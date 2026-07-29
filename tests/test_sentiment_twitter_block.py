@@ -62,6 +62,26 @@ def test_stocktwits_defaults_on_for_stock_runs(monkeypatch):
 # --- Prompt assembly with a variable number of sources --------------------
 
 
+def test_sentiment_sources_are_exposed_in_state(monkeypatch):
+    """The UI must be able to show exactly the raw data the model read."""
+    from tradingagents.agents.utils import agent_states
+    assert "sentiment_sources" in agent_states.AgentState.__annotations__
+
+
+def test_collected_sources_carry_every_fetched_block():
+    sources = sa.collect_sentiment_sources(news_block="NEWS", stocktwits_block="TWITS",
+                                           reddit_block="REDDIT", twitter_block="TWEETS")
+    assert sources == {"news": "NEWS", "stocktwits": "TWITS",
+                       "reddit": "REDDIT", "twitter": "TWEETS"}
+
+
+def test_collected_sources_omit_disabled_blocks():
+    sources = sa.collect_sentiment_sources(news_block="NEWS", stocktwits_block="",
+                                           reddit_block="REDDIT", twitter_block="")
+    assert sources == {"news": "NEWS", "reddit": "REDDIT"}
+    assert "stocktwits" not in sources
+
+
 def test_prompt_omits_stocktwits_section_when_disabled():
     msg = sa._build_system_message(**_kwargs(stocktwits_block=""))
     assert "start_of_stocktwits" not in msg

@@ -290,6 +290,41 @@ def test_collect_reports_is_empty_for_an_empty_state(screener):
     assert screener.collect_reports({}, "") == {}
 
 
+def test_source_panels_have_headers_in_reading_order(screener):
+    labels = [label for _, label in screener.SOURCE_PANELS]
+    keys = [key for key, _ in screener.SOURCE_PANELS]
+    assert keys == ["stocktwits", "twitter", "reddit", "news"]
+    assert any("StockTwits" in label for label in labels)
+    assert any("X / Twitter" in label for label in labels)
+
+
+def test_collect_reports_keeps_the_raw_sentiment_sources(screener):
+    state = {"sentiment_report": "S",
+             "sentiment_sources": {"stocktwits": "TWITS", "reddit": "REDDIT"}}
+    reports = screener.collect_reports(state, "D")
+    assert reports["sentiment_sources"] == {"stocktwits": "TWITS", "reddit": "REDDIT"}
+
+
+def test_collect_reports_tolerates_a_run_without_sources(screener):
+    reports = screener.collect_reports({"sentiment_report": "S"}, "D")
+    assert reports.get("sentiment_sources", {}) == {}
+
+
+def test_source_panel_rows_only_cover_fetched_sources(screener):
+    rows = screener.source_panel_rows({"stocktwits": "TWITS", "news": "NEWS"})
+    assert [key for key, _, _ in rows] == ["stocktwits", "news"]
+    assert rows[0][2] == "TWITS"
+
+
+def test_source_panel_rows_flag_an_unavailable_source(screener):
+    rows = screener.source_panel_rows(
+        {"stocktwits": "<no StockTwits messages for $AEON.X in the last 7 days: "
+                       "30 older messages ignored, newest was 878 days old>"})
+    key, label, body = rows[0]
+    assert "unavailable" in label.lower() or "no data" in label.lower()
+    assert "878" in body
+
+
 def test_report_sections_exclude_fundamentals(screener):
     keys = [k for k, _ in screener.REPORT_SECTIONS]
     assert "fundamentals_report" not in keys

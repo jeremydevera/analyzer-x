@@ -100,12 +100,42 @@ REPORT_SECTIONS = (
 )
 
 
+# Raw source panels shown under the sentiment report, cheapest source first.
+SOURCE_PANELS = (
+    ("stocktwits", "StockTwits messages"),
+    ("twitter", "X / Twitter posts"),
+    ("reddit", "Reddit posts"),
+    ("news", "News headlines"),
+)
+
+
 def collect_reports(state: dict, decision: str) -> dict:
     """Pull the report sections worth keeping out of a finished graph state."""
     reports = {key: state.get(key, "") for key, _ in REPORT_SECTIONS}
     if decision and not reports.get("final_trade_decision"):
         reports["final_trade_decision"] = decision
-    return {k: v for k, v in reports.items() if v}
+    kept = {k: v for k, v in reports.items() if v}
+    sources = state.get("sentiment_sources") or {}
+    if sources:
+        kept["sentiment_sources"] = dict(sources)
+    return kept
+
+
+def source_panel_rows(sources: dict) -> list:
+    """``(key, label, body)`` per fetched source, in panel order.
+
+    A fetcher that could not reach its source returns a ``<...>`` placeholder
+    rather than raising, so the label says so outright — otherwise a reader opens
+    a panel expecting posts and finds a sentence they have to decode.
+    """
+    rows = []
+    for key, label in SOURCE_PANELS:
+        body = sources.get(key)
+        if not body:
+            continue
+        unavailable = body.lstrip().startswith("<")
+        rows.append((key, f"{label} — unavailable" if unavailable else label, body))
+    return rows
 
 
 def verdict_label(signal: str | None) -> str:
@@ -476,3 +506,18 @@ def _render_stored_reports(st, trade_date: str) -> None:
             if reports.get(key):
                 st.markdown(f"#### {label}")
                 st.markdown(reports[key])
+            # Raw source data sits directly under the narrative that used it, so
+            # a claim about StockTwits sentiment can be checked against the posts.
+            if key == "sentiment_report":
+                _render_source_panels(st, reports.get("sentiment_sources") or {})
+
+
+def _render_source_panels(st, sources: dict) -> None:
+    """Collapsed panels holding the raw posts each source returned."""
+    rows = source_panel_rows(sources)
+    if not rows:
+        return
+    st.markdown("##### Source data the analyst read")
+    for _, label, body in rows:
+        with st.expander(label, expanded=False):
+            st.code(body, language=None)

@@ -48,6 +48,20 @@ from tradingagents.dataflows.twitter import fetch_twitter_posts
 _COUNT_WORDS = {2: "two", 3: "three", 4: "four"}
 
 
+def collect_sentiment_sources(*, news_block: str, stocktwits_block: str,
+                              reddit_block: str, twitter_block: str) -> dict:
+    """The raw blocks that went into the prompt, keyed by source.
+
+    Returned in state so a UI can show the actual posts the model read instead of
+    only its narrative about them — the difference between "17 bullish messages"
+    being checkable and being taken on faith. Disabled sources are omitted so a
+    reader never sees an empty panel for a source that was switched off.
+    """
+    blocks = {"news": news_block, "stocktwits": stocktwits_block,
+              "reddit": reddit_block, "twitter": twitter_block}
+    return {name: block for name, block in blocks.items() if block}
+
+
 def _seven_days_back(trade_date: str) -> str:
     return (datetime.strptime(trade_date, "%Y-%m-%d") - timedelta(days=7)).strftime("%Y-%m-%d")
 
@@ -176,6 +190,9 @@ def create_sentiment_analyst(llm):
         return {
             "messages": [AIMessage(content=report_text)],
             "sentiment_report": report_text,
+            "sentiment_sources": collect_sentiment_sources(
+                news_block=news_block, stocktwits_block=stocktwits_block,
+                reddit_block=reddit_block, twitter_block=twitter_block),
         }
 
     return sentiment_analyst_node

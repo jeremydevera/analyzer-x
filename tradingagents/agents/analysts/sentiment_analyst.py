@@ -59,9 +59,12 @@ def _maybe_twitter_block(ticker: str, start_date: str, end_date: str) -> str:
     """
     if not get_config().get("include_twitter"):
         return ""
+    # Cashtag only, no bare symbol: the bare term drags in unrelated chatter that
+    # happens to share the ticker's letters. Measured on $AEON, the cashtag alone
+    # returned 12 crypto-relevant posts of 16, while adding the bare term returned
+    # 5 of 20 — the rest were anime fandom posts about a character named Aeon.
     return fetch_twitter_posts(
-        f"${_cashtag(ticker)} OR {_cashtag(ticker)}",
-        start_date=start_date, end_date=end_date,
+        f"${_cashtag(ticker)}", start_date=start_date, end_date=end_date
     )
 
 

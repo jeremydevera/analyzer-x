@@ -17,6 +17,7 @@ from __future__ import annotations
 import http.client
 import json
 import logging
+from datetime import datetime, timezone
 from urllib.request import Request, urlopen
 
 logger = logging.getLogger(__name__)
@@ -25,9 +26,48 @@ _API = "https://api.stocktwits.com/api/2/streams/symbol/{ticker}.json"
 _UA = "tradingagents/0.2 (+https://github.com/TauricResearch/TradingAgents)"
 
 
-def fetch_stocktwits_messages(ticker: str, limit: int = 30, timeout: float = 10.0) -> str:
+DEFAULT_WINDOW_DAYS = 7
+
+
+def _message_age_days(message: dict, now: datetime) -> int | None:
+    """Whole days since a message was posted, or None if the stamp is unusable."""
+    stamp = message.get("created_at")
+    if not isinstance(stamp, str):
+        return None
+    try:
+        posted = datetime.strptime(stamp, "%Y-%m-%dT%H:%M:%SZ").replace(
+            tzinfo=timezone.utc)
+    except ValueError:
+        return None
+    return (now - posted).days
+
+
+def _within_window(messages: list, window_days: int | None):
+    """Split messages by recency. Returns ``(kept, newest_age_in_days)``.
+
+    A stream can be entirely historical: the ticker of a coin listed last week
+    may have belonged to a different asset years ago, and StockTwits serves those
+    old messages as the "most recent" ones. Ages come back with the result so the
+    caller can say how stale the stream is instead of implying it is live.
+    """
+    now = datetime.now(timezone.utc)
+    ages = [(m, _message_age_days(m, now)) for m in messages]
+    dated = [(m, age) for m, age in ages if age is not None]
+    newest_age = min((age for _, age in dated), default=None)
+    if window_days is None:
+        return [m for m, _ in dated], newest_age
+    return [m for m, age in dated if age <= window_days], newest_age
+
+
+def fetch_stocktwits_messages(ticker: str, limit: int = 30, timeout: float = 10.0,
+                              window_days: int | None = DEFAULT_WINDOW_DAYS) -> str:
     """Fetch recent StockTwits messages for ``ticker`` and return them as a
     formatted plaintext block ready for prompt injection.
+
+    Only messages posted within ``window_days`` are kept, because the endpoint
+    returns the 30 most-recent messages regardless of age — for a newly listed
+    coin that inherited its ticker from an older asset, those can be years old
+    (AEON.X's newest is 878 days old). Pass ``window_days=None`` to keep them all.
 
     Returns a placeholder string when the endpoint is unreachable, the
     symbol has no messages, or the response shape is unexpected — the
@@ -48,9 +88,17 @@ def fetch_stocktwits_messages(ticker: str, limit: int = 30, timeout: float = 10.
     if not messages:
         return f"<no StockTwits messages found for ${ticker.upper()}>"
 
+    fresh, newest_age = _within_window(messages, window_days)
+    if not fresh:
+        detail = (f", newest was {newest_age} days old" if newest_age is not None
+                  else "")
+        return (f"<no StockTwits messages for ${ticker.upper()} in the last "
+                f"{window_days} days: {len(messages)} older messages ignored"
+                f"{detail}>")
+
     lines = []
     bullish = bearish = unlabeled = 0
-    for m in messages[:limit]:
+    for m in fresh[:limit]:
         created = m.get("created_at", "")
         user = (m.get("user") or {}).get("username", "?")
         entities = m.get("entities") or {}
@@ -74,10 +122,15 @@ def fetch_stocktwits_messages(ticker: str, limit: int = 30, timeout: float = 10.
     total = bullish + bearish + unlabeled
     bull_pct = round(100 * bullish / total) if total else 0
     bear_pct = round(100 * bearish / total) if total else 0
+    window_note = (f" within the last {window_days} days"
+                   if window_days is not None else "")
+    age_note = f" · newest {newest_age}d old" if newest_age is not None else ""
+    dropped = len(messages) - len(fresh)
+    drop_note = f" · {dropped} older messages excluded" if dropped else ""
     summary = (
         f"Bullish: {bullish} ({bull_pct}%) · "
         f"Bearish: {bearish} ({bear_pct}%) · "
         f"Unlabeled: {unlabeled} · "
-        f"Total: {total} most-recent messages"
+        f"Total: {total} messages{window_note}{age_note}{drop_note}"
     )
     return summary + "\n\n" + "\n".join(lines)

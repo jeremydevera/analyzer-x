@@ -273,27 +273,51 @@ def group_replies(posts: list, replies: list) -> tuple[list, list]:
     rather than dropped — they are engagement on the same coin, just on a post
     the search did not return.
     """
+    # One pool, deduplicated: the term search returns replies as results too (they
+    # name the coin), so the same tweet can arrive from both searches.
+    pool: list = []
+    seen_ids = set()
+    for tweet in list(posts) + list(replies):
+        tid = tweet.get("id")
+        if tid and tid in seen_ids:
+            continue
+        if tid:
+            seen_ids.add(tid)
+        pool.append(tweet)
+
+    # Classified by what the tweet is, not by what happened to be fetched: a
+    # tweet with inReplyToId is a reply even when its parent was not returned,
+    # so it renders as one instead of masquerading as an original post.
+    def _is_reply(tweet):
+        parent = tweet.get("inReplyToId")
+        return bool(parent) and parent != tweet.get("id")
+
+    def _parent_id(tweet):
+        parent = tweet.get("inReplyToId")
+        return parent if parent and parent in seen_ids else None
+
+    tops = [t for t in pool if not _is_reply(t)]
     # Indexed by position, not by id: tweets missing an id would otherwise share
     # a single None key and collapse into one thread, silently dropping posts.
-    threads = [{"post": post, "replies": []} for post in posts]
-    index_by_id = {p.get("id"): i for i, p in enumerate(posts) if p.get("id")}
+    threads = [{"post": post, "replies": []} for post in tops]
+    index_by_id = {p.get("id"): i for i, p in enumerate(tops) if p.get("id")}
     index_by_conversation: dict = {}
-    for i, post in enumerate(posts):
+    for i, post in enumerate(tops):
         conversation = post.get("conversationId") or post.get("id")
         if conversation:
             index_by_conversation.setdefault(conversation, i)
 
     orphans = []
-    for reply in replies:
-        if reply.get("id") and reply.get("id") in index_by_id:
-            continue                    # the post itself, echoed by the search
-        parent = index_by_id.get(reply.get("inReplyToId"))
+    for tweet in pool:
+        if not _is_reply(tweet):
+            continue                    # already a thread head
+        parent = index_by_id.get(_parent_id(tweet))
         if parent is None:
-            parent = index_by_conversation.get(reply.get("conversationId"))
+            parent = index_by_conversation.get(tweet.get("conversationId"))
         if parent is None:
-            orphans.append(reply)
+            orphans.append(tweet)
         else:
-            threads[parent]["replies"].append(reply)
+            threads[parent]["replies"].append(tweet)
     return threads, orphans
 
 
@@ -309,10 +333,14 @@ def format_thread_block(terms: str, start_date: str | None, end_date: str | None
     threads.sort(key=lambda t: (_likes(t["post"]) + _retweets_of(t["post"])
                                 + len(t["replies"])), reverse=True)
 
-    authors = {_author(t) for t in posts} | {_author(r) for r in replies}
+    # Counted from the grouping, not the raw lists: a reply that also arrived in
+    # the post search must not inflate either number.
+    rendered_posts = [t["post"] for t in threads]
+    rendered_replies = [r for t in threads for r in t["replies"]] + orphans
+    authors = {_author(t) for t in rendered_posts} | {_author(r) for r in rendered_replies}
     window = f"  ·  {start_date} → {end_date}" if start_date and end_date else ""
-    counts = [f"{len(posts)} post{'s' if len(posts) != 1 else ''}",
-              f"{len(replies)} repl{'ies' if len(replies) != 1 else 'y'}",
+    counts = [f"{len(rendered_posts)} post{'s' if len(rendered_posts) != 1 else ''}",
+              f"{len(rendered_replies)} repl{'ies' if len(rendered_replies) != 1 else 'y'}",
               f"{len(authors)} author{'s' if len(authors) != 1 else ''}"]
     if retweets:
         counts.append(f"{retweets} retweet{'s' if retweets != 1 else ''} excluded")

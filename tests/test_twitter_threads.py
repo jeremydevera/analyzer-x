@@ -26,6 +26,43 @@ def _tweet(tid, user, text, likes=0, rts=0, replies=0, created="Wed Jul 29 08:25
 # --- grouping -------------------------------------------------------------
 
 
+def test_a_fetched_reply_nests_under_its_fetched_parent():
+    """The term search returns replies as results too, since they name the coin.
+
+    Rendering them as standalone posts loses the conversation and double-counts
+    them; they belong under the post they answer.
+    """
+    parent = _tweet("1", "Alpha_MEXC", "MEXC listing $XPLK", likes=19)
+    child = _tweet("2", "ericgudboy", "trading already?", in_reply_to="1",
+                   conversation="1")
+    threads, orphans = twitter.group_replies([parent, child], [])
+    assert [t["post"]["id"] for t in threads] == ["1"], "the reply is not a post"
+    assert [r["id"] for r in threads[0]["replies"]] == ["2"]
+    assert orphans == []
+
+
+def test_counts_reflect_what_is_actually_rendered():
+    """A reply already present among the posts must not be counted twice."""
+    parent = _tweet("1", "Alpha_MEXC", "listing")
+    child = _tweet("2", "ericgudboy", "nice", in_reply_to="1", conversation="1")
+    out = twitter.format_thread_block("$XPLK", None, None, [parent, child],
+                                      [child], retweets=0)
+    summary = out.splitlines()[1]
+    assert "1 post" in summary
+    assert "1 reply" in summary
+    assert out.count("POST · @") == 1
+    assert out.count("↳ @ericgudboy") == 1
+
+
+def test_a_reply_whose_parent_was_not_fetched_is_still_a_reply():
+    """It is a reply by nature; presenting it as an original post would mislead."""
+    orphan_reply = _tweet("2", "zarsiful", "@xPayLink from Hindustan",
+                          in_reply_to="999", conversation="999")
+    threads, orphans = twitter.group_replies([orphan_reply], [])
+    assert threads == []
+    assert [r["id"] for r in orphans] == ["2"]
+
+
 def test_replies_attach_to_their_parent_post():
     posts = [_tweet("1", "Alpha_MEXC", "MEXC New Listing $XPLK", replies=2)]
     replies = [_tweet("11", "ericgudboy", "@Alpha_MEXC trading already?", in_reply_to="1"),

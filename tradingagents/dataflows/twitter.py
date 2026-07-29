@@ -26,6 +26,14 @@ import urllib.request
 logger = logging.getLogger(__name__)
 
 _API = "https://api.twitterapi.io/twitter/tweet/advanced_search"
+_ACCOUNT_API = "https://api.twitterapi.io/oapi/my/info"
+# Published rates (twitterapi.io/pricing): 1 USD = 100,000 credits, 15 credits per
+# returned tweet, 15-credit minimum per call. A search page returns 20 tweets, so
+# one sentiment fetch costs ~300 credits ≈ $0.003.
+CREDITS_PER_USD = 100_000
+CREDITS_PER_TWEET = 15
+TWEETS_PER_PAGE = 20
+CREDITS_PER_RUN = CREDITS_PER_TWEET * TWEETS_PER_PAGE
 _UA = "tradingagents/0.3 (+https://github.com/TauricResearch/TradingAgents)"
 _TIMEOUT = 15.0
 DEFAULT_LIMIT = 30
@@ -61,13 +69,53 @@ def _tweets_of(data) -> list:
     return tweets if isinstance(tweets, list) else []
 
 
-def _request(params: dict, key: str, timeout: float):
-    url = f"{_API}?{urllib.parse.urlencode(params)}"
+def _get_json(url: str, key: str, timeout: float):
     req = urllib.request.Request(
         url, headers={"X-API-Key": key, "User-Agent": _UA, "Accept": "application/json"}
     )
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return json.loads(resp.read())
+
+
+def _request(params: dict, key: str, timeout: float):
+    return _get_json(f"{_API}?{urllib.parse.urlencode(params)}", key, timeout)
+
+
+def fetch_credit_balance(timeout: float = 10.0) -> dict:
+    """Remaining twitterapi.io credits, split by bucket.
+
+    Account lookups are not billed (verified: a balance check left the credit
+    total unchanged), but they do count against the free tier's one-request-per-
+    five-seconds limit, so callers should cache the result rather than polling.
+
+    Always returns a dict — ``ok`` False with a populated ``error`` when the
+    balance could not be read, so a UI can show "unknown" instead of breaking.
+    """
+    key = os.getenv("TWITTERAPI_IO_KEY", "").strip()
+    if not key:
+        return {"ok": False, "recharge": 0, "bonus": 0, "total": 0,
+                "error": "TWITTERAPI_IO_KEY not set"}
+    try:
+        data = _get_json(_ACCOUNT_API, key, timeout)
+    except (OSError, urllib.error.URLError, json.JSONDecodeError) as exc:
+        logger.warning("Twitter credit lookup failed: %s", exc)
+        return {"ok": False, "recharge": 0, "bonus": 0, "total": 0,
+                "error": f"{type(exc).__name__}: {exc}"}
+
+    if not isinstance(data, dict):
+        return {"ok": False, "recharge": 0, "bonus": 0, "total": 0,
+                "error": "unexpected response shape"}
+
+    def _int(value) -> int:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return 0
+
+    recharge = _int(data.get("recharge_credits"))
+    bonus = _int(data.get("total_bonus_credits"))
+    return {"ok": True, "recharge": recharge, "bonus": bonus,
+            "total": recharge + bonus, "error": ""}
 
 
 def _build_query(terms: str, start_date: str | None, end_date: str | None) -> str:

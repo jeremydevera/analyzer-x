@@ -166,6 +166,60 @@ def test_fmt_age(screener, hours, expected):
     assert screener.fmt_age(hours) == expected
 
 
+def _balance(**over):
+    base = dict(ok=True, recharge=0, bonus=280, total=280, error="")
+    base.update(over)
+    return base
+
+
+def test_credit_summary_converts_credits_to_runs_and_dollars(screener):
+    s = screener.credit_summary(_balance(bonus=30_000, total=30_000))
+    assert s["runs"] == 100            # 30,000 / 300 credits per run
+    assert s["usd"] == pytest.approx(0.30)
+    assert s["known"] is True
+
+
+def test_credit_summary_on_the_real_low_balance(screener):
+    s = screener.credit_summary(_balance())
+    assert s["runs"] == 0              # 280 credits buys no complete 20-tweet page
+    assert s["level"] == "empty"
+
+
+@pytest.mark.parametrize("total,level", [
+    (0, "empty"),
+    (280, "empty"),          # under one run's worth
+    (300, "low"),            # exactly one run
+    (4_500, "low"),          # 15 runs
+    (6_000, "ok"),           # 20 runs
+    (60_000, "ok"),
+])
+def test_credit_summary_levels(screener, total, level):
+    assert screener.credit_summary(_balance(total=total))["level"] == level
+
+
+def test_credit_summary_bar_fraction_is_capped(screener):
+    assert screener.credit_summary(_balance(total=0))["fraction"] == 0.0
+    assert screener.credit_summary(_balance(total=15_000))["fraction"] == pytest.approx(0.5)
+    assert screener.credit_summary(_balance(total=999_999))["fraction"] == 1.0
+
+
+def test_credit_summary_marks_an_unreadable_balance_unknown(screener):
+    s = screener.credit_summary(_balance(ok=False, total=0, error="OSError: boom"))
+    assert s["known"] is False
+    assert s["level"] == "unknown"
+    assert "boom" in s["detail"]
+
+
+def test_credit_summary_notes_bonus_expiry_when_only_bonus_credits_remain(screener):
+    s = screener.credit_summary(_balance(recharge=0, bonus=6_000, total=6_000))
+    assert "30 days" in s["detail"]
+
+
+def test_credit_summary_omits_expiry_note_for_recharged_credits(screener):
+    s = screener.credit_summary(_balance(recharge=50_000, bonus=0, total=50_000))
+    assert "30 days" not in s["detail"]
+
+
 def test_report_key_is_symbol_and_date_scoped(screener):
     assert screener.report_key("CATEUSDT", "2026-07-29") == "reports:CATEUSDT:2026-07-29"
 

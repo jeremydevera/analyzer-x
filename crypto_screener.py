@@ -8,6 +8,7 @@ that touches st.*.
 
 from __future__ import annotations
 
+import html
 import time
 from copy import deepcopy
 
@@ -96,6 +97,59 @@ def verdict_label(signal: str | None) -> str:
 
 # Age units offered in the range dropdowns, in hours.
 AGE_UNITS = {"hour": 1, "day": 24, "week": 168}
+
+# The meter is drawn against a reference "full tank" rather than a real ceiling,
+# because a pay-as-you-go balance has no maximum. 100 analyze runs is a week or
+# two of ordinary use, which makes the bar readable at the scale that matters.
+CREDIT_METER_REFERENCE_RUNS = 100
+# Below this many remaining runs the bar turns amber; at zero it turns red.
+CREDIT_LOW_RUNS = 20
+
+
+def credit_summary(balance: dict) -> dict:
+    """Turn a raw credit balance into everything the meter needs to render.
+
+    Credits are meaningless to read directly, so they are expressed as the two
+    units that answer "should I top up": how many analyze runs remain, and what
+    the balance is worth in dollars.
+    """
+    from tradingagents.dataflows import twitter
+
+    total = max(0, int(balance.get("total", 0)))
+    runs = total // twitter.CREDITS_PER_RUN
+    usd = total / twitter.CREDITS_PER_USD
+    reference = CREDIT_METER_REFERENCE_RUNS * twitter.CREDITS_PER_RUN
+
+    if not balance.get("ok"):
+        level = "unknown"
+    elif runs == 0:
+        level = "empty"
+    elif runs < CREDIT_LOW_RUNS:
+        level = "low"
+    else:
+        level = "ok"
+
+    if level == "unknown":
+        detail = f"Balance unavailable — {balance.get('error', 'unknown error')}."
+    elif runs == 0:
+        detail = ("Not enough for another X/Twitter fetch. Sentiment will fall back "
+                  "to Reddit and news until you top up ($1 ≈ 330 runs).")
+    else:
+        detail = f"About {runs} more analyze runs at ~{twitter.CREDITS_PER_RUN} credits each."
+        # Bonus credits expire; recharged credits do not. Only warn when the
+        # balance is entirely promotional, since that is the expiring kind.
+        if balance.get("bonus", 0) > 0 and balance.get("recharge", 0) == 0:
+            detail += " These are bonus credits, valid 30 days from the recharge that granted them."
+
+    return {
+        "known": bool(balance.get("ok")),
+        "credits": total,
+        "runs": runs,
+        "usd": usd,
+        "level": level,
+        "fraction": min(1.0, total / reference) if reference else 0.0,
+        "detail": detail,
+    }
 
 
 def to_hours(value: float, unit: str) -> float:
@@ -213,6 +267,8 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
         f'{mexc.WINDOW_DAYS} days</div>',
         unsafe_allow_html=True)
 
+    _render_credit_meter(st)
+
     units = list(AGE_UNITS)
     a1, a2, a3, a4 = st.columns([1, 1.2, 1, 1.2])
     min_value = a1.number_input("Age from", min_value=0, value=1, step=1,
@@ -321,6 +377,58 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
     # to be redrawn for the result to land in it. Reports survive the rerun via
     # session_state and are re-rendered by _render_stored_reports.
     st.rerun()
+
+
+_CREDIT_CACHE_KEY = "crypto_credit_balance"
+_CREDIT_CACHE_TTL = 120.0
+_CREDIT_COLORS = {"ok": "#22C55E", "low": "#F59E0B", "empty": "#EF4444",
+                  "unknown": "#64748B"}
+_CREDIT_LABELS = {"ok": "healthy", "low": "running low", "empty": "exhausted",
+                  "unknown": "unknown"}
+
+
+def _cached_balance(st, force: bool = False) -> dict:
+    """Credit balance, cached in session state.
+
+    Streamlit re-runs this tab on every interaction and the free tier allows one
+    request per five seconds, so polling the balance on each render would spend
+    the run's rate-limit budget on a status widget.
+    """
+    from tradingagents.dataflows import twitter
+
+    cached = st.session_state.get(_CREDIT_CACHE_KEY)
+    if cached and not force and (time.time() - cached["at"]) < _CREDIT_CACHE_TTL:
+        return cached["balance"]
+
+    balance = twitter.fetch_credit_balance()
+    st.session_state[_CREDIT_CACHE_KEY] = {"at": time.time(), "balance": balance}
+    return balance
+
+
+def _render_credit_meter(st) -> None:
+    """X/Twitter credit bar, in the same idiom as the engine-capacity panel."""
+    col_bar, col_btn = st.columns([5, 1])
+    refresh = col_btn.button("↻", key="crypto_credit_refresh",
+                             help="Re-check the X/Twitter credit balance")
+    summary = credit_summary(_cached_balance(st, force=refresh))
+
+    colour = _CREDIT_COLORS[summary["level"]]
+    headline = (f"{summary['credits']:,} credits · ~{summary['runs']} runs · "
+                f"${summary['usd']:.2f}") if summary["known"] else "unavailable"
+    col_bar.markdown(
+        "<div style='margin:2px 0 10px'>"
+        "<div style='display:flex;justify-content:space-between;"
+        "font-family:var(--font-mono);font-size:12px'>"
+        "<span style='color:var(--muted);letter-spacing:.08em'>X/TWITTER CREDITS "
+        f"<span style='color:{colour}'>· {_CREDIT_LABELS[summary['level']]}</span></span>"
+        f"<span style='color:{colour}'>{html.escape(headline)}</span></div>"
+        "<div style='height:8px;background:#0E141B;border:1px solid var(--border);"
+        "border-radius:6px;overflow:hidden;margin-top:3px'>"
+        f"<div style='height:100%;width:{int(summary['fraction'] * 100)}%;"
+        f"background:{colour}'></div></div>"
+        f"<div style='font-size:11px;color:var(--muted);margin-top:4px'>"
+        f"{html.escape(summary['detail'])}</div></div>",
+        unsafe_allow_html=True)
 
 
 def _render_stored_reports(st, trade_date: str) -> None:

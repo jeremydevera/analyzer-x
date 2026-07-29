@@ -143,6 +143,57 @@ def test_does_not_retry_on_a_transport_error(monkeypatch):
     assert out.startswith("<twitter unavailable")
 
 
+def test_credit_balance_parses_both_buckets(monkeypatch):
+    monkeypatch.setenv("TWITTERAPI_IO_KEY", "k")
+    payload = {"recharge_credits": 12_000, "total_bonus_credits": 280}
+    with patch.object(twitter, "_get_json", return_value=payload):
+        bal = twitter.fetch_credit_balance()
+    assert bal["ok"] is True
+    assert bal["recharge"] == 12_000
+    assert bal["bonus"] == 280
+    assert bal["total"] == 12_280
+    assert bal["error"] == ""
+
+
+def test_credit_balance_without_a_key(monkeypatch):
+    monkeypatch.delenv("TWITTERAPI_IO_KEY", raising=False)
+    bal = twitter.fetch_credit_balance()
+    assert bal["ok"] is False
+    assert bal["total"] == 0
+    assert "TWITTERAPI_IO_KEY" in bal["error"]
+
+
+def test_credit_balance_survives_a_transport_error(monkeypatch):
+    monkeypatch.setenv("TWITTERAPI_IO_KEY", "k")
+    with patch.object(twitter, "_get_json", side_effect=OSError("boom")):
+        bal = twitter.fetch_credit_balance()
+    assert bal["ok"] is False
+    assert bal["total"] == 0
+    assert "OSError" in bal["error"]
+
+
+def test_credit_balance_survives_an_unexpected_shape(monkeypatch):
+    monkeypatch.setenv("TWITTERAPI_IO_KEY", "k")
+    with patch.object(twitter, "_get_json", return_value=["nope"]):
+        bal = twitter.fetch_credit_balance()
+    assert bal["ok"] is False
+
+
+def test_credit_balance_treats_missing_buckets_as_zero(monkeypatch):
+    monkeypatch.setenv("TWITTERAPI_IO_KEY", "k")
+    with patch.object(twitter, "_get_json", return_value={}):
+        bal = twitter.fetch_credit_balance()
+    assert bal["ok"] is True
+    assert bal["total"] == 0
+
+
+def test_pricing_constants_match_the_published_rates():
+    """1 USD = 100,000 credits, 15 credits per returned tweet."""
+    assert twitter.CREDITS_PER_USD == 100_000
+    assert twitter.CREDITS_PER_TWEET == 15
+    assert twitter.CREDITS_PER_RUN == 15 * twitter.TWEETS_PER_PAGE
+
+
 def test_query_includes_cashtag_and_dates(monkeypatch):
     monkeypatch.setenv("TWITTERAPI_IO_KEY", "k")
     monkeypatch.setattr(twitter, "_RETRY_SLEEP", 0.0)

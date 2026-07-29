@@ -25,14 +25,21 @@ def test_returns_placeholder_without_key(monkeypatch):
 
 
 def test_formats_posts_from_payload(monkeypatch, payload):
+    """Parses the recorded live response — field names come from a real call."""
     monkeypatch.setenv("TWITTERAPI_IO_KEY", "k")
     with patch.object(twitter, "_request", return_value=payload):
-        out = twitter.fetch_twitter_posts("$CATE", start_date="2026-07-22",
+        out = twitter.fetch_twitter_posts("$BTC", start_date="2026-07-22",
                                           end_date="2026-07-29")
     assert "X/Twitter posts" in out
-    assert "@chainwatcher" in out
-    assert "412 likes" in out
     assert "<twitter unavailable" not in out
+    # Every recorded post's handle, timestamp, and like count must survive.
+    for tweet in payload["tweets"]:
+        assert f"@{tweet['author']['userName']}" in out
+        assert f"{tweet['likeCount']} likes" in out
+        assert tweet["createdAt"] in out
+    # Newlines inside a post body would corrupt the one-post-per-line format.
+    body_lines = [ln for ln in out.split("\n") if ln.startswith("[")]
+    assert len(body_lines) == len(payload["tweets"])
 
 
 def test_truncates_long_bodies(monkeypatch):
@@ -85,8 +92,60 @@ def test_tolerates_alternate_field_names(monkeypatch):
     assert "9 likes" in out
 
 
-def test_query_includes_cashtag_dates_and_excludes_retweets(monkeypatch):
+def test_retries_once_when_the_first_response_is_empty(monkeypatch):
+    """twitterapi.io intermittently returns an empty list for a query that works."""
     monkeypatch.setenv("TWITTERAPI_IO_KEY", "k")
+    monkeypatch.setattr(twitter, "_RETRY_SLEEP", 0.0)
+    calls = []
+
+    def flaky(params, key, timeout):
+        calls.append(params["query"])
+        if len(calls) == 1:
+            return {"tweets": []}
+        return {"tweets": [{"text": "second try", "createdAt": "2026-07-28",
+                            "likeCount": 5, "retweetCount": 1,
+                            "author": {"userName": "u"}}]}
+
+    with patch.object(twitter, "_request", side_effect=flaky):
+        out = twitter.fetch_twitter_posts("$CATE")
+    assert len(calls) == 2
+    assert "second try" in out
+
+
+def test_gives_up_after_one_retry(monkeypatch):
+    monkeypatch.setenv("TWITTERAPI_IO_KEY", "k")
+    monkeypatch.setattr(twitter, "_RETRY_SLEEP", 0.0)
+    calls = []
+
+    def always_empty(params, key, timeout):
+        calls.append(1)
+        return {"tweets": []}
+
+    with patch.object(twitter, "_request", side_effect=always_empty):
+        out = twitter.fetch_twitter_posts("$CATE")
+    assert len(calls) == 2
+    assert out.startswith("<no X/Twitter posts found")
+
+
+def test_does_not_retry_on_a_transport_error(monkeypatch):
+    """A network failure is not the empty-response case; one attempt is enough."""
+    monkeypatch.setenv("TWITTERAPI_IO_KEY", "k")
+    monkeypatch.setattr(twitter, "_RETRY_SLEEP", 0.0)
+    calls = []
+
+    def boom(params, key, timeout):
+        calls.append(1)
+        raise OSError("timed out")
+
+    with patch.object(twitter, "_request", side_effect=boom):
+        out = twitter.fetch_twitter_posts("$CATE")
+    assert len(calls) == 1
+    assert out.startswith("<twitter unavailable")
+
+
+def test_query_includes_cashtag_and_dates(monkeypatch):
+    monkeypatch.setenv("TWITTERAPI_IO_KEY", "k")
+    monkeypatch.setattr(twitter, "_RETRY_SLEEP", 0.0)
     seen = {}
 
     def capture(params, key, timeout):
@@ -97,6 +156,40 @@ def test_query_includes_cashtag_dates_and_excludes_retweets(monkeypatch):
         twitter.fetch_twitter_posts("$CATE OR Catestein",
                                     start_date="2026-07-22", end_date="2026-07-29")
     assert "$CATE" in seen["query"]
+    assert "lang:en" in seen["query"]
     assert "since:2026-07-22" in seen["query"]
     assert "until:2026-07-29" in seen["query"]
-    assert "-filter:retweets" in seen["query"]
+
+
+def test_query_omits_filter_retweets(monkeypatch):
+    """This reseller returns zero results for any query containing that operator."""
+    monkeypatch.setenv("TWITTERAPI_IO_KEY", "k")
+    monkeypatch.setattr(twitter, "_RETRY_SLEEP", 0.0)
+    seen = {}
+
+    def capture(params, key, timeout):
+        seen.update(params)
+        return {"tweets": []}
+
+    with patch.object(twitter, "_request", side_effect=capture):
+        twitter.fetch_twitter_posts("$CATE")
+    assert "filter:retweets" not in seen["query"]
+
+
+def test_retweets_are_dropped_client_side(monkeypatch):
+    monkeypatch.setenv("TWITTERAPI_IO_KEY", "k")
+    payload = {"tweets": [
+        {"text": "RT @someone: recycled take", "createdAt": "2026-07-28",
+         "likeCount": 10, "retweetCount": 3, "author": {"userName": "parrot"}},
+        {"text": "quoted wrapper", "createdAt": "2026-07-28", "likeCount": 4,
+         "retweetCount": 0, "author": {"userName": "wrapper"},
+         "retweeted_tweet": {"text": "original"}},
+        {"text": "an original opinion", "createdAt": "2026-07-28", "likeCount": 7,
+         "retweetCount": 1, "author": {"userName": "original"}},
+    ]}
+    with patch.object(twitter, "_request", return_value=payload):
+        out = twitter.fetch_twitter_posts("$CATE")
+    assert "@original" in out
+    assert "@parrot" not in out
+    assert "@wrapper" not in out
+    assert "1 posts" in out

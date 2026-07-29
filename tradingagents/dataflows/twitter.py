@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -29,6 +30,12 @@ _UA = "tradingagents/0.3 (+https://github.com/TauricResearch/TradingAgents)"
 _TIMEOUT = 15.0
 DEFAULT_LIMIT = 30
 _MAX_BODY_CHARS = 280
+# The endpoint intermittently answers a working query with an empty list —
+# verified live: the same query returned 20 posts, then 0, then 20 again. One
+# retry converts most of those into data. The pause also respects the free
+# tier's documented limit of one request every 5 seconds, so the retry itself
+# cannot trip a 429.
+_RETRY_SLEEP = 5.0
 
 # Response field names are read through aliases: the reseller's schema is not
 # contractual, and a renamed field should degrade one column rather than break
@@ -49,6 +56,11 @@ def _first(obj: dict, names: tuple[str, ...], default=""):
     return default
 
 
+def _tweets_of(data) -> list:
+    tweets = data.get("tweets") if isinstance(data, dict) else None
+    return tweets if isinstance(tweets, list) else []
+
+
 def _request(params: dict, key: str, timeout: float):
     url = f"{_API}?{urllib.parse.urlencode(params)}"
     req = urllib.request.Request(
@@ -59,12 +71,24 @@ def _request(params: dict, key: str, timeout: float):
 
 
 def _build_query(terms: str, start_date: str | None, end_date: str | None) -> str:
-    parts = [f"({terms})", "lang:en", "-filter:retweets"]
+    """Assemble the X search string.
+
+    ``-filter:retweets`` is deliberately absent: this reseller returns zero
+    results for any query containing it (verified live — the same query scored
+    0/0 with it and 20/20 without, while parentheses, OR, ``lang:en``, ``since``
+    and ``until`` all work). Retweets are dropped in ``_is_retweet`` instead.
+    """
+    parts = [f"({terms})", "lang:en"]
     if start_date:
         parts.append(f"since:{start_date}")
     if end_date:
         parts.append(f"until:{end_date}")
     return " ".join(parts)
+
+
+def _is_retweet(tweet: dict, body: str) -> bool:
+    """True for retweets, which carry no sentiment of their own."""
+    return bool(tweet.get("retweeted_tweet")) or body.startswith("RT @")
 
 
 def fetch_twitter_posts(
@@ -91,13 +115,18 @@ def fetch_twitter_posts(
     }
     try:
         data = _request(params, key, timeout)
+        tweets = _tweets_of(data)
+        if not tweets:
+            logger.info("Twitter returned no posts for %r; retrying once.", terms)
+            time.sleep(_RETRY_SLEEP)
+            data = _request(params, key, timeout)
+            tweets = _tweets_of(data)
     except (OSError, urllib.error.URLError, json.JSONDecodeError) as exc:
         # OSError covers URLError, HTTPError, and socket timeouts.
         logger.warning("Twitter fetch failed for %r: %s", terms, exc)
         return f"<twitter unavailable: {type(exc).__name__}: {exc}>"
 
-    tweets = data.get("tweets") if isinstance(data, dict) else None
-    if not isinstance(tweets, list) or not tweets:
+    if not tweets:
         return f"<no X/Twitter posts found for {terms}>"
 
     lines = []
@@ -107,6 +136,8 @@ def fetch_twitter_posts(
         author = tw.get("author") or {}
         user = _first(author, _USER_ALIASES, "?") if isinstance(author, dict) else "?"
         body = str(_first(tw, _FIELD_ALIASES["text"])).replace("\n", " ").strip()
+        if _is_retweet(tw, body):
+            continue
         if len(body) > _MAX_BODY_CHARS:
             body = body[:_MAX_BODY_CHARS] + "…"
         lines.append(

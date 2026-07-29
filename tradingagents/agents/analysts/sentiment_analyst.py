@@ -59,10 +59,24 @@ def _maybe_twitter_block(ticker: str, start_date: str, end_date: str) -> str:
     """
     if not get_config().get("include_twitter"):
         return ""
-    base = ticker.split("-")[0].upper()
     return fetch_twitter_posts(
-        f"${base} OR {base}", start_date=start_date, end_date=end_date
+        f"${_cashtag(ticker)} OR {_cashtag(ticker)}",
+        start_date=start_date, end_date=end_date,
     )
+
+
+def _cashtag(ticker: str) -> str:
+    """Reduce a ticker to the symbol people actually post about.
+
+    Crypto arrives as an exchange pair (``AEONUSDT``, ``CATE-USD``), but traders
+    write ``$AEON`` far more often than ``$AEONUSDT``, so the quote currency is
+    stripped before searching.
+    """
+    base = ticker.split("-")[0].strip().upper()
+    for quote in ("USDT", "USDC", "USD"):
+        if base.endswith(quote) and len(base) > len(quote):
+            return base[: -len(quote)]
+    return base
 
 
 def create_sentiment_analyst(llm):

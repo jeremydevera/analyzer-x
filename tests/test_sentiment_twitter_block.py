@@ -66,6 +66,19 @@ def test_query_uses_the_base_asset_as_a_cashtag(monkeypatch):
     assert seen["end_date"] == "2026-07-29"
 
 
+@pytest.mark.parametrize("ticker,expected", [
+    ("AEONUSDT", "AEON"),     # MEXC pair form
+    ("CATE-USD", "CATE"),     # app/Yahoo form
+    ("CATEUSDC", "CATE"),
+    ("NVDA", "NVDA"),         # equities untouched
+    ("nvda", "NVDA"),
+    ("USDT", "USDT"),         # never strip a symbol down to nothing
+])
+def test_cashtag_strips_the_quote_currency(ticker, expected):
+    """Traders write $AEON, not $AEONUSDT, so the pair suffix must go."""
+    assert sa._cashtag(ticker) == expected
+
+
 def test_unavailable_source_is_reported_not_hidden(monkeypatch):
     """The placeholder reaches the prompt so the model says 'unavailable'."""
     monkeypatch.setattr(sa, "fetch_twitter_posts",

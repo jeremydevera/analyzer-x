@@ -1,46 +1,57 @@
 {
-  "_comment": "PLACEHOLDER shaped from twitterapi.io's documented advanced_search response. NOT recorded from a live call — no API key was available. Replace with a real trimmed response once TWITTERAPI_IO_KEY is set (see the plan, Task 9 Step 0) and adjust _FIELD_ALIASES if the live field names differ.",
   "tweets": [
     {
-      "id": "1900000000000000001",
-      "text": "$CATE up 40% since the MEXC listing. Volume finally showing up on the 4h.",
-      "createdAt": "2026-07-28T14:02:11Z",
-      "likeCount": 412,
-      "retweetCount": 61,
-      "replyCount": 33,
+      "id": "2082447521477960089",
+      "text": "Drop your #BTC  address 👇\n\nI will send you $650 in 24h❤\n(Yes for real )\n\nRT and Follow🔥 https://t.co/TCKYpXmNzJ",
+      "createdAt": "Wed Jul 29 12:45:53 +0000 2026",
+      "likeCount": 69,
+      "retweetCount": 70,
+      "replyCount": 96,
+      "viewCount": 3719,
+      "lang": "en",
+      "twitterUrl": "https://twitter.com/Bitcoinblacck/status/2082447521477960089",
       "author": {
-        "userName": "chainwatcher",
-        "name": "Chain Watcher",
-        "followers": 48210
+        "userName": "Bitcoinblacck",
+        "name": "Bitcoin Black",
+        "followers": 70046,
+        "isBlueVerified": true
       }
     },
     {
-      "id": "1900000000000000002",
-      "text": "Reminder that $CATE has no audit and the top 10 wallets hold 61% of supply. Be careful out there.",
-      "createdAt": "2026-07-28T09:47:03Z",
-      "likeCount": 189,
-      "retweetCount": 24,
-      "replyCount": 12,
+      "id": "2082159321065148665",
+      "text": "I'M OFFICIALLY A $BTC BILLIONAIRE! 🙏\n\nAs I promised, I want to change someone’s life giving away 1 #Bitcoin (~$65,000) to one lucky winner by tomorrow!\n\nLike, RT, follow @TheBitcoinTime and comment 'DONE' to enter.\n\nWinner announced in 48h! 🚀 https://t.co/WTtdNeKqji",
+      "createdAt": "Tue Jul 28 17:40:41 +0000 2026",
+      "likeCount": 3278,
+      "retweetCount": 1990,
+      "replyCount": 2693,
+      "viewCount": 282828,
+      "lang": "en",
+      "twitterUrl": "https://twitter.com/DrWhaleReal/status/2082159321065148665",
       "author": {
-        "userName": "onchain_skeptic",
-        "name": "On-Chain Skeptic",
-        "followers": 15340
+        "userName": "DrWhaleReal",
+        "name": "Dr. Whale",
+        "followers": 298972,
+        "isBlueVerified": true
       }
     },
     {
-      "id": "1900000000000000003",
-      "text": "new listing season is back. $CATE next 10x incoming, dont fade this one ser",
-      "createdAt": "2026-07-27T22:15:58Z",
-      "likeCount": 7,
-      "retweetCount": 1,
-      "replyCount": 0,
+      "id": "2082398646465593474",
+      "text": "$10,000 giveaway   \n\nI’ll pick 10 people from the comments to send $1,000 each. Results with proof in 24 hours. 🤝 \n\nJust like, comment, repost and follow https://t.co/HNnpgI3zyU",
+      "createdAt": "Wed Jul 29 09:31:41 +0000 2026",
+      "likeCount": 446,
+      "retweetCount": 332,
+      "replyCount": 414,
+      "viewCount": 20988,
+      "lang": "en",
+      "twitterUrl": "https://twitter.com/BitcoinIntelX/status/2082398646465593474",
       "author": {
-        "userName": "moonboy9931",
-        "name": "moonboy",
-        "followers": 212
+        "userName": "BitcoinIntelX",
+        "name": "Bitcoin Intelligence",
+        "followers": 102967,
+        "isBlueVerified": true
       }
     }
   ],
   "has_next_page": true,
-  "next_cursor": "DAABCgABGh_placeholder"
+  "next_cursor": "TRIMMED_FOR_FIXTURE"
 }

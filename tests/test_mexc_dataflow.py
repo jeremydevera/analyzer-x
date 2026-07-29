@@ -5,6 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from tradingagents.dataflows import mexc
+from tradingagents.dataflows.errors import NoMarketDataError
 from tradingagents.dataflows.symbol_utils import from_mexc_symbol, to_mexc_symbol
 
 pytestmark = pytest.mark.unit
@@ -318,3 +319,61 @@ def test_screen_raises_when_blocked_and_no_cache(monkeypatch, tmp_path):
     monkeypatch.setattr(mexc, "fetch_usdt_symbols", dead)
     with pytest.raises(mexc.MexcUnavailable):
         mexc.screen_new_listings(today="2026-07-29")
+
+
+# --- OHLCV and the get_stock_data vendor ----------------------------------
+
+_DAILY = [
+    # 2026-07-20 .. 2026-07-22 (openTime, o, h, l, c, vol, closeTime, quoteVol)
+    [1784505600000, "0.0015", "0.0160", "0.0015", "0.0044", "45918439.28",
+     1784592000000, "269034.26"],
+    [1784592000000, "0.0044", "0.0068", "0.0027", "0.0033", "38783978.54",
+     1784678400000, "160393.56"],
+    [1784678400000, "0.0033", "0.0046", "0.0032", "0.0040", "11649426.35",
+     1784764800000, "45362.14"],
+]
+
+
+def test_daily_fixture_covers_the_expected_dates():
+    """Guard the fixture itself: these epochs must be 2026-07-20..22."""
+    assert [mexc._ms_to_date(r[0]) for r in _DAILY] == [
+        "2026-07-20", "2026-07-21", "2026-07-22"]
+
+
+def test_get_mexc_ohlcv_builds_a_typed_frame():
+    with patch.object(mexc, "_klines", return_value=_DAILY):
+        df = mexc.get_mexc_ohlcv("CATE-USD", "2026-07-20", "2026-07-22")
+    assert list(df.columns) == ["Date", "Open", "High", "Low", "Close", "Volume"]
+    assert len(df) == 3
+    assert df["Close"].iloc[-1] == pytest.approx(0.0040)
+    assert str(df["Date"].iloc[0].date()) == "2026-07-20"
+
+
+def test_get_mexc_ohlcv_filters_to_the_requested_range():
+    with patch.object(mexc, "_klines", return_value=_DAILY):
+        df = mexc.get_mexc_ohlcv("CATE-USD", "2026-07-21", "2026-07-21")
+    assert len(df) == 1
+    assert str(df["Date"].iloc[0].date()) == "2026-07-21"
+
+
+def test_get_mexc_ohlcv_raises_no_market_data_when_empty():
+    with patch.object(mexc, "_klines", return_value=[]):
+        with pytest.raises(NoMarketDataError) as exc:
+            mexc.get_mexc_ohlcv("GHOST-USD", "2026-07-01", "2026-07-29")
+    assert exc.value.canonical == "GHOSTUSDT"
+
+
+def test_get_mexc_ohlcv_raises_when_range_excludes_all_rows():
+    with patch.object(mexc, "_klines", return_value=_DAILY):
+        with pytest.raises(NoMarketDataError):
+            mexc.get_mexc_ohlcv("CATE-USD", "2026-01-01", "2026-01-31")
+
+
+def test_get_mexc_stock_data_returns_annotated_csv():
+    with patch.object(mexc, "_klines", return_value=_DAILY):
+        out = mexc.get_mexc_stock_data("CATE-USD", "2026-07-20", "2026-07-22")
+    lines = out.splitlines()
+    assert lines[0].startswith("# MEXC spot data for CATEUSDT (from CATE-USD)")
+    assert "# Total records: 3" in out
+    header = next(ln for ln in lines if ln.startswith("Date,"))
+    assert header == "Date,Open,High,Low,Close,Volume"

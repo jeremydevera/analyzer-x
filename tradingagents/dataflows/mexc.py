@@ -25,6 +25,11 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
+import pandas as pd
+
+from tradingagents.dataflows.errors import NoMarketDataError
+from tradingagents.dataflows.symbol_utils import to_mexc_symbol
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_HOSTS = ("api.mexc.fm", "api.mexc.co", "api.mexc.com")
@@ -387,3 +392,50 @@ def screen_new_listings(
         from_cache=from_cache,
         stale=stale,
     )
+
+
+_KLINE_COLUMNS = ["openTime", "Open", "High", "Low", "Close", "Volume",
+                  "closeTime", "quoteVolume"]
+
+
+def get_mexc_ohlcv(symbol: str, start_date: str, end_date: str) -> pd.DataFrame:
+    """Daily OHLCV for ``symbol`` as a Date/Open/High/Low/Close/Volume frame.
+
+    Raises NoMarketDataError when MEXC has no candles in range, so the vendor
+    router emits its single "unavailable" sentinel instead of letting an agent
+    invent a price.
+    """
+    pair = to_mexc_symbol(symbol)
+    rows = _klines(pair, "1d", _DAILY_PROBE_LIMIT)
+    if not rows:
+        raise NoMarketDataError(symbol, pair, "MEXC returned no candles")
+
+    df = pd.DataFrame(rows, columns=_KLINE_COLUMNS)
+    df["Date"] = pd.to_datetime(df["openTime"], unit="ms", utc=True).dt.tz_localize(None)
+    for col in ("Open", "High", "Low", "Close", "Volume"):
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    df = df[["Date", "Open", "High", "Low", "Close", "Volume"]].dropna()
+
+    lo = pd.to_datetime(start_date)
+    hi = pd.to_datetime(end_date) + pd.Timedelta(days=1)
+    df = df[(df["Date"] >= lo) & (df["Date"] < hi)].reset_index(drop=True)
+    if df.empty:
+        raise NoMarketDataError(
+            symbol, pair, f"no candles between {start_date} and {end_date}"
+        )
+    return df
+
+
+def get_mexc_stock_data(symbol: str, start_date: str, end_date: str) -> str:
+    """Vendor entry point for ``get_stock_data`` — annotated CSV, like yfinance's."""
+    df = get_mexc_ohlcv(symbol, start_date, end_date)
+    pair = to_mexc_symbol(symbol)
+    label = pair if pair == symbol.upper() else f"{pair} (from {symbol})"
+    out = df.copy()
+    out["Date"] = out["Date"].dt.strftime("%Y-%m-%d")
+    header = (
+        f"# MEXC spot data for {label} from {start_date} to {end_date}\n"
+        f"# Total records: {len(out)}\n"
+        f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+    )
+    return header + out.to_csv(index=False)

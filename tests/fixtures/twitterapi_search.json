@@ -1,0 +1,46 @@
+{
+  "_comment": "PLACEHOLDER shaped from twitterapi.io's documented advanced_search response. NOT recorded from a live call — no API key was available. Replace with a real trimmed response once TWITTERAPI_IO_KEY is set (see the plan, Task 9 Step 0) and adjust _FIELD_ALIASES if the live field names differ.",
+  "tweets": [
+    {
+      "id": "1900000000000000001",
+      "text": "$CATE up 40% since the MEXC listing. Volume finally showing up on the 4h.",
+      "createdAt": "2026-07-28T14:02:11Z",
+      "likeCount": 412,
+      "retweetCount": 61,
+      "replyCount": 33,
+      "author": {
+        "userName": "chainwatcher",
+        "name": "Chain Watcher",
+        "followers": 48210
+      }
+    },
+    {
+      "id": "1900000000000000002",
+      "text": "Reminder that $CATE has no audit and the top 10 wallets hold 61% of supply. Be careful out there.",
+      "createdAt": "2026-07-28T09:47:03Z",
+      "likeCount": 189,
+      "retweetCount": 24,
+      "replyCount": 12,
+      "author": {
+        "userName": "onchain_skeptic",
+        "name": "On-Chain Skeptic",
+        "followers": 15340
+      }
+    },
+    {
+      "id": "1900000000000000003",
+      "text": "new listing season is back. $CATE next 10x incoming, dont fade this one ser",
+      "createdAt": "2026-07-27T22:15:58Z",
+      "likeCount": 7,
+      "retweetCount": 1,
+      "replyCount": 0,
+      "author": {
+        "userName": "moonboy9931",
+        "name": "moonboy",
+        "followers": 212
+      }
+    }
+  ],
+  "has_next_page": true,
+  "next_cursor": "DAABCgABGh_placeholder"
+}

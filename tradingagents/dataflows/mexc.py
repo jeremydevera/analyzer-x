@@ -14,12 +14,15 @@ client parse a block page as market data.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import logging
 import os
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
@@ -210,3 +213,177 @@ def age_days(listed_date: str, today: str) -> int:
     d0 = datetime.strptime(listed_date, "%Y-%m-%d")
     d1 = datetime.strptime(today, "%Y-%m-%d")
     return (d1 - d0).days
+
+
+# Throttling. A measured 8-worker sweep sustained ~31 req/s and drew 429s on 6%
+# of requests, so each worker pauses before its call to hold the aggregate near
+# 16 req/s. A full ~1700-symbol sweep therefore takes ~2 minutes, which is why
+# results are cached rather than re-swept on every tab render.
+_MAX_WORKERS = 5
+_THROTTLE_SLEEP = 0.3
+_CACHE_TTL_SECONDS = 6 * 60 * 60
+DEFAULT_MIN_QUOTE_VOLUME = 50_000.0
+
+
+@dataclasses.dataclass(frozen=True)
+class NewCoin:
+    """One newly listed MEXC spot coin, as shown in a screener row."""
+
+    symbol: str          # MEXC pair, e.g. "CATEUSDT"
+    base: str            # "CATE"
+    name: str            # human name from exchangeInfo.fullName
+    contract: str        # on-chain contract address, "" when MEXC has none
+    listed_date: str     # first-trade date, YYYY-MM-DD
+    age_days: int
+    price: float
+    change_pct: float    # 24h change in whole percent
+    quote_volume: float  # 24h quote volume in USDT
+
+
+@dataclasses.dataclass(frozen=True)
+class ScreenResult:
+    """Outcome of one screener sweep, including what it could not resolve."""
+
+    coins: list
+    scanned: int              # symbols considered
+    unresolved: int           # symbols whose age probe failed
+    hidden_by_volume: int     # in-window coins below the volume floor
+    fetched_at: float         # epoch seconds of the underlying sweep
+    from_cache: bool
+    stale: bool = False       # served past its TTL because a refresh failed
+
+
+def _cache_dir() -> str:
+    from tradingagents.dataflows.config import get_config
+    return get_config()["data_cache_dir"]
+
+
+def _cache_path() -> str:
+    return os.path.join(_cache_dir(), f"mexc-new-listings-{WINDOW_DAYS}d.json")
+
+
+def _read_cache() -> dict | None:
+    try:
+        with open(_cache_path(), encoding="utf-8") as fh:
+            payload = json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        return None
+    return payload if isinstance(payload, dict) and "coins" in payload else None
+
+
+def _write_cache(payload: dict) -> None:
+    try:
+        os.makedirs(_cache_dir(), exist_ok=True)
+        with open(_cache_path(), "w", encoding="utf-8") as fh:
+            json.dump(payload, fh)
+    except OSError as exc:
+        logger.warning("Could not write MEXC screener cache: %s", exc)
+
+
+def _throttled_age(symbol: str) -> tuple[str, int | None]:
+    """Monthly-candle count for one symbol, with one Retry-After-aware retry."""
+    time.sleep(_THROTTLE_SLEEP)
+    try:
+        return symbol, monthly_candle_count(symbol)
+    except MexcRateLimited as exc:
+        # ``or`` would swallow a legitimate "Retry-After: 0" and stall 2s for nothing.
+        time.sleep(exc.retry_after if exc.retry_after is not None else 2.0)
+        try:
+            return symbol, monthly_candle_count(symbol)
+        except (MexcRateLimited, MexcHostUnavailable) as retry_exc:
+            logger.warning("MEXC age probe gave up on %s: %s", symbol, retry_exc)
+            return symbol, None
+    except MexcHostUnavailable as exc:
+        logger.warning("MEXC age probe failed for %s: %s", symbol, exc)
+        return symbol, None
+
+
+def _sweep(today: str) -> tuple[list, int, int]:
+    """Run the full three-stage sweep. Returns (in-window coins, scanned, unresolved)."""
+    universe = fetch_usdt_symbols()
+    tickers = fetch_24h_tickers()
+
+    with ThreadPoolExecutor(max_workers=_MAX_WORKERS) as pool:
+        counts = list(pool.map(_throttled_age, [row["symbol"] for row in universe]))
+
+    unresolved = sum(1 for _, n in counts if n is None)
+    candidates = {s for s, n in counts if n is not None and is_recent_listing_candidate(n)}
+
+    coins = []
+    for row in universe:
+        if row["symbol"] not in candidates:
+            continue
+        try:
+            listed = first_trade_date(row["symbol"])
+        except (MexcRateLimited, MexcHostUnavailable) as exc:
+            logger.warning("MEXC first-trade probe failed for %s: %s", row["symbol"], exc)
+            unresolved += 1
+            continue
+        if not listed:
+            continue
+        age = age_days(listed, today)
+        if age > WINDOW_DAYS or age < 0:
+            continue
+        tick = tickers.get(row["symbol"], {})
+        coins.append(NewCoin(
+            symbol=row["symbol"], base=row["base"], name=row["name"],
+            contract=row["contract"], listed_date=listed, age_days=age,
+            price=tick.get("price", 0.0), change_pct=tick.get("change_pct", 0.0),
+            quote_volume=tick.get("quote_volume", 0.0),
+        ))
+
+    coins.sort(key=lambda c: (c.listed_date, c.quote_volume), reverse=True)
+    return coins, len(universe), unresolved
+
+
+def screen_new_listings(
+    *,
+    today: str | None = None,
+    min_quote_volume: float = DEFAULT_MIN_QUOTE_VOLUME,
+    include_all: bool = False,
+    force_refresh: bool = False,
+) -> ScreenResult:
+    """Coins first traded on MEXC within the last ``WINDOW_DAYS`` days.
+
+    Results are cached for 6h because a full sweep costs ~1700 requests. When a
+    forced refresh fails (blocked host, rate limits), a cached sweep is served
+    and flagged stale rather than showing an empty table, which would read as
+    "no new coins" instead of "could not check".
+    """
+    today = today or datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+    cached = _read_cache()
+    fresh_enough = (
+        cached is not None
+        and cached.get("today") == today
+        and (time.time() - cached.get("fetched_at", 0)) < _CACHE_TTL_SECONDS
+    )
+
+    if fresh_enough and not force_refresh:
+        payload, from_cache, stale = cached, True, False
+    else:
+        try:
+            coins, scanned, unresolved = _sweep(today)
+            payload = {
+                "today": today, "fetched_at": time.time(), "scanned": scanned,
+                "unresolved": unresolved,
+                "coins": [dataclasses.asdict(c) for c in coins],
+            }
+            _write_cache(payload)
+            from_cache, stale = False, False
+        except (MexcUnavailable, MexcHostUnavailable, MexcRateLimited):
+            if cached is None:
+                raise
+            logger.warning("MEXC sweep failed; serving cached listings.")
+            payload, from_cache, stale = cached, True, True
+
+    coins = [NewCoin(**c) for c in payload["coins"]]
+    kept = coins if include_all else [c for c in coins if c.quote_volume >= min_quote_volume]
+    return ScreenResult(
+        coins=kept,
+        scanned=payload.get("scanned", len(coins)),
+        unresolved=payload.get("unresolved", 0),
+        hidden_by_volume=len(coins) - len(kept),
+        fetched_at=payload.get("fetched_at", 0.0),
+        from_cache=from_cache,
+        stale=stale,
+    )

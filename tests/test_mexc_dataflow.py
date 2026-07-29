@@ -178,3 +178,143 @@ def test_age_days_and_window_boundary(listed, today, expected_age, within):
     age = mexc.age_days(listed, today)
     assert age == expected_age
     assert (age <= mexc.WINDOW_DAYS) is within
+
+
+# --- The screener sweep ----------------------------------------------------
+
+
+def _screen_patches(monkeypatch, tmp_path, *, ages, first_dates):
+    """Patch the three network stages of the sweep and point the cache at tmp_path."""
+    monkeypatch.setattr(mexc, "fetch_usdt_symbols", lambda: [
+        {"symbol": s, "base": s[:-4], "name": f"{s[:-4]} Coin", "contract": ""}
+        for s in ages
+    ])
+    monkeypatch.setattr(mexc, "fetch_24h_tickers", lambda: {
+        "NEWUSDT": {"price": 1.0, "quote_volume": 200_000.0, "change_pct": 12.0},
+        "DUSTUSDT": {"price": 0.1, "quote_volume": 1_000.0, "change_pct": 5.0},
+        "OLDUSDT": {"price": 9.0, "quote_volume": 900_000.0, "change_pct": 1.0},
+    })
+    monkeypatch.setattr(mexc, "monthly_candle_count", lambda s: ages[s])
+    monkeypatch.setattr(mexc, "first_trade_date", lambda s: first_dates.get(s))
+    monkeypatch.setattr(mexc, "_cache_dir", lambda: str(tmp_path))
+    monkeypatch.setattr(mexc, "_THROTTLE_SLEEP", 0.0)
+
+
+def test_screen_returns_only_recent_liquid_coins(monkeypatch, tmp_path):
+    _screen_patches(
+        monkeypatch, tmp_path,
+        ages={"NEWUSDT": 1, "DUSTUSDT": 1, "OLDUSDT": 3},
+        first_dates={"NEWUSDT": "2026-07-20", "DUSTUSDT": "2026-07-21"},
+    )
+    result = mexc.screen_new_listings(today="2026-07-29", min_quote_volume=50_000.0)
+
+    assert [c.symbol for c in result.coins] == ["NEWUSDT"]
+    coin = result.coins[0]
+    assert coin.listed_date == "2026-07-20"
+    assert coin.age_days == 9
+    assert coin.quote_volume == pytest.approx(200_000.0)
+    assert coin.change_pct == pytest.approx(12.0)
+    assert result.scanned == 3
+    assert result.hidden_by_volume == 1
+
+
+def test_screen_include_all_keeps_dust(monkeypatch, tmp_path):
+    _screen_patches(
+        monkeypatch, tmp_path,
+        ages={"NEWUSDT": 1, "DUSTUSDT": 1, "OLDUSDT": 3},
+        first_dates={"NEWUSDT": "2026-07-20", "DUSTUSDT": "2026-07-21"},
+    )
+    result = mexc.screen_new_listings(today="2026-07-29", min_quote_volume=50_000.0,
+                                      include_all=True)
+    assert {c.symbol for c in result.coins} == {"NEWUSDT", "DUSTUSDT"}
+
+
+def test_screen_sorts_newest_first(monkeypatch, tmp_path):
+    _screen_patches(
+        monkeypatch, tmp_path,
+        ages={"NEWUSDT": 1, "DUSTUSDT": 1, "OLDUSDT": 3},
+        first_dates={"NEWUSDT": "2026-07-10", "DUSTUSDT": "2026-07-25"},
+    )
+    result = mexc.screen_new_listings(today="2026-07-29", min_quote_volume=0.0)
+    assert [c.symbol for c in result.coins] == ["DUSTUSDT", "NEWUSDT"]
+
+
+def test_screen_excludes_coins_outside_the_window(monkeypatch, tmp_path):
+    _screen_patches(
+        monkeypatch, tmp_path,
+        ages={"NEWUSDT": 2, "DUSTUSDT": 1, "OLDUSDT": 3},
+        first_dates={"NEWUSDT": "2026-05-01", "DUSTUSDT": "2026-07-25"},
+    )
+    result = mexc.screen_new_listings(today="2026-07-29", min_quote_volume=0.0)
+    assert [c.symbol for c in result.coins] == ["DUSTUSDT"]
+
+
+def test_screen_counts_unresolved_symbols(monkeypatch, tmp_path):
+    """A symbol whose probe keeps failing is reported, never silently dropped."""
+    _screen_patches(monkeypatch, tmp_path,
+                    ages={"NEWUSDT": 1, "DUSTUSDT": 1, "OLDUSDT": 3},
+                    first_dates={"NEWUSDT": "2026-07-20"})
+
+    def boom(symbol):
+        if symbol == "DUSTUSDT":
+            raise mexc.MexcRateLimited("0")
+        return {"NEWUSDT": 1, "OLDUSDT": 3}[symbol]
+
+    monkeypatch.setattr(mexc, "monthly_candle_count", boom)
+
+    result = mexc.screen_new_listings(today="2026-07-29", min_quote_volume=0.0)
+    assert result.unresolved == 1
+    assert [c.symbol for c in result.coins] == ["NEWUSDT"]
+
+
+def test_screen_reads_fresh_cache_without_network(monkeypatch, tmp_path):
+    _screen_patches(monkeypatch, tmp_path,
+                    ages={"NEWUSDT": 1, "DUSTUSDT": 1, "OLDUSDT": 3},
+                    first_dates={"NEWUSDT": "2026-07-20", "DUSTUSDT": "2026-07-21"})
+    first = mexc.screen_new_listings(today="2026-07-29", min_quote_volume=0.0)
+    assert first.from_cache is False
+
+    def explode():
+        raise AssertionError("cache hit must not hit the network")
+
+    monkeypatch.setattr(mexc, "fetch_usdt_symbols", explode)
+    second = mexc.screen_new_listings(today="2026-07-29", min_quote_volume=0.0)
+    assert second.from_cache is True
+    assert [c.symbol for c in second.coins] == [c.symbol for c in first.coins]
+
+
+def test_screen_force_refresh_bypasses_cache(monkeypatch, tmp_path):
+    _screen_patches(monkeypatch, tmp_path,
+                    ages={"NEWUSDT": 1, "DUSTUSDT": 1, "OLDUSDT": 3},
+                    first_dates={"NEWUSDT": "2026-07-20", "DUSTUSDT": "2026-07-21"})
+    mexc.screen_new_listings(today="2026-07-29", min_quote_volume=0.0)
+    result = mexc.screen_new_listings(today="2026-07-29", min_quote_volume=0.0,
+                                      force_refresh=True)
+    assert result.from_cache is False
+
+
+def test_screen_serves_expired_cache_when_refresh_fails(monkeypatch, tmp_path):
+    _screen_patches(monkeypatch, tmp_path,
+                    ages={"NEWUSDT": 1, "DUSTUSDT": 1, "OLDUSDT": 3},
+                    first_dates={"NEWUSDT": "2026-07-20", "DUSTUSDT": "2026-07-21"})
+    mexc.screen_new_listings(today="2026-07-29", min_quote_volume=0.0)
+
+    def dead():
+        raise mexc.MexcUnavailable("all hosts blocked")
+
+    monkeypatch.setattr(mexc, "fetch_usdt_symbols", dead)
+    result = mexc.screen_new_listings(today="2026-07-29", min_quote_volume=0.0,
+                                      force_refresh=True)
+    assert result.from_cache is True
+    assert result.stale is True
+
+
+def test_screen_raises_when_blocked_and_no_cache(monkeypatch, tmp_path):
+    _screen_patches(monkeypatch, tmp_path, ages={}, first_dates={})
+
+    def dead():
+        raise mexc.MexcUnavailable("all hosts blocked")
+
+    monkeypatch.setattr(mexc, "fetch_usdt_symbols", dead)
+    with pytest.raises(mexc.MexcUnavailable):
+        mexc.screen_new_listings(today="2026-07-29")

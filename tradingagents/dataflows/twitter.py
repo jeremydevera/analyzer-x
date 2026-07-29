@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import time
+from datetime import datetime
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -163,33 +164,19 @@ def _is_retweet(tweet: dict, body: str) -> bool:
     return bool(tweet.get("retweeted_tweet")) or body.startswith("RT @")
 
 
-def fetch_twitter_posts(
-    terms: str,
-    *,
-    start_date: str | None = None,
-    end_date: str | None = None,
-    limit: int = DEFAULT_LIMIT,
-    timeout: float = _TIMEOUT,
-) -> str:
-    """Recent X posts matching ``terms``, formatted for prompt injection.
+def _search_pages(query: str, key: str, timeout: float, limit: int,
+                  label: str) -> tuple[list, Exception | None]:
+    """Walk result pages for ``query`` until ``limit`` or the cursor runs out.
 
-    ``terms`` is an X search fragment — a cashtag, a coin name, or an OR of
-    both. Engagement counts are included so the model can weight a 400-like
-    post above a zero-engagement shill.
+    A page holds at most 20 posts, so reaching a limit of 30 needs the cursor.
+    Pages are billed per returned tweet, so the walk is bounded by MAX_PAGES as
+    well as by the limit — a cursor that never reports exhaustion must not spend
+    without end.
     """
-    key = os.getenv("TWITTERAPI_IO_KEY", "").strip()
-    if not key:
-        return "<twitter unavailable: TWITTERAPI_IO_KEY not set>"
-
-    query = _build_query(terms, start_date, end_date)
     tweets: list = []
     last_error: Exception | None = None
     cursor: str | None = None
 
-    # A page holds at most 20 posts, so reaching a limit of 30 needs the cursor.
-    # Pages are billed per returned tweet, so the walk is bounded by MAX_PAGES as
-    # well as by the limit — a cursor that never reports exhaustion must not spend
-    # without end.
     for page in range(1, MAX_PAGES + 1):
         params = {"query": query, "queryType": "Top"}
         if cursor:
@@ -206,8 +193,8 @@ def fetch_twitter_posts(
             except (OSError, urllib.error.URLError, json.JSONDecodeError) as exc:
                 # OSError covers URLError, HTTPError, and socket timeouts.
                 last_error = exc
-                logger.warning("Twitter fetch page %d attempt %d failed for %r: %s",
-                               page, attempt, terms, exc)
+                logger.warning("Twitter %s page %d attempt %d failed: %s",
+                               label, page, attempt, exc)
                 payload = None
             if payload is not None and _tweets_of(payload):
                 break
@@ -228,40 +215,169 @@ def fetch_twitter_posts(
         if not cursor or len(tweets) >= limit:
             break
 
+    return tweets[:limit], last_error
+
+
+def _author(tweet: dict) -> str:
+    author = tweet.get("author") or {}
+    return _first(author, _USER_ALIASES, "?") if isinstance(author, dict) else "?"
+
+
+def _body(tweet: dict) -> str:
+    """One-line, length-capped post text. Newlines would break the layout."""
+    text = str(_first(tweet, _FIELD_ALIASES["text"])).replace("\n", " ").strip()
+    return text[:_MAX_BODY_CHARS] + "…" if len(text) > _MAX_BODY_CHARS else text
+
+
+def _short_time(tweet: dict) -> str:
+    """"Jul 29 08:25" from X's "Wed Jul 29 08:25:57 +0000 2026" stamp."""
+    raw = str(_first(tweet, _FIELD_ALIASES["created"], ""))
+    try:
+        return datetime.strptime(raw, "%a %b %d %H:%M:%S %z %Y").strftime("%b %d %H:%M")
+    except ValueError:
+        return raw[:16] or "?"
+
+
+def group_replies(posts: list, replies: list) -> tuple[list, list]:
+    """Attach each reply to the post it belongs to.
+
+    Returns ``(threads, orphans)`` where a thread is ``{"post", "replies"}``.
+    Replies whose thread was not among the fetched posts are kept as orphans
+    rather than dropped — they are engagement on the same coin, just on a post
+    the search did not return.
+    """
+    # Indexed by position, not by id: tweets missing an id would otherwise share
+    # a single None key and collapse into one thread, silently dropping posts.
+    threads = [{"post": post, "replies": []} for post in posts]
+    index_by_id = {p.get("id"): i for i, p in enumerate(posts) if p.get("id")}
+    index_by_conversation: dict = {}
+    for i, post in enumerate(posts):
+        conversation = post.get("conversationId") or post.get("id")
+        if conversation:
+            index_by_conversation.setdefault(conversation, i)
+
+    orphans = []
+    for reply in replies:
+        if reply.get("id") and reply.get("id") in index_by_id:
+            continue                    # the post itself, echoed by the search
+        parent = index_by_id.get(reply.get("inReplyToId"))
+        if parent is None:
+            parent = index_by_conversation.get(reply.get("conversationId"))
+        if parent is None:
+            orphans.append(reply)
+        else:
+            threads[parent]["replies"].append(reply)
+    return threads, orphans
+
+
+def format_thread_block(terms: str, start_date: str | None, end_date: str | None,
+                        posts: list, replies: list, retweets: int) -> str:
+    """Render posts with their replies nested underneath.
+
+    Ordered by engagement so the loudest thread reads first, and led by a counts
+    line: for a two-day-old coin, "3 posts · 41 replies · 22 authors" is the
+    signal, more than any individual post.
+    """
+    threads, orphans = group_replies(posts, replies)
+    threads.sort(key=lambda t: (_likes(t["post"]) + _retweets_of(t["post"])
+                                + len(t["replies"])), reverse=True)
+
+    authors = {_author(t) for t in posts} | {_author(r) for r in replies}
+    window = f"  ·  {start_date} → {end_date}" if start_date and end_date else ""
+    counts = [f"{len(posts)} post{'s' if len(posts) != 1 else ''}",
+              f"{len(replies)} repl{'ies' if len(replies) != 1 else 'y'}",
+              f"{len(authors)} author{'s' if len(authors) != 1 else ''}"]
+    if retweets:
+        counts.append(f"{retweets} retweet{'s' if retweets != 1 else ''} excluded")
+
+    out = [f"## X/Twitter — {terms}{window}", "  ·  ".join(counts), ""]
+    for thread in threads:
+        post = thread["post"]
+        meta = [f"{_likes(post)} likes", f"{_retweets_of(post)} RT"]
+        reply_count = _as_int(post.get("replyCount"))
+        if reply_count:
+            meta.append(f"{reply_count} replies")
+        out.append(f"POST · @{_author(post)} · {_short_time(post)} · " + " · ".join(meta))
+        out.append(f"    {_body(post)}")
+        for reply in thread["replies"]:
+            out.append(f"    ↳ @{_author(reply)} "
+                       f"({_likes(reply)} likes): {_body(reply)}")
+        out.append("")
+
+    if orphans:
+        out.append(f"OTHER REPLIES mentioning {terms} ({len(orphans)})")
+        for reply in orphans:
+            out.append(f"    ↳ @{_author(reply)} · {_short_time(reply)} "
+                       f"({_likes(reply)} likes): {_body(reply)}")
+    return "\n".join(out).rstrip() + "\n"
+
+
+def _likes(tweet: dict) -> int:
+    return _as_int(_first(tweet, _FIELD_ALIASES["likes"], 0))
+
+
+def _retweets_of(tweet: dict) -> int:
+    return _as_int(_first(tweet, _FIELD_ALIASES["retweets"], 0))
+
+
+def _as_int(value) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+def fetch_twitter_posts(
+    terms: str,
+    *,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    limit: int = DEFAULT_LIMIT,
+    timeout: float = _TIMEOUT,
+    include_replies: bool = True,
+) -> str:
+    """Recent X posts matching ``terms``, with their replies, for prompt injection.
+
+    ``terms`` is an X search fragment — a cashtag, a coin name, or an OR of both.
+    Replies come from a second search with ``filter:replies``, because the search
+    endpoint returns top-level posts only and the dedicated replies endpoint
+    returned 1 of a post's 98 replies. Reply volume is the clearest evidence that
+    people are actually engaging with a new listing, so it is worth the extra
+    page: roughly 300 more credits, about a third of a cent.
+    """
+    key = os.getenv("TWITTERAPI_IO_KEY", "").strip()
+    if not key:
+        return "<twitter unavailable: TWITTERAPI_IO_KEY not set>"
+
+    query = _build_query(terms, start_date, end_date)
+    tweets, last_error = _search_pages(query, key, timeout, limit, "search")
+
     if not tweets and last_error is not None:
         return f"<twitter unavailable: {type(last_error).__name__}: {last_error}>"
     if not tweets:
         return f"<no X/Twitter posts found for {terms}>"
 
-    lines = []
-    retweets = 0
-    for tw in tweets[:limit]:
+    posts, retweets = [], 0
+    for tw in tweets:
         if not isinstance(tw, dict):
             continue
-        author = tw.get("author") or {}
-        user = _first(author, _USER_ALIASES, "?") if isinstance(author, dict) else "?"
-        body = str(_first(tw, _FIELD_ALIASES["text"])).replace("\n", " ").strip()
-        if _is_retweet(tw, body):
-            retweets += 1
+        if _is_retweet(tw, _body(tw)):
+            retweets += 1              # counted, not shown: no original opinion
             continue
-        if len(body) > _MAX_BODY_CHARS:
-            body = body[:_MAX_BODY_CHARS] + "…"
-        lines.append(
-            f"[{_first(tw, _FIELD_ALIASES['created'], '?')}] @{user} "
-            f"({_first(tw, _FIELD_ALIASES['likes'], 0)} likes, "
-            f"{_first(tw, _FIELD_ALIASES['retweets'], 0)} RT): {body}"
-        )
+        posts.append(tw)
 
-    if not lines:
+    if not posts:
         return f"<no X/Twitter posts found for {terms}>"
 
-    window = f" from {start_date} to {end_date}" if start_date and end_date else ""
-    # Retweets are excluded from the body but counted here: they carry no original
-    # opinion, yet the volume is itself evidence of attention.
-    rt_note = ""
-    if retweets:
-        rt_note = f" · {retweets} retweet{'s' if retweets > 1 else ''} excluded"
-    return (
-        f"## X/Twitter posts for {terms}{window} "
-        f"({len(lines)} posts, ranked by engagement{rt_note})\n\n" + "\n".join(lines)
-    )
+    replies: list = []
+    if include_replies:
+        # A failed reply search must not blank the source; the posts already
+        # fetched are worth reporting on their own.
+        found, reply_error = _search_pages(f"{query} filter:replies", key, timeout,
+                                           limit, "replies")
+        if reply_error is not None:
+            logger.warning("Twitter reply search failed for %r: %s", terms, reply_error)
+        replies = [r for r in found
+                   if isinstance(r, dict) and not _is_retweet(r, _body(r))]
+
+    return format_thread_block(terms, start_date, end_date, posts, replies, retweets)

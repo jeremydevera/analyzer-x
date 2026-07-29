@@ -17,6 +17,7 @@ from __future__ import annotations
 import html
 import os
 import traceback
+from typing import NamedTuple
 
 import streamlit as st
 
@@ -713,13 +714,24 @@ def run_parallel_live(models, ticker, date, analysts, debate_rounds, risk_rounds
     st.success(f"All {len(models)} models complete.")
 
 
+class RunOutcome(NamedTuple):
+    """What a completed streaming run produced.
+
+    Returned so a caller can persist the result across Streamlit reruns: a table
+    row is drawn before its run starts, so the verdict can only appear if the
+    caller stores this and redraws.
+    """
+
+    signal: str      # BUY / SELL / HOLD, "" when the run produced none
+    decision: str    # the final decision markdown
+    state: dict      # the last full graph state (per-analyst reports)
+
+
 def run_single_streaming(ticker, trade_date, selected, cfg, provider, model,
                          asset_type: str = "stock",
-                         instrument_context: str | None = None) -> str:
+                         instrument_context: str | None = None) -> RunOutcome:
     """One model, with live streaming progress + reports (the original flow).
 
-    Returns the final BUY / SELL / HOLD signal ("" when the run produced none) so
-    a caller such as the New Crypto tab can store the verdict per row.
     ``instrument_context`` overrides the yfinance identity lookup, which returns
     nothing for coins Yahoo does not list.
     """
@@ -761,7 +773,7 @@ def run_single_streaming(ticker, trade_date, selected, cfg, provider, model,
         error_box.error(raw_error(exc))                    # verbatim API/SDK message
         with error_box.expander("Full traceback"):
             st.code("".join(traceback.format_exception(type(exc), exc, exc.__traceback__)))
-        return ""
+        return RunOutcome("", "", final_state)
 
     final_decision = final_state.get("final_trade_decision", "")
     if _nonempty(final_decision):
@@ -775,10 +787,10 @@ def run_single_streaming(ticker, trade_date, selected, cfg, provider, model,
             st.markdown(final_decision)
         st.download_button("⬇  Download decision (.md)", data=final_decision,
                            file_name=f"{ticker}_{trade_date}_decision.md", mime="text/markdown")
-        return signal
+        return RunOutcome(signal, final_decision, final_state)
 
     st.warning("Run ended without a final decision — see reports / errors above.")
-    return ""
+    return RunOutcome("", "", final_state)
 
 
 def render_run_mode(default_model: str):

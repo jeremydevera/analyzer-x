@@ -62,6 +62,31 @@ def verdict_key(symbol: str, date: str) -> str:
     return f"verdict:{symbol}:{date}"
 
 
+def report_key(symbol: str, date: str) -> str:
+    """Session-state key for the stored reports behind a completed verdict."""
+    return f"reports:{symbol}:{date}"
+
+
+# Report sections shown in the expander, in reading order. Fundamentals is absent
+# because the crypto pipeline does not run that analyst.
+REPORT_SECTIONS = (
+    ("sentiment_report", "Sentiment (X/Twitter · Reddit · news)"),
+    ("news_report", "News"),
+    ("market_report", "Market / technicals (MEXC candles)"),
+    ("investment_plan", "Research-team debate"),
+    ("trader_investment_plan", "Trader plan"),
+    ("final_trade_decision", "Risk-team final decision"),
+)
+
+
+def collect_reports(state: dict, decision: str) -> dict:
+    """Pull the report sections worth keeping out of a finished graph state."""
+    reports = {key: state.get(key, "") for key, _ in REPORT_SECTIONS}
+    if decision and not reports.get("final_trade_decision"):
+        reports["final_trade_decision"] = decision
+    return {k: v for k, v in reports.items() if v}
+
+
 def verdict_label(signal: str | None) -> str:
     """Render a signal as its table chip."""
     return {"BUY": "▲ BUY", "SELL": "▼ SELL", "HOLD": "■ HOLD"}.get(
@@ -193,6 +218,7 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
             to_run = coin
 
     if to_run is None:
+        _render_stored_reports(st, trade_date)
         return
 
     st.markdown('<div class="ta-rule"></div>', unsafe_allow_html=True)
@@ -201,7 +227,35 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
         base_config, provider=provider, deep_model=model, quick_model=model,
         debate_rounds=debate_rounds, risk_rounds=risk_rounds)
     configure_cfg(cfg, model)
-    signal = streaming_runner(
+    outcome = streaming_runner(
         to_run.symbol, trade_date, list(CRYPTO_ANALYSTS), cfg, provider, model,
         asset_type="crypto", instrument_context=coin_instrument_context(to_run))
-    st.session_state[verdict_key(to_run.symbol, trade_date)] = signal or ""
+
+    st.session_state[verdict_key(to_run.symbol, trade_date)] = outcome.signal or ""
+    st.session_state[report_key(to_run.symbol, trade_date)] = collect_reports(
+        outcome.state, outcome.decision)
+    st.session_state["crypto_last_analyzed"] = (to_run.symbol, to_run.base,
+                                                to_run.name, trade_date)
+    # The row's verdict cell was drawn before this run started, so the table has
+    # to be redrawn for the result to land in it. Reports survive the rerun via
+    # session_state and are re-rendered by _render_stored_reports.
+    st.rerun()
+
+
+def _render_stored_reports(st, trade_date: str) -> None:
+    """Show the reports behind the most recently analyzed coin, if any."""
+    last = st.session_state.get("crypto_last_analyzed")
+    if not last:
+        return
+    symbol, base, name, date = last
+    if date != trade_date:
+        return
+    reports = st.session_state.get(report_key(symbol, date), {})
+    if not reports:
+        return
+    verdict = verdict_label(st.session_state.get(verdict_key(symbol, date), ""))
+    with st.expander(f"🧾  {base} · {name} — {verdict} · full reports", expanded=True):
+        for key, label in REPORT_SECTIONS:
+            if reports.get(key):
+                st.markdown(f"#### {label}")
+                st.markdown(reports[key])

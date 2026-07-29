@@ -15,6 +15,7 @@ from collections.abc import Iterable
 import pandas as pd
 from stockstats import wrap
 
+from tradingagents.dataflows.errors import NoMarketDataError
 from tradingagents.dataflows.stockstats_utils import load_ohlcv
 
 # A fixed, common indicator set so the snapshot is the same shape every run.
@@ -25,14 +26,64 @@ DEFAULT_SNAPSHOT_INDICATORS: tuple[str, ...] = (
 )
 
 
+# How many days of history to request from vendors that need an explicit range.
+# Matches the depth load_ohlcv keeps, so slow indicators (200 SMA) have input.
+_FRAME_LOOKBACK_DAYS = 500
+
+
+def _mexc_frame(symbol: str, curr_date: str) -> pd.DataFrame:
+    from tradingagents.dataflows.mexc import get_mexc_ohlcv
+
+    start = (pd.to_datetime(curr_date)
+             - pd.Timedelta(days=_FRAME_LOOKBACK_DAYS)).strftime("%Y-%m-%d")
+    return get_mexc_ohlcv(symbol, start, curr_date)
+
+
+def _frame_loaders() -> dict:
+    # Built per call so a patched load_ohlcv (tests) is picked up.
+    return {"yfinance": load_ohlcv, "mexc": _mexc_frame}
+
+
+def _load_frame(symbol: str, curr_date: str) -> pd.DataFrame:
+    """OHLCV frame from the configured price vendor chain.
+
+    ``get_stock_data`` routes through VENDOR_METHODS, but this path needs a
+    DataFrame rather than a formatted string, so it dispatches on the same
+    ``core_stock_apis`` setting instead of hardcoding Yahoo — otherwise the
+    verification tool hard-fails for any instrument Yahoo does not carry, which
+    is every newly listed MEXC coin. Vendors with no frame loader (alpha_vantage)
+    fall back to load_ohlcv, preserving this module's original behavior.
+    """
+    from tradingagents.dataflows.config import get_config
+
+    configured = str(get_config().get("data_vendors", {}).get("core_stock_apis", ""))
+    chain = [v.strip() for v in configured.split(",")
+             if v.strip() and v.strip() != "default"]
+    loaders = _frame_loaders()
+
+    last_no_data: NoMarketDataError | None = None
+    for vendor in chain:
+        loader = loaders.get(vendor)
+        if loader is None:
+            continue
+        try:
+            return loader(symbol, curr_date)
+        except NoMarketDataError as exc:
+            last_no_data = exc      # another configured vendor may have it
+            continue
+    if last_no_data is not None:
+        raise last_no_data
+    return load_ohlcv(symbol, curr_date)
+
+
 def _verified_rows(symbol: str, curr_date: str) -> pd.DataFrame:
     """OHLCV on or before curr_date, date-sorted. Raises if nothing usable.
 
-    ``load_ohlcv`` already normalizes the Date column and filters out
-    look-ahead rows, but we re-apply the cutoff defensively — this is a
-    verification path, so it must not trust its input to be pre-filtered.
+    The loader already normalizes the Date column and filters out look-ahead
+    rows, but we re-apply the cutoff defensively — this is a verification path,
+    so it must not trust its input to be pre-filtered.
     """
-    data = load_ohlcv(symbol, curr_date)
+    data = _load_frame(symbol, curr_date)
     if data is None or data.empty:
         raise ValueError(f"No OHLCV data available for {symbol}.")
 

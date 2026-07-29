@@ -91,6 +91,35 @@ def test_verdict_label(screener, signal, expected):
     assert screener.verdict_label(signal) == expected
 
 
+def test_report_key_is_symbol_and_date_scoped(screener):
+    assert screener.report_key("CATEUSDT", "2026-07-29") == "reports:CATEUSDT:2026-07-29"
+
+
+def test_collect_reports_keeps_only_populated_sections(screener):
+    state = {"sentiment_report": "S", "news_report": "", "market_report": "M",
+             "final_trade_decision": "D", "fundamentals_report": "IGNORED"}
+    reports = screener.collect_reports(state, "D")
+    assert reports == {"sentiment_report": "S", "market_report": "M",
+                       "final_trade_decision": "D"}
+
+
+def test_collect_reports_falls_back_to_the_decision_argument(screener):
+    """A run whose state lacks the decision still keeps the returned markdown."""
+    reports = screener.collect_reports({"sentiment_report": "S"}, "DECISION")
+    assert reports["final_trade_decision"] == "DECISION"
+
+
+def test_collect_reports_is_empty_for_an_empty_state(screener):
+    assert screener.collect_reports({}, "") == {}
+
+
+def test_report_sections_exclude_fundamentals(screener):
+    keys = [k for k, _ in screener.REPORT_SECTIONS]
+    assert "fundamentals_report" not in keys
+    assert "sentiment_report" in keys
+    assert "final_trade_decision" in keys
+
+
 def test_row_cells_formats_price_volume_and_change(screener):
     cells = screener.row_cells(_coin())
     assert cells["symbol"] == "CATE"

@@ -20,6 +20,7 @@ import os
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -166,3 +167,46 @@ def fetch_24h_tickers() -> dict[str, dict]:
             "change_pct": _as_float(r.get("priceChangePercent")) * 100.0,
         }
     return snap
+
+
+# The age prefilter. MEXC ignores ``startTime=0`` and always serves the most
+# recent candles, so listing age is inferred from how many candles come back for
+# a bounded request: a coin with fewer than 3 monthly candles first traded within
+# roughly two months and is worth an exact-date lookup.
+_MONTHLY_PROBE_LIMIT = 3
+_DAILY_PROBE_LIMIT = 500
+WINDOW_DAYS = 30
+
+
+def _ms_to_date(ms: int) -> str:
+    return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).strftime("%Y-%m-%d")
+
+
+def _klines(symbol: str, interval: str, limit: int) -> list:
+    rows = _get("/api/v3/klines", {"symbol": symbol, "interval": interval, "limit": limit})
+    return rows if isinstance(rows, list) else []
+
+
+def monthly_candle_count(symbol: str) -> int:
+    """How many monthly candles MEXC has for ``symbol``, capped at the probe limit."""
+    return len(_klines(symbol, "1M", _MONTHLY_PROBE_LIMIT))
+
+
+def is_recent_listing_candidate(monthly_count: int) -> bool:
+    """True when the monthly-candle count implies a listing inside the probe window."""
+    return 0 < monthly_count < _MONTHLY_PROBE_LIMIT
+
+
+def first_trade_date(symbol: str) -> str | None:
+    """Exact first-trade date (YYYY-MM-DD), or None when it is older than the probe."""
+    rows = _klines(symbol, "1d", _DAILY_PROBE_LIMIT)
+    if not rows or len(rows) >= _DAILY_PROBE_LIMIT:
+        return None            # saturated history == older than the window
+    return _ms_to_date(rows[0][0])
+
+
+def age_days(listed_date: str, today: str) -> int:
+    """Whole days between a listing date and ``today``, both YYYY-MM-DD."""
+    d0 = datetime.strptime(listed_date, "%Y-%m-%d")
+    d1 = datetime.strptime(today, "%Y-%m-%d")
+    return (d1 - d0).days

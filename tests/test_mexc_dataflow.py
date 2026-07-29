@@ -129,3 +129,52 @@ def test_fetch_24h_tickers_tolerates_missing_fields():
     with patch.object(mexc, "_get", return_value=[{"symbol": "XUSDT"}]):
         snap = mexc.fetch_24h_tickers()
     assert snap["XUSDT"] == {"price": 0.0, "quote_volume": 0.0, "change_pct": 0.0}
+
+
+# --- Listing-age detection -------------------------------------------------
+
+
+def _kline(open_ms):
+    """One MEXC kline row: [openTime, o, h, l, c, vol, closeTime, quoteVol]."""
+    return [open_ms, "1.0", "2.0", "0.5", "1.5", "100.0", open_ms + 86_400_000, "150.0"]
+
+
+def test_monthly_candle_count_reports_row_count():
+    with patch.object(mexc, "_get", return_value=[_kline(1), _kline(2)]):
+        assert mexc.monthly_candle_count("CATEUSDT") == 2
+
+
+def test_is_recent_listing_accepts_fewer_than_three_monthly_candles():
+    assert mexc.is_recent_listing_candidate(1) is True
+    assert mexc.is_recent_listing_candidate(2) is True
+    assert mexc.is_recent_listing_candidate(3) is False
+
+
+def test_first_trade_date_uses_the_earliest_daily_candle():
+    # 1783036800000 == 2026-07-03T00:00:00Z
+    with patch.object(mexc, "_get", return_value=[_kline(1783036800000),
+                                                  _kline(1783123200000)]):
+        assert mexc.first_trade_date("CATEUSDT") == "2026-07-03"
+
+
+def test_first_trade_date_returns_none_when_history_is_saturated():
+    """500 daily rows means the true first trade is older than the window."""
+    rows = [_kline(1783036800000 + i * 86_400_000) for i in range(500)]
+    with patch.object(mexc, "_get", return_value=rows):
+        assert mexc.first_trade_date("BTCUSDT") is None
+
+
+def test_first_trade_date_returns_none_when_no_candles():
+    with patch.object(mexc, "_get", return_value=[]):
+        assert mexc.first_trade_date("GHOSTUSDT") is None
+
+
+@pytest.mark.parametrize("listed,today,expected_age,within", [
+    ("2026-07-29", "2026-07-29", 0, True),
+    ("2026-06-29", "2026-07-29", 30, True),    # exactly 30 days -> inside
+    ("2026-06-28", "2026-07-29", 31, False),   # 31 days -> outside
+])
+def test_age_days_and_window_boundary(listed, today, expected_age, within):
+    age = mexc.age_days(listed, today)
+    assert age == expected_age
+    assert (age <= mexc.WINDOW_DAYS) is within

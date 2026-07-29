@@ -18,13 +18,33 @@ from copy import deepcopy
 CRYPTO_ANALYSTS = ("market", "social", "news")
 
 
+# Social sentiment sources, offered cheapest-first. StockTwits is keyless and
+# free; X costs metered credits, so it is never the default.
+SOURCE_STOCKTWITS = "StockTwits (free)"
+SOURCE_TWITTER = "X / Twitter (paid credits)"
+SOURCE_BOTH = "Both"
+SOCIAL_SOURCES = (SOURCE_STOCKTWITS, SOURCE_TWITTER, SOURCE_BOTH)
+
+_SOCIAL_FLAGS = {
+    SOURCE_STOCKTWITS: {"include_stocktwits": True, "include_twitter": False},
+    SOURCE_TWITTER: {"include_stocktwits": False, "include_twitter": True},
+    SOURCE_BOTH: {"include_stocktwits": True, "include_twitter": True},
+}
+
+
+def social_flags(choice: str) -> dict:
+    """Config flags for a social-source choice. Raises on an unknown label."""
+    return dict(_SOCIAL_FLAGS[choice])
+
+
 def build_crypto_config(base: dict, *, provider: str, deep_model: str,
-                        quick_model: str, debate_rounds: int,
-                        risk_rounds: int) -> dict:
-    """Config for a new-coin run: MEXC prices, Yahoo news, Twitter on.
+                        quick_model: str, debate_rounds: int, risk_rounds: int,
+                        social_source: str = SOURCE_STOCKTWITS) -> dict:
+    """Config for a new-coin run: MEXC prices, Yahoo news, chosen social source.
 
     Returns a copy — the caller's DEFAULT_CONFIG must stay untouched so a later
-    stock run in the same process still routes prices to yfinance.
+    stock run in the same process still routes prices to yfinance. Defaults to
+    the free source so an omitted choice never spends X credits.
     """
     cfg = deepcopy(base)
     cfg["llm_provider"] = provider
@@ -36,7 +56,7 @@ def build_crypto_config(base: dict, *, provider: str, deep_model: str,
     vendors["core_stock_apis"] = "mexc"
     vendors["technical_indicators"] = "mexc"
     cfg["data_vendors"] = vendors
-    cfg["include_twitter"] = True
+    cfg.update(social_flags(social_source))
     return cfg
 
 
@@ -71,7 +91,7 @@ def report_key(symbol: str, date: str) -> str:
 # Report sections shown in the expander, in reading order. Fundamentals is absent
 # because the crypto pipeline does not run that analyst.
 REPORT_SECTIONS = (
-    ("sentiment_report", "Sentiment (X/Twitter · Reddit · news)"),
+    ("sentiment_report", "Sentiment (social · Reddit · news)"),
     ("news_report", "News"),
     ("market_report", "Market / technicals (MEXC candles)"),
     ("investment_plan", "Research-team debate"),
@@ -267,8 +287,6 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
         f'{mexc.WINDOW_DAYS} days</div>',
         unsafe_allow_html=True)
 
-    _render_credit_meter(st)
-
     units = list(AGE_UNITS)
     a1, a2, a3, a4 = st.columns([1, 1.2, 1, 1.2])
     min_value = a1.number_input("Age from", min_value=0, value=1, step=1,
@@ -279,6 +297,15 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
                                 key="crypto_age_max_value")
     max_unit = a4.selectbox(" ", units, index=units.index("week"),
                             key="crypto_age_max_unit", label_visibility="hidden")
+
+    source = st.radio("Social sentiment source", SOCIAL_SOURCES, horizontal=True,
+                      key="crypto_social_source",
+                      help="StockTwits is keyless and free with Bullish/Bearish "
+                           "tags; X costs metered credits. News and Reddit are "
+                           "always included.")
+    # The credit bar is noise when the run will not touch X at all.
+    if social_flags(source)["include_twitter"]:
+        _render_credit_meter(st)
 
     c1, c2, c3 = st.columns([1.4, 1, 1])
     min_vol = c1.number_input("Min 24h volume (USDT)", min_value=0.0,
@@ -362,7 +389,8 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
     st.markdown(f"### {to_run.base} · {to_run.name}")
     cfg = build_crypto_config(
         base_config, provider=provider, deep_model=model, quick_model=model,
-        debate_rounds=debate_rounds, risk_rounds=risk_rounds)
+        debate_rounds=debate_rounds, risk_rounds=risk_rounds,
+        social_source=source)
     configure_cfg(cfg, model)
     outcome = streaming_runner(
         to_run.symbol, trade_date, list(CRYPTO_ANALYSTS), cfg, provider, model,

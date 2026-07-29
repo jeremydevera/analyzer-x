@@ -45,6 +45,9 @@ from tradingagents.dataflows.stocktwits import fetch_stocktwits_messages
 from tradingagents.dataflows.twitter import fetch_twitter_posts
 
 
+_COUNT_WORDS = {2: "two", 3: "three", 4: "four"}
+
+
 def _seven_days_back(trade_date: str) -> str:
     return (datetime.strptime(trade_date, "%Y-%m-%d") - timedelta(days=7)).strftime("%Y-%m-%d")
 
@@ -66,6 +69,29 @@ def _maybe_twitter_block(ticker: str, start_date: str, end_date: str) -> str:
     return fetch_twitter_posts(
         f"${_cashtag(ticker)}", start_date=start_date, end_date=end_date
     )
+
+
+def _stocktwits_symbol(ticker: str, asset_type: str) -> str:
+    """Symbol StockTwits indexes this instrument under.
+
+    StockTwits files crypto as ``BASE.X`` (``AEON.X``), not as an exchange pair:
+    querying ``AEONUSDT`` returns 404 while ``AEON.X`` returns a full stream of
+    sentiment-tagged messages. Equities keep their plain ticker.
+    """
+    if asset_type != "crypto":
+        return ticker.strip().upper()
+    return f"{_cashtag(ticker)}.X"
+
+
+def _maybe_stocktwits_block(ticker: str, asset_type: str) -> str:
+    """Fetch StockTwits messages unless the source is switched off.
+
+    Defaults to enabled: it is keyless and free, and stock runs have always had
+    it, so an absent flag must not silently drop a source.
+    """
+    if not get_config().get("include_stocktwits", True):
+        return ""
+    return fetch_stocktwits_messages(_stocktwits_symbol(ticker, asset_type), limit=30)
 
 
 def _cashtag(ticker: str) -> str:
@@ -102,7 +128,7 @@ def create_sentiment_analyst(llm):
         # returns a string (no exceptions surface from here), so the LLM
         # always sees something — either real data or a clear placeholder.
         news_block = get_news.func(ticker, start_date, end_date)
-        stocktwits_block = fetch_stocktwits_messages(ticker, limit=30)
+        stocktwits_block = _maybe_stocktwits_block(ticker, state.get("asset_type", "stock"))
         reddit_block = fetch_reddit_posts(ticker)
         twitter_block = _maybe_twitter_block(ticker, start_date, end_date)
 
@@ -167,11 +193,21 @@ def _build_system_message(
 ) -> str:
     """Assemble the sentiment-analyst system message with structured data blocks.
 
-    The X/Twitter section appears only when a block was fetched, so the prompt
-    never advertises a source that is not present — naming an absent source is
-    what drove the fabricated-post behavior this analyst was redesigned to fix.
+    Optional sections appear only when their block was fetched, and the stated
+    source count follows suit, so the prompt never advertises a source that is
+    not present — naming an absent source is what drove the fabricated-post
+    behavior this analyst was redesigned to fix.
     """
-    source_count = "four" if twitter_block else "three"
+    stocktwits_section = ""
+    if stocktwits_block:
+        stocktwits_section = f"""
+### StockTwits messages — retail-trader social platform indexed by cashtag
+Fast-moving signal. Each message carries a user-labeled sentiment tag (Bullish / Bearish / no-label) plus the message body.
+
+<start_of_stocktwits>
+{stocktwits_block}
+<end_of_stocktwits>
+"""
     twitter_section = ""
     if twitter_block:
         twitter_section = f"""
@@ -182,6 +218,8 @@ Fastest-moving retail signal, and the most promotion-heavy. Weight posts by thei
 {twitter_block}
 <end_of_twitter>
 """
+    # News and Reddit are always present; the other two are switchable.
+    source_count = _COUNT_WORDS[2 + bool(stocktwits_block) + bool(twitter_block)]
     return f"""You are a financial market sentiment analyst. Your task is to produce a comprehensive sentiment report for {ticker} covering the period from {start_date} to {end_date}, drawing on {source_count} complementary data sources that have already been collected for you.
 
 ## Data sources (pre-fetched, in this prompt)
@@ -192,13 +230,7 @@ Institutional framing. Fact-driven, slower-moving signal.
 <start_of_news>
 {news_block}
 <end_of_news>
-
-### StockTwits messages — retail-trader social platform indexed by cashtag
-Fast-moving signal. Each message carries a user-labeled sentiment tag (Bullish / Bearish / no-label) plus the message body.
-
-<start_of_stocktwits>
-{stocktwits_block}
-<end_of_stocktwits>
+{stocktwits_section}
 
 ### Reddit posts — r/wallstreetbets, r/stocks, r/investing (past 7 days)
 Community discussion. Engagement signal via upvote score and comment count. Subreddit character matters (r/wallstreetbets is often contrarian/exuberant; r/stocks more measured; r/investing longer-term).

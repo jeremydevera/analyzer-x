@@ -50,7 +50,8 @@ def test_build_crypto_config_routes_prices_to_mexc(screener):
             "max_debate_rounds": 9, "max_risk_discuss_rounds": 9}
     cfg = screener.build_crypto_config(
         base, provider="google", deep_model="gemini-3.1-flash-lite",
-        quick_model="gemini-3.1-flash-lite", debate_rounds=1, risk_rounds=2)
+        quick_model="gemini-3.1-flash-lite", debate_rounds=1, risk_rounds=2,
+        social_source="Both")
 
     assert cfg["data_vendors"]["core_stock_apis"] == "mexc"
     assert cfg["data_vendors"]["technical_indicators"] == "mexc"
@@ -164,6 +165,53 @@ def test_parse_age_range_rejects_a_negative_bound(screener):
 ])
 def test_fmt_age(screener, hours, expected):
     assert screener.fmt_age(hours) == expected
+
+
+def test_social_source_options_are_offered_in_cost_order(screener):
+    assert screener.SOCIAL_SOURCES[0] == screener.SOURCE_STOCKTWITS
+    assert set(screener.SOCIAL_SOURCES) == {
+        screener.SOURCE_STOCKTWITS, screener.SOURCE_TWITTER, screener.SOURCE_BOTH}
+
+
+@pytest.mark.parametrize("choice,stocktwits,twitter", [
+    ("StockTwits (free)", True, False),
+    ("X / Twitter (paid credits)", False, True),
+    ("Both", True, True),
+])
+def test_social_flags(screener, choice, stocktwits, twitter):
+    flags = screener.social_flags(choice)
+    assert flags == {"include_stocktwits": stocktwits, "include_twitter": twitter}
+
+
+def test_social_flags_rejects_an_unknown_choice(screener):
+    with pytest.raises(KeyError):
+        screener.social_flags("Telepathy")
+
+
+def test_build_crypto_config_applies_the_source_choice(screener):
+    base = {"data_vendors": {}, "llm_provider": "openai", "deep_think_llm": "x",
+            "quick_think_llm": "y", "max_debate_rounds": 1, "max_risk_discuss_rounds": 1}
+    free = screener.build_crypto_config(
+        base, provider="google", deep_model="m", quick_model="m",
+        debate_rounds=1, risk_rounds=1, social_source=screener.SOURCE_STOCKTWITS)
+    assert free["include_stocktwits"] is True
+    assert free["include_twitter"] is False
+
+    paid = screener.build_crypto_config(
+        base, provider="google", deep_model="m", quick_model="m",
+        debate_rounds=1, risk_rounds=1, social_source=screener.SOURCE_TWITTER)
+    assert paid["include_stocktwits"] is False
+    assert paid["include_twitter"] is True
+
+
+def test_build_crypto_config_defaults_to_the_free_source(screener):
+    """An omitted choice must not silently spend X credits."""
+    base = {"data_vendors": {}, "llm_provider": "openai", "deep_think_llm": "x",
+            "quick_think_llm": "y", "max_debate_rounds": 1, "max_risk_discuss_rounds": 1}
+    cfg = screener.build_crypto_config(base, provider="google", deep_model="m",
+                                       quick_model="m", debate_rounds=1, risk_rounds=1)
+    assert cfg["include_twitter"] is False
+    assert cfg["include_stocktwits"] is True
 
 
 def _balance(**over):

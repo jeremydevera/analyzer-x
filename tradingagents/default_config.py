@@ -138,6 +138,10 @@ DEFAULT_CONFIG = _apply_env_overrides({
     # calls a metered third-party API, so stock runs should not spend credits
     # unless the user asks. The New Crypto tab turns it on for its own runs.
     "include_twitter": False,
+    # Include StockTwits messages as a sentiment source. On by default — keyless,
+    # free, and carries user-labeled Bullish/Bearish tags. Crypto is queried as
+    # BASE.X, which is how StockTwits indexes it.
+    "include_stocktwits": True,
     # Tool-level configuration (takes precedence over category-level)
     "tool_vendors": {
         # Example: "get_stock_data": "alpha_vantage",  # Override category default

@@ -153,6 +153,52 @@ def test_is_recent_listing_accepts_fewer_than_three_monthly_candles():
     assert mexc.is_recent_listing_candidate(3) is False
 
 
+_HOUR_MS = 3_600_000
+
+
+def test_first_trade_ms_uses_the_earliest_hourly_candle():
+    """Hourly candles give the hour precision an "age < 1 day" filter needs."""
+    rows = [_kline(1784505600000 + i * _HOUR_MS) for i in range(30)]
+    with patch.object(mexc, "_klines", return_value=rows) as kl:
+        assert mexc.first_trade_ms("CATEUSDT") == 1784505600000
+    assert kl.call_args[0][1] == "60m"
+
+
+def test_first_trade_ms_falls_back_to_daily_when_hourly_is_saturated():
+    """A saturated hourly window only proves the coin is older than ~20 days."""
+    hourly = [_kline(1784505600000 + i * _HOUR_MS) for i in range(500)]
+    daily = [_kline(1780000000000 + i * 86_400_000) for i in range(40)]
+
+    def by_interval(symbol, interval, limit):
+        return hourly if interval == "60m" else daily
+
+    with patch.object(mexc, "_klines", side_effect=by_interval):
+        assert mexc.first_trade_ms("CATEUSDT") == 1780000000000
+
+
+def test_first_trade_ms_returns_none_when_both_probes_are_saturated():
+    def saturated(symbol, interval, limit):
+        step = _HOUR_MS if interval == "60m" else 86_400_000
+        return [_kline(1780000000000 + i * step) for i in range(limit)]
+
+    with patch.object(mexc, "_klines", side_effect=saturated):
+        assert mexc.first_trade_ms("BTCUSDT") is None
+
+
+def test_first_trade_ms_returns_none_when_there_are_no_candles():
+    with patch.object(mexc, "_klines", return_value=[]):
+        assert mexc.first_trade_ms("GHOSTUSDT") is None
+
+
+@pytest.mark.parametrize("listed_ms,now_ms,expected", [
+    (0, 5 * _HOUR_MS, 5.0),
+    (0, 36 * _HOUR_MS, 36.0),
+    (0, 0, 0.0),
+])
+def test_age_hours(listed_ms, now_ms, expected):
+    assert mexc.age_hours(listed_ms, now_ms) == pytest.approx(expected)
+
+
 def test_first_trade_date_uses_the_earliest_daily_candle():
     # 1783036800000 == 2026-07-03T00:00:00Z
     with patch.object(mexc, "_get", return_value=[_kline(1783036800000),
@@ -172,22 +218,34 @@ def test_first_trade_date_returns_none_when_no_candles():
         assert mexc.first_trade_date("GHOSTUSDT") is None
 
 
-@pytest.mark.parametrize("listed,today,expected_age,within", [
-    ("2026-07-29", "2026-07-29", 0, True),
-    ("2026-06-29", "2026-07-29", 30, True),    # exactly 30 days -> inside
-    ("2026-06-28", "2026-07-29", 31, False),   # 31 days -> outside
+@pytest.mark.parametrize("listed,today,expected_age", [
+    ("2026-07-29", "2026-07-29", 0),
+    ("2026-06-29", "2026-07-29", 30),
+    ("2026-06-28", "2026-07-29", 31),
 ])
-def test_age_days_and_window_boundary(listed, today, expected_age, within):
-    age = mexc.age_days(listed, today)
-    assert age == expected_age
-    assert (age <= mexc.WINDOW_DAYS) is within
+def test_age_days_between_dates(listed, today, expected_age):
+    """Date arithmetic only — range membership is the age-filter's job now."""
+    assert mexc.age_days(listed, today) == expected_age
 
 
 # --- The screener sweep ----------------------------------------------------
 
 
+_NOW_MS = 1785000000000          # fixed "now" so ages are deterministic
+_DAY_MS = 86_400_000
+
+
+def _ms_ago(**kw):
+    """Epoch ms for a moment in the past, e.g. _ms_ago(days=9)."""
+    hours = kw.get("hours", 0) + kw.get("days", 0) * 24 + kw.get("weeks", 0) * 168
+    return _NOW_MS - int(hours * _HOUR_MS)
+
+
 def _screen_patches(monkeypatch, tmp_path, *, ages, first_dates):
-    """Patch the three network stages of the sweep and point the cache at tmp_path."""
+    """Patch the three network stages of the sweep and point the cache at tmp_path.
+
+    ``first_dates`` maps symbol -> epoch ms of first trade (or None).
+    """
     monkeypatch.setattr(mexc, "fetch_usdt_symbols", lambda: [
         {"symbol": s, "base": s[:-4], "name": f"{s[:-4]} Coin", "contract": ""}
         for s in ages
@@ -198,22 +256,108 @@ def _screen_patches(monkeypatch, tmp_path, *, ages, first_dates):
         "OLDUSDT": {"price": 9.0, "quote_volume": 900_000.0, "change_pct": 1.0},
     })
     monkeypatch.setattr(mexc, "monthly_candle_count", lambda s: ages[s])
-    monkeypatch.setattr(mexc, "first_trade_date", lambda s: first_dates.get(s))
+    monkeypatch.setattr(mexc, "first_trade_ms", lambda s: first_dates.get(s))
     monkeypatch.setattr(mexc, "_cache_dir", lambda: str(tmp_path))
     monkeypatch.setattr(mexc, "_THROTTLE_SLEEP", 0.0)
+    monkeypatch.setattr(mexc, "_now_ms", lambda: _NOW_MS)
+
+
+# --- Age-range filtering ---------------------------------------------------
+
+
+def _range_fixture(monkeypatch, tmp_path):
+    """Three in-window coins at 5 hours, 9 days, and 3 weeks old."""
+    _screen_patches(
+        monkeypatch, tmp_path,
+        ages={"NEWUSDT": 1, "DUSTUSDT": 1, "OLDUSDT": 2},
+        first_dates={"NEWUSDT": _ms_ago(hours=5),
+                     "DUSTUSDT": _ms_ago(days=9),
+                     "OLDUSDT": _ms_ago(weeks=3)},
+    )
+
+
+def test_range_defaults_include_everything_in_the_window(monkeypatch, tmp_path):
+    _range_fixture(monkeypatch, tmp_path)
+    result = mexc.screen_new_listings(min_quote_volume=0.0)
+    assert {c.symbol for c in result.coins} == {"NEWUSDT", "DUSTUSDT", "OLDUSDT"}
+
+
+def test_range_one_hour_to_one_week(monkeypatch, tmp_path):
+    """The user's example: 1hr to 1 week keeps the 5-hour coin, drops the rest."""
+    _range_fixture(monkeypatch, tmp_path)
+    result = mexc.screen_new_listings(min_quote_volume=0.0,
+                                      min_age_hours=1, max_age_hours=168)
+    assert [c.symbol for c in result.coins] == ["NEWUSDT"]
+
+
+def test_range_one_day_to_one_week(monkeypatch, tmp_path):
+    """1d to 1 week excludes the 5-hour coin (too new) and the 3-week coin."""
+    _range_fixture(monkeypatch, tmp_path)
+    result = mexc.screen_new_listings(min_quote_volume=0.0,
+                                      min_age_hours=24, max_age_hours=168)
+    assert [c.symbol for c in result.coins] == []
+
+
+def test_range_one_week_to_two_weeks(monkeypatch, tmp_path):
+    _range_fixture(monkeypatch, tmp_path)
+    result = mexc.screen_new_listings(min_quote_volume=0.0,
+                                      min_age_hours=168, max_age_hours=336)
+    assert [c.symbol for c in result.coins] == ["DUSTUSDT"]
+
+
+def test_range_bounds_are_inclusive(monkeypatch, tmp_path):
+    _range_fixture(monkeypatch, tmp_path)
+    exact = mexc.screen_new_listings(min_quote_volume=0.0,
+                                     min_age_hours=5, max_age_hours=5)
+    assert [c.symbol for c in exact.coins] == ["NEWUSDT"]
+
+
+def test_range_reports_how_many_it_hid(monkeypatch, tmp_path):
+    _range_fixture(monkeypatch, tmp_path)
+    result = mexc.screen_new_listings(min_quote_volume=0.0,
+                                      min_age_hours=1, max_age_hours=168)
+    assert result.hidden_by_age == 2
+
+
+def test_age_hours_are_recomputed_from_the_cache_not_frozen(monkeypatch, tmp_path):
+    """A cached sweep read an hour later must report an age an hour larger."""
+    _range_fixture(monkeypatch, tmp_path)
+    first = mexc.screen_new_listings(min_quote_volume=0.0)
+    age_then = next(c for c in first.coins if c.symbol == "NEWUSDT").age_hours
+
+    monkeypatch.setattr(mexc, "_now_ms", lambda: _NOW_MS + 2 * _HOUR_MS)
+    later = mexc.cached_listings(min_quote_volume=0.0)
+    age_now = next(c for c in later.coins if c.symbol == "NEWUSDT").age_hours
+    assert age_now == pytest.approx(age_then + 2.0)
+
+
+def test_cached_listings_applies_the_age_range(monkeypatch, tmp_path):
+    _range_fixture(monkeypatch, tmp_path)
+    mexc.screen_new_listings(min_quote_volume=0.0)
+    result = mexc.cached_listings(min_quote_volume=0.0,
+                                  min_age_hours=168, max_age_hours=336)
+    assert [c.symbol for c in result.coins] == ["DUSTUSDT"]
+
+
+def test_age_days_still_available_for_display(monkeypatch, tmp_path):
+    _range_fixture(monkeypatch, tmp_path)
+    result = mexc.screen_new_listings(min_quote_volume=0.0)
+    by_symbol = {c.symbol: c for c in result.coins}
+    assert by_symbol["DUSTUSDT"].age_days == 9
+    assert by_symbol["NEWUSDT"].age_days == 0
 
 
 def test_screen_returns_only_recent_liquid_coins(monkeypatch, tmp_path):
     _screen_patches(
         monkeypatch, tmp_path,
         ages={"NEWUSDT": 1, "DUSTUSDT": 1, "OLDUSDT": 3},
-        first_dates={"NEWUSDT": "2026-07-20", "DUSTUSDT": "2026-07-21"},
+        first_dates={"NEWUSDT": _ms_ago(days=9), "DUSTUSDT": _ms_ago(days=8)},
     )
-    result = mexc.screen_new_listings(today="2026-07-29", min_quote_volume=50_000.0)
+    result = mexc.screen_new_listings(min_quote_volume=50_000.0)
 
     assert [c.symbol for c in result.coins] == ["NEWUSDT"]
     coin = result.coins[0]
-    assert coin.listed_date == "2026-07-20"
+    assert coin.listed_date == mexc._ms_to_date(_ms_ago(days=9))
     assert coin.age_days == 9
     assert coin.quote_volume == pytest.approx(200_000.0)
     assert coin.change_pct == pytest.approx(12.0)
@@ -225,9 +369,9 @@ def test_screen_include_all_keeps_dust(monkeypatch, tmp_path):
     _screen_patches(
         monkeypatch, tmp_path,
         ages={"NEWUSDT": 1, "DUSTUSDT": 1, "OLDUSDT": 3},
-        first_dates={"NEWUSDT": "2026-07-20", "DUSTUSDT": "2026-07-21"},
+        first_dates={"NEWUSDT": _ms_ago(days=9), "DUSTUSDT": _ms_ago(days=8)},
     )
-    result = mexc.screen_new_listings(today="2026-07-29", min_quote_volume=50_000.0,
+    result = mexc.screen_new_listings(min_quote_volume=50_000.0,
                                       include_all=True)
     assert {c.symbol for c in result.coins} == {"NEWUSDT", "DUSTUSDT"}
 
@@ -236,9 +380,9 @@ def test_screen_sorts_newest_first(monkeypatch, tmp_path):
     _screen_patches(
         monkeypatch, tmp_path,
         ages={"NEWUSDT": 1, "DUSTUSDT": 1, "OLDUSDT": 3},
-        first_dates={"NEWUSDT": "2026-07-10", "DUSTUSDT": "2026-07-25"},
+        first_dates={"NEWUSDT": _ms_ago(days=19), "DUSTUSDT": _ms_ago(days=4)},
     )
-    result = mexc.screen_new_listings(today="2026-07-29", min_quote_volume=0.0)
+    result = mexc.screen_new_listings(min_quote_volume=0.0)
     assert [c.symbol for c in result.coins] == ["DUSTUSDT", "NEWUSDT"]
 
 
@@ -246,9 +390,9 @@ def test_screen_excludes_coins_outside_the_window(monkeypatch, tmp_path):
     _screen_patches(
         monkeypatch, tmp_path,
         ages={"NEWUSDT": 2, "DUSTUSDT": 1, "OLDUSDT": 3},
-        first_dates={"NEWUSDT": "2026-05-01", "DUSTUSDT": "2026-07-25"},
+        first_dates={"NEWUSDT": _ms_ago(days=89), "DUSTUSDT": _ms_ago(days=4)},
     )
-    result = mexc.screen_new_listings(today="2026-07-29", min_quote_volume=0.0)
+    result = mexc.screen_new_listings(min_quote_volume=0.0)
     assert [c.symbol for c in result.coins] == ["DUSTUSDT"]
 
 
@@ -256,7 +400,7 @@ def test_screen_counts_unresolved_symbols(monkeypatch, tmp_path):
     """A symbol whose probe keeps failing is reported, never silently dropped."""
     _screen_patches(monkeypatch, tmp_path,
                     ages={"NEWUSDT": 1, "DUSTUSDT": 1, "OLDUSDT": 3},
-                    first_dates={"NEWUSDT": "2026-07-20"})
+                    first_dates={"NEWUSDT": _ms_ago(days=9)})
 
     def boom(symbol):
         if symbol == "DUSTUSDT":
@@ -265,7 +409,7 @@ def test_screen_counts_unresolved_symbols(monkeypatch, tmp_path):
 
     monkeypatch.setattr(mexc, "monthly_candle_count", boom)
 
-    result = mexc.screen_new_listings(today="2026-07-29", min_quote_volume=0.0)
+    result = mexc.screen_new_listings(min_quote_volume=0.0)
     assert result.unresolved == 1
     assert [c.symbol for c in result.coins] == ["NEWUSDT"]
 
@@ -273,15 +417,15 @@ def test_screen_counts_unresolved_symbols(monkeypatch, tmp_path):
 def test_screen_reads_fresh_cache_without_network(monkeypatch, tmp_path):
     _screen_patches(monkeypatch, tmp_path,
                     ages={"NEWUSDT": 1, "DUSTUSDT": 1, "OLDUSDT": 3},
-                    first_dates={"NEWUSDT": "2026-07-20", "DUSTUSDT": "2026-07-21"})
-    first = mexc.screen_new_listings(today="2026-07-29", min_quote_volume=0.0)
+                    first_dates={"NEWUSDT": _ms_ago(days=9), "DUSTUSDT": _ms_ago(days=8)})
+    first = mexc.screen_new_listings(min_quote_volume=0.0)
     assert first.from_cache is False
 
     def explode():
         raise AssertionError("cache hit must not hit the network")
 
     monkeypatch.setattr(mexc, "fetch_usdt_symbols", explode)
-    second = mexc.screen_new_listings(today="2026-07-29", min_quote_volume=0.0)
+    second = mexc.screen_new_listings(min_quote_volume=0.0)
     assert second.from_cache is True
     assert [c.symbol for c in second.coins] == [c.symbol for c in first.coins]
 
@@ -289,9 +433,9 @@ def test_screen_reads_fresh_cache_without_network(monkeypatch, tmp_path):
 def test_screen_force_refresh_bypasses_cache(monkeypatch, tmp_path):
     _screen_patches(monkeypatch, tmp_path,
                     ages={"NEWUSDT": 1, "DUSTUSDT": 1, "OLDUSDT": 3},
-                    first_dates={"NEWUSDT": "2026-07-20", "DUSTUSDT": "2026-07-21"})
-    mexc.screen_new_listings(today="2026-07-29", min_quote_volume=0.0)
-    result = mexc.screen_new_listings(today="2026-07-29", min_quote_volume=0.0,
+                    first_dates={"NEWUSDT": _ms_ago(days=9), "DUSTUSDT": _ms_ago(days=8)})
+    mexc.screen_new_listings(min_quote_volume=0.0)
+    result = mexc.screen_new_listings(min_quote_volume=0.0,
                                       force_refresh=True)
     assert result.from_cache is False
 
@@ -299,14 +443,14 @@ def test_screen_force_refresh_bypasses_cache(monkeypatch, tmp_path):
 def test_screen_serves_expired_cache_when_refresh_fails(monkeypatch, tmp_path):
     _screen_patches(monkeypatch, tmp_path,
                     ages={"NEWUSDT": 1, "DUSTUSDT": 1, "OLDUSDT": 3},
-                    first_dates={"NEWUSDT": "2026-07-20", "DUSTUSDT": "2026-07-21"})
-    mexc.screen_new_listings(today="2026-07-29", min_quote_volume=0.0)
+                    first_dates={"NEWUSDT": _ms_ago(days=9), "DUSTUSDT": _ms_ago(days=8)})
+    mexc.screen_new_listings(min_quote_volume=0.0)
 
     def dead():
         raise mexc.MexcUnavailable("all hosts blocked")
 
     monkeypatch.setattr(mexc, "fetch_usdt_symbols", dead)
-    result = mexc.screen_new_listings(today="2026-07-29", min_quote_volume=0.0,
+    result = mexc.screen_new_listings(min_quote_volume=0.0,
                                       force_refresh=True)
     assert result.from_cache is True
     assert result.stale is True
@@ -315,20 +459,20 @@ def test_screen_serves_expired_cache_when_refresh_fails(monkeypatch, tmp_path):
 def test_cached_listings_returns_none_without_a_cache(monkeypatch, tmp_path):
     """The UI must be able to render instantly instead of sweeping on load."""
     monkeypatch.setattr(mexc, "_cache_dir", lambda: str(tmp_path))
-    assert mexc.cached_listings(today="2026-07-29") is None
+    assert mexc.cached_listings() is None
 
 
 def test_cached_listings_never_hits_the_network(monkeypatch, tmp_path):
     _screen_patches(monkeypatch, tmp_path,
                     ages={"NEWUSDT": 1, "DUSTUSDT": 1, "OLDUSDT": 3},
-                    first_dates={"NEWUSDT": "2026-07-20", "DUSTUSDT": "2026-07-21"})
-    mexc.screen_new_listings(today="2026-07-29", min_quote_volume=0.0)
+                    first_dates={"NEWUSDT": _ms_ago(days=9), "DUSTUSDT": _ms_ago(days=8)})
+    mexc.screen_new_listings(min_quote_volume=0.0)
 
     def explode():
         raise AssertionError("cached_listings must not sweep")
 
     monkeypatch.setattr(mexc, "fetch_usdt_symbols", explode)
-    result = mexc.cached_listings(today="2026-07-29", min_quote_volume=0.0)
+    result = mexc.cached_listings(min_quote_volume=0.0)
     assert result is not None
     assert result.from_cache is True
     assert result.stale is False
@@ -338,9 +482,13 @@ def test_cached_listings_never_hits_the_network(monkeypatch, tmp_path):
 def test_cached_listings_flags_a_previous_day_as_stale(monkeypatch, tmp_path):
     _screen_patches(monkeypatch, tmp_path,
                     ages={"NEWUSDT": 1, "DUSTUSDT": 1, "OLDUSDT": 3},
-                    first_dates={"NEWUSDT": "2026-07-20", "DUSTUSDT": "2026-07-21"})
-    mexc.screen_new_listings(today="2026-07-29", min_quote_volume=0.0)
-    result = mexc.cached_listings(today="2026-07-30", min_quote_volume=0.0)
+                    first_dates={"NEWUSDT": _ms_ago(days=9), "DUSTUSDT": _ms_ago(days=8)})
+    mexc.screen_new_listings(min_quote_volume=0.0)
+
+    # Read it back a day later: new listings have appeared since, so the sweep
+    # is stale even though the file is intact.
+    monkeypatch.setattr(mexc, "_now_ms", lambda: _NOW_MS + 25 * _HOUR_MS)
+    result = mexc.cached_listings(min_quote_volume=0.0)
     assert result is not None
     assert result.stale is True
 
@@ -348,9 +496,9 @@ def test_cached_listings_flags_a_previous_day_as_stale(monkeypatch, tmp_path):
 def test_cached_listings_applies_the_volume_floor(monkeypatch, tmp_path):
     _screen_patches(monkeypatch, tmp_path,
                     ages={"NEWUSDT": 1, "DUSTUSDT": 1, "OLDUSDT": 3},
-                    first_dates={"NEWUSDT": "2026-07-20", "DUSTUSDT": "2026-07-21"})
-    mexc.screen_new_listings(today="2026-07-29", min_quote_volume=0.0)
-    result = mexc.cached_listings(today="2026-07-29", min_quote_volume=50_000.0)
+                    first_dates={"NEWUSDT": _ms_ago(days=9), "DUSTUSDT": _ms_ago(days=8)})
+    mexc.screen_new_listings(min_quote_volume=0.0)
+    result = mexc.cached_listings(min_quote_volume=50_000.0)
     assert [c.symbol for c in result.coins] == ["NEWUSDT"]
     assert result.hidden_by_volume == 1
 
@@ -363,7 +511,7 @@ def test_screen_raises_when_blocked_and_no_cache(monkeypatch, tmp_path):
 
     monkeypatch.setattr(mexc, "fetch_usdt_symbols", dead)
     with pytest.raises(mexc.MexcUnavailable):
-        mexc.screen_new_listings(today="2026-07-29")
+        mexc.screen_new_listings()
 
 
 # --- OHLCV and the get_stock_data vendor ----------------------------------
@@ -482,41 +630,3 @@ def test_default_config_still_prefers_yfinance():
 
 def test_include_twitter_defaults_off():
     assert get_config().get("include_twitter") is False
-
-
-# --- Live checks (network; deselected by default) --------------------------
-
-
-@pytest.mark.integration
-def test_live_host_resolves():
-    assert mexc.resolve_host() in mexc.DEFAULT_HOSTS
-
-
-@pytest.mark.integration
-def test_live_symbol_universe_is_large():
-    rows = mexc.fetch_usdt_symbols()
-    assert len(rows) > 500
-    assert all(r["symbol"].endswith("USDT") for r in rows)
-
-
-@pytest.mark.integration
-def test_live_mexc_stock_data_parses_for_a_known_pair():
-    out = mexc.get_mexc_stock_data("BTC-USD", "2026-07-01", "2026-07-29")
-    assert "# MEXC spot data for BTCUSDT" in out
-    assert "Date,Open,High,Low,Close,Volume" in out
-
-
-@pytest.mark.integration
-def test_live_indicators_compute_for_a_known_pair():
-    out = mexc.get_mexc_indicators("BTC-USD", "rsi", "2026-07-29", 5)
-    assert "## rsi values" in out
-
-
-@pytest.mark.integration
-def test_live_screen_returns_plausible_new_coins():
-    """Full sweep — slow (~2 min cold) and rate-limit sensitive."""
-    result = mexc.screen_new_listings(min_quote_volume=0.0)
-    assert result.scanned > 500
-    for coin in result.coins:
-        assert 0 <= coin.age_days <= mexc.WINDOW_DAYS
-        assert coin.symbol.endswith("USDT")

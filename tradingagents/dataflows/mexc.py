@@ -183,11 +183,29 @@ def fetch_24h_tickers() -> dict[str, dict]:
 # roughly two months and is worth an exact-date lookup.
 _MONTHLY_PROBE_LIMIT = 3
 _DAILY_PROBE_LIMIT = 500
-WINDOW_DAYS = 30
+# 500 hourly candles ≈ 20.8 days, which is where hour-precise ages come from.
+# Beyond that the daily probe supplies day precision, which is all an "older than
+# three weeks" filter needs.
+_HOURLY_PROBE_LIMIT = 500
+_HOUR_MS = 3_600_000
+# The sweep collects a superset; the UI filters an age range inside it. 60 days
+# covers an 8-week maximum, and the monthly prefilter already admits ~2 months,
+# so widening the window costs no extra requests.
+WINDOW_DAYS = 60
+
+
+def _now_ms() -> int:
+    return int(time.time() * 1000)
 
 
 def _ms_to_date(ms: int) -> str:
     return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).strftime("%Y-%m-%d")
+
+
+def age_hours(listed_at_ms: int, now_ms: int | None = None) -> float:
+    """Hours between a listing instant and now. Never negative."""
+    now = now_ms if now_ms is not None else _now_ms()
+    return max(0.0, (now - listed_at_ms) / _HOUR_MS)
 
 
 def _klines(symbol: str, interval: str, limit: int) -> list:
@@ -205,12 +223,28 @@ def is_recent_listing_candidate(monthly_count: int) -> bool:
     return 0 < monthly_count < _MONTHLY_PROBE_LIMIT
 
 
+def first_trade_ms(symbol: str) -> int | None:
+    """First-trade instant in epoch ms, or None when it predates both probes.
+
+    Tries hourly candles first so a coin listed this morning reports an age in
+    hours rather than rounding to a whole day — an "under 24h old" filter is
+    meaningless at day resolution. Falls back to daily candles (midnight
+    precision) for coins older than the hourly window.
+    """
+    hourly = _klines(symbol, "60m", _HOURLY_PROBE_LIMIT)
+    if hourly and len(hourly) < _HOURLY_PROBE_LIMIT:
+        return hourly[0][0]
+
+    daily = _klines(symbol, "1d", _DAILY_PROBE_LIMIT)
+    if not daily or len(daily) >= _DAILY_PROBE_LIMIT:
+        return None            # saturated history == older than the window
+    return daily[0][0]
+
+
 def first_trade_date(symbol: str) -> str | None:
     """Exact first-trade date (YYYY-MM-DD), or None when it is older than the probe."""
-    rows = _klines(symbol, "1d", _DAILY_PROBE_LIMIT)
-    if not rows or len(rows) >= _DAILY_PROBE_LIMIT:
-        return None            # saturated history == older than the window
-    return _ms_to_date(rows[0][0])
+    ms = first_trade_ms(symbol)
+    return _ms_to_date(ms) if ms is not None else None
 
 
 def age_days(listed_date: str, today: str) -> int:
@@ -232,17 +266,27 @@ DEFAULT_MIN_QUOTE_VOLUME = 50_000.0
 
 @dataclasses.dataclass(frozen=True)
 class NewCoin:
-    """One newly listed MEXC spot coin, as shown in a screener row."""
+    """One newly listed MEXC spot coin, as shown in a screener row.
+
+    ``age_hours`` is computed when a sweep is read, not when it is written, so a
+    cached sweep never reports a frozen age.
+    """
 
     symbol: str          # MEXC pair, e.g. "CATEUSDT"
     base: str            # "CATE"
     name: str            # human name from exchangeInfo.fullName
     contract: str        # on-chain contract address, "" when MEXC has none
+    listed_at_ms: int    # first-trade instant, epoch ms
     listed_date: str     # first-trade date, YYYY-MM-DD
-    age_days: int
+    age_hours: float
     price: float
     change_pct: float    # 24h change in whole percent
     quote_volume: float  # 24h quote volume in USDT
+
+    @property
+    def age_days(self) -> int:
+        """Whole days since listing, for compact display."""
+        return int(self.age_hours // 24)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -253,9 +297,15 @@ class ScreenResult:
     scanned: int              # symbols considered
     unresolved: int           # symbols whose age probe failed
     hidden_by_volume: int     # in-window coins below the volume floor
+    hidden_by_age: int        # in-window coins outside the requested age range
     fetched_at: float         # epoch seconds of the underlying sweep
     from_cache: bool
     stale: bool = False       # served past its TTL because a refresh failed
+
+
+def _today() -> str:
+    """Today's UTC date, derived from the same clock as ages so tests stay coherent."""
+    return _ms_to_date(_now_ms())
 
 
 def _cache_dir() -> str:
@@ -314,43 +364,61 @@ def _sweep(today: str) -> tuple[list, int, int]:
     unresolved = sum(1 for _, n in counts if n is None)
     candidates = {s for s, n in counts if n is not None and is_recent_listing_candidate(n)}
 
-    coins = []
+    now = _now_ms()
+    records = []
     for row in universe:
         if row["symbol"] not in candidates:
             continue
         try:
-            listed = first_trade_date(row["symbol"])
+            listed_at = first_trade_ms(row["symbol"])
         except (MexcRateLimited, MexcHostUnavailable) as exc:
             logger.warning("MEXC first-trade probe failed for %s: %s", row["symbol"], exc)
             unresolved += 1
             continue
-        if not listed:
+        if listed_at is None:
             continue
-        age = age_days(listed, today)
-        if age > WINDOW_DAYS or age < 0:
+        if age_hours(listed_at, now) > WINDOW_DAYS * 24:
             continue
         tick = tickers.get(row["symbol"], {})
-        coins.append(NewCoin(
-            symbol=row["symbol"], base=row["base"], name=row["name"],
-            contract=row["contract"], listed_date=listed, age_days=age,
-            price=tick.get("price", 0.0), change_pct=tick.get("change_pct", 0.0),
-            quote_volume=tick.get("quote_volume", 0.0),
-        ))
+        records.append({
+            "symbol": row["symbol"], "base": row["base"], "name": row["name"],
+            "contract": row["contract"], "listed_at_ms": listed_at,
+            "listed_date": _ms_to_date(listed_at),
+            "price": tick.get("price", 0.0),
+            "change_pct": tick.get("change_pct", 0.0),
+            "quote_volume": tick.get("quote_volume", 0.0),
+        })
 
-    coins.sort(key=lambda c: (c.listed_date, c.quote_volume), reverse=True)
-    return coins, len(universe), unresolved
+    records.sort(key=lambda r: (r["listed_at_ms"], r["quote_volume"]), reverse=True)
+    return records, len(universe), unresolved
 
 
 def _filtered(payload: dict, *, min_quote_volume: float, include_all: bool,
-              from_cache: bool, stale: bool) -> ScreenResult:
-    """Apply the volume floor to a sweep payload and wrap it as a ScreenResult."""
-    coins = [NewCoin(**c) for c in payload["coins"]]
-    kept = coins if include_all else [c for c in coins if c.quote_volume >= min_quote_volume]
+              from_cache: bool, stale: bool,
+              min_age_hours: float = 0.0,
+              max_age_hours: float | None = None) -> ScreenResult:
+    """Apply the age range and volume floor to a sweep payload.
+
+    Ages are derived here rather than read from the payload so a cached sweep
+    reports how old each coin is *now*, not how old it was when swept. Both range
+    bounds are inclusive.
+    """
+    now = _now_ms()
+    ceiling = WINDOW_DAYS * 24 if max_age_hours is None else max_age_hours
+    coins = [
+        NewCoin(**record, age_hours=age_hours(record["listed_at_ms"], now))
+        for record in payload["coins"]
+    ]
+
+    in_range = [c for c in coins if min_age_hours <= c.age_hours <= ceiling]
+    kept = (in_range if include_all
+            else [c for c in in_range if c.quote_volume >= min_quote_volume])
     return ScreenResult(
         coins=kept,
         scanned=payload.get("scanned", len(coins)),
         unresolved=payload.get("unresolved", 0),
-        hidden_by_volume=len(coins) - len(kept),
+        hidden_by_volume=len(in_range) - len(kept),
+        hidden_by_age=len(coins) - len(in_range),
         fetched_at=payload.get("fetched_at", 0.0),
         from_cache=from_cache,
         stale=stale,
@@ -362,6 +430,8 @@ def cached_listings(
     today: str | None = None,
     min_quote_volume: float = DEFAULT_MIN_QUOTE_VOLUME,
     include_all: bool = False,
+    min_age_hours: float = 0.0,
+    max_age_hours: float | None = None,
 ) -> ScreenResult | None:
     """Return a cached sweep without touching the network, or None if there is none.
 
@@ -370,16 +440,17 @@ def cached_listings(
     requests even for a user who never opened the tab. The tab shows cached rows
     instantly and leaves the sweep to an explicit button.
     """
-    today = today or datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+    today = today or _today()
     cached = _read_cache()
     if cached is None:
         return None
     stale = (
         cached.get("today") != today
-        or (time.time() - cached.get("fetched_at", 0)) >= _CACHE_TTL_SECONDS
+        or (_now_ms() / 1000 - cached.get("fetched_at", 0)) >= _CACHE_TTL_SECONDS
     )
     return _filtered(cached, min_quote_volume=min_quote_volume,
-                     include_all=include_all, from_cache=True, stale=stale)
+                     include_all=include_all, from_cache=True, stale=stale,
+                     min_age_hours=min_age_hours, max_age_hours=max_age_hours)
 
 
 def screen_new_listings(
@@ -388,6 +459,8 @@ def screen_new_listings(
     min_quote_volume: float = DEFAULT_MIN_QUOTE_VOLUME,
     include_all: bool = False,
     force_refresh: bool = False,
+    min_age_hours: float = 0.0,
+    max_age_hours: float | None = None,
 ) -> ScreenResult:
     """Coins first traded on MEXC within the last ``WINDOW_DAYS`` days.
 
@@ -396,23 +469,22 @@ def screen_new_listings(
     and flagged stale rather than showing an empty table, which would read as
     "no new coins" instead of "could not check".
     """
-    today = today or datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+    today = today or _today()
     cached = _read_cache()
     fresh_enough = (
         cached is not None
         and cached.get("today") == today
-        and (time.time() - cached.get("fetched_at", 0)) < _CACHE_TTL_SECONDS
+        and (_now_ms() / 1000 - cached.get("fetched_at", 0)) < _CACHE_TTL_SECONDS
     )
 
     if fresh_enough and not force_refresh:
         payload, from_cache, stale = cached, True, False
     else:
         try:
-            coins, scanned, unresolved = _sweep(today)
+            records, scanned, unresolved = _sweep(today)
             payload = {
-                "today": today, "fetched_at": time.time(), "scanned": scanned,
-                "unresolved": unresolved,
-                "coins": [dataclasses.asdict(c) for c in coins],
+                "today": today, "fetched_at": _now_ms() / 1000, "scanned": scanned,
+                "unresolved": unresolved, "coins": records,
             }
             _write_cache(payload)
             from_cache, stale = False, False
@@ -423,7 +495,8 @@ def screen_new_listings(
             payload, from_cache, stale = cached, True, True
 
     return _filtered(payload, min_quote_volume=min_quote_volume,
-                     include_all=include_all, from_cache=from_cache, stale=stale)
+                     include_all=include_all, from_cache=from_cache, stale=stale,
+                     min_age_hours=min_age_hours, max_age_hours=max_age_hours)
 
 
 _KLINE_COLUMNS = ["openTime", "Open", "High", "Low", "Close", "Volume",

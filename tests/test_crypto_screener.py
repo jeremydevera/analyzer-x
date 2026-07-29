@@ -24,10 +24,18 @@ def screener():
 
 def _coin(**over):
     base = dict(symbol="CATEUSDT", base="CATE", name="Catestein", contract="0xabc",
-                listed_date="2026-07-20", age_days=9, price=0.0037841,
+                listed_at_ms=1784505600000, listed_date="2026-07-20",
+                age_hours=9 * 24.0, price=0.0037841,
                 change_pct=12.4321, quote_volume=140_981.74)
     base.update(over)
     return NewCoin(**base)
+
+
+def _result(**over):
+    base = dict(coins=[], scanned=1741, unresolved=0, hidden_by_volume=0,
+                hidden_by_age=0, fetched_at=0.0, from_cache=False, stale=False)
+    base.update(over)
+    return ScreenResult(**base)
 
 
 def test_crypto_analysts_exclude_fundamentals(screener):
@@ -91,6 +99,73 @@ def test_verdict_label(screener, signal, expected):
     assert screener.verdict_label(signal) == expected
 
 
+def test_age_units_cover_hour_day_week(screener):
+    assert screener.AGE_UNITS == {"hour": 1, "day": 24, "week": 168}
+
+
+@pytest.mark.parametrize("value,unit,expected", [
+    (1, "hour", 1),
+    (36, "hour", 36),
+    (1, "day", 24),
+    (1, "week", 168),
+    (2, "week", 336),
+])
+def test_to_hours(screener, value, unit, expected):
+    assert screener.to_hours(value, unit) == expected
+
+
+@pytest.mark.parametrize("lo_v,lo_u,hi_v,hi_u,expected", [
+    (1, "hour", 1, "week", (1, 168)),      # the user's "1hr to 1 week"
+    (1, "day", 1, "week", (24, 168)),      # the user's "1d to 1 week"
+    (1, "week", 2, "week", (168, 336)),    # "1 week to 2 weeks"
+    (12, "hour", 3, "day", (12, 72)),
+])
+def test_parse_age_range_accepts_ascending_ranges(screener, lo_v, lo_u, hi_v, hi_u,
+                                                  expected):
+    lo, hi, error = screener.parse_age_range(lo_v, lo_u, hi_v, hi_u)
+    assert error is None
+    assert (lo, hi) == expected
+
+
+@pytest.mark.parametrize("lo_v,lo_u,hi_v,hi_u", [
+    (1, "week", 1, "hour"),    # the user's rejected example
+    (2, "week", 1, "week"),
+    (48, "hour", 1, "day"),
+    (1, "day", 1, "day"),      # empty range
+])
+def test_parse_age_range_rejects_descending_or_empty(screener, lo_v, lo_u, hi_v, hi_u):
+    lo, hi, error = screener.parse_age_range(lo_v, lo_u, hi_v, hi_u)
+    assert lo is None and hi is None
+    assert error is not None
+    assert "younger" in error.lower()
+
+
+def test_parse_age_range_rejects_an_unknown_unit(screener):
+    lo, hi, error = screener.parse_age_range(1, "fortnight", 2, "week")
+    assert error is not None
+
+
+def test_parse_age_range_rejects_a_negative_bound(screener):
+    lo, hi, error = screener.parse_age_range(-1, "day", 2, "week")
+    assert error is not None
+
+
+@pytest.mark.parametrize("hours,expected", [
+    (0.4, "24m"),
+    (1.0, "1h"),
+    (5.5, "5h"),
+    (23.9, "23h"),
+    (24.0, "1d"),
+    (36.0, "1d 12h"),
+    (168.0, "7d"),
+    (200.0, "8d"),
+    (336.0, "14d"),
+    (1440.0, "60d"),
+])
+def test_fmt_age(screener, hours, expected):
+    assert screener.fmt_age(hours) == expected
+
+
 def test_report_key_is_symbol_and_date_scoped(screener):
     assert screener.report_key("CATEUSDT", "2026-07-29") == "reports:CATEUSDT:2026-07-29"
 
@@ -144,8 +219,8 @@ def test_row_cells_handles_tiny_volume(screener):
 
 
 def test_status_caption_reports_cache_and_gaps(screener):
-    res = ScreenResult(coins=[], scanned=1741, unresolved=12, hidden_by_volume=5,
-                       fetched_at=0.0, from_cache=True, stale=True)
+    res = _result(unresolved=12, hidden_by_volume=5, hidden_by_age=3,
+                  from_cache=True, stale=True)
     caption = screener.status_caption(res)
     assert "1741" in caption
     assert "12" in caption          # unresolved symbols surfaced, not hidden
@@ -154,8 +229,7 @@ def test_status_caption_reports_cache_and_gaps(screener):
 
 
 def test_status_caption_stays_quiet_when_nothing_is_wrong(screener):
-    res = ScreenResult(coins=[], scanned=1741, unresolved=0, hidden_by_volume=0,
-                       fetched_at=0.0, from_cache=False, stale=False)
+    res = _result()
     caption = screener.status_caption(res)
     assert "1741" in caption
     assert "could not be checked" not in caption

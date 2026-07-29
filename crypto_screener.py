@@ -94,6 +94,60 @@ def verdict_label(signal: str | None) -> str:
     )
 
 
+# Age units offered in the range dropdowns, in hours.
+AGE_UNITS = {"hour": 1, "day": 24, "week": 168}
+
+
+def to_hours(value: float, unit: str) -> float:
+    """Convert a value plus unit label into hours."""
+    return value * AGE_UNITS[unit]
+
+
+def parse_age_range(min_value: float, min_unit: str,
+                    max_value: float, max_unit: str):
+    """Validate an age range. Returns ``(min_hours, max_hours, error)``.
+
+    The bound pair is rejected rather than silently reordered when the minimum is
+    not older-than-or-equal the maximum: "1 week to 1 hour" is a mistake, and
+    swapping it would quietly analyze a different set of coins than asked for.
+    """
+    for unit in (min_unit, max_unit):
+        if unit not in AGE_UNITS:
+            return None, None, (
+                f"Unknown unit {unit!r}. Choose one of: "
+                f"{', '.join(AGE_UNITS)}."
+            )
+    if min_value < 0 or max_value < 0:
+        return None, None, "Age bounds cannot be negative."
+
+    low = to_hours(min_value, min_unit)
+    high = to_hours(max_value, max_unit)
+    if low >= high:
+        return None, None, (
+            f"The 'from' age ({fmt_age(low)}) must be younger than the 'to' age "
+            f"({fmt_age(high)}) — a range reads from newest to oldest, e.g. "
+            f"1 hour to 1 week."
+        )
+    return low, high, None
+
+
+def fmt_age(hours: float) -> str:
+    """Compact age label: 24m, 5h, 1d 12h, 9d.
+
+    Days rather than weeks above a day: every coin here is younger than the sweep
+    window, so "9d" reads faster in a table than "1w 2d". Hours are only shown
+    alongside days below the first week, where they still carry information.
+    """
+    if hours < 1:
+        return f"{int(round(hours * 60))}m"
+    if hours < 24:
+        return f"{int(hours)}h"
+    days, rem = divmod(int(hours), 24)
+    if days < 7 and rem:
+        return f"{days}d {rem}h"
+    return f"{days}d"
+
+
 def _fmt_volume(value: float) -> str:
     if value >= 1_000_000:
         return f"${value / 1_000_000:.1f}M"
@@ -110,7 +164,7 @@ def row_cells(coin) -> dict:
         "symbol": coin.base,
         "name": coin.name,
         "listed": coin.listed_date,
-        "age": f"{coin.age_days}d",
+        "age": fmt_age(coin.age_hours),
         "price": price,
         "change": f"{coin.change_pct:+.2f}%",
         "volume": _fmt_volume(coin.quote_volume),
@@ -122,6 +176,8 @@ def status_caption(result) -> str:
     parts = [f"{result.scanned} MEXC USDT pairs scanned"]
     if result.unresolved:
         parts.append(f"{result.unresolved} could not be checked (rate-limited)")
+    if result.hidden_by_age:
+        parts.append(f"{result.hidden_by_age} outside the age range")
     if result.hidden_by_volume:
         parts.append(f"{result.hidden_by_volume} hidden by the volume floor")
     if result.stale:
@@ -157,6 +213,17 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
         f'{mexc.WINDOW_DAYS} days</div>',
         unsafe_allow_html=True)
 
+    units = list(AGE_UNITS)
+    a1, a2, a3, a4 = st.columns([1, 1.2, 1, 1.2])
+    min_value = a1.number_input("Age from", min_value=0, value=1, step=1,
+                                key="crypto_age_min_value")
+    min_unit = a2.selectbox("", units, index=units.index("hour"),
+                            key="crypto_age_min_unit", label_visibility="hidden")
+    max_value = a3.number_input("to", min_value=0, value=4, step=1,
+                                key="crypto_age_max_value")
+    max_unit = a4.selectbox(" ", units, index=units.index("week"),
+                            key="crypto_age_max_unit", label_visibility="hidden")
+
     c1, c2, c3 = st.columns([1.4, 1, 1])
     min_vol = c1.number_input("Min 24h volume (USDT)", min_value=0.0,
                               value=mexc.DEFAULT_MIN_QUOTE_VOLUME, step=10_000.0,
@@ -166,6 +233,16 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
     scan = c3.button("↻ Scan MEXC", key="crypto_refresh",
                      help="Sweep all MEXC USDT pairs now (~2 minutes)")
 
+    min_age, max_age, age_error = parse_age_range(min_value, min_unit,
+                                                  max_value, max_unit)
+    if age_error:
+        # Refuse the range rather than reordering it: swapping the bounds would
+        # silently screen a different set of coins than the one asked for.
+        st.error(age_error)
+        return
+    st.caption(f"Showing coins first traded between **{fmt_age(min_age)}** and "
+               f"**{fmt_age(max_age)}** ago.")
+
     # Streamlit re-runs every tab body on every interaction, so the sweep must be
     # explicit: rendering it automatically would cost ~1700 requests each time
     # anyone touched the app, including users who never open this tab.
@@ -174,13 +251,15 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
             with st.spinner("Scanning ~1700 MEXC pairs — this takes about 2 minutes…"):
                 result = mexc.screen_new_listings(
                     min_quote_volume=min_vol, include_all=include_all,
-                    force_refresh=True)
+                    force_refresh=True, min_age_hours=min_age,
+                    max_age_hours=max_age)
         except mexc.MexcUnavailable as exc:
             st.error(f"Cannot reach MEXC: {exc}")
             return
     else:
         result = mexc.cached_listings(min_quote_volume=min_vol,
-                                      include_all=include_all)
+                                      include_all=include_all,
+                                      min_age_hours=min_age, max_age_hours=max_age)
 
     if result is None:
         st.info("No scan yet. Press **↻ Scan MEXC** to sweep the exchange "
@@ -189,7 +268,9 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
 
     st.caption(status_caption(result))
     if not result.coins:
-        st.info("No MEXC coins matched the window and volume floor.")
+        st.info(f"No MEXC coins were first traded between {fmt_age(min_age)} and "
+                f"{fmt_age(max_age)} ago above that volume floor. Widen the range "
+                f"or lower the floor.")
         return
 
     header = st.columns(_WIDTHS)

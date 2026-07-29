@@ -155,6 +155,27 @@ def test_query_uses_the_base_asset_as_a_cashtag(monkeypatch):
     assert seen["end_date"] == "2026-07-29"
 
 
+def test_query_includes_the_configured_display_name(monkeypatch):
+    """The screener knows the project name; the cashtag alone finds far less."""
+    seen = {}
+    monkeypatch.setattr(sa, "fetch_twitter_posts",
+                        lambda terms, **kw: seen.setdefault("terms", terms) or "T")
+    monkeypatch.setattr(sa, "get_config",
+                        lambda: {"include_twitter": True,
+                                 "asset_display_name": "xPayLink"})
+    sa._maybe_twitter_block("XPLKUSDT", "2026-07-23", "2026-07-30")
+    assert seen["terms"] == '$XPLK OR "xPayLink"'
+
+
+def test_query_falls_back_to_the_cashtag_without_a_name(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(sa, "fetch_twitter_posts",
+                        lambda terms, **kw: seen.setdefault("terms", terms) or "T")
+    monkeypatch.setattr(sa, "get_config", lambda: {"include_twitter": True})
+    sa._maybe_twitter_block("XPLKUSDT", "2026-07-23", "2026-07-30")
+    assert seen["terms"] == "$XPLK"
+
+
 def test_query_omits_the_bare_symbol(monkeypatch):
     """The bare term matches unrelated chatter sharing the ticker's letters."""
     seen = {}

@@ -39,6 +39,9 @@ _UA = "tradingagents/0.3 (+https://github.com/TauricResearch/TradingAgents)"
 # single stall used to cost the whole source.
 _TIMEOUT = 30.0
 DEFAULT_LIMIT = 30
+# A page returns at most 20 posts; two pages cover the default limit. Each page is
+# billed, so this also bounds spend when a cursor never reports exhaustion.
+MAX_PAGES = 2
 _MAX_BODY_CHARS = 280
 # The endpoint intermittently answers a working query with an empty list —
 # verified live: the same query returned 20 posts, then 0, then 20 again. One
@@ -136,6 +139,25 @@ def _build_query(terms: str, start_date: str | None, end_date: str | None) -> st
     return " ".join(parts)
 
 
+def search_terms(symbol: str, display_name: str | None = None) -> str:
+    """Search fragment for a coin: its cashtag, plus its name when that adds reach.
+
+    Measured on $XPLK: the cashtag alone returned 4 posts, while adding the
+    project name returned 17 — people write "xPayLink", not "$XPLK". The name is
+    quoted so it matches as a phrase, and it is skipped when it merely repeats or
+    extends the symbol ("PIPEDOG"/"pipedog", "XPLK Token"), where it would add no
+    reach and would reintroduce the bare-symbol noise the cashtag avoids.
+    """
+    cashtag = f"${symbol.strip().upper()}"
+    name = (display_name or "").strip()
+    if not name:
+        return cashtag
+    words = name.upper().split()
+    if not words or words[0] == symbol.strip().upper():
+        return cashtag
+    return f'{cashtag} OR "{name}"'
+
+
 def _is_retweet(tweet: dict, body: str) -> bool:
     """True for retweets, which carry no sentiment of their own."""
     return bool(tweet.get("retweeted_tweet")) or body.startswith("RT @")
@@ -159,39 +181,60 @@ def fetch_twitter_posts(
     if not key:
         return "<twitter unavailable: TWITTERAPI_IO_KEY not set>"
 
-    params = {
-        "query": _build_query(terms, start_date, end_date),
-        "queryType": "Top",
-    }
-    # Two attempts, retried on either an empty list or a transport failure. The
-    # endpoint intermittently answers a working query with no results, and it
-    # occasionally stalls past the timeout — measured latency for this query is
-    # 1.5-1.9s, so a timeout is a blip rather than an outage, and abandoning the
-    # source on the first one loses paid-for data.
+    query = _build_query(terms, start_date, end_date)
     tweets: list = []
     last_error: Exception | None = None
-    for attempt in (1, 2):
-        try:
-            tweets = _tweets_of(_request(params, key, timeout))
-            last_error = None
-        except (OSError, urllib.error.URLError, json.JSONDecodeError) as exc:
-            # OSError covers URLError, HTTPError, and socket timeouts.
-            last_error = exc
-            logger.warning("Twitter fetch attempt %d failed for %r: %s",
-                           attempt, terms, exc)
-        if tweets:
-            break
-        if attempt == 1:
-            if last_error is None:
-                logger.info("Twitter returned no posts for %r; retrying once.", terms)
-            time.sleep(_RETRY_SLEEP)
+    cursor: str | None = None
 
-    if last_error is not None:
+    # A page holds at most 20 posts, so reaching a limit of 30 needs the cursor.
+    # Pages are billed per returned tweet, so the walk is bounded by MAX_PAGES as
+    # well as by the limit — a cursor that never reports exhaustion must not spend
+    # without end.
+    for page in range(1, MAX_PAGES + 1):
+        params = {"query": query, "queryType": "Top"}
+        if cursor:
+            params["cursor"] = cursor
+
+        payload = None
+        # Two attempts per page. The endpoint intermittently answers a working
+        # query with no results, and it occasionally stalls past the timeout —
+        # measured latency is 1.5-1.9s, so a timeout is a blip, not an outage.
+        for attempt in (1, 2):
+            try:
+                payload = _request(params, key, timeout)
+                last_error = None
+            except (OSError, urllib.error.URLError, json.JSONDecodeError) as exc:
+                # OSError covers URLError, HTTPError, and socket timeouts.
+                last_error = exc
+                logger.warning("Twitter fetch page %d attempt %d failed for %r: %s",
+                               page, attempt, terms, exc)
+                payload = None
+            if payload is not None and _tweets_of(payload):
+                break
+            if attempt == 1 and page == 1:
+                # Only the first page is worth retrying for emptiness; a later
+                # page coming back empty just means the results ran out.
+                time.sleep(_RETRY_SLEEP)
+            else:
+                break
+
+        if payload is None:
+            break
+        batch = _tweets_of(payload)
+        if not batch:
+            break
+        tweets.extend(batch)
+        cursor = payload.get("next_cursor") if payload.get("has_next_page") else None
+        if not cursor or len(tweets) >= limit:
+            break
+
+    if not tweets and last_error is not None:
         return f"<twitter unavailable: {type(last_error).__name__}: {last_error}>"
     if not tweets:
         return f"<no X/Twitter posts found for {terms}>"
 
     lines = []
+    retweets = 0
     for tw in tweets[:limit]:
         if not isinstance(tw, dict):
             continue
@@ -199,6 +242,7 @@ def fetch_twitter_posts(
         user = _first(author, _USER_ALIASES, "?") if isinstance(author, dict) else "?"
         body = str(_first(tw, _FIELD_ALIASES["text"])).replace("\n", " ").strip()
         if _is_retweet(tw, body):
+            retweets += 1
             continue
         if len(body) > _MAX_BODY_CHARS:
             body = body[:_MAX_BODY_CHARS] + "…"
@@ -212,7 +256,12 @@ def fetch_twitter_posts(
         return f"<no X/Twitter posts found for {terms}>"
 
     window = f" from {start_date} to {end_date}" if start_date and end_date else ""
+    # Retweets are excluded from the body but counted here: they carry no original
+    # opinion, yet the volume is itself evidence of attention.
+    rt_note = ""
+    if retweets:
+        rt_note = f" · {retweets} retweet{'s' if retweets > 1 else ''} excluded"
     return (
         f"## X/Twitter posts for {terms}{window} "
-        f"({len(lines)} posts, ranked by engagement)\n\n" + "\n".join(lines)
+        f"({len(lines)} posts, ranked by engagement{rt_note})\n\n" + "\n".join(lines)
     )

@@ -27,6 +27,9 @@ def test_returns_placeholder_without_key(monkeypatch):
 def test_formats_posts_from_payload(monkeypatch, payload):
     """Parses the recorded live response — field names come from a real call."""
     monkeypatch.setenv("TWITTERAPI_IO_KEY", "k")
+    # The recording carries has_next_page; present it as the only page so this
+    # test covers formatting rather than the cursor walk.
+    payload = {**payload, "has_next_page": False}
     with patch.object(twitter, "_request", return_value=payload):
         out = twitter.fetch_twitter_posts("$BTC", start_date="2026-07-22",
                                           end_date="2026-07-29")
@@ -172,6 +175,84 @@ def test_timeout_allows_for_a_slow_endpoint(monkeypatch):
     assert twitter._TIMEOUT >= 30
 
 
+# --- pagination -----------------------------------------------------------
+
+
+def _page(n, start=0, more=False, cursor="c1"):
+    return {"tweets": [{"text": f"post {start + i}", "createdAt": "2026-07-30",
+                        "likeCount": 1, "retweetCount": 0,
+                        "author": {"userName": f"u{start + i}"}} for i in range(n)],
+            "has_next_page": more, "next_cursor": cursor}
+
+
+def test_follows_the_cursor_until_the_limit_is_reached(monkeypatch):
+    """One page caps at 20; the limit is 30, so a second page is required."""
+    monkeypatch.setenv("TWITTERAPI_IO_KEY", "k")
+    monkeypatch.setattr(twitter, "_RETRY_SLEEP", 0.0)
+    seen = []
+
+    def paged(params, key, timeout):
+        seen.append(params.get("cursor"))
+        return _page(20, more=True) if len(seen) == 1 else _page(20, start=20)
+
+    with patch.object(twitter, "_request", side_effect=paged):
+        out = twitter.fetch_twitter_posts("$XPLK", limit=30)
+    assert seen == [None, "c1"], "second call must carry the cursor"
+    assert out.count("@u") == 30
+
+
+def test_stops_when_the_endpoint_reports_no_more_pages(monkeypatch):
+    monkeypatch.setenv("TWITTERAPI_IO_KEY", "k")
+    monkeypatch.setattr(twitter, "_RETRY_SLEEP", 0.0)
+    calls = []
+
+    def one_page(params, key, timeout):
+        calls.append(1)
+        return _page(4, more=False)
+
+    with patch.object(twitter, "_request", side_effect=one_page):
+        out = twitter.fetch_twitter_posts("$XPLK", limit=30)
+    assert len(calls) == 1
+    assert out.count("@u") == 4
+
+
+def test_page_count_is_bounded_even_if_the_cursor_never_ends(monkeypatch):
+    """Each page is billed, so a runaway cursor must not spend without limit."""
+    monkeypatch.setenv("TWITTERAPI_IO_KEY", "k")
+    monkeypatch.setattr(twitter, "_RETRY_SLEEP", 0.0)
+    calls = []
+
+    def endless(params, key, timeout):
+        calls.append(1)
+        return _page(1, start=len(calls), more=True)
+
+    with patch.object(twitter, "_request", side_effect=endless):
+        twitter.fetch_twitter_posts("$XPLK", limit=30)
+    assert len(calls) <= twitter.MAX_PAGES
+
+
+# --- query terms ----------------------------------------------------------
+
+
+@pytest.mark.parametrize("symbol,name,expected", [
+    # A distinctive project name is what people actually write.
+    ("XPLK", "xPayLink", '$XPLK OR "xPayLink"'),
+    ("PIPEDOG", "pipedog", '$PIPEDOG'),          # name repeats the symbol
+    ("AEON", "AEON", "$AEON"),                   # ditto, and $AEON alone is noisy
+    ("CATE", "Catecoin", '$CATE OR "Catecoin"'),
+    ("XPLK", "", "$XPLK"),
+    ("XPLK", None, "$XPLK"),
+    ("SPCXX", "SpaceX xStocks", '$SPCXX OR "SpaceX xStocks"'),
+])
+def test_search_terms_add_a_distinctive_name(symbol, name, expected):
+    assert twitter.search_terms(symbol, name) == expected
+
+
+def test_search_terms_ignores_a_name_that_merely_extends_the_symbol():
+    """"XPLK Token" adds nothing the cashtag does not already match."""
+    assert twitter.search_terms("XPLK", "XPLK Token") == "$XPLK"
+
+
 def test_credit_balance_parses_both_buckets(monkeypatch):
     monkeypatch.setenv("TWITTERAPI_IO_KEY", "k")
     payload = {"recharge_credits": 12_000, "total_bonus_credits": 280}
@@ -254,6 +335,32 @@ def test_query_omits_filter_retweets(monkeypatch):
     with patch.object(twitter, "_request", side_effect=capture):
         twitter.fetch_twitter_posts("$CATE")
     assert "filter:retweets" not in seen["query"]
+
+
+def test_header_reports_how_many_retweets_were_excluded(monkeypatch):
+    """Retweet volume is attention even though it carries no original opinion."""
+    monkeypatch.setenv("TWITTERAPI_IO_KEY", "k")
+    payload = {"tweets": [
+        {"text": "RT @a: echo", "createdAt": "2026-07-30", "likeCount": 1,
+         "retweetCount": 0, "author": {"userName": "parrot"}},
+        {"text": "original", "createdAt": "2026-07-30", "likeCount": 2,
+         "retweetCount": 0, "author": {"userName": "author"}},
+    ], "has_next_page": False}
+    with patch.object(twitter, "_request", return_value=payload):
+        out = twitter.fetch_twitter_posts("$XPLK")
+    assert "1 posts" in out
+    assert "1 retweet excluded" in out
+
+
+def test_header_omits_the_retweet_note_when_there_were_none(monkeypatch):
+    monkeypatch.setenv("TWITTERAPI_IO_KEY", "k")
+    payload = {"tweets": [{"text": "original", "createdAt": "2026-07-30",
+                           "likeCount": 2, "retweetCount": 0,
+                           "author": {"userName": "author"}}],
+               "has_next_page": False}
+    with patch.object(twitter, "_request", return_value=payload):
+        out = twitter.fetch_twitter_posts("$XPLK")
+    assert "retweet" not in out.split("\n")[0]
 
 
 def test_retweets_are_dropped_client_side(monkeypatch):

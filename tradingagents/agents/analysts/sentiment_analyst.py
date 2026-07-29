@@ -42,7 +42,7 @@ from tradingagents.agents.utils.structured import (
 from tradingagents.dataflows.config import get_config
 from tradingagents.dataflows.reddit import fetch_reddit_posts
 from tradingagents.dataflows.stocktwits import fetch_stocktwits_messages
-from tradingagents.dataflows.twitter import fetch_twitter_posts
+from tradingagents.dataflows.twitter import fetch_twitter_posts, search_terms
 
 
 _COUNT_WORDS = {2: "two", 3: "three", 4: "four"}
@@ -74,15 +74,15 @@ def _maybe_twitter_block(ticker: str, start_date: str, end_date: str) -> str:
     but unavailable, the fetcher's placeholder is passed through so the report
     says the source was missing instead of quietly dropping it.
     """
-    if not get_config().get("include_twitter"):
+    config = get_config()
+    if not config.get("include_twitter"):
         return ""
-    # Cashtag only, no bare symbol: the bare term drags in unrelated chatter that
-    # happens to share the ticker's letters. Measured on $AEON, the cashtag alone
-    # returned 12 crypto-relevant posts of 16, while adding the bare term returned
-    # 5 of 20 — the rest were anime fandom posts about a character named Aeon.
-    return fetch_twitter_posts(
-        f"${_cashtag(ticker)}", start_date=start_date, end_date=end_date
-    )
+    # Cashtag plus the project name when one is configured. The bare *symbol* is
+    # never used — on $AEON it dragged in anime fandom posts — but the quoted
+    # *name* is what people actually write: $XPLK alone returned 4 posts where
+    # '$XPLK OR "xPayLink"' returned 17.
+    terms = search_terms(_cashtag(ticker), config.get("asset_display_name"))
+    return fetch_twitter_posts(terms, start_date=start_date, end_date=end_date)
 
 
 def _stocktwits_symbol(ticker: str, asset_type: str) -> str:

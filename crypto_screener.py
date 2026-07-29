@@ -40,7 +40,8 @@ def social_flags(choice: str) -> dict:
 
 def build_crypto_config(base: dict, *, provider: str, deep_model: str,
                         quick_model: str, debate_rounds: int, risk_rounds: int,
-                        social_source: str = SOURCE_STOCKTWITS) -> dict:
+                        social_source: str = SOURCE_STOCKTWITS,
+                        display_name: str | None = None) -> dict:
     """Config for a new-coin run: MEXC prices, Yahoo news, chosen social source.
 
     Returns a copy — the caller's DEFAULT_CONFIG must stay untouched so a later
@@ -58,6 +59,10 @@ def build_crypto_config(base: dict, *, provider: str, deep_model: str,
     vendors["technical_indicators"] = "mexc"
     cfg["data_vendors"] = vendors
     cfg.update(social_flags(social_source))
+    # The project name reaches the X search this way: people post "xPayLink" far
+    # more than "$XPLK", and the analyst has no other route to a coin's name.
+    if display_name:
+        cfg["asset_display_name"] = display_name
     return cfg
 
 
@@ -562,7 +567,7 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
     cfg = build_crypto_config(
         base_config, provider=provider, deep_model=model, quick_model=model,
         debate_rounds=debate_rounds, risk_rounds=risk_rounds,
-        social_source=source)
+        social_source=source, display_name=to_run.name)
     configure_cfg(cfg, model)
     outcome = streaming_runner(
         to_run.symbol, trade_date, list(CRYPTO_ANALYSTS), cfg, provider, model,

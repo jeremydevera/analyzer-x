@@ -373,6 +373,39 @@ def test_alert_beep_is_short_enough_to_not_annoy(screener):
     assert 0.1 < seconds < 1.5
 
 
+# --- selectable alert sounds ----------------------------------------------
+
+
+def test_sound_choices_are_offered_by_name(screener):
+    assert "Two-tone beep" in screener.ALERT_SOUNDS
+    assert len(screener.ALERT_SOUNDS) >= 4
+
+
+def test_every_sound_renders_a_playable_wav(screener):
+    import io
+    import wave
+    for name in screener.ALERT_SOUNDS:
+        data = screener.alert_beep_wav(name)
+        assert data[:4] == b"RIFF", name
+        with wave.open(io.BytesIO(data)) as w:
+            seconds = w.getnframes() / w.getframerate()
+        assert 0.1 < seconds < 3.0, f"{name} is {seconds}s"
+
+
+def test_sounds_are_distinguishable_from_each_other(screener):
+    rendered = {name: screener.alert_beep_wav(name) for name in screener.ALERT_SOUNDS}
+    assert len(set(rendered.values())) == len(rendered)
+
+
+def test_unknown_sound_falls_back_to_the_default(screener):
+    assert screener.alert_beep_wav("Kazoo") == screener.alert_beep_wav(
+        screener.DEFAULT_ALERT_SOUND)
+
+
+def test_default_sound_is_one_of_the_choices(screener):
+    assert screener.DEFAULT_ALERT_SOUND in screener.ALERT_SOUNDS
+
+
 def test_alert_message_names_each_new_coin_with_its_age(screener):
     found = [{"symbol": "XPLKUSDT", "base": "XPLK", "name": "xPayLink",
               "age_hours": 0.5, "listed_date": "2026-07-29"},

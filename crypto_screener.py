@@ -111,25 +111,44 @@ POLL_SECONDS = 120
 ALERT_MAX_AGE_HOURS = 48.0
 
 
-def alert_beep_wav(freqs=(880, 1320), seconds_each: float = 0.16,
-                   rate: int = 22_050) -> bytes:
-    """Two-tone attention beep as WAV bytes.
+# Alert sounds, as (frequency Hz, duration s) tone sequences. Synthesised rather
+# than shipped as audio files so the repo carries no binaries and nothing has to
+# resolve a path at runtime. A rest is a frequency of 0.
+ALERT_SOUNDS: dict[str, tuple] = {
+    "Two-tone beep": ((880, 0.16), (1320, 0.16)),
+    "Triple chirp": ((1568, 0.09), (0, 0.06), (1568, 0.09), (0, 0.06), (1568, 0.09)),
+    "Rising alert": ((660, 0.12), (880, 0.12), (1100, 0.12), (1480, 0.2)),
+    "Low buzz": ((220, 0.22), (0, 0.05), (220, 0.22)),
+    "Siren": ((900, 0.18), (650, 0.18), (900, 0.18), (650, 0.18)),
+    "Single ping": ((1046, 0.25),),
+}
+DEFAULT_ALERT_SOUND = "Two-tone beep"
+_SOUND_RATE = 22_050
 
-    Generated rather than shipped as an asset so the alert has no binary file to
-    keep in the repo and no path to resolve at runtime.
+
+def alert_beep_wav(sound: str = DEFAULT_ALERT_SOUND, rate: int = _SOUND_RATE) -> bytes:
+    """Render a named alert sound as WAV bytes.
+
+    An unknown name falls back to the default rather than raising: a stale
+    session-state value from a renamed sound must not break the alert path.
     """
     import io
     import math
     import struct
     import wave
 
+    tones = ALERT_SOUNDS.get(sound) or ALERT_SOUNDS[DEFAULT_ALERT_SOUND]
     frames = bytearray()
-    for freq in freqs:
-        for i in range(int(rate * seconds_each)):
-            # Taper the tail of each tone so it does not click on cut-off.
-            fade = min(1.0, (int(rate * seconds_each) - i) / (rate * 0.02))
-            sample = int(22_000 * fade * math.sin(2 * math.pi * freq * i / rate))
-            frames += struct.pack("<h", sample)
+    for freq, seconds in tones:
+        total = int(rate * seconds)
+        for i in range(total):
+            if not freq:
+                frames += struct.pack("<h", 0)          # rest
+                continue
+            # Taper both ends of a tone so looping does not click at the seam.
+            fade = min(1.0, i / (rate * 0.01), (total - i) / (rate * 0.01))
+            frames += struct.pack(
+                "<h", int(22_000 * fade * math.sin(2 * math.pi * freq * i / rate)))
 
     buf = io.BytesIO()
     with wave.open(buf, "wb") as w:
@@ -592,6 +611,7 @@ _KNOWN_KEY = "crypto_known_symbols"
 _LAST_POLL_KEY = "crypto_last_poll_at"
 _ALERTS_KEY = "crypto_new_listings"
 _BEEP_KEY = "crypto_pending_beep"
+_SOUNDING_KEY = "crypto_alert_sounding"
 
 
 def _render_listing_watch(st) -> None:
@@ -602,9 +622,20 @@ def _render_listing_watch(st) -> None:
     """
     from tradingagents.dataflows import mexc
 
-    watch = st.checkbox("🔔 Watch for new listings", value=True, key="crypto_watch",
+    w1, w2, w3, w4 = st.columns([1.6, 1.4, 1, 1])
+    watch = w1.checkbox("🔔 Watch for new listings", value=True, key="crypto_watch",
                         help=f"Polls MEXC every {POLL_SECONDS // 60} min "
-                             f"(one request) and beeps when a coin is listed.")
+                             f"(one request) and plays a sound when a coin is listed.")
+    sound_name = w2.selectbox(
+        "Alert sound", list(ALERT_SOUNDS),
+        index=list(ALERT_SOUNDS).index(DEFAULT_ALERT_SOUND),
+        key="crypto_alert_sound", label_visibility="collapsed")
+    loop_sound = w3.checkbox("Loop", value=False, key="crypto_alert_loop",
+                             help="Keep the sound repeating until you press Stop.")
+    if w4.button("▶ Test", key="crypto_alert_preview",
+                 help="Play the selected sound now"):
+        st.audio(alert_beep_wav(sound_name), format="audio/wav", autoplay=True)
+
     if not watch:
         return
 
@@ -627,20 +658,34 @@ def _render_listing_watch(st) -> None:
             st.session_state[_ALERTS_KEY] = (
                 found + (st.session_state.get(_ALERTS_KEY) or []))[:20]
             st.session_state[_BEEP_KEY] = True
+            st.session_state[_SOUNDING_KEY] = loop_sound
             st.toast(alert_message(found), icon="🔔")
 
         alerts = st.session_state.get(_ALERTS_KEY) or []
         if alerts:
             st.success(alert_message(alerts[:5]))
+        # The stop control lives inside the fragment so it appears on the very
+        # pass that arms the loop; rendered outside, it would not exist until the
+        # next poll two minutes later, leaving no way to silence the sound.
+        if st.session_state.get(_SOUNDING_KEY):
+            # Clicking a widget inside a fragment already reruns that fragment,
+            # which drops the audio element — no explicit rerun needed, and
+            # st.rerun(scope="fragment") raises outside a fragment rerun.
+            if st.button("⏹ Stop sound", key="crypto_alert_stop", type="primary"):
+                st.session_state[_SOUNDING_KEY] = False
         st.caption(watch_status_line(
             len(seen), last_poll=st.session_state.get(_LAST_POLL_KEY)))
         _render_background_watcher_status(st)
 
         # Autoplay is allowed only after the user has interacted with the page,
-        # which opening this tab satisfies. Rendered once per detection, then
-        # cleared so a later tick does not replay it.
-        if st.session_state.pop(_BEEP_KEY, False):
-            st.audio(alert_beep_wav(), format="audio/wav", autoplay=True)
+        # which opening this tab satisfies.
+        looping = loop_sound and st.session_state.get(_SOUNDING_KEY)
+        if st.session_state.pop(_BEEP_KEY, False) or looping:
+            # A one-shot is cleared by the pop above so a later tick cannot
+            # replay it; a loop is re-rendered every tick until Stop clears the
+            # flag, because a fragment rerun discards the previous audio element.
+            st.audio(alert_beep_wav(sound_name), format="audio/wav",
+                     autoplay=True, loop=bool(looping))
 
     _tick()
 

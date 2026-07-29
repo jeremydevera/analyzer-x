@@ -37,6 +37,80 @@ def test_state_round_trips(watcher, tmp_path):
     assert watcher.load_state(path) == {"AUSDT", "BUSDT"}
 
 
+# --- heartbeat and status -------------------------------------------------
+
+
+def test_save_state_records_a_heartbeat(watcher, tmp_path):
+    path = tmp_path / "state.json"
+    watcher.save_state(path, {"AUSDT"}, now=1_000_000.0)
+    raw = json.loads(path.read_text())
+    assert raw["last_poll_at"] == 1_000_000.0
+    assert raw["polls"] == 1
+    assert raw["symbol_count"] == 1
+
+
+def test_poll_counter_increments_across_saves(watcher, tmp_path):
+    path = tmp_path / "state.json"
+    watcher.save_state(path, {"AUSDT"}, now=1.0)
+    watcher.save_state(path, {"AUSDT", "BUSDT"}, now=2.0)
+    raw = json.loads(path.read_text())
+    assert raw["polls"] == 2
+    assert raw["last_poll_at"] == 2.0
+
+
+def test_alert_is_recorded_in_state(watcher, tmp_path):
+    path = tmp_path / "state.json"
+    watcher.save_state(path, {"AUSDT"}, now=5.0, last_alert=[_coin("XPLK")])
+    raw = json.loads(path.read_text())
+    assert raw["last_alert_at"] == 5.0
+    assert raw["last_alert"] == ["XPLK"]
+
+
+def test_alert_details_survive_a_later_quiet_poll(watcher, tmp_path):
+    """A poll with nothing new must not erase the previous alert record."""
+    path = tmp_path / "state.json"
+    watcher.save_state(path, {"AUSDT"}, now=5.0, last_alert=[_coin("XPLK")])
+    watcher.save_state(path, {"AUSDT"}, now=9.0)
+    raw = json.loads(path.read_text())
+    assert raw["last_alert"] == ["XPLK"]
+    assert raw["last_alert_at"] == 5.0
+    assert raw["last_poll_at"] == 9.0
+
+
+def test_status_reports_running_when_the_heartbeat_is_recent(watcher, tmp_path):
+    path = tmp_path / "state.json"
+    watcher.save_state(path, {"AUSDT"}, now=1_000.0)
+    status = watcher.status(path, interval=120, now=1_060.0)
+    assert status["running"] is True
+    assert status["seconds_since_poll"] == pytest.approx(60.0)
+    assert status["symbol_count"] == 1
+
+
+def test_status_reports_stopped_when_the_heartbeat_is_stale(watcher, tmp_path):
+    """Missing two intervals means the process is gone, not merely slow."""
+    path = tmp_path / "state.json"
+    watcher.save_state(path, {"AUSDT"}, now=1_000.0)
+    status = watcher.status(path, interval=120, now=1_000.0 + 400)
+    assert status["running"] is False
+
+
+def test_status_handles_a_watcher_that_never_ran(watcher, tmp_path):
+    status = watcher.status(tmp_path / "absent.json", interval=120, now=10.0)
+    assert status["running"] is False
+    assert status["last_poll_at"] is None
+    assert status["polls"] == 0
+
+
+def test_format_status_is_human_readable(watcher, tmp_path):
+    path = tmp_path / "state.json"
+    watcher.save_state(path, {"AUSDT", "BUSDT"}, now=1_000.0,
+                       last_alert=[_coin("XPLK")])
+    text = watcher.format_status(watcher.status(path, interval=120, now=1_060.0))
+    assert "running" in text.lower()
+    assert "2" in text                     # symbol count
+    assert "XPLK" in text                  # last alert echoed
+
+
 def test_missing_state_reads_as_empty(watcher, tmp_path):
     assert watcher.load_state(tmp_path / "absent.json") == set()
 

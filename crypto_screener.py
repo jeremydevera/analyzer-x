@@ -9,6 +9,7 @@ that touches st.*.
 from __future__ import annotations
 
 import html
+import os
 import time
 from copy import deepcopy
 
@@ -137,6 +138,17 @@ def alert_beep_wav(freqs=(880, 1320), seconds_each: float = 0.16,
         w.setframerate(rate)
         w.writeframes(bytes(frames))
     return buf.getvalue()
+
+
+def watch_status_line(symbol_count: int, *, last_poll: float | None,
+                      now: float | None = None) -> str:
+    """Caption proving the watch is alive and saying when it last checked."""
+    if last_poll is None:
+        return f"Listing watch starting · checks every {POLL_SECONDS // 60} min"
+    elapsed = (time.time() if now is None else now) - last_poll
+    ago = f"{int(elapsed)}s ago" if elapsed < 60 else f"{int(elapsed // 60)}m ago"
+    return (f"Watching {symbol_count} MEXC pairs · last checked {ago} · "
+            f"every {POLL_SECONDS // 60} min")
 
 
 def alert_message(found: list) -> str:
@@ -487,7 +499,36 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
     st.rerun()
 
 
+def _render_background_watcher_status(st) -> None:
+    """Report the standalone watcher, which keeps alerting with the tab closed.
+
+    Read from its state file rather than by importing it, so the tab works
+    whether or not that script has ever been started.
+    """
+    import json
+
+    from tradingagents.dataflows.config import get_config
+
+    path = os.path.join(get_config()["data_cache_dir"], "mexc-watch-state.json")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            raw = json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        return                      # never started; nothing to report
+    last = raw.get("last_poll_at")
+    if not isinstance(last, (int, float)):
+        return
+    elapsed = time.time() - last
+    alive = elapsed <= POLL_SECONDS * 2.5
+    mark = "🟢" if alive else "🔴"
+    state = "running" if alive else "stopped"
+    st.caption(f"{mark} background watcher {state} · last poll "
+               f"{int(elapsed // 60)}m {int(elapsed % 60)}s ago · "
+               f"{raw.get('polls', 0)} polls")
+
+
 _KNOWN_KEY = "crypto_known_symbols"
+_LAST_POLL_KEY = "crypto_last_poll_at"
 _ALERTS_KEY = "crypto_new_listings"
 _BEEP_KEY = "crypto_pending_beep"
 
@@ -518,6 +559,7 @@ def _render_listing_watch(st) -> None:
             return
 
         st.session_state[_KNOWN_KEY] = seen
+        st.session_state[_LAST_POLL_KEY] = time.time()
         if found:
             # Keep newest first and cap the log so a long session cannot grow it
             # without bound.
@@ -529,9 +571,9 @@ def _render_listing_watch(st) -> None:
         alerts = st.session_state.get(_ALERTS_KEY) or []
         if alerts:
             st.success(alert_message(alerts[:5]))
-        else:
-            st.caption(f"Watching {len(seen)} MEXC pairs · checking every "
-                       f"{POLL_SECONDS // 60} min · no new listings yet")
+        st.caption(watch_status_line(
+            len(seen), last_poll=st.session_state.get(_LAST_POLL_KEY)))
+        _render_background_watcher_status(st)
 
         # Autoplay is allowed only after the user has interacted with the page,
         # which opening this tab satisfies. Rendered once per detection, then

@@ -294,6 +294,21 @@ def test_poll_interval_is_two_minutes(screener):
     assert screener.POLL_SECONDS == 120
 
 
+def test_watch_status_line_reports_the_last_check(screener):
+    line = screener.watch_status_line(1641, last_poll=1_000.0, now=1_042.0)
+    assert "1641" in line
+    assert "42s ago" in line
+
+
+def test_watch_status_line_before_any_check(screener):
+    assert "starting" in screener.watch_status_line(0, last_poll=None, now=5.0).lower()
+
+
+def test_watch_status_line_shows_minutes_once_past_a_minute(screener):
+    line = screener.watch_status_line(10, last_poll=0.0, now=185.0)
+    assert "3m ago" in line
+
+
 def test_alert_beep_is_a_playable_wav(screener):
     data = screener.alert_beep_wav()
     assert data[:4] == b"RIFF"

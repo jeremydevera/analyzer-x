@@ -66,14 +66,91 @@ def load_state(path: Path) -> set:
     return set(symbols) if isinstance(symbols, list) else set()
 
 
-def save_state(path: Path, symbols: set) -> None:
-    """Persist the baseline. A write failure is logged, never fatal."""
+def _read_raw(path: Path) -> dict:
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def save_state(path: Path, symbols: set, *, now: float | None = None,
+               last_alert: list | None = None) -> None:
+    """Persist the baseline plus a heartbeat. A write failure is never fatal.
+
+    Every poll stamps ``last_poll_at`` and bumps ``polls`` so liveness can be
+    checked from outside the process — a watcher that only spoke when something
+    happened was indistinguishable from a dead one. Alert details are carried
+    forward across quiet polls rather than overwritten.
+    """
+    stamp = time.time() if now is None else now
+    previous = _read_raw(path)
+    payload = {
+        "symbols": sorted(symbols),
+        "symbol_count": len(symbols),
+        "last_poll_at": stamp,
+        "polls": int(previous.get("polls", 0)) + 1,
+        "last_alert_at": previous.get("last_alert_at"),
+        "last_alert": previous.get("last_alert"),
+    }
+    if last_alert:
+        payload["last_alert_at"] = stamp
+        payload["last_alert"] = [c["base"] for c in last_alert]
     try:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w", encoding="utf-8") as fh:
-            json.dump({"symbols": sorted(symbols)}, fh)
+            json.dump(payload, fh)
     except OSError as exc:
         logger.warning("Could not save watcher state: %s", exc)
+
+
+# A heartbeat older than this many intervals means the process is gone rather
+# than merely slow; one missed interval can just be a long request.
+_STALE_INTERVALS = 2.5
+
+
+def status(path: Path, *, interval: int = DEFAULT_INTERVAL_SECONDS,
+           now: float | None = None) -> dict:
+    """Liveness snapshot read from the state file, without touching the network."""
+    stamp = time.time() if now is None else now
+    raw = _read_raw(path)
+    last = raw.get("last_poll_at")
+    since = (stamp - last) if isinstance(last, (int, float)) else None
+    return {
+        "running": since is not None and since <= interval * _STALE_INTERVALS,
+        "last_poll_at": last,
+        "seconds_since_poll": since,
+        "polls": int(raw.get("polls", 0)),
+        "symbol_count": int(raw.get("symbol_count", len(raw.get("symbols") or []))),
+        "last_alert_at": raw.get("last_alert_at"),
+        "last_alert": raw.get("last_alert") or [],
+        "state_path": str(path),
+    }
+
+
+def format_status(snapshot: dict) -> str:
+    """One-screen summary of a watcher's state."""
+    if snapshot["last_poll_at"] is None:
+        return (f"Watcher: never run (no state at {snapshot['state_path']}).\n"
+                f"Start it with: python scripts/watch_mexc.py")
+    when = time.strftime("%Y-%m-%d %H:%M:%S",
+                         time.localtime(snapshot["last_poll_at"]))
+    verb = "running" if snapshot["running"] else "STOPPED (heartbeat stale)"
+    lines = [
+        f"Watcher: {verb}",
+        f"  last poll   : {when} ({snapshot['seconds_since_poll']:.0f}s ago)",
+        f"  polls so far: {snapshot['polls']}",
+        f"  watching    : {snapshot['symbol_count']} MEXC pairs",
+    ]
+    if snapshot["last_alert"]:
+        alert_when = time.strftime("%Y-%m-%d %H:%M:%S",
+                                   time.localtime(snapshot["last_alert_at"]))
+        lines.append(f"  last alert  : {', '.join(snapshot['last_alert'])} "
+                     f"at {alert_when}")
+    else:
+        lines.append("  last alert  : none yet")
+    return "\n".join(lines)
 
 
 def _fmt_age(hours: float) -> str:
@@ -152,12 +229,15 @@ def tick(state_path: Path, *, max_age_hours: float, sound: bool,
         logger.warning("Poll failed, keeping previous baseline: %s", exc)
         return []
 
-    save_state(state_path, seen)
+    save_state(state_path, seen, last_alert=found)
     if not known:
         logger.info("Seeded baseline with %d symbols; watching for changes.",
                     len(seen))
         return []
     if not found:
+        # Logged every poll so tailing the log answers "is it alive" without
+        # waiting for a listing that may be hours away.
+        logger.info("Polled %d symbols · no new listings", len(seen))
         return []
 
     title, body = alert_text(found)
@@ -177,10 +257,16 @@ def main(argv=None) -> int:
                         help="baseline file (default: under data_cache_dir)")
     parser.add_argument("--once", action="store_true",
                         help="poll once and exit, for cron")
+    parser.add_argument("--status", action="store_true",
+                        help="print whether a watcher is alive and when it last polled")
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
     state_path = args.state or default_state_path()
+
+    if args.status:
+        print(format_status(status(state_path, interval=args.interval)))
+        return 0
     kwargs = {"max_age_hours": args.max_age_hours, "sound": not args.no_sound,
               "webhook": args.webhook}
 

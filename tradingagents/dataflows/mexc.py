@@ -341,6 +341,47 @@ def _sweep(today: str) -> tuple[list, int, int]:
     return coins, len(universe), unresolved
 
 
+def _filtered(payload: dict, *, min_quote_volume: float, include_all: bool,
+              from_cache: bool, stale: bool) -> ScreenResult:
+    """Apply the volume floor to a sweep payload and wrap it as a ScreenResult."""
+    coins = [NewCoin(**c) for c in payload["coins"]]
+    kept = coins if include_all else [c for c in coins if c.quote_volume >= min_quote_volume]
+    return ScreenResult(
+        coins=kept,
+        scanned=payload.get("scanned", len(coins)),
+        unresolved=payload.get("unresolved", 0),
+        hidden_by_volume=len(coins) - len(kept),
+        fetched_at=payload.get("fetched_at", 0.0),
+        from_cache=from_cache,
+        stale=stale,
+    )
+
+
+def cached_listings(
+    *,
+    today: str | None = None,
+    min_quote_volume: float = DEFAULT_MIN_QUOTE_VOLUME,
+    include_all: bool = False,
+) -> ScreenResult | None:
+    """Return a cached sweep without touching the network, or None if there is none.
+
+    A UI needs this to stay responsive: Streamlit re-runs every tab body on every
+    interaction, so a screen that swept on render would spend ~2 minutes of
+    requests even for a user who never opened the tab. The tab shows cached rows
+    instantly and leaves the sweep to an explicit button.
+    """
+    today = today or datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+    cached = _read_cache()
+    if cached is None:
+        return None
+    stale = (
+        cached.get("today") != today
+        or (time.time() - cached.get("fetched_at", 0)) >= _CACHE_TTL_SECONDS
+    )
+    return _filtered(cached, min_quote_volume=min_quote_volume,
+                     include_all=include_all, from_cache=True, stale=stale)
+
+
 def screen_new_listings(
     *,
     today: str | None = None,
@@ -381,17 +422,8 @@ def screen_new_listings(
             logger.warning("MEXC sweep failed; serving cached listings.")
             payload, from_cache, stale = cached, True, True
 
-    coins = [NewCoin(**c) for c in payload["coins"]]
-    kept = coins if include_all else [c for c in coins if c.quote_volume >= min_quote_volume]
-    return ScreenResult(
-        coins=kept,
-        scanned=payload.get("scanned", len(coins)),
-        unresolved=payload.get("unresolved", 0),
-        hidden_by_volume=len(coins) - len(kept),
-        fetched_at=payload.get("fetched_at", 0.0),
-        from_cache=from_cache,
-        stale=stale,
-    )
+    return _filtered(payload, min_quote_volume=min_quote_volume,
+                     include_all=include_all, from_cache=from_cache, stale=stale)
 
 
 _KLINE_COLUMNS = ["openTime", "Open", "High", "Low", "Close", "Volume",

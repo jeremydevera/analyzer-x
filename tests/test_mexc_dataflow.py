@@ -312,6 +312,49 @@ def test_screen_serves_expired_cache_when_refresh_fails(monkeypatch, tmp_path):
     assert result.stale is True
 
 
+def test_cached_listings_returns_none_without_a_cache(monkeypatch, tmp_path):
+    """The UI must be able to render instantly instead of sweeping on load."""
+    monkeypatch.setattr(mexc, "_cache_dir", lambda: str(tmp_path))
+    assert mexc.cached_listings(today="2026-07-29") is None
+
+
+def test_cached_listings_never_hits_the_network(monkeypatch, tmp_path):
+    _screen_patches(monkeypatch, tmp_path,
+                    ages={"NEWUSDT": 1, "DUSTUSDT": 1, "OLDUSDT": 3},
+                    first_dates={"NEWUSDT": "2026-07-20", "DUSTUSDT": "2026-07-21"})
+    mexc.screen_new_listings(today="2026-07-29", min_quote_volume=0.0)
+
+    def explode():
+        raise AssertionError("cached_listings must not sweep")
+
+    monkeypatch.setattr(mexc, "fetch_usdt_symbols", explode)
+    result = mexc.cached_listings(today="2026-07-29", min_quote_volume=0.0)
+    assert result is not None
+    assert result.from_cache is True
+    assert result.stale is False
+    assert [c.symbol for c in result.coins] == ["DUSTUSDT", "NEWUSDT"]
+
+
+def test_cached_listings_flags_a_previous_day_as_stale(monkeypatch, tmp_path):
+    _screen_patches(monkeypatch, tmp_path,
+                    ages={"NEWUSDT": 1, "DUSTUSDT": 1, "OLDUSDT": 3},
+                    first_dates={"NEWUSDT": "2026-07-20", "DUSTUSDT": "2026-07-21"})
+    mexc.screen_new_listings(today="2026-07-29", min_quote_volume=0.0)
+    result = mexc.cached_listings(today="2026-07-30", min_quote_volume=0.0)
+    assert result is not None
+    assert result.stale is True
+
+
+def test_cached_listings_applies_the_volume_floor(monkeypatch, tmp_path):
+    _screen_patches(monkeypatch, tmp_path,
+                    ages={"NEWUSDT": 1, "DUSTUSDT": 1, "OLDUSDT": 3},
+                    first_dates={"NEWUSDT": "2026-07-20", "DUSTUSDT": "2026-07-21"})
+    mexc.screen_new_listings(today="2026-07-29", min_quote_volume=0.0)
+    result = mexc.cached_listings(today="2026-07-29", min_quote_volume=50_000.0)
+    assert [c.symbol for c in result.coins] == ["NEWUSDT"]
+    assert result.hidden_by_volume == 1
+
+
 def test_screen_raises_when_blocked_and_no_cache(monkeypatch, tmp_path):
     _screen_patches(monkeypatch, tmp_path, ages={}, first_dates={})
 

@@ -82,7 +82,45 @@ def _maybe_twitter_block(ticker: str, start_date: str, end_date: str) -> str:
     # *name* is what people actually write: $XPLK alone returned 4 posts where
     # '$XPLK OR "xPayLink"' returned 17.
     terms = search_terms(_cashtag(ticker), config.get("asset_display_name"))
-    return fetch_twitter_posts(terms, start_date=start_date, end_date=end_date)
+    return fetch_twitter_posts(
+        terms,
+        start_date=twitter_window_start(start_date, config.get("asset_listed_date")),
+        end_date=end_date,
+        sort=twitter_sort(config.get("asset_age_hours")),
+    )
+
+
+# Pre-listing hype window. A coin listed today was being talked about before it
+# traded ("will be listed July 29"), and that anticipation is real signal, while
+# the days before it existed are not.
+_PRE_LISTING_DAYS = 2
+# Below this age the live reaction matters more than engagement ranking, which
+# would surface the exchange's announcement post above everything else.
+_FRESH_LISTING_HOURS = 24
+
+
+def twitter_window_start(default_start: str, listed_date: str | None) -> str:
+    """Search-window start: shortly before listing, or the caller's default.
+
+    Never widens the window — an old coin must not drag the search back weeks —
+    and never narrows past the listing, so pre-listing chatter is still caught.
+    """
+    if not listed_date:
+        return default_start
+    try:
+        listed = datetime.strptime(listed_date, "%Y-%m-%d")
+    except (TypeError, ValueError):
+        return default_start
+    candidate = (listed - timedelta(days=_PRE_LISTING_DAYS)).strftime("%Y-%m-%d")
+    return max(candidate, default_start)
+
+
+def twitter_sort(age_hours: float | None) -> str:
+    """"Latest" for a coin still reacting, "Top" once engagement means something."""
+    try:
+        return "Latest" if float(age_hours) < _FRESH_LISTING_HOURS else "Top"
+    except (TypeError, ValueError):
+        return "Top"
 
 
 def _stocktwits_symbol(ticker: str, asset_type: str) -> str:

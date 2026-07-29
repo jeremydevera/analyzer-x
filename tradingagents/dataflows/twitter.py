@@ -124,15 +124,22 @@ def fetch_credit_balance(timeout: float = 10.0) -> dict:
             "total": recharge + bonus, "error": ""}
 
 
-def _build_query(terms: str, start_date: str | None, end_date: str | None) -> str:
+def _build_query(terms: str, start_date: str | None, end_date: str | None,
+                 lang: str | None = None) -> str:
     """Assemble the X search string.
 
     ``-filter:retweets`` is deliberately absent: this reseller returns zero
     results for any query containing it (verified live — the same query scored
     0/0 with it and 20/20 without, while parentheses, OR, ``lang:en``, ``since``
     and ``until`` all work). Retweets are dropped in ``_is_retweet`` instead.
+
+    No language filter by default: the crowd trading a fresh listing tweets in
+    Turkish, Chinese, Indonesian and Vietnamese as much as English, and the models
+    reading this block handle all of them.
     """
-    parts = [f"({terms})", "lang:en"]
+    parts = [f"({terms})"]
+    if lang:
+        parts.append(f"lang:{lang}")
     if start_date:
         parts.append(f"since:{start_date}")
     if end_date:
@@ -165,7 +172,7 @@ def _is_retweet(tweet: dict, body: str) -> bool:
 
 
 def _search_pages(query: str, key: str, timeout: float, limit: int,
-                  label: str) -> tuple[list, Exception | None]:
+                  label: str, sort: str = "Top") -> tuple[list, Exception | None]:
     """Walk result pages for ``query`` until ``limit`` or the cursor runs out.
 
     A page holds at most 20 posts, so reaching a limit of 30 needs the cursor.
@@ -178,7 +185,7 @@ def _search_pages(query: str, key: str, timeout: float, limit: int,
     cursor: str | None = None
 
     for page in range(1, MAX_PAGES + 1):
-        params = {"query": query, "queryType": "Top"}
+        params = {"query": query, "queryType": sort}
         if cursor:
             params["cursor"] = cursor
 
@@ -221,6 +228,26 @@ def _search_pages(query: str, key: str, timeout: float, limit: int,
 def _author(tweet: dict) -> str:
     author = tweet.get("author") or {}
     return _first(author, _USER_ALIASES, "?") if isinstance(author, dict) else "?"
+
+
+def _credibility(tweet: dict) -> str:
+    """Follower count and verification, so a shill is distinguishable from a whale.
+
+    New listings draw giveaway spam from throwaway accounts; both fields come free
+    in the response and were previously discarded, leaving the model no way to
+    weight a 9-follower account against a 48k one.
+    """
+    author = tweet.get("author") or {}
+    if not isinstance(author, dict):
+        return ""
+    parts = []
+    followers = author.get("followers")
+    if isinstance(followers, (int, float)):
+        parts.append(f"{followers / 1000:.1f}k followers" if followers >= 1000
+                     else f"{int(followers)} followers")
+    if author.get("isBlueVerified"):
+        parts.append("✓")
+    return " · ".join(parts)
 
 
 def _body(tweet: dict) -> str:
@@ -297,17 +324,24 @@ def format_thread_block(terms: str, start_date: str | None, end_date: str | None
         reply_count = _as_int(post.get("replyCount"))
         if reply_count:
             meta.append(f"{reply_count} replies")
-        out.append(f"POST · @{_author(post)} · {_short_time(post)} · " + " · ".join(meta))
+        cred = _credibility(post)
+        header = f"POST · @{_author(post)}"
+        if cred:
+            header += f" ({cred})"
+        out.append(f"{header} · {_short_time(post)} · " + " · ".join(meta))
         out.append(f"    {_body(post)}")
         for reply in thread["replies"]:
-            out.append(f"    ↳ @{_author(reply)} "
-                       f"({_likes(reply)} likes): {_body(reply)}")
+            cred = _credibility(reply)
+            who = f"@{_author(reply)}" + (f" ({cred})" if cred else "")
+            out.append(f"    ↳ {who} ({_likes(reply)} likes): {_body(reply)}")
         out.append("")
 
     if orphans:
         out.append(f"OTHER REPLIES mentioning {terms} ({len(orphans)})")
         for reply in orphans:
-            out.append(f"    ↳ @{_author(reply)} · {_short_time(reply)} "
+            cred = _credibility(reply)
+            who = f"@{_author(reply)}" + (f" ({cred})" if cred else "")
+            out.append(f"    ↳ {who} · {_short_time(reply)} "
                        f"({_likes(reply)} likes): {_body(reply)}")
     return "\n".join(out).rstrip() + "\n"
 
@@ -335,6 +369,8 @@ def fetch_twitter_posts(
     limit: int = DEFAULT_LIMIT,
     timeout: float = _TIMEOUT,
     include_replies: bool = True,
+    sort: str = "Top",
+    lang: str | None = None,
 ) -> str:
     """Recent X posts matching ``terms``, with their replies, for prompt injection.
 
@@ -349,8 +385,8 @@ def fetch_twitter_posts(
     if not key:
         return "<twitter unavailable: TWITTERAPI_IO_KEY not set>"
 
-    query = _build_query(terms, start_date, end_date)
-    tweets, last_error = _search_pages(query, key, timeout, limit, "search")
+    query = _build_query(terms, start_date, end_date, lang=lang)
+    tweets, last_error = _search_pages(query, key, timeout, limit, "search", sort)
 
     if not tweets and last_error is not None:
         return f"<twitter unavailable: {type(last_error).__name__}: {last_error}>"
@@ -374,7 +410,7 @@ def fetch_twitter_posts(
         # A failed reply search must not blank the source; the posts already
         # fetched are worth reporting on their own.
         found, reply_error = _search_pages(f"{query} filter:replies", key, timeout,
-                                           limit, "replies")
+                                           limit, "replies", sort)
         if reply_error is not None:
             logger.warning("Twitter reply search failed for %r: %s", terms, reply_error)
         replies = [r for r in found

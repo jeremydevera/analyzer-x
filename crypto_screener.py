@@ -41,7 +41,9 @@ def social_flags(choice: str) -> dict:
 def build_crypto_config(base: dict, *, provider: str, deep_model: str,
                         quick_model: str, debate_rounds: int, risk_rounds: int,
                         social_source: str = SOURCE_STOCKTWITS,
-                        display_name: str | None = None) -> dict:
+                        display_name: str | None = None,
+                        listed_date: str | None = None,
+                        age_hours: float | None = None) -> dict:
     """Config for a new-coin run: MEXC prices, Yahoo news, chosen social source.
 
     Returns a copy — the caller's DEFAULT_CONFIG must stay untouched so a later
@@ -63,6 +65,12 @@ def build_crypto_config(base: dict, *, provider: str, deep_model: str,
     # more than "$XPLK", and the analyst has no other route to a coin's name.
     if display_name:
         cfg["asset_display_name"] = display_name
+    # Listing date and age let the analyst size its search window to the coin and
+    # rank by recency while a listing is still reacting.
+    if listed_date:
+        cfg["asset_listed_date"] = listed_date
+    if age_hours is not None:
+        cfg["asset_age_hours"] = age_hours
     return cfg
 
 
@@ -567,7 +575,8 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
     cfg = build_crypto_config(
         base_config, provider=provider, deep_model=model, quick_model=model,
         debate_rounds=debate_rounds, risk_rounds=risk_rounds,
-        social_source=source, display_name=to_run.name)
+        social_source=source, display_name=to_run.name,
+        listed_date=to_run.listed_date, age_hours=to_run.age_hours)
     configure_cfg(cfg, model)
     outcome = streaming_runner(
         to_run.symbol, trade_date, list(CRYPTO_ANALYSTS), cfg, provider, model,

@@ -320,9 +320,10 @@ def test_query_includes_cashtag_and_dates(monkeypatch):
         twitter.fetch_twitter_posts("$CATE OR Catestein",
                                     start_date="2026-07-22", end_date="2026-07-29", include_replies=False)
     assert "$CATE" in seen["query"]
-    assert "lang:en" in seen["query"]
     assert "since:2026-07-22" in seen["query"]
     assert "until:2026-07-29" in seen["query"]
+    # No language filter: it excluded most of a new listing's audience.
+    assert "lang:" not in seen["query"]
 
 
 def test_query_omits_filter_retweets(monkeypatch):

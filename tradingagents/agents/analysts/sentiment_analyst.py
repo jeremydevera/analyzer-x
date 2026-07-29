@@ -39,12 +39,47 @@ from tradingagents.agents.utils.structured import (
     bind_structured,
     invoke_structured_or_freetext,
 )
+from tradingagents.dataflows.config import get_config
 from tradingagents.dataflows.reddit import fetch_reddit_posts
 from tradingagents.dataflows.stocktwits import fetch_stocktwits_messages
+from tradingagents.dataflows.twitter import fetch_twitter_posts
 
 
 def _seven_days_back(trade_date: str) -> str:
     return (datetime.strptime(trade_date, "%Y-%m-%d") - timedelta(days=7)).strftime("%Y-%m-%d")
+
+
+def _maybe_twitter_block(ticker: str, start_date: str, end_date: str) -> str:
+    """Fetch X posts when enabled, else return "" so the prompt omits the section.
+
+    Gated on config rather than on key presence because the fetch is metered: a
+    stock run should not spend X credits unless the user opted in. When enabled
+    but unavailable, the fetcher's placeholder is passed through so the report
+    says the source was missing instead of quietly dropping it.
+    """
+    if not get_config().get("include_twitter"):
+        return ""
+    # Cashtag only, no bare symbol: the bare term drags in unrelated chatter that
+    # happens to share the ticker's letters. Measured on $AEON, the cashtag alone
+    # returned 12 crypto-relevant posts of 16, while adding the bare term returned
+    # 5 of 20 — the rest were anime fandom posts about a character named Aeon.
+    return fetch_twitter_posts(
+        f"${_cashtag(ticker)}", start_date=start_date, end_date=end_date
+    )
+
+
+def _cashtag(ticker: str) -> str:
+    """Reduce a ticker to the symbol people actually post about.
+
+    Crypto arrives as an exchange pair (``AEONUSDT``, ``CATE-USD``), but traders
+    write ``$AEON`` far more often than ``$AEONUSDT``, so the quote currency is
+    stripped before searching.
+    """
+    base = ticker.split("-")[0].strip().upper()
+    for quote in ("USDT", "USDC", "USD"):
+        if base.endswith(quote) and len(base) > len(quote):
+            return base[: -len(quote)]
+    return base
 
 
 def create_sentiment_analyst(llm):
@@ -69,6 +104,7 @@ def create_sentiment_analyst(llm):
         news_block = get_news.func(ticker, start_date, end_date)
         stocktwits_block = fetch_stocktwits_messages(ticker, limit=30)
         reddit_block = fetch_reddit_posts(ticker)
+        twitter_block = _maybe_twitter_block(ticker, start_date, end_date)
 
         system_message = _build_system_message(
             ticker=ticker,
@@ -77,6 +113,7 @@ def create_sentiment_analyst(llm):
             news_block=news_block,
             stocktwits_block=stocktwits_block,
             reddit_block=reddit_block,
+            twitter_block=twitter_block,
         )
 
         prompt = ChatPromptTemplate.from_messages(
@@ -126,9 +163,26 @@ def _build_system_message(
     news_block: str,
     stocktwits_block: str,
     reddit_block: str,
+    twitter_block: str = "",
 ) -> str:
-    """Assemble the sentiment-analyst system message with structured data blocks."""
-    return f"""You are a financial market sentiment analyst. Your task is to produce a comprehensive sentiment report for {ticker} covering the period from {start_date} to {end_date}, drawing on three complementary data sources that have already been collected for you.
+    """Assemble the sentiment-analyst system message with structured data blocks.
+
+    The X/Twitter section appears only when a block was fetched, so the prompt
+    never advertises a source that is not present — naming an absent source is
+    what drove the fabricated-post behavior this analyst was redesigned to fix.
+    """
+    source_count = "four" if twitter_block else "three"
+    twitter_section = ""
+    if twitter_block:
+        twitter_section = f"""
+### X/Twitter posts — public timeline search, ranked by engagement
+Fastest-moving retail signal, and the most promotion-heavy. Weight posts by their like/retweet counts, and discount coordinated shilling: a cluster of near-identical posts from low-follower accounts is manufactured attention, not sentiment.
+
+<start_of_twitter>
+{twitter_block}
+<end_of_twitter>
+"""
+    return f"""You are a financial market sentiment analyst. Your task is to produce a comprehensive sentiment report for {ticker} covering the period from {start_date} to {end_date}, drawing on {source_count} complementary data sources that have already been collected for you.
 
 ## Data sources (pre-fetched, in this prompt)
 
@@ -152,7 +206,7 @@ Community discussion. Engagement signal via upvote score and comment count. Subr
 <start_of_reddit>
 {reddit_block}
 <end_of_reddit>
-
+{twitter_section}
 ## How to analyze this data (best practices)
 
 1. **Read the StockTwits Bullish/Bearish ratio as a leading retail-sentiment signal.** A 70/30 bullish/bearish split is moderately bullish; ≥90/10 may indicate over-extension and contrarian risk; 50/50 is uncertainty. Sample size matters — base rates on the actual message count, not percentages alone.

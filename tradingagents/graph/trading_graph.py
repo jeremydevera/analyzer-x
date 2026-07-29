@@ -156,6 +156,23 @@ class TradingAgentsGraph:
         if temperature is not None and temperature != "":
             kwargs["temperature"] = float(temperature)
 
+        # Resilience: forward max_retries / request_timeout to the client so the
+        # OpenAI SDK auto-retries 429s with backoff (honoring Retry-After) instead
+        # of the default 2 — important under parallel/rate-limited providers.
+        max_retries = self.config.get("max_retries")
+        if max_retries is not None and max_retries != "":
+            kwargs["max_retries"] = int(max_retries)
+        request_timeout = self.config.get("request_timeout")
+        if request_timeout is not None and request_timeout != "":
+            kwargs["timeout"] = float(request_timeout)
+
+        # Per-run API key override (config, not env) so parallel threads can each
+        # use a DIFFERENT key — separate per-key rate-limit quotas. Overrides the
+        # env key in the OpenAI-compatible client's passthrough.
+        api_key = self.config.get("api_key")
+        if api_key:
+            kwargs["api_key"] = api_key
+
         return kwargs
 
     def _create_tool_nodes(self) -> dict[str, ToolNode]:

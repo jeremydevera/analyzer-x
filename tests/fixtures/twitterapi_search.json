@@ -1,0 +1,57 @@
+{
+  "tweets": [
+    {
+      "id": "2082447521477960089",
+      "text": "Drop your #BTC  address 👇\n\nI will send you $650 in 24h❤\n(Yes for real )\n\nRT and Follow🔥 https://t.co/TCKYpXmNzJ",
+      "createdAt": "Wed Jul 29 12:45:53 +0000 2026",
+      "likeCount": 69,
+      "retweetCount": 70,
+      "replyCount": 96,
+      "viewCount": 3719,
+      "lang": "en",
+      "twitterUrl": "https://twitter.com/Bitcoinblacck/status/2082447521477960089",
+      "author": {
+        "userName": "Bitcoinblacck",
+        "name": "Bitcoin Black",
+        "followers": 70046,
+        "isBlueVerified": true
+      }
+    },
+    {
+      "id": "2082159321065148665",
+      "text": "I'M OFFICIALLY A $BTC BILLIONAIRE! 🙏\n\nAs I promised, I want to change someone’s life giving away 1 #Bitcoin (~$65,000) to one lucky winner by tomorrow!\n\nLike, RT, follow @TheBitcoinTime and comment 'DONE' to enter.\n\nWinner announced in 48h! 🚀 https://t.co/WTtdNeKqji",
+      "createdAt": "Tue Jul 28 17:40:41 +0000 2026",
+      "likeCount": 3278,
+      "retweetCount": 1990,
+      "replyCount": 2693,
+      "viewCount": 282828,
+      "lang": "en",
+      "twitterUrl": "https://twitter.com/DrWhaleReal/status/2082159321065148665",
+      "author": {
+        "userName": "DrWhaleReal",
+        "name": "Dr. Whale",
+        "followers": 298972,
+        "isBlueVerified": true
+      }
+    },
+    {
+      "id": "2082398646465593474",
+      "text": "$10,000 giveaway   \n\nI’ll pick 10 people from the comments to send $1,000 each. Results with proof in 24 hours. 🤝 \n\nJust like, comment, repost and follow https://t.co/HNnpgI3zyU",
+      "createdAt": "Wed Jul 29 09:31:41 +0000 2026",
+      "likeCount": 446,
+      "retweetCount": 332,
+      "replyCount": 414,
+      "viewCount": 20988,
+      "lang": "en",
+      "twitterUrl": "https://twitter.com/BitcoinIntelX/status/2082398646465593474",
+      "author": {
+        "userName": "BitcoinIntelX",
+        "name": "Bitcoin Intelligence",
+        "followers": 102967,
+        "isBlueVerified": true
+      }
+    }
+  ],
+  "has_next_page": true,
+  "next_cursor": "TRIMMED_FOR_FIXTURE"
+}

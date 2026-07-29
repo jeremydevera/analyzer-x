@@ -35,7 +35,9 @@ CREDITS_PER_TWEET = 15
 TWEETS_PER_PAGE = 20
 CREDITS_PER_RUN = CREDITS_PER_TWEET * TWEETS_PER_PAGE
 _UA = "tradingagents/0.3 (+https://github.com/TauricResearch/TradingAgents)"
-_TIMEOUT = 15.0
+# Raised from 15s: the endpoint occasionally stalls well past its ~2s norm, and a
+# single stall used to cost the whole source.
+_TIMEOUT = 30.0
 DEFAULT_LIMIT = 30
 _MAX_BODY_CHARS = 280
 # The endpoint intermittently answers a working query with an empty list —
@@ -161,19 +163,31 @@ def fetch_twitter_posts(
         "query": _build_query(terms, start_date, end_date),
         "queryType": "Top",
     }
-    try:
-        data = _request(params, key, timeout)
-        tweets = _tweets_of(data)
-        if not tweets:
-            logger.info("Twitter returned no posts for %r; retrying once.", terms)
+    # Two attempts, retried on either an empty list or a transport failure. The
+    # endpoint intermittently answers a working query with no results, and it
+    # occasionally stalls past the timeout — measured latency for this query is
+    # 1.5-1.9s, so a timeout is a blip rather than an outage, and abandoning the
+    # source on the first one loses paid-for data.
+    tweets: list = []
+    last_error: Exception | None = None
+    for attempt in (1, 2):
+        try:
+            tweets = _tweets_of(_request(params, key, timeout))
+            last_error = None
+        except (OSError, urllib.error.URLError, json.JSONDecodeError) as exc:
+            # OSError covers URLError, HTTPError, and socket timeouts.
+            last_error = exc
+            logger.warning("Twitter fetch attempt %d failed for %r: %s",
+                           attempt, terms, exc)
+        if tweets:
+            break
+        if attempt == 1:
+            if last_error is None:
+                logger.info("Twitter returned no posts for %r; retrying once.", terms)
             time.sleep(_RETRY_SLEEP)
-            data = _request(params, key, timeout)
-            tweets = _tweets_of(data)
-    except (OSError, urllib.error.URLError, json.JSONDecodeError) as exc:
-        # OSError covers URLError, HTTPError, and socket timeouts.
-        logger.warning("Twitter fetch failed for %r: %s", terms, exc)
-        return f"<twitter unavailable: {type(exc).__name__}: {exc}>"
 
+    if last_error is not None:
+        return f"<twitter unavailable: {type(last_error).__name__}: {last_error}>"
     if not tweets:
         return f"<no X/Twitter posts found for {terms}>"
 

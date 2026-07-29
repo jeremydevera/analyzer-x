@@ -127,20 +127,49 @@ def test_gives_up_after_one_retry(monkeypatch):
     assert out.startswith("<no X/Twitter posts found")
 
 
-def test_does_not_retry_on_a_transport_error(monkeypatch):
-    """A network failure is not the empty-response case; one attempt is enough."""
+def test_retries_a_transport_error_then_succeeds(monkeypatch):
+    """A single stalled request must not lose the source.
+
+    Measured latency for the analyst's query is 1.5-1.9s, so a timeout is a blip,
+    not a signal that the endpoint is down.
+    """
     monkeypatch.setenv("TWITTERAPI_IO_KEY", "k")
     monkeypatch.setattr(twitter, "_RETRY_SLEEP", 0.0)
     calls = []
 
-    def boom(params, key, timeout):
+    def flaky(params, key, timeout):
         calls.append(1)
-        raise OSError("timed out")
+        if len(calls) == 1:
+            raise TimeoutError("The read operation timed out")
+        return {"tweets": [{"text": "recovered", "createdAt": "2026-07-30",
+                            "likeCount": 1, "retweetCount": 0,
+                            "author": {"userName": "u"}}]}
 
-    with patch.object(twitter, "_request", side_effect=boom):
-        out = twitter.fetch_twitter_posts("$CATE")
-    assert len(calls) == 1
+    with patch.object(twitter, "_request", side_effect=flaky):
+        out = twitter.fetch_twitter_posts("$XPLK")
+    assert len(calls) == 2
+    assert "recovered" in out
+
+
+def test_reports_unavailable_only_after_the_retry_also_fails(monkeypatch):
+    monkeypatch.setenv("TWITTERAPI_IO_KEY", "k")
+    monkeypatch.setattr(twitter, "_RETRY_SLEEP", 0.0)
+    calls = []
+
+    def always_timeout(params, key, timeout):
+        calls.append(1)
+        raise TimeoutError("The read operation timed out")
+
+    with patch.object(twitter, "_request", side_effect=always_timeout):
+        out = twitter.fetch_twitter_posts("$XPLK")
+    assert len(calls) == 2
     assert out.startswith("<twitter unavailable")
+    assert "TimeoutError" in out
+
+
+def test_timeout_allows_for_a_slow_endpoint(monkeypatch):
+    """15s was tight enough that one stall killed the source."""
+    assert twitter._TIMEOUT >= 30
 
 
 def test_credit_balance_parses_both_buckets(monkeypatch):

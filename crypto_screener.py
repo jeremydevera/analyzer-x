@@ -140,6 +140,52 @@ def alert_beep_wav(freqs=(880, 1320), seconds_each: float = 0.16,
     return buf.getvalue()
 
 
+# Age range the tab opens on: the window where a new listing is still moving.
+DEFAULT_AGE_RANGE = (1, "hour", 24, "hour")
+
+# Live chart. MEXC candles are keyless, so refreshing often costs nothing but a
+# request; 10s is responsive without hammering a 1m candle that barely moves.
+CHART_INTERVALS = {"1m": "1m", "5m": "5m", "15m": "15m", "1h": "60m", "1d": "1d"}
+CHART_REFRESH_SECONDS = 10
+CHART_CANDLES = 180
+_UP = "#22C55E"
+_DOWN = "#EF4444"
+
+
+def candlestick_chart(df, base: str):
+    """Altair candlestick for an OHLCV frame.
+
+    Two layers: a thin rule spanning low-to-high for the wick, and a bar from
+    open to close for the body, coloured by direction. Altair ships with
+    Streamlit, so this needs no extra dependency.
+    """
+    import altair as alt
+
+    data = df.copy()
+    data["rising"] = data["Close"] >= data["Open"]
+    colour = alt.condition("datum.rising", alt.value(_UP), alt.value(_DOWN))
+    base_chart = alt.Chart(data).encode(
+        x=alt.X("Date:T", title=None),
+        tooltip=["Date:T", "Open:Q", "High:Q", "Low:Q", "Close:Q", "Volume:Q"],
+    )
+    wick = base_chart.mark_rule().encode(
+        y=alt.Y("Low:Q", title=f"{base} price", scale=alt.Scale(zero=False)),
+        y2=alt.Y2("High:Q"), color=colour)
+    body = base_chart.mark_bar().encode(y="Open:Q", y2="Close:Q", color=colour)
+    return (wick + body).properties(height=340)
+
+
+def chart_summary(df) -> str:
+    """Last price plus the change across the visible window."""
+    last = float(df["Close"].iloc[-1])
+    first = float(df["Open"].iloc[0])
+    price = f"{last:.8f}".rstrip("0").rstrip(".") or "0"
+    if len(df) < 2 or first == 0:
+        return f"last {price}"
+    change = (last - first) / first * 100
+    return f"last {price} · {change:+.2f}% over {len(df)} candles"
+
+
 def watch_status_line(symbol_count: int, *, last_poll: float | None,
                       now: float | None = None) -> str:
     """Caption proving the watch is alive and saying when it last checked."""
@@ -377,15 +423,25 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
         f'{mexc.WINDOW_DAYS} days</div>',
         unsafe_allow_html=True)
 
+    # All four widgets carry collapsed labels under one caption, so they share a
+    # baseline; mixing visible and hidden labels left the dropdowns sitting a row
+    # higher than the number inputs.
     units = list(AGE_UNITS)
-    a1, a2, a3, a4 = st.columns([1, 1.2, 1, 1.2])
-    min_value = a1.number_input("Age from", min_value=0, value=1, step=1,
-                                key="crypto_age_min_value")
-    min_unit = a2.selectbox("From unit", units, index=units.index("hour"),
+    dv, du, xv, xu = DEFAULT_AGE_RANGE
+    st.markdown(
+        '<div style="font-family:var(--font-mono);font-size:11px;'
+        'letter-spacing:.08em;color:var(--faint);margin:2px 0 -6px">'
+        'AGE RANGE — FROM / TO</div>', unsafe_allow_html=True)
+    a1, a2, a3, a4 = st.columns([1, 1.3, 1, 1.3])
+    min_value = a1.number_input("Age from", min_value=0, value=dv, step=1,
+                               key="crypto_age_min_value",
+                               label_visibility="collapsed")
+    min_unit = a2.selectbox("From unit", units, index=units.index(du),
                             key="crypto_age_min_unit", label_visibility="collapsed")
-    max_value = a3.number_input("to", min_value=0, value=4, step=1,
-                                key="crypto_age_max_value")
-    max_unit = a4.selectbox("To unit", units, index=units.index("week"),
+    max_value = a3.number_input("Age to", min_value=0, value=xv, step=1,
+                               key="crypto_age_max_value",
+                               label_visibility="collapsed")
+    max_unit = a4.selectbox("To unit", units, index=units.index(xu),
                             key="crypto_age_max_unit", label_visibility="collapsed")
 
     _render_listing_watch(st)
@@ -459,7 +515,10 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
     for coin in result.coins:
         cells = row_cells(coin)
         cols = st.columns(_WIDTHS)
-        cols[0].markdown(f"**{cells['symbol']}**")
+        # The symbol is the chart handle: clicking it opens the live candles.
+        if cols[0].button(cells["symbol"], key=f"chart_{coin.symbol}",
+                          help=f"Live {coin.base} chart from MEXC candles"):
+            st.session_state[_CHART_KEY] = coin.symbol
         cols[1].write(cells["name"])
         cols[2].write(cells["listed"])
         cols[3].write(cells["age"])
@@ -472,6 +531,8 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
         cols[7].markdown(f"**{verdict_label(stored)}**")
         if cols[8].button("Analyze", key=f"analyze_{coin.symbol}"):
             to_run = coin
+
+    _render_live_chart(st, {c.symbol: c for c in result.coins})
 
     if to_run is None:
         _render_stored_reports(st, trade_date)
@@ -634,6 +695,49 @@ def _render_credit_meter(st) -> None:
         f"<div style='font-size:11px;color:var(--muted);margin-top:4px'>"
         f"{html.escape(summary['detail'])}</div></div>",
         unsafe_allow_html=True)
+
+
+_CHART_KEY = "crypto_chart_symbol"
+
+
+def _render_live_chart(st, coins_by_symbol: dict) -> None:
+    """Live candles for the symbol whose row was clicked.
+
+    Wrapped in a fragment so the refresh timer redraws only the chart — a table
+    of 60 rows and any running analysis stay put.
+    """
+    from tradingagents.dataflows import mexc
+
+    symbol = st.session_state.get(_CHART_KEY)
+    if not symbol:
+        st.caption("Click a symbol to open its live chart.")
+        return
+    coin = coins_by_symbol.get(symbol)
+    base = coin.base if coin else symbol
+
+    st.markdown('<div class="ta-rule"></div>', unsafe_allow_html=True)
+    head, picker, closer = st.columns([3, 1.4, 0.8])
+    head.markdown(f"### {base} · live chart")
+    labels = list(CHART_INTERVALS)
+    choice = picker.selectbox("Interval", labels, index=0, key="crypto_chart_interval")
+    if closer.button("✕ close", key="crypto_chart_close"):
+        st.session_state.pop(_CHART_KEY, None)
+        st.rerun()
+
+    @st.fragment(run_every=CHART_REFRESH_SECONDS)
+    def _chart():
+        try:
+            df = mexc.intraday_ohlcv(symbol, interval=CHART_INTERVALS[choice],
+                                     limit=CHART_CANDLES)
+        except Exception as exc:                       # noqa: BLE001
+            # A chart is not worth breaking the tab over; say why and move on.
+            st.warning(f"No {choice} candles for {base}: {exc}")
+            return
+        st.altair_chart(candlestick_chart(df, base), use_container_width=True)
+        st.caption(f"{chart_summary(df)} · {choice} candles from MEXC · "
+                   f"refreshing every {CHART_REFRESH_SECONDS}s")
+
+    _chart()
 
 
 def _render_stored_reports(st, trade_date: str) -> None:

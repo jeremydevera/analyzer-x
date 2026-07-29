@@ -2,6 +2,8 @@
 
 from unittest.mock import patch
 
+import pandas as pd
+
 import pytest
 
 from tradingagents.dataflows import interface, mexc
@@ -617,6 +619,37 @@ def test_get_mexc_ohlcv_raises_when_range_excludes_all_rows():
     with patch.object(mexc, "_klines", return_value=_DAILY):
         with pytest.raises(NoMarketDataError):
             mexc.get_mexc_ohlcv("CATE-USD", "2026-01-01", "2026-01-31")
+
+
+def test_intraday_ohlcv_builds_a_frame_with_minute_stamps():
+    rows = [[1784505600000 + i * 60_000, "1.0", "1.2", "0.9", str(1.0 + i / 100),
+             "10.0", 0, "0"] for i in range(5)]
+    with patch.object(mexc, "_klines", return_value=rows) as kl:
+        df = mexc.intraday_ohlcv("XPLK-USD", interval="1m", limit=5)
+    assert kl.call_args[0][1] == "1m"
+    assert list(df.columns) == ["Date", "Open", "High", "Low", "Close", "Volume"]
+    assert len(df) == 5
+    assert df["Close"].iloc[-1] == pytest.approx(1.04)
+    # Minute bars must keep their time, not be flattened to a date.
+    assert df["Date"].iloc[1] - df["Date"].iloc[0] == pd.Timedelta(minutes=1)
+
+
+def test_intraday_ohlcv_raises_when_the_symbol_has_no_candles():
+    with patch.object(mexc, "_klines", return_value=[]):
+        with pytest.raises(NoMarketDataError):
+            mexc.intraday_ohlcv("GHOST-USD")
+
+
+def test_intraday_ohlcv_accepts_the_supported_intervals():
+    rows = [[1784505600000, "1", "1", "1", "1", "1", 0, "0"]]
+    for interval in ("1m", "5m", "15m", "60m", "4h", "1d"):
+        with patch.object(mexc, "_klines", return_value=rows):
+            assert len(mexc.intraday_ohlcv("X-USD", interval=interval)) == 1
+
+
+def test_intraday_ohlcv_rejects_an_unsupported_interval():
+    with pytest.raises(ValueError, match="interval"):
+        mexc.intraday_ohlcv("X-USD", interval="7s")
 
 
 def test_get_mexc_stock_data_returns_annotated_csv():

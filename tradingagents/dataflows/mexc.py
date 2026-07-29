@@ -587,6 +587,35 @@ def get_mexc_ohlcv(symbol: str, start_date: str, end_date: str) -> pd.DataFrame:
     return df
 
 
+# Intervals MEXC accepts on the spot klines endpoint.
+INTRADAY_INTERVALS = ("1m", "5m", "15m", "30m", "60m", "4h", "1d")
+
+
+def intraday_ohlcv(symbol: str, interval: str = "1m", limit: int = 200) -> pd.DataFrame:
+    """Recent candles at ``interval`` for live charting.
+
+    Unlike get_mexc_ohlcv this keeps the intraday timestamp rather than a date,
+    and takes no range — a chart wants the newest N bars, whatever period they
+    happen to span.
+    """
+    if interval not in INTRADAY_INTERVALS:
+        raise ValueError(
+            f"Unsupported interval {interval!r}. "
+            f"Choose one of: {', '.join(INTRADAY_INTERVALS)}"
+        )
+    pair = to_mexc_symbol(symbol)
+    rows = _klines(pair, interval, limit)
+    if not rows:
+        raise NoMarketDataError(symbol, pair, f"no {interval} candles")
+
+    df = pd.DataFrame(rows, columns=_KLINE_COLUMNS)
+    df["Date"] = pd.to_datetime(df["openTime"], unit="ms", utc=True).dt.tz_localize(None)
+    for col in ("Open", "High", "Low", "Close", "Volume"):
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df[["Date", "Open", "High", "Low", "Close", "Volume"]].dropna().reset_index(
+        drop=True)
+
+
 def get_mexc_stock_data(symbol: str, start_date: str, end_date: str) -> str:
     """Vendor entry point for ``get_stock_data`` — annotated CSV, like yfinance's."""
     df = get_mexc_ohlcv(symbol, start_date, end_date)

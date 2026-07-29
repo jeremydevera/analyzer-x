@@ -290,6 +290,55 @@ def test_collect_reports_is_empty_for_an_empty_state(screener):
     assert screener.collect_reports({}, "") == {}
 
 
+def test_default_age_range_is_one_hour_to_twenty_four_hours(screener):
+    lo, hi, error = screener.parse_age_range(*screener.DEFAULT_AGE_RANGE)
+    assert error is None
+    assert (lo, hi) == (1, 24)
+
+
+def test_chart_intervals_offer_minute_to_daily(screener):
+    from tradingagents.dataflows.mexc import INTRADAY_INTERVALS
+    assert all(v in INTRADAY_INTERVALS for v in screener.CHART_INTERVALS.values())
+    assert "1m" in screener.CHART_INTERVALS.values()
+
+
+def test_chart_refresh_is_frequent_enough_to_feel_live(screener):
+    assert 5 <= screener.CHART_REFRESH_SECONDS <= 30
+
+
+def test_candlestick_chart_builds_from_a_frame(screener):
+    import pandas as pd
+    df = pd.DataFrame({
+        "Date": pd.date_range("2026-07-30", periods=3, freq="1min"),
+        "Open": [1.0, 1.1, 1.2], "High": [1.3, 1.3, 1.4],
+        "Low": [0.9, 1.0, 1.1], "Close": [1.1, 1.2, 1.15],
+        "Volume": [10.0, 20.0, 30.0],
+    })
+    chart = screener.candlestick_chart(df, "XPLK")
+    spec = chart.to_dict()
+    assert spec["layer"], "candlestick needs wick and body layers"
+
+
+def test_chart_summary_reports_last_price_and_change(screener):
+    import pandas as pd
+    df = pd.DataFrame({
+        "Date": pd.date_range("2026-07-30", periods=2, freq="1min"),
+        "Open": [1.0, 1.0], "High": [2.0, 2.0], "Low": [0.5, 0.5],
+        "Close": [1.0, 1.5], "Volume": [1.0, 1.0],
+    })
+    text = screener.chart_summary(df)
+    assert "1.5" in text
+    assert "+50" in text          # 1.0 -> 1.5 across the window
+
+
+def test_chart_summary_handles_a_single_candle(screener):
+    import pandas as pd
+    df = pd.DataFrame({"Date": pd.date_range("2026-07-30", periods=1, freq="1min"),
+                       "Open": [1.0], "High": [1.0], "Low": [1.0], "Close": [1.0],
+                       "Volume": [1.0]})
+    assert "1" in screener.chart_summary(df)
+
+
 def test_poll_interval_is_two_minutes(screener):
     assert screener.POLL_SECONDS == 120
 

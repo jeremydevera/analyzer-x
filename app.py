@@ -826,59 +826,77 @@ def render_run_mode(default_model: str):
 
 
 # --- App -------------------------------------------------------------------
+def engine_badge_html() -> str:
+    provs = "+".join(sorted({provider_for(m) for m in MODEL_CHOICES}))
+    return (
+        "<div style='background:#10161F;border:1px solid #313D4E;border-radius:9px;"
+        "padding:8px 12px;margin-bottom:8px;font-family:var(--font-mono);font-size:12px'>"
+        "<span style='color:var(--muted);letter-spacing:.08em'>ENGINE</span>  "
+        f"<span style='color:var(--accent)'>{html.escape(provs)}</span>"
+        "<span style='color:var(--faint);font-size:10px'> · auto per model</span></div>")
+
+
 def main() -> None:
-    st.set_page_config(page_title="TradingAgents", page_icon="◈", layout="wide")
+    # No sidebar: Streamlit renders one sidebar for the whole app, so settings
+    # placed there appear on both tabs and imply they apply to whichever tab is
+    # open. Each tab owns its own controls instead.
+    st.set_page_config(page_title="TradingAgents", page_icon="◈", layout="wide",
+                       initial_sidebar_state="collapsed")
     st.markdown(CSS, unsafe_allow_html=True)
     st.markdown(header_html(), unsafe_allow_html=True)
-    with st.sidebar:
-        st.markdown("## Run settings")
-        # Searchable dropdown: click the field → search box appears inside it; type
-        # to filter by symbol/company, or enter ANY Yahoo ticker (accept_new_options).
-        opts = ticker_data.options()
-        default = ticker_data.label_for("NVDA")
-        choice = st.selectbox(
-            "Ticker", opts, index=opts.index(default) if default in opts else 0,
-            accept_new_options=True,
-            placeholder="Click to search — symbol or company…",
-            help="Type to search by symbol or company name, or enter any Yahoo Finance ticker "
-                 "(e.g. 0700.HK, BTC-USD).")
-        ticker = ticker_data.parse_ticker(choice) if choice else "NVDA"
-        trade_date = st.date_input("Analysis date").isoformat()
-        _provs = "+".join(sorted({provider_for(m) for m in MODEL_CHOICES}))
-        st.markdown(
-            "<div style='background:#10161F;border:1px solid #313D4E;border-radius:9px;"
-            "padding:8px 12px;margin-bottom:8px;font-family:var(--font-mono);font-size:12px'>"
-            "<span style='color:var(--muted);letter-spacing:.08em'>ENGINE</span>  "
-            f"<span style='color:var(--accent)'>{html.escape(_provs)}</span>"
-            "<span style='color:var(--faint);font-size:10px'> · auto per model</span></div>",
-            unsafe_allow_html=True)
-        selected = st.multiselect(
-            "Analysts", options=[k for k, _, _ in ANALYST_STAGES],
-            default=[k for k, _, _ in ANALYST_STAGES], format_func=lambda k: ANALYST_LABELS[k])
-        c1, c2 = st.columns(2)
-        debate_rounds = c1.number_input("Debate rounds", 1, 5, 1)
-        risk_rounds = c2.number_input("Risk rounds", 1, 5, 1)
-        run = st.button("▶  Run analysis", type="primary", use_container_width=True)
 
     tab_run, tab_new = st.tabs(["Run analysis", "New Crypto"])
     with tab_run:
         # A plain `with` block cannot host the run screen's early `return`s — they
         # would exit main() and skip the second tab — so it is its own function.
-        render_run_analysis_tab(ticker, trade_date, selected, debate_rounds,
-                                risk_rounds, run)
+        render_run_analysis_tab()
     with tab_new:
-        render_crypto_tab(trade_date, debate_rounds, risk_rounds)
+        render_crypto_tab()
 
 
-def render_crypto_tab(trade_date: str, debate_rounds: int, risk_rounds: int) -> None:
-    """Model picker for the crypto tab, then the screener itself."""
+def render_run_settings():
+    """Ticker / date / analysts / rounds for the stock run. Returns the choices."""
+    st.markdown(engine_badge_html(), unsafe_allow_html=True)
+    c1, c2 = st.columns([3, 1])
+    # Searchable dropdown: click the field → search box appears inside it; type
+    # to filter by symbol/company, or enter ANY Yahoo ticker (accept_new_options).
+    opts = ticker_data.options()
+    default = ticker_data.label_for("NVDA")
+    choice = c1.selectbox(
+        "Ticker", opts, index=opts.index(default) if default in opts else 0,
+        accept_new_options=True,
+        placeholder="Click to search — symbol or company…",
+        help="Type to search by symbol or company name, or enter any Yahoo Finance "
+             "ticker (e.g. 0700.HK, BTC-USD).")
+    ticker = ticker_data.parse_ticker(choice) if choice else "NVDA"
+    trade_date = c2.date_input("Analysis date").isoformat()
+
+    selected = st.multiselect(
+        "Analysts", options=[k for k, _, _ in ANALYST_STAGES],
+        default=[k for k, _, _ in ANALYST_STAGES],
+        format_func=lambda k: ANALYST_LABELS[k])
+    r1, r2, r3 = st.columns([1, 1, 2])
+    debate_rounds = r1.number_input("Debate rounds", 1, 5, 1)
+    risk_rounds = r2.number_input("Risk rounds", 1, 5, 1)
+    run = r3.button("▶  Run analysis", type="primary", use_container_width=True)
+    return ticker, trade_date, selected, debate_rounds, risk_rounds, run
+
+
+def render_crypto_tab() -> None:
+    """Model, date and round controls for the crypto tab, then the screener."""
     default_model = DEFAULT_CONFIG["deep_think_llm"]
     opts = model_options(default_model)
-    model = st.selectbox("Model", opts, index=0, key="crypto_model",
+    m1, m2 = st.columns([3, 1])
+    model = m1.selectbox("Model", opts, index=0, key="crypto_model",
                          format_func=lambda m: f"{m}  ·  {provider_for(m)}")
     if model == CUSTOM_MODEL:
-        model = st.text_input("Custom model id", value="", key="crypto_custom",
+        model = m1.text_input("Custom model id", value="", key="crypto_custom",
                               placeholder="vendor/model-id").strip() or default_model
+    trade_date = m2.date_input("Analysis date", key="crypto_date").isoformat()
+    d1, d2, _ = st.columns([1, 1, 2])
+    debate_rounds = d1.number_input("Debate rounds", 1, 5, 1, key="crypto_debate")
+    risk_rounds = d2.number_input("Risk rounds", 1, 5, 1, key="crypto_risk")
+
     render_new_crypto_tab(
         model=model, provider=provider_for(model), trade_date=trade_date,
         base_config=DEFAULT_CONFIG, debate_rounds=debate_rounds,
@@ -886,9 +904,10 @@ def render_crypto_tab(trade_date: str, debate_rounds: int, risk_rounds: int) -> 
         streaming_runner=run_single_streaming)
 
 
-def render_run_analysis_tab(ticker, trade_date, selected, debate_rounds,
-                            risk_rounds, run) -> None:
-    """The original single/parallel run screen, unchanged in behavior."""
+def render_run_analysis_tab() -> None:
+    """The original single/parallel run screen, with its settings inline."""
+    ticker, trade_date, selected, debate_rounds, risk_rounds, run = render_run_settings()
+    st.markdown('<div class="ta-rule"></div>', unsafe_allow_html=True)
     # Two options on top: run mode + which model(s).
     mode, models_to_run, model_keys = render_run_mode(DEFAULT_CONFIG["deep_think_llm"])
     st.markdown('<div class="ta-rule"></div>', unsafe_allow_html=True)

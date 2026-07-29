@@ -339,6 +339,27 @@ def test_chart_summary_handles_a_single_candle(screener):
     assert "1" in screener.chart_summary(df)
 
 
+def test_upcoming_line_shows_the_countdown(screener):
+    line = screener.upcoming_line({"base": "NATG", "name": "NatGold Digital",
+                                   "open_ms": 1785409200000, "hours_until": 12.5})
+    assert "NATG" in line
+    assert "NatGold Digital" in line
+    assert "12h" in line or "12.5h" in line
+
+
+def test_upcoming_line_handles_an_unpublished_time(screener):
+    line = screener.upcoming_line({"base": "GRVT", "name": "Grvt",
+                                   "open_ms": None, "hours_until": None})
+    assert "GRVT" in line
+    assert "time" in line.lower()          # says the hour is unknown
+
+
+def test_upcoming_line_marks_an_imminent_listing(screener):
+    line = screener.upcoming_line({"base": "SOON", "name": "Soon", "open_ms": 1,
+                                   "hours_until": 0.4})
+    assert "24m" in line
+
+
 def test_poll_interval_is_two_minutes(screener):
     assert screener.POLL_SECONDS == 120
 

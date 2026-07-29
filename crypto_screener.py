@@ -218,6 +218,18 @@ def chart_summary(df) -> str:
     return f"last {price} · {change:+.2f}% over {len(df)} candles"
 
 
+def upcoming_line(coin: dict) -> str:
+    """One line for a listing that has been announced but is not trading yet."""
+    when = coin.get("hours_until")
+    if when is None:
+        timing = "open time not published yet"
+    elif when < 1:
+        timing = f"opens in {int(round(when * 60))}m"
+    else:
+        timing = f"opens in {fmt_age(when)}"
+    return f"**{coin['base']}** · {coin['name']} · {timing}"
+
+
 def watch_status_line(symbol_count: int, *, last_poll: float | None,
                       now: float | None = None) -> str:
     """Caption proving the watch is alive and saying when it last checked."""
@@ -675,6 +687,8 @@ def _render_listing_watch(st) -> None:
             st.session_state[_SOUNDING_KEY] = loop_sound
             st.toast(alert_message(found), icon="🔔")
 
+        _render_upcoming(st, mexc)
+
         alerts = st.session_state.get(_ALERTS_KEY) or []
         if alerts:
             st.success(alert_message(alerts[:5]))
@@ -754,6 +768,37 @@ def _render_credit_meter(st) -> None:
         f"<div style='font-size:11px;color:var(--muted);margin-top:4px'>"
         f"{html.escape(summary['detail'])}</div></div>",
         unsafe_allow_html=True)
+
+
+_ANNOUNCED_KEY = "crypto_announced_symbols"
+
+
+def _render_upcoming(st, mexc) -> None:
+    """Listings MEXC has announced but not opened, with a heads-up on new ones.
+
+    Read from the same exchangeInfo call the watch already makes, so knowing what
+    is coming costs nothing extra. A newly announced coin beeps like a new listing
+    does — it is the earliest warning the exchange gives.
+    """
+    try:
+        rows = mexc.upcoming_listings()
+    except (mexc.MexcUnavailable, mexc.MexcHostUnavailable, mexc.MexcRateLimited):
+        return                      # the watch caption already reports the outage
+    if not rows:
+        return
+
+    known = st.session_state.get(_ANNOUNCED_KEY)
+    current = {r["symbol"] for r in rows}
+    if known is not None:
+        fresh = [r for r in rows if r["symbol"] not in known]
+        if fresh:
+            st.session_state[_BEEP_KEY] = True
+            st.toast(f"📣 {len(fresh)} listing announced: "
+                     f"{', '.join(r['base'] for r in fresh)}", icon="📣")
+    st.session_state[_ANNOUNCED_KEY] = current
+
+    st.info("**Coming soon on MEXC**\n\n"
+            + "\n\n".join(upcoming_line(r) for r in rows[:5]))
 
 
 _CHART_KEY = "crypto_chart_symbol"

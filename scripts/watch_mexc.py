@@ -37,6 +37,7 @@ from tradingagents.dataflows.mexc import (                     # noqa: E402
     MexcRateLimited,
     MexcUnavailable,
     poll_new_listings,
+    upcoming_listings,
 )
 
 logger = logging.getLogger("watch_mexc")
@@ -93,6 +94,9 @@ def save_state(path: Path, symbols: set, *, now: float | None = None,
         "polls": int(previous.get("polls", 0)) + 1,
         "last_alert_at": previous.get("last_alert_at"),
         "last_alert": previous.get("last_alert"),
+        # Carried forward, or every poll would forget which listings have already
+        # been announced and re-alert them until they open.
+        "announced": previous.get("announced"),
     }
     if last_alert:
         payload["last_alert_at"] = stamp
@@ -103,6 +107,18 @@ def save_state(path: Path, symbols: set, *, now: float | None = None,
             json.dump(payload, fh)
     except OSError as exc:
         logger.warning("Could not save watcher state: %s", exc)
+
+
+def _merge_state(path: Path, updates: dict) -> None:
+    """Write extra keys into the state file without disturbing the rest."""
+    payload = _read_raw(path)
+    payload.update(updates)
+    try:
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(payload, fh)
+    except OSError as exc:
+        logger.warning("Could not merge watcher state: %s", exc)
 
 
 # A heartbeat older than this many intervals means the process is gone rather
@@ -178,8 +194,11 @@ def notify_commands(system: str, title: str, body: str, sound: bool) -> list:
     raising.
     """
     if system == "Darwin":
-        script = (f'display notification {json.dumps(body)} '
-                  f'with title {json.dumps(title)}')
+        # ensure_ascii=False on purpose: json.dumps would escape "·" to ·,
+        # which AppleScript cannot parse ("Expected \" but found unknown token").
+        # It handles literal UTF-8 fine, and json still escapes quotes/newlines.
+        script = (f'display notification {json.dumps(body, ensure_ascii=False)} '
+                  f'with title {json.dumps(title, ensure_ascii=False)}')
         cmds = [["osascript", "-e", script]]
         if sound and Path(_MAC_SOUND).exists():
             cmds.append(["afplay", _MAC_SOUND])
@@ -217,6 +236,44 @@ def deliver(title: str, body: str, *, sound: bool, webhook: str | None,
         post_webhook(webhook, {"count": len(coins), "title": title, "coins": coins})
 
 
+def announcement_text(upcoming: list) -> tuple[str, str]:
+    """``(title, body)`` for listings MEXC has scheduled but not opened."""
+    noun = "listing" if len(upcoming) == 1 else "listings"
+    title = f"{len(upcoming)} MEXC {noun} announced"
+    parts = []
+    for coin in upcoming:
+        hours = coin.get("hours_until")
+        when = f"opens in {hours:.1f}h" if hours else "open time not published"
+        parts.append(f"{coin['base']} ({coin['name']}) {when}")
+    return title, " · ".join(parts)
+
+
+def _announce_upcoming(state_path: Path, *, sound: bool, webhook: str | None) -> None:
+    """Alert on newly scheduled listings, once each.
+
+    This is the earliest warning the exchange gives — a pair appears with
+    status "2" hours before it trades — so it is worth a separate alert from the
+    listing itself. Announced coins are remembered in the state file so a coin is
+    not re-announced on every poll while it waits to open.
+    """
+    try:
+        upcoming = upcoming_listings()
+    except (MexcUnavailable, MexcHostUnavailable, MexcRateLimited) as exc:
+        logger.warning("Upcoming-listing lookup failed: %s", exc)
+        return
+
+    raw = _read_raw(state_path)
+    seen = set(raw.get("announced") or [])
+    fresh = [c for c in upcoming if c["symbol"] not in seen]
+    if upcoming or seen:
+        _merge_state(state_path, {"announced": sorted({c["symbol"] for c in upcoming})})
+    if not fresh:
+        return
+
+    title, body = announcement_text(fresh)
+    deliver(title, body, sound=sound, webhook=webhook, coins=fresh)
+
+
 def tick(state_path: Path, *, max_age_hours: float, sound: bool,
          webhook: str | None) -> list:
     """One poll. Returns the coins announced, and never raises on MEXC trouble."""
@@ -230,6 +287,7 @@ def tick(state_path: Path, *, max_age_hours: float, sound: bool,
         return []
 
     save_state(state_path, seen, last_alert=found)
+    _announce_upcoming(state_path, sound=sound, webhook=webhook)
     if not known:
         logger.info("Seeded baseline with %d symbols; watching for changes.",
                     len(seen))

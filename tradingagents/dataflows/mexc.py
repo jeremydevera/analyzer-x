@@ -162,6 +162,102 @@ def fetch_usdt_symbols() -> list[dict]:
     return out
 
 
+# Announced-but-not-trading pairs carry status "2". Spot-disabled alone is not
+# the signal: ~102 pairs are status "1" with spot disabled because they are
+# suspended or delisted, and announcing those as "coming soon" would be wrong.
+_PENDING_STATUS = "2"
+# The schedule lives on the web market endpoint, a 4 MB payload, so it is only
+# fetched when exchangeInfo shows something pending.
+_WEB_HOSTS = ("www.mexc.fm", "www.mexc.co", "www.mexc.com")
+_WEB_SYMBOLS_PATH = "/api/platform/spot/market/symbols"
+
+
+def fetch_pending_listings() -> list:
+    """USDT pairs MEXC has announced but not yet opened for trading."""
+    data = _get("/api/v3/exchangeInfo")
+    symbols = data.get("symbols", []) if isinstance(data, dict) else []
+    out = []
+    for s in symbols:
+        if s.get("quoteAsset") != "USDT" or s.get("status") != _PENDING_STATUS:
+            continue
+        base = s.get("baseAsset", "")
+        out.append({"symbol": s.get("symbol", ""), "base": base,
+                    "name": s.get("fullName") or base,
+                    "contract": s.get("contractAddress") or ""})
+    return out
+
+
+def _web_get(path: str, params: dict | None = None, timeout: float | None = None):
+    """GET from the web market API, trying each mirror in turn.
+
+    Separate from ``_get``: these endpoints live on the www hosts rather than the
+    api ones, and the primary www.mexc.com is blocked on the same networks that
+    block api.mexc.com.
+    """
+    failures = []
+    for host in _WEB_HOSTS:
+        try:
+            return _raw_get(host, path, params, timeout or 45.0)
+        except (MexcHostUnavailable, MexcRateLimited) as exc:
+            failures.append(f"{host} ({exc})")
+            continue
+    raise MexcHostUnavailable("no reachable MEXC web host: " + "; ".join(failures))
+
+
+def _parse_iso_ms(stamp) -> int | None:
+    if not isinstance(stamp, str):
+        return None
+    try:
+        return int(datetime.fromisoformat(stamp.replace("Z", "+00:00")).timestamp() * 1000)
+    except ValueError:
+        return None
+
+
+def fetch_scheduled_open_times() -> dict:
+    """``base asset -> scheduled open time in epoch ms`` from the web market API."""
+    data = _web_get(_WEB_SYMBOLS_PATH, {"symbol": "BTC_USDT"})
+    rows = (data.get("data") or {}).get("USDT") if isinstance(data, dict) else None
+    times = {}
+    for row in rows or []:
+        if not isinstance(row, dict):
+            continue
+        when = _parse_iso_ms(row.get("openTime"))
+        if row.get("currency") and when:
+            times[row["currency"]] = when
+    return times
+
+
+def upcoming_listings(*, now_ms: int | None = None) -> list:
+    """Listings announced but not yet trading, soonest first.
+
+    Advance warning comes from exchangeInfo, which is already fetched on every
+    poll; the open time is a best-effort enrichment, so a pending coin is still
+    reported when the schedule cannot be read — knowing a listing is coming
+    matters even without the hour.
+    """
+    now = now_ms if now_ms is not None else _now_ms()
+    pending = fetch_pending_listings()
+    if not pending:
+        return []
+
+    try:
+        schedule = fetch_scheduled_open_times()
+    except (MexcUnavailable, MexcHostUnavailable, MexcRateLimited) as exc:
+        logger.warning("MEXC schedule lookup failed: %s", exc)
+        schedule = {}
+
+    rows = []
+    for coin in pending:
+        open_ms = schedule.get(coin["base"])
+        if open_ms is not None and open_ms <= now:
+            # Already past its open time; the exchange has yet to flip status.
+            continue
+        rows.append({**coin, "open_ms": open_ms,
+                     "hours_until": (open_ms - now) / _HOUR_MS if open_ms else None})
+    rows.sort(key=lambda r: (r["open_ms"] is None, r["open_ms"] or 0))
+    return rows
+
+
 def poll_new_listings(known_symbols: set, *, now_ms: int | None = None,
                       max_age_hours: float = 48.0):
     """Detect newly listed USDT pairs in a single request.

@@ -22,6 +22,17 @@ def watcher():
     return mod
 
 
+@pytest.fixture(autouse=True)
+def _no_upcoming_lookup(watcher):
+    """Stub the announcement lookup so no unit test reaches the network.
+
+    tick() checks for scheduled listings on every poll; without this a test that
+    only cares about new listings would quietly hit the live exchange.
+    """
+    with patch.object(watcher, "upcoming_listings", return_value=[]):
+        yield
+
+
 def _coin(base="XPLK", hours=0.5):
     return {"symbol": f"{base}USDT", "base": base, "name": f"{base} Coin",
             "contract": "", "first_open_ms": 0, "age_hours": hours,
@@ -183,6 +194,52 @@ def test_tick_alerts_and_persists(watcher, tmp_path):
     assert [c["base"] for c in found] == ["XPLK"]
     assert sent, "an alert should have been delivered"
     assert watcher.load_state(state) == {"OLDUSDT", "XPLKUSDT"}
+
+
+def test_tick_announces_a_newly_scheduled_listing(watcher, tmp_path):
+    """The earliest warning the exchange gives: announced, not yet trading."""
+    state = tmp_path / "state.json"
+    watcher.save_state(state, {"OLDUSDT"})
+    sent = []
+    upcoming = [{"symbol": "NATGUSDT", "base": "NATG", "name": "NatGold Digital",
+                 "open_ms": 1785409200000, "hours_until": 12.5}]
+
+    with patch.object(watcher, "poll_new_listings", return_value=([], {"OLDUSDT"})), \
+         patch.object(watcher, "upcoming_listings", return_value=upcoming), \
+         patch.object(watcher, "deliver", side_effect=lambda *a, **k: sent.append(a)):
+        watcher.tick(state, max_age_hours=48, sound=True, webhook=None)
+
+    assert sent, "an announcement should have been delivered"
+    title, body = sent[0][0], sent[0][1]
+    assert "announced" in title.lower()
+    assert "NATG" in body
+    assert "12.5h" in body or "12h" in body
+
+
+def test_an_announcement_is_only_delivered_once(watcher, tmp_path):
+    state = tmp_path / "state.json"
+    watcher.save_state(state, {"OLDUSDT"})
+    sent = []
+    upcoming = [{"symbol": "NATGUSDT", "base": "NATG", "name": "NatGold",
+                 "open_ms": 1785409200000, "hours_until": 12.5}]
+
+    with patch.object(watcher, "poll_new_listings", return_value=([], {"OLDUSDT"})), \
+         patch.object(watcher, "upcoming_listings", return_value=upcoming), \
+         patch.object(watcher, "deliver", side_effect=lambda *a, **k: sent.append(a)):
+        watcher.tick(state, max_age_hours=48, sound=True, webhook=None)
+        watcher.tick(state, max_age_hours=48, sound=True, webhook=None)
+    assert len(sent) == 1
+
+
+def test_a_failed_upcoming_lookup_does_not_break_the_tick(watcher, tmp_path):
+    from tradingagents.dataflows.mexc import MexcHostUnavailable
+
+    state = tmp_path / "state.json"
+    watcher.save_state(state, {"OLDUSDT"})
+    with patch.object(watcher, "poll_new_listings", return_value=([], {"OLDUSDT"})), \
+         patch.object(watcher, "upcoming_listings",
+                      side_effect=MexcHostUnavailable("blocked")):
+        assert watcher.tick(state, max_age_hours=48, sound=False, webhook=None) == []
 
 
 def test_tick_stays_silent_when_nothing_is_new(watcher, tmp_path):

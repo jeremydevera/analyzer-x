@@ -126,13 +126,18 @@ DEFAULT_CONFIG = _apply_env_overrides({
     # routed to vendors you didn't choose. For ordered fallback, list several,
     # e.g. "yfinance,alpha_vantage". "default" uses all available vendors.
     "data_vendors": {
-        "core_stock_apis": "yfinance",       # Options: alpha_vantage, yfinance
-        "technical_indicators": "yfinance",  # Options: alpha_vantage, yfinance
+        # mexc serves crypto that Yahoo has no data for (new MEXC listings).
+        "core_stock_apis": "yfinance",       # Options: alpha_vantage, yfinance, mexc
+        "technical_indicators": "yfinance",  # Options: alpha_vantage, yfinance, mexc
         "fundamental_data": "yfinance",      # Options: alpha_vantage, yfinance
         "news_data": "yfinance",             # Options: alpha_vantage, yfinance
         "macro_data": "fred",                # Options: fred (needs FRED_API_KEY)
         "prediction_markets": "polymarket",  # Options: polymarket (keyless)
     },
+    # Include Twitter/X posts as a sentiment source. Off by default: the fetcher
+    # calls a metered third-party API, so stock runs should not spend credits
+    # unless the user asks. The New Crypto tab turns it on for its own runs.
+    "include_twitter": False,
     # Tool-level configuration (takes precedence over category-level)
     "tool_vendors": {
         # Example: "get_stock_data": "alpha_vantage",  # Override category default

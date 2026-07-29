@@ -4,7 +4,8 @@ from unittest.mock import patch
 
 import pytest
 
-from tradingagents.dataflows import mexc
+from tradingagents.dataflows import interface, mexc
+from tradingagents.dataflows.config import get_config, set_config
 from tradingagents.dataflows.errors import NoMarketDataError
 from tradingagents.dataflows.stockstats_utils import INDICATOR_DESCRIPTIONS
 from tradingagents.dataflows.symbol_utils import from_mexc_symbol, to_mexc_symbol
@@ -408,3 +409,33 @@ def test_get_mexc_indicators_reports_values_per_date():
 def test_get_mexc_indicators_rejects_unknown_indicator():
     with pytest.raises(ValueError, match="not supported"):
         mexc.get_mexc_indicators("CATE-USD", "not_an_indicator", "2026-07-29", 3)
+
+
+# --- Vendor registration ---------------------------------------------------
+
+
+def test_mexc_is_registered_for_price_and_indicator_methods():
+    assert "mexc" in interface.VENDOR_METHODS["get_stock_data"]
+    assert "mexc" in interface.VENDOR_METHODS["get_indicators"]
+    assert "mexc" in interface.VENDOR_LIST
+
+
+def test_route_to_vendor_uses_mexc_when_configured():
+    set_config({"data_vendors": {"core_stock_apis": "mexc"}})
+    try:
+        with patch.object(mexc, "_klines", return_value=_DAILY):
+            out = interface.route_to_vendor(
+                "get_stock_data", "CATE-USD", "2026-07-20", "2026-07-22")
+        assert "MEXC spot data" in out
+    finally:
+        set_config({"data_vendors": {"core_stock_apis": "yfinance"}})
+
+
+def test_default_config_still_prefers_yfinance():
+    """Stock runs must not be re-routed by this feature."""
+    assert get_config()["data_vendors"]["core_stock_apis"] == "yfinance"
+    assert get_config()["data_vendors"]["technical_indicators"] == "yfinance"
+
+
+def test_include_twitter_defaults_off():
+    assert get_config().get("include_twitter") is False

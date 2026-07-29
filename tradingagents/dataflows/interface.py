@@ -18,6 +18,7 @@ from .errors import (
     VendorRateLimitError,
 )
 from .fred import get_macro_data as get_fred_macro_data
+from .mexc import get_mexc_indicators, get_mexc_stock_data
 from .polymarket import get_prediction_markets as get_polymarket_prediction_markets
 from .y_finance import (
     get_balance_sheet as get_yfinance_balance_sheet,
@@ -82,6 +83,7 @@ VENDOR_LIST = [
     "fred",
     "polymarket",
     "alpha_vantage",
+    "mexc",
 ]
 
 # Optional enrichment categories. These add macro/event context to the news
@@ -97,11 +99,14 @@ VENDOR_METHODS = {
     "get_stock_data": {
         "alpha_vantage": get_alpha_vantage_stock,
         "yfinance": get_YFin_data_online,
+        # Crypto listed on MEXC but absent from Yahoo (new microcaps).
+        "mexc": get_mexc_stock_data,
     },
     # technical_indicators
     "get_indicators": {
         "alpha_vantage": get_alpha_vantage_indicator,
         "yfinance": get_stock_stats_indicators_window,
+        "mexc": get_mexc_indicators,
     },
     # fundamental_data
     "get_fundamentals": {

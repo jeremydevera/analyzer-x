@@ -169,6 +169,101 @@ def test_newlines_inside_a_post_do_not_break_the_layout():
     assert "line two" in body_lines[0]
 
 
+# --- per-post reply threads -----------------------------------------------
+
+
+def test_thread_replies_hit_the_replies_endpoint(monkeypatch):
+    """A reply to a post rarely names the coin, so term search cannot find it."""
+    monkeypatch.setenv("TWITTERAPI_IO_KEY", "k")
+    seen = []
+
+    def fake_get(url, key, timeout):
+        seen.append(url)
+        return {"tweets": [_tweet("11", "fan", "great project")],
+                "has_next_page": False}
+
+    with patch.object(twitter, "_get_json", side_effect=fake_get):
+        out = twitter.fetch_replies("1", "k", 10.0, limit=20)
+    assert any("tweet/replies" in u and "tweetId=1" in u for u in seen)
+    assert [r["id"] for r in out] == ["11"]
+
+
+def test_thread_replies_are_reparented_to_the_post_they_belong_to(monkeypatch):
+    """The endpoint returns nested replies whose inReplyToId points mid-thread."""
+    monkeypatch.setenv("TWITTERAPI_IO_KEY", "k")
+    posts = [_tweet("1", "MrHodlReal", "cabal call", replies=19)]
+    nested = _tweet("55", "someone", "deep in the thread", in_reply_to="33")
+
+    with patch.object(twitter, "fetch_replies", return_value=[nested]):
+        collected = twitter.collect_thread_replies(posts, "k", 10.0, threads=3, limit=20)
+    assert collected[0]["inReplyToId"] == "1"
+
+
+def test_only_the_busiest_threads_are_fetched(monkeypatch):
+    """Each thread page is billed, so the walk is bounded by reply volume."""
+    monkeypatch.setenv("TWITTERAPI_IO_KEY", "k")
+    posts = [_tweet(str(i), f"u{i}", "post", replies=i) for i in range(1, 8)]
+    asked = []
+
+    def fake_fetch(tweet_id, key, timeout, limit):
+        asked.append(tweet_id)
+        return []
+
+    with patch.object(twitter, "fetch_replies", side_effect=fake_fetch):
+        twitter.collect_thread_replies(posts, "k", 10.0, threads=3, limit=20)
+    assert asked == ["7", "6", "5"], "busiest threads first, capped at three"
+
+
+def test_posts_without_replies_are_not_fetched(monkeypatch):
+    posts = [_tweet("1", "a", "quiet post", replies=0)]
+    asked = []
+
+    def fake_fetch(tweet_id, key, timeout, limit):
+        asked.append(tweet_id)
+        return []
+
+    with patch.object(twitter, "fetch_replies", side_effect=fake_fetch):
+        twitter.collect_thread_replies(posts, "k", 10.0, threads=3, limit=20)
+    assert asked == []
+
+
+def test_one_failed_thread_does_not_lose_the_others(monkeypatch):
+    posts = [_tweet("1", "a", "p", replies=5), _tweet("2", "b", "p", replies=4)]
+
+    def flaky(tweet_id, key, timeout, limit):
+        if tweet_id == "1":
+            raise TimeoutError("stalled")
+        return [_tweet("22", "fan", "nice", in_reply_to="2")]
+
+    with patch.object(twitter, "fetch_replies", side_effect=flaky):
+        collected = twitter.collect_thread_replies(posts, "k", 10.0, threads=3, limit=20)
+    assert [r["id"] for r in collected] == ["22"]
+
+
+def test_thread_replies_nest_under_their_post_end_to_end(monkeypatch):
+    monkeypatch.setenv("TWITTERAPI_IO_KEY", "k")
+    monkeypatch.setattr(twitter, "_RETRY_SLEEP", 0.0)
+
+    def fake_request(params, key, timeout):
+        if "filter:replies" in params["query"]:
+            return {"tweets": [], "has_next_page": False}
+        return {"tweets": [_tweet("1", "MrHodlReal", "cabal call $PIPEDOG", replies=19)],
+                "has_next_page": False}
+
+    thread_reply = _tweet("11", "MasterMinion2", "Another scam coin obviously.",
+                          in_reply_to="1")
+    with patch.object(twitter, "_request", side_effect=fake_request), \
+         patch.object(twitter, "fetch_replies", return_value=[thread_reply]):
+        out = twitter.fetch_twitter_posts("$PIPEDOG")
+
+    lines = out.splitlines()
+    post_at = next(i for i, ln in enumerate(lines) if "POST · @MrHodlReal" in ln)
+    reply_at = next(i for i, ln in enumerate(lines) if "MasterMinion2" in ln)
+    assert reply_at > post_at
+    assert lines[reply_at].startswith("    ↳")
+    assert "OTHER REPLIES" not in out
+
+
 # --- end to end through the fetcher ---------------------------------------
 
 

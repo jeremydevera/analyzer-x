@@ -28,6 +28,10 @@ logger = logging.getLogger(__name__)
 
 _API = "https://api.twitterapi.io/twitter/tweet/advanced_search"
 _ACCOUNT_API = "https://api.twitterapi.io/oapi/my/info"
+_REPLIES_API = "https://api.twitterapi.io/twitter/tweet/replies"
+# Reply threads fetched per run, busiest first. Each page is billed, and beyond
+# the top few posts a new-listing feed is mostly airdrop spam with no conversation.
+REPLY_THREADS = 3
 # Published rates (twitterapi.io/pricing): 1 USD = 100,000 credits, 15 credits per
 # returned tweet, 15-credit minimum per call. A search page returns 20 tweets, so
 # one sentiment fetch costs ~300 credits ≈ $0.003.
@@ -169,6 +173,60 @@ def search_terms(symbol: str, display_name: str | None = None) -> str:
 def _is_retweet(tweet: dict, body: str) -> bool:
     """True for retweets, which carry no sentiment of their own."""
     return bool(tweet.get("retweeted_tweet")) or body.startswith("RT @")
+
+
+def fetch_replies(tweet_id: str, key: str, timeout: float,
+                  limit: int = TWEETS_PER_PAGE) -> list:
+    """Replies to one post, from the dedicated replies endpoint.
+
+    Term search cannot find these: a reply saying "Another scam coin obviously"
+    never names the coin, so it matches no query built from the ticker. This
+    endpoint returns them by parent id — 20 per page, cursored.
+    """
+    replies: list = []
+    cursor: str | None = None
+    for _ in range(MAX_PAGES):
+        params = {"tweetId": tweet_id}
+        if cursor:
+            params["cursor"] = cursor
+        payload = _get_json(f"{_REPLIES_API}?{urllib.parse.urlencode(params)}",
+                            key, timeout)
+        batch = _tweets_of(payload)
+        if not batch:
+            break
+        replies.extend(batch)
+        cursor = payload.get("next_cursor") if payload.get("has_next_page") else None
+        if not cursor or len(replies) >= limit:
+            break
+    return replies[:limit]
+
+
+def collect_thread_replies(posts: list, key: str, timeout: float, *,
+                           threads: int = REPLY_THREADS,
+                           limit: int = TWEETS_PER_PAGE) -> list:
+    """Replies for the busiest posts, reparented to the post they were fetched for.
+
+    Only posts that report replies are fetched, busiest first, capped at
+    ``threads`` — every page is billed, and the tail of a post list is mostly
+    airdrop spam with no conversation. The endpoint returns nested replies whose
+    inReplyToId points mid-thread, so each is reparented to the post it came from;
+    otherwise the grouping would file it as an orphan.
+    """
+    candidates = [p for p in posts if p.get("id") and _as_int(p.get("replyCount")) > 0]
+    candidates.sort(key=lambda p: _as_int(p.get("replyCount")), reverse=True)
+
+    collected: list = []
+    for post in candidates[:threads]:
+        try:
+            batch = fetch_replies(post["id"], key, timeout, limit)
+        except (OSError, urllib.error.URLError, json.JSONDecodeError) as exc:
+            # One stalled thread must not cost the others.
+            logger.warning("Twitter reply thread %s failed: %s", post["id"], exc)
+            continue
+        for reply in batch:
+            if isinstance(reply, dict) and reply.get("id") != post["id"]:
+                collected.append({**reply, "inReplyToId": post["id"]})
+    return collected
 
 
 def _search_pages(query: str, key: str, timeout: float, limit: int,
@@ -435,13 +493,15 @@ def fetch_twitter_posts(
 
     replies: list = []
     if include_replies:
+        # Replies to the posts themselves, which term search cannot reach.
+        replies.extend(collect_thread_replies(posts, key, timeout))
         # A failed reply search must not blank the source; the posts already
         # fetched are worth reporting on their own.
         found, reply_error = _search_pages(f"{query} filter:replies", key, timeout,
                                            limit, "replies", sort)
         if reply_error is not None:
             logger.warning("Twitter reply search failed for %r: %s", terms, reply_error)
-        replies = [r for r in found
-                   if isinstance(r, dict) and not _is_retweet(r, _body(r))]
+        replies.extend(r for r in found
+                       if isinstance(r, dict) and not _is_retweet(r, _body(r)))
 
     return format_thread_block(terms, start_date, end_date, posts, replies, retweets)

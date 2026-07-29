@@ -154,8 +154,42 @@ def fetch_usdt_symbols() -> list[dict]:
             "base": base,
             "name": s.get("fullName") or base,
             "contract": s.get("contractAddress") or "",
+            # MEXC reports the listing instant directly. When present it replaces
+            # the kline probing entirely: one request yields every symbol's age at
+            # minute precision. Absent for a minority of symbols, which fall back.
+            "first_open_ms": s.get("firstOpenTime") or None,
         })
     return out
+
+
+def poll_new_listings(known_symbols: set, *, now_ms: int | None = None,
+                      max_age_hours: float = 48.0):
+    """Detect newly listed USDT pairs in a single request.
+
+    Returns ``(new_records, all_symbols)``. Cheap enough to run on a short timer:
+    one ``exchangeInfo`` call covers the whole exchange, and the age filter runs
+    locally, so polling cost is independent of how many coins qualify.
+
+    An empty ``known_symbols`` seeds the baseline and reports nothing — otherwise
+    the first poll would announce every coin on the exchange as new.
+    """
+    now = now_ms if now_ms is not None else _now_ms()
+    universe = fetch_usdt_symbols()
+    all_symbols = {row["symbol"] for row in universe}
+    if not known_symbols:
+        return [], all_symbols
+
+    found = []
+    for row in universe:
+        if row["symbol"] in known_symbols or not row["first_open_ms"]:
+            continue
+        age = age_hours(row["first_open_ms"], now)
+        if age > max_age_hours:
+            continue          # unseen only because the baseline predates it
+        found.append({**row, "age_hours": age,
+                      "listed_date": _ms_to_date(row["first_open_ms"])})
+    found.sort(key=lambda r: r["age_hours"])
+    return found, all_symbols
 
 
 def fetch_24h_tickers() -> dict[str, dict]:
@@ -353,29 +387,51 @@ def _throttled_age(symbol: str) -> tuple[str, int | None]:
         return symbol, None
 
 
+# Sentinel for "probe succeeded and the coin is plainly older than the window".
+# Distinct from None, which means the age could not be determined at all — only
+# the latter is reported as unresolved, since it is the case that hides a coin.
+_TOO_OLD = "too-old"
+
+
+def _probed_listing_ms(symbol: str) -> tuple[str, object]:
+    """Kline-probe fallback for symbols whose record omits ``firstOpenTime``."""
+    _, monthly = _throttled_age(symbol)
+    if monthly is None:
+        return symbol, None                       # age unknown
+    if not is_recent_listing_candidate(monthly):
+        return symbol, _TOO_OLD                   # age known, outside the window
+    try:
+        listed = first_trade_ms(symbol)
+    except (MexcRateLimited, MexcHostUnavailable) as exc:
+        logger.warning("MEXC first-trade probe failed for %s: %s", symbol, exc)
+        return symbol, None
+    return symbol, (listed if listed is not None else _TOO_OLD)
+
+
 def _sweep(today: str) -> tuple[list, int, int]:
-    """Run the full three-stage sweep. Returns (in-window coins, scanned, unresolved)."""
+    """Sweep the exchange for in-window listings.
+
+    Listing times come from ``firstOpenTime`` in the symbol record, so the whole
+    exchange costs two requests instead of ~1700 kline probes. Only symbols
+    missing the field are probed, which is why the throttle still exists.
+    """
     universe = fetch_usdt_symbols()
     tickers = fetch_24h_tickers()
 
-    with ThreadPoolExecutor(max_workers=_MAX_WORKERS) as pool:
-        counts = list(pool.map(_throttled_age, [row["symbol"] for row in universe]))
+    needs_probe = [row["symbol"] for row in universe if not row["first_open_ms"]]
+    probed: dict[str, int | None] = {}
+    if needs_probe:
+        logger.info("MEXC: probing %d symbols without firstOpenTime", len(needs_probe))
+        with ThreadPoolExecutor(max_workers=_MAX_WORKERS) as pool:
+            probed = dict(pool.map(_probed_listing_ms, needs_probe))
 
-    unresolved = sum(1 for _, n in counts if n is None)
-    candidates = {s for s, n in counts if n is not None and is_recent_listing_candidate(n)}
+    unresolved = sum(1 for symbol in needs_probe if probed.get(symbol) is None)
 
     now = _now_ms()
     records = []
     for row in universe:
-        if row["symbol"] not in candidates:
-            continue
-        try:
-            listed_at = first_trade_ms(row["symbol"])
-        except (MexcRateLimited, MexcHostUnavailable) as exc:
-            logger.warning("MEXC first-trade probe failed for %s: %s", row["symbol"], exc)
-            unresolved += 1
-            continue
-        if listed_at is None:
+        listed_at = row["first_open_ms"] or probed.get(row["symbol"])
+        if listed_at is None or listed_at is _TOO_OLD:
             continue
         if age_hours(listed_at, now) > WINDOW_DAYS * 24:
             continue

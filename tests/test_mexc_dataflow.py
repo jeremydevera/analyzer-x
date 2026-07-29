@@ -114,8 +114,62 @@ def test_fetch_usdt_symbols_keeps_only_tradable_usdt_pairs():
     with patch.object(mexc, "_get", return_value=_EXCHANGE_INFO):
         rows = mexc.fetch_usdt_symbols()
     assert [r["symbol"] for r in rows] == ["CATEUSDT", "BTCUSDT"]
-    assert rows[0] == {"symbol": "CATEUSDT", "base": "CATE",
-                       "name": "Catestein", "contract": "0xabc"}
+    assert rows[0] == {"symbol": "CATEUSDT", "base": "CATE", "name": "Catestein",
+                       "contract": "0xabc", "first_open_ms": None}
+
+
+def test_fetch_usdt_symbols_carries_first_open_ms():
+    """MEXC reports the listing instant directly; no kline probing needed."""
+    info = {"symbols": [dict(_EXCHANGE_INFO["symbols"][0], firstOpenTime=1784505600000)]}
+    with patch.object(mexc, "_get", return_value=info):
+        rows = mexc.fetch_usdt_symbols()
+    assert rows[0]["first_open_ms"] == 1784505600000
+
+
+def test_fetch_usdt_symbols_tolerates_a_missing_first_open_time():
+    """65 of 2129 symbols omit the field; they fall back to the kline probe."""
+    with patch.object(mexc, "_get", return_value=_EXCHANGE_INFO):
+        rows = mexc.fetch_usdt_symbols()
+    assert rows[0]["first_open_ms"] is None
+
+
+def test_poll_new_listings_reports_symbols_not_seen_before():
+    info = {"symbols": [
+        {"symbol": "OLDUSDT", "baseAsset": "OLD", "quoteAsset": "USDT",
+         "isSpotTradingAllowed": True, "fullName": "Old", "contractAddress": "",
+         "firstOpenTime": _ms_ago(days=5)},
+        {"symbol": "FRESHUSDT", "baseAsset": "FRESH", "quoteAsset": "USDT",
+         "isSpotTradingAllowed": True, "fullName": "Fresh Coin", "contractAddress": "",
+         "firstOpenTime": _ms_ago(hours=1)},
+    ]}
+    with patch.object(mexc, "_get", return_value=info) as get:
+        found, seen = mexc.poll_new_listings({"OLDUSDT"}, now_ms=_NOW_MS)
+    assert get.call_count == 1                       # exactly one request
+    assert [c["symbol"] for c in found] == ["FRESHUSDT"]
+    assert found[0]["name"] == "Fresh Coin"
+    assert found[0]["age_hours"] == pytest.approx(1.0)
+    assert seen == {"OLDUSDT", "FRESHUSDT"}
+
+
+def test_poll_new_listings_first_call_seeds_without_alerting():
+    """An empty known-set must not announce all 1600 coins as new."""
+    with patch.object(mexc, "_get", return_value=_EXCHANGE_INFO):
+        found, seen = mexc.poll_new_listings(set(), now_ms=_NOW_MS)
+    assert found == []
+    assert seen == {"CATEUSDT", "BTCUSDT"}
+
+
+def test_poll_new_listings_ignores_coins_older_than_the_alert_window():
+    info = {"symbols": [
+        {"symbol": "STALEUSDT", "baseAsset": "STALE", "quoteAsset": "USDT",
+         "isSpotTradingAllowed": True, "fullName": "Stale", "contractAddress": "",
+         "firstOpenTime": _ms_ago(days=40)},
+    ]}
+    with patch.object(mexc, "_get", return_value=info):
+        found, seen = mexc.poll_new_listings({"SOMETHINGELSE"}, now_ms=_NOW_MS,
+                                             max_age_hours=48)
+    assert found == []                                # unseen, but far too old
+    assert "STALEUSDT" in seen
 
 
 def test_fetch_24h_tickers_converts_fraction_to_percent():
@@ -246,8 +300,11 @@ def _screen_patches(monkeypatch, tmp_path, *, ages, first_dates):
 
     ``first_dates`` maps symbol -> epoch ms of first trade (or None).
     """
+    # first_open_ms mirrors what MEXC now reports in the symbol record; symbols
+    # mapped to None fall through to the kline probe.
     monkeypatch.setattr(mexc, "fetch_usdt_symbols", lambda: [
-        {"symbol": s, "base": s[:-4], "name": f"{s[:-4]} Coin", "contract": ""}
+        {"symbol": s, "base": s[:-4], "name": f"{s[:-4]} Coin", "contract": "",
+         "first_open_ms": first_dates.get(s)}
         for s in ages
     ])
     monkeypatch.setattr(mexc, "fetch_24h_tickers", lambda: {

@@ -290,6 +290,49 @@ def test_collect_reports_is_empty_for_an_empty_state(screener):
     assert screener.collect_reports({}, "") == {}
 
 
+def test_poll_interval_is_two_minutes(screener):
+    assert screener.POLL_SECONDS == 120
+
+
+def test_alert_beep_is_a_playable_wav(screener):
+    data = screener.alert_beep_wav()
+    assert data[:4] == b"RIFF"
+    assert data[8:12] == b"WAVE"
+    assert len(data) > 2000          # real samples, not just a header
+
+
+def test_alert_beep_is_short_enough_to_not_annoy(screener):
+    import io
+    import wave
+    with wave.open(io.BytesIO(screener.alert_beep_wav())) as w:
+        seconds = w.getnframes() / w.getframerate()
+    assert 0.1 < seconds < 1.5
+
+
+def test_alert_message_names_each_new_coin_with_its_age(screener):
+    found = [{"symbol": "XPLKUSDT", "base": "XPLK", "name": "xPayLink",
+              "age_hours": 0.5, "listed_date": "2026-07-29"},
+             {"symbol": "FOOUSDT", "base": "FOO", "name": "Foo Coin",
+              "age_hours": 3.0, "listed_date": "2026-07-29"}]
+    msg = screener.alert_message(found)
+    assert "2 new" in msg
+    assert "XPLK" in msg and "FOO" in msg
+    assert "30m" in msg              # 0.5h rendered by fmt_age
+    assert "3h" in msg
+
+
+def test_alert_message_is_singular_for_one_coin(screener):
+    msg = screener.alert_message([{"symbol": "XPLKUSDT", "base": "XPLK",
+                                   "name": "xPayLink", "age_hours": 1.0,
+                                   "listed_date": "2026-07-29"}])
+    assert "1 new MEXC listing" in msg
+    assert "listings" not in msg
+
+
+def test_alert_message_empty_for_no_coins(screener):
+    assert screener.alert_message([]) == ""
+
+
 def test_source_panels_have_headers_in_reading_order(screener):
     labels = [label for _, label in screener.SOURCE_PANELS]
     keys = [key for key, _ in screener.SOURCE_PANELS]

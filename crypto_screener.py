@@ -100,6 +100,54 @@ REPORT_SECTIONS = (
 )
 
 
+# New-listing watch. One exchangeInfo request per poll covers the whole exchange
+# and the age filter runs locally, so the cost is independent of how many coins
+# qualify: 720 requests a day at this interval, against a measured 429 threshold
+# of roughly 25 requests a second.
+POLL_SECONDS = 120
+# Coins listed longer ago than this are not announced. Without it, a fresh
+# baseline plus a delisting/relisting could shout about a month-old coin.
+ALERT_MAX_AGE_HOURS = 48.0
+
+
+def alert_beep_wav(freqs=(880, 1320), seconds_each: float = 0.16,
+                   rate: int = 22_050) -> bytes:
+    """Two-tone attention beep as WAV bytes.
+
+    Generated rather than shipped as an asset so the alert has no binary file to
+    keep in the repo and no path to resolve at runtime.
+    """
+    import io
+    import math
+    import struct
+    import wave
+
+    frames = bytearray()
+    for freq in freqs:
+        for i in range(int(rate * seconds_each)):
+            # Taper the tail of each tone so it does not click on cut-off.
+            fade = min(1.0, (int(rate * seconds_each) - i) / (rate * 0.02))
+            sample = int(22_000 * fade * math.sin(2 * math.pi * freq * i / rate))
+            frames += struct.pack("<h", sample)
+
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(rate)
+        w.writeframes(bytes(frames))
+    return buf.getvalue()
+
+
+def alert_message(found: list) -> str:
+    """Headline for newly detected listings, or "" when there are none."""
+    if not found:
+        return ""
+    noun = "listing" if len(found) == 1 else "listings"
+    coins = ", ".join(f"{c['base']} ({fmt_age(c['age_hours'])} old)" for c in found)
+    return f"🔔 {len(found)} new MEXC {noun}: {coins}"
+
+
 # Raw source panels shown under the sentiment report, cheapest source first.
 SOURCE_PANELS = (
     ("stocktwits", "StockTwits messages"),
@@ -321,12 +369,14 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
     a1, a2, a3, a4 = st.columns([1, 1.2, 1, 1.2])
     min_value = a1.number_input("Age from", min_value=0, value=1, step=1,
                                 key="crypto_age_min_value")
-    min_unit = a2.selectbox("", units, index=units.index("hour"),
-                            key="crypto_age_min_unit", label_visibility="hidden")
+    min_unit = a2.selectbox("From unit", units, index=units.index("hour"),
+                            key="crypto_age_min_unit", label_visibility="collapsed")
     max_value = a3.number_input("to", min_value=0, value=4, step=1,
                                 key="crypto_age_max_value")
-    max_unit = a4.selectbox(" ", units, index=units.index("week"),
-                            key="crypto_age_max_unit", label_visibility="hidden")
+    max_unit = a4.selectbox("To unit", units, index=units.index("week"),
+                            key="crypto_age_max_unit", label_visibility="collapsed")
+
+    _render_listing_watch(st)
 
     source = st.radio("Social sentiment source", SOCIAL_SOURCES, horizontal=True,
                       key="crypto_social_source",
@@ -435,6 +485,61 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
     # to be redrawn for the result to land in it. Reports survive the rerun via
     # session_state and are re-rendered by _render_stored_reports.
     st.rerun()
+
+
+_KNOWN_KEY = "crypto_known_symbols"
+_ALERTS_KEY = "crypto_new_listings"
+_BEEP_KEY = "crypto_pending_beep"
+
+
+def _render_listing_watch(st) -> None:
+    """Poll MEXC for new listings and sound an alert when one appears.
+
+    Runs as a fragment so the timer reruns only this block, leaving the table and
+    any in-flight analysis untouched. Detection is one request per tick.
+    """
+    from tradingagents.dataflows import mexc
+
+    watch = st.checkbox("🔔 Watch for new listings", value=True, key="crypto_watch",
+                        help=f"Polls MEXC every {POLL_SECONDS // 60} min "
+                             f"(one request) and beeps when a coin is listed.")
+    if not watch:
+        return
+
+    @st.fragment(run_every=POLL_SECONDS)
+    def _tick():
+        known = st.session_state.get(_KNOWN_KEY) or set()
+        try:
+            found, seen = mexc.poll_new_listings(
+                known, max_age_hours=ALERT_MAX_AGE_HOURS)
+        except (mexc.MexcUnavailable, mexc.MexcHostUnavailable,
+                mexc.MexcRateLimited) as exc:
+            st.caption(f"Listing watch paused — {exc}")
+            return
+
+        st.session_state[_KNOWN_KEY] = seen
+        if found:
+            # Keep newest first and cap the log so a long session cannot grow it
+            # without bound.
+            st.session_state[_ALERTS_KEY] = (
+                found + (st.session_state.get(_ALERTS_KEY) or []))[:20]
+            st.session_state[_BEEP_KEY] = True
+            st.toast(alert_message(found), icon="🔔")
+
+        alerts = st.session_state.get(_ALERTS_KEY) or []
+        if alerts:
+            st.success(alert_message(alerts[:5]))
+        else:
+            st.caption(f"Watching {len(seen)} MEXC pairs · checking every "
+                       f"{POLL_SECONDS // 60} min · no new listings yet")
+
+        # Autoplay is allowed only after the user has interacted with the page,
+        # which opening this tab satisfies. Rendered once per detection, then
+        # cleared so a later tick does not replay it.
+        if st.session_state.pop(_BEEP_KEY, False):
+            st.audio(alert_beep_wav(), format="audio/wav", autoplay=True)
+
+    _tick()
 
 
 _CREDIT_CACHE_KEY = "crypto_credit_balance"

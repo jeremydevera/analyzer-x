@@ -111,3 +111,58 @@ def resolve_host(force: bool = False) -> str:
         + "; ".join(failures)
         + ". If your network blocks MEXC, set MEXC_API_HOST to a reachable mirror."
     )
+
+
+def _get(path: str, params: dict | None = None, timeout: float | None = None):
+    """GET from the resolved host, re-resolving once if that host has gone bad."""
+    host = resolve_host()
+    try:
+        return _raw_get(host, path, params, timeout)
+    except MexcHostUnavailable:
+        logger.warning("MEXC host %s failed mid-session; re-resolving.", host)
+        reset_host_cache()
+        return _raw_get(resolve_host(), path, params, timeout)
+
+
+def _as_float(value) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def fetch_usdt_symbols() -> list[dict]:
+    """Every spot-tradable USDT pair, with its display name and contract address."""
+    data = _get("/api/v3/exchangeInfo")
+    symbols = data.get("symbols", []) if isinstance(data, dict) else []
+    out = []
+    for s in symbols:
+        if s.get("quoteAsset") != "USDT" or not s.get("isSpotTradingAllowed"):
+            continue
+        base = s.get("baseAsset", "")
+        out.append({
+            "symbol": s.get("symbol", ""),
+            "base": base,
+            "name": s.get("fullName") or base,
+            "contract": s.get("contractAddress") or "",
+        })
+    return out
+
+
+def fetch_24h_tickers() -> dict[str, dict]:
+    """Price / 24h quote volume / 24h change for every symbol, in one request.
+
+    ``priceChangePercent`` arrives as a fraction (0.0196 == +1.96%), so it is
+    scaled to whole percent here — the table and the prompt both want percent.
+    """
+    rows = _get("/api/v3/ticker/24hr")
+    snap: dict[str, dict] = {}
+    for r in rows if isinstance(rows, list) else []:
+        if not isinstance(r, dict) or not r.get("symbol"):
+            continue
+        snap[r["symbol"]] = {
+            "price": _as_float(r.get("lastPrice")),
+            "quote_volume": _as_float(r.get("quoteVolume")),
+            "change_pct": _as_float(r.get("priceChangePercent")) * 100.0,
+        }
+    return snap

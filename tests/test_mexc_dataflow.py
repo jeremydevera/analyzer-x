@@ -81,3 +81,51 @@ def test_from_mexc_symbol(pair, expected):
 
 def test_mexc_symbol_round_trip():
     assert to_mexc_symbol(from_mexc_symbol("CATEUSDT")) == "CATEUSDT"
+
+
+# --- Symbol universe and 24h ticker ---------------------------------------
+
+_EXCHANGE_INFO = {
+    "symbols": [
+        {"symbol": "CATEUSDT", "baseAsset": "CATE", "quoteAsset": "USDT",
+         "isSpotTradingAllowed": True, "fullName": "Catestein",
+         "contractAddress": "0xabc"},
+        {"symbol": "BTCUSDT", "baseAsset": "BTC", "quoteAsset": "USDT",
+         "isSpotTradingAllowed": True, "fullName": "Bitcoin", "contractAddress": ""},
+        {"symbol": "ETHBTC", "baseAsset": "ETH", "quoteAsset": "BTC",
+         "isSpotTradingAllowed": True, "fullName": "Ethereum", "contractAddress": ""},
+        {"symbol": "HALTEDUSDT", "baseAsset": "HALTED", "quoteAsset": "USDT",
+         "isSpotTradingAllowed": False, "fullName": "Halted", "contractAddress": ""},
+    ]
+}
+
+_TICKER_24H = [
+    {"symbol": "CATEUSDT", "lastPrice": "0.003782",
+     "quoteVolume": "140981.74", "priceChangePercent": "-0.2379"},
+    {"symbol": "BTCUSDT", "lastPrice": "64666.01",
+     "quoteVolume": "409920994.69", "priceChangePercent": "0.0196"},
+]
+
+
+def test_fetch_usdt_symbols_keeps_only_tradable_usdt_pairs():
+    with patch.object(mexc, "_get", return_value=_EXCHANGE_INFO):
+        rows = mexc.fetch_usdt_symbols()
+    assert [r["symbol"] for r in rows] == ["CATEUSDT", "BTCUSDT"]
+    assert rows[0] == {"symbol": "CATEUSDT", "base": "CATE",
+                       "name": "Catestein", "contract": "0xabc"}
+
+
+def test_fetch_24h_tickers_converts_fraction_to_percent():
+    """MEXC reports priceChangePercent as a fraction: 0.0196 means +1.96%."""
+    with patch.object(mexc, "_get", return_value=_TICKER_24H):
+        snap = mexc.fetch_24h_tickers()
+    assert snap["BTCUSDT"]["change_pct"] == pytest.approx(1.96)
+    assert snap["CATEUSDT"]["change_pct"] == pytest.approx(-23.79)
+    assert snap["CATEUSDT"]["quote_volume"] == pytest.approx(140981.74)
+    assert snap["CATEUSDT"]["price"] == pytest.approx(0.003782)
+
+
+def test_fetch_24h_tickers_tolerates_missing_fields():
+    with patch.object(mexc, "_get", return_value=[{"symbol": "XUSDT"}]):
+        snap = mexc.fetch_24h_tickers()
+    assert snap["XUSDT"] == {"price": 0.0, "quote_volume": 0.0, "change_pct": 0.0}

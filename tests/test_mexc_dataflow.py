@@ -5,6 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from tradingagents.dataflows import mexc
+from tradingagents.dataflows.symbol_utils import from_mexc_symbol, to_mexc_symbol
 
 pytestmark = pytest.mark.unit
 
@@ -52,3 +53,31 @@ def test_resolved_host_is_cached_across_calls():
         mexc.resolve_host()
         mexc.resolve_host()
     assert raw.call_count == 1
+
+
+# --- Symbol mapping --------------------------------------------------------
+
+
+@pytest.mark.parametrize("raw,expected", [
+    ("CATE-USD", "CATEUSDT"),
+    ("CATE-USDT", "CATEUSDT"),
+    ("CATEUSDT", "CATEUSDT"),
+    ("cate-usd", "CATEUSDT"),
+    ("CATE", "CATEUSDT"),
+    ("CATE-USDC", "CATEUSDC"),
+])
+def test_to_mexc_symbol(raw, expected):
+    assert to_mexc_symbol(raw) == expected
+
+
+@pytest.mark.parametrize("pair,expected", [
+    ("CATEUSDT", "CATE-USD"),
+    ("BTCUSDT", "BTC-USD"),
+    ("WEIRD", "WEIRD"),
+])
+def test_from_mexc_symbol(pair, expected):
+    assert from_mexc_symbol(pair) == expected
+
+
+def test_mexc_symbol_round_trip():
+    assert to_mexc_symbol(from_mexc_symbol("CATEUSDT")) == "CATEUSDT"

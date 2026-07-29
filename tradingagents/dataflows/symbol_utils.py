@@ -136,3 +136,33 @@ def normalize_symbol(raw: str) -> str:
 def is_yahoo_safe(symbol: str) -> bool:
     """True when ``symbol`` only contains characters Yahoo symbols use."""
     return bool(symbol) and _YAHOO_SAFE.fullmatch(symbol) is not None
+
+
+# MEXC spot pairs are unseparated and quoted in a stablecoin (``CATEUSDT``),
+# while the rest of the app uses Yahoo's dash form (``CATE-USD``). USD itself has
+# no MEXC market, so it maps to USDT — the deepest quote book on the exchange.
+_MEXC_QUOTES = ("USDT", "USDC")
+
+
+def to_mexc_symbol(symbol: str) -> str:
+    """Convert an app-style symbol to a MEXC spot pair (``CATE-USD`` -> ``CATEUSDT``)."""
+    s = symbol.strip().upper().replace("_", "-")
+    if "-" in s:
+        base, _, quote = s.partition("-")
+    else:
+        for q in _MEXC_QUOTES:
+            if s.endswith(q) and len(s) > len(q):
+                return s
+        base, quote = s, "USDT"
+    if quote not in _MEXC_QUOTES:
+        quote = "USDT"          # USD / blank / anything exotic -> the USDT book
+    return f"{base}{quote}"
+
+
+def from_mexc_symbol(pair: str) -> str:
+    """Convert a MEXC spot pair back to the app's dash form (``CATEUSDT`` -> ``CATE-USD``)."""
+    p = pair.strip().upper()
+    for q in _MEXC_QUOTES:
+        if p.endswith(q) and len(p) > len(q):
+            return f"{p[: -len(q)]}-USD"
+    return p

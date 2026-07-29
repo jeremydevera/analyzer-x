@@ -23,7 +23,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 
@@ -439,3 +439,45 @@ def get_mexc_stock_data(symbol: str, start_date: str, end_date: str) -> str:
         f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
     )
     return header + out.to_csv(index=False)
+
+
+def get_mexc_indicators(
+    symbol: str, indicator: str, curr_date: str, look_back_days: int
+) -> str:
+    """Vendor entry point for ``get_indicators``, computed off MEXC candles.
+
+    Dates are captured before ``stockstats.wrap`` runs, because wrap normalises
+    column names and the date column's identity is not guaranteed to survive.
+    Zipping two positional lists keeps this correct either way.
+    """
+    from stockstats import wrap
+
+    from tradingagents.dataflows.stockstats_utils import INDICATOR_DESCRIPTIONS
+
+    if indicator not in INDICATOR_DESCRIPTIONS:
+        raise ValueError(
+            f"Indicator {indicator!r} is not supported. "
+            f"Supported: {', '.join(sorted(INDICATOR_DESCRIPTIONS))}"
+        )
+
+    end = datetime.strptime(curr_date, "%Y-%m-%d")
+    # 260 extra calendar days of warm-up so slow indicators (200 SMA) have input.
+    start = end - timedelta(days=look_back_days + 260)
+    df = get_mexc_ohlcv(symbol, start.strftime("%Y-%m-%d"), curr_date)
+
+    dates = df["Date"].dt.strftime("%Y-%m-%d").tolist()
+    values = wrap(df.copy())[indicator].tolist()
+
+    window_start = (end - timedelta(days=look_back_days)).strftime("%Y-%m-%d")
+    lines = [
+        f"{d}: {v}" for d, v in zip(dates, values) if window_start <= d <= curr_date
+    ]
+    if not lines:
+        lines = [f"{curr_date}: N/A: no candles in the requested window"]
+
+    return (
+        f"## {indicator} values from {window_start} to {curr_date}:\n\n"
+        + "\n".join(lines)
+        + "\n\n"
+        + INDICATOR_DESCRIPTIONS[indicator]
+    )

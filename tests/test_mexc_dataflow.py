@@ -6,6 +6,7 @@ import pytest
 
 from tradingagents.dataflows import mexc
 from tradingagents.dataflows.errors import NoMarketDataError
+from tradingagents.dataflows.stockstats_utils import INDICATOR_DESCRIPTIONS
 from tradingagents.dataflows.symbol_utils import from_mexc_symbol, to_mexc_symbol
 
 pytestmark = pytest.mark.unit
@@ -377,3 +378,33 @@ def test_get_mexc_stock_data_returns_annotated_csv():
     assert "# Total records: 3" in out
     header = next(ln for ln in lines if ln.startswith("Date,"))
     assert header == "Date,Open,High,Low,Close,Volume"
+
+
+# --- Indicators ------------------------------------------------------------
+
+
+def test_indicator_descriptions_are_shared_and_populated():
+    for key in ("close_50_sma", "rsi", "macd", "atr", "vwma", "boll_ub"):
+        assert key in INDICATOR_DESCRIPTIONS
+        assert len(INDICATOR_DESCRIPTIONS[key]) > 20
+
+
+def test_get_mexc_indicators_reports_values_per_date():
+    # 80 consecutive daily candles ending 2026-10-07, so rsi has enough input.
+    start_ms = 1784505600000
+    rows = [
+        [start_ms + i * 86_400_000, "1.0", "1.2", "0.9",
+         str(1.0 + i / 100), "1000.0", 0, "0"]
+        for i in range(80)
+    ]
+    last_date = mexc._ms_to_date(rows[-1][0])
+    with patch.object(mexc, "_klines", return_value=rows):
+        out = mexc.get_mexc_indicators("CATE-USD", "rsi", last_date, 3)
+    assert "## rsi values" in out
+    assert out.count(last_date[:8]) >= 3          # several dates in that month
+    assert INDICATOR_DESCRIPTIONS["rsi"] in out
+
+
+def test_get_mexc_indicators_rejects_unknown_indicator():
+    with pytest.raises(ValueError, match="not supported"):
+        mexc.get_mexc_indicators("CATE-USD", "not_an_indicator", "2026-07-29", 3)

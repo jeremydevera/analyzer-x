@@ -230,144 +230,187 @@ def health_badge(result: dict | None) -> str:
 # --- Design system (CSS) ---------------------------------------------------
 CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
-
+/* Themed on the Cloudflare dashboard's design tokens: warm near-grey surfaces,
+   a monochrome base with colour reserved for status, a system font stack, and an
+   8px spacing rhythm. No web-font import — the system stack renders instantly and
+   removes an external request. */
 :root {
-  --bg:#0B0E13; --panel:#141A22; --panel-2:#1A222C;
-  --border:#232C38; --border-soft:#1B2430;
-  --text:#E6EAF0; --muted:#8A95A5; --faint:#586374;
-  --accent:#2DD4BF; --accent-dim:#178577;
-  --buy:#16C784; --sell:#EA3943; --hold:#F0B90B;
-  --font-display:'Bricolage Grotesque',sans-serif;
-  --font-body:'IBM Plex Sans',sans-serif;
-  --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+  /* Cloudflare dark tokens, converted from HSL to hex */
+  --bg:#171715; --panel:#232321; --panel-2:#292927; --sidebar:#20201E;
+  --border:#3C3C3A; --border-soft:#2B2B29;
+  --text:#F5F5F4; --muted:#939392; --faint:#6B6B69;
+  --accent:#F6821F; --accent-dim:#C2670F;      /* Cloudflare orange */
+  --buy:#22C55E; --sell:#EF4444; --hold:#F59E0B;
+  --font-display:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --font-body:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --font-mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --r:6px;                                     /* one radius everywhere */
+  --s:8px;                                     /* spacing unit */
 }
 
-/* Atmosphere: deep slate + faint teal glow + hairline grid */
-[data-testid="stAppViewContainer"]{
-  background:
-    radial-gradient(900px 500px at 12% -8%, rgba(45,212,191,.07), transparent 60%),
-    radial-gradient(700px 500px at 100% 0%, rgba(45,212,191,.04), transparent 55%),
-    linear-gradient(180deg,#0B0E13 0%,#0A0C11 100%);
+/* Flat surface: the previous teal glows and grid overlay competed with the data */
+[data-testid="stAppViewContainer"]{ background:var(--bg); }
+html, body, [data-testid="stAppViewContainer"]{
+  color:var(--text); font-family:var(--font-body); font-size:14px;
 }
-[data-testid="stAppViewContainer"]::before{
-  content:""; position:fixed; inset:0; pointer-events:none; opacity:.4;
-  background-image:
-    linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);
-  background-size:40px 40px;
-}
-html, body, [data-testid="stAppViewContainer"]{ color:var(--text); font-family:var(--font-body); }
-
-/* Hide only the menu / deploy / decoration. Leave the header element at its
-   normal height and untouched so the sidebar collapse + re-open arrows stay
-   visible and clickable (forcing header height:0 was clipping the re-open
-   control off-screen — that was the "can't bring the panel back" bug). */
 #MainMenu, footer, [data-testid="stDecoration"],
 [data-testid="stAppDeployButton"], .stDeployButton, [data-testid="stStatusWidget"]{ display:none !important; }
 [data-testid="stHeader"]{ background:transparent !important; }
-.block-container{ padding-top:1.2rem; max-width:1300px; }
+.block-container{ padding-top:calc(var(--s) * 2); max-width:1360px; }
 
-h1,h2,h3,h4{ font-family:var(--font-display); letter-spacing:-.02em; color:var(--text); }
+h1,h2,h3,h4{ font-family:var(--font-display); letter-spacing:-.01em; color:var(--text); font-weight:600; }
+h3{ font-size:18px; } h4{ font-size:15px; }
 
 /* ---- Brand header ---- */
-.ta-header{ display:flex; align-items:center; gap:14px; padding:6px 0 2px; }
+.ta-header{ display:flex; align-items:center; gap:calc(var(--s) * 1.5);
+  padding:var(--s) 0 calc(var(--s) / 2); }
 .ta-mark{
-  width:42px;height:42px;border-radius:11px; display:grid;place-items:center;
-  background:linear-gradient(145deg,var(--accent),var(--accent-dim));
-  color:#06201D; font-family:var(--font-display); font-weight:800; font-size:22px;
-  box-shadow:0 6px 20px rgba(45,212,191,.28), inset 0 1px 0 rgba(255,255,255,.4);
+  width:32px;height:32px;border-radius:var(--r); display:grid;place-items:center;
+  background:var(--accent); color:#1A1A18;
+  font-family:var(--font-display); font-weight:700; font-size:17px;
 }
-.ta-title{ font-family:var(--font-display); font-weight:800; font-size:28px; line-height:1; }
+.ta-title{ font-family:var(--font-display); font-weight:600; font-size:20px; line-height:1.2; }
 .ta-title .dim{ color:var(--accent); }
-.ta-sub{ color:var(--muted); font-size:13px; margin-top:3px; letter-spacing:.01em; }
-.ta-rule{ height:1px; background:linear-gradient(90deg,var(--border),transparent); margin:14px 0 18px; }
+.ta-sub{ color:var(--muted); font-size:13px; margin-top:2px; }
+.ta-rule{ height:1px; background:var(--border); margin:calc(var(--s) * 2) 0; }
 
-/* ---- Run meta bar ---- */
-.ta-meta{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+/* ---- Meta chips ---- */
+.ta-meta{ display:flex; gap:var(--s); flex-wrap:wrap; margin-bottom:calc(var(--s) * 2); }
 .ta-chip{
-  font-family:var(--font-mono); font-size:12.5px; color:var(--text);
-  background:var(--panel); border:1px solid var(--border); border-radius:8px;
-  padding:7px 12px;
+  font-family:var(--font-mono); font-size:12px; color:var(--text);
+  background:var(--panel); border:1px solid var(--border); border-radius:var(--r);
+  padding:6px 10px;
 }
-.ta-chip b{ color:var(--muted); font-weight:500; margin-right:7px; text-transform:uppercase; letter-spacing:.08em; font-size:10.5px; }
+.ta-chip b{ color:var(--muted); font-weight:500; margin-right:6px;
+  text-transform:uppercase; letter-spacing:.06em; font-size:10px; }
 
-/* ---- Panels / cards ---- */
+/* ---- Cards ---- */
 .ta-card{
-  background:linear-gradient(180deg,var(--panel),#11161D);
-  border:1px solid var(--border); border-radius:14px; padding:16px 18px;
+  background:var(--panel); border:1px solid var(--border); border-radius:var(--r);
+  padding:calc(var(--s) * 2);
 }
-.ta-card h4{ margin:0 0 12px; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+.ta-card h4{ margin:0 0 var(--s); font-size:11px; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--muted); font-weight:600; }
 
-/* ---- Progress pills ---- */
-.ta-stage{ display:flex; align-items:center; gap:11px; padding:9px 4px; border-bottom:1px solid var(--border-soft); }
+/* ---- Stage list ---- */
+.ta-stage{ display:flex; align-items:center; gap:var(--s);
+  padding:var(--s) 2px; border-bottom:1px solid var(--border-soft); }
 .ta-stage:last-child{ border-bottom:none; }
-.ta-dot{ width:9px;height:9px;border-radius:50%; flex:0 0 auto; }
-.ta-stage .lbl{ font-size:14px; }
-.ta-stage .tag{ margin-left:auto; font-family:var(--font-mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; }
-.s-done .ta-dot{ background:var(--buy); box-shadow:0 0 0 3px rgba(22,199,132,.15); }
+.ta-dot{ width:8px;height:8px;border-radius:50%; flex:0 0 auto; }
+.ta-stage .lbl{ font-size:13.5px; }
+.ta-stage .tag{ margin-left:auto; font-family:var(--font-mono); font-size:10px;
+  letter-spacing:.08em; text-transform:uppercase; }
+.s-done .ta-dot{ background:var(--buy); }
 .s-done .lbl{ color:var(--text); }    .s-done .tag{ color:var(--buy); }
-.s-run .ta-dot{ background:var(--accent); animation:pulse 1.1s infinite; }
+.s-run .ta-dot{ background:var(--accent); animation:pulse 1.2s infinite; }
 .s-run .lbl{ color:var(--text); font-weight:600; } .s-run .tag{ color:var(--accent); }
 .s-wait .ta-dot{ background:var(--faint); } .s-wait .lbl{ color:var(--faint); } .s-wait .tag{ color:var(--faint); }
-@keyframes pulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(45,212,191,.5);} 50%{ box-shadow:0 0 0 6px rgba(45,212,191,0);} }
+@keyframes pulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(246,130,31,.45);} 50%{ box-shadow:0 0 0 5px rgba(246,130,31,0);} }
 
 /* ---- Decision banner ---- */
 .ta-decision{
-  border-radius:16px; padding:26px 28px; margin:6px 0 8px; position:relative; overflow:hidden;
-  border:1px solid rgba(255,255,255,.10);
+  border-radius:var(--r); padding:calc(var(--s) * 3); margin:var(--s) 0;
+  border:1px solid var(--border); background:var(--panel);
 }
-.ta-decision .k{ font-family:var(--font-mono); font-size:12px; letter-spacing:.22em; opacity:.8; text-transform:uppercase; }
-.ta-decision .v{ font-family:var(--font-display); font-weight:800; font-size:54px; line-height:1; margin-top:6px; }
-.ta-decision .ticker{ font-family:var(--font-mono); font-size:14px; opacity:.85; margin-top:10px; }
+.ta-decision .k{ font-family:var(--font-mono); font-size:11px; letter-spacing:.12em;
+  color:var(--muted); text-transform:uppercase; }
+.ta-decision .v{ font-family:var(--font-display); font-weight:700; font-size:40px;
+  line-height:1.1; margin-top:4px; }
+.ta-decision .ticker{ font-family:var(--font-mono); font-size:13px; color:var(--muted);
+  margin-top:var(--s); }
 
-/* ---- Sidebar ---- */
-[data-testid="stSidebar"]{ background:#0C1016; border-right:1px solid var(--border); }
-[data-testid="stSidebar"] h2{ font-size:13px !important; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); }
-[data-testid="stSidebar"] .stButton>button{
-  background:linear-gradient(145deg,var(--accent),var(--accent-dim)); color:#06201D;
-  font-family:var(--font-display); font-weight:700; border:none; border-radius:10px;
-  box-shadow:0 6px 18px rgba(45,212,191,.30);
-}
-[data-testid="stSidebar"] .stButton>button:hover{ filter:brightness(1.08); }
+/* ---- Tabs: Cloudflare's underline, not pills ---- */
+[data-baseweb="tab-list"]{ gap:calc(var(--s) * 3) !important; border-bottom:1px solid var(--border); }
+[data-baseweb="tab"]{ padding:var(--s) 0 !important; font-size:14px; color:var(--muted); }
+[data-baseweb="tab"][aria-selected="true"]{ color:var(--text); font-weight:600; }
+[data-baseweb="tab-highlight"]{ background:var(--accent) !important; height:2px !important; }
 
-/* ---- Sidebar form fields: visible outlines (pro grade) ---- */
-[data-testid="stSidebar"] label p, [data-testid="stSidebar"] label{
-  color:var(--text) !important; font-weight:600; font-size:12.5px; letter-spacing:.01em;
+/* ---- Form fields, app-wide ----
+   These rules were previously scoped to the sidebar. When the settings moved into
+   the tabs the inputs lost every outline, which is what made the layout read as
+   unstructured. They are unscoped now. */
+label p, .stSelectbox label, .stNumberInput label, .stDateInput label,
+.stTextInput label, .stMultiSelect label, .stRadio label{
+  color:var(--text) !important; font-weight:500; font-size:12.5px;
 }
-/* The bordered shells: text / number / date use baseweb "input"; selectbox &
-   multiselect use baseweb "select". Give both a clear 1px outline + fill. */
-[data-testid="stSidebar"] [data-baseweb="input"],
-[data-testid="stSidebar"] [data-baseweb="base-input"],
-[data-testid="stSidebar"] [data-baseweb="select"] > div{
-  background:#10161F !important;
-  border:1px solid #313D4E !important;
-  border-radius:9px !important;
+[data-baseweb="input"], [data-baseweb="base-input"], [data-baseweb="select"] > div,
+[data-baseweb="textarea"]{
+  background:var(--bg) !important;
+  border:1px solid var(--border) !important;
+  border-radius:var(--r) !important;
   transition:border-color .12s ease, box-shadow .12s ease;
 }
-/* kill BaseWeb's inner double border so only our outline shows */
-[data-testid="stSidebar"] [data-baseweb="input"] > div,
-[data-testid="stSidebar"] [data-baseweb="select"] > div > div{
+[data-baseweb="input"] > div, [data-baseweb="select"] > div > div{
   border:none !important; background:transparent !important;
 }
-/* focus / hover ring in accent */
-[data-testid="stSidebar"] [data-baseweb="input"]:hover,
-[data-testid="stSidebar"] [data-baseweb="select"] > div:hover{ border-color:#46566B !important; }
-[data-testid="stSidebar"] [data-baseweb="input"]:focus-within,
-[data-testid="stSidebar"] [data-baseweb="base-input"]:focus-within,
-[data-testid="stSidebar"] [data-baseweb="select"] > div:focus-within{
-  border-color:var(--accent) !important; box-shadow:0 0 0 3px rgba(45,212,191,.18) !important;
+[data-baseweb="input"]:hover, [data-baseweb="select"] > div:hover{ border-color:#4E4E4B !important; }
+[data-baseweb="input"]:focus-within, [data-baseweb="base-input"]:focus-within,
+[data-baseweb="select"] > div:focus-within{
+  border-color:var(--accent) !important; box-shadow:0 0 0 3px rgba(246,130,31,.16) !important;
 }
-/* mono text + readable placeholder */
-[data-testid="stSidebar"] input, [data-testid="stSidebar"] [data-baseweb="select"]{ font-family:var(--font-mono) !important; color:var(--text) !important; }
-[data-testid="stSidebar"] input::placeholder{ color:var(--faint) !important; }
-/* number-input stepper buttons get the same outline */
-[data-testid="stSidebar"] [data-testid="stNumberInputStepUp"],
-[data-testid="stSidebar"] [data-testid="stNumberInputStepDown"]{ border-color:#313D4E !important; }
-[data-testid="stExpander"]{ border:1px solid var(--border) !important; border-radius:12px !important; background:var(--panel); }
-[data-testid="stExpander"] summary{ font-family:var(--font-display); }
-code, pre, .stMarkdown code{ font-family:var(--font-mono) !important; }
-a{ color:var(--accent); }
+input, [data-baseweb="select"]{ font-family:var(--font-mono) !important; color:var(--text) !important; }
+input::placeholder{ color:var(--faint) !important; }
+[data-testid="stNumberInputStepUp"], [data-testid="stNumberInputStepDown"]{
+  border-color:var(--border) !important; background:var(--panel) !important;
+}
+
+/* ---- Buttons: neutral by default, orange only for the primary action ---- */
+.stButton>button{
+  background:var(--panel) !important; color:var(--text) !important;
+  border:1px solid var(--border) !important; border-radius:var(--r) !important;
+  font-family:var(--font-body) !important; font-weight:500 !important; font-size:13px !important;
+  box-shadow:none !important;
+}
+.stButton>button:hover{ border-color:#4E4E4B !important; background:var(--panel-2) !important; }
+.stButton>button[kind="primary"]{
+  background:var(--accent) !important; color:#1A1A18 !important;
+  border-color:var(--accent) !important; font-weight:600 !important;
+}
+.stButton>button[kind="primary"]:hover{ background:var(--accent-dim) !important; }
+
+/* ---- Data rows: hairline separators and a hover, like a CF table ---- */
+[data-testid="stHorizontalBlock"]{ align-items:center; }
+[data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"]{
+  border-bottom:1px solid var(--border-soft); padding:2px 0;
+}
+[data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"]:hover{
+  background:var(--panel);
+}
+
+/* ---- Containers ---- */
+[data-testid="stExpander"]{
+  border:1px solid var(--border) !important; border-radius:var(--r) !important;
+  background:var(--panel);
+}
+[data-testid="stExpander"] summary{ font-family:var(--font-body); font-size:13.5px; }
+[data-testid="stSidebar"]{ background:var(--sidebar); border-right:1px solid var(--border); }
+/* Streamlit's default alerts are blue/green/red fills that fight a warm-grey
+   palette. Neutral surface, with severity carried by a 2px left edge only. */
+[data-testid="stAlert"]{
+  border-radius:var(--r) !important; border:1px solid var(--border) !important;
+  background:var(--panel) !important; color:var(--text) !important;
+  border-left:2px solid var(--accent) !important;
+}
+/* The tint lives on stAlertContainer, not on stAlert — styling only the outer
+   element left the blue/green wash in place. */
+[data-testid="stAlertContainer"]{ background:transparent !important; }
+[data-testid="stAlert"] p, [data-testid="stAlert"] div{ color:var(--text) !important; }
+[data-testid="stAlert"]:has([data-testid="stAlertContentSuccess"]){ border-left-color:var(--buy) !important; }
+[data-testid="stAlert"]:has([data-testid="stAlertContentError"]){ border-left-color:var(--sell) !important; }
+[data-testid="stAlert"]:has([data-testid="stAlertContentWarning"]){ border-left-color:var(--hold) !important; }
+[data-testid="stAlert"] a{ color:var(--accent) !important; }
+
+/* Section labels sit above their controls; a negative margin here collided with
+   the row above once the settings moved out of the sidebar. */
+.ta-label{
+  font-family:var(--font-mono); font-size:10.5px; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--muted);
+  margin:calc(var(--s) * 2) 0 calc(var(--s) / 2);
+}
+code, pre, .stMarkdown code{ font-family:var(--font-mono) !important; font-size:12.5px; }
+a{ color:var(--accent); text-decoration:none; }
+a:hover{ text-decoration:underline; }
+hr{ border-color:var(--border); }
 </style>
 """
 

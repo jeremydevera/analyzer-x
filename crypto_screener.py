@@ -460,22 +460,16 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
 
     from tradingagents.dataflows import mexc
 
-    st.markdown(
-        '<div style="font-family:var(--font-display);font-size:13px;'
-        'letter-spacing:.08em;text-transform:uppercase;color:var(--muted);'
-        f'margin-bottom:4px">New crypto · MEXC · first traded within '
-        f'{mexc.WINDOW_DAYS} days</div>',
-        unsafe_allow_html=True)
+    st.markdown(f'<div class="ta-label">New crypto · MEXC · listed within '
+                f'{mexc.WINDOW_DAYS} days</div>', unsafe_allow_html=True)
 
     # All four widgets carry collapsed labels under one caption, so they share a
     # baseline; mixing visible and hidden labels left the dropdowns sitting a row
     # higher than the number inputs.
     units = list(AGE_UNITS)
     dv, du, xv, xu = DEFAULT_AGE_RANGE
-    st.markdown(
-        '<div style="font-family:var(--font-mono);font-size:11px;'
-        'letter-spacing:.08em;color:var(--faint);margin:2px 0 -6px">'
-        'AGE RANGE — FROM / TO</div>', unsafe_allow_html=True)
+    st.markdown('<div class="ta-label">Age range — from / to</div>',
+                unsafe_allow_html=True)
     a1, a2, a3, a4 = st.columns([1, 1.3, 1, 1.3])
     min_value = a1.number_input("Age from", min_value=0, value=dv, step=1,
                                key="crypto_age_min_value",

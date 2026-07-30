@@ -209,3 +209,14 @@ def test_ticker_options_formatted():
     assert "NVDA (NVIDIA Corp.)" in opts
     assert all("(" in o or o == o.upper() for o in opts)  # every entry has a name or is a bare symbol
     assert opts == sorted(opts)                            # sorted for the dropdown
+
+
+def test_safe_markdown_escapes_dollar_signs(app):
+    """Streamlit reads $...$ as LaTeX, which garbled every quoted price."""
+    out = app.safe_markdown("a high of $5.82 before closing at $1.03")
+    assert out == r"a high of \$5.82 before closing at \$1.03"
+
+
+def test_safe_markdown_handles_empty_input(app):
+    assert app.safe_markdown("") == ""
+    assert app.safe_markdown(None) == ""

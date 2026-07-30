@@ -497,6 +497,16 @@ def render_progress(container, state: dict, selected: list[str]) -> None:
                        unsafe_allow_html=True)
 
 
+def safe_markdown(text: str) -> str:
+    """Escape dollar signs so prices are not parsed as LaTeX.
+
+    Streamlit renders ``$...$`` as maths, so a report quoting "a high of $5.82
+    before closing at $1.03" had everything between the two dollar signs turned
+    into italic maths glyphs — unreadable exactly where the numbers matter.
+    """
+    return (text or "").replace("$", r"\$")
+
+
 def render_reports(container, state: dict) -> None:
     state = state or {}
     debate = state.get("investment_debate_state") or {}
@@ -535,7 +545,7 @@ def render_reports(container, state: dict) -> None:
             return
         for i, (label, content) in enumerate(sections):
             with st.expander(label, expanded=(i == len(sections) - 1)):
-                st.markdown(content)
+                st.markdown(safe_markdown(content))
 
 
 def render_decision(container, ticker: str, date: str, signal: str) -> None:
@@ -879,7 +889,7 @@ def run_single_streaming(ticker, trade_date, selected, cfg, provider, model,
             pass
         render_decision(decision_box, ticker, trade_date, signal)
         with st.expander("🧾  Full final decision", expanded=True):
-            st.markdown(final_decision)
+            st.markdown(safe_markdown(final_decision))
         st.download_button("⬇  Download decision (.md)", data=final_decision,
                            file_name=f"{ticker}_{trade_date}_decision.md", mime="text/markdown")
         return RunOutcome(signal, final_decision, final_state)

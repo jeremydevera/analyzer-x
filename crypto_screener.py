@@ -482,7 +482,14 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
     max_unit = a4.selectbox("To unit", units, index=units.index(xu),
                             key="crypto_age_max_unit", label_visibility="collapsed")
 
-    _render_listing_watch(st)
+    # Timers are paused while a run is pending: a fragment refresh reruns the app,
+    # Streamlit re-executes an open dialog's body, and the analysis restarted from
+    # stage 0 — repeatedly, so it never finished and spent tokens each time.
+    run_pending = bool(st.session_state.get(_PENDING_KEY))
+    if not run_pending:
+        _render_listing_watch(st)
+    else:
+        st.caption("Listing watch and chart refresh paused while an analysis runs.")
 
     source = st.radio("Social sentiment source", SOCIAL_SOURCES, horizontal=True,
                       key="crypto_social_source",
@@ -568,35 +575,60 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
         stored = st.session_state.get(verdict_key(coin.symbol, trade_date), "")
         cols[7].markdown(f"**{verdict_label(stored)}**")
         if cols[8].button("Analyze", key=f"analyze_{coin.symbol}"):
+            st.session_state[_PENDING_KEY] = coin.symbol
             to_run = coin
 
-    _render_live_chart(st, {c.symbol: c for c in result.coins})
+    if not run_pending:
+        _render_live_chart(st, {c.symbol: c for c in result.coins})
 
-    if to_run is None:
+    pending = st.session_state.get(_PENDING_KEY)
+    coin = to_run or next((c for c in result.coins if c.symbol == pending), None)
+    if not pending or coin is None:
         _render_stored_reports(st, trade_date)
         return
 
-    st.markdown('<div class="ta-rule"></div>', unsafe_allow_html=True)
-    st.markdown(f"### {to_run.base} · {to_run.name}")
-    cfg = build_crypto_config(
-        base_config, provider=provider, deep_model=model, quick_model=model,
-        debate_rounds=debate_rounds, risk_rounds=risk_rounds,
-        social_source=source, display_name=to_run.name,
-        listed_date=to_run.listed_date, age_hours=to_run.age_hours)
-    configure_cfg(cfg, model)
-    outcome = streaming_runner(
-        to_run.symbol, trade_date, list(CRYPTO_ANALYSTS), cfg, provider, model,
-        asset_type="crypto", instrument_context=coin_instrument_context(to_run))
+    # The run happens in a modal rather than below the table: a 60-second stream
+    # appended under 60 rows pushed the coin being analyzed out of view.
+    @st.dialog(f"{coin.base} · {coin.name}", width="large")
+    def _analysis_dialog():
+        st.caption(f"{coin.symbol} · listed {coin.listed_date} "
+                   f"({fmt_age(coin.age_hours)} old) · {model} · {source}")
 
-    st.session_state[verdict_key(to_run.symbol, trade_date)] = outcome.signal or ""
-    st.session_state[report_key(to_run.symbol, trade_date)] = collect_reports(
-        outcome.state, outcome.decision)
-    st.session_state["crypto_last_analyzed"] = (to_run.symbol, to_run.base,
-                                                to_run.name, trade_date)
-    # The row's verdict cell was drawn before this run started, so the table has
-    # to be redrawn for the result to land in it. Reports survive the rerun via
-    # session_state and are re-rendered by _render_stored_reports.
-    st.rerun()
+        # Streamlit re-executes an open dialog's body on every rerun, so the run
+        # has to be guarded: without this the analysis restarted from stage 0 and
+        # spent LLM tokens and X credits again on each rerun. A stored result means
+        # the work is done, so the modal re-renders it instead of repeating it.
+        done = st.session_state.get(report_key(coin.symbol, trade_date)) is not None
+        if not done:
+            cfg = build_crypto_config(
+                base_config, provider=provider, deep_model=model, quick_model=model,
+                debate_rounds=debate_rounds, risk_rounds=risk_rounds,
+                social_source=source, display_name=coin.name,
+                listed_date=coin.listed_date, age_hours=coin.age_hours)
+            configure_cfg(cfg, model)
+            outcome = streaming_runner(
+                coin.symbol, trade_date, list(CRYPTO_ANALYSTS), cfg, provider, model,
+                asset_type="crypto", instrument_context=coin_instrument_context(coin))
+            st.session_state[verdict_key(coin.symbol, trade_date)] = outcome.signal or ""
+            st.session_state[report_key(coin.symbol, trade_date)] = collect_reports(
+                outcome.state, outcome.decision)
+            st.session_state["crypto_last_analyzed"] = (coin.symbol, coin.base,
+                                                        coin.name, trade_date)
+        else:
+            verdict = st.session_state.get(verdict_key(coin.symbol, trade_date), "")
+            st.markdown(f"### {verdict_label(verdict)}")
+            _render_source_panels(
+                st, (st.session_state.get(report_key(coin.symbol, trade_date))
+                     or {}).get("sentiment_sources") or {})
+
+        # Closing clears the pending run and reruns, which redraws the row with its
+        # verdict — that cell was rendered before the run started, so it cannot
+        # update in place. Reports stay in session_state and reappear below.
+        if st.button("Close", type="primary", key="crypto_close_dialog"):
+            st.session_state.pop(_PENDING_KEY, None)
+            st.rerun()
+
+    _analysis_dialog()
 
 
 def _render_background_watcher_status(st) -> None:
@@ -796,6 +828,7 @@ def _render_upcoming(st, mexc) -> None:
 
 
 _CHART_KEY = "crypto_chart_symbol"
+_PENDING_KEY = "crypto_pending_run"
 
 
 def _render_live_chart(st, coins_by_symbol: dict) -> None:
@@ -854,7 +887,8 @@ def _render_stored_reports(st, trade_date: str) -> None:
         for key, label in REPORT_SECTIONS:
             if reports.get(key):
                 st.markdown(f"#### {label}")
-                st.markdown(reports[key])
+                # Prices contain dollar signs, which Streamlit would read as LaTeX.
+                st.markdown(reports[key].replace("$", r"\$"))
             # Raw source data sits directly under the narrative that used it, so
             # a claim about StockTwits sentiment can be checked against the posts.
             if key == "sentiment_report":

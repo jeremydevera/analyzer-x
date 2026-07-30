@@ -448,50 +448,25 @@ _HEADINGS = ("SYMBOL", "NAME", "LISTED", "AGE", "PRICE", "24H", "VOLUME",
              "VERDICT", "")
 
 
-def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
-                          base_config: dict, debate_rounds: int, risk_rounds: int,
-                          configure_cfg, streaming_runner) -> None:
-    """Render the screener table and run one coin's analysis on demand.
+def render_run_panel(st, *, model_options, default_model, custom_sentinel,
+                     provider_for, mexc):
+    """Right-hand control panel: what a run uses, kept out of the table's way.
 
-    ``configure_cfg`` and ``streaming_runner`` are injected from app.py so this
-    module never imports app.py, which would re-execute its Streamlit setup.
+    Returns the settings the screener needs. These live beside the data rather
+    than above it so the table starts at the top of the screen, which is what a
+    reader came for.
     """
-    import streamlit as st
-
-    from tradingagents.dataflows import mexc
-
-    st.markdown(f'<div class="ta-label">New crypto · MEXC · listed within '
-                f'{mexc.WINDOW_DAYS} days</div>', unsafe_allow_html=True)
-
-    # All four widgets carry collapsed labels under one caption, so they share a
-    # baseline; mixing visible and hidden labels left the dropdowns sitting a row
-    # higher than the number inputs.
-    units = list(AGE_UNITS)
-    dv, du, xv, xu = DEFAULT_AGE_RANGE
-    st.markdown('<div class="ta-label">Age range — from / to</div>',
+    st.markdown('<div class="ta-panel-title">Run settings</div>',
                 unsafe_allow_html=True)
-    a1, a2, a3, a4 = st.columns([1, 1.3, 1, 1.3])
-    min_value = a1.number_input("Age from", min_value=0, value=dv, step=1,
-                               key="crypto_age_min_value",
-                               label_visibility="collapsed")
-    min_unit = a2.selectbox("From unit", units, index=units.index(du),
-                            key="crypto_age_min_unit", label_visibility="collapsed")
-    max_value = a3.number_input("Age to", min_value=0, value=xv, step=1,
-                               key="crypto_age_max_value",
-                               label_visibility="collapsed")
-    max_unit = a4.selectbox("To unit", units, index=units.index(xu),
-                            key="crypto_age_max_unit", label_visibility="collapsed")
 
-    # Timers are paused while a run is pending: a fragment refresh reruns the app,
-    # Streamlit re-executes an open dialog's body, and the analysis restarted from
-    # stage 0 — repeatedly, so it never finished and spent tokens each time.
-    run_pending = bool(st.session_state.get(_PENDING_KEY))
-    if not run_pending:
-        _render_listing_watch(st)
-    else:
-        st.caption("Listing watch and chart refresh paused while an analysis runs.")
+    model = st.selectbox("Model", model_options, index=0, key="crypto_model",
+                         format_func=lambda m: f"{m}  ·  {provider_for(m)}")
+    if model == custom_sentinel:
+        model = st.text_input("Custom model id", value="", key="crypto_custom",
+                             placeholder="vendor/model-id").strip() or default_model
+    trade_date = st.date_input("Analysis date", key="crypto_date").isoformat()
 
-    source = st.radio("Social sentiment source", SOCIAL_SOURCES, horizontal=True,
+    source = st.radio("Social sentiment source", SOCIAL_SOURCES,
                       key="crypto_social_source",
                       help="StockTwits is keyless and free with Bullish/Bearish "
                            "tags; X costs metered credits. News and Reddit are "
@@ -500,28 +475,129 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
     if social_flags(source)["include_twitter"]:
         _render_credit_meter(st)
 
-    c1, c2, c3 = st.columns([1.4, 1, 1])
-    min_vol = c1.number_input("Min 24h volume (USDT)", min_value=0.0,
-                              value=mexc.DEFAULT_MIN_QUOTE_VOLUME, step=10_000.0,
-                              key="crypto_min_vol")
-    include_all = c2.checkbox("Show all (incl. dust)", value=False,
-                              key="crypto_include_all")
-    scan = c3.button("↻ Scan MEXC", key="crypto_refresh",
-                     help="Sweep all MEXC USDT pairs now (~2 minutes)")
+    sound = st.selectbox("Alert sound", list(ALERT_SOUNDS),
+                         index=list(ALERT_SOUNDS).index(DEFAULT_ALERT_SOUND),
+                         key="crypto_alert_sound")
+    s1, s2 = st.columns([1, 1])
+    loop_sound = s1.checkbox("Loop", value=False, key="crypto_alert_loop",
+                             help="Repeat until you press Stop.")
+    if s2.button("▶ Test", key="crypto_alert_preview", help="Hear this sound"):
+        st.audio(alert_beep_wav(sound), format="audio/wav", autoplay=True)
+
+    r1, r2 = st.columns([1, 1])
+    debate_rounds = r1.number_input("Debate", 1, 5, 1, key="crypto_debate",
+                                    help="Bull/bear debate rounds")
+    risk_rounds = r2.number_input("Risk", 1, 5, 1, key="crypto_risk",
+                                  help="Risk-team discussion rounds")
+    return {"model": model, "trade_date": trade_date, "source": source,
+            "sound": sound, "loop_sound": loop_sound,
+            "debate_rounds": debate_rounds, "risk_rounds": risk_rounds}
+
+
+def render_filter_popover(st, mexc):
+    """Age range and volume floor, behind a funnel. Returns the filter values.
+
+    Tucked away because they are set once and then left alone; showing four age
+    widgets above the table pushed the data below the fold on every visit.
+    """
+    units = list(AGE_UNITS)
+    dv, du, xv, xu = DEFAULT_AGE_RANGE
+    with st.popover("Filters", icon=":material/filter_alt:"):
+        st.markdown('<div class="ta-label">Age range — from / to</div>',
+                    unsafe_allow_html=True)
+        a1, a2 = st.columns([1, 1.4])
+        min_value = a1.number_input("Age from", min_value=0, value=dv, step=1,
+                                   key="crypto_age_min_value",
+                                   label_visibility="collapsed")
+        min_unit = a2.selectbox("From unit", units, index=units.index(du),
+                                key="crypto_age_min_unit",
+                                label_visibility="collapsed")
+        b1, b2 = st.columns([1, 1.4])
+        max_value = b1.number_input("Age to", min_value=0, value=xv, step=1,
+                                   key="crypto_age_max_value",
+                                   label_visibility="collapsed")
+        max_unit = b2.selectbox("To unit", units, index=units.index(xu),
+                                key="crypto_age_max_unit",
+                                label_visibility="collapsed")
+        st.markdown('<div class="ta-label">Liquidity</div>', unsafe_allow_html=True)
+        min_vol = st.number_input("Min 24h volume (USDT)", min_value=0.0,
+                                  value=mexc.DEFAULT_MIN_QUOTE_VOLUME, step=10_000.0,
+                                  key="crypto_min_vol")
+        include_all = st.checkbox("Show all (incl. dust)", value=False,
+                                  key="crypto_include_all")
+    return min_value, min_unit, max_value, max_unit, min_vol, include_all
+
+
+def render_new_crypto_tab(*, model_options, default_model, custom_sentinel,
+                          provider_for, base_config: dict, configure_cfg,
+                          streaming_runner) -> None:
+    """Screener table on the left, run settings on the right.
+
+    ``configure_cfg`` and ``streaming_runner`` are injected from app.py so this
+    module never imports app.py, which would re-execute its Streamlit setup.
+    """
+    import streamlit as st
+
+    from tradingagents.dataflows import mexc
+
+    table_col, panel_col = st.columns([3.4, 1], gap="large")
+    with panel_col:
+        with st.container(border=True):
+            settings = render_run_panel(
+                st, model_options=model_options, default_model=default_model,
+                custom_sentinel=custom_sentinel, provider_for=provider_for,
+                mexc=mexc)
+
+    model = settings["model"]
+    provider = provider_for(model)
+    trade_date = settings["trade_date"]
+    source = settings["source"]
+    sound_name = settings["sound"]
+    loop_sound = settings["loop_sound"]
+
+    with table_col:
+        _render_screener(
+            st, mexc, model=model, provider=provider, trade_date=trade_date,
+            source=source, sound_name=sound_name, loop_sound=loop_sound,
+            debate_rounds=settings["debate_rounds"],
+            risk_rounds=settings["risk_rounds"],
+            base_config=base_config, configure_cfg=configure_cfg,
+            streaming_runner=streaming_runner)
+
+
+def _render_screener(st, mexc, *, model, provider, trade_date, source, sound_name,
+                     loop_sound, debate_rounds, risk_rounds, base_config,
+                     configure_cfg, streaming_runner) -> None:
+    """The toolbar, the table, the chart and the analysis modal."""
+    # Timers are paused while a run is pending: a fragment refresh reruns the app,
+    # Streamlit re-executes an open dialog's body, and the analysis restarted from
+    # stage 0 — repeatedly, so it never finished and spent tokens each time.
+    run_pending = bool(st.session_state.get(_PENDING_KEY))
+
+    bar_filter, bar_scan, bar_note = st.columns([1, 1, 4])
+    with bar_filter:
+        (min_value, min_unit, max_value, max_unit,
+         min_vol, include_all) = render_filter_popover(st, mexc)
+    scan = bar_scan.button("↻ Scan MEXC", key="crypto_refresh",
+                          help="Sweep all MEXC USDT pairs now (~2 minutes)")
 
     min_age, max_age, age_error = parse_age_range(min_value, min_unit,
-                                                  max_value, max_unit)
+                                                 max_value, max_unit)
     if age_error:
         # Refuse the range rather than reordering it: swapping the bounds would
         # silently screen a different set of coins than the one asked for.
         st.error(age_error)
         return
-    st.caption(f"Showing coins first traded between **{fmt_age(min_age)}** and "
-               f"**{fmt_age(max_age)}** ago.")
+    bar_note.caption(f"Listed between **{fmt_age(min_age)}** and "
+                     f"**{fmt_age(max_age)}** ago · volume ≥ ${min_vol:,.0f}")
 
-    # Streamlit re-runs every tab body on every interaction, so the sweep must be
-    # explicit: rendering it automatically would cost ~1700 requests each time
-    # anyone touched the app, including users who never open this tab.
+    if not run_pending:
+        _render_listing_watch(st, sound_name=sound_name, loop_sound=loop_sound)
+    else:
+        st.caption("Listing watch and chart refresh paused while an analysis runs.")
+
+    # The sweep stays explicit: rendering it automatically would cost ~1700
+    # requests every time anyone touched the app.
     if scan:
         try:
             with st.spinner("Scanning ~1700 MEXC pairs — this takes about 2 minutes…"):
@@ -542,8 +618,8 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
                 "for coins listed in the last 30 days (about 2 minutes).")
         return
 
-    st.caption(status_caption(result))
     if not result.coins:
+        st.caption(status_caption(result))
         st.info(f"No MEXC coins were first traded between {fmt_age(min_age)} and "
                 f"{fmt_age(max_age)} ago above that volume floor. Widen the range "
                 f"or lower the floor.")
@@ -551,10 +627,7 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
 
     header = st.columns(_WIDTHS)
     for col, label in zip(header, _HEADINGS):
-        col.markdown(
-            f"<div style='font-family:var(--font-mono);font-size:11px;"
-            f"letter-spacing:.08em;color:var(--faint)'>{label}</div>",
-            unsafe_allow_html=True)
+        col.markdown(f"<div class='ta-th'>{label}</div>", unsafe_allow_html=True)
 
     to_run = None
     for coin in result.coins:
@@ -568,7 +641,7 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
         cols[2].write(cells["listed"])
         cols[3].write(cells["age"])
         cols[4].write(cells["price"])
-        colour = "#22C55E" if coin.change_pct >= 0 else "#EF4444"
+        colour = _UP if coin.change_pct >= 0 else _DOWN
         cols[5].markdown(f"<span style='color:{colour}'>{cells['change']}</span>",
                          unsafe_allow_html=True)
         cols[6].write(cells["volume"])
@@ -577,6 +650,8 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
         if cols[8].button("Analyze", key=f"analyze_{coin.symbol}"):
             st.session_state[_PENDING_KEY] = coin.symbol
             to_run = coin
+
+    st.caption(status_caption(result))
 
     if not run_pending:
         _render_live_chart(st, {c.symbol: c for c in result.coins})
@@ -596,8 +671,7 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
 
         # Streamlit re-executes an open dialog's body on every rerun, so the run
         # has to be guarded: without this the analysis restarted from stage 0 and
-        # spent LLM tokens and X credits again on each rerun. A stored result means
-        # the work is done, so the modal re-renders it instead of repeating it.
+        # spent LLM tokens and X credits again on each rerun.
         done = st.session_state.get(report_key(coin.symbol, trade_date)) is not None
         if not done:
             cfg = build_crypto_config(
@@ -621,9 +695,6 @@ def render_new_crypto_tab(*, model: str, provider: str, trade_date: str,
                 st, (st.session_state.get(report_key(coin.symbol, trade_date))
                      or {}).get("sentiment_sources") or {})
 
-        # Closing clears the pending run and reruns, which redraws the row with its
-        # verdict — that cell was rendered before the run started, so it cannot
-        # update in place. Reports stay in session_state and reappear below.
         if st.button("Close", type="primary", key="crypto_close_dialog"):
             st.session_state.pop(_PENDING_KEY, None)
             st.rerun()
@@ -666,28 +737,19 @@ _BEEP_KEY = "crypto_pending_beep"
 _SOUNDING_KEY = "crypto_alert_sounding"
 
 
-def _render_listing_watch(st) -> None:
+def _render_listing_watch(st, *, sound_name=DEFAULT_ALERT_SOUND,
+                          loop_sound: bool = False) -> None:
     """Poll MEXC for new listings and sound an alert when one appears.
 
     Runs as a fragment so the timer reruns only this block, leaving the table and
-    any in-flight analysis untouched. Detection is one request per tick.
+    any in-flight analysis untouched. Detection is one request per tick. The sound
+    choice is passed in, since those controls now live in the run panel.
     """
     from tradingagents.dataflows import mexc
 
-    w1, w2, w3, w4 = st.columns([1.6, 1.4, 1, 1])
-    watch = w1.checkbox("🔔 Watch for new listings", value=True, key="crypto_watch",
+    watch = st.checkbox("🔔 Watch for new listings", value=True, key="crypto_watch",
                         help=f"Polls MEXC every {POLL_SECONDS // 60} min "
                              f"(one request) and plays a sound when a coin is listed.")
-    sound_name = w2.selectbox(
-        "Alert sound", list(ALERT_SOUNDS),
-        index=list(ALERT_SOUNDS).index(DEFAULT_ALERT_SOUND),
-        key="crypto_alert_sound", label_visibility="collapsed")
-    loop_sound = w3.checkbox("Loop", value=False, key="crypto_alert_loop",
-                             help="Keep the sound repeating until you press Stop.")
-    if w4.button("▶ Test", key="crypto_alert_preview",
-                 help="Play the selected sound now"):
-        st.audio(alert_beep_wav(sound_name), format="audio/wav", autoplay=True)
-
     if not watch:
         return
 

@@ -463,6 +463,74 @@ code, pre, .stMarkdown code{ font-family:var(--font-mono) !important; font-size:
 a{ color:var(--accent); text-decoration:none; }
 a:hover{ text-decoration:underline; }
 hr{ border-color:var(--border); }
+
+/* ---- Sidebar navigation: dark rail, brand at the top ---- */
+[data-testid="stSidebar"]{
+  background:#15171C !important; border-right:none !important; width:240px !important;
+}
+[data-testid="stSidebar"] *{ color:#E7E5E0; }
+[data-testid="stSidebarContent"]{ padding:calc(var(--s) * 2) var(--s); }
+.ta-brand{ display:flex; align-items:center; gap:10px; padding:var(--s) var(--s)
+  calc(var(--s) * 3); }
+.ta-brand .ta-mark{ width:34px;height:34px;background:var(--accent); color:#fff;
+  border-radius:8px; font-size:16px; }
+.ta-brand-name{ font-family:var(--font-display); font-size:16px; font-weight:600;
+  line-height:1.1; }
+.ta-brand-sub{ font-family:var(--font-mono); font-size:9px; letter-spacing:.16em;
+  text-transform:uppercase; color:#8B877D !important; margin-top:3px; }
+.ta-nav-foot{ margin-top:calc(var(--s) * 4); padding:0 var(--s);
+  font-size:11px; color:#7C786F !important; line-height:1.5; }
+
+/* Radio becomes a nav list: full-width rows, current screen filled */
+[data-testid="stSidebar"] [role="radiogroup"]{ gap:2px !important; }
+[data-testid="stSidebar"] [role="radiogroup"] label{
+  padding:9px 12px !important; border-radius:6px; width:100%;
+  font-size:13.5px !important; cursor:pointer;
+}
+[data-testid="stSidebar"] [role="radiogroup"] label:hover{ background:#1E2027; }
+[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked){
+  background:#25272F;
+}
+[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) p{
+  font-weight:600 !important;
+}
+/* The radio dots would read as form controls in a nav list */
+[data-testid="stSidebar"] [role="radiogroup"] label > div:first-child{ display:none !important; }
+[data-testid="stSidebar"] [data-testid="stWidgetLabel"]{ display:none; }
+
+/* ---- Page title ---- */
+.ta-page-title{
+  font-family:var(--font-display); font-size:26px; font-weight:600;
+  letter-spacing:-.015em; margin:0 0 calc(var(--s) * 2);
+}
+
+/* ---- Table ---- */
+.ta-th{
+  font-family:var(--font-mono); font-size:9.5px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--faint); padding-bottom:6px;
+}
+[data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"]{ padding:3px 0; }
+/* The symbol cell is a button, but it should read as a link in a table */
+[data-testid="stHorizontalBlock"] .stButton>button{ padding:4px 9px !important;
+  min-height:28px !important; font-size:12px !important; }
+
+/* ---- Right-hand run panel ---- */
+[data-testid="stVerticalBlockBorderWrapper"]{
+  background:var(--panel); border-color:var(--border) !important; border-radius:var(--r);
+}
+.ta-panel-title{
+  font-family:var(--font-mono); font-size:9.5px; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--faint); margin-bottom:var(--s);
+}
+/* Inside the narrow panel a field should fill its column, not stop at 340px */
+[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stSelectbox"],
+[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stDateInput"],
+[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stTextInput"],
+[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stNumberInput"]{
+  max-width:100%;
+}
+[data-testid="stVerticalBlockBorderWrapper"] [role="radiogroup"]{ gap:2px !important; }
+[data-testid="stVerticalBlockBorderWrapper"] [role="radiogroup"] p{ font-size:12.5px !important; }
 </style>
 """
 
@@ -942,22 +1010,39 @@ def engine_badge_html() -> str:
         "<span style='color:var(--faint);font-size:10px'> · auto per model</span></div>")
 
 
-def main() -> None:
-    # No sidebar: Streamlit renders one sidebar for the whole app, so settings
-    # placed there appear on both tabs and imply they apply to whichever tab is
-    # open. Each tab owns its own controls instead.
-    st.set_page_config(page_title="TradingAgents", page_icon="◈", layout="wide",
-                       initial_sidebar_state="collapsed")
-    st.markdown(CSS, unsafe_allow_html=True)
-    st.markdown(header_html(), unsafe_allow_html=True)
+# Sidebar navigation: one screen renders at a time, which is what lets each screen
+# own its controls. Tabs could not do that — Streamlit renders every tab body on
+# every run, so a sidebar full of settings looked like it applied to both.
+PAGES = ("New Crypto", "Run analysis")
 
-    tab_run, tab_new = st.tabs(["Run analysis", "New Crypto"])
-    with tab_run:
-        # A plain `with` block cannot host the run screen's early `return`s — they
-        # would exit main() and skip the second tab — so it is its own function.
-        render_run_analysis_tab()
-    with tab_new:
+
+def render_nav() -> str:
+    """Brand mark plus the screen switcher. Returns the selected screen."""
+    with st.sidebar:
+        st.markdown(
+            '<div class="ta-brand"><div class="ta-mark">◈</div>'
+            '<div><div class="ta-brand-name">TradingAgents</div>'
+            '<div class="ta-brand-sub">Terminal</div></div></div>',
+            unsafe_allow_html=True)
+        page = st.radio("Screen", PAGES, label_visibility="collapsed",
+                        key="nav_page")
+        st.markdown('<div class="ta-nav-foot">Multi-agent LLM equity &amp; '
+                    'crypto analysis</div>', unsafe_allow_html=True)
+    return page
+
+
+def main() -> None:
+    st.set_page_config(page_title="TradingAgents", page_icon="◈", layout="wide",
+                       initial_sidebar_state="expanded")
+    st.markdown(CSS, unsafe_allow_html=True)
+
+    page = render_nav()
+    st.markdown(f'<div class="ta-page-title">{html.escape(page)}</div>',
+                unsafe_allow_html=True)
+    if page == "New Crypto":
         render_crypto_tab()
+    else:
+        render_run_analysis_tab()
 
 
 def render_run_settings():
@@ -989,24 +1074,13 @@ def render_run_settings():
 
 
 def render_crypto_tab() -> None:
-    """Model, date and round controls for the crypto tab, then the screener."""
-    default_model = DEFAULT_CONFIG["deep_think_llm"]
-    opts = model_options(default_model)
-    m1, m2 = st.columns([3, 1])
-    model = m1.selectbox("Model", opts, index=0, key="crypto_model",
-                         format_func=lambda m: f"{m}  ·  {provider_for(m)}")
-    if model == CUSTOM_MODEL:
-        model = m1.text_input("Custom model id", value="", key="crypto_custom",
-                              placeholder="vendor/model-id").strip() or default_model
-    trade_date = m2.date_input("Analysis date", key="crypto_date").isoformat()
-    d1, d2, _ = st.columns([1, 1, 2])
-    debate_rounds = d1.number_input("Debate rounds", 1, 5, 1, key="crypto_debate")
-    risk_rounds = d2.number_input("Risk rounds", 1, 5, 1, key="crypto_risk")
-
+    """The screener, with its run settings rendered in a right-hand panel."""
     render_new_crypto_tab(
-        model=model, provider=provider_for(model), trade_date=trade_date,
-        base_config=DEFAULT_CONFIG, debate_rounds=debate_rounds,
-        risk_rounds=risk_rounds, configure_cfg=configure_cfg,
+        model_options=model_options(DEFAULT_CONFIG["deep_think_llm"]),
+        default_model=DEFAULT_CONFIG["deep_think_llm"],
+        custom_sentinel=CUSTOM_MODEL,
+        provider_for=provider_for,
+        base_config=DEFAULT_CONFIG, configure_cfg=configure_cfg,
         streaming_runner=run_single_streaming)
 
 

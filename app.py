@@ -230,184 +230,236 @@ def health_badge(result: dict | None) -> str:
 # --- Design system (CSS) ---------------------------------------------------
 CSS = """
 <style>
-/* Themed on the Cloudflare dashboard's design tokens: warm near-grey surfaces,
-   a monochrome base with colour reserved for status, a system font stack, and an
-   8px spacing rhythm. No web-font import — the system stack renders instantly and
-   removes an external request. */
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* Editorial financial terminal: paper surfaces, ink type, one burnt-orange
+   accent, hairline rules. The data is the interface, so the chrome stays quiet
+   and the numbers get the good typography — JetBrains Mono with tabular figures
+   so columns of prices line up digit for digit. */
 :root {
-  /* Cloudflare dark tokens, converted from HSL to hex */
-  --bg:#171715; --panel:#232321; --panel-2:#292927; --sidebar:#20201E;
-  --border:#3C3C3A; --border-soft:#2B2B29;
-  --text:#F5F5F4; --muted:#939392; --faint:#6B6B69;
-  --accent:#F6821F; --accent-dim:#C2670F;      /* Cloudflare orange */
-  --buy:#22C55E; --sell:#EF4444; --hold:#F59E0B;
-  --font-display:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  --font-body:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  --font-mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
-  --r:6px;                                     /* one radius everywhere */
-  --s:8px;                                     /* spacing unit */
+  --bg:#FAF9F7;            /* warm paper, not clinical white */
+  --panel:#FFFFFF;
+  --panel-2:#F3F2EF;
+  --sidebar:#F3F2EF;
+  --border:#E4E1DB;
+  --border-soft:#EDEBE6;
+  --border-strong:#CFCBC2;
+  --text:#171612;          /* ink, not pure black */
+  --muted:#6C695F;
+  --faint:#9B978C;
+  --accent:#C2560B;        /* burnt orange: passes contrast on paper */
+  --accent-dim:#96420A;
+  --accent-wash:#FDF3EA;
+  --buy:#0A6B45; --sell:#A8231B; --hold:#9A5B08;
+  --font-display:'Newsreader',Georgia,serif;
+  --font-body:'Instrument Sans',sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,monospace;
+  --r:5px;
+  --s:8px;
+  --field:280px;           /* one field width, so the forms line up */
 }
 
-/* Flat surface: the previous teal glows and grid overlay competed with the data */
 [data-testid="stAppViewContainer"]{ background:var(--bg); }
 html, body, [data-testid="stAppViewContainer"]{
   color:var(--text); font-family:var(--font-body); font-size:14px;
+  -webkit-font-smoothing:antialiased;
 }
 #MainMenu, footer, [data-testid="stDecoration"],
 [data-testid="stAppDeployButton"], .stDeployButton, [data-testid="stStatusWidget"]{ display:none !important; }
 [data-testid="stHeader"]{ background:transparent !important; }
-.block-container{ padding-top:calc(var(--s) * 2); max-width:1360px; }
+.block-container{ padding-top:calc(var(--s) * 2); max-width:1240px; }
 
-h1,h2,h3,h4{ font-family:var(--font-display); letter-spacing:-.01em; color:var(--text); font-weight:600; }
-h3{ font-size:18px; } h4{ font-size:15px; }
+/* Serif headings against a sans UI: editorial contrast, and it makes a verdict
+   read as a statement rather than a label. */
+h1,h2,h3,h4{ font-family:var(--font-display); font-weight:500; color:var(--text);
+  letter-spacing:-.01em; }
+h3{ font-size:20px; } h4{ font-size:16px; }
 
-/* ---- Brand header ---- */
-.ta-header{ display:flex; align-items:center; gap:calc(var(--s) * 1.5);
-  padding:var(--s) 0 calc(var(--s) / 2); }
+/* Numbers everywhere are tabular: a price column that shifts as digits change
+   is unreadable at a glance. */
+[data-testid="stMarkdownContainer"] code, .ta-chip, .ta-stage .tag,
+input, [data-baseweb="select"]{ font-variant-numeric:tabular-nums; }
+
+/* ---- Masthead ---- */
+.ta-header{ display:flex; align-items:baseline; gap:calc(var(--s) * 1.5);
+  padding:var(--s) 0 0; }
 .ta-mark{
-  width:32px;height:32px;border-radius:var(--r); display:grid;place-items:center;
-  background:var(--accent); color:#1A1A18;
-  font-family:var(--font-display); font-weight:700; font-size:17px;
+  width:28px;height:28px;border-radius:var(--r); display:grid;place-items:center;
+  background:var(--text); color:var(--bg);
+  font-family:var(--font-display); font-weight:600; font-size:15px;
+  align-self:center;
 }
-.ta-title{ font-family:var(--font-display); font-weight:600; font-size:20px; line-height:1.2; }
+.ta-title{ font-family:var(--font-display); font-weight:600; font-size:22px; line-height:1; }
 .ta-title .dim{ color:var(--accent); }
-.ta-sub{ color:var(--muted); font-size:13px; margin-top:2px; }
+.ta-sub{ color:var(--muted); font-size:12.5px; margin-top:3px; }
 .ta-rule{ height:1px; background:var(--border); margin:calc(var(--s) * 2) 0; }
+.ta-label{
+  font-family:var(--font-mono); font-size:10px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--faint);
+  margin:calc(var(--s) * 2) 0 calc(var(--s) / 2);
+}
 
-/* ---- Meta chips ---- */
+/* ---- Chips ---- */
 .ta-meta{ display:flex; gap:var(--s); flex-wrap:wrap; margin-bottom:calc(var(--s) * 2); }
 .ta-chip{
-  font-family:var(--font-mono); font-size:12px; color:var(--text);
+  font-family:var(--font-mono); font-size:11.5px; color:var(--text);
   background:var(--panel); border:1px solid var(--border); border-radius:var(--r);
-  padding:6px 10px;
+  padding:5px 9px;
 }
-.ta-chip b{ color:var(--muted); font-weight:500; margin-right:6px;
-  text-transform:uppercase; letter-spacing:.06em; font-size:10px; }
+.ta-chip b{ color:var(--faint); font-weight:500; margin-right:6px;
+  text-transform:uppercase; letter-spacing:.08em; font-size:9.5px; }
 
 /* ---- Cards ---- */
 .ta-card{
   background:var(--panel); border:1px solid var(--border); border-radius:var(--r);
   padding:calc(var(--s) * 2);
 }
-.ta-card h4{ margin:0 0 var(--s); font-size:11px; letter-spacing:.08em;
-  text-transform:uppercase; color:var(--muted); font-weight:600; }
+.ta-card h4{ margin:0 0 var(--s); font-family:var(--font-mono); font-size:10px;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--faint); font-weight:500; }
 
 /* ---- Stage list ---- */
 .ta-stage{ display:flex; align-items:center; gap:var(--s);
-  padding:var(--s) 2px; border-bottom:1px solid var(--border-soft); }
+  padding:7px 2px; border-bottom:1px solid var(--border-soft); }
 .ta-stage:last-child{ border-bottom:none; }
-.ta-dot{ width:8px;height:8px;border-radius:50%; flex:0 0 auto; }
+.ta-dot{ width:7px;height:7px;border-radius:50%; flex:0 0 auto; }
 .ta-stage .lbl{ font-size:13.5px; }
-.ta-stage .tag{ margin-left:auto; font-family:var(--font-mono); font-size:10px;
-  letter-spacing:.08em; text-transform:uppercase; }
+.ta-stage .tag{ margin-left:auto; font-family:var(--font-mono); font-size:9.5px;
+  letter-spacing:.1em; text-transform:uppercase; }
 .s-done .ta-dot{ background:var(--buy); }
 .s-done .lbl{ color:var(--text); }    .s-done .tag{ color:var(--buy); }
 .s-run .ta-dot{ background:var(--accent); animation:pulse 1.2s infinite; }
 .s-run .lbl{ color:var(--text); font-weight:600; } .s-run .tag{ color:var(--accent); }
-.s-wait .ta-dot{ background:var(--faint); } .s-wait .lbl{ color:var(--faint); } .s-wait .tag{ color:var(--faint); }
-@keyframes pulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(246,130,31,.45);} 50%{ box-shadow:0 0 0 5px rgba(246,130,31,0);} }
+.s-wait .ta-dot{ background:var(--border-strong); } .s-wait .lbl{ color:var(--faint); }
+.s-wait .tag{ color:var(--faint); }
+@keyframes pulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(194,86,11,.35);} 50%{ box-shadow:0 0 0 5px rgba(194,86,11,0);} }
 
-/* ---- Decision banner ---- */
+/* ---- Verdict ---- */
 .ta-decision{
   border-radius:var(--r); padding:calc(var(--s) * 3); margin:var(--s) 0;
   border:1px solid var(--border); background:var(--panel);
+  border-left:3px solid var(--accent);
 }
-.ta-decision .k{ font-family:var(--font-mono); font-size:11px; letter-spacing:.12em;
-  color:var(--muted); text-transform:uppercase; }
-.ta-decision .v{ font-family:var(--font-display); font-weight:700; font-size:40px;
-  line-height:1.1; margin-top:4px; }
-.ta-decision .ticker{ font-family:var(--font-mono); font-size:13px; color:var(--muted);
+.ta-decision .k{ font-family:var(--font-mono); font-size:10px; letter-spacing:.14em;
+  color:var(--faint); text-transform:uppercase; }
+.ta-decision .v{ font-family:var(--font-display); font-weight:600; font-size:42px;
+  line-height:1.05; margin-top:6px; letter-spacing:-.02em; }
+.ta-decision .ticker{ font-family:var(--font-mono); font-size:12.5px; color:var(--muted);
   margin-top:var(--s); }
 
-/* ---- Tabs: Cloudflare's underline, not pills ---- */
-[data-baseweb="tab-list"]{ gap:calc(var(--s) * 3) !important; border-bottom:1px solid var(--border); }
-[data-baseweb="tab"]{ padding:var(--s) 0 !important; font-size:14px; color:var(--muted); }
+/* ---- Tabs ---- */
+[data-baseweb="tab-list"]{ gap:calc(var(--s) * 3) !important;
+  border-bottom:1px solid var(--border); background:transparent !important; }
+[data-baseweb="tab"]{ padding:var(--s) 0 !important; font-size:13.5px; color:var(--muted);
+  background:transparent !important; }
 [data-baseweb="tab"][aria-selected="true"]{ color:var(--text); font-weight:600; }
 [data-baseweb="tab-highlight"]{ background:var(--accent) !important; height:2px !important; }
 
-/* ---- Form fields, app-wide ----
-   These rules were previously scoped to the sidebar. When the settings moved into
-   the tabs the inputs lost every outline, which is what made the layout read as
-   unstructured. They are unscoped now. */
-label p, .stSelectbox label, .stNumberInput label, .stDateInput label,
-.stTextInput label, .stMultiSelect label, .stRadio label{
-  color:var(--text) !important; font-weight:500; font-size:12.5px;
+/* ---- Fields: one width, not the whole column ----
+   Streamlit stretches every widget to its container. Capping them keeps a form
+   readable: an eight-character number input has no business being 700px wide. */
+[data-testid="stSelectbox"] [data-testid="stWidgetLabel"] p,
+[data-testid="stNumberInput"] [data-testid="stWidgetLabel"] p,
+[data-testid="stDateInput"] [data-testid="stWidgetLabel"] p,
+[data-testid="stTextInput"] [data-testid="stWidgetLabel"] p,
+[data-testid="stMultiSelect"] [data-testid="stWidgetLabel"] p{
+  font-family:var(--font-mono); color:var(--faint) !important; font-weight:500 !important;
+  font-size:10px !important; text-transform:uppercase; letter-spacing:.1em;
 }
+/* Checkbox and radio text is a choice, not a field name — left in sentence case,
+   since uppercasing "Show all (incl. dust)" reads as shouting. */
+[data-testid="stCheckbox"] p, [data-testid="stRadio"] p{ font-size:13px !important; }
+
+/* Field widths sized to their content: a model id needs room, a round count
+   does not. */
+[data-testid="stSelectbox"], [data-testid="stTextInput"]{ max-width:340px; }
+[data-testid="stDateInput"]{ max-width:180px; }
+[data-testid="stNumberInput"]{ max-width:150px; }
+[data-testid="stMultiSelect"]{ max-width:620px; }
+[data-baseweb="tag"]{
+  background:var(--accent-wash) !important; color:var(--accent-dim) !important;
+  border:1px solid #EBD3BC !important; border-radius:3px !important;
+  font-size:12px !important; font-weight:500 !important;
+}
+[data-baseweb="tag"] span, [data-baseweb="tag"] svg{ color:var(--accent-dim) !important; }
 [data-baseweb="input"], [data-baseweb="base-input"], [data-baseweb="select"] > div,
 [data-baseweb="textarea"]{
-  background:var(--bg) !important;
-  border:1px solid var(--border) !important;
+  background:var(--panel) !important;
+  border:1px solid var(--border-strong) !important;
   border-radius:var(--r) !important;
+  min-height:34px !important;
   transition:border-color .12s ease, box-shadow .12s ease;
 }
 [data-baseweb="input"] > div, [data-baseweb="select"] > div > div{
   border:none !important; background:transparent !important;
 }
-[data-baseweb="input"]:hover, [data-baseweb="select"] > div:hover{ border-color:#4E4E4B !important; }
+[data-baseweb="input"]:hover, [data-baseweb="select"] > div:hover{ border-color:#B4AFA4 !important; }
 [data-baseweb="input"]:focus-within, [data-baseweb="base-input"]:focus-within,
 [data-baseweb="select"] > div:focus-within{
-  border-color:var(--accent) !important; box-shadow:0 0 0 3px rgba(246,130,31,.16) !important;
+  border-color:var(--accent) !important; box-shadow:0 0 0 3px rgba(194,86,11,.12) !important;
 }
-input, [data-baseweb="select"]{ font-family:var(--font-mono) !important; color:var(--text) !important; }
+input, [data-baseweb="select"]{ font-family:var(--font-mono) !important;
+  color:var(--text) !important; font-size:13px !important; }
 input::placeholder{ color:var(--faint) !important; }
 [data-testid="stNumberInputStepUp"], [data-testid="stNumberInputStepDown"]{
-  border-color:var(--border) !important; background:var(--panel) !important;
+  border-color:var(--border-strong) !important; background:var(--panel-2) !important;
+  color:var(--muted) !important;
 }
+/* Dropdown menus: same paper, same hairlines */
+[data-baseweb="popover"] [role="listbox"], [data-baseweb="menu"]{
+  background:var(--panel) !important; border:1px solid var(--border-strong) !important;
+  border-radius:var(--r) !important;
+}
+[role="option"]{ font-family:var(--font-mono) !important; font-size:12.5px !important; }
+[role="option"]:hover{ background:var(--accent-wash) !important; }
 
-/* ---- Buttons: neutral by default, orange only for the primary action ---- */
+/* ---- Buttons: sized to their label ---- */
+.stButton{ width:auto !important; }
 .stButton>button{
+  width:auto !important; min-width:0 !important;
   background:var(--panel) !important; color:var(--text) !important;
-  border:1px solid var(--border) !important; border-radius:var(--r) !important;
-  font-family:var(--font-body) !important; font-weight:500 !important; font-size:13px !important;
-  box-shadow:none !important;
+  border:1px solid var(--border-strong) !important; border-radius:var(--r) !important;
+  font-family:var(--font-body) !important; font-weight:500 !important; font-size:12.5px !important;
+  padding:6px 14px !important; min-height:34px !important; box-shadow:none !important;
 }
-.stButton>button:hover{ border-color:#4E4E4B !important; background:var(--panel-2) !important; }
+.stButton>button:hover{ border-color:var(--accent) !important; color:var(--accent) !important;
+  background:var(--accent-wash) !important; }
 .stButton>button[kind="primary"]{
-  background:var(--accent) !important; color:#1A1A18 !important;
-  border-color:var(--accent) !important; font-weight:600 !important;
+  background:var(--text) !important; color:var(--bg) !important;
+  border-color:var(--text) !important; font-weight:600 !important;
 }
-.stButton>button[kind="primary"]:hover{ background:var(--accent-dim) !important; }
+.stButton>button[kind="primary"]:hover{ background:var(--accent) !important;
+  border-color:var(--accent) !important; color:#fff !important; }
 
-/* ---- Data rows: hairline separators and a hover, like a CF table ---- */
+/* ---- Data rows ---- */
 [data-testid="stHorizontalBlock"]{ align-items:center; }
 [data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"]{
-  border-bottom:1px solid var(--border-soft); padding:2px 0;
+  border-bottom:1px solid var(--border-soft); padding:1px 0;
 }
 [data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"]:hover{
   background:var(--panel);
 }
+[data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"] p{ font-size:13px; }
 
 /* ---- Containers ---- */
 [data-testid="stExpander"]{
   border:1px solid var(--border) !important; border-radius:var(--r) !important;
   background:var(--panel);
 }
-[data-testid="stExpander"] summary{ font-family:var(--font-body); font-size:13.5px; }
+[data-testid="stExpander"] summary{ font-family:var(--font-body); font-size:13px; }
 [data-testid="stSidebar"]{ background:var(--sidebar); border-right:1px solid var(--border); }
-/* Streamlit's default alerts are blue/green/red fills that fight a warm-grey
-   palette. Neutral surface, with severity carried by a 2px left edge only. */
+/* Alerts: the tint lives on stAlertContainer, so severity is a left edge on paper */
 [data-testid="stAlert"]{
   border-radius:var(--r) !important; border:1px solid var(--border) !important;
-  background:var(--panel) !important; color:var(--text) !important;
-  border-left:2px solid var(--accent) !important;
+  background:var(--panel) !important; border-left:2px solid var(--accent) !important;
 }
-/* The tint lives on stAlertContainer, not on stAlert — styling only the outer
-   element left the blue/green wash in place. */
 [data-testid="stAlertContainer"]{ background:transparent !important; }
 [data-testid="stAlert"] p, [data-testid="stAlert"] div{ color:var(--text) !important; }
 [data-testid="stAlert"]:has([data-testid="stAlertContentSuccess"]){ border-left-color:var(--buy) !important; }
 [data-testid="stAlert"]:has([data-testid="stAlertContentError"]){ border-left-color:var(--sell) !important; }
 [data-testid="stAlert"]:has([data-testid="stAlertContentWarning"]){ border-left-color:var(--hold) !important; }
-[data-testid="stAlert"] a{ color:var(--accent) !important; }
-
-/* Section labels sit above their controls; a negative margin here collided with
-   the row above once the settings moved out of the sidebar. */
-.ta-label{
-  font-family:var(--font-mono); font-size:10.5px; letter-spacing:.08em;
-  text-transform:uppercase; color:var(--muted);
-  margin:calc(var(--s) * 2) 0 calc(var(--s) / 2);
-}
-code, pre, .stMarkdown code{ font-family:var(--font-mono) !important; font-size:12.5px; }
+[data-testid="stCaptionContainer"]{ color:var(--muted) !important; font-size:12px; }
+code, pre, .stMarkdown code{ font-family:var(--font-mono) !important; font-size:12px;
+  background:var(--panel-2) !important; }
 a{ color:var(--accent); text-decoration:none; }
 a:hover{ text-decoration:underline; }
 hr{ border-color:var(--border); }
@@ -872,10 +924,11 @@ def render_run_mode(default_model: str):
 def engine_badge_html() -> str:
     provs = "+".join(sorted({provider_for(m) for m in MODEL_CHOICES}))
     return (
-        "<div style='background:#10161F;border:1px solid #313D4E;border-radius:9px;"
-        "padding:8px 12px;margin-bottom:8px;font-family:var(--font-mono);font-size:12px'>"
-        "<span style='color:var(--muted);letter-spacing:.08em'>ENGINE</span>  "
-        f"<span style='color:var(--accent)'>{html.escape(provs)}</span>"
+        "<div style='background:var(--panel-2);border:1px solid var(--border);"
+        "border-radius:5px;padding:7px 11px;margin-bottom:10px;"
+        "font-family:var(--font-mono);font-size:11.5px'>"
+        "<span style='color:var(--faint);letter-spacing:.1em'>ENGINE</span>  "
+        f"<span style='color:var(--accent-dim)'>{html.escape(provs)}</span>"
         "<span style='color:var(--faint);font-size:10px'> · auto per model</span></div>")
 
 
@@ -921,7 +974,7 @@ def render_run_settings():
     r1, r2, r3 = st.columns([1, 1, 2])
     debate_rounds = r1.number_input("Debate rounds", 1, 5, 1)
     risk_rounds = r2.number_input("Risk rounds", 1, 5, 1)
-    run = r3.button("▶  Run analysis", type="primary", use_container_width=True)
+    run = r3.button("Run analysis", type="primary")
     return ticker, trade_date, selected, debate_rounds, risk_rounds, run
 
 

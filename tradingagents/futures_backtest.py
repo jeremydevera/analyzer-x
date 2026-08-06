@@ -15,6 +15,13 @@ Conventions, chosen to be pessimistic rather than flattering:
 * drawdown is measured MARK-TO-MARKET, including open-position loss, because
   that is what a venue liquidates on — realised-only drawdown flatters a
   strategy that holds through a deep dip
+* LIQUIDATION ENDS THE SIMULATION. Under isolated margin the venue force-closes
+  the position and the loss is capped at the margin: you cannot lose more than
+  you posted, and with nothing left you cannot place another trade. Earlier this
+  was only a flag on the result, so a 200x run reported a single stop-loss of
+  -$200.80 against a $10 margin — twenty times the whole account — and then
+  booked twelve more trades on money that no longer existed, finishing +$239.30
+  when the truth was -$10 on day one.
 """
 
 from __future__ import annotations
@@ -101,8 +108,9 @@ def run(candles, *, take_profit_pct: float, stop_loss_pct: float,
     peak = 0.0
     max_dd = 0.0
     worst_equity = margin
+    liquidated = False
     i = 0
-    while i < n_bars - 2:
+    while i < n_bars - 2 and not liquidated:
         entry_px = O[i + 1]
         if entry_px <= 0:
             i += 1
@@ -118,6 +126,22 @@ def run(candles, *, take_profit_pct: float, stop_loss_pct: float,
             equity = margin + realised + open_worst
             if equity < worst_equity:
                 worst_equity = equity
+            if equity <= 0:
+                # Force-closed. The loss is exactly what was left, so the account
+                # ends at zero rather than at a fictional negative, and the price
+                # is the one at which that happened — not the bar's low.
+                liq_px = entry_px * (1 + (-margin - realised) / notional)
+                liq_pnl = -(margin + realised)
+                realised += liq_pnl
+                worst_equity = 0.0
+                trades.append(Trade(
+                    n=len(trades) + 1, entry_at=T[i + 1], exit_at=T[j],
+                    entry_px=entry_px, exit_px=liq_px, reason="liquidated",
+                    net_return=liq_pnl / notional if notional else 0.0,
+                    pnl=liq_pnl, bars_held=j - (i + 1)))
+                liquidated = True
+                exit_i = j
+                break
             if realised + open_worst - peak < max_dd:
                 max_dd = realised + open_worst - peak
             open_best = (H[j] / entry_px - 1) * notional
@@ -130,6 +154,8 @@ def run(candles, *, take_profit_pct: float, stop_loss_pct: float,
                 exit_i, exit_px, reason = j, tp_px, "take-profit"
                 break
             j += 1
+        if liquidated:
+            break
         if exit_i < 0:
             exit_i = cap - 1
             if exit_i <= i:
@@ -145,7 +171,18 @@ def run(candles, *, take_profit_pct: float, stop_loss_pct: float,
         i = exit_i + 1
 
     wins = sum(1 for t in trades if t.pnl > 0)
+    # The benchmark is a real leveraged long facing the same path, so it can be
+    # liquidated too. Without this it was the raw price change times notional:
+    # +$228.92 against a $10 margin at 200x, a number no account could hold.
     bh_net = (C[-1] / O[1] - 1) - 2 * fee_per_side if n_bars > 1 else 0.0
+    bh_pnl = bh_net * notional
+    bh_liquidated = False
+    if n_bars > 1 and O[1] > 0 and notional > 0:
+        for low in L[1:]:
+            if margin + (low / O[1] - 1) * notional <= 0:
+                bh_liquidated = True
+                bh_pnl = -margin
+                break
     span = ((T[-1] - T[0]).total_seconds() / 86400) if n_bars > 1 else 0.0
     curve, running = [], margin
     for t in trades:
@@ -160,8 +197,8 @@ def run(candles, *, take_profit_pct: float, stop_loss_pct: float,
         n_sl=sum(1 for t in trades if t.reason == "stop-loss"),
         n_open=sum(1 for t in trades if t.reason == "open at end"),
         max_drawdown=max_dd, worst_equity=worst_equity,
-        liquidated=worst_equity <= 0,
-        buy_hold_pnl=bh_net * notional, bars=n_bars, span_days=span,
+        liquidated=liquidated,
+        buy_hold_pnl=bh_pnl, bars=n_bars, span_days=span,
         equity_curve=curve)
 
 
@@ -214,6 +251,7 @@ def run_positions(candles, positions, *, margin: float = 100.0,
     peak = 0.0
     max_dd = 0.0
     worst = margin
+    liquidated = False
     prev_pos = 0.0
     trades: list = []
     open_at = None
@@ -244,12 +282,28 @@ def run_positions(candles, positions, *, margin: float = 100.0,
             max_dd = realised - peak
         if margin + realised < worst:
             worst = margin + realised
-    if prev_pos > 0:
+        if margin + realised <= 0:
+            # Force-closed: cap the loss at the margin and stop. See run().
+            realised = -margin
+            worst = 0.0
+            liquidated = True
+            if open_at is not None:
+                trades.append(Trade(
+                    n=len(trades) + 1, entry_at=open_at, exit_at=T[i + 1],
+                    entry_px=open_px, exit_px=O[i + 1], reason="liquidated",
+                    net_return=-1.0, pnl=-(margin), bars_held=0))
+            break
+    if prev_pos > 0 and not liquidated:
         # A position still open at the end must still pay to get out, or a
         # buy-and-hold strategy shows one fee less than the benchmark it is
         # measured against and appears to beat itself.
+        #
+        # Skipped after a liquidation: the venue has already closed the position
+        # and the loss is capped at the margin, so charging an exit fee on top
+        # pushed the result to -$10.40 against a $10 margin — reintroducing the
+        # very "lost more than you posted" bug this rule exists to prevent.
         realised -= prev_pos * fee_per_side * notional
-    if prev_pos > 0 and open_at is not None:
+    if prev_pos > 0 and open_at is not None and not liquidated:
         net = (C[n - 1] / open_px - 1) - 2 * fee_per_side
         trades.append(Trade(
             n=len(trades) + 1, entry_at=open_at, exit_at=T[n - 1],
@@ -263,6 +317,13 @@ def run_positions(candles, positions, *, margin: float = 100.0,
     # single open-to-close return here made buy & hold appear to lose to itself,
     # because summed arithmetic returns differ from one compounded return.
     bh_net = sum(O[i + 2] / O[i + 1] - 1 for i in range(n - 2)) - 2 * fee_per_side
+    bh_pnl = bh_net * notional
+    if n > 1 and O[1] > 0 and notional > 0:
+        # Same rule as run(): a leveraged benchmark can be liquidated.
+        for px_low in C[1:n]:
+            if margin + (px_low / O[1] - 1) * notional <= 0:
+                bh_pnl = -margin
+                break
     span = (T[-1] - T[0]).total_seconds() / 86400
     curve, running = [], margin
     for t in trades:
@@ -273,8 +334,8 @@ def run_positions(candles, positions, *, margin: float = 100.0,
         pnl=realised, return_pct=(realised / margin * 100) if margin else 0.0,
         win_rate=(wins / len(trades) * 100) if trades else 0.0,
         n_tp=0, n_sl=0, n_open=sum(1 for t in trades if t.reason == "open at end"),
-        max_drawdown=max_dd, worst_equity=worst, liquidated=worst <= 0,
-        buy_hold_pnl=bh_net * notional, bars=n, span_days=span,
+        max_drawdown=max_dd, worst_equity=worst, liquidated=liquidated,
+        buy_hold_pnl=bh_pnl, bars=n, span_days=span,
         equity_curve=curve)
 
 

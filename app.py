@@ -1522,6 +1522,13 @@ def render_trade_tab() -> None:
                        f"stops opening new ones. At a {sl:.2f}% stop that is "
                        f"about ${mx * min(margin * lev, cap) * sl / 100:,.2f} "
                        f"of realised loss before it halts.")
+        if lev > 1 and sl >= 100 / lev:
+            st.error(
+                f"**These settings cannot work.** At {lev:.0f}x, a "
+                f"{100/lev:.2f}% adverse move wipes the margin, but your stop "
+                f"sits at {sl:.1f}% — you would be liquidated long before it "
+                f"fires, losing the whole ${margin:,.2f}. Either drop leverage "
+                f"below {100/sl:.0f}x or tighten the stop under {100/lev:.2f}%.")
         st.caption(f"Notional at these settings: "
                    f"${min(margin * lev, cap):,.2f}  ·  a {sl:.0f}% stop costs "
                    f"{sl * lev:.0f}% of margin.")
@@ -2011,10 +2018,22 @@ def render_trade_tab() -> None:
                               f"of ${res.margin:,.0f}",
                               delta_color="inverse" if res.liquidated else "off")
                     if res.liquidated:
+                        _t = res.trades[-1] if res.trades else None
                         st.error(
-                            f"At {lev:.0f}x this configuration would have been "
-                            f"liquidated — the drawdown consumed the whole margin. "
-                            f"Lower the leverage or widen the stop.")
+                            f"**LIQUIDATED at {lev:.0f}x.** The account was wiped "
+                            f"out"
+                            + (f" on trade {len(res.trades)}, "
+                               f"{_t.entry_at:%Y-%m-%d %H:%M} to "
+                               f"{_t.exit_at:%Y-%m-%d %H:%M}" if _t else "")
+                            + f", and the simulation stops there — with nothing "
+                            f"left there are no further trades. You lose exactly "
+                            f"your ${res.margin:,.2f} margin, never more: MEXC "
+                            f"force-closes the position instead.\n\n"
+                            f"At {lev:.0f}x, an adverse move of about "
+                            f"{100 / max(lev, 1):.2f}% is enough — your "
+                            f"{sl:.0f}% stop is far beyond that, so it never gets "
+                            f"the chance to fire. Lower the leverage until the "
+                            f"stop sits inside the margin.")
                     elif not cmp_["beats_hold"]:
                         st.warning(
                             f"Simply holding made more "

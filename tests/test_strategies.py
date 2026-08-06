@@ -276,3 +276,54 @@ def test_a_tie_is_not_reported_as_beating_hold():
     res, fund = sg.backtest("buy_hold", candles, margin=100.0, leverage=1.0)
     cmp_ = sg.hold_comparison(res, fund, candles, None)
     assert cmp_["beats_hold"] is False, "buy and hold cannot beat itself"
+
+
+# ============ nothing may be earned after liquidation =======================
+def test_funding_stops_at_liquidation():
+    """exposure_series re-runs the simulation UNLEVERED to find when a position
+    was held, and an unlevered run is never liquidated — so it reported exposure
+    for the whole window. At 200x that credited 166 days of funding to an account
+    wiped out on day 23, turning a -$10 total into +$195.83.
+    """
+    candles = frame([100 - i * 0.5 for i in range(120)])
+    funding = [{"settle_ms": int(candles["Date"].iloc[i].timestamp() * 1000),
+                "rate": -0.001} for i in range(5, 115, 5)]
+    res, fund = sg.backtest("barrier_harvest", candles, margin=10.0,
+                            leverage=200, funding=funding)
+    assert res.liquidated is True
+    assert fund == pytest.approx(0.0, abs=0.51), \
+        "funding must stop when the account does"
+    cmp_ = sg.hold_comparison(res, fund, candles, funding)
+    assert cmp_["total"] >= -10.0 - 1e-6, "total worse than the margin posted"
+    assert cmp_["hold_total"] >= -10.0 - 1e-6, \
+        "the benchmark is a real long facing the same move"
+
+
+def test_a_surviving_run_still_earns_funding_for_the_whole_window():
+    candles = frame([100 + i * 0.05 for i in range(200)])
+    funding = [{"settle_ms": int(candles["Date"].iloc[i].timestamp() * 1000),
+                "rate": -0.0002} for i in range(5, 195, 10)]
+    res, fund = sg.backtest("barrier_harvest", candles, margin=100.0,
+                            leverage=1, funding=funding)
+    assert res.liquidated is False
+    assert fund > 0.0, "a surviving long is still paid"
+
+
+@pytest.mark.parametrize("lev", [1, 3, 10, 50, 125, 200])
+def test_no_leverage_can_lose_more_than_the_margin(lev):
+    """The property that matters, across the whole leverage range.
+
+    This exposed a third instance of the same bug: funding is settled against the
+    margin balance, so on a contract where longs PAY, the payments liquidate the
+    account once they exhaust it. Applying funding as a lump sum after the price
+    simulation let the combined figure pass the margin — a 3x run reporting a loss
+    larger than the money posted. It is capped now; see _cap_funding_at_margin for
+    why a cap is not the same as modelling it properly.
+    """
+    candles = frame([100 - i * 0.4 for i in range(150)])
+    funding = [{"settle_ms": int(candles["Date"].iloc[i].timestamp() * 1000),
+                "rate": 0.001} for i in range(5, 145, 5)]      # longs PAY here
+    res, fund = sg.backtest("barrier_harvest", candles, margin=10.0,
+                            leverage=lev, funding=funding)
+    assert res.pnl + fund >= -10.0 - 1e-6, \
+        f"{lev}x lost more than the margin: {res.pnl + fund}"

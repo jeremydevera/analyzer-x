@@ -15,8 +15,11 @@ same fees. A strategy that cannot beat holding is reported as not beating it.
 from __future__ import annotations
 
 import dataclasses
+import logging
 
 from tradingagents import futures_backtest as fbt
+
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -231,9 +234,46 @@ def backtest(key: str, candles, *, margin: float, leverage: float,
                                 fee_per_side=fee_per_side, label=strat.name)
     fund = 0.0
     if funding:
-        fund = fbt.funding_pnl(candles, exposure_series(key, candles, p),
-                               funding, notional=res.notional)
+        exposure = exposure_series(key, candles, p)
+        if res.liquidated and res.trades:
+            # No account, no position, no funding. exposure_series re-runs the
+            # simulation UNLEVERED to find when a position was held, and an
+            # unlevered run is never liquidated — so it happily reported exposure
+            # for the whole window. At 200x that credited 166 days of funding to
+            # an account wiped out on day 23, turning a -$10 total into +$195.83.
+            end = res.trades[-1].exit_at
+            exposure = [e if t <= end else 0.0
+                        for e, t in zip(exposure, candles["Date"])]
+        fund = fbt.funding_pnl(candles, exposure, funding,
+                               notional=res.notional)
+        fund = _cap_funding_at_margin(res, fund)
     return res, fund
+
+
+def _cap_funding_at_margin(result, fund: float) -> float:
+    """A funding bill cannot exceed what is in the account.
+
+    Funding is settled against the margin balance, so on a contract where longs
+    PAY, the payments themselves liquidate the account once they exhaust it. This
+    engine applies funding as a lump sum after the price simulation, so nothing
+    stopped the combined figure from going past the margin — a 3x run reported a
+    total worse than the money posted, which no exchange can produce.
+
+    This is a CAP, not a full model. Properly, funding belongs inside the equity
+    path: an account being drained by funding is liquidated EARLIER than the price
+    alone would do it, and the trades after that point should not exist either. So
+    treat a capped result as an upper bound on what you would have kept, not as a
+    faithful replay. It is flagged in the log so the difference is visible.
+    """
+    floor = -result.margin - result.pnl
+    if fund < floor:
+        logger.warning(
+            "funding of %.4f would take the account past its %.2f margin; capped "
+            "at %.4f. Funding alone would have liquidated this position earlier "
+            "than the price did, so the trade list is optimistic.",
+            fund, result.margin, floor)
+        return floor
+    return fund
 
 
 def compare(candles, *, margin: float, leverage: float,
@@ -454,8 +494,19 @@ def hold_comparison(result, strategy_funding: float, candles,
     """
     hold_funding = 0.0
     if funding:
-        hold_funding = fbt.funding_pnl(candles, [1.0] * len(candles), funding,
+        hold_exposure = [1.0] * len(candles)
+        if result.liquidated and result.trades:
+            # Buy and hold at this leverage is a real long facing the same move,
+            # so it stops earning funding at the same point. Paying the benchmark
+            # for 143 days it could not have survived would understate the
+            # strategy instead of overstating it — wrong either way.
+            end = result.trades[-1].exit_at
+            hold_exposure = [1.0 if t <= end else 0.0 for t in candles["Date"]]
+        hold_funding = fbt.funding_pnl(candles, hold_exposure, funding,
                                        notional=result.notional)
+        # The benchmark's balance is finite too.
+        floor = -result.margin - result.buy_hold_pnl
+        hold_funding = max(hold_funding, floor)
     total = result.pnl + strategy_funding
     hold_total = result.buy_hold_pnl + hold_funding
     eps = max(abs(result.notional), 1.0) * 1e-9

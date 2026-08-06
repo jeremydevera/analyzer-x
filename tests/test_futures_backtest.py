@@ -134,3 +134,107 @@ def test_sweep_orders_by_pnl_and_flags_the_benchmark():
     assert len(s) == 6
     assert s == sorted(s, key=lambda d: -d["pnl"])
     assert all("beats_buy_hold" in d for d in s)
+
+
+# ============ liquidation must end the simulation ===========================
+# Reported by the operator after setting 200x: a single stop-loss showed -$200.80
+# against a $10 margin — 20x the whole account — and the run then booked twelve
+# more trades on money that no longer existed, finishing +$239.30 when the truth
+# was -$10 on day one.
+def _falling(n=60, start=100.0, step=-1.0):
+    import pandas as pd
+    rows = []
+    for i in range(n):
+        px = start + step * i
+        rows.append({"Date": datetime(2026, 1, 1) + timedelta(hours=4 * i),
+                     "Open": px, "High": px + 0.1, "Low": px - 0.1, "Close": px})
+    return pd.DataFrame(rows)
+
+
+def test_a_loss_can_never_exceed_the_margin():
+    """Isolated margin caps the loss at what you posted. Anything larger is a
+    number the exchange could not produce."""
+    for lev in (1, 3, 20, 50, 200):
+        r = bt.run(_falling(), take_profit_pct=2.0, stop_loss_pct=10.0,
+                    margin=10.0, leverage=lev)
+        assert r.pnl >= -10.0 - 1e-9, f"{lev}x lost more than the margin: {r.pnl}"
+
+
+def test_liquidation_stops_the_run():
+    r = bt.run(_falling(), take_profit_pct=2.0, stop_loss_pct=10.0,
+                margin=10.0, leverage=200)
+    assert r.liquidated is True
+    assert len(r.trades) == 1, "there is no money left for a second trade"
+    assert r.trades[0].reason == "liquidated"
+    assert r.pnl == pytest.approx(-10.0)
+    assert r.worst_equity == 0.0, "the account ends at zero, not negative"
+
+
+def test_the_liquidation_price_is_where_equity_hit_zero():
+    """Not the bar's low: the venue closes you at the point the margin is gone."""
+    r = bt.run(_falling(), take_profit_pct=2.0, stop_loss_pct=50.0,
+                margin=10.0, leverage=10)
+    t = r.trades[0]
+    assert t.reason == "liquidated"
+    # 10x: equity is gone after roughly a 10% adverse move
+    assert t.exit_px == pytest.approx(t.entry_px * 0.9, rel=1e-6)
+
+
+def test_low_leverage_is_untouched_by_the_rule():
+    """The stop must still be what ends a trade when the margin can absorb it.
+
+    A shallow fall: the earlier version of this test used a 59% decline, where a
+    3x account genuinely IS liquidated by repeated stops — the rule was right and
+    the test's premise was wrong.
+    """
+    r = bt.run(_falling(30, step=-0.4), take_profit_pct=2.0, stop_loss_pct=10.0,
+               margin=10.0, leverage=3)
+    assert r.liquidated is False
+    assert r.trades[0].reason == "stop-loss"
+    assert r.pnl > -10.0
+
+
+def test_the_exposure_engine_also_stops_at_zero():
+    candles = _falling(80)
+    positions = [1.0] * len(candles)
+    r = bt.run_positions(candles, positions, margin=10.0, leverage=200)
+    assert r.liquidated is True
+    assert r.pnl == pytest.approx(-10.0)
+    assert r.worst_equity == 0.0
+
+
+def test_liquidated_is_a_fact_not_an_inference():
+    """It used to be derived from worst_equity, so a run could report liquidated
+    while still handing back profits earned afterwards."""
+    r = bt.run(_falling(), take_profit_pct=2.0, stop_loss_pct=10.0,
+                margin=10.0, leverage=200)
+    assert r.liquidated and r.pnl == pytest.approx(-10.0)
+    r2 = bt.run(_falling(), take_profit_pct=2.0, stop_loss_pct=10.0,
+                 margin=10_000.0, leverage=1)
+    assert r2.liquidated is False
+
+
+def test_the_benchmark_can_be_liquidated_too():
+    """Buy and hold at 200x is a real leveraged long facing the same path. It was
+    reported as the raw price change times notional: +$228.92 against a $10
+    margin, a number no account could hold."""
+    candles = _falling(60)
+    r = bt.run(candles, take_profit_pct=2.0, stop_loss_pct=10.0,
+               margin=10.0, leverage=200)
+    assert r.buy_hold_pnl == pytest.approx(-10.0), \
+        "a 200x long cannot lose more, nor survive, this path"
+    # unlevered, the same fall is survivable and the benchmark is a real number
+    r2 = bt.run(candles, take_profit_pct=2.0, stop_loss_pct=10.0,
+                margin=10_000.0, leverage=1)
+    assert r2.buy_hold_pnl < 0 and r2.buy_hold_pnl > -10_000.0
+
+
+def test_a_rising_path_leaves_the_benchmark_alone():
+    import pandas as pd
+    rows = [{"Date": datetime(2026, 1, 1) + timedelta(hours=4 * i),
+             "Open": 100 + i * 0.5, "High": 100 + i * 0.5 + 0.2,
+             "Low": 100 + i * 0.5 - 0.05, "Close": 100 + i * 0.5}
+            for i in range(60)]
+    r = bt.run(pd.DataFrame(rows), take_profit_pct=2.0, stop_loss_pct=10.0,
+               margin=100.0, leverage=3)
+    assert r.buy_hold_pnl > 0, "a 3x long through a steady rise is not liquidated"

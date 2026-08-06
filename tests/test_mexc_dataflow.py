@@ -1241,3 +1241,65 @@ def test_the_cache_never_holds_a_chart_stale_for_long():
     assert fx._KLINE_TTL_CAP == 300
     for interval, ttl in fx._KLINE_TTL.items():
         assert ttl <= fx._KLINE_TTL_CAP, interval
+
+
+# ============ kline paging ==================================================
+def test_klines_pages_past_the_exchange_ceiling(monkeypatch):
+    """MEXC serves at most 2001 candles per request, silently. Asking for 5000 gave
+    2001 and a backtest that quietly covered a quarter of the requested history."""
+    import pandas as pd
+
+    fx.clear_kline_cache()
+    calls = []
+
+    def fake_page(symbol, interval, limit, end):
+        calls.append((limit, end))
+        # 2000 candles ending at `end`, one per minute
+        times = [end - 60 * i for i in range(limit)][::-1]
+        return pd.DataFrame({
+            "Date": pd.to_datetime(times, unit="s", utc=True).tz_localize(None),
+            "Open": [1.0] * limit, "High": [1.0] * limit, "Low": [1.0] * limit,
+            "Close": [1.0] * limit, "Volume": [0.0] * limit})
+
+    monkeypatch.setattr(fx, "_klines_page", fake_page)
+    out = fx.klines("SPX500_USDT", "Min1", 5000)
+    assert len(calls) == 3, f"5000 needs three pages, made {len(calls)}"
+    assert len(out) == 5000
+    assert out["Date"].is_monotonic_increasing, "pages must be stitched in order"
+    assert out["Date"].duplicated().sum() == 0, "overlaps must be dropped"
+
+
+def test_paging_stops_when_the_history_runs_out(monkeypatch):
+    """A young contract has less history than the window; the loop must end rather
+    than request the same page forever."""
+    import pandas as pd
+
+    fx.clear_kline_cache()
+    calls = []
+
+    def short_page(symbol, interval, limit, end):
+        calls.append(end)
+        if len(calls) > 1:
+            return None                      # nothing older exists
+        times = [end - 60 * i for i in range(500)][::-1]
+        return pd.DataFrame({
+            "Date": pd.to_datetime(times, unit="s", utc=True).tz_localize(None),
+            "Open": [1.0] * 500, "High": [1.0] * 500, "Low": [1.0] * 500,
+            "Close": [1.0] * 500, "Volume": [0.0] * 500})
+
+    monkeypatch.setattr(fx, "_klines_page", short_page)
+    out = fx.klines("SPX500_USDT", "Min1", 5000)
+    assert len(out) == 500
+    assert len(calls) <= 2, "must not spin on an exhausted history"
+
+
+def test_a_small_request_does_not_page(monkeypatch):
+    fx.clear_kline_cache()
+    pages = []
+    monkeypatch.setattr(fx, "_klines_page",
+                        lambda *a, **k: pages.append(1) or None)
+    payload = {"data": {"time": [1, 2], "open": [1, 1], "high": [2, 2],
+                        "low": [0.5, 0.5], "close": [1.5, 1.5], "vol": [1, 1]}}
+    monkeypatch.setattr(fx, "_get_public", lambda url: payload)
+    fx.klines("SPX500_USDT", "Min5", 300)
+    assert pages == [], "300 bars is one plain request, no paging"

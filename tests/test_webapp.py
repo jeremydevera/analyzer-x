@@ -441,11 +441,15 @@ def test_neither_tab_does_the_other_tab_s_job():
     trade = strings_in(app.render_trade_tab)
     backtest = strings_in(app.render_backtest_tab)
 
+    # Stable markers, not button labels: the run button's text is now built from
+    # the number of combinations selected ("Run 6 backtests"), so asserting a
+    # literal made this test fail on a rename rather than on a real regression.
     assert "Run auto trade" in trade
     assert "Run auto trade" not in backtest, "the backtest tab must not start the bot"
-    assert "Run backtest" in backtest
-    assert "Run backtest" not in trade, "the trade tab must not run simulations"
-    assert "Compare all 6" in backtest and "Compare all 6" not in trade
+    assert "Results by approach" in backtest
+    assert "Timeframes to test" in backtest
+    assert "Results by approach" not in trade, "the trade tab must not simulate"
+    assert "Compare all 6" not in trade
     # and the backtest tab must say it changes nothing
     assert "changes your bot" in backtest or "changes nothing" in backtest
 
@@ -463,3 +467,50 @@ def test_the_backtest_tab_never_saves_the_bot_config():
     saves = [c for c in calls
              if isinstance(c.func, ast.Attribute) and c.func.attr in ("save",)]
     assert not saves, "the backtest tab must never call cfg.save()"
+
+
+# ============ the backtest matrix ===========================================
+def test_the_backtest_tab_offers_a_matrix_not_a_single_run():
+    """Asked for: checkboxes to pick which timeframes and which approaches to test,
+    a select-all, and results grouped by approach. Also: the tab previously had TWO
+    'Bars' pickers and only the second was wired to anything."""
+    import inspect
+
+    import app
+
+    src = inspect.getsource(app.render_backtest_tab)
+    assert "Select all timeframes" in src
+    assert "Select all approaches" in src
+    assert "Results by approach" in src
+    assert src.count('selectbox("History"') == 1, "one history picker, not two"
+    assert 'selectbox("Bars"' not in src, "the duplicate dead Bars picker is gone"
+    assert "5000" in src, "5,000 bars must be offered"
+
+
+def test_select_all_writes_the_individual_keys():
+    """Streamlit honours `value=` only when a keyed widget is first created; after
+    that session state wins. So a select-all that merely passed a new `value` did
+    nothing — the boxes never changed. It must write the keys itself."""
+    import inspect
+
+    import app
+
+    src = inspect.getsource(app.render_backtest_tab)
+    assert "on_change=_apply_all_tf" in src
+    assert "on_change=_apply_all_ap" in src
+    assert 'st.session_state[f"bt_tf_{_tf}"]' in src
+    assert 'st.session_state[f"bt_ap_{_k}"]' in src
+
+
+def test_the_matrix_aligns_windows_by_default():
+    """5,000 bars is 3.5 days on Min1 and 189 on Day1, so without alignment each row
+    covers a different period and the winner is whoever drew the kinder window."""
+    import inspect
+
+    import app
+
+    src = inspect.getsource(app.render_backtest_tab)
+    assert "Compare over the same dates" in src
+    assert "value=True" in src, "alignment must default on"
+    assert "not comparable" in src, "and say so when it is off"
+    assert "_limiter" in src, "and name the timeframe that limits the window"

@@ -793,12 +793,35 @@ def list_contracts(quote: str = "USDT") -> list[dict]:
 # while the caption claimed it was the last price.
 _KLINE_CACHE: dict = {}
 _KLINE_TTL_CAP = 300
+_KLINE_PAGE = 2000            # MEXC's per-request ceiling is 2001; stay under it
 _KLINE_TTL = {"Min1": 30, "Min5": 150, "Min15": 300, "Min30": 300,
               "Min60": 300, "Hour4": 300, "Day1": 300}
 
 
 def clear_kline_cache() -> None:
     _KLINE_CACHE.clear()
+
+
+def _klines_page(symbol: str, interval: str, limit: int, end: int):
+    """One page of candles ending at ``end`` (unix seconds). No caching."""
+    import pandas as pd
+
+    per = {"Min1": 60, "Min5": 300, "Min15": 900, "Min30": 1800,
+           "Min60": 3600, "Hour4": 14400, "Day1": 86400}.get(interval, 300)
+    url = (f"{BASE}/api/v1/contract/kline/{urllib.parse.quote(symbol)}?"
+           + urllib.parse.urlencode({"interval": interval,
+                                     "start": end - per * limit, "end": end}))
+    d = (_get_public(url).get("data") or {})
+    if not d.get("time"):
+        return None
+    return pd.DataFrame({
+        "Date": pd.to_datetime(d["time"], unit="s", utc=True).tz_localize(None),
+        "Open": [float(x) for x in d["open"]],
+        "High": [float(x) for x in d["high"]],
+        "Low": [float(x) for x in d["low"]],
+        "Close": [float(x) for x in d["close"]],
+        "Volume": [float(x) for x in d.get("vol", [0] * len(d["time"]))],
+    })
 
 
 def klines(symbol: str, interval: str = "Min5", limit: int = 300):
@@ -815,6 +838,33 @@ def klines(symbol: str, interval: str = "Min5", limit: int = 300):
     if hit and now - hit[0] < min(_KLINE_TTL.get(interval, 150),
                                  _KLINE_TTL_CAP):
         return hit[1].copy()
+
+    # MEXC returns at most 2001 candles per request, silently — asking for 5000
+    # gave 2001 and a backtest that quietly covered a quarter of the requested
+    # history. Page backwards through time when more than that is wanted.
+    if limit > _KLINE_PAGE:
+        frames, cursor_end = [], int(time.time())
+        remaining = limit
+        while remaining > 0:
+            chunk = min(_KLINE_PAGE, remaining)
+            part = _klines_page(symbol, interval, chunk, cursor_end)
+            if part is None or part.empty:
+                break
+            frames.append(part)
+            oldest = int(part["Date"].iloc[0].timestamp())
+            if oldest >= cursor_end:
+                break                       # no progress: the history ends here
+            cursor_end = oldest - 1
+            remaining -= len(part)
+            if len(part) < chunk:
+                break                       # exchange has no more history
+        if not frames:
+            raise MexcFuturesError(f"no {interval} candles for {symbol}")
+        out = pd.concat(reversed(frames), ignore_index=True)
+        out = out.drop_duplicates(subset="Date").sort_values("Date")
+        out = out.tail(limit).reset_index(drop=True)
+        _KLINE_CACHE[key] = (now, out)
+        return out.copy()
 
     end = int(time.time())
     per = {"Min1": 60, "Min5": 300, "Min15": 900, "Min30": 1800,

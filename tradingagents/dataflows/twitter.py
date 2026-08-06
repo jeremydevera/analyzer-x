@@ -42,7 +42,7 @@ CREDITS_PER_RUN = CREDITS_PER_TWEET * TWEETS_PER_PAGE
 _UA = "tradingagents/0.3 (+https://github.com/TauricResearch/TradingAgents)"
 # Raised from 15s: the endpoint occasionally stalls well past its ~2s norm, and a
 # single stall used to cost the whole source.
-_TIMEOUT = 30.0
+_TIMEOUT = 45.0
 DEFAULT_LIMIT = 30
 # A page returns at most 20 posts; two pages cover the default limit. Each page is
 # billed, so this also bounds spend when a cursor never reports exhaustion.
@@ -151,7 +151,8 @@ def _build_query(terms: str, start_date: str | None, end_date: str | None,
     return " ".join(parts)
 
 
-def search_terms(symbol: str, display_name: str | None = None) -> str:
+def search_terms(symbol: str, display_name: str | None = None,
+                 extra_terms: list[str] | None = None) -> str:
     """Search fragment for a coin: its cashtag, plus its name when that adds reach.
 
     Measured on $XPLK: the cashtag alone returned 4 posts, while adding the
@@ -159,15 +160,26 @@ def search_terms(symbol: str, display_name: str | None = None) -> str:
     quoted so it matches as a phrase, and it is skipped when it merely repeats or
     extends the symbol ("PIPEDOG"/"pipedog", "XPLK Token"), where it would add no
     reach and would reintroduce the bare-symbol noise the cashtag avoids.
+
+    ``extra_terms`` are user-supplied keywords, OR'd in after the automatic
+    terms. Multi-word terms are quoted so they match as phrases; a term that
+    duplicates an automatic one is dropped.
     """
     cashtag = f"${symbol.strip().upper()}"
+    parts = [cashtag]
     name = (display_name or "").strip()
-    if not name:
-        return cashtag
-    words = name.upper().split()
-    if not words or words[0] == symbol.strip().upper():
-        return cashtag
-    return f'{cashtag} OR "{name}"'
+    if name:
+        words = name.upper().split()
+        if words and words[0] != symbol.strip().upper():
+            parts.append(f'"{name}"')
+    for term in extra_terms or []:
+        term = term.strip()
+        if not term:
+            continue
+        rendered = f'"{term}"' if " " in term else term
+        if rendered.upper() not in (p.upper() for p in parts):
+            parts.append(rendered)
+    return " OR ".join(parts)
 
 
 def _is_retweet(tweet: dict, body: str) -> bool:
@@ -248,10 +260,12 @@ def _search_pages(query: str, key: str, timeout: float, limit: int,
             params["cursor"] = cursor
 
         payload = None
-        # Two attempts per page. The endpoint intermittently answers a working
-        # query with no results, and it occasionally stalls past the timeout —
-        # measured latency is 1.5-1.9s, so a timeout is a blip, not an outage.
-        for attempt in (1, 2):
+        # Up to three attempts per first page. The endpoint intermittently
+        # answers a working query with no results, and it stalls past the
+        # timeout more often on broad queries (user keywords with common
+        # phrases return big pages) — measured latency is 1.5-1.9s normally,
+        # so a stall is worth retrying twice before dropping the source.
+        for attempt in (1, 2, 3):
             try:
                 payload = _request(params, key, timeout)
                 last_error = None
@@ -261,11 +275,15 @@ def _search_pages(query: str, key: str, timeout: float, limit: int,
                 logger.warning("Twitter %s page %d attempt %d failed: %s",
                                label, page, attempt, exc)
                 payload = None
-            if payload is not None and _tweets_of(payload):
+                if page == 1 and attempt < 3:
+                    time.sleep(_RETRY_SLEEP)
+                    continue
                 break
-            if attempt == 1 and page == 1:
-                # Only the first page is worth retrying for emptiness; a later
-                # page coming back empty just means the results ran out.
+            if _tweets_of(payload):
+                break
+            if page == 1 and attempt == 1:
+                # Only the first page is worth retrying for emptiness — once; a
+                # later page coming back empty means the results ran out.
                 time.sleep(_RETRY_SLEEP)
             else:
                 break

@@ -81,7 +81,8 @@ def _maybe_twitter_block(ticker: str, start_date: str, end_date: str) -> str:
     # never used — on $AEON it dragged in anime fandom posts — but the quoted
     # *name* is what people actually write: $XPLK alone returned 4 posts where
     # '$XPLK OR "xPayLink"' returned 17.
-    terms = search_terms(_cashtag(ticker), config.get("asset_display_name"))
+    terms = search_terms(_cashtag(ticker), config.get("asset_display_name"),
+                         extra_terms=config.get("twitter_extra_terms"))
     return fetch_twitter_posts(
         terms,
         start_date=twitter_window_start(start_date, config.get("asset_listed_date")),

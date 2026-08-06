@@ -157,7 +157,28 @@ def test_retries_a_transport_error_then_succeeds(monkeypatch):
     assert "recovered" in out
 
 
-def test_reports_unavailable_only_after_the_retry_also_fails(monkeypatch):
+def test_recovers_when_two_stalls_precede_a_success(monkeypatch):
+    """Broad user-keyword queries stall more often — two blips must not lose
+    the source."""
+    monkeypatch.setenv("TWITTERAPI_IO_KEY", "k")
+    monkeypatch.setattr(twitter, "_RETRY_SLEEP", 0.0)
+    calls = []
+
+    def flaky(params, key, timeout):
+        calls.append(1)
+        if len(calls) <= 2:
+            raise TimeoutError("The read operation timed out")
+        return {"tweets": [{"text": "third time lucky", "createdAt": "2026-07-31",
+                            "likeCount": 1, "retweetCount": 0,
+                            "author": {"userName": "u"}}]}
+
+    with patch.object(twitter, "_request", side_effect=flaky):
+        out = twitter.fetch_twitter_posts("$XPLK", include_replies=False)
+    assert len(calls) == 3
+    assert "third time lucky" in out
+
+
+def test_reports_unavailable_only_after_all_retries_fail(monkeypatch):
     monkeypatch.setenv("TWITTERAPI_IO_KEY", "k")
     monkeypatch.setattr(twitter, "_RETRY_SLEEP", 0.0)
     calls = []
@@ -168,7 +189,7 @@ def test_reports_unavailable_only_after_the_retry_also_fails(monkeypatch):
 
     with patch.object(twitter, "_request", side_effect=always_timeout):
         out = twitter.fetch_twitter_posts("$XPLK", include_replies=False)
-    assert len(calls) == 2
+    assert len(calls) == 3
     assert out.startswith("<twitter unavailable")
     assert "TimeoutError" in out
 
@@ -384,3 +405,15 @@ def test_retweets_are_dropped_client_side(monkeypatch):
     assert "@parrot" not in out
     assert "@wrapper" not in out
     assert "1 post" in out
+
+
+def test_search_terms_appends_extra_keywords():
+    from tradingagents.dataflows.twitter import search_terms
+    out = search_terms("XPLK", "xPayLink", extra_terms=["airdrop", "listing pump"])
+    assert out == '$XPLK OR "xPayLink" OR airdrop OR "listing pump"'
+
+
+def test_search_terms_extra_keywords_dedupe_and_blank():
+    from tradingagents.dataflows.twitter import search_terms
+    out = search_terms("XPLK", None, extra_terms=["", "  ", "$xplk", "moon"])
+    assert out == "$XPLK OR moon"

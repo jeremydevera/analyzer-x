@@ -168,6 +168,10 @@ TICKERS: dict[str, str] = {
     "AVAX-USD": "Avalanche",
 
     # International (exchange-suffixed, as Yahoo lists them)
+    # Philippine Stock Exchange. Yahoo carries no PSE data, so these route to
+    # the keyless `pse` vendor (phisix + TradingView) instead of yfinance.
+    "MER": "Manila Electric Company (Meralco) — PSE",
+    "MAEOY": "Manila Electric Company (Meralco) — US ADR",
     "0700.HK": "Tencent Holdings Ltd. (Hong Kong)",
     "9988.HK": "Alibaba Group (Hong Kong)",
     "7203.T": "Toyota Motor Corp. (Tokyo)",
@@ -206,6 +210,24 @@ def parse_ticker(label: str) -> str:
     return label.upper()
 
 
+# Symbols whose bare form belongs to a DIFFERENT company on Yahoo Finance than
+# the one a user here is likely to mean. Yahoo carries no Philippine Stock
+# Exchange data, so a PSE ticker typed on its own silently resolves to whatever
+# US/other listing shares those letters — analyzing the wrong company without
+# any error. Maps typed symbol -> (what Yahoo actually returns, what to use).
+CONFUSABLE: dict[str, tuple[str, str, str]] = {}
+
+
+def confusable_warning(symbol: str) -> str:
+    """Warning text when a typed symbol resolves to the wrong company, else ""."""
+    entry = CONFUSABLE.get((symbol or "").strip().upper())
+    if not entry:
+        return ""
+    wrong, use, why = entry
+    return (f"**{symbol.upper()}** on Yahoo Finance is **{wrong}**. {why} "
+            f"Use **{use}** ({label_for(use)}) to analyze this company.")
+
+
 def search(query: str) -> list[str]:
     """Curated labels matching `query` in the ticker OR company name (case-insensitive).
     Empty query returns the full list. Pure/testable."""
@@ -214,3 +236,20 @@ def search(query: str) -> list[str]:
     if not q:
         return opts
     return [o for o in opts if q in o.lower()]
+
+
+# Philippine Stock Exchange tickers. Yahoo has no PSE data (and a bare "MER"
+# there is an unrelated company), so these are routed to the `pse` vendor.
+PSE_TICKERS: frozenset[str] = frozenset({"MER"})
+
+
+def is_pse(symbol: str) -> bool:
+    """True when a symbol should be served by the PSE vendor, not yfinance."""
+    sym = (symbol or "").strip().upper()
+    base = sym.split(".")[0] if sym.endswith((".PS", ".PH", ".PSE")) else sym
+    return base in PSE_TICKERS
+
+
+def pse_vendor_overrides() -> dict:
+    """data_vendors entries that point price/indicator lookups at the PSE feed."""
+    return {"core_stock_apis": "pse", "technical_indicators": "pse"}

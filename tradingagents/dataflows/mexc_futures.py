@@ -1,0 +1,801 @@
+"""Signed MEXC futures (perpetual) client.
+
+Separate from ``mexc_trade.py`` because the futures venue is a different host, a
+different signing scheme, and carries leverage — a mistake here is amplified by
+whatever multiple the position uses. Everything that can spend money takes an
+explicit ``dry_run`` argument and defaults to refusing to trade.
+
+Credentials come from ``MEXC_API_KEY`` / ``MEXC_API_SECRET`` in the environment
+and are never accepted as function arguments, so a key cannot end up in a
+traceback, a log line, or shell history. Create the key with futures trading
+enabled, withdrawals DISABLED, and an IP allowlist.
+
+Signing (futures v1, different from spot): the signed payload is
+``accessKey + requestTime + parameterString`` where parameterString is the
+sorted query string for GET/DELETE, or the exact JSON body for POST. The result
+is HMAC-SHA256 hex, sent in the ``Signature`` header alongside ``ApiKey`` and
+``Request-Time``.
+
+NOTE ON ACCESS: MEXC has historically gated futures API order placement behind a
+per-account permission. A key without it authenticates fine and then fails on
+order submission. :func:`preflight` probes this explicitly so a bot discovers it
+before it thinks it has a position.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import hmac
+import json
+import logging
+import os
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+
+logger = logging.getLogger(__name__)
+
+BASE = "https://contract.mexc.com"
+_TIMEOUT = 20.0
+_RECV_WINDOW_MS = 10_000
+_UA = "tradingagents/0.3"
+
+# Order sides on MEXC futures: 1 open-long, 2 close-short, 3 open-short, 4 close-long
+SIDE_OPEN_LONG = 1
+SIDE_CLOSE_SHORT = 2
+SIDE_OPEN_SHORT = 3
+SIDE_CLOSE_LONG = 4
+# Order types: 1 limit, 5 market, 6 convert-to-market
+TYPE_LIMIT = 1
+TYPE_MARKET = 5
+# Margin mode: 1 isolated, 2 cross
+OPEN_ISOLATED = 1
+OPEN_CROSS = 2
+
+# Trigger-price basis for a resting stop. The backtest measures against MEXC's
+# own last-trade candles, so TRIGGER_LAST is the only basis that reproduces it —
+# fair and index price are manipulation-resistant but track a different series,
+# which makes them a different strategy rather than a safer version of this one.
+TRIGGER_LAST = 1
+TRIGGER_FAIR = 2
+TRIGGER_INDEX = 3
+# What the resting stop becomes once triggered.
+SL_MARKET = 0        # always exits; pays the spread
+SL_LIMIT = 1         # exits at exactly the price, or not at all
+# Whether the stop covers part of the position or all of it.
+VOL_PARTIAL = 1
+VOL_POSITION = 2
+
+
+# MEXC answers permission problems with HTTP 200 and a code in the body, so a
+# transport-level check never sees them. Each code maps to a specific checkbox
+# on the exchange's API-key page; a generic "forbidden" message sends people
+# hunting for the wrong setting.
+PERMISSION_CODES = {
+    701: ("read access",
+          "On MEXC: API Management -> edit this key -> enable **Read** access."),
+    703: ("trading information read",
+          "On MEXC: API Management -> edit this key -> enable "
+          "**Trading information / Read** (needed for positions and orders)."),
+    704: ("trading information write",
+          "On MEXC: API Management -> edit this key -> enable "
+          "**Trading information / Write** (needed to place orders)."),
+    705: ("withdrawal", "This key is being asked for a withdrawal scope — do "
+                        "NOT enable it; trading does not require withdrawals."),
+}
+# Codes that mean the credentials or signature are wrong, not the scopes.
+AUTH_CODES = {401, 402, 403, 1004, 2011}
+
+# MEXC fronts the futures API with an edge proxy that refuses the ORDER paths
+# outright for requests whose User-Agent looks like a scripted client — bare
+# ``Python-urllib/*`` and ``python-requests/*`` both get an HTML "Access Denied"
+# with HTTP 403, before the API (and therefore before any key check) sees them.
+# Reads are unaffected, which makes the failure look exactly like a missing
+# trade permission. It is not: the same request with this module's own
+# User-Agent is accepted. Detect it explicitly so nobody re-diagnoses this as a
+# key-scope problem and goes hunting on the wrong settings page.
+EDGE_BLOCK_REMEDY = (
+    "MEXC's edge proxy rejected the request before it reached the API. This "
+    "happens when the User-Agent identifies a scripted HTTP client. Send "
+    f"requests through this module (User-Agent {_UA!r}) rather than a bare "
+    "urllib/requests default, and check no proxy is rewriting the header.")
+
+
+
+class MexcFuturesError(RuntimeError):
+    """A futures request could not be made or was rejected by the exchange."""
+
+
+class MexcFuturesAuthFailed(MexcFuturesError):
+    """The key, the secret, the clock or the source IP is wrong.
+
+    Deliberately NOT a :class:`MexcFuturesForbidden` subclass, for the same
+    reason as :class:`MexcFuturesEdgeBlocked`: no checkbox on MEXC's API-key page
+    fixes a bad signature. Reporting these as a missing scope sent people to the
+    wrong settings screen — and it printed "missing scope: code None", because
+    there was no scope to name.
+    """
+
+    REMEDY = (
+        "MEXC rejected the credentials themselves, not their permissions. Check, "
+        "in this order: the secret was pasted in full (editing a key's scopes can "
+        "issue a NEW secret); this machine's clock is accurate to within a few "
+        "seconds; and the key's IP allowlist includes this machine's current "
+        "public IP. No permission setting will change this.")
+
+    def __init__(self, message: str, *, code=None):
+        super().__init__(message)
+        self.code = code
+        self.remedy = self.REMEDY
+
+
+class MexcFuturesEdgeBlocked(MexcFuturesError):
+    """Blocked by MEXC's edge proxy, never reaching the API.
+
+    Deliberately NOT a subclass of :class:`MexcFuturesForbidden`: this is not a
+    key-permission failure, and conflating the two is what sent an earlier
+    version of this code looking for a checkbox that was already ticked.
+    """
+
+    def __init__(self, path: str):
+        super().__init__(f"edge proxy denied {path} — {EDGE_BLOCK_REMEDY}")
+        self.path = path
+        self.remedy = EDGE_BLOCK_REMEDY
+
+
+class MexcFuturesForbidden(MexcFuturesError):
+    """Authenticated fine, but this key lacks a permission the call needs.
+
+    Carries the MEXC code, the missing scope, and the exact remedy so a caller
+    can tell the user which setting to change rather than "permission denied".
+    """
+
+    def __init__(self, message: str, code: int | None = None,
+                 scope: str | None = None, remedy: str | None = None):
+        super().__init__(message)
+        self.code = code
+        self.scope = scope
+        self.remedy = remedy
+
+
+def credentials() -> tuple[str | None, str | None]:
+    key = os.getenv("MEXC_API_KEY", "").strip() or None
+    secret = os.getenv("MEXC_API_SECRET", "").strip() or None
+    return key, secret
+
+
+def has_credentials() -> bool:
+    return all(credentials())
+
+
+def _param_string(params: dict | None, body: dict | list | None) -> str:
+    """The exact string that gets signed — sorted query, or verbatim JSON body."""
+    if body is not None:
+        # A list body (order/cancel takes an array of ids) has no keys to sort;
+        # sort_keys applies only to the dict case.
+        return json.dumps(body, separators=(",", ":"),
+                          sort_keys=isinstance(body, dict))
+    if not params:
+        return ""
+    return urllib.parse.urlencode(sorted(params.items()))
+
+
+def sign(key: str, secret: str, ts_ms: str,
+         params: dict | None = None,
+         body: dict | list | None = None) -> str:
+    """HMAC-SHA256 hex of ``key + timestamp + parameterString``."""
+    target = f"{key}{ts_ms}{_param_string(params, body)}"
+    return hmac.new(secret.encode(), target.encode(), hashlib.sha256).hexdigest()
+
+
+def _classify(code, msg: str, http_status: int | None = None):
+    """Turn an exchange code into the right exception, or None to pass through.
+
+    Both failure branches route through here. They used to classify
+    independently, and the HTTP branch discarded the code one line after reading
+    it, so every 401/403 became ``MexcFuturesForbidden`` with code, scope and
+    remedy all None — which ``preflight`` then rendered as the missing scope
+    "code None".
+    """
+    if code in PERMISSION_CODES:
+        scope, remedy = PERMISSION_CODES[code]
+        return MexcFuturesForbidden(
+            f"{msg} (code {code}) — missing scope: {scope}",
+            code=code, scope=scope, remedy=remedy)
+    if code in AUTH_CODES or "signature" in msg.lower() or "sign " in msg.lower():
+        return MexcFuturesAuthFailed(f"code {code or http_status}: {msg}",
+                                     code=code or http_status)
+    return None
+
+
+def _request(method: str, path: str, *, params: dict | None = None,
+             body: dict | list | None = None):
+    key, secret = credentials()
+    if not (key and secret):
+        raise MexcFuturesError(
+            "MEXC_API_KEY / MEXC_API_SECRET are not set in the environment.")
+    ts = str(int(time.time() * 1000))
+    sig = sign(key, secret, ts, params, body)
+    url = BASE + path
+    if params:
+        url += "?" + urllib.parse.urlencode(sorted(params.items()))
+    data = None
+    headers = {
+        "ApiKey": key,
+        "Request-Time": ts,
+        "Signature": sig,
+        "Recv-Window": str(_RECV_WINDOW_MS),
+        "User-Agent": _UA,
+    }
+    if body is not None:
+        data = _param_string(None, body).encode()
+        headers["Content-Type"] = "application/json"
+    req = urllib.request.Request(url, data=data, headers=headers, method=method)
+    try:
+        with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
+            raw = resp.read()
+    except urllib.error.HTTPError as exc:
+        raw = exc.read()
+        text = (raw or b"").decode("utf-8", "replace")
+        if exc.code == 403 and ("Access Denied" in text or "<HTML" in text.upper()):
+            raise MexcFuturesEdgeBlocked(path) from exc
+        try:
+            payload = json.loads(raw or b"{}")
+        except json.JSONDecodeError:
+            payload = {"message": text[:200]}
+        msg = str(payload.get("message") or payload.get("msg") or exc)
+        # The body carries the real code; exc.code is only the HTTP status.
+        code = payload.get("code")
+        if code is None and exc.code in AUTH_CODES:
+            code = exc.code
+        err = _classify(code, msg, http_status=exc.code)
+        if err is not None:
+            raise err from exc
+        if "permission" in msg.lower():
+            raise MexcFuturesForbidden(f"{exc.code}: {msg}") from exc
+        raise MexcFuturesError(f"{exc.code}: {msg}") from exc
+    except (OSError, urllib.error.URLError) as exc:
+        raise MexcFuturesError(f"transport failure: {exc}") from exc
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise MexcFuturesError("malformed response from MEXC") from exc
+    if not payload.get("success", False):
+        code = payload.get("code")
+        msg = payload.get("message") or payload.get("msg") or "rejected"
+        err = _classify(code, str(msg))
+        if err is not None:
+            raise err
+        raise MexcFuturesError(f"code {code}: {msg}")
+    return payload.get("data")
+
+
+def _get_public(url: str):
+    """Keyless GET that raises this module's exceptions, not urllib's.
+
+    The keyless helpers used to call ``urlopen`` bare, so they raised
+    ``urllib.error.HTTPError``. ``spx_bot.step()`` calls two of them outside any
+    handler, so a single transient 503 fell through to the catch-all, halted the
+    process, and left a levered position with no stop being monitored — while the
+    identical failure through ``_request`` would merely have been retried.
+    """
+    req = urllib.request.Request(url, headers={"User-Agent": _UA})
+    try:
+        with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
+            raw = resp.read()
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", "replace")
+        if exc.code == 403 and ("Access Denied" in body or "<HTML" in body.upper()):
+            raise MexcFuturesEdgeBlocked(url) from exc
+        raise MexcFuturesError(f"{exc.code}: {body[:200]}") from exc
+    except (OSError, urllib.error.URLError) as exc:
+        raise MexcFuturesError(f"transport failure: {exc}") from exc
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise MexcFuturesError(f"malformed response from {url}") from exc
+
+
+# ---------------------------------------------------------------- read-only
+def assets() -> dict:
+    """Futures wallet balances keyed by currency."""
+    data = _request("GET", "/api/v1/private/account/assets") or []
+    return {a.get("currency"): a for a in data if isinstance(a, dict)}
+
+
+def usdt_equity() -> float:
+    a = assets().get("USDT") or {}
+    return float(a.get("equity") or a.get("availableBalance") or 0.0)
+
+
+def open_positions(symbol: str | None = None) -> list:
+    params = {"symbol": symbol} if symbol else None
+    return _request("GET", "/api/v1/private/position/open_positions",
+                    params=params) or []
+
+
+def contract_spec(symbol: str) -> dict:
+    """Keyless contract metadata — contract size, tick, leverage bounds."""
+    url = f"{BASE}/api/v1/contract/detail?symbol={urllib.parse.quote(symbol)}"
+    payload = _get_public(url)
+    d = payload.get("data") or {}
+    if isinstance(d, list):
+        d = d[0] if d else {}
+    return d
+
+
+def last_price(symbol: str) -> float:
+    url = f"{BASE}/api/v1/contract/ticker?symbol={urllib.parse.quote(symbol)}"
+    payload = _get_public(url)
+    d = payload.get("data") or {}
+    if isinstance(d, list):
+        d = d[0] if d else {}
+    return float(d.get("lastPrice") or 0.0)
+
+
+def contracts_for(symbol: str, notional_usd: float,
+                  price: float | None = None) -> int:
+    """How many contracts approximate ``notional_usd`` of exposure.
+
+    Rounded DOWN so a sizing error can never overshoot the intended exposure.
+    """
+    spec = contract_spec(symbol)
+    size = float(spec.get("contractSize") or 0.0)
+    px = price if price is not None else last_price(symbol)
+    if size <= 0 or px <= 0:
+        raise MexcFuturesError(f"cannot size {symbol}: contractSize={size} px={px}")
+    per_contract = size * px
+    return int(notional_usd // per_contract)
+
+
+# ---------------------------------------------------------------- preflight
+def write_probe() -> dict:
+    """Prove the key may write to the order endpoint WITHOUT risking a trade.
+
+    Cancels order id 1, which cannot exist (MEXC ids are 18-digit snowflakes).
+    The endpoint is the same permission-gated order path a real trade uses, so
+    reaching it proves both the ``trading information write`` scope and that the
+    edge proxy let the request through — but the request describes no
+    instrument, no size and no side, so there is no reachable code path in which
+    it opens a position.
+
+    This replaced a probe that submitted a real order with ``vol=0`` and relied
+    on MEXC to reject it. That probe was one validation-rule change away from
+    opening a position on someone's account, which is not a risk a *connection
+    test* is allowed to take.
+    """
+    data = _request("POST", "/api/v1/private/order/cancel", body=[1])
+    return {"reached": True, "response": data}
+
+
+def preflight(symbol: str) -> dict:
+    """Check what this key can actually do, before any bot trusts it.
+
+    Returns a report rather than raising, so a caller can print it and stop.
+    """
+    report = {"credentials": has_credentials(), "read_assets": False,
+              "read_positions": False, "order_permission": None,
+              "equity_usdt": None, "notes": [], "missing_scopes": [],
+              "remedies": [], "edge_blocked": False,
+              "auth_failed": False, "can_rest_stop": None, "ready": False}
+    if not report["credentials"]:
+        report["notes"].append("MEXC_API_KEY / MEXC_API_SECRET not set")
+        return report
+    try:
+        report["equity_usdt"] = usdt_equity()
+        report["read_assets"] = True
+    except MexcFuturesAuthFailed as exc:
+        report["auth_failed"] = True
+        report["remedies"].append(exc.remedy)
+    except MexcFuturesForbidden as exc:
+        # Only name a scope MEXC actually named. Synthesising one from a status
+        # code produced the message "missing scope: code None".
+        if exc.scope:
+            report["missing_scopes"].append(exc.scope)
+            report["remedies"].append(exc.remedy or str(exc))
+        report["notes"].append(f"cannot read balance: {exc}")
+    except MexcFuturesError as exc:
+        report["notes"].append(f"assets failed: {exc}")
+    try:
+        open_positions(symbol)
+        report["read_positions"] = True
+    except MexcFuturesAuthFailed as exc:
+        report["auth_failed"] = True
+        report["remedies"].append(exc.remedy)
+    except MexcFuturesForbidden as exc:
+        # Only name a scope MEXC actually named. Synthesising one from a status
+        # code produced the message "missing scope: code None".
+        if exc.scope:
+            report["missing_scopes"].append(exc.scope)
+            report["remedies"].append(exc.remedy or str(exc))
+        report["notes"].append(f"cannot read positions: {exc}")
+    except MexcFuturesError as exc:
+        report["notes"].append(f"positions failed: {exc}")
+    # Order permission is probed by cancelling an id that cannot exist — see
+    # write_probe(). 704 must NOT be read as success: an earlier version treated
+    # it as "endpoint reachable" and reported the permission as granted when the
+    # key could not trade at all.
+    try:
+        write_probe()
+        report["order_permission"] = True
+        report["notes"].append("order endpoint accepts writes from this key")
+    except MexcFuturesEdgeBlocked as exc:
+        report["order_permission"] = False
+        report["edge_blocked"] = True
+        report["remedies"].append(exc.remedy)
+        report["notes"].append(f"cannot place orders: {exc}")
+    except MexcFuturesAuthFailed as exc:
+        report["order_permission"] = False
+        report["auth_failed"] = True
+        report["remedies"].append(exc.remedy)
+        report["notes"].append(f"cannot place orders: {exc}")
+    except MexcFuturesForbidden as exc:
+        report["order_permission"] = False
+        if exc.scope:
+            report["missing_scopes"].append(exc.scope)
+            report["remedies"].append(exc.remedy or str(exc))
+        report["notes"].append(f"cannot place orders: {exc}")
+    except MexcFuturesError as exc:
+        report["order_permission"] = False
+        report["notes"].append(f"order write probe failed: {exc}")
+    # The write probe above tests order/cancel. Resting a stop is a DIFFERENT
+    # endpoint, and a key can pass one and fail the other — which would only be
+    # discovered at the moment a stop was needed.
+    if report["order_permission"]:
+        st = stop_probe()
+        report["can_rest_stop"] = bool(st.get("permitted"))
+        if st.get("permitted"):
+            report["notes"].append(f"can rest a stop on MEXC ({st['reason']})")
+        else:
+            report["notes"].append(
+                f"cannot rest a stop ({st.get('blocked_by')}): {st.get('reason')}")
+            if st.get("remedy"):
+                report["remedies"].append(st["remedy"])
+    report["missing_scopes"] = sorted(set(report["missing_scopes"]))
+    report["remedies"] = list(dict.fromkeys(report["remedies"]))
+    report["ready"] = bool(report["read_assets"] and report["read_positions"]
+                           and report["order_permission"]
+                           and report["can_rest_stop"])
+    return report
+
+
+# ---------------------------------------------------------------- trading
+def submit(symbol: str, side: int, vol: int, *, leverage: int,
+           order_type: int = TYPE_MARKET, price: float | None = None,
+           open_type: int = OPEN_ISOLATED, dry_run: bool = True) -> dict:
+    """Place one futures order. ``dry_run=True`` returns the payload unsent.
+
+    Nothing here is retried: a timed-out order may or may not have reached the
+    exchange, and blindly resending it is how a bot ends up with double the
+    intended position. The caller must reconcile against open_positions().
+    """
+    if vol <= 0:
+        raise MexcFuturesError(f"refusing to submit vol={vol}")
+    body = {"symbol": symbol, "vol": int(vol), "side": int(side),
+            "type": int(order_type), "openType": int(open_type),
+            "leverage": int(leverage)}
+    if order_type == TYPE_LIMIT:
+        if not price:
+            raise MexcFuturesError("a limit order needs a price")
+        body["price"] = float(price)
+    if dry_run:
+        logger.info("DRY RUN futures order: %s", body)
+        return {"dry_run": True, "request": body}
+    logger.warning("LIVE futures order: %s", body)
+    data = _request("POST", "/api/v1/private/order/submit", body=body)
+    return {"dry_run": False, "request": body, "response": data}
+
+
+def open_long(symbol: str, vol: int, *, leverage: int,
+              dry_run: bool = True) -> dict:
+    return submit(symbol, SIDE_OPEN_LONG, vol, leverage=leverage,
+                  dry_run=dry_run)
+
+
+def close_long(symbol: str, vol: int, *, leverage: int,
+               dry_run: bool = True) -> dict:
+    return submit(symbol, SIDE_CLOSE_LONG, vol, leverage=leverage,
+                  dry_run=dry_run)
+
+
+def limit_close_long(symbol: str, vol: int, price: float, *, leverage: int,
+                     dry_run: bool = True) -> dict:
+    """Take-profit as a LIMIT order — the backtested edge depends on it.
+
+    A market exit gives back roughly 25bp per trade, which is the entire
+    measured advantage of the barriers, so the target must rest as a maker.
+    """
+    return submit(symbol, SIDE_CLOSE_LONG, vol, leverage=leverage,
+                  order_type=TYPE_LIMIT, price=price, dry_run=dry_run)
+
+
+# --------------------------------------------------- exchange-resting stops
+# Why this endpoint and not the alternatives, all three of which MEXC documents:
+#
+# * ``order/create`` takes stopLossPrice at entry, but MEXC only materialises the
+#   stop AFTER the parent order fully fills, and binds it to that one order. Scale
+#   into a position and the added size carries no stop at all.
+# * ``planorder/place/v2`` requires ``executeCycle``, documented only as 24 hours
+#   or 7 days. A stop that silently expires is worse than no stop, because you
+#   believe you have one.
+# * ``stoporder/place`` attaches to the POSITION, never expires, and is the only
+#   path exposing stopLossType — i.e. the only one where market-vs-limit is a
+#   choice rather than an undocumented default.
+def place_position_stop(symbol: str, position_id: int, vol: int, *,
+                        stop_loss_price: float,
+                        take_profit_price: float | None = None,
+                        stop_loss_type: int = SL_MARKET,
+                        stop_loss_order_price: float | None = None,
+                        take_profit_type: int = SL_LIMIT,
+                        take_profit_order_price: float | None = None,
+                        trend: int = TRIGGER_LAST,
+                        vol_type: int = VOL_POSITION,
+                        dry_run: bool = True) -> dict:
+    """Rest a stop (and optionally a take-profit) on MEXC's servers.
+
+    This is the whole point of the exercise: once placed, the exit no longer
+    depends on this process, this machine, or this internet connection. A stop
+    enforced by a polling loop protects nothing while the laptop is asleep.
+
+    ``stop_loss_type=SL_LIMIT`` reproduces the backtest exactly, which assumes a
+    fill at the stop price — but a limit that cannot fill leaves the position
+    open in a falling market, so SL_MARKET is the default. Measured cost of that
+    choice on 188 days of SPX500 data: $0.33.
+    """
+    if vol <= 0:
+        raise MexcFuturesError(f"refusing to place a stop for vol={vol}")
+    if stop_loss_price <= 0:
+        raise MexcFuturesError("stop_loss_price must be positive")
+    if stop_loss_type == SL_LIMIT and not stop_loss_order_price:
+        raise MexcFuturesError(
+            "a limit stop needs stop_loss_order_price — without it MEXC has no "
+            "price to rest the exit order at")
+    body: dict = {
+        "symbol": symbol,
+        "positionId": int(position_id),
+        "vol": int(vol),
+        "lossTrend": int(trend),
+        "profitTrend": int(trend),
+        "stopLossPrice": float(stop_loss_price),
+        "stopLossType": int(stop_loss_type),
+        "volType": int(vol_type),
+    }
+    if stop_loss_order_price:
+        body["stopLossOrderPrice"] = float(stop_loss_order_price)
+    if take_profit_price:
+        body["takeProfitPrice"] = float(take_profit_price)
+        body["takeProfitType"] = int(take_profit_type)
+        # The defaults are deliberately asymmetric: the stop exits at market
+        # because getting out matters more than the price, while the target
+        # rests as a limit because a market fill costs ~25bp — the whole
+        # measured advantage of the barriers.
+        if take_profit_type == SL_LIMIT:
+            body["takeProfitOrderPrice"] = float(
+                take_profit_order_price or take_profit_price)
+    if dry_run:
+        logger.info("DRY RUN resting stop: %s", body)
+        return {"dry_run": True, "request": body}
+    logger.warning("LIVE resting stop: %s", body)
+    data = _request("POST", "/api/v1/private/stoporder/place", body=body)
+    return {"dry_run": False, "request": body, "response": data}
+
+
+def stop_probe() -> dict:
+    """Can this key rest a stop on the exchange? Answered without a position.
+
+    Sends a well-formed request against position id 1, which cannot exist (MEXC
+    ids are 18-digit snowflakes). A JSON rejection means the endpoint and the
+    key's permissions are both fine and only the position was missing; a
+    permission code or an edge block means the whole exchange-side-stop plan is
+    unavailable on this key and must be discovered NOW rather than at the moment
+    a stop is needed.
+
+    ``preflight``'s existing write probe tests order/cancel, which is a
+    different permission surface — passing it does not prove a stop can be
+    placed.
+    """
+    try:
+        data = _request("POST", "/api/v1/private/stoporder/place", body={
+            "symbol": "SPX500_USDT", "positionId": 1, "vol": 1,
+            "lossTrend": TRIGGER_LAST, "profitTrend": TRIGGER_LAST,
+            "stopLossPrice": 1.0, "stopLossType": SL_MARKET,
+            "volType": VOL_POSITION})
+        return {"permitted": True, "reason": "accepted (no position to attach to)",
+                "response": data}
+    except MexcFuturesEdgeBlocked as exc:
+        return {"permitted": False, "blocked_by": "edge proxy",
+                "reason": str(exc), "remedy": exc.remedy}
+    except MexcFuturesForbidden as exc:
+        return {"permitted": False, "blocked_by": "key scope",
+                "reason": str(exc), "remedy": exc.remedy}
+    except MexcFuturesAuthFailed as exc:
+        return {"permitted": False, "blocked_by": "credentials",
+                "reason": str(exc), "remedy": exc.remedy}
+    except MexcFuturesError as exc:
+        # A validation rejection is the SUCCESS case: MEXC read the request,
+        # authorised it, and only then found position 1 missing.
+        return {"permitted": True, "reason": f"validation rejection: {exc}"}
+
+
+# Observed on this account: two of three historical TP/SL records finished with
+# errorCode 8912 and vol 0, i.e. MEXC accepted the request and the stop still
+# never became active. A bot that treats a 200 OK as protection is wrong.
+STOP_STATE_ACTIVE = {1, 2}          # 1 uninformed, 2 uncompleted/working
+
+
+def stop_is_active(record: dict) -> bool:
+    """Is this TP/SL record actually protecting the position right now?"""
+    if int(record.get("errorCode") or 0) != 0:
+        return False
+    if int(record.get("isFinished") or 0) == 1:
+        return False
+    return int(record.get("state") or 0) in STOP_STATE_ACTIVE
+
+
+def verify_position_stop(symbol: str, position_id: int) -> dict:
+    """Read back what the exchange actually holds for this position.
+
+    Called after every placement. Without it, ``place_position_stop`` returning
+    success is only evidence that the request was accepted — see errorCode 8912
+    above.
+    """
+    records = [r for r in list_position_stops(symbol)
+               if str(r.get("positionId")) == str(position_id)]
+    active = [r for r in records if stop_is_active(r)]
+    failed = [r for r in records if int(r.get("errorCode") or 0) != 0]
+    return {"protected": bool(active), "active": active, "failed": failed,
+            "error_codes": sorted({int(r.get("errorCode") or 0)
+                                   for r in failed})}
+
+
+def list_position_stops(symbol: str | None = None) -> list:
+    """Resting TP/SL records, so a bot can verify its stop is really there."""
+    params = {"symbol": symbol} if symbol else None
+    return _request("GET", "/api/v1/private/stoporder/list/orders",
+                    params=params) or []
+
+
+# ---------------------------------------------------------------- discovery
+def list_contracts(quote: str = "USDT") -> list[dict]:
+    """All tradeable perpetuals, newest-liquid first. Keyless.
+
+    Only contracts whose API flag is set are returned — a contract the key
+    cannot trade has no business appearing in a picker.
+    """
+    url = f"{BASE}/api/v1/contract/detail"
+    payload = _get_public(url)
+    out = []
+    for c in payload.get("data") or []:
+        sym = c.get("symbol") or ""
+        if quote and not sym.endswith(f"_{quote}"):
+            continue
+        if c.get("apiAllowed") is False:
+            continue
+        out.append({
+            "symbol": sym,
+            "display": c.get("displayNameEn") or c.get("displayName") or sym,
+            "contract_size": float(c.get("contractSize") or 0.0),
+            "max_leverage": int(c.get("maxLeverage") or 1),
+            "vol_unit": float(c.get("volUnit") or 1),
+            "min_vol": float(c.get("minVol") or 1),
+            "price_unit": float(c.get("priceUnit") or 0.0001),
+        })
+    out.sort(key=lambda c: c["symbol"])
+    return out
+
+
+def klines(symbol: str, interval: str = "Min5", limit: int = 300):
+    """Recent futures candles as a DataFrame, for charting. Keyless.
+
+    Column names match the spot helpers (Date/Open/High/Low/Close/Volume) so the
+    existing candlestick chart can render them unchanged.
+    """
+    import pandas as pd
+
+    end = int(time.time())
+    per = {"Min1": 60, "Min5": 300, "Min15": 900, "Min30": 1800,
+           "Min60": 3600, "Hour4": 14400, "Day1": 86400}.get(interval, 300)
+    url = (f"{BASE}/api/v1/contract/kline/{urllib.parse.quote(symbol)}?"
+           + urllib.parse.urlencode({"interval": interval,
+                                     "start": end - per * limit, "end": end}))
+    payload = _get_public(url)
+    d = payload.get("data") or {}
+    if not d.get("time"):
+        raise MexcFuturesError(f"no {interval} candles for {symbol}")
+    return pd.DataFrame({
+        "Date": pd.to_datetime(d["time"], unit="s", utc=True).tz_localize(None),
+        "Open": [float(x) for x in d["open"]],
+        "High": [float(x) for x in d["high"]],
+        "Low": [float(x) for x in d["low"]],
+        "Close": [float(x) for x in d["close"]],
+        "Volume": [float(x) for x in d.get("vol", [0] * len(d["time"]))],
+    })
+
+
+def round_vol(symbol: str, vol: float) -> int:
+    """Snap a contract count DOWN to the exchange's volUnit step.
+
+    Borrowed from the Crypto-Predictor-Web approach: submitting a size the venue
+    cannot represent gets the whole order rejected, so round rather than hope.
+    """
+    spec = contract_spec(symbol)
+    step = float(spec.get("volUnit") or 1)
+    min_vol = float(spec.get("minVol") or 1)
+    snapped = int((vol // step) * step) if step > 0 else int(vol)
+    return snapped if snapped >= min_vol else 0
+
+
+def chase_guard(entry_ref: float, live: float, max_chase_pct: float) -> tuple[bool, str]:
+    """Refuse an entry that has already run away from the reference price.
+
+    Also from the reference project: a signal computed a minute ago is not a
+    licence to buy at any price. Returns (ok_to_enter, reason).
+    """
+    if entry_ref <= 0 or live <= 0:
+        return False, "no reference price"
+    drift = (live / entry_ref - 1) * 100
+    if drift > max_chase_pct:
+        return False, (f"price ran {drift:+.2f}% past the reference "
+                       f"(limit {max_chase_pct:.2f}%)")
+    return True, f"drift {drift:+.2f}% within {max_chase_pct:.2f}%"
+
+
+# ---------------------------------------------------------------- funding
+def funding_history(symbol: str, max_pages: int = 20) -> list:
+    """Every published funding settlement, oldest last. Keyless.
+
+    Returned as ``[{"settle_ms": int, "rate": float, "cycle_h": int}, ...]``.
+    Sign convention is MEXC's: a POSITIVE rate means longs pay shorts, so a
+    long position's funding PnL is ``-rate * notional`` per settlement.
+    """
+    out, pg = [], 1
+    while pg <= max_pages:
+        url = (f"{BASE}/api/v1/contract/funding_rate/history?"
+               + urllib.parse.urlencode({"symbol": symbol, "page_num": pg,
+                                         "page_size": 100}))
+        req = urllib.request.Request(url, headers={"User-Agent": _UA})
+        try:
+            with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
+                payload = json.loads(resp.read())
+        except (OSError, json.JSONDecodeError) as exc:
+            logger.warning("funding history page %d failed for %s: %s",
+                           pg, symbol, exc)
+            break
+        data = payload.get("data") or {}
+        rows = data.get("resultList") or []
+        for r in rows:
+            out.append({"settle_ms": int(r["settleTime"]),
+                        "rate": float(r["fundingRate"]),
+                        "cycle_h": int(r.get("collectCycle") or 8)})
+        total = int(data.get("totalPage") or 1)
+        if pg >= total or not rows:
+            break
+        pg += 1
+        time.sleep(0.15)
+    out.sort(key=lambda d: d["settle_ms"])
+    return out
+
+
+def funding_summary(symbol: str) -> dict:
+    """Headline funding numbers for a contract, from the long side."""
+    hist = funding_history(symbol)
+    if not hist:
+        return {"symbol": symbol, "settlements": 0, "available": False}
+    rates = [h["rate"] for h in hist]
+    span_days = (hist[-1]["settle_ms"] - hist[0]["settle_ms"]) / 86400_000
+    cycle = hist[0]["cycle_h"] or 8
+    mean = sum(rates) / len(rates)
+    return {
+        "symbol": symbol, "available": True, "settlements": len(rates),
+        "span_days": span_days, "cycle_h": cycle,
+        "mean_rate": mean,
+        "pct_positive": sum(1 for r in rates if r > 0) / len(rates) * 100,
+        # A long's cumulative funding as a fraction of notional. Derived from
+        # the actual settlement sum and elapsed span rather than the recorded
+        # cycle: MEXC changed this contract from a 24h to an 8h cycle mid-life,
+        # so any single cycle value misstates the daily rate.
+        "long_total": -sum(rates),
+        "long_daily": (-sum(rates) / span_days) if span_days > 0 else 0.0,
+        "long_annual": ((-sum(rates) / span_days) * 365) if span_days > 0 else 0.0,
+    }

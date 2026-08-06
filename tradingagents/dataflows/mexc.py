@@ -288,6 +288,49 @@ def poll_new_listings(known_symbols: set, *, now_ms: int | None = None,
     return found, all_symbols
 
 
+def merge_new_listings(found: list) -> int:
+    """Inject just-opened coins into the cached sweep. Returns how many joined.
+
+    The watch spots an opening within one poll, but the table reads the last
+    full sweep (up to 6h old), so a fresh coin stayed invisible until someone
+    pressed Scan. Merging it into the cache — one tickers request for all of
+    them — makes it visible immediately without a ~1700-symbol rescan.
+
+    ``found`` rows are poll_new_listings() records (symbol/base/name/contract/
+    first_open_ms/listed_date). Without a cache there is nothing to merge into;
+    the next full sweep will pick the coins up anyway.
+    """
+    payload = _read_cache()
+    if not payload or not found:
+        return 0
+    have = {c["symbol"] for c in payload["coins"]}
+    fresh = [r for r in found if r["symbol"] not in have and r.get("first_open_ms")]
+    if not fresh:
+        return 0
+
+    try:
+        tickers = fetch_24h_tickers()
+    except (MexcUnavailable, MexcHostUnavailable, MexcRateLimited) as exc:
+        # A coin with a zeroed ticker row still beats an invisible one.
+        logger.warning("MEXC ticker fetch for listing merge failed: %s", exc)
+        tickers = {}
+
+    for r in fresh:
+        tick = tickers.get(r["symbol"], {})
+        payload["coins"].append({
+            "symbol": r["symbol"], "base": r["base"], "name": r["name"],
+            "contract": r["contract"], "listed_at_ms": r["first_open_ms"],
+            "listed_date": r["listed_date"],
+            "price": tick.get("price", 0.0),
+            "change_pct": tick.get("change_pct", 0.0),
+            "quote_volume": tick.get("quote_volume", 0.0),
+        })
+    payload["coins"].sort(key=lambda c: (c["listed_at_ms"], c["quote_volume"]),
+                          reverse=True)
+    _write_cache(payload)
+    return len(fresh)
+
+
 def fetch_24h_tickers() -> dict[str, dict]:
     """Price / 24h quote volume / 24h change for every symbol, in one request.
 
@@ -392,6 +435,11 @@ _MAX_WORKERS = 5
 _THROTTLE_SLEEP = 0.3
 _CACHE_TTL_SECONDS = 6 * 60 * 60
 DEFAULT_MIN_QUOTE_VOLUME = 50_000.0
+# The volume floor never hides a coin younger than this. A brand-new listing
+# has had no time to accumulate volume (GPUBSC: $2.7k at 20 minutes old), and
+# hiding it defeats the whole point of a new-listing screener — the floor
+# exists to bury old dead pairs, not newborns.
+FRESH_VOLUME_EXEMPT_HOURS = 10.0
 
 
 @dataclasses.dataclass(frozen=True)
@@ -564,7 +612,9 @@ def _filtered(payload: dict, *, min_quote_volume: float, include_all: bool,
 
     in_range = [c for c in coins if min_age_hours <= c.age_hours <= ceiling]
     kept = (in_range if include_all
-            else [c for c in in_range if c.quote_volume >= min_quote_volume])
+            else [c for c in in_range
+                  if c.quote_volume >= min_quote_volume
+                  or c.age_hours <= FRESH_VOLUME_EXEMPT_HOURS])
     return ScreenResult(
         coins=kept,
         scanned=payload.get("scanned", len(coins)),

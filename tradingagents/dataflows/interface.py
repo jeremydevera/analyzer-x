@@ -19,6 +19,7 @@ from .errors import (
 )
 from .fred import get_macro_data as get_fred_macro_data
 from .mexc import get_mexc_indicators, get_mexc_stock_data
+from .pse import get_pse_indicators, get_pse_stock_data
 from .polymarket import get_prediction_markets as get_polymarket_prediction_markets
 from .y_finance import (
     get_balance_sheet as get_yfinance_balance_sheet,
@@ -84,6 +85,7 @@ VENDOR_LIST = [
     "polymarket",
     "alpha_vantage",
     "mexc",
+    "pse",
 ]
 
 # Optional enrichment categories. These add macro/event context to the news
@@ -101,12 +103,15 @@ VENDOR_METHODS = {
         "yfinance": get_YFin_data_online,
         # Crypto listed on MEXC but absent from Yahoo (new microcaps).
         "mexc": get_mexc_stock_data,
+        # Philippine Stock Exchange names, which Yahoo does not carry.
+        "pse": get_pse_stock_data,
     },
     # technical_indicators
     "get_indicators": {
         "alpha_vantage": get_alpha_vantage_indicator,
         "yfinance": get_stock_stats_indicators_window,
         "mexc": get_mexc_indicators,
+        "pse": get_pse_indicators,
     },
     # fundamental_data
     "get_fundamentals": {

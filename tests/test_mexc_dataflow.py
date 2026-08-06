@@ -720,3 +720,390 @@ def test_default_config_still_prefers_yfinance():
 
 def test_include_twitter_defaults_off():
     assert get_config().get("include_twitter") is False
+
+
+def test_volume_floor_never_hides_a_fresh_coin(monkeypatch, tmp_path):
+    """GPUBSC case: 20 minutes old, $2.7k volume, default $50k floor.
+
+    The floor exists to bury old dead pairs; a newborn has had no time to
+    accumulate volume, so coins younger than FRESH_VOLUME_EXEMPT_HOURS are
+    always shown.
+    """
+    _screen_patches(
+        monkeypatch, tmp_path,
+        ages={"NEWUSDT": 1, "DUSTUSDT": 1, "OLDUSDT": 3},
+        first_dates={"NEWUSDT": _ms_ago(days=9),
+                     "DUSTUSDT": _ms_ago(hours=0.34)},   # ~20 minutes old
+    )
+    result = mexc.screen_new_listings(min_quote_volume=50_000.0)
+    assert {c.symbol for c in result.coins} == {"NEWUSDT", "DUSTUSDT"}
+    assert result.hidden_by_volume == 0
+
+
+def test_volume_floor_still_hides_old_dust(monkeypatch, tmp_path):
+    _screen_patches(
+        monkeypatch, tmp_path,
+        ages={"NEWUSDT": 1, "DUSTUSDT": 1, "OLDUSDT": 3},
+        first_dates={"NEWUSDT": _ms_ago(days=9),
+                     "DUSTUSDT": _ms_ago(days=8)},       # well past the exemption
+    )
+    result = mexc.screen_new_listings(min_quote_volume=50_000.0)
+    assert [c.symbol for c in result.coins] == ["NEWUSDT"]
+    assert result.hidden_by_volume == 1
+
+
+def test_merge_new_listings_injects_into_the_cache(monkeypatch, tmp_path):
+    """A just-opened coin joins the cached sweep without a full rescan."""
+    _screen_patches(
+        monkeypatch, tmp_path,
+        ages={"NEWUSDT": 1, "DUSTUSDT": 1, "OLDUSDT": 3},
+        first_dates={"NEWUSDT": _ms_ago(days=9), "DUSTUSDT": _ms_ago(days=8)},
+    )
+    mexc.screen_new_listings(min_quote_volume=0.0)       # seed the cache
+
+    monkeypatch.setattr(mexc, "fetch_24h_tickers", lambda: {
+        "FRESHUSDT": {"price": 0.02, "quote_volume": 2_700.0, "change_pct": 299.0}})
+    added = mexc.merge_new_listings([{
+        "symbol": "FRESHUSDT", "base": "FRESH", "name": "Fresh Coin",
+        "contract": "0xf", "first_open_ms": _ms_ago(hours=0.3),
+        "listed_date": mexc._ms_to_date(_ms_ago(hours=0.3))}])
+    assert added == 1
+
+    result = mexc.cached_listings(min_quote_volume=50_000.0)
+    by_symbol = {c.symbol: c for c in result.coins}
+    assert "FRESHUSDT" in by_symbol                       # visible despite $2.7k
+    assert by_symbol["FRESHUSDT"].quote_volume == pytest.approx(2_700.0)
+    # merging the same coin again is a no-op
+    assert mexc.merge_new_listings([{
+        "symbol": "FRESHUSDT", "base": "FRESH", "name": "Fresh Coin",
+        "contract": "0xf", "first_open_ms": _ms_ago(hours=0.3),
+        "listed_date": mexc._ms_to_date(_ms_ago(hours=0.3))}]) == 0
+
+
+# ===================== edge-proxy block vs missing key scope =================
+# MEXC's edge proxy refuses the futures ORDER paths for requests whose
+# User-Agent identifies a scripted client, answering with an HTML "Access
+# Denied" and HTTP 403 before the API sees the request. That is indistinguishable
+# from a permission failure unless it is detected explicitly, and it cost a long
+# debugging session spent looking at key settings that were already correct.
+import io
+import json as _json
+import urllib.error
+
+import pytest
+
+from tradingagents.dataflows import mexc_futures as fx
+
+AKAMAI_DENY = (
+    b"<HTML><HEAD>\n<TITLE>Access Denied</TITLE>\n</HEAD><BODY>\n"
+    b"<H1>Access Denied</H1>\nYou don't have permission to access "
+    b'"http://contract.mexc.com/api/v1/private/order/submit" on this server.'
+)
+
+
+def _keys(monkeypatch):
+    monkeypatch.setenv("MEXC_API_KEY", "k" * 18)
+    monkeypatch.setenv("MEXC_API_SECRET", "s" * 32)
+
+
+def _http_error(code, body):
+    def raiser(*a, **k):
+        raise urllib.error.HTTPError("u", code, "err", {}, io.BytesIO(body))
+    return raiser
+
+
+def _ok(payload):
+    class R:
+        def read(self): return _json.dumps(payload).encode()
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+    return lambda *a, **k: R()
+
+
+def test_html_403_is_an_edge_block_not_a_permission_error(monkeypatch):
+    _keys(monkeypatch)
+    monkeypatch.setattr(fx.urllib.request, "urlopen",
+                        _http_error(403, AKAMAI_DENY))
+    with pytest.raises(fx.MexcFuturesEdgeBlocked) as exc:
+        fx._request("POST", "/api/v1/private/order/submit", body={"vol": 1})
+    assert "User-Agent" in exc.value.remedy
+    # It must NOT be catchable as a key-scope problem: that conflation is the
+    # bug this test exists to prevent.
+    assert not isinstance(exc.value, fx.MexcFuturesForbidden)
+
+
+def test_a_real_json_403_is_an_auth_failure_not_a_missing_scope(monkeypatch):
+    """The edge-block branch must not swallow genuine 403 JSON — but a 403 is a
+    CREDENTIAL problem, not a scope problem.
+
+    This assertion was originally MexcFuturesForbidden. That was wrong: MEXC
+    returns 403 for a bad signature, a stale clock, or a source IP outside the
+    allowlist, none of which any permission checkbox fixes. Because preflight
+    derived a scope name from the code, the UI printed "missing permission
+    scopes: code None" and the branch naming the real cause was unreachable.
+    """
+    _keys(monkeypatch)
+    monkeypatch.setattr(fx.urllib.request, "urlopen", _http_error(
+        403, b'{"success":false,"code":403,"message":"no permission"}'))
+    with pytest.raises(fx.MexcFuturesAuthFailed) as exc:
+        fx._request("GET", "/api/v1/private/account/assets")
+    assert "allowlist" in exc.value.remedy and "clock" in exc.value.remedy
+    assert not isinstance(exc.value, fx.MexcFuturesForbidden)
+
+
+def test_only_a_named_scope_reaches_missing_scopes(monkeypatch):
+    """preflight must never invent a scope name out of a status code."""
+    _keys(monkeypatch)
+    monkeypatch.setattr(fx, "open_positions", lambda s=None: [])
+    monkeypatch.setattr(fx, "write_probe", lambda: {"reached": True})
+
+    def bad_sig():
+        raise fx.MexcFuturesAuthFailed("code 2011: signature error", code=2011)
+
+    monkeypatch.setattr(fx, "usdt_equity", bad_sig)
+    rep = fx.preflight("SPX500_USDT")
+    assert rep["missing_scopes"] == [], "a signature error is not a scope"
+    assert rep["auth_failed"] is True
+    assert rep["ready"] is False
+    assert any("allowlist" in r for r in rep["remedies"])
+
+
+def test_a_scope_code_still_names_its_scope(monkeypatch):
+    _keys(monkeypatch)
+    monkeypatch.setattr(fx.urllib.request, "urlopen", _ok(
+        {"success": False, "code": 704, "message": "enable write"}))
+    with pytest.raises(fx.MexcFuturesForbidden) as exc:
+        fx._request("POST", "/api/v1/private/order/cancel", body=[1])
+    assert exc.value.scope == "trading information write"
+    assert not isinstance(exc.value, fx.MexcFuturesAuthFailed)
+
+
+def test_requests_always_carry_a_user_agent_the_edge_accepts(monkeypatch):
+    """A bare urllib/requests UA is refused by MEXC — assert we never send one."""
+    _keys(monkeypatch)
+    seen = {}
+
+    def capture(req, *a, **k):
+        seen["ua"] = req.get_header("User-agent")
+        class R:
+            def read(self): return b'{"success":true,"code":0,"data":[]}'
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+        return R()
+
+    monkeypatch.setattr(fx.urllib.request, "urlopen", capture)
+    fx._request("GET", "/api/v1/private/position/open_positions")
+    ua = (seen["ua"] or "").lower()
+    assert ua, "no User-Agent sent — the edge proxy blocks the order paths"
+    assert "urllib" not in ua and "python-requests" not in ua
+
+
+# ============================ the write probe ===============================
+def test_write_probe_cancels_and_never_submits_an_order(monkeypatch):
+    """The order-permission probe must not be able to open a position.
+
+    The probe it replaced submitted a real order with vol=0 and trusted MEXC to
+    reject it; during diagnosis an equivalent probe DID open four real long
+    positions. This test pins the contract: cancel-only, no instrument, no size.
+    """
+    _keys(monkeypatch)
+    calls = []
+
+    def capture(req, *a, **k):
+        calls.append((req.get_method(), req.full_url,
+                      (req.data or b"").decode()))
+        class R:
+            def read(self):
+                return (b'{"success":true,"code":0,"data":[{"orderId":1,'
+                        b'"errorCode":2040,"errorMsg":"order not exist"}]}')
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+        return R()
+
+    monkeypatch.setattr(fx.urllib.request, "urlopen", capture)
+    assert fx.write_probe()["reached"] is True
+    assert len(calls) == 1
+    method, url, body = calls[0]
+    assert method == "POST"
+    assert url.endswith("/api/v1/private/order/cancel")
+    assert "submit" not in url
+    assert body == "[1]"
+    for forbidden in ("symbol", "vol", "side", "leverage", "openType"):
+        assert forbidden not in body, f"probe body describes a trade: {body}"
+
+
+def test_preflight_all_pass_shape(monkeypatch):
+    _keys(monkeypatch)
+    monkeypatch.setattr(fx, "usdt_equity", lambda: 163.2)
+    monkeypatch.setattr(fx, "open_positions", lambda s=None: [])
+    monkeypatch.setattr(fx, "write_probe", lambda: {"reached": True})
+    monkeypatch.setattr(fx, "stop_probe",
+                        lambda: {"permitted": True, "reason": "ok"})
+    rep = fx.preflight("SPX500_USDT")
+    assert rep["ready"] is True
+    assert rep["can_rest_stop"] is True
+    assert rep["order_permission"] is True
+    assert rep["edge_blocked"] is False
+    assert rep["missing_scopes"] == []
+
+
+def test_preflight_reports_edge_block_separately_from_scopes(monkeypatch):
+    """An edge block must not be rendered as "your key lacks a scope"."""
+    _keys(monkeypatch)
+    monkeypatch.setattr(fx, "usdt_equity", lambda: 163.2)
+    monkeypatch.setattr(fx, "open_positions", lambda s=None: [])
+
+    def blocked():
+        raise fx.MexcFuturesEdgeBlocked("/api/v1/private/order/cancel")
+
+    monkeypatch.setattr(fx, "write_probe", blocked)
+    rep = fx.preflight("SPX500_USDT")
+    assert rep["ready"] is False
+    assert rep["order_permission"] is False
+    assert rep["edge_blocked"] is True
+    assert rep["missing_scopes"] == [], "edge block is not a missing scope"
+    assert any("User-Agent" in r for r in rep["remedies"])
+
+
+# ======================= signing with a list body ===========================
+def test_list_body_signs_the_exact_bytes_that_are_sent(monkeypatch):
+    """order/cancel takes a JSON array; the signed string and the wire bytes
+    must be identical or MEXC answers with a signature failure that looks like a
+    permission problem."""
+    _keys(monkeypatch)
+    seen = {}
+
+    def capture(req, *a, **k):
+        seen["body"] = (req.data or b"").decode()
+        seen["sig"] = req.get_header("Signature")
+        seen["ts"] = req.get_header("Request-time")
+        class R:
+            def read(self): return b'{"success":true,"code":0,"data":[]}'
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+        return R()
+
+    monkeypatch.setattr(fx.urllib.request, "urlopen", capture)
+    fx._request("POST", "/api/v1/private/order/cancel", body=[1])
+    expected = fx.sign("k" * 18, "s" * 32, seen["ts"], None, [1])
+    assert seen["sig"] == expected
+    assert seen["body"] == "[1]"
+
+
+def test_dict_body_signing_is_unchanged_by_the_list_support():
+    """sort_keys must still apply to dict bodies — the whole signature depends
+    on it."""
+    body = {"vol": 1, "symbol": "SPX500_USDT", "side": 1}
+    assert fx._param_string(None, body) == \
+        '{"side":1,"symbol":"SPX500_USDT","vol":1}'
+    assert fx._param_string(None, [1, 2]) == "[1,2]"
+
+
+# ============ exchange-resting stops (the point of the whole exercise) ======
+def test_stop_defaults_are_asymmetric_and_deliberate():
+    """Stop exits at MARKET so it always gets out; take-profit rests as a LIMIT
+    because a market fill costs ~25bp, which is the entire measured edge."""
+    r = fx.place_position_stop("SPX500_USDT", 123, 4, stop_loss_price=6960.0,
+                               take_profit_price=7890.0)
+    b = r["request"]
+    assert r["dry_run"] is True, "must not reach the exchange by default"
+    assert b["stopLossType"] == fx.SL_MARKET
+    assert b["takeProfitType"] == fx.SL_LIMIT
+    assert b["takeProfitOrderPrice"] == 7890.0
+    assert b["lossTrend"] == fx.TRIGGER_LAST, \
+        "last price is the only basis that matches the backtest's candles"
+    assert b["volType"] == fx.VOL_POSITION, "must cover the whole position"
+
+
+def test_a_limit_stop_without_a_price_is_refused():
+    with pytest.raises(fx.MexcFuturesError) as exc:
+        fx.place_position_stop("SPX500_USDT", 1, 1, stop_loss_price=100.0,
+                               stop_loss_type=fx.SL_LIMIT)
+    assert "stop_loss_order_price" in str(exc.value)
+
+
+def test_nonsense_sizes_and_prices_are_refused():
+    for kw in ({"vol": 0}, {"vol": -3}):
+        with pytest.raises(fx.MexcFuturesError):
+            fx.place_position_stop("SPX500_USDT", 1, stop_loss_price=100.0, **kw)
+    with pytest.raises(fx.MexcFuturesError):
+        fx.place_position_stop("SPX500_USDT", 1, 1, stop_loss_price=0.0)
+
+
+def test_a_stop_that_errored_is_not_protection():
+    """Observed live: two of three real records on this account finished with
+    errorCode 8912 and vol 0. MEXC accepting the request is not protection."""
+    assert fx.stop_is_active({"errorCode": 0, "isFinished": 0, "state": 2})
+    assert not fx.stop_is_active({"errorCode": 8912, "isFinished": 1, "state": 2})
+    assert not fx.stop_is_active({"errorCode": 0, "isFinished": 1, "state": 3}), \
+        "already triggered and finished is not still protecting"
+
+
+def test_verify_reports_unprotected_when_every_record_failed(monkeypatch):
+    monkeypatch.setattr(fx, "list_position_stops", lambda symbol=None: [
+        {"positionId": "999", "errorCode": 8912, "isFinished": 1, "state": 2},
+        {"positionId": "111", "errorCode": 0, "isFinished": 0, "state": 2},
+    ])
+    v = fx.verify_position_stop("SPX500_USDT", 999)
+    assert v["protected"] is False
+    assert v["error_codes"] == [8912]
+    assert fx.verify_position_stop("SPX500_USDT", 111)["protected"] is True
+
+
+def test_stop_probe_reads_a_validation_error_as_permitted(monkeypatch):
+    """Rejecting a fake position id proves the endpoint authorised the key."""
+    def boom(*a, **k):
+        raise fx.MexcFuturesError("code 2009: Position is nonexistent or closed")
+    monkeypatch.setattr(fx, "_request", boom)
+    rep = fx.stop_probe()
+    assert rep["permitted"] is True
+    assert "2009" in rep["reason"]
+
+
+def test_stop_probe_distinguishes_the_three_ways_it_can_be_blocked(monkeypatch):
+    cases = [
+        (fx.MexcFuturesEdgeBlocked("/api/v1/private/stoporder/place"), "edge proxy"),
+        (fx.MexcFuturesForbidden("no", code=704, scope="trading information write",
+                                 remedy="enable write"), "key scope"),
+        (fx.MexcFuturesAuthFailed("code 2011: signature", code=2011), "credentials"),
+    ]
+    for err, expect in cases:
+        def boom(*a, _e=err, **k):
+            raise _e
+        monkeypatch.setattr(fx, "_request", boom)
+        rep = fx.stop_probe()
+        assert rep["permitted"] is False
+        assert rep["blocked_by"] == expect
+        assert rep["remedy"], "a blocked probe must say what to do about it"
+
+
+def test_stop_probe_never_names_an_instrument_it_could_open(monkeypatch):
+    """The probe must not be able to create a position: no side, no order type,
+    and a position id that cannot exist."""
+    seen = {}
+    monkeypatch.setattr(fx, "_request",
+                        lambda m, p, **k: seen.update(method=m, path=p,
+                                                      body=k.get("body")) or {})
+    fx.stop_probe()
+    assert seen["path"].endswith("/stoporder/place")
+    assert seen["body"]["positionId"] == 1, "an id that cannot exist"
+    for forbidden in ("side", "type", "openType", "leverage"):
+        assert forbidden not in seen["body"]
+
+
+def test_ready_requires_being_able_to_rest_a_stop(monkeypatch):
+    """A key that can place orders but cannot rest a stop is not ready: the
+    whole point of the exchange-side stop is that it survives this process
+    dying, and discovering it is unavailable mid-trade is too late."""
+    _keys(monkeypatch)
+    monkeypatch.setattr(fx, "usdt_equity", lambda: 163.2)
+    monkeypatch.setattr(fx, "open_positions", lambda s=None: [])
+    monkeypatch.setattr(fx, "write_probe", lambda: {"reached": True})
+    monkeypatch.setattr(fx, "stop_probe", lambda: {
+        "permitted": False, "blocked_by": "key scope",
+        "reason": "code 704", "remedy": "enable Trading information / Write"})
+    rep = fx.preflight("SPX500_USDT")
+    assert rep["order_permission"] is True, "orders are fine"
+    assert rep["can_rest_stop"] is False
+    assert rep["ready"] is False, "but it is not ready to trade"
+    assert any("Write" in r for r in rep["remedies"])

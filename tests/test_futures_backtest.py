@@ -1,0 +1,136 @@
+"""Tests for the bracket backtester — exit precedence, fees, drawdown, sweeps."""
+from datetime import datetime, timedelta
+
+import pandas as pd
+import pytest
+
+from tradingagents import futures_backtest as bt
+
+pytestmark = pytest.mark.unit
+
+
+def frame(rows):
+    """rows = [(open, high, low, close), ...] on a 5-minute clock."""
+    t0 = datetime(2026, 1, 1)
+    return pd.DataFrame({
+        "Date": [t0 + timedelta(minutes=5 * i) for i in range(len(rows))],
+        "Open": [r[0] for r in rows], "High": [r[1] for r in rows],
+        "Low": [r[2] for r in rows], "Close": [r[3] for r in rows],
+    })
+
+
+def test_take_profit_fills_at_the_target_not_the_high():
+    # entry at bar1 open = 100; bar2 spikes to 110 but the target is +2%
+    df = frame([(100, 100, 100, 100), (100, 101, 100, 100), (100, 110, 100, 109)])
+    r = bt.run(df, take_profit_pct=2, stop_loss_pct=10, margin=100, leverage=1,
+               fee_per_side=0)
+    assert r.trades[0].reason == "take-profit"
+    assert r.trades[0].exit_px == pytest.approx(102.0)
+    assert r.trades[0].net_return == pytest.approx(0.02)
+
+
+def test_stop_wins_when_one_bar_touches_both():
+    """Pessimistic tie-break: a bar spanning both levels books the loss."""
+    df = frame([(100, 100, 100, 100), (100, 100, 100, 100),
+                (100, 130, 80, 100)])
+    r = bt.run(df, take_profit_pct=2, stop_loss_pct=10, margin=100, leverage=1,
+               fee_per_side=0)
+    assert r.trades[0].reason == "stop-loss"
+    assert r.trades[0].exit_px == pytest.approx(90.0)
+
+
+def test_fees_are_charged_on_both_sides():
+    df = frame([(100, 100, 100, 100), (100, 100, 100, 100), (100, 103, 100, 102)])
+    r = bt.run(df, take_profit_pct=2, stop_loss_pct=10, margin=100, leverage=1,
+               fee_per_side=0.001)
+    # +2% gross, minus 0.1% twice
+    assert r.trades[0].net_return == pytest.approx(0.02 - 0.002)
+
+
+def test_leverage_scales_pnl_but_not_return_fraction():
+    df = frame([(100, 100, 100, 100), (100, 100, 100, 100), (100, 103, 100, 102)])
+    a = bt.run(df, take_profit_pct=2, stop_loss_pct=10, margin=100, leverage=1,
+               fee_per_side=0)
+    b = bt.run(df, take_profit_pct=2, stop_loss_pct=10, margin=100, leverage=3,
+               fee_per_side=0)
+    assert b.pnl == pytest.approx(a.pnl * 3)
+    assert b.trades[0].net_return == pytest.approx(a.trades[0].net_return)
+
+
+def test_positions_do_not_overlap():
+    rows = [(100, 100, 100, 100)]
+    for _ in range(6):                     # repeated +2% pops
+        rows.append((100, 103, 100, 102))
+    r = bt.run(frame(rows), take_profit_pct=2, stop_loss_pct=10, margin=100,
+               leverage=1, fee_per_side=0)
+    for a, b in zip(r.trades, r.trades[1:]):
+        assert b.entry_at > a.exit_at, "a new entry must follow the prior exit"
+
+
+def test_open_position_at_the_end_is_reported():
+    df = frame([(100, 100, 100, 100)] * 6)          # never hits either barrier
+    r = bt.run(df, take_profit_pct=5, stop_loss_pct=5, margin=100, leverage=1,
+               fee_per_side=0)
+    assert r.n_open == 1 and r.trades[-1].reason == "open at end"
+
+
+def test_drawdown_is_mark_to_market_not_realised_only():
+    """A dip that recovers before the stop must still show in the drawdown."""
+    df = frame([(100, 100, 100, 100), (100, 100, 100, 100),
+                (100, 100, 95, 100),                 # -5% unrealised
+                (100, 103, 100, 102)])               # then take-profit
+    r = bt.run(df, take_profit_pct=2, stop_loss_pct=10, margin=100, leverage=1,
+               fee_per_side=0)
+    assert r.trades[0].reason == "take-profit"
+    assert r.max_drawdown < 0, "the -5% dip must be recorded"
+    assert r.worst_equity < r.margin
+
+
+def test_liquidation_flag_trips_when_equity_hits_zero():
+    # 10x leverage and a 12% dip wipes the margin before any stop at 20%
+    df = frame([(100, 100, 100, 100), (100, 100, 100, 100),
+                (100, 100, 88, 90)])
+    r = bt.run(df, take_profit_pct=50, stop_loss_pct=20, margin=100,
+               leverage=10, fee_per_side=0)
+    assert r.liquidated is True and r.worst_equity <= 0
+
+
+def test_buy_hold_benchmark_uses_the_same_notional():
+    df = frame([(100, 100, 100, 100), (100, 100, 100, 100),
+                (100, 121, 100, 120)])
+    r = bt.run(df, take_profit_pct=2, stop_loss_pct=10, margin=100, leverage=2,
+               fee_per_side=0)
+    # buy&hold: enter bar1 open 100, exit last close 120 = +20% on 2x notional
+    assert r.buy_hold_pnl == pytest.approx(0.20 * 200)
+    assert r.beats_buy_hold is False, "a +2% target cannot beat a +20% hold"
+
+
+def test_max_hold_forces_a_time_exit():
+    df = frame([(100, 100, 100, 100)] * 10)
+    r = bt.run(df, take_profit_pct=50, stop_loss_pct=50, margin=100,
+               leverage=1, fee_per_side=0, max_hold_bars=2)
+    assert len(r.trades) > 1, "a time exit must free the engine to re-enter"
+
+
+def test_rejects_bad_parameters():
+    df = frame([(100, 100, 100, 100)] * 5)
+    with pytest.raises(ValueError):
+        bt.run(df, take_profit_pct=0, stop_loss_pct=10)
+    with pytest.raises(ValueError):
+        bt.run(df.head(2), take_profit_pct=2, stop_loss_pct=10)
+
+
+def test_equity_curve_tracks_cumulative_pnl():
+    rows = [(100, 100, 100, 100)] + [(100, 103, 100, 102)] * 3
+    r = bt.run(frame(rows), take_profit_pct=2, stop_loss_pct=10, margin=100,
+               leverage=1, fee_per_side=0)
+    assert len(r.equity_curve) == len(r.trades)
+    assert r.equity_curve[-1][1] == pytest.approx(r.margin + r.pnl)
+
+
+def test_sweep_orders_by_pnl_and_flags_the_benchmark():
+    rows = [(100, 100, 100, 100)] + [(100, 103, 99, 102)] * 8
+    s = bt.sweep(frame(rows), [1, 2, 3], [5, 10], margin=100, leverage=1)
+    assert len(s) == 6
+    assert s == sorted(s, key=lambda d: -d["pnl"])
+    assert all("beats_buy_hold" in d for d in s)

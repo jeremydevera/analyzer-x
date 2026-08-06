@@ -250,7 +250,11 @@ def backtest(key: str, candles, *, margin: float, leverage: float,
         res = fbt.run_positions(candles, positions_for(key, candles, p),
                                 margin=margin, leverage=leverage,
                                 fee_per_side=fee_per_side, label=strat.name,
-                                max_notional=lim.get("max_notional"))
+                                max_notional=lim.get("max_notional"),
+                                daily_loss_limit=float(
+                                    lim.get("daily_loss_limit") or 0.0),
+                                min_equity=float(lim.get("min_equity") or 0.0),
+                                starting_equity=lim.get("starting_equity"))
     fund = 0.0
     if funding:
         exposure = exposure_series(key, candles, p,

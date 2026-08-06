@@ -289,3 +289,26 @@ def test_no_wallet_figure_means_the_floor_is_skipped_not_guessed():
     r = bt.run(c, take_profit_pct=2.0, stop_loss_pct=10.0, margin=10.0,
                leverage=3, min_equity=1_000_000.0)
     assert r.halted_reason == "" and len(r.trades) > 0
+
+
+def test_the_exposure_engine_honours_the_same_breakers():
+    """The compare table ranked bracket strategies that stopped on the operator's
+    limits against exposure strategies that ignored them — one league table, two
+    sets of rules."""
+    # numbers chosen so the floor genuinely trips: a 40% fall on $100 notional
+    # costs $40, taking a $60 wallet below a $50 floor.
+    c = _falling(80, step=-0.5)
+    a = bt.run_positions(c, [1.0] * len(c), margin=100.0, leverage=1,
+                         min_equity=50.0, starting_equity=60.0)
+    assert "below floor" in a.halted_reason
+    b_ = bt.run_positions(c, [1.0] * len(c), margin=100.0, leverage=1)
+    assert b_.halted_reason == "", "no limits given means no early stop"
+
+
+def test_the_daily_limit_stands_the_exposure_engine_down():
+    c = _falling(200, step=-0.2)
+    with_limit = bt.run_positions(c, [1.0] * len(c), margin=1000.0, leverage=1,
+                                  daily_loss_limit=1.0)
+    without = bt.run_positions(c, [1.0] * len(c), margin=1000.0, leverage=1)
+    assert with_limit.pnl > without.pnl, \
+        "standing down after the daily loss must lose less than holding through it"

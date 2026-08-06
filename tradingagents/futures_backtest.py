@@ -274,7 +274,9 @@ def sweep(candles, tp_grid, sl_grid, *, margin: float = 100.0,
 
 def run_positions(candles, positions, *, margin: float = 100.0,
                   leverage: float = 1.0, fee_per_side: float = DEFAULT_FEE,
-                  label: str = "", max_notional: float | None = None) -> Result:
+                  label: str = "", max_notional: float | None = None,
+                  daily_loss_limit: float = 0.0, min_equity: float = 0.0,
+                  starting_equity: float | None = None) -> Result:
     """Backtest a per-bar target exposure instead of TP/SL brackets.
 
     ``positions[i]`` is the fraction of full notional to hold going into bar
@@ -299,12 +301,30 @@ def run_positions(candles, positions, *, margin: float = 100.0,
     max_dd = 0.0
     worst = margin
     liquidated = False
+    halted = ""
+    day = None
+    day_start_realised = 0.0
     prev_pos = 0.0
     trades: list = []
     open_at = None
     open_px = None
     for i in range(n - 2):
-        pos = float(positions[i])
+        # The same breakers run() enforces. Without them the compare table ranked
+        # bracket strategies that stopped on the operator's limits against exposure
+        # strategies that ignored them — different rules in one league table.
+        entry_day = T[i + 1].strftime("%Y-%m-%d")
+        if entry_day != day:
+            day, day_start_realised = entry_day, realised
+        if min_equity and starting_equity is not None and \
+                starting_equity + realised < min_equity:
+            halted = (f"wallet {starting_equity + realised:.2f} below floor "
+                      f"{min_equity:.2f}")
+            break
+        if daily_loss_limit and \
+                realised - day_start_realised <= -abs(daily_loss_limit):
+            pos = 0.0                       # stand down for the rest of the day
+        else:
+            pos = float(positions[i])
         ret = O[i + 2] / O[i + 1] - 1
         realised += pos * ret * notional
         turn = abs(pos - prev_pos)
@@ -382,7 +402,7 @@ def run_positions(candles, positions, *, margin: float = 100.0,
         win_rate=(wins / len(trades) * 100) if trades else 0.0,
         n_tp=0, n_sl=0, n_open=sum(1 for t in trades if t.reason == "open at end"),
         max_drawdown=max_dd, worst_equity=worst, liquidated=liquidated,
-        halted_reason="",
+        halted_reason=halted,
         buy_hold_pnl=bh_pnl, bars=n, span_days=span,
         equity_curve=curve)
 

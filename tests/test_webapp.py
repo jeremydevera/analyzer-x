@@ -346,3 +346,68 @@ def test_compare_accepts_the_limits_the_app_sends():
         assert r["result"].notional == 400.0, \
             f"{r['key']} ignored the notional cap"
         assert "halted_reason" in r
+
+
+def test_the_backtest_sizes_to_a_tradable_notional(monkeypatch):
+    """Contracts are indivisible: a $15 target is 19 contracts worth $14.65, 2.4%
+    less. Sizing to the arithmetic ideal reported returns on a position the
+    exchange cannot express."""
+    import app
+    from tradingagents.dataflows import mexc_futures as fx
+
+    monkeypatch.setattr(fx, "last_price", lambda s: 7700.0)
+    monkeypatch.setattr(fx, "contracts_for", lambda s, notional, px: int(
+        notional / (0.0001 * px)))
+    monkeypatch.setattr(fx, "contract_spec", lambda s: {"contractSize": 0.0001})
+    got = app._tradable_notional.__wrapped__("SPX500_USDT", 5.0, 3, 400.0)
+    assert got < 15.0, "must be the achievable size, not the ideal"
+    assert got == pytest.approx(19 * 0.0001 * 7700.0)
+
+
+def test_tradable_notional_falls_back_when_the_exchange_is_unreachable(monkeypatch):
+    import app
+    from tradingagents.dataflows import mexc_futures as fx
+
+    def boom(*a, **k):
+        raise fx.MexcFuturesError("unreachable")
+
+    monkeypatch.setattr(fx, "last_price", boom)
+    assert app._tradable_notional.__wrapped__("SPX500_USDT", 5.0, 3, 400.0) == 15.0
+
+
+def test_error_handlers_in_app_do_not_reference_missing_names():
+    """Two handlers were added that called `logger`, which app.py did not define —
+    a NameError that only fires when the exchange is down, i.e. exactly when the
+    handler is needed. Compiling proves nothing; the handler body has to run.
+    """
+    import app
+    from tradingagents.dataflows import mexc_futures as fx
+
+    def boom(symbol):
+        raise fx.MexcFuturesError("simulated outage")
+
+    for helper, target, expected in (
+        (app._funding_history, "funding_history", []),
+        (app._funding_summary, "funding_summary", {"available": False}),
+    ):
+        orig = getattr(fx, target)
+        setattr(fx, target, boom)
+        try:
+            assert helper.__wrapped__("SPX500_USDT") == expected
+        finally:
+            setattr(fx, target, orig)
+
+
+def test_the_funding_helpers_do_not_swallow_their_own_bugs(monkeypatch):
+    """A bare `except Exception` here would hide a typo and silently return no
+    funding — and funding is ~40% of the measured return on this contract, so the
+    backtest would quietly lose its largest component."""
+    import app
+    from tradingagents.dataflows import mexc_futures as fx
+
+    def typo(symbol):
+        raise AttributeError("this is a bug, not an outage")
+
+    monkeypatch.setattr(fx, "funding_history", typo)
+    with pytest.raises(AttributeError):
+        app._funding_history.__wrapped__("SPX500_USDT")

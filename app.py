@@ -15,12 +15,15 @@ snapshot at that point, so the UI just reads the latest chunk.
 from __future__ import annotations
 
 import html
+import logging
 import os
 import sys
 import traceback
 from typing import NamedTuple
 
 import streamlit as st
+
+logger = logging.getLogger(__name__)
 
 import model_registry
 import tickers as ticker_data
@@ -1190,7 +1193,13 @@ def _funding_history(symbol: str) -> list:
     from tradingagents.dataflows import mexc_futures as fx
     try:
         return fx.funding_history(symbol)
-    except Exception:                                     # noqa: BLE001
+    except fx.MexcFuturesError as exc:
+        # Narrow on purpose. A bare `except Exception` here would swallow a typo in
+        # this function and silently return no funding — and funding is 40% of the
+        # measured return on this contract, so the backtest would quietly lose its
+        # largest component with nothing on screen to say so. That exact pattern
+        # made _tradable_notional a no-op for an hour.
+        logger.warning("funding history unavailable for %s: %s", symbol, exc)
         return []
 
 
@@ -1199,7 +1208,8 @@ def _funding_summary(symbol: str) -> dict:
     from tradingagents.dataflows import mexc_futures as fx
     try:
         return fx.funding_summary(symbol)
-    except Exception:                                     # noqa: BLE001
+    except fx.MexcFuturesError as exc:
+        logger.warning("funding summary unavailable for %s: %s", symbol, exc)
         return {"available": False}
 
 
@@ -1209,6 +1219,33 @@ def _futures_contracts() -> list[dict]:
     from tradingagents.dataflows import mexc_futures as fx
     return fx.list_contracts()
 
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def _tradable_notional(symbol: str, margin: float, leverage: float,
+                       cap: float) -> float:
+    """The notional the bot can actually put on, not the arithmetic ideal.
+
+    Contracts are indivisible, so a $15 target becomes 19 contracts worth $14.65 —
+    2.4% less. The backtest sized to the ideal and therefore reported returns on a
+    position the exchange cannot express.
+    """
+    # `fx` is imported inside render_trade_tab, not at module scope, so referencing
+    # it here raised NameError — swallowed by the except below, which made this
+    # function always return the ideal and do nothing at all. A broad except that
+    # hides a typo is worse than no except.
+    from tradingagents.dataflows import mexc_futures as _fx
+
+    want = min(margin * leverage, cap)
+    try:
+        px = _fx.last_price(symbol)
+        vol = _fx.contracts_for(symbol, want, px)
+        size = float(_fx.contract_spec(symbol).get("contractSize") or 0)
+    except _fx.MexcFuturesError:
+        return want                       # exchange unreachable: use the ideal
+    if vol >= 1 and size > 0 and px > 0:
+        return vol * size * px
+    return want
 
 def render_trade_tab() -> None:
     """Auto-trade console for the SPX500 perpetual bot.
@@ -1925,7 +1962,9 @@ def render_trade_tab() -> None:
                         rows = _sg.compare(
                             hist, margin=float(margin), leverage=float(lev),
                             funding=fund_hist,
-                            limits={"max_notional": float(cap),
+                            limits={"max_notional": _tradable_notional(
+                                        symbol, float(margin), float(lev),
+                                        float(cap)),
                                     "max_losses": int(mx),
                                     "daily_loss_limit": float(dl),
                                     "min_equity": float(floor),

@@ -411,3 +411,55 @@ def test_the_funding_helpers_do_not_swallow_their_own_bugs(monkeypatch):
     monkeypatch.setattr(fx, "funding_history", typo)
     with pytest.raises(AttributeError):
         app._funding_history.__wrapped__("SPX500_USDT")
+
+
+# ============ the two jobs live in two tabs =================================
+def test_trade_and_backtest_are_separate_pages():
+    """One tab that both operated the bot and simulated it was confusing: the same
+    controls appeared to do both jobs, and it was never clear whether a number
+    described what the bot WOULD do or what it HAD done."""
+    import app
+    assert "Backtest" in app.PAGES
+    assert "Trade" in app.PAGES
+    assert hasattr(app, "render_backtest_tab")
+    assert hasattr(app, "render_trade_tab")
+
+
+def test_neither_tab_does_the_other_tab_s_job():
+    """Checked by source, since nothing renders app.py in tests: the operating
+    controls must not appear in the backtest function, nor vice versa."""
+    import ast
+    import inspect
+
+    import app
+
+    def strings_in(fn):
+        tree = ast.parse(inspect.getsource(fn).lstrip())
+        return " ".join(n.value for n in ast.walk(tree)
+                        if isinstance(n, ast.Constant) and isinstance(n.value, str))
+
+    trade = strings_in(app.render_trade_tab)
+    backtest = strings_in(app.render_backtest_tab)
+
+    assert "Run auto trade" in trade
+    assert "Run auto trade" not in backtest, "the backtest tab must not start the bot"
+    assert "Run backtest" in backtest
+    assert "Run backtest" not in trade, "the trade tab must not run simulations"
+    assert "Compare all 6" in backtest and "Compare all 6" not in trade
+    # and the backtest tab must say it changes nothing
+    assert "changes your bot" in backtest or "changes nothing" in backtest
+
+
+def test_the_backtest_tab_never_saves_the_bot_config():
+    """Its controls start from the saved config and must not write it back —
+    otherwise exploring a what-if would silently reconfigure the live bot."""
+    import ast
+    import inspect
+
+    import app
+
+    tree = ast.parse(inspect.getsource(app.render_backtest_tab).lstrip())
+    calls = [n for n in ast.walk(tree) if isinstance(n, ast.Call)]
+    saves = [c for c in calls
+             if isinstance(c.func, ast.Attribute) and c.func.attr in ("save",)]
+    assert not saves, "the backtest tab must never call cfg.save()"

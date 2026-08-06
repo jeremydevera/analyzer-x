@@ -1091,7 +1091,7 @@ def engine_badge_html() -> str:
 # Sidebar navigation: one screen renders at a time, which is what lets each screen
 # own its controls. Tabs could not do that — Streamlit renders every tab body on
 # every run, so a sidebar full of settings looked like it applied to both.
-PAGES = ("New Crypto", "Stocks", "Trade", "LLM Models")
+PAGES = ("New Crypto", "Stocks", "Trade", "Backtest", "LLM Models")
 
 
 def render_nav() -> str:
@@ -1120,6 +1120,8 @@ def main() -> None:
         render_crypto_tab()
     elif page == "Trade":
         render_trade_tab()
+    elif page == "Backtest":
+        render_backtest_tab()
     elif page == "LLM Models":
         render_llm_models_tab()
     else:
@@ -1460,7 +1462,9 @@ def render_trade_tab() -> None:
         st.caption(
             f"Checked every "
             f"**{min(sg.poll_seconds_for(l['timeframe']) for l in lanes)}s** — "
-            f"half a bar of the finest timeframe ticked.")
+            f"half a bar of the finest timeframe ticked. "
+            f"To simulate these settings on past data, use the **Backtest** tab; "
+            f"it reads them and changes nothing.")
 
     trade_layout = st.container(key="trade_layout")
     left, right = trade_layout.columns([1.6, 1], gap="large")
@@ -1888,273 +1892,418 @@ def render_trade_tab() -> None:
                     st.caption(f"· {note}")
 
 
-    st.markdown('<div class="ta-section">Analyse</div>',
-                unsafe_allow_html=True)
-    analyse_tabs = st.tabs(["Chart", "Backtest"])
-    with analyse_tabs[0]:
-            st.markdown('<div class="ta-label">Chart</div>', unsafe_allow_html=True)
-            ci1, ci2 = st.columns([1, 3])
-            interval = ci1.selectbox(
-                "Interval", list(sg.TIMEFRAMES),
-                index=(sg.TIMEFRAMES.index(cfg.timeframe)
-                       if cfg.timeframe in sg.TIMEFRAMES else 1),
-                key="trade_interval", label_visibility="collapsed",
-                format_func=lambda t: f"{t}  ·  {sg.TIMEFRAME_LABELS[t]}")
+
+def render_backtest_tab() -> None:
+    """Backtesting, deliberately separate from the Trade tab.
+
+    One tab that both operated the bot and simulated it was confusing: the same
+    controls appeared to do both, and it was never obvious whether a number on
+    screen described what the bot WOULD do or what it HAD done.
+
+    So: the Trade tab operates. This tab explores. Every control here starts from
+    the bot's saved configuration — so the default view answers "what would my bot
+    have done" — but nothing here writes that configuration. Change anything and you
+    are asking a what-if, not reconfiguring the bot.
+    """
+    import json
+    from dataclasses import asdict
+
+    import pandas as pd
+
+    import spx_bot
+    from tradingagents import strategies as sg
+    from tradingagents.dataflows import mexc_credentials as cred
+    from tradingagents.dataflows import mexc_futures as fx
+
+    cred.load_into_env()
+    cfg = spx_bot.Config.load()
+    _lane = cfg.primary_lane()
+
+    st.caption(
+        "Nothing here places an order or changes your bot. Values start from your "
+        "saved settings, so the first run answers *what would my bot have done*. "
+        "Change them to ask what-if — to change the bot itself, use the Trade tab."
+    )
+
+    wallet = None
+    if fx.has_credentials():
+        try:
+            wallet = fx.usdt_equity()
+        except fx.MexcFuturesError:
+            wallet = None
+
+    bl, br = st.columns([1.6, 1], gap="large")
+    with br:
+        st.markdown('<div class="ta-panel-title">What to simulate</div>',
+                    unsafe_allow_html=True)
+        # list_contracts() returns a LIST of dicts, not a symbol-keyed mapping.
+        # sorted() on it compared dicts and raised TypeError.
+        try:
+            contracts = _futures_contracts()
+        except Exception as exc:                          # noqa: BLE001
+            contracts = []
+            st.warning(f"Contract list unavailable: {exc}")
+        spec_by = {c["symbol"]: c for c in contracts}
+        FAVOURITES = ("SPX500_USDT", "BTC_USDT", "ETH_USDT", "SOL_USDT",
+                      "BNB_USDT", "XRP_USDT", "DOGE_USDT", "GOLD_USDT")
+        head = [s for s in FAVOURITES if s in spec_by]
+        options = (head + [c["symbol"] for c in contracts if c["symbol"] not in head]
+                   or [cfg.symbol])
+        symbol = st.selectbox(
+            "Perpetual", options,
+            index=options.index(cfg.symbol) if cfg.symbol in options else 0,
+            key="bt_symbol",
+            format_func=lambda s: (f"{s}  ·  "
+                                   f"{spec_by.get(s, {}).get('max_leverage', '?')}x max"))
+        timeframe = st.selectbox(
+            "Bars", list(sg.TIMEFRAMES),
+            index=(sg.TIMEFRAMES.index(_lane["timeframe"])
+                   if _lane["timeframe"] in sg.TIMEFRAMES else 1),
+            key="bt_tf",
+            format_func=lambda t: f"{t}  \u00b7  {sg.TIMEFRAME_LABELS[t]}")
+        keys = list(sg.ORDER)
+        strat_key = st.selectbox(
+            "Approach", keys,
+            index=keys.index(_lane["strategy"])
+            if _lane["strategy"] in keys else 0,
+            key="bt_strategy",
+            format_func=lambda k: sg.REGISTRY[k].name)
+        strat = sg.REGISTRY[strat_key]
+        st.caption(strat.summary)
+        if strat_key not in spx_bot.RUNNABLE_STRATEGIES:
+            st.warning(
+                "Live, this runs as an **entry filter** — its signal decides only "
+                "whether to open one bracketed trade. The simulation below measures "
+                "the **exposure** form instead, rebalancing every bar. Read it as "
+                "information about the signal, not as a forecast.")
+
+        st.markdown('<div class="ta-panel-title">Position</div>',
+                    unsafe_allow_html=True)
+        max_lev = int(spec_by.get(symbol, {}).get("max_leverage", 200) or 200)
+        lev = st.number_input("Leverage", 1, max(max_lev, 1),
+                              min(int(cfg.leverage), max_lev), key="bt_lev")
+        margin = st.number_input("Margin (USD)", 1.0, 100_000.0,
+                                 float(cfg.margin_usd), step=5.0, key="bt_margin")
+        tp = st.number_input("Take-profit %", 0.05, 50.0,
+                             float(cfg.take_profit_pct), step=0.25, key="bt_tp")
+        sl = st.number_input("Stop-loss %", 0.05, 90.0,
+                             float(cfg.stop_loss_pct), step=0.5, key="bt_sl")
+        # EFFECTIVE leverage, not nominal: the max-notional cap can cut it a long
+        # way. At 200x with $10 margin and a $400 cap the position is 40x, so
+        # quoting 200x's 0.10% wipe-out point would be wrong by a factor of twenty.
+        _eff_lev = min(float(margin) * float(lev),
+                       float(cfg.max_notional_usd)) / max(float(margin), 1e-9)
+        _wipe = fx.liquidation_move_pct(symbol, _eff_lev)
+        if _eff_lev > 1 and sl >= _wipe:
+            st.error(
+                f"At an effective **{_eff_lev:.0f}x** on {symbol} the margin is "
+                f"gone after a **{_wipe:.2f}%** move, so a {sl:.1f}% stop can "
+                f"never fire — the simulation will show a liquidation, which is "
+                f"what would really happen.")
+        elif _eff_lev < float(lev) - 0.5:
+            st.caption(
+                f"Max notional caps this at **{_eff_lev:.0f}x effective**, not "
+                f"{float(lev):.0f}x.")
+
+        st.markdown('<div class="ta-panel-title">Risk limits</div>',
+                    unsafe_allow_html=True)
+        cap = st.number_input("Max notional (USD)", 10.0, 500_000.0,
+                              float(cfg.max_notional_usd), step=50.0, key="bt_cap")
+        dl = st.number_input("Daily loss limit (USD)", 0.0, 50_000.0,
+                             float(cfg.daily_loss_limit_usd), step=5.0,
+                             key="bt_dl")
+        floor = st.number_input("Halt below equity (USD)", 0.0, 50_000.0,
+                                float(cfg.min_equity_usd), step=5.0,
+                                key="bt_floor")
+        mx = st.number_input("Stop after N losing trades", 0, 100,
+                             int(getattr(cfg, "max_losses", 0)), step=1,
+                             key="bt_mx")
+        _same = (symbol == cfg.symbol and timeframe == _lane["timeframe"]
+                 and strat_key == _lane["strategy"]
+                 and int(lev) == int(cfg.leverage)
+                 and float(margin) == float(cfg.margin_usd)
+                 and float(tp) == float(cfg.take_profit_pct)
+                 and float(sl) == float(cfg.stop_loss_pct))
+        if _same:
+            st.success("These are your bot's live settings.")
+        else:
+            st.info("**What-if** — these differ from your bot's settings, which are "
+                    "unchanged.")
+
+    with bl:
+        st.markdown('<div class="ta-label">Chart</div>', unsafe_allow_html=True)
+        ci1, ci2 = st.columns([1, 3])
+        interval = ci1.selectbox(
+            "Interval", list(sg.TIMEFRAMES),
+            index=(sg.TIMEFRAMES.index(cfg.timeframe)
+                   if cfg.timeframe in sg.TIMEFRAMES else 1),
+            key="trade_interval", label_visibility="collapsed",
+            format_func=lambda t: f"{t}  ·  {sg.TIMEFRAME_LABELS[t]}")
+        try:
+            import crypto_screener as _cs
+            candles = fx.klines(symbol, interval, 240)
+            chart = _cs.candlestick_chart(candles, symbol.replace("_USDT", ""))
+            # overlay the live take-profit / stop levels off the last close
+            import altair as alt
+            last = float(candles["Close"].iloc[-1])
+            levels = [{"level": last * (1 + tp / 100), "kind": f"take-profit +{tp:g}%"},
+                      {"level": last * (1 - sl / 100), "kind": f"stop-loss -{sl:g}%"}]
+            # The Trade tab marks the live entry here; this tab has no `pos` in
+            # scope, and referencing it raised NameError inside the chart handler,
+            # which surfaced as "Chart unavailable: name 'pos' is not defined".
+            _live = (spx_bot._read_state() or {}).get("position")
+            if _live and _live.get("entry"):
+                levels.append({"level": float(_live["entry"]),
+                               "kind": "your live entry"})
+            rules = alt.Chart(pd.DataFrame(levels)).mark_rule(
+                strokeDash=[4, 4], size=1.5).encode(
+                y="level:Q",
+                color=alt.Color("kind:N", legend=alt.Legend(title=None,
+                                                            orient="top")),
+                tooltip=["kind:N", "level:Q"])
+            st.altair_chart(chart + rules, use_container_width=True)
+            ci2.caption(f"{_cs.chart_summary(candles)}  ·  {interval} candles "
+                        f"from MEXC futures")
+        except Exception as exc:                          # noqa: BLE001
+            st.warning(f"Chart unavailable for {symbol}: {exc}")
+
+        st.markdown('<div class="ta-label">Backtest these settings</div>',
+                    unsafe_allow_html=True)
+        bt1, bt2, bt3 = st.columns([1, 1, 2])
+        # Derived from sg.TIMEFRAMES, never a hardcoded list: this one was
+        # missing Min1, Min30 and Day1, so a timeframe you could select for
+        # the bot could not be backtested at all.
+        bt_interval = bt1.selectbox(
+            "Bars", list(sg.TIMEFRAMES),
+            index=(sg.TIMEFRAMES.index(cfg.timeframe)
+                   if cfg.timeframe in sg.TIMEFRAMES else 1),
+            key="bt_interval",
+            format_func=lambda t: f"{t}  ·  {sg.TIMEFRAME_LABELS[t]}")
+        bt_limit = bt2.selectbox("History", [500, 1000, 2000], index=1,
+                                 key="bt_limit",
+                                 format_func=lambda n: f"{n} bars")
+        bb1, bb2 = bt3.columns(2)
+        if strat_key not in spx_bot.RUNNABLE_STRATEGIES:
+            st.warning(
+                f"**This backtest does not measure what the bot will run.** "
+                f"`{strat_key}` is selected as an *entry filter*: live, its "
+                f"signal only decides whether to open one bracketed trade "
+                f"that exits on the take-profit and stop. The backtest below "
+                f"measures the *exposure* form instead — rebalancing position "
+                f"size every bar — which trades far more and is the reason it "
+                f"is not run that way. Treat the number as information about "
+                f"the signal, not as a forecast for the filter.")
+        if bb1.button("Run backtest", type="primary"):
+            st.session_state["bt_run"] = True
+            st.session_state.pop("bt_compare", None)
+        if bb2.button("Compare all 6"):
+            st.session_state["bt_compare"] = True
+            st.session_state.pop("bt_run", None)
+
+        if st.session_state.get("bt_compare"):
+            from tradingagents import strategies as _sg
             try:
-                import crypto_screener as _cs
-                candles = fx.klines(symbol, interval, 240)
-                chart = _cs.candlestick_chart(candles, symbol.replace("_USDT", ""))
-                # overlay the live take-profit / stop levels off the last close
-                import altair as alt
-                last = float(candles["Close"].iloc[-1])
-                levels = [{"level": last * (1 + tp / 100), "kind": f"take-profit +{tp:g}%"},
-                          {"level": last * (1 - sl / 100), "kind": f"stop-loss -{sl:g}%"}]
-                if pos:
-                    levels += [{"level": float(pos["entry"]), "kind": "entry"},
-                               {"level": float(pos["tp"]), "kind": "resting TP"}]
-                rules = alt.Chart(pd.DataFrame(levels)).mark_rule(
-                    strokeDash=[4, 4], size=1.5).encode(
-                    y="level:Q",
-                    color=alt.Color("kind:N", legend=alt.Legend(title=None,
-                                                                orient="top")),
-                    tooltip=["kind:N", "level:Q"])
-                st.altair_chart(chart + rules, use_container_width=True)
-                ci2.caption(f"{_cs.chart_summary(candles)}  ·  {interval} candles "
-                            f"from MEXC futures")
-            except Exception as exc:                          # noqa: BLE001
-                st.warning(f"Chart unavailable for {symbol}: {exc}")
-
-    with analyse_tabs[1]:
-            st.markdown('<div class="ta-label">Backtest these settings</div>',
-                        unsafe_allow_html=True)
-            bt1, bt2, bt3 = st.columns([1, 1, 2])
-            # Derived from sg.TIMEFRAMES, never a hardcoded list: this one was
-            # missing Min1, Min30 and Day1, so a timeframe you could select for
-            # the bot could not be backtested at all.
-            bt_interval = bt1.selectbox(
-                "Bars", list(sg.TIMEFRAMES),
-                index=(sg.TIMEFRAMES.index(cfg.timeframe)
-                       if cfg.timeframe in sg.TIMEFRAMES else 1),
-                key="bt_interval",
-                format_func=lambda t: f"{t}  ·  {sg.TIMEFRAME_LABELS[t]}")
-            bt_limit = bt2.selectbox("History", [500, 1000, 2000], index=1,
-                                     key="bt_limit",
-                                     format_func=lambda n: f"{n} bars")
-            bb1, bb2 = bt3.columns(2)
-            if strat_key not in spx_bot.RUNNABLE_STRATEGIES:
-                st.warning(
-                    f"**This backtest does not measure what the bot will run.** "
-                    f"`{strat_key}` is selected as an *entry filter*: live, its "
-                    f"signal only decides whether to open one bracketed trade "
-                    f"that exits on the take-profit and stop. The backtest below "
-                    f"measures the *exposure* form instead — rebalancing position "
-                    f"size every bar — which trades far more and is the reason it "
-                    f"is not run that way. Treat the number as information about "
-                    f"the signal, not as a forecast for the filter.")
-            if bb1.button("Run backtest", type="primary"):
-                st.session_state["bt_run"] = True
-                st.session_state.pop("bt_compare", None)
-            if bb2.button("Compare all 6"):
-                st.session_state["bt_compare"] = True
-                st.session_state.pop("bt_run", None)
-
-            if st.session_state.get("bt_compare"):
-                from tradingagents import strategies as _sg
-                try:
-                    with st.spinner(f"running all six strategies on {symbol}…"):
-                        hist = fx.klines(symbol, bt_interval, int(bt_limit))
-                        fund_hist = _funding_history(symbol)
-                        rows = _sg.compare(
-                            hist, margin=float(margin), leverage=float(lev),
-                            funding=fund_hist,
-                            limits={"max_notional": _tradable_notional(
-                                        symbol, float(margin), float(lev),
-                                        float(cap)),
-                                    "max_losses": int(mx),
-                                    "daily_loss_limit": float(dl),
-                                    "min_equity": float(floor),
-                                    "starting_equity": wallet})
-                except Exception as exc:                      # noqa: BLE001
-                    st.error(f"Comparison failed: {exc}")
+                with st.spinner(f"running all six strategies on {symbol}…"):
+                    hist = fx.klines(symbol, bt_interval, int(bt_limit))
+                    fund_hist = _funding_history(symbol)
+                    rows = _sg.compare(
+                        hist, margin=float(margin), leverage=float(lev),
+                        funding=fund_hist,
+                        limits={"max_notional": _tradable_notional(
+                                    symbol, float(margin), float(lev),
+                                    float(cap)),
+                                "max_losses": int(mx),
+                                "daily_loss_limit": float(dl),
+                                "min_equity": float(floor),
+                                "starting_equity": wallet})
+            except Exception as exc:                      # noqa: BLE001
+                st.error(f"Comparison failed: {exc}")
+            else:
+                good = [r for r in rows if "error" not in r]
+                bh = good[0]["buy_hold_total"] if good else 0.0
+                fsum = _funding_summary(symbol)
+                _eff_c = min(float(margin) * float(lev), float(cap))
+                st.caption(
+                    f"{symbol} · {bt_limit} {bt_interval} bars · "
+                    f"${margin:,.0f} margin at {lev:.0f}x · position "
+                    f"${_eff_c:,.2f}"
+                    + (f" (capped from ${float(margin)*float(lev):,.2f})"
+                       if _eff_c < float(margin) * float(lev) else "")
+                    + f" · buy & hold benchmark ${bh:+,.2f} "
+                    f"(funding included) · your risk limits applied")
+                _stopped = [r for r in good if r.get("halted_reason")]
+                if _stopped:
+                    st.warning(
+                        "**Some runs stopped early on your risk limits**, so "
+                        "their figures cover only the period up to that point: "
+                        + "; ".join(f"{r['name']} — {r['halted_reason']}"
+                                    for r in _stopped))
+                if fsum.get("available"):
+                    sign = "receives" if fsum["long_total"] > 0 else "pays"
+                    st.info(
+                        f"**Funding on {symbol}:** a long {sign} "
+                        f"{abs(fsum['long_total'])*100:.2f}% of notional over the "
+                        f"published history ({fsum['long_daily']*100:+.4f}%/day, "
+                        f"{fsum['long_annual']*100:+.1f}%/yr) across "
+                        f"{fsum['settlements']} settlements, "
+                        f"{fsum['pct_positive']:.0f}% of which charged longs. "
+                        f"Perpetual funding is settled every few hours while a "
+                        f"position is open, so it scales with time held.")
                 else:
-                    good = [r for r in rows if "error" not in r]
-                    bh = good[0]["buy_hold_total"] if good else 0.0
-                    fsum = _funding_summary(symbol)
-                    _eff_c = min(float(margin) * float(lev), float(cap))
-                    st.caption(
-                        f"{symbol} · {bt_limit} {bt_interval} bars · "
-                        f"${margin:,.0f} margin at {lev:.0f}x · position "
-                        f"${_eff_c:,.2f}"
-                        + (f" (capped from ${float(margin)*float(lev):,.2f})"
-                           if _eff_c < float(margin) * float(lev) else "")
-                        + f" · buy & hold benchmark ${bh:+,.2f} "
-                        f"(funding included) · your risk limits applied")
-                    _stopped = [r for r in good if r.get("halted_reason")]
-                    if _stopped:
-                        st.warning(
-                            "**Some runs stopped early on your risk limits**, so "
-                            "their figures cover only the period up to that point: "
-                            + "; ".join(f"{r['name']} — {r['halted_reason']}"
-                                        for r in _stopped))
-                    if fsum.get("available"):
-                        sign = "receives" if fsum["long_total"] > 0 else "pays"
-                        st.info(
-                            f"**Funding on {symbol}:** a long {sign} "
-                            f"{abs(fsum['long_total'])*100:.2f}% of notional over the "
-                            f"published history ({fsum['long_daily']*100:+.4f}%/day, "
-                            f"{fsum['long_annual']*100:+.1f}%/yr) across "
-                            f"{fsum['settlements']} settlements, "
-                            f"{fsum['pct_positive']:.0f}% of which charged longs. "
-                            f"Perpetual funding is settled every few hours while a "
-                            f"position is open, so it scales with time held.")
-                    else:
-                        st.warning("No funding history published for this contract — "
-                                   "the totals below exclude funding.")
-                    tbl = ("| strategy | price PnL | funding | TOTAL | return "
-                           "| trades | win% | max DD | beats hold |\n"
-                           "|---|---|---|---|---|---|---|---|---|\n")
-                    for r in rows:
-                        if "error" in r:
-                            tbl += f"| {r['name']} | error | | | | | | | |\n"
-                            continue
-                        flag = "**YES**" if r["beats_buy_hold"] else "no"
-                        if r["liquidated"]:
-                            flag = "LIQUIDATED"
-                        tbl += (f"| {r['name']} | {r['pnl']:+,.2f} "
-                                f"| {r['funding_pnl']:+,.2f} "
-                                f"| **{r['total_pnl']:+,.2f}** "
-                                f"| {r['total_return_pct']:+.1f}% | {r['trades']} "
-                                f"| {r['win_rate']:.0f}% "
-                                f"| {r['max_drawdown']:+,.2f} | {flag} |\n")
+                    st.warning("No funding history published for this contract — "
+                               "the totals below exclude funding.")
+                tbl = ("| strategy | price PnL | funding | TOTAL | return "
+                       "| trades | win% | max DD | beats hold |\n"
+                       "|---|---|---|---|---|---|---|---|---|\n")
+                for r in rows:
+                    if "error" in r:
+                        tbl += f"| {r['name']} | error | | | | | | | |\n"
+                        continue
+                    flag = "**YES**" if r["beats_buy_hold"] else "no"
+                    if r["liquidated"]:
+                        flag = "LIQUIDATED"
+                    tbl += (f"| {r['name']} | {r['pnl']:+,.2f} "
+                            f"| {r['funding_pnl']:+,.2f} "
+                            f"| **{r['total_pnl']:+,.2f}** "
+                            f"| {r['total_return_pct']:+.1f}% | {r['trades']} "
+                            f"| {r['win_rate']:.0f}% "
+                            f"| {r['max_drawdown']:+,.2f} | {flag} |\n")
+                st.markdown(tbl)
+                winners = [r for r in good if r.get("beats_buy_hold")]
+                if not winners:
+                    st.warning(
+                        f"On {symbol} over this window, no strategy beat simply "
+                        f"holding (${bh:+,.2f}). That is the honest answer — "
+                        f"holding is the benchmark for a reason.")
+                else:
+                    best = winners[0]
+                    st.success(
+                        f"Best here: **{best['name']}** at "
+                        f"${best['total_pnl']:+,.2f} "
+                        f"({best['total_return_pct']:+.1f}%) including funding, "
+                        f"versus ${bh:+,.2f} for holding.")
+                liq = [r for r in good if r["liquidated"]]
+                if liq:
+                    st.error("Would have been liquidated at this leverage: "
+                             + ", ".join(r["name"] for r in liq))
+        if st.session_state.get("bt_run"):
+            from tradingagents import futures_backtest as fbt
+            try:
+                with st.spinner(f"simulating {strat.name} on {symbol}…"):
+                    hist = fx.klines(symbol, bt_interval, int(bt_limit))
+                    _fh = _funding_history(symbol)
+                    res, fund_pnl = sg.backtest(
+                        strat_key, hist, margin=float(margin),
+                        leverage=float(lev),
+                        params=({"take_profit_pct": float(tp),
+                                 "stop_loss_pct": float(sl)}
+                                if strat.kind == "bracket" else None),
+                        funding=_fh,
+                        # The same limits the bot enforces. Without these the
+                        # simulation used margin x leverage with no cap and no
+                        # breakers, so it traded a different position and kept
+                        # going through conditions that stop the real runner.
+                        limits={"max_notional": float(cap),
+                                "max_losses": int(mx),
+                                "daily_loss_limit": float(dl),
+                                "min_equity": float(floor),
+                                # the floor is on the WALLET, so the wallet
+                                # balance has to come with it
+                                "starting_equity": wallet})
+                    # Both sides on the same terms. Result included funding
+                    # while the benchmark did not, which credited the strategy
+                    # with income buy-and-hold also earned.
+                    cmp_ = sg.hold_comparison(res, fund_pnl, hist, _fh)
+            except Exception as exc:                      # noqa: BLE001
+                st.error(f"Backtest failed: {exc}")
+            else:
+                m1, m2, m3, m4, m5 = st.columns(5)
+                m1.metric("Result", f"${cmp_['total']:+,.2f}",
+                          f"{cmp_['total']/res.margin*100:+.1f}% on margin")
+                m5.metric("of which funding", f"${fund_pnl:+,.2f}",
+                          "received" if fund_pnl > 0 else "paid",
+                          delta_color="normal" if fund_pnl > 0 else "inverse")
+                m2.metric("Buy & hold", f"${cmp_['hold_total']:+,.2f}",
+                          "beaten" if cmp_["beats_hold"] else "not beaten",
+                          delta_color="normal" if cmp_["beats_hold"]
+                          else "inverse")
+                m3.metric("Trades", f"{len(res.trades)}",
+                          f"{res.win_rate:.0f}% win")
+                m4.metric("Worst equity", f"${res.worst_equity:,.2f}",
+                          "LIQUIDATED" if res.liquidated else
+                          f"of ${res.margin:,.0f}",
+                          delta_color="inverse" if res.liquidated else "off")
+                _eff = min(float(margin) * float(lev), float(cap))
+                # Built separately: splitting the bold markers across concatenated
+                # f-strings left literal ** on screen.
+                # Dollar signs are escaped: Streamlit reads a $...$ pair as LaTeX,
+                # which swallowed the $ and left the ** visible on screen —
+                # "position **400.00**" instead of a bold $400.00.
+                _capnote = (
+                    f" (capped from \\${float(margin) * float(lev):,.2f} by max "
+                    f"notional)" if _eff < float(margin) * float(lev) else "")
+                st.caption(
+                    f"Simulated with the limits on the right: position "
+                    f"**\\${_eff:,.2f}**{_capnote} · effective leverage "
+                    f"**{_eff / max(float(margin), 1e-9):.0f}x** · stops after "
+                    f"{int(mx)} losing trade(s) · daily loss limit "
+                    f"\\${float(dl):,.2f} · halts below \\${float(floor):,.2f} "
+                    f"equity.")
+                if res.halted_reason:
+                    st.warning(f"**The run stopped early: "
+                               f"{res.halted_reason}.** Your bot would have "
+                               f"stopped at the same point, so the figures "
+                               f"cover only the period up to there.")
+                if res.liquidated:
+                    _t = res.trades[-1] if res.trades else None
+                    st.error(
+                        f"**LIQUIDATED at {lev:.0f}x.** The account was wiped "
+                        f"out"
+                        + (f" on trade {len(res.trades)}, "
+                           f"{_t.entry_at:%Y-%m-%d %H:%M} to "
+                           f"{_t.exit_at:%Y-%m-%d %H:%M}" if _t else "")
+                        + f", and the simulation stops there — with nothing "
+                        f"left there are no further trades. You lose exactly "
+                        f"your ${res.margin:,.2f} margin, never more: MEXC "
+                        f"force-closes the position instead.\n\n"
+                        f"At {lev:.0f}x, an adverse move of about "
+                        f"{100 / max(lev, 1):.2f}% is enough — your "
+                        f"{sl:.0f}% stop is far beyond that, so it never gets "
+                        f"the chance to fire. Lower the leverage until the "
+                        f"stop sits inside the margin.")
+                elif not cmp_["beats_hold"]:
+                    st.warning(
+                        f"Simply holding made more "
+                        f"(${cmp_['hold_total']:+,.2f} vs "
+                        f"${cmp_['total']:+,.2f}, both including funding). "
+                        f"The barriers cost money on this symbol and period.")
+                st.caption(
+                    f"{res.bars} {bt_interval} bars over {res.span_days:.1f} days · "
+                    f"{res.n_tp} take-profits, {res.n_sl} stops, {res.n_open} open "
+                    f"· max drawdown ${res.max_drawdown:,.2f} mark-to-market · "
+                    f"fees 2bp per side")
+                if res.equity_curve:
+                    import altair as alt
+                    eq = pd.DataFrame(res.equity_curve, columns=["Date", "Equity"])
+                    st.altair_chart(
+                        alt.Chart(eq).mark_line(size=2).encode(
+                            x=alt.X("Date:T", title=None),
+                            y=alt.Y("Equity:Q", title="account",
+                                    scale=alt.Scale(zero=False)),
+                            tooltip=["Date:T", "Equity:Q"]).properties(height=170),
+                        use_container_width=True)
+                if res.trades:
+                    tbl = "| # | entry | exit | in | out | why | return | PnL $ |\n"
+                    tbl += "|---|---|---|---|---|---|---|---|\n"
+                    for t in res.trades[-30:]:
+                        tbl += (f"| {t.n} | {t.entry_at:%m-%d %H:%M} "
+                                f"| {t.exit_at:%m-%d %H:%M} | {t.entry_px:,.4g} "
+                                f"| {t.exit_px:,.4g} | {t.reason} "
+                                f"| {t.net_return*100:+.2f}% | {t.pnl:+,.2f} |\n")
                     st.markdown(tbl)
-                    winners = [r for r in good if r.get("beats_buy_hold")]
-                    if not winners:
-                        st.warning(
-                            f"On {symbol} over this window, no strategy beat simply "
-                            f"holding (${bh:+,.2f}). That is the honest answer — "
-                            f"holding is the benchmark for a reason.")
-                    else:
-                        best = winners[0]
-                        st.success(
-                            f"Best here: **{best['name']}** at "
-                            f"${best['total_pnl']:+,.2f} "
-                            f"({best['total_return_pct']:+.1f}%) including funding, "
-                            f"versus ${bh:+,.2f} for holding.")
-                    liq = [r for r in good if r["liquidated"]]
-                    if liq:
-                        st.error("Would have been liquidated at this leverage: "
-                                 + ", ".join(r["name"] for r in liq))
-            if st.session_state.get("bt_run"):
-                from tradingagents import futures_backtest as fbt
-                try:
-                    with st.spinner(f"simulating {strat.name} on {symbol}…"):
-                        hist = fx.klines(symbol, bt_interval, int(bt_limit))
-                        _fh = _funding_history(symbol)
-                        res, fund_pnl = sg.backtest(
-                            strat_key, hist, margin=float(margin),
-                            leverage=float(lev),
-                            params=({"take_profit_pct": float(tp),
-                                     "stop_loss_pct": float(sl)}
-                                    if strat.kind == "bracket" else None),
-                            funding=_fh,
-                            # The same limits the bot enforces. Without these the
-                            # simulation used margin x leverage with no cap and no
-                            # breakers, so it traded a different position and kept
-                            # going through conditions that stop the real runner.
-                            limits={"max_notional": float(cap),
-                                    "max_losses": int(mx),
-                                    "daily_loss_limit": float(dl),
-                                    "min_equity": float(floor),
-                                    # the floor is on the WALLET, so the wallet
-                                    # balance has to come with it
-                                    "starting_equity": wallet})
-                        # Both sides on the same terms. Result included funding
-                        # while the benchmark did not, which credited the strategy
-                        # with income buy-and-hold also earned.
-                        cmp_ = sg.hold_comparison(res, fund_pnl, hist, _fh)
-                except Exception as exc:                      # noqa: BLE001
-                    st.error(f"Backtest failed: {exc}")
-                else:
-                    m1, m2, m3, m4, m5 = st.columns(5)
-                    m1.metric("Result", f"${cmp_['total']:+,.2f}",
-                              f"{cmp_['total']/res.margin*100:+.1f}% on margin")
-                    m5.metric("of which funding", f"${fund_pnl:+,.2f}",
-                              "received" if fund_pnl > 0 else "paid",
-                              delta_color="normal" if fund_pnl > 0 else "inverse")
-                    m2.metric("Buy & hold", f"${cmp_['hold_total']:+,.2f}",
-                              "beaten" if cmp_["beats_hold"] else "not beaten",
-                              delta_color="normal" if cmp_["beats_hold"]
-                              else "inverse")
-                    m3.metric("Trades", f"{len(res.trades)}",
-                              f"{res.win_rate:.0f}% win")
-                    m4.metric("Worst equity", f"${res.worst_equity:,.2f}",
-                              "LIQUIDATED" if res.liquidated else
-                              f"of ${res.margin:,.0f}",
-                              delta_color="inverse" if res.liquidated else "off")
-                    _eff = min(float(margin) * float(lev), float(cap))
-                    st.caption(
-                        f"Simulated with the limits on the right: position "
-                        f"**${_eff:,.2f}** "
-                        + (f"(capped from ${float(margin)*float(lev):,.2f} by max "
-                           f"notional) " if _eff < float(margin) * float(lev)
-                           else "")
-                        + f"· stops after {int(mx)} losing trade(s) · daily loss "
-                        f"limit ${float(dl):,.2f} · halts below ${float(floor):,.2f} "
-                        f"equity.")
-                    if res.halted_reason:
-                        st.warning(f"**The run stopped early: "
-                                   f"{res.halted_reason}.** Your bot would have "
-                                   f"stopped at the same point, so the figures "
-                                   f"cover only the period up to there.")
-                    if res.liquidated:
-                        _t = res.trades[-1] if res.trades else None
-                        st.error(
-                            f"**LIQUIDATED at {lev:.0f}x.** The account was wiped "
-                            f"out"
-                            + (f" on trade {len(res.trades)}, "
-                               f"{_t.entry_at:%Y-%m-%d %H:%M} to "
-                               f"{_t.exit_at:%Y-%m-%d %H:%M}" if _t else "")
-                            + f", and the simulation stops there — with nothing "
-                            f"left there are no further trades. You lose exactly "
-                            f"your ${res.margin:,.2f} margin, never more: MEXC "
-                            f"force-closes the position instead.\n\n"
-                            f"At {lev:.0f}x, an adverse move of about "
-                            f"{100 / max(lev, 1):.2f}% is enough — your "
-                            f"{sl:.0f}% stop is far beyond that, so it never gets "
-                            f"the chance to fire. Lower the leverage until the "
-                            f"stop sits inside the margin.")
-                    elif not cmp_["beats_hold"]:
-                        st.warning(
-                            f"Simply holding made more "
-                            f"(${cmp_['hold_total']:+,.2f} vs "
-                            f"${cmp_['total']:+,.2f}, both including funding). "
-                            f"The barriers cost money on this symbol and period.")
-                    st.caption(
-                        f"{res.bars} {bt_interval} bars over {res.span_days:.1f} days · "
-                        f"{res.n_tp} take-profits, {res.n_sl} stops, {res.n_open} open "
-                        f"· max drawdown ${res.max_drawdown:,.2f} mark-to-market · "
-                        f"fees 2bp per side")
-                    if res.equity_curve:
-                        import altair as alt
-                        eq = pd.DataFrame(res.equity_curve, columns=["Date", "Equity"])
-                        st.altair_chart(
-                            alt.Chart(eq).mark_line(size=2).encode(
-                                x=alt.X("Date:T", title=None),
-                                y=alt.Y("Equity:Q", title="account",
-                                        scale=alt.Scale(zero=False)),
-                                tooltip=["Date:T", "Equity:Q"]).properties(height=170),
-                            use_container_width=True)
-                    if res.trades:
-                        tbl = "| # | entry | exit | in | out | why | return | PnL $ |\n"
-                        tbl += "|---|---|---|---|---|---|---|---|\n"
-                        for t in res.trades[-30:]:
-                            tbl += (f"| {t.n} | {t.entry_at:%m-%d %H:%M} "
-                                    f"| {t.exit_at:%m-%d %H:%M} | {t.entry_px:,.4g} "
-                                    f"| {t.exit_px:,.4g} | {t.reason} "
-                                    f"| {t.net_return*100:+.2f}% | {t.pnl:+,.2f} |\n")
-                        st.markdown(tbl)
-                        if len(res.trades) > 30:
-                            st.caption(f"showing the last 30 of {len(res.trades)} trades")
+                    if len(res.trades) > 30:
+                        st.caption(f"showing the last 30 of {len(res.trades)} trades")
+
 
 def render_llm_models_tab() -> None:
     """Manage the model catalog: built-ins listed, user models added/removed.

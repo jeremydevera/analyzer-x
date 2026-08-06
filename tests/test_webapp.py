@@ -246,3 +246,37 @@ def test_pse_ticker_switches_the_price_vendor(app):
                             quick_model="m", debate_rounds=1, risk_rounds=1,
                             ticker="AAPL")
     assert cfg2["data_vendors"]["core_stock_apis"] != "pse"
+
+
+# ============ timeframe pickers must not drift =============================
+def test_no_hardcoded_timeframe_lists_in_the_ui():
+    """Three pickers each carried their own hardcoded list of intervals, so they
+    drifted: the backtest offered no Min1, Min30 or Day1, meaning a timeframe you
+    could select for the bot could not be backtested at all. Every picker must
+    derive from strategies.TIMEFRAMES so adding one adds it everywhere.
+    """
+    import re
+    from pathlib import Path
+
+    from tradingagents import strategies as sg
+
+    src = Path(__file__).resolve().parents[1] / "app.py"
+    text = src.read_text(encoding="utf-8")
+    # a list literal containing two or more MEXC interval names
+    names = "|".join(sg.TIMEFRAMES)
+    literal = re.compile(r'\[\s*(?:"(?:%s)"\s*,\s*){1,}"(?:%s)"\s*\]'
+                         % (names, names))
+    found = literal.findall(text)
+    assert not found, (
+        f"hardcoded timeframe list(s) in app.py: {found}. "
+        f"Use list(sg.TIMEFRAMES) so the pickers cannot drift apart.")
+
+
+def test_every_timeframe_has_a_label_and_a_poll_interval():
+    """A picker rendering TIMEFRAME_LABELS[t] raises KeyError on any timeframe
+    that lacks one."""
+    from tradingagents import strategies as sg
+    for tf in sg.TIMEFRAMES:
+        assert tf in sg.TIMEFRAME_LABELS, tf
+        assert tf in sg.TIMEFRAME_SECONDS, tf
+        assert sg.poll_seconds_for(tf) > 0

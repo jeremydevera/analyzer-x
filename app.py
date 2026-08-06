@@ -1845,10 +1845,12 @@ def render_trade_tab() -> None:
     with analyse_tabs[0]:
             st.markdown('<div class="ta-label">Chart</div>', unsafe_allow_html=True)
             ci1, ci2 = st.columns([1, 3])
-            interval = ci1.selectbox("Interval",
-                                     ["Min1", "Min5", "Min15", "Min60", "Hour4", "Day1"],
-                                     index=1, key="trade_interval",
-                                     label_visibility="collapsed")
+            interval = ci1.selectbox(
+                "Interval", list(sg.TIMEFRAMES),
+                index=(sg.TIMEFRAMES.index(cfg.timeframe)
+                       if cfg.timeframe in sg.TIMEFRAMES else 1),
+                key="trade_interval", label_visibility="collapsed",
+                format_func=lambda t: f"{t}  ·  {sg.TIMEFRAME_LABELS[t]}")
             try:
                 import crypto_screener as _cs
                 candles = fx.klines(symbol, interval, 240)
@@ -1877,8 +1879,15 @@ def render_trade_tab() -> None:
             st.markdown('<div class="ta-label">Backtest these settings</div>',
                         unsafe_allow_html=True)
             bt1, bt2, bt3 = st.columns([1, 1, 2])
-            bt_interval = bt1.selectbox("Bars", ["Min5", "Min15", "Min60", "Hour4"],
-                                        index=0, key="bt_interval")
+            # Derived from sg.TIMEFRAMES, never a hardcoded list: this one was
+            # missing Min1, Min30 and Day1, so a timeframe you could select for
+            # the bot could not be backtested at all.
+            bt_interval = bt1.selectbox(
+                "Bars", list(sg.TIMEFRAMES),
+                index=(sg.TIMEFRAMES.index(cfg.timeframe)
+                       if cfg.timeframe in sg.TIMEFRAMES else 1),
+                key="bt_interval",
+                format_func=lambda t: f"{t}  ·  {sg.TIMEFRAME_LABELS[t]}")
             bt_limit = bt2.selectbox("History", [500, 1000, 2000], index=1,
                                      key="bt_limit",
                                      format_func=lambda n: f"{n} bars")

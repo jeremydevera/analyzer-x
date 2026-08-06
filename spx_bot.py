@@ -225,6 +225,18 @@ def health() -> dict:
 # something they were not.
 RUNNABLE_STRATEGIES = ("barrier_harvest", "buy_hold")
 
+# As an ENTRY GATE every strategy is runnable: its signal only decides whether to
+# open one bracketed trade, and the barriers bound the turnover. That is a
+# different thing from the exposure form the backtest measures — no sizing, no
+# scaling out — so the backtested figures do not transfer, and anything reporting
+# a gate result has to say so.
+GATE_STRATEGIES = tuple(("barrier_harvest", "buy_hold", "trend_filter",
+                         "session_long", "ladder_dca", "vol_target"))
+
+
+def lane_may_gate(key: str) -> bool:
+    return key in GATE_STRATEGIES
+
 
 def strategy_is_runnable(key: str) -> tuple[bool, str]:
     if key in RUNNABLE_STRATEGIES:
@@ -312,10 +324,12 @@ def do_status(cfg: Config) -> int:
     runnable, why_not = strategy_is_runnable(cfg.strategy)
     from tradingagents.strategies import timeframe_fit
     fit, _ = timeframe_fit(cfg.timeframe, cfg.strategy)
-    for i, lane in enumerate(cfg.active_lanes()):
-        f, _ = timeframe_fit(lane["timeframe"], lane["strategy"])
-        print(f"lane {i}   : {lane['strategy']} on {lane['timeframe']} bars "
-              f"(fit {f})" + ("  <- TRADES" if i == 0 else "  signal only"))
+    _owner = (s.get("position") or {}).get("lane")
+    for i, lane in enumerate(_lane_order(cfg)):
+        owns = _owner and _owner.get("strategy") == lane["strategy"] \
+            and _owner.get("timeframe") == lane["timeframe"]
+        print(f"lane {i}   : {lane['strategy']} on {lane['timeframe']} bars"
+              + ("  <- HOLDS THE POSITION" if owns else ""))
     print(f"strategy : {cfg.strategy} on {cfg.timeframe} bars "
           f"(fit: {fit}, poll {cfg.poll}s)"
           + ("" if runnable else f"  ** NOT RUNNABLE: {why_not}"))
@@ -449,6 +463,44 @@ def _attach_bracket(cfg: Config, vol: int, entry_px: float,
             "response": resp, "tp_response": tp_resp}
 
 
+def _lane_order(cfg: Config) -> list:
+    """Lanes in race order: finest bars first.
+
+    'Whichever signals first' needs a deterministic tie-break, because a single
+    poll can find several lanes ready at once. The finest timeframe wins: its bar
+    closed most recently, so in real time its signal did arrive first.
+    """
+    from tradingagents.strategies import TIMEFRAME_SECONDS
+    return sorted(cfg.active_lanes(),
+                  key=lambda l: TIMEFRAME_SECONDS.get(l["timeframe"], 300))
+
+
+def pick_lane(cfg: Config) -> tuple:
+    """Which lane gets the position? Returns (lane, reason) or (None, why not).
+
+    Each lane is asked on ITS OWN bars whether it wants to be long. The first one
+    that says yes takes the trade and owns it until the position closes — MEXC
+    allows a single position per symbol, so ownership has to be exclusive rather
+    than shared.
+    """
+    from tradingagents.strategies import gate_reason, wants_long
+    misses = []
+    for lane in _lane_order(cfg):
+        if not lane_may_gate(lane["strategy"]):
+            misses.append(f"{lane['strategy']}/{lane['timeframe']}: not runnable")
+            continue
+        try:
+            candles = fx.klines(cfg.symbol, lane["timeframe"], 400)
+        except fx.MexcFuturesError as exc:
+            misses.append(f"{lane['strategy']}/{lane['timeframe']}: no bars ({exc})")
+            continue
+        if wants_long(lane["strategy"], candles):
+            return lane, gate_reason(lane["strategy"], candles)
+        misses.append(f"{lane['strategy']}/{lane['timeframe']}: "
+                      f"{gate_reason(lane['strategy'], candles)}")
+    return None, "; ".join(misses) or "no lanes configured"
+
+
 def _reconcile(cfg: Config, s: dict, px: float, dry: bool) -> bool:
     """Ask MEXC what we actually hold, and believe THAT.
 
@@ -574,12 +626,14 @@ def step(cfg: Config, live: bool) -> None:
     # manages an open position: returning here with a position on the books
     # would stop the stop-loss being watched at exactly the moment the account
     # is already in trouble.
-    # The primary lane is the only one that places orders.
-    _primary = cfg.primary_lane()
-    if _primary["strategy"] != cfg.strategy or \
-            _primary["timeframe"] != cfg.timeframe:
-        cfg = dataclasses_replace(cfg, strategy=_primary["strategy"],
-                                  timeframe=_primary["timeframe"])
+    # While a position is open, the lane that opened it owns it: its barriers are
+    # already resting on the exchange, and a different lane's stop would close
+    # part of a position it does not own.
+    _held = s.get("position") or {}
+    _owner = _held.get("lane")
+    if _owner:
+        cfg = dataclasses_replace(cfg, strategy=_owner["strategy"],
+                                  timeframe=_owner["timeframe"])
     may_enter, breaker_why = check_breakers(cfg, s)
     if not may_enter and not s.get("position"):
         LOG.warning("no action: %s", breaker_why)
@@ -693,6 +747,21 @@ def step(cfg: Config, live: bool) -> None:
             LOG.error("HALT: %s", s["halt_reason"])
             return
 
+    # Flat: race the lanes. First to want exposure takes the trade.
+    _lane, _why = pick_lane(cfg)
+    if _lane is None:
+        LOG.info("no lane wants exposure — %s", _why)
+        _write_state(s)
+        return
+    if _lane["strategy"] != cfg.strategy or _lane["timeframe"] != cfg.timeframe:
+        LOG.info("lane %s on %s bars won the entry: %s",
+                 _lane["strategy"], _lane["timeframe"], _why)
+        cfg = dataclasses_replace(cfg, strategy=_lane["strategy"],
+                                  timeframe=_lane["timeframe"])
+    else:
+        LOG.info("lane %s on %s bars takes the entry: %s",
+                 _lane["strategy"], _lane["timeframe"], _why)
+
     notional = min(cfg.margin_usd * cfg.leverage, cfg.max_notional_usd)
     vol = fx.contracts_for(cfg.symbol, notional, px)
     if vol < 1:
@@ -709,7 +778,7 @@ def step(cfg: Config, live: bool) -> None:
     # Persist the position BEFORE the take-profit goes out. Everything after
     # this line may fail without the bot forgetting that it is long.
     s["position"] = {"entry": px, "vol": vol, "notional": notional,
-                     "tp": None, "opened": _today()}
+                     "tp": None, "opened": _today(), "lane": _lane}
     _append_ledger({"action": "open", "price": px, "vol": vol,
                     "notional": notional, "dry_run": dry,
                     "gate": gate_why or "LIVE", "open_resp": r})
@@ -747,27 +816,22 @@ def step(cfg: Config, live: bool) -> None:
 
 
 def do_run(cfg: Config, live: bool, once: bool) -> int:
-    lanes = cfg.active_lanes()
-    primary = lanes[0]
-    runnable, why_not = strategy_is_runnable(primary["strategy"])
-    if not runnable:
-        LOG.error("refusing to start: %s", why_not)
-        return 2
-    from tradingagents.strategies import timeframe_fit
-    fit, why_fit = timeframe_fit(primary["timeframe"], primary["strategy"])
-    if fit == "avoid":
-        LOG.error("refusing to start: %s on %s bars is measured as ruinous. %s",
-                  primary["strategy"], primary["timeframe"], why_fit)
-        return 5
-    # The runner trades the primary lane and reports the rest, because MEXC
-    # cannot hold a separate stop per lane on one symbol.
-    for lane in lanes[1:]:
-        lf, lw = timeframe_fit(lane["timeframe"], lane["strategy"])
-        LOG.warning("SIGNAL-ONLY lane: %s on %s bars (fit %s) — it is evaluated "
-                    "and logged, but places no orders. %s trades %s on %s.",
-                    lane["strategy"], lane["timeframe"], lf,
-                    "Only the first lane", primary["strategy"],
-                    primary["timeframe"])
+    lanes = _lane_order(cfg)
+    for lane in lanes:
+        if not lane_may_gate(lane["strategy"]):
+            LOG.error("refusing to start: %s cannot be used even as an entry "
+                      "gate", lane["strategy"])
+            return 2
+    LOG.warning("racing %d lane(s), finest bars first — the first to want "
+                "exposure takes the trade and owns it until it closes:",
+                len(lanes))
+    for i, lane in enumerate(lanes):
+        LOG.warning("  %d. %s on %s bars", i + 1, lane["strategy"],
+                    lane["timeframe"])
+    if len(lanes) > 1:
+        LOG.warning("Entry gates only: a lane's signal decides WHETHER to open "
+                    "one bracketed trade. That is not the exposure form the "
+                    "backtest measures, so those figures do not transfer.")
     try:
         skew = fx.clock_skew_ms()
         if abs(skew) > 5000:

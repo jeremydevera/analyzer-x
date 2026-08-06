@@ -381,3 +381,62 @@ def strategies_for(timeframe: str) -> list:
                      "why": why, "kind": REGISTRY[key].kind})
     rows.sort(key=lambda r: (order[r["verdict"]], ORDER.index(r["key"])))
     return rows
+
+
+# ------------------------------------------------------- entry gates
+# A strategy's per-bar exposure can be used two different ways.
+#
+#   AS AN EXPOSURE TARGET (what the backtest measures): rebalance the position
+#   toward the target every bar. That is what makes trend_filter and friends
+#   ruinous on fine bars — measured at 148 orders a day on 1-minute data.
+#
+#   AS AN ENTRY GATE (what this function serves): only ask "would this strategy
+#   want to be long right now?" and, if so, take ONE bracketed trade managed by a
+#   take-profit and a stop. Turnover is then bounded by the barriers rather than
+#   by the bar count, so the fee problem disappears.
+#
+# These are NOT the same strategy. A gate has no exposure sizing and does not
+# scale out, so the backtested figures for the exposure form do not transfer.
+# Anything showing a gate result must say so.
+def wants_long(strategy: str, candles, params: dict | None = None) -> bool:
+    """Would this strategy want exposure on the latest bar?
+
+    ``candles`` needs Date/Open/High/Low/Close and enough history for the
+    strategy's lookback. Returns False rather than raising when there is not
+    enough data — refusing to trade on an unknown signal is the safe direction.
+    """
+    strat = REGISTRY.get(strategy)
+    if strat is None:
+        return False
+    if strat.kind == "bracket":
+        return True                      # always-long: it never declines
+    p = {**strat.params, **(params or {})}
+    try:
+        exposure = positions_for(strategy, candles, p)
+    except (ValueError, KeyError, IndexError, ZeroDivisionError):
+        return False
+    if not exposure:
+        return False
+    return float(exposure[-1]) > 0.0
+
+
+def gate_reason(strategy: str, candles, params: dict | None = None) -> str:
+    """One line on why the gate is open or shut, for the log and the UI."""
+    strat = REGISTRY.get(strategy)
+    if strat is None:
+        return f"{strategy!r} is not a known strategy"
+    if strat.kind == "bracket":
+        return "always-long: never declines an entry"
+    on = wants_long(strategy, candles, params)
+    if strategy == "trend_filter":
+        return ("price is above its moving average" if on
+                else "price is below its moving average")
+    if strategy == "session_long":
+        return ("the US cash session is open" if on
+                else "the US cash session is shut")
+    if strategy == "vol_target":
+        return ("recent volatility permits exposure" if on
+                else "recent volatility is too high for any exposure")
+    if strategy == "ladder_dca":
+        return "the ladder has started" if on else "the ladder has not started"
+    return "wants exposure" if on else "wants no exposure"

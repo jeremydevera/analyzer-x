@@ -1263,6 +1263,7 @@ def render_trade_tab() -> None:
     _st = spx_bot._read_state() or {}
     _pos = _st.get("position")
     _live_ready = os.getenv("SPX_BOT_ARMED", "").strip().lower() in ("yes", "true", "1")
+    _racing = spx_bot._lane_order(cfg)
     cs = st.container(key="command_strip")
     with cs:
         m1, m2, m3, m4, act = st.columns([1, 1, 1, 1, 1.5], gap="medium")
@@ -1310,10 +1311,13 @@ def render_trade_tab() -> None:
     st.caption(
         ("**This will place real orders.** " if _live_ready else
          "Runs in **dry run** — it decides and logs, but sends no orders. ")
-        + (f"Trading `{cfg.primary_lane()['strategy']}` on "
-           f"`{cfg.primary_lane()['timeframe']}` bars, checked every {cfg.poll}s"
-           + (f", plus {len(cfg.active_lanes()) - 1} signal-only lane(s). "
-              if len(cfg.active_lanes()) > 1 else ". ")
+        # The saved config, not the pending selection: this strip describes what
+        # is (or would be) RUNNING. `lanes` is not built until the plan block
+        # below, and referencing it here was a NameError at runtime.
+        + (f"Trading `{_racing[0]['strategy']}` on `{_racing[0]['timeframe']}` "
+           f"bars, checked every {cfg.poll}s"
+           + (f", racing {len(_racing)} lanes. "
+              if len(_racing) > 1 else ". ")
            + ("" if _live_ready else
               "To trade for real, launch it from a terminal with "
               "`SPX_BOT_ARMED=yes python spx_bot.py watchdog --live` — a browser "
@@ -1344,9 +1348,12 @@ def render_trade_tab() -> None:
                 mark = {"good": "", "workable": "  ~", "avoid": "  \u2715"}
 
                 def _label(k, _fit=fit, _mark=mark):
-                    name = sg.REGISTRY[k].name + _mark[_fit[k]["verdict"]]
+                    name = sg.REGISTRY[k].name
                     if k not in spx_bot.RUNNABLE_STRATEGIES:
-                        name += "  [backtest only]"
+                        # No longer "backtest only": these run as entry GATES,
+                        # which is a different thing from the exposure form the
+                        # backtest measures.
+                        name += "  [as entry filter]"
                     return name
 
                 want = _saved.get(tf, keys[0])
@@ -1359,16 +1366,12 @@ def render_trade_tab() -> None:
                         index=keys.index(want) if want in keys else 0,
                         key=f"tf_strat_{tf}", format_func=_label,
                         label_visibility="collapsed")
-                    v = fit[pick]
-                    if v["verdict"] == "avoid":
-                        st.markdown("<div class='ta-fit bad'>not suited to these "
-                                    "bars</div>", unsafe_allow_html=True)
-                    elif v["verdict"] == "workable":
-                        st.markdown("<div class='ta-fit warn'>workable</div>",
-                                    unsafe_allow_html=True)
+                    if pick in spx_bot.RUNNABLE_STRATEGIES:
+                        st.markdown("<div class='ta-fit ok'>trades on its own "
+                                    "signal</div>", unsafe_allow_html=True)
                     else:
-                        st.markdown("<div class='ta-fit ok'>good fit</div>",
-                                    unsafe_allow_html=True)
+                        st.markdown("<div class='ta-fit warn'>entry filter "
+                                    "only</div>", unsafe_allow_html=True)
                 lanes.append({"timeframe": tf, "strategy": pick})
 
         if not lanes:
@@ -1378,31 +1381,44 @@ def render_trade_tab() -> None:
         timeframe = lanes[0]["timeframe"]
         strat_key = lanes[0]["strategy"]
         strat = sg.REGISTRY[strat_key]
-        _worst = [l for l in lanes
-                  if sg.timeframe_fit(l["timeframe"], l["strategy"])[0] == "avoid"]
-        if _worst:
-            st.error("**" + ", ".join(f"{l['strategy']} on {l['timeframe']}"
-                                      for l in _worst) + "** — "
-                     + sg.timeframe_fit(_worst[0]["timeframe"],
-                                        _worst[0]["strategy"])[1])
+        _gates = [l for l in lanes
+                  if l["strategy"] not in spx_bot.RUNNABLE_STRATEGIES]
+        if _gates:
+            st.warning(
+                "**" + ", ".join(f"{l['strategy']} on {l['timeframe']}"
+                                 for l in _gates)
+                + "** run as *entry filters*: the signal decides only whether to "
+                  "open one bracketed trade, which is then managed by the "
+                  "take-profit and stop below. That is NOT the form the backtest "
+                  "measures — the backtest rebalances exposure every bar, which "
+                  "on fine bars measured 148 orders a day. As a filter the "
+                  "turnover problem is gone, but so is the backtested result: "
+                  "those numbers do not transfer.")
         if len(lanes) > 1:
             others = ", ".join(f"{l['strategy']} on {l['timeframe']}"
                                for l in lanes[1:])
+            _order = ", ".join(f"{l['strategy']} on {l['timeframe']}"
+                               for l in sorted(
+                                   lanes,
+                                   key=lambda l: sg.TIMEFRAME_SECONDS.get(
+                                       l["timeframe"], 300)))
             st.info(
-                f"**{strat_key} on {timeframe} places the orders.** The other "
-                f"{len(lanes) - 1} ({others}) are evaluated and logged as signals "
-                f"only.\n\nThis is MEXC's rule, not a shortcut here — the "
-                f"exchange allows **one long per symbol** and refuses the "
-                f"alternatives outright:\n"
+                f"**These {len(lanes)} lanes race each other.** Whichever wants "
+                f"to be long first takes the trade and keeps it until it closes; "
+                f"then the race starts again.\n\nRace order, finest bars first: "
+                f"{_order}. The finest timeframe wins a tie, because its bar "
+                f"closed most recently.\n\nOnly one can hold the position at a "
+                f"time, and that is MEXC's rule rather than a shortcut here — the "
+                f"exchange allows **one long per symbol** and refuses every way "
+                f"around it:\n"
                 f"- a second long at a different leverage → "
                 f"`code 2021: Order leverage is inconsistent with the existing "
                 f"position leverage`\n"
                 f"- one isolated plus one cross → `code 2027: Cross and isolated "
                 f"position of the same direction are alternative`\n\n"
-                f"Same-settings orders simply merge into one position, which "
-                f"carries a single stop. To run several lanes for real at the same "
-                f"time, give each a different perpetual — MEXC keeps positions on "
-                f"different contracts separate.")
+                f"To have several lanes hold positions at the same time, give each "
+                f"a different perpetual — MEXC keeps different contracts "
+                f"separate.")
         st.caption(
             f"Checked every "
             f"**{min(sg.poll_seconds_for(l['timeframe']) for l in lanes)}s** — "
@@ -1458,17 +1474,18 @@ def render_trade_tab() -> None:
         margin = st.number_input("Margin (USD)", 5.0, 10_000.0,
                                  float(cfg.margin_usd), step=5.0,
                                  key="trade_margin")
-        if strat.kind == "bracket":
-            tp = st.number_input("Take-profit %", 0.25, 20.0,
-                                 float(cfg.take_profit_pct), step=0.25,
-                                 key="trade_tp")
-            sl = st.number_input("Stop-loss %", 1.0, 50.0,
-                                 float(cfg.stop_loss_pct), step=0.5,
-                                 key="trade_sl")
-        else:
-            tp, sl = float(cfg.take_profit_pct), float(cfg.stop_loss_pct)
-            st.caption("This approach shapes exposure rather than setting "
-                       "barriers, so it has no take-profit or stop-loss.")
+        # Every lane exits through these barriers now, including the ones used as
+        # entry filters — a filter decides only WHETHER to open a trade.
+        tp = st.number_input("Take-profit %", 0.25, 20.0,
+                             float(cfg.take_profit_pct), step=0.25,
+                             key="trade_tp")
+        sl = st.number_input("Stop-loss %", 1.0, 50.0,
+                             float(cfg.stop_loss_pct), step=0.5,
+                             key="trade_sl")
+        if strat.kind != "bracket":
+            st.caption("Used as an entry filter, this approach still exits "
+                       "through the take-profit and stop above — its own exposure "
+                       "sizing is not used.")
         st.markdown('<div class="ta-panel-title">Risk limits</div>',
                     unsafe_allow_html=True)
         cap = st.number_input("Max notional (USD)", 10.0, 50_000.0,

@@ -1,5 +1,6 @@
 """Tests for the SPX futures bot: safety gates, sizing, signing, state."""
 import json
+from datetime import datetime, timedelta, timezone
 import os
 from pathlib import Path
 from unittest.mock import patch
@@ -430,13 +431,22 @@ def test_only_bracket_strategies_are_runnable():
         assert "rebalancing engine" in why
 
 
-def test_the_runner_refuses_to_start_an_unrunnable_strategy(monkeypatch):
-    """Refusing beats silently running something else: the operator would
-    believe they were trading a strategy they were not."""
-    monkeypatch.setattr(spx_bot.fx, "last_price", lambda s: 100.0)
-    rc = spx_bot.do_run(spx_bot.Config(strategy="vol_target"),
-                        live=False, once=True)
-    assert rc == 2, "must exit non-zero rather than trade something else"
+def test_an_exposure_strategy_now_starts_as_an_entry_gate(monkeypatch):
+    """This used to be refused, and the refusal was right at the time.
+
+    As an EXPOSURE target vol_target rebalances every bar, which measured 148
+    orders a day on 1-minute data. As an ENTRY GATE its signal only decides
+    whether to open one bracketed trade, so turnover is bounded by the barriers
+    and the objection disappears. The backtested figures for the exposure form do
+    not transfer, which is why the UI labels these as gates.
+    """
+    _state()
+    monkeypatch.setattr(spx_bot.fx, "clock_skew_ms", lambda: 0)
+    monkeypatch.setattr(spx_bot, "step", lambda cfg, live: None)
+    rc = spx_bot.do_run(spx_bot.Config(strategy="vol_target",
+                                      timeframe="Min1"), live=False, once=True)
+    assert rc == 0
+
 
 
 def test_every_registered_strategy_is_classified():
@@ -686,32 +696,26 @@ def test_an_explicit_poll_override_wins():
     assert spx_bot.Config(timeframe="Min5", poll_seconds=45).poll == 45
 
 
-def test_the_unrunnable_gate_fires_before_the_timeframe_gate():
-    """Both refusals are correct, and the strategy gate is the earlier one."""
-    assert spx_bot.do_run(spx_bot.Config(strategy="trend_filter",
-                                        timeframe="Min1"),
-                          live=False, once=True) == 2
-
-
-def test_the_runner_refuses_a_ruinous_timeframe_pairing(monkeypatch):
-    """trend_filter on 1-minute bars measured 148 orders a day — the account
-    burns down through turnover alone, with no bug involved.
-
-    Today this gate is unreachable, because the only two runnable strategies fit
-    every timeframe. It exists for the exposure engine that would make those
-    strategies runnable, so the test grants the permission that engine would and
-    checks the gate still holds. Without it, adding the engine would silently
-    make 1-minute rebalancing launchable.
-    """
+def test_a_strategy_that_is_not_a_strategy_is_still_refused(monkeypatch):
     monkeypatch.setattr(spx_bot.fx, "clock_skew_ms", lambda: 0)
-    monkeypatch.setattr(spx_bot, "RUNNABLE_STRATEGIES",
-                        ("barrier_harvest", "buy_hold", "trend_filter"))
-    cfg = spx_bot.Config(strategy="trend_filter", timeframe="Min1")
-    assert spx_bot.do_run(cfg, live=False, once=True) == 5
-    # ...and permits it on bars where the turnover is affordable
+    rc = spx_bot.do_run(spx_bot.Config(
+        lanes=[{"timeframe": "Min5", "strategy": "not_a_strategy"}]),
+        live=False, once=True)
+    assert rc == 2
+
+
+
+def test_a_gate_on_fine_bars_is_permitted_because_it_does_not_rebalance(monkeypatch):
+    """trend_filter on 1-minute bars was refused as an exposure target — 2,279x
+    turnover in 31 days. As a gate it opens at most one bracketed trade at a
+    time, so the turnover argument no longer holds and it may run."""
+    _state()
+    monkeypatch.setattr(spx_bot.fx, "clock_skew_ms", lambda: 0)
     monkeypatch.setattr(spx_bot, "step", lambda cfg, live: None)
-    cfg.timeframe = "Min60"
+    cfg = spx_bot.Config(lanes=[{"timeframe": "Min1",
+                                 "strategy": "trend_filter"}])
     assert spx_bot.do_run(cfg, live=False, once=True) == 0
+
 
 
 def test_the_watchdog_does_not_retry_a_ruinous_pairing(monkeypatch):
@@ -764,18 +768,16 @@ def test_duplicate_and_malformed_lanes_are_dropped():
     assert c.active_lanes() == [{"timeframe": "Min5", "strategy": "buy_hold"}]
 
 
-def test_the_primary_lane_is_validated_not_the_stale_fields(monkeypatch):
-    """A config whose top-level strategy is unrunnable must still start when the
-    primary lane is fine — and must refuse when the primary lane is not."""
+def test_every_lane_is_validated_not_just_the_first(monkeypatch):
+    """All lanes race, so a bad strategy anywhere in the list must stop startup
+    rather than waiting to be reached."""
     monkeypatch.setattr(spx_bot.fx, "clock_skew_ms", lambda: 0)
     monkeypatch.setattr(spx_bot, "step", lambda cfg, live: None)
-    ok = spx_bot.Config(strategy="vol_target", timeframe="Min1",
-                        lanes=[{"timeframe": "Min5",
-                                "strategy": "barrier_harvest"}])
-    assert spx_bot.do_run(ok, live=False, once=True) == 0
-    bad = spx_bot.Config(strategy="barrier_harvest",
-                         lanes=[{"timeframe": "Min5", "strategy": "vol_target"}])
+    bad = spx_bot.Config(lanes=[
+        {"timeframe": "Min5", "strategy": "barrier_harvest"},
+        {"timeframe": "Min60", "strategy": "typo_strategy"}])
     assert spx_bot.do_run(bad, live=False, once=True) == 2
+
 
 
 def test_step_trades_the_primary_lane_not_the_stale_field(monkeypatch):
@@ -804,3 +806,119 @@ def test_lanes_round_trip_through_the_saved_config():
     assert spx_bot.Config.load().active_lanes() == [
         {"timeframe": "Min15", "strategy": "buy_hold"},
         {"timeframe": "Hour4", "strategy": "barrier_harvest"}]
+
+
+# ============ the lane race ==================================================
+# "Enable every timeframe with a different approach, whichever signals first
+# wins." MEXC allows one position per symbol, so the winner OWNS it until it
+# closes — a different lane's stop would close part of a position it does not own.
+def _bars(n=400, rising=True):
+    import pandas as pd
+    base = 100.0
+    rows = []
+    for i in range(n):
+        px = base + (i * 0.05 if rising else -i * 0.05)
+        rows.append({"Date": datetime(2026, 1, 1, tzinfo=timezone.utc)
+                     + timedelta(minutes=5 * i),
+                     "Open": px, "High": px + 0.2, "Low": px - 0.2, "Close": px})
+    return pd.DataFrame(rows)
+
+
+def test_the_race_is_finest_bars_first():
+    """A single poll can find several lanes ready; the tie-break must be
+    deterministic, and the finest bar closed most recently."""
+    c = spx_bot.Config(lanes=[{"timeframe": "Day1", "strategy": "buy_hold"},
+                              {"timeframe": "Min1", "strategy": "buy_hold"},
+                              {"timeframe": "Min15", "strategy": "buy_hold"}])
+    assert [l["timeframe"] for l in spx_bot._lane_order(c)] == \
+        ["Min1", "Min15", "Day1"]
+
+
+def test_the_first_lane_that_wants_exposure_wins(monkeypatch):
+    monkeypatch.setattr(spx_bot.fx, "klines", lambda s, tf, n=400: _bars())
+    # trend_filter on a falling series declines; barrier_harvest never does
+    c = spx_bot.Config(lanes=[{"timeframe": "Min1", "strategy": "trend_filter"},
+                              {"timeframe": "Min5",
+                               "strategy": "barrier_harvest"}])
+    monkeypatch.setattr(spx_bot.fx, "klines",
+                        lambda s, tf, n=400: _bars(rising=(tf != "Min1")))
+    lane, why = spx_bot.pick_lane(c)
+    assert lane["strategy"] == "barrier_harvest", \
+        "the declining lane must be skipped, not used"
+    assert "never declines" in why, "why describes the winner, not the misses"
+
+
+def test_no_lane_wanting_exposure_means_no_trade(monkeypatch):
+    monkeypatch.setattr(spx_bot.fx, "klines",
+                        lambda s, tf, n=400: _bars(rising=False))
+    c = spx_bot.Config(lanes=[{"timeframe": "Min5", "strategy": "trend_filter"}])
+    lane, why = spx_bot.pick_lane(c)
+    assert lane is None
+    assert "moving average" in why
+
+
+def test_a_lane_with_no_bars_is_skipped_not_fatal(monkeypatch):
+    def flaky(sym, tf, n=400):
+        if tf == "Min1":
+            raise spx_bot.fx.MexcFuturesError("no bars")
+        return _bars()
+    monkeypatch.setattr(spx_bot.fx, "klines", flaky)
+    c = spx_bot.Config(lanes=[{"timeframe": "Min1", "strategy": "buy_hold"},
+                              {"timeframe": "Min5", "strategy": "buy_hold"}])
+    lane, _ = spx_bot.pick_lane(c)
+    assert lane["timeframe"] == "Min5"
+
+
+def test_the_winner_is_recorded_and_owns_the_position(monkeypatch):
+    _state()
+    monkeypatch.setattr(spx_bot.fx, "last_price", lambda s: 100.0)
+    monkeypatch.setattr(spx_bot.fx, "usdt_equity", lambda: 500.0)
+    monkeypatch.setattr(spx_bot.fx, "contracts_for", lambda *a, **k: 5)
+    monkeypatch.setattr(spx_bot.fx, "open_long", lambda *a, **k: {})
+    monkeypatch.setattr(spx_bot.fx, "klines", lambda s, tf, n=400: _bars())
+    seen = {}
+    monkeypatch.setattr(spx_bot, "_attach_bracket",
+                        lambda cfg, *a, **k: seen.update(strategy=cfg.strategy)
+                        or {"protected": True, "tp": None, "sl": 90.0,
+                            "position_id": 1})
+    cfg = spx_bot.Config(lanes=[{"timeframe": "Min60", "strategy": "buy_hold"},
+                                {"timeframe": "Min5",
+                                 "strategy": "barrier_harvest"}])
+    spx_bot.step(cfg, live=False)
+    pos = spx_bot._read_state()["position"]
+    assert pos["lane"] == {"timeframe": "Min5", "strategy": "barrier_harvest"}, \
+        "finest lane should win the race"
+    assert seen["strategy"] == "barrier_harvest", "and its barriers are used"
+
+
+def test_the_owning_lane_manages_the_exit_not_another(monkeypatch):
+    """A different lane's stop would close part of a position it does not own."""
+    _state(position=dict(_held(entry=100.0), protected=True,
+                         lane={"timeframe": "Min60", "strategy": "buy_hold"}))
+    seen = {}
+    monkeypatch.setattr(spx_bot.fx, "last_price", lambda s: 101.0)
+    monkeypatch.setattr(spx_bot.fx, "usdt_equity", lambda: 500.0)
+    monkeypatch.setattr(spx_bot.fx, "open_positions",
+                        lambda s=None: [{"positionId": 1, "holdVol": 10}])
+    monkeypatch.setattr(spx_bot, "_attach_bracket",
+                        lambda cfg, *a, **k: seen.update(strategy=cfg.strategy)
+                        or {"protected": True, "tp": None, "sl": 90.0,
+                            "position_id": 1})
+    cfg = spx_bot.Config(strategy="barrier_harvest", timeframe="Min5",
+                         lanes=[{"timeframe": "Min5",
+                                 "strategy": "barrier_harvest"}])
+    _s = spx_bot._read_state()
+    _s["position"]["protected"] = False        # force a bracket retry
+    spx_bot._write_state(_s)
+    spx_bot.step(cfg, live=False)
+    assert seen["strategy"] == "buy_hold", \
+        "the lane that opened it must keep managing it"
+
+
+def test_every_strategy_is_usable_as_a_gate():
+    """As a gate there is no per-bar rebalancing, so the turnover objection that
+    made four of them backtest-only does not apply."""
+    from tradingagents import strategies as sg
+    for key in sg.ORDER:
+        assert spx_bot.lane_may_gate(key), key
+    assert not spx_bot.lane_may_gate("no_such_strategy")

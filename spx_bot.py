@@ -238,6 +238,35 @@ def lane_may_gate(key: str) -> bool:
     return key in GATE_STRATEGIES
 
 
+# Liquidation happens before the stop can fire once the stop sits further away
+# than the margin can absorb. At 200x that is a 0.5% move against a 10% stop —
+# the stop is decoration and the real exit is the venue taking the position. MEXC
+# also holds a maintenance margin, so liquidation arrives slightly EARLIER than
+# 100/leverage; the margin of safety below accounts for that.
+LIQUIDATION_SAFETY = 0.7        # the stop must sit inside 70% of the wipe-out move
+
+
+def stop_is_reachable(leverage: int, stop_loss_pct: float) -> tuple[bool, str]:
+    """Can this stop actually fire before the position is liquidated?"""
+    if leverage <= 1 or stop_loss_pct <= 0:
+        return True, ""
+    wipeout = 100.0 / leverage
+    if stop_loss_pct >= wipeout:
+        return False, (
+            f"a {stop_loss_pct:.1f}% stop at {leverage}x can never fire: the "
+            f"margin is gone after about {wipeout:.2f}%, so the venue liquidates "
+            f"the position first and the loss is the whole margin. Use leverage "
+            f"below {100.0 / stop_loss_pct:.0f}x, or a stop under "
+            f"{wipeout * LIQUIDATION_SAFETY:.2f}%.")
+    if stop_loss_pct > wipeout * LIQUIDATION_SAFETY:
+        return True, (
+            f"a {stop_loss_pct:.1f}% stop at {leverage}x sits close to the "
+            f"{wipeout:.2f}% wipe-out point; maintenance margin means liquidation "
+            f"can arrive first. Consider a stop under "
+            f"{wipeout * LIQUIDATION_SAFETY:.2f}%.")
+    return True, ""
+
+
 def strategy_is_runnable(key: str) -> tuple[bool, str]:
     if key in RUNNABLE_STRATEGIES:
         return True, ""
@@ -837,6 +866,12 @@ def do_run(cfg: Config, live: bool, once: bool) -> int:
             LOG.error("refusing to start: %s cannot be used even as an entry "
                       "gate", lane["strategy"])
             return 2
+    reachable, why_stop = stop_is_reachable(cfg.leverage, cfg.stop_loss_pct)
+    if not reachable:
+        LOG.error("refusing to start: %s", why_stop)
+        return 6
+    if why_stop:
+        LOG.warning("%s", why_stop)
     LOG.warning("racing %d lane(s), finest bars first — the first to want "
                 "exposure takes the trade and owns it until it closes:",
                 len(lanes))
@@ -889,7 +924,7 @@ ALERT_PATH = STATE_DIR / "alerts.jsonl"
 
 # Exit codes the watchdog must NOT retry: they are configuration, not weather.
 # Restarting on a bad clock or an unrunnable strategy would just spin.
-PERMANENT_EXIT_CODES = {2, 3, 4, 5}
+PERMANENT_EXIT_CODES = {2, 3, 4, 5, 6}
 
 
 def alert(kind: str, message: str) -> None:

@@ -1155,3 +1155,53 @@ def test_a_one_shot_lane_hands_over_across_cycles(wired):
     lane = spx_bot._read_state()["position"]["lane"]
     assert lane["strategy"] == "barrier_harvest", \
         "the spent one-shot lane must hand over"
+
+
+# ============ a stop beyond liquidation is not a stop ========================
+# The UI warned about this; the BOT did not, so it would have run 200x with a 10%
+# stop where liquidation arrives at 0.5% — the stop is decoration and the real
+# exit is the venue taking the whole margin.
+@pytest.mark.parametrize("lev,stop,ok", [
+    (1, 10.0, True),
+    (3, 10.0, True),        # wipe-out at 33%, stop well inside
+    # 3x wipes out near 33.3%, so a 30% stop DOES still fire first — marginal,
+    # not impossible. It warns rather than refusing. This expectation was mine and
+    # it was wrong; the code is right.
+    (3, 30.0, True),
+    (3, 34.0, False),       # past the wipe-out: genuinely unreachable
+    (10, 10.0, False),      # wipe-out at 10% — exactly unreachable
+    (10, 5.0, True),
+    (20, 10.0, False),
+    (200, 10.0, False),
+    (200, 0.3, True),       # inside 70% of the 0.5% wipe-out
+])
+def test_stop_reachability(lev, stop, ok):
+    assert spx_bot.stop_is_reachable(lev, stop)[0] is ok
+
+
+def test_the_runner_refuses_an_unreachable_stop(monkeypatch):
+    monkeypatch.setattr(spx_bot, "step", lambda cfg, live: None)
+    cfg = spx_bot.Config(margin_usd=5.0, leverage=200, stop_loss_pct=10.0)
+    assert spx_bot.do_run(cfg, live=False, once=True) == 6
+
+
+def test_the_watchdog_will_not_retry_an_unreachable_stop(monkeypatch):
+    monkeypatch.setattr(spx_bot.time, "sleep", lambda s: None)
+    monkeypatch.setattr(spx_bot, "alert", lambda k, m: None)
+    monkeypatch.setattr(spx_bot, "do_run", lambda *a, **k: 6)
+    assert spx_bot.do_watchdog(spx_bot.Config(), live=False) == 6
+
+
+def test_a_stop_near_the_wipeout_warns_but_runs(monkeypatch):
+    _state()
+    monkeypatch.setattr(spx_bot, "step", lambda cfg, live: None)
+    ok, why = spx_bot.stop_is_reachable(10, 8.0)     # wipe-out 10%, 70% = 7%
+    assert ok is True and "maintenance margin" in why
+    assert spx_bot.do_run(spx_bot.Config(leverage=10, stop_loss_pct=8.0),
+                          live=False, once=True) == 0
+
+
+def test_the_operators_settings_are_permitted():
+    """3x with a 10% stop: wipe-out at 33%, so the stop fires with room to spare."""
+    ok, why = spx_bot.stop_is_reachable(3, 10.0)
+    assert ok is True and why == ""

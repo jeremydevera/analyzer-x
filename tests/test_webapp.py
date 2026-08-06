@@ -104,31 +104,32 @@ def test_classify_error(app):
 def test_health_badge(app):
     assert app.health_badge(None) == "—"
     ok = app.health_badge({"status": "ok", "ms": 250})
-    assert "✅" in ok and "250ms" in ok
+    assert "100%" in ok and "250ms" in ok
     deg = app.health_badge({"status": "degraded", "ms": 90})
-    assert "⚠️" in deg and "degraded" in deg
+    assert "0%" in deg and "degraded" in deg
+    rl = app.health_badge({"status": "ratelimit", "ms": 90})
+    assert "25%" in rl
 
 
 def test_provider_for(app):
     assert app.provider_for("gemini-3.1-flash-lite") == "google"
     assert app.provider_for("deepseek-ai/deepseek-v4-flash") == "nvidia"
-    assert app.provider_for("glm-4.7") == "ollama"
+    assert app.provider_for("gpt-oss:120b") == "ollama"
     # unknown/custom model → falls back to the .env default provider
     assert app.provider_for("some/unknown") == app.DEFAULT_CONFIG["llm_provider"]
     assert app.provider_for("gpt-4o-mini") == "openai"
     assert app.provider_for("qwen3.6-flash") == "qwen"
     assert app.provider_for("glm-5.1") == "maas"
-    assert app.provider_for("@cf/meta/llama-3.3-70b-instruct-fp8-fast") == "cloudflare"
-    assert app.provider_for("claude-opus-4-8") == "anthropic"
-    # providers represented in the dropdown
-    assert {app.provider_for(m) for m in app.MODEL_CHOICES} == {
-        "google", "nvidia", "ollama", "openai", "qwen", "maas", "cloudflare", "anthropic"}
+    # providers represented in the dropdown (catalog pruned 2026-07-31 to
+    # models that answered a live ping; cloudflare/anthropic entries removed)
+    assert {app.provider_for(m) for m in app.MODELS} == {
+        "google", "nvidia", "ollama", "openai", "qwen", "maas"}
 
 
 def test_configure_cfg_ollama(app):
-    cfg = app.build_config(app.DEFAULT_CONFIG, provider="ollama", deep_model="glm-4.7",
-                           quick_model="glm-4.7", debate_rounds=1, risk_rounds=1)
-    app.configure_cfg(cfg, "glm-4.7")
+    cfg = app.build_config(app.DEFAULT_CONFIG, provider="ollama", deep_model="gpt-oss:120b",
+                           quick_model="gpt-oss:120b", debate_rounds=1, risk_rounds=1)
+    app.configure_cfg(cfg, "gpt-oss:120b")
     assert cfg["llm_provider"] == "openai_compatible"          # routed via generic client
     assert cfg["backend_url"] == "https://ollama.com/v1"
     # google model gets no backend_url override and no forced api_key
@@ -157,18 +158,8 @@ def test_model_options(app):
     assert opts2.count("gemini-3.1-flash-lite") == 1
 
 
-def test_provider_status(app):
-    # pick two models known to be on the same provider (google)
-    g = [m for m in app.MODEL_CHOICES if app.provider_for(m) == "google"]
-    assert len(g) >= 2
-    # any ok → provider ok
-    health = {g[0]: {"status": "ratelimit"}, g[1]: {"status": "ok"}}
-    assert app.provider_status("google", health) == "ok"
-    # none ok → worst by rank
-    health = {g[0]: {"status": "ratelimit"}, g[1]: {"status": "auth"}}
-    assert app.provider_status("google", health) == "ratelimit"
-    # nothing tested → untested
-    assert app.provider_status("google", {}) == "untested"
+# provider_status / the Engine-capacity bars were removed 2026-07-31: the
+# health panel now shows a usability percentage per model row instead.
 
 
 def test_progress_summary(app):
@@ -220,3 +211,38 @@ def test_safe_markdown_escapes_dollar_signs(app):
 def test_safe_markdown_handles_empty_input(app):
     assert app.safe_markdown("") == ""
     assert app.safe_markdown(None) == ""
+
+
+def test_build_config_social_source(app):
+    cfg = app.build_config(app.DEFAULT_CONFIG, provider="google", deep_model="m",
+                           quick_model="m", debate_rounds=1, risk_rounds=1)
+    # default = free source: never spend X credits unless asked
+    assert cfg["include_stocktwits"] is True
+    assert cfg["include_twitter"] is False
+    cfg = app.build_config(app.DEFAULT_CONFIG, provider="google", deep_model="m",
+                           quick_model="m", debate_rounds=1, risk_rounds=1,
+                           social_source="Both")
+    assert cfg["include_stocktwits"] is True
+    assert cfg["include_twitter"] is True
+
+
+def test_confusable_warning_is_quiet_for_routed_tickers():
+    """MER no longer needs a warning: it routes to the PSE vendor, which
+    serves the real Meralco rather than Yahoo's unrelated Meren Energy."""
+    import tickers as t
+    assert t.confusable_warning("MER") == ""
+    assert t.confusable_warning("AAPL") == ""
+    assert t.confusable_warning("") == ""
+
+
+def test_pse_ticker_switches_the_price_vendor(app):
+    cfg = app.build_config(app.DEFAULT_CONFIG, provider="google", deep_model="m",
+                           quick_model="m", debate_rounds=1, risk_rounds=1,
+                           ticker="MER")
+    assert cfg["data_vendors"]["core_stock_apis"] == "pse"
+    assert cfg["data_vendors"]["technical_indicators"] == "pse"
+    # a US ticker keeps whatever the base config had
+    cfg2 = app.build_config(app.DEFAULT_CONFIG, provider="google", deep_model="m",
+                            quick_model="m", debate_rounds=1, risk_rounds=1,
+                            ticker="AAPL")
+    assert cfg2["data_vendors"]["core_stock_apis"] != "pse"

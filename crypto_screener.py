@@ -9,9 +9,12 @@ that touches st.*.
 from __future__ import annotations
 
 import html
+import logging
 import os
 import time
 from copy import deepcopy
+
+logger = logging.getLogger(__name__)
 
 # Fundamentals is omitted rather than disabled: a three-week-old memecoin has no
 # filings, and giving that analyst nothing to read only feeds placeholders into
@@ -38,12 +41,23 @@ def social_flags(choice: str) -> dict:
     return dict(_SOCIAL_FLAGS[choice])
 
 
+def parse_keywords(text: str) -> list[str]:
+    """Comma-separated keywords → clean list: stripped, de-duped, empties out."""
+    seen: list[str] = []
+    for raw in (text or "").split(","):
+        term = raw.strip()
+        if term and term.lower() not in (s.lower() for s in seen):
+            seen.append(term)
+    return seen
+
+
 def build_crypto_config(base: dict, *, provider: str, deep_model: str,
                         quick_model: str, debate_rounds: int, risk_rounds: int,
                         social_source: str = SOURCE_STOCKTWITS,
                         display_name: str | None = None,
                         listed_date: str | None = None,
-                        age_hours: float | None = None) -> dict:
+                        age_hours: float | None = None,
+                        twitter_keywords: list[str] | None = None) -> dict:
     """Config for a new-coin run: MEXC prices, Yahoo news, chosen social source.
 
     Returns a copy — the caller's DEFAULT_CONFIG must stay untouched so a later
@@ -71,6 +85,9 @@ def build_crypto_config(base: dict, *, provider: str, deep_model: str,
         cfg["asset_listed_date"] = listed_date
     if age_hours is not None:
         cfg["asset_age_hours"] = age_hours
+    # User keywords are OR'd into the X search beside the cashtag and name.
+    if twitter_keywords:
+        cfg["twitter_extra_terms"] = list(twitter_keywords)
     return cfg
 
 
@@ -92,14 +109,19 @@ def coin_instrument_context(coin) -> str:
     )
 
 
-def verdict_key(symbol: str, date: str) -> str:
-    """Session-state key so each coin/date verdict survives analyzing another coin."""
-    return f"verdict:{symbol}:{date}"
+def verdict_key(symbol: str, date: str, model: str) -> str:
+    """Session-state key so each coin/date/model verdict survives other runs.
+
+    The model is part of the key on purpose: without it, switching models and
+    pressing Analyze showed the previous model's cached verdict instead of
+    running the new one.
+    """
+    return f"verdict:{symbol}:{date}:{model}"
 
 
-def report_key(symbol: str, date: str) -> str:
+def report_key(symbol: str, date: str, model: str) -> str:
     """Session-state key for the stored reports behind a completed verdict."""
-    return f"reports:{symbol}:{date}"
+    return f"reports:{symbol}:{date}:{model}"
 
 
 # Report sections shown in the expander, in reading order. Fundamentals is absent
@@ -200,10 +222,16 @@ def candlestick_chart(df, base: str):
         x=alt.X("Date:T", title=None),
         tooltip=["Date:T", "Open:Q", "High:Q", "Low:Q", "Close:Q", "Volume:Q"],
     )
+    # labelLimit keeps five-figure prices (BTC at 64,872) from being clipped to
+    # "000"; Altair's default reserves too little room for the axis text.
+    y_axis = alt.Axis(format=",.6~g", labelLimit=90, labelPadding=4)
     wick = base_chart.mark_rule().encode(
-        y=alt.Y("Low:Q", title=f"{base} price", scale=alt.Scale(zero=False)),
+        y=alt.Y("Low:Q", title=f"{base} price", axis=y_axis,
+                scale=alt.Scale(zero=False)),
         y2=alt.Y2("High:Q"), color=colour)
     body = base_chart.mark_bar().encode(y="Open:Q", y2="Close:Q", color=colour)
+    # No .configure_*() here: Altair refuses to nest a configured chart inside a
+    # LayerChart, and the Trade tab layers take-profit / stop-loss rules on top.
     return (wick + body).properties(height=340)
 
 
@@ -247,7 +275,7 @@ def alert_message(found: list) -> str:
         return ""
     noun = "listing" if len(found) == 1 else "listings"
     coins = ", ".join(f"{c['base']} ({fmt_age(c['age_hours'])} old)" for c in found)
-    return f"🔔 {len(found)} new MEXC {noun}: {coins}"
+    return f"{len(found)} new MEXC {noun}: {coins}"
 
 
 # Raw source panels shown under the sentiment report, cheapest source first.
@@ -289,10 +317,29 @@ def source_panel_rows(sources: dict) -> list:
 
 
 def verdict_label(signal: str | None) -> str:
-    """Render a signal as its table chip."""
-    return {"BUY": "▲ BUY", "SELL": "▼ SELL", "HOLD": "■ HOLD"}.get(
-        (signal or "").strip().upper(), "—"
-    )
+    """Render a signal as its table chip — the full 5-tier scale."""
+    return {
+        "BUY": "▲ BUY", "OVERWEIGHT": "↗ OVERWEIGHT", "HOLD": "■ HOLD",
+        "UNDERWEIGHT": "↘ UNDERWEIGHT", "SELL": "▼ SELL",
+    }.get((signal or "").strip().upper(), "—")
+
+
+# Rows shown per table page. A 60-coin sweep rendered as one endless column
+# buried the pagination-worthy signal (the newest listings) below the fold.
+PAGE_SIZE = 20
+_PAGE_KEY = "crypto_table_page"
+
+
+def page_slice(coins: list, page: int, size: int = PAGE_SIZE) -> tuple:
+    """Clamped ``(page, total_pages, rows)`` for one table page.
+
+    The stored page can go stale when a rescan shrinks the list (page 3 of a
+    60-coin sweep, then a filter leaves 15 coins), so it is clamped rather
+    than trusted.
+    """
+    total = max(1, -(-len(coins) // size))
+    page = min(max(page, 0), total - 1)
+    return page, total, coins[page * size:(page + 1) * size]
 
 
 # Age units offered in the range dropdowns, in hours.
@@ -471,8 +518,16 @@ def render_run_panel(st, *, model_options, default_model, custom_sentinel,
                       help="StockTwits is keyless and free with Bullish/Bearish "
                            "tags; X costs metered credits. News and Reddit are "
                            "always included.")
-    # The credit bar is noise when the run will not touch X at all.
+    # The credit bar and keyword box are noise when the run will not touch X.
+    twitter_keywords: list[str] = []
     if social_flags(source)["include_twitter"]:
+        twitter_keywords = parse_keywords(st.text_input(
+            "X search keywords (optional, comma-separated)",
+            key="crypto_twitter_keywords", placeholder="airdrop, listing pump",
+            help="Extra terms OR'd into the X search besides the cashtag and "
+                 "the coin's name. Multi-word terms match as phrases. Keep "
+                 "terms specific — very common phrases return huge result "
+                 "pages, which slows the search and can time it out."))
         _render_credit_meter(st)
 
     sound = st.selectbox("Alert sound", list(ALERT_SOUNDS),
@@ -491,7 +546,8 @@ def render_run_panel(st, *, model_options, default_model, custom_sentinel,
                                   help="Risk-team discussion rounds")
     return {"model": model, "trade_date": trade_date, "source": source,
             "sound": sound, "loop_sound": loop_sound,
-            "debate_rounds": debate_rounds, "risk_rounds": risk_rounds}
+            "debate_rounds": debate_rounds, "risk_rounds": risk_rounds,
+            "twitter_keywords": twitter_keywords}
 
 
 def render_filter_popover(st, mexc):
@@ -531,7 +587,7 @@ def render_filter_popover(st, mexc):
 def render_new_crypto_tab(*, model_options, default_model, custom_sentinel,
                           provider_for, base_config: dict, configure_cfg,
                           streaming_runner) -> None:
-    """Screener table on the left, run settings on the right.
+    """Announcements on the left, screener table in the middle, settings right.
 
     ``configure_cfg`` and ``streaming_runner`` are injected from app.py so this
     module never imports app.py, which would re-execute its Streamlit setup.
@@ -540,7 +596,13 @@ def render_new_crypto_tab(*, model_options, default_model, custom_sentinel,
 
     from tradingagents.dataflows import mexc
 
-    table_col, panel_col = st.columns([3.4, 1], gap="large")
+    # The key gives this row a stable .st-key-crypto_layout class so the CSS can
+    # top-align just this layout row while data rows elsewhere stay centered.
+    layout = st.container(key="crypto_layout")
+    ann_col, table_col, panel_col = layout.columns([1.1, 3.8, 1.1], gap="large")
+    with ann_col:
+        # Only the exchange's own coming-soon list: which coins open, and when.
+        _render_upcoming_panel(st)
     with panel_col:
         with st.container(border=True):
             settings = render_run_panel(
@@ -561,13 +623,15 @@ def render_new_crypto_tab(*, model_options, default_model, custom_sentinel,
             source=source, sound_name=sound_name, loop_sound=loop_sound,
             debate_rounds=settings["debate_rounds"],
             risk_rounds=settings["risk_rounds"],
+            twitter_keywords=settings["twitter_keywords"],
             base_config=base_config, configure_cfg=configure_cfg,
             streaming_runner=streaming_runner)
 
 
 def _render_screener(st, mexc, *, model, provider, trade_date, source, sound_name,
                      loop_sound, debate_rounds, risk_rounds, base_config,
-                     configure_cfg, streaming_runner) -> None:
+                     configure_cfg, streaming_runner,
+                     twitter_keywords: list[str] | None = None) -> None:
     """The toolbar, the table, the chart and the analysis modal."""
     # Timers are paused while a run is pending: a fragment refresh reruns the app,
     # Streamlit re-executes an open dialog's body, and the analysis restarted from
@@ -625,31 +689,49 @@ def _render_screener(st, mexc, *, model, provider, trade_date, source, sound_nam
                 f"or lower the floor.")
         return
 
-    header = st.columns(_WIDTHS)
-    for col, label in zip(header, _HEADINGS):
-        col.markdown(f"<div class='ta-th'>{label}</div>", unsafe_allow_html=True)
+    page, total_pages, page_coins = page_slice(
+        result.coins, st.session_state.get(_PAGE_KEY, 0))
+    st.session_state[_PAGE_KEY] = page
 
     to_run = None
-    for coin in result.coins:
-        cells = row_cells(coin)
-        cols = st.columns(_WIDTHS)
-        # The symbol is the chart handle: clicking it opens the live candles.
-        if cols[0].button(cells["symbol"], key=f"chart_{coin.symbol}",
-                          help=f"Live {coin.base} chart from MEXC candles"):
-            st.session_state[_CHART_KEY] = coin.symbol
-        cols[1].write(cells["name"])
-        cols[2].write(cells["listed"])
-        cols[3].write(cells["age"])
-        cols[4].write(cells["price"])
-        colour = _UP if coin.change_pct >= 0 else _DOWN
-        cols[5].markdown(f"<span style='color:{colour}'>{cells['change']}</span>",
-                         unsafe_allow_html=True)
-        cols[6].write(cells["volume"])
-        stored = st.session_state.get(verdict_key(coin.symbol, trade_date), "")
-        cols[7].markdown(f"**{verdict_label(stored)}**")
-        if cols[8].button("Analyze", key=f"analyze_{coin.symbol}"):
-            st.session_state[_PENDING_KEY] = coin.symbol
-            to_run = coin
+    with st.container(border=True):
+        header = st.columns(_WIDTHS)
+        for col, label in zip(header, _HEADINGS):
+            col.markdown(f"<div class='ta-th'>{label}</div>", unsafe_allow_html=True)
+
+        for coin in page_coins:
+            cells = row_cells(coin)
+            cols = st.columns(_WIDTHS)
+            # The symbol is the chart handle: clicking it opens the live candles.
+            if cols[0].button(cells["symbol"], key=f"chart_{coin.symbol}",
+                              help=f"Live {coin.base} chart from MEXC candles"):
+                st.session_state[_CHART_KEY] = coin.symbol
+            cols[1].write(cells["name"])
+            cols[2].write(cells["listed"])
+            cols[3].write(cells["age"])
+            cols[4].write(cells["price"])
+            colour = _UP if coin.change_pct >= 0 else _DOWN
+            cols[5].markdown(f"<span style='color:{colour}'>{cells['change']}</span>",
+                             unsafe_allow_html=True)
+            cols[6].write(cells["volume"])
+            stored = st.session_state.get(
+                verdict_key(coin.symbol, trade_date, model), "")
+            cols[7].markdown(f"**{verdict_label(stored)}**")
+            if cols[8].button("Analyze", key=f"analyze_{coin.symbol}"):
+                st.session_state[_PENDING_KEY] = coin.symbol
+                to_run = coin
+
+        if total_pages > 1:
+            prev_c, info_c, next_c = st.columns([1, 4, 1])
+            if prev_c.button("← Prev", key="crypto_page_prev", disabled=page == 0):
+                st.session_state[_PAGE_KEY] = page - 1
+                st.rerun()
+            info_c.caption(f"Page {page + 1} of {total_pages} · "
+                           f"{len(result.coins)} coins · {PAGE_SIZE} per page")
+            if next_c.button("Next →", key="crypto_page_next",
+                             disabled=page >= total_pages - 1):
+                st.session_state[_PAGE_KEY] = page + 1
+                st.rerun()
 
     st.caption(status_caption(result))
 
@@ -672,27 +754,33 @@ def _render_screener(st, mexc, *, model, provider, trade_date, source, sound_nam
         # Streamlit re-executes an open dialog's body on every rerun, so the run
         # has to be guarded: without this the analysis restarted from stage 0 and
         # spent LLM tokens and X credits again on each rerun.
-        done = st.session_state.get(report_key(coin.symbol, trade_date)) is not None
+        done = st.session_state.get(
+            report_key(coin.symbol, trade_date, model)) is not None
         if not done:
             cfg = build_crypto_config(
                 base_config, provider=provider, deep_model=model, quick_model=model,
                 debate_rounds=debate_rounds, risk_rounds=risk_rounds,
                 social_source=source, display_name=coin.name,
-                listed_date=coin.listed_date, age_hours=coin.age_hours)
+                listed_date=coin.listed_date, age_hours=coin.age_hours,
+                twitter_keywords=twitter_keywords)
             configure_cfg(cfg, model)
             outcome = streaming_runner(
                 coin.symbol, trade_date, list(CRYPTO_ANALYSTS), cfg, provider, model,
                 asset_type="crypto", instrument_context=coin_instrument_context(coin))
-            st.session_state[verdict_key(coin.symbol, trade_date)] = outcome.signal or ""
-            st.session_state[report_key(coin.symbol, trade_date)] = collect_reports(
-                outcome.state, outcome.decision)
+            st.session_state[verdict_key(coin.symbol, trade_date, model)] = (
+                outcome.signal or "")
+            st.session_state[report_key(coin.symbol, trade_date, model)] = (
+                collect_reports(outcome.state, outcome.decision))
             st.session_state["crypto_last_analyzed"] = (coin.symbol, coin.base,
-                                                        coin.name, trade_date)
+                                                        coin.name, trade_date, model)
         else:
-            verdict = st.session_state.get(verdict_key(coin.symbol, trade_date), "")
+            # Cached rerun: the stream (and its Sentiment Analyst section with
+            # the raw source posts) is gone, so show verdict + sources here.
+            verdict = st.session_state.get(
+                verdict_key(coin.symbol, trade_date, model), "")
             st.markdown(f"### {verdict_label(verdict)}")
             _render_source_panels(
-                st, (st.session_state.get(report_key(coin.symbol, trade_date))
+                st, (st.session_state.get(report_key(coin.symbol, trade_date, model))
                      or {}).get("sentiment_sources") or {})
 
         if st.button("Close", type="primary", key="crypto_close_dialog"):
@@ -723,7 +811,7 @@ def _render_background_watcher_status(st) -> None:
         return
     elapsed = time.time() - last
     alive = elapsed <= POLL_SECONDS * 2.5
-    mark = "🟢" if alive else "🔴"
+    mark = "●" if alive else "○"
     state = "running" if alive else "stopped"
     st.caption(f"{mark} background watcher {state} · last poll "
                f"{int(elapsed // 60)}m {int(elapsed % 60)}s ago · "
@@ -747,7 +835,7 @@ def _render_listing_watch(st, *, sound_name=DEFAULT_ALERT_SOUND,
     """
     from tradingagents.dataflows import mexc
 
-    watch = st.checkbox("🔔 Watch for new listings", value=True, key="crypto_watch",
+    watch = st.checkbox("Watch for new listings", value=True, key="crypto_watch",
                         help=f"Polls MEXC every {POLL_SECONDS // 60} min "
                              f"(one request) and plays a sound when a coin is listed.")
     if not watch:
@@ -773,9 +861,19 @@ def _render_listing_watch(st, *, sound_name=DEFAULT_ALERT_SOUND,
                 found + (st.session_state.get(_ALERTS_KEY) or []))[:20]
             st.session_state[_BEEP_KEY] = True
             st.session_state[_SOUNDING_KEY] = loop_sound
-            st.toast(alert_message(found), icon="🔔")
+            st.toast(alert_message(found))
+            # Put the coin in the table NOW: merge it into the cached sweep
+            # (one request) and redraw the page. The beep flag is already in
+            # session state, so the sound still plays on the rerun pass.
+            try:
+                merged = mexc.merge_new_listings(found)
+            except Exception as exc:                     # noqa: BLE001
+                logger.warning("Listing merge failed: %s", exc)
+                merged = 0
+            if merged:
+                st.rerun(scope="app")
 
-        _render_upcoming(st, mexc)
+        _detect_upcoming(st, mexc)
 
         alerts = st.session_state.get(_ALERTS_KEY) or []
         if alerts:
@@ -787,7 +885,7 @@ def _render_listing_watch(st, *, sound_name=DEFAULT_ALERT_SOUND,
             # Clicking a widget inside a fragment already reruns that fragment,
             # which drops the audio element — no explicit rerun needed, and
             # st.rerun(scope="fragment") raises outside a fragment rerun.
-            if st.button("⏹ Stop sound", key="crypto_alert_stop", type="primary"):
+            if st.button("Stop sound", key="crypto_alert_stop", type="primary"):
                 st.session_state[_SOUNDING_KEY] = False
         st.caption(watch_status_line(
             len(seen), last_poll=st.session_state.get(_LAST_POLL_KEY)))
@@ -827,7 +925,13 @@ def _cached_balance(st, force: bool = False) -> dict:
     if cached and not force and (time.time() - cached["at"]) < _CREDIT_CACHE_TTL:
         return cached["balance"]
 
-    balance = twitter.fetch_credit_balance()
+    # Generous timeout: the account endpoint shares the API's slow days, and a
+    # blown lookup used to flash "Balance unavailable" over a perfectly fine
+    # balance. When the refresh still fails, keep showing the last good
+    # reading (re-stamped, so the TTL keeps throttling retries).
+    balance = twitter.fetch_credit_balance(timeout=20.0)
+    if not balance.get("ok") and cached and cached["balance"].get("ok"):
+        balance = cached["balance"]
     st.session_state[_CREDIT_CACHE_KEY] = {"at": time.time(), "balance": balance}
     return balance
 
@@ -859,19 +963,22 @@ def _render_credit_meter(st) -> None:
 
 
 _ANNOUNCED_KEY = "crypto_announced_symbols"
+_UPCOMING_KEY = "crypto_upcoming_rows"
 
 
-def _render_upcoming(st, mexc) -> None:
-    """Listings MEXC has announced but not opened, with a heads-up on new ones.
+def _detect_upcoming(st, mexc) -> None:
+    """Track listings MEXC has announced but not opened; beep on new ones.
 
     Read from the same exchangeInfo call the watch already makes, so knowing what
     is coming costs nothing extra. A newly announced coin beeps like a new listing
-    does — it is the earliest warning the exchange gives.
+    does — it is the earliest warning the exchange gives. The rows are stashed in
+    session state; the announcements column left of the table displays them.
     """
     try:
         rows = mexc.upcoming_listings()
     except (mexc.MexcUnavailable, mexc.MexcHostUnavailable, mexc.MexcRateLimited):
         return                      # the watch caption already reports the outage
+    st.session_state[_UPCOMING_KEY] = rows
     if not rows:
         return
 
@@ -881,12 +988,43 @@ def _render_upcoming(st, mexc) -> None:
         fresh = [r for r in rows if r["symbol"] not in known]
         if fresh:
             st.session_state[_BEEP_KEY] = True
-            st.toast(f"📣 {len(fresh)} listing announced: "
-                     f"{', '.join(r['base'] for r in fresh)}", icon="📣")
+            st.toast(f"{len(fresh)} listing announced: "
+                     f"{', '.join(r['base'] for r in fresh)}")
     st.session_state[_ANNOUNCED_KEY] = current
 
-    st.info("**Coming soon on MEXC**\n\n"
-            + "\n\n".join(upcoming_line(r) for r in rows[:5]))
+
+def _render_upcoming_panel(st) -> None:
+    """The "Coming soon on MEXC" card in the announcements column.
+
+    Display only — detection (and the beep) lives in the watch fragment, which
+    stashes the rows in session state. A fragment on the same cadence keeps the
+    card fresh without another exchangeInfo request.
+
+    The timer MUST pause while an analysis is pending: a fragment refresh
+    reruns the app, Streamlit re-executes the open dialog's body, and the
+    analysis restarts from stage 0 — so any run longer than one poll interval
+    would loop forever and burn tokens on every lap.
+    """
+    run_pending = bool(st.session_state.get(_PENDING_KEY))
+
+    @st.fragment(run_every=None if run_pending else POLL_SECONDS)
+    def _panel():
+        rows = st.session_state.get(_UPCOMING_KEY)
+        if rows is None:
+            # First load: this column renders before the watch fragment's first
+            # tick, so fetch once rather than showing an empty card for a poll.
+            from tradingagents.dataflows import mexc
+            try:
+                rows = mexc.upcoming_listings()
+            except (mexc.MexcUnavailable, mexc.MexcHostUnavailable,
+                    mexc.MexcRateLimited):
+                rows = []
+            st.session_state[_UPCOMING_KEY] = rows
+        if rows:
+            st.info("**Coming soon on MEXC**\n\n"
+                    + "\n\n".join(upcoming_line(r) for r in rows[:5]))
+
+    _panel()
 
 
 _CHART_KEY = "crypto_chart_symbol"
@@ -938,14 +1076,15 @@ def _render_stored_reports(st, trade_date: str) -> None:
     last = st.session_state.get("crypto_last_analyzed")
     if not last:
         return
-    symbol, base, name, date = last
+    symbol, base, name, date, model = last
     if date != trade_date:
         return
-    reports = st.session_state.get(report_key(symbol, date), {})
+    reports = st.session_state.get(report_key(symbol, date, model), {})
     if not reports:
         return
-    verdict = verdict_label(st.session_state.get(verdict_key(symbol, date), ""))
-    with st.expander(f"🧾  {base} · {name} — {verdict} · full reports", expanded=True):
+    verdict = verdict_label(
+        st.session_state.get(verdict_key(symbol, date, model), ""))
+    with st.expander(f"{base} · {name} — {verdict} · full reports", expanded=True):
         for key, label in REPORT_SECTIONS:
             if reports.get(key):
                 st.markdown(f"#### {label}")

@@ -16,13 +16,22 @@ from __future__ import annotations
 
 import html
 import os
+import sys
 import traceback
 from typing import NamedTuple
 
 import streamlit as st
 
+import model_registry
 import tickers as ticker_data
-from crypto_screener import render_new_crypto_tab
+from crypto_screener import (
+    SOCIAL_SOURCES,
+    SOURCE_STOCKTWITS,
+    parse_keywords,
+    render_new_crypto_tab,
+    social_flags,
+    source_panel_rows,
+)
 from tradingagents.default_config import DEFAULT_CONFIG
 from tradingagents.graph.trading_graph import TradingAgentsGraph
 
@@ -46,56 +55,53 @@ _OLLAMA = {"label": "ollama", "provider": "openai_compatible",
 _GOOGLE = {"label": "google", "provider": "google", "base_url": None, "key_env": "GOOGLE_API_KEY"}
 _NVIDIA = {"label": "nvidia", "provider": "nvidia", "base_url": None, "key_env": "NVIDIA_API_KEY"}
 _OPENAI = {"label": "openai", "provider": "openai", "base_url": None, "key_env": "OPENAI_API_KEY"}
-_ANTHROPIC = {"label": "anthropic", "provider": "anthropic", "base_url": None, "key_env": "ANTHROPIC_API_KEY"}
 _QWEN = {"label": "qwen", "provider": "qwen", "base_url": None, "key_env": "DASHSCOPE_API_KEY"}
 # Alibaba MaaS workspace (dedicated host) — OpenAI-compatible; serves glm-5.1 etc.
 _MAAS = {"label": "maas", "provider": "openai_compatible",
          "base_url": "https://ws-wu00l7n3hmiafz2q.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
          "key_env": "MAAS_API_KEY"}
-# Cloudflare Workers AI — OpenAI-compatible (account id baked into the URL).
-# Native @cf/* models run on the free tier; deepseek/* partner models need a
-# funded AI Gateway (402 otherwise).
-_CF = {"label": "cloudflare", "provider": "openai_compatible",
-       "base_url": "https://api.cloudflare.com/client/v4/accounts/4acf69efbeed54838dc0d5f004769933/ai/v1",
-       "key_env": "CLOUDFLARE_API_KEY"}
-
+# Catalog pruned 2026-07-31 against a live ping of every model (LLM Models tab
+# health check). Removed as unresponsive: all Cloudflare @cf/* entries and
+# deepseek/deepseek-v4-pro (401 — no valid CLOUDFLARE_API_KEY), claude-opus-4-8
+# (no ANTHROPIC_API_KEY), glm-4.7 + qwen3-coder:480b (410 retired by Ollama),
+# z-ai/glm-5.1 (410 gone from NVIDIA), moonshotai/kimi-k2.6 (404). Re-add any
+# of them on the LLM Models tab if the key/endpoint comes back.
 MODELS: dict[str, dict] = {
     "gemini-3.1-flash-lite": _GOOGLE,            # free · fast · clean
     "gemini-3.5-flash": _GOOGLE,                 # free
     "deepseek-ai/deepseek-v4-flash": _NVIDIA,    # NVIDIA NIM
     "deepseek-ai/deepseek-v4-pro": _NVIDIA,      # NVIDIA NIM (slow)
-    "moonshotai/kimi-k2.6": _NVIDIA,             # NVIDIA NIM
-    "z-ai/glm-5.1": _NVIDIA,                     # NVIDIA NIM
-    "glm-4.7": _OLLAMA,                          # Ollama Cloud · free · GLM (clean)
-    "qwen3-coder:480b": _OLLAMA,                 # Ollama Cloud · free
     "gpt-oss:120b": _OLLAMA,                     # Ollama Cloud · free
     "gpt-4o-mini": _OPENAI,                      # OpenAI · cheap (needs billing/credits)
     "gpt-5-mini": _OPENAI,                       # OpenAI · cheap reasoning
     "gpt-5.1": _OPENAI,                          # OpenAI · frontier
     "gpt-5.5": _OPENAI,                          # OpenAI · frontier (needs billing)
-    "claude-opus-4-8": _ANTHROPIC,               # Anthropic · Opus 4.8 (needs ANTHROPIC_API_KEY)
     "qwen3.6-flash": _QWEN,                      # Qwen Cloud · cheap · clean
     "qwen3.7-plus": _QWEN,                       # Qwen Cloud · balanced
     "qwen3.7-max": _QWEN,                        # Qwen Cloud · top reasoning/coding
     "glm-5.1": _MAAS,                            # Alibaba MaaS · GLM-5.1 (works here!)
     "deepseek-v4-flash": _MAAS,                  # Alibaba MaaS · DeepSeek V4 Flash
-    "deepseek-v4-pro": _MAAS,                    # Alibaba MaaS · DeepSeek V4 Pro (free here; CF 402s)
-    "@cf/meta/llama-3.3-70b-instruct-fp8-fast": _CF,  # Cloudflare · Llama 3.3 70B · free
-    "@cf/openai/gpt-oss-120b": _CF,                   # Cloudflare · GPT-OSS 120B · high-end
-    "@cf/meta/llama-4-scout-17b-16e-instruct": _CF,   # Cloudflare · Llama 4 Scout · newest
-    "@cf/zai-org/glm-5.2": _CF,                       # Cloudflare · GLM-5.2 · free (newer than 5.1)
-    "deepseek/deepseek-v4-pro": _CF,                  # Cloudflare gateway partner · 402 until funded
-    # NOTE: nvidia ids use prefixes (z-ai/glm-5.1, deepseek-ai/…) so no clash.
-    #       OpenAI models + the Ollama glm-5.1 need a funded/paid account.
+    "deepseek-v4-pro": _MAAS,                    # Alibaba MaaS · DeepSeek V4 Pro
 }
-MODEL_CHOICES = list(MODELS)
-CUSTOM_MODEL = "✏️  Custom…"
+CUSTOM_MODEL = "Custom…"
+
+
+def all_models() -> dict[str, dict]:
+    """Built-in catalog merged with models saved on the LLM Models tab."""
+    return model_registry.merged_models(MODELS)
+
+
+def model_choices() -> list[str]:
+    """Model ids for the dropdowns — recomputed per rerun so a model added
+    on the LLM Models tab appears everywhere immediately."""
+    return list(all_models())
 
 
 def _spec(model: str) -> dict:
-    return MODELS.get(model, {"label": DEFAULT_CONFIG["llm_provider"],
-                              "provider": DEFAULT_CONFIG["llm_provider"],
-                              "base_url": DEFAULT_CONFIG.get("backend_url"), "key_env": None})
+    return all_models().get(
+        model, {"label": DEFAULT_CONFIG["llm_provider"],
+                "provider": DEFAULT_CONFIG["llm_provider"],
+                "base_url": DEFAULT_CONFIG.get("backend_url"), "key_env": None})
 
 
 def provider_for(model: str) -> str:
@@ -123,7 +129,7 @@ def configure_cfg(cfg: dict, model: str, key_override: str = "") -> dict:
 def model_options(default: str) -> list[str]:
     """`default` first, then the model choices, then a Custom sentinel. De-duped."""
     seen: list[str] = []
-    for m in [default, *MODEL_CHOICES]:
+    for m in [default, *model_choices()]:
         if m and m not in seen:
             seen.append(m)
     return [*seen, CUSTOM_MODEL]
@@ -131,14 +137,32 @@ def model_options(default: str) -> list[str]:
 
 # --- Pure, testable helpers ------------------------------------------------
 def build_config(base: dict, *, provider: str, deep_model: str, quick_model: str,
-                 debate_rounds: int, risk_rounds: int) -> dict:
-    """base config overlaid with the UI's per-run choices. `.env` still supplies keys."""
+                 debate_rounds: int, risk_rounds: int,
+                 social_source: str = SOURCE_STOCKTWITS,
+                 twitter_keywords: list[str] | None = None,
+                 ticker: str = "") -> dict:
+    """base config overlaid with the UI's per-run choices. `.env` still supplies keys.
+
+    ``social_source`` defaults to the free source so a stock run never spends
+    X credits unless the user picked X/Twitter or Both in the run settings.
+    ``twitter_keywords`` are extra user terms OR'd into the X search.
+    """
     cfg = base.copy()
     cfg["llm_provider"] = provider
     cfg["deep_think_llm"] = deep_model
     cfg["quick_think_llm"] = quick_model
     cfg["max_debate_rounds"] = int(debate_rounds)
     cfg["max_risk_discuss_rounds"] = int(risk_rounds)
+    cfg.update(social_flags(social_source))
+    if twitter_keywords:
+        cfg["twitter_extra_terms"] = list(twitter_keywords)
+    # PSE names have no Yahoo coverage, so their prices and indicators come
+    # from the keyless `pse` vendor instead. Everything else (news, macro)
+    # keeps its configured vendor.
+    if ticker and ticker_data.is_pse(ticker):
+        vendors = dict(cfg.get("data_vendors", {}))
+        vendors.update(ticker_data.pse_vendor_overrides())
+        cfg["data_vendors"] = vendors
     # One retry for a transient blip, then surface the raw API error fast
     # (high retry counts hide 429s behind long silent backoff).
     cfg.setdefault("max_retries", 1)
@@ -205,7 +229,12 @@ def _signal_color(signal: str) -> str:
     return "#F0B90B"       # hold amber
 
 
-HEALTH_ICON = {"ok": "✅", "degraded": "⚠️", "ratelimit": "⏱️", "auth": "🔑", "error": "❌"}
+# status → (usability percentage, color). Providers expose no exact quota, so
+# the percentage reads as "how usable right now": 100 = responding, 25 =
+# alive but rate-limited/needs credits, 0 = down / no key / gone.
+HEALTH_PCT = {"ok": ("100%", "#16a34a"), "ratelimit": ("25%", "#B45309"),
+              "degraded": ("0%", "#bd413f"), "auth": ("0%", "#bd413f"),
+              "error": ("0%", "#bd413f")}
 
 
 def classify_error(name: str, msg: str) -> str:
@@ -220,41 +249,42 @@ def classify_error(name: str, msg: str) -> str:
 
 
 def health_badge(result: dict | None) -> str:
-    """Render a health result dict as an icon + status + latency string. Pure."""
+    """Render a health result as a colored percentage + status + latency. Pure."""
     if not result:
         return "—"
     status = result.get("status", "error")
-    return f"{HEALTH_ICON.get(status, '❌')} **{status}** · {result.get('ms', '?')}ms"
+    pct, color = HEALTH_PCT.get(status, HEALTH_PCT["error"])
+    return (f"<span style='color:{color};font-weight:700'>{pct}</span> · "
+            f"{status} · {result.get('ms', '?')}ms")
 
 
 # --- Design system (CSS) ---------------------------------------------------
 CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Mulish:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
-/* Editorial financial terminal: paper surfaces, ink type, one burnt-orange
-   accent, hairline rules. The data is the interface, so the chrome stays quiet
-   and the numbers get the good typography — JetBrains Mono with tabular figures
-   so columns of prices line up digit for digit. */
+/* Celebrately-style terminal: neutral near-white surfaces, near-black ink,
+   one cobalt accent, hairline rules. One sans (Mulish) does both display and
+   body work; IBM Plex Mono keeps columns of prices aligned digit for digit. */
 :root {
-  --bg:#FAF9F7;            /* warm paper, not clinical white */
-  --panel:#FFFFFF;
-  --panel-2:#F3F2EF;
-  --sidebar:#F3F2EF;
-  --border:#E4E1DB;
-  --border-soft:#EDEBE6;
-  --border-strong:#CFCBC2;
-  --text:#171612;          /* ink, not pure black */
-  --muted:#6C695F;
-  --faint:#9B978C;
-  --accent:#C2560B;        /* burnt orange: passes contrast on paper */
-  --accent-dim:#96420A;
-  --accent-wash:#FDF3EA;
-  --buy:#0A6B45; --sell:#A8231B; --hold:#9A5B08;
-  --font-display:'Newsreader',Georgia,serif;
-  --font-body:'Instrument Sans',sans-serif;
-  --font-mono:'JetBrains Mono',ui-monospace,monospace;
-  --r:5px;
+  --bg:#fafafa;            /* neutral near-white */
+  --panel:#ffffff;
+  --panel-2:#f6f6f4;
+  --sidebar:#f6f6f4;
+  --border:#e7e7ea;
+  --border-soft:#f0f0f2;
+  --border-strong:#d4d4d8;
+  --text:#1a1a1a;          /* ink, not pure black */
+  --muted:#71717a;
+  --faint:#a1a1aa;
+  --accent:#1E5BD6;        /* cobalt */
+  --accent-dim:#174ab0;
+  --accent-wash:#e7eefc;
+  --buy:#16a34a; --sell:#bd413f; --hold:#9A5B08;
+  --font-display:'Mulish','Helvetica Neue',Helvetica,Arial,sans-serif;
+  --font-body:'Mulish','Helvetica Neue',Helvetica,Arial,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+  --r:8px;
   --s:8px;
   --field:280px;           /* one field width, so the forms line up */
 }
@@ -267,11 +297,11 @@ html, body, [data-testid="stAppViewContainer"]{
 #MainMenu, footer, [data-testid="stDecoration"],
 [data-testid="stAppDeployButton"], .stDeployButton, [data-testid="stStatusWidget"]{ display:none !important; }
 [data-testid="stHeader"]{ background:transparent !important; }
-.block-container{ padding-top:calc(var(--s) * 2); max-width:1240px; }
+.block-container{ padding-top:calc(var(--s) * 2); max-width:1600px; }
 
-/* Serif headings against a sans UI: editorial contrast, and it makes a verdict
-   read as a statement rather than a label. */
-h1,h2,h3,h4{ font-family:var(--font-display); font-weight:500; color:var(--text);
+/* One sans throughout; headings differ by weight, not family — heavier Mulish
+   makes a verdict read as a statement without switching typefaces. */
+h1,h2,h3,h4{ font-family:var(--font-display); font-weight:700; color:var(--text);
   letter-spacing:-.01em; }
 h3{ font-size:20px; } h4{ font-size:16px; }
 
@@ -331,7 +361,7 @@ input, [data-baseweb="select"]{ font-variant-numeric:tabular-nums; }
 .s-run .lbl{ color:var(--text); font-weight:600; } .s-run .tag{ color:var(--accent); }
 .s-wait .ta-dot{ background:var(--border-strong); } .s-wait .lbl{ color:var(--faint); }
 .s-wait .tag{ color:var(--faint); }
-@keyframes pulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(194,86,11,.35);} 50%{ box-shadow:0 0 0 5px rgba(194,86,11,0);} }
+@keyframes pulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(30,91,214,.35);} 50%{ box-shadow:0 0 0 5px rgba(30,91,214,0);} }
 
 /* ---- Verdict ---- */
 .ta-decision{
@@ -346,13 +376,16 @@ input, [data-baseweb="select"]{ font-variant-numeric:tabular-nums; }
 .ta-decision .ticker{ font-family:var(--font-mono); font-size:12.5px; color:var(--muted);
   margin-top:var(--s); }
 
-/* ---- Tabs ---- */
-[data-baseweb="tab-list"]{ gap:calc(var(--s) * 3) !important;
-  border-bottom:1px solid var(--border); background:transparent !important; }
-[data-baseweb="tab"]{ padding:var(--s) 0 !important; font-size:13.5px; color:var(--muted);
-  background:transparent !important; }
-[data-baseweb="tab"][aria-selected="true"]{ color:var(--text); font-weight:600; }
-[data-baseweb="tab-highlight"]{ background:var(--accent) !important; height:2px !important; }
+/* ---- Tabs: quiet pills, no underline rail ---- */
+[data-baseweb="tab-list"]{ gap:4px !important;
+  border-bottom:none !important; background:transparent !important; }
+[data-baseweb="tab"]{ padding:3px 12px !important; font-size:14px; line-height:20px;
+  color:#525252; background:transparent !important; border-radius:6px !important;
+  transition:background .12s, color .12s; }
+[data-baseweb="tab"]:hover{ background:#f4f4f5 !important; color:#171717; }
+[data-baseweb="tab"][aria-selected="true"]{ background:#ededed !important;
+  color:#171717; font-weight:600; }
+[data-baseweb="tab-highlight"], [data-baseweb="tab-border"]{ display:none !important; }
 
 /* ---- Fields: one width, not the whole column ----
    Streamlit stretches every widget to its container. Capping them keeps a form
@@ -377,7 +410,7 @@ input, [data-baseweb="select"]{ font-variant-numeric:tabular-nums; }
 [data-testid="stMultiSelect"]{ max-width:620px; }
 [data-baseweb="tag"]{
   background:var(--accent-wash) !important; color:var(--accent-dim) !important;
-  border:1px solid #EBD3BC !important; border-radius:3px !important;
+  border:1px solid #c8d8f7 !important; border-radius:4px !important;
   font-size:12px !important; font-weight:500 !important;
 }
 [data-baseweb="tag"] span, [data-baseweb="tag"] svg{ color:var(--accent-dim) !important; }
@@ -392,10 +425,10 @@ input, [data-baseweb="select"]{ font-variant-numeric:tabular-nums; }
 [data-baseweb="input"] > div, [data-baseweb="select"] > div > div{
   border:none !important; background:transparent !important;
 }
-[data-baseweb="input"]:hover, [data-baseweb="select"] > div:hover{ border-color:#B4AFA4 !important; }
+[data-baseweb="input"]:hover, [data-baseweb="select"] > div:hover{ border-color:#b6b6bd !important; }
 [data-baseweb="input"]:focus-within, [data-baseweb="base-input"]:focus-within,
 [data-baseweb="select"] > div:focus-within{
-  border-color:var(--accent) !important; box-shadow:0 0 0 3px rgba(194,86,11,.12) !important;
+  border-color:var(--accent) !important; box-shadow:0 0 0 3px rgba(30,91,214,.14) !important;
 }
 input, [data-baseweb="select"]{ font-family:var(--font-mono) !important;
   color:var(--text) !important; font-size:13px !important; }
@@ -432,6 +465,18 @@ input::placeholder{ color:var(--faint) !important; }
 
 /* ---- Data rows ---- */
 [data-testid="stHorizontalBlock"]{ align-items:center; }
+/* …but never page-layout rows: centering a short column against a tall one
+   (announcements vs table) floats it into the middle of the screen. Layout
+   rows are opted out by container key; direct-child chains so the data rows
+   inside those columns keep their centering. */
+.st-key-crypto_layout > [data-testid="stHorizontalBlock"],
+.st-key-crypto_layout > div > [data-testid="stHorizontalBlock"],
+.st-key-run_stream_layout > [data-testid="stHorizontalBlock"],
+.st-key-run_stream_layout > div > [data-testid="stHorizontalBlock"],
+.st-key-trade_layout > [data-testid="stHorizontalBlock"],
+.st-key-trade_layout > div > [data-testid="stHorizontalBlock"]{
+  align-items:flex-start;
+}
 [data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"]{
   border-bottom:1px solid var(--border-soft); padding:1px 0;
 }
@@ -446,6 +491,11 @@ input::placeholder{ color:var(--faint) !important; }
   background:var(--panel);
 }
 [data-testid="stExpander"] summary{ font-family:var(--font-body); font-size:13px; }
+/* Report sections behave like chat bubbles: a fixed max height, long text
+   scrolls inside instead of stretching the page to the floor. */
+[data-testid="stExpanderDetails"]{
+  max-height:420px; overflow-y:auto; overscroll-behavior:contain;
+}
 [data-testid="stSidebar"]{ background:var(--sidebar); border-right:1px solid var(--border); }
 /* Alerts: the tint lives on stAlertContainer, so severity is a left edge on paper */
 [data-testid="stAlert"]{
@@ -464,51 +514,60 @@ a{ color:var(--accent); text-decoration:none; }
 a:hover{ text-decoration:underline; }
 hr{ border-color:var(--border); }
 
-/* ---- Sidebar navigation: dark rail, brand at the top ---- */
-[data-testid="stSidebar"]{
-  background:#15171C !important; border-right:none !important; width:240px !important;
-}
-[data-testid="stSidebar"] *{ color:#E7E5E0; }
-[data-testid="stSidebarContent"]{ padding:calc(var(--s) * 2) var(--s); }
-.ta-brand{ display:flex; align-items:center; gap:10px; padding:var(--s) var(--s)
-  calc(var(--s) * 3); }
+/* ---- Top navigation: brand row, then screen tabs as quiet pills ---- */
+[data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"],
+[data-testid="stSidebarCollapseButton"]{ display:none !important; }
+.ta-brand{ display:flex; align-items:center; gap:10px; padding:0 0 var(--s); }
 .ta-brand .ta-mark{ width:34px;height:34px;background:var(--accent); color:#fff;
   border-radius:8px; font-size:16px; }
-.ta-brand-name{ font-family:var(--font-display); font-size:16px; font-weight:600;
+.ta-brand-name{ font-family:var(--font-display); font-size:16px; font-weight:700;
   line-height:1.1; }
 .ta-brand-sub{ font-family:var(--font-mono); font-size:9px; letter-spacing:.16em;
-  text-transform:uppercase; color:#8B877D !important; margin-top:3px; }
-.ta-nav-foot{ margin-top:calc(var(--s) * 4); padding:0 var(--s);
-  font-size:11px; color:#7C786F !important; line-height:1.5; }
+  text-transform:uppercase; color:var(--faint); margin-top:3px; }
 
-/* Radio becomes a nav list: full-width rows, current screen filled */
-[data-testid="stSidebar"] [role="radiogroup"]{ gap:2px !important; }
-[data-testid="stSidebar"] [role="radiogroup"] label{
-  padding:9px 12px !important; border-radius:6px; width:100%;
-  font-size:13.5px !important; cursor:pointer;
+/* The nav radio reads as tabs: same quiet pills as the report tabs above */
+.st-key-nav_page [role="radiogroup"]{ display:flex; gap:4px !important; }
+.st-key-nav_page [role="radiogroup"] label{
+  padding:3px 12px !important; border-radius:6px; cursor:pointer;
+  transition:background .12s, color .12s;
 }
-[data-testid="stSidebar"] [role="radiogroup"] label:hover{ background:#1E2027; }
-[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked){
-  background:#25272F;
+.st-key-nav_page [role="radiogroup"] label p{ font-size:14px !important;
+  line-height:20px; color:#525252; }
+.st-key-nav_page [role="radiogroup"] label:hover{ background:#f4f4f5; }
+.st-key-nav_page [role="radiogroup"] label:has(input:checked){
+  background:#ededed;
 }
-[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) p{
+.st-key-nav_page [role="radiogroup"] label:has(input:checked) p{
   font-weight:600 !important;
 }
-/* The radio dots would read as form controls in a nav list */
-[data-testid="stSidebar"] [role="radiogroup"] label > div:first-child{ display:none !important; }
-[data-testid="stSidebar"] [data-testid="stWidgetLabel"]{ display:none; }
+/* The radio dots would read as form controls in a tab row */
+.st-key-nav_page [role="radiogroup"] label > div:first-child{ display:none !important; }
+.st-key-nav_page [data-testid="stWidgetLabel"]{ display:none; }
 
 /* ---- Page title ---- */
 .ta-page-title{
-  font-family:var(--font-display); font-size:26px; font-weight:600;
+  font-family:var(--font-display); font-size:26px; font-weight:700;
   letter-spacing:-.015em; margin:0 0 calc(var(--s) * 2);
 }
 
+
 /* ---- Table ---- */
 .ta-th{
-  font-family:var(--font-mono); font-size:9.5px; letter-spacing:.1em;
-  text-transform:uppercase; color:var(--faint); padding-bottom:6px;
+  font-size:11px; letter-spacing:.1em; font-weight:600;
+  text-transform:uppercase; color:var(--muted); padding-bottom:6px;
 }
+/* Markdown tables in reports: hairline rows, uppercase letterspaced headers,
+   a whisper of accent on row hover — no vertical rules, no zebra striping. */
+.stMarkdown table{ width:100%; border-collapse:collapse; font-size:14px;
+  border:none !important; }
+.stMarkdown th{ text-align:left; padding:13px 16px; font-size:11px;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--muted);
+  border:none !important; border-bottom:1px solid var(--border) !important;
+  font-weight:600; white-space:nowrap; background:transparent !important; }
+.stMarkdown td{ padding:14px 16px; border:none !important;
+  border-bottom:1px solid var(--border) !important; vertical-align:middle; }
+.stMarkdown tr:last-child td{ border-bottom:none !important; }
+.stMarkdown tbody tr:hover td{ background:var(--panel-2); }
 [data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"]{ padding:3px 0; }
 /* The symbol cell is a button, but it should read as a link in a table */
 [data-testid="stHorizontalBlock"] .stButton>button{ padding:4px 9px !important;
@@ -581,25 +640,25 @@ def render_reports(container, state: dict) -> None:
     risk = state.get("risk_debate_state") or {}
     sections: list[tuple[str, str]] = []
     for label, key in [
-        ("📈  Market Analyst", "market_report"),
-        ("💬  Sentiment Analyst", "sentiment_report"),
-        ("📰  News Analyst", "news_report"),
-        ("📊  Fundamentals Analyst", "fundamentals_report"),
+        ("Market Analyst", "market_report"),
+        ("Sentiment Analyst", "sentiment_report"),
+        ("News Analyst", "news_report"),
+        ("Fundamentals Analyst", "fundamentals_report"),
     ]:
         if _nonempty(state.get(key)):
             sections.append((label, state[key]))
     if _nonempty(debate.get("bull_history")):
-        sections.append(("🐂  Bull Researcher", debate["bull_history"]))
+        sections.append(("Bull Researcher", debate["bull_history"]))
     if _nonempty(debate.get("bear_history")):
-        sections.append(("🐻  Bear Researcher", debate["bear_history"]))
+        sections.append(("Bear Researcher", debate["bear_history"]))
     if _nonempty(state.get("investment_plan")):
-        sections.append(("🧭  Research Manager — Plan", state["investment_plan"]))
+        sections.append(("Research Manager — Plan", state["investment_plan"]))
     if _nonempty(state.get("trader_investment_plan")):
-        sections.append(("💼  Trader — Proposal", state["trader_investment_plan"]))
+        sections.append(("Trader — Proposal", state["trader_investment_plan"]))
     for label, rkey in [
-        ("🔥  Risk — Aggressive", "aggressive_history"),
-        ("🛡️  Risk — Conservative", "conservative_history"),
-        ("⚖️  Risk — Neutral", "neutral_history"),
+        ("Risk — Aggressive", "aggressive_history"),
+        ("Risk — Conservative", "conservative_history"),
+        ("Risk — Neutral", "neutral_history"),
     ]:
         if _nonempty(risk.get(rkey)):
             sections.append((label, risk[rkey]))
@@ -611,9 +670,18 @@ def render_reports(container, state: dict) -> None:
                 '<div style="color:var(--muted);font-size:14px">Each agent\'s report '
                 'streams in here as it finishes.</div></div>', unsafe_allow_html=True)
             return
+        sources = source_panel_rows(state.get("sentiment_sources") or {})
         for i, (label, content) in enumerate(sections):
             with st.expander(label, expanded=(i == len(sections) - 1)):
                 st.markdown(safe_markdown(content))
+                # Raw posts live under the narrative that used them, so a claim
+                # about X sentiment is checkable in place. Tabs, not expanders:
+                # Streamlit cannot nest an expander inside an expander.
+                if "Sentiment Analyst" in label and sources:
+                    st.markdown("###### Source data the analyst read")
+                    tabs = st.tabs([lab for _, lab, _ in sources])
+                    for tab, (_, _, body) in zip(tabs, sources):
+                        tab.code(body, language=None)
 
 
 def render_decision(container, ticker: str, date: str, signal: str) -> None:
@@ -655,93 +723,43 @@ def _health_line(res: dict | None) -> str:
     return line
 
 
-# status → (bar color, label, fill fraction). Providers don't expose exact
-# remaining quota, so the bar reflects live *usability*: green=has capacity now,
-# amber=rate-limited (no quota this minute), red=down/no-key.
-_BAR = {
-    "ok":        ("#16C784", "available", 1.0),
-    "ratelimit": ("#F0B90B", "rate-limited now", 0.12),
-    "degraded":  ("#EA3943", "provider down", 0.0),
-    "auth":      ("#EA3943", "no / invalid key", 0.0),
-    "error":     ("#EA3943", "error", 0.0),
-    "untested":  ("#586374", "not tested", 0.06),
-}
-
-
-def provider_status(provider: str, health: dict) -> str:
-    """Aggregate a provider's models into one status. `health` maps model→result.
-    If any model is ok the provider is ok; else the worst seen. Pure/testable."""
-    seen = [health[m]["status"] for m in MODEL_CHOICES
-            if provider_for(m) == provider and m in health and health[m]]
-    if not seen:
-        return "untested"
-    for rank in ("ok", "ratelimit", "degraded", "auth", "error"):
-        if rank in seen:
-            return rank
-    return seen[0]
-
-
-def render_provider_bars(container) -> None:
-    health = {m: st.session_state.get(f"health_{m}") for m in MODEL_CHOICES}
-    health = {m: r for m, r in health.items() if r}
-    rows = ""
-    for p in sorted({provider_for(m) for m in MODEL_CHOICES}):
-        color, label, frac = _BAR[provider_status(p, health)]
-        rows += (
-            f"<div style='margin:7px 0'>"
-            f"<div style='display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:12px'>"
-            f"<span style='color:var(--text)'>{html.escape(p)}</span>"
-            f"<span style='color:{color}'>{label}</span></div>"
-            f"<div style='height:8px;background:#0E141B;border:1px solid var(--border);"
-            f"border-radius:6px;overflow:hidden;margin-top:3px'>"
-            f"<div style='height:100%;width:{int(frac*100)}%;background:{color}'></div></div></div>")
-    container.markdown(
-        "<div class='ta-card'><h4>Engine capacity</h4>"
-        "<div style='font-size:11px;color:var(--muted);margin-bottom:6px'>Live usability from the last "
-        "health check — green = has capacity now, amber = rate-limited, red = down / no key. "
-        "(Providers don't expose an exact balance; click <b>Test ALL</b> to refresh.)</div>"
-        f"{rows}</div>", unsafe_allow_html=True)
-
-
 def render_health_panel() -> None:
-    """Per-provider capacity bars + a 'Test' button per model + 'Test all'.
+    """Model list with a 'Test' button and a live usability percentage per row.
     Each model pings its OWN provider; rows update LIVE via as_completed."""
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    st.markdown("#### 🔌 Model health")
-    bars = st.empty()                       # top placeholder, refreshed after tests
-    render_provider_bars(bars)
-    st.caption("Live ping each model on its own provider — confirms it actually responds right now.")
-    test_all = st.button("⚡ Test ALL models (parallel)", key="test_all", type="primary")
+    st.markdown("#### Model health")
+    st.caption("Live ping each model on its own provider — the percentage says "
+               "how usable it is right now (100 = responding, 25 = rate-limited "
+               "or needs credits, 0 = down / no key).")
+    test_all = st.button("Test ALL models (parallel)", key="test_all", type="primary")
 
     # Build rows with a placeholder per status cell so we can update them live.
     slots: dict[str, object] = {}
-    for m in MODEL_CHOICES:
+    for m in model_choices():
         c1, c2, c3 = st.columns([4, 1, 4])
         c1.markdown(f"`{m}`  ·  _{provider_for(m)}_")
         single = c2.button("Test", key=f"test_{m}")
         slots[m] = c3.empty()
         if single:
-            slots[m].markdown("⏳ testing…")
+            slots[m].markdown("testing…")
             st.session_state[f"health_{m}"] = ping_model(m)
-        slots[m].markdown(_health_line(st.session_state.get(f"health_{m}")))
+        slots[m].markdown(_health_line(st.session_state.get(f"health_{m}")),
+                          unsafe_allow_html=True)
 
     if test_all:
-        if st.button("⏹  Stop tests", key="stop_tests",
+        if st.button("Stop tests", key="stop_tests",
                      help="Abandon the in-flight tests (effective at the next model finishing)."):
             st.rerun()
-        for m in MODEL_CHOICES:                       # all flip to testing at once…
-            slots[m].markdown("⏳ testing…")
-        with ThreadPoolExecutor(max_workers=len(MODEL_CHOICES)) as ex:
-            futs = {ex.submit(ping_model, m): m for m in MODEL_CHOICES}
+        for m in model_choices():                       # all flip to testing at once…
+            slots[m].markdown("testing…")
+        with ThreadPoolExecutor(max_workers=len(model_choices())) as ex:
+            futs = {ex.submit(ping_model, m): m for m in model_choices()}
             for fut in as_completed(futs):            # …and resolve as each finishes
                 m = futs[fut]
                 res = fut.result()
                 st.session_state[f"health_{m}"] = res
-                slots[m].markdown(_health_line(res))
-                render_provider_bars(bars)            # progressive: refresh bars per result
-
-    render_provider_bars(bars)              # final refresh with latest results
+                slots[m].markdown(_health_line(res), unsafe_allow_html=True)
 
 
 def raw_error(exc: BaseException) -> str:
@@ -785,12 +803,13 @@ def _parallel_summary_html(models, shared, analysts) -> str:
             cards += _summary_card(m, sig.upper() if _nonempty(sig) else "DONE", _signal_color(sig), "complete")
         else:
             done, total, running = progress_summary(s["state"], analysts)
-            cards += _summary_card(m, f"{done}/{total}", "#2DD4BF", (running or "starting…") + " ⏳")
+            cards += _summary_card(m, f"{done}/{total}", "#2DD4BF", (running or "starting…"))
     return f"<div style='display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px'>{cards}</div>"
 
 
 def run_parallel_live(models, ticker, date, analysts, debate_rounds, risk_rounds,
-                      keys=None) -> None:
+                      keys=None, social_source=SOURCE_STOCKTWITS,
+                      twitter_keywords=None) -> None:
     """Run each model's FULL analysis in its own background thread and stream all
     of them LIVE — a folder-tab per model, each with its own pipeline + reports
     updating in real time (same live view as single-model, ×N concurrently).
@@ -814,7 +833,9 @@ def run_parallel_live(models, ticker, date, analysts, debate_rounds, risk_rounds
 
     def worker(model: str):
         cfg = build_config(DEFAULT_CONFIG, provider=provider_for(model), deep_model=model,
-                           quick_model=model, debate_rounds=debate_rounds, risk_rounds=risk_rounds)
+                           quick_model=model, debate_rounds=debate_rounds,
+                           risk_rounds=risk_rounds, social_source=social_source,
+                           twitter_keywords=twitter_keywords, ticker=ticker)
         configure_cfg(cfg, model, key_override=keys.get(model, ""))  # real provider/url/key
         try:
             ta = TradingAgentsGraph(selected_analysts=tuple(analysts), debug=False, config=cfg)
@@ -873,10 +894,10 @@ def run_parallel_live(models, ticker, date, analysts, debate_rounds, risk_rounds
                     with box.container():
                         render_decision(st.empty(), ticker, date, s["decision"])
                         if _nonempty(fd):
-                            with st.expander("🧾  Full final decision", expanded=False):
+                            with st.expander("Full final decision", expanded=False):
                                 st.markdown(fd)
                             st.download_button(
-                                "⬇  Download (.md)", data=fd, key=f"dl_{m}",
+                                "Download (.md)", data=fd, key=f"dl_{m}",
                                 file_name=f"{ticker}_{date}_{m.replace('/', '_')}.md",
                                 mime="text/markdown")
 
@@ -911,7 +932,11 @@ def run_single_streaming(ticker, trade_date, selected, cfg, provider, model,
     st.markdown(meta_bar(ticker, trade_date, provider, model, len(selected)), unsafe_allow_html=True)
     status = st.status(f"Running on {provider} / {model}…", expanded=True)
     progress_bar = st.progress(0.0, text="Starting…")
-    progress_col, report_col = st.columns([1, 2], gap="large")
+    # Keyed so the CSS can top-align this layout row (see .st-key-crypto_layout):
+    # without it the short pipeline column gets vertically centered against the
+    # tall reports column and ends up floating mid-dialog.
+    stream_layout = st.container(key="run_stream_layout")
+    progress_col, report_col = stream_layout.columns([1, 2], gap="large")
     with progress_col:
         progress_box = st.empty()
     with report_col:
@@ -935,14 +960,14 @@ def run_single_streaming(ticker, trade_date, selected, cfg, provider, model,
             done, total, running = progress_summary(final_state, selected)
             frac = min(1.0, done / total) if total else 0.0
             label = f"Running: {running}" if running else "Finalizing…"
-            status.update(label=f"⏳ {label}  ·  {done}/{total} stages done")
+            status.update(label=f"{label}  ·  {done}/{total} stages done")
             progress_bar.progress(frac, text=f"{label}  ·  {done}/{total}")
             render_progress(progress_box, final_state, selected)
             render_reports(report_box, final_state)
         progress_bar.progress(1.0, text="Complete")
-        status.update(label="✅ Analysis complete", state="complete", expanded=False)
+        status.update(label="Analysis complete", state="complete", expanded=False)
     except Exception as exc:  # noqa: BLE001
-        status.update(label="❌ Run failed — raw API error below", state="error", expanded=True)
+        status.update(label="Run failed — raw API error below", state="error", expanded=True)
         error_box.error(raw_error(exc))                    # verbatim API/SDK message
         with error_box.expander("Full traceback"):
             st.code("".join(traceback.format_exception(type(exc), exc, exc.__traceback__)))
@@ -956,9 +981,9 @@ def run_single_streaming(ticker, trade_date, selected, cfg, provider, model,
         except Exception:  # noqa: BLE001
             pass
         render_decision(decision_box, ticker, trade_date, signal)
-        with st.expander("🧾  Full final decision", expanded=True):
+        with st.expander("Full final decision", expanded=True):
             st.markdown(safe_markdown(final_decision))
-        st.download_button("⬇  Download decision (.md)", data=final_decision,
+        st.download_button("Download decision (.md)", data=final_decision,
                            file_name=f"{ticker}_{trade_date}_decision.md", mime="text/markdown")
         return RunOutcome(signal, final_decision, final_state)
 
@@ -972,22 +997,22 @@ def render_run_mode(default_model: str):
         '<div style="font-family:var(--font-display);font-size:13px;letter-spacing:.08em;'
         'text-transform:uppercase;color:var(--muted);margin-bottom:4px">Run mode</div>',
         unsafe_allow_html=True)
-    mode = st.radio("Run mode", ["🎯 Selected model", "⚡ Parallel — compare models"],
+    mode = st.radio("Run mode", ["Selected model", "Parallel — compare models"],
                     horizontal=True, label_visibility="collapsed", key="run_mode")
-    if mode.startswith("🎯"):
+    if mode.startswith("Selected"):
         opts = model_options(default_model)
         sel = st.selectbox("Model", opts, index=0, key="single_model", label_visibility="collapsed")
         if sel == CUSTOM_MODEL:
             sel = st.text_input("Custom model id", value="", key="single_custom",
                                 placeholder="vendor/model-id").strip() or default_model
         return mode, [sel], {}
-    default_two = MODEL_CHOICES[:2]
-    models = st.multiselect("Models to run in parallel", MODEL_CHOICES, default=default_two,
+    default_two = model_choices()[:2]
+    models = st.multiselect("Models to run in parallel", model_choices(), default=default_two,
                             key="parallel_models", format_func=lambda m: f"{m}  ·  {provider_for(m)}")
-    st.caption("⚠️ Each model runs a full analysis at once, each on **its own provider** "
+    st.caption("Each model runs a full analysis at once, each on **its own provider** "
                "(mixing NVIDIA + Gemini = separate quotas → best for dodging rate limits).")
     keys: dict[str, str] = {}
-    with st.expander("🔑 Per-model API keys (optional)"):
+    with st.expander("Per-model API keys (optional)"):
         st.caption("Blank = use the provider's default key from `.env`. A distinct key per model "
                    "gives each its own per-key rate-limit quota.")
         for m in models:
@@ -1000,7 +1025,7 @@ def render_run_mode(default_model: str):
 
 # --- App -------------------------------------------------------------------
 def engine_badge_html() -> str:
-    provs = "+".join(sorted({provider_for(m) for m in MODEL_CHOICES}))
+    provs = "+".join(sorted({provider_for(m) for m in model_choices()}))
     return (
         "<div style='background:var(--panel-2);border:1px solid var(--border);"
         "border-radius:5px;padding:7px 11px;margin-bottom:10px;"
@@ -1013,27 +1038,26 @@ def engine_badge_html() -> str:
 # Sidebar navigation: one screen renders at a time, which is what lets each screen
 # own its controls. Tabs could not do that — Streamlit renders every tab body on
 # every run, so a sidebar full of settings looked like it applied to both.
-PAGES = ("New Crypto", "Run analysis")
+PAGES = ("New Crypto", "Stocks", "Trade", "LLM Models")
 
 
 def render_nav() -> str:
-    """Brand mark plus the screen switcher. Returns the selected screen."""
-    with st.sidebar:
-        st.markdown(
-            '<div class="ta-brand"><div class="ta-mark">◈</div>'
-            '<div><div class="ta-brand-name">TradingAgents</div>'
-            '<div class="ta-brand-sub">Terminal</div></div></div>',
-            unsafe_allow_html=True)
-        page = st.radio("Screen", PAGES, label_visibility="collapsed",
-                        key="nav_page")
-        st.markdown('<div class="ta-nav-foot">Multi-agent LLM equity &amp; '
-                    'crypto analysis</div>', unsafe_allow_html=True)
+    """Brand mark plus the screen tabs on top. Returns the selected screen."""
+    st.markdown(
+        '<div class="ta-brand"><div class="ta-mark">◈</div>'
+        '<div><div class="ta-brand-name">TradingAgents</div>'
+        '<div class="ta-brand-sub">Terminal</div></div></div>',
+        unsafe_allow_html=True)
+    page = st.radio("Screen", PAGES, horizontal=True,
+                    label_visibility="collapsed", key="nav_page")
+    st.markdown('<div class="ta-rule" style="margin-top:var(--s)"></div>',
+                unsafe_allow_html=True)
     return page
 
 
 def main() -> None:
     st.set_page_config(page_title="TradingAgents", page_icon="◈", layout="wide",
-                       initial_sidebar_state="expanded")
+                       initial_sidebar_state="collapsed")
     st.markdown(CSS, unsafe_allow_html=True)
 
     page = render_nav()
@@ -1041,6 +1065,10 @@ def main() -> None:
                 unsafe_allow_html=True)
     if page == "New Crypto":
         render_crypto_tab()
+    elif page == "Trade":
+        render_trade_tab()
+    elif page == "LLM Models":
+        render_llm_models_tab()
     else:
         render_run_analysis_tab()
 
@@ -1060,6 +1088,11 @@ def render_run_settings():
         help="Type to search by symbol or company name, or enter any Yahoo Finance "
              "ticker (e.g. 0700.HK, BTC-USD).")
     ticker = ticker_data.parse_ticker(choice) if choice else "NVDA"
+    # A PSE ticker typed bare resolves to an unrelated US listing on Yahoo, so
+    # say so rather than analyzing the wrong company in silence.
+    mixup = ticker_data.confusable_warning(ticker)
+    if mixup:
+        st.warning(mixup)
     trade_date = c2.date_input("Analysis date").isoformat()
 
     selected = st.multiselect(
@@ -1069,8 +1102,25 @@ def render_run_settings():
     r1, r2, r3 = st.columns([1, 1, 2])
     debate_rounds = r1.number_input("Debate rounds", 1, 5, 1)
     risk_rounds = r2.number_input("Risk rounds", 1, 5, 1)
+    # Same cost-ordered choice as the New Crypto tab: StockTwits is free,
+    # X spends metered credits, so it is opt-in per run.
+    source = st.radio("Social sentiment source", SOCIAL_SOURCES, horizontal=True,
+                      key="stock_social_source",
+                      help="Where the Sentiment Analyst reads social posts. "
+                           "X / Twitter spends metered API credits.")
+    # Keyword box only when the run will actually search X.
+    keywords: list[str] = []
+    if social_flags(source)["include_twitter"]:
+        keywords = parse_keywords(st.text_input(
+            "X search keywords (optional, comma-separated)",
+            key="stock_twitter_keywords", placeholder="Meralco, rate hike ERC",
+            help="Extra terms OR'd into the X search besides the cashtag and "
+                 "company name. Multi-word terms match as phrases. Keep terms "
+                 "specific — very common phrases return huge result pages, "
+                 "which slows the search and can time it out."))
     run = r3.button("Run analysis", type="primary")
-    return ticker, trade_date, selected, debate_rounds, risk_rounds, run
+    return (ticker, trade_date, selected, debate_rounds, risk_rounds,
+            source, keywords, run)
 
 
 def render_crypto_tab() -> None:
@@ -1084,9 +1134,741 @@ def render_crypto_tab() -> None:
         streaming_runner=run_single_streaming)
 
 
+@st.cache_data(ttl=1800, show_spinner=False)
+def _funding_history(symbol: str) -> list:
+    """Funding settlements for a contract, cached — several paged requests."""
+    from tradingagents.dataflows import mexc_futures as fx
+    try:
+        return fx.funding_history(symbol)
+    except Exception:                                     # noqa: BLE001
+        return []
+
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def _funding_summary(symbol: str) -> dict:
+    from tradingagents.dataflows import mexc_futures as fx
+    try:
+        return fx.funding_summary(symbol)
+    except Exception:                                     # noqa: BLE001
+        return {"available": False}
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def _futures_contracts() -> list[dict]:
+    """Tradeable MEXC perpetuals, cached — 920 contracts is one slow request."""
+    from tradingagents.dataflows import mexc_futures as fx
+    return fx.list_contracts()
+
+
+def render_trade_tab() -> None:
+    """Auto-trade console for the SPX500 perpetual bot.
+
+    The UI deliberately cannot arm live trading: that needs SPX_BOT_ARMED in the
+    bot's own environment, so a stray click in a browser can never start
+    spending money. What the UI does own is everything safe — status, config,
+    preflight, dry-run cycles, the ledger, and the two stop controls.
+    """
+    import json
+    import signal
+    import subprocess
+    import time
+    from dataclasses import asdict
+
+    import pandas as pd
+
+    import spx_bot
+    from tradingagents.dataflows import mexc_futures as fx
+
+    from tradingagents.dataflows import mexc_credentials as cred
+
+    cred.load_into_env()          # pick up keys saved from this page
+    cfg = spx_bot.Config.load()
+    state = spx_bot._read_state()
+    armed_env = os.getenv("SPX_BOT_ARMED", "").strip().lower() in ("yes", "true", "1")
+    killed = spx_bot.KILL_PATH.exists()
+    live_ready = armed_env and not killed
+
+    # ---- top row: what mode is this in, right now
+    mode = ("LIVE — real money" if live_ready
+            else ("HALTED — kill file present" if killed else "DRY RUN — no orders"))
+    colour = "var(--sell)" if live_ready else ("var(--hold)" if killed else "var(--buy)")
+    st.markdown(
+        f"<div class='ta-card' style='border-left:3px solid {colour}'>"
+        f"<h4>Bot mode</h4>"
+        f"<div style='font-family:var(--font-mono);font-size:22px;font-weight:600;"
+        f"color:{colour}'>{html.escape(mode)}</div>"
+        f"<div style='color:var(--muted);font-size:13px;margin-top:6px'>"
+        f"Live trading needs <code>SPX_BOT_ARMED=yes</code> in the bot's shell "
+        f"<b>and</b> <code>--live</code> on its command line. This page cannot "
+        f"set either — by design.</div></div>",
+        unsafe_allow_html=True)
+
+    # Keyed so the CSS top-aligns this row; otherwise the shorter left column
+    # gets vertically centred against the tall settings panel.
+    trade_layout = st.container(key="trade_layout")
+    left, right = trade_layout.columns([1.6, 1], gap="large")
+
+    with right:
+        st.markdown('<div class="ta-panel-title">Instrument</div>',
+                    unsafe_allow_html=True)
+        try:
+            contracts = _futures_contracts()
+        except Exception as exc:                          # noqa: BLE001
+            contracts = []
+            st.warning(f"Contract list unavailable: {exc}")
+        spec_by = {c["symbol"]: c for c in contracts}
+        all_syms = [c["symbol"] for c in contracts] or [cfg.symbol]
+        # The majors first: the dropdown holds ~920 contracts and Streamlit's
+        # search does subsequence matching, so "BTC" alone surfaces junk like
+        # RKLBSTOCK. Browsing beats searching for the handful people want.
+        FAVOURITES = ("SPX500_USDT", "BTC_USDT", "ETH_USDT", "SOL_USDT",
+                      "BNB_USDT", "XRP_USDT", "DOGE_USDT", "GOLD_USDT")
+        head = [s for s in FAVOURITES if s in spec_by]
+        syms = head + [s for s in all_syms if s not in head]
+        idx = syms.index(cfg.symbol) if cfg.symbol in syms else 0
+        symbol = st.selectbox(
+            "Perpetual", syms, index=idx, key="trade_symbol",
+            # Keep the full symbol in the label: Streamlit's picker does
+            # subsequence matching, so stripping "_USDT" made "BTC" match
+            # "RKLBSTOCK" ahead of BTC_USDT.
+            format_func=lambda s: (f"{s}  ·  "
+                                   f"{spec_by.get(s, {}).get('max_leverage', '?')}x max"),
+            help="Majors are listed first. For anything else, use the exact-symbol "
+                 "box below — the dropdown's search is fuzzy and ranks poorly "
+                 "across 920 contracts.")
+        exact = st.text_input("Or exact symbol", value="", key="trade_exact",
+                              placeholder="e.g. PEPE_USDT",
+                              help="Overrides the dropdown. Must match a "
+                                   "tradeable MEXC perpetual exactly.").strip().upper()
+        if exact:
+            if exact in spec_by:
+                symbol = exact
+                st.caption(f"Using {symbol} (from the exact-symbol box).")
+            else:
+                st.error(f"{exact} is not a tradeable MEXC USDT perpetual.")
+        max_lev = int(spec_by.get(symbol, {}).get("max_leverage", 20))
+
+        from tradingagents import strategies as sg
+
+        st.markdown('<div class="ta-panel-title">Strategy</div>',
+                    unsafe_allow_html=True)
+        def _label(k):
+            name = sg.REGISTRY[k].name
+            if k not in spx_bot.RUNNABLE_STRATEGIES:
+                return f"{name}  [backtest only]"
+            return name
+
+        strat_key = st.selectbox(
+            "Approach", sg.ORDER, index=0, key="trade_strategy",
+            format_func=_label)
+        strat = sg.REGISTRY[strat_key]
+        st.caption(strat.summary)
+        runnable, why_not = spx_bot.strategy_is_runnable(strat_key)
+        if not runnable:
+            # Previously the bot ignored this dropdown entirely and always ran
+            # barrier harvest, so a selection here was a silent lie.
+            st.warning(f"**Backtest only — the bot cannot run this.** {why_not}")
+        if strat_key == "trend_filter":
+            st.error("**This one liquidated the account in testing** — "
+                     r"-\$298 and -\$192 on your two data files, in a window "
+                     "where the index rose 11%. Do not run it live.")
+        with st.expander("Why this, and how it fails"):
+            st.markdown(f"**Rationale** — {strat.rationale}")
+            st.markdown(f"**Risk** — {strat.risk}")
+
+        lev = st.number_input("Leverage", 1, max(max_lev, 1),
+                              min(int(cfg.leverage), max_lev), key="trade_lev",
+                              help="3x was the highest that survived the worst "
+                                   "drawdown in the backtest; 8x liquidated.")
+        margin = st.number_input("Margin (USD)", 5.0, 10_000.0,
+                                 float(cfg.margin_usd), step=5.0,
+                                 key="trade_margin")
+        if strat.kind == "bracket":
+            tp = st.number_input("Take-profit %", 0.25, 20.0,
+                                 float(cfg.take_profit_pct), step=0.25,
+                                 key="trade_tp")
+            sl = st.number_input("Stop-loss %", 1.0, 50.0,
+                                 float(cfg.stop_loss_pct), step=0.5,
+                                 key="trade_sl")
+        else:
+            tp, sl = float(cfg.take_profit_pct), float(cfg.stop_loss_pct)
+            st.caption("This approach shapes exposure rather than setting "
+                       "barriers, so it has no take-profit or stop-loss.")
+        st.markdown('<div class="ta-panel-title">Risk limits</div>',
+                    unsafe_allow_html=True)
+        cap = st.number_input("Max notional (USD)", 10.0, 50_000.0,
+                              float(cfg.max_notional_usd), step=50.0,
+                              key="trade_cap")
+        dl = st.number_input("Daily loss limit (USD)", 1.0, 5_000.0,
+                             float(cfg.daily_loss_limit_usd), step=5.0,
+                             key="trade_dl")
+        floor = st.number_input("Halt below equity (USD)", 0.0, 5_000.0,
+                                float(cfg.min_equity_usd), step=5.0,
+                                key="trade_floor")
+        mx = st.number_input("Stop after N losing trades", 0, 100,
+                             int(getattr(cfg, "max_losses", 0)), step=1,
+                             key="trade_maxlosses",
+                             help="0 = no limit. Counts losing trades in "
+                                  "total, not per day. Only the Reset button "
+                                  "below clears it.")
+        if st.button("Save settings", type="primary"):
+            cfg.symbol = symbol
+            cfg.strategy = strat_key
+            cfg.leverage, cfg.margin_usd = int(lev), float(margin)
+            cfg.take_profit_pct, cfg.stop_loss_pct = float(tp), float(sl)
+            cfg.max_notional_usd, cfg.daily_loss_limit_usd = float(cap), float(dl)
+            cfg.min_equity_usd = float(floor)
+            cfg.max_losses = int(mx)
+            cfg.save()
+            st.success("Saved. The bot picks these up on its next cycle.")
+        if mx:
+            st.caption(f"After {mx} losing trade{'s' if mx != 1 else ''} the bot "
+                       f"stops opening new ones. At a {sl:.2f}% stop that is "
+                       f"about ${mx * min(margin * lev, cap) * sl / 100:,.2f} "
+                       f"of realised loss before it halts.")
+        st.caption(f"Notional at these settings: "
+                   f"${min(margin * lev, cap):,.2f}  ·  a {sl:.0f}% stop costs "
+                   f"{sl * lev:.0f}% of margin.")
+        if symbol != "SPX500_USDT":
+            st.warning(
+                f"These take-profit and stop-loss levels were validated on "
+                f"SPX500_USDT only. {symbol.replace('_USDT','')} has different "
+                f"volatility, so 2%/10% is an untested guess here — re-run the "
+                f"backtest before trusting it.")
+
+    with left:
+        st.markdown('<div class="ta-label">Position &amp; account</div>',
+                    unsafe_allow_html=True)
+        pos = state.get("position")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Position", f"{pos['vol']} contracts" if pos else "flat")
+        c2.metric("Entry", f"{pos['entry']:,.2f}" if pos else "—")
+        c3.metric("Realised today", f"{state.get('realised_today', 0.0):+.2f}")
+        if state.get("halted"):
+            st.error(f"Bot halted — {state.get('halt_reason', '')}")
+
+        wallet = None
+        if fx.has_credentials():
+            try:
+                wallet = fx.usdt_equity()
+            except fx.MexcFuturesError as exc:
+                st.warning(f"Exchange read failed: {exc}")
+        st.caption(f"Futures wallet: "
+                   f"{('%.2f USDT' % wallet) if wallet is not None else 'unavailable'}"
+                   f"  ·  key present: {fx.has_credentials()}")
+
+        st.markdown('<div class="ta-label">MEXC API keys</div>',
+                    unsafe_allow_html=True)
+        cst = cred.status()
+        if cst["has_credentials"]:
+            mode_note = ("" if cst["file_mode_ok"] else
+                         f"  ·  file mode {cst['file_mode']} — should be -rw-------")
+            st.markdown(
+                f"<div class='ta-card'><h4>Key loaded</h4>"
+                f"<div style='font-family:var(--font-mono);font-size:12.5px'>"
+                f"key &nbsp; {html.escape(cst['key_fingerprint'])}<br>"
+                f"secret {html.escape(cst['secret_fingerprint'])}</div>"
+                f"<div style='color:var(--muted);font-size:12px;margin-top:6px'>"
+                f"source: {html.escape(cst['source'])}{html.escape(mode_note)}"
+                f"</div></div>", unsafe_allow_html=True)
+        else:
+            st.caption("No key loaded. Enter one below, or export "
+                       "MEXC_API_KEY / MEXC_API_SECRET before launching.")
+
+        # A different key in .env is invisible from the browser. It used to win
+        # silently, so every connection test ran against a key the user had
+        # already replaced. The saved key now wins — say so, and name the file
+        # to clean up.
+        conflict = cred.env_conflict()
+        if conflict.get("conflict"):
+            stale = ", ".join(f"{where} ({fp})" for where, fp in conflict["stale"])
+            st.warning(
+                f"A different MEXC key is also set in {stale}. The key saved "
+                f"here wins, but delete the `MEXC_API_KEY` / `MEXC_API_SECRET` "
+                f"lines from that file so there is only one answer to which "
+                f"key is live.")
+
+        with st.expander("Enter or replace keys",
+                         expanded=not cst["has_credentials"]):
+            st.caption(
+                "Create the key on MEXC with **futures trading and read access "
+                "enabled**, **withdrawals disabled**, and an **IP allowlist**. "
+                "A trade-only key that leaks can lose money on bad trades but "
+                "cannot move funds off the exchange. Keys are written to "
+                f"`{cst['store_path']}` with owner-only permissions — never to "
+                "the project folder, and never shown back to you.")
+            with st.form("mexc_keys", clear_on_submit=True):
+                k_in = st.text_input("API key", type="password",
+                                     autocomplete="off")
+                s_in = st.text_input("API secret", type="password",
+                                     autocomplete="off")
+                f1, f2 = st.columns([1, 1])
+                if f1.form_submit_button("Save keys", type="primary"):
+                    try:
+                        cred.save(k_in, s_in)
+                    except ValueError as exc:
+                        st.error(str(exc))
+                    else:
+                        st.success("Saved. Test the connection below.")
+                        st.rerun()
+                if f2.form_submit_button("Forget saved keys"):
+                    st.warning("Removed." if cred.clear() else "Nothing stored.")
+                    st.rerun()
+
+        tc1, tc2 = st.columns([1, 3])
+        if tc1.button("Test connection", type="primary"):
+            st.session_state["conn_test"] = True
+        if st.session_state.get("conn_test"):
+            # Clear the flag before rendering: Streamlit reruns the script on
+            # every widget interaction, and leaving it set re-issued a signed
+            # POST to the order endpoint on each one.
+            st.session_state.pop("conn_test", None)
+            with st.spinner("talking to MEXC…"):
+                rep = fx.preflight(symbol)
+            checks = [
+                ("Credentials present", rep.get("credentials")),
+                ("Read account balance", rep.get("read_assets")),
+                ("Read open positions", rep.get("read_positions")),
+                ("Permission to place orders", rep.get("order_permission")),
+                ("Rest a stop on MEXC's servers", rep.get("can_rest_stop")),
+            ]
+            rows = ""
+            for label, ok in checks:
+                mark = "PASS" if ok else ("FAIL" if ok is False else "unknown")
+                colour = ("var(--buy)" if ok else
+                          ("var(--sell)" if ok is False else "var(--muted)"))
+                rows += (f"<div class='ta-stage'><span class='lbl'>{label}</span>"
+                         f"<span class='tag' style='color:{colour}'>{mark}</span>"
+                         f"</div>")
+            st.markdown(f"<div class='ta-card'><h4>Connection</h4>{rows}</div>",
+                        unsafe_allow_html=True)
+            if rep.get("equity_usdt") is not None:
+                st.metric("Futures wallet", f"{rep['equity_usdt']:,.2f} USDT")
+            if rep.get("ready"):
+                st.success(f"Connected. This key can read the account and place "
+                           f"futures orders on {symbol}.")
+                st.caption("Both write checks are non-destructive: the order "
+                           "check cancels an order id that cannot exist, and "
+                           "the stop check targets a position id that cannot "
+                           "exist. Neither can open a position. They are "
+                           "separate endpoints, so both are tested — a key can "
+                           "place orders and still not be allowed to rest a "
+                           "stop.")
+            elif rep.get("auth_failed"):
+                st.error("**MEXC rejected the credentials themselves, not their "
+                         "permissions.** No permission setting will fix this.")
+                for fix in rep.get("remedies", []):
+                    st.markdown(f"- {fix}")
+            elif rep.get("edge_blocked"):
+                st.error("**Blocked by MEXC's edge proxy, not by your key.** The "
+                         "order endpoint returned an HTML “Access Denied” "
+                         "before the API saw the request, so no permission "
+                         "setting on MEXC will change it.")
+                for fix in rep.get("remedies", []):
+                    st.markdown(f"- {fix}")
+                st.caption("MEXC's edge refuses the futures order paths for "
+                           "requests whose User-Agent identifies a scripted "
+                           "client (bare urllib or requests). Reads are "
+                           "unaffected, which makes it look like a trade "
+                           "permission problem.")
+            elif rep.get("missing_scopes"):
+                st.error("**Your key is missing permission scopes.** MEXC named "
+                         "them exactly: " + ", ".join(rep["missing_scopes"]) + ".")
+                st.markdown("**To fix, on MEXC:**")
+                for fix in rep.get("remedies", []):
+                    st.markdown(f"- {fix}")
+                st.markdown(
+                    "- Keep **withdrawals disabled**, and check the key's "
+                    "**IP allowlist** includes this machine.\n"
+                    "- Editing scopes can issue a new secret — if so, paste "
+                    "both values above again.")
+                st.caption("Futures API order placement is not gated by MEXC on "
+                           "this contract; these are key settings you control.")
+            else:
+                st.error("Not ready to trade — see the raw exchange responses "
+                         "below. Common causes: a wrong secret (signature "
+                         "failure) or an IP allowlist that excludes this machine.")
+            for note in rep.get("notes", []):
+                st.caption(f"· {note}")
+
+        st.markdown('<div class="ta-label">Bot process</div>',
+                    unsafe_allow_html=True)
+        h = spx_bot.health()
+        if h["orphaned"]:
+            st.error("**The bot is not running and a position is open.** Its "
+                     "exchange stop still applies, but nothing is managing the "
+                     "trade. Start it again, or close the position below.")
+        elif h["running"] and h["stale"]:
+            st.warning(f"Running as pid {h['pid']} but the last cycle was "
+                       f"{h['seconds_since_cycle']:.0f}s ago — it may be stuck.")
+        elif h["running"]:
+            st.success(f"Running as pid {h['pid']}"
+                       + (f" · last cycle {h['seconds_since_cycle']:.0f}s ago"
+                          if h["seconds_since_cycle"] is not None else ""))
+        else:
+            st.caption("Not running. Start it below — it keeps running when you "
+                       "close this page.")
+        if h["halted"]:
+            st.error(f"Halted: {h['halt_reason']}")
+
+        p1, p2, p3 = st.columns(3)
+        if not h["running"]:
+            if p1.button("Start bot (dry run)", type="primary"):
+                # Live trading deliberately cannot be armed from a browser: it
+                # needs SPX_BOT_ARMED=yes in the bot's own shell.
+                log = open(spx_bot.LOG_PATH, "a", buffering=1)
+                subprocess.Popen(
+                    [sys.executable, "spx_bot.py", "run"],
+                    stdout=log, stderr=subprocess.STDOUT,
+                    start_new_session=True)
+                st.success("Started in dry-run mode — no orders will be sent.")
+                time.sleep(2)
+                st.rerun()
+        elif p1.button("Stop bot"):
+            try:
+                os.kill(h["pid"], signal.SIGTERM)
+                st.warning(f"Sent stop to pid {h['pid']}.")
+            except OSError as exc:
+                st.error(f"could not stop pid {h['pid']}: {exc}")
+            time.sleep(2)
+            st.rerun()
+        if p2.button("Show bot log"):
+            st.session_state["show_bot_log"] = True
+        p3.caption(f"Live trading needs `SPX_BOT_ARMED=yes` and `--live` in a "
+                   f"terminal — this button only starts a dry run.")
+        if st.session_state.get("show_bot_log"):
+            try:
+                st.code(spx_bot.LOG_PATH.read_text()[-3000:] or "(empty)")
+            except OSError:
+                st.caption("no log yet")
+
+        st.markdown('<div class="ta-label">Checks &amp; controls</div>',
+                    unsafe_allow_html=True)
+        b1, b2, b3, b4 = st.columns(4)
+        if b1.button("Preflight"):
+            with st.spinner("checking key permissions…"):
+                rep = fx.preflight(symbol)
+            # Use preflight's own verdict: recomputing it here dropped
+            # read_positions and edge_blocked, so a key that could not read
+            # positions printed a green "ready" directly under a red FAIL row.
+            ok = rep.get("ready")
+            (st.success if ok else st.error)(
+                f"Key can read {symbol} and place futures orders." if ok
+                else f"Key is not ready for {symbol} — see details.")
+            st.json(rep)
+        if b2.button("Dry-run one cycle"):
+            with st.spinner("running one decision cycle…"):
+                r = subprocess.run(
+                    [sys.executable, "spx_bot.py", "run", "--once"],
+                    capture_output=True, text=True, timeout=180)
+            st.code((r.stdout + r.stderr)[-2000:] or "(no output)")
+        if b3.button("Close position now"):
+            st.session_state["confirm_flat"] = True
+        if b4.button("Kill switch" if not killed else "Clear kill file"):
+            if killed:
+                spx_bot.KILL_PATH.unlink(missing_ok=True)
+                st.success("Kill file cleared — the bot may trade again.")
+            else:
+                spx_bot.KILL_PATH.parent.mkdir(parents=True, exist_ok=True)
+                spx_bot.KILL_PATH.write_text("stopped from the Trade tab")
+                st.warning("Kill file written. The bot will not open new trades.")
+            st.rerun()
+
+        bot_state = spx_bot._read_state() or {}
+        losses = int(bot_state.get("losses", 0) or 0)
+        limit = int(getattr(cfg, "max_losses", 0) or 0)
+        c1, c2 = st.columns([2, 1])
+        if limit:
+            hit = losses >= limit
+            c1.markdown(
+                f"<div class='ta-card'><h4>Losing trades</h4>"
+                f"<div style='font-family:var(--font-mono);font-size:22px;"
+                f"color:{'var(--sell)' if hit else 'var(--ink)'}'>"
+                f"{losses} / {limit}</div>"
+                f"<div style='color:var(--muted);font-size:12px'>"
+                f"{'LIMIT REACHED — the bot will not open new trades until you '
+                   'reset' if hit else 'counts every losing trade, never resets '
+                   'on its own'}</div></div>", unsafe_allow_html=True)
+        else:
+            c1.caption(f"Losing trades so far: {losses}. No limit set — "
+                       f"set one in Risk limits.")
+        if c2.button("Reset loss count", disabled=losses == 0):
+            r = subprocess.run([sys.executable, "spx_bot.py", "reset-losses"],
+                               capture_output=True, text=True, timeout=60)
+            st.success((r.stdout or "reset").strip()[:200])
+            st.rerun()
+
+        # Closing a real position is irreversible, so it takes a second click.
+        if st.session_state.get("confirm_flat"):
+            st.warning("This sends a market order to close the whole position.")
+            k1, k2 = st.columns(2)
+            if k1.button("Yes, close it", type="primary"):
+                r = subprocess.run(
+                    [sys.executable, "spx_bot.py", "flat"]
+                    + (["--live"] if live_ready else []),
+                    capture_output=True, text=True, timeout=120)
+                st.code((r.stdout + r.stderr)[-1500:] or "(no output)")
+                st.session_state.pop("confirm_flat", None)
+                st.rerun()
+            if k2.button("Cancel"):
+                st.session_state.pop("confirm_flat", None)
+                st.rerun()
+
+        st.markdown('<div class="ta-label">Chart</div>', unsafe_allow_html=True)
+        ci1, ci2 = st.columns([1, 3])
+        interval = ci1.selectbox("Interval",
+                                 ["Min1", "Min5", "Min15", "Min60", "Hour4", "Day1"],
+                                 index=1, key="trade_interval",
+                                 label_visibility="collapsed")
+        try:
+            import crypto_screener as _cs
+            candles = fx.klines(symbol, interval, 240)
+            chart = _cs.candlestick_chart(candles, symbol.replace("_USDT", ""))
+            # overlay the live take-profit / stop levels off the last close
+            import altair as alt
+            last = float(candles["Close"].iloc[-1])
+            levels = [{"level": last * (1 + tp / 100), "kind": f"take-profit +{tp:g}%"},
+                      {"level": last * (1 - sl / 100), "kind": f"stop-loss -{sl:g}%"}]
+            if pos:
+                levels += [{"level": float(pos["entry"]), "kind": "entry"},
+                           {"level": float(pos["tp"]), "kind": "resting TP"}]
+            rules = alt.Chart(pd.DataFrame(levels)).mark_rule(
+                strokeDash=[4, 4], size=1.5).encode(
+                y="level:Q",
+                color=alt.Color("kind:N", legend=alt.Legend(title=None,
+                                                            orient="top")),
+                tooltip=["kind:N", "level:Q"])
+            st.altair_chart(chart + rules, use_container_width=True)
+            ci2.caption(f"{_cs.chart_summary(candles)}  ·  {interval} candles "
+                        f"from MEXC futures")
+        except Exception as exc:                          # noqa: BLE001
+            st.warning(f"Chart unavailable for {symbol}: {exc}")
+
+        st.markdown('<div class="ta-label">Backtest these settings</div>',
+                    unsafe_allow_html=True)
+        bt1, bt2, bt3 = st.columns([1, 1, 2])
+        bt_interval = bt1.selectbox("Bars", ["Min5", "Min15", "Min60", "Hour4"],
+                                    index=0, key="bt_interval")
+        bt_limit = bt2.selectbox("History", [500, 1000, 2000], index=1,
+                                 key="bt_limit",
+                                 format_func=lambda n: f"{n} bars")
+        bb1, bb2 = bt3.columns(2)
+        if bb1.button("Run backtest", type="primary"):
+            st.session_state["bt_run"] = True
+            st.session_state.pop("bt_compare", None)
+        if bb2.button("Compare all 6"):
+            st.session_state["bt_compare"] = True
+            st.session_state.pop("bt_run", None)
+
+        if st.session_state.get("bt_compare"):
+            from tradingagents import strategies as _sg
+            try:
+                with st.spinner(f"running all six strategies on {symbol}…"):
+                    hist = fx.klines(symbol, bt_interval, int(bt_limit))
+                    fund_hist = _funding_history(symbol)
+                    rows = _sg.compare(hist, margin=float(margin),
+                                       leverage=float(lev), funding=fund_hist)
+            except Exception as exc:                      # noqa: BLE001
+                st.error(f"Comparison failed: {exc}")
+            else:
+                good = [r for r in rows if "error" not in r]
+                bh = good[0]["buy_hold_total"] if good else 0.0
+                fsum = _funding_summary(symbol)
+                st.caption(f"{symbol} · {bt_limit} {bt_interval} bars · "
+                           f"${margin:,.0f} margin at {lev:.0f}x · "
+                           f"buy & hold benchmark ${bh:+,.2f} (funding included)")
+                if fsum.get("available"):
+                    sign = "receives" if fsum["long_total"] > 0 else "pays"
+                    st.info(
+                        f"**Funding on {symbol}:** a long {sign} "
+                        f"{abs(fsum['long_total'])*100:.2f}% of notional over the "
+                        f"published history ({fsum['long_daily']*100:+.4f}%/day, "
+                        f"{fsum['long_annual']*100:+.1f}%/yr) across "
+                        f"{fsum['settlements']} settlements, "
+                        f"{fsum['pct_positive']:.0f}% of which charged longs. "
+                        f"Perpetual funding is settled every few hours while a "
+                        f"position is open, so it scales with time held.")
+                else:
+                    st.warning("No funding history published for this contract — "
+                               "the totals below exclude funding.")
+                tbl = ("| strategy | price PnL | funding | TOTAL | return "
+                       "| trades | win% | max DD | beats hold |\n"
+                       "|---|---|---|---|---|---|---|---|---|\n")
+                for r in rows:
+                    if "error" in r:
+                        tbl += f"| {r['name']} | error | | | | | | | |\n"
+                        continue
+                    flag = "**YES**" if r["beats_buy_hold"] else "no"
+                    if r["liquidated"]:
+                        flag = "LIQUIDATED"
+                    tbl += (f"| {r['name']} | {r['pnl']:+,.2f} "
+                            f"| {r['funding_pnl']:+,.2f} "
+                            f"| **{r['total_pnl']:+,.2f}** "
+                            f"| {r['total_return_pct']:+.1f}% | {r['trades']} "
+                            f"| {r['win_rate']:.0f}% "
+                            f"| {r['max_drawdown']:+,.2f} | {flag} |\n")
+                st.markdown(tbl)
+                winners = [r for r in good if r.get("beats_buy_hold")]
+                if not winners:
+                    st.warning(
+                        f"On {symbol} over this window, no strategy beat simply "
+                        f"holding (${bh:+,.2f}). That is the honest answer — "
+                        f"holding is the benchmark for a reason.")
+                else:
+                    best = winners[0]
+                    st.success(
+                        f"Best here: **{best['name']}** at "
+                        f"${best['total_pnl']:+,.2f} "
+                        f"({best['total_return_pct']:+.1f}%) including funding, "
+                        f"versus ${bh:+,.2f} for holding.")
+                liq = [r for r in good if r["liquidated"]]
+                if liq:
+                    st.error("Would have been liquidated at this leverage: "
+                             + ", ".join(r["name"] for r in liq))
+        if st.session_state.get("bt_run"):
+            from tradingagents import futures_backtest as fbt
+            try:
+                with st.spinner(f"simulating {strat.name} on {symbol}…"):
+                    hist = fx.klines(symbol, bt_interval, int(bt_limit))
+                    res, fund_pnl = sg.backtest(
+                        strat_key, hist, margin=float(margin),
+                        leverage=float(lev),
+                        params=({"take_profit_pct": float(tp),
+                                 "stop_loss_pct": float(sl)}
+                                if strat.kind == "bracket" else None),
+                        funding=_funding_history(symbol))
+            except Exception as exc:                      # noqa: BLE001
+                st.error(f"Backtest failed: {exc}")
+            else:
+                m1, m2, m3, m4, m5 = st.columns(5)
+                m1.metric("Result", f"${res.pnl + fund_pnl:+,.2f}",
+                          f"{(res.pnl + fund_pnl)/res.margin*100:+.1f}% on margin")
+                m5.metric("of which funding", f"${fund_pnl:+,.2f}",
+                          "received" if fund_pnl > 0 else "paid",
+                          delta_color="normal" if fund_pnl > 0 else "inverse")
+                m2.metric("Buy & hold", f"${res.buy_hold_pnl:+,.2f}",
+                          "beaten" if res.beats_buy_hold else "not beaten",
+                          delta_color="normal" if res.beats_buy_hold else "inverse")
+                m3.metric("Trades", f"{len(res.trades)}",
+                          f"{res.win_rate:.0f}% win")
+                m4.metric("Worst equity", f"${res.worst_equity:,.2f}",
+                          "LIQUIDATED" if res.liquidated else
+                          f"of ${res.margin:,.0f}",
+                          delta_color="inverse" if res.liquidated else "off")
+                if res.liquidated:
+                    st.error(
+                        f"At {lev:.0f}x this configuration would have been "
+                        f"liquidated — the drawdown consumed the whole margin. "
+                        f"Lower the leverage or widen the stop.")
+                elif not res.beats_buy_hold:
+                    st.warning(
+                        f"Simply holding made more (${res.buy_hold_pnl:+,.2f} vs "
+                        f"${res.pnl:+,.2f}). The barriers cost money on this "
+                        f"symbol and period.")
+                st.caption(
+                    f"{res.bars} {bt_interval} bars over {res.span_days:.1f} days · "
+                    f"{res.n_tp} take-profits, {res.n_sl} stops, {res.n_open} open "
+                    f"· max drawdown ${res.max_drawdown:,.2f} mark-to-market · "
+                    f"fees 2bp per side")
+                if res.equity_curve:
+                    import altair as alt
+                    eq = pd.DataFrame(res.equity_curve, columns=["Date", "Equity"])
+                    st.altair_chart(
+                        alt.Chart(eq).mark_line(size=2).encode(
+                            x=alt.X("Date:T", title=None),
+                            y=alt.Y("Equity:Q", title="account",
+                                    scale=alt.Scale(zero=False)),
+                            tooltip=["Date:T", "Equity:Q"]).properties(height=170),
+                        use_container_width=True)
+                if res.trades:
+                    tbl = "| # | entry | exit | in | out | why | return | PnL $ |\n"
+                    tbl += "|---|---|---|---|---|---|---|---|\n"
+                    for t in res.trades[-30:]:
+                        tbl += (f"| {t.n} | {t.entry_at:%m-%d %H:%M} "
+                                f"| {t.exit_at:%m-%d %H:%M} | {t.entry_px:,.4g} "
+                                f"| {t.exit_px:,.4g} | {t.reason} "
+                                f"| {t.net_return*100:+.2f}% | {t.pnl:+,.2f} |\n")
+                    st.markdown(tbl)
+                    if len(res.trades) > 30:
+                        st.caption(f"showing the last 30 of {len(res.trades)} trades")
+
+        st.markdown('<div class="ta-label">Trade log</div>', unsafe_allow_html=True)
+        rows = []
+        try:
+            for line in spx_bot.LEDGER_PATH.read_text().splitlines()[-40:]:
+                try:
+                    rows.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+        except OSError:
+            pass
+        if not rows:
+            st.caption("No trades recorded yet. Dry runs are logged here too.")
+        else:
+            body = "| when | action | price | contracts | PnL $ | mode |\n"
+            body += "|---|---|---|---|---|---|\n"
+            for e in reversed(rows):
+                body += (f"| {e.get('at','')} | {e.get('action','')} "
+                         f"| {e.get('price','')} | {e.get('vol','')} "
+                         f"| {e.get('pnl_usd','')} "
+                         f"| {'dry' if e.get('dry_run') else 'LIVE'} |\n")
+            st.markdown(body)
+
+    st.markdown('<div class="ta-rule"></div>', unsafe_allow_html=True)
+    st.caption(
+        "Strategy: always-long SPX500_USDT, take-profit as a limit order, "
+        "stop-loss as a market exit, re-enter after each exit, never short. "
+        "Backtest over 188 days: +47.6% on margin at 3x, 15 trades, 87% win "
+        "rate. Most of that return was the index rising during the sample — "
+        "funding costs are not in the backtest, and a limit fill is required or "
+        "the take-profit edge disappears. To go live: set SPX_BOT_ARMED=yes and "
+        "run `python spx_bot.py run --live` in a terminal.")
+
+
+def render_llm_models_tab() -> None:
+    """Manage the model catalog: built-ins listed, user models added/removed.
+
+    Anything added here is persisted (~/.tradingagents/webapp_models.json) and
+    appears in the model dropdowns of both other screens on the next rerun.
+    """
+    custom = model_registry.load_custom()
+
+    st.markdown('<div class="ta-label">Add a model</div>', unsafe_allow_html=True)
+    with st.form("add_model", clear_on_submit=True):
+        c1, c2 = st.columns([2, 1])
+        model_id = c1.text_input("Model id", placeholder="vendor/model-id")
+        preset = c2.selectbox("Provider", list(model_registry.PROVIDER_PRESETS))
+        c3, c4 = st.columns([2, 1])
+        base_url = c3.text_input(
+            "Base URL (openai-compatible only)", placeholder="https://host/v1")
+        key_env = c4.text_input("Key env var (optional override)",
+                                placeholder="MY_API_KEY")
+        if st.form_submit_button("Add model", type="primary"):
+            ok, msg = model_registry.add_model(
+                model_id, preset, base_url=base_url, key_env=key_env)
+            (st.success if ok else st.error)(msg)
+            if ok:
+                st.rerun()
+
+    if custom:
+        st.markdown('<div class="ta-label">Your models</div>', unsafe_allow_html=True)
+        for mid, spec in custom.items():
+            c1, c2, c3, c4 = st.columns([3, 1, 3, 1])
+            c1.markdown(f"**{mid}**")
+            c2.write(spec.get("label", ""))
+            c3.write(spec.get("base_url") or "provider default endpoint")
+            if c4.button("✕ remove", key=f"rm_{mid}"):
+                model_registry.remove_model(mid)
+                st.rerun()
+
+    st.markdown('<div class="ta-rule"></div>', unsafe_allow_html=True)
+    render_health_panel()
+
+
 def render_run_analysis_tab() -> None:
     """The original single/parallel run screen, with its settings inline."""
-    ticker, trade_date, selected, debate_rounds, risk_rounds, run = render_run_settings()
+    (ticker, trade_date, selected, debate_rounds, risk_rounds,
+     source, keywords, run) = render_run_settings()
     st.markdown('<div class="ta-rule"></div>', unsafe_allow_html=True)
     # Two options on top: run mode + which model(s).
     mode, models_to_run, model_keys = render_run_mode(DEFAULT_CONFIG["deep_think_llm"])
@@ -1096,10 +1878,9 @@ def render_run_analysis_tab() -> None:
         st.markdown(
             '<div class="ta-card"><h4>Ready</h4><div style="color:var(--muted);font-size:14px">'
             'Pick a ticker/date and a run mode, then Run. <b>Selected model</b> streams one run live; '
-            '<b>Parallel</b> runs several models at once and compares their calls side-by-side.</div></div>',
+            '<b>Parallel</b> runs several models at once and compares their calls side-by-side. '
+            'Manage and health-check models on the <b>LLM Models</b> tab.</div></div>',
             unsafe_allow_html=True)
-        st.write("")
-        render_health_panel()
         return
     if not ticker:
         st.error("Enter a ticker."); return
@@ -1111,20 +1892,22 @@ def render_run_analysis_tab() -> None:
     # Stop control. Clicking any widget mid-run makes Streamlit abandon the
     # in-flight script at its next UI call, so this returns to idle at the next
     # stage (single) / model (parallel) boundary.
-    if st.button("⏹  Stop", key="stop_run",
+    if st.button("Stop", key="stop_run",
                  help="Abandon the current run and return to idle (takes effect at the next stage/model boundary)."):
         st.rerun()
 
-    if mode.startswith("🎯"):
+    if mode.startswith("Selected"):
         model = models_to_run[0]
         prov = provider_for(model)
         cfg = build_config(DEFAULT_CONFIG, provider=prov, deep_model=model, quick_model=model,
-                           debate_rounds=debate_rounds, risk_rounds=risk_rounds)
+                           debate_rounds=debate_rounds, risk_rounds=risk_rounds,
+                           social_source=source, twitter_keywords=keywords,
+                           ticker=ticker)
         configure_cfg(cfg, model)               # real provider / base_url / key
         run_single_streaming(ticker, trade_date, selected, cfg, prov, model)
     else:
         run_parallel_live(models_to_run, ticker, trade_date, selected,
-                          debate_rounds, risk_rounds, model_keys)
+                          debate_rounds, risk_rounds, model_keys, source, keywords)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,23 @@
+# TradingAgents web UI theme — light editorial terminal: paper surfaces, ink
+# type, one burnt-orange accent. These values drive the
+# widgets Streamlit paints itself (multiselect tags, radio dots, checkboxes),
+# which CSS cannot reach.
+[theme]
+base = "light"
+primaryColor = "#C2560B"
+backgroundColor = "#FAF9F7"
+secondaryBackgroundColor = "#F3F2EF"
+textColor = "#171612"
+font = "sans serif"
+
+[server]
+headless = true
+address = "0.0.0.0"
+# Allow access from other devices on the LAN (phone). The XSRF/CORS origin
+# checks otherwise reject the websocket when reached via the machine's IP,
+# which renders as a blank white screen on the remote device.
+enableCORS = false
+enableXsrfProtection = false
+
+[browser]
+gatherUsageStats = false

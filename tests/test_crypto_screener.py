@@ -88,12 +88,20 @@ def test_instrument_context_omits_contract_when_absent(screener):
     assert "Contract address" not in ctx
 
 
-def test_verdict_key_is_symbol_and_date_scoped(screener):
-    assert screener.verdict_key("CATEUSDT", "2026-07-29") == "verdict:CATEUSDT:2026-07-29"
+def test_verdict_key_is_symbol_date_and_model_scoped(screener):
+    assert (screener.verdict_key("CATEUSDT", "2026-07-29", "gpt-5-mini")
+            == "verdict:CATEUSDT:2026-07-29:gpt-5-mini")
+    # A different model must produce a different key: reusing another
+    # model's cached verdict instead of re-analyzing was a real bug.
+    assert (screener.verdict_key("CATEUSDT", "2026-07-29", "glm-5.1")
+            != screener.verdict_key("CATEUSDT", "2026-07-29", "gpt-5-mini"))
+    assert (screener.report_key("CATEUSDT", "2026-07-29", "glm-5.1")
+            == "reports:CATEUSDT:2026-07-29:glm-5.1")
 
 
 @pytest.mark.parametrize("signal,expected", [
     ("BUY", "▲ BUY"), ("SELL", "▼ SELL"), ("HOLD", "■ HOLD"),
+    ("Overweight", "↗ OVERWEIGHT"), ("Underweight", "↘ UNDERWEIGHT"),
     ("buy", "▲ BUY"), ("", "—"), (None, "—"), ("garbage", "—"),
 ])
 def test_verdict_label(screener, signal, expected):
@@ -268,8 +276,9 @@ def test_credit_summary_omits_expiry_note_for_recharged_credits(screener):
     assert "30 days" not in s["detail"]
 
 
-def test_report_key_is_symbol_and_date_scoped(screener):
-    assert screener.report_key("CATEUSDT", "2026-07-29") == "reports:CATEUSDT:2026-07-29"
+def test_report_key_is_symbol_date_and_model_scoped(screener):
+    assert (screener.report_key("CATEUSDT", "2026-07-29", "gpt-5-mini")
+            == "reports:CATEUSDT:2026-07-29:gpt-5-mini")
 
 
 def test_collect_reports_keeps_only_populated_sections(screener):
@@ -532,3 +541,70 @@ def test_status_caption_stays_quiet_when_nothing_is_wrong(screener):
     assert "1741" in caption
     assert "could not be checked" not in caption
     assert "stale" not in caption.lower()
+
+
+def test_page_slice_single_page_when_under_size(screener):
+    coins = list(range(5))
+    assert screener.page_slice(coins, 0) == (0, 1, coins)
+
+
+def test_page_slice_splits_at_page_size(screener):
+    coins = list(range(45))
+    page, total, rows = screener.page_slice(coins, 1)
+    assert (page, total) == (1, 3)
+    assert rows == coins[20:40]
+    assert screener.page_slice(coins, 2)[2] == coins[40:]
+
+
+def test_page_slice_clamps_a_stale_page(screener):
+    coins = list(range(15))
+    assert screener.page_slice(coins, 7) == (0, 1, coins)   # shrunken list
+    assert screener.page_slice(coins, -3)[0] == 0
+    assert screener.page_slice([], 2) == (0, 1, [])
+
+
+def test_parse_keywords(screener):
+    assert screener.parse_keywords("airdrop, listing pump, airdrop") == [
+        "airdrop", "listing pump"]
+    assert screener.parse_keywords("  , ,") == []
+    assert screener.parse_keywords("") == []
+    assert screener.parse_keywords(None) == []
+
+
+def test_build_crypto_config_threads_twitter_keywords(screener):
+    base = {"data_vendors": {}, "llm_provider": "x", "deep_think_llm": "x",
+            "quick_think_llm": "x", "max_debate_rounds": 1,
+            "max_risk_discuss_rounds": 1}
+    cfg = screener.build_crypto_config(
+        base, provider="google", deep_model="m", quick_model="m",
+        debate_rounds=1, risk_rounds=1, twitter_keywords=["airdrop", "big pump"])
+    assert cfg["twitter_extra_terms"] == ["airdrop", "big pump"]
+    cfg2 = screener.build_crypto_config(
+        base, provider="google", deep_model="m", quick_model="m",
+        debate_rounds=1, risk_rounds=1)
+    assert "twitter_extra_terms" not in cfg2
+
+
+def test_cached_balance_keeps_last_good_reading_on_failure(screener, monkeypatch):
+    """A slow credit endpoint must not flash 'unavailable' over a known balance."""
+    import time as _time
+    from unittest.mock import patch
+
+    class FakeSt:
+        session_state: dict = {}
+
+    good = {"ok": True, "recharge": 100_000, "bonus": 0, "total": 100_000}
+    bad = {"ok": False, "recharge": 0, "bonus": 0, "total": 0,
+           "error": "TimeoutError: The read operation timed out"}
+
+    st = FakeSt()
+    from tradingagents.dataflows import twitter
+    with patch.object(twitter, "fetch_credit_balance", return_value=good):
+        assert screener._cached_balance(st, force=True) == good
+    with patch.object(twitter, "fetch_credit_balance", return_value=bad):
+        assert screener._cached_balance(st, force=True) == good   # keeps last good
+    # with no good reading ever, the failure is what there is to show
+    st2 = FakeSt()
+    st2.session_state = {}
+    with patch.object(twitter, "fetch_credit_balance", return_value=bad):
+        assert screener._cached_balance(st2, force=True) == bad

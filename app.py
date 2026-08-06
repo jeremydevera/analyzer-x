@@ -1694,7 +1694,7 @@ def render_trade_tab() -> None:
         "stop-loss as a market exit, re-enter after each exit, never short. "
         "Backtest over 188 days: +47.6% on margin at 3x, 15 trades, 87% win "
         "rate. Most of that return was the index rising during the sample — "
-        "funding costs are not in the backtest, and a limit fill is required or "
+        "funding is included in the backtest, and a limit fill is required or "
         "the take-profit edge disappears. To go live: set SPX_BOT_ARMED=yes and "
         "run `python spx_bot.py watchdog --live` in a terminal.")
 
@@ -1979,25 +1979,31 @@ def render_trade_tab() -> None:
                 try:
                     with st.spinner(f"simulating {strat.name} on {symbol}…"):
                         hist = fx.klines(symbol, bt_interval, int(bt_limit))
+                        _fh = _funding_history(symbol)
                         res, fund_pnl = sg.backtest(
                             strat_key, hist, margin=float(margin),
                             leverage=float(lev),
                             params=({"take_profit_pct": float(tp),
                                      "stop_loss_pct": float(sl)}
                                     if strat.kind == "bracket" else None),
-                            funding=_funding_history(symbol))
+                            funding=_fh)
+                        # Both sides on the same terms. Result included funding
+                        # while the benchmark did not, which credited the strategy
+                        # with income buy-and-hold also earned.
+                        cmp_ = sg.hold_comparison(res, fund_pnl, hist, _fh)
                 except Exception as exc:                      # noqa: BLE001
                     st.error(f"Backtest failed: {exc}")
                 else:
                     m1, m2, m3, m4, m5 = st.columns(5)
-                    m1.metric("Result", f"${res.pnl + fund_pnl:+,.2f}",
-                              f"{(res.pnl + fund_pnl)/res.margin*100:+.1f}% on margin")
+                    m1.metric("Result", f"${cmp_['total']:+,.2f}",
+                              f"{cmp_['total']/res.margin*100:+.1f}% on margin")
                     m5.metric("of which funding", f"${fund_pnl:+,.2f}",
                               "received" if fund_pnl > 0 else "paid",
                               delta_color="normal" if fund_pnl > 0 else "inverse")
-                    m2.metric("Buy & hold", f"${res.buy_hold_pnl:+,.2f}",
-                              "beaten" if res.beats_buy_hold else "not beaten",
-                              delta_color="normal" if res.beats_buy_hold else "inverse")
+                    m2.metric("Buy & hold", f"${cmp_['hold_total']:+,.2f}",
+                              "beaten" if cmp_["beats_hold"] else "not beaten",
+                              delta_color="normal" if cmp_["beats_hold"]
+                              else "inverse")
                     m3.metric("Trades", f"{len(res.trades)}",
                               f"{res.win_rate:.0f}% win")
                     m4.metric("Worst equity", f"${res.worst_equity:,.2f}",
@@ -2009,11 +2015,12 @@ def render_trade_tab() -> None:
                             f"At {lev:.0f}x this configuration would have been "
                             f"liquidated — the drawdown consumed the whole margin. "
                             f"Lower the leverage or widen the stop.")
-                    elif not res.beats_buy_hold:
+                    elif not cmp_["beats_hold"]:
                         st.warning(
-                            f"Simply holding made more (${res.buy_hold_pnl:+,.2f} vs "
-                            f"${res.pnl:+,.2f}). The barriers cost money on this "
-                            f"symbol and period.")
+                            f"Simply holding made more "
+                            f"(${cmp_['hold_total']:+,.2f} vs "
+                            f"${cmp_['total']:+,.2f}, both including funding). "
+                            f"The barriers cost money on this symbol and period.")
                     st.caption(
                         f"{res.bars} {bt_interval} bars over {res.span_days:.1f} days · "
                         f"{res.n_tp} take-profits, {res.n_sl} stops, {res.n_open} open "

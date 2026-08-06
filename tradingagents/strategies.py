@@ -440,3 +440,26 @@ def gate_reason(strategy: str, candles, params: dict | None = None) -> str:
     if strategy == "ladder_dca":
         return "the ladder has started" if on else "the ladder has not started"
     return "wants exposure" if on else "wants no exposure"
+
+
+def hold_comparison(result, strategy_funding: float, candles,
+                    funding: list | None) -> dict:
+    """Strategy total vs buy-and-hold total, both on the same terms.
+
+    The benchmark must be charged (or paid) funding too. Showing a strategy's PnL
+    WITH funding against a buy-and-hold figure WITHOUT it credits the strategy
+    with income the benchmark also earned — and on SPX500_USDT, where funding pays
+    longs ~21.6%/yr, that error flatters any strategy that sits flat part of the
+    time, which is most of them.
+    """
+    hold_funding = 0.0
+    if funding:
+        hold_funding = fbt.funding_pnl(candles, [1.0] * len(candles), funding,
+                                       notional=result.notional)
+    total = result.pnl + strategy_funding
+    hold_total = result.buy_hold_pnl + hold_funding
+    eps = max(abs(result.notional), 1.0) * 1e-9
+    return {"total": total, "hold_total": hold_total,
+            "strategy_funding": strategy_funding, "hold_funding": hold_funding,
+            "beats_hold": total > hold_total + eps,
+            "edge": total - hold_total}

@@ -238,3 +238,41 @@ def test_strategies_are_ranked_best_fit_first():
 
 def test_an_unknown_strategy_is_refused_rather_than_defaulted():
     assert sg.timeframe_fit("Min5", "no_such_strategy")[0] == "avoid"
+
+
+# ============ funding must be on both sides of the comparison ===============
+def test_hold_comparison_charges_funding_to_the_benchmark_too():
+    """Showing a strategy's PnL WITH funding against buy-and-hold WITHOUT it
+    credits the strategy with income the benchmark also earned. On SPX500_USDT
+    funding pays longs ~21.6%/yr, so the error flatters anything that sits flat
+    part of the time — which is most strategies."""
+    candles = frame([100 + i * 0.1 for i in range(300)])
+    funding = [{"settle_ms": int(candles["Date"].iloc[i].timestamp() * 1000),
+                "rate": -0.0001} for i in range(10, 290, 40)]
+    res, fund = sg.backtest("barrier_harvest", candles, margin=100.0,
+                            leverage=1.0, funding=funding)
+    cmp_ = sg.hold_comparison(res, fund, candles, funding)
+    assert cmp_["hold_funding"] > 0, "a long benchmark is paid here too"
+    assert cmp_["hold_total"] == pytest.approx(res.buy_hold_pnl
+                                              + cmp_["hold_funding"])
+    assert cmp_["total"] == pytest.approx(res.pnl + fund)
+    # the naive comparison would have claimed a bigger edge
+    naive_edge = (res.pnl + fund) - res.buy_hold_pnl
+    assert cmp_["edge"] < naive_edge, \
+        "counting funding on one side only overstates the edge"
+
+
+def test_hold_comparison_without_funding_is_a_plain_comparison():
+    candles = frame([100 + i * 0.1 for i in range(300)])
+    res, fund = sg.backtest("barrier_harvest", candles, margin=100.0,
+                            leverage=1.0)
+    cmp_ = sg.hold_comparison(res, fund, candles, None)
+    assert cmp_["hold_funding"] == 0.0
+    assert cmp_["beats_hold"] == res.beats_buy_hold
+
+
+def test_a_tie_is_not_reported_as_beating_hold():
+    candles = frame([100 + i * 0.1 for i in range(300)])
+    res, fund = sg.backtest("buy_hold", candles, margin=100.0, leverage=1.0)
+    cmp_ = sg.hold_comparison(res, fund, candles, None)
+    assert cmp_["beats_hold"] is False, "buy and hold cannot beat itself"

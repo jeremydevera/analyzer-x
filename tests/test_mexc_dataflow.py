@@ -16,6 +16,15 @@ pytestmark = pytest.mark.unit
 
 
 @pytest.fixture(autouse=True)
+def _offline_clock(monkeypatch):
+    """preflight() checks the clock, which reached MEXC over the real network in
+    every preflight test. They passed only because a failed check is treated as
+    inconclusive — passing for the wrong reason, and flaky offline."""
+    from tradingagents.dataflows import mexc_futures as _fx
+    monkeypatch.setattr(_fx, "clock_skew_ms", lambda: 0)
+
+
+@pytest.fixture(autouse=True)
 def _clear_host_cache():
     mexc.reset_host_cache()
     yield
@@ -861,6 +870,10 @@ def test_only_a_named_scope_reaches_missing_scopes(monkeypatch):
         raise fx.MexcFuturesAuthFailed("code 2011: signature error", code=2011)
 
     monkeypatch.setattr(fx, "usdt_equity", bad_sig)
+    # order_permission is True here, so preflight goes on to probe the stop
+    # endpoint — a live call unless stubbed.
+    monkeypatch.setattr(fx, "stop_probe", lambda: {"permitted": True,
+                                                   "reason": "stubbed"})
     rep = fx.preflight("SPX500_USDT")
     assert rep["missing_scopes"] == [], "a signature error is not a scope"
     assert rep["auth_failed"] is True

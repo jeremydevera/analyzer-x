@@ -280,7 +280,12 @@ def test_fetcher_runs_a_second_search_for_replies(monkeypatch):
         return {"tweets": [_tweet("1", "Alpha_MEXC", "listing", replies=1)],
                 "has_next_page": False}
 
-    with patch.object(twitter, "_request", side_effect=fake):
+    # fetch_replies() goes through _get_json, not _request, so the dedicated
+    # replies endpoint was reached over the live network and its failure silently
+    # swallowed by the per-thread handler. The search path below is what this test
+    # is really about.
+    with patch.object(twitter, "_request", side_effect=fake), \
+            patch.object(twitter, "_get_json", return_value={"tweets": []}):
         out = twitter.fetch_twitter_posts("$XPLK")
 
     assert any("filter:replies" in q for q in queries), "replies must be searched"

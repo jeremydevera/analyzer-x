@@ -1,6 +1,7 @@
 """Shared pytest fixtures that prevent CI hangs when API keys are absent."""
 
 import os
+import socket
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -65,3 +66,37 @@ def mock_llm_client():
         return_value=client,
     ):
         yield client
+
+
+# ---------------------------------------------------------------------------
+# No unit test may touch the network.
+#
+# 36 tests in this suite were making live HTTPS calls and passing anyway, because
+# the code under test treats a failed fetch as inconclusive and falls back. That
+# is worse than a red test: they passed for the wrong reason, they were flaky
+# whenever an exchange was unreachable, and every full run hammered MEXC and
+# twitterapi.io. Blocking the socket turns each leak into an immediate, named
+# failure instead of a silent one.
+#
+# A test that genuinely needs a live service belongs under the `integration`
+# marker, which is exempt below.
+_REAL_CONNECT = socket.socket.connect
+
+
+@pytest.fixture(autouse=True)
+def _no_network(request):
+    if request.node.get_closest_marker("integration"):
+        yield
+        return
+
+    def blocked(self, address):
+        raise AssertionError(
+            f"{request.node.name} tried to open a network connection to "
+            f"{address}. Unit tests must stub their I/O — mock the fetch, or mark "
+            f"the test `@pytest.mark.integration` if it truly needs the service.")
+
+    socket.socket.connect = blocked
+    try:
+        yield
+    finally:
+        socket.socket.connect = _REAL_CONNECT

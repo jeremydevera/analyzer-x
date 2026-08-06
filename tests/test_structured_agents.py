@@ -367,6 +367,22 @@ def _structured_sentiment_llm(captured: dict, report: SentimentReport | None = N
 
 @pytest.mark.unit
 class TestSentimentAnalystAgent:
+    @pytest.fixture(autouse=True)
+    def _no_live_stocktwits(self, monkeypatch):
+        """The node fetches StockTwits, which was a live HTTPS call in every test
+        below. They passed anyway because an unreachable source is treated as
+        simply absent — so they were exercising the failure path, not the one they
+        claim to test, and they hit a third-party API on every run."""
+        # Patch the name the analyst imported, not the source module: it does
+        # `from ...stocktwits import fetch_stocktwits_messages`, so rebinding the
+        # module attribute leaves the analyst's own reference untouched.
+        from tradingagents.agents.analysts import sentiment_analyst as _sa
+        for name, empty in (("fetch_stocktwits_messages", []),
+                            ("fetch_reddit_posts", ""),
+                            ("fetch_twitter_posts", "")):
+            if hasattr(_sa, name):
+                monkeypatch.setattr(_sa, name, lambda *a, **k: empty)
+
     def test_structured_path_produces_rendered_markdown(self):
         captured = {}
         report = SentimentReport(

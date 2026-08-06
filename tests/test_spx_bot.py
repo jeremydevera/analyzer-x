@@ -23,6 +23,24 @@ def isolated_state(tmp_path, monkeypatch):
     monkeypatch.setattr(spx_bot, "LOG_PATH", tmp_path / "bot.log")
     monkeypatch.setattr(spx_bot, "HEARTBEAT_PATH", tmp_path / "heartbeat")
     monkeypatch.setattr(spx_bot, "ALERT_PATH", tmp_path / "alerts.jsonl")
+    # Offline by default. Without these, _snap() reached contract_spec and
+    # do_run() reached clock_skew_ms over the real network: 21 tests in this
+    # suite were making live HTTP calls and passing only because the code
+    # swallows the failure and falls back — i.e. passing for the wrong reason,
+    # flaky whenever MEXC is unreachable, and hammering the exchange on every
+    # run. A test that wants a different clock or tick still monkeypatches it.
+    monkeypatch.setattr(spx_bot.fx, "contract_spec",
+                        lambda symbol: {"priceUnit": 0.1,
+                                        "contractSize": 0.0001,
+                                        "maxLeverage": 200})
+    monkeypatch.setattr(spx_bot.fx, "clock_skew_ms", lambda: 0)
+    # pick_lane() asks every lane for its own bars, which is a live fetch.
+    monkeypatch.setattr(spx_bot.fx, "klines",
+                        lambda symbol, interval="Min5", limit=400: _bars())
+    # _reconcile() sweeps leftover resting orders when the exchange closes a
+    # position, which is two more live calls.
+    monkeypatch.setattr(spx_bot.fx, "open_orders", lambda symbol=None: [])
+    monkeypatch.setattr(spx_bot.fx, "cancel_all_orders", lambda symbol: {})
     monkeypatch.delenv("SPX_BOT_ARMED", raising=False)
     yield
 

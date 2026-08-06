@@ -36,7 +36,8 @@ import logging
 import os
 import sys
 import time
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
+from dataclasses import replace as dataclasses_replace
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -61,6 +62,12 @@ class Config:
     strategy: str = "barrier_harvest"
     timeframe: str = "Min5"           # the bars this strategy is measured on;
                                       # poll_seconds is derived from it
+    # Several (timeframe, strategy) lanes may be selected. Only ONE can place
+    # orders per symbol: MEXC merges same-symbol positions into one, and a
+    # position carries a single stop, so two lanes cannot each hold their own
+    # barriers — one lane's stop would close part of the other's position. The
+    # remaining lanes are evaluated and logged as signals.
+    lanes: list = field(default_factory=list)
     leverage: int = 3                 # 3x was the cap that survived the worst
                                       # drawdown in the sample; 8x liquidated
     margin_usd: float = 115.0         # ~PHP 7,000
@@ -90,13 +97,38 @@ class Config:
                 LOG.warning("bad config, using defaults: %s", exc)
         return cls()
 
+    def active_lanes(self) -> list:
+        """Normalised lanes, primary first. Falls back to the single pairing."""
+        out = []
+        for lane in (self.lanes or []):
+            tf = str(lane.get("timeframe") or "").strip()
+            st = str(lane.get("strategy") or "").strip()
+            if tf and st:
+                out.append({"timeframe": tf, "strategy": st})
+        if not out:
+            out = [{"timeframe": self.timeframe, "strategy": self.strategy}]
+        # de-duplicate while keeping order
+        seen, uniq = set(), []
+        for lane in out:
+            key = (lane["timeframe"], lane["strategy"])
+            if key not in seen:
+                seen.add(key)
+                uniq.append(lane)
+        return uniq
+
+    def primary_lane(self) -> dict:
+        """The one lane allowed to place orders."""
+        return self.active_lanes()[0]
+
     @property
     def poll(self) -> int:
         """Effective poll interval: the explicit override, or half a bar."""
         if self.poll_seconds and self.poll_seconds > 0:
             return int(self.poll_seconds)
         from tradingagents.strategies import poll_seconds_for
-        return poll_seconds_for(self.timeframe)
+        # The finest lane sets the cadence: polling slower than its bars would
+        # miss them entirely.
+        return min(poll_seconds_for(l["timeframe"]) for l in self.active_lanes())
 
     def save(self) -> None:
         STATE_DIR.mkdir(parents=True, exist_ok=True)
@@ -272,6 +304,10 @@ def do_status(cfg: Config) -> int:
     runnable, why_not = strategy_is_runnable(cfg.strategy)
     from tradingagents.strategies import timeframe_fit
     fit, _ = timeframe_fit(cfg.timeframe, cfg.strategy)
+    for i, lane in enumerate(cfg.active_lanes()):
+        f, _ = timeframe_fit(lane["timeframe"], lane["strategy"])
+        print(f"lane {i}   : {lane['strategy']} on {lane['timeframe']} bars "
+              f"(fit {f})" + ("  <- TRADES" if i == 0 else "  signal only"))
     print(f"strategy : {cfg.strategy} on {cfg.timeframe} bars "
           f"(fit: {fit}, poll {cfg.poll}s)"
           + ("" if runnable else f"  ** NOT RUNNABLE: {why_not}"))
@@ -530,6 +566,12 @@ def step(cfg: Config, live: bool) -> None:
     # manages an open position: returning here with a position on the books
     # would stop the stop-loss being watched at exactly the moment the account
     # is already in trouble.
+    # The primary lane is the only one that places orders.
+    _primary = cfg.primary_lane()
+    if _primary["strategy"] != cfg.strategy or \
+            _primary["timeframe"] != cfg.timeframe:
+        cfg = dataclasses_replace(cfg, strategy=_primary["strategy"],
+                                  timeframe=_primary["timeframe"])
     may_enter, breaker_why = check_breakers(cfg, s)
     if not may_enter and not s.get("position"):
         LOG.warning("no action: %s", breaker_why)
@@ -697,16 +739,27 @@ def step(cfg: Config, live: bool) -> None:
 
 
 def do_run(cfg: Config, live: bool, once: bool) -> int:
-    runnable, why_not = strategy_is_runnable(cfg.strategy)
+    lanes = cfg.active_lanes()
+    primary = lanes[0]
+    runnable, why_not = strategy_is_runnable(primary["strategy"])
     if not runnable:
         LOG.error("refusing to start: %s", why_not)
         return 2
     from tradingagents.strategies import timeframe_fit
-    fit, why_fit = timeframe_fit(cfg.timeframe, cfg.strategy)
+    fit, why_fit = timeframe_fit(primary["timeframe"], primary["strategy"])
     if fit == "avoid":
         LOG.error("refusing to start: %s on %s bars is measured as ruinous. %s",
-                  cfg.strategy, cfg.timeframe, why_fit)
+                  primary["strategy"], primary["timeframe"], why_fit)
         return 5
+    # The runner trades the primary lane and reports the rest, because MEXC
+    # cannot hold a separate stop per lane on one symbol.
+    for lane in lanes[1:]:
+        lf, lw = timeframe_fit(lane["timeframe"], lane["strategy"])
+        LOG.warning("SIGNAL-ONLY lane: %s on %s bars (fit %s) — it is evaluated "
+                    "and logged, but places no orders. %s trades %s on %s.",
+                    lane["strategy"], lane["timeframe"], lf,
+                    "Only the first lane", primary["strategy"],
+                    primary["timeframe"])
     try:
         skew = fx.clock_skew_ms()
         if abs(skew) > 5000:

@@ -726,3 +726,81 @@ def test_timeframe_round_trips_through_the_saved_config():
     loaded = spx_bot.Config.load()
     assert loaded.timeframe == "Min60"
     assert loaded.poll == 300
+
+
+# ============ multiple timeframe lanes ======================================
+# The operator asked to tick several timeframes and pick an approach under each.
+# Only ONE can place orders per symbol: MEXC merges same-symbol positions into
+# one and a position carries a single stop, so two lanes cannot each hold their
+# own barriers — one lane's stop would close part of the other's position.
+def test_lanes_fall_back_to_the_single_pairing():
+    c = spx_bot.Config(timeframe="Min15", strategy="buy_hold")
+    assert c.active_lanes() == [{"timeframe": "Min15", "strategy": "buy_hold"}]
+    assert c.primary_lane()["strategy"] == "buy_hold"
+
+
+def test_the_first_lane_is_the_one_that_trades():
+    c = spx_bot.Config(lanes=[
+        {"timeframe": "Min60", "strategy": "buy_hold"},
+        {"timeframe": "Min5", "strategy": "barrier_harvest"}])
+    assert c.primary_lane() == {"timeframe": "Min60", "strategy": "buy_hold"}
+    assert len(c.active_lanes()) == 2
+
+
+def test_poll_follows_the_finest_lane():
+    """Polling slower than the finest lane's bars would miss them entirely."""
+    c = spx_bot.Config(lanes=[{"timeframe": "Day1", "strategy": "buy_hold"},
+                              {"timeframe": "Min1", "strategy": "buy_hold"}])
+    assert c.poll == 30
+
+
+def test_duplicate_and_malformed_lanes_are_dropped():
+    c = spx_bot.Config(lanes=[
+        {"timeframe": "Min5", "strategy": "buy_hold"},
+        {"timeframe": "Min5", "strategy": "buy_hold"},      # duplicate
+        {"timeframe": "", "strategy": "buy_hold"},          # no timeframe
+        {"timeframe": "Min60"},                             # no strategy
+    ])
+    assert c.active_lanes() == [{"timeframe": "Min5", "strategy": "buy_hold"}]
+
+
+def test_the_primary_lane_is_validated_not_the_stale_fields(monkeypatch):
+    """A config whose top-level strategy is unrunnable must still start when the
+    primary lane is fine — and must refuse when the primary lane is not."""
+    monkeypatch.setattr(spx_bot.fx, "clock_skew_ms", lambda: 0)
+    monkeypatch.setattr(spx_bot, "step", lambda cfg, live: None)
+    ok = spx_bot.Config(strategy="vol_target", timeframe="Min1",
+                        lanes=[{"timeframe": "Min5",
+                                "strategy": "barrier_harvest"}])
+    assert spx_bot.do_run(ok, live=False, once=True) == 0
+    bad = spx_bot.Config(strategy="barrier_harvest",
+                         lanes=[{"timeframe": "Min5", "strategy": "vol_target"}])
+    assert spx_bot.do_run(bad, live=False, once=True) == 2
+
+
+def test_step_trades_the_primary_lane_not_the_stale_field(monkeypatch):
+    _state()
+    seen = {}
+    monkeypatch.setattr(spx_bot.fx, "last_price", lambda s: 100.0)
+    monkeypatch.setattr(spx_bot.fx, "usdt_equity", lambda: 500.0)
+    monkeypatch.setattr(spx_bot.fx, "contracts_for", lambda *a, **k: 5)
+    monkeypatch.setattr(spx_bot.fx, "open_long", lambda *a, **k: {})
+    monkeypatch.setattr(spx_bot, "_attach_bracket",
+                        lambda cfg, *a, **k: seen.update(
+                            strategy=cfg.strategy, timeframe=cfg.timeframe)
+                        or {"protected": True, "tp": None, "sl": 90.0,
+                            "position_id": 1})
+    cfg = spx_bot.Config(strategy="barrier_harvest", timeframe="Min5",
+                         lanes=[{"timeframe": "Min60",
+                                 "strategy": "buy_hold"}])
+    spx_bot.step(cfg, live=False)
+    assert seen == {"strategy": "buy_hold", "timeframe": "Min60"}
+
+
+def test_lanes_round_trip_through_the_saved_config():
+    spx_bot.Config(lanes=[{"timeframe": "Min15", "strategy": "buy_hold"},
+                          {"timeframe": "Hour4",
+                           "strategy": "barrier_harvest"}]).save()
+    assert spx_bot.Config.load().active_lanes() == [
+        {"timeframe": "Min15", "strategy": "buy_hold"},
+        {"timeframe": "Hour4", "strategy": "barrier_harvest"}]

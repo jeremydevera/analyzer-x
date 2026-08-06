@@ -362,6 +362,23 @@ input, [data-baseweb="select"]{ font-variant-numeric:tabular-nums; }
 /* The primary action carries weight; the stop is quiet until it is needed. */
 .st-key-cs_start button{ font-weight:700; letter-spacing:.02em; }
 
+/* ---- Plan lanes: a tick-list of timeframes, each with its own approach ---- */
+.st-key-plan_box{
+  background:var(--panel); border:1px solid var(--border);
+  border-radius:var(--r); padding:calc(var(--s) * 1.75) calc(var(--s) * 2);
+}
+.ta-lane{
+  font-family:var(--font-mono); font-size:10px; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--faint); margin-bottom:5px;
+}
+.ta-fit{
+  font-family:var(--font-mono); font-size:10px; letter-spacing:.06em;
+  margin-top:5px;
+}
+.ta-fit.ok{ color:var(--buy); }
+.ta-fit.warn{ color:#B45309; }
+.ta-fit.bad{ color:var(--sell); }
+
 /* ---- Chips ---- */
 .ta-meta{ display:flex; gap:var(--s); flex-wrap:wrap; margin-bottom:calc(var(--s) * 2); }
 .ta-chip{
@@ -1210,6 +1227,7 @@ def render_trade_tab() -> None:
     import pandas as pd
 
     import spx_bot
+    from tradingagents import strategies as sg
     from tradingagents.dataflows import mexc_futures as fx
 
     from tradingagents.dataflows import mexc_credentials as cred
@@ -1292,12 +1310,96 @@ def render_trade_tab() -> None:
     st.caption(
         ("**This will place real orders.** " if _live_ready else
          "Runs in **dry run** — it decides and logs, but sends no orders. ")
-        + (f"Strategy `{cfg.strategy}` on `{cfg.timeframe}` bars, checked every "
-           f"{cfg.poll}s. "
+        + (f"Trading `{cfg.primary_lane()['strategy']}` on "
+           f"`{cfg.primary_lane()['timeframe']}` bars, checked every {cfg.poll}s"
+           + (f", plus {len(cfg.active_lanes()) - 1} signal-only lane(s). "
+              if len(cfg.active_lanes()) > 1 else ". ")
            + ("" if _live_ready else
               "To trade for real, launch it from a terminal with "
               "`SPX_BOT_ARMED=yes python spx_bot.py watchdog --live` — a browser "
               "button cannot arm real money, by design.")))
+
+
+    # The plan block sits full width: seven timeframes plus an approach for each
+    # cannot fit a narrow side rail without towering over the operating column.
+    st.markdown('<div class="ta-section">Plan &mdash; tick the timeframes to run, '
+                'and pick an approach for each</div>', unsafe_allow_html=True)
+    plan_box = st.container(key="plan_box")
+    with plan_box:
+        _saved = {l["timeframe"]: l["strategy"] for l in cfg.active_lanes()}
+        _cols = st.columns(len(sg.TIMEFRAMES))
+        _on = []
+        for _c, tf in zip(_cols, sg.TIMEFRAMES):
+            if _c.checkbox(tf, value=tf in _saved, key=f"tf_on_{tf}",
+                           help=sg.TIMEFRAME_LABELS[tf]):
+                _on.append(tf)
+
+        lanes: list = []
+        if _on:
+            _lc = st.columns(len(_on))
+            for _c, tf in zip(_lc, _on):
+                rows = sg.strategies_for(tf)
+                keys = [r["key"] for r in rows]
+                fit = {r["key"]: r for r in rows}
+                mark = {"good": "", "workable": "  ~", "avoid": "  \u2715"}
+
+                def _label(k, _fit=fit, _mark=mark):
+                    name = sg.REGISTRY[k].name + _mark[_fit[k]["verdict"]]
+                    if k not in spx_bot.RUNNABLE_STRATEGIES:
+                        name += "  [backtest only]"
+                    return name
+
+                want = _saved.get(tf, keys[0])
+                with _c:
+                    st.markdown(f"<div class='ta-lane'>{tf} &middot; "
+                                f"{sg.TIMEFRAME_LABELS[tf]}</div>",
+                                unsafe_allow_html=True)
+                    pick = st.selectbox(
+                        f"Approach for {tf}", keys,
+                        index=keys.index(want) if want in keys else 0,
+                        key=f"tf_strat_{tf}", format_func=_label,
+                        label_visibility="collapsed")
+                    v = fit[pick]
+                    if v["verdict"] == "avoid":
+                        st.markdown("<div class='ta-fit bad'>not suited to these "
+                                    "bars</div>", unsafe_allow_html=True)
+                    elif v["verdict"] == "workable":
+                        st.markdown("<div class='ta-fit warn'>workable</div>",
+                                    unsafe_allow_html=True)
+                    else:
+                        st.markdown("<div class='ta-fit ok'>good fit</div>",
+                                    unsafe_allow_html=True)
+                lanes.append({"timeframe": tf, "strategy": pick})
+
+        if not lanes:
+            st.error("Tick at least one timeframe — the bot has nothing to run.")
+            lanes = [{"timeframe": "Min5", "strategy": "barrier_harvest"}]
+
+        timeframe = lanes[0]["timeframe"]
+        strat_key = lanes[0]["strategy"]
+        strat = sg.REGISTRY[strat_key]
+        _worst = [l for l in lanes
+                  if sg.timeframe_fit(l["timeframe"], l["strategy"])[0] == "avoid"]
+        if _worst:
+            st.error("**" + ", ".join(f"{l['strategy']} on {l['timeframe']}"
+                                      for l in _worst) + "** — "
+                     + sg.timeframe_fit(_worst[0]["timeframe"],
+                                        _worst[0]["strategy"])[1])
+        if len(lanes) > 1:
+            others = ", ".join(f"{l['strategy']} on {l['timeframe']}"
+                               for l in lanes[1:])
+            st.info(
+                f"**{strat_key} on {timeframe} places the orders.** The other "
+                f"{len(lanes) - 1} ({others}) are evaluated and logged as signals "
+                f"only. MEXC merges same-symbol positions into one, and a position "
+                f"carries a single stop — so two lanes cannot each hold their own "
+                f"barriers; one lane's stop would close part of the other's "
+                f"position. To trade several for real at once, give each a "
+                f"different perpetual.")
+        st.caption(
+            f"Checked every "
+            f"**{min(sg.poll_seconds_for(l['timeframe']) for l in lanes)}s** — "
+            f"half a bar of the finest timeframe ticked.")
 
     trade_layout = st.container(key="trade_layout")
     left, right = trade_layout.columns([1.6, 1], gap="large")
@@ -1342,66 +1444,6 @@ def render_trade_tab() -> None:
                 st.error(f"{exact} is not a tradeable MEXC USDT perpetual.")
         max_lev = int(spec_by.get(symbol, {}).get("max_leverage", 20))
 
-        from tradingagents import strategies as sg
-
-        st.markdown('<div class="ta-panel-title">Timeframe</div>',
-                    unsafe_allow_html=True)
-        timeframe = st.selectbox(
-            "Bars", sg.TIMEFRAMES,
-            index=(sg.TIMEFRAMES.index(cfg.timeframe)
-                   if cfg.timeframe in sg.TIMEFRAMES else 1),
-            key="trade_timeframe",
-            format_func=lambda t: f"{t}  ·  {sg.TIMEFRAME_LABELS[t]}",
-            help="One timeframe for the bot, the chart and the backtest. There "
-                 "used to be three separate pickers, so you could study one "
-                 "timeframe, backtest another, and run a bot on neither.")
-        st.caption(f"The bot checks every **{sg.poll_seconds_for(timeframe)}s** "
-                   f"on these bars — half a bar. Polling faster cannot change "
-                   f"the decision.")
-
-        st.markdown('<div class="ta-panel-title">Strategy</div>',
-                    unsafe_allow_html=True)
-        # Ordered by how well each one suits the chosen timeframe, with the
-        # verdict in the label — a strategy that is ruinous on 1-minute bars
-        # should not look identical to one that is fine.
-        _fit_rows = sg.strategies_for(timeframe)
-        _fit = {r["key"]: r for r in _fit_rows}
-        _MARK = {"good": "", "workable": "  ~", "avoid": "  ✕"}
-
-        def _label(k):
-            name = sg.REGISTRY[k].name
-            bits = [name + _MARK[_fit[k]["verdict"]]]
-            if k not in spx_bot.RUNNABLE_STRATEGIES:
-                bits.append("[backtest only]")
-            return "  ".join(bits)
-
-        _keys = [r["key"] for r in _fit_rows]
-        strat_key = st.selectbox(
-            "Approach", _keys,
-            index=(_keys.index(cfg.strategy) if cfg.strategy in _keys else 0),
-            key="trade_strategy", format_func=_label)
-        _v = _fit[strat_key]
-        if _v["verdict"] == "avoid":
-            st.error(f"**Not suited to {timeframe} bars.** {_v['why']}")
-        elif _v["verdict"] == "workable":
-            st.warning(f"**Workable on {timeframe}.** {_v['why']}")
-        else:
-            st.caption(f"Good fit for {timeframe}. {_v['why']}")
-        strat = sg.REGISTRY[strat_key]
-        st.caption(strat.summary)
-        runnable, why_not = spx_bot.strategy_is_runnable(strat_key)
-        if not runnable:
-            # Previously the bot ignored this dropdown entirely and always ran
-            # barrier harvest, so a selection here was a silent lie.
-            st.warning(f"**Backtest only — the bot cannot run this.** {why_not}")
-        if strat_key == "trend_filter":
-            st.error("**This one liquidated the account in testing** — "
-                     r"-\$298 and -\$192 on your two data files, in a window "
-                     "where the index rose 11%. Do not run it live.")
-        with st.expander("Why this, and how it fails"):
-            st.markdown(f"**Rationale** — {strat.rationale}")
-            st.markdown(f"**Risk** — {strat.risk}")
-
         lev = st.number_input("Leverage", 1, max(max_lev, 1),
                               min(int(cfg.leverage), max_lev), key="trade_lev",
                               help="3x was the highest that survived the worst "
@@ -1441,7 +1483,8 @@ def render_trade_tab() -> None:
             cfg.symbol = symbol
             cfg.strategy = strat_key
             cfg.timeframe = timeframe
-            cfg.poll_seconds = 0        # 0 = derive from the timeframe
+            cfg.lanes = lanes
+            cfg.poll_seconds = 0        # 0 = derive from the timeframes
             cfg.leverage, cfg.margin_usd = int(lev), float(margin)
             cfg.take_profit_pct, cfg.stop_loss_pct = float(tp), float(sl)
             cfg.max_notional_usd, cfg.daily_loss_limit_usd = float(cap), float(dl)
@@ -1628,7 +1671,7 @@ def render_trade_tab() -> None:
         "rate. Most of that return was the index rising during the sample — "
         "funding costs are not in the backtest, and a limit fill is required or "
         "the take-profit edge disappears. To go live: set SPX_BOT_ARMED=yes and "
-        "run `python spx_bot.py run --live` in a terminal.")
+        "run `python spx_bot.py watchdog --live` in a terminal.")
 
 
 

@@ -280,3 +280,69 @@ def test_every_timeframe_has_a_label_and_a_poll_interval():
         assert tf in sg.TIMEFRAME_LABELS, tf
         assert tf in sg.TIMEFRAME_SECONDS, tf
         assert sg.poll_seconds_for(tf) > 0
+
+
+# ============ app.py's calls must match the signatures it calls =============
+def test_app_only_passes_kwargs_that_exist():
+    """A live TypeError shipped past 1128 green tests: app.py was changed to pass
+    `limits=` to strategies.compare() while compare() still lacked the parameter,
+    so "Compare all 6" would crash the moment it was clicked. No unit test calls
+    app.py, so nothing caught it.
+
+    This parses app.py and checks every keyword argument it hands to the backtest
+    and comparison entry points against those functions' real signatures.
+    """
+    import ast
+    import inspect
+    from pathlib import Path
+
+    from tradingagents import strategies as sg
+
+    targets = {"backtest": sg.backtest, "compare": sg.compare,
+               "hold_comparison": sg.hold_comparison}
+    src = Path(__file__).resolve().parents[1] / "app.py"
+    tree = ast.parse(src.read_text(encoding="utf-8"))
+
+    problems = []
+    checked = 0
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        fn = node.func
+        name = fn.attr if isinstance(fn, ast.Attribute) else getattr(fn, "id", None)
+        if name not in targets:
+            continue
+        allowed = set(inspect.signature(targets[name]).parameters)
+        checked += 1
+        for kw in node.keywords:
+            if kw.arg and kw.arg not in allowed:
+                problems.append(f"line {node.lineno}: {name}(... {kw.arg}=...) "
+                                f"— not a parameter of {name}{inspect.signature(targets[name])}")
+    assert checked >= 2, f"expected to find the backtest calls, found {checked}"
+    assert not problems, "app.py calls a function with a parameter it does not have:\n" \
+                         + "\n".join(problems)
+
+
+def test_compare_accepts_the_limits_the_app_sends():
+    """The call the Compare all 6 button makes, exercised directly."""
+    from datetime import datetime, timedelta
+
+    import pandas as pd
+
+    from tradingagents import strategies as sg
+    d = pd.DataFrame({
+        "Date": [datetime(2026, 1, 1) + timedelta(minutes=5 * i) for i in range(300)],
+        "Open": [100 + i * 0.1 for i in range(300)],
+        "High": [100.5 + i * 0.1 for i in range(300)],
+        "Low": [99.5 + i * 0.1 for i in range(300)],
+        "Close": [100 + i * 0.1 for i in range(300)]})
+    rows = sg.compare(d, margin=10.0, leverage=200, funding=None,
+                      limits={"max_notional": 400.0, "max_losses": 3,
+                              "daily_loss_limit": 25.0, "min_equity": 20.0,
+                              "starting_equity": 163.0})
+    assert len(rows) == len(sg.ORDER)
+    assert all("error" not in r for r in rows), [r for r in rows if "error" in r]
+    for r in rows:
+        assert r["result"].notional == 400.0, \
+            f"{r['key']} ignored the notional cap"
+        assert "halted_reason" in r

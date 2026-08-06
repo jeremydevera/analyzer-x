@@ -1922,17 +1922,36 @@ def render_trade_tab() -> None:
                     with st.spinner(f"running all six strategies on {symbol}…"):
                         hist = fx.klines(symbol, bt_interval, int(bt_limit))
                         fund_hist = _funding_history(symbol)
-                        rows = _sg.compare(hist, margin=float(margin),
-                                           leverage=float(lev), funding=fund_hist)
+                        rows = _sg.compare(
+                            hist, margin=float(margin), leverage=float(lev),
+                            funding=fund_hist,
+                            limits={"max_notional": float(cap),
+                                    "max_losses": int(mx),
+                                    "daily_loss_limit": float(dl),
+                                    "min_equity": float(floor),
+                                    "starting_equity": wallet})
                 except Exception as exc:                      # noqa: BLE001
                     st.error(f"Comparison failed: {exc}")
                 else:
                     good = [r for r in rows if "error" not in r]
                     bh = good[0]["buy_hold_total"] if good else 0.0
                     fsum = _funding_summary(symbol)
-                    st.caption(f"{symbol} · {bt_limit} {bt_interval} bars · "
-                               f"${margin:,.0f} margin at {lev:.0f}x · "
-                               f"buy & hold benchmark ${bh:+,.2f} (funding included)")
+                    _eff_c = min(float(margin) * float(lev), float(cap))
+                    st.caption(
+                        f"{symbol} · {bt_limit} {bt_interval} bars · "
+                        f"${margin:,.0f} margin at {lev:.0f}x · position "
+                        f"${_eff_c:,.2f}"
+                        + (f" (capped from ${float(margin)*float(lev):,.2f})"
+                           if _eff_c < float(margin) * float(lev) else "")
+                        + f" · buy & hold benchmark ${bh:+,.2f} "
+                        f"(funding included) · your risk limits applied")
+                    _stopped = [r for r in good if r.get("halted_reason")]
+                    if _stopped:
+                        st.warning(
+                            "**Some runs stopped early on your risk limits**, so "
+                            "their figures cover only the period up to that point: "
+                            + "; ".join(f"{r['name']} — {r['halted_reason']}"
+                                        for r in _stopped))
                     if fsum.get("available"):
                         sign = "receives" if fsum["long_total"] > 0 else "pays"
                         st.info(

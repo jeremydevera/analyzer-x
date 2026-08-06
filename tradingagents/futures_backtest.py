@@ -274,7 +274,7 @@ def sweep(candles, tp_grid, sl_grid, *, margin: float = 100.0,
 
 def run_positions(candles, positions, *, margin: float = 100.0,
                   leverage: float = 1.0, fee_per_side: float = DEFAULT_FEE,
-                  label: str = "") -> Result:
+                  label: str = "", max_notional: float | None = None) -> Result:
     """Backtest a per-bar target exposure instead of TP/SL brackets.
 
     ``positions[i]`` is the fraction of full notional to hold going into bar
@@ -289,7 +289,10 @@ def run_positions(candles, positions, *, margin: float = 100.0,
     n = min(len(O), len(positions))
     if n < 3:
         raise ValueError("need at least 3 candles")
+    # Same sizing rule as run() and as the live runner.
     notional = margin * leverage
+    if max_notional and max_notional > 0:
+        notional = min(notional, float(max_notional))
 
     realised = 0.0
     peak = 0.0

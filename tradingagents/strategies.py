@@ -249,7 +249,8 @@ def backtest(key: str, candles, *, margin: float, leverage: float,
     else:
         res = fbt.run_positions(candles, positions_for(key, candles, p),
                                 margin=margin, leverage=leverage,
-                                fee_per_side=fee_per_side, label=strat.name)
+                                fee_per_side=fee_per_side, label=strat.name,
+                                max_notional=lim.get("max_notional"))
     fund = 0.0
     if funding:
         exposure = exposure_series(key, candles, p,
@@ -300,7 +301,8 @@ def _cap_funding_at_margin(result, fund: float) -> float:
 def compare(candles, *, margin: float, leverage: float,
             overrides: dict | None = None,
             fee_per_side: float = fbt.DEFAULT_FEE,
-            funding: list | None = None) -> list:
+            funding: list | None = None,
+            limits: dict | None = None) -> list:
     """Every strategy on the same bars, best PnL first.
 
     Returns rows carrying the honest comparison: PnL, return on margin, trade
@@ -313,20 +315,18 @@ def compare(candles, *, margin: float, leverage: float,
         try:
             r, fund = backtest(key, candles, margin=margin, leverage=leverage,
                                params=(overrides or {}).get(key),
-                               fee_per_side=fee_per_side, funding=funding)
+                               fee_per_side=fee_per_side, funding=funding,
+                               limits=limits)
         except Exception as exc:                          # noqa: BLE001
             rows.append({"key": key, "name": strat.name, "error": str(exc)})
             continue
-        # Buy & hold is the benchmark, so its funding must be included in the
-        # bar every strategy is measured against — otherwise a strategy that
-        # holds less looks better purely by dodging a cost (or an income).
-        bh_fund = 0.0
-        if funding:
-            bh_fund = fbt.funding_pnl(candles, [1.0] * len(candles), funding,
-                                      notional=r.notional)
-        total = r.pnl + fund
-        bh_total = r.buy_hold_pnl + bh_fund
-        eps = max(abs(r.notional), 1.0) * 1e-9
+        # ONE comparison implementation. This function carried its own copy, so the
+        # fix that stops paying the benchmark funding after a liquidation landed in
+        # hold_comparison() and not here. Two copies of a rule is two rules.
+        cmp_ = hold_comparison(r, fund, candles, funding)
+        bh_fund = cmp_["hold_funding"]
+        total = cmp_["total"]
+        bh_total = cmp_["hold_total"]
         rows.append({
             "key": key, "name": strat.name, "summary": strat.summary,
             "kind": strat.kind, "pnl": r.pnl, "return_pct": r.return_pct,
@@ -336,7 +336,8 @@ def compare(candles, *, margin: float, leverage: float,
             "max_drawdown": r.max_drawdown, "worst_equity": r.worst_equity,
             "liquidated": r.liquidated, "buy_hold_pnl": r.buy_hold_pnl,
             "buy_hold_total": bh_total,
-            "beats_buy_hold": total > bh_total + eps, "result": r,
+            "beats_buy_hold": cmp_["beats_hold"], "result": r,
+            "halted_reason": r.halted_reason,
             "risk": strat.risk,
         })
     ok = [r for r in rows if "error" not in r]

@@ -21,6 +21,7 @@ def isolated_state(tmp_path, monkeypatch):
     monkeypatch.setattr(spx_bot, "PID_PATH", tmp_path / "bot.pid")
     monkeypatch.setattr(spx_bot, "LOG_PATH", tmp_path / "bot.log")
     monkeypatch.setattr(spx_bot, "HEARTBEAT_PATH", tmp_path / "heartbeat")
+    monkeypatch.setattr(spx_bot, "ALERT_PATH", tmp_path / "alerts.jsonl")
     monkeypatch.delenv("SPX_BOT_ARMED", raising=False)
     yield
 
@@ -601,3 +602,127 @@ def test_the_fault_counter_resets_after_a_good_cycle(monkeypatch):
     assert spx_bot.do_run(spx_bot.Config(), live=False, once=False) == 1
     # one fault, reset, one fault, reset, then two in a row ends it
     assert len(n) == 6, f"good cycles must clear the counter, got {len(n)}"
+
+
+# ============ alerts and the watchdog =======================================
+# A bot that halts silently at 3am is discovered at 9am.
+def test_an_alert_is_recorded_and_readable(monkeypatch):
+    monkeypatch.setattr(spx_bot.sys, "platform", "linux")   # skip osascript
+    spx_bot.alert("halted", "equity below the floor")
+    got = spx_bot.recent_alerts()
+    assert got[0]["kind"] == "halted"
+    assert "equity" in got[0]["message"]
+    assert got[0]["at"].endswith("+00:00")
+
+
+def test_alerting_never_breaks_trading(monkeypatch):
+    """A notification failure must not propagate — the bot holds a position."""
+    monkeypatch.setattr(spx_bot, "ALERT_PATH",
+                        spx_bot.STATE_DIR / "nope" / "x" / "alerts.jsonl")
+    monkeypatch.setattr(spx_bot.sys, "platform", "darwin")
+    spx_bot.alert("halted", "unwritable path and a bogus notifier")  # must not raise
+
+
+def test_the_equity_floor_raises_an_alert(monkeypatch):
+    _state()
+    fired = []
+    monkeypatch.setattr(spx_bot, "alert", lambda k, m: fired.append((k, m)))
+    monkeypatch.setattr(spx_bot.fx, "last_price", lambda s: 100.0)
+    monkeypatch.setattr(spx_bot.fx, "usdt_equity", lambda: 1.0)
+    spx_bot.step(spx_bot.Config(min_equity_usd=20.0), live=False)
+    assert fired and fired[0][0] == "halted"
+
+
+def test_the_loss_limit_raises_an_alert(monkeypatch):
+    _state(position=_held(entry=100.0, notional=345.0))
+    fired = []
+    monkeypatch.setattr(spx_bot, "alert", lambda k, m: fired.append((k, m)))
+    monkeypatch.setattr(spx_bot.fx, "last_price", lambda s: 88.0)
+    monkeypatch.setattr(spx_bot.fx, "usdt_equity", lambda: 500.0)
+    monkeypatch.setattr(spx_bot.fx, "close_long", lambda *a, **k: {})
+    spx_bot.step(spx_bot.Config(max_losses=1, stop_loss_pct=10.0), live=False)
+    assert any(k == "loss-limit" for k, _ in fired)
+
+
+def test_the_watchdog_restarts_a_crash_but_not_a_misconfiguration(monkeypatch):
+    """Restarting on a bad clock or an unrunnable strategy would spin forever."""
+    monkeypatch.setattr(spx_bot.time, "sleep", lambda s: None)
+    fired = []
+    monkeypatch.setattr(spx_bot, "alert", lambda k, m: fired.append((k, m)))
+
+    codes = iter([1, 1, 0])
+    monkeypatch.setattr(spx_bot, "do_run", lambda *a, **k: next(codes))
+    assert spx_bot.do_watchdog(spx_bot.Config(), live=False) == 0
+    assert [k for k, _ in fired] == ["restarting", "restarting"]
+
+    fired.clear()
+    for permanent in (2, 3, 4):
+        monkeypatch.setattr(spx_bot, "do_run", lambda *a, **k: permanent)
+        assert spx_bot.do_watchdog(spx_bot.Config(), live=False) == permanent
+    assert all(k == "stopped" for k, _ in fired), \
+        "a configuration error must not be retried"
+
+
+def test_the_watchdog_names_an_open_position_when_it_restarts(monkeypatch):
+    _state(position=_held(vol=19))
+    monkeypatch.setattr(spx_bot.time, "sleep", lambda s: None)
+    fired = []
+    monkeypatch.setattr(spx_bot, "alert", lambda k, m: fired.append((k, m)))
+    codes = iter([1, 0])
+    monkeypatch.setattr(spx_bot, "do_run", lambda *a, **k: next(codes))
+    spx_bot.do_watchdog(spx_bot.Config(), live=False)
+    assert "POSITION IS OPEN" in fired[0][1]
+    assert "19" in fired[0][1]
+
+
+# ============ timeframe drives the poll cadence ==============================
+def test_poll_is_derived_from_the_timeframe():
+    assert spx_bot.Config(timeframe="Min1").poll == 30
+    assert spx_bot.Config(timeframe="Min5").poll == 150
+    assert spx_bot.Config(timeframe="Min60").poll == 300
+
+
+def test_an_explicit_poll_override_wins():
+    assert spx_bot.Config(timeframe="Min5", poll_seconds=45).poll == 45
+
+
+def test_the_unrunnable_gate_fires_before_the_timeframe_gate():
+    """Both refusals are correct, and the strategy gate is the earlier one."""
+    assert spx_bot.do_run(spx_bot.Config(strategy="trend_filter",
+                                        timeframe="Min1"),
+                          live=False, once=True) == 2
+
+
+def test_the_runner_refuses_a_ruinous_timeframe_pairing(monkeypatch):
+    """trend_filter on 1-minute bars measured 148 orders a day — the account
+    burns down through turnover alone, with no bug involved.
+
+    Today this gate is unreachable, because the only two runnable strategies fit
+    every timeframe. It exists for the exposure engine that would make those
+    strategies runnable, so the test grants the permission that engine would and
+    checks the gate still holds. Without it, adding the engine would silently
+    make 1-minute rebalancing launchable.
+    """
+    monkeypatch.setattr(spx_bot.fx, "clock_skew_ms", lambda: 0)
+    monkeypatch.setattr(spx_bot, "RUNNABLE_STRATEGIES",
+                        ("barrier_harvest", "buy_hold", "trend_filter"))
+    cfg = spx_bot.Config(strategy="trend_filter", timeframe="Min1")
+    assert spx_bot.do_run(cfg, live=False, once=True) == 5
+    # ...and permits it on bars where the turnover is affordable
+    monkeypatch.setattr(spx_bot, "step", lambda cfg, live: None)
+    cfg.timeframe = "Min60"
+    assert spx_bot.do_run(cfg, live=False, once=True) == 0
+
+
+def test_the_watchdog_does_not_retry_a_ruinous_pairing(monkeypatch):
+    monkeypatch.setattr(spx_bot.time, "sleep", lambda s: None)
+    monkeypatch.setattr(spx_bot, "alert", lambda k, m: None)
+    monkeypatch.setattr(spx_bot, "do_run", lambda *a, **k: 5)
+    assert spx_bot.do_watchdog(spx_bot.Config(), live=False) == 5
+
+
+def test_timeframe_round_trips_through_the_saved_config():
+    spx_bot.Config(timeframe="Min60").save()
+    loaded = spx_bot.Config.load()
+    assert loaded.timeframe == "Min60"
+    assert loaded.poll == 300

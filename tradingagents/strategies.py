@@ -282,3 +282,102 @@ def compare(candles, *, margin: float, leverage: float,
     bad = [r for r in rows if "error" in r]
     ok.sort(key=lambda d: -d["total_pnl"])
     return ok + bad
+
+
+# ------------------------------------------------------------- timeframes
+# One authoritative timeframe. The UI used to carry three separate interval
+# pickers — one for the chart, one for the backtest, and none for the bot — so a
+# person could study 1-minute bars, backtest on 5-minute bars, and run a bot that
+# used neither.
+TIMEFRAMES = ("Min1", "Min5", "Min15", "Min30", "Min60", "Hour4", "Day1")
+
+TIMEFRAME_SECONDS = {"Min1": 60, "Min5": 300, "Min15": 900, "Min30": 1800,
+                     "Min60": 3600, "Hour4": 14400, "Day1": 86400}
+
+TIMEFRAME_LABELS = {"Min1": "1 minute", "Min5": "5 minutes",
+                    "Min15": "15 minutes", "Min30": "30 minutes",
+                    "Min60": "1 hour", "Hour4": "4 hours", "Day1": "1 day"}
+
+
+def poll_seconds_for(timeframe: str) -> int:
+    """How often a bot on this timeframe needs to look.
+
+    Half a bar, floored at 30s and capped at 5 minutes. Polling faster than the
+    bar it trades gains nothing — the decision cannot change until the bar does —
+    and polling slower than half a bar risks missing one entirely.
+    """
+    bar = TIMEFRAME_SECONDS.get(timeframe, 300)
+    return max(30, min(300, bar // 2))
+
+
+def timeframe_fit(timeframe: str, strategy: str) -> tuple:
+    """Is this strategy sensible on this timeframe? Returns (verdict, why).
+
+    Verdict is "good", "workable" or "avoid". The judgements are measured on this
+    project's own SPX500 data, not opinion:
+
+    * A bracket strategy is nearly timeframe-independent, because its exits are
+      price levels rather than bar events. It only needs bars fine enough to
+      notice a level being crossed.
+    * An exposure strategy rebalances once per bar, so its trading cost scales
+      inversely with bar size. Measured on the real 1-minute file, an on/off
+      exposure rule turned over 2,279x the notional in 31 days — 148 orders a day.
+      At the current zero fee that is still $10.22/month of spread on a $345
+      position (107%/yr of margin), and at a normal 2bp fee it is $157/month
+      against an account of $163.
+    """
+    strat = REGISTRY.get(strategy)
+    if strat is None:
+        return "avoid", f"{strategy!r} is not a known strategy"
+    bar = TIMEFRAME_SECONDS.get(timeframe, 300)
+    if strategy == "buy_hold":
+        return "good", (
+            "One entry and one exit for the whole period, so the timeframe "
+            "changes nothing about cost. It is the benchmark every other "
+            "strategy here has to beat.")
+    if strategy == "ladder_dca":
+        steps = REGISTRY[strategy].params.get("steps", 8)
+        span = TIMEFRAME_SECONDS.get(timeframe, 300) * \
+            REGISTRY[strategy].params.get("bars_between", 288) * steps / 86400
+        return ("good" if span <= 60 else "workable"), (
+            f"Turnover is bounded at {steps} partial entries however fine the "
+            f"bars are, so cost is not the issue. What the timeframe changes is "
+            f"how LONG the ladder takes: {span:.1f} days at this setting. Adjust "
+            f"'bars between' if that is not the ramp you want.")
+    if strat.kind == "bracket":
+        if bar < 300:
+            return "workable", (
+                "The barriers are price levels, so the timeframe barely matters. "
+                "1-minute bars only make the backtest's fills more optimistic, "
+                "because a smaller bar is more likely to touch a level it could "
+                "not actually have filled at.")
+        return "good", (
+            f"Barriers are price levels, so {TIMEFRAME_LABELS.get(timeframe, timeframe)} "
+            f"bars are ample. This is the pairing the +2%/-10% grid was measured on.")
+    # The three genuine per-bar rebalancers — trend_filter, session_long and
+    # vol_target — are the only ones whose turnover grows as bars shrink.
+    if bar < 900:
+        return "avoid", (
+            f"This rebalances once per bar. On {TIMEFRAME_LABELS.get(timeframe, timeframe)} "
+            f"bars that measured 148 orders a day and 2,279x turnover in 31 days "
+            f"— $10.22/month of spread at today's zero fee, and $157/month once "
+            f"fees return, against a $163 account.")
+    if bar < 3600:
+        return "workable", (
+            "Rebalancing this often is affordable but not free. Watch the "
+            "turnover figure in the backtest before trusting it.")
+    return "good", (
+        f"One rebalance per {TIMEFRAME_LABELS.get(timeframe, timeframe)} keeps "
+        f"trading cost to a few dollars a month at this size.")
+
+
+def strategies_for(timeframe: str) -> list:
+    """Every strategy, annotated for this timeframe, best fit first."""
+    order = {"good": 0, "workable": 1, "avoid": 2}
+    rows = []
+    for key in ORDER:
+        verdict, why = timeframe_fit(timeframe, key)
+        rows.append({"key": key, "name": REGISTRY[key].name, "verdict": verdict,
+                     "why": why, "kind": REGISTRY[key].kind})
+    rows.sort(key=lambda r: (order[r["verdict"]], ORDER.index(r["key"])))
+    return rows

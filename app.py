@@ -329,6 +329,39 @@ input, [data-baseweb="select"]{ font-variant-numeric:tabular-nums; }
   margin:calc(var(--s) * 2) 0 calc(var(--s) / 2);
 }
 
+/* ---- Section rule: separates the three jobs of the Trade tab ---- */
+.ta-section{
+  font-family:var(--font-mono); font-size:10px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--faint); font-weight:500;
+  margin:calc(var(--s) * 4) 0 calc(var(--s) * 1.5);
+  padding-bottom:6px; border-bottom:1px solid var(--border);
+}
+
+/* ---- Command strip: the state, and the one action that acts on it ----
+   Given a raised surface and a left accent so the primary control reads as the
+   top of the page rather than as one more row of buttons. */
+.st-key-command_strip{
+  background:var(--panel); border:1px solid var(--border);
+  border-left:3px solid var(--ink); border-radius:var(--r);
+  padding:calc(var(--s) * 1.75) calc(var(--s) * 2);
+  margin-bottom:var(--s);
+}
+.st-key-command_strip > [data-testid="stHorizontalBlock"],
+.st-key-command_strip > div > [data-testid="stHorizontalBlock"]{
+  align-items:center;
+}
+.ta-metric{ display:flex; flex-direction:column; gap:3px; }
+.ta-metric span{
+  font-family:var(--font-mono); font-size:9.5px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--faint);
+}
+.ta-metric b{
+  font-family:var(--font-mono); font-size:17px; font-weight:600;
+  color:var(--ink); font-variant-numeric:tabular-nums; line-height:1.1;
+}
+/* The primary action carries weight; the stop is quiet until it is needed. */
+.st-key-cs_start button{ font-weight:700; letter-spacing:.02em; }
+
 /* ---- Chips ---- */
 .ta-meta{ display:flex; gap:var(--s); flex-wrap:wrap; margin-bottom:calc(var(--s) * 2); }
 .ta-chip{
@@ -1205,6 +1238,67 @@ def render_trade_tab() -> None:
 
     # Keyed so the CSS top-aligns this row; otherwise the shorter left column
     # gets vertically centred against the tall settings panel.
+    # ---- command strip: the primary action, and the state it acts on.
+    # "Start bot (dry run)" used to sit four sections down the operating column,
+    # below the API-key form, which is why it could not be found.
+    _h = spx_bot.health()
+    _st = spx_bot._read_state() or {}
+    _pos = _st.get("position")
+    _live_ready = os.getenv("SPX_BOT_ARMED", "").strip().lower() in ("yes", "true", "1")
+    cs = st.container(key="command_strip")
+    with cs:
+        m1, m2, m3, m4, act = st.columns([1, 1, 1, 1, 1.5], gap="medium")
+        m1.markdown(
+            f"<div class='ta-metric'><span>Bot</span><b style='color:"
+            f"{'var(--buy)' if _h['running'] else 'var(--muted)'}'>"
+            f"{'RUNNING' if _h['running'] else 'STOPPED'}</b></div>",
+            unsafe_allow_html=True)
+        m2.markdown(
+            f"<div class='ta-metric'><span>Position</span><b>"
+            f"{(str(_pos.get('vol')) + ' contracts') if _pos else 'flat'}</b></div>",
+            unsafe_allow_html=True)
+        m3.markdown(
+            f"<div class='ta-metric'><span>Realised today</span><b>"
+            f"{_st.get('realised_today', 0.0):+.2f}</b></div>",
+            unsafe_allow_html=True)
+        _limit = int(getattr(cfg, "max_losses", 0) or 0)
+        m4.markdown(
+            f"<div class='ta-metric'><span>Losses</span><b>"
+            f"{int(_st.get('losses', 0) or 0)}"
+            f"{f' / {_limit}' if _limit else ''}</b></div>",
+            unsafe_allow_html=True)
+        with act:
+            if _h["running"]:
+                if st.button("Stop auto trade", type="secondary",
+                             use_container_width=True, key="cs_stop"):
+                    try:
+                        os.kill(_h["pid"], signal.SIGTERM)
+                        st.warning(f"Stopped pid {_h['pid']}.")
+                    except OSError as exc:
+                        st.error(f"could not stop pid {_h['pid']}: {exc}")
+                    time.sleep(2)
+                    st.rerun()
+            else:
+                if st.button("Run auto trade", type="primary",
+                             use_container_width=True, key="cs_start"):
+                    log = open(spx_bot.LOG_PATH, "a", buffering=1)
+                    subprocess.Popen(
+                        [sys.executable, "spx_bot.py", "watchdog"],
+                        stdout=log, stderr=subprocess.STDOUT,
+                        start_new_session=True)
+                    st.success("Started.")
+                    time.sleep(2)
+                    st.rerun()
+    st.caption(
+        ("**This will place real orders.** " if _live_ready else
+         "Runs in **dry run** — it decides and logs, but sends no orders. ")
+        + (f"Strategy `{cfg.strategy}` on `{cfg.timeframe}` bars, checked every "
+           f"{cfg.poll}s. "
+           + ("" if _live_ready else
+              "To trade for real, launch it from a terminal with "
+              "`SPX_BOT_ARMED=yes python spx_bot.py watchdog --live` — a browser "
+              "button cannot arm real money, by design.")))
+
     trade_layout = st.container(key="trade_layout")
     left, right = trade_layout.columns([1.6, 1], gap="large")
 
@@ -1250,17 +1344,49 @@ def render_trade_tab() -> None:
 
         from tradingagents import strategies as sg
 
+        st.markdown('<div class="ta-panel-title">Timeframe</div>',
+                    unsafe_allow_html=True)
+        timeframe = st.selectbox(
+            "Bars", sg.TIMEFRAMES,
+            index=(sg.TIMEFRAMES.index(cfg.timeframe)
+                   if cfg.timeframe in sg.TIMEFRAMES else 1),
+            key="trade_timeframe",
+            format_func=lambda t: f"{t}  ·  {sg.TIMEFRAME_LABELS[t]}",
+            help="One timeframe for the bot, the chart and the backtest. There "
+                 "used to be three separate pickers, so you could study one "
+                 "timeframe, backtest another, and run a bot on neither.")
+        st.caption(f"The bot checks every **{sg.poll_seconds_for(timeframe)}s** "
+                   f"on these bars — half a bar. Polling faster cannot change "
+                   f"the decision.")
+
         st.markdown('<div class="ta-panel-title">Strategy</div>',
                     unsafe_allow_html=True)
+        # Ordered by how well each one suits the chosen timeframe, with the
+        # verdict in the label — a strategy that is ruinous on 1-minute bars
+        # should not look identical to one that is fine.
+        _fit_rows = sg.strategies_for(timeframe)
+        _fit = {r["key"]: r for r in _fit_rows}
+        _MARK = {"good": "", "workable": "  ~", "avoid": "  ✕"}
+
         def _label(k):
             name = sg.REGISTRY[k].name
+            bits = [name + _MARK[_fit[k]["verdict"]]]
             if k not in spx_bot.RUNNABLE_STRATEGIES:
-                return f"{name}  [backtest only]"
-            return name
+                bits.append("[backtest only]")
+            return "  ".join(bits)
 
+        _keys = [r["key"] for r in _fit_rows]
         strat_key = st.selectbox(
-            "Approach", sg.ORDER, index=0, key="trade_strategy",
-            format_func=_label)
+            "Approach", _keys,
+            index=(_keys.index(cfg.strategy) if cfg.strategy in _keys else 0),
+            key="trade_strategy", format_func=_label)
+        _v = _fit[strat_key]
+        if _v["verdict"] == "avoid":
+            st.error(f"**Not suited to {timeframe} bars.** {_v['why']}")
+        elif _v["verdict"] == "workable":
+            st.warning(f"**Workable on {timeframe}.** {_v['why']}")
+        else:
+            st.caption(f"Good fit for {timeframe}. {_v['why']}")
         strat = sg.REGISTRY[strat_key]
         st.caption(strat.summary)
         runnable, why_not = spx_bot.strategy_is_runnable(strat_key)
@@ -1314,6 +1440,8 @@ def render_trade_tab() -> None:
         if st.button("Save settings", type="primary"):
             cfg.symbol = symbol
             cfg.strategy = strat_key
+            cfg.timeframe = timeframe
+            cfg.poll_seconds = 0        # 0 = derive from the timeframe
             cfg.leverage, cfg.margin_usd = int(lev), float(margin)
             cfg.take_profit_pct, cfg.stop_loss_pct = float(tp), float(sl)
             cfg.max_notional_usd, cfg.daily_loss_limit_usd = float(cap), float(dl)
@@ -1337,13 +1465,18 @@ def render_trade_tab() -> None:
                 f"backtest before trusting it.")
 
     with left:
-        st.markdown('<div class="ta-label">Position &amp; account</div>',
+        st.markdown('<div class="ta-label">Position detail</div>',
                     unsafe_allow_html=True)
         pos = state.get("position")
         c1, c2, c3 = st.columns(3)
-        c1.metric("Position", f"{pos['vol']} contracts" if pos else "flat")
-        c2.metric("Entry", f"{pos['entry']:,.2f}" if pos else "—")
-        c3.metric("Realised today", f"{state.get('realised_today', 0.0):+.2f}")
+        c1.metric("Entry", f"{pos['entry']:,.2f}" if pos else "—")
+        c2.metric("Target", f"{pos.get('tp'):,.2f}"
+                  if pos and pos.get("tp") else "—")
+        c3.metric("Stop", f"{pos.get('sl'):,.2f}"
+                  if pos and pos.get("sl") else "—")
+        if pos and not pos.get("protected"):
+            st.warning("This position has no verified exchange-side barriers — "
+                       "the stop is only being watched by the bot process.")
         if state.get("halted"):
             st.error(f"Bot halted — {state.get('halt_reason', '')}")
 
@@ -1356,140 +1489,6 @@ def render_trade_tab() -> None:
         st.caption(f"Futures wallet: "
                    f"{('%.2f USDT' % wallet) if wallet is not None else 'unavailable'}"
                    f"  ·  key present: {fx.has_credentials()}")
-
-        st.markdown('<div class="ta-label">MEXC API keys</div>',
-                    unsafe_allow_html=True)
-        cst = cred.status()
-        if cst["has_credentials"]:
-            mode_note = ("" if cst["file_mode_ok"] else
-                         f"  ·  file mode {cst['file_mode']} — should be -rw-------")
-            st.markdown(
-                f"<div class='ta-card'><h4>Key loaded</h4>"
-                f"<div style='font-family:var(--font-mono);font-size:12.5px'>"
-                f"key &nbsp; {html.escape(cst['key_fingerprint'])}<br>"
-                f"secret {html.escape(cst['secret_fingerprint'])}</div>"
-                f"<div style='color:var(--muted);font-size:12px;margin-top:6px'>"
-                f"source: {html.escape(cst['source'])}{html.escape(mode_note)}"
-                f"</div></div>", unsafe_allow_html=True)
-        else:
-            st.caption("No key loaded. Enter one below, or export "
-                       "MEXC_API_KEY / MEXC_API_SECRET before launching.")
-
-        # A different key in .env is invisible from the browser. It used to win
-        # silently, so every connection test ran against a key the user had
-        # already replaced. The saved key now wins — say so, and name the file
-        # to clean up.
-        conflict = cred.env_conflict()
-        if conflict.get("conflict"):
-            stale = ", ".join(f"{where} ({fp})" for where, fp in conflict["stale"])
-            st.warning(
-                f"A different MEXC key is also set in {stale}. The key saved "
-                f"here wins, but delete the `MEXC_API_KEY` / `MEXC_API_SECRET` "
-                f"lines from that file so there is only one answer to which "
-                f"key is live.")
-
-        with st.expander("Enter or replace keys",
-                         expanded=not cst["has_credentials"]):
-            st.caption(
-                "Create the key on MEXC with **futures trading and read access "
-                "enabled**, **withdrawals disabled**, and an **IP allowlist**. "
-                "A trade-only key that leaks can lose money on bad trades but "
-                "cannot move funds off the exchange. Keys are written to "
-                f"`{cst['store_path']}` with owner-only permissions — never to "
-                "the project folder, and never shown back to you.")
-            with st.form("mexc_keys", clear_on_submit=True):
-                k_in = st.text_input("API key", type="password",
-                                     autocomplete="off")
-                s_in = st.text_input("API secret", type="password",
-                                     autocomplete="off")
-                f1, f2 = st.columns([1, 1])
-                if f1.form_submit_button("Save keys", type="primary"):
-                    try:
-                        cred.save(k_in, s_in)
-                    except ValueError as exc:
-                        st.error(str(exc))
-                    else:
-                        st.success("Saved. Test the connection below.")
-                        st.rerun()
-                if f2.form_submit_button("Forget saved keys"):
-                    st.warning("Removed." if cred.clear() else "Nothing stored.")
-                    st.rerun()
-
-        tc1, tc2 = st.columns([1, 3])
-        if tc1.button("Test connection", type="primary"):
-            st.session_state["conn_test"] = True
-        if st.session_state.get("conn_test"):
-            # Clear the flag before rendering: Streamlit reruns the script on
-            # every widget interaction, and leaving it set re-issued a signed
-            # POST to the order endpoint on each one.
-            st.session_state.pop("conn_test", None)
-            with st.spinner("talking to MEXC…"):
-                rep = fx.preflight(symbol)
-            checks = [
-                ("Credentials present", rep.get("credentials")),
-                ("Read account balance", rep.get("read_assets")),
-                ("Read open positions", rep.get("read_positions")),
-                ("Permission to place orders", rep.get("order_permission")),
-                ("Rest a stop on MEXC's servers", rep.get("can_rest_stop")),
-            ]
-            rows = ""
-            for label, ok in checks:
-                mark = "PASS" if ok else ("FAIL" if ok is False else "unknown")
-                colour = ("var(--buy)" if ok else
-                          ("var(--sell)" if ok is False else "var(--muted)"))
-                rows += (f"<div class='ta-stage'><span class='lbl'>{label}</span>"
-                         f"<span class='tag' style='color:{colour}'>{mark}</span>"
-                         f"</div>")
-            st.markdown(f"<div class='ta-card'><h4>Connection</h4>{rows}</div>",
-                        unsafe_allow_html=True)
-            if rep.get("equity_usdt") is not None:
-                st.metric("Futures wallet", f"{rep['equity_usdt']:,.2f} USDT")
-            if rep.get("ready"):
-                st.success(f"Connected. This key can read the account and place "
-                           f"futures orders on {symbol}.")
-                st.caption("Both write checks are non-destructive: the order "
-                           "check cancels an order id that cannot exist, and "
-                           "the stop check targets a position id that cannot "
-                           "exist. Neither can open a position. They are "
-                           "separate endpoints, so both are tested — a key can "
-                           "place orders and still not be allowed to rest a "
-                           "stop.")
-            elif rep.get("auth_failed"):
-                st.error("**MEXC rejected the credentials themselves, not their "
-                         "permissions.** No permission setting will fix this.")
-                for fix in rep.get("remedies", []):
-                    st.markdown(f"- {fix}")
-            elif rep.get("edge_blocked"):
-                st.error("**Blocked by MEXC's edge proxy, not by your key.** The "
-                         "order endpoint returned an HTML “Access Denied” "
-                         "before the API saw the request, so no permission "
-                         "setting on MEXC will change it.")
-                for fix in rep.get("remedies", []):
-                    st.markdown(f"- {fix}")
-                st.caption("MEXC's edge refuses the futures order paths for "
-                           "requests whose User-Agent identifies a scripted "
-                           "client (bare urllib or requests). Reads are "
-                           "unaffected, which makes it look like a trade "
-                           "permission problem.")
-            elif rep.get("missing_scopes"):
-                st.error("**Your key is missing permission scopes.** MEXC named "
-                         "them exactly: " + ", ".join(rep["missing_scopes"]) + ".")
-                st.markdown("**To fix, on MEXC:**")
-                for fix in rep.get("remedies", []):
-                    st.markdown(f"- {fix}")
-                st.markdown(
-                    "- Keep **withdrawals disabled**, and check the key's "
-                    "**IP allowlist** includes this machine.\n"
-                    "- Editing scopes can issue a new secret — if so, paste "
-                    "both values above again.")
-                st.caption("Futures API order placement is not gated by MEXC on "
-                           "this contract; these are key settings you control.")
-            else:
-                st.error("Not ready to trade — see the raw exchange responses "
-                         "below. Common causes: a wrong secret (signature "
-                         "failure) or an IP allowlist that excludes this machine.")
-            for note in rep.get("notes", []):
-                st.caption(f"· {note}")
 
         st.markdown('<div class="ta-label">Bot process</div>',
                     unsafe_allow_html=True)
@@ -1506,43 +1505,21 @@ def render_trade_tab() -> None:
                        + (f" · last cycle {h['seconds_since_cycle']:.0f}s ago"
                           if h["seconds_since_cycle"] is not None else ""))
         else:
-            st.caption("Not running. Start it below — it keeps running when you "
-                       "close this page.")
+            st.caption("Not running. Use **Run auto trade** at the top — it "
+                       "keeps running after you close this page.")
         if h["halted"]:
             st.error(f"Halted: {h['halt_reason']}")
+        alerts = spx_bot.recent_alerts(5)
+        if alerts:
+            with st.expander(f"Recent alerts ({len(alerts)})",
+                             expanded=alerts[0]["kind"] in ("halted", "giving-up",
+                                                            "loss-limit")):
+                for a in alerts:
+                    st.markdown(f"`{a['at']}` **{a['kind']}** — {a['message']}")
 
-        p1, p2, p3 = st.columns(3)
-        if not h["running"]:
-            if p1.button("Start bot (dry run)", type="primary"):
-                # Live trading deliberately cannot be armed from a browser: it
-                # needs SPX_BOT_ARMED=yes in the bot's own shell.
-                log = open(spx_bot.LOG_PATH, "a", buffering=1)
-                subprocess.Popen(
-                    [sys.executable, "spx_bot.py", "run"],
-                    stdout=log, stderr=subprocess.STDOUT,
-                    start_new_session=True)
-                st.success("Started in dry-run mode — no orders will be sent.")
-                time.sleep(2)
-                st.rerun()
-        elif p1.button("Stop bot"):
-            try:
-                os.kill(h["pid"], signal.SIGTERM)
-                st.warning(f"Sent stop to pid {h['pid']}.")
-            except OSError as exc:
-                st.error(f"could not stop pid {h['pid']}: {exc}")
-            time.sleep(2)
-            st.rerun()
-        if p2.button("Show bot log"):
-            st.session_state["show_bot_log"] = True
-        p3.caption(f"Live trading needs `SPX_BOT_ARMED=yes` and `--live` in a "
-                   f"terminal — this button only starts a dry run.")
-        if st.session_state.get("show_bot_log"):
-            try:
-                st.code(spx_bot.LOG_PATH.read_text()[-3000:] or "(empty)")
-            except OSError:
-                st.caption("no log yet")
-
-        st.markdown('<div class="ta-label">Checks &amp; controls</div>',
+        # Start/Stop lives in the command strip at the top of the page — having it
+        # here as well was the reason two buttons appeared to do the same thing.
+        st.markdown('<div class="ta-label">Controls</div>',
                     unsafe_allow_html=True)
         b1, b2, b3, b4 = st.columns(4)
         if b1.button("Preflight"):
@@ -1592,6 +1569,13 @@ def render_trade_tab() -> None:
         else:
             c1.caption(f"Losing trades so far: {losses}. No limit set — "
                        f"set one in Risk limits.")
+        if c2.button("Show bot log"):
+            st.session_state["show_bot_log"] = True
+        if st.session_state.get("show_bot_log"):
+            try:
+                st.code(spx_bot.LOG_PATH.read_text()[-3000:] or "(empty)")
+            except OSError:
+                st.caption("no log yet")
         if c2.button("Reset loss count", disabled=losses == 0):
             r = subprocess.run([sys.executable, "spx_bot.py", "reset-losses"],
                                capture_output=True, text=True, timeout=60)
@@ -1613,184 +1597,6 @@ def render_trade_tab() -> None:
             if k2.button("Cancel"):
                 st.session_state.pop("confirm_flat", None)
                 st.rerun()
-
-        st.markdown('<div class="ta-label">Chart</div>', unsafe_allow_html=True)
-        ci1, ci2 = st.columns([1, 3])
-        interval = ci1.selectbox("Interval",
-                                 ["Min1", "Min5", "Min15", "Min60", "Hour4", "Day1"],
-                                 index=1, key="trade_interval",
-                                 label_visibility="collapsed")
-        try:
-            import crypto_screener as _cs
-            candles = fx.klines(symbol, interval, 240)
-            chart = _cs.candlestick_chart(candles, symbol.replace("_USDT", ""))
-            # overlay the live take-profit / stop levels off the last close
-            import altair as alt
-            last = float(candles["Close"].iloc[-1])
-            levels = [{"level": last * (1 + tp / 100), "kind": f"take-profit +{tp:g}%"},
-                      {"level": last * (1 - sl / 100), "kind": f"stop-loss -{sl:g}%"}]
-            if pos:
-                levels += [{"level": float(pos["entry"]), "kind": "entry"},
-                           {"level": float(pos["tp"]), "kind": "resting TP"}]
-            rules = alt.Chart(pd.DataFrame(levels)).mark_rule(
-                strokeDash=[4, 4], size=1.5).encode(
-                y="level:Q",
-                color=alt.Color("kind:N", legend=alt.Legend(title=None,
-                                                            orient="top")),
-                tooltip=["kind:N", "level:Q"])
-            st.altair_chart(chart + rules, use_container_width=True)
-            ci2.caption(f"{_cs.chart_summary(candles)}  ·  {interval} candles "
-                        f"from MEXC futures")
-        except Exception as exc:                          # noqa: BLE001
-            st.warning(f"Chart unavailable for {symbol}: {exc}")
-
-        st.markdown('<div class="ta-label">Backtest these settings</div>',
-                    unsafe_allow_html=True)
-        bt1, bt2, bt3 = st.columns([1, 1, 2])
-        bt_interval = bt1.selectbox("Bars", ["Min5", "Min15", "Min60", "Hour4"],
-                                    index=0, key="bt_interval")
-        bt_limit = bt2.selectbox("History", [500, 1000, 2000], index=1,
-                                 key="bt_limit",
-                                 format_func=lambda n: f"{n} bars")
-        bb1, bb2 = bt3.columns(2)
-        if bb1.button("Run backtest", type="primary"):
-            st.session_state["bt_run"] = True
-            st.session_state.pop("bt_compare", None)
-        if bb2.button("Compare all 6"):
-            st.session_state["bt_compare"] = True
-            st.session_state.pop("bt_run", None)
-
-        if st.session_state.get("bt_compare"):
-            from tradingagents import strategies as _sg
-            try:
-                with st.spinner(f"running all six strategies on {symbol}…"):
-                    hist = fx.klines(symbol, bt_interval, int(bt_limit))
-                    fund_hist = _funding_history(symbol)
-                    rows = _sg.compare(hist, margin=float(margin),
-                                       leverage=float(lev), funding=fund_hist)
-            except Exception as exc:                      # noqa: BLE001
-                st.error(f"Comparison failed: {exc}")
-            else:
-                good = [r for r in rows if "error" not in r]
-                bh = good[0]["buy_hold_total"] if good else 0.0
-                fsum = _funding_summary(symbol)
-                st.caption(f"{symbol} · {bt_limit} {bt_interval} bars · "
-                           f"${margin:,.0f} margin at {lev:.0f}x · "
-                           f"buy & hold benchmark ${bh:+,.2f} (funding included)")
-                if fsum.get("available"):
-                    sign = "receives" if fsum["long_total"] > 0 else "pays"
-                    st.info(
-                        f"**Funding on {symbol}:** a long {sign} "
-                        f"{abs(fsum['long_total'])*100:.2f}% of notional over the "
-                        f"published history ({fsum['long_daily']*100:+.4f}%/day, "
-                        f"{fsum['long_annual']*100:+.1f}%/yr) across "
-                        f"{fsum['settlements']} settlements, "
-                        f"{fsum['pct_positive']:.0f}% of which charged longs. "
-                        f"Perpetual funding is settled every few hours while a "
-                        f"position is open, so it scales with time held.")
-                else:
-                    st.warning("No funding history published for this contract — "
-                               "the totals below exclude funding.")
-                tbl = ("| strategy | price PnL | funding | TOTAL | return "
-                       "| trades | win% | max DD | beats hold |\n"
-                       "|---|---|---|---|---|---|---|---|---|\n")
-                for r in rows:
-                    if "error" in r:
-                        tbl += f"| {r['name']} | error | | | | | | | |\n"
-                        continue
-                    flag = "**YES**" if r["beats_buy_hold"] else "no"
-                    if r["liquidated"]:
-                        flag = "LIQUIDATED"
-                    tbl += (f"| {r['name']} | {r['pnl']:+,.2f} "
-                            f"| {r['funding_pnl']:+,.2f} "
-                            f"| **{r['total_pnl']:+,.2f}** "
-                            f"| {r['total_return_pct']:+.1f}% | {r['trades']} "
-                            f"| {r['win_rate']:.0f}% "
-                            f"| {r['max_drawdown']:+,.2f} | {flag} |\n")
-                st.markdown(tbl)
-                winners = [r for r in good if r.get("beats_buy_hold")]
-                if not winners:
-                    st.warning(
-                        f"On {symbol} over this window, no strategy beat simply "
-                        f"holding (${bh:+,.2f}). That is the honest answer — "
-                        f"holding is the benchmark for a reason.")
-                else:
-                    best = winners[0]
-                    st.success(
-                        f"Best here: **{best['name']}** at "
-                        f"${best['total_pnl']:+,.2f} "
-                        f"({best['total_return_pct']:+.1f}%) including funding, "
-                        f"versus ${bh:+,.2f} for holding.")
-                liq = [r for r in good if r["liquidated"]]
-                if liq:
-                    st.error("Would have been liquidated at this leverage: "
-                             + ", ".join(r["name"] for r in liq))
-        if st.session_state.get("bt_run"):
-            from tradingagents import futures_backtest as fbt
-            try:
-                with st.spinner(f"simulating {strat.name} on {symbol}…"):
-                    hist = fx.klines(symbol, bt_interval, int(bt_limit))
-                    res, fund_pnl = sg.backtest(
-                        strat_key, hist, margin=float(margin),
-                        leverage=float(lev),
-                        params=({"take_profit_pct": float(tp),
-                                 "stop_loss_pct": float(sl)}
-                                if strat.kind == "bracket" else None),
-                        funding=_funding_history(symbol))
-            except Exception as exc:                      # noqa: BLE001
-                st.error(f"Backtest failed: {exc}")
-            else:
-                m1, m2, m3, m4, m5 = st.columns(5)
-                m1.metric("Result", f"${res.pnl + fund_pnl:+,.2f}",
-                          f"{(res.pnl + fund_pnl)/res.margin*100:+.1f}% on margin")
-                m5.metric("of which funding", f"${fund_pnl:+,.2f}",
-                          "received" if fund_pnl > 0 else "paid",
-                          delta_color="normal" if fund_pnl > 0 else "inverse")
-                m2.metric("Buy & hold", f"${res.buy_hold_pnl:+,.2f}",
-                          "beaten" if res.beats_buy_hold else "not beaten",
-                          delta_color="normal" if res.beats_buy_hold else "inverse")
-                m3.metric("Trades", f"{len(res.trades)}",
-                          f"{res.win_rate:.0f}% win")
-                m4.metric("Worst equity", f"${res.worst_equity:,.2f}",
-                          "LIQUIDATED" if res.liquidated else
-                          f"of ${res.margin:,.0f}",
-                          delta_color="inverse" if res.liquidated else "off")
-                if res.liquidated:
-                    st.error(
-                        f"At {lev:.0f}x this configuration would have been "
-                        f"liquidated — the drawdown consumed the whole margin. "
-                        f"Lower the leverage or widen the stop.")
-                elif not res.beats_buy_hold:
-                    st.warning(
-                        f"Simply holding made more (${res.buy_hold_pnl:+,.2f} vs "
-                        f"${res.pnl:+,.2f}). The barriers cost money on this "
-                        f"symbol and period.")
-                st.caption(
-                    f"{res.bars} {bt_interval} bars over {res.span_days:.1f} days · "
-                    f"{res.n_tp} take-profits, {res.n_sl} stops, {res.n_open} open "
-                    f"· max drawdown ${res.max_drawdown:,.2f} mark-to-market · "
-                    f"fees 2bp per side")
-                if res.equity_curve:
-                    import altair as alt
-                    eq = pd.DataFrame(res.equity_curve, columns=["Date", "Equity"])
-                    st.altair_chart(
-                        alt.Chart(eq).mark_line(size=2).encode(
-                            x=alt.X("Date:T", title=None),
-                            y=alt.Y("Equity:Q", title="account",
-                                    scale=alt.Scale(zero=False)),
-                            tooltip=["Date:T", "Equity:Q"]).properties(height=170),
-                        use_container_width=True)
-                if res.trades:
-                    tbl = "| # | entry | exit | in | out | why | return | PnL $ |\n"
-                    tbl += "|---|---|---|---|---|---|---|---|\n"
-                    for t in res.trades[-30:]:
-                        tbl += (f"| {t.n} | {t.entry_at:%m-%d %H:%M} "
-                                f"| {t.exit_at:%m-%d %H:%M} | {t.entry_px:,.4g} "
-                                f"| {t.exit_px:,.4g} | {t.reason} "
-                                f"| {t.net_return*100:+.2f}% | {t.pnl:+,.2f} |\n")
-                    st.markdown(tbl)
-                    if len(res.trades) > 30:
-                        st.caption(f"showing the last 30 of {len(res.trades)} trades")
 
         st.markdown('<div class="ta-label">Trade log</div>', unsafe_allow_html=True)
         rows = []
@@ -1824,6 +1630,329 @@ def render_trade_tab() -> None:
         "the take-profit edge disappears. To go live: set SPX_BOT_ARMED=yes and "
         "run `python spx_bot.py run --live` in a terminal.")
 
+
+
+    # Setup is a one-time job. It used to sit at the top of the operating
+    # column, above the controls, which is why the tab read as jumbled.
+    with st.expander("Setup and connection",
+                     expanded=not cred.status()["has_credentials"]):
+            st.markdown('<div class="ta-label">MEXC API keys</div>',
+                        unsafe_allow_html=True)
+            cst = cred.status()
+            if cst["has_credentials"]:
+                mode_note = ("" if cst["file_mode_ok"] else
+                             f"  ·  file mode {cst['file_mode']} — should be -rw-------")
+                st.markdown(
+                    f"<div class='ta-card'><h4>Key loaded</h4>"
+                    f"<div style='font-family:var(--font-mono);font-size:12.5px'>"
+                    f"key &nbsp; {html.escape(cst['key_fingerprint'])}<br>"
+                    f"secret {html.escape(cst['secret_fingerprint'])}</div>"
+                    f"<div style='color:var(--muted);font-size:12px;margin-top:6px'>"
+                    f"source: {html.escape(cst['source'])}{html.escape(mode_note)}"
+                    f"</div></div>", unsafe_allow_html=True)
+            else:
+                st.caption("No key loaded. Enter one below, or export "
+                           "MEXC_API_KEY / MEXC_API_SECRET before launching.")
+
+            # A different key in .env is invisible from the browser. It used to win
+            # silently, so every connection test ran against a key the user had
+            # already replaced. The saved key now wins — say so, and name the file
+            # to clean up.
+            conflict = cred.env_conflict()
+            if conflict.get("conflict"):
+                stale = ", ".join(f"{where} ({fp})" for where, fp in conflict["stale"])
+                st.warning(
+                    f"A different MEXC key is also set in {stale}. The key saved "
+                    f"here wins, but delete the `MEXC_API_KEY` / `MEXC_API_SECRET` "
+                    f"lines from that file so there is only one answer to which "
+                    f"key is live.")
+
+            with st.expander("Enter or replace keys",
+                             expanded=not cst["has_credentials"]):
+                st.caption(
+                    "Create the key on MEXC with **futures trading and read access "
+                    "enabled**, **withdrawals disabled**, and an **IP allowlist**. "
+                    "A trade-only key that leaks can lose money on bad trades but "
+                    "cannot move funds off the exchange. Keys are written to "
+                    f"`{cst['store_path']}` with owner-only permissions — never to "
+                    "the project folder, and never shown back to you.")
+                with st.form("mexc_keys", clear_on_submit=True):
+                    k_in = st.text_input("API key", type="password",
+                                         autocomplete="off")
+                    s_in = st.text_input("API secret", type="password",
+                                         autocomplete="off")
+                    f1, f2 = st.columns([1, 1])
+                    if f1.form_submit_button("Save keys", type="primary"):
+                        try:
+                            cred.save(k_in, s_in)
+                        except ValueError as exc:
+                            st.error(str(exc))
+                        else:
+                            st.success("Saved. Test the connection below.")
+                            st.rerun()
+                    if f2.form_submit_button("Forget saved keys"):
+                        st.warning("Removed." if cred.clear() else "Nothing stored.")
+                        st.rerun()
+
+            tc1, tc2 = st.columns([1, 3])
+            if tc1.button("Test connection", type="primary"):
+                st.session_state["conn_test"] = True
+            if st.session_state.get("conn_test"):
+                # Clear the flag before rendering: Streamlit reruns the script on
+                # every widget interaction, and leaving it set re-issued a signed
+                # POST to the order endpoint on each one.
+                st.session_state.pop("conn_test", None)
+                with st.spinner("talking to MEXC…"):
+                    rep = fx.preflight(symbol)
+                checks = [
+                    ("Credentials present", rep.get("credentials")),
+                    ("Read account balance", rep.get("read_assets")),
+                    ("Read open positions", rep.get("read_positions")),
+                    ("Permission to place orders", rep.get("order_permission")),
+                    ("Rest a stop on MEXC's servers", rep.get("can_rest_stop")),
+                ]
+                rows = ""
+                for label, ok in checks:
+                    mark = "PASS" if ok else ("FAIL" if ok is False else "unknown")
+                    colour = ("var(--buy)" if ok else
+                              ("var(--sell)" if ok is False else "var(--muted)"))
+                    rows += (f"<div class='ta-stage'><span class='lbl'>{label}</span>"
+                             f"<span class='tag' style='color:{colour}'>{mark}</span>"
+                             f"</div>")
+                st.markdown(f"<div class='ta-card'><h4>Connection</h4>{rows}</div>",
+                            unsafe_allow_html=True)
+                if rep.get("equity_usdt") is not None:
+                    st.metric("Futures wallet", f"{rep['equity_usdt']:,.2f} USDT")
+                if rep.get("ready"):
+                    st.success(f"Connected. This key can read the account and place "
+                               f"futures orders on {symbol}.")
+                    st.caption("Both write checks are non-destructive: the order "
+                               "check cancels an order id that cannot exist, and "
+                               "the stop check targets a position id that cannot "
+                               "exist. Neither can open a position. They are "
+                               "separate endpoints, so both are tested — a key can "
+                               "place orders and still not be allowed to rest a "
+                               "stop.")
+                elif rep.get("auth_failed"):
+                    st.error("**MEXC rejected the credentials themselves, not their "
+                             "permissions.** No permission setting will fix this.")
+                    for fix in rep.get("remedies", []):
+                        st.markdown(f"- {fix}")
+                elif rep.get("edge_blocked"):
+                    st.error("**Blocked by MEXC's edge proxy, not by your key.** The "
+                             "order endpoint returned an HTML “Access Denied” "
+                             "before the API saw the request, so no permission "
+                             "setting on MEXC will change it.")
+                    for fix in rep.get("remedies", []):
+                        st.markdown(f"- {fix}")
+                    st.caption("MEXC's edge refuses the futures order paths for "
+                               "requests whose User-Agent identifies a scripted "
+                               "client (bare urllib or requests). Reads are "
+                               "unaffected, which makes it look like a trade "
+                               "permission problem.")
+                elif rep.get("missing_scopes"):
+                    st.error("**Your key is missing permission scopes.** MEXC named "
+                             "them exactly: " + ", ".join(rep["missing_scopes"]) + ".")
+                    st.markdown("**To fix, on MEXC:**")
+                    for fix in rep.get("remedies", []):
+                        st.markdown(f"- {fix}")
+                    st.markdown(
+                        "- Keep **withdrawals disabled**, and check the key's "
+                        "**IP allowlist** includes this machine.\n"
+                        "- Editing scopes can issue a new secret — if so, paste "
+                        "both values above again.")
+                    st.caption("Futures API order placement is not gated by MEXC on "
+                               "this contract; these are key settings you control.")
+                else:
+                    st.error("Not ready to trade — see the raw exchange responses "
+                             "below. Common causes: a wrong secret (signature "
+                             "failure) or an IP allowlist that excludes this machine.")
+                for note in rep.get("notes", []):
+                    st.caption(f"· {note}")
+
+
+    st.markdown('<div class="ta-section">Analyse</div>',
+                unsafe_allow_html=True)
+    analyse_tabs = st.tabs(["Chart", "Backtest"])
+    with analyse_tabs[0]:
+            st.markdown('<div class="ta-label">Chart</div>', unsafe_allow_html=True)
+            ci1, ci2 = st.columns([1, 3])
+            interval = ci1.selectbox("Interval",
+                                     ["Min1", "Min5", "Min15", "Min60", "Hour4", "Day1"],
+                                     index=1, key="trade_interval",
+                                     label_visibility="collapsed")
+            try:
+                import crypto_screener as _cs
+                candles = fx.klines(symbol, interval, 240)
+                chart = _cs.candlestick_chart(candles, symbol.replace("_USDT", ""))
+                # overlay the live take-profit / stop levels off the last close
+                import altair as alt
+                last = float(candles["Close"].iloc[-1])
+                levels = [{"level": last * (1 + tp / 100), "kind": f"take-profit +{tp:g}%"},
+                          {"level": last * (1 - sl / 100), "kind": f"stop-loss -{sl:g}%"}]
+                if pos:
+                    levels += [{"level": float(pos["entry"]), "kind": "entry"},
+                               {"level": float(pos["tp"]), "kind": "resting TP"}]
+                rules = alt.Chart(pd.DataFrame(levels)).mark_rule(
+                    strokeDash=[4, 4], size=1.5).encode(
+                    y="level:Q",
+                    color=alt.Color("kind:N", legend=alt.Legend(title=None,
+                                                                orient="top")),
+                    tooltip=["kind:N", "level:Q"])
+                st.altair_chart(chart + rules, use_container_width=True)
+                ci2.caption(f"{_cs.chart_summary(candles)}  ·  {interval} candles "
+                            f"from MEXC futures")
+            except Exception as exc:                          # noqa: BLE001
+                st.warning(f"Chart unavailable for {symbol}: {exc}")
+
+    with analyse_tabs[1]:
+            st.markdown('<div class="ta-label">Backtest these settings</div>',
+                        unsafe_allow_html=True)
+            bt1, bt2, bt3 = st.columns([1, 1, 2])
+            bt_interval = bt1.selectbox("Bars", ["Min5", "Min15", "Min60", "Hour4"],
+                                        index=0, key="bt_interval")
+            bt_limit = bt2.selectbox("History", [500, 1000, 2000], index=1,
+                                     key="bt_limit",
+                                     format_func=lambda n: f"{n} bars")
+            bb1, bb2 = bt3.columns(2)
+            if bb1.button("Run backtest", type="primary"):
+                st.session_state["bt_run"] = True
+                st.session_state.pop("bt_compare", None)
+            if bb2.button("Compare all 6"):
+                st.session_state["bt_compare"] = True
+                st.session_state.pop("bt_run", None)
+
+            if st.session_state.get("bt_compare"):
+                from tradingagents import strategies as _sg
+                try:
+                    with st.spinner(f"running all six strategies on {symbol}…"):
+                        hist = fx.klines(symbol, bt_interval, int(bt_limit))
+                        fund_hist = _funding_history(symbol)
+                        rows = _sg.compare(hist, margin=float(margin),
+                                           leverage=float(lev), funding=fund_hist)
+                except Exception as exc:                      # noqa: BLE001
+                    st.error(f"Comparison failed: {exc}")
+                else:
+                    good = [r for r in rows if "error" not in r]
+                    bh = good[0]["buy_hold_total"] if good else 0.0
+                    fsum = _funding_summary(symbol)
+                    st.caption(f"{symbol} · {bt_limit} {bt_interval} bars · "
+                               f"${margin:,.0f} margin at {lev:.0f}x · "
+                               f"buy & hold benchmark ${bh:+,.2f} (funding included)")
+                    if fsum.get("available"):
+                        sign = "receives" if fsum["long_total"] > 0 else "pays"
+                        st.info(
+                            f"**Funding on {symbol}:** a long {sign} "
+                            f"{abs(fsum['long_total'])*100:.2f}% of notional over the "
+                            f"published history ({fsum['long_daily']*100:+.4f}%/day, "
+                            f"{fsum['long_annual']*100:+.1f}%/yr) across "
+                            f"{fsum['settlements']} settlements, "
+                            f"{fsum['pct_positive']:.0f}% of which charged longs. "
+                            f"Perpetual funding is settled every few hours while a "
+                            f"position is open, so it scales with time held.")
+                    else:
+                        st.warning("No funding history published for this contract — "
+                                   "the totals below exclude funding.")
+                    tbl = ("| strategy | price PnL | funding | TOTAL | return "
+                           "| trades | win% | max DD | beats hold |\n"
+                           "|---|---|---|---|---|---|---|---|---|\n")
+                    for r in rows:
+                        if "error" in r:
+                            tbl += f"| {r['name']} | error | | | | | | | |\n"
+                            continue
+                        flag = "**YES**" if r["beats_buy_hold"] else "no"
+                        if r["liquidated"]:
+                            flag = "LIQUIDATED"
+                        tbl += (f"| {r['name']} | {r['pnl']:+,.2f} "
+                                f"| {r['funding_pnl']:+,.2f} "
+                                f"| **{r['total_pnl']:+,.2f}** "
+                                f"| {r['total_return_pct']:+.1f}% | {r['trades']} "
+                                f"| {r['win_rate']:.0f}% "
+                                f"| {r['max_drawdown']:+,.2f} | {flag} |\n")
+                    st.markdown(tbl)
+                    winners = [r for r in good if r.get("beats_buy_hold")]
+                    if not winners:
+                        st.warning(
+                            f"On {symbol} over this window, no strategy beat simply "
+                            f"holding (${bh:+,.2f}). That is the honest answer — "
+                            f"holding is the benchmark for a reason.")
+                    else:
+                        best = winners[0]
+                        st.success(
+                            f"Best here: **{best['name']}** at "
+                            f"${best['total_pnl']:+,.2f} "
+                            f"({best['total_return_pct']:+.1f}%) including funding, "
+                            f"versus ${bh:+,.2f} for holding.")
+                    liq = [r for r in good if r["liquidated"]]
+                    if liq:
+                        st.error("Would have been liquidated at this leverage: "
+                                 + ", ".join(r["name"] for r in liq))
+            if st.session_state.get("bt_run"):
+                from tradingagents import futures_backtest as fbt
+                try:
+                    with st.spinner(f"simulating {strat.name} on {symbol}…"):
+                        hist = fx.klines(symbol, bt_interval, int(bt_limit))
+                        res, fund_pnl = sg.backtest(
+                            strat_key, hist, margin=float(margin),
+                            leverage=float(lev),
+                            params=({"take_profit_pct": float(tp),
+                                     "stop_loss_pct": float(sl)}
+                                    if strat.kind == "bracket" else None),
+                            funding=_funding_history(symbol))
+                except Exception as exc:                      # noqa: BLE001
+                    st.error(f"Backtest failed: {exc}")
+                else:
+                    m1, m2, m3, m4, m5 = st.columns(5)
+                    m1.metric("Result", f"${res.pnl + fund_pnl:+,.2f}",
+                              f"{(res.pnl + fund_pnl)/res.margin*100:+.1f}% on margin")
+                    m5.metric("of which funding", f"${fund_pnl:+,.2f}",
+                              "received" if fund_pnl > 0 else "paid",
+                              delta_color="normal" if fund_pnl > 0 else "inverse")
+                    m2.metric("Buy & hold", f"${res.buy_hold_pnl:+,.2f}",
+                              "beaten" if res.beats_buy_hold else "not beaten",
+                              delta_color="normal" if res.beats_buy_hold else "inverse")
+                    m3.metric("Trades", f"{len(res.trades)}",
+                              f"{res.win_rate:.0f}% win")
+                    m4.metric("Worst equity", f"${res.worst_equity:,.2f}",
+                              "LIQUIDATED" if res.liquidated else
+                              f"of ${res.margin:,.0f}",
+                              delta_color="inverse" if res.liquidated else "off")
+                    if res.liquidated:
+                        st.error(
+                            f"At {lev:.0f}x this configuration would have been "
+                            f"liquidated — the drawdown consumed the whole margin. "
+                            f"Lower the leverage or widen the stop.")
+                    elif not res.beats_buy_hold:
+                        st.warning(
+                            f"Simply holding made more (${res.buy_hold_pnl:+,.2f} vs "
+                            f"${res.pnl:+,.2f}). The barriers cost money on this "
+                            f"symbol and period.")
+                    st.caption(
+                        f"{res.bars} {bt_interval} bars over {res.span_days:.1f} days · "
+                        f"{res.n_tp} take-profits, {res.n_sl} stops, {res.n_open} open "
+                        f"· max drawdown ${res.max_drawdown:,.2f} mark-to-market · "
+                        f"fees 2bp per side")
+                    if res.equity_curve:
+                        import altair as alt
+                        eq = pd.DataFrame(res.equity_curve, columns=["Date", "Equity"])
+                        st.altair_chart(
+                            alt.Chart(eq).mark_line(size=2).encode(
+                                x=alt.X("Date:T", title=None),
+                                y=alt.Y("Equity:Q", title="account",
+                                        scale=alt.Scale(zero=False)),
+                                tooltip=["Date:T", "Equity:Q"]).properties(height=170),
+                            use_container_width=True)
+                    if res.trades:
+                        tbl = "| # | entry | exit | in | out | why | return | PnL $ |\n"
+                        tbl += "|---|---|---|---|---|---|---|---|\n"
+                        for t in res.trades[-30:]:
+                            tbl += (f"| {t.n} | {t.entry_at:%m-%d %H:%M} "
+                                    f"| {t.exit_at:%m-%d %H:%M} | {t.entry_px:,.4g} "
+                                    f"| {t.exit_px:,.4g} | {t.reason} "
+                                    f"| {t.net_return*100:+.2f}% | {t.pnl:+,.2f} |\n")
+                        st.markdown(tbl)
+                        if len(res.trades) > 30:
+                            st.caption(f"showing the last 30 of {len(res.trades)} trades")
 
 def render_llm_models_tab() -> None:
     """Manage the model catalog: built-ins listed, user models added/removed.

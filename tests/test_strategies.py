@@ -182,3 +182,59 @@ def test_bracket_strategy_gets_an_exposure_series():
     assert len(exp) == len(df)
     assert set(exp) <= {0.0, 1.0}
     assert any(x == 1.0 for x in exp), "a bracket strategy does hold sometimes"
+
+
+# ===================== timeframes ===========================================
+# The UI used to carry three interval pickers — chart, backtest, and none for the
+# bot — so a person could study one timeframe, backtest another, and run neither.
+def test_poll_is_half_a_bar_within_sane_bounds():
+    assert sg.poll_seconds_for("Min1") == 30
+    assert sg.poll_seconds_for("Min5") == 150
+    assert sg.poll_seconds_for("Min60") == 300, "capped at 5 minutes"
+    assert sg.poll_seconds_for("Day1") == 300, "still capped"
+    assert sg.poll_seconds_for("nonsense") == 150, "falls back to Min5"
+
+
+def test_per_bar_rebalancers_are_refused_on_fine_bars():
+    """Measured on the real 1-minute file: 148 orders a day, 2,279x turnover in
+    31 days — $10.22/month of spread at zero fees on a $163 account."""
+    for key in ("trend_filter", "session_long", "vol_target"):
+        assert sg.timeframe_fit("Min1", key)[0] == "avoid"
+        assert sg.timeframe_fit("Min5", key)[0] == "avoid"
+        assert sg.timeframe_fit("Min60", key)[0] == "good"
+
+
+def test_strategies_that_do_not_rebalance_are_timeframe_independent():
+    """buy_hold trades once and ladder_dca a fixed number of times, so the
+    turnover argument does not apply to either. Classifying them by `kind` alone
+    wrongly flagged both as ruinous on fine bars."""
+    for tf in sg.TIMEFRAMES:
+        assert sg.timeframe_fit(tf, "buy_hold")[0] == "good"
+        assert sg.timeframe_fit(tf, "ladder_dca")[0] in ("good", "workable")
+
+
+def test_a_bracket_strategy_is_only_flagged_on_sub_5m_bars():
+    assert sg.timeframe_fit("Min1", "barrier_harvest")[0] == "workable"
+    assert "optimistic" in sg.timeframe_fit("Min1", "barrier_harvest")[1]
+    for tf in ("Min5", "Min15", "Min60", "Hour4", "Day1"):
+        assert sg.timeframe_fit(tf, "barrier_harvest")[0] == "good"
+
+
+def test_every_verdict_carries_a_reason():
+    for tf in sg.TIMEFRAMES:
+        for key in sg.ORDER:
+            verdict, why = sg.timeframe_fit(tf, key)
+            assert verdict in ("good", "workable", "avoid")
+            assert len(why) > 40, f"{tf}/{key} has no usable explanation"
+
+
+def test_strategies_are_ranked_best_fit_first():
+    rows = sg.strategies_for("Min1")
+    verdicts = [r["verdict"] for r in rows]
+    assert verdicts == sorted(verdicts, key=lambda v:
+                              {"good": 0, "workable": 1, "avoid": 2}[v])
+    assert {r["key"] for r in rows} == set(sg.ORDER), "none may be dropped"
+
+
+def test_an_unknown_strategy_is_refused_rather_than_defaulted():
+    assert sg.timeframe_fit("Min5", "no_such_strategy")[0] == "avoid"

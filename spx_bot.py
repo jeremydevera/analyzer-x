@@ -24,6 +24,8 @@ Usage:
     python spx_bot.py run --live                # needs SPX_BOT_ARMED=yes too
     python spx_bot.py status                    # position + ledger
     python spx_bot.py flat --live               # close everything now
+    python spx_bot.py watchdog --live           # run, and restart after a crash
+    python spx_bot.py reset-losses              # clear the losing-trade counter
 """
 
 from __future__ import annotations
@@ -57,6 +59,8 @@ class Config:
     """Every risk limit in one place. Edit here, not in the logic below."""
     symbol: str = SYMBOL
     strategy: str = "barrier_harvest"
+    timeframe: str = "Min5"           # the bars this strategy is measured on;
+                                      # poll_seconds is derived from it
     leverage: int = 3                 # 3x was the cap that survived the worst
                                       # drawdown in the sample; 8x liquidated
     margin_usd: float = 115.0         # ~PHP 7,000
@@ -71,7 +75,9 @@ class Config:
                                       # reset clears it — a limit that resets
                                       # itself overnight is not a limit.
     max_open_positions: int = 1
-    poll_seconds: int = 60
+    poll_seconds: int = 0             # 0 = derive from the timeframe. Polling
+                                      # faster than the bar cannot change the
+                                      # decision; slower risks missing a bar.
     min_equity_usd: float = 20.0      # halt if the wallet falls below this
 
     @classmethod
@@ -83,6 +89,14 @@ class Config:
             except (OSError, json.JSONDecodeError, TypeError) as exc:
                 LOG.warning("bad config, using defaults: %s", exc)
         return cls()
+
+    @property
+    def poll(self) -> int:
+        """Effective poll interval: the explicit override, or half a bar."""
+        if self.poll_seconds and self.poll_seconds > 0:
+            return int(self.poll_seconds)
+        from tradingagents.strategies import poll_seconds_for
+        return poll_seconds_for(self.timeframe)
 
     def save(self) -> None:
         STATE_DIR.mkdir(parents=True, exist_ok=True)
@@ -152,7 +166,7 @@ def health() -> dict:
         pass
     st = _read_state()
     cfg = Config.load()
-    stale = age is not None and age > max(180, cfg.poll_seconds * 3)
+    stale = age is not None and age > max(180, cfg.poll * 3)
     return {"running": pid is not None, "pid": pid, "last_cycle": beat,
             "seconds_since_cycle": age, "stale": stale,
             "position_open": bool(st.get("position")),
@@ -256,7 +270,10 @@ def do_preflight(cfg: Config) -> int:
 def do_status(cfg: Config) -> int:
     s = _read_state()
     runnable, why_not = strategy_is_runnable(cfg.strategy)
-    print(f"strategy : {cfg.strategy}"
+    from tradingagents.strategies import timeframe_fit
+    fit, _ = timeframe_fit(cfg.timeframe, cfg.strategy)
+    print(f"strategy : {cfg.strategy} on {cfg.timeframe} bars "
+          f"(fit: {fit}, poll {cfg.poll}s)"
           + ("" if runnable else f"  ** NOT RUNNABLE: {why_not}"))
     print(f"position : {s.get('position')}")
     print(f"day      : {s.get('day')}  realised today "
@@ -533,7 +550,7 @@ def step(cfg: Config, live: bool) -> None:
             s["halted"] = True
             s["halt_reason"] = f"equity {eq:.2f} below floor {cfg.min_equity_usd}"
             _write_state(s)
-            LOG.error("HALT: %s", s["halt_reason"])
+            alert("halted", s["halt_reason"])
             return
     except fx.MexcFuturesError as exc:
         LOG.warning("equity check failed, standing down this cycle: %s", exc)
@@ -586,9 +603,10 @@ def step(cfg: Config, live: bool) -> None:
                         px, pnl, s.get("losses", 0),
                         f" of {cfg.max_losses}" if cfg.max_losses else "")
             if cfg.max_losses and s.get("losses", 0) >= cfg.max_losses:
-                LOG.error("LOSS LIMIT REACHED (%d of %d) — no further trades "
-                          "until you reset the counter",
-                          s["losses"], cfg.max_losses)
+                alert("loss-limit",
+                      f"loss limit reached: {s['losses']} of {cfg.max_losses} "
+                      f"losing trades. No further trades until you reset the "
+                      f"counter.")
         _write_state(s)
         return
 
@@ -683,6 +701,12 @@ def do_run(cfg: Config, live: bool, once: bool) -> int:
     if not runnable:
         LOG.error("refusing to start: %s", why_not)
         return 2
+    from tradingagents.strategies import timeframe_fit
+    fit, why_fit = timeframe_fit(cfg.timeframe, cfg.strategy)
+    if fit == "avoid":
+        LOG.error("refusing to start: %s on %s bars is measured as ruinous. %s",
+                  cfg.strategy, cfg.timeframe, why_fit)
+        return 5
     try:
         skew = fx.clock_skew_ms()
         if abs(skew) > 5000:
@@ -697,8 +721,9 @@ def do_run(cfg: Config, live: bool, once: bool) -> int:
         LOG.warning("could not check the clock: %s", exc)
     may, why = gates_open(live)
     mode = "LIVE — REAL MONEY" if may else f"DRY RUN ({why})"
-    LOG.warning("spx_bot starting: %s  %s  %s %dx  tp %.1f%% sl %.1f%%  "
-                "margin $%.2f", mode, cfg.strategy, cfg.symbol, cfg.leverage,
+    LOG.warning("spx_bot starting: %s  %s on %s bars (poll %ds)  %s %dx  "
+                "tp %.1f%% sl %.1f%%  margin $%.2f", mode, cfg.strategy,
+                cfg.timeframe, cfg.poll, cfg.symbol, cfg.leverage,
                 cfg.take_profit_pct, cfg.stop_loss_pct, cfg.margin_usd)
     if may:
         LOG.warning("kill switch: touch %s to stop trading", KILL_PATH)
@@ -720,6 +745,83 @@ def do_run(cfg: Config, live: bool, once: bool) -> int:
 
 
 MAX_CONSECUTIVE_FAULTS = 5
+ALERT_PATH = STATE_DIR / "alerts.jsonl"
+
+# Exit codes the watchdog must NOT retry: they are configuration, not weather.
+# Restarting on a bad clock or an unrunnable strategy would just spin.
+PERMANENT_EXIT_CODES = {2, 3, 4, 5}
+
+
+def alert(kind: str, message: str) -> None:
+    """Tell the operator something happened while they were not looking.
+
+    A bot that halts silently at 3am is discovered at 9am. This writes an append
+    only record and raises a desktop notification, so the state is visible both
+    on screen and after the fact.
+    """
+    entry = {"at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+             "kind": kind, "message": message}
+    try:
+        STATE_DIR.mkdir(parents=True, exist_ok=True)
+        with ALERT_PATH.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(entry) + "\n")
+    except OSError as exc:
+        LOG.warning("could not write the alert: %s", exc)
+    LOG.error("ALERT [%s] %s", kind, message)
+    if sys.platform == "darwin":
+        try:
+            # osascript rather than a dependency; failure here must never affect
+            # trading, so it is fire-and-forget with a short timeout.
+            import subprocess
+            safe = message.replace('"', "'")[:200]
+            subprocess.run(
+                ["osascript", "-e",
+                 f'display notification "{safe}" with title "spx_bot: {kind}"'],
+                capture_output=True, timeout=5, check=False)
+        except Exception:                                  # noqa: BLE001
+            pass
+
+
+def recent_alerts(limit: int = 20) -> list:
+    try:
+        lines = ALERT_PATH.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+    out = []
+    for line in lines[-limit:]:
+        try:
+            out.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    return list(reversed(out))
+
+
+def do_watchdog(cfg: Config, live: bool) -> int:
+    """Keep the runner alive across faults, and say so when it cannot.
+
+    Separate from the in-loop retry: that handles a bad cycle, this handles the
+    process giving up entirely. Backs off so a permanent fault cannot spin, and
+    refuses to restart on a configuration error, which would spin forever.
+    """
+    delay = 30
+    restarts = 0
+    while True:
+        rc = do_run(cfg, live, once=False)
+        if rc == 0:
+            return 0
+        if rc in PERMANENT_EXIT_CODES:
+            alert("stopped", f"the bot exited with code {rc}, which is a "
+                             f"configuration problem — not restarting. See "
+                             f"{LOG_PATH}")
+            return rc
+        restarts += 1
+        held = (_read_state() or {}).get("position")
+        alert("restarting",
+              f"the bot died (code {rc}); restart {restarts} in {delay}s"
+              + (f". A POSITION IS OPEN ({held.get('vol')} contracts) — its "
+                 f"exchange stop still applies" if held else ""))
+        time.sleep(delay)
+        delay = min(600, delay * 2)
 
 
 def _run_loop(cfg: Config, live: bool, once: bool) -> int:
@@ -743,30 +845,36 @@ def _run_loop(cfg: Config, live: bool, once: bool) -> int:
             LOG.exception("unexpected error (%d of %d before giving up): %s",
                           consecutive_faults, MAX_CONSECUTIVE_FAULTS, exc)
             if consecutive_faults >= MAX_CONSECUTIVE_FAULTS:
-                if (_read_state() or {}).get("position"):
-                    LOG.error("GIVING UP WITH AN OPEN POSITION — its exchange "
-                              "stop still applies, but nothing is managing the "
-                              "trade. Close it with "
-                              "`python spx_bot.py flat --live`")
+                held = (_read_state() or {}).get("position")
+                if held:
+                    alert("giving-up",
+                          f"{MAX_CONSECUTIVE_FAULTS} consecutive faults WITH AN "
+                          f"OPEN POSITION ({held.get('vol')} contracts). Its "
+                          f"exchange stop still applies, but nothing is managing "
+                          f"the trade. Close it with "
+                          f"`python spx_bot.py flat --live`.")
+                else:
+                    alert("giving-up", f"{MAX_CONSECUTIVE_FAULTS} consecutive "
+                                       f"faults, flat, stopping. See {LOG_PATH}")
                 return 1
             _touch_heartbeat()
             if once:
                 return 1
-            time.sleep(min(300, cfg.poll_seconds * consecutive_faults))
+            time.sleep(min(600, cfg.poll * consecutive_faults))
             continue
         else:
             consecutive_faults = 0
         _touch_heartbeat()
         if once:
             return 0
-        time.sleep(cfg.poll_seconds)
+        time.sleep(cfg.poll)
 
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", choices=("preflight", "run", "status", "flat",
-                                       "reset-losses"))
+    ap.add_argument("command", choices=("preflight", "run", "watchdog", "status",
+                                       "flat", "reset-losses"))
     ap.add_argument("--live", action="store_true",
                     help="actually place orders (also needs SPX_BOT_ARMED=yes)")
     ap.add_argument("--once", action="store_true", help="single cycle, then exit")
@@ -800,6 +908,8 @@ def main(argv=None) -> int:
         return do_flat(cfg, a.live)
     if not gates_open(a.live)[0]:
         use_dry_book()
+    if a.command == "watchdog":
+        return do_watchdog(cfg, a.live)
     return do_run(cfg, a.live, a.once)
 
 

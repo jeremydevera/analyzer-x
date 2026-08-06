@@ -63,10 +63,18 @@ class Config:
     timeframe: str = "Min5"           # the bars this strategy is measured on;
                                       # poll_seconds is derived from it
     # Several (timeframe, strategy) lanes may be selected. Only ONE can place
-    # orders per symbol: MEXC merges same-symbol positions into one, and a
-    # position carries a single stop, so two lanes cannot each hold their own
-    # barriers — one lane's stop would close part of the other's position. The
-    # remaining lanes are evaluated and logged as signals.
+    # orders per symbol, and that is the exchange's rule rather than a shortcut
+    # here. Established against the live API:
+    #   * same settings          -> the orders merge into one position, which
+    #                               carries a single stop
+    #   * different leverage     -> "code 2021: Order leverage is inconsistent
+    #                               with the existing position leverage"
+    #   * isolated plus cross    -> "code 2027: Cross and isolated position of
+    #                               the same direction are alternative"
+    # So two lanes cannot each hold their own barriers; one lane's stop would
+    # close part of the other's position. The remaining lanes are evaluated and
+    # logged as signals. Running lanes in parallel for real needs one symbol
+    # each — MEXC keeps positions on different contracts separate.
     lanes: list = field(default_factory=list)
     leverage: int = 3                 # 3x was the cap that survived the worst
                                       # drawdown in the sample; 8x liquidated

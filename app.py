@@ -1391,11 +1391,18 @@ def render_trade_tab() -> None:
             st.info(
                 f"**{strat_key} on {timeframe} places the orders.** The other "
                 f"{len(lanes) - 1} ({others}) are evaluated and logged as signals "
-                f"only. MEXC merges same-symbol positions into one, and a position "
-                f"carries a single stop — so two lanes cannot each hold their own "
-                f"barriers; one lane's stop would close part of the other's "
-                f"position. To trade several for real at once, give each a "
-                f"different perpetual.")
+                f"only.\n\nThis is MEXC's rule, not a shortcut here — the "
+                f"exchange allows **one long per symbol** and refuses the "
+                f"alternatives outright:\n"
+                f"- a second long at a different leverage → "
+                f"`code 2021: Order leverage is inconsistent with the existing "
+                f"position leverage`\n"
+                f"- one isolated plus one cross → `code 2027: Cross and isolated "
+                f"position of the same direction are alternative`\n\n"
+                f"Same-settings orders simply merge into one position, which "
+                f"carries a single stop. To run several lanes for real at the same "
+                f"time, give each a different perpetual — MEXC keeps positions on "
+                f"different contracts separate.")
         st.caption(
             f"Checked every "
             f"**{min(sg.poll_seconds_for(l['timeframe']) for l in lanes)}s** — "

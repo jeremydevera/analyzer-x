@@ -358,8 +358,7 @@ def _attach_bracket(cfg: Config, vol: int, entry_px: float,
                 else _snap_tp_price(cfg, entry_px))
     if dry:
         payload = fx.place_position_stop(
-            cfg.symbol, 0, vol, stop_loss_price=sl_price,
-            take_profit_price=tp_price, dry_run=True)
+            cfg.symbol, 0, vol, stop_loss_price=sl_price, dry_run=True)
         return {"protected": False, "dry_run": True, "tp": tp_price,
                 "sl": sl_price, "request": payload.get("request")}
     live = [p for p in fx.open_positions(cfg.symbol)
@@ -368,13 +367,25 @@ def _attach_bracket(cfg: Config, vol: int, entry_px: float,
         raise fx.MexcFuturesError(
             "the entry order left no open position to attach a stop to")
     pid = int(live[0]["positionId"])
+    # The two barriers live in different places, because MEXC only supports one
+    # of them in each: the stop goes on the position record (survives this
+    # process dying), and the target has to be a resting limit close order (a
+    # LIMIT take-profit on the position record is accepted and silently
+    # attaches nothing). A market target would cost ~25bp, which is the entire
+    # measured edge, so it must be a limit.
     resp = fx.place_position_stop(cfg.symbol, pid, vol,
-                                  stop_loss_price=sl_price,
-                                  take_profit_price=tp_price, dry_run=False)
-    check = fx.verify_position_stop(cfg.symbol, pid)
+                                  stop_loss_price=sl_price, dry_run=False)
+    tp_resp = None
+    if tp_price:
+        tp_resp = fx.limit_close_long(cfg.symbol, vol, tp_price,
+                                      leverage=cfg.leverage, dry_run=False)
+    check = fx.verify_bracket(cfg.symbol, pid, tp_price)
     return {"protected": check["protected"], "dry_run": False,
+            "stop_active": check["stop_active"],
+            "target_resting": check["target_resting"],
             "position_id": pid, "tp": tp_price, "sl": sl_price,
-            "error_codes": check["error_codes"], "response": resp}
+            "error_codes": check["stop_error_codes"],
+            "response": resp, "tp_response": tp_resp}
 
 
 def _reconcile(cfg: Config, s: dict, px: float, dry: bool) -> bool:
@@ -421,6 +432,15 @@ def _reconcile(cfg: Config, s: dict, px: float, dry: bool) -> bool:
         exit_px = float(rec.get("takeProfitPrice") or rec.get("stopLossPrice")
                         or px)
         break
+    # The stop and the target are separate orders, so whichever did NOT fire can
+    # be left resting. It is a close-long order and cannot open a short, but a
+    # stale order is still a surprise waiting to happen.
+    try:
+        if fx.open_orders(cfg.symbol):
+            fx.cancel_all_orders(cfg.symbol)
+            LOG.info("cancelled the leftover resting order")
+    except fx.MexcFuturesError as exc:
+        LOG.warning("could not cancel leftover orders: %s", exc)
     pnl = (exit_px / entry - 1) * float(pos["notional"])
     won = pnl > 0
     s["realised_today"] = s.get("realised_today", 0.0) + pnl
@@ -649,9 +669,9 @@ def step(cfg: Config, live: bool) -> None:
                     "error_codes": br.get("error_codes"), "resp": br.get("response")})
     _write_state(s)
     if br["protected"]:
-        LOG.info("exchange holds the barriers: tp %.6f (limit) / sl %.6f "
-                 "(market) — they fire even if this process stops",
-                 br["tp"], br["sl"])
+        LOG.info("exchange holds both barriers: stop %.6f on the position, "
+                 "target %s resting as a limit — they fire even if this process "
+                 "stops", br["sl"], br["tp"])
     elif not dry:
         LOG.error("MEXC ACCEPTED THE BARRIERS BUT THEY ARE NOT ACTIVE "
                   "(error codes %s) — this loop is the only stop. Investigate "
@@ -663,6 +683,18 @@ def do_run(cfg: Config, live: bool, once: bool) -> int:
     if not runnable:
         LOG.error("refusing to start: %s", why_not)
         return 2
+    try:
+        skew = fx.clock_skew_ms()
+        if abs(skew) > 5000:
+            LOG.error("refusing to start: this machine's clock is %+.1fs from "
+                      "MEXC's. Every signed request would be rejected, and MEXC "
+                      "reports that as an auth failure — which looks exactly "
+                      "like a wrong secret. Fix the system clock first.",
+                      skew / 1000)
+            return 4
+        LOG.info("clock skew %+dms", skew)
+    except fx.MexcFuturesError as exc:
+        LOG.warning("could not check the clock: %s", exc)
     may, why = gates_open(live)
     mode = "LIVE — REAL MONEY" if may else f"DRY RUN ({why})"
     LOG.warning("spx_bot starting: %s  %s  %s %dx  tp %.1f%% sl %.1f%%  "
@@ -687,7 +719,11 @@ def do_run(cfg: Config, live: bool, once: bool) -> int:
             PID_PATH.unlink(missing_ok=True)
 
 
+MAX_CONSECUTIVE_FAULTS = 5
+
+
 def _run_loop(cfg: Config, live: bool, once: bool) -> int:
+    consecutive_faults = 0
     while True:
         try:
             step(cfg, live)
@@ -699,12 +735,27 @@ def _run_loop(cfg: Config, live: bool, once: bool) -> int:
         except fx.MexcFuturesError as exc:
             LOG.warning("cycle failed, will retry: %s", exc)
         except Exception as exc:                          # noqa: BLE001
-            LOG.exception("unexpected error, halting: %s", exc)
-            if (_read_state() or {}).get("position"):
-                LOG.error("EXITING WITH AN OPEN POSITION — no stop is being "
-                          "monitored. Close it with "
-                          "`python spx_bot.py flat --live`")
-            return 1
+            # Exiting on the first unexpected fault abandoned the position: the
+            # exchange stop still applies, but nothing retries the barriers,
+            # notices a fill, or enforces the breakers. Retry with backoff, then
+            # give up loudly rather than spinning on a permanent bug.
+            consecutive_faults += 1
+            LOG.exception("unexpected error (%d of %d before giving up): %s",
+                          consecutive_faults, MAX_CONSECUTIVE_FAULTS, exc)
+            if consecutive_faults >= MAX_CONSECUTIVE_FAULTS:
+                if (_read_state() or {}).get("position"):
+                    LOG.error("GIVING UP WITH AN OPEN POSITION — its exchange "
+                              "stop still applies, but nothing is managing the "
+                              "trade. Close it with "
+                              "`python spx_bot.py flat --live`")
+                return 1
+            _touch_heartbeat()
+            if once:
+                return 1
+            time.sleep(min(300, cfg.poll_seconds * consecutive_faults))
+            continue
+        else:
+            consecutive_faults = 0
         _touch_heartbeat()
         if once:
             return 0

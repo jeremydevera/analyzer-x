@@ -1000,19 +1000,82 @@ def test_dict_body_signing_is_unchanged_by_the_list_support():
 
 
 # ============ exchange-resting stops (the point of the whole exercise) ======
-def test_stop_defaults_are_asymmetric_and_deliberate():
-    """Stop exits at MARKET so it always gets out; take-profit rests as a LIMIT
-    because a market fill costs ~25bp, which is the entire measured edge."""
-    r = fx.place_position_stop("SPX500_USDT", 123, 4, stop_loss_price=6960.0,
-                               take_profit_price=7890.0)
+def test_a_limit_take_profit_on_the_position_record_is_refused():
+    """MEXC accepts it and attaches NOTHING.
+
+    Verified against a real position: the request returned success and the
+    resulting record read back `tp=None tpType=None`, with only the stop
+    attached. A take-profit that silently does not exist is the worst failure
+    available here, so this path refuses rather than lying. The target belongs in
+    a resting limit close order.
+    """
+    with pytest.raises(fx.MexcFuturesError) as exc:
+        fx.place_position_stop("SPX500_USDT", 1, 4, stop_loss_price=6944.0,
+                               take_profit_price=7870.0,
+                               take_profit_type=fx.SL_LIMIT)
+    assert "silently ignores" in str(exc.value)
+    assert "limit close order" in str(exc.value)
+
+
+def test_a_market_take_profit_sends_only_the_trigger_price():
+    b = fx.place_position_stop("SPX500_USDT", 1, 4, stop_loss_price=6944.0,
+                               take_profit_price=7870.0,
+                               take_profit_type=fx.SL_MARKET)["request"]
+    assert b["takeProfitPrice"] == 7870.0
+    assert "takeProfitOrderPrice" not in b
+
+
+def test_a_market_stop_omits_the_order_price():
+    b = fx.place_position_stop("SPX500_USDT", 1, 4,
+                               stop_loss_price=6944.0)["request"]
+    assert b["stopLossPrice"] == 6944.0
+    assert b["stopLossType"] == fx.SL_MARKET
+    assert "stopLossOrderPrice" not in b
+
+
+def test_a_limit_stop_needs_both_prices():
+    """Unlike the take-profit, a limit STOP requires the trigger AND the resting
+    price — either alone answers 5001."""
+    b = fx.place_position_stop("SPX500_USDT", 1, 4, stop_loss_price=6944.0,
+                               stop_loss_type=fx.SL_LIMIT,
+                               stop_loss_order_price=6940.0)["request"]
+    assert b["stopLossPrice"] == 6944.0
+    assert b["stopLossOrderPrice"] == 6940.0
+    assert b["stopLossType"] == fx.SL_LIMIT
+
+
+def test_the_position_record_carries_the_stop_at_market():
+    """Default is a MARKET stop: getting out matters more than the price, and it
+    is the only stop type MEXC actually attaches without a second price."""
+    r = fx.place_position_stop("SPX500_USDT", 123, 4, stop_loss_price=6960.0)
     b = r["request"]
     assert r["dry_run"] is True, "must not reach the exchange by default"
     assert b["stopLossType"] == fx.SL_MARKET
-    assert b["takeProfitType"] == fx.SL_LIMIT
-    assert b["takeProfitOrderPrice"] == 7890.0
+    assert b["stopLossPrice"] == 6960.0
+    assert "takeProfitPrice" not in b, "the target is a separate resting order"
     assert b["lossTrend"] == fx.TRIGGER_LAST, \
         "last price is the only basis that matches the backtest's candles"
     assert b["volType"] == fx.VOL_POSITION, "must cover the whole position"
+
+
+def test_verify_bracket_requires_both_halves(monkeypatch):
+    """The stop and the target live in different places, so both are read back.
+    Either one missing means the position is not protected as intended."""
+    monkeypatch.setattr(fx, "list_position_stops", lambda symbol=None: [
+        {"positionId": "55", "errorCode": 0, "isFinished": 0, "state": 2}])
+    monkeypatch.setattr(fx, "open_orders", lambda symbol=None: [
+        {"orderId": "9", "side": fx.SIDE_CLOSE_LONG, "price": 7870.0}])
+    v = fx.verify_bracket("SPX500_USDT", 55, 7870.0)
+    assert v["stop_active"] and v["target_resting"] and v["protected"]
+    assert v["target_order_id"] == "9"
+
+    # target missing -> not protected, even though the stop is fine
+    monkeypatch.setattr(fx, "open_orders", lambda symbol=None: [])
+    v = fx.verify_bracket("SPX500_USDT", 55, 7870.0)
+    assert v["stop_active"] is True and v["protected"] is False
+
+    # a strategy with no target (buy and hold) needs only the stop
+    assert fx.verify_bracket("SPX500_USDT", 55, None)["protected"] is True
 
 
 def test_a_limit_stop_without_a_price_is_refused():

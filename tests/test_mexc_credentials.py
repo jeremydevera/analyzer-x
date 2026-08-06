@@ -185,6 +185,9 @@ def test_preflight_reports_not_ready_when_a_scope_is_missing(monkeypatch):
 
     monkeypatch.setenv("MEXC_API_KEY", "k")
     monkeypatch.setenv("MEXC_API_SECRET", "s")
+    # This test is about scopes. preflight also checks the clock, which would
+    # otherwise consume the first mocked response.
+    monkeypatch.setattr(fx, "clock_skew_ms", lambda: 0)
     codes = iter([701, 703, 704])
     def fake_open(*a, **k):
         return FakeResp({"success": False, "code": next(codes),

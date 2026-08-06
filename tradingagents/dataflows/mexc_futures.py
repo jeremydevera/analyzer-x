@@ -271,6 +271,23 @@ def _request(method: str, path: str, *, params: dict | None = None,
     return payload.get("data")
 
 
+def server_time_ms() -> int:
+    """MEXC's clock, from the keyless ping endpoint."""
+    return int(_get_public(f"{BASE}/api/v1/contract/ping").get("data") or 0)
+
+
+def clock_skew_ms() -> int:
+    """How far this machine's clock is from MEXC's, in milliseconds.
+
+    Every signed request carries Request-Time and is validated against a receive
+    window. A laptop that has been asleep, or whose NTP has drifted, gets every
+    request rejected — and MEXC reports that as an auth failure, which reads
+    exactly like a wrong secret. Measuring it turns an afternoon of debugging
+    into one line of output.
+    """
+    return int(time.time() * 1000) - server_time_ms()
+
+
 def _get_public(url: str):
     """Keyless GET that raises this module's exceptions, not urllib's.
 
@@ -378,10 +395,27 @@ def preflight(symbol: str) -> dict:
               "read_positions": False, "order_permission": None,
               "equity_usdt": None, "notes": [], "missing_scopes": [],
               "remedies": [], "edge_blocked": False,
-              "auth_failed": False, "can_rest_stop": None, "ready": False}
+              "auth_failed": False, "can_rest_stop": None,
+              "clock_ok": None, "clock_skew_ms": None, "ready": False}
     if not report["credentials"]:
         report["notes"].append("MEXC_API_KEY / MEXC_API_SECRET not set")
         return report
+    try:
+        skew = clock_skew_ms()
+        report["clock_skew_ms"] = skew
+        if abs(skew) > _RECV_WINDOW_MS / 2:
+            report["clock_ok"] = False
+            report["remedies"].append(
+                f"This machine's clock is {skew / 1000:+.1f}s away from MEXC's. "
+                f"Signed requests are validated against a "
+                f"{_RECV_WINDOW_MS / 1000:.0f}s window, so they will be rejected "
+                f"as auth failures. Fix the system clock (macOS: System "
+                f"Settings -> General -> Date & Time -> Set automatically).")
+            report["notes"].append(f"clock skew {skew}ms — too large")
+        else:
+            report["clock_ok"] = True
+    except MexcFuturesError as exc:
+        report["notes"].append(f"could not check the clock: {exc}")
     try:
         report["equity_usdt"] = usdt_equity()
         report["read_assets"] = True
@@ -456,7 +490,8 @@ def preflight(symbol: str) -> dict:
     report["remedies"] = list(dict.fromkeys(report["remedies"]))
     report["ready"] = bool(report["read_assets"] and report["read_positions"]
                            and report["order_permission"]
-                           and report["can_rest_stop"])
+                           and report["can_rest_stop"]
+                           and report["clock_ok"] is not False)
     return report
 
 
@@ -527,7 +562,7 @@ def place_position_stop(symbol: str, position_id: int, vol: int, *,
                         take_profit_price: float | None = None,
                         stop_loss_type: int = SL_MARKET,
                         stop_loss_order_price: float | None = None,
-                        take_profit_type: int = SL_LIMIT,
+                        take_profit_type: int = SL_MARKET,
                         take_profit_order_price: float | None = None,
                         trend: int = TRIGGER_LAST,
                         vol_type: int = VOL_POSITION,
@@ -551,6 +586,21 @@ def place_position_stop(symbol: str, position_id: int, vol: int, *,
         raise MexcFuturesError(
             "a limit stop needs stop_loss_order_price — without it MEXC has no "
             "price to rest the exit order at")
+    # MEXC's field rules here are asymmetric between the two barriers and are
+    # not stated in the docs. Established by probing every combination against a
+    # position id that cannot exist, so an invalid payload answers 600/5001 while
+    # a valid one answers 2009 "position is nonexistent":
+    #
+    #   limit  take-profit -> takeProfitOrderPrice ONLY. Sending takeProfitPrice
+    #                         as well is rejected live with
+    #                         "code 600: takeProfitPrice and takeProfitOrderPrice
+    #                         cannot be set at the same time", and sending only
+    #                         takeProfitPrice with type=1 answers 5001, i.e. the
+    #                         field is ignored entirely for the limit type.
+    #   market take-profit -> takeProfitPrice ONLY.
+    #   limit  stop        -> stopLossPrice (the trigger) AND stopLossOrderPrice
+    #                         (where the exit rests). Either alone answers 5001.
+    #   market stop        -> stopLossPrice ONLY.
     body: dict = {
         "symbol": symbol,
         "positionId": int(position_id),
@@ -561,18 +611,22 @@ def place_position_stop(symbol: str, position_id: int, vol: int, *,
         "stopLossType": int(stop_loss_type),
         "volType": int(vol_type),
     }
-    if stop_loss_order_price:
+    if stop_loss_type == SL_LIMIT:
         body["stopLossOrderPrice"] = float(stop_loss_order_price)
     if take_profit_price:
-        body["takeProfitPrice"] = float(take_profit_price)
-        body["takeProfitType"] = int(take_profit_type)
-        # The defaults are deliberately asymmetric: the stop exits at market
-        # because getting out matters more than the price, while the target
-        # rests as a limit because a market fill costs ~25bp — the whole
-        # measured advantage of the barriers.
         if take_profit_type == SL_LIMIT:
-            body["takeProfitOrderPrice"] = float(
-                take_profit_order_price or take_profit_price)
+            # MEXC ACCEPTS this and attaches nothing. Verified against a real
+            # position: the payload returned success and the resulting record
+            # read back "tp=None tpType=None" with only the stop attached. A
+            # take-profit that silently does not exist is the worst possible
+            # failure here, so refuse it and make the caller use a resting limit
+            # close order instead (see limit_close_long).
+            raise MexcFuturesError(
+                "MEXC silently ignores a LIMIT take-profit on a position TP/SL "
+                "record — it returns success and attaches only the stop. Place "
+                "the target as a resting limit close order instead.")
+        body["takeProfitType"] = int(take_profit_type)
+        body["takeProfitPrice"] = float(take_profit_price)
     if dry_run:
         logger.info("DRY RUN resting stop: %s", body)
         return {"dry_run": True, "request": body}
@@ -647,6 +701,51 @@ def verify_position_stop(symbol: str, position_id: int) -> dict:
     return {"protected": bool(active), "active": active, "failed": failed,
             "error_codes": sorted({int(r.get("errorCode") or 0)
                                    for r in failed})}
+
+
+def open_orders(symbol: str | None = None) -> list:
+    """Resting (unfilled) orders — this is where the take-profit lives."""
+    params = {"symbol": symbol} if symbol else None
+    return _request("GET", "/api/v1/private/order/list/open_orders",
+                    params=params) or []
+
+
+def cancel_all_orders(symbol: str) -> dict:
+    """Cancel every resting order on a symbol.
+
+    Needed after the exchange closes a position: the take-profit rests as its own
+    order, so when the STOP fires the target can be left behind. It is a
+    close-long order and therefore cannot open a short, but a stale order on the
+    books is still a surprise waiting to happen.
+    """
+    return {"response": _request("POST", "/api/v1/private/order/cancel_all",
+                                 body={"symbol": symbol})}
+
+
+def verify_bracket(symbol: str, position_id: int, take_profit_price=None) -> dict:
+    """Is this position ACTUALLY protected on both sides right now?
+
+    The two barriers live in different places — the stop on the position TP/SL
+    record, the target as a resting limit close order — so both have to be read
+    back separately. Neither placement returning success is evidence: MEXC has
+    accepted stop records that finished with errorCode 8912 and never activated,
+    and it accepts limit take-profits on the position record while attaching
+    nothing at all.
+    """
+    stop = verify_position_stop(symbol, position_id)
+    target = None
+    if take_profit_price:
+        for o in open_orders(symbol):
+            if int(o.get("side") or 0) == SIDE_CLOSE_LONG and \
+                    abs(float(o.get("price") or 0) - float(take_profit_price)) < 1e-6:
+                target = o
+                break
+    return {"stop_active": stop["protected"],
+            "target_resting": target is not None,
+            "protected": stop["protected"] and (target is not None
+                                                if take_profit_price else True),
+            "stop_error_codes": stop["error_codes"],
+            "target_order_id": (target or {}).get("orderId")}
 
 
 def list_position_stops(symbol: str | None = None) -> list:

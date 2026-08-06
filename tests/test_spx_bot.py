@@ -445,15 +445,25 @@ def test_every_registered_strategy_is_classified():
         assert isinstance(spx_bot.strategy_is_runnable(key)[0], bool)
 
 
-def test_buy_hold_places_a_stop_but_no_take_profit(monkeypatch):
-    placed = {}
+def test_buy_hold_places_a_stop_but_no_target(monkeypatch):
+    calls = {}
     monkeypatch.setattr(spx_bot.fx, "place_position_stop",
-                        lambda *a, **k: placed.update(k) or
+                        lambda *a, **k: calls.update(stop=k) or
                         {"dry_run": True, "request": {}})
-    spx_bot._attach_bracket(spx_bot.Config(strategy="buy_hold"), 5, 100.0,
-                            dry=True)
-    assert placed["take_profit_price"] is None, "hold means never take profit"
-    assert placed["stop_loss_price"] > 0, "but it still needs a stop"
+    monkeypatch.setattr(spx_bot.fx, "limit_close_long",
+                        lambda *a, **k: calls.setdefault("target", k))
+    br = spx_bot._attach_bracket(spx_bot.Config(strategy="buy_hold"), 5, 100.0,
+                                 dry=True)
+    assert br["tp"] is None, "hold means never take profit"
+    assert br["sl"] > 0, "but it still needs a stop"
+    assert "target" not in calls, "and no resting target order"
+
+
+def test_barrier_harvest_asks_for_both_barriers(monkeypatch):
+    br = spx_bot._attach_bracket(spx_bot.Config(strategy="barrier_harvest"),
+                                 5, 100.0, dry=True)
+    assert br["sl"] == pytest.approx(90.0)
+    assert br["tp"] == pytest.approx(102.0)
 
 
 def test_strategy_round_trips_through_the_saved_config():
@@ -510,3 +520,84 @@ def test_a_completed_cycle_leaves_a_heartbeat(monkeypatch):
     assert spx_bot.do_run(spx_bot.Config(), live=False, once=True) == 0
     assert spx_bot.HEARTBEAT_PATH.exists()
     assert spx_bot.health()["stale"] is False
+
+
+# ============ clock skew ====================================================
+# Signed requests are validated against a receive window. A slept-through or
+# drifted clock gets every request rejected, and MEXC reports that as an auth
+# failure — indistinguishable from a wrong secret unless it is measured.
+def test_the_runner_refuses_to_start_on_a_skewed_clock(monkeypatch):
+    monkeypatch.setattr(spx_bot.fx, "clock_skew_ms", lambda: 45_000)
+    assert spx_bot.do_run(spx_bot.Config(), live=False, once=True) == 4
+
+
+def test_a_small_skew_is_fine(monkeypatch):
+    _state()
+    monkeypatch.setattr(spx_bot.fx, "clock_skew_ms", lambda: -172)
+    monkeypatch.setattr(spx_bot.fx, "last_price", lambda s: 100.0)
+    monkeypatch.setattr(spx_bot.fx, "usdt_equity", lambda: 500.0)
+    monkeypatch.setattr(spx_bot.fx, "contracts_for", lambda *a, **k: 5)
+    monkeypatch.setattr(spx_bot.fx, "open_long", lambda *a, **k: {})
+    monkeypatch.setattr(spx_bot, "_attach_bracket",
+                        lambda *a, **k: {"protected": True, "tp": 102.0,
+                                         "sl": 90.0, "position_id": 1})
+    assert spx_bot.do_run(spx_bot.Config(), live=False, once=True) == 0
+
+
+def test_an_unreachable_clock_does_not_block_startup(monkeypatch):
+    """A failed check is not evidence of a bad clock."""
+    _state()
+
+    def boom():
+        raise spx_bot.fx.MexcFuturesError("transport failure")
+
+    monkeypatch.setattr(spx_bot.fx, "clock_skew_ms", boom)
+    monkeypatch.setattr(spx_bot.fx, "last_price", lambda s: 100.0)
+    monkeypatch.setattr(spx_bot.fx, "usdt_equity", lambda: 500.0)
+    monkeypatch.setattr(spx_bot.fx, "contracts_for", lambda *a, **k: 5)
+    monkeypatch.setattr(spx_bot.fx, "open_long", lambda *a, **k: {})
+    monkeypatch.setattr(spx_bot, "_attach_bracket",
+                        lambda *a, **k: {"protected": True, "tp": 102.0,
+                                         "sl": 90.0, "position_id": 1})
+    assert spx_bot.do_run(spx_bot.Config(), live=False, once=True) == 0
+
+
+# ============ crash resilience ==============================================
+def test_a_transient_fault_retries_instead_of_abandoning_the_position(monkeypatch):
+    """Exiting on the first fault left a live position with nothing retrying the
+    barriers, noticing fills, or enforcing the breakers."""
+    _state(position=_held())
+    monkeypatch.setattr(spx_bot.fx, "clock_skew_ms", lambda: 0)
+    monkeypatch.setattr(spx_bot, "MAX_CONSECUTIVE_FAULTS", 3)
+    monkeypatch.setattr(spx_bot.time, "sleep", lambda s: None)
+    calls = []
+
+    def flaky(cfg, live):
+        calls.append(1)
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(spx_bot, "step", flaky)
+    rc = spx_bot.do_run(spx_bot.Config(), live=False, once=False)
+    assert rc == 1
+    assert len(calls) == 3, "it must retry up to the limit, not exit at once"
+
+
+def test_the_fault_counter_resets_after_a_good_cycle(monkeypatch):
+    _state()
+    monkeypatch.setattr(spx_bot.fx, "clock_skew_ms", lambda: 0)
+    monkeypatch.setattr(spx_bot, "MAX_CONSECUTIVE_FAULTS", 2)
+    monkeypatch.setattr(spx_bot.time, "sleep", lambda s: None)
+    seq = iter([RuntimeError("a"), None, RuntimeError("b"), None,
+                RuntimeError("c"), RuntimeError("d")])
+    n = []
+
+    def flaky(cfg, live):
+        n.append(1)
+        nxt = next(seq)
+        if nxt:
+            raise nxt
+
+    monkeypatch.setattr(spx_bot, "step", flaky)
+    assert spx_bot.do_run(spx_bot.Config(), live=False, once=False) == 1
+    # one fault, reset, one fault, reset, then two in a row ends it
+    assert len(n) == 6, f"good cycles must clear the counter, got {len(n)}"

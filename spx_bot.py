@@ -321,18 +321,15 @@ def do_preflight(cfg: Config) -> int:
 
 def do_status(cfg: Config) -> int:
     s = _read_state()
-    runnable, why_not = strategy_is_runnable(cfg.strategy)
-    from tradingagents.strategies import timeframe_fit
-    fit, _ = timeframe_fit(cfg.timeframe, cfg.strategy)
+    # Every lane is runnable as a gate, so the old runnable/fit verdicts no longer
+    # describe anything: printing "NOT RUNNABLE" for a working gate lane was a lie.
     _owner = (s.get("position") or {}).get("lane")
     for i, lane in enumerate(_lane_order(cfg)):
         owns = _owner and _owner.get("strategy") == lane["strategy"] \
             and _owner.get("timeframe") == lane["timeframe"]
         print(f"lane {i}   : {lane['strategy']} on {lane['timeframe']} bars"
               + ("  <- HOLDS THE POSITION" if owns else ""))
-    print(f"strategy : {cfg.strategy} on {cfg.timeframe} bars "
-          f"(fit: {fit}, poll {cfg.poll}s)"
-          + ("" if runnable else f"  ** NOT RUNNABLE: {why_not}"))
+    print(f"poll     : every {cfg.poll}s (half a bar of the finest lane)")
     print(f"position : {s.get('position')}")
     print(f"day      : {s.get('day')}  realised today "
           f"{s.get('realised_today', 0.0):+.2f} USD")
@@ -475,7 +472,17 @@ def _lane_order(cfg: Config) -> list:
                   key=lambda l: TIMEFRAME_SECONDS.get(l["timeframe"], 300))
 
 
-def pick_lane(cfg: Config) -> tuple:
+# A lane that means "enter once" must decline afterwards. Without this, buy_hold
+# in a race re-entered every time a stop closed it, which is "hold until stopped,
+# then buy again" — a different strategy wearing the same name.
+ONE_SHOT_STRATEGIES = ("buy_hold",)
+
+
+def lane_key(lane: dict) -> str:
+    return f"{lane['strategy']}@{lane['timeframe']}"
+
+
+def pick_lane(cfg: Config, state: dict | None = None) -> tuple:
     """Which lane gets the position? Returns (lane, reason) or (None, why not).
 
     Each lane is asked on ITS OWN bars whether it wants to be long. The first one
@@ -484,10 +491,15 @@ def pick_lane(cfg: Config) -> tuple:
     than shared.
     """
     from tradingagents.strategies import gate_reason, wants_long
+    used = set((state or {}).get("lanes_used") or [])
     misses = []
     for lane in _lane_order(cfg):
         if not lane_may_gate(lane["strategy"]):
             misses.append(f"{lane['strategy']}/{lane['timeframe']}: not runnable")
+            continue
+        if lane["strategy"] in ONE_SHOT_STRATEGIES and lane_key(lane) in used:
+            misses.append(f"{lane['strategy']}/{lane['timeframe']}: already had "
+                          f"its one entry")
             continue
         try:
             candles = fx.klines(cfg.symbol, lane["timeframe"], 400)
@@ -748,7 +760,7 @@ def step(cfg: Config, live: bool) -> None:
             return
 
     # Flat: race the lanes. First to want exposure takes the trade.
-    _lane, _why = pick_lane(cfg)
+    _lane, _why = pick_lane(cfg, s)
     if _lane is None:
         LOG.info("no lane wants exposure — %s", _why)
         _write_state(s)
@@ -779,6 +791,9 @@ def step(cfg: Config, live: bool) -> None:
     # this line may fail without the bot forgetting that it is long.
     s["position"] = {"entry": px, "vol": vol, "notional": notional,
                      "tp": None, "opened": _today(), "lane": _lane}
+    if _lane["strategy"] in ONE_SHOT_STRATEGIES:
+        s["lanes_used"] = sorted(set((s.get("lanes_used") or []))
+                                 | {lane_key(_lane)})
     _append_ledger({"action": "open", "price": px, "vol": vol,
                     "notional": notional, "dry_run": dry,
                     "gate": gate_why or "LIVE", "open_resp": r})

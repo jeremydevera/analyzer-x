@@ -1170,3 +1170,61 @@ def test_ready_requires_being_able_to_rest_a_stop(monkeypatch):
     assert rep["can_rest_stop"] is False
     assert rep["ready"] is False, "but it is not ready to trade"
     assert any("Write" in r for r in rep["remedies"])
+
+
+# ============ kline cache ===================================================
+def test_klines_are_cached_for_half_a_bar(monkeypatch):
+    """A bot racing 7 lanes issued 480 kline requests an hour, each for 400
+    candles, and this account has already been told "code 510: Requests are too
+    frequent". Candles cannot change inside half a bar, so re-fetching faster is
+    pure waste."""
+    fx.clear_kline_cache()
+    calls = []
+    payload = {"data": {"time": [1, 2, 3], "open": [1, 1, 1], "high": [2, 2, 2],
+                        "low": [0.5, 0.5, 0.5], "close": [1.5, 1.5, 1.5],
+                        "vol": [1, 1, 1]}}
+    monkeypatch.setattr(fx, "_get_public",
+                        lambda url: calls.append(url) or payload)
+    a = fx.klines("SPX500_USDT", "Min60", 10)
+    b = fx.klines("SPX500_USDT", "Min60", 10)
+    assert len(calls) == 1, "the second call must be served from the cache"
+    assert list(a["Close"]) == list(b["Close"])
+
+    # a different interval or limit is a different series
+    fx.klines("SPX500_USDT", "Min5", 10)
+    fx.klines("SPX500_USDT", "Min60", 20)
+    assert len(calls) == 3
+
+
+def test_a_cached_frame_cannot_be_poisoned_by_its_caller(monkeypatch):
+    """Handing out the cached object would let one caller's edit corrupt every
+    later read."""
+    fx.clear_kline_cache()
+    payload = {"data": {"time": [1, 2], "open": [1, 1], "high": [2, 2],
+                        "low": [0.5, 0.5], "close": [1.5, 1.5], "vol": [1, 1]}}
+    monkeypatch.setattr(fx, "_get_public", lambda url: payload)
+    first = fx.klines("SPX500_USDT", "Min60", 10)
+    first.loc[0, "Close"] = 999.0
+    assert fx.klines("SPX500_USDT", "Min60", 10)["Close"].iloc[0] == 1.5
+
+
+def test_the_cache_expires(monkeypatch):
+    fx.clear_kline_cache()
+    calls = []
+    payload = {"data": {"time": [1], "open": [1], "high": [2], "low": [0.5],
+                        "close": [1.5], "vol": [1]}}
+    monkeypatch.setattr(fx, "_get_public",
+                        lambda url: calls.append(url) or payload)
+    monkeypatch.setattr(fx.time, "time", lambda: 1000.0)
+    fx.klines("SPX500_USDT", "Min1", 10)
+    monkeypatch.setattr(fx.time, "time", lambda: 1000.0 + 31)   # TTL is 30s
+    fx.klines("SPX500_USDT", "Min1", 10)
+    assert len(calls) == 2
+
+
+def test_the_cache_never_holds_a_chart_stale_for_long():
+    """The UI charts share klines(). A 12-hour TTL on Day1 bars would render a
+    chart half a day old under a caption claiming it was the last price."""
+    assert fx._KLINE_TTL_CAP == 300
+    for interval, ttl in fx._KLINE_TTL.items():
+        assert ttl <= fx._KLINE_TTL_CAP, interval

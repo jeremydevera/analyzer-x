@@ -922,3 +922,218 @@ def test_every_strategy_is_usable_as_a_gate():
     for key in sg.ORDER:
         assert spx_bot.lane_may_gate(key), key
     assert not spx_bot.lane_may_gate("no_such_strategy")
+
+
+# ============ one-shot lanes ================================================
+def test_buy_hold_declines_after_its_one_entry(monkeypatch):
+    """Without this, buy_hold re-entered every time a stop closed it — which is
+    "hold until stopped, then buy again", a different strategy wearing the name."""
+    monkeypatch.setattr(spx_bot.fx, "klines", lambda s, tf, n=400: _bars())
+    c = spx_bot.Config(lanes=[{"timeframe": "Min5", "strategy": "buy_hold"}])
+    assert spx_bot.pick_lane(c, {})[0]["strategy"] == "buy_hold"
+    lane, why = spx_bot.pick_lane(c, {"lanes_used": ["buy_hold@Min5"]})
+    assert lane is None
+    assert "already had its one entry" in why
+
+
+def test_a_used_one_shot_lane_yields_to_the_next(monkeypatch):
+    monkeypatch.setattr(spx_bot.fx, "klines", lambda s, tf, n=400: _bars())
+    c = spx_bot.Config(lanes=[{"timeframe": "Min5", "strategy": "buy_hold"},
+                              {"timeframe": "Min60",
+                               "strategy": "barrier_harvest"}])
+    lane, _ = spx_bot.pick_lane(c, {"lanes_used": ["buy_hold@Min5"]})
+    assert lane == {"timeframe": "Min60", "strategy": "barrier_harvest"}
+
+
+def test_a_repeating_lane_is_never_marked_one_shot(monkeypatch):
+    """barrier_harvest is meant to re-enter after every exit — that IS the
+    strategy. Marking it used would stop it after one trade."""
+    monkeypatch.setattr(spx_bot.fx, "klines", lambda s, tf, n=400: _bars())
+    c = spx_bot.Config(lanes=[{"timeframe": "Min5",
+                               "strategy": "barrier_harvest"}])
+    assert spx_bot.pick_lane(
+        c, {"lanes_used": ["barrier_harvest@Min5"]})[0] is not None
+
+
+def test_taking_a_one_shot_entry_records_it(monkeypatch):
+    _state()
+    monkeypatch.setattr(spx_bot.fx, "last_price", lambda s: 100.0)
+    monkeypatch.setattr(spx_bot.fx, "usdt_equity", lambda: 500.0)
+    monkeypatch.setattr(spx_bot.fx, "contracts_for", lambda *a, **k: 5)
+    monkeypatch.setattr(spx_bot.fx, "open_long", lambda *a, **k: {})
+    monkeypatch.setattr(spx_bot.fx, "klines", lambda s, tf, n=400: _bars())
+    monkeypatch.setattr(spx_bot, "_attach_bracket",
+                        lambda *a, **k: {"protected": True, "tp": None,
+                                         "sl": 90.0, "position_id": 1})
+    cfg = spx_bot.Config(lanes=[{"timeframe": "Min5", "strategy": "buy_hold"}])
+    spx_bot.step(cfg, live=False)
+    assert spx_bot._read_state()["lanes_used"] == ["buy_hold@Min5"]
+
+
+# ============ multi-cycle integration ========================================
+# Unit tests check one call. These run the loop the way it actually runs, because
+# the bugs that cost money today were all ORDERING bugs: state written too late,
+# a lane switched at the wrong moment, an exit booked twice.
+class FakeExchange:
+    """A minimal MEXC that remembers a position and can close it behind the bot's
+    back, which is what the real exchange does when a barrier fires."""
+
+    def __init__(self, price=100.0):
+        self.price = price
+        self.position = None
+        self.next_id = 500
+        self.orders = []
+        self.stops = []
+        self.submitted = []
+
+    def last_price(self, symbol):
+        return self.price
+
+    def usdt_equity(self):
+        return 500.0
+
+    def contracts_for(self, symbol, notional, px):
+        return 10
+
+    def open_positions(self, symbol=None):
+        return [self.position] if self.position else []
+
+    def open_long(self, symbol, vol, *, leverage, dry_run=True):
+        assert self.position is None, "the bot stacked a position"
+        self.next_id += 1
+        self.position = {"positionId": self.next_id, "holdVol": vol,
+                         "holdAvgPrice": self.price, "openType": 1,
+                         "leverage": leverage}
+        self.submitted.append(("open", vol))
+        return {"dry_run": False, "response": self.next_id}
+
+    def close_long(self, symbol, vol, *, leverage, dry_run=True):
+        self.position = None
+        self.submitted.append(("close", vol))
+        return {"dry_run": False, "response": 1}
+
+    def place_position_stop(self, symbol, pid, vol, **kw):
+        self.stops.append({"positionId": str(pid), "errorCode": 0,
+                           "isFinished": 0, "state": 2,
+                           "stopLossPrice": kw.get("stop_loss_price")})
+        return {"dry_run": False, "response": len(self.stops)}
+
+    def limit_close_long(self, symbol, vol, price, *, leverage, dry_run=True):
+        self.orders.append({"orderId": f"o{len(self.orders)}", "side": 4,
+                            "price": price, "vol": vol})
+        return {"dry_run": False, "response": "ok"}
+
+    def list_position_stops(self, symbol=None):
+        return list(self.stops)
+
+    def open_orders(self, symbol=None):
+        return list(self.orders)
+
+    def cancel_all_orders(self, symbol):
+        self.orders.clear()
+        return {}
+
+    def verify_bracket(self, symbol, pid, tp=None):
+        active = [r for r in self.stops if str(r["positionId"]) == str(pid)
+                  and r["errorCode"] == 0 and not r["isFinished"]]
+        resting = [o for o in self.orders
+                   if tp and abs(float(o["price"]) - float(tp)) < 1e-6]
+        return {"stop_active": bool(active),
+                "target_resting": bool(resting) if tp else True,
+                "protected": bool(active) and (bool(resting) if tp else True),
+                "stop_error_codes": [], "target_order_id": None}
+
+    # the exchange closing the position on its own, as a barrier fill does
+    def fill_target(self, price):
+        self.position = None
+        self.orders.clear()
+        for r in self.stops:
+            r["isFinished"] = 1
+            r["state"] = 3
+            r["takeProfitPrice"] = price
+        self.price = price
+
+
+@pytest.fixture
+def wired(monkeypatch):
+    ex = FakeExchange()
+    for name in ("last_price", "usdt_equity", "contracts_for", "open_positions",
+                 "open_long", "close_long", "place_position_stop",
+                 "limit_close_long", "list_position_stops", "open_orders",
+                 "cancel_all_orders", "verify_bracket"):
+        monkeypatch.setattr(spx_bot.fx, name, getattr(ex, name))
+    monkeypatch.setattr(spx_bot.fx, "klines", lambda s, tf, n=400: _bars())
+    monkeypatch.setattr(spx_bot, "_snap", lambda cfg, target: round(target, 2))
+    monkeypatch.setenv("SPX_BOT_ARMED", "yes")
+    return ex
+
+
+def test_four_cycles_enter_hold_get_closed_then_re_enter(wired):
+    """The full loop: the exchange fills the target behind the bot's back, the bot
+    notices, books it, and races again. This is the 1-trade-vs-15 path."""
+    ex = wired
+    _state()
+    cfg = spx_bot.Config(margin_usd=5.0, leverage=3, max_losses=0,
+                         lanes=[{"timeframe": "Min5",
+                                 "strategy": "barrier_harvest"}])
+
+    spx_bot.step(cfg, live=True)                       # 1: enter
+    st = spx_bot._read_state()
+    assert st["position"]["vol"] == 10
+    assert st["position"]["protected"] is True, "both barriers must be verified"
+    assert ex.submitted == [("open", 10)]
+
+    spx_bot.step(cfg, live=True)                       # 2: hold, do nothing
+    assert ex.submitted == [("open", 10)], "no second order while holding"
+    assert spx_bot._read_state()["position"] is not None
+
+    ex.fill_target(102.0)                              # exchange takes profit
+    spx_bot.step(cfg, live=True)                       # 3: notice and book it
+    st = spx_bot._read_state()
+    assert st["position"] is None, "the bot must notice the exchange closed it"
+    assert st["realised_today"] > 0
+    assert st["losses"] == 0
+
+    spx_bot.step(cfg, live=True)                       # 4: race again, re-enter
+    st = spx_bot._read_state()
+    assert st["position"] is not None, "1 trade must become many"
+    assert [a for a, _ in ex.submitted].count("open") == 2
+
+
+def test_the_loss_limit_stops_the_cycle_after_n_losses(wired):
+    ex = wired
+    _state()
+    cfg = spx_bot.Config(margin_usd=5.0, leverage=3, max_losses=2,
+                         stop_loss_pct=10.0,
+                         lanes=[{"timeframe": "Min5",
+                                 "strategy": "barrier_harvest"}])
+    for expected_losses in (1, 2):
+        spx_bot.step(cfg, live=True)                   # enter
+        assert spx_bot._read_state()["position"] is not None
+        ex.price = 85.0                                # below the stop
+        spx_bot.step(cfg, live=True)                   # backup stop fires
+        st = spx_bot._read_state()
+        assert st["position"] is None
+        assert st["losses"] == expected_losses
+        ex.price = 100.0
+    opens_before = [a for a, _ in ex.submitted].count("open")
+    spx_bot.step(cfg, live=True)                       # must refuse now
+    assert [a for a, _ in ex.submitted].count("open") == opens_before, \
+        "the loss limit must stop further entries"
+
+
+def test_a_one_shot_lane_hands_over_across_cycles(wired):
+    ex = wired
+    _state()
+    cfg = spx_bot.Config(margin_usd=5.0, leverage=3, max_losses=0,
+                         lanes=[{"timeframe": "Min5", "strategy": "buy_hold"},
+                                {"timeframe": "Min60",
+                                 "strategy": "barrier_harvest"}])
+    spx_bot.step(cfg, live=True)
+    assert spx_bot._read_state()["position"]["lane"]["strategy"] == "buy_hold"
+    ex.fill_target(102.0)
+    spx_bot.step(cfg, live=True)                       # booked, now flat
+    spx_bot.step(cfg, live=True)                       # buy_hold is spent
+    lane = spx_bot._read_state()["position"]["lane"]
+    assert lane["strategy"] == "barrier_harvest", \
+        "the spent one-shot lane must hand over"

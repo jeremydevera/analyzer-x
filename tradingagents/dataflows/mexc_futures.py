@@ -784,6 +784,23 @@ def list_contracts(quote: str = "USDT") -> list[dict]:
     return out
 
 
+# Candles cannot change meaningfully inside half a bar, so re-fetching them
+# faster than that is pure waste. A bot racing 7 lanes was issuing 480 kline
+# requests an hour, each for 400 candles, and the order endpoints on this account
+# have already answered "code 510: Requests are too frequent".
+# Capped at 5 minutes even for coarse intervals: the UI charts share this
+# function, and a 12-hour TTL on Day1 bars would show a chart half a day stale
+# while the caption claimed it was the last price.
+_KLINE_CACHE: dict = {}
+_KLINE_TTL_CAP = 300
+_KLINE_TTL = {"Min1": 30, "Min5": 150, "Min15": 300, "Min30": 300,
+              "Min60": 300, "Hour4": 300, "Day1": 300}
+
+
+def clear_kline_cache() -> None:
+    _KLINE_CACHE.clear()
+
+
 def klines(symbol: str, interval: str = "Min5", limit: int = 300):
     """Recent futures candles as a DataFrame, for charting. Keyless.
 
@@ -791,6 +808,13 @@ def klines(symbol: str, interval: str = "Min5", limit: int = 300):
     existing candlestick chart can render them unchanged.
     """
     import pandas as pd
+
+    key = (symbol, interval, limit)
+    hit = _KLINE_CACHE.get(key)
+    now = time.time()
+    if hit and now - hit[0] < min(_KLINE_TTL.get(interval, 150),
+                                 _KLINE_TTL_CAP):
+        return hit[1].copy()
 
     end = int(time.time())
     per = {"Min1": 60, "Min5": 300, "Min15": 900, "Min30": 1800,
@@ -802,7 +826,7 @@ def klines(symbol: str, interval: str = "Min5", limit: int = 300):
     d = payload.get("data") or {}
     if not d.get("time"):
         raise MexcFuturesError(f"no {interval} candles for {symbol}")
-    return pd.DataFrame({
+    frame = pd.DataFrame({
         "Date": pd.to_datetime(d["time"], unit="s", utc=True).tz_localize(None),
         "Open": [float(x) for x in d["open"]],
         "High": [float(x) for x in d["high"]],
@@ -810,6 +834,9 @@ def klines(symbol: str, interval: str = "Min5", limit: int = 300):
         "Close": [float(x) for x in d["close"]],
         "Volume": [float(x) for x in d.get("vol", [0] * len(d["time"]))],
     })
+    # Hand out copies so a caller mutating the frame cannot poison the cache.
+    _KLINE_CACHE[key] = (now, frame)
+    return frame.copy()
 
 
 def round_vol(symbol: str, vol: float) -> int:

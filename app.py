@@ -1342,12 +1342,13 @@ def render_trade_tab() -> None:
         if _on:
             _lc = st.columns(len(_on))
             for _c, tf in zip(_lc, _on):
-                rows = sg.strategies_for(tf)
-                keys = [r["key"] for r in rows]
-                fit = {r["key"]: r for r in rows}
-                mark = {"good": "", "workable": "  ~", "avoid": "  \u2715"}
+                # Registry order, not fit order. Fit ranked by the turnover of
+                # the EXPOSURE form, which no longer decides anything now that
+                # these run as entry filters — so ordering by it moved options
+                # around for a reason that no longer applies.
+                keys = list(sg.ORDER)
 
-                def _label(k, _fit=fit, _mark=mark):
+                def _label(k):
                     name = sg.REGISTRY[k].name
                     if k not in spx_bot.RUNNABLE_STRATEGIES:
                         # No longer "backtest only": these run as entry GATES,
@@ -1882,6 +1883,16 @@ def render_trade_tab() -> None:
                                      key="bt_limit",
                                      format_func=lambda n: f"{n} bars")
             bb1, bb2 = bt3.columns(2)
+            if strat_key not in spx_bot.RUNNABLE_STRATEGIES:
+                st.warning(
+                    f"**This backtest does not measure what the bot will run.** "
+                    f"`{strat_key}` is selected as an *entry filter*: live, its "
+                    f"signal only decides whether to open one bracketed trade "
+                    f"that exits on the take-profit and stop. The backtest below "
+                    f"measures the *exposure* form instead — rebalancing position "
+                    f"size every bar — which trades far more and is the reason it "
+                    f"is not run that way. Treat the number as information about "
+                    f"the signal, not as a forecast for the filter.")
             if bb1.button("Run backtest", type="primary"):
                 st.session_state["bt_run"] = True
                 st.session_state.pop("bt_compare", None)

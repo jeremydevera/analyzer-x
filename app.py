@@ -1559,13 +1559,18 @@ def render_trade_tab() -> None:
                        f"stops opening new ones. At a {sl:.2f}% stop that is "
                        f"about ${mx * min(margin * lev, cap) * sl / 100:,.2f} "
                        f"of realised loss before it halts.")
-        if lev > 1 and sl >= 100 / lev:
+        # The exchange's published maintenance margin, not 100/leverage: at 200x
+        # that is 0.10% survivable, not 0.50%.
+        _wipe = fx.liquidation_move_pct(symbol, float(lev))
+        if lev > 1 and sl >= _wipe:
             st.error(
-                f"**These settings cannot work.** At {lev:.0f}x, a "
-                f"{100/lev:.2f}% adverse move wipes the margin, but your stop "
-                f"sits at {sl:.1f}% — you would be liquidated long before it "
-                f"fires, losing the whole ${margin:,.2f}. Either drop leverage "
-                f"below {100/sl:.0f}x or tighten the stop under {100/lev:.2f}%.")
+                f"**These settings cannot work.** At {lev:.0f}x on {symbol}, a "
+                f"**{_wipe:.2f}%** adverse move wipes the margin — MEXC keeps a "
+                f"maintenance margin back, so it happens earlier than "
+                f"{100/lev:.2f}% would suggest. Your stop sits at {sl:.1f}%, so "
+                f"you would be liquidated long before it fires, losing the whole "
+                f"${margin:,.2f}. Tighten the stop under {_wipe:.2f}% or lower "
+                f"the leverage.")
         st.caption(f"Notional at these settings: "
                    f"${min(margin * lev, cap):,.2f}  ·  a {sl:.0f}% stop costs "
                    f"{sl * lev:.0f}% of margin.")

@@ -839,6 +839,27 @@ def klines(symbol: str, interval: str = "Min5", limit: int = 300):
     return frame.copy()
 
 
+def liquidation_move_pct(symbol: str, leverage: float) -> float:
+    """How far price may move against a long before the venue liquidates it, in %.
+
+    ``1/leverage - maintenance_margin_rate``, which is the formula OctoBot uses and
+    which MEXC's own contract detail supports: it publishes maintenanceMarginRate
+    directly. Using 100/leverage instead — as this project did — overstates the
+    survivable move fivefold at 200x, because it ignores the maintenance margin the
+    venue keeps back: 0.50% claimed against 0.10% actual.
+
+    Falls back to the naive figure when the rate cannot be read, and clamps at zero
+    for leverage so high that the maintenance margin alone exhausts the position.
+    """
+    if leverage <= 0:
+        return 100.0
+    try:
+        mmr = float(contract_spec(symbol).get("maintenanceMarginRate") or 0.0)
+    except (MexcFuturesError, TypeError, ValueError):
+        mmr = 0.0
+    return max(0.0, (1.0 / leverage - mmr) * 100.0)
+
+
 def round_vol(symbol: str, vol: float) -> int:
     """Snap a contract count DOWN to the exchange's volUnit step.
 

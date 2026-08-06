@@ -1205,3 +1205,44 @@ def test_the_operators_settings_are_permitted():
     """3x with a 10% stop: wipe-out at 33%, so the stop fires with room to spare."""
     ok, why = spx_bot.stop_is_reachable(3, 10.0)
     assert ok is True and why == ""
+
+
+# ============ liquidation uses the exchange's maintenance margin =============
+# Borrowed from reading OctoBot's position model: liquidation price is
+# entry x (1 - initial_margin_rate + maintenance_margin_rate), and MEXC publishes
+# maintenanceMarginRate = 0.004 directly. The 100/leverage figure this project used
+# overstates the survivable move FIVEFOLD at 200x — 0.50% claimed, 0.10% actual.
+def test_the_wipeout_point_accounts_for_maintenance_margin(monkeypatch):
+    monkeypatch.setattr(spx_bot.fx, "contract_spec",
+                        lambda s: {"maintenanceMarginRate": 0.004})
+    assert spx_bot.fx.liquidation_move_pct("SPX500_USDT", 200) == \
+        pytest.approx(0.1), "0.5% - 0.4% = 0.1%, not 0.5%"
+    assert spx_bot.fx.liquidation_move_pct("SPX500_USDT", 3) == \
+        pytest.approx((1 / 3 - 0.004) * 100)
+
+
+def test_leverage_the_maintenance_margin_alone_exhausts_is_refused(monkeypatch):
+    """At 1/mmr = 250x the maintenance margin equals the whole position, so it is
+    liquidated on entry no matter where the stop sits."""
+    monkeypatch.setattr(spx_bot.fx, "contract_spec",
+                        lambda s: {"maintenanceMarginRate": 0.004})
+    assert spx_bot.fx.liquidation_move_pct("SPX500_USDT", 250) == 0.0
+    ok, why = spx_bot.stop_is_reachable(250, 0.01, "SPX500_USDT")
+    assert ok is False and "liquidated on entry" in why
+
+
+def test_a_stop_between_the_two_formulas_is_now_correctly_refused(monkeypatch):
+    """A 0.3% stop at 200x passed the old 100/leverage guard (0.5% survivable) and
+    is refused by the real one (0.1%). That gap is where an account dies."""
+    monkeypatch.setattr(spx_bot.fx, "contract_spec",
+                        lambda s: {"maintenanceMarginRate": 0.004})
+    assert spx_bot.stop_is_reachable(200, 0.3, "SPX500_USDT")[0] is False
+    assert 0.3 < 100 / 200, "the old guard would have allowed it"
+
+
+def test_an_unreadable_margin_rate_falls_back_rather_than_crashing(monkeypatch):
+    def boom(symbol):
+        raise spx_bot.fx.MexcFuturesError("unreachable")
+    monkeypatch.setattr(spx_bot.fx, "contract_spec", boom)
+    assert spx_bot.fx.liquidation_move_pct("SPX500_USDT", 200) == \
+        pytest.approx(0.5), "falls back to the naive figure"

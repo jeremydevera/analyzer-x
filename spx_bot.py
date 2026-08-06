@@ -246,11 +246,21 @@ def lane_may_gate(key: str) -> bool:
 LIQUIDATION_SAFETY = 0.7        # the stop must sit inside 70% of the wipe-out move
 
 
-def stop_is_reachable(leverage: int, stop_loss_pct: float) -> tuple[bool, str]:
-    """Can this stop actually fire before the position is liquidated?"""
+def stop_is_reachable(leverage: int, stop_loss_pct: float,
+                     symbol: str | None = None) -> tuple[bool, str]:
+    """Can this stop actually fire before the position is liquidated?
+
+    Uses the exchange's published maintenance margin rather than 100/leverage. The
+    naive figure overstates the survivable move fivefold at 200x — 0.50% against
+    MEXC's actual 0.10% — because the venue keeps a maintenance margin back.
+    """
     if leverage <= 1 or stop_loss_pct <= 0:
         return True, ""
-    wipeout = 100.0 / leverage
+    wipeout = fx.liquidation_move_pct(symbol or SYMBOL, leverage)
+    if wipeout <= 0:
+        return False, (
+            f"{leverage}x is not usable on {symbol or SYMBOL}: the maintenance "
+            f"margin alone exhausts the position, so it is liquidated on entry.")
     if stop_loss_pct >= wipeout:
         return False, (
             f"a {stop_loss_pct:.1f}% stop at {leverage}x can never fire: the "
@@ -866,7 +876,8 @@ def do_run(cfg: Config, live: bool, once: bool) -> int:
             LOG.error("refusing to start: %s cannot be used even as an entry "
                       "gate", lane["strategy"])
             return 2
-    reachable, why_stop = stop_is_reachable(cfg.leverage, cfg.stop_loss_pct)
+    reachable, why_stop = stop_is_reachable(cfg.leverage, cfg.stop_loss_pct,
+                                           cfg.symbol)
     if not reachable:
         LOG.error("refusing to start: %s", why_stop)
         return 6

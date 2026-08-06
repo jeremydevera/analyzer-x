@@ -327,3 +327,24 @@ def test_no_leverage_can_lose_more_than_the_margin(lev):
                             leverage=lev, funding=funding)
     assert res.pnl + fund >= -10.0 - 1e-6, \
         f"{lev}x lost more than the margin: {res.pnl + fund}"
+
+
+def test_a_run_that_took_no_trades_earns_no_funding():
+    """exposure_series re-runs the simulation to find when a position was held, and
+    running it WITHOUT the limits reported exposure for periods the limited run
+    never traded — crediting $41.06 of funding to a backtest with zero trades."""
+    candles = frame([100 + i * 0.05 for i in range(200)])
+    funding = [{"settle_ms": int(candles["Date"].iloc[i].timestamp() * 1000),
+                "rate": -0.001} for i in range(5, 195, 5)]
+    res, fund = sg.backtest("barrier_harvest", candles, margin=10.0, leverage=3,
+                            funding=funding,
+                            limits={"min_equity": 100.0, "starting_equity": 10.0})
+    assert res.trades == [] and res.halted_reason
+    assert fund == 0.0, "no position, no funding"
+
+
+def test_limits_flow_through_to_the_notional():
+    candles = frame([100 + i * 0.05 for i in range(200)])
+    res, _ = sg.backtest("barrier_harvest", candles, margin=10.0, leverage=200,
+                         limits={"max_notional": 400.0})
+    assert res.notional == 400.0

@@ -238,3 +238,54 @@ def test_a_rising_path_leaves_the_benchmark_alone():
     r = bt.run(pd.DataFrame(rows), take_profit_pct=2.0, stop_loss_pct=10.0,
                margin=100.0, leverage=3)
     assert r.buy_hold_pnl > 0, "a 3x long through a steady rise is not liquidated"
+
+
+# ============ the backtest must simulate THIS bot ===========================
+# The operator asked whether the backtest reflects the settings panel. It did not:
+# it used margin x leverage with no cap and no breakers, so at $10 margin, 200x and
+# a $400 cap it traded $2,000 — five times the bot's size — and kept going through
+# conditions that stop the real runner.
+def test_the_notional_cap_is_applied():
+    c = _falling(40, step=0.2)
+    r = bt.run(c, take_profit_pct=2.0, stop_loss_pct=10.0,
+               margin=10.0, leverage=200, max_notional=400.0)
+    assert r.notional == 400.0, "the bot sizes with min(margin*lev, cap)"
+    uncapped = bt.run(c, take_profit_pct=2.0, stop_loss_pct=10.0,
+                      margin=10.0, leverage=200)
+    assert uncapped.notional == 2000.0
+
+
+def test_the_loss_limit_stops_the_run():
+    r = bt.run(_falling(200, step=-0.3), take_profit_pct=2.0, stop_loss_pct=5.0,
+               margin=1000.0, leverage=1, max_losses=2)
+    assert sum(1 for t in r.trades if t.pnl < 0) == 2
+    assert "loss limit" in r.halted_reason
+
+
+def test_zero_disables_each_breaker():
+    c = _falling(200, step=-0.3)
+    a = bt.run(c, take_profit_pct=2.0, stop_loss_pct=5.0, margin=1000.0,
+               leverage=1, max_losses=0, daily_loss_limit=0.0, min_equity=0.0)
+    assert a.halted_reason == ""
+    assert len([t for t in a.trades if t.pnl < 0]) > 2
+
+
+def test_the_equity_floor_measures_the_wallet_not_the_margin():
+    """This fired instantly on a $10-margin run against a $20 floor even with
+    $163 in the wallet — it was comparing the wrong quantity."""
+    c = _falling(60, step=0.2)
+    r = bt.run(c, take_profit_pct=2.0, stop_loss_pct=10.0, margin=10.0,
+               leverage=3, min_equity=20.0, starting_equity=163.0)
+    assert r.halted_reason == "", "a $163 wallet is far above a $20 floor"
+    assert len(r.trades) > 0
+    # and it does fire when the wallet really is below the floor
+    r2 = bt.run(c, take_profit_pct=2.0, stop_loss_pct=10.0, margin=10.0,
+                leverage=3, min_equity=20.0, starting_equity=15.0)
+    assert "below floor" in r2.halted_reason and len(r2.trades) == 0
+
+
+def test_no_wallet_figure_means_the_floor_is_skipped_not_guessed():
+    c = _falling(60, step=0.2)
+    r = bt.run(c, take_profit_pct=2.0, stop_loss_pct=10.0, margin=10.0,
+               leverage=3, min_equity=1_000_000.0)
+    assert r.halted_reason == "" and len(r.trades) > 0

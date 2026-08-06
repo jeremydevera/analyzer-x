@@ -181,7 +181,8 @@ def positions_for(key: str, candles, params: dict) -> list:
     raise ValueError(f"{key} is not a position-style strategy")
 
 
-def exposure_series(key: str, candles, params: dict | None = None) -> list:
+def exposure_series(key: str, candles, params: dict | None = None,
+                    limits: dict | None = None) -> list:
     """Per-bar exposure for ANY strategy, including the bracket one.
 
     Funding is charged on exposure, so a bracket strategy needs an exposure
@@ -192,9 +193,19 @@ def exposure_series(key: str, candles, params: dict | None = None) -> list:
     p = {**strat.params, **(params or {})}
     if strat.kind != "bracket":
         return positions_for(key, candles, p)
+    # The limits must apply here too. This re-runs the simulation to find WHEN a
+    # position was held, and running it unlimited reported exposure for periods the
+    # real run never traded — crediting $41.06 of funding to a backtest that took
+    # zero trades.
+    lim = limits or {}
     r = fbt.run(candles, take_profit_pct=float(p["take_profit_pct"]),
                 stop_loss_pct=float(p["stop_loss_pct"]),
-                margin=1.0, leverage=1.0)
+                margin=1.0, leverage=1.0,
+                max_losses=int(lim.get("max_losses") or 0),
+                daily_loss_limit=(float(lim["daily_loss_limit"]) / max(
+                    float(lim.get("notional") or 1.0), 1e-9)
+                    if lim.get("daily_loss_limit") and lim.get("notional")
+                    else 0.0))
     times = list(candles["Date"])
     out = [0.0] * len(times)
     for t in r.trades:
@@ -212,7 +223,8 @@ def exposure_series(key: str, candles, params: dict | None = None) -> list:
 def backtest(key: str, candles, *, margin: float, leverage: float,
              params: dict | None = None,
              fee_per_side: float = fbt.DEFAULT_FEE,
-             funding: list | None = None) -> tuple:
+             funding: list | None = None,
+             limits: dict | None = None) -> tuple:
     """Run one strategy by key.
 
     Returns ``(result, funding_pnl)``. ``funding`` is the settlement list from
@@ -223,18 +235,25 @@ def backtest(key: str, candles, *, margin: float, leverage: float,
     """
     strat = REGISTRY[key]
     p = {**strat.params, **(params or {})}
+    lim = limits or {}
     if strat.kind == "bracket":
         res = fbt.run(candles, take_profit_pct=float(p["take_profit_pct"]),
                       stop_loss_pct=float(p["stop_loss_pct"]),
                       margin=margin, leverage=leverage,
-                      fee_per_side=fee_per_side)
+                      fee_per_side=fee_per_side,
+                      max_notional=lim.get("max_notional"),
+                      max_losses=int(lim.get("max_losses") or 0),
+                      daily_loss_limit=float(lim.get("daily_loss_limit") or 0.0),
+                      min_equity=float(lim.get("min_equity") or 0.0),
+                      starting_equity=lim.get("starting_equity"))
     else:
         res = fbt.run_positions(candles, positions_for(key, candles, p),
                                 margin=margin, leverage=leverage,
                                 fee_per_side=fee_per_side, label=strat.name)
     fund = 0.0
     if funding:
-        exposure = exposure_series(key, candles, p)
+        exposure = exposure_series(key, candles, p,
+                                   {**lim, "notional": res.notional})
         if res.liquidated and res.trades:
             # No account, no position, no funding. exposure_series re-runs the
             # simulation UNLEVERED to find when a position was held, and an
@@ -246,6 +265,8 @@ def backtest(key: str, candles, *, margin: float, leverage: float,
                         for e, t in zip(exposure, candles["Date"])]
         fund = fbt.funding_pnl(candles, exposure, funding,
                                notional=res.notional)
+        if not res.trades:
+            fund = 0.0
         fund = _cap_funding_at_margin(res, fund)
     return res, fund
 

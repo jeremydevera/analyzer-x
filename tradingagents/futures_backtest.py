@@ -62,6 +62,7 @@ class Result:
     max_drawdown: float           # currency, mark-to-market
     worst_equity: float           # lowest the account ever marked
     liquidated: bool
+    halted_reason: str            # "" unless a breaker stopped the run early
     buy_hold_pnl: float           # same margin and leverage, no barriers
     bars: int
     span_days: float
@@ -82,7 +83,12 @@ class Result:
 def run(candles, *, take_profit_pct: float, stop_loss_pct: float,
         margin: float = 100.0, leverage: float = 1.0,
         fee_per_side: float = DEFAULT_FEE,
-        max_hold_bars: int | None = None) -> Result:
+        max_hold_bars: int | None = None,
+        max_notional: float | None = None,
+        max_losses: int = 0,
+        daily_loss_limit: float = 0.0,
+        min_equity: float = 0.0,
+        starting_equity: float | None = None) -> Result:
     """Backtest always-long-with-barriers over an OHLCV frame.
 
     ``candles`` needs Date/Open/High/Low/Close columns (the shape both the spot
@@ -100,7 +106,13 @@ def run(candles, *, take_profit_pct: float, stop_loss_pct: float,
     C = candles["Close"].tolist()
     T = list(candles["Date"])
     n_bars = len(O)
+    # The live runner sizes with min(margin * leverage, max_notional). Ignoring the
+    # cap made the simulation trade a different position from the bot: at $10
+    # margin, 200x and a $400 cap it used $2,000 — five times the size, so every
+    # figure it produced was five times too large.
     notional = margin * leverage
+    if max_notional and max_notional > 0:
+        notional = min(notional, float(max_notional))
     tp_f, sl_f = take_profit_pct / 100.0, stop_loss_pct / 100.0
 
     trades: list = []
@@ -109,8 +121,38 @@ def run(candles, *, take_profit_pct: float, stop_loss_pct: float,
     max_dd = 0.0
     worst_equity = margin
     liquidated = False
+    losses = 0
+    halted = ""
+    day = None
+    day_start_realised = 0.0
     i = 0
-    while i < n_bars - 2 and not liquidated:
+    while i < n_bars - 2 and not liquidated and not halted:
+        # The same breakers the bot enforces, in the same order. Without them the
+        # simulation kept trading through conditions that stop the real runner.
+        entry_day = T[i + 1].strftime("%Y-%m-%d")
+        if entry_day != day:
+            day, day_start_realised = entry_day, realised
+        if max_losses and losses >= max_losses:
+            halted = f"loss limit: {losses} losing trades"
+            break
+        # The bot's floor is on the WALLET balance, not on the position's margin.
+        # Comparing margin + realised halted a $10-margin run instantly against a
+        # $20 floor, even with $163 in the wallet — the check fired on the wrong
+        # quantity. With no wallet figure supplied the check is skipped rather
+        # than guessed at.
+        if min_equity and starting_equity is not None and \
+                starting_equity + realised < min_equity:
+            halted = (f"wallet {starting_equity + realised:.2f} below floor "
+                      f"{min_equity:.2f}")
+            break
+        if daily_loss_limit and \
+                realised - day_start_realised <= -abs(daily_loss_limit):
+            # The bot stands down for the rest of the day, then resumes.
+            j = i + 1
+            while j < n_bars - 2 and T[j].strftime("%Y-%m-%d") == day:
+                j += 1
+            i = j
+            continue
         entry_px = O[i + 1]
         if entry_px <= 0:
             i += 1
@@ -164,6 +206,8 @@ def run(candles, *, take_profit_pct: float, stop_loss_pct: float,
         net = (exit_px / entry_px - 1) - 2 * fee_per_side
         pnl = net * notional
         realised += pnl
+        if pnl < 0:
+            losses += 1
         trades.append(Trade(
             n=len(trades) + 1, entry_at=T[i + 1], exit_at=T[exit_i],
             entry_px=entry_px, exit_px=exit_px, reason=reason,
@@ -197,7 +241,7 @@ def run(candles, *, take_profit_pct: float, stop_loss_pct: float,
         n_sl=sum(1 for t in trades if t.reason == "stop-loss"),
         n_open=sum(1 for t in trades if t.reason == "open at end"),
         max_drawdown=max_dd, worst_equity=worst_equity,
-        liquidated=liquidated,
+        liquidated=liquidated, halted_reason=halted,
         buy_hold_pnl=bh_pnl, bars=n_bars, span_days=span,
         equity_curve=curve)
 
@@ -335,6 +379,7 @@ def run_positions(candles, positions, *, margin: float = 100.0,
         win_rate=(wins / len(trades) * 100) if trades else 0.0,
         n_tp=0, n_sl=0, n_open=sum(1 for t in trades if t.reason == "open at end"),
         max_drawdown=max_dd, worst_equity=worst, liquidated=liquidated,
+        halted_reason="",
         buy_hold_pnl=bh_pnl, bars=n, span_days=span,
         equity_curve=curve)
 

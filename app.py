@@ -1993,7 +1993,18 @@ def render_trade_tab() -> None:
                             params=({"take_profit_pct": float(tp),
                                      "stop_loss_pct": float(sl)}
                                     if strat.kind == "bracket" else None),
-                            funding=_fh)
+                            funding=_fh,
+                            # The same limits the bot enforces. Without these the
+                            # simulation used margin x leverage with no cap and no
+                            # breakers, so it traded a different position and kept
+                            # going through conditions that stop the real runner.
+                            limits={"max_notional": float(cap),
+                                    "max_losses": int(mx),
+                                    "daily_loss_limit": float(dl),
+                                    "min_equity": float(floor),
+                                    # the floor is on the WALLET, so the wallet
+                                    # balance has to come with it
+                                    "starting_equity": wallet})
                         # Both sides on the same terms. Result included funding
                         # while the benchmark did not, which credited the strategy
                         # with income buy-and-hold also earned.
@@ -2017,6 +2028,21 @@ def render_trade_tab() -> None:
                               "LIQUIDATED" if res.liquidated else
                               f"of ${res.margin:,.0f}",
                               delta_color="inverse" if res.liquidated else "off")
+                    _eff = min(float(margin) * float(lev), float(cap))
+                    st.caption(
+                        f"Simulated with the limits on the right: position "
+                        f"**${_eff:,.2f}** "
+                        + (f"(capped from ${float(margin)*float(lev):,.2f} by max "
+                           f"notional) " if _eff < float(margin) * float(lev)
+                           else "")
+                        + f"· stops after {int(mx)} losing trade(s) · daily loss "
+                        f"limit ${float(dl):,.2f} · halts below ${float(floor):,.2f} "
+                        f"equity.")
+                    if res.halted_reason:
+                        st.warning(f"**The run stopped early: "
+                                   f"{res.halted_reason}.** Your bot would have "
+                                   f"stopped at the same point, so the figures "
+                                   f"cover only the period up to there.")
                     if res.liquidated:
                         _t = res.trades[-1] if res.trades else None
                         st.error(

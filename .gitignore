@@ -226,3 +226,5 @@ reports/
 # never part of the source.
 /*.png
 .playwright-mcp/
+# Playwright verification screenshots live next to the scripts that make them.
+.claude/skills/verifying-ui-with-playwright/scripts/*.png

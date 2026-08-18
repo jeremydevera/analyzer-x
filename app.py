@@ -14,11 +14,15 @@ snapshot at that point, so the UI just reads the latest chunk.
 
 from __future__ import annotations
 
+import datetime as _dt
 import html
+import time
+import json
 import logging
 import os
 import sys
 import traceback
+from pathlib import Path
 from typing import NamedTuple
 
 import streamlit as st
@@ -56,29 +60,22 @@ ANALYST_LABELS = {key: label for key, label, _ in ANALYST_STAGES}
 _OLLAMA = {"label": "ollama", "provider": "openai_compatible",
            "base_url": "https://ollama.com/v1", "key_env": "OLLAMA_API_KEY"}
 _GOOGLE = {"label": "google", "provider": "google", "base_url": None, "key_env": "GOOGLE_API_KEY"}
-_NVIDIA = {"label": "nvidia", "provider": "nvidia", "base_url": None, "key_env": "NVIDIA_API_KEY"}
-_OPENAI = {"label": "openai", "provider": "openai", "base_url": None, "key_env": "OPENAI_API_KEY"}
 _QWEN = {"label": "qwen", "provider": "qwen", "base_url": None, "key_env": "DASHSCOPE_API_KEY"}
 # Alibaba MaaS workspace (dedicated host) — OpenAI-compatible; serves glm-5.1 etc.
 _MAAS = {"label": "maas", "provider": "openai_compatible",
          "base_url": "https://ws-wu00l7n3hmiafz2q.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
          "key_env": "MAAS_API_KEY"}
-# Catalog pruned 2026-07-31 against a live ping of every model (LLM Models tab
-# health check). Removed as unresponsive: all Cloudflare @cf/* entries and
-# deepseek/deepseek-v4-pro (401 — no valid CLOUDFLARE_API_KEY), claude-opus-4-8
-# (no ANTHROPIC_API_KEY), glm-4.7 + qwen3-coder:480b (410 retired by Ollama),
-# z-ai/glm-5.1 (410 gone from NVIDIA), moonshotai/kimi-k2.6 (404). Re-add any
-# of them on the LLM Models tab if the key/endpoint comes back.
+# Catalog pruned 2026-08-18 against a live ping of every model. Removed:
+# deepseek-ai/* (410 Gone — NVIDIA retired the endpoint) and all four OpenAI
+# models (429 "exceeded your current quota" — errors until the OpenAI account
+# is funded). Earlier prunes (2026-07-31): Cloudflare @cf/* + partner deepseek
+# (401), claude-opus-4-8 (no key), glm-4.7 + qwen3-coder:480b (410),
+# z-ai/glm-5.1 (410), moonshotai/kimi-k2.6 (404). Re-add any of them on the
+# LLM Models tab if the key/endpoint comes back.
 MODELS: dict[str, dict] = {
     "gemini-3.1-flash-lite": _GOOGLE,            # free · fast · clean
     "gemini-3.5-flash": _GOOGLE,                 # free
-    "deepseek-ai/deepseek-v4-flash": _NVIDIA,    # NVIDIA NIM
-    "deepseek-ai/deepseek-v4-pro": _NVIDIA,      # NVIDIA NIM (slow)
     "gpt-oss:120b": _OLLAMA,                     # Ollama Cloud · free
-    "gpt-4o-mini": _OPENAI,                      # OpenAI · cheap (needs billing/credits)
-    "gpt-5-mini": _OPENAI,                       # OpenAI · cheap reasoning
-    "gpt-5.1": _OPENAI,                          # OpenAI · frontier
-    "gpt-5.5": _OPENAI,                          # OpenAI · frontier (needs billing)
     "qwen3.6-flash": _QWEN,                      # Qwen Cloud · cheap · clean
     "qwen3.7-plus": _QWEN,                       # Qwen Cloud · balanced
     "qwen3.7-max": _QWEN,                        # Qwen Cloud · top reasoning/coding
@@ -291,6 +288,13 @@ CSS = """
   --s:8px;
   --field:280px;           /* one field width, so the forms line up */
 }
+/* Every element using the mono face is showing numbers that get compared
+   column-to-column (PnL, prices, dates). Proportional digits make the
+   columns shift as values change; tabular-nums locks the width. Declared
+   once here rather than in each of the 31 inline blocks. */
+[style*="--font-mono"], [style*="font-mono"], .ta-mono,
+[style*="IBM Plex Mono"] { font-variant-numeric: tabular-nums; }
+
 
 [data-testid="stAppViewContainer"]{ background:var(--bg); }
 html, body, [data-testid="stAppViewContainer"]{
@@ -643,6 +647,64 @@ hr{ border-color:var(--border); }
 }
 [data-testid="stVerticalBlockBorderWrapper"] [role="radiogroup"]{ gap:2px !important; }
 [data-testid="stVerticalBlockBorderWrapper"] [role="radiogroup"] p{ font-size:12.5px !important; }
+</style>
+"""
+
+# Night mode: the same design, re-tokened. Injected AFTER the base CSS so the
+# variable overrides win; a handful of Streamlit widget internals need
+# explicit repaints because they don't read our variables.
+DARK_CSS = """
+<style>
+:root {
+  --bg:#0f1318; --panel:#151b23; --panel-2:#1a222c; --sidebar:#151b23;
+  --border:#2a3441; --border-soft:#232c37; --border-strong:#3a4757;
+  --text:#e3e9f1; --muted:#8b98a9; --faint:#5d6979;
+  --accent:#4c8dff; --accent-dim:#6ea3ff; --accent-wash:#16233a;
+}
+[data-testid="stAppViewContainer"], .stApp{ background:var(--bg) !important; }
+[data-testid="stHeader"]{ background:transparent !important; }
+h1,h2,h3,h4,h5,h6,p,li,label,span,div{ color:inherit; }
+.stMarkdown, [data-testid="stWidgetLabel"] p{ color:var(--text); }
+/* Radio/checkbox OPTION labels are not stWidgetLabel — Streamlit leaves them at
+   the light theme's near-black, which is invisible on the night background.
+   The calendar's "REAL money / PAPER (demo)" choices read as blank without this. */
+[data-testid="stRadio"] label p, [data-testid="stCheckbox"] label p,
+[data-testid="stRadio"] label span, [data-testid="stCheckbox"] label span{
+  color:var(--text) !important; }
+/* …except the nav pills, which keep a LIGHT pill background from the base CSS.
+   The rule above would paint light text on it and blank out the current tab. */
+.st-key-nav_page [role="radiogroup"] label p{ color:var(--muted) !important; }
+.st-key-nav_page [role="radiogroup"] label:hover{ background:var(--panel-2); }
+.st-key-nav_page [role="radiogroup"] label:has(input:checked){
+  background:var(--panel-2); }
+.st-key-nav_page [role="radiogroup"] label:has(input:checked) p{
+  color:var(--text) !important; }
+[data-testid="stCaptionContainer"] p{ color:var(--muted) !important; }
+.stTextInput input, .stNumberInput input, .stTextArea textarea{
+  background:var(--panel-2) !important; color:var(--text) !important;
+  border-color:var(--border) !important; }
+[data-baseweb="select"] > div{
+  background:var(--panel-2) !important; border-color:var(--border) !important;
+  color:var(--text) !important; }
+[data-baseweb="select"] span, [data-baseweb="select"] div{ color:var(--text); }
+[data-baseweb="popover"] li, [data-baseweb="menu"]{
+  background:var(--panel-2) !important; color:var(--text) !important; }
+[data-baseweb="tag"]{ background:var(--accent-wash) !important;
+  color:var(--accent-dim) !important; }
+.stButton button{ background:var(--panel-2); color:var(--text);
+  border-color:var(--border); }
+.stButton button[kind="primary"]{ background:var(--accent); color:#fff; }
+.stNumberInput button{ background:var(--panel-2) !important;
+  color:var(--text) !important; border-color:var(--border) !important; }
+[data-testid="stExpander"] details{ background:var(--panel);
+  border-color:var(--border) !important; }
+[data-testid="stVerticalBlockBorderWrapper"]{
+  border-color:var(--border) !important; background:var(--panel); }
+[data-testid="stMetricValue"]{ color:var(--text); }
+/* Glide data grid paints its own colors; inversion approximates the theme. */
+[data-testid="stDataFrame"]{ filter:invert(0.9) hue-rotate(180deg); }
+[data-testid="stAlert"]{ filter:none; }
+hr{ border-color:var(--border); }
 </style>
 """
 
@@ -1091,7 +1153,17 @@ def engine_badge_html() -> str:
 # Sidebar navigation: one screen renders at a time, which is what lets each screen
 # own its controls. Tabs could not do that — Streamlit renders every tab body on
 # every run, so a sidebar full of settings looked like it applied to both.
-PAGES = ("New Crypto", "Stocks", "Trade", "Backtest", "LLM Models")
+PAGES = ("New Crypto", "Stocks", "Auto Trade", "LLM Models")
+
+
+UI_PREFS = Path(os.path.expanduser("~/.tradingagents/ui_prefs.json"))
+
+
+def _ui_prefs_load() -> dict:
+    try:
+        return json.loads(UI_PREFS.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
 
 
 def render_nav() -> str:
@@ -1101,8 +1173,19 @@ def render_nav() -> str:
         '<div><div class="ta-brand-name">TradingAgents</div>'
         '<div class="ta-brand-sub">Terminal</div></div></div>',
         unsafe_allow_html=True)
-    page = st.radio("Screen", PAGES, horizontal=True,
-                    label_visibility="collapsed", key="nav_page")
+    nav1, nav2 = st.columns([6, 1])
+    page = nav1.radio("Screen", PAGES, horizontal=True,
+                      label_visibility="collapsed", key="nav_page")
+    if "ui_night" not in st.session_state:
+        st.session_state["ui_night"] = bool(_ui_prefs_load().get("night"))
+    night = nav2.toggle("Night mode", key="ui_night")
+    prefs = _ui_prefs_load()
+    if bool(prefs.get("night")) != night:
+        UI_PREFS.parent.mkdir(parents=True, exist_ok=True)
+        UI_PREFS.write_text(json.dumps({**prefs, "night": night}),
+                            encoding="utf-8")
+    if night:
+        st.markdown(DARK_CSS, unsafe_allow_html=True)
     st.markdown('<div class="ta-rule" style="margin-top:var(--s)"></div>',
                 unsafe_allow_html=True)
     return page
@@ -1118,10 +1201,8 @@ def main() -> None:
                 unsafe_allow_html=True)
     if page == "New Crypto":
         render_crypto_tab()
-    elif page == "Trade":
-        render_trade_tab()
-    elif page == "Backtest":
-        render_backtest_tab()
+    elif page == "Auto Trade":
+        render_auto_trade_tab()
     elif page == "LLM Models":
         render_llm_models_tab()
     else:
@@ -1249,555 +1330,1743 @@ def _tradable_notional(symbol: str, margin: float, leverage: float,
         return vol * size * px
     return want
 
-def render_trade_tab() -> None:
-    """Auto-trade console for the SPX500 perpetual bot.
+# Each entry: key, label, evidence note, default contracts.
+# The 1h block below is the shortlist that survived the 941-coin sweep with
+# measured slippage, then a split-half holdout (profitable in BOTH halves of
+# its history), then a stability re-run on fresh candles. Figures are $10 base
+# margin, 20x, DEEP ladder, costs included. See docs/INCIDENT-2026-08-12-BDX.md
+# for why raw sweep profit alone is not evidence.
+AUTO_STRATEGIES = (
+    # Only the strategies actually deployed appear here. The specs for
+    # every other config still live in auto_trader.STRATEGY_SPECS, so a
+    # tile can be restored in one line; an unticked tile on the page is
+    # just clutter the operator has to read past.
+    ("mom15_4h_w", "Momentum 15 (4h) · TP 8.0% — PI",
+     "Winner of a 630-combination grid on PI's full 18-month history "
+     "(2026-08-13): #1 of 105 configs. +$1,283 martingale / +$293 flat at $5 "
+     "base — vs +$884 / +$168 for the 4.5% version it replaces. 19/19 months "
+     "green, profitable in BOTH halves at BOTH sizings (+$768 / +$462 "
+     "martingale), 433 trades instead of 666 so less fee drag. Same signal "
+     "and timeframe as before — only the barriers are wider.",
+     ("PI_USDT",)),
+    ("mom6_1h_pv", "Momentum 6 (1h) · TP 4.0% — PROVE",
+     "Replaced trend50 (4h) on 2026-08-17. Winner of a 3,432-combination "
+     "search over PROVE's own 1-hour year, with MEXC's 4.50% liquidation "
+     "modelled — an earlier pass without it crowned an 8% stop the venue "
+     "would never have let fire. Flat-staked this is the ONLY signal that "
+     "survives on PROVE at 1h: +$171.77 over 375 days, 38.8% win across 765 "
+     "trades, both halves positive (+$98 / +$70), 10/13 months green, worst "
+     "trade -$2.10. trend50 on the same terms: +$89.57 at 29.5%. The cost is "
+     "depth — worst dip $57 against trend50's $28 at a $5 base.",
+     ("PROVE_USDT",)),
+    ("sweep30_1h_w", "Liquidity sweep 30 (1h) · TP 4.0% — APEX",
+     "The strongest evidence in the 55,062-combination all-market sweep "
+     "(2026-08-14): one of only TWO configs that survived FLAT-staked over a "
+     "real year. APEX_USDT flat +$55.72 at $5 base, 10/12 months green, "
+     "profitable in BOTH halves (+$17 / +$36), 302 trades over 320 days. "
+     "Martingale +$141.16 — but note the ladder makes it LESS consistent "
+     "(7/12 green), so the flat figure is the honest one. Cost 6% of target.",
+     ("APEX_USDT",)),
+    ("fvg_1h_w", "ICT fair value gap (1h) · TP 4.0% — ALICE",
+     "Most consistent martingale survivor in the same sweep: +$443 at $5 "
+     "base, 13/15 months green over 416 days, both halves strongly positive. "
+     "Its FLAT version is also clearly profitable (+$80.20, the highest flat "
+     "figure of any candidate), so the edge is in the signal rather than the "
+     "ladder — though its flat months (8/15) miss the 70% survivor bar. "
+     "570 trades. Cost 3% of target.",
+     ("ALICE_USDT",)),
+    ("mom6_1h_gx", "Momentum 6 (1h) · TP 2.4% — XAUT gold",
+     "The ONLY 1-hour configuration in the 55,062-combination all-market "
+     "sweep that survived at BOTH sizings on a real year. Flat +$36.96 at $5 "
+     "base (11/15 months green, both halves positive: +$14.71 / +$23.04) AND "
+     "martingale +$148.01 (14/15 green). 282 trades over 416 days, 31.6% win "
+     "rate. Gold's 0.01% taker fee makes the round-trip cost just 1% of the "
+     "target — the cheapest contract on the venue. Same barriers as the "
+     "mom15 version it replaces; only the signal differs.",
+     ("XAUT_USDT",)),
+    ("mom15_1h_g", "Momentum 15 (1h) · TP 2.4% — GOLD (XAUT/PAXG)",
+     "RE-MEASURED 2026-08-13 on 10,000 fresh 1h bars (14 months), real fees "
+     "+ slippage. XAUT_USDT: martingale +$382 (14/15 green) but FLAT only "
+     "+$48 (9/15 green, halves +8 / +36) — a weak but genuinely two-sided "
+     "edge. PAXG_USDT: martingale +$301 (15/15 green) but FLAT +$1.95 "
+     "(7/15 green, FIRST HALF NEGATIVE −$13) — that headline is the ladder, "
+     "not the signal. Cost is 1% of target on XAUT, 5% on PAXG. Prefer XAUT.",
+     ("XAUT_USDT",)),
+)
 
-    The UI deliberately cannot arm live trading: that needs SPX_BOT_ARMED in the
-    bot's own environment, so a stray click in a browser can never start
-    spending money. What the UI does own is everything safe — status, config,
-    preflight, dry-run cycles, the ledger, and the two stop controls.
-    """
-    import json
-    import signal
-    import subprocess
-    import time
-    from dataclasses import asdict
+AUTO_TRADE_SETTINGS = Path(os.path.expanduser("~/.tradingagents/auto_trade.json"))
 
+
+def _fmt_when(ts: float) -> str:
+    """Operator's requested format: Aug 13, 2026 (8:03PM)."""
+    d = _dt.datetime.fromtimestamp(ts)
+    hour = d.hour % 12 or 12
+    return f"{d:%b} {d.day}, {d.year} ({hour}:{d:%M}{d:%p})"
+
+
+def _fmt_age(seconds: float) -> str:
+    """How long a position has been open, in words."""
+    seconds = max(0, int(seconds))
+    d, r = divmod(seconds, 86400)
+    h, r = divmod(r, 3600)
+    m = r // 60
+    if d:
+        return f"{d}d {h}h"
+    if h:
+        return f"{h}h {m}m"
+    return f"{m}m"
+
+
+def _auto_trade_load() -> dict:
+    try:
+        return json.loads(AUTO_TRADE_SETTINGS.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def _auto_trade_save(payload: dict) -> None:
+    AUTO_TRADE_SETTINGS.parent.mkdir(parents=True, exist_ok=True)
+    AUTO_TRADE_SETTINGS.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+@st.cache_data(ttl=900, show_spinner=False)
+def _auto_bt_klines(symbol: str, interval: str, limit: int):
+    from tradingagents.dataflows import mexc_futures as fx
+    return fx.klines(symbol, interval, limit)
+
+
+@st.cache_data(ttl=10, show_spinner=False)
+def _live_open_positions() -> list:
+    """The exchange's open positions, cached so the 5-second status fragment
+    doesn't hammer MEXC's private API."""
+    from tradingagents.dataflows import mexc_futures as fx
+    if not fx.has_credentials():
+        return []
+    return fx.open_positions()
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def _contract_size(symbol: str) -> float:
+    """USDT of underlying per CONTRACT. Not always 1: XAUT is 0.001, so
+    entry x vol overstated its notional 1000x and told the operator a 2.40%
+    take-profit was worth +2,279 USDT on a 5 USDT margin position."""
+    from tradingagents.dataflows import mexc_futures as fx
+    try:
+        return float(fx.contract_spec(symbol).get("contractSize") or 1.0)
+    except Exception:
+        return 1.0
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def _edge_check(key: str, symbol: str, margin: float) -> dict:
+    """Live liquidity/edge verdict for a strategy-coin pair, cached 5 min."""
+    from tradingagents import auto_trader as at
+    return at.edge_check(key, symbol, margin)
+
+
+@st.cache_data(ttl=10, show_spinner=False)
+def _last_price(symbol: str) -> float | None:
+    """Mark price for a symbol, cached — used to value DRY-RUN positions,
+    which the exchange knows nothing about."""
+    from tradingagents.dataflows import mexc_futures as fx
+    try:
+        return float(fx.last_price(symbol))
+    except Exception:
+        return None
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def _wallet_equity() -> float | None:
+    from tradingagents.dataflows import mexc_futures as fx
+    if not fx.has_credentials():
+        return None
+    try:
+        return fx.usdt_equity()
+    except Exception:
+        return None
+
+
+# TP/SL pairs swept per timeframe, scaled to the bar. CLAUDE.md rule 18 asks
+# for at least three pairs per timeframe and BOTH sizings, because the ladder
+# is a sizing choice, not a measurement: an audit showed the "13/13 green
+# months" behind six live strategies came from the ladder, not the signal.
+_BT_GRID = {
+    900: [(.004, .008), (.005, .010), (.005, .015), (.008, .016), (.008, .024)],
+    1800: [(.005, .010), (.006, .018), (.008, .016), (.010, .020), (.010, .030)],
+    3600: [(.005, .010), (.006, .018), (.008, .016), (.008, .024), (.010, .020),
+           (.010, .030), (.010, .040), (.015, .030), (.015, .045), (.020, .040),
+           (.025, .040), (.025, .050), (.030, .060)],
+    14400: [(.010, .020), (.015, .020), (.015, .030), (.015, .045), (.020, .030),
+            (.020, .040), (.020, .060), (.020, .080), (.025, .050), (.030, .060)],
+    86400: [(.020, .040), (.025, .050), (.030, .060), (.030, .090), (.040, .080),
+            (.040, .120)],
+}
+
+
+# A momentum signal's THRESHOLD — how big a move counts — changes which bars
+# fire at all, so it changes the trade list as much as the barriers do. The
+# backtest used to hold it at whatever was deployed and never showed it, which
+# meant the button could not reach a configuration found by a wider search and
+# said nothing about the gap.
+_BT_TH = {900: [.001, .002, .003], 1800: [.002, .003, .004],
+          3600: [.002, .003, .005], 14400: [.004, .006, .008],
+          86400: [.008, .010, .015]}
+
+
+def _bt_thresholds(spec: dict) -> list:
+    """Thresholds to sweep, always including the deployed one. Signals with no
+    threshold get a single ``None`` pass."""
+    if "threshold" not in spec:
+        return [None]
+    out = list(_BT_TH.get(int(spec.get("bar_seconds") or 0), [.003]))
+    live = round(float(spec["threshold"]), 6)
+    if live not in [round(x, 6) for x in out]:
+        out.append(live)
+    return sorted(set(out))
+
+
+def _bt_pairs(spec: dict) -> list:
+    """The barrier grid for this strategy's bar, always including its LIVE
+    pair so the table can show what is actually deployed beside the
+    alternatives."""
+    pairs = list(_BT_GRID.get(int(spec.get("bar_seconds") or 0), []))
+    live = (round(float(spec["sl"]), 6), round(float(spec["tp"]), 6))
+    if live not in [(round(a, 6), round(b, 6)) for a, b in pairs]:
+        pairs.append(live)
+    return sorted(set(pairs))
+
+
+def _render_strategy_backtest(key: str, label: str, coins: list[str],
+                              base_margin: float, days: int = 365) -> None:
+    """Run the strategy's exact live rules over MEXC history, one row per
+    coin. Same engine as the runner: DEEP ladder, 20x, worst-case fills."""
     import pandas as pd
 
-    import spx_bot
-    from tradingagents import strategies as sg
+    from tradingagents import auto_trader as at
+    if not coins:
+        st.error("Select at least one contract to backtest.")
+        return
+    spec = at.STRATEGY_SPECS[key]
+    # Ask for a YEAR of bars, not a fixed 2000 — 2000 bars is 333 days on 4h
+    # but only 83 days on 1h, which quietly turned a "1 year" backtest into
+    # under three months. Rule 13: never cap a fetch below what the venue
+    # serves for the window being claimed.
+    _need = int(days * 86400 / spec["bar_seconds"] * 1.15)
+    _limit = max(300, min(_need, 10_000))
+    _cut = pd.Timestamp.utcnow().tz_localize(None) - pd.Timedelta(days=days)
+    _pairs = _bt_pairs(spec)
+    _threshes = _bt_thresholds(spec)
+    # Liquidation, from MEXC's own maintenance margin. Without it a stop wider
+    # than the liquidation distance looks survivable when the venue would have
+    # closed the position first and taken the whole margin.
+    from tradingagents.dataflows import mexc_futures as _fx0
+    _liq = {}
+    _live_sizing = at.sizing_for(_auto_trade_load())
+    rows = []
+    logs: dict[str, dict] = {}
+    _ncombo = len(coins) * len(_pairs) * len(_threshes) * 2
+    with st.spinner(f"backtesting {len(coins)} coin(s) × {len(_threshes)} "
+                    f"threshold(s) × {len(_pairs)} TP/SL pairs × 2 sizings = "
+                    f"{_ncombo} combinations over {days} days of MEXC "
+                    f"{spec['interval']} history…"):
+        for coin in coins:
+            try:
+                df = _auto_bt_klines(coin, spec["interval"], _limit)
+            except Exception as exc:
+                st.warning(f"{coin}: no history ({exc})")
+                continue
+            # Trim to exactly the window claimed. A coin younger than that
+            # keeps whatever it has, and the row states its real depth.
+            df = df[df["Date"] >= _cut]
+            if len(df) < 30:
+                st.warning(f"{coin}: only {len(df)} bars inside the last "
+                           f"{days} days — too little to test.")
+                continue
+            _fee = at.taker_fee(coin)
+            try:
+                _liq[coin] = _fx0.liquidation_move_pct(coin, at.LEVERAGE)
+            except Exception:
+                _liq[coin] = None
+            _hi = [float(x) for x in df["High"]]
+            _lo = [float(x) for x in df["Low"]]
+            _cl = [float(x) for x in df["Close"]]
+            for _th in _threshes:
+                # The signal array depends on the THRESHOLD, so it is rebuilt
+                # per threshold — but only once, not once per barrier pair.
+                # A throwaway key: never mutate the deployed spec, which the
+                # runner brackets with and the grid renders from.
+                if _th is None:
+                    _dirs = at._dirs_for_backtest(key, _hi, _lo, _cl)
+                else:
+                    _tk = f"{key}__bt"
+                    at.STRATEGY_SPECS[_tk] = {**spec, "threshold": _th}
+                    try:
+                        _dirs = at._dirs_for_backtest(_tk, _hi, _lo, _cl)
+                    finally:
+                        at.STRATEGY_SPECS.pop(_tk, None)
+                for _sl, _tp in _pairs:
+                    for _sz in ("martingale", "flat"):
+                        r = at.backtest_strategy(
+                            key, df, base_margin=base_margin, fee=_fee,
+                            sizing=_sz, dirs=_dirs, tp=_tp, sl=_sl,
+                            liq_move_pct=_liq.get(coin))
+                        _is_live = (abs(_tp - spec["tp"]) < 1e-9
+                                    and abs(_sl - spec["sl"]) < 1e-9
+                                    and _sz == _live_sizing
+                                    and (_th is None
+                                         or abs(_th - spec.get("threshold", 0))
+                                         < 1e-9))
+                        _lk = (f"{coin}|{_sl * 100:.2f}|{_tp * 100:.2f}|{_sz}"
+                               f"|{'-' if _th is None else f'{_th * 100:.2f}'}")
+                        logs[_lk] = r
+                        rows.append({
+                            "LIVE": "◀ DEPLOYED" if _is_live else "",
+                            "coin": coin,
+                            "TF": spec["interval"],
+                            "thresh %": ("—" if _th is None
+                                         else round(_th * 100, 2)),
+                            "SL %": round(_sl * 100, 2),
+                            "TP %": round(_tp * 100, 2),
+                            "R:R": round(_tp / _sl, 2) if _sl else 0.0,
+                            "sizing": _sz,
+                            "leverage": f"{at.LEVERAGE}x",
+                            "base margin $": base_margin,
+                            "notional $": round(base_margin * at.LEVERAGE, 2),
+                            "trades": r["trades"],
+                            "trades/day": round(r["trades"] / max(r["days"], 1), 2),
+                            "WINS": r["wins"],
+                            "LOSSES": r["losses"],
+                            "win %": round(100 * r["wins"] / r["trades"], 1)
+                                     if r["trades"] else 0.0,
+                            "PROFIT TOTAL $": r["profit"],
+                            "months green": f"{r['months_green']}/"
+                                            f"{r['months_total']}",
+                            "worst month $": r["worst_month"],
+                            "worst trade $": r["worst_trade"],
+                            "max drawdown $": r["max_dd"],
+                            "days of history": r["days"],
+                            "_log": _lk,
+                        })
+    if not rows:
+        st.error("No coin returned enough history to test.")
+        return
+    _dmax = max(r["days of history"] for r in rows)
+    _dep = next((r for r in rows if r["LIVE"]), None)
+    _best = max(rows, key=lambda r: r["PROFIT TOTAL $"])
+    st.markdown(
+        f"<div class='tm-p' style='margin:6px 0 8px'>"
+        f"<div class='row'><span>DEPLOYED &middot; SL "
+        + (f"{_dep['SL %']:.2f}% / TP {_dep['TP %']:.2f}% &middot; "
+           f"{_dep['sizing']}" if _dep else "not in this grid")
+        + "</span><span class='"
+        + (_tm_cls(_dep["PROFIT TOTAL $"]) if _dep else "tm-nil")
+        + "' style='font-weight:700'>"
+        + (f"{_dep['PROFIT TOTAL $']:+,.2f} USDT" if _dep else "—")
+        + "</span></div>"
+        f"<div class='row'><span>BEST IN GRID &middot; SL "
+        f"{_best['SL %']:.2f}% / TP {_best['TP %']:.2f}% &middot; "
+        f"{_best['sizing']}</span>"
+        f"<span class='{_tm_cls(_best['PROFIT TOTAL $'])}' "
+        f"style='font-weight:700'>{_best['PROFIT TOTAL $']:+,.2f} USDT"
+        f"</span></div>"
+        f"<div class='row sub'><span style='color:var(--t-faint)'>"
+        f"{len(coins)} contract(s) &times; {len(_threshes)} threshold(s) "
+        f"&times; {len(_pairs)} TP/SL pairs &times; 2 sizings = "
+        f"<b>{len(rows)} combinations tested</b> "
+        f"&middot; {days}-day window &middot; {_dmax} days served "
+        f"&middot; {at.LEVERAGE}x &middot; base {base_margin:g} USDT "
+        f"({base_margin * at.LEVERAGE:g} notional)</span>"
+        f"<span style='color:var(--t-faint)'>"
+        f"{_best['trades']} trades &middot; {_best['WINS']}W / "
+        f"{_best['LOSSES']}L &middot; {_best['trades/day']:.2f}/day "
+        f"at best</span></div></div>", unsafe_allow_html=True)
+    st.caption(
+        "Every row is the SAME signal at different barriers — only TP, SL and "
+        "sizing change. Flat is what the signal measures; the DEEP ladder "
+        "multiplies whatever edge exists, including a negative one, so a row "
+        "that only wins on martingale is telling you about the ladder rather "
+        "than the strategy. Fills are worst-case: MEXC taker fee 0.02%/side "
+        "PLUS 0.03%/side slippage, because a live market order never fills at "
+        "the printed candle price. Columns sort on click.")
+    _df = pd.DataFrame(rows).sort_values(
+        "PROFIT TOTAL $", ascending=False).reset_index(drop=True)
+    st.dataframe(_df.drop(columns=["_log"]), width="stretch", height=430)
+    # Trade-by-trade log for each combination, best first.
+    for _lk, r in sorted(logs.items(), key=lambda kv: -kv[1]["profit"]):
+        _c, _s, _t, _z, _th = _lk.split("|")
+        with st.expander(
+                f"Trades — {_c} · SL {_s}% / TP {_t}% · {_z}"
+                + ("" if _th == "-" else f" · threshold {_th}%") + " · "
+                f"{r['trades']} trades · {r['wins']} WIN / {r['losses']} LOSE "
+                f"· TOTAL PROFIT {r['profit']:+.2f} $"):
+            st.metric("TOTAL PROFIT", f"{r['profit']:+.2f} $")
+            if r["log"]:
+                _lg = pd.DataFrame(r["log"]).rename(columns={
+                    "entry time": "OPENED", "exit time": "CLOSED",
+                    "step": "ladder rung", "why": "closed by"})
+                # How long each trade was actually held — the question the two
+                # timestamps are usually being read to answer.
+                _o = pd.to_datetime(_lg["OPENED"])
+                _c = pd.to_datetime(_lg["CLOSED"])
+                _h = (_c - _o).dt.total_seconds() / 3600.0
+                _lg.insert(2, "HELD", [
+                    f"{v/24:.1f}d" if v >= 24 else f"{v:.1f}h" for v in _h])
+                _lg = _lg[["OPENED", "CLOSED", "HELD", "side", "closed by",
+                           "entry", "exit", "TP px", "SL px", "ladder rung",
+                           "margin $", "notional $", "leverage",
+                           "WIN/LOSE", "pnl $", "running total $"]]
+                _nliq = int((_lg["closed by"] == "LIQ").sum())
+                st.caption(
+                    f"{len(_lg)} trades · median hold "
+                    f"{pd.Series(_h).median():.1f}h · longest "
+                    f"{max(_h)/24:.1f}d"
+                    + (f" · **{_nliq} LIQUIDATED**" if _nliq else "")
+                    + ". OPENED is the bar the entry filled on, CLOSED the bar "
+                      "the barrier was hit.")
+                st.dataframe(_lg, width="stretch", height=400)
+            else:
+                st.caption("No trades in the tested window.")
+
+
+# ---------------------------------------------------------------------------
+# Auto Trade is a TERMINAL, and it commits to that one visual world: it paints
+# its own near-black ground and monospace grid regardless of the app's Night
+# toggle. That is deliberate, not an oversight. Two separate bugs on
+# 2026-08-15 were "correct value, invisible text" caused by this screen
+# inheriting a theme it did not control (radio options black-on-black, the nav
+# pill white-on-white). A band that owns its palette cannot have that bug.
+# ---------------------------------------------------------------------------
+TERMINAL_CSS = """
+<style>
+.st-key-term{
+  --t-ground:#07090b; --t-panel:#0d1115; --t-panel2:#121820;
+  --t-rule:#1b232b; --t-rule2:#2c3844;
+  --t-ink:#d3dbe3; --t-dim:#63717f; --t-faint:#3d4854;
+  --t-amber:#f0a848; --t-up:#35d07f; --t-dn:#ff5f56;
+  background:var(--t-ground); color:var(--t-ink);
+  font-family:var(--font-mono); font-variant-numeric:tabular-nums;
+  padding:18px 20px 22px; border:1px solid var(--t-rule);
+}
+.st-key-term p, .st-key-term span, .st-key-term div, .st-key-term label{
+  font-family:var(--font-mono); }
+/* …but NEVER the Material icon spans. Their glyphs are ligatures, so a mono
+   font renders the ligature's source text: the expander chevrons came out as
+   the literal word "arrow_right" printed over the contract column. */
+.st-key-term [data-testid="stIconMaterial"],
+.st-key-term .material-symbols-rounded, .st-key-term [class*="material"]{
+  font-family:"Material Symbols Rounded" !important; }
+
+/* ---- band header: amber tick, tracked label, rule to the right edge ---- */
+.tm-h{ display:flex; align-items:center; gap:10px; margin:22px 0 8px; }
+.tm-h:first-child{ margin-top:0; }
+.tm-h .k{ color:var(--t-amber); font-size:10.5px; letter-spacing:.22em;
+  text-transform:uppercase; white-space:nowrap; }
+.tm-h .k::before{ content:"\\258C"; margin-right:7px; }
+.tm-h .r{ flex:1; height:1px; background:var(--t-rule2); }
+.tm-h .v{ color:var(--t-dim); font-size:10.5px; letter-spacing:.14em;
+  text-transform:uppercase; white-space:nowrap; }
+
+/* ---- the readout ribbon: cells split by hairlines, no cards ---- */
+.tm-rib{ display:flex; border:1px solid var(--t-rule2); background:var(--t-panel); }
+.tm-rib > div{ flex:1; padding:10px 14px; border-left:1px solid var(--t-rule); }
+.tm-rib > div:first-child{ border-left:0; }
+.tm-rib .l{ font-size:9.5px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--t-dim); margin-bottom:3px; white-space:nowrap; }
+.tm-rib .n{ font-size:23px; font-weight:600; letter-spacing:-.02em;
+  line-height:1.15; }
+.tm-rib .s{ font-size:10.5px; color:var(--t-dim); margin-top:2px; }
+.tm-up{ color:var(--t-up); } .tm-dn{ color:var(--t-dn); }
+.tm-nil{ color:var(--t-dim); } .tm-am{ color:var(--t-amber); }
+
+/* ---- the strategy grid. Monospace + white-space:pre IS the column
+       alignment — no table markup can survive inside an expander label. ---- */
+/* Font size and left offset are MEASURED against the expander rows below
+   (text starts at x=112, 12.5px). Change either and the header stops sitting
+   over its own columns — the whole grid is monospace alignment, nothing else
+   holds it together. */
+.tm-th{ white-space:pre; font-size:12.5px; letter-spacing:.02em;
+  color:var(--t-dim); padding:6px 0 5px 21px;
+  border-bottom:1px solid var(--t-rule2); }
+/* Streamlit paints :green[]/:red[]/:gray[] with its LIGHT theme's ink, inline,
+   so it is near-invisible on this band's near-black ground. These are the
+   three literal values it emits. */
+.st-key-term .stMarkdownColoredText[style*="21, 130, 55"]{
+  color:var(--t-up) !important; }
+.st-key-term .stMarkdownColoredText[style*="189, 64, 67"]{
+  color:var(--t-dn) !important; }
+.st-key-term .stMarkdownColoredText[style*="49, 51, 63"]{
+  color:var(--t-faint) !important; }
+.st-key-term [data-testid="stExpander"]{ border:0 !important;
+  background:transparent !important; }
+.st-key-term [data-testid="stExpander"] details{ border:0 !important;
+  border-bottom:1px solid var(--t-rule) !important; border-radius:0 !important;
+  background:transparent !important; }
+.st-key-term [data-testid="stExpander"] summary{ padding:0 !important;
+  border-radius:0 !important; min-height:0 !important; }
+/* Streamlit puts ~1rem of gap between stacked blocks; on a 24px terminal row
+   that reads as a list of cards, not a grid. */
+.st-key-term [data-testid="stExpander"]{ margin-bottom:0 !important; }
+.st-key-term [data-testid="stVerticalBlock"]:has(> [data-testid="stExpander"]){
+  gap:0 !important; }
+.st-key-term [data-testid="stExpander"] summary:hover{
+  background:var(--t-panel2) !important; }
+.st-key-term [data-testid="stExpander"] summary p{ white-space:pre;
+  font-size:12.5px !important; letter-spacing:.02em; color:var(--t-ink);
+  line-height:2.1; }
+.st-key-term [data-testid="stExpander"] summary svg{ fill:var(--t-faint); }
+.st-key-term [data-testid="stExpanderDetails"]{ background:var(--t-panel);
+  border-left:2px solid var(--t-amber); padding:12px 16px !important;
+  margin:0 0 2px 22px; }
+
+/* ---- tables: a CSS grid, because st.dataframe cannot hold a button and
+       st.data_editor cannot colour a cell. `__POSGRID__` is substituted from
+       _TM_POS at render time so the header, every row and this rule can never
+       disagree about the column count; the smaller tables override
+       grid-template-columns inline. ---- */
+.tm-pt{ display:grid; grid-template-columns:__POSGRID__; gap:11px;
+  align-items:center; font-size:11px; padding:5px 8px;
+  border-bottom:1px solid var(--t-rule); }
+.tm-pt .c{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tm-pt .r{ text-align:right; }
+.tm-pt .l{ text-align:left; }
+.tm-pt-h{ color:var(--t-dim); font-size:10px; letter-spacing:.08em;
+  text-transform:uppercase; border-bottom:1px solid var(--t-rule2); }
+.tm-pt-t{ font-weight:700; border-top:1px solid var(--t-rule2);
+  border-bottom:0; background:var(--t-panel); }
+/* Each book is a hard-bordered box with a solid badge, because two ruled
+   grids stacked together read as one table — and "real money or simulator?"
+   is the one thing this section must never leave ambiguous. */
+.tm-badge{ display:inline-block; padding:3px 10px; margin:0 0 8px;
+  font-size:10px; letter-spacing:.16em; font-weight:700; color:#07090b; }
+.st-key-pos_real, .st-key-pos_paper{ border-radius:0 !important;
+  padding:12px 14px 6px !important; margin-bottom:14px !important; }
+.st-key-pos_real{ border:1px solid var(--t-dn) !important;
+  border-left:4px solid var(--t-dn) !important;
+  background:rgba(255,95,86,.03) !important; }
+.st-key-pos_paper{ border:1px solid var(--t-up) !important;
+  border-left:4px solid var(--t-up) !important;
+  background:rgba(53,208,127,.03) !important; }
+.st-key-pos_real .tm-badge{ background:var(--t-dn); }
+.st-key-pos_paper .tm-badge{ background:var(--t-up); }
+
+/* The close button sits in its own column beside the row. */
+.st-key-term [data-testid="stColumn"] .stButton button{ padding:2px 8px !important;
+  font-size:10px !important; letter-spacing:.06em; width:100%; }
+
+/* ---- ledger panels: ruled rows, totals set off by a heavy rule ---- */
+.tm-p{ border:1px solid var(--t-rule2); background:var(--t-panel);
+  padding:11px 13px; font-size:12px; line-height:1.85; }
+.tm-p .row{ display:flex; justify-content:space-between; gap:8px; }
+.tm-p .sub{ border-top:1px solid var(--t-rule2); margin-top:5px; padding-top:5px; }
+.tm-p .tot{ border-top:2px solid var(--t-rule2); margin-top:4px; padding-top:5px;
+  font-weight:700; }
+.tm-big{ font-size:34px; font-weight:700; line-height:1.1; letter-spacing:-.03em; }
+.tm-feed{ max-height:230px; overflow-y:auto; border:1px solid var(--t-rule);
+  background:var(--t-panel); padding:8px 11px; font-size:11.5px; line-height:1.65;
+  color:var(--t-dim);
+  /* Oldest at the top, newest at the bottom, scrolled to the newest — the
+     way a terminal reads. column-reverse over a reversed DOM is the only way
+     to get the auto-scroll without a script. */
+  display:flex; flex-direction:column-reverse; }
+
+/* Strategy-grid rows: one height for every cell so the columns line up.
+   Streamlit gives a text input 35px, a checkbox 21px and a bare span 13px;
+   left alone they sit on three different baselines across the row. */
+.st-key-term [data-testid="stColumn"] [data-testid="stTextInput"],
+.st-key-term [data-testid="stColumn"] [data-testid="stNumberInput"]{
+  margin:0 !important; }
+.st-key-term [data-testid="stColumn"] [data-testid="stTextInput"] input,
+.st-key-term [data-testid="stColumn"] [data-testid="stNumberInput"] input{
+  height:30px !important; padding:2px 8px !important; }
+.st-key-term [data-testid="stColumn"] [data-testid="stCheckbox"]{
+  min-height:38px; display:flex; align-items:center; margin:0 !important; }
+.st-key-term [data-testid="stColumn"] [data-testid="stElementContainer"]{
+  margin-bottom:0 !important; }
+
+/* Every column row in the terminal is a LAYOUT row, never a data row, so the
+   app-wide `align-items:center` must not reach in here — it floats a short
+   column into the middle of a tall neighbour. */
+.st-key-term [data-testid="stHorizontalBlock"]{ align-items:flex-start; }
+/* The 150px app-wide cap on number inputs clamps the widget's own label and
+   wraps it into its help icon. */
+.st-key-term [data-testid="stNumberInput"]{ max-width:230px; }
+
+/* ---- Streamlit widgets, repainted for the dark band ---- */
+.st-key-term [data-testid="stWidgetLabel"] p{ color:var(--t-dim) !important;
+  font-size:10px !important; letter-spacing:.14em; text-transform:uppercase; }
+.st-key-term [data-testid="stCheckbox"] p,
+.st-key-term [data-testid="stRadio"] label p{ color:var(--t-ink) !important;
+  font-size:12px !important; text-transform:none; letter-spacing:0; }
+/* A ticked book is GREEN — the same green as a profit, so "on" and "good"
+   read the same way down the table. Streamlit's own primary is orange, which
+   on this band was indistinguishable from the amber used for the ladder. */
+.st-key-term label[data-baseweb="checkbox"] > span:first-child{
+  background:var(--t-panel2) !important;
+  border-color:var(--t-rule2) !important; }
+.st-key-term label[data-baseweb="checkbox"]:has(input:checked) > span:first-child{
+  background:var(--t-up) !important; border-color:var(--t-up) !important; }
+.st-key-term input, .st-key-term textarea{ background:var(--t-panel2) !important;
+  color:var(--t-ink) !important; border-color:var(--t-rule2) !important;
+  border-radius:0 !important; }
+.st-key-term [data-baseweb="select"] > div{ background:var(--t-panel2) !important;
+  border-color:var(--t-rule2) !important; border-radius:0 !important;
+  color:var(--t-ink) !important; }
+.st-key-term [data-baseweb="tag"]{ background:var(--t-panel2) !important;
+  color:var(--t-amber) !important; border-radius:0 !important; }
+/* A multiselect's search box is a 16px-wide input that BaseWeb parks UNDER
+   the first tag and keeps transparent. Giving every input in the band an
+   opaque panel background painted it over the tag's first glyph, so
+   PROVE_USDT rendered as "ROVE_USDT". Measured: input at x=136 w=16, the
+   tag's text starts at x=144. */
+.st-key-term [data-baseweb="select"] input{ background:transparent !important; }
+.st-key-term .stButton button{ background:var(--t-panel2) !important;
+  color:var(--t-ink) !important; border:1px solid var(--t-rule2) !important;
+  border-radius:0 !important; font-family:var(--font-mono) !important;
+  font-size:11.5px !important; letter-spacing:.1em; text-transform:uppercase; }
+.st-key-term .stButton button:hover{ border-color:var(--t-amber) !important;
+  color:var(--t-amber) !important; }
+.st-key-term .stButton button[kind="primary"]{ background:var(--t-amber) !important;
+  color:#0a0c0e !important; border-color:var(--t-amber) !important;
+  font-weight:700 !important; }
+.st-key-term .stNumberInput button{ background:var(--t-panel2) !important;
+  border-color:var(--t-rule2) !important; }
+.st-key-term [data-testid="stCaptionContainer"] p{ color:var(--t-dim) !important;
+  font-size:11.5px !important; }
+.st-key-term [data-testid="stAlert"]{ border-radius:0 !important;
+  background:var(--t-panel) !important; }
+.st-key-term [data-testid="stDataFrame"]{ filter:invert(.92) hue-rotate(180deg); }
+</style>
+"""
+
+# Bar length -> the name a trader uses for it.
+_TF_NAMES = {60: "1m", 300: "5m", 900: "15m", 1800: "30m", 3600: "1h",
+             7200: "2h", 14400: "4h", 28800: "8h", 86400: "1d"}
+
+
+def _tm_tf(spec: dict) -> str:
+    """Timeframe read from the spec's bar length, never parsed out of a key."""
+    return _TF_NAMES.get(int(spec.get("bar_seconds") or 0), "—")
+
+
+def _tm_sig(key: str) -> str:
+    """The signal name inside a strategy key ('mom15_4h_w' -> 'mom15')."""
+    parts = key.split("_")
+    return parts[1] if parts and parts[0] == "ict" and len(parts) > 1 else parts[0]
+
+
+def _tm_head(label: str, value: str = "") -> str:
+    return (f"<div class='tm-h'><span class='k'>{label}</span>"
+            f"<span class='r'></span><span class='v'>{value}</span></div>")
+
+
+def _tm_cls(v: float) -> str:
+    return "tm-up" if v > 0 else "tm-dn" if v < 0 else "tm-nil"
+
+
+
+# Column widths for the strategy grid. The header and every row use these
+# same numbers — change one, change both, or the columns stop lining up.
+
+# Each strategy picks its own book. "off" is a real option, not the absence of
+# one — a strategy can be loaded, configured and deliberately trading nowhere.
+
+
+def _books_to_choice(books: list) -> str:
+    """['real','paper'] -> 'both'. The stored form is a list so the runner can
+    ask 'is this book mine?'; the UI form is one choice."""
+    has_r, has_p = "real" in books, "paper" in books
+    return ("both" if has_r and has_p else "real" if has_r
+            else "paper" if has_p else "off")
+
+
+def _choice_to_books(choice: str) -> list:
+    return {"off": [], "paper": ["paper"], "real": ["real"],
+            "both": ["real", "paper"]}[choice]
+
+
+def _parse_contracts(text: str, known: set | None = None) -> tuple:
+    """'pi, btc' -> (['PI_USDT','BTC_USDT'], []).
+
+    Returns the symbols AND the rejects. A typo must never silently arm
+    nothing: the caller names what it dropped so an empty strategy is
+    obviously a mistake rather than a quiet choice.
+    """
+    good, bad = [], []
+    for tok in str(text or "").split(","):
+        tok = tok.strip().upper().replace(" ", "")
+        if not tok:
+            continue
+        sym = tok if tok.endswith("_USDT") else f"{tok}_USDT"
+        if known and sym not in known:
+            bad.append(sym)
+        elif sym not in good:
+            good.append(sym)
+    return good, bad
+
+# The positions table: (key, header, weight, alignment, kind). Money columns
+# are coloured by sign; everything else is plain. Header and rows are built
+# from THIS list, so a column can never appear in one and not the other.
+_TM_POS = (
+    # `state` and `vol` are still carried on the row — the open/flat filter
+    # and the close order both need them — they are simply not displayed.
+    ("coin", "coin", 1.1, "l", "text"),
+    ("total $", "total $", 1.4, "r", "money"),
+    ("realised $", "realised $", 1.8, "r", "money"),
+    ("open $", "unreal $", 1.5, "r", "money"),
+    ("prog", "to TP", 2.6, "l", "html"),
+    ("tp_pct", "TP % ($)", 2.4, "r", "html"),
+    ("sl_pct", "SL % ($)", 2.4, "r", "html"),
+    ("W", "W", 0.5, "r", "num"),
+    ("L", "L", 0.5, "r", "num"),
+    ("trades", "trd", 0.7, "r", "num"),
+    ("side", "side", 1.0, "l", "text"),
+    ("strategy", "strategy", 2.1, "l", "text"),
+    ("opened", "opened", 1.9, "l", "text"),
+    ("held", "held", 1.2, "l", "text"),
+    ("entry", "entry", 1.4, "r", "px"),
+    # The TP/SL PRICES were dropped: entry plus TP %/SL % says the same thing
+    # in the unit the strategy is specified in, and 20 columns did not fit —
+    # every strategy name and timestamp was ellipsised to make room for them.
+    # `lev` went too; it is 20x on every row and now sits in the band header.
+    ("margin $", "margin", 1.1, "r", "num"),
+    ("bracket", "bracket", 1.3, "l", "text"),
+)
+_TM_POS_GRID = " ".join(f"{w}fr" for _, _, w, _a, _k in _TM_POS)
+
+
+def _tm_pos_head() -> str:
+    return "".join(
+        f"<span class='c {a}'>{html.escape(lab)}</span>"
+        for _k, lab, _w, a, _kind in _TM_POS)
+
+
+def _tm_progress(entry, tp, sl, px, side: int) -> str:
+    """A bar showing how far this position has travelled from its ENTRY
+    toward its take-profit — green — or toward its stop — red.
+
+    Works for both directions because the span is signed: for a short, tp sits
+    below entry, so (px - entry) / (tp - entry) is still positive when the
+    trade is winning. Returns "" when any leg is missing rather than drawing a
+    bar from a guess.
+    """
+    try:
+        entry, tp, sl, px = float(entry), float(tp), float(sl), float(px)
+    except (TypeError, ValueError):
+        return ""
+    if not entry or not px or side == 0:
+        return ""
+    tp_span, sl_span = tp - entry, sl - entry
+    moved = px - entry
+    if tp_span and (moved / tp_span) >= 0:
+        frac, colour, target = moved / tp_span, "var(--t-up)", "TP"
+    elif sl_span:
+        frac, colour, target = moved / sl_span, "var(--t-dn)", "SL"
+    else:
+        return ""
+    pct = max(0.0, min(frac, 1.0)) * 100
+    return (
+        f"<span style='display:inline-flex;align-items:center;gap:6px;"
+        f"width:100%'>"
+        f"<span style='flex:1;height:9px;background:var(--t-panel2);"
+        f"border:1px solid var(--t-rule2);position:relative;min-width:40px'>"
+        f"<span style='position:absolute;left:0;top:0;bottom:0;"
+        f"width:{pct:.1f}%;background:{colour}'></span></span>"
+        f"<span style='color:{colour};font-size:10.5px;white-space:nowrap'>"
+        f"{pct:.0f}%&nbsp;{target}</span></span>")
+
+
+def _tm_pos_cell(val, kind: str) -> str:
+    """One cell. An absent value prints an em dash, never 'None' — a missing
+    price and a broken one must not look the same."""
+    if kind == "html":
+        return str(val) if val else ""
+    if val is None or val == "":
+        return "—" if kind != "text" else ""
+    if kind == "money":
+        return f"<span class='{_tm_cls(float(val))}'>{float(val):+.2f}</span>"
+    if kind == "px" and isinstance(val, (int, float)):
+        # Simulated brackets carry full float noise (0.09547200000000002);
+        # six significant figures is past any contract's price scale.
+        return f"{val:.6g}"
+    if kind == "num" and isinstance(val, (int, float)):
+        return f"{val:g}"
+    return html.escape(str(val))
+
+
+def _tm_pos_row(r: dict) -> str:
+    return "".join(
+        f"<span class='c {a}'>{_tm_pos_cell(r.get(k), kind)}</span>"
+        for k, _lab, _w, a, kind in _TM_POS)
+
+
+def _tm_table(cols: tuple, rows: list, total: dict | None = None,
+              empty: str = "nothing yet") -> str:
+    """A small ruled table sharing the positions grid's look.
+
+    ``cols`` is (key, label, weight, align, kind). The TOTAL row, when given,
+    is rendered from the SAME cell formatter as the body, so a total can never
+    be formatted — or coloured — differently from the rows it sums.
+    """
+    tmpl = "grid-template-columns:" + " ".join(f"{w}fr" for _k, _l, w, _a, _kd
+                                               in cols)
+    head = "".join(f"<span class='c {a}'>{html.escape(lab)}</span>"
+                   for _k, lab, _w, a, _kd in cols)
+    out = [f"<div class='tm-pt tm-pt-h' style='{tmpl}'>{head}</div>"]
+    if not rows:
+        return (out[0] + f"<div style='font-size:11.5px;color:var(--t-faint);"
+                         f"padding:7px 8px'>{empty}</div>")
+    for r in rows:
+        cells = "".join(
+            f"<span class='c {a}'>{_tm_pos_cell(r.get(k), kd)}</span>"
+            for k, _l, _w, a, kd in cols)
+        out.append(f"<div class='tm-pt' style='{tmpl}'>{cells}</div>")
+    if total is not None:
+        cells = "".join(
+            f"<span class='c {a}'>{_tm_pos_cell(total.get(k), kd)}</span>"
+            for k, _l, _w, a, kd in cols)
+        out.append(f"<div class='tm-pt tm-pt-t' style='{tmpl}'>{cells}</div>")
+    return "".join(out)
+
+
+def render_auto_trade_tab() -> None:
+    """The trading terminal: status ribbon, strategy grid, risk, book, feed."""
+    from tradingagents import auto_trader as at
+    from tradingagents.dataflows import mexc_credentials as cred
     from tradingagents.dataflows import mexc_futures as fx
 
-    from tradingagents.dataflows import mexc_credentials as cred
+    cred.load_into_env()
+    saved = _auto_trade_load()
+    term = st.container(key="term")
 
-    cred.load_into_env()          # pick up keys saved from this page
-    cfg = spx_bot.Config.load()
-    state = spx_bot._read_state()
-    armed_env = os.getenv("SPX_BOT_ARMED", "").strip().lower() in ("yes", "true", "1")
-    killed = spx_bot.KILL_PATH.exists()
-    live_ready = armed_env and not killed
-
-    # ---- top row: what mode is this in, right now
-    mode = ("LIVE — real money" if live_ready
-            else ("HALTED — kill file present" if killed else "DRY RUN — no orders"))
-    colour = "var(--sell)" if live_ready else ("var(--hold)" if killed else "var(--buy)")
-    st.markdown(
-        f"<div class='ta-card' style='border-left:3px solid {colour}'>"
-        f"<h4>Bot mode</h4>"
-        f"<div style='font-family:var(--font-mono);font-size:22px;font-weight:600;"
-        f"color:{colour}'>{html.escape(mode)}</div>"
-        f"<div style='color:var(--muted);font-size:13px;margin-top:6px'>"
-        f"Live trading needs <code>SPX_BOT_ARMED=yes</code> in the bot's shell "
-        f"<b>and</b> <code>--live</code> on its command line. This page cannot "
-        f"set either — by design.</div></div>",
-        unsafe_allow_html=True)
-
-    # Keyed so the CSS top-aligns this row; otherwise the shorter left column
-    # gets vertically centred against the tall settings panel.
-    # ---- command strip: the primary action, and the state it acts on.
-    # "Start bot (dry run)" used to sit four sections down the operating column,
-    # below the API-key form, which is why it could not be found.
-    _h = spx_bot.health()
-    _st = spx_bot._read_state() or {}
-    _pos = _st.get("position")
-    _live_ready = os.getenv("SPX_BOT_ARMED", "").strip().lower() in ("yes", "true", "1")
-    _racing = spx_bot._lane_order(cfg)
-    cs = st.container(key="command_strip")
-    with cs:
-        m1, m2, m3, m4, act = st.columns([1, 1, 1, 1, 1.5], gap="medium")
-        m1.markdown(
-            f"<div class='ta-metric'><span>Bot</span><b style='color:"
-            f"{'var(--buy)' if _h['running'] else 'var(--muted)'}'>"
-            f"{'RUNNING' if _h['running'] else 'STOPPED'}</b></div>",
-            unsafe_allow_html=True)
-        m2.markdown(
-            f"<div class='ta-metric'><span>Position</span><b>"
-            f"{(str(_pos.get('vol')) + ' contracts') if _pos else 'flat'}</b></div>",
-            unsafe_allow_html=True)
-        m3.markdown(
-            f"<div class='ta-metric'><span>Realised today</span><b>"
-            f"{_st.get('realised_today', 0.0):+.2f}</b></div>",
-            unsafe_allow_html=True)
-        _limit = int(getattr(cfg, "max_losses", 0) or 0)
-        m4.markdown(
-            f"<div class='ta-metric'><span>Losses</span><b>"
-            f"{int(_st.get('losses', 0) or 0)}"
-            f"{f' / {_limit}' if _limit else ''}</b></div>",
-            unsafe_allow_html=True)
-        with act:
-            if _h["running"]:
-                if st.button("Stop auto trade", type="secondary",
-                             use_container_width=True, key="cs_stop"):
-                    try:
-                        os.kill(_h["pid"], signal.SIGTERM)
-                        st.warning(f"Stopped pid {_h['pid']}.")
-                    except OSError as exc:
-                        st.error(f"could not stop pid {_h['pid']}: {exc}")
-                    time.sleep(2)
-                    st.rerun()
-            else:
-                if st.button("Run auto trade", type="primary",
-                             use_container_width=True, key="cs_start"):
-                    log = open(spx_bot.LOG_PATH, "a", buffering=1)
-                    subprocess.Popen(
-                        [sys.executable, "spx_bot.py", "watchdog"],
-                        stdout=log, stderr=subprocess.STDOUT,
-                        start_new_session=True)
-                    st.success("Started.")
-                    time.sleep(2)
-                    st.rerun()
-    st.caption(
-        ("**This will place real orders.** " if _live_ready else
-         "Runs in **dry run** — it decides and logs, but sends no orders. ")
-        # The saved config, not the pending selection: this strip describes what
-        # is (or would be) RUNNING. `lanes` is not built until the plan block
-        # below, and referencing it here was a NameError at runtime.
-        + (f"Trading `{_racing[0]['strategy']}` on `{_racing[0]['timeframe']}` "
-           f"bars, checked every {cfg.poll}s"
-           + (f", racing {len(_racing)} lanes. "
-              if len(_racing) > 1 else ". ")
-           + ("" if _live_ready else
-              "To trade for real, launch it from a terminal with "
-              "`SPX_BOT_ARMED=yes python spx_bot.py watchdog --live` — a browser "
-              "button cannot arm real money, by design.")))
-
-
-    # The plan block sits full width: seven timeframes plus an approach for each
-    # cannot fit a narrow side rail without towering over the operating column.
-    st.markdown('<div class="ta-section">Plan &mdash; tick the timeframes to run, '
-                'and pick an approach for each</div>', unsafe_allow_html=True)
-    plan_box = st.container(key="plan_box")
-    with plan_box:
-        _saved = {l["timeframe"]: l["strategy"] for l in cfg.active_lanes()}
-        _cols = st.columns(len(sg.TIMEFRAMES))
-        _on = []
-        for _c, tf in zip(_cols, sg.TIMEFRAMES):
-            if _c.checkbox(tf, value=tf in _saved, key=f"tf_on_{tf}",
-                           help=sg.TIMEFRAME_LABELS[tf]):
-                _on.append(tf)
-
-        lanes: list = []
-        if _on:
-            _lc = st.columns(len(_on))
-            for _c, tf in zip(_lc, _on):
-                # Registry order, not fit order. Fit ranked by the turnover of
-                # the EXPOSURE form, which no longer decides anything now that
-                # these run as entry filters — so ordering by it moved options
-                # around for a reason that no longer applies.
-                keys = list(sg.ORDER)
-
-                def _label(k):
-                    name = sg.REGISTRY[k].name
-                    if k not in spx_bot.RUNNABLE_STRATEGIES:
-                        # No longer "backtest only": these run as entry GATES,
-                        # which is a different thing from the exposure form the
-                        # backtest measures.
-                        name += "  [as entry filter]"
-                    return name
-
-                want = _saved.get(tf, keys[0])
-                with _c:
-                    st.markdown(f"<div class='ta-lane'>{tf} &middot; "
-                                f"{sg.TIMEFRAME_LABELS[tf]}</div>",
-                                unsafe_allow_html=True)
-                    pick = st.selectbox(
-                        f"Approach for {tf}", keys,
-                        index=keys.index(want) if want in keys else 0,
-                        key=f"tf_strat_{tf}", format_func=_label,
-                        label_visibility="collapsed")
-                    if pick in spx_bot.RUNNABLE_STRATEGIES:
-                        st.markdown("<div class='ta-fit ok'>trades on its own "
-                                    "signal</div>", unsafe_allow_html=True)
-                    else:
-                        st.markdown("<div class='ta-fit warn'>entry filter "
-                                    "only</div>", unsafe_allow_html=True)
-                lanes.append({"timeframe": tf, "strategy": pick})
-
-        if not lanes:
-            st.error("Tick at least one timeframe — the bot has nothing to run.")
-            lanes = [{"timeframe": "Min5", "strategy": "barrier_harvest"}]
-
-        timeframe = lanes[0]["timeframe"]
-        strat_key = lanes[0]["strategy"]
-        strat = sg.REGISTRY[strat_key]
-        _gates = [l for l in lanes
-                  if l["strategy"] not in spx_bot.RUNNABLE_STRATEGIES]
-        if _gates:
-            st.warning(
-                "**" + ", ".join(f"{l['strategy']} on {l['timeframe']}"
-                                 for l in _gates)
-                + "** run as *entry filters*: the signal decides only whether to "
-                  "open one bracketed trade, which is then managed by the "
-                  "take-profit and stop below. That is NOT the form the backtest "
-                  "measures — the backtest rebalances exposure every bar, which "
-                  "on fine bars measured 148 orders a day. As a filter the "
-                  "turnover problem is gone, but so is the backtested result: "
-                  "those numbers do not transfer.")
-        if len(lanes) > 1:
-            others = ", ".join(f"{l['strategy']} on {l['timeframe']}"
-                               for l in lanes[1:])
-            _order = ", ".join(f"{l['strategy']} on {l['timeframe']}"
-                               for l in sorted(
-                                   lanes,
-                                   key=lambda l: sg.TIMEFRAME_SECONDS.get(
-                                       l["timeframe"], 300)))
-            st.info(
-                f"**These {len(lanes)} lanes race each other.** Whichever wants "
-                f"to be long first takes the trade and keeps it until it closes; "
-                f"then the race starts again.\n\nRace order, finest bars first: "
-                f"{_order}. The finest timeframe wins a tie, because its bar "
-                f"closed most recently.\n\nOnly one can hold the position at a "
-                f"time, and that is MEXC's rule rather than a shortcut here — the "
-                f"exchange allows **one long per symbol** and refuses every way "
-                f"around it:\n"
-                f"- a second long at a different leverage → "
-                f"`code 2021: Order leverage is inconsistent with the existing "
-                f"position leverage`\n"
-                f"- one isolated plus one cross → `code 2027: Cross and isolated "
-                f"position of the same direction are alternative`\n\n"
-                f"To have several lanes hold positions at the same time, give each "
-                f"a different perpetual — MEXC keeps different contracts "
-                f"separate.")
-        st.caption(
-            f"Checked every "
-            f"**{min(sg.poll_seconds_for(l['timeframe']) for l in lanes)}s** — "
-            f"half a bar of the finest timeframe ticked. "
-            f"To simulate these settings on past data, use the **Backtest** tab; "
-            f"it reads them and changes nothing.")
-
-    trade_layout = st.container(key="trade_layout")
-    left, right = trade_layout.columns([1.6, 1], gap="large")
-
-    with right:
-        st.markdown('<div class="ta-panel-title">Instrument</div>',
+    with term:
+        # The positions grid template is built from _TM_POS so the header,
+        # every row and the CSS can never disagree about the column count.
+        st.markdown(TERMINAL_CSS.replace("__POSGRID__", _TM_POS_GRID),
                     unsafe_allow_html=True)
+
+        # ================= BAND 1 — SYSTEM ==============================
+        # Its own fragment so the ribbon can refresh at the top of the page
+        # without dragging the whole terminal through a rerun.
+        # Refresh rates are staggered and matched to the cache TTLs below.
+        # All three panels used to run at 5s, firing independently, which
+        # redrew the page up to three times every five seconds — the operator
+        # saw it as the screen blinking. Nothing here changes faster than its
+        # cache anyway, so a faster tick only redraws the same numbers.
+        @st.fragment(run_every=10)
+        def _ribbon() -> None:
+            pid = at.runner_pid()
+            books = at.active_modes()
+            live, paper_on = False in books, True in books
+            equity = _wallet_equity()
+            day = at.pnl_today(dry=False)
+            paper = at.pnl_today(dry=True)
+            open_real = 0.0
+            open_n = 0
+            open_bits: list[tuple] = []
+            try:
+                for p in _live_open_positions():
+                    _u = float(p.get("unRealizedPnl") or 0.0)
+                    open_real += _u
+                    open_n += 1
+                    open_bits.append(
+                        (str(p.get("symbol", "?")).replace("_USDT", ""), _u))
+                open_bits.sort(key=lambda r: -abs(r[1]))
+            except Exception:
+                open_real, open_n, open_bits = 0.0, 0, []
+            open_paper = 0.0
+            for _s, _sst in at.load_state().items():
+                _p = _sst.get("position") if isinstance(_sst, dict) else None
+                if _p and _p.get("dry"):
+                    _px = _last_price(_s)
+                    if _px and _p.get("entry"):
+                        open_paper += ((_px / _p["entry"] - 1) * _p["side"]
+                                       * _p["margin"] * at.LEVERAGE)
+            life = at.coin_stats(dry=False)
+            life_total = round(sum(v["pnl"] for v in life.values()), 2)
+            all_time = life_total + open_real
+            paper_total = paper["total"] + open_paper
+            if pid:
+                mode = ("LIVE+PAPER" if live and paper_on else
+                        "LIVE" if live else "PAPER")
+                mode_cls = "tm-dn" if live else "tm-up"
+            else:
+                mode, mode_cls = "STOPPED", "tm-nil"
+            st.markdown(
+                _tm_head("System", f"pid {pid}" if pid else "no process")
+                + "<div class='tm-rib'>"
+                f"<div><div class='l'>Futures wallet</div><div class='n'>"
+                f"{f'{equity:,.2f}' if equity is not None else '—'}</div>"
+                f"<div class='s'>USDT collateral</div></div>"
+                f"<div><div class='l'>Real &middot; all time</div>"
+                f"<div class='n {_tm_cls(all_time)}'>{all_time:+,.2f}</div>"
+                f"<div class='s'>{life_total:+.2f} closed &middot; "
+                f"{open_real:+.2f} open</div></div>"
+                f"<div><div class='l'>Real &middot; today closed</div>"
+                f"<div class='n {_tm_cls(day['total'])}'>{day['total']:+,.2f}</div>"
+                f"<div class='s'>{day['wins']}W / {day['losses']}L &middot; "
+                f"{day['trades']} closed</div></div>"
+                # Unrealized is money that has NOT been banked, so it never
+                # joins the realized figure in one number. It is also not a
+                # "today" quantity — a position open since the 13th carries
+                # its whole life in here — so the label says OPEN NOW, and
+                # the coins are itemised rather than hidden behind a total
+                # (a summed figure once shipped labelled with one coin's name).
+                f"<div><div class='l'>Open now &middot; unrealized</div>"
+                f"<div class='n {_tm_cls(open_real)}'>{open_real:+,.2f}</div>"
+                f"<div class='s'>"
+                + (" &middot; ".join(f"{_c} {_v:+.2f}" for _c, _v in open_bits)
+                   if open_bits else "no position open")
+                + "</div></div>"
+                f"<div><div class='l'>Paper &middot; demo</div>"
+                f"<div class='n {_tm_cls(paper_total)}'>{paper_total:+,.2f}</div>"
+                f"<div class='s'>not real money</div></div>"
+                f"<div><div class='l'>Runner</div>"
+                f"<div class='n {mode_cls}'>{mode}</div>"
+                f"<div class='s'>{'entries halted' if at.halted() else 'scanning'}"
+                f"</div></div></div>", unsafe_allow_html=True)
+
+        _ribbon()
+
+        # ================= BAND 2 — POSITIONS ===========================
+        @st.fragment(run_every=20)
+        def _positions() -> None:
+            # ONE table per book. Open positions and per-coin PnL used to be
+            # four separate tables; the same contract appeared in two of them
+            # with different columns, which read as duplication.
+            def _book_rows(dry: bool):
+                stats = at.coin_stats(dry)
+                rows: dict[str, dict] = {}
+
+                def _blank(sym):
+                    v = stats.get(sym, {"pnl": 0.0, "wins": 0, "losses": 0,
+                                        "trades": 0, "strategies": "—"})
+                    return {"coin": sym.replace("_USDT", ""),
+                            # kept for the close buttons; dropped from the
+                            # displayed frame by the _order filter below
+                            "symbol": sym,
+                            "state": "flat", "side": "—",
+                            "strategy": v["strategies"],
+                            "opened": "—", "held": "—",
+                            "vol": None, "margin $": None,
+                            "lev": f"{at.LEVERAGE}x",
+                            "entry": None, "TP": None, "SL": None,
+                            "tp_pct": None, "sl_pct": None, "prog": "",
+                            "open $": 0.0,
+                            "realised $": round(v["pnl"], 2),
+                            "total $": round(v["pnl"], 2),
+                            "trades": v["trades"], "W": v["wins"],
+                            "L": v["losses"], "bracket": "—"}
+
+                for sym in stats:
+                    rows[sym] = _blank(sym)
+                for _sym, _sst in at.load_state().items():
+                    _pos = (_sst.get("position")
+                            if isinstance(_sst, dict) else None)
+                    if not _pos or bool(_pos.get("dry", False)) is not dry:
+                        continue
+                    _base = _sym.split("#")[0]
+                    r = rows.setdefault(_base, _blank(_base))
+                    _op = None
+                    if dry:
+                        _px = _last_price(_base)
+                        if _px and _pos.get("entry"):
+                            _op = round((_px / _pos["entry"] - 1)
+                                        * _pos["side"] * _pos["margin"]
+                                        * at.LEVERAGE, 2)
+                    _when = _pos.get("opened_at") or _pos.get("entry_ts")
+                    r.update({
+                        "state": "OPEN",
+                        "side": "LONG" if _pos["side"] > 0 else "SHORT",
+                        "strategy": _pos.get("strategy", r["strategy"]),
+                        # Compact stamp: "Aug 14, 2026 (4:00AM)" does not fit
+                        # a grid cell and ellipsised to "Aug 14, 20…", which
+                        # hides the part that matters — the time.
+                        "opened": (_dt.datetime.fromtimestamp(_when)
+                                   .strftime("%m-%d %H:%M") if _when else "—"),
+                        "held": (_fmt_age(time.time() - _when) if _when
+                                 else "—"),
+                        "vol": _pos.get("vol"), "margin $": _pos.get("margin"),
+                        "entry": _pos.get("entry"), "TP": _pos.get("tp"),
+                        "SL": _pos.get("sl"),
+                        "bracket": ("SIMULATED" if dry
+                                    else "on MEXC" if _pos.get("bracket", True)
+                                    else "RETRYING"),
+                    })
+                    if _op is not None:
+                        r["open $"] = _op
+                # the exchange is the source of truth for the REAL book
+                if not dry:
+                    try:
+                        for _p in _live_open_positions():
+                            _sym = _p.get("symbol")
+                            r = rows.setdefault(_sym, _blank(_sym))
+                            if r["state"] != "OPEN":
+                                r["state"] = "OPEN"
+                                r["strategy"] = "(not the bot's)"
+                                r["side"] = ("LONG"
+                                             if _p.get("positionType") == 1
+                                             else "SHORT")
+                            r["vol"] = _p.get("holdVol", r["vol"])
+                            r["entry"] = _p.get("holdAvgPrice", r["entry"])
+                            _u = _p.get("unRealizedPnl")
+                            if _u is not None:
+                                r["open $"] = round(float(_u), 2)
+                    except Exception as exc:
+                        st.caption(f"could not read MEXC positions: {exc}")
+                out = [r for r in rows.values() if r["state"] == "OPEN"]
+                for r in out:
+                    r["total $"] = round(r["realised $"] + (r["open $"] or 0), 2)
+                    # Barriers as PERCENTAGES off the entry, plus how far the
+                    # price has travelled toward one of them. Percent is what
+                    # the strategy is specified in; the raw prices alone make
+                    # you do the arithmetic every time you look.
+                    _e, _tp, _sl = r.get("entry"), r.get("TP"), r.get("SL")
+                    _side = 1 if r.get("side") == "LONG" else -1
+                    # …and what each barrier is WORTH on this position, net of
+                    # the round-trip taker fee. The percentage is on the
+                    # NOTIONAL, so the dollar figure is the only one that says
+                    # what actually lands in the wallet.
+                    _vol = r.get("vol") or 0
+                    _notional = (float(_e or 0) * float(_vol)
+                                 * _contract_size(r.get("symbol") or ""))
+                    try:
+                        _fee = at.taker_fee(r.get("symbol") or "")
+                    except Exception:
+                        _fee = 0.0004
+                    _cost = _notional * _fee * 2
+                    if _e and _tp:
+                        _p = abs(float(_tp) / float(_e) - 1) * 100
+                        _usd = _notional * _p / 100 - _cost
+                        r["tp_pct"] = (f"{_p:.2f} <span class='tm-up'>"
+                                       f"({_usd:+,.2f})</span>")
+                    if _e and _sl:
+                        _p = abs(float(_sl) / float(_e) - 1) * 100
+                        _usd = -(_notional * _p / 100 + _cost)
+                        r["sl_pct"] = (f"{_p:.2f} <span class='tm-dn'>"
+                                       f"({_usd:+,.2f})</span>")
+                    _now = _last_price(r.get("symbol") or "")
+                    r["prog"] = _tm_progress(_e, _tp, _sl, _now, _side)
+                out.sort(key=lambda r: r["total $"])
+                return out
+
+            _real, _paper = _book_rows(False), _book_rows(True)
+            st.markdown(
+                _tm_head("Positions",
+                         f"{len(_real)} real &middot; {len(_paper)} paper "
+                         f"&middot; {at.LEVERAGE}x isolated"),
+                unsafe_allow_html=True)
+            # Each book gets its OWN bordered box with a coloured badge. Two
+            # ruled grids stacked with only a small caption between them read
+            # as one table, and "is this row real money or the simulator?" is
+            # the single question this section must never leave ambiguous.
+            for _label, _rows, _empty, _boxkey in (
+                    ("REAL — MONEY AT RISK", _real,
+                     "none — no real money at risk", "pos_real"),
+                    ("PAPER — DEMO, NOT REAL MONEY", _paper,
+                     "none — no simulated position open", "pos_paper")):
+              with st.container(key=_boxkey, border=True):
+                st.markdown(
+                    f"<div class='tm-badge'>{_label}</div>",
+                    unsafe_allow_html=True)
+                if not _rows:
+                    st.markdown(f"<div style='font-size:12px;"
+                                f"color:var(--t-faint);padding:2px 0 6px'>"
+                                f"{_empty}</div>", unsafe_allow_html=True)
+                    continue
+                # Rendered as a grid rather than st.dataframe because a
+                # dataframe cannot host a widget, and the close control has
+                # to live on the row it closes.
+                _closable = _rows is _real
+                # The header must sit in the SAME 10/1.15 split as the rows,
+                # or its grid is 144px wider than theirs and every label
+                # drifts off its own column.
+                _hc, _ = st.columns([10, 1.15], gap="small")
+                _hc.markdown(
+                    f"<div class='tm-pt tm-pt-h'>{_tm_pos_head()}</div>",
+                    unsafe_allow_html=True)
+                for _r in _rows:
+                    _rc, _bc = st.columns([10, 1.15], gap="small")
+                    _rc.markdown(f"<div class='tm-pt'>{_tm_pos_row(_r)}</div>",
+                                 unsafe_allow_html=True)
+                    if _closable:
+                        # The coin moved out of the label and into the
+                        # tooltip. Row/button alignment is asserted at 0px,
+                        # and the confirm step names the contract in full
+                        # before anything is sent — so a bare "Close" cannot
+                        # flatten something the operator did not mean.
+                        if _bc.button("Close", key=f"cl_{_r['symbol']}",
+                                      help=f"Close {_r['symbol']} at market"):
+                            st.session_state["close_pending"] = _r["symbol"]
+                            st.rerun(scope="fragment")
+                # The TOTAL row is derived from the rows above it, never
+                # carried in from elsewhere.
+                _sum = {
+                    "coin": "TOTAL", "state": "", "side": "", "strategy": "",
+                    "opened": "", "held": "", "lev": "", "bracket": "",
+                    "entry": None, "TP": None, "SL": None, "vol": None,
+                    "margin $": None,
+                    # A total has no barriers and no progress of its own.
+                    "tp_pct": None, "sl_pct": None, "prog": "",
+                    "trades": sum(int(r["trades"]) for r in _rows),
+                    "W": sum(int(r["W"]) for r in _rows),
+                    "L": sum(int(r["L"]) for r in _rows),
+                    "open $": round(sum(r["open $"] or 0 for r in _rows), 2),
+                    "realised $": round(sum(r["realised $"] or 0
+                                            for r in _rows), 2),
+                    "total $": round(sum(r["total $"] or 0 for r in _rows), 2)}
+                _tc, _ = st.columns([10, 1.15], gap="small")
+                _tc.markdown(
+                    f"<div class='tm-pt tm-pt-t'>{_tm_pos_row(_sum)}</div>",
+                    unsafe_allow_html=True)
+
+            # ---- the second half of the per-row close. Real money and no
+            # undo, so it takes two clicks: the row button names the contract,
+            # this states exactly what is being flattened before it is sent.
+            _pend = st.session_state.get("close_pending")
+            if _pend:
+                _row = next((r for r in _real if r["symbol"] == _pend), None)
+                if _row is None:
+                    # It closed on its own (TP/SL) between the two clicks.
+                    st.session_state.pop("close_pending", None)
+                    st.info(f"{_pend} is no longer open — nothing to close.")
+                else:
+                    _mg = _row.get("margin $") or 0
+                    st.warning(
+                        f"**Close {_pend} at market now?** {_row['side']} "
+                        f"{_row['vol']} contracts, entry {_row['entry']}, "
+                        f"{_mg} USDT margin at {at.LEVERAGE}x. Unrealised "
+                        f"**{_row['open $']:+.2f} USDT** becomes real the "
+                        f"moment this fills. There is no undo, and the "
+                        f"strategy may re-enter on its next signal.")
+                    _y, _n = st.columns([1, 1])
+                    if _y.button("CONFIRM — close at market", type="primary",
+                                 key="cl_confirm"):
+                        rep = at.close_one(_pend)
+                        st.session_state.pop("close_pending", None)
+                        # The positions read is cached for 5 s; without this
+                        # the table would still show the closed position.
+                        _live_open_positions.clear()
+                        if rep["closed"]:
+                            st.success(
+                                f"{_pend} closed. Realised "
+                                + (f"{rep['realised']:+.2f} USDT."
+                                   if rep["realised"] is not None
+                                   else "PnL not yet reported by MEXC."))
+                        else:
+                            st.error(f"NOT closed — {rep['error']}. The "
+                                     f"position is still open and still "
+                                     f"tracked.")
+                    if _n.button("Cancel", key="cl_cancel"):
+                        st.session_state.pop("close_pending", None)
+                        st.rerun(scope="fragment")
+
+            # ---- what the removed BOOK band used to carry, as tables.
+            # Today's closes are itemised because a net figure hides the
+            # trades inside it: +2.71 and -1.66 net to +1.05, which is
+            # indistinguishable from one flat trade.
+            _lt = time.localtime()
+            _mid = time.mktime((_lt.tm_year, _lt.tm_mon, _lt.tm_mday,
+                                0, 0, 0, 0, 0, -1))
+            _today = [e for e in at.ledger_since(_mid)
+                      if e.get("action") == "exit" and not e.get("dry_run")]
+            _trows = [{
+                "when": _dt.datetime.fromtimestamp(
+                    float(e.get("ts") or 0)).strftime("%H:%M"),
+                "coin": str(e.get("symbol", "?")).replace("_USDT", ""),
+                "strategy": e.get("strategy") or "—",
+                "why": (e.get("why") or "—"),
+                "PROFIT $": round(float(e.get("pnl_est") or 0), 2),
+            } for e in sorted(_today, key=lambda x: -float(x.get("ts") or 0))]
+            _tcols = (("when", "time", 1.0, "l", "text"),
+                      ("coin", "coin", 1.2, "l", "text"),
+                      ("strategy", "strategy", 2.0, "l", "text"),
+                      ("why", "closed by", 2.0, "l", "text"),
+                      ("PROFIT $", "PROFIT $", 1.3, "r", "money"))
+            _ttot = {"when": "TOTAL", "coin": "", "strategy": "",
+                     "why": f"{len(_trows)} closed",
+                     "PROFIT $": round(sum(r["PROFIT $"] for r in _trows), 2)}
+            st.markdown(
+                "<div style='font-size:10px;letter-spacing:.14em;"
+                "text-transform:uppercase;color:var(--t-dim);"
+                "margin:16px 0 4px'>Today &middot; real closes</div>"
+                + _tm_table(_tcols, _trows, _ttot if _trows else None,
+                            "no trades closed today"),
+                unsafe_allow_html=True)
+
+            # All-time per contract. Realised comes from this book's ledger,
+            # open from the exchange, and the two are added — never mixed.
+            _life = at.coin_stats(dry=False)
+            _open_by: dict[str, float] = {}
+            try:
+                for _p in _live_open_positions():
+                    _open_by[str(_p.get("symbol"))] = float(
+                        _p.get("unRealizedPnl") or 0.0)
+            except Exception:
+                _open_by = {}
+            try:
+                _cfg = at.load_settings()
+                _mine = {c for v in (_cfg.get("strategy_coins")
+                                     or {}).values() for c in v}
+            except Exception:
+                _mine = set()
+            # The DEMO book, kept in its own columns. Simulated money is never
+            # added to the real figures — mixing them is how an operator
+            # misjudges what is actually at risk — so each side carries its
+            # own realised, open and TOTAL, and the footer sums them apart.
+            _demo = at.coin_stats(dry=True)
+            _dopen: dict[str, float] = {}
+            for _s, _sst in at.load_state().items():
+                _p = _sst.get("position") if isinstance(_sst, dict) else None
+                if not _p or not _p.get("dry"):
+                    continue
+                _base = _s.split("#")[0]
+                _px = _last_price(_base)
+                if _px and _p.get("entry"):
+                    _dopen[_base] = _dopen.get(_base, 0.0) + (
+                        (_px / _p["entry"] - 1) * _p["side"] * _p["margin"]
+                        * at.LEVERAGE)
+            _arows = []
+            for _sym in sorted(set(_life) | set(_open_by) | set(_demo)
+                               | set(_dopen),
+                               key=lambda s: (_life.get(s, {}).get("pnl", 0)
+                                              + _open_by.get(s, 0))):
+                _v = _life.get(_sym, {"pnl": 0.0, "wins": 0, "losses": 0,
+                                      "trades": 0})
+                _d = _demo.get(_sym, {"pnl": 0.0, "wins": 0, "losses": 0,
+                                      "trades": 0})
+                _op, _dop = _open_by.get(_sym, 0.0), _dopen.get(_sym, 0.0)
+                _has_demo = bool(_d["trades"] or _dop)
+                _arows.append({
+                    "coin": _sym.replace("_USDT", ""),
+                    "mine": "" if _sym in _mine else "not yours",
+                    "W": _v["wins"], "L": _v["losses"],
+                    "realised $": round(_v["pnl"], 2),
+                    "open $": round(_op, 2),
+                    "total $": round(_v["pnl"] + _op, 2),
+                    "dW": _d["wins"] if _has_demo else None,
+                    "dL": _d["losses"] if _has_demo else None,
+                    "d realised $": round(_d["pnl"], 2) if _has_demo else None,
+                    "d open $": round(_dop, 2) if _has_demo else None,
+                    "d total $": (round(_d["pnl"] + _dop, 2) if _has_demo
+                                  else None)})
+            _acols = (("coin", "coin", 1.1, "l", "text"),
+                      ("mine", "", 1.3, "l", "text"),
+                      ("W", "real W", 0.8, "r", "num"),
+                      ("L", "real L", 0.8, "r", "num"),
+                      ("realised $", "real realised $", 1.7, "r", "money"),
+                      ("open $", "real open $", 1.5, "r", "money"),
+                      ("total $", "REAL TOTAL $", 1.6, "r", "money"),
+                      ("dW", "demo W", 0.8, "r", "num"),
+                      ("dL", "demo L", 0.8, "r", "num"),
+                      ("d realised $", "demo realised $", 1.7, "r", "money"),
+                      ("d open $", "demo open $", 1.5, "r", "money"),
+                      ("d total $", "DEMO TOTAL $", 1.6, "r", "money"))
+            _sm = lambda k: round(sum(r[k] or 0 for r in _arows), 2)  # noqa: E731
+            _atot = {
+                "coin": "TOTAL", "mine": f"{len(_arows)} contracts",
+                "W": sum(r["W"] for r in _arows),
+                "L": sum(r["L"] for r in _arows),
+                "realised $": _sm("realised $"),
+                "open $": _sm("open $"),
+                "total $": _sm("total $"),
+                "dW": sum(r["dW"] or 0 for r in _arows),
+                "dL": sum(r["dL"] or 0 for r in _arows),
+                "d realised $": _sm("d realised $"),
+                "d open $": _sm("d open $"),
+                "d total $": _sm("d total $")}
+            st.markdown(
+                "<div style='font-size:10px;letter-spacing:.14em;"
+                "text-transform:uppercase;color:var(--t-dim);"
+                "margin:16px 0 4px'>All time &middot; per contract &middot; "
+                "<span style='color:var(--t-dn)'>real</span> vs "
+                "<span style='color:var(--t-up)'>demo</span> &mdash; never "
+                "summed together</div>"
+                + _tm_table(_acols, _arows, _atot if _arows else None,
+                            "no closed trades yet"),
+                unsafe_allow_html=True)
+
+        _positions()
+
+
+        # ================= BAND 3 — STRATEGY ============================
         try:
             contracts = _futures_contracts()
-        except Exception as exc:                          # noqa: BLE001
-            contracts = []
-            st.warning(f"Contract list unavailable: {exc}")
-        spec_by = {c["symbol"]: c for c in contracts}
-        all_syms = [c["symbol"] for c in contracts] or [cfg.symbol]
-        # The majors first: the dropdown holds ~920 contracts and Streamlit's
-        # search does subsequence matching, so "BTC" alone surfaces junk like
-        # RKLBSTOCK. Browsing beats searching for the handful people want.
-        FAVOURITES = ("SPX500_USDT", "BTC_USDT", "ETH_USDT", "SOL_USDT",
-                      "BNB_USDT", "XRP_USDT", "DOGE_USDT", "GOLD_USDT")
-        head = [s for s in FAVOURITES if s in spec_by]
-        syms = head + [s for s in all_syms if s not in head]
-        idx = syms.index(cfg.symbol) if cfg.symbol in syms else 0
-        symbol = st.selectbox(
-            "Perpetual", syms, index=idx, key="trade_symbol",
-            # Keep the full symbol in the label: Streamlit's picker does
-            # subsequence matching, so stripping "_USDT" made "BTC" match
-            # "RKLBSTOCK" ahead of BTC_USDT.
-            format_func=lambda s: (f"{s}  ·  "
-                                   f"{spec_by.get(s, {}).get('max_leverage', '?')}x max"),
-            help="Majors are listed first. For anything else, use the exact-symbol "
-                 "box below — the dropdown's search is fuzzy and ranks poorly "
-                 "across 920 contracts.")
-        exact = st.text_input("Or exact symbol", value="", key="trade_exact",
-                              placeholder="e.g. PEPE_USDT",
-                              help="Overrides the dropdown. Must match a "
-                                   "tradeable MEXC perpetual exactly.").strip().upper()
-        if exact:
-            if exact in spec_by:
-                symbol = exact
-                st.caption(f"Using {symbol} (from the exact-symbol box).")
+            symbols = sorted(c["symbol"] for c in contracts)
+        except Exception as exc:
+            symbols = []
+            st.warning(f"Could not fetch the MEXC contract list ({exc}); "
+                       "showing saved selections only.")
+        saved_strats = saved.get("strategies", ["ict_fvg"])
+        saved_coins_by = saved.get("strategy_coins") or {}
+        legacy_coins = saved.get("coins", ["BTC_USDT"])
+        chosen_strats: list[str] = []
+        blocked_now: list[tuple] = []
+        strategy_coins: dict[str, list[str]] = {}
+        strategy_limits: dict[str, float] = {}
+        strategy_margins: dict[str, float] = {}
+        saved_limits = saved.get("strategy_loss_limits") or {}
+        saved_margins = saved.get("strategy_margins") or {}
+        live_stats = at.strategy_stats(dry=False)
+        paper_stats = at.strategy_stats(dry=True)
+        paused = at.tripped_strategies(saved)
+        # ---- ONE table, built from real widgets rather than st.data_editor.
+        # The editor is a canvas: it cannot colour a cell, and the operator
+        # wants a green tick when a book is on and red/green money. So each
+        # row is a st.columns strip — widgets where a value is typed, HTML
+        # where it is computed and needs colour.
+        strategy_books: dict[str, list] = {}
+        _bad_syms: list[str] = []
+        _runstate = at.load_state()
+        _sizing_now = at.sizing_for(saved)
+        _flat = _sizing_now == "flat"
+        _W = [1.15, 1.45, .62, .62, .95, .95, .8, 2.5, .9, .95, 1.0, .95, 1.0,
+              .95]
+        _HEADS = ("strategy", "contracts", "LIVE", "DEMO", "base $",
+                  "notional $", "streak", f"ladder $ · {'flat' if _flat else 'DEEP'}",
+                  "next $", "SL / TP", "loss cap $", "W / L", "PROFIT $",
+                  "backtest")
+
+        _head_slot = st.empty()
+        st.caption(
+            "One row per strategy. LIVE places real orders on MEXC, DEMO "
+            "simulates fills in a separate book — independent, so a strategy "
+            "can run both, one, or neither. Contracts, base margin and loss "
+            "cap are typed in place; press Save & run to commit them. "
+            "`ladder $` is the whole DEEP sequence in dollars with the "
+            "current rung boxed, so `next $` is never a number you have to "
+            "work out.")
+        _hc = st.columns(_W, gap="small", vertical_alignment="bottom")
+        for _i, _h in enumerate(_HEADS):
+            _hc[_i].markdown(
+                f"<div style='font-size:9.5px;letter-spacing:.11em;"
+                f"text-transform:uppercase;color:var(--t-dim);"
+                f"border-bottom:1px solid var(--t-rule2);padding-bottom:4px;"
+                f"white-space:nowrap;overflow:hidden;text-overflow:ellipsis'>"
+                f"{_h}</div>", unsafe_allow_html=True)
+
+        # Every cell in a strategy row is the same height and vertically
+        # centred, so a 35px text input and a 13px text span share a baseline.
+        # Before this they sat 11px apart and the row read as ragged.
+        _cell = ("display:flex;align-items:center;min-height:38px;"
+                 "font-size:11.5px;white-space:nowrap;overflow:hidden;"
+                 "text-overflow:ellipsis")
+        for key, label, note, default_coins in AUTO_STRATEGIES:
+            _spec = at.STRATEGY_SPECS.get(key, {})
+            _bks = at.books_for(key, saved) if key in saved_strats else []
+            _coins = saved_coins_by.get(key) or list(default_coins)
+            _mgs = float(saved_margins.get(key) or 5.0)
+            # The LOSING STREAK is the ladder's own counter: it advances on a
+            # loss and resets to zero on a win, so it IS the streak, and it is
+            # what decides the next stake. Read per contract, worst one wins.
+            _streak = max((int((_runstate.get(c) or {}).get("step", 0) or 0)
+                           for c in _coins), default=0)
+            c = st.columns(_W, gap="small", vertical_alignment="center")
+            c[0].markdown(
+                f"<div style='{_cell}'>{_tm_sig(key)}"
+                f"<span style='color:var(--t-faint)'> {_tm_tf(_spec)}</span>"
+                f"</div>", unsafe_allow_html=True)
+            _txt = c[1].text_input(
+                "contracts", value=", ".join(x.replace("_USDT", "")
+                                             for x in _coins),
+                key=f"g_c_{key}", label_visibility="collapsed",
+                placeholder="PI, BTC")
+            _live = c[2].checkbox("LIVE", value=False in _bks,
+                                  key=f"g_live_{key}",
+                                  label_visibility="collapsed",
+                                  help="REAL money — sends orders to MEXC.")
+            _demo = c[3].checkbox("DEMO", value=True in _bks,
+                                  key=f"g_demo_{key}",
+                                  label_visibility="collapsed",
+                                  help="Simulated fills, separate book, no "
+                                       "real orders.")
+            _base = c[4].number_input(
+                "base", min_value=1.0, max_value=10_000.0, value=_mgs,
+                step=1.0, key=f"g_b_{key}", label_visibility="collapsed")
+            c[5].markdown(f"<div style='{_cell}'>"
+                          f"{_base * at.LEVERAGE:,.2f}"
+                          f"<span style='color:var(--t-faint)'> "
+                          f"{at.LEVERAGE}x</span></div>",
+                          unsafe_allow_html=True)
+            # Streak colour is the risk, not the sign: 0 is calm, deep is red.
+            _scol = ("tm-nil" if _streak == 0 else "tm-am" if _streak < 4
+                     else "tm-dn")
+            c[6].markdown(
+                f"<div style='{_cell}' class='{_scol}'><b>{_streak}</b>"
+                f"<span style='color:var(--t-faint)'> loss</span></div>",
+                unsafe_allow_html=True)
+            # The ladder, in dollars, with the rung it is standing on boxed.
+            if _flat:
+                _lad = (f"<span class='tm-up'>{_base:,.2f}</span>"
+                        f"<span style='color:var(--t-faint)'> every trade"
+                        f"</span>")
+                _next = _base
             else:
-                st.error(f"{exact} is not a tradeable MEXC USDT perpetual.")
-        max_lev = int(spec_by.get(symbol, {}).get("max_leverage", 20))
+                _idx = min(_streak, len(at.LADDER) - 1)
+                _next = _base * at.LADDER[_idx]
+                _lad = " ".join(
+                    (f"<span style='background:var(--t-amber);color:#0a0c0e;"
+                     f"padding:1px 4px;font-weight:700'>{_base * m:,.0f}</span>"
+                     if i == _idx else
+                     f"<span style='color:var(--t-faint)'>{_base * m:,.0f}"
+                     f"</span>")
+                    for i, m in enumerate(at.LADDER))
+            c[7].markdown(f"<div style='{_cell};overflow:visible'>{_lad}</div>",
+                          unsafe_allow_html=True)
+            c[8].markdown(f"<div style='{_cell}' class='tm-am'>"
+                          f"<b>{_next:,.2f}</b></div>",
+                          unsafe_allow_html=True)
+            c[9].markdown(
+                f"<div style='{_cell}'>{_spec.get('sl', 0) * 100:.2f}"
+                f"<span style='color:var(--t-faint)'> / </span>"
+                f"{_spec.get('tp', 0) * 100:.2f}</div>",
+                unsafe_allow_html=True)
+            _cap = c[10].number_input(
+                "cap", min_value=0.0, max_value=100_000.0,
+                value=float(saved_limits.get(key, 0.0)), step=1.0,
+                key=f"g_l_{key}", label_visibility="collapsed")
+            # The record has to come from the book this strategy trades: a
+            # live P&L printed beside a DEMO-only strategy is a false label.
+            _stt = (live_stats.get(key) if _live
+                    else paper_stats.get(key) if _demo
+                    else live_stats.get(key))
+            _pnl = _stt["pnl"] if _stt else None
+            c[11].markdown(
+                f"<div style='{_cell}'>"
+                f"<span class='tm-up'>{_stt['wins'] if _stt else 0}</span>"
+                f"<span style='color:var(--t-faint)'> / </span>"
+                f"<span class='tm-dn'>{_stt['losses'] if _stt else 0}</span>"
+                f"</div>", unsafe_allow_html=True)
+            c[12].markdown(
+                f"<div style='{_cell}' class='{_tm_cls(_pnl or 0)}'><b>"
+                + ("·" if _pnl is None else f"{_pnl:+,.2f}")
+                + f"</b><span style='color:var(--t-faint)'> "
+                + ("live" if _live else "demo" if _demo else "—")
+                + "</span></div>", unsafe_allow_html=True)
+            # Backtest THIS row, over the past year, on the contracts typed
+            # in the row — not on whatever was last saved.
+            if c[13].button("1 YEAR", key=f"g_bt_{key}",
+                            help=f"Replay {_tm_sig(key)} over the last 365 "
+                                 f"days of MEXC history at this row's base "
+                                 f"margin."):
+                st.session_state["auto_bt_run"] = key
 
-        lev = st.number_input("Leverage", 1, max(max_lev, 1),
-                              min(int(cfg.leverage), max_lev), key="trade_lev",
-                              help="3x was the highest that survived the worst "
-                                   "drawdown in the backtest; 8x liquidated.")
-        margin = st.number_input("Margin (USD)", 5.0, 10_000.0,
-                                 float(cfg.margin_usd), step=5.0,
-                                 key="trade_margin")
-        # Every lane exits through these barriers now, including the ones used as
-        # entry filters — a filter decides only WHETHER to open a trade.
-        tp = st.number_input("Take-profit %", 0.25, 20.0,
-                             float(cfg.take_profit_pct), step=0.25,
-                             key="trade_tp")
-        sl = st.number_input("Stop-loss %", 1.0, 50.0,
-                             float(cfg.stop_loss_pct), step=0.5,
-                             key="trade_sl")
-        if strat.kind != "bracket":
-            st.caption("Used as an entry filter, this approach still exits "
-                       "through the take-profit and stop above — its own exposure "
-                       "sizing is not used.")
-        st.markdown('<div class="ta-panel-title">Risk limits</div>',
-                    unsafe_allow_html=True)
-        cap = st.number_input("Max notional (USD)", 10.0, 50_000.0,
-                              float(cfg.max_notional_usd), step=50.0,
-                              key="trade_cap")
-        dl = st.number_input("Daily loss limit (USD)", 1.0, 5_000.0,
-                             float(cfg.daily_loss_limit_usd), step=5.0,
-                             key="trade_dl")
-        floor = st.number_input("Halt below equity (USD)", 0.0, 5_000.0,
-                                float(cfg.min_equity_usd), step=5.0,
-                                key="trade_floor")
-        mx = st.number_input("Stop after N losing trades", 0, 100,
-                             int(getattr(cfg, "max_losses", 0)), step=1,
-                             key="trade_maxlosses",
-                             help="0 = no limit. Counts losing trades in "
-                                  "total, not per day. Only the Reset button "
-                                  "below clears it.")
-        if st.button("Save settings", type="primary"):
-            cfg.symbol = symbol
-            cfg.strategy = strat_key
-            cfg.timeframe = timeframe
-            cfg.lanes = lanes
-            cfg.poll_seconds = 0        # 0 = derive from the timeframes
-            cfg.leverage, cfg.margin_usd = int(lev), float(margin)
-            cfg.take_profit_pct, cfg.stop_loss_pct = float(tp), float(sl)
-            cfg.max_notional_usd, cfg.daily_loss_limit_usd = float(cap), float(dl)
-            cfg.min_equity_usd = float(floor)
-            cfg.max_losses = int(mx)
-            cfg.save()
-            st.success("Saved. The bot picks these up on its next cycle.")
-        if mx:
-            st.caption(f"After {mx} losing trade{'s' if mx != 1 else ''} the bot "
-                       f"stops opening new ones. At a {sl:.2f}% stop that is "
-                       f"about ${mx * min(margin * lev, cap) * sl / 100:,.2f} "
-                       f"of realised loss before it halts.")
-        # The exchange's published maintenance margin, not 100/leverage: at 200x
-        # that is 0.10% survivable, not 0.50%.
-        _wipe = fx.liquidation_move_pct(symbol, float(lev))
-        if lev > 1 and sl >= _wipe:
-            st.error(
-                f"**These settings cannot work.** At {lev:.0f}x on {symbol}, a "
-                f"**{_wipe:.2f}%** adverse move wipes the margin — MEXC keeps a "
-                f"maintenance margin back, so it happens earlier than "
-                f"{100/lev:.2f}% would suggest. Your stop sits at {sl:.1f}%, so "
-                f"you would be liquidated long before it fires, losing the whole "
-                f"${margin:,.2f}. Tighten the stop under {_wipe:.2f}% or lower "
-                f"the leverage.")
-        st.caption(f"Notional at these settings: "
-                   f"${min(margin * lev, cap):,.2f}  ·  a {sl:.0f}% stop costs "
-                   f"{sl * lev:.0f}% of margin.")
-        if symbol != "SPX500_USDT":
-            st.warning(
-                f"These take-profit and stop-loss levels were validated on "
-                f"SPX500_USDT only. {symbol.replace('_USDT','')} has different "
-                f"volatility, so 2%/10% is an untested guess here — re-run the "
-                f"backtest before trusting it.")
+            _cs, _rej = _parse_contracts(_txt, set(symbols))
+            _bad_syms.extend(_rej)
+            strategy_books[key] = (["real"] if _live else []) + \
+                                  (["paper"] if _demo else [])
+            strategy_margins[key] = float(_base)
+            strategy_limits[key] = float(_cap)
+            strategy_coins[key] = _cs
+            if _live or _demo:
+                chosen_strats.append(key)
 
-    with left:
-        st.markdown('<div class="ta-label">Position detail</div>',
-                    unsafe_allow_html=True)
-        pos = state.get("position")
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Entry", f"{pos['entry']:,.2f}" if pos else "—")
-        c2.metric("Target", f"{pos.get('tp'):,.2f}"
-                  if pos and pos.get("tp") else "—")
-        c3.metric("Stop", f"{pos.get('sl'):,.2f}"
-                  if pos and pos.get("sl") else "—")
-        if pos and not pos.get("protected"):
-            st.warning("This position has no verified exchange-side barriers — "
-                       "the stop is only being watched by the bot process.")
-        if state.get("halted"):
-            st.error(f"Bot halted — {state.get('halt_reason', '')}")
+        _n_real = sum(1 for v in strategy_books.values() if "real" in v)
+        _n_paper = sum(1 for v in strategy_books.values() if "paper" in v)
+        _n_off = sum(1 for v in strategy_books.values() if not v)
+        _head_slot.markdown(
+            _tm_head("Strategy",
+                     f"{_n_real} live &middot; {_n_paper} demo &middot; "
+                     f"{_n_off} off &middot; {len(AUTO_STRATEGIES)} loaded"),
+            unsafe_allow_html=True)
+        if _bad_syms:
+            st.error("Not MEXC USDT perpetuals — these were dropped: "
+                     + ", ".join(sorted(set(_bad_syms))))
 
-        wallet = None
-        if fx.has_credentials():
-            try:
-                wallet = fx.usdt_equity()
-            except fx.MexcFuturesError as exc:
-                st.warning(f"Exchange read failed: {exc}")
-        st.caption(f"Futures wallet: "
-                   f"{('%.2f USDT' % wallet) if wallet is not None else 'unavailable'}"
-                   f"  ·  key present: {fx.has_credentials()}")
 
-        st.markdown('<div class="ta-label">Bot process</div>',
-                    unsafe_allow_html=True)
-        h = spx_bot.health()
-        if h["orphaned"]:
-            st.error("**The bot is not running and a position is open.** Its "
-                     "exchange stop still applies, but nothing is managing the "
-                     "trade. Start it again, or close the position below.")
-        elif h["running"] and h["stale"]:
-            st.warning(f"Running as pid {h['pid']} but the last cycle was "
-                       f"{h['seconds_since_cycle']:.0f}s ago — it may be stuck.")
-        elif h["running"]:
-            st.success(f"Running as pid {h['pid']}"
-                       + (f" · last cycle {h['seconds_since_cycle']:.0f}s ago"
-                          if h["seconds_since_cycle"] is not None else ""))
-        else:
-            st.caption("Not running. Use **Run auto trade** at the top — it "
-                       "keeps running after you close this page.")
-        if h["halted"]:
-            st.error(f"Halted: {h['halt_reason']}")
-        alerts = spx_bot.recent_alerts(5)
-        if alerts:
-            with st.expander(f"Recent alerts ({len(alerts)})",
-                             expanded=alerts[0]["kind"] in ("halted", "giving-up",
-                                                            "loss-limit")):
-                for a in alerts:
-                    st.markdown(f"`{a['at']}` **{a['kind']}** — {a['message']}")
-
-        # Start/Stop lives in the command strip at the top of the page — having it
-        # here as well was the reason two buttons appeared to do the same thing.
-        st.markdown('<div class="ta-label">Controls</div>',
-                    unsafe_allow_html=True)
-        b1, b2, b3, b4 = st.columns(4)
-        if b1.button("Preflight"):
-            with st.spinner("checking key permissions…"):
-                rep = fx.preflight(symbol)
-            # Use preflight's own verdict: recomputing it here dropped
-            # read_positions and edge_blocked, so a key that could not read
-            # positions printed a green "ready" directly under a red FAIL row.
-            ok = rep.get("ready")
-            (st.success if ok else st.error)(
-                f"Key can read {symbol} and place futures orders." if ok
-                else f"Key is not ready for {symbol} — see details.")
-            st.json(rep)
-        if b2.button("Dry-run one cycle"):
-            with st.spinner("running one decision cycle…"):
-                r = subprocess.run(
-                    [sys.executable, "spx_bot.py", "run", "--once"],
-                    capture_output=True, text=True, timeout=180)
-            st.code((r.stdout + r.stderr)[-2000:] or "(no output)")
-        if b3.button("Close position now"):
-            st.session_state["confirm_flat"] = True
-        if b4.button("Kill switch" if not killed else "Clear kill file"):
-            if killed:
-                spx_bot.KILL_PATH.unlink(missing_ok=True)
-                st.success("Kill file cleared — the bot may trade again.")
-            else:
-                spx_bot.KILL_PATH.parent.mkdir(parents=True, exist_ok=True)
-                spx_bot.KILL_PATH.write_text("stopped from the Trade tab")
-                st.warning("Kill file written. The bot will not open new trades.")
-            st.rerun()
-
-        bot_state = spx_bot._read_state() or {}
-        losses = int(bot_state.get("losses", 0) or 0)
-        limit = int(getattr(cfg, "max_losses", 0) or 0)
-        c1, c2 = st.columns([2, 1])
-        if limit:
-            hit = losses >= limit
-            c1.markdown(
-                f"<div class='ta-card'><h4>Losing trades</h4>"
-                f"<div style='font-family:var(--font-mono);font-size:22px;"
-                f"color:{'var(--sell)' if hit else 'var(--ink)'}'>"
-                f"{losses} / {limit}</div>"
-                f"<div style='color:var(--muted);font-size:12px'>"
-                f"{'LIMIT REACHED — the bot will not open new trades until you '
-                   'reset' if hit else 'counts every losing trade, never resets '
-                   'on its own'}</div></div>", unsafe_allow_html=True)
-        else:
-            c1.caption(f"Losing trades so far: {losses}. No limit set — "
-                       f"set one in Risk limits.")
-        if c2.button("Show bot log"):
-            st.session_state["show_bot_log"] = True
-        if st.session_state.get("show_bot_log"):
-            try:
-                st.code(spx_bot.LOG_PATH.read_text()[-3000:] or "(empty)")
-            except OSError:
-                st.caption("no log yet")
-        if c2.button("Reset loss count", disabled=losses == 0):
-            r = subprocess.run([sys.executable, "spx_bot.py", "reset-losses"],
-                               capture_output=True, text=True, timeout=60)
-            st.success((r.stdout or "reset").strip()[:200])
-            st.rerun()
-
-        # Closing a real position is irreversible, so it takes a second click.
-        if st.session_state.get("confirm_flat"):
-            st.warning("This sends a market order to close the whole position.")
-            k1, k2 = st.columns(2)
-            if k1.button("Yes, close it", type="primary"):
-                r = subprocess.run(
-                    [sys.executable, "spx_bot.py", "flat"]
-                    + (["--live"] if live_ready else []),
-                    capture_output=True, text=True, timeout=120)
-                st.code((r.stdout + r.stderr)[-1500:] or "(no output)")
-                st.session_state.pop("confirm_flat", None)
-                st.rerun()
-            if k2.button("Cancel"):
-                st.session_state.pop("confirm_flat", None)
-                st.rerun()
-
-        st.markdown('<div class="ta-label">Trade log</div>', unsafe_allow_html=True)
-        rows = []
-        try:
-            for line in spx_bot.LEDGER_PATH.read_text().splitlines()[-40:]:
+        # ---- liquidity gate. The per-pair readout was removed at the
+        # operator's request: all six pairs sit at 1–6% of target, so the list
+        # was noise. The CHECK still runs, because rule 12 says a blocked pair
+        # places no orders — and the runner enforces that itself
+        # (auto_trader.edge_check, called again before every entry), so this
+        # is only about surfacing it. Nothing is drawn unless a pair is
+        # actually blocked, which is the one case worth interrupting for.
+        for key in chosen_strats:
+            for coin in strategy_coins.get(key, []):
                 try:
-                    rows.append(json.loads(line))
-                except json.JSONDecodeError:
+                    g = _edge_check(key, coin, strategy_margins.get(key) or 5.0)
+                except Exception:
                     continue
-        except OSError:
-            pass
-        if not rows:
-            st.caption("No trades recorded yet. Dry runs are logged here too.")
-        else:
-            body = "| when | action | price | contracts | PnL $ | mode |\n"
-            body += "|---|---|---|---|---|---|\n"
-            for e in reversed(rows):
-                body += (f"| {e.get('at','')} | {e.get('action','')} "
-                         f"| {e.get('price','')} | {e.get('vol','')} "
-                         f"| {e.get('pnl_usd','')} "
-                         f"| {'dry' if e.get('dry_run') else 'LIVE'} |\n")
-            st.markdown(body)
+                if g.get("verdict") == "block":
+                    blocked_now.append((key, coin))
 
-    st.markdown('<div class="ta-rule"></div>', unsafe_allow_html=True)
-    st.caption(
-        "Strategy: always-long SPX500_USDT, take-profit as a limit order, "
-        "stop-loss as a market exit, re-enter after each exit, never short. "
-        "Backtest over 188 days: +47.6% on margin at 3x, 15 trades, 87% win "
-        "rate. Most of that return was the index rising during the sample — "
-        "funding is included in the backtest, and a limit fill is required or "
-        "the take-profit edge disappears. To go live: set SPX_BOT_ARMED=yes and "
-        "run `python spx_bot.py watchdog --live` in a terminal.")
+        # ---- the backtest a row asked for, rendered under the table. The
+        # flag is CLEARED before the run, so a lingering one cannot re-fire
+        # the whole year on every later widget interaction.
+        if st.session_state.get("auto_bt_run"):
+            _k = st.session_state.pop("auto_bt_run")
+            _lbl = {k: l for k, l, *_ in AUTO_STRATEGIES}
+            st.markdown(
+                f"<div style='font-size:10px;letter-spacing:.14em;"
+                f"text-transform:uppercase;color:var(--t-amber);"
+                f"margin:14px 0 2px'>Backtest &middot; past 365 days &middot; "
+                f"{html.escape(_lbl.get(_k, _k))}</div>",
+                unsafe_allow_html=True)
+            _render_strategy_backtest(_k, _lbl.get(_k, _k),
+                                      strategy_coins.get(_k, []),
+                                      strategy_margins.get(_k) or 5.0,
+                                      days=365)
 
+        chosen_coins = [c for cs in strategy_coins.values() for c in cs]
 
+        # ================= BAND 4 — RISK ================================
+        st.markdown(_tm_head("Risk", f"{at.LEVERAGE}x isolated"),
+                    unsafe_allow_html=True)
+        rk1, rk2 = st.columns([1, 1.6], gap="large")
+        with rk1:
+            # The book is chosen PER STRATEGY, in the grid above. These two
+            # are derived from those choices, not set here — the old global
+            # pair could not paper-test one strategy beside a live one.
+            _real_ks = [k for k, b in strategy_books.items() if "real" in b]
+            _paper_ks = [k for k, b in strategy_books.items() if "paper" in b]
+            enabled = bool(_real_ks)
+            dry_run = bool(_paper_ks)
+            _fmt = (lambda ks: ", ".join(
+                sorted({c.replace("_USDT", "")
+                        for k in ks for c in (strategy_coins.get(k) or [])}))
+                or "none")
+            st.markdown(
+                f"<div style='font-size:10px;letter-spacing:.14em;"
+                f"text-transform:uppercase;color:var(--t-dim)'>Books in "
+                f"use</div><div class='tm-p' style='margin:4px 0 12px'>"
+                f"<div class='row'><span>REAL &middot; real orders</span>"
+                f"<span class='{'tm-dn' if _real_ks else 'tm-nil'}'>"
+                f"{len(_real_ks)} strategies</span></div>"
+                f"<div class='row'><span style='color:var(--t-faint)'>"
+                f"&nbsp;&nbsp;{_fmt(_real_ks)}</span><span></span></div>"
+                f"<div class='row sub'><span>PAPER &middot; simulated</span>"
+                f"<span class='{'tm-up' if _paper_ks else 'tm-nil'}'>"
+                f"{len(_paper_ks)} strategies</span></div>"
+                f"<div class='row'><span style='color:var(--t-faint)'>"
+                f"&nbsp;&nbsp;{_fmt(_paper_ks)}</span><span></span></div>"
+                f"</div>", unsafe_allow_html=True)
+            acct_limit = st.number_input(
+                "Account loss cap USDT", min_value=0.0,
+                max_value=100_000.0, value=float(saved.get("loss_limit", 0.0)),
+                step=1.0, key="auto_acct_limit",
+                help="0 turns it off. Across ALL strategies: when the day's "
+                     "real losses reach this, the whole runner stops and "
+                     "drops the kill file. Set it larger than any single "
+                     "strategy's limit.")
+        with rk2:
+            # Sizing is a first-class setting, not an assumption. It was NOT
+            # in the save payload, so any Save silently reverted a flat book
+            # to the ladder — the exact dimension an audit showed was
+            # producing the "13/13 green months" behind six live strategies.
+            sizing = st.radio(
+                "Position sizing", options=("flat", "martingale"),
+                index=0 if at.sizing_for(saved) == "flat" else 1,
+                horizontal=True, key="auto_sizing",
+                format_func=lambda v: (
+                    "Flat — every trade stakes the base margin" if v == "flat"
+                    else "Martingale — 1,1,2,2,4,4,8 × base after each loss"),
+                help="Flat is what the backtests measure. Martingale "
+                     "multiplies whatever edge exists, including a negative "
+                     "one, and needs 8x the base margin in the account to "
+                     "survive its own worst case.")
+            # The worst-case and LIVE-MODE banners were removed at the
+            # operator's request. What they said is now on the rows: every
+            # strategy shows its own ladder in dollars with the current rung
+            # boxed, and the LIVE tick is green next to it. A pair the gate
+            # BLOCKS still interrupts, because that one is not a reminder —
+            # it means orders will be refused.
+            if enabled and blocked_now:
+                st.error("**These pairs are blocked by the liquidity gate and "
+                         "will place no orders:** "
+                         + ", ".join(f"{k} on {c}" for k, c in blocked_now)
+                         + ". Untick them or move the strategy to a "
+                           "deeper-book contract.")
 
-    # Setup is a one-time job. It used to sit at the top of the operating
-    # column, above the controls, which is why the tab read as jumbled.
-    with st.expander("Setup and connection",
-                     expanded=not cred.status()["has_credentials"]):
-            st.markdown('<div class="ta-label">MEXC API keys</div>',
-                        unsafe_allow_html=True)
-            cst = cred.status()
-            if cst["has_credentials"]:
-                mode_note = ("" if cst["file_mode_ok"] else
-                             f"  ·  file mode {cst['file_mode']} — should be -rw-------")
-                st.markdown(
-                    f"<div class='ta-card'><h4>Key loaded</h4>"
-                    f"<div style='font-family:var(--font-mono);font-size:12.5px'>"
-                    f"key &nbsp; {html.escape(cst['key_fingerprint'])}<br>"
-                    f"secret {html.escape(cst['secret_fingerprint'])}</div>"
-                    f"<div style='color:var(--muted);font-size:12px;margin-top:6px'>"
-                    f"source: {html.escape(cst['source'])}{html.escape(mode_note)}"
-                    f"</div></div>", unsafe_allow_html=True)
+        sv1, sv2, sv3 = st.columns([1.1, 1, 1])
+        if sv1.button("Save & run", type="primary", key="auto_save"):
+            _payload = {"strategies": chosen_strats,
+                              "strategy_coins": strategy_coins,
+                              "coins": chosen_coins,   # legacy union, kept for
+                                                       # anything still reading it
+                              "strategy_loss_limits": strategy_limits,
+                              "strategy_margins": strategy_margins,
+                              # The per-strategy book map is the real setting.
+                              "strategy_books": {k: v for k, v in
+                                                 strategy_books.items() if v},
+                              "loss_limit": acct_limit,
+                              "sizing": sizing,
+                        # Derived, not chosen — kept so anything still
+                        # reading the old globals sees the truth.
+                        "enabled": enabled, "dry_run": dry_run}
+            _auto_trade_save(_payload)
+            # "Saved" must mean the FILE says so, not that the write was
+            # attempted. Read it back off disk and compare the fields that
+            # decide where money goes; only then report success.
+            _verified, _diff = False, []
+            try:
+                _back = json.loads(
+                    AUTO_TRADE_SETTINGS.read_text(encoding="utf-8"))
+                for _f in ("strategies", "strategy_books", "strategy_coins",
+                           "strategy_margins", "strategy_loss_limits",
+                           "sizing", "loss_limit"):
+                    if _back.get(_f) != _payload.get(_f):
+                        _diff.append(_f)
+                _verified = not _diff
+            except Exception as _exc:
+                _diff = [f"could not re-read the file: {_exc}"]
+            st.session_state["auto_saved_at"] = {
+                "when": time.strftime("%H:%M:%S"), "ok": _verified,
+                "diff": _diff, "n": len(chosen_strats),
+                "live": sorted(k for k, v in strategy_books.items()
+                               if "real" in v),
+                "demo": sorted(k for k, v in strategy_books.items()
+                               if "paper" in v),
+                "path": str(AUTO_TRADE_SETTINGS)}
+            st.toast(
+                f"Saved — {len(chosen_strats)} strategies written and verified "
+                f"on disk" if _verified
+                else f"NOT saved cleanly — {', '.join(_diff)}",
+                icon="✅" if _verified else "🚨")
+            if enabled and at.halted():
+                # A deliberate re-enable clears a loss-limit (or manual) halt.
+                at.KILL_PATH.unlink(missing_ok=True)
+                st.info("Kill file cleared — trading resumes.")
+            if (enabled or dry_run) and not chosen_strats:
+                st.error("Auto Trade is on but no strategy is armed — the "
+                         "runner will start and do nothing.")
+            if (enabled or dry_run) and not chosen_coins:
+                st.error("Auto Trade is on but no coin is selected — the "
+                         "runner will start and do nothing.")
+            if enabled or dry_run:
+                pid = at.start_runner()
+                bk = []
+                if enabled:
+                    bk.append("**LIVE — real orders on MEXC**")
+                if dry_run:
+                    bk.append("**PAPER — simulated, separate book**")
+                st.success(f"Saved and running (pid {pid}). Running "
+                           f"{' and '.join(bk)}.")
             else:
-                st.caption("No key loaded. Enter one below, or export "
-                           "MEXC_API_KEY / MEXC_API_SECRET before launching.")
+                stopped = at.stop_runner()
+                st.success("Saved. Runner stopped — neither switch is on."
+                           if stopped else "Saved. Runner was not running.")
+        if sv2.button("Stop — halt entries", key="auto_halt"):
+            at.KILL_PATH.parent.mkdir(parents=True, exist_ok=True)
+            at.KILL_PATH.write_text("stopped from the UI")
+            at.stop_runner()
+            st.warning("Entries halted and runner stopped. Open positions "
+                       "keep their exchange-side TP/SL.")
+        _armed_panic = sv3.checkbox(
+            "Arm PANIC", key="auto_panic_arm",
+            help="Tick this to unlock the PANIC button. It closes EVERY real "
+                 "position at market immediately — there is no undo.")
+        if sv3.button("PANIC — close all", key="auto_panic",
+                      disabled=not _armed_panic):
+            rep = at.panic_stop()
+            st.error(f"Panic stop. Closed: {rep['closed'] or 'nothing'}."
+                     + (f" FAILED: {rep['failed']}" if rep["failed"]
+                        else " Runner stopped, entries halted."))
+        if at.halted():
+            st.error(f"Kill file present at {at.KILL_PATH} — entries halted. "
+                     f"Save with a switch ticked to clear it.")
+        # The toast disappears after a few seconds; this stays, so the
+        # operator can still see WHAT was written and that it was read back.
+        _sv = st.session_state.get("auto_saved_at")
+        if _sv:
+            _sym = lambda ks: ", ".join(   # noqa: E731
+                sorted({c.replace("_USDT", "")
+                        for k in ks for c in (strategy_coins.get(k) or [])})
+            ) or "none"
+            st.markdown(
+                f"<div class='tm-p' style='margin-top:10px;border-color:"
+                f"{'var(--t-up)' if _sv['ok'] else 'var(--t-dn)'}'>"
+                f"<div class='row' style='font-size:10px;letter-spacing:.14em;"
+                f"text-transform:uppercase;color:var(--t-dim)'>"
+                f"<span>Save &middot; {html.escape(_sv['when'])}</span>"
+                f"<span class='{'tm-up' if _sv['ok'] else 'tm-dn'}'>"
+                + ("WRITTEN &amp; VERIFIED ON DISK" if _sv["ok"]
+                   else "FAILED")
+                + "</span></div>"
+                + (f"<div class='row'><span>LIVE &middot; real orders</span>"
+                   f"<span class='tm-dn'>{_sym(_sv['live'])}</span></div>"
+                   f"<div class='row'><span>DEMO &middot; simulated</span>"
+                   f"<span class='tm-up'>{_sym(_sv['demo'])}</span></div>"
+                   f"<div class='row sub'><span style='color:var(--t-faint)'>"
+                   f"{html.escape(_sv['path'])}</span>"
+                   f"<span style='color:var(--t-faint)'>{_sv['n']} strategies"
+                   f"</span></div>"
+                   if _sv["ok"] else
+                   f"<div class='row'><span>fields that did not match</span>"
+                   f"<span class='tm-dn'>"
+                   f"{html.escape(', '.join(_sv['diff']))}</span></div>")
+                + "</div>", unsafe_allow_html=True)
 
-            # A different key in .env is invisible from the browser. It used to win
-            # silently, so every connection test ran against a key the user had
-            # already replaced. The saved key now wins — say so, and name the file
-            # to clean up.
-            conflict = cred.env_conflict()
-            if conflict.get("conflict"):
-                stale = ", ".join(f"{where} ({fp})" for where, fp in conflict["stale"])
-                st.warning(
-                    f"A different MEXC key is also set in {stale}. The key saved "
-                    f"here wins, but delete the `MEXC_API_KEY` / `MEXC_API_SECRET` "
-                    f"lines from that file so there is only one answer to which "
-                    f"key is live.")
 
-            with st.expander("Enter or replace keys",
-                             expanded=not cst["has_credentials"]):
-                st.caption(
-                    "Create the key on MEXC with **futures trading and read access "
-                    "enabled**, **withdrawals disabled**, and an **IP allowlist**. "
-                    "A trade-only key that leaks can lose money on bad trades but "
-                    "cannot move funds off the exchange. Keys are written to "
-                    f"`{cst['store_path']}` with owner-only permissions — never to "
-                    "the project folder, and never shown back to you.")
-                with st.form("mexc_keys", clear_on_submit=True):
+        # ================= BAND 6 — FEED ================================
+        @st.fragment(run_every=30)
+        def _feed() -> None:
+            log_lines = at.log_tail(200)
+            recent = at.ledger_tail(100)
+            st.markdown(_tm_head("Feed", "newest at the bottom"),
+                        unsafe_allow_html=True)
+            f1, f2 = st.columns(2, gap="large")
+            with f1:
+                st.markdown("<div style='font-size:10px;letter-spacing:.14em;"
+                            "text-transform:uppercase;color:var(--t-dim);"
+                            "margin-bottom:4px'>Runner log &middot; every scan"
+                            "</div>", unsafe_allow_html=True)
+                # Terminal order: oldest at the top, newest at the bottom.
+                # The DOM order is REVERSED and the box is column-reverse —
+                # that renders them the right way up AND keeps the scroll
+                # pinned to the newest line, which plain markup cannot do
+                # without a script Streamlit would strip.
+                st.markdown(
+                    "<div class='tm-feed'>"
+                    + ("".join(f"<div>{html.escape(l)}</div>"
+                               for l in reversed(log_lines))
+                       if log_lines else "<div>runner has not logged yet</div>")
+                    + "</div>", unsafe_allow_html=True)
+            with f2:
+                st.markdown("<div style='font-size:10px;letter-spacing:.14em;"
+                            "text-transform:uppercase;color:var(--t-dim);"
+                            "margin-bottom:4px'>Trades &amp; events</div>",
+                            unsafe_allow_html=True)
+                rows = []
+                for e in recent:
+                    bits = [_fmt_when(e.get("ts", 0)),
+                            "PAPER" if e.get("dry_run") else "REAL",
+                            e.get("symbol", ""), e.get("action", "")]
+                    for k in ("strategy", "side", "why"):
+                        if e.get(k):
+                            bits.append(str(e[k]))
+                    if e.get("pnl_est") is not None:
+                        bits.append(f"pnl {e['pnl_est']:+.2f}")
+                    rows.append(html.escape(" · ".join(str(b) for b in bits)))
+                st.markdown("<div class='tm-feed'>"
+                            + ("".join(f"<div>{r}</div>" for r in rows)
+                               if rows else "<div>no events yet</div>")
+                            + "</div>", unsafe_allow_html=True)
+
+        _feed()
+
+        # ================= BAND 7 — CONNECTION ==========================
+        cst = cred.status()
+        st.markdown(
+            _tm_head("Connection",
+                     "keys connected" if cst["has_credentials"]
+                     else "keys NOT SET"), unsafe_allow_html=True)
+        cn1, cn2 = st.columns([1.4, 1], gap="large")
+        with cn1:
+            # Keys are set once and then never touched, so they live at the
+            # bottom of the terminal, out of the reading path.
+            with st.expander("MEXC API keys", expanded=False):
+                if cst["has_credentials"]:
+                    st.markdown(
+                        f"<div style='color:var(--t-dim);font-size:12px'>"
+                        f"Using existing keys "
+                        f"({html.escape(cst['source'])}) — key "
+                        f"{html.escape(cst['key_fingerprint'])} · secret "
+                        f"{html.escape(cst['secret_fingerprint'])}</div>",
+                        unsafe_allow_html=True)
+                else:
+                    st.warning("No MEXC keys found. Paste a key pair below, "
+                               "or export MEXC_API_KEY / MEXC_API_SECRET "
+                               "before launching.")
+                with st.form("auto_mexc_keys", clear_on_submit=True):
                     k_in = st.text_input("API key", type="password",
                                          autocomplete="off")
                     s_in = st.text_input("API secret", type="password",
@@ -1809,438 +3078,55 @@ def render_trade_tab() -> None:
                         except ValueError as exc:
                             st.error(str(exc))
                         else:
-                            st.success("Saved. Test the connection below.")
+                            st.success("Saved.")
                             st.rerun()
                     if f2.form_submit_button("Forget saved keys"):
-                        st.warning("Removed." if cred.clear() else "Nothing stored.")
+                        st.warning("Removed." if cred.clear()
+                                   else "Nothing stored.")
                         st.rerun()
-
-            tc1, tc2 = st.columns([1, 3])
-            if tc1.button("Test connection", type="primary"):
-                st.session_state["conn_test"] = True
-            if st.session_state.get("conn_test"):
-                # Clear the flag before rendering: Streamlit reruns the script on
-                # every widget interaction, and leaving it set re-issued a signed
-                # POST to the order endpoint on each one.
-                st.session_state.pop("conn_test", None)
+        with cn2:
+            probe_symbol = chosen_coins[0] if chosen_coins else "BTC_USDT"
+            if st.button("Test connect", key="auto_test_connect"):
+                st.session_state["auto_conn_test"] = True
+            if st.session_state.get("auto_conn_test"):
+                # Clear before rendering — a lingering flag would re-issue the
+                # signed probe on every widget interaction (Trade-tab lesson).
+                st.session_state.pop("auto_conn_test", None)
                 with st.spinner("talking to MEXC…"):
-                    rep = fx.preflight(symbol)
-                checks = [
-                    ("Credentials present", rep.get("credentials")),
-                    ("Read account balance", rep.get("read_assets")),
-                    ("Read open positions", rep.get("read_positions")),
-                    ("Permission to place orders", rep.get("order_permission")),
-                    ("Rest a stop on MEXC's servers", rep.get("can_rest_stop")),
-                ]
+                    rep = fx.preflight(probe_symbol)
                 rows = ""
-                for label, ok in checks:
-                    mark = "PASS" if ok else ("FAIL" if ok is False else "unknown")
-                    colour = ("var(--buy)" if ok else
-                              ("var(--sell)" if ok is False else "var(--muted)"))
-                    rows += (f"<div class='ta-stage'><span class='lbl'>{label}</span>"
-                             f"<span class='tag' style='color:{colour}'>{mark}</span>"
-                             f"</div>")
-                st.markdown(f"<div class='ta-card'><h4>Connection</h4>{rows}</div>",
+                for _lab, ok in (
+                        ("Credentials present", rep.get("credentials")),
+                        ("Read account balance", rep.get("read_assets")),
+                        ("Read open positions", rep.get("read_positions")),
+                        ("Permission to place orders",
+                         rep.get("order_permission")),
+                        ("Rest a stop on MEXC's servers",
+                         rep.get("can_rest_stop"))):
+                    mark = "PASS" if ok else ("FAIL" if ok is False
+                                              else "UNKNOWN")
+                    cls = ("tm-up" if ok else "tm-dn" if ok is False
+                           else "tm-nil")
+                    rows += (f"<div class='row'><span>{_lab}</span>"
+                             f"<span class='{cls}'>{mark}</span></div>")
+                st.markdown(f"<div class='tm-p'>{rows}</div>",
                             unsafe_allow_html=True)
-                if rep.get("equity_usdt") is not None:
-                    st.metric("Futures wallet", f"{rep['equity_usdt']:,.2f} USDT")
                 if rep.get("ready"):
-                    st.success(f"Connected. This key can read the account and place "
-                               f"futures orders on {symbol}.")
-                    st.caption("Both write checks are non-destructive: the order "
-                               "check cancels an order id that cannot exist, and "
-                               "the stop check targets a position id that cannot "
-                               "exist. Neither can open a position. They are "
-                               "separate endpoints, so both are tested — a key can "
-                               "place orders and still not be allowed to rest a "
-                               "stop.")
-                elif rep.get("auth_failed"):
-                    st.error("**MEXC rejected the credentials themselves, not their "
-                             "permissions.** No permission setting will fix this.")
-                    for fix in rep.get("remedies", []):
-                        st.markdown(f"- {fix}")
-                elif rep.get("edge_blocked"):
-                    st.error("**Blocked by MEXC's edge proxy, not by your key.** The "
-                             "order endpoint returned an HTML “Access Denied” "
-                             "before the API saw the request, so no permission "
-                             "setting on MEXC will change it.")
-                    for fix in rep.get("remedies", []):
-                        st.markdown(f"- {fix}")
-                    st.caption("MEXC's edge refuses the futures order paths for "
-                               "requests whose User-Agent identifies a scripted "
-                               "client (bare urllib or requests). Reads are "
-                               "unaffected, which makes it look like a trade "
-                               "permission problem.")
-                elif rep.get("missing_scopes"):
-                    st.error("**Your key is missing permission scopes.** MEXC named "
-                             "them exactly: " + ", ".join(rep["missing_scopes"]) + ".")
-                    st.markdown("**To fix, on MEXC:**")
-                    for fix in rep.get("remedies", []):
-                        st.markdown(f"- {fix}")
-                    st.markdown(
-                        "- Keep **withdrawals disabled**, and check the key's "
-                        "**IP allowlist** includes this machine.\n"
-                        "- Editing scopes can issue a new secret — if so, paste "
-                        "both values above again.")
-                    st.caption("Futures API order placement is not gated by MEXC on "
-                               "this contract; these are key settings you control.")
-                else:
-                    st.error("Not ready to trade — see the raw exchange responses "
-                             "below. Common causes: a wrong secret (signature "
-                             "failure) or an IP allowlist that excludes this machine.")
-                for note in rep.get("notes", []):
-                    st.caption(f"· {note}")
+                    st.success("Connected — this key can read the account and "
+                               "place orders.")
+                elif rep.get("detail"):
+                    st.error(rep["detail"])
 
-
-
-def render_backtest_tab() -> None:
-    """Backtesting: a matrix of approaches x timeframes, grouped by approach.
-
-    Deliberately separate from the Trade tab, which operates the bot. Nothing here
-    writes the bot's configuration.
-
-    Earlier this tab carried TWO bars pickers — one in the settings panel and one
-    above the run button — and only the second was wired to anything. Now there is
-    one place to choose, it takes several timeframes at once, and the results are
-    grouped so a single run answers "which timeframe suits this approach".
-    """
-    import pandas as pd
-
-    import spx_bot
-    from tradingagents import strategies as sg
-    from tradingagents.dataflows import mexc_credentials as cred
-    from tradingagents.dataflows import mexc_futures as fx
-
-    cred.load_into_env()
-    cfg = spx_bot.Config.load()
-    _lane = cfg.primary_lane()
-
-    st.caption(
-        "Nothing here places an order or changes your bot. Values start from your "
-        "saved settings, so the first run answers *what would my bot have done*. "
-        "Change them to ask what-if — to change the bot itself, use the Trade tab.")
-
-    wallet = None
-    if fx.has_credentials():
-        try:
-            wallet = fx.usdt_equity()
-        except fx.MexcFuturesError:
-            wallet = None
-
-    # ---- what to simulate -------------------------------------------------
-    try:
-        contracts = _futures_contracts()
-    except Exception as exc:                              # noqa: BLE001
-        contracts = []
-        st.warning(f"Contract list unavailable: {exc}")
-    spec_by = {c["symbol"]: c for c in contracts}
-    FAVOURITES = ("SPX500_USDT", "BTC_USDT", "ETH_USDT", "SOL_USDT",
-                  "BNB_USDT", "XRP_USDT", "DOGE_USDT", "GOLD_USDT")
-    head = [s for s in FAVOURITES if s in spec_by]
-    options = (head + [c["symbol"] for c in contracts if c["symbol"] not in head]
-               or [cfg.symbol])
-
-    s1, s2, s3 = st.columns([2, 1, 1])
-    symbol = s1.selectbox(
-        "Perpetual", options,
-        index=options.index(cfg.symbol) if cfg.symbol in options else 0,
-        key="bt_symbol",
-        format_func=lambda s: (f"{s}  \u00b7  "
-                               f"{spec_by.get(s, {}).get('max_leverage', '?')}x max"))
-    bars = s2.selectbox("History", [500, 1000, 2000, 3000, 5000], index=2,
-                        key="bt_bars", format_func=lambda n: f"{n:,} bars")
-    align = s3.checkbox(
-        "Compare over the same dates", value=True, key="bt_align",
-        help="5,000 bars is 3.5 days on Min1 and 189 days on Day1, so without "
-             "this each row covers a different period and the results are not "
-             "comparable — a timeframe can look best purely for having had the "
-             "luckiest window.")
-    s3.caption("MEXC serves 2,001 candles per request; more is paged together.")
-
-    # ---- timeframes ------------------------------------------------------
-    st.markdown('<div class="ta-section">Timeframes to test</div>',
-                unsafe_allow_html=True)
-    def _apply_all_tf():
-        # Streamlit only honours `value=` the FIRST time a widget with a key is
-        # created; afterwards session state wins. So "select all" has to write the
-        # individual keys itself — passing a new `value` did nothing at all.
-        for _tf in sg.TIMEFRAMES:
-            st.session_state[f"bt_tf_{_tf}"] = st.session_state["bt_tf_all"]
-
-    tf_box = st.container(key="bt_tf_box")
-    with tf_box:
-        st.checkbox("Select all timeframes", key="bt_tf_all",
-                    on_change=_apply_all_tf)
-        cols = st.columns(len(sg.TIMEFRAMES))
-        timeframes = []
-        for col, tf in zip(cols, sg.TIMEFRAMES):
-            if f"bt_tf_{tf}" not in st.session_state:
-                st.session_state[f"bt_tf_{tf}"] = tf == _lane["timeframe"]
-            if col.checkbox(tf, key=f"bt_tf_{tf}",
-                            help=sg.TIMEFRAME_LABELS[tf]):
-                timeframes.append(tf)
-
-    # ---- approaches ------------------------------------------------------
-    st.markdown('<div class="ta-section">Approaches to test</div>',
-                unsafe_allow_html=True)
-    def _apply_all_ap():
-        for _k in sg.ORDER:
-            st.session_state[f"bt_ap_{_k}"] = st.session_state["bt_ap_all"]
-
-    ap_box = st.container(key="bt_ap_box")
-    with ap_box:
-        st.checkbox("Select all approaches", key="bt_ap_all",
-                    on_change=_apply_all_ap)
-        acols = st.columns(3)
-        strategies = []
-        for i, key in enumerate(sg.ORDER):
-            if f"bt_ap_{key}" not in st.session_state:
-                st.session_state[f"bt_ap_{key}"] = key == _lane["strategy"]
-            label = sg.REGISTRY[key].name
-            if key not in spx_bot.RUNNABLE_STRATEGIES:
-                label += "  (entry filter live)"
-            if acols[i % 3].checkbox(label, key=f"bt_ap_{key}"):
-                strategies.append(key)
-
-    # ---- position and limits --------------------------------------------
-    st.markdown('<div class="ta-section">Position and risk limits</div>',
-                unsafe_allow_html=True)
-    p1, p2, p3, p4 = st.columns(4)
-    max_lev = int(spec_by.get(symbol, {}).get("max_leverage", 200) or 200)
-    lev = p1.number_input("Leverage", 1, max(max_lev, 1),
-                          min(int(cfg.leverage), max_lev), key="bt_lev")
-    margin = p2.number_input("Margin (USD)", 1.0, 100_000.0,
-                             float(cfg.margin_usd), step=5.0, key="bt_margin")
-    tp = p3.number_input("Take-profit %", 0.05, 50.0,
-                         float(cfg.take_profit_pct), step=0.25, key="bt_tp")
-    sl = p4.number_input("Stop-loss %", 0.05, 90.0,
-                         float(cfg.stop_loss_pct), step=0.5, key="bt_sl")
-    r1, r2, r3, r4 = st.columns(4)
-    cap = r1.number_input("Max notional (USD)", 10.0, 500_000.0,
-                          float(cfg.max_notional_usd), step=50.0, key="bt_cap")
-    dl = r2.number_input("Daily loss limit (USD)", 0.0, 50_000.0,
-                         float(cfg.daily_loss_limit_usd), step=5.0, key="bt_dl")
-    floor = r3.number_input("Halt below equity (USD)", 0.0, 50_000.0,
-                            float(cfg.min_equity_usd), step=5.0, key="bt_floor")
-    mx = r4.number_input("Stop after N losing trades", 0, 100,
-                         int(getattr(cfg, "max_losses", 0)), step=1, key="bt_mx")
-
-    # Effective leverage, not nominal: the cap can cut it a long way. At 200x with
-    # $10 margin and a $400 cap the position is 40x, so quoting 200x's wipe-out
-    # point would be wrong by a factor of twenty.
-    eff_notional = min(float(margin) * float(lev), float(cap))
-    eff_lev = eff_notional / max(float(margin), 1e-9)
-    wipe = fx.liquidation_move_pct(symbol, eff_lev)
-    bits = [f"position **\\${eff_notional:,.2f}**",
-            f"effective **{eff_lev:.0f}x**"]
-    if eff_notional < float(margin) * float(lev):
-        bits.append(f"capped from \\${float(margin) * float(lev):,.2f}")
-    bits.append(f"liquidation at a **{wipe:.2f}%** adverse move")
-    st.caption(" \u00b7 ".join(bits))
-    if eff_lev > 1 and sl >= wipe:
-        st.error(
-            f"A {sl:.1f}% stop can never fire at an effective {eff_lev:.0f}x — the "
-            f"margin is gone after {wipe:.2f}%. Every run below will liquidate, "
-            f"which is what would really happen.")
-
-    _same = (symbol == cfg.symbol and timeframes == [_lane["timeframe"]]
-             and strategies == [_lane["strategy"]]
-             and int(lev) == int(cfg.leverage)
-             and float(margin) == float(cfg.margin_usd)
-             and float(tp) == float(cfg.take_profit_pct)
-             and float(sl) == float(cfg.stop_loss_pct))
-    if _same:
-        st.success("These are your bot's live settings.")
-
-    runs = len(timeframes) * len(strategies)
-    go = st.button(
-        f"Run {runs} backtest{'s' if runs != 1 else ''}"
-        if runs else "Select at least one timeframe and one approach",
-        type="primary", disabled=runs == 0, key="bt_go")
-    if not go and not st.session_state.get("bt_matrix"):
-        return
-    if go:
-        st.session_state["bt_matrix"] = True
-
-    limits = {"max_notional": _tradable_notional(symbol, float(margin),
-                                                float(lev), float(cap)),
-              "max_losses": int(mx), "daily_loss_limit": float(dl),
-              "min_equity": float(floor), "starting_equity": wallet}
-    funding = _funding_history(symbol)
-
-    # ---- run the matrix --------------------------------------------------
-    results: dict = {}
-    with st.spinner(f"simulating {runs} combination(s) on {symbol}\u2026"):
-        candles_by_tf = {}
-        for tf in timeframes:
-            try:
-                candles_by_tf[tf] = fx.klines(symbol, tf, int(bars))
-            except fx.MexcFuturesError as exc:
-                candles_by_tf[tf] = None
-                st.warning(f"{tf}: no candles ({exc})")
-        window = None
-        if align:
-            # Truncate every series to the latest common start. Without this, a
-            # fine timeframe is judged on the last few days and a coarse one on
-            # months, and the winner is whoever drew the kinder period.
-            starts = {tf: c["Date"].iloc[0] for tf, c in candles_by_tf.items()
-                      if c is not None and len(c)}
-            if starts:
-                window = max(starts.values())
-                # Name the timeframe that set the limit: aligning Min1 with Day1
-                # collapses the window to Min1's few days of history, which is far
-                # too short to judge anything, and the fix is to untick it.
-                _limiter = max(starts, key=lambda k: starts[k])
-                _span_days = (pd.Timestamp.utcnow().tz_localize(None)
-                              - window).total_seconds() / 86400
-                if len(starts) > 1 and _span_days < 7:
-                    st.warning(
-                        f"**The shared window is only {_span_days:.1f} days**, "
-                        f"limited by **{_limiter}** — MEXC keeps little history at "
-                        f"that resolution. Too short to judge a strategy. Untick "
-                        f"{_limiter} for a longer comparison, or untick *Compare "
-                        f"over the same dates* to let each timeframe use all its "
-                        f"history (results then cover different periods and are "
-                        f"not comparable between rows).")
-                elif len(starts) > 1:
-                    st.caption(
-                        f"Shared window set by **{_limiter}**, the shortest "
-                        f"history among the ticked timeframes: {_span_days:.1f} "
-                        f"days.")
-                for tf, c in list(candles_by_tf.items()):
-                    if c is None:
-                        continue
-                    trimmed = c[c["Date"] >= window].reset_index(drop=True)
-                    candles_by_tf[tf] = trimmed if len(trimmed) >= 3 else None
-                    if candles_by_tf[tf] is None:
-                        st.warning(f"{tf}: too few bars inside the common window")
-        for key in strategies:
-            rows = []
-            for tf in timeframes:
-                hist = candles_by_tf.get(tf)
-                if hist is None or len(hist) < 3:
-                    rows.append({"timeframe": tf, "error": "no candles"})
-                    continue
-                try:
-                    res, fund = sg.backtest(
-                        key, hist, margin=float(margin), leverage=float(lev),
-                        params=({"take_profit_pct": float(tp),
-                                 "stop_loss_pct": float(sl)}
-                                if sg.REGISTRY[key].kind == "bracket" else None),
-                        funding=funding, limits=limits)
-                    cmp_ = sg.hold_comparison(res, fund, hist, funding)
-                except Exception as exc:                  # noqa: BLE001
-                    rows.append({"timeframe": tf, "error": str(exc)})
-                    continue
-                rows.append({
-                    "timeframe": tf, "res": res, "fund": fund, "cmp": cmp_,
-                    "bars": len(hist),
-                    "days": (hist["Date"].iloc[-1]
-                             - hist["Date"].iloc[0]).total_seconds() / 86400,
-                })
-            results[key] = rows
-    st.session_state["bt_matrix"] = True
-
-    # ---- results, grouped by approach -----------------------------------
-    st.markdown('<div class="ta-section">Results by approach</div>',
-                unsafe_allow_html=True)
-    _windownote = ""
-    if align and window is not None:
-        _spans = [r["days"] for rows in results.values() for r in rows
-                  if "error" not in r]
-        _windownote = (f" \u00b7 all rows share the same dates, from "
-                       f"{window:%Y-%m-%d %H:%M}"
-                       + (f" ({max(_spans):.1f} days)" if _spans else ""))
-    elif not align:
-        _windownote = (" \u00b7 **rows cover different periods** — 5,000 bars is "
-                       "3.5 days on Min1 and 189 on Day1, so Result is not "
-                       "comparable between rows")
-    st.caption(
-        f"{symbol} \u00b7 {int(bars):,} bars requested \u00b7 position "
-        f"\\${eff_notional:,.2f} at an effective {eff_lev:.0f}x \u00b7 your risk "
-        f"limits applied \u00b7 funding included on both the strategy and the "
-        f"benchmark{_windownote}.")
-
-    tabs = st.tabs([sg.REGISTRY[k].name for k in strategies])
-    for tab, key in zip(tabs, strategies):
-        with tab:
-            strat = sg.REGISTRY[key]
-            st.caption(strat.summary)
-            if key not in spx_bot.RUNNABLE_STRATEGIES:
-                st.warning(
-                    "Live, this runs as an **entry filter** — its signal only "
-                    "decides whether to open one bracketed trade. The rows below "
-                    "measure the **exposure** form, which rebalances every bar. "
-                    "Read them as information about the signal, not as a forecast.")
-            table = []
-            for row in results.get(key, []):
-                if "error" in row:
-                    table.append({"Timeframe": row["timeframe"],
-                                  "Result": None, "vs hold": None,
-                                  "Trades": None, "Win %": None,
-                                  "Worst equity": None,
-                                  "Note": row["error"]})
-                    continue
-                res, cmp_ = row["res"], row["cmp"]
-                note = []
-                if res.liquidated:
-                    note.append("LIQUIDATED")
-                if res.halted_reason:
-                    note.append(res.halted_reason)
-                table.append({
-                    "Timeframe": row["timeframe"],
-                    "Result": round(cmp_["total"], 2),
-                    "vs hold": round(cmp_["edge"], 2),
-                    "Trades": len(res.trades),
-                    "Win %": round(res.win_rate, 0),
-                    "Worst equity": round(res.worst_equity, 2),
-                    "Days": round(row["days"], 1),
-                    "Note": "; ".join(note),
-                })
-            if table:
-                frame = pd.DataFrame(table)
-                st.dataframe(frame, use_container_width=True, hide_index=True)
-                best = max((r for r in results[key] if "error" not in r),
-                           key=lambda r: r["cmp"]["total"], default=None)
-                if best is not None:
-                    beat = sum(1 for r in results[key]
-                               if "error" not in r and r["cmp"]["beats_hold"])
-                    st.caption(
-                        f"Best on **{best['timeframe']}** at "
-                        f"\\${best['cmp']['total']:+,.2f}. Beat buy-and-hold on "
-                        f"{beat} of {len([r for r in results[key] if 'error' not in r])} "
-                        f"timeframe(s). A timeframe that only wins by a little is "
-                        f"the sort of result that does not repeat \u2014 searching "
-                        f"this grid produces about \\$2.85 of edge from luck alone "
-                        f"at \\$115 margin.")
-                for row in results.get(key, []):
-                    if "error" in row:
-                        continue
-                    res = row["res"]
-                    with st.expander(
-                            f"{row['timeframe']} \u2014 {len(res.trades)} trade(s), "
-                            f"{row['bars']} bars over {row['days']:.1f} days"):
-                        if res.trades:
-                            st.dataframe(pd.DataFrame([{
-                                "#": t.n,
-                                "Entry": t.entry_at.strftime("%m-%d %H:%M"),
-                                "Exit": t.exit_at.strftime("%m-%d %H:%M"),
-                                "In": round(t.entry_px, 2),
-                                "Out": round(t.exit_px, 2),
-                                "Why": t.reason,
-                                "Return %": round(t.net_return * 100, 2),
-                                "PnL $": round(t.pnl, 2),
-                            } for t in res.trades]),
-                                use_container_width=True, hide_index=True)
-                        else:
-                            st.caption("No trades: "
-                                       + (res.halted_reason or "no entry signal "
-                                          "in this window."))
-                        st.caption(
-                            f"funding \\${row['fund']:+,.2f} \u00b7 buy-and-hold "
-                            f"\\${row['cmp']['hold_total']:+,.2f} \u00b7 max "
-                            f"drawdown \\${res.max_drawdown:,.2f} mark-to-market")
-
+        st.caption("This page refreshes itself: the top strip every 10 s, "
+                   "positions every 20 s, the feed every 30 s. The runner "
+                   "itself is unaffected — it wakes seconds after each candle "
+                   "of the finest armed timeframe closes and enters at the "
+                   "live price; open simulated positions are tick-checked "
+                   "every 30 seconds. "
+                   "Auto Trade checked = REAL orders; tick Dry run to "
+                   "simulate. Emergency stop: uncheck + Save, or `touch "
+                   "~/.tradingagents/auto_trade.KILL`. Brackets rest on "
+                   "MEXC's servers when live.")
 
 
 def render_llm_models_tab() -> None:

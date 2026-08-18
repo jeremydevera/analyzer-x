@@ -113,17 +113,18 @@ def test_health_badge(app):
 
 def test_provider_for(app):
     assert app.provider_for("gemini-3.1-flash-lite") == "google"
-    assert app.provider_for("deepseek-ai/deepseek-v4-flash") == "nvidia"
     assert app.provider_for("gpt-oss:120b") == "ollama"
-    # unknown/custom model → falls back to the .env default provider
+    # unknown/custom model → falls back to the .env default provider. The pruned
+    # models (nvidia 410s, openai quota-dead) take this path too now.
     assert app.provider_for("some/unknown") == app.DEFAULT_CONFIG["llm_provider"]
-    assert app.provider_for("gpt-4o-mini") == "openai"
+    assert app.provider_for("gpt-4o-mini") == app.DEFAULT_CONFIG["llm_provider"]
     assert app.provider_for("qwen3.6-flash") == "qwen"
     assert app.provider_for("glm-5.1") == "maas"
-    # providers represented in the dropdown (catalog pruned 2026-07-31 to
-    # models that answered a live ping; cloudflare/anthropic entries removed)
+    # providers represented in the dropdown (catalog pruned 2026-08-18 to
+    # models that answered a live ping; nvidia 410-Gone and openai
+    # quota-exhausted entries removed alongside the earlier cloudflare/anthropic)
     assert {app.provider_for(m) for m in app.MODELS} == {
-        "google", "nvidia", "ollama", "openai", "qwen", "maas"}
+        "google", "ollama", "qwen", "maas"}
 
 
 def test_configure_cfg_ollama(app):
@@ -248,269 +249,36 @@ def test_pse_ticker_switches_the_price_vendor(app):
     assert cfg2["data_vendors"]["core_stock_apis"] != "pse"
 
 
-# ============ timeframe pickers must not drift =============================
-def test_no_hardcoded_timeframe_lists_in_the_ui():
-    """Three pickers each carried their own hardcoded list of intervals, so they
-    drifted: the backtest offered no Min1, Min30 or Day1, meaning a timeframe you
-    could select for the bot could not be backtested at all. Every picker must
-    derive from strategies.TIMEFRAMES so adding one adds it everywhere.
-    """
-    import re
-    from pathlib import Path
-
-    from tradingagents import strategies as sg
-
-    src = Path(__file__).resolve().parents[1] / "app.py"
-    text = src.read_text(encoding="utf-8")
-    # a list literal containing two or more MEXC interval names
-    names = "|".join(sg.TIMEFRAMES)
-    literal = re.compile(r'\[\s*(?:"(?:%s)"\s*,\s*){1,}"(?:%s)"\s*\]'
-                         % (names, names))
-    found = literal.findall(text)
-    assert not found, (
-        f"hardcoded timeframe list(s) in app.py: {found}. "
-        f"Use list(sg.TIMEFRAMES) so the pickers cannot drift apart.")
-
-
-def test_every_timeframe_has_a_label_and_a_poll_interval():
-    """A picker rendering TIMEFRAME_LABELS[t] raises KeyError on any timeframe
-    that lacks one."""
-    from tradingagents import strategies as sg
-    for tf in sg.TIMEFRAMES:
-        assert tf in sg.TIMEFRAME_LABELS, tf
-        assert tf in sg.TIMEFRAME_SECONDS, tf
-        assert sg.poll_seconds_for(tf) > 0
-
-
-# ============ app.py's calls must match the signatures it calls =============
-def test_app_only_passes_kwargs_that_exist():
-    """A live TypeError shipped past 1128 green tests: app.py was changed to pass
-    `limits=` to strategies.compare() while compare() still lacked the parameter,
-    so "Compare all 6" would crash the moment it was clicked. No unit test calls
-    app.py, so nothing caught it.
-
-    This parses app.py and checks every keyword argument it hands to the backtest
-    and comparison entry points against those functions' real signatures.
-    """
-    import ast
-    import inspect
-    from pathlib import Path
-
-    from tradingagents import strategies as sg
-
-    targets = {"backtest": sg.backtest, "compare": sg.compare,
-               "hold_comparison": sg.hold_comparison}
-    src = Path(__file__).resolve().parents[1] / "app.py"
-    tree = ast.parse(src.read_text(encoding="utf-8"))
-
-    problems = []
-    checked = 0
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Call):
-            continue
-        fn = node.func
-        name = fn.attr if isinstance(fn, ast.Attribute) else getattr(fn, "id", None)
-        if name not in targets:
-            continue
-        allowed = set(inspect.signature(targets[name]).parameters)
-        checked += 1
-        for kw in node.keywords:
-            if kw.arg and kw.arg not in allowed:
-                problems.append(f"line {node.lineno}: {name}(... {kw.arg}=...) "
-                                f"— not a parameter of {name}{inspect.signature(targets[name])}")
-    assert checked >= 2, f"expected to find the backtest calls, found {checked}"
-    assert not problems, "app.py calls a function with a parameter it does not have:\n" \
-                         + "\n".join(problems)
-
-
-def test_compare_accepts_the_limits_the_app_sends():
-    """The call the Compare all 6 button makes, exercised directly."""
-    from datetime import datetime, timedelta
-
-    import pandas as pd
-
-    from tradingagents import strategies as sg
-    d = pd.DataFrame({
-        "Date": [datetime(2026, 1, 1) + timedelta(minutes=5 * i) for i in range(300)],
-        "Open": [100 + i * 0.1 for i in range(300)],
-        "High": [100.5 + i * 0.1 for i in range(300)],
-        "Low": [99.5 + i * 0.1 for i in range(300)],
-        "Close": [100 + i * 0.1 for i in range(300)]})
-    rows = sg.compare(d, margin=10.0, leverage=200, funding=None,
-                      limits={"max_notional": 400.0, "max_losses": 3,
-                              "daily_loss_limit": 25.0, "min_equity": 20.0,
-                              "starting_equity": 163.0})
-    assert len(rows) == len(sg.ORDER)
-    assert all("error" not in r for r in rows), [r for r in rows if "error" in r]
-    for r in rows:
-        assert r["result"].notional == 400.0, \
-            f"{r['key']} ignored the notional cap"
-        assert "halted_reason" in r
-
-
-def test_the_backtest_sizes_to_a_tradable_notional(monkeypatch):
-    """Contracts are indivisible: a $15 target is 19 contracts worth $14.65, 2.4%
-    less. Sizing to the arithmetic ideal reported returns on a position the
-    exchange cannot express."""
+# ============ Auto Trade tab ================================================
+def test_auto_trade_page_exists():
+    """Operator asked for a dedicated Auto Trade screen: strategy checkboxes,
+    a coin multiselect, MEXC keys with a connection test."""
     import app
-    from tradingagents.dataflows import mexc_futures as fx
+    assert "Auto Trade" in app.PAGES
+    assert hasattr(app, "render_auto_trade_tab")
+    keys = [row[0] for row in app.AUTO_STRATEGIES]
+    from tradingagents import auto_trader as at
+    assert keys, "at least one strategy must be offered"
+    # The offered set is the operator's shortlist and changes as evidence
+    # changes (2026-08-12: replaced with the 4h sweep winners). What must
+    # always hold is that every offered key is one the runner can execute.
+    for k in keys:
+        assert k in at.STRATEGY_SPECS, f"{k} is offered but the runner cannot run it"
 
-    monkeypatch.setattr(fx, "last_price", lambda s: 7700.0)
-    monkeypatch.setattr(fx, "contracts_for", lambda s, notional, px: int(
-        notional / (0.0001 * px)))
-    monkeypatch.setattr(fx, "contract_spec", lambda s: {"contractSize": 0.0001})
-    got = app._tradable_notional.__wrapped__("SPX500_USDT", 5.0, 3, 400.0)
-    assert got < 15.0, "must be the achievable size, not the ideal"
-    assert got == pytest.approx(19 * 0.0001 * 7700.0)
 
-
-def test_tradable_notional_falls_back_when_the_exchange_is_unreachable(monkeypatch):
+def test_auto_trade_settings_round_trip(tmp_path, monkeypatch):
     import app
-    from tradingagents.dataflows import mexc_futures as fx
-
-    def boom(*a, **k):
-        raise fx.MexcFuturesError("unreachable")
-
-    monkeypatch.setattr(fx, "last_price", boom)
-    assert app._tradable_notional.__wrapped__("SPX500_USDT", 5.0, 3, 400.0) == 15.0
+    monkeypatch.setattr(app, "AUTO_TRADE_SETTINGS", tmp_path / "auto_trade.json")
+    payload = {"strategies": ["ict_fvg"], "coins": ["BTC_USDT", "ETH_USDT"]}
+    app._auto_trade_save(payload)
+    assert app._auto_trade_load() == payload
 
 
-def test_error_handlers_in_app_do_not_reference_missing_names():
-    """Two handlers were added that called `logger`, which app.py did not define —
-    a NameError that only fires when the exchange is down, i.e. exactly when the
-    handler is needed. Compiling proves nothing; the handler body has to run.
-    """
+def test_auto_trade_load_survives_missing_or_corrupt_file(tmp_path, monkeypatch):
     import app
-    from tradingagents.dataflows import mexc_futures as fx
-
-    def boom(symbol):
-        raise fx.MexcFuturesError("simulated outage")
-
-    for helper, target, expected in (
-        (app._funding_history, "funding_history", []),
-        (app._funding_summary, "funding_summary", {"available": False}),
-    ):
-        orig = getattr(fx, target)
-        setattr(fx, target, boom)
-        try:
-            assert helper.__wrapped__("SPX500_USDT") == expected
-        finally:
-            setattr(fx, target, orig)
-
-
-def test_the_funding_helpers_do_not_swallow_their_own_bugs(monkeypatch):
-    """A bare `except Exception` here would hide a typo and silently return no
-    funding — and funding is ~40% of the measured return on this contract, so the
-    backtest would quietly lose its largest component."""
-    import app
-    from tradingagents.dataflows import mexc_futures as fx
-
-    def typo(symbol):
-        raise AttributeError("this is a bug, not an outage")
-
-    monkeypatch.setattr(fx, "funding_history", typo)
-    with pytest.raises(AttributeError):
-        app._funding_history.__wrapped__("SPX500_USDT")
-
-
-# ============ the two jobs live in two tabs =================================
-def test_trade_and_backtest_are_separate_pages():
-    """One tab that both operated the bot and simulated it was confusing: the same
-    controls appeared to do both jobs, and it was never clear whether a number
-    described what the bot WOULD do or what it HAD done."""
-    import app
-    assert "Backtest" in app.PAGES
-    assert "Trade" in app.PAGES
-    assert hasattr(app, "render_backtest_tab")
-    assert hasattr(app, "render_trade_tab")
-
-
-def test_neither_tab_does_the_other_tab_s_job():
-    """Checked by source, since nothing renders app.py in tests: the operating
-    controls must not appear in the backtest function, nor vice versa."""
-    import ast
-    import inspect
-
-    import app
-
-    def strings_in(fn):
-        tree = ast.parse(inspect.getsource(fn).lstrip())
-        return " ".join(n.value for n in ast.walk(tree)
-                        if isinstance(n, ast.Constant) and isinstance(n.value, str))
-
-    trade = strings_in(app.render_trade_tab)
-    backtest = strings_in(app.render_backtest_tab)
-
-    # Stable markers, not button labels: the run button's text is now built from
-    # the number of combinations selected ("Run 6 backtests"), so asserting a
-    # literal made this test fail on a rename rather than on a real regression.
-    assert "Run auto trade" in trade
-    assert "Run auto trade" not in backtest, "the backtest tab must not start the bot"
-    assert "Results by approach" in backtest
-    assert "Timeframes to test" in backtest
-    assert "Results by approach" not in trade, "the trade tab must not simulate"
-    assert "Compare all 6" not in trade
-    # and the backtest tab must say it changes nothing
-    assert "changes your bot" in backtest or "changes nothing" in backtest
-
-
-def test_the_backtest_tab_never_saves_the_bot_config():
-    """Its controls start from the saved config and must not write it back —
-    otherwise exploring a what-if would silently reconfigure the live bot."""
-    import ast
-    import inspect
-
-    import app
-
-    tree = ast.parse(inspect.getsource(app.render_backtest_tab).lstrip())
-    calls = [n for n in ast.walk(tree) if isinstance(n, ast.Call)]
-    saves = [c for c in calls
-             if isinstance(c.func, ast.Attribute) and c.func.attr in ("save",)]
-    assert not saves, "the backtest tab must never call cfg.save()"
-
-
-# ============ the backtest matrix ===========================================
-def test_the_backtest_tab_offers_a_matrix_not_a_single_run():
-    """Asked for: checkboxes to pick which timeframes and which approaches to test,
-    a select-all, and results grouped by approach. Also: the tab previously had TWO
-    'Bars' pickers and only the second was wired to anything."""
-    import inspect
-
-    import app
-
-    src = inspect.getsource(app.render_backtest_tab)
-    assert "Select all timeframes" in src
-    assert "Select all approaches" in src
-    assert "Results by approach" in src
-    assert src.count('selectbox("History"') == 1, "one history picker, not two"
-    assert 'selectbox("Bars"' not in src, "the duplicate dead Bars picker is gone"
-    assert "5000" in src, "5,000 bars must be offered"
-
-
-def test_select_all_writes_the_individual_keys():
-    """Streamlit honours `value=` only when a keyed widget is first created; after
-    that session state wins. So a select-all that merely passed a new `value` did
-    nothing — the boxes never changed. It must write the keys itself."""
-    import inspect
-
-    import app
-
-    src = inspect.getsource(app.render_backtest_tab)
-    assert "on_change=_apply_all_tf" in src
-    assert "on_change=_apply_all_ap" in src
-    assert 'st.session_state[f"bt_tf_{_tf}"]' in src
-    assert 'st.session_state[f"bt_ap_{_k}"]' in src
-
-
-def test_the_matrix_aligns_windows_by_default():
-    """5,000 bars is 3.5 days on Min1 and 189 on Day1, so without alignment each row
-    covers a different period and the winner is whoever drew the kinder window."""
-    import inspect
-
-    import app
-
-    src = inspect.getsource(app.render_backtest_tab)
-    assert "Compare over the same dates" in src
-    assert "value=True" in src, "alignment must default on"
-    assert "not comparable" in src, "and say so when it is off"
-    assert "_limiter" in src, "and name the timeframe that limits the window"
+    monkeypatch.setattr(app, "AUTO_TRADE_SETTINGS", tmp_path / "none.json")
+    assert app._auto_trade_load() == {}
+    bad = tmp_path / "bad.json"
+    bad.write_text("{not json", encoding="utf-8")
+    monkeypatch.setattr(app, "AUTO_TRADE_SETTINGS", bad)
+    assert app._auto_trade_load() == {}

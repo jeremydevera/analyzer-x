@@ -1342,6 +1342,17 @@ AUTO_STRATEGIES = (
     # every other config still live in auto_trader.STRATEGY_SPECS, so a
     # tile can be restored in one line; an unticked tile on the page is
     # just clutter the operator has to read past.
+    ("trend50_30m_pi", "Trend 50 (30m) · TP 2.5% / SL 2.0% — PI",
+     "Row #3CRXP8 from the 28,600-combination 15m/30m year sweep "
+     "(2026-08-19). +$140.74 over 360 days at $5 base, 47.6% win across 918 "
+     "trades, with MEXC's per-book cost, 4.60% liquidation and real funding "
+     "settlements all charged. NOT a survivor: 9/13 months green is 69.2%, a "
+     "third of a month under the 70% bar, and the worst dip is $69.07 against "
+     "an $80.47 wallet — at $5 base that leaves about $11 at the low point. "
+     "Deployed on the operator's instruction; $2.91 base would bring the dip "
+     "to $40.23. Replaced mom15_4h_w on PI, because one coin runs one "
+     "timeframe.",
+     ("PI_USDT",)),
     ("mom15_4h_w", "Momentum 15 (4h) · TP 8.0% — PI",
      "Winner of a 630-combination grid on PI's full 18-month history "
      "(2026-08-13): #1 of 105 configs. +$1,283 martingale / +$293 flat at $5 "
@@ -1851,9 +1862,21 @@ TERMINAL_CSS = """
   --t-r:8px; --t-rc:6px;
   background:var(--t-ground); color:var(--t-ink);
   font-family:var(--font-mono); font-variant-numeric:tabular-nums;
-  padding:20px 22px 24px; border:1px solid var(--t-rule);
-  border-radius:calc(var(--t-r) + 2px);
+  padding:2px; border:0;
 }
+/* Each band is its own enclosed card; the ground shows between them. */
+.st-key-term [class*="st-key-tmsec_"]{
+  background:var(--t-panel); border:1px solid var(--t-rule);
+  border-radius:var(--t-r); padding:16px 18px 14px; margin-bottom:14px;
+}
+/* Inner tiles sit on a card now, so they step one shade up to stay visible. */
+.st-key-term [class*="st-key-tmsec_"] .tm-rib > div,
+.st-key-term [class*="st-key-tmsec_"] .tm-p,
+.st-key-term [class*="st-key-tmsec_"] .tm-feed{ background:var(--t-panel2); }
+/* The card supplies the top spacing; a header's own margin would double it. */
+.st-key-term [class*="st-key-tmsec_"] .tm-h:first-child,
+.st-key-term [class*="st-key-tmsec_"] [data-testid="stElementContainer"]:first-child .tm-h{
+  margin-top:0; }
 .st-key-term p, .st-key-term span, .st-key-term div, .st-key-term label{
   font-family:var(--font-mono); }
 /* …but NEVER the Material icon spans. Their glyphs are ligatures, so a mono
@@ -2383,853 +2406,896 @@ def render_auto_trade_tab() -> None:
                 f"<div class='s'>{'entries halted' if at.halted() else 'scanning'}"
                 f"</div></div></div>", unsafe_allow_html=True)
 
-        _ribbon()
+        with st.container(key="tmsec_system"):
+            _ribbon()
 
         # ================= BAND 2 — POSITIONS ===========================
         @st.fragment(run_every=20)
         def _positions() -> None:
-            # ONE table per book. Open positions and per-coin PnL used to be
-            # four separate tables; the same contract appeared in two of them
-            # with different columns, which read as duplication.
-            def _book_rows(dry: bool):
-                stats = at.coin_stats(dry)
-                rows: dict[str, dict] = {}
+            with st.container(key="tmsec_positions"):
+                # ONE table per book. Open positions and per-coin PnL used to be
+                # four separate tables; the same contract appeared in two of them
+                # with different columns, which read as duplication.
+                def _book_rows(dry: bool):
+                    stats = at.coin_stats(dry)
+                    rows: dict[str, dict] = {}
 
-                def _blank(sym):
-                    v = stats.get(sym, {"pnl": 0.0, "wins": 0, "losses": 0,
-                                        "trades": 0, "strategies": "—"})
-                    return {"coin": sym.replace("_USDT", ""),
-                            # kept for the close buttons; dropped from the
-                            # displayed frame by the _order filter below
-                            "symbol": sym,
-                            "state": "flat", "side": "—",
-                            "strategy": v["strategies"],
-                            "opened": "—", "held": "—",
-                            "vol": None, "margin $": None,
-                            "lev": f"{at.LEVERAGE}x",
-                            "entry": None, "TP": None, "SL": None,
-                            "tp_pct": None, "sl_pct": None, "prog": "",
-                            "open $": 0.0,
-                            "realised $": round(v["pnl"], 2),
-                            "total $": round(v["pnl"], 2),
-                            "trades": v["trades"], "W": v["wins"],
-                            "L": v["losses"], "bracket": "—"}
+                    def _blank(sym):
+                        v = stats.get(sym, {"pnl": 0.0, "wins": 0, "losses": 0,
+                                            "trades": 0, "strategies": "—"})
+                        return {"coin": sym.replace("_USDT", ""),
+                                # kept for the close buttons; dropped from the
+                                # displayed frame by the _order filter below
+                                "symbol": sym,
+                                "state": "flat", "side": "—",
+                                "strategy": v["strategies"],
+                                "opened": "—", "held": "—",
+                                "vol": None, "margin $": None,
+                                "lev": f"{at.LEVERAGE}x",
+                                "entry": None, "TP": None, "SL": None,
+                                "tp_pct": None, "sl_pct": None, "prog": "",
+                                "open $": 0.0,
+                                "realised $": round(v["pnl"], 2),
+                                "total $": round(v["pnl"], 2),
+                                "trades": v["trades"], "W": v["wins"],
+                                "L": v["losses"], "bracket": "—"}
 
-                for sym in stats:
-                    rows[sym] = _blank(sym)
-                for _sym, _sst in at.load_state().items():
-                    _pos = (_sst.get("position")
-                            if isinstance(_sst, dict) else None)
-                    if not _pos or bool(_pos.get("dry", False)) is not dry:
-                        continue
-                    _base = _sym.split("#")[0]
-                    r = rows.setdefault(_base, _blank(_base))
-                    _op = None
-                    if dry:
-                        _px = _last_price(_base)
-                        if _px and _pos.get("entry"):
-                            _op = round((_px / _pos["entry"] - 1)
-                                        * _pos["side"] * _pos["margin"]
-                                        * at.LEVERAGE, 2)
-                    _when = _pos.get("opened_at") or _pos.get("entry_ts")
-                    r.update({
-                        "state": "OPEN",
-                        "side": "LONG" if _pos["side"] > 0 else "SHORT",
-                        "strategy": _pos.get("strategy", r["strategy"]),
-                        # Compact stamp: "Aug 14, 2026 (4:00AM)" does not fit
-                        # a grid cell and ellipsised to "Aug 14, 20…", which
-                        # hides the part that matters — the time.
-                        "opened": (_dt.datetime.fromtimestamp(_when)
-                                   .strftime("%m-%d %H:%M") if _when else "—"),
-                        "held": (_fmt_age(time.time() - _when) if _when
-                                 else "—"),
-                        "vol": _pos.get("vol"), "margin $": _pos.get("margin"),
-                        "entry": _pos.get("entry"), "TP": _pos.get("tp"),
-                        "SL": _pos.get("sl"),
-                        "bracket": ("SIMULATED" if dry
-                                    else "on MEXC" if _pos.get("bracket", True)
-                                    else "RETRYING"),
-                    })
-                    if _op is not None:
-                        r["open $"] = _op
-                # the exchange is the source of truth for the REAL book
-                if not dry:
-                    try:
-                        for _p in _live_open_positions():
-                            _sym = _p.get("symbol")
-                            r = rows.setdefault(_sym, _blank(_sym))
-                            if r["state"] != "OPEN":
-                                r["state"] = "OPEN"
-                                r["strategy"] = "(not the bot's)"
-                                r["side"] = ("LONG"
-                                             if _p.get("positionType") == 1
-                                             else "SHORT")
-                            r["vol"] = _p.get("holdVol", r["vol"])
-                            r["entry"] = _p.get("holdAvgPrice", r["entry"])
-                            _u = _p.get("unRealizedPnl")
-                            if _u is not None:
-                                r["open $"] = round(float(_u), 2)
-                    except Exception as exc:
-                        st.caption(f"could not read MEXC positions: {exc}")
-                out = [r for r in rows.values() if r["state"] == "OPEN"]
-                for r in out:
-                    r["total $"] = round(r["realised $"] + (r["open $"] or 0), 2)
-                    # Barriers as PERCENTAGES off the entry, plus how far the
-                    # price has travelled toward one of them. Percent is what
-                    # the strategy is specified in; the raw prices alone make
-                    # you do the arithmetic every time you look.
-                    _e, _tp, _sl = r.get("entry"), r.get("TP"), r.get("SL")
-                    _side = 1 if r.get("side") == "LONG" else -1
-                    # …and what each barrier is WORTH on this position, net of
-                    # the round-trip taker fee. The percentage is on the
-                    # NOTIONAL, so the dollar figure is the only one that says
-                    # what actually lands in the wallet.
-                    _vol = r.get("vol") or 0
-                    _notional = (float(_e or 0) * float(_vol)
-                                 * _contract_size(r.get("symbol") or ""))
-                    try:
-                        _fee = at.taker_fee(r.get("symbol") or "")
-                    except Exception:
-                        _fee = 0.0004
-                    _cost = _notional * _fee * 2
-                    if _e and _tp:
-                        _p = abs(float(_tp) / float(_e) - 1) * 100
-                        _usd = _notional * _p / 100 - _cost
-                        r["tp_pct"] = (f"{_p:.2f} <span class='tm-up'>"
-                                       f"({_usd:+,.2f})</span>")
-                    if _e and _sl:
-                        _p = abs(float(_sl) / float(_e) - 1) * 100
-                        _usd = -(_notional * _p / 100 + _cost)
-                        r["sl_pct"] = (f"{_p:.2f} <span class='tm-dn'>"
-                                       f"({_usd:+,.2f})</span>")
-                    _now = _last_price(r.get("symbol") or "")
-                    r["prog"] = _tm_progress(_e, _tp, _sl, _now, _side)
-                out.sort(key=lambda r: r["total $"])
-                return out
+                    for sym in stats:
+                        rows[sym] = _blank(sym)
+                    for _sym, _sst in at.load_state().items():
+                        _pos = (_sst.get("position")
+                                if isinstance(_sst, dict) else None)
+                        if not _pos or bool(_pos.get("dry", False)) is not dry:
+                            continue
+                        _base = _sym.split("#")[0]
+                        r = rows.setdefault(_base, _blank(_base))
+                        _op = None
+                        if dry:
+                            _px = _last_price(_base)
+                            if _px and _pos.get("entry"):
+                                _op = round((_px / _pos["entry"] - 1)
+                                            * _pos["side"] * _pos["margin"]
+                                            * at.LEVERAGE, 2)
+                        _when = _pos.get("opened_at") or _pos.get("entry_ts")
+                        r.update({
+                            "state": "OPEN",
+                            "side": "LONG" if _pos["side"] > 0 else "SHORT",
+                            "strategy": _pos.get("strategy", r["strategy"]),
+                            # Compact stamp: "Aug 14, 2026 (4:00AM)" does not fit
+                            # a grid cell and ellipsised to "Aug 14, 20…", which
+                            # hides the part that matters — the time.
+                            "opened": (_dt.datetime.fromtimestamp(_when)
+                                       .strftime("%m-%d %H:%M") if _when else "—"),
+                            "held": (_fmt_age(time.time() - _when) if _when
+                                     else "—"),
+                            "vol": _pos.get("vol"), "margin $": _pos.get("margin"),
+                            "entry": _pos.get("entry"), "TP": _pos.get("tp"),
+                            "SL": _pos.get("sl"),
+                            "bracket": ("SIMULATED" if dry
+                                        else "on MEXC" if _pos.get("bracket", True)
+                                        else "RETRYING"),
+                        })
+                        if _op is not None:
+                            r["open $"] = _op
+                    # the exchange is the source of truth for the REAL book
+                    if not dry:
+                        try:
+                            for _p in _live_open_positions():
+                                _sym = _p.get("symbol")
+                                r = rows.setdefault(_sym, _blank(_sym))
+                                if r["state"] != "OPEN":
+                                    r["state"] = "OPEN"
+                                    r["strategy"] = "(not the bot's)"
+                                    r["side"] = ("LONG"
+                                                 if _p.get("positionType") == 1
+                                                 else "SHORT")
+                                r["vol"] = _p.get("holdVol", r["vol"])
+                                r["entry"] = _p.get("holdAvgPrice", r["entry"])
+                                _u = _p.get("unRealizedPnl")
+                                if _u is not None:
+                                    r["open $"] = round(float(_u), 2)
+                        except Exception as exc:
+                            st.caption(f"could not read MEXC positions: {exc}")
+                    out = [r for r in rows.values() if r["state"] == "OPEN"]
+                    for r in out:
+                        r["total $"] = round(r["realised $"] + (r["open $"] or 0), 2)
+                        # Barriers as PERCENTAGES off the entry, plus how far the
+                        # price has travelled toward one of them. Percent is what
+                        # the strategy is specified in; the raw prices alone make
+                        # you do the arithmetic every time you look.
+                        _e, _tp, _sl = r.get("entry"), r.get("TP"), r.get("SL")
+                        _side = 1 if r.get("side") == "LONG" else -1
+                        # …and what each barrier is WORTH on this position, net of
+                        # the round-trip taker fee. The percentage is on the
+                        # NOTIONAL, so the dollar figure is the only one that says
+                        # what actually lands in the wallet.
+                        _vol = r.get("vol") or 0
+                        _notional = (float(_e or 0) * float(_vol)
+                                     * _contract_size(r.get("symbol") or ""))
+                        try:
+                            _fee = at.taker_fee(r.get("symbol") or "")
+                        except Exception:
+                            _fee = 0.0004
+                        _cost = _notional * _fee * 2
+                        if _e and _tp:
+                            _p = abs(float(_tp) / float(_e) - 1) * 100
+                            _usd = _notional * _p / 100 - _cost
+                            r["tp_pct"] = (f"{_p:.2f} <span class='tm-up'>"
+                                           f"({_usd:+,.2f})</span>")
+                        if _e and _sl:
+                            _p = abs(float(_sl) / float(_e) - 1) * 100
+                            _usd = -(_notional * _p / 100 + _cost)
+                            r["sl_pct"] = (f"{_p:.2f} <span class='tm-dn'>"
+                                           f"({_usd:+,.2f})</span>")
+                        _now = _last_price(r.get("symbol") or "")
+                        r["prog"] = _tm_progress(_e, _tp, _sl, _now, _side)
+                    out.sort(key=lambda r: r["total $"])
+                    return out
 
-            _real, _paper = _book_rows(False), _book_rows(True)
-            st.markdown(
-                _tm_head("Positions",
-                         f"{len(_real)} real &middot; {len(_paper)} paper "
-                         f"&middot; {at.LEVERAGE}x isolated"),
-                unsafe_allow_html=True)
-            # Each book gets its OWN bordered box with a coloured badge. Two
-            # ruled grids stacked with only a small caption between them read
-            # as one table, and "is this row real money or the simulator?" is
-            # the single question this section must never leave ambiguous.
-            for _label, _rows, _empty, _boxkey in (
-                    ("REAL — MONEY AT RISK", _real,
-                     "none — no real money at risk", "pos_real"),
-                    ("PAPER — DEMO, NOT REAL MONEY", _paper,
-                     "none — no simulated position open", "pos_paper")):
-              with st.container(key=_boxkey, border=True):
+                _real, _paper = _book_rows(False), _book_rows(True)
                 st.markdown(
-                    f"<div class='tm-badge'>{_label}</div>",
+                    _tm_head("Positions",
+                             f"{len(_real)} real &middot; {len(_paper)} paper "
+                             f"&middot; {at.LEVERAGE}x isolated"),
                     unsafe_allow_html=True)
-                if not _rows:
-                    st.markdown(f"<div style='font-size:12px;"
-                                f"color:var(--t-faint);padding:2px 0 6px'>"
-                                f"{_empty}</div>", unsafe_allow_html=True)
-                    continue
-                # Rendered as a grid rather than st.dataframe because a
-                # dataframe cannot host a widget, and the close control has
-                # to live on the row it closes.
-                _closable = _rows is _real
-                # The header must sit in the SAME 10/1.15 split as the rows,
-                # or its grid is 144px wider than theirs and every label
-                # drifts off its own column.
-                _hc, _ = st.columns([10, 1.15], gap="small")
-                _hc.markdown(
-                    f"<div class='tm-pt tm-pt-h'>{_tm_pos_head()}</div>",
-                    unsafe_allow_html=True)
-                for _r in _rows:
-                    _rc, _bc = st.columns([10, 1.15], gap="small")
-                    _rc.markdown(f"<div class='tm-pt'>{_tm_pos_row(_r)}</div>",
-                                 unsafe_allow_html=True)
-                    if _closable:
-                        # The coin moved out of the label and into the
-                        # tooltip. Row/button alignment is asserted at 0px,
-                        # and the confirm step names the contract in full
-                        # before anything is sent — so a bare "Close" cannot
-                        # flatten something the operator did not mean.
-                        if _bc.button("Close", key=f"cl_{_r['symbol']}",
-                                      help=f"Close {_r['symbol']} at market"):
-                            st.session_state["close_pending"] = _r["symbol"]
-                            st.rerun(scope="fragment")
-                # The TOTAL row is derived from the rows above it, never
-                # carried in from elsewhere.
-                _sum = {
-                    "coin": "TOTAL", "state": "", "side": "", "strategy": "",
-                    "opened": "", "held": "", "lev": "", "bracket": "",
-                    "entry": None, "TP": None, "SL": None, "vol": None,
-                    "margin $": None,
-                    # A total has no barriers and no progress of its own.
-                    "tp_pct": None, "sl_pct": None, "prog": "",
-                    "trades": sum(int(r["trades"]) for r in _rows),
-                    "W": sum(int(r["W"]) for r in _rows),
-                    "L": sum(int(r["L"]) for r in _rows),
-                    "open $": round(sum(r["open $"] or 0 for r in _rows), 2)}
-                _tc, _ = st.columns([10, 1.15], gap="small")
-                _tc.markdown(
-                    f"<div class='tm-pt tm-pt-t'>{_tm_pos_row(_sum)}</div>",
-                    unsafe_allow_html=True)
+                # Each book gets its OWN bordered box with a coloured badge. Two
+                # ruled grids stacked with only a small caption between them read
+                # as one table, and "is this row real money or the simulator?" is
+                # the single question this section must never leave ambiguous.
+                for _label, _rows, _empty, _boxkey in (
+                        ("REAL — MONEY AT RISK", _real,
+                         "none — no real money at risk", "pos_real"),
+                        ("PAPER — DEMO, NOT REAL MONEY", _paper,
+                         "none — no simulated position open", "pos_paper")):
+                  with st.container(key=_boxkey, border=True):
+                    st.markdown(
+                        f"<div class='tm-badge'>{_label}</div>",
+                        unsafe_allow_html=True)
+                    if not _rows:
+                        st.markdown(f"<div style='font-size:12px;"
+                                    f"color:var(--t-faint);padding:2px 0 6px'>"
+                                    f"{_empty}</div>", unsafe_allow_html=True)
+                        continue
+                    # Rendered as a grid rather than st.dataframe because a
+                    # dataframe cannot host a widget, and the close control has
+                    # to live on the row it closes.
+                    _closable = _rows is _real
+                    # The header must sit in the SAME 10/1.15 split as the rows,
+                    # or its grid is 144px wider than theirs and every label
+                    # drifts off its own column.
+                    _hc, _ = st.columns([10, 1.15], gap="small")
+                    _hc.markdown(
+                        f"<div class='tm-pt tm-pt-h'>{_tm_pos_head()}</div>",
+                        unsafe_allow_html=True)
+                    for _r in _rows:
+                        _rc, _bc = st.columns([10, 1.15], gap="small")
+                        _rc.markdown(f"<div class='tm-pt'>{_tm_pos_row(_r)}</div>",
+                                     unsafe_allow_html=True)
+                        if _closable:
+                            # The coin moved out of the label and into the
+                            # tooltip. Row/button alignment is asserted at 0px,
+                            # and the confirm step names the contract in full
+                            # before anything is sent — so a bare "Close" cannot
+                            # flatten something the operator did not mean.
+                            if _bc.button("Close", key=f"cl_{_r['symbol']}",
+                                          help=f"Close {_r['symbol']} at market"):
+                                st.session_state["close_pending"] = _r["symbol"]
+                                st.rerun(scope="fragment")
+                    # The TOTAL row is derived from the rows above it, never
+                    # carried in from elsewhere.
+                    _sum = {
+                        "coin": "TOTAL", "state": "", "side": "", "strategy": "",
+                        "opened": "", "held": "", "lev": "", "bracket": "",
+                        "entry": None, "TP": None, "SL": None, "vol": None,
+                        "margin $": None,
+                        # A total has no barriers and no progress of its own.
+                        "tp_pct": None, "sl_pct": None, "prog": "",
+                        "trades": sum(int(r["trades"]) for r in _rows),
+                        "W": sum(int(r["W"]) for r in _rows),
+                        "L": sum(int(r["L"]) for r in _rows),
+                        "open $": round(sum(r["open $"] or 0 for r in _rows), 2)}
+                    _tc, _ = st.columns([10, 1.15], gap="small")
+                    _tc.markdown(
+                        f"<div class='tm-pt tm-pt-t'>{_tm_pos_row(_sum)}</div>",
+                        unsafe_allow_html=True)
 
-            # ---- the second half of the per-row close. Real money and no
-            # undo, so it takes two clicks: the row button names the contract,
-            # this states exactly what is being flattened before it is sent.
-            _pend = st.session_state.get("close_pending")
-            if _pend:
-                _row = next((r for r in _real if r["symbol"] == _pend), None)
-                if _row is None:
-                    # It closed on its own (TP/SL) between the two clicks.
-                    st.session_state.pop("close_pending", None)
-                    st.info(f"{_pend} is no longer open — nothing to close.")
-                else:
-                    _mg = _row.get("margin $") or 0
-                    st.warning(
-                        f"**Close {_pend} at market now?** {_row['side']} "
-                        f"{_row['vol']} contracts, entry {_row['entry']}, "
-                        f"{_mg} USDT margin at {at.LEVERAGE}x. Unrealised "
-                        f"**{_row['open $']:+.2f} USDT** becomes real the "
-                        f"moment this fills. There is no undo, and the "
-                        f"strategy may re-enter on its next signal.")
-                    _y, _n = st.columns([1, 1])
-                    if _y.button("CONFIRM — close at market", type="primary",
-                                 key="cl_confirm"):
-                        rep = at.close_one(_pend)
+                # ---- the second half of the per-row close. Real money and no
+                # undo, so it takes two clicks: the row button names the contract,
+                # this states exactly what is being flattened before it is sent.
+                _pend = st.session_state.get("close_pending")
+                if _pend:
+                    _row = next((r for r in _real if r["symbol"] == _pend), None)
+                    if _row is None:
+                        # It closed on its own (TP/SL) between the two clicks.
                         st.session_state.pop("close_pending", None)
-                        # The positions read is cached for 5 s; without this
-                        # the table would still show the closed position.
-                        _live_open_positions.clear()
-                        if rep["closed"]:
-                            st.success(
-                                f"{_pend} closed. Realised "
-                                + (f"{rep['realised']:+.2f} USDT."
-                                   if rep["realised"] is not None
-                                   else "PnL not yet reported by MEXC."))
-                        else:
-                            st.error(f"NOT closed — {rep['error']}. The "
-                                     f"position is still open and still "
-                                     f"tracked.")
-                    if _n.button("Cancel", key="cl_cancel"):
-                        st.session_state.pop("close_pending", None)
-                        st.rerun(scope="fragment")
-
-            # ---- TRADE HISTORY. Its own section, LIVE and DEMO on
-            # separate tabs, paginated 5 rows at a time. Every closed trade,
-            # not just today's — a net figure hides the trades inside it, and
-            # a wall of 200 rows hides them just as effectively.
-            st.markdown(
-                _tm_head("Trade history", "every closed trade"),
-                unsafe_allow_html=True)
-            _hcols = (("when", "closed", 1.6, "l", "text"),
-                      ("coin", "coin", 1.1, "l", "text"),
-                      ("side", "side", 0.9, "l", "text"),
-                      ("strategy", "strategy", 1.9, "l", "text"),
-                      ("why", "closed by", 1.9, "l", "text"),
-                      ("PROFIT $", "PROFIT $", 1.3, "r", "money"),
-                      ("run", "running $", 1.3, "r", "money"))
-            _tl, _td = st.tabs(["LIVE — real money", "DEMO — simulated"])
-            for _tab, _dry, _tag in ((_tl, False, "live"), (_td, True, "demo")):
-                with _tab:
-                    _ex = [e for e in at.ledger_tail(100000)
-                           if e.get("action") == "exit"
-                           and bool(e.get("dry_run")) is _dry]
-                    _ex.sort(key=lambda x: float(x.get("ts") or 0))
-                    _run = 0.0
-                    _all = []
-                    for _e in _ex:
-                        _p = round(float(_e.get("pnl_est") or 0), 2)
-                        _run = round(_run + _p, 2)
-                        _all.append({
-                            "when": _dt.datetime.fromtimestamp(
-                                float(_e.get("ts") or 0)).strftime("%m-%d %H:%M"),
-                            "coin": str(_e.get("symbol", "?")).replace("_USDT", ""),
-                            "side": (_e.get("side") or "—"),
-                            "strategy": _e.get("strategy") or "—",
-                            "why": (_e.get("why") or "—"),
-                            "PROFIT $": _p, "run": _run})
-                    _all.reverse()          # newest first
-                    # ---- per-month summary. The paginated list shows five
-                    # trades; this is the overview it cannot give.
-                    _mo = {}
-                    for _e in _ex:
-                        _k = _dt.datetime.fromtimestamp(
-                            float(_e.get("ts") or 0)).strftime("%Y-%m")
-                        _p = round(float(_e.get("pnl_est") or 0), 2)
-                        _m = _mo.setdefault(_k, {"month": _k, "trades": 0,
-                                                 "W": 0, "L": 0,
-                                                 "PROFIT $": 0.0})
-                        _m["trades"] += 1
-                        _m["W" if _p > 0 else "L"] += 1
-                        _m["PROFIT $"] = round(_m["PROFIT $"] + _p, 2)
-                    _mrows = sorted(_mo.values(), key=lambda x: x["month"],
-                                    reverse=True)
-                    for _m in _mrows:
-                        _m["win %"] = round(100 * _m["W"] / _m["trades"], 1)
-                    _mcols = (("month", "month", 1.4, "l", "text"),
-                              ("trades", "trades", 1.0, "r", "num"),
-                              ("W", "W", 0.8, "r", "num"),
-                              ("L", "L", 0.8, "r", "num"),
-                              ("win %", "win %", 1.0, "r", "num"),
-                              ("PROFIT $", "PROFIT $", 1.4, "r", "money"))
-                    _mtot = {"month": "TOTAL",
-                             "trades": sum(m["trades"] for m in _mrows),
-                             "W": sum(m["W"] for m in _mrows),
-                             "L": sum(m["L"] for m in _mrows),
-                             "win %": None,
-                             "PROFIT $": round(sum(m["PROFIT $"]
-                                                   for m in _mrows), 2)}
-                    st.markdown(
-                        "<div style='font-size:10px;letter-spacing:.14em;"
-                        "text-transform:uppercase;color:var(--t-dim);"
-                        "margin:2px 0 4px'>Profit per month</div>"
-                        + _tm_table(_mcols, _mrows,
-                                    _mtot if _mrows else None,
-                                    "no closed trades yet"),
-                        unsafe_allow_html=True)
-                    st.markdown(
-                        "<div style='font-size:10px;letter-spacing:.14em;"
-                        "text-transform:uppercase;color:var(--t-dim);"
-                        "margin:14px 0 4px'>Every trade</div>",
-                        unsafe_allow_html=True)
-                    _per = 5
-                    _pages = max(1, -(-len(_all) // _per))
-                    _pk = f"hist_page_{_tag}"
-                    _pg = int(st.session_state.get(_pk, 1))
-                    _pg = max(1, min(_pg, _pages))
-                    _slice = _all[(_pg - 1) * _per:_pg * _per]
-                    # The TOTAL is over EVERY trade, not the five on screen —
-                    # a footer that summed the page would change as you paged.
-                    _wins = sum(1 for r in _all if r["PROFIT $"] > 0)
-                    _tot = {"when": "TOTAL", "coin": "", "side": "",
-                            "strategy": f"{len(_all)} trades",
-                            "why": f"{_wins}W / {len(_all) - _wins}L",
-                            "PROFIT $": round(sum(r["PROFIT $"] for r in _all), 2),
-                            "run": None}
-                    st.markdown(
-                        _tm_table(_hcols, _slice, _tot if _all else None,
-                                  "no closed trades yet"),
-                        unsafe_allow_html=True)
-                    if _pages > 1:
-                        _n1, _n2, _n3 = st.columns([1, 2, 1])
-                        if _n1.button("◀ newer", key=f"{_pk}_prev",
-                                      disabled=_pg <= 1):
-                            st.session_state[_pk] = _pg - 1
-                            st.rerun(scope="fragment")
-                        _n2.markdown(
-                            f"<div style='text-align:center;font-size:11px;"
-                            f"color:var(--t-dim);padding-top:6px'>page {_pg} "
-                            f"of {_pages} &middot; showing "
-                            f"{(_pg-1)*_per+1}-{min(_pg*_per, len(_all))} of "
-                            f"{len(_all)}</div>", unsafe_allow_html=True)
-                        if _n3.button("older ▶", key=f"{_pk}_next",
-                                      disabled=_pg >= _pages):
-                            st.session_state[_pk] = _pg + 1
+                        st.info(f"{_pend} is no longer open — nothing to close.")
+                    else:
+                        _mg = _row.get("margin $") or 0
+                        st.warning(
+                            f"**Close {_pend} at market now?** {_row['side']} "
+                            f"{_row['vol']} contracts, entry {_row['entry']}, "
+                            f"{_mg} USDT margin at {at.LEVERAGE}x. Unrealised "
+                            f"**{_row['open $']:+.2f} USDT** becomes real the "
+                            f"moment this fills. There is no undo, and the "
+                            f"strategy may re-enter on its next signal.")
+                        _y, _n = st.columns([1, 1])
+                        if _y.button("CONFIRM — close at market", type="primary",
+                                     key="cl_confirm"):
+                            rep = at.close_one(_pend)
+                            st.session_state.pop("close_pending", None)
+                            # The positions read is cached for 5 s; without this
+                            # the table would still show the closed position.
+                            _live_open_positions.clear()
+                            if rep["closed"]:
+                                st.success(
+                                    f"{_pend} closed. Realised "
+                                    + (f"{rep['realised']:+.2f} USDT."
+                                       if rep["realised"] is not None
+                                       else "PnL not yet reported by MEXC."))
+                            else:
+                                st.error(f"NOT closed — {rep['error']}. The "
+                                         f"position is still open and still "
+                                         f"tracked.")
+                        if _n.button("Cancel", key="cl_cancel"):
+                            st.session_state.pop("close_pending", None)
                             st.rerun(scope="fragment")
 
+            with st.container(key="tmsec_history"):
+                # ---- TRADE HISTORY. Its own section, LIVE and DEMO on
+                # separate tabs, paginated 5 rows at a time. Every closed trade,
+                # not just today's — a net figure hides the trades inside it, and
+                # a wall of 200 rows hides them just as effectively.
+                st.markdown(
+                    _tm_head("Trade history", "every closed trade"),
+                    unsafe_allow_html=True)
+                _hcols = (("when", "closed", 1.6, "l", "text"),
+                          ("coin", "coin", 1.1, "l", "text"),
+                          ("side", "side", 0.9, "l", "text"),
+                          ("strategy", "strategy", 1.9, "l", "text"),
+                          ("why", "closed by", 1.9, "l", "text"),
+                          ("PROFIT $", "PROFIT $", 1.3, "r", "money"),
+                          ("run", "running $", 1.3, "r", "money"))
+                _tl, _td = st.tabs(["LIVE — real money", "DEMO — simulated"])
+                for _tab, _dry, _tag in ((_tl, False, "live"), (_td, True, "demo")):
+                    with _tab:
+                        _ex = [e for e in at.ledger_tail(100000)
+                               if e.get("action") == "exit"
+                               and bool(e.get("dry_run")) is _dry]
+                        _ex.sort(key=lambda x: float(x.get("ts") or 0))
+                        _run = 0.0
+                        _all = []
+                        for _e in _ex:
+                            _p = round(float(_e.get("pnl_est") or 0), 2)
+                            _run = round(_run + _p, 2)
+                            _all.append({
+                                "when": _dt.datetime.fromtimestamp(
+                                    float(_e.get("ts") or 0)).strftime("%m-%d %H:%M"),
+                                "coin": str(_e.get("symbol", "?")).replace("_USDT", ""),
+                                "side": (_e.get("side") or "—"),
+                                "strategy": _e.get("strategy") or "—",
+                                "why": (_e.get("why") or "—"),
+                                "PROFIT $": _p, "run": _run})
+                        _all.reverse()          # newest first
+                        # ---- per-month summary. The paginated list shows five
+                        # trades; this is the overview it cannot give.
+                        _mo = {}
+                        for _e in _ex:
+                            _k = _dt.datetime.fromtimestamp(
+                                float(_e.get("ts") or 0)).strftime("%Y-%m")
+                            _p = round(float(_e.get("pnl_est") or 0), 2)
+                            _m = _mo.setdefault(_k, {"month": _k, "trades": 0,
+                                                     "W": 0, "L": 0,
+                                                     "PROFIT $": 0.0})
+                            _m["trades"] += 1
+                            _m["W" if _p > 0 else "L"] += 1
+                            _m["PROFIT $"] = round(_m["PROFIT $"] + _p, 2)
+                        _mrows = sorted(_mo.values(), key=lambda x: x["month"],
+                                        reverse=True)
+                        for _m in _mrows:
+                            _m["win %"] = round(100 * _m["W"] / _m["trades"], 1)
+                        _mcols = (("month", "month", 1.4, "l", "text"),
+                                  ("trades", "trades", 1.0, "r", "num"),
+                                  ("W", "W", 0.8, "r", "num"),
+                                  ("L", "L", 0.8, "r", "num"),
+                                  ("win %", "win %", 1.0, "r", "num"),
+                                  ("PROFIT $", "PROFIT $", 1.4, "r", "money"))
+                        _mtot = {"month": "TOTAL",
+                                 "trades": sum(m["trades"] for m in _mrows),
+                                 "W": sum(m["W"] for m in _mrows),
+                                 "L": sum(m["L"] for m in _mrows),
+                                 "win %": None,
+                                 "PROFIT $": round(sum(m["PROFIT $"]
+                                                       for m in _mrows), 2)}
+                        st.markdown(
+                            "<div style='font-size:10px;letter-spacing:.14em;"
+                            "text-transform:uppercase;color:var(--t-dim);"
+                            "margin:2px 0 4px'>Profit per month</div>"
+                            + _tm_table(_mcols, _mrows,
+                                        _mtot if _mrows else None,
+                                        "no closed trades yet"),
+                            unsafe_allow_html=True)
+                        st.markdown(
+                            "<div style='font-size:10px;letter-spacing:.14em;"
+                            "text-transform:uppercase;color:var(--t-dim);"
+                            "margin:14px 0 4px'>Every trade</div>",
+                            unsafe_allow_html=True)
+                        _per = 5
+                        _pages = max(1, -(-len(_all) // _per))
+                        _pk = f"hist_page_{_tag}"
+                        _pg = int(st.session_state.get(_pk, 1))
+                        _pg = max(1, min(_pg, _pages))
+                        _slice = _all[(_pg - 1) * _per:_pg * _per]
+                        # The TOTAL is over EVERY trade, not the five on screen —
+                        # a footer that summed the page would change as you paged.
+                        _wins = sum(1 for r in _all if r["PROFIT $"] > 0)
+                        _tot = {"when": "TOTAL", "coin": "", "side": "",
+                                "strategy": f"{len(_all)} trades",
+                                "why": f"{_wins}W / {len(_all) - _wins}L",
+                                "PROFIT $": round(sum(r["PROFIT $"] for r in _all), 2),
+                                "run": None}
+                        st.markdown(
+                            _tm_table(_hcols, _slice, _tot if _all else None,
+                                      "no closed trades yet"),
+                            unsafe_allow_html=True)
+                        if _pages > 1:
+                            _n1, _n2, _n3 = st.columns([1, 2, 1])
+                            if _n1.button("◀ newer", key=f"{_pk}_prev",
+                                          disabled=_pg <= 1):
+                                st.session_state[_pk] = _pg - 1
+                                st.rerun(scope="fragment")
+                            _n2.markdown(
+                                f"<div style='text-align:center;font-size:11px;"
+                                f"color:var(--t-dim);padding-top:6px'>page {_pg} "
+                                f"of {_pages} &middot; showing "
+                                f"{(_pg-1)*_per+1}-{min(_pg*_per, len(_all))} of "
+                                f"{len(_all)}</div>", unsafe_allow_html=True)
+                            if _n3.button("older ▶", key=f"{_pk}_next",
+                                          disabled=_pg >= _pages):
+                                st.session_state[_pk] = _pg + 1
+                                st.rerun(scope="fragment")
 
-            # All-time per contract. Realised comes from this book's ledger,
-            # open from the exchange, and the two are added — never mixed.
-            _life = at.coin_stats(dry=False)
-            _open_by: dict[str, float] = {}
-            try:
-                for _p in _live_open_positions():
-                    _open_by[str(_p.get("symbol"))] = float(
-                        _p.get("unRealizedPnl") or 0.0)
-            except Exception:
-                _open_by = {}
-            try:
-                _cfg = at.load_settings()
-                _mine = {c for v in (_cfg.get("strategy_coins")
-                                     or {}).values() for c in v}
-            except Exception:
-                _mine = set()
-            # The DEMO book, kept in its own columns. Simulated money is never
-            # added to the real figures — mixing them is how an operator
-            # misjudges what is actually at risk — so each side carries its
-            # own realised, open and TOTAL, and the footer sums them apart.
-            _demo = at.coin_stats(dry=True)
-            _dopen: dict[str, float] = {}
-            for _s, _sst in at.load_state().items():
-                _p = _sst.get("position") if isinstance(_sst, dict) else None
-                if not _p or not _p.get("dry"):
-                    continue
-                _base = _s.split("#")[0]
-                _px = _last_price(_base)
-                if _px and _p.get("entry"):
-                    _dopen[_base] = _dopen.get(_base, 0.0) + (
-                        (_px / _p["entry"] - 1) * _p["side"] * _p["margin"]
-                        * at.LEVERAGE)
-            _arows = []
-            for _sym in sorted(set(_life) | set(_open_by) | set(_demo)
-                               | set(_dopen),
-                               key=lambda s: (_life.get(s, {}).get("pnl", 0)
-                                              + _open_by.get(s, 0))):
-                _v = _life.get(_sym, {"pnl": 0.0, "wins": 0, "losses": 0,
-                                      "trades": 0})
-                _d = _demo.get(_sym, {"pnl": 0.0, "wins": 0, "losses": 0,
-                                      "trades": 0})
-                _op, _dop = _open_by.get(_sym, 0.0), _dopen.get(_sym, 0.0)
-                _has_demo = bool(_d["trades"] or _dop)
-                _arows.append({
-                    "coin": _sym.replace("_USDT", ""),
-                    "mine": "" if _sym in _mine else "not yours",
-                    "W": _v["wins"], "L": _v["losses"],
-                    "realised $": round(_v["pnl"], 2),
-                    "open $": round(_op, 2),
-                    "total $": round(_v["pnl"] + _op, 2),
-                    "dW": _d["wins"] if _has_demo else None,
-                    "dL": _d["losses"] if _has_demo else None,
-                    "d realised $": round(_d["pnl"], 2) if _has_demo else None,
-                    "d open $": round(_dop, 2) if _has_demo else None,
-                    "d total $": (round(_d["pnl"] + _dop, 2) if _has_demo
-                                  else None)})
-            _acols = (("coin", "coin", 1.1, "l", "text"),
-                      ("mine", "", 1.3, "l", "text"),
-                      ("W", "real W", 0.8, "r", "num"),
-                      ("L", "real L", 0.8, "r", "num"),
-                      ("realised $", "real realised $", 1.7, "r", "money"),
-                      ("open $", "real open $", 1.5, "r", "money"),
-                      ("total $", "REAL TOTAL $", 1.6, "r", "money"),
-                      ("dW", "demo W", 0.8, "r", "num"),
-                      ("dL", "demo L", 0.8, "r", "num"),
-                      ("d realised $", "demo realised $", 1.7, "r", "money"),
-                      ("d open $", "demo open $", 1.5, "r", "money"),
-                      ("d total $", "DEMO TOTAL $", 1.6, "r", "money"))
-            _sm = lambda k: round(sum(r[k] or 0 for r in _arows), 2)  # noqa: E731
-            _atot = {
-                "coin": "TOTAL", "mine": f"{len(_arows)} contracts",
-                "W": sum(r["W"] for r in _arows),
-                "L": sum(r["L"] for r in _arows),
-                "realised $": _sm("realised $"),
-                "open $": _sm("open $"),
-                "total $": _sm("total $"),
-                "dW": sum(r["dW"] or 0 for r in _arows),
-                "dL": sum(r["dL"] or 0 for r in _arows),
-                "d realised $": _sm("d realised $"),
-                "d open $": _sm("d open $"),
-                "d total $": _sm("d total $")}
-            st.markdown(
-                "<div style='font-size:10px;letter-spacing:.14em;"
-                "text-transform:uppercase;color:var(--t-dim);"
-                "margin:16px 0 4px'>All time &middot; per contract &middot; "
-                "<span style='color:var(--t-dn)'>real</span> vs "
-                "<span style='color:var(--t-up)'>demo</span> &mdash; never "
-                "summed together</div>"
-                + _tm_table(_acols, _arows, _atot if _arows else None,
-                            "no closed trades yet"),
-                unsafe_allow_html=True)
+
+                # All-time per contract. Realised comes from this book's ledger,
+                # open from the exchange, and the two are added — never mixed.
+                _life = at.coin_stats(dry=False)
+                _open_by: dict[str, float] = {}
+                try:
+                    for _p in _live_open_positions():
+                        _open_by[str(_p.get("symbol"))] = float(
+                            _p.get("unRealizedPnl") or 0.0)
+                except Exception:
+                    _open_by = {}
+                try:
+                    _cfg = at.load_settings()
+                    _mine = {c for v in (_cfg.get("strategy_coins")
+                                         or {}).values() for c in v}
+                except Exception:
+                    _mine = set()
+                # The DEMO book, kept in its own columns. Simulated money is never
+                # added to the real figures — mixing them is how an operator
+                # misjudges what is actually at risk — so each side carries its
+                # own realised, open and TOTAL, and the footer sums them apart.
+                _demo = at.coin_stats(dry=True)
+                _dopen: dict[str, float] = {}
+                for _s, _sst in at.load_state().items():
+                    _p = _sst.get("position") if isinstance(_sst, dict) else None
+                    if not _p or not _p.get("dry"):
+                        continue
+                    _base = _s.split("#")[0]
+                    _px = _last_price(_base)
+                    if _px and _p.get("entry"):
+                        _dopen[_base] = _dopen.get(_base, 0.0) + (
+                            (_px / _p["entry"] - 1) * _p["side"] * _p["margin"]
+                            * at.LEVERAGE)
+                _arows = []
+                for _sym in sorted(set(_life) | set(_open_by) | set(_demo)
+                                   | set(_dopen),
+                                   key=lambda s: (_life.get(s, {}).get("pnl", 0)
+                                                  + _open_by.get(s, 0))):
+                    _v = _life.get(_sym, {"pnl": 0.0, "wins": 0, "losses": 0,
+                                          "trades": 0})
+                    _d = _demo.get(_sym, {"pnl": 0.0, "wins": 0, "losses": 0,
+                                          "trades": 0})
+                    _op, _dop = _open_by.get(_sym, 0.0), _dopen.get(_sym, 0.0)
+                    _has_demo = bool(_d["trades"] or _dop)
+                    _arows.append({
+                        "coin": _sym.replace("_USDT", ""),
+                        "mine": "" if _sym in _mine else "not yours",
+                        "W": _v["wins"], "L": _v["losses"],
+                        "realised $": round(_v["pnl"], 2),
+                        "open $": round(_op, 2),
+                        "total $": round(_v["pnl"] + _op, 2),
+                        "dW": _d["wins"] if _has_demo else None,
+                        "dL": _d["losses"] if _has_demo else None,
+                        "d realised $": round(_d["pnl"], 2) if _has_demo else None,
+                        "d open $": round(_dop, 2) if _has_demo else None,
+                        "d total $": (round(_d["pnl"] + _dop, 2) if _has_demo
+                                      else None)})
+                _acols = (("coin", "coin", 1.1, "l", "text"),
+                          ("mine", "", 1.3, "l", "text"),
+                          ("W", "real W", 0.8, "r", "num"),
+                          ("L", "real L", 0.8, "r", "num"),
+                          ("realised $", "real realised $", 1.7, "r", "money"),
+                          ("open $", "real open $", 1.5, "r", "money"),
+                          ("total $", "REAL TOTAL $", 1.6, "r", "money"),
+                          ("dW", "demo W", 0.8, "r", "num"),
+                          ("dL", "demo L", 0.8, "r", "num"),
+                          ("d realised $", "demo realised $", 1.7, "r", "money"),
+                          ("d open $", "demo open $", 1.5, "r", "money"),
+                          ("d total $", "DEMO TOTAL $", 1.6, "r", "money"))
+                _sm = lambda k: round(sum(r[k] or 0 for r in _arows), 2)  # noqa: E731
+                _atot = {
+                    "coin": "TOTAL", "mine": f"{len(_arows)} contracts",
+                    "W": sum(r["W"] for r in _arows),
+                    "L": sum(r["L"] for r in _arows),
+                    "realised $": _sm("realised $"),
+                    "open $": _sm("open $"),
+                    "total $": _sm("total $"),
+                    "dW": sum(r["dW"] or 0 for r in _arows),
+                    "dL": sum(r["dL"] or 0 for r in _arows),
+                    "d realised $": _sm("d realised $"),
+                    "d open $": _sm("d open $"),
+                    "d total $": _sm("d total $")}
+                st.markdown(
+                    "<div style='font-size:10px;letter-spacing:.14em;"
+                    "text-transform:uppercase;color:var(--t-dim);"
+                    "margin:16px 0 4px'>All time &middot; per contract &middot; "
+                    "<span style='color:var(--t-dn)'>real</span> vs "
+                    "<span style='color:var(--t-up)'>demo</span> &mdash; never "
+                    "summed together</div>"
+                    + _tm_table(_acols, _arows, _atot if _arows else None,
+                                "no closed trades yet"),
+                    unsafe_allow_html=True)
 
         _positions()
 
 
         # ================= BAND 3 — STRATEGY ============================
-        try:
-            contracts = _futures_contracts()
-            symbols = sorted(c["symbol"] for c in contracts)
-        except Exception as exc:
-            symbols = []
-            st.warning(f"Could not fetch the MEXC contract list ({exc}); "
-                       "showing saved selections only.")
-        saved_strats = saved.get("strategies", ["ict_fvg"])
-        saved_coins_by = saved.get("strategy_coins") or {}
-        legacy_coins = saved.get("coins", ["BTC_USDT"])
-        chosen_strats: list[str] = []
-        blocked_now: list[tuple] = []
-        strategy_coins: dict[str, list[str]] = {}
-        strategy_limits: dict[str, float] = {}
-        strategy_margins: dict[str, float] = {}
-        saved_limits = saved.get("strategy_loss_limits") or {}
-        saved_margins = saved.get("strategy_margins") or {}
-        live_stats = at.strategy_stats(dry=False)
-        paper_stats = at.strategy_stats(dry=True)
-        paused = at.tripped_strategies(saved)
-        # ---- ONE table, built from real widgets rather than st.data_editor.
-        # The editor is a canvas: it cannot colour a cell, and the operator
-        # wants a green tick when a book is on and red/green money. So each
-        # row is a st.columns strip — widgets where a value is typed, HTML
-        # where it is computed and needs colour.
-        strategy_books: dict[str, list] = {}
-        _bad_syms: list[str] = []
-        _runstate = at.load_state()
-        _sizing_now = at.sizing_for(saved)
-        _flat = _sizing_now == "flat"
-        _W = [1.15, 1.45, .62, .62, .95, .95, .8, 2.5, .9, .95, 1.0, .95, 1.0,
-              .95]
-        _HEADS = ("strategy", "contracts", "LIVE", "DEMO", "base $",
-                  "notional $", "streak", f"ladder $ · {'flat' if _flat else 'DEEP'}",
-                  "next $", "SL / TP", "loss cap $", "W / L", "PROFIT $",
-                  "backtest")
+        with st.container(key="tmsec_strategy"):
+            try:
+                contracts = _futures_contracts()
+                symbols = sorted(c["symbol"] for c in contracts)
+            except Exception as exc:
+                symbols = []
+                st.warning(f"Could not fetch the MEXC contract list ({exc}); "
+                           "showing saved selections only.")
+            saved_strats = saved.get("strategies", ["ict_fvg"])
+            saved_coins_by = saved.get("strategy_coins") or {}
+            legacy_coins = saved.get("coins", ["BTC_USDT"])
+            chosen_strats: list[str] = []
+            blocked_now: list[tuple] = []
+            strategy_coins: dict[str, list[str]] = {}
+            strategy_limits: dict[str, float] = {}
+            strategy_margins: dict[str, float] = {}
+            saved_limits = saved.get("strategy_loss_limits") or {}
+            saved_margins = saved.get("strategy_margins") or {}
+            live_stats = at.strategy_stats(dry=False)
+            paper_stats = at.strategy_stats(dry=True)
+            paused = at.tripped_strategies(saved)
+            # ---- ONE table, built from real widgets rather than st.data_editor.
+            # The editor is a canvas: it cannot colour a cell, and the operator
+            # wants a green tick when a book is on and red/green money. So each
+            # row is a st.columns strip — widgets where a value is typed, HTML
+            # where it is computed and needs colour.
+            strategy_books: dict[str, list] = {}
+            _bad_syms: list[str] = []
+            _runstate = at.load_state()
+            _sizing_now = at.sizing_for(saved)
+            _flat = _sizing_now == "flat"
+            _W = [1.15, 1.45, .62, .62, .95, .95, .8, 2.5, .9, .95, 1.0, .95, 1.0,
+                  .95]
+            _HEADS = ("strategy", "contracts", "LIVE", "DEMO", "base $",
+                      "notional $", "streak", f"ladder $ · {'flat' if _flat else 'DEEP'}",
+                      "next $", "SL / TP", "loss cap $", "W / L", "PROFIT $",
+                      "backtest")
 
-        _head_slot = st.empty()
-        st.caption(
-            "One row per strategy. LIVE places real orders on MEXC, DEMO "
-            "simulates fills in a separate book — independent, so a strategy "
-            "can run both, one, or neither. Contracts, base margin and loss "
-            "cap are typed in place; press Save & run to commit them. "
-            "`ladder $` is the whole DEEP sequence in dollars with the "
-            "current rung boxed, so `next $` is never a number you have to "
-            "work out.")
-        _hc = st.columns(_W, gap="small", vertical_alignment="bottom")
-        for _i, _h in enumerate(_HEADS):
-            _hc[_i].markdown(
-                f"<div style='font-size:9.5px;letter-spacing:.11em;"
-                f"text-transform:uppercase;color:var(--t-dim);"
-                f"border-bottom:1px solid var(--t-rule2);padding-bottom:4px;"
-                f"white-space:nowrap;overflow:hidden;text-overflow:ellipsis'>"
-                f"{_h}</div>", unsafe_allow_html=True)
+            _head_slot = st.empty()
+            st.caption(
+                "One row per strategy. LIVE places real orders on MEXC, DEMO "
+                "simulates fills in a separate book — independent, so a strategy "
+                "can run both, one, or neither. Contracts are fixed per "
+                "strategy — a row is one signal on one coin, backtested "
+                "together — while base margin and loss cap are typed in place; "
+                "press Save & run to commit them. "
+                "`ladder $` is the whole DEEP sequence in dollars with the "
+                "current rung boxed, so `next $` is never a number you have to "
+                "work out.")
+            _hc = st.columns(_W, gap="small", vertical_alignment="bottom")
+            for _i, _h in enumerate(_HEADS):
+                _hc[_i].markdown(
+                    f"<div style='font-size:9.5px;letter-spacing:.11em;"
+                    f"text-transform:uppercase;color:var(--t-dim);"
+                    f"border-bottom:1px solid var(--t-rule2);padding-bottom:4px;"
+                    f"white-space:nowrap;overflow:hidden;text-overflow:ellipsis'>"
+                    f"{_h}</div>", unsafe_allow_html=True)
 
-        # Every cell in a strategy row is the same height and vertically
-        # centred, so a 35px text input and a 13px text span share a baseline.
-        # Before this they sat 11px apart and the row read as ragged.
-        _cell = ("display:flex;align-items:center;min-height:38px;"
-                 "font-size:11.5px;white-space:nowrap;overflow:hidden;"
-                 "text-overflow:ellipsis")
-        for key, label, note, default_coins in AUTO_STRATEGIES:
-            _spec = at.STRATEGY_SPECS.get(key, {})
-            _bks = at.books_for(key, saved) if key in saved_strats else []
-            _coins = saved_coins_by.get(key) or list(default_coins)
-            _mgs = float(saved_margins.get(key) or 5.0)
-            # The LOSING STREAK is the ladder's own counter: it advances on a
-            # loss and resets to zero on a win, so it IS the streak, and it is
-            # what decides the next stake. Read per contract, worst one wins.
-            _streak = max((int((_runstate.get(c) or {}).get("step", 0) or 0)
-                           for c in _coins), default=0)
-            c = st.columns(_W, gap="small", vertical_alignment="center")
-            c[0].markdown(
-                f"<div style='{_cell}'>{_tm_sig(key)}"
-                f"<span style='color:var(--t-faint)'> {_tm_tf(_spec)}</span>"
-                f"</div>", unsafe_allow_html=True)
-            _txt = c[1].text_input(
-                "contracts", value=", ".join(x.replace("_USDT", "")
-                                             for x in _coins),
-                key=f"g_c_{key}", label_visibility="collapsed",
-                placeholder="PI, BTC")
-            _live = c[2].checkbox("LIVE", value=False in _bks,
-                                  key=f"g_live_{key}",
-                                  label_visibility="collapsed",
-                                  help="REAL money — sends orders to MEXC.")
-            _demo = c[3].checkbox("DEMO", value=True in _bks,
-                                  key=f"g_demo_{key}",
-                                  label_visibility="collapsed",
-                                  help="Simulated fills, separate book, no "
-                                       "real orders.")
-            _base = c[4].number_input(
-                "base", min_value=1.0, max_value=10_000.0, value=_mgs,
-                step=1.0, key=f"g_b_{key}", label_visibility="collapsed")
-            c[5].markdown(f"<div style='{_cell}'>"
-                          f"{_base * at.LEVERAGE:,.2f}"
-                          f"<span style='color:var(--t-faint)'> "
-                          f"{at.LEVERAGE}x</span></div>",
-                          unsafe_allow_html=True)
-            # Streak colour is the risk, not the sign: 0 is calm, deep is red.
-            _scol = ("tm-nil" if _streak == 0 else "tm-am" if _streak < 4
-                     else "tm-dn")
-            c[6].markdown(
-                f"<div style='{_cell}' class='{_scol}'><b>{_streak}</b>"
-                f"<span style='color:var(--t-faint)'> loss</span></div>",
+            # Every cell in a strategy row is the same height and vertically
+            # centred, so a 35px text input and a 13px text span share a baseline.
+            # Before this they sat 11px apart and the row read as ragged.
+            _cell = ("display:flex;align-items:center;min-height:38px;"
+                     "font-size:11.5px;white-space:nowrap;overflow:hidden;"
+                     "text-overflow:ellipsis")
+            for key, label, note, default_coins in AUTO_STRATEGIES:
+                _spec = at.STRATEGY_SPECS.get(key, {})
+                _bks = at.books_for(key, saved) if key in saved_strats else []
+                # An explicitly saved EMPTY list means "no contracts", not "use the
+                # default". `saved_coins_by.get(key) or default_coins` treated [] as
+                # unset and refilled the box from the hardcoded default, so PI came
+                # back on mom15_4h_w after being moved to trend50_30m_pi and showed
+                # up twice — one save away from a coin ticked on two timeframes.
+                # Same shape as the auto_trader.coins_for bug fixed the same day.
+                _coins = (list(saved_coins_by[key]) if key in saved_coins_by
+                          else list(default_coins))
+                _mgs = float(saved_margins.get(key) or 5.0)
+                # The LOSING STREAK is the ladder's own counter: it advances on a
+                # loss and resets to zero on a win, so it IS the streak, and it is
+                # what decides the next stake. Read per contract, worst one wins.
+                _streak = max((int((_runstate.get(c) or {}).get("step", 0) or 0)
+                               for c in _coins), default=0)
+                c = st.columns(_W, gap="small", vertical_alignment="center")
+                c[0].markdown(
+                    f"<div style='{_cell}'>{_tm_sig(key)}"
+                    f"<span style='color:var(--t-faint)'> {_tm_tf(_spec)}</span>"
+                    f"</div>", unsafe_allow_html=True)
+                # Contracts are NOT typed. Each row is one strategy chosen FOR a
+                # specific contract — #3CRXP8 is trend50/30m/2.5/2.0 *on PI*, and
+                # the same signal on another coin is a different, untested
+                # combination (CLAUDE.md rule 21: sizing and coin are part of the
+                # strategy, not dials turned afterwards). An editable box invited
+                # exactly that edit, so the column now renders what is configured.
+                _shown = ", ".join(x.replace("_USDT", "") for x in _coins)
+                c[1].markdown(
+                    f"<div style='{_cell}'>"
+                    + (f"<b>{_shown}</b>" if _shown else
+                       "<span style='color:var(--t-faint)'>none</span>")
+                    + "</div>", unsafe_allow_html=True)
+                _live = c[2].checkbox("LIVE", value=False in _bks,
+                                      key=f"g_live_{key}",
+                                      label_visibility="collapsed",
+                                      help="REAL money — sends orders to MEXC.")
+                _demo = c[3].checkbox("DEMO", value=True in _bks,
+                                      key=f"g_demo_{key}",
+                                      label_visibility="collapsed",
+                                      help="Simulated fills, separate book, no "
+                                           "real orders.")
+                _base = c[4].number_input(
+                    "base", min_value=1.0, max_value=10_000.0, value=_mgs,
+                    step=1.0, key=f"g_b_{key}", label_visibility="collapsed")
+                c[5].markdown(f"<div style='{_cell}'>"
+                              f"{_base * at.LEVERAGE:,.2f}"
+                              f"<span style='color:var(--t-faint)'> "
+                              f"{at.LEVERAGE}x</span></div>",
+                              unsafe_allow_html=True)
+                # Streak colour is the risk, not the sign: 0 is calm, deep is red.
+                _scol = ("tm-nil" if _streak == 0 else "tm-am" if _streak < 4
+                         else "tm-dn")
+                c[6].markdown(
+                    f"<div style='{_cell}' class='{_scol}'><b>{_streak}</b>"
+                    f"<span style='color:var(--t-faint)'> loss</span></div>",
+                    unsafe_allow_html=True)
+                # The ladder, in dollars, with the rung it is standing on boxed.
+                if _flat:
+                    _lad = (f"<span class='tm-up'>{_base:,.2f}</span>"
+                            f"<span style='color:var(--t-faint)'> every trade"
+                            f"</span>")
+                    _next = _base
+                else:
+                    _idx = min(_streak, len(at.LADDER) - 1)
+                    _next = _base * at.LADDER[_idx]
+                    _lad = " ".join(
+                        (f"<span style='background:var(--t-amber);color:#0a0c0e;"
+                         f"padding:1px 4px;font-weight:700'>{_base * m:,.0f}</span>"
+                         if i == _idx else
+                         f"<span style='color:var(--t-faint)'>{_base * m:,.0f}"
+                         f"</span>")
+                        for i, m in enumerate(at.LADDER))
+                c[7].markdown(f"<div style='{_cell};overflow:visible'>{_lad}</div>",
+                              unsafe_allow_html=True)
+                c[8].markdown(f"<div style='{_cell}' class='tm-am'>"
+                              f"<b>{_next:,.2f}</b></div>",
+                              unsafe_allow_html=True)
+                c[9].markdown(
+                    f"<div style='{_cell}'>{_spec.get('sl', 0) * 100:.2f}"
+                    f"<span style='color:var(--t-faint)'> / </span>"
+                    f"{_spec.get('tp', 0) * 100:.2f}</div>",
+                    unsafe_allow_html=True)
+                _cap = c[10].number_input(
+                    "cap", min_value=0.0, max_value=100_000.0,
+                    value=float(saved_limits.get(key, 0.0)), step=1.0,
+                    key=f"g_l_{key}", label_visibility="collapsed")
+                # The record has to come from the book this strategy trades: a
+                # live P&L printed beside a DEMO-only strategy is a false label.
+                _stt = (live_stats.get(key) if _live
+                        else paper_stats.get(key) if _demo
+                        else live_stats.get(key))
+                _pnl = _stt["pnl"] if _stt else None
+                c[11].markdown(
+                    f"<div style='{_cell}'>"
+                    f"<span class='tm-up'>{_stt['wins'] if _stt else 0}</span>"
+                    f"<span style='color:var(--t-faint)'> / </span>"
+                    f"<span class='tm-dn'>{_stt['losses'] if _stt else 0}</span>"
+                    f"</div>", unsafe_allow_html=True)
+                c[12].markdown(
+                    f"<div style='{_cell}' class='{_tm_cls(_pnl or 0)}'><b>"
+                    + ("·" if _pnl is None else f"{_pnl:+,.2f}")
+                    + f"</b><span style='color:var(--t-faint)'> "
+                    + ("live" if _live else "demo" if _demo else "—")
+                    + "</span></div>", unsafe_allow_html=True)
+                # Backtest THIS row, over the past year, on the contracts typed
+                # in the row — not on whatever was last saved.
+                if c[13].button("1 YEAR", key=f"g_bt_{key}",
+                                help=f"Replay {_tm_sig(key)} over the last 365 "
+                                     f"days of MEXC history at this row's base "
+                                     f"margin."):
+                    st.session_state["auto_bt_run"] = key
+
+                # Still validated, because a saved settings file can name a
+                # contract MEXC has since delisted. Read-only is not unchecked.
+                _known = set(symbols)
+                _cs = [x for x in _coins if not _known or x in _known]
+                _bad_syms.extend(x for x in _coins if _known and x not in _known)
+                strategy_books[key] = (["real"] if _live else []) + \
+                                      (["paper"] if _demo else [])
+                strategy_margins[key] = float(_base)
+                strategy_limits[key] = float(_cap)
+                strategy_coins[key] = _cs
+                if _live or _demo:
+                    chosen_strats.append(key)
+
+            _n_real = sum(1 for v in strategy_books.values() if "real" in v)
+            _n_paper = sum(1 for v in strategy_books.values() if "paper" in v)
+            _n_off = sum(1 for v in strategy_books.values() if not v)
+            _head_slot.markdown(
+                _tm_head("Strategy",
+                         f"{_n_real} live &middot; {_n_paper} demo &middot; "
+                         f"{_n_off} off &middot; {len(AUTO_STRATEGIES)} loaded"),
                 unsafe_allow_html=True)
-            # The ladder, in dollars, with the rung it is standing on boxed.
-            if _flat:
-                _lad = (f"<span class='tm-up'>{_base:,.2f}</span>"
-                        f"<span style='color:var(--t-faint)'> every trade"
-                        f"</span>")
-                _next = _base
-            else:
-                _idx = min(_streak, len(at.LADDER) - 1)
-                _next = _base * at.LADDER[_idx]
-                _lad = " ".join(
-                    (f"<span style='background:var(--t-amber);color:#0a0c0e;"
-                     f"padding:1px 4px;font-weight:700'>{_base * m:,.0f}</span>"
-                     if i == _idx else
-                     f"<span style='color:var(--t-faint)'>{_base * m:,.0f}"
-                     f"</span>")
-                    for i, m in enumerate(at.LADDER))
-            c[7].markdown(f"<div style='{_cell};overflow:visible'>{_lad}</div>",
-                          unsafe_allow_html=True)
-            c[8].markdown(f"<div style='{_cell}' class='tm-am'>"
-                          f"<b>{_next:,.2f}</b></div>",
-                          unsafe_allow_html=True)
-            c[9].markdown(
-                f"<div style='{_cell}'>{_spec.get('sl', 0) * 100:.2f}"
-                f"<span style='color:var(--t-faint)'> / </span>"
-                f"{_spec.get('tp', 0) * 100:.2f}</div>",
-                unsafe_allow_html=True)
-            _cap = c[10].number_input(
-                "cap", min_value=0.0, max_value=100_000.0,
-                value=float(saved_limits.get(key, 0.0)), step=1.0,
-                key=f"g_l_{key}", label_visibility="collapsed")
-            # The record has to come from the book this strategy trades: a
-            # live P&L printed beside a DEMO-only strategy is a false label.
-            _stt = (live_stats.get(key) if _live
-                    else paper_stats.get(key) if _demo
-                    else live_stats.get(key))
-            _pnl = _stt["pnl"] if _stt else None
-            c[11].markdown(
-                f"<div style='{_cell}'>"
-                f"<span class='tm-up'>{_stt['wins'] if _stt else 0}</span>"
-                f"<span style='color:var(--t-faint)'> / </span>"
-                f"<span class='tm-dn'>{_stt['losses'] if _stt else 0}</span>"
-                f"</div>", unsafe_allow_html=True)
-            c[12].markdown(
-                f"<div style='{_cell}' class='{_tm_cls(_pnl or 0)}'><b>"
-                + ("·" if _pnl is None else f"{_pnl:+,.2f}")
-                + f"</b><span style='color:var(--t-faint)'> "
-                + ("live" if _live else "demo" if _demo else "—")
-                + "</span></div>", unsafe_allow_html=True)
-            # Backtest THIS row, over the past year, on the contracts typed
-            # in the row — not on whatever was last saved.
-            if c[13].button("1 YEAR", key=f"g_bt_{key}",
-                            help=f"Replay {_tm_sig(key)} over the last 365 "
-                                 f"days of MEXC history at this row's base "
-                                 f"margin."):
-                st.session_state["auto_bt_run"] = key
-
-            _cs, _rej = _parse_contracts(_txt, set(symbols))
-            _bad_syms.extend(_rej)
-            strategy_books[key] = (["real"] if _live else []) + \
-                                  (["paper"] if _demo else [])
-            strategy_margins[key] = float(_base)
-            strategy_limits[key] = float(_cap)
-            strategy_coins[key] = _cs
-            if _live or _demo:
-                chosen_strats.append(key)
-
-        _n_real = sum(1 for v in strategy_books.values() if "real" in v)
-        _n_paper = sum(1 for v in strategy_books.values() if "paper" in v)
-        _n_off = sum(1 for v in strategy_books.values() if not v)
-        _head_slot.markdown(
-            _tm_head("Strategy",
-                     f"{_n_real} live &middot; {_n_paper} demo &middot; "
-                     f"{_n_off} off &middot; {len(AUTO_STRATEGIES)} loaded"),
-            unsafe_allow_html=True)
-        if _bad_syms:
-            st.error("Not MEXC USDT perpetuals — these were dropped: "
-                     + ", ".join(sorted(set(_bad_syms))))
+            if _bad_syms:
+                st.error("Not MEXC USDT perpetuals — these were dropped: "
+                         + ", ".join(sorted(set(_bad_syms))))
 
 
-        # ---- liquidity gate. The per-pair readout was removed at the
-        # operator's request: all six pairs sit at 1–6% of target, so the list
-        # was noise. The CHECK still runs, because rule 12 says a blocked pair
-        # places no orders — and the runner enforces that itself
-        # (auto_trader.edge_check, called again before every entry), so this
-        # is only about surfacing it. Nothing is drawn unless a pair is
-        # actually blocked, which is the one case worth interrupting for.
-        for key in chosen_strats:
-            for coin in strategy_coins.get(key, []):
-                try:
-                    g = _edge_check(key, coin, strategy_margins.get(key) or 5.0)
-                except Exception:
-                    continue
-                if g.get("verdict") == "block":
-                    blocked_now.append((key, coin))
+            # ---- liquidity gate. The per-pair readout was removed at the
+            # operator's request: all six pairs sit at 1–6% of target, so the list
+            # was noise. The CHECK still runs, because rule 12 says a blocked pair
+            # places no orders — and the runner enforces that itself
+            # (auto_trader.edge_check, called again before every entry), so this
+            # is only about surfacing it. Nothing is drawn unless a pair is
+            # actually blocked, which is the one case worth interrupting for.
+            for key in chosen_strats:
+                for coin in strategy_coins.get(key, []):
+                    try:
+                        g = _edge_check(key, coin, strategy_margins.get(key) or 5.0)
+                    except Exception:
+                        continue
+                    if g.get("verdict") == "block":
+                        blocked_now.append((key, coin))
 
-        # ---- the backtest a row asked for, rendered under the table. The
-        # flag is CLEARED before the run, so a lingering one cannot re-fire
-        # the whole year on every later widget interaction.
-        if st.session_state.get("auto_bt_run"):
-            _k = st.session_state.pop("auto_bt_run")
-            _lbl = {k: l for k, l, *_ in AUTO_STRATEGIES}
-            st.markdown(
-                f"<div style='font-size:10px;letter-spacing:.14em;"
-                f"text-transform:uppercase;color:var(--t-amber);"
-                f"margin:14px 0 2px'>Backtest &middot; past 365 days &middot; "
-                f"{html.escape(_lbl.get(_k, _k))}</div>",
-                unsafe_allow_html=True)
-            _render_strategy_backtest(_k, _lbl.get(_k, _k),
-                                      strategy_coins.get(_k, []),
-                                      strategy_margins.get(_k) or 5.0,
-                                      days=365)
+            # ---- the backtest a row asked for, rendered under the table. The
+            # flag is CLEARED before the run, so a lingering one cannot re-fire
+            # the whole year on every later widget interaction.
+            if st.session_state.get("auto_bt_run"):
+                _k = st.session_state.pop("auto_bt_run")
+                _lbl = {k: l for k, l, *_ in AUTO_STRATEGIES}
+                st.markdown(
+                    f"<div style='font-size:10px;letter-spacing:.14em;"
+                    f"text-transform:uppercase;color:var(--t-amber);"
+                    f"margin:14px 0 2px'>Backtest &middot; past 365 days &middot; "
+                    f"{html.escape(_lbl.get(_k, _k))}</div>",
+                    unsafe_allow_html=True)
+                _render_strategy_backtest(_k, _lbl.get(_k, _k),
+                                          strategy_coins.get(_k, []),
+                                          strategy_margins.get(_k) or 5.0,
+                                          days=365)
 
-        chosen_coins = [c for cs in strategy_coins.values() for c in cs]
+            chosen_coins = [c for cs in strategy_coins.values() for c in cs]
 
         # ================= BAND 4 — RISK ================================
-        st.markdown(_tm_head("Risk", f"{at.LEVERAGE}x isolated"),
-                    unsafe_allow_html=True)
-        rk1, rk2 = st.columns([1, 1.6], gap="large")
-        with rk1:
-            # The book is chosen PER STRATEGY, in the grid above. These two
-            # are derived from those choices, not set here — the old global
-            # pair could not paper-test one strategy beside a live one.
-            _real_ks = [k for k, b in strategy_books.items() if "real" in b]
-            _paper_ks = [k for k, b in strategy_books.items() if "paper" in b]
-            enabled = bool(_real_ks)
-            dry_run = bool(_paper_ks)
-            _fmt = (lambda ks: ", ".join(
-                sorted({c.replace("_USDT", "")
-                        for k in ks for c in (strategy_coins.get(k) or [])}))
-                or "none")
-            st.markdown(
-                f"<div style='font-size:10px;letter-spacing:.14em;"
-                f"text-transform:uppercase;color:var(--t-dim)'>Books in "
-                f"use</div><div class='tm-p' style='margin:4px 0 12px'>"
-                f"<div class='row'><span>REAL &middot; real orders</span>"
-                f"<span class='{'tm-dn' if _real_ks else 'tm-nil'}'>"
-                f"{len(_real_ks)} strategies</span></div>"
-                f"<div class='row'><span style='color:var(--t-faint)'>"
-                f"&nbsp;&nbsp;{_fmt(_real_ks)}</span><span></span></div>"
-                f"<div class='row sub'><span>PAPER &middot; simulated</span>"
-                f"<span class='{'tm-up' if _paper_ks else 'tm-nil'}'>"
-                f"{len(_paper_ks)} strategies</span></div>"
-                f"<div class='row'><span style='color:var(--t-faint)'>"
-                f"&nbsp;&nbsp;{_fmt(_paper_ks)}</span><span></span></div>"
-                f"</div>", unsafe_allow_html=True)
-            acct_limit = st.number_input(
-                "Account loss cap USDT", min_value=0.0,
-                max_value=100_000.0, value=float(saved.get("loss_limit", 0.0)),
-                step=1.0, key="auto_acct_limit",
-                help="0 turns it off. Across ALL strategies: when the day's "
-                     "real losses reach this, the whole runner stops and "
-                     "drops the kill file. Set it larger than any single "
-                     "strategy's limit.")
-        with rk2:
-            # Sizing is a first-class setting, not an assumption. It was NOT
-            # in the save payload, so any Save silently reverted a flat book
-            # to the ladder — the exact dimension an audit showed was
-            # producing the "13/13 green months" behind six live strategies.
-            sizing = st.radio(
-                "Position sizing", options=("flat", "martingale"),
-                index=0 if at.sizing_for(saved) == "flat" else 1,
-                horizontal=True, key="auto_sizing",
-                format_func=lambda v: (
-                    "Flat — every trade stakes the base margin" if v == "flat"
-                    else "Martingale — 1,1,2,2,4,4,8 × base after each loss"),
-                help="Flat is what the backtests measure. Martingale "
-                     "multiplies whatever edge exists, including a negative "
-                     "one, and needs 8x the base margin in the account to "
-                     "survive its own worst case.")
-            # The worst-case and LIVE-MODE banners were removed at the
-            # operator's request. What they said is now on the rows: every
-            # strategy shows its own ladder in dollars with the current rung
-            # boxed, and the LIVE tick is green next to it. A pair the gate
-            # BLOCKS still interrupts, because that one is not a reminder —
-            # it means orders will be refused.
-            if enabled and blocked_now:
-                st.error("**These pairs are blocked by the liquidity gate and "
-                         "will place no orders:** "
-                         + ", ".join(f"{k} on {c}" for k, c in blocked_now)
-                         + ". Untick them or move the strategy to a "
-                           "deeper-book contract.")
+        with st.container(key="tmsec_risk"):
+            st.markdown(_tm_head("Risk", f"{at.LEVERAGE}x isolated"),
+                        unsafe_allow_html=True)
+            rk1, rk2 = st.columns([1, 1.6], gap="large")
+            with rk1:
+                # The book is chosen PER STRATEGY, in the grid above. These two
+                # are derived from those choices, not set here — the old global
+                # pair could not paper-test one strategy beside a live one.
+                _real_ks = [k for k, b in strategy_books.items() if "real" in b]
+                _paper_ks = [k for k, b in strategy_books.items() if "paper" in b]
+                enabled = bool(_real_ks)
+                dry_run = bool(_paper_ks)
+                _fmt = (lambda ks: ", ".join(
+                    sorted({c.replace("_USDT", "")
+                            for k in ks for c in (strategy_coins.get(k) or [])}))
+                    or "none")
+                st.markdown(
+                    f"<div style='font-size:10px;letter-spacing:.14em;"
+                    f"text-transform:uppercase;color:var(--t-dim)'>Books in "
+                    f"use</div><div class='tm-p' style='margin:4px 0 12px'>"
+                    f"<div class='row'><span>REAL &middot; real orders</span>"
+                    f"<span class='{'tm-dn' if _real_ks else 'tm-nil'}'>"
+                    f"{len(_real_ks)} strategies</span></div>"
+                    f"<div class='row'><span style='color:var(--t-faint)'>"
+                    f"&nbsp;&nbsp;{_fmt(_real_ks)}</span><span></span></div>"
+                    f"<div class='row sub'><span>PAPER &middot; simulated</span>"
+                    f"<span class='{'tm-up' if _paper_ks else 'tm-nil'}'>"
+                    f"{len(_paper_ks)} strategies</span></div>"
+                    f"<div class='row'><span style='color:var(--t-faint)'>"
+                    f"&nbsp;&nbsp;{_fmt(_paper_ks)}</span><span></span></div>"
+                    f"</div>", unsafe_allow_html=True)
+                acct_limit = st.number_input(
+                    "Account loss cap USDT", min_value=0.0,
+                    max_value=100_000.0, value=float(saved.get("loss_limit", 0.0)),
+                    step=1.0, key="auto_acct_limit",
+                    help="0 turns it off. Across ALL strategies: when the day's "
+                         "real losses reach this, the whole runner stops and "
+                         "drops the kill file. Set it larger than any single "
+                         "strategy's limit.")
+            with rk2:
+                # Sizing is a first-class setting, not an assumption. It was NOT
+                # in the save payload, so any Save silently reverted a flat book
+                # to the ladder — the exact dimension an audit showed was
+                # producing the "13/13 green months" behind six live strategies.
+                sizing = st.radio(
+                    "Position sizing", options=("flat", "martingale"),
+                    index=0 if at.sizing_for(saved) == "flat" else 1,
+                    horizontal=True, key="auto_sizing",
+                    format_func=lambda v: (
+                        "Flat — every trade stakes the base margin" if v == "flat"
+                        else "Martingale — 1,1,2,2,4,4,8 × base after each loss"),
+                    help="Flat is what the backtests measure. Martingale "
+                         "multiplies whatever edge exists, including a negative "
+                         "one, and needs 8x the base margin in the account to "
+                         "survive its own worst case.")
+                # The worst-case and LIVE-MODE banners were removed at the
+                # operator's request. What they said is now on the rows: every
+                # strategy shows its own ladder in dollars with the current rung
+                # boxed, and the LIVE tick is green next to it. A pair the gate
+                # BLOCKS still interrupts, because that one is not a reminder —
+                # it means orders will be refused.
+                if enabled and blocked_now:
+                    st.error("**These pairs are blocked by the liquidity gate and "
+                             "will place no orders:** "
+                             + ", ".join(f"{k} on {c}" for k, c in blocked_now)
+                             + ". Untick them or move the strategy to a "
+                               "deeper-book contract.")
 
-        sv1, sv2, sv3 = st.columns([1.1, 1, 1])
-        if sv1.button("Save & run", type="primary", key="auto_save"):
-            _payload = {"strategies": chosen_strats,
-                              "strategy_coins": strategy_coins,
-                              "coins": chosen_coins,   # legacy union, kept for
-                                                       # anything still reading it
-                              "strategy_loss_limits": strategy_limits,
-                              "strategy_margins": strategy_margins,
-                              # The per-strategy book map is the real setting.
-                              "strategy_books": {k: v for k, v in
-                                                 strategy_books.items() if v},
-                              "loss_limit": acct_limit,
-                              "sizing": sizing,
-                        # Derived, not chosen — kept so anything still
-                        # reading the old globals sees the truth.
-                        "enabled": enabled, "dry_run": dry_run}
-            _auto_trade_save(_payload)
-            # "Saved" must mean the FILE says so, not that the write was
-            # attempted. Read it back off disk and compare the fields that
-            # decide where money goes; only then report success.
-            _verified, _diff = False, []
-            try:
-                _back = json.loads(
-                    AUTO_TRADE_SETTINGS.read_text(encoding="utf-8"))
-                for _f in ("strategies", "strategy_books", "strategy_coins",
-                           "strategy_margins", "strategy_loss_limits",
-                           "sizing", "loss_limit"):
-                    if _back.get(_f) != _payload.get(_f):
-                        _diff.append(_f)
-                _verified = not _diff
-            except Exception as _exc:
-                _diff = [f"could not re-read the file: {_exc}"]
-            st.session_state["auto_saved_at"] = {
-                "when": time.strftime("%H:%M:%S"), "ok": _verified,
-                "diff": _diff, "n": len(chosen_strats),
-                "live": sorted(k for k, v in strategy_books.items()
-                               if "real" in v),
-                "demo": sorted(k for k, v in strategy_books.items()
-                               if "paper" in v),
-                "path": str(AUTO_TRADE_SETTINGS)}
-            st.toast(
-                f"Saved — {len(chosen_strats)} strategies written and verified "
-                f"on disk" if _verified
-                else f"NOT saved cleanly — {', '.join(_diff)}",
-                icon="✅" if _verified else "🚨")
-            if enabled and at.halted():
-                # A deliberate re-enable clears a loss-limit (or manual) halt.
-                at.KILL_PATH.unlink(missing_ok=True)
-                st.info("Kill file cleared — trading resumes.")
-            if (enabled or dry_run) and not chosen_strats:
-                st.error("Auto Trade is on but no strategy is armed — the "
-                         "runner will start and do nothing.")
-            if (enabled or dry_run) and not chosen_coins:
-                st.error("Auto Trade is on but no coin is selected — the "
-                         "runner will start and do nothing.")
-            if enabled or dry_run:
-                pid = at.start_runner()
-                bk = []
-                if enabled:
-                    bk.append("**LIVE — real orders on MEXC**")
-                if dry_run:
-                    bk.append("**PAPER — simulated, separate book**")
-                st.success(f"Saved and running (pid {pid}). Running "
-                           f"{' and '.join(bk)}.")
-            else:
-                stopped = at.stop_runner()
-                st.success("Saved. Runner stopped — neither switch is on."
-                           if stopped else "Saved. Runner was not running.")
-        if sv2.button("Stop — halt entries", key="auto_halt"):
-            at.KILL_PATH.parent.mkdir(parents=True, exist_ok=True)
-            at.KILL_PATH.write_text("stopped from the UI")
-            at.stop_runner()
-            st.warning("Entries halted and runner stopped. Open positions "
-                       "keep their exchange-side TP/SL.")
-        _armed_panic = sv3.checkbox(
-            "Arm PANIC", key="auto_panic_arm",
-            help="Tick this to unlock the PANIC button. It closes EVERY real "
-                 "position at market immediately — there is no undo.")
-        if sv3.button("PANIC — close all", key="auto_panic",
-                      disabled=not _armed_panic):
-            rep = at.panic_stop()
-            st.error(f"Panic stop. Closed: {rep['closed'] or 'nothing'}."
-                     + (f" FAILED: {rep['failed']}" if rep["failed"]
-                        else " Runner stopped, entries halted."))
-        if at.halted():
-            st.error(f"Kill file present at {at.KILL_PATH} — entries halted. "
-                     f"Save with a switch ticked to clear it.")
-        # The toast disappears after a few seconds; this stays, so the
-        # operator can still see WHAT was written and that it was read back.
-        _sv = st.session_state.get("auto_saved_at")
-        if _sv:
-            _sym = lambda ks: ", ".join(   # noqa: E731
-                sorted({c.replace("_USDT", "")
-                        for k in ks for c in (strategy_coins.get(k) or [])})
-            ) or "none"
-            st.markdown(
-                f"<div class='tm-p' style='margin-top:10px;border-color:"
-                f"{'var(--t-up)' if _sv['ok'] else 'var(--t-dn)'}'>"
-                f"<div class='row' style='font-size:10px;letter-spacing:.14em;"
-                f"text-transform:uppercase;color:var(--t-dim)'>"
-                f"<span>Save &middot; {html.escape(_sv['when'])}</span>"
-                f"<span class='{'tm-up' if _sv['ok'] else 'tm-dn'}'>"
-                + ("WRITTEN &amp; VERIFIED ON DISK" if _sv["ok"]
-                   else "FAILED")
-                + "</span></div>"
-                + (f"<div class='row'><span>LIVE &middot; real orders</span>"
-                   f"<span class='tm-dn'>{_sym(_sv['live'])}</span></div>"
-                   f"<div class='row'><span>DEMO &middot; simulated</span>"
-                   f"<span class='tm-up'>{_sym(_sv['demo'])}</span></div>"
-                   f"<div class='row sub'><span style='color:var(--t-faint)'>"
-                   f"{html.escape(_sv['path'])}</span>"
-                   f"<span style='color:var(--t-faint)'>{_sv['n']} strategies"
-                   f"</span></div>"
-                   if _sv["ok"] else
-                   f"<div class='row'><span>fields that did not match</span>"
-                   f"<span class='tm-dn'>"
-                   f"{html.escape(', '.join(_sv['diff']))}</span></div>")
-                + "</div>", unsafe_allow_html=True)
+            sv1, sv2, sv3 = st.columns([1.1, 1, 1])
+            if sv1.button("Save & run", type="primary", key="auto_save"):
+                # One timeframe per coin, refused at the point of saving. The
+                # runner also refuses (auto_trader.timeframe_conflicts), but a
+                # config that cannot legally run should never reach the disk: MEXC
+                # nets same-symbol positions into one, so two strategies on a coin
+                # at different bar sizes resize each other's trade and either stop
+                # closes part of a position it does not own.
+                _probe = {"strategies": chosen_strats,
+                          "strategy_coins": {k: strategy_coins.get(k, [])
+                                             for k in chosen_strats}}
+                _clashes = at.timeframe_conflicts(_probe)
+                if _clashes:
+                    for _c in _clashes:
+                        st.error(
+                            f"**{_c['coin']} is ticked on two timeframes at once** "
+                            f"({' and '.join(_c['timeframes'])}, via "
+                            f"{', '.join(_c['strategies'])}). One coin runs one "
+                            f"timeframe — untick all but one, then save again. "
+                            f"Nothing was written.")
+                    st.stop()
+                _payload = {"strategies": chosen_strats,
+                                  "strategy_coins": strategy_coins,
+                                  "coins": chosen_coins,   # legacy union, kept for
+                                                           # anything still reading it
+                                  "strategy_loss_limits": strategy_limits,
+                                  "strategy_margins": strategy_margins,
+                                  # The per-strategy book map is the real setting.
+                                  "strategy_books": {k: v for k, v in
+                                                     strategy_books.items() if v},
+                                  "loss_limit": acct_limit,
+                                  "sizing": sizing,
+                            # Derived, not chosen — kept so anything still
+                            # reading the old globals sees the truth.
+                            "enabled": enabled, "dry_run": dry_run}
+                _auto_trade_save(_payload)
+                # "Saved" must mean the FILE says so, not that the write was
+                # attempted. Read it back off disk and compare the fields that
+                # decide where money goes; only then report success.
+                _verified, _diff = False, []
+                try:
+                    _back = json.loads(
+                        AUTO_TRADE_SETTINGS.read_text(encoding="utf-8"))
+                    for _f in ("strategies", "strategy_books", "strategy_coins",
+                               "strategy_margins", "strategy_loss_limits",
+                               "sizing", "loss_limit"):
+                        if _back.get(_f) != _payload.get(_f):
+                            _diff.append(_f)
+                    _verified = not _diff
+                except Exception as _exc:
+                    _diff = [f"could not re-read the file: {_exc}"]
+                st.session_state["auto_saved_at"] = {
+                    "when": time.strftime("%H:%M:%S"), "ok": _verified,
+                    "diff": _diff, "n": len(chosen_strats),
+                    "live": sorted(k for k, v in strategy_books.items()
+                                   if "real" in v),
+                    "demo": sorted(k for k, v in strategy_books.items()
+                                   if "paper" in v),
+                    "path": str(AUTO_TRADE_SETTINGS)}
+                st.toast(
+                    f"Saved — {len(chosen_strats)} strategies written and verified "
+                    f"on disk" if _verified
+                    else f"NOT saved cleanly — {', '.join(_diff)}",
+                    icon="✅" if _verified else "🚨")
+                if enabled and at.halted():
+                    # A deliberate re-enable clears a loss-limit (or manual) halt.
+                    at.KILL_PATH.unlink(missing_ok=True)
+                    st.info("Kill file cleared — trading resumes.")
+                if (enabled or dry_run) and not chosen_strats:
+                    st.error("Auto Trade is on but no strategy is armed — the "
+                             "runner will start and do nothing.")
+                if (enabled or dry_run) and not chosen_coins:
+                    st.error("Auto Trade is on but no coin is selected — the "
+                             "runner will start and do nothing.")
+                if enabled or dry_run:
+                    pid = at.start_runner()
+                    bk = []
+                    if enabled:
+                        bk.append("**LIVE — real orders on MEXC**")
+                    if dry_run:
+                        bk.append("**PAPER — simulated, separate book**")
+                    st.success(f"Saved and running (pid {pid}). Running "
+                               f"{' and '.join(bk)}.")
+                else:
+                    stopped = at.stop_runner()
+                    st.success("Saved. Runner stopped — neither switch is on."
+                               if stopped else "Saved. Runner was not running.")
+            if sv2.button("Stop — halt entries", key="auto_halt"):
+                at.KILL_PATH.parent.mkdir(parents=True, exist_ok=True)
+                at.KILL_PATH.write_text("stopped from the UI")
+                at.stop_runner()
+                st.warning("Entries halted and runner stopped. Open positions "
+                           "keep their exchange-side TP/SL.")
+            _armed_panic = sv3.checkbox(
+                "Arm PANIC", key="auto_panic_arm",
+                help="Tick this to unlock the PANIC button. It closes EVERY real "
+                     "position at market immediately — there is no undo.")
+            if sv3.button("PANIC — close all", key="auto_panic",
+                          disabled=not _armed_panic):
+                rep = at.panic_stop()
+                st.error(f"Panic stop. Closed: {rep['closed'] or 'nothing'}."
+                         + (f" FAILED: {rep['failed']}" if rep["failed"]
+                            else " Runner stopped, entries halted."))
+            if at.halted():
+                st.error(f"Kill file present at {at.KILL_PATH} — entries halted. "
+                         f"Save with a switch ticked to clear it.")
+            # The toast disappears after a few seconds; this stays, so the
+            # operator can still see WHAT was written and that it was read back.
+            _sv = st.session_state.get("auto_saved_at")
+            if _sv:
+                _sym = lambda ks: ", ".join(   # noqa: E731
+                    sorted({c.replace("_USDT", "")
+                            for k in ks for c in (strategy_coins.get(k) or [])})
+                ) or "none"
+                st.markdown(
+                    f"<div class='tm-p' style='margin-top:10px;border-color:"
+                    f"{'var(--t-up)' if _sv['ok'] else 'var(--t-dn)'}'>"
+                    f"<div class='row' style='font-size:10px;letter-spacing:.14em;"
+                    f"text-transform:uppercase;color:var(--t-dim)'>"
+                    f"<span>Save &middot; {html.escape(_sv['when'])}</span>"
+                    f"<span class='{'tm-up' if _sv['ok'] else 'tm-dn'}'>"
+                    + ("WRITTEN &amp; VERIFIED ON DISK" if _sv["ok"]
+                       else "FAILED")
+                    + "</span></div>"
+                    + (f"<div class='row'><span>LIVE &middot; real orders</span>"
+                       f"<span class='tm-dn'>{_sym(_sv['live'])}</span></div>"
+                       f"<div class='row'><span>DEMO &middot; simulated</span>"
+                       f"<span class='tm-up'>{_sym(_sv['demo'])}</span></div>"
+                       f"<div class='row sub'><span style='color:var(--t-faint)'>"
+                       f"{html.escape(_sv['path'])}</span>"
+                       f"<span style='color:var(--t-faint)'>{_sv['n']} strategies"
+                       f"</span></div>"
+                       if _sv["ok"] else
+                       f"<div class='row'><span>fields that did not match</span>"
+                       f"<span class='tm-dn'>"
+                       f"{html.escape(', '.join(_sv['diff']))}</span></div>")
+                    + "</div>", unsafe_allow_html=True)
 
 
         # ================= BAND 6 — FEED ================================
@@ -3277,92 +3343,94 @@ def render_auto_trade_tab() -> None:
                                if rows else "<div>no events yet</div>")
                             + "</div>", unsafe_allow_html=True)
 
-        _feed()
+        with st.container(key="tmsec_feed"):
+            _feed()
 
         # ================= BAND 7 — CONNECTION ==========================
-        cst = cred.status()
-        st.markdown(
-            _tm_head("Connection",
-                     "keys connected" if cst["has_credentials"]
-                     else "keys NOT SET"), unsafe_allow_html=True)
-        cn1, cn2 = st.columns([1.4, 1], gap="large")
-        with cn1:
-            # Keys are set once and then never touched, so they live at the
-            # bottom of the terminal, out of the reading path.
-            with st.expander("MEXC API keys", expanded=False):
-                if cst["has_credentials"]:
-                    st.markdown(
-                        f"<div style='color:var(--t-dim);font-size:12px'>"
-                        f"Using existing keys "
-                        f"({html.escape(cst['source'])}) — key "
-                        f"{html.escape(cst['key_fingerprint'])} · secret "
-                        f"{html.escape(cst['secret_fingerprint'])}</div>",
-                        unsafe_allow_html=True)
-                else:
-                    st.warning("No MEXC keys found. Paste a key pair below, "
-                               "or export MEXC_API_KEY / MEXC_API_SECRET "
-                               "before launching.")
-                with st.form("auto_mexc_keys", clear_on_submit=True):
-                    k_in = st.text_input("API key", type="password",
-                                         autocomplete="off")
-                    s_in = st.text_input("API secret", type="password",
-                                         autocomplete="off")
-                    f1, f2 = st.columns([1, 1])
-                    if f1.form_submit_button("Save keys", type="primary"):
-                        try:
-                            cred.save(k_in, s_in)
-                        except ValueError as exc:
-                            st.error(str(exc))
-                        else:
-                            st.success("Saved.")
-                            st.rerun()
-                    if f2.form_submit_button("Forget saved keys"):
-                        st.warning("Removed." if cred.clear()
-                                   else "Nothing stored.")
-                        st.rerun()
-        with cn2:
-            probe_symbol = chosen_coins[0] if chosen_coins else "BTC_USDT"
-            if st.button("Test connect", key="auto_test_connect"):
-                st.session_state["auto_conn_test"] = True
-            if st.session_state.get("auto_conn_test"):
-                # Clear before rendering — a lingering flag would re-issue the
-                # signed probe on every widget interaction (Trade-tab lesson).
-                st.session_state.pop("auto_conn_test", None)
-                with st.spinner("talking to MEXC…"):
-                    rep = fx.preflight(probe_symbol)
-                rows = ""
-                for _lab, ok in (
-                        ("Credentials present", rep.get("credentials")),
-                        ("Read account balance", rep.get("read_assets")),
-                        ("Read open positions", rep.get("read_positions")),
-                        ("Permission to place orders",
-                         rep.get("order_permission")),
-                        ("Rest a stop on MEXC's servers",
-                         rep.get("can_rest_stop"))):
-                    mark = "PASS" if ok else ("FAIL" if ok is False
-                                              else "UNKNOWN")
-                    cls = ("tm-up" if ok else "tm-dn" if ok is False
-                           else "tm-nil")
-                    rows += (f"<div class='row'><span>{_lab}</span>"
-                             f"<span class='{cls}'>{mark}</span></div>")
-                st.markdown(f"<div class='tm-p'>{rows}</div>",
+        with st.container(key="tmsec_connection"):
+            cst = cred.status()
+            st.markdown(
+                _tm_head("Connection",
+                         "keys connected" if cst["has_credentials"]
+                         else "keys NOT SET"), unsafe_allow_html=True)
+            cn1, cn2 = st.columns([1.4, 1], gap="large")
+            with cn1:
+                # Keys are set once and then never touched, so they live at the
+                # bottom of the terminal, out of the reading path.
+                with st.expander("MEXC API keys", expanded=False):
+                    if cst["has_credentials"]:
+                        st.markdown(
+                            f"<div style='color:var(--t-dim);font-size:12px'>"
+                            f"Using existing keys "
+                            f"({html.escape(cst['source'])}) — key "
+                            f"{html.escape(cst['key_fingerprint'])} · secret "
+                            f"{html.escape(cst['secret_fingerprint'])}</div>",
                             unsafe_allow_html=True)
-                if rep.get("ready"):
-                    st.success("Connected — this key can read the account and "
-                               "place orders.")
-                elif rep.get("detail"):
-                    st.error(rep["detail"])
+                    else:
+                        st.warning("No MEXC keys found. Paste a key pair below, "
+                                   "or export MEXC_API_KEY / MEXC_API_SECRET "
+                                   "before launching.")
+                    with st.form("auto_mexc_keys", clear_on_submit=True):
+                        k_in = st.text_input("API key", type="password",
+                                             autocomplete="off")
+                        s_in = st.text_input("API secret", type="password",
+                                             autocomplete="off")
+                        f1, f2 = st.columns([1, 1])
+                        if f1.form_submit_button("Save keys", type="primary"):
+                            try:
+                                cred.save(k_in, s_in)
+                            except ValueError as exc:
+                                st.error(str(exc))
+                            else:
+                                st.success("Saved.")
+                                st.rerun()
+                        if f2.form_submit_button("Forget saved keys"):
+                            st.warning("Removed." if cred.clear()
+                                       else "Nothing stored.")
+                            st.rerun()
+            with cn2:
+                probe_symbol = chosen_coins[0] if chosen_coins else "BTC_USDT"
+                if st.button("Test connect", key="auto_test_connect"):
+                    st.session_state["auto_conn_test"] = True
+                if st.session_state.get("auto_conn_test"):
+                    # Clear before rendering — a lingering flag would re-issue the
+                    # signed probe on every widget interaction (Trade-tab lesson).
+                    st.session_state.pop("auto_conn_test", None)
+                    with st.spinner("talking to MEXC…"):
+                        rep = fx.preflight(probe_symbol)
+                    rows = ""
+                    for _lab, ok in (
+                            ("Credentials present", rep.get("credentials")),
+                            ("Read account balance", rep.get("read_assets")),
+                            ("Read open positions", rep.get("read_positions")),
+                            ("Permission to place orders",
+                             rep.get("order_permission")),
+                            ("Rest a stop on MEXC's servers",
+                             rep.get("can_rest_stop"))):
+                        mark = "PASS" if ok else ("FAIL" if ok is False
+                                                  else "UNKNOWN")
+                        cls = ("tm-up" if ok else "tm-dn" if ok is False
+                               else "tm-nil")
+                        rows += (f"<div class='row'><span>{_lab}</span>"
+                                 f"<span class='{cls}'>{mark}</span></div>")
+                    st.markdown(f"<div class='tm-p'>{rows}</div>",
+                                unsafe_allow_html=True)
+                    if rep.get("ready"):
+                        st.success("Connected — this key can read the account and "
+                                   "place orders.")
+                    elif rep.get("detail"):
+                        st.error(rep["detail"])
 
-        st.caption("This page refreshes itself: the top strip every 10 s, "
-                   "positions every 20 s, the feed every 30 s. The runner "
-                   "itself is unaffected — it wakes seconds after each candle "
-                   "of the finest armed timeframe closes and enters at the "
-                   "live price; open simulated positions are tick-checked "
-                   "every 30 seconds. "
-                   "Auto Trade checked = REAL orders; tick Dry run to "
-                   "simulate. Emergency stop: uncheck + Save, or `touch "
-                   "~/.tradingagents/auto_trade.KILL`. Brackets rest on "
-                   "MEXC's servers when live.")
+            st.caption("This page refreshes itself: the top strip every 10 s, "
+                       "positions every 20 s, the feed every 30 s. The runner "
+                       "itself is unaffected — it wakes seconds after each candle "
+                       "of the finest armed timeframe closes and enters at the "
+                       "live price; open simulated positions are tick-checked "
+                       "every 30 seconds. "
+                       "Auto Trade checked = REAL orders; tick Dry run to "
+                       "simulate. Emergency stop: uncheck + Save, or `touch "
+                       "~/.tradingagents/auto_trade.KILL`. Brackets rest on "
+                       "MEXC's servers when live.")
 
 
 def render_llm_models_tab() -> None:

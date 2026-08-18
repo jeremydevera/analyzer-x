@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 logger = logging.getLogger(__name__)
 
@@ -1384,14 +1385,11 @@ AUTO_STRATEGIES = (
      "target — the cheapest contract on the venue. Same barriers as the "
      "mom15 version it replaces; only the signal differs.",
      ("XAUT_USDT",)),
-    ("mom15_1h_g", "Momentum 15 (1h) · TP 2.4% — GOLD (XAUT/PAXG)",
-     "RE-MEASURED 2026-08-13 on 10,000 fresh 1h bars (14 months), real fees "
-     "+ slippage. XAUT_USDT: martingale +$382 (14/15 green) but FLAT only "
-     "+$48 (9/15 green, halves +8 / +36) — a weak but genuinely two-sided "
-     "edge. PAXG_USDT: martingale +$301 (15/15 green) but FLAT +$1.95 "
-     "(7/15 green, FIRST HALF NEGATIVE −$13) — that headline is the ladder, "
-     "not the signal. Cost is 1% of target on XAUT, 5% on PAXG. Prefer XAUT.",
-     ("XAUT_USDT",)),
+    # mom15_1h_g (GOLD) was REMOVED from this list on 2026-08-19: XAUT now runs
+    # mom6 at SL 1.50 / TP 2.00 (row #7THVJW) and nothing else. Its spec stays
+    # in auto_trader.STRATEGY_SPECS on purpose — a paper SHORT opened under it
+    # is still resting, and the runner needs the spec to exit that position.
+    # Restore the tile in one line if it is ever wanted back.
 )
 
 AUTO_TRADE_SETTINGS = Path(os.path.expanduser("~/.tradingagents/auto_trade.json"))
@@ -1536,16 +1534,112 @@ def _bt_pairs(spec: dict) -> list:
     return sorted(set(pairs))
 
 
+# Interval -> the report module's timeframe label. A strategy running on 4-hour
+# candles gets a 4h page; anything else is shown beside 1h and 4h so the
+# operator can see whether their bar is the one that works.
+_BT_TF_NAME = {"Min15": "15m", "Min30": "30m", "Min60": "1h",
+               "Hour4": "4h", "Day1": "1d"}
+# Generated pages live under ./static so Streamlit serves them at
+# /app/static/... and the link can open in a real second tab. Keep the last
+# few; a year of clicks would otherwise fill the disk with 500KB pages.
+BT_REPORT_DIR = Path(__file__).parent / "static" / "bt"
+BT_REPORT_KEEP = 20
+
+
+def _bt_report_build(key: str, label: str, coins: list[str],
+                     base_margin: float, days: int) -> tuple[str, str] | None:
+    """Run the full grid for these coins and write the standalone page.
+
+    Returns (url, filename), or None if nothing could be tested. Candles are
+    fetched fresh on every click: the operator re-runs this over time, so a
+    cached year would silently answer last week's question.
+    """
+    from tradingagents import auto_trader as at
+    from tradingagents import backtest_report as br
+
+    spec = at.STRATEGY_SPECS.get(key) or {}
+    own = _BT_TF_NAME.get(spec.get("interval"), "1h")
+    tfs = [own] + [t for t in ("1h", "4h") if t != own]
+    sig = _tm_sig(key)
+    sizing = at.sizing_for(_auto_trade_load())
+    dep = [{"coin": c.replace("_USDT", ""), "tf": own, "signal": sig,
+            "th": round(float(spec.get("threshold") or 0) * 100, 3),
+            "sl": round(float(spec.get("sl", 0)) * 100, 3),
+            "tp": round(float(spec.get("tp", 0)) * 100, 3),
+            "sizing": sizing} for c in coins]
+    bar = st.progress(0.0, text="fetching candles…")
+    try:
+        payload = br.run_grid(
+            coins, tfs, base_margin=base_margin, days=days, deployed=dep,
+            progress=lambda m, f: bar.progress(min(1.0, f), text=m))
+    finally:
+        bar.empty()
+    if not payload["rows"]:
+        return None
+    BT_REPORT_DIR.mkdir(parents=True, exist_ok=True)
+    stamp = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+    name = f"{key}-{stamp}.html"
+    # The strategy label often already names its coin; appending it again read
+    # as "PROVE · PROVE".
+    _shown = [c.replace("_USDT", "") for c in dict.fromkeys(coins)]
+    _extra = [c for c in _shown if c not in label]
+    br.write_report(
+        str(BT_REPORT_DIR / name), payload,
+        title=label + (" · " + ", ".join(_extra) if _extra else ""),
+        note=(f"<b>{label}</b> is deployed on "
+              f"{', '.join(_shown)} at "
+              f"SL {float(spec.get('sl', 0)) * 100:.2f}% / "
+              f"TP {float(spec.get('tp', 0)) * 100:.2f}%, {sizing}. That row "
+              f"is marked <b>DEPLOYED</b> and always visible, whatever the "
+              f"Show box says &mdash; every other row is an alternative "
+              f"measured on the same candles."))
+    # Prune: keep the newest few pages, drop the rest.
+    old = sorted(BT_REPORT_DIR.glob("*.html"),
+                 key=lambda p: p.stat().st_mtime, reverse=True)
+    for stale in old[BT_REPORT_KEEP:]:
+        try:
+            stale.unlink()
+        except OSError:
+            pass
+    return f"app/static/bt/{name}", name
+
+
 def _render_strategy_backtest(key: str, label: str, coins: list[str],
                               base_margin: float, days: int = 365) -> None:
-    """Run the strategy's exact live rules over MEXC history, one row per
-    coin. Same engine as the runner: DEEP ladder, 20x, worst-case fills."""
+    """Replay the strategy over MEXC history and hand back the full grid page.
+
+    The page opens in its own tab and carries everything — every signal on the
+    same candles, both sizings, per-row trade logs — so nothing is drawn here.
+    The in-page table below is the FALLBACK, reached only when the page could
+    not be built; a click that produces nothing is worse than a plain table.
+    """
     import pandas as pd
 
     from tradingagents import auto_trader as at
     if not coins:
         st.error("Select at least one contract to backtest.")
         return
+    try:
+        _rep = _bt_report_build(key, label, coins, base_margin, days)
+    except Exception as exc:
+        _rep = None
+        st.warning(f"Full-grid page could not be built ({exc}) — falling back "
+                   f"to the in-page table.")
+    if _rep:
+        _url, _name = _rep
+        st.markdown(
+            f"<a class='bt-open' href='{_url}' target='_blank' "
+            f"rel='noopener'>OPEN FULL GRID &#8599;</a>"
+            f"<span class='bt-open-note'>opened in a new tab &middot; every "
+            f"signal on the same candles &middot; click any row for its "
+            f"trades &middot; {html.escape(_name)}</span>",
+            unsafe_allow_html=True)
+        components.html(
+            "<script>window.open("
+            + json.dumps("/" + _url)
+            + ",'_blank','noopener');</script>", height=0)
+        return
+
     spec = at.STRATEGY_SPECS[key]
     # Ask for a YEAR of bars, not a fixed 2000 — 2000 bars is 333 days on 4h
     # but only 83 days on 1h, which quietly turned a "1 year" backtest into
@@ -1561,6 +1655,7 @@ def _render_strategy_backtest(key: str, label: str, coins: list[str],
     # closed the position first and taken the whole margin.
     from tradingagents.dataflows import mexc_futures as _fx0
     _liq = {}
+    _fund: dict[str, list] = {}
     _live_sizing = at.sizing_for(_auto_trade_load())
     rows = []
     logs: dict[str, dict] = {}
@@ -1587,6 +1682,12 @@ def _render_strategy_backtest(key: str, label: str, coins: list[str],
                 _liq[coin] = _fx0.liquidation_move_pct(coin, at.LEVERAGE)
             except Exception:
                 _liq[coin] = None
+            # Holding cost, charged per settlement (rule 9): a backtest that
+            # only pays entry and exit flatters every trade held overnight.
+            try:
+                _fund[coin] = _fx0.funding_history(coin)
+            except Exception:
+                _fund[coin] = []
             _hi = [float(x) for x in df["High"]]
             _lo = [float(x) for x in df["Low"]]
             _cl = [float(x) for x in df["Close"]]
@@ -1609,7 +1710,8 @@ def _render_strategy_backtest(key: str, label: str, coins: list[str],
                         r = at.backtest_strategy(
                             key, df, base_margin=base_margin, fee=_fee,
                             sizing=_sz, dirs=_dirs, tp=_tp, sl=_sl,
-                            liq_move_pct=_liq.get(coin))
+                            liq_move_pct=_liq.get(coin),
+                            funding=_fund.get(coin))
                         _is_live = (abs(_tp - spec["tp"]) < 1e-9
                                     and abs(_sl - spec["sl"]) < 1e-9
                                     and _sz == _live_sizing
@@ -1739,13 +1841,18 @@ def _render_strategy_backtest(key: str, label: str, coins: list[str],
 TERMINAL_CSS = """
 <style>
 .st-key-term{
-  --t-ground:#07090b; --t-panel:#0d1115; --t-panel2:#121820;
-  --t-rule:#1b232b; --t-rule2:#2c3844;
-  --t-ink:#d3dbe3; --t-dim:#63717f; --t-faint:#3d4854;
-  --t-amber:#f0a848; --t-up:#35d07f; --t-dn:#ff5f56;
+  /* Vercel/Geist dark: near-black ground, one blue accent, tinted semantics.
+     --t-amber keeps its NAME because two dozen rules and several render
+     functions reference it; it now holds the accent blue. */
+  --t-ground:#0a0a0a; --t-panel:#101012; --t-panel2:#161618;
+  --t-rule:#232326; --t-rule2:#2e2e32;
+  --t-ink:#ededed; --t-dim:#8f8f99; --t-faint:#55555e;
+  --t-amber:#52a8ff; --t-up:#0cce6b; --t-dn:#e5484d;
+  --t-r:8px; --t-rc:6px;
   background:var(--t-ground); color:var(--t-ink);
   font-family:var(--font-mono); font-variant-numeric:tabular-nums;
-  padding:18px 20px 22px; border:1px solid var(--t-rule);
+  padding:20px 22px 24px; border:1px solid var(--t-rule);
+  border-radius:calc(var(--t-r) + 2px);
 }
 .st-key-term p, .st-key-term span, .st-key-term div, .st-key-term label{
   font-family:var(--font-mono); }
@@ -1755,6 +1862,23 @@ TERMINAL_CSS = """
 .st-key-term [data-testid="stIconMaterial"],
 .st-key-term .material-symbols-rounded, .st-key-term [class*="material"]{
   font-family:"Material Symbols Rounded" !important; }
+
+/* ---- the full-grid page link: this is a door out of the app, so it reads
+   like a button rather than a line of text ---- */
+.st-key-term a.bt-open{
+  display:inline-block; background:var(--t-ink); color:#0a0a0a;
+  font-weight:700; font-size:11.5px; letter-spacing:.14em;
+  text-transform:uppercase; text-decoration:none; padding:9px 16px;
+  border:1px solid var(--t-ink); border-radius:var(--t-rc);
+  margin:6px 10px 8px 0;
+  transition:transform 160ms cubic-bezier(0.23,1,0.32,1),
+             background 150ms ease, border-color 150ms ease; }
+@media (hover:hover) and (pointer:fine){
+  .st-key-term a.bt-open:hover{ background:#ffffff; border-color:#ffffff; } }
+.st-key-term a.bt-open:active{ transform:scale(0.97); }
+.st-key-term a.bt-open:focus-visible{ outline:2px solid var(--t-ink);
+  outline-offset:2px; }
+.st-key-term .bt-open-note{ color:var(--t-faint); font-size:11px; }
 
 /* ---- band header: amber tick, tracked label, rule to the right edge ---- */
 .tm-h{ display:flex; align-items:center; gap:10px; margin:22px 0 8px; }
@@ -1767,9 +1891,12 @@ TERMINAL_CSS = """
   text-transform:uppercase; white-space:nowrap; }
 
 /* ---- the readout ribbon: cells split by hairlines, no cards ---- */
-.tm-rib{ display:flex; border:1px solid var(--t-rule2); background:var(--t-panel); }
-.tm-rib > div{ flex:1; padding:10px 14px; border-left:1px solid var(--t-rule); }
-.tm-rib > div:first-child{ border-left:0; }
+.tm-rib{ display:flex; gap:10px; }
+.tm-rib > div{ flex:1; padding:12px 14px; background:var(--t-panel);
+  border:1px solid var(--t-rule); border-radius:var(--t-r);
+  transition:border-color 150ms ease; }
+@media (hover:hover) and (pointer:fine){
+  .tm-rib > div:hover{ border-color:var(--t-rule2); } }
 .tm-rib .l{ font-size:9.5px; letter-spacing:.16em; text-transform:uppercase;
   color:var(--t-dim); margin-bottom:3px; white-space:nowrap; }
 .tm-rib .n{ font-size:23px; font-weight:600; letter-spacing:-.02em;
@@ -1836,33 +1963,47 @@ TERMINAL_CSS = """
 /* Each book is a hard-bordered box with a solid badge, because two ruled
    grids stacked together read as one table — and "real money or simulator?"
    is the one thing this section must never leave ambiguous. */
-.tm-badge{ display:inline-block; padding:3px 10px; margin:0 0 8px;
-  font-size:10px; letter-spacing:.16em; font-weight:700; color:#07090b; }
-.st-key-pos_real, .st-key-pos_paper{ border-radius:0 !important;
+.tm-badge{ display:inline-block; padding:3px 11px; margin:0 0 8px;
+  font-size:10px; letter-spacing:.14em; font-weight:700;
+  border-radius:9999px; border:1px solid transparent; }
+.st-key-pos_real, .st-key-pos_paper{ border-radius:var(--t-r) !important;
   padding:12px 14px 6px !important; margin-bottom:14px !important; }
-.st-key-pos_real{ border:1px solid var(--t-dn) !important;
+.st-key-pos_real{ border:1px solid rgba(229,72,77,.55) !important;
   border-left:4px solid var(--t-dn) !important;
-  background:rgba(255,95,86,.03) !important; }
-.st-key-pos_paper{ border:1px solid var(--t-up) !important;
+  background:rgba(229,72,77,.04) !important; }
+.st-key-pos_paper{ border:1px solid rgba(12,206,107,.45) !important;
   border-left:4px solid var(--t-up) !important;
-  background:rgba(53,208,127,.03) !important; }
-.st-key-pos_real .tm-badge{ background:var(--t-dn); }
-.st-key-pos_paper .tm-badge{ background:var(--t-up); }
+  background:rgba(12,206,107,.04) !important; }
+.st-key-pos_real .tm-badge{ background:rgba(229,72,77,.15);
+  color:#ff8589; border-color:rgba(229,72,77,.5); }
+.st-key-pos_paper .tm-badge{ background:rgba(12,206,107,.13);
+  color:#3fe08f; border-color:rgba(12,206,107,.45); }
 
 /* The close button sits in its own column beside the row. */
 .st-key-term [data-testid="stColumn"] .stButton button{ padding:2px 8px !important;
   font-size:10px !important; letter-spacing:.06em; width:100%; }
 
+/* Trade-history tabs, in the band's own palette. */
+.st-key-term [data-testid="stTabs"] button{ font-family:var(--font-mono) !important;
+  font-size:11px !important; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--t-dim) !important; transition:color 150ms ease !important; }
+.st-key-term [data-testid="stTabs"] button[aria-selected="true"]{
+  color:var(--t-amber) !important; }
+.st-key-term [data-testid="stTabs"] [data-baseweb="tab-highlight"]{
+  background:var(--t-amber) !important; }
+.st-key-term [data-testid="stTabs"] [data-baseweb="tab-border"]{
+  background:var(--t-rule2) !important; }
+
 /* ---- ledger panels: ruled rows, totals set off by a heavy rule ---- */
-.tm-p{ border:1px solid var(--t-rule2); background:var(--t-panel);
-  padding:11px 13px; font-size:12px; line-height:1.85; }
+.tm-p{ border:1px solid var(--t-rule); background:var(--t-panel);
+  border-radius:var(--t-r); padding:12px 14px; font-size:12px; line-height:1.85; }
 .tm-p .row{ display:flex; justify-content:space-between; gap:8px; }
 .tm-p .sub{ border-top:1px solid var(--t-rule2); margin-top:5px; padding-top:5px; }
 .tm-p .tot{ border-top:2px solid var(--t-rule2); margin-top:4px; padding-top:5px;
   font-weight:700; }
 .tm-big{ font-size:34px; font-weight:700; line-height:1.1; letter-spacing:-.03em; }
 .tm-feed{ max-height:230px; overflow-y:auto; border:1px solid var(--t-rule);
-  background:var(--t-panel); padding:8px 11px; font-size:11.5px; line-height:1.65;
+  background:var(--t-panel); border-radius:var(--t-r); padding:8px 11px; font-size:11.5px; line-height:1.65;
   color:var(--t-dim);
   /* Oldest at the top, newest at the bottom, scrolled to the newest — the
      way a terminal reads. column-reverse over a reversed DOM is the only way
@@ -1905,14 +2046,20 @@ TERMINAL_CSS = """
   border-color:var(--t-rule2) !important; }
 .st-key-term label[data-baseweb="checkbox"]:has(input:checked) > span:first-child{
   background:var(--t-up) !important; border-color:var(--t-up) !important; }
+/* Radio dots come from the app theme's orange primary; inside this band the
+   accent is blue, and a second unexplained accent color reads as a state. */
+.st-key-term label[data-baseweb="radio"] > div:first-child{
+  border-color:var(--t-rule2) !important; background:var(--t-panel2) !important; }
+.st-key-term label[data-baseweb="radio"]:has(input:checked) > div:first-child{
+  background:var(--t-amber) !important; border-color:var(--t-amber) !important; }
 .st-key-term input, .st-key-term textarea{ background:var(--t-panel2) !important;
   color:var(--t-ink) !important; border-color:var(--t-rule2) !important;
-  border-radius:0 !important; }
+  border-radius:var(--t-rc) !important; }
 .st-key-term [data-baseweb="select"] > div{ background:var(--t-panel2) !important;
-  border-color:var(--t-rule2) !important; border-radius:0 !important;
+  border-color:var(--t-rule2) !important; border-radius:var(--t-rc) !important;
   color:var(--t-ink) !important; }
 .st-key-term [data-baseweb="tag"]{ background:var(--t-panel2) !important;
-  color:var(--t-amber) !important; border-radius:0 !important; }
+  color:var(--t-amber) !important; border-radius:var(--t-rc) !important; }
 /* A multiselect's search box is a 16px-wide input that BaseWeb parks UNDER
    the first tag and keeps transparent. Giving every input in the band an
    opaque panel background painted it over the tag's first glyph, so
@@ -1921,8 +2068,17 @@ TERMINAL_CSS = """
 .st-key-term [data-baseweb="select"] input{ background:transparent !important; }
 .st-key-term .stButton button{ background:var(--t-panel2) !important;
   color:var(--t-ink) !important; border:1px solid var(--t-rule2) !important;
-  border-radius:0 !important; font-family:var(--font-mono) !important;
-  font-size:11.5px !important; letter-spacing:.1em; text-transform:uppercase; }
+  border-radius:var(--t-rc) !important; font-family:var(--font-mono) !important;
+  font-size:11.5px !important; letter-spacing:.1em; text-transform:uppercase;
+  transition:transform 160ms cubic-bezier(0.23,1,0.32,1),
+             border-color 150ms ease, background 150ms ease !important;
+  box-shadow:none !important; }
+@media (hover:hover) and (pointer:fine){
+  .st-key-term .stButton button:hover{ border-color:#3f3f46 !important;
+    background:#1c1c1f !important; } }
+.st-key-term .stButton button:active{ transform:scale(0.97); }
+.st-key-term .stButton button:focus-visible{
+  outline:2px solid var(--t-amber) !important; outline-offset:2px; }
 .st-key-term .stButton button:hover{ border-color:var(--t-amber) !important;
   color:var(--t-amber) !important; }
 .st-key-term .stButton button[kind="primary"]{ background:var(--t-amber) !important;
@@ -2009,10 +2165,12 @@ def _parse_contracts(text: str, known: set | None = None) -> tuple:
 _TM_POS = (
     # `state` and `vol` are still carried on the row — the open/flat filter
     # and the close order both need them — they are simply not displayed.
+    # `total $` and `realised $` were removed: they carried this contract's
+    # LIFETIME closed PnL beside a single open trade's unrealised, so one row
+    # mixed two timescales. The lifetime figures live in the ALL TIME table
+    # below, where they are labelled as such.
     ("coin", "coin", 1.1, "l", "text"),
-    ("total $", "total $", 1.4, "r", "money"),
-    ("realised $", "realised $", 1.8, "r", "money"),
-    ("open $", "unreal $", 1.5, "r", "money"),
+    ("open $", "unreal $", 1.6, "r", "money"),
     ("prog", "to TP", 2.6, "l", "html"),
     ("tp_pct", "TP % ($)", 2.4, "r", "html"),
     ("sl_pct", "SL % ($)", 2.4, "r", "html"),
@@ -2410,10 +2568,7 @@ def render_auto_trade_tab() -> None:
                     "trades": sum(int(r["trades"]) for r in _rows),
                     "W": sum(int(r["W"]) for r in _rows),
                     "L": sum(int(r["L"]) for r in _rows),
-                    "open $": round(sum(r["open $"] or 0 for r in _rows), 2),
-                    "realised $": round(sum(r["realised $"] or 0
-                                            for r in _rows), 2),
-                    "total $": round(sum(r["total $"] or 0 for r in _rows), 2)}
+                    "open $": round(sum(r["open $"] or 0 for r in _rows), 2)}
                 _tc, _ = st.columns([10, 1.15], gap="small")
                 _tc.markdown(
                     f"<div class='tm-pt tm-pt-t'>{_tm_pos_row(_sum)}</div>",
@@ -2460,38 +2615,119 @@ def render_auto_trade_tab() -> None:
                         st.session_state.pop("close_pending", None)
                         st.rerun(scope="fragment")
 
-            # ---- what the removed BOOK band used to carry, as tables.
-            # Today's closes are itemised because a net figure hides the
-            # trades inside it: +2.71 and -1.66 net to +1.05, which is
-            # indistinguishable from one flat trade.
-            _lt = time.localtime()
-            _mid = time.mktime((_lt.tm_year, _lt.tm_mon, _lt.tm_mday,
-                                0, 0, 0, 0, 0, -1))
-            _today = [e for e in at.ledger_since(_mid)
-                      if e.get("action") == "exit" and not e.get("dry_run")]
-            _trows = [{
-                "when": _dt.datetime.fromtimestamp(
-                    float(e.get("ts") or 0)).strftime("%H:%M"),
-                "coin": str(e.get("symbol", "?")).replace("_USDT", ""),
-                "strategy": e.get("strategy") or "—",
-                "why": (e.get("why") or "—"),
-                "PROFIT $": round(float(e.get("pnl_est") or 0), 2),
-            } for e in sorted(_today, key=lambda x: -float(x.get("ts") or 0))]
-            _tcols = (("when", "time", 1.0, "l", "text"),
-                      ("coin", "coin", 1.2, "l", "text"),
-                      ("strategy", "strategy", 2.0, "l", "text"),
-                      ("why", "closed by", 2.0, "l", "text"),
-                      ("PROFIT $", "PROFIT $", 1.3, "r", "money"))
-            _ttot = {"when": "TOTAL", "coin": "", "strategy": "",
-                     "why": f"{len(_trows)} closed",
-                     "PROFIT $": round(sum(r["PROFIT $"] for r in _trows), 2)}
+            # ---- TRADE HISTORY. Its own section, LIVE and DEMO on
+            # separate tabs, paginated 5 rows at a time. Every closed trade,
+            # not just today's — a net figure hides the trades inside it, and
+            # a wall of 200 rows hides them just as effectively.
             st.markdown(
-                "<div style='font-size:10px;letter-spacing:.14em;"
-                "text-transform:uppercase;color:var(--t-dim);"
-                "margin:16px 0 4px'>Today &middot; real closes</div>"
-                + _tm_table(_tcols, _trows, _ttot if _trows else None,
-                            "no trades closed today"),
+                _tm_head("Trade history", "every closed trade"),
                 unsafe_allow_html=True)
+            _hcols = (("when", "closed", 1.6, "l", "text"),
+                      ("coin", "coin", 1.1, "l", "text"),
+                      ("side", "side", 0.9, "l", "text"),
+                      ("strategy", "strategy", 1.9, "l", "text"),
+                      ("why", "closed by", 1.9, "l", "text"),
+                      ("PROFIT $", "PROFIT $", 1.3, "r", "money"),
+                      ("run", "running $", 1.3, "r", "money"))
+            _tl, _td = st.tabs(["LIVE — real money", "DEMO — simulated"])
+            for _tab, _dry, _tag in ((_tl, False, "live"), (_td, True, "demo")):
+                with _tab:
+                    _ex = [e for e in at.ledger_tail(100000)
+                           if e.get("action") == "exit"
+                           and bool(e.get("dry_run")) is _dry]
+                    _ex.sort(key=lambda x: float(x.get("ts") or 0))
+                    _run = 0.0
+                    _all = []
+                    for _e in _ex:
+                        _p = round(float(_e.get("pnl_est") or 0), 2)
+                        _run = round(_run + _p, 2)
+                        _all.append({
+                            "when": _dt.datetime.fromtimestamp(
+                                float(_e.get("ts") or 0)).strftime("%m-%d %H:%M"),
+                            "coin": str(_e.get("symbol", "?")).replace("_USDT", ""),
+                            "side": (_e.get("side") or "—"),
+                            "strategy": _e.get("strategy") or "—",
+                            "why": (_e.get("why") or "—"),
+                            "PROFIT $": _p, "run": _run})
+                    _all.reverse()          # newest first
+                    # ---- per-month summary. The paginated list shows five
+                    # trades; this is the overview it cannot give.
+                    _mo = {}
+                    for _e in _ex:
+                        _k = _dt.datetime.fromtimestamp(
+                            float(_e.get("ts") or 0)).strftime("%Y-%m")
+                        _p = round(float(_e.get("pnl_est") or 0), 2)
+                        _m = _mo.setdefault(_k, {"month": _k, "trades": 0,
+                                                 "W": 0, "L": 0,
+                                                 "PROFIT $": 0.0})
+                        _m["trades"] += 1
+                        _m["W" if _p > 0 else "L"] += 1
+                        _m["PROFIT $"] = round(_m["PROFIT $"] + _p, 2)
+                    _mrows = sorted(_mo.values(), key=lambda x: x["month"],
+                                    reverse=True)
+                    for _m in _mrows:
+                        _m["win %"] = round(100 * _m["W"] / _m["trades"], 1)
+                    _mcols = (("month", "month", 1.4, "l", "text"),
+                              ("trades", "trades", 1.0, "r", "num"),
+                              ("W", "W", 0.8, "r", "num"),
+                              ("L", "L", 0.8, "r", "num"),
+                              ("win %", "win %", 1.0, "r", "num"),
+                              ("PROFIT $", "PROFIT $", 1.4, "r", "money"))
+                    _mtot = {"month": "TOTAL",
+                             "trades": sum(m["trades"] for m in _mrows),
+                             "W": sum(m["W"] for m in _mrows),
+                             "L": sum(m["L"] for m in _mrows),
+                             "win %": None,
+                             "PROFIT $": round(sum(m["PROFIT $"]
+                                                   for m in _mrows), 2)}
+                    st.markdown(
+                        "<div style='font-size:10px;letter-spacing:.14em;"
+                        "text-transform:uppercase;color:var(--t-dim);"
+                        "margin:2px 0 4px'>Profit per month</div>"
+                        + _tm_table(_mcols, _mrows,
+                                    _mtot if _mrows else None,
+                                    "no closed trades yet"),
+                        unsafe_allow_html=True)
+                    st.markdown(
+                        "<div style='font-size:10px;letter-spacing:.14em;"
+                        "text-transform:uppercase;color:var(--t-dim);"
+                        "margin:14px 0 4px'>Every trade</div>",
+                        unsafe_allow_html=True)
+                    _per = 5
+                    _pages = max(1, -(-len(_all) // _per))
+                    _pk = f"hist_page_{_tag}"
+                    _pg = int(st.session_state.get(_pk, 1))
+                    _pg = max(1, min(_pg, _pages))
+                    _slice = _all[(_pg - 1) * _per:_pg * _per]
+                    # The TOTAL is over EVERY trade, not the five on screen —
+                    # a footer that summed the page would change as you paged.
+                    _wins = sum(1 for r in _all if r["PROFIT $"] > 0)
+                    _tot = {"when": "TOTAL", "coin": "", "side": "",
+                            "strategy": f"{len(_all)} trades",
+                            "why": f"{_wins}W / {len(_all) - _wins}L",
+                            "PROFIT $": round(sum(r["PROFIT $"] for r in _all), 2),
+                            "run": None}
+                    st.markdown(
+                        _tm_table(_hcols, _slice, _tot if _all else None,
+                                  "no closed trades yet"),
+                        unsafe_allow_html=True)
+                    if _pages > 1:
+                        _n1, _n2, _n3 = st.columns([1, 2, 1])
+                        if _n1.button("◀ newer", key=f"{_pk}_prev",
+                                      disabled=_pg <= 1):
+                            st.session_state[_pk] = _pg - 1
+                            st.rerun(scope="fragment")
+                        _n2.markdown(
+                            f"<div style='text-align:center;font-size:11px;"
+                            f"color:var(--t-dim);padding-top:6px'>page {_pg} "
+                            f"of {_pages} &middot; showing "
+                            f"{(_pg-1)*_per+1}-{min(_pg*_per, len(_all))} of "
+                            f"{len(_all)}</div>", unsafe_allow_html=True)
+                        if _n3.button("older ▶", key=f"{_pk}_next",
+                                      disabled=_pg >= _pages):
+                            st.session_state[_pk] = _pg + 1
+                            st.rerun(scope="fragment")
+
 
             # All-time per contract. Realised comes from this book's ledger,
             # open from the exchange, and the two are added — never mixed.

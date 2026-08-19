@@ -30,6 +30,10 @@ FILES = {
                  "spec": STATE_DIR / "db_backtest.spec.json",
                  "pid": STATE_DIR / "db_backtest.pid",
                  "stop": STATE_DIR / "db_backtest.STOP"},
+    "btupdate": {"progress": STATE_DIR / "db_btupdate.json",
+                 "spec": STATE_DIR / "db_btupdate.spec.json",
+                 "pid": STATE_DIR / "db_btupdate.pid",
+                 "stop": STATE_DIR / "db_btupdate.STOP"},
 }
 
 # Where the finished backtest report page goes — the same folder the app's
@@ -150,7 +154,9 @@ def result_rows(payload: dict, days: int, signals_count: int) -> list[dict]:
         "code_version": f"signals{signals_count}",
         "profit": r["profit"], "trades": r["trades"], "wins": r["wins"],
         "losses": r["losses"], "win_rate": r["winrate"],
-        "worst_streak": r["dd"], "worst_streak_len": None,
+        # worst_streak is the LOSING RUN summed, not the drawdown — two
+        # different numbers, and the column is named for the first
+        "worst_streak": r.get("wstreak"), "worst_streak_len": r.get("wstreakn"),
         "months_green": r.get("green"), "months_total": r.get("months"),
         "days": r.get("days"), "max_dd": r.get("dd"),
         "funding": r.get("funding"),
@@ -204,6 +210,59 @@ def _run_backtest(spec: dict) -> None:
                            "report": name, "finished": int(time.time())})
 
 
+def _run_btupdate(spec: dict) -> None:
+    """CONTINUE stored backtests over new bars only — never from scratch.
+
+    Uses the sweep's per-combination resume state (`run_pair`): each
+    combination picks up with its ladder rung, running totals and any open
+    position from where the last run stopped, and walks only the bars that
+    printed since. A stopped update keeps every pair already continued."""
+    from tradingagents import backtest_report as br
+    from tradingagents import market_sweep as msw
+    from tradingagents.dataflows import market_db as mdb
+    f = FILES["btupdate"]
+    pairs = [(c, tf) for c in spec["coins"] for tf in spec["tfs"]]
+    days = int(spec.get("days") or 365)
+    base = float(spec.get("base") or 5.0)
+    rows, new_bars, stopped, i, notes = [], 0, False, 0, []
+    for i, (sym, tf) in enumerate(pairs):
+        if _stopping("btupdate"):
+            stopped = True
+            break
+        _write(f["progress"], {"running": True, "done": i,
+                               "total": len(pairs), "now": f"{sym} {tf}",
+                               "rows": len(rows), "new_bars": new_bars})
+        try:
+            r = msw.run_pair(sym, tf, base_margin=base, days=days,
+                             thresholds=3)
+        except Exception as exc:
+            notes.append(f"{sym} {tf}: {str(exc)[:80]}")
+            continue
+        rows += r.get("rows") or []
+        new_bars += int(r.get("new_bars") or 0)
+        if r.get("why"):
+            notes.append(f"{sym} {tf}: {r['why']}")
+    saved, save_err = 0, ""
+    if rows:
+        for r in rows:                     # the sweep's rows carry no id
+            r.setdefault("id", br.row_code(
+                r["coin"], r["tf"], r["signal"], r.get("th") or 0.0,
+                r["sl"], r["tp"], r["sizing"]))
+        try:
+            mdb.ensure_schema()
+            saved = mdb.save_results(
+                result_rows({"rows": rows}, days, len(br.SIGNALS)))
+        except Exception as exc:
+            save_err = str(exc)[:160]
+    _write(f["progress"], {
+        "running": False, "done": i if stopped else len(pairs),
+        "total": len(pairs), "rows": len(rows), "saved": saved,
+        "save_error": save_err, "new_bars": new_bars, "stopped": stopped,
+        "finished": int(time.time()),
+        "note": ("stopped by you — every pair already continued is kept; " if stopped else "")
+                + ("; ".join(notes[:3]))})
+
+
 def main(argv: list[str]) -> int:
     kind = argv[0]
     spec = _read(FILES[kind]["spec"])
@@ -211,6 +270,8 @@ def main(argv: list[str]) -> int:
         _run_download(spec)
     elif kind == "backtest":
         _run_backtest(spec)
+    elif kind == "btupdate":
+        _run_btupdate(spec)
     else:
         print(f"unknown job: {kind}", file=sys.stderr)
         return 2

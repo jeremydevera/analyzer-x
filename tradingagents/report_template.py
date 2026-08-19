@@ -133,10 +133,10 @@ tbody tr.rec td{font-weight:600}
   <div><label for="fprof">Min profit total $</label><input id="fprof" type="number" step="10" placeholder="any"></div>
   <div><label for="fgreen">Min months green</label><input id="fgreen" type="number" min="0" max="80" step="1" placeholder="any"></div>
   <div><label for="fdip">Max worst dip $</label><input id="fdip" type="number" min="0" step="5" placeholder="any"></div>
-  <div><label for="fmon" title="re-runs every row over only the last N months of candles">Last N months</label><input id="fmon" type="number" min="1" max="120" step="1" placeholder="all"></div>
+  <div><label for="fmon" title="re-runs every row over only the last N months or days of candles">Last N</label><input id="fmon" type="number" min="1" max="365" step="1" placeholder="all" style="width:70px"><select id="fmonu" title="window unit" style="font:inherit;font-size:14px;background:var(--panel2);color:var(--ink);border:1px solid var(--rule2);padding:6px 4px"><option value="m">months</option><option value="d">days</option></select></div>
   <div><label for="fid">Find row ID</label><input id="fid" type="text" placeholder="e.g. K4M7QP2X"></div>
   <div style="align-self:end"><button id="freset" type="button">clear filters</button></div>
-  <div class="hint">LAST N MONTHS re-runs every row over just that slice of candles &mdash; profit, trades, wins, losses and win rate all become the window's own, not the year's.
+  <div class="hint">LAST N (months or days) re-runs every row over just that slice of candles &mdash; profit, trades, wins, losses and win rate all become the window's own, not the year's.
     The DEPLOYED row always shows, whatever the Show box says.
     MIN MONTHS GREEN counts months, exactly as the GREEN column prints them: set 10 and a 9/12 row is gone.
     GREEN % is the same thing as a share, for sorting.
@@ -277,16 +277,34 @@ function recommend(){
    re-runs the strategy over only that slice of candles, so profit, trades,
    wins, losses, win rate, the streak and the dip are all the window's own. */
 let WIN_MONTHS=0;
+/* 'm' or 'd' — the operator runs this DAILY to see what is working right now,
+   and "last 3 days" is a different question from "last 3 months". Same
+   re-simulation either way; only the cut moves. */
+let WIN_UNIT='m';
+const winWord=()=>WIN_MONTHS+' '+(WIN_UNIT==='d'?'day':'month')+(WIN_MONTHS===1?'':'s');
+function winCut(last){
+  const cut=new Date(last.getTime());
+  if(WIN_UNIT==='d') cut.setUTCDate(cut.getUTCDate()-WIN_MONTHS);
+  else cut.setUTCMonth(cut.getUTCMonth()-WIN_MONTHS);
+  return cut;}
 /* A 3-month window starting mid-May reaches into 4 calendar months, so that is
    how many columns it gets: the operator asked for "3 months -> show 4 months",
-   and no empty ones. */
-const monthsShown=()=>WIN_MONTHS?D.months.slice(0,WIN_MONTHS+1):D.months;
+   and no empty ones. A days window derives its month count from its own cut. */
+const monthsShown=()=>{
+  if(!WIN_MONTHS) return D.months;
+  if(WIN_UNIT!=='d') return D.months.slice(0,WIN_MONTHS+1);
+  const newest=D.months[0]; if(!newest) return D.months;
+  const last=new Date(newest+'-28T00:00:00Z');
+  const cut=winCut(last);
+  const span=(last.getUTCFullYear()*12+last.getUTCMonth())
+            -(cut.getUTCFullYear()*12+cut.getUTCMonth())+1;
+  return D.months.slice(0,Math.max(1,span));};
 const winVal=()=>{const q=parseInt((document.getElementById('fmon')||{}).value,10);
   return Number.isFinite(q)&&q>0?q:0;};
 function winStart(t){
   if(!WIN_MONTHS||!t.length) return {i:0,from:t[0]};
   const last=new Date(t[t.length-1].replace(' ','T')+':00Z');
-  const cut=new Date(last.getTime()); cut.setUTCMonth(cut.getUTCMonth()-WIN_MONTHS);
+  const cut=winCut(last);
   const p=x=>String(x).padStart(2,'0');
   const key=`${cut.getUTCFullYear()}-${p(cut.getUTCMonth()+1)}-${p(cut.getUTCDate())} ${p(cut.getUTCHours())}:${p(cut.getUTCMinutes())}`;
   let lo=0,hi=t.length-1;                       // timestamps sort lexically
@@ -483,7 +501,7 @@ function render(){
         :u==='mo'?lab+' '+q+' month'+(q===1?'':'s'):lab+' '+q+u):null;}).filter(Boolean);
   const wSpan=(()=>{ if(!WIN_MONTHS||!list.length) return '';
     const s0=cache&&cache.get(rows.find(r=>r.id===list[0].id));
-    return s0 ? '  \u00b7  window: last '+WIN_MONTHS+' month'+(WIN_MONTHS===1?'':'s')
+    return s0 ? '  \u00b7  window: last '+winWord()
                 +' ('+String(s0.from).slice(0,10)+' \u2192 '+String(s0.to).slice(0,10)+')' : '';})();
   const gq=parseFloat(document.getElementById('fgreen').value);
   const maxMo=Math.max(0,...rows.map(r=>r.months||0));
@@ -614,7 +632,7 @@ function detail(){
    <div style="padding:10px 14px;border-bottom:1px solid var(--rule2);display:flex;
         justify-content:space-between;gap:10px;flex-wrap:wrap">
      <span style="color:var(--amber);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;font-weight:700">
-       Past trades &middot; ${res.log.length}${WIN_MONTHS?' &middot; last '+WIN_MONTHS+' month'+(WIN_MONTHS===1?'':'s')+' only':''}</span>
+       Past trades &middot; ${res.log.length}${WIN_MONTHS?' &middot; last '+winWord()+' only':''}</span>
      <span class="nil" style="font-size:11px">${res.log.length?res.log[0].open+' → '+res.log[res.log.length-1].close:''}
        &middot; median hold ${(()=>{const hs=res.log.map(t=>(new Date(t.close)-new Date(t.open))/3600000).sort((a,b)=>a-b);
          const m=hs.length?hs[Math.floor(hs.length/2)]:0; return m>=24?(m/24).toFixed(1)+'d':m.toFixed(1)+'h';})()}</span>
@@ -657,6 +675,9 @@ document.getElementById('wallet').addEventListener('input',()=>{recommend();rend
 document.getElementById('base').addEventListener('input',()=>{_moCache.clear();rescale();scoreAll();render();detail();});
 document.getElementById('fmon').addEventListener('input',()=>{
   WIN_MONTHS=winVal(); _moCache.clear(); rescale(); scoreAll(); render(); detail();});
+document.getElementById('fmonu').addEventListener('change',()=>{
+  WIN_UNIT=document.getElementById('fmonu').value; WIN_MONTHS=winVal();
+  _moCache.clear(); rescale(); scoreAll(); render(); detail();});
 document.getElementById('thHdr').textContent=D.cur+' $';
 /* One column per month, oldest on the right. EVERY row carries every month
    (payload stores them as an array aligned to D.months), so a blank cell means

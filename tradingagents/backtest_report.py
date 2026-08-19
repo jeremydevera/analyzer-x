@@ -369,6 +369,26 @@ def run_grid(coins: Sequence[str], tfs: Sequence[str], *,
             n = len(df)
             half = n // 2
             pairs = pairs_for(tf, deployed)
+            # Once per frame, for the fast path: funding as cumulative-rate
+            # arrays, and each bar's month resolved to an index so no trade
+            # ever formats a timestamp.
+            _fms, _frate = [], []
+            for _f in sorted(fund or [], key=lambda d: d["settle_ms"]):
+                _fms.append(int(_f["settle_ms"]))
+                _frate.append(float(_f["rate"]))
+            _fcum = [0.0]
+            for _r_ in _frate:
+                _fcum.append(_fcum[-1] + _r_)
+            _mo_codes = df["Date"].to_numpy().astype("datetime64[M]")
+            _mo_labels: list[str] = []
+            _mo_seen: dict = {}
+            _mo_idx: list[int] = []
+            for _v in _mo_codes:
+                _k = _mo_seen.get(_v)
+                if _k is None:
+                    _k = _mo_seen[_v] = len(_mo_labels)
+                    _mo_labels.append(str(_v)[:7])
+                _mo_idx.append(_k)
             for sig in signals:
                 ths = (sorted(set(THRESHOLDS[tf])
                               | extra_th.get((tf, sig), set()))
@@ -391,20 +411,51 @@ def run_grid(coins: Sequence[str], tfs: Sequence[str], *,
                     thp = 0.0 if th is None else round(th * 100, 3)
                     series[skey]["d"][f"{sig}|{thp:g}"] = "".join(
                         "u" if d > 0 else "d" if d < 0 else "n" for d in dirs)
-                    for (sl, tp), sz, pl in itertools.product(
-                            pairs, ("flat", "martingale"), plans):
-                        # One position, several exits. `plans` defaults to
-                        # (None,) — the single exit every existing row uses —
-                        # so a page built without asking for splits reproduces
-                        # exactly what it produced before.
-                        _slx = slices_for(pl, sl, tp)
-                        try:
-                            r = at.backtest_strategy(
-                                key, df, base_margin, fee=fee, sizing=sz,
-                                dirs=dirs, tp=tp, sl=sl, liq_move_pct=liq,
-                                funding=fund, slices=_slx)
-                        except Exception:
-                            continue
+                    import numpy as _np
+
+                    from tradingagents import fast_grid as _fg
+                    _dirs_idx = [int(x) for x in _np.flatnonzero(
+                        _np.asarray(dirs, dtype=_np.int8))]
+                    for (sl, tp) in pairs:
+                        # ONE walk per barrier pair: entries and exits do not
+                        # depend on sizing, the first half is a prefix of the
+                        # full run, and only the second half needs its own
+                        # walk (it starts flat at the boundary). Six engine
+                        # runs become two walks + scaling — pinned to the
+                        # cent against the engine in tests/test_fast_grid.py.
+                        _fastr = None
+                        if any(_pl is None for _pl in plans):
+                            try:
+                                _fastr = _fg.combo_six(
+                                    _dirs_idx, dirs, op, hi, lo, cl,
+                                    tp=tp, sl=sl,
+                                    liq=(None if liq is None
+                                         else abs(liq) / 100.0),
+                                    half=half, base=base_margin,
+                                    lev=at.LEVERAGE, fee=fee + 0.0003,
+                                    ladder=at.ladder_margin,
+                                    mo_idx=_mo_idx, mo_labels=_mo_labels,
+                                    f_ms=_fms, f_cum=_fcum, bar_ms=_ms)
+                            except Exception:
+                                _fastr = None
+                        for sz, pl in itertools.product(
+                                ("flat", "martingale"), plans):
+                            # One position, several exits. `plans` defaults to
+                            # (None,) — the single exit every existing row
+                            # uses — so a page built without asking for splits
+                            # reproduces exactly what it produced before.
+                            _slx = slices_for(pl, sl, tp)
+                            if _slx is None and _fastr is not None:
+                                r = _fastr[sz]["full"]
+                            else:
+                                try:
+                                    r = at.backtest_strategy(
+                                        key, df, base_margin, fee=fee,
+                                        sizing=sz, dirs=dirs, tp=tp, sl=sl,
+                                        liq_move_pct=liq, funding=fund,
+                                        slices=_slx)
+                                except Exception:
+                                    continue
                         # The DEPLOYED row is never dropped, whatever its
                         # trade count. Rule 21 says the page must contain the
                         # exact combination that is running, and the trade
@@ -413,54 +464,66 @@ def run_grid(coins: Sequence[str], tfs: Sequence[str], *,
                         # 30 trades in the window, so the page badged NOTHING
                         # as deployed and the operator could not find their own
                         # strategy in their own results.
-                        if r["trades"] < min_trades and not _is_deployed(
-                                show, tf, sig, thp, sl * 100, tp * 100, sz,
-                                deployed, pl):
-                            continue
-                        a = at.backtest_strategy(
-                            key, df.iloc[:half], base_margin, fee=fee,
-                            sizing=sz, dirs=dirs[:half], tp=tp, sl=sl,
-                            liq_move_pct=liq, funding=fund, slices=_slx)
-                        b = at.backtest_strategy(
-                            key, df.iloc[half:], base_margin, fee=fee,
-                            sizing=sz, dirs=dirs[half:], tp=tp, sl=sl,
-                            liq_move_pct=liq, funding=fund, slices=_slx)
-                        ratio = None if rt is None else rt / tp
-                        rows.append({
-                            "coin": show, "tf": tf, "signal": sig,
-                            "th": thp, "sl": round(sl * 100, 3),
-                            "tp": round(tp * 100, 3), "rr": round(tp / sl, 2),
-                            "sizing": sz, "lev": at.LEVERAGE,
-                            # None on a single-exit row, so the field is on
-                            # EVERY row rather than only the split ones
-                            # (rule F: never drop a field from a subset).
-                            "plan": pl,
-                            "exits": 1 if not _slx else len(_slx),
-                            "base": base_margin,
-                            "notional": round(base_margin * at.LEVERAGE, 2),
-                            "trades": r["trades"], "wins": r["wins"],
-                            "losses": r["losses"],
-                            "winrate": round(100 * r["wins"] / r["trades"], 2),
-                            "profit": round(r["profit"], 2),
-                            "h1": round(a["profit"], 2),
-                            "h2": round(b["profit"], 2),
-                            "green": r["months_green"],
-                            "months": r["months_total"],
-                            "worst": round(r["worst_trade"], 2),
-                            "dd": round(r["max_dd"], 2),
-                            "liqs": sum(1 for t in r["log"]
-                                        if t["why"] == "LIQ"),
-                            "stop_reachable": bool(liq is None
-                                                   or sl * 100 < liq),
-                            "days": hist_days,
-                            "monthly": {k: round(v, 2)
-                                        for k, v in r["monthly"].items()},
-                            "cost_of_tp": (0.0 if ratio is None
-                                           else round(ratio * 100, 1)),
-                            "gate": ("unknown" if ratio is None
-                                     else "block" if ratio >= GATE_BLOCK
-                                     else "warn" if ratio >= .2 else "ok"),
-                        })
+                            if r["trades"] < min_trades and not _is_deployed(
+                                    show, tf, sig, thp, sl * 100, tp * 100,
+                                    sz, deployed, pl):
+                                continue
+                            if _slx is None and _fastr is not None:
+                                a = _fastr[sz]["h1"]
+                                b = _fastr[sz]["h2"]
+                            else:
+                                a = at.backtest_strategy(
+                                    key, df.iloc[:half], base_margin, fee=fee,
+                                    sizing=sz, dirs=dirs[:half], tp=tp, sl=sl,
+                                    liq_move_pct=liq, funding=fund,
+                                    slices=_slx)
+                                b = at.backtest_strategy(
+                                    key, df.iloc[half:], base_margin, fee=fee,
+                                    sizing=sz, dirs=dirs[half:], tp=tp, sl=sl,
+                                    liq_move_pct=liq, funding=fund,
+                                    slices=_slx)
+                            ratio = None if rt is None else rt / tp
+                            rows.append({
+                                "coin": show, "tf": tf, "signal": sig,
+                                "th": thp, "sl": round(sl * 100, 3),
+                                "tp": round(tp * 100, 3),
+                                "rr": round(tp / sl, 2),
+                                "sizing": sz, "lev": at.LEVERAGE,
+                                # None on a single-exit row, so the field is
+                                # on EVERY row rather than only the split ones
+                                # (rule F: never drop a field from a subset).
+                                "plan": pl,
+                                "exits": 1 if not _slx else len(_slx),
+                                "base": base_margin,
+                                "notional": round(base_margin * at.LEVERAGE,
+                                                  2),
+                                "trades": r["trades"], "wins": r["wins"],
+                                "losses": r["losses"],
+                                "winrate": round(100 * r["wins"]
+                                                 / r["trades"], 2),
+                                "profit": round(r["profit"], 2),
+                                "h1": round(a["profit"], 2),
+                                "h2": round(b["profit"], 2),
+                                "green": r["months_green"],
+                                "months": r["months_total"],
+                                "worst": round(r["worst_trade"], 2),
+                                "dd": round(r["max_dd"], 2),
+                                # both the engine and the fast path count
+                                # liquidations directly; the log-scan needed
+                                # keep_log and broke on logless results
+                                "liqs": r["liqs"],
+                                "stop_reachable": bool(liq is None
+                                                       or sl * 100 < liq),
+                                "days": hist_days,
+                                "monthly": {k: round(v, 2)
+                                            for k, v in r["monthly"].items()},
+                                "cost_of_tp": (0.0 if ratio is None
+                                               else round(ratio * 100, 1)),
+                                "gate": ("unknown" if ratio is None
+                                         else "block" if ratio >= GATE_BLOCK
+                                         else "warn" if ratio >= .2
+                                         else "ok"),
+                            })
                     at.STRATEGY_SPECS.pop(key, None)
             done += 1
             if progress:

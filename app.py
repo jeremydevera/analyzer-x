@@ -3834,6 +3834,45 @@ def _bt_build_page(rows: list) -> tuple[str, str] | None:
     return f"app/static/bt/{BT_ALL_PAGE.name}", BT_ALL_PAGE.name
 
 
+@st.fragment(run_every=15)
+def _bt_cloud_panel() -> None:
+    """A GitHub run, watched from here — and pulled into the local store the
+    moment it finishes, so the operator never touches github.com."""
+    from tradingagents import cloud_sweep as cs
+    from tradingagents import market_sweep as msw
+
+    run = st.session_state.get("bt_cloud_run")
+    if not run:
+        return
+    try:
+        stt = cs.status(run["id"], run.get("repo"))
+    except Exception as exc:
+        st.caption(f"GitHub run {run['id']}: cannot read status ({exc})")
+        return
+    done, total = stt["shards_done"], max(stt["shards"], 1)
+    st.progress(min(1.0, done / total),
+                text=(f"GitHub · {done}/{total} machines finished"
+                      + (f" · {stt['failed']} failed" if stt["failed"] else "")
+                      + f" · {stt['status']}"))
+    st.markdown(f"<a class='bt-open' href='{stt['url']}' target='_blank' "
+                f"rel='noopener'>WATCH ON GITHUB &#8599;</a>"
+                f"<span class='bt-open-note'>run #{run['id']} · started "
+                f"{run.get('started', '')}</span>", unsafe_allow_html=True)
+    if stt["status"] == "completed" and not st.session_state.get(
+            f"bt_pulled_{run['id']}"):
+        with st.spinner("Downloading results from GitHub…"):
+            try:
+                rows = cs.fetch(run["id"], run.get("repo"))
+                got = cs.merge_into_store(rows)
+                st.session_state[f"bt_pulled_{run['id']}"] = True
+                st.session_state.pop("bt_all_page", None)
+                st.success(f"Pulled {got['rows']:,} rows covering "
+                           f"{got['coins']} coins from GitHub.")
+            except Exception as exc:
+                st.error(f"Run finished but the results could not be "
+                         f"downloaded: {exc}")
+
+
 @st.fragment(run_every=5)
 def _bt_progress_panel() -> None:
     """Redraws itself every 5 seconds while a sweep runs, without touching the
@@ -3888,6 +3927,23 @@ def render_backtest_tab() -> None:
         f"settlement held. Liquidation is modelled from MEXC's own maintenance "
         f"margin. Rows under {msw.MIN_TRADES} trades are dropped.")
 
+    from tradingagents import cloud_sweep as cs
+
+    _ok, _why = (False, "")
+    try:
+        _ok, _why = cs.available()
+    except Exception as exc:
+        _ok, _why = False, str(exc)[:120]
+    where = st.radio(
+        "Run where", ["GitHub (free, 20 machines)", "This Mac"],
+        horizontal=True, key="bt_where",
+        index=0 if _ok else 1,
+        help="GitHub runs the same sweep on 20 machines in parallel and costs "
+             "nothing on a public repo. This Mac uses 7 of your 8 cores.")
+    if not _ok:
+        st.caption(f"GitHub unavailable — {_why}. Falling back to this Mac.")
+    cloud = _ok and where.startswith("GitHub")
+
     a, b, c = st.columns([1, 1, 2])
     run_all = a.button("RUN ALL COINS", key="bt_run_all",
                        help="Measure every contract at least a year old. "
@@ -3901,7 +3957,14 @@ def render_backtest_tab() -> None:
     # The sweep runs DETACHED, across every core. Doing it inline meant one
     # core and a restart on any click; a market sweep is hours, and Streamlit
     # reruns the script whenever a widget moves.
-    if run_all or refresh:
+    if (run_all or refresh) and cloud:
+        try:
+            run = cs.dispatch(shards=20, coins=int(limit), min_days=365)
+            st.session_state["bt_cloud_run"] = run
+            st.success(f"Started on GitHub — 20 machines. Run #{run['id']}.")
+        except Exception as exc:
+            st.error(f"Could not start on GitHub: {exc}")
+    elif run_all or refresh:
         if msw.is_running():
             st.warning("A sweep is already running — watch it below.")
         else:
@@ -3916,6 +3979,7 @@ def render_backtest_tab() -> None:
                        "you leave this page, and survives a refresh.")
             time.sleep(2)
 
+    _bt_cloud_panel()
     _bt_progress_panel()
 
     page = st.session_state.get("bt_all_page")

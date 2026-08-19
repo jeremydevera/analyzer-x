@@ -1,0 +1,28 @@
+import { chromium } from 'playwright';
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1920, height: 1050 } });
+await page.goto('file://' + process.argv[2]);
+await page.waitForTimeout(3500);
+const firstProfit = async () => {
+  const heads = await page.locator('thead th').allInnerTexts();
+  const i = heads.findIndex(h => /PROFIT TOTAL/i.test(h));
+  const c = await page.locator('tbody tr').first().locator('td').allInnerTexts();
+  return { id: c[0], p: c[i], trades: c[heads.findIndex(h => h === 'TRADES')] };
+};
+const before = await firstProfit();
+console.log('year view row1:', JSON.stringify(before));
+await page.locator('select#fmonu').selectOption('d');
+await page.locator('input#fmon').fill('7');
+await page.waitForTimeout(4000);
+const body = await page.locator('body').innerText();
+console.log('count line:', (body.match(/[\d,]+ OF [\d,]+ SHOWN[^\n]*/i)||['MISSING'])[0].slice(0, 180));
+const after = await firstProfit();
+console.log('7-day view row1:', JSON.stringify(after));
+await page.locator('tbody tr').first().click();
+await page.waitForTimeout(2500);
+const b2 = await page.locator('body').innerText();
+console.log('past trades header:', (b2.match(/PAST TRADES[^\n]*/i)||['MISSING'])[0]);
+const tot = (b2.match(/TOTAL PROFIT[^\n]*/i)||[''])[0];
+console.log('log total line:', tot.slice(0, 90));
+await page.screenshot({ path: '/tmp/daywin.png' });
+await browser.close();

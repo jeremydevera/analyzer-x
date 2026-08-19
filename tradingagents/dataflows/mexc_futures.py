@@ -915,14 +915,31 @@ def list_contracts(quote: str = "USDT") -> list[dict]:
 # function, and a 12-hour TTL on Day1 bars would show a chart half a day stale
 # while the caption claimed it was the last price.
 _KLINE_CACHE: dict = {}
+import pathlib as _pathlib
+
+KLINE_DISK_DIR = (_pathlib.Path.home() / ".tradingagents" / "kline_cache")
 _KLINE_TTL_CAP = 300
 _KLINE_PAGE = 2000            # MEXC's per-request ceiling is 2001; stay under it
 _KLINE_TTL = {"Min1": 30, "Min5": 150, "Min15": 300, "Min30": 300,
               "Min60": 300, "Hour4": 300, "Day1": 300}
 
 
-def clear_kline_cache() -> None:
+def clear_kline_cache(disk: bool = True) -> None:
+    """Forget cached candles — in memory and, by default, on disk.
+
+    The disk cache made a unit test read real candles saved by an earlier run
+    (5,000 bars where the test served 500), and the same leak would let a stale
+    file answer a backtest. Anything that clears the cache must clear both, or
+    "cleared" is not true.
+    """
     _KLINE_CACHE.clear()
+    if not disk:
+        return
+    try:
+        for f in KLINE_DISK_DIR.glob("*.json"):
+            f.unlink()
+    except OSError:
+        pass
 
 
 def _klines_page(symbol: str, interval: str, limit: int, end: int):
@@ -947,6 +964,62 @@ def _klines_page(symbol: str, interval: str, limit: int, end: int):
     })
 
 
+# Closed candles never change, so the long histories the sweeps page down are
+# kept on disk and only the tail is refetched. JSON+gzip of plain columns —
+# no parquet dependency — capped so a file never grows past ~40k bars.
+import gzip as _gzip
+import json as _json
+import pathlib as _pathlib
+
+
+_KLINE_DISK_MAX = 40_000
+
+
+def _kline_disk_path(symbol: str, interval: str) -> "_pathlib.Path":
+    safe = "".join(c for c in f"{symbol}_{interval}"
+                   if c.isalnum() or c in "_-")
+    return KLINE_DISK_DIR / f"{safe}.json.gz"
+
+
+def _kline_disk_load(symbol: str, interval: str):
+    import pandas as pd
+
+    try:
+        p = _kline_disk_path(symbol, interval)
+        if not p.exists():
+            return None
+        with _gzip.open(p, "rt", encoding="utf-8") as fh:
+            d = _json.load(fh)
+        if not d.get("t"):
+            return None
+        return pd.DataFrame({
+            "Date": pd.to_datetime(d["t"], unit="s", utc=True)
+                      .tz_localize(None),
+            "Open": d["o"], "High": d["h"], "Low": d["l"],
+            "Close": d["c"], "Volume": d["v"],
+        })
+    except Exception:
+        return None          # a corrupt cache must never break a fetch
+
+
+def _kline_disk_save(symbol: str, interval: str, frame) -> None:
+    try:
+        KLINE_DISK_DIR.mkdir(parents=True, exist_ok=True)
+        f = frame.tail(_KLINE_DISK_MAX)
+        d = {"t": [int(x.timestamp()) for x in f["Date"]],
+             "o": [float(x) for x in f["Open"]],
+             "h": [float(x) for x in f["High"]],
+             "l": [float(x) for x in f["Low"]],
+             "c": [float(x) for x in f["Close"]],
+             "v": [float(x) for x in f["Volume"]]}
+        tmp = _kline_disk_path(symbol, interval).with_suffix(".tmp")
+        with _gzip.open(tmp, "wt", encoding="utf-8") as fh:
+            _json.dump(d, fh, separators=(",", ":"))
+        tmp.replace(_kline_disk_path(symbol, interval))
+    except Exception:
+        pass                 # caching is best-effort, never fatal
+
+
 def klines(symbol: str, interval: str = "Min5", limit: int = 300):
     """Recent futures candles as a DataFrame, for charting. Keyless.
 
@@ -966,6 +1039,39 @@ def klines(symbol: str, interval: str = "Min5", limit: int = 300):
     # gave 2001 and a backtest that quietly covered a quarter of the requested
     # history. Page backwards through time when more than that is wanted.
     if limit > _KLINE_PAGE:
+        # Candles are immutable once their bar closes, so a year of them is
+        # cached ON DISK and only the missing tail is fetched. A daily sweep
+        # needs ~100 new bars, not 18 paged requests; measured 2026-08-20 the
+        # 15m fetch fell from minutes to one request. The last two cached bars
+        # are refetched and overwritten in case the newest was still forming
+        # when it was saved. Delete ~/.tradingagents/kline_cache to reset.
+        cached = _kline_disk_load(symbol, interval)
+        if cached is not None and len(cached):
+            per = {"Min1": 60, "Min5": 300, "Min15": 900, "Min30": 1800,
+                   "Min60": 3600, "Hour4": 14400, "Day1": 86400}.get(
+                       interval, 300)
+            last_s = int(cached["Date"].iloc[-1].timestamp())
+            frames = [cached]
+            cursor_end = int(time.time())
+            fetch_from = last_s - 2 * per
+            while cursor_end > fetch_from:
+                part = _klines_page(symbol, interval, _KLINE_PAGE, cursor_end)
+                if part is None or part.empty:
+                    break
+                frames.append(part)
+                oldest = int(part["Date"].iloc[0].timestamp())
+                if oldest >= cursor_end or oldest <= fetch_from:
+                    break
+                cursor_end = oldest - 1
+            out = pd.concat(frames, ignore_index=True)
+            # keep="last": the freshly fetched copy of an overlapping bar wins
+            out = (out.sort_values("Date")
+                      .drop_duplicates(subset="Date", keep="last")
+                      .reset_index(drop=True))
+            _kline_disk_save(symbol, interval, out)
+            out = out.tail(limit).reset_index(drop=True)
+            _KLINE_CACHE[key] = (now, out)
+            return out.copy()
         frames, cursor_end = [], int(time.time())
         remaining = limit
         while remaining > 0:
@@ -986,6 +1092,7 @@ def klines(symbol: str, interval: str = "Min5", limit: int = 300):
         out = pd.concat(reversed(frames), ignore_index=True)
         out = out.drop_duplicates(subset="Date").sort_values("Date")
         out = out.tail(limit).reset_index(drop=True)
+        _kline_disk_save(symbol, interval, out)
         _KLINE_CACHE[key] = (now, out)
         return out.copy()
 

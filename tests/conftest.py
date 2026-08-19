@@ -136,3 +136,20 @@ def _never_touch_the_live_book(tmp_path, monkeypatch):
                            ("KILL_PATH", "auto_trade.KILL")):
         if hasattr(at, name):
             monkeypatch.setattr(at, name, sandbox / filename)
+
+
+@pytest.fixture(autouse=True)
+def _isolate_kline_disk_cache(tmp_path, monkeypatch):
+    """Every test gets its own empty candle cache directory.
+
+    Without this the cache is ``~/.tradingagents/kline_cache`` for tests too, so
+    a file written by a real run — or by an earlier test in the same session —
+    answers the request under test. That is exactly how a paging test that
+    served 500 bars asserted against 5,000.
+    """
+    from tradingagents.dataflows import mexc_futures as _fx
+
+    monkeypatch.setattr(_fx, "KLINE_DISK_DIR", tmp_path / "kline_cache")
+    _fx._KLINE_CACHE.clear()
+    yield
+    _fx._KLINE_CACHE.clear()

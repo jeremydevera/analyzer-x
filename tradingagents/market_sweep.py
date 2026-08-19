@@ -327,3 +327,170 @@ def run_pair(symbol: str, tf: str, *, base_margin: float = 5.0,
             "source": source, "incremental": incremental,
             "new_bars": max(0, len(df) - start_at) if incremental else len(df),
             "bars": len(df), "days": days_have}
+
+
+# --------------------------------------------------------------- background
+PROGRESS = HOME / "progress.json"
+PIDFILE = HOME / "sweep.pid"
+
+
+def progress() -> dict:
+    try:
+        return json.loads(PROGRESS.read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def is_running() -> bool:
+    """True when a sweep process is alive. Checked by PID, never by name —
+    matching on a name once killed the operator's own server."""
+    try:
+        pid = int(PIDFILE.read_text().strip())
+    except (OSError, ValueError):
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def stop() -> bool:
+    try:
+        pid = int(PIDFILE.read_text().strip())
+        os.kill(pid, 15)
+        return True
+    except (OSError, ValueError):
+        return False
+
+
+def _worker(args):
+    sym, tf, base_margin, days, thresholds = args
+    try:
+        r = run_pair(sym, tf, base_margin=base_margin, days=days,
+                     thresholds=thresholds)
+        return {"sym": sym, "tf": tf, "rows": len(r.get("rows") or []),
+                "source": r.get("source"), "why": r.get("why"),
+                "new_bars": r.get("new_bars", 0)}
+    except Exception as exc:                      # one coin must not stop 446
+        return {"sym": sym, "tf": tf, "rows": 0, "why": str(exc)[:80]}
+
+
+def run_market(symbols: Sequence[str], tfs: Sequence[str] = ("15m", "30m"), *,
+               base_margin: float = 5.0, days: int = 365,
+               thresholds: int = 1, workers: int = 0) -> dict:
+    """Sweep many contracts across every core, writing progress as it goes.
+
+    Runs in whatever process calls it — the Back Test tab spawns this detached
+    so a click in Streamlit cannot restart or kill it.
+    """
+    from concurrent.futures import ProcessPoolExecutor, as_completed
+
+    _paths()
+    workers = workers or max(1, (os.cpu_count() or 4) - 1)
+    jobs = [(s, tf, base_margin, days, thresholds) for s in symbols
+            for tf in tfs]
+    t0 = time.time()
+    state = {"phase": "sweeping",
+             "total": len(jobs), "done": 0, "rows": 0, "new_bars": 0,
+             "started": time.strftime("%Y-%m-%d %H:%M"), "workers": workers,
+             "running": True, "last": "", "eta_min": None}
+    PROGRESS.write_text(json.dumps(state))
+    PIDFILE.write_text(str(os.getpid()))
+    try:
+        with ProcessPoolExecutor(max_workers=workers) as ex:
+            futs = [ex.submit(_worker, j) for j in jobs]
+            for f in as_completed(futs):
+                r = f.result()
+                state["done"] += 1
+                state["rows"] += r.get("rows", 0)
+                state["new_bars"] += int(r.get("new_bars") or 0)
+                el = time.time() - t0
+                state["eta_min"] = round(
+                    el / max(state["done"], 1)
+                    * (state["total"] - state["done"]) / 60, 1)
+                state["elapsed_min"] = round(el / 60, 1)
+                state["last"] = (f"{r['sym']} {r['tf']} · {r.get('rows', 0)} "
+                                 f"rows{' · ' + r['why'] if r.get('why') else ''}")
+                PROGRESS.write_text(json.dumps(state))
+    finally:
+        state["running"] = False
+        state["finished"] = time.strftime("%Y-%m-%d %H:%M")
+        PROGRESS.write_text(json.dumps(state))
+        try:
+            PIDFILE.unlink()
+        except OSError:
+            pass
+    return state
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """``python -m tradingagents.market_sweep --coins 25`` — what the tab spawns."""
+    import argparse
+
+    ap = argparse.ArgumentParser(description="Market-wide 15m/30m sweep")
+    ap.add_argument("--coins", type=int, default=0,
+                    help="how many eligible contracts (0 = all)")
+    ap.add_argument("--min-days", type=int, default=365)
+    ap.add_argument("--tfs", default="15m,30m")
+    ap.add_argument("--base", type=float, default=5.0)
+    ap.add_argument("--workers", type=int, default=0)
+    ap.add_argument("--thresholds", type=int, default=1)
+    a = ap.parse_args(argv)
+
+    from tradingagents.dataflows import mexc_futures as fx
+
+    import datetime as _dt
+
+    _paths()
+    # Claim the PID here, not in run_market: screening runs first and can take
+    # 15 minutes, and until the file exists the tab reports "not running".
+    PIDFILE.write_text(str(os.getpid()))
+    # Screening ~1,000 contracts for age takes a quarter of an hour and used to
+    # happen in silence, so the tab showed nothing at all for the first 15
+    # minutes. Cache it for the day, and report progress while it runs.
+    elig_f = HOME / "eligible.json"
+    keep = []
+    try:
+        cached = json.loads(elig_f.read_text())
+        if cached.get("day") == _dt.date.today().isoformat() \
+                and int(cached.get("min_days", 0)) == a.min_days:
+            keep = cached["symbols"]
+    except (OSError, ValueError, KeyError):
+        keep = []
+    if not keep:
+        raw = fx._get_public(f"{fx.BASE}/api/v1/contract/detail").get("data") or []
+        syms = sorted(x["symbol"] for x in raw
+                      if str(x.get("symbol", "")).endswith("_USDT")
+                      and int(x.get("state", 1)) == 0)
+        for i, s in enumerate(syms, 1):
+            try:
+                d = fx.klines(s, "Day1", 500)
+                if (d["Date"].iloc[-1] - d["Date"].iloc[0]).days >= a.min_days:
+                    keep.append(s)
+            except Exception:
+                pass
+            if i % 10 == 0 or i == len(syms):
+                PROGRESS.write_text(json.dumps({
+                    "phase": "screening", "total": len(syms), "done": i,
+                    "rows": 0, "new_bars": 0, "running": True,
+                    "workers": a.workers or max(1, (os.cpu_count() or 4) - 1),
+                    "started": time.strftime("%Y-%m-%d %H:%M"),
+                    "last": f"{len(keep)} contracts at least "
+                            f"{a.min_days} days old so far"}))
+        elig_f.write_text(json.dumps({"day": _dt.date.today().isoformat(),
+                                      "min_days": a.min_days,
+                                      "symbols": keep}))
+    if a.coins:
+        keep = keep[:a.coins]
+    print(f"{len(keep)} contracts at least {a.min_days} days old", flush=True)
+    st = run_market(keep, [t.strip() for t in a.tfs.split(",") if t.strip()],
+                    base_margin=a.base, thresholds=a.thresholds,
+                    workers=a.workers)
+    print(f"done: {st['done']}/{st['total']} jobs, {st['rows']:,} rows, "
+          f"{st.get('elapsed_min')} min", flush=True)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

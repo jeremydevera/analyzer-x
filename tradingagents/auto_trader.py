@@ -865,7 +865,8 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                       keep_log: bool = True,
                       resume: dict | None = None,
                       start_at: int = 0,
-                      slices: list | None = None) -> dict:
+                      slices: list | None = None,
+                      sig_idx=None) -> dict:
     """Run one strategy's exact live rules over a candle history.
 
     Same engine as the 13-month studies: signal at bar close, enter next bar
@@ -984,6 +985,18 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
             v = _pd.Timestamp(_dates[k]).strftime("%Y-%m-%d %H:%M")
             _stamp_cache[k] = v
         return v
+    # One strftime per TRADE just to label its month was 14% of this function.
+    # Bars map to months vectorised, once, and the label is looked up by index.
+    _mo_codes = _dates.astype("datetime64[M]")
+    _mo_names: dict = {}
+
+    def _month_of(k: int) -> str:
+        v = _mo_codes[k]
+        name = _mo_names.get(v)
+        if name is None:
+            name = str(v)[:7]
+            _mo_names[v] = name
+        return name
     monthly: dict[str, float] = {}
     n = len(close)
     trades = wins = 0
@@ -995,6 +1008,21 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
     # the tail state of an earlier run -- ladder rung, running totals, the
     # month-by-month map, the losing streak, and any position still open at the
     # boundary -- so this call continues that same backtest over new bars only.
+    # Where the signals actually are, instead of walking every bar to find
+    # them. The same `dirs` array is reused across ~200 barrier/sizing
+    # combinations, and each one used to step through all 19,000 bars in Python
+    # purely to skip the ~95% that hold nothing.
+    if sig_idx is None:
+        try:
+            import numpy as _np
+
+            _sig = _np.flatnonzero(_np.asarray(dirs, dtype=_np.int8))
+        except Exception:
+            _sig = [k for k, v in enumerate(dirs) if v]
+    else:
+        _sig = sig_idx
+    _sp = 0
+    _nsig = len(_sig)
     _open = None
     if resume:
         trades = int(resume.get("trades", 0))
@@ -1012,6 +1040,14 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
         _open = resume.get("open") or None
     log: list[dict] = []
     while i < n - 1:
+        if _open is None:
+            while _sp < _nsig and _sig[_sp] < i:
+                _sp += 1
+            if _sp >= _nsig:
+                break
+            i = int(_sig[_sp])
+            if i >= n - 1:
+                break
         if _open is not None:
             # carried across the boundary: same side, entry, rung and barriers
             s = int(_open["side"])
@@ -1174,7 +1210,7 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
         equity += pnl
         peak = max(peak, equity)
         max_dd = max(max_dd, peak - equity)
-        month = stamp(j)[:7]
+        month = _month_of(j)
         monthly[month] = monthly.get(month, 0.0) + pnl
         n_liq += why == "LIQ"
         fund_total += fund

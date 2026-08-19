@@ -26,6 +26,7 @@ import traceback
 from pathlib import Path
 from typing import NamedTuple
 
+import subprocess
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -3833,6 +3834,42 @@ def _bt_build_page(rows: list) -> tuple[str, str] | None:
     return f"app/static/bt/{BT_ALL_PAGE.name}", BT_ALL_PAGE.name
 
 
+@st.fragment(run_every=5)
+def _bt_progress_panel() -> None:
+    """Redraws itself every 5 seconds while a sweep runs, without touching the
+    rest of the page — a market sweep is hours, and the operator should not
+    have to click to see where it is."""
+    from tradingagents import market_sweep as msw
+
+    prog = msw.progress()
+    if prog:
+        running = msw.is_running()
+        pct = prog["done"] / max(prog["total"], 1)
+        phase = prog.get("phase", "sweeping")
+        unit = "contracts screened" if phase == "screening" else "jobs"
+        st.progress(min(1.0, pct),
+                    text=(f"{prog['done']}/{prog['total']} {unit} · "
+                          + (f"{prog['rows']:,} rows · "
+                             if phase != "screening" else "")
+                          + (f"ETA {prog.get('eta_min')} min · "
+                             if running and prog.get("eta_min") is not None
+                             else "")
+                          + (prog.get("last") or "")))
+        cols = st.columns(4)
+        cols[0].caption(f"started {prog.get('started', '—')}")
+        cols[1].caption(f"{prog.get('workers', '—')} workers")
+        cols[2].caption(f"{prog.get('new_bars', 0):,} new bars tested")
+        cols[3].caption("RUNNING" if running
+                        else f"finished {prog.get('finished', '—')}")
+        r1, r2 = st.columns([1, 5])
+        if running and r1.button("STOP", key="bt_stop"):
+            msw.stop()
+            st.warning("Stop signalled — the current jobs finish, then it exits.")
+        if r2.button("Refresh this view", key="bt_poll"):
+            st.session_state.pop("bt_all_page", None)
+            st.rerun()
+
+
 def render_backtest_tab() -> None:
     from tradingagents import market_sweep as msw
     from tradingagents import backtest_report as br
@@ -3861,37 +3898,25 @@ def render_backtest_tab() -> None:
     limit = c.number_input("Coins this pass (0 = all eligible)", min_value=0,
                            max_value=1000, value=25, step=25, key="bt_limit")
 
+    # The sweep runs DETACHED, across every core. Doing it inline meant one
+    # core and a restart on any click; a market sweep is hours, and Streamlit
+    # reruns the script whenever a widget moves.
     if run_all or refresh:
-        syms = _bt_eligible()
-        if limit:
-            syms = syms[:int(limit)]
-        st.info(f"{len(syms)} contracts x 15m + 30m = {len(syms) * 2} jobs.")
-        bar = st.progress(0.0, text="starting…")
-        line = st.empty()
-        done = new_bars = kept = 0
-        t0 = time.time()
-        for k, sym in enumerate(syms, 1):
-            for tf in ("15m", "30m"):
-                try:
-                    r = msw.run_pair(sym, tf, base_margin=5.0, days=365,
-                                     thresholds=1)
-                except Exception as exc:
-                    line.caption(f"{sym} {tf}: {str(exc)[:80]}")
-                    continue
-                done += 1
-                new_bars += int(r.get("new_bars") or 0)
-                kept += len(r.get("rows") or [])
-                el = time.time() - t0
-                eta = el / max(done, 1) * (len(syms) * 2 - done) / 60
-                bar.progress(min(1.0, done / (len(syms) * 2)),
-                             text=f"{done}/{len(syms) * 2} · {sym} {tf} · "
-                                  f"{r.get('source')} · ETA {eta:.0f} min")
-                line.caption(f"{kept:,} rows kept · {new_bars:,} new bars "
-                             f"tested this pass")
-        bar.empty()
-        st.session_state["bt_all_page"] = _bt_build_page(msw.all_rows())
-        st.success(f"{done} jobs in {(time.time() - t0) / 60:.1f} min · "
-                   f"{new_bars:,} new bars tested")
+        if msw.is_running():
+            st.warning("A sweep is already running — watch it below.")
+        else:
+            cmd = [sys.executable, "-m", "tradingagents.market_sweep",
+                   "--coins", str(int(limit)), "--min-days", "365",
+                   "--tfs", "15m,30m", "--base", "5.0"]
+            logf = open(os.path.expanduser(
+                "~/.tradingagents/backtest/sweep.log"), "a")
+            subprocess.Popen(cmd, cwd=str(Path(__file__).parent), stdout=logf,
+                             stderr=subprocess.STDOUT, start_new_session=True)
+            st.success("Sweep started in the background. It keeps running if "
+                       "you leave this page, and survives a refresh.")
+            time.sleep(2)
+
+    _bt_progress_panel()
 
     page = st.session_state.get("bt_all_page")
     if not page and cov["rows"]:

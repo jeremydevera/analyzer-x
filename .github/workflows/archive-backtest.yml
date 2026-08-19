@@ -1,0 +1,51 @@
+name: Archive backtest
+
+# The Backtest button's cloud twin: the SAME shared grid
+# (tradingagents.backtest_report) over the chosen coins, timeframes and
+# window, run on a GitHub machine. Rows land in the database; the report
+# page is the run's artifact.
+
+on:
+  workflow_dispatch:
+    inputs:
+      coins:
+        description: "Comma-separated symbols, e.g. APEX_USDT,PI_USDT"
+        required: true
+      timeframes:
+        description: "Comma-separated: 15m,30m,1h,4h,1d"
+        default: "15m,30m,1h,4h,1d"
+      days:
+        description: "Window in days (30/90/180/365)"
+        default: "365"
+      base:
+        description: "Base margin in USDT"
+        default: "5.0"
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas requests sqlalchemy psycopg2-binary
+      - name: Run the grid
+        env:
+          TRADINGAGENTS_DB_URL: ${{ secrets.TRADINGAGENTS_DB_URL }}
+          COINS: ${{ github.event.inputs.coins }}
+          TFS: ${{ github.event.inputs.timeframes }}
+          DAYS: ${{ github.event.inputs.days }}
+          BASE: ${{ github.event.inputs.base }}
+        run: python .github/scripts/archive_backtest.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backtest-report
+          path: out/report.html
+          if-no-files-found: warn
+          retention-days: 30

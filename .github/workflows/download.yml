@@ -1,0 +1,61 @@
+name: Market data download
+
+# Fills the permanent candle archive (Neon Postgres) from GitHub's machines
+# instead of the operator's laptop. Candles are MEXC public data; the only
+# secret is the database URL. Sharded by coin, same as the sweep.
+
+on:
+  workflow_dispatch:
+    inputs:
+      coins:
+        description: "Comma-separated symbols, or ALL for every contract"
+        default: "ALL"
+      timeframes:
+        description: "Comma-separated: 15m,30m,1h,4h,1d"
+        default: "15m,30m,1h,4h,1d"
+      shards:
+        description: "How many runners to split the coins across"
+        default: "10"
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      shards: ${{ steps.mk.outputs.shards }}
+    steps:
+      - id: mk
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          n = int(os.environ["N"])
+          print("shards=" + json.dumps(list(range(n))))
+          PY
+        env:
+          N: ${{ github.event.inputs.shards }}
+
+  download:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJson(needs.plan.outputs.shards) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas requests sqlalchemy psycopg2-binary
+      - name: Download shard ${{ matrix.shard }}
+        env:
+          TRADINGAGENTS_DB_URL: ${{ secrets.TRADINGAGENTS_DB_URL }}
+          COINS: ${{ github.event.inputs.coins }}
+          TFS: ${{ github.event.inputs.timeframes }}
+          SHARD: ${{ matrix.shard }}
+          SHARDS: ${{ github.event.inputs.shards }}
+        run: python .github/scripts/download_candles.py

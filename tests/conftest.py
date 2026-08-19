@@ -39,6 +39,23 @@ def _dummy_api_keys(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _no_real_market_db(monkeypatch, tmp_path):
+    """Cut every test off from the real market database.
+
+    The kline fetch archives bars to Neon as a side effect; without this, the
+    paging tests uploaded 5,000 fake TEST_USDT candles into the PRODUCTION
+    archive and then read them back as history (caught 2026-08-20). Tests
+    that want a database opt in by setting the env URL themselves.
+    """
+    from tradingagents.dataflows import market_db as mdb
+    monkeypatch.delenv(mdb.DB_URL_ENV, raising=False)
+    monkeypatch.setattr(mdb, "STORE_PATH", tmp_path / "no_db_here.json")
+    monkeypatch.setattr(mdb, "_ENGINE", None)
+    monkeypatch.setattr(mdb, "_ENGINE_URL", None)
+    monkeypatch.setattr(mdb, "_down_until", 0.0)
+
+
+@pytest.fixture(autouse=True)
 def _isolate_config():
     """Reset the global dataflows config before and after each test.
 

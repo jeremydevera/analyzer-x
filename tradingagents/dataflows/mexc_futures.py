@@ -1020,6 +1020,37 @@ def _kline_disk_save(symbol: str, interval: str, frame) -> None:
         pass                 # caching is best-effort, never fatal
 
 
+def _kline_db_seed(symbol: str, interval: str):
+    """Long history from the permanent database when the local disk cache is
+    cold (new machine, cleared cache) — saves re-paging the whole venue."""
+    try:
+        from tradingagents.dataflows import market_db  # noqa: PLC0415
+        return market_db.candles_df(symbol, interval)
+    except Exception:
+        return None
+
+
+def _kline_db_store(symbol: str, interval: str, frame) -> None:
+    """Archive closed bars to the permanent database, best-effort. Only the
+    tail past what it already holds is sent; the newest stored bar is re-sent
+    in case it was still forming when first archived."""
+    try:
+        from tradingagents.dataflows import market_db  # noqa: PLC0415
+        import pandas as pd  # noqa: PLC0415
+        if not market_db.available():
+            return
+        per = {"Min1": 60, "Min5": 300, "Min15": 900, "Min30": 1800,
+               "Min60": 3600, "Hour4": 14400, "Day1": 86400}.get(interval, 300)
+        closed = frame[frame["Date"]
+                       <= pd.Timestamp(time.time() - per, unit="s")]
+        prev = market_db.last_ts(symbol, interval)
+        if prev is not None:
+            closed = closed[closed["Date"] >= pd.Timestamp(prev, unit="s")]
+        market_db.upsert_candles(symbol, interval, closed)
+    except Exception:
+        pass                 # the archive must never break a fetch
+
+
 def klines(symbol: str, interval: str = "Min5", limit: int = 300):
     """Recent futures candles as a DataFrame, for charting. Keyless.
 
@@ -1046,6 +1077,8 @@ def klines(symbol: str, interval: str = "Min5", limit: int = 300):
         # are refetched and overwritten in case the newest was still forming
         # when it was saved. Delete ~/.tradingagents/kline_cache to reset.
         cached = _kline_disk_load(symbol, interval)
+        if cached is None or not len(cached):
+            cached = _kline_db_seed(symbol, interval)
         if cached is not None and len(cached):
             per = {"Min1": 60, "Min5": 300, "Min15": 900, "Min30": 1800,
                    "Min60": 3600, "Hour4": 14400, "Day1": 86400}.get(
@@ -1069,6 +1102,7 @@ def klines(symbol: str, interval: str = "Min5", limit: int = 300):
                       .drop_duplicates(subset="Date", keep="last")
                       .reset_index(drop=True))
             _kline_disk_save(symbol, interval, out)
+            _kline_db_store(symbol, interval, out)
             out = out.tail(limit).reset_index(drop=True)
             _KLINE_CACHE[key] = (now, out)
             return out.copy()
@@ -1093,6 +1127,7 @@ def klines(symbol: str, interval: str = "Min5", limit: int = 300):
         out = out.drop_duplicates(subset="Date").sort_values("Date")
         out = out.tail(limit).reset_index(drop=True)
         _kline_disk_save(symbol, interval, out)
+        _kline_db_store(symbol, interval, out)
         _KLINE_CACHE[key] = (now, out)
         return out.copy()
 

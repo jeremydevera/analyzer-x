@@ -134,9 +134,25 @@ DDL = [
         losses integer, win_rate double precision,
         worst_streak double precision, worst_streak_len integer,
         months_json text, detail_json text, computed_at bigint,
+        threshold double precision, months_green integer,
+        months_total integer, days integer, max_dd double precision,
+        funding double precision,
         PRIMARY KEY (row_code, data_end, code_version))""",
     """CREATE INDEX IF NOT EXISTS idx_results_lookup
         ON backtest_results (symbol, timeframe, signal)""",
+]
+
+
+# Columns added after the table shipped. Run one at a time and let each
+# failure pass: `ADD COLUMN IF NOT EXISTS` is Postgres-only, and on SQLite
+# — which the tests use — the whole schema step died on it.
+MIGRATIONS = [
+    "ALTER TABLE backtest_results ADD COLUMN threshold double precision",
+    "ALTER TABLE backtest_results ADD COLUMN months_green integer",
+    "ALTER TABLE backtest_results ADD COLUMN months_total integer",
+    "ALTER TABLE backtest_results ADD COLUMN days integer",
+    "ALTER TABLE backtest_results ADD COLUMN max_dd double precision",
+    "ALTER TABLE backtest_results ADD COLUMN funding double precision",
 ]
 
 
@@ -148,6 +164,12 @@ def ensure_schema() -> bool:
         with _engine().begin() as cx:
             for stmt in DDL:
                 cx.execute(text(stmt))
+        for stmt in MIGRATIONS:
+            try:
+                with _engine().begin() as cx:
+                    cx.execute(text(stmt))
+            except Exception:
+                pass          # already there, or the dialect refuses it
         return True
     except Exception as exc:
         _stand_down(exc, "ensure_schema")
@@ -280,11 +302,15 @@ def download(symbols: list[str], intervals: list[str],
 
 
 # ------------------------------------------------------------------ results
+# A strategy IS the seven fields the operator names: coin, timeframe, signal,
+# THRESHOLD, TP, SL, sizing. Threshold was missing, so two variants of one rule
+# were indistinguishable in a query despite being different strategies.
 RESULT_FIELDS = ("row_code", "symbol", "timeframe", "signal", "tp", "sl",
                  "sizing", "data_start", "data_end", "code_version",
                  "profit", "trades", "wins", "losses", "win_rate",
                  "worst_streak", "worst_streak_len", "months_json",
-                 "detail_json", "computed_at")
+                 "detail_json", "computed_at", "threshold", "months_green",
+                 "months_total", "days", "max_dd", "funding")
 
 
 def save_results(rows: list[dict]) -> int:
@@ -315,7 +341,8 @@ def save_results(rows: list[dict]) -> int:
 def load_results(symbol: str | None = None, timeframe: str | None = None,
                  signal: str | None = None,
                  data_end: int | None = None,
-                 code_version: str | None = None) -> list[dict]:
+                 code_version: str | None = None,
+                 sizing: str | None = None) -> list[dict]:
     if not _ready():
         return []
     from sqlalchemy import text
@@ -323,7 +350,7 @@ def load_results(symbol: str | None = None, timeframe: str | None = None,
     params: dict = {}
     for name, val in (("symbol", symbol), ("timeframe", timeframe),
                       ("signal", signal), ("data_end", data_end),
-                      ("code_version", code_version)):
+                      ("code_version", code_version), ("sizing", sizing)):
         if val is not None:
             sql += f" AND {name}=:{name}"
             params[name] = val
@@ -334,3 +361,49 @@ def load_results(symbol: str | None = None, timeframe: str | None = None,
         _stand_down(exc, "load_results")
         return []
     return [dict(zip(RESULT_FIELDS, r)) for r in rows]
+
+
+# ------------------------------------------------------------------ storage
+# Neon's free branch caps LOGICAL data at 512MB; the limit is overridable in
+# neon_db.json ("size_limit_mb") for a paid plan.
+DEFAULT_SIZE_LIMIT_MB = 512
+
+
+def size_limit_bytes() -> int:
+    try:
+        mb = float(json.loads(STORE_PATH.read_text()).get("size_limit_mb")
+                   or DEFAULT_SIZE_LIMIT_MB)
+    except Exception:
+        mb = DEFAULT_SIZE_LIMIT_MB
+    return int(mb * 1024 * 1024)
+
+
+def storage_stats() -> dict | None:
+    """How full the database is: measured size, the plan limit, and each
+    table's share — None when the store is unreachable."""
+    if not _ready():
+        return None
+    from sqlalchemy import text
+    try:
+        with _engine().connect() as cx:
+            db_bytes = int(cx.execute(text(
+                "SELECT pg_database_size(current_database())")).scalar())
+            tables = cx.execute(text(
+                "SELECT c.relname, pg_total_relation_size(c.oid),"
+                "       coalesce(s.n_live_tup, 0)"
+                " FROM pg_class c"
+                " JOIN pg_namespace n ON n.oid = c.relnamespace"
+                " LEFT JOIN pg_stat_user_tables s ON s.relid = c.oid"
+                " WHERE n.nspname = 'public' AND c.relkind = 'r'"
+                " ORDER BY 2 DESC")).fetchall()
+    except Exception as exc:
+        _stand_down(exc, "storage_stats")
+        return None
+    limit = size_limit_bytes()
+    return {
+        "db_bytes": db_bytes,
+        "limit_bytes": limit,
+        "percent": round(100 * db_bytes / limit, 1),
+        "tables": [{"table": r[0], "bytes": int(r[1]), "rows": int(r[2])}
+                   for r in tables],
+    }

@@ -3959,7 +3959,12 @@ def render_backtest_tab() -> None:
     # reruns the script whenever a widget moves.
     if (run_all or refresh) and cloud:
         try:
-            run = cs.dispatch(shards=20, coins=int(limit), min_days=365)
+            # The box says "coins this pass"; the workflow input is coins PER
+            # SHARD. Passing it straight through meant 25 became 20x25=500.
+            shards = 20
+            per_shard = 0 if not limit else max(
+                1, -(-int(limit) // shards))          # ceil, so 25 -> 2/shard
+            run = cs.dispatch(shards=shards, coins=per_shard, min_days=365)
             st.session_state["bt_cloud_run"] = run
             st.success(f"Started on GitHub — 20 machines. Run #{run['id']}.")
         except Exception as exc:

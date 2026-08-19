@@ -86,14 +86,28 @@ def _engine():
         return None
     if _ENGINE is None or _ENGINE_URL != url:
         from sqlalchemy import create_engine
+        # A hanging connection must never hang a caller: without a connect
+        # timeout, one dropped Neon socket froze the whole Backtest page
+        # mid-render (2026-08-20). SQLite (tests) takes no such argument.
+        kw = {}
+        if url.startswith(("postgresql://", "postgres://")):
+            # Neon's pooler rejects startup options like statement_timeout —
+            # only the connect timeout goes in the startup packet.
+            kw["connect_args"] = {"connect_timeout": 10}
         _ENGINE = create_engine(url, pool_pre_ping=True, pool_size=2,
-                                max_overflow=2)
+                                max_overflow=2, **kw)
         _ENGINE_URL = url
     return _ENGINE
 
 
 def _ready() -> bool:
     return time.time() >= _down_until and db_url() is not None
+
+
+def is_down() -> bool:
+    """True while the store is standing down after a connection failure.
+    Callers use it to say "unreachable" instead of the false "empty"."""
+    return time.time() < _down_until
 
 
 def _stand_down(exc: Exception, what: str) -> None:

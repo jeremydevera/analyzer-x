@@ -31,6 +31,11 @@ GATE_BLOCK = 0.50
 OUT = os.path.join("out", f"rows-{SHARD}.jsonl")
 os.makedirs("out", exist_ok=True)
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from progress import Reporter                                   # noqa: E402
+
+report = Reporter()
+
 
 def log(msg):
     print(f"[shard {SHARD}] {msg}", flush=True)
@@ -47,20 +52,25 @@ def eligible():
     mine = syms[SHARD::SHARDS]
     log(f"{len(syms)} contracts, {len(mine)} in this shard")
     keep = []
-    for sym in mine:
+    report("screening", 0, len(mine), note="checking contract ages", force=True)
+    for i, sym in enumerate(mine, 1):
         try:
             d = fx.klines(sym, "Day1", 500)
             if (d["Date"].iloc[-1] - d["Date"].iloc[0]).days >= MIN_DAYS:
                 keep.append(sym)
         except Exception as exc:
             log(f"{sym}: age check failed ({str(exc)[:50]})")
+        report("screening", i, len(mine),
+               note=f"{len(keep)} old enough so far")
         time.sleep(0.05)
     log(f"{len(keep)} are at least {MIN_DAYS} days old")
     return keep[:PER_SHARD] if PER_SHARD else keep
 
 
-def run_pair(sym, tf, out):
+def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
     iv, bs, cap = br.TFS[tf]
+    report("testing", i, n, rows=rows_so_far,
+           note=f"{sym.replace('_USDT', '')} {tf}: downloading candles")
     try:
         fee = at.taker_fee(sym, fx=fx)
         liq = fx.liquidation_move_pct(sym, at.LEVERAGE)
@@ -82,10 +92,12 @@ def run_pair(sym, tf, out):
     op = [float(x) for x in df["Open"]]
     vol = [float(x) for x in df["Volume"]] if "Volume" in df.columns else None
     ts = list(df["Date"].to_numpy().astype("datetime64[ms]").astype("int64"))
-    n = len(df)
-    half = n // 2
+    nbars = len(df)
+    half = nbars // 2
     kept = 0
-    for sig in br.SIGNALS:
+    report("testing", i, n, rows=rows_so_far,
+           note=f"{coin} {tf}: {nbars:,} bars, testing {len(br.SIGNALS)} rules")
+    for si, sig in enumerate(br.SIGNALS, 1):
         key = f"{sig}_gh_{tf}"
         th = br.THRESHOLDS[tf][1] if sig in br.THRESH_SIGNALS else None
         at.STRATEGY_SPECS[key] = {"interval": iv, "bar_seconds": bs, "tp": .02,
@@ -136,11 +148,13 @@ def run_pair(sym, tf, out):
                 "green": r["months_green"], "months": r["months_total"],
                 "worst": round(r["worst_trade"], 2), "dd": round(r["max_dd"], 2),
                 "liqs": r["liqs"], "stop_reachable": True, "days": days,
-                "bars": n, "monthly": {k: round(v, 2) for k, v in m.items()},
+                "bars": nbars, "monthly": {k: round(v, 2) for k, v in m.items()},
                 "cost_of_tp": round(rt / tp * 100, 1), "rt": round(rt * 100, 4),
                 "gate": "warn" if rt / tp >= .2 else "ok"}) + "\n")
             kept += 1
         at.STRATEGY_SPECS.pop(key, None)
+        report("testing", i, n, rows=rows_so_far + kept,
+               note=f"{coin} {tf}: rule {si}/{len(br.SIGNALS)} ({sig})")
     out.flush()
     return kept
 
@@ -152,7 +166,8 @@ def main():
     with open(OUT, "w") as out:
         for i, sym in enumerate(coins, 1):
             for tf in TFS:
-                total += run_pair(sym, tf, out)
+                total += run_pair(sym, tf, out, i=i, n=len(coins),
+                                  rows_so_far=total)
             el = time.time() - t0
             log(f"{i}/{len(coins)} {sym} · {total:,} rows · "
                 f"{el / 60:.0f} min elapsed · "
@@ -162,6 +177,8 @@ def main():
             if el > 5.2 * 3600:
                 log(f"stopping at {i}/{len(coins)} coins to protect the artifact")
                 break
+    report("done", len(coins), len(coins), rows=total,
+           note=f"{total:,} rows", force=True)
     log(f"done: {total:,} rows in {(time.time() - t0) / 60:.0f} min")
 
 

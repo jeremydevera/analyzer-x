@@ -497,6 +497,45 @@ def test_manual_close_records_the_exchanges_real_pnl(sandbox):
     assert state["BTC_USDT"]["step"] == 1, "a real loss moves the ladder"
 
 
+def test_exchange_exit_label_names_the_barrier_the_fill_landed_on():
+    """Replays of real fills from 2026-08-19. Every bracket fill used to be
+    ledgered MANUAL/EXCHANGE because the stop fills intrabar, before the
+    candle check sees the cross."""
+    # ALICE long: stop 0.1321 filled at exactly 0.1321.
+    long_pos = {"side": 1, "tp": 0.1387, "sl": 0.1321}
+    assert at._exchange_exit_label(long_pos, 0.1321) == "SL"
+    # ALICE long TP 0.1386 filled 0.15% shy at 0.1384 — still the TP.
+    assert at._exchange_exit_label(
+        {"side": 1, "tp": 0.1386, "sl": 0.132}, 0.1384) == "TP"
+    # ALICE short: stop 0.1396 slipped THROUGH to 0.1407 — still the stop.
+    short_pos = {"side": -1, "tp": 0.1327, "sl": 0.1396}
+    assert at._exchange_exit_label(short_pos, 0.1407) == "SL"
+    assert at._exchange_exit_label(short_pos, 0.1327) == "TP"
+    # Mid-range fills, clear of both barriers, are genuinely manual.
+    assert at._exchange_exit_label(long_pos, 0.1350) == "MANUAL/EXCHANGE"
+    assert at._exchange_exit_label(short_pos, 0.1360) == "MANUAL/EXCHANGE"
+
+
+def test_bracket_fill_is_ledgered_as_its_barrier_not_manual(sandbox):
+    """Position gone from the venue, fill price at the stop: the ledger row
+    must say SL (with MEXC's real PnL), not MANUAL/EXCHANGE."""
+    fx = FakeFx(_bars([100.0] * 61))
+    fx.history = [{"positionId": 42, "realised": -3.10,
+                   "closeAvgPrice": 98.4}]     # through the 98.5 stop
+    state = {"BTC_USDT": {"step": 0, "last_ts": {}, "position": {
+        "side": 1, "vol": 50, "entry": 100.0, "tp": 104.5, "sl": 98.5,
+        "margin": 10.0, "strategy": "mom6", "entry_ts": _T0 + 3600,
+        "position_id": 42, "bracket": True}}}
+    at.process_symbol("BTC_USDT",
+                      {"strategies": ["mom6"], "coins": ["BTC_USDT"],
+                       "margin": 10.0}, state, fx=fx, dry=False)
+    entries = [json.loads(x) for x in
+               at.LEDGER_PATH.read_text().strip().splitlines()]
+    exit_row = [e for e in entries if e["action"] == "exit"][-1]
+    assert exit_row["why"] == "SL"
+    assert exit_row["pnl_est"] == -3.10, "real PnL from MEXC, not estimate"
+
+
 # ------------------------------------------------- liquidity / edge gate
 class BookFx(FakeFx):
     """FakeFx plus a measurable order book."""

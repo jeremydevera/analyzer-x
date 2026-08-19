@@ -1,0 +1,22 @@
+
+================ LIGHT ================
+New Crypto  tokens bg=oklch(98.5% .002 230) accent=oklch(50% .175 160) r=10px
+            page=oklch(0.985 0.002 230) card-radius=undefined btn-radius=10px (no html table on this page)
+Stocks      tokens bg=oklch(98.5% .002 230) accent=oklch(50% .175 160) r=10px
+            page=oklch(0.985 0.002 230) card-radius=undefined btn-radius=10px (no html table on this page)
+Auto Trade  tokens bg=oklch(98.5% .002 230) accent=oklch(50% .175 160) r=10px
+            page=oklch(0.985 0.002 230) card-radius=undefined btn-radius=8px (no html table on this page)
+Back Test   tokens bg=oklch(98.5% .002 230) accent=oklch(50% .175 160) r=10px
+            page=oklch(0.985 0.002 230) card-radius=undefined btn-radius=10px (no html table on this page)
+LLM Models  tokens bg=oklch(98.5% .002 230) accent=oklch(50% .175 160) r=10px
+            page=oklch(0.985 0.002 230) card-radius=undefined btn-radius=10px (no html table on this page)
+
+================ NIGHT ================
+New Crypto  tokens bg=oklch(14% .015 170) accent=oklch(60% .175 160) r=10px
+            page=oklch(0.14 0.015 170) card-radius=undefined btn-radius=10px (no html table on this page)
+Stocks      tokens bg=oklch(14% .015 170) accent=oklch(60% .175 160) r=10px
+            page=oklch(0.14 0.015 170) card-radius=undefined btn-radius=10px (no html table on this page)
+Auto Trade  tokens bg=oklch(14% .015 170) accent=oklch(60% .175 160) r=10px
+            page=oklch(0.14 0.015 170) card-radius=undefined btn-radius=8px (no html table on this page)
+Back Test   tokens bg=oklch(14% .015 170) accent=oklch(60% .175 160) r=10px
+            page=oklch(0.14 0.015 170) card-radius=undefined btn-radius=10px (no html table on this page)

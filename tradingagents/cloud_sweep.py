@@ -119,10 +119,66 @@ def status(run_id: int, slug: str | None = None) -> dict:
     d = json.loads(_gh("run", "view", str(run_id), "--repo", slug, "--json",
                        "status,conclusion,url,jobs"))
     jobs = [j for j in d.get("jobs", []) if j["name"].startswith("sweep")]
+    plan = [j for j in d.get("jobs", []) if j["name"] == "plan"]
     done = sum(1 for j in jobs if j["status"] == "completed")
+    running = sum(1 for j in jobs if j["status"] == "in_progress")
+    queued = sum(1 for j in jobs if j["status"] in ("queued", "waiting",
+                                                    "pending"))
+    # GitHub gives a free repo about 20 concurrent jobs. Two 20-shard runs at
+    # once means the second one waits, which looks like "nothing is happening"
+    # unless the panel says so.
+    waiting = (not jobs and plan
+               and plan[0].get("status") in ("queued", "waiting", "pending"))
     return {"status": d.get("status"), "conclusion": d.get("conclusion"),
             "url": d.get("url"), "shards": len(jobs), "shards_done": done,
+            "running": running, "queued": queued,
+            "waiting_for_runners": bool(waiting),
+            "started": (plan[0].get("startedAt") if plan else None),
+            "jobs": [{"name": j["name"], "status": j["status"],
+                       "conclusion": j.get("conclusion"),
+                       "startedAt": j.get("startedAt"),
+                       "completedAt": j.get("completedAt"),
+                       # the step a machine is on right now — the only live
+                       # detail GitHub exposes before a job's log is released
+                       "step": next((st_["name"] for st_ in (j.get("steps") or [])
+                                     if st_.get("status") == "in_progress"),
+                                    None)}
+                     for j in jobs],
             "failed": sum(1 for j in jobs if j.get("conclusion") == "failure")}
+
+
+PROGRESS_BRANCH = "sweep-progress"
+
+
+def live_progress(run_id: int, slug: str | None = None) -> list:
+    """What each machine says it is doing, right now.
+
+    GitHub serves no log for a running job, so the shards publish a small file
+    each — ``progress/run-<id>/shard-<n>.json`` on an orphan branch. This reads
+    them back. Empty list simply means nothing has reported yet.
+    """
+    slug = slug or repo_slug()
+    path = f"progress/run-{run_id}"
+    try:
+        listing = json.loads(_gh(
+            "api", f"repos/{slug}/contents/{path}?ref={PROGRESS_BRANCH}",
+            timeout=45))
+    except CloudError:
+        return []
+    out = []
+    for f in listing if isinstance(listing, list) else []:
+        try:
+            blob = json.loads(_gh("api", f["url"], "--jq", ".content",
+                                  timeout=45))
+        except CloudError:
+            continue
+        try:
+            import base64
+
+            out.append(json.loads(base64.b64decode(blob)))
+        except Exception:
+            continue
+    return sorted(out, key=lambda d: d.get("shard", 0))
 
 
 def fetch(run_id: int, slug: str | None = None) -> list:
@@ -137,6 +193,35 @@ def fetch(run_id: int, slug: str | None = None) -> list:
                 if line.strip():
                     rows.append(json.loads(line))
     return rows
+
+
+RUNFILE = Path(os.path.expanduser("~/.tradingagents/backtest/cloud_run.json"))
+
+
+def remember(run: dict) -> None:
+    """Persist the run being watched, so it survives a browser reload, a tab
+    switch, or the app restarting. Session state does not."""
+    RUNFILE.parent.mkdir(parents=True, exist_ok=True)
+    RUNFILE.write_text(json.dumps(run))
+
+
+def remembered() -> dict:
+    try:
+        return json.loads(RUNFILE.read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def forget() -> None:
+    try:
+        RUNFILE.unlink()
+    except OSError:
+        pass
+
+
+def cancel(run_id: int, slug: str | None = None) -> None:
+    """Cancel a run on GitHub. The machines stop; nothing is charged."""
+    _gh("run", "cancel", str(run_id), "--repo", slug or repo_slug())
 
 
 def merge_into_store(rows: list) -> dict:

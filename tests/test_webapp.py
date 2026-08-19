@@ -339,9 +339,15 @@ def test_the_terminal_follows_the_light_dark_toggle():
     light = re.findall(r"--t-(\w+):\s*([^;]+);", app.TERMINAL_CSS)
     dark = re.findall(r"--t-(\w+):\s*([^;]+);", app.TERMINAL_DARK_CSS)
     lmap, dmap = dict(light), dict(dark)
-    assert lmap["ink"].strip() == "#16181d", "light mode needs dark ink"
-    assert lmap["panel"].strip() == "#ffffff", "light mode needs a light panel"
-    assert dmap["ink"].strip() == "#ededed", "night needs light ink"
+    # Values are Apex's own tokens now (oklch), ported 2026-08-20. Assert the
+    # PROPERTY rather than the literal: light ink must be dark, dark ink light.
+    def _l(v):
+        m = re.search(r"oklch\((\d+(?:\.\d+)?)%", v)
+        return float(m.group(1)) if m else None
+    assert _l(lmap["ink"]) < 30, f"light mode needs dark ink, got {lmap['ink']}"
+    assert _l(lmap["panel"]) > 95, f"light needs a light panel, {lmap['panel']}"
+    assert _l(dmap["ink"]) > 80, f"night needs light ink, got {dmap['ink']}"
+    assert _l(dmap["panel"]) < 30, f"night needs a dark panel, {dmap['panel']}"
     # Every colour token the night block redefines must exist in the light one,
     # or a rule paints ink whose ground was never painted — the 2026-08-15 bug.
     missing = [k for k in dmap if k not in lmap]
@@ -356,19 +362,26 @@ def test_the_dataframe_invert_is_night_only():
     assert "invert(.92)" in app.TERMINAL_DARK_CSS
 
 
-def test_the_bands_are_not_filled_cards():
-    """"the sections are enclosed on large box" — a filled, bordered card per
-    band put three frames around one table. Hairline divider instead."""
+def test_the_bands_use_apexs_card_treatment():
+    """Superseded "the bands are not filled cards": that was the operator's
+    2026-08-19 complaint about a BLACK box in light mode. On 2026-08-20 they
+    asked for Apex's UI, whose sections are white cards with a hairline border
+    and a 10px radius — the opposite problem, and what they now want."""
     import re
 
     import app
-    m = re.search(r'\.st-key-term \[class\*="st-key-tmsec_"\]\{([^}]+)\}',
-                  app.TERMINAL_CSS)
-    assert m, "the band rule is gone entirely"
-    body = m.group(1)
-    assert "background:transparent" in body
-    assert "border:0" in body
-    assert "border-top:1px solid" in body
+    # 2026-08-20: the operator asked for apex-django.dashboardpack.com's UI,
+    # whose sections ARE cards — so the hairline-only rule from earlier the same
+    # day is deliberately superseded. What must hold is Apex's treatment: a
+    # panel-coloured card, a hairline border, the 10px radius and NO shadow.
+    rules = re.findall(r'\.st-key-term \[class\*="st-key-tmsec_"\]\{([^}]+)\}',
+                       app.TERMINAL_CSS)
+    assert rules, "the band rule is gone entirely"
+    body = rules[-1]
+    assert "background:var(--t-panel)" in body
+    assert "border:1px solid var(--t-rule)" in body
+    assert "border-radius:var(--t-r)" in body
+    assert "box-shadow:none" in body
 
 
 def test_the_history_table_pages_ten_at_a_time_with_numbers():
@@ -392,3 +405,124 @@ def test_page_numbers_windows_and_elides():
             assert real == sorted(set(real)), f"{pg}/{pages}: {nums}"
             assert real[0] == 1 and real[-1] == pages
             assert len(nums) <= 9, f"{pg}/{pages} draws {len(nums)} buttons"
+
+
+def test_the_runner_feed_shows_am_pm_not_a_24_hour_stamp():
+    """Operator, 2026-08-20: "make the time in am or pm i dont want this format
+    2026-08-20 01:20:50". Reformatted at RENDER time, so the lines already on
+    disk read the same way as the ones written next."""
+    import app
+    assert app._fmt_log_line(
+        "2026-08-20 01:20:50,936 INFO scan PI_USDT: step=3") == \
+        "Aug 20 1:20:50AM INFO scan PI_USDT: step=3"
+    assert app._fmt_log_line("2026-08-20 13:05:09,001 WARNING x") == \
+        "Aug 20 1:05:09PM WARNING x"
+    assert app._fmt_log_line("2026-08-20 12:00:00,000 INFO noon") == \
+        "Aug 20 12:00:00PM INFO noon"
+    assert app._fmt_log_line("2026-08-20 00:00:00,000 INFO midnight") == \
+        "Aug 20 12:00:00AM INFO midnight"
+    # milliseconds are optional
+    assert app._fmt_log_line("2026-08-20 09:07:05 INFO x") == \
+        "Aug 20 9:07:05AM INFO x"
+
+
+def test_a_line_with_no_timestamp_is_left_alone():
+    """A traceback continuation must not be mangled into something that reads
+    like an event."""
+    import app
+    for line in ("Traceback (most recent call last):",
+                 '  File "x.py", line 1, in <module>',
+                 "2026-13-45 99:99:99,000 INFO impossible date",
+                 ""):
+        assert app._fmt_log_line(line) == line
+
+
+def test_the_feed_actually_uses_the_formatter():
+    src = open("app.py").read()
+    assert "html.escape(_fmt_log_line(l))" in src, \
+        "the runner-log column must render through it"
+
+
+def test_tables_match_the_apex_customers_spec():
+    """Measured cell by cell off apex-django.dashboardpack.com/customers/ on
+    2026-08-20. This CORRECTS the first port: the dashboard's "Recent Orders"
+    card is sentence case, so uppercase was stripped everywhere — but the data
+    table the operator asked for has UPPERCASE headers at 12px/600 with .6px
+    tracking. Rows are 44.5px with a hairline under each and an accent hover."""
+    import re
+
+    import app
+    css = app.CSS
+    m = re.search(r'\[data-testid="stTable"\] thead th[^{]*\{([^}]+)\}', css)
+    assert m, "the table header rule is gone"
+    th = m.group(1)
+    assert "text-transform:uppercase" in th
+    assert "font-size:12px" in th
+    assert "font-weight:600" in th
+    assert "letter-spacing:.6px" in th
+    assert "position:sticky" in th, "its header sticks while the body scrolls"
+
+    m = re.search(r'\[data-testid="stTable"\] tbody td[^{]*\{([^}]+)\}', css)
+    td = m.group(1)
+    assert "padding:8px 12px" in td
+    assert "height:44px" in td
+    assert "border-bottom:1px solid var(--border)" in td
+
+    # the ornaments its rows are built from
+    for cls in (".ap-av", ".ap-pill", ".ap-sub"):
+        assert cls in css, f"{cls} missing"
+    assert "border-radius:9999px" in css, "avatars and pills are round"
+
+
+def test_the_terminal_grid_uses_the_same_header_spec():
+    """One app, one table language — the dense grid keeps the spec at its own
+    row height rather than looking like a different product."""
+    import re
+    import app
+    m = re.search(r'\.st-key-term \.tm-pt-h\{([^}]+)\}', app.TERMINAL_CSS)
+    assert m, "the grid header rule is gone"
+    h = m.group(1)
+    assert "text-transform:uppercase" in h
+    assert "letter-spacing:.6px" in h
+    assert "font-weight:600" in h
+
+
+def test_positions_rows_use_the_apex_orders_shape():
+    """Ported from apex-django.dashboardpack.com/orders/ on 2026-08-20: its row
+    is avatar + name + email underneath, a status PILL, and a right-aligned
+    total. Ours is avatar + contract + strategy underneath, LONG/SHORT as the
+    pill, and the bracket as a second pill."""
+    import app
+    row = app._tm_pos_row({
+        "coin": "PROVE", "strategy": "mom6_1h_pv", "side": "LONG",
+        "bracket": "on MEXC", "open $": 2.11, "W": 4, "L": 8, "trades": 12,
+        "entry": 0.1563, "margin $": 5, "opened": "08-19 03:00", "held": "22h",
+        "prog": "", "tp_pct": "", "sl_pct": ""})
+    assert "ap-av" in row and ">PR<" in row, "avatar with the contract initials"
+    assert "<b>PROVE</b>" in row
+    assert "ap-sub'>mom6_1h_pv" in row, "strategy is the sub-line"
+    assert "ap-pill ok'>LONG" in row, "LONG is a green pill"
+    assert "ap-pill warn'>on MEXC" in row, "the bracket is a pill"
+    short = app._tm_pos_row({"coin": "PI", "strategy": "x", "side": "SHORT",
+                             "bracket": "SIMULATED", "open $": -1.0})
+    assert "ap-pill bad'>SHORT" in short
+
+
+def test_the_total_row_gets_no_avatar():
+    """It printed a circle reading "TO" beside the word TOTAL — a summary line
+    is not an identity."""
+    import app
+    tot = app._tm_pos_row({"coin": "TOTAL", "side": "", "bracket": "",
+                           "open $": 0.5, "W": 4, "L": 11, "trades": 15})
+    assert "ap-av" not in tot
+    assert "<b>TOTAL</b>" in tot
+
+
+def test_the_avatar_colour_is_stable_per_contract():
+    """Apex gives each identity its own colour; a colour that moved between
+    reruns would make the same contract look like a different one."""
+    import app
+    a = app._ap_avatar("PROVE_USDT")
+    assert a == app._ap_avatar("PROVE_USDT") == app._ap_avatar("PROVE")
+    assert app._ap_avatar("PI") != app._ap_avatar("XAUT")
+    assert "PR" in a and "#" in a

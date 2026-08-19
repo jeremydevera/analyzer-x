@@ -624,6 +624,12 @@ FEE_FALLBACK = 0.0008
 # slippage; a simulated one is filled at the exact barrier, so without this
 # the demo reports better results than the backtest that justified it.
 PAPER_SLIPPAGE = 0.0003
+# How far SHY of a resting barrier a real fill may land and still be named
+# after it. A fill THROUGH the barrier always counts (a stop slips past by
+# any amount — ALICE's 0.1396 stop filled at 0.1407); shy fills happen on
+# the TP side, measured at 0.15% (TP 0.1386 filled 0.1384). Twice the worst
+# observed. Anything shy of both barriers by more reads as a manual close.
+EXIT_LABEL_TOLERANCE = 0.003
 
 
 # How far price may drift from the signal bar's close before the entry is
@@ -1675,6 +1681,30 @@ def _bracket(side: int, entry: float, tp: float, sl: float) -> tuple[float, floa
     return entry * (1 - tp), entry * (1 + sl)
 
 
+def _exchange_exit_label(pos: dict, close_px: float) -> str:
+    """Name an exchange-side close by where its real fill price landed.
+
+    A resting bracket fills intrabar, so the position is gone from the venue
+    before the candle check ever sees the cross — which ledgered every real
+    bracket fill as MANUAL/EXCHANGE (10 of 10 real exits as of 2026-08-20,
+    none of them closed by hand; ALICE filled at exactly its 0.1321 stop and
+    was still called manual). A fill at or beyond a barrier, give or take
+    slippage, is that barrier firing; only a fill clear of both is manual.
+    """
+    tol = EXIT_LABEL_TOLERANCE
+    if pos["side"] > 0:
+        if close_px <= pos["sl"] * (1 + tol):
+            return "SL"
+        if close_px >= pos["tp"] * (1 - tol):
+            return "TP"
+    else:
+        if close_px >= pos["sl"] * (1 - tol):
+            return "SL"
+        if close_px <= pos["tp"] * (1 + tol):
+            return "TP"
+    return "MANUAL/EXCHANGE"
+
+
 def _dry_fill(pos: dict, high: list, low: list) -> str | None:
     """Walk bars since entry; SL first when both barriers sit in one bar —
     the same worst-case rule the backtest used."""
@@ -2044,9 +2074,15 @@ def process_symbol(symbol: str, settings: dict, state: dict, *, fx,
                         real = match.get("realised")
                         if real is not None:
                             pnl = float(real)      # 0.0 is a real answer
-                        exit_px = float(match.get("closeAvgPrice")
-                                        or exit_px)
                         why = "MANUAL/EXCHANGE"
+                        if match.get("closeAvgPrice"):
+                            exit_px = float(match["closeAvgPrice"])
+                            # A bracket fills intrabar, so the position is
+                            # gone before the candle check sees the cross —
+                            # without this every stop/TP fill was ledgered
+                            # as a manual close. Let the fill price say
+                            # which barrier fired.
+                            why = _exchange_exit_label(pos, exit_px)
                 except Exception as exc:
                     logger.warning("could not fetch real PnL for %s manual "
                                    "close, using estimate: %s", symbol, exc)

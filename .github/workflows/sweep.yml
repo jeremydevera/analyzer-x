@@ -25,7 +25,7 @@ on:
         default: "365"
 
 permissions:
-  contents: read
+  contents: write        # shards write their progress to the sweep-progress branch
 
 jobs:
   plan:
@@ -66,6 +66,7 @@ jobs:
 
       - name: Sweep shard ${{ matrix.shard }}
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SHARD: ${{ matrix.shard }}
           SHARDS: ${{ github.event.inputs.shards }}
           COINS: ${{ github.event.inputs.coins }}

@@ -21,11 +21,13 @@ import time
 import json
 import logging
 import os
+import re as _re
 import sys
 import traceback
 from pathlib import Path
 from typing import NamedTuple
 
+import re
 import subprocess
 import streamlit as st
 import streamlit.components.v1 as components
@@ -270,24 +272,33 @@ CSS = """
    one cobalt accent, hairline rules. One sans (Mulish) does both display and
    body work; IBM Plex Mono keeps columns of prices aligned digit for digit. */
 :root {
-  --bg:#fafafa;            /* neutral near-white */
-  --panel:#ffffff;
-  --panel-2:#f6f6f4;
-  --sidebar:#f6f6f4;
-  --border:#e7e7ea;
-  --border-soft:#f0f0f2;
-  --border-strong:#d4d4d8;
-  --text:#1a1a1a;          /* ink, not pure black */
-  --muted:#71717a;
-  --faint:#a1a1aa;
-  --accent:#1E5BD6;        /* cobalt */
-  --accent-dim:#174ab0;
-  --accent-wash:#e7eefc;
-  --buy:#16a34a; --sell:#bd413f; --hold:#9A5B08;
+  /* Ported from apex-django.dashboardpack.com, 2026-08-20 — read out of the
+     running page's own custom properties (--background, --card, --muted,
+     --border, --primary, --success, --destructive, --warning, --radius) after
+     signing in with the demo credentials it publishes. APP-WIDE, not just the
+     Auto Trade terminal: the first pass scoped everything to .st-key-term, so
+     every other page looked untouched, which is exactly what the operator saw.
+     Their stylesheet and assets are not copied; these are the same values. */
+  --bg:oklch(98.5% .002 230);          /* --background */
+  --panel:oklch(100% 0 0);             /* --card */
+  --panel-2:oklch(96% .005 230);       /* --muted */
+  --sidebar:oklch(96% .005 230);
+  --border:oklch(92.2% .005 230);      /* --border */
+  --border-soft:oklch(95% .004 230);
+  --border-strong:oklch(87% .006 230);
+  --text:oklch(15.5% .015 230);        /* --foreground */
+  --muted:oklch(48% .015 230);         /* --muted-foreground */
+  --faint:oklch(63% .012 230);
+  --accent:oklch(50% .175 160);        /* --primary, emerald */
+  --accent-dim:oklch(44% .16 160);
+  --accent-wash:oklch(95% .03 160);
+  --buy:oklch(50% .16 145);            /* --success */
+  --sell:oklch(57.7% .245 27.325);     /* --destructive */
+  --hold:oklch(60% .14 75);            /* --warning, darkened for contrast */
   --font-display:'Mulish','Helvetica Neue',Helvetica,Arial,sans-serif;
   --font-body:'Mulish','Helvetica Neue',Helvetica,Arial,sans-serif;
   --font-mono:'IBM Plex Mono',ui-monospace,monospace;
-  --r:8px;
+  --r:10px;                /* Apex --radius: .625rem */
   --s:8px;
   --field:280px;           /* one field width, so the forms line up */
 }
@@ -650,6 +661,108 @@ hr{ border-color:var(--border); }
 }
 [data-testid="stVerticalBlockBorderWrapper"] [role="radiogroup"]{ gap:2px !important; }
 [data-testid="stVerticalBlockBorderWrapper"] [role="radiogroup"] p{ font-size:12.5px !important; }
+
+/* =====================================================================
+   APEX TREATMENT, APP-WIDE — apex-django.dashboardpack.com, 2026-08-20.
+   Measured off the running page: card = --card on a --background page, 1px
+   --border, radius .625rem, NO shadow, content flush inside; thead = --muted
+   at ~30% alpha with NO uppercase and NO letter-spacing at 14px/500 and
+   12px/16px padding; rows separated by a single hairline, no zebra, hover
+   tint; status = rounded-full pill at 12px/600; primary = emerald.
+   This block is LAST in the base sheet so it wins over the older rules
+   without deleting them.
+   ===================================================================== */
+
+/* ---- every bordered container becomes an Apex card */
+[data-testid="stVerticalBlockBorderWrapper"]:has(> div > [data-testid]),
+div[data-testid="stExpander"], .card, .panel{
+  background:var(--panel); border:1px solid var(--border) !important;
+  border-radius:var(--r) !important; box-shadow:none !important; }
+
+/* ---- section titles: sentence case, 15px/600 ink, muted subtitle */
+h1, h2, h3{ letter-spacing:-.01em; font-weight:600; }
+h2{ font-size:20px; } h3{ font-size:15px; }
+[data-testid="stCaptionContainer"] p{ color:var(--muted) !important;
+  font-size:13px !important; letter-spacing:0 !important;
+  text-transform:none !important; }
+
+/* ---- TABLES: measured cell by cell off /customers/ on 2026-08-20.
+   NOTE this CORRECTS the earlier pass. The dashboard's "Recent Orders" card
+   uses sentence-case headers, so the first port removed uppercase everywhere —
+   but the data table the operator actually asked for is the opposite: its
+   headers ARE uppercase, 12px/600, letter-spacing .6px, in the muted ink, with
+   NO bottom border on the cell (the row below carries the hairline).
+     card    white, 1px --border, radius 10px, overflow hidden, padding 0
+     thead   sticky, faint tint, th 12px/600 UPPERCASE ls .6px --muted-fg
+     tr      44.5px tall, 1px --border under it, hover = accent at 30%
+     td      padding 8px 12px, 14px, --foreground, numerics right-aligned
+     avatar  32px circle on --muted, initials 12px/600
+     pill    rounded-full, tinted, 12px/600 */
+[data-testid="stTable"] table, .stMarkdown table{
+  width:100%; border-collapse:separate; border-spacing:0;
+  background:var(--panel); border:1px solid var(--border);
+  border-radius:var(--r); overflow:hidden; font-size:14px; }
+[data-testid="stTable"] thead th, .stMarkdown thead th{
+  background:color-mix(in oklab, var(--panel-2) 55%, transparent);
+  color:var(--muted) !important; font-size:12px !important;
+  font-weight:600 !important; letter-spacing:.6px !important;
+  text-transform:uppercase !important; white-space:nowrap;
+  padding:10px 12px !important; text-align:left;
+  border-bottom:1px solid var(--border) !important;
+  position:sticky; top:0; z-index:2; }
+[data-testid="stTable"] tbody td, .stMarkdown tbody td{
+  padding:8px 12px !important; font-size:14px;
+  color:var(--text); vertical-align:middle; height:44px;
+  border-bottom:1px solid var(--border) !important; }
+[data-testid="stTable"] tbody tr:last-child td,
+.stMarkdown tbody tr:last-child td{ border-bottom:0 !important; }
+/* Apex's own hover: the accent at 30%, not a grey wash. */
+@media (hover:hover) and (pointer:fine){
+  [data-testid="stTable"] tbody tr:hover td, .stMarkdown tbody tr:hover td{
+    background:color-mix(in oklab, var(--accent-wash) 55%, transparent); } }
+/* Numbers: tabular figures, right-aligned, as its ORDERS column is. */
+[data-testid="stTable"] td, .stMarkdown td{ font-variant-numeric:tabular-nums; }
+[data-testid="stTable"] td.num, .stMarkdown td.num,
+[data-testid="stTable"] th.num, .stMarkdown th.num{ text-align:right !important; }
+/* The two cell ornaments its rows are built from. */
+.ap-av{ display:inline-flex; align-items:center; justify-content:center;
+  width:32px; height:32px; border-radius:9999px; background:var(--panel-2);
+  color:var(--text); font-size:12px; font-weight:600; margin-right:10px;
+  flex:0 0 32px; }
+.ap-cell{ display:flex; align-items:center; }
+.ap-sub{ display:block; font-size:12px; color:var(--muted); margin-top:1px; }
+.ap-pill{ display:inline-block; padding:2px 10px; border-radius:9999px;
+  font-size:12px; font-weight:600; line-height:1.5;
+  background:var(--panel-2); color:var(--muted); }
+.ap-pill.ok{ background:color-mix(in oklab, var(--buy) 16%, transparent);
+  color:var(--buy); }
+.ap-pill.bad{ background:color-mix(in oklab, var(--sell) 16%, transparent);
+  color:var(--sell); }
+.ap-pill.warn{ background:color-mix(in oklab, var(--hold) 18%, transparent);
+  color:var(--hold); }
+/* Streamlit's own grid is a canvas it paints itself — give it the card frame */
+[data-testid="stDataFrame"]{ border:1px solid var(--border) !important;
+  border-radius:var(--r) !important; overflow:hidden; }
+
+/* ---- buttons: Apex's emerald primary, quiet secondary */
+.stButton>button{ border-radius:var(--r) !important; font-weight:500 !important;
+  border:1px solid var(--border-strong) !important; box-shadow:none !important; }
+.stButton>button[kind="primary"]{ background:var(--accent) !important;
+  border-color:var(--accent) !important; color:#fff !important; }
+.stButton>button:hover{ border-color:var(--accent) !important; }
+
+/* ---- inputs pick up the same radius and hairline */
+.stTextInput input, .stNumberInput input, .stTextArea textarea,
+[data-baseweb="select"] > div{
+  border-radius:var(--r) !important;
+  border-color:var(--border) !important; box-shadow:none !important; }
+
+/* ---- the nav pills read like Apex's sidebar items */
+.st-key-nav_page [role="radiogroup"] label{ border-radius:var(--r) !important; }
+.st-key-nav_page [role="radiogroup"] label:has(input:checked){
+  background:var(--accent-wash) !important; }
+.st-key-nav_page [role="radiogroup"] label:has(input:checked) p{
+  color:var(--accent) !important; font-weight:600 !important; }
 </style>
 """
 
@@ -659,10 +772,17 @@ hr{ border-color:var(--border); }
 DARK_CSS = """
 <style>
 :root {
-  --bg:#0f1318; --panel:#151b23; --panel-2:#1a222c; --sidebar:#151b23;
-  --border:#2a3441; --border-soft:#232c37; --border-strong:#3a4757;
-  --text:#e3e9f1; --muted:#8b98a9; --faint:#5d6979;
-  --accent:#4c8dff; --accent-dim:#6ea3ff; --accent-wash:#16233a;
+  /* Apex's dark surface is its sidebar: --sidebar, --sidebar-accent,
+     --sidebar-border, --sidebar-primary. */
+  --bg:oklch(14% .015 170); --panel:oklch(17.5% .015 170);
+  --panel-2:oklch(20% .015 170); --sidebar:oklch(14% .015 170);
+  --border:oklch(22% .015 170); --border-soft:oklch(19% .015 170);
+  --border-strong:oklch(27% .015 170);
+  --text:oklch(95% .005 230); --muted:oklch(72% .01 230);
+  --faint:oklch(55% .012 230);
+  --accent:oklch(60% .175 160); --accent-dim:oklch(68% .16 160);
+  --accent-wash:oklch(24% .05 165);
+  --buy:oklch(65% .16 150); --sell:oklch(65% .2 27); --hold:oklch(72% .15 75);
 }
 [data-testid="stAppViewContainer"], .stApp{ background:var(--bg) !important; }
 [data-testid="stHeader"]{ background:transparent !important; }
@@ -1449,6 +1569,38 @@ AUTO_STRATEGIES = (
 AUTO_TRADE_SETTINGS = Path(os.path.expanduser("~/.tradingagents/auto_trade.json"))
 
 
+_LOG_TS_RE = _re.compile(
+    r"^(?P<y>\d{4})-(?P<mo>\d{2})-(?P<d>\d{2}) "
+    r"(?P<h>\d{2}):(?P<mi>\d{2}):(?P<s>\d{2})(?:,\d+)?")
+
+
+def _fmt_log_line(line: str) -> str:
+    """Rewrite a runner-log line's timestamp into the operator's clock.
+
+    Python's logging writes "2026-08-20 01:20:50,936" — a 24-hour stamp with
+    milliseconds and a redundant year, on a screen where every line is from
+    today. Asked for on 2026-08-20: "make the time in am or pm i dont want this
+    format". Becomes "Aug 20 1:20:50AM". Done at RENDER time, not by changing
+    the log format, so the lines already on disk read the same way as the ones
+    written next.
+
+    A line that does not start with a stamp is handed back untouched — a
+    traceback continuation must not be mangled into something that looks like
+    an event.
+    """
+    m = _LOG_TS_RE.match(line)
+    if not m:
+        return line
+    try:
+        d = _dt.datetime(int(m["y"]), int(m["mo"]), int(m["d"]),
+                         int(m["h"]), int(m["mi"]), int(m["s"]))
+    except ValueError:
+        return line
+    hour = d.hour % 12 or 12
+    return (f"{d:%b} {d.day} {hour}:{d:%M}:{d:%S}{d:%p}"
+            f"{line[m.end():]}")
+
+
 def _fmt_when(ts: float) -> str:
     """Operator's requested format: Aug 13, 2026 (8:03PM)."""
     d = _dt.datetime.fromtimestamp(ts)
@@ -1925,11 +2077,22 @@ TERMINAL_CSS = """
      these names for night mode and touches nothing else.
      --t-amber keeps its NAME because two dozen rules and several render
      functions reference it; it holds the accent, blue in both themes. */
-  --t-ground:transparent; --t-panel:#ffffff; --t-panel2:#f4f5f7;
-  --t-rule:#e3e5e9; --t-rule2:#d3d7de;
-  --t-ink:#16181d; --t-dim:#5f6672; --t-faint:#9aa1ad;
-  --t-amber:#1a6dd9; --t-up:#0a8f4d; --t-dn:#cf2b31;
-  --t-r:8px; --t-rc:6px;
+  /* Palette measured off apex-django.dashboardpack.com (2026-08-20) with its
+     own published demo login, read out of the page's CSS custom properties —
+     --background, --card, --muted, --border, --primary, --success,
+     --destructive, --radius. Their emerald primary replaces the blue accent;
+     --t-amber keeps its NAME because two dozen rules reference it. */
+  /* transparent, NOT a colour: the app paints the page and the card
+     sits on it. Two near-identical darks (this band's and the app's)
+     showed as a seam around every card in night mode. */
+  --t-ground:transparent; --t-panel:oklch(100% 0 0);
+  --t-panel2:oklch(96% .005 230);
+  --t-rule:oklch(92.2% .005 230); --t-rule2:oklch(87% .006 230);
+  --t-ink:oklch(15.5% .015 230); --t-dim:oklch(48% .015 230);
+  --t-faint:oklch(63% .012 230);
+  --t-amber:oklch(50% .175 160); --t-up:oklch(50% .16 145);
+  --t-dn:oklch(57.7% .245 27.325);
+  --t-r:10px; --t-rc:8px;
   background:var(--t-ground); color:var(--t-ink);
   font-family:var(--font-mono); font-variant-numeric:tabular-nums;
   padding:2px; border:0;
@@ -2202,6 +2365,87 @@ a.bt-open:focus-visible{ outline:2px solid #171612; outline-offset:2px; }
   font-size:11.5px !important; }
 .st-key-term [data-testid="stAlert"]{ border-radius:0 !important;
   background:var(--t-panel) !important; }
+/* =====================================================================
+   APEX TREATMENT — ported from apex-django.dashboardpack.com, 2026-08-20.
+   Measured, not guessed: card = white, 1px oklch(92.2% .005 230) border,
+   radius 10px, NO shadow, overflow hidden; the table sits flush inside it;
+   thead is the muted token at ~30% alpha with NO uppercase and NO letter-
+   spacing, 14px/500, padding 12px 16px; rows are 61px tall with hairline
+   separators and no zebra; status is a soft rounded-full pill at 12px/600.
+   Their stylesheet and assets are NOT copied — this is the same treatment
+   rebuilt on the tokens above.
+   ADAPTED, deliberately: their rows are 61px for five columns of prose. This
+   grid carries fourteen columns of numbers, so rows are 36px and cells 12px —
+   the same rhythm at this density. Numbers keep the monospace face because
+   tabular alignment is the one thing Apex's sans cannot do.
+   ===================================================================== */
+.st-key-term{ --t-sans:-apple-system,system-ui,"Segoe UI",Roboto,
+  "Helvetica Neue",Arial,sans-serif; }
+/* Text wears the sans; anything numeric keeps the mono. */
+.st-key-term .tm-h, .st-key-term .tm-h *,
+.st-key-term .tm-rib .l, .st-key-term .tm-rib .s,
+.st-key-term .tm-pt-h, .st-key-term .tm-pt-h *,
+.st-key-term [data-testid="stCaptionContainer"] p,
+.st-key-term .tm-badge, .st-key-term .tm-pill{
+  font-family:var(--t-sans) !important; }
+
+/* ---- SECTION = card. White, hairline, 10px, no shadow. */
+.st-key-term [class*="st-key-tmsec_"]{
+  background:var(--t-panel); border:1px solid var(--t-rule);
+  border-radius:var(--t-r); box-shadow:none;
+  padding:16px 18px 14px; margin-bottom:16px; }
+.st-key-term [class*="st-key-tmsec_"]:first-of-type{ border-top:1px solid var(--t-rule); }
+/* Inner tiles step DOWN onto the muted token, so a card inside a card still
+   reads as one surface rather than three frames. */
+.st-key-term [class*="st-key-tmsec_"] .tm-rib > div,
+.st-key-term [class*="st-key-tmsec_"] .tm-p,
+.st-key-term [class*="st-key-tmsec_"] .tm-feed{
+  background:var(--t-panel2); border:1px solid var(--t-rule);
+  border-radius:var(--t-rc); }
+
+/* ---- SECTION HEADER = title + muted subtitle + divider, sentence case. */
+.st-key-term .tm-h{ display:flex; align-items:baseline; gap:10px;
+  margin:0 0 12px; padding-bottom:10px;
+  border-bottom:1px solid var(--t-rule); }
+.st-key-term .tm-h .k{ color:var(--t-ink); font-size:15px; font-weight:600;
+  letter-spacing:-.01em; text-transform:none; }
+.st-key-term .tm-h .k::before{ content:none; }
+.st-key-term .tm-h .r{ flex:1; height:0; background:none; }
+.st-key-term .tm-h .v{ color:var(--t-dim); font-size:12.5px;
+  letter-spacing:0; text-transform:none; font-weight:400; }
+
+/* ---- TABLES. Faint tinted header, hairline rows, no zebra, no uppercase. */
+/* Same spec as /customers/, at this grid's density: its rows are 44.5px for
+   seven columns, these carry up to fourteen, so 34px with the same 8px/12px
+   cell padding and the same uppercase 12px/600 .6px-tracked header. */
+.st-key-term .tm-pt{ padding:8px 12px; font-size:12.5px; min-height:34px;
+  border-bottom:1px solid var(--t-rule); }
+/* The positions books carry Apex's two-line identity cell, so their rows take
+   its 44px and their cells stop clipping the sub-line. */
+.st-key-pos_real .tm-pt, .st-key-pos_paper .tm-pt{ min-height:44px; }
+.st-key-term .tm-pt .c:has(.ap-cell){ overflow:visible; }
+.st-key-term .ap-cell{ display:flex; align-items:center; line-height:1.25; }
+.st-key-term .ap-av{ font-family:var(--t-sans); }
+.st-key-term .ap-sub{ font-family:var(--t-sans); }
+.st-key-term .tm-pt-h{
+  background:color-mix(in oklab, var(--t-panel2) 55%, transparent);
+  color:var(--t-dim); font-size:11.5px; font-weight:600; letter-spacing:.6px;
+  text-transform:uppercase; padding:10px 12px; white-space:nowrap;
+  border-bottom:1px solid var(--t-rule); border-radius:var(--t-rc) var(--t-rc) 0 0; }
+.st-key-term .tm-pt-t{ font-weight:600; background:var(--t-panel2);
+  border-top:1px solid var(--t-rule2); border-bottom:0; }
+@media (hover:hover) and (pointer:fine){
+  .st-key-term .tm-pt:not(.tm-pt-h):not(.tm-pt-t):hover{
+    background:color-mix(in oklab, var(--t-amber) 8%, transparent); } }
+
+/* ---- soft status pill, Apex's shape: rounded-full, tinted, 600. */
+.st-key-term .tm-badge{ border-radius:9999px; font-size:11px; font-weight:600;
+  letter-spacing:0; text-transform:none; padding:3px 10px; }
+.st-key-term .tm-pill{ display:inline-block; border-radius:9999px;
+  font-size:11px; font-weight:600; padding:2px 9px;
+  background:color-mix(in oklab, var(--t-panel2) 80%, transparent);
+  border:1px solid var(--t-rule); color:var(--t-dim); }
+
 /* Pagination: the current page is a filled pill, the others are buttons. */
 .st-key-term .tm-pg-on{
   text-align:center; font-size:11.5px; font-weight:700; line-height:1;
@@ -2218,10 +2462,15 @@ a.bt-open:focus-visible{ outline:2px solid #171612; outline-offset:2px; }
 TERMINAL_DARK_CSS = """
 <style>
 .st-key-term{
-  --t-ground:transparent; --t-panel:#101012; --t-panel2:#161618;
-  --t-rule:#232326; --t-rule2:#2e2e32;
-  --t-ink:#ededed; --t-dim:#8f8f99; --t-faint:#55555e;
-  --t-amber:#52a8ff; --t-up:#0cce6b; --t-dn:#e5484d;
+  /* Apex's own dark set — its sidebar tokens, which are its dark surface:
+     --sidebar, --sidebar-accent, --sidebar-border, --sidebar-primary. */
+  --t-ground:transparent; --t-panel:oklch(17.5% .015 170);
+  --t-panel2:oklch(20% .015 170);
+  --t-rule:oklch(22% .015 170); --t-rule2:oklch(27% .015 170);
+  --t-ink:oklch(95% .005 230); --t-dim:oklch(72% .01 230);
+  --t-faint:oklch(55% .012 230);
+  --t-amber:oklch(60% .175 160); --t-up:oklch(65% .16 150);
+  --t-dn:oklch(65% .2 27);
 }
 /* Streamlit paints its dataframe canvas itself and reads none of our tokens,
    so it is inverted to match. LIGHT mode must never get this rule: it turned a
@@ -2389,7 +2638,9 @@ _TM_POS = (
     # LIFETIME closed PnL beside a single open trade's unrealised, so one row
     # mixed two timescales. The lifetime figures live in the ALL TIME table
     # below, where they are labelled as such.
-    ("coin", "coin", 1.1, "l", "text"),
+    # One cell is the row's identity — avatar, contract, strategy underneath —
+    # exactly as Apex's CUSTOMER cell is avatar, name, email.
+    ("ident", "contract", 2.5, "l", "ident"),
     ("open $", "unreal $", 1.6, "r", "money"),
     ("prog", "to TP", 2.6, "l", "html"),
     ("tp_pct", "TP % ($)", 2.4, "r", "html"),
@@ -2397,8 +2648,7 @@ _TM_POS = (
     ("W", "W", 0.5, "r", "num"),
     ("L", "L", 0.5, "r", "num"),
     ("trades", "trd", 0.7, "r", "num"),
-    ("side", "side", 1.0, "l", "text"),
-    ("strategy", "strategy", 2.1, "l", "text"),
+    ("side", "side", 1.1, "l", "side"),
     ("opened", "opened", 1.9, "l", "text"),
     ("held", "held", 1.2, "l", "text"),
     ("entry", "entry", 1.4, "r", "px"),
@@ -2407,7 +2657,7 @@ _TM_POS = (
     # every strategy name and timestamp was ellipsised to make room for them.
     # `lev` went too; it is 20x on every row and now sits in the band header.
     ("margin $", "margin", 1.1, "r", "num"),
-    ("bracket", "bracket", 1.3, "l", "text"),
+    ("bracket", "bracket", 1.6, "l", "pill"),
 )
 _TM_POS_GRID = " ".join(f"{w}fr" for _, _, w, _a, _k in _TM_POS)
 
@@ -2453,6 +2703,28 @@ def _tm_progress(entry, tp, sl, px, side: int) -> str:
         f"{pct:.0f}%&nbsp;{target}</span></span>")
 
 
+# Apex's avatar palette, read off /orders/: one deterministic colour per
+# identity, white initials at 12px/600 in a 32px circle. Theirs were teal
+# rgb(14,116,144), pink rgb(190,24,93), indigo rgb(79,70,229), amber
+# rgb(180,83,9) and rgb(3,105,161) for the signed-in user.
+_AP_AVATAR = ("#0e7490", "#be185d", "#4f46e5", "#b45309", "#0369a1",
+              "#047857", "#7c3aed", "#b91c1c", "#0891b2", "#a16207")
+
+
+def _ap_avatar(name: str) -> str:
+    """A coloured circle with the contract's initials — Apex's row identity."""
+    txt = (name or "?").replace("_USDT", "")
+    ini = (txt[:2] or "?").upper()
+    tone = _AP_AVATAR[sum(map(ord, txt)) % len(_AP_AVATAR)]
+    return (f"<span class='ap-av' style='background:{tone};color:#fff'>"
+            f"{html.escape(ini)}</span>")
+
+
+def _ap_pill(text: str, tone: str = "") -> str:
+    """Apex's status pill: its own colour at 10% alpha behind the full colour."""
+    return f"<span class='ap-pill {tone}'>{html.escape(str(text))}</span>"
+
+
 def _tm_pos_cell(val, kind: str) -> str:
     """One cell. An absent value prints an em dash, never 'None' — a missing
     price and a broken one must not look the same."""
@@ -2468,10 +2740,45 @@ def _tm_pos_cell(val, kind: str) -> str:
         return f"{val:.6g}"
     if kind == "num" and isinstance(val, (int, float)):
         return f"{val:g}"
+    if kind == "ident":
+        # Apex's CUSTOMER cell: avatar, name in medium, detail underneath.
+        name, _, sub = str(val).partition("\n")
+        return (f"<span class='ap-cell'>{_ap_avatar(name)}"
+                f"<span><b>{html.escape(name.replace('_USDT', ''))}</b>"
+                + (f"<span class='ap-sub'>{html.escape(sub)}</span>"
+                   if sub else "")
+                + "</span></span>")
+    if kind == "side":
+        v = str(val).upper()
+        return _ap_pill(v, "ok" if v == "LONG" else
+                        "bad" if v == "SHORT" else "")
+    if kind == "pill":
+        v = str(val)
+        return _ap_pill(v, "warn" if "MEXC" in v.upper() else "")
     return html.escape(str(val))
 
 
 def _tm_pos_row(r: dict) -> str:
+    # `ident` is derived, not stored: "COIN\nstrategy", which the ident cell
+    # renders as Apex's avatar + name + sub-line. Doing it here means every
+    # caller — both books and the TOTAL row — gets it without being touched.
+    if "ident" not in r:
+        r = dict(r)
+        _st = r.get("strategy")
+        _cn = str(r.get("coin", ""))
+        if _cn == "TOTAL":
+            # A summary line is not an identity: giving it an avatar printed a
+            # circle reading "TO" beside the word TOTAL.
+            r["ident"] = None
+            r["_plain"] = "TOTAL"
+        else:
+            r["ident"] = (f"{_cn}\n{_st}"
+                          if _st and _st not in ("—", "-") else _cn)
+    if r.get("_plain"):
+        head = (f"<span class='c l'><b>{html.escape(r['_plain'])}</b></span>")
+        return head + "".join(
+            f"<span class='c {a}'>{_tm_pos_cell(r.get(k), kind)}</span>"
+            for k, _lab, _w, a, kind in _TM_POS[1:])
     return "".join(
         f"<span class='c {a}'>{_tm_pos_cell(r.get(k), kind)}</span>"
         for k, _lab, _w, a, kind in _TM_POS)
@@ -3621,7 +3928,7 @@ def render_auto_trade_tab() -> None:
                 # without a script Streamlit would strip.
                 st.markdown(
                     "<div class='tm-feed'>"
-                    + ("".join(f"<div>{html.escape(l)}</div>"
+                    + ("".join(f"<div>{html.escape(_fmt_log_line(l))}</div>"
                                for l in reversed(log_lines))
                        if log_lines else "<div>runner has not logged yet</div>")
                     + "</div>", unsafe_allow_html=True)
@@ -3838,10 +4145,12 @@ def _bt_build_page(rows: list) -> tuple[str, str] | None:
 def _bt_cloud_panel() -> None:
     """A GitHub run, watched from here — and pulled into the local store the
     moment it finishes, so the operator never touches github.com."""
+    import pandas as pd
+
     from tradingagents import cloud_sweep as cs
     from tradingagents import market_sweep as msw
 
-    run = st.session_state.get("bt_cloud_run")
+    run = st.session_state.get("bt_cloud_run") or cs.remembered()
     if not run:
         return
     try:
@@ -3850,14 +4159,118 @@ def _bt_cloud_panel() -> None:
         st.caption(f"GitHub run {run['id']}: cannot read status ({exc})")
         return
     done, total = stt["shards_done"], max(stt["shards"], 1)
-    st.progress(min(1.0, done / total),
-                text=(f"GitHub · {done}/{total} machines finished"
-                      + (f" · {stt['failed']} failed" if stt["failed"] else "")
-                      + f" · {stt['status']}"))
+    st.markdown("<div style='font-size:10px;letter-spacing:.16em;"
+                "text-transform:uppercase;color:#C2560B;margin:14px 0 2px'>"
+                f"GitHub run #{run['id']}</div>", unsafe_allow_html=True)
+    if stt.get("waiting_for_runners"):
+        st.warning("Waiting for a free machine — every GitHub runner is busy. "
+                   "A free repository gets about 20 at once, so another sweep "
+                   "of yours is holding them. Stop that one to start this now.")
+    else:
+        st.caption(f"{done} of {total} machines finished · "
+                   f"{stt.get('running', 0)} still testing · "
+                   f"{stt.get('queued', 0)} not started"
+                   + (f" · {stt['failed']} failed" if stt["failed"] else ""))
+
+    # What each machine SAYS it is doing — the shards publish this themselves,
+    # because GitHub serves no log for a job that is still running.
+    live = {}
+    try:
+        for d in cs.live_progress(run["id"], run.get("repo")):
+            live[int(d.get("shard", -1))] = d
+    except Exception:
+        live = {}
+    if live:
+        tot_done = sum(d.get("done", 0) for d in live.values())
+        tot_all = sum(d.get("total", 0) for d in live.values())
+        rows_now = sum(d.get("rows", 0) for d in live.values())
+        if tot_all:
+            st.progress(min(1.0, tot_done / tot_all),
+                        text=(f"{100 * tot_done / tot_all:.0f}% · "
+                              f"{tot_done} of {tot_all} contracts · "
+                              f"{rows_now:,} rows found so far"))
+
+    # One row per machine, because "0 of 20 finished" answers nothing about
+    # where the work actually is.
+    jobs = stt.get("jobs") or []
+    if jobs:
+        now = _dt.datetime.now(_dt.timezone.utc)
+
+        def _stamp(v):
+            """GitHub returns 0001-01-01T00:00:00Z for "hasn't happened yet".
+            Parsed naively that reads as two thousand years, which is how the
+            table showed "-1065379229 min"."""
+            if not v or v.startswith("0001-01-01"):
+                return None
+            try:
+                return _dt.datetime.fromisoformat(v.replace("Z", "+00:00"))
+            except ValueError:
+                return None
+
+        def _mins(a, b=None):
+            t0 = _stamp(a)
+            if t0 is None:
+                return ""
+            t1 = _stamp(b) or now
+            m = (t1 - t0).total_seconds() / 60
+            return f"{m:.0f} min" if m >= 0 else ""
+
+        rows = []
+
+        def _num(x):
+            m = re.search(r"\((\d+)\)", x["name"])
+            return int(m.group(1)) if m else 999
+
+        for j in sorted(jobs, key=_num):
+            state = ("finished" if j["status"] == "completed"
+                     else "testing" if j["status"] == "in_progress"
+                     else "waiting")
+            if j.get("conclusion") == "failure":
+                state = "FAILED"
+            # "sweep (7)" -> "#7", and a step name carries GitHub's internal
+            # id ("Sweep shard 7-1065379229") which means nothing here
+            num = re.search(r"\((\d+)\)", j["name"])
+            step = re.sub(r"-\d{6,}$", "", (j.get("step") or "")).strip()
+            sid = int(num.group(1)) if num else -1
+            rep = live.get(sid) or {}
+            stage = {"screening": "checking ages",
+                     "testing": "analysing",
+                     "done": "done"}.get(rep.get("stage"), "")
+            rows.append({
+                "machine": f"#{sid}" if sid >= 0 else j["name"],
+                "state": state,
+                "stage": stage or (step or
+                                   ("done" if state == "finished" else "queued")),
+                "%": (f"{rep['pct']:.0f}%" if rep.get("pct") is not None
+                      else ""),
+                "on": rep.get("note", ""),
+                "rows": rep.get("rows", ""),
+                "running for": _mins(j.get("startedAt"), j.get("completedAt")),
+            })
+        st.dataframe(pd.DataFrame(rows), width="stretch", height=260,
+                     hide_index=True)
+        st.caption("Each machine reports its own stage and percentage every "
+                   "45 seconds — 'checking ages' is picking which contracts "
+                   "have a year of history, 'analysing' is the backtesting.")
+
     st.markdown(f"<a class='bt-open' href='{stt['url']}' target='_blank' "
                 f"rel='noopener'>WATCH ON GITHUB &#8599;</a>"
                 f"<span class='bt-open-note'>run #{run['id']} · started "
                 f"{run.get('started', '')}</span>", unsafe_allow_html=True)
+    s1, s2 = st.columns([1, 5])
+    if stt["status"] != "completed":
+        if s1.button("STOP RUN", key=f"bt_cloud_stop_{run['id']}"):
+            try:
+                cs.cancel(run["id"], run.get("repo"))
+                cs.forget()
+                st.session_state.pop("bt_cloud_run", None)
+                st.warning("Cancelled on GitHub. The machines stop now.")
+            except Exception as exc:
+                st.error(f"Could not cancel: {exc}")
+    elif s1.button("DISMISS", key=f"bt_cloud_hide_{run['id']}"):
+        cs.forget()
+        st.session_state.pop("bt_cloud_run", None)
+        st.rerun()
     if stt["status"] == "completed" and not st.session_state.get(
             f"bt_pulled_{run['id']}"):
         with st.spinner("Downloading results from GitHub…"):
@@ -3866,6 +4279,7 @@ def _bt_cloud_panel() -> None:
                 got = cs.merge_into_store(rows)
                 st.session_state[f"bt_pulled_{run['id']}"] = True
                 st.session_state.pop("bt_all_page", None)
+                cs.forget()
                 st.success(f"Pulled {got['rows']:,} rows covering "
                            f"{got['coins']} coins from GitHub.")
             except Exception as exc:
@@ -3883,6 +4297,9 @@ def _bt_progress_panel() -> None:
     prog = msw.progress()
     if prog:
         running = msw.is_running()
+        st.markdown("<div style='font-size:10px;letter-spacing:.16em;"
+                    "text-transform:uppercase;color:#6b6459;margin:14px 0 2px'>"
+                    "This Mac</div>", unsafe_allow_html=True)
         pct = prog["done"] / max(prog["total"], 1)
         phase = prog.get("phase", "sweeping")
         unit = "contracts screened" if phase == "screening" else "jobs"
@@ -3901,7 +4318,7 @@ def _bt_progress_panel() -> None:
         cols[3].caption("RUNNING" if running
                         else f"finished {prog.get('finished', '—')}")
         r1, r2 = st.columns([1, 5])
-        if running and r1.button("STOP", key="bt_stop"):
+        if running and r1.button("STOP THIS MAC", key="bt_stop"):
             msw.stop()
             st.warning("Stop signalled — the current jobs finish, then it exits.")
         if r2.button("Refresh this view", key="bt_poll"):
@@ -3966,6 +4383,7 @@ def render_backtest_tab() -> None:
                 1, -(-int(limit) // shards))          # ceil, so 25 -> 2/shard
             run = cs.dispatch(shards=shards, coins=per_shard, min_days=365)
             st.session_state["bt_cloud_run"] = run
+            cs.remember(run)          # survives a reload and a tab switch
             st.success(f"Started on GitHub — 20 machines. Run #{run['id']}.")
         except Exception as exc:
             st.error(f"Could not start on GitHub: {exc}")

@@ -18,8 +18,8 @@ def frame(closes, start_hour=0):
     })
 
 
-def test_registry_has_exactly_six_long_only_strategies():
-    assert len(sg.REGISTRY) == 6
+def test_registry_has_exactly_seven_long_only_strategies():
+    assert len(sg.REGISTRY) == 7
     assert set(sg.ORDER) == set(sg.REGISTRY)
     for s in sg.REGISTRY.values():
         assert s.kind in ("bracket", "position")
@@ -39,6 +39,23 @@ def test_trend_filter_is_flat_below_the_average():
     assert p_up[-1] == 1.0, "above its average -> long"
     assert p_dn[-1] == 0.0, "below its average -> flat"
     assert p_up[0] == 0.0, "no exposure before the average exists"
+
+
+def test_trend50_is_trend_filter_with_a_50_bar_default():
+    rising = [100 + i for i in range(80)]
+    falling = [200 - i for i in range(80)]
+    p_up = sg.positions_for("trend50", frame(rising), sg.REGISTRY["trend50"].params)
+    p_dn = sg.positions_for("trend50", frame(falling), sg.REGISTRY["trend50"].params)
+    assert sg.REGISTRY["trend50"].params["ma_bars"] == 50
+    assert p_up[-1] == 1.0, "above its 50-bar average -> long"
+    assert p_dn[-1] == 0.0, "below its 50-bar average -> flat"
+    assert p_up[0] == 0.0, "no exposure before the average exists"
+
+
+def test_trend50_gate_opens_and_reports_a_reason():
+    rising = [100 + i for i in range(80)]
+    assert sg.wants_long("trend50", frame(rising)) is True
+    assert "average" in sg.gate_reason("trend50", frame(rising))
 
 
 def test_session_long_only_holds_inside_the_window():
@@ -81,7 +98,7 @@ def test_backtest_runs_every_strategy_without_error():
 def test_compare_sorts_by_pnl_and_reports_the_benchmark():
     df = frame([100 + i * 0.05 for i in range(600)])
     rows = sg.compare(df, margin=100, leverage=1)
-    assert len(rows) == 6
+    assert len(rows) == 7
     pnls = [r["pnl"] for r in rows]
     assert pnls == sorted(pnls, reverse=True)
     for r in rows:

@@ -1303,3 +1303,48 @@ def test_a_small_request_does_not_page(monkeypatch):
     monkeypatch.setattr(fx, "_get_public", lambda url: payload)
     fx.klines("SPX500_USDT", "Min5", 300)
     assert pages == [], "300 bars is one plain request, no paging"
+
+
+
+def test_contract_spec_refuses_an_empty_payload(monkeypatch):
+    """MEXC answers a rate limit with HTTP 200 and no `data` key. The old code
+    returned {} and callers read contractSize as 0.0 — which is not a size, it
+    is a missing reply. Cost: on 2026-08-18 19:00 an ALICE entry died with
+    `cannot size ALICE_USDT: contractSize=0.0` in both books, while ALICE's
+    real contract size is 0.1."""
+    fx.clear_spec_cache()
+    monkeypatch.setattr(fx, "_get_public", lambda url, **kw: {
+        "code": 510, "message": "Requests are too frequent, please try again later"})
+    with pytest.raises(fx.MexcFuturesError) as e:
+        fx.contract_spec("ALICE_USDT")
+    assert "carried no data" in str(e.value)
+    assert "510" in str(e.value), "say WHY it was empty"
+    fx.clear_spec_cache()
+
+
+def test_contract_spec_is_cached_so_a_rate_limit_cannot_empty_it(monkeypatch):
+    """Contract size and tick never move during a session. One read per hour
+    keeps a 510 from erasing a spec that was already read successfully."""
+    fx.clear_spec_cache()
+    calls = []
+
+    def _one(url, **kw):
+        calls.append(url)
+        return {"code": 0, "data": {"symbol": "ALICE_USDT",
+                                    "contractSize": 0.1}}
+
+    monkeypatch.setattr(fx, "_get_public", _one)
+    assert fx.contract_spec("ALICE_USDT")["contractSize"] == 0.1
+    assert fx.contract_spec("ALICE_USDT")["contractSize"] == 0.1
+    assert len(calls) == 1, "the second read should come from the cache"
+    fx.clear_spec_cache()
+
+
+def test_a_spec_with_no_symbol_is_not_a_spec(monkeypatch):
+    """A partial payload is the same failure wearing different clothes."""
+    fx.clear_spec_cache()
+    monkeypatch.setattr(fx, "_get_public",
+                        lambda url, **kw: {"code": 0, "data": {"contractSize": 0}})
+    with pytest.raises(fx.MexcFuturesError):
+        fx.contract_spec("ALICE_USDT")
+    fx.clear_spec_cache()

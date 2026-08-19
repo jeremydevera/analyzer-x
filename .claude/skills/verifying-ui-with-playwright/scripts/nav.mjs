@@ -1,0 +1,12 @@
+import { chromium } from "playwright";
+const b = await chromium.launch();
+const pg = await b.newPage({ viewport: { width: 1800, height: 1200 } });
+await pg.goto("http://localhost:8503", { waitUntil: "networkidle" });
+await pg.waitForTimeout(10000);
+console.log("title:", await pg.title());
+const btns = await pg.locator("button").evaluateAll(ns => ns.map(n => n.innerText.trim()).filter(Boolean).slice(0,30));
+console.log("buttons:", JSON.stringify(btns));
+const tabs = await pg.locator('[data-baseweb="tab"]').allInnerTexts().catch(()=>[]);
+console.log("tabs:", JSON.stringify(tabs));
+console.log((await pg.locator("body").innerText()).slice(0, 600));
+await b.close();

@@ -1,0 +1,10 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch();
+const p = await b.newPage({viewport:{width:1500,height:1100}});
+await p.goto('http://localhost:8503',{waitUntil:'networkidle'});
+await p.waitForTimeout(10000);
+console.log('--- sidebar text ---');
+console.log((await p.locator('[data-testid="stSidebar"]').innerText()).slice(0,400));
+console.log('--- main text (first 900) ---');
+console.log((await p.locator('.main, [data-testid="stAppViewContainer"]').first().innerText()).slice(0,900));
+await b.close();

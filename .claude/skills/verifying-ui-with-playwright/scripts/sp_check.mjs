@@ -1,0 +1,14 @@
+import { chromium } from "playwright";
+const b = await chromium.launch(); const p = await b.newPage({viewport:{width:1680,height:1200}});
+await p.goto("http://localhost:8503", {waitUntil:"networkidle"}); await p.waitForTimeout(8000);
+await p.locator('label', {hasText: "Auto Trade"}).first().click(); await p.waitForTimeout(5000);
+await p.locator('[data-testid="stCheckbox"]').filter({hasText:/Momentum 15 \(4h\)/}).locator('label').first().click();
+await p.waitForTimeout(3000);
+const body = await p.innerText("body");
+console.log("SPX500 default:", body.includes("SPX500_USDT") ? "shown" : "MISSING");
+await p.locator('[data-testid="stButton"] button').filter({hasText:/^Backtest Momentum 15/}).click();
+await p.waitForTimeout(25000);
+await p.screenshot({path:"sp-strat.png", fullPage:true});
+const b2 = await p.innerText("body");
+console.log("backtest ran:", b2.includes("coin(s) tested") ? "yes" : "MISSING");
+await b.close();

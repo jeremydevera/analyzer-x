@@ -1,0 +1,14 @@
+import { chromium } from "playwright";
+const b = await chromium.launch(); const p = await b.newPage({viewport:{width:1680,height:1400}});
+await p.goto("http://localhost:8503", {waitUntil:"networkidle"}); await p.waitForTimeout(8000);
+await p.locator('label', {hasText: "Auto Trade"}).first().click(); await p.waitForTimeout(5000);
+await p.locator('[data-testid="stButton"] button').filter({hasText:/^Backtest ICT fair value gap/}).click();
+await p.waitForTimeout(20000);
+const exp = p.locator('[data-testid="stExpander"]').filter({hasText:/Trades — BTC_USDT/});
+console.log("expander:", await exp.count());
+await exp.first().locator("summary, [data-testid='stExpanderToggleIcon']").first().click().catch(()=>exp.first().click());
+await p.waitForTimeout(4000);
+const body = await p.innerText("body");
+console.log("TOTAL PROFIT metric:", /TOTAL PROFIT/.test(body) ? "shown" : "MISSING");
+await p.screenshot({path:"auto-bt-log.png", fullPage:true});
+await b.close();

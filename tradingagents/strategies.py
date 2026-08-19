@@ -1,12 +1,14 @@
 """Strategy registry for MEXC perpetuals.
 
-Six strategies, all long-only. They differ in **exposure structure**, not in
+Seven strategies, all long-only. Six differ in **exposure structure**, not in
 entry signals, and that is deliberate: across 51,192 tested signal combinations
 on SPX500, permutation tests showed entry signals carried no information —
 shuffled signals scored p=0.467 and randomly-timed entries did as well or
 better. Walk-forward selection of the "best" signal lost money while holding
 made money. So the honest levers are how much exposure to carry and when to
-give it up, not what to predict.
+give it up, not what to predict. The exception is trend50, added after the
+Aug'25-Aug'26 multi-timeframe study found a genuine momentum edge on 4-hour
+BTC bars — see its rationale/risk for what was measured and what was not.
 
 Every strategy is scored against buy & hold on the same bars, same leverage,
 same fees. A strategy that cannot beat holding is reported as not beating it.
@@ -110,6 +112,25 @@ REGISTRY: dict[str, Strategy] = {
         risk=("Roughly a third of the exposure, so roughly a third of the drift. "
               "Also misses overnight gaps in both directions."),
     ),
+    "trend50": Strategy(
+        key="trend50",
+        name="Trend 50 (4-hour momentum)",
+        kind="position",
+        summary="Long only while price is above its 50-bar average, flat below. Built for 4-hour bars.",
+        rationale=(
+            "The best-performing signal of the 13-month multi-timeframe study "
+            "(Aug 2025 - Aug 2026): on BTC 4-hour bars the two-sided form made "
+            "+$446 per $10 base with 11 of 13 months green, and the momentum "
+            "family held up across barriers and ladders (a plateau, not a lone "
+            "spike). BTC trends at multi-day scale even though it mean-reverts "
+            "at hours and cascades at minutes."),
+        params={"ma_bars": 50},
+        risk=("Measured TWO-SIDED (long and short); this bot form is long-only, "
+              "so it forfeits the short side's profit and sat out most of a "
+              "-20% bear stretch in the study. Whipsaws around the average cost "
+              "a spread each cross - run it on Hour4 bars, never minutes. "
+              "Backtest, not a guarantee: paper-trade before arming."),
+    ),
     "ladder_dca": Strategy(
         key="ladder_dca",
         name="Ladder in (DCA)",
@@ -138,8 +159,8 @@ REGISTRY: dict[str, Strategy] = {
     ),
 }
 
-ORDER = ["barrier_harvest", "buy_hold", "trend_filter", "session_long",
-         "ladder_dca", "vol_target"]
+ORDER = ["barrier_harvest", "buy_hold", "trend_filter", "trend50",
+         "session_long", "ladder_dca", "vol_target"]
 
 
 # ------------------------------------------------------------------ positions
@@ -149,8 +170,8 @@ def positions_for(key: str, candles, params: dict) -> list:
     n = len(C)
     if key == "buy_hold":
         return [1.0] * n
-    if key == "trend_filter":
-        ma = _sma(C, int(params.get("ma_bars", 200)))
+    if key in ("trend_filter", "trend50"):
+        ma = _sma(C, int(params.get("ma_bars", 200 if key == "trend_filter" else 50)))
         return [0.0 if (ma[i] is None) else (1.0 if C[i] > ma[i] else 0.0)
                 for i in range(n)]
     if key == "session_long":
@@ -494,7 +515,7 @@ def gate_reason(strategy: str, candles, params: dict | None = None) -> str:
     if strat.kind == "bracket":
         return "always-long: never declines an entry"
     on = wants_long(strategy, candles, params)
-    if strategy == "trend_filter":
+    if strategy in ("trend_filter", "trend50"):
         return ("price is above its moving average" if on
                 else "price is below its moving average")
     if strategy == "session_long":

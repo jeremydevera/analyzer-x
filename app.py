@@ -15,6 +15,7 @@ snapshot at that point, so the UI just reads the latest chunk.
 from __future__ import annotations
 
 import datetime as _dt
+import hashlib as _hashlib
 import html
 import time
 import json
@@ -1154,7 +1155,7 @@ def engine_badge_html() -> str:
 # Sidebar navigation: one screen renders at a time, which is what lets each screen
 # own its controls. Tabs could not do that — Streamlit renders every tab body on
 # every run, so a sidebar full of settings looked like it applied to both.
-PAGES = ("New Crypto", "Stocks", "Auto Trade", "LLM Models")
+PAGES = ("New Crypto", "Stocks", "Auto Trade", "Back Test", "LLM Models")
 
 
 UI_PREFS = Path(os.path.expanduser("~/.tradingagents/ui_prefs.json"))
@@ -1204,6 +1205,8 @@ def main() -> None:
         render_crypto_tab()
     elif page == "Auto Trade":
         render_auto_trade_tab()
+    elif page == "Back Test":
+        render_backtest_tab()
     elif page == "LLM Models":
         render_llm_models_tab()
     else:
@@ -1337,13 +1340,36 @@ def _tradable_notional(symbol: str, margin: float, leverage: float,
 # its history), then a stability re-run on fresh candles. Figures are $10 base
 # margin, 20x, DEEP ladder, costs included. See docs/INCIDENT-2026-08-12-BDX.md
 # for why raw sweep profit alone is not evidence.
+def _strategy_label(key: str, label: str) -> str:
+    """The tile's name plus the barriers READ FROM THE SPEC.
+
+    The barriers used to be typed into the label by hand, and two of them had
+    drifted from the config the runner trades: the APEX tile advertised
+    "TP 4.0%" against a real 3.0% (it was changed on 2026-08-19 and the text
+    was not), and the XAUT tile "TP 2.4%" against a real 2.0%. A label that
+    repeats a number instead of deriving it is a label that will disagree with
+    it eventually — so it is built here, from `STRATEGY_SPECS`, and cannot.
+    """
+    # `at` is imported inside the render functions, not at module scope, so it
+    # must be imported here too — the same mistake made `_tradable_notional` a
+    # silent no-op for an hour behind a bare `except Exception`.
+    from tradingagents import auto_trader as at  # noqa: PLC0415
+    spec = at.STRATEGY_SPECS.get(key) or {}
+    tp, sl = spec.get("tp"), spec.get("sl")
+    if tp is None or sl is None:
+        return label
+    name, _, tail = label.partition(" — ")
+    barriers = f"TP {tp * 100:.2f}% / SL {sl * 100:.2f}%"
+    return f"{name} · {barriers}" + (f" — {tail}" if tail else "")
+
+
 AUTO_STRATEGIES = (
     # Only the strategies actually deployed appear here. The specs for
     # every other config still live in auto_trader.STRATEGY_SPECS, so a
     # tile can be restored in one line; an unticked tile on the page is
     # just clutter the operator has to read past.
-    ("trend50_30m_pi", "Trend 50 (30m) · TP 2.5% / SL 2.0% — PI",
-     "Row #3CRXP8 from the 28,600-combination 15m/30m year sweep "
+    ("trend50_30m_pi", "Trend 50 (30m) — PI",
+     "Row #3M3CRXP8 from the 28,600-combination 15m/30m year sweep "
      "(2026-08-19). +$140.74 over 360 days at $5 base, 47.6% win across 918 "
      "trades, with MEXC's per-book cost, 4.60% liquidation and real funding "
      "settlements all charged. NOT a survivor: 9/13 months green is 69.2%, a "
@@ -1353,7 +1379,7 @@ AUTO_STRATEGIES = (
      "to $40.23. Replaced mom15_4h_w on PI, because one coin runs one "
      "timeframe.",
      ("PI_USDT",)),
-    ("mom15_4h_w", "Momentum 15 (4h) · TP 8.0% — PI",
+    ("mom15_4h_w", "Momentum 15 (4h) — PI",
      "Winner of a 630-combination grid on PI's full 18-month history "
      "(2026-08-13): #1 of 105 configs. +$1,283 martingale / +$293 flat at $5 "
      "base — vs +$884 / +$168 for the 4.5% version it replaces. 19/19 months "
@@ -1361,7 +1387,23 @@ AUTO_STRATEGIES = (
      "martingale), 433 trades instead of 666 so less fee drag. Same signal "
      "and timeframe as before — only the barriers are wider.",
      ("PI_USDT",)),
-    ("mom6_1h_pv", "Momentum 6 (1h) · TP 4.0% — PROVE",
+    ("fade15_1h_pv2", "Fade 15 (1h) — PROVE · Best 8.67 for August",
+     "Row #8ZFUXG8F, the most profitable row of the 130,294-combination August "
+     "sweep (2026-08-01 to 08-19): +$226.82 at a 12.50% win rate over 48 "
+     "trades, threshold 0.20, SL 0.30% / TP 8.00%. The operator's label; 8.67 "
+     "is their figure from the artifact's BALANCED column. "
+     "MEASURED OVER 380 DAYS (9,095 hourly bars, fees + slippage + funding + "
+     "4.50% liquidation charged): martingale +$104.07 over 1,562 trades — 91 "
+     "wins against 1,471 losses, a 5.83% win rate — with a worst losing run of "
+     "-$292.13 across 87 CONSECUTIVE losses and a $775.81 worst dip, which is "
+     "four times the $192 wallet. Flat it is +$37.54 with a $126.45 dip. "
+     "Cost is 2% of target and the stop is reachable, so the gate passes; the "
+     "drawdown is the reason to think twice. SHIPPED WITH NO BOOK TICKED: "
+     "PROVE already runs mom6_1h_pv on the same 1-hour bar, and one coin holds "
+     "one position per book, so arming both would have them racing for the "
+     "same slot.",
+     ("PROVE_USDT",)),
+    ("mom6_1h_pv", "Momentum 6 (1h) — PROVE",
      "Replaced trend50 (4h) on 2026-08-17. Winner of a 3,432-combination "
      "search over PROVE's own 1-hour year, with MEXC's 4.50% liquidation "
      "modelled — an earlier pass without it crowned an 8% stop the venue "
@@ -1371,7 +1413,7 @@ AUTO_STRATEGIES = (
      "trade -$2.10. trend50 on the same terms: +$89.57 at 29.5%. The cost is "
      "depth — worst dip $57 against trend50's $28 at a $5 base.",
      ("PROVE_USDT",)),
-    ("sweep30_1h_w", "Liquidity sweep 30 (1h) · TP 4.0% — APEX",
+    ("sweep30_1h_w", "Liquidity sweep 30 (1h) — APEX",
      "The strongest evidence in the 55,062-combination all-market sweep "
      "(2026-08-14): one of only TWO configs that survived FLAT-staked over a "
      "real year. APEX_USDT flat +$55.72 at $5 base, 10/12 months green, "
@@ -1379,7 +1421,7 @@ AUTO_STRATEGIES = (
      "Martingale +$141.16 — but note the ladder makes it LESS consistent "
      "(7/12 green), so the flat figure is the honest one. Cost 6% of target.",
      ("APEX_USDT",)),
-    ("fvg_1h_w", "ICT fair value gap (1h) · TP 4.0% — ALICE",
+    ("fvg_1h_w", "ICT fair value gap (1h) — ALICE",
      "Most consistent martingale survivor in the same sweep: +$443 at $5 "
      "base, 13/15 months green over 416 days, both halves strongly positive. "
      "Its FLAT version is also clearly profitable (+$80.20, the highest flat "
@@ -1387,7 +1429,7 @@ AUTO_STRATEGIES = (
      "ladder — though its flat months (8/15) miss the 70% survivor bar. "
      "570 trades. Cost 3% of target.",
      ("ALICE_USDT",)),
-    ("mom6_1h_gx", "Momentum 6 (1h) · TP 2.4% — XAUT gold",
+    ("mom6_1h_gx", "Momentum 6 (1h) — XAUT gold",
      "The ONLY 1-hour configuration in the 55,062-combination all-market "
      "sweep that survived at BOTH sizings on a real year. Flat +$36.96 at $5 "
      "base (11/15 months green, both halves positive: +$14.71 / +$23.04) AND "
@@ -1397,7 +1439,7 @@ AUTO_STRATEGIES = (
      "mom15 version it replaces; only the signal differs.",
      ("XAUT_USDT",)),
     # mom15_1h_g (GOLD) was REMOVED from this list on 2026-08-19: XAUT now runs
-    # mom6 at SL 1.50 / TP 2.00 (row #7THVJW) and nothing else. Its spec stays
+    # mom6 at SL 1.50 / TP 2.00 (row #CZ7THVJW) and nothing else. Its spec stays
     # in auto_trader.STRATEGY_SPECS on purpose — a paper SHORT opened under it
     # is still resting, and the runner needs the spec to exit that position.
     # Restore the tile in one line if it is ever wanted back.
@@ -1578,18 +1620,36 @@ def _bt_report_build(key: str, label: str, coins: list[str],
             "sl": round(float(spec.get("sl", 0)) * 100, 3),
             "tp": round(float(spec.get("tp", 0)) * 100, 3),
             "sizing": sizing} for c in coins]
+    # A rerun THROWS AWAY an in-flight build: Streamlit restarts the script on
+    # any widget interaction, and a 22-signal grid takes ~5 minutes. So the
+    # result is cached on disk under a signature of everything that could
+    # change it, and a repeat click is instant.
+    sig = "-".join([key, ",".join(sorted(coins)), ",".join(tfs), sizing,
+                    f"{base_margin:g}", str(days),
+                    f"{spec.get('sl')}/{spec.get('tp')}/"
+                    f"{spec.get('threshold')}", str(len(br.SIGNALS))])
+    stamp = _dt.datetime.now().strftime("%Y%m%d")
+    name = f"{key}-{_hashlib.blake2s(sig.encode(), digest_size=4).hexdigest()}"
+    fresh = BT_REPORT_DIR / f"{name}-{stamp}.html"
+    if fresh.exists() and fresh.stat().st_size > 10_000:
+        return f"app/static/bt/{fresh.name}", fresh.name
+
     bar = st.progress(0.0, text="fetching candles…")
+    note = st.empty()
+    note.caption(f"Testing {len(br.SIGNALS)} signals x 110 barrier pairs x 2 "
+                 f"sizings on {', '.join(tfs)} — about 5 minutes. Leave this "
+                 f"tab alone; clicking anything restarts it.")
     try:
         payload = br.run_grid(
             coins, tfs, base_margin=base_margin, days=days, deployed=dep,
             progress=lambda m, f: bar.progress(min(1.0, f), text=m))
     finally:
         bar.empty()
+        note.empty()
     if not payload["rows"]:
         return None
     BT_REPORT_DIR.mkdir(parents=True, exist_ok=True)
-    stamp = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
-    name = f"{key}-{stamp}.html"
+    name = f"{name}-{stamp}.html"
     # The strategy label often already names its coin; appending it again read
     # as "PROVE · PROVE".
     _shown = [c.replace("_USDT", "") for c in dict.fromkeys(coins)]
@@ -1636,6 +1696,9 @@ def _render_strategy_backtest(key: str, label: str, coins: list[str],
         _rep = None
         st.warning(f"Full-grid page could not be built ({exc}) — falling back "
                    f"to the in-page table.")
+    if _rep:
+        st.session_state.setdefault("bt_pages", {})[key] = _rep
+    _rep = _rep or st.session_state.get("bt_pages", {}).get(key)
     if _rep:
         _url, _name = _rep
         st.markdown(
@@ -1842,37 +1905,50 @@ def _render_strategy_backtest(key: str, label: str, coins: list[str],
 
 
 # ---------------------------------------------------------------------------
-# Auto Trade is a TERMINAL, and it commits to that one visual world: it paints
-# its own near-black ground and monospace grid regardless of the app's Night
-# toggle. That is deliberate, not an oversight. Two separate bugs on
-# 2026-08-15 were "correct value, invisible text" caused by this screen
-# inheriting a theme it did not control (radio options black-on-black, the nav
-# pill white-on-white). A band that owns its palette cannot have that bug.
+# Auto Trade is a TERMINAL — monospace, tabular, dense. It used to paint a
+# near-black ground in BOTH themes and say so in this comment, on the grounds
+# that a band owning its palette cannot have an invisible-text bug (two of
+# those happened on 2026-08-15).
+#
+# The operator overruled that on 2026-08-19: "even when i light mode, the
+# sections are black". So the palette is now re-tokened per theme instead of
+# fixed, and the invisible-text risk is answered the right way round — every
+# colour on this screen comes from a token that BOTH blocks define, so there is
+# no rule that paints ink without also having painted its ground. The only
+# thing the dark block does is redefine the seven tokens below.
 # ---------------------------------------------------------------------------
 TERMINAL_CSS = """
 <style>
 .st-key-term{
-  /* Vercel/Geist dark: near-black ground, one blue accent, tinted semantics.
+  /* LIGHT is the default token set; TERMINAL_DARK_CSS below redefines exactly
+     these names for night mode and touches nothing else.
      --t-amber keeps its NAME because two dozen rules and several render
-     functions reference it; it now holds the accent blue. */
-  --t-ground:#0a0a0a; --t-panel:#101012; --t-panel2:#161618;
-  --t-rule:#232326; --t-rule2:#2e2e32;
-  --t-ink:#ededed; --t-dim:#8f8f99; --t-faint:#55555e;
-  --t-amber:#52a8ff; --t-up:#0cce6b; --t-dn:#e5484d;
+     functions reference it; it holds the accent, blue in both themes. */
+  --t-ground:transparent; --t-panel:#ffffff; --t-panel2:#f4f5f7;
+  --t-rule:#e3e5e9; --t-rule2:#d3d7de;
+  --t-ink:#16181d; --t-dim:#5f6672; --t-faint:#9aa1ad;
+  --t-amber:#1a6dd9; --t-up:#0a8f4d; --t-dn:#cf2b31;
   --t-r:8px; --t-rc:6px;
   background:var(--t-ground); color:var(--t-ink);
   font-family:var(--font-mono); font-variant-numeric:tabular-nums;
   padding:2px; border:0;
 }
-/* Each band is its own enclosed card; the ground shows between them. */
+/* Bands are separated by a hairline, not wrapped in a filled card. The card
+   was the "sections are enclosed on large box" the operator asked to remove on
+   2026-08-19: nested panels inside a panel inside the page reads as three
+   frames around one table. */
 .st-key-term [class*="st-key-tmsec_"]{
-  background:var(--t-panel); border:1px solid var(--t-rule);
-  border-radius:var(--t-r); padding:16px 18px 14px; margin-bottom:14px;
+  background:transparent; border:0; border-top:1px solid var(--t-rule);
+  border-radius:0; padding:14px 0 10px; margin-bottom:6px;
 }
-/* Inner tiles sit on a card now, so they step one shade up to stay visible. */
+/* The first band needs no divider above it. */
+.st-key-term [class*="st-key-tmsec_"]:first-of-type{ border-top:0; }
+/* Inner tiles carry the only fill on the screen, so they read as objects
+   against the page rather than as panels within a panel. */
 .st-key-term [class*="st-key-tmsec_"] .tm-rib > div,
 .st-key-term [class*="st-key-tmsec_"] .tm-p,
-.st-key-term [class*="st-key-tmsec_"] .tm-feed{ background:var(--t-panel2); }
+.st-key-term [class*="st-key-tmsec_"] .tm-feed{
+  background:var(--t-panel2); border:1px solid var(--t-rule); }
 /* The card supplies the top spacing; a header's own margin would double it. */
 .st-key-term [class*="st-key-tmsec_"] .tm-h:first-child,
 .st-key-term [class*="st-key-tmsec_"] [data-testid="stElementContainer"]:first-child .tm-h{
@@ -1885,6 +1961,18 @@ TERMINAL_CSS = """
 .st-key-term [data-testid="stIconMaterial"],
 .st-key-term .material-symbols-rounded, .st-key-term [class*="material"]{
   font-family:"Material Symbols Rounded" !important; }
+
+/* st.metric labels render at 0.8 opacity and vanish on the dark ground */
+[data-testid="stMetricLabel"]{ opacity:1 !important; }
+[data-testid="stMetricLabel"] p{ font-size:11px; letter-spacing:.12em;
+  text-transform:uppercase; }
+a.bt-open{ display:inline-block; background:#C2560B; color:#fff;
+  font-weight:700; font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+  text-decoration:none; padding:10px 18px; border:1px solid #C2560B;
+  margin:8px 12px 10px 0; }
+a.bt-open:hover{ background:#a2470a; border-color:#a2470a; }
+a.bt-open:focus-visible{ outline:2px solid #171612; outline-offset:2px; }
+.bt-open-note{ color:#6b6459; font-size:12px; }
 
 /* ---- the full-grid page link: this is a door out of the app, so it reads
    like a button rather than a line of text ---- */
@@ -2113,6 +2201,30 @@ TERMINAL_CSS = """
   font-size:11.5px !important; }
 .st-key-term [data-testid="stAlert"]{ border-radius:0 !important;
   background:var(--t-panel) !important; }
+/* Pagination: the current page is a filled pill, the others are buttons. */
+.st-key-term .tm-pg-on{
+  text-align:center; font-size:11.5px; font-weight:700; line-height:1;
+  padding:9px 0; border-radius:var(--t-rc);
+  background:var(--t-amber); color:#ffffff; }
+.st-key-term [data-testid="stHorizontalBlock"] .stButton button{
+  min-height:0; padding:7px 0; font-size:11.5px; }
+</style>
+"""
+
+# Night mode for the terminal: it redefines the SEVEN token groups above and
+# nothing else, so no rule can paint ink without its ground having been painted
+# too — which is what caused the two invisible-text bugs of 2026-08-15.
+TERMINAL_DARK_CSS = """
+<style>
+.st-key-term{
+  --t-ground:transparent; --t-panel:#101012; --t-panel2:#161618;
+  --t-rule:#232326; --t-rule2:#2e2e32;
+  --t-ink:#ededed; --t-dim:#8f8f99; --t-faint:#55555e;
+  --t-amber:#52a8ff; --t-up:#0cce6b; --t-dn:#e5484d;
+}
+/* Streamlit paints its dataframe canvas itself and reads none of our tokens,
+   so it is inverted to match. LIGHT mode must never get this rule: it turned a
+   white grid black, which is half of what the operator reported. */
 .st-key-term [data-testid="stDataFrame"]{ filter:invert(.92) hue-rotate(180deg); }
 </style>
 """
@@ -2125,6 +2237,15 @@ _TF_NAMES = {60: "1m", 300: "5m", 900: "15m", 1800: "30m", 3600: "1h",
 def _tm_tf(spec: dict) -> str:
     """Timeframe read from the spec's bar length, never parsed out of a key."""
     return _TF_NAMES.get(int(spec.get("bar_seconds") or 0), "—")
+
+
+# The operator's own name for a row, drawn in the STRATEGY column beside the
+# signal. The tile label carries it too, but the label is only read on the
+# backtest header and in the note — asked for on 2026-08-19: "i said to add the
+# 8.67 in the name", meaning the grid row itself.
+_TILE_TAGS = {
+    "fade15_1h_pv2": "Best 8.67 for August",
+}
 
 
 def _tm_sig(key: str) -> str:
@@ -2161,6 +2282,81 @@ def _books_to_choice(books: list) -> str:
 def _choice_to_books(choice: str) -> list:
     return {"off": [], "paper": ["paper"], "real": ["real"],
             "both": ["real", "paper"]}[choice]
+
+
+def _timeframe_locks(rows, specs, is_live) -> dict:
+    """Which strategy rows may not go LIVE, because their coin is taken.
+
+    One coin runs ONE timeframe **with real money**: two live strategies on the
+    same coin at different bar sizes net into a single MEXC position, so the
+    second entry resizes the first and either stop closes part of a trade it
+    does not own. That is an exchange fact, and it is the only thing this
+    locks. DEMO is never locked — a simulated book has no MEXC position to
+    fight over, so the operator can paper the same coin on two timeframes to
+    compare them.
+
+    ``rows`` is [(key, [coins])] in display order, ``specs`` maps key -> spec
+    (for ``interval``), and ``is_live(key)`` says whether that row's LIVE box
+    is ticked right now. The FIRST live row in display order wins a coin, so
+    freeing it is an explicit untick rather than a silent reassignment.
+    Returns ``{locked_key: (coin, holder_key)}``.
+
+    A second row on the SAME timeframe is not locked — that is one position on
+    one bar size, which the runner already handles; only a different timeframe
+    is the conflict.
+
+    Two passes, because the rule is SYMMETRIC. Claiming and locking in one
+    sweep only ever locked rows BELOW the holder: going live on the 4h row
+    left the 30m row above it armable, so the operator could still tick
+    both. The live rows claim first; then every row on a claimed coin at
+    another timeframe is locked, wherever it sits in the list.
+    """
+    iv_of = lambda k: (specs.get(k) or {}).get("interval", "")   # noqa: E731
+    claim: dict[str, tuple[str, str]] = {}
+    for key, coins in rows:
+        if not is_live(key):
+            continue
+        interval = iv_of(key)
+        # A live row that is ALREADY double-booked claims nothing — the
+        # earlier holder keeps the coin and this row is locked below.
+        if any(c in claim and claim[c][1] != interval for c in coins):
+            continue
+        for c in coins:
+            claim.setdefault(c, (key, interval))
+    locked: dict[str, tuple[str, str]] = {}
+    for key, coins in rows:
+        interval = iv_of(key)
+        hit = next((c for c in coins
+                    if c in claim and claim[c][1] != interval), None)
+        if hit:
+            locked[key] = (hit, claim[hit][0])
+    return locked
+
+
+def _page_numbers(page: int, pages: int, window: int = 7) -> list:
+    """The page numbers to draw: first, last, a window around the current one,
+    and ``None`` where a gap is elided.
+
+    Numbered pages beat `newer`/`older` because the operator can see how much
+    history there is and jump straight to it — but 40 pages of a busy ledger
+    would be a wall of buttons, so the middle is elided.
+    """
+    if pages <= window:
+        return list(range(1, pages + 1))
+    half = (window - 3) // 2
+    lo, hi = page - half, page + half
+    if lo < 2:
+        lo, hi = 2, window - 1
+    if hi > pages - 1:
+        lo, hi = pages - window + 2, pages - 1
+    out: list = [1]
+    if lo > 2:
+        out.append(None)
+    out.extend(range(lo, hi + 1))
+    if hi < pages - 1:
+        out.append(None)
+    out.append(pages)
+    return out
 
 
 def _parse_contracts(text: str, known: set | None = None) -> tuple:
@@ -2324,6 +2520,10 @@ def render_auto_trade_tab() -> None:
         # every row and the CSS can never disagree about the column count.
         st.markdown(TERMINAL_CSS.replace("__POSGRID__", _TM_POS_GRID),
                     unsafe_allow_html=True)
+        # The terminal follows the app's Night toggle now. Same switch the rest
+        # of the app reads, so the two halves of the page can never disagree.
+        if st.session_state.get("ui_night"):
+            st.markdown(TERMINAL_DARK_CSS, unsafe_allow_html=True)
 
         # ================= BAND 1 — SYSTEM ==============================
         # Its own fragment so the ribbon can refresh at the top of the page
@@ -2719,7 +2919,7 @@ def render_auto_trade_tab() -> None:
                             "text-transform:uppercase;color:var(--t-dim);"
                             "margin:14px 0 4px'>Every trade</div>",
                             unsafe_allow_html=True)
-                        _per = 5
+                        _per = 10
                         _pages = max(1, -(-len(_all) // _per))
                         _pk = f"hist_page_{_tag}"
                         _pg = int(st.session_state.get(_pk, 1))
@@ -2738,21 +2938,40 @@ def render_auto_trade_tab() -> None:
                                       "no closed trades yet"),
                             unsafe_allow_html=True)
                         if _pages > 1:
-                            _n1, _n2, _n3 = st.columns([1, 2, 1])
-                            if _n1.button("◀ newer", key=f"{_pk}_prev",
-                                          disabled=_pg <= 1):
-                                st.session_state[_pk] = _pg - 1
-                                st.rerun(scope="fragment")
-                            _n2.markdown(
-                                f"<div style='text-align:center;font-size:11px;"
-                                f"color:var(--t-dim);padding-top:6px'>page {_pg} "
-                                f"of {_pages} &middot; showing "
-                                f"{(_pg-1)*_per+1}-{min(_pg*_per, len(_all))} of "
-                                f"{len(_all)}</div>", unsafe_allow_html=True)
-                            if _n3.button("older ▶", key=f"{_pk}_next",
-                                          disabled=_pg >= _pages):
-                                st.session_state[_pk] = _pg + 1
-                                st.rerun(scope="fragment")
+                            _nums = _page_numbers(_pg, _pages)
+                            # Narrow number columns hugging the left, one wide
+                            # filler to the right. Equal weights spread eight
+                            # buttons across the whole table width, which read
+                            # as scattered controls rather than one pager.
+                            _pcols = st.columns([1] * len(_nums) +
+                                                [3 * len(_nums)], gap="small")
+                            # Numbered pages, on the operator's ask. `newer`
+                            # and `older` said which DIRECTION they moved but
+                            # never how far there was to go, and jumping to
+                            # page 9 of 14 took eight clicks.
+                            for _i, _num in enumerate(_nums):
+                                _c = _pcols[_i]
+                                if _num is None:
+                                    _c.markdown(
+                                        "<div style='text-align:center;"
+                                        "font-size:11px;color:var(--t-faint);"
+                                        "padding-top:7px'>&hellip;</div>",
+                                        unsafe_allow_html=True)
+                                elif _num == _pg:
+                                    _c.markdown(
+                                        f"<div class='tm-pg-on'>{_num}</div>",
+                                        unsafe_allow_html=True)
+                                elif _c.button(str(_num),
+                                               key=f"{_pk}_p{_num}"):
+                                    st.session_state[_pk] = _num
+                                    st.rerun(scope="fragment")
+                            st.markdown(
+                                f"<div style='font-size:10.5px;"
+                                f"color:var(--t-dim);margin-top:2px'>page "
+                                f"{_pg} of {_pages} &middot; showing "
+                                f"{(_pg-1)*_per+1}-"
+                                f"{min(_pg*_per, len(_all))} of {len(_all)} "
+                                f"trades</div>", unsafe_allow_html=True)
 
 
                 # All-time per contract. Realised comes from this book's ledger,
@@ -2860,8 +3079,9 @@ def render_auto_trade_tab() -> None:
                 st.warning(f"Could not fetch the MEXC contract list ({exc}); "
                            "showing saved selections only.")
             saved_strats = saved.get("strategies", ["ict_fvg"])
-            saved_coins_by = saved.get("strategy_coins") or {}
-            legacy_coins = saved.get("coins", ["BTC_USDT"])
+            # `strategy_coins` and `coins` are still WRITTEN — the runner
+            # reads them — but never read back into this table. The contract
+            # is part of the strategy, fixed by the tile that defines it.
             chosen_strats: list[str] = []
             blocked_now: list[tuple] = []
             strategy_coins: dict[str, list[str]] = {}
@@ -2882,8 +3102,13 @@ def render_auto_trade_tab() -> None:
             _runstate = at.load_state()
             _sizing_now = at.sizing_for(saved)
             _flat = _sizing_now == "flat"
-            _W = [1.15, 1.45, .62, .62, .95, .95, .8, 2.5, .9, .95, 1.0, .95, 1.0,
-                  .95]
+            # STREAK carries "3 loss · PI" now, so it needs the width the
+            # ladder can spare — a clipped "3 loss · P" is the label bug the
+            # column was widened to fix.
+            # STRATEGY carries the operator's own row name now, so it takes
+            # the width the ladder can spare.
+            _W = [2.1, 1.3, .62, .62, .95, .95, 1.15, 1.75, .9, .95, 1.0,
+                  .95, 1.0, .95]
             _HEADS = ("strategy", "contracts", "LIVE", "DEMO", "base $",
                       "notional $", "streak", f"ladder $ · {'flat' if _flat else 'DEEP'}",
                       "next $", "SL / TP", "loss cap $", "W / L", "PROFIT $",
@@ -2895,8 +3120,11 @@ def render_auto_trade_tab() -> None:
                 "simulates fills in a separate book — independent, so a strategy "
                 "can run both, one, or neither. Contracts are fixed per "
                 "strategy — a row is one signal on one coin, backtested "
-                "together — while base margin and loss cap are typed in place; "
-                "press Save & run to commit them. "
+                "together — and a row whose coin another row already trades LIVE "
+                "cannot go live too, because MEXC nets them into one position. "
+                "DEMO is never locked, so two timeframes on one coin can be "
+                "papered side by side. Base margin and loss cap are typed in "
+                "place; press Save & run to commit them. "
                 "`ladder $` is the whole DEEP sequence in dollars with the "
                 "current rung boxed, so `next $` is never a number you have to "
                 "work out.")
@@ -2915,30 +3143,62 @@ def render_auto_trade_tab() -> None:
             _cell = ("display:flex;align-items:center;min-height:38px;"
                      "font-size:11.5px;white-space:nowrap;overflow:hidden;"
                      "text-overflow:ellipsis")
-            for key, label, note, default_coins in AUTO_STRATEGIES:
+
+            # ---- ONE TIMEFRAME PER COIN ON REAL MONEY, enforced where the choice
+            # is MADE. Contracts are fixed per row, so the only way to double-book
+            # a coin is to tick a SECOND row that carries it; that row's LIVE box
+            # is disabled and forced off while the first row holds the coin.
+            # DEMO is deliberately NOT locked — the operator asked to paper PI on
+            # 30m and 1h at once to compare them, and a simulated book has no MEXC
+            # position for the two to fight over. The save-time guard further down
+            # applies the same live-only rule as the backstop.
+            # The first live tile in AUTO_STRATEGIES wins the coin, so moving PI
+            # means unticking the row that holds it — a visible, deliberate act.
+            def _row_live(_k: str) -> bool:
+                _lv = st.session_state.get(f"g_live_{_k}")
+                if _lv is None:
+                    return False in (at.books_for(_k, saved)
+                                     if _k in saved_strats else [])
+                return bool(_lv)
+
+            _locked = _timeframe_locks(
+                [(k, list(dc)) for k, _, _, dc in AUTO_STRATEGIES],
+                at.STRATEGY_SPECS, _row_live)
+            for key, _label_raw, note, default_coins in AUTO_STRATEGIES:
+                label = _strategy_label(key, _label_raw)
                 _spec = at.STRATEGY_SPECS.get(key, {})
                 _bks = at.books_for(key, saved) if key in saved_strats else []
-                # An explicitly saved EMPTY list means "no contracts", not "use the
-                # default". `saved_coins_by.get(key) or default_coins` treated [] as
-                # unset and refilled the box from the hardcoded default, so PI came
-                # back on mom15_4h_w after being moved to trend50_30m_pi and showed
-                # up twice — one save away from a coin ticked on two timeframes.
-                # Same shape as the auto_trader.coins_for bug fixed the same day.
-                _coins = (list(saved_coins_by[key]) if key in saved_coins_by
-                          else list(default_coins))
+                # The contract is part of the strategy, not a saved preference:
+                # #3M3CRXP8 IS trend50 / 30m / TP 2.5 / SL 2.0 *on PI*. So the row
+                # always shows its own contract and the saved copy is ignored —
+                # which is what killed the "contracts: none" row, left behind when
+                # PI moved off mom15_4h_w and its saved list was emptied to [].
+                _coins = list(default_coins)
+                _lock = _locked.get(key)
                 _mgs = float(saved_margins.get(key) or 5.0)
                 # The LOSING STREAK is the ladder's own counter: it advances on a
                 # loss and resets to zero on a win, so it IS the streak, and it is
                 # what decides the next stake. Read per contract, worst one wins.
-                _streak = max((int((_runstate.get(c) or {}).get("step", 0) or 0)
+                #
+                # It belongs to the COIN AND BOOK, not to this strategy — the
+                # state key is `PI_USDT` live and `PI_USDT#paper` on demo — so a
+                # new strategy on a coin inherits whatever streak the previous one
+                # left, and really will stake that rung on its first trade. Two
+                # corrections here: read the book this row trades (a demo-only row
+                # was printing the LIVE ladder), and say whose streak it is.
+                _bk = "" if (False in _bks or not _bks) else "#paper"
+                _streak = max((int((_runstate.get(c + _bk) or {}).get("step", 0) or 0)
                                for c in _coins), default=0)
                 c = st.columns(_W, gap="small", vertical_alignment="center")
+                _tag = _TILE_TAGS.get(key)
                 c[0].markdown(
-                    f"<div style='{_cell}'>{_tm_sig(key)}"
+                    f"<div style='{_cell};overflow:visible'>{_tm_sig(key)}"
                     f"<span style='color:var(--t-faint)'> {_tm_tf(_spec)}</span>"
-                    f"</div>", unsafe_allow_html=True)
+                    + (f"<span style='color:var(--t-amber);font-size:10px;"
+                       f"margin-left:6px'>{html.escape(_tag)}</span>" if _tag else "")
+                    + "</div>", unsafe_allow_html=True)
                 # Contracts are NOT typed. Each row is one strategy chosen FOR a
-                # specific contract — #3CRXP8 is trend50/30m/2.5/2.0 *on PI*, and
+                # specific contract — #3M3CRXP8 is trend50/30m/2.5/2.0 *on PI*, and
                 # the same signal on another coin is a different, untested
                 # combination (CLAUDE.md rule 21: sizing and coin are part of the
                 # strategy, not dials turned afterwards). An editable box invited
@@ -2948,16 +3208,35 @@ def render_auto_trade_tab() -> None:
                     f"<div style='{_cell}'>"
                     + (f"<b>{_shown}</b>" if _shown else
                        "<span style='color:var(--t-faint)'>none</span>")
+                    + (f"<span style='color:var(--t-faint)'> &middot; live on "
+                       f"{_tm_tf(at.STRATEGY_SPECS.get(_lock[1], {}))}</span>"
+                       if _lock else "")
                     + "</div>", unsafe_allow_html=True)
-                _live = c[2].checkbox("LIVE", value=False in _bks,
-                                      key=f"g_live_{key}",
+                _why = None
+                if _lock:
+                    # A ticked LIVE box on a locked row is un-ticked BEFORE the
+                    # widget is rebuilt — Streamlit refuses the write afterwards,
+                    # and a disabled box that stays green is a false label.
+                    if st.session_state.get(f"g_live_{key}"):
+                        st.session_state[f"g_live_{key}"] = False
+                    _why = (f"{_lock[0].replace('_USDT', '')} already trades REAL "
+                            f"money on {_tm_tf(at.STRATEGY_SPECS.get(_lock[1], {}))} "
+                            f"candles ({_tm_sig(_lock[1])}). MEXC nets both into ONE "
+                            f"position, so the second entry resizes the first and "
+                            f"either stop closes part of a trade it does not own. "
+                            f"DEMO is still free — paper both and compare. Untick "
+                            f"that row's LIVE to free "
+                            f"{_lock[0].replace('_USDT', '')}.")
+                _live = c[2].checkbox("LIVE", value=(False in _bks) and not _lock,
+                                      key=f"g_live_{key}", disabled=bool(_lock),
                                       label_visibility="collapsed",
-                                      help="REAL money — sends orders to MEXC.")
+                                      help=_why or "REAL money — sends orders to MEXC.")
                 _demo = c[3].checkbox("DEMO", value=True in _bks,
                                       key=f"g_demo_{key}",
                                       label_visibility="collapsed",
-                                      help="Simulated fills, separate book, no "
-                                           "real orders.")
+                                      help="Simulated fills, separate book, no real "
+                                           "orders. Never locked — two timeframes on "
+                                           "one coin can be papered side by side.")
                 _base = c[4].number_input(
                     "base", min_value=1.0, max_value=10_000.0, value=_mgs,
                     step=1.0, key=f"g_b_{key}", label_visibility="collapsed")
@@ -2969,9 +3248,19 @@ def render_auto_trade_tab() -> None:
                 # Streak colour is the risk, not the sign: 0 is calm, deep is red.
                 _scol = ("tm-nil" if _streak == 0 else "tm-am" if _streak < 4
                          else "tm-dn")
+                # NAME whose streak it is. `3 loss` on a strategy row reads as
+                # "this strategy lost 3" — trend50 had not traded at all; the 3
+                # was PI's own ladder, left by mom15_4h_w, and it is what the
+                # NEXT $ column is computed from.
+                _who = ", ".join(x.replace("_USDT", "") for x in _coins) or "—"
                 c[6].markdown(
-                    f"<div style='{_cell}' class='{_scol}'><b>{_streak}</b>"
-                    f"<span style='color:var(--t-faint)'> loss</span></div>",
+                    f"<div style='{_cell}' class='{_scol}' title='Ladder step for "
+                    f"{_who} on the {'demo' if _bk else 'live'} book. It belongs "
+                    f"to the contract, not to this strategy: a strategy taking "
+                    f"over a coin inherits the streak and stakes that rung.'>"
+                    f"<b>{_streak}</b>"
+                    f"<span style='color:var(--t-faint)'> loss &middot; {_who}"
+                    f"</span></div>",
                     unsafe_allow_html=True)
                 # The ladder, in dollars, with the rung it is standing on boxed.
                 if _flat:
@@ -3048,7 +3337,9 @@ def render_auto_trade_tab() -> None:
             _head_slot.markdown(
                 _tm_head("Strategy",
                          f"{_n_real} live &middot; {_n_paper} demo &middot; "
-                         f"{_n_off} off &middot; {len(AUTO_STRATEGIES)} loaded"),
+                         f"{_n_off} off"
+                         + (f" &middot; {len(_locked)} live-locked" if _locked else "")
+                         + f" &middot; {len(AUTO_STRATEGIES)} loaded"),
                 unsafe_allow_html=True)
             if _bad_syms:
                 st.error("Not MEXC USDT perpetuals — these were dropped: "
@@ -3076,7 +3367,7 @@ def render_auto_trade_tab() -> None:
             # the whole year on every later widget interaction.
             if st.session_state.get("auto_bt_run"):
                 _k = st.session_state.pop("auto_bt_run")
-                _lbl = {k: l for k, l, *_ in AUTO_STRATEGIES}
+                _lbl = {k: _strategy_label(k, l) for k, l, *_ in AUTO_STRATEGIES}
                 st.markdown(
                     f"<div style='font-size:10px;letter-spacing:.14em;"
                     f"text-transform:uppercase;color:var(--t-amber);"
@@ -3088,7 +3379,11 @@ def render_auto_trade_tab() -> None:
                                           strategy_margins.get(_k) or 5.0,
                                           days=365)
 
-            chosen_coins = [c for cs in strategy_coins.values() for c in cs]
+            # The legacy union is the runner's fallback, so it must follow the
+            # ARMED rows only. Built from every row, a locked or off row's
+            # contract joined it and a coin nothing trades looked selected.
+            chosen_coins = list(dict.fromkeys(
+                c for k in chosen_strats for c in strategy_coins.get(k, [])))
 
         # ================= BAND 4 — RISK ================================
         with st.container(key="tmsec_risk"):
@@ -3169,16 +3464,23 @@ def render_auto_trade_tab() -> None:
                 # closes part of a position it does not own.
                 _probe = {"strategies": chosen_strats,
                           "strategy_coins": {k: strategy_coins.get(k, [])
-                                             for k in chosen_strats}}
+                                             for k in chosen_strats},
+                          # Without the book map, books_for() falls back to the
+                          # global switches and reads every strategy as live —
+                          # which would refuse the save for two PAPER timeframes
+                          # on one coin, the exact thing the operator asked for.
+                          "strategy_books": {k: v for k, v in strategy_books.items()
+                                             if v}}
                 _clashes = at.timeframe_conflicts(_probe)
                 if _clashes:
                     for _c in _clashes:
                         st.error(
-                            f"**{_c['coin']} is ticked on two timeframes at once** "
+                            f"**{_c['coin']} is LIVE on two timeframes at once** "
                             f"({' and '.join(_c['timeframes'])}, via "
-                            f"{', '.join(_c['strategies'])}). One coin runs one "
-                            f"timeframe — untick all but one, then save again. "
-                            f"Nothing was written.")
+                            f"{', '.join(_c['strategies'])}). MEXC nets them into one "
+                            f"position, so one coin trades real money on one timeframe "
+                            f"— untick all but one LIVE box, then save again. DEMO is "
+                            f"unaffected. Nothing was written.")
                     st.stop()
                 _payload = {"strategies": chosen_strats,
                                   "strategy_coins": strategy_coins,
@@ -3431,6 +3733,180 @@ def render_auto_trade_tab() -> None:
                        "simulate. Emergency stop: uncheck + Save, or `touch "
                        "~/.tradingagents/auto_trade.KILL`. Brackets rest on "
                        "MEXC's servers when live.")
+
+
+
+# ---------------------------------------------------------------------------
+# Back Test — the market-wide sweep, and its REFRESH.
+#
+# The first run measures a year for every eligible contract. A refresh does not
+# repeat it: candles are cached and only the new tail is fetched, and every
+# combination's backtest is CONTINUED from the state the engine handed back, so
+# only the new bars are tested. Verified exact — continuing a split run
+# reproduces a single-pass run trade-for-trade (tests/test_market_sweep.py).
+# ---------------------------------------------------------------------------
+BT_ALL_PAGE = BT_REPORT_DIR / "all-coins.html"
+
+
+def _bt_eligible(min_days: int = 365) -> list[str]:
+    """Contracts at least `min_days` old, cheapest book first. Cached a day."""
+    import json as _json
+
+    f = Path(os.path.expanduser("~/.tradingagents/backtest/eligible.json"))
+    try:
+        d = _json.loads(f.read_text())
+        if d.get("day") == _dt.date.today().isoformat():
+            return d["symbols"]
+    except (OSError, ValueError, KeyError):
+        pass
+    from tradingagents.dataflows import mexc_futures as fx
+    from tradingagents import auto_trader as at
+
+    raw = fx._get_public(f"{fx.BASE}/api/v1/contract/detail").get("data") or []
+    syms = sorted(x["symbol"] for x in raw
+                  if str(x.get("symbol", "")).endswith("_USDT")
+                  and int(x.get("state", 1)) == 0)
+    keep = []
+    bar = st.progress(0.0, text="finding contracts a year old…")
+    for i, sym in enumerate(syms, 1):
+        try:
+            d = fx.klines(sym, "Day1", 500)
+            if (d["Date"].iloc[-1] - d["Date"].iloc[0]).days >= min_days:
+                c = fx.book_cost(sym, 100.0)
+                rt = 2 * (at.taker_fee(sym, fx=fx)
+                          + float(c.get("spread") or 0) / 2
+                          + float(c.get("slippage") or 0))
+                keep.append((rt, sym))
+        except Exception:
+            pass
+        if i % 20 == 0:
+            bar.progress(i / len(syms),
+                         text=f"{i}/{len(syms)} screened · {len(keep)} eligible")
+    bar.empty()
+    keep.sort()
+    out = [s2 for _rt, s2 in keep]
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(_json.dumps({"day": _dt.date.today().isoformat(),
+                              "symbols": out}))
+    return out
+
+
+def _bt_build_page(rows: list) -> tuple[str, str] | None:
+    """Render the stored grid as the standard page."""
+    from tradingagents import backtest_report as br
+    from tradingagents import market_sweep as msw
+
+    if not rows:
+        return None
+    months = sorted({m for r in rows for m in (r.get("monthly") or {})},
+                    reverse=True)
+    for r in rows:
+        r["mon"] = [(r.get("monthly") or {}).get(m) for m in months]
+        r.pop("monthly", None)
+        r["id"] = br.row_code(r["coin"], r["tf"], r["signal"], r["th"],
+                              r["sl"], r["tp"], r["sizing"])
+        r.setdefault("tpd", round(r["trades"] / max(r.get("days", 1), 1), 2))
+    meta = {}
+    for r in rows:
+        meta.setdefault(f"{r['coin']}|{r['tf']}",
+                        {"bars": r.get("bars", 0), "days": r.get("days", 0),
+                         "rt": r.get("rt"), "liq": 0.0, "fee": 0.0})
+    cov = msw.coverage()
+    payload = {"rows": rows, "meta": meta, "series": {}, "months": months,
+               "cur": months[0] if months else "", "lev": 20, "slip": 0.0003,
+               "base": rows[0].get("base", 5.0),
+               "ladder": [1, 1, 2, 2, 4, 4, 8], "deployed": [],
+               "excluded": [], "days_asked": 365,
+               "fetched": cov.get("last_bar") or "",
+               "rec_min_trades": 300, "rec_min_days": 300, "card_cap": 8}
+    BT_REPORT_DIR.mkdir(parents=True, exist_ok=True)
+    br.write_report(
+        str(BT_ALL_PAGE), payload,
+        title="Back Test — Every MEXC Coin a Year Old",
+        note=(f"<b>{cov['coins']} contracts, {cov['pairs']} coin/timeframe "
+              f"pairs, {len(rows)} rows.</b> Candles are cached, so a refresh "
+              f"fetches only the bars printed since the last run and CONTINUES "
+              f"each backtest rather than repeating the year. Newest bar "
+              f"measured: {cov.get('last_bar') or 'n/a'}. Trade-by-trade replay "
+              f"is not embedded on this market-wide page — run a single coin "
+              f"from Auto Trade for that."))
+    return f"app/static/bt/{BT_ALL_PAGE.name}", BT_ALL_PAGE.name
+
+
+def render_backtest_tab() -> None:
+    from tradingagents import market_sweep as msw
+    from tradingagents import backtest_report as br
+
+    cov = msw.coverage()
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Coins measured", cov["coins"])
+    c2.metric("Coin/timeframe pairs", cov["pairs"])
+    c3.metric("Rows kept", f"{cov['rows']:,}")
+    c4.metric("Newest bar tested", cov.get("last_bar") or "—")
+
+    st.caption(
+        f"{len(br.SIGNALS)} entry rules x {len(br.pairs_for('15m'))} barrier "
+        f"pairs x 2 sizings, on 15m and 30m, over a year. All three costs are "
+        f"charged: taker fee per contract, 0.03%/side slippage, and funding per "
+        f"settlement held. Liquidation is modelled from MEXC's own maintenance "
+        f"margin. Rows under {msw.MIN_TRADES} trades are dropped.")
+
+    a, b, c = st.columns([1, 1, 2])
+    run_all = a.button("RUN ALL COINS", key="bt_run_all",
+                       help="Measure every contract at least a year old. "
+                            "Hours on a first run; minutes once cached.")
+    refresh = b.button("REFRESH", key="bt_refresh",
+                       help="Fetch only the candles printed since the last run "
+                            "and continue each backtest from where it stopped.")
+    limit = c.number_input("Coins this pass (0 = all eligible)", min_value=0,
+                           max_value=1000, value=25, step=25, key="bt_limit")
+
+    if run_all or refresh:
+        syms = _bt_eligible()
+        if limit:
+            syms = syms[:int(limit)]
+        st.info(f"{len(syms)} contracts x 15m + 30m = {len(syms) * 2} jobs.")
+        bar = st.progress(0.0, text="starting…")
+        line = st.empty()
+        done = new_bars = kept = 0
+        t0 = time.time()
+        for k, sym in enumerate(syms, 1):
+            for tf in ("15m", "30m"):
+                try:
+                    r = msw.run_pair(sym, tf, base_margin=5.0, days=365,
+                                     thresholds=1)
+                except Exception as exc:
+                    line.caption(f"{sym} {tf}: {str(exc)[:80]}")
+                    continue
+                done += 1
+                new_bars += int(r.get("new_bars") or 0)
+                kept += len(r.get("rows") or [])
+                el = time.time() - t0
+                eta = el / max(done, 1) * (len(syms) * 2 - done) / 60
+                bar.progress(min(1.0, done / (len(syms) * 2)),
+                             text=f"{done}/{len(syms) * 2} · {sym} {tf} · "
+                                  f"{r.get('source')} · ETA {eta:.0f} min")
+                line.caption(f"{kept:,} rows kept · {new_bars:,} new bars "
+                             f"tested this pass")
+        bar.empty()
+        st.session_state["bt_all_page"] = _bt_build_page(msw.all_rows())
+        st.success(f"{done} jobs in {(time.time() - t0) / 60:.1f} min · "
+                   f"{new_bars:,} new bars tested")
+
+    page = st.session_state.get("bt_all_page")
+    if not page and cov["rows"]:
+        # rows on disk but no page yet — render it now rather than show nothing
+        page = _bt_build_page(msw.all_rows())
+        st.session_state["bt_all_page"] = page
+    if page:
+        st.markdown(
+            f"<a class='bt-open' href='{page[0]}' target='_blank' "
+            f"rel='noopener'>OPEN RESULTS &#8599;</a>"
+            f"<span class='bt-open-note'>every coin, every rule, sortable "
+            f"&middot; filters &middot; last-N-months window</span>",
+            unsafe_allow_html=True)
+    elif not cov["rows"]:
+        st.warning("Nothing measured yet — press RUN ALL COINS.")
 
 
 def render_llm_models_tab() -> None:

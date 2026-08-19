@@ -1,0 +1,13 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch();
+const p = await b.newPage({viewport:{width:1500,height:1100}});
+await p.goto('http://localhost:8503',{waitUntil:'networkidle'});
+await p.waitForTimeout(9000);
+await p.getByText('Auto Trade',{exact:true}).first().click();
+await p.waitForTimeout(13000);
+const tile = p.getByText(/REAL PNL NOW/i).first().locator('xpath=..');
+const bb = await tile.boundingBox();
+console.log('tile:', JSON.stringify(bb));
+console.log('TEXT:', (await tile.innerText()).replace(/\n/g,' | '));
+await p.screenshot({path:'/tmp/tilecrop.png', clip:{x:bb.x-8,y:bb.y-8,width:bb.width+16,height:bb.height+16}});
+await b.close();

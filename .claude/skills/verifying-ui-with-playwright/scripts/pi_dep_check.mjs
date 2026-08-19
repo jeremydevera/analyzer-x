@@ -1,0 +1,15 @@
+import { chromium } from 'playwright';
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1920, height: 1050 } });
+await page.goto('file://' + process.argv[2]);
+await page.waitForTimeout(3000);
+const body = await page.locator('body').innerText();
+console.log('live panel:', (body.match(/Live right now[^\n]*/i) || ['MISSING'])[0]);
+const find = page.locator('input#fid');
+await find.fill('YNAQZS');
+await page.waitForTimeout(1200);
+const row = page.locator('tbody tr').first();
+console.log('row verdict cell:', JSON.stringify((await row.locator('td').allInnerTexts()).slice(0, 3)));
+console.log('footer names deployed:', /Deployed on PI right now/.test(body) || /Deployed on PI right now/.test(await page.locator('body').innerText()));
+await page.screenshot({ path: '/tmp/pi_dep_check.png' });
+await browser.close();

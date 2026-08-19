@@ -351,7 +351,7 @@ def run_positions(candles, positions, *, margin: float = 100.0,
             worst = margin + realised
         if margin + realised <= 0:
             # Force-closed: cap the loss at the margin and stop. See run().
-            realised = -margin
+            realised = -float(margin)
             worst = 0.0
             liquidated = True
             if open_at is not None:

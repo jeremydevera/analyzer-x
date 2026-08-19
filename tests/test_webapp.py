@@ -282,3 +282,113 @@ def test_auto_trade_load_survives_missing_or_corrupt_file(tmp_path, monkeypatch)
     bad.write_text("{not json", encoding="utf-8")
     monkeypatch.setattr(app, "AUTO_TRADE_SETTINGS", bad)
     assert app._auto_trade_load() == {}
+
+
+def test_the_ui_refuses_to_save_a_coin_on_two_timeframes():
+    """One coin runs one timeframe. The runner refuses such a config at cycle
+    time, but it should never reach the disk: MEXC nets same-symbol positions
+    into one, so two strategies on a coin at different bar sizes resize each
+    other's trade and either stop closes part of a position it does not own."""
+    import inspect
+
+    import app
+
+    src = inspect.getsource(app.render_auto_trade_tab) \
+        if hasattr(app, "render_auto_trade_tab") else open("app.py").read()
+    assert "timeframe_conflicts" in src, "the save path must run the check"
+    assert "is LIVE on two timeframes" in src, "and say which coin"
+    assert "Nothing was written" in src, "and not write a broken config"
+    assert '"strategy_books": {k: v for k, v in strategy_books.items()' in src, \
+        ("the probe must carry the book map, or books_for() falls back to the "
+         "global switches and refuses two PAPER timeframes on one coin")
+
+
+def test_the_new_pi_strategy_is_offered_in_the_ui():
+    """A key that exists in STRATEGY_SPECS and in the settings file still will
+    not render: the table is built from app.AUTO_STRATEGIES, a separate
+    hardcoded list. #3CRXP8 was enabled on disk and invisible on the page."""
+    import app
+    from tradingagents import auto_trader as at
+
+    keys = [k for k, _, _, _ in app.AUTO_STRATEGIES]
+    assert "trend50_30m_pi" in keys
+    for k in keys:
+        assert k in at.STRATEGY_SPECS, f"{k} is offered but has no spec"
+
+
+def test_the_contract_column_comes_from_the_TILE_not_the_saved_file():
+    """Superseded the empty-list fix: the saved copy is no longer read at all.
+
+    PI was moved off mom15_4h_w, which emptied that row's saved coin list to
+    [], and the table then printed `contracts: none` — a row that could be
+    armed and would trade nothing. The contract is part of the strategy
+    (#3CRXP8 IS trend50/30m on PI), so the row shows its own."""
+    src = open("app.py").read()
+    assert "_coins = list(default_coins)" in src, "the tile is the source"
+    assert "saved_coins_by" not in src, \
+        "reading the saved copy back is what produced 'contracts: none'"
+
+
+def test_the_terminal_follows_the_light_dark_toggle():
+    """Operator, 2026-08-19: "even when i light mode, the sections are black".
+    The terminal used to paint a near-black ground in both themes on purpose.
+    Now the light palette is the default and night redefines the tokens."""
+    import re
+
+    import app
+    light = re.findall(r"--t-(\w+):\s*([^;]+);", app.TERMINAL_CSS)
+    dark = re.findall(r"--t-(\w+):\s*([^;]+);", app.TERMINAL_DARK_CSS)
+    lmap, dmap = dict(light), dict(dark)
+    assert lmap["ink"].strip() == "#16181d", "light mode needs dark ink"
+    assert lmap["panel"].strip() == "#ffffff", "light mode needs a light panel"
+    assert dmap["ink"].strip() == "#ededed", "night needs light ink"
+    # Every colour token the night block redefines must exist in the light one,
+    # or a rule paints ink whose ground was never painted — the 2026-08-15 bug.
+    missing = [k for k in dmap if k not in lmap]
+    assert not missing, f"night defines tokens light does not: {missing}"
+
+
+def test_the_dataframe_invert_is_night_only():
+    """`filter:invert(.92)` turns Streamlit's white grid black. In light mode
+    that IS the reported bug, so the rule lives in the night block only."""
+    import app
+    assert "invert(.92)" not in app.TERMINAL_CSS
+    assert "invert(.92)" in app.TERMINAL_DARK_CSS
+
+
+def test_the_bands_are_not_filled_cards():
+    """"the sections are enclosed on large box" — a filled, bordered card per
+    band put three frames around one table. Hairline divider instead."""
+    import re
+
+    import app
+    m = re.search(r'\.st-key-term \[class\*="st-key-tmsec_"\]\{([^}]+)\}',
+                  app.TERMINAL_CSS)
+    assert m, "the band rule is gone entirely"
+    body = m.group(1)
+    assert "background:transparent" in body
+    assert "border:0" in body
+    assert "border-top:1px solid" in body
+
+
+def test_the_history_table_pages_ten_at_a_time_with_numbers():
+    src = open("app.py").read()
+    assert "_per = 10" in src, "the operator asked for 10 rows a page"
+    assert "_page_numbers(" in src, "numbered pages, not newer/older"
+    assert "◀ newer" not in src and "older ▶" not in src
+
+
+def test_page_numbers_windows_and_elides():
+    import app
+    assert app._page_numbers(1, 3) == [1, 2, 3]
+    assert app._page_numbers(7, 14) == [1, None, 5, 6, 7, 8, 9, None, 14]
+    assert app._page_numbers(14, 14) == [1, None, 9, 10, 11, 12, 13, 14]
+    assert app._page_numbers(1, 1) == [1]
+    for pages in range(1, 60):
+        for pg in range(1, pages + 1):
+            nums = app._page_numbers(pg, pages)
+            real = [n for n in nums if n is not None]
+            assert pg in real, f"page {pg} of {pages} is not reachable"
+            assert real == sorted(set(real)), f"{pg}/{pages}: {nums}"
+            assert real[0] == 1 and real[-1] == pages
+            assert len(nums) <= 9, f"{pg}/{pages} draws {len(nums)} buttons"

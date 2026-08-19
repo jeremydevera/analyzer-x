@@ -332,23 +332,91 @@ def open_positions(symbol: str | None = None) -> list:
                     params=params) or []
 
 
+def position_history(symbol: str | None = None, page_size: int = 20) -> list:
+    """Recently closed positions, newest first — the exchange's own realized
+    PnL per position. The auto-trader reads this when a position vanished
+    without its bracket being crossed (e.g. the operator closed it by hand),
+    so the ledger records the REAL result instead of an estimate."""
+    params: dict = {"page_num": 1, "page_size": int(page_size)}
+    if symbol:
+        params["symbol"] = symbol
+    return _request("GET", "/api/v1/private/position/list/history_positions",
+                    params=params) or []
+
+
+# Contract metadata is STATIC — size, tick and leverage bounds do not move
+# during a session — so it is cached for an hour. Before this it was re-read on
+# every entry, every bracket and every fee lookup, which is a large share of
+# the request budget for a number that never changes.
+_SPEC_CACHE: dict = {}
+_SPEC_TTL = 3600
+
+
+def clear_spec_cache() -> None:
+    _SPEC_CACHE.clear()
+
+
 def contract_spec(symbol: str) -> dict:
-    """Keyless contract metadata — contract size, tick, leverage bounds."""
+    """Keyless contract metadata — contract size, tick, leverage bounds.
+
+    NEVER returns an empty dict as if it were an answer. MEXC replies to a rate
+    limit (code 510) and to a maintenance window with HTTP 200 and no ``data``
+    key, and the old ``payload.get("data") or {}`` handed that back as a spec.
+    Callers then read ``contractSize`` as 0.0 — which is not a contract size,
+    it is a missing reply. Cost, measured: on 2026-08-18 at 19:00 an ALICE
+    entry signal died with ``cannot size ALICE_USDT: contractSize=0.0`` in both
+    books while the real contract size is 0.1, and because the candle had
+    already been marked seen the signal was never retried. Same failure and the
+    same fix as ``last_price`` (see its docstring): an unreadable value is an
+    ERROR, not a number.
+
+    Served from a 1-hour cache, so a rate limit cannot empty a spec that was
+    already read successfully.
+    """
+    now = time.time()
+    hit = _SPEC_CACHE.get(symbol)
+    if hit and now - hit[0] < _SPEC_TTL:
+        return hit[1]
     url = f"{BASE}/api/v1/contract/detail?symbol={urllib.parse.quote(symbol)}"
     payload = _get_public(url)
     d = payload.get("data") or {}
     if isinstance(d, list):
         d = d[0] if d else {}
+    if not isinstance(d, dict) or not d.get("symbol"):
+        raise MexcFuturesError(
+            f"contract detail for {symbol} carried no data "
+            f"(code={payload.get('code')} msg={payload.get('message')!r}) — "
+            f"refusing to report a contract with no size")
+    _SPEC_CACHE[symbol] = (now, d)
     return d
 
 
 def last_price(symbol: str) -> float:
+    """The last traded price. NEVER returns 0.0 as if it were a price.
+
+    MEXC answers a rate limit (code 510) or a maintenance window with HTTP
+    200 and no ``data`` key, so the old ``float(d.get("lastPrice") or 0.0)``
+    handed callers a silent 0.0. A price of zero is below every short's
+    take-profit and below every long's stop, so the paper book booked
+    fabricated wins on shorts and fabricated losses on longs — PROVE_USDT was
+    recorded as three take-profit wins (+$13.50) on 2026-08-12/13 while the
+    market never traded within 4% of the target. An unreadable price is an
+    ERROR, not a number.
+    """
     url = f"{BASE}/api/v1/contract/ticker?symbol={urllib.parse.quote(symbol)}"
     payload = _get_public(url)
     d = payload.get("data") or {}
     if isinstance(d, list):
         d = d[0] if d else {}
-    return float(d.get("lastPrice") or 0.0)
+    raw = d.get("lastPrice")
+    if raw is None:
+        raise MexcFuturesError(
+            f"ticker for {symbol} carried no lastPrice "
+            f"(code={payload.get('code')} msg={payload.get('message')!r})")
+    px = float(raw)
+    if not px > 0:
+        raise MexcFuturesError(f"ticker for {symbol} reported price {px!r}")
+    return px
 
 
 def contracts_for(symbol: str, notional_usd: float,
@@ -364,6 +432,61 @@ def contracts_for(symbol: str, notional_usd: float,
         raise MexcFuturesError(f"cannot size {symbol}: contractSize={size} px={px}")
     per_contract = size * px
     return int(notional_usd // per_contract)
+
+
+def order_book(symbol: str) -> dict:
+    """Live depth for a contract: {"bids": [[price, contracts], ...], "asks": ...}."""
+    url = f"{BASE}/api/v1/contract/depth/{urllib.parse.quote(symbol)}"
+    d = _get_public(url).get("data") or {}
+    return {
+        "bids": [[float(x[0]), float(x[1])] for x in (d.get("bids") or [])],
+        "asks": [[float(x[0]), float(x[1])] for x in (d.get("asks") or [])],
+    }
+
+
+def book_cost(symbol: str, notional_usd: float = 200.0) -> dict:
+    """What it ACTUALLY costs to trade this contract, measured from the book.
+
+    Walks the live asks to fill ``notional_usd`` and reports the average fill
+    price versus mid. This is the number a backtest silently assumes is zero —
+    on 2026-08-12 a strategy targeting 0.36% was run on a contract whose
+    spread alone was 1.56%, which no edge can survive.
+
+    Returns slippage/spread as FRACTIONS (0.0156 == 1.56%).
+    """
+    book = order_book(symbol)
+    asks, bids = book["asks"], book["bids"]
+    if not asks or not bids:
+        raise MexcFuturesError(f"no order book for {symbol}")
+    mid = (asks[0][0] + bids[0][0]) / 2.0
+    size = float(contract_spec(symbol).get("contractSize") or 0.0)
+    if size <= 0 or mid <= 0:
+        raise MexcFuturesError(f"cannot measure {symbol}: size={size} mid={mid}")
+    want = notional_usd / (size * mid)
+    need, cost, got = want, 0.0, 0.0
+    for px, vol in asks:
+        take = min(need, vol)
+        cost += take * px
+        got += take
+        need -= take
+        if need <= 0:
+            break
+    if got <= 0:
+        raise MexcFuturesError(f"empty book for {symbol}")
+    slippage = cost / got / mid - 1.0
+    exhausted = need > 0
+    if exhausted:
+        # The whole visible book cannot fill this order; the true cost is
+        # worse than anything measurable here.
+        slippage = max(slippage, asks[-1][0] / mid - 1.0)
+    return {
+        "symbol": symbol,
+        "mid": mid,
+        "spread": (asks[0][0] - bids[0][0]) / mid,
+        "slippage": slippage,
+        "book_exhausted": exhausted,
+        "notional_tested": notional_usd,
+    }
 
 
 # ---------------------------------------------------------------- preflight
@@ -996,3 +1119,4 @@ def funding_summary(symbol: str) -> dict:
         "long_daily": (-sum(rates) / span_days) if span_days > 0 else 0.0,
         "long_annual": ((-sum(rates) / span_days) * 365) if span_days > 0 else 0.0,
     }
+

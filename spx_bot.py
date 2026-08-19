@@ -230,7 +230,7 @@ RUNNABLE_STRATEGIES = ("barrier_harvest", "buy_hold")
 # different thing from the exposure form the backtest measures — no sizing, no
 # scaling out — so the backtested figures do not transfer, and anything reporting
 # a gate result has to say so.
-GATE_STRATEGIES = tuple(("barrier_harvest", "buy_hold", "trend_filter",
+GATE_STRATEGIES = tuple(("barrier_harvest", "buy_hold", "trend_filter", "trend50",
                          "session_long", "ladder_dca", "vol_target"))
 
 

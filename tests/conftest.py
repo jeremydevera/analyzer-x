@@ -100,3 +100,39 @@ def _no_network(request):
         yield
     finally:
         socket.socket.connect = _REAL_CONNECT
+
+
+# --------------------------------------------------------------------------
+# The test suite must never touch the operator's LIVE book.
+#
+# Found 2026-08-19: `tests/test_exit_survives_book_change.py` builds a
+# synthetic XAUT position (entry 4353.0, SL 4387.8, vol 22) and drives
+# `process_symbol` through its exit path. `append_ledger` was still pointed at
+# ~/.tradingagents/auto_trade_ledger.jsonl, so EVERY run of the suite wrote a
+# real-looking row: `XAUT_USDT exit SL pnl -0.96 dry_run false`. Eighty-six of
+# them accumulated. They are why the app showed XAUT at -$32.39 all-time and
+# today's live P&L at -$63.30 when MEXC's own figures are -$1.01 and -$29.71 —
+# and the daily loss limit reads exactly those rows, so a run of the tests
+# could have stopped live trading.
+#
+# Redirect every path the auto-trader writes, for every test, always. A test
+# that wants to inspect what it wrote still can: the files exist, under tmp.
+# --------------------------------------------------------------------------
+@pytest.fixture(autouse=True)
+def _never_touch_the_live_book(tmp_path, monkeypatch):
+    try:
+        import tradingagents.auto_trader as at
+    except Exception:                      # module not importable: nothing to do
+        return
+    sandbox = tmp_path / "tradingagents_state"
+    sandbox.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(at, "STATE_DIR", sandbox, raising=False)
+    for name, filename in (("STATE_PATH", "auto_trade_state.json"),
+                           ("STATE_LOCK_PATH", "auto_trade_state.lock"),
+                           ("LEDGER_PATH", "auto_trade_ledger.jsonl"),
+                           ("SETTINGS_PATH", "auto_trade.json"),
+                           ("LOG_PATH", "auto_trade.log"),
+                           ("PID_PATH", "auto_trade.pid"),
+                           ("KILL_PATH", "auto_trade.KILL")):
+        if hasattr(at, name):
+            monkeypatch.setattr(at, name, sandbox / filename)

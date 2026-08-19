@@ -1,0 +1,116 @@
+name: Market sweep (15m / 30m)
+
+# Runs the whole-market backtest on GitHub's machines instead of the operator's
+# laptop. It needs NO credentials: every input — candles, funding history, order
+# books, fees, liquidation — is MEXC public data. Nothing secret is uploaded,
+# and none of the repository's own key files are read.
+#
+# The work is embarrassingly parallel by coin, so it is sharded across runners.
+# Each shard writes its rows as an artifact; `merge` stitches them together.
+
+on:
+  workflow_dispatch:
+    inputs:
+      shards:
+        description: "How many runners to split the work across"
+        default: "20"
+      coins:
+        description: "Coins per shard (0 = all eligible in that shard)"
+        default: "0"
+      timeframes:
+        description: "Comma-separated, e.g. 15m,30m"
+        default: "15m,30m"
+      min_days:
+        description: "Minimum contract age in days"
+        default: "365"
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      shards: ${{ steps.mk.outputs.shards }}
+    steps:
+      - id: mk
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          n = int(os.environ["N"])
+          print("shards=" + json.dumps(list(range(n))))
+          PY
+        env:
+          N: ${{ github.event.inputs.shards }}
+
+  sweep:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 350          # runners are killed at 6h; stop before that
+    strategy:
+      fail-fast: false            # one bad shard must not bin the others
+      matrix:
+        shard: ${{ fromJson(needs.plan.outputs.shards) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas requests
+
+      - name: Sweep shard ${{ matrix.shard }}
+        env:
+          SHARD: ${{ matrix.shard }}
+          SHARDS: ${{ github.event.inputs.shards }}
+          COINS: ${{ github.event.inputs.coins }}
+          TFS: ${{ github.event.inputs.timeframes }}
+          MIN_DAYS: ${{ github.event.inputs.min_days }}
+        run: python .github/scripts/sweep_shard.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rows-${{ matrix.shard }}
+          path: out/rows-*.jsonl
+          if-no-files-found: warn
+          retention-days: 14
+
+  merge:
+    needs: sweep
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: shards
+          pattern: rows-*
+          merge-multiple: true
+      - name: Stitch the shards
+        run: |
+          mkdir -p out
+          cat shards/rows-*.jsonl > out/rows-all.jsonl || true
+          python3 - <<'PY'
+          import json, collections
+          rows = [json.loads(l) for l in open("out/rows-all.jsonl")]
+          coins = {r["coin"] for r in rows}
+          def surv(r):
+              return (r["profit"] > 0 and r["h1"] > 0 and r["h2"] > 0
+                      and r["months"] and r["green"] / r["months"] >= .70
+                      and r["gate"] != "block")
+          sv = [r for r in rows if surv(r)]
+          by = collections.Counter(r["signal"] for r in rows)
+          print(f"{len(rows):,} rows · {len(sv):,} survivors · {len(coins)} coins")
+          for s, n in by.most_common(10):
+              print(f"  {s:12} {n:6,}")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sweep-results
+          path: out/rows-all.jsonl
+          retention-days: 30

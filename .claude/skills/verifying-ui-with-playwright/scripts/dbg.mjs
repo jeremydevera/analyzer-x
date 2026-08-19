@@ -1,0 +1,11 @@
+import { chromium } from "playwright";
+const b = await chromium.launch();
+const pg = await b.newPage({ viewport: { width: 1900, height: 1300 } });
+await pg.goto("http://localhost:8503", { waitUntil: "networkidle" });
+await pg.waitForTimeout(9000);
+await pg.locator('[data-testid="stRadio"] label').filter({ hasText: /^Auto Trade$/ }).first().click();
+await pg.waitForTimeout(12000);
+const t = await pg.locator("body").innerText();
+console.log(t.slice(0, 2500));
+await pg.screenshot({ path: "dbg.png", fullPage: false });
+await b.close();

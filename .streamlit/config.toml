@@ -12,6 +12,9 @@ font = "sans serif"
 
 [server]
 headless = true
+# Serves ./static at /app/static/... so a generated backtest page can be
+# opened in its own browser tab instead of being trapped inside the app.
+enableStaticServing = true
 address = "0.0.0.0"
 # Allow access from other devices on the LAN (phone). The XSRF/CORS origin
 # checks otherwise reject the websocket when reached via the machine's IP,
@@ -21,3 +24,11 @@ enableXsrfProtection = false
 
 [browser]
 gatherUsageStats = false
+
+[client]
+# The operator hits Ctrl+C to copy a number out of a table. With no text
+# selected the browser passes the bare `c` through, and Streamlit's developer
+# hotkey opens "Clear cache" — mid-session, on a page whose caches hold the
+# contract list and the kline history. `minimal` removes the developer options
+# and the keyboard shortcuts bound to them (`c` clear cache, `r` rerun).
+toolbarMode = "minimal"

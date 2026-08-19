@@ -54,3 +54,14 @@ Baseline failure (why this skill exists): a change was reported "done" twice on 
 | Clicking anything while an analysis streams restarts it from stage 0 | Wait for the stButton "Close" (renders only after the outcome is stored) before any click |
 | `getByLabel('My field')` resolves to the **help tooltip button** when the widget was given `help=...` — Streamlit gives it `aria-label="Help for My field"`, and `fill()` then dies with "Element is not an `<input>`" | Target the widget container: `locator('[data-testid="stNumberInput"]').filter({hasText:'My field'}).locator('input')` |
 | A regex against `innerText` misses a heading styled `text-transform: uppercase` — Chromium's `innerText` returns the *rendered* case, so a `<h4>Losing trades</h4>` reads as `LOSING TRADES` | Match case-insensitively (`/losing trades/i`) — and when a check fails, read the screenshot before assuming the UI is broken |
+
+## Presence is not correctness
+
+Every check in this skill confirms an element EXISTS and sits where it should. That
+passes on a tile whose number is right and whose label is a lie — which is how
+`+ open (RUNE) +7.59` shipped while RUNE was `+0.16` and the figure summed four
+positions.
+
+So add one more assertion to any check involving a figure: **recompute the value from
+its source and compare it to the rendered text**, and for any itemised list, **assert
+the items sum to the displayed total**. See `label-must-match-data`.

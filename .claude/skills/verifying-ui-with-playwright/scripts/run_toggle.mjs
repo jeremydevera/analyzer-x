@@ -1,0 +1,14 @@
+import { chromium } from "playwright";
+const b = await chromium.launch(); const p = await b.newPage({viewport:{width:1680,height:1050}});
+await p.goto("http://localhost:8503", {waitUntil:"networkidle"}); await p.waitForTimeout(8000);
+await p.locator('label', {hasText: "Auto Trade"}).first().click(); await p.waitForTimeout(5000);
+await p.locator('[data-testid="stCheckbox"]').filter({hasText:/^Auto Trade$/}).locator('label').click();
+await p.waitForTimeout(2000);
+await p.locator('[data-testid="stButton"] button').filter({hasText:/^Save auto-trade settings$/}).click();
+await p.waitForTimeout(6000);
+const body = await p.innerText("body");
+console.log("RUNNING shown:", /RUNNING · pid/i.test(body));
+console.log("dry-run notice:", /DRY RUN/i.test(body));
+console.log("armed warning:", /AUTO_TRADE_ARMED=yes/.test(body));
+await p.screenshot({path:"auto-trade-running.png", fullPage:true});
+await b.close();

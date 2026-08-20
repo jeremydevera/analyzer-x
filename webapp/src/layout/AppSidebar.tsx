@@ -29,6 +29,11 @@ const navItems: NavItem[] = [
   },
   {
     icon: <GridIcon />,
+    name: "New Crypto",
+    path: "/new-crypto",
+  },
+  {
+    icon: <GridIcon />,
     name: "LLM Models",
     path: "/models",
   },

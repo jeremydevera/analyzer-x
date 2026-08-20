@@ -417,3 +417,51 @@ def models_ping(body: dict) -> dict:
     if not spec:
         raise HTTPException(404, f"unknown model: {mid}")
     return {"model_id": mid, **mh.ping(mid, spec)}
+
+
+# ------------------------------------------------------------- new listings
+@app.get("/api/crypto/new")
+def crypto_new(min_volume: float = 0.0, include_all: bool = False,
+               min_age_hours: float = 0.0, max_age_hours: float | None = None,
+               refresh: bool = False) -> dict:
+    """Newly listed MEXC spot coins. Says what it could NOT resolve, and
+    whether the answer came from cache — an empty table must never be
+    mistaken for "no new coins" when the truth is "could not check"."""
+    from tradingagents.dataflows import mexc
+
+    r = mexc.screen_new_listings(min_quote_volume=min_volume,
+                                 include_all=include_all,
+                                 min_age_hours=min_age_hours,
+                                 max_age_hours=max_age_hours,
+                                 force_refresh=refresh)
+    return {
+        "rows": [{
+            "symbol": c.symbol, "base": c.base, "name": c.name,
+            "contract": c.contract, "listed_date": c.listed_date,
+            "age_hours": round(c.age_hours, 2), "age_days": c.age_days,
+            "price": c.price, "change_pct": round(c.change_pct, 2),
+            "quote_volume": round(c.quote_volume, 2),
+        } for c in r.coins],
+        "scanned": r.scanned, "unresolved": r.unresolved,
+        "hidden_by_volume": r.hidden_by_volume,
+        "hidden_by_age": r.hidden_by_age,
+        "fetched_at": r.fetched_at, "from_cache": r.from_cache,
+        "stale": r.stale, "window_days": mexc.WINDOW_DAYS,
+    }
+
+
+@app.get("/api/crypto/upcoming")
+def crypto_upcoming() -> dict:
+    """Announced-but-not-trading listings, soonest first."""
+    from tradingagents.dataflows import mexc
+
+    try:
+        rows = mexc.upcoming_listings()
+    except Exception as exc:                                   # noqa: BLE001
+        return {"rows": [], "why": f"{type(exc).__name__}: {exc}"}
+    return {"rows": [{
+        "symbol": r.get("symbol"), "base": r.get("base"),
+        "name": r.get("name"), "open_ms": r.get("open_ms"),
+        "hours_until": (round(r["hours_until"], 2)
+                        if r.get("hours_until") is not None else None),
+    } for r in rows]}

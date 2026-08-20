@@ -784,7 +784,13 @@ def test_the_view_owns_its_markup_and_holds_no_widgets():
         assert cls in app.MODERN_CSS, f"{cls} missing"
     assert "prefers-reduced-motion" in app.MODERN_CSS, "the pulse must be optional"
     src = open("app.py").read()
-    assert 'key="mv_close_pick"' in src and 'key="mv_close_go"' in src
+    # The close moved INTO the row on 2026-08-20 ("where is the close button in
+    # open position?"). It is still not a widget inside our markup — it is an
+    # anchor, which is how a designed table can own its own controls — and the
+    # confirm that actually sends the order is a real button underneath.
+    assert "class='mv-x'" in src and "href='?close=" in src
+    assert 'key="mvx_confirm"' in src
+    assert 'key="mv_close_pick"' not in src, "the dropdown it replaced is gone"
 
 
 def test_a_stake_is_not_a_gain():
@@ -797,12 +803,15 @@ def test_a_stake_is_not_a_gain():
 
 
 def test_backtest2_shows_the_storage_panel():
-    """Growth must be visible before it is a problem: every store, rows,
-    bytes, on the page that writes them."""
+    """Growth must be visible before it is a problem — and pure local means
+    the panel lists THIS MACHINE's stores and nothing else ("i told you that
+    its pure local")."""
     src = open("app.py").read()
     assert "def render_storage_panel" in src
     assert src.count("render_storage_panel()") >= 1
     body = src.split("def render_storage_panel", 1)[1].split("\ndef ", 1)[0]
-    assert "table_sizes" in body, "Neon tables must be listed"
     assert "parquet_store" in body, "disk stores must be listed"
-    assert "0.5 GB" in body, "the free-tier cap belongs on screen"
+    assert "pair rows" in body and "resume states" in body
+    assert "trade ledger" in body and "deployments" in body
+    assert "table_sizes" not in body, "no database in a pure-local panel"
+    assert "pure local" in body

@@ -13,8 +13,10 @@ def _payload():
                       "winrate": 40.0, "dd": 1.0, "monthly": {}}]}
 
 
-def test_backtest_job_snapshots_grid_then_saves_then_prunes(monkeypatch,
-                                                            tmp_path):
+def test_backtest_job_snapshots_the_grid_and_touches_no_database(monkeypatch,
+                                                                 tmp_path):
+    """Pure local: persist = one grid snapshot on this Mac. The pair store
+    already holds every row; no database is written or dieted."""
     calls = []
     fake_grid = tmp_path / "2026-08-20-t.parquet"
 
@@ -25,9 +27,10 @@ def test_backtest_job_snapshots_grid_then_saves_then_prunes(monkeypatch,
             fake_grid.write_bytes(b"x" * 64)
             return fake_grid
 
-    class DB:
+    class DB:                                # must never be consulted
         @staticmethod
         def ensure_schema():
+            calls.append(("save", 0))
             return True
 
         @staticmethod
@@ -37,15 +40,12 @@ def test_backtest_job_snapshots_grid_then_saves_then_prunes(monkeypatch,
 
         @staticmethod
         def retention_tick(**kw):
-            calls.append(("prune", str(kw.get("grid_path"))))
-            return {"results_dropped": 3, "candle_symbols_dropped": [],
-                    "aborted": ""}
+            calls.append(("prune", ""))
+            return {}
 
-    monkeypatch.setattr(db_jobs, "_armed_symbols", lambda: ["APEX_USDT"])
     saved = db_jobs.persist_results(_payload(), days=365, label="t",
                                     mdb=DB, pq=PQ)
-    assert [c[0] for c in calls] == ["grid", "save", "prune"]
-    assert calls[2][1] == str(fake_grid)
+    assert [c[0] for c in calls] == ["grid"]
     assert saved == 1
 
 
@@ -118,7 +118,6 @@ def test_download_fills_the_local_store_first(monkeypatch, tmp_path):
     monkeypatch.setattr(mdb, "ensure_schema", lambda: True)
     monkeypatch.setattr(mdb, "upsert_candles",
                         lambda c, tf, df: calls["neon"].append((c, tf)))
-    monkeypatch.setattr(db_jobs, "_armed_symbols", lambda: ["APEX_USDT"])
     monkeypatch.setattr(db_jobs, "_stopping", lambda kind: False)
     monkeypatch.setattr(db_jobs, "FILES", {
         "download": {"progress": tmp_path / "p.json"}})
@@ -126,5 +125,5 @@ def test_download_fills_the_local_store_first(monkeypatch, tmp_path):
                            "tfs": ["15m"]})
     assert calls["local"] == [("APEX_USDT", "15m"), ("GONE_USDT", "15m")]
     assert calls["parquet"] == calls["local"], "parquet copy for every pair"
-    assert calls["neon"] == [("APEX_USDT", "15m")], \
-        "only armed coins mirror to the cloud"
+    assert calls["neon"] == [], \
+        "pure local: the database is never written, armed or not"

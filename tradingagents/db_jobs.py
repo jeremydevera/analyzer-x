@@ -110,17 +110,14 @@ def start(kind: str, spec: dict) -> int:
 # --------------------------------------------------------------- job bodies
 def _run_download(spec: dict) -> None:
     """DOWNLOAD/UPDATE fill the operator's OWN MACHINE — the store every
-    backtest actually reads ("i said i want all local machine"). Neon gets a
-    best-effort mirror of armed coins only; its absence never fails a
-    download."""
+    backtest reads. Pure local: no database is touched."""
     from tradingagents import market_sweep as msw
     from tradingagents import parquet_store as pqs
-    from tradingagents.dataflows import market_db as mdb
     f = FILES["download"]
     coins = spec["coins"]
-    tfs = [t for t in spec["tfs"] if t in mdb.TIMEFRAMES]
+    tfs = [t for t in spec["tfs"]
+           if t in ("15m", "30m", "1h", "4h", "1d")]
     pairs = [(c, tf) for c in coins for tf in tfs]
-    armed = set(_armed_symbols())
     stored, errors, stopped, i = 0, [], False, 0
     for i, (c, tf) in enumerate(pairs):
         if _stopping("download"):
@@ -136,12 +133,6 @@ def _run_download(spec: dict) -> None:
         except Exception as exc:
             errors.append(f"{c} {tf}: {str(exc)[:80]}")
             continue
-        if c in armed and mdb.available():
-            try:                                  # cloud mirror, best-effort
-                mdb.ensure_schema()
-                mdb.upsert_candles(c, tf, df)
-            except Exception:
-                pass
     _write(f["progress"], {
         "running": False, "done": i if stopped else len(pairs),
         "total": len(pairs), "bars_stored": stored, "errors": len(errors),
@@ -204,24 +195,18 @@ def _signals_count() -> int:
 
 def persist_results(payload: dict, *, days: int, label: str,
                     mdb=None, pq=None) -> int:
-    """Grid file FIRST, Neon rows second, prune third — in that order, so the
-    database diet can never destroy rows that are not yet on disk. A failed
-    snapshot raises: no snapshot, no save, no prune."""
-    if mdb is None:
-        from tradingagents.dataflows import market_db as mdb
+    """Snapshot the full grid to the operator's own disk. Pure local — "i
+    told you that its pure local" — so no database is written or dieted; the
+    pair store (market_sweep) already holds every row, and this file is the
+    immutable record of THIS run. A failed snapshot raises."""
     if pq is None:
         from tradingagents import parquet_store as pq
-    grid_path = pq.save_grid(payload["rows"], label=label)
-    mdb.ensure_schema()
-    saved = mdb.save_results(result_rows(payload, days, _signals_count()))
-    mdb.retention_tick(keep_per_pair=500, armed_symbols=_armed_symbols(),
-                       grid_path=grid_path)
-    return saved
+    pq.save_grid(payload["rows"], label=label)
+    return len(payload["rows"])
 
 
 def _run_backtest(spec: dict) -> None:
     from tradingagents import backtest_report as br
-    from tradingagents.dataflows import market_db as mdb
     f = FILES["backtest"]
 
     def prog(msg: str, frac: float) -> None:
@@ -271,7 +256,6 @@ def _run_btupdate(spec: dict) -> None:
     printed since. A stopped update keeps every pair already continued."""
     from tradingagents import backtest_report as br
     from tradingagents import market_sweep as msw
-    from tradingagents.dataflows import market_db as mdb
     f = FILES["btupdate"]
     pairs = [(c, tf) for c in spec["coins"] for tf in spec["tfs"]]
     days = int(spec.get("days") or 365)
@@ -294,18 +278,13 @@ def _run_btupdate(spec: dict) -> None:
         new_bars += int(r.get("new_bars") or 0)
         if r.get("why"):
             notes.append(f"{sym} {tf}: {r['why']}")
-    saved, save_err = 0, ""
-    if rows:
-        for r in rows:                     # the sweep's rows carry no id
-            r.setdefault("id", br.row_code(
-                r["coin"], r["tf"], r["signal"], r.get("th") or 0.0,
-                r["sl"], r["tp"], r["sizing"]))
-        try:
-            mdb.ensure_schema()
-            saved = mdb.save_results(
-                result_rows({"rows": rows}, days, len(br.SIGNALS)))
-        except Exception as exc:
-            save_err = str(exc)[:160]
+    # run_pair already persisted every row into the local pair store — pure
+    # local, nothing else to write. `saved` reports what landed there.
+    saved, save_err = len(rows), ""
+    for r in rows:                         # ids for the progress readout
+        r.setdefault("id", br.row_code(
+            r["coin"], r["tf"], r["signal"], r.get("th") or 0.0,
+            r["sl"], r["tp"], r["sizing"]))
     _write(f["progress"], {
         "running": False, "done": i if stopped else len(pairs),
         "total": len(pairs), "rows": len(rows), "saved": saved,

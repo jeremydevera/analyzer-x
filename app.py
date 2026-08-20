@@ -1933,16 +1933,14 @@ def _auto_trade_save(payload: dict) -> None:
     prev = _auto_trade_load()
     AUTO_TRADE_SETTINGS.parent.mkdir(parents=True, exist_ok=True)
     AUTO_TRADE_SETTINGS.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    # Record what changed BEFORE this write is forgotten. Best-effort: the
-    # archive being down must never stop a save the operator asked for.
+    # Record what changed BEFORE this write is forgotten — locally, pure
+    # local by the operator's instruction. A failed history write must never
+    # stop the save itself.
     try:
-        from tradingagents.dataflows import market_db as _mdb
+        from tradingagents import local_history as _lh
 
-        changes = _deploy_diff(prev, payload)
-        if changes and _mdb.available():
-            _mdb.ensure_schema()
-            for c in changes:
-                _mdb.record_deployment(c)
+        for c in _deploy_diff(prev, payload):
+            _lh.record_deployment(c)
     except Exception:
         pass
 
@@ -3356,7 +3354,12 @@ def _mv_cls(v) -> str:
 def _mv_positions(rows: list, label: str, sub: str, live: bool) -> str:
     """The positions table, as my own grid. Six columns, a ring for distance,
     and no widget anywhere inside it."""
-    cols = "2.6fr .9fr 1.1fr 1.2fr 1fr .9fr"
+    # The live book carries a 7th cell: the per-row close. It used to live in
+    # the legacy _positions() band, which was removed as a duplicate on
+    # 2026-08-20 — so the only way to close became a dropdown below the table,
+    # and the operator reasonably read that as the button being gone.
+    cols = ("2.6fr .9fr 1.1fr 1.2fr 1fr .9fr .5fr" if live
+            else "2.6fr .9fr 1.1fr 1.2fr 1fr .9fr")
     # Live and Paper render the same coins. Without this the paper row would
     # count from the live row's figure and vice versa.
     _bk = "live" if live else "paper"
@@ -3370,7 +3373,9 @@ def _mv_positions(rows: list, label: str, sub: str, live: bool) -> str:
     out.append(f"<div class='mv-row hd' style='grid-template-columns:{cols}'>"
                "<div>Position</div><div>Side</div><div class='mv-r'>Open P/L</div>"
                "<div>To barrier</div><div class='mv-r'>At risk</div>"
-               "<div class='mv-r'>Entry</div></div>")
+               "<div class='mv-r'>Entry</div>"
+               + ("<div class='mv-r'>Close</div>" if live else "")
+               + "</div>")
     tot_open = tot_risk = 0.0
     for r in rows:
         coin = str(r.get("coin", ""))
@@ -3397,7 +3402,12 @@ def _mv_positions(rows: list, label: str, sub: str, live: bool) -> str:
                else "<div class='mv-sm mv-nil'>&mdash;</div>")
             + "<div class='mv-r mv-num'>"
             + _ani_money(risk, key=f"pos.{_bk}.{coin}.risk") + "</div>"
-            + f"<div class='mv-r mv-sm'>{r.get('entry') or '&mdash;'}</div></div>")
+            + f"<div class='mv-r mv-sm'>{r.get('entry') or '&mdash;'}</div>"
+            + (("<div class='mv-r'><a class='mv-x' "
+                f"href='?close={html.escape(str(r.get('symbol') or ''))}' "
+                f"target='_self' title='Close {html.escape(coin)} at market'>"
+                "&#10005;</a></div>") if live else "")
+            + "</div>")
     out.append(f"<div class='mv-row ft' style='grid-template-columns:{cols}'>"
                f"<div>{len(rows)} open</div><div></div>"
                f"<div class='mv-r {_mv_cls(tot_open)}'>"
@@ -3405,7 +3415,9 @@ def _mv_positions(rows: list, label: str, sub: str, live: bool) -> str:
                + "</div>"
                f"<div></div><div class='mv-r'>"
                + _ani_money(tot_risk, key=f"pos.{_bk}.risktotal") + "</div>"
-               "<div></div></div>")
+               "<div></div>"
+               + ("<div></div>" if live else "")
+               + "</div>")
     out.append("</div>")
     return "".join(out)
 
@@ -3654,6 +3666,40 @@ html, body, .stApp, [data-testid="stAppViewContainer"],
 [data-testid="stMain"], [data-testid="stBottom"]{
   background:var(--bg) !important; }
 
+/* ---- Risk: composition, not colour ---------------------------------- */
+/* Counts of live/paper strategies are FACTS, not verdicts. --t-dn is the loss
+   red on this screen, so "4 strategies" in red read as an alarm. */
+.st-key-term .tm-acc{ color:var(--brand-text) !important; }
+.st-key-term .tm-mut{ color:var(--fg-2) !important; }
+/* A rule above the action row, so the controls read as a footer to the
+   section rather than as more content. */
+.tm-acts{ border-top:1px solid var(--hair); margin:var(--s5) 0 var(--s4); }
+/* The destructive group: its own well, its own label, warm border. */
+.tm-danger-h{ font-size:9.5px; font-weight:600; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--neg); margin-bottom:var(--s1); }
+/* Keyed, NOT positional. `[data-testid="stColumn"]:last-child` matched the last
+   column of every row in this section, so it also wrapped the Position sizing
+   radio in the destructive red well. */
+.st-key-riskpanic{
+  border:1px solid color-mix(in oklab,var(--neg) 34%,transparent);
+  background:var(--neg-wash); border-radius:var(--r-ctl);
+  padding:var(--s3) var(--s4) var(--s4) !important; }
+.st-key-riskpanic button[data-testid^="stBaseButton"]{
+  background:transparent !important;
+  border:1px solid var(--neg) !important; color:var(--neg) !important; }
+.st-key-riskpanic button[data-testid^="stBaseButton"]:hover:not(:disabled){
+  background:var(--neg) !important; color:var(--n-9) !important; }
+.st-key-riskpanic button:disabled{ opacity:.55 !important; }
+/* The help icon beside a label was rendering as tofu: the Material ligature
+   font is not loaded for it, so it printed the glyph name's fallback box. */
+.stApp [data-testid="stTooltipIcon"] svg,
+.stApp [data-testid="stWidgetLabel"] svg{
+  width:13px !important; height:13px !important;
+  stroke:var(--fg-3) !important; fill:none !important; opacity:1; }
+.stApp [data-testid="stTooltipIcon"]:hover svg{ stroke:var(--fg) !important; }
+.st-key-term [data-testid="stTooltipIcon"] [data-testid="stIconMaterial"]{
+  font-size:14px !important; line-height:1 !important; opacity:.6; }
+
 /* ═══ THE RAIL ═════════════════════════════════════════════════════════════
    Our markup, so these are real numbers rather than whatever Streamlit's
    button block happened to leave behind: 232px rail, 30px rows, 2px gap, 16px
@@ -3880,6 +3926,21 @@ ANI_CSS = """
    active. Either way there is a visible gap. */
 h2.tm-h .k{ margin-right:14px; }
 h2.tm-h .v{ margin-left:auto; }
+
+/* The per-row close. A destructive control inside a dense table, so it stays
+   quiet until the row is hovered — visible enough to find, not so loud that it
+   invites a mis-click on a row you were only reading. */
+.mv-x{ display:inline-grid; place-items:center; width:22px; height:22px;
+  border-radius:var(--r-ctl); font-size:11px; line-height:1;
+  color:var(--fg-3); text-decoration:none !important;
+  border:1px solid transparent; opacity:.45;
+  transition:opacity 140ms ease, color 140ms ease, background 140ms ease,
+             border-color 140ms ease; }
+.mv-row:hover .mv-x{ opacity:1; }
+.mv-x:hover{ color:var(--neg) !important; background:var(--neg-wash);
+  border-color:color-mix(in oklab,var(--neg) 40%,transparent); }
+.mv-x:focus-visible{ opacity:1; outline:2px solid var(--focus);
+  outline-offset:1px; }
 
 .mv-barrier{ display:flex; align-items:center; gap:7px; }
 .mv-to{ font-size:10.5px; font-weight:600; letter-spacing:.06em;
@@ -4398,7 +4459,6 @@ def _tm_table(cols: tuple, rows: list, total: dict | None = None,
 
 def render_auto_trade_tab() -> None:
     """The trading terminal: status ribbon, strategy grid, risk, book, feed."""
-    _ledger_sync_tick()
     from tradingagents import auto_trader as at
     from tradingagents.dataflows import mexc_credentials as cred
     from tradingagents.dataflows import mexc_futures as fx
@@ -4710,21 +4770,66 @@ def render_auto_trade_tab() -> None:
                                 True)
                 + "</div>", unsafe_allow_html=True)
 
-            # CLOSE sits directly under the table it acts on. A widget cannot
-            # live inside our HTML, so the block is SPLIT here rather than
-            # appended after everything — it was rendering 801px below the Open
-            # positions panel, on the far side of the demo table and the whole
-            # strategy list, so closing a live position meant scrolling past
-            # two other tables to find the control for this one.
+            # ---- CLOSE. The row's × arms it; the confirm lands HERE, directly
+            # under the table it acts on. Before, the arming control was a
+            # dropdown below the table and the confirmation rendered in a
+            # different section hundreds of pixels further down, so clicking
+            # looked like nothing happened at all.
+            #
+            # The × is a GET link, which is safe for ARMING (it only reveals a
+            # confirmation) but would not be safe for the close itself: a
+            # refresh or a prefetch could replay it and flatten a position the
+            # strategy had since re-entered. The order is only ever sent by the
+            # button below.
             _open_syms = [r["symbol"] for r in _real]
-            if _open_syms:
-                a1, a2, _a3 = st.columns([2, 1, 5], vertical_alignment="bottom")
-                _pick = a1.selectbox("Close a position", _open_syms,
-                                     key="mv_close_pick")
-                if a2.button("Close at market", key="mv_close_go",
-                             use_container_width=True):
-                    st.session_state["close_pending"] = _pick
-                    st.rerun(scope="fragment")
+            try:
+                _asked = st.query_params.get("close")
+            except Exception:
+                _asked = None
+            if _asked and _asked in _open_syms:
+                st.session_state["close_pending"] = _asked
+            if _asked:
+                try:
+                    del st.query_params["close"]
+                except Exception:
+                    pass
+
+            _pend = st.session_state.get("close_pending")
+            if _pend:
+                _row = next((r for r in _real if r["symbol"] == _pend), None)
+                if _row is None:
+                    st.session_state.pop("close_pending", None)
+                    st.info(f"{_pend} is no longer open — nothing to close.")
+                else:
+                    _mg = _row.get("margin $") or 0
+                    st.warning(
+                        f"**Close {_pend} at market now?** {_row['side']} "
+                        f"{_row['vol']} contracts, entry {_row['entry']}, "
+                        f"{_mg} USDT margin at {at.LEVERAGE}x. Unrealised "
+                        f"**{_row['open $']:+.2f} USDT** becomes real the moment "
+                        f"this fills. There is no undo, and the strategy may "
+                        f"re-enter on its next signal.")
+                    _y, _n, _sp = st.columns([1.4, 1, 4])
+                    if _y.button("CONFIRM — close at market", type="primary",
+                                 key="mvx_confirm"):
+                        rep = at.close_one(_pend)
+                        st.session_state.pop("close_pending", None)
+                        # The positions read is cached, so without this the
+                        # table would still show the position we just closed.
+                        _live_open_positions.clear()
+                        if rep["closed"]:
+                            st.success(
+                                f"{_pend} closed. Realised "
+                                + (f"{rep['realised']:+.2f} USDT."
+                                   if rep["realised"] is not None
+                                   else "PnL not yet reported by MEXC."))
+                        else:
+                            st.error(f"NOT closed — {rep['error']}. The position "
+                                     f"is still open and still tracked.")
+                        st.rerun(scope="fragment")
+                    if _n.button("Cancel", key="mvx_cancel"):
+                        st.session_state.pop("close_pending", None)
+                        st.rerun(scope="fragment")
 
             # The read-only "Strategies" list is GONE. Every one of its six
             # columns is already in the Configure strategies grid below —
@@ -4893,46 +4998,6 @@ def render_auto_trade_tab() -> None:
                         f"<div class='tm-pt tm-pt-t'>{_tm_pos_row(_sum)}</div>",
                         unsafe_allow_html=True)
 
-                # ---- the second half of the per-row close. Real money and no
-                # undo, so it takes two clicks: the row button names the contract,
-                # this states exactly what is being flattened before it is sent.
-                _pend = st.session_state.get("close_pending")
-                if _pend:
-                    _row = next((r for r in _real if r["symbol"] == _pend), None)
-                    if _row is None:
-                        # It closed on its own (TP/SL) between the two clicks.
-                        st.session_state.pop("close_pending", None)
-                        st.info(f"{_pend} is no longer open — nothing to close.")
-                    else:
-                        _mg = _row.get("margin $") or 0
-                        st.warning(
-                            f"**Close {_pend} at market now?** {_row['side']} "
-                            f"{_row['vol']} contracts, entry {_row['entry']}, "
-                            f"{_mg} USDT margin at {at.LEVERAGE}x. Unrealised "
-                            f"**{_row['open $']:+.2f} USDT** becomes real the "
-                            f"moment this fills. There is no undo, and the "
-                            f"strategy may re-enter on its next signal.")
-                        _y, _n = st.columns([1, 1])
-                        if _y.button("CONFIRM — close at market", type="primary",
-                                     key="cl_confirm"):
-                            rep = at.close_one(_pend)
-                            st.session_state.pop("close_pending", None)
-                            # The positions read is cached for 5 s; without this
-                            # the table would still show the closed position.
-                            _live_open_positions.clear()
-                            if rep["closed"]:
-                                st.success(
-                                    f"{_pend} closed. Realised "
-                                    + (f"{rep['realised']:+.2f} USDT."
-                                       if rep["realised"] is not None
-                                       else "PnL not yet reported by MEXC."))
-                            else:
-                                st.error(f"NOT closed — {rep['error']}. The "
-                                         f"position is still open and still "
-                                         f"tracked.")
-                        if _n.button("Cancel", key="cl_cancel"):
-                            st.session_state.pop("close_pending", None)
-                            st.rerun(scope="fragment")
 
             with st.container(key="tmsec_history"):
                 # ---- TRADE HISTORY. Its own section, LIVE and DEMO on
@@ -5496,8 +5561,14 @@ def render_auto_trade_tab() -> None:
         # ================= BAND 4 — RISK ================================
         if True:
           with st.container(key="tmsec_risk"):
-            st.markdown(_tm_head("Risk", f"{at.LEVERAGE}x isolated"),
-                        unsafe_allow_html=True)
+            # Read before the header, which states it.
+            sizing = at.sizing_for(saved)
+            st.markdown(
+                _tm_head("Risk",
+                         f"{at.LEVERAGE}x isolated &middot; "
+                         + ("flat stake" if sizing == "flat"
+                            else "DEEP ladder 1,1,2,2,4,4,8")),
+                unsafe_allow_html=True)
             rk1, rk2 = st.columns([1, 1.6], gap="large")
             with rk1:
                 # The book is chosen PER STRATEGY, in the grid above. These two
@@ -5516,12 +5587,12 @@ def render_auto_trade_tab() -> None:
                     f"text-transform:uppercase;color:var(--t-dim)'>Books in "
                     f"use</div><div class='tm-p' style='margin:4px 0 12px'>"
                     f"<div class='row'><span>REAL &middot; real orders</span>"
-                    f"<span class='{'tm-dn' if _real_ks else 'tm-nil'}'>"
+                    f"<span class='{'tm-acc' if _real_ks else 'tm-nil'}'>"
                     f"{len(_real_ks)} strategies</span></div>"
                     f"<div class='row'><span style='color:var(--t-faint)'>"
                     f"&nbsp;&nbsp;{_fmt(_real_ks)}</span><span></span></div>"
                     f"<div class='row sub'><span>PAPER &middot; simulated</span>"
-                    f"<span class='{'tm-up' if _paper_ks else 'tm-nil'}'>"
+                    f"<span class='{'tm-mut' if _paper_ks else 'tm-nil'}'>"
                     f"{len(_paper_ks)} strategies</span></div>"
                     f"<div class='row'><span style='color:var(--t-faint)'>"
                     f"&nbsp;&nbsp;{_fmt(_paper_ks)}</span><span></span></div>"
@@ -5534,22 +5605,19 @@ def render_auto_trade_tab() -> None:
                          "real losses reach this, the whole runner stops and "
                          "drops the kill file. Set it larger than any single "
                          "strategy's limit.")
+            # SIZING IS NO LONGER A CONTROL HERE. Operator, 2026-08-20:
+            # "remove position sizing section because i always rely on strategy
+            # always" — the ladder is chosen with the strategy, not turned on
+            # afterwards, which is also what CLAUDE.md item 21 says.
+            #
+            # It is still read from the saved config and still written back
+            # unchanged, because it must stay in the payload: the comment this
+            # replaces records that when `sizing` was ABSENT from the payload,
+            # every Save silently reverted a flat book to the ladder — the exact
+            # dimension an audit showed was producing the "13/13 green months"
+            # behind six live strategies. Removing the widget must not become
+            # removing the value.
             with rk2:
-                # Sizing is a first-class setting, not an assumption. It was NOT
-                # in the save payload, so any Save silently reverted a flat book
-                # to the ladder — the exact dimension an audit showed was
-                # producing the "13/13 green months" behind six live strategies.
-                sizing = st.radio(
-                    "Position sizing", options=("flat", "martingale"),
-                    index=0 if at.sizing_for(saved) == "flat" else 1,
-                    horizontal=True, key="auto_sizing",
-                    format_func=lambda v: (
-                        "Flat — every trade stakes the base margin" if v == "flat"
-                        else "Martingale — 1,1,2,2,4,4,8 × base after each loss"),
-                    help="Flat is what the backtests measure. Martingale "
-                         "multiplies whatever edge exists, including a negative "
-                         "one, and needs 8x the base margin in the account to "
-                         "survive its own worst case.")
                 # The worst-case and LIVE-MODE banners were removed at the
                 # operator's request. What they said is now on the rows: every
                 # strategy shows its own ladder in dollars with the current rung
@@ -5563,7 +5631,17 @@ def render_auto_trade_tab() -> None:
                              + ". Untick them or move the strategy to a "
                                "deeper-book contract.")
 
-            sv1, sv2, sv3 = st.columns([1.1, 1, 1])
+            # ACTIONS, grouped by consequence rather than spread across the
+            # width. Before: three equal columns put "Save & run", "Stop" and
+            # "PANIC — close all" on three different baselines with dead space
+            # between them, so the button that closes every position read as
+            # peer to the one that saves a text field. Now: the two routine
+            # actions sit together on the left, and the destructive pair lives
+            # in its own bordered well on the right, labelled, with the arm
+            # checkbox beside the button it arms.
+            st.markdown("<div class='tm-acts'></div>", unsafe_allow_html=True)
+            sv1, sv2, _svgap, sv3 = st.columns([1.1, 1.3, 1.4, 2.2],
+                                               vertical_alignment="top")
             if sv1.button("Save & run", type="primary", key="auto_save"):
                 # One timeframe per coin, refused at the point of saving. The
                 # runner also refuses (auto_trader.timeframe_conflicts), but a
@@ -5657,18 +5735,22 @@ def render_auto_trade_tab() -> None:
                     stopped = at.stop_runner()
                     st.success("Saved. Runner stopped — neither switch is on."
                                if stopped else "Saved. Runner was not running.")
+            _panic_box = sv3.container(key="riskpanic")
+            _panic_box.markdown(
+                "<div class='tm-danger-h'>Emergency</div>",
+                unsafe_allow_html=True)
             if sv2.button("Stop — halt entries", key="auto_halt"):
                 at.KILL_PATH.parent.mkdir(parents=True, exist_ok=True)
                 at.KILL_PATH.write_text("stopped from the UI")
                 at.stop_runner()
                 st.warning("Entries halted and runner stopped. Open positions "
                            "keep their exchange-side TP/SL.")
-            _armed_panic = sv3.checkbox(
+            _armed_panic = _panic_box.checkbox(
                 "Arm PANIC", key="auto_panic_arm",
                 help="Tick this to unlock the PANIC button. It closes EVERY real "
                      "position at market immediately — there is no undo.")
-            if sv3.button("PANIC — close all", key="auto_panic",
-                          disabled=not _armed_panic):
+            if _panic_box.button("PANIC — close all", key="auto_panic",
+                                disabled=not _armed_panic):
                 rep = at.panic_stop()
                 st.error(f"Panic stop. Closed: {rep['closed'] or 'nothing'}."
                          + (f" FAILED: {rep['failed']}" if rep["failed"]
@@ -6129,49 +6211,6 @@ def _bt_progress_panel() -> None:
             st.rerun()
 
 
-def render_db_dashboard_section() -> None:
-    """How full the Neon database is: measured size against the plan limit,
-    and each table's share. The percent is derived, never guessed."""
-    import pandas as pd
-    from tradingagents.dataflows import market_db as mdb
-
-    st.markdown('<div class="ta-section">Database — storage used</div>',
-                unsafe_allow_html=True)
-    if not mdb.available():
-        st.caption("No database configured.")
-        return
-    stats = mdb.storage_stats()
-    if stats is None:
-        st.caption("Database unreachable right now — the app retries by "
-                   "itself within 2 minutes.")
-        return
-    used_mb = stats["db_bytes"] / 1048576
-    limit_mb = stats["limit_bytes"] / 1048576
-    pct = stats["percent"]
-    st.progress(min(pct / 100, 1.0),
-                text=f"{pct:g}% used — {used_mb:,.1f} MB of {limit_mb:,.0f} "
-                     "MB (Neon plan limit)")
-    if pct >= 80:
-        st.warning(f"Over 80% full. At 100% Neon refuses new writes — "
-                   f"{limit_mb - used_mb:,.0f} MB left. Delete unused "
-                   "coins/timeframes or upgrade the plan.")
-    c = st.columns(3)
-    c[0].metric("Size now", f"{used_mb:,.1f} MB")
-    c[1].metric("Free", f"{limit_mb - used_mb:,.1f} MB")
-    c[2].metric("Plan limit", f"{limit_mb:,.0f} MB")
-    rows = [{
-        "table": t["table"],
-        "size MB": round(t["bytes"] / 1048576, 2),
-        "share of used": f"{100 * t['bytes'] / max(stats['db_bytes'], 1):.1f}%",
-        "rows (estimate)": t["rows"],
-    } for t in stats["tables"]]
-    st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
-    st.caption("Size as Postgres reports it (pg_database_size). Row counts "
-               "are the planner's live estimate, not an exact count. Limit "
-               f"is {limit_mb:,.0f} MB — override with \"size_limit_mb\" in "
-               "~/.tradingagents/neon_db.json if the plan changes.")
-
-
 def render_market_data_section() -> None:
     """The permanent candle archive on Neon: download once, update the tail,
     and every backtest reads from it instead of re-paging MEXC."""
@@ -6182,8 +6221,8 @@ def render_market_data_section() -> None:
     st.markdown('<div class="ta-section">Market data — stored on this Mac'
                 '</div>', unsafe_allow_html=True)
     st.caption("DOWNLOAD and UPDATE fill ~/.tradingagents on this machine — "
-               "the store every backtest reads. Armed coins also mirror to "
-               "Neon as an off-site copy when it is reachable.")
+               "the store every backtest reads. Pure local: no database is "
+               "involved.")
 
     coins = (at.load_settings().get("coins") or [])
     _all = _all_mexc_symbols()
@@ -6208,36 +6247,8 @@ def render_market_data_section() -> None:
                    disabled=not (coin_sel and tf_sel),
                    help="Fetch only candles newer than the archive's last "
                         "bar for the selection.")
-    where = st.radio(
-        "Run where", ["This Mac", "GitHub (free machines)"], horizontal=True,
-        key="mdb_where",
-        help="This Mac fills the local store backtests read. GitHub machines "
-             "cannot reach this Mac, so that option only fills the Neon "
-             "mirror — use it for off-site backup, not for speeding up "
-             "local backtests.")
-
-    if (dl or up) and where.startswith("GitHub"):
-        from tradingagents import cloud_jobs as cj
-        _ok, _slug = cj.available()
-        if not _ok:
-            st.error(f"GitHub unavailable — {_slug}. Run on This Mac instead.")
-            return
-        _everything = len(coin_sel) >= len(coin_opts)
-        try:
-            run = cj.dispatch("download.yml", {
-                "coins": "ALL" if _everything else ",".join(coin_sel),
-                "timeframes": ",".join(tf_sel),
-                "shards": str(min(10, max(1, len(coin_sel) // 5 or 1))),
-            })
-            st.success(f"Started on GitHub — run #{run['id']}. Candles land "
-                       "in the database as each machine finishes; re-open "
-                       "this tab later and the coverage table will have "
-                       "grown.")
-            st.markdown(f"[Watch the run]({run['url']})")
-        except Exception as exc:
-            st.error(f"Could not start on GitHub: {exc}")
-        return
-
+    # GitHub machines cannot write to this Mac, and pure local means there
+    # is no cloud store for them to fill — downloads run here, full stop.
     from tradingagents import db_jobs
     if dl or up:
         symbols = list(coin_sel)
@@ -6469,7 +6480,6 @@ def render_backtest_tab() -> None:
     from tradingagents import market_sweep as msw
     from tradingagents import backtest_report as br
 
-    render_db_dashboard_section()
     render_market_data_section()
     render_archive_backtest_section()
     st.markdown('<div class="ta-section">Sweep</div>', unsafe_allow_html=True)
@@ -6598,34 +6608,27 @@ def _bt2_deployed(coins: list[str], tfs: list[str]) -> list[dict]:
 
 
 def render_stored_strategies_section() -> None:
-    """Every strategy ever measured, kept in the archive.
+    """Every strategy ever measured — from THIS MACHINE's pair store.
 
-    A strategy here is the seven fields the operator names: coin, timeframe,
-    signal, threshold, TP, SL, sizing. BTC alone carries dozens — rsi14 and
-    fade15 and the rest, each at several barrier pairs — so the browser filters
-    rather than dumps.
+    Pure local by the operator's instruction. A strategy is the seven fields
+    they name: coin, timeframe, signal, threshold, TP, SL, sizing; BTC alone
+    carries thousands, so the browser filters rather than dumps.
     """
     import pandas as pd
 
-    from tradingagents.dataflows import market_db as mdb
+    from tradingagents import backtest_report as br
+    from tradingagents import market_sweep as msw
 
-    st.markdown('<div class="ta-section">Stored strategies</div>',
+    st.markdown('<div class="ta-section">Stored strategies (this Mac)</div>',
                 unsafe_allow_html=True)
-    if not mdb.available():
-        st.caption("The archive is not reachable, so nothing can be listed.")
-        return
-    try:
-        rows = mdb.load_results()
-    except Exception as exc:
-        st.warning(f"Could not read stored strategies: {str(exc)[:120]}")
-        return
+    rows = msw.all_rows()
     if not rows:
-        st.caption("No strategies stored yet — run a backtest above and its "
-                   "rows are written here automatically.")
+        st.caption("Nothing measured yet — run a backtest and every "
+                   "combination lands in ~/.tradingagents/backtest/rows.")
         return
 
-    coins = sorted({r["symbol"] for r in rows})
-    tfs = sorted({r["timeframe"] for r in rows})
+    coins = sorted({r["coin"] for r in rows})
+    tfs = sorted({r["tf"] for r in rows})
     sigs = sorted({r["signal"] for r in rows})
     c1, c2, c3, c4 = st.columns([2, 1, 1, 1], vertical_alignment="bottom")
     f_coin = c1.multiselect("Coin", coins, default=coins[:1] or coins,
@@ -6635,8 +6638,8 @@ def render_stored_strategies_section() -> None:
     only_green = c4.checkbox("Profitable only", value=True, key="mdbs_green")
 
     sel = [r for r in rows
-           if (not f_coin or r["symbol"] in f_coin)
-           and (not f_tf or r["timeframe"] in f_tf)
+           if (not f_coin or r["coin"] in f_coin)
+           and (not f_tf or r["tf"] in f_tf)
            and (not f_sig or r["signal"] in f_sig)
            and (not only_green or (r.get("profit") or 0) > 0)]
     st.caption(f"**{len(sel):,}** of {len(rows):,} stored strategies · "
@@ -6644,25 +6647,22 @@ def render_stored_strategies_section() -> None:
     if not sel:
         st.caption("Nothing matches those filters.")
         return
+    for r in sel:
+        r.setdefault("id", br.row_code(r["coin"], r["tf"], r["signal"],
+                                       r.get("th") or 0.0, r["sl"], r["tp"],
+                                       r["sizing"]))
     tbl = pd.DataFrame([{
-        "id": r["row_code"],
-        "coin": r["symbol"].replace("_USDT", ""),
-        "tf": r["timeframe"],
-        "signal": r["signal"],
-        "thresh %": r.get("threshold"),
-        "SL %": r["sl"], "TP %": r["tp"],
+        "id": r["id"],
+        "coin": r["coin"], "tf": r["tf"], "signal": r["signal"],
+        "thresh %": r.get("th"), "SL %": r["sl"], "TP %": r["tp"],
         "sizing": r["sizing"],
-        "PROFIT $": r.get("profit"),
-        "win %": r.get("win_rate"),
-        "trades": r.get("trades"),
-        "W": r.get("wins"), "L": r.get("losses"),
-        "green": (f"{r.get('months_green')}/{r.get('months_total')}"
-                  if r.get("months_total") else ""),
-        "worst dip $": r.get("max_dd") or r.get("worst_streak"),
+        "PROFIT $": r.get("profit"), "win %": r.get("winrate"),
+        "trades": r.get("trades"), "W": r.get("wins"), "L": r.get("losses"),
+        "green": (f"{r.get('green')}/{r.get('months')}"
+                  if r.get("months") else ""),
+        "worst dip $": r.get("dd"),
         "funding $": r.get("funding"),
         "days": r.get("days"),
-        "measured": (_dt.datetime.fromtimestamp(r["computed_at"])
-                     .strftime("%Y-%m-%d") if r.get("computed_at") else ""),
     } for r in sorted(sel, key=lambda x: -(x.get("profit") or 0))])
     st.dataframe(tbl, width="stretch", height=420, hide_index=True)
     st.caption("Sorted by profit. Every row is one strategy — the same signal "
@@ -6671,23 +6671,21 @@ def render_stored_strategies_section() -> None:
 
     # ---- the trades behind one row ("i want to see the trades per strategy
     # so i can see what are losing or not"). Rebuilt from the local candles —
-    # deterministic, so it is the SAME 900 trades the stored row summed — and
-    # cross-checked against the stored totals before anything is shown.
+    # deterministic, so it is the SAME trades the stored row summed.
     ids = list(tbl["id"])
     pick = st.selectbox("View the trades behind a strategy", ["—"] + ids,
                         key="mdbs_trades_pick",
                         help="Pick a row id from the table above.")
     if pick and pick != "—":
-        row = next(r for r in sel if r["row_code"] == pick)
+        row = next(r for r in sel if r["id"] == pick)
         from tradingagents import market_sweep as _msw
 
         with st.spinner("Rebuilding this strategy's trades from the local "
                         "candle store…"):
             got = _msw.trades_for(
-                row["symbol"].replace("_USDT", ""), row["timeframe"],
-                signal=row["signal"], th=row.get("threshold") or 0,
-                sl=row["sl"], tp=row["tp"], sizing=row["sizing"],
-                base_margin=5.0)
+                row["coin"], row["tf"], signal=row["signal"],
+                th=row.get("th") or 0, sl=row["sl"], tp=row["tp"],
+                sizing=row["sizing"], base_margin=5.0)
         if not got.get("log"):
             st.warning(got.get("why") or "No trades in the stored window.")
         else:
@@ -6701,9 +6699,8 @@ def render_stored_strategies_section() -> None:
                     f"stored row.")
             w, l = got["wins"], got["losses"]
             st.markdown(
-                f"**{pick}** · {row['symbol'].replace('_USDT', '')} "
-                f"{row['timeframe']} {row['signal']} · SL {row['sl']:g}% / "
-                f"TP {row['tp']:g}% · {row['sizing']} — "
+                f"**{pick}** · {row['coin']} {row['tf']} {row['signal']} · "
+                f"SL {row['sl']:g}% / TP {row['tp']:g}% · {row['sizing']} — "
                 f"**{got['trades']} trades · "
                 f"<span style='color:#137a45'>{w} WIN</span> / "
                 f"<span style='color:#a8382c'>{l} LOSE</span> · "
@@ -6727,76 +6724,19 @@ def render_stored_strategies_section() -> None:
                     f"Wins earned {lg[lg['pnl $'] > 0]['pnl $'].sum():+,.2f}.")
 
 
-# Set once per PROCESS, not per session. The throttle used to live in
-# st.session_state, so it read 0 on every fresh browser session and the sync
-# ran again — which is why a plain refresh was slow every single time.
-_LEDGER_SYNC_AT = 0.0
-_LEDGER_SYNC_LOCK = _threading.Lock()
-
-
-def _ledger_sync_worker() -> None:
-    """The archive copy, off the render thread.
-
-    ensure_schema() issues twenty DDL/migration statements against a REMOTE
-    Neon Postgres. Measured 2026-08-20: 12,490 ms for that one call. It used to
-    be the first statement of render_auto_trade_tab(), synchronous, before a
-    single pixel was drawn — so the whole terminal waited on a schema check for
-    a database the screen does not read.
-    """
-    global _LEDGER_SYNC_AT
-    try:
-        from tradingagents import auto_trader as at
-        from tradingagents.dataflows import market_db as mdb
-
-        if not mdb.available():
-            return
-        mdb.ensure_schema()
-        n = mdb.sync_ledger(at.ledger_tail(100000))
-        if n:
-            _LEDGER_SYNC_LAST["rows"] = n
-    except Exception:
-        pass
-    finally:
-        _LEDGER_SYNC_LAST["at"] = _time_mod.time()
-        with _LEDGER_SYNC_LOCK:
-            _LEDGER_SYNC_AT = _time_mod.time()
-
-
-_LEDGER_SYNC_LAST: dict = {"at": 0.0, "rows": 0}
-
-
-def _ledger_sync_tick(every: int = 300) -> None:
-    """Kick the archive copy onto a daemon thread and return immediately.
-
-    The ledger is one local file — every entry, exit and venue rejection this
-    account has ever made. A disk failure ends the record, so the copy still
-    happens; it just no longer holds the page hostage.
-    """
-    global _LEDGER_SYNC_AT
-    with _LEDGER_SYNC_LOCK:
-        if _time_mod.time() - _LEDGER_SYNC_AT < every:
-            return
-        # Claim the slot BEFORE starting the thread, or two quick reruns each
-        # start their own sync and both pay the schema cost.
-        _LEDGER_SYNC_AT = _time_mod.time()
-    _threading.Thread(target=_ledger_sync_worker, name="ledger-sync",
-                      daemon=True).start()
-
-
 def render_history_section() -> None:
-    """What was live, and what it did — both out of the archive."""
+    """What was live, and what it did — both from THIS MACHINE."""
     import pandas as pd
 
-    from tradingagents.dataflows import market_db as mdb
+    from tradingagents import auto_trader as at
+    from tradingagents import local_history as lh
 
-    st.markdown('<div class="ta-section">Deployment history</div>',
+    st.markdown('<div class="ta-section">Deployment history (this Mac)</div>',
                 unsafe_allow_html=True)
-    if not mdb.available():
-        st.caption("The archive is not reachable, so history cannot be shown.")
-        return
-    deps = mdb.deployments(limit=200)
+    deps = lh.deployments(limit=200)
     if not deps:
-        st.caption("No changes recorded yet — the next save writes one.")
+        st.caption("No changes recorded yet — the next save writes one to "
+                   "~/.tradingagents/deployments.jsonl.")
     else:
         st.dataframe(pd.DataFrame([{
             "when": _dt.datetime.fromtimestamp(d["changed_at"])
@@ -6804,81 +6744,85 @@ def render_history_section() -> None:
             "coin": (d["symbol"] or "").replace("_USDT", ""),
             "what": d["action"],
             "strategy": d["strategy_key"],
-            "tf": d["timeframe"], "signal": d["signal"],
-            "thresh %": d["threshold"], "SL %": d["sl"], "TP %": d["tp"],
-            "sizing": d["sizing"], "books": d["books"],
-            "base $": d["base_margin"], "row id": d["row_code"],
-            "note": d["note"],
+            "tf": d.get("timeframe"), "signal": d.get("signal"),
+            "thresh %": d.get("threshold"), "SL %": d.get("sl"),
+            "TP %": d.get("tp"), "sizing": d.get("sizing"),
+            "books": d.get("books"), "base $": d.get("base_margin"),
+            "note": d.get("note"),
         } for d in deps]), width="stretch", height=240, hide_index=True)
 
-    rows = mdb.ledger_rows(limit=100000)
-    st.markdown('<div class="ta-section">Trade ledger, archived</div>',
+    st.markdown('<div class="ta-section">Trade ledger (this Mac)</div>',
                 unsafe_allow_html=True)
+    rows = at.ledger_tail(100000)
     if not rows:
-        st.caption("Nothing synced yet.")
+        st.caption("The ledger is empty.")
         return
     import collections as _c
-    by = _c.Counter(r["action"] for r in rows)
-    # dry_run is absent on most historical lines. Counting absent as real
-    # money labelled 497 lines REAL that may not be — say unknown instead.
-    real = sum(1 for r in rows if r["dry_run"] is False)
-    unknown = sum(1 for r in rows if r["dry_run"] is None)
+    by = _c.Counter(r.get("action") for r in rows)
+    real = sum(1 for r in rows if r.get("dry_run") is False)
+    unknown = sum(1 for r in rows if r.get("dry_run") is None)
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Lines archived", f"{len(rows):,}")
+    c1.metric("Ledger lines", f"{len(rows):,}")
     c2.metric("Real money", f"{real:,}",
               help=f"{unknown:,} older lines do not record which book they "
                    f"were on, and are counted as neither.")
-    c3.metric("Entries / exits", f"{by.get('enter', 0):,} / {by.get('exit', 0):,}")
+    c3.metric("Entries / exits", f"{by.get('enter', 0):,} / "
+                                 f"{by.get('exit', 0):,}")
     c4.metric("Errors", f"{by.get('error', 0):,}")
-    show = [r for r in rows if r["action"] in ("enter", "exit")][:200]
+    show = [r for r in rows if r.get("action") in ("enter", "exit")][:200]
     if show:
         st.dataframe(pd.DataFrame([{
-            "when": _dt.datetime.fromtimestamp(r["ts"]).strftime("%Y-%m-%d %H:%M"),
-            "coin": (r["symbol"] or "").replace("_USDT", ""),
-            "action": r["action"], "strategy": r["strategy"],
-            "side": r["side"], "entry": r["entry"], "exit": r["exit_price"],
-            "margin $": r["margin"], "pnl $": r["pnl"], "closed by": r["why"],
-            "book": ("paper" if r["dry_run"] else
-                     "unknown" if r["dry_run"] is None else "REAL"),
+            "when": _dt.datetime.fromtimestamp(r["ts"])
+                    .strftime("%Y-%m-%d %H:%M"),
+            "coin": (r.get("symbol") or "").replace("_USDT", ""),
+            "action": r.get("action"), "strategy": r.get("strategy"),
+            "side": r.get("side"), "entry": r.get("entry"),
+            "exit": r.get("exit"), "margin $": r.get("margin"),
+            "pnl $": r.get("pnl"), "closed by": r.get("why"),
+            "book": ("paper" if r.get("dry_run") else
+                     "unknown" if r.get("dry_run") is None else "REAL"),
         } for r in show]), width="stretch", height=300, hide_index=True)
 
-
 def render_storage_panel() -> None:
-    """Every store, its rows and bytes — growth visible before it is a
-    problem. Neon's free project caps at 0.5 GB; parquet is the operator's
-    own disk and holds only what a re-run can rebuild."""
+    """Every store on THIS MACHINE, its rows and bytes. Pure local — the
+    operator's instruction — so no database appears here."""
     import pandas as pd
 
+    from tradingagents import market_sweep as msw
     from tradingagents import parquet_store as pqs
-    from tradingagents.dataflows import market_db as mdb
 
-    st.markdown('<div class="ta-section">Storage</div>',
+    st.markdown('<div class="ta-section">Storage (this Mac)</div>',
                 unsafe_allow_html=True)
     rows = []
-    try:
-        for name, v in (mdb.table_sizes() or {}).items():
-            rows.append({"store": f"Neon · {name}", "rows": v.get("rows"),
-                         "size": v.get("size") or "—",
-                         "holds": {"candles": "traded coins only",
-                                   "backtest_results": "best 500 per pair",
-                                   "deployments": "forever",
-                                   "trade_ledger": "forever"}.get(name, "")})
-    except Exception:
-        rows.append({"store": "Neon", "rows": None,
-                     "size": "unreachable", "holds": ""})
     for name, v in pqs.sizes().items():
-        rows.append({"store": f"This Mac · {name}", "rows": v["rows"],
+        rows.append({"store": f"parquet · {name}", "rows": v["rows"],
                      "size": f"{v['bytes'] / 1e6:.1f} MB ({v['files']} files)",
-                     "holds": {"candles": "full history, every coin",
+                     "holds": {"candles": "full candle history",
                                "grids": "complete sweep snapshots"}[name]})
-    st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True,
-                 height=min(320, 60 + 36 * len(rows)))
-    st.caption("Neon keeps the irreplaceable and stays under its 0.5 GB free "
-               "cap — the retention tick prunes it after every save, and only "
-               "after the full grid is proven on disk. Parquet on this Mac "
-               "holds the recomputable bulk: losing a file costs a re-run, "
-               "never history.")
+    import os as _os
+    from pathlib import Path as _P
 
+    for name, d, holds in (
+            ("pair rows", msw.ROWDIR, "every strategy measured, losers too"),
+            ("resume states", msw.STATES, "what makes a refresh take seconds"),
+            ("candle cache", msw.CANDLES, "the bars backtests read")):
+        files = list(d.glob("*.json")) if d.exists() else []
+        rows.append({"store": f"backtest · {name}", "rows": len(files),
+                     "size": f"{sum(f.stat().st_size for f in files) / 1e6:.1f}"
+                             f" MB ({len(files)} files)", "holds": holds})
+    lp = _P(_os.path.expanduser("~/.tradingagents/auto_trade_ledger.jsonl"))
+    dp = _P(_os.path.expanduser("~/.tradingagents/deployments.jsonl"))
+    for name, f, holds in (("trade ledger", lp, "every entry/exit/error, forever"),
+                           ("deployments", dp, "what was live, when")):
+        if f.exists():
+            n = sum(1 for _ in f.open())
+            rows.append({"store": f"history · {name}", "rows": n,
+                         "size": f"{f.stat().st_size / 1e3:.0f} kB",
+                         "holds": holds})
+    st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True,
+                 height=min(360, 60 + 36 * len(rows)))
+    st.caption("Everything lives in ~/.tradingagents on this Mac. Neon is "
+               "not written to or read from — pure local, as instructed.")
 
 def render_backtest2_tab() -> None:
     """Version 2: the DAILY sweep. One click runs every signal on the
@@ -6898,7 +6842,6 @@ def render_backtest2_tab() -> None:
     # candle cache, and the cache is what DOWNLOAD/UPDATE fill — but the section
     # was wired only into `Back Test`, so from here there was no way to fetch or
     # refresh the candles the grid then reads.
-    render_db_dashboard_section()
     render_market_data_section()
     # The operator's requested flow lives here too: BACKTEST + date window
     # (months/year) + run-on-Mac-or-GitHub, reading the archive.

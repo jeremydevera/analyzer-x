@@ -1080,7 +1080,10 @@ def render_health_panel() -> None:
     Each model pings its OWN provider; rows update LIVE via as_completed."""
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    st.markdown("#### Model health")
+    # h2, not "####": markdown's #### emits an h4 directly under the page's h1,
+    # which skips two levels. ui-ux-pro-max Accessibility / "Heading Hierarchy".
+    st.markdown('<h2 class="ta-card-h">Model health</h2>',
+                unsafe_allow_html=True)
     st.caption("Live ping each model on its own provider — the percentage says "
                "how usable it is right now (100 = responding, 25 = rate-limited "
                "or needs credits, 0 = down / no key).")
@@ -1390,8 +1393,7 @@ def engine_badge_html() -> str:
 # Sidebar navigation: one screen renders at a time, which is what lets each screen
 # own its controls. Tabs could not do that — Streamlit renders every tab body on
 # every run, so a sidebar full of settings looked like it applied to both.
-PAGES = ("New Crypto", "Stocks", "Auto Trade", "Back Test", "Backtest 2",
-         "LLM Models")
+PAGES = ("New Crypto", "Stocks", "Auto Trade", "Backtest 2", "LLM Models")
 
 
 UI_PREFS = Path(os.path.expanduser("~/.tradingagents/ui_prefs.json"))
@@ -1408,7 +1410,7 @@ def _ui_prefs_load() -> dict:
 # spend money and which only look — the grouping does.
 NAV_GROUPS = (
     ("Trading", ("Auto Trade",)),
-    ("Research", ("Back Test", "Backtest 2")),
+    ("Research", ("Backtest 2",)),
     ("Markets", ("New Crypto", "Stocks")),
     ("Setup", ("LLM Models",)),
 )
@@ -1419,8 +1421,7 @@ NAV_GROUPS = (
 # word you have to click to find out.
 NAV_ITEMS = (
     ("Trading",  (("Auto Trade",  "bolt",   "positions"),)),
-    ("Research", (("Back Test",   "beaker", "jobs"),
-                  ("Backtest 2",  "grid",   None))),
+    ("Research", (("Backtest 2",  "grid",   None),)),
     ("Markets",  (("New Crypto",  "spark",  "newcoins"),
                   ("Stocks",      "chart",  None))),
     ("Setup",    (("LLM Models",  "cpu",    None),)),
@@ -1515,8 +1516,14 @@ def render_nav() -> str:
         for name, icon, badge_key in items:
             on = " on" if name == page else ""
             b = badges.get(badge_key) if badge_key else None
-            chip = (f"<span class='nvx-b {b['tone']}'>{b['n']}</span>"
-                    if b else "")
+            # The badge's colour said live-vs-paper and nothing else did, so a
+            # reader who cannot separate the hues got a bare number. The title
+            # names what it counts and which book it is.
+            _bk = {"live": "open live position", "paper": "open paper position",
+                   "busy": "job running"}.get(b["tone"], "item") if b else ""
+            chip = (f"<span class='nvx-b {b['tone']}' "
+                    f"title='{b['n']} {_bk}{'s' if b['n'] != 1 else ''}'>"
+                    f"{b['n']}</span>" if b else "")
             rows.append(
                 f"<a class='nvx-i{on}' href='?{NAV_PARAM}={_nav_slug(name)}' "
                 f"target='_self'>{_mv_icon(icon, size=16)}"
@@ -1586,8 +1593,6 @@ def main() -> None:
             render_crypto_tab()
         elif page == "Auto Trade":
             render_auto_trade_tab()
-        elif page == "Back Test":
-            render_backtest_tab()
         elif page == "Backtest 2":
             render_backtest2_tab()
         elif page == "LLM Models":
@@ -3354,12 +3359,13 @@ def _mv_cls(v) -> str:
 def _mv_positions(rows: list, label: str, sub: str, live: bool) -> str:
     """The positions table, as my own grid. Six columns, a ring for distance,
     and no widget anywhere inside it."""
-    # The live book carries a 7th cell: the per-row close. It used to live in
-    # the legacy _positions() band, which was removed as a duplicate on
-    # 2026-08-20 — so the only way to close became a dropdown below the table,
-    # and the operator reasonably read that as the button being gone.
-    cols = ("2.6fr .9fr 1.1fr 1.2fr 1fr .9fr .5fr" if live
-            else "2.6fr .9fr 1.1fr 1.2fr 1fr .9fr")
+    # The FULL old column set, restored 2026-08-20 at the operator's request
+    # ("i want the old columns ... you removed columns like time of hold,
+    # time of entry"). The five-column "clean" cut lasted a few hours; opened
+    # and held were the first two they missed. The live book keeps its extra
+    # per-row close cell at the end.
+    cols = ("2.1fr .8fr 1fr 1.1fr 1.3fr 1.3fr .4fr .4fr .5fr 1.2fr .8fr "
+            ".9fr .9fr 1.2fr" + (" .4fr" if live else ""))
     # Live and Paper render the same coins. Without this the paper row would
     # count from the live row's figure and vice versa.
     _bk = "live" if live else "paper"
@@ -3372,8 +3378,13 @@ def _mv_positions(rows: list, label: str, sub: str, live: bool) -> str:
         return "".join(out)
     out.append(f"<div class='mv-row hd' style='grid-template-columns:{cols}'>"
                "<div>Position</div><div>Side</div><div class='mv-r'>Open P/L</div>"
-               "<div>To barrier</div><div class='mv-r'>At risk</div>"
-               "<div class='mv-r'>Entry</div>"
+               "<div>To barrier</div>"
+               "<div class='mv-r'>TP % ($)</div><div class='mv-r'>SL % ($)</div>"
+               "<div class='mv-r'>W</div><div class='mv-r'>L</div>"
+               "<div class='mv-r'>Trd</div>"
+               "<div>Opened</div><div>Held</div>"
+               "<div class='mv-r'>Entry</div><div class='mv-r'>At risk</div>"
+               "<div>Bracket</div>"
                + ("<div class='mv-r'>Close</div>" if live else "")
                + "</div>")
     tot_open = tot_risk = 0.0
@@ -3400,9 +3411,19 @@ def _mv_positions(rows: list, label: str, sub: str, live: bool) -> str:
             + (f"<div>{_mv_ring(pct, tone, str(r.get('prog_to') or ''))}</div>"
                if pct is not None
                else "<div class='mv-sm mv-nil'>&mdash;</div>")
+            + f"<div class='mv-r mv-sm'>{r.get('tp_pct') or '&mdash;'}</div>"
+            + f"<div class='mv-r mv-sm'>{r.get('sl_pct') or '&mdash;'}</div>"
+            + f"<div class='mv-r mv-num'>{r.get('W', 0) or 0:g}</div>"
+            + f"<div class='mv-r mv-num'>{r.get('L', 0) or 0:g}</div>"
+            + f"<div class='mv-r mv-num'>{r.get('trades', 0) or 0:g}</div>"
+            + f"<div class='mv-sm'>{html.escape(str(r.get('opened') or '—'))}</div>"
+            + f"<div class='mv-sm'>{html.escape(str(r.get('held') or '—'))}</div>"
+            + f"<div class='mv-r mv-sm'>{r.get('entry') or '&mdash;'}</div>"
             + "<div class='mv-r mv-num'>"
             + _ani_money(risk, key=f"pos.{_bk}.{coin}.risk") + "</div>"
-            + f"<div class='mv-r mv-sm'>{r.get('entry') or '&mdash;'}</div>"
+            + ((f"<div class='mv-sm tm-dn'>{html.escape(str(r.get('bracket')))}"
+                "</div>") if r.get("bracket")
+               else "<div class='mv-sm mv-nil'>ok</div>")
             + (("<div class='mv-r'><a class='mv-x' "
                 f"href='?close={html.escape(str(r.get('symbol') or ''))}' "
                 f"target='_self' title='Close {html.escape(coin)} at market'>"
@@ -3413,7 +3434,8 @@ def _mv_positions(rows: list, label: str, sub: str, live: bool) -> str:
                f"<div class='mv-r {_mv_cls(tot_open)}'>"
                + _ani_money(tot_open, key=f"pos.{_bk}.total", sign=True)
                + "</div>"
-               f"<div></div><div class='mv-r'>"
+               + "<div></div>" * 9        # barrier..held stay blank in the total
+               + "<div class='mv-r'>"
                + _ani_money(tot_risk, key=f"pos.{_bk}.risktotal") + "</div>"
                "<div></div>"
                + ("<div></div>" if live else "")
@@ -3623,12 +3645,28 @@ h2.tm-h .v{ font-size:var(--f-uism) !important; letter-spacing:0 !important;
 .mv-pill.dn{ background:var(--neg-wash) !important; color:var(--neg) !important; }
 
 /* ---- FIELDS: one height, one radius, and a real focus ring ---------- */
-.stApp input, .stApp textarea,
+/* A select and a multiselect contain their OWN <input> — the invisible search
+   field baseweb types into. Styling `input` generically gave that inner field a
+   border, an 8px radius and a 34px min-height, so every dropdown rendered an
+   18x36px box floating inside it. Measured before the fix: border
+   "1px oklch(0.3 0.01 265)", radius 8px, min-height 34px on the inner input of
+   both COINS and TIMEFRAMES. The chrome belongs to the CONTROL; the inner
+   input must stay bare. */
+.stApp input:not([data-baseweb="select"] input):not([role="combobox"]),
+.stApp textarea,
 .stApp [data-baseweb="select"] > div, .stApp [data-baseweb="input"] > div{
   background:var(--fld-bg) !important; border-radius:var(--fld-r) !important;
   border:1px solid var(--fld-line) !important; color:var(--fld-ink) !important;
   font-size:var(--fld-size) !important; min-height:var(--fld-h) !important; }
-.stApp input:focus, .stApp [data-baseweb="select"] > div:focus-within,
+/* Belt and braces: whatever the selector above matches, an input inside a
+   select owns no chrome of its own. */
+.stApp [data-baseweb="select"] input,
+.stApp [data-baseweb="select"] input:focus{
+  background:transparent !important; border:0 !important;
+  border-radius:0 !important; min-height:0 !important; height:auto !important;
+  box-shadow:none !important; outline:none !important; }
+.stApp input:not([data-baseweb="select"] input):focus,
+.stApp [data-baseweb="select"] > div:focus-within,
 .stApp [data-baseweb="input"] > div:focus-within{
   border-color:var(--focus) !important;
   box-shadow:0 0 0 3px color-mix(in oklab,var(--focus) 26%,transparent) !important; }
@@ -3699,6 +3737,75 @@ html, body, .stApp, [data-testid="stAppViewContainer"],
 .stApp [data-testid="stTooltipIcon"]:hover svg{ stroke:var(--fg) !important; }
 .st-key-term [data-testid="stTooltipIcon"] [data-testid="stIconMaterial"]{
   font-size:14px !important; line-height:1 !important; opacity:.6; }
+
+/* Promoted from h4 so the outline does not skip levels; the SIZE is unchanged,
+   because level is structure and size is style. */
+.stApp h2.ta-card-h{ font-size:var(--f-uilg) !important; font-weight:600 !important;
+  margin:0 0 var(--s2) !important; border:0 !important; padding:0 !important;
+  color:var(--fg) !important; letter-spacing:-.01em; }
+
+/* ---- PORTALED OVERLAYS ------------------------------------------------
+   baseweb renders an open dropdown, popover and tooltip into a portal at
+   BODY level — outside .stApp. Every rule in this file scoped to .stApp
+   therefore missed them, so the menu kept config.toml's paper fill while its
+   options inherited our white text: measured rgb(250,249,247) behind
+   oklch(0.99) ink, a ratio of 1.03. Every option was invisible; "No results"
+   only read because it carries its own dark colour.
+   These selectors are deliberately UNSCOPED. The tokens live on :root, so a
+   portaled node can still resolve them. */
+[data-baseweb="popover"], [data-baseweb="menu"],
+[data-baseweb="popover"] > div, [data-baseweb="menu"] > div,
+ul[role="listbox"], div[role="listbox"],
+/* Streamlit's own virtualised list. It carries NO role attribute, so a
+   `ul[role="listbox"]` selector missed it and the list body stayed paper
+   white behind white text while the first row looked fixed. */
+ul[data-testid="stSelectboxVirtualDropdown"],
+[data-testid="stSelectboxVirtualDropdown"] > div,
+[data-testid="stVirtualDropdown"], [data-testid="stVirtualDropdown"] > div{
+  background:var(--sf-raised) !important;
+  border:1px solid var(--hair-2) !important;
+  border-radius:var(--r-ctl) !important;
+  box-shadow:0 12px 32px -8px rgb(0 0 0 / .65) !important;
+  color:var(--fg) !important; }
+li[role="option"], [data-baseweb="menu"] li{
+  background:transparent !important; color:var(--fg) !important;
+  font-size:var(--f-uism) !important; }
+/* Hover AND keyboard highlight — baseweb marks the active option with
+   aria-selected, and a menu you can only drive with a mouse is half a menu. */
+li[role="option"]:hover, li[role="option"][aria-selected="true"],
+[data-baseweb="menu"] li:hover{
+  background:var(--brand-wash) !important; color:var(--fg) !important; }
+/* The empty state ("No results") ships its own near-black ink. */
+[data-baseweb="menu"] [class*="empty"], [data-baseweb="popover"] [class*="empty"],
+[data-baseweb="menu"] li[disabled]{
+  background:transparent !important; color:var(--fg-3) !important; }
+/* Tooltips are portaled too. */
+[data-baseweb="tooltip"], [role="tooltip"]{
+  background:var(--sf-sunken) !important; color:var(--fg) !important;
+  border:1px solid var(--hair-2) !important; }
+
+/* A long contract name ("1000000BABYDOGE") broke mid-word inside the option
+   list. An option is one token: it ellipsises rather than splitting a symbol
+   across two lines, where it reads as two different contracts. */
+[data-baseweb="menu"] li, [role="option"], [data-baseweb="select"] [role="option"],
+[data-baseweb="tag"], [data-baseweb="tag"] span,
+[data-baseweb="select"] [class*="st-"] span{
+  white-space:nowrap !important; overflow:hidden; text-overflow:ellipsis;
+  max-width:100%; }
+
+/* Backtest 2's lede. A page that opens with seven bands and no sentence makes
+   the operator infer what it is for; one line removes five repetitions of
+   "(this Mac)" from the headings below it. */
+.bt2-lede{ font-size:var(--f-ui) !important; color:var(--fg-2) !important;
+  margin:0 0 var(--s5) !important; max-width:74ch; line-height:var(--lh); }
+.bt2-lede code{ font-size:var(--f-uism); background:var(--sf-sunken);
+  border:1px solid var(--hair); border-radius:5px; padding:1px 5px;
+  color:var(--fg) !important; }
+/* A section heading nested UNDER a group heading steps down, so the hierarchy
+   is visible rather than implied. */
+.ta-section{ font-size:var(--f-uixs) !important; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--fg-3) !important;
+  font-weight:600 !important; margin:var(--s5) 0 var(--s2) !important; }
 
 /* ═══ THE RAIL ═════════════════════════════════════════════════════════════
    Our markup, so these are real numbers rather than whatever Streamlit's
@@ -4228,20 +4335,24 @@ def _parse_contracts(text: str, known: set | None = None) -> tuple:
 # are coloured by sign; everything else is plain. Header and rows are built
 # from THIS list, so a column can never appear in one and not the other.
 _TM_POS = (
-    # FIVE columns, rebuilt 2026-08-20: "total remake ... i want clean". It was
-    # fourteen — coin, unreal, progress, TP%, SL%, W, L, trades, side, opened,
-    # held, entry, margin, stop — every one of them ellipsised on a laptop, and
-    # thirteen of them are not what you look at when you open the screen.
-    #
-    # What survives is the question each row answers: WHAT is open, WHICH WAY,
-    # HOW MUCH is it up or down, HOW FAR to the barrier, and HOW BIG is the bet.
-    # Entry, liquidation, W/L, age and the stop's state moved into the row's own
-    # detail panel, one click away and nothing lost — see `_tm_pos_detail`.
-    ("ident", "position", 3.0, "l", "ident"),
-    ("side", "side", 1.0, "l", "side"),
-    ("open $", "open p/l", 1.3, "r", "money"),
-    ("prog", "to barrier", 2.6, "l", "html"),
-    ("margin $", "at risk", 1.1, "r", "money0"),
+    # The FULL fourteen columns, restored 2026-08-20 at the operator's request
+    # ("i want the old columns") after a five-column "clean" remake earlier the
+    # same day. The detail panel still opens on click; these are the columns
+    # they actually read: opened and held were the two they missed first.
+    ("ident", "contract", 2.5, "l", "ident"),
+    ("open $", "unreal $", 1.6, "r", "money"),
+    ("prog", "to TP", 2.6, "l", "html"),
+    ("tp_pct", "TP % ($)", 2.4, "r", "html"),
+    ("sl_pct", "SL % ($)", 2.4, "r", "html"),
+    ("W", "W", 0.5, "r", "num"),
+    ("L", "L", 0.5, "r", "num"),
+    ("trades", "trd", 0.7, "r", "num"),
+    ("side", "side", 1.1, "l", "side"),
+    ("opened", "opened", 1.9, "l", "text"),
+    ("held", "held", 1.2, "l", "text"),
+    ("entry", "entry", 1.4, "r", "px"),
+    ("margin $", "margin", 1.1, "r", "num"),
+    ("bracket", "bracket", 1.6, "l", "pill"),
 )
 _TM_POS_GRID = " ".join(f"{w}fr" for _, _, w, _a, _k in _TM_POS)
 
@@ -5929,288 +6040,6 @@ def render_auto_trade_tab() -> None:
 
 
 
-# ---------------------------------------------------------------------------
-# Back Test — the market-wide sweep, and its REFRESH.
-#
-# The first run measures a year for every eligible contract. A refresh does not
-# repeat it: candles are cached and only the new tail is fetched, and every
-# combination's backtest is CONTINUED from the state the engine handed back, so
-# only the new bars are tested. Verified exact — continuing a split run
-# reproduces a single-pass run trade-for-trade (tests/test_market_sweep.py).
-# ---------------------------------------------------------------------------
-BT_ALL_PAGE = BT_REPORT_DIR / "all-coins.html"
-
-
-def _bt_eligible(min_days: int = 365) -> list[str]:
-    """Contracts at least `min_days` old, cheapest book first. Cached a day."""
-    import json as _json
-
-    f = Path(os.path.expanduser("~/.tradingagents/backtest/eligible.json"))
-    try:
-        d = _json.loads(f.read_text())
-        if d.get("day") == _dt.date.today().isoformat():
-            return d["symbols"]
-    except (OSError, ValueError, KeyError):
-        pass
-    from tradingagents.dataflows import mexc_futures as fx
-    from tradingagents import auto_trader as at
-
-    raw = fx._get_public(f"{fx.BASE}/api/v1/contract/detail").get("data") or []
-    syms = sorted(x["symbol"] for x in raw
-                  if str(x.get("symbol", "")).endswith("_USDT")
-                  and int(x.get("state", 1)) == 0)
-    keep = []
-    bar = st.progress(0.0, text="finding contracts a year old…")
-    for i, sym in enumerate(syms, 1):
-        try:
-            d = fx.klines(sym, "Day1", 500)
-            if (d["Date"].iloc[-1] - d["Date"].iloc[0]).days >= min_days:
-                c = fx.book_cost(sym, 100.0)
-                rt = 2 * (at.taker_fee(sym, fx=fx)
-                          + float(c.get("spread") or 0) / 2
-                          + float(c.get("slippage") or 0))
-                keep.append((rt, sym))
-        except Exception:
-            pass
-        if i % 20 == 0:
-            bar.progress(i / len(syms),
-                         text=f"{i}/{len(syms)} screened · {len(keep)} eligible")
-    bar.empty()
-    keep.sort()
-    out = [s2 for _rt, s2 in keep]
-    f.parent.mkdir(parents=True, exist_ok=True)
-    f.write_text(_json.dumps({"day": _dt.date.today().isoformat(),
-                              "symbols": out}))
-    return out
-
-
-def _bt_build_page(rows: list) -> tuple[str, str] | None:
-    """Render the stored grid as the standard page."""
-    from tradingagents import backtest_report as br
-    from tradingagents import market_sweep as msw
-
-    if not rows:
-        return None
-    months = sorted({m for r in rows for m in (r.get("monthly") or {})},
-                    reverse=True)
-    for r in rows:
-        r["mon"] = [(r.get("monthly") or {}).get(m) for m in months]
-        r.pop("monthly", None)
-        r["id"] = br.row_code(r["coin"], r["tf"], r["signal"], r["th"],
-                              r["sl"], r["tp"], r["sizing"])
-        r.setdefault("tpd", round(r["trades"] / max(r.get("days", 1), 1), 2))
-    meta = {}
-    for r in rows:
-        meta.setdefault(f"{r['coin']}|{r['tf']}",
-                        {"bars": r.get("bars", 0), "days": r.get("days", 0),
-                         "rt": r.get("rt"), "liq": 0.0, "fee": 0.0})
-    cov = msw.coverage()
-    payload = {"rows": rows, "meta": meta, "series": {}, "months": months,
-               "cur": months[0] if months else "", "lev": 20, "slip": 0.0003,
-               "base": rows[0].get("base", 5.0),
-               "ladder": [1, 1, 2, 2, 4, 4, 8], "deployed": [],
-               "excluded": [], "days_asked": 365,
-               "fetched": cov.get("last_bar") or "",
-               "rec_min_trades": 300, "rec_min_days": 300, "card_cap": 8}
-    BT_REPORT_DIR.mkdir(parents=True, exist_ok=True)
-    br.write_report(
-        str(BT_ALL_PAGE), payload,
-        title="Back Test — Every MEXC Coin a Year Old",
-        note=(f"<b>{cov['coins']} contracts, {cov['pairs']} coin/timeframe "
-              f"pairs, {len(rows)} rows.</b> Candles are cached, so a refresh "
-              f"fetches only the bars printed since the last run and CONTINUES "
-              f"each backtest rather than repeating the year. Newest bar "
-              f"measured: {cov.get('last_bar') or 'n/a'}. Trade-by-trade replay "
-              f"is not embedded on this market-wide page — run a single coin "
-              f"from Auto Trade for that."))
-    return f"app/static/bt/{BT_ALL_PAGE.name}", BT_ALL_PAGE.name
-
-
-@st.fragment(run_every=15)
-def _bt_cloud_panel() -> None:
-    """A GitHub run, watched from here — and pulled into the local store the
-    moment it finishes, so the operator never touches github.com."""
-    import pandas as pd
-
-    from tradingagents import cloud_sweep as cs
-    from tradingagents import market_sweep as msw
-
-    run = st.session_state.get("bt_cloud_run") or cs.remembered()
-    if not run:
-        return
-    try:
-        stt = cs.status(run["id"], run.get("repo"))
-    except Exception as exc:
-        st.caption(f"GitHub run {run['id']}: cannot read status ({exc})")
-        return
-    done, total = stt["shards_done"], max(stt["shards"], 1)
-    st.markdown("<div style='font-size:10px;letter-spacing:.16em;"
-                "text-transform:uppercase;color:#C2560B;margin:14px 0 2px'>"
-                f"GitHub run #{run['id']}</div>", unsafe_allow_html=True)
-    if stt.get("waiting_for_runners"):
-        st.warning("Waiting for a free machine — every GitHub runner is busy. "
-                   "A free repository gets about 20 at once, so another sweep "
-                   "of yours is holding them. Stop that one to start this now.")
-    else:
-        st.caption(f"{done} of {total} machines finished · "
-                   f"{stt.get('running', 0)} still testing · "
-                   f"{stt.get('queued', 0)} not started"
-                   + (f" · {stt['failed']} failed" if stt["failed"] else ""))
-
-    # What each machine SAYS it is doing — the shards publish this themselves,
-    # because GitHub serves no log for a job that is still running.
-    live = {}
-    try:
-        for d in cs.live_progress(run["id"], run.get("repo")):
-            live[int(d.get("shard", -1))] = d
-    except Exception:
-        live = {}
-    if live:
-        tot_done = sum(d.get("done", 0) for d in live.values())
-        tot_all = sum(d.get("total", 0) for d in live.values())
-        rows_now = sum(d.get("rows", 0) for d in live.values())
-        if tot_all:
-            st.progress(min(1.0, tot_done / tot_all),
-                        text=(f"{100 * tot_done / tot_all:.0f}% · "
-                              f"{tot_done} of {tot_all} contracts · "
-                              f"{rows_now:,} rows found so far"))
-
-    # One row per machine, because "0 of 20 finished" answers nothing about
-    # where the work actually is.
-    jobs = stt.get("jobs") or []
-    if jobs:
-        now = _dt.datetime.now(_dt.timezone.utc)
-
-        def _stamp(v):
-            """GitHub returns 0001-01-01T00:00:00Z for "hasn't happened yet".
-            Parsed naively that reads as two thousand years, which is how the
-            table showed "-1065379229 min"."""
-            if not v or v.startswith("0001-01-01"):
-                return None
-            try:
-                return _dt.datetime.fromisoformat(v.replace("Z", "+00:00"))
-            except ValueError:
-                return None
-
-        def _mins(a, b=None):
-            t0 = _stamp(a)
-            if t0 is None:
-                return ""
-            t1 = _stamp(b) or now
-            m = (t1 - t0).total_seconds() / 60
-            return f"{m:.0f} min" if m >= 0 else ""
-
-        rows = []
-
-        def _num(x):
-            m = re.search(r"\((\d+)\)", x["name"])
-            return int(m.group(1)) if m else 999
-
-        for j in sorted(jobs, key=_num):
-            state = ("finished" if j["status"] == "completed"
-                     else "testing" if j["status"] == "in_progress"
-                     else "waiting")
-            if j.get("conclusion") == "failure":
-                state = "FAILED"
-            # "sweep (7)" -> "#7", and a step name carries GitHub's internal
-            # id ("Sweep shard 7-1065379229") which means nothing here
-            num = re.search(r"\((\d+)\)", j["name"])
-            step = re.sub(r"-\d{6,}$", "", (j.get("step") or "")).strip()
-            sid = int(num.group(1)) if num else -1
-            rep = live.get(sid) or {}
-            stage = {"screening": "checking ages",
-                     "testing": "analysing",
-                     "done": "done"}.get(rep.get("stage"), "")
-            rows.append({
-                "machine": f"#{sid}" if sid >= 0 else j["name"],
-                "state": state,
-                "stage": stage or (step or
-                                   ("done" if state == "finished" else "queued")),
-                "%": (f"{rep['pct']:.0f}%" if rep.get("pct") is not None
-                      else ""),
-                "on": rep.get("note", ""),
-                "rows": rep.get("rows", ""),
-                "running for": _mins(j.get("startedAt"), j.get("completedAt")),
-            })
-        st.dataframe(pd.DataFrame(rows), width="stretch", height=260,
-                     hide_index=True)
-        st.caption("Each machine reports its own stage and percentage every "
-                   "45 seconds — 'checking ages' is picking which contracts "
-                   "have a year of history, 'analysing' is the backtesting.")
-
-    st.markdown(f"<a class='bt-open' href='{stt['url']}' target='_blank' "
-                f"rel='noopener'>WATCH ON GITHUB &#8599;</a>"
-                f"<span class='bt-open-note'>run #{run['id']} · started "
-                f"{run.get('started', '')}</span>", unsafe_allow_html=True)
-    s1, s2 = st.columns([1, 5])
-    if stt["status"] != "completed":
-        if s1.button("STOP RUN", key=f"bt_cloud_stop_{run['id']}"):
-            try:
-                cs.cancel(run["id"], run.get("repo"))
-                cs.forget()
-                st.session_state.pop("bt_cloud_run", None)
-                st.warning("Cancelled on GitHub. The machines stop now.")
-            except Exception as exc:
-                st.error(f"Could not cancel: {exc}")
-    elif s1.button("DISMISS", key=f"bt_cloud_hide_{run['id']}"):
-        cs.forget()
-        st.session_state.pop("bt_cloud_run", None)
-        st.rerun()
-    if stt["status"] == "completed" and not st.session_state.get(
-            f"bt_pulled_{run['id']}"):
-        with st.spinner("Downloading results from GitHub…"):
-            try:
-                rows = cs.fetch(run["id"], run.get("repo"))
-                got = cs.merge_into_store(rows)
-                st.session_state[f"bt_pulled_{run['id']}"] = True
-                st.session_state.pop("bt_all_page", None)
-                cs.forget()
-                st.success(f"Pulled {got['rows']:,} rows covering "
-                           f"{got['coins']} coins from GitHub.")
-            except Exception as exc:
-                st.error(f"Run finished but the results could not be "
-                         f"downloaded: {exc}")
-
-
-@st.fragment(run_every=5)
-def _bt_progress_panel() -> None:
-    """Redraws itself every 5 seconds while a sweep runs, without touching the
-    rest of the page — a market sweep is hours, and the operator should not
-    have to click to see where it is."""
-    from tradingagents import market_sweep as msw
-
-    prog = msw.progress()
-    if prog:
-        running = msw.is_running()
-        st.markdown("<div style='font-size:10px;letter-spacing:.16em;"
-                    "text-transform:uppercase;color:var(--faint);margin:14px 0 2px'>"
-                    "This Mac</div>", unsafe_allow_html=True)
-        pct = prog["done"] / max(prog["total"], 1)
-        phase = prog.get("phase", "sweeping")
-        unit = "contracts screened" if phase == "screening" else "jobs"
-        st.progress(min(1.0, pct),
-                    text=(f"{prog['done']}/{prog['total']} {unit} · "
-                          + (f"{prog['rows']:,} rows · "
-                             if phase != "screening" else "")
-                          + (f"ETA {prog.get('eta_min')} min · "
-                             if running and prog.get("eta_min") is not None
-                             else "")
-                          + (prog.get("last") or "")))
-        cols = st.columns(4)
-        cols[0].caption(f"started {prog.get('started', '—')}")
-        cols[1].caption(f"{prog.get('workers', '—')} workers")
-        cols[2].caption(f"{prog.get('new_bars', 0):,} new bars tested")
-        cols[3].caption("RUNNING" if running
-                        else f"finished {prog.get('finished', '—')}")
-        r1, r2 = st.columns([1, 5])
-        if running and r1.button("STOP THIS MAC", key="bt_stop"):
-            msw.stop()
-            st.warning("Stop signalled — the current jobs finish, then it exits.")
-        if r2.button("Refresh this view", key="bt_poll"):
-            st.session_state.pop("bt_all_page", None)
-            st.rerun()
-
-
 def render_market_data_section() -> None:
     """The permanent candle archive on Neon: download once, update the tail,
     and every backtest reads from it instead of re-paging MEXC."""
@@ -6218,8 +6047,7 @@ def render_market_data_section() -> None:
     from tradingagents.dataflows import market_db as mdb
     from tradingagents import auto_trader as at
 
-    st.markdown('<div class="ta-section">Market data — stored on this Mac'
-                '</div>', unsafe_allow_html=True)
+    st.markdown('<div class="ta-section">Market data</div>', unsafe_allow_html=True)
     st.caption("DOWNLOAD and UPDATE fill ~/.tradingagents on this machine — "
                "the store every backtest reads. Pure local: no database is "
                "involved.")
@@ -6238,15 +6066,32 @@ def render_market_data_section() -> None:
                if coin_sel else f"none of {len(coin_opts)} coins selected")
     tf_sel = c2.multiselect("Timeframes", list(mdb.TIMEFRAMES),
                             default=list(mdb.TIMEFRAMES), key="mdb_tfs")
+    # Both buttons need a selection. The cursor already says "not allowed"
+    # (ui-ux-pro-max Interaction / "Disabled States": reduce opacity and change
+    # the cursor) — but a stop sign with no stated reason reads as broken
+    # rather than as waiting. The reason is named below the buttons, and the
+    # tooltip says it too, because a disabled control still shows its help.
+    _why = ("Pick at least one coin first" if not coin_sel
+            else "Pick at least one timeframe first" if not tf_sel else "")
     dl = c3.button("DOWNLOAD", key="mdb_download", use_container_width=True,
-                   disabled=not (coin_sel and tf_sel),
-                   help="Fetch everything MEXC serves for the selection and "
-                        "store it permanently. Re-running only adds what is "
+                   disabled=bool(_why),
+                   help=_why or "Fetch everything MEXC serves for the selection "
+                        "and store it permanently. Re-running only adds what is "
                         "missing.")
     up = c4.button("UPDATE", key="mdb_update", use_container_width=True,
-                   disabled=not (coin_sel and tf_sel),
-                   help="Fetch only candles newer than the archive's last "
+                   disabled=bool(_why),
+                   help=_why or "Fetch only candles newer than the store's last "
                         "bar for the selection.")
+    if _why:
+        # ui-ux-pro-max Feedback / "Empty States": show a helpful message and
+        # the action, never a dead control on a blank screen. The coin list
+        # ships empty on purpose (977 contracts), so this is the FIRST thing
+        # the operator meets on this page.
+        #
+        # Full width, NOT inside the DOWNLOAD column: a caption in c3 grew that
+        # column and pushed UPDATE onto a different baseline from DOWNLOAD.
+        st.caption(f"&#9432;&nbsp; {_why} — then DOWNLOAD and UPDATE unlock.",
+                   unsafe_allow_html=True)
     # GitHub machines cannot write to this Mac, and pure local means there
     # is no cloud store for them to fill — downloads run here, full stop.
     from tradingagents import db_jobs
@@ -6476,105 +6321,6 @@ def render_archive_backtest_section() -> None:
     st.rerun()
 
 
-def render_backtest_tab() -> None:
-    from tradingagents import market_sweep as msw
-    from tradingagents import backtest_report as br
-
-    render_market_data_section()
-    render_archive_backtest_section()
-    st.markdown('<div class="ta-section">Sweep</div>', unsafe_allow_html=True)
-
-    cov = msw.coverage()
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Coins measured", cov["coins"])
-    c2.metric("Coin/timeframe pairs", cov["pairs"])
-    c3.metric("Rows kept", f"{cov['rows']:,}")
-    c4.metric("Newest bar tested", cov.get("last_bar") or "—")
-
-    st.caption(
-        f"{len(br.SIGNALS)} entry rules x {len(br.pairs_for('15m'))} barrier "
-        f"pairs x 2 sizings, on 15m and 30m, over a year. All three costs are "
-        f"charged: taker fee per contract, 0.03%/side slippage, and funding per "
-        f"settlement held. Liquidation is modelled from MEXC's own maintenance "
-        f"margin. Rows under {msw.MIN_TRADES} trades are dropped.")
-
-    from tradingagents import cloud_sweep as cs
-
-    _ok, _why = (False, "")
-    try:
-        _ok, _why = cs.available()
-    except Exception as exc:
-        _ok, _why = False, str(exc)[:120]
-    where = st.radio(
-        "Run where", ["GitHub (free, 20 machines)", "This Mac"],
-        horizontal=True, key="bt_where",
-        index=0 if _ok else 1,
-        help="GitHub runs the same sweep on 20 machines in parallel and costs "
-             "nothing on a public repo. This Mac uses 7 of your 8 cores.")
-    if not _ok:
-        st.caption(f"GitHub unavailable — {_why}. Falling back to this Mac.")
-    cloud = _ok and where.startswith("GitHub")
-
-    a, b, c = st.columns([1, 1, 2])
-    run_all = a.button("RUN ALL COINS", key="bt_run_all",
-                       help="Measure every contract at least a year old. "
-                            "Hours on a first run; minutes once cached.")
-    refresh = b.button("REFRESH", key="bt_refresh",
-                       help="Fetch only the candles printed since the last run "
-                            "and continue each backtest from where it stopped.")
-    limit = c.number_input("Coins this pass (0 = all eligible)", min_value=0,
-                           max_value=1000, value=25, step=25, key="bt_limit")
-
-    # The sweep runs DETACHED, across every core. Doing it inline meant one
-    # core and a restart on any click; a market sweep is hours, and Streamlit
-    # reruns the script whenever a widget moves.
-    if (run_all or refresh) and cloud:
-        try:
-            # The box says "coins this pass"; the workflow input is coins PER
-            # SHARD. Passing it straight through meant 25 became 20x25=500.
-            shards = 20
-            per_shard = 0 if not limit else max(
-                1, -(-int(limit) // shards))          # ceil, so 25 -> 2/shard
-            run = cs.dispatch(shards=shards, coins=per_shard, min_days=365)
-            st.session_state["bt_cloud_run"] = run
-            cs.remember(run)          # survives a reload and a tab switch
-            st.success(f"Started on GitHub — 20 machines. Run #{run['id']}.")
-        except Exception as exc:
-            st.error(f"Could not start on GitHub: {exc}")
-    elif run_all or refresh:
-        if msw.is_running():
-            st.warning("A sweep is already running — watch it below.")
-        else:
-            cmd = [sys.executable, "-m", "tradingagents.market_sweep",
-                   "--coins", str(int(limit)), "--min-days", "365",
-                   "--tfs", "15m,30m", "--base", "5.0"]
-            logf = open(os.path.expanduser(
-                "~/.tradingagents/backtest/sweep.log"), "a")
-            subprocess.Popen(cmd, cwd=str(Path(__file__).parent), stdout=logf,
-                             stderr=subprocess.STDOUT, start_new_session=True)
-            st.success("Sweep started in the background. It keeps running if "
-                       "you leave this page, and survives a refresh.")
-            time.sleep(2)
-
-    _bt_cloud_panel()
-    _bt_progress_panel()
-
-    page = st.session_state.get("bt_all_page")
-    if not page and cov["rows"]:
-        # rows on disk but no page yet — render it now rather than show nothing
-        page = _bt_build_page(msw.all_rows())
-        st.session_state["bt_all_page"] = page
-    if page:
-        st.markdown(
-            f"<a class='bt-open' href='{page[0]}' target='_blank' "
-            f"rel='noopener'>OPEN RESULTS &#8599;</a>"
-            f"<span class='bt-open-note'>every coin, every rule, sortable "
-            f"&middot; filters &middot; last-N-months window</span>",
-            unsafe_allow_html=True)
-    elif not cov["rows"]:
-        st.warning("Nothing measured yet — press RUN ALL COINS.")
-
-
 def _bt2_deployed(coins: list[str], tfs: list[str]) -> list[dict]:
     """Every live strategy trading a selected coin on a selected timeframe,
     as `run_grid` deployed-injection dicts.
@@ -6619,7 +6365,7 @@ def render_stored_strategies_section() -> None:
     from tradingagents import backtest_report as br
     from tradingagents import market_sweep as msw
 
-    st.markdown('<div class="ta-section">Stored strategies (this Mac)</div>',
+    st.markdown('<div class="ta-section">Stored strategies</div>',
                 unsafe_allow_html=True)
     rows = msw.all_rows()
     if not rows:
@@ -6731,7 +6477,7 @@ def render_history_section() -> None:
     from tradingagents import auto_trader as at
     from tradingagents import local_history as lh
 
-    st.markdown('<div class="ta-section">Deployment history (this Mac)</div>',
+    st.markdown('<div class="ta-section">Deployment history</div>',
                 unsafe_allow_html=True)
     deps = lh.deployments(limit=200)
     if not deps:
@@ -6751,7 +6497,7 @@ def render_history_section() -> None:
             "note": d.get("note"),
         } for d in deps]), width="stretch", height=240, hide_index=True)
 
-    st.markdown('<div class="ta-section">Trade ledger (this Mac)</div>',
+    st.markdown('<div class="ta-section">Trade ledger</div>',
                 unsafe_allow_html=True)
     rows = at.ledger_tail(100000)
     if not rows:
@@ -6791,7 +6537,7 @@ def render_storage_panel() -> None:
     from tradingagents import market_sweep as msw
     from tradingagents import parquet_store as pqs
 
-    st.markdown('<div class="ta-section">Storage (this Mac)</div>',
+    st.markdown('<div class="ta-section">Storage</div>',
                 unsafe_allow_html=True)
     rows = []
     for name, v in pqs.sizes().items():
@@ -6831,7 +6577,8 @@ def render_backtest2_tab() -> None:
     week so "what is working right now" is answered by survivors on a
     current streak, not by yesterday's luck.
 
-    V1 (`Back Test`) measures the whole market on 15m/30m; this one measures
+    V1 (`Back Test`, removed 2026-08-20 at the operator's request — this page
+    replaced it) measured the whole market on 15m/30m; this one measures
     YOUR book, deeper (all four timeframes), in minutes — one walk per
     combination (`fast_grid`, parity-pinned) plus the disk candle cache.
     """
@@ -6842,13 +6589,32 @@ def render_backtest2_tab() -> None:
     # candle cache, and the cache is what DOWNLOAD/UPDATE fill — but the section
     # was wired only into `Back Test`, so from here there was no way to fetch or
     # refresh the candles the grid then reads.
+    # ---- STRUCTURE. This page was seven full-width bands stacked in a row,
+    # five of them repeating "(this Mac)" in their own title, with no statement
+    # of what the page is for. Same sections, same logic — but grouped by what
+    # the operator is doing, with the storage location said ONCE, in the
+    # subtitle. frontend-design: the page needs a point of view before it needs
+    # decoration; ui-ux-pro-max Accessibility / "Heading Hierarchy": real
+    # levels, so the groups are h2 and the sections sit under them.
+    st.markdown(
+        "<p class='bt2-lede'>Everything on this page reads and writes "
+        "<code>~/.tradingagents</code> on this Mac. Nothing here touches a "
+        "cloud database.</p>", unsafe_allow_html=True)
+
+    st.markdown(_tm_head("Data", "what is on disk, and how to fill it"),
+                unsafe_allow_html=True)
     render_market_data_section()
-    # The operator's requested flow lives here too: BACKTEST + date window
-    # (months/year) + run-on-Mac-or-GitHub, reading the archive.
+    render_storage_panel()
+
+    st.markdown(_tm_head("Run", "backtest the store, or sweep your own book"),
+                unsafe_allow_html=True)
+    # BACKTEST + date window (months/year) + run-on-Mac-or-GitHub.
     render_archive_backtest_section()
+
+    st.markdown(_tm_head("Results", "what was measured, and what was deployed"),
+                unsafe_allow_html=True)
     render_stored_strategies_section()
     render_history_section()
-    render_storage_panel()
 
     cfg = at.load_settings()
     _keys = list(cfg.get("strategies") or []) or list(
@@ -7012,7 +6778,8 @@ def render_run_analysis_tab() -> None:
 
     if not run:
         st.markdown(
-            '<div class="ta-card"><h4>Ready</h4><div style="color:var(--muted);font-size:14px">'
+            '<div class="ta-card"><h2 class="ta-card-h">Ready</h2>'
+            '<div style="color:var(--muted);font-size:14px">'
             'Pick a ticker/date and a run mode, then Run. <b>Selected model</b> streams one run live; '
             '<b>Parallel</b> runs several models at once and compares their calls side-by-side. '
             'Manage and health-check models on the <b>LLM Models</b> tab.</div></div>',

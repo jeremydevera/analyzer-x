@@ -698,18 +698,17 @@ def test_tables_have_a_border():
     assert out.startswith("<div class='tm-tbl'>") and out.endswith("</div>")
 
 
-def test_both_backtest_pages_offer_the_archive_controls():
+def test_backtest2_offers_the_archive_controls():
     """"where is the download in backtest 2?" — `render_market_data_section`
-    holds DOWNLOAD/UPDATE for the permanent candle archive and was called only
-    from `render_backtest_tab`. Backtest 2 runs off that same cache, so it had
-    no way to fill or refresh it."""
+    holds DOWNLOAD/UPDATE for the permanent candle archive. Backtest 2 is the
+    only backtest page now (V1 removed at the operator's request 2026-08-20),
+    so it must carry the controls."""
     import inspect
 
     import app
-    for fn in (app.render_backtest_tab, app.render_backtest2_tab):
-        src = inspect.getsource(fn)
-        assert "render_market_data_section()" in src, \
-            f"{fn.__name__} does not offer the archive controls"
+    src = inspect.getsource(app.render_backtest2_tab)
+    assert "render_market_data_section()" in src, \
+        "render_backtest2_tab does not offer the archive controls"
 
 
 def test_the_equity_curve_is_built_from_the_ledgers_own_exits():

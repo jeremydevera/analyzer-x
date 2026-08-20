@@ -110,12 +110,18 @@ def test_state_without_rows_is_re_measured_not_skipped():
 
 
 def test_the_tab_exists_and_is_wired():
+    """Backtest 2 replaced the V1 Back Test page (operator, 2026-08-20).
+    The sweep ENGINE stays — UPDATE BACKTEST continues through run_pair —
+    but the old page must be gone, not half-wired."""
     import app
 
-    assert "Back Test" in app.PAGES
-    assert hasattr(app, "render_backtest_tab")
+    assert "Backtest 2" in app.PAGES
+    assert "Back Test" not in app.PAGES
+    assert hasattr(app, "render_backtest2_tab")
+    assert not hasattr(app, "render_backtest_tab")
     src = open("app.py").read()
-    assert 'page == "Back Test"' in src
+    assert 'page == "Backtest 2"' in src
+    assert 'page == "Back Test"' not in src
 
 
 def test_the_store_keeps_losing_rows_too(monkeypatch, tmp_path):
@@ -125,3 +131,64 @@ def test_the_store_keeps_losing_rows_too(monkeypatch, tmp_path):
     assert 'r["profit"] <= 0' not in src, \
         "run_pair still throws away losing rows"
     assert "MIN_TRADES" in src, "the trade floor must survive"
+
+
+def test_pair_writes_hold_an_exclusive_lock(tmp_path, monkeypatch):
+    """BACKTEST and UPDATE can run at once; without a lock they interleave
+    read-modify-write on the same pair files and one side's rows vanish."""
+    import json
+
+    monkeypatch.setattr(msw, "HOME", tmp_path)
+    monkeypatch.setattr(msw, "ROWDIR", tmp_path / "rows")
+    monkeypatch.setattr(msw, "STATES", tmp_path / "state")
+    locked_during_write = []
+
+    real_locked = msw._pair_lock
+
+    def spy(coin, tf):
+        cm = real_locked(coin, tf)
+
+        class Spy:
+            def __enter__(self):
+                self._inner = cm.__enter__()
+                locked_during_write.append("enter")
+                return self._inner
+
+            def __exit__(self, *a):
+                locked_during_write.append("exit")
+                return cm.__exit__(*a)
+
+        return Spy()
+
+    monkeypatch.setattr(msw, "_pair_lock", spy)
+    msw.save_pair_rows("APEX", "1h", [{"coin": "APEX"}])
+    assert locked_during_write == ["enter", "exit"]
+    assert json.loads((tmp_path / "rows" / "APEX-1h.json").read_text())
+
+
+def test_the_lock_is_per_pair_and_blocks_a_second_writer(tmp_path,
+                                                         monkeypatch):
+    import threading
+    import time as _t
+
+    monkeypatch.setattr(msw, "HOME", tmp_path)
+    monkeypatch.setattr(msw, "ROWDIR", tmp_path / "rows")
+    monkeypatch.setattr(msw, "STATES", tmp_path / "state")
+    order = []
+
+    def slow_writer():
+        with msw._pair_lock("APEX", "1h"):
+            order.append("A-in")
+            _t.sleep(0.4)
+            order.append("A-out")
+
+    def fast_writer():
+        _t.sleep(0.1)
+        with msw._pair_lock("APEX", "1h"):
+            order.append("B-in")
+
+    a = threading.Thread(target=slow_writer)
+    b = threading.Thread(target=fast_writer)
+    a.start(); b.start(); a.join(); b.join()
+    assert order == ["A-in", "A-out", "B-in"], \
+        "the second writer must wait for the first"

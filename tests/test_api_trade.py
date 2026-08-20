@@ -87,20 +87,40 @@ def test_settings_save_records_the_deploy_history(client, monkeypatch,
     assert client.get("/api/trade/settings").json()["settings"] == payload
 
 
-def test_strategies_lists_every_key_with_deploy_state(client, monkeypatch):
-    payload = {"strategy_books": {"mom6_1h_g": ["real"]},
-               "strategy_coins": {"mom6_1h_g": ["XAUT_USDT"]}}
+def test_strategies_shows_only_what_is_deployed_by_default(client):
+    """27 keys exist; 2 are deployed. Listing all 27 made four armed
+    strategies read as twenty-seven running ones (2026-08-21)."""
+    payload = {"strategy_books": {"mom6_1h_g": ["real"], "fvg_4h": ["paper"]},
+               "strategy_coins": {"mom6_1h_g": ["XAUT_USDT"],
+                                  "fvg_4h": ["BTC_USDT"]}}
     at.SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
     at.SETTINGS_PATH.write_text(json.dumps(payload))
-    rows = client.get("/api/trade/strategies").json()["rows"]
-    assert {r["key"] for r in rows} == set(at.STRATEGY_ORDER)
-    mine = next(r for r in rows if r["key"] == "mom6_1h_g")
+    got = client.get("/api/trade/strategies").json()
+    assert {r["key"] for r in got["rows"]} == {"mom6_1h_g", "fvg_4h"}
+    assert got["real_count"] == 1 and got["paper_count"] == 1
+    assert got["deployed_count"] == 2
+    assert got["catalog_count"] == len(at.STRATEGY_ORDER) > 2
+    assert got["showing_catalog"] is False
+    mine = next(r for r in got["rows"] if r["key"] == "mom6_1h_g")
     assert mine["books"] == ["real"] and mine["coins"] == ["XAUT_USDT"]
+
+
+def test_the_full_catalog_is_available_but_only_when_asked(client):
+    at.SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    at.SETTINGS_PATH.write_text(json.dumps(
+        {"strategy_books": {"mom6_1h_g": ["real"]}}))
+    got = client.get("/api/trade/strategies?catalog=true").json()
+    assert {r["key"] for r in got["rows"]} == set(at.STRATEGY_ORDER)
+    assert got["showing_catalog"] is True
+    assert got["real_count"] == 1, "counts still describe what is DEPLOYED"
 
 
 def test_open_positions_are_reported_per_book_with_clean_coin_names(client):
     """The grid's "open now" column showed "XAUT#paper" — the book suffix is
     not part of the coin name, and a paper position is not a real one."""
+    at.SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    at.SETTINGS_PATH.write_text(json.dumps({"strategy_books": {
+        "trend50_30m_pi": ["paper"], "sweep30_1h_w": ["real"]}}))
     rows = client.get("/api/trade/strategies").json()["rows"]
     paper = next(r for r in rows if r["key"] == "trend50_30m_pi")
     assert paper["open_on_paper"] == ["PI_USDT"] and paper["open_on"] == []

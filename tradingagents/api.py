@@ -258,8 +258,15 @@ def trade_summary() -> dict:
 
 
 @app.get("/api/trade/strategies")
-def trade_strategies() -> dict:
-    """Every strategy key: spec, deployment state, and lifetime numbers."""
+def trade_strategies(catalog: bool = False) -> dict:
+    """The DEPLOYED strategies by default — the ones with a book or a coin.
+
+    `catalog=true` adds every other key in STRATEGY_ORDER so a new one can be
+    armed. It is not the default on purpose: showing all 27 made four armed
+    strategies read as twenty-seven running ones (2026-08-21), and the
+    Streamlit screen it replaced had made the same call in the other
+    direction ("an unticked tile is clutter the operator has to read past").
+    """
     import tradingagents.auto_trader as at
 
     settings = at.load_settings()
@@ -268,8 +275,11 @@ def trade_strategies() -> dict:
     margins = settings.get("strategy_margins") or {}
     stats = at.strategy_stats(dry=False)
     state = at.load_state()
+    deployed = [k for k in at.STRATEGY_ORDER
+                if (books.get(k) or coins.get(k))]
+    keys = at.STRATEGY_ORDER if catalog else deployed
     rows = []
-    for key in at.STRATEGY_ORDER:
+    for key in keys:
         spec = at.STRATEGY_SPECS.get(key) or {}
         st_row = stats.get(key) or {}
         # book keys are "SYMBOL" (real) and "SYMBOL#paper" (simulated), so the
@@ -296,8 +306,19 @@ def trade_strategies() -> dict:
             "open_on": open_real_on,
             "open_on_paper": open_paper_on,
         })
-    return {"rows": rows, "sizing": at.sizing_for(settings),
-            "conflicts": at.timeframe_conflicts(settings)}
+    return {
+        "rows": rows,
+        "sizing": at.sizing_for(settings),
+        "conflicts": at.timeframe_conflicts(settings),
+        # counted here so the screen's caption cannot invent its own number
+        "real_count": sum(1 for k in deployed if "real" in (books.get(k) or [])),
+        "paper_count": sum(1 for k in deployed
+                           if (books.get(k) or []) and "real" not in books[k]),
+        "idle_count": sum(1 for k in deployed if not (books.get(k) or [])),
+        "deployed_count": len(deployed),
+        "catalog_count": len(at.STRATEGY_ORDER),
+        "showing_catalog": catalog,
+    }
 
 
 @app.get("/api/trade/settings")

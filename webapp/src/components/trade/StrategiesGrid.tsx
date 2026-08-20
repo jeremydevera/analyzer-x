@@ -2,7 +2,7 @@
 /** Every strategy the runner knows: deployment state, lifetime record, and
  * the arm/disarm + coin/margin editor. Saving POSTs the full settings file
  * and the API records every change to the local deploy history. */
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { fmtMoney, tradeApi, StrategyDeployRow } from "@/lib/api";
 import Badge from "@/components/ui/badge/Badge";
 import Button from "@/components/ui/button/Button";
@@ -13,6 +13,8 @@ const TF: Record<string, string> = { Min1: "1m", Min15: "15m", Min30: "30m", Min
 export default function StrategiesGrid() {
   const [rows, setRows] = useState<StrategyDeployRow[]>([]);
   const [sizing, setSizing] = useState("");
+  const [counts, setCounts] = useState({ real_count: 0, paper_count: 0, idle_count: 0, deployed_count: 0, catalog_count: 0 });
+  const [catalog, setCatalog] = useState(false);
   const [conflicts, setConflicts] = useState<{ symbol?: string; keys?: string[] }[]>([]);
   const [settings, setSettings] = useState<Record<string, unknown> | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -20,11 +22,14 @@ export default function StrategiesGrid() {
   const [err, setErr] = useState("");
   const [note, setNote] = useState("");
 
-  const load = () =>
-    Promise.all([tradeApi.strategies(), tradeApi.settingsGet()])
-      .then(([st, se]) => { setRows(st.rows); setSizing(st.sizing); setConflicts(st.conflicts); setSettings(se.settings); setDirty(false); })
-      .catch((e) => setErr(String(e)));
-  useEffect(() => { load(); }, []);
+  const load = useCallback(() =>
+    Promise.all([tradeApi.strategies(catalog), tradeApi.settingsGet()])
+      .then(([st, se]) => {
+        setRows(st.rows); setSizing(st.sizing); setConflicts(st.conflicts);
+        setCounts(st); setSettings(se.settings); setDirty(false);
+      })
+      .catch((e) => setErr(String(e))), [catalog]);
+  useEffect(() => { load(); }, [load]);
 
   const mut = (fn: (s: Record<string, unknown>) => void) => {
     if (!settings) return;
@@ -77,12 +82,22 @@ export default function StrategiesGrid() {
     <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="flex flex-wrap items-center gap-3 px-5 pt-4">
         <div>
-          <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Strategies</h3>
+          <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">
+            {catalog ? "Strategies · every configurable one" : "Strategies you have deployed"}
+          </h3>
           <p className="text-theme-xs text-gray-500 dark:text-gray-400">
-            {rows.length} configured · sizing {sizing || "—"} · lifetime figures are the REAL book&apos;s closed trades
+            <span className="font-semibold text-error-500">{counts.real_count} trading REAL money</span>
+            {" · "}{counts.paper_count} paper only
+            {counts.idle_count ? ` · ${counts.idle_count} deployed but switched off` : ""}
+            {" · sizing "}{sizing || "—"}
+            {catalog ? ` · showing all ${counts.catalog_count} the runner can run` : ""}
           </p>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          <label className="flex items-center gap-2 text-theme-xs text-gray-600 dark:text-gray-300">
+            <input type="checkbox" checked={catalog} onChange={(e) => setCatalog(e.target.checked)} className="h-4 w-4 accent-brand-500" />
+            show all {counts.catalog_count} to arm a new one
+          </label>
           {note && !dirty && <span className="text-theme-xs text-success-600">{note}</span>}
           {dirty && <span className="text-theme-xs text-warning-600">unsaved changes</span>}
           <Button size="sm" disabled={!dirty || busy} onClick={save}>SAVE CONFIG</Button>

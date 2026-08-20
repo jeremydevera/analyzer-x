@@ -565,6 +565,44 @@ def prune_results(keep_per_pair: int = 500,
         return 0
 
 
+def retention_tick(*, keep_per_pair: int = 500,
+                   armed_symbols: list | None = None,
+                   grid_path=None) -> dict:
+    """Enforce the storage split's Neon diet, loudly and guardedly.
+
+    * results pruned to the best ``keep_per_pair`` per (symbol, timeframe,
+      window, code_version) — but ONLY when the full grid is proven on disk
+      (``grid_path`` exists and is non-empty). Never delete from the database
+      what the file store does not yet hold.
+    * candles kept only for coins with a live strategy. An EMPTY armed list
+      deletes nothing: a config hiccup must not empty the archive.
+    """
+    out = {"results_dropped": 0, "candle_symbols_dropped": [], "aborted": ""}
+    if grid_path is not None:
+        try:
+            ok = os.path.getsize(grid_path) > 0
+        except OSError:
+            ok = False
+        if not ok:
+            out["aborted"] = "grid snapshot missing or empty"
+            return out
+    out["results_dropped"] = prune_results(keep_per_pair=keep_per_pair)
+    if armed_symbols:
+        from sqlalchemy import text
+        try:
+            with _engine().begin() as cx:
+                gone = sorted(r[0] for r in cx.execute(text(
+                    "SELECT DISTINCT symbol FROM candles")).fetchall()
+                    if r[0] not in set(armed_symbols))
+                for sym in gone:
+                    cx.execute(text("DELETE FROM candles WHERE symbol=:s"),
+                               {"s": sym})
+                out["candle_symbols_dropped"] = gone
+        except Exception as exc:
+            _stand_down(exc, "retention_tick")
+    return out
+
+
 def table_sizes() -> dict:
     """Rows and disk per table, so growth is visible before it is a problem."""
     if not _ready():

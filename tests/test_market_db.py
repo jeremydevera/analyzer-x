@@ -270,3 +270,45 @@ def test_table_sizes_reports_every_table(db):
     assert set(sizes) == {"candles", "backtest_results", "deployments",
                           "trade_ledger"}
     assert all("rows" in v for v in sizes.values())
+
+
+def _result_row(i, symbol="BTC_USDT"):
+    return {"row_code": f"R{i:04d}", "symbol": symbol, "timeframe": "1h",
+            "signal": "mom6", "tp": 4.0, "sl": 1.0, "sizing": "flat",
+            "data_start": 0, "data_end": 100, "code_version": "v",
+            "profit": float(i), "trades": 200}
+
+
+def test_retention_prunes_results_and_unarmed_candles(db, tmp_path):
+    db.save_results([_result_row(i) for i in range(30)])
+    db.upsert_candles("BTC_USDT", "1h", _frame())
+    db.upsert_candles("GONE_USDT", "1h", _frame())
+    grid = tmp_path / "g.parquet"
+    grid.write_bytes(b"x" * 100)          # a real, non-empty snapshot
+    r = db.retention_tick(keep_per_pair=10, armed_symbols=["BTC_USDT"],
+                          grid_path=grid)
+    assert r["aborted"] == ""
+    assert r["results_dropped"] == 20
+    assert r["candle_symbols_dropped"] == ["GONE_USDT"]
+    left = db.load_results(symbol="BTC_USDT")
+    assert len(left) == 10
+    assert min(x["profit"] for x in left) == 20.0, "the best ten survive"
+    assert db.candles_df("BTC_USDT", "1h") is not None
+    assert db.candles_df("GONE_USDT", "1h") is None
+
+
+def test_retention_aborts_without_the_grid_on_disk(db, tmp_path):
+    """Never delete from Neon what disk does not yet hold."""
+    db.save_results([_result_row(i) for i in range(30)])
+    r = db.retention_tick(keep_per_pair=10, armed_symbols=["BTC_USDT"],
+                          grid_path=tmp_path / "missing.parquet")
+    assert r["aborted"] == "grid snapshot missing or empty"
+    assert len(db.load_results(symbol="BTC_USDT")) == 30
+
+
+def test_retention_never_deletes_candles_when_armed_list_is_empty(db):
+    """A config hiccup returning [] must not empty the candle archive."""
+    db.upsert_candles("BTC_USDT", "1h", _frame())
+    r = db.retention_tick(keep_per_pair=10, armed_symbols=[], grid_path=None)
+    assert r["candle_symbols_dropped"] == []
+    assert db.candles_df("BTC_USDT", "1h") is not None

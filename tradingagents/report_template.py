@@ -91,6 +91,10 @@ tbody tr.rec td{font-weight:600}
 .det .cell{padding:9px 14px;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule)}
 .det .cell .l{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:2px}
 .det .cell .v{font-size:14px;font-weight:600}
+/* A still-open trade is the LAST row of a log and the one most likely to be
+   misread as a result, so it gets a left rail and a dimmed ground. */
+.logbox tr.openrow{ background:rgba(148,163,184,.07) }
+.logbox tr.openrow td:first-child{ box-shadow:inset 2px 0 0 #94a3b8 }
 .logbox{max-height:380px;overflow:auto}.empty{padding:20px 14px;color:var(--faint);font-size:12px}
 .note{border-left:2px solid var(--amber);background:var(--panel);padding:11px 15px;margin-top:16px;
  font-size:11.5px;color:var(--dim);line-height:1.75}.note b{color:var(--ink)}
@@ -643,7 +647,13 @@ function detail(){
      <th>PROFIT $</th><th>running $</th></tr></thead><tbody>`
    + res.log.map(t=>{const hh=(new Date(t.close)-new Date(t.open))/3600000;
      const ex=t.why==='TP'?t.tpPx:t.why==='SL'?t.slPx:null;
-     return `<tr><td class="l">${t.n}</td><td class="l">${t.open}</td><td class="l">${t.close}</td>
+     // why==='END' means the CANDLES ran out with the position still open —
+     // there was no exit. This cell used to print the last bar's timestamp
+     // under a column headed CLOSED, so an open trade read as closed for a
+     // profit it has not made. The operator caught it on row 181.
+     const shut = t.why==='END'
+       ? `<span class="nil">still open</span>` : t.close;
+     return `<tr class="${t.why==='END'?'openrow':''}"><td class="l">${t.n}</td><td class="l">${t.open}</td><td class="l">${shut}</td>
      <td class="l">${hh>=24?(hh/24).toFixed(1)+'d':hh.toFixed(1)+'h'}</td>
      <td class="l">${t.side}</td><td class="l ${t.why==='LIQ'?'dn':''}"><b>${t.why}</b></td>
      <td>${t.entry.toFixed(6)}</td><td>${ex?ex.toFixed(6):'—'}</td>
@@ -651,8 +661,29 @@ function detail(){
      <td>${t.rung}</td><td>${t.margin.toFixed(2)}</td>
      <td class="${t.fund<0?'dn':t.fund>0?'up':'nil'}">${(t.fund||0).toFixed(3)}</td>
      <td class="${cls(t.pnl)}"><b>${f2(t.pnl)}</b></td><td class="${cls(t.run)}">${f2(t.run)}</td></tr>`;}).join('')
-   + `</tbody><tfoot><tr><td class="l" colspan="10">TOTAL PROFIT · ${res.trades} trades · ${res.wins}W / ${res.losses}L · ${res.winrate.toFixed(2)}% win</td>
-      <td class="${cls(res.profit)}"><b>${f2(res.profit)}</b></td><td></td></tr></tfoot></table></div>`;
+   + (()=>{
+       // Split REALISED from OPEN. The engine marks a still-open trade to the
+       // last close, charges it a full round trip and credits it as a win, so
+       // the combined figure claimed money that is not banked yet.
+       const op = res.log.filter(t=>t.why==='END');
+       const opPnl = op.reduce((a,t)=>a+t.pnl,0);
+       const rTrades = res.trades - op.length;
+       const rWins = res.wins - op.filter(t=>t.pnl>0).length;
+       const rLoss = res.losses - op.filter(t=>t.pnl<=0).length;
+       const rProfit = res.profit - opPnl;
+       const rWr = rTrades ? (rWins/rTrades*100) : 0;
+       return `</tbody><tfoot><tr><td class="l" colspan="10">`
+         + `REALISED · ${rTrades} closed trades · ${rWins}W / ${rLoss}L · `
+         + `${rWr.toFixed(2)}% win</td>`
+         + `<td class="${cls(rProfit)}"><b>${f2(rProfit)}</b></td><td></td></tr>`
+         + (op.length ? `<tr><td class="l" colspan="10">`
+             + `<span class="nil">STILL OPEN · ${op.length} trade`
+             + `${op.length>1?'s':''} marked to the last close `
+             + `(${op[0].close}) · not banked, can still hit its stop`
+             + `</span></td><td class="${cls(opPnl)}">${f2(opPnl)}</td>`
+             + `<td></td></tr>` : '')
+         + `</tfoot></table></div>`;
+     })();
   el.scrollIntoView({behavior:'smooth',block:'start'});
 }
 document.querySelectorAll('th').forEach(th=>th.addEventListener('click',()=>{

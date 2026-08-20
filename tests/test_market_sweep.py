@@ -192,3 +192,31 @@ def test_the_lock_is_per_pair_and_blocks_a_second_writer(tmp_path,
     a.start(); b.start(); a.join(); b.join()
     assert order == ["A-in", "A-out", "B-in"], \
         "the second writer must wait for the first"
+
+
+def test_storage_by_coin_sums_every_store_per_pair(tmp_path, monkeypatch):
+    """"show me total size for bitcoin" — candles + rows + states, per
+    (coin, timeframe), in bytes that sum per coin."""
+    from tradingagents import parquet_store as pqs
+
+    monkeypatch.setattr(msw, "CANDLES", tmp_path / "candles")
+    monkeypatch.setattr(msw, "ROWDIR", tmp_path / "rows")
+    monkeypatch.setattr(msw, "STATES", tmp_path / "state")
+    monkeypatch.setattr(pqs, "CANDLES", tmp_path / "pq")
+    for d in ("candles", "rows", "state", "pq"):
+        (tmp_path / d).mkdir()
+    (tmp_path / "candles" / "BTC_USDT-15m.json").write_bytes(b"x" * 1000)
+    (tmp_path / "pq" / "BTC_USDT-15m.parquet").write_bytes(b"x" * 500)
+    (tmp_path / "rows" / "BTC-15m.json").write_bytes(b"x" * 300)
+    (tmp_path / "state" / "BTC-15m.json").write_bytes(b"x" * 200)
+    (tmp_path / "candles" / "BTC_USDT-1h.json").write_bytes(b"x" * 100)
+    (tmp_path / "rows" / "PI-1h.json").write_bytes(b"x" * 50)
+
+    rows = msw.storage_by_coin()
+    btc15 = next(r for r in rows if r["coin"] == "BTC" and r["tf"] == "15m")
+    assert btc15["candles"] == 1500, "json cache AND parquet copy both count"
+    assert btc15["rows"] == 300 and btc15["states"] == 200
+    assert btc15["total"] == 2000
+    btc = [r for r in rows if r["coin"] == "BTC"]
+    assert sum(r["total"] for r in btc) == 2100, "coin total sums its tfs"
+    assert next(r for r in rows if r["coin"] == "PI")["total"] == 50

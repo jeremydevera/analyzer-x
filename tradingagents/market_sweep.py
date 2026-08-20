@@ -41,6 +41,15 @@ GATE_BLOCK = 0.50         # cost >= half the target: the trade cannot win
 CONTEXT_BARS = 300        # lookback a signal needs before the first new bar
 
 
+def fmt_stamp(ts: float | None = None) -> str:
+    """The operator's one date format (2026-08-21): Aug 26, 2026 4:00PM."""
+    import datetime as _dt
+
+    d = _dt.datetime.fromtimestamp(time.time() if ts is None else ts)
+    h = d.hour % 12 or 12
+    return f"{d:%b} {d.day}, {d.year} {h}:{d:%M}{d:%p}"
+
+
 def _paths() -> None:
     for d in (HOME, CANDLES, STATES):
         d.mkdir(parents=True, exist_ok=True)
@@ -215,8 +224,7 @@ def coverage() -> dict:
         except ValueError:
             continue
     return {"pairs": len(pairs), "rows": len(all_rows()),
-            "last_bar": (_dt.datetime.fromtimestamp(newest / 1000)
-                         .strftime("%Y-%m-%d %H:%M") if newest else None),
+            "last_bar": (fmt_stamp(newest / 1000) if newest else None),
             "coins": len({p.split("-")[0] for p in pairs})}
 
 
@@ -439,7 +447,7 @@ def run_market(symbols: Sequence[str], tfs: Sequence[str] = ("15m", "30m"), *,
     t0 = time.time()
     state = {"phase": "sweeping",
              "total": len(jobs), "done": 0, "rows": 0, "new_bars": 0,
-             "started": time.strftime("%Y-%m-%d %H:%M"), "workers": workers,
+             "started": fmt_stamp(), "workers": workers,
              "running": True, "last": "", "eta_min": None}
     PROGRESS.write_text(json.dumps(state))
     PIDFILE.write_text(str(os.getpid()))
@@ -461,7 +469,7 @@ def run_market(symbols: Sequence[str], tfs: Sequence[str] = ("15m", "30m"), *,
                 PROGRESS.write_text(json.dumps(state))
     finally:
         state["running"] = False
-        state["finished"] = time.strftime("%Y-%m-%d %H:%M")
+        state["finished"] = fmt_stamp()
         PROGRESS.write_text(json.dumps(state))
         try:
             PIDFILE.unlink()
@@ -521,7 +529,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "phase": "screening", "total": len(syms), "done": i,
                     "rows": 0, "new_bars": 0, "running": True,
                     "workers": a.workers or max(1, (os.cpu_count() or 4) - 1),
-                    "started": time.strftime("%Y-%m-%d %H:%M"),
+                    "started": fmt_stamp(),
                     "last": f"{len(keep)} contracts at least "
                             f"{a.min_days} days old so far"}))
         elig_f.write_text(json.dumps({"day": _dt.date.today().isoformat(),
@@ -662,12 +670,15 @@ def candle_coverage() -> list:
             sym, tf = f.stem.rsplit("-", 1)
             import datetime as _dt
 
+            # Operator's one date format (2026-08-21): Aug 26, 2026 4:00PM.
+            _d0 = _dt.datetime.fromtimestamp(ts[0] / 1000)
+            _d1 = _dt.datetime.fromtimestamp(ts[-1] / 1000)
+            _h1 = _d1.hour % 12 or 12
             out.append({
                 "symbol": sym, "timeframe": tf, "bars": len(ts),
-                "first": _dt.datetime.fromtimestamp(ts[0] / 1000)
-                            .strftime("%Y-%m-%d"),
-                "last": _dt.datetime.fromtimestamp(ts[-1] / 1000)
-                           .strftime("%Y-%m-%d %H:%M"),
+                "first": f"{_d0:%b} {_d0.day}, {_d0.year}",
+                "last": (f"{_d1:%b} {_d1.day}, {_d1.year} "
+                         f"{_h1}:{_d1:%M}{_d1:%p}"),
                 "days": round((ts[-1] - ts[0]) / 86400000)})
         except (ValueError, OSError):
             continue
@@ -727,3 +738,49 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
             "losses": r["losses"], "profit": round(r["profit"], 2),
             "max_dd": r["max_dd"],
             "winrate": round(100 * r["wins"] / max(r["trades"], 1), 2)}
+
+
+def storage_by_coin() -> list:
+    """Disk cost per coin and timeframe, across every store that scales with
+    coins: candles (json cache + parquet copy), measured rows, resume states.
+
+    The operator's ask: "i downloaded btc 15m, 30m, 1hr, 4hr … show me total
+    size for bitcoin" — so the unit is bytes on THIS machine, per (coin, tf),
+    summable per coin. Grid snapshots are per-RUN, not per-coin, and are
+    reported separately by the storage panel.
+    """
+    from tradingagents import parquet_store as pqs
+
+    out: dict = {}
+
+    def add(coin, tf, kind, path):
+        try:
+            b = path.stat().st_size
+        except OSError:
+            return
+        row = out.setdefault((coin, tf), {"coin": coin, "tf": tf,
+                                          "candles": 0, "rows": 0,
+                                          "states": 0})
+        row[kind] += b
+
+    if CANDLES.exists():
+        for f in CANDLES.glob("*.json"):
+            sym, tf = f.stem.rsplit("-", 1)
+            add(sym.replace("_USDT", ""), tf, "candles", f)
+    if pqs.CANDLES.exists():
+        for f in pqs.CANDLES.glob("*.parquet"):
+            sym, tf = f.stem.rsplit("-", 1)
+            add(sym.replace("_USDT", ""), tf, "candles", f)
+    if ROWDIR.exists():
+        for f in ROWDIR.glob("*.json"):
+            coin, tf = f.stem.rsplit("-", 1)
+            add(coin, tf, "rows", f)
+    if STATES.exists():
+        for f in STATES.glob("*.json"):
+            coin, tf = f.stem.rsplit("-", 1)
+            add(coin, tf, "states", f)
+    rows = list(out.values())
+    for r in rows:
+        r["total"] = r["candles"] + r["rows"] + r["states"]
+    rows.sort(key=lambda r: (r["coin"], r["tf"]))
+    return rows

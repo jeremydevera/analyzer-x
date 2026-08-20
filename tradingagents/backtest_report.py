@@ -290,7 +290,8 @@ def run_grid(coins: Sequence[str], tfs: Sequence[str], *,
     cut = pd.Timestamp.utcnow().tz_localize(None) - pd.Timedelta(days=days)
     total = max(1, len(coins) * len(tfs))
     done = 0
-    fetched_at = time.strftime("%Y-%m-%d %H:%M")
+    from tradingagents.market_sweep import fmt_stamp
+    fetched_at = fmt_stamp()
 
     for coin in coins:
         show = coin.replace("_USDT", "")
@@ -930,4 +931,4 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
             "slip": 0.0003, "base": base_margin,
             "ladder": [1, 1, 2, 2, 4, 4, 8], "deployed": list(deployed),
             "excluded": excluded, "days_asked": days,
-            "fetched": _time.strftime("%Y-%m-%d %H:%M"), "reuse": reuse}
+            "fetched": __import__("tradingagents.market_sweep", fromlist=["fmt_stamp"]).fmt_stamp(), "reuse": reuse}

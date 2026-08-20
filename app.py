@@ -1869,10 +1869,20 @@ def _fmt_log_line(line: str) -> str:
 
 
 def _fmt_when(ts: float) -> str:
-    """Operator's requested format: Aug 13, 2026 (8:03PM)."""
+    """THE date format, everywhere: Aug 26, 2026 4:00PM.
+
+    The operator has now asked twice (2026-08-20 parens version, 2026-08-21
+    "i dont want 08-21 00:18") — every timestamp the UI prints goes through
+    here or `_fmt_day`, never a raw strftime."""
     d = _dt.datetime.fromtimestamp(ts)
     hour = d.hour % 12 or 12
-    return f"{d:%b} {d.day}, {d.year} ({hour}:{d:%M}{d:%p})"
+    return f"{d:%b} {d.day}, {d.year} {hour}:{d:%M}{d:%p}"
+
+
+def _fmt_day(ts: float) -> str:
+    """Date-only version of `_fmt_when`: Aug 26, 2026."""
+    d = _dt.datetime.fromtimestamp(ts)
+    return f"{d:%b} {d.day}, {d.year}"
 
 
 def _fmt_age(seconds: float) -> str:
@@ -4728,11 +4738,9 @@ def render_auto_trade_tab() -> None:
                     "state": "OPEN",
                     "side": "LONG" if _pos["side"] > 0 else "SHORT",
                     "strategy": _pos.get("strategy", r["strategy"]),
-                    # Compact stamp: "Aug 14, 2026 (4:00AM)" does not fit
-                    # a grid cell and ellipsised to "Aug 14, 20…", which
-                    # hides the part that matters — the time.
-                    "opened": (_dt.datetime.fromtimestamp(_when)
-                               .strftime("%m-%d %H:%M") if _when else "—"),
+                    # One format everywhere — the operator rejected the
+                    # compact "08-14 04:00" stamp on 2026-08-21.
+                    "opened": (_fmt_when(_when) if _when else "—"),
                     "held": (_fmt_age(time.time() - _when) if _when
                              else "—"),
                     "vol": _pos.get("vol"), "margin $": _pos.get("margin"),
@@ -5146,8 +5154,7 @@ def render_auto_trade_tab() -> None:
                             _p = round(float(_e.get("pnl_est") or 0), 2)
                             _run = round(_run + _p, 2)
                             _all.append({
-                                "when": _dt.datetime.fromtimestamp(
-                                    float(_e.get("ts") or 0)).strftime("%m-%d %H:%M"),
+                                "when": _fmt_when(float(_e.get("ts") or 0)),
                                 "coin": str(_e.get("symbol", "?")).replace("_USDT", ""),
                                 "side": (_e.get("side") or "—"),
                                 "strategy": _e.get("strategy") or "—",
@@ -5171,6 +5178,9 @@ def render_auto_trade_tab() -> None:
                                         reverse=True)
                         for _m in _mrows:
                             _m["win %"] = round(100 * _m["W"] / _m["trades"], 1)
+                            # sorted on the %Y-%m key above; shown as Aug 2026
+                            _m["month"] = _dt.datetime.strptime(
+                                _m["month"], "%Y-%m").strftime("%b %Y")
                         _mcols = (("month", "month", 1.4, "l", "text"),
                                   ("trades", "trades", 1.0, "r", "num"),
                                   ("W", "W", 0.8, "r", "num"),
@@ -5821,7 +5831,7 @@ def render_auto_trade_tab() -> None:
                 except Exception as _exc:
                     _diff = [f"could not re-read the file: {_exc}"]
                 st.session_state["auto_saved_at"] = {
-                    "when": time.strftime("%H:%M:%S"), "ok": _verified,
+                    "when": _fmt_when(time.time()), "ok": _verified,
                     "diff": _diff, "n": len(chosen_strats),
                     "live": sorted(k for k, v in strategy_books.items()
                                    if "real" in v),
@@ -6315,7 +6325,7 @@ def render_archive_backtest_section() -> None:
     fresh = BT_REPORT_DIR / name
     if fresh.exists() and fresh.stat().st_size > 10_000:
         built = _dt.datetime.fromtimestamp(fresh.stat().st_mtime)
-        st.success(f"Already computed today at {built.strftime('%H:%M')} — "
+        st.success(f"Already computed at {_fmt_when(built.timestamp())} — "
                    "cached result.")
         st.markdown(f"**[OPEN THE REPORT](app/static/bt/{name})**")
         return
@@ -6495,8 +6505,7 @@ def render_history_section() -> None:
                    "~/.tradingagents/deployments.jsonl.")
     else:
         st.dataframe(pd.DataFrame([{
-            "when": _dt.datetime.fromtimestamp(d["changed_at"])
-                    .strftime("%Y-%m-%d %H:%M"),
+            "when": _fmt_when(d["changed_at"]),
             "coin": (d["symbol"] or "").replace("_USDT", ""),
             "what": d["action"],
             "strategy": d["strategy_key"],
@@ -6528,8 +6537,7 @@ def render_history_section() -> None:
     show = [r for r in rows if r.get("action") in ("enter", "exit")][:200]
     if show:
         st.dataframe(pd.DataFrame([{
-            "when": _dt.datetime.fromtimestamp(r["ts"])
-                    .strftime("%Y-%m-%d %H:%M"),
+            "when": _fmt_when(r["ts"]),
             "coin": (r.get("symbol") or "").replace("_USDT", ""),
             "action": r.get("action"), "strategy": r.get("strategy"),
             "side": r.get("side"), "entry": r.get("entry"),
@@ -6579,6 +6587,51 @@ def render_storage_panel() -> None:
                  height=min(360, 60 + 36 * len(rows)))
     st.caption("Everything lives in ~/.tradingagents on this Mac. Neon is "
                "not written to or read from — pure local, as instructed.")
+
+    # ---- size per coin ("i downloaded btc 15m, 30m, 1hr, 4hr … show me
+    # total size for bitcoin") — candles, measured rows and resume states,
+    # per timeframe, summable per coin.
+    by = msw.storage_by_coin()
+    if by:
+        mb = 1 / 1e6
+        per_coin: dict = {}
+        for r in by:
+            per_coin.setdefault(r["coin"], {"coin": r["coin"], "tfs": 0,
+                                            "candles": 0, "rows": 0,
+                                            "states": 0, "total": 0})
+            c = per_coin[r["coin"]]
+            c["tfs"] += 1
+            for k in ("candles", "rows", "states", "total"):
+                c[k] += r[k]
+        totals = sorted(per_coin.values(), key=lambda c: -c["total"])
+        st.markdown("**Size per coin** — every store that grows with a coin, "
+                    "summed across its timeframes", unsafe_allow_html=True)
+        st.dataframe(pd.DataFrame([{
+            "coin": c["coin"], "timeframes": c["tfs"],
+            "candles MB": round(c["candles"] * mb, 2),
+            "backtest rows MB": round(c["rows"] * mb, 2),
+            "resume states MB": round(c["states"] * mb, 2),
+            "TOTAL MB": round(c["total"] * mb, 2),
+        } for c in totals]), width="stretch", hide_index=True,
+            height=min(330, 60 + 35 * len(totals)))
+        pick = st.selectbox(
+            "Per-timeframe breakdown", ["—"] + [c["coin"] for c in totals],
+            key="stor_coin_pick",
+            help="One coin's cost, timeframe by timeframe.")
+        if pick and pick != "—":
+            sub = [r for r in by if r["coin"] == pick]
+            st.dataframe(pd.DataFrame([{
+                "timeframe": r["tf"],
+                "candles MB": round(r["candles"] * mb, 2),
+                "backtest rows MB": round(r["rows"] * mb, 2),
+                "resume states MB": round(r["states"] * mb, 2),
+                "TOTAL MB": round(r["total"] * mb, 2),
+            } for r in sub]), width="stretch", hide_index=True,
+                height=min(260, 60 + 35 * len(sub)))
+            st.caption(f"{pick} total across {len(sub)} timeframe(s): "
+                       f"**{sum(r['total'] for r in sub) * mb:.2f} MB**. "
+                       "Grid snapshots are per-run, not per-coin, and are "
+                       "counted in the table above.")
 
 def render_backtest2_tab() -> None:
     """Version 2: the DAILY sweep. One click runs every signal on the

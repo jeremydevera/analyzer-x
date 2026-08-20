@@ -3,7 +3,7 @@
  * the arm/disarm + coin/margin editor. Saving POSTs the full settings file
  * and the API records every change to the local deploy history. */
 import { useCallback, useEffect, useState } from "react";
-import { fmtMoney, tradeApi, StrategyDeployRow } from "@/lib/api";
+import { api, fmtMoney, JobStatus, tradeApi, StrategyDeployRow } from "@/lib/api";
 import Badge from "@/components/ui/badge/Badge";
 import Button from "@/components/ui/button/Button";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
@@ -23,6 +23,7 @@ export default function StrategiesGrid() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [note, setNote] = useState("");
+  const [bt, setBt] = useState<JobStatus | null>(null);
 
   const load = useCallback(() =>
     Promise.all([tradeApi.strategies(catalog), tradeApi.settingsGet()])
@@ -33,6 +34,21 @@ export default function StrategiesGrid() {
       })
       .catch((e) => setErr(String(e))), [catalog]);
   useEffect(() => { load(); }, [load]);
+
+  // the "1 YEAR" grid runs detached, so it survives leaving this page
+  useEffect(() => {
+    const poll = () => api.jobStatus("stratbt").then(setBt).catch(() => {});
+    poll();
+    const t = setInterval(poll, 4000);
+    return () => clearInterval(t);
+  }, []);
+
+  const runBacktest = async (key: string) => {
+    try {
+      await tradeApi.backtestStrategy(key, key);
+      setBt({ running: true, key, now: "starting" });
+    } catch (e) { setErr(String(e)); }
+  };
 
   const mut = (fn: (s: Record<string, unknown>) => void) => {
     if (!settings) return;
@@ -121,6 +137,20 @@ export default function StrategiesGrid() {
           Paused for the rest of today (their own loss cap was hit): {rows.filter((r) => r.tripped).map((r) => r.key).join(", ")}. The others keep trading.
         </p>
       )}
+      {bt && (bt.running || bt.report || bt.error) && (
+        <p className="mx-5 mt-2 rounded-lg bg-gray-50 px-3 py-2 text-theme-sm dark:bg-white/[0.03]">
+          {bt.running
+            ? <span className="text-gray-600 dark:text-gray-300">
+                Backtesting <b>{bt.key}</b> over 365 days — {bt.done ?? 0}% · {bt.now ?? ""} · runs detached, you can leave this page
+              </span>
+            : bt.error
+              ? <span className="text-error-500">{bt.key} backtest failed: {bt.error}</span>
+              : <a href={bt.report_url ?? `/api/reports/file/${bt.report}`} target="_blank" rel="noopener"
+                   className="font-medium text-brand-500 hover:underline">
+                  OPEN THE {bt.key} GRID ↗ {bt.cached ? "(cached)" : `· ${bt.rows ?? ""} rows`}
+                </a>}
+        </p>
+      )}
       {conflicts.length > 0 && (
         <p className="mx-5 mt-2 rounded-lg bg-warning-50 px-3 py-2 text-theme-sm text-warning-700 dark:bg-warning-500/10">
           Timeframe conflict: {conflicts.map((c) => `${c.symbol} on ${(c.keys || []).join(" + ")}`).join(" · ")} — two bots would fight over one MEXC position.
@@ -130,7 +160,7 @@ export default function StrategiesGrid() {
         <Table>
           <TableHeader>
             <TableRow>
-              {["strategy", "tf", "TP/SL %", "books", "coins", "margin $", "loss cap $", "today $", "PROFIT $", "trades", "W", "L", "open now"].map((h) => (
+              {["strategy", "tf", "TP/SL %", "books", "coins", "margin $", "loss cap $", "today $", "PROFIT $", "trades", "W", "L", "open now", "backtest"].map((h) => (
                 <TableCell key={h} isHeader className="px-3 py-2 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400">{h}</TableCell>
               ))}
             </TableRow>
@@ -197,6 +227,14 @@ export default function StrategiesGrid() {
                     {!r.open_on.length && !r.open_on_paper.length && <span>—</span>}
                     {r.books.includes("real") && <Badge size="sm" color="error">ARMED</Badge>}
                   </div>
+                </TableCell>
+                <TableCell className="px-3 py-2">
+                  <button onClick={() => runBacktest(r.key)}
+                    disabled={!r.coins.length || (bt?.running && bt.key === r.key)}
+                    title={`Replay ${r.key} over the last 365 days of MEXC history at this row's base margin.`}
+                    className="rounded-lg border border-gray-200 px-2 py-1 text-theme-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300">
+                    {bt?.running && bt.key === r.key ? `${bt.done ?? 0}%` : "1 YEAR"}
+                  </button>
                 </TableCell>
               </TableRow>
             ))}

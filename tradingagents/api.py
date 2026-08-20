@@ -26,7 +26,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-JOB_KINDS = ("download", "backtest", "btupdate")
+JOB_KINDS = ("download", "backtest", "btupdate", "stratbt")
 
 
 # ------------------------------------------------------------------ health
@@ -404,6 +404,31 @@ def trade_strategies(catalog: bool = False) -> dict:
         "account_cap_hit": at.loss_limit_hit(settings),
         "tripped": sorted(tripped),
     }
+
+
+@app.post("/api/trade/strategies/backtest")
+def strategy_backtest(body: dict) -> dict:
+    """The '1 YEAR' button: replay one deployed strategy over a year.
+
+    Detached, because the grid takes minutes — the caller polls
+    /api/jobs/stratbt and opens the page when it lands.
+    """
+    import tradingagents.auto_trader as at
+    from tradingagents import db_jobs
+
+    key = str(body.get("key") or "")
+    if key not in at.STRATEGY_SPECS:
+        raise HTTPException(404, f"unknown strategy: {key}")
+    settings = at.load_settings()
+    coins = (body.get("coins")
+             or (settings.get("strategy_coins") or {}).get(key) or [])
+    if not coins:
+        raise HTTPException(400, "this strategy has no contract selected")
+    margin = float(body.get("base_margin")
+                   or (settings.get("strategy_margins") or {}).get(key) or 5.0)
+    return {"pid": db_jobs.start("stratbt", {
+        "key": key, "label": body.get("label") or key, "coins": coins,
+        "base_margin": margin, "days": int(body.get("days") or 365)})}
 
 
 @app.get("/api/trade/settings")

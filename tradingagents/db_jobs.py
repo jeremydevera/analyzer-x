@@ -30,6 +30,13 @@ FILES = {
                  "spec": STATE_DIR / "db_backtest.spec.json",
                  "pid": STATE_DIR / "db_backtest.pid",
                  "stop": STATE_DIR / "db_backtest.STOP"},
+    # one deployed strategy, replayed over a year — the Auto Trade "1 YEAR"
+    # button. Detached because the grid takes minutes and a request must not
+    # hold it open.
+    "stratbt": {"progress": STATE_DIR / "db_stratbt.json",
+                "spec": STATE_DIR / "db_stratbt.spec.json",
+                "pid": STATE_DIR / "db_stratbt.pid",
+                "stop": STATE_DIR / "db_stratbt.STOP"},
     "btupdate": {"progress": STATE_DIR / "db_btupdate.json",
                  "spec": STATE_DIR / "db_btupdate.spec.json",
                  "pid": STATE_DIR / "db_btupdate.pid",
@@ -310,10 +317,43 @@ def _run_btupdate(spec: dict) -> None:
                 + ("; ".join(notes[:3]))})
 
 
+def _run_stratbt(spec: dict) -> None:
+    """Replay ONE deployed strategy over a year and write its grid page."""
+    from tradingagents import strategy_report as sr
+    f = FILES["stratbt"]
+    key = spec["key"]
+
+    def prog(msg: str, frac: float) -> None:
+        _write(f["progress"], {"running": True, "key": key, "now": msg,
+                               "done": int(max(0.0, min(1.0, frac)) * 100),
+                               "total": 100})
+
+    try:
+        got = sr.build(key, label=spec.get("label") or key,
+                       coins=spec["coins"],
+                       base_margin=float(spec.get("base_margin") or 5.0),
+                       days=int(spec.get("days") or 365), progress=prog)
+        _write(f["progress"], {"running": False, "key": key, "done": 100,
+                               "total": 100, "report": got["name"],
+                               "report_url": got["url"], "rows": got["rows"],
+                               "cached": got["cached"],
+                               "finished": int(time.time()),
+                               "note": "cached page reused" if got["cached"]
+                                       else f"{got['rows']} rows tested"})
+    except Exception as exc:                                   # noqa: BLE001
+        _write(f["progress"], {"running": False, "key": key,
+                               "error": f"{type(exc).__name__}: {exc}",
+                               "note": f"failed: {exc}",
+                               "finished": int(time.time())})
+        raise
+
+
 def main(argv: list[str]) -> int:
     kind = argv[0]
     spec = _read(FILES[kind]["spec"])
-    if kind == "download":
+    if kind == "stratbt":
+        _run_stratbt(spec)
+    elif kind == "download":
         _run_download(spec)
     elif kind == "backtest":
         _run_backtest(spec)

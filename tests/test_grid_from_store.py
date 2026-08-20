@@ -130,3 +130,19 @@ def test_trades_for_rebuilds_the_stored_rows_trades(monkeypatch, tmp_path):
     total = round(sum(t["pnl $"] for t in got["log"]), 2)
     assert abs(total - got["profit"]) < 0.02, "the log must sum to the total"
     assert {"WIN", "LOSE"} >= {t["WIN/LOSE"] for t in got["log"]}
+
+
+def test_every_store_writer_uses_the_same_threshold_count():
+    """The store's version stamp includes the threshold count, so two paths
+    with different counts RESET each other's store on every alternation."""
+    import inspect
+
+    from tradingagents import backtest_report as br2
+
+    sig = inspect.signature(br2.grid_from_store)
+    assert sig.parameters["thresholds"].default == 3
+    src = open("tradingagents/db_jobs.py").read()
+    import re
+
+    counts = set(re.findall(r"thresholds=(\d+)", src))
+    assert counts <= {"3"}, f"db_jobs uses thresholds={counts}"

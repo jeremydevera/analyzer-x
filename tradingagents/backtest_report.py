@@ -734,7 +734,7 @@ def write_report(path: str, payload: dict, *, title: str, headline: str = "",
 
 def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
                     base_margin: float = 5.0, days: int = 365,
-                    thresholds: int = 1,
+                    thresholds: int = 3,
                     deployed: Sequence[dict] | None = None,
                     progress: Callable[[str, float], None] | None = None,
                     embed_limit: int = 4) -> dict:
@@ -742,7 +742,12 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
 
     The operator's rule: "when doing analysis its not doing from scratch."
     Each (coin, timeframe) is served by ``market_sweep.run_pair`` — rows on
-    disk, per-combination resume state, only new bars computed. Deployed
+    disk, per-combination resume state, only new bars computed.
+
+    ``thresholds`` defaults to 3 and MUST match every other caller: the store
+    stamps its version as ``signals<N>-th<K>``, so two paths using different
+    K reset each other's store on every alternation — BACKTEST at th1 and
+    UPDATE at th3 would silently recompute the world each time. Deployed
     combinations missing from the store are computed once (rule 21) and folded
     in. The payload carries a ``reuse`` block so every page can SAY what was
     reused versus fresh — a cached number the reader cannot trace is a wrong

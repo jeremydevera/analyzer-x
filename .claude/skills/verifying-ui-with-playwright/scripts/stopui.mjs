@@ -1,0 +1,10 @@
+import { chromium } from "playwright";
+const b = await chromium.launch(); const p = await b.newPage({viewport:{width:1680,height:1400}});
+await p.goto("http://localhost:8503", {waitUntil:"networkidle", timeout: 60000}); await p.waitForTimeout(10000);
+await p.getByText("Backtest 2", {exact: true}).first().click(); await p.waitForTimeout(45000);
+const body = await p.innerText("body");
+console.log("last-download note:", /stopped by you[^.]*/i.exec(body)?.[0] ?? "not shown");
+console.log("last-backtest line:", /Last backtest[^\n]*/i.exec(body)?.[0] ?? "not shown");
+console.log("report link:", body.includes("OPEN THE REPORT") ? "shown" : "MISSING");
+await p.screenshot({path:"stop-ui.png", fullPage:true});
+await b.close();

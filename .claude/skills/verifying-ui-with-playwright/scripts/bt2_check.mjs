@@ -1,0 +1,16 @@
+import { chromium } from 'playwright';
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1680, height: 1050 } });
+await page.goto('http://localhost:8503', { waitUntil: 'networkidle' });
+await page.waitForTimeout(9000);
+const nav = page.locator('text=Backtest 2').first();
+console.log('nav entry exists:', await nav.count() > 0);
+await nav.click();
+await page.waitForTimeout(6000);
+const body = await page.locator('body').innerText();
+console.log('title shown:', /Backtest 2/.test(body));
+console.log('coins box:', /Coins/.test(body), '| tf box:', /Timeframes/.test(body));
+console.log('cost line:', (body.match(/[\d,]+ combinations[^\n]*/i)||['MISSING'])[0].slice(0,150));
+console.log('run button:', await page.locator('button', { hasText: 'RUN THE DAILY GRID' }).count() > 0);
+await page.screenshot({ path: '/tmp/bt2.png', fullPage: false });
+await browser.close();

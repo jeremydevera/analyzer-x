@@ -1,0 +1,11 @@
+import { chromium } from "playwright";
+const b = await chromium.launch(); const p = await b.newPage({viewport:{width:1680,height:1200}});
+await p.goto("http://localhost:8503", {waitUntil:"networkidle"}); await p.waitForTimeout(9000);
+await p.locator('label', {hasText: "Backtest 2"}).first().click(); await p.waitForTimeout(12000);
+const inp = p.locator('.st-key-bt2_coins [data-testid="stMultiSelect"] input');
+await inp.click(); await inp.fill("BTC"); await p.waitForTimeout(1500);
+const opts = await p.locator('li[role="option"]').allInnerTexts();
+console.log("search 'BTC' →", opts.slice(0,6).join(" | "));
+await inp.fill("1000000BABYDOGE"); await p.waitForTimeout(1500);
+console.log("search babydoge →", (await p.locator('li[role="option"]').allInnerTexts()).slice(0,3).join(" | "));
+await b.close();

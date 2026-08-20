@@ -166,6 +166,43 @@ def result_rows(payload: dict, days: int, signals_count: int) -> list[dict]:
     } for r in payload["rows"]]
 
 
+def _armed_symbols() -> list:
+    """Coins with a live strategy — the only candles Neon keeps."""
+    try:
+        from tradingagents import auto_trader as at
+
+        cfg = at.load_settings()
+        books = cfg.get("strategy_books") or {}
+        coins = cfg.get("strategy_coins") or {}
+        return sorted({c for k, cs in coins.items()
+                       for c in (cs or []) if books.get(k)})
+    except Exception:
+        return []
+
+
+def _signals_count() -> int:
+    from tradingagents import backtest_report as br
+
+    return len(br.SIGNALS)
+
+
+def persist_results(payload: dict, *, days: int, label: str,
+                    mdb=None, pq=None) -> int:
+    """Grid file FIRST, Neon rows second, prune third — in that order, so the
+    database diet can never destroy rows that are not yet on disk. A failed
+    snapshot raises: no snapshot, no save, no prune."""
+    if mdb is None:
+        from tradingagents.dataflows import market_db as mdb
+    if pq is None:
+        from tradingagents import parquet_store as pq
+    grid_path = pq.save_grid(payload["rows"], label=label)
+    mdb.ensure_schema()
+    saved = mdb.save_results(result_rows(payload, days, _signals_count()))
+    mdb.retention_tick(keep_per_pair=500, armed_symbols=_armed_symbols(),
+                       grid_path=grid_path)
+    return saved
+
+
 def _run_backtest(spec: dict) -> None:
     from tradingagents import backtest_report as br
     from tradingagents.dataflows import market_db as mdb
@@ -200,9 +237,8 @@ def _run_backtest(spec: dict) -> None:
                     note=spec.get("note") or "")
     saved, save_err = 0, ""
     try:
-        mdb.ensure_schema()
-        saved = mdb.save_results(
-            result_rows(payload, int(spec["days"]), len(br.SIGNALS)))
+        saved = persist_results(payload, days=int(spec["days"]),
+                                label=spec.get("label") or "archive")
     except Exception as exc:                 # never claim a save that failed
         save_err = str(exc)[:160]
     _write(f["progress"], {"running": False, "rows": len(payload["rows"]),

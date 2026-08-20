@@ -644,3 +644,57 @@ def candle_coverage() -> list:
             continue
     out.sort(key=lambda c: -c["bars"])
     return out
+
+
+def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
+               tp: float, sizing: str, base_margin: float = 5.0,
+               days: int = 365) -> dict:
+    """Every trade one stored strategy made, rebuilt from the local candles.
+
+    The store keeps ONE row per strategy (trades, wins, profit…); the trades
+    themselves are derivable because the replay is deterministic. This is the
+    derivation: same candles in, same trades out, and the caller can check the
+    log's sum against the stored row's profit — the check that once caught a
+    rounding bug worth $1.53.
+    """
+    from tradingagents.dataflows import mexc_futures as fx
+    from tradingagents import backtest_report as br
+    import tradingagents.auto_trader as at
+
+    symbol = f"{coin}_USDT"
+    iv, bs, cap = br.TFS[tf]
+    df, _added, _src = refresh_candles(symbol, tf, days=days)
+    if df is None or len(df) < 60:
+        return {"log": [], "why": "no candles stored for this pair"}
+    fee = at.taker_fee(symbol, fx=fx)
+    try:
+        liq = fx.liquidation_move_pct(symbol, at.LEVERAGE)
+    except Exception:
+        liq = None
+    try:
+        fund = fx.funding_history(symbol)
+    except Exception:
+        fund = []
+    hi = [float(x) for x in df["High"]]
+    lo = [float(x) for x in df["Low"]]
+    cl = [float(x) for x in df["Close"]]
+    op = [float(x) for x in df["Open"]]
+    vol = [float(x) for x in df["Volume"]] if "Volume" in df.columns else None
+    ts = list(df["Date"].to_numpy().astype("datetime64[ms]").astype("int64"))
+    key = f"{signal}_tf_{tf}"
+    at.STRATEGY_SPECS[key] = {"interval": iv, "bar_seconds": bs, "tp": .02,
+                              "sl": .01, "threshold": (float(th) / 100) or .003}
+    try:
+        dk = "rsi14_1h" if signal == "rsi14" else key
+        dirs = at._dirs_for_backtest(dk, hi, lo, cl, opens=op, volume=vol,
+                                     ts=ts)
+        r = at.backtest_strategy(key, df, base_margin, fee=fee, sizing=sizing,
+                                 dirs=dirs, tp=float(tp) / 100,
+                                 sl=float(sl) / 100, liq_move_pct=liq,
+                                 funding=fund, keep_log=True)
+    finally:
+        at.STRATEGY_SPECS.pop(key, None)
+    return {"log": r["log"], "trades": r["trades"], "wins": r["wins"],
+            "losses": r["losses"], "profit": round(r["profit"], 2),
+            "max_dd": r["max_dd"],
+            "winrate": round(100 * r["wins"] / max(r["trades"], 1), 2)}

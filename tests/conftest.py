@@ -1,5 +1,12 @@
 """Shared pytest fixtures that prevent CI hangs when API keys are absent."""
 
+# Same-second file edits can beat the .pyc mtime check, and stale bytecode
+# then fails tests whose code is correct (it cost three phantom failures on
+# 2026-08-20 alone). Tests never write bytecode.
+import sys as _sys
+
+_sys.dont_write_bytecode = True
+
 import os
 import socket
 from unittest.mock import MagicMock, patch

@@ -1414,31 +1414,127 @@ NAV_GROUPS = (
 )
 
 
-def render_nav() -> str:
-    """The screen rail. Left sidebar, grouped, one screen at a time.
+# One screen, its icon, and where its live badge comes from. The rail is DATA
+# now — a destination that has something happening says so, instead of being a
+# word you have to click to find out.
+NAV_ITEMS = (
+    ("Trading",  (("Auto Trade",  "bolt",   "positions"),)),
+    ("Research", (("Back Test",   "beaker", "jobs"),
+                  ("Backtest 2",  "grid",   None))),
+    ("Markets",  (("New Crypto",  "spark",  "newcoins"),
+                  ("Stocks",      "chart",  None))),
+    ("Setup",    (("LLM Models",  "cpu",    None),)),
+)
 
-    Rebuilt 2026-08-20 on the operator's instruction ("total remake ... i want
-    clean"). It was six pills in a row across the top, which put navigation,
-    the page title and the screen's own controls in one horizontal band and left
-    nothing for the content. A vertical rail costs 210px once and gives the
-    screen its full width back — and it can group by what a screen DOES.
+# The nav is anchors, not st.button. st.button gives Streamlit the markup, and
+# Streamlit renders each one as its own full-width block with its own margin —
+# which is a stack of text buttons with fixed gaps, and no amount of CSS makes
+# it a rail with icons, counts and a collapse. Anchors + query params give us
+# the markup; the cost is one rerun per click, and a rerun is ~600ms now.
+NAV_PARAM = "p"
+
+
+def _nav_slug(name: str) -> str:
+    return name.lower().replace(" ", "-")
+
+
+def _nav_from_query() -> str | None:
+    """The screen named in ?p=, if it is one we actually have."""
+    try:
+        raw = st.query_params.get(NAV_PARAM)
+    except Exception:
+        return None
+    if not raw:
+        return None
+    for _grp, items in NAV_ITEMS:
+        for name, _ic, _b in items:
+            if _nav_slug(name) == str(raw):
+                return name
+    return None
+
+
+def _nav_badges() -> dict:
+    """Live counts for the rail. Every read here is already cached elsewhere on
+    the page, so the rail costs no extra network call."""
+    out: dict = {}
+    try:
+        from tradingagents import auto_trader as at
+
+        live = paper = 0
+        for _sym, _sst in at.load_state().items():
+            _pos = _sst.get("position") if isinstance(_sst, dict) else None
+            if not _pos:
+                continue
+            if bool(_pos.get("dry", False)):
+                paper += 1
+            else:
+                live += 1
+        if live or paper:
+            out["positions"] = {"n": live or paper,
+                                "tone": "live" if live else "paper"}
+    except Exception:
+        pass
+    try:
+        from tradingagents import db_jobs
+
+        running = [k for k in ("download", "backtest")
+                   if (db_jobs.status(k) or {}).get("state") == "running"]
+        if running:
+            out["jobs"] = {"n": len(running), "tone": "busy"}
+    except Exception:
+        pass
+    return out
+
+
+def render_nav() -> str:
+    """The screen rail, as our own markup.
+
+    Rebuilt from scratch 2026-08-20. It was a for-loop of st.button() calls, so
+    the operator's screenshot of it was unchanged through six passes of
+    restyling — the structure belonged to Streamlit, not to us. This renders ONE
+    html block: a 232px rail, 30px rows, a 16px icon per screen, a live count
+    where a screen has one, and a 2px accent bar marking the active row rather
+    than a filled pill.
     """
+    picked = _nav_from_query()
+    if picked:
+        st.session_state["nav_page"] = picked
+    page = st.session_state.get("nav_page") or "Auto Trade"
+
+    badges = _nav_badges()
+    armed = False
+    try:
+        from tradingagents import auto_trader as at
+        armed = bool(at.runner_pid()) and not at.halted()
+    except Exception:
+        pass
+
+    rows = []
+    for title, items in NAV_ITEMS:
+        rows.append(f"<div class='nvx-grp'>{html.escape(title)}</div>")
+        for name, icon, badge_key in items:
+            on = " on" if name == page else ""
+            b = badges.get(badge_key) if badge_key else None
+            chip = (f"<span class='nvx-b {b['tone']}'>{b['n']}</span>"
+                    if b else "")
+            rows.append(
+                f"<a class='nvx-i{on}' href='?{NAV_PARAM}={_nav_slug(name)}' "
+                f"target='_self'>{_mv_icon(icon, size=16)}"
+                f"<span class='nvx-l'>{html.escape(name)}</span>{chip}</a>")
+
     with st.sidebar:
         st.markdown(
-            '<div class="nv-brand"><div class="nv-mark">◈</div>'
-            '<div><div class="nv-name">TradingAgents</div>'
-            '<div class="nv-sub">Analyst desk</div></div></div>',
-            unsafe_allow_html=True)
-        page = st.session_state.get("nav_page") or "Auto Trade"
-        for _title, _screens in NAV_GROUPS:
-            st.markdown(f"<div class='nv-grp'>{_title}</div>",
-                        unsafe_allow_html=True)
-            for _sc in _screens:
-                if st.button(_sc, key=f"nv_{_sc}", use_container_width=True,
-                             type=("primary" if _sc == page else "secondary")):
-                    st.session_state["nav_page"] = _sc
-                    st.rerun()
-        st.markdown("<div class='nv-foot'></div>", unsafe_allow_html=True)
+            "<nav class='nvx' aria-label='Screens'>"
+            "<a class='nvx-brand' href='?" + NAV_PARAM + "=auto-trade' "
+            "target='_self'>"
+            "<span class='nvx-mark'>" + _mv_icon("bolt", size=17) + "</span>"
+            "<span><span class='nvx-name'>TradingAgents</span>"
+            "<span class='nvx-sub'>"
+            + ("<i class='dot on'></i>Trading" if armed
+               else "<i class='dot off'></i>Halted")
+            + "</span></span></a>"
+            + "".join(rows)
+            + "</nav>", unsafe_allow_html=True)
         if "ui_night" not in st.session_state:
             st.session_state["ui_night"] = bool(_ui_prefs_load().get("night"))
         night = st.toggle("Night mode", key="ui_night")
@@ -1449,7 +1545,7 @@ def render_nav() -> str:
                             encoding="utf-8")
     if night:
         st.markdown(DARK_CSS, unsafe_allow_html=True)
-    return st.session_state.get("nav_page") or "Auto Trade"
+    return page
 
 
 import threading as _threading
@@ -2380,10 +2476,14 @@ button{ min-width:0 !important; }
    2.69:1 on this ground — "OPEN THE REPORT" on Back Test was the one that
    showed it. The accent measures 8.10:1, and the underline carries the link
    identity so it is never colour alone. */
-[data-testid="stMarkdownContainer"] a:not(.bt-open):not(.ta-link){
+/* The rail's rows are anchors inside a markdown container, and each :not()
+   here adds specificity — so this rule beat the rail's own colour rule and
+   painted every destination link-indigo. Excluding them is the fix; escalating
+   specificity on the other side would just move the fight. */
+[data-testid="stMarkdownContainer"] a:not(.bt-open):not(.ta-link):not(.nvx-i):not(.nvx-brand){
   color:var(--accent-dim) !important; text-decoration:underline;
   text-underline-offset:2px; }
-[data-testid="stMarkdownContainer"] a:not(.bt-open):not(.ta-link):hover{
+[data-testid="stMarkdownContainer"] a:not(.bt-open):not(.ta-link):not(.nvx-i):not(.nvx-brand):hover{
   color:var(--accent) !important; }
 
 /* st.popover's trigger keeps Streamlit's own light chrome: measured
@@ -3049,6 +3149,14 @@ _MV_ICONS = {
     "layers": "M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5",
     "flask": "M9 3h6M10 3v6L5 19a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-10V3",
     "pulse": "M22 12h-4l-3 9L9 3l-3 9H2",
+    # the rail's own set
+    "bolt": "M13 2 3 14h7l-1 8 10-12h-7l1-8z",
+    "beaker": "M4.5 3h15M6 3v7a6 6 0 0 0 12 0V3M8 21h8",
+    "grid": "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z",
+    "spark": "M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1"
+             "M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1",
+    "chart": "M3 3v18h18M7 15v-4M12 15V7M17 15v-7",
+    "cpu": "M6 6h12v12H6zM9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2",
 }
 
 
@@ -3545,6 +3653,101 @@ h2.tm-h .v{ font-size:var(--f-uism) !important; letter-spacing:0 !important;
 html, body, .stApp, [data-testid="stAppViewContainer"],
 [data-testid="stMain"], [data-testid="stBottom"]{
   background:var(--bg) !important; }
+
+/* ═══ THE RAIL ═════════════════════════════════════════════════════════════
+   Our markup, so these are real numbers rather than whatever Streamlit's
+   button block happened to leave behind: 232px rail, 30px rows, 2px gap, 16px
+   icon, a 2px accent bar on the active row. The old nav's rows were ~38px tall
+   with ~24px of block margin between them, which is why six destinations
+   filled the whole viewport height. */
+[data-testid="stSidebar"]{ width:232px !important; min-width:232px !important;
+  background:var(--sf-page) !important;
+  border-right:1px solid var(--hair) !important; }
+[data-testid="stSidebar"] > div{ padding-top:var(--s3) !important; }
+[data-testid="stSidebarContent"]{ padding:0 var(--s3) !important; }
+
+/* The rail's rows are anchors, so the markdown-link rule ("accent + underline")
+   was styling them as body links — six underlined indigo words, which is what
+   made a rebuilt rail still look like a list of links. A destination is not a
+   citation: it gets no underline and takes its colour from its state. */
+[data-testid="stSidebar"] .nvx a,
+[data-testid="stMarkdownContainer"] .nvx a{
+  text-decoration:none !important; }
+[data-testid="stSidebar"] .nvx .nvx-i,
+[data-testid="stMarkdownContainer"] .nvx .nvx-i{ color:var(--fg-2) !important; }
+[data-testid="stSidebar"] .nvx .nvx-i:hover,
+[data-testid="stMarkdownContainer"] .nvx .nvx-i:hover{ color:var(--fg) !important; }
+[data-testid="stSidebar"] .nvx .nvx-i.on,
+[data-testid="stMarkdownContainer"] .nvx .nvx-i.on{ color:var(--fg) !important; }
+[data-testid="stSidebar"] .nvx .nvx-brand,
+[data-testid="stMarkdownContainer"] .nvx .nvx-brand{ color:var(--fg) !important; }
+
+.nvx{ display:flex; flex-direction:column; gap:2px; }
+.nvx-brand{ display:flex; align-items:center; gap:10px; padding:var(--s2);
+  margin-bottom:var(--s4); border-radius:var(--r-ctl); text-decoration:none;
+  transition:background 140ms ease; }
+.nvx-brand:hover{ background:var(--sf-raised); }
+.nvx-mark{ width:28px; height:28px; flex:0 0 28px; border-radius:7px;
+  background:var(--brand); color:var(--brand-ink);
+  display:grid; place-items:center; }
+.nvx-name{ display:block; font-size:var(--f-ui); font-weight:600;
+  color:var(--fg); letter-spacing:-.01em; line-height:1.2; }
+.nvx-sub{ display:flex; align-items:center; gap:5px; font-size:var(--f-uixs);
+  color:var(--fg-3); line-height:1.4; }
+.nvx-sub .dot{ width:5px; height:5px; border-radius:50%; flex:0 0 5px; }
+.nvx-sub .dot.on{ background:var(--pos); box-shadow:0 0 0 3px var(--pos-wash); }
+.nvx-sub .dot.off{ background:var(--warn); }
+
+/* A group label is furniture: it must not compete with a destination. */
+.nvx-grp{ font-size:9.5px; font-weight:600; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--fg-3);
+  padding:var(--s4) var(--s2) var(--s1); }
+.nvx-grp:first-of-type{ padding-top:0; }
+
+.nvx-i{ position:relative; display:flex; align-items:center; gap:9px;
+  height:30px; padding:0 var(--s2); border-radius:var(--r-ctl);
+  text-decoration:none; color:var(--fg-2);
+  transition:background 140ms ease, color 140ms ease; }
+.nvx-i svg{ flex:0 0 16px; opacity:.75; }
+.nvx-l{ font-size:var(--f-uism); font-weight:450; letter-spacing:-.005em;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.nvx-i:hover{ background:var(--sf-raised); color:var(--fg); }
+.nvx-i:hover svg{ opacity:1; }
+/* Active is a BAR plus a wash, not a filled pill. A pill reads as a button you
+   press; a bar reads as where you are. */
+.nvx-i.on{ background:var(--brand-wash); color:var(--fg); }
+.nvx-i.on svg{ opacity:1; color:var(--brand-text); }
+.nvx-i.on::before{ content:""; position:absolute; left:-var(--s3); left:-12px;
+  top:7px; bottom:7px; width:2px; border-radius:2px; background:var(--brand-text); }
+.nvx-i:focus-visible{ outline:2px solid var(--focus); outline-offset:1px; }
+
+/* The count rides the row. It is the reason the rail exists as data. */
+.nvx-b{ margin-left:auto; min-width:18px; height:17px; padding:0 5px;
+  border-radius:var(--r-pill); font-family:var(--font-mono);
+  font-size:9.5px; font-weight:600; line-height:17px; text-align:center;
+  font-variant-numeric:tabular-nums; }
+.nvx-b.live{ background:var(--pos-wash); color:var(--pos); }
+.nvx-b.paper{ background:var(--sf-sunken); color:var(--fg-2); }
+.nvx-b.busy{ background:var(--brand-wash); color:var(--brand-text); }
+
+/* The night switch is the only widget left in the rail; it sits under a rule
+   as a settings row, not as another destination. */
+/* The switch is the only widget left in the rail. It gets a rule above it so
+   it reads as a setting rather than a seventh destination. Targets the widget's
+   CONTAINER: the toggle itself is not the element Streamlit gives the margin
+   to, so a border on it never showed. */
+[data-testid="stSidebar"] [data-testid="stElementContainer"]:has([data-baseweb="checkbox"]),
+[data-testid="stSidebar"] [data-testid="stElementContainer"]:has(.stCheckbox){
+  margin-top:var(--s5) !important; padding-top:var(--s4) !important;
+  border-top:1px solid var(--hair) !important; }
+
+@media (max-width:1100px){
+  [data-testid="stSidebar"]{ width:60px !important; min-width:60px !important; }
+  .nvx-l, .nvx-grp, .nvx-name, .nvx-sub{ display:none !important; }
+  .nvx-i{ justify-content:center; padding:0; }
+  .nvx-b{ position:absolute; top:2px; right:2px; margin:0; min-width:14px;
+    height:14px; line-height:14px; font-size:8.5px; }
+}
 
 /* Streamlit paints some component FILLS from config.toml's own theme, which is
    still the light one. Measured: the expander summary came out
@@ -4505,12 +4708,14 @@ def render_auto_trade_tab() -> None:
                 + _mv_positions(_real, "Open positions",
                                 f"{len(_real)} real &middot; {at.LEVERAGE}x isolated",
                                 True)
-                + _mv_positions(_paper, "Demo positions",
-                                f"{len(_paper)} simulated", False)
-                + _mv_strategies(AUTO_STRATEGIES, saved, _stats,
-                                 at.STRATEGY_SPECS)
                 + "</div>", unsafe_allow_html=True)
-            # the only interaction on this screen
+
+            # CLOSE sits directly under the table it acts on. A widget cannot
+            # live inside our HTML, so the block is SPLIT here rather than
+            # appended after everything — it was rendering 801px below the Open
+            # positions panel, on the far side of the demo table and the whole
+            # strategy list, so closing a live position meant scrolling past
+            # two other tables to find the control for this one.
             _open_syms = [r["symbol"] for r in _real]
             if _open_syms:
                 a1, a2, _a3 = st.columns([2, 1, 5], vertical_alignment="bottom")
@@ -4520,6 +4725,17 @@ def render_auto_trade_tab() -> None:
                              use_container_width=True):
                     st.session_state["close_pending"] = _pick
                     st.rerun(scope="fragment")
+
+            # The read-only "Strategies" list is GONE. Every one of its six
+            # columns is already in the Configure strategies grid below —
+            # RULE=STRATEGY, BAR is in the strategy label, CONTRACT=CONTRACTS,
+            # STOP/TARGET=SL/TP, LIFETIME=PROFIT $, BOOKS=LIVE+DEMO — so the
+            # screen showed every strategy twice and the operator asked why.
+            st.markdown(
+                "<div class='mv'>"
+                + _mv_positions(_paper, "Demo positions",
+                                f"{len(_paper)} simulated", False)
+                + "</div>", unsafe_allow_html=True)
 
         with st.container(key="tmsec_view"):
             _view()
@@ -6452,6 +6668,63 @@ def render_stored_strategies_section() -> None:
     st.caption("Sorted by profit. Every row is one strategy — the same signal "
                "at a different threshold or a different TP/SL is a different "
                "row, because it is a different strategy.")
+
+    # ---- the trades behind one row ("i want to see the trades per strategy
+    # so i can see what are losing or not"). Rebuilt from the local candles —
+    # deterministic, so it is the SAME 900 trades the stored row summed — and
+    # cross-checked against the stored totals before anything is shown.
+    ids = list(tbl["id"])
+    pick = st.selectbox("View the trades behind a strategy", ["—"] + ids,
+                        key="mdbs_trades_pick",
+                        help="Pick a row id from the table above.")
+    if pick and pick != "—":
+        row = next(r for r in sel if r["row_code"] == pick)
+        from tradingagents import market_sweep as _msw
+
+        with st.spinner("Rebuilding this strategy's trades from the local "
+                        "candle store…"):
+            got = _msw.trades_for(
+                row["symbol"].replace("_USDT", ""), row["timeframe"],
+                signal=row["signal"], th=row.get("threshold") or 0,
+                sl=row["sl"], tp=row["tp"], sizing=row["sizing"],
+                base_margin=5.0)
+        if not got.get("log"):
+            st.warning(got.get("why") or "No trades in the stored window.")
+        else:
+            drift = abs((got["profit"] or 0) - (row.get("profit") or 0))
+            if drift > max(1.0, abs(row.get("profit") or 0) * 0.02):
+                st.warning(
+                    f"These trades total {got['profit']:+,.2f} but the stored "
+                    f"row says {row.get('profit'):+,.2f} — the candle store "
+                    f"has grown since the row was measured. The trades below "
+                    f"are the CURRENT replay; press BACKTEST to refresh the "
+                    f"stored row.")
+            w, l = got["wins"], got["losses"]
+            st.markdown(
+                f"**{pick}** · {row['symbol'].replace('_USDT', '')} "
+                f"{row['timeframe']} {row['signal']} · SL {row['sl']:g}% / "
+                f"TP {row['tp']:g}% · {row['sizing']} — "
+                f"**{got['trades']} trades · "
+                f"<span style='color:#137a45'>{w} WIN</span> / "
+                f"<span style='color:#a8382c'>{l} LOSE</span> · "
+                f"{got['winrate']:.2f}% · TOTAL {got['profit']:+,.2f} USDT**",
+                unsafe_allow_html=True)
+            lg = pd.DataFrame(got["log"]).rename(columns={
+                "entry time": "OPENED", "exit time": "CLOSED",
+                "step": "rung", "why": "closed by"})
+            cols = [c for c in ("OPENED", "CLOSED", "side", "closed by",
+                                "entry", "exit", "rung", "margin $",
+                                "funding $", "WIN/LOSE", "pnl $",
+                                "running total $") if c in lg.columns]
+            st.dataframe(lg[cols], width="stretch", height=380,
+                         hide_index=True)
+            losers = lg[lg["pnl $"] <= 0]
+            if len(losers):
+                st.caption(
+                    f"Losing trades: {len(losers)} · worst "
+                    f"{losers['pnl $'].min():+,.2f} · they cost "
+                    f"{losers['pnl $'].sum():+,.2f} in total. "
+                    f"Wins earned {lg[lg['pnl $'] > 0]['pnl $'].sum():+,.2f}.")
 
 
 # Set once per PROCESS, not per session. The throttle used to live in

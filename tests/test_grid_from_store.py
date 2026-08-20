@@ -101,3 +101,32 @@ def test_version_bump_resets_a_stale_pair(tmp_path, monkeypatch):
     src = open("tradingagents/market_sweep.py").read()
     assert "__version__" in src
     assert "states, last_ms = {}, 0" in src
+
+
+def test_trades_for_rebuilds_the_stored_rows_trades(monkeypatch, tmp_path):
+    """The store keeps one row per strategy; the trades behind it must be
+    derivable and must SUM to that row — same candles, same trades."""
+    import math
+
+    import pandas as pd
+
+    n = 400
+    close = [100 + 8 * math.sin(i / 7.0) for i in range(n)]
+    df = pd.DataFrame({
+        "Date": pd.date_range("2026-01-01", periods=n, freq="h"),
+        "Open": close, "High": [c + 1.2 for c in close],
+        "Low": [c - 1.2 for c in close], "Close": close,
+        "Volume": [5.0] * n})
+    monkeypatch.setattr(msw, "refresh_candles",
+                        lambda sym, tf, days=365: (df, 0, "cache"))
+    import tradingagents.auto_trader as at
+    monkeypatch.setattr(at, "taker_fee", lambda s, fx=None: 0.0004)
+
+    got = msw.trades_for("FAKE", "1h", signal="mom6", th=0.3, sl=1.0,
+                         tp=2.0, sizing="martingale")
+    assert got["trades"] > 0
+    assert len(got["log"]) == got["trades"]
+    assert got["wins"] + got["losses"] == got["trades"]
+    total = round(sum(t["pnl $"] for t in got["log"]), 2)
+    assert abs(total - got["profit"]) < 0.02, "the log must sum to the total"
+    assert {"WIN", "LOSE"} >= {t["WIN/LOSE"] for t in got["log"]}

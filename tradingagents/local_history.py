@@ -70,3 +70,53 @@ def deployments(symbol: str | None = None, limit: int = 200) -> list[dict]:
         out.append(d)
     out.sort(key=lambda d: -(d.get("changed_at") or 0))
     return out[:limit]
+
+
+# ---------------------------------------------------------------- deploy diff
+_TF_NAME = {"Min1": "1m", "Min15": "15m", "Min30": "30m", "Min60": "1h",
+            "Hour4": "4h", "Day1": "1d"}
+
+
+def _sig_of(key: str) -> str:
+    """The signal name inside a strategy key ('mom15_4h_w' -> 'mom15')."""
+    parts = key.split("_")
+    return parts[1] if parts and parts[0] == "ict" and len(parts) > 1 else parts[0]
+
+
+def deploy_diff(old: dict, new: dict) -> list[dict]:
+    """What changed about what is LIVE, one entry per strategy/coin.
+
+    Config files overwrite; this is the record of what was running when.
+    Ported from the Streamlit layer so the API layer shares one diff.
+    """
+    from tradingagents import auto_trader as at
+
+    out = []
+    keys = set(list((old.get("strategy_books") or {}))
+               + list((new.get("strategy_books") or {})))
+    for k in sorted(keys):
+        ob = list((old.get("strategy_books") or {}).get(k) or [])
+        nb = list((new.get("strategy_books") or {}).get(k) or [])
+        oc = list((old.get("strategy_coins") or {}).get(k) or [])
+        nc = list((new.get("strategy_coins") or {}).get(k) or [])
+        om = (old.get("strategy_margins") or {}).get(k)
+        nm = (new.get("strategy_margins") or {}).get(k)
+        if ob == nb and oc == nc and om == nm:
+            continue
+        spec = at.STRATEGY_SPECS.get(k) or {}
+        action = ("disarmed" if nb == [] and ob else
+                  "deployed" if nb and not ob else "changed")
+        for coin in (nc or oc or ["—"]):
+            out.append({
+                "strategy_key": k, "symbol": coin, "action": action,
+                "timeframe": _TF_NAME.get(spec.get("interval")),
+                "signal": _sig_of(k),
+                "threshold": round(float(spec.get("threshold") or 0) * 100, 3),
+                "tp": round(float(spec.get("tp", 0)) * 100, 3),
+                "sl": round(float(spec.get("sl", 0)) * 100, 3),
+                "sizing": at.sizing_for(new),
+                "books": ",".join(nb), "base_margin": nm,
+                "prev_json": json.dumps({"books": ob, "coins": oc,
+                                         "base_margin": om}),
+            })
+    return out

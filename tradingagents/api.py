@@ -174,3 +174,173 @@ def reports() -> dict:
     files = sorted(d.glob("*.html"), key=lambda f: -f.stat().st_mtime)
     return {"rows": [{"name": f.name, "bytes": f.stat().st_size,
                       "mtime": int(f.stat().st_mtime)} for f in files[:50]]}
+
+
+# ------------------------------------------------------------------- trading
+@app.get("/api/trade/summary")
+def trade_summary() -> dict:
+    """The status ribbon: process, modes, wallet, today, all-time, open."""
+    import tradingagents.auto_trader as at
+    from tradingagents.dataflows import mexc_credentials as cred
+    from tradingagents.dataflows import mexc_futures as fx
+
+    cred.load_into_env()
+    pid = at.runner_pid()
+    books = at.active_modes()
+    equity = None
+    open_rows: list[dict] = []
+    # assets() returns a DICT keyed by currency, not a list — iterating it as
+    # a list yields the key strings and .get() dies, which read as "no wallet"
+    # instead of an error. usdt_equity() is the one reader both screens use.
+    try:
+        equity = round(fx.usdt_equity(), 2) if fx.has_credentials() else None
+    except Exception:
+        equity = None
+    try:
+        for p in fx.open_positions():
+            open_rows.append({
+                "symbol": p.get("symbol"),
+                "unrealized": round(float(p.get("unRealizedPnl") or 0.0), 2),
+                "margin": round(float(p.get("im") or 0.0), 2),
+                "side": "LONG" if int(p.get("positionType") or 1) == 1 else "SHORT",
+                "entry": float(p.get("holdAvgPrice") or 0.0),
+            })
+    except Exception:
+        pass
+    paper_rows: list[dict] = []
+    for skey, sst in (at.load_state() or {}).items():
+        pos = sst.get("position") if isinstance(sst, dict) else None
+        if pos and pos.get("dry"):
+            paper_rows.append({
+                # the book key is "SYMBOL#paper" (auto_trader.state_key), so
+                # the separator is '#'. Splitting on ':' left "PI#paper" on
+                # screen where the coin name belongs.
+                "symbol": skey.split("#", 1)[0],
+                "side": "LONG" if int(pos.get("side") or 1) == 1 else "SHORT",
+                "entry": pos.get("entry"),
+                "margin": pos.get("margin"),
+                "strategy": pos.get("strategy"),
+            })
+    life = at.coin_stats(dry=False)
+    life_total = round(sum(v["pnl"] for v in life.values()), 2)
+    open_real = round(sum(r["unrealized"] for r in open_rows), 2)
+    return {
+        "pid": pid,
+        "mode": ("LIVE+PAPER" if (False in books and True in books) else
+                 "LIVE" if False in books else
+                 "PAPER" if True in books else "OFF") if pid else "STOPPED",
+        "halted": at.halted(),
+        "equity": equity,
+        "today_real": at.pnl_today(dry=False),
+        "today_paper": at.pnl_today(dry=True),
+        "all_time_closed": life_total,
+        "open_unrealized": open_real,
+        "all_time": round(life_total + open_real, 2),
+        "open_positions": open_rows,
+        "paper_positions": paper_rows,
+    }
+
+
+@app.get("/api/trade/strategies")
+def trade_strategies() -> dict:
+    """Every strategy key: spec, deployment state, and lifetime numbers."""
+    import tradingagents.auto_trader as at
+
+    settings = at.load_settings()
+    books = settings.get("strategy_books") or {}
+    coins = settings.get("strategy_coins") or {}
+    margins = settings.get("strategy_margins") or {}
+    stats = at.strategy_stats(dry=False)
+    state = at.load_state()
+    rows = []
+    for key in at.STRATEGY_ORDER:
+        spec = at.STRATEGY_SPECS.get(key) or {}
+        st_row = stats.get(key) or {}
+        # book keys are "SYMBOL" (real) and "SYMBOL#paper" (simulated), so the
+        # coin name is what precedes '#' and the book is which side it came from
+        open_real_on, open_paper_on = [], []
+        for bkey, v in state.items():
+            pos = v.get("position") if isinstance(v, dict) else None
+            if not pos or pos.get("strategy") != key:
+                continue
+            coin = bkey.split("#", 1)[0]
+            (open_paper_on if pos.get("dry") else open_real_on).append(coin)
+        rows.append({
+            "key": key,
+            "interval": spec.get("interval"),
+            "tp": spec.get("tp"), "sl": spec.get("sl"),
+            "threshold": spec.get("threshold"),
+            "books": books.get(key) or [],
+            "coins": coins.get(key) or [],
+            "base_margin": margins.get(key),
+            "pnl": round(float(st_row.get("pnl") or 0.0), 2),
+            "trades": int(st_row.get("trades") or 0),
+            "wins": int(st_row.get("wins") or 0),
+            "losses": int(st_row.get("losses") or 0),
+            "open_on": open_real_on,
+            "open_on_paper": open_paper_on,
+        })
+    return {"rows": rows, "sizing": at.sizing_for(settings),
+            "conflicts": at.timeframe_conflicts(settings)}
+
+
+@app.get("/api/trade/settings")
+def trade_settings_get() -> dict:
+    import tradingagents.auto_trader as at
+
+    return {"settings": at.load_settings()}
+
+
+@app.post("/api/trade/settings")
+def trade_settings_post(payload: dict) -> dict:
+    """Save auto_trade.json. The deploy history records every change."""
+    import tradingagents.auto_trader as at
+
+    changes = at.save_settings(payload)
+    return {"ok": True, "changes_recorded": len(changes)}
+
+
+@app.post("/api/trade/runner/start")
+def runner_start() -> dict:
+    import tradingagents.auto_trader as at
+
+    return {"pid": at.start_runner()}
+
+
+@app.post("/api/trade/runner/stop")
+def runner_stop() -> dict:
+    import tradingagents.auto_trader as at
+
+    return {"stopped": at.stop_runner()}
+
+
+@app.get("/api/trade/pnl/daily")
+def trade_pnl_daily(dry: bool = False) -> dict:
+    """Realized PnL per calendar day — the calendar view's data."""
+    import tradingagents.auto_trader as at
+
+    return {"days": at.daily_pnl(dry=dry)}
+
+
+@app.get("/api/trade/pnl/by-coin")
+def trade_pnl_by_coin(dry: bool = False) -> dict:
+    import tradingagents.auto_trader as at
+
+    return {"coins": at.coin_stats(dry=dry)}
+
+
+@app.get("/api/trade/edge")
+def trade_edge(key: str, symbol: str) -> dict:
+    """The liquidity gate for one strategy/coin — block is block."""
+    import tradingagents.auto_trader as at
+    from tradingagents.dataflows import mexc_credentials as cred
+
+    cred.load_into_env()
+    return at.edge_check(key, symbol)
+
+
+@app.get("/api/trade/log")
+def trade_log(n: int = 200) -> dict:
+    import tradingagents.auto_trader as at
+
+    return {"lines": at.log_tail(max(1, min(n, 2000)))}

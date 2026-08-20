@@ -2563,8 +2563,15 @@ def run_cycle(*, fx=None) -> None:
             seen = st.get("last_ts") or {}
             if not isinstance(seen, dict):     # pre-multi-TF state files
                 seen = {"Hour4": seen}
+            def _bar_stamp(ts: float) -> str:
+                # The operator's one date format (2026-08-21): the scan log
+                # is shown in the UI, so "08-18 16:00" is banned here too.
+                t = time.gmtime(ts)
+                h = t.tm_hour % 12 or 12
+                return time.strftime(f"%b {t.tm_mday}, %Y {h}:%M%p", t)
+
             bars_txt = " ".join(
-                f"{tf}@{time.strftime('%m-%d %H:%M', time.gmtime(ts))}"
+                f"{tf}@{_bar_stamp(ts)}"
                 for tf, ts in sorted(seen.items())) or "none yet"
             logger.info(
                 "scan %s: step=%s position=%s last_bars=%s", symbol,
@@ -2729,3 +2736,23 @@ if __name__ == "__main__":
         run_cycle()
     else:
         run_forever()
+
+
+def save_settings(payload: dict) -> list[dict]:
+    """Write auto_trade.json atomically and record what changed, locally.
+
+    The deploy history write must never stop the save itself. Returns the
+    recorded changes so callers can show what happened.
+    """
+    prev = load_settings()
+    _write_json(SETTINGS_PATH, payload)
+    changes: list[dict] = []
+    try:
+        from tradingagents import local_history as _lh
+
+        for c in _lh.deploy_diff(prev, payload):
+            if _lh.record_deployment(c):
+                changes.append(c)
+    except Exception:
+        pass
+    return changes

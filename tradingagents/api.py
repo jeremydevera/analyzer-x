@@ -163,6 +163,22 @@ def deployments(symbol: str | None = None, limit: int = 200) -> dict:
 
 
 # ----------------------------------------------------------------- reports
+@app.get("/api/reports/file/{name}")
+def report_file(name: str):
+    """Serve one generated grid page. The name is checked against the folder's
+    own listing, so a traversal ('../../etc/passwd') cannot reach anything."""
+    from pathlib import Path
+
+    from fastapi.responses import FileResponse
+
+    d = Path(__file__).resolve().parent.parent / "static" / "bt"
+    target = (d / name).resolve()
+    if target.parent != d.resolve() or not target.is_file() \
+            or target.suffix != ".html":
+        raise HTTPException(404, f"no such report: {name}")
+    return FileResponse(target, media_type="text/html")
+
+
 @app.get("/api/reports")
 def reports() -> dict:
     """Generated grid pages, newest first, so the frontend can link them."""

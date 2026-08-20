@@ -14,15 +14,23 @@ Baseline failure (why this skill exists): a change was reported "done" twice on 
 ## The Loop
 
 1. **Restart the server — by PID, never by name.**
-   `pkill -f "streamlit run app.py"` kills the user's own server. Only ever:
+   Since 2026-08-21 port 8503 serves the **React app** (Next.js), not
+   Streamlit, with the Python API behind it on 8787. `./start.sh` frees both
+   ports by PID, rebuilds, and waits for `/api/health` to answer:
    ```bash
-   PID=$(lsof -nP -tiTCP:8503 -sTCP:LISTEN); [ -n "$PID" ] && kill $PID
-   cd "/Users/jeremydevera/Desktop/Trading Agents" && nohup .venv/bin/streamlit run app.py \
-     --server.headless true --server.port 8503 > /tmp/streamlit-8503.log 2>&1 &
+   cd "/Users/jeremydevera/Desktop/Trading Agents" && ./start.sh
+   # ./start.sh status  -> which ports are held, and whether the proxy answers
+   # ./start.sh stop    -> free both ports by PID
    ```
+   A UI-only change needs no restart in dev (`cd webapp && npm run dev`, port
+   3000, same `/api` proxy). `pkill -f` anything is still forbidden.
+
+   **The API is same-origin.** The browser calls `/api/...` on 8503 and Next
+   rewrites it to 8787, so a screen that renders but shows no numbers means
+   the API process died — check `./start.sh status` before blaming the page.
 2. **Run the verify script** (bootstraps its own Playwright on first use):
    ```bash
-   cd .claude/skills/verifying-ui-with-playwright/scripts && ./verify.sh "http://localhost:8503" "New Crypto"
+   cd .claude/skills/verifying-ui-with-playwright/scripts && ./verify.sh "http://localhost:8503/trade" "Open positions"
    ```
    It screenshots the page and prints the bounding box of every element whose
    text you pass with `--find "Some text"` (repeatable).
@@ -49,7 +57,10 @@ Baseline failure (why this skill exists): a change was reported "done" twice on 
 | Element found but below the fold | Check the y coordinate against viewport height (1050) |
 | Styling a Streamlit testid that no longer exists (silently dead CSS) | Probe the live DOM for the testid first (`--dump-testids`) |
 | Verifying only the changed screen | Click through both tabs when CSS is app-wide |
-| `button:text-is("X")` never matches — Streamlit nests button text in a markdown `<p>` | Use `locator('[data-testid="stButton"] button').filter({ hasText: /^X$/ })` |
+| `button:text-is("X")` never matches — Streamlit nests button text in a markdown `<p>` | Streamlit-era note. In React use `locator('button', { hasText: /^X$/ })` |
+| Asserting a LIVE figure (unrealized PnL, wallet) equals a later API read | It moved between render and assert. Assert DOM-internal consistency instead — itemised rows must SUM to the total tile — plus a tolerance against a fresh sample |
+| A `confirm()` dialog blocks the run and the click looks dead | `page.on('dialog', d => d.dismiss())` before clicking anything that saves or stops |
+| Reading a shape you did not check (`daily_pnl` returns objects, not floats) | One `v.toFixed is not a function` blanks the WHOLE page and every assert fails at once. Read the emitter (CLAUDE.md 23) — then `page.on('pageerror')` catches what is left |
 | `getByRole('button', {name:'Close'})` matches the dialog's X icon (aria-label "Close") — false "run finished" at t+5s | Scope to `[data-testid="stButton"]` for the real text button |
 | Clicking anything while an analysis streams restarts it from stage 0 | Wait for the stButton "Close" (renders only after the outcome is stored) before any click |
 | `getByLabel('My field')` resolves to the **help tooltip button** when the widget was given `help=...` — Streamlit gives it `aria-label="Help for My field"`, and `fill()` then dies with "Element is not an `<input>`" | Target the widget container: `locator('[data-testid="stNumberInput"]').filter({hasText:'My field'}).locator('input')` |

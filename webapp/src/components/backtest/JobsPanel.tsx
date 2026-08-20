@@ -43,7 +43,7 @@ function Progress({ s }: { s: JobStatus | null }) {
       {!s.running && s.report && (
         <a
           className="mt-2 inline-block text-theme-sm font-medium text-brand-600 underline dark:text-brand-400"
-          href={`http://localhost:8503/app/static/bt/${s.report}`}
+          href={`${API_BASE}/api/reports/file/${s.report}`}
           target="_blank"
           rel="noopener"
         >

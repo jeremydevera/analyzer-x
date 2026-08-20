@@ -136,3 +136,25 @@ def test_ledger_and_deployments_read_local_files(client, monkeypatch,
     assert r.json()["rows"][0]["why"] == "TP"
     r2 = client.get("/api/deployments")
     assert r2.json()["rows"][0]["symbol"] == "PI_USDT"
+
+
+def test_report_file_refuses_to_walk_out_of_its_folder(client):
+    """A report name is a filename, never a path. '..' must 404, not read."""
+    for evil in ("../../etc/passwd", "..%2f..%2fetc%2fpasswd", "notes.txt"):
+        assert client.get(f"/api/reports/file/{evil}").status_code in (404, 400)
+
+
+def test_report_file_serves_a_real_report(client, tmp_path, monkeypatch):
+    from pathlib import Path
+
+    import tradingagents.api as api_mod
+
+    d = Path(api_mod.__file__).resolve().parent.parent / "static" / "bt"
+    d.mkdir(parents=True, exist_ok=True)
+    probe = d / "api-selftest.html"
+    probe.write_text("<h1>grid</h1>", encoding="utf-8")
+    try:
+        got = client.get("/api/reports/file/api-selftest.html")
+        assert got.status_code == 200 and "grid" in got.text
+    finally:
+        probe.unlink(missing_ok=True)

@@ -23,8 +23,8 @@ export default function ApiStatus() {
       <span className={`h-2 w-2 rounded-full ${
         state === "up" ? "bg-success-500" : state === "down" ? "bg-error-500" : "bg-warning-400"
       }`} />
-      {state === "up" ? `API on ${API_BASE.replace("http://", "")}`
-        : state === "down" ? `API unreachable at ${API_BASE}`
+      {state === "up" ? (API_BASE ? `API on ${API_BASE.replace("http://", "")}` : "API connected")
+        : state === "down" ? `API unreachable${API_BASE ? ` at ${API_BASE}` : ""}`
         : "checking API…"}
     </span>
   );

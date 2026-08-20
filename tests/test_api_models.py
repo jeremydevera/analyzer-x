@@ -71,3 +71,18 @@ def test_classify_buckets_the_failures_operators_actually_hit():
     assert mh.classify_error("RateLimitError", "429 quota") == "ratelimit"
     assert mh.classify_error("AuthError", "401 bad API_KEY") == "auth"
     assert mh.classify_error("ValueError", "boom") == "error"
+
+
+def test_social_sources_say_whether_x_is_usable_without_leaking_the_key(client,
+                                                                       monkeypatch):
+    """Picking X with no key must be visible BEFORE a run, not discovered in
+    a report that says the source was missing."""
+    monkeypatch.setenv("TWITTERAPI_IO_KEY", "CANARY-X-KEY-8812")
+    got = client.get("/api/analysis/social/sources").json()
+    assert got["x_key_present"] is True
+    assert "CANARY-X-KEY-8812" not in str(got)
+    assert got["default"] == "stocktwits", "the free source is the default"
+    ids = [s["id"] for s in got["sources"]]
+    assert ids == ["stocktwits", "twitter", "both"]
+    monkeypatch.delenv("TWITTERAPI_IO_KEY")
+    assert client.get("/api/analysis/social/sources").json()["x_key_present"] is False

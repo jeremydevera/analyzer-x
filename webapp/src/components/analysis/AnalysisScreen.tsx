@@ -4,7 +4,7 @@
  * its progress file. Stage status is derived from whether each report
  * actually exists, never from a timer. */
 import { useCallback, useEffect, useState } from "react";
-import { analysisApi, AnalysisRun, ModelRow, modelsApi, RunListRow } from "@/lib/api";
+import { analysisApi, AnalysisRun, ModelRow, modelsApi, RunListRow, SocialSources } from "@/lib/api";
 import Badge from "@/components/ui/badge/Badge";
 import Button from "@/components/ui/button/Button";
 
@@ -27,6 +27,9 @@ export default function AnalysisScreen() {
   const [asset, setAsset] = useState("stock");
   const [picked, setPicked] = useState<string[]>(ANALYSTS.map((a) => a[0]));
   const [debate, setDebate] = useState(1);
+  const [social, setSocial] = useState<SocialSources | null>(null);
+  const [source, setSource] = useState("stocktwits");
+  const [keywords, setKeywords] = useState("");
   const [risk, setRisk] = useState(1);
   const [runId, setRunId] = useState("");
   const [run, setRun] = useState<AnalysisRun | null>(null);
@@ -37,6 +40,7 @@ export default function AnalysisScreen() {
   useEffect(() => {
     modelsApi.list().then((d) => { setModels(d.rows); if (!model && d.rows[0]) setModel(d.rows[0].id); }).catch((e) => setErr(String(e)));
     analysisApi.runs().then((d) => setRecent(d.rows)).catch(() => {});
+    analysisApi.socialSources().then((d) => { setSocial(d); setSource(d.default); }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -61,6 +65,8 @@ export default function AnalysisScreen() {
       const got = await analysisApi.start({
         ticker: ticker.trim().toUpperCase(), trade_date: date, model,
         analysts: picked, debate_rounds: debate, risk_rounds: risk, asset_type: asset,
+        social_source: source,
+        twitter_keywords: keywords.split(",").map((k) => k.trim()).filter(Boolean),
       });
       setRunId(got.run_id);
     } catch (e) { setErr(String(e)); }
@@ -98,6 +104,28 @@ export default function AnalysisScreen() {
           <label className="flex flex-col text-theme-xs text-gray-500 dark:text-gray-400">risk rounds
             <input type="number" min={1} max={4} className={`${input} w-20`} value={risk} onChange={(e) => setRisk(Number(e.target.value))} /></label>
         </div>
+        {picked.includes("social") && (
+          <div className="mt-3 flex flex-wrap items-end gap-2 rounded-xl border border-gray-200 p-3 dark:border-white/[0.08]">
+            <label className="flex flex-col text-theme-xs text-gray-500 dark:text-gray-400">where the Sentiment Analyst reads posts
+              <select className={`${input} w-52`} value={source} onChange={(e) => setSource(e.target.value)}>
+                {(social?.sources ?? []).map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+              </select></label>
+            <span className="pb-2 text-theme-xs text-gray-500 dark:text-gray-400">
+              {social?.sources.find((s) => s.id === source)?.note}
+            </span>
+            {source !== "stocktwits" && (
+              <label className="flex flex-col text-theme-xs text-gray-500 dark:text-gray-400">extra X search terms (comma separated)
+                <input className={`${input} w-72`} placeholder="Meralco, rate hike ERC" value={keywords}
+                  onChange={(e) => setKeywords(e.target.value)} /></label>
+            )}
+            {source !== "stocktwits" && social && !social.x_key_present && (
+              <span className="pb-2 text-theme-xs font-medium text-error-500">
+                {social.x_key_env} is not set — X would return nothing. Add the key or pick StockTwits.
+              </span>
+            )}
+          </div>
+        )}
+
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <span className="text-theme-xs text-gray-500 dark:text-gray-400">analysts:</span>
           {ANALYSTS.map(([key, label]) => (
@@ -124,6 +152,12 @@ export default function AnalysisScreen() {
             </Badge>
             {run.running && runningStage && <span className="text-theme-xs text-gray-500 dark:text-gray-400">now: {runningStage}</span>}
             {run.spec?.model && <span className="text-theme-xs text-gray-500 dark:text-gray-400">{run.spec.ticker} · {run.spec.trade_date} · {run.spec.model}</span>}
+            {run.spec?.social_source && (
+              <Badge size="sm" color={run.spec.social_source === "stocktwits" ? "light" : "warning"}>
+                social: {run.spec.social_source}
+                {run.spec.twitter_keywords?.length ? ` +${run.spec.twitter_keywords.length} X terms` : ""}
+              </Badge>
+            )}
           </div>
           <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/[0.06]">
             <div className={`h-full rounded-full transition-all ${run.error ? "bg-error-500" : run.running ? "bg-brand-500" : "bg-success-500"}`}

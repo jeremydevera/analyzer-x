@@ -82,3 +82,42 @@ def test_runs_lists_newest_first_without_report_bodies():
     assert {r["run_id"] for r in rows} == {"A-1", "B-2"}
     assert all("reports" not in r for r in rows), "listing must stay small"
     assert rows[0]["decision"] == "BUY"
+
+
+# --- social sources -------------------------------------------------------
+# The Sentiment Analyst reads X (Twitter) only when include_twitter is on, and
+# X is metered — so the choice must travel from the screen into the run's
+# config, and must never be turned on by accident. The React screen shipped
+# without it on 2026-08-21, which silently ran every analysis on StockTwits
+# only, with no way to ask for X.
+
+def test_config_carries_the_social_choice_and_keywords():
+    cfg = aj.social_config({"social_source": "both",
+                            "twitter_keywords": ["ERC", "rate hike", "ERC"]})
+    assert cfg["include_twitter"] is True
+    assert cfg["include_stocktwits"] is True
+    assert cfg["twitter_extra_terms"] == ["ERC", "rate hike"], "de-duped, order kept"
+
+
+def test_twitter_only_turns_stocktwits_off():
+    cfg = aj.social_config({"social_source": "twitter"})
+    assert cfg["include_twitter"] is True and cfg["include_stocktwits"] is False
+
+
+def test_the_default_never_spends_x_credits():
+    for spec in ({}, {"social_source": ""}, {"social_source": "stocktwits"}):
+        cfg = aj.social_config(spec)
+        assert cfg["include_twitter"] is False, spec
+        assert cfg["include_stocktwits"] is True, spec
+
+
+def test_an_unknown_source_falls_back_to_the_free_one_not_to_x():
+    cfg = aj.social_config({"social_source": "twitr"})
+    assert cfg["include_twitter"] is False and cfg["include_stocktwits"] is True
+
+
+def test_keywords_are_ignored_when_x_is_off():
+    """Extra terms with X off would read as 'X is searching these'."""
+    cfg = aj.social_config({"social_source": "stocktwits",
+                            "twitter_keywords": ["ERC"]})
+    assert "twitter_extra_terms" not in cfg

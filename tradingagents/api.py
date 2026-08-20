@@ -535,3 +535,27 @@ def analysis_stop(run_id: str) -> dict:
     from tradingagents import analysis_jobs as aj
 
     return {"stopped": aj.stop(run_id)}
+
+
+@app.get("/api/analysis/social/sources")
+def analysis_social_sources() -> dict:
+    """Which social sources the Sentiment Analyst can read, and whether X is
+    actually usable — X is metered and needs TWITTERAPI_IO_KEY, so the screen
+    must be able to say "you picked X but there is no key" BEFORE a run."""
+    import os
+
+    from tradingagents import analysis_jobs as aj
+
+    return {
+        "sources": [
+            {"id": "stocktwits", "label": "StockTwits only",
+             "note": "free, keyless, carries Bullish/Bearish tags"},
+            {"id": "twitter", "label": "X / Twitter only",
+             "note": "metered — spends TwitterAPI.io credits"},
+            {"id": "both", "label": "Both",
+             "note": "StockTwits plus X — spends credits"},
+        ],
+        "default": aj.DEFAULT_SOCIAL,
+        "x_key_present": bool(os.environ.get("TWITTERAPI_IO_KEY", "").strip()),
+        "x_key_env": "TWITTERAPI_IO_KEY",
+    }

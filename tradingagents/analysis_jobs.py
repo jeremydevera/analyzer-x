@@ -29,6 +29,34 @@ ANALYST_STAGES = [
 ]
 
 
+# Where the Sentiment Analyst reads social posts. X/Twitter is metered, so it
+# is never on unless it was asked for by name — an unknown value falls back to
+# the free source rather than spending credits (the same rule the Streamlit
+# screen enforced through crypto_screener.social_flags).
+SOCIAL_SOURCES = {
+    "stocktwits": {"include_stocktwits": True, "include_twitter": False},
+    "twitter": {"include_stocktwits": False, "include_twitter": True},
+    "both": {"include_stocktwits": True, "include_twitter": True},
+}
+DEFAULT_SOCIAL = "stocktwits"
+
+
+def social_config(spec: dict) -> dict:
+    """Config flags for one run's social choice, plus any extra X terms."""
+    choice = str(spec.get("social_source") or DEFAULT_SOCIAL).strip().lower()
+    flags = dict(SOCIAL_SOURCES.get(choice, SOCIAL_SOURCES[DEFAULT_SOCIAL]))
+    if flags["include_twitter"]:
+        terms, seen = [], set()
+        for raw in spec.get("twitter_keywords") or []:
+            t = str(raw).strip()
+            if t and t.lower() not in seen:
+                seen.add(t.lower())
+                terms.append(t)
+        if terms:
+            flags["twitter_extra_terms"] = terms
+    return flags
+
+
 def _paths(run_id: str) -> dict:
     d = RUN_DIR / run_id
     return {"dir": d, "spec": d / "spec.json", "progress": d / "progress.json",
@@ -220,6 +248,7 @@ def _run(run_id: str) -> None:
             "max_debate_rounds": int(spec.get("debate_rounds") or 1),
             "max_risk_discuss_rounds": int(spec.get("risk_rounds") or 1),
         })
+        cfg.update(social_config(spec))
         key_env = mspec.get("key_env")
         if key_env and mspec.get("provider") == "openai_compatible":
             env_key = os.environ.get(key_env, "")

@@ -120,6 +120,30 @@ def refresh_candles(symbol: str, tf: str, *, days: int = 365):
 
 
 # ------------------------------------------------------------------ state
+import contextlib
+import fcntl
+
+
+@contextlib.contextmanager
+def _pair_lock(coin: str, tf: str):
+    """Exclusive lock for one (coin, timeframe)'s files.
+
+    BACKTEST and UPDATE can run at the same moment; both read-modify-write the
+    same rows/state files, and without this the loser's writes vanish. flock
+    is advisory but every writer in this module takes it, and it works across
+    processes — the detached sweep and the Streamlit script included.
+    """
+    LOCKS = HOME / "locks"
+    LOCKS.mkdir(parents=True, exist_ok=True)
+    f = (LOCKS / f"{coin}-{tf}.lock").open("w")
+    try:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        yield
+    finally:
+        fcntl.flock(f, fcntl.LOCK_UN)
+        f.close()
+
+
 def _state_file(coin: str, tf: str) -> Path:
     return STATES / f"{coin}-{tf}.json"
 
@@ -134,7 +158,10 @@ def load_states(coin: str, tf: str) -> dict:
 
 def save_states(coin: str, tf: str, states: dict) -> None:
     _paths()
-    _state_file(coin, tf).write_text(json.dumps(states, separators=(",", ":")))
+    with _pair_lock(coin, tf):
+        tmp = _state_file(coin, tf).with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(states, separators=(",", ":")))
+        tmp.replace(_state_file(coin, tf))
 
 
 def combo_key(signal: str, th: float, sl: float, tp: float,
@@ -155,8 +182,10 @@ def pair_rows(coin: str, tf: str) -> list:
 
 def save_pair_rows(coin: str, tf: str, rows: list) -> None:
     ROWDIR.mkdir(parents=True, exist_ok=True)
-    (ROWDIR / f"{coin}-{tf}.json").write_text(json.dumps(rows,
-                                                         separators=(",", ":")))
+    with _pair_lock(coin, tf):
+        tmp = ROWDIR / f"{coin}-{tf}.json.tmp"
+        tmp.write_text(json.dumps(rows, separators=(",", ":")))
+        tmp.replace(ROWDIR / f"{coin}-{tf}.json")
 
 
 def all_rows() -> list:

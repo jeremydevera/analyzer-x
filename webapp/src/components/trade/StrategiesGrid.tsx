@@ -14,6 +14,8 @@ export default function StrategiesGrid() {
   const [rows, setRows] = useState<StrategyDeployRow[]>([]);
   const [sizing, setSizing] = useState("");
   const [counts, setCounts] = useState({ real_count: 0, paper_count: 0, idle_count: 0, deployed_count: 0, catalog_count: 0 });
+  const [acctCap, setAcctCap] = useState(0);
+  const [capHit, setCapHit] = useState(false);
   const [catalog, setCatalog] = useState(false);
   const [conflicts, setConflicts] = useState<{ symbol?: string; keys?: string[] }[]>([]);
   const [settings, setSettings] = useState<Record<string, unknown> | null>(null);
@@ -27,6 +29,7 @@ export default function StrategiesGrid() {
       .then(([st, se]) => {
         setRows(st.rows); setSizing(st.sizing); setConflicts(st.conflicts);
         setCounts(st); setSettings(se.settings); setDirty(false);
+        setAcctCap(st.account_loss_cap); setCapHit(st.account_cap_hit);
       })
       .catch((e) => setErr(String(e))), [catalog]);
   useEffect(() => { load(); }, [load]);
@@ -94,6 +97,10 @@ export default function StrategiesGrid() {
           </p>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          <label className="flex flex-col text-theme-xs text-gray-500 dark:text-gray-400">account loss cap $ (0 = off)
+            <input type="number" step="1" min={0} value={acctCap}
+              onChange={(e) => { const v = Number(e.target.value); setAcctCap(v); mut((s) => { s.loss_limit = v; }); }}
+              className="h-9 w-28 rounded-lg border border-gray-200 bg-transparent px-2 text-theme-sm text-gray-700 dark:border-gray-700 dark:text-gray-300" /></label>
           <label className="flex items-center gap-2 text-theme-xs text-gray-600 dark:text-gray-300">
             <input type="checkbox" checked={catalog} onChange={(e) => setCatalog(e.target.checked)} className="h-4 w-4 accent-brand-500" />
             show all {counts.catalog_count} to arm a new one
@@ -104,6 +111,16 @@ export default function StrategiesGrid() {
         </div>
       </div>
       {err && <p className="px-5 pt-2 text-theme-sm text-error-500">{err}</p>}
+      {capHit && (
+        <p className="mx-5 mt-2 rounded-lg bg-error-50 px-3 py-2 text-theme-sm font-medium text-error-600 dark:bg-error-500/10">
+          The account loss cap of ${acctCap} has been reached today — the runner has halted entries. Raise the cap or clear the halt to resume.
+        </p>
+      )}
+      {!!counts.catalog_count && rows.some((r) => r.tripped) && (
+        <p className="mx-5 mt-2 rounded-lg bg-warning-50 px-3 py-2 text-theme-sm text-warning-700 dark:bg-warning-500/10">
+          Paused for the rest of today (their own loss cap was hit): {rows.filter((r) => r.tripped).map((r) => r.key).join(", ")}. The others keep trading.
+        </p>
+      )}
       {conflicts.length > 0 && (
         <p className="mx-5 mt-2 rounded-lg bg-warning-50 px-3 py-2 text-theme-sm text-warning-700 dark:bg-warning-500/10">
           Timeframe conflict: {conflicts.map((c) => `${c.symbol} on ${(c.keys || []).join(" + ")}`).join(" · ")} — two bots would fight over one MEXC position.
@@ -113,7 +130,7 @@ export default function StrategiesGrid() {
         <Table>
           <TableHeader>
             <TableRow>
-              {["strategy", "tf", "TP/SL %", "books", "coins", "margin $", "PROFIT $", "trades", "W", "L", "open now"].map((h) => (
+              {["strategy", "tf", "TP/SL %", "books", "coins", "margin $", "loss cap $", "today $", "PROFIT $", "trades", "W", "L", "open now"].map((h) => (
                 <TableCell key={h} isHeader className="px-3 py-2 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400">{h}</TableCell>
               ))}
             </TableRow>
@@ -149,6 +166,17 @@ export default function StrategiesGrid() {
                   <input type="number" step="0.5" defaultValue={r.base_margin ?? ""}
                     onBlur={(e) => setMargin(r.key, e.target.value)}
                     className="w-16 rounded-lg border border-gray-200 bg-transparent px-2 py-1 text-theme-xs text-gray-700 dark:border-gray-700 dark:text-gray-300" />
+                </TableCell>
+                <TableCell className="px-3 py-2">
+                  <input type="number" step="0.5" defaultValue={r.loss_cap ?? ""}
+                    onBlur={(e) => mut((s) => {
+                      const m = ((s.strategy_loss_limits as Record<string, number | null>) ??= {});
+                      m[r.key] = e.target.value === "" ? null : Number(e.target.value);
+                    })}
+                    className="w-16 rounded-lg border border-gray-200 bg-transparent px-2 py-1 text-theme-xs text-gray-700 dark:border-gray-700 dark:text-gray-300" />
+                </TableCell>
+                <TableCell className={`px-3 py-2 text-theme-xs ${(r.today ?? 0) >= 0 ? "text-success-600" : "text-error-500"}`}>
+                  {fmtMoney(r.today)}{r.tripped && <span className="ml-1 font-semibold text-error-500">PAUSED</span>}
                 </TableCell>
                 <TableCell className={`px-3 py-2 text-theme-sm font-semibold ${r.pnl >= 0 ? "text-success-600" : "text-error-500"}`}>{fmtMoney(r.pnl)}</TableCell>
                 <TableCell className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400">{r.trades}</TableCell>

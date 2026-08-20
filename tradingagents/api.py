@@ -350,6 +350,9 @@ def trade_strategies(catalog: bool = False) -> dict:
     margins = settings.get("strategy_margins") or {}
     stats = at.strategy_stats(dry=False)
     state = at.load_state()
+    limits = settings.get("strategy_loss_limits") or {}
+    tripped = at.tripped_strategies(settings)
+    today_by = at.pnl_today_by_strategy(dry=False)
     deployed = [k for k in at.STRATEGY_ORDER
                 if (books.get(k) or coins.get(k))]
     keys = at.STRATEGY_ORDER if catalog else deployed
@@ -374,6 +377,9 @@ def trade_strategies(catalog: bool = False) -> dict:
             "books": books.get(key) or [],
             "coins": coins.get(key) or [],
             "base_margin": margins.get(key),
+            "loss_cap": limits.get(key),
+            "tripped": key in tripped,
+            "today": round(float(today_by.get(key) or 0.0), 2),
             "pnl": round(float(st_row.get("pnl") or 0.0), 2),
             "trades": int(st_row.get("trades") or 0),
             "wins": int(st_row.get("wins") or 0),
@@ -393,6 +399,10 @@ def trade_strategies(catalog: bool = False) -> dict:
         "deployed_count": len(deployed),
         "catalog_count": len(at.STRATEGY_ORDER),
         "showing_catalog": catalog,
+        # the account-wide breaker, and whether it has already fired today
+        "account_loss_cap": float(settings.get("loss_limit") or 0.0),
+        "account_cap_hit": at.loss_limit_hit(settings),
+        "tripped": sorted(tripped),
     }
 
 
@@ -648,3 +658,56 @@ def trade_halt(body: dict) -> dict:
     else:
         at.KILL_PATH.unlink(missing_ok=True)
     return {"halted": at.halted()}
+
+
+# ------------------------------------------------------------- credentials
+@app.get("/api/trade/credentials")
+def credentials_status() -> dict:
+    """Where the active MEXC keys came from — masked fingerprints only.
+
+    cred.status() is built to be renderable: it returns no secret material,
+    so this route cannot leak one. The canary test proves it.
+    """
+    from tradingagents.dataflows import mexc_credentials as cred
+
+    cred.load_into_env()
+    got = dict(cred.status())
+    got["env_conflict"] = cred.env_conflict()
+    return got
+
+
+@app.post("/api/trade/credentials")
+def credentials_save(body: dict) -> dict:
+    """Store a key pair on this Mac at mode 0600, then reload the env."""
+    from tradingagents.dataflows import mexc_credentials as cred
+
+    key = str(body.get("api_key") or "").strip()
+    secret = str(body.get("api_secret") or "").strip()
+    if not key or not secret:
+        raise HTTPException(400, "both an api key and a secret are required")
+    cred.save(key, secret)
+    cred.load_into_env()
+    return {"saved": True, **credentials_status()}
+
+
+@app.post("/api/trade/credentials/forget")
+def credentials_forget() -> dict:
+    """Delete the stored pair. A shell-supplied key still applies."""
+    from tradingagents.dataflows import mexc_credentials as cred
+
+    return {"cleared": cred.clear(), **credentials_status()}
+
+
+@app.post("/api/trade/credentials/test")
+def credentials_test(body: dict) -> dict:
+    """What this key can actually DO — read, order, and rest a stop.
+
+    'The request was sent' is not 'it is in place' (rule 14), so the probe
+    checks resting a stop, not just reading a balance.
+    """
+    from tradingagents.dataflows import mexc_credentials as cred
+    from tradingagents.dataflows import mexc_futures as fx
+
+    cred.load_into_env()
+    symbol = str(body.get("symbol") or "BTC_USDT").strip()
+    return fx.preflight(symbol)

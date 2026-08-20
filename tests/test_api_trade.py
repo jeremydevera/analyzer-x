@@ -222,3 +222,95 @@ def test_progress_needs_a_real_price_reader_not_a_dataframe_index(client,
     r = client.get("/api/trade/positions").json()["real"][0]
     assert r["price"] == 105.0
     assert r["progress_pct"] == 50.0 and r["progress_to"] == "TP"
+
+
+# --- the loss caps --------------------------------------------------------
+# Two separate breakers: one per strategy (pauses that strategy for the day,
+# so the working ones keep trading) and one for the account (stops the runner
+# and drops the kill file). Both were missing from the React screen.
+
+def test_per_strategy_cap_and_trip_state_reach_the_screen(client, monkeypatch):
+    at.SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    at.SETTINGS_PATH.write_text(json.dumps({
+        "strategy_books": {"sweep30_1h_w": ["real"], "fvg_1h_w": ["real"]},
+        "strategy_loss_limits": {"sweep30_1h_w": 20.0},
+        "loss_limit": 50.0}))
+    monkeypatch.setattr(at, "pnl_today_by_strategy",
+                        lambda dry=None: {"sweep30_1h_w": -25.0,
+                                          "fvg_1h_w": -1.0})
+    monkeypatch.setattr(at, "loss_limit_hit", lambda s=None: False)
+    got = client.get("/api/trade/strategies").json()
+    hot = next(r for r in got["rows"] if r["key"] == "sweep30_1h_w")
+    cool = next(r for r in got["rows"] if r["key"] == "fvg_1h_w")
+    assert hot["loss_cap"] == 20.0 and hot["tripped"] is True
+    assert hot["today"] == -25.0
+    assert cool["loss_cap"] is None and cool["tripped"] is False
+    assert got["tripped"] == ["sweep30_1h_w"]
+    assert got["account_loss_cap"] == 50.0 and got["account_cap_hit"] is False
+
+
+def test_the_account_breaker_reports_when_it_has_fired(client, monkeypatch):
+    at.SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    at.SETTINGS_PATH.write_text(json.dumps({"loss_limit": 10.0}))
+    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None: {})
+    monkeypatch.setattr(at, "loss_limit_hit", lambda s=None: True)
+    got = client.get("/api/trade/strategies").json()
+    assert got["account_cap_hit"] is True
+
+
+def test_saving_keeps_both_kinds_of_cap(client):
+    payload = {"strategy_books": {"fvg_1h_w": ["real"]},
+               "strategy_loss_limits": {"fvg_1h_w": 8.5},
+               "loss_limit": 40.0}
+    client.post("/api/trade/settings", json=payload)
+    back = client.get("/api/trade/settings").json()["settings"]
+    assert back["strategy_loss_limits"] == {"fvg_1h_w": 8.5}
+    assert back["loss_limit"] == 40.0
+
+
+# --- credentials ----------------------------------------------------------
+# The panel was missing entirely, so keys could only be set by editing a file
+# or exporting a shell var. What it may NEVER do is echo a secret back.
+
+def test_credentials_status_never_returns_key_material(client, monkeypatch):
+    monkeypatch.setenv("MEXC_API_KEY", "CANARY-KEY-mx-1234abcd")
+    monkeypatch.setenv("MEXC_API_SECRET", "CANARY-SECRET-mx-9876wxyz")
+    from tradingagents.dataflows import mexc_credentials as cred
+    monkeypatch.setattr(cred, "load_into_env", lambda override=True: True)
+    body = client.get("/api/trade/credentials").text
+    assert "CANARY-KEY-mx-1234abcd" not in body
+    assert "CANARY-SECRET-mx-9876wxyz" not in body
+    got = json.loads(body)
+    assert got["has_credentials"] is True
+    assert "1234abcd"[-4:] in got["key_fingerprint"], "the stub keeps 4 chars"
+    assert "•" in got["key_fingerprint"]
+
+
+def test_saving_credentials_requires_both_halves(client, monkeypatch):
+    from tradingagents.dataflows import mexc_credentials as cred
+    saved = []
+    monkeypatch.setattr(cred, "save", lambda k, s: saved.append((k, s)))
+    monkeypatch.setattr(cred, "load_into_env", lambda override=True: True)
+    monkeypatch.setattr(cred, "status", lambda: {"has_credentials": True})
+    monkeypatch.setattr(cred, "env_conflict", lambda: {})
+    assert client.post("/api/trade/credentials",
+                       json={"api_key": "abc"}).status_code == 400
+    assert saved == []
+    got = client.post("/api/trade/credentials",
+                      json={"api_key": "abc", "api_secret": "def"})
+    assert got.status_code == 200 and saved == [("abc", "def")]
+    assert "abc" not in got.text, "the saved key is not echoed back"
+
+
+def test_the_probe_reports_whether_a_stop_can_actually_rest(client,
+                                                           monkeypatch):
+    """Reading a balance proves nothing about protection. Rule 14."""
+    from tradingagents.dataflows import mexc_credentials as cred
+    from tradingagents.dataflows import mexc_futures as fx
+    monkeypatch.setattr(cred, "load_into_env", lambda override=True: True)
+    monkeypatch.setattr(fx, "preflight", lambda sym: {
+        "credentials": True, "read_assets": True, "read_positions": True,
+        "order_permission": True, "can_rest_stop": False, "symbol": sym})
+    got = client.post("/api/trade/credentials/test",
+                      json={"symbol": "APEX_USDT"}).json()
+    assert got["can_rest_stop"] is False and got["symbol"] == "APEX_USDT"

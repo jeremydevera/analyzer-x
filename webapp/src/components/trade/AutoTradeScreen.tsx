@@ -8,6 +8,7 @@ import PositionsPanel from "./PositionsPanel";
 import StrategiesGrid from "./StrategiesGrid";
 import PnlPanel from "./PnlPanel";
 import FeedPanel from "./FeedPanel";
+import CredentialsPanel from "./CredentialsPanel";
 
 export default function AutoTradeScreen() {
   const [tick, setTick] = useState(0);
@@ -17,6 +18,7 @@ export default function AutoTradeScreen() {
       <SummaryRibbon key={`ribbon-${tick}`} onChanged={bump} />
       <PositionsPanel onChanged={bump} />
       <StrategiesGrid />
+      <CredentialsPanel />
       <PnlPanel />
       <FeedPanel />
     </div>

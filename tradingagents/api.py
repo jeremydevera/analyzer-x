@@ -465,3 +465,36 @@ def crypto_upcoming() -> dict:
         "hours_until": (round(r["hours_until"], 2)
                         if r.get("hours_until") is not None else None),
     } for r in rows]}
+
+
+# ---------------------------------------------------------------- analysis
+@app.get("/api/analysis/runs")
+def analysis_runs(limit: int = 25) -> dict:
+    from tradingagents import analysis_jobs as aj
+
+    return {"rows": aj.runs(limit)}
+
+
+@app.post("/api/analysis/start")
+def analysis_start(spec: dict) -> dict:
+    from tradingagents import analysis_jobs as aj
+
+    if not str(spec.get("ticker") or "").strip():
+        raise HTTPException(400, "a ticker is required")
+    if not str(spec.get("trade_date") or "").strip():
+        raise HTTPException(400, "a trade date is required")
+    return {"run_id": aj.start(spec)}
+
+
+@app.get("/api/analysis/{run_id}")
+def analysis_status(run_id: str) -> dict:
+    from tradingagents import analysis_jobs as aj
+
+    return aj.status(run_id)
+
+
+@app.post("/api/analysis/{run_id}/stop")
+def analysis_stop(run_id: str) -> dict:
+    from tradingagents import analysis_jobs as aj
+
+    return {"stopped": aj.stop(run_id)}

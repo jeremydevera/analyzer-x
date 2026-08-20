@@ -132,7 +132,7 @@ task, not per tool call, and never for a mid-task status update. Non-blocking:
 
 ```bash
 _V="Daniel"; say -v '?' | grep -q "Jamie (Premium)" && _V="Jamie (Premium)"
-say -v "$_V" -r 170 "<what was finished>, sir." &
+say -v "$_V" -r 145 "<what was finished>, sir." &
 ```
 
 ALWAYS ON — `plain-words`. The operator is new to crypto trading and said so:
@@ -142,11 +142,6 @@ Use money, not ratios. One idea per sentence. This is not optional and does not
 wait to be invoked — it was skipped for an entire session of leverage, drawdown
 and liquidation answers, which is exactly when it mattered most. It combines with
 `one-word`: answer short AND in plain language, not one or the other.
-
-ALWAYS ON — `say-done`. After finishing any task the operator asked for, speak
-ONE fast sentence out loud describing what was finished (macOS `say`, male
-voice, e.g. `say -v Daniel -r 230 "..."`). Questions don't get spoken; finished
-work does. Requested 2026-08-20.
 
 ALWAYS ON — `label-must-match-data`. Run it before reporting ANY change that puts a
 figure on screen: a tile, table, artifact, caption or badge. This is not optional and does

@@ -1,6 +1,6 @@
 ---
 name: say-done
-description: ALWAYS ON. After finishing any task the operator asked for, speak ONE fast sentence out loud describing what was finished, in a male voice, via macOS `say`. Requested 2026-08-20 — "after you are finished, make a sound to describe what you finished".
+description: ALWAYS ON. After finishing any task the operator asked for, speak ONE calm sentence out loud describing what was finished, in a male voice, via macOS `say`. Requested 2026-08-20 — "after you are finished, make a sound to describe what you finished".
 ---
 
 # Say what you finished
@@ -19,7 +19,7 @@ artifact published, bug fixed — run, non-blocking:
 
 ```bash
 _V="Daniel"; say -v '?' | grep -q "Jamie (Premium)" && _V="Jamie (Premium)"
-say -v "$_V" -r 170 "<what was finished>, sir." &
+say -v "$_V" -r 145 "<what was finished>, sir." &
 ```
 
 - **One sentence, one utterance per task.** Not per tool call, not per
@@ -32,7 +32,7 @@ say -v "$_V" -r 170 "<what was finished>, sir." &
 - **Voice: `Jamie (Premium)` (en_GB) when installed, else `Daniel`** — the
   operator wants Jarvis; Jamie is macOS's closest voice but ships via
   System Settings -> Accessibility -> Spoken Content -> Manage Voices, so
-  probe for it each time and fall back to Daniel. Rate 170, calm.
+  probe for it each time and fall back to Daniel. Rate 145 — the operator flagged 170 as still too fast (2026-08-20: "why is saydone too fast?").
 - **Background it (`&`)** so the turn never stalls on audio.
 
 ## When NOT to speak

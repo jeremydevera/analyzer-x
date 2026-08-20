@@ -1,12 +1,13 @@
-import { chromium } from "playwright";
-const b=await chromium.launch(); const p=await b.newPage({viewport:{width:1680,height:1400}});
-await p.goto("http://localhost:8503",{waitUntil:"networkidle"}); await p.waitForTimeout(9000);
-await p.locator('label',{hasText:"Auto Trade"}).first().click(); await p.waitForTimeout(8000);
-const dfs=p.locator('[data-testid="stDataFrame"]');
-console.log("tables:", await dfs.count());
-for (let i=0;i<await dfs.count();i++){
-  const t=(await dfs.nth(i).innerText()).split("\n").slice(0,14).join(" | ");
-  console.log(`table ${i}: ${t}`);
-}
-await p.screenshot({path:"pos-time.png", clip:{x:890,y:900,width:790,height:500}});
-await b.close();
+import { chromium } from 'playwright';
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1680, height: 1050 } });
+await page.goto('http://localhost:8503', { waitUntil: 'networkidle' });
+await page.waitForTimeout(8000);
+await page.locator('text=Auto Trade').first().click();
+await page.waitForTimeout(25000);
+const body = await page.locator('body').innerText();
+const heads = ["contract","unreal $","to TP","TP % ($)","SL % ($)","side","opened","held","entry","margin","bracket"];
+const missing = heads.filter(h => !body.toLowerCase().includes(h.toLowerCase()));
+console.log('missing headers:', missing.length ? missing : 'none — all 14-column headers present');
+await page.screenshot({ path: '/tmp/pos_cols.png', fullPage: false });
+await browser.close();

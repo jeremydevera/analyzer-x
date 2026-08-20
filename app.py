@@ -5110,6 +5110,14 @@ def render_auto_trade_tab() -> None:
                         unsafe_allow_html=True)
 
 
+
+        # Trade history got silently dropped when the remake stopped
+        # calling _positions() — the band lived inside that dead
+        # fragment. Split out and rendered again, 2026-08-20, after
+        # the operator asked where it went. The duplicate positions
+        # table STAYS dead; only the history returns.
+        @st.fragment(run_every=20)
+        def _history() -> None:
             with st.container(key="tmsec_history"):
                 # ---- TRADE HISTORY. Its own section, LIVE and DEMO on
                 # separate tabs, paginated 5 rows at a time. Every closed trade,
@@ -5335,6 +5343,8 @@ def render_auto_trade_tab() -> None:
                     + _tm_table(_acols, _arows, _atot if _arows else None,
                                 "no closed trades yet"),
                     unsafe_allow_html=True)
+
+        _history()
 
         # The old positions band is GONE — the view renders both books with the
         # same rows from the same `_book_rows`. Its per-row detail disclosure is

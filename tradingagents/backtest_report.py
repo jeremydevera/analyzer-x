@@ -572,9 +572,20 @@ def _pack(payload: dict) -> dict:
     if rows and not p.get("cols"):
         cols = list(rows[0].keys())
         keyset = set(cols)
-        for r in rows:                    # a row with a different shape would
+        for i, r in enumerate(rows):      # a row with a different shape would
             if set(r.keys()) != keyset:   # silently lose fields to the header
-                raise RuntimeError("rows have inconsistent keys; cannot pack")
+                # Name the difference. This used to raise a bare "rows have
+                # inconsistent keys", which told the operator nothing and left a
+                # ZERO-BYTE report on disk — a click that produced a blank page.
+                # Measured 2026-08-20 19:51 on an archive run for PI.
+                miss = sorted(keyset - set(r.keys()))
+                extra = sorted(set(r.keys()) - keyset)
+                raise RuntimeError(
+                    "rows have inconsistent keys; cannot pack. "
+                    f"row {i} ({r.get('coin')} {r.get('tf')} {r.get('signal')} "
+                    f"{r.get('sizing')}) is missing {miss or 'nothing'} and adds "
+                    f"{extra or 'nothing'}. Row 0 defines "
+                    f"{len(cols)} columns.")
         p["cols"] = cols
         p["rows"] = [[r[c] for c in cols] for r in rows]
     ser = {}
@@ -725,10 +736,32 @@ def render(payload: dict, *, title: str, headline: str = "",
 
 def write_report(path: str, payload: dict, *, title: str, headline: str = "",
                  note: str = "") -> str:
-    """Render and write the page. Returns the path written."""
-    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-    with open(path, "w", encoding="utf-8") as fh:
-        fh.write(render(payload, title=title, headline=headline, note=note))
+    """Render and write the page, ATOMICALLY. Returns the path written.
+
+    `open(path, "w")` truncates the moment it is called, so rendering INSIDE the
+    with-block meant any failure left a zero-byte file behind — a link the
+    operator could click that opened a blank page. Measured 2026-08-20: an
+    archive run for PI raised "rows have inconsistent keys" from _pack and left
+    `archive-91239ab0-20260820.html` at 0 bytes, which read as "the backtest
+    produced no result".
+
+    So: render first, write to a temp file, then rename over the target. A
+    failed build now leaves the PREVIOUS report intact and raises, instead of
+    replacing it with nothing.
+    """
+    html = render(payload, title=title, headline=headline, note=note)
+    d = os.path.dirname(path) or "."
+    os.makedirs(d, exist_ok=True)
+    tmp = os.path.join(d, f".{os.path.basename(path)}.part")
+    try:
+        with open(tmp, "w", encoding="utf-8") as fh:
+            fh.write(html)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
     return path
 
 
@@ -824,6 +857,24 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
         r.setdefault("tpd", round(r["trades"] / max(r.get("days", 1), 1), 2))
         r.setdefault("stop_reachable", True)
         r.setdefault("gate", "ok")
+    # Store rows come from different eras — some carry funding/wstreak, some
+    # 'why', some neither — and the payload packer refuses ragged rows rather
+    # than silently dropping fields. Normalise to the UNION of keys, absent
+    # values None, and pad month arrays to the shared header. One crash on
+    # 2026-08-20 finished 100% of PI's compute and then died exactly here.
+    all_keys: list = []
+    seen_keys = set()
+    for r in rows:
+        for k in r:
+            if k not in seen_keys:
+                seen_keys.add(k)
+                all_keys.append(k)
+    for r in rows:
+        for k in all_keys:
+            r.setdefault(k, None)
+        m = r.get("mon") or []
+        if len(m) < len(months):
+            r["mon"] = list(m) + [None] * (len(months) - len(m))
     # candles for in-page replay, from the cache — but only for small pages;
     # a market-wide payload would blow the size cap (kit item F's lesson)
     if 0 < len(meta) <= embed_limit:

@@ -1,0 +1,11 @@
+import { chromium } from "playwright";
+const b = await chromium.launch(); const p = await b.newPage({viewport:{width:1680,height:1200}});
+await p.goto("http://localhost:8503", {waitUntil:"networkidle", timeout: 60000}); await p.waitForTimeout(12000);
+const side = await p.innerText("body");
+console.log("nav has 'Backtest 2':", side.includes("Backtest 2"));
+console.log("nav has old 'Back Test':", /Back Test(?!\s*2)/.test(side.replace(/Backtest 2/g,"")));
+await p.getByText("Backtest 2", {exact: true}).first().click(); await p.waitForTimeout(30000);
+const body = await p.innerText("body");
+console.log("Backtest 2 renders:", body.includes("MARKET DATA") && body.includes("DAILY GRID"));
+await p.screenshot({path:"no-bt1.png", fullPage:true});
+await b.close();

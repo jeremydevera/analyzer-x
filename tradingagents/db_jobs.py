@@ -206,6 +206,22 @@ def persist_results(payload: dict, *, days: int, label: str,
 
 
 def _run_backtest(spec: dict) -> None:
+    """Crash containment: whatever happens inside, the progress file ends in
+    running:false with the error named. A job that died at 80% once left
+    'running: true' on screen for half an hour."""
+    try:
+        _run_backtest_inner(spec)
+    except _StopRequested:
+        raise
+    except Exception as exc:
+        _write(FILES["backtest"]["progress"], {
+            "running": False, "finished": int(time.time()),
+            "error": str(exc)[:200],
+            "note": f"failed: {str(exc)[:160]}"})
+        raise
+
+
+def _run_backtest_inner(spec: dict) -> None:
     from tradingagents import backtest_report as br
     f = FILES["backtest"]
 

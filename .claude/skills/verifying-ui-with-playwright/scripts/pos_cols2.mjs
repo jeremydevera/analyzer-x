@@ -1,0 +1,14 @@
+import { chromium } from 'playwright';
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1920, height: 1050 } });
+await page.goto('http://localhost:8503', { waitUntil: 'networkidle' });
+await page.waitForTimeout(8000);
+await page.locator('text=Auto Trade').first().click();
+await page.waitForTimeout(25000);
+const body = await page.locator('body').innerText();
+const need = ["Opened","Held","TP % ($)","SL % ($)","Trd","Bracket","Entry","At risk"];
+const missing = need.filter(h => !body.includes(h));
+console.log('missing:', missing.length ? missing : 'none — all restored columns render');
+const m = body.match(/Opened[\s\S]{0,600}/);
+await page.screenshot({ path: '/tmp/pos_cols2.png', fullPage: false });
+await browser.close();

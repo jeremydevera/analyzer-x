@@ -12,21 +12,28 @@ The operator's instruction, verbatim:
 > 'I'm done fixing the section'. i want 1 sentence only, and male voice"
 > — later: "make say done skill slower, i want normal human interaction"
 
-## The rule
+## The rule — LIVE settings
+
+NEVER call `say` directly. Always go through `speak.sh`, which reads
+`config.json` AT SPEAK TIME — so the operator's edits to voice, rate, suffix
+or enabled apply to every session instantly, without any skill reload. This
+exists because an edit ("no 'sir'") once sat unread while sessions kept
+speaking their stale copies of the rule.
+
 
 When a TASK the operator asked for is finished — code changed, sweep done,
 artifact published, bug fixed — run, non-blocking:
 
 ```bash
-_V="Daniel"; say -v '?' | grep -q "Jamie (Premium)" && _V="Jamie (Premium)"
-say -v "$_V" -r 145 "<what was finished>, sir." &
+bash .claude/skills/say-done/speak.sh "<what was finished>" &
 ```
 
 - **One sentence, one utterance per task.** Not per tool call, not per
   message — per finished task. A multi-step task speaks once, at the end.
-- **Jarvis delivery** (operator: "i want jarvis voice"): calm, butler-like,
-  ending in "sir" — "The section is fixed, sir.",
-  "The daily grid is complete, sir.", "The APEX artifact is published, sir.".
+- **Jarvis delivery** (operator: "i want jarvis voice"): calm, butler-like —
+  "The section is fixed.", "The daily grid is complete.",
+  "The APEX artifact is published." **No "sir"** — the operator removed it
+  on 2026-08-20: "i dont want 'sir' on the end".
 - **Keep it under ~12 words.** It is a chime with meaning, not a report —
   the written summary still goes in chat as usual.
 - **Voice: `Jamie (Premium)` (en_GB) when installed, else `Daniel`** — the

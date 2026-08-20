@@ -146,3 +146,45 @@ def test_every_store_writer_uses_the_same_threshold_count():
 
     counts = set(re.findall(r"thresholds=(\d+)", src))
     assert counts <= {"3"}, f"db_jobs uses thresholds={counts}"
+
+
+def test_rows_from_different_eras_come_back_uniform(monkeypatch):
+    """Store rows accumulate fields across versions; the payload packer
+    refuses ragged rows, and a job once finished ALL its compute and then
+    crashed on exactly this."""
+    msw.save_pair_rows("APEX", "1h", [
+        _row(),                                      # modern shape
+        {k: v for k, v in _row(signal="fvg", th=0.0).items()
+         if k not in ("rt", "gate")},                # an older, smaller shape
+    ])
+    monkeypatch.setattr(msw, "run_pair", lambda sym, tf, **kw: {
+        "coin": "APEX", "tf": "1h", "rows": [], "added": 0, "source": "cache",
+        "why": "no new bars", "incremental": True, "new_bars": 0,
+        "fee": 0.0004, "liq": 4.0, "rt": 0.002, "bars": 7000, "days": 300})
+    p = br.grid_from_store(["APEX_USDT"], ["1h"], embed_limit=0)
+    keysets = {tuple(sorted(r.keys())) for r in p["rows"]}
+    assert len(keysets) == 1, "every row must share one key set"
+    assert all(len(r["mon"]) == len(p["months"]) for r in p["rows"])
+    # and the packer must accept it end-to-end
+    html = br.render(p, title="t")
+    assert "cannot pack" not in html
+
+
+def test_a_crashed_backtest_job_leaves_an_honest_progress_file(monkeypatch,
+                                                               tmp_path):
+    from tradingagents import db_jobs
+
+    prog = tmp_path / "p.json"
+    monkeypatch.setitem(db_jobs.FILES, "backtest", {"progress": prog})
+    monkeypatch.setattr(db_jobs, "_run_backtest_inner",
+                        lambda spec: (_ for _ in ()).throw(
+                            RuntimeError("rows have inconsistent keys")))
+    import pytest as _pt
+
+    with _pt.raises(RuntimeError):
+        db_jobs._run_backtest({})
+    import json as _json
+
+    left = _json.loads(prog.read_text())
+    assert left["running"] is False
+    assert "inconsistent keys" in left["error"]

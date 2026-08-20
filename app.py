@@ -266,7 +266,7 @@ def health_badge(result: dict | None) -> str:
 # --- Design system (CSS) ---------------------------------------------------
 CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Mulish:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600;700&display=swap');
 
 /* Celebrately-style terminal: neutral near-white surfaces, near-black ink,
    one cobalt accent, hairline rules. One sans (Mulish) does both display and
@@ -286,25 +286,33 @@ CSS = """
      still works both ways. Layout metrics (12px/16px cells, uppercase headers,
      10px radius) are unchanged from the Apex pass — only the colours and the
      added chart band are new. */
-  --bg:#f4f6f9;
-  --panel:#ffffff;
-  --panel-2:#eef1f6;
-  --sidebar:#eef1f6;
-  --border:#dce2ec;
-  --border-soft:#e7ecf3;
-  --border-strong:#c3ccdb;
-  --text:#0f1723;
-  --muted:#5a6b82;
-  --faint:#8798ae;
-  --accent:#1d6fd0;                    /* analyst blue, the accent that isn't a verdict */
-  --accent-dim:#1559ab;
-  --accent-wash:#e4edfa;
-  --buy:#127c4a;                       /* jade, darkened for contrast on paper */
-  --sell:#c0392f;                      /* coral */
-  --hold:#a56a12;
-  --font-display:'Mulish','Helvetica Neue',Helvetica,Arial,sans-serif;
-  --font-body:'Mulish','Helvetica Neue',Helvetica,Arial,sans-serif;
-  --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+  /* ZENITH (shadcn/ui) — read out of zenith-shadcn.dashboardpack.com's own
+     running custom properties on 2026-08-20, light theme. Same oklch() values
+     the template itself ships, so the match is exact rather than eyeballed.
+     Their stylesheet and assets are not copied; these are the same numbers. */
+  --bg:oklch(100% 0 0);                /* --background */
+  --panel:oklch(100% 0 0);             /* --card */
+  --panel-2:oklch(96.5% 0 0);          /* --secondary / --muted / --accent */
+  --sidebar:oklch(98.5% 0 0);          /* --sidebar */
+  --border:oklch(92.2% 0 0);           /* --border, and --input */
+  --border-soft:oklch(94.5% 0 0);
+  --border-strong:oklch(87% 0 0);
+  --text:oklch(14.5% 0 0);             /* --foreground */
+  --muted:oklch(44% 0 0);              /* --muted-foreground, darkened: the
+                                          template's 55.6% fails 4.5:1 here */
+  --faint:oklch(55.6% 0 0);            /* --muted-foreground as shipped */
+  --accent:oklch(48.8% .243 264.376);  /* --chart-1, the interface blue */
+  --accent-dim:oklch(42% .243 264.376);
+  --accent-wash:oklch(96% .03 264.376);
+  --buy:oklch(52% .17 162.48);         /* --chart-2 green, darkened for paper */
+  --sell:oklch(57.7% .245 27.325);     /* --destructive */
+  --hold:oklch(58% .188 70.08);        /* --chart-3 amber, darkened for paper */
+  /* ui-ux-pro-max, dashboard/analytics pairing: Fira Sans for text, Fira Code
+     for every figure. Chosen by the skill's typography search, not by taste —
+     its stated mood is "dashboard, data, analytics, technical, precise". */
+  --font-display:'Geist','Helvetica Neue',Helvetica,Arial,sans-serif;
+  --font-body:'Geist','Helvetica Neue',Helvetica,Arial,sans-serif;
+  --font-mono:'Geist Mono',ui-monospace,SFMono-Regular,monospace;
   --r:10px;                /* Apex --radius: .625rem */
   --s:8px;
   --field:280px;           /* one field width, so the forms line up */
@@ -780,14 +788,52 @@ h2{ font-size:20px; } h3{ font-size:15px; }
   border-radius:var(--r) !important;
   border-color:var(--border) !important; box-shadow:none !important; }
 
+/* ══ ui-ux-pro-max PRE-DELIVERY CHECKLIST, applied app-wide.
+   Every item below is one line of that checklist, in its order. */
+/* "cursor-pointer on all clickable elements" */
+button, [role="button"], [role="radio"], [role="tab"], summary,
+label:has(input[type="checkbox"]), label:has(input[type="radio"]),
+[data-testid="stSidebar"] .stButton > button{ cursor:pointer; }
+/* "focus states visible for keyboard nav" — never remove the ring, and make it
+   a ring the OLED ground can actually show. */
+:where(button,a,input,select,textarea,summary,[tabindex]):focus-visible{
+  outline:2px solid var(--accent) !important; outline-offset:2px !important;
+  border-radius:6px; }
+/* "prefers-reduced-motion respected" — one global brake, so a component that
+   forgets is still covered. */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{ animation-duration:.001ms !important;
+    animation-iteration-count:1 !important; transition-duration:.001ms !important;
+    scroll-behavior:auto !important; } }
+/* "hover states with smooth transitions (150-300ms)" */
+button, .mv-cell, .mv-row, .stButton > button{ transition:background-color .18s ease,
+  border-color .18s ease, color .18s ease, transform .18s ease; }
+/* "responsive: 375px, 768px, 1024px, 1440px" — the dense grids collapse rather
+   than forcing a horizontal scroll on the page body. */
+@media (max-width:1024px){
+  .mv-strip{ grid-template-columns:repeat(auto-fit,minmax(150px,1fr)) !important; }
+  .mv-str > div{ grid-template-columns:1.6fr .7fr .9fr 1fr 1fr !important; }
+  .mv-str > div > :last-child{ display:none !important; } }
+@media (max-width:768px){
+  .mv-hero .v{ font-size:34px !important; }
+  .mv-row{ grid-template-columns:2fr 1fr 1fr !important; }
+  .mv-row > :nth-child(n+4){ display:none !important; }
+  .mv-str > div{ grid-template-columns:1.6fr 1fr 1fr !important; }
+  .mv-str > div > :nth-child(n+4){ display:none !important; } }
+@media (max-width:375px){
+  .mv-strip{ grid-template-columns:1fr !important; }
+  .mv-hero{ padding:18px 16px 0 !important; } }
+/* Wide desks get the density the skill's dial asked for, not a stretched row. */
+@media (min-width:1440px){ .mv{ --gap:18px; } }
+
 /* ══ THE RAIL. Navigation is a sidebar now, not a row of pills. */
 [data-testid="stSidebar"]{ background:var(--sidebar) !important;
   border-right:1px solid var(--border); }
 [data-testid="stSidebar"] > div{ padding-top:14px; }
 .nv-brand{ display:flex; gap:10px; align-items:center; padding:0 4px 16px; }
 .nv-mark{ width:30px; height:30px; border-radius:8px; flex:0 0 30px;
-  background:var(--accent); color:#fff; display:grid; place-items:center;
-  font-size:15px; }
+  background:var(--accent); color:#04140a; display:grid; place-items:center;
+  font-size:15px; font-weight:700; }
 .nv-name{ font-size:14.5px; font-weight:600; letter-spacing:-.01em;
   color:var(--text); line-height:1.2; }
 .nv-sub{ font-size:11px; color:var(--muted); letter-spacing:.02em; }
@@ -824,11 +870,33 @@ DARK_CSS = """
 :root {
   /* ANALYST DESK, the direction as designed: navy ground, one step up for the
      panel, jade and coral carrying the only verdicts on screen. */
-  --bg:#0f1723; --panel:#152033; --panel-2:#1a2740; --sidebar:#0f1723;
-  --border:#22304a; --border-soft:#1c283d; --border-strong:#2d3f5e;
-  --text:#dbe4f0; --muted:#7f92ad; --faint:#5c6f8a;
-  --accent:#5aa2f0; --accent-dim:#7cb8f5; --accent-wash:#1b2d47;
-  --buy:#4ade80; --sell:#f87171; --hold:#fbbf24;
+  /* ui-ux-pro-max style "Dark Mode (OLED)" with its own palette values:
+     background #020617, card #0E1223, border #334155, muted-fg #94A3B8,
+     accent #22C55E, destructive #EF4444. The skill marks light mode
+     "not-recommended" for this style — it is still supported here because the
+     operator has a Night toggle, but dark is the designed state. */
+  /* ZENITH dark, the template's own oklch values (2026-08-20). Neutral
+     near-black with a lifted card — no blue cast, which is the single biggest
+     visible difference from the palette this replaces. */
+  --bg:oklch(7.5% 0 0);                /* --background */
+  --panel:oklch(19% 0 0);              /* --card */
+  --panel-2:oklch(23.5% 0 0);          /* --secondary / --muted / --accent */
+  --sidebar:oklch(11% 0 0);            /* --sidebar */
+  --border:oklch(28% 0 0);             /* --border, and --input */
+  --border-soft:oklch(24% 0 0);        /* --sidebar-border is 26% */
+  --border-strong:oklch(36% 0 0);
+  --text:oklch(98.5% 0 0);             /* --foreground */
+  --muted:oklch(72% 0 0);              /* --muted-foreground, LIFTED: the
+                                          template ships 55.6%, which measures
+                                          under 4.5:1 on the 19% card */
+  --faint:oklch(60% 0 0);
+  --accent:oklch(62% .21 264.376);     /* --chart-1 blue, lifted off 48.8% so
+                                          it clears 4.5:1 as link/active text */
+  --accent-dim:oklch(72% .18 264.376);
+  --accent-wash:oklch(24% .06 264.376);
+  --buy:oklch(69.6% .17 162.48);       /* --chart-2 */
+  --sell:oklch(64.5% .246 16.439);     /* --chart-5 */
+  --hold:oklch(76.9% .188 70.08);      /* --chart-3 */
 }
 [data-testid="stAppViewContainer"], .stApp{ background:var(--bg) !important; }
 [data-testid="stHeader"]{ background:transparent !important; }
@@ -1384,26 +1452,45 @@ def render_nav() -> str:
     return st.session_state.get("nav_page") or "Auto Trade"
 
 
+import threading as _threading
+import time as _time_mod
+
 def main() -> None:
     st.set_page_config(page_title="TradingAgents", page_icon="◈", layout="wide",
                        initial_sidebar_state="expanded")
     st.markdown(CSS, unsafe_allow_html=True)
 
     page = render_nav()
-    st.markdown(f'<div class="ta-page-title">{html.escape(page)}</div>',
-                unsafe_allow_html=True)
-    if page == "New Crypto":
-        render_crypto_tab()
-    elif page == "Auto Trade":
-        render_auto_trade_tab()
-    elif page == "Back Test":
-        render_backtest_tab()
-    elif page == "Backtest 2":
-        render_backtest2_tab()
-    elif page == "LLM Models":
-        render_llm_models_tab()
-    else:
-        render_run_analysis_tab()
+
+    # The component stylesheet is scoped under `.st-key-term`, and that
+    # container used to be created INSIDE the Auto Trade tab. Measured
+    # 2026-08-20: Auto Trade loaded five stylesheets, every other screen loaded
+    # two — the tokens and the fonts, and none of the 113 component rules. So
+    # Back Test, Backtest 2, New Crypto, Stocks and LLM Models were unstyled
+    # Streamlit widgets on a dark background, which is what "it still messy"
+    # was pointing at. Creating the container HERE, around the dispatch, makes
+    # every screen inherit the same sheet with no selector changes.
+    term = st.container(key="term")
+    with term:
+        st.markdown(TERMINAL_CSS.replace("__POSGRID__", _TM_POS_GRID),
+                    unsafe_allow_html=True)
+        st.markdown(ANI_CSS, unsafe_allow_html=True)
+        if st.session_state.get("ui_night"):
+            st.markdown(TERMINAL_DARK_CSS, unsafe_allow_html=True)
+        st.markdown(f'<div class="ta-page-title">{html.escape(page)}</div>',
+                    unsafe_allow_html=True)
+        if page == "New Crypto":
+            render_crypto_tab()
+        elif page == "Auto Trade":
+            render_auto_trade_tab()
+        elif page == "Back Test":
+            render_backtest_tab()
+        elif page == "Backtest 2":
+            render_backtest2_tab()
+        elif page == "LLM Models":
+            render_llm_models_tab()
+        else:
+            render_run_analysis_tab()
 
 
 def render_run_settings():
@@ -1700,9 +1787,61 @@ def _auto_trade_load() -> dict:
         return {}
 
 
+def _deploy_diff(old: dict, new: dict) -> list[dict]:
+    """What changed about what is LIVE, one entry per strategy/coin.
+
+    Config files overwrite. Without this the answer to "what was running on
+    APEX on 12 August, at what barriers" is gone the moment it is saved.
+    """
+    from tradingagents import auto_trader as at
+
+    out = []
+    keys = set(list((old.get("strategy_books") or {}))
+               + list((new.get("strategy_books") or {})))
+    for k in sorted(keys):
+        ob = list((old.get("strategy_books") or {}).get(k) or [])
+        nb = list((new.get("strategy_books") or {}).get(k) or [])
+        oc = list((old.get("strategy_coins") or {}).get(k) or [])
+        nc = list((new.get("strategy_coins") or {}).get(k) or [])
+        om = (old.get("strategy_margins") or {}).get(k)
+        nm = (new.get("strategy_margins") or {}).get(k)
+        if ob == nb and oc == nc and om == nm:
+            continue
+        spec = at.STRATEGY_SPECS.get(k) or {}
+        action = ("disarmed" if nb == [] and ob else
+                  "deployed" if nb and not ob else "changed")
+        for coin in (nc or oc or ["—"]):
+            out.append({
+                "strategy_key": k, "symbol": coin, "action": action,
+                "timeframe": _BT_TF_NAME.get(spec.get("interval")),
+                "signal": _tm_sig(k),
+                "threshold": round(float(spec.get("threshold") or 0) * 100, 3),
+                "tp": round(float(spec.get("tp", 0)) * 100, 3),
+                "sl": round(float(spec.get("sl", 0)) * 100, 3),
+                "sizing": at.sizing_for(new),
+                "books": ",".join(nb), "base_margin": nm,
+                "prev_json": json.dumps({"books": ob, "coins": oc,
+                                         "base_margin": om}),
+            })
+    return out
+
+
 def _auto_trade_save(payload: dict) -> None:
+    prev = _auto_trade_load()
     AUTO_TRADE_SETTINGS.parent.mkdir(parents=True, exist_ok=True)
     AUTO_TRADE_SETTINGS.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    # Record what changed BEFORE this write is forgotten. Best-effort: the
+    # archive being down must never stop a save the operator asked for.
+    try:
+        from tradingagents.dataflows import market_db as _mdb
+
+        changes = _deploy_diff(prev, payload)
+        if changes and _mdb.available():
+            _mdb.ensure_schema()
+            for c in changes:
+                _mdb.record_deployment(c)
+    except Exception:
+        pass
 
 
 @st.cache_data(ttl=900, show_spinner=False)
@@ -2157,14 +2296,15 @@ TERMINAL_CSS = """
   /* transparent, NOT a colour: the app paints the page and the card
      sits on it. Two near-identical darks (this band's and the app's)
      showed as a seam around every card in night mode. */
-  --t-ground:transparent; --t-panel:#ffffff;
-  --t-panel2:#eef1f6;
-  --t-rule:#dce2ec; --t-rule2:#c3ccdb;
-  --t-ink:#0f1723; --t-dim:#5a6b82;
-  --t-faint:#8798ae;
-  --t-amber:#1d6fd0; --t-up:#127c4a;
-  --t-dn:#c0392f;
-  --t-r:10px; --t-rc:8px;
+  --t-ground:transparent; --t-panel:oklch(100% 0 0);
+  --t-panel2:oklch(96.5% 0 0);
+  --t-rule:oklch(92.2% 0 0); --t-rule2:oklch(87% 0 0);
+  --t-ink:oklch(14.5% 0 0); --t-dim:oklch(44% 0 0);
+  --t-faint:oklch(55.6% 0 0);
+  --t-amber:oklch(48.8% .243 264.376); --t-up:oklch(52% .17 162.48);
+  --t-dn:oklch(57.7% .245 27.325);
+  /* zenith: --radius .625rem for controls, and a measured 14px on the card */
+  --t-r:14px; --t-rc:10px;
   background:var(--t-ground); color:var(--t-ink);
   font-family:var(--font-mono); font-variant-numeric:tabular-nums;
   padding:2px; border:0;
@@ -2197,17 +2337,88 @@ TERMINAL_CSS = """
 .st-key-term .material-symbols-rounded, .st-key-term [class*="material"]{
   font-family:"Material Symbols Rounded" !important; }
 
-/* st.metric labels render at 0.8 opacity and vanish on the dark ground */
+/* st.metric labels render at 0.8 opacity AND inherit config.toml's textColor,
+   which CSS here must override or they measure 1.11:1 on the dark ground. */
+/* Green form-submit buttons ("Add model", "Test ALL models") paint white on
+   #22C55E — 2.28:1. Near-black on the same green measures 8.46. Scoped to the
+   FORM-SUBMIT testid on purpose: the sidebar's active nav pill is also a
+   primary button, and it carries green text on a dark wash (7.29:1), which a
+   blanket primary rule turns into 1.15:1. */
+[data-testid="stBaseButton-primaryFormSubmit"],
+[data-testid="stBaseButton-primaryFormSubmit"] *{
+  color:#04140a !important; }
+[data-testid="stBaseButton-primaryFormSubmit"]{ font-weight:700 !important; }
+
+/* Hoisting the terminal sheet app-wide swapped these screens onto Fira Code,
+   which is wider per character than the face their column ratios were tuned
+   for. The labels then broke mid-word — "Filter/s", "SWAR/M", "ANA/LYZ/E",
+   "+833./50%". A control label is a single token: it never wraps, and if it
+   cannot fit it shrinks. Overflow is checked in the layout probe, not assumed. */
+button p, button span, button div,
+[data-testid="stPopoverButton"] p, [data-testid="stPopoverButton"] span{
+  white-space:nowrap !important; }
+button{ min-width:0 !important; }
+/* Checkbox and radio labels are single tokens too — "Loop" was rendering as
+   "Loo" / "p" in the narrow run panel. */
+[data-testid="stCheckbox"] label p, [data-testid="stRadio"] label p,
+[data-testid="stWidgetLabel"] p{ white-space:nowrap !important; }
+/* Numbers in a data cell are one token too — a percent that breaks across two
+   lines reads as two different figures. */
+.st-key-term [data-testid="stMarkdownContainer"] .nowrap,
+.st-key-term .tm-num, .st-key-term .mv-num{ white-space:nowrap !important; }
+
+/* An unstyled markdown link keeps Streamlit's default rgb(0,84,163), which is
+   2.69:1 on this ground — "OPEN THE REPORT" on Back Test was the one that
+   showed it. The accent measures 8.10:1, and the underline carries the link
+   identity so it is never colour alone. */
+[data-testid="stMarkdownContainer"] a:not(.bt-open):not(.ta-link){
+  color:var(--accent-dim) !important; text-decoration:underline;
+  text-underline-offset:2px; }
+[data-testid="stMarkdownContainer"] a:not(.bt-open):not(.ta-link):hover{
+  color:var(--accent) !important; }
+
+/* st.popover's trigger keeps Streamlit's own light chrome: measured
+   rgb(255,255,255) — a white box on the OLED ground, carrying light text, so
+   New Crypto's "Filters" control read 1.28:1 and looked like a rendering
+   fault rather than a button. */
+[data-testid="stPopoverButton"]{
+  background:var(--panel-2) !important; color:var(--text) !important;
+  border:1px solid var(--border) !important; }
+[data-testid="stPopoverButton"] *{ color:var(--text) !important; }
+[data-testid="stPopoverButton"]:hover{ border-color:var(--accent) !important; }
+
+/* An expander header outside the terminal container kept config.toml's ink,
+   so "Filters" on New Crypto measured 1.28:1 — a control you cannot see is a
+   control you cannot find. The chevron ligature is decorative but sits in the
+   same run of text, so it takes --muted rather than being left at 3.93. */
+[data-testid="stExpander"] summary{ color:var(--text) !important; }
+[data-testid="stExpander"] summary p,
+[data-testid="stExpander"] summary span:not([data-testid="stIconMaterial"]){
+  color:var(--text) !important; }
+[data-testid="stExpander"] summary [data-testid="stIconMaterial"],
+[data-testid="stExpander"] summary svg{ color:var(--muted) !important;
+  fill:var(--muted) !important; }
+
+/* A disabled button inherits config.toml's ink at 0.4 alpha — measured 1.11:1
+   on this ground, i.e. invisible. The operator asked "where is the DOWNLOAD in
+   backtest 2?" and the answer was that it was rendering, unreadably. Disabled
+   still has to look like a control. */
+button:disabled, button[disabled]{
+  color:var(--muted) !important; opacity:1 !important;
+  border-color:var(--border-soft) !important;
+  background:var(--panel-2) !important; cursor:not-allowed !important; }
+button:disabled *, button[disabled] *{ color:var(--muted) !important; }
+
 [data-testid="stMetricLabel"]{ opacity:1 !important; }
 [data-testid="stMetricLabel"] p{ font-size:11px; letter-spacing:.12em;
-  text-transform:uppercase; }
-a.bt-open{ display:inline-block; background:#C2560B; color:#fff;
+  text-transform:uppercase; color:var(--muted) !important; }
+a.bt-open{ display:inline-block; background:var(--accent); color:#04140a;
   font-weight:700; font-size:12px; letter-spacing:.14em; text-transform:uppercase;
-  text-decoration:none; padding:10px 18px; border:1px solid #C2560B;
+  text-decoration:none; padding:10px 18px; border:1px solid var(--accent);
   margin:8px 12px 10px 0; }
-a.bt-open:hover{ background:#a2470a; border-color:#a2470a; }
-a.bt-open:focus-visible{ outline:2px solid #171612; outline-offset:2px; }
-.bt-open-note{ color:#6b6459; font-size:12px; }
+a.bt-open:hover{ background:var(--accent-dim); border-color:var(--accent-dim); }
+a.bt-open:focus-visible{ outline:2px solid var(--text); outline-offset:2px; }
+.bt-open-note{ color:var(--faint); font-size:12px; }
 
 /* ---- the full-grid page link: this is a door out of the app, so it reads
    like a button rather than a line of text ---- */
@@ -2682,13 +2893,13 @@ TERMINAL_DARK_CSS = """
 .st-key-term{
   /* Apex's own dark set — its sidebar tokens, which are its dark surface:
      --sidebar, --sidebar-accent, --sidebar-border, --sidebar-primary. */
-  --t-ground:transparent; --t-panel:#152033;
-  --t-panel2:#1a2740;
-  --t-rule:#22304a; --t-rule2:#2d3f5e;
-  --t-ink:#dbe4f0; --t-dim:#7f92ad;
-  --t-faint:#5c6f8a;
-  --t-amber:#5aa2f0; --t-up:#4ade80;
-  --t-dn:#f87171;
+  --t-ground:transparent; --t-panel:oklch(19% 0 0);
+  --t-panel2:oklch(23.5% 0 0);
+  --t-rule:oklch(28% 0 0); --t-rule2:oklch(36% 0 0);
+  --t-ink:oklch(98.5% 0 0); --t-dim:oklch(72% 0 0);
+  --t-faint:oklch(60% 0 0);
+  --t-amber:oklch(62% .21 264.376); --t-up:oklch(69.6% .17 162.48);
+  --t-dn:oklch(64.5% .246 16.439);
 }
 /* Streamlit paints its dataframe canvas itself and reads none of our tokens,
    so it is inverted to match. LIGHT mode must never get this rule: it turned a
@@ -2799,6 +3010,426 @@ def _an_bars(stats: dict, limit: int = 8) -> str:
             f"<div class='an-bs'>{v.get('wins', 0)}W / {v.get('losses', 0)}L "
             f"&middot; {v.get('trades', 0)} trades</div></div>")
     return "".join(out)
+
+
+# ui-ux-pro-max checklist, first line: "No emojis as icons (use SVG:
+# Heroicons/Lucide)". The stat cells carried text glyphs — $, Σ, ◷, ◈, ◇, ● —
+# which are neither emoji nor icons: they inherit the text baseline, they cannot
+# be sized independently of the type, and a screen reader announces them as
+# characters. These are Lucide paths, 24x24 on a 2px stroke, marked
+# aria-hidden because the label beside each one already names it.
+_MV_ICONS = {
+    "wallet": "M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h15a2 2 0 0 1 2 2v8a2 2 0 0"
+              " 1-2 2H5a2 2 0 0 1-2-2V5M16 12h.01",
+    "trend": "M3 17l6-6 4 4 8-8M21 7v6h-6",
+    "clock": "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 6v6l4 2",
+    "layers": "M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5",
+    "flask": "M9 3h6M10 3v6L5 19a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-10V3",
+    "pulse": "M22 12h-4l-3 9L9 3l-3 9H2",
+}
+
+
+def _mv_icon(name: str, tone: str = "currentColor", size: int = 16) -> str:
+    d = _MV_ICONS.get(name)
+    if not d:
+        return ""
+    return (f"<svg width='{size}' height='{size}' viewBox='0 0 24 24' fill='none' "
+            f"stroke='{tone}' stroke-width='2' stroke-linecap='round' "
+            f"stroke-linejoin='round' aria-hidden='true' focusable='false'>"
+            f"<path d='{d}'/></svg>")
+
+
+def _mv_ring(pct: float, tone: str) -> str:
+    """Progress to the barrier as a ring. A percentage you have to read is a
+    number; a ring is a shape, and the shape is what you catch at a glance."""
+    p = max(0.0, min(100.0, float(pct or 0)))
+    return (f"<div class='mv-ring' style='background:conic-gradient({tone} 0 "
+            f"{p:.1f}%,var(--s1) {p:.1f}% 100%);color:{tone}'>"
+            f"<i>{p:.0f}%</i></div>")
+
+
+# ---------------------------------------------------------------------------
+# COUNTING MONEY
+#
+# A figure that counts from what was last on screen to what it is now, in pure
+# CSS. No JavaScript is involved and none can be: st.markdown strips <script>,
+# so a JS counter cannot run inside anything this app renders.
+#
+# The mechanism is a REGISTERED custom property. `--aw` is declared with
+# `syntax:"<integer>"`, which makes it a real animatable type rather than an
+# opaque string, so the browser can interpolate it. `counter-reset` seeds a
+# counter from that property and `content: counter(...)` prints it, so
+# animating the number animates the printed digits.
+#
+# Money needs a decimal point and thousands separators, and a counter cannot
+# contain either — so the value is split into up to three counters (thousands,
+# remainder, cents) and the "," and "." are literal text between them. The
+# remainder and cents are printed through @counter-style rules that zero-pad,
+# or 1,005.07 would print as "1,5.7".
+_ANI_STATE: dict = {}
+_ANI_SEQ = [0]
+
+# Beyond this the value would need a fourth counter group; a static figure is
+# correct and honest, rather than a wrong one that animates.
+_ANI_MAX = 1_000_000
+
+
+def _ani_money(value, *, key: str, sign: bool = False,
+               unit: str = "", cls: str = "") -> str:
+    """Money that counts up to `value` from whatever this key showed before.
+
+    `key` identifies the figure across reruns — the account balance keeps
+    counting from its own last value, not from another tile's.
+    """
+    if value is None:
+        return "<span>&mdash;</span>"
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return "<span>&mdash;</span>"
+
+    prev = _ANI_STATE.get(key)
+    _ANI_STATE[key] = v
+    # First paint has nothing to count from, so it counts up from zero — the
+    # thing a dashboard does on load.
+    start = 0.0 if prev is None else prev
+
+    def _split(x):
+        cents = int(round(abs(x) * 100))
+        whole, frac = divmod(cents, 100)
+        k, rem = divmod(whole, 1000)
+        return k, rem, frac, whole
+
+    if abs(v) >= _ANI_MAX or abs(start) >= _ANI_MAX:
+        big = f"{v:+,.2f}" if sign else f"{v:,.2f}"
+        return f"<span class='{cls}'>{big}{unit}</span>"
+
+    k1, r1, f1, w1 = _split(v)
+    k0, r0, f0, w0 = _split(start)
+    # The sign is text, never a counter: a counter would render its own minus
+    # and the digits would fight the label. It follows the FINAL value.
+    pre = ("-" if v < 0 else "+") if sign else ("-" if v < 0 else "")
+
+    _ANI_SEQ[0] += 1
+    eid = f"anm{_ANI_SEQ[0]}"
+    grouped = w1 >= 1000 or w0 >= 1000
+    if grouped:
+        frm = f"--ak:{k0}; --aw:{r0}; --af:{f0}"
+        to = f"--ak:{k1}; --aw:{r1}; --af:{f1}"
+        digits = ("<i class='k'></i>,<i class='w3'></i>"
+                  ".<i class='f'></i>")
+        seed = f"--ak:{k1};--aw:{r1};--af:{f1}"
+    else:
+        frm = f"--aw:{w0}; --af:{f0}"
+        to = f"--aw:{w1}; --af:{f1}"
+        digits = "<i class='w'></i>.<i class='f'></i>"
+        seed = f"--aw:{w1};--af:{f1}"
+    # A counter is GLYPHS, not text. Measured 2026-08-20: Chrome's full
+    # accessibility tree exposes zero of these figures — a screen reader gets
+    # silence where the account balance is, and innerText reads "." Hence the
+    # visually-hidden real text node, which is the accessible value AND the
+    # only way a test can read back what the page actually prints. The counter
+    # half is aria-hidden so the figure is never announced twice.
+    txt = f"{v:+,.2f}" if sign else f"{v:,.2f}"
+    return (
+        f"<style>@keyframes {eid}{{from{{{frm}}}to{{{to}}}}}"
+        f"#{eid}{{animation:{eid} .9s cubic-bezier(.22,1,.36,1) both}}</style>"
+        # The seed values are set inline as well as animated to, so the figure
+        # is CORRECT with no animation at all — which is what a reduced-motion
+        # reader gets, and what shows if @property is unsupported.
+        f"<span class='ani {cls}' id='{eid}' style='{seed}'>"
+        f"<span class='ani-sr'>{txt}{unit}</span>"
+        f"<span aria-hidden='true'>{pre}{digits}{unit}</span></span>")
+
+
+def _mv_hero(equity, day, open_real, life, series, armed: bool) -> str:
+    """The one number that matters, with its own curve behind it."""
+    curve = ""
+    if len(series) >= 2:
+        ys = [v for _t, v in series]
+        lo, hi = min(ys), max(ys)
+        span = (hi - lo) or 1.0
+        n = len(series) - 1
+        pts = " ".join(
+            f"{i / n * 100:.2f},{28 - (v - lo) / span * 26:.2f}"
+            for i, (_t, v) in enumerate(series))
+        tone = "var(--up)" if ys[-1] >= 0 else "var(--dn)"
+        curve = (
+            f"<svg viewBox='0 0 100 30' preserveAspectRatio='none' aria-hidden='true'>"
+            f"<defs><linearGradient id='mvg' x1='0' y1='0' x2='0' y2='1'>"
+            f"<stop offset='0' stop-color='{tone}' stop-opacity='.34'/>"
+            f"<stop offset='1' stop-color='{tone}' stop-opacity='0'/></linearGradient></defs>"
+            f"<polygon points='0,30 {pts} 100,30' fill='url(#mvg)'/>"
+            f"<polyline points='{pts}' fill='none' stroke='{tone}' stroke-width='.6'"
+            f" vector-effect='non-scaling-stroke'/></svg>")
+    return (
+        "<div class='mv-hero'>"
+        + (f"<span class='badge'><i></i>{'Trading' if armed else 'Halted'}</span>")
+        + "<div class='k'>Account</div>"
+        + "<div class='v'>"
+        + _ani_money(equity, key="hero.equity")
+        + "<span style='font-size:.42em;color:var(--dim);font-weight:500'>"
+          " USDT</span></div>"
+        + "<div class='d'>"
+        + f"<span>Open <b class='{_mv_cls(open_real)}'>"
+        + _ani_money(open_real, key="hero.open", sign=True) + "</b></span>"
+        + f"<span>Today <b class='{_mv_cls(day)}'>"
+        + _ani_money(day, key="hero.day", sign=True) + "</b></span>"
+        + f"<span>Lifetime <b class='{_mv_cls(life)}'>"
+        + _ani_money(life, key="hero.life", sign=True) + "</b></span>"
+        + "</div>" + curve + "</div>")
+
+
+def _mv_cls(v) -> str:
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return "mv-nil"
+    return "mv-up" if v > 0 else "mv-dn" if v < 0 else "mv-nil"
+
+
+def _mv_positions(rows: list, label: str, sub: str, live: bool) -> str:
+    """The positions table, as my own grid. Six columns, a ring for distance,
+    and no widget anywhere inside it."""
+    cols = "2.6fr .9fr 1.1fr 1.2fr 1fr .9fr"
+    # Live and Paper render the same coins. Without this the paper row would
+    # count from the live row's figure and vice versa.
+    _bk = "live" if live else "paper"
+    out = [f"<div class='mv-panel'><div class='mv-ph'><h3>{label}</h3>"
+           f"<span class='sub'>{sub}</span>"
+           f"<span class='mv-seg'><span class='{'on' if live else ''}'>Live</span>"
+           f"<span class='{'' if live else 'on'}'>Paper</span></span></div>"]
+    if not rows:
+        out.append("<div class='mv-empty'>Nothing open on this book.</div></div>")
+        return "".join(out)
+    out.append(f"<div class='mv-row hd' style='grid-template-columns:{cols}'>"
+               "<div>Position</div><div>Side</div><div class='mv-r'>Open P/L</div>"
+               "<div>To barrier</div><div class='mv-r'>At risk</div>"
+               "<div class='mv-r'>Entry</div></div>")
+    tot_open = tot_risk = 0.0
+    for r in rows:
+        coin = str(r.get("coin", ""))
+        tone_av = _AP_AVATAR[sum(map(ord, coin)) % len(_AP_AVATAR)]
+        side = str(r.get("side") or "").upper()
+        op = float(r.get("open $") or 0)
+        risk = float(r.get("margin $") or 0)
+        tot_open += op
+        tot_risk += risk
+        pct = r.get("prog_pct")
+        tone = "var(--up)" if r.get("prog_to") == "TP" else "var(--dn)"
+        out.append(
+            f"<div class='mv-row' style='grid-template-columns:{cols}'>"
+            f"<div class='mv-id'><span class='mv-av' style='background:{tone_av}'>"
+            f"{html.escape(coin[:2].upper())}</span><span><span class='nm'>"
+            f"{html.escape(coin)}</span><br><span class='sb'>"
+            f"{html.escape(str(r.get('strategy') or ''))}</span></span></div>"
+            f"<div><span class='mv-pill {'up' if side == 'LONG' else 'dn'}'>"
+            f"{side.title()}</span></div>"
+            f"<div class='mv-r mv-num {_mv_cls(op)}'>"
+            + _ani_money(op, key=f"pos.{_bk}.{coin}.op", sign=True) + "</div>"
+            + (f"<div>{_mv_ring(pct, tone)}</div>" if pct is not None
+               else "<div class='mv-sm mv-nil'>&mdash;</div>")
+            + "<div class='mv-r mv-num'>"
+            + _ani_money(risk, key=f"pos.{_bk}.{coin}.risk") + "</div>"
+            + f"<div class='mv-r mv-sm'>{r.get('entry') or '&mdash;'}</div></div>")
+    out.append(f"<div class='mv-row ft' style='grid-template-columns:{cols}'>"
+               f"<div>{len(rows)} open</div><div></div>"
+               f"<div class='mv-r {_mv_cls(tot_open)}'>"
+               + _ani_money(tot_open, key=f"pos.{_bk}.total", sign=True)
+               + "</div>"
+               f"<div></div><div class='mv-r'>"
+               + _ani_money(tot_risk, key=f"pos.{_bk}.risktotal") + "</div>"
+               "<div></div></div>")
+    out.append("</div>")
+    return "".join(out)
+
+
+def _mv_strategies(tiles, saved, stats, specs) -> str:
+    """One line per strategy: what it is, where it trades, whether it is armed,
+    and the only number that decides anything — its lifetime."""
+    out = ["<div class='mv-panel'><div class='mv-ph'><h3>Strategies</h3>"
+           "<span class='sub'>armed on this account</span></div>",
+           "<div class='mv-str'><div class='hd'><span>Rule</span><span>Bar</span>"
+           "<span>Contract</span><span>Stop / target</span>"
+           "<span>Lifetime</span><span>Books</span></div>"]
+    from tradingagents import auto_trader as at
+    for key, _lab, _note, coins in tiles:
+        sp = specs.get(key) or {}
+        bk = at.books_for(key, saved) if key in (saved.get("strategies") or []) else []
+        st_ = stats.get(key) or {}
+        pnl = st_.get("pnl")
+        dot = ("var(--up)" if False in bk else
+               "var(--acc)" if True in bk else "var(--faint)")
+        books = ("Live + paper" if False in bk and True in bk else
+                 "Live" if False in bk else "Paper" if True in bk else "Off")
+        out.append(
+            f"<div><span class='nm'>{html.escape(_tm_sig(key))}"
+            + (f" <span class='tf'>{html.escape(_TILE_TAGS[key])}</span>"
+               if key in _TILE_TAGS else "")
+            + f"</span><span class='tf'>{html.escape(_tm_tf(sp))}</span>"
+            + f"<span class='mv-sm'>"
+              f"{html.escape(', '.join(c.replace('_USDT','') for c in coins))}</span>"
+            + f"<span class='mv-sm'>{sp.get('sl', 0) * 100:.2f}"
+              f" / {sp.get('tp', 0) * 100:.2f}</span>"
+            + ((f"<span class='mv-num {_mv_cls(pnl)}'>"
+                + _ani_money(float(pnl), key=f"strat.{key}.pnl", sign=True)
+                + "</span>")
+               if pnl is not None and st_.get("trades")
+               else "<span class='mv-sm mv-nil'>no trades</span>")
+            + f"<span class='mv-sm'><i class='mv-dot' style='background:{dot}'></i>"
+              f"{books}</span></div>")
+    out.append("</div></div>")
+    return "".join(out)
+
+
+ANI_CSS = """
+<style>
+/* Registered properties: `syntax:"<integer>"` is what makes these animatable.
+   Declared as plain custom properties they would be opaque strings and the
+   browser would jump straight to the end value instead of counting. */
+@property --aw { syntax:"<integer>"; initial-value:0; inherits:false; }
+@property --af { syntax:"<integer>"; initial-value:0; inherits:false; }
+@property --ak { syntax:"<integer>"; initial-value:0; inherits:false; }
+
+/* A counter prints "7", not "07", so 1,005.07 would come out as "1,5.7".
+   These pad the groups that sit to the right of a separator. */
+@counter-style ani2 { system:extends decimal; pad:2 "0"; }
+@counter-style ani3 { system:extends decimal; pad:3 "0"; }
+
+.ani{ counter-reset: aw var(--aw) af var(--af) ak var(--ak);
+      font-variant-numeric:tabular-nums; font-feature-settings:"tnum";
+      white-space:nowrap; }
+.ani i{ font-style:normal; }
+/* The accessible copy of the figure: read by assistive tech, never seen. Not
+   display:none — that would remove it from the accessibility tree too, which
+   is the whole problem it exists to solve. */
+.ani-sr{ position:absolute !important; width:1px; height:1px; overflow:hidden;
+  clip-path:inset(50%); white-space:nowrap; border:0; padding:0; margin:-1px; }
+.ani i.k::after  { content:counter(ak); }
+.ani i.w::after  { content:counter(aw); }
+.ani i.w3::after { content:counter(aw, ani3); }
+.ani i.f::after  { content:counter(af, ani2); }
+
+/* Reduced motion keeps the FIGURE and drops the count. The inline seed values
+   already hold the final number, so switching the animation off cannot leave a
+   stale or zeroed figure on screen. */
+@media (prefers-reduced-motion: reduce){
+  .ani{ animation:none !important; }
+}
+</style>
+"""
+
+MODERN_CSS = """
+<style>
+/* ═══════════════════════════════════════════════════════════════════════
+   THE VIEW — Auto Trade rendered as one block of markup I control, instead
+   of Streamlit widgets re-skinned with !important. Built 2026-08-20 after the
+   operator said the re-skin was not impressive; the honest reason it was not
+   is that the row markup belonged to Streamlit. Everything here is mine: the
+   grid, the type scale, the ring, the transitions.
+   Interaction stays in Streamlit, in ONE action bar, which also permanently
+   ends the Close-button alignment problem — there is no button in the table.
+   ═══════════════════════════════════════════════════════════════════════ */
+.mv{ --r:14px; --gap:16px;
+  --s0:var(--panel); --s1:var(--panel-2); --line:var(--border);
+  --ink:var(--text); --dim:var(--muted); --faint:var(--faint);
+  --up:var(--buy); --dn:var(--sell); --acc:var(--accent);
+  font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;
+  color:var(--ink); font-variant-numeric:tabular-nums;
+  display:flex; flex-direction:column; gap:var(--gap); }
+.mv *{ box-sizing:border-box; }
+
+/* ── hero: the one number that matters, with the curve behind it ── */
+.mv-hero{ position:relative; overflow:hidden; border:1px solid var(--line);
+  border-radius:var(--r); background:
+    radial-gradient(120% 140% at 88% -20%, color-mix(in oklab,var(--acc) 16%,transparent), transparent 60%),
+    var(--s0); padding:26px 28px 0; }
+.mv-hero .k{ font-size:11.5px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--dim); }
+.mv-hero .v{ font-size:clamp(38px,5vw,54px); font-weight:650; letter-spacing:-.035em;
+  line-height:1; margin:6px 0 8px; }
+.mv-hero .d{ display:flex; gap:16px; flex-wrap:wrap; font-size:13px; color:var(--dim);
+  padding-bottom:18px; }
+.mv-hero .d b{ font-weight:600; }
+.mv-hero svg{ display:block; width:100%; height:86px; margin:0 -28px; }
+.mv-hero .badge{ position:absolute; top:22px; right:26px; display:inline-flex;
+  align-items:center; gap:7px; font-size:12px; font-weight:600; padding:5px 12px;
+  border-radius:999px; background:color-mix(in oklab,var(--up) 14%,transparent);
+  color:var(--up); border:1px solid color-mix(in oklab,var(--up) 32%,transparent); }
+.mv-hero .badge i{ width:7px; height:7px; border-radius:50%; background:currentColor;
+  animation:mvpulse 2.4s ease-in-out infinite; }
+@keyframes mvpulse{ 0%,100%{ opacity:1 } 50%{ opacity:.35 } }
+@media (prefers-reduced-motion:reduce){ .mv-hero .badge i{ animation:none } }
+
+/* ── the strip of secondary readouts ── */
+.mv-strip{ display:grid; gap:var(--gap);
+  grid-template-columns:repeat(auto-fit,minmax(168px,1fr)); }
+.mv-cell{ border:1px solid var(--line); border-radius:var(--r); background:var(--s0);
+  padding:15px 16px; transition:border-color .16s ease, transform .16s ease; }
+.mv-cell:hover{ border-color:color-mix(in oklab,var(--acc) 45%,var(--line));
+  transform:translateY(-1px); }
+.mv-cell em{ font-style:normal; font-size:11px; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--dim); display:flex;
+  align-items:center; gap:7px; }
+.mv-cell em svg{ flex:0 0 16px; opacity:.85; }
+.mv-cell b{ font-size:24px; font-weight:600; letter-spacing:-.025em; display:block;
+  margin-top:5px; }
+.mv-cell span{ font-size:11.5px; color:var(--faint); display:block; margin-top:3px; }
+
+/* ── my table. real grid, sticky head, no widget anywhere near it ── */
+.mv-panel{ border:1px solid var(--line); border-radius:var(--r); background:var(--s0);
+  overflow:hidden; }
+.mv-ph{ display:flex; align-items:baseline; gap:12px; padding:15px 18px 13px;
+  border-bottom:1px solid var(--line); }
+.mv-ph h3{ margin:0; font-size:14.5px; font-weight:600; letter-spacing:-.01em; }
+.mv-ph .sub{ font-size:12px; color:var(--dim); flex:1; }
+.mv-seg{ display:inline-flex; border:1px solid var(--line); border-radius:8px;
+  overflow:hidden; font-size:11.5px; }
+.mv-seg span{ padding:4px 11px; color:var(--dim); }
+.mv-seg span.on{ background:var(--s1); color:var(--ink); font-weight:600; }
+.mv-row{ display:grid; align-items:center; gap:14px; padding:13px 18px;
+  border-bottom:1px solid var(--line); transition:background .14s ease; }
+.mv-row:last-child{ border-bottom:0; }
+.mv-row.hd{ padding:9px 18px; background:var(--s1); border-bottom:1px solid var(--line); }
+.mv-row.hd div{ font-size:10.5px; letter-spacing:.13em; text-transform:uppercase;
+  color:var(--dim); font-weight:600; }
+.mv-row:not(.hd):not(.ft):hover{ background:color-mix(in oklab,var(--acc) 6%,transparent); }
+.mv-row.ft{ background:var(--s1); font-weight:600; border-bottom:0; }
+.mv-r{ text-align:right; }
+.mv-id{ display:flex; align-items:center; gap:11px; min-width:0; }
+.mv-av{ width:34px; height:34px; flex:0 0 34px; border-radius:10px; display:grid;
+  place-items:center; font-size:12px; font-weight:700; color:#fff; letter-spacing:.02em; }
+.mv-id .nm{ font-size:13.5px; font-weight:600; line-height:1.25; }
+.mv-id .sb{ font-size:11.5px; color:var(--faint); }
+.mv-pill{ display:inline-block; font-size:11px; font-weight:600; padding:2px 9px;
+  border-radius:999px; }
+.mv-pill.up{ background:color-mix(in oklab,var(--up) 15%,transparent); color:var(--up) }
+.mv-pill.dn{ background:color-mix(in oklab,var(--dn) 15%,transparent); color:var(--dn) }
+.mv-num{ font-size:14px; font-weight:600; letter-spacing:-.01em; }
+.mv-sm{ font-size:12px; color:var(--dim); }
+.mv-up{ color:var(--up) } .mv-dn{ color:var(--dn) } .mv-nil{ color:var(--faint) }
+
+/* progress to the barrier, as a ring — reads at a glance, unlike a number */
+.mv-ring{ width:38px; height:38px; border-radius:50%; display:grid; place-items:center;
+  font-size:10.5px; font-weight:700; }
+.mv-ring i{ width:28px; height:28px; border-radius:50%; background:var(--s0);
+  display:grid; place-items:center; font-style:normal; }
+
+/* ── strategy list: one line each, the numbers that decide things ── */
+.mv-str{ display:grid; gap:1px; background:var(--line); }
+.mv-str > div{ background:var(--s0); padding:12px 18px; display:grid; gap:14px;
+  align-items:center; grid-template-columns:1.9fr .8fr .9fr 1fr 1.1fr .9fr;
+  transition:background .14s ease; }
+.mv-str > div:hover{ background:color-mix(in oklab,var(--acc) 6%,transparent); }
+.mv-str > div.hd{ background:var(--s1); }
+.mv-str > div.hd span{ font-size:10.5px; letter-spacing:.13em; text-transform:uppercase;
+  color:var(--dim); font-weight:600; }
+.mv-str .nm{ font-size:13px; font-weight:600 }
+.mv-str .tf{ font-size:11.5px; color:var(--faint) }
+.mv-dot{ width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:7px }
+.mv-empty{ padding:26px 18px; font-size:12.5px; color:var(--faint); text-align:center }
+</style>
+"""
 
 
 def _tm_tile_head(label: str, glyph: str, tone: str) -> str:
@@ -2965,6 +3596,32 @@ def _tm_pos_head() -> str:
         for _k, lab, _w, a, _kind in _TM_POS)
 
 
+def _tm_prog_calc(entry, tp, sl, px, side: int):
+    """How far this position has travelled, as (percent, "TP"|"SL") or None.
+
+    Split out of `_tm_progress` on 2026-08-20 because the custom view was
+    RE-PARSING the rendered bar's HTML to recover the number — and failed, since
+    the markup separates them with &nbsp; rather than a space, so every ring drew
+    0%. Two readers of one figure means one calculation, not a regex over the
+    other one's output.
+    """
+    try:
+        entry, tp, sl, px = float(entry), float(tp), float(sl), float(px)
+    except (TypeError, ValueError):
+        return None
+    if not entry or not px or side == 0:
+        return None
+    tp_span, sl_span = tp - entry, sl - entry
+    moved = px - entry
+    if tp_span and (moved / tp_span) >= 0:
+        frac, target = moved / tp_span, "TP"
+    elif sl_span:
+        frac, target = moved / sl_span, "SL"
+    else:
+        return None
+    return max(0.0, min(frac, 1.0)) * 100, target
+
+
 def _tm_progress(entry, tp, sl, px, side: int) -> str:
     """A bar showing how far this position has travelled from its ENTRY
     toward its take-profit — green — or toward its stop — red.
@@ -2974,21 +3631,11 @@ def _tm_progress(entry, tp, sl, px, side: int) -> str:
     trade is winning. Returns "" when any leg is missing rather than drawing a
     bar from a guess.
     """
-    try:
-        entry, tp, sl, px = float(entry), float(tp), float(sl), float(px)
-    except (TypeError, ValueError):
+    got = _tm_prog_calc(entry, tp, sl, px, side)
+    if got is None:
         return ""
-    if not entry or not px or side == 0:
-        return ""
-    tp_span, sl_span = tp - entry, sl - entry
-    moved = px - entry
-    if tp_span and (moved / tp_span) >= 0:
-        frac, colour, target = moved / tp_span, "var(--t-up)", "TP"
-    elif sl_span:
-        frac, colour, target = moved / sl_span, "var(--t-dn)", "SL"
-    else:
-        return ""
-    pct = max(0.0, min(frac, 1.0)) * 100
+    pct, target = got
+    colour = "var(--t-up)" if target == "TP" else "var(--t-dn)"
     return (
         f"<span style='display:inline-flex;align-items:center;gap:6px;"
         f"width:100%'>"
@@ -3156,23 +3803,20 @@ def _tm_table(cols: tuple, rows: list, total: dict | None = None,
 
 def render_auto_trade_tab() -> None:
     """The trading terminal: status ribbon, strategy grid, risk, book, feed."""
+    _ledger_sync_tick()
     from tradingagents import auto_trader as at
     from tradingagents.dataflows import mexc_credentials as cred
     from tradingagents.dataflows import mexc_futures as fx
 
     cred.load_into_env()
     saved = _auto_trade_load()
-    term = st.container(key="term")
+    # The `term` container and its stylesheet are created in main() now, so
+    # every screen gets them and this tab does not send the sheet twice. The
+    # positions grid template still comes from _TM_POS, so the header, every
+    # row and the CSS can never disagree about the column count.
+    term = st.container()
 
     with term:
-        # The positions grid template is built from _TM_POS so the header,
-        # every row and the CSS can never disagree about the column count.
-        st.markdown(TERMINAL_CSS.replace("__POSGRID__", _TM_POS_GRID),
-                    unsafe_allow_html=True)
-        # The terminal follows the app's Night toggle now. Same switch the rest
-        # of the app reads, so the two halves of the page can never disagree.
-        if st.session_state.get("ui_night"):
-            st.markdown(TERMINAL_DARK_CSS, unsafe_allow_html=True)
 
         # ================= BAND 1 — SYSTEM ==============================
         # Its own fragment so the ribbon can refresh at the top of the page
@@ -3271,8 +3915,223 @@ def render_auto_trade_tab() -> None:
                 + ("entries halted" if at.halted() else "scanning")
                 + "</div></div></div>", unsafe_allow_html=True)
 
-        with st.container(key="tmsec_system"):
-            _ribbon()
+        # Both the view and the legacy band read these rows, so a position
+        # cannot appear in one and not the other.
+        def _book_rows(dry: bool):
+            stats = at.coin_stats(dry)
+            rows: dict[str, dict] = {}
+
+            def _blank(sym):
+                v = stats.get(sym, {"pnl": 0.0, "wins": 0, "losses": 0,
+                                    "trades": 0, "strategies": "—"})
+                return {"coin": sym.replace("_USDT", ""),
+                        # kept for the close buttons; dropped from the
+                        # displayed frame by the _order filter below
+                        "symbol": sym,
+                        "state": "flat", "side": "—",
+                        "strategy": v["strategies"],
+                        "opened": "—", "held": "—",
+                        "vol": None, "margin $": None,
+                        "lev": f"{at.LEVERAGE}x",
+                        "entry": None, "TP": None, "SL": None,
+                        "tp_pct": None, "sl_pct": None, "prog": "",
+                        "open $": 0.0,
+                        "realised $": round(v["pnl"], 2),
+                        "total $": round(v["pnl"], 2),
+                        "trades": v["trades"], "W": v["wins"],
+                        "L": v["losses"], "bracket": ""}
+
+            for sym in stats:
+                rows[sym] = _blank(sym)
+            for _sym, _sst in at.load_state().items():
+                _pos = (_sst.get("position")
+                        if isinstance(_sst, dict) else None)
+                if not _pos or bool(_pos.get("dry", False)) is not dry:
+                    continue
+                _base = _sym.split("#")[0]
+                r = rows.setdefault(_base, _blank(_base))
+                _op = None
+                if dry:
+                    _px = _last_price(_base)
+                    if _px and _pos.get("entry"):
+                        _op = round((_px / _pos["entry"] - 1)
+                                    * _pos["side"] * _pos["margin"]
+                                    * at.LEVERAGE, 2)
+                _when = _pos.get("opened_at") or _pos.get("entry_ts")
+                r.update({
+                    "state": "OPEN",
+                    "side": "LONG" if _pos["side"] > 0 else "SHORT",
+                    "strategy": _pos.get("strategy", r["strategy"]),
+                    # Compact stamp: "Aug 14, 2026 (4:00AM)" does not fit
+                    # a grid cell and ellipsised to "Aug 14, 20…", which
+                    # hides the part that matters — the time.
+                    "opened": (_dt.datetime.fromtimestamp(_when)
+                               .strftime("%m-%d %H:%M") if _when else "—"),
+                    "held": (_fmt_age(time.time() - _when) if _when
+                             else "—"),
+                    "vol": _pos.get("vol"), "margin $": _pos.get("margin"),
+                    "entry": _pos.get("entry"), "TP": _pos.get("tp"),
+                    "SL": _pos.get("sl"),
+                    # Blank when the stop is where it should be. "on
+                    # MEXC" and "SIMULATED" told the operator what the
+                    # book they are already labelled with implies, and
+                    # they asked for it gone. The column keeps its space
+                    # for the ONE state worth interrupting for: a
+                    # rejected stop means real money is open with no
+                    # protection, so that shouts.
+                    "bracket": ("" if dry or _pos.get("bracket", True)
+                                else "NO STOP — RETRYING"),
+                })
+                if _op is not None:
+                    r["open $"] = _op
+            # the exchange is the source of truth for the REAL book
+            if not dry:
+                try:
+                    for _p in _live_open_positions():
+                        _sym = _p.get("symbol")
+                        r = rows.setdefault(_sym, _blank(_sym))
+                        if r["state"] != "OPEN":
+                            r["state"] = "OPEN"
+                            r["strategy"] = "(not the bot's)"
+                            r["side"] = ("LONG"
+                                         if _p.get("positionType") == 1
+                                         else "SHORT")
+                        r["vol"] = _p.get("holdVol", r["vol"])
+                        r["entry"] = _p.get("holdAvgPrice", r["entry"])
+                        _u = _p.get("unRealizedPnl")
+                        if _u is not None:
+                            r["open $"] = round(float(_u), 2)
+                except Exception as exc:
+                    st.caption(f"could not read MEXC positions: {exc}")
+            out = [r for r in rows.values() if r["state"] == "OPEN"]
+            for r in out:
+                r["total $"] = round(r["realised $"] + (r["open $"] or 0), 2)
+                # Barriers as PERCENTAGES off the entry, plus how far the
+                # price has travelled toward one of them. Percent is what
+                # the strategy is specified in; the raw prices alone make
+                # you do the arithmetic every time you look.
+                _e, _tp, _sl = r.get("entry"), r.get("TP"), r.get("SL")
+                _side = 1 if r.get("side") == "LONG" else -1
+                # …and what each barrier is WORTH on this position, net of
+                # the round-trip taker fee. The percentage is on the
+                # NOTIONAL, so the dollar figure is the only one that says
+                # what actually lands in the wallet.
+                _vol = r.get("vol") or 0
+                _notional = (float(_e or 0) * float(_vol)
+                             * _contract_size(r.get("symbol") or ""))
+                try:
+                    _fee = at.taker_fee(r.get("symbol") or "")
+                except Exception:
+                    _fee = 0.0004
+                _cost = _notional * _fee * 2
+                if _e and _tp:
+                    _p = abs(float(_tp) / float(_e) - 1) * 100
+                    _usd = _notional * _p / 100 - _cost
+                    r["tp_pct"] = (f"{_p:.2f} <span class='tm-up'>"
+                                   f"({_usd:+,.2f})</span>")
+                if _e and _sl:
+                    _p = abs(float(_sl) / float(_e) - 1) * 100
+                    _usd = -(_notional * _p / 100 + _cost)
+                    r["sl_pct"] = (f"{_p:.2f} <span class='tm-dn'>"
+                                   f"({_usd:+,.2f})</span>")
+                _now = _last_price(r.get("symbol") or "")
+                r["prog"] = _tm_progress(_e, _tp, _sl, _now, _side)
+                _pc = _tm_prog_calc(_e, _tp, _sl, _now, _side)
+                r["prog_pct"], r["prog_to"] = (_pc if _pc else (None, None))
+            out.sort(key=lambda r: r["total $"])
+            return out
+
+        # ── THE VIEW. One block of my own markup replaces the System,
+        # Performance and Positions bands. Streamlit keeps exactly one job on
+        # this screen: the action bar underneath, which is also why there is no
+        # longer a button inside a table to misalign.
+        st.markdown(MODERN_CSS, unsafe_allow_html=True)
+
+        # 15s, matching the shortest data cache on this screen
+        # (_live_open_positions is ttl=10). The bands this view replaced ran at
+        # 10s and 20s; when they were removed as duplicates the refresh went
+        # with them, and the screen sat still until the operator reloaded.
+        @st.fragment(run_every=15)
+        def _view() -> None:
+            _eq = _an_equity(dry=False)
+            _life = _eq[-1][1] if _eq else 0.0
+            _day = at.pnl_today(dry=False)["total"]
+            _stats = at.strategy_stats(dry=False)
+            _open_real = 0.0
+            _bits = []
+            try:
+                for _p in _live_open_positions():
+                    _v = float(_p.get("unRealizedPnl") or 0)
+                    _open_real += _v
+                    _bits.append((str(_p.get("symbol", "")).replace("_USDT", ""), _v))
+            except Exception:
+                pass
+            try:
+                _eqty = float((fx.assets().get("USDT") or {}).get("equity") or 0)
+            except Exception:
+                _eqty = 0.0
+            # Read each figure ONCE. fx.assets() was called three times and
+            # pnl_today(dry=False) twice while building this one block, and each
+            # call is a live round trip to MEXC.
+            _usdt = fx.assets().get("USDT") or {}
+            _free = float(_usdt.get("availableBalance") or 0)
+            _today = at.pnl_today(dry=False)
+            _paper_total = sum(float(v.get("pnl") or 0)
+                               for v in at.strategy_stats(dry=True).values())
+            _real, _paper = _book_rows(False), _book_rows(True)
+            _real = [r for r in _real if r.get("state") != "flat"]
+            _paper = [r for r in _paper if r.get("state") != "flat"]
+            st.markdown(
+                "<div class='mv'>"
+                + _mv_hero(_eqty, _day, _open_real, _life, _eq,
+                           armed=bool(at.runner_pid()) and not at.halted())
+                + "<div class='mv-strip'>"
+                + f"<div class='mv-cell'><em>{_mv_icon("wallet")}Free margin</em><b>"
+                + _ani_money(_free, key="tile.free")
+                + "</b><span>uncommitted</span></div>"
+                + f"<div class='mv-cell'><em>{_mv_icon("trend")}Open now</em>"
+                + f"<b class='{_mv_cls(_open_real)}'>"
+                + _ani_money(_open_real, key="tile.open", sign=True) + "</b>"
+                + "<span>"
+                + (" &middot; ".join(f"{c} {v:+.2f}" for c, v in _bits)
+                   if _bits else "no position open") + "</span></div>"
+                + f"<div class='mv-cell'><em>{_mv_icon("clock")}Closed today</em>"
+                + f"<b class='{_mv_cls(_day)}'>"
+                + _ani_money(_day, key="tile.day", sign=True) + "</b>"
+                + f"<span>{_today['trades']} trades</span></div>"
+                + f"<div class='mv-cell'><em>{_mv_icon("flask")}Paper book</em>"
+                + f"<b class='{_mv_cls(_paper_total)}'>"
+                + _ani_money(_paper_total, key="tile.paper", sign=True)
+                + "</b><span>not real money</span></div>"
+                + "</div>"
+                + _mv_positions(_real, "Open positions",
+                                f"{len(_real)} real &middot; {at.LEVERAGE}x isolated",
+                                True)
+                + _mv_positions(_paper, "Demo positions",
+                                f"{len(_paper)} simulated", False)
+                + _mv_strategies(AUTO_STRATEGIES, saved, _stats,
+                                 at.STRATEGY_SPECS)
+                + "</div>", unsafe_allow_html=True)
+            # the only interaction on this screen
+            _open_syms = [r["symbol"] for r in _real]
+            if _open_syms:
+                a1, a2, _a3 = st.columns([2, 1, 5], vertical_alignment="bottom")
+                _pick = a1.selectbox("Close a position", _open_syms,
+                                     key="mv_close_pick")
+                if a2.button("Close at market", key="mv_close_go",
+                             use_container_width=True):
+                    st.session_state["close_pending"] = _pick
+                    st.rerun(scope="fragment")
+
+        with st.container(key="tmsec_view"):
+            _view()
+
+        # The System ribbon is GONE. Its six tiles said what the hero and the
+        # four readouts above already say — wallet, all-time, today, open,
+        # paper, runner — so the screen printed every figure twice, which is
+        # what the operator meant by "still messy". `_ribbon` itself is kept
+        # unused for now rather than deleted, so nothing else that calls it
+        # breaks; it is no longer rendered here.
 
         # ================= BAND 1b — PERFORMANCE ========================
         # Design 09's defining move: the equity curve is the FIRST object after
@@ -3322,8 +4181,10 @@ def render_auto_trade_tab() -> None:
                 + _an_bars(_live_stats)
                 + "</div></div>", unsafe_allow_html=True)
 
-        with st.container(key="tmsec_perf"):
-            _performance()
+        # The Performance band is GONE for the same reason: the equity curve now
+        # sits behind the hero number and "lifetime by strategy" is the LIFETIME
+        # column of the strategy list. Two charts of one series is not
+        # information, it is noise.
 
         # ================= BAND 2 — POSITIONS ===========================
         @st.fragment(run_every=20)
@@ -3332,127 +4193,7 @@ def render_auto_trade_tab() -> None:
                 # ONE table per book. Open positions and per-coin PnL used to be
                 # four separate tables; the same contract appeared in two of them
                 # with different columns, which read as duplication.
-                def _book_rows(dry: bool):
-                    stats = at.coin_stats(dry)
-                    rows: dict[str, dict] = {}
-
-                    def _blank(sym):
-                        v = stats.get(sym, {"pnl": 0.0, "wins": 0, "losses": 0,
-                                            "trades": 0, "strategies": "—"})
-                        return {"coin": sym.replace("_USDT", ""),
-                                # kept for the close buttons; dropped from the
-                                # displayed frame by the _order filter below
-                                "symbol": sym,
-                                "state": "flat", "side": "—",
-                                "strategy": v["strategies"],
-                                "opened": "—", "held": "—",
-                                "vol": None, "margin $": None,
-                                "lev": f"{at.LEVERAGE}x",
-                                "entry": None, "TP": None, "SL": None,
-                                "tp_pct": None, "sl_pct": None, "prog": "",
-                                "open $": 0.0,
-                                "realised $": round(v["pnl"], 2),
-                                "total $": round(v["pnl"], 2),
-                                "trades": v["trades"], "W": v["wins"],
-                                "L": v["losses"], "bracket": ""}
-
-                    for sym in stats:
-                        rows[sym] = _blank(sym)
-                    for _sym, _sst in at.load_state().items():
-                        _pos = (_sst.get("position")
-                                if isinstance(_sst, dict) else None)
-                        if not _pos or bool(_pos.get("dry", False)) is not dry:
-                            continue
-                        _base = _sym.split("#")[0]
-                        r = rows.setdefault(_base, _blank(_base))
-                        _op = None
-                        if dry:
-                            _px = _last_price(_base)
-                            if _px and _pos.get("entry"):
-                                _op = round((_px / _pos["entry"] - 1)
-                                            * _pos["side"] * _pos["margin"]
-                                            * at.LEVERAGE, 2)
-                        _when = _pos.get("opened_at") or _pos.get("entry_ts")
-                        r.update({
-                            "state": "OPEN",
-                            "side": "LONG" if _pos["side"] > 0 else "SHORT",
-                            "strategy": _pos.get("strategy", r["strategy"]),
-                            # Compact stamp: "Aug 14, 2026 (4:00AM)" does not fit
-                            # a grid cell and ellipsised to "Aug 14, 20…", which
-                            # hides the part that matters — the time.
-                            "opened": (_dt.datetime.fromtimestamp(_when)
-                                       .strftime("%m-%d %H:%M") if _when else "—"),
-                            "held": (_fmt_age(time.time() - _when) if _when
-                                     else "—"),
-                            "vol": _pos.get("vol"), "margin $": _pos.get("margin"),
-                            "entry": _pos.get("entry"), "TP": _pos.get("tp"),
-                            "SL": _pos.get("sl"),
-                            # Blank when the stop is where it should be. "on
-                            # MEXC" and "SIMULATED" told the operator what the
-                            # book they are already labelled with implies, and
-                            # they asked for it gone. The column keeps its space
-                            # for the ONE state worth interrupting for: a
-                            # rejected stop means real money is open with no
-                            # protection, so that shouts.
-                            "bracket": ("" if dry or _pos.get("bracket", True)
-                                        else "NO STOP — RETRYING"),
-                        })
-                        if _op is not None:
-                            r["open $"] = _op
-                    # the exchange is the source of truth for the REAL book
-                    if not dry:
-                        try:
-                            for _p in _live_open_positions():
-                                _sym = _p.get("symbol")
-                                r = rows.setdefault(_sym, _blank(_sym))
-                                if r["state"] != "OPEN":
-                                    r["state"] = "OPEN"
-                                    r["strategy"] = "(not the bot's)"
-                                    r["side"] = ("LONG"
-                                                 if _p.get("positionType") == 1
-                                                 else "SHORT")
-                                r["vol"] = _p.get("holdVol", r["vol"])
-                                r["entry"] = _p.get("holdAvgPrice", r["entry"])
-                                _u = _p.get("unRealizedPnl")
-                                if _u is not None:
-                                    r["open $"] = round(float(_u), 2)
-                        except Exception as exc:
-                            st.caption(f"could not read MEXC positions: {exc}")
-                    out = [r for r in rows.values() if r["state"] == "OPEN"]
-                    for r in out:
-                        r["total $"] = round(r["realised $"] + (r["open $"] or 0), 2)
-                        # Barriers as PERCENTAGES off the entry, plus how far the
-                        # price has travelled toward one of them. Percent is what
-                        # the strategy is specified in; the raw prices alone make
-                        # you do the arithmetic every time you look.
-                        _e, _tp, _sl = r.get("entry"), r.get("TP"), r.get("SL")
-                        _side = 1 if r.get("side") == "LONG" else -1
-                        # …and what each barrier is WORTH on this position, net of
-                        # the round-trip taker fee. The percentage is on the
-                        # NOTIONAL, so the dollar figure is the only one that says
-                        # what actually lands in the wallet.
-                        _vol = r.get("vol") or 0
-                        _notional = (float(_e or 0) * float(_vol)
-                                     * _contract_size(r.get("symbol") or ""))
-                        try:
-                            _fee = at.taker_fee(r.get("symbol") or "")
-                        except Exception:
-                            _fee = 0.0004
-                        _cost = _notional * _fee * 2
-                        if _e and _tp:
-                            _p = abs(float(_tp) / float(_e) - 1) * 100
-                            _usd = _notional * _p / 100 - _cost
-                            r["tp_pct"] = (f"{_p:.2f} <span class='tm-up'>"
-                                           f"({_usd:+,.2f})</span>")
-                        if _e and _sl:
-                            _p = abs(float(_sl) / float(_e) - 1) * 100
-                            _usd = -(_notional * _p / 100 + _cost)
-                            r["sl_pct"] = (f"{_p:.2f} <span class='tm-dn'>"
-                                           f"({_usd:+,.2f})</span>")
-                        _now = _last_price(r.get("symbol") or "")
-                        r["prog"] = _tm_progress(_e, _tp, _sl, _now, _side)
-                    out.sort(key=lambda r: r["total $"])
-                    return out
+                # _book_rows now lives at tab scope (hoisted 2026-08-20) so the custom view and this band read the SAME rows.
 
                 _real, _paper = _book_rows(False), _book_rows(True)
                 st.markdown(
@@ -3805,11 +4546,22 @@ def render_auto_trade_tab() -> None:
                                 "no closed trades yet"),
                     unsafe_allow_html=True)
 
-        _positions()
+        # The old positions band is GONE — the view renders both books with the
+        # same rows from the same `_book_rows`. Its per-row detail disclosure is
+        # the one thing it had that the view does not; that is the next thing to
+        # port, and it is listed as such rather than left as a duplicate table.
 
 
         # ================= BAND 3 — STRATEGY ============================
-        with st.container(key="tmsec_strategy"):
+        # Progressive disclosure (ui-ux-pro-max priority table §8 — the ux
+        # search returned no rule for this, so it is the built-in guidance, not
+        # a database match). The clean strategy LIST is the default reading; the
+        # fourteen-column control grid is configuration, which you open when you
+        # intend to change something. Before this they rendered one above the
+        # other, so every strategy appeared twice on one screen.
+        with st.expander("Configure strategies  ·  arm, size, loss cap, backtest",
+                         expanded=False):
+          with st.container(key="tmsec_strategy"):
             try:
                 contracts = _futures_contracts()
                 symbols = sorted(c["symbol"] for c in contracts)
@@ -3846,8 +4598,8 @@ def render_auto_trade_tab() -> None:
             # column was widened to fix.
             # STRATEGY carries the operator's own row name now, so it takes
             # the width the ladder can spare.
-            _W = [2.1, 1.3, .62, .62, .95, .95, 1.15, 1.75, .9, .95, 1.0,
-                  .95, 1.0, .95]
+            _W = [2.0, 1.3, .62, .62, .95, .95, 1.15, 1.75, .9, .95, 1.0,
+                  .95, 1.0, 1.05]
             _HEADS = ("strategy", "contracts", "LIVE", "DEMO", "base $",
                       "notional $", "streak", f"ladder $ · {'flat' if _flat else 'DEEP'}",
                       "next $", "SL / TP", "loss cap $", "W / L", "PROFIT $",
@@ -4125,7 +4877,9 @@ def render_auto_trade_tab() -> None:
                 c for k in chosen_strats for c in strategy_coins.get(k, [])))
 
         # ================= BAND 4 — RISK ================================
-        with st.container(key="tmsec_risk"):
+        with st.expander("Risk  ·  sizing, books in use, account loss cap",
+                         expanded=False):
+          with st.container(key="tmsec_risk"):
             st.markdown(_tm_head("Risk", f"{at.LEVERAGE}x isolated"),
                         unsafe_allow_html=True)
             rk1, rk2 = st.columns([1, 1.6], gap="large")
@@ -4384,11 +5138,15 @@ def render_auto_trade_tab() -> None:
                                if rows else "<div>no events yet</div>")
                             + "</div>", unsafe_allow_html=True)
 
-        with st.container(key="tmsec_feed"):
+        with st.expander("Feed  ·  runner log and every event",
+                         expanded=False):
+          with st.container(key="tmsec_feed"):
             _feed()
 
         # ================= BAND 7 — CONNECTION ==========================
-        with st.container(key="tmsec_connection"):
+        with st.expander("Connection  ·  MEXC keys and permissions",
+                         expanded=False):
+          with st.container(key="tmsec_connection"):
             cst = cred.status()
             st.markdown(
                 _tm_head("Connection",
@@ -4729,7 +5487,7 @@ def _bt_progress_panel() -> None:
     if prog:
         running = msw.is_running()
         st.markdown("<div style='font-size:10px;letter-spacing:.16em;"
-                    "text-transform:uppercase;color:#6b6459;margin:14px 0 2px'>"
+                    "text-transform:uppercase;color:var(--faint);margin:14px 0 2px'>"
                     "This Mac</div>", unsafe_allow_html=True)
         pct = prog["done"] / max(prog["total"], 1)
         phase = prog.get("phase", "sweeping")
@@ -4757,6 +5515,49 @@ def _bt_progress_panel() -> None:
             st.rerun()
 
 
+def render_db_dashboard_section() -> None:
+    """How full the Neon database is: measured size against the plan limit,
+    and each table's share. The percent is derived, never guessed."""
+    import pandas as pd
+    from tradingagents.dataflows import market_db as mdb
+
+    st.markdown('<div class="ta-section">Database — storage used</div>',
+                unsafe_allow_html=True)
+    if not mdb.available():
+        st.caption("No database configured.")
+        return
+    stats = mdb.storage_stats()
+    if stats is None:
+        st.caption("Database unreachable right now — the app retries by "
+                   "itself within 2 minutes.")
+        return
+    used_mb = stats["db_bytes"] / 1048576
+    limit_mb = stats["limit_bytes"] / 1048576
+    pct = stats["percent"]
+    st.progress(min(pct / 100, 1.0),
+                text=f"{pct:g}% used — {used_mb:,.1f} MB of {limit_mb:,.0f} "
+                     "MB (Neon plan limit)")
+    if pct >= 80:
+        st.warning(f"Over 80% full. At 100% Neon refuses new writes — "
+                   f"{limit_mb - used_mb:,.0f} MB left. Delete unused "
+                   "coins/timeframes or upgrade the plan.")
+    c = st.columns(3)
+    c[0].metric("Size now", f"{used_mb:,.1f} MB")
+    c[1].metric("Free", f"{limit_mb - used_mb:,.1f} MB")
+    c[2].metric("Plan limit", f"{limit_mb:,.0f} MB")
+    rows = [{
+        "table": t["table"],
+        "size MB": round(t["bytes"] / 1048576, 2),
+        "share of used": f"{100 * t['bytes'] / max(stats['db_bytes'], 1):.1f}%",
+        "rows (estimate)": t["rows"],
+    } for t in stats["tables"]]
+    st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
+    st.caption("Size as Postgres reports it (pg_database_size). Row counts "
+               "are the planner's live estimate, not an exact count. Limit "
+               f"is {limit_mb:,.0f} MB — override with \"size_limit_mb\" in "
+               "~/.tradingagents/neon_db.json if the plan changes.")
+
+
 def render_market_data_section() -> None:
     """The permanent candle archive on Neon: download once, update the tail,
     and every backtest reads from it instead of re-paging MEXC."""
@@ -4777,9 +5578,13 @@ def render_market_data_section() -> None:
     coin_opts = coins + [s for s in sorted(_all) if s not in coins]
     c1, c2, c3, c4 = st.columns([2, 1, 1, 1], vertical_alignment="bottom")
     coin_sel = c1.multiselect(
-        "Coins", coin_opts, default=coins, key="mdb_coins",
+        "Coins", coin_opts, default=[], key="mdb_coins",
         help=f"All {len(coin_opts)} MEXC USDT perpetuals — pick any set, or "
              "use the list's Select all. Defaults to your configured coins.")
+    # With hundreds of chips on screen, the one thing the operator cannot see
+    # is how many they picked.
+    c1.caption(f"**{len(coin_sel)}** of {len(coin_opts)} coins selected"
+               if coin_sel else f"none of {len(coin_opts)} coins selected")
     tf_sel = c2.multiselect("Timeframes", list(mdb.TIMEFRAMES),
                             default=list(mdb.TIMEFRAMES), key="mdb_tfs")
     dl = c3.button("DOWNLOAD", key="mdb_download", use_container_width=True,
@@ -4820,6 +5625,7 @@ def render_market_data_section() -> None:
             st.error(f"Could not start on GitHub: {exc}")
         return
 
+    from tradingagents import db_jobs
     if dl or up:
         symbols = list(coin_sel)
         if len(symbols) > 50:
@@ -4827,26 +5633,41 @@ def render_market_data_section() -> None:
                        "timeframe(s) — a first download this size takes "
                        "hours and can outgrow the database plan. It keeps "
                        "whatever finishes.")
-        ivs = [mdb.TIMEFRAMES[t] for t in tf_sel]
-        bar = st.progress(0.0, text="Starting…")
+        db_jobs.start("download", {"coins": symbols, "tfs": list(tf_sel)})
+        st.rerun()
 
-        def _prog(done, total, sym, iv):
-            bar.progress(min(done / max(total, 1), 1.0),
-                         text=f"{sym} · {iv} ({done}/{total})")
-
-        res = mdb.download(symbols, ivs, progress=_prog)
-        bar.progress(1.0, text="Done")
-        msg = (f"{res['bars_stored']:,} new bars stored across "
-               f"{len(res['pairs'])} coin/timeframe pair(s).")
-        if res["errors"]:
-            st.error(msg + f" {len(res['errors'])} failed — first: "
-                     + res["errors"][0])
-        else:
-            st.success(msg)
+    # A running job renders its live progress + STOP, whoever started it.
+    _dj = db_jobs.status("download")
+    if _dj.get("running"):
+        done, total = _dj.get("done", 0), max(_dj.get("total", 0), 1)
+        st.progress(min(done / total, 1.0),
+                    text=f"Downloading {_dj.get('now', '…')} — {done}/{total} "
+                         f"pairs, {_dj.get('bars_stored', 0):,} bars stored")
+        s1, s2 = st.columns([1, 5])
+        if s1.button("STOP DOWNLOAD", key="mdb_stop"):
+            db_jobs.request_stop("download")
+            st.warning("Stop signalled — the current pair finishes, then it "
+                       "exits. Everything downloaded so far is kept.")
+        if s2.button("Refresh progress", key="mdb_poll"):
+            st.rerun()
+    elif _dj.get("finished"):
+        _msg = (f"Last download: {_dj.get('bars_stored', 0):,} bars, "
+                f"{_dj.get('done', 0)}/{_dj.get('total', 0)} pairs"
+                + (f" — {_dj['note']}" if _dj.get("note") else "")
+                + (f" — first error: {_dj['first_error']}"
+                   if _dj.get("first_error") else ""))
+        (st.warning if _dj.get("stopped") or _dj.get("errors")
+         else st.caption)(_msg)
 
     cov = mdb.coverage()
     if not cov:
-        st.caption("Archive is empty — pick a coin and click DOWNLOAD.")
+        # An unreachable database must never read as an empty one — "empty"
+        # on a network blip would say your data is gone when it isn't.
+        if mdb.is_down():
+            st.caption("Database unreachable right now — the app retries "
+                       "by itself within 2 minutes. Your data is intact.")
+        else:
+            st.caption("Archive is empty — pick a coin and click DOWNLOAD.")
         return
     label_of = {v: k for k, v in mdb.TIMEFRAMES.items()}
     rows = [{
@@ -4893,8 +5714,11 @@ def render_archive_backtest_section() -> None:
     coins = settings.get("coins") or []
     _all = _all_mexc_symbols()
     coin_opts = coins + [s for s in sorted(_all) if s not in coins]
-    c1, c2, c3, c4 = st.columns([2, 1, 1, 1], vertical_alignment="bottom")
-    sel = c1.multiselect("Coins", coin_opts, default=coins, key="mdbt_coins")
+    c1, c2, c3, c4, c5 = st.columns([2, 1, 1, 1, 1],
+                                    vertical_alignment="bottom")
+    sel = c1.multiselect("Coins", coin_opts, default=[], key="mdbt_coins")
+    c1.caption(f"**{len(sel)}** of {len(coin_opts)} coins selected"
+               if sel else f"none of {len(coin_opts)} coins selected")
     tfs = c2.multiselect("Timeframes", list(br.TFS),
                          default=list(br.TFS), key="mdbt_tfs")
     win_sel = c3.selectbox("Dates", list(_BT_WINDOWS), index=3,
@@ -4904,11 +5728,70 @@ def render_archive_backtest_section() -> None:
                     help="Every signal x barrier pair x both sizings from the "
                          "shared grid, over the chosen window. Instant when "
                          "this exact question was already answered today.")
+    upd = c5.button("UPDATE BACKTEST", key="mdbt_update",
+                    use_container_width=True, disabled=not (sel and tfs),
+                    help="CONTINUE the stored backtests over new candles "
+                         "only — ladder rung, running totals and any open "
+                         "trade carry across the seam. Never recomputes "
+                         "what was already tested.")
     bt_where = st.radio(
         "Run where", ["This Mac", "GitHub (free machines)"], horizontal=True,
         key="mdbt_where",
         help="GitHub runs the same grid on their machine: rows land in the "
              "database, the report page hangs off the run as an artifact.")
+
+    # A running job shows its live progress + STOP, whoever started it.
+    from tradingagents import db_jobs
+    _uj = db_jobs.status("btupdate")
+    if upd and not _uj.get("running"):
+        db_jobs.start("btupdate", {"coins": sel, "tfs": list(tfs),
+                                   "days": _BT_WINDOWS[win_sel],
+                                   "base": float(settings.get("margin", 5.0))})
+        st.rerun()
+    if _uj.get("running"):
+        done_u, total_u = _uj.get("done", 0), max(_uj.get("total", 0), 1)
+        st.progress(min(done_u / total_u, 1.0),
+                    text=f"Continuing {_uj.get('now', '…')} — {done_u}/"
+                         f"{total_u} pairs, {_uj.get('new_bars', 0):,} new "
+                         f"bars, {_uj.get('rows', 0):,} rows so far")
+        u1, u2 = st.columns([1, 5])
+        if u1.button("STOP UPDATE", key="mdbt_upd_stop"):
+            db_jobs.request_stop("btupdate")
+            st.warning("Stop signalled — the current pair finishes, then it "
+                       "exits. Every pair already continued is kept.")
+        if u2.button("Refresh progress", key="mdbt_upd_poll"):
+            st.rerun()
+        return
+    if not run and _uj.get("finished"):
+        st.caption(f"Last update: {_uj.get('done', 0)}/{_uj.get('total', 0)} "
+                   f"pairs continued over {_uj.get('new_bars', 0):,} new "
+                   f"bars — {_uj.get('rows', 0):,} surviving rows, "
+                   f"{_uj.get('saved', 0):,} saved to the database"
+                   + (f" — save FAILED: {_uj['save_error']}"
+                      if _uj.get("save_error") else "")
+                   + (f" — {_uj['note']}" if _uj.get("note") else "") + ".")
+    _bj = db_jobs.status("backtest")
+    if _bj.get("running"):
+        st.progress(min(_bj.get("done", 0) / 100, 1.0),
+                    text=f"Backtesting — {_bj.get('now', '…')}")
+        s1, s2 = st.columns([1, 5])
+        if s1.button("STOP BACKTEST", key="mdbt_stop"):
+            db_jobs.request_stop("backtest")
+            st.warning("Stop signalled — it exits at the next step. A "
+                       "backtest has no partial answer, so nothing is saved.")
+        if s2.button("Refresh progress", key="mdbt_poll"):
+            st.rerun()
+        return
+    if not run and _bj.get("finished"):
+        if _bj.get("report"):
+            st.caption(f"Last backtest: {_bj.get('rows', 0):,} combinations, "
+                       f"{_bj.get('saved', 0):,} rows saved to the database"
+                       + (f" — save FAILED: {_bj['save_error']}"
+                          if _bj.get("save_error") else "") + ".")
+            st.markdown(
+                f"**[OPEN THE REPORT](app/static/bt/{_bj['report']})**")
+        elif _bj.get("note"):
+            st.caption(f"Last backtest: {_bj['note']}.")
     if not run:
         return
 
@@ -4962,57 +5845,22 @@ def render_archive_backtest_section() -> None:
         st.markdown(f"**[OPEN THE REPORT](app/static/bt/{name})**")
         return
 
-    bar = st.progress(0.0, text="Preparing…")
-    note = st.empty()
-    note.caption(f"{len(br.SIGNALS)} signals x barrier pairs x 2 sizings on "
-                 f"{', '.join(tfs)} for {len(sel)} coin(s), {win_sel.lower()}."
-                 " Candles come from the archive — only the missing tail is "
-                 "fetched. Leave this tab alone; clicking anything restarts "
-                 "it.")
-    try:
-        payload = br.run_grid(
-            sel, tfs, base_margin=base, days=days, deployed=dep,
-            progress=lambda m, f: bar.progress(min(1.0, f), text=m))
-    finally:
-        bar.empty()
-        note.empty()
-    if not payload["rows"]:
-        st.warning("Nothing survived the trade floor in this window.")
-        return
-    BT_REPORT_DIR.mkdir(parents=True, exist_ok=True)
-    br.write_report(
-        str(BT_REPORT_DIR / name), payload,
-        title=f"Archive backtest · {', '.join(c.replace('_USDT', '') for c in sel)}",
-        note=(f"{win_sel} ({days} days), {', '.join(tfs)}, base margin "
-              f"{base:g} USDT x {payload['lev']}x. Candles from the permanent "
-              f"archive, fetched {payload['fetched']}."))
-    # The same rows go to the database, keyed by combination + window end,
-    # so a later session can answer without recomputing.
-    day_end = int(time.time()) // 86400 * 86400
-    try:
-        import json as _json
-        mdb.save_results([{
-            "row_code": r["id"], "symbol": f"{r['coin']}_USDT",
-            "timeframe": r["tf"], "signal": r["signal"], "tp": r["tp"],
-            "sl": r["sl"], "sizing": r["sizing"],
-            "data_start": day_end - days * 86400, "data_end": day_end,
-            "code_version": f"signals{len(br.SIGNALS)}",
-            "profit": r["profit"], "trades": r["trades"], "wins": r["wins"],
-            "losses": r["losses"], "win_rate": r["winrate"],
-            "worst_streak": r["dd"], "worst_streak_len": None,
-            "months_json": _json.dumps(r["monthly"]),
-        } for r in payload["rows"]])
-    except Exception:
-        pass
-    st.success(f"{len(payload['rows']):,} combinations tested over "
-               f"{win_sel.lower()} — rows saved to the database.")
-    st.markdown(f"**[OPEN THE REPORT](app/static/bt/{name})**")
+    db_jobs.start("backtest", {
+        "coins": sel, "tfs": list(tfs), "days": days, "base": base,
+        "deployed": dep, "report_name": name,
+        "title": ("Archive backtest · "
+                  + ", ".join(c.replace("_USDT", "") for c in sel)),
+        "note": (f"{win_sel} ({days} days), {', '.join(tfs)}, base margin "
+                 f"{base:g} USDT. Candles from the permanent archive."),
+    })
+    st.rerun()
 
 
 def render_backtest_tab() -> None:
     from tradingagents import market_sweep as msw
     from tradingagents import backtest_report as br
 
+    render_db_dashboard_section()
     render_market_data_section()
     render_archive_backtest_section()
     st.markdown('<div class="ta-section">Sweep</div>', unsafe_allow_html=True)
@@ -5140,6 +5988,195 @@ def _bt2_deployed(coins: list[str], tfs: list[str]) -> list[dict]:
     return dep
 
 
+def render_stored_strategies_section() -> None:
+    """Every strategy ever measured, kept in the archive.
+
+    A strategy here is the seven fields the operator names: coin, timeframe,
+    signal, threshold, TP, SL, sizing. BTC alone carries dozens — rsi14 and
+    fade15 and the rest, each at several barrier pairs — so the browser filters
+    rather than dumps.
+    """
+    import pandas as pd
+
+    from tradingagents.dataflows import market_db as mdb
+
+    st.markdown('<div class="ta-section">Stored strategies</div>',
+                unsafe_allow_html=True)
+    if not mdb.available():
+        st.caption("The archive is not reachable, so nothing can be listed.")
+        return
+    try:
+        rows = mdb.load_results()
+    except Exception as exc:
+        st.warning(f"Could not read stored strategies: {str(exc)[:120]}")
+        return
+    if not rows:
+        st.caption("No strategies stored yet — run a backtest above and its "
+                   "rows are written here automatically.")
+        return
+
+    coins = sorted({r["symbol"] for r in rows})
+    tfs = sorted({r["timeframe"] for r in rows})
+    sigs = sorted({r["signal"] for r in rows})
+    c1, c2, c3, c4 = st.columns([2, 1, 1, 1], vertical_alignment="bottom")
+    f_coin = c1.multiselect("Coin", coins, default=coins[:1] or coins,
+                            key="mdbs_coin")
+    f_tf = c2.multiselect("Timeframe", tfs, default=tfs, key="mdbs_tf")
+    f_sig = c3.multiselect("Signal", sigs, default=[], key="mdbs_sig")
+    only_green = c4.checkbox("Profitable only", value=True, key="mdbs_green")
+
+    sel = [r for r in rows
+           if (not f_coin or r["symbol"] in f_coin)
+           and (not f_tf or r["timeframe"] in f_tf)
+           and (not f_sig or r["signal"] in f_sig)
+           and (not only_green or (r.get("profit") or 0) > 0)]
+    st.caption(f"**{len(sel):,}** of {len(rows):,} stored strategies · "
+               f"{len(coins)} coins · {len(sigs)} signals")
+    if not sel:
+        st.caption("Nothing matches those filters.")
+        return
+    tbl = pd.DataFrame([{
+        "id": r["row_code"],
+        "coin": r["symbol"].replace("_USDT", ""),
+        "tf": r["timeframe"],
+        "signal": r["signal"],
+        "thresh %": r.get("threshold"),
+        "SL %": r["sl"], "TP %": r["tp"],
+        "sizing": r["sizing"],
+        "PROFIT $": r.get("profit"),
+        "win %": r.get("win_rate"),
+        "trades": r.get("trades"),
+        "W": r.get("wins"), "L": r.get("losses"),
+        "green": (f"{r.get('months_green')}/{r.get('months_total')}"
+                  if r.get("months_total") else ""),
+        "worst dip $": r.get("max_dd") or r.get("worst_streak"),
+        "funding $": r.get("funding"),
+        "days": r.get("days"),
+        "measured": (_dt.datetime.fromtimestamp(r["computed_at"])
+                     .strftime("%Y-%m-%d") if r.get("computed_at") else ""),
+    } for r in sorted(sel, key=lambda x: -(x.get("profit") or 0))])
+    st.dataframe(tbl, width="stretch", height=420, hide_index=True)
+    st.caption("Sorted by profit. Every row is one strategy — the same signal "
+               "at a different threshold or a different TP/SL is a different "
+               "row, because it is a different strategy.")
+
+
+# Set once per PROCESS, not per session. The throttle used to live in
+# st.session_state, so it read 0 on every fresh browser session and the sync
+# ran again — which is why a plain refresh was slow every single time.
+_LEDGER_SYNC_AT = 0.0
+_LEDGER_SYNC_LOCK = _threading.Lock()
+
+
+def _ledger_sync_worker() -> None:
+    """The archive copy, off the render thread.
+
+    ensure_schema() issues twenty DDL/migration statements against a REMOTE
+    Neon Postgres. Measured 2026-08-20: 12,490 ms for that one call. It used to
+    be the first statement of render_auto_trade_tab(), synchronous, before a
+    single pixel was drawn — so the whole terminal waited on a schema check for
+    a database the screen does not read.
+    """
+    global _LEDGER_SYNC_AT
+    try:
+        from tradingagents import auto_trader as at
+        from tradingagents.dataflows import market_db as mdb
+
+        if not mdb.available():
+            return
+        mdb.ensure_schema()
+        n = mdb.sync_ledger(at.ledger_tail(100000))
+        if n:
+            _LEDGER_SYNC_LAST["rows"] = n
+    except Exception:
+        pass
+    finally:
+        _LEDGER_SYNC_LAST["at"] = _time_mod.time()
+        with _LEDGER_SYNC_LOCK:
+            _LEDGER_SYNC_AT = _time_mod.time()
+
+
+_LEDGER_SYNC_LAST: dict = {"at": 0.0, "rows": 0}
+
+
+def _ledger_sync_tick(every: int = 300) -> None:
+    """Kick the archive copy onto a daemon thread and return immediately.
+
+    The ledger is one local file — every entry, exit and venue rejection this
+    account has ever made. A disk failure ends the record, so the copy still
+    happens; it just no longer holds the page hostage.
+    """
+    global _LEDGER_SYNC_AT
+    with _LEDGER_SYNC_LOCK:
+        if _time_mod.time() - _LEDGER_SYNC_AT < every:
+            return
+        # Claim the slot BEFORE starting the thread, or two quick reruns each
+        # start their own sync and both pay the schema cost.
+        _LEDGER_SYNC_AT = _time_mod.time()
+    _threading.Thread(target=_ledger_sync_worker, name="ledger-sync",
+                      daemon=True).start()
+
+
+def render_history_section() -> None:
+    """What was live, and what it did — both out of the archive."""
+    import pandas as pd
+
+    from tradingagents.dataflows import market_db as mdb
+
+    st.markdown('<div class="ta-section">Deployment history</div>',
+                unsafe_allow_html=True)
+    if not mdb.available():
+        st.caption("The archive is not reachable, so history cannot be shown.")
+        return
+    deps = mdb.deployments(limit=200)
+    if not deps:
+        st.caption("No changes recorded yet — the next save writes one.")
+    else:
+        st.dataframe(pd.DataFrame([{
+            "when": _dt.datetime.fromtimestamp(d["changed_at"])
+                    .strftime("%Y-%m-%d %H:%M"),
+            "coin": (d["symbol"] or "").replace("_USDT", ""),
+            "what": d["action"],
+            "strategy": d["strategy_key"],
+            "tf": d["timeframe"], "signal": d["signal"],
+            "thresh %": d["threshold"], "SL %": d["sl"], "TP %": d["tp"],
+            "sizing": d["sizing"], "books": d["books"],
+            "base $": d["base_margin"], "row id": d["row_code"],
+            "note": d["note"],
+        } for d in deps]), width="stretch", height=240, hide_index=True)
+
+    rows = mdb.ledger_rows(limit=100000)
+    st.markdown('<div class="ta-section">Trade ledger, archived</div>',
+                unsafe_allow_html=True)
+    if not rows:
+        st.caption("Nothing synced yet.")
+        return
+    import collections as _c
+    by = _c.Counter(r["action"] for r in rows)
+    # dry_run is absent on most historical lines. Counting absent as real
+    # money labelled 497 lines REAL that may not be — say unknown instead.
+    real = sum(1 for r in rows if r["dry_run"] is False)
+    unknown = sum(1 for r in rows if r["dry_run"] is None)
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Lines archived", f"{len(rows):,}")
+    c2.metric("Real money", f"{real:,}",
+              help=f"{unknown:,} older lines do not record which book they "
+                   f"were on, and are counted as neither.")
+    c3.metric("Entries / exits", f"{by.get('enter', 0):,} / {by.get('exit', 0):,}")
+    c4.metric("Errors", f"{by.get('error', 0):,}")
+    show = [r for r in rows if r["action"] in ("enter", "exit")][:200]
+    if show:
+        st.dataframe(pd.DataFrame([{
+            "when": _dt.datetime.fromtimestamp(r["ts"]).strftime("%Y-%m-%d %H:%M"),
+            "coin": (r["symbol"] or "").replace("_USDT", ""),
+            "action": r["action"], "strategy": r["strategy"],
+            "side": r["side"], "entry": r["entry"], "exit": r["exit_price"],
+            "margin $": r["margin"], "pnl $": r["pnl"], "closed by": r["why"],
+            "book": ("paper" if r["dry_run"] else
+                     "unknown" if r["dry_run"] is None else "REAL"),
+        } for r in show]), width="stretch", height=300, hide_index=True)
+
+
 def render_backtest2_tab() -> None:
     """Version 2: the DAILY sweep. One click runs every signal on the
     operator's own coins across every timeframe, marks every live strategy
@@ -5158,10 +6195,13 @@ def render_backtest2_tab() -> None:
     # candle cache, and the cache is what DOWNLOAD/UPDATE fill — but the section
     # was wired only into `Back Test`, so from here there was no way to fetch or
     # refresh the candles the grid then reads.
+    render_db_dashboard_section()
     render_market_data_section()
     # The operator's requested flow lives here too: BACKTEST + date window
     # (months/year) + run-on-Mac-or-GitHub, reading the archive.
     render_archive_backtest_section()
+    render_stored_strategies_section()
+    render_history_section()
 
     cfg = at.load_settings()
     _keys = list(cfg.get("strategies") or []) or list(
@@ -5180,7 +6220,7 @@ def render_backtest2_tab() -> None:
     _opts = _all_mexc_symbols() or _live
     _opts = sorted(set(_opts) | set(_live))
     c1, c2 = st.columns([3, 2])
-    coins = c1.multiselect("Coins", options=_opts, default=_live,
+    coins = c1.multiselect("Coins", options=_opts, default=[],
                            key="bt2_coins",
                            help=f"All {len(_opts)} MEXC USDT perpetuals. "
                                 "Defaults to your configured coins.")

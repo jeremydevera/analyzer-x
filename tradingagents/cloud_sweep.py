@@ -168,14 +168,15 @@ def live_progress(run_id: int, slug: str | None = None) -> list:
     out = []
     for f in listing if isinstance(listing, list) else []:
         try:
-            blob = json.loads(_gh("api", f["url"], "--jq", ".content",
-                                  timeout=45))
+            # --jq .content prints the raw base64 string, not JSON, so it must
+            # not be passed through json.loads first.
+            blob = _gh("api", f["url"], "--jq", ".content", timeout=45)
         except CloudError:
             continue
         try:
             import base64
 
-            out.append(json.loads(base64.b64decode(blob)))
+            out.append(json.loads(base64.b64decode(blob.strip())))
         except Exception:
             continue
     return sorted(out, key=lambda d: d.get("shard", 0))

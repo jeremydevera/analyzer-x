@@ -105,6 +105,10 @@ def derive(trades: list[tuple], *, base: float, lev: int, fee: float,
     trades_n = wins = n_liq = 0
     profit = worst = equity = peak = max_dd = fund_total = 0.0
     step = 0
+    # The worst unbroken run of losses, and how many trades it took. On a
+    # ladder this is what empties an account — the single worst trade is not.
+    run_sum = worst_run = 0.0
+    run_len = worst_run_len = 0
     for (_sig, _entry, exit_bar, _s, res_out, why, fund_frac) in trades:
         margin = base if sizing == "flat" else ladder(base, step)
         notional = margin * lev
@@ -124,6 +128,13 @@ def derive(trades: list[tuple], *, base: float, lev: int, fee: float,
         monthly[m] = monthly.get(m, 0.0) + pnl
         n_liq += why == WHY_LIQ
         fund_total += fund
+        if pnl > 0:
+            run_sum, run_len = 0.0, 0
+        else:
+            run_sum += pnl
+            run_len += 1
+            if run_sum < worst_run:
+                worst_run, worst_run_len = run_sum, run_len
         step = 0 if pnl > 0 else step + 1
     monthly = {m: round(v, 2) for m, v in sorted(monthly.items())}
     return {"trades": trades_n, "wins": wins, "losses": trades_n - wins,
@@ -131,7 +142,9 @@ def derive(trades: list[tuple], *, base: float, lev: int, fee: float,
             "max_dd": round(max_dd, 2), "monthly": monthly,
             "months_green": sum(1 for v in monthly.values() if v > 0),
             "months_total": len(monthly),
-            "liqs": n_liq, "funding_total": round(fund_total, 4)}
+            "liqs": n_liq, "funding_total": round(fund_total, 4),
+            "worst_streak": round(worst_run, 2),
+            "worst_streak_len": worst_run_len}
 
 
 def combo_six(dirs_idx, dirs, opens, high, low, close, *, tp, sl, liq,

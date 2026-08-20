@@ -25,6 +25,20 @@ DB_URL_ENV = "TRADINGAGENTS_DB_URL"
 STORE_PATH = Path(os.path.expanduser("~/.tradingagents")) / "neon_db.json"
 
 # UI label -> MEXC interval, the five timeframes the grid searches.
+# candles were stored under MEXC's names (Min60) and results under the short
+# label (1h), so the two tables could not be joined at all. One vocabulary —
+# the short label — and a normaliser every writer goes through.
+_TF_CANON = {"Min1": "1m", "Min5": "5m", "Min15": "15m", "Min30": "30m",
+             "Min60": "1h", "Hour4": "4h", "Hour8": "8h", "Day1": "1d",
+             "1m": "1m", "5m": "5m", "15m": "15m", "30m": "30m", "1h": "1h",
+             "4h": "4h", "8h": "8h", "1d": "1d"}
+
+
+def tf_label(tf: str) -> str:
+    """MEXC interval or short label in, short label out."""
+    return _TF_CANON.get(str(tf), str(tf))
+
+
 TIMEFRAMES = {"15m": "Min15", "30m": "Min30", "1h": "Min60",
               "4h": "Hour4", "1d": "Day1"}
 BAR_SECONDS = {"Min1": 60, "Min5": 300, "Min15": 900, "Min30": 1800,
@@ -97,6 +111,11 @@ def _engine():
         _ENGINE = create_engine(url, pool_pre_ping=True, pool_size=2,
                                 max_overflow=2, **kw)
         _ENGINE_URL = url
+        # A new engine means a different database, or a reconnect to one that
+        # may have been reset. Whatever ensure_schema() proved before does not
+        # apply to it.
+        global _SCHEMA_DONE_URL
+        _SCHEMA_DONE_URL = None
     return _ENGINE
 
 
@@ -140,6 +159,32 @@ DDL = [
         PRIMARY KEY (row_code, data_end, code_version))""",
     """CREATE INDEX IF NOT EXISTS idx_results_lookup
         ON backtest_results (symbol, timeframe, signal)""",
+    # What was live, when. Config files overwrite, so without this nobody can
+    # answer "what was running on APEX on 12 August, at what barriers" — the
+    # question behind every "did that change help?"
+    # Keyed on a hash of the CHANGE, not on the second it happened: two edits
+    # to one strategy inside the same second are two pieces of history, and a
+    # timestamp key threw the second away. Identical re-saves still collapse.
+    """CREATE TABLE IF NOT EXISTS deployments (
+        change_id text PRIMARY KEY,
+        changed_at bigint NOT NULL, strategy_key text NOT NULL,
+        symbol text NOT NULL, action text NOT NULL,
+        timeframe text, signal text, threshold double precision,
+        tp double precision, sl double precision, sizing text,
+        books text, base_margin double precision, ladder_step integer,
+        row_code text, prev_json text, note text)""",
+    """CREATE INDEX IF NOT EXISTS idx_deploy_lookup
+        ON deployments (symbol, changed_at)""",
+    # The live record of what the money actually did. One local file today; if
+    # that disk goes, so does every entry, exit and rejection ever made.
+    """CREATE TABLE IF NOT EXISTS trade_ledger (
+        fingerprint text PRIMARY KEY, ts bigint NOT NULL, action text NOT NULL,
+        symbol text, strategy text, side text, dry_run boolean,
+        entry double precision, exit_price double precision,
+        vol double precision, margin double precision, leverage integer,
+        step integer, pnl double precision, why text, raw_json text)""",
+    """CREATE INDEX IF NOT EXISTS idx_ledger_lookup
+        ON trade_ledger (symbol, ts)""",
 ]
 
 
@@ -156,7 +201,23 @@ MIGRATIONS = [
 ]
 
 
-def ensure_schema() -> bool:
+# The twenty DDL/migration statements are idempotent, so running them twice
+# against the same database buys nothing and costs a full round trip each.
+# Measured against Neon on 2026-08-20: 12,490 ms for one call.
+#
+# Keyed to the DATABASE URL, never a bare bool: a plain flag said "schema is
+# done" about whichever database happened to be first, so pointing at a second
+# one skipped its DDL entirely and every query failed with "no such table".
+# _engine() also clears this whenever it builds a new engine, which is what a
+# reconnect or a swapped DSN looks like from here.
+_SCHEMA_DONE_URL: str | None = None
+
+
+def ensure_schema(*, force: bool = False) -> bool:
+    global _SCHEMA_DONE_URL
+    url = db_url()
+    if url is not None and _SCHEMA_DONE_URL == url and not force:
+        return True
     if not _ready():
         return False
     from sqlalchemy import text
@@ -170,6 +231,7 @@ def ensure_schema() -> bool:
                     cx.execute(text(stmt))
             except Exception:
                 pass          # already there, or the dialect refuses it
+        _SCHEMA_DONE_URL = url
         return True
     except Exception as exc:
         _stand_down(exc, "ensure_schema")
@@ -178,6 +240,7 @@ def ensure_schema() -> bool:
 
 # ------------------------------------------------------------------ candles
 def upsert_candles(symbol: str, interval: str, df) -> int:
+    interval = tf_label(interval)
     """Store closed candles; re-sent bars overwrite (a bar refetched after
     its close corrects one saved while still forming). Returns rows sent."""
     if df is None or not len(df) or not _ready():
@@ -204,6 +267,7 @@ def upsert_candles(symbol: str, interval: str, df) -> int:
 
 
 def last_ts(symbol: str, interval: str) -> int | None:
+    interval = tf_label(interval)
     if not _ready():
         return None
     from sqlalchemy import text
@@ -222,6 +286,7 @@ def candles_df(symbol: str, interval: str,
                start: int | None = None, end: int | None = None):
     """Stored candles as the same DataFrame shape ``fx.klines`` returns,
     or None when the store is empty/unreachable."""
+    interval = tf_label(interval)
     if not _ready():
         return None
     import pandas as pd
@@ -407,3 +472,208 @@ def storage_stats() -> dict | None:
         "tables": [{"table": r[0], "bytes": int(r[1]), "rows": int(r[2])}
                    for r in tables],
     }
+
+
+# ------------------------------------------------------------- deployments
+DEPLOY_FIELDS = ("change_id", "changed_at", "strategy_key", "symbol", "action",
+                 "timeframe", "signal", "threshold", "tp", "sl", "sizing",
+                 "books", "base_margin", "ladder_step", "row_code",
+                 "prev_json", "note")
+
+
+def deployment_id(row: dict) -> str:
+    """Hash of the whole change, so two edits in one second both survive."""
+    import hashlib
+    import json as _j
+
+    seed = _j.dumps({k: row.get(k) for k in DEPLOY_FIELDS if k != "change_id"},
+                    sort_keys=True, default=str)
+    return hashlib.blake2s(seed.encode(), digest_size=10).hexdigest()
+
+
+def record_deployment(entry: dict) -> int:
+    """Write one change to what is live. Same key overwrites, so re-saving an
+    unchanged config does not fill the table with duplicates."""
+    if not _ready():
+        return 0
+    from sqlalchemy import text
+    row = {f: entry.get(f) for f in DEPLOY_FIELDS}
+    row["changed_at"] = int(row.get("changed_at") or time.time())
+    for req in ("strategy_key", "symbol", "action"):
+        if not row.get(req):
+            return 0
+    row["change_id"] = deployment_id(row)
+    cols = ", ".join(DEPLOY_FIELDS)
+    try:
+        with _engine().begin() as cx:
+            _multi_insert(
+                cx, f"INSERT INTO deployments ({cols}) VALUES ",
+                " ON CONFLICT (change_id) DO NOTHING", DEPLOY_FIELDS, [row])
+        return 1
+    except Exception as exc:
+        _stand_down(exc, "record_deployment")
+        return 0
+
+
+def deployments(symbol: str | None = None, limit: int = 200) -> list[dict]:
+    """What was live, newest first."""
+    if not _ready():
+        return []
+    from sqlalchemy import text
+    sql = f"SELECT {', '.join(DEPLOY_FIELDS)} FROM deployments"
+    params: dict = {}
+    if symbol:
+        sql += " WHERE symbol=:symbol"
+        params["symbol"] = symbol
+    sql += " ORDER BY changed_at DESC LIMIT :lim"
+    params["lim"] = int(limit)
+    try:
+        with _engine().connect() as cx:
+            rows = cx.execute(text(sql), params).fetchall()
+    except Exception as exc:
+        _stand_down(exc, "deployments")
+        return []
+    return [dict(zip(DEPLOY_FIELDS, r)) for r in rows]
+
+
+def prune_results(keep_per_pair: int = 500,
+                  symbol: str | None = None) -> int:
+    """Keep the best `keep_per_pair` rows per coin/timeframe/window, drop the
+    rest. Returns rows deleted.
+
+    A full market sweep writes ~17,000 rows per coin and timeframe; across 447
+    contracts that is hundreds of megabytes of mostly-losing combinations. The
+    losers are worth keeping for one comparison and not for a year.
+    """
+    if not _ready():
+        return 0
+    from sqlalchemy import text
+    sql = """DELETE FROM backtest_results WHERE row_code IN (
+               SELECT row_code FROM (
+                 SELECT row_code, row_number() OVER (
+                   PARTITION BY symbol, timeframe, data_end, code_version
+                   ORDER BY profit DESC NULLS LAST) AS rn
+                 FROM backtest_results
+                 WHERE (:symbol IS NULL OR symbol = :symbol)) ranked
+               WHERE rn > :keep)"""
+    try:
+        with _engine().begin() as cx:
+            return cx.execute(text(sql), {"keep": int(keep_per_pair),
+                                          "symbol": symbol}).rowcount or 0
+    except Exception as exc:
+        _stand_down(exc, "prune_results")
+        return 0
+
+
+def table_sizes() -> dict:
+    """Rows and disk per table, so growth is visible before it is a problem."""
+    if not _ready():
+        return {}
+    from sqlalchemy import text
+    out = {}
+    for t in ("candles", "backtest_results", "deployments", "trade_ledger"):
+        try:
+            with _engine().connect() as cx:
+                n = cx.execute(text(f"SELECT count(*) FROM {t}")).scalar()
+                try:
+                    size = cx.execute(text(
+                        "SELECT pg_size_pretty(pg_total_relation_size(:t))"),
+                        {"t": t}).scalar()
+                except Exception:
+                    size = None                 # sqlite has no such function
+            out[t] = {"rows": int(n or 0), "size": size}
+        except Exception:
+            continue
+    return out
+
+
+# ------------------------------------------------------------------ ledger
+LEDGER_FIELDS = ("fingerprint", "ts", "action", "symbol", "strategy", "side",
+                 "dry_run", "entry", "exit_price", "vol", "margin", "leverage",
+                 "step", "pnl", "why", "raw_json")
+
+
+def ledger_fingerprint(e: dict) -> str:
+    """Stable id for a ledger line, so syncing twice writes once.
+
+    Hashes the WHOLE record. A field-list version dropped a real exit: two BDX
+    lines shared a second, a symbol and an action but differed in `why` —
+    MANUAL/EXCHANGE against LIQUIDATED — and only one survived the sync.
+    """
+    import hashlib
+    import json as _j
+
+    try:
+        seed = _j.dumps(e, sort_keys=True, default=str)
+    except Exception:
+        seed = repr(sorted(e.items()))
+    return hashlib.blake2s(seed.encode(), digest_size=10).hexdigest()
+
+
+def sync_ledger(entries: list[dict]) -> int:
+    """Copy local ledger lines into the archive. Idempotent by fingerprint."""
+    if not entries or not _ready():
+        return 0
+    payload = []
+    for e in entries:
+        payload.append({
+            "fingerprint": ledger_fingerprint(e), "ts": int(e.get("ts") or 0),
+            "action": e.get("action") or "", "symbol": e.get("symbol"),
+            "strategy": e.get("strategy"), "side": e.get("side"),
+            # 498 of 1,043 lines carry no dry_run at all. Storing absent as
+            # False labelled them REAL MONEY, which they may not be. NULL is
+            # the honest answer.
+            "dry_run": (None if e.get("dry_run") is None
+                        else bool(e.get("dry_run"))),
+            "entry": e.get("entry"),
+            "exit_price": e.get("exit"), "vol": e.get("vol"),
+            "margin": e.get("margin"), "leverage": e.get("leverage"),
+            "step": e.get("step"), "pnl": e.get("pnl"), "why": e.get("why"),
+            "raw_json": _json_dumps(e)})
+    cols = ", ".join(LEDGER_FIELDS)
+    try:
+        from sqlalchemy import text as _t
+
+        with _engine().begin() as cx:
+            before = cx.execute(_t("SELECT count(*) FROM trade_ledger")).scalar()
+            _multi_insert(cx, f"INSERT INTO trade_ledger ({cols}) VALUES ",
+                          " ON CONFLICT (fingerprint) DO NOTHING",
+                          LEDGER_FIELDS, payload)
+            after = cx.execute(_t("SELECT count(*) FROM trade_ledger")).scalar()
+        # rows actually WRITTEN, not rows offered: syncing the same file twice
+        # reported "1,043 written" both times, which is a lie the second time
+        return int(after) - int(before)
+    except Exception as exc:
+        _stand_down(exc, "sync_ledger")
+        return 0
+
+
+def ledger_rows(symbol: str | None = None, action: str | None = None,
+                limit: int = 500) -> list[dict]:
+    if not _ready():
+        return []
+    from sqlalchemy import text
+    sql = f"SELECT {', '.join(LEDGER_FIELDS)} FROM trade_ledger WHERE 1=1"
+    params: dict = {}
+    for name, val in (("symbol", symbol), ("action", action)):
+        if val:
+            sql += f" AND {name}=:{name}"
+            params[name] = val
+    sql += " ORDER BY ts DESC LIMIT :lim"
+    params["lim"] = int(limit)
+    try:
+        with _engine().connect() as cx:
+            rows = cx.execute(text(sql), params).fetchall()
+    except Exception as exc:
+        _stand_down(exc, "ledger_rows")
+        return []
+    return [dict(zip(LEDGER_FIELDS, r)) for r in rows]
+
+
+def _json_dumps(v) -> str:
+    import json as _j
+
+    try:
+        return _j.dumps(v)
+    except Exception:
+        return "{}"

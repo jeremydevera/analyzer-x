@@ -106,7 +106,9 @@ jobs:
                       and r["gate"] != "block")
           sv = [r for r in rows if surv(r)]
           by = collections.Counter(r["signal"] for r in rows)
-          print(f"{len(rows):,} rows · {len(sv):,} survivors · {len(coins)} coins")
+          print(f"{len(rows):,} PROFITABLE rows kept (losers and <100-trade "
+                f"rows were never written) · {len(sv):,} survivors · "
+                f"{len(coins)} coins · momentum thresholds capped to 1 of 3")
           for s, n in by.most_common(10):
               print(f"  {s:12} {n:6,}")
           PY

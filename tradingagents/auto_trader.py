@@ -955,6 +955,12 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
     # dicts is the difference between a 12-hour sweep and a 4-hour one.
     n_liq = 0
     fund_total = 0.0
+    # The worst unbroken run of losses — what actually empties a laddered
+    # account. The page computed it in JS; storing it needs it here.
+    run_sum = 0.0
+    run_len = 0
+    worst_run = 0.0
+    worst_run_len = 0
     _f_cum = [0.0]
     for _r in _f_rate:
         _f_cum.append(_f_cum[-1] + _r)
@@ -1220,6 +1226,13 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
         monthly[month] = monthly.get(month, 0.0) + pnl
         n_liq += why == "LIQ"
         fund_total += fund
+        if pnl > 0:
+            run_sum, run_len = 0.0, 0
+        else:
+            run_sum += pnl
+            run_len += 1
+            if run_sum < worst_run:
+                worst_run, worst_run_len = run_sum, run_len
         if not keep_log:
             step = 0 if pnl > 0 else step + 1
             _open = None          # or a carried trade re-enters at its old
@@ -1252,6 +1265,8 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                                     .astype("datetime64[ms]")
                                     .astype("int64")[-1]) if n else 0))}
     return {"liqs": n_liq, "funding_total": round(fund_total, 4),
+            "worst_streak": round(worst_run, 2),
+            "worst_streak_len": worst_run_len,
             "state": _state,
             "trades": trades, "wins": wins, "losses": trades - wins,
             "profit": round(profit, 2), "worst_trade": round(worst_trade, 2),

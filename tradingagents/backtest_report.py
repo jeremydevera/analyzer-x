@@ -507,6 +507,9 @@ def run_grid(coins: Sequence[str], tfs: Sequence[str], *,
                                 "green": r["months_green"],
                                 "months": r["months_total"],
                                 "worst": round(r["worst_trade"], 2),
+                            "wstreak": r.get("worst_streak"),
+                            "wstreakn": r.get("worst_streak_len"),
+                            "funding": round(r.get("funding_total") or 0, 2),
                                 "dd": round(r["max_dd"], 2),
                                 # both the engine and the fast path count
                                 # liquidations directly; the log-scan needed

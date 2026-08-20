@@ -1,10 +1,12 @@
-# TradingAgents web UI theme — light editorial terminal: paper surfaces, ink
-# type, one burnt-orange accent. These values drive the
+# TradingAgents web UI theme. These values drive the
 # widgets Streamlit paints itself (multiselect tags, radio dots, checkboxes),
 # which CSS cannot reach.
+# The accent matches the app's own token (--accent #22C55E) so Streamlit's
+# self-painted controls — the Night toggle, radio dots, checkboxes — stop
+# rendering in the retired burnt orange on a green page.
 [theme]
 base = "light"
-primaryColor = "#C2560B"
+primaryColor = "#22C55E"
 backgroundColor = "#FAF9F7"
 secondaryBackgroundColor = "#F3F2EF"
 textColor = "#171612"

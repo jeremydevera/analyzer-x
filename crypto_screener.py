@@ -490,7 +490,14 @@ def status_caption(result) -> str:
 
 
 # Column widths for the screener grid, shared by the header and every row.
-_WIDTHS = [1.0, 2.0, 1.1, 0.6, 1.2, 0.9, 1.0, 1.0, 0.9]
+# Widened 2026-08-20: the app's component stylesheet now reaches this screen,
+# which puts these cells in Fira Code — wider per character than the face these
+# ratios were set for. LISTED broke "2026-08-19" across two lines, 24H broke
+# "+833.50%" into "+833." / "50%", and VOLUME broke "$321.6k". A figure split
+# over two lines reads as two figures, so the columns fit their widest value:
+# LISTED 10 chars, 24H 8, VOLUME 8, VERDICT 7. NAME gives up the slack,
+# since it is the one cell where wrapping a long coin name is acceptable.
+_WIDTHS = [0.9, 1.3, 1.6, 0.55, 1.05, 1.3, 1.05, 1.05, 0.9]
 _HEADINGS = ("SYMBOL", "NAME", "LISTED", "AGE", "PRICE", "24H", "VOLUME",
              "VERDICT", "")
 

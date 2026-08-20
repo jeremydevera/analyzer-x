@@ -339,15 +339,29 @@ def test_the_terminal_follows_the_light_dark_toggle():
     light = re.findall(r"--t-(\w+):\s*([^;]+);", app.TERMINAL_CSS)
     dark = re.findall(r"--t-(\w+):\s*([^;]+);", app.TERMINAL_DARK_CSS)
     lmap, dmap = dict(light), dict(dark)
-    # Values are Apex's own tokens now (oklch), ported 2026-08-20. Assert the
-    # PROPERTY rather than the literal: light ink must be dark, dark ink light.
-    def _l(v):
-        m = re.search(r"oklch\((\d+(?:\.\d+)?)%", v)
-        return float(m.group(1)) if m else None
-    assert _l(lmap["ink"]) < 30, f"light mode needs dark ink, got {lmap['ink']}"
-    assert _l(lmap["panel"]) > 95, f"light needs a light panel, {lmap['panel']}"
-    assert _l(dmap["ink"]) > 80, f"night needs light ink, got {dmap['ink']}"
-    assert _l(dmap["panel"]) < 30, f"night needs a dark panel, {dmap['panel']}"
+    # Measure lightness rather than matching a literal — the invariant is what
+    # matters: light ink dark, dark ink light. Two notations have to be read,
+    # because the tokens were ported to the zenith template's own oklch() values
+    # on 2026-08-20 and a hex-only parser silently returned None for every one
+    # of them, which made all four assertions compare against None.
+    def _lum(v):
+        v = v.strip()
+        m = re.fullmatch(r"#([0-9a-fA-F]{6})", v)
+        if m:
+            r, g, b = (int(m.group(1)[i:i + 2], 16) / 255 for i in (0, 2, 4))
+            return 0.2126 * r + 0.7152 * g + 0.0722 * b
+        # oklch(L% c h) — L IS a perceptual lightness on 0..1, so it answers
+        # "is this ink or is this ground" directly.
+        m = re.match(r"oklch\(\s*([\d.]+)%", v)
+        if m:
+            return float(m.group(1)) / 100.0
+        return None
+    assert _lum(lmap["ink"]) < 0.30, f"light mode needs dark ink: {lmap['ink']}"
+    assert _lum(lmap["panel"]) > 0.85, f"light needs a light panel: {lmap['panel']}"
+    assert _lum(dmap["ink"]) > 0.70, f"night needs light ink: {dmap['ink']}"
+    assert _lum(dmap["panel"]) < 0.20, f"night needs a dark panel: {dmap['panel']}"
+    # and the direction's own semantics: jade up, coral down, in both themes
+    assert lmap["up"] and lmap["dn"] and dmap["up"] and dmap["dn"]
     # Every colour token the night block redefines must exist in the light one,
     # or a rule paints ink whose ground was never painted — the 2026-08-15 bug.
     missing = [k for k in dmap if k not in lmap]
@@ -502,7 +516,9 @@ def test_positions_rows_use_the_apex_orders_shape():
     assert "<b>PROVE</b>" in row
     assert "ap-sub'>mom6_1h_pv" in row, "strategy is the sub-line"
     assert "ap-pill ok'>LONG" in row, "LONG is a green pill"
-    assert "ap-pill warn'>on MEXC" in row, "the bracket is a pill"
+    # The bracket pill used to read "on MEXC" here. Removed on the operator's
+    # instruction the same day — see
+    # test_the_stop_column_is_silent_unless_the_stop_is_missing.
     short = app._tm_pos_row({"coin": "PI", "strategy": "x", "side": "SHORT",
                              "bracket": "SIMULATED", "open $": -1.0})
     assert "ap-pill bad'>SHORT" in short
@@ -526,3 +542,255 @@ def test_the_avatar_colour_is_stable_per_contract():
     assert a == app._ap_avatar("PROVE_USDT") == app._ap_avatar("PROVE")
     assert app._ap_avatar("PI") != app._ap_avatar("XAUT")
     assert "PR" in a and "#" in a
+
+
+def test_the_close_column_shares_the_rows_height():
+    """The Close button drifted 7px above its row and I claimed in a comment
+    that alignment was "asserted at 0px" — no such test existed.
+
+    Measured cause: Streamlit's own markdown container carries
+    margin-bottom:-14px, so a 49px row (the identity cell is two lines) reported
+    35px to its parents; the flex block sized to 35 and the button centred
+    there. The CSS undoes that collapse and stretches the block, and
+    scripts/pos_align.mjs measures the real offset in a browser — it reads 0px.
+    """
+    import app
+    css = app.TERMINAL_CSS
+    assert '[data-testid="stMarkdownContainer"]:has(.tm-pt)' in css, \
+        "the negative-margin collapse must be undone for position rows"
+    assert "align-items:stretch !important" in css, \
+        "the row block must stretch so both columns share the row height"
+    assert '[data-testid="stColumn"]:has(.stButton)' in css, \
+        "the button column is stColumn, not a bare div"
+
+
+def test_a_summary_row_prints_no_stray_dashes():
+    """The TOTAL row showed em dashes under SIDE and BRACKET, because the new
+    ident/side/pill kinds fell through to the em-dash branch that only "text"
+    was exempt from."""
+    import app
+    for kind in ("text", "ident", "side", "pill", "html"):
+        assert app._tm_pos_cell("", kind) == ""
+        assert app._tm_pos_cell(None, kind) == ""
+    for kind in ("num", "money", "px"):
+        assert app._tm_pos_cell(None, kind) == "—"
+
+
+def test_the_total_row_sums_the_margin_at_risk():
+    """It printed an em dash, which reads as "no data" for the one number that
+    says how much is exposed in this book."""
+    src = open("app.py").read()
+    assert 'sum(float(r.get("margin $") or 0)' in src
+
+
+def test_the_stop_column_is_silent_unless_the_stop_is_missing():
+    """Operator, 2026-08-20: "remove the on mexc". It said what the book label
+    already implies. But the column has a THIRD state — a rejected stop, which
+    means real money is open with no protection — so the column keeps its space
+    and only speaks for that."""
+    src = open("app.py").read()
+    assert '"" if dry or _pos.get("bracket", True)' in src
+    assert '"NO STOP — RETRYING"' in src
+    assert '"on MEXC"' not in src, "the noise is gone"
+
+    import app
+    assert app._tm_pos_cell("", "pill") == ""
+    loud = app._tm_pos_cell("NO STOP — RETRYING", "pill")
+    assert "ap-pill bad" in loud, "an unprotected position is red, not amber"
+
+
+def test_the_close_column_is_dressed_as_the_tables_last_cell():
+    """A Streamlit button cannot live inside a markdown grid, so Close is a
+    sibling column and looked like it sat outside the table. It cannot be moved
+    in, so the column carries the row hairline, the header band and the total
+    fill, and the column gap is collapsed so the band is continuous."""
+    css = __import__("app").TERMINAL_CSS
+    import re
+    assert re.search(r'\[data-testid="stHorizontalBlock"\]:has\(\.tm-pt\)\s*'
+                     r'>\s*\[data-testid="stColumn"\]:last-child', css)
+    assert '[data-testid="stHorizontalBlock"]:has(.tm-pt-h)' in css
+    assert '[data-testid="stHorizontalBlock"]:has(.tm-pt-t)' in css
+    assert "gap:0 !important" in css, "the gutter cut a notch through the band"
+
+
+def test_backtest2_page_is_registered(app):
+    assert "Backtest 2" in app.PAGES
+    assert callable(app.render_backtest2_tab)
+
+
+def test_bt2_deployed_reads_config_at_call_time(app, monkeypatch):
+    """Backtest 2 injects EVERY live strategy on the selected coins/timeframes,
+    and reads the settings file at run time — the config changed mid-task once
+    and a page shipped claiming no deployed row while one was live."""
+    from tradingagents import auto_trader as at
+
+    monkeypatch.setitem(at.STRATEGY_SPECS, "mom15_4h_w",
+                        {"interval": "Hour4", "threshold": 0.006,
+                         "sl": 0.02, "tp": 0.08})
+    monkeypatch.setitem(at.STRATEGY_SPECS, "trend50_30m_pi",
+                        {"interval": "Min30", "threshold": None,
+                         "sl": 0.02, "tp": 0.025})
+    cfg = {"strategies": ["mom15_4h_w", "trend50_30m_pi"],
+           "strategy_coins": {"mom15_4h_w": ["PI_USDT"],
+                              "trend50_30m_pi": ["PI_USDT"]},
+           "sizing": "martingale"}
+    monkeypatch.setattr(at, "load_settings", lambda: cfg)
+    monkeypatch.setattr(at, "sizing_for", lambda c: "martingale")
+
+    dep = app._bt2_deployed(["PI_USDT"], ["30m", "4h"])
+    got = {(d["coin"], d["tf"], d["signal"], d["sl"], d["tp"]) for d in dep}
+    assert ("PI", "4h", "mom15", 2.0, 8.0) in got
+    assert ("PI", "30m", "trend50", 2.0, 2.5) in got
+
+    # a timeframe outside the page must not inject its strategy
+    dep_1h = app._bt2_deployed(["PI_USDT"], ["1h"])
+    assert dep_1h == []
+
+    # nor a coin that was not selected
+    dep_other = app._bt2_deployed(["APEX_USDT"], ["30m", "4h"])
+    assert dep_other == []
+
+
+def test_the_system_tiles_match_apexs_stat_card():
+    """Measured off apex-django.dashboardpack.com's dashboard on 2026-08-20:
+    `rounded-lg border border-border bg-card p-4 flex flex-col gap-3` — so 16px
+    padding, 12px gap, 10px radius, --card ground, no shadow — with a 36x36 icon
+    chip at 8px radius carrying its tone at ~10% alpha behind the full colour
+    (theirs: rgba(22,163,74,.1) on rgb(22,163,74))."""
+    import re
+    import app
+    css = app.TERMINAL_CSS
+    m = re.search(r'\.tm-rib > div\{([^}]+)\}', css)
+    assert m, "the tile rule is gone"
+    tile = m.group(1)
+    assert "padding:16px" in tile and "gap:12px" in tile
+    assert "border-radius:var(--t-r)" in tile
+    ic = re.search(r'\.tm-rib \.ic\{([^}]+)\}', css).group(1)
+    assert "width:36px" in ic and "height:36px" in ic and "border-radius:8px" in ic
+    n = re.search(r'\.tm-rib \.n\{([^}]+)\}', css).group(1)
+    assert "font-size:30px" in n and "font-weight:700" in n
+    lb = re.search(r'\.tm-rib \.l\{([^}]+)\}', css).group(1)
+    assert "font-size:14px" in lb and "text-transform:none" in lb
+
+    # the later "inner tiles" rule repainted them muted at 8px; it must not
+    assert re.search(r'\.tm-rib > div\{\s*background:var\(--t-panel\);', css), \
+        "the stat card is --card, not the muted step"
+
+    head = app._tm_tile_head("Futures wallet", "$", "var(--t-amber)")
+    assert "class='hd'" in head and "class='ic'" in head
+    assert "color-mix(in oklab,var(--t-amber) 12%" in head, "tone at ~10% alpha"
+
+
+def test_tables_have_a_border():
+    """"also make border on tables" — one frame round the whole table with the
+    corners clipped, plus the positions grid bordered edge by edge because it is
+    built from Streamlit columns and has no single element to border."""
+    import app
+    css = app.TERMINAL_CSS
+    assert ".tm-tbl{ border:1px solid var(--t-rule)" in css
+    assert "border-radius:var(--t-r)" in css and "overflow:hidden" in css
+    assert "border-left:1px solid var(--t-rule)" in css
+    assert "border-right:1px solid var(--t-rule)" in css
+    assert "border-top:1px solid var(--t-rule)" in css
+    assert "border-bottom:1px solid var(--t-rule)" in css
+    # and the wrapper is actually emitted
+    out = app._tm_table((("a", "A", 1, "l", "text"),), [{"a": "x"}])
+    assert out.startswith("<div class='tm-tbl'>") and out.endswith("</div>")
+
+
+def test_both_backtest_pages_offer_the_archive_controls():
+    """"where is the download in backtest 2?" — `render_market_data_section`
+    holds DOWNLOAD/UPDATE for the permanent candle archive and was called only
+    from `render_backtest_tab`. Backtest 2 runs off that same cache, so it had
+    no way to fill or refresh it."""
+    import inspect
+
+    import app
+    for fn in (app.render_backtest_tab, app.render_backtest2_tab):
+        src = inspect.getsource(fn)
+        assert "render_market_data_section()" in src, \
+            f"{fn.__name__} does not offer the archive controls"
+
+
+def test_the_equity_curve_is_built_from_the_ledgers_own_exits():
+    """Design 09 leads with the curve, so it must be the same source as every
+    figure beside it — the ledger's exit rows — or the chart and the totals can
+    disagree on the same screen."""
+    import inspect
+    import app
+    src = inspect.getsource(app._an_equity)
+    assert 'e.get("action") != "exit"' in src
+    assert 'bool(e.get("dry_run")) is not dry' in src, "books never mix"
+
+
+def test_the_curve_draws_a_real_zero_axis_and_takes_its_sign():
+    import app
+    up = app._an_curve([(1, 0.0), (2, 5.0), (3, 12.0)])
+    dn = app._an_curve([(1, 0.0), (2, -5.0), (3, -12.0)])
+    assert "stroke-dasharray" in up, "break-even is drawn, not implied"
+    assert "var(--buy)" in up and "var(--sell)" not in up
+    assert "var(--sell)" in dn and "var(--buy)" not in dn
+    assert "aria-label" in up, "the curve names itself for a screen reader"
+    # two points minimum, and it says so rather than drawing a lie
+    assert "an-empty" in app._an_curve([(1, 1.0)])
+
+
+def test_the_legend_swatch_takes_the_curves_colour():
+    """It was hardcoded green while the curve was coral, because the book is
+    down. A legend that disagrees with its own line is a false label."""
+    src = open("app.py").read()
+    assert "'var(--t-up)' if _last >= 0 else 'var(--t-dn)'" in src
+
+
+def test_the_strategy_bars_rank_by_size_not_sign():
+    """The biggest mover first whichever way it went — a list sorted by signed
+    value buries the worst loser at the bottom where it gets skimmed past."""
+    import app
+    out = app._an_bars({
+        "small_win": {"pnl": 2.0, "wins": 1, "losses": 0, "trades": 1},
+        "big_loss": {"pnl": -40.0, "wins": 0, "losses": 4, "trades": 4},
+        "mid_win": {"pnl": 16.0, "wins": 2, "losses": 1, "trades": 3},
+        "never_traded": {"pnl": 0.0, "wins": 0, "losses": 0, "trades": 0}})
+    assert out.index("big_loss") < out.index("mid_win") < out.index("small_win")
+    assert "never_traded" not in out, "a strategy with no trades has no bar"
+    assert "width:100.0%" in out, "the biggest mover sets the scale"
+    assert app._an_bars({}).count("an-empty") == 1
+
+
+def test_the_progress_figure_has_ONE_calculation():
+    """The custom view first recovered the percentage by regexing the rendered
+    bar's HTML — and got 0% on every row, because the markup separates the number
+    from its target with &nbsp; rather than a space. Two readers of one figure
+    means one function, not a regex over the other one's output."""
+    import app
+    assert app._tm_prog_calc(100, 110, 95, 104, 1) == (40.0, "TP")
+    assert app._tm_prog_calc(100, 90, 105, 102, -1) == (40.0, "SL")
+    assert app._tm_prog_calc(100, None, 95, 104, 1) is None, "no guessing"
+    assert app._tm_prog_calc(100, 110, 95, 104, 0) is None, "no side, no bar"
+    # the bar renders FROM the calc, so they cannot disagree
+    assert "40%" in app._tm_progress(100, 110, 95, 104, 1)
+    src = open("app.py").read()
+    assert 'r["prog_pct"], r["prog_to"]' in src, "the row carries the numbers"
+    assert '_re.search(r">(\\d+)%' not in src, "and nobody parses the markup back"
+
+
+def test_the_view_owns_its_markup_and_holds_no_widgets():
+    """The point of the rebuild: the table is mine, so nothing inside it can be a
+    Streamlit widget — which is also what permanently ends the Close-button
+    alignment problem. Interaction lives in one action bar underneath."""
+    import app
+    assert "MODERN_CSS" in dir(app)
+    for cls in (".mv-hero", ".mv-row", ".mv-ring", ".mv-av", ".mv-pill", ".mv-str"):
+        assert cls in app.MODERN_CSS, f"{cls} missing"
+    assert "prefers-reduced-motion" in app.MODERN_CSS, "the pulse must be optional"
+    src = open("app.py").read()
+    assert 'key="mv_close_pick"' in src and 'key="mv_close_go"' in src
+
+
+def test_a_stake_is_not_a_gain():
+    """`at risk` printed +5.00 in green. Margin is what you put up, not what you
+    made."""
+    import app
+    assert app._tm_pos_cell(5.0, "money0") == "5.00"
+    assert "+" not in app._tm_pos_cell(5.0, "money0")
+    assert "tm-up" not in app._tm_pos_cell(5.0, "money0")

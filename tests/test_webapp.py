@@ -794,3 +794,15 @@ def test_a_stake_is_not_a_gain():
     assert app._tm_pos_cell(5.0, "money0") == "5.00"
     assert "+" not in app._tm_pos_cell(5.0, "money0")
     assert "tm-up" not in app._tm_pos_cell(5.0, "money0")
+
+
+def test_backtest2_shows_the_storage_panel():
+    """Growth must be visible before it is a problem: every store, rows,
+    bytes, on the page that writes them."""
+    src = open("app.py").read()
+    assert "def render_storage_panel" in src
+    assert src.count("render_storage_panel()") >= 1
+    body = src.split("def render_storage_panel", 1)[1].split("\ndef ", 1)[0]
+    assert "table_sizes" in body, "Neon tables must be listed"
+    assert "parquet_store" in body, "disk stores must be listed"
+    assert "0.5 GB" in body, "the free-tier cap belongs on screen"

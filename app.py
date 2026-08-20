@@ -6177,6 +6177,43 @@ def render_history_section() -> None:
         } for r in show]), width="stretch", height=300, hide_index=True)
 
 
+def render_storage_panel() -> None:
+    """Every store, its rows and bytes — growth visible before it is a
+    problem. Neon's free project caps at 0.5 GB; parquet is the operator's
+    own disk and holds only what a re-run can rebuild."""
+    import pandas as pd
+
+    from tradingagents import parquet_store as pqs
+    from tradingagents.dataflows import market_db as mdb
+
+    st.markdown('<div class="ta-section">Storage</div>',
+                unsafe_allow_html=True)
+    rows = []
+    try:
+        for name, v in (mdb.table_sizes() or {}).items():
+            rows.append({"store": f"Neon · {name}", "rows": v.get("rows"),
+                         "size": v.get("size") or "—",
+                         "holds": {"candles": "traded coins only",
+                                   "backtest_results": "best 500 per pair",
+                                   "deployments": "forever",
+                                   "trade_ledger": "forever"}.get(name, "")})
+    except Exception:
+        rows.append({"store": "Neon", "rows": None,
+                     "size": "unreachable", "holds": ""})
+    for name, v in pqs.sizes().items():
+        rows.append({"store": f"This Mac · {name}", "rows": v["rows"],
+                     "size": f"{v['bytes'] / 1e6:.1f} MB ({v['files']} files)",
+                     "holds": {"candles": "full history, every coin",
+                               "grids": "complete sweep snapshots"}[name]})
+    st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True,
+                 height=min(320, 60 + 36 * len(rows)))
+    st.caption("Neon keeps the irreplaceable and stays under its 0.5 GB free "
+               "cap — the retention tick prunes it after every save, and only "
+               "after the full grid is proven on disk. Parquet on this Mac "
+               "holds the recomputable bulk: losing a file costs a re-run, "
+               "never history.")
+
+
 def render_backtest2_tab() -> None:
     """Version 2: the DAILY sweep. One click runs every signal on the
     operator's own coins across every timeframe, marks every live strategy
@@ -6202,6 +6239,7 @@ def render_backtest2_tab() -> None:
     render_archive_backtest_section()
     render_stored_strategies_section()
     render_history_section()
+    render_storage_panel()
 
     cfg = at.load_settings()
     _keys = list(cfg.get("strategies") or []) or list(

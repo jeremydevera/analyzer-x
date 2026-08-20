@@ -257,6 +257,81 @@ def trade_summary() -> dict:
     }
 
 
+@app.get("/api/trade/positions")
+def trade_positions() -> dict:
+    """Open positions on both books, with every column the operator reads.
+
+    Fourteen columns, not five: the set is a standing operator decision
+    (app.py's _TM_POS comment records restoring them on 2026-08-20), and
+    `bracket` is the one that says whether real money is protected.
+    """
+    import tradingagents.auto_trader as at
+    from tradingagents import positions_view as pv
+    from tradingagents.dataflows import mexc_credentials as cred
+    from tradingagents.dataflows import mexc_futures as fx
+
+    cred.load_into_env()
+
+    def last_price(symbol: str):
+        # fx.last_price is the mark-price reader. klines() returns a DataFrame,
+        # so indexing it like a list silently yielded nothing and the "to TP"
+        # progress column rendered empty on every row.
+        try:
+            return float(fx.last_price(symbol))
+        except Exception:
+            return None
+
+    def contract_size(symbol: str) -> float:
+        try:
+            return float(fx.contract_spec(symbol).get("contractSize") or 1.0)
+        except Exception:
+            return 1.0
+
+    state = at.load_state()
+    try:
+        live = fx.open_positions()
+    except Exception:
+        live = []
+    kw = {"last_price": last_price, "contract_size": contract_size,
+          "taker_fee": at.taker_fee, "leverage": at.LEVERAGE}
+    real = pv.build_rows(state=state, exchange_positions=live,
+                         stats=at.coin_stats(dry=False), dry=False, **kw)
+    paper = pv.build_rows(state=state, exchange_positions=[],
+                          stats=at.coin_stats(dry=True), dry=True, **kw)
+    unprotected = [r["coin"] for r in real if r["bracket"]]
+    return {"real": real, "paper": paper, "leverage": at.LEVERAGE,
+            "unprotected": unprotected}
+
+
+@app.post("/api/trade/positions/close")
+def trade_close_one(body: dict) -> dict:
+    """Close ONE position at market. Irreversible; the caller confirms."""
+    import tradingagents.auto_trader as at
+    from tradingagents.dataflows import mexc_credentials as cred
+
+    cred.load_into_env()
+    symbol = str(body.get("symbol") or "").strip()
+    if not symbol:
+        raise HTTPException(400, "a symbol is required")
+    return at.close_one(symbol)
+
+
+@app.post("/api/trade/panic")
+def trade_panic(body: dict) -> dict:
+    """PANIC: halt entries and close every position at market.
+
+    Requires an explicit {"confirm": true} — a mis-click must not be able to
+    flatten the account.
+    """
+    import tradingagents.auto_trader as at
+    from tradingagents.dataflows import mexc_credentials as cred
+
+    if body.get("confirm") is not True:
+        raise HTTPException(400, "panic requires confirm=true")
+    cred.load_into_env()
+    return at.panic_stop(close_positions=bool(body.get("close_positions", True)))
+
+
 @app.get("/api/trade/strategies")
 def trade_strategies(catalog: bool = False) -> dict:
     """The DEPLOYED strategies by default — the ones with a book or a coin.
@@ -559,3 +634,17 @@ def analysis_social_sources() -> dict:
         "x_key_present": bool(os.environ.get("TWITTERAPI_IO_KEY", "").strip()),
         "x_key_env": "TWITTERAPI_IO_KEY",
     }
+
+
+@app.post("/api/trade/halt")
+def trade_halt(body: dict) -> dict:
+    """Halt entries, or clear the halt. The kill file blocks NEW entries; open
+    positions keep their exchange-side brackets and their own exits."""
+    import tradingagents.auto_trader as at
+
+    if bool(body.get("halt", True)):
+        at.KILL_PATH.parent.mkdir(parents=True, exist_ok=True)
+        at.KILL_PATH.write_text("halted from the UI", encoding="utf-8")
+    else:
+        at.KILL_PATH.unlink(missing_ok=True)
+    return {"halted": at.halted()}

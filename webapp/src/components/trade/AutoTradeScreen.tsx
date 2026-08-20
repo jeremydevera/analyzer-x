@@ -1,8 +1,8 @@
 "use client";
-/** The terminal. One summary fetch feeds the ribbon and the positions table,
- * so the two can never show different position counts. */
+/** The terminal. The positions table owns its own fetch (it must poll faster
+ * than the ribbon and it carries the close control), and a close bumps `tick`
+ * so the ribbon's totals re-read instead of showing a position that is gone. */
 import { useState } from "react";
-import { TradeSummary } from "@/lib/api";
 import SummaryRibbon from "./SummaryRibbon";
 import PositionsPanel from "./PositionsPanel";
 import StrategiesGrid from "./StrategiesGrid";
@@ -10,11 +10,12 @@ import PnlPanel from "./PnlPanel";
 import FeedPanel from "./FeedPanel";
 
 export default function AutoTradeScreen() {
-  const [s, setS] = useState<TradeSummary | null>(null);
+  const [tick, setTick] = useState(0);
+  const bump = () => setTick((t) => t + 1);
   return (
     <div className="flex flex-col gap-5">
-      <SummaryRibbon onSummary={setS} />
-      <PositionsPanel real={s?.open_positions ?? []} paper={s?.paper_positions ?? []} />
+      <SummaryRibbon key={`ribbon-${tick}`} onChanged={bump} />
+      <PositionsPanel onChanged={bump} />
       <StrategiesGrid />
       <PnlPanel />
       <FeedPanel />

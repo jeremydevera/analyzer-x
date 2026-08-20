@@ -20,13 +20,15 @@ function Tile({ label, value, sub, tone }: { label: string; value: string; sub: 
   );
 }
 
-export default function SummaryRibbon({ onSummary }: { onSummary?: (s: TradeSummary) => void }) {
+export default function SummaryRibbon({ onChanged }: { onChanged?: () => void }) {
   const [s, setS] = useState<TradeSummary | null>(null);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [armed, setArmed] = useState(false);
+  const [note, setNote] = useState("");
 
   const load = () =>
-    tradeApi.summary().then((d) => { setS(d); setErr(""); onSummary?.(d); }).catch((e) => setErr(String(e)));
+    tradeApi.summary().then((d) => { setS(d); setErr(""); }).catch((e) => setErr(String(e)));
 
   useEffect(() => {
     load();
@@ -35,6 +37,28 @@ export default function SummaryRibbon({ onSummary }: { onSummary?: (s: TradeSumm
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const halt = async () => {
+    const on = !s?.halted;
+    if (on && !confirm("Halt entries?\n\nNo NEW trade will be opened. Open positions keep their exchange-side stops and can still close on their own.")) return;
+    setBusy(true);
+    try { await tradeApi.halt(on); await load(); onChanged?.(); }
+    catch (e) { setErr(String(e)); } finally { setBusy(false); }
+  };
+
+  const panic = async () => {
+    const n = (s?.open_positions.length ?? 0);
+    const worth = s?.open_unrealized ?? 0;
+    if (!confirm(`PANIC — close everything at market?\n\nThis halts entries, stops the runner, and closes ${n} real position${n === 1 ? "" : "s"} NOW. Unrealized ${money(worth)} USDT becomes real.\n\nThere is no undo.`)) return;
+    setBusy(true);
+    try {
+      const got = await tradeApi.panic(true);
+      setNote(`PANIC done — halted, runner ${got.runner_stopped ? "stopped" : "was not running"}, closed ${got.closed.length}${got.failed.length ? `, FAILED on ${got.failed.join(", ")}` : ""}.`);
+      setArmed(false);
+      await load();
+      onChanged?.();
+    } catch (e) { setErr(String(e)); } finally { setBusy(false); }
+  };
+
   const runner = async (action: "start" | "stop") => {
     if (action === "stop" && !confirm("Stop the runner? Open positions keep their exchange-side brackets, but no new trades will be taken.")) return;
     setBusy(true);
@@ -42,6 +66,7 @@ export default function SummaryRibbon({ onSummary }: { onSummary?: (s: TradeSumm
       if (action === "start") await tradeApi.runnerStart();
       else await tradeApi.runnerStop();
       await load();
+      onChanged?.();
     } catch (e) { setErr(String(e)); } finally { setBusy(false); }
   };
 
@@ -55,11 +80,24 @@ export default function SummaryRibbon({ onSummary }: { onSummary?: (s: TradeSumm
         <Badge size="sm" color={s.pid ? (s.mode.includes("LIVE") ? "error" : "success") : "light"}>
           {s.mode}{s.pid ? ` · pid ${s.pid}` : ""}
         </Badge>
-        {s.halted && <Badge size="sm" color="warning">HALTED — daily loss limit</Badge>}
-        <div className="ml-auto flex gap-2">
+        {s.halted && <Badge size="sm" color="warning">HALTED — no new entries</Badge>}
+        {note && <span className="text-theme-xs font-medium text-error-500">{note}</span>}
+        <div className="ml-auto flex flex-wrap items-center gap-2">
           {s.pid
             ? <Button size="sm" variant="outline" disabled={busy} onClick={() => runner("stop")}>STOP RUNNER</Button>
             : <Button size="sm" disabled={busy} onClick={() => runner("start")}>START RUNNER</Button>}
+          <Button size="sm" variant="outline" disabled={busy} onClick={halt}>
+            {s.halted ? "RESUME ENTRIES" : "HALT ENTRIES"}
+          </Button>
+          <label className="flex items-center gap-1.5 text-theme-xs text-gray-600 dark:text-gray-300">
+            <input type="checkbox" checked={armed} onChange={(e) => setArmed(e.target.checked)}
+              className="h-4 w-4 accent-error-500" />
+            arm PANIC
+          </label>
+          <button disabled={!armed || busy} onClick={panic}
+            className="rounded-lg bg-error-500 px-3 py-2 text-theme-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40">
+            PANIC — close all
+          </button>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">

@@ -137,3 +137,88 @@ def test_no_trade_response_carries_a_credential(client, monkeypatch):
                  "/api/trade/pnl/by-coin", "/api/trade/log"):
         body = client.get(path).text
         assert canary not in body, f"{path} leaked a credential"
+
+
+# --- the safety controls --------------------------------------------------
+# Restored 2026-08-21 after the React port shipped without them: PANIC,
+# close-one and halt. A kill switch that needs a second click is fine; one
+# that can fire on a mis-click, or cannot fire at all, is not.
+
+def test_panic_refuses_without_an_explicit_confirmation(client, monkeypatch):
+    called = []
+    monkeypatch.setattr(at, "panic_stop",
+                        lambda **kw: called.append(kw) or {"halted": True})
+    assert client.post("/api/trade/panic", json={}).status_code == 400
+    assert client.post("/api/trade/panic",
+                       json={"confirm": "yes"}).status_code == 400
+    assert called == [], "panic must not fire without confirm=true"
+    got = client.post("/api/trade/panic", json={"confirm": True})
+    assert got.status_code == 200 and called == [{"close_positions": True}]
+
+
+def test_panic_can_halt_without_closing_when_asked(client, monkeypatch):
+    seen = {}
+    monkeypatch.setattr(at, "panic_stop", lambda **kw: seen.update(kw) or {})
+    client.post("/api/trade/panic", json={"confirm": True,
+                                          "close_positions": False})
+    assert seen == {"close_positions": False}
+
+
+def test_close_one_needs_a_symbol_and_passes_it_through(client, monkeypatch):
+    seen = []
+    monkeypatch.setattr(at, "close_one",
+                        lambda s, **kw: seen.append(s) or {"closed": True})
+    assert client.post("/api/trade/positions/close",
+                       json={}).status_code == 400
+    got = client.post("/api/trade/positions/close",
+                      json={"symbol": "APEX_USDT"}).json()
+    assert seen == ["APEX_USDT"] and got["closed"] is True
+
+
+def test_halt_writes_and_clears_the_kill_file(client, monkeypatch, tmp_path):
+    monkeypatch.setattr(at, "KILL_PATH", tmp_path / "auto_trade.KILL")
+    assert client.post("/api/trade/halt", json={"halt": True}).json()["halted"] is True
+    assert (tmp_path / "auto_trade.KILL").exists()
+    assert client.post("/api/trade/halt", json={"halt": False}).json()["halted"] is False
+    assert not (tmp_path / "auto_trade.KILL").exists()
+
+
+def test_positions_route_carries_every_column_and_names_the_unprotected(
+        client, monkeypatch):
+    monkeypatch.setattr(at, "load_state", lambda: {
+        "APEX_USDT": {"position": {"dry": False, "side": 1, "entry": 100.0,
+                                   "tp": 110.0, "sl": 95.0, "margin": 5.0,
+                                   "vol": 1.0, "strategy": "sweep30_1h_w",
+                                   "opened_at": 1_787_000_000,
+                                   "bracket": False}}})
+    monkeypatch.setattr(at, "taker_fee", lambda s, **kw: 0.0004)
+    from tradingagents.dataflows import mexc_futures as fx
+    monkeypatch.setattr(fx, "open_positions", lambda symbol=None: [])
+    monkeypatch.setattr(fx, "last_price", lambda s: 105.0)
+    monkeypatch.setattr(fx, "contract_spec", lambda s: {"contractSize": 1.0})
+    got = client.get("/api/trade/positions").json()
+    r = got["real"][0]
+    assert r["bracket"] == "NO STOP — RETRYING"
+    assert got["unprotected"] == ["APEX"], "an unprotected position is named"
+    assert r["progress_pct"] == 50.0 and r["progress_to"] == "TP"
+    assert r["tp_value"]["pct"] == 10.0 and r["sl_value"]["usd"] < 0
+    assert r["held"] != "—" and r["opened"] != "—"
+
+
+def test_progress_needs_a_real_price_reader_not_a_dataframe_index(client,
+                                                                  monkeypatch):
+    """klines() returns a DataFrame; indexing it like a list yielded no price
+    and blanked the 'to TP' column on every row (2026-08-21)."""
+    monkeypatch.setattr(at, "load_state", lambda: {
+        "PI_USDT": {"position": {"dry": False, "side": 1, "entry": 100.0,
+                                 "tp": 110.0, "sl": 95.0, "margin": 5.0,
+                                 "vol": 1.0, "opened_at": 1_787_000_000,
+                                 "bracket": True}}})
+    monkeypatch.setattr(at, "taker_fee", lambda s, **kw: 0.0004)
+    from tradingagents.dataflows import mexc_futures as fx
+    monkeypatch.setattr(fx, "open_positions", lambda symbol=None: [])
+    monkeypatch.setattr(fx, "contract_spec", lambda s: {"contractSize": 1.0})
+    monkeypatch.setattr(fx, "last_price", lambda s: 105.0)
+    r = client.get("/api/trade/positions").json()["real"][0]
+    assert r["price"] == 105.0
+    assert r["progress_pct"] == 50.0 and r["progress_to"] == "TP"

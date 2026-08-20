@@ -1472,11 +1472,18 @@ def main() -> None:
     # every screen inherit the same sheet with no selector changes.
     term = st.container(key="term")
     with term:
+        # ORDER MATTERS. The design system is the authority; the two legacy
+        # sheets are what it re-points. DESIGN_CSS used to be injected BEFORE
+        # TERMINAL_DARK_CSS, so in night mode the old sheet's --t-faint and
+        # --t-dn won on source order and the system's own values never
+        # reached the screen — which is why "4 STRATEGIES" was still painting
+        # the retired red and measured 4.44:1.
         st.markdown(TERMINAL_CSS.replace("__POSGRID__", _TM_POS_GRID),
                     unsafe_allow_html=True)
-        st.markdown(ANI_CSS, unsafe_allow_html=True)
         if st.session_state.get("ui_night"):
             st.markdown(TERMINAL_DARK_CSS, unsafe_allow_html=True)
+        st.markdown(DESIGN_CSS, unsafe_allow_html=True)
+        st.markdown(ANI_CSS, unsafe_allow_html=True)
         st.markdown(f'<h1 class="ta-page-title">{html.escape(page)}</h1>',
                     unsafe_allow_html=True)
         if page == "New Crypto":
@@ -2661,7 +2668,11 @@ a.bt-open:focus-visible{ outline:2px solid var(--text); outline-offset:2px; }
   outline:2px solid var(--t-amber) !important; outline-offset:2px; }
 .st-key-term .stButton button:hover{ border-color:var(--t-amber) !important;
   color:var(--t-amber) !important; }
-.st-key-term .stButton button[kind="primary"]{ background:var(--t-amber) !important;
+/* The FILL, not --t-amber: that token is the accent as TEXT now, and filling
+   a button with it put white on oklch(0.70) at 2.68:1. Every screen lives
+   inside .st-key-term since the sheet was hoisted, so this one rule was
+   painting every primary button in the app. */
+.st-key-term .stButton button[kind="primary"]{ background:var(--brand) !important;
   color:#0a0c0e !important; border-color:var(--t-amber) !important;
   font-weight:700 !important; }
 .st-key-term .stNumberInput button{ background:var(--t-panel2) !important;
@@ -2684,8 +2695,10 @@ a.bt-open:focus-visible{ outline:2px solid var(--text); outline-offset:2px; }
    the same rhythm at this density. Numbers keep the monospace face because
    tabular alignment is the one thing Apex's sans cannot do.
    ===================================================================== */
-.st-key-term{ --t-sans:-apple-system,system-ui,"Segoe UI",Roboto,
-  "Helvetica Neue",Arial,sans-serif; }
+/* One sans for the whole app. This used to be its own system stack, so the
+   terminal's text and the rest of the app were different typefaces on the
+   same screen. */
+.st-key-term{ --t-sans:var(--font-body); }
 /* Text wears the sans; anything numeric keeps the mono. */
 .st-key-term .tm-h, .st-key-term .tm-h *,
 .st-key-term .tm-rib .l, .st-key-term .tm-rib .s,
@@ -3327,6 +3340,287 @@ def _mv_strategies(tiles, saved, stats, specs) -> str:
     return "".join(out)
 
 
+DESIGN_CSS = """
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE DESIGN SYSTEM
+   Written from scratch 2026-08-20 after the operator's verdict: "the ui is not
+   good and not professional, not production ready". Earlier passes ported a
+   bought template's colour values on top of Streamlit's default widget tree.
+   That fixes hue and fixes nothing else, which is why five attempts read as
+   the same app in new paint.
+
+   Three layers, per the design-system skill: primitive values, semantic
+   aliases naming a PURPOSE, then component tokens. A component rule may only
+   read a component token; nothing in this file paints a raw value into a
+   component, so the whole surface moves by editing one block.
+   ═════════════════════════════════════════════════════════════════════════ */
+:root{
+  /* ---- LAYER 1 · primitive -------------------------------------------- */
+  /* A neutral ramp with a deliberate cool bias — a pure grey reads as
+     unconsidered, and the bias ties the greys to the accent. */
+  --n-0:oklch(9% .006 265);   --n-1:oklch(13% .007 265);
+  --n-2:oklch(17% .008 265);  --n-3:oklch(22% .009 265);
+  --n-4:oklch(30% .010 265);  --n-5:oklch(45% .010 265);
+  --n-6:oklch(74% .008 265);  --n-7:oklch(84% .006 265);
+  --n-8:oklch(92% .004 265);  --n-9:oklch(99% 0 0);
+  /* One accent, indigo — chosen so it never collides with the money hues.
+     Green as an interface accent is unusable here: green already MEANS profit,
+     and an accent that means something is not an accent. */
+  --a-4:oklch(48% .17 274);   --a-5:oklch(54% .19 274);
+  --a-6:oklch(70% .15 274);   --a-w:oklch(24% .06 274);
+  /* Money. Desaturated on purpose: a screen of saturated red and green reads
+     as an alarm, and then nothing on it reads as urgent. */
+  --up-5:oklch(66% .14 158);  --up-w:oklch(24% .05 158);
+  --dn-5:oklch(64% .17 22);   --dn-w:oklch(24% .06 22);
+  --wa-5:oklch(76% .14 75);
+  /* Space, one scale, no arbitrary values in between. */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px;
+  /* Type. Sans carries the interface; mono is reserved for FIGURES, where the
+     tabular width earns it. Everything was mono before, which is what made a
+     trading app read as a terminal emulator instead of a product. */
+  --f-uixs:11px; --f-uism:12.5px; --f-ui:13.5px; --f-uilg:15px;
+  --f-h3:17px;   --f-h2:20px;     --f-h1:27px;
+  --lh-tight:1.25; --lh:1.5;
+
+  /* ---- LAYER 2 · semantic --------------------------------------------- */
+  --sf-page:var(--n-0);      /* the ground */
+  --sf-raised:var(--n-2);    /* a card on the ground — n-1 was only 4%
+                                lighter than the page and the tiles read as
+                                floating text rather than objects */
+  --sf-sunken:var(--n-1);    /* a well INSIDE a card: darker than the card,
+                                so an input reads as carved in, not stuck on */
+  --sf-hover:var(--n-2);
+  --fg:var(--n-9);          /* primary text */
+  --fg-2:var(--n-7);        /* secondary text */
+  --fg-3:var(--n-6);        /* labels, captions — still 4.5:1 on the ground */
+  --hair:var(--n-3);         /* hairline */
+  --hair-2:var(--n-4);       /* a border that must be seen */
+  --brand:var(--a-5);          /* a FILL. Its ink is --brand-ink. */
+  --brand-ink:var(--n-9);      /* white on that fill — measured, not assumed */
+  --brand-text:var(--a-6);     /* the accent as TEXT on a dark surface. The
+                                  fill value fails 4.5:1 used this way, which
+                                  is how "20.00" and the row tag sat at 4.26 */
+  --brand-wash:var(--a-w);
+  --pos:var(--up-5); --pos-wash:var(--up-w);
+  --neg:var(--dn-5); --neg-wash:var(--dn-w);
+  --warn:var(--wa-5);
+  --focus:var(--a-6);
+  --r-ctl:8px; --r-card:12px; --r-pill:999px;
+
+  /* ---- LAYER 3 · component ------------------------------------------- */
+  --card-bg:var(--sf-raised);   --card-line:var(--hair);
+  --card-pad:var(--s5);         --card-r:var(--r-card);
+  --tbl-head-ink:var(--fg-3);  --tbl-head-size:var(--f-uixs);
+  --tbl-cell-size:var(--f-uism);--tbl-row-h:44px;
+  --tbl-line:var(--hair);       --tbl-row-hover:var(--sf-hover);
+  --fld-bg:var(--sf-sunken);    --fld-line:var(--hair-2);
+  --fld-ink:var(--fg);         --fld-r:var(--r-ctl);
+  --fld-h:34px;                 --fld-size:var(--f-uism);
+  --btn-h:34px;                 --btn-r:var(--r-ctl);
+  --pill-size:var(--f-uixs);    --pill-pad:3px 9px;
+}
+
+/* ---- the legacy names, re-pointed -------------------------------------
+   Two dozen files' worth of rules already read --bg/--panel/--text/--t-ink
+   and so on. Re-pointing those names at the semantic layer moves the entire
+   surface onto the system in one place, instead of rewriting 113 selectors
+   and leaving half of them behind — which is how the last pass ended up with
+   five stylesheets that disagreed. */
+:root{
+  --bg:var(--sf-page); --panel:var(--sf-raised); --panel-2:var(--sf-sunken);
+  --sidebar:var(--n-1);
+  --border:var(--hair); --border-soft:var(--n-2); --border-strong:var(--hair-2);
+  --text:var(--fg); --muted:var(--fg-2); --faint:var(--fg-3);
+  /* --accent is a FILL in the legacy rules (.stButton>button[kind=primary]
+     paints its background with it), so it must stay the fill value. Pointing
+     it at the lighter TEXT step filled every primary button with oklch(0.70)
+     and put white on it at 2.68:1. --accent-dim is the text step. */
+  --accent:var(--brand); --accent-dim:var(--brand-text);
+  --accent-wash:var(--brand-wash);
+  --buy:var(--pos); --sell:var(--neg); --hold:var(--warn);
+  --r:var(--r-ctl); --s:var(--s2);
+}
+.st-key-term{
+  --t-ground:transparent; --t-panel:var(--sf-raised);
+  --t-panel2:var(--sf-sunken);
+  --t-rule:var(--hair); --t-rule2:var(--hair-2);
+  --t-ink:var(--fg); --t-dim:var(--fg-2); --t-faint:var(--fg-3);
+  --t-amber:var(--brand-text); --t-up:var(--pos); --t-dn:var(--neg);
+  --t-r:var(--r-card); --t-rc:var(--r-ctl);
+}
+
+/* ---- TYPE: sans runs the interface, mono runs the figures -------------
+   Every label, header and caption was mono. Tabular width is worth having on
+   a COLUMN OF NUMBERS and costs legibility everywhere else — it is the single
+   biggest reason this read as a terminal emulator rather than a product. */
+.stApp, .stApp p, .stApp span, .stApp div, .stApp label, .stApp button,
+.stApp h1, .stApp h2, .stApp h3, .stApp li, .stApp td, .stApp th{
+  font-family:var(--font-body) !important;
+  -webkit-font-smoothing:antialiased; }
+/* Figures keep the mono, and keep tabular digits so columns line up.
+   Prefixed with .stApp so these OUT-SPECIFY the blanket sans rule above:
+   `.stApp span` is (0,1,1) and beat a bare `.mv-num` at (0,1,0), which
+   silently put the money back into the sans and lost tabular alignment. */
+.stApp .mv-num, .stApp .tm-num, .stApp .ani, .stApp .ani *,
+.stApp .mv-hero .v, .stApp .mv-cell b, .stApp .mv-r, .stApp .mv-to,
+.stApp [data-testid="stMetricValue"], .stApp .tm-mono,
+.stApp code, .stApp pre, .stApp .mv-ring i{
+  font-family:var(--font-mono) !important;
+  font-variant-numeric:tabular-nums; font-feature-settings:"tnum"; }
+
+.ta-page-title{ font-size:var(--f-h1) !important; font-weight:600 !important;
+  letter-spacing:-.02em; color:var(--fg) !important; line-height:var(--lh-tight); }
+h2.tm-h .k{ font-size:var(--f-h3) !important; font-weight:600 !important;
+  letter-spacing:-.01em !important; text-transform:none !important;
+  color:var(--fg) !important; }
+h2.tm-h .v{ font-size:var(--f-uism) !important; letter-spacing:0 !important;
+  text-transform:none !important; color:var(--fg-3) !important; }
+.mv-ph h2{ font-size:var(--f-h3) !important; }
+
+/* ---- CARDS: one border, one radius, one padding --------------------- */
+.mv-panel, .st-key-term [class*="st-key-tmsec_"]{
+  background:var(--card-bg) !important; border:1px solid var(--card-line) !important;
+  border-radius:var(--card-r) !important; }
+.st-key-term [class*="st-key-tmsec_"]{ padding:var(--card-pad) !important;
+  margin-bottom:var(--s5) !important; border-top:1px solid var(--card-line) !important; }
+
+/* ---- TABLES: the header is a label, the row is the object ----------- */
+.mv-row.hd > div, .st-key-term [data-testid="stHorizontalBlock"]:first-of-type{
+  font-size:var(--tbl-head-size) !important; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--tbl-head-ink) !important;
+  font-weight:500 !important; }
+.mv-row:not(.hd):not(.ft){ min-height:var(--tbl-row-h);
+  border-top:1px solid var(--tbl-line); }
+.mv-row:not(.hd):not(.ft):hover{ background:var(--tbl-row-hover); }
+.mv-row > div{ font-size:var(--tbl-cell-size); }
+
+/* ---- PILLS ---------------------------------------------------------- */
+.mv-pill{ font-size:var(--pill-size) !important; padding:var(--pill-pad) !important;
+  border-radius:var(--r-pill) !important; font-weight:500 !important;
+  letter-spacing:.02em; text-transform:none !important; }
+.mv-pill.up{ background:var(--pos-wash) !important; color:var(--pos) !important; }
+.mv-pill.dn{ background:var(--neg-wash) !important; color:var(--neg) !important; }
+
+/* ---- FIELDS: one height, one radius, and a real focus ring ---------- */
+.stApp input, .stApp textarea,
+.stApp [data-baseweb="select"] > div, .stApp [data-baseweb="input"] > div{
+  background:var(--fld-bg) !important; border-radius:var(--fld-r) !important;
+  border:1px solid var(--fld-line) !important; color:var(--fld-ink) !important;
+  font-size:var(--fld-size) !important; min-height:var(--fld-h) !important; }
+.stApp input:focus, .stApp [data-baseweb="select"] > div:focus-within,
+.stApp [data-baseweb="input"] > div:focus-within{
+  border-color:var(--focus) !important;
+  box-shadow:0 0 0 3px color-mix(in oklab,var(--focus) 26%,transparent) !important; }
+[data-testid="stWidgetLabel"] p{ font-size:var(--f-uixs) !important;
+  letter-spacing:.07em; text-transform:uppercase;
+  color:var(--fg-3) !important; font-weight:500 !important; }
+
+/* ---- READOUT TILES: the figure is the object, the label is furniture --- */
+.stApp .mv-cell b{ font-size:var(--f-h2) !important; font-weight:600 !important;
+  line-height:var(--lh-tight); letter-spacing:-.01em; }
+.stApp .mv-cell em{ font-size:var(--f-uixs) !important; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--fg-3) !important; font-style:normal; }
+.stApp .mv-cell span{ font-size:var(--f-uism) !important; color:var(--fg-3) !important; }
+.mv-cell{ padding:var(--s4) !important; }
+/* The unit was jammed against the last digit of the balance. */
+.stApp .mv-hero .v > span{ margin-left:6px; }
+
+/* A toggle's label is a NAME, not a column header. The blanket uppercase
+   micro-label rule turned "Night mode" into "NIGHT MODE" at 11px, which reads
+   as a section eyebrow attached to a switch. */
+[data-testid="stCheckbox"] [data-testid="stWidgetLabel"] p,
+[data-testid="stToggle"] [data-testid="stWidgetLabel"] p,
+[data-testid="stRadio"] [data-testid="stWidgetLabel"] p,
+.stApp [data-testid="stCheckbox"] label p{
+  font-size:var(--f-ui) !important; letter-spacing:0 !important;
+  text-transform:none !important; color:var(--fg-2) !important;
+  font-weight:400 !important; }
+
+/* The document body kept config.toml's paper #FAF9F7 while the app painted
+   itself dark, so anything with a transparent ancestor chain — a portaled
+   popover, an overscroll gutter, a button whose own fill is none — sat on
+   white. Measured: "Forget saved keys" 1.03:1, "MEXC API KEYS" 1.06:1. The
+   body takes the theme token so the two can never disagree again. */
+html, body, .stApp, [data-testid="stAppViewContainer"],
+[data-testid="stMain"], [data-testid="stBottom"]{
+  background:var(--bg) !important; }
+
+/* Streamlit paints some component FILLS from config.toml's own theme, which is
+   still the light one. Measured: the expander summary came out
+   rgb(246,245,243) and a secondary form-submit button pure rgb(255,255,255) —
+   both carrying white text, so 1.06:1 and 1.03:1. Every rule I wrote before
+   this set `color` and never touched those backgrounds, which is why three
+   figures survived four rounds of "fixes". Painting the fills from tokens
+   settles it in BOTH themes, rather than flipping config to dark and breaking
+   light mode. */
+.stApp [data-testid="stExpander"] summary{
+  background:var(--sf-sunken) !important; border-radius:var(--r-ctl) !important; }
+.stApp [data-testid="stExpander"] details{
+  background:transparent !important; border:1px solid var(--hair) !important;
+  border-radius:var(--r-ctl) !important; }
+/* NOT in the sidebar: the nav's inactive items are secondary buttons too, and
+   giving them a fill turned a quiet list of destinations into six competing
+   pills. A nav item is a link that happens to be a button. */
+.stApp [data-testid="stMain"] button[data-testid="stBaseButton-secondary"],
+.stApp button[data-testid="stBaseButton-secondaryFormSubmit"]{
+  background:var(--sf-sunken) !important;
+  border:1px solid var(--hair-2) !important; }
+.stApp [data-testid="stMain"] button[data-testid="stBaseButton-secondary"]:hover,
+.stApp button[data-testid="stBaseButton-secondaryFormSubmit"]:hover{
+  background:var(--sf-hover) !important; border-color:var(--focus) !important; }
+[data-testid="stSidebar"] button[data-testid="stBaseButton-secondary"]{
+  background:transparent !important; border-color:transparent !important; }
+[data-testid="stSidebar"] button[data-testid="stBaseButton-secondary"]:hover{
+  background:var(--sf-raised) !important; }
+/* Dark ink on the 58% indigo measured 4.21:1. White on the same fill clears
+   the floor and keeps the button reading as the primary action. */
+.stApp [data-testid="stBaseButton-primaryFormSubmit"],
+.stApp [data-testid="stBaseButton-primaryFormSubmit"] *,
+.stApp [data-testid="stBaseButton-primary"]:not([class*="st-key-nav"]),
+.stApp button[data-testid="stBaseButton-primary"] *{
+  color:var(--brand-ink) !important; }
+/* the sidebar's active item is an exception: it is accent TEXT on a wash,
+   not a filled button, so it keeps the text token. */
+[data-testid="stSidebar"] [data-testid="stBaseButton-primary"],
+[data-testid="stSidebar"] [data-testid="stBaseButton-primary"] *{
+  color:var(--brand-text) !important; }
+
+/* ---- contrast repairs, each one measured, not guessed ----------------
+   Ratios below are on this page at 1600px, read with the browser's own colour
+   conversion (a hand-rolled rgb() parser reads oklch as garbage). */
+/* "MEXC API KEYS" measured 1.06:1 — an expander summary inside a dark card
+   kept a near-black ink. The chevron ligature beside it measured 1.84. */
+.st-key-term [data-testid="stExpander"] summary,
+.st-key-term [data-testid="stExpander"] summary *{ color:var(--fg) !important; }
+.st-key-term [data-testid="stExpander"] summary [data-testid="stIconMaterial"]{
+  color:var(--fg-2) !important; }
+/* The active nav item was brand ink on a brand wash: 3.69:1. The lighter step
+   of the same hue keeps the identity and clears the floor. */
+[data-testid="stSidebar"] [data-testid="stBaseButton-primary"],
+[data-testid="stSidebar"] [data-testid="stBaseButton-primary"] *{
+  color:var(--a-6) !important; }
+/* The mark: white on the brand fill measured 4.21:1. */
+.nv-mark, .ta-mark{ color:var(--brand-ink) !important; font-weight:700; }
+/* Secondary buttons ("Save keys", "Add model", "Forget saved keys") sat at
+   4.21 on their own fill. */
+.stApp button[data-testid="stBaseButton-secondary"],
+.stApp button[data-testid="stBaseButton-secondary"] *,
+.stApp button[data-testid="stBaseButton-secondaryFormSubmit"],
+.stApp button[data-testid="stBaseButton-secondaryFormSubmit"] *{
+  color:var(--fg) !important; }
+
+/* ---- BUTTONS -------------------------------------------------------- */
+.stApp button[data-testid^="stBaseButton"]{
+  min-height:var(--btn-h) !important; border-radius:var(--btn-r) !important;
+  font-size:var(--f-uism) !important; font-weight:500 !important;
+  letter-spacing:0 !important; text-transform:none !important; }
+[data-testid="stBaseButton-primaryFormSubmit"],
+[data-testid="stBaseButton-primary"]:not([kind]){ background:var(--brand) !important;
+  border-color:var(--brand) !important; }
+</style>
+"""
+
 ANI_CSS = """
 <style>
 /* Registered properties: `syntax:"<integer>"` is what makes these animatable.
@@ -3422,7 +3716,7 @@ MODERN_CSS = """
   --s0:var(--panel); --s1:var(--panel-2); --line:var(--border);
   --ink:var(--text); --dim:var(--muted); --faint:var(--faint);
   --up:var(--buy); --dn:var(--sell); --acc:var(--accent);
-  font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;
+  font-family:var(--font-body);
   color:var(--ink); font-variant-numeric:tabular-nums;
   display:flex; flex-direction:column; gap:var(--gap); }
 .mv *{ box-sizing:border-box; }
@@ -5669,13 +5963,11 @@ def render_market_data_section() -> None:
     from tradingagents.dataflows import market_db as mdb
     from tradingagents import auto_trader as at
 
-    st.markdown('<div class="ta-section">Market data — permanent archive '
-                '(Neon Postgres)</div>', unsafe_allow_html=True)
-    if not mdb.available():
-        st.info("No database configured. Put the connection URL in "
-                "~/.tradingagents/neon_db.json as {\"url\": \"postgresql://…\"} "
-                "or export TRADINGAGENTS_DB_URL.")
-        return
+    st.markdown('<div class="ta-section">Market data — stored on this Mac'
+                '</div>', unsafe_allow_html=True)
+    st.caption("DOWNLOAD and UPDATE fill ~/.tradingagents on this machine — "
+               "the store every backtest reads. Armed coins also mirror to "
+               "Neon as an off-site copy when it is reachable.")
 
     coins = (at.load_settings().get("coins") or [])
     _all = _all_mexc_symbols()
@@ -5703,9 +5995,10 @@ def render_market_data_section() -> None:
     where = st.radio(
         "Run where", ["This Mac", "GitHub (free machines)"], horizontal=True,
         key="mdb_where",
-        help="GitHub runs it on 10 of their machines and writes straight to "
-             "the database — your Mac stays free. Results appear in the "
-             "coverage table as shards finish.")
+        help="This Mac fills the local store backtests read. GitHub machines "
+             "cannot reach this Mac, so that option only fills the Neon "
+             "mirror — use it for off-site backup, not for speeding up "
+             "local backtests.")
 
     if (dl or up) and where.startswith("GitHub"):
         from tradingagents import cloud_jobs as cj
@@ -5763,31 +6056,27 @@ def render_market_data_section() -> None:
         (st.warning if _dj.get("stopped") or _dj.get("errors")
          else st.caption)(_msg)
 
-    cov = mdb.coverage()
-    if not cov:
-        # An unreachable database must never read as an empty one — "empty"
-        # on a network blip would say your data is gone when it isn't.
-        if mdb.is_down():
-            st.caption("Database unreachable right now — the app retries "
-                       "by itself within 2 minutes. Your data is intact.")
-        else:
-            st.caption("Archive is empty — pick a coin and click DOWNLOAD.")
+    # Coverage reads THIS MACHINE — the store backtests consume. Neon's copy
+    # is a mirror, and an unreachable mirror must not read as missing data.
+    from tradingagents import market_sweep as _msw
+
+    lcov = _msw.candle_coverage()
+    if not lcov:
+        st.caption("Nothing stored on this Mac yet — pick a coin and click "
+                   "DOWNLOAD.")
         return
-    label_of = {v: k for k, v in mdb.TIMEFRAMES.items()}
     rows = [{
         "coin": c["symbol"].replace("_USDT", ""),
-        "timeframe": label_of.get(c["timeframe"], c["timeframe"]),
+        "timeframe": c["timeframe"],
         "bars": c["bars"],
-        "from": _dt.datetime.fromtimestamp(c["first_ts"])
-                   .strftime("%Y-%m-%d"),
-        "to": _dt.datetime.fromtimestamp(c["last_ts"])
-                 .strftime("%Y-%m-%d %H:%M"),
-        "days": round((c["last_ts"] - c["first_ts"]) / 86400),
-    } for c in cov]
-    st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
-    st.caption(f"{sum(r['bars'] for r in rows):,} candles stored across "
-               f"{len(rows)} coin/timeframe pairs. Every long fetch anywhere "
-               "in the app also tops this archive up automatically.")
+        "from": c["first"], "to": c["last"], "days": c["days"],
+    } for c in lcov]
+    st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch",
+                 height=min(330, 60 + 35 * len(rows)))
+    st.caption(f"{sum(r['bars'] for r in rows):,} candles on this Mac across "
+               f"{len(rows)} coin/timeframe pairs "
+               f"(~/.tradingagents). Every backtest tops this up "
+               "automatically; DOWNLOAD just does it in advance.")
 
 
 _BT_WINDOWS = {"Previous month": 30, "Previous 3 months": 90,

@@ -109,23 +109,39 @@ def start(kind: str, spec: dict) -> int:
 
 # --------------------------------------------------------------- job bodies
 def _run_download(spec: dict) -> None:
+    """DOWNLOAD/UPDATE fill the operator's OWN MACHINE — the store every
+    backtest actually reads ("i said i want all local machine"). Neon gets a
+    best-effort mirror of armed coins only; its absence never fails a
+    download."""
+    from tradingagents import market_sweep as msw
+    from tradingagents import parquet_store as pqs
     from tradingagents.dataflows import market_db as mdb
     f = FILES["download"]
     coins = spec["coins"]
-    ivs = [mdb.TIMEFRAMES[t] for t in spec["tfs"] if t in mdb.TIMEFRAMES]
-    pairs = [(c, iv) for c in coins for iv in ivs]
+    tfs = [t for t in spec["tfs"] if t in mdb.TIMEFRAMES]
+    pairs = [(c, tf) for c in coins for tf in tfs]
+    armed = set(_armed_symbols())
     stored, errors, stopped, i = 0, [], False, 0
-    mdb.ensure_schema()
-    for i, (c, iv) in enumerate(pairs):
+    for i, (c, tf) in enumerate(pairs):
         if _stopping("download"):
             stopped = True
             break
         _write(f["progress"], {"running": True, "done": i, "total": len(pairs),
-                               "now": f"{c} {iv}", "bars_stored": stored,
+                               "now": f"{c} {tf}", "bars_stored": stored,
                                "errors": len(errors)})
-        res = mdb.download([c], [iv])
-        stored += res["bars_stored"]
-        errors += res["errors"]
+        try:
+            df, added, _src = msw.refresh_candles(c, tf, days=365)
+            pqs.save_candles(c, tf, df)          # the parquet copy, atomically
+            stored += int(added)
+        except Exception as exc:
+            errors.append(f"{c} {tf}: {str(exc)[:80]}")
+            continue
+        if c in armed and mdb.available():
+            try:                                  # cloud mirror, best-effort
+                mdb.ensure_schema()
+                mdb.upsert_candles(c, tf, df)
+            except Exception:
+                pass
     _write(f["progress"], {
         "running": False, "done": i if stopped else len(pairs),
         "total": len(pairs), "bars_stored": stored, "errors": len(errors),

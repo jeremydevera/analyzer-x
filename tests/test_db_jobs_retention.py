@@ -93,3 +93,38 @@ def test_armed_symbols_reads_only_strategies_with_books(monkeypatch):
         "strategy_books": {"a": ["real"], "b": []},
         "strategy_coins": {"a": ["APEX_USDT"], "b": ["GONE_USDT"]}})
     assert db_jobs._armed_symbols() == ["APEX_USDT"]
+
+
+def test_download_fills_the_local_store_first(monkeypatch, tmp_path):
+    """"i said i want all local machine" — DOWNLOAD writes this Mac's store;
+    Neon is a best-effort mirror for armed coins whose absence never fails
+    the job."""
+    import pandas as pd
+
+    from tradingagents import market_sweep as msw
+    from tradingagents import parquet_store as pqs
+    from tradingagents.dataflows import market_db as mdb
+
+    calls = {"local": [], "parquet": [], "neon": []}
+    frame = pd.DataFrame({"Date": pd.to_datetime([1_787_000_000], unit="s"),
+                          "Open": [1.0], "High": [1.0], "Low": [1.0],
+                          "Close": [1.0], "Volume": [1.0]})
+    monkeypatch.setattr(msw, "refresh_candles",
+                        lambda c, tf, days=365: (calls["local"].append((c, tf))
+                                                 or (frame, 1, "fetch")))
+    monkeypatch.setattr(pqs, "save_candles",
+                        lambda c, tf, df: calls["parquet"].append((c, tf)))
+    monkeypatch.setattr(mdb, "available", lambda: True)
+    monkeypatch.setattr(mdb, "ensure_schema", lambda: True)
+    monkeypatch.setattr(mdb, "upsert_candles",
+                        lambda c, tf, df: calls["neon"].append((c, tf)))
+    monkeypatch.setattr(db_jobs, "_armed_symbols", lambda: ["APEX_USDT"])
+    monkeypatch.setattr(db_jobs, "_stopping", lambda kind: False)
+    monkeypatch.setattr(db_jobs, "FILES", {
+        "download": {"progress": tmp_path / "p.json"}})
+    db_jobs._run_download({"coins": ["APEX_USDT", "GONE_USDT"],
+                           "tfs": ["15m"]})
+    assert calls["local"] == [("APEX_USDT", "15m"), ("GONE_USDT", "15m")]
+    assert calls["parquet"] == calls["local"], "parquet copy for every pair"
+    assert calls["neon"] == [("APEX_USDT", "15m")], \
+        "only armed coins mirror to the cloud"

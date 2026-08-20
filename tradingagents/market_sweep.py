@@ -614,3 +614,33 @@ def compute_combos(symbol: str, tf: str, combos: list, *,
                  not in seen]
         save_pair_rows(coin, tf, have)
     return out
+
+
+def candle_coverage() -> list:
+    """What THIS MACHINE holds, per coin and timeframe — the store backtests
+    actually read. The operator's words: "i said i want all local machine"."""
+    import json as _json
+
+    out = []
+    if not CANDLES.exists():
+        return out
+    for f in sorted(CANDLES.glob("*.json")):
+        try:
+            d = _json.loads(f.read_text())
+            ts = d.get("t") or []
+            if not ts:
+                continue
+            sym, tf = f.stem.rsplit("-", 1)
+            import datetime as _dt
+
+            out.append({
+                "symbol": sym, "timeframe": tf, "bars": len(ts),
+                "first": _dt.datetime.fromtimestamp(ts[0] / 1000)
+                            .strftime("%Y-%m-%d"),
+                "last": _dt.datetime.fromtimestamp(ts[-1] / 1000)
+                           .strftime("%Y-%m-%d %H:%M"),
+                "days": round((ts[-1] - ts[0]) / 86400000)})
+        except (ValueError, OSError):
+            continue
+    out.sort(key=lambda c: -c["bars"])
+    return out

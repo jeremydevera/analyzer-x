@@ -1477,7 +1477,7 @@ def main() -> None:
         st.markdown(ANI_CSS, unsafe_allow_html=True)
         if st.session_state.get("ui_night"):
             st.markdown(TERMINAL_DARK_CSS, unsafe_allow_html=True)
-        st.markdown(f'<div class="ta-page-title">{html.escape(page)}</div>',
+        st.markdown(f'<h1 class="ta-page-title">{html.escape(page)}</h1>',
                     unsafe_allow_html=True)
         if page == "New Crypto":
             render_crypto_tab()
@@ -2004,7 +2004,9 @@ def _bt_report_build(key: str, label: str, coins: list[str],
                  f"sizings on {', '.join(tfs)} — about 5 minutes. Leave this "
                  f"tab alone; clicking anything restarts it.")
     try:
-        payload = br.run_grid(
+        # store-first: rows come from the pair store, only new bars compute
+        # ("when doing analysis its not doing from scratch")
+        payload = br.grid_from_store(
             coins, tfs, base_margin=base_margin, days=days, deployed=dep,
             progress=lambda m, f: bar.progress(min(1.0, f), text=m))
     finally:
@@ -2438,7 +2440,15 @@ a.bt-open:focus-visible{ outline:2px solid var(--text); outline-offset:2px; }
 .st-key-term .bt-open-note{ color:var(--t-faint); font-size:11px; }
 
 /* ---- band header: amber tick, tracked label, rule to the right edge ---- */
-.tm-h{ display:flex; align-items:center; gap:10px; margin:22px 0 8px; }
+/* display:flex is forced because this is an <h2> now, and Streamlit's own
+   heading rule reaches it with higher specificity — which collapsed the
+   flex:1 spacer and printed "Configure strategies4 live · 7 demo" as one run
+   of text. */
+/* width:100% as well as display:flex — the heading was content-sized inside a
+   flex parent, so there was no free space for the flex:1 spacer to take and
+   the sub-line sat flush against the title. */
+.tm-h{ display:flex !important; align-items:center; gap:10px; margin:22px 0 8px;
+  width:100%; font-size:inherit; font-weight:inherit; scroll-margin-top:20px; }
 .tm-h:first-child{ margin-top:0; }
 .tm-h .k{ color:var(--t-amber); font-size:10.5px; letter-spacing:.22em;
   text-transform:uppercase; white-space:nowrap; }
@@ -3039,13 +3049,29 @@ def _mv_icon(name: str, tone: str = "currentColor", size: int = 16) -> str:
             f"<path d='{d}'/></svg>")
 
 
-def _mv_ring(pct: float, tone: str) -> str:
-    """Progress to the barrier as a ring. A percentage you have to read is a
-    number; a ring is a shape, and the shape is what you catch at a glance."""
+def _mv_ring(pct: float, tone: str, to: str = "") -> str:
+    """Progress to the barrier as a ring, with the barrier NAMED.
+
+    A ring is a shape and the shape is what you catch at a glance — but the
+    shape was green for "approaching take-profit" and red for "approaching my
+    stop", and nothing else said which. Measured 2026-08-20: 26 figures on this
+    screen carried meaning in colour alone, and these rings were all of them.
+    ui-ux-pro-max, Accessibility / "Color Only", severity HIGH: "use icons/text
+    in addition to colour, never red/green alone". So the destination is
+    printed. On a trading screen the difference between those two rings is the
+    difference between a win and a loss, which is not something to encode in a
+    hue a reader may not distinguish.
+    """
     p = max(0.0, min(100.0, float(pct or 0)))
-    return (f"<div class='mv-ring' style='background:conic-gradient({tone} 0 "
+    lab = (to or "").upper()
+    arrow = "&uarr;" if lab == "TP" else "&darr;" if lab == "SL" else ""
+    return ("<div class='mv-barrier'>"
+            f"<div class='mv-ring' style='background:conic-gradient({tone} 0 "
             f"{p:.1f}%,var(--s1) {p:.1f}% 100%);color:{tone}'>"
-            f"<i>{p:.0f}%</i></div>")
+            f"<i>{p:.0f}%</i></div>"
+            + (f"<span class='mv-to' style='color:{tone}'>{arrow}{lab}</span>"
+               if lab else "")
+            + "</div>")
 
 
 # ---------------------------------------------------------------------------
@@ -3142,6 +3168,24 @@ def _ani_money(value, *, key: str, sign: bool = False,
         f"<span aria-hidden='true'>{pre}{digits}{unit}</span></span>")
 
 
+def _tm_h2(title: str, sub: str = "") -> str:
+    """A section heading that IS a heading.
+
+    ui-ux-pro-max, Accessibility / "Heading Hierarchy" (severity Medium): use
+    sequential levels and never misuse a heading for styling. This page had no
+    h1 and no h2 at all — the title was a styled div and the outline jumped
+    straight to h3, so the whole screen was one flat unlabelled run to anything
+    reading structure. Page title is h1, section is h2, a table inside it h3.
+    """
+    return (f"<h2 class='tm-h2' id='sec-{_slug(title)}'>{html.escape(title)}"
+            + (f"<span>{html.escape(sub)}</span>" if sub else "")
+            + "</h2>")
+
+
+def _slug(s: str) -> str:
+    return "".join(c if c.isalnum() else "-" for c in s.lower()).strip("-")
+
+
 def _mv_hero(equity, day, open_real, life, series, armed: bool) -> str:
     """The one number that matters, with its own curve behind it."""
     curve = ""
@@ -3195,7 +3239,7 @@ def _mv_positions(rows: list, label: str, sub: str, live: bool) -> str:
     # Live and Paper render the same coins. Without this the paper row would
     # count from the live row's figure and vice versa.
     _bk = "live" if live else "paper"
-    out = [f"<div class='mv-panel'><div class='mv-ph'><h3>{label}</h3>"
+    out = [f"<div class='mv-panel'><div class='mv-ph'><h2>{label}</h2>"
            f"<span class='sub'>{sub}</span>"
            f"<span class='mv-seg'><span class='{'on' if live else ''}'>Live</span>"
            f"<span class='{'' if live else 'on'}'>Paper</span></span></div>"]
@@ -3227,7 +3271,8 @@ def _mv_positions(rows: list, label: str, sub: str, live: bool) -> str:
             f"{side.title()}</span></div>"
             f"<div class='mv-r mv-num {_mv_cls(op)}'>"
             + _ani_money(op, key=f"pos.{_bk}.{coin}.op", sign=True) + "</div>"
-            + (f"<div>{_mv_ring(pct, tone)}</div>" if pct is not None
+            + (f"<div>{_mv_ring(pct, tone, str(r.get('prog_to') or ''))}</div>"
+               if pct is not None
                else "<div class='mv-sm mv-nil'>&mdash;</div>")
             + "<div class='mv-r mv-num'>"
             + _ani_money(risk, key=f"pos.{_bk}.{coin}.risk") + "</div>"
@@ -3247,7 +3292,7 @@ def _mv_positions(rows: list, label: str, sub: str, live: bool) -> str:
 def _mv_strategies(tiles, saved, stats, specs) -> str:
     """One line per strategy: what it is, where it trades, whether it is armed,
     and the only number that decides anything — its lifetime."""
-    out = ["<div class='mv-panel'><div class='mv-ph'><h3>Strategies</h3>"
+    out = ["<div class='mv-panel'><div class='mv-ph'><h2>Strategies</h2>"
            "<span class='sub'>armed on this account</span></div>",
            "<div class='mv-str'><div class='hd'><span>Rule</span><span>Bar</span>"
            "<span>Contract</span><span>Stop / target</span>"
@@ -3299,6 +3344,49 @@ ANI_CSS = """
 .ani{ counter-reset: aw var(--aw) af var(--af) ak var(--ak);
       font-variant-numeric:tabular-nums; font-feature-settings:"tnum";
       white-space:nowrap; }
+/* ---- section headings, now that nothing is folded -----------------------
+   The page is one long scroll by request, so each section has to announce
+   itself at a glance. Rule at the top of a heading rather than a box around
+   the section: a nested panel inside a panel inside a page reads as three
+   frames around one table, which the operator had removed on 2026-08-19. */
+.tm-h2{ font-size:13px !important; font-weight:600 !important;
+  letter-spacing:.04em; text-transform:none; color:var(--text) !important;
+  margin:34px 0 2px !important; padding-top:18px;
+  border-top:1px solid var(--border);
+  display:flex; align-items:baseline; gap:10px; scroll-margin-top:20px; }
+.tm-h2 span{ font-size:11.5px; font-weight:400; color:var(--muted);
+  letter-spacing:.01em; }
+/* The first section needs no divider: the readouts above already end. */
+.tm-h2:first-of-type{ border-top:0; margin-top:18px !important; }
+.ta-page-title{ margin:0 0 2px !important; }
+
+/* The strategy grid carries fourteen mandated columns. At 1600px that is
+   ~80px each, which clipped values mid-character. It now keeps a legible
+   minimum and scrolls INSIDE its own section — ui-ux-pro-max Layout: wide
+   content gets its own overflow-x, and the page body must never scroll
+   sideways. Truncation rule: never overflow or break the layout. */
+.st-key-tmsec_strategy{ overflow-x:auto; overflow-y:visible;
+  padding-bottom:6px; scrollbar-width:thin; }
+.st-key-tmsec_strategy > div > [data-testid="stVerticalBlock"]{ min-width:1480px; }
+.st-key-tmsec_strategy [data-testid="stHorizontalBlock"]{ min-width:1480px;
+  flex-wrap:nowrap !important; }
+.st-key-tmsec_strategy [data-testid="stColumn"]{ min-width:0; }
+/* A scroll container clips its own sticky children, so the caption above the
+   grid keeps its full width rather than inheriting the 1480px floor. */
+.st-key-tmsec_strategy [data-testid="stCaptionContainer"]{ min-width:0; }
+
+/* The section heading's spacer measured 0px wide with flex-grow:1, and the
+   container's own 10px gap never appeared between the title and its sub-line —
+   so the children were not being laid out as flex items whatever the computed
+   display said. Rather than keep fighting it, the spacing is stated directly:
+   a real margin after the title, and the sub-line pushed right when flex IS
+   active. Either way there is a visible gap. */
+h2.tm-h .k{ margin-right:14px; }
+h2.tm-h .v{ margin-left:auto; }
+
+.mv-barrier{ display:flex; align-items:center; gap:7px; }
+.mv-to{ font-size:10.5px; font-weight:600; letter-spacing:.06em;
+  font-family:var(--font-mono); }
 .ani i{ font-style:normal; }
 /* The accessible copy of the figure: read by assistive tech, never seen. Not
    display:none — that would remove it from the accessibility tree too, which
@@ -3381,7 +3469,8 @@ MODERN_CSS = """
   overflow:hidden; }
 .mv-ph{ display:flex; align-items:baseline; gap:12px; padding:15px 18px 13px;
   border-bottom:1px solid var(--line); }
-.mv-ph h3{ margin:0; font-size:14.5px; font-weight:600; letter-spacing:-.01em; }
+.mv-ph h2{ margin:0; font-size:14.5px; font-weight:600;
+  letter-spacing:-.01em; border:0; padding:0; text-transform:none; }
 .mv-ph .sub{ font-size:12px; color:var(--dim); flex:1; }
 .mv-seg{ display:inline-flex; border:1px solid var(--line); border-radius:8px;
   overflow:hidden; font-size:11.5px; }
@@ -3445,8 +3534,17 @@ def _tm_tile_head(label: str, glyph: str, tone: str) -> str:
 
 
 def _tm_head(label: str, value: str = "") -> str:
-    return (f"<div class='tm-h'><span class='k'>{label}</span>"
-            f"<span class='r'></span><span class='v'>{value}</span></div>")
+    """A section header, emitted as a real <h2>.
+
+    ui-ux-pro-max, Accessibility / "Heading Hierarchy" (severity Medium):
+    sequential levels, and never a div dressed up as a heading. Measured on
+    this page before the change: one h1 and three h3s, no h2 anywhere, so the
+    outline skipped a level and every band below was structurally anonymous.
+    The class stays `tm-h` so all two dozen existing rules still match.
+    """
+    return (f"<h2 class='tm-h' id='sec-{_slug(label)}'>"
+            f"<span class='k'>{label}</span>"
+            f"<span class='r'></span><span class='v'>{value}</span></h2>")
 
 
 def _tm_cls(v: float) -> str:
@@ -4061,9 +4159,15 @@ def render_auto_trade_tab() -> None:
             _bits = []
             try:
                 for _p in _live_open_positions():
-                    _v = float(_p.get("unRealizedPnl") or 0)
+                    # Round EACH part, then sum the rounded parts. Summing the
+                    # raw floats and rounding once made the tile disagree with
+                    # its own caption: the headline read -2.15 while the parts
+                    # beside it read "PI -4.29 · PROVE +2.13", which is -2.16.
+                    # Itemised rows have to sum to the total printed above them.
+                    _v = round(float(_p.get("unRealizedPnl") or 0), 2)
                     _open_real += _v
                     _bits.append((str(_p.get("symbol", "")).replace("_USDT", ""), _v))
+                _open_real = round(_open_real, 2)
             except Exception:
                 pass
             try:
@@ -4559,8 +4663,7 @@ def render_auto_trade_tab() -> None:
         # fourteen-column control grid is configuration, which you open when you
         # intend to change something. Before this they rendered one above the
         # other, so every strategy appeared twice on one screen.
-        with st.expander("Configure strategies  ·  arm, size, loss cap, backtest",
-                         expanded=False):
+        if True:
           with st.container(key="tmsec_strategy"):
             try:
                 contracts = _futures_contracts()
@@ -4789,11 +4892,15 @@ def render_auto_trade_tab() -> None:
                         else paper_stats.get(key) if _demo
                         else live_stats.get(key))
                 _pnl = _stt["pnl"] if _stt else None
+                # "0 / 2" told a colourblind reader nothing: which half is
+                # wins was carried by the green/red hue and by column order
+                # alone. ui-ux-pro-max Accessibility / "Color Only" (HIGH).
+                # The W and the L are now in the cell, not just the header.
                 c[11].markdown(
                     f"<div style='{_cell}'>"
-                    f"<span class='tm-up'>{_stt['wins'] if _stt else 0}</span>"
+                    f"<span class='tm-up'>{_stt['wins'] if _stt else 0}W</span>"
                     f"<span style='color:var(--t-faint)'> / </span>"
-                    f"<span class='tm-dn'>{_stt['losses'] if _stt else 0}</span>"
+                    f"<span class='tm-dn'>{_stt['losses'] if _stt else 0}L</span>"
                     f"</div>", unsafe_allow_html=True)
                 c[12].markdown(
                     f"<div style='{_cell}' class='{_tm_cls(_pnl or 0)}'><b>"
@@ -4826,7 +4933,7 @@ def render_auto_trade_tab() -> None:
             _n_paper = sum(1 for v in strategy_books.values() if "paper" in v)
             _n_off = sum(1 for v in strategy_books.values() if not v)
             _head_slot.markdown(
-                _tm_head("Strategy",
+                _tm_head("Configure strategies",
                          f"{_n_real} live &middot; {_n_paper} demo &middot; "
                          f"{_n_off} off"
                          + (f" &middot; {len(_locked)} live-locked" if _locked else "")
@@ -4877,8 +4984,7 @@ def render_auto_trade_tab() -> None:
                 c for k in chosen_strats for c in strategy_coins.get(k, [])))
 
         # ================= BAND 4 — RISK ================================
-        with st.expander("Risk  ·  sizing, books in use, account loss cap",
-                         expanded=False):
+        if True:
           with st.container(key="tmsec_risk"):
             st.markdown(_tm_head("Risk", f"{at.LEVERAGE}x isolated"),
                         unsafe_allow_html=True)
@@ -5138,14 +5244,12 @@ def render_auto_trade_tab() -> None:
                                if rows else "<div>no events yet</div>")
                             + "</div>", unsafe_allow_html=True)
 
-        with st.expander("Feed  ·  runner log and every event",
-                         expanded=False):
+        if True:
           with st.container(key="tmsec_feed"):
             _feed()
 
         # ================= BAND 7 — CONNECTION ==========================
-        with st.expander("Connection  ·  MEXC keys and permissions",
-                         expanded=False):
+        if True:
           with st.container(key="tmsec_connection"):
             cst = cred.status()
             st.markdown(
@@ -5156,7 +5260,7 @@ def render_auto_trade_tab() -> None:
             with cn1:
                 # Keys are set once and then never touched, so they live at the
                 # bottom of the terminal, out of the reading path.
-                with st.expander("MEXC API keys", expanded=False):
+                with st.expander("MEXC API keys", expanded=True):
                     if cst["has_credentials"]:
                         st.markdown(
                             f"<div style='color:var(--t-dim);font-size:12px'>"
@@ -6308,7 +6412,7 @@ def render_backtest2_tab() -> None:
             note.caption("Leave this tab alone while it runs; clicking "
                          "anything restarts Streamlit's script.")
             try:
-                payload = br.run_grid(
+                payload = br.grid_from_store(
                     coins, tfs, base_margin=float(base), days=int(days),
                     deployed=dep,
                     progress=lambda m, f: bar.progress(min(1.0, f), text=m))

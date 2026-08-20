@@ -665,7 +665,16 @@ def render(payload: dict, *, title: str, headline: str = "",
            f"<b>Fibonacci is not in the engine</b> &mdash; it implements "
            f"{len(SIGNALS)} signals.")
         + (f" Excluded: {len(payload['excluded'])} coin/timeframe pair(s)."
-           if payload["excluded"] else ""))
+           if payload["excluded"] else "")
+        + ((lambda z: f" <b>Store: {z['stored_rows']:,} rows reused &middot; "
+                      f"{z['new_bars']:,} new bars tested &middot; "
+                      f"{z['recomputed_rows']:,} rows recomputed"
+                      + (f" &middot; {z['deployed_computed']} deployed "
+                         f"combination(s) computed" if z['deployed_computed']
+                         else "")
+                      + (f" &middot; fresh: {', '.join(z['fresh_pairs'])}"
+                         if z['fresh_pairs'] else "") + ".")
+           (payload["reuse"]) if payload.get("reuse") else ""))
     foot = headline or (
         "<b>A survivor is not a recommendation.</b> A row earns RECOMMENDED "
         "only by being a survivor, top-20 by BALANCED, backed by 100+ trades, "
@@ -721,3 +730,148 @@ def write_report(path: str, payload: dict, *, title: str, headline: str = "",
     with open(path, "w", encoding="utf-8") as fh:
         fh.write(render(payload, title=title, headline=headline, note=note))
     return path
+
+
+def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
+                    base_margin: float = 5.0, days: int = 365,
+                    thresholds: int = 1,
+                    deployed: Sequence[dict] | None = None,
+                    progress: Callable[[str, float], None] | None = None,
+                    embed_limit: int = 4) -> dict:
+    """A ``run_grid``-shaped payload that READS THE STORE FIRST.
+
+    The operator's rule: "when doing analysis its not doing from scratch."
+    Each (coin, timeframe) is served by ``market_sweep.run_pair`` — rows on
+    disk, per-combination resume state, only new bars computed. Deployed
+    combinations missing from the store are computed once (rule 21) and folded
+    in. The payload carries a ``reuse`` block so every page can SAY what was
+    reused versus fresh — a cached number the reader cannot trace is a wrong
+    number waiting to happen.
+    """
+    import time as _time
+
+    from tradingagents import market_sweep as msw
+    import tradingagents.auto_trader as at
+
+    deployed = [dict(d, th=(d.get("th", 0.0)
+                            if d.get("signal") in THRESH_SIGNALS else 0.0))
+                for d in (deployed or [])]
+    rows: list = []
+    meta: dict = {}
+    series: dict = {}
+    excluded: list = []
+    reuse = {"stored_rows": 0, "new_bars": 0, "recomputed_rows": 0,
+             "fresh_pairs": [], "deployed_computed": 0}
+    total = max(1, len(coins) * len(tfs))
+    done = 0
+    for sym in coins:
+        show = sym.replace("_USDT", "")
+        for tf in tfs:
+            if progress:
+                progress(f"{show} {tf}: reading the store", done / total)
+            r = msw.run_pair(sym, tf, base_margin=base_margin, days=days,
+                             thresholds=thresholds)
+            done += 1
+            # "no new bars" is SUCCESS — the store answers in full. Only a
+            # why with nothing behind it (fetch failed, too young, venue
+            # error) excludes the pair.
+            if r.get("why") not in (None, "", "no new bars") \
+                    and not r.get("rows"):
+                excluded.append({"coin": show, "tf": tf, "why": r["why"]})
+                continue
+            pair = msw.pair_rows(show, tf)
+            rows += pair
+            if r.get("incremental"):
+                fresh_n = (0 if r.get("why") == "no new bars"
+                           else len(r.get("rows") or []))
+                reuse["stored_rows"] += max(0, len(pair) - fresh_n)
+                reuse["new_bars"] += int(r.get("new_bars") or 0)
+                reuse["recomputed_rows"] += fresh_n
+            else:
+                reuse["fresh_pairs"].append(f"{show} {tf}")
+            meta[f"{show}|{tf}"] = {
+                "bars": r.get("bars", 0), "days": r.get("days", 0),
+                "rt": (None if r.get("rt") is None
+                       else round(r["rt"] * 100, 4)),
+                "liq": round(r.get("liq") or 0, 3),
+                "fee": r.get("fee") or 0}
+    # rule 21: the exact live combination must exist on the page
+    have = {(r["coin"], r["tf"], r["signal"], round(r["th"], 3),
+             round(r["sl"], 3), round(r["tp"], 3), r["sizing"])
+            for r in rows}
+    for d in deployed:
+        k = (d["coin"], d["tf"], d["signal"], round(float(d["th"]), 3),
+             round(float(d["sl"]), 3), round(float(d["tp"]), 3), d["sizing"])
+        if k in have or d["tf"] not in tfs:
+            continue
+        got = msw.compute_combos(f"{d['coin']}_USDT", d["tf"], [d],
+                                 base_margin=base_margin, days=days)
+        rows += got
+        reuse["deployed_computed"] += len(got)
+    months = sorted({m for r in rows for m in (r.get("monthly") or {})},
+                    reverse=True)
+    for r in rows:
+        if "mon" not in r:
+            r["mon"] = [(r.get("monthly") or {}).get(m) for m in months]
+        r.pop("monthly", None)
+        r["id"] = row_code(r["coin"], r["tf"], r["signal"], r.get("th", 0),
+                           r["sl"], r["tp"], r["sizing"])
+        r.setdefault("tpd", round(r["trades"] / max(r.get("days", 1), 1), 2))
+        r.setdefault("stop_reachable", True)
+        r.setdefault("gate", "ok")
+    # candles for in-page replay, from the cache — but only for small pages;
+    # a market-wide payload would blow the size cap (kit item F's lesson)
+    if 0 < len(meta) <= embed_limit:
+        for key in meta:
+            show, tf = key.split("|")
+            df = msw.cached_candles(f"{show}_USDT", tf)
+            if df is None or not len(df):
+                continue
+            hi = [float(x) for x in df["High"]]
+            lo = [float(x) for x in df["Low"]]
+            cl = [float(x) for x in df["Close"]]
+            op = [float(x) for x in df["Open"]]
+            vol = ([float(x) for x in df["Volume"]]
+                   if "Volume" in df.columns else None)
+            ts = list(df["Date"].to_numpy().astype("datetime64[ms]")
+                      .astype("int64"))
+            fund = []
+            try:
+                from tradingagents.dataflows import mexc_futures as fx
+
+                fund = [[int(f["settle_ms"]), round(f["rate"], 8)]
+                        for f in fx.funding_history(f"{show}_USDT")
+                        if int(ts[0]) <= int(f["settle_ms"]) <= int(ts[-1])]
+            except Exception:
+                pass
+            sd = {"o": [_round_sig(x) for x in op],
+                  "h": [_round_sig(x) for x in hi],
+                  "l": [_round_sig(x) for x in lo],
+                  "c": [_round_sig(x) for x in cl],
+                  "t": [str(x)[:16] for x in df["Date"]],
+                  "fee": meta[key]["fee"], "liq": meta[key]["liq"],
+                  "fund": fund, "d": {}}
+            wanted = {(r["signal"], r.get("th", 0)) for r in rows
+                      if r["coin"] == show and r["tf"] == tf}
+            iv, bs, cap = TFS[tf]
+            for sig, thp in wanted:
+                k2 = f"{sig}_gfs_{tf}"
+                at.STRATEGY_SPECS[k2] = {"interval": iv, "bar_seconds": bs,
+                                         "tp": .02, "sl": .01,
+                                         "threshold": (thp / 100) or .003}
+                try:
+                    dk = "rsi14_1h" if sig == "rsi14" else k2
+                    dirs = at._dirs_for_backtest(dk, hi, lo, cl, opens=op,
+                                                 volume=vol, ts=ts)
+                    sd["d"][f"{sig}|{thp:g}"] = "".join(
+                        "u" if x > 0 else "d" if x < 0 else "n" for x in dirs)
+                except Exception:
+                    pass
+                at.STRATEGY_SPECS.pop(k2, None)
+            series[key] = sd
+    return {"rows": rows, "meta": meta, "series": series, "months": months,
+            "cur": months[0] if months else "", "lev": at.LEVERAGE,
+            "slip": 0.0003, "base": base_margin,
+            "ladder": [1, 1, 2, 2, 4, 4, 8], "deployed": list(deployed),
+            "excluded": excluded, "days_asked": days,
+            "fetched": _time.strftime("%Y-%m-%d %H:%M"), "reuse": reuse}

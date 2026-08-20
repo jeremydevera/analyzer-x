@@ -215,7 +215,7 @@ def _run_backtest(spec: dict) -> None:
                                "total": 100, "now": msg})
 
     try:
-        payload = br.run_grid(
+        payload = br.grid_from_store(
             spec["coins"], spec["tfs"], base_margin=float(spec["base"]),
             days=int(spec["days"]), deployed=spec.get("deployed") or [],
             progress=prog)

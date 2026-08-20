@@ -207,18 +207,28 @@ def run_pair(symbol: str, tf: str, *, base_margin: float = 5.0,
         return {"coin": coin, "tf": tf, "rows": [], "added": added,
                 "source": source, "why": f"only {len(df)} bars"}
     try:
+        fund = fx.funding_history(symbol)
+    except Exception:
+        fund = []
+
+    try:
         fee = at.taker_fee(symbol, fx=fx)
         liq = fx.liquidation_move_pct(symbol, at.LEVERAGE)
-        fund = fx.funding_history(symbol)
         book = fx.book_cost(symbol, base_margin * at.LEVERAGE)
         rt = 2 * (fee + float(book.get("spread") or 0) / 2
                   + float(book.get("slippage") or 0))
     except Exception as exc:
         return {"coin": coin, "tf": tf, "rows": [], "added": added,
                 "source": source, "why": f"venue: {str(exc)[:60]}"}
-
     states = load_states(coin, tf)
     last_ms = int(states.get("__last_ms__", 0))
+    # A store built with an older signal library must not be served as if it
+    # were current: 54-signal rows silently missing 21 rules is a wrong answer
+    # wearing a cached one's clothes. Version mismatch resets the pair.
+    ver = f"signals{len(signals or br.SIGNALS)}-th{thresholds}"
+    if last_ms and states.get("__version__") not in (None, ver):
+        states, last_ms = {}, 0
+    states["__version__"] = ver
     # State without rows shows the operator nothing. If the grid for this pair
     # is missing (first build, or a store wiped by hand), ignore the resume
     # point and measure it again rather than reporting "no new bars" forever.
@@ -232,9 +242,12 @@ def run_pair(symbol: str, tf: str, *, base_margin: float = 5.0,
         start_at = newer[0] if newer else len(df)
     incremental = bool(last_ms) and 0 < start_at < len(df)
     if last_ms and start_at >= len(df):
+        save_states(coin, tf, states)          # persists a fresh __version__
         return {"coin": coin, "tf": tf, "rows": pair_rows(coin, tf),
                 "added": added, "source": source, "why": "no new bars",
-                "incremental": True, "new_bars": 0}
+                "incremental": True, "new_bars": 0, "fee": fee,
+                "liq": liq, "rt": rt, "bars": len(df),
+                "days": int((df["Date"].iloc[-1] - df["Date"].iloc[0]).days)}
 
     # An incremental pass only needs the new bars plus enough lookback for the
     # signal rules to be identical to what a full run would have computed.
@@ -293,7 +306,10 @@ def run_pair(symbol: str, tf: str, *, base_margin: float = 5.0,
                 except Exception:
                     continue
                 states[ck] = r["state"]
-                if r["trades"] < MIN_TRADES or r["profit"] <= 0:
+                # "everything stored": losers are measurements too, and the
+                # store is what makes re-analysis free. Only the trade floor
+                # filters — a 3-trade row is noise, not a loser.
+                if r["trades"] < MIN_TRADES:
                     continue
                 m = r["monthly"]
                 mk = sorted(m)
@@ -325,6 +341,7 @@ def run_pair(symbol: str, tf: str, *, base_margin: float = 5.0,
     save_pair_rows(coin, tf, out_rows)
     return {"coin": coin, "tf": tf, "rows": out_rows, "added": added,
             "source": source, "incremental": incremental,
+            "fee": fee, "liq": liq, "rt": rt,
             "new_bars": max(0, len(df) - start_at) if incremental else len(df),
             "bars": len(df), "days": days_have}
 
@@ -494,3 +511,106 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+def compute_combos(symbol: str, tf: str, combos: list, *,
+                   base_margin: float = 5.0, days: int = 365) -> list:
+    """Compute SPECIFIC combinations over the full cached history and fold
+    them into the pair's store.
+
+    Exists for rule 21: the exact deployed combination must appear in every
+    page, and a live 0.80/2.40 pair is in no grid of round numbers. Each combo
+    dict names signal/th/sl/tp/sizing (percent units, like stored rows).
+    """
+    from tradingagents.dataflows import mexc_futures as fx
+    from tradingagents import backtest_report as br
+    import tradingagents.auto_trader as at
+
+    coin = symbol.replace("_USDT", "")
+    iv, bs, cap = br.TFS[tf]
+    df, _added, _src = refresh_candles(symbol, tf, days=days)
+    if len(df) < 300:
+        return []
+    fee = at.taker_fee(symbol, fx=fx)
+    liq = fx.liquidation_move_pct(symbol, at.LEVERAGE)
+    try:
+        fund = fx.funding_history(symbol)
+    except Exception:
+        fund = []
+    try:
+        book = fx.book_cost(symbol, base_margin * at.LEVERAGE)
+        rt = 2 * (fee + float(book.get("spread") or 0) / 2
+                  + float(book.get("slippage") or 0))
+    except Exception:
+        rt = None
+    hi = [float(x) for x in df["High"]]
+    lo = [float(x) for x in df["Low"]]
+    cl = [float(x) for x in df["Close"]]
+    op = [float(x) for x in df["Open"]]
+    vol = [float(x) for x in df["Volume"]] if "Volume" in df.columns else None
+    ts = list(df["Date"].to_numpy().astype("datetime64[ms]").astype("int64"))
+    days_have = int((df["Date"].iloc[-1] - df["Date"].iloc[0]).days)
+    n = len(df)
+    half = n // 2
+    out = []
+    for c in combos:
+        sig, thp = c["signal"], float(c.get("th") or 0)
+        sl, tp = float(c["sl"]) / 100, float(c["tp"]) / 100
+        sz = c["sizing"]
+        key = f"{sig}_cc_{tf}"
+        at.STRATEGY_SPECS[key] = {"interval": iv, "bar_seconds": bs,
+                                  "tp": .02, "sl": .01,
+                                  "threshold": (thp / 100) or .003}
+        try:
+            dk = "rsi14_1h" if sig == "rsi14" else key
+            dirs = at._dirs_for_backtest(dk, hi, lo, cl, opens=op,
+                                         volume=vol, ts=ts)
+            r = at.backtest_strategy(key, df, base_margin, fee=fee,
+                                     sizing=sz, dirs=dirs, tp=tp, sl=sl,
+                                     liq_move_pct=liq, funding=fund,
+                                     keep_log=False)
+            a = at.backtest_strategy(key, df.iloc[:half], base_margin,
+                                     fee=fee, sizing=sz, dirs=dirs[:half],
+                                     tp=tp, sl=sl, liq_move_pct=liq,
+                                     funding=fund, keep_log=False)
+            b = at.backtest_strategy(key, df.iloc[half:], base_margin,
+                                     fee=fee, sizing=sz, dirs=dirs[half:],
+                                     tp=tp, sl=sl, liq_move_pct=liq,
+                                     funding=fund, keep_log=False)
+        except Exception:
+            at.STRATEGY_SPECS.pop(key, None)
+            continue
+        at.STRATEGY_SPECS.pop(key, None)
+        if not r["trades"]:
+            continue
+        out.append({
+            "coin": coin, "tf": tf, "signal": sig, "th": round(thp, 3),
+            "sl": round(sl * 100, 3), "tp": round(tp * 100, 3),
+            "rr": round(tp / sl, 2), "sizing": sz, "lev": at.LEVERAGE,
+            "base": base_margin, "notional": base_margin * at.LEVERAGE,
+            "trades": r["trades"], "wins": r["wins"], "losses": r["losses"],
+            "winrate": round(100 * r["wins"] / r["trades"], 2),
+            "profit": round(r["profit"], 2),
+            "funding": round(r["funding_total"], 2),
+            "wstreak": r.get("worst_streak"),
+            "wstreakn": r.get("worst_streak_len"),
+            "h1": round(a["profit"], 2), "h2": round(b["profit"], 2),
+            "green": r["months_green"], "months": r["months_total"],
+            "worst": round(r["worst_trade"], 2), "dd": round(r["max_dd"], 2),
+            "liqs": r["liqs"], "stop_reachable": bool(liq is None
+                                                      or sl * 100 < liq),
+            "days": days_have, "bars": n,
+            "monthly": {k: round(v, 2) for k, v in r["monthly"].items()},
+            "cost_of_tp": 0.0 if rt is None else round(rt / tp * 100, 1),
+            "rt": None if rt is None else round(rt * 100, 4),
+            "gate": ("unknown" if rt is None
+                     else "warn" if rt / tp >= .2 else "ok")})
+    if out:
+        have = pair_rows(coin, tf)
+        seen = {(r["signal"], r["th"], r["sl"], r["tp"], r["sizing"])
+                for r in have}
+        have += [r for r in out
+                 if (r["signal"], r["th"], r["sl"], r["tp"], r["sizing"])
+                 not in seen]
+        save_pair_rows(coin, tf, have)
+    return out

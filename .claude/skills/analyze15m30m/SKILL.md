@@ -83,6 +83,16 @@ On 15m/30m the stop grid tops out at 1.50% and 2.00%, so most rows are safely
 inside — but the gate still runs, because a thin contract's liquidation distance
 is not BTC's. Mark violations **STOP UNREACHABLE** and exclude them.
 
+## Store first — MANDATORY (operator: "not from scratch")
+
+Never compute what the store already holds. Build payloads with
+`backtest_report.grid_from_store(coins, tfs, deployed=…)` — it serves rows
+from `market_sweep`'s pair store, computes ONLY bars printed since the last
+run, computes a missing deployed combination once, and stamps the page with
+`Store: N rows reused · M new bars tested · K recomputed`. Losers are stored
+too ("i want everything stored"); the trade floor still applies. A stale
+signal-library version resets the pair automatically.
+
 ## Grid — every field varies
 
 | Dimension | Values |

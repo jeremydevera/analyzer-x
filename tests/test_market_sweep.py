@@ -116,3 +116,12 @@ def test_the_tab_exists_and_is_wired():
     assert hasattr(app, "render_backtest_tab")
     src = open("app.py").read()
     assert 'page == "Back Test"' in src
+
+
+def test_the_store_keeps_losing_rows_too(monkeypatch, tmp_path):
+    """"i want everything stored" — a loser is a measurement, not noise. The
+    trade floor still applies; profitability must not."""
+    src = open("tradingagents/market_sweep.py").read()
+    assert 'r["profit"] <= 0' not in src, \
+        "run_pair still throws away losing rows"
+    assert "MIN_TRADES" in src, "the trade floor must survive"

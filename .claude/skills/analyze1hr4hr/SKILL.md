@@ -25,6 +25,16 @@ So the goal is never "max win rate". It is **the highest win rate among
 configurations that survive**, with the trap shown beside it so the operator
 sees why the 92% row is not the answer.
 
+## Store first — MANDATORY (operator: "not from scratch")
+
+Never compute what the store already holds. Build payloads with
+`backtest_report.grid_from_store(coins, tfs, deployed=…)` — it serves rows
+from `market_sweep`'s pair store, computes ONLY bars printed since the last
+run, computes a missing deployed combination once, and stamps the page with
+`Store: N rows reused · M new bars tested · K recomputed`. Losers are stored
+too ("i want everything stored"); the trade floor still applies. A stale
+signal-library version resets the pair automatically.
+
 ## Grid — every field varies
 
 | Dimension | Values |

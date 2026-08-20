@@ -27,6 +27,11 @@ const navItems: NavItem[] = [
     name: "Backtest",
     path: "/backtest",
   },
+  {
+    icon: <GridIcon />,
+    name: "LLM Models",
+    path: "/models",
+  },
 ];
 
 const AppSidebar: React.FC = () => {

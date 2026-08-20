@@ -344,3 +344,76 @@ def trade_log(n: int = 200) -> dict:
     import tradingagents.auto_trader as at
 
     return {"lines": at.log_tail(max(1, min(n, 2000)))}
+
+
+# ------------------------------------------------------------------- models
+def _model_specs() -> dict:
+    """Built-in models merged with the operator's own, from one place."""
+    import model_registry
+
+    from tradingagents.default_config import DEFAULT_CONFIG  # noqa: F401
+
+    import app_models  # thin, import-safe catalog (no Streamlit)
+
+    return model_registry.merged_models(app_models.MODELS)
+
+
+@app.get("/api/models")
+def models_list() -> dict:
+    """The catalog: which are built in, which the operator added, and whether
+    each one's key is present. The key VALUE never leaves this process."""
+    import model_registry
+
+    from tradingagents import model_health as mh
+
+    custom = model_registry.load_custom()
+    specs = _model_specs()
+    rows = []
+    for mid, spec in specs.items():
+        rows.append({
+            "id": mid,
+            "label": spec.get("label"),
+            "provider": spec.get("provider"),
+            "base_url": spec.get("base_url"),
+            "key_env": spec.get("key_env"),
+            "key_present": mh.key_present(spec),
+            "custom": mid in custom,
+        })
+    return {"rows": rows, "presets": list(model_registry.PROVIDER_PRESETS)}
+
+
+class ModelAdd(BaseModel):
+    model_id: str
+    preset: str
+    base_url: str = ""
+    key_env: str = ""
+
+
+@app.post("/api/models/add")
+def models_add(body: ModelAdd) -> dict:
+    import model_registry
+
+    ok, msg = model_registry.add_model(body.model_id, body.preset,
+                                      base_url=body.base_url,
+                                      key_env=body.key_env)
+    return {"ok": ok, "message": msg}
+
+
+@app.post("/api/models/remove")
+def models_remove(body: dict) -> dict:
+    import model_registry
+
+    mid = str(body.get("model_id") or "")
+    return {"ok": model_registry.remove_model(mid)}
+
+
+@app.post("/api/models/ping")
+def models_ping(body: dict) -> dict:
+    """Live-test one model against its own provider."""
+    from tradingagents import model_health as mh
+
+    mid = str(body.get("model_id") or "")
+    spec = _model_specs().get(mid)
+    if not spec:
+        raise HTTPException(404, f"unknown model: {mid}")
+    return {"model_id": mid, **mh.ping(mid, spec)}

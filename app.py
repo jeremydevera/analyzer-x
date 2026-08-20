@@ -62,32 +62,9 @@ ANALYST_LABELS = {key: label for key, label, _ in ANALYST_STAGES}
 # NVIDIA, and Ollama-Cloud models can be MIXED in one parallel run, each on its
 # own provider + rate-limit quota. (Ollama Cloud is reached via the generic
 # OpenAI-compatible client pointed at https://ollama.com/v1.)
-_OLLAMA = {"label": "ollama", "provider": "openai_compatible",
-           "base_url": "https://ollama.com/v1", "key_env": "OLLAMA_API_KEY"}
-_GOOGLE = {"label": "google", "provider": "google", "base_url": None, "key_env": "GOOGLE_API_KEY"}
-_QWEN = {"label": "qwen", "provider": "qwen", "base_url": None, "key_env": "DASHSCOPE_API_KEY"}
-# Alibaba MaaS workspace (dedicated host) — OpenAI-compatible; serves glm-5.1 etc.
-_MAAS = {"label": "maas", "provider": "openai_compatible",
-         "base_url": "https://ws-wu00l7n3hmiafz2q.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
-         "key_env": "MAAS_API_KEY"}
-# Catalog pruned 2026-08-18 against a live ping of every model. Removed:
-# deepseek-ai/* (410 Gone — NVIDIA retired the endpoint) and all four OpenAI
-# models (429 "exceeded your current quota" — errors until the OpenAI account
-# is funded). Earlier prunes (2026-07-31): Cloudflare @cf/* + partner deepseek
-# (401), claude-opus-4-8 (no key), glm-4.7 + qwen3-coder:480b (410),
-# z-ai/glm-5.1 (410), moonshotai/kimi-k2.6 (404). Re-add any of them on the
-# LLM Models tab if the key/endpoint comes back.
-MODELS: dict[str, dict] = {
-    "gemini-3.1-flash-lite": _GOOGLE,            # free · fast · clean
-    "gemini-3.5-flash": _GOOGLE,                 # free
-    "gpt-oss:120b": _OLLAMA,                     # Ollama Cloud · free
-    "qwen3.6-flash": _QWEN,                      # Qwen Cloud · cheap · clean
-    "qwen3.7-plus": _QWEN,                       # Qwen Cloud · balanced
-    "qwen3.7-max": _QWEN,                        # Qwen Cloud · top reasoning/coding
-    "glm-5.1": _MAAS,                            # Alibaba MaaS · GLM-5.1 (works here!)
-    "deepseek-v4-flash": _MAAS,                  # Alibaba MaaS · DeepSeek V4 Flash
-    "deepseek-v4-pro": _MAAS,                    # Alibaba MaaS · DeepSeek V4 Pro
-}
+# The catalog lives in app_models so the HTTP layer can read the same
+# built-in list this screen shows -- one source, no drift.
+from app_models import MODELS, _GOOGLE, _MAAS, _OLLAMA, _QWEN  # noqa: F401
 CUSTOM_MODEL = "Custom…"
 
 
@@ -1857,7 +1834,7 @@ def _fmt_log_line(line: str) -> str:
     """
     m = _LOG_TS_RE.match(line)
     if not m:
-        return line
+        return _rewrite_bare_stamps(line)
     try:
         d = _dt.datetime(int(m["y"]), int(m["mo"]), int(m["d"]),
                          int(m["h"]), int(m["mi"]), int(m["s"]))
@@ -1865,7 +1842,30 @@ def _fmt_log_line(line: str) -> str:
         return line
     hour = d.hour % 12 or 12
     return (f"{d:%b} {d.day} {hour}:{d:%M}:{d:%S}{d:%p}"
-            f"{line[m.end():]}")
+            f"{_rewrite_bare_stamps(line[m.end():])}")
+
+
+_BARE_STAMP_RE = _re.compile(r"\b(\d{2})-(\d{2}) (\d{2}):(\d{2})\b")
+
+
+def _rewrite_bare_stamps(text: str) -> str:
+    """Old log lines carry embedded "08-18 16:00" stamps (the scan line's
+    last_bars). The emitter now writes the operator's format; this rewrites
+    the history already on disk at render time. Year: nearest past one —
+    a December stamp read in January belongs to last year."""
+    now = _dt.datetime.now()
+
+    def _sub(m: "_re.Match[str]") -> str:
+        mo, day, hh, mi = (int(m[1]), int(m[2]), int(m[3]), int(m[4]))
+        try:
+            year = now.year - (1 if mo > now.month else 0)
+            d = _dt.datetime(year, mo, day, hh, mi)
+        except ValueError:
+            return m[0]
+        hour = d.hour % 12 or 12
+        return f"{d:%b} {d.day}, {d.year} {hour}:{d:%M}{d:%p}"
+
+    return _BARE_STAMP_RE.sub(_sub, text)
 
 
 def _fmt_when(ts: float) -> str:
@@ -3769,9 +3769,15 @@ ul[role="listbox"], div[role="listbox"],
 /* Streamlit's own virtualised list. It carries NO role attribute, so a
    `ul[role="listbox"]` selector missed it and the list body stayed paper
    white behind white text while the first row looked fixed. */
-ul[data-testid="stSelectboxVirtualDropdown"],
-[data-testid="stSelectboxVirtualDropdown"] > div,
-[data-testid="stVirtualDropdown"], [data-testid="stVirtualDropdown"] > div{
+/* PREFIX match, not the exact testid. The empty state is a DIFFERENT element —
+   `stSelectboxVirtualDropdownEmpty` — so covering only
+   `stSelectboxVirtualDropdown` left "No results" as a paper-white panel with a
+   dark chip floating in it. Measured: ul bg rgb(250,249,247), 79px tall. A
+   prefix covers both and whatever variant Streamlit adds next. */
+ul[data-testid^="stSelectboxVirtualDropdown"],
+[data-testid^="stSelectboxVirtualDropdown"] > div,
+[data-testid^="stVirtualDropdown"], [data-testid^="stVirtualDropdown"] > div,
+[data-testid^="stMultiSelectVirtualDropdown"]{
   background:var(--sf-raised) !important;
   border:1px solid var(--hair-2) !important;
   border-radius:var(--r-ctl) !important;

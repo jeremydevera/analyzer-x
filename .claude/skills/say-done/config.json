@@ -2,6 +2,6 @@
   "enabled": true,
   "voice": "Daniel",
   "fallback_voice": "Eddy (English (UK))",
-  "rate": 170,
+  "rate": 145,
   "suffix": ""
 }

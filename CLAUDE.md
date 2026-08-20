@@ -126,13 +126,14 @@ only the answer. The operator has asked for this twice: "give me options short a
 accurate" and "can you just tell me in 1 word ... this is getting annoying".
 
 ALWAYS ON — `say-done`. After finishing ANY task the operator asked for — code
-changed, sweep finished, artifact published, bug fixed — speak one short sentence
-out loud, Jarvis-style, male voice, ending in "sir". One utterance per finished
-task, not per tool call, and never for a mid-task status update. Non-blocking:
+changed, sweep finished, artifact published, bug fixed — speak one calm sentence
+out loud (under ~12 words, no "sir" — removed 2026-08-20). One utterance per
+finished task, not per tool call, never for a mid-task status update, never after
+a failure. NEVER call `say` directly — always the script below, which reads
+`.claude/skills/say-done/config.json` at speak time so operator edits apply live:
 
 ```bash
-_V="Daniel"; say -v '?' | grep -q "Jamie (Premium)" && _V="Jamie (Premium)"
-say -v "$_V" -r 145 "<what was finished>, sir." &
+bash .claude/skills/say-done/speak.sh "<what was finished>" &
 ```
 
 ALWAYS ON — `plain-words`. The operator is new to crypto trading and said so:

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 3, "total": 25, "rows": 11537, "note": "ARB 15m: 34,606 bars, testing 75 rules", "pct": 12.0, "updated": "2026-08-21T07:58:04Z"}
+{"shard": 16, "stage": "testing", "done": 3, "total": 25, "rows": 11538, "note": "ARB 15m: rule 17/75 (atrbreak)", "pct": 12.0, "updated": "2026-08-21T07:58:51Z"}

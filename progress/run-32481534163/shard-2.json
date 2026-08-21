@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 14, "total": 18, "rows": 64780, "note": "SPK 15m: rule 46/75 (rsi2)", "pct": 77.8, "updated": "2026-08-21T13:37:32Z"}
+{"shard": 2, "stage": "testing", "done": 14, "total": 18, "rows": 64999, "note": "SPK 30m: 19,999 bars, testing 75 rules", "pct": 77.8, "updated": "2026-08-21T13:38:21Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 12, "total": 20, "rows": 49600, "note": "MTL 15m: rule 68/75 (dbltop)", "pct": 60.0, "updated": "2026-08-21T13:18:35Z"}
+{"shard": 9, "stage": "testing", "done": 12, "total": 20, "rows": 49928, "note": "MTL 30m: rule 24/75 (psar)", "pct": 60.0, "updated": "2026-08-21T13:19:20Z"}

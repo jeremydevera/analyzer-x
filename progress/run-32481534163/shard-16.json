@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 25, "total": 26, "rows": 95993, "note": "YFI 15m: 34,632 bars, testing 75 rules", "pct": 96.2, "updated": "2026-08-21T14:27:31Z"}
+{"shard": 16, "stage": "testing", "done": 25, "total": 26, "rows": 96110, "note": "YFI 15m: rule 20/75 (stoch14)", "pct": 96.2, "updated": "2026-08-21T14:28:18Z"}

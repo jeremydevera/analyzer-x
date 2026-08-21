@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 1, "total": 23, "rows": 3625, "note": "AIXBT 1h: rule 57/75 (orderblock)", "pct": 4.3, "updated": "2026-08-21T07:51:09Z"}
+{"shard": 19, "stage": "testing", "done": 2, "total": 23, "rows": 6097, "note": "AUCTION 15m: 34,606 bars, testing 75 rules", "pct": 8.7, "updated": "2026-08-21T07:52:01Z"}

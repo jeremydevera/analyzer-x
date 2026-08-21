@@ -39,7 +39,11 @@ for (const r of p.real) {
   ok(`${r.coin} W/L/trd exact`, row[5] === String(r.wins) && row[6] === String(r.losses) && row[7] === String(r.trades),
      `${row[5]}/${row[6]}/${row[7]}`);
   ok(`${r.coin} opened stamp exact`, row[9] === r.opened, row[9]);
-  ok(`${r.coin} held`, row[10] === r.held, row[10]);
+  // held counts up with the clock, so it can tick between render and sample
+  const mins = (t) => { const m = String(t).match(/(?:(\d+)d )?(?:(\d+)h )?(\d+)m/);
+    return m ? (+(m[1]||0))*1440 + (+(m[2]||0))*60 + (+m[3]) : NaN; };
+  ok(`${r.coin} held within a tick`, Math.abs(mins(row[10]) - mins(r.held)) <= 2,
+     `page=${row[10]} api=${r.held}`);
 }
 ok('unprotected banner matches reality',
    p.unprotected.length ? body.includes('NO STOP resting at the exchange') : !body.includes('NO STOP resting'),

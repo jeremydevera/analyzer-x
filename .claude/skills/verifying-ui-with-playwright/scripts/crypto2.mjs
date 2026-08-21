@@ -12,7 +12,10 @@ let body = await page.evaluate(() => document.body.innerText);
 
 ok('watch control', body.includes('watch for new listings'));
 ok('loop hidden until watching', !body.includes('loop the alarm'));
-await page.getByText('watch for new listings').locator('..').locator('input[type="checkbox"]').check();
+ok('age unit pickers', body.includes('age from') && body.includes('age to'));
+ok('show-all control', body.includes('show all (incl. dust)'));
+// address it by its accessible name — sibling checkboxes share the parent
+await page.getByRole('checkbox', { name: 'watch for new listings' }).check();
 await page.waitForTimeout(9000);
 body = await page.evaluate(() => document.body.innerText);
 ok('loop + test sound appear', body.includes('loop the alarm') && body.includes('test sound'));

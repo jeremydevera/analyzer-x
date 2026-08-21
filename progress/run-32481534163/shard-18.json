@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 2, "total": 23, "rows": 5496, "note": "AIO 15m: rule 45/75 (zscore20)", "pct": 8.7, "updated": "2026-08-21T12:29:27Z"}
+{"shard": 18, "stage": "testing", "done": 2, "total": 23, "rows": 5656, "note": "AIO 30m: 17,906 bars, testing 75 rules", "pct": 8.7, "updated": "2026-08-21T12:30:14Z"}

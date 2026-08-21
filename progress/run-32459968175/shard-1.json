@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 4, "total": 26, "rows": 11851, "note": "ARK 15m: rule 6/75 (sweep30)", "pct": 15.4, "updated": "2026-08-21T07:59:11Z"}
+{"shard": 1, "stage": "testing", "done": 4, "total": 26, "rows": 12068, "note": "ARK 15m: rule 45/75 (zscore20)", "pct": 15.4, "updated": "2026-08-21T07:59:57Z"}

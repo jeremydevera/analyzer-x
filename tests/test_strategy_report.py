@@ -30,8 +30,12 @@ def test_the_deployed_row_is_injected_with_its_real_barriers(monkeypatch,
             seen["note"] = note
 
     monkeypatch.setattr(sr, "REPORT_DIR", tmp_path)
-    import sys
-    monkeypatch.setitem(sys.modules, "tradingagents.backtest_report", BR)
+    # `from tradingagents import backtest_report as br` inside build() resolves
+    # the PACKAGE ATTRIBUTE, which is already bound once any other test has
+    # imported it — patching sys.modules is ignored and the real grid runs
+    # (it passed alone and hit the network in the full suite, 2026-08-21).
+    import tradingagents
+    monkeypatch.setattr(tradingagents, "backtest_report", BR, raising=False)
     from tradingagents import auto_trader as at
     monkeypatch.setattr(at, "STRATEGY_SPECS", {"mom6_1h_gx": {
         "interval": "Min60", "tp": 0.02, "sl": 0.015, "threshold": 0.0015}})

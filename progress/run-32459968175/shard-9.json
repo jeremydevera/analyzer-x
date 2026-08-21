@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "screening", "done": 0, "total": 51, "rows": 0, "note": "checking contract ages", "pct": 0.0, "updated": "2026-08-21T07:44:59Z"}
+{"shard": 9, "stage": "testing", "done": 1, "total": 15, "rows": 36, "note": "AGI 15m: rule 16/75 (keltner)", "pct": 6.7, "updated": "2026-08-21T07:45:45Z"}

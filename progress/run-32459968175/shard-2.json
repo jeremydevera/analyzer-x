@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 10, "total": 27, "rows": 42416, "note": "ETHFI 30m: 19,999 bars, testing 75 rules", "pct": 37.0, "updated": "2026-08-21T08:32:34Z"}
+{"shard": 2, "stage": "testing", "done": 10, "total": 27, "rows": 42435, "note": "ETHFI 30m: rule 36/75 (stochrsi)", "pct": 37.0, "updated": "2026-08-21T08:33:19Z"}

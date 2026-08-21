@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 8, "total": 25, "rows": 22418, "note": "FARTCOIN 15m: 34,608 bars, testing 75 rules", "pct": 32.0, "updated": "2026-08-21T08:19:27Z"}
+{"shard": 15, "stage": "testing", "done": 8, "total": 25, "rows": 22418, "note": "FARTCOIN 15m: rule 16/75 (keltner)", "pct": 32.0, "updated": "2026-08-21T08:20:14Z"}

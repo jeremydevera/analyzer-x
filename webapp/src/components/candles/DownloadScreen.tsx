@@ -40,6 +40,7 @@ function Progress({ s }: { s: JobStatus | null }) {
 
 export default function DownloadScreen() {
   const [coins, setCoins] = useState<string[]>([]);
+  const [gaps, setGaps] = useState<Awaited<ReturnType<typeof api.candleGaps>> | null>(null);
   const [tfs, setTfs] = useState<string[]>(["15m", "30m", "1h", "4h"]);
   const [dl, setDl] = useState<JobStatus | null>(null);
   const [err, setErr] = useState("");
@@ -48,11 +49,33 @@ export default function DownloadScreen() {
   const poll = useCallback(() => {
     api.jobStatus("download").then(setDl).catch(() => {});
   }, []);
+  const scanGaps = useCallback(() => {
+    // this walks EVERY stored pair's file, so it runs on arrival and after a
+    // job ends — never on the 4-second job poll
+    api.candleGaps().then(setGaps).catch(() => {});
+  }, []);
   useEffect(() => {
     poll();
+    scanGaps();
     timer.current = setInterval(poll, 4000);
-    return () => { if (timer.current) clearInterval(timer.current); };
-  }, [poll]);
+    const slow = setInterval(scanGaps, 60000);
+    return () => { if (timer.current) clearInterval(timer.current); clearInterval(slow); };
+  }, [poll, scanGaps]);
+  const wasRunning = useRef(false);
+  useEffect(() => {
+    if (wasRunning.current && !dl?.running) scanGaps();   // a job just ended
+    wasRunning.current = !!dl?.running;
+  }, [dl?.running, scanGaps]);
+
+  /** UPDATE = fill the gap since each stored pair's LAST BAR. No coin needs
+   * picking: the pairs come from the store, so a store filled on 28 July and
+   * updated on 21 August fetches exactly the bars between. */
+  const update = async () => {
+    setErr("");
+    if (!confirm(`Update ${gaps?.pairs ?? 0} stored pair(s)?\n\nOnly the bars printed since each pair's last stored bar are fetched — nothing is downloaded again.`)) return;
+    try { await api.jobStart("download", { mode: "update" }); poll(); }
+    catch (e) { setErr(String(e)); }
+  };
 
   const start = async () => {
     setErr("");
@@ -97,9 +120,22 @@ export default function DownloadScreen() {
           {dl?.running && (
             <Button size="sm" variant="outline" onClick={() => api.jobStop("download").then(poll)}>STOP</Button>
           )}
-          {dl?.running && <Badge size="sm" color="info">running</Badge>}
-          {!coins.length && <span className="text-theme-xs text-gray-500 dark:text-gray-400">pick at least one coin — nothing downloads on its own</span>}
+          <Button size="sm" variant="outline" onClick={update} disabled={!gaps?.pairs || !!dl?.running}>
+            UPDATE CANDLES
+          </Button>
+          {dl?.running && <Badge size="sm" color="info">{dl.mode === "update" ? "updating" : "downloading"}</Badge>}
+          {!coins.length && <span className="text-theme-xs text-gray-500 dark:text-gray-400">DOWNLOAD needs a coin; UPDATE tops up everything already stored</span>}
         </div>
+        {gaps && (
+          <p className="mt-3 text-theme-xs text-gray-500 dark:text-gray-400">
+            {gaps.pairs.toLocaleString()} pair(s) stored ·{" "}
+            {gaps.behind
+              ? <><b>{gaps.behind}</b> behind by more than a bar
+                  {gaps.worst && <> · furthest is {gaps.worst.symbol.replace("_USDT", "")} {gaps.worst.timeframe}, {gaps.worst.hours_behind}h</>}
+                  {" "}— UPDATE CANDLES fills exactly those gaps</>
+              : "all up to date"}
+          </p>
+        )}
         <Progress s={dl} />
       </div>
       <StoragePanel />

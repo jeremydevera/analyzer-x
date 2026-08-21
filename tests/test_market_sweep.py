@@ -220,3 +220,82 @@ def test_storage_by_coin_sums_every_store_per_pair(tmp_path, monkeypatch):
     btc = [r for r in rows if r["coin"] == "BTC"]
     assert sum(r["total"] for r in btc) == 2100, "coin total sums its tfs"
     assert next(r for r in rows if r["coin"] == "PI")["total"] == 50
+
+
+def test_coverage_carries_raw_epochs_not_only_display_dates(tmp_path,
+                                                            monkeypatch):
+    """The gaps route re-parsed the display string ("Aug 21, 2026 3:00AM")
+    with an ISO format, failed on all 4,899 rows, and reported zero pairs
+    behind. Callers that MEASURE need the epoch."""
+    import json
+
+    from tradingagents import market_sweep as msw
+    monkeypatch.setattr(msw, "CANDLES", tmp_path)
+    (tmp_path / "APEX_USDT-1h.json").write_text(json.dumps({
+        "t": [1_787_000_000_000, 1_787_003_600_000],
+        "o": [1, 1], "h": [1, 1], "l": [1, 1], "c": [1, 1]}))
+    row = msw.candle_coverage()[0]
+    assert row["last_ms"] == 1_787_003_600_000
+    assert row["first_ms"] == 1_787_000_000_000
+    assert "," in row["last"], "the display string stays too"
+
+
+def test_the_candle_index_only_rereads_files_that_changed(tmp_path,
+                                                          monkeypatch):
+    """Opening all 4,899 candle files to learn their last bar took 30s and
+    timed out the UI's proxy. The index is keyed by mtime."""
+    import json
+
+    from tradingagents import market_sweep as msw
+    monkeypatch.setattr(msw, "CANDLES", tmp_path)
+    monkeypatch.setattr(msw, "INDEX_PATH", tmp_path / "candle_index.json")
+    monkeypatch.setattr(msw, "_paths", lambda: None)
+    f = tmp_path / "APEX_USDT-1h.json"
+    f.write_text(json.dumps({"t": [1_787_000_000_000, 1_787_003_600_000]}))
+    first = msw.candle_index()
+    assert first["APEX_USDT-1h"]["last_ms"] == 1_787_003_600_000
+    assert first["APEX_USDT-1h"]["bars"] == 2
+
+    reads = []
+    real = type(f).read_text
+    def counted(self, *a, **kw):
+        if self.name.endswith("-1h.json"):
+            reads.append(self.name)
+        return real(self, *a, **kw)
+    monkeypatch.setattr(type(f), "read_text", counted)
+    msw.candle_index()
+    assert reads == [], "an unchanged file must not be reopened"
+
+    # a rewrite in the SAME SECOND must still be noticed — the index keys on
+    # mtime_ns and size, because a second-resolution check is what let stale
+    # .pyc files pass three times in this repo
+    f.write_text(json.dumps({"t": [1_787_000_000_000, 1_787_007_200_000,
+                                   1_787_010_800_000]}))
+    got = msw.candle_index()
+    assert got["APEX_USDT-1h"]["last_ms"] == 1_787_010_800_000
+    assert got["APEX_USDT-1h"]["bars"] == 3
+    assert reads, "a changed file must be re-read"
+
+
+def test_scan_false_reads_the_index_and_opens_nothing(tmp_path, monkeypatch):
+    """An HTTP handler must not scan: a download rewrites candle files
+    constantly, and even an incremental scan then outlasts the proxy."""
+    import json
+
+    from tradingagents import market_sweep as msw
+    monkeypatch.setattr(msw, "CANDLES", tmp_path)
+    monkeypatch.setattr(msw, "INDEX_PATH", tmp_path / "candle_index.json")
+    monkeypatch.setattr(msw, "_paths", lambda: None)
+    (tmp_path / "candle_index.json").write_text(json.dumps({
+        "APEX_USDT-1h": {"mtime": 1, "size": 2, "symbol": "APEX_USDT",
+                          "timeframe": "1h", "bars": 9,
+                          "first_ms": 1, "last_ms": 2}}))
+    # a pair on disk that the index has never seen
+    (tmp_path / "NEW_USDT-4h.json").write_text(json.dumps({"t": [1, 2, 3]}))
+    got = msw.candle_index(scan=False)
+    assert list(got) == ["APEX_USDT-1h"], "scan=False must not discover files"
+    # a scan reflects the DISK: it finds the new pair and drops the indexed
+    # one whose file is gone, so a deleted store never lingers in the readout
+    scanned = msw.candle_index(scan=True)
+    assert list(scanned) == ["NEW_USDT-4h"]
+    assert scanned["NEW_USDT-4h"]["bars"] == 3

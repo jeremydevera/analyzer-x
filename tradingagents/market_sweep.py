@@ -679,6 +679,10 @@ def candle_coverage() -> list:
                 "first": f"{_d0:%b} {_d0.day}, {_d0.year}",
                 "last": (f"{_d1:%b} {_d1.day}, {_d1.year} "
                          f"{_h1}:{_d1:%M}{_d1:%p}"),
+                # the raw epoch too: callers that need to MEASURE the gap must
+                # not re-parse the display string (the gaps route did, and the
+                # parse failed on every one of 4,899 rows in silence)
+                "first_ms": int(ts[0]), "last_ms": int(ts[-1]),
                 "days": round((ts[-1] - ts[0]) / 86400000)})
         except (ValueError, OSError):
             continue
@@ -784,3 +788,66 @@ def storage_by_coin() -> list:
         r["total"] = r["candles"] + r["rows"] + r["states"]
     rows.sort(key=lambda r: (r["coin"], r["tf"]))
     return rows
+
+
+# --------------------------------------------------------- candle index
+# Reading every stored pair's JSON to learn its last bar took 30+ seconds at
+# 4,899 pairs and timed out the UI's proxy. The index keeps one small file
+# keyed by each candle file's mtime, so a rescan only opens what CHANGED.
+INDEX_PATH = HOME / "candle_index.json"
+
+
+def candle_index(rebuild: bool = False, scan: bool = True) -> dict:
+    """{"SYMBOL-tf": {bars, first_ms, last_ms}} for every stored pair.
+
+    Incremental: a pair whose file has not been rewritten since the last call
+    is taken from the index rather than re-read.
+
+    `scan=False` reads the index file and stops. A caller answering an HTTP
+    request must use it: while a download is running the files change
+    constantly, so even an incremental scan can take a minute and blow the
+    UI proxy's timeout. Refresh happens on a background thread instead.
+    """
+    import json as _json
+
+    _paths()
+    try:
+        cache = _json.loads(INDEX_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        cache = {}
+    if not scan:
+        return cache
+    if rebuild:
+        cache = {}
+    out, dirty = {}, False
+    for f in sorted(CANDLES.glob("*.json")):
+        key = f.stem
+        try:
+            stat = f.stat()
+            mtime, size = int(stat.st_mtime_ns), int(stat.st_size)
+        except OSError:
+            continue
+        was = cache.get(key)
+        if was and was.get("mtime") == mtime and was.get("size") == size:
+            out[key] = was
+            continue
+        try:
+            ts = (_json.loads(f.read_text(encoding="utf-8")).get("t") or [])
+        except (OSError, ValueError):
+            continue
+        if not ts:
+            continue
+        sym, tf = key.rsplit("-", 1)
+        out[key] = {"mtime": mtime, "size": size, "symbol": sym,
+                    "timeframe": tf,
+                    "bars": len(ts), "first_ms": int(ts[0]),
+                    "last_ms": int(ts[-1])}
+        dirty = True
+    if dirty or len(out) != len(cache):
+        try:
+            tmp = INDEX_PATH.with_suffix(".tmp")
+            tmp.write_text(_json.dumps(out), encoding="utf-8")
+            tmp.replace(INDEX_PATH)
+        except OSError:
+            pass
+    return out

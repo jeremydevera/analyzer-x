@@ -1471,6 +1471,11 @@ def panic_stop(*, fx=None, close_positions: bool = True) -> dict:
         # to all of them and a real loss read as a $0.00 day.
         append_ledger({"symbol": key, "action": "exit", "why": "PANIC_CLOSE",
                        "strategy": pos.get("strategy"),
+                       # side/entry belong on the EXIT row too: the trade
+                       # history reads exit rows only, so without them the
+                       # LONG/SHORT column was empty for every closed trade.
+                       "side": "LONG" if pos.get("side", 0) > 0 else "SHORT",
+                       "entry": pos.get("entry"),
                        "pnl_est": None if realised is None else round(realised, 2),
                        "dry_run": False})
         st["position"] = None
@@ -1558,6 +1563,9 @@ def close_one(symbol: str, *, fx=None) -> dict:
     pos = st.get("position") if isinstance(st, dict) else None
     append_ledger({"symbol": symbol, "action": "exit", "why": "MANUAL_UI",
                    "strategy": (pos or {}).get("strategy"),
+                   "side": ("LONG" if (pos or {}).get("side", 0) > 0
+                            else "SHORT") if pos else None,
+                   "entry": (pos or {}).get("entry"),
                    "pnl_est": rep["realised"], "dry_run": False})
     if isinstance(st, dict):
         st["position"] = None
@@ -2120,6 +2128,8 @@ def process_symbol(symbol: str, settings: dict, state: dict, *, fx,
                 "dry run" if dry else "LIVE")
             append_ledger({"symbol": symbol, "action": "exit", "why": why,
                            "strategy": pos.get("strategy"),
+                           "side": "LONG" if pos.get("side", 0) > 0 else "SHORT",
+                           "entry": pos.get("entry"), "exit": exit_px,
                            "pnl_est": round(pnl, 2), "step_next": st["step"],
                            "dry_run": pos_dry})
 
@@ -2483,6 +2493,8 @@ def reconcile_unconfigured(settings: dict, state: dict, *, fx) -> None:
             symbol, "unknown" if realised is None else f"{realised:+.2f} USDT")
         append_ledger({"symbol": symbol, "action": "exit", "why": "RECONCILED",
                        "strategy": pos.get("strategy"),
+                       "side": "LONG" if pos.get("side", 0) > 0 else "SHORT",
+                       "entry": pos.get("entry"),
                        "pnl_est": None if realised is None else round(realised, 2),
                        "dry_run": False})
 

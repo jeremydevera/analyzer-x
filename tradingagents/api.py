@@ -343,6 +343,12 @@ def trade_strategies(catalog: bool = False) -> dict:
     direction ("an unticked tile is clutter the operator has to read past").
     """
     import tradingagents.auto_trader as at
+    from tradingagents import backtest_report as br
+    from tradingagents.local_history import _sig_of
+
+    # interval -> the timeframe name row_code hashes with
+    _TF_OF = {"Min1": "1m", "Min5": "5m", "Min15": "15m", "Min30": "30m",
+              "Min60": "1h", "Hour4": "4h", "Hour8": "8h", "Day1": "1d"}
 
     settings = at.load_settings()
     books = settings.get("strategy_books") or {}
@@ -374,8 +380,29 @@ def trade_strategies(catalog: bool = False) -> dict:
                 continue
             coin = bkey.split("#", 1)[0]
             (open_paper_on if pos.get("dry") else open_real_on).append(coin)
+        # The row's STABLE ID, hashed from the combination by the same
+        # backtest_report.row_code every report uses — so the id the operator
+        # reads here is the id they can paste into a report's find-by-ID box.
+        # Contracts are fixed per strategy, so the first coin identifies it;
+        # with no coin there is no combination to hash and the id is blank.
+        _sig = _sig_of(key)
+        _c0 = (coins.get(key) or [None])[0]
+        _rid = ""
+        if _c0:
+            try:
+                _rid = br.row_code(
+                    _c0.replace("_USDT", ""),
+                    _TF_OF.get(spec.get("interval") or "", ""),
+                    _sig,
+                    round(float(spec.get("threshold") or 0) * 100, 3),
+                    round(float(spec.get("sl") or 0) * 100, 3),
+                    round(float(spec.get("tp") or 0) * 100, 3),
+                    at.sizing_for(settings))
+            except Exception:
+                _rid = ""
         rows.append({
             "key": key,
+            "id": _rid,
             "interval": spec.get("interval"),
             "tp": spec.get("tp"), "sl": spec.get("sl"),
             "threshold": spec.get("threshold"),
@@ -1023,9 +1050,34 @@ def trade_history(dry: bool = False, per_page: int = 5, page: int = 1) -> dict:
     import tradingagents.auto_trader as at
     from tradingagents import positions_view as pv
 
-    ex = [e for e in at.ledger_tail(100000)
+    _all = at.ledger_tail(100000)
+    ex = [e for e in _all
           if e.get("action") == "exit" and bool(e.get("dry_run")) is dry]
     ex.sort(key=lambda x: float(x.get("ts") or 0))
+
+    # Exit rows written before 2026-08-21 carry no side, so the LONG/SHORT
+    # column printed "-" for every closed trade. Pair each exit with the most
+    # recent ENTER on the same symbol and book that precedes it, and take the
+    # side from there. New exits record their own side; this is only for the
+    # history already on disk.
+    _entries: dict = {}
+    for e in sorted(_all, key=lambda x: float(x.get("ts") or 0)):
+        if e.get("action") != "enter":
+            continue
+        _entries.setdefault(
+            (str(e.get("symbol")), bool(e.get("dry_run"))), []
+        ).append(e)
+
+    def _side_for(row: dict) -> str:
+        if row.get("side"):
+            return str(row["side"])
+        cands = _entries.get((str(row.get("symbol")),
+                              bool(row.get("dry_run")))) or []
+        ts = float(row.get("ts") or 0)
+        prior = [c for c in cands if float(c.get("ts") or 0) <= ts]
+        if not prior:
+            return "—"
+        return str(prior[-1].get("side") or "—")
     run, rows, months = 0.0, [], {}
     for e in ex:
         p = round(float(e.get("pnl_est") or 0), 2)
@@ -1034,7 +1086,7 @@ def trade_history(dry: bool = False, per_page: int = 5, page: int = 1) -> dict:
             "ts": float(e.get("ts") or 0),
             "when": pv.fmt_when(float(e.get("ts") or 0)),
             "coin": str(e.get("symbol", "?")).replace("_USDT", ""),
-            "side": e.get("side") or "—",
+            "side": _side_for(e),
             "strategy": e.get("strategy") or "—",
             "why": e.get("why") or "—",
             "profit": p, "running": run})
@@ -1094,3 +1146,78 @@ def trade_equity(dry: bool = False) -> dict:
                     "coin": str(e.get("symbol", "")).replace("_USDT", "")})
     return {"points": out, "last": out[-1]["equity"] if out else 0.0,
             "trades": len(out)}
+
+
+# ----------------------------------------------------------- candle gaps
+_GAP_CACHE: dict = {"at": 0.0, "payload": None, "building": False}
+
+
+def _warm_gap_index() -> None:
+    """Build the candle index off the request thread.
+
+    A first build opens every stored pair (69s at 4,899 pairs) and would hold
+    a request open past the UI proxy's timeout — so the route answers
+    "indexing" and this fills it in.
+    """
+    import threading
+
+    from tradingagents import market_sweep as msw
+
+    if _GAP_CACHE["building"]:
+        return
+    _GAP_CACHE["building"] = True
+
+    def run() -> None:
+        try:
+            msw.candle_index()
+        finally:
+            _GAP_CACHE["building"] = False
+            _GAP_CACHE["at"] = 0.0          # let the next call read it
+
+    threading.Thread(target=run, daemon=True).start()
+
+
+@app.get("/api/candles/gaps")
+def candle_gaps() -> dict:
+    """How far behind every stored pair is, so UPDATE can say what it fills.
+
+    Nothing is fetched here — it reads the store's own last bar. A pair is
+    "behind" when more than one bar could have printed since.
+    """
+    import datetime as _dt
+    import time
+
+    from tradingagents import backtest_report as br
+    from tradingagents import market_sweep as msw
+
+    # the scan opens one file per stored pair (4,899 today), so a repeat call
+    # inside 30s gets the same answer rather than the same work
+    now = time.time()
+    if _GAP_CACHE["payload"] and now - _GAP_CACHE["at"] < 30:
+        return _GAP_CACHE["payload"]
+    # never scan on a request thread: with a download running the files change
+    # constantly, so even an incremental scan can outlast the proxy's timeout
+    _warm_gap_index()
+    index = msw.candle_index(scan=False)
+    if not index:
+        return {"rows": [], "pairs": 0, "behind": 0, "worst": None,
+                "indexing": True}
+    rows, behind = [], 0
+    for c in index.values():
+        tf = c.get("timeframe")
+        bs = (br.TFS.get(tf) or (None, 3600, None))[1]
+        last = int(c["last_ms"]) / 1000
+        missing = max(0, int((now - last) // bs))
+        if missing > 1:
+            behind += 1
+        rows.append({"symbol": c.get("symbol"), "timeframe": tf,
+                     "bars": c.get("bars"),
+                     "last": _dt.datetime.fromtimestamp(last).strftime(
+                         "%b %d, %Y %I:%M%p").replace(" 0", " "),
+                     "missing_bars": missing,
+                     "hours_behind": round((now - last) / 3600, 1)})
+    rows.sort(key=lambda r: -r["missing_bars"])
+    payload = {"rows": rows[:200], "pairs": len(rows), "behind": behind,
+               "worst": rows[0] if rows else None, "indexing": False}
+    _GAP_CACHE.update({"at": now, "payload": payload})
+    return payload

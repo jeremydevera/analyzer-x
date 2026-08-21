@@ -168,8 +168,12 @@ export default function StrategiesGrid() {
         <Table fixed>
           <TableHeader>
             <TableRow>
-              {["strategy", "tf", "TP/SL %", "books", "coins", "margin $", "notional $", "streak", `ladder $ · ${flat ? "flat" : "DEEP"}`, "next $",
-                "loss cap $", "today $", "PROFIT $", "W / L", "open now", "backtest"].map((h) => (
+              {/* notional $ and "open now" removed at the operator's request
+                  2026-08-21: notional is base x leverage, a number they already
+                  know, and "open now" repeats what the positions tables above
+                  this one already show. */}
+              {["strategy", "tf", "TP/SL %", "books", "coins", "margin $", "streak", `ladder $ · ${flat ? "flat" : "DEEP"}`, "next $",
+                "loss cap $", "today $", "PROFIT $", "W / L", "backtest"].map((h) => (
                 <TableCell key={h} isHeader className="px-2 py-1.5 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400">{h}</TableCell>
               ))}
             </TableRow>
@@ -177,15 +181,31 @@ export default function StrategiesGrid() {
           <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
             {rows.map((r) => (
               <TableRow key={r.key}>
-                <TableCell className="px-2 py-1.5 text-[11px] font-medium leading-tight text-gray-800 dark:text-white/90">
-                  {r.key.replace(/_/g, "_\u200b")}
+                <TableCell className="px-2 py-1.5 leading-tight">
+                  {/* The stable row ID first, hashed from the combination by the
+                      same row_code the reports use — so this is the id to paste
+                      into a report's find-by-ID box. The key stays underneath
+                      because it is what the runner logs. */}
+                  {r.id ? (
+                    <button
+                      onClick={() => navigator.clipboard?.writeText(r.id!)}
+                      title="copy this id"
+                      className="block font-mono text-[11px] font-semibold text-brand-500 hover:underline">
+                      #{r.id}
+                    </button>
+                  ) : null}
+                  <span className="block text-[10px] text-gray-500 dark:text-gray-400">
+                    {r.key.replace(/_/g, "_\u200b")}
+                  </span>
                 </TableCell>
                 <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{TF[r.interval ?? ""] ?? r.interval}</TableCell>
                 <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">
                   {r.tp != null ? (r.tp * 100).toFixed(2) : "—"} / {r.sl != null ? (r.sl * 100).toFixed(2) : "—"}
                 </TableCell>
                 <TableCell className="px-2 py-1.5">
-                  <div className="flex flex-col gap-0.5">
+                  {/* Side by side, not stacked: two stacked pills made every
+                      row twice as tall as it needed to be. */}
+                  <div className="flex flex-row items-center gap-1">
                     {(["real", "paper"] as const).map((b) => {
                       // a coin already traded LIVE on another timeframe cannot
                       // take a second live strategy: MEXC nets them into one
@@ -197,14 +217,21 @@ export default function StrategiesGrid() {
                           title={locked
                             ? `${r.live_locked!.coin.replace("_USDT", "")} is already traded live by ${r.live_locked!.held_by} on another timeframe — MEXC nets them into one position`
                             : undefined}
-                          className={`rounded-full px-2.5 py-0.5 text-theme-xs font-medium transition ${
+                          role="switch"
+                          aria-checked={r.books.includes(b)}
+                          aria-label={b === "real" ? "trade real money" : "simulate only"}
+                          className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide transition ${
                             r.books.includes(b)
                               ? b === "real" ? "bg-error-500 text-white" : "bg-success-500 text-white"
                               : locked
                                 ? "cursor-not-allowed bg-gray-100 text-gray-300 line-through dark:bg-white/[0.03] dark:text-gray-600"
                                 : "bg-gray-100 text-gray-500 dark:bg-white/[0.05] dark:text-gray-400"
                           }`}>
-                          {b === "real" ? "REAL" : "paper"}
+                          {/* the dot IS the switch state, so on/off does not
+                              rest on colour alone */}
+                          <span className={`h-1.5 w-1.5 rounded-full ${
+                            r.books.includes(b) ? "bg-white" : "bg-gray-400 dark:bg-gray-600"}`} />
+                          {b === "real" ? "live" : "demo"}
                         </button>
                       );
                     })}
@@ -222,7 +249,6 @@ export default function StrategiesGrid() {
                     onBlur={(e) => setMargin(r.key, e.target.value)}
                     className="w-full min-w-0 rounded-lg border border-gray-200 bg-transparent px-1 py-1 text-[11px] text-gray-700 dark:border-gray-700 dark:text-gray-300" />
                 </TableCell>
-                <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.notional ?? "—"}</TableCell>
                 <TableCell className="px-2 py-1.5 text-theme-xs">
                   {r.streak ? <span className="font-medium text-error-500">{r.streak} loss</span>
                             : <span className="text-gray-400">—</span>}
@@ -258,27 +284,6 @@ export default function StrategiesGrid() {
                   <span className="text-success-600">{r.wins}</span>
                   <span className="text-gray-400"> / </span>
                   <span className="text-error-500">{r.losses}</span>
-                </TableCell>
-                <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">
-                  <div className="flex min-w-0 flex-wrap items-center gap-0.5 text-[10px] leading-tight">
-                    {r.open_on.map((c) => (
-                      <span key={`r${c}`} className="whitespace-normal break-words rounded bg-error-50 px-1 py-0.5 font-medium text-error-600 dark:bg-error-500/15">
-                        {c.replace("_USDT", "")} real
-                      </span>
-                    ))}
-                    {r.open_on_paper.map((c) => (
-                      <span key={`p${c}`} className="whitespace-normal break-words rounded bg-gray-100 px-1 py-0.5 text-gray-500 dark:bg-white/[0.06] dark:text-gray-400">
-                        {c.replace("_USDT", "")} paper
-                      </span>
-                    ))}
-                    {!r.open_on.length && !r.open_on_paper.length && <span>—</span>}
-                    {r.books.includes("real") && (
-                      <span title="armed with real money"
-                        className="rounded bg-error-500 px-0.5 text-[9px] font-bold leading-tight text-white">
-                        ARM
-                      </span>
-                    )}
-                  </div>
                 </TableCell>
                 <TableCell className="px-2 py-1.5">
                   <button onClick={() => runBacktest(r.key)}

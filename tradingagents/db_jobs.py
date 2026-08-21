@@ -117,14 +117,23 @@ def start(kind: str, spec: dict) -> int:
 # --------------------------------------------------------------- job bodies
 def _run_download(spec: dict) -> None:
     """DOWNLOAD/UPDATE fill the operator's OWN MACHINE — the store every
-    backtest reads. Pure local: no database is touched."""
+    backtest reads. Pure local: no database is touched.
+
+    `mode: "update"` means "top up what I already have": the pairs come from
+    the store itself, so a store filled on 28 July and updated on 21 August
+    fetches exactly the bars between — refresh_candles walks back from the
+    stored last bar, never re-downloading a year.
+    """
     from tradingagents import market_sweep as msw
     from tradingagents import parquet_store as pqs
     f = FILES["download"]
-    coins = spec["coins"]
-    tfs = [t for t in spec["tfs"]
-           if t in ("15m", "30m", "1h", "4h", "1d")]
-    pairs = [(c, tf) for c in coins for tf in tfs]
+    if spec.get("mode") == "update" and not spec.get("coins"):
+        pairs = [(c["symbol"], c["timeframe"]) for c in msw.candle_coverage()]
+    else:
+        coins = spec["coins"]
+        tfs = [t for t in spec["tfs"]
+               if t in ("15m", "30m", "1h", "4h", "1d")]
+        pairs = [(c, tf) for c in coins for tf in tfs]
     stored, errors, stopped, i = 0, [], False, 0
     for i, (c, tf) in enumerate(pairs):
         if _stopping("download"):
@@ -145,8 +154,11 @@ def _run_download(spec: dict) -> None:
         "total": len(pairs), "bars_stored": stored, "errors": len(errors),
         "first_error": (errors[0] if errors else ""),
         "stopped": stopped, "finished": int(time.time()),
+        "mode": spec.get("mode") or "download",
         "note": ("stopped by you — everything downloaded so far is kept"
-                 if stopped else "")})
+                 if stopped else
+                 f"{'gap-filled' if spec.get('mode') == 'update' else 'downloaded'} "
+                 f"{len(pairs)} pair(s)")})
 
 
 class _StopRequested(Exception):

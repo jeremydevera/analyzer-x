@@ -127,3 +127,57 @@ def test_download_fills_the_local_store_first(monkeypatch, tmp_path):
     assert calls["parquet"] == calls["local"], "parquet copy for every pair"
     assert calls["neon"] == [], \
         "pure local: the database is never written, armed or not"
+
+
+def test_update_mode_tops_up_what_is_already_stored(monkeypatch, tmp_path):
+    """"update candles" means fill the gap since the stored last bar — the
+    pairs come from the STORE, so no coin has to be picked, and nothing is
+    re-downloaded from scratch."""
+    import pandas as pd
+
+    from tradingagents import market_sweep as msw
+    from tradingagents import parquet_store as pqs
+
+    seen = []
+    frame = pd.DataFrame({"Date": pd.to_datetime([1_787_000_000], unit="s"),
+                          "Open": [1.0], "High": [1.0], "Low": [1.0],
+                          "Close": [1.0], "Volume": [1.0]})
+    monkeypatch.setattr(msw, "candle_coverage", lambda: [
+        {"symbol": "APEX_USDT", "timeframe": "1h"},
+        {"symbol": "XAUT_USDT", "timeframe": "15m"}])
+    monkeypatch.setattr(msw, "refresh_candles",
+                        lambda c, tf, days=365: (seen.append((c, tf))
+                                                 or (frame, 7, "delta")))
+    monkeypatch.setattr(pqs, "save_candles", lambda c, tf, df: None)
+    monkeypatch.setattr(db_jobs, "_stopping", lambda kind: False)
+    monkeypatch.setattr(db_jobs, "FILES", {
+        "download": {"progress": tmp_path / "p.json"}})
+    db_jobs._run_download({"mode": "update"})
+    assert seen == [("APEX_USDT", "1h"), ("XAUT_USDT", "15m")]
+    import json
+    got = json.loads((tmp_path / "p.json").read_text())
+    assert got["mode"] == "update" and "gap-filled" in got["note"]
+    assert got["bars_stored"] == 14
+
+
+def test_an_explicit_selection_still_wins_over_the_store(monkeypatch, tmp_path):
+    import pandas as pd
+
+    from tradingagents import market_sweep as msw
+    from tradingagents import parquet_store as pqs
+    seen = []
+    frame = pd.DataFrame({"Date": pd.to_datetime([1_787_000_000], unit="s"),
+                          "Open": [1.0], "High": [1.0], "Low": [1.0],
+                          "Close": [1.0], "Volume": [1.0]})
+    monkeypatch.setattr(msw, "candle_coverage", lambda: [
+        {"symbol": "NOPE_USDT", "timeframe": "1h"}])
+    monkeypatch.setattr(msw, "refresh_candles",
+                        lambda c, tf, days=365: (seen.append((c, tf))
+                                                 or (frame, 1, "fetch")))
+    monkeypatch.setattr(pqs, "save_candles", lambda c, tf, df: None)
+    monkeypatch.setattr(db_jobs, "_stopping", lambda kind: False)
+    monkeypatch.setattr(db_jobs, "FILES", {
+        "download": {"progress": tmp_path / "p.json"}})
+    db_jobs._run_download({"mode": "update", "coins": ["PI_USDT"],
+                           "tfs": ["4h"]})
+    assert seen == [("PI_USDT", "4h")]

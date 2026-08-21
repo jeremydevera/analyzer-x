@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 10, "total": 18, "rows": 50062, "note": "METASTOCK 15m: rule 45/75 (zscore20)", "pct": 55.6, "updated": "2026-08-21T13:18:23Z"}
+{"shard": 2, "stage": "testing", "done": 10, "total": 18, "rows": 50609, "note": "METASTOCK 30m: rule 23/75 (supertrend)", "pct": 55.6, "updated": "2026-08-21T13:19:08Z"}

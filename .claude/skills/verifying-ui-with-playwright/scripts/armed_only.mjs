@@ -21,7 +21,8 @@ for (const k of catalogOnly) ok(`${k} hidden until asked`, !body.includes(k));
 ok('ARMED badges = real-armed rows', (body.match(/ARMED/g) || []).length === d.real_count, `${(body.match(/ARMED/g)||[]).length} vs ${d.real_count}`);
 
 // the catalog is reachable, and switching to it says so
-await page.locator('input[type="checkbox"]').filter({ hasNot: page.locator('x') }).first().check();
+// by accessible name: .first() became "arm PANIC" once that control landed
+await page.getByRole('checkbox', { name: /show all \d+ to arm a new one/ }).check();
 await page.waitForTimeout(2500);
 body = await page.evaluate(() => document.body.innerText);
 ok('catalog toggle reveals the rest', body.includes('every configurable one') && body.includes('ict_fvg'));

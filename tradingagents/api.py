@@ -927,3 +927,45 @@ def analysis_report_md(run_id: str):
     md = "\n".join(head + body)
     return PlainTextResponse(md, media_type="text/markdown", headers={
         "Content-Disposition": f'attachment; filename="{run_id}.md"'})
+
+
+@app.post("/api/crypto/watch")
+def crypto_watch(body: dict) -> dict:
+    """One watch tick: which coins are new since the caller's baseline.
+
+    Deliberately stateless — the browser holds the baseline and posts it back,
+    so two open tabs cannot silence each other, and a restarted API does not
+    replay yesterday's listings as new. An EMPTY baseline seeds and reports
+    nothing, or the first tick would announce the whole exchange.
+    """
+    from tradingagents.dataflows import mexc
+
+    known = set(body.get("known") or [])
+    try:
+        found, seen = mexc.poll_new_listings(
+            known, max_age_hours=float(body.get("max_age_hours") or 48.0))
+    except Exception as exc:                                   # noqa: BLE001
+        return {"found": [], "known": sorted(known), "seeded": False,
+                "why": f"{type(exc).__name__}: {exc}"}
+    merged = mexc.merge_new_listings(found) if found else 0
+    return {"found": found, "known": sorted(seen), "seeded": not known,
+            "merged_into_sweep": merged, "why": ""}
+
+
+@app.get("/api/crypto/candles")
+def crypto_candles(symbol: str, interval: str = "Min60",
+                   limit: int = 200) -> dict:
+    """Candles for one contract, for the in-page chart."""
+    from tradingagents.dataflows import mexc_futures as fx
+
+    try:
+        df = fx.klines(symbol, interval, max(10, min(limit, 1000)))
+    except Exception as exc:                                   # noqa: BLE001
+        raise HTTPException(502, f"{type(exc).__name__}: {exc}")
+    if df is None or not len(df):
+        return {"rows": [], "symbol": symbol, "interval": interval}
+    rows = [{"t": int(d.value // 1_000_000), "o": float(o), "h": float(h),
+             "l": float(low), "c": float(c), "v": float(v)}
+            for d, o, h, low, c, v in zip(df["Date"], df["Open"], df["High"],
+                                          df["Low"], df["Close"], df["Volume"])]
+    return {"rows": rows, "symbol": symbol, "interval": interval}

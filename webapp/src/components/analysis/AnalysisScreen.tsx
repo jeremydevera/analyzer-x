@@ -4,6 +4,7 @@
  * its progress file. Stage status is derived from whether each report
  * actually exists, never from a timer. */
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { analysisApi, AnalysisRun, ModelRow, modelsApi, RunListRow, SocialSources } from "@/lib/api";
 import Badge from "@/components/ui/badge/Badge";
 import Button from "@/components/ui/button/Button";
@@ -36,6 +37,7 @@ export default function AnalysisScreen() {
   const [keywords, setKeywords] = useState("");
   const [risk, setRisk] = useState(1);
   const [runId, setRunId] = useState("");
+  const params = useSearchParams();
   const [run, setRun] = useState<AnalysisRun | null>(null);
   const [recent, setRecent] = useState<RunListRow[]>([]);
   const [err, setErr] = useState("");
@@ -46,6 +48,9 @@ export default function AnalysisScreen() {
     analysisApi.runs().then((d) => setRecent(d.rows)).catch(() => {});
     analysisApi.socialSources().then((d) => { setSocial(d); setSource(d.default); }).catch(() => {});
     analysisApi.tickers().then((d) => setTickers(d.rows)).catch(() => {});
+    // a run handed over from another screen (New Crypto's ANALYZE) opens here
+    const handed = params.get("run");
+    if (handed) setRunId(handed);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

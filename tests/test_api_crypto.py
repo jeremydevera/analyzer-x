@@ -65,3 +65,51 @@ def test_upcoming_failure_reports_why_instead_of_an_empty_list(client,
     monkeypatch.setattr(mexc, "upcoming_listings", boom)
     got = client.get("/api/crypto/upcoming").json()
     assert got["rows"] == [] and "host blocked" in got["why"]
+
+
+# --- the listing watcher --------------------------------------------------
+# The screener could watch for new listings and alarm. It was missing from the
+# React port entirely. The rule that makes it usable: an empty baseline SEEDS,
+# it does not announce the whole exchange.
+
+def test_the_first_tick_seeds_and_announces_nothing(client, monkeypatch):
+    monkeypatch.setattr(mexc, "poll_new_listings",
+                        lambda known, **kw: ([], {"AUSDT", "BUSDT"}))
+    got = client.post("/api/crypto/watch", json={"known": []}).json()
+    assert got["found"] == [] and got["seeded"] is True
+    assert set(got["known"]) == {"AUSDT", "BUSDT"}
+
+
+def test_a_later_tick_reports_only_what_is_new(client, monkeypatch):
+    seen = {}
+    monkeypatch.setattr(mexc, "poll_new_listings",
+                        lambda known, **kw: seen.update(known=known, kw=kw) or
+                        ([{"symbol": "CUSDT", "base": "C", "age_hours": 2.0}],
+                         {"AUSDT", "CUSDT"}))
+    monkeypatch.setattr(mexc, "merge_new_listings", lambda found: len(found))
+    got = client.post("/api/crypto/watch",
+                      json={"known": ["AUSDT"], "max_age_hours": 12}).json()
+    assert [r["symbol"] for r in got["found"]] == ["CUSDT"]
+    assert got["seeded"] is False and got["merged_into_sweep"] == 1
+    assert seen["known"] == {"AUSDT"} and seen["kw"]["max_age_hours"] == 12.0
+
+
+def test_a_watch_failure_says_why_and_keeps_the_baseline(client, monkeypatch):
+    def boom(known, **kw):
+        raise mexc.MexcRateLimited("429")
+    monkeypatch.setattr(mexc, "poll_new_listings", boom)
+    got = client.post("/api/crypto/watch", json={"known": ["AUSDT"]}).json()
+    assert got["found"] == [] and "429" in got["why"]
+    assert got["known"] == ["AUSDT"], "a failed tick must not reset the baseline"
+
+
+def test_candles_come_back_as_plain_rows_for_the_chart(client, monkeypatch):
+    import pandas as pd
+    from tradingagents.dataflows import mexc_futures as fx
+    df = pd.DataFrame({"Date": pd.to_datetime([1_787_000_000], unit="s"),
+                       "Open": [1.0], "High": [2.0], "Low": [0.5],
+                       "Close": [1.5], "Volume": [10.0]})
+    monkeypatch.setattr(fx, "klines", lambda s, i, n: df)
+    got = client.get("/api/crypto/candles?symbol=APEX_USDT&interval=Min60").json()
+    assert got["rows"] == [{"t": 1_787_000_000_000, "o": 1.0, "h": 2.0,
+                            "l": 0.5, "c": 1.5, "v": 10.0}]

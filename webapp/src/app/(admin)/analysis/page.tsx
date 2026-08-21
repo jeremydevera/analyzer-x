@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import AnalysisScreen from "@/components/analysis/AnalysisScreen";
 
 export const metadata: Metadata = {
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function AnalysisPage() {
-  return <AnalysisScreen />;
+  return (
+    <Suspense fallback={<p className="text-theme-sm text-gray-500">loading…</p>}>
+      <AnalysisScreen />
+    </Suspense>
+  );
 }

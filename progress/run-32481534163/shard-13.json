@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 10, "total": 19, "rows": 35561, "note": "INIT 15m: rule 42/75 (rsidiv)", "pct": 52.6, "updated": "2026-08-21T13:12:43Z"}
+{"shard": 13, "stage": "testing", "done": 10, "total": 19, "rows": 35584, "note": "INIT 15m: rule 75/75 (relvolbrk)", "pct": 52.6, "updated": "2026-08-21T13:13:28Z"}

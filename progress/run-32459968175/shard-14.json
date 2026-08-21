@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 1, "total": 20, "rows": 1152, "note": "AAVE 4h: rule 1/75 (mom6)", "pct": 5.0, "updated": "2026-08-21T07:51:05Z"}
+{"shard": 14, "stage": "testing", "done": 1, "total": 20, "rows": 1502, "note": "AAVE 4h: rule 45/75 (zscore20)", "pct": 5.0, "updated": "2026-08-21T07:51:50Z"}

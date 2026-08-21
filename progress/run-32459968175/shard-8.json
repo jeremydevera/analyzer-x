@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 6, "total": 20, "rows": 21026, "note": "CRV 15m: downloading candles", "pct": 30.0, "updated": "2026-08-21T08:12:52Z"}
+{"shard": 8, "stage": "testing", "done": 6, "total": 20, "rows": 21026, "note": "CRV 15m: rule 15/75 (bbbreak)", "pct": 30.0, "updated": "2026-08-21T08:13:38Z"}

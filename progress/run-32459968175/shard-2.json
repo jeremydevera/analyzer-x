@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 24, "total": 27, "rows": 113580, "note": "SNX 30m: 19,999 bars, testing 75 rules", "pct": 88.9, "updated": "2026-08-21T09:38:55Z"}
+{"shard": 2, "stage": "testing", "done": 24, "total": 27, "rows": 113787, "note": "SNX 30m: rule 33/75 (heikin)", "pct": 88.9, "updated": "2026-08-21T09:39:42Z"}

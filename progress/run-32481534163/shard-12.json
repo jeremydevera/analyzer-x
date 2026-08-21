@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 4, "total": 18, "rows": 10638, "note": "DASH 15m: 34,625 bars, testing 75 rules", "pct": 22.2, "updated": "2026-08-21T12:32:30Z"}
+{"shard": 12, "stage": "testing", "done": 4, "total": 18, "rows": 10640, "note": "DASH 15m: rule 36/75 (stochrsi)", "pct": 22.2, "updated": "2026-08-21T12:33:16Z"}

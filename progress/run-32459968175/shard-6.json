@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 22, "total": 24, "rows": 110619, "note": "TESLA 1h: rule 9/75 (fib382)", "pct": 91.7, "updated": "2026-08-21T09:48:33Z"}
+{"shard": 6, "stage": "testing", "done": 23, "total": 24, "rows": 112255, "note": "WAL 15m: 34,614 bars, testing 75 rules", "pct": 95.8, "updated": "2026-08-21T09:49:21Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 29, "total": 29, "rows": 112536, "note": "ZEREBRO 30m: 19,999 bars, testing 75 rules", "pct": 100.0, "updated": "2026-08-21T14:58:30Z"}
+{"shard": 4, "stage": "testing", "done": 29, "total": 29, "rows": 112625, "note": "ZEREBRO 30m: rule 22/75 (engulf)", "pct": 100.0, "updated": "2026-08-21T14:59:17Z"}

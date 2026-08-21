@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 9, "total": 20, "rows": 33602, "note": "JST 15m: 34,608 bars, testing 75 rules", "pct": 45.0, "updated": "2026-08-21T08:26:22Z"}
+{"shard": 18, "stage": "testing", "done": 9, "total": 20, "rows": 34070, "note": "JST 15m: rule 20/75 (stoch14)", "pct": 45.0, "updated": "2026-08-21T08:27:10Z"}

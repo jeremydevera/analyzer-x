@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 19, "total": 22, "rows": 82681, "note": "SNX 4h: rule 45/75 (zscore20)", "pct": 86.4, "updated": "2026-08-21T14:06:44Z"}
+{"shard": 6, "stage": "testing", "done": 20, "total": 22, "rows": 83356, "note": "SPX 15m: rule 3/75 (fade15)", "pct": 90.9, "updated": "2026-08-21T14:07:37Z"}

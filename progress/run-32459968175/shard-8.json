@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 13, "total": 20, "rows": 44130, "note": "RED 15m: downloading candles", "pct": 65.0, "updated": "2026-08-21T08:52:56Z"}
+{"shard": 8, "stage": "testing", "done": 13, "total": 20, "rows": 44142, "note": "RED 15m: rule 11/75 (sr_break)", "pct": 65.0, "updated": "2026-08-21T08:53:42Z"}

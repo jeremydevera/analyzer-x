@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 17, "total": 22, "rows": 63768, "note": "SEI 30m: 19,999 bars, testing 75 rules", "pct": 77.3, "updated": "2026-08-21T13:52:46Z"}
+{"shard": 11, "stage": "testing", "done": 17, "total": 22, "rows": 63812, "note": "SEI 30m: rule 36/75 (stochrsi)", "pct": 77.3, "updated": "2026-08-21T13:53:32Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 17, "total": 18, "rows": 65447, "note": "WCT 15m: rule 33/75 (heikin)", "pct": 94.4, "updated": "2026-08-21T13:16:37Z"}
+{"shard": 12, "stage": "testing", "done": 17, "total": 18, "rows": 65656, "note": "WCT 30m: 19,999 bars, testing 75 rules", "pct": 94.4, "updated": "2026-08-21T13:17:25Z"}

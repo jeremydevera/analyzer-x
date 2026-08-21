@@ -117,6 +117,8 @@ CHECKS = {
     "a stopped job is not painted as success": ["bg-warning-400"],
     "one shared progress component": ["JobProgress"],
     "tables carry explicit column widths": ['["books", "12%"]', '["opened", "10%"]'],
+    "storage: a tab per timeframe plus ALL": ['role="tablist"', 'tab === "ALL"'],
+    "storage: when each pair was last updated": ["last updated", "last_ms"],
   },
   "Global": {
     "night mode": ["ThemeToggleButton"],

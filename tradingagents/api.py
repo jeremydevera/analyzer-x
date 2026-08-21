@@ -96,9 +96,25 @@ def strategy_trades(q: TradesQuery) -> dict:
 # ----------------------------------------------------------------- storage
 @app.get("/api/storage/by-coin")
 def storage_by_coin() -> dict:
+    """Bytes per coin and timeframe, plus WHEN each pair was last updated.
+
+    The freshness comes from the candle index (scan=False, so this never walks
+    every file on a request thread) — the store's own last bar, not a file
+    mtime, because a rewrite that added no bars is not an update.
+    """
     from tradingagents import market_sweep as msw
 
-    return {"rows": msw.storage_by_coin()}
+    rows = msw.storage_by_coin()
+    index = msw.candle_index(scan=False)
+    by_pair = {}
+    for entry in index.values():
+        coin = str(entry.get("symbol", "")).replace("_USDT", "")
+        by_pair[(coin, entry.get("timeframe"))] = entry
+    for r in rows:
+        hit = by_pair.get((r["coin"], r["tf"]))
+        r["last_ms"] = hit.get("last_ms") if hit else None
+        r["bars"] = hit.get("bars") if hit else None
+    return {"rows": rows}
 
 
 @app.get("/api/storage/coverage")
@@ -1221,3 +1237,58 @@ def candle_gaps() -> dict:
                "worst": rows[0] if rows else None, "indexing": False}
     _GAP_CACHE.update({"at": now, "payload": payload})
     return payload
+
+
+# ------------------------------------------------------------- notifications
+# One bell for "did the thing I clicked actually work". A click that reports
+# nothing is indistinguishable from a click that failed silently — which is
+# exactly how a 0-byte backtest report went unnoticed on 2026-08-20.
+@app.get("/api/notifications")
+def notifications_list(limit: int = 30, kind: str | None = None,
+                       unread: bool = False) -> dict:
+    """Newest first, with the unread count for the badge."""
+    from tradingagents import notifications as nt
+    from tradingagents import positions_view as pv
+
+    rows = nt.recent(limit=limit, kind=kind, unread_only=unread)
+    for r in rows:
+        r["when"] = pv.fmt_when(float(r.get("ts") or 0))
+    return {"rows": rows, "unread": nt.unread_count(), "total": len(rows)}
+
+
+class NotifyRead(BaseModel):
+    ids: list[int] | None = None
+
+
+@app.post("/api/notifications/read")
+def notifications_read(body: NotifyRead) -> dict:
+    """Mark the given ids read, or every unread event when ids is omitted."""
+    from tradingagents import notifications as nt
+
+    changed = nt.mark_read(body.ids)
+    return {"marked": changed, "unread": nt.unread_count()}
+
+
+@app.get("/api/candles/download-history")
+def download_history(limit: int = 20) -> dict:
+    """Every download this machine has run, newest first, with its outcome.
+
+    The operator asked to see whether a DOWNLOAD succeeded. The job's progress
+    file only holds the LAST run, so the history comes from the event store.
+    """
+    from tradingagents import notifications as nt
+    from tradingagents import positions_view as pv
+
+    rows = nt.recent(limit=limit, kind="download")
+    out = []
+    for r in rows:
+        m = r.get("meta") or {}
+        out.append({
+            "ts": r["ts"], "when": pv.fmt_when(float(r.get("ts") or 0)),
+            "ok": r["ok"], "title": r["title"], "detail": r["detail"],
+            "pairs": m.get("pairs"), "bars": m.get("bars"),
+            "errors": m.get("errors"), "stopped": bool(m.get("stopped")),
+            "mode": m.get("mode") or "download",
+        })
+    ok = sum(1 for r in out if r["ok"])
+    return {"rows": out, "total": len(out), "ok": ok, "failed": len(out) - ok}

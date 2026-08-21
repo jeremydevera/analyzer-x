@@ -1,0 +1,24 @@
+import { chromium } from 'playwright';
+const URL = 'http://localhost:8507';
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 1680, height: 1050 } });
+await p.goto(URL, { waitUntil: 'networkidle' });
+await p.waitForTimeout(9000);
+await p.locator('text=Backtest 2').first().click();
+await p.waitForTimeout(7000);
+const btn = p.locator('[data-testid="stButton"] button').filter({ hasText: /RUN THE DAILY GRID/ });
+console.log('run button found:', await btn.count());
+await btn.first().click();
+await p.waitForTimeout(10000);
+let body = await p.locator('body').innerText();
+console.log('started:', /Started in the background|elapsed|Running detached/i.test(body));
+console.log('  ->', (body.match(/[^\n]*(elapsed|background)[^\n]*/)||['-'])[0].slice(0,120));
+await p.reload({ waitUntil: 'networkidle' });   // THE TEST
+await p.waitForTimeout(9000);
+await p.locator('text=Backtest 2').first().click();
+await p.waitForTimeout(9000);
+body = await p.locator('body').innerText();
+console.log('AFTER REFRESH survived:', /elapsed|Running detached|OPEN THE DAILY GRID/i.test(body));
+console.log('  ->', (body.match(/[^\n]*(elapsed|OPEN THE DAILY GRID)[^\n]*/)||['-'])[0].slice(0,140));
+await p.screenshot({ path: '/tmp/bt2_refresh.png' });
+await b.close();

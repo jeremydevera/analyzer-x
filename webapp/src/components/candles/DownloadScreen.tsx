@@ -14,6 +14,7 @@ import Button from "@/components/ui/button/Button";
 import Badge from "@/components/ui/badge/Badge";
 import CoinPicker from "@/components/backtest/CoinPicker";
 import JobProgress from "@/components/jobs/JobProgress";
+import DownloadHistory from "@/components/candles/DownloadHistory";
 import StoragePanel from "@/components/backtest/StoragePanel";
 
 const TFS = ["15m", "30m", "1h", "4h", "1d"];
@@ -117,6 +118,10 @@ export default function DownloadScreen() {
           </p>
         )}
         <JobProgress s={dl} />
+        {/* did it work? the progress file only holds the LAST run, so the
+            outcome of every run comes from the event store. Keyed on
+            `running` so a finishing job refreshes the list. */}
+        <DownloadHistory refreshKey={dl?.running ? 1 : 0} />
       </div>
       <StoragePanel />
     </div>

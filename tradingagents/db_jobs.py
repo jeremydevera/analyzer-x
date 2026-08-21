@@ -149,6 +149,24 @@ def _run_download(spec: dict) -> None:
         except Exception as exc:
             errors.append(f"{c} {tf}: {str(exc)[:80]}")
             continue
+    # One line in the bell, so a click that did nothing is distinguishable
+    # from a click that worked. Never allowed to raise into the job.
+    try:
+        from tradingagents import notifications as _nt
+
+        _ok = not errors and not stopped
+        _nt.record(
+            "download",
+            ("Download stopped" if stopped else
+             "Download finished" if _ok else "Download finished with errors"),
+            detail=(f"{stored:,} bars over {len(pairs)} pair(s)"
+                    + (f" · {len(errors)} error(s): {errors[0]}" if errors else "")),
+            ok=_ok,
+            meta={"pairs": len(pairs), "bars": stored,
+                  "errors": len(errors), "stopped": bool(stopped),
+                  "mode": spec.get("mode") or "download"})
+    except Exception:
+        pass
     _write(f["progress"], {
         "running": False, "done": i if stopped else len(pairs),
         "total": len(pairs), "bars_stored": stored, "errors": len(errors),
@@ -233,6 +251,13 @@ def _run_backtest(spec: dict) -> None:
     except _StopRequested:
         raise
     except Exception as exc:
+        try:
+            from tradingagents import notifications as _nt
+
+            _nt.record("backtest", "Backtest FAILED", ok=False,
+                       detail=str(exc)[:300], meta={"fatal": True})
+        except Exception:
+            pass
         _write(FILES["backtest"]["progress"], {
             "running": False, "finished": int(time.time()),
             "error": str(exc)[:200],
@@ -277,6 +302,19 @@ def _run_backtest_inner(spec: dict) -> None:
                                 label=spec.get("label") or "archive")
     except Exception as exc:                 # never claim a save that failed
         save_err = str(exc)[:160]
+    try:
+        from tradingagents import notifications as _nt
+
+        _nt.record(
+            "backtest",
+            "Backtest finished" if not save_err else "Backtest saved with errors",
+            detail=(f"{len(payload['rows']):,} rows · report {name}"
+                    + (f" · save error: {save_err}" if save_err else "")),
+            ok=not save_err,
+            meta={"rows": len(payload["rows"]), "saved": saved,
+                  "report": name, "save_error": save_err})
+    except Exception:
+        pass
     _write(f["progress"], {"running": False, "rows": len(payload["rows"]),
                            "saved": saved, "save_error": save_err,
                            "report": name, "finished": int(time.time())})

@@ -2132,6 +2132,24 @@ def process_symbol(symbol: str, settings: dict, state: dict, *, fx,
                            "entry": pos.get("entry"), "exit": exit_px,
                            "pnl_est": round(pnl, 2), "step_next": st["step"],
                            "dry_run": pos_dry})
+            try:
+                from tradingagents import notifications as _nt
+
+                _nt.record(
+                    "trade_close",
+                    f"{'PAPER' if pos_dry else 'LIVE'} "
+                    f"{symbol.replace('_USDT', '')} closed {why} "
+                    f"{round(pnl, 2):+.2f} USDT",
+                    detail=(f"{pos.get('strategy')} · "
+                            f"{'LONG' if pos.get('side', 0) > 0 else 'SHORT'} "
+                            f"{pos.get('entry')} -> {exit_px}"),
+                    # a loss is not an ERROR, so ok tracks the money not the run
+                    ok=bool(pnl >= 0),
+                    meta={"symbol": symbol, "strategy": pos.get("strategy"),
+                          "dry": bool(pos_dry), "why": why,
+                          "pnl": round(pnl, 2), "exit": exit_px})
+            except Exception:
+                pass
 
     # ---- entries: each strategy acts once per closed candle of its own TF
     if st.get("position") or halted():
@@ -2360,6 +2378,23 @@ def process_symbol(symbol: str, settings: dict, state: dict, *, fx,
                        "sl": round(sl_px, 6), "margin": margin,
                        "leverage": LEVERAGE, "step": st["step"],
                        "dry_run": dry})
+        # The bell. Wrapped because this is the live money path: a feed write
+        # failing must never be able to interrupt an order or a bracket.
+        try:
+            from tradingagents import notifications as _nt
+
+            _nt.record(
+                "trade_open",
+                f"{'PAPER' if dry else 'LIVE'} {'LONG' if side > 0 else 'SHORT'} "
+                f"{symbol.replace('_USDT', '')}",
+                detail=(f"{key} · entry {entry} · {margin} USDT at {LEVERAGE}x "
+                        f"· TP {round(tp_px, 6)} / SL {round(sl_px, 6)}"),
+                ok=True,
+                meta={"symbol": symbol, "strategy": key, "dry": bool(dry),
+                      "side": "LONG" if side > 0 else "SHORT",
+                      "entry": entry, "margin": margin, "step": st["step"]})
+        except Exception:
+            pass
         return
 
 

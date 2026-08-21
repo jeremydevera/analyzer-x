@@ -221,3 +221,34 @@ def test_cloud_status_reports_each_machine_not_just_a_count(client,
     got = client.get("/api/cloud/status").json()
     assert len(got["shards"]) == 2
     assert got["shards"][0]["stage"] == "backtesting"
+
+
+def test_storage_rows_carry_when_each_pair_was_last_updated(client,
+                                                            monkeypatch):
+    """'last updated' is the store's own LAST BAR, not a file mtime: a rewrite
+    that added no bars is not an update."""
+    from tradingagents import market_sweep as msw
+    monkeypatch.setattr(msw, "storage_by_coin", lambda: [
+        {"coin": "APEX", "tf": "1h", "candles": 10, "rows": 0, "states": 0,
+         "total": 10},
+        {"coin": "APEX", "tf": "4h", "candles": 5, "rows": 0, "states": 0,
+         "total": 5}])
+    monkeypatch.setattr(msw, "candle_index", lambda scan=True: {
+        "APEX_USDT-1h": {"symbol": "APEX_USDT", "timeframe": "1h",
+                          "bars": 9999, "last_ms": 1_787_000_000_000}})
+    rows = client.get("/api/storage/by-coin").json()["rows"]
+    one = next(r for r in rows if r["tf"] == "1h")
+    four = next(r for r in rows if r["tf"] == "4h")
+    assert one["last_ms"] == 1_787_000_000_000 and one["bars"] == 9999
+    assert four["last_ms"] is None, "a pair the index has not seen says so"
+
+
+def test_storage_never_scans_on_a_request(client, monkeypatch):
+    """The scan opens every candle file; a request must read the index only."""
+    from tradingagents import market_sweep as msw
+    seen = {}
+    monkeypatch.setattr(msw, "storage_by_coin", lambda: [])
+    monkeypatch.setattr(msw, "candle_index",
+                        lambda scan=True: seen.update(scan=scan) or {})
+    client.get("/api/storage/by-coin")
+    assert seen["scan"] is False

@@ -1,0 +1,25 @@
+import { chromium } from 'playwright';
+const api = async (p) => (await fetch('http://localhost:8503' + p)).json();
+const b = await chromium.launch();
+const page = await b.newPage({ viewport: { width: 1512, height: 1100 } });
+page.on('dialog', d => d.dismiss());
+const fails = []; const ok = (n,c,d) => { console.log((c?'PASS ':'FAIL ')+n+(d?' — '+d:'')); if(!c) fails.push(n); };
+const j = await api('/api/jobs/btupdate');
+const ageMin = Math.round((Date.now()/1000 - j.finished)/60);
+console.log(`   (btupdate finished ${ageMin} min ago, stopped=${j.stopped}, note="${j.note}")`);
+await page.goto('http://localhost:8503/backtest', { waitUntil: 'domcontentloaded' });
+await page.waitForSelector('text=UPDATE BACKTEST', { timeout: 60000 });
+await page.waitForTimeout(4500);
+let body = await page.evaluate(() => document.body.innerText);
+// note can be empty, and includes("") is always true — assert on a marker
+ok('a fresh finish DOES render', body.includes('clears itself'), j.note || '(no note)');
+ok('it says when it finished', /finished .*(AM|PM)/.test(body));
+ok('it says it clears itself', body.includes('clears itself'));
+ok('rows reported', j.rows ? body.includes(j.rows.toLocaleString('en-US')) : true, String(j.rows));
+const x = page.locator('button[aria-label="dismiss"]').first();
+ok('dismiss button present', await x.count() > 0);
+await x.click(); await page.waitForTimeout(700);
+body = await page.evaluate(() => document.body.innerText);
+ok('dismiss hides it', !body.includes('clears itself'));
+console.log(fails.length ? 'RESULT: FAIL ' + fails.join(', ') : 'RESULT: ALL PASS');
+await b.close();

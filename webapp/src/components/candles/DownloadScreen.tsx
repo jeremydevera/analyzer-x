@@ -13,30 +13,10 @@ import { api, JobStatus } from "@/lib/api";
 import Button from "@/components/ui/button/Button";
 import Badge from "@/components/ui/badge/Badge";
 import CoinPicker from "@/components/backtest/CoinPicker";
+import JobProgress from "@/components/jobs/JobProgress";
 import StoragePanel from "@/components/backtest/StoragePanel";
 
 const TFS = ["15m", "30m", "1h", "4h", "1d"];
-
-function Progress({ s }: { s: JobStatus | null }) {
-  if (!s || (!s.running && !s.finished)) return null;
-  const pct = s.total ? Math.min(100, (100 * (s.done ?? 0)) / s.total) : 0;
-  return (
-    <div className="mt-3">
-      <div className="mb-1 flex items-center justify-between text-theme-xs text-gray-500 dark:text-gray-400">
-        <span>{s.running ? (s.now ?? "running…") : s.error ? `failed: ${s.error}` : (s.note || "finished")}</span>
-        <span>
-          {s.done ?? 0}/{s.total ?? 0}
-          {s.bars_stored != null && ` · ${s.bars_stored.toLocaleString()} bars stored`}
-          {s.errors != null && s.errors > 0 && ` · ${s.errors} error(s)`}
-        </span>
-      </div>
-      <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-800">
-        <div className={`h-2 rounded-full ${s.error ? "bg-error-500" : s.running ? "bg-brand-500" : "bg-success-500"}`}
-          style={{ width: `${s.running ? Math.max(pct, 3) : 100}%` }} />
-      </div>
-    </div>
-  );
-}
 
 export default function DownloadScreen() {
   const [coins, setCoins] = useState<string[]>([]);
@@ -136,7 +116,7 @@ export default function DownloadScreen() {
               : "all up to date"}
           </p>
         )}
-        <Progress s={dl} />
+        <JobProgress s={dl} />
       </div>
       <StoragePanel />
     </div>

@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, API_BASE, CloudStatus, GridPlan, JobStatus } from "@/lib/api";
 import Button from "@/components/ui/button/Button";
 import Badge from "@/components/ui/badge/Badge";
+import JobProgress from "@/components/jobs/JobProgress";
 import CoinPicker from "./CoinPicker";
 
 const TFS = ["15m", "30m", "1h", "4h", "1d"];
@@ -22,41 +23,6 @@ const inputCls =
   "h-10 w-full rounded-lg border border-gray-300 bg-transparent px-3 " +
   "text-theme-sm text-gray-700 focus:outline-hidden focus:ring-2 " +
   "focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300";
-
-function Progress({ s }: { s: JobStatus | null }) {
-  if (!s || (!s.running && !s.finished)) return null;
-  const pct = s.total ? Math.min(100, (100 * (s.done ?? 0)) / s.total) : 0;
-  return (
-    <div className="mt-3">
-      <div className="mb-1 flex items-center justify-between text-theme-xs text-gray-500 dark:text-gray-400">
-        <span>
-          {s.running ? (s.now ?? "running…") : s.error ? `failed: ${s.error}` : (s.note || "finished")}
-        </span>
-        <span>
-          {s.done ?? 0}/{s.total ?? 0}
-          {s.bars_stored != null && ` · ${s.bars_stored.toLocaleString()} bars`}
-          {s.rows != null && ` · ${s.rows.toLocaleString()} rows`}
-        </span>
-      </div>
-      <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-800">
-        <div
-          className={`h-2 rounded-full ${s.error ? "bg-error-500" : s.running ? "bg-brand-500" : "bg-success-500"}`}
-          style={{ width: `${s.running ? Math.max(pct, 3) : 100}%` }}
-        />
-      </div>
-      {!s.running && s.report && (
-        <a
-          className="mt-2 inline-block text-theme-sm font-medium text-brand-600 underline dark:text-brand-400"
-          href={`${API_BASE}/api/reports/file/${s.report}`}
-          target="_blank"
-          rel="noopener"
-        >
-          OPEN THE REPORT ↗
-        </a>
-      )}
-    </div>
-  );
-}
 
 export default function JobsPanel() {
   const [coins, setCoins] = useState<string[]>([]);
@@ -220,8 +186,8 @@ export default function JobsPanel() {
             {bt?.running && <Badge size="sm" color="info">full grid running</Badge>}
             {upd?.running && <Badge size="sm" color="info">update running</Badge>}
           </div>
-          <Progress s={bt} />
-          <Progress s={upd} />
+          <JobProgress s={bt} label="full grid" />
+          <JobProgress s={upd} label="update" />
         </div>
       </div>
 

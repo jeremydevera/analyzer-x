@@ -113,6 +113,9 @@ CHECKS = {
     "streak per coin AND book": ["streak"],
     "live-lock: one coin, one timeframe, real money": ["live_locked", "timeframe_locks"],
     "a clashing live save is REFUSED": ["cannot go live"],
+    "a finished job's bar clears itself": ["FRESH_SECONDS", "clears itself"],
+    "a stopped job is not painted as success": ["bg-warning-400"],
+    "one shared progress component": ["JobProgress"],
   },
   "Global": {
     "night mode": ["ThemeToggleButton"],

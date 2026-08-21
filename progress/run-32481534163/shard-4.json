@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 18, "total": 29, "rows": 65096, "note": "NOT 15m: rule 51/75 (orb)", "pct": 62.1, "updated": "2026-08-21T13:56:44Z"}
+{"shard": 4, "stage": "testing", "done": 18, "total": 29, "rows": 65222, "note": "NOT 30m: 19,999 bars, testing 75 rules", "pct": 62.1, "updated": "2026-08-21T13:57:30Z"}

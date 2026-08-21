@@ -5,7 +5,7 @@
  * the job's progress file on disk, not in this component.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, API_BASE, JobStatus } from "@/lib/api";
+import { api, API_BASE, CloudStatus, GridPlan, JobStatus } from "@/lib/api";
 import Button from "@/components/ui/button/Button";
 import Badge from "@/components/ui/badge/Badge";
 
@@ -60,12 +60,20 @@ export default function JobsPanel() {
   const [win, setWin] = useState("Previous 1 year");
   const [dl, setDl] = useState<JobStatus | null>(null);
   const [bt, setBt] = useState<JobStatus | null>(null);
+  const [upd, setUpd] = useState<JobStatus | null>(null);
+  const [base, setBase] = useState(5);
+  const [plan, setPlan] = useState<GridPlan | null>(null);
+  const [deployed, setDeployed] = useState<{ coin: string; tf: string; key: string }[]>([]);
+  const [where, setWhere] = useState<"mac" | "github">("mac");
+  const [cloud, setCloud] = useState<CloudStatus | null>(null);
   const [err, setErr] = useState("");
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const poll = useCallback(() => {
     api.jobStatus("download").then(setDl).catch(() => {});
     api.jobStatus("backtest").then(setBt).catch(() => {});
+    api.jobStatus("btupdate").then(setUpd).catch(() => {});
+    api.cloudStatus().then(setCloud).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -77,14 +85,29 @@ export default function JobsPanel() {
   const coins = coinsText.split(/[\s,]+/).map((c) => c.trim().toUpperCase())
     .filter(Boolean).map((c) => (c.endsWith("_USDT") ? c : `${c}_USDT`));
 
-  const start = async (kind: "download" | "backtest") => {
+  useEffect(() => {
+    if (!coins.length || !tfs.length) { setPlan(null); setDeployed([]); return; }
+    api.plan(coins, tfs).then(setPlan).catch(() => setPlan(null));
+    api.deployedRows(coins, tfs).then((d) => setDeployed(d.rows)).catch(() => setDeployed([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coinsText, tfs.join(",")]);
+
+  const startCloud = async () => {
+    setErr("");
+    try {
+      await api.cloudDispatch({ shards: 20, coins: coins.length, timeframes: tfs.join(",") });
+      api.cloudStatus().then(setCloud).catch(() => {});
+    } catch (e) { setErr(String(e)); }
+  };
+
+  const start = async (kind: "download" | "backtest" | "btupdate") => {
     setErr("");
     try {
       if (kind === "download") await api.jobStart("download", { coins, tfs });
       else
-        await api.jobStart("backtest", {
-          coins, tfs, days: WINDOWS[win], base: 5.0,
-          label: "react", deployed: [],
+        await api.jobStart(kind, {
+          coins, tfs, days: WINDOWS[win], base,
+          label: "react", deployed,
         });
       poll();
     } catch (e) {
@@ -128,7 +151,46 @@ export default function JobsPanel() {
             {Object.keys(WINDOWS).map((w) => <option key={w}>{w}</option>)}
           </select>
         </div>
+        <div>
+          <label className="mb-1 block text-theme-xs text-gray-500 dark:text-gray-400">
+            Base margin $ — every dollar figure is measured at this stake
+          </label>
+          <input type="number" min={1} step={1} className={inputCls} value={base}
+            onChange={(e) => setBase(Number(e.target.value) || 1)} />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="mb-1 block text-theme-xs text-gray-500 dark:text-gray-400">Run where</label>
+          <div className="flex gap-2 pt-1.5">
+            {([["mac", "this Mac"], ["github", "GitHub Actions"]] as const).map(([k, lab]) => (
+              <button key={k} onClick={() => setWhere(k)}
+                className={`rounded-full px-3 py-1 text-theme-xs font-medium ${where === k
+                  ? "bg-brand-500 text-white" : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"}`}>
+                {lab}
+              </button>
+            ))}
+            {where === "github" && (
+              <span className="self-center text-theme-xs text-gray-500 dark:text-gray-400">
+                {cloud?.available
+                  ? "their machines run the same grid; rows come back in an artifact you merge into this Mac"
+                  : `unavailable — ${cloud?.why ?? "checking…"}`}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
+
+      {plan && (
+        <p className="mt-3 text-theme-xs text-gray-500 dark:text-gray-400">
+          {plan.signals} signals × {plan.barrier_pairs} barrier pairs × {plan.sizings} sizings ×{" "}
+          {plan.tfs} timeframe(s) × {plan.coins} coin(s) ={" "}
+          <b>~{plan.combinations.toLocaleString()} combinations</b>, about {plan.eta_minutes} min with warm
+          candles (up to 3× on the first run of the day). {plan.note}.
+          {deployed.length > 0 && (
+            <> <b>{deployed.length} live row(s)</b> will be injected and marked DEPLOYED:{" "}
+              {deployed.map((d) => `${d.coin} ${d.tf} ${d.key}`).join(", ")}.</>
+          )}
+        </p>
+      )}
       {err && <p className="mt-2 text-theme-sm text-error-500">{err}</p>}
 
       <div className="mt-4 grid gap-6 lg:grid-cols-2">
@@ -148,21 +210,88 @@ export default function JobsPanel() {
           <Progress s={dl} />
         </div>
         <div>
-          <div className="flex items-center gap-3">
-            <Button size="sm" onClick={() => start("backtest")}
-              disabled={!coins.length || !tfs.length || !!bt?.running}>
-              BACKTEST
-            </Button>
-            {bt?.running && (
-              <Button size="sm" variant="outline" onClick={() => api.jobStop("backtest").then(poll)}>
-                STOP
+          <div className="flex flex-wrap items-center gap-3">
+            {where === "github" ? (
+              <Button size="sm" onClick={startCloud}
+                disabled={!coins.length || !tfs.length || !cloud?.available}>
+                RUN ON GITHUB
               </Button>
+            ) : (
+              <>
+                <Button size="sm" onClick={() => start("backtest")}
+                  disabled={!coins.length || !tfs.length || !!bt?.running}>
+                  BACKTEST
+                </Button>
+                <span title="CONTINUE the stored backtests over new candles only — never from scratch.">
+                  <Button size="sm" variant="outline" onClick={() => start("btupdate")}
+                    disabled={!coins.length || !tfs.length || !!upd?.running}>
+                    UPDATE BACKTEST
+                  </Button>
+                </span>
+              </>
             )}
-            {bt?.running && <Badge size="sm" color="info">running</Badge>}
+            {bt?.running && (
+              <Button size="sm" variant="outline" onClick={() => api.jobStop("backtest").then(poll)}>STOP</Button>
+            )}
+            {upd?.running && (
+              <Button size="sm" variant="outline" onClick={() => api.jobStop("btupdate").then(poll)}>STOP UPDATE</Button>
+            )}
+            {bt?.running && <Badge size="sm" color="info">full grid running</Badge>}
+            {upd?.running && <Badge size="sm" color="info">update running</Badge>}
           </div>
           <Progress s={bt} />
+          <Progress s={upd} />
         </div>
       </div>
+
+      {where === "github" && cloud?.run?.id && (
+        <div className="mt-4 rounded-xl border border-gray-200 p-3 dark:border-white/[0.08]">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-theme-sm font-medium text-gray-800 dark:text-white/90">
+              GitHub run #{cloud.run.id}
+            </span>
+            <Badge size="sm" color={cloud.conclusion ? "success" : "info"}>
+              {cloud.conclusion ?? "running"}
+            </Badge>
+            <span className="text-theme-xs text-gray-500 dark:text-gray-400">
+              {cloud.shards.length} machine(s) reporting
+            </span>
+            <div className="ml-auto flex gap-2">
+              {!cloud.conclusion && (
+                <Button size="sm" variant="outline"
+                  onClick={() => api.cloudCancel(cloud.run!.id!).then(() => api.cloudStatus().then(setCloud))}>
+                  CANCEL RUN
+                </Button>
+              )}
+              {cloud.conclusion === "success" && (
+                <Button size="sm"
+                  onClick={() => api.cloudMerge(cloud.run!.id!).then((r) => setErr(`merged ${r.fetched} rows into this Mac`))}>
+                  MERGE INTO THIS MAC
+                </Button>
+              )}
+              <Button size="sm" variant="outline"
+                onClick={() => api.cloudForget().then(() => setCloud({ ...cloud, run: null, shards: [] }))}>
+                DISMISS
+              </Button>
+            </div>
+          </div>
+          <div className="mt-2 grid gap-1 sm:grid-cols-2 lg:grid-cols-4">
+            {cloud.shards.map((sh) => (
+              <div key={sh.shard} className="rounded-lg bg-gray-50 px-2 py-1.5 dark:bg-white/[0.03]">
+                <div className="flex justify-between text-theme-xs text-gray-600 dark:text-gray-300">
+                  <span>machine {sh.shard}</span><span>{sh.pct ?? 0}%</span>
+                </div>
+                <div className="mt-1 h-1.5 rounded-full bg-gray-200 dark:bg-gray-800">
+                  <div className="h-1.5 rounded-full bg-brand-500" style={{ width: `${sh.pct ?? 0}%` }} />
+                </div>
+                <p className="mt-0.5 truncate text-theme-xs text-gray-500 dark:text-gray-400">
+                  {sh.stage ?? "waiting"}{sh.note ? ` · ${sh.note}` : ""}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

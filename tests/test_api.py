@@ -158,3 +158,66 @@ def test_report_file_serves_a_real_report(client, tmp_path, monkeypatch):
         assert got.status_code == 200 and "grid" in got.text
     finally:
         probe.unlink(missing_ok=True)
+
+
+def test_the_plan_counts_combinations_from_the_real_registry(client):
+    """'Say the cost before spending it.' A hardcoded count would drift the
+    moment a signal is added — the registry is the source."""
+    from tradingagents import backtest_report as br
+    got = client.get("/api/backtest/plan?coins=BTC_USDT,ETH_USDT&tfs=1h,4h").json()
+    assert got["signals"] == len(br.SIGNALS)
+    per_tf = ((len(br.SIGNALS) - len(br.THRESH_SIGNALS)) * 110 * 2
+              + len(br.THRESH_SIGNALS) * 3 * 110 * 2)
+    assert got["combinations"] == per_tf * 2 * 2
+    assert got["eta_minutes"] > 0
+
+
+def test_deployed_rows_are_filtered_to_the_selection(client, monkeypatch):
+    import tradingagents.auto_trader as at
+    monkeypatch.setattr(at, "load_settings", lambda: {
+        "strategy_books": {"mom6_1h_gx": ["real"], "mom15_4h_w": ["paper"]},
+        "strategy_coins": {"mom6_1h_gx": ["XAUT_USDT"],
+                           "mom15_4h_w": ["PI_USDT"]},
+        "sizing": "martingale"})
+    got = client.get("/api/backtest/deployed?coins=XAUT_USDT&tfs=1h").json()
+    assert [r["coin"] for r in got["rows"]] == ["XAUT"]
+    r = got["rows"][0]
+    assert r["tf"] == "1h" and r["signal"] == "mom6" and r["key"] == "mom6_1h_gx"
+    # a strategy with no book is not deployed and must not be injected
+    monkeypatch.setattr(at, "load_settings", lambda: {
+        "strategy_books": {"mom6_1h_gx": []},
+        "strategy_coins": {"mom6_1h_gx": ["XAUT_USDT"]}})
+    assert client.get("/api/backtest/deployed").json()["rows"] == []
+
+
+def test_cloud_status_says_why_when_github_is_unusable(client, monkeypatch):
+    from tradingagents import cloud_sweep as cs
+    monkeypatch.setattr(cs, "available", lambda: (False, "gh CLI not signed in"))
+    monkeypatch.setattr(cs, "remembered", lambda: {})
+    got = client.get("/api/cloud/status").json()
+    assert got["available"] is False and "gh CLI" in got["why"]
+    assert got["shards"] == []
+
+
+def test_cloud_dispatch_is_refused_when_unavailable(client, monkeypatch):
+    from tradingagents import cloud_sweep as cs
+    fired = []
+    monkeypatch.setattr(cs, "available", lambda: (False, "no gh"))
+    monkeypatch.setattr(cs, "dispatch", lambda **kw: fired.append(kw) or {})
+    assert client.post("/api/cloud/dispatch", json={}).status_code == 400
+    assert fired == [], "never dispatch when the CLI cannot answer"
+
+
+def test_cloud_status_reports_each_machine_not_just_a_count(client,
+                                                            monkeypatch):
+    from tradingagents import cloud_sweep as cs
+    monkeypatch.setattr(cs, "available", lambda: (True, "ok"))
+    monkeypatch.setattr(cs, "remembered", lambda: {"id": 42})
+    monkeypatch.setattr(cs, "status", lambda rid, slug=None: {
+        "conclusion": None, "shards": 20, "done": 3})
+    monkeypatch.setattr(cs, "live_progress", lambda rid, slug=None: [
+        {"shard": 1, "stage": "backtesting", "pct": 40, "note": "BTC 15m"},
+        {"shard": 2, "stage": "downloading", "pct": 10, "note": "ETH 30m"}])
+    got = client.get("/api/cloud/status").json()
+    assert len(got["shards"]) == 2
+    assert got["shards"][0]["stage"] == "backtesting"

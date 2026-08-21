@@ -614,6 +614,63 @@ def crypto_upcoming() -> dict:
     } for r in rows]}
 
 
+# --------------------------------------------------------------- grid math
+@app.get("/api/backtest/plan")
+def backtest_plan(coins: str = "", tfs: str = "") -> dict:
+    """Say the cost BEFORE spending it: how many combinations this selection
+    is, and roughly how long, from the real signal registry."""
+    from tradingagents import backtest_report as br
+
+    cl = [c for c in coins.split(",") if c]
+    tl = [t for t in tfs.split(",") if t]
+    n_sig = len(br.SIGNALS)
+    per_tf = ((n_sig - len(br.THRESH_SIGNALS)) * 110 * 2
+              + len(br.THRESH_SIGNALS) * 3 * 110 * 2)
+    combos = per_tf * max(len(tl), 1) * max(len(cl), 1)
+    # measured 2026-08-20: ~92s per coin for four timeframes, cache warm
+    eta_s = 92 * max(len(cl), 1) * max(len(tl), 1) / 4
+    return {"signals": n_sig, "barrier_pairs": 110, "sizings": 2,
+            "coins": len(cl), "tfs": len(tl), "combinations": combos,
+            "eta_minutes": round(eta_s / 60, 1),
+            "note": "all three costs charged; liquidation modelled; every "
+                    "live strategy on these coins/timeframes is marked "
+                    "DEPLOYED"}
+
+
+@app.get("/api/backtest/deployed")
+def backtest_deployed(coins: str = "", tfs: str = "") -> dict:
+    """The live rows to inject into a grid, so the operator's own config is
+    always on the page (rule 21) even at barriers no round-number grid holds."""
+    import tradingagents.auto_trader as at
+    from tradingagents import strategy_report as sr
+
+    settings = at.load_settings()
+    books = settings.get("strategy_books") or {}
+    scoins = settings.get("strategy_coins") or {}
+    sizing = at.sizing_for(settings)
+    want_c = {c for c in coins.split(",") if c}
+    want_t = {t for t in tfs.split(",") if t}
+    out = []
+    for key, bk in books.items():
+        if not bk:
+            continue
+        spec = at.STRATEGY_SPECS.get(key) or {}
+        tf = sr.TF_NAME.get(spec.get("interval"))
+        if want_t and tf not in want_t:
+            continue
+        signal = key.split("_")[1] if key.startswith("ict_") else key.split("_")[0]
+        for c in scoins.get(key) or []:
+            if want_c and c not in want_c:
+                continue
+            out.append({"coin": c.replace("_USDT", ""), "tf": tf,
+                        "signal": signal,
+                        "th": round(float(spec.get("threshold") or 0) * 100, 3),
+                        "sl": round(float(spec.get("sl", 0)) * 100, 3),
+                        "tp": round(float(spec.get("tp", 0)) * 100, 3),
+                        "sizing": sizing, "key": key})
+    return {"rows": out}
+
+
 # ---------------------------------------------------------------- analysis
 @app.get("/api/analysis/runs")
 def analysis_runs(limit: int = 25) -> dict:
@@ -736,3 +793,74 @@ def credentials_test(body: dict) -> dict:
     cred.load_into_env()
     symbol = str(body.get("symbol") or "BTC_USDT").strip()
     return fx.preflight(symbol)
+
+
+# ------------------------------------------------------------ cloud sweeps
+@app.get("/api/cloud/status")
+def cloud_status() -> dict:
+    """Whether GitHub Actions can be used, and what the remembered run is
+    doing — per machine, not just "20 running", which told the operator
+    nothing (2026-08-20)."""
+    from tradingagents import cloud_sweep as cs
+
+    ok, why = cs.available()
+    out = {"available": ok, "why": why, "run": None, "shards": []}
+    run = cs.remembered()
+    if run and run.get("id"):
+        out["run"] = run
+        try:
+            out.update(cs.status(int(run["id"])))
+        except Exception as exc:                               # noqa: BLE001
+            out["why"] = f"{type(exc).__name__}: {exc}"
+        try:
+            out["shards"] = cs.live_progress(int(run["id"]))
+        except Exception:
+            out["shards"] = []
+    return out
+
+
+@app.post("/api/cloud/dispatch")
+def cloud_dispatch(body: dict) -> dict:
+    """Run the same grid on GitHub's machines. Their rows land in an artifact
+    that must be MERGED into this Mac's store — nothing is written remotely."""
+    from tradingagents import cloud_sweep as cs
+
+    ok, why = cs.available()
+    if not ok:
+        raise HTTPException(400, why)
+    run = cs.dispatch(shards=int(body.get("shards") or 20),
+                      coins=int(body.get("coins") or 0),
+                      timeframes=str(body.get("timeframes") or "15m,30m"))
+    cs.remember(run)
+    return run
+
+
+@app.post("/api/cloud/cancel")
+def cloud_cancel(body: dict) -> dict:
+    from tradingagents import cloud_sweep as cs
+
+    run_id = int(body.get("run_id") or 0)
+    if not run_id:
+        raise HTTPException(400, "a run id is required")
+    cs.cancel(run_id)
+    return {"cancelled": run_id}
+
+
+@app.post("/api/cloud/merge")
+def cloud_merge(body: dict) -> dict:
+    """Pull a finished run's rows into THIS Mac's store."""
+    from tradingagents import cloud_sweep as cs
+
+    run_id = int(body.get("run_id") or 0)
+    if not run_id:
+        raise HTTPException(400, "a run id is required")
+    rows = cs.fetch(run_id)
+    return {"fetched": len(rows), **cs.merge_into_store(rows)}
+
+
+@app.post("/api/cloud/forget")
+def cloud_forget() -> dict:
+    from tradingagents import cloud_sweep as cs
+
+    cs.forget()
+    return {"forgotten": True}

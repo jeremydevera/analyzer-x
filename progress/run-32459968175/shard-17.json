@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 1, "total": 24, "rows": 306, "note": "ACH 30m: 19,999 bars, testing 75 rules", "pct": 4.2, "updated": "2026-08-21T07:48:09Z"}
+{"shard": 17, "stage": "testing", "done": 1, "total": 24, "rows": 538, "note": "ACH 30m: rule 21/75 (cci20)", "pct": 4.2, "updated": "2026-08-21T07:48:56Z"}

@@ -969,3 +969,70 @@ def crypto_candles(symbol: str, interval: str = "Min60",
             for d, o, h, low, c, v in zip(df["Date"], df["Open"], df["High"],
                                           df["Low"], df["Close"], df["Volume"])]
     return {"rows": rows, "symbol": symbol, "interval": interval}
+
+
+@app.get("/api/trade/history")
+def trade_history(dry: bool = False, per_page: int = 5, page: int = 1) -> dict:
+    """Every CLOSED trade on one book, newest first, with its running total —
+    plus a per-month summary the page cannot give.
+
+    Paginated because a wall of 200 rows hides a trade as effectively as a net
+    figure does. The running total is computed oldest-first over the WHOLE
+    book, so page 3's 'running $' is the real running total, not the page's.
+    """
+    import datetime as dt
+
+    import tradingagents.auto_trader as at
+    from tradingagents import positions_view as pv
+
+    ex = [e for e in at.ledger_tail(100000)
+          if e.get("action") == "exit" and bool(e.get("dry_run")) is dry]
+    ex.sort(key=lambda x: float(x.get("ts") or 0))
+    run, rows, months = 0.0, [], {}
+    for e in ex:
+        p = round(float(e.get("pnl_est") or 0), 2)
+        run = round(run + p, 2)
+        rows.append({
+            "ts": float(e.get("ts") or 0),
+            "when": pv.fmt_when(float(e.get("ts") or 0)),
+            "coin": str(e.get("symbol", "?")).replace("_USDT", ""),
+            "side": e.get("side") or "—",
+            "strategy": e.get("strategy") or "—",
+            "why": e.get("why") or "—",
+            "profit": p, "running": run})
+        key = dt.datetime.fromtimestamp(float(e.get("ts") or 0)).strftime("%Y-%m")
+        m = months.setdefault(key, {"key": key, "trades": 0, "wins": 0,
+                                    "losses": 0, "profit": 0.0})
+        m["trades"] += 1
+        m["wins" if p > 0 else "losses"] += 1
+        m["profit"] = round(m["profit"] + p, 2)
+    rows.reverse()                                   # newest first
+    per = max(1, min(per_page, 100))
+    pages = max(1, -(-len(rows) // per))
+    page = max(1, min(page, pages))
+    mrows = sorted(months.values(), key=lambda m: m["key"], reverse=True)
+    for m in mrows:
+        m["win_rate"] = round(100 * m["wins"] / m["trades"], 1) if m["trades"] else 0.0
+        m["label"] = dt.datetime.strptime(m["key"], "%Y-%m").strftime("%b %Y")
+    return {
+        "rows": rows[(page - 1) * per:page * per],
+        "total": len(rows), "page": page, "pages": pages, "per_page": per,
+        "months": mrows,
+        "totals": {"trades": sum(m["trades"] for m in mrows),
+                   "wins": sum(m["wins"] for m in mrows),
+                   "losses": sum(m["losses"] for m in mrows),
+                   "profit": round(sum(m["profit"] for m in mrows), 2)},
+    }
+
+
+@app.get("/api/contracts")
+def contracts() -> dict:
+    """Every tradeable MEXC USDT perpetual, for the coin pickers."""
+    from tradingagents.dataflows import mexc_futures as fx
+
+    try:
+        rows = fx.list_contracts()
+    except Exception as exc:                                   # noqa: BLE001
+        return {"rows": [], "why": f"{type(exc).__name__}: {exc}"}
+    return {"rows": sorted({str(c.get("symbol")) for c in rows if c.get("symbol")}),
+            "why": ""}

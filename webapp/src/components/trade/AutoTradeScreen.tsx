@@ -9,6 +9,7 @@ import StrategiesGrid from "./StrategiesGrid";
 import PnlPanel from "./PnlPanel";
 import FeedPanel from "./FeedPanel";
 import CredentialsPanel from "./CredentialsPanel";
+import TradeHistory from "./TradeHistory";
 
 export default function AutoTradeScreen() {
   const [tick, setTick] = useState(0);
@@ -19,6 +20,7 @@ export default function AutoTradeScreen() {
       <PositionsPanel onChanged={bump} />
       <StrategiesGrid />
       <CredentialsPanel />
+      <TradeHistory />
       <PnlPanel />
       <FeedPanel />
     </div>

@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, API_BASE, CloudStatus, GridPlan, JobStatus } from "@/lib/api";
 import Button from "@/components/ui/button/Button";
 import Badge from "@/components/ui/badge/Badge";
+import CoinPicker from "./CoinPicker";
 
 const TFS = ["15m", "30m", "1h", "4h", "1d"];
 const WINDOWS: Record<string, number> = {
@@ -55,7 +56,7 @@ function Progress({ s }: { s: JobStatus | null }) {
 }
 
 export default function JobsPanel() {
-  const [coinsText, setCoinsText] = useState("PI_USDT");
+  const [coins, setCoins] = useState<string[]>([]);
   const [tfs, setTfs] = useState<string[]>(["15m", "30m", "1h", "4h"]);
   const [win, setWin] = useState("Previous 1 year");
   const [dl, setDl] = useState<JobStatus | null>(null);
@@ -82,15 +83,12 @@ export default function JobsPanel() {
     return () => { if (timer.current) clearInterval(timer.current); };
   }, [poll]);
 
-  const coins = coinsText.split(/[\s,]+/).map((c) => c.trim().toUpperCase())
-    .filter(Boolean).map((c) => (c.endsWith("_USDT") ? c : `${c}_USDT`));
-
   useEffect(() => {
     if (!coins.length || !tfs.length) { setPlan(null); setDeployed([]); return; }
     api.plan(coins, tfs).then(setPlan).catch(() => setPlan(null));
     api.deployedRows(coins, tfs).then((d) => setDeployed(d.rows)).catch(() => setDeployed([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [coinsText, tfs.join(",")]);
+  }, [coins.join(","), tfs.join(",")]);
 
   const startCloud = async () => {
     setErr("");
@@ -126,8 +124,8 @@ export default function JobsPanel() {
       </p>
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="sm:col-span-1">
-          <label className="mb-1 block text-theme-xs text-gray-500 dark:text-gray-400">Coins (comma or space separated)</label>
-          <input className={inputCls} value={coinsText} onChange={(e) => setCoinsText(e.target.value)} />
+          <label className="mb-1 block text-theme-xs text-gray-500 dark:text-gray-400">Coins</label>
+          <CoinPicker value={coins} onChange={setCoins} />
         </div>
         <div>
           <label className="mb-1 block text-theme-xs text-gray-500 dark:text-gray-400">Timeframes</label>

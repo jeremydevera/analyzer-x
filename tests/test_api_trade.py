@@ -314,3 +314,79 @@ def test_the_probe_reports_whether_a_stop_can_actually_rest(client,
     got = client.post("/api/trade/credentials/test",
                       json={"symbol": "APEX_USDT"}).json()
     assert got["can_rest_stop"] is False and got["symbol"] == "APEX_USDT"
+
+
+# --- trade history --------------------------------------------------------
+# "the history is still not here" — the Auto Trade screen had every CLOSED
+# trade, on LIVE/DEMO tabs, with a per-month summary and 5-row pages.
+
+def test_history_separates_the_books_and_runs_the_total_over_the_whole_book(
+        client, monkeypatch):
+    led = [
+        {"action": "exit", "dry_run": False, "ts": 1_787_000_000,
+         "symbol": "APEX_USDT", "side": "SHORT", "strategy": "sweep30_1h_w",
+         "why": "TP", "pnl_est": 2.0},
+        {"action": "exit", "dry_run": False, "ts": 1_787_100_000,
+         "symbol": "PI_USDT", "side": "LONG", "strategy": "trend50_30m_pi",
+         "why": "SL", "pnl_est": -0.5},
+        {"action": "exit", "dry_run": True, "ts": 1_787_200_000,
+         "symbol": "XAUT_USDT", "side": "LONG", "strategy": "mom6_1h_gx",
+         "why": "TP", "pnl_est": 9.0},
+        {"action": "enter", "dry_run": False, "ts": 1_787_300_000},
+    ]
+    monkeypatch.setattr(at, "ledger_tail", lambda n: led)
+    live = client.get("/api/trade/history?dry=false").json()
+    assert live["total"] == 2, "entries and the paper book are excluded"
+    assert [r["coin"] for r in live["rows"]] == ["PI", "APEX"], "newest first"
+    assert live["rows"][0]["running"] == 1.5, "running total is book-wide"
+    assert live["rows"][1]["running"] == 2.0
+    paper = client.get("/api/trade/history?dry=true").json()
+    assert [r["coin"] for r in paper["rows"]] == ["XAUT"]
+
+
+def test_history_pages_are_five_deep_and_clamped(client, monkeypatch):
+    led = [{"action": "exit", "dry_run": False, "ts": 1_787_000_000 + i,
+            "symbol": "A_USDT", "pnl_est": 1.0} for i in range(12)]
+    monkeypatch.setattr(at, "ledger_tail", lambda n: led)
+    p1 = client.get("/api/trade/history?per_page=5&page=1").json()
+    assert len(p1["rows"]) == 5 and p1["pages"] == 3
+    p9 = client.get("/api/trade/history?per_page=5&page=9").json()
+    assert p9["page"] == 3, "a page past the end clamps, never empties"
+    assert len(p9["rows"]) == 2
+
+
+def test_history_carries_a_per_month_summary_that_sums_to_its_own_total(
+        client, monkeypatch):
+    led = [{"action": "exit", "dry_run": False, "ts": 1_785_000_000,
+            "symbol": "A_USDT", "pnl_est": 3.0},
+           {"action": "exit", "dry_run": False, "ts": 1_787_000_000,
+            "symbol": "A_USDT", "pnl_est": -1.0},
+           {"action": "exit", "dry_run": False, "ts": 1_787_100_000,
+            "symbol": "A_USDT", "pnl_est": 2.0}]
+    monkeypatch.setattr(at, "ledger_tail", lambda n: led)
+    got = client.get("/api/trade/history").json()
+    assert len(got["months"]) == 2
+    assert got["months"][0]["label"] > "", "months are printed as 'Aug 2026'"
+    assert sum(m["profit"] for m in got["months"]) == got["totals"]["profit"]
+    assert got["totals"]["trades"] == 3
+    latest = got["months"][0]
+    assert latest["wins"] + latest["losses"] == latest["trades"]
+    assert latest["win_rate"] == round(100 * latest["wins"] / latest["trades"], 1)
+
+
+def test_the_contract_list_is_available_for_the_pickers(client, monkeypatch):
+    from tradingagents.dataflows import mexc_futures as fx
+    monkeypatch.setattr(fx, "list_contracts", lambda quote="USDT": [
+        {"symbol": "BTC_USDT"}, {"symbol": "APEX_USDT"}, {"symbol": "BTC_USDT"}])
+    got = client.get("/api/contracts").json()
+    assert got["rows"] == ["APEX_USDT", "BTC_USDT"], "sorted and de-duped"
+
+
+def test_a_contract_list_failure_says_why_instead_of_being_empty(client,
+                                                                 monkeypatch):
+    from tradingagents.dataflows import mexc_futures as fx
+    def boom(quote="USDT"):
+        raise RuntimeError("host blocked")
+    monkeypatch.setattr(fx, "list_contracts", boom)
+    got = client.get("/api/contracts").json()
+    assert got["rows"] == [] and "host blocked" in got["why"]

@@ -45,7 +45,7 @@ CHECKS = {
     "bracket": ['"bracket"'],
   },
   "Backtest": {
-    "coins picker": ["Coins (comma or space separated)"],
+    "coins picker": ["<CoinPicker"],
     "timeframes": ["TFS ="],
     "dates / window": ["Previous 1 year"],
     "base margin $": ["Base margin $"],
@@ -91,6 +91,19 @@ CHECKS = {
     "base url": ["openai-compatible only"], "key env": ["KEY_ENV_VAR"],
     "remove": ["remove"], "test one": [">test<"], "test all": ["TEST ALL"],
     "health %": ["% {h.status}", "h.pct"],
+  },
+  "Behaviour (not just presence)": {
+    "REAL and PAPER positions in SEPARATE boxes":
+      ["REAL — MONEY AT RISK", "PAPER — DEMO, NOT REAL MONEY"],
+    "trade history: LIVE/DEMO tabs": ["LIVE — real money", "DEMO — simulated"],
+    "trade history: per-month summary": ["Profit per month"],
+    "trade history: paginated with numbered pages": ["pageNumbers"],
+    "trade history: running total is book-wide": ['"running $"'],
+    "coins chosen from a LIST, not typed": ["CoinPicker", "search contracts"],
+    "selected-coin count shown": ["coins selected"],
+    "strategies default to DEPLOYED only": ["Strategies you have deployed"],
+    "backtest states its cost first": ["combinations"],
+    "PANIC needs arming then confirming": ["arm PANIC", "close everything at market"],
   },
   "Global": {
     "night mode": ["ThemeToggleButton"],

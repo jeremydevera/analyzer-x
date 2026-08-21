@@ -116,6 +116,7 @@ CHECKS = {
     "a finished job's bar clears itself": ["FRESH_SECONDS", "clears itself"],
     "a stopped job is not painted as success": ["bg-warning-400"],
     "one shared progress component": ["JobProgress"],
+    "tables carry explicit column widths": ['["books", "12%"]', '["opened", "10%"]'],
   },
   "Global": {
     "night mode": ["ThemeToggleButton"],

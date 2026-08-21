@@ -1,5 +1,6 @@
 "use client";
 import { ThemeToggleButton } from "@/components/common/ThemeToggleButton";
+import NotificationDropdown from "@/components/header/NotificationDropdown";
 import { useSidebar } from "@/context/SidebarContext";
 import ApiStatus from "@/components/header/ApiStatus";
 import Link from "next/link";
@@ -120,7 +121,9 @@ const AppHeader: React.FC = () => {
             {/* <!-- Dark Mode Toggler --> */}
             <ThemeToggleButton />
             {/* <!-- Dark Mode Toggler --> */}
-
+            {/* the bell sits beside it, as asked: downloads, backtests and
+                every position opening or closing */}
+            <NotificationDropdown />
           </div>
           <span className="text-theme-sm font-medium text-gray-700 dark:text-gray-300">
             this Mac · pure local

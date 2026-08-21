@@ -172,9 +172,17 @@ export default function StrategiesGrid() {
                   2026-08-21: notional is base x leverage, a number they already
                   know, and "open now" repeats what the positions tables above
                   this one already show. */}
-              {["strategy", "tf", "TP/SL %", "books", "coins", "margin $", "streak", `ladder $ · ${flat ? "flat" : "DEEP"}`, "next $",
-                "loss cap $", "today $", "PROFIT $", "W / L", "backtest"].map((h) => (
-                <TableCell key={h} isHeader className="px-2 py-1.5 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400">{h}</TableCell>
+              {/* explicit widths: a table-fixed layout splits columns EVENLY
+                  without them, which left "books" too narrow for its two
+                  switches and they spilled over the coin beside them. */}
+              {([["strategy", "13%"], ["tf", "4%"], ["TP/SL %", "7%"],
+                 ["books", "12%"], ["coins", "8%"], ["margin $", "6%"],
+                 ["streak", "5%"], [`ladder $ · ${flat ? "flat" : "DEEP"}`, "10%"],
+                 ["next $", "5%"], ["loss cap $", "6%"], ["today $", "6%"],
+                 ["PROFIT $", "6%"], ["W / L", "5%"], ["backtest", "6%"]] as [string, string][])
+                .map(([h, w]) => (
+                <TableCell key={h} isHeader style={{ width: w }}
+                  className="px-2 py-1.5 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400">{h}</TableCell>
               ))}
             </TableRow>
           </TableHeader>
@@ -205,7 +213,7 @@ export default function StrategiesGrid() {
                 <TableCell className="px-2 py-1.5">
                   {/* Side by side, not stacked: two stacked pills made every
                       row twice as tall as it needed to be. */}
-                  <div className="flex flex-row items-center gap-1">
+                  <div className="flex min-w-0 flex-row flex-wrap items-center gap-1">
                     {(["real", "paper"] as const).map((b) => {
                       // a coin already traded LIVE on another timeframe cannot
                       // take a second live strategy: MEXC nets them into one

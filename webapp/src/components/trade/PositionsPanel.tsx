@@ -87,7 +87,14 @@ export default function PositionsPanel({ onChanged }: { onChanged?: () => void }
       <TableCell className="px-2 py-1.5 text-theme-xs text-error-500">{r.losses}</TableCell>
       <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.trades}</TableCell>
       <TableCell className={`px-2 py-1.5 text-theme-xs font-medium ${r.side === "LONG" ? "text-success-600" : "text-error-500"}`}>{r.side}</TableCell>
-      <TableCell className="whitespace-nowrap px-3 py-2 text-theme-xs text-gray-500 dark:text-gray-400">{r.opened}</TableCell>
+      <TableCell className="px-2 py-1.5 text-[10px] leading-tight text-gray-500 dark:text-gray-400">
+        {/* two lines: nowrap forced this column wider than its share and the
+            stamp ran under "held" */}
+        {(() => {
+          const m = r.opened.match(/^(.*\d{4})\s+(.*)$/);   // "Aug 20, 2026" + "11:30PM"
+          return m ? <><span className="block">{m[1]}</span><span className="block">{m[2]}</span></> : r.opened;
+        })()}
+      </TableCell>
       <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.held}</TableCell>
       <TableCell className="px-2 py-1.5 text-theme-xs text-gray-700 dark:text-gray-300">{r.entry ?? "—"}</TableCell>
       <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.margin ?? "—"}</TableCell>

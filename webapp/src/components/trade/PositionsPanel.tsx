@@ -15,19 +15,23 @@ import { fmtMoney, PositionRow, PositionsPayload, tradeApi } from "@/lib/api";
 import Badge from "@/components/ui/badge/Badge";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 
-const HEADS = ["contract", "unreal $", "to TP", "TP % ($)", "SL % ($)", "W", "L",
-  "trd", "side", "opened", "held", "entry", "margin", "bracket"];
+const HEADS: [string, string][] = [
+  ["contract", "13%"], ["unreal $", "6%"], ["to TP", "8%"], ["TP % ($)", "9%"],
+  ["SL % ($)", "9%"], ["W", "3%"], ["L", "3%"], ["trd", "4%"], ["side", "6%"],
+  ["opened", "10%"], ["held", "6%"], ["entry", "8%"], ["margin", "6%"],
+  ["bracket", "9%"],
+];
 
 function Progress({ r }: { r: PositionRow }) {
   if (r.progress_pct == null) return <span className="text-gray-400">—</span>;
   const toTp = r.progress_to === "TP";
   return (
-    <div className="flex items-center gap-2">
-      <span className="h-1.5 w-16 overflow-hidden rounded-full bg-gray-100 dark:bg-white/[0.08]">
+    <div className="flex min-w-0 flex-wrap items-center gap-1">
+      <span className="h-1.5 w-6 shrink-0 overflow-hidden rounded-full bg-gray-100 dark:bg-white/[0.08]">
         <span className={`block h-full rounded-full ${toTp ? "bg-success-500" : "bg-error-500"}`}
           style={{ width: `${r.progress_pct}%` }} />
       </span>
-      <span className={`text-theme-xs ${toTp ? "text-success-600" : "text-error-500"}`}>
+      <span className={`text-[10px] leading-tight ${toTp ? "text-success-600" : "text-error-500"}`}>
         {r.progress_pct}% {r.progress_to}
       </span>
     </div>
@@ -36,7 +40,7 @@ function Progress({ r }: { r: PositionRow }) {
 
 const Barrier = ({ v, win }: { v: { pct: number; usd: number } | null; win: boolean }) =>
   v == null ? <span className="text-gray-400">—</span> : (
-    <span className="whitespace-nowrap">
+    <span className="inline-block leading-tight">
       {v.pct.toFixed(2)}{" "}
       <span className={win ? "text-success-600" : "text-error-500"}>({fmtMoney(v.usd)})</span>
     </span>
@@ -69,26 +73,26 @@ export default function PositionsPanel({ onChanged }: { onChanged?: () => void }
 
   const row = (r: PositionRow, book: "REAL" | "paper") => (
     <TableRow key={`${book}-${r.symbol}`}>
-      <TableCell className="px-3 py-2 text-theme-sm">
-        <span className="font-medium text-gray-800 dark:text-white/90">{r.coin}</span>
-        <span className="ml-1.5 text-theme-xs text-gray-400">{r.strategy}</span>
+      <TableCell className="px-2 py-1.5 text-theme-xs">
+        <span className="block font-medium text-gray-800 dark:text-white/90">{r.coin}</span>
+        <span className="block text-[10px] leading-tight text-gray-400">{r.strategy}</span>
       </TableCell>
-      <TableCell className={`px-3 py-2 text-theme-sm font-semibold ${(r.unrealized ?? 0) >= 0 ? "text-success-600" : "text-error-500"}`}>
+      <TableCell className={`px-2 py-1.5 text-theme-xs font-semibold ${(r.unrealized ?? 0) >= 0 ? "text-success-600" : "text-error-500"}`}>
         {r.unrealized == null ? "—" : fmtMoney(r.unrealized)}
       </TableCell>
-      <TableCell className="px-3 py-2"><Progress r={r} /></TableCell>
-      <TableCell className="px-3 py-2 text-theme-xs text-gray-600 dark:text-gray-300"><Barrier v={r.tp_value} win /></TableCell>
-      <TableCell className="px-3 py-2 text-theme-xs text-gray-600 dark:text-gray-300"><Barrier v={r.sl_value} win={false} /></TableCell>
-      <TableCell className="px-3 py-2 text-theme-xs text-success-600">{r.wins}</TableCell>
-      <TableCell className="px-3 py-2 text-theme-xs text-error-500">{r.losses}</TableCell>
-      <TableCell className="px-3 py-2 text-theme-xs text-gray-500 dark:text-gray-400">{r.trades}</TableCell>
-      <TableCell className={`px-3 py-2 text-theme-xs font-medium ${r.side === "LONG" ? "text-success-600" : "text-error-500"}`}>{r.side}</TableCell>
+      <TableCell className="px-2 py-1.5"><Progress r={r} /></TableCell>
+      <TableCell className="px-2 py-1.5 text-theme-xs text-gray-600 dark:text-gray-300"><Barrier v={r.tp_value} win /></TableCell>
+      <TableCell className="px-2 py-1.5 text-theme-xs text-gray-600 dark:text-gray-300"><Barrier v={r.sl_value} win={false} /></TableCell>
+      <TableCell className="px-2 py-1.5 text-theme-xs text-success-600">{r.wins}</TableCell>
+      <TableCell className="px-2 py-1.5 text-theme-xs text-error-500">{r.losses}</TableCell>
+      <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.trades}</TableCell>
+      <TableCell className={`px-2 py-1.5 text-theme-xs font-medium ${r.side === "LONG" ? "text-success-600" : "text-error-500"}`}>{r.side}</TableCell>
       <TableCell className="whitespace-nowrap px-3 py-2 text-theme-xs text-gray-500 dark:text-gray-400">{r.opened}</TableCell>
-      <TableCell className="px-3 py-2 text-theme-xs text-gray-500 dark:text-gray-400">{r.held}</TableCell>
-      <TableCell className="px-3 py-2 text-theme-xs text-gray-700 dark:text-gray-300">{r.entry ?? "—"}</TableCell>
-      <TableCell className="px-3 py-2 text-theme-xs text-gray-500 dark:text-gray-400">{r.margin ?? "—"}</TableCell>
-      <TableCell className="px-3 py-2">
-        <div className="flex items-center gap-2">
+      <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.held}</TableCell>
+      <TableCell className="px-2 py-1.5 text-theme-xs text-gray-700 dark:text-gray-300">{r.entry ?? "—"}</TableCell>
+      <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.margin ?? "—"}</TableCell>
+      <TableCell className="px-2 py-1.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-1">
           {r.bracket
             ? <Badge size="sm" color="error">{r.bracket}</Badge>
             : <span className="text-theme-xs text-gray-400">—</span>}
@@ -115,12 +119,13 @@ export default function PositionsPanel({ onChanged }: { onChanged?: () => void }
         {label}<span className="font-normal">· {rows.length} open</span>
       </div>
       {rows.length ? (
-        <div className="max-w-full overflow-x-auto p-1">
-          <Table>
+        <div className="w-full">
+          <Table fixed>
             <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
               <TableRow>
-                {HEADS.map((h) => (
-                  <TableCell key={h} isHeader className="px-3 py-2 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400">{h}</TableCell>
+                {HEADS.map(([h, w]) => (
+                  <TableCell key={h} isHeader style={{ width: w }}
+                    className="px-2 py-1.5 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400">{h}</TableCell>
                 ))}
               </TableRow>
             </TableHeader>
@@ -139,7 +144,7 @@ export default function PositionsPanel({ onChanged }: { onChanged?: () => void }
   const paper = data?.paper ?? [];
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="px-5 pt-4">
         <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Positions</h3>
         <p className="text-theme-xs text-gray-500 dark:text-gray-400">

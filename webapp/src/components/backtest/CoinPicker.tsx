@@ -45,6 +45,10 @@ export default function CoinPicker({ value, onChange }: {
           placeholder={value.length ? "add another…" : "search contracts…"}
           className="min-w-32 flex-1 bg-transparent text-theme-sm text-gray-700 outline-hidden placeholder:text-gray-400 dark:text-gray-300"
         />
+        <button onClick={() => onChange(all)} disabled={!all.length || value.length === all.length}
+          className="rounded-lg border border-gray-200 px-2 py-0.5 text-theme-xs text-gray-600 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300">
+          select all {all.length ? all.length.toLocaleString() : ""}
+        </button>
         {value.length > 0 && (
           <button onClick={() => onChange([])}
             className="rounded-lg border border-gray-200 px-2 py-0.5 text-theme-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
@@ -69,6 +73,12 @@ export default function CoinPicker({ value, onChange }: {
               <p className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400">
                 {all.length ? `no contract matches “${q}”` : "loading the exchange's contract list…"}
               </p>
+            )}
+            {q.trim() && shown.length > 1 && (
+              <button onClick={() => onChange([...new Set([...value, ...shown])])}
+                className="mb-1 flex w-full items-center justify-between rounded-lg bg-brand-50 px-3 py-1.5 text-left text-theme-xs font-medium text-brand-600 dark:bg-brand-500/10 dark:text-brand-400">
+                select all {shown.length} matching “{q.trim().toUpperCase()}”
+              </button>
             )}
             {shown.map((s) => (
               <button key={s} onClick={() => toggle(s)}

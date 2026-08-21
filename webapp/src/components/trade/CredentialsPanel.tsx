@@ -51,7 +51,7 @@ export default function CredentialsPanel() {
   };
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-white/[0.05] dark:bg-white/[0.03]">
+    <div className="min-w-0 rounded-2xl border border-gray-200 bg-white p-5 dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="flex flex-wrap items-center gap-3">
         <div>
           <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">MEXC keys</h3>

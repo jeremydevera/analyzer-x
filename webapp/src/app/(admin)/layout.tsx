@@ -26,8 +26,10 @@ export default function AdminLayout({
       <AppSidebar />
       <Backdrop />
       {/* Main Content Area */}
+      {/* min-w-0: a flex child defaults to min-width:auto, so a wide table
+          inside it grows the track and the whole page scrolls sideways. */}
       <div
-        className={`flex-1 transition-all  duration-300 ease-in-out ${mainContentMargin}`}
+        className={`min-w-0 flex-1 transition-all duration-300 ease-in-out ${mainContentMargin}`}
       >
         {/* Header */}
         <AppHeader />

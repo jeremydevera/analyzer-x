@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import StoragePanel from "@/components/backtest/StoragePanel";
 import StrategiesPanel from "@/components/backtest/StrategiesPanel";
 import JobsPanel from "@/components/backtest/JobsPanel";
 import HistoryPanel from "@/components/backtest/HistoryPanel";
@@ -15,7 +14,6 @@ export default function BacktestPage() {
     <div className="flex flex-col gap-5">
       <JobsPanel />
       <StrategiesPanel />
-      <StoragePanel />
       <HistoryPanel />
     </div>
   );

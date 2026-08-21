@@ -33,7 +33,7 @@ export default function TradeHistory() {
 
   const t = d?.totals;
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="flex flex-wrap items-center gap-3 px-5 pt-4">
         <div>
           <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Trade history</h3>
@@ -56,50 +56,12 @@ export default function TradeHistory() {
       </div>
       {err && <p className="px-5 pt-2 text-theme-sm text-error-500">{err}</p>}
 
-      {!!d?.months.length && (
-        <div className="max-w-full overflow-x-auto px-3 pt-3">
-          <p className="px-2 pb-1 text-theme-xs uppercase tracking-wide text-gray-400">Profit per month</p>
-          <Table>
-            <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-              <TableRow>
-                {["month", "trades", "W", "L", "win %", "PROFIT $"].map((h) => (
-                  <TableCell key={h} isHeader className="px-3 py-2 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400">{h}</TableCell>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-              {d.months.map((m) => (
-                <TableRow key={m.key}>
-                  <TableCell className="px-3 py-1.5 text-theme-sm text-gray-700 dark:text-gray-300">{m.label}</TableCell>
-                  <TableCell className="px-3 py-1.5 text-theme-sm text-gray-500 dark:text-gray-400">{m.trades}</TableCell>
-                  <TableCell className="px-3 py-1.5 text-theme-sm text-success-600">{m.wins}</TableCell>
-                  <TableCell className="px-3 py-1.5 text-theme-sm text-error-500">{m.losses}</TableCell>
-                  <TableCell className="px-3 py-1.5 text-theme-sm text-gray-500 dark:text-gray-400">{m.win_rate}</TableCell>
-                  <TableCell className={`px-3 py-1.5 text-theme-sm font-medium ${m.profit >= 0 ? "text-success-600" : "text-error-500"}`}>{fmtMoney(m.profit)}</TableCell>
-                </TableRow>
-              ))}
-              {t && (
-                <TableRow className="bg-gray-50 dark:bg-white/[0.03]">
-                  <TableCell className="px-3 py-1.5 text-theme-sm font-semibold text-gray-800 dark:text-white/90">TOTAL</TableCell>
-                  <TableCell className="px-3 py-1.5 text-theme-sm font-semibold text-gray-700 dark:text-gray-300">{t.trades}</TableCell>
-                  <TableCell className="px-3 py-1.5 text-theme-sm font-semibold text-success-600">{t.wins}</TableCell>
-                  <TableCell className="px-3 py-1.5 text-theme-sm font-semibold text-error-500">{t.losses}</TableCell>
-                  <TableCell className="px-3 py-1.5 text-theme-sm text-gray-400">—</TableCell>
-                  <TableCell className={`px-3 py-1.5 text-theme-sm font-semibold ${t.profit >= 0 ? "text-success-600" : "text-error-500"}`}>{fmtMoney(t.profit)}</TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-
-      <p className="px-5 pb-1 pt-4 text-theme-xs uppercase tracking-wide text-gray-400">Every trade</p>
-      <div className="max-w-full overflow-x-auto px-3">
-        <Table>
+      <div className="w-full">
+        <Table fixed>
           <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
             <TableRow>
               {HEADS.map((h) => (
-                <TableCell key={h} isHeader className="px-3 py-2 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400">{h}</TableCell>
+                <TableCell key={h} isHeader className="px-2 py-1.5 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400">{h}</TableCell>
               ))}
             </TableRow>
           </TableHeader>
@@ -107,12 +69,12 @@ export default function TradeHistory() {
             {(d?.rows ?? []).map((r, i) => (
               <TableRow key={`${r.ts}-${i}`}>
                 <TableCell className="whitespace-nowrap px-3 py-2 text-theme-xs text-gray-500 dark:text-gray-400">{r.when}</TableCell>
-                <TableCell className="px-3 py-2 text-theme-sm font-medium text-gray-800 dark:text-white/90">{r.coin}</TableCell>
-                <TableCell className={`px-3 py-2 text-theme-xs ${r.side === "LONG" ? "text-success-600" : "text-error-500"}`}>{r.side}</TableCell>
-                <TableCell className="px-3 py-2 text-theme-xs text-gray-500 dark:text-gray-400">{r.strategy}</TableCell>
-                <TableCell className="px-3 py-2 text-theme-xs text-gray-500 dark:text-gray-400">{r.why}</TableCell>
-                <TableCell className={`px-3 py-2 text-theme-sm font-semibold ${r.profit >= 0 ? "text-success-600" : "text-error-500"}`}>{fmtMoney(r.profit)}</TableCell>
-                <TableCell className={`px-3 py-2 text-theme-sm ${r.running >= 0 ? "text-success-600" : "text-error-500"}`}>{fmtMoney(r.running)}</TableCell>
+                <TableCell className="px-2 py-1.5 text-theme-xs font-medium text-gray-800 dark:text-white/90">{r.coin}</TableCell>
+                <TableCell className={`px-2 py-1.5 text-theme-xs ${r.side === "LONG" ? "text-success-600" : "text-error-500"}`}>{r.side}</TableCell>
+                <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.strategy}</TableCell>
+                <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.why}</TableCell>
+                <TableCell className={`px-2 py-1.5 text-theme-xs font-semibold ${r.profit >= 0 ? "text-success-600" : "text-error-500"}`}>{fmtMoney(r.profit)}</TableCell>
+                <TableCell className={`px-2 py-1.5 text-theme-xs ${r.running >= 0 ? "text-success-600" : "text-error-500"}`}>{fmtMoney(r.running)}</TableCell>
               </TableRow>
             ))}
             {d && !d.rows.length && (

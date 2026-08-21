@@ -75,12 +75,6 @@ export default function StrategiesGrid() {
       books[key] = [...cur];
     });
 
-  const setCoins = (key: string, text: string) =>
-    mut((s) => {
-      const coins = ((s.strategy_coins as Record<string, string[]>) ??= {});
-      coins[key] = text.split(/[\s,]+/).filter(Boolean).map((c) => (c.toUpperCase().endsWith("_USDT") ? c.toUpperCase() : `${c.toUpperCase()}_USDT`));
-    });
-
   const setMargin = (key: string, v: string) =>
     mut((s) => {
       const m = ((s.strategy_margins as Record<string, number | null>) ??= {});
@@ -106,7 +100,7 @@ export default function StrategiesGrid() {
   };
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="flex flex-wrap items-center gap-3 px-5 pt-4">
         <div>
           <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">
@@ -170,26 +164,28 @@ export default function StrategiesGrid() {
           Timeframe conflict: {conflicts.map((c) => `${c.symbol} on ${(c.keys || []).join(" + ")}`).join(" · ")} — two bots would fight over one MEXC position.
         </p>
       )}
-      <div className="max-w-full overflow-x-auto p-2">
-        <Table>
+      <div className="w-full">
+        <Table fixed>
           <TableHeader>
             <TableRow>
               {["strategy", "tf", "TP/SL %", "books", "coins", "margin $", "notional $", "streak", `ladder $ · ${flat ? "flat" : "DEEP"}`, "next $",
-                "loss cap $", "today $", "PROFIT $", "trades", "W", "L", "open now", "backtest"].map((h) => (
-                <TableCell key={h} isHeader className="px-3 py-2 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400">{h}</TableCell>
+                "loss cap $", "today $", "PROFIT $", "W / L", "open now", "backtest"].map((h) => (
+                <TableCell key={h} isHeader className="px-2 py-1.5 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400">{h}</TableCell>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
             {rows.map((r) => (
               <TableRow key={r.key}>
-                <TableCell className="px-3 py-2 text-theme-sm font-medium text-gray-800 dark:text-white/90">{r.key}</TableCell>
-                <TableCell className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400">{TF[r.interval ?? ""] ?? r.interval}</TableCell>
-                <TableCell className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400">
+                <TableCell className="px-2 py-1.5 text-[11px] font-medium leading-tight text-gray-800 dark:text-white/90">
+                  {r.key.replace(/_/g, "_\u200b")}
+                </TableCell>
+                <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{TF[r.interval ?? ""] ?? r.interval}</TableCell>
+                <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">
                   {r.tp != null ? (r.tp * 100).toFixed(2) : "—"} / {r.sl != null ? (r.sl * 100).toFixed(2) : "—"}
                 </TableCell>
-                <TableCell className="px-3 py-2">
-                  <div className="flex gap-1">
+                <TableCell className="px-2 py-1.5">
+                  <div className="flex flex-col gap-0.5">
                     {(["real", "paper"] as const).map((b) => {
                       // a coin already traded LIVE on another timeframe cannot
                       // take a second live strategy: MEXC nets them into one
@@ -214,25 +210,27 @@ export default function StrategiesGrid() {
                     })}
                   </div>
                 </TableCell>
-                <TableCell className="px-3 py-2">
-                  <input defaultValue={r.coins.map((c) => c.replace("_USDT", "")).join(", ")}
-                    onBlur={(e) => setCoins(r.key, e.target.value)}
-                    className="w-36 rounded-lg border border-gray-200 bg-transparent px-2 py-1 text-theme-xs text-gray-700 dark:border-gray-700 dark:text-gray-300" />
+                <TableCell className="px-2 py-2 text-theme-xs font-medium text-gray-700 dark:text-gray-300">
+                  {/* read-only: the contract is PART of the strategy, not a
+                      preference — #3M3CRXP8 IS trend50/30m/2.5/2.0 on PI, and
+                      the same signal on another coin is an untested
+                      combination (CLAUDE.md rule 21) */}
+                  {r.coins.map((c) => c.replace("_USDT", "")).join(", ") || "—"}
                 </TableCell>
-                <TableCell className="px-3 py-2">
+                <TableCell className="px-2 py-1.5">
                   <input type="number" step="0.5" defaultValue={r.base_margin ?? ""}
                     onBlur={(e) => setMargin(r.key, e.target.value)}
-                    className="w-16 rounded-lg border border-gray-200 bg-transparent px-2 py-1 text-theme-xs text-gray-700 dark:border-gray-700 dark:text-gray-300" />
+                    className="w-full min-w-0 rounded-lg border border-gray-200 bg-transparent px-1 py-1 text-[11px] text-gray-700 dark:border-gray-700 dark:text-gray-300" />
                 </TableCell>
-                <TableCell className="px-3 py-2 text-theme-xs text-gray-500 dark:text-gray-400">{r.notional ?? "—"}</TableCell>
-                <TableCell className="px-3 py-2 text-theme-xs">
+                <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.notional ?? "—"}</TableCell>
+                <TableCell className="px-2 py-1.5 text-theme-xs">
                   {r.streak ? <span className="font-medium text-error-500">{r.streak} loss</span>
                             : <span className="text-gray-400">—</span>}
                 </TableCell>
-                <TableCell className="px-3 py-2">
+                <TableCell className="px-2 py-1.5">
                   {/* the whole ladder in dollars, with the rung it stands on boxed —
                       so "next $" is never a number to work out */}
-                  <div className="flex flex-wrap items-center gap-0.5 text-theme-xs">
+                  <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-[10px] leading-tight">
                     {(r.ladder ?? []).map((amt, i) => (
                       <span key={i} className={i === (r.ladder_rung ?? 0) && !flat
                         ? "rounded bg-warning-400 px-1 font-bold text-gray-900"
@@ -243,39 +241,46 @@ export default function StrategiesGrid() {
                     {flat && <span className="ml-1 text-gray-400">every trade</span>}
                   </div>
                 </TableCell>
-                <TableCell className="px-3 py-2 text-theme-sm font-semibold text-warning-600">{r.next_stake ?? "—"}</TableCell>
-                <TableCell className="px-3 py-2">
+                <TableCell className="px-2 py-1.5 text-theme-xs font-semibold text-warning-600">{r.next_stake ?? "—"}</TableCell>
+                <TableCell className="px-2 py-1.5">
                   <input type="number" step="0.5" defaultValue={r.loss_cap ?? ""}
                     onBlur={(e) => mut((s) => {
                       const m = ((s.strategy_loss_limits as Record<string, number | null>) ??= {});
                       m[r.key] = e.target.value === "" ? null : Number(e.target.value);
                     })}
-                    className="w-16 rounded-lg border border-gray-200 bg-transparent px-2 py-1 text-theme-xs text-gray-700 dark:border-gray-700 dark:text-gray-300" />
+                    className="w-full min-w-0 rounded-lg border border-gray-200 bg-transparent px-1 py-1 text-[11px] text-gray-700 dark:border-gray-700 dark:text-gray-300" />
                 </TableCell>
-                <TableCell className={`px-3 py-2 text-theme-xs ${(r.today ?? 0) >= 0 ? "text-success-600" : "text-error-500"}`}>
+                <TableCell className={`px-2 py-1.5 text-theme-xs ${(r.today ?? 0) >= 0 ? "text-success-600" : "text-error-500"}`}>
                   {fmtMoney(r.today)}{r.tripped && <span className="ml-1 font-semibold text-error-500">PAUSED</span>}
                 </TableCell>
-                <TableCell className={`px-3 py-2 text-theme-sm font-semibold ${r.pnl >= 0 ? "text-success-600" : "text-error-500"}`}>{fmtMoney(r.pnl)}</TableCell>
-                <TableCell className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400">{r.trades}</TableCell>
-                <TableCell className="px-3 py-2 text-theme-sm text-success-600">{r.wins}</TableCell>
-                <TableCell className="px-3 py-2 text-theme-sm text-error-500">{r.losses}</TableCell>
-                <TableCell className="px-3 py-2 text-theme-xs text-gray-500 dark:text-gray-400">
-                  <div className="flex flex-wrap items-center gap-1">
+                <TableCell className={`px-2 py-1.5 text-theme-xs font-semibold ${r.pnl >= 0 ? "text-success-600" : "text-error-500"}`}>{fmtMoney(r.pnl)}</TableCell>
+                <TableCell className="px-2 py-1.5 text-theme-xs">
+                  <span className="text-success-600">{r.wins}</span>
+                  <span className="text-gray-400"> / </span>
+                  <span className="text-error-500">{r.losses}</span>
+                </TableCell>
+                <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">
+                  <div className="flex min-w-0 flex-wrap items-center gap-0.5 text-[10px] leading-tight">
                     {r.open_on.map((c) => (
-                      <span key={`r${c}`} className="rounded bg-error-50 px-1.5 py-0.5 font-medium text-error-600 dark:bg-error-500/15">
+                      <span key={`r${c}`} className="whitespace-normal break-words rounded bg-error-50 px-1 py-0.5 font-medium text-error-600 dark:bg-error-500/15">
                         {c.replace("_USDT", "")} real
                       </span>
                     ))}
                     {r.open_on_paper.map((c) => (
-                      <span key={`p${c}`} className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-500 dark:bg-white/[0.06] dark:text-gray-400">
+                      <span key={`p${c}`} className="whitespace-normal break-words rounded bg-gray-100 px-1 py-0.5 text-gray-500 dark:bg-white/[0.06] dark:text-gray-400">
                         {c.replace("_USDT", "")} paper
                       </span>
                     ))}
                     {!r.open_on.length && !r.open_on_paper.length && <span>—</span>}
-                    {r.books.includes("real") && <Badge size="sm" color="error">ARMED</Badge>}
+                    {r.books.includes("real") && (
+                      <span title="armed with real money"
+                        className="rounded bg-error-500 px-0.5 text-[9px] font-bold leading-tight text-white">
+                        ARM
+                      </span>
+                    )}
                   </div>
                 </TableCell>
-                <TableCell className="px-3 py-2">
+                <TableCell className="px-2 py-1.5">
                   <button onClick={() => runBacktest(r.key)}
                     disabled={!r.coins.length || (bt?.running && bt.key === r.key)}
                     title={`Replay ${r.key} over the last 365 days of MEXC history at this row's base margin.`}

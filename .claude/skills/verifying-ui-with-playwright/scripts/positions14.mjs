@@ -14,8 +14,9 @@ const p = await api('/api/trade/positions');
 // all fourteen headers, by name
 const HEADS = ["contract","unreal $","to TP","TP % ($)","SL % ($)","W","L","trd","side","opened","held","entry","margin","bracket"];
 for (const h of HEADS) ok(`column "${h}"`, body.includes(h));
-ok('caption counts both books', body.includes(`${p.real.length} real (exchange-confirmed) · ${p.paper.length} paper (simulated)`));
-ok('leverage stated', body.includes(`${p.leverage}x leverage`));
+ok('caption counts both books', body.includes(`${p.real.length} real · ${p.paper.length} paper`),
+   `${p.real.length}/${p.paper.length}`);
+ok('leverage stated', body.includes(`${p.leverage}x isolated`));
 
 // per-row values match the API row for row. unrealized and progress move with
 // the mark price between the render and this sample, so those two get a
@@ -27,7 +28,7 @@ const cells = await page.evaluate(() => {
 });
 const num = (t) => parseFloat(String(t).replace(/[+,%$ ]/g, ''));
 for (const r of p.real) {
-  const row = cells.find(c => c[0]?.includes(r.coin) && c[0]?.startsWith('REAL'));
+  const row = cells.find(c => c[0]?.startsWith(r.coin));
   ok(`${r.coin} row present`, !!row);
   if (!row) continue;
   ok(`${r.coin} unrealized within drift`, Math.abs(num(row[1]) - r.unrealized) < 0.75,

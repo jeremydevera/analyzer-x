@@ -15,7 +15,7 @@ export default function FeedPanel() {
   }, []);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <h3 className="px-5 pt-4 text-base font-semibold text-gray-800 dark:text-white/90">Runner feed</h3>
       <p className="px-5 text-theme-xs text-gray-500 dark:text-gray-400">
         last {lines.length} lines from the runner&apos;s log on this Mac

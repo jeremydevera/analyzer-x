@@ -1,8 +1,11 @@
 "use client";
 /**
- * Download candles and run backtests — the detached jobs, driven over HTTP.
- * Progress polls every 4s and survives reloads because the truth lives in
- * the job's progress file on disk, not in this component.
+ * Run backtests. Downloading candles lives on its own screen — this one is
+ * for backtesting only, so a multi-hour download is never one click from a
+ * grid run.
+ *
+ * Progress polls every 4s and survives reloads because the truth lives in the
+ * job's progress file on disk, not in this component.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, API_BASE, CloudStatus, GridPlan, JobStatus } from "@/lib/api";
@@ -59,7 +62,6 @@ export default function JobsPanel() {
   const [coins, setCoins] = useState<string[]>([]);
   const [tfs, setTfs] = useState<string[]>(["15m", "30m", "1h", "4h"]);
   const [win, setWin] = useState("Previous 1 year");
-  const [dl, setDl] = useState<JobStatus | null>(null);
   const [bt, setBt] = useState<JobStatus | null>(null);
   const [upd, setUpd] = useState<JobStatus | null>(null);
   const [base, setBase] = useState(5);
@@ -71,7 +73,6 @@ export default function JobsPanel() {
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const poll = useCallback(() => {
-    api.jobStatus("download").then(setDl).catch(() => {});
     api.jobStatus("backtest").then(setBt).catch(() => {});
     api.jobStatus("btupdate").then(setUpd).catch(() => {});
     api.cloudStatus().then(setCloud).catch(() => {});
@@ -98,12 +99,10 @@ export default function JobsPanel() {
     } catch (e) { setErr(String(e)); }
   };
 
-  const start = async (kind: "download" | "backtest" | "btupdate") => {
+  const start = async (kind: "backtest" | "btupdate") => {
     setErr("");
     try {
-      if (kind === "download") await api.jobStart("download", { coins, tfs });
-      else
-        await api.jobStart(kind, {
+      await api.jobStart(kind, {
           coins, tfs, days: WINDOWS[win], base,
           label: "react", deployed,
         });
@@ -115,12 +114,11 @@ export default function JobsPanel() {
 
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 dark:border-white/[0.05] dark:bg-white/[0.03]">
-      <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">
-        Market data & backtests
-      </h3>
+      <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Backtest</h3>
       <p className="mb-4 text-theme-xs text-gray-500 dark:text-gray-400">
-        Jobs run detached on this Mac — switching tabs or closing the browser
-        does not stop them. API: {API_BASE}
+        Every signal × barrier pair × both sizings, over the candles already stored on this Mac.
+        Runs detached — leaving this screen does not stop it. Candles are downloaded on the{" "}
+        <a href="/candles" className="text-brand-500 hover:underline">Candles</a> screen.
       </p>
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="sm:col-span-1">
@@ -191,22 +189,7 @@ export default function JobsPanel() {
       )}
       {err && <p className="mt-2 text-theme-sm text-error-500">{err}</p>}
 
-      <div className="mt-4 grid gap-6 lg:grid-cols-2">
-        <div>
-          <div className="flex items-center gap-3">
-            <Button size="sm" onClick={() => start("download")}
-              disabled={!coins.length || !tfs.length || !!dl?.running}>
-              DOWNLOAD CANDLES
-            </Button>
-            {dl?.running && (
-              <Button size="sm" variant="outline" onClick={() => api.jobStop("download").then(poll)}>
-                STOP
-              </Button>
-            )}
-            {dl?.running && <Badge size="sm" color="info">running</Badge>}
-          </div>
-          <Progress s={dl} />
-        </div>
+      <div className="mt-4">
         <div>
           <div className="flex flex-wrap items-center gap-3">
             {where === "github" ? (

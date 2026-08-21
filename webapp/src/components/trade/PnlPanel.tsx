@@ -28,8 +28,8 @@ export default function PnlPanel() {
   const losses = coinRows.reduce((a, [, v]) => a + v.losses, 0);
 
   return (
-    <div className="grid gap-5 xl:grid-cols-2">
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+    <div className="grid min-w-0 gap-5 xl:grid-cols-2">
+      <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
         <div className="flex items-center gap-3 px-5 pt-4">
           <div>
             <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Closed profit by coin</h3>
@@ -43,24 +43,24 @@ export default function PnlPanel() {
           </label>
         </div>
         {err && <p className="px-5 pt-2 text-theme-sm text-error-500">{err}</p>}
-        <div className="max-h-72 max-w-full overflow-auto p-2">
-          <Table>
+        <div className="max-h-72 w-full overflow-y-auto p-2">
+          <Table fixed>
             <TableHeader className="sticky top-0 bg-white dark:bg-gray-900">
               <TableRow>
                 {["coin", "PROFIT $", "trades", "W", "L", "win %"].map((h) => (
-                  <TableCell key={h} isHeader className="px-3 py-2 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400">{h}</TableCell>
+                  <TableCell key={h} isHeader className="px-2 py-1.5 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400">{h}</TableCell>
                 ))}
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
               {coinRows.map(([coin, v]) => (
                 <TableRow key={coin}>
-                  <TableCell className="px-3 py-2 text-theme-sm font-medium text-gray-800 dark:text-white/90">{coin.replace("_USDT", "")}</TableCell>
-                  <TableCell className={`px-3 py-2 text-theme-sm font-semibold ${v.pnl >= 0 ? "text-success-600" : "text-error-500"}`}>{fmtMoney(v.pnl)}</TableCell>
-                  <TableCell className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400">{v.trades}</TableCell>
-                  <TableCell className="px-3 py-2 text-theme-sm text-success-600">{v.wins}</TableCell>
-                  <TableCell className="px-3 py-2 text-theme-sm text-error-500">{v.losses}</TableCell>
-                  <TableCell className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400">{v.trades ? ((v.wins / v.trades) * 100).toFixed(1) : "—"}</TableCell>
+                  <TableCell className="px-2 py-1.5 text-theme-xs font-medium text-gray-800 dark:text-white/90">{coin.replace("_USDT", "")}</TableCell>
+                  <TableCell className={`px-2 py-1.5 text-theme-xs font-semibold ${v.pnl >= 0 ? "text-success-600" : "text-error-500"}`}>{fmtMoney(v.pnl)}</TableCell>
+                  <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{v.trades}</TableCell>
+                  <TableCell className="px-2 py-1.5 text-theme-xs text-success-600">{v.wins}</TableCell>
+                  <TableCell className="px-2 py-1.5 text-theme-xs text-error-500">{v.losses}</TableCell>
+                  <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{v.trades ? ((v.wins / v.trades) * 100).toFixed(1) : "—"}</TableCell>
                 </TableRow>
               ))}
               {!coinRows.length && <TableRow><TableCell className="px-3 py-4 text-theme-sm text-gray-500 dark:text-gray-400">No closed trades on this book yet.</TableCell></TableRow>}
@@ -69,15 +69,15 @@ export default function PnlPanel() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+      <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
         <h3 className="px-5 pt-4 text-base font-semibold text-gray-800 dark:text-white/90">Day by day</h3>
         <p className="px-5 text-theme-xs text-gray-500 dark:text-gray-400">
           latest {dayRows.length} days · {fmtMoney(dayTotal)} over that window ·{" "}
           {dayRows.reduce((a, [, v]) => a + v.wins, 0)}W /{" "}
           {dayRows.reduce((a, [, v]) => a + v.losses, 0)}L
         </p>
-        <div className="max-h-72 max-w-full overflow-auto p-2">
-          <Table>
+        <div className="max-h-72 w-full overflow-y-auto p-2">
+          <Table fixed>
             <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
               {dayRows.map(([day, v]) => (
                 <TableRow key={day}>
@@ -86,8 +86,8 @@ export default function PnlPanel() {
                   <TableCell className="px-3 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{v.wins}W / {v.losses}L</TableCell>
                   <TableCell className="px-3 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{v.coins.join(", ")}</TableCell>
                   <TableCell className="px-3 py-1.5">
-                    <span className={`inline-block h-2 rounded-full ${v.pnl >= 0 ? "bg-success-500" : "bg-error-500"}`}
-                      style={{ width: `${Math.min(100, Math.abs(v.pnl) * 3)}px` }} />
+                    <span className={`block h-2 max-w-full rounded-full ${v.pnl >= 0 ? "bg-success-500" : "bg-error-500"}`}
+                      style={{ width: `${Math.min(100, Math.abs(v.pnl) * 3)}%` }} />
                   </TableCell>
                 </TableRow>
               ))}

@@ -4,6 +4,7 @@ import React, { ReactNode } from "react";
 interface TableProps {
   children: ReactNode; // Table content (thead, tbody, etc.)
   className?: string; // Optional className for styling
+  fixed?: boolean; // lay out columns from the header, never from content width
 }
 
 // Props for TableHeader
@@ -30,11 +31,18 @@ interface TableCellProps {
   children: ReactNode; // Cell content
   isHeader?: boolean; // If true, renders as <th>, otherwise <td>
   className?: string; // Optional className for styling
+  style?: React.CSSProperties; // column widths for fixed-layout tables
 }
 
 // Table Component
-const Table: React.FC<TableProps> = ({ children, className }) => {
-  return <table className={`min-w-full  ${className}`}>{children}</table>;
+const Table: React.FC<TableProps> = ({ children, className, fixed }) => {
+  // `fixed` keeps a wide table inside the viewport: the Auto Trade screen must
+  // not scroll sideways, and min-w-full + auto layout is what made it.
+  return (
+    <table className={`w-full ${fixed ? "table-fixed" : "min-w-full"} ${className ?? ""}`}>
+      {children}
+    </table>
+  );
 };
 
 // TableHeader Component
@@ -61,9 +69,16 @@ const TableCell: React.FC<TableCellProps> = ({
   children,
   isHeader = false,
   className,
+  style,
 }) => {
   const CellTag = isHeader ? "th" : "td";
-  return <CellTag className={` ${className}`}>{children}</CellTag>;
+  // break-words + align-top: a fixed-layout table must be allowed to wrap,
+  // or one long cell pushes the whole screen sideways.
+  return (
+    <CellTag style={style} className={`align-top break-words ${className ?? ""}`}>
+      {children}
+    </CellTag>
+  );
 };
 
 export { Table, TableHeader, TableBody, TableRow, TableCell };

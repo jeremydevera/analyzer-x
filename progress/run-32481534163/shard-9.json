@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 15, "total": 20, "rows": 64679, "note": "SCRT 15m: rule 33/75 (heikin)", "pct": 75.0, "updated": "2026-08-21T13:32:33Z"}
+{"shard": 9, "stage": "testing", "done": 15, "total": 20, "rows": 64863, "note": "SCRT 30m: 19,999 bars, testing 75 rules", "pct": 75.0, "updated": "2026-08-21T13:33:20Z"}

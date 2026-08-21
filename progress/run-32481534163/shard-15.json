@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 8, "total": 20, "rows": 28941, "note": "LTC 4h: 13,422 bars, testing 75 rules", "pct": 40.0, "updated": "2026-08-21T12:58:45Z"}
+{"shard": 15, "stage": "testing", "done": 8, "total": 20, "rows": 29177, "note": "LTC 4h: rule 40/75 (crsi)", "pct": 40.0, "updated": "2026-08-21T12:59:31Z"}

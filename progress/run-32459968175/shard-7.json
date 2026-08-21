@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 20, "total": 27, "rows": 91701, "note": "SEI 30m: 19,999 bars, testing 75 rules", "pct": 74.1, "updated": "2026-08-21T09:07:28Z"}
+{"shard": 7, "stage": "testing", "done": 20, "total": 27, "rows": 91771, "note": "SEI 30m: rule 49/75 (vwaprev)", "pct": 74.1, "updated": "2026-08-21T09:08:14Z"}

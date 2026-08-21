@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 20, "total": 20, "rows": 82849, "note": "XEC 30m: 19,999 bars, testing 75 rules", "pct": 100.0, "updated": "2026-08-21T13:56:11Z"}
+{"shard": 15, "stage": "testing", "done": 20, "total": 20, "rows": 83149, "note": "XEC 30m: rule 29/75 (hull20)", "pct": 100.0, "updated": "2026-08-21T13:56:58Z"}

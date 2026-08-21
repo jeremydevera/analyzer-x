@@ -204,16 +204,30 @@
   @apply text-gray-700 hover:bg-gray-100 group-hover:text-gray-700 dark:text-gray-300 dark:hover:bg-white/5 dark:hover:text-gray-300;
 }
 
+/* One 24px box for every rail glyph. The shipped SVGs carry their own
+   intrinsic sizes — bolt is 24x26, download 25x24 — so without this clamp
+   the icons sit one or two pixels off each other down the column and the
+   rail reads as slightly crooked. viewBox scaling keeps each shape's own
+   proportions inside the box. */
 @utility menu-item-icon {
   @apply text-gray-500 group-hover:text-gray-700 dark:text-gray-400;
+  & > svg {
+    @apply size-6 shrink-0;
+  }
 }
 
 @utility menu-item-icon-active {
   @apply text-brand-500 dark:text-brand-400;
+  & > svg {
+    @apply size-6 shrink-0;
+  }
 }
 
 @utility menu-item-icon-inactive {
   @apply text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-300;
+  & > svg {
+    @apply size-6 shrink-0;
+  }
 }
 
 @utility menu-item-arrow {

@@ -5,8 +5,13 @@ import { usePathname } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
 import {
   ChevronDownIcon,
-  GridIcon,
+  DollarLineIcon,
+  DownloadIcon,
   HorizontaLDots,
+  PieChartIcon,
+  PlugInIcon,
+  ShootingStarIcon,
+  TableIcon,
 } from "../icons/index";
 
 type NavItem = {
@@ -16,34 +21,44 @@ type NavItem = {
   subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
 };
 
+// Every destination had the same grid glyph, so the rail was six identical
+// squares and the icons carried no information at all — you had to read the
+// label to know where you were. Each icon now says what its page DOES:
+// money at work, a grid of measured rows, a download, a new arrival, a
+// chart, and what plugs in behind the models.
+//
+// All six are FILLED glyphs from the shipped set. bolt.svg was the obvious
+// pick for the runner and is the one icon in this family drawn as a 1.5px
+// STROKE, so beside five filled shapes it read as a thinner, lighter icon —
+// which is the same "these don't look like a set" complaint in a new form.
 const navItems: NavItem[] = [
   {
-    icon: <GridIcon />,
+    icon: <DollarLineIcon />,
     name: "Auto Trade",
     path: "/trade",
   },
   {
-    icon: <GridIcon />,
+    icon: <TableIcon />,
     name: "Backtest",
     path: "/backtest",
   },
   {
-    icon: <GridIcon />,
+    icon: <DownloadIcon />,
     name: "Candles",
     path: "/candles",
   },
   {
-    icon: <GridIcon />,
+    icon: <ShootingStarIcon />,
     name: "New Crypto",
     path: "/new-crypto",
   },
   {
-    icon: <GridIcon />,
+    icon: <PieChartIcon />,
     name: "Analysis",
     path: "/analysis",
   },
   {
-    icon: <GridIcon />,
+    icon: <PlugInIcon />,
     name: "LLM Models",
     path: "/models",
   },

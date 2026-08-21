@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 9, "total": 26, "rows": 33854, "note": "COMP 15m: 34,627 bars, testing 75 rules", "pct": 34.6, "updated": "2026-08-21T13:05:45Z"}
+{"shard": 16, "stage": "testing", "done": 9, "total": 26, "rows": 33919, "note": "COMP 15m: rule 16/75 (keltner)", "pct": 34.6, "updated": "2026-08-21T13:06:31Z"}

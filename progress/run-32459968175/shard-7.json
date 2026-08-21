@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 11, "total": 27, "rows": 50772, "note": "EUR 15m: 34,608 bars, testing 75 rules", "pct": 40.7, "updated": "2026-08-21T08:29:52Z"}
+{"shard": 7, "stage": "testing", "done": 11, "total": 27, "rows": 50779, "note": "EUR 15m: rule 64/75 (hammer)", "pct": 40.7, "updated": "2026-08-21T08:30:37Z"}

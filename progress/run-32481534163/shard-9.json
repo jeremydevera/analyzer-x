@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 18, "total": 20, "rows": 81164, "note": "T 4h: rule 41/75 (tsi)", "pct": 90.0, "updated": "2026-08-21T13:47:52Z"}
+{"shard": 9, "stage": "testing", "done": 19, "total": 20, "rows": 81868, "note": "WAL 15m: rule 4/75 (trend50)", "pct": 95.0, "updated": "2026-08-21T13:48:41Z"}

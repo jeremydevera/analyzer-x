@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 21, "total": 29, "rows": 79040, "note": "PUFFER 30m: rule 62/75 (ote)", "pct": 72.4, "updated": "2026-08-21T14:12:14Z"}
+{"shard": 4, "stage": "testing", "done": 21, "total": 29, "rows": 80463, "note": "PUFFER 1h: rule 45/75 (zscore20)", "pct": 72.4, "updated": "2026-08-21T14:12:59Z"}

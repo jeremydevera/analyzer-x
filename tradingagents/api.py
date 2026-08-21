@@ -681,13 +681,42 @@ def analysis_runs(limit: int = 25) -> dict:
 
 @app.post("/api/analysis/start")
 def analysis_start(spec: dict) -> dict:
+    """Start one run, or one per model when `models` is given.
+
+    Parallel is not a nicety: each model runs on ITS OWN provider, so mixing
+    them spends separate rate-limit quotas and the calls can be compared on
+    the same ticker and date.
+    """
     from tradingagents import analysis_jobs as aj
 
     if not str(spec.get("ticker") or "").strip():
         raise HTTPException(400, "a ticker is required")
     if not str(spec.get("trade_date") or "").strip():
         raise HTTPException(400, "a trade date is required")
-    return {"run_id": aj.start(spec)}
+    models = [m for m in (spec.get("models") or []) if m]
+    if not models:
+        one = aj.start(spec)
+        return {"run_id": one, "run_ids": [{"model": spec.get("model"),
+                                            "run_id": one}]}
+    runs = []
+    for m in models:
+        one = {k: v for k, v in spec.items() if k != "models"}
+        one["model"] = m
+        runs.append({"model": m, "run_id": aj.start(one)})
+    return {"run_ids": runs, "run_id": runs[0]["run_id"]}
+
+
+# NOTE: every STATIC /api/analysis/... path must be declared
+# above this one. FastAPI matches in order, so a route added
+# below it is swallowed by {run_id} — /api/analysis/tickers
+# returned {'error': 'no such run', 'run_id': 'tickers'}.
+@app.get("/api/analysis/tickers")
+def analysis_tickers() -> dict:
+    """The curated ticker list, with company names. Free text still works —
+    this is a shortcut, not a restriction (Yahoo covers tens of thousands)."""
+    import tickers
+
+    return {"rows": [{"symbol": s, "name": n} for s, n in tickers.TICKERS.items()]}
 
 
 @app.get("/api/analysis/{run_id}")
@@ -864,3 +893,37 @@ def cloud_forget() -> dict:
 
     cs.forget()
     return {"forgotten": True}
+
+
+@app.get("/api/analysis/{run_id}/report.md")
+def analysis_report_md(run_id: str):
+    """The whole run as one markdown file — every section, then the decision.
+
+    A browser download link, because the operator's own copy of a run should
+    not live only inside a web page.
+    """
+    from fastapi.responses import PlainTextResponse
+
+    from tradingagents import analysis_jobs as aj
+
+    got = aj.status(run_id)
+    if got.get("error") == "no such run":
+        raise HTTPException(404, f"no such run: {run_id}")
+    spec = got.get("spec") or {}
+    head = [f"# {spec.get('ticker', run_id)} · {spec.get('trade_date', '')}",
+            "",
+            f"- run: `{run_id}`",
+            f"- model: {spec.get('model')}",
+            f"- analysts: {', '.join(spec.get('analysts') or [])}",
+            f"- social source: {spec.get('social_source') or 'stocktwits'}"]
+    if spec.get("twitter_keywords"):
+        head.append(f"- extra X terms: {', '.join(spec['twitter_keywords'])}")
+    head += ["", "---", ""]
+    body = []
+    for label, text in (got.get("reports") or {}).items():
+        body += [f"## {label}", "", str(text), ""]
+    if got.get("decision"):
+        body += ["## Final decision", "", str(got["decision"]), ""]
+    md = "\n".join(head + body)
+    return PlainTextResponse(md, media_type="text/markdown", headers={
+        "Content-Disposition": f'attachment; filename="{run_id}.md"'})

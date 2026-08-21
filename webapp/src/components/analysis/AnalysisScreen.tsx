@@ -28,6 +28,10 @@ export default function AnalysisScreen() {
   const [picked, setPicked] = useState<string[]>(ANALYSTS.map((a) => a[0]));
   const [debate, setDebate] = useState(1);
   const [social, setSocial] = useState<SocialSources | null>(null);
+  const [tickers, setTickers] = useState<{ symbol: string; name: string }[]>([]);
+  const [parallel, setParallel] = useState(false);
+  const [models2, setModels2] = useState<string[]>([]);
+  const [batch, setBatch] = useState<{ model: string; run_id: string }[]>([]);
   const [source, setSource] = useState("stocktwits");
   const [keywords, setKeywords] = useState("");
   const [risk, setRisk] = useState(1);
@@ -41,6 +45,7 @@ export default function AnalysisScreen() {
     modelsApi.list().then((d) => { setModels(d.rows); if (!model && d.rows[0]) setModel(d.rows[0].id); }).catch((e) => setErr(String(e)));
     analysisApi.runs().then((d) => setRecent(d.rows)).catch(() => {});
     analysisApi.socialSources().then((d) => { setSocial(d); setSource(d.default); }).catch(() => {});
+    analysisApi.tickers().then((d) => setTickers(d.rows)).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -62,12 +67,15 @@ export default function AnalysisScreen() {
   const start = async () => {
     setErr(""); setRun(null);
     try {
-      const got = await analysisApi.start({
-        ticker: ticker.trim().toUpperCase(), trade_date: date, model,
+      const got = await analysisApi.startMany({
+        ticker: ticker.trim().toUpperCase(), trade_date: date,
+        model: parallel ? undefined : model,
+        models: parallel ? models2 : undefined,
         analysts: picked, debate_rounds: debate, risk_rounds: risk, asset_type: asset,
         social_source: source,
         twitter_keywords: keywords.split(",").map((k) => k.trim()).filter(Boolean),
       });
+      setBatch(got.run_ids ?? []);
       setRunId(got.run_id);
     } catch (e) { setErr(String(e)); }
   };
@@ -88,17 +96,35 @@ export default function AnalysisScreen() {
         </p>
         <div className="mt-3 flex flex-wrap items-end gap-2">
           <label className="flex flex-col text-theme-xs text-gray-500 dark:text-gray-400">ticker
-            <input className={`${input} w-28`} placeholder="AAPL" value={ticker} onChange={(e) => setTicker(e.target.value)} /></label>
+            <input className={`${input} w-44`} placeholder="AAPL" list="ta-tickers" value={ticker}
+              onChange={(e) => setTicker(e.target.value)} />
+            <datalist id="ta-tickers">
+              {tickers.map((t) => <option key={t.symbol} value={t.symbol}>{t.name}</option>)}
+            </datalist></label>
           <label className="flex flex-col text-theme-xs text-gray-500 dark:text-gray-400">date
             <input type="date" className={input} value={date} onChange={(e) => setDate(e.target.value)} /></label>
           <label className="flex flex-col text-theme-xs text-gray-500 dark:text-gray-400">asset
             <select className={input} value={asset} onChange={(e) => setAsset(e.target.value)}>
               <option value="stock">stock</option><option value="crypto">crypto</option>
             </select></label>
-          <label className="flex flex-col text-theme-xs text-gray-500 dark:text-gray-400">model
-            <select className={`${input} w-56`} value={model} onChange={(e) => setModel(e.target.value)}>
-              {models.map((m) => <option key={m.id} value={m.id}>{m.id} · {m.label}</option>)}
-            </select></label>
+          {parallel ? (
+            <label className="flex flex-col text-theme-xs text-gray-500 dark:text-gray-400">
+              models to compare ({models2.length} picked)
+              <select multiple className={`${input} h-24 w-72`} value={models2}
+                onChange={(e) => setModels2([...e.target.selectedOptions].map((o) => o.value))}>
+                {models.map((m) => <option key={m.id} value={m.id}>{m.id} · {m.label}</option>)}
+              </select></label>
+          ) : (
+            <label className="flex flex-col text-theme-xs text-gray-500 dark:text-gray-400">model
+              <select className={`${input} w-56`} value={model} onChange={(e) => setModel(e.target.value)}>
+                {models.map((m) => <option key={m.id} value={m.id}>{m.id} · {m.label}</option>)}
+              </select></label>
+          )}
+          <label className="flex h-10 items-center gap-2 text-theme-xs text-gray-600 dark:text-gray-300">
+            <input type="checkbox" checked={parallel} onChange={(e) => setParallel(e.target.checked)}
+              className="h-4 w-4 accent-brand-500" />
+            parallel — compare models
+          </label>
           <label className="flex flex-col text-theme-xs text-gray-500 dark:text-gray-400">debate rounds
             <input type="number" min={1} max={4} className={`${input} w-20`} value={debate} onChange={(e) => setDebate(Number(e.target.value))} /></label>
           <label className="flex flex-col text-theme-xs text-gray-500 dark:text-gray-400">risk rounds
@@ -136,10 +162,31 @@ export default function AnalysisScreen() {
             </button>
           ))}
           <div className="ml-auto flex gap-2">
-            <Button size="sm" onClick={start} disabled={!ticker.trim() || !picked.length || !!run?.running}>START ANALYSIS</Button>
+            <Button size="sm" onClick={start}
+              disabled={!ticker.trim() || !picked.length || (parallel ? models2.length < 2 : false)}>
+              {parallel ? `START ${models2.length} RUNS` : "START ANALYSIS"}
+            </Button>
             {run?.running && <Button size="sm" variant="outline" onClick={stop}>STOP</Button>}
           </div>
         </div>
+        {parallel && (
+          <p className="mt-2 text-theme-xs text-gray-500 dark:text-gray-400">
+            Each model runs a full analysis at once, each on its OWN provider — mixing providers spends
+            separate rate-limit quotas, which is how you dodge a limit rather than wait it out.
+          </p>
+        )}
+        {batch.length > 1 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {batch.map((r) => (
+              <button key={r.run_id} onClick={() => setRunId(r.run_id)}
+                className={`rounded-lg border px-2.5 py-1 text-theme-xs ${runId === r.run_id
+                  ? "border-brand-500 bg-brand-50 text-brand-600 dark:bg-brand-500/10"
+                  : "border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-300"}`}>
+                {r.model}
+              </button>
+            ))}
+          </div>
+        )}
         {err && <p className="mt-2 text-theme-sm text-error-500">{err}</p>}
       </div>
 
@@ -152,6 +199,12 @@ export default function AnalysisScreen() {
             </Badge>
             {run.running && runningStage && <span className="text-theme-xs text-gray-500 dark:text-gray-400">now: {runningStage}</span>}
             {run.spec?.model && <span className="text-theme-xs text-gray-500 dark:text-gray-400">{run.spec.ticker} · {run.spec.trade_date} · {run.spec.model}</span>}
+            {(run.decision || Object.keys(run.reports).length > 0) && (
+              <a href={analysisApi.reportUrl(run.run_id)} download
+                className="ml-auto rounded-lg border border-gray-200 px-2.5 py-1 text-theme-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300">
+                DOWNLOAD .md
+              </a>
+            )}
             {run.spec?.social_source && (
               <Badge size="sm" color={run.spec.social_source === "stocktwits" ? "light" : "warning"}>
                 social: {run.spec.social_source}

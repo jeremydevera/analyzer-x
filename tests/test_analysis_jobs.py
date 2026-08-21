@@ -121,3 +121,80 @@ def test_keywords_are_ignored_when_x_is_off():
     cfg = aj.social_config({"social_source": "stocktwits",
                             "twitter_keywords": ["ERC"]})
     assert "twitter_extra_terms" not in cfg
+
+
+# --- parallel runs and the markdown export --------------------------------
+# Streamlit could run several models at once, each on its own provider, and
+# hand back a .md of the result. Both were missing from the React screen.
+
+def test_parallel_start_makes_one_run_per_model(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from tradingagents.api import app
+    started = []
+    monkeypatch.setattr(aj, "start",
+                        lambda spec: started.append(spec) or f"R{len(started)}")
+    got = TestClient(app).post("/api/analysis/start", json={
+        "ticker": "AAPL", "trade_date": "2026-08-20",
+        "models": ["gemini-3.5-flash", "qwen3.7-max"]}).json()
+    assert [r["model"] for r in got["run_ids"]] == ["gemini-3.5-flash",
+                                                    "qwen3.7-max"]
+    assert [s["model"] for s in started] == ["gemini-3.5-flash", "qwen3.7-max"]
+    assert all("models" not in s for s in started), "the list is not passed on"
+    assert got["run_id"] == "R1"
+
+
+def test_a_single_model_still_returns_one_run(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from tradingagents.api import app
+    monkeypatch.setattr(aj, "start", lambda spec: "SOLO")
+    got = TestClient(app).post("/api/analysis/start", json={
+        "ticker": "AAPL", "trade_date": "2026-08-20",
+        "model": "gemini-3.5-flash"}).json()
+    assert got["run_id"] == "SOLO" and len(got["run_ids"]) == 1
+
+
+def test_the_markdown_export_carries_every_section_and_its_provenance(
+        monkeypatch, tmp_path):
+    from fastapi.testclient import TestClient
+
+    from tradingagents.api import app
+    monkeypatch.setattr(aj, "status", lambda rid: {
+        "run_id": rid, "running": False,
+        "spec": {"ticker": "TSLA", "trade_date": "2026-08-20",
+                 "model": "gemini-3.5-flash", "analysts": ["social"],
+                 "social_source": "both", "twitter_keywords": ["robotaxi"]},
+        "reports": {"Sentiment Analyst": "X was polarized."},
+        "decision": "**Rating**: Overweight"})
+    got = TestClient(app).get("/api/analysis/TSLA-1/report.md")
+    assert got.status_code == 200
+    assert "attachment" in got.headers["content-disposition"]
+    assert "TSLA-1.md" in got.headers["content-disposition"]
+    body = got.text
+    assert "## Sentiment Analyst" in body and "X was polarized." in body
+    assert "## Final decision" in body and "Overweight" in body
+    assert "social source: both" in body and "robotaxi" in body
+
+
+def test_exporting_an_unknown_run_is_a_404(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from tradingagents.api import app
+    monkeypatch.setattr(aj, "status", lambda rid: {"running": False,
+                                                   "error": "no such run"})
+    assert TestClient(app).get("/api/analysis/nope/report.md").status_code == 404
+
+
+def test_static_analysis_routes_are_not_swallowed_by_the_run_id_route():
+    """FastAPI matches in declaration order: /api/analysis/tickers must be
+    declared BEFORE /api/analysis/{run_id}, or it resolves as a run named
+    'tickers' (it did, 2026-08-21)."""
+    from fastapi.testclient import TestClient
+
+    from tradingagents.api import app
+    got = TestClient(app).get("/api/analysis/tickers").json()
+    assert "rows" in got and got["rows"], "shadowed by {run_id}"
+    assert {"symbol", "name"} <= set(got["rows"][0])
+    import tickers
+    assert len(got["rows"]) == len(tickers.TICKERS)

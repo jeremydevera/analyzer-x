@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 19, "total": 20, "rows": 81946, "note": "WAL 15m: rule 28/75 (vortex14)", "pct": 95.0, "updated": "2026-08-21T13:49:27Z"}
+{"shard": 9, "stage": "testing", "done": 19, "total": 20, "rows": 82070, "note": "WAL 15m: rule 55/75 (nhigh50)", "pct": 95.0, "updated": "2026-08-21T13:50:13Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 12, "total": 20, "rows": 51356, "note": "KAVA 15m: 34,627 bars, testing 75 rules", "pct": 60.0, "updated": "2026-08-21T13:10:06Z"}
+{"shard": 8, "stage": "testing", "done": 12, "total": 20, "rows": 51425, "note": "KAVA 15m: rule 22/75 (engulf)", "pct": 60.0, "updated": "2026-08-21T13:10:52Z"}

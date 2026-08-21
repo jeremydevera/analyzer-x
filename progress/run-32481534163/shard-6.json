@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 13, "total": 22, "rows": 61927, "note": "KAS 30m: 19,999 bars, testing 75 rules", "pct": 59.1, "updated": "2026-08-21T13:34:13Z"}
+{"shard": 6, "stage": "testing", "done": 13, "total": 22, "rows": 61970, "note": "KAS 30m: rule 39/75 (fisher)", "pct": 59.1, "updated": "2026-08-21T13:34:58Z"}

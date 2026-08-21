@@ -390,3 +390,129 @@ def test_a_contract_list_failure_says_why_instead_of_being_empty(client,
     monkeypatch.setattr(fx, "list_contracts", boom)
     got = client.get("/api/contracts").json()
     assert got["rows"] == [] and "host blocked" in got["why"]
+
+
+# --- the ladder columns and the equity curve ------------------------------
+# The Streamlit grid printed streak, the whole ladder in dollars with the
+# current rung boxed, and next $ — so the next stake is never a number the
+# operator has to work out. The React grid shipped without them.
+
+def test_the_ladder_is_reported_in_dollars_with_the_current_rung(client,
+                                                                 monkeypatch):
+    at.SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    at.SETTINGS_PATH.write_text(json.dumps({
+        "strategy_books": {"sweep30_1h_w": ["real"]},
+        "strategy_coins": {"sweep30_1h_w": ["APEX_USDT"]},
+        "strategy_margins": {"sweep30_1h_w": 5.0},
+        "sizing": "martingale"}))
+    monkeypatch.setattr(at, "sizing_for", lambda s: "martingale")
+    monkeypatch.setattr(at, "load_state", lambda: {
+        "APEX_USDT": {"step": 3}})          # three losses deep
+    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None: {})
+    r = next(x for x in client.get("/api/trade/strategies").json()["rows"]
+             if x["key"] == "sweep30_1h_w")
+    assert r["streak"] == 3
+    assert r["ladder"] == [round(5.0 * m, 2) for m in at.LADDER]
+    assert r["ladder_rung"] == 3
+    assert r["next_stake"] == round(5.0 * at.LADDER[3], 2)
+    assert r["notional"] == round(5.0 * at.LEVERAGE, 2)
+
+
+def test_flat_sizing_has_one_rung_and_a_constant_stake(client, monkeypatch):
+    at.SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    at.SETTINGS_PATH.write_text(json.dumps({
+        "strategy_books": {"fvg_1h_w": ["real"]},
+        "strategy_margins": {"fvg_1h_w": 8.0}}))
+    monkeypatch.setattr(at, "sizing_for", lambda s: "flat")
+    monkeypatch.setattr(at, "load_state", lambda: {})
+    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None: {})
+    got = client.get("/api/trade/strategies").json()
+    r = next(x for x in got["rows"] if x["key"] == "fvg_1h_w")
+    assert got["flat"] is True
+    assert r["ladder"] == [8.0] and r["next_stake"] == 8.0
+
+
+def test_the_streak_is_read_from_the_book_the_row_trades(client, monkeypatch):
+    """A demo-only row was printing the LIVE ladder rung."""
+    at.SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    at.SETTINGS_PATH.write_text(json.dumps({
+        "strategy_books": {"mom6_1h_pv": ["paper"]},
+        "strategy_coins": {"mom6_1h_pv": ["PROVE_USDT"]},
+        "strategy_margins": {"mom6_1h_pv": 5.0}}))
+    monkeypatch.setattr(at, "sizing_for", lambda s: "martingale")
+    monkeypatch.setattr(at, "load_state", lambda: {
+        "PROVE_USDT": {"step": 6},            # the LIVE book, not this row's
+        "PROVE_USDT#paper": {"step": 1}})
+    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None: {})
+    r = next(x for x in client.get("/api/trade/strategies").json()["rows"]
+             if x["key"] == "mom6_1h_pv")
+    assert r["streak"] == 1, "a paper row must read the paper ladder"
+
+
+def test_the_equity_curve_is_built_from_the_same_exit_rows(client, monkeypatch):
+    monkeypatch.setattr(at, "ledger_since", lambda ts: [
+        {"action": "exit", "dry_run": False, "ts": 1.0, "pnl_est": 2.0,
+         "symbol": "A_USDT"},
+        {"action": "enter", "dry_run": False, "ts": 2.0},
+        {"action": "exit", "dry_run": True, "ts": 3.0, "pnl_est": 99.0},
+        {"action": "exit", "dry_run": False, "ts": 4.0, "pnl_est": -0.5,
+         "symbol": "B_USDT"}])
+    got = client.get("/api/trade/equity").json()
+    assert [p["equity"] for p in got["points"]] == [2.0, 1.5]
+    assert got["last"] == 1.5 and got["trades"] == 2
+
+
+# --- the live lock --------------------------------------------------------
+# One coin runs ONE timeframe with real money. MEXC nets same-symbol
+# positions, so a second live entry resizes the first and either stop closes
+# part of a trade it does not own. Streamlit disabled the checkbox; the React
+# port had no guard at all.
+
+def test_two_live_strategies_on_one_coin_are_locked(client, monkeypatch):
+    at.SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    at.SETTINGS_PATH.write_text(json.dumps({
+        "strategy_books": {"trend50_30m_pi": ["real"], "mom15_4h_w": ["real"]},
+        "strategy_coins": {"trend50_30m_pi": ["PI_USDT"],
+                           "mom15_4h_w": ["PI_USDT"]}}))
+    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None: {})
+    got = client.get("/api/trade/strategies").json()
+    # the FIRST in STRATEGY_ORDER holds the coin; the other is locked
+    holder = next(k for k in at.STRATEGY_ORDER
+                  if k in ("trend50_30m_pi", "mom15_4h_w"))
+    other = "mom15_4h_w" if holder == "trend50_30m_pi" else "trend50_30m_pi"
+    assert other in got["locks"] and got["locks"][other]["held_by"] == holder
+    assert got["locks"][other]["coin"] == "PI_USDT"
+    row = next(r for r in got["rows"] if r["key"] == other)
+    assert row["live_locked"]["held_by"] == holder
+
+
+def test_paper_is_never_locked(client, monkeypatch):
+    at.SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    at.SETTINGS_PATH.write_text(json.dumps({
+        "strategy_books": {"trend50_30m_pi": ["paper"], "mom15_4h_w": ["paper"]},
+        "strategy_coins": {"trend50_30m_pi": ["PI_USDT"],
+                           "mom15_4h_w": ["PI_USDT"]}}))
+    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None: {})
+    assert client.get("/api/trade/strategies").json()["locks"] == {}
+
+
+def test_saving_a_clashing_live_pair_is_REFUSED_not_warned(client):
+    payload = {"strategy_books": {"trend50_30m_pi": ["real"],
+                                  "mom15_4h_w": ["real"]},
+               "strategy_coins": {"trend50_30m_pi": ["PI_USDT"],
+                                  "mom15_4h_w": ["PI_USDT"]}}
+    got = client.post("/api/trade/settings", json=payload)
+    assert got.status_code == 409
+    assert "already" in got.json()["detail"] and "PI" in got.json()["detail"]
+    # and nothing was written
+    assert not at.SETTINGS_PATH.exists() or json.loads(
+        at.SETTINGS_PATH.read_text()) != payload
+
+
+def test_the_same_coin_on_the_SAME_timeframe_is_allowed(client):
+    """One position on one bar size — the runner already handles that."""
+    got = client.post("/api/trade/settings", json={
+        "strategy_books": {"mom6_1h_gx": ["real"], "mom6_1h_pv": ["real"]},
+        "strategy_coins": {"mom6_1h_gx": ["XAUT_USDT"],
+                           "mom6_1h_pv": ["XAUT_USDT"]}})
+    assert got.status_code == 200

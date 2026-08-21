@@ -15,6 +15,8 @@ export default function StrategiesGrid() {
   const [sizing, setSizing] = useState("");
   const [counts, setCounts] = useState({ real_count: 0, paper_count: 0, idle_count: 0, deployed_count: 0, catalog_count: 0 });
   const [acctCap, setAcctCap] = useState(0);
+  const [flat, setFlat] = useState(false);
+  const [locks, setLocks] = useState<Record<string, { coin: string; held_by: string }>>({});
   const [capHit, setCapHit] = useState(false);
   const [catalog, setCatalog] = useState(false);
   const [conflicts, setConflicts] = useState<{ symbol?: string; keys?: string[] }[]>([]);
@@ -30,7 +32,7 @@ export default function StrategiesGrid() {
       .then(([st, se]) => {
         setRows(st.rows); setSizing(st.sizing); setConflicts(st.conflicts);
         setCounts(st); setSettings(se.settings); setDirty(false);
-        setAcctCap(st.account_loss_cap); setCapHit(st.account_cap_hit);
+        setAcctCap(st.account_loss_cap); setCapHit(st.account_cap_hit); setFlat(st.flat); setLocks(st.locks);
       })
       .catch((e) => setErr(String(e))), [catalog]);
   useEffect(() => { load(); }, [load]);
@@ -93,8 +95,14 @@ export default function StrategiesGrid() {
     try {
       const got = await tradeApi.settingsSave(settings);
       setNote(`Saved — ${got.changes_recorded} change${got.changes_recorded === 1 ? "" : "s"} recorded to deploy history.`);
+      setErr("");
       await load();
-    } catch (e) { setErr(String(e)); } finally { setBusy(false); }
+    } catch (e) {
+      // a 409 is the live-lock guard refusing to net two strategies into one
+      // MEXC position — the config on disk is unchanged
+      setErr(`NOT saved — ${String(e)}`);
+      await load();
+    } finally { setBusy(false); }
   };
 
   return (
@@ -151,6 +159,12 @@ export default function StrategiesGrid() {
                 </a>}
         </p>
       )}
+      {Object.keys(locks).length > 0 && (
+        <p className="mx-5 mt-2 rounded-lg bg-gray-50 px-3 py-2 text-theme-xs text-gray-600 dark:bg-white/[0.03] dark:text-gray-300">
+          live-locked: {Object.entries(locks).map(([k, v]) =>
+            `${k} (${v.coin.replace("_USDT", "")} held by ${v.held_by})`).join(" · ")} — one coin runs one timeframe with real money.
+        </p>
+      )}
       {conflicts.length > 0 && (
         <p className="mx-5 mt-2 rounded-lg bg-warning-50 px-3 py-2 text-theme-sm text-warning-700 dark:bg-warning-500/10">
           Timeframe conflict: {conflicts.map((c) => `${c.symbol} on ${(c.keys || []).join(" + ")}`).join(" · ")} — two bots would fight over one MEXC position.
@@ -160,7 +174,8 @@ export default function StrategiesGrid() {
         <Table>
           <TableHeader>
             <TableRow>
-              {["strategy", "tf", "TP/SL %", "books", "coins", "margin $", "loss cap $", "today $", "PROFIT $", "trades", "W", "L", "open now", "backtest"].map((h) => (
+              {["strategy", "tf", "TP/SL %", "books", "coins", "margin $", "notional $", "streak", `ladder $ · ${flat ? "flat" : "DEEP"}`, "next $",
+                "loss cap $", "today $", "PROFIT $", "trades", "W", "L", "open now", "backtest"].map((h) => (
                 <TableCell key={h} isHeader className="px-3 py-2 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400">{h}</TableCell>
               ))}
             </TableRow>
@@ -175,16 +190,28 @@ export default function StrategiesGrid() {
                 </TableCell>
                 <TableCell className="px-3 py-2">
                   <div className="flex gap-1">
-                    {(["real", "paper"] as const).map((b) => (
-                      <button key={b} onClick={() => toggleBook(r.key, b)}
-                        className={`rounded-full px-2.5 py-0.5 text-theme-xs font-medium transition ${
-                          r.books.includes(b)
-                            ? b === "real" ? "bg-error-500 text-white" : "bg-success-500 text-white"
-                            : "bg-gray-100 text-gray-500 dark:bg-white/[0.05] dark:text-gray-400"
-                        }`}>
-                        {b === "real" ? "REAL" : "paper"}
-                      </button>
-                    ))}
+                    {(["real", "paper"] as const).map((b) => {
+                      // a coin already traded LIVE on another timeframe cannot
+                      // take a second live strategy: MEXC nets them into one
+                      // position. DEMO is never locked.
+                      const locked = b === "real" && !!r.live_locked && !r.books.includes("real");
+                      return (
+                        <button key={b} onClick={() => !locked && toggleBook(r.key, b)}
+                          disabled={locked}
+                          title={locked
+                            ? `${r.live_locked!.coin.replace("_USDT", "")} is already traded live by ${r.live_locked!.held_by} on another timeframe — MEXC nets them into one position`
+                            : undefined}
+                          className={`rounded-full px-2.5 py-0.5 text-theme-xs font-medium transition ${
+                            r.books.includes(b)
+                              ? b === "real" ? "bg-error-500 text-white" : "bg-success-500 text-white"
+                              : locked
+                                ? "cursor-not-allowed bg-gray-100 text-gray-300 line-through dark:bg-white/[0.03] dark:text-gray-600"
+                                : "bg-gray-100 text-gray-500 dark:bg-white/[0.05] dark:text-gray-400"
+                          }`}>
+                          {b === "real" ? "REAL" : "paper"}
+                        </button>
+                      );
+                    })}
                   </div>
                 </TableCell>
                 <TableCell className="px-3 py-2">
@@ -197,6 +224,26 @@ export default function StrategiesGrid() {
                     onBlur={(e) => setMargin(r.key, e.target.value)}
                     className="w-16 rounded-lg border border-gray-200 bg-transparent px-2 py-1 text-theme-xs text-gray-700 dark:border-gray-700 dark:text-gray-300" />
                 </TableCell>
+                <TableCell className="px-3 py-2 text-theme-xs text-gray-500 dark:text-gray-400">{r.notional ?? "—"}</TableCell>
+                <TableCell className="px-3 py-2 text-theme-xs">
+                  {r.streak ? <span className="font-medium text-error-500">{r.streak} loss</span>
+                            : <span className="text-gray-400">—</span>}
+                </TableCell>
+                <TableCell className="px-3 py-2">
+                  {/* the whole ladder in dollars, with the rung it stands on boxed —
+                      so "next $" is never a number to work out */}
+                  <div className="flex flex-wrap items-center gap-0.5 text-theme-xs">
+                    {(r.ladder ?? []).map((amt, i) => (
+                      <span key={i} className={i === (r.ladder_rung ?? 0) && !flat
+                        ? "rounded bg-warning-400 px-1 font-bold text-gray-900"
+                        : "px-0.5 text-gray-400"}>
+                        {amt}
+                      </span>
+                    ))}
+                    {flat && <span className="ml-1 text-gray-400">every trade</span>}
+                  </div>
+                </TableCell>
+                <TableCell className="px-3 py-2 text-theme-sm font-semibold text-warning-600">{r.next_stake ?? "—"}</TableCell>
                 <TableCell className="px-3 py-2">
                   <input type="number" step="0.5" defaultValue={r.loss_cap ?? ""}
                     onBlur={(e) => mut((s) => {

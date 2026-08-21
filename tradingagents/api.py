@@ -351,7 +351,11 @@ def trade_strategies(catalog: bool = False) -> dict:
     stats = at.strategy_stats(dry=False)
     state = at.load_state()
     limits = settings.get("strategy_loss_limits") or {}
+    sizing_now = at.sizing_for(settings)
+    flat = sizing_now == "flat"
+    runstate = at.load_state()
     tripped = at.tripped_strategies(settings)
+    locks = at.timeframe_locks(settings)
     today_by = at.pnl_today_by_strategy(dry=False)
     deployed = [k for k in at.STRATEGY_ORDER
                 if (books.get(k) or coins.get(k))]
@@ -359,6 +363,7 @@ def trade_strategies(catalog: bool = False) -> dict:
     rows = []
     for key in keys:
         spec = at.STRATEGY_SPECS.get(key) or {}
+        base_m = float(margins.get(key) or 5.0)
         st_row = stats.get(key) or {}
         # book keys are "SYMBOL" (real) and "SYMBOL#paper" (simulated), so the
         # coin name is what precedes '#' and the book is which side it came from
@@ -378,7 +383,22 @@ def trade_strategies(catalog: bool = False) -> dict:
             "coins": coins.get(key) or [],
             "base_margin": margins.get(key),
             "loss_cap": limits.get(key),
+            # the LADDER, in dollars, and the rung this row is standing on.
+            # The streak belongs to the COIN AND BOOK, not the strategy — a
+            # new strategy on a coin inherits whatever rung the last one left,
+            # and really will stake that on its first trade.
+            "streak": (streak := max(
+                (int((runstate.get(c + ("" if "real" in (books.get(key) or [])
+                                        else "#paper")) or {}).get("step", 0) or 0)
+                 for c in (coins.get(key) or [])), default=0)),
+            "ladder": ([base_m] if flat
+                       else [round(base_m * m, 2) for m in at.LADDER]),
+            "ladder_rung": (0 if flat else min(streak, len(at.LADDER) - 1)),
+            "next_stake": (base_m if flat
+                           else round(base_m * at.LADDER[min(streak, len(at.LADDER) - 1)], 2)),
+            "notional": round(base_m * at.LEVERAGE, 2),
             "tripped": key in tripped,
+            "live_locked": locks.get(key),
             "today": round(float(today_by.get(key) or 0.0), 2),
             "pnl": round(float(st_row.get("pnl") or 0.0), 2),
             "trades": int(st_row.get("trades") or 0),
@@ -403,6 +423,10 @@ def trade_strategies(catalog: bool = False) -> dict:
         "account_loss_cap": float(settings.get("loss_limit") or 0.0),
         "account_cap_hit": at.loss_limit_hit(settings),
         "tripped": sorted(tripped),
+        "locks": locks,
+        "flat": flat,
+        "leverage": at.LEVERAGE,
+        "ladder_steps": list(at.LADDER),
     }
 
 
@@ -440,9 +464,23 @@ def trade_settings_get() -> dict:
 
 @app.post("/api/trade/settings")
 def trade_settings_post(payload: dict) -> dict:
-    """Save auto_trade.json. The deploy history records every change."""
+    """Save auto_trade.json. The deploy history records every change.
+
+    A save that would put TWO strategies on one coin with real money at
+    different timeframes is REFUSED, not warned about: MEXC nets them into
+    one position, so the second entry resizes the first and either stop
+    closes part of a trade it does not own.
+    """
     import tradingagents.auto_trader as at
 
+    locked = at.timeframe_locks(payload)
+    books = payload.get("strategy_books") or {}
+    clashing = {k: v for k, v in locked.items() if "real" in (books.get(k) or [])}
+    if clashing:
+        raise HTTPException(409, "; ".join(
+            f"{k} cannot go live: {v['coin'].replace('_USDT', '')} is already "
+            f"traded live by {v['held_by']} on another timeframe"
+            for k, v in clashing.items()))
     changes = at.save_settings(payload)
     return {"ok": True, "changes_recorded": len(changes)}
 
@@ -1036,3 +1074,23 @@ def contracts() -> dict:
         return {"rows": [], "why": f"{type(exc).__name__}: {exc}"}
     return {"rows": sorted({str(c.get("symbol")) for c in rows if c.get("symbol")}),
             "why": ""}
+
+
+@app.get("/api/trade/equity")
+def trade_equity(dry: bool = False) -> dict:
+    """Cumulative realised PnL per closed trade — the equity curve.
+
+    Built from the ledger's own exit rows, the same rows every other figure on
+    the screen reads, so the curve cannot disagree with the totals beside it.
+    """
+    import tradingagents.auto_trader as at
+
+    out, run = [], 0.0
+    for e in at.ledger_since(0):
+        if e.get("action") != "exit" or bool(e.get("dry_run")) is not dry:
+            continue
+        run = round(run + float(e.get("pnl_est") or 0), 2)
+        out.append({"ts": float(e.get("ts") or 0), "equity": run,
+                    "coin": str(e.get("symbol", "")).replace("_USDT", "")})
+    return {"points": out, "last": out[-1]["equity"] if out else 0.0,
+            "trades": len(out)}

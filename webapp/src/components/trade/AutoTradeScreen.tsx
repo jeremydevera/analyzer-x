@@ -10,6 +10,7 @@ import PnlPanel from "./PnlPanel";
 import FeedPanel from "./FeedPanel";
 import CredentialsPanel from "./CredentialsPanel";
 import TradeHistory from "./TradeHistory";
+import EquityCurve from "./EquityCurve";
 
 export default function AutoTradeScreen() {
   const [tick, setTick] = useState(0);
@@ -18,6 +19,7 @@ export default function AutoTradeScreen() {
     <div className="flex flex-col gap-5">
       <SummaryRibbon key={`ribbon-${tick}`} onChanged={bump} />
       <PositionsPanel onChanged={bump} />
+      <EquityCurve />
       <StrategiesGrid />
       <CredentialsPanel />
       <TradeHistory />

@@ -2756,3 +2756,47 @@ def save_settings(payload: dict) -> list[dict]:
     except Exception:
         pass
     return changes
+
+
+def timeframe_locks(settings: dict | None = None) -> dict:
+    """Which strategies may not go LIVE, because their coin is already taken.
+
+    One coin runs ONE timeframe WITH REAL MONEY: two live strategies on the
+    same coin at different bar sizes net into a single MEXC position, so the
+    second entry resizes the first and either stop closes part of a trade it
+    does not own. That is an exchange fact, and it is the only thing this
+    locks — DEMO is never locked, because a simulated book has no MEXC
+    position to fight over.
+
+    The FIRST live row in STRATEGY_ORDER wins a coin, so freeing it is an
+    explicit disarm rather than a silent reassignment. Two passes, because the
+    rule is symmetric: claiming and locking in one sweep only ever locked rows
+    below the holder.
+
+    Returns {locked_key: {"coin": ..., "held_by": ...}}.
+    """
+    if settings is None:
+        settings = load_settings()
+    books = settings.get("strategy_books") or {}
+    coins = settings.get("strategy_coins") or {}
+    iv = lambda k: (STRATEGY_SPECS.get(k) or {}).get("interval", "")  # noqa: E731
+
+    claim: dict[str, tuple[str, str]] = {}
+    for key in STRATEGY_ORDER:
+        if "real" not in (books.get(key) or []):
+            continue
+        interval = iv(key)
+        mine = coins.get(key) or []
+        if any(c in claim and claim[c][1] != interval for c in mine):
+            continue                      # already double-booked: claims nothing
+        for c in mine:
+            claim.setdefault(c, (key, interval))
+
+    locked: dict[str, dict] = {}
+    for key in STRATEGY_ORDER:
+        interval = iv(key)
+        hit = next((c for c in (coins.get(key) or [])
+                    if c in claim and claim[c][1] != interval), None)
+        if hit:
+            locked[key] = {"coin": hit, "held_by": claim[hit][0]}
+    return locked

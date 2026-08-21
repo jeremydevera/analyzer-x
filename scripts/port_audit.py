@@ -104,6 +104,12 @@ CHECKS = {
     "strategies default to DEPLOYED only": ["Strategies you have deployed"],
     "backtest states its cost first": ["combinations"],
     "PANIC needs arming then confirming": ["arm PANIC", "close everything at market"],
+    "ladder in dollars with the current rung": ["ladder_rung", "ladder $"],
+    "next stake shown, not worked out": ["next_stake", '"next $"'],
+    "streak per coin AND book": ["streak"],
+    "equity curve": ["EquityCurve"],
+    "live-lock: one coin, one timeframe, real money": ["live_locked", "timeframe_locks"],
+    "a clashing live save is REFUSED": ["cannot go live"],
   },
   "Global": {
     "night mode": ["ThemeToggleButton"],

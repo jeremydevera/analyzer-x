@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 8, "total": 22, "rows": 34048, "note": "JASMY 30m: rule 45/75 (zscore20)", "pct": 36.4, "updated": "2026-08-21T13:06:11Z"}
+{"shard": 10, "stage": "testing", "done": 8, "total": 22, "rows": 34310, "note": "JASMY 1h: rule 20/75 (stoch14)", "pct": 36.4, "updated": "2026-08-21T13:06:56Z"}

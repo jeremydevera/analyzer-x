@@ -39,7 +39,10 @@ for (const r of p.real) {
   ok(`${r.coin} SL pct+usd exact`, row[4].includes(r.sl_value.pct.toFixed(2)), row[4]);
   ok(`${r.coin} W/L/trd exact`, row[5] === String(r.wins) && row[6] === String(r.losses) && row[7] === String(r.trades),
      `${row[5]}/${row[6]}/${row[7]}`);
-  ok(`${r.coin} opened stamp exact`, row[9] === r.opened, row[9]);
+  // the stamp prints on two lines now, so textContent has no space between
+  // the date and the time
+  ok(`${r.coin} opened stamp exact`, row[9].replace(/\s+/g, "") === r.opened.replace(/\s+/g, ""),
+     `${row[9]} vs ${r.opened}`);
   // held counts up with the clock, so it can tick between render and sample
   const mins = (t) => { const m = String(t).match(/(?:(\d+)d )?(?:(\d+)h )?(\d+)m/);
     return m ? (+(m[1]||0))*1440 + (+(m[2]||0))*60 + (+m[3]) : NaN; };

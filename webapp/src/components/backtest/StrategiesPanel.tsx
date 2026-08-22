@@ -6,7 +6,7 @@
  * (the label-must-match-data rule, ported).
  */
 import { useCallback, useEffect, useState } from "react";
-import { api, fmtMoney, StrategyRow, TradesResult } from "@/lib/api";
+import { api, fmtMoney, StrategyRow, TradesResult, type IndexStatus } from "@/lib/api";
 import Badge from "@/components/ui/badge/Badge";
 import {
   Table,
@@ -33,6 +33,7 @@ export default function StrategiesPanel() {
   const [trades, setTrades] = useState<TradesResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [idx, setIdx] = useState<IndexStatus | null>(null);
 
   useEffect(() => {
     api.facets().then(setFacets).catch((e) => setErr(String(e)));
@@ -40,11 +41,16 @@ export default function StrategiesPanel() {
 
   const load = useCallback(() => {
     api.strategies({ coin: coin || undefined, tf: tf || undefined, signal: signal || undefined, profitable, limit: 300 })
-      .then((d) => { setRows(d.rows); setTotal(d.total); setErr(""); })
+      .then((d) => { setRows(d.rows); setTotal(d.total); setIdx(d.index ?? null); setErr(""); })
       .catch((e) => setErr(String(e)));
   }, [coin, tf, signal, profitable]);
 
   useEffect(load, [load]);
+  useEffect(() => {
+    if (!idx || (!idx.syncing && idx.behind === 0)) return;
+    const t = setTimeout(load, 5000);
+    return () => clearTimeout(t);
+  }, [idx, load]);
 
   const view = async (r: StrategyRow) => {
     setOpen(r);
@@ -74,6 +80,17 @@ export default function StrategiesPanel() {
           <p className="text-theme-xs text-gray-500 dark:text-gray-400">
             {total.toLocaleString()} {[coin, tf, signal, profitable ? "profitable only" : ""].some(Boolean) ? "match" : "stored strategies"}
             {rows.length < total ? ` · showing top ${rows.length} by profit` : ""}
+            {/* A partial index must NOT be captioned as the whole store: the
+                sweep measures pairs faster than they are indexed, and "648,181
+                stored strategies" while 40 pairs are still queued is a false
+                label on a true number. */}
+            {idx && (idx.behind > 0 || idx.syncing) ? (
+              <span className="text-warning-600 dark:text-warning-400">
+                {" · "}indexing {idx.pairs_indexed.toLocaleString()} of{" "}
+                {idx.pairs_on_disk.toLocaleString()} measured pairs — this list is
+                still filling in
+              </span>
+            ) : null}
             {[coin, tf, signal].filter(Boolean).length ? ` · filters: ${[coin, tf, signal].filter(Boolean).join(" · ")}` : ""}
             {profitable ? " · profitable only" : " · losers included"}
           </p>

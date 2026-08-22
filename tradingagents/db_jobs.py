@@ -16,6 +16,7 @@ import json
 import os
 import subprocess
 import sys
+import threading as _threading
 import time
 from pathlib import Path
 
@@ -269,23 +270,94 @@ def _run_backtest_inner(spec: dict) -> None:
     from tradingagents import backtest_report as br
     f = FILES["backtest"]
 
-    def prog(msg: str, frac: float) -> None:
+    # A missing field used to surface in the UI as `failed: 'coins'` -- a raw
+    # KeyError repr, which says nothing to the person reading it. Name what is
+    # missing, in words.
+    _needs = {"coins": "which coins to test", "tfs": "which timeframes",
+              "base": "the starting money per trade", "days": "how much history"}
+    _gone = [f"{k} ({why})" for k, why in _needs.items()
+             if spec.get(k) in (None, "", [], {})]
+    if _gone:
+        raise ValueError("the backtest was started without "
+                         + ", ".join(_gone) + " — nothing ran")
+
+    import os as _os
+
+    from tradingagents import market_sweep as _msw
+
+    # One pair per core, one core left free for the trading runner and the API.
+    n_workers = max(1, (_os.cpu_count() or 2) - 1)
+
+    # What the heartbeat should say between pair completions.
+    # done/total are the REAL pair counts once grid_from_store knows them.
+    # Rescaling the fraction to 0-100 printed `0/100` beside a message that
+    # said `16/3960` -- a correct value under a false label, which is the
+    # failure shape label-must-match-data exists to catch.
+    last = {"msg": "starting", "frac": 0.0, "done": 0, "total": 0}
+
+    # PUBLISHED, not assumed. The UI used to print "from scratch" as a literal,
+    # so a resumed run wore a from-scratch label -- a true value under a false
+    # caption, which is the failure label-must-match-data exists to catch.
+    fresh = bool(spec.get("fresh", True))
+
+    def _publish() -> None:
+        _write(f["progress"], {"running": True,
+                               "done": last["done"],
+                               "total": last["total"], "now": last["msg"],
+                               "cores": n_workers, "fresh": fresh,
+                               "workers": _msw.worker_read()})
+
+    def prog(msg: str, frac: float, done: int | None = None,
+             total: int | None = None) -> None:
         if _stopping("backtest"):
             raise _StopRequested()
-        _write(f["progress"], {"running": True, "done": round(frac * 100),
-                               "total": 100, "now": msg})
+        frac = max(0.0, min(1.0, frac))
+        # no counts offered (a phase that only knows a fraction): keep the bar
+        # moving on a permille scale rather than printing a rounded-to-zero one
+        if total is None:
+            done, total = round(frac * 1000), 1000
+        last.update(msg=msg, frac=frac, done=done, total=total)
+        _publish()
+
+    # HEARTBEAT. progress() only fires when a PAIR finishes, and a pair is
+    # ~17,800 combinations — so with every core on a long pair the progress file
+    # sat at "starting" with no cores for minutes while all seven were in fact
+    # working. The workers publish their own slot files continuously; this
+    # thread folds them into the job's progress on a timer so the UI sees them.
+    _beat_stop = _threading.Event()
+
+    def _beat() -> None:
+        while not _beat_stop.wait(2.0):
+            try:
+                _publish()
+            except Exception:
+                pass                      # telemetry must never kill the job
+
+    _beat_t = _threading.Thread(target=_beat, name="bt-heartbeat", daemon=True)
+    _beat_t.start()
 
     try:
+        # BACKTEST means from scratch. The operator's words: "when i click
+        # backtest i want from scratch, when i click update backtest just fill
+        # the gap" -- so this job throws the resume point away by default and
+        # UPDATE (_run_btupdate) is the one that continues.
         payload = br.grid_from_store(
             spec["coins"], spec["tfs"], base_margin=float(spec["base"]),
             days=int(spec["days"]), deployed=spec.get("deployed") or [],
-            progress=prog)
+            progress=prog, workers=n_workers, fresh=fresh)
     except _StopRequested:
         _write(f["progress"], {"running": False, "stopped": True,
                                "finished": int(time.time()),
                                "note": "stopped by you — a backtest has no "
                                        "partial answer, so nothing was saved"})
         return
+    finally:
+        # ALWAYS, and before any terminal write. The caller records a failure
+        # in its own handler; a heartbeat still alive at that moment would fire
+        # two seconds later and stamp the dead job "running" again, leaving a
+        # crashed backtest looking like it was still going.
+        _beat_stop.set()
+        _beat_t.join(timeout=3.0)
     if not payload["rows"]:
         _write(f["progress"], {"running": False, "rows": 0,
                                "finished": int(time.time()),
@@ -343,7 +415,7 @@ def _run_btupdate(spec: dict) -> None:
                                "rows": len(rows), "new_bars": new_bars})
         try:
             r = msw.run_pair(sym, tf, base_margin=base, days=days,
-                             thresholds=3)
+                             thresholds=3, fresh=False)   # UPDATE = gap fill
         except Exception as exc:
             notes.append(f"{sym} {tf}: {str(exc)[:80]}")
             continue

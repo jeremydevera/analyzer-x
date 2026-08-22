@@ -26,14 +26,19 @@ export default function SummaryRibbon({ onChanged }: { onChanged?: () => void })
   const [busy, setBusy] = useState(false);
   const [armed, setArmed] = useState(false);
   const [note, setNote] = useState("");
+  const [sup, setSup] = useState<Awaited<ReturnType<typeof tradeApi.supervisor>> | null>(null);
 
   const load = () =>
     tradeApi.summary().then((d) => { setS(d); setErr(""); }).catch((e) => setErr(String(e)));
 
+  const loadSup = () => tradeApi.supervisor().then(setSup).catch(() => {});
+
   useEffect(() => {
     load();
+    loadSup();
     const t = setInterval(load, 10000);
-    return () => clearInterval(t);
+    const su = setInterval(loadSup, 15000);
+    return () => { clearInterval(t); clearInterval(su); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -81,6 +86,23 @@ export default function SummaryRibbon({ onChanged }: { onChanged?: () => void })
           {s.mode}{s.pid ? ` · pid ${s.pid}` : ""}
         </Badge>
         {s.halted && <Badge size="sm" color="warning">HALTED — no new entries</Badge>}
+        {sup && !s.pid && sup.wants_runner && (
+          <Badge size="sm" color="error">
+            DIED{sup.last_beat_seconds != null
+              ? ` — last heartbeat ${Math.round(sup.last_beat_seconds / 60)} min ago`
+              : ""}
+          </Badge>
+        )}
+        {sup && s.pid && sup.stale && (
+          <Badge size="sm" color="warning">
+            no heartbeat for {Math.round((sup.last_beat_seconds ?? 0) / 60)} min
+          </Badge>
+        )}
+        {sup && !sup.disk_ok && (
+          <Badge size="sm" color="error">
+            disk almost full — {sup.free_mb.toLocaleString()} MB free
+          </Badge>
+        )}
         {note && <span className="text-theme-xs font-medium text-error-500">{note}</span>}
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {s.pid
@@ -89,6 +111,19 @@ export default function SummaryRibbon({ onChanged }: { onChanged?: () => void })
           <Button size="sm" variant="outline" disabled={busy} onClick={halt}>
             {s.halted ? "RESUME ENTRIES" : "HALT ENTRIES"}
           </Button>
+          <label className="flex items-center gap-1.5 text-theme-xs text-gray-600 dark:text-gray-300"
+            title={sup?.installed
+              ? `macOS restarts the runner within ${sup.throttle_seconds}s of a crash, while it is meant to be up. A deliberate STOP is respected.`
+              : "off: if the runner dies, nothing brings it back"}>
+            <input type="checkbox" checked={!!sup?.installed}
+              onChange={async (e) => {
+                setBusy(true);
+                try { await tradeApi.setSupervisor(e.target.checked); await loadSup(); }
+                catch (err) { setErr(String(err)); } finally { setBusy(false); }
+              }}
+              className="h-4 w-4 accent-brand-500" />
+            auto-restart
+          </label>
           <label className="flex items-center gap-1.5 text-theme-xs text-gray-600 dark:text-gray-300">
             <input type="checkbox" checked={armed} onChange={(e) => setArmed(e.target.checked)}
               className="h-4 w-4 accent-error-500" />

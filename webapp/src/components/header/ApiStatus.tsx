@@ -9,10 +9,19 @@ export default function ApiStatus() {
 
   useEffect(() => {
     let alive = true;
+    // TWO consecutive failures before saying "unreachable". One slow answer is
+    // not an outage: while a 3,960-pair sweep has the machine, a probe can
+    // exceed the timeout and come straight back on the next poll. Claiming the
+    // API is down when it is merely busy is a false label on a live system.
+    let misses = 0;
     const probe = () =>
       api.health()
-        .then((h) => alive && setState(h.ok ? "up" : "down"))
-        .catch(() => alive && setState("down"));
+        .then((h) => { if (!alive) return; misses = 0; setState(h.ok ? "up" : "down"); })
+        .catch(() => {
+          if (!alive) return;
+          misses += 1;
+          if (misses >= 2) setState("down");
+        });
     probe();
     const t = setInterval(probe, 10000);
     return () => { alive = false; clearInterval(t); };

@@ -44,6 +44,13 @@ LEDGER_PATH = STATE_DIR / "auto_trade_ledger.jsonl"
 PID_PATH = STATE_DIR / "auto_trade.pid"
 LOG_PATH = STATE_DIR / "auto_trade.log"
 KILL_PATH = STATE_DIR / "auto_trade.KILL"
+# "the operator wants it running". A supervisor watches this file: while it
+# exists the runner is restarted whenever it dies, and a deliberate STOP
+# removes it, so nothing fights the operator's own decision.
+WANT_PATH = STATE_DIR / "auto_trade.WANT"
+# held for the process's whole life: the single-instance lock
+LOCK_PATH = STATE_DIR / "auto_trade.lock"
+_RUN_LOCK = None
 
 BAR_SECONDS = 4 * 3600       # the default (coarsest) strategy timeframe
 LEVERAGE = 20
@@ -2647,6 +2654,11 @@ def run_cycle(*, fx=None) -> None:
 
 
 # --------------------------------------------------------- process control
+def wants_runner() -> bool:
+    """Whether the operator has asked for the runner to be up."""
+    return WANT_PATH.exists()
+
+
 def runner_pid() -> int | None:
     try:
         pid = int(PID_PATH.read_text(encoding="utf-8").strip())
@@ -2662,9 +2674,11 @@ def runner_pid() -> int | None:
 def start_runner() -> int:
     """Spawn the loop as a detached process. Returns the PID."""
     existing = runner_pid()
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    # record the INTENT before spawning: a supervisor keeps it up from here
+    WANT_PATH.write_text("run", encoding="utf-8")
     if existing:
         return existing
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
     with LOG_PATH.open("a", encoding="utf-8") as log:
         proc = subprocess.Popen(
             [sys.executable, "-m", "tradingagents.auto_trader", "run"],
@@ -2675,7 +2689,12 @@ def start_runner() -> int:
 
 
 def stop_runner() -> bool:
-    """Terminate by recorded PID — never by process name."""
+    """Terminate by recorded PID — never by process name.
+
+    Clears the want-flag FIRST, so a supervisor does not restart what the
+    operator just stopped.
+    """
+    WANT_PATH.unlink(missing_ok=True)
     pid = runner_pid()
     if not pid:
         PID_PATH.unlink(missing_ok=True)
@@ -2711,6 +2730,15 @@ def next_sleep_seconds(now: float | None = None) -> float:
     return max(1.0, min(float(cap), to_boundary))
 
 
+def disk_free_mb() -> int:
+    """Free space where the state, ledger and log live."""
+    st = os.statvfs(str(STATE_DIR if STATE_DIR.exists() else Path.home()))
+    return int(st.f_bavail * st.f_frsize / 1_000_000)
+
+
+MIN_FREE_MB = 500
+
+
 def run_forever() -> None:
     from tradingagents.dataflows import mexc_credentials as cred
     cred.load_into_env()
@@ -2733,6 +2761,30 @@ def run_forever() -> None:
         print(f"another auto-trader is already running (pid {other}) — "
               f"stop it first:  kill {other}", file=sys.stderr)
         raise SystemExit(1)
+    # The pid check alone LOST A RACE on 2026-08-22: launchd started a second
+    # runner beside a healthy one and both lived for seconds while the newcomer
+    # was still importing. An exclusive lock cannot race — whoever holds it is
+    # the runner, and the loser exits before it can trade.
+    global _RUN_LOCK
+    try:
+        _RUN_LOCK = open(LOCK_PATH, "w")
+        fcntl.flock(_RUN_LOCK, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        print("another auto-trader holds the run lock — exiting so trades are "
+              "never doubled", file=sys.stderr)
+        raise SystemExit(1) from None
+    # A full disk killed the runner mid-write on 2026-08-22 (fatal OSError at
+    # 05:33); two positions then closed at the exchange with nobody recording
+    # the exits for three hours. Refuse to start, loudly, instead.
+    free = disk_free_mb()
+    if free < MIN_FREE_MB:
+        logger.error("REFUSING TO START: only %s MB free where the state and "
+                     "ledger live (need %s MB). A write failing mid-cycle is "
+                     "how the runner died on 2026-08-22 — free space first.",
+                     f"{free:,}", f"{MIN_FREE_MB:,}")
+        print(f"disk almost full: {free} MB free, need {MIN_FREE_MB} MB",
+              file=sys.stderr)
+        raise SystemExit(2)
     PID_PATH.parent.mkdir(parents=True, exist_ok=True)
     PID_PATH.write_text(str(os.getpid()), encoding="utf-8")
     modes = active_modes()

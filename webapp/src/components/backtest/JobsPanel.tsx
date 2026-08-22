@@ -71,6 +71,9 @@ export default function JobsPanel() {
       await api.jobStart(kind, {
           coins, tfs, days: WINDOWS[win], base,
           label: "react", deployed,
+          // BACKTEST = from scratch, UPDATE = fill the gap. Sent explicitly so
+          // the button and the run agree without relying on a server default.
+          fresh: kind === "backtest",
         });
       poll();
     } catch (e) {
@@ -165,10 +168,12 @@ export default function JobsPanel() {
               </Button>
             ) : (
               <>
-                <Button size="sm" onClick={() => start("backtest")}
-                  disabled={!coins.length || !tfs.length || !!bt?.running}>
-                  BACKTEST
-                </Button>
+                <span title="FROM SCRATCH — every combination replays from its first candle. Slower; use UPDATE BACKTEST to only add new candles.">
+                  <Button size="sm" onClick={() => start("backtest")}
+                    disabled={!coins.length || !tfs.length || !!bt?.running}>
+                    BACKTEST
+                  </Button>
+                </span>
                 <span title="CONTINUE the stored backtests over new candles only — never from scratch.">
                   <Button size="sm" variant="outline" onClick={() => start("btupdate")}
                     disabled={!coins.length || !tfs.length || !!upd?.running}>
@@ -183,11 +188,19 @@ export default function JobsPanel() {
             {upd?.running && (
               <Button size="sm" variant="outline" onClick={() => api.jobStop("btupdate").then(poll)}>STOP UPDATE</Button>
             )}
-            {bt?.running && <Badge size="sm" color="info">full grid running</Badge>}
+            {bt?.running && (
+              <Badge size="sm" color="info">
+                {/* DERIVED from the run, not a literal: a resumed job wearing a
+                    "from scratch" badge is a false label on true data. */}
+                full grid {bt.fresh === false ? "· gap fill" : bt.fresh ? "· from scratch" : ""}
+              </Badge>
+            )}
             {upd?.running && <Badge size="sm" color="info">update running</Badge>}
           </div>
-          <JobProgress s={bt} label="full grid" />
-          <JobProgress s={upd} label="update" />
+          <JobProgress s={bt}
+            label={`full grid${bt?.fresh === false ? " · gap fill"
+                     : bt?.fresh ? " · from scratch" : ""}`} />
+          <JobProgress s={upd} label="update · new candles only" />
         </div>
       </div>
 

@@ -61,6 +61,42 @@ export default function JobProgress({ s, label }: { s: JobStatus | null; label?:
       <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-800">
         <div className={`h-2 rounded-full ${bar}`} style={{ width: `${width}%` }} />
       </div>
+
+      {/* PER CORE. The overall bar counts finished PAIRS, so on a long pair it
+          can sit still for minutes and look stuck. These say which pair each
+          core has and how far into it — the operator asked to see the machine
+          really working. */}
+      {s.running && !!s.workers?.length && (
+        <div className="mt-2">
+          <p className="mb-1 text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500">
+            {s.workers.length} of {s.cores ?? s.workers.length} core
+            {(s.cores ?? s.workers.length) === 1 ? "" : "s"} working
+          </p>
+          <div className="flex flex-col gap-1">
+            {s.workers.map((w) => {
+              const idle = w.state === "done" || w.state === "no new bars";
+              return (
+                <div key={w.slot} className="flex items-center gap-2">
+                  <span className="w-10 shrink-0 font-mono text-[10px] text-gray-400 dark:text-gray-500">
+                    #{w.slot}
+                  </span>
+                  <span className="w-24 shrink-0 truncate text-[10px] text-gray-600 dark:text-gray-300">
+                    {w.pair ?? "—"}
+                  </span>
+                  <span className="h-1.5 min-w-0 flex-1 rounded-full bg-gray-200 dark:bg-gray-800">
+                    <span
+                      className={`block h-1.5 rounded-full ${idle ? "bg-success-500" : "bg-brand-500"}`}
+                      style={{ width: `${Math.max(w.pct ?? 0, 2)}%` }} />
+                  </span>
+                  <span className="w-9 shrink-0 text-right font-mono text-[10px] tabular-nums text-gray-500 dark:text-gray-400">
+                    {idle ? "done" : `${w.pct ?? 0}%`}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
       {!s.running && (
         <p className="mt-1 text-[10px] text-gray-400">
           {state === "stopped" ? "stopped" : state === "error" ? "failed" : "finished"}{" "}

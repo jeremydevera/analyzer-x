@@ -1,0 +1,12 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 1680, height: 1400 } });
+await p.goto('http://localhost:8507', { waitUntil: 'networkidle' });
+await p.waitForTimeout(9000);
+await p.locator('text=Backtest 2').first().click();
+await p.waitForTimeout(35000);
+const t = await p.locator('body').innerText();
+console.log('has "Daily grid":', t.includes('Daily grid'));
+console.log('has error box:', /Traceback|Error|Exception/i.test(t));
+console.log('TAIL:', t.slice(-700).replace(/\n+/g, ' | '));
+await b.close();

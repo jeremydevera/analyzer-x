@@ -52,6 +52,12 @@ def test_strategies_filter_and_paginate(client, monkeypatch):
     from tradingagents import market_sweep as msw
 
     _seed_rows(msw)
+    # /api/strategies answers from the SQLite index now, not by re-parsing the
+    # store (that cost 28.6s per request on the real one). A tiny store fills
+    # inline on the first read; syncing here keeps the test deterministic.
+    from tradingagents import rows_index as ri
+
+    ri.sync()
     r = client.get("/api/strategies", params={"coin": "BTC"})
     assert r.status_code == 200
     body = r.json()
@@ -62,7 +68,11 @@ def test_strategies_filter_and_paginate(client, monkeypatch):
     assert r2.json()["total"] == 1, "the loser filters out"
     assert r2.json()["rows"][0]["signal"] == "rsi14"
     r3 = client.get("/api/strategies", params={"coin": "NOPE"})
-    assert r3.json() == {"rows": [], "total": 0}
+    body3 = r3.json()
+    assert (body3["rows"], body3["total"]) == ([], 0)
+    assert body3["index"]["behind"] == 0, (
+        "the response must say whether the index is still catching up, or a "
+        "partial list gets read as the whole store")
 
 
 def test_storage_by_coin_shape(client, monkeypatch):

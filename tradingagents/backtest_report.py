@@ -766,12 +766,28 @@ def write_report(path: str, payload: dict, *, title: str, headline: str = "",
     return path
 
 
+def _prog_takes_counts(progress) -> bool:
+    """Does this progress callback want the real (done, total) as well as the
+    fraction? A UI that prints a counter needs the counts: rescaling 16/3960 to
+    a 0-100 bar rounds to `0/100`, which sits beside a message saying 16/3960
+    and reads as a stalled run."""
+    import inspect
+    try:
+        ps = [x for x in inspect.signature(progress).parameters.values()
+              if x.kind in (x.POSITIONAL_ONLY, x.POSITIONAL_OR_KEYWORD)]
+        return len(ps) >= 4 or any(x.kind == x.VAR_POSITIONAL
+                                   for x in inspect.signature(progress).parameters.values())
+    except (TypeError, ValueError):
+        return False
+
+
 def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
                     base_margin: float = 5.0, days: int = 365,
                     thresholds: int = 3,
                     deployed: Sequence[dict] | None = None,
                     progress: Callable[[str, float], None] | None = None,
-                    embed_limit: int = 4) -> dict:
+                    embed_limit: int = 4,
+                    workers: int = 0, fresh: bool = False) -> dict:
     """A ``run_grid``-shaped payload that READS THE STORE FIRST.
 
     The operator's rule: "when doing analysis its not doing from scratch."
@@ -803,14 +819,75 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
              "fresh_pairs": [], "deployed_computed": 0}
     total = max(1, len(coins) * len(tfs))
     done = 0
-    for sym in coins:
-        show = sym.replace("_USDT", "")
-        for tf in tfs:
+    # ---- MEASURE. One pair per core: this was a serial nested loop, so a
+    # 27-pair sweep used one of the machine's eight cores. Pairs are
+    # independent (own row file, own state file, per-pair lock before either
+    # write), and PROCESSES rather than threads because each pair mutates
+    # at.STRATEGY_SPECS, which is not thread-safe. One core is left free: the
+    # trading runner and the API live on this machine too.
+    #
+    # Only the MEASURING is parallel. The folding below stays single-threaded
+    # and unchanged, so the parallel and serial paths cannot drift.
+    pairs = [(sym, tf) for sym in coins for tf in tfs]
+    n_workers = workers if workers > 0 else max(1, (os.cpu_count() or 2) - 1)
+    n_workers = max(1, min(n_workers, len(pairs)))
+    measured: list = []
+    _counts = _prog_takes_counts(progress) if progress else False
+
+    if n_workers > 1:
+        import concurrent.futures as _cf
+
+        msw.worker_clear()
+        try:
+            with _cf.ProcessPoolExecutor(
+                    max_workers=n_workers,
+                    initializer=msw.be_polite) as pool:
+                futs = {pool.submit(msw.run_pair, sym, tf, slot=i % n_workers,
+                                    base_margin=base_margin, days=days,
+                                    thresholds=thresholds,
+                                    fresh=fresh): (sym, tf)
+                        for i, (sym, tf) in enumerate(pairs)}
+                for fut in _cf.as_completed(futs):
+                    sym, tf = futs[fut]
+                    done += 1
+                    if progress:
+                        _msg = (f"{sym.replace('_USDT', '')} {tf}: done "
+                                f"({done}/{total})")
+                        if _counts:
+                            progress(_msg, done / total, done, total)
+                        else:
+                            progress(_msg, done / total)
+                    try:
+                        measured.append((sym, tf, fut.result()))
+                    except Exception as exc:   # one pair dying is not the run
+                        excluded.append({"coin": sym.replace("_USDT", ""),
+                                         "tf": tf,
+                                         "why": f"worker: {str(exc)[:60]}"})
+        except Exception:
+            # The pool itself could not start — spawn needs an importable
+            # __main__, so a caller running from stdin or a REPL has none. Fall
+            # back to measuring in-process rather than returning a ZERO-ROW
+            # backtest, which is the failure mode that looks like success.
+            measured, done = [], 0
+            n_workers = 1
+        msw.worker_clear()
+
+    if n_workers <= 1 and not measured:
+        for sym, tf in pairs:
             if progress:
-                progress(f"{show} {tf}: reading the store", done / total)
-            r = msw.run_pair(sym, tf, base_margin=base_margin, days=days,
-                             thresholds=thresholds)
+                _msg = f"{sym.replace('_USDT', '')} {tf}: reading the store"
+                if _counts:
+                    progress(_msg, done / total, done, total)
+                else:
+                    progress(_msg, done / total)
+            measured.append((sym, tf, msw.run_pair(
+                sym, tf, base_margin=base_margin, days=days,
+                thresholds=thresholds, fresh=fresh)))
             done += 1
+
+    for sym, tf, r in measured:
+        if True:
+            show = sym.replace("_USDT", "")
             # "no new bars" is SUCCESS — the store answers in full. Only a
             # why with nothing behind it (fetch failed, too young, venue
             # error) excludes the pair.

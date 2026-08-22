@@ -106,3 +106,34 @@ def test_sizes_when_nothing_written_yet():
     s = pq.sizes()
     assert s["candles"] == {"files": 0, "rows": 0, "bytes": 0}
     assert s["grids"] == {"files": 0, "rows": 0, "bytes": 0}
+
+
+def test_sizes_can_skip_the_row_count(tmp_path, monkeypatch):
+    """Counting rows opens every parquet file — 4,909 of them on the real
+    store, over 20s while the sweep is running. /api/health is polled every
+    10 seconds, so it must not do that."""
+    import pyarrow.parquet as pa
+
+    from tradingagents import parquet_store as pq
+
+    monkeypatch.setattr(pq, "CANDLES", tmp_path / "c")
+    monkeypatch.setattr(pq, "GRIDS", tmp_path / "g")
+    (tmp_path / "c").mkdir()
+    (tmp_path / "g").mkdir()
+    pq.save_candles("BTC_USDT", "15m", _frame())
+
+    opens = []
+    real = pa.ParquetFile
+    monkeypatch.setattr(pa, "ParquetFile",
+                        lambda *a, **k: (opens.append(a), real(*a, **k))[1])
+
+    cheap = pq.sizes(rows=False)
+    assert not opens, f"health opened {len(opens)} parquet files"
+    assert cheap["candles"]["files"] == 1
+    assert cheap["candles"]["bytes"] > 0
+    assert cheap["candles"]["rows"] is None, (
+        "None says 'not counted'; a 0 would read as an empty store")
+
+    full = pq.sizes()
+    assert opens, "the storage screen still counts rows"
+    assert full["candles"]["rows"] > 0

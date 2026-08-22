@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 const b = await chromium.launch();
 const p = await b.newPage({ viewport: { width: 1680, height: 1050 } });
-await p.goto('http://localhost:8503', { waitUntil: 'networkidle' });
+await p.goto('http://localhost:8507', { waitUntil: 'networkidle' });
 await p.waitForTimeout(9000);
 await p.locator('text=Backtest 2').first().click();
 await p.waitForTimeout(8000);

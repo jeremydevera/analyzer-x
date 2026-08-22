@@ -94,19 +94,30 @@ def load_grid(path):
 
 
 # ------------------------------------------------------------------ sizes
-def sizes() -> dict:
-    """Files, rows and bytes per store — growth must be visible."""
-    import pyarrow.parquet as pa
+def sizes(rows: bool = True) -> dict:
+    """Files, rows and bytes per store — growth must be visible.
 
+    `rows=False` skips the row counts, and that is the difference between a
+    stat and a storm: counting rows OPENS every parquet file, 4,909 of them
+    measured on 2026-08-22. That is 2s on an idle disk and over 20s while the
+    sweep has seven cores on it — and /api/health was polled every 10 seconds
+    by the header chip, so the chip read "API unreachable" while the API was
+    perfectly healthy and merely busy counting. Liveness probes get
+    `rows=False`; the storage screen, which the operator opens deliberately,
+    gets the full count.
+    """
     out = {}
     for name, d in (("candles", CANDLES), ("grids", GRIDS)):
         files = sorted(d.glob("*.parquet")) if d.exists() else []
-        rows = 0
-        for f in files:
-            try:
-                rows += pa.ParquetFile(f).metadata.num_rows
-            except Exception:
-                continue
-        out[name] = {"files": len(files), "rows": rows,
+        n = 0
+        if rows:
+            import pyarrow.parquet as pa
+
+            for f in files:
+                try:
+                    n += pa.ParquetFile(f).metadata.num_rows
+                except Exception:
+                    continue
+        out[name] = {"files": len(files), "rows": (n if rows else None),
                      "bytes": sum(f.stat().st_size for f in files)}
     return out

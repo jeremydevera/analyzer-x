@@ -1,6 +1,7 @@
 "use client";
 import { ThemeToggleButton } from "@/components/common/ThemeToggleButton";
 import NotificationDropdown from "@/components/header/NotificationDropdown";
+import RunningJobs from "@/components/header/RunningJobs";
 import { useSidebar } from "@/context/SidebarContext";
 import ApiStatus from "@/components/header/ApiStatus";
 import Link from "next/link";
@@ -124,6 +125,9 @@ const AppHeader: React.FC = () => {
             {/* the bell sits beside it, as asked: downloads, backtests and
                 every position opening or closing */}
             <NotificationDropdown />
+            {/* and anything RUNNING right now, from whichever screen started
+                it — the per-screen pollers die on navigation */}
+            <RunningJobs />
           </div>
           <span className="text-theme-sm font-medium text-gray-700 dark:text-gray-300">
             this Mac · pure local

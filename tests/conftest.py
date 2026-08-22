@@ -11,6 +11,8 @@ import os
 import socket
 from unittest.mock import MagicMock, patch
 
+from pathlib import Path
+
 import pytest
 
 
@@ -160,6 +162,42 @@ def _never_touch_the_live_book(tmp_path, monkeypatch):
                            ("KILL_PATH", "auto_trade.KILL")):
         if hasattr(at, name):
             monkeypatch.setattr(at, name, sandbox / filename)
+    # The NOTIFICATION FEED is written from the same code paths, so it has to
+    # be sandboxed with them. It was not, and one suite run put 30 fixture
+    # trades ("PAPER LONG BTC entry 102.0", sweep_rt, ETH) into the operator's
+    # real bell — the same class of mistake as the run that wrote 43 fake XAUT
+    # rows into the live ledger. Any new module-level path under
+    # ~/.tradingagents belongs in this list on the day it is added.
+    try:
+        from tradingagents import notifications as _nt
+
+        monkeypatch.setattr(_nt, "DB_PATH", sandbox / "notifications.db")
+    except Exception:
+        pass
+    # The DETACHED JOB FILES too. They were not sandboxed, and a test that
+    # drove db_jobs._run_backtest_inner with a stub grid wrote
+    # {"running": false, "rows": 0, "note": "nothing survived the trade floor"}
+    # straight over the progress file of the operator's LIVE 3,960-pair sweep
+    # at 00:25:26 on 2026-08-22, while seven cores were still measuring. The
+    # measurements were safe; the screen said the run had finished with
+    # nothing. A test must never be able to narrate a real job.
+    try:
+        from tradingagents import rows_index as _ri
+
+        monkeypatch.setattr(_ri, "DB_PATH", sandbox / "rows.db")
+    except Exception:
+        pass
+    try:
+        from tradingagents import db_jobs as _dj
+
+        jobs = sandbox / "jobs"
+        jobs.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setattr(_dj, "STATE_DIR", jobs, raising=False)
+        monkeypatch.setattr(_dj, "FILES", {
+            kind: {role: jobs / Path(path).name for role, path in roles.items()}
+            for kind, roles in _dj.FILES.items()})
+    except Exception:
+        pass
 
 
 @pytest.fixture(autouse=True)

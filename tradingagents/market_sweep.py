@@ -178,6 +178,85 @@ def combo_key(signal: str, th: float, sl: float, tp: float,
     return f"{signal}|{th:g}|{sl:g}|{tp:g}|{sizing}"
 
 
+# ------------------------------------------------------------- worker slots
+# A parallel run puts one PAIR on each core. A child process cannot call back
+# into the parent, so each worker publishes its own progress to its own small
+# file and anyone — the job, the API, the UI — reads them. One file per slot,
+# so a crashed worker leaves its last state behind instead of a hole.
+WORKERS = HOME / "workers"
+
+
+def worker_write(slot: int, **fields) -> None:
+    """Publish one worker's progress. Never raises: it is only telemetry."""
+    try:
+        WORKERS.mkdir(parents=True, exist_ok=True)
+        f = WORKERS / f"w{int(slot)}.json"
+        tmp = f.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps({"slot": int(slot),
+                                   "updated": time.time(), **fields},
+                                  separators=(",", ":")))
+        tmp.replace(f)
+    except Exception:
+        pass
+
+
+def worker_read() -> list:
+    """Every worker's last published state, lowest slot first."""
+    out = []
+    try:
+        for f in sorted(WORKERS.glob("w*.json")):
+            try:
+                out.append(json.loads(f.read_text()))
+            except (OSError, ValueError):
+                continue
+    except Exception:
+        return []
+    return sorted(out, key=lambda r: r.get("slot", 0))
+
+
+def worker_clear() -> None:
+    """Wipe the slots before a run, so last run's cores are not shown as busy."""
+    try:
+        for f in WORKERS.glob("w*.json"):
+            f.unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
+# How many combinations between checkpoints. A pair is roughly 2,000 of them,
+# so 200 caps the loss from a crash at a twentieth of the pair while adding one
+# small atomic write per 200 backtests.
+CHECKPOINT_EVERY = 200
+
+# Telemetry is CHEAP (a ~130 byte file); a checkpoint is EXPENSIVE (it rewrites
+# the pair's whole row file, which reaches 17 MB). Tying the progress display to
+# the checkpoint made both wrong: seven workers each rewriting megabytes every
+# 200 combinations, and a percentage that sat still for 30 seconds so the
+# operator could not tell the machine was working. Publish often, checkpoint
+# rarely.
+PUBLISH_EVERY = 20
+
+
+def be_polite() -> int:
+    """Run this worker at low OS priority.
+
+    Measured 2026-08-22 during a 3,960-pair sweep: CPU itself was fine (a 3M
+    multiply-add loop still took its idle 0.26s) but /api/jobs/backtest — which
+    reads ONE small file — took 1.7s, and the header's health probe timed out,
+    so the app read "API unreachable" while it was merely queued behind the
+    sweep. The sweep is a three-day background job; a click is not. `nice` is
+    exactly this trade: the sweep gives up almost nothing because nothing else
+    wants the machine most of the time.
+
+    Returns the new niceness, or -1 if the platform would not allow it.
+    """
+    import os
+
+    try:
+        return os.nice(10)
+    except (OSError, AttributeError):
+        return -1
+
 # ------------------------------------------------------------------ rows
 ROWDIR = HOME / "rows"
 
@@ -195,6 +274,29 @@ def save_pair_rows(coin: str, tf: str, rows: list) -> None:
         tmp = ROWDIR / f"{coin}-{tf}.json.tmp"
         tmp.write_text(json.dumps(rows, separators=(",", ":")))
         tmp.replace(ROWDIR / f"{coin}-{tf}.json")
+
+
+def _row_key(r: dict) -> str:
+    """The combination a row measures — the identity a merge keys on."""
+    return combo_key(str(r.get("signal")), float(r.get("th") or 0),
+                     float(r.get("sl") or 0), float(r.get("tp") or 0),
+                     str(r.get("sizing")))
+
+
+def merge_pair_rows(coin: str, tf: str, rows: list) -> int:
+    """Write `rows` OVER whatever is stored for this pair, keeping the rest.
+
+    A checkpoint holds only the combinations measured so far, so writing it
+    with save_pair_rows would delete every combination not yet reached — the
+    pair would come back from a crash with a fraction of its grid and no sign
+    that anything was missing. Merging by combination keeps the untouched rows
+    and replaces the recomputed ones. Returns the stored row count.
+    """
+    have = {_row_key(r): r for r in pair_rows(coin, tf)}
+    have.update({_row_key(r): r for r in rows})
+    merged = list(have.values())
+    save_pair_rows(coin, tf, merged)
+    return len(merged)
 
 
 def all_rows() -> list:
@@ -229,10 +331,15 @@ def coverage() -> dict:
 
 
 # ------------------------------------------------------------------- run
-def run_pair(symbol: str, tf: str, *, base_margin: float = 5.0,
+def run_pair(symbol: str, tf: str, *, slot: int | None = None,
+             base_margin: float = 5.0,
              days: int = 365, signals: Sequence[str] | None = None,
-             thresholds: int = 1) -> dict:
-    """Test (or continue) every combination for one contract and timeframe."""
+             thresholds: int = 1, fresh: bool = False) -> dict:
+    """Test (or continue) every combination for one contract and timeframe.
+
+    `fresh=True` throws the resume point away and replays every combination
+    from its first bar. That is what the BACKTEST button does; the UPDATE
+    button leaves it False so it only walks bars that printed since."""
     from tradingagents.dataflows import mexc_futures as fx
     from tradingagents import backtest_report as br
     import tradingagents.auto_trader as at
@@ -257,8 +364,8 @@ def run_pair(symbol: str, tf: str, *, base_margin: float = 5.0,
     except Exception as exc:
         return {"coin": coin, "tf": tf, "rows": [], "added": added,
                 "source": source, "why": f"venue: {str(exc)[:60]}"}
-    states = load_states(coin, tf)
-    last_ms = int(states.get("__last_ms__", 0))
+    states = {} if fresh else load_states(coin, tf)
+    last_ms = 0 if fresh else int(states.get("__last_ms__", 0))
     # A store built with an older signal library must not be served as if it
     # were current: 54-signal rows silently missing 21 rules is a wrong answer
     # wearing a cached one's clothes. Version mismatch resets the pair.
@@ -280,6 +387,9 @@ def run_pair(symbol: str, tf: str, *, base_margin: float = 5.0,
     incremental = bool(last_ms) and 0 < start_at < len(df)
     if last_ms and start_at >= len(df):
         save_states(coin, tf, states)          # persists a fresh __version__
+        if slot is not None:
+            worker_write(slot, pair=f"{coin} {tf}", done=0, total=0, pct=100,
+                         state="no new bars")
         return {"coin": coin, "tf": tf, "rows": pair_rows(coin, tf),
                 "added": added, "source": source, "why": "no new bars",
                 "incremental": True, "new_bars": 0, "fee": fee,
@@ -310,6 +420,17 @@ def run_pair(symbol: str, tf: str, *, base_margin: float = 5.0,
 
     sigs = list(signals or br.SIGNALS)
     out_rows = []
+    done_combos = 0
+    # The denominator, computed the same way the loops below iterate — a
+    # percentage whose total is a guess is worse than no percentage.
+    total_combos = 0
+    for _sig in sigs:
+        _ths = ((br.THRESHOLDS[tf][:thresholds] if thresholds < 3
+                 else br.THRESHOLDS[tf]) if _sig in br.THRESH_SIGNALS else [None])
+        total_combos += len(_ths) * len(br.pairs_for(tf)) * 2
+    if slot is not None:
+        worker_write(slot, pair=f"{coin} {tf}", done=0, total=total_combos,
+                     pct=0, state="starting")
     for sig in sigs:
         ths = (br.THRESHOLDS[tf][:thresholds] if thresholds < 3
                else br.THRESHOLDS[tf]) if sig in br.THRESH_SIGNALS else [None]
@@ -343,6 +464,27 @@ def run_pair(symbol: str, tf: str, *, base_margin: float = 5.0,
                 except Exception:
                     continue
                 states[ck] = r["state"]
+                # CHECKPOINT. Before this, states and rows were written once,
+                # after the whole pair finished — so a crash at 99% threw away
+                # every combination in the pair (~2,000 backtests) and the next
+                # run recomputed all of it. Now a crash costs at most
+                # CHECKPOINT_EVERY. __last_ms__ is deliberately NOT advanced
+                # here: the watermark means "every bar up to here has been
+                # tested for every combination", and that is only true when the
+                # pair completes. Advancing it early would make the next run
+                # skip bars the unreached combinations never saw.
+                done_combos += 1
+                # cheap: just say where we are
+                if slot is not None and done_combos % PUBLISH_EVERY == 0:
+                    worker_write(slot, pair=f"{coin} {tf}",
+                                 done=done_combos, total=total_combos,
+                                 pct=(round(100 * done_combos / total_combos)
+                                      if total_combos else 0),
+                                 rows=len(out_rows), state="running")
+                # expensive: make the work survive a crash
+                if done_combos % CHECKPOINT_EVERY == 0:
+                    save_states(coin, tf, states)
+                    merge_pair_rows(coin, tf, out_rows)
                 # "everything stored": losers are measurements too, and the
                 # store is what makes re-analysis free. Only the trade floor
                 # filters — a 3-trade row is noise, not a loser.
@@ -376,6 +518,10 @@ def run_pair(symbol: str, tf: str, *, base_margin: float = 5.0,
     states["__last_ms__"] = int(ms[-1])
     save_states(coin, tf, states)
     save_pair_rows(coin, tf, out_rows)
+    if slot is not None:
+        worker_write(slot, pair=f"{coin} {tf}", done=done_combos,
+                     total=total_combos, pct=100, rows=len(out_rows),
+                     state="done")
     return {"coin": coin, "tf": tf, "rows": out_rows, "added": added,
             "source": source, "incremental": incremental,
             "fee": fee, "liq": liq, "rt": rt,

@@ -119,6 +119,11 @@ CHECKS = {
     "tables carry explicit column widths": ['["books", "12%"]', '["opened", "10%"]'],
     "storage: a tab per timeframe plus ALL": ['role="tablist"', 'tab === "ALL"'],
     "storage: when each pair was last updated": ["last updated", "last_ms"],
+    "runner auto-restarts after a crash": ["KeepAlive", "auto-restart"],
+    "a deliberate STOP is never overridden": ["WANT_PATH", "wants_runner"],
+    "two runners can never coexist": ["LOCK_PATH", "run lock"],
+    "runner refuses to start on a full disk": ["MIN_FREE_MB", "disk almost full"],
+    "the UI says when the runner died": ["DIED", "last heartbeat"],
   },
   "Global": {
     "night mode": ["ThemeToggleButton"],

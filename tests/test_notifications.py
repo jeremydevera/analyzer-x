@@ -95,3 +95,16 @@ def test_the_jobs_emit_download_and_backtest():
     src = open("tradingagents/db_jobs.py", encoding="utf-8").read()
     assert '"download",' in src and '"backtest",' in src
     assert "Backtest FAILED" in src, "a dead job must also speak"
+
+
+def test_the_suite_can_never_write_the_operators_real_bell():
+    """One suite run put 30 fixture trades into the live notification store,
+    the same class of mistake as the run that wrote 43 fake XAUT rows into the
+    live ledger. The sandbox must cover this path."""
+    from tradingagents import notifications as nt
+
+    real = str(nt.Path("~/.tradingagents/notifications.db").expanduser())
+    assert str(nt.DB_PATH) != real, (
+        "DB_PATH still points at the operator's real feed during tests — "
+        "add it to the sandbox in tests/conftest.py")
+    assert "tradingagents_state" in str(nt.DB_PATH) or "tmp" in str(nt.DB_PATH)

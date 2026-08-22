@@ -17,6 +17,27 @@ from pydantic import BaseModel
 
 app = FastAPI(title="TradingAgents API", version="1.0")
 
+
+@app.on_event("startup")
+def _keep_the_row_index_current() -> None:
+    """The strategy index must advance whether or not anyone is watching. When
+    it only synced from inside the request handler, closing the Backtest tab
+    froze it: the row count climbed while 43 finished coins stayed invisible.
+    """
+    try:
+        from tradingagents import rows_index as ri
+
+        # a SEPARATE PROCESS, not a thread here: the indexer's work is pure
+        # Python and would hold this process's GIL, which made every request
+        # queue behind it (1.7s for a one-file endpoint) and the health probe
+        # time out, printed on screen as "API unreachable".
+        pid = ri.spawn_indexer()
+        print(f"[rows-index] indexer pid={pid or 'already running'}", flush=True)
+    except Exception as exc:
+        # The API must still start -- but SILENTLY skipping the indexer is how
+        # "behind 55 and never moving" looked like a working system.
+        print(f"[rows-index] COULD NOT START: {exc!r}", flush=True)
+
 # The Next.js dev server runs on :3000; the API on :8787. Same machine, two
 # ports — the browser calls this CORS and blocks it without consent.
 app.add_middleware(
@@ -32,9 +53,12 @@ JOB_KINDS = ("download", "backtest", "btupdate", "stratbt")
 # ------------------------------------------------------------------ health
 @app.get("/api/health")
 def health() -> dict:
+    """Liveness. The header chip polls this every 10 seconds, so it must never
+    touch more than a directory listing — see parquet_store.sizes(rows=False).
+    """
     from tradingagents import parquet_store as pqs
 
-    return {"ok": True, "storage": pqs.sizes()}
+    return {"ok": True, "storage": pqs.sizes(rows=False)}
 
 
 # -------------------------------------------------------------- strategies
@@ -42,34 +66,30 @@ def health() -> dict:
 def strategies(coin: str | None = None, tf: str | None = None,
                signal: str | None = None, profitable: bool = False,
                limit: int = 500, offset: int = 0) -> dict:
-    """Every stored strategy, filtered. Rows carry their stable id."""
-    from tradingagents import backtest_report as br
-    from tradingagents import market_sweep as msw
+    """Every stored strategy, filtered. Rows carry their stable id.
 
-    rows = msw.all_rows()
-    sel = [r for r in rows
-           if (not coin or r.get("coin") == coin)
-           and (not tf or r.get("tf") == tf)
-           and (not signal or r.get("signal") == signal)
-           and (not profitable or (r.get("profit") or 0) > 0)]
-    sel.sort(key=lambda r: -(r.get("profit") or 0))
-    for r in sel:
-        r.setdefault("id", br.row_code(r["coin"], r["tf"], r["signal"],
-                                       r.get("th") or 0.0, r["sl"], r["tp"],
-                                       r["sizing"]))
-    return {"rows": sel[offset:offset + max(0, min(limit, 2000))],
-            "total": len(sel)}
+    Served from the SQLite index, NOT by re-reading the store. This route used
+    to call `market_sweep.all_rows()`, which parses every pair file: measured
+    28.6s for 648,181 rows over 363 MB, 53 pairs into a 3,960-pair sweep. The
+    grid polls every 4s, so the calls piled up, the threadpool jammed, and the
+    browser reported `HTTP 500`. See tradingagents/rows_index.py.
+    """
+    from tradingagents import rows_index as ri
+
+    # no sync kick here: a timer thread keeps the index current (see the
+    # startup hook), so a page open does not decide whether data appears.
+    got = ri.query(coin=coin, tf=tf, signal=signal, profitable=profitable,
+                   limit=limit, offset=offset)
+    got["index"] = ri.status()             # so the UI can say "still indexing"
+    return got
 
 
 @app.get("/api/strategies/facets")
 def strategy_facets() -> dict:
     """Distinct coins/timeframes/signals, for the filter dropdowns."""
-    from tradingagents import market_sweep as msw
+    from tradingagents import rows_index as ri
 
-    rows = msw.all_rows()
-    return {"coins": sorted({r["coin"] for r in rows}),
-            "tfs": sorted({r["tf"] for r in rows}),
-            "signals": sorted({r["signal"] for r in rows})}
+    return ri.facets()
 
 
 class TradesQuery(BaseModel):
@@ -135,6 +155,36 @@ def storage_sizes() -> dict:
 def _check_kind(kind: str) -> None:
     if kind not in JOB_KINDS:
         raise HTTPException(404, f"unknown job kind: {kind}")
+
+
+@app.get("/api/jobs")
+def jobs_all() -> dict:
+    """Every job's state in ONE call, for the header's running-job indicator.
+
+    Each screen used to poll only its own job, on a timer that died when the
+    screen unmounted — so starting a backtest and navigating away left nothing
+    on screen saying it was still running. The job itself was fine (db_jobs
+    runs detached and keeps writing its progress file); the UI simply stopped
+    reporting it. One request keeps a global indicator cheap.
+    """
+    from tradingagents import db_jobs
+
+    out, running = {}, []
+    for kind in JOB_KINDS:
+        try:
+            st = db_jobs.status(kind) or {}
+        except Exception:
+            st = {}
+        out[kind] = st
+        if st.get("running"):
+            done, total = st.get("done") or 0, st.get("total") or 0
+            running.append({
+                "kind": kind,
+                "now": st.get("now") or "",
+                "done": done, "total": total,
+                "pct": (round(100 * done / total) if total else None),
+            })
+    return {"jobs": out, "running": running, "any_running": bool(running)}
 
 
 @app.get("/api/jobs/{kind}")
@@ -1292,3 +1342,130 @@ def download_history(limit: int = 20) -> dict:
         })
     ok = sum(1 for r in out if r["ok"])
     return {"rows": out, "total": len(out), "ok": ok, "failed": len(out) - ok}
+
+
+# ------------------------------------------------------------ backtest store
+@app.get("/api/backtest/storage")
+def backtest_storage() -> dict:
+    """What the MEASURED grid costs and how current it is, per coin/timeframe.
+
+    Two different "last updated" figures, because they answer different
+    questions and conflating them hides a stale pair:
+
+    * ``measured_through`` — the last CANDLE the grid was tested against
+      (``__last_ms__``). This is the honest freshness marker: a pair rewritten
+      with no new bars is not more current than it was.
+    * ``last_run`` — when the row file was last written. A pair can have been
+      re-run recently and still be measured through an old bar.
+    """
+    import datetime as _dt
+
+    from tradingagents import positions_view as pv
+    from tradingagents import rows_index as ri
+
+    # From the INDEX. This route used to parse every row file and every state
+    # file — over 2 GB, measured 2026-08-22 — and the Backtest screen polls it,
+    # which is why /api/health and /api/strategies queued behind it and the
+    # header chip printed "API unreachable".
+    rows = []
+    for r in ri.pair_storage():
+        # NULL is UNKNOWN, not zero. A pair indexed before these columns
+        # existed printed "0 combinations, 0 B, interrupted" while holding
+        # 12,960 measured rows.
+        known = r.get("last_ms") is not None
+        last_ms = int(r.get("last_ms") or 0)
+        n = int(r.get("n") or 0)
+        mtime = r.get("rows_mtime") or 0
+        rows.append({
+            "coin": r["coin"], "tf": r["tf"],
+            "rows": n,
+            "combos": (int(r["combos"]) if r.get("combos") is not None
+                       else None),
+            "bytes": int(r.get("bytes") or 0),
+            "version": r.get("version") or "",
+            "measured_through": (pv.fmt_when(last_ms / 1000)
+                                 if last_ms else None),
+            "measured_ms": last_ms or None,
+            # a pair with rows but NO watermark was interrupted part-way:
+            # the checkpoint kept its work, the pair never completed
+            "incomplete": bool(known and n and not last_ms),
+            "last_run": pv.fmt_when(mtime) if mtime else None,
+            "last_run_ts": mtime or None,
+        })
+    rows.sort(key=lambda r: -r["bytes"])
+    total_b = sum(r["bytes"] for r in rows)
+    newest = max((r["measured_ms"] or 0 for r in rows), default=0)
+    return {
+        "rows": rows,
+        "pairs": len(rows),
+        "coins": len({r["coin"] for r in rows}),
+        "total_rows": sum(r["rows"] for r in rows),
+        "total_bytes": total_b,
+        "incomplete": sum(1 for r in rows if r["incomplete"]),
+        # the screen must be able to say this list is still filling in
+        "index": ri.status(),
+        "newest_measured": (_dt.datetime.fromtimestamp(newest / 1000)
+                            .strftime("%b %d, %Y %I:%M%p").replace(" 0", " ")
+                            if newest else None),
+    }
+
+
+@app.get("/api/backtest/history")
+def backtest_history(limit: int = 20) -> dict:
+    """Every backtest run, newest first, with whether it worked.
+
+    Same source as the bell — the local event feed — because the job's own
+    progress file only ever holds the LAST run.
+    """
+    from tradingagents import notifications as nt
+    from tradingagents import positions_view as pv
+
+    out = []
+    for r in nt.recent(limit=limit, kind="backtest"):
+        m = r.get("meta") or {}
+        out.append({
+            "ts": r["ts"], "when": pv.fmt_when(float(r.get("ts") or 0)),
+            "ok": r["ok"], "title": r["title"], "detail": r["detail"],
+            "rows": m.get("rows"), "report": m.get("report"),
+            "fatal": bool(m.get("fatal")),
+            "save_error": m.get("save_error") or "",
+        })
+    ok = sum(1 for r in out if r["ok"])
+    return {"rows": out, "total": len(out), "ok": ok, "failed": len(out) - ok}
+
+
+# ------------------------------------------------------------- supervisor
+@app.get("/api/trade/supervisor")
+def supervisor_status() -> dict:
+    """Whether the runner is being kept alive, and how healthy it looks.
+
+    `last_beat_seconds` comes from the runner's own log mtime: a live runner
+    writes a scan line every cycle, so a stale log IS a dead runner even when
+    a stale pid file says otherwise.
+    """
+    import time
+
+    import tradingagents.auto_trader as at
+    from tradingagents import supervisor as sv
+
+    got = sv.status()
+    try:
+        beat = at.LOG_PATH.stat().st_mtime
+        got["last_beat_seconds"] = round(time.time() - beat, 1)
+    except OSError:
+        got["last_beat_seconds"] = None
+    got["stale"] = (got["last_beat_seconds"] is not None
+                    and got["last_beat_seconds"] > 300)
+    return got
+
+
+@app.post("/api/trade/supervisor")
+def supervisor_set(body: dict) -> dict:
+    """Turn auto-restart on or off."""
+    import sys
+
+    from tradingagents import supervisor as sv
+
+    if bool(body.get("enabled")):
+        return sv.install(python=sys.executable)
+    return sv.uninstall()

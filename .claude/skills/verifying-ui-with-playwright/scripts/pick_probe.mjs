@@ -1,0 +1,13 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 1680, height: 1050 } });
+await p.goto('http://localhost:8507', { waitUntil: 'networkidle' });
+await p.waitForTimeout(6000);
+await p.locator('text=Backtest 2').first().click();
+await p.waitForTimeout(38000);
+console.log('st-key-bt2_coins count:', await p.locator('.st-key-bt2_coins').count());
+const ms = p.locator('[data-testid="stMultiSelect"]');
+const n = await ms.count();
+console.log('multiselects:', n);
+for (let i = 0; i < n; i++) console.log(' ', i, (await ms.nth(i).innerText()).replace(/\n/g,' / ').slice(0,60));
+await b.close();

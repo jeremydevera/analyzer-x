@@ -399,6 +399,7 @@ def _run_backtest_inner(spec: dict) -> None:
         _write(f["progress"], {"running": True,
                                "done": last["done"],
                                "total": last["total"], "now": last["msg"],
+                               "pct": last.get("pct"),
                                "cores": n_workers, "fresh": fresh,
                                "workers": _msw.worker_read()})
 
@@ -418,7 +419,8 @@ def _run_backtest_inner(spec: dict) -> None:
         # moving on a permille scale rather than printing a rounded-to-zero one
         if total is None:
             done, total = round(frac * 1000), 1000
-        last.update(msg=msg, frac=frac, done=done, total=total)
+        last.update(msg=msg, frac=frac, done=done, total=total,
+                    pct=round(frac * 100, 2))
         _publish()
 
     # HEARTBEAT. progress() only fires when a PAIR finishes, and a pair is
@@ -480,7 +482,13 @@ def _run_backtest_inner(spec: dict) -> None:
                                "finished": int(time.time()),
                                "note": "nothing survived the trade floor"})
         return
-    name = spec["report_name"]
+    # NEVER a bare spec["report_name"]. A sweep that measured every pair used
+    # to die here — hours of work discarded at the last step because one key
+    # was missing, reported to the operator only as `failed: 'report_name'`.
+    # A report always has somewhere to go; the name is a convenience.
+    name = spec.get("report_name") or spec.get("name") or "archive.html"
+    if not str(name).endswith(".html"):
+        name = f"{name}.html"
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     br.write_report(str(REPORT_DIR / name), payload,
                     title=spec.get("title") or "Archive backtest",
@@ -563,9 +571,12 @@ def _run_stratbt(spec: dict) -> None:
     key = spec["key"]
 
     def prog(msg: str, frac: float) -> None:
+        # `pct` carries the exact figure: `done` is a whole number, so a bar
+        # asked to show two decimals had nothing finer to print.
+        frac = max(0.0, min(1.0, frac))
         _write(f["progress"], {"running": True, "key": key, "now": msg,
-                               "done": int(max(0.0, min(1.0, frac)) * 100),
-                               "total": 100})
+                               "done": int(frac * 100), "total": 100,
+                               "pct": round(frac * 100, 2)})
 
     try:
         got = sr.build(key, label=spec.get("label") or key,

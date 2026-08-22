@@ -317,7 +317,8 @@ export default function StrategiesGrid() {
                     disabled={!r.coins.length || (bt?.running && bt.key === r.key)}
                     title={`Replay ${r.key} over the last 365 days of MEXC history at this row's base margin.`}
                     className="rounded-lg border border-gray-200 px-2 py-1 text-theme-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300">
-                    {bt?.running && bt.key === r.key ? `${bt.done ?? 0}%` : "1 YEAR"}
+                    {bt?.running && bt.key === r.key
+                      ? `${(bt.pct ?? bt.done ?? 0).toFixed(2)}%` : "1 YEAR"}
                   </button>
                 </TableCell>
               </TableRow>

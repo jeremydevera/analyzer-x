@@ -30,7 +30,11 @@ export default function JobProgress({ s, label }: { s: JobStatus | null; label?:
   const hidden = !s.running && s.finished != null && dismissed === s.finished;
   if (!s.running && (stale || hidden || !s.finished)) return null;
 
-  const pct = s.total ? Math.min(100, (100 * (s.done ?? 0)) / s.total) : 0;
+  // two decimals, from the job's EXACT figure when it publishes one — `done`
+  // is a whole number, so done/total alone could not show them
+  const pct = s.pct != null
+    ? Math.min(100, s.pct)
+    : s.total ? Math.min(100, (100 * (s.done ?? 0)) / s.total) : 0;
   const state = s.error ? "error" : s.stopped ? "stopped" : s.running ? "running" : "done";
   const bar = { error: "bg-error-500", stopped: "bg-warning-400",
                 running: "bg-brand-500", done: "bg-success-500" }[state];
@@ -47,6 +51,9 @@ export default function JobProgress({ s, label }: { s: JobStatus | null; label?:
             : (s.note || (state === "stopped" ? "stopped" : "finished"))}
         </span>
         <span className="flex shrink-0 items-center gap-2 whitespace-nowrap">
+          {s.running || s.stopped ? (
+            <b className="tabular-nums text-gray-700 dark:text-gray-200">{pct.toFixed(2)}%</b>
+          ) : null}
           {s.total ? `${s.done ?? 0}/${s.total}` : null}
           {s.bars_stored != null && ` · ${s.bars_stored.toLocaleString()} bars`}
           {s.rows != null && ` · ${s.rows.toLocaleString()} rows`}

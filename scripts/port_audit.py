@@ -137,6 +137,7 @@ CHECKS = {
     "the ladder rung names its book, not a fake streak": ["streak_book", "rung"],
     "a shared ladder is called out": ["streak_shared_with", "raises the stake for both"],
     "W/L follows the book the row trades": ["stats_real if _is_real else stats_paper"],
+    "progress bars show two decimals": ["pct.toFixed(2)"],
   },
   "Global": {
     "night mode": ["ThemeToggleButton"],

@@ -75,6 +75,16 @@ export default function PositionsPanel({ onChanged }: { onChanged?: () => void }
     <TableRow key={`${book}-${r.symbol}`}>
       <TableCell className="px-2 py-1.5 text-theme-xs">
         <span className="block font-medium text-gray-800 dark:text-white/90">{r.coin}</span>
+        {/* the SAME id the strategy grid prints, so "which strategy is running
+            here?" is answerable from this row alone — and it is the id to
+            paste into a report's find-by-ID box */}
+        {r.id ? (
+          <button onClick={() => navigator.clipboard?.writeText(r.id)}
+            title="copy this id"
+            className="block font-mono text-[10px] font-semibold leading-tight text-brand-500 hover:underline">
+            #{r.id}
+          </button>
+        ) : null}
         <span className="block text-[10px] leading-tight text-gray-400">{r.strategy}</span>
       </TableCell>
       <TableCell className={`px-2 py-1.5 text-theme-xs font-semibold ${(r.unrealized ?? 0) >= 0 ? "text-success-600" : "text-error-500"}`}>

@@ -18,6 +18,9 @@ from pydantic import BaseModel
 app = FastAPI(title="TradingAgents API", version="1.0")
 
 
+import time as _time
+
+
 @app.on_event("startup")
 def _keep_the_row_index_current() -> None:
     """The strategy index must advance whether or not anyone is watching. When
@@ -34,9 +37,35 @@ def _keep_the_row_index_current() -> None:
         pid = ri.spawn_indexer()
         print(f"[rows-index] indexer pid={pid or 'already running'}", flush=True)
     except Exception as exc:
-        # The API must still start -- but SILENTLY skipping the indexer is how
-        # "behind 55 and never moving" looked like a working system.
         print(f"[rows-index] COULD NOT START: {exc!r}", flush=True)
+
+    # AUTO-RETRY. A crashed sweep used to stay dead until the operator noticed
+    # hours later; per-pair checkpointing meant a restart would have resumed,
+    # but nothing ever did the restarting.
+    try:
+        import threading as _th
+
+        from tradingagents import db_jobs as _dj
+
+        def _watch() -> None:
+            while True:
+                _time.sleep(30)
+                for kind in ("backtest", "download", "btupdate"):
+                    try:
+                        got = _dj.resume_if_died(kind)
+                        if got.get("resumed"):
+                            print(f"[supervisor] {kind} resumed, attempt "
+                                  f"{got['attempt']} (pid {got['pid']})",
+                                  flush=True)
+                    except Exception:
+                        pass
+
+        _th.Thread(target=_watch, name="job-supervisor", daemon=True).start()
+        print("[supervisor] watching for crashed jobs", flush=True)
+    except Exception as exc:
+        # The API must still start -- but SILENTLY skipping this is how
+        # "behind 55 and never moving" looked like a working system.
+        print(f"[supervisor] COULD NOT START: {exc!r}", flush=True)
 
 # The Next.js dev server runs on :3000; the API on :8787. Same machine, two
 # ports — the browser calls this CORS and blocks it without consent.
@@ -46,6 +75,42 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+# interval -> the timeframe name row_code hashes with
+_TF_OF = {"Min1": "1m", "Min5": "5m", "Min15": "15m", "Min30": "30m",
+          "Min60": "1h", "Hour4": "4h", "Hour8": "8h", "Day1": "1d"}
+
+
+def row_id_for(key: str, coin: str | None, settings: dict) -> str:
+    """The stable row id for one strategy ON ONE COIN.
+
+    Hashed by the same backtest_report.row_code every report uses, so the id
+    beside an open position is the id to paste into a report's find-by-ID box.
+    Shared by the strategies grid and the positions table — computing it twice
+    is how two screens end up naming one row differently.
+    """
+    import tradingagents.auto_trader as at
+    from tradingagents import backtest_report as br
+    from tradingagents.local_history import _sig_of
+
+    # An unknown key (an exchange position the bot never opened carries
+    # "(not the bot's)") must NOT hash: it would print a real-looking id that
+    # matches no combination in any report.
+    if not coin or key not in at.STRATEGY_SPECS:
+        return ""
+    spec = at.STRATEGY_SPECS[key]
+    try:
+        return br.row_code(
+            coin.replace("_USDT", ""),
+            _TF_OF.get(spec.get("interval") or "", ""),
+            _sig_of(key),
+            round(float(spec.get("threshold") or 0) * 100, 3),
+            round(float(spec.get("sl") or 0) * 100, 3),
+            round(float(spec.get("tp") or 0) * 100, 3),
+            at.sizing_for(settings))
+    except Exception:                                          # noqa: BLE001
+        return ""
+
 
 JOB_KINDS = ("download", "backtest", "btupdate", "stratbt")
 
@@ -364,6 +429,11 @@ def trade_positions() -> dict:
                          stats=at.coin_stats(dry=False), dry=False, **kw)
     paper = pv.build_rows(state=state, exchange_positions=[],
                           stats=at.coin_stats(dry=True), dry=True, **kw)
+    # the same id the strategy grid prints, hashed with THIS row's coin — so
+    # "which strategy is running here?" is answerable from the position alone
+    settings = at.load_settings()
+    for r in real + paper:
+        r["id"] = row_id_for(r.get("strategy") or "", r.get("symbol"), settings)
     unprotected = [r["coin"] for r in real if r["bracket"]]
     return {"real": real, "paper": paper, "leverage": at.LEVERAGE,
             "unprotected": unprotected}
@@ -412,10 +482,6 @@ def trade_strategies(catalog: bool = False) -> dict:
     from tradingagents import backtest_report as br
     from tradingagents.local_history import _sig_of
 
-    # interval -> the timeframe name row_code hashes with
-    _TF_OF = {"Min1": "1m", "Min5": "5m", "Min15": "15m", "Min30": "30m",
-              "Min60": "1h", "Hour4": "4h", "Hour8": "8h", "Day1": "1d"}
-
     settings = at.load_settings()
     books = settings.get("strategy_books") or {}
     coins = settings.get("strategy_coins") or {}
@@ -451,21 +517,7 @@ def trade_strategies(catalog: bool = False) -> dict:
         # reads here is the id they can paste into a report's find-by-ID box.
         # Contracts are fixed per strategy, so the first coin identifies it;
         # with no coin there is no combination to hash and the id is blank.
-        _sig = _sig_of(key)
-        _c0 = (coins.get(key) or [None])[0]
-        _rid = ""
-        if _c0:
-            try:
-                _rid = br.row_code(
-                    _c0.replace("_USDT", ""),
-                    _TF_OF.get(spec.get("interval") or "", ""),
-                    _sig,
-                    round(float(spec.get("threshold") or 0) * 100, 3),
-                    round(float(spec.get("sl") or 0) * 100, 3),
-                    round(float(spec.get("tp") or 0) * 100, 3),
-                    at.sizing_for(settings))
-            except Exception:
-                _rid = ""
+        _rid = row_id_for(key, (coins.get(key) or [None])[0], settings)
         rows.append({
             "key": key,
             "id": _rid,

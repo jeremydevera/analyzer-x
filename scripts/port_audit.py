@@ -132,6 +132,8 @@ CHECKS = {
     "two runners can never coexist": ["LOCK_PATH", "run lock"],
     "runner refuses to start on a full disk": ["MIN_FREE_MB", "disk almost full"],
     "the UI says when the runner died": ["DIED", "last heartbeat"],
+    "a position names the strategy running it, by id": ["row_id_for", "copy this id"],
+    "one id per row, shared by both screens": ["row_id_for(key,"],
   },
   "Global": {
     "night mode": ["ThemeToggleButton"],

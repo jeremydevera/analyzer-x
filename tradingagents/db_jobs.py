@@ -88,6 +88,97 @@ def status(kind: str) -> dict:
     return prog
 
 
+# ---------------------------------------------------------------- supervision
+# The operator's words, after a 3,960-pair sweep died at 11.8%:
+#   "if it fails it should have automatic retry and you did not even think of
+#    it"
+# Correct. Per-pair checkpointing was built so a restart RESUMES, but nothing
+# ever did the restarting. On 2026-08-22 the sweep hit a full disk at 04:30:35,
+# the interpreter died printing the OSError, and it simply stayed dead — the
+# operator found out hours later.
+MAX_RETRIES = 20
+DISK_FLOOR_GB = 5.0
+RETRY_FILE = STATE_DIR / "db_retries.json"
+
+
+def free_gb(path: Path | None = None) -> float:
+    """Free space where the stores live."""
+    import shutil
+
+    try:
+        return shutil.disk_usage(path or STATE_DIR).free / 1e9
+    except OSError:
+        return 0.0
+
+
+def _retries(kind: str) -> int:
+    return int(_read(RETRY_FILE).get(kind) or 0)
+
+
+def _set_retries(kind: str, n: int) -> None:
+    got = _read(RETRY_FILE)
+    got[kind] = n
+    _write(RETRY_FILE, got)
+
+
+def died_unfinished(kind: str) -> bool:
+    """Was this job running, with a real spec, when its process vanished?
+
+    `status()` already reports a dead pid as not-running. The distinction that
+    matters here is between a job that FINISHED (it wrote a terminal record
+    with `finished`) and one that was cut off mid-flight.
+    """
+    prog = _read(FILES[kind]["progress"])
+    if not prog.get("running"):
+        return False                     # finished, stopped, or never started
+    try:
+        pid = int(FILES[kind]["pid"].read_text().strip())
+    except Exception:
+        return False
+    return not _alive(pid)
+
+
+def resume_if_died(kind: str) -> dict:
+    """Restart a job that was cut off, from its own checkpoint.
+
+    Never restarts a job that finished, was stopped by the operator, or has
+    already burned its retries — a crash loop that re-reads the same broken
+    state is worse than a stopped job, because it looks like progress.
+    """
+    if not died_unfinished(kind):
+        return {"resumed": False, "why": "not a crashed job"}
+    if free_gb() < DISK_FLOOR_GB:
+        # exactly what killed it. Restarting into a full disk just kills it
+        # again, and the log fills the last of the space doing so.
+        return {"resumed": False, "why": f"only {free_gb():.1f} GB free — "
+                                         f"waiting for {DISK_FLOOR_GB} GB"}
+    n = _retries(kind)
+    if n >= MAX_RETRIES:
+        return {"resumed": False, "why": f"gave up after {n} retries"}
+    spec = _read(FILES[kind]["spec"])
+    if not spec:
+        return {"resumed": False, "why": "no spec to resume from"}
+    # A RESUMED run continues; it never starts over. The operator's split is
+    # BACKTEST=scratch / UPDATE=gap-fill, and a crash is not a click on either.
+    spec = {**spec, "fresh": False}
+    _set_retries(kind, n + 1)
+    try:
+        from tradingagents import notifications as _nt
+
+        _nt.record(kind, f"{kind} restarted after a crash",
+                   ok=True, detail=f"attempt {n + 1} of {MAX_RETRIES}, "
+                                   f"resuming from the last checkpoint")
+    except Exception:
+        pass
+    pid = start(kind, spec)
+    return {"resumed": True, "pid": pid, "attempt": n + 1}
+
+
+def clear_retries(kind: str) -> None:
+    """A run the operator starts by hand is a fresh budget of retries."""
+    _set_retries(kind, 0)
+
+
 def request_stop(kind: str) -> None:
     FILES[kind]["stop"].touch()
 
@@ -178,6 +269,10 @@ def _run_download(spec: dict) -> None:
                  if stopped else
                  f"{'gap-filled' if spec.get('mode') == 'update' else 'downloaded'} "
                  f"{len(pairs)} pair(s)")})
+
+
+class _LowDisk(Exception):
+    """Not enough disk left to keep going safely."""
 
 
 class _StopRequested(Exception):
@@ -311,6 +406,13 @@ def _run_backtest_inner(spec: dict) -> None:
              total: int | None = None) -> None:
         if _stopping("backtest"):
             raise _StopRequested()
+        # STOP BEFORE the disk is gone. On 2026-08-22 the sweep ran the volume
+        # to zero at 04:30:35 and the interpreter died printing the OSError --
+        # no terminal record, no notification, and the checkpoint of the pair
+        # in flight was lost. Stopping with room left keeps every finished pair
+        # and lets the supervisor resume once there is space.
+        if free_gb() < DISK_FLOOR_GB:
+            raise _LowDisk(f"{free_gb():.1f} GB free")
         frac = max(0.0, min(1.0, frac))
         # no counts offered (a phase that only knows a fraction): keep the bar
         # moving on a permille scale rather than printing a rounded-to-zero one
@@ -345,6 +447,21 @@ def _run_backtest_inner(spec: dict) -> None:
             spec["coins"], spec["tfs"], base_margin=float(spec["base"]),
             days=int(spec["days"]), deployed=spec.get("deployed") or [],
             progress=prog, workers=n_workers, fresh=fresh)
+    except _LowDisk as exc:
+        _write(f["progress"], {"running": False, "paused": True,
+                               "finished": int(time.time()),
+                               "done": last["done"], "total": last["total"],
+                               "note": f"paused — low disk ({exc}). Every "
+                                       f"finished pair is kept; it resumes by "
+                                       f"itself once there is room"})
+        try:
+            from tradingagents import notifications as _nt
+
+            _nt.record("backtest", "Backtest paused — low disk", ok=False,
+                       detail=str(exc))
+        except Exception:
+            pass
+        return
     except _StopRequested:
         _write(f["progress"], {"running": False, "stopped": True,
                                "finished": int(time.time()),

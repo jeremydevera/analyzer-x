@@ -516,3 +516,50 @@ def test_the_same_coin_on_the_SAME_timeframe_is_allowed(client):
         "strategy_coins": {"mom6_1h_gx": ["XAUT_USDT"],
                            "mom6_1h_pv": ["XAUT_USDT"]}})
     assert got.status_code == 200
+
+
+def test_a_position_carries_the_same_id_the_strategy_grid_shows(client,
+                                                                monkeypatch):
+    """'which strategy is running here?' must be answerable from the position
+    row alone — and the id must MATCH the grid's, or two screens name one row
+    differently."""
+    at.SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    at.SETTINGS_PATH.write_text(json.dumps({
+        "strategy_books": {"mom6_1h_gx": ["real"]},
+        "strategy_coins": {"mom6_1h_gx": ["XAUT_USDT"]},
+        "strategy_margins": {"mom6_1h_gx": 5.0}}))
+    monkeypatch.setattr(at, "load_state", lambda: {
+        "XAUT_USDT": {"position": {"dry": False, "side": 1, "entry": 4500.0,
+                                   "tp": 4600.0, "sl": 4400.0, "margin": 5.0,
+                                   "vol": 1.0, "strategy": "mom6_1h_gx",
+                                   "opened_at": 1_787_000_000,
+                                   "bracket": True}}})
+    monkeypatch.setattr(at, "taker_fee", lambda s, **kw: 0.0004)
+    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None: {})
+    from tradingagents.dataflows import mexc_futures as fx
+    monkeypatch.setattr(fx, "open_positions", lambda symbol=None: [])
+    monkeypatch.setattr(fx, "contract_spec", lambda s: {"contractSize": 1.0})
+    monkeypatch.setattr(fx, "last_price", lambda s: 4550.0)
+
+    pos = client.get("/api/trade/positions").json()["real"][0]
+    grid = next(r for r in client.get("/api/trade/strategies").json()["rows"]
+                if r["key"] == "mom6_1h_gx")
+    assert pos["id"] and pos["id"] == grid["id"], "one row, one id"
+    assert len(pos["id"]) == 8
+
+
+def test_a_position_with_no_strategy_gets_a_blank_id_not_a_wrong_one(client,
+                                                                    monkeypatch):
+    """An exchange position the bot never opened has no combination to hash."""
+    at.SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    at.SETTINGS_PATH.write_text("{}")
+    monkeypatch.setattr(at, "load_state", lambda: {})
+    monkeypatch.setattr(at, "taker_fee", lambda s, **kw: 0.0004)
+    from tradingagents.dataflows import mexc_futures as fx
+    monkeypatch.setattr(fx, "open_positions", lambda symbol=None: [
+        {"symbol": "GHOST_USDT", "positionType": 1, "holdVol": 1.0,
+         "holdAvgPrice": 5.0, "unRealizedPnl": 0.1}])
+    monkeypatch.setattr(fx, "contract_spec", lambda s: {"contractSize": 1.0})
+    monkeypatch.setattr(fx, "last_price", lambda s: 5.0)
+    r = client.get("/api/trade/positions").json()["real"][0]
+    assert r["strategy"] == "(not the bot's)" and r["id"] == ""

@@ -22,6 +22,12 @@ py = "\n".join(pathlib.Path(f).read_text() for f in (
     "tradingagents/auto_trader.py",
     "tradingagents/supervisor.py",
     "tradingagents/positions_view.py",
+    "tradingagents/market_sweep.py",
+    "tradingagents/backtest_report.py",
+    # the sweep's own telemetry: "a core is identified by its process" and
+    # "a core that stopped reporting is dropped" are guarantees made HERE, and
+    # searching everything except this file reported both as lost in the port
+    "tradingagents/market_sweep.py",
 ) if pathlib.Path(f).exists())
 both = blob + py
 

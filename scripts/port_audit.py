@@ -14,8 +14,16 @@ import re, subprocess, pathlib
 WEB = pathlib.Path("webapp/src")
 blob = "\n".join(p.read_text() for p in WEB.rglob("*.tsx")) + \
        "\n".join(p.read_text() for p in WEB.rglob("*.ts"))
-api = pathlib.Path("tradingagents/api.py").read_text()
-both = blob + api
+# the API plus the modules whose BEHAVIOUR the checks below describe: a
+# runner-side guarantee lives in auto_trader/supervisor, and searching only
+# the web app made "two runners can never coexist" unprovable.
+py = "\n".join(pathlib.Path(f).read_text() for f in (
+    "tradingagents/api.py",
+    "tradingagents/auto_trader.py",
+    "tradingagents/supervisor.py",
+    "tradingagents/positions_view.py",
+) if pathlib.Path(f).exists())
+both = blob + py
 
 # control -> the string(s) that prove it exists in React (any one is enough)
 CHECKS = {

@@ -265,6 +265,9 @@ def job_start(kind: str, spec: dict) -> dict:
     _check_kind(kind)
     from tradingagents import db_jobs
 
+    # a run the operator starts by hand is a fresh budget of retries, so an
+    # earlier bad patch cannot leave the supervisor refusing to restart this one
+    db_jobs.clear_retries(kind)
     return {"pid": db_jobs.start(kind, spec)}
 
 
@@ -486,7 +489,8 @@ def trade_strategies(catalog: bool = False) -> dict:
     books = settings.get("strategy_books") or {}
     coins = settings.get("strategy_coins") or {}
     margins = settings.get("strategy_margins") or {}
-    stats = at.strategy_stats(dry=False)
+    stats_real = at.strategy_stats(dry=False)
+    stats_paper = at.strategy_stats(dry=True)
     state = at.load_state()
     limits = settings.get("strategy_loss_limits") or {}
     sizing_now = at.sizing_for(settings)
@@ -502,7 +506,11 @@ def trade_strategies(catalog: bool = False) -> dict:
     for key in keys:
         spec = at.STRATEGY_SPECS.get(key) or {}
         base_m = float(margins.get(key) or 5.0)
-        st_row = stats.get(key) or {}
+        # the row's OWN book decides which ladder and which record to read: a
+        # paper-only row was showing the live book's wins and losses
+        _is_real = "real" in (books.get(key) or [])
+        _bk_suffix = "" if _is_real else "#paper"
+        st_row = ((stats_real if _is_real else stats_paper).get(key) or {})
         # book keys are "SYMBOL" (real) and "SYMBOL#paper" (simulated), so the
         # coin name is what precedes '#' and the book is which side it came from
         open_real_on, open_paper_on = [], []
@@ -528,14 +536,23 @@ def trade_strategies(catalog: bool = False) -> dict:
             "coins": coins.get(key) or [],
             "base_margin": margins.get(key),
             "loss_cap": limits.get(key),
-            # the LADDER, in dollars, and the rung this row is standing on.
-            # The streak belongs to the COIN AND BOOK, not the strategy — a
-            # new strategy on a coin inherits whatever rung the last one left,
-            # and really will stake that on its first trade.
+            # The LADDER RUNG — and it belongs to the COIN AND BOOK, not to
+            # this strategy. Two strategies on one coin ADVANCE THE SAME
+            # counter, so a row showing 3W/1L can sit on rung 11 because a
+            # different strategy on the same coin lost eleven times. Calling
+            # it "N loss" on this row was a lie (2026-08-22); the payload now
+            # names the book and who else shares it so the label can be true.
             "streak": (streak := max(
-                (int((runstate.get(c + ("" if "real" in (books.get(key) or [])
-                                        else "#paper")) or {}).get("step", 0) or 0)
+                (int((runstate.get(c + _bk_suffix) or {}).get("step", 0) or 0)
                  for c in (coins.get(key) or [])), default=0)),
+            "streak_book": ("real" if "real" in (books.get(key) or [])
+                            else "paper"),
+            "streak_shared_with": sorted(
+                other for other in at.STRATEGY_ORDER
+                if other != key and (books.get(other) or [])
+                and set(coins.get(other) or []) & set(coins.get(key) or [])
+                and (("real" in (books.get(other) or []))
+                     == ("real" in (books.get(key) or [])))),
             "ladder": ([base_m] if flat
                        else [round(base_m * m, 2) for m in at.LADDER]),
             "ladder_rung": (0 if flat else min(streak, len(at.LADDER) - 1)),

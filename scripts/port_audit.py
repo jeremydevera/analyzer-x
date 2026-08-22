@@ -134,6 +134,9 @@ CHECKS = {
     "the UI says when the runner died": ["DIED", "last heartbeat"],
     "a position names the strategy running it, by id": ["row_id_for", "copy this id"],
     "one id per row, shared by both screens": ["row_id_for(key,"],
+    "the ladder rung names its book, not a fake streak": ["streak_book", "rung"],
+    "a shared ladder is called out": ["streak_shared_with", "raises the stake for both"],
+    "W/L follows the book the row trades": ["stats_real if _is_real else stats_paper"],
   },
   "Global": {
     "night mode": ["ThemeToggleButton"],

@@ -167,9 +167,12 @@ def test_progress_counter_agrees_with_the_message_beside_it(monkeypatch, tmp_pat
 def test_fraction_only_phases_do_not_round_to_zero():
     """A phase that knows no counts still has to move: 0.004 rescaled to 0-100
     is 0, which looks like nothing is happening."""
+    # bound on the function, not a character count: a fixed 700-char window
+    # broke the moment a disk guard was added above the line under test, which
+    # reported a behaviour change that had not happened.
     src = open("tradingagents/db_jobs.py", encoding="utf-8").read()
     i = src.index("def prog(msg: str, frac: float")
-    body = src[i:i + 700]
+    body = src[i:src.index("\n    # HEARTBEAT", i)]
     assert "round(frac * 1000), 1000" in body, "use a permille fallback, not 0-100"
 
 

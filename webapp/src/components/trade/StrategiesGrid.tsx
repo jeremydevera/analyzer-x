@@ -159,6 +159,14 @@ export default function StrategiesGrid() {
             `${k} (${v.coin.replace("_USDT", "")} held by ${v.held_by})`).join(" · ")} — one coin runs one timeframe with real money.
         </p>
       )}
+      {rows.some((r) => (r.streak ?? 0) > 0 && (r.streak_shared_with?.length ?? 0) > 0) && (
+        <p className="mx-5 mt-2 rounded-lg bg-warning-50 px-3 py-2 text-theme-xs text-warning-700 dark:bg-warning-500/10">
+          {rows.filter((r) => (r.streak ?? 0) > 0 && (r.streak_shared_with?.length ?? 0) > 0)
+            .map((r) => `${r.coins.map((c) => c.replace("_USDT", "")).join(",")} ${r.streak_book}: rung ${r.streak} → next stake $${r.next_stake}, shared by ${[r.key, ...(r.streak_shared_with ?? [])].join(" + ")}`)
+            .join(" · ")}
+          {" "}— the ladder belongs to the coin and book, so a loss by either strategy raises the stake for both.
+        </p>
+      )}
       {conflicts.length > 0 && (
         <p className="mx-5 mt-2 rounded-lg bg-warning-50 px-3 py-2 text-theme-sm text-warning-700 dark:bg-warning-500/10">
           Timeframe conflict: {conflicts.map((c) => `${c.symbol} on ${(c.keys || []).join(" + ")}`).join(" · ")} — two bots would fight over one MEXC position.
@@ -177,7 +185,7 @@ export default function StrategiesGrid() {
                   switches and they spilled over the coin beside them. */}
               {([["strategy", "13%"], ["tf", "4%"], ["TP/SL %", "7%"],
                  ["books", "12%"], ["coins", "8%"], ["margin $", "6%"],
-                 ["streak", "5%"], [`ladder $ · ${flat ? "flat" : "DEEP"}`, "10%"],
+                 ["rung", "6%"], [`ladder $ · ${flat ? "flat" : "DEEP"}`, "10%"],
                  ["next $", "5%"], ["loss cap $", "6%"], ["today $", "6%"],
                  ["PROFIT $", "6%"], ["W / L", "5%"], ["backtest", "6%"]] as [string, string][])
                 .map(([h, w]) => (
@@ -257,9 +265,20 @@ export default function StrategiesGrid() {
                     onBlur={(e) => setMargin(r.key, e.target.value)}
                     className="w-full min-w-0 rounded-lg border border-gray-200 bg-transparent px-1 py-1 text-[11px] text-gray-700 dark:border-gray-700 dark:text-gray-300" />
                 </TableCell>
-                <TableCell className="px-2 py-1.5 text-theme-xs">
-                  {r.streak ? <span className="font-medium text-error-500">{r.streak} loss</span>
-                            : <span className="text-gray-400">—</span>}
+                <TableCell className="px-2 py-1.5 text-theme-xs leading-tight">
+                  {/* This is the LADDER RUNG of the coin+book, not this
+                      strategy's losing streak. Two strategies on one coin
+                      advance the SAME counter, so "11 loss" beside a 3W/1L
+                      record was a lie (2026-08-22). */}
+                  {r.streak ? (
+                    <span title={`${r.coins.map((c) => c.replace("_USDT", "")).join(", ")} ${r.streak_book} book is on ladder rung ${r.streak} — the next stake here is $${r.next_stake}. The rung belongs to the coin and book${r.streak_shared_with?.length ? `, and ${r.streak_shared_with.join(", ")} advance${r.streak_shared_with.length === 1 ? "s" : ""} it too` : ""}.`}>
+                      <span className="block font-medium text-error-500">{r.streak}</span>
+                      <span className="block text-[10px] text-gray-400">
+                        {r.streak_book} book
+                        {r.streak_shared_with?.length ? " · shared" : ""}
+                      </span>
+                    </span>
+                  ) : <span className="text-gray-400">—</span>}
                 </TableCell>
                 <TableCell className="px-2 py-1.5">
                   {/* the whole ladder in dollars, with the rung it stands on boxed —

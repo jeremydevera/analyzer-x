@@ -563,3 +563,58 @@ def test_a_position_with_no_strategy_gets_a_blank_id_not_a_wrong_one(client,
     monkeypatch.setattr(fx, "last_price", lambda s: 5.0)
     r = client.get("/api/trade/positions").json()["real"][0]
     assert r["strategy"] == "(not the bot's)" and r["id"] == ""
+
+
+# --- the ladder rung is the COIN's, not the strategy's ---------------------
+# 2026-08-22: #3RAUB3WW showed "11 loss" beside its own 3W/1L record. The 11
+# was PROVE's real-book ladder rung, advanced by a DIFFERENT strategy on the
+# same coin that had lost four in a row.
+
+def test_the_rung_names_its_book_and_who_shares_it(client, monkeypatch):
+    at.SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    at.SETTINGS_PATH.write_text(json.dumps({
+        "strategy_books": {"mom6_1h_pv": ["real", "paper"],
+                           "fade15_1h_pv2": ["real", "paper"],
+                           "mom6_1h_gx": ["paper"]},
+        "strategy_coins": {"mom6_1h_pv": ["PROVE_USDT"],
+                           "fade15_1h_pv2": ["PROVE_USDT"],
+                           "mom6_1h_gx": ["XAUT_USDT"]}}))
+    monkeypatch.setattr(at, "load_state", lambda: {
+        "PROVE_USDT": {"step": 11}, "PROVE_USDT#paper": {"step": 0},
+        "XAUT_USDT#paper": {"step": 2}, "XAUT_USDT": {"step": 9}})
+    monkeypatch.setattr(at, "strategy_stats",
+                        lambda dry=None: ({"mom6_1h_pv": {"wins": 3, "losses": 1,
+                                                          "trades": 4, "pnl": 20.35}}
+                                          if not dry else
+                                          {"mom6_1h_gx": {"wins": 7, "losses": 0,
+                                                           "trades": 7, "pnl": 9.0}}))
+    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None: {})
+    rows = {r["key"]: r for r in client.get("/api/trade/strategies").json()["rows"]}
+
+    mom = rows["mom6_1h_pv"]
+    assert mom["streak"] == 11
+    assert mom["streak_book"] == "real", "an armed row reads the REAL ladder"
+    assert mom["streak_shared_with"] == ["fade15_1h_pv2"], \
+        "the rung is not attributable to this row alone"
+    assert (mom["wins"], mom["losses"]) == (3, 1)
+
+    # a paper-only row reads the PAPER ladder and the PAPER record — it was
+    # showing the live book's ladder and the live book's wins
+    gx = rows["mom6_1h_gx"]
+    assert gx["streak_book"] == "paper"
+    assert gx["streak"] == 2, "the paper rung, not the live book's 9"
+    assert (gx["wins"], gx["losses"]) == (7, 0)
+    assert gx["streak_shared_with"] == [], "nothing else trades XAUT on paper"
+
+
+def test_a_lone_strategy_on_a_coin_owns_its_rung(client, monkeypatch):
+    at.SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    at.SETTINGS_PATH.write_text(json.dumps({
+        "strategy_books": {"sweep30_1h_w": ["real"]},
+        "strategy_coins": {"sweep30_1h_w": ["APEX_USDT"]}}))
+    monkeypatch.setattr(at, "load_state", lambda: {"APEX_USDT": {"step": 3}})
+    monkeypatch.setattr(at, "strategy_stats", lambda dry=None: {})
+    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None: {})
+    r = next(x for x in client.get("/api/trade/strategies").json()["rows"]
+             if x["key"] == "sweep30_1h_w")
+    assert r["streak"] == 3 and r["streak_shared_with"] == []

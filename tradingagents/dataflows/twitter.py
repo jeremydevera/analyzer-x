@@ -336,7 +336,11 @@ def _short_time(tweet: dict) -> str:
     """"Jul 29 08:25" from X's "Wed Jul 29 08:25:57 +0000 2026" stamp."""
     raw = str(_first(tweet, _FIELD_ALIASES["created"], ""))
     try:
-        return datetime.strptime(raw, "%a %b %d %H:%M:%S %z %Y").strftime("%b %d %H:%M")
+        # THE format, like everywhere else — this used to drop the year
+        from tradingagents.positions_view import fmt_when
+
+        return fmt_when(
+            datetime.strptime(raw, "%a %b %d %H:%M:%S %z %Y").timestamp())
     except ValueError:
         return raw[:16] or "?"
 

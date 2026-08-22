@@ -14,9 +14,47 @@
  *    backtest had completed.
  */
 import { useEffect, useState } from "react";
-import { JobStatus } from "@/lib/api";
+import { api, JobStatus, SysLoad, fmtWhen } from "@/lib/api";
 
 const FRESH_SECONDS = 600;   // a finished result stops being news after 10 min
+
+/** What the machine is doing, beside the bar that is doing it.
+ *
+ * There is no temperature here: macOS exposes a die temperature only to root
+ * on Apple Silicon (powermetrics refuses the SMC sampler otherwise), and a
+ * figure inferred from load would be a guess wearing a measurement's clothes.
+ * What IS real is CPU busy, load per core, and whether the OS is throttling.
+ */
+function MachineLoad() {
+  const [sys, setSys] = useState<SysLoad | null>(null);
+  useEffect(() => {
+    const tick = () => api.system().then(setSys).catch(() => {});
+    tick();
+    const t = setInterval(tick, 5000);
+    return () => clearInterval(t);
+  }, []);
+  if (!sys) return null;
+  const hot = sys.load_per_core >= 1.5;
+  const th = sys.thermal;
+  return (
+    <span className="flex shrink-0 items-center gap-2 whitespace-nowrap text-[10px]">
+      <span className={sys.busy != null && sys.busy > 90 ? "text-warning-600" : "text-gray-500 dark:text-gray-400"}
+        title="how much of every core is busy right now, across the whole Mac">
+        CPU {sys.busy != null ? `${sys.busy.toFixed(1)}%` : "—"}
+      </span>
+      <span className={hot ? "text-warning-600" : "text-gray-500 dark:text-gray-400"}
+        title={`${sys.load1} processes wanted to run across ${sys.cores} cores. Above 1.00x per core means work is queueing.`}>
+        load {sys.load1.toFixed(2)}/{sys.cores} ({sys.load_per_core.toFixed(2)}x)
+      </span>
+      <span className={th.throttled ? "text-error-500" : "text-gray-400"}
+        title={th.why || `macOS reports the CPU running at ${th.speed_limit}% of full speed`}>
+        {th.throttled
+          ? `THROTTLING ${th.speed_limit}%`
+          : th.available ? "no throttling" : "temp: root only"}
+      </span>
+    </span>
+  );
+}
 
 export default function JobProgress({ s, label }: { s: JobStatus | null; label?: string }) {
   const [dismissed, setDismissed] = useState<number | null>(null);
@@ -51,6 +89,7 @@ export default function JobProgress({ s, label }: { s: JobStatus | null; label?:
             : (s.note || (state === "stopped" ? "stopped" : "finished"))}
         </span>
         <span className="flex shrink-0 items-center gap-2 whitespace-nowrap">
+          {s.running && <MachineLoad />}
           {s.running || s.stopped ? (
             <b className="tabular-nums text-gray-700 dark:text-gray-200">{pct.toFixed(2)}%</b>
           ) : null}
@@ -110,7 +149,7 @@ export default function JobProgress({ s, label }: { s: JobStatus | null; label?:
       {!s.running && (
         <p className="mt-1 text-[10px] text-gray-400">
           {state === "stopped" ? "stopped" : state === "error" ? "failed" : "finished"}{" "}
-          {s.finished ? new Date(s.finished * 1000).toLocaleString() : ""} · this clears itself
+          {s.finished ? fmtWhen(s.finished) : ""} · this clears itself
         </p>
       )}
     </div>

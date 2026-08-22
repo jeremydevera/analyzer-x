@@ -1,0 +1,12 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 1680, height: 1050 } });
+const bad = [];
+p.on('response', r => { if (r.status() >= 400) bad.push(`${r.status()} ${r.url().replace('http://localhost:8503','')}`); });
+await p.goto('http://localhost:8503/backtest', { waitUntil: 'domcontentloaded' });
+await p.waitForTimeout(14000);
+const t = await p.locator('body').innerText();
+const i = t.search(/Trade ledger/i);
+console.log('TOP ROWS:', t.slice(i, i + 330).replace(/\n+/g, ' | '));
+console.log('failing requests:', [...new Set(bad)].slice(0, 5));
+await b.close();

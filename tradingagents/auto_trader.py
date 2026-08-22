@@ -318,21 +318,21 @@ def sig_rsi14(close: list) -> int:
     n = 14
     if len(close) < n + 2:
         return 0
-    g = l = 0.0
+    g = lo = 0.0
     for i in range(1, len(close)):
         ch = close[i] - close[i - 1]
         if i <= n:
             if ch > 0:
                 g += ch
             else:
-                l -= ch
+                lo -= ch
             if i == n:
                 g /= n
-                l /= n
+                lo /= n
             continue
         g = (g * (n - 1) + max(ch, 0)) / n
-        l = (l * (n - 1) + max(-ch, 0)) / n
-    r = 100.0 if l == 0 else 100 - 100 / (1 + g / l)
+        lo = (lo * (n - 1) + max(-ch, 0)) / n
+    r = 100.0 if lo == 0 else 100 - 100 / (1 + g / lo)
     return 1 if r < 30 else (-1 if r > 70 else 0)
 
 
@@ -547,6 +547,125 @@ def append_ledger(entry: dict) -> None:
     entry = {"ts": int(time.time()), **entry}
     with LEDGER_PATH.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(entry) + "\n")
+
+
+# Trade IDs. The exit row used to carry no identity and no opening time, so
+# the history table could not name a trade or say when it started — the
+# operator asked for both on 2026-08-22 ("put ids for each trade and date
+# opened ... you will add this in the database").
+#
+# The id is HASHED from the facts that cannot change once the trade opens:
+# contract, strategy, the entry candle's timestamp, side and which book it is
+# on. Not a counter — a counter renumbers the same trade whenever the file is
+# rewritten or a row is dropped, which is the "#05146 / #02054" confusion the
+# backtest row codes already had to fix. Hashing also means the BACKFILL of
+# old rows computes exactly the id the live path would have written.
+_TRADE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"      # no 0/O/1/I
+
+
+def trade_code(symbol: str, strategy: str, entry_ts, side, dry: bool) -> str:
+    """A stable 8-character id for one trade, e.g. ``K4M7QP2X``."""
+    import hashlib
+
+    seed = "|".join([str(symbol), str(strategy or ""), str(int(entry_ts or 0)),
+                     "L" if (side or 0) > 0 else "S",
+                     "paper" if dry else "live"])
+    n = int.from_bytes(hashlib.blake2s(seed.encode(), digest_size=5).digest(),
+                       "big")
+    out = ""
+    for _ in range(8):
+        out = _TRADE_ALPHABET[n % 32] + out
+        n //= 32
+    return out
+
+
+def backfill_ledger_ids(path=None, *, dry_run: bool = False) -> dict:
+    """Give every past enter/exit row a trade id and an opened timestamp.
+
+    Pairs each exit with its own entry FIFO within (symbol, strategy, book),
+    which is exactly how the runner holds one position per slot, so the
+    pairing is not a guess. Rows already carrying an id are left untouched,
+    so this is safe to run twice.
+
+    Rewrites the file under the same lock the writers use, through a temp file
+    and a rename, keeping a timestamped ``.bak`` — a half-written ledger would
+    take every PnL figure in the app with it.
+    """
+    p = Path(path) if path else LEDGER_PATH
+    if not p.exists():
+        return {"rows": 0, "entered": 0, "exited": 0, "written": False}
+    lines = p.read_text(encoding="utf-8").splitlines()
+    rows: list = []
+    for ln in lines:
+        try:
+            rows.append(json.loads(ln))
+        except ValueError:
+            rows.append(ln)                  # keep unparseable lines verbatim
+    open_by: dict = {}
+    n_enter = n_exit = 0
+    for r in rows:
+        if not isinstance(r, dict):
+            continue
+        act = r.get("action")
+        if act not in ("enter", "exit"):
+            continue
+        slot = (r.get("symbol"), r.get("strategy"), bool(r.get("dry_run")))
+        if act == "enter":
+            if not r.get("trade_id"):
+                r["trade_id"] = trade_code(
+                    r.get("symbol"), r.get("strategy"),
+                    r.get("entry_ts") or r.get("ts"),
+                    1 if str(r.get("side", "")).upper() == "LONG" else -1,
+                    bool(r.get("dry_run")))
+                n_enter += 1
+            r.setdefault("opened_at", r.get("ts"))
+            open_by.setdefault(slot, []).append(r)
+        else:
+            q = open_by.get(slot) or []
+            src = q.pop(0) if q else None
+            if src is not None:
+                if not r.get("trade_id"):
+                    r["trade_id"] = src["trade_id"]
+                    n_exit += 1
+                r.setdefault("opened_at", src.get("opened_at"))
+                if r.get("held_s") is None and r.get("ts") and src.get("ts"):
+                    r["held_s"] = int(r["ts"]) - int(src["ts"])
+            elif not r.get("trade_id"):
+                # An exit with no surviving entry row (the ledger predates the
+                # entry, or it was a reconciliation). Give it an id of its own
+                # rather than leaving a blank cell nobody can quote.
+                r["trade_id"] = trade_code(
+                    r.get("symbol"), r.get("strategy"), r.get("ts"),
+                    1 if str(r.get("side", "")).upper() == "LONG" else -1,
+                    bool(r.get("dry_run")))
+                n_exit += 1
+    if dry_run:
+        return {"rows": len(rows), "entered": n_enter, "exited": n_exit,
+                "written": False}
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    with (STATE_DIR / "ledger.lock").open("a+") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        try:
+            # Re-read under the lock: the runner may have appended while the
+            # pairing above was computed. Those tail rows are carried over
+            # untouched, and the next run will id them.
+            fresh = p.read_text(encoding="utf-8").splitlines()
+            tail = fresh[len(lines):]
+            bak = p.with_suffix(f".bak-{int(time.time())}")
+            bak.write_text("\n".join(fresh) + ("\n" if fresh else ""),
+                           encoding="utf-8")
+            tmp = p.with_suffix(".tmp")
+            with tmp.open("w", encoding="utf-8") as fh:
+                for r in rows:
+                    fh.write((json.dumps(r) if isinstance(r, dict) else r)
+                             + "\n")
+                for ln in tail:
+                    fh.write(ln + "\n")
+            tmp.replace(p)
+        finally:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+    return {"rows": len(rows), "entered": n_enter, "exited": n_exit,
+            "written": True, "backup": str(bak)}
 
 
 def log_tail(n: int = 200) -> list[str]:
@@ -803,21 +922,21 @@ def _dirs_for_backtest(key: str, high: list, low: list,
         if key == _name or key.startswith(_name + "_"):
             return EXTRA_SIGNALS[_name](high, low, close)
     if key == "rsi14_1h":
-        g = l = 0.0
+        g = lo = 0.0
         for i in range(1, n):
             ch = close[i] - close[i - 1]
             if i <= 14:
                 if ch > 0:
                     g += ch
                 else:
-                    l -= ch
+                    lo -= ch
                 if i == 14:
                     g /= 14
-                    l /= 14
+                    lo /= 14
                 continue
             g = (g * 13 + max(ch, 0)) / 14
-            l = (l * 13 + max(-ch, 0)) / 14
-            r = 100.0 if l == 0 else 100 - 100 / (1 + g / l)
+            lo = (lo * 13 + max(-ch, 0)) / 14
+            r = 100.0 if lo == 0 else 100 - 100 / (1 + g / lo)
             out[i] = 1 if r < 30 else (-1 if r > 70 else 0)
     elif key.startswith("fvg_") or key == "ict_fvg":
         bull = bear = None
@@ -1477,11 +1596,16 @@ def panic_stop(*, fx=None, close_positions: bool = True) -> dict:
         # Written as an "exit" row: every PnL reader and every loss limit
         # filters on action == "exit", so a panic_stop-only row was invisible
         # to all of them and a real loss read as a $0.00 day.
+        _pop = pos.get("opened_at") or pos.get("entry_ts")
         append_ledger({"symbol": key, "action": "exit", "why": "PANIC_CLOSE",
                        "strategy": pos.get("strategy"),
                        # side/entry belong on the EXIT row too: the trade
                        # history reads exit rows only, so without them the
                        # LONG/SHORT column was empty for every closed trade.
+                       # Same reasoning for the id and the opening time.
+                       "trade_id": pos.get("trade_id"), "opened_at": _pop,
+                       "held_s": (int(time.time()) - int(_pop)) if _pop
+                                 else None,
                        "side": "LONG" if pos.get("side", 0) > 0 else "SHORT",
                        "entry": pos.get("entry"),
                        "pnl_est": None if realised is None else round(realised, 2),
@@ -1569,8 +1693,12 @@ def close_one(symbol: str, *, fx=None) -> dict:
     state = load_state()
     st = state.get(symbol)
     pos = st.get("position") if isinstance(st, dict) else None
+    _mop = (pos or {}).get("opened_at") or (pos or {}).get("entry_ts")
     append_ledger({"symbol": symbol, "action": "exit", "why": "MANUAL_UI",
                    "strategy": (pos or {}).get("strategy"),
+                   "trade_id": (pos or {}).get("trade_id"),
+                   "opened_at": _mop,
+                   "held_s": (int(time.time()) - int(_mop)) if _mop else None,
                    "side": ("LONG" if (pos or {}).get("side", 0) > 0
                             else "SHORT") if pos else None,
                    "entry": (pos or {}).get("entry"),
@@ -1968,11 +2096,11 @@ def process_symbol(symbol: str, settings: dict, state: dict, *, fx,
         seconds_of = {s["interval"]: s["bar_seconds"]
                       for s in STRATEGY_SPECS.values()}
         df = frames[min(frames, key=lambda k: seconds_of[k])]
-        bars_since = [(float(h), float(l)) for h, l, t in zip(
+        bars_since = [(float(h), float(lo)) for h, lo, t in zip(
             df["High"], df["Low"], (int(d.timestamp()) for d in df["Date"]), strict=False)
             if t > pos["entry_ts"]]
         outcome = _dry_fill(pos, [h for h, _ in bars_since],
-                            [l for _, l in bars_since])
+                            [lo for _, lo in bars_since])
         if not outcome and pos_dry:
             # A real bracket rests AT THE EXCHANGE and fills the instant any
             # trade prints through the barrier — on a wick, intrabar, at 3am.
@@ -1984,12 +2112,12 @@ def process_symbol(symbol: str, settings: dict, state: dict, *, fx,
             # One-minute RANGES close that gap to ~1 minute.
             try:
                 fine = _closed_bars(fx.klines(symbol, "Min1", 300), 60)
-                wick = [(float(h), float(l)) for h, l, t in zip(
+                wick = [(float(h), float(lo)) for h, lo, t in zip(
                     fine["High"], fine["Low"],
                     (int(d.timestamp()) for d in fine["Date"]), strict=False)
                     if t > pos["entry_ts"]]
                 outcome = _dry_fill(pos, [h for h, _ in wick],
-                                    [l for _, l in wick])
+                                    [lo for _, lo in wick])
             except Exception as exc:
                 logger.warning("%s: could not read 1-minute ranges for the "
                                "paper bracket (%s) — falling back to the "
@@ -2134,8 +2262,17 @@ def process_symbol(symbol: str, settings: dict, state: dict, *, fx,
                 "LONG" if pos["side"] > 0 else "SHORT", why, exit_px, pnl,
                 "WIN" if pnl > 0 else "LOSE", st["step"],
                 "dry run" if dry else "LIVE")
+            _op = pos.get("opened_at") or pos.get("entry_ts")
             append_ledger({"symbol": symbol, "action": "exit", "why": why,
                            "strategy": pos.get("strategy"),
+                           # id and opening time travel WITH the position, so
+                           # a closed trade keeps the identity it opened with
+                           "trade_id": pos.get("trade_id") or trade_code(
+                               symbol, pos.get("strategy"),
+                               pos.get("entry_ts"), pos.get("side"), pos_dry),
+                           "opened_at": _op,
+                           "held_s": (int(time.time()) - int(_op)) if _op
+                                     else None,
                            "side": "LONG" if pos.get("side", 0) > 0 else "SHORT",
                            "entry": pos.get("entry"), "exit": exit_px,
                            "pnl_est": round(pnl, 2), "step_next": st["step"],
@@ -2165,8 +2302,27 @@ def process_symbol(symbol: str, settings: dict, state: dict, *, fx,
             st["last_ts"][tf] = max(st["last_ts"].get(tf, 0),
                                     int(df["Date"].iloc[-1].timestamp()))
         return
+    _live_locks = timeframe_locks(settings) if not dry else {}
     for key in strategies:
         if key in tripped:                 # paused for the day — no entries
+            continue
+        # ONE LIVE STRATEGY PER COIN, enforced where the order is placed.
+        # The rule was checked only when SETTINGS WERE SAVED, so a config that
+        # was already double-booked kept trading both: on 2026-08-22 PROVE ran
+        # fade15_1h_pv2 and mom6_1h_pv live together, MEXC netted them into one
+        # position, and either stop could close part of a trade it did not own.
+        # A save-time check cannot protect a state that already exists.
+        # Demo is untouched — `_live_locks` is empty when dry.
+        _lock = _live_locks.get(key)
+        if _lock and symbol in (coins_for(key, settings) or []):
+            logger.warning(
+                "REFUSED live entry %s · %s: %s is already traded live by %s. "
+                "One live strategy per coin — disarm one of them to trade the "
+                "other.", symbol, key, _lock["coin"].replace("_USDT", ""),
+                _lock["held_by"])
+            append_ledger({"symbol": symbol, "action": "refused",
+                           "strategy": key, "why": "coin already live",
+                           "held_by": _lock["held_by"], "dry_run": dry})
             continue
         # The liquidity gate: never open a trade whose take-profit is
         # smaller than the cost of getting in and out. Checked live, per
@@ -2369,6 +2525,10 @@ def process_symbol(symbol: str, settings: dict, state: dict, *, fx,
         # from settings later. Flipping the Dry-run checkbox while a real
         # position is open must not make the runner fabricate its exit, and a
         # paper position must never be mistaken for money at risk.
+        _opened_at = int(time.time())
+        # The trade's identity, minted ONCE here and carried to its exit row,
+        # so the history table can name a trade and say when it opened.
+        _tid = trade_code(symbol, key, last_ts, side, bool(dry))
         st["position"] = {"side": side, "vol": vol, "entry": entry,
                           "tp": tp_px, "sl": sl_px, "margin": margin,
                           "strategy": key, "entry_ts": last_ts,
@@ -2376,11 +2536,12 @@ def process_symbol(symbol: str, settings: dict, state: dict, *, fx,
                           # entry_ts is the CANDLE's time; opened_at is when
                           # the order actually went out — the operator asked
                           # to see both.
-                          "opened_at": int(time.time()),
+                          "opened_at": _opened_at, "trade_id": _tid,
                           "bracket": bool(dry)}
         if not dry:
             _rest_bracket(symbol, st["position"], fx=fx)
         append_ledger({"symbol": symbol, "action": "enter", "strategy": key,
+                       "trade_id": _tid, "opened_at": _opened_at,
                        "side": "LONG" if side > 0 else "SHORT", "vol": vol,
                        "entry": entry, "tp": round(tp_px, 6),
                        "sl": round(sl_px, 6), "margin": margin,
@@ -2534,8 +2695,12 @@ def reconcile_unconfigured(settings: dict, state: dict, *, fx) -> None:
             "RECONCILED %s: the book held a position on a coin no longer "
             "configured, and the exchange has closed it. Realised %s.",
             symbol, "unknown" if realised is None else f"{realised:+.2f} USDT")
+        _rop = pos.get("opened_at") or pos.get("entry_ts")
         append_ledger({"symbol": symbol, "action": "exit", "why": "RECONCILED",
                        "strategy": pos.get("strategy"),
+                       "trade_id": pos.get("trade_id"), "opened_at": _rop,
+                       "held_s": (int(time.time()) - int(_rop)) if _rop
+                                 else None,
                        "side": "LONG" if pos.get("side", 0) > 0 else "SHORT",
                        "entry": pos.get("entry"),
                        "pnl_est": None if realised is None else round(realised, 2),
@@ -2619,11 +2784,14 @@ def run_cycle(*, fx=None) -> None:
             if not isinstance(seen, dict):     # pre-multi-TF state files
                 seen = {"Hour4": seen}
             def _bar_stamp(ts: float) -> str:
-                # The operator's one date format (2026-08-21): the scan log
-                # is shown in the UI, so "08-18 16:00" is banned here too.
-                t = time.gmtime(ts)
-                h = t.tm_hour % 12 or 12
-                return time.strftime(f"%b {t.tm_mday}, %Y {h}:%M%p", t)
+                # The scan log is shown in the Runner feed, so it uses THE
+                # format like everything else. This was a third hand-rolled
+                # copy — unpadded day, uppercase PM — and it is what the
+                # operator was looking at when they asked for the format a
+                # third time on 2026-08-22.
+                from tradingagents.positions_view import fmt_when
+
+                return fmt_when(ts)
 
             bars_txt = " ".join(
                 f"{tf}@{_bar_stamp(ts)}"
@@ -2768,7 +2936,9 @@ def run_forever() -> None:
     # the runner, and the loser exits before it can trade.
     global _RUN_LOCK
     try:
-        _RUN_LOCK = open(LOCK_PATH, "w")
+        # held for the life of the process ON PURPOSE: closing it releases
+        # the flock, which is the only thing stopping a second runner
+        _RUN_LOCK = open(LOCK_PATH, "w")   # noqa: SIM115
         fcntl.flock(_RUN_LOCK, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
         print("another auto-trader holds the run lock — exiting so trades are "
@@ -2829,13 +2999,6 @@ def run_forever() -> None:
             PID_PATH.unlink(missing_ok=True)
 
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO,
-                        format="%(asctime)s %(levelname)s %(message)s")
-    if len(sys.argv) > 1 and sys.argv[1] == "once":
-        run_cycle()
-    else:
-        run_forever()
 
 
 def save_settings(payload: dict) -> list[dict]:
@@ -2861,12 +3024,20 @@ def save_settings(payload: dict) -> list[dict]:
 def timeframe_locks(settings: dict | None = None) -> dict:
     """Which strategies may not go LIVE, because their coin is already taken.
 
-    One coin runs ONE timeframe WITH REAL MONEY: two live strategies on the
-    same coin at different bar sizes net into a single MEXC position, so the
-    second entry resizes the first and either stop closes part of a trade it
-    does not own. That is an exchange fact, and it is the only thing this
-    locks — DEMO is never locked, because a simulated book has no MEXC
-    position to fight over.
+    ONE LIVE STRATEGY PER COIN. Not one per timeframe — per coin, full stop.
+    MEXC nets every order on a contract into a single position, so a second
+    live entry resizes the first and either stop closes part of a trade it does
+    not own. The bar size is irrelevant to that; the contract is what nets.
+
+    This check used to compare intervals (`claim[c][1] != interval`), so it
+    only caught clashes across DIFFERENT timeframes. On 2026-08-22 PROVE was
+    running `fade15_1h_pv2` and `mom6_1h_pv` live at the SAME 1h, and the guard
+    waved it through.
+
+    DEMO is never locked. The operator's words: "for demo it can have multiple
+    strategies so i can see if its working" — a simulated book has no MEXC
+    position to fight over, and comparing strategies side by side on one coin
+    is the point of paper trading.
 
     The FIRST live row in STRATEGY_ORDER wins a coin, so freeing it is an
     explicit disarm rather than a silent reassignment. Two passes, because the
@@ -2879,24 +3050,69 @@ def timeframe_locks(settings: dict | None = None) -> dict:
         settings = load_settings()
     books = settings.get("strategy_books") or {}
     coins = settings.get("strategy_coins") or {}
-    iv = lambda k: (STRATEGY_SPECS.get(k) or {}).get("interval", "")  # noqa: E731
 
-    claim: dict[str, tuple[str, str]] = {}
+    claim: dict[str, str] = {}            # coin -> the key holding it live
     for key in STRATEGY_ORDER:
         if "real" not in (books.get(key) or []):
-            continue
-        interval = iv(key)
+            continue                      # demo claims nothing and locks nobody
         mine = coins.get(key) or []
-        if any(c in claim and claim[c][1] != interval for c in mine):
+        if any(c in claim for c in mine):
             continue                      # already double-booked: claims nothing
         for c in mine:
-            claim.setdefault(c, (key, interval))
+            claim.setdefault(c, key)
 
     locked: dict[str, dict] = {}
     for key in STRATEGY_ORDER:
-        interval = iv(key)
         hit = next((c for c in (coins.get(key) or [])
-                    if c in claim and claim[c][1] != interval), None)
+                    if c in claim and claim[c] != key), None)
         if hit:
-            locked[key] = {"coin": hit, "held_by": claim[hit][0]}
+            locked[key] = {"coin": hit, "held_by": claim[hit]}
     return locked
+
+
+# ---------------------------------------------------------------------------
+# THE ENTRY POINT MUST BE THE LAST THING IN THIS FILE.
+#
+# It used to sit at line 2999 with save_settings and timeframe_locks defined
+# BELOW it. `import tradingagents.auto_trader` runs the whole file, so the API
+# and every test saw those two functions and everything looked fine. The runner
+# starts with `python -m tradingagents.auto_trader run`: the module body
+# executes top to bottom, reaches this guard, and enters the trading loop —
+# so nothing below it is ever defined.
+#
+# On 2026-08-22 that made every LIVE cycle raise
+# `name 'timeframe_locks' is not defined` from 13:34:23 onward: 1,176 failures
+# over five hours, four coins a cycle. The paper book kept running, because the
+# lock is only consulted when the book is real, so the screen still filled with
+# healthy-looking scan lines. No money was lost — no live entry could be placed
+# — but no live entry could be placed.
+#
+# Anything appended after this block is invisible to the runner and visible to
+# everything else, which is the worst kind of bug: it passes every test.
+# ---------------------------------------------------------------------------
+if __name__ == "__main__":
+    # Log to THE FILE, not to stdout.
+    #
+    # `start_runner()` spawns the child with stdout/stderr redirected into
+    # auto_trade.log, so a runner started from the UI button filled the Runner
+    # feed. launchd starts the very same command with its output going to
+    # supervisor.log — so a runner it restarted (a crash, a reboot) wrote
+    # nothing to auto_trade.log at all: the feed sat frozen on the last line
+    # the previous process wrote, and api.py uses that file's mtime as the
+    # runner's heartbeat, so a perfectly healthy runner read as dead.
+    #
+    # Owning the handler here makes it true however the process was started.
+    # No StreamHandler, or the UI path would write every line twice.
+    LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    # THE date format on every line too. basicConfig's default asctime is
+    # "2026-08-22 19:27:03,488" — the compact stamp the operator banned,
+    # printed on every row of the Runner feed they read.
+    from tradingagents.positions_view import WhenFormatter
+
+    _h = logging.FileHandler(LOG_PATH, encoding="utf-8")
+    _h.setFormatter(WhenFormatter("%(asctime)s %(levelname)s %(message)s"))
+    logging.basicConfig(level=logging.INFO, handlers=[_h])
+    if len(sys.argv) > 1 and sys.argv[1] == "once":
+        run_cycle()
+    else:
+        run_forever()

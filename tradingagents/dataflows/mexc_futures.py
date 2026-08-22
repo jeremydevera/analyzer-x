@@ -24,11 +24,14 @@ before it thinks it has a position.
 
 from __future__ import annotations
 
+import gzip as _gzip
 import hashlib
 import hmac
 import json
+import json as _json
 import logging
 import os
+import pathlib as _pathlib
 import time
 import urllib.error
 import urllib.parse
@@ -915,7 +918,6 @@ def list_contracts(quote: str = "USDT") -> list[dict]:
 # function, and a 12-hour TTL on Day1 bars would show a chart half a day stale
 # while the caption claimed it was the last price.
 _KLINE_CACHE: dict = {}
-import pathlib as _pathlib
 
 KLINE_DISK_DIR = (_pathlib.Path.home() / ".tradingagents" / "kline_cache")
 _KLINE_TTL_CAP = 300
@@ -967,9 +969,6 @@ def _klines_page(symbol: str, interval: str, limit: int, end: int):
 # Closed candles never change, so the long histories the sweeps page down are
 # kept on disk and only the tail is refetched. JSON+gzip of plain columns —
 # no parquet dependency — capped so a file never grows past ~40k bars.
-import gzip as _gzip
-import json as _json
-import pathlib as _pathlib
 
 _KLINE_DISK_MAX = 40_000
 

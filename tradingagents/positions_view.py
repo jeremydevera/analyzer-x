@@ -11,15 +11,46 @@ Nothing here talks to Streamlit. Money maths lives here, not in the view.
 from __future__ import annotations
 
 import datetime as _dt
+import logging as _logging
 import time
 
 
 def fmt_when(ts: float) -> str:
-    """THE date format, everywhere: Aug 26, 2026 4:00PM. The operator asked
-    twice for this and rejected compact stamps like '08-21 00:18'."""
+    """THE date format, everywhere: ``Aug 03, 2026 8:03pm``.
+
+    The operator's exact words on 2026-08-22, after asking three times:
+    "i want format of Aug 03, 2026 8:03pm ... this applies to whole module".
+
+    Read it precisely, because each part was wrong at some point:
+      * month  — three letters, capitalised: ``Aug``
+      * day    — TWO DIGITS, zero padded: ``03``, not ``3``
+      * year   — four digits, after a comma
+      * hour   — 12-hour, NOT padded: ``8``, and midnight/noon are ``12``
+      * minute — two digits: ``03``
+      * am/pm  — LOWERCASE, no space before it: ``8:03pm``
+
+    Compact stamps like '08-21 00:18' were rejected outright. Every timestamp
+    in this repo, Python and TypeScript alike, comes from here or from its
+    TypeScript twin ``fmtWhen`` in webapp/src/lib/api.ts.
+    """
     d = _dt.datetime.fromtimestamp(ts)
     hour = d.hour % 12 or 12
-    return f"{d:%b} {d.day}, {d.year} {hour}:{d:%M}{d:%p}"
+    ampm = "am" if d.hour < 12 else "pm"
+    return f"{d:%b} {d.day:02d}, {d.year} {hour}:{d:%M}{ampm}"
+
+
+class WhenFormatter(_logging.Formatter):
+    """A logging formatter whose timestamps are THE format.
+
+    `logging.basicConfig(format="%(asctime)s ...")` defaults to
+    `2026-08-22 19:27:03,488` — precisely the compact stamp the operator
+    banned, printed on every line of the Runner feed. `datefmt` cannot express
+    the rule either: strftime has no portable unpadded 12-hour hour and its
+    `%p` is uppercase. So the formatter asks fmt_when, like everything else.
+    """
+
+    def formatTime(self, record, datefmt=None):    # noqa: N802 (stdlib name)
+        return fmt_when(record.created)
 
 
 def fmt_age(seconds: float) -> str:

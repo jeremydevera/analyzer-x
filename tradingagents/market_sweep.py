@@ -23,6 +23,8 @@ Layout under ``~/.tradingagents/backtest/``::
 """
 from __future__ import annotations
 
+import contextlib
+import fcntl
 import itertools
 import json
 import os
@@ -42,12 +44,14 @@ CONTEXT_BARS = 300        # lookback a signal needs before the first new bar
 
 
 def fmt_stamp(ts: float | None = None) -> str:
-    """The operator's one date format (2026-08-21): Aug 26, 2026 4:00PM."""
-    import datetime as _dt
+    """The operator's one date format (2026-08-21): Aug 26, 2026 4:00PM.
 
-    d = _dt.datetime.fromtimestamp(time.time() if ts is None else ts)
-    h = d.hour % 12 or 12
-    return f"{d:%b} {d.day}, {d.year} {h}:{d:%M}{d:%p}"
+    DELEGATES rather than reimplements. This was a second copy of the same
+    six lines, and two copies of one rule is one rule waiting to drift.
+    """
+    from tradingagents.positions_view import fmt_when
+
+    return fmt_when(time.time() if ts is None else ts)
 
 
 def _paths() -> None:
@@ -129,8 +133,6 @@ def refresh_candles(symbol: str, tf: str, *, days: int = 365):
 
 
 # ------------------------------------------------------------------ state
-import contextlib
-import fcntl
 
 
 @contextlib.contextmanager
@@ -245,7 +247,12 @@ def worker_read(stale_seconds: float = WORKER_STALE_SECONDS) -> list:
         fresh = (now - float(row.get("updated") or 0)) <= stale_seconds
         if alive and fresh:
             out.append(row)
-        else:
+        elif not alive:
+            # Hide a quiet line, but only DELETE one whose process is gone. A
+            # living worker can be slow between publishes — few combinations
+            # on a pair, or a long fetch — and unlinking its file made seven
+            # busy cores render as four (2026-08-22): each deletion also cost
+            # the row until that worker published again.
             with contextlib.suppress(OSError):
                 f.unlink(missing_ok=True)
     out.sort(key=lambda r: r.get("pid", 0))
@@ -729,8 +736,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     return 0
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
 
 
 def compute_combos(symbol: str, tf: str, combos: list, *,
@@ -1034,3 +1039,12 @@ def candle_index(rebuild: bool = False, scan: bool = True) -> dict:
         except OSError:
             pass
     return out
+
+
+# The entry point is LAST, deliberately. It sat at line 734 with six more
+# definitions below it, so `python -m tradingagents.market_sweep` never saw
+# compute_combos and its neighbours while every import did. That is exactly
+# how auto_trader lost timeframe_locks for five hours on 2026-08-22 — a bug
+# that passes every test, because tests import.
+if __name__ == "__main__":
+    raise SystemExit(main())

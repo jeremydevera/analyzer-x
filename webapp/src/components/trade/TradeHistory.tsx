@@ -9,7 +9,10 @@ import { useEffect, useState } from "react";
 import { fmtMoney, HistoryPayload, tradeApi } from "@/lib/api";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 
-const HEADS = ["closed", "coin", "side", "strategy", "closed by", "PROFIT $", "running $"];
+// id and opened lead the row: the operator asked to be able to name a
+// trade and see when it started (2026-08-22).
+const HEADS = ["id", "opened", "closed", "held", "coin", "side", "strategy",
+               "closed by", "PROFIT $", "running $"];
 
 function pageNumbers(page: number, pages: number): number[] {
   const span = 7;
@@ -68,7 +71,10 @@ export default function TradeHistory() {
           <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
             {(d?.rows ?? []).map((r, i) => (
               <TableRow key={`${r.ts}-${i}`}>
+                <TableCell className="whitespace-nowrap px-2 py-1.5 font-mono text-theme-xs text-gray-800 dark:text-white/90">{r.id ?? "—"}</TableCell>
+                <TableCell className="whitespace-nowrap px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.opened ?? "—"}</TableCell>
                 <TableCell className="whitespace-nowrap px-3 py-2 text-theme-xs text-gray-500 dark:text-gray-400">{r.when}</TableCell>
+                <TableCell className="whitespace-nowrap px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.held ?? "—"}</TableCell>
                 <TableCell className="px-2 py-1.5 text-theme-xs font-medium text-gray-800 dark:text-white/90">{r.coin}</TableCell>
                 <TableCell className={`px-2 py-1.5 text-theme-xs ${r.side === "LONG" ? "text-success-600" : "text-error-500"}`}>{r.side}</TableCell>
                 <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.strategy}</TableCell>

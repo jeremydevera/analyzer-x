@@ -100,12 +100,12 @@ def run(candles, *, take_profit_pct: float, stop_loss_pct: float,
     if len(candles) < 3:
         raise ValueError("need at least 3 candles to simulate an entry and exit")
 
-    O = candles["Open"].tolist()
+    Op = candles["Open"].tolist()
     H = candles["High"].tolist()
     L = candles["Low"].tolist()
     C = candles["Close"].tolist()
     T = list(candles["Date"])
-    n_bars = len(O)
+    n_bars = len(Op)
     # The live runner sizes with min(margin * leverage, max_notional). Ignoring the
     # cap made the simulation trade a different position from the bot: at $10
     # margin, 200x and a $400 cap it used $2,000 — five times the size, so every
@@ -153,7 +153,7 @@ def run(candles, *, take_profit_pct: float, stop_loss_pct: float,
                 j += 1
             i = j
             continue
-        entry_px = O[i + 1]
+        entry_px = Op[i + 1]
         if entry_px <= 0:
             i += 1
             continue
@@ -218,11 +218,11 @@ def run(candles, *, take_profit_pct: float, stop_loss_pct: float,
     # The benchmark is a real leveraged long facing the same path, so it can be
     # liquidated too. Without this it was the raw price change times notional:
     # +$228.92 against a $10 margin at 200x, a number no account could hold.
-    bh_net = (C[-1] / O[1] - 1) - 2 * fee_per_side if n_bars > 1 else 0.0
+    bh_net = (C[-1] / Op[1] - 1) - 2 * fee_per_side if n_bars > 1 else 0.0
     bh_pnl = bh_net * notional
-    if n_bars > 1 and O[1] > 0 and notional > 0:
+    if n_bars > 1 and Op[1] > 0 and notional > 0:
         for low in L[1:]:
-            if margin + (low / O[1] - 1) * notional <= 0:
+            if margin + (low / Op[1] - 1) * notional <= 0:
                 bh_pnl = -margin
                 break
     span = ((T[-1] - T[0]).total_seconds() / 86400) if n_bars > 1 else 0.0
@@ -283,10 +283,10 @@ def run_positions(candles, positions, *, margin: float = 100.0,
     exposure-shaping strategies — trend filters, session windows, volatility
     targeting — where there is no discrete take-profit to hit.
     """
-    O = candles["Open"].tolist()
+    Op = candles["Open"].tolist()
     C = candles["Close"].tolist()
     T = list(candles["Date"])
-    n = min(len(O), len(positions))
+    n = min(len(Op), len(positions))
     if n < 3:
         raise ValueError("need at least 3 candles")
     # Same sizing rule as run() and as the live runner.
@@ -323,21 +323,21 @@ def run_positions(candles, positions, *, margin: float = 100.0,
             pos = 0.0                       # stand down for the rest of the day
         else:
             pos = float(positions[i])
-        ret = O[i + 2] / O[i + 1] - 1
+        ret = Op[i + 2] / Op[i + 1] - 1
         realised += pos * ret * notional
         turn = abs(pos - prev_pos)
         realised -= turn * fee_per_side * notional
         # a change in exposure is recorded as a trade boundary
         if turn > 1e-9:
             if prev_pos > 0 and open_at is not None:
-                net = (O[i + 1] / open_px - 1) - 2 * fee_per_side
+                net = (Op[i + 1] / open_px - 1) - 2 * fee_per_side
                 trades.append(Trade(
                     n=len(trades) + 1, entry_at=open_at, exit_at=T[i + 1],
-                    entry_px=open_px, exit_px=O[i + 1],
+                    entry_px=open_px, exit_px=Op[i + 1],
                     reason="exposure change", net_return=net,
                     pnl=net * notional * prev_pos, bars_held=0))
             if pos > 0:
-                open_at, open_px = T[i + 1], O[i + 1]
+                open_at, open_px = T[i + 1], Op[i + 1]
             else:
                 open_at = open_px = None
         prev_pos = pos
@@ -355,7 +355,7 @@ def run_positions(candles, positions, *, margin: float = 100.0,
             if open_at is not None:
                 trades.append(Trade(
                     n=len(trades) + 1, entry_at=open_at, exit_at=T[i + 1],
-                    entry_px=open_px, exit_px=O[i + 1], reason="liquidated",
+                    entry_px=open_px, exit_px=Op[i + 1], reason="liquidated",
                     net_return=-1.0, pnl=-(margin), bars_held=0))
             break
     if prev_pos > 0 and not liquidated:
@@ -381,12 +381,12 @@ def run_positions(candles, positions, *, margin: float = 100.0,
     # fully-invested position is the only apples-to-apples buy & hold. Using a
     # single open-to-close return here made buy & hold appear to lose to itself,
     # because summed arithmetic returns differ from one compounded return.
-    bh_net = sum(O[i + 2] / O[i + 1] - 1 for i in range(n - 2)) - 2 * fee_per_side
+    bh_net = sum(Op[i + 2] / Op[i + 1] - 1 for i in range(n - 2)) - 2 * fee_per_side
     bh_pnl = bh_net * notional
-    if n > 1 and O[1] > 0 and notional > 0:
+    if n > 1 and Op[1] > 0 and notional > 0:
         # Same rule as run(): a leveraged benchmark can be liquidated.
         for px_low in C[1:n]:
-            if margin + (px_low / O[1] - 1) * notional <= 0:
+            if margin + (px_low / Op[1] - 1) * notional <= 0:
                 bh_pnl = -margin
                 break
     span = (T[-1] - T[0]).total_seconds() / 86400

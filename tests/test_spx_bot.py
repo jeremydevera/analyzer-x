@@ -684,7 +684,8 @@ def test_the_watchdog_restarts_a_crash_but_not_a_misconfiguration(monkeypatch):
 
     fired.clear()
     for permanent in (2, 3, 4):
-        monkeypatch.setattr(spx_bot, "do_run", lambda *a, **k: permanent)
+        monkeypatch.setattr(spx_bot, "do_run",
+                            lambda *a, _p=permanent, **k: _p)
         assert spx_bot.do_watchdog(spx_bot.Config(), live=False) == permanent
     assert all(k == "stopped" for k, _ in fired), \
         "a configuration error must not be retried"

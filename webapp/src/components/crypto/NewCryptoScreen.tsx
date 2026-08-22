@@ -4,7 +4,7 @@
  * an empty table must never read as "nothing new" when it means
  * "could not check". */
 import { useEffect, useState } from "react";
-import { analysisApi, cryptoApi, NewCoinRow, ScreenPayload, UpcomingRow } from "@/lib/api";
+import { analysisApi, cryptoApi, NewCoinRow, ScreenPayload, UpcomingRow, fmtWhen, fmtWhenMs } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import CoinChart from "./CoinChart";
 import Badge from "@/components/ui/badge/Badge";
@@ -196,8 +196,8 @@ export default function NewCryptoScreen() {
         {data && (
           <p className="px-5 pt-2 text-theme-xs">
             {data.stale
-              ? <span className="text-warning-600">This sweep is STALE — a refresh failed, so these are the last numbers that could be read ({new Date(data.fetched_at * 1000).toLocaleString()}).</span>
-              : <span className="text-gray-500 dark:text-gray-400">{data.from_cache ? "cached" : "fresh"} sweep from {new Date(data.fetched_at * 1000).toLocaleString()}</span>}
+              ? <span className="text-warning-600">This sweep is STALE — a refresh failed, so these are the last numbers that could be read ({fmtWhen(data.fetched_at)}).</span>
+              : <span className="text-gray-500 dark:text-gray-400">{data.from_cache ? "cached" : "fresh"} sweep from {fmtWhen(data.fetched_at)}</span>}
           </p>
         )}
         {watch && (
@@ -206,7 +206,7 @@ export default function NewCryptoScreen() {
               ? <span className="text-warning-600">watch paused — {watchWhy}</span>
               : <span className="text-gray-500 dark:text-gray-400">
                   watching {known.length.toLocaleString()} pairs, one request every 2 min
-                  {lastTick ? ` · last checked ${new Date(lastTick).toLocaleTimeString()}` : " · seeding the baseline…"}
+                  {lastTick ? ` · last checked ${fmtWhenMs(lastTick)}` : " · seeding the baseline…"}
                   {alerts.length ? ` · ${alerts.length} alert(s) this session` : ""}
                 </span>}
           </p>
@@ -285,7 +285,7 @@ export default function NewCryptoScreen() {
                   <TableCell className="px-3 py-2 text-theme-sm font-medium text-gray-800 dark:text-white/90">{u.base}</TableCell>
                   <TableCell className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400">{u.name}</TableCell>
                   <TableCell className="px-3 py-2 text-theme-xs text-gray-500 dark:text-gray-400">
-                    {u.open_ms ? new Date(u.open_ms).toLocaleString() : "time not published"}
+                    {u.open_ms ? fmtWhenMs(u.open_ms) : "time not published"}
                   </TableCell>
                   <TableCell className="px-3 py-2 text-theme-xs">
                     {u.hours_until != null

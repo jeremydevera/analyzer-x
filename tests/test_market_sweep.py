@@ -318,21 +318,32 @@ def test_a_worker_publishes_under_its_own_pid(tmp_path, monkeypatch):
     assert row["core"] == 0, "a display index is assigned on read"
 
 
-def test_a_line_that_stopped_being_written_is_dropped(tmp_path, monkeypatch):
-    """A finished task's last line read as a core stuck on 'done'."""
+def test_a_line_that_stopped_being_written_is_hidden_but_kept(tmp_path,
+                                                              monkeypatch):
+    """A finished task's last line must not read as a core stuck on 'done'.
+
+    It is HIDDEN, not deleted: the process is still alive and may simply be
+    slow between publishes. Deleting it cost the row until that worker
+    published again, which rendered seven busy cores as four.
+    """
     import json
     import os
 
     from tradingagents import market_sweep as msw
     monkeypatch.setattr(msw, "WORKERS", tmp_path)
-    stale = tmp_path / "w999999.json"
-    stale.write_text(json.dumps({"pid": os.getpid(), "pair": "OLD 4h",
+    quiet = tmp_path / "w999999.json"
+    quiet.write_text(json.dumps({"pid": os.getpid(), "pair": "OLD 4h",
                                  "state": "done", "pct": 100,
                                  "updated": 0}))         # 1970
     msw.worker_write(pair="LIVE 1h", pct=5.0, state="running")
     rows = msw.worker_read()
     assert [r["pair"] for r in rows] == ["LIVE 1h"]
-    assert not stale.exists(), "the stale file is cleaned up, not just hidden"
+    assert quiet.exists(), "a LIVING worker's file is kept, only hidden"
+    # …and it comes back the moment that worker publishes again
+    quiet.write_text(json.dumps({"pid": os.getpid(), "pair": "OLD 4h",
+                                 "state": "running", "pct": 7.5,
+                                 "updated": __import__("time").time()}))
+    assert {r["pair"] for r in msw.worker_read()} == {"LIVE 1h", "OLD 4h"}
 
 
 def test_a_dead_worker_is_dropped_even_if_recently_written(tmp_path,

@@ -13,6 +13,7 @@ already stored.
 from __future__ import annotations
 
 import contextlib
+import contextlib as _contextlib
 import json
 import os
 import subprocess
@@ -194,7 +195,9 @@ def start(kind: str, spec: dict) -> int:
     f = FILES[kind]
     f["stop"].unlink(missing_ok=True)
     _write(f["spec"], spec)
-    logf = open(STATE_DIR / f"db_{kind}.log", "a")
+    # NOT a context manager: this handle is the detached child's stdout and
+    # must outlive this function. Closing it would send the job SIGPIPE.
+    logf = open(STATE_DIR / f"db_{kind}.log", "a")   # noqa: SIM115
     proc = subprocess.Popen(
         [sys.executable, "-m", "tradingagents.db_jobs", kind],
         cwd=str(Path(__file__).resolve().parent.parent),
@@ -430,10 +433,9 @@ def _run_backtest_inner(spec: dict) -> None:
 
     def _beat() -> None:
         while not _beat_stop.wait(2.0):
-            try:
+            # telemetry must never kill the job
+            with _contextlib.suppress(Exception):
                 _publish()
-            except Exception:
-                pass                      # telemetry must never kill the job
 
     _beat_t = _threading.Thread(target=_beat, name="bt-heartbeat", daemon=True)
     _beat_t.start()

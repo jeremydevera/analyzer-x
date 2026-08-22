@@ -274,8 +274,18 @@ def test_no_coin_has_two_LIVE_strategies_at_once():
     import collections
     import json
     import pathlib
-    saved = json.loads((pathlib.Path.home() / ".tradingagents"
-                        / "auto_trade.json").read_text())
+
+    import pytest
+
+    # This asserts on the OPERATOR'S live configuration, which exists only on
+    # their machine. A CI runner has no ~/.tradingagents, so the test raised
+    # FileNotFoundError there and the whole suite went red on every push for a
+    # file it can never have. Skip where there is nothing to check; the
+    # invariant still runs where it matters, which is the machine that trades.
+    cfg = pathlib.Path.home() / ".tradingagents" / "auto_trade.json"
+    if not cfg.exists():
+        pytest.skip("no live auto_trade.json on this machine")
+    saved = json.loads(cfg.read_text())
     live = collections.defaultdict(list)
     for key in saved.get("strategies", []):
         if "real" not in ((saved.get("strategy_books") or {}).get(key) or []):
@@ -308,3 +318,67 @@ def test_the_tag_matches_the_tile_label():
     labels = {k: l for k, l, _n, _c in app.AUTO_STRATEGIES}
     for key, tag in app._TILE_TAGS.items():
         assert tag in labels[key], f"{key}: label {labels[key]!r} lacks {tag!r}"
+
+
+# ---------------------------------------------------------- one live per coin
+# The operator's rule, in their words: "a coin should not have 2 strategies
+# running for live ... but for demo it can have multiple strategies so i can
+# see if its working".
+def _cfg(books, coins):
+    return {"strategies": list(books), "strategy_books": books,
+            "strategy_coins": coins}
+
+
+def test_two_live_strategies_on_one_coin_is_blocked_at_any_timeframe():
+    """The guard compared TIMEFRAMES, so it only caught clashes across
+    different bar sizes. PROVE ran fade15_1h_pv2 and mom6_1h_pv live together
+    at the same 1h on 2026-08-22 and it waved them through. MEXC nets by
+    CONTRACT; the bar size has nothing to do with it."""
+    order = list(at.STRATEGY_ORDER)
+    pair = [k for k in order if (at.STRATEGY_SPECS.get(k) or {}).get("interval")]
+    a, b = pair[0], next(k for k in pair[1:]
+                         if (at.STRATEGY_SPECS[k].get("interval")
+                             == at.STRATEGY_SPECS[pair[0]].get("interval")))
+    cfg = _cfg({a: ["real"], b: ["real"]},
+               {a: ["PROVE_USDT"], b: ["PROVE_USDT"]})
+    locks = at.timeframe_locks(cfg)
+    assert len(locks) == 1, f"same-timeframe clash not caught: {locks}"
+    loser = next(iter(locks))
+    assert locks[loser]["coin"] == "PROVE_USDT"
+    assert locks[loser]["held_by"] != loser
+
+
+def test_demo_may_run_as_many_strategies_on_one_coin_as_it_likes():
+    """Comparing strategies side by side on one coin is the POINT of paper."""
+    order = list(at.STRATEGY_ORDER)[:4]
+    cfg = _cfg({k: ["paper"] for k in order},
+               {k: ["PROVE_USDT"] for k in order})
+    assert at.timeframe_locks(cfg) == {}, "demo must never be locked"
+
+
+def test_a_live_row_does_not_lock_a_demo_row_on_the_same_coin():
+    """One live plus several demo on one coin is the normal, wanted setup."""
+    order = list(at.STRATEGY_ORDER)
+    live, d1, d2 = order[0], order[1], order[2]
+    cfg = _cfg({live: ["real"], d1: ["paper"], d2: ["paper"]},
+               {live: ["PROVE_USDT"], d1: ["PROVE_USDT"], d2: ["PROVE_USDT"]})
+    locks = at.timeframe_locks(cfg)
+    assert live not in locks, "the live holder must not lock itself"
+    # the demo rows are reported as unable to GO live, which is true, and it
+    # does not stop them trading on paper
+    assert set(locks) <= {d1, d2}
+
+
+def test_the_runner_refuses_a_live_entry_on_a_coin_already_live():
+    """A save-time check cannot protect a config that is ALREADY double-booked
+    — which is exactly the state the operator's machine was in."""
+    import inspect
+
+    src = inspect.getsource(at.process_symbol)
+    assert "_live_locks = timeframe_locks(settings) if not dry else {}" in src, (
+        "the runner must consult the lock, not just the settings screen")
+    i = src.index("_live_locks.get(key)")
+    body = src[i:i + 900]
+    assert "REFUSED live entry" in body, "a refusal must be logged loudly"
+    assert '"action": "refused"' in body, "and recorded in the ledger"
+    assert "continue" in body, "and must actually skip the order"

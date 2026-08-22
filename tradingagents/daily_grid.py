@@ -74,7 +74,8 @@ def start(*, coins: list, tfs: list, base: float, days: int, deployed: list,
             "page_url": page_url, "out_path": out_path, "rows": 0,
             "coins": list(coins), "tfs": list(tfs)}
     _atomic(STATE, init)
-    log = open(HOME / "daily.log", "a")
+    # the detached child writes here; closing it would kill its output
+    log = open(HOME / "daily.log", "a")   # noqa: SIM115
     proc = subprocess.Popen(
         [sys.executable, "-m", "tradingagents.daily_grid",
          "--job", str(JOBFILE)],

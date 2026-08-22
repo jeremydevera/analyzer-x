@@ -508,13 +508,31 @@ def test_saving_a_clashing_live_pair_is_REFUSED_not_warned(client):
         at.SETTINGS_PATH.read_text()) != payload
 
 
-def test_the_same_coin_on_the_SAME_timeframe_is_allowed(client):
-    """One position on one bar size — the runner already handles that."""
+def test_the_same_coin_on_the_SAME_timeframe_is_refused_too(client):
+    """This asserted the opposite until 2026-08-22, on the premise that "one
+    position on one bar size — the runner already handles that". It does not:
+    MEXC nets by CONTRACT, so two live strategies on one coin resize each
+    other's position whether the bars match or not. PROVE ran fade15_1h_pv2
+    and mom6_1h_pv live together at 1h and neither the save guard nor the
+    runner stopped it. The operator's rule: one live strategy per coin."""
     got = client.post("/api/trade/settings", json={
         "strategy_books": {"mom6_1h_gx": ["real"], "mom6_1h_pv": ["real"]},
         "strategy_coins": {"mom6_1h_gx": ["XAUT_USDT"],
                            "mom6_1h_pv": ["XAUT_USDT"]}})
-    assert got.status_code == 200
+    assert got.status_code == 409, "a second live strategy on XAUT was accepted"
+    assert "already" in got.json()["detail"]
+    assert "XAUT" in got.json()["detail"]
+
+
+def test_the_same_coin_on_many_DEMO_strategies_is_allowed(client):
+    """"for demo it can have multiple strategies so i can see if its working"."""
+    got = client.post("/api/trade/settings", json={
+        "strategy_books": {"mom6_1h_gx": ["paper"], "mom6_1h_pv": ["paper"],
+                           "fade15_1h_pv2": ["paper"]},
+        "strategy_coins": {"mom6_1h_gx": ["XAUT_USDT"],
+                           "mom6_1h_pv": ["XAUT_USDT"],
+                           "fade15_1h_pv2": ["XAUT_USDT"]}})
+    assert got.status_code == 200, got.text
 
 
 def test_a_position_carries_the_same_id_the_strategy_grid_shows(client,

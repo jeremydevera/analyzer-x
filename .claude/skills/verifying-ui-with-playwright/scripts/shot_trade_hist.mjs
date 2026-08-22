@@ -1,0 +1,12 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 1700, height: 1000 } });
+await p.goto('http://localhost:8503/trade', { waitUntil: 'domcontentloaded' });
+await p.waitForTimeout(16000);
+const panel = p.locator('div.rounded-2xl').filter({ hasText: 'Trade history' }).last();
+await panel.scrollIntoViewIfNeeded();
+await p.waitForTimeout(2500);
+const t = await panel.innerText();
+console.log('CARD TEXT:', t.split('\n').slice(0, 24).join(' | '));
+await panel.screenshot({ path: '/tmp/trade_history_ids.png' });
+await b.close();

@@ -69,14 +69,14 @@ def _rsi_series(close, n=14):
     out = [math.nan] * len(close)
     if len(close) <= n:
         return out
-    g = l = 0.0
+    g = lo = 0.0
     for i in range(1, n + 1):
         ch = close[i] - close[i - 1]
         if ch > 0:
             g += ch
         else:
-            l -= ch
-    ag, al = g / n, l / n
+            lo -= ch
+    ag, al = g / n, lo / n
     out[n] = 100.0 if al == 0 else 100 - 100 / (1 + ag / al)
     for i in range(n + 1, len(close)):
         ch = close[i] - close[i - 1]
@@ -463,7 +463,7 @@ def ultosc(opens, high, low, close, volume, ts):
 
 def ao(opens, high, low, close, volume, ts):
     """Awesome Oscillator zero cross."""
-    med = [(h + l) / 2 for h, l in zip(high, low, strict=False)]
+    med = [(h + lo) / 2 for h, lo in zip(high, low, strict=False)]
     f = _sma(med, 5)
     s = _sma(med, 34)
     out = _zeros(close)
@@ -481,7 +481,7 @@ def fisher(opens, high, low, close, volume, ts, n=10):
     """Fisher transform turning at an extreme."""
     m = len(close)
     out = _zeros(close)
-    med = [(h + l) / 2 for h, l in zip(high, low, strict=False)]
+    med = [(h + lo) / 2 for h, lo in zip(high, low, strict=False)]
     v = 0.0
     fish = [0.0] * m
     for i in range(n, m):

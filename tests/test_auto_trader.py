@@ -1651,3 +1651,75 @@ def test_the_suite_can_never_write_to_the_operators_live_book():
                       "pnl_est": -1.0, "dry_run": False})
     assert at.LEDGER_PATH.exists()
     assert "CANARY_USDT" in at.LEDGER_PATH.read_text()
+
+
+def test_nothing_is_defined_after_the_runner_entry_point():
+    """The runner starts with `python -m tradingagents.auto_trader run`, so the
+    module body executes top to bottom and STOPS at the __main__ guard — never
+    defining anything below it. A plain `import` runs the whole file, so the
+    API and every test still see those names and nothing looks wrong.
+
+    On 2026-08-22 save_settings and timeframe_locks sat below the guard and
+    every LIVE cycle raised `name 'timeframe_locks' is not defined`: 1,176
+    failures across five hours, four coins a cycle, while the paper book kept
+    printing healthy scan lines beside them.
+    """
+    import ast
+    import pathlib
+
+    for mod in ("tradingagents/auto_trader.py", "tradingagents/db_jobs.py",
+                "tradingagents/daily_grid.py", "tradingagents/market_sweep.py",
+                "tradingagents/rows_index.py"):
+        p = pathlib.Path(mod)
+        if not p.exists():
+            continue
+        tree = ast.parse(p.read_text())
+        guard = next((n.lineno for n in tree.body
+                      if isinstance(n, ast.If)
+                      and ast.unparse(n.test).startswith("__name__")), None)
+        if guard is None:
+            continue
+        after = [f"{type(n).__name__} at line {n.lineno}"
+                 for n in tree.body if n.lineno > guard]
+        assert not after, (
+            f"{mod}: these are invisible when the module runs as __main__:\n  "
+            + "\n  ".join(after))
+
+
+def test_the_runner_can_resolve_the_live_lock_as_main():
+    """The specific name that broke, checked the way the RUNNER loads it."""
+    import runpy
+    import sys
+
+    argv = sys.argv[:]
+    sys.argv = ["auto_trader", "__never_runs__"]
+    try:
+        # run_name is deliberately not "__main__": we want the module body
+        # WITHOUT starting the trading loop, then assert the tail defined.
+        ns = runpy.run_module("tradingagents.auto_trader", run_name="probe")
+    finally:
+        sys.argv = argv
+    for name in ("timeframe_locks", "save_settings", "process_symbol"):
+        assert name in ns, f"{name} is missing from the module namespace"
+
+
+def test_the_runner_writes_its_own_log_however_it_was_started():
+    """The Runner feed reads auto_trade.log and api.py uses that file's mtime
+    as the heartbeat. start_runner() redirects the child's stdout into it, but
+    launchd sends the identical command to supervisor.log — so a runner the
+    supervisor restarted wrote nothing there, the feed froze on the previous
+    process's last line, and a healthy runner read as dead."""
+    import ast
+    import pathlib
+
+    src = pathlib.Path("tradingagents/auto_trader.py").read_text()
+    tree = ast.parse(src)
+    guard = next(n for n in tree.body
+                 if isinstance(n, ast.If)
+                 and ast.unparse(n.test).startswith("__name__"))
+    body = ast.unparse(guard)
+    assert "FileHandler" in body and "LOG_PATH" in body, (
+        "the entry point must attach a FileHandler on LOG_PATH")
+    assert "StreamHandler" not in body, (
+        "a StreamHandler as well would double every line on the UI path, "
+        "which redirects stdout into the same file")

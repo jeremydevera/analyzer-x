@@ -7,6 +7,11 @@ import {
 } from "@/components/ui/table";
 
 const ts = (v: number) => new Date(v * 1000).toISOString().slice(0, 16).replace("T", " ");
+/** Held time, from the seconds the ledger stores. */
+const held = (s?: number | null) =>
+  s == null ? "—" : s >= 86400 ? `${(s / 86400).toFixed(1)}d`
+    : s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.round((s % 3600) / 60)}m`
+      : `${Math.max(1, Math.round(s / 60))}m`;
 
 export default function HistoryPanel() {
   const [deps, setDeps] = useState<DeploymentRow[]>([]);
@@ -58,7 +63,7 @@ export default function HistoryPanel() {
           <Table>
             <TableHeader className="sticky top-0 bg-white dark:bg-gray-900">
               <TableRow>
-                {["when", "coin", "action", "side", "pnl $", "closed by", "book"].map((h) => (
+                {["id", "opened", "when", "held", "coin", "action", "side", "pnl $", "closed by", "book"].map((h) => (
                   <TableCell key={h} isHeader className="px-3 py-2 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400">{h}</TableCell>
                 ))}
               </TableRow>
@@ -66,11 +71,14 @@ export default function HistoryPanel() {
             <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
               {trades.map((r, i) => (
                 <TableRow key={i}>
+                  <TableCell className="px-3 py-1.5 font-mono text-theme-xs text-gray-800 dark:text-white/90">{r.trade_id ?? "—"}</TableCell>
+                  <TableCell className="px-3 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.opened_at ? ts(r.opened_at) : "—"}</TableCell>
                   <TableCell className="px-3 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{ts(r.ts)}</TableCell>
+                  <TableCell className="px-3 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{held(r.held_s)}</TableCell>
                   <TableCell className="px-3 py-1.5 text-theme-sm font-medium text-gray-800 dark:text-white/90">{(r.symbol || "").replace("_USDT", "")}</TableCell>
                   <TableCell className="px-3 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.action}</TableCell>
                   <TableCell className="px-3 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.side ?? "—"}</TableCell>
-                  <TableCell className={`px-3 py-1.5 text-theme-xs font-medium ${(r.pnl ?? 0) >= 0 ? "text-success-600" : "text-error-500"}`}>{r.pnl != null ? fmtMoney(r.pnl) : "—"}</TableCell>
+                  <TableCell className={`px-3 py-1.5 text-theme-xs font-medium ${((r.pnl_est ?? r.pnl) ?? 0) >= 0 ? "text-success-600" : "text-error-500"}`}>{(r.pnl_est ?? r.pnl) != null ? fmtMoney((r.pnl_est ?? r.pnl) as number) : "—"}</TableCell>
                   <TableCell className="px-3 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.why ?? "—"}</TableCell>
                   <TableCell className="px-3 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">
                     {r.dry_run === false ? "REAL" : r.dry_run === true ? "paper" : "unknown"}

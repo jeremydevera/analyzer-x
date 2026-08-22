@@ -101,9 +101,9 @@ def should_sell(config: StrategyConfig, position: dict, price: float, now: float
     if change >= config.take_profit_pct:
         return True, f"take-profit hit ({change:+.1f}%)"
 
-    if config.exit_mode in (EXIT_TP_SL, EXIT_TP_SL_TIME):
-        if change <= -abs(config.stop_loss_pct):
-            return True, f"stop-loss hit ({change:+.1f}%)"
+    if (config.exit_mode in (EXIT_TP_SL, EXIT_TP_SL_TIME)
+            and change <= -abs(config.stop_loss_pct)):
+        return True, f"stop-loss hit ({change:+.1f}%)"
 
     if config.exit_mode == EXIT_TP_SL_TIME:
         held_hours = (now - float(position.get("opened_at") or now)) / 3600.0

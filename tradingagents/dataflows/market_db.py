@@ -247,8 +247,8 @@ def upsert_candles(symbol: str, interval: str, df) -> int:
         return 0
     rows = [{"s": symbol, "f": interval,
              "ts": int(d.timestamp()), "o": float(o), "h": float(h),
-             "l": float(l), "c": float(c), "v": float(v)}
-            for d, o, h, l, c, v in zip(df["Date"], df["Open"], df["High"],
+             "l": float(lo), "c": float(c), "v": float(v)}   # "l" is the COLUMN
+            for d, o, h, lo, c, v in zip(df["Date"], df["Open"], df["High"],
                                         df["Low"], df["Close"], df["Volume"], strict=False)]
     try:
         with _engine().begin() as cx:

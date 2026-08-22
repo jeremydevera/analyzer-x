@@ -11,6 +11,8 @@ Run:  .venv/bin/uvicorn tradingagents.api:app --port 8787
 """
 from __future__ import annotations
 
+import time as _time
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -18,7 +20,6 @@ from pydantic import BaseModel
 app = FastAPI(title="TradingAgents API", version="1.0")
 
 
-import time as _time
 
 
 @app.on_event("startup")
@@ -255,8 +256,7 @@ def jobs_all() -> dict:
 @app.get("/api/jobs/{kind}")
 def job_status(kind: str) -> dict:
     _check_kind(kind)
-    from tradingagents import db_jobs
-    from tradingagents import market_sweep as msw
+    from tradingagents import db_jobs, market_sweep as msw
 
     got = db_jobs.status(kind)
     # Read the workers HERE rather than trusting the snapshot the job wrote:
@@ -1162,7 +1162,7 @@ def crypto_candles(symbol: str, interval: str = "Min60",
     try:
         df = fx.klines(symbol, interval, max(10, min(limit, 1000)))
     except Exception as exc:                                   # noqa: BLE001
-        raise HTTPException(502, f"{type(exc).__name__}: {exc}")
+        raise HTTPException(502, f"{type(exc).__name__}: {exc}") from exc
     if df is None or not len(df):
         return {"rows": [], "symbol": symbol, "interval": interval}
     rows = [{"t": int(d.value // 1_000_000), "o": float(o), "h": float(h),
@@ -1170,6 +1170,18 @@ def crypto_candles(symbol: str, interval: str = "Min60",
             for d, o, h, low, c, v in zip(df["Date"], df["Open"], df["High"],
                                           df["Low"], df["Close"], df["Volume"], strict=False)]
     return {"rows": rows, "symbol": symbol, "interval": interval}
+
+
+def _fmt_held(secs) -> str:
+    """How long a trade was held, from the seconds the ledger stores."""
+    if not secs:
+        return "—"
+    s = int(secs)
+    if s >= 86400:
+        return f"{s / 86400:.1f}d"
+    if s >= 3600:
+        return f"{s // 3600}h {round((s % 3600) / 60)}m"
+    return f"{max(1, round(s / 60))}m"
 
 
 @app.get("/api/trade/history")
@@ -1218,8 +1230,17 @@ def trade_history(dry: bool = False, per_page: int = 5, page: int = 1) -> dict:
     for e in ex:
         p = round(float(e.get("pnl_est") or 0), 2)
         run = round(run + p, 2)
+        # The trade's own id and opening time, stored on the ledger row since
+        # 2026-08-22 (auto_trader.trade_code + backfill_ledger_ids). "—" only
+        # for the handful of old exits whose entry predates the ledger: an
+        # invented timestamp would be worse than an honest dash.
+        _op = e.get("opened_at")
+        _hs = e.get("held_s")
         rows.append({
             "ts": float(e.get("ts") or 0),
+            "id": e.get("trade_id") or "—",
+            "opened": pv.fmt_when(float(_op)) if _op else "—",
+            "held": _fmt_held(_hs),
             "when": pv.fmt_when(float(e.get("ts") or 0)),
             "coin": str(e.get("symbol", "?")).replace("_USDT", ""),
             "side": _side_for(e),
@@ -1320,10 +1341,9 @@ def candle_gaps() -> dict:
     Nothing is fetched here — it reads the store's own last bar. A pair is
     "behind" when more than one bar could have printed since.
     """
-    import datetime as _dt
     import time
 
-    from tradingagents import backtest_report as br, market_sweep as msw
+    from tradingagents import backtest_report as br, market_sweep as msw, positions_view as pv
 
     # the scan opens one file per stored pair (4,899 today), so a repeat call
     # inside 30s gets the same answer rather than the same work
@@ -1347,8 +1367,7 @@ def candle_gaps() -> dict:
             behind += 1
         rows.append({"symbol": c.get("symbol"), "timeframe": tf,
                      "bars": c.get("bars"),
-                     "last": _dt.datetime.fromtimestamp(last).strftime(
-                         "%b %d, %Y %I:%M%p").replace(" 0", " "),
+                     "last": pv.fmt_when(last),
                      "missing_bars": missing,
                      "hours_behind": round((now - last) / 3600, 1)})
     rows.sort(key=lambda r: -r["missing_bars"])
@@ -1425,7 +1444,6 @@ def backtest_storage() -> dict:
     * ``last_run`` — when the row file was last written. A pair can have been
       re-run recently and still be measured through an old bar.
     """
-    import datetime as _dt
 
     from tradingagents import positions_view as pv, rows_index as ri
 
@@ -1470,9 +1488,7 @@ def backtest_storage() -> dict:
         "incomplete": sum(1 for r in rows if r["incomplete"]),
         # the screen must be able to say this list is still filling in
         "index": ri.status(),
-        "newest_measured": (_dt.datetime.fromtimestamp(newest / 1000)
-                            .strftime("%b %d, %Y %I:%M%p").replace(" 0", " ")
-                            if newest else None),
+        "newest_measured": (pv.fmt_when(newest / 1000) if newest else None),
     }
 
 
@@ -1534,3 +1550,14 @@ def supervisor_set(body: dict) -> dict:
     if bool(body.get("enabled")):
         return sv.install(python=sys.executable)
     return sv.uninstall()
+
+
+@app.get("/api/system")
+def system_load() -> dict:
+    """What the machine is doing — shown beside the job bars.
+
+    Temperature is absent on purpose when it cannot be read: see sysmon.
+    """
+    from tradingagents import sysmon
+
+    return sysmon.snapshot()

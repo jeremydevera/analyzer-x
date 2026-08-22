@@ -5,7 +5,7 @@
  * actually exists, never from a timer. */
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { analysisApi, AnalysisRun, ModelRow, modelsApi, RunListRow, SocialSources } from "@/lib/api";
+import { analysisApi, AnalysisRun, ModelRow, modelsApi, RunListRow, SocialSources, fmtWhen } from "@/lib/api";
 import Badge from "@/components/ui/badge/Badge";
 import Button from "@/components/ui/button/Button";
 
@@ -272,7 +272,7 @@ export default function AnalysisScreen() {
               {r.running ? <Badge size="sm" color="info">running</Badge>
                 : r.error ? <Badge size="sm" color="error">failed</Badge>
                 : <Badge size="sm" color="success">done</Badge>}
-              {r.started_at && <span className="text-theme-xs text-gray-400">{new Date(r.started_at * 1000).toLocaleString()}</span>}
+              {r.started_at && <span className="text-theme-xs text-gray-400">{fmtWhen(r.started_at)}</span>}
             </button>
           ))}
           {!recent.length && <p className="px-2 py-3 text-theme-sm text-gray-500 dark:text-gray-400">No runs on this Mac yet.</p>}

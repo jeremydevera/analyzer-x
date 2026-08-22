@@ -271,7 +271,7 @@ def stoch14(high, low, close, n: int = 14) -> list[int]:
 
 def cci20(high, low, close, n: int = 20) -> list[int]:
     """Commodity Channel Index: long under -100, short over +100."""
-    tp = [(h + l + c) / 3 for h, l, c in zip(high, low, close, strict=False)]
+    tp = [(h + lo + c) / 3 for h, lo, c in zip(high, low, close, strict=False)]
     out = [0] * len(close)
     for i in range(n, len(close)):
         w = tp[i - n + 1:i + 1]

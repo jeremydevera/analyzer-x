@@ -10,7 +10,7 @@
  * added no bars is not an update.
  */
 import { useEffect, useMemo, useState } from "react";
-import { api, CoinStorageRow, CoverageRow, fmtMB } from "@/lib/api";
+import { api, CoinStorageRow, CoverageRow, fmtMB, fmtWhenMs } from "@/lib/api";
 import {
   Table, TableBody, TableCell, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -27,9 +27,9 @@ const ago = (ms: number | null) => {
   return `${Math.floor(h / 24)}d ${h % 24}h ago`;
 };
 
-const stamp = (ms: number | null) =>
-  ms ? new Date(ms).toLocaleString(undefined,
-    { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—";
+// one shared formatter, or this drifts: this rendered "Aug 22, 12:00 PM" —
+// no year, and a space before the AM/PM
+const stamp = (ms: number | null) => (ms ? fmtWhenMs(ms) : "—");
 
 interface Grouped {
   coin: string;

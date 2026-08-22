@@ -41,8 +41,12 @@ def test_formats_posts_from_payload(monkeypatch, payload):
     for tweet in payload["tweets"]:
         assert f"@{tweet['author']['userName']}" in out
         assert f"{tweet['likeCount']} likes" in out
-        short = datetime.strptime(tweet["createdAt"],
-                                  "%a %b %d %H:%M:%S %z %Y").strftime("%b %d %H:%M")
+        # THE date format applies here too — a tweet's time is a time on
+        # screen, and it used to print as "Jul 29 12:45" with no year
+        from tradingagents.positions_view import fmt_when
+
+        short = fmt_when(datetime.strptime(
+            tweet["createdAt"], "%a %b %d %H:%M:%S %z %Y").timestamp())
         assert short in out
     # One POST header per recorded post: a body newline must not split a post.
     assert out.count("POST · @") == len(payload["tweets"])

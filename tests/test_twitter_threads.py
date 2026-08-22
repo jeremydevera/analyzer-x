@@ -126,7 +126,14 @@ def test_each_post_shows_author_time_and_engagement():
     assert "19 likes" in line
     assert "4 RT" in line
     assert "12 replies" in line
-    assert "Jul 29 08:25" in line          # readable, not the raw X stamp
+    # THE date format, not the raw X stamp and not a short one either
+    import datetime as _dt
+
+    from tradingagents.positions_view import fmt_when
+
+    want = fmt_when(_dt.datetime.strptime("Wed Jul 29 08:25:57 +0000 2026",
+                                          "%a %b %d %H:%M:%S %z %Y").timestamp())
+    assert want in line, f"{want!r} not in {line!r}"
 
 
 def test_replies_are_indented_under_their_post():

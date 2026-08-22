@@ -145,6 +145,8 @@ CHECKS = {
     "W/L follows the book the row trades": ["stats_real if _is_real else stats_paper"],
     "progress bars show two decimals": ["pct.toFixed(2)"],
     "core bars show two decimals": ["(w.pct ?? 0).toFixed(2)"],
+    "the machine's own CPU load sits beside the bars": ["MachineLoad", "load_per_core"],
+    "a temperature is never invented": ["temp: root only", "only to root"],
     "a core is identified by its process, not a task index": ["w{pid}.json"],
     "a core that stopped reporting is dropped": ["WORKER_STALE_SECONDS"],
   },
@@ -159,6 +161,7 @@ for group, items in CHECKS.items():
     print(f"\n=== {group}")
     for name, needles in items.items():
         ok = any(n in both for n in needles)
-        if not ok: miss += 1
+        if not ok:
+            miss += 1
         print(f"  {'OK  ' if ok else 'MISS'} {name}")
 print(f"\n{'ALL PRESENT' if not miss else str(miss) + ' STILL MISSING'}")

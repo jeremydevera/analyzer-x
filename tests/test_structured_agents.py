@@ -381,7 +381,8 @@ class TestSentimentAnalystAgent:
                             ("fetch_reddit_posts", ""),
                             ("fetch_twitter_posts", "")):
             if hasattr(_sa, name):
-                monkeypatch.setattr(_sa, name, lambda *a, **k: empty)
+                monkeypatch.setattr(_sa, name,
+                                    lambda *a, _e=empty, **k: _e)
 
     def test_structured_path_produces_rendered_markdown(self):
         captured = {}

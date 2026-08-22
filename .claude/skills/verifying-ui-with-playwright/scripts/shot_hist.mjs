@@ -1,0 +1,12 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 1600, height: 900 } });
+await p.goto('http://localhost:8503/backtest', { waitUntil: 'domcontentloaded' });
+await p.waitForTimeout(14000);
+const panel = p.locator('div').filter({ hasText: /^Trade ledger/ }).last();
+await panel.scrollIntoViewIfNeeded();
+await p.waitForTimeout(2500);
+const box = await panel.boundingBox();
+console.log('panel box:', box && JSON.stringify({y: Math.round(box.y), h: Math.round(box.height)}));
+await panel.screenshot({ path: '/tmp/trade_ledger_ids.png' });
+await b.close();

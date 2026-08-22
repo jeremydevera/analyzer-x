@@ -7,8 +7,7 @@ a position still open at the boundary.
 """
 import pytest
 
-from tradingagents import auto_trader as at
-from tradingagents import market_sweep as msw
+from tradingagents import auto_trader as at, market_sweep as msw
 
 
 def _bars(n=900, seed=7):
@@ -299,3 +298,61 @@ def test_scan_false_reads_the_index_and_opens_nothing(tmp_path, monkeypatch):
     scanned = msw.candle_index(scan=True)
     assert list(scanned) == ["NEW_USDT-4h"]
     assert scanned["NEW_USDT-4h"]["bars"] == 3
+
+
+# --- the cores panel ------------------------------------------------------
+# "why is core 3 and 4 not working?" — they were. The slot was the TASK's
+# index (i % n_workers), so a finished task's last line sat on screen as an
+# idle core, and two in-flight tasks sharing an index overwrote each other.
+
+def test_a_worker_publishes_under_its_own_pid(tmp_path, monkeypatch):
+    import os
+
+    from tradingagents import market_sweep as msw
+    monkeypatch.setattr(msw, "WORKERS", tmp_path)
+    msw.worker_write(pair="APEX 1h", pct=12.34, state="running")
+    files = list(tmp_path.glob("w*.json"))
+    assert len(files) == 1 and str(os.getpid()) in files[0].name
+    row = msw.worker_read()[0]
+    assert row["pid"] == os.getpid() and row["pct"] == 12.34
+    assert row["core"] == 0, "a display index is assigned on read"
+
+
+def test_a_line_that_stopped_being_written_is_dropped(tmp_path, monkeypatch):
+    """A finished task's last line read as a core stuck on 'done'."""
+    import json
+    import os
+
+    from tradingagents import market_sweep as msw
+    monkeypatch.setattr(msw, "WORKERS", tmp_path)
+    stale = tmp_path / "w999999.json"
+    stale.write_text(json.dumps({"pid": os.getpid(), "pair": "OLD 4h",
+                                 "state": "done", "pct": 100,
+                                 "updated": 0}))         # 1970
+    msw.worker_write(pair="LIVE 1h", pct=5.0, state="running")
+    rows = msw.worker_read()
+    assert [r["pair"] for r in rows] == ["LIVE 1h"]
+    assert not stale.exists(), "the stale file is cleaned up, not just hidden"
+
+
+def test_a_dead_worker_is_dropped_even_if_recently_written(tmp_path,
+                                                           monkeypatch):
+    import json
+    import time
+
+    from tradingagents import market_sweep as msw
+    monkeypatch.setattr(msw, "WORKERS", tmp_path)
+    (tmp_path / "w424242.json").write_text(json.dumps({
+        "pid": 424242, "pair": "GHOST 1h", "state": "running",
+        "pct": 50.0, "updated": time.time()}))
+    assert msw.worker_read() == []
+
+
+def test_the_published_percentage_carries_two_decimals(tmp_path, monkeypatch):
+    """A core grinding 17,820 combinations moves less than a whole percent
+    between publishes, so a rounded figure looked frozen."""
+    from tradingagents import market_sweep as msw
+    monkeypatch.setattr(msw, "WORKERS", tmp_path)
+    msw.worker_write(pair="BTC 15m", done=3280, total=17820,
+                     pct=round(100 * 3280 / 17820, 2), state="running")
+    assert msw.worker_read()[0]["pct"] == 18.41

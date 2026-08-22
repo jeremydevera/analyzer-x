@@ -89,7 +89,7 @@ def _embedded(html):
     blob = json.loads(html.split("const D=", 1)[1].split(", LAD=", 1)[0])
     if blob.get("cols"):
         cols = blob["cols"]
-        blob["rows"] = [dict(zip(cols, a)) for a in blob["rows"]]
+        blob["rows"] = [dict(zip(cols, a, strict=False)) for a in blob["rows"]]
     return blob
 
 
@@ -109,7 +109,7 @@ def test_packing_preserves_every_field_of_every_row():
     html = br.render(p, title="t")
     after = _embedded(html)["rows"]
     assert len(after) == len(before)
-    for a, b in zip(before, after):
+    for a, b in zip(before, after, strict=False):
         assert set(a) == set(b), "a field went missing in the wire encoding"
         for k in a:
             assert a[k] == b[k], f"{k} changed: {a[k]!r} -> {b[k]!r}"
@@ -167,7 +167,6 @@ def test_an_irregular_frame_keeps_its_timestamps():
 def test_deployed_threshold_is_zeroed_for_signals_without_one(monkeypatch):
     """sweep30 has no threshold, so a deployed entry naming one would match no
     row and the page would show nothing as DEPLOYED."""
-    seen = {}
 
     def fake_klines(*a, **k):
         raise RuntimeError("no network in tests")
@@ -199,8 +198,8 @@ def test_row_code_is_stable_across_pages_and_runs():
     assert (br.row_code("PI", "4h", "mom15", 0.6, 2.0, 8.0, "martingale")
             != br.row_code("PI", "4h", "mom15", 0.8, 2.0, 8.0, "martingale"))
     # and every other field still separates rows
-    base = dict(coin="X", tf="1h", signal="fvg", th=0.0, sl=1.0, tp=4.0,
-                sizing="flat")
+    base = {"coin": "X", "tf": "1h", "signal": "fvg", "th": 0.0, "sl": 1.0, "tp": 4.0,
+                "sizing": "flat"}
     codes = {br.row_code(**base)}
     for field, other in (("coin", "Y"), ("tf", "4h"), ("signal", "rsi14"),
                          ("sl", 2.0), ("tp", 5.0), ("sizing", "martingale")):

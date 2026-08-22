@@ -101,8 +101,7 @@ def test_download_fills_the_local_store_first(monkeypatch, tmp_path):
     the job."""
     import pandas as pd
 
-    from tradingagents import market_sweep as msw
-    from tradingagents import parquet_store as pqs
+    from tradingagents import market_sweep as msw, parquet_store as pqs
     from tradingagents.dataflows import market_db as mdb
 
     calls = {"local": [], "parquet": [], "neon": []}
@@ -135,8 +134,7 @@ def test_update_mode_tops_up_what_is_already_stored(monkeypatch, tmp_path):
     re-downloaded from scratch."""
     import pandas as pd
 
-    from tradingagents import market_sweep as msw
-    from tradingagents import parquet_store as pqs
+    from tradingagents import market_sweep as msw, parquet_store as pqs
 
     seen = []
     frame = pd.DataFrame({"Date": pd.to_datetime([1_787_000_000], unit="s"),
@@ -163,8 +161,7 @@ def test_update_mode_tops_up_what_is_already_stored(monkeypatch, tmp_path):
 def test_an_explicit_selection_still_wins_over_the_store(monkeypatch, tmp_path):
     import pandas as pd
 
-    from tradingagents import market_sweep as msw
-    from tradingagents import parquet_store as pqs
+    from tradingagents import market_sweep as msw, parquet_store as pqs
     seen = []
     frame = pd.DataFrame({"Date": pd.to_datetime([1_787_000_000], unit="s"),
                           "Open": [1.0], "High": [1.0], "Low": [1.0],

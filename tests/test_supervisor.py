@@ -5,6 +5,7 @@ fatal OSError on a nearly full disk, and nothing restarted it. Two positions
 closed at the exchange on their resting brackets and neither exit reached the
 ledger for three hours.
 """
+import contextlib
 import plistlib
 
 import pytest
@@ -96,10 +97,8 @@ def test_a_healthy_disk_does_not_block_the_runner(monkeypatch):
         raise KeyboardInterrupt()
 
     monkeypatch.setattr(at, "run_cycle", one_cycle)
-    try:
+    with contextlib.suppress(KeyboardInterrupt, SystemExit):
         at.run_forever()
-    except (KeyboardInterrupt, SystemExit):
-        pass
     assert cycles, "a healthy disk must let the runner past the guard"
 
 

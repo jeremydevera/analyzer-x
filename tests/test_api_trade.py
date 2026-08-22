@@ -7,8 +7,8 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from tradingagents.api import app
 import tradingagents.auto_trader as at
+from tradingagents.api import app
 
 
 @pytest.fixture()
@@ -305,8 +305,7 @@ def test_saving_credentials_requires_both_halves(client, monkeypatch):
 def test_the_probe_reports_whether_a_stop_can_actually_rest(client,
                                                            monkeypatch):
     """Reading a balance proves nothing about protection. Rule 14."""
-    from tradingagents.dataflows import mexc_credentials as cred
-    from tradingagents.dataflows import mexc_futures as fx
+    from tradingagents.dataflows import mexc_credentials as cred, mexc_futures as fx
     monkeypatch.setattr(cred, "load_into_env", lambda override=True: True)
     monkeypatch.setattr(fx, "preflight", lambda sym: {
         "credentials": True, "read_assets": True, "read_positions": True,

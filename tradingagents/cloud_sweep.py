@@ -14,6 +14,7 @@ someone else's hardware at all.
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import subprocess
@@ -214,10 +215,8 @@ def remembered() -> dict:
 
 
 def forget() -> None:
-    try:
+    with contextlib.suppress(OSError):
         RUNFILE.unlink()
-    except OSError:
-        pass
 
 
 def cancel(run_id: int, slug: str | None = None) -> None:

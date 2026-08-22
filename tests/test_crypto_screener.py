@@ -23,17 +23,17 @@ def screener():
 
 
 def _coin(**over):
-    base = dict(symbol="CATEUSDT", base="CATE", name="Catestein", contract="0xabc",
-                listed_at_ms=1784505600000, listed_date="2026-07-20",
-                age_hours=9 * 24.0, price=0.0037841,
-                change_pct=12.4321, quote_volume=140_981.74)
+    base = {"symbol": "CATEUSDT", "base": "CATE", "name": "Catestein", "contract": "0xabc",
+                "listed_at_ms": 1784505600000, "listed_date": "2026-07-20",
+                "age_hours": 9 * 24.0, "price": 0.0037841,
+                "change_pct": 12.4321, "quote_volume": 140_981.74}
     base.update(over)
     return NewCoin(**base)
 
 
 def _result(**over):
-    base = dict(coins=[], scanned=1741, unresolved=0, hidden_by_volume=0,
-                hidden_by_age=0, fetched_at=0.0, from_cache=False, stale=False)
+    base = {"coins": [], "scanned": 1741, "unresolved": 0, "hidden_by_volume": 0,
+                "hidden_by_age": 0, "fetched_at": 0.0, "from_cache": False, "stale": False}
     base.update(over)
     return ScreenResult(**base)
 
@@ -223,7 +223,7 @@ def test_build_crypto_config_defaults_to_the_free_source(screener):
 
 
 def _balance(**over):
-    base = dict(ok=True, recharge=0, bonus=280, total=280, error="")
+    base = {"ok": True, "recharge": 0, "bonus": 280, "total": 280, "error": ""}
     base.update(over)
     return base
 
@@ -587,7 +587,6 @@ def test_build_crypto_config_threads_twitter_keywords(screener):
 
 def test_cached_balance_keeps_last_good_reading_on_failure(screener, monkeypatch):
     """A slow credit endpoint must not flash 'unavailable' over a known balance."""
-    import time as _time
     from unittest.mock import patch
 
     class FakeSt:

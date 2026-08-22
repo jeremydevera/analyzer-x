@@ -806,7 +806,7 @@ def get_mexc_indicators(
 
     window_start = (end - timedelta(days=look_back_days)).strftime("%Y-%m-%d")
     lines = [
-        f"{d}: {v}" for d, v in zip(dates, values) if window_start <= d <= curr_date
+        f"{d}: {v}" for d, v in zip(dates, values, strict=False) if window_start <= d <= curr_date
     ]
     if not lines:
         lines = [f"{curr_date}: N/A: no candles in the requested window"]

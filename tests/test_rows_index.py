@@ -11,8 +11,7 @@ import json
 
 import pytest
 
-from tradingagents import market_sweep as msw
-from tradingagents import rows_index as ri
+from tradingagents import market_sweep as msw, rows_index as ri
 
 
 def _settled(**kw):
@@ -131,7 +130,7 @@ def test_paging_does_not_repeat_or_skip_a_row(store):
     all_ids = [r["id"] for r in ri.query(limit=2000)["rows"]]
     assert [r["id"] for r in page1] == all_ids[:5]
     assert [r["id"] for r in page2] == all_ids[5:10]
-    assert not set(r["id"] for r in page1) & set(r["id"] for r in page2)
+    assert not {r["id"] for r in page1} & {r["id"] for r in page2}
 
 
 def test_only_changed_pairs_are_reindexed(store):
@@ -492,7 +491,6 @@ def test_a_bulk_fill_drops_and_rebuilds_its_indexes_exactly_once(store,
                                                                  monkeypatch):
     """Dropping and rebuilding per cycle cost 4-8s of exclusive work every 60
     seconds and the fill stalled at 52 of 232 pairs."""
-    import sqlite3
 
     rows_dir, _ = store
     for i in range(12):                    # over BULK_PAIRS

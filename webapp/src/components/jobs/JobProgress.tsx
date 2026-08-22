@@ -80,12 +80,15 @@ export default function JobProgress({ s, label }: { s: JobStatus | null; label?:
             {(s.cores ?? s.workers.length) === 1 ? "" : "s"} working
           </p>
           <div className="flex flex-col gap-1">
-            {s.workers.map((w) => {
+            {s.workers.map((w, i) => {
+              // "done" is a worker's LAST line before it picks up the next
+              // pair, not an idle core — the reader now drops a line that
+              // stops being written, so anything here is a living worker.
               const idle = w.state === "done" || w.state === "no new bars";
               return (
-                <div key={w.slot} className="flex items-center gap-2">
+                <div key={w.pid ?? w.slot ?? i} className="flex items-center gap-2">
                   <span className="w-10 shrink-0 font-mono text-[10px] text-gray-400 dark:text-gray-500">
-                    #{w.slot}
+                    #{w.core ?? i}
                   </span>
                   <span className="w-24 shrink-0 truncate text-[10px] text-gray-600 dark:text-gray-300">
                     {w.pair ?? "—"}
@@ -95,8 +98,8 @@ export default function JobProgress({ s, label }: { s: JobStatus | null; label?:
                       className={`block h-1.5 rounded-full ${idle ? "bg-success-500" : "bg-brand-500"}`}
                       style={{ width: `${Math.max(w.pct ?? 0, 2)}%` }} />
                   </span>
-                  <span className="w-9 shrink-0 text-right font-mono text-[10px] tabular-nums text-gray-500 dark:text-gray-400">
-                    {idle ? "done" : `${w.pct ?? 0}%`}
+                  <span className="w-14 shrink-0 text-right font-mono text-[10px] tabular-nums text-gray-500 dark:text-gray-400">
+                    {idle ? "saving" : `${(w.pct ?? 0).toFixed(2)}%`}
                   </span>
                 </div>
               );

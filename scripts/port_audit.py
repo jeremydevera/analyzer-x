@@ -9,7 +9,7 @@ nine position columns and the X/Twitter source — and every check written at
 the time passed, because they all asked "is what I built correct?" and none
 asked "is anything missing?".
 """
-import re, subprocess, pathlib
+import pathlib
 
 WEB = pathlib.Path("webapp/src")
 blob = "\n".join(p.read_text() for p in WEB.rglob("*.tsx")) + \
@@ -138,6 +138,9 @@ CHECKS = {
     "a shared ladder is called out": ["streak_shared_with", "raises the stake for both"],
     "W/L follows the book the row trades": ["stats_real if _is_real else stats_paper"],
     "progress bars show two decimals": ["pct.toFixed(2)"],
+    "core bars show two decimals": ["(w.pct ?? 0).toFixed(2)"],
+    "a core is identified by its process, not a task index": ["w{pid}.json"],
+    "a core that stopped reporting is dropped": ["WORKER_STALE_SECONDS"],
   },
   "Global": {
     "night mode": ["ThemeToggleButton"],

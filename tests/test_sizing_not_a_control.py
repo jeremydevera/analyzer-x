@@ -13,7 +13,6 @@ import re
 
 from tradingagents import auto_trader as at
 
-
 SRC = open("app.py", encoding="utf-8").read()
 
 

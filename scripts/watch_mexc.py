@@ -31,8 +31,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from tradingagents.dataflows.config import get_config          # noqa: E402
-from tradingagents.dataflows.mexc import (                     # noqa: E402
+from tradingagents.dataflows.config import get_config  # noqa: E402
+from tradingagents.dataflows.mexc import (  # noqa: E402
     MexcHostUnavailable,
     MexcRateLimited,
     MexcUnavailable,

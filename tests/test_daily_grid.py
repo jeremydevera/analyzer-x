@@ -7,7 +7,6 @@ leaving a bar that never moves.
 """
 import json
 import os
-import time
 
 import pytest
 

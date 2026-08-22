@@ -10,21 +10,34 @@ sweep used one of eight cores.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 from tradingagents import market_sweep as msw
 
-from pathlib import Path
-
 
 def test_worker_slots_round_trip(tmp_path, monkeypatch):
+    """One file per WORKER PROCESS, keyed by pid.
+
+    It used to be keyed by the task index (`i % n_workers`), which is a label
+    on the work rather than an identity: a finished task left its file reading
+    "done" beside six busy cores, and two in-flight tasks sharing an index
+    overwrote each other's bar. So two writes from ONE process are one worker
+    reporting twice — the second reading replaces the first — and that is the
+    behaviour under test.
+    """
     monkeypatch.setattr(msw, "WORKERS", tmp_path / "workers")
     msw.worker_write(0, pair="PI 1h", done=50, total=200, pct=25,
                      state="running")
+    got = msw.worker_read()
+    assert len(got) == 1
+    assert got[0]["pair"] == "PI 1h" and got[0]["pct"] == 25
+    assert got[0]["pid"] == os.getpid(), "a worker is identified by its process"
+
     msw.worker_write(3, pair="APEX 4h", done=10, total=200, pct=5,
                      state="running")
     got = msw.worker_read()
-    assert [w["slot"] for w in got] == [0, 3], "lowest slot first"
-    assert got[0]["pair"] == "PI 1h" and got[0]["pct"] == 25
+    assert len(got) == 1, "the same process must not appear as two cores"
+    assert got[0]["pair"] == "APEX 4h", "the newest reading wins"
 
 
 def test_worker_clear_empties_the_slots(tmp_path, monkeypatch):
@@ -136,7 +149,8 @@ def test_progress_counter_agrees_with_the_message_beside_it(monkeypatch, tmp_pat
     to 0-100, so a real 16-of-3960 printed `0/100` next to a message that said
     `(16/3960)`: correct value, false label, and it read as a stalled run."""
     import json
-    from tradingagents import db_jobs as dj, backtest_report as br
+
+    from tradingagents import backtest_report as br, db_jobs as dj
 
     seen = {}
 
@@ -180,6 +194,7 @@ def test_a_backtest_started_without_a_field_says_which_one():
     """`failed: 'coins'` is a KeyError repr on screen. The operator is new to
     this: name the missing thing in words."""
     import pytest
+
     from tradingagents import db_jobs as dj
     with pytest.raises(ValueError) as e:
         dj._run_backtest_inner({"tfs": ["1h"], "base": 5.0, "days": 30})
@@ -190,9 +205,11 @@ def test_a_backtest_started_without_a_field_says_which_one():
 
 def _fake_pair(monkeypatch, tmp_path, msw, bars=900):
     """Drive run_pair without the venue: synthetic candles, stubbed costs."""
-    import numpy as np, pandas as pd
-    from tradingagents.dataflows import mexc_futures as fx
+    import numpy as np
+    import pandas as pd
+
     import tradingagents.auto_trader as at
+    from tradingagents.dataflows import mexc_futures as fx
 
     for name, sub in (("HOME", ""), ("ROWDIR", "rows"), ("STATES", "state"),
                       ("WORKERS", "workers"), ("CANDLES", "candles")):
@@ -254,6 +271,7 @@ def test_backtest_is_from_scratch_and_update_fills_the_gap(tmp_path, monkeypatch
 def test_the_two_buttons_disagree_on_purpose():
     """BACKTEST -> fresh, UPDATE -> resume, in the job code AND on the button."""
     import inspect
+
     from tradingagents import db_jobs as dj_mod
 
     # the BACKTEST job: scratch unless the caller says otherwise

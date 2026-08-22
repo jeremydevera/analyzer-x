@@ -92,8 +92,8 @@ def deploy_diff(old: dict, new: dict) -> list[dict]:
     from tradingagents import auto_trader as at
 
     out = []
-    keys = set(list((old.get("strategy_books") or {}))
-               + list((new.get("strategy_books") or {})))
+    keys = set(list(old.get("strategy_books") or {})
+               + list(new.get("strategy_books") or {}))
     for k in sorted(keys):
         ob = list((old.get("strategy_books") or {}).get(k) or [])
         nb = list((new.get("strategy_books") or {}).get(k) or [])

@@ -27,8 +27,8 @@ import itertools
 import json
 import os
 import time
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Callable, Iterable, Sequence
 
 HOME = Path(os.path.expanduser("~/.tradingagents/backtest"))
 CANDLES = HOME / "candles"
@@ -90,9 +90,9 @@ def refresh_candles(symbol: str, tf: str, *, days: int = 365):
     """
     import pandas as pd
 
-    from tradingagents.dataflows import mexc_futures as fx
-    from tradingagents import backtest_report as br
     import tradingagents.auto_trader as at
+    from tradingagents import backtest_report as br
+    from tradingagents.dataflows import mexc_futures as fx
 
     _paths()
     iv, bs, cap = br.TFS[tf]
@@ -186,13 +186,22 @@ def combo_key(signal: str, th: float, sl: float, tp: float,
 WORKERS = HOME / "workers"
 
 
-def worker_write(slot: int, **fields) -> None:
-    """Publish one worker's progress. Never raises: it is only telemetry."""
+def worker_write(slot: int | None = None, **fields) -> None:
+    """Publish one worker's progress. Never raises: it is only telemetry.
+
+    Keyed by the WORKER'S OWN PID, not by a slot number. The slot used to be
+    the task's index (`i % n_workers`), which is a label on the work, not an
+    identity: when a task finished, its file sat there reading "done" while
+    the operator watched what looked like an idle core, and two in-flight
+    tasks that happened to share an index overwrote each other's bar
+    (2026-08-22 — "why is core 3 and 4 not working?", while all seven were).
+    """
     try:
         WORKERS.mkdir(parents=True, exist_ok=True)
-        f = WORKERS / f"w{int(slot)}.json"
+        pid = os.getpid()
+        f = WORKERS / f"w{pid}.json"
         tmp = f.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps({"slot": int(slot),
+        tmp.write_text(json.dumps({"pid": pid, "slot": slot,
                                    "updated": time.time(), **fields},
                                   separators=(",", ":")))
         tmp.replace(f)
@@ -200,18 +209,49 @@ def worker_write(slot: int, **fields) -> None:
         pass
 
 
-def worker_read() -> list:
-    """Every worker's last published state, lowest slot first."""
-    out = []
+# A worker publishes every couple of seconds; past this it is not working.
+WORKER_STALE_SECONDS = 30
+
+
+def worker_read(stale_seconds: float = WORKER_STALE_SECONDS) -> list:
+    """Every LIVING worker's last published state.
+
+    A file whose process is gone, or that has not been written for
+    `stale_seconds`, is dropped and deleted: showing a finished task's last
+    line as if a core were stuck on it is what made seven busy cores look
+    like five.
+    """
+    out, now = [], time.time()
     try:
-        for f in sorted(WORKERS.glob("w*.json")):
-            try:
-                out.append(json.loads(f.read_text()))
-            except (OSError, ValueError):
-                continue
+        files = sorted(WORKERS.glob("w*.json"))
     except Exception:
         return []
-    return sorted(out, key=lambda r: r.get("slot", 0))
+    for f in files:
+        try:
+            row = json.loads(f.read_text())
+        except (OSError, ValueError):
+            continue
+        pid = int(row.get("pid") or 0)
+        # No pid means a worker from a run that started before this scheme
+        # existed. FRESHNESS still governs it — which is the half that fixes
+        # the reported bug — so a live run keeps its panel and a finished
+        # task's line still disappears.
+        alive = True
+        if pid:
+            try:
+                os.kill(pid, 0)
+            except (ProcessLookupError, PermissionError):
+                alive = False
+        fresh = (now - float(row.get("updated") or 0)) <= stale_seconds
+        if alive and fresh:
+            out.append(row)
+        else:
+            with contextlib.suppress(OSError):
+                f.unlink(missing_ok=True)
+    out.sort(key=lambda r: r.get("pid", 0))
+    for i, row in enumerate(out):          # a stable display index per core
+        row["core"] = i
+    return out
 
 
 def worker_clear() -> None:
@@ -314,7 +354,6 @@ def all_rows() -> list:
 
 def coverage() -> dict:
     """What the store holds: pairs, rows, and how fresh each timeframe is."""
-    import datetime as _dt
 
     pairs = sorted(p.stem for p in ROWDIR.glob("*.json")) if ROWDIR.exists() \
         else []
@@ -340,9 +379,9 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
     `fresh=True` throws the resume point away and replays every combination
     from its first bar. That is what the BACKTEST button does; the UPDATE
     button leaves it False so it only walks bars that printed since."""
-    from tradingagents.dataflows import mexc_futures as fx
-    from tradingagents import backtest_report as br
     import tradingagents.auto_trader as at
+    from tradingagents import backtest_report as br
+    from tradingagents.dataflows import mexc_futures as fx
 
     coin = symbol.replace("_USDT", "")
     iv, bs, cap = br.TFS[tf]
@@ -387,9 +426,8 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
     incremental = bool(last_ms) and 0 < start_at < len(df)
     if last_ms and start_at >= len(df):
         save_states(coin, tf, states)          # persists a fresh __version__
-        if slot is not None:
-            worker_write(slot, pair=f"{coin} {tf}", done=0, total=0, pct=100,
-                         state="no new bars")
+        worker_write(pair=f"{coin} {tf}", done=0, total=0, pct=100.0,
+                     state="no new bars")
         return {"coin": coin, "tf": tf, "rows": pair_rows(coin, tf),
                 "added": added, "source": source, "why": "no new bars",
                 "incremental": True, "new_bars": 0, "fee": fee,
@@ -416,7 +454,7 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                 .astype("int64"))
     days_have = int((df["Date"].iloc[-1] - df["Date"].iloc[0]).days)
     n = len(frame)
-    half = n // 2
+    n // 2
 
     sigs = list(signals or br.SIGNALS)
     out_rows = []
@@ -428,9 +466,8 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
         _ths = ((br.THRESHOLDS[tf][:thresholds] if thresholds < 3
                  else br.THRESHOLDS[tf]) if _sig in br.THRESH_SIGNALS else [None])
         total_combos += len(_ths) * len(br.pairs_for(tf)) * 2
-    if slot is not None:
-        worker_write(slot, pair=f"{coin} {tf}", done=0, total=total_combos,
-                     pct=0, state="starting")
+    worker_write(pair=f"{coin} {tf}", done=0, total=total_combos,
+                 pct=0.0, state="starting")
     for sig in sigs:
         ths = (br.THRESHOLDS[tf][:thresholds] if thresholds < 3
                else br.THRESHOLDS[tf]) if sig in br.THRESH_SIGNALS else [None]
@@ -475,11 +512,14 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                 # skip bars the unreached combinations never saw.
                 done_combos += 1
                 # cheap: just say where we are
-                if slot is not None and done_combos % PUBLISH_EVERY == 0:
-                    worker_write(slot, pair=f"{coin} {tf}",
+                if done_combos % PUBLISH_EVERY == 0:
+                    worker_write(pair=f"{coin} {tf}",
                                  done=done_combos, total=total_combos,
-                                 pct=(round(100 * done_combos / total_combos)
-                                      if total_combos else 0),
+                                 # two decimals: a core grinding through
+                                 # 17,820 combinations moves less than a whole
+                                 # percent between publishes
+                                 pct=(round(100 * done_combos / total_combos, 2)
+                                      if total_combos else 0.0),
                                  rows=len(out_rows), state="running")
                 # expensive: make the work survive a crash
                 if done_combos % CHECKPOINT_EVERY == 0:
@@ -518,10 +558,9 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
     states["__last_ms__"] = int(ms[-1])
     save_states(coin, tf, states)
     save_pair_rows(coin, tf, out_rows)
-    if slot is not None:
-        worker_write(slot, pair=f"{coin} {tf}", done=done_combos,
-                     total=total_combos, pct=100, rows=len(out_rows),
-                     state="done")
+    worker_write(pair=f"{coin} {tf}", done=done_combos,
+                 total=total_combos, pct=100.0, rows=len(out_rows),
+                 state="done")
     return {"coin": coin, "tf": tf, "rows": out_rows, "added": added,
             "source": source, "incremental": incremental,
             "fee": fee, "liq": liq, "rt": rt,
@@ -617,10 +656,8 @@ def run_market(symbols: Sequence[str], tfs: Sequence[str] = ("15m", "30m"), *,
         state["running"] = False
         state["finished"] = fmt_stamp()
         PROGRESS.write_text(json.dumps(state))
-        try:
+        with contextlib.suppress(OSError):
             PIDFILE.unlink()
-        except OSError:
-            pass
     return state
 
 
@@ -638,9 +675,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     ap.add_argument("--thresholds", type=int, default=1)
     a = ap.parse_args(argv)
 
-    from tradingagents.dataflows import mexc_futures as fx
-
     import datetime as _dt
+
+    from tradingagents.dataflows import mexc_futures as fx
 
     _paths()
     # Claim the PID here, not in run_market: screening runs first and can take
@@ -705,9 +742,9 @@ def compute_combos(symbol: str, tf: str, combos: list, *,
     page, and a live 0.80/2.40 pair is in no grid of round numbers. Each combo
     dict names signal/th/sl/tp/sizing (percent units, like stored rows).
     """
-    from tradingagents.dataflows import mexc_futures as fx
-    from tradingagents import backtest_report as br
     import tradingagents.auto_trader as at
+    from tradingagents import backtest_report as br
+    from tradingagents.dataflows import mexc_futures as fx
 
     coin = symbol.replace("_USDT", "")
     iv, bs, cap = br.TFS[tf]
@@ -847,9 +884,9 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
     log's sum against the stored row's profit — the check that once caught a
     rounding bug worth $1.53.
     """
-    from tradingagents.dataflows import mexc_futures as fx
-    from tradingagents import backtest_report as br
     import tradingagents.auto_trader as at
+    from tradingagents import backtest_report as br
+    from tradingagents.dataflows import mexc_futures as fx
 
     symbol = f"{coin}_USDT"
     iv, bs, cap = br.TFS[tf]

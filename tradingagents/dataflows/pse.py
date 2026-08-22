@@ -187,7 +187,7 @@ def get_pse_indicators(symbol: str, indicator: str, curr_date: str,
     window_start = end - timedelta(days=look_back_days)
     lines = [
         f"{day}: {value:.4f}" if pd.notna(value) else f"{day}: n/a"
-        for day, value in zip(dates, values)
+        for day, value in zip(dates, values, strict=False)
         if window_start.isoformat() <= day <= curr_date
     ]
     body = "\n".join(lines) if lines else "No values in the requested window."

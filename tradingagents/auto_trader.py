@@ -27,13 +27,14 @@ from __future__ import annotations
 import fcntl
 import json
 import logging
-import pandas as _pd
 import os
 import signal
 import subprocess
 import sys
 import time
 from pathlib import Path
+
+import pandas as _pd
 
 logger = logging.getLogger(__name__)
 
@@ -1738,7 +1739,7 @@ def _exchange_exit_label(pos: dict, close_px: float) -> str:
 def _dry_fill(pos: dict, high: list, low: list) -> str | None:
     """Walk bars since entry; SL first when both barriers sit in one bar —
     the same worst-case rule the backtest used."""
-    for hi, lo in zip(high, low):
+    for hi, lo in zip(high, low, strict=False):
         if pos["side"] > 0:
             if lo <= pos["sl"]:
                 return "SL"
@@ -1929,7 +1930,7 @@ def process_symbol(symbol: str, settings: dict, state: dict, *, fx,
                 symbol, _rescue)
     if not strategies:
         return
-    base = float(settings.get("margin", 10.0))
+    float(settings.get("margin", 10.0))
 
     # One fetch per distinct timeframe, shared by the strategies on it.
     frames: dict[str, object] = {}
@@ -1968,7 +1969,7 @@ def process_symbol(symbol: str, settings: dict, state: dict, *, fx,
                       for s in STRATEGY_SPECS.values()}
         df = frames[min(frames, key=lambda k: seconds_of[k])]
         bars_since = [(float(h), float(l)) for h, l, t in zip(
-            df["High"], df["Low"], (int(d.timestamp()) for d in df["Date"]))
+            df["High"], df["Low"], (int(d.timestamp()) for d in df["Date"]), strict=False)
             if t > pos["entry_ts"]]
         outcome = _dry_fill(pos, [h for h, _ in bars_since],
                             [l for _, l in bars_since])
@@ -1985,7 +1986,7 @@ def process_symbol(symbol: str, settings: dict, state: dict, *, fx,
                 fine = _closed_bars(fx.klines(symbol, "Min1", 300), 60)
                 wick = [(float(h), float(l)) for h, l, t in zip(
                     fine["High"], fine["Low"],
-                    (int(d.timestamp()) for d in fine["Date"]))
+                    (int(d.timestamp()) for d in fine["Date"]), strict=False)
                     if t > pos["entry_ts"]]
                 outcome = _dry_fill(pos, [h for h, _ in wick],
                                     [l for _, l in wick])

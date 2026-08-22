@@ -7,7 +7,6 @@ carried "age 30 min" — the feed looked like the bot was missing most of its
 checks when it had examined every one and simply found no trade.
 """
 import pandas as pd
-import pytest
 
 import tradingagents.auto_trader as at
 

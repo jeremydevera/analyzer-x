@@ -405,7 +405,7 @@ def test_backtest_dirs_match_the_live_signal():
     stateful = ("ict_fvg", "fvg_1h", "fvg_4h", "fvg_4h_b",
                 "sweep_1h", "sweep_rt", "sweep30_4h")
     stateless = [m for m in mismatches if m[0] not in stateful]
-    covered = {m[0] for m in mismatches}
+    {m[0] for m in mismatches}
     import app as _app
     for _k, *_ in _app.AUTO_STRATEGIES:
         if _k in stateful:
@@ -785,8 +785,9 @@ def test_zero_price_never_books_a_paper_exit(sandbox):
 
 def test_last_price_refuses_to_return_zero():
     """The root cause: a sentinel 0.0 wearing a price's clothes."""
-    from tradingagents.dataflows import mexc_futures as mf
     import pytest as _pt
+
+    from tradingagents.dataflows import mexc_futures as mf
     for payload in ({"success": False, "code": 510, "message": "rate limit"},
                     {"data": {}},
                     {"data": {"lastPrice": 0}},

@@ -13,8 +13,6 @@ Three things the checkpoint has to get right, and each is a way to lose data:
 """
 from __future__ import annotations
 
-import pytest
-
 from tradingagents import market_sweep as msw
 
 

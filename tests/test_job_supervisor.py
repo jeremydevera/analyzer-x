@@ -111,3 +111,31 @@ def test_the_api_runs_the_supervisor():
 
     src = inspect.getsource(api._keep_the_row_index_current)
     assert "resume_if_died" in src, "nothing is watching for crashed jobs"
+
+
+def test_a_finished_sweep_is_never_discarded_over_a_missing_name():
+    """A run measured all six pairs, then died with `failed: 'report_name'` and
+    threw the whole payload away. The same failure is in the operator's feed
+    from the day before. A report always has somewhere to go."""
+    import inspect
+
+    # comments stripped: the docstring and the explanatory comment both quote
+    # the banned expression, and matching those is testing documentation
+    src = "\n".join(ln for ln in
+                    inspect.getsource(dj._run_backtest_inner).splitlines()
+                    if not ln.lstrip().startswith("#"))
+    assert 'spec["report_name"]' not in src, "a bare lookup can still KeyError"
+    assert 'spec.get("report_name") or spec.get("name")' in src
+    assert '"archive.html"' in src, "there must be a fallback name"
+
+
+def test_the_report_name_gets_an_html_suffix():
+    """The operator's own spec passes `name: retry-proof`; writing that
+    without .html produces a file the report list cannot open."""
+    import inspect
+
+    src = "\n".join(ln for ln in
+                    inspect.getsource(dj._run_backtest_inner).splitlines()
+                    if not ln.lstrip().startswith("#"))
+    i = src.index('spec.get("report_name")')
+    assert '.html' in src[i:i + 400], src[i:i + 200]

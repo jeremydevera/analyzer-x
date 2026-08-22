@@ -7,7 +7,6 @@ fill, 2078 refusal near liquidation, a rate limit swallowing the second leg).
 Reporting a phantom close would clear the position from the local book, and
 nothing would ever retry it: real money left open with no tracker.
 """
-import types
 
 import pytest
 

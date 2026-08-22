@@ -63,7 +63,7 @@ def test_positions_do_not_overlap():
         rows.append((100, 103, 100, 102))
     r = bt.run(frame(rows), take_profit_pct=2, stop_loss_pct=10, margin=100,
                leverage=1, fee_per_side=0)
-    for a, b in zip(r.trades, r.trades[1:]):
+    for a, b in zip(r.trades, r.trades[1:], strict=False):
         assert b.entry_at > a.exit_at, "a new entry must follow the prior exit"
 
 

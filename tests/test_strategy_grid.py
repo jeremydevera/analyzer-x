@@ -10,7 +10,6 @@ import pytest
 import app
 from tradingagents import auto_trader as at
 
-
 # ------------------------------------------------------ book round-trip
 
 @pytest.mark.parametrize("choice,books", [
@@ -178,7 +177,7 @@ def test_the_shipped_tiles_never_double_book_a_coin_by_themselves():
     # must be the SECOND holder, never the deployed one.
     for key, (coin, holder) in locks.items():
         assert holder != key
-        assert coin in dict((k, c) for k, _l, _n, c in app.AUTO_STRATEGIES)[key]
+        assert coin in {k: c for k, _l, _n, c in app.AUTO_STRATEGIES}[key]
 
 
 def test_a_locked_row_cannot_go_LIVE_but_DEMO_stays_free():
@@ -290,7 +289,7 @@ def test_no_coin_has_two_LIVE_strategies_at_once():
 def test_the_new_tile_is_offered_in_the_ui():
     keys = [k for k, *_ in app.AUTO_STRATEGIES]
     assert "fade15_1h_pv2" in keys
-    coins = dict((k, c) for k, _l, _n, c in app.AUTO_STRATEGIES)
+    coins = {k: c for k, _l, _n, c in app.AUTO_STRATEGIES}
     assert coins["fade15_1h_pv2"] == ("PROVE_USDT",)
 
 
@@ -306,6 +305,6 @@ def test_the_operators_row_name_is_drawn_in_the_strategy_column():
 
 def test_the_tag_matches_the_tile_label():
     """Two places carry the name; they must not drift apart."""
-    labels = dict((k, l) for k, l, _n, _c in app.AUTO_STRATEGIES)
+    labels = {k: l for k, l, _n, _c in app.AUTO_STRATEGIES}
     for key, tag in app._TILE_TAGS.items():
         assert tag in labels[key], f"{key}: label {labels[key]!r} lacks {tag!r}"

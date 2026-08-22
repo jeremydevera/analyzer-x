@@ -5,7 +5,6 @@ it. The API adds no business logic — each route is a thin, typed window onto
 modules the suite already trusts — so these tests pin the window: shapes,
 filters, failure modes, and that no secret ever crosses the wire.
 """
-import json
 
 import pytest
 from fastapi.testclient import TestClient
@@ -13,8 +12,7 @@ from fastapi.testclient import TestClient
 
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
-    from tradingagents import market_sweep as msw
-    from tradingagents import parquet_store as pqs
+    from tradingagents import market_sweep as msw, parquet_store as pqs
 
     monkeypatch.setattr(msw, "HOME", tmp_path)
     monkeypatch.setattr(msw, "CANDLES", tmp_path / "candles")

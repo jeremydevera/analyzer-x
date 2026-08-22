@@ -281,7 +281,7 @@ def hull20(opens, high, low, close, volume, ts, n=20):
     half = _wma(close, n // 2)
     full = _wma(close, n)
     raw = [2 * a - b if not (math.isnan(a) or math.isnan(b)) else math.nan
-           for a, b in zip(half, full)]
+           for a, b in zip(half, full, strict=False)]
     k = int(math.sqrt(n))
     hma = [math.nan] * len(close)
     for i in range(len(close)):
@@ -389,7 +389,7 @@ def lrslope(opens, high, low, close, volume, ts, n=20):
     for i in range(n - 1, m):
         w = close[i - n + 1:i + 1]
         ym = sum(w) / n
-        s = sum((x - xm) * (y - ym) for x, y in zip(xs, w)) / den
+        s = sum((x - xm) * (y - ym) for x, y in zip(xs, w, strict=False)) / den
         if not math.isnan(prev):
             if prev <= 0 < s:
                 out[i] = 1
@@ -463,7 +463,7 @@ def ultosc(opens, high, low, close, volume, ts):
 
 def ao(opens, high, low, close, volume, ts):
     """Awesome Oscillator zero cross."""
-    med = [(h + l) / 2 for h, l in zip(high, low)]
+    med = [(h + l) / 2 for h, l in zip(high, low, strict=False)]
     f = _sma(med, 5)
     s = _sma(med, 34)
     out = _zeros(close)
@@ -481,7 +481,7 @@ def fisher(opens, high, low, close, volume, ts, n=10):
     """Fisher transform turning at an extreme."""
     m = len(close)
     out = _zeros(close)
-    med = [(h + l) / 2 for h, l in zip(high, low)]
+    med = [(h + l) / 2 for h, l in zip(high, low, strict=False)]
     v = 0.0
     fish = [0.0] * m
     for i in range(n, m):
@@ -535,7 +535,7 @@ def tsi(opens, high, low, close, volume, ts):
     mom = [0.0] + [close[i] - close[i - 1] for i in range(1, m)]
     num = _ema(_ema(mom, 25), 13)
     den = _ema(_ema([abs(x) for x in mom], 25), 13)
-    t = [100 * a / b if b else 0.0 for a, b in zip(num, den)]
+    t = [100 * a / b if b else 0.0 for a, b in zip(num, den, strict=False)]
     sig = _ema(t, 7)
     out = _zeros(close)
     for i in range(40, m):
@@ -567,8 +567,8 @@ def macddiv(opens, high, low, close, volume, ts, look=40):
     """MACD-histogram divergence against a new price extreme."""
     f = _ema(close, 12)
     s = _ema(close, 26)
-    line = [a - b for a, b in zip(f, s)]
-    hist = [a - b for a, b in zip(line, _ema(line, 9))]
+    line = [a - b for a, b in zip(f, s, strict=False)]
+    hist = [a - b for a, b in zip(line, _ema(line, 9), strict=False)]
     out = _zeros(close)
     for i in range(look + 35, len(close)):
         w = close[i - look:i]
@@ -587,8 +587,8 @@ def elder(opens, high, low, close, volume, ts):
     e = _ema(close, 13)
     f = _ema(close, 12)
     s = _ema(close, 26)
-    line = [a - b for a, b in zip(f, s)]
-    hist = [a - b for a, b in zip(line, _ema(line, 9))]
+    line = [a - b for a, b in zip(f, s, strict=False)]
+    hist = [a - b for a, b in zip(line, _ema(line, 9), strict=False)]
     out = _zeros(close)
     state = 0
     for i in range(36, len(close)):

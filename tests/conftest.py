@@ -9,9 +9,8 @@ _sys.dont_write_bytecode = True
 
 import os
 import socket
-from unittest.mock import MagicMock, patch
-
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 

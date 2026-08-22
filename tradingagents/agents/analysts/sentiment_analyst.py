@@ -44,7 +44,6 @@ from tradingagents.dataflows.reddit import fetch_reddit_posts
 from tradingagents.dataflows.stocktwits import fetch_stocktwits_messages
 from tradingagents.dataflows.twitter import fetch_twitter_posts, search_terms
 
-
 _COUNT_WORDS = {2: "two", 3: "three", 4: "four"}
 
 

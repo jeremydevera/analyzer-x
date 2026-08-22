@@ -1,8 +1,7 @@
 """Tests for the SPX futures bot: safety gates, sizing, signing, state."""
 import json
-from datetime import datetime, timedelta, timezone
 import os
-from pathlib import Path
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 import pytest

@@ -6,7 +6,6 @@ an order — the live path is only ever exercised deliberately by the user.
 
 import hashlib
 import hmac
-import json
 from unittest.mock import patch
 
 import pytest

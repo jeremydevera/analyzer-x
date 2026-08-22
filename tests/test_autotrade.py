@@ -14,17 +14,17 @@ pytestmark = pytest.mark.unit
 
 
 def _config(**over):
-    base = dict(armed=True, buy_trigger=autotrade.TRIGGER_EVERY,
-                per_trade_usd=3.0, daily_cap_usd=15.0, max_positions=3,
-                min_volume_usd=50_000.0, exit_mode=autotrade.EXIT_TP_SL,
-                take_profit_pct=50.0, stop_loss_pct=30.0, max_hold_hours=6.0)
+    base = {"armed": True, "buy_trigger": autotrade.TRIGGER_EVERY,
+                "per_trade_usd": 3.0, "daily_cap_usd": 15.0, "max_positions": 3,
+                "min_volume_usd": 50_000.0, "exit_mode": autotrade.EXIT_TP_SL,
+                "take_profit_pct": 50.0, "stop_loss_pct": 30.0, "max_hold_hours": 6.0}
     base.update(over)
     return autotrade.StrategyConfig(**base)
 
 
 def _coin(**over):
-    base = dict(symbol="XPLKUSDT", base="XPLK", name="xPayLink",
-                quote_volume=120_000.0, age_hours=0.5)
+    base = {"symbol": "XPLKUSDT", "base": "XPLK", "name": "xPayLink",
+                "quote_volume": 120_000.0, "age_hours": 0.5}
     base.update(over)
     return base
 
@@ -107,8 +107,8 @@ def test_per_trade_below_exchange_minimum_is_refused():
 
 
 def _position(**over):
-    base = dict(symbol="XPLKUSDT", base="XPLK", qty=1000.0, entry_price=0.003,
-                spent=3.0, opened_at=1785000000.0)
+    base = {"symbol": "XPLKUSDT", "base": "XPLK", "qty": 1000.0, "entry_price": 0.003,
+                "spent": 3.0, "opened_at": 1785000000.0}
     base.update(over)
     return base
 

@@ -256,8 +256,17 @@ def jobs_all() -> dict:
 def job_status(kind: str) -> dict:
     _check_kind(kind)
     from tradingagents import db_jobs
+    from tradingagents import market_sweep as msw
 
-    return db_jobs.status(kind)
+    got = db_jobs.status(kind)
+    # Read the workers HERE rather than trusting the snapshot the job wrote:
+    # the job process loaded its code when it started, so a running sweep
+    # keeps publishing whatever that build did — including a finished task's
+    # last line, which read as an idle core. This read drops anything whose
+    # process is gone or that stopped being written.
+    if got.get("running") and got.get("workers") is not None:
+        got["workers"] = msw.worker_read()
+    return got
 
 
 @app.post("/api/jobs/{kind}/start")
@@ -331,8 +340,7 @@ def reports() -> dict:
 def trade_summary() -> dict:
     """The status ribbon: process, modes, wallet, today, all-time, open."""
     import tradingagents.auto_trader as at
-    from tradingagents.dataflows import mexc_credentials as cred
-    from tradingagents.dataflows import mexc_futures as fx
+    from tradingagents.dataflows import mexc_credentials as cred, mexc_futures as fx
 
     cred.load_into_env()
     pid = at.runner_pid()
@@ -401,8 +409,7 @@ def trade_positions() -> dict:
     """
     import tradingagents.auto_trader as at
     from tradingagents import positions_view as pv
-    from tradingagents.dataflows import mexc_credentials as cred
-    from tradingagents.dataflows import mexc_futures as fx
+    from tradingagents.dataflows import mexc_credentials as cred, mexc_futures as fx
 
     cred.load_into_env()
 
@@ -482,8 +489,6 @@ def trade_strategies(catalog: bool = False) -> dict:
     direction ("an unticked tile is clutter the operator has to read past").
     """
     import tradingagents.auto_trader as at
-    from tradingagents import backtest_report as br
-    from tradingagents.local_history import _sig_of
 
     settings = at.load_settings()
     books = settings.get("strategy_books") or {}
@@ -696,11 +701,9 @@ def trade_log(n: int = 200) -> dict:
 # ------------------------------------------------------------------- models
 def _model_specs() -> dict:
     """Built-in models merged with the operator's own, from one place."""
-    import model_registry
-
-    from tradingagents.default_config import DEFAULT_CONFIG  # noqa: F401
-
     import app_models  # thin, import-safe catalog (no Streamlit)
+    import model_registry
+    from tradingagents.default_config import DEFAULT_CONFIG  # noqa: F401
 
     return model_registry.merged_models(app_models.MODELS)
 
@@ -710,7 +713,6 @@ def models_list() -> dict:
     """The catalog: which are built in, which the operator added, and whether
     each one's key is present. The key VALUE never leaves this process."""
     import model_registry
-
     from tradingagents import model_health as mh
 
     custom = model_registry.load_custom()
@@ -1016,8 +1018,7 @@ def credentials_test(body: dict) -> dict:
     'The request was sent' is not 'it is in place' (rule 14), so the probe
     checks resting a stop, not just reading a balance.
     """
-    from tradingagents.dataflows import mexc_credentials as cred
-    from tradingagents.dataflows import mexc_futures as fx
+    from tradingagents.dataflows import mexc_credentials as cred, mexc_futures as fx
 
     cred.load_into_env()
     symbol = str(body.get("symbol") or "BTC_USDT").strip()
@@ -1167,7 +1168,7 @@ def crypto_candles(symbol: str, interval: str = "Min60",
     rows = [{"t": int(d.value // 1_000_000), "o": float(o), "h": float(h),
              "l": float(low), "c": float(c), "v": float(v)}
             for d, o, h, low, c, v in zip(df["Date"], df["Open"], df["High"],
-                                          df["Low"], df["Close"], df["Volume"])]
+                                          df["Low"], df["Close"], df["Volume"], strict=False)]
     return {"rows": rows, "symbol": symbol, "interval": interval}
 
 
@@ -1322,8 +1323,7 @@ def candle_gaps() -> dict:
     import datetime as _dt
     import time
 
-    from tradingagents import backtest_report as br
-    from tradingagents import market_sweep as msw
+    from tradingagents import backtest_report as br, market_sweep as msw
 
     # the scan opens one file per stored pair (4,899 today), so a repeat call
     # inside 30s gets the same answer rather than the same work
@@ -1366,8 +1366,7 @@ def candle_gaps() -> dict:
 def notifications_list(limit: int = 30, kind: str | None = None,
                        unread: bool = False) -> dict:
     """Newest first, with the unread count for the badge."""
-    from tradingagents import notifications as nt
-    from tradingagents import positions_view as pv
+    from tradingagents import notifications as nt, positions_view as pv
 
     rows = nt.recent(limit=limit, kind=kind, unread_only=unread)
     for r in rows:
@@ -1395,8 +1394,7 @@ def download_history(limit: int = 20) -> dict:
     The operator asked to see whether a DOWNLOAD succeeded. The job's progress
     file only holds the LAST run, so the history comes from the event store.
     """
-    from tradingagents import notifications as nt
-    from tradingagents import positions_view as pv
+    from tradingagents import notifications as nt, positions_view as pv
 
     rows = nt.recent(limit=limit, kind="download")
     out = []
@@ -1429,8 +1427,7 @@ def backtest_storage() -> dict:
     """
     import datetime as _dt
 
-    from tradingagents import positions_view as pv
-    from tradingagents import rows_index as ri
+    from tradingagents import positions_view as pv, rows_index as ri
 
     # From the INDEX. This route used to parse every row file and every state
     # file — over 2 GB, measured 2026-08-22 — and the Backtest screen polls it,
@@ -1486,8 +1483,7 @@ def backtest_history(limit: int = 20) -> dict:
     Same source as the bell — the local event feed — because the job's own
     progress file only ever holds the LAST run.
     """
-    from tradingagents import notifications as nt
-    from tradingagents import positions_view as pv
+    from tradingagents import notifications as nt, positions_view as pv
 
     out = []
     for r in nt.recent(limit=limit, kind="backtest"):

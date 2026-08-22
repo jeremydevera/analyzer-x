@@ -12,6 +12,7 @@ already stored.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import subprocess
@@ -77,10 +78,8 @@ def status(kind: str) -> dict:
     f = FILES[kind]
     prog = _read(f["progress"])
     pid = 0
-    try:
+    with contextlib.suppress(Exception):
         pid = int(f["pid"].read_text().strip())
-    except Exception:
-        pass
     if prog.get("running") and not (pid and _alive(pid)):
         prog["running"] = False       # crashed or killed: say so, not RUNNING
         prog.setdefault("note", "process died before finishing")
@@ -216,8 +215,7 @@ def _run_download(spec: dict) -> None:
     fetches exactly the bars between — refresh_candles walks back from the
     stored last bar, never re-downloading a year.
     """
-    from tradingagents import market_sweep as msw
-    from tradingagents import parquet_store as pqs
+    from tradingagents import market_sweep as msw, parquet_store as pqs
     f = FILES["download"]
     if spec.get("mode") == "update" and not spec.get("coins"):
         pairs = [(c["symbol"], c["timeframe"]) for c in msw.candle_coverage()]
@@ -524,8 +522,7 @@ def _run_btupdate(spec: dict) -> None:
     combination picks up with its ladder rung, running totals and any open
     position from where the last run stopped, and walks only the bars that
     printed since. A stopped update keeps every pair already continued."""
-    from tradingagents import backtest_report as br
-    from tradingagents import market_sweep as msw
+    from tradingagents import backtest_report as br, market_sweep as msw
     f = FILES["btupdate"]
     pairs = [(c, tf) for c in spec["coins"] for tf in spec["tfs"]]
     days = int(spec.get("days") or 365)

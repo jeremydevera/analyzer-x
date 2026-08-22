@@ -4,8 +4,7 @@ The operator's words: "when doing analysis its not doing from scratch" and
 "i want everything stored"."""
 import pytest
 
-from tradingagents import backtest_report as br
-from tradingagents import market_sweep as msw
+from tradingagents import backtest_report as br, market_sweep as msw
 
 
 @pytest.fixture(autouse=True)

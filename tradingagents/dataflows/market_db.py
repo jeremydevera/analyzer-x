@@ -98,7 +98,7 @@ def _engine():
     url = db_url()
     if url is None:
         return None
-    if _ENGINE is None or _ENGINE_URL != url:
+    if _ENGINE is None or url != _ENGINE_URL:
         from sqlalchemy import create_engine
         # A hanging connection must never hang a caller: without a connect
         # timeout, one dropped Neon socket froze the whole Backtest page
@@ -216,7 +216,7 @@ _SCHEMA_DONE_URL: str | None = None
 def ensure_schema(*, force: bool = False) -> bool:
     global _SCHEMA_DONE_URL
     url = db_url()
-    if url is not None and _SCHEMA_DONE_URL == url and not force:
+    if url is not None and url == _SCHEMA_DONE_URL and not force:
         return True
     if not _ready():
         return False
@@ -249,7 +249,7 @@ def upsert_candles(symbol: str, interval: str, df) -> int:
              "ts": int(d.timestamp()), "o": float(o), "h": float(h),
              "l": float(l), "c": float(c), "v": float(v)}
             for d, o, h, l, c, v in zip(df["Date"], df["Open"], df["High"],
-                                        df["Low"], df["Close"], df["Volume"])]
+                                        df["Low"], df["Close"], df["Volume"], strict=False)]
     try:
         with _engine().begin() as cx:
             _multi_insert(
@@ -425,7 +425,7 @@ def load_results(symbol: str | None = None, timeframe: str | None = None,
     except Exception as exc:
         _stand_down(exc, "load_results")
         return []
-    return [dict(zip(RESULT_FIELDS, r)) for r in rows]
+    return [dict(zip(RESULT_FIELDS, r, strict=False)) for r in rows]
 
 
 # ------------------------------------------------------------------ storage
@@ -496,7 +496,6 @@ def record_deployment(entry: dict) -> int:
     unchanged config does not fill the table with duplicates."""
     if not _ready():
         return 0
-    from sqlalchemy import text
     row = {f: entry.get(f) for f in DEPLOY_FIELDS}
     row["changed_at"] = int(row.get("changed_at") or time.time())
     for req in ("strategy_key", "symbol", "action"):
@@ -533,7 +532,7 @@ def deployments(symbol: str | None = None, limit: int = 200) -> list[dict]:
     except Exception as exc:
         _stand_down(exc, "deployments")
         return []
-    return [dict(zip(DEPLOY_FIELDS, r)) for r in rows]
+    return [dict(zip(DEPLOY_FIELDS, r, strict=False)) for r in rows]
 
 
 def prune_results(keep_per_pair: int = 500,
@@ -705,7 +704,7 @@ def ledger_rows(symbol: str | None = None, action: str | None = None,
     except Exception as exc:
         _stand_down(exc, "ledger_rows")
         return []
-    return [dict(zip(LEDGER_FIELDS, r)) for r in rows]
+    return [dict(zip(LEDGER_FIELDS, r, strict=False)) for r in rows]
 
 
 def _json_dumps(v) -> str:

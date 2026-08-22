@@ -8,8 +8,8 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from tradingagents.api import app
 from tradingagents import model_health as mh
+from tradingagents.api import app
 
 
 @pytest.fixture()

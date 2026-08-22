@@ -1,7 +1,6 @@
 """The disk kline cache: a daily sweep must fetch the missing TAIL, not
 re-page a year, and a corrupt or missing cache must fall back to the full
 paged fetch rather than break it."""
-import time
 
 import pandas as pd
 import pytest

@@ -220,11 +220,9 @@ def run(candles, *, take_profit_pct: float, stop_loss_pct: float,
     # +$228.92 against a $10 margin at 200x, a number no account could hold.
     bh_net = (C[-1] / O[1] - 1) - 2 * fee_per_side if n_bars > 1 else 0.0
     bh_pnl = bh_net * notional
-    bh_liquidated = False
     if n_bars > 1 and O[1] > 0 and notional > 0:
         for low in L[1:]:
             if margin + (low / O[1] - 1) * notional <= 0:
-                bh_liquidated = True
                 bh_pnl = -margin
                 break
     span = ((T[-1] - T[0]).total_seconds() / 86400) if n_bars > 1 else 0.0

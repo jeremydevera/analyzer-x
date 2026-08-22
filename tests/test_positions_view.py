@@ -2,7 +2,6 @@
 after a five-column trim, and 2026-08-21 in React after the same trim. These
 tests are what makes a third trim fail loudly.
 """
-import time
 
 import pytest
 

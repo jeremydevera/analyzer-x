@@ -63,7 +63,7 @@ def test_session_long_only_holds_inside_the_window():
     p = sg.positions_for("session_long", df,
                          {"open_hour_utc": 13, "close_hour_utc": 20})
     hours = [d.hour for d in df["Date"]]
-    for pos, h in zip(p, hours):
+    for pos, h in zip(p, hours, strict=False):
         assert pos == (1.0 if 13 <= h < 20 else 0.0)
 
 

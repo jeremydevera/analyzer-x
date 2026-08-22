@@ -7,14 +7,12 @@ these tests hold the derivation against the real engine, combination by
 combination, on data rough enough to hit every exit path — TP, SL, LIQ, END,
 funding both signs, wins and losing streaks.
 """
-import math
 import random
 
 import pandas as pd
 import pytest
 
-from tradingagents import auto_trader as at
-from tradingagents import fast_grid as fg
+from tradingagents import auto_trader as at, fast_grid as fg
 
 
 def _frame(n=900, seed=7):
@@ -74,7 +72,6 @@ def _engine(df, dirs, *, tp, sl, sizing, liq, fund):
 
 
 def _fast(df, dirs, *, tp, sl, liq, fund):
-    import numpy as np
     ms = df["Date"].to_numpy().astype("datetime64[ms]").astype("int64")
     f_ms, f_rate = [], []
     for f in sorted(fund or [], key=lambda d: d["settle_ms"]):

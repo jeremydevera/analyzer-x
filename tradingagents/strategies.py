@@ -288,7 +288,7 @@ def backtest(key: str, candles, *, margin: float, leverage: float,
             # an account wiped out on day 23, turning a -$10 total into +$195.83.
             end = res.trades[-1].exit_at
             exposure = [e if t <= end else 0.0
-                        for e, t in zip(exposure, candles["Date"])]
+                        for e, t in zip(exposure, candles["Date"], strict=False)]
         fund = fbt.funding_pnl(candles, exposure, funding,
                                notional=res.notional)
         if not res.trades:
@@ -349,7 +349,7 @@ def compare(candles, *, margin: float, leverage: float,
         # fix that stops paying the benchmark funding after a liquidation landed in
         # hold_comparison() and not here. Two copies of a rule is two rules.
         cmp_ = hold_comparison(r, fund, candles, funding)
-        bh_fund = cmp_["hold_funding"]
+        cmp_["hold_funding"]
         total = cmp_["total"]
         bh_total = cmp_["hold_total"]
         rows.append({

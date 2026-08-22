@@ -29,9 +29,8 @@ import itertools
 import json
 import math
 import os
-import time
+from collections.abc import Callable, Sequence
 from html import escape as html_escape
-from typing import Callable, Iterable, Sequence
 
 # Every entry rule the engine implements. Seven shipped originally; fifteen
 # were added 2026-08-19 when the operator asked why Fibonacci, support and
@@ -566,7 +565,6 @@ def _pack(payload: dict) -> dict:
     Reversed in the template in two lines. Verified by
     `test_packing_preserves_every_field_of_every_row`.
     """
-    import copy
 
     p = dict(payload)
     rows = p.get("rows") or []
@@ -803,10 +801,9 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
     reused versus fresh — a cached number the reader cannot trace is a wrong
     number waiting to happen.
     """
-    import time as _time
 
-    from tradingagents import market_sweep as msw
     import tradingagents.auto_trader as at
+    from tradingagents import market_sweep as msw
 
     deployed = [dict(d, th=(d.get("th", 0.0)
                             if d.get("signal") in THRESH_SIGNALS else 0.0))
@@ -842,7 +839,10 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
             with _cf.ProcessPoolExecutor(
                     max_workers=n_workers,
                     initializer=msw.be_polite) as pool:
-                futs = {pool.submit(msw.run_pair, sym, tf, slot=i % n_workers,
+                # no slot= : `i % n_workers` labelled the TASK, not the
+                # worker, so a finished task's line sat on screen as an idle
+                # core. Each worker publishes under its own pid.
+                futs = {pool.submit(msw.run_pair, sym, tf, slot=None,
                                     base_margin=base_margin, days=days,
                                     thresholds=thresholds,
                                     fresh=fresh): (sym, tf)

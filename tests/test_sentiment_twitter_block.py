@@ -8,8 +8,8 @@ pytestmark = pytest.mark.unit
 
 
 def _kwargs(**over):
-    base = dict(ticker="CATE-USD", start_date="2026-07-22", end_date="2026-07-29",
-                news_block="NEWS", stocktwits_block="TWITS", reddit_block="REDDIT")
+    base = {"ticker": "CATE-USD", "start_date": "2026-07-22", "end_date": "2026-07-29",
+                "news_block": "NEWS", "stocktwits_block": "TWITS", "reddit_block": "REDDIT"}
     base.update(over)
     return base
 

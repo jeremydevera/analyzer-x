@@ -193,8 +193,9 @@ def test_is_deployed_matches_on_the_plan_too():
 
 def test_every_row_carries_the_plan_field_even_when_it_is_none():
     """Rule F: never drop a field from a subset of rows."""
-    from tradingagents import backtest_report as br
     import inspect
+
+    from tradingagents import backtest_report as br
     src = inspect.getsource(br.run_grid)
     assert '"plan": pl,' in src
     assert '"exits": 1 if not _slx else len(_slx),' in src

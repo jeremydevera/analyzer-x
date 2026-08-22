@@ -492,6 +492,7 @@ def test_the_terminal_grid_uses_the_same_header_spec():
     """One app, one table language — the dense grid keeps the spec at its own
     row height rather than looking like a different product."""
     import re
+
     import app
     m = re.search(r'\.st-key-term \.tm-pt-h\{([^}]+)\}', app.TERMINAL_CSS)
     assert m, "the grid header rule is gone"
@@ -658,6 +659,7 @@ def test_the_system_tiles_match_apexs_stat_card():
     chip at 8px radius carrying its tone at ~10% alpha behind the full colour
     (theirs: rgba(22,163,74,.1) on rgb(22,163,74))."""
     import re
+
     import app
     css = app.TERMINAL_CSS
     m = re.search(r'\.tm-rib > div\{([^}]+)\}', css)
@@ -716,6 +718,7 @@ def test_the_equity_curve_is_built_from_the_ledgers_own_exits():
     figure beside it — the ledger's exit rows — or the chart and the totals can
     disagree on the same screen."""
     import inspect
+
     import app
     src = inspect.getsource(app._an_equity)
     assert 'e.get("action") != "exit"' in src

@@ -27,8 +27,7 @@ Multi-exit ``slices`` rows are rare and keep the old engine path.
 from __future__ import annotations
 
 import bisect
-import math
-from typing import Sequence
+from collections.abc import Sequence
 
 WHY_TP, WHY_SL, WHY_LIQ, WHY_END = 0, 1, 2, 3
 
@@ -152,7 +151,7 @@ def combo_six(dirs_idx, dirs, opens, high, low, close, *, tp, sl, liq,
               f_ms=None, f_cum=None, bar_ms=None) -> dict:
     """Everything ``run_grid`` needs for one (dirs, SL, TP): the six results,
     from two walks."""
-    kw = dict(f_ms=f_ms, f_cum=f_cum, bar_ms=bar_ms)
+    kw = {"f_ms": f_ms, "f_cum": f_cum, "bar_ms": bar_ms}
     full = walk(dirs_idx, dirs, opens, high, low, close,
                 tp=tp, sl=sl, liq=liq, **kw)
     # first half: prefix of the full walk, boundary trade re-marked
@@ -179,8 +178,8 @@ def combo_six(dirs_idx, dirs, opens, high, low, close, *, tp, sl, liq,
               tp=tp, sl=sl, liq=liq, start=half, **kw)
     out = {}
     for sz in ("flat", "martingale"):
-        d = dict(base=base, lev=lev, fee=fee, sizing=sz, ladder=ladder,
-                 mo_idx=mo_idx, mo_labels=mo_labels)
+        d = {"base": base, "lev": lev, "fee": fee, "sizing": sz, "ladder": ladder,
+                 "mo_idx": mo_idx, "mo_labels": mo_labels}
         out[sz] = {"full": derive(full, **d), "h1": derive(h1, **d),
                    "h2": derive(h2, **d)}
     return out

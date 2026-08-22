@@ -3,7 +3,6 @@
 A sweep that came from a stale cache, or that failed to resolve some symbols,
 says so in the payload — the count line on screen is built from these fields.
 """
-import dataclasses
 
 import pytest
 from fastapi.testclient import TestClient
@@ -105,6 +104,7 @@ def test_a_watch_failure_says_why_and_keeps_the_baseline(client, monkeypatch):
 
 def test_candles_come_back_as_plain_rows_for_the_chart(client, monkeypatch):
     import pandas as pd
+
     from tradingagents.dataflows import mexc_futures as fx
     df = pd.DataFrame({"Date": pd.to_datetime([1_787_000_000], unit="s"),
                        "Open": [1.0], "High": [2.0], "Low": [0.5],

@@ -29,8 +29,8 @@ import json
 import sqlite3
 import threading
 import time
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 from tradingagents import market_sweep as msw
 
@@ -509,7 +509,8 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     total, got = _missing_ok(_read, (0, []))
     out = []
     for r in got:
-        d = {k: r[k] for k in r.keys() if k != "pair"}
+        # r.keys(), NOT `in r`: a sqlite3.Row iterates its VALUES
+        d = {k: r[k] for k in r.keys() if k != "pair"}   # noqa: SIM118
         d["stop_reachable"] = bool(d.get("stop_reachable"))
         try:
             d["monthly"] = json.loads(d.get("monthly") or "{}")
@@ -667,10 +668,8 @@ def main() -> int:
     """The indexer process. Nice, so it never outranks a click either."""
     import os
 
-    try:
+    with contextlib.suppress(OSError, AttributeError):
         os.nice(5)
-    except (OSError, AttributeError):
-        pass
     ensure()
     start_keeping_up()
     try:

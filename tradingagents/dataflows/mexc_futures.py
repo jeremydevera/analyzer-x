@@ -971,11 +971,10 @@ import gzip as _gzip
 import json as _json
 import pathlib as _pathlib
 
-
 _KLINE_DISK_MAX = 40_000
 
 
-def _kline_disk_path(symbol: str, interval: str) -> "_pathlib.Path":
+def _kline_disk_path(symbol: str, interval: str) -> _pathlib.Path:
     safe = "".join(c for c in f"{symbol}_{interval}"
                    if c.isalnum() or c in "_-")
     return KLINE_DISK_DIR / f"{safe}.json.gz"
@@ -1035,8 +1034,9 @@ def _kline_db_store(symbol: str, interval: str, frame) -> None:
     tail past what it already holds is sent; the newest stored bar is re-sent
     in case it was still forming when first archived."""
     try:
-        from tradingagents.dataflows import market_db  # noqa: PLC0415
         import pandas as pd  # noqa: PLC0415
+
+        from tradingagents.dataflows import market_db  # noqa: PLC0415
         if not market_db.available():
             return
         per = {"Min1": 60, "Min5": 300, "Min15": 900, "Min30": 1800,

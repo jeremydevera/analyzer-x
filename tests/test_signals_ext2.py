@@ -138,8 +138,7 @@ def test_live_signal_for_reaches_both_expansions():
     """The runner's path must speak every rule the grid recommends —
     the first expansion was backtest-only for a day, and a deployed
     fib618 strategy would have emitted 0 forever."""
-    from tradingagents import auto_trader as at
-    from tradingagents import signals_ext as s1
+    from tradingagents import auto_trader as at, signals_ext as s1
     o, h, l, c, v, t = _series()
     hits = 0
     for name in ALL:

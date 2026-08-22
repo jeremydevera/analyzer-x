@@ -19,10 +19,10 @@ import json
 import logging
 import os
 import time
-from datetime import datetime
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 

@@ -15,6 +15,7 @@ from the HTTP layer. The behaviours that matter and why:
 """
 from __future__ import annotations
 
+import contextlib
 import datetime as _dt
 import hashlib
 from pathlib import Path
@@ -38,8 +39,7 @@ def signature(key: str, coins: list[str], tfs: list[str], sizing: str,
 def build(key: str, *, label: str, coins: list[str], base_margin: float,
           days: int = 365, progress=None, today: str | None = None) -> dict:
     """Run the grid and write the page. Returns {name, url, rows, cached}."""
-    from tradingagents import auto_trader as at
-    from tradingagents import backtest_report as br
+    from tradingagents import auto_trader as at, backtest_report as br
 
     if not coins:
         raise ValueError("select at least one contract to backtest")
@@ -83,9 +83,7 @@ def build(key: str, *, label: str, coins: list[str], base_margin: float,
               f"same candles."))
     for stale in sorted(REPORT_DIR.glob("*.html"),
                         key=lambda p: p.stat().st_mtime, reverse=True)[KEEP:]:
-        try:
+        with contextlib.suppress(OSError):
             stale.unlink()
-        except OSError:
-            pass
     return {"name": fresh.name, "url": f"/api/reports/file/{fresh.name}",
             "rows": len(payload["rows"]), "cached": False}

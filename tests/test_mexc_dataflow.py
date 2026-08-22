@@ -3,7 +3,6 @@
 from unittest.mock import patch
 
 import pandas as pd
-
 import pytest
 
 from tradingagents.dataflows import interface, mexc
@@ -625,9 +624,8 @@ def test_get_mexc_ohlcv_raises_no_market_data_when_empty():
 
 
 def test_get_mexc_ohlcv_raises_when_range_excludes_all_rows():
-    with patch.object(mexc, "_klines", return_value=_DAILY):
-        with pytest.raises(NoMarketDataError):
-            mexc.get_mexc_ohlcv("CATE-USD", "2026-01-01", "2026-01-31")
+    with patch.object(mexc, "_klines", return_value=_DAILY), pytest.raises(NoMarketDataError):
+        mexc.get_mexc_ohlcv("CATE-USD", "2026-01-01", "2026-01-31")
 
 
 def test_intraday_ohlcv_builds_a_frame_with_minute_stamps():
@@ -644,9 +642,8 @@ def test_intraday_ohlcv_builds_a_frame_with_minute_stamps():
 
 
 def test_intraday_ohlcv_raises_when_the_symbol_has_no_candles():
-    with patch.object(mexc, "_klines", return_value=[]):
-        with pytest.raises(NoMarketDataError):
-            mexc.intraday_ohlcv("GHOST-USD")
+    with patch.object(mexc, "_klines", return_value=[]), pytest.raises(NoMarketDataError):
+        mexc.intraday_ohlcv("GHOST-USD")
 
 
 def test_intraday_ohlcv_accepts_the_supported_intervals():

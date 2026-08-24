@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 18, "total": 18, "rows": 73840, "note": "VIRTUAL 30m: rule 6/75 (sweep30)", "pct": 100.0, "updated": "2026-08-24T18:34:26Z"}
+{"shard": 3, "stage": "testing", "done": 18, "total": 18, "rows": 73951, "note": "VIRTUAL 30m: rule 45/75 (zscore20)", "pct": 100.0, "updated": "2026-08-24T18:35:12Z"}

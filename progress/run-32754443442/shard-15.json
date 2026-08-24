@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 15, "total": 19, "rows": 60903, "note": "SKY 30m: rule 3/75 (fade15)", "pct": 78.9, "updated": "2026-08-24T18:26:00Z"}
+{"shard": 15, "stage": "testing", "done": 15, "total": 19, "rows": 62172, "note": "SKY 30m: rule 45/75 (zscore20)", "pct": 78.9, "updated": "2026-08-24T18:26:46Z"}

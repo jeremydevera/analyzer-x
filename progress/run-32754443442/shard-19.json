@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 8, "total": 24, "rows": 32144, "note": "HIVE 30m: 19,999 bars, testing 75 rules", "pct": 33.3, "updated": "2026-08-24T17:47:32Z"}
+{"shard": 19, "stage": "testing", "done": 8, "total": 24, "rows": 32582, "note": "HIVE 30m: rule 34/75 (lrslope)", "pct": 33.3, "updated": "2026-08-24T17:48:17Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 6, "total": 28, "rows": 18684, "note": "DBR 1h: rule 19/75 (emacross)", "pct": 21.4, "updated": "2026-08-24T17:24:22Z"}
+{"shard": 14, "stage": "testing", "done": 7, "total": 28, "rows": 22157, "note": "DRIFT 15m: 34,644 bars, testing 75 rules", "pct": 25.0, "updated": "2026-08-24T17:25:08Z"}

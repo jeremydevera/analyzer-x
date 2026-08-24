@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 1, "total": 27, "rows": 3, "note": "ACH 15m: rule 4/75 (trend50)", "pct": 3.7, "updated": "2026-08-24T17:05:03Z"}
+{"shard": 17, "stage": "testing", "done": 1, "total": 27, "rows": 64, "note": "ACH 15m: rule 20/75 (stoch14)", "pct": 3.7, "updated": "2026-08-24T17:05:51Z"}

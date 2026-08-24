@@ -85,6 +85,11 @@ export default function PositionsPanel({ onChanged }: { onChanged?: () => void }
             #{r.id}
           </button>
         ) : null}
+        {r.label ? (
+          <span className="block text-[10px] font-medium leading-tight text-brand-500">
+            ({r.label})
+          </span>
+        ) : null}
         <span className="block text-[10px] leading-tight text-gray-400">{r.strategy}</span>
       </TableCell>
       <TableCell className={`px-2 py-1.5 text-theme-xs font-semibold ${(r.unrealized ?? 0) >= 0 ? "text-success-600" : "text-error-500"}`}>

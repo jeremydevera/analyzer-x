@@ -210,6 +210,11 @@ export default function StrategiesGrid() {
                       #{r.id}
                     </button>
                   ) : null}
+                  {r.label ? (
+                    <span className="block text-[10px] font-medium text-brand-500">
+                      ({r.label})
+                    </span>
+                  ) : null}
                   <span className="block text-[10px] text-gray-500 dark:text-gray-400">
                     {r.key.replace(/_/g, "_\u200b")}
                   </span>

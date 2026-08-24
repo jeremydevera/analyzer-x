@@ -112,9 +112,22 @@ def barrier_value(entry, barrier, notional: float, fee: float, *,
     return {"pct": round(pct, 2), "usd": round(usd, 2)}
 
 
+def _label(key: str, settings: dict | None) -> str:
+    """The row's human name. Imported lazily: auto_trader imports this module."""
+    if not key:
+        return ""
+    try:
+        from tradingagents import auto_trader as at
+
+        return at.label_for(key, settings)
+    except Exception:
+        return ""
+
+
 def build_rows(*, state: dict, exchange_positions: list, stats: dict,
                dry: bool, last_price, contract_size, taker_fee,
-               leverage: int, now: float | None = None) -> list[dict]:
+               leverage: int, now: float | None = None,
+               settings: dict | None = None) -> list[dict]:
     """Every OPEN position on one book, with all fourteen columns.
 
     Callables are injected so this stays testable without a network: a wrong
@@ -152,6 +165,11 @@ def build_rows(*, state: dict, exchange_positions: list, stats: dict,
             "state": "OPEN",
             "side": "LONG" if pos["side"] > 0 else "SHORT",
             "strategy": pos.get("strategy") or r["strategy"],
+            # the same human name the strategies grid shows, from the same
+            # function — the operator asked why it appeared on one table and
+            # not the other, and two tables naming one row differently is the
+            # whole reason the id is derived rather than typed
+            "label": _label(pos.get("strategy") or r["strategy"], settings),
             "opened": fmt_when(when) if when else "—",
             "held": fmt_age(now - when) if when else "—",
             "opened_ts": when,

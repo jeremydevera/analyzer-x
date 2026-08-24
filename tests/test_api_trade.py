@@ -404,7 +404,7 @@ def test_the_ladder_is_reported_in_dollars_with_the_current_rung(client,
         "strategy_coins": {"sweep30_1h_w": ["APEX_USDT"]},
         "strategy_margins": {"sweep30_1h_w": 5.0},
         "sizing": "martingale"}))
-    monkeypatch.setattr(at, "sizing_for", lambda s: "martingale")
+    monkeypatch.setattr(at, "sizing_for", lambda s, key=None: "martingale")
     monkeypatch.setattr(at, "load_state", lambda: {
         "APEX_USDT": {"step": 3}})          # three losses deep
     monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None: {})
@@ -422,7 +422,7 @@ def test_flat_sizing_has_one_rung_and_a_constant_stake(client, monkeypatch):
     at.SETTINGS_PATH.write_text(json.dumps({
         "strategy_books": {"fvg_1h_w": ["real"]},
         "strategy_margins": {"fvg_1h_w": 8.0}}))
-    monkeypatch.setattr(at, "sizing_for", lambda s: "flat")
+    monkeypatch.setattr(at, "sizing_for", lambda s, key=None: "flat")
     monkeypatch.setattr(at, "load_state", lambda: {})
     monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None: {})
     got = client.get("/api/trade/strategies").json()
@@ -438,7 +438,7 @@ def test_the_streak_is_read_from_the_book_the_row_trades(client, monkeypatch):
         "strategy_books": {"mom6_1h_pv": ["paper"]},
         "strategy_coins": {"mom6_1h_pv": ["PROVE_USDT"]},
         "strategy_margins": {"mom6_1h_pv": 5.0}}))
-    monkeypatch.setattr(at, "sizing_for", lambda s: "martingale")
+    monkeypatch.setattr(at, "sizing_for", lambda s, key=None: "martingale")
     monkeypatch.setattr(at, "load_state", lambda: {
         "PROVE_USDT": {"step": 6},            # the LIVE book, not this row's
         "PROVE_USDT#paper": {"step": 1}})
@@ -635,3 +635,131 @@ def test_a_lone_strategy_on_a_coin_owns_its_rung(client, monkeypatch):
     r = next(x for x in client.get("/api/trade/strategies").json()["rows"]
              if x["key"] == "sweep30_1h_w")
     assert r["streak"] == 3 and r["streak_shared_with"] == []
+
+
+def test_sizing_is_per_strategy_not_one_switch_for_the_account(client, monkeypatch):
+    """NOM/mom6 measured +$114.57 flat and +$113.26 laddered over the same year
+    — the same money — but its worst losing run was -$41.00 flat and -$188.60
+    laddered against a $210.68 wallet. Flat was right for that row and wrong to
+    force on the others, and a single global switch could not say so."""
+    import json
+
+    at.SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    at.SETTINGS_PATH.write_text(json.dumps({
+        "strategies": ["mom6_1h_pv", "fvg_1h_w"],
+        "strategy_books": {"mom6_1h_pv": ["real"], "fvg_1h_w": ["real"]},
+        "strategy_coins": {"mom6_1h_pv": ["PROVE_USDT"], "fvg_1h_w": ["ALICE_USDT"]},
+        "strategy_margins": {"mom6_1h_pv": 5.0, "fvg_1h_w": 5.0},
+        "sizing": "martingale",
+        "strategy_sizing": {"fvg_1h_w": "flat"},
+    }))
+    saved = json.loads(at.SETTINGS_PATH.read_text())
+
+    assert at.sizing_for(saved) == "martingale", "the account default is unchanged"
+    assert at.sizing_for(saved, "mom6_1h_pv") == "martingale"
+    assert at.sizing_for(saved, "fvg_1h_w") == "flat"
+
+    # the STAKE follows it: at rung 3 the ladder doubles, flat does not
+    assert at.staked_margin("fvg_1h_w", saved, 3) == 5.0
+    assert at.staked_margin("mom6_1h_pv", saved, 3) > 5.0
+
+    # and the grid draws each row's own ladder, or it shows the operator a
+    # ladder for a row that will never take one
+    body = client.get("/api/trade/strategies").json()
+    by = {r["key"]: r for r in body["rows"]}
+    assert by["fvg_1h_w"]["sizing"] == "flat"
+    assert by["fvg_1h_w"]["ladder"] == [5.0], by["fvg_1h_w"]["ladder"]
+    assert by["mom6_1h_pv"]["sizing"] == "martingale"
+    assert len(by["mom6_1h_pv"]["ladder"]) > 1
+
+
+def test_a_row_id_is_hashed_with_that_rows_own_sizing(client):
+    """Sizing is part of the combination. Hashed with the ACCOUNT default, the
+    flat NOM row printed #L4TCWCZY in the app while the board it came from
+    called it #F2S7J87Z — one row with two names, which is exactly what the
+    stable id exists to prevent."""
+    import json
+
+    from tradingagents import backtest_report as br
+    from tradingagents.api import row_id_for
+
+    at.SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    saved = {"strategies": ["mom6_4h_nom"],
+             "strategy_books": {"mom6_4h_nom": ["real"]},
+             "strategy_coins": {"mom6_4h_nom": ["NOM_USDT"]},
+             "sizing": "martingale",
+             "strategy_sizing": {"mom6_4h_nom": "flat"}}
+    at.SETTINGS_PATH.write_text(json.dumps(saved))
+
+    want = br.row_code("NOM", "4h", "mom6", 0.8, 4.0, 5.0, "flat")
+    assert row_id_for("mom6_4h_nom", "NOM_USDT", saved) == want == "F2S7J87Z"
+
+    # and the account default alone would give a different, wrong id
+    other = br.row_code("NOM", "4h", "mom6", 0.8, 4.0, 5.0, "martingale")
+    assert other != want
+
+
+def test_a_strategy_can_carry_a_human_label(client):
+    """The grid showed only the key and the id. "Best winrate for Aug" is
+    provenance a spec cannot express — where the row came from and why it was
+    picked — and the operator asked for it on the row itself."""
+    import json
+
+    at.SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    at.SETTINGS_PATH.write_text(json.dumps({
+        "strategies": ["mom6_4h_nom", "fvg_1h_w"],
+        "strategy_books": {"mom6_4h_nom": ["real"], "fvg_1h_w": ["real"]},
+        "strategy_coins": {"mom6_4h_nom": ["NOM_USDT"], "fvg_1h_w": ["ALICE_USDT"]},
+    }))
+    by = {r["key"]: r for r in client.get("/api/trade/strategies").json()["rows"]}
+    assert by["mom6_4h_nom"]["label"] == "Best winrate for Aug"
+    # a row without one gets "", so the cell does not render "None"
+    assert by["fvg_1h_w"]["label"] == ""
+
+
+def test_no_label_repeats_a_barrier():
+    """app._strategy_label records the incident: barriers typed into a label
+    drift from the spec the runner trades — the APEX tile advertised TP 4.0%
+    against a real 3.0% for weeks. Labels carry provenance, not numbers."""
+    import re
+
+    for key, label in at.STRATEGY_LABELS.items():
+        assert not re.search(r"\d", label), f"{key} label has a number: {label!r}"
+
+
+def test_a_label_is_editable_config_not_a_constant_in_the_source():
+    """It began as a dict in auto_trader only, so the operator could not change
+    a label without editing code — they asked outright whether it was hard
+    coded. strategy_labels overrides it, like strategy_margins does."""
+    shipped = at.label_for("mom6_4h_nom")
+    assert shipped == "Best winrate for Aug"
+
+    cfg = {"strategy_labels": {"mom6_4h_nom": "renamed by hand",
+                               "fvg_1h_w": ""}}
+    assert at.label_for("mom6_4h_nom", cfg) == "renamed by hand"
+    # an EMPTY string in the config means "no label", not "fall back"
+    assert at.label_for("fvg_1h_w", cfg) == ""
+    # a key the config does not mention still gets its shipped default
+    assert at.label_for("mom6_1h_pv4", cfg) == "Best winrate for Aug"
+    assert at.label_for("nothing_here", cfg) == ""
+
+
+def test_an_open_position_carries_the_same_label_as_its_strategy_row():
+    """The operator saw it on one table and not the other. Two tables naming
+    one row differently is the reason the id is derived rather than typed."""
+    from tradingagents import positions_view as pv
+
+    settings = {"strategy_labels": {"mom6_4h_nom": "Best winrate for Aug"}}
+    # state is keyed by BOOK ("SYMBOL#book"), each holding one "position"
+    rows = pv.build_rows(
+        state={"NOM_USDT#paper": {"position": {
+            "side": -1, "vol": 6191, "margin": 5.0, "entry": 0.001614,
+            "dry": True, "strategy": "mom6_4h_nom",
+            "opened_at": 1787000000}}},
+        exchange_positions=[], stats={}, dry=True,
+        last_price=lambda s: 0.0016, contract_size=lambda s: 1.0,
+        taker_fee=lambda s, fx=None: 0.0002, leverage=20,
+        settings=settings)
+    assert rows, "no row built"
+    assert rows[0]["label"] == "Best winrate for Aug"
+    assert rows[0]["strategy"] == "mom6_4h_nom"

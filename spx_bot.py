@@ -36,8 +36,7 @@ import logging
 import os
 import sys
 import time
-from dataclasses import dataclass, asdict, field
-from dataclasses import replace as dataclasses_replace
+from dataclasses import asdict, dataclass, field, replace as dataclasses_replace
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -96,7 +95,7 @@ class Config:
     min_equity_usd: float = 20.0      # halt if the wallet falls below this
 
     @classmethod
-    def load(cls) -> "Config":
+    def load(cls) -> Config:
         p = STATE_DIR / "config.json"
         if p.exists():
             try:
@@ -230,8 +229,8 @@ RUNNABLE_STRATEGIES = ("barrier_harvest", "buy_hold")
 # different thing from the exposure form the backtest measures — no sizing, no
 # scaling out — so the backtested figures do not transfer, and anything reporting
 # a gate result has to say so.
-GATE_STRATEGIES = tuple(("barrier_harvest", "buy_hold", "trend_filter", "trend50",
-                         "session_long", "ladder_dca", "vol_target"))
+GATE_STRATEGIES = ("barrier_harvest", "buy_hold", "trend_filter", "trend50",
+                         "session_long", "ladder_dca", "vol_target")
 
 
 def lane_may_gate(key: str) -> bool:
@@ -831,7 +830,7 @@ def step(cfg: Config, live: bool) -> None:
     s["position"] = {"entry": px, "vol": vol, "notional": notional,
                      "tp": None, "opened": _today(), "lane": _lane}
     if _lane["strategy"] in ONE_SHOT_STRATEGIES:
-        s["lanes_used"] = sorted(set((s.get("lanes_used") or []))
+        s["lanes_used"] = sorted(set(s.get("lanes_used") or [])
                                  | {lane_key(_lane)})
     _append_ledger({"action": "open", "price": px, "vol": vol,
                     "notional": notional, "dry_run": dry,
@@ -1069,6 +1068,15 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)-7s %(message)s")
+    # THE date format, like the runner's log — see positions_view.WhenFormatter
+    try:
+        from tradingagents.positions_view import WhenFormatter
+
+        for _h in logging.getLogger().handlers:
+            _h.setFormatter(WhenFormatter("%(asctime)s %(levelname)-7s "
+                                          "%(message)s"))
+    except Exception:
+        pass
     # The UI saves keys to the credential store; without this the bot read only
     # its own shell environment, so "Test connection" could pass on one key
     # while the bot traded with another.

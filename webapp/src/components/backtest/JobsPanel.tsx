@@ -30,6 +30,8 @@ export default function JobsPanel() {
   const [win, setWin] = useState("Previous 1 year");
   const [bt, setBt] = useState<JobStatus | null>(null);
   const [upd, setUpd] = useState<JobStatus | null>(null);
+  const [hand, setHand] = useState<Awaited<ReturnType<typeof api.jobHandoffState>> | null>(null);
+  const [handing, setHanding] = useState(false);
   const [base, setBase] = useState(5);
   const [plan, setPlan] = useState<GridPlan | null>(null);
   const [deployed, setDeployed] = useState<{ coin: string; tf: string; key: string }[]>([]);
@@ -42,6 +44,7 @@ export default function JobsPanel() {
     api.jobStatus("backtest").then(setBt).catch(() => {});
     api.jobStatus("btupdate").then(setUpd).catch(() => {});
     api.cloudStatus().then(setCloud).catch(() => {});
+    api.jobHandoffState("backtest").then(setHand).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -63,6 +66,14 @@ export default function JobsPanel() {
       await api.cloudDispatch({ shards: 20, coins: coins.length, timeframes: tfs.join(",") });
       api.cloudStatus().then(setCloud).catch(() => {});
     } catch (e) { setErr(String(e)); }
+  };
+
+  const handOff = async () => {
+    setErr(""); setHanding(true);
+    try {
+      await api.jobHandoff("backtest");
+      api.jobHandoffState("backtest").then(setHand).catch(() => {});
+    } catch (e) { setErr(String(e)); } finally { setHanding(false); }
   };
 
   const start = async (kind: "backtest" | "btupdate") => {
@@ -185,6 +196,24 @@ export default function JobsPanel() {
             {bt?.running && (
               <Button size="sm" variant="outline" onClick={() => api.jobStop("backtest").then(poll)}>STOP</Button>
             )}
+            {/* Hand over WITHOUT losing anything: the local job finishes the
+                pairs it is measuring, then the cloud takes the coins the Mac
+                never reached. A plain STOP would leave those coins to nobody. */}
+            {bt?.running && hand?.available && !hand?.requested && (
+              <span title="Finish the pairs being measured right now, then dispatch GitHub Actions for the coins this Mac has not reached. Nothing already measured is re-run or overwritten.">
+                <Button size="sm" variant="outline" onClick={handOff} disabled={handing}>
+                  {handing ? "HANDING OVER…" : "SWITCH TO GITHUB ACTIONS"}
+                </Button>
+              </span>
+            )}
+            {hand?.requested && !hand?.stalled && (
+              <Badge size="sm" color="warning">
+                finishing the current pairs, then handing over
+              </Badge>
+            )}
+            {hand?.stalled && (
+              <Badge size="sm" color="error">hand-off is stuck</Badge>
+            )}
             {upd?.running && (
               <Button size="sm" variant="outline" onClick={() => api.jobStop("btupdate").then(poll)}>STOP UPDATE</Button>
             )}
@@ -197,6 +226,17 @@ export default function JobsPanel() {
             )}
             {upd?.running && <Badge size="sm" color="info">update running</Badge>}
           </div>
+          {hand?.stalled && (
+            <p className="mt-2 text-theme-xs text-error-500">
+              {hand.stalled_why}
+            </p>
+          )}
+          {hand?.requested && !hand?.available && (
+            <p className="mt-2 text-theme-xs text-warning-600">
+              GitHub Actions is not usable right now, so the hand-off has
+              nowhere to go: {hand.why.split("\n")[0]}
+            </p>
+          )}
           <JobProgress s={bt}
             label={`full grid${bt?.fresh === false ? " · gap fill"
                      : bt?.fresh ? " · from scratch" : ""}`} />

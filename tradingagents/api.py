@@ -22,6 +22,47 @@ app = FastAPI(title="TradingAgents API", version="1.0")
 
 
 
+def _finish_handoff() -> None:
+    """Dispatch the cloud sweep once a handed-off local job has stopped.
+
+    Runs on the supervisor's tick. Three guards, each one a way this could go
+    wrong: the local job must actually be stopped, the request must not already
+    have been served, and the cloud gets ONLY the coins with no local
+    watermark — `merge_into_store` replaces what it covers, so re-measuring a
+    finished pair in the cloud would land rows behind the Mac's own watermark.
+    """
+    from tradingagents import cloud_sweep as cs, db_jobs as dj
+
+    kind = "backtest"
+    if not dj.handoff_requested(kind):
+        return
+    st = dj.status(kind)
+    if st.get("running"):
+        return                          # still finishing the pairs in flight
+    spec = dj._read(dj.FILES[kind]["spec"])
+    coins = list(spec.get("coins") or [])
+    tfs = list(spec.get("tfs") or [])
+    left = cs.unmeasured(coins, tfs)
+    dj.clear_handoff(kind)              # served, whatever happens next
+    if not left:
+        print("[handoff] nothing left unmeasured — no cloud run needed",
+              flush=True)
+        return
+    run = cs.dispatch(shards=20, coins=len(left), timeframes=",".join(tfs))
+    cs.remember(run)
+    print(f"[handoff] {len(left)} coins the Mac never reached -> GitHub run "
+          f"{run.get('id')}", flush=True)
+    try:
+        from tradingagents import notifications as nt
+
+        nt.record("backtest", "Handed off to GitHub Actions", ok=True,
+                  detail=f"{len(left)} unmeasured coins dispatched; "
+                         f"the Mac's {len(coins) - len(left)} finished coins "
+                         f"are untouched")
+    except Exception:
+        pass
+
+
 @app.on_event("startup")
 def _keep_the_row_index_current() -> None:
     """The strategy index must advance whether or not anyone is watching. When
@@ -51,6 +92,13 @@ def _keep_the_row_index_current() -> None:
         def _watch() -> None:
             while True:
                 _time.sleep(30)
+                # A HAND-OFF completes here, once the local job has actually
+                # stood down — dispatching while it was still finishing would
+                # have both measuring the same pairs.
+                try:
+                    _finish_handoff()
+                except Exception as exc:
+                    print(f"[handoff] failed: {exc!r}", flush=True)
                 for kind in ("backtest", "download", "btupdate"):
                     try:
                         got = _dj.resume_if_died(kind)
@@ -108,12 +156,22 @@ def row_id_for(key: str, coin: str | None, settings: dict) -> str:
             round(float(spec.get("threshold") or 0) * 100, 3),
             round(float(spec.get("sl") or 0) * 100, 3),
             round(float(spec.get("tp") or 0) * 100, 3),
-            at.sizing_for(settings))
+            # THIS strategy's sizing, not the account default. Sizing is part
+            # of the combination, so hashing a flat row with the account's
+            # martingale gave it a laddered row's id: the deployed NOM row
+            # printed #L4TCWCZY in the app and #F2S7J87Z on the board it came
+            # from, which is the "same row, a different number on every page"
+            # problem the stable id exists to end.
+            at.sizing_for(settings, key))
     except Exception:                                          # noqa: BLE001
         return ""
 
 
 JOB_KINDS = ("download", "backtest", "btupdate", "stratbt")
+
+# A pair takes minutes; twelve is well past any of them, so a hand-off still
+# unserved by then is not slow, it is stuck.
+HANDOFF_STALL_SECONDS = 12 * 60
 
 
 # ------------------------------------------------------------------ health
@@ -280,6 +338,67 @@ def job_start(kind: str, spec: dict) -> dict:
     return {"pid": db_jobs.start(kind, spec)}
 
 
+@app.post("/api/jobs/{kind}/handoff")
+def job_handoff(kind: str) -> dict:
+    """Finish the pairs in flight, then hand this sweep to GitHub Actions.
+
+    Not a stop: the operator's words were "finish the current task then switch
+    to github actions after its done". The local job completes what it is
+    measuring, checkpoints it, and stands down; the supervisor then dispatches
+    the cloud for the coins the Mac never reached.
+    """
+    _check_kind(kind)
+    from tradingagents import cloud_sweep as cs, db_jobs
+
+    ok, why = cs.available()
+    if not ok:
+        raise HTTPException(400, f"GitHub Actions is not usable: {why}")
+    st = db_jobs.status(kind)
+    if not st.get("running"):
+        raise HTTPException(409, "that job is not running — start the cloud "
+                                 "sweep directly instead")
+    db_jobs.request_handoff(kind)
+    return {"requested": True,
+            "note": "finishing the pairs in flight, then handing over"}
+
+
+@app.get("/api/jobs/{kind}/handoff")
+def job_handoff_state(kind: str) -> dict:
+    """What the button should say."""
+    _check_kind(kind)
+    from tradingagents import cloud_sweep as cs, db_jobs
+
+    ok, why = cs.available()
+    st = db_jobs.status(kind)
+    # A request the running job CANNOT serve must say so, not sit on
+    # "finishing the current pairs" forever. It hung for 19 minutes on
+    # 2026-08-25 because the job had started before the handoff code existed,
+    # so nothing in that process could ever notice the flag. The check is
+    # deliberately generic — stale code, a wedged pair, a dead pool all look
+    # the same from here, and all of them mean "this is not progressing".
+    import time as _t
+
+    stalled, reason = False, ""
+    if db_jobs.handoff_requested(kind) and st.get("running"):
+        try:
+            age = _t.time() - db_jobs.FILES[kind]["handoff"].stat().st_mtime
+        except OSError:
+            age = 0.0
+        if age > HANDOFF_STALL_SECONDS:
+            stalled = True
+            reason = (f"asked {age / 60:.0f} minutes ago and the job has not "
+                      f"stood down. A pair takes minutes, but not this long — "
+                      f"the likeliest cause is that this job started before "
+                      f"the hand-off existed, so it cannot see the request. "
+                      f"Stopping and restarting it resumes from the last "
+                      f"checkpoint and loses nothing.")
+    return {"available": ok, "why": ("" if ok else why),
+            "requested": db_jobs.handoff_requested(kind),
+            "handed_off": bool(st.get("handoff")),
+            "running": bool(st.get("running")),
+            "stalled": stalled, "stalled_why": reason}
+
+
 @app.post("/api/jobs/{kind}/stop")
 def job_stop(kind: str) -> dict:
     _check_kind(kind)
@@ -433,15 +552,16 @@ def trade_positions() -> dict:
         live = fx.open_positions()
     except Exception:
         live = []
+    settings = at.load_settings()
     kw = {"last_price": last_price, "contract_size": contract_size,
-          "taker_fee": at.taker_fee, "leverage": at.LEVERAGE}
+          "taker_fee": at.taker_fee, "leverage": at.LEVERAGE,
+          "settings": settings}
     real = pv.build_rows(state=state, exchange_positions=live,
                          stats=at.coin_stats(dry=False), dry=False, **kw)
     paper = pv.build_rows(state=state, exchange_positions=[],
                           stats=at.coin_stats(dry=True), dry=True, **kw)
     # the same id the strategy grid prints, hashed with THIS row's coin — so
     # "which strategy is running here?" is answerable from the position alone
-    settings = at.load_settings()
     for r in real + paper:
         r["id"] = row_id_for(r.get("strategy") or "", r.get("symbol"), settings)
     unprotected = [r["coin"] for r in real if r["bracket"]]
@@ -498,8 +618,7 @@ def trade_strategies(catalog: bool = False) -> dict:
     stats_paper = at.strategy_stats(dry=True)
     state = at.load_state()
     limits = settings.get("strategy_loss_limits") or {}
-    sizing_now = at.sizing_for(settings)
-    flat = sizing_now == "flat"
+    sizing_now = at.sizing_for(settings)          # the account-wide default
     runstate = at.load_state()
     tripped = at.tripped_strategies(settings)
     locks = at.timeframe_locks(settings)
@@ -531,9 +650,13 @@ def trade_strategies(catalog: bool = False) -> dict:
         # Contracts are fixed per strategy, so the first coin identifies it;
         # with no coin there is no combination to hash and the id is blank.
         _rid = row_id_for(key, (coins.get(key) or [None])[0], settings)
+        flat = at.sizing_for(settings, key) == "flat"    # THIS row's sizing
         rows.append({
             "key": key,
             "id": _rid,
+            # the human name, for the operator. Empty for rows that have none,
+            # so the cell simply does not render rather than printing "None".
+            "label": at.label_for(key, settings),
             "interval": spec.get("interval"),
             "tp": spec.get("tp"), "sl": spec.get("sl"),
             "threshold": spec.get("threshold"),
@@ -558,6 +681,9 @@ def trade_strategies(catalog: bool = False) -> dict:
                 and set(coins.get(other) or []) & set(coins.get(key) or [])
                 and (("real" in (books.get(other) or []))
                      == ("real" in (books.get(key) or [])))),
+            # PER ROW. A row that runs flat must not be drawn with a ladder:
+            # the ladder column is what the operator reads before deploying.
+            "sizing": at.sizing_for(settings, key),
             "ladder": ([base_m] if flat
                        else [round(base_m * m, 2) for m in at.LADDER]),
             "ladder_rung": (0 if flat else min(streak, len(at.LADDER) - 1)),
@@ -591,7 +717,9 @@ def trade_strategies(catalog: bool = False) -> dict:
         "account_cap_hit": at.loss_limit_hit(settings),
         "tripped": sorted(tripped),
         "locks": locks,
-        "flat": flat,
+        # the ACCOUNT-WIDE default. Per-row sizing lives on each row now, so a
+        # single flag here would contradict any row that overrides it.
+        "flat": sizing_now == "flat",
         "leverage": at.LEVERAGE,
         "ladder_steps": list(at.LADDER),
     }

@@ -310,6 +310,12 @@ def test_every_row_id_in_the_repo_matches_row_code():
         br.row_code("PROVE", "1h", "fade15", 0.2, 0.3, 8.0, "martingale"),
         br.row_code("PROVE", "1h", "fade15", 0.3, 0.3, 8.0, "martingale"),
         br.row_code("PROVE", "1h", "fade15", 0.5, 0.3, 8.0, "martingale"),
+        # From the August win-rate board, 2026-08-24. BOTH run FLAT, and the
+        # sizing is why they are listed that way: deployed under the account's
+        # martingale default, PROVE's row hashed to 7R4JEPGJ instead — a
+        # combination nobody had tested. This assertion is what caught it.
+        br.row_code("PROVE", "1h", "mom6", 0.5, 4.0, 4.0, "flat"),   # NEQMY7RS
+        br.row_code("NOM", "4h", "mom6", 0.8, 4.0, 5.0, "flat"),     # F2S7J87Z
     }
     unknown = quoted - live
     assert not unknown, (

@@ -183,6 +183,26 @@ STRATEGY_SPECS = {
                       "tp": 0.080, "sl": 0.003, "threshold": 0.002},
     "mom6_1h_pv": {"interval": "Min60", "bar_seconds": 3600,
                    "tp": 0.040, "sl": 0.025, "threshold": 0.003},
+    # --- From the August win-rate board, 2026-08-24.
+    # #NEQMY7RS — PROVE 1h mom6, TP 4.0 / SL 4.0. The SAME signal and target as
+    # mom6_1h_pv above but a WIDER stop, and it was the highest August win rate
+    # at 1h: 19W/3L over 22 trades, 86.4%, +$57.92. DEMO ONLY. The operator kept
+    # mom6_1h_pv live: PROVE has 62 days of candles, so its "3 months", "6
+    # months" and "full history" windows are the same 62 days printed three
+    # times, which is not the evidence a live swap needs.
+    # Runs FLAT, like the row it copies. Deployed under the account's
+    # martingale default it hashed to 7R4JEPGJ — a DIFFERENT combination that
+    # had never been tested, which is the 2026-08-17 deploy exactly. A demo
+    # whose sizing differs from the row it is rehearsing is not a rehearsal.
+    "mom6_1h_pv4": {"interval": "Min60", "bar_seconds": 3600,
+                    "tp": 0.040, "sl": 0.040, "threshold": 0.005},
+    # #F2S7J87Z — NOM 4h mom6, TP 5.0 / SL 4.0. Green in EVERY nested window
+    # (1m +$56.28, 3m +$121.93, 6m +$159.55, full year +$113.26 over 361
+    # trades) and edge_check ok at 4% of the target. Runs FLAT: laddered its
+    # worst losing run is -$188.60 over 10 trades against a $210.68 wallet,
+    # flat the same run is -$41.00 for the same full-year profit.
+    "mom6_4h_nom": {"interval": "Hour4", "bar_seconds": 14400,
+                    "tp": 0.050, "sl": 0.040, "threshold": 0.008},
     "fvg_1h": {"interval": "Min60", "bar_seconds": 3600,
                "tp": 0.018, "sl": 0.006},
     # --- Wide 1-hour barriers (1.00%/4.00%). From the 55,062-combination
@@ -241,10 +261,39 @@ STRATEGY_SPECS = {
 
 # Order matters: when several ticked strategies fire at once, the first one
 # here wins. FVG first — it is the config the tab was built for.
+# A human name for a row, shown beside its id in both UIs.
+#
+# NO NUMBERS IN HERE. `app._strategy_label` records why: barriers typed into a
+# label drift from the spec the runner trades — the APEX tile advertised
+# "TP 4.0%" against a real 3.0% for weeks. Barriers are derived from
+# STRATEGY_SPECS at render time; this map is for PROVENANCE, which is the part
+# a spec cannot express: where the row came from and why it was picked.
+STRATEGY_LABELS = {
+    "mom6_1h_pv4": "Best winrate for Aug",
+    "mom6_4h_nom": "Best winrate for Aug",
+}
+
+
+def label_for(key: str, settings: dict | None = None) -> str:
+    """The row's human name — from the CONFIG first, then this file's default.
+
+    It started as a dict in this module only, which meant the operator could
+    not change a label without editing code. `settings["strategy_labels"]`
+    overrides it, exactly like strategy_margins and strategy_books, so the name
+    is data. The map above is only the shipped default for the rows that came
+    with one.
+    """
+    if settings:
+        got = (settings.get("strategy_labels") or {}).get(key)
+        if got is not None:
+            return str(got)
+    return STRATEGY_LABELS.get(key, "")
+
 STRATEGY_ORDER = ("mom15_4h", "mom15_4h_b", "fvg_4h", "fvg_4h_b",
                   "trend50_4h", "sweep30_4h", "mom15_1h_g", "mom6_1h_g",
                   "mom15_4h_w", "sweep30_1h_w", "fvg_1h_w", "mom6_1h_gx",
-                  "mom6_1h_pv", "trend50_30m_pi", "fade15_1h_pv2",
+                  "mom6_1h_pv", "mom6_1h_pv4", "mom6_4h_nom",
+                  "trend50_30m_pi", "fade15_1h_pv2",
                   "ict_fvg", "fvg_1h", "rsi14_1h", "mom15_sp", "mom6",
                   "trend50", "sweep_1h", "sweep_rt", "mom15_1h", "fade15_1h",
                   "fade15_15m", "fade15_1m")
@@ -451,16 +500,29 @@ def coins_for(key: str, settings: dict) -> list[str]:
     return list(settings.get("coins", []))
 
 
-def sizing_for(settings: dict) -> str:
-    """"flat" or "martingale". Defaults to martingale so an existing config
-    keeps behaving exactly as it did before this setting existed.
+def sizing_for(settings: dict, key: str | None = None) -> str:
+    """"flat" or "martingale", PER STRATEGY, falling back to the global choice.
+
+    Defaults to martingale so an existing config keeps behaving exactly as it
+    did before this setting existed.
 
     Flat is how a signal is MEASURED; the ladder is a sizing choice made
     afterwards, with its own funding requirement. An audit showed six live
     strategies whose "13/13 green months" was produced by the ladder rather
     than the signal, so the runner has to be able to actually RUN the flat
     version that the backtest scores.
+
+    PER STRATEGY because sizing is not one decision for the whole account. On
+    2026-08-24 NOM/mom6 measured +$114.57 flat and +$113.26 laddered over the
+    same year — the same money — but its worst losing run was −$41.00 flat and
+    −$188.60 laddered, against a $210.68 wallet. Flat was obviously right for
+    that row and obviously wrong to force on the others, and with only a global
+    switch the operator's choice could not be expressed at all.
     """
+    if key:
+        per = (settings.get("strategy_sizing") or {}).get(key)
+        if per:
+            return "flat" if str(per).lower() == "flat" else "martingale"
     v = str(settings.get("sizing") or "martingale").lower()
     return "flat" if v == "flat" else "martingale"
 
@@ -468,7 +530,8 @@ def sizing_for(settings: dict) -> str:
 def staked_margin(key: str, settings: dict, step: int) -> float:
     """The margin for the next trade, honouring the sizing setting."""
     base = margin_for(key, settings)
-    return base if sizing_for(settings) == "flat" else ladder_margin(base, step)
+    return (base if sizing_for(settings, key) == "flat"
+            else ladder_margin(base, step))
 
 
 def margin_for(key: str, settings: dict) -> float:

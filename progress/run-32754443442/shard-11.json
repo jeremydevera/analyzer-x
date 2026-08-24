@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "screening", "done": 0, "total": 51, "rows": 0, "note": "checking contract ages", "pct": 0.0, "updated": "2026-08-24T17:04:19Z"}
+{"shard": 11, "stage": "testing", "done": 1, "total": 20, "rows": 173, "note": "AAPLSTOCK 15m: rule 14/75 (bb20)", "pct": 5.0, "updated": "2026-08-24T17:05:04Z"}

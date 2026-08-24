@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "screening", "done": 0, "total": 51, "rows": 0, "note": "checking contract ages", "pct": 0.0, "updated": "2026-08-24T17:04:15Z"}
+{"shard": 12, "stage": "testing", "done": 1, "total": 20, "rows": 0, "note": "BRETT 15m: rule 4/75 (trend50)", "pct": 5.0, "updated": "2026-08-24T17:05:01Z"}

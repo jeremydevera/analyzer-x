@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 10, "total": 26, "rows": 36418, "note": "DEEP 1h: 9,999 bars, testing 75 rules", "pct": 38.5, "updated": "2026-08-24T17:56:20Z"}
+{"shard": 16, "stage": "testing", "done": 10, "total": 26, "rows": 38554, "note": "DEEP 1h: rule 45/75 (zscore20)", "pct": 38.5, "updated": "2026-08-24T17:57:05Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 20, "total": 25, "rows": 83951, "note": "RARE 15m: rule 45/75 (zscore20)", "pct": 80.0, "updated": "2026-08-24T18:22:47Z"}
+{"shard": 4, "stage": "testing", "done": 20, "total": 25, "rows": 84166, "note": "RARE 30m: rule 4/75 (trend50)", "pct": 80.0, "updated": "2026-08-24T18:23:33Z"}

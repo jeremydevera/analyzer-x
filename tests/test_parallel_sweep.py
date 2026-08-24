@@ -165,6 +165,10 @@ def test_progress_counter_agrees_with_the_message_beside_it(monkeypatch, tmp_pat
 
     monkeypatch.setattr(br, "grid_from_store", fake_grid)
     monkeypatch.setattr(dj, "persist_results", lambda *a, **k: None)
+    # the low-disk guard is real and fired here for real on 2026-08-24, when
+    # the WAL had taken the volume to 3.5 GB. A test must not depend on how
+    # full the machine happens to be.
+    monkeypatch.setattr(dj, "free_gb", lambda path=None: 500.0)
     try:
         dj._run_backtest_inner({"coins": ["BTC_USDT"], "tfs": ["1h"],
                                 "base": 5.0, "days": 30, "name": "t"})
@@ -339,3 +343,55 @@ def test_sweep_workers_run_at_low_priority():
             os._exit(2)
     _, status = os.waitpid(pid, 0)
     assert os.WEXITSTATUS(status) == 0, "be_polite did not lower priority"
+
+
+def test_the_progress_bar_counts_the_STORE_not_the_process(tmp_path, monkeypatch):
+    """It read "204 of 3960 (5.2%)" while 2,947 pairs — 74.4% — were measured
+    and on disk, because `done` started at zero every run and the supervisor
+    had just resumed a crashed job. The operator watched it go BACKWARDS from
+    an earlier run's 466."""
+    import inspect
+
+    from tradingagents import backtest_report as br
+
+    src = inspect.getsource(br.grid_from_store)
+    code = "\n".join(ln for ln in src.splitlines()
+                     if not ln.lstrip().startswith("#"))
+    assert "msw.completed_pairs(pairs)" in code, (
+        "the seed must come from what is measured on disk")
+    assert "done = len(_seen)" in code, (
+        "counting increments double-counts a pair that was already measured")
+    assert "done += 1" not in code, "an increment cannot survive a restart"
+    # a from-scratch run has nothing to resume from
+    assert "set() if fresh else" in code
+
+
+def test_completed_pairs_reads_only_the_tail(tmp_path, monkeypatch):
+    """The whole-file version took over five minutes on the real store."""
+    import json as _json
+    import time
+
+    states = tmp_path / "state"
+    states.mkdir()
+    monkeypatch.setattr(msw, "STATES", states)
+    # one finished, one interrupted, one absent
+    (states / "AAA-1h.json").write_text(_json.dumps(
+        {"combo|x": {"n": 1}, "__version__": "v", "__last_ms__": 1787450400000}))
+    (states / "BBB-1h.json").write_text(_json.dumps(
+        {"combo|x": {"n": 1}, "__version__": "v", "__last_ms__": 0}))
+
+    assert msw.pair_watermark("AAA", "1h") == 1787450400000
+    assert msw.pair_watermark("BBB", "1h") == 0
+    assert msw.pair_watermark("CCC", "1h") == 0        # no file at all
+
+    pairs = [("AAA_USDT", "1h"), ("BBB_USDT", "1h"), ("CCC_USDT", "1h")]
+    assert msw.completed_pairs(pairs) == {("AAA_USDT", "1h")}
+
+    # and it is fast: a big file must not be parsed
+    big = {f"combo|{i}": {"n": i} for i in range(20000)}
+    big["__last_ms__"] = 1787450400000
+    (states / "BIG-1h.json").write_text(_json.dumps(big))
+    t = time.perf_counter()
+    assert msw.pair_watermark("BIG", "1h") == 1787450400000
+    el = time.perf_counter() - t
+    assert el < 0.05, f"{el*1000:.0f}ms — it is parsing the whole file"

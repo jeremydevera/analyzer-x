@@ -139,3 +139,198 @@ def test_the_report_name_gets_an_html_suffix():
                     if not ln.lstrip().startswith("#"))
     i = src.index('spec.get("report_name")')
     assert '.html' in src[i:i + 400], src[i:i + 200]
+
+
+def test_a_dropped_connection_resumes_but_a_broken_spec_does_not(crashed):
+    """The operator's internet went down mid-sweep on 2026-08-24. The job died
+    with `transport failure: <urlopen error [Errno 8] nodename nor servname
+    provided>`, RECORDED it, and the supervisor read that as "this job ended" —
+    leaving 3,000 measured pairs while the network was already back.
+
+    Retrying a deterministic error is a crash loop wearing progress's clothes;
+    retrying a transient one is the reason a supervisor exists."""
+    f = dj.FILES["backtest"]
+
+    f["progress"].write_text(json.dumps({
+        "running": False, "finished": 1787000000, "transient": True,
+        "error": "transport failure: <urlopen error [Errno 8] nodename nor "
+                 "servname provided, or not known>"}))
+    assert dj.died_unfinished("backtest") is True
+    assert dj.resume_if_died("backtest")["resumed"] is True
+
+    # a deterministic failure is left alone, however many times it happens
+    crashed.clear()
+    dj.clear_retries("backtest")
+    f["progress"].write_text(json.dumps({
+        "running": False, "finished": 1787000000, "transient": False,
+        "error": "'report_name'"}))
+    assert dj.died_unfinished("backtest") is False
+    assert dj.resume_if_died("backtest")["resumed"] is False
+    assert not crashed
+
+
+def test_transient_is_decided_by_type_not_by_reading_the_message():
+    """The flag is written where the exception is caught. A supervisor that
+    pattern-matched an error string later would be reading a label instead of
+    the thing that produced it."""
+    import inspect
+
+    assert dj.is_transient(OSError("[Errno 8] nodename nor servname provided"))
+    assert dj.is_transient(TimeoutError("timed out"))
+    assert dj.is_transient(ConnectionError("connection reset by peer"))
+    # MEXC's own rate-limit wording, from the runner's log
+    assert dj.is_transient(Exception("510 Requests are too frequent"))
+    # and the deterministic ones stay deterministic
+    assert not dj.is_transient(KeyError("report_name"))
+    assert not dj.is_transient(ValueError("started without coins"))
+    assert not dj.is_transient(ZeroDivisionError("division by zero"))
+
+    src = inspect.getsource(dj.died_unfinished)
+    assert 'prog.get("transient")' in src, "it must read the flag"
+    for word in ("urlopen", "nodename", "timed out"):
+        assert word not in src, f"died_unfinished is matching on {word!r}"
+
+
+# ------------------------------------------------------- hand off to the cloud
+# The operator: "create a button 'switch to github actions', if i click that,
+# finish the current task then switch to github actions after its done".
+def test_a_handoff_is_not_a_stop(crashed):
+    """It must finish the pairs in flight and keep every measured one. A plain
+    STOP records "nothing was saved" and leaves the unmeasured coins to
+    nobody."""
+    import inspect
+
+    src = inspect.getsource(dj._run_backtest_inner)
+    assert 'handoff_requested("backtest")' in src, "the job must notice it"
+    i = src.index('handoff_requested("backtest")')
+    assert "_HandOff" in src[i:i + 200], "and raise the handoff, not a stop"
+
+    # the handler sits beside _LowDisk in the inner function, which is where
+    # grid_from_store is called from
+    assert "_HandOff" in src
+    assert '"handoff": True' in src, "the record must say handed off"
+    # and it must NOT reuse the stop wording, which claims nothing was saved
+    hand = src[src.index("except _HandOff"):src.index("except _LowDisk")]
+    assert "nothing was saved" not in hand
+    assert "kept" in hand
+
+
+def test_the_handoff_flag_round_trips():
+    assert dj.handoff_requested("backtest") is False
+    dj.request_handoff("backtest")
+    assert dj.handoff_requested("backtest") is True
+    dj.clear_handoff("backtest")
+    assert dj.handoff_requested("backtest") is False
+
+
+def test_the_cloud_only_gets_coins_the_mac_never_reached(monkeypatch, tmp_path):
+    """merge_into_store REPLACES the pairs it covers, so re-measuring a
+    finished pair in the cloud would land rows behind the Mac's own watermark —
+    and the next local update would extend a measurement it never made."""
+    from tradingagents import cloud_sweep as cs, market_sweep as msw
+
+    marks = {("DONE", "1h"): 1787450400000, ("DONE", "4h"): 1787450400000,
+             ("HALF", "1h"): 1787450400000, ("HALF", "4h"): 0}
+    monkeypatch.setattr(msw, "pair_watermark",
+                        lambda coin, tf: marks.get((coin, tf), 0))
+
+    left = cs.unmeasured(["DONE_USDT", "HALF_USDT", "NEW_USDT"], ["1h", "4h"])
+    assert left == ["HALF_USDT", "NEW_USDT"], left
+
+    # and the merge refuses a pair that is already measured
+    saved = []
+    monkeypatch.setattr(msw, "save_pair_rows",
+                        lambda c, tf, rs: saved.append((c, tf)))
+    got = cs.merge_into_store([
+        {"coin": "DONE", "tf": "1h", "profit": 1.0},
+        {"coin": "NEW", "tf": "1h", "profit": 2.0}])
+    assert saved == [("NEW", "1h")], saved
+    assert got["pairs"] == 1 and got["skipped"] == 1
+    assert "DONE 1h" in got["skipped_pairs"]
+    assert "watermark" in got["why_skipped"]
+
+
+def test_the_handoff_waits_for_the_local_job_to_stand_down(monkeypatch):
+    """Dispatching while it was still finishing would have both measuring the
+    same pairs."""
+    from tradingagents import api, cloud_sweep as cs
+
+    dj.FILES["backtest"]["spec"].write_text(json.dumps(
+        {"coins": ["A_USDT", "B_USDT"], "tfs": ["1h"]}))
+    dj.request_handoff("backtest")
+    sent = []
+    monkeypatch.setattr(cs, "dispatch",
+                        lambda **kw: sent.append(kw) or {"id": 1})
+    monkeypatch.setattr(cs, "remember", lambda run: None)
+    monkeypatch.setattr(cs, "unmeasured", lambda coins, tfs: list(coins))
+
+    monkeypatch.setattr(dj, "status", lambda kind: {"running": True})
+    api._finish_handoff()
+    assert not sent, "it dispatched while the local job was still running"
+    assert dj.handoff_requested("backtest"), "and it must stay requested"
+
+    monkeypatch.setattr(dj, "status", lambda kind: {"running": False})
+    api._finish_handoff()
+    assert sent and sent[0]["coins"] == 2
+    assert not dj.handoff_requested("backtest"), "served requests are cleared"
+
+
+def test_a_handoff_with_nothing_left_does_not_dispatch(monkeypatch):
+    from tradingagents import api, cloud_sweep as cs
+
+    dj.FILES["backtest"]["spec"].write_text(json.dumps(
+        {"coins": ["A_USDT"], "tfs": ["1h"]}))
+    dj.request_handoff("backtest")
+    sent = []
+    monkeypatch.setattr(cs, "dispatch", lambda **kw: sent.append(kw) or {"id": 1})
+    monkeypatch.setattr(cs, "unmeasured", lambda coins, tfs: [])
+    monkeypatch.setattr(dj, "status", lambda kind: {"running": False})
+    api._finish_handoff()
+    assert not sent, "there was nothing for the cloud to do"
+    assert not dj.handoff_requested("backtest")
+
+
+def test_a_handoff_the_job_cannot_serve_says_stuck(monkeypatch):
+    """It sat on "finishing the current pairs, then handing over" for 19
+    minutes on 2026-08-25. The job had started before the hand-off code
+    existed, so no code in that process could ever notice the flag — and the
+    badge reported patience instead of a problem."""
+    import time
+
+    from tradingagents import api
+    from tradingagents import cloud_sweep as cs
+
+    monkeypatch.setattr(cs, "available", lambda: (True, ""))
+    monkeypatch.setattr(dj, "status", lambda kind: {"running": True})
+    dj.request_handoff("backtest")
+
+    fresh = api.job_handoff_state("backtest")
+    assert fresh["requested"] is True and fresh["stalled"] is False
+
+    # age the request past the threshold
+    f = dj.FILES["backtest"]["handoff"]
+    old = time.time() - api.HANDOFF_STALL_SECONDS - 60
+    import os
+
+    os.utime(f, (old, old))
+    late = api.job_handoff_state("backtest")
+    assert late["stalled"] is True
+    assert "stood down" in late["stalled_why"]
+    assert "loses nothing" in late["stalled_why"], "it must say what to do"
+
+    # once the job stops, it is no longer stuck — it is waiting to dispatch
+    monkeypatch.setattr(dj, "status", lambda kind: {"running": False})
+    assert api.job_handoff_state("backtest")["stalled"] is False
+
+
+def test_a_handoff_with_no_github_says_so(monkeypatch):
+    """gh's keyring token had expired, so the dispatch had nowhere to go."""
+    from tradingagents import api
+    from tradingagents import cloud_sweep as cs
+
+    monkeypatch.setattr(cs, "available",
+                        lambda: (False, "gh is not logged in (token invalid)"))
+    monkeypatch.setattr(dj, "status", lambda kind: {"running": True})
+    got = api.job_handoff_state("backtest")
+    assert got["available"] is False
+    assert "not logged in" in got["why"]

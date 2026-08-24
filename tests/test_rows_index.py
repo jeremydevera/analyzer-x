@@ -482,9 +482,20 @@ def test_the_indexer_never_takes_a_lock_that_blocks_a_reader():
     src = open("tradingagents/rows_index.py", encoding="utf-8").read()
     code = "\n".join(ln for ln in src.splitlines()
                      if not ln.lstrip().startswith("#"))
-    for blocking in ("TRUNCATE", "RESTART", "BEGIN EXCLUSIVE", "locking_mode"):
+    for blocking in ("RESTART", "BEGIN EXCLUSIVE", "locking_mode"):
         assert blocking not in code, f"{blocking} blocks readers"
-    assert "wal_autocheckpoint" in code, "the WAL still has to stay bounded"
+    # TRUNCATE is allowed in exactly ONE place and only above a size cap.
+    # Running it every sync cycle convoyed with the grid's 4-second poll (reads
+    # went 0.04s -> 25s, the pair count froze at 26). Never running it let the
+    # WAL reach 27.4 GB and take the disk to 3.5 GB free. Both are real; the
+    # cap is what separates them.
+    assert code.count("wal_checkpoint(TRUNCATE)") == 1, \
+        "TRUNCATE belongs in checkpoint_if_bloated and nowhere else"
+    fn = code[code.index("def checkpoint_if_bloated"):]
+    assert "wal_checkpoint(TRUNCATE)" in fn[:fn.index("def main")], \
+        "the one TRUNCATE must be the size-gated one"
+    assert "if before < cap" in fn, "it must be gated on the WAL's size"
+    assert "wal_autocheckpoint" in code, "the passive checkpoint stays too"
 
 
 def test_a_bulk_fill_drops_and_rebuilds_its_indexes_exactly_once(store,
@@ -651,3 +662,83 @@ def test_an_unindexed_state_is_unknown_not_interrupted(store, monkeypatch):
     got = next(r for r in out["rows"] if (r["coin"], r["tf"]) == ("BTC", "1h"))
     assert got["incomplete"] is False, "unknown state claimed 'interrupted'"
     assert got["combos"] is None, "unknown count printed as zero"
+
+
+def test_a_pair_that_finished_is_reindexed_even_if_its_rows_did_not_change(
+        store, monkeypatch, tmp_path):
+    """A pair FINISHING writes its watermark to the state file, not the row
+    file. Watching only the row file left 392 completed pairs marked
+    "interrupted part-way" on the storage screen, and it is the same field the
+    completion percentage reads."""
+    import time
+
+    rows_dir, _ = store
+    states = tmp_path / "state"
+    states.mkdir()
+    monkeypatch.setattr(msw, "STATES", states)
+    (states / "BTC-1h.json").write_text(json.dumps({"__last_ms__": 0}))
+    ri.sync()
+    assert next(r for r in ri.pair_storage()
+                if (r["coin"], r["tf"]) == ("BTC", "1h"))["last_ms"] == 0
+
+    # the pair finishes: only the STATE file changes
+    (states / "BTC-1h.json").write_text(json.dumps({"__last_ms__": 1787450400000}))
+    assert ri.stale_watermark("BTC-1h") is True
+    later = time.time() + ri.SETTLE_S + 1
+    assert any(p.stem == "BTC-1h" for p in ri.stale_pairs(now=later)), \
+        "the finished pair was not queued for re-indexing"
+    ri.sync(now=later)
+    got = next(r for r in ri.pair_storage()
+               if (r["coin"], r["tf"]) == ("BTC", "1h"))
+    assert got["last_ms"] == 1787450400000, "still showing the stale watermark"
+
+
+def test_the_watermark_is_read_from_the_tail_not_the_whole_file():
+    """State files reach 8.6 MB and there are thousands. Parsing them all to
+    answer "how complete is the sweep?" timed out at five minutes."""
+    import inspect
+
+    src = inspect.getsource(msw.pair_watermark)
+    assert "seek(" in src and "256" in src, "it must tail-read"
+    assert "__last_ms__" in src
+    # and it must still be correct when the tail does not match
+    assert "json.loads" in src, "no fallback for an unexpected layout"
+
+
+def test_the_write_ahead_log_cannot_grow_without_bound(store, monkeypatch):
+    """SQLite's automatic checkpoint is PASSIVE: it cannot reclaim while any
+    reader holds a snapshot. One abandoned query pinned it on 2026-08-24 and
+    the WAL reached 27.4 GB beside a 13.8 GB database, taking the volume to
+    3.5 GB free — the same wall that had already killed the sweep and the
+    trading runner."""
+    ri.sync()
+    # the file itself is capped, so a checkpoint truncates rather than leaving
+    # the high-water mark in place
+    # through ri._connect, because journal_size_limit is a property of the
+    # CONNECTION — a raw sqlite3.connect() would always report the default and
+    # prove nothing about the connections this module actually uses
+    con = ri._connect()
+    limit = con.execute("PRAGMA journal_size_limit").fetchone()[0]
+    mode = con.execute("PRAGMA journal_mode").fetchone()[0]
+    con.close()
+    assert mode.lower() == "wal"
+    assert 0 < limit <= 1_073_741_824, f"journal_size_limit is {limit}"
+
+    # and a bloated log is folded back in, while a small one is left alone
+    assert ri.checkpoint_if_bloated()["checkpointed"] is False
+    got = ri.checkpoint_if_bloated(cap=0)
+    assert got["checkpointed"] is True
+
+    # the indexer loop must actually call it, or the cap never fires
+    import inspect
+
+    src = inspect.getsource(ri.start_keeping_up)
+    assert "checkpoint_if_bloated()" in src
+
+
+def test_a_long_reader_is_what_pins_the_log(store):
+    """Documents the mechanism, so the next person does not delete the cap."""
+    import inspect
+
+    doc = inspect.getdoc(ri.checkpoint_if_bloated) or ""
+    assert "reader" in doc.lower() and "27.4" in doc

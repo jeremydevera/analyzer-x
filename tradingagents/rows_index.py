@@ -165,6 +165,11 @@ def _connect(readonly: bool = False) -> sqlite3.Connection:
         # journal_mode is PERSISTENT -- setting it per connection needs a brief
         # exclusive lock, which any live reader blocks. Set once, in ensure().
         con.execute("PRAGMA synchronous=OFF")
+    # journal_size_limit is NOT persistent: it is a property of the CONNECTION,
+    # so setting it once in ensure() bound it to a connection that was then
+    # closed. Without it SQLite keeps whatever high-water mark the WAL ever
+    # reached — 27.4 GB on 2026-08-24, beside a 13.8 GB database.
+    con.execute("PRAGMA journal_size_limit=536870912")       # 512 MB
     return con
 
 
@@ -325,6 +330,28 @@ def index_pair(path: Path, con: sqlite3.Connection | None = None) -> int:
 SETTLE_S = 60.0
 
 
+def stale_watermark(pair: str) -> bool:
+    """Has this pair FINISHED since it was indexed, without its row file
+    changing? The completion mark lives in the state file, not the row file."""
+    coin, _, tf = pair.rpartition("-")
+    if not coin:
+        return False
+    try:
+        live = msw.pair_watermark(coin, tf)
+    except Exception:
+        return False
+    if not live:
+        return False
+    def _known():
+        with _open(readonly=True) as con:
+            r = con.execute("SELECT last_ms FROM pairs WHERE pair = ?",
+                            (pair,)).fetchone()
+            return None if r is None else (r[0] or 0)
+
+    was = _missing_ok(_known, None)
+    return was is not None and int(was) != int(live)
+
+
 def _missing_ok(fn, default):
     """Readers never create anything: DDL on a read path put the indexer and
     every poll in a queue behind each other. If the schema is not there yet,
@@ -362,7 +389,13 @@ def stale_pairs(now: float | None = None) -> list:
             st = f.stat()
         except OSError:
             continue
-        if known.get(f.stem) == (st.st_mtime, st.st_size):
+        # The ROW file being unchanged is not enough: a pair FINISHING writes
+        # its watermark to the STATE file, and the storage screen reads
+        # last_ms from here. 392 finished pairs were still reported
+        # "interrupted part-way" on 2026-08-23 because only the row file was
+        # watched. A tail read settles it in under a millisecond.
+        if (known.get(f.stem) == (st.st_mtime, st.st_size)
+                and not stale_watermark(f.stem)):
             continue
         if f.stem not in known:
             new.append(f)
@@ -644,6 +677,7 @@ def start_keeping_up(every_s: float = 10.0, budget_s: float = 60.0) -> bool:
                                    max_pairs=TRICKLE_PAIRS if busy else 0)
                     finally:
                         _syncing.clear()
+                    checkpoint_if_bloated()
                     print(f"[rows-index] +{got['pairs']} pairs "
                           f"({got['rows']:,} rows) in {got['seconds']}s, "
                           f"{got['left']} left"
@@ -662,6 +696,40 @@ def start_keeping_up(every_s: float = 10.0, budget_s: float = 60.0) -> bool:
 
 def stop_keeping_up() -> None:
     _loop_stop.set()
+
+
+WAL_CAP_BYTES = 2_000_000_000        # 2 GB before a blocking truncate is worth it
+
+
+def wal_bytes() -> int:
+    try:
+        return (DB_PATH.parent / (DB_PATH.name + "-wal")).stat().st_size
+    except OSError:
+        return 0
+
+
+def checkpoint_if_bloated(cap: int = WAL_CAP_BYTES) -> dict:
+    """Fold an oversized write-ahead log back into the database.
+
+    Only when it is genuinely large, because TRUNCATE takes an exclusive lock
+    and running it every cycle convoyed with the UI's polling. Left alone it is
+    unbounded: a single abandoned reader pinned it on 2026-08-24 and it grew to
+    27.4 GB beside a 13.8 GB database, taking the volume to 3.5 GB free — the
+    same wall that had already killed the sweep and the trading runner.
+    """
+    before = wal_bytes()
+    if before < cap:
+        return {"checkpointed": False, "wal": before}
+    try:
+        with _open() as con:
+            con.execute("PRAGMA busy_timeout=60000")
+            r = con.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()
+    except sqlite3.Error as exc:
+        return {"checkpointed": False, "wal": before, "error": str(exc)[:80]}
+    after = wal_bytes()
+    print(f"[rows-index] WAL {before/1e9:.1f} GB -> {after/1e9:.1f} GB "
+          f"(busy={r[0] if r else '?'})", flush=True)
+    return {"checkpointed": True, "wal": after, "was": before}
 
 
 def main() -> int:

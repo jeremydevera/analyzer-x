@@ -32,7 +32,8 @@ FILES = {
     "backtest": {"progress": STATE_DIR / "db_backtest.json",
                  "spec": STATE_DIR / "db_backtest.spec.json",
                  "pid": STATE_DIR / "db_backtest.pid",
-                 "stop": STATE_DIR / "db_backtest.STOP"},
+                 "stop": STATE_DIR / "db_backtest.STOP",
+                 "handoff": STATE_DIR / "db_backtest.HANDOFF"},
     # one deployed strategy, replayed over a year — the Auto Trade "1 YEAR"
     # button. Detached because the grid takes minutes and a request must not
     # hold it open.
@@ -122,15 +123,23 @@ def _set_retries(kind: str, n: int) -> None:
 
 
 def died_unfinished(kind: str) -> bool:
-    """Was this job running, with a real spec, when its process vanished?
+    """Was this job cut off mid-flight, one way or another?
 
-    `status()` already reports a dead pid as not-running. The distinction that
-    matters here is between a job that FINISHED (it wrote a terminal record
-    with `finished`) and one that was cut off mid-flight.
+    TWO ways count. A process that VANISHED leaves `running: true` with a dead
+    pid. A process that hit a TRANSIENT failure — the network dropping — exits
+    cleanly and records it; that used to read as "this job ended" and the
+    supervisor walked away from 3,000 measured pairs while the connection was
+    already back.
+
+    A job that finished, was stopped by the operator, or failed on something
+    deterministic is never resumed: retrying a broken spec forever looks like
+    progress and is not.
     """
     prog = _read(FILES[kind]["progress"])
+    if prog.get("error") and prog.get("transient"):
+        return True                      # the network, not the config
     if not prog.get("running"):
-        return False                     # finished, stopped, or never started
+        return False                     # finished, stopped, or hard-failed
     try:
         pid = int(FILES[kind]["pid"].read_text().strip())
     except Exception:
@@ -177,6 +186,19 @@ def resume_if_died(kind: str) -> dict:
 def clear_retries(kind: str) -> None:
     """A run the operator starts by hand is a fresh budget of retries."""
     _set_retries(kind, 0)
+
+
+def request_handoff(kind: str) -> None:
+    """Ask a running job to finish its current pairs and hand over."""
+    FILES[kind]["handoff"].touch()
+
+
+def handoff_requested(kind: str) -> bool:
+    return FILES[kind]["handoff"].exists()
+
+
+def clear_handoff(kind: str) -> None:
+    FILES[kind]["handoff"].unlink(missing_ok=True)
 
 
 def request_stop(kind: str) -> None:
@@ -272,6 +294,16 @@ def _run_download(spec: dict) -> None:
                  f"{len(pairs)} pair(s)")})
 
 
+class _HandOff(Exception):
+    """The operator asked to move this sweep to GitHub Actions.
+
+    NOT a stop. "finish the current task then switch" — so the pairs already
+    in flight run to completion and checkpoint, and only then does the job
+    stand down. Every measured pair stays on disk; the cloud picks up the ones
+    the Mac never reached.
+    """
+
+
 class _LowDisk(Exception):
     """Not enough disk left to keep going safely."""
 
@@ -339,6 +371,36 @@ def persist_results(payload: dict, *, days: int, label: str,
     return len(payload["rows"])
 
 
+# A dropped connection is not a broken config.
+#
+# On 2026-08-24 the operator's internet went down mid-sweep and the job died
+# with `transport failure: <urlopen error [Errno 8] nodename nor servname
+# provided>`. It recorded that failure, so `died_unfinished` saw a job that had
+# ENDED rather than one whose process vanished, and the supervisor left it dead
+# — 3,000 measured pairs sitting there while the network was already back.
+#
+# Retrying a DETERMINISTIC error is a crash loop that looks like progress;
+# retrying a TRANSIENT one is the whole point of having a supervisor. So the
+# distinction is decided where the exception is caught, by type, and written
+# down — never by pattern-matching the message later.
+_TRANSIENT_TYPES = (OSError, TimeoutError, ConnectionError)
+_TRANSIENT_MARKS = ("transport failure", "urlopen", "temporary failure",
+                    "nodename nor servname", "timed out", "connection reset",
+                    "connection refused", "rate limit", "too many requests",
+                    # MEXC's own wording, taken from the runner's log:
+                    # "code=510 msg='Requests are too frequent, please try
+                    # again later'". "rate limit" alone never matched it.
+                    "too frequent")
+
+
+def is_transient(exc: BaseException) -> bool:
+    """Would trying again, later, plausibly work?"""
+    if isinstance(exc, _TRANSIENT_TYPES):
+        return True
+    msg = str(exc).lower()
+    return any(m in msg for m in _TRANSIENT_MARKS)
+
+
 def _run_backtest(spec: dict) -> None:
     """Crash containment: whatever happens inside, the progress file ends in
     running:false with the error named. A job that died at 80% once left
@@ -358,6 +420,8 @@ def _run_backtest(spec: dict) -> None:
         _write(FILES["backtest"]["progress"], {
             "running": False, "finished": int(time.time()),
             "error": str(exc)[:200],
+            # the supervisor reads this flag; it never parses the message
+            "transient": is_transient(exc),
             "note": f"failed: {str(exc)[:160]}"})
         raise
 
@@ -408,6 +472,12 @@ def _run_backtest_inner(spec: dict) -> None:
              total: int | None = None) -> None:
         if _stopping("backtest"):
             raise _StopRequested()
+        # Raised from the per-PAIR callback on purpose: a pair has just
+        # finished and checkpointed, and ProcessPoolExecutor's context manager
+        # waits for the rest of the in-flight pairs on the way out. That is
+        # "finish the current task", exactly as asked.
+        if handoff_requested("backtest"):
+            raise _HandOff(msg)
         # STOP BEFORE the disk is gone. On 2026-08-22 the sweep ran the volume
         # to zero at 04:30:35 and the interpreter died printing the OSError --
         # no terminal record, no notification, and the checkpoint of the pair
@@ -449,6 +519,22 @@ def _run_backtest_inner(spec: dict) -> None:
             spec["coins"], spec["tfs"], base_margin=float(spec["base"]),
             days=int(spec["days"]), deployed=spec.get("deployed") or [],
             progress=prog, workers=n_workers, fresh=fresh)
+    except _HandOff as exc:
+        _write(f["progress"], {"running": False, "handoff": True,
+                               "finished": int(time.time()),
+                               "done": last["done"], "total": last["total"],
+                               "note": f"finished the pairs in flight at "
+                                       f"{exc} and handed over to GitHub "
+                                       f"Actions — every measured pair is kept"})
+        try:
+            from tradingagents import notifications as _nt
+
+            _nt.record("backtest", "Handed off to GitHub Actions", ok=True,
+                       detail=f"stopped locally at {last['done']} of "
+                              f"{last['total']} pairs; the cloud takes the rest")
+        except Exception:
+            pass
+        return
     except _LowDisk as exc:
         _write(f["progress"], {"running": False, "paused": True,
                                "finished": int(time.time()),

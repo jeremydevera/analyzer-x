@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 17, "total": 17, "rows": 72513, "note": "ZIG 15m: 27,960 bars, testing 75 rules", "pct": 100.0, "updated": "2026-08-24T18:27:52Z"}
+{"shard": 13, "stage": "testing", "done": 17, "total": 17, "rows": 73785, "note": "ZIG 15m: rule 64/75 (hammer)", "pct": 100.0, "updated": "2026-08-24T18:28:37Z"}

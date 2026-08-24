@@ -45,6 +45,19 @@ through a symlink to the sibling skill's `node_modules`; if it ever breaks,
 the screenshot, because checks 1 and 5 below are the only automatable part of
 "does this look right".
 
+### Proving a check works
+
+Before trusting a new check, REINTRODUCE the bug and confirm the gate fails.
+Done for the empty-dropdown case: reverting the prefix selector back to the
+exact testid produced
+
+```
+FAIL (1):
+  - overlay fill LIGHT on a dark app: ul[stSelectboxVirtualDropdownEmpty]
+```
+
+A check that has never failed on a known-bad input is not a check.
+
 ### What it caught on its first run
 - The rail's count badge carried live-vs-paper in hue alone.
 - `1000000BABYDOGE` breaking mid-word inside a multiselect tag.
@@ -132,6 +145,19 @@ await live.click();
 await p.waitForSelector('[data-baseweb="popover"],[data-baseweb="menu"]');
 // evaluate IMMEDIATELY — the click triggers a Streamlit rerun which closes it
 ```
+
+**Check the EMPTY state as well as the populated one.** They are different
+elements. `stSelectboxVirtualDropdown` is the list; **`…DropdownEmpty`** is the
+"No results" panel — a separate testid. Covering only the first left a
+paper-white 79px panel on a dark page while the populated list measured clean.
+Match by PREFIX (`[data-testid^="stSelectboxVirtualDropdown"]`) so the next
+variant cannot slip through, and drive one select to empty (click "Select all")
+before opening it.
+
+**Check overlay FILLS, not just overlay text.** The "No results" chip had white
+ink on its own dark ground and passed a text-contrast check while the panel
+behind it was white. The gate now walks every element in the portal and fails
+any light fill on a dark app (or dark on light), naming the element.
 
 Portaled surfaces to style unscoped, from `:root` tokens:
 `[data-baseweb="popover"]`, `[data-baseweb="menu"]`, `li[role="option"]`,

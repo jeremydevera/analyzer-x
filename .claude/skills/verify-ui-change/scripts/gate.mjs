@@ -165,6 +165,18 @@ for (let i = 0; i < nSel; i++) {
     // and the check reported "verified NOTHING" while the menu was fine.
     const live = p.locator('[data-baseweb="select"]').nth(i);
     await live.scrollIntoViewIfNeeded({timeout: 4000});
+    // Try "Select all" first so at least one pass sees the EMPTY state, which
+    // is a different element from the populated list and was broken while the
+    // populated one measured clean.
+    if (i === 0) {
+      await live.click({timeout: 5000}).catch(()=>{});
+      await p.waitForTimeout(500);
+      const sa = p.locator('li', {hasText: /^Select all$/}).first();
+      if (await sa.count()) { await sa.click({timeout: 3000}).catch(()=>{});
+                              await p.waitForTimeout(1200); }
+      await p.keyboard.press('Escape').catch(()=>{});
+      await p.waitForTimeout(400);
+    }
     await live.click({timeout: 5000});
     await p.waitForSelector('[data-baseweb="popover"],[data-baseweb="menu"]',
                             {timeout: 5000});
@@ -195,6 +207,24 @@ for (let i = 0; i < nSel; i++) {
           r = sr*sa + r*(1-sa); g = sg*sa + g*(1-sa); b = sb*sa + b*(1-sa); }
         return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`; };
       const out = [];
+      // EVERY element in the overlay, not just the text. The empty state
+      // ("No results") is its own element with its own fill —
+      // stSelectboxVirtualDropdownEmpty, a different testid from the populated
+      // list — so checking only text contrast passed a paper-white panel.
+      const appL = lum(bgOf(document.querySelector('.stApp')));
+      const dark = appL < 0.35;
+      const walkFills = (el, d) => {
+        const v = srgb(getComputedStyle(el).backgroundColor);
+        if (v[3] > 0.05) {
+          const l = lum(`rgb(${v[0]},${v[1]},${v[2]})`);
+          if (dark ? l > 0.55 : l < 0.12)
+            out.push(`overlay fill ${dark ? 'LIGHT on a dark app' : 'DARK on a light app'}`
+                     + `: ${el.tagName.toLowerCase()}`
+                     + `[${el.getAttribute('data-testid') || el.getAttribute('data-baseweb') || '?'}]`);
+        }
+        for (const k of el.children) if (d < 8) walkFills(k, d + 1);
+      };
+      walkFills(pop, 0);
       // the overlay must not be wearing a light theme on a dark app (or vice versa)
       const appBg = lum(bgOf(document.querySelector('.stApp')));
       const popBg = lum(bgOf(pop));

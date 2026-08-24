@@ -1,0 +1,10 @@
+import {chromium} from 'playwright';
+const b=await chromium.launch(); const p=await b.newPage({viewport:{width:1700,height:1300}});
+await p.goto('http://localhost:8503/trade',{waitUntil:'domcontentloaded',timeout:120000});
+await p.waitForTimeout(11000);
+const row = p.locator('tr').filter({hasText:'F2S7J87Z'}).first();
+await row.scrollIntoViewIfNeeded(); await p.waitForTimeout(500);
+const box = await row.boundingBox();
+console.log('open-positions row text:', (await row.innerText()).split('\n').slice(0,4).join(' | '));
+await p.screenshot({path:'pos.png', clip:{x:0, y:Math.max(0,box.y-110), width:1150, height:250}});
+await b.close();

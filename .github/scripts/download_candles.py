@@ -12,8 +12,10 @@ import sys
 
 sys.path.insert(0, os.getcwd())
 
-from tradingagents.dataflows import market_db as mdb          # noqa: E402
-from tradingagents.dataflows import mexc_futures as fx        # noqa: E402
+from tradingagents.dataflows import (
+    market_db as mdb,  # noqa: E402
+    mexc_futures as fx,  # noqa: E402
+)
 
 
 def main() -> int:

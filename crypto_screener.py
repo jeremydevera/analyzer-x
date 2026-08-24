@@ -610,12 +610,11 @@ def render_new_crypto_tab(*, model_options, default_model, custom_sentinel,
     with ann_col:
         # Only the exchange's own coming-soon list: which coins open, and when.
         _render_upcoming_panel(st)
-    with panel_col:
-        with st.container(border=True):
-            settings = render_run_panel(
-                st, model_options=model_options, default_model=default_model,
-                custom_sentinel=custom_sentinel, provider_for=provider_for,
-                mexc=mexc)
+    with panel_col, st.container(border=True):
+        settings = render_run_panel(
+            st, model_options=model_options, default_model=default_model,
+            custom_sentinel=custom_sentinel, provider_for=provider_for,
+            mexc=mexc)
 
     model = settings["model"]
     provider = provider_for(model)
@@ -703,7 +702,7 @@ def _render_screener(st, mexc, *, model, provider, trade_date, source, sound_nam
     to_run = None
     with st.container(border=True):
         header = st.columns(_WIDTHS)
-        for col, label in zip(header, _HEADINGS):
+        for col, label in zip(header, _HEADINGS, strict=False):
             col.markdown(f"<div class='ta-th'>{label}</div>", unsafe_allow_html=True)
 
         for coin in page_coins:

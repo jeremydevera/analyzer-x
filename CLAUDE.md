@@ -52,6 +52,99 @@ PRE-PUBLISH CHECK (mandatory): before publishing any artifact, verify items 1-8 
 one by one. A missing item = do not publish until fixed. User has escalated three times over missing
 columns/features; treat this checklist as blocking.
 
+## Commit and push EVERY change (MANDATORY — 2026-08-25)
+
+**Finish a change, commit it, push it. Do not ask.** The operator's words:
+*"just push right away, why did you asked this suddenly? take note somewhere to
+push always whatever the change"*.
+
+Work that only exists on this Mac is work that does not exist. On 2026-08-25 a
+whole session of fixes sat uncommitted while GitHub Actions ran a sweep from
+`main` — so the cloud executed the OLD shard, with the caps the session had
+just removed, and would have written capped data into the store. The operator
+saw "no changes" on GitHub and was right to.
+
+- push after each coherent unit of work, not at the end of a session
+- a commit message says WHAT changed and WHICH incident bought it, with the
+  real numbers — the messages in this repo are the incident record
+- never hold a change back to ask permission to push; if something genuinely
+  must not ship, say so in the same breath as pushing the rest
+- anything the CI runs from `main` (workflows, `.github/scripts/*`) is doubly
+  urgent: unpushed means the cloud is running different code from this machine
+
+DO NOT commit the operator's private notes (`.obsidian/`, `*.md` scratch files
+in the repo root) — those are theirs, not the project's.
+
+## Date format (MANDATORY — asked three times, 2026-08-21 and 2026-08-22)
+
+**Every date and time this project puts on a screen, in a log, in a report or
+in an API response reads exactly like this:**
+
+```
+Aug 03, 2026 8:03pm
+```
+
+Operator's words: *"i want format of Aug 03, 2026 8:03pm ... i will not repeat
+this again, i want this remembered so other session in claude will see this ...
+this applies to whole module"*.
+
+Every part of it was wrong at some point, so read it precisely:
+
+| part | rule | wrong |
+|---|---|---|
+| month | three letters, capitalised — `Aug` | `08`, `August` |
+| day | **two digits, zero padded** — `03` | `3` |
+| year | four digits, after a comma | omitted |
+| hour | 12-hour, **not** padded — `8`; midnight/noon are `12` | `08`, `20` |
+| minute | two digits — `03` | |
+| am/pm | **lowercase, no space** — `8:03pm` | `8:03 PM`, `8:03PM` |
+
+Compact stamps (`08-21 00:18`) are banned outright, and so is
+`toLocaleString()` (`8/22/2026, 8:03:00 PM`).
+
+**There are exactly two implementations and you must call one of them:**
+
+* Python — `tradingagents.positions_view.fmt_when(ts_seconds)`
+* TypeScript — `fmtWhen(seconds)` / `fmtWhenMs(ms)` in `webapp/src/lib/api.ts`
+
+Never write `strftime("%b %d, %Y ...")`, `time.strftime`, or `new Date(...)
+.toLocale*` anywhere else. Three hand-rolled copies had already drifted apart
+by 2026-08-22 — one in the runner's scan log (unpadded day, uppercase PM), one
+in each of two API routes with a `.replace(" 0", " ")` hack to undo a padded
+hour — plus seven `toLocaleString()` calls in the web app. Tests enforce this:
+`test_the_date_format_is_exactly_what_the_operator_asked_for`,
+`test_no_module_formats_a_timestamp_by_hand`,
+`test_the_browser_uses_one_date_format_everywhere` and
+`test_the_two_date_formatters_agree` (runs both implementations over the same
+instants, including midnight and noon).
+
+**LOG LINES COUNT.** The Runner feed shows raw log lines, so `%(asctime)s` is
+a date on the operator's screen. `logging.basicConfig`'s default prints
+`2026-08-22 19:27:03,488` — the banned stamp, on every row. Configure logging
+with `positions_view.WhenFormatter`, never a bare format string; `datefmt`
+cannot express the rule either, because strftime has no portable unpadded
+12-hour hour and its `%p` is uppercase. This was the FOURTH ask: the message
+content had been fixed while the line's own timestamp had not.
+
+A month LABEL (`Aug 2026`) is a different thing and keeps its own form, and
+PARSING someone else's format (`strptime` on an X/Twitter stamp) is fine — the
+rule is about what this project PRINTS.
+
+## Never put anything below an entry point (MANDATORY — 2026-08-22)
+
+`if __name__ == "__main__":` is the LAST thing in a module. Always.
+
+The runner starts with `python -m tradingagents.auto_trader run`, so the module
+body executes top to bottom and stops at that guard — **nothing defined below
+it exists**. A plain `import` runs the whole file, so the API and every test
+still see those names and everything looks healthy. `save_settings` and
+`timeframe_locks` sat below the guard and every LIVE cycle raised
+`name 'timeframe_locks' is not defined` from 13:34:23 for five hours, 1,176
+failures, four coins a cycle, while the paper book printed normal scan lines
+beside them. `market_sweep.py` had the same trap with six definitions.
+`test_nothing_is_defined_after_the_runner_entry_point` checks every module that
+has an entry point.
+
 ## Trading-cost rules (MANDATORY — bought with real money, see docs/INCIDENT-2026-08-12-BDX.md)
 
 9. **Every backtest charges all THREE costs: entry, exit and HOLDING.** A profit computed at

@@ -14,8 +14,8 @@ import time
 
 sys.path.insert(0, os.getcwd())
 
-from tradingagents import backtest_report as br               # noqa: E402
-from tradingagents.dataflows import market_db as mdb          # noqa: E402
+from tradingagents import backtest_report as br  # noqa: E402
+from tradingagents.dataflows import market_db as mdb  # noqa: E402
 
 
 def main() -> int:

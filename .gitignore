@@ -228,3 +228,7 @@ reports/
 .playwright-mcp/
 # Playwright verification screenshots live next to the scripts that make them.
 .claude/skills/verifying-ui-with-playwright/scripts/*.png
+
+# the operator private notes — theirs, not the project
+.obsidian/
+Obdisian Codebase.md

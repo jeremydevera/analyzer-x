@@ -17,18 +17,15 @@ from __future__ import annotations
 import datetime as _dt
 import hashlib as _hashlib
 import html
-import time
 import json
 import logging
 import os
 import re as _re
-import sys
+import time
 import traceback
 from pathlib import Path
 from typing import NamedTuple
 
-import re
-import subprocess
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -64,7 +61,10 @@ ANALYST_LABELS = {key: label for key, label, _ in ANALYST_STAGES}
 # OpenAI-compatible client pointed at https://ollama.com/v1.)
 # The catalog lives in app_models so the HTTP layer can read the same
 # built-in list this screen shows -- one source, no drift.
-from app_models import MODELS, _GOOGLE, _MAAS, _OLLAMA, _QWEN  # noqa: F401
+import contextlib
+
+from app_models import _GOOGLE, _MAAS, _OLLAMA, _QWEN, MODELS  # noqa: F401
+
 CUSTOM_MODEL = "Custom…"
 
 
@@ -1009,7 +1009,7 @@ def render_reports(container, state: dict) -> None:
                 if "Sentiment Analyst" in label and sources:
                     st.markdown("###### Source data the analyst read")
                     tabs = st.tabs([lab for _, lab, _ in sources])
-                    for tab, (_, _, body) in zip(tabs, sources):
+                    for tab, (_, _, body) in zip(tabs, sources, strict=False):
                         tab.code(body, language=None)
 
 
@@ -1029,6 +1029,7 @@ def ping_model(model: str) -> dict:
     """Fire a tiny live request at one model on its OWN provider/endpoint/key.
     Returns {status, ms, detail}."""
     import time
+
     from tradingagents.llm_clients.factory import create_llm_client
     s = _spec(model)
     env_key = os.environ.get(s["key_env"], "") if s["key_env"] else ""
@@ -1154,7 +1155,7 @@ def run_parallel_live(models, ticker, date, analysts, debate_rounds, risk_rounds
 
     keys = keys or {}
     providers = sorted({provider_for(m) for m in models})
-    distinct = len(set(keys.get(m, "") for m in models if keys.get(m)))
+    distinct = len({keys.get(m, "") for m in models if keys.get(m)})
     note = (" · " + "+".join(providers)) if providers else ""
     st.markdown(meta_bar(ticker, date, "+".join(providers) or "—",
                          f"{len(models)} models · parallel{note}", len(analysts)),
@@ -1200,13 +1201,13 @@ def run_parallel_live(models, ticker, date, analysts, debate_rounds, risk_rounds
     summary_ph = st.empty()
     tabs = st.tabs(list(models))
     cells: dict[str, dict] = {}
-    for tab, m in zip(tabs, models):
+    for tab, m in zip(tabs, models, strict=False):
         with tab:
             cells[m] = {"prog": st.empty(), "rep": st.empty(), "dec": st.empty()}
             render_progress(cells[m]["prog"], {}, analysts)
             render_reports(cells[m]["rep"], {})
 
-    last_sig = {m: -1 for m in models}
+    last_sig = dict.fromkeys(models, -1)
 
     def paint(final: bool = False):
         summary_ph.markdown(_parallel_summary_html(models, shared, analysts), unsafe_allow_html=True)
@@ -1532,8 +1533,7 @@ def render_nav() -> str:
     return page
 
 
-import threading as _threading
-import time as _time_mod
+
 
 def main() -> None:
     st.set_page_config(page_title="TradingAgents", page_icon="◈", layout="wide",
@@ -1855,7 +1855,7 @@ def _rewrite_bare_stamps(text: str) -> str:
     a December stamp read in January belongs to last year."""
     now = _dt.datetime.now()
 
-    def _sub(m: "_re.Match[str]") -> str:
+    def _sub(m: _re.Match[str]) -> str:
         mo, day, hh, mi = (int(m[1]), int(m[2]), int(m[3]), int(m[4]))
         try:
             year = now.year - (1 if mo > now.month else 0)
@@ -1914,8 +1914,8 @@ def _deploy_diff(old: dict, new: dict) -> list[dict]:
     from tradingagents import auto_trader as at
 
     out = []
-    keys = set(list((old.get("strategy_books") or {}))
-               + list((new.get("strategy_books") or {})))
+    keys = set(list(old.get("strategy_books") or {})
+               + list(new.get("strategy_books") or {}))
     for k in sorted(keys):
         ob = list((old.get("strategy_books") or {}).get(k) or [])
         nb = list((new.get("strategy_books") or {}).get(k) or [])
@@ -2087,8 +2087,7 @@ def _bt_report_build(key: str, label: str, coins: list[str],
     fetched fresh on every click: the operator re-runs this over time, so a
     cached year would silently answer last week's question.
     """
-    from tradingagents import auto_trader as at
-    from tradingagents import backtest_report as br
+    from tradingagents import auto_trader as at, backtest_report as br
 
     spec = at.STRATEGY_SPECS.get(key) or {}
     own = _BT_TF_NAME.get(spec.get("interval"), "1h")
@@ -2150,10 +2149,8 @@ def _bt_report_build(key: str, label: str, coins: list[str],
     old = sorted(BT_REPORT_DIR.glob("*.html"),
                  key=lambda p: p.stat().st_mtime, reverse=True)
     for stale in old[BT_REPORT_KEEP:]:
-        try:
+        with contextlib.suppress(OSError):
             stale.unlink()
-        except OSError:
-            pass
     return f"app/static/bt/{name}", name
 
 
@@ -2312,8 +2309,8 @@ def _render_strategy_backtest(key: str, label: str, coins: list[str],
     _dep = next((r for r in rows if r["LIVE"]), None)
     _best = max(rows, key=lambda r: r["PROFIT TOTAL $"])
     st.markdown(
-        f"<div class='tm-p' style='margin:6px 0 8px'>"
-        f"<div class='row'><span>DEPLOYED &middot; SL "
+        "<div class='tm-p' style='margin:6px 0 8px'>"
+        "<div class='row'><span>DEPLOYED &middot; SL "
         + (f"{_dep['SL %']:.2f}% / TP {_dep['TP %']:.2f}% &middot; "
            f"{_dep['sizing']}" if _dep else "not in this grid")
         + "</span><span class='"
@@ -3092,14 +3089,16 @@ def _an_curve(series: list, *, w: int = 640, h: int = 132) -> str:
     entirely below zero must LOOK like it does.
     """
     if len(series) < 2:
-        return (f"<div class='an-empty'>No closed trades yet — the curve needs "
-                f"at least two to have a shape.</div>")
+        return ("<div class='an-empty'>No closed trades yet — the curve needs "
+                "at least two to have a shape.</div>")
     ys = [v for _t, v in series]
     lo, hi = min(min(ys), 0.0), max(max(ys), 0.0)
     span = (hi - lo) or 1.0
     n = len(series) - 1
-    px = lambda i: i / n * w
-    py = lambda v: h - (v - lo) / span * h
+    def px(i):
+        return i / n * w
+    def py(v):
+        return h - (v - lo) / span * h
     pts = " ".join(f"{px(i):.1f},{py(v):.1f}" for i, (_t, v) in enumerate(series))
     zero = py(0.0)
     last = ys[-1]
@@ -4506,7 +4505,8 @@ def _tm_pos_detail(r: dict) -> str:
                 f"<b class='{cls}'>{v}</b></div>")
 
     _stop = r.get("bracket") or ""
-    _px = lambda v: f"{float(v):.6g}" if isinstance(v, (int, float)) else v
+    def _px(v):
+        return f"{float(v):.6g}" if isinstance(v, (int, float)) else v
     return ("<div class='pd'>"
             + _pair("strategy", r.get("strategy"))
             + _pair("entry", _px(r.get("entry")))
@@ -4565,7 +4565,7 @@ def _tm_table(cols: tuple, rows: list, total: dict | None = None,
                    for _k, lab, _w, a, _kd in cols)
     # Apex wraps every table in a bordered card with the corners clipped, so
     # the header's tint and the last row's edge both stop at the radius.
-    out = [f"<div class='tm-tbl'>",
+    out = ["<div class='tm-tbl'>",
            f"<div class='tm-pt tm-pt-h' style='{tmpl}'>{head}</div>"]
     if not rows:
         return ("".join(out) + f"<div style='font-size:11.5px;"
@@ -4587,8 +4587,7 @@ def _tm_table(cols: tuple, rows: list, total: dict | None = None,
 def render_auto_trade_tab() -> None:
     """The trading terminal: status ribbon, strategy grid, risk, book, feed."""
     from tradingagents import auto_trader as at
-    from tradingagents.dataflows import mexc_credentials as cred
-    from tradingagents.dataflows import mexc_futures as fx
+    from tradingagents.dataflows import mexc_credentials as cred, mexc_futures as fx
 
     cred.load_into_env()
     saved = _auto_trade_load()
@@ -4656,7 +4655,7 @@ def render_auto_trade_tab() -> None:
                 # block is long enough that the error is not obvious.
                 + "<div>"
                 + _tm_tile_head("Futures wallet", "$", "var(--t-amber)")
-                + f"<div class='n'>"
+                + "<div class='n'>"
                 + (f"{equity:,.2f}" if equity is not None else "—")
                 + "</div><div class='s'>USDT collateral</div></div>"
                 + "<div>"
@@ -4693,7 +4692,7 @@ def render_auto_trade_tab() -> None:
                 + "<div>"
                 + _tm_tile_head("Runner", "\u25cf", "oklch(70% .15 75)")
                 + f"<div class='n {mode_cls}'>{mode}</div>"
-                + f"<div class='s'>"
+                + "<div class='s'>"
                 + ("entries halted" if at.halted() else "scanning")
                 + "</div></div></div>", unsafe_allow_html=True)
 
@@ -4872,20 +4871,20 @@ def render_auto_trade_tab() -> None:
                 + _mv_hero(_eqty, _day, _open_real, _life, _eq,
                            armed=bool(at.runner_pid()) and not at.halted())
                 + "<div class='mv-strip'>"
-                + f"<div class='mv-cell'><em>{_mv_icon("wallet")}Free margin</em><b>"
+                + f"<div class='mv-cell'><em>{_mv_icon('wallet')}Free margin</em><b>"
                 + _ani_money(_free, key="tile.free")
                 + "</b><span>uncommitted</span></div>"
-                + f"<div class='mv-cell'><em>{_mv_icon("trend")}Open now</em>"
+                + f"<div class='mv-cell'><em>{_mv_icon('trend')}Open now</em>"
                 + f"<b class='{_mv_cls(_open_real)}'>"
                 + _ani_money(_open_real, key="tile.open", sign=True) + "</b>"
                 + "<span>"
                 + (" &middot; ".join(f"{c} {v:+.2f}" for c, v in _bits)
                    if _bits else "no position open") + "</span></div>"
-                + f"<div class='mv-cell'><em>{_mv_icon("clock")}Closed today</em>"
+                + f"<div class='mv-cell'><em>{_mv_icon('clock')}Closed today</em>"
                 + f"<b class='{_mv_cls(_day)}'>"
                 + _ani_money(_day, key="tile.day", sign=True) + "</b>"
                 + f"<span>{_today['trades']} trades</span></div>"
-                + f"<div class='mv-cell'><em>{_mv_icon("flask")}Paper book</em>"
+                + f"<div class='mv-cell'><em>{_mv_icon('flask')}Paper book</em>"
                 + f"<b class='{_mv_cls(_paper_total)}'>"
                 + _ani_money(_paper_total, key="tile.paper", sign=True)
                 + "</b><span>not real money</span></div>"
@@ -4914,10 +4913,8 @@ def render_auto_trade_tab() -> None:
             if _asked and _asked in _open_syms:
                 st.session_state["close_pending"] = _asked
             if _asked:
-                try:
+                with contextlib.suppress(Exception):
                     del st.query_params["close"]
-                except Exception:
-                    pass
 
             _pend = st.session_state.get("close_pending")
             if _pend:
@@ -5017,8 +5014,8 @@ def render_auto_trade_tab() -> None:
                 + f"<span><i style='background:"
                   f"{'var(--t-up)' if _last >= 0 else 'var(--t-dn)'}'></i>"
                   f"realised, cumulative</span>"
-                + f"<span><i style='background:var(--t-rule2)'></i>"
-                  f"break-even</span></div></div>"
+                + "<span><i style='background:var(--t-rule2)'></i>"
+                  "break-even</span></div></div>"
                 + "<div class='an-panel'><h4>Lifetime by strategy</h4>"
                 + "<div class='an-cap'>Ranked by size, not sign — the biggest "
                   "mover first whichever way it went.</div>"
@@ -5140,7 +5137,14 @@ def render_auto_trade_tab() -> None:
                 st.markdown(
                     _tm_head("Trade history", "every closed trade"),
                     unsafe_allow_html=True)
-                _hcols = (("when", "closed", 1.6, "l", "text"),
+                # ID and OPENED come FIRST: the operator asked for both on
+                # 2026-08-22, and they now live in the ledger itself
+                # (auto_trader.trade_code / backfill_ledger_ids), so a trade
+                # can be quoted by name and its start is on the row.
+                _hcols = (("id", "id", 1.4, "l", "text"),
+                          ("opened", "opened", 1.6, "l", "text"),
+                          ("when", "closed", 1.6, "l", "text"),
+                          ("held", "held", 1.0, "l", "text"),
                           ("coin", "coin", 1.1, "l", "text"),
                           ("side", "side", 0.9, "l", "text"),
                           ("strategy", "strategy", 1.9, "l", "text"),
@@ -5160,6 +5164,15 @@ def render_auto_trade_tab() -> None:
                             _p = round(float(_e.get("pnl_est") or 0), 2)
                             _run = round(_run + _p, 2)
                             _all.append({
+                                "id": _e.get("trade_id") or "—",
+                                # "—" is honest for the handful of old exits
+                                # whose entry row predates the ledger: their
+                                # opening time was never recorded, and a
+                                # guessed timestamp is worse than a dash.
+                                "opened": (_fmt_when(float(_e["opened_at"]))
+                                           if _e.get("opened_at") else "—"),
+                                "held": (_fmt_age(float(_e["held_s"]))
+                                         if _e.get("held_s") else "—"),
                                 "when": _fmt_when(float(_e.get("ts") or 0)),
                                 "coin": str(_e.get("symbol", "?")).replace("_USDT", ""),
                                 "side": (_e.get("side") or "—"),
@@ -5222,7 +5235,8 @@ def render_auto_trade_tab() -> None:
                         # The TOTAL is over EVERY trade, not the five on screen —
                         # a footer that summed the page would change as you paged.
                         _wins = sum(1 for r in _all if r["PROFIT $"] > 0)
-                        _tot = {"when": "TOTAL", "coin": "", "side": "",
+                        _tot = {"id": "TOTAL", "opened": "", "held": "",
+                                "when": "", "coin": "", "side": "",
                                 "strategy": f"{len(_all)} trades",
                                 "why": f"{_wins}W / {len(_all) - _wins}L",
                                 "PROFIT $": round(sum(r["PROFIT $"] for r in _all), 2),
@@ -5397,7 +5411,7 @@ def render_auto_trade_tab() -> None:
             saved_margins = saved.get("strategy_margins") or {}
             live_stats = at.strategy_stats(dry=False)
             paper_stats = at.strategy_stats(dry=True)
-            paused = at.tripped_strategies(saved)
+            at.tripped_strategies(saved)
             # ---- ONE table, built from real widgets rather than st.data_editor.
             # The editor is a canvas: it cannot colour a cell, and the operator
             # wants a green tick when a book is on and red/green money. So each
@@ -5470,8 +5484,8 @@ def render_auto_trade_tab() -> None:
             _locked = _timeframe_locks(
                 [(k, list(dc)) for k, _, _, dc in AUTO_STRATEGIES],
                 at.STRATEGY_SPECS, _row_live)
-            for key, _label_raw, note, default_coins in AUTO_STRATEGIES:
-                label = _strategy_label(key, _label_raw)
+            for key, _label_raw, _note, default_coins in AUTO_STRATEGIES:
+                _strategy_label(key, _label_raw)
                 _spec = at.STRATEGY_SPECS.get(key, {})
                 _bks = at.books_for(key, saved) if key in saved_strats else []
                 # The contract is part of the strategy, not a saved preference:
@@ -5617,7 +5631,7 @@ def render_auto_trade_tab() -> None:
                 c[12].markdown(
                     f"<div style='{_cell}' class='{_tm_cls(_pnl or 0)}'><b>"
                     + ("·" if _pnl is None else f"{_pnl:+,.2f}")
-                    + f"</b><span style='color:var(--t-faint)'> "
+                    + "</b><span style='color:var(--t-faint)'> "
                     + ("live" if _live else "demo" if _demo else "—")
                     + "</span></div>", unsafe_allow_html=True)
                 # Backtest THIS row, over the past year, on the contracts typed
@@ -5715,10 +5729,11 @@ def render_auto_trade_tab() -> None:
                 _paper_ks = [k for k, b in strategy_books.items() if "paper" in b]
                 enabled = bool(_real_ks)
                 dry_run = bool(_paper_ks)
-                _fmt = (lambda ks: ", ".join(
-                    sorted({c.replace("_USDT", "")
-                            for k in ks for c in (strategy_coins.get(k) or [])}))
-                    or "none")
+                def _fmt(ks):
+                    return (", ".join(
+                                    sorted({c.replace("_USDT", "")
+                                            for k in ks for c in (strategy_coins.get(k) or [])}))
+                                    or "none")
                 st.markdown(
                     f"<div style='font-size:10px;letter-spacing:.14em;"
                     f"text-transform:uppercase;color:var(--t-dim)'>Books in "
@@ -6070,8 +6085,9 @@ def render_market_data_section() -> None:
     """The permanent candle archive on Neon: download once, update the tail,
     and every backtest reads from it instead of re-paging MEXC."""
     import pandas as pd
-    from tradingagents.dataflows import market_db as mdb
+
     from tradingagents import auto_trader as at
+    from tradingagents.dataflows import market_db as mdb
 
     st.markdown('<div class="ta-section">Market data</div>', unsafe_allow_html=True)
     st.caption("DOWNLOAD and UPDATE fill ~/.tradingagents on this machine — "
@@ -6195,9 +6211,7 @@ def render_archive_backtest_section() -> None:
     """Backtest straight off the archive: pick coin, timeframe and window,
     run the SAME shared grid (`backtest_report`), get the standard report
     page. Candles come from the archive/disk cache, so nothing re-downloads."""
-    from tradingagents import auto_trader as at
-    from tradingagents import backtest_report as br
-    from tradingagents.dataflows import market_db as mdb
+    from tradingagents import auto_trader as at, backtest_report as br
 
     st.markdown('<div class="ta-section">Backtest — from the archive</div>',
                 unsafe_allow_html=True)
@@ -6388,8 +6402,7 @@ def render_stored_strategies_section() -> None:
     """
     import pandas as pd
 
-    from tradingagents import backtest_report as br
-    from tradingagents import market_sweep as msw
+    from tradingagents import backtest_report as br, market_sweep as msw
 
     st.markdown('<div class="ta-section">Stored strategies</div>',
                 unsafe_allow_html=True)
@@ -6500,8 +6513,7 @@ def render_history_section() -> None:
     """What was live, and what it did — both from THIS MACHINE."""
     import pandas as pd
 
-    from tradingagents import auto_trader as at
-    from tradingagents import local_history as lh
+    from tradingagents import auto_trader as at, local_history as lh
 
     st.markdown('<div class="ta-section">Deployment history</div>',
                 unsafe_allow_html=True)
@@ -6558,8 +6570,7 @@ def render_storage_panel() -> None:
     operator's instruction — so no database appears here."""
     import pandas as pd
 
-    from tradingagents import market_sweep as msw
-    from tradingagents import parquet_store as pqs
+    from tradingagents import market_sweep as msw, parquet_store as pqs
 
     st.markdown('<div class="ta-section">Storage</div>',
                 unsafe_allow_html=True)
@@ -6651,8 +6662,7 @@ def render_backtest2_tab() -> None:
     YOUR book, deeper (all four timeframes), in minutes — one walk per
     combination (`fast_grid`, parity-pinned) plus the disk candle cache.
     """
-    from tradingagents import auto_trader as at
-    from tradingagents import backtest_report as br
+    from tradingagents import auto_trader as at, backtest_report as br
 
     # The archive controls belong on BOTH backtest pages. This tab runs off the
     # candle cache, and the cache is what DOWNLOAD/UPDATE fill — but the section
@@ -6732,7 +6742,15 @@ def render_backtest2_tab() -> None:
         f"charged; liquidation modelled; every live strategy on these "
         f"coins/timeframes is marked DEPLOYED.")
 
-    if run:
+    # The run is DETACHED and its progress lives on disk, so a refresh, a tab
+    # switch or a closed laptop cannot lose it — 2026-08-21, the operator:
+    # "when i refresh the backtest page the loading are lost". It used to run
+    # inline with st.progress(), which meant a refresh killed the run itself.
+    from tradingagents import daily_grid as dg
+
+    if run and dg.is_running():
+        st.warning("A daily grid is already running — its progress is below.")
+    elif run:
         dep = _bt2_deployed(coins, tfs)
         _sig = "-".join([",".join(sorted(coins)), ",".join(sorted(tfs)),
                          f"{base:g}", str(int(days)), str(_nsig),
@@ -6742,31 +6760,28 @@ def render_backtest2_tab() -> None:
                                              digest_size=4).hexdigest()
                  + f"-{_stamp}.html")
         fresh = BT_REPORT_DIR / _name
+        _shown = [c.replace("_USDT", "") for c in dict.fromkeys(coins)]
         if fresh.exists() and fresh.stat().st_size > 10_000:
-            st.session_state["bt2_page"] = (f"app/static/bt/{_name}", _name)
             st.info("Same coins, timeframes and margin already ran today — "
                     "reusing that page. Change any input to force a re-run.")
+            dg._atomic(dg.STATE, {"phase": "done", "frac": 1.0, "done": True,
+                                  "error": "", "rows": 0,
+                                  "note": "reused today's page",
+                                  "page_url": f"app/static/bt/{_name}",
+                                  "out_path": str(fresh),
+                                  "coins": coins, "tfs": tfs,
+                                  "started": int(time.time())})
         else:
-            bar = st.progress(0.0, text="fetching candles…")
-            note = st.empty()
-            note.caption("Leave this tab alone while it runs; clicking "
-                         "anything restarts Streamlit's script.")
-            try:
-                payload = br.grid_from_store(
-                    coins, tfs, base_margin=float(base), days=int(days),
-                    deployed=dep,
-                    progress=lambda m, f: bar.progress(min(1.0, f), text=m))
-            finally:
-                bar.empty()
-                note.empty()
-            if not payload["rows"]:
-                st.error("No rows survived the trade floor — nothing to "
-                         "show. (Thin history or too-tight filters.)")
-                return
             BT_REPORT_DIR.mkdir(parents=True, exist_ok=True)
-            _shown = [c.replace("_USDT", "") for c in dict.fromkeys(coins)]
-            br.write_report(
-                str(BT_REPORT_DIR / _name), payload,
+            old = sorted(BT_REPORT_DIR.glob("*.html"),
+                         key=lambda p: p.stat().st_mtime, reverse=True)
+            for stale in old[BT_REPORT_KEEP:]:
+                with contextlib.suppress(OSError):
+                    stale.unlink()
+            dg.start(
+                coins=coins, tfs=tfs, base=float(base), days=int(days),
+                deployed=dep, out_path=str(BT_REPORT_DIR / _name),
+                page_url=f"app/static/bt/{_name}",
                 title="Daily grid · " + ", ".join(_shown),
                 note=(f"The operator's whole book on one page: "
                       f"{len(_shown)} coin(s) x {len(tfs)} timeframe(s), "
@@ -6775,25 +6790,56 @@ def render_backtest2_tab() -> None:
                       f"working RIGHT NOW: set Last N to 7 and the unit to "
                       f"days — every figure re-simulates over that window, "
                       f"and the year-long record stays in the same row so a "
-                      f"lucky week cannot masquerade as an edge."))
-            old = sorted(BT_REPORT_DIR.glob("*.html"),
-                         key=lambda p: p.stat().st_mtime, reverse=True)
-            for stale in old[BT_REPORT_KEEP:]:
-                try:
-                    stale.unlink()
-                except OSError:
-                    pass
-            st.session_state["bt2_page"] = (f"app/static/bt/{_name}", _name)
+                      f"lucky week cannot masquerade as an edge."),
+                repo_root=str(Path(__file__).parent))
+            st.success("Started in the background. It keeps running if you "
+                       "refresh this page, switch tabs or close the browser.")
 
-    page = st.session_state.get("bt2_page")
-    if page:
-        st.markdown(
-            f"<a class='bt-open' href='{page[0]}' target='_blank' "
-            f"rel='noopener'>OPEN THE DAILY GRID &#8599;</a>"
-            f"<span class='bt-open-note'>set LAST N = 7 days on the page "
-            f"&middot; survivors on a current streak float to the top "
-            f"&middot; {html.escape(page[1])}</span>",
-            unsafe_allow_html=True)
+    @st.fragment(run_every=3)
+    def _bt2_status() -> None:
+        s = dg.state()
+        if not s:
+            return
+        alive = dg.is_running()
+        _el = max(0, int(time.time()) - int(s.get("started") or 0))
+        _age = f"{_el // 60}m {_el % 60}s"
+        if not s.get("done") and alive:
+            st.progress(min(1.0, float(s.get("frac") or 0.0)),
+                        text=f"{s.get('note') or 'working…'} · {_age} elapsed")
+            st.caption("Running detached — refresh, leave, or come back "
+                       "later; this bar reads the run's own progress file.")
+            return
+        if not s.get("done") and not alive:
+            # The process died without writing a verdict. Say so rather than
+            # leaving a bar that will never move.
+            st.error(f"The run stopped without finishing (last: "
+                     f"{s.get('note') or 'unknown'}). See "
+                     f"~/.tradingagents/backtest/daily.log.")
+            return
+        if s.get("error"):
+            st.error(f"The run failed: {s['error']}")
+            return
+        if s.get("phase") == "empty":
+            st.warning("No rows survived the trade floor — nothing to show. "
+                       "(Thin history, or filters too tight.)")
+            return
+        _url = s.get("page_url") or ""
+        _rows = int(s.get("rows") or 0)
+        _fin = s.get("finished")
+        _when = (_dt.datetime.fromtimestamp(_fin).strftime("%H:%M")
+                 if _fin else "")
+        if _url:
+            st.markdown(
+                f"<a class='bt-open' href='{_url}' target='_blank' "
+                f"rel='noopener'>OPEN THE DAILY GRID &#8599;</a>"
+                f"<span class='bt-open-note'>"
+                + (f"{_rows:,} combinations" if _rows else "ready")
+                + (f" &middot; finished {_when}" if _when else "")
+                + " &middot; set LAST N = 7 days on the page to see what is "
+                  "working right now</span>",
+                unsafe_allow_html=True)
+
+    _bt2_status()
 
 
 def render_llm_models_tab() -> None:

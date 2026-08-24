@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 16, "total": 17, "rows": 69119, "note": "WAL 1h: rule 29/75 (hull20)", "pct": 94.1, "updated": "2026-08-24T18:26:58Z"}
+{"shard": 13, "stage": "testing", "done": 17, "total": 17, "rows": 72513, "note": "ZIG 15m: 27,960 bars, testing 75 rules", "pct": 100.0, "updated": "2026-08-24T18:27:52Z"}

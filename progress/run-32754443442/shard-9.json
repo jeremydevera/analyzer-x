@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 7, "total": 20, "rows": 24527, "note": "ILV 15m: 34,645 bars, testing 75 rules", "pct": 35.0, "updated": "2026-08-24T17:36:40Z"}
+{"shard": 9, "stage": "testing", "done": 7, "total": 20, "rows": 24549, "note": "ILV 15m: rule 17/75 (atrbreak)", "pct": 35.0, "updated": "2026-08-24T17:37:25Z"}

@@ -297,8 +297,7 @@ def test_a_handoff_the_job_cannot_serve_says_stuck(monkeypatch):
     badge reported patience instead of a problem."""
     import time
 
-    from tradingagents import api
-    from tradingagents import cloud_sweep as cs
+    from tradingagents import api, cloud_sweep as cs
 
     monkeypatch.setattr(cs, "available", lambda: (True, ""))
     monkeypatch.setattr(dj, "status", lambda kind: {"running": True})
@@ -325,8 +324,7 @@ def test_a_handoff_the_job_cannot_serve_says_stuck(monkeypatch):
 
 def test_a_handoff_with_no_github_says_so(monkeypatch):
     """gh's keyring token had expired, so the dispatch had nowhere to go."""
-    from tradingagents import api
-    from tradingagents import cloud_sweep as cs
+    from tradingagents import api, cloud_sweep as cs
 
     monkeypatch.setattr(cs, "available",
                         lambda: (False, "gh is not logged in (token invalid)"))

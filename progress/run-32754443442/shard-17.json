@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 20, "total": 27, "rows": 88445, "note": "RENDER 15m: rule 35/75 (willr14)", "pct": 74.1, "updated": "2026-08-24T18:41:15Z"}
+{"shard": 17, "stage": "testing", "done": 20, "total": 27, "rows": 88451, "note": "RENDER 30m: 19,999 bars, testing 75 rules", "pct": 74.1, "updated": "2026-08-24T18:42:07Z"}

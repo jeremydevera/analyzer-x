@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 5, "total": 28, "rows": 14435, "note": "COINBASE 30m: rule 64/75 (hammer)", "pct": 17.9, "updated": "2026-08-24T17:21:55Z"}
+{"shard": 14, "stage": "testing", "done": 6, "total": 28, "rows": 16482, "note": "DBR 15m: 34,644 bars, testing 75 rules", "pct": 21.4, "updated": "2026-08-24T17:22:51Z"}

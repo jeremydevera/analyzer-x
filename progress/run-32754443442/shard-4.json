@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 10, "total": 25, "rows": 41683, "note": "FHE 30m: 19,999 bars, testing 75 rules", "pct": 40.0, "updated": "2026-08-24T17:42:36Z"}
+{"shard": 4, "stage": "testing", "done": 10, "total": 25, "rows": 41698, "note": "FHE 30m: rule 33/75 (heikin)", "pct": 40.0, "updated": "2026-08-24T17:43:21Z"}

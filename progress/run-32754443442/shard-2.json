@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 11, "total": 24, "rows": 45681, "note": "JST 30m: 19,999 bars, testing 75 rules", "pct": 45.8, "updated": "2026-08-24T18:03:54Z"}
+{"shard": 2, "stage": "testing", "done": 11, "total": 24, "rows": 47585, "note": "JST 30m: rule 39/75 (fisher)", "pct": 45.8, "updated": "2026-08-24T18:04:40Z"}

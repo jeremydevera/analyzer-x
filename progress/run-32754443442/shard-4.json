@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "screening", "done": 0, "total": 51, "rows": 0, "note": "checking contract ages", "pct": 0.0, "updated": "2026-08-24T17:04:13Z"}
+{"shard": 4, "stage": "testing", "done": 1, "total": 25, "rows": 49, "note": "1000BTT 15m: rule 12/75 (donchian20)", "pct": 4.0, "updated": "2026-08-24T17:04:58Z"}

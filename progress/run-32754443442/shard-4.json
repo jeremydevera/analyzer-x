@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 19, "total": 25, "rows": 73888, "note": "PI 15m: rule 40/75 (crsi)", "pct": 76.0, "updated": "2026-08-24T18:18:52Z"}
+{"shard": 4, "stage": "testing", "done": 19, "total": 25, "rows": 74235, "note": "PI 30m: 19,999 bars, testing 75 rules", "pct": 76.0, "updated": "2026-08-24T18:19:38Z"}

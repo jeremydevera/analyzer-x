@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 14, "total": 20, "rows": 56035, "note": "POLYX 30m: 19,999 bars, testing 75 rules", "pct": 70.0, "updated": "2026-08-24T18:13:12Z"}
+{"shard": 11, "stage": "testing", "done": 14, "total": 20, "rows": 56463, "note": "POLYX 30m: rule 36/75 (stochrsi)", "pct": 70.0, "updated": "2026-08-24T18:13:57Z"}

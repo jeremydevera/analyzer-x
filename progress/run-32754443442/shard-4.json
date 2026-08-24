@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 15, "total": 25, "rows": 56961, "note": "LISTA 15m: 34,646 bars, testing 75 rules", "pct": 60.0, "updated": "2026-08-24T17:59:40Z"}
+{"shard": 4, "stage": "testing", "done": 15, "total": 25, "rows": 56993, "note": "LISTA 15m: rule 20/75 (stoch14)", "pct": 60.0, "updated": "2026-08-24T18:00:25Z"}

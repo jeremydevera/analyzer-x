@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 8, "total": 26, "rows": 35998, "note": "DOGS 15m: rule 45/75 (zscore20)", "pct": 30.8, "updated": "2026-08-24T17:49:07Z"}
+{"shard": 6, "stage": "testing", "done": 8, "total": 26, "rows": 36144, "note": "DOGS 30m: 19,999 bars, testing 75 rules", "pct": 30.8, "updated": "2026-08-24T17:50:00Z"}

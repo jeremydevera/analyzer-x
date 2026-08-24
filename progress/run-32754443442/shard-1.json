@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 4, "total": 27, "rows": 11844, "note": "ARK 30m: 19,999 bars, testing 75 rules", "pct": 14.8, "updated": "2026-08-24T17:19:42Z"}
+{"shard": 1, "stage": "testing", "done": 4, "total": 27, "rows": 12398, "note": "ARK 30m: rule 49/75 (vwaprev)", "pct": 14.8, "updated": "2026-08-24T17:20:28Z"}

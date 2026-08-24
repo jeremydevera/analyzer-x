@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 16, "total": 24, "rows": 70827, "note": "QTUM 30m: rule 4/75 (trend50)", "pct": 66.7, "updated": "2026-08-24T18:35:07Z"}
+{"shard": 19, "stage": "testing", "done": 16, "total": 24, "rows": 71386, "note": "QTUM 30m: rule 45/75 (zscore20)", "pct": 66.7, "updated": "2026-08-24T18:35:52Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 6, "total": 25, "rows": 24438, "note": "BTC 1h: 9,999 bars, testing 75 rules", "pct": 24.0, "updated": "2026-08-24T17:27:29Z"}
+{"shard": 4, "stage": "testing", "done": 6, "total": 25, "rows": 27174, "note": "BTC 4h: rule 20/75 (stoch14)", "pct": 24.0, "updated": "2026-08-24T17:28:14Z"}

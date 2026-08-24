@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 14, "total": 20, "rows": 60155, "note": "PNUT 15m: 34,647 bars, testing 75 rules", "pct": 70.0, "updated": "2026-08-24T18:12:24Z"}
+{"shard": 9, "stage": "testing", "done": 14, "total": 20, "rows": 60155, "note": "PNUT 15m: rule 16/75 (keltner)", "pct": 70.0, "updated": "2026-08-24T18:13:10Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 12, "total": 21, "rows": 44799, "note": "ICP 30m: rule 73/75 (volspike)", "pct": 57.1, "updated": "2026-08-24T18:11:21Z"}
+{"shard": 5, "stage": "testing", "done": 12, "total": 21, "rows": 45516, "note": "ICP 4h: 11,583 bars, testing 75 rules", "pct": 57.1, "updated": "2026-08-24T18:12:14Z"}

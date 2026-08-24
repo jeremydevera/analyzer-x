@@ -6,7 +6,6 @@ read and none is needed, which is why this can run on someone else's machine.
 The shard picks its slice of the eligible contracts by index, so N runners cover
 the market without talking to each other.
 """
-import itertools
 import json
 import os
 import sys
@@ -15,10 +14,12 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.dirname(
     os.path.dirname(os.path.abspath(__file__)))))
 
-from tradingagents.dataflows import mexc_futures as fx          # noqa: E402
-import tradingagents.auto_trader as at                          # noqa: E402
-from tradingagents import backtest_report as br                 # noqa: E402
-from tradingagents import fast_grid as fg                       # noqa: E402
+import tradingagents.auto_trader as at  # noqa: E402
+from tradingagents import (
+    backtest_report as br,  # noqa: E402
+    fast_grid as fg,  # noqa: E402
+)
+from tradingagents.dataflows import mexc_futures as fx  # noqa: E402
 
 SHARD = int(os.environ.get("SHARD", "0"))
 SHARDS = max(1, int(os.environ.get("SHARDS", "1")))
@@ -26,14 +27,13 @@ PER_SHARD = int(os.environ.get("COINS", "0"))
 TFS = [t.strip() for t in os.environ.get("TFS", "15m,30m").split(",") if t.strip()]
 MIN_DAYS = int(os.environ.get("MIN_DAYS", "365"))
 BASE_MARGIN = 5.0
-MIN_TRADES = 100
 GATE_BLOCK = 0.50
 
 OUT = os.path.join("out", f"rows-{SHARD}.jsonl")
 os.makedirs("out", exist_ok=True)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from progress import Reporter                                   # noqa: E402
+from progress import Reporter  # noqa: E402
 
 report = Reporter()
 
@@ -77,12 +77,9 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
         liq = fx.liquidation_move_pct(sym, at.LEVERAGE)
         fund = fx.funding_history(sym)
         book = fx.book_cost(sym, BASE_MARGIN * at.LEVERAGE)
-        # book_cost measures slippage against MID, so half the spread is
-        # ALREADY inside it — adding spread/2 again charged it twice and
-        # printed 0.376% on APEX where the measured cost was 0.130%
-        # (backtest_report.py documents the same incident). The inflated
-        # figure made rt/tp >= 50% skip combos that are actually viable.
-        rt = 2 * (fee + float(book.get("slippage") or 0))
+        # ONE definition, shared with the local sweep — see
+        # backtest_report.round_trip_cost for why spread/2 must not be added.
+        rt = br.round_trip_cost(fee, book)
         df = at._closed_bars(fx.klines(sym, iv, cap), bs)
     except Exception as exc:
         log(f"{sym} {tf}: {str(exc)[:60]}")
@@ -121,65 +118,83 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
            note=f"{coin} {tf}: {nbars:,} bars, testing {len(br.SIGNALS)} rules")
     for si, sig in enumerate(br.SIGNALS, 1):
         key = f"{sig}_gh_{tf}"
-        th = br.THRESHOLDS[tf][1] if sig in br.THRESH_SIGNALS else None
-        at.STRATEGY_SPECS[key] = {"interval": iv, "bar_seconds": bs, "tp": .02,
-                                  "sl": .01,
-                                  "threshold": .003 if th is None else th}
-        try:
-            dk = "rsi14_1h" if sig == "rsi14" else key
-            dirs = at._dirs_for_backtest(dk, hi, lo, cl, opens=op, volume=vol,
-                                         ts=ts)
-        except Exception:
-            at.STRATEGY_SPECS.pop(key, None)
-            continue
-        thp = 0.0 if th is None else round(th * 100, 3)
-        # One walk per combination (fast_grid): sizing never moves an exit
-        # and the halves derive from the full walk, so six engine runs
-        # collapse into two walks — parity-pinned in tests/test_fast_grid.py.
-        # ~3x more market per 6-hour runner.
-        dirs_idx = [k2 for k2, v2 in enumerate(dirs) if v2]
-        for (sl, tp) in br.pairs_for(tf):
-            if liq is not None and sl * 100 >= liq:
-                continue
-            if rt / tp >= GATE_BLOCK:
-                continue
+        # EVERY threshold, exactly as market_sweep.run_pair does with
+        # thresholds=3. Taking only the middle one made the cloud grid a third
+        # as wide as the Mac's for every momentum and fade rule, so a coin
+        # measured here and the same coin measured locally were not the same
+        # search — and the operator asked for a store they can trust.
+        ths = br.THRESHOLDS[tf] if sig in br.THRESH_SIGNALS else [None]
+        for th in ths:
+            at.STRATEGY_SPECS[key] = {"interval": iv, "bar_seconds": bs, "tp": .02,
+                                      "sl": .01,
+                                      "threshold": .003 if th is None else th}
             try:
-                six = fg.combo_six(
-                    dirs_idx, dirs, op, hi, lo, cl, tp=tp, sl=sl,
-                    liq=None if liq is None else abs(liq) / 100.0,
-                    half=half, base=BASE_MARGIN, lev=at.LEVERAGE,
-                    fee=fee + 0.0003, ladder=at.ladder_margin,
-                    mo_idx=mo_idx, mo_labels=mo_labels,
-                    f_ms=f_ms, f_cum=f_cum, bar_ms=ts)
+                dk = "rsi14_1h" if sig == "rsi14" else key
+                dirs = at._dirs_for_backtest(dk, hi, lo, cl, opens=op, volume=vol,
+                                             ts=ts)
             except Exception:
-                continue
-            for sz in ("flat", "martingale"):
-                r = six[sz]["full"]
-                if r["trades"] < MIN_TRADES or r["profit"] <= 0:
+                at.STRATEGY_SPECS.pop(key, None)
+                continue          # this threshold only, not the whole rule
+            thp = 0.0 if th is None else round(th * 100, 3)
+            # One walk per combination (fast_grid): sizing never moves an exit
+            # and the halves derive from the full walk, so six engine runs
+            # collapse into two walks — parity-pinned in tests/test_fast_grid.py.
+            # ~3x more market per 6-hour runner.
+            dirs_idx = [k2 for k2, v2 in enumerate(dirs) if v2]
+            for (sl, tp) in br.pairs_for(tf):
+                if liq is not None and sl * 100 >= liq:
                     continue
-                a = six[sz]["h1"]
-                b = six[sz]["h2"]
-                m = r["monthly"]
-                out.write(json.dumps({
-                    "coin": coin, "tf": tf, "signal": sig, "th": thp,
-                    "sl": round(sl * 100, 3), "tp": round(tp * 100, 3),
-                    "rr": round(tp / sl, 2), "sizing": sz, "lev": at.LEVERAGE,
-                    "base": BASE_MARGIN, "notional": BASE_MARGIN * at.LEVERAGE,
-                    "trades": r["trades"], "wins": r["wins"], "losses": r["losses"],
-                    "winrate": round(100 * r["wins"] / r["trades"], 2),
-                    "profit": round(r["profit"], 2),
-                    "funding": round(r["funding_total"], 2),
-                    "h1": round(a["profit"], 2), "h2": round(b["profit"], 2),
-                    "green": r["months_green"], "months": r["months_total"],
-                    "worst": round(r["worst_trade"], 2), "dd": round(r["max_dd"], 2),
-                    # honest when liquidation could not be read: unreachable
-                    # stops are only screened out when liq is known
-                    "liqs": r["liqs"], "stop_reachable": liq is not None,
-                    "days": days,
-                    "bars": nbars, "monthly": {k: round(v, 2) for k, v in m.items()},
-                    "cost_of_tp": round(rt / tp * 100, 1), "rt": round(rt * 100, 4),
-                    "gate": "warn" if rt / tp >= .2 else "ok"}) + "\n")
-                kept += 1
+                if rt / tp >= GATE_BLOCK:
+                    continue
+                try:
+                    six = fg.combo_six(
+                        dirs_idx, dirs, op, hi, lo, cl, tp=tp, sl=sl,
+                        liq=None if liq is None else abs(liq) / 100.0,
+                        half=half, base=BASE_MARGIN, lev=at.LEVERAGE,
+                        fee=fee + 0.0003, ladder=at.ladder_margin,
+                        mo_idx=mo_idx, mo_labels=mo_labels,
+                        f_ms=f_ms, f_cum=f_cum, bar_ms=ts)
+                except Exception:
+                    continue
+                for sz in ("flat", "martingale"):
+                    r = six[sz]["full"]
+                    # EVERY row, winners and losers alike. This used to drop
+                    # `profit <= 0 or trades < 100`, so a merged pair held only
+                    # its profitable slice: "how many combinations were tested"
+                    # became unanswerable, win/loss across the grid was
+                    # meaningless, and a "profitable only" filter was a no-op
+                    # because the losers were never written. The local sweep
+                    # writes them; the cloud has to as well or the two stores
+                    # are not the same measurement.
+                    if not r["trades"]:
+                        continue          # no trade at all is not a row
+                    a = six[sz]["h1"]
+                    b = six[sz]["h2"]
+                    m = r["monthly"]
+                    out.write(json.dumps({
+                        "coin": coin, "tf": tf, "signal": sig, "th": thp,
+                        "sl": round(sl * 100, 3), "tp": round(tp * 100, 3),
+                        "rr": round(tp / sl, 2), "sizing": sz, "lev": at.LEVERAGE,
+                        "base": BASE_MARGIN, "notional": BASE_MARGIN * at.LEVERAGE,
+                        "trades": r["trades"], "wins": r["wins"], "losses": r["losses"],
+                        "winrate": (round(100 * r["wins"] / r["trades"], 2)
+                                    if r["trades"] else 0.0),
+                        "profit": round(r["profit"], 2),
+                        "funding": round(r["funding_total"], 2),
+                        "h1": round(a["profit"], 2), "h2": round(b["profit"], 2),
+                        "green": r["months_green"], "months": r["months_total"],
+                        "worst": round(r["worst_trade"], 2), "dd": round(r["max_dd"], 2),
+                        # honest when liquidation could not be read: unreachable
+                        # stops are only screened out when liq is known
+                        "liqs": r["liqs"], "stop_reachable": liq is not None,
+                        "days": days,
+                        # the last bar this pair was measured through, so the
+                        # merge can record freshness instead of guessing
+                        "last_ms": (ts[-1] * 1000) if ts else 0,
+                        "bars": nbars, "monthly": {k: round(v, 2) for k, v in m.items()},
+                        "cost_of_tp": round(rt / tp * 100, 1), "rt": round(rt * 100, 4),
+                        "gate": "warn" if rt / tp >= .2 else "ok"}) + "\n")
+                    kept += 1
         at.STRATEGY_SPECS.pop(key, None)
         report("testing", i, n, rows=rows_so_far + kept,
                note=f"{coin} {tf}: rule {si}/{len(br.SIGNALS)} ({sig})")
@@ -208,10 +223,9 @@ def main():
     report("done", len(coins), len(coins), rows=total,
            note=f"{total:,} rows", force=True)
     log(f"done: {total:,} rows in {(time.time() - t0) / 60:.0f} min")
-    log("CAPS: momentum thresholds capped to the middle value (1 of 3); "
-        "rows with profit <= 0 or under "
-        f"{MIN_TRADES} trades are NOT written — this file holds the "
-        "profitable slice of the grid, not the whole grid.")
+    log("PARITY: every threshold and every row, winners and losers, exactly "
+        "as market_sweep.run_pair measures them — a cloud pair and a local "
+        "pair are the same measurement and can be compared row for row.")
 
 
 if __name__ == "__main__":

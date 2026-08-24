@@ -764,6 +764,30 @@ def write_report(path: str, payload: dict, *, title: str, headline: str = "",
     return path
 
 
+def round_trip_cost(fee: float, book: dict) -> float:
+    """What one full trade costs, in and out, as a FRACTION.
+
+    ONE definition, called by the local sweep and the GitHub shards alike.
+    They each had their own and the two disagreed, which meant a coin measured
+    on the Mac and the same coin measured in the cloud were scored against
+    different costs.
+
+    `mexc_futures.book_cost` returns slippage as the average fill price versus
+    MID, so half the spread is ALREADY inside that number. Adding `spread / 2`
+    on top charges the top of the book twice. Measured on live books
+    2026-08-25: APEX slippage 0.0689% against a spread of 0.1379% — exactly
+    half, as the definition implies — so the extra term made the round trip
+    0.3558% instead of 0.2179%, a factor of 1.63. PROVE ran 1.42x. BTC, whose
+    spread is a rounding error, was unaffected, which is why this survived.
+
+    It matters twice over: the figure is printed as COST/TP beside every
+    recommendation, and the liquidity gate SKIPS a combination whose cost
+    reaches half its target — so an inflated cost silently withheld
+    combinations that are in fact viable.
+    """
+    return 2.0 * (float(fee) + float(book.get("slippage") or 0.0))
+
+
 def _prog_takes_counts(progress) -> bool:
     """Does this progress callback want the real (done, total) as well as the
     fraction? A UI that prints a counter needs the counts: rescaling 16/3960 to
@@ -826,10 +850,30 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
     # Only the MEASURING is parallel. The folding below stays single-threaded
     # and unchanged, so the parallel and serial paths cannot drift.
     pairs = [(sym, tf) for sym in coins for tf in tfs]
+    # PAIRS ALREADY MEASURED COUNT TOWARD DONE.
+    #
+    # `done` used to start at zero every run, so it reported progress for THIS
+    # PROCESS rather than for the sweep. When the supervisor resumed a crashed
+    # job the bar restarted from 0: on 2026-08-23 it read "204 of 3960 (5.2%)"
+    # while 2,947 pairs -- 74.4% -- were measured and on disk, and the operator
+    # had watched it go BACKWARDS from an earlier run's 466.
+    #
+    # Seeded once at startup (113s over 3,960 pairs, one tail read per state
+    # file), never per tick. A from-scratch run starts at zero by definition.
+    _counts = _prog_takes_counts(progress) if progress else False
+    _seen: set = set() if fresh else msw.completed_pairs(pairs)
+    done = len(_seen)
+    if progress:
+        # publish the seeded figure at once, or the bar shows 0 until the
+        # first pair of THIS run finishes -- minutes on a big sweep
+        _m = f"resuming: {done} of {total} pairs already measured"
+        if _counts:
+            progress(_m, done / total, done, total)
+        else:
+            progress(_m, done / total)
     n_workers = workers if workers > 0 else max(1, (os.cpu_count() or 2) - 1)
     n_workers = max(1, min(n_workers, len(pairs)))
     measured: list = []
-    _counts = _prog_takes_counts(progress) if progress else False
 
     if n_workers > 1:
         import concurrent.futures as _cf
@@ -849,7 +893,9 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
                         for i, (sym, tf) in enumerate(pairs)}
                 for fut in _cf.as_completed(futs):
                     sym, tf = futs[fut]
-                    done += 1
+                    _seen.add((sym, tf))
+                    done = len(_seen)     # DISTINCT pairs, so one that was
+                                          # already measured is not counted twice
                     if progress:
                         _msg = (f"{sym.replace('_USDT', '')} {tf}: done "
                                 f"({done}/{total})")
@@ -883,7 +929,8 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
             measured.append((sym, tf, msw.run_pair(
                 sym, tf, base_margin=base_margin, days=days,
                 thresholds=thresholds, fresh=fresh)))
-            done += 1
+            _seen.add((sym, tf))
+            done = len(_seen)
 
     for sym, tf, r in measured:
         if True:

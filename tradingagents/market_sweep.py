@@ -28,6 +28,7 @@ import fcntl
 import itertools
 import json
 import os
+import re
 import time
 from collections.abc import Sequence
 from pathlib import Path
@@ -173,6 +174,44 @@ def save_states(coin: str, tf: str, states: dict) -> None:
         tmp = _state_file(coin, tf).with_suffix(".json.tmp")
         tmp.write_text(json.dumps(states, separators=(",", ":")))
         tmp.replace(_state_file(coin, tf))
+
+
+def pair_watermark(coin: str, tf: str) -> int:
+    """The last candle a pair was measured through, or 0 if it never finished.
+
+    Reads the TAIL of the state file, not the whole thing. `save_states` writes
+    `__last_ms__` last, so 256 bytes answers it; the alternative is parsing
+    25 GB of JSON, which is how a "how complete is the sweep?" check timed out
+    at five minutes on 2026-08-23. Falls back to a full parse if the tail does
+    not look the way it should, so a format change degrades to slow rather
+    than to wrong.
+    """
+    f = _state_file(coin, tf)
+    try:
+        size = f.stat().st_size
+        with f.open("rb") as fh:
+            fh.seek(max(0, size - 256))
+            tail = fh.read().decode("utf-8", "replace")
+    except OSError:
+        return 0
+    m = re.search(r'"__last_ms__":\s*(\d+)\s*}\s*$', tail)
+    if m:
+        return int(m.group(1))
+    if '"__last_ms__"' not in tail:      # not near the end: parse properly
+        try:
+            return int(json.loads(f.read_text()).get("__last_ms__") or 0)
+        except (OSError, ValueError):
+            return 0
+    return 0
+
+
+def completed_pairs(pairs) -> set:
+    """Which of these (symbol, tf) pairs have already been measured through."""
+    out = set()
+    for sym, tf in pairs:
+        if pair_watermark(sym.replace("_USDT", ""), tf) > 0:
+            out.add((sym, tf))
+    return out
 
 
 def combo_key(signal: str, th: float, sl: float, tp: float,
@@ -405,12 +444,17 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
         fee = at.taker_fee(symbol, fx=fx)
         liq = fx.liquidation_move_pct(symbol, at.LEVERAGE)
         book = fx.book_cost(symbol, base_margin * at.LEVERAGE)
-        rt = 2 * (fee + float(book.get("spread") or 0) / 2
-                  + float(book.get("slippage") or 0))
+        rt = br.round_trip_cost(fee, book)
     except Exception as exc:
         return {"coin": coin, "tf": tf, "rows": [], "added": added,
                 "source": source, "why": f"venue: {str(exc)[:60]}"}
     states = {} if fresh else load_states(coin, tf)
+    # A pair measured in the CLOUD carries a watermark but no per-combination
+    # state, so resuming from it would start every combination at that bar with
+    # no ladder rung or running total behind it — extending a measurement this
+    # machine never made. Recompute instead; the cloud rows stand until it does.
+    if states.get("__cloud__"):
+        states = {}
     last_ms = 0 if fresh else int(states.get("__last_ms__", 0))
     # A store built with an older signal library must not be served as if it
     # were current: 54-signal rows silently missing 21 rules is a wrong answer
@@ -764,8 +808,7 @@ def compute_combos(symbol: str, tf: str, combos: list, *,
         fund = []
     try:
         book = fx.book_cost(symbol, base_margin * at.LEVERAGE)
-        rt = 2 * (fee + float(book.get("spread") or 0) / 2
-                  + float(book.get("slippage") or 0))
+        rt = br.round_trip_cost(fee, book)
     except Exception:
         rt = None
     hi = [float(x) for x in df["High"]]

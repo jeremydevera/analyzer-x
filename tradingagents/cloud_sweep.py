@@ -224,6 +224,23 @@ def cancel(run_id: int, slug: str | None = None) -> None:
     _gh("run", "cancel", str(run_id), "--repo", slug or repo_slug())
 
 
+def unmeasured(coins, tfs) -> list:
+    """The coins the local sweep has NOT finished, for a hand-off.
+
+    Pointing the cloud at everything would have it re-measure pairs the Mac
+    already holds, and `merge_into_store` REPLACES what it covers — cloud rows
+    would land behind the Mac's own watermark, so the next local update would
+    add new bars on top of someone else's measurement.
+    """
+    from tradingagents import market_sweep as msw
+
+    left = []
+    for c in coins:
+        if any(msw.pair_watermark(c.replace("_USDT", ""), tf) == 0 for tf in tfs):
+            left.append(c)
+    return left
+
+
 def merge_into_store(rows: list) -> dict:
     """Fold cloud rows into the local Back Test store, per coin/timeframe.
 
@@ -235,7 +252,34 @@ def merge_into_store(rows: list) -> dict:
     by: dict[tuple[str, str], list] = {}
     for r in rows:
         by.setdefault((r["coin"], r["tf"]), []).append(r)
+    kept, skipped = 0, []
     for (coin, tf), rs in by.items():
+        # NEVER overwrite a pair the Mac finished. Its rows sit behind a
+        # watermark that says every bar up to X was tested for every
+        # combination; replacing the rows while leaving that watermark makes
+        # the next local update extend a measurement it did not make.
+        if msw.pair_watermark(coin, tf) > 0:
+            skipped.append(f"{coin} {tf}")
+            continue
         msw.save_pair_rows(coin, tf, rs)
-    return {"pairs": len(by), "rows": len(rows),
-            "coins": len({c for c, _ in by})}
+        # Record HOW CURRENT the measurement is, and that a machine other than
+        # this one made it.
+        #
+        # Without a watermark the pair reads as unmeasured: the progress
+        # counter undercounts it and the storage screen calls it interrupted.
+        # With a watermark but no per-combination state, a later UPDATE would
+        # resume every combination from that bar with no ladder or running
+        # totals behind it — extending a measurement it never made. The
+        # `__cloud__` mark is what stops that: run_pair treats it as a full
+        # recompute, so the rows are trusted and the resume point is not.
+        last_ms = max(int(r.get("last_ms") or 0) for r in rs)
+        if last_ms:
+            msw.save_states(coin, tf, {"__last_ms__": last_ms,
+                                       "__cloud__": True})
+        kept += 1
+    return {"pairs": kept, "rows": len(rows),
+            "coins": len({c for c, _ in by}),
+            "skipped": len(skipped), "skipped_pairs": skipped[:20],
+            "why_skipped": ("already measured locally — a cloud row would "
+                            "land behind the Mac's own watermark"
+                            if skipped else "")}

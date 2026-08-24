@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 19, "total": 20, "rows": 77507, "note": "SPX 30m: rule 40/75 (crsi)", "pct": 95.0, "updated": "2026-08-24T18:40:18Z"}
+{"shard": 9, "stage": "testing", "done": 19, "total": 20, "rows": 78194, "note": "SPX 1h: 9,999 bars, testing 75 rules", "pct": 95.0, "updated": "2026-08-24T18:41:09Z"}

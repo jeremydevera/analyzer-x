@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 23, "total": 24, "rows": 95942, "note": "TNSR 15m: rule 21/75 (cci20)", "pct": 95.8, "updated": "2026-08-24T19:09:43Z"}
+{"shard": 2, "stage": "testing", "done": 23, "total": 24, "rows": 96024, "note": "TNSR 15m: rule 45/75 (zscore20)", "pct": 95.8, "updated": "2026-08-24T19:10:29Z"}

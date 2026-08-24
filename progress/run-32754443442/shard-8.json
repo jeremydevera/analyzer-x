@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 11, "total": 23, "rows": 43985, "note": "FILECOIN 15m: 34,646 bars, testing 75 rules", "pct": 47.8, "updated": "2026-08-24T17:56:20Z"}
+{"shard": 8, "stage": "testing", "done": 11, "total": 23, "rows": 43985, "note": "FILECOIN 15m: rule 16/75 (keltner)", "pct": 47.8, "updated": "2026-08-24T17:57:06Z"}

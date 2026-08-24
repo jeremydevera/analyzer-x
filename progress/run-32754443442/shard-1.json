@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 19, "total": 27, "rows": 84854, "note": "PROM 30m: rule 63/75 (killzone)", "pct": 70.4, "updated": "2026-08-24T18:20:38Z"}
+{"shard": 1, "stage": "testing", "done": 19, "total": 27, "rows": 86771, "note": "PROM 4h: 5,901 bars, testing 75 rules", "pct": 70.4, "updated": "2026-08-24T18:21:29Z"}

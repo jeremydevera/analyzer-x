@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 10, "total": 25, "rows": 38802, "note": "FORM 15m: 34,645 bars, testing 75 rules", "pct": 40.0, "updated": "2026-08-24T17:40:53Z"}
+{"shard": 0, "stage": "testing", "done": 10, "total": 25, "rows": 38813, "note": "FORM 15m: rule 20/75 (stoch14)", "pct": 40.0, "updated": "2026-08-24T17:41:39Z"}

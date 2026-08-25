@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 21, "total": 51, "rows": 796536, "note": "HANA 1h: rule 49/75 (vwaprev)", "pct": 41.2, "updated": "2026-08-25T11:58:43Z"}
+{"shard": 8, "stage": "testing", "done": 22, "total": 51, "rows": 802636, "note": "HOT 15m: rule 1/75 (mom6)", "pct": 43.1, "updated": "2026-08-25T11:59:30Z"}

@@ -886,29 +886,61 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
                 # no slot= : `i % n_workers` labelled the TASK, not the
                 # worker, so a finished task's line sat on screen as an idle
                 # core. Each worker publishes under its own pid.
-                futs = {pool.submit(msw.run_pair, sym, tf, slot=None,
-                                    base_margin=base_margin, days=days,
-                                    thresholds=thresholds,
-                                    fresh=fresh): (sym, tf)
-                        for i, (sym, tf) in enumerate(pairs)}
-                for fut in _cf.as_completed(futs):
-                    sym, tf = futs[fut]
-                    _seen.add((sym, tf))
-                    done = len(_seen)     # DISTINCT pairs, so one that was
-                                          # already measured is not counted twice
-                    if progress:
-                        _msg = (f"{sym.replace('_USDT', '')} {tf}: done "
-                                f"({done}/{total})")
-                        if _counts:
-                            progress(_msg, done / total, done, total)
-                        else:
-                            progress(_msg, done / total)
-                    try:
-                        measured.append((sym, tf, fut.result()))
-                    except Exception as exc:   # one pair dying is not the run
-                        excluded.append({"coin": sym.replace("_USDT", ""),
-                                         "tf": tf,
-                                         "why": f"worker: {str(exc)[:60]}"})
+                def _submit(sym, tf):
+                    return pool.submit(msw.run_pair, sym, tf, slot=None,
+                                       base_margin=base_margin, days=days,
+                                       thresholds=thresholds, fresh=fresh)
+
+                def _say(msg):
+                    if not progress:
+                        return
+                    if _counts:
+                        progress(msg, done / total, done, total)
+                    else:
+                        progress(msg, done / total)
+
+                # A dict rather than as_completed(): a failed pair is put back
+                # into the SAME pool, so the work set grows while the run does.
+                futs = {_submit(sym, tf): (sym, tf) for sym, tf in pairs}
+                tries: dict = {}
+                while futs:
+                    ready, _ = _cf.wait(list(futs),
+                                        return_when=_cf.FIRST_COMPLETED)
+                    for fut in ready:
+                        sym, tf = futs.pop(fut)
+                        show = sym.replace("_USDT", "")
+                        try:
+                            res = fut.result()
+                        except Exception as exc:   # one pair dying is not the run
+                            # Operator, 2026-08-25: "if a coin fails, delete the
+                            # backtest then redo again the last failed job (not
+                            # the whole)". Delete FIRST -- a pair that raised
+                            # part-way has rows on disk and a state file whose
+                            # watermark is stale, and measuring on top of that
+                            # leaves one coin holding a mixture of two runs.
+                            n = tries.get((sym, tf), 0)
+                            if n < msw.PAIR_RETRIES:
+                                tries[(sym, tf)] = n + 1
+                                msw.discard_pair(show, tf)
+                                futs[_submit(sym, tf)] = (sym, tf)
+                                _say(f"{show} {tf}: failed "
+                                     f"({str(exc)[:40]}) · discarded, redoing "
+                                     f"{n + 1}/{msw.PAIR_RETRIES}")
+                                continue
+                            # out of retries: it is excluded, and only NOW does
+                            # it count as done
+                            excluded.append({"coin": show, "tf": tf,
+                                             "why": f"worker: {str(exc)[:60]}"})
+                            _seen.add((sym, tf))
+                            done = len(_seen)
+                            _say(f"{show} {tf}: gave up after "
+                                 f"{msw.PAIR_RETRIES} retries ({done}/{total})")
+                            continue
+                        _seen.add((sym, tf))
+                        done = len(_seen)     # DISTINCT pairs, so one that was
+                                              # already measured is not counted twice
+                        _say(f"{show} {tf}: done ({done}/{total})")
+                        measured.append((sym, tf, res))
         except Exception:
             # The pool itself could not start — spawn needs an importable
             # __main__, so a caller running from stdin or a REPL has none. Fall

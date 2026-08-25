@@ -159,3 +159,101 @@ def _serial(monkeypatch):
             return f
 
     monkeypatch.setattr(cf, "ProcessPoolExecutor", lambda **k: Inline())
+
+
+# ---------------------------------------------------------------- the LIVE path
+# run_market is what the Back Test tab spawns. The ORCHESTRATOR measures through
+# backtest_report.grid_from_store, and on 2026-08-25 that path had neither the
+# delete nor the retry: a failed worker was appended to `excluded` and the run
+# moved on, leaving the half-written pair on disk. The rule has to live on the
+# path that is actually running, so both are tested.
+def test_the_orchestrators_path_discards_and_redoes_the_failed_pair(monkeypatch):
+    from tradingagents import backtest_report as br, market_sweep as msw
+
+    calls, dropped = [], []
+
+    def flaky(sym, tf, **k):
+        calls.append((sym, tf))
+        if sym == "BAD_USDT" and calls.count(("BAD_USDT", "1h")) == 1:
+            raise RuntimeError("klines timed out")
+        return {"rows": [{"coin": sym}], "why": None, "new_bars": 0}
+
+    monkeypatch.setattr(msw, "run_pair", flaky)
+    monkeypatch.setattr(msw, "discard_pair",
+                        lambda c, tf: dropped.append((c, tf)) or {"deleted": []})
+    monkeypatch.setattr(msw, "completed_pairs", lambda p: set())
+    monkeypatch.setattr(msw, "pair_rows", lambda c, tf: [])
+    monkeypatch.setattr(msw, "PAIR_RETRIES", 2)
+    _inline_pool(monkeypatch)
+
+    out = br.grid_from_store(["GOOD_USDT", "BAD_USDT"], ["1h"], workers=4)
+
+    assert calls.count(("BAD_USDT", "1h")) == 2, "the failed pair is redone"
+    assert calls.count(("GOOD_USDT", "1h")) == 1, "a healthy coin is not"
+    assert dropped == [("BAD", "1h")], "and it is DELETED before the redo"
+    assert out.get("excluded") == [], "it recovered, so it is not excluded"
+
+
+def test_a_pair_being_retried_does_not_count_as_done_yet(monkeypatch):
+    """`done` drives the percentage. Counting a pair the moment it FAILED made
+    the bar reach 100% while the work was still queued.
+
+    Two pairs, not one: grid_from_store clamps workers to len(pairs), so a
+    single-pair run never enters the parallel branch at all -- which is how a
+    first draft of this test 'passed' against the serial fallback.
+    """
+    from tradingagents import backtest_report as br, market_sweep as msw
+
+    seen = []
+
+    def one_bad(sym, tf, **k):
+        if sym == "BAD_USDT":
+            raise RuntimeError("boom")
+        return {"rows": [{"coin": sym}], "why": None, "new_bars": 0}
+
+    monkeypatch.setattr(msw, "run_pair", one_bad)
+    monkeypatch.setattr(msw, "discard_pair", lambda c, tf: {"deleted": []})
+    monkeypatch.setattr(msw, "completed_pairs", lambda p: set())
+    monkeypatch.setattr(msw, "pair_rows", lambda c, tf: [])
+    monkeypatch.setattr(msw, "PAIR_RETRIES", 2)
+    _inline_pool(monkeypatch)
+
+    out = br.grid_from_store(["GOOD_USDT", "BAD_USDT"], ["1h"], workers=4,
+                             progress=lambda m, f, *a: seen.append((m, f)))
+
+    msgs = [m for m, _ in seen]
+    assert any("redoing 1/2" in m for m in msgs)
+    assert any("redoing 2/2" in m for m in msgs)
+    assert any("gave up after 2 retries" in m for m in msgs)
+
+    # the fraction never counts a pair that is about to be retried
+    for m, f in seen:
+        if "redoing" in m:
+            assert f < 1.0, "a pair being retried is not done"
+    assert seen[-1][1] == 1.0 and sum(f == 1.0 for _, f in seen) == 1
+
+    assert [e["coin"] for e in out["excluded"]] == ["BAD"], (
+        "out of retries means excluded, and named")
+
+
+def _inline_pool(monkeypatch):
+    """Run submitted work inline. A monkeypatched run_pair cannot cross a
+    process boundary, and the retry logic under test is in the parent."""
+    import concurrent.futures as cf
+
+    class Pool:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def submit(self, fn, *a, **k):
+            f = cf.Future()
+            try:
+                f.set_result(fn(*a, **k))
+            except Exception as exc:      # noqa: BLE001
+                f.set_exception(exc)
+            return f
+
+    monkeypatch.setattr(cf, "ProcessPoolExecutor", lambda **k: Pool())

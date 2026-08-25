@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 29, "total": 51, "rows": 1132900, "note": "MOCA 15m: 34,623 bars, testing 75 rules", "pct": 56.9, "updated": "2026-08-25T12:13:05Z"}
+{"shard": 14, "stage": "testing", "done": 29, "total": 51, "rows": 1135600, "note": "MOCA 15m: rule 9/75 (fib382)", "pct": 56.9, "updated": "2026-08-25T12:13:50Z"}

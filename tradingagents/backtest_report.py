@@ -957,11 +957,21 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
                                               # already measured is not counted twice
                         _say(f"{show} {tf}: done ({done}/{total})")
                         measured.append((sym, tf, res))
-        except Exception:
+        except _cf.process.BrokenProcessPool:
             # The pool itself could not start — spawn needs an importable
             # __main__, so a caller running from stdin or a REPL has none. Fall
             # back to measuring in-process rather than returning a ZERO-ROW
             # backtest, which is the failure mode that looks like success.
+            #
+            # ONLY that. This was `except Exception`, which also swallowed
+            # everything the progress callback raises on purpose —
+            # _StopRequested (the STOP button), _HandOff (switch to GitHub),
+            # _LowDisk — and, on 2026-08-25 on Windows, a PermissionError from
+            # the progress file. Each became "measured, done = [], 0" followed
+            # by the with-block's exit, which waits for EVERY pending pair: the
+            # job ran to the end with `done` frozen at 64 of 4,985 and no button
+            # could stop it. Anything else now propagates to the job runner,
+            # which names it.
             measured, done = [], 0
             n_workers = 1
         msw.worker_clear()

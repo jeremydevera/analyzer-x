@@ -60,17 +60,43 @@ REPORT_DIR = Path(__file__).resolve().parent.parent / "static" / "bt"
 
 
 def _write(path: Path, payload: dict) -> None:
+    """Atomic publish. Two threads write one progress file -- the per-pair
+    callback and the 2 s heartbeat -- and the API reads it every few seconds.
+    The tmp name is unique PER CALL: both threads used `db_backtest.tmp`, and
+    on Windows a file another handle has open can be neither replaced nor
+    removed, so on 2026-08-25 the collision raised PermissionError inside the
+    per-pair callback and the job's `done` froze at 64 of 4,985 while its
+    workers ran on for twenty minutes (6,419 errors in a 6 s reproduction).
+    The replace itself is retried briefly: a reader holding the destination
+    open is a few milliseconds of PermissionError on Windows, not a failure."""
+    import threading as _th
+
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".tmp")
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.{_th.get_ident()}.tmp")
     tmp.write_text(json.dumps(payload), encoding="utf-8")
-    tmp.replace(path)
+    for attempt in range(40):
+        try:
+            tmp.replace(path)
+            return
+        except PermissionError:
+            if attempt == 39:
+                with contextlib.suppress(OSError):
+                    tmp.unlink()
+                raise
+            time.sleep(0.005)
 
 
 def _read(path: Path) -> dict:
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
+    # a reader can land between a writer's unlink and rename on Windows: try
+    # again before answering {} -- {} reads as "the job died" on screen
+    for attempt in range(3):
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except PermissionError:
+            time.sleep(0.005)
+        except Exception:
+            return {}
+    return {}
 
 
 def _alive(pid: int) -> bool:

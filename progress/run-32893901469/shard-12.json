@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 19, "total": 51, "rows": 435660, "note": "GAS 30m: 4,319 bars, testing 75 rules", "pct": 37.3, "updated": "2026-08-25T20:28:04Z"}
+{"shard": 12, "stage": "testing", "done": 20, "total": 51, "rows": 461540, "note": "GOOGLSTOCK 15m: rule 40/75 (crsi)", "pct": 39.2, "updated": "2026-08-25T20:28:50Z"}

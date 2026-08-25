@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 8, "total": 51, "rows": 201400, "note": "BIO 30m: 4,319 bars, testing 75 rules", "pct": 15.7, "updated": "2026-08-25T20:17:57Z"}
+{"shard": 9, "stage": "testing", "done": 10, "total": 51, "rows": 248700, "note": "BXSTOCK 15m: rule 70/75 (cmf20)", "pct": 19.6, "updated": "2026-08-25T20:18:42Z"}

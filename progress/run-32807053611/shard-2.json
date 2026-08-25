@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 2, "total": 27, "rows": 65600, "note": "AKT 15m: 34,591 bars, testing 75 rules", "pct": 7.4, "updated": "2026-08-25T04:04:21Z"}
+{"shard": 2, "stage": "testing", "done": 2, "total": 27, "rows": 67580, "note": "AKT 15m: rule 3/75 (fade15)", "pct": 7.4, "updated": "2026-08-25T04:05:25Z"}

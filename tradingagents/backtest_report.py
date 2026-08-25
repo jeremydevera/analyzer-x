@@ -895,10 +895,19 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
         import concurrent.futures as _cf
 
         msw.worker_clear()
+        # NOT `with pool:`. The with-block's exit is shutdown(wait=True), which
+        # waits for EVERY queued pair -- 4,985 were submitted up front -- before
+        # an exception can leave the block. On 2026-08-25 the STOP button raised
+        # _StopRequested at pair 129 and the job then sat in __exit__ for the
+        # rest of the sweep (py-spy: MainThread in shutdown/join, exc_val
+        # _StopRequested), still measuring, `done` frozen, unstoppable except by
+        # killing it. A stop, a hand-off or an error now CANCELS the queue and
+        # waits only for the pairs already in a worker -- "finish the current
+        # task", exactly as the operator asked -- then propagates.
+        pool = _cf.ProcessPoolExecutor(max_workers=n_workers,
+                                       initializer=msw.be_polite)
         try:
-            with _cf.ProcessPoolExecutor(
-                    max_workers=n_workers,
-                    initializer=msw.be_polite) as pool:
+            if True:
                 # no slot= : `i % n_workers` labelled the TASK, not the
                 # worker, so a finished task's line sat on screen as an idle
                 # core. Each worker publishes under its own pid.
@@ -958,6 +967,7 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
                         _say(f"{show} {tf}: done ({done}/{total})")
                         measured.append((sym, tf, res))
         except _cf.process.BrokenProcessPool:
+            pool.shutdown(wait=False, cancel_futures=True)
             # The pool itself could not start — spawn needs an importable
             # __main__, so a caller running from stdin or a REPL has none. Fall
             # back to measuring in-process rather than returning a ZERO-ROW
@@ -974,6 +984,12 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
             # which names it.
             measured, done = [], 0
             n_workers = 1
+        except BaseException:
+            # drop the queue, let the pairs already running checkpoint, go
+            pool.shutdown(wait=True, cancel_futures=True)
+            raise
+        else:
+            pool.shutdown(wait=True)
         msw.worker_clear()
 
     if n_workers <= 1 and not measured:

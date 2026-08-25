@@ -35,12 +35,8 @@ class FakePool:
             fut.set_exception(exc)
         return fut
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *a):
+    def shutdown(self, wait=True, *, cancel_futures=False):
         self.shutdown_calls += 1
-        return False
 
 
 @pytest.fixture
@@ -92,3 +88,37 @@ def test_only_a_pool_that_cannot_start_falls_back_to_in_process(quiet_store, mon
                              progress=lambda *a, **k: calls.append(a[0]))
     assert got is not None
     assert any("reading the store" in m for m in calls), "fell back to in-process measuring"
+
+
+class RecordingPool(FakePool):
+    """Remembers how it was shut down."""
+    calls: list = []
+
+    def shutdown(self, wait=True, *, cancel_futures=False):
+        RecordingPool.calls.append((wait, cancel_futures))
+
+
+def test_a_signal_cancels_the_queue_and_waits_only_for_running_pairs(quiet_store, monkeypatch):
+    """py-spy on 2026-08-25: MainThread in ProcessPoolExecutor.__exit__ ->
+    shutdown(wait=True) -> join, exc_val=_StopRequested, 4,850 pairs still
+    queued. The STOP had been honoured -- and would take effect hours later."""
+    RecordingPool.calls = []
+    monkeypatch.setattr(cf, "ProcessPoolExecutor", RecordingPool)
+
+    def prog(msg, frac, done=None, total=None):
+        if "done (" in msg:
+            raise Boom(msg)
+
+    with pytest.raises(Boom):
+        br.grid_from_store(["APEX_USDT", "PI_USDT"], ["1h"], progress=prog, workers=2)
+    assert RecordingPool.calls == [(True, True)], \
+        "cancel what is queued, wait for what is running, then leave"
+
+
+def test_a_normal_run_still_waits_for_the_pool(quiet_store, monkeypatch):
+    RecordingPool.calls = []
+    monkeypatch.setattr(cf, "ProcessPoolExecutor", RecordingPool)
+    # two pairs: with one, n_workers collapses to 1 and no pool is used at all
+    br.grid_from_store(["APEX_USDT", "PI_USDT"], ["1h"], workers=2,
+                       progress=lambda *a, **k: None)
+    assert RecordingPool.calls == [(True, False)]

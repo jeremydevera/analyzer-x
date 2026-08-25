@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "screening", "done": 0, "total": 51, "rows": 0, "note": "checking contract ages", "pct": 0.0, "updated": "2026-08-25T03:57:05Z"}
+{"shard": 10, "stage": "testing", "done": 1, "total": 15, "rows": 660, "note": "AGLD 15m: rule 1/75 (mom6)", "pct": 6.7, "updated": "2026-08-25T03:57:53Z"}

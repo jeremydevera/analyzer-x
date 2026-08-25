@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 14, "total": 28, "rows": 870680, "note": "MANA 30m: rule 4/75 (trend50)", "pct": 50.0, "updated": "2026-08-25T05:34:43Z"}
+{"shard": 6, "stage": "testing", "done": 14, "total": 28, "rows": 879700, "note": "MANA 30m: rule 45/75 (zscore20)", "pct": 50.0, "updated": "2026-08-25T05:35:28Z"}

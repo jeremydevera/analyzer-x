@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 24, "total": 26, "rows": 1577400, "note": "VELVET 30m: rule 45/75 (zscore20)", "pct": 92.3, "updated": "2026-08-25T06:13:46Z"}
+{"shard": 1, "stage": "testing", "done": 24, "total": 26, "rows": 1585000, "note": "VELVET 1h: rule 4/75 (trend50)", "pct": 92.3, "updated": "2026-08-25T06:14:31Z"}

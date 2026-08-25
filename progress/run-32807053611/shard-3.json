@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 6, "total": 18, "rows": 336000, "note": "COW 15m: 34,592 bars, testing 75 rules", "pct": 33.3, "updated": "2026-08-25T04:27:45Z"}
+{"shard": 3, "stage": "testing", "done": 6, "total": 18, "rows": 338000, "note": "COW 15m: rule 4/75 (trend50)", "pct": 33.3, "updated": "2026-08-25T04:28:31Z"}

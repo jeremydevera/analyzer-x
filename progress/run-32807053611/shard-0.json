@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 5, "total": 25, "rows": 256340, "note": "BR 1h: rule 62/75 (ote)", "pct": 20.0, "updated": "2026-08-25T04:25:09Z"}
+{"shard": 0, "stage": "testing", "done": 6, "total": 25, "rows": 276800, "note": "CATI 15m: 34,592 bars, testing 75 rules", "pct": 24.0, "updated": "2026-08-25T04:25:58Z"}

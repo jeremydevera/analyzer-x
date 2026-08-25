@@ -119,7 +119,8 @@ def test_download_fills_the_local_store_first(monkeypatch, tmp_path):
                         lambda c, tf, df: calls["neon"].append((c, tf)))
     monkeypatch.setattr(db_jobs, "_stopping", lambda kind: False)
     monkeypatch.setattr(db_jobs, "FILES", {
-        "download": {"progress": tmp_path / "p.json"}})
+        "download": {"progress": tmp_path / "p.json",
+                     "lost": tmp_path / "lost.json"}})
     db_jobs._run_download({"coins": ["APEX_USDT", "GONE_USDT"],
                            "tfs": ["15m"]})
     assert calls["local"] == [("APEX_USDT", "15m"), ("GONE_USDT", "15m")]
@@ -149,7 +150,8 @@ def test_update_mode_tops_up_what_is_already_stored(monkeypatch, tmp_path):
     monkeypatch.setattr(pqs, "save_candles", lambda c, tf, df: None)
     monkeypatch.setattr(db_jobs, "_stopping", lambda kind: False)
     monkeypatch.setattr(db_jobs, "FILES", {
-        "download": {"progress": tmp_path / "p.json"}})
+        "download": {"progress": tmp_path / "p.json",
+                     "lost": tmp_path / "lost.json"}})
     db_jobs._run_download({"mode": "update"})
     assert seen == [("APEX_USDT", "1h"), ("XAUT_USDT", "15m")]
     import json
@@ -174,7 +176,8 @@ def test_an_explicit_selection_still_wins_over_the_store(monkeypatch, tmp_path):
     monkeypatch.setattr(pqs, "save_candles", lambda c, tf, df: None)
     monkeypatch.setattr(db_jobs, "_stopping", lambda kind: False)
     monkeypatch.setattr(db_jobs, "FILES", {
-        "download": {"progress": tmp_path / "p.json"}})
+        "download": {"progress": tmp_path / "p.json",
+                     "lost": tmp_path / "lost.json"}})
     db_jobs._run_download({"mode": "update", "coins": ["PI_USDT"],
                            "tfs": ["4h"]})
     assert seen == [("PI_USDT", "4h")]

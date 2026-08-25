@@ -27,6 +27,7 @@ from __future__ import annotations
 import gzip as _gzip
 import hashlib
 import hmac
+import http.client
 import json
 import json as _json
 import logging
@@ -291,33 +292,65 @@ def clock_skew_ms() -> int:
     return int(time.time() * 1000) - server_time_ms()
 
 
+# A keyless GET is idempotent, so a failure of the WIRE is simply tried again.
+# 2026-08-25: MEXC closed one connection after 183,452 bytes of a CHILLGUY_USDT
+# Min15 kline page. That is http.client.IncompleteRead — an HTTPException the
+# except clauses below did not even name — and a 4,985-pair download lost the
+# pair for good while the same endpoint served the other 4,983. Three attempts
+# with a breath between them; the budget stays small because the live runner
+# walks through here every cycle (3 x _TIMEOUT + backoff, under 90 s).
+_PUBLIC_RETRIES = 3
+_PUBLIC_BACKOFF = (1.0, 2.0)                  # seconds before attempt 2, 3, ...
+# No redo starts after this much wall-clock has gone: a cut connection fails
+# in milliseconds and gets all three attempts, a dead network burns _TIMEOUT
+# per attempt and gets one redo, so the runner's cycle is held for at most
+# _PUBLIC_RETRY_BUDGET_S + _TIMEOUT + backoff (~53 s), not 3 x _TIMEOUT per coin.
+_PUBLIC_RETRY_BUDGET_S = 30.0
+_RETRY_STATUSES = frozenset({429, 500, 502, 503, 504})
+_retry_sleep = time.sleep
+_clock = time.monotonic
+
+
+def _no_more_tries(attempt: int, t0: float) -> bool:
+    """Was that the last attempt — by count, or by wall-clock spent?"""
+    return attempt >= _PUBLIC_RETRIES or _clock() - t0 >= _PUBLIC_RETRY_BUDGET_S
+
+
 def _get_public(url: str):
-    """Keyless GET that raises this module's exceptions, not urllib's.
+    """Keyless GET that raises this module's exceptions, not urllib's, and
+    retries a failed WIRE — cut connection, timeout, 5xx, 429 — up to
+    _PUBLIC_RETRIES times. A 4xx is an answer and is not retried. Never used
+    for signed calls: a second order submit is a second order.
 
     The keyless helpers used to call ``urlopen`` bare, so they raised
     ``urllib.error.HTTPError``. ``spx_bot.step()`` calls two of them outside any
     handler, so a single transient 503 fell through to the catch-all, halted the
-    process, and left a levered position with no stop being monitored — while the
-    identical failure through ``_request`` would merely have been retried.
+    process, and left a levered position with no stop being monitored.
     """
     req = urllib.request.Request(url, headers={"User-Agent": _UA})
-    try:
-        with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
-            raw = resp.read()
-    except urllib.error.HTTPError as exc:
-        body = exc.read().decode("utf-8", "replace")
-        if exc.code == 403 and ("Access Denied" in body or "<HTML" in body.upper()):
-            raise MexcFuturesEdgeBlocked(url) from exc
-        raise MexcFuturesError(f"{exc.code}: {body[:200]}") from exc
-    except (OSError, urllib.error.URLError) as exc:
-        raise MexcFuturesError(f"transport failure: {exc}") from exc
+    t0 = _clock()
+    for attempt in range(1, _PUBLIC_RETRIES + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
+                raw = resp.read()
+            break
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8", "replace")
+            if exc.code == 403 and ("Access Denied" in body or "<HTML" in body.upper()):
+                raise MexcFuturesEdgeBlocked(url) from exc
+            if exc.code not in _RETRY_STATUSES or _no_more_tries(attempt, t0):
+                raise MexcFuturesError(f"{exc.code}: {body[:200]}") from exc
+        except (OSError, urllib.error.URLError, http.client.HTTPException) as exc:
+            if _no_more_tries(attempt, t0):
+                raise MexcFuturesError(
+                    f"transport failure: {exc} after {attempt} attempts") from exc
+        _retry_sleep(_PUBLIC_BACKOFF[min(attempt - 1, len(_PUBLIC_BACKOFF) - 1)])
     try:
         return json.loads(raw)
     except json.JSONDecodeError as exc:
         raise MexcFuturesError(f"malformed response from {url}") from exc
 
 
-# ---------------------------------------------------------------- read-only
 def assets() -> dict:
     """Futures wallet balances keyed by currency."""
     data = _request("GET", "/api/v1/private/account/assets") or []

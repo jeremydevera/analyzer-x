@@ -108,6 +108,24 @@ An INTERRUPTED pair is not a failed one. A SIGTERM or a closed laptop leaves a
 consistent checkpoint, and the next pass resumes from its watermark. Only an
 exception discards.
 
+**The same rule for candle DOWNLOADS (2026-08-25).** A 4,985-pair download
+ended `2 error(s): CHILLGUY_USDT 15m: IncompleteRead(183452 bytes read)` —
+one connection cut mid-body, the pair skipped for good, the second lost pair
+(NAORIS_USDT 30m) never even named, and "update" walks the store so neither
+could ever be fetched again. Operator: *"i want 10/10 accuracy on download"*.
+Three layers now, all tested (`tests/test_public_get_retry.py`,
+`tests/test_download_retry.py`, `tests/test_cloud_download_retry.py`):
+
+* `mexc_futures._get_public` retries a failed WIRE (cut connection, timeout,
+  5xx, 429) up to `_PUBLIC_RETRIES` within `_PUBLIC_RETRY_BUDGET_S` of
+  wall-clock. Never `_request` — a second order submit is a second order.
+* `db_jobs._run_download` and `market_db.download` redo a pair whose error
+  `is_transient` BY ITSELF, after the others, up to `db_jobs.PAIR_RETRIES`;
+  a deterministic failure is named at once. Every pair still lost is NAMED
+  in the progress file (`failed`), the bell and the log — never `errors[0]`
+  alone — and written to `db_download.lost.json`, which the next "update"
+  queues again.
+
 ## Never cap the grid with a default nobody chose (MANDATORY — 2026-08-25)
 
 `cloud_sweep.dispatch()` defaults `min_days=365` and `sweep_orchestrator` did

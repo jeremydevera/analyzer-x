@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import contextlib
 import contextlib as _contextlib
+import http.client
 import json
 import os
 import subprocess
@@ -29,6 +30,10 @@ STATE_DIR = Path(os.path.expanduser("~/.tradingagents"))
 FILES = {
     "download": {"progress": STATE_DIR / "db_download.json",
                  "spec": STATE_DIR / "db_download.spec.json",
+                 # pairs the last run gave up on, so "update" can queue them
+                 # again. Its own file: start() rewrites the progress file with a
+                 # stub before the job even begins, so progress cannot carry it.
+                 "lost": STATE_DIR / "db_download.lost.json",
                  "pid": STATE_DIR / "db_download.pid",
                  "stop": STATE_DIR / "db_download.STOP"},
     "backtest": {"progress": STATE_DIR / "db_backtest.json",
@@ -229,6 +234,25 @@ def start(kind: str, spec: dict) -> int:
 
 
 # --------------------------------------------------------------- job bodies
+# The operator, 2026-08-25, after a 4,985-pair download ended with
+#   "2 error(s): CHILLGUY_USDT 15m: IncompleteRead(183452 bytes read)":
+#   "so you mean if download fails, it wont try again? this is a stupid
+#    design ... i want 10/10 accuracy on download"
+# One pair's connection was cut mid-body and the pair was skipped for good;
+# the second lost pair (NAORIS_USDT 30m) was never even named — only
+# errors[0] was written down — and "update" walks the STORE, so a pair the
+# download lost could never be fetched again by clicking anything.
+# Now: a pair whose WIRE failed is redone BY ITSELF, after the others, up to
+# PAIR_RETRIES times (the rule from the sweep — never the whole run again); a
+# deterministic failure is named at once; every pair still lost at the end is
+# named in the progress file, the bell and the log; and the next update queues
+# the lost pairs again.
+PAIR_RETRIES = 3
+RETRY_PAUSE_S = 3.0          # a redo straight away hits the same bad connection
+_BELL_NAMES = 5              # lost pairs named in the bell before "and N more"
+_pause = time.sleep
+
+
 def _run_download(spec: dict) -> None:
     """DOWNLOAD/UPDATE fill the operator's OWN MACHINE — the store every
     backtest reads. Pure local: no database is touched.
@@ -236,60 +260,110 @@ def _run_download(spec: dict) -> None:
     `mode: "update"` means "top up what I already have": the pairs come from
     the store itself, so a store filled on 28 July and updated on 21 August
     fetches exactly the bars between — refresh_candles walks back from the
-    stored last bar, never re-downloading a year.
+    stored last bar, never re-downloading a year. Plus whatever the LAST run
+    lost: a pair that failed is not in the store, so the store alone would
+    never ask for it again.
     """
+    from collections import deque
+
     from tradingagents import market_sweep as msw, parquet_store as pqs
+    from tradingagents.positions_view import fmt_when
     f = FILES["download"]
+    lost_before: list[tuple[str, str]] = []
     if spec.get("mode") == "update" and not spec.get("coins"):
         pairs = [(c["symbol"], c["timeframe"]) for c in msw.candle_coverage()]
+        have = set(pairs)
+        lost_before = [(p[0], p[1]) for p in (_read(f["lost"]).get("pairs") or [])
+                       if len(p) == 2 and (p[0], p[1]) not in have]
+        pairs += lost_before
     else:
         coins = spec["coins"]
         tfs = [t for t in spec["tfs"]
                if t in ("15m", "30m", "1h", "4h", "1d")]
         pairs = [(c, tf) for c in coins for tf in tfs]
-    stored, errors, stopped, i = 0, [], False, 0
-    for i, (c, tf) in enumerate(pairs):
+    stored, stopped, done, retries = 0, False, 0, 0
+    failed: list[str] = []                 # "COIN tf: why" — one per pair given up on
+    failed_pairs: list[list[str]] = []
+    tries: dict[tuple[str, str], int] = {}
+    queue = deque(pairs)
+    while queue:
         if _stopping("download"):
             stopped = True
             break
-        _write(f["progress"], {"running": True, "done": i, "total": len(pairs),
-                               "now": f"{c} {tf}", "bars_stored": stored,
-                               "errors": len(errors)})
+        c, tf = queue.popleft()
+        n = tries.get((c, tf), 0)
+        # `total` counts PAIRS and `done` counts pairs settled (stored or given
+        # up). A redo bumps neither, or the percentage runs backwards the
+        # moment a coin fails.
+        _write(f["progress"], {"running": True, "done": done, "total": len(pairs),
+                               "now": f"{c} {tf}"
+                                      + (f" (redo {n}/{PAIR_RETRIES})" if n else ""),
+                               "bars_stored": stored, "errors": len(failed),
+                               "retries": retries})
+        if n:
+            _pause(RETRY_PAUSE_S)
         try:
             df, added, _src = msw.refresh_candles(c, tf, days=365)
             pqs.save_candles(c, tf, df)          # the parquet copy, atomically
             stored += int(added)
         except Exception as exc:
-            errors.append(f"{c} {tf}: {str(exc)[:80]}")
-            continue
+            why = str(exc)[:80]
+            if is_transient(exc) and n < PAIR_RETRIES:
+                # redo THAT pair, not the whole — behind the others, so the
+                # connection has time to come back
+                tries[(c, tf)] = n + 1
+                retries += 1
+                print(f"[download] {fmt_when(time.time())} {c} {tf} failed "
+                      f"({n + 1}/{PAIR_RETRIES}): {why} — redoing it after the others",
+                      flush=True)
+                queue.append((c, tf))
+                continue
+            failed.append(f"{c} {tf}: {why}")
+            failed_pairs.append([c, tf])
+            print(f"[download] {fmt_when(time.time())} {c} {tf} gave up after "
+                  f"{n} redo(s): {why}", flush=True)
+        done += 1
     # One line in the bell, so a click that did nothing is distinguishable
-    # from a click that worked. Never allowed to raise into the job.
+    # from a click that worked. Every lost pair is NAMED — a bare "2 error(s)"
+    # sends somebody back to diff the store against the spec. Never allowed
+    # to raise into the job.
     try:
         from tradingagents import notifications as _nt
 
-        _ok = not errors and not stopped
+        _ok = not failed and not stopped
+        names = " · ".join(failed[:_BELL_NAMES])
+        more = len(failed) - _BELL_NAMES
         _nt.record(
             "download",
             ("Download stopped" if stopped else
              "Download finished" if _ok else "Download finished with errors"),
             detail=(f"{stored:,} bars over {len(pairs)} pair(s)"
-                    + (f" · {len(errors)} error(s): {errors[0]}" if errors else "")),
+                    + (f" · {len(failed)} error(s): {names}" if failed else "")
+                    + (f" · and {more} more" if more > 0 else "")),
             ok=_ok,
             meta={"pairs": len(pairs), "bars": stored,
-                  "errors": len(errors), "stopped": bool(stopped),
+                  "errors": len(failed), "failed": failed, "retries": retries,
+                  "stopped": bool(stopped),
                   "mode": spec.get("mode") or "download"})
     except Exception:
         pass
+    # what this run could not get, for the next update to ask for again;
+    # a clean run empties it
+    _write(f["lost"], {"pairs": failed_pairs, "written": int(time.time())})
     _write(f["progress"], {
-        "running": False, "done": i if stopped else len(pairs),
-        "total": len(pairs), "bars_stored": stored, "errors": len(errors),
-        "first_error": (errors[0] if errors else ""),
+        "running": False, "done": done, "total": len(pairs),
+        "bars_stored": stored, "errors": len(failed),
+        "first_error": (failed[0] if failed else ""),
+        "failed": failed, "failed_pairs": failed_pairs, "retries": retries,
         "stopped": stopped, "finished": int(time.time()),
         "mode": spec.get("mode") or "download",
         "note": ("stopped by you — everything downloaded so far is kept"
                  if stopped else
                  f"{'gap-filled' if spec.get('mode') == 'update' else 'downloaded'} "
-                 f"{len(pairs)} pair(s)")})
+                 f"{len(pairs)} pair(s)"
+                 + (f" · {len(lost_before)} pair(s) the last download lost "
+                    f"re-downloaded" if lost_before else "")
+                 + (f" · {len(failed)} still lost — named in failed" if failed else ""))})
 
 
 class _HandOff(Exception):
@@ -381,7 +455,10 @@ def persist_results(payload: dict, *, days: int, label: str,
 # retrying a TRANSIENT one is the whole point of having a supervisor. So the
 # distinction is decided where the exception is caught, by type, and written
 # down — never by pattern-matching the message later.
-_TRANSIENT_TYPES = (OSError, TimeoutError, ConnectionError)
+# http.client.HTTPException covers IncompleteRead / RemoteDisconnected — a
+# connection cut mid-body. It is NOT an OSError, which is how the error that
+# lost CHILLGUY_USDT 15m on 2026-08-25 would have read as deterministic.
+_TRANSIENT_TYPES = (OSError, TimeoutError, ConnectionError, http.client.HTTPException)
 _TRANSIENT_MARKS = ("transport failure", "urlopen", "temporary failure",
                     "nodename nor servname", "timed out", "connection reset",
                     "connection refused", "rate limit", "too many requests",

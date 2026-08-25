@@ -44,8 +44,11 @@ def main() -> int:
             print(f"shard {shard}: {done}/{total} · {sym} {iv}", flush=True)
 
     res = mdb.download(coins, ivs, progress=progress)
+    # redos are said out loud: "0 errors" after five redone pairs is a
+    # different night from "0 errors" with none
     print(f"shard {shard}: stored {res['bars_stored']:,} new bars across "
-          f"{len(res['pairs'])} pairs, {len(res['errors'])} errors")
+          f"{len(res['pairs'])} pairs, {len(res['errors'])} errors, "
+          f"{res.get('retries', 0)} pair redo(s)")
     for e in res["errors"][:20]:
         print("  ERROR", e)
     return 0

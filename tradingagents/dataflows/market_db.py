@@ -341,28 +341,45 @@ def download(symbols: list[str], intervals: list[str],
     """Fetch everything the venue serves for each pair x timeframe and store
     it. Also THE update: the kline fetch only pages the missing tail, so a
     second run moves only the new bars. Returns a per-pair summary."""
+    from collections import deque
+
     import pandas as pd
+
+    # the local job's rule, so the cloud and the PC lose pairs the same way —
+    # which is to say, not to one cut connection (2026-08-25, CHILLGUY 15m)
+    from tradingagents import db_jobs
     if fx is None:
         from tradingagents.dataflows import mexc_futures as fx  # noqa: PLC0415
     ensure_schema()
-    done, out = 0, {"pairs": [], "bars_stored": 0, "errors": []}
-    total = len(symbols) * len(intervals)
-    for sym in symbols:
-        for iv in intervals:
-            done += 1
-            if progress:
-                progress(done, total, sym, iv)
-            try:
-                df = fx.klines(sym, iv, DOWNLOAD_BARS)
-                prev = last_ts(sym, iv)
-                fresh = df if prev is None else df[
-                    df["Date"] > pd.Timestamp(prev, unit="s")]
-                n = upsert_candles(sym, iv, fresh)
-                out["bars_stored"] += n
-                out["pairs"].append({"symbol": sym, "timeframe": iv,
-                                     "new_bars": n, "have": len(df)})
-            except Exception as exc:
-                out["errors"].append(f"{sym} {iv}: {exc}")
+    done, out = 0, {"pairs": [], "bars_stored": 0, "errors": [], "retries": 0}
+    queue = deque((sym, iv) for sym in symbols for iv in intervals)
+    total = len(queue)
+    tries: dict[tuple[str, str], int] = {}
+    while queue:
+        sym, iv = queue.popleft()
+        n = tries.get((sym, iv), 0)
+        if n:
+            db_jobs._pause(db_jobs.RETRY_PAUSE_S)
+        try:
+            df = fx.klines(sym, iv, DOWNLOAD_BARS)
+            prev = last_ts(sym, iv)
+            fresh = df if prev is None else df[
+                df["Date"] > pd.Timestamp(prev, unit="s")]
+            stored = upsert_candles(sym, iv, fresh)
+            out["bars_stored"] += stored
+            out["pairs"].append({"symbol": sym, "timeframe": iv,
+                                 "new_bars": stored, "have": len(df)})
+        except Exception as exc:
+            if db_jobs.is_transient(exc) and n < db_jobs.PAIR_RETRIES:
+                # redo THAT pair, after the others — never the whole shard
+                tries[(sym, iv)] = n + 1
+                out["retries"] += 1
+                queue.append((sym, iv))
+                continue
+            out["errors"].append(f"{sym} {iv}: {exc}")
+        done += 1                       # pairs settled: total never inflates
+        if progress:
+            progress(done, total, sym, iv)
     return out
 
 

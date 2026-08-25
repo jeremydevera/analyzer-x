@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 2, "total": 51, "rows": 16000, "note": "AIGENSYN 30m: 5,653 bars, testing 75 rules", "pct": 3.9, "updated": "2026-08-25T07:19:12Z"}
+{"shard": 13, "stage": "testing", "done": 2, "total": 51, "rows": 35976, "note": "AIGENSYN 1h: rule 6/75 (sweep30)", "pct": 3.9, "updated": "2026-08-25T07:19:57Z"}

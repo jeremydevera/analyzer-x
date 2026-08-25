@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 1, "total": 52, "rows": 14400, "note": "1000BONK 30m: 19,999 bars, testing 75 rules", "pct": 1.9, "updated": "2026-08-25T11:02:31Z"}
+{"shard": 3, "stage": "testing", "done": 1, "total": 52, "rows": 18800, "note": "1000BONK 30m: rule 16/75 (keltner)", "pct": 1.9, "updated": "2026-08-25T11:03:16Z"}

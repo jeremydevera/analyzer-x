@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 42, "total": 51, "rows": 961740, "note": "SPX500 15m: rule 47/75 (ibs)", "pct": 82.4, "updated": "2026-08-25T20:38:19Z"}
+{"shard": 8, "stage": "testing", "done": 43, "total": 51, "rows": 996640, "note": "SUI 15m: rule 73/75 (volspike)", "pct": 84.3, "updated": "2026-08-25T20:39:04Z"}

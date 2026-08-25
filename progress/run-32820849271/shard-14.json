@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 51, "total": 51, "rows": 2055858, "note": "ZINC 30m: 7,098 bars, testing 75 rules", "pct": 100.0, "updated": "2026-08-25T10:06:54Z"}
+{"shard": 14, "stage": "done", "done": 51, "total": 51, "rows": 2088096, "note": "2,088,096 rows", "pct": 100.0, "updated": "2026-08-25T10:07:27Z"}

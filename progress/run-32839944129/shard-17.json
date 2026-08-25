@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 23, "total": 51, "rows": 1047806, "note": "INX 1d: downloading candles", "pct": 45.1, "updated": "2026-08-25T12:37:48Z"}
+{"shard": 17, "stage": "testing", "done": 24, "total": 51, "rows": 1060606, "note": "JP225 30m: 5,961 bars, testing 75 rules", "pct": 47.1, "updated": "2026-08-25T12:38:39Z"}

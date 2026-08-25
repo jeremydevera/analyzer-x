@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 12, "total": 28, "rows": 737600, "note": "ICX 30m: 19,999 bars, testing 75 rules", "pct": 42.9, "updated": "2026-08-25T05:21:08Z"}
+{"shard": 6, "stage": "testing", "done": 12, "total": 28, "rows": 743200, "note": "ICX 30m: rule 22/75 (engulf)", "pct": 42.9, "updated": "2026-08-25T05:21:54Z"}

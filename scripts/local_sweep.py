@@ -127,6 +127,13 @@ def _pair_job(args_tuple):
     import os as _os
     symbol, tf, home, base, days, thresholds = args_tuple
     _os.environ["TRADINGAGENTS_SWEEP_HOME"] = home
+    # The Neon archive is FULL (512 MB project limit, measured 2026-08-25) and
+    # every fresh worker re-tried it, stalled, then stood down for two minutes
+    # — which is why 7 workers idled at 316% CPU instead of ~560%. This run is
+    # local-only, so the archive is switched off per worker rather than by
+    # editing the shared module.
+    from tradingagents.dataflows import market_db as _mdb
+    _mdb.available = lambda: False
     from tradingagents import market_sweep as ms
     try:
         r = ms.run_pair(symbol, tf, base_margin=base, days=days,
@@ -172,16 +179,17 @@ def _run_batch(batch, tfs, args, n_workers):
     import concurrent.futures as cf
 
     home = os.path.expanduser(args.home)
-    jobs = [(c, tf, home, args.base, args.days, 3)
+    jobs = [(c, tf, home, args.base, args.days, args.thresholds)
             for c in batch for tf in tfs]
-    out = []
+    out, failures = [], []
     with cf.ProcessPoolExecutor(max_workers=min(n_workers, len(jobs))) as ex:
         for sym, tf, _n, err in ex.map(_pair_job, jobs):
             if err:
                 print(f"!! {sym} {tf}: {err}", flush=True)
+                failures.append((sym, tf, err))
                 continue
             out.extend(_read_pair_rows(home, sym, tf))
-    return out
+    return out, failures
 
 
 def main(argv=None) -> int:
@@ -191,11 +199,20 @@ def main(argv=None) -> int:
                     help="this run's OWN cache, kept off the other session's")
     ap.add_argument("--tfs", default="15m,30m,1h,4h")
     ap.add_argument("--coins", type=int, default=0, help="0 = every eligible")
+    ap.add_argument("--symbols", default="",
+                    help="comma-separated symbols to run FIRST (or only, with "
+                         "--only). Alphabetical order otherwise puts obscure "
+                         "contracts ahead of the ones being compared")
+    ap.add_argument("--only", action="store_true",
+                    help="run just --symbols and stop")
     ap.add_argument("--chunk", type=int, default=4,
                     help="coins per grid call; rows are flushed after each")
     ap.add_argument("--days", type=int, default=365)
     ap.add_argument("--base", type=float, default=5.0)
     ap.add_argument("--workers", type=int, default=0, help="0 = cores - 1")
+    ap.add_argument("--thresholds", type=int, default=1,
+                    help="momentum thresholds per timeframe. 1 matches the "
+                         "GitHub sweep; 3 triples those signals' combinations")
     ap.add_argument("--retries", type=int, default=2,
                     help="redo a FAILED pair this many times, purged first")
     ap.add_argument("--progress",
@@ -215,6 +232,12 @@ def main(argv=None) -> int:
                    and int(x.get("state", 1)) == 0)
     done = {r[0] for r in db.execute("SELECT coin FROM done")}
     todo = [c for c in coins if c.replace("_USDT", "") not in done]
+    want = [x.strip() for x in args.symbols.split(",") if x.strip()]
+    if want:
+        first = [c for c in want if c in coins
+                 and c.replace("_USDT", "") not in done]
+        rest = [] if args.only else [c for c in todo if c not in first]
+        todo = first + rest
     if args.coins:
         todo = todo[:args.coins]
     started = time.time()

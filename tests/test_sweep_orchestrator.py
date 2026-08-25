@@ -100,29 +100,55 @@ def test_a_stop_file_ends_it(monkeypatch):
 def test_a_finished_cloud_run_is_merged_not_just_awaited(monkeypatch):
     """`done` counts LOCAL watermarks, so without collecting the artifact the
     percentage sat at 0 for hours and then jumped — the same false label as a
-    counter that measures the process instead of the work."""
+    counter that measures the process instead of the work.
+
+    It collects by STREAMING the per-shard artifacts. On 2026-08-25 the old
+    path asked only for the merged `sweep-results` file, the workflow's merge
+    job was OOM-killed before writing it, and 29.7 million measured rows in
+    twenty `rows-N` artifacts were logged as "no usable artifact" and dropped.
+    """
     from tradingagents import cloud_sweep as cs
 
-    monkeypatch.setattr(cs, "status", lambda rid, slug=None: {"status": "completed"})
-    monkeypatch.setattr(cs, "fetch", lambda rid, slug=None: [{"coin": "A", "tf": "1h"}])
-    merged = []
-    monkeypatch.setattr(cs, "merge_into_store",
-                        lambda rows: merged.append(rows) or
-                        {"pairs": 1, "rows": len(rows), "skipped": 0})
+    monkeypatch.setattr(cs, "status",
+                        lambda rid, slug=None: {"status": "completed"})
+    calls = []
+    monkeypatch.setattr(cs, "collect_into_store",
+                        lambda rid, slug=None, **k: calls.append(rid) or
+                        {"pairs": 1, "rows": 4, "skipped": 0, "artifacts": 20})
     assert so.collect_cloud(99) == 1
-    assert merged, "the artifact was never folded in"
+    assert calls == [99], "the artifacts were never folded in"
 
     # a run still going is left alone — None, not 0
-    monkeypatch.setattr(cs, "status", lambda rid, slug=None: {"status": "in_progress"})
-    merged.clear()
-    assert so.collect_cloud(99) is None and not merged
+    monkeypatch.setattr(cs, "status",
+                        lambda rid, slug=None: {"status": "in_progress"})
+    calls.clear()
+    assert so.collect_cloud(99) is None and not calls
 
-    # a run that ENDED with no usable artifact still releases the slot, or the
+    # a run that ENDED with no live artifact still releases the slot, or the
     # orchestrator stays pinned to a cancelled run forever
-    monkeypatch.setattr(cs, "status", lambda rid, slug=None: {"status": "completed"})
-    monkeypatch.setattr(cs, "fetch", lambda rid, slug=None: (_ for _ in ()).throw(
-        RuntimeError("no artifact")))
+    monkeypatch.setattr(cs, "status",
+                        lambda rid, slug=None: {"status": "completed"})
+    monkeypatch.setattr(cs, "collect_into_store",
+                        lambda rid, slug=None, **k: {"pairs": 0, "rows": 0,
+                                                     "artifacts": 0,
+                                                     "skipped": 0})
     assert so.collect_cloud(99) == 0
+
+    # and a collector that RAISES releases it too
+    monkeypatch.setattr(cs, "collect_into_store",
+                        lambda rid, slug=None, **k: (_ for _ in ()).throw(
+                            RuntimeError("network died")))
+    assert so.collect_cloud(99) == 0
+
+
+def test_the_collector_is_never_the_list_shaped_one():
+    """cs.fetch builds one list of every row. At 29.7M rows that is the same
+    12 GB that killed the cloud's merge job, on a Mac that is also measuring."""
+    import inspect
+
+    src = inspect.getsource(so.collect_cloud)
+    assert "collect_into_store" in src
+    assert "cs.fetch(" not in src
 
 
 def test_the_mac_works_while_the_cloud_works():

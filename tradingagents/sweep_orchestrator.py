@@ -157,15 +157,30 @@ def collect_cloud(run_id: int):
         return 0
     if st.get("status") != "completed":
         return None                      # still going: keep waiting
+    # STREAM the per-shard artifacts. `cs.fetch` asked for the single merged
+    # `sweep-results` file and built one list of every row, and on 2026-08-25
+    # both halves of that failed at once: the workflow's merge job was OOM-killed
+    # loading 29.7 million rows into a list on a 7 GB runner, so `sweep-results`
+    # never existed -- and the collector, having no fallback, logged "ended with
+    # no usable artifact" and released the run. The twenty `rows-N` artifacts,
+    # 3.3 GB of measured rows, were sitting there the whole time. They ARE the
+    # measurement; the merge job only concatenates them.
     try:
-        rows = cs.fetch(run_id)
+        got = cs.collect_into_store(
+            run_id,
+            on_progress=lambda name, i, n, pairs, rows: log(
+                f"run {run_id}: {name} ({i}/{n}) · {pairs} pairs, "
+                f"{rows:,} rows so far"))
     except Exception as exc:
-        log(f"run {run_id} ended with no usable artifact ({str(exc)[:60]}) "
+        log(f"run {run_id} could not be collected ({str(exc)[:60]}) "
             f"— releasing it")
         return 0
-    got = cs.merge_into_store(rows)
+    if not got.get("artifacts"):
+        log(f"run {run_id} ended with no live artifact — releasing it")
+        return 0
     log(f"merged run {run_id}: {got.get('pairs')} pairs, "
-        f"{got.get('rows'):,} rows, {got.get('skipped')} skipped")
+        f"{got.get('rows'):,} rows from {got.get('artifacts')} artifacts, "
+        f"{got.get('skipped')} skipped")
     return int(got.get("pairs") or 0)
 
 

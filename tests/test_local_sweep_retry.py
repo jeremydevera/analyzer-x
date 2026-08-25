@@ -99,3 +99,31 @@ def test_worker_reports_the_error_instead_of_raising(monkeypatch, tmp_path):
     monkeypatch.setattr(tradingagents, "market_sweep", fake, raising=False)
     sym, tf, n, err = ls._pair_job(("PI_USDT", "1h", str(tmp_path), 5.0, 365, 3))
     assert n == 0 and "venue said no" in err
+
+
+def test_run_batch_returns_rows_AND_failures(monkeypatch, tmp_path):
+    """It returned a bare list once, and `rows, failures = _run_batch(...)`
+    then died with 'too many values to unpack' — after the sweep had already
+    been launched. Pin the shape."""
+    import types
+    calls = []
+
+    class FakeEx:
+        def __init__(self, *a, **k): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def map(self, fn, jobs):
+            for j in jobs:
+                calls.append(j[0])
+                yield (j[0], j[1], 0,
+                       "boom" if j[0] == "BAD_USDT" else "")
+
+    import concurrent.futures as cf
+    monkeypatch.setattr(cf, "ProcessPoolExecutor", FakeEx)
+    monkeypatch.setattr(ls, "_read_pair_rows",
+                        lambda home, s, tf: [{"coin": s, "tf": tf}])
+    args = types.SimpleNamespace(home=str(tmp_path), base=5.0, days=365,
+                                 thresholds=1)
+    rows, failures = ls._run_batch(["OK_USDT", "BAD_USDT"], ["1h"], args, 2)
+    assert [r["coin"] for r in rows] == ["OK_USDT"]
+    assert failures == [("BAD_USDT", "1h", "boom")]

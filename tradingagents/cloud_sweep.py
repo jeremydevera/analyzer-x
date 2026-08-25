@@ -221,6 +221,140 @@ def fetch(run_id: int, slug: str | None = None) -> list:
     return rows
 
 
+def artifact_names(run_id: int, slug: str | None = None) -> list[str]:
+    """The artifacts a run really produced, newest measurement first.
+
+    `ARTIFACT` ("sweep-results") is written by the workflow's `merge` job, and
+    on 2026-08-25 that job was OOM-killed: it loads every row into one Python
+    list, and 29.7 million of them is about 12 GB on a 7 GB runner. So the only
+    artifact that existed was the twenty per-shard `rows-N` uploads -- 3.3 GB of
+    measured rows -- and the collector, which asked for `sweep-results` and
+    nothing else, reported "no usable artifact" and released the run.
+
+    The per-shard artifacts ARE the measurement. The merge job only concatenates
+    them. So they are what this prefers, and the merged file is the fallback.
+    """
+    slug = slug or repo_slug()
+    try:
+        raw = json.loads(_gh("api", f"repos/{slug}/actions/runs/{run_id}"
+                                    "/artifacts?per_page=100"))
+    except Exception as exc:                       # noqa: BLE001
+        logger.warning("cloud sweep: cannot list artifacts for %s: %s",
+                       run_id, str(exc)[:80])
+        return []
+    live = [a["name"] for a in (raw.get("artifacts") or [])
+            if not a.get("expired")]
+    shards = sorted((n for n in live if n.startswith("rows-")),
+                    key=lambda n: int(n.split("-", 1)[1])
+                    if n.split("-", 1)[1].isdigit() else 0)
+    return shards or [n for n in live if n == ARTIFACT]
+
+
+def collect_into_store(run_id: int, slug: str | None = None, *,
+                       on_progress=None) -> dict:
+    """Stream a finished run's artifacts straight into the pair store.
+
+    `fetch()` builds one list of every row. At 29.7 million rows that is more
+    memory than this Mac should be asked for while it is also measuring, and it
+    is exactly how the cloud's own merge job died. So nothing is accumulated:
+    each shard file is read a line at a time and each (coin, timeframe) is
+    written the moment the pair changes.
+
+    Shards write `for coin: for tf:`, so a pair's rows are contiguous in the
+    file. That is not RELIED on -- a pair seen again after being written is
+    appended to rather than replacing what is already there -- but it is why
+    peak memory is one pair rather than one shard.
+    """
+    from tradingagents import market_sweep as msw
+
+    slug = slug or repo_slug()
+    names = artifact_names(run_id, slug)
+    if not names:
+        return {"pairs": 0, "rows": 0, "coins": 0, "skipped": 0,
+                "artifacts": 0, "why": "the run produced no live artifact"}
+
+    written: set = set()
+    skipped: list = []
+    kept = rows_seen = bad = 0
+    coins: set = set()
+
+    def flush(key, buf):
+        nonlocal kept
+        if not key or not buf:
+            return
+        coin, tf = key
+        # A pair refused once stays refused. It has to be its OWN set: marking
+        # it in `written` would make the second sighting of the same pair take
+        # the append branch below and overwrite the very rows being protected.
+        if key in refused:
+            return
+        # NEVER overwrite a pair the Mac finished: its watermark promises every
+        # bar up to X was tested for every combination, and replacing the rows
+        # under that promise makes the next local update extend a measurement
+        # it did not make.
+        if key not in written and msw.pair_watermark(coin, tf) > 0:
+            refused.add(key)                   # do not re-check it per line
+            skipped.append(f"{coin} {tf}")
+            return
+        if key in written:                     # a pair split across the file
+            buf = msw.pair_rows(coin, tf) + buf
+        else:
+            kept += 1
+        msw.save_pair_rows(coin, tf, buf)
+        last_ms = max(int(r.get("last_ms") or 0) for r in buf)
+        if last_ms:
+            # __last_ms__ LAST. `pair_watermark` reads the final 256 bytes and
+            # its regex anchors the key to the closing brace, so writing it
+            # first made every cloud-merged pair read as watermark 0 -- that is
+            # "never measured", which undercounts the progress bar and invites
+            # a re-sweep of work already done.
+            msw.save_states(coin, tf, {"__cloud__": True,
+                                       "__last_ms__": last_ms})
+        written.add(key)
+        coins.add(coin)
+
+    refused: set = set()
+    for n, name in enumerate(names, 1):
+        with tempfile.TemporaryDirectory() as tmp:
+            try:
+                _gh("run", "download", str(run_id), "--repo", slug,
+                    "-n", name, "-D", tmp, timeout=1800)
+            except Exception as exc:           # noqa: BLE001
+                logger.warning("cloud sweep: %s did not download: %s",
+                               name, str(exc)[:80])
+                continue
+            for f in sorted(Path(tmp).rglob("*.jsonl")):
+                key, buf = None, []
+                with f.open(encoding="utf-8") as fh:
+                    for line in fh:
+                        if not line.strip():
+                            continue
+                        try:
+                            r = json.loads(line)
+                        except ValueError:
+                            # a runner killed at the 6h ceiling truncates its
+                            # last line; skipping it must not lose the file
+                            bad += 1
+                            continue
+                        rows_seen += 1
+                        k = (r["coin"], r["tf"])
+                        if k != key:
+                            flush(key, buf)
+                            key, buf = k, []
+                        buf.append(r)
+                flush(key, buf)
+        if on_progress:
+            on_progress(name, n, len(names), kept, rows_seen)
+    if bad:
+        logger.warning("cloud sweep: skipped %d unparseable line(s); "
+                       "%d rows kept", bad, rows_seen)
+    return {"pairs": kept, "rows": rows_seen, "coins": len(coins),
+            "artifacts": len(names), "skipped": len(skipped),
+            "skipped_pairs": skipped[:20], "unparseable": bad,
+            "why_skipped": ("already measured locally — a cloud row would land "
+                            "behind the Mac's own watermark" if skipped else "")}
+
+
 RUNFILE = Path(os.path.expanduser("~/.tradingagents/backtest/cloud_run.json"))
 
 
@@ -329,8 +463,13 @@ def merge_into_store(rows: list) -> dict:
         # recompute, so the rows are trusted and the resume point is not.
         last_ms = max(int(r.get("last_ms") or 0) for r in rs)
         if last_ms:
-            msw.save_states(coin, tf, {"__last_ms__": last_ms,
-                                       "__cloud__": True})
+            # __last_ms__ LAST. `pair_watermark` reads the final 256 bytes and
+            # its regex anchors the key to the closing brace, so writing it
+            # first made every cloud-merged pair read as watermark 0 -- that is
+            # "never measured", which undercounts the progress bar and invites
+            # a re-sweep of work already done.
+            msw.save_states(coin, tf, {"__cloud__": True,
+                                       "__last_ms__": last_ms})
         kept += 1
     return {"pairs": kept, "rows": len(rows),
             "coins": len({c for c, _ in by}),

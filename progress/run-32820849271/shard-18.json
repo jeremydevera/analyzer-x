@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 50, "total": 51, "rows": 2221476, "note": "YB 30m: rule 9/75 (fib382)", "pct": 98.0, "updated": "2026-08-25T10:44:02Z"}
+{"shard": 18, "stage": "testing", "done": 50, "total": 51, "rows": 2233176, "note": "YB 1h: 7,652 bars, testing 75 rules", "pct": 98.0, "updated": "2026-08-25T10:44:53Z"}

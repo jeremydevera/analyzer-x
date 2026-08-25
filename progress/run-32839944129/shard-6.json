@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 30, "total": 51, "rows": 1393216, "note": "MSSTOCK 15m: downloading candles", "pct": 58.8, "updated": "2026-08-25T13:13:01Z"}
+{"shard": 6, "stage": "testing", "done": 32, "total": 51, "rows": 1422016, "note": "NPC 15m: 22,295 bars, testing 75 rules", "pct": 62.7, "updated": "2026-08-25T13:13:46Z"}

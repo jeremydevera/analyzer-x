@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 51, "total": 51, "rows": 2346558, "note": "ZBT 15m: 29,949 bars, testing 75 rules", "pct": 100.0, "updated": "2026-08-25T10:24:30Z"}
+{"shard": 4, "stage": "testing", "done": 51, "total": 51, "rows": 2348538, "note": "ZBT 15m: rule 3/75 (fade15)", "pct": 100.0, "updated": "2026-08-25T10:25:34Z"}

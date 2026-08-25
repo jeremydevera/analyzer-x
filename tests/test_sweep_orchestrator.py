@@ -149,7 +149,7 @@ def test_a_restart_adopts_the_run_already_in_flight():
     work = inspect.getsource(so.run)
     assert "cs.remembered()" in work, "it must look for a run in flight"
     i = work.index("cs.remembered()")
-    body = work[i:i + 400]
+    body = work[i:i + 700]        # the liveness check grew; widen the window
     assert 'st0.get("status") != "completed"' in body
     assert 'conclusion' in body, (
         "a cancelled run is remembered too; adopting one waits on a corpse")

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 4, "total": 51, "rows": 143860, "note": "APEX 30m: rule 45/75 (zscore20)", "pct": 7.8, "updated": "2026-08-25T07:35:17Z"}
+{"shard": 7, "stage": "testing", "done": 4, "total": 51, "rows": 154398, "note": "APEX 1h: rule 15/75 (bbbreak)", "pct": 7.8, "updated": "2026-08-25T07:36:02Z"}

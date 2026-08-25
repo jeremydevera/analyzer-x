@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 46, "total": 51, "rows": 1891080, "note": "TWT 15m: 34,614 bars, testing 75 rules", "pct": 90.2, "updated": "2026-08-25T09:53:38Z"}
+{"shard": 9, "stage": "testing", "done": 46, "total": 51, "rows": 1893960, "note": "TWT 15m: rule 10/75 (sr_bounce)", "pct": 90.2, "updated": "2026-08-25T09:54:23Z"}

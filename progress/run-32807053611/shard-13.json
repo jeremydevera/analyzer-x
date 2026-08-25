@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 5, "total": 15, "rows": 276800, "note": "FLOW 15m: 34,592 bars, testing 75 rules", "pct": 33.3, "updated": "2026-08-25T04:28:52Z"}
+{"shard": 13, "stage": "testing", "done": 5, "total": 15, "rows": 278780, "note": "FLOW 15m: rule 3/75 (fade15)", "pct": 33.3, "updated": "2026-08-25T04:29:56Z"}

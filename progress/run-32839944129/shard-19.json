@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 7, "total": 51, "rows": 245120, "note": "BEAT 15m: rule 68/75 (dbltop)", "pct": 13.7, "updated": "2026-08-25T11:15:09Z"}
+{"shard": 19, "stage": "testing", "done": 7, "total": 51, "rows": 249640, "note": "BEAT 30m: rule 11/75 (sr_break)", "pct": 13.7, "updated": "2026-08-25T11:15:54Z"}

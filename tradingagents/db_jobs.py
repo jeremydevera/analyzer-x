@@ -269,8 +269,16 @@ def _run_download(spec: dict) -> None:
     from tradingagents import market_sweep as msw, parquet_store as pqs
     from tradingagents.positions_view import fmt_when
     f = FILES["download"]
+    mode = spec.get("mode") or "download"
     lost_before: list[tuple[str, str]] = []
-    if spec.get("mode") == "update" and not spec.get("coins"):
+    if mode == "retry":
+        # the RETRY FAILED button: exactly the pairs the last run gave up
+        # on — no store walk, no re-download, one entry per pair
+        pairs = []
+        for p in (_read(f["lost"]).get("pairs") or []):
+            if len(p) == 2 and (p[0], p[1]) not in pairs:
+                pairs.append((p[0], p[1]))
+    elif mode == "update" and not spec.get("coins"):
         pairs = [(c["symbol"], c["timeframe"]) for c in msw.candle_coverage()]
         have = set(pairs)
         lost_before = [(p[0], p[1]) for p in (_read(f["lost"]).get("pairs") or [])
@@ -338,6 +346,7 @@ def _run_download(spec: dict) -> None:
             ("Download stopped" if stopped else
              "Download finished" if _ok else "Download finished with errors"),
             detail=(f"{stored:,} bars over {len(pairs)} pair(s)"
+                    + (" · nothing to retry" if mode == "retry" and not pairs else "")
                     + (f" · {len(failed)} error(s): {names}" if failed else "")
                     + (f" · and {more} more" if more > 0 else "")),
             ok=_ok,
@@ -359,7 +368,9 @@ def _run_download(spec: dict) -> None:
         "mode": spec.get("mode") or "download",
         "note": ("stopped by you — everything downloaded so far is kept"
                  if stopped else
-                 f"{'gap-filled' if spec.get('mode') == 'update' else 'downloaded'} "
+                 (f"retried {len(pairs)} lost pair(s)" if pairs else
+                  "nothing to retry — no pair is lost") if mode == "retry" else
+                 f"{'gap-filled' if mode == 'update' else 'downloaded'} "
                  f"{len(pairs)} pair(s)"
                  + (f" · {len(lost_before)} pair(s) the last download lost "
                     f"re-downloaded" if lost_before else "")

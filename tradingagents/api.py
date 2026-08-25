@@ -1546,6 +1546,22 @@ def notifications_read(body: NotifyRead) -> dict:
     return {"marked": changed, "unread": nt.unread_count()}
 
 
+@app.get("/api/candles/lost")
+def candles_lost() -> dict:
+    """The pairs the last download gave up on — what RETRY FAILED will fetch.
+
+    Read from the job's own lost file, so the button's count IS the retry's
+    list, never a second bookkeeping of it. No file means nothing is lost.
+    """
+    from tradingagents import db_jobs, positions_view as pv
+
+    got = db_jobs._read(db_jobs.FILES["download"]["lost"])
+    pairs = [{"symbol": p[0], "timeframe": p[1]}
+             for p in (got.get("pairs") or []) if len(p) == 2]
+    return {"pairs": pairs, "count": len(pairs),
+            "written": pv.fmt_when(float(got["written"])) if got.get("written") else ""}
+
+
 @app.get("/api/candles/download-history")
 def download_history(limit: int = 20) -> dict:
     """Every download this machine has run, newest first, with its outcome.

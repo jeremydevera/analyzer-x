@@ -22,6 +22,7 @@ const TFS = ["15m", "30m", "1h", "4h", "1d"];
 export default function DownloadScreen() {
   const [coins, setCoins] = useState<string[]>([]);
   const [gaps, setGaps] = useState<Awaited<ReturnType<typeof api.candleGaps>> | null>(null);
+  const [lost, setLost] = useState<Awaited<ReturnType<typeof api.candleLost>> | null>(null);
   const [tfs, setTfs] = useState<string[]>(["15m", "30m", "1h", "4h"]);
   const [dl, setDl] = useState<JobStatus | null>(null);
   const [err, setErr] = useState("");
@@ -34,6 +35,9 @@ export default function DownloadScreen() {
     // this walks EVERY stored pair's file, so it runs on arrival and after a
     // job ends — never on the 4-second job poll
     api.candleGaps().then(setGaps).catch(() => {});
+    // the lost list is rewritten by every download job, so it refreshes on
+    // the same schedule: arrival, every minute, and when a job ends
+    api.candleLost().then(setLost).catch(() => {});
   }, []);
   useEffect(() => {
     poll();
@@ -55,6 +59,14 @@ export default function DownloadScreen() {
     setErr("");
     if (!confirm(`Update ${gaps?.pairs ?? 0} stored pair(s)?\n\nOnly the bars printed since each pair's last stored bar are fetched — nothing is downloaded again.`)) return;
     try { await api.jobStart("download", { mode: "update" }); poll(); }
+    catch (e) { setErr(String(e)); }
+  };
+
+  /** RETRY FAILED = only the pairs the last run gave up on
+   * (db_download.lost.json). Nothing else is touched. */
+  const retry = async () => {
+    setErr("");
+    try { await api.jobStart("download", { mode: "retry" }); poll(); }
     catch (e) { setErr(String(e)); }
   };
 
@@ -104,9 +116,19 @@ export default function DownloadScreen() {
           <Button size="sm" variant="outline" onClick={update} disabled={!gaps?.pairs || !!dl?.running}>
             UPDATE CANDLES
           </Button>
-          {dl?.running && <Badge size="sm" color="info">{dl.mode === "update" ? "updating" : "downloading"}</Badge>}
+          <Button size="sm" variant="outline" onClick={retry} disabled={!lost?.count || !!dl?.running}>
+            {lost?.count ? `RETRY ${lost.count} FAILED` : "RETRY FAILED · nothing lost"}
+          </Button>
+          {dl?.running && <Badge size="sm" color="info">{dl.mode === "update" ? "updating" : dl.mode === "retry" ? "retrying" : "downloading"}</Badge>}
           {!coins.length && <span className="text-theme-xs text-gray-500 dark:text-gray-400">DOWNLOAD needs a coin; UPDATE tops up everything already stored</span>}
         </div>
+        {!!lost?.count && (
+          <p className="mt-3 text-theme-xs text-error-500">
+            lost by the last download{lost.written ? ` (${lost.written})` : ""}:{" "}
+            {lost.pairs.map((p) => `${p.symbol.replace("_USDT", "")} ${p.timeframe}`).join(" · ")}
+            {" "}— RETRY fetches exactly these
+          </p>
+        )}
         {gaps && (
           <p className="mt-3 text-theme-xs text-gray-500 dark:text-gray-400">
             {gaps.pairs.toLocaleString()} pair(s) stored ·{" "}

@@ -235,3 +235,42 @@ def test_a_stop_click_during_the_redo_pass_still_stops(job, monkeypatch):
     p = job["progress"]()
     assert p["stopped"] is True
     assert job["calls"].count(("CHILLGUY_USDT", "15m")) == 1
+
+
+def test_retry_mode_downloads_exactly_the_lost_pairs_and_nothing_else(job, monkeypatch, tmp_path):
+    """The RETRY FAILED button: the pairs the last run gave up on, by
+    themselves. Not the store walk of UPDATE, not a re-download."""
+    from tradingagents import market_sweep as msw
+
+    monkeypatch.setattr(msw, "candle_coverage", lambda: [
+        {"symbol": "APEX_USDT", "timeframe": "1h"}])
+    (tmp_path / "lost.json").write_text(json.dumps({
+        "pairs": [["CHILLGUY_USDT", "15m"], ["NAORIS_USDT", "30m"],
+                  ["CHILLGUY_USDT", "15m"]]}))            # a duplicate is one pair
+    db_jobs._run_download({"mode": "retry"})
+    assert job["calls"] == [("CHILLGUY_USDT", "15m"), ("NAORIS_USDT", "30m")]
+    p = job["progress"]()
+    assert (p["done"], p["total"]) == (2, 2) and p["errors"] == 0
+    assert p["mode"] == "retry"
+    assert "retried 2 lost pair(s)" in p["note"]
+    assert job["lost"]()["pairs"] == []
+
+
+def test_retry_mode_with_nothing_lost_does_nothing_and_says_so(job, tmp_path):
+    (tmp_path / "lost.json").write_text(json.dumps({"pairs": []}))
+    db_jobs._run_download({"mode": "retry"})
+    assert job["calls"] == []
+    p = job["progress"]()
+    assert (p["done"], p["total"]) == (0, 0)
+    assert "nothing to retry" in p["note"]
+    title, kw = job["bell"][-1]
+    assert title == "Download finished" and "nothing to retry" in kw["detail"]
+
+
+def test_a_pair_lost_again_on_retry_stays_in_the_lost_file(job, tmp_path):
+    (tmp_path / "lost.json").write_text(json.dumps({
+        "pairs": [["CHILLGUY_USDT", "15m"], ["NAORIS_USDT", "30m"]]}))
+    job["fails"][("NAORIS_USDT", "30m")] = 10 ** 6
+    db_jobs._run_download({"mode": "retry"})
+    assert job["lost"]()["pairs"] == [["NAORIS_USDT", "30m"]]
+    assert job["saved"] == [("CHILLGUY_USDT", "15m")]

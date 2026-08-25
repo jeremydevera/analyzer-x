@@ -231,6 +231,10 @@ export const api = {
     pairs: number; behind: number;
     worst: { symbol: string; timeframe: string; hours_behind: number } | null;
   }>("/api/candles/gaps"),
+  /** the pairs the last download gave up on — what RETRY FAILED fetches */
+  candleLost: () => get<{
+    pairs: { symbol: string; timeframe: string }[]; count: number; written: string;
+  }>("/api/candles/lost"),
   plan: (coins: string[], tfs: string[]) =>
     get<GridPlan>(`/api/backtest/plan?coins=${coins.join(",")}&tfs=${tfs.join(",")}`),
   deployedRows: (coins: string[], tfs: string[]) =>

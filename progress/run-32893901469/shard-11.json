@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 14, "total": 51, "rows": 322840, "note": "DATA 15m: 5,246 bars, testing 75 rules", "pct": 27.5, "updated": "2026-08-25T20:23:05Z"}
+{"shard": 11, "stage": "testing", "done": 15, "total": 51, "rows": 370460, "note": "DOS 15m: rule 69/75 (obv20)", "pct": 29.4, "updated": "2026-08-25T20:23:50Z"}

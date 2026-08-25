@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 28, "total": 51, "rows": 760180, "note": "MASK 30m: rule 47/75 (ibs)", "pct": 54.9, "updated": "2026-08-25T20:34:13Z"}
+{"shard": 9, "stage": "testing", "done": 29, "total": 51, "rows": 777120, "note": "MITO 15m: rule 49/75 (vwaprev)", "pct": 56.9, "updated": "2026-08-25T20:34:58Z"}

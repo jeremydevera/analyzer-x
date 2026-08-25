@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 1, "total": 51, "rows": 0, "note": "AAVE 15m: downloading candles", "pct": 2.0, "updated": "2026-08-25T07:17:41Z"}
+{"shard": 14, "stage": "testing", "done": 1, "total": 51, "rows": 1080, "note": "AAVE 15m: rule 2/75 (mom15)", "pct": 2.0, "updated": "2026-08-25T07:18:33Z"}

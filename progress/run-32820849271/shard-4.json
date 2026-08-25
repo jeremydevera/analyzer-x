@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 16, "total": 51, "rows": 568580, "note": "EDGE 15m: 15,239 bars, testing 75 rules", "pct": 31.4, "updated": "2026-08-25T08:03:45Z"}
+{"shard": 4, "stage": "testing", "done": 16, "total": 51, "rows": 572980, "note": "EDGE 15m: rule 16/75 (keltner)", "pct": 31.4, "updated": "2026-08-25T08:04:30Z"}

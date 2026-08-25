@@ -166,3 +166,36 @@ def test_shard_progress_is_read_from_git(monkeypatch):
     src = inspect.getsource(so.cloud_shards)
     assert '"git", "fetch"' in src and "sweep-progress" in src
     assert "gh" not in src.replace("github", ""), "it must not touch the API"
+
+
+def test_stop_takes_the_pool_down_instead_of_waiting_for_it():
+    """STOP is read once a TICK, so the loop notices in a minute. The PROCESS
+    took over two: local_round's ProcessPoolExecutor registers an atexit
+    handler that joins every worker, so 'stop' waited for a 24-pair round to
+    drain. Killing the parent instead left 8 workers reparented to init."""
+    import inspect
+
+    src = inspect.getsource(so.shutdown_pool)
+    assert "signal.SIGTERM" in src and "signal.SIGKILL" in src
+    assert "os.kill(pid, 0)" in src, "check it is alive before SIGKILL"
+
+    work = inspect.getsource(so.run)
+    assert work.count("shutdown_pool()") == 2, (
+        "both exits close the pool: stopped-by-request AND finished")
+    i = work.index("stopped by request")
+    assert "shutdown_pool()" in work[max(0, i - 300):i]
+
+
+def test_shutdown_pool_only_signals_its_own_children(monkeypatch):
+    """A ps line whose ppid is somebody else must never be signalled."""
+    sent = []
+    monkeypatch.setattr(so.os, "getpid", lambda: 4242)
+    monkeypatch.setattr(so.os, "kill", lambda p, s: sent.append((p, s)))
+    monkeypatch.setattr(so.time, "sleep", lambda s: None)
+
+    class R:
+        stdout = "  PID  PPID\n 100 4242\n 101 4242\n 102    1\n 103  9999\n"
+
+    monkeypatch.setattr(so.subprocess, "run", lambda *a, **k: R())
+    assert so.shutdown_pool() == 2
+    assert {p for p, _ in sent} == {100, 101}

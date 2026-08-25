@@ -33,6 +33,7 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+import signal
 import subprocess
 import time
 from pathlib import Path
@@ -222,6 +223,46 @@ def local_round(pairs_left, *, workers: int = 0) -> int:
     return len(got.get("rows") or [])
 
 
+def shutdown_pool(grace: float = 4.0) -> int:
+    """Stop this process's own pool workers before exiting.
+
+    STOP is read once a TICK, so the loop notices within a minute. The process
+    still did not exit for over two: `local_round` runs inside a daemon thread,
+    but the ProcessPoolExecutor it opens registers an atexit handler that JOINS
+    every worker at interpreter shutdown — so "stop" waited for the current
+    24-pair round to drain, up to half an hour.
+
+    Reaching for SIGTERM on the parent instead is worse: on 2026-08-25 it left
+    8 workers reparented to init, which is the orphan problem this file's
+    sibling `reap_orphans` exists to clean up. So the parent takes its own
+    children down first, on purpose, and only then exits.
+
+    A worker killed mid-pair is INTERRUPTED, not failed: its state file is a
+    consistent checkpoint and the next pass resumes from that watermark. Only
+    an exception discards a pair (see `market_sweep.discard_pair`).
+    """
+    mine = os.getpid()
+    out = subprocess.run(["ps", "-eo", "pid,ppid"],
+                         capture_output=True, text=True).stdout.splitlines()
+    kids = []
+    for line in out[1:]:
+        parts = line.split()
+        if len(parts) == 2 and parts[1].isdigit() and int(parts[1]) == mine:
+            kids.append(int(parts[0]))
+    for pid in kids:
+        with contextlib.suppress(ProcessLookupError, PermissionError):
+            os.kill(pid, signal.SIGTERM)
+    if kids:
+        time.sleep(grace)
+    for pid in kids:
+        # signal 0 raises ProcessLookupError if it already went; the suppress
+        # then skips the SIGKILL rather than aiming it at a recycled pid
+        with contextlib.suppress(ProcessLookupError, PermissionError):
+            os.kill(pid, 0)
+            os.kill(pid, signal.SIGKILL)
+    return len(kids)
+
+
 # ------------------------------------------------------------------- cycle
 def run(coins, tfs, *, prefer_cloud: bool = True) -> None:
     """Publish every TICK; do the heavy work on threads.
@@ -353,10 +394,12 @@ def run(coins, tfs, *, prefer_cloud: bool = True) -> None:
         log(f"{pct:5.1f}%  {len(done):,}/{total:,} pairs  ·  {where}")
         if len(done) >= total:
             log(f"FINISHED {len(done):,}/{total:,} pairs")
+            log(f"closing {shutdown_pool()} workers")
             return
         time.sleep(TICK)
 
-    log("stopped by request")
+    n = shutdown_pool()
+    log(f"stopped by request, closed {n} workers")
 
 
 def main() -> int:

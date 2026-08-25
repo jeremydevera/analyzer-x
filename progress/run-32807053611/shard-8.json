@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 10, "total": 23, "rows": 598560, "note": "EGLD 30m: 19,999 bars, testing 75 rules", "pct": 43.5, "updated": "2026-08-25T04:36:21Z"}
+{"shard": 8, "stage": "testing", "done": 10, "total": 23, "rows": 609340, "note": "EGLD 30m: rule 43/75 (macddiv)", "pct": 43.5, "updated": "2026-08-25T04:37:06Z"}

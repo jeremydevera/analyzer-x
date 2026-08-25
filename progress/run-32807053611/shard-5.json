@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 2, "total": 21, "rows": 89400, "note": "ALGO 30m: rule 17/75 (atrbreak)", "pct": 9.5, "updated": "2026-08-25T04:06:44Z"}
+{"shard": 5, "stage": "testing", "done": 2, "total": 21, "rows": 100800, "note": "ALGO 1h: 9,999 bars, testing 75 rules", "pct": 9.5, "updated": "2026-08-25T04:07:31Z"}

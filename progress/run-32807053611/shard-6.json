@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 23, "total": 28, "rows": 1431680, "note": "SIREN 30m: 19,999 bars, testing 75 rules", "pct": 82.1, "updated": "2026-08-25T06:33:23Z"}
+{"shard": 6, "stage": "testing", "done": 23, "total": 28, "rows": 1434080, "note": "SIREN 30m: rule 6/75 (sweep30)", "pct": 82.1, "updated": "2026-08-25T06:34:09Z"}

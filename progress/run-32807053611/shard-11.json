@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 9, "total": 19, "rows": 544500, "note": "GMX 15m: 34,594 bars, testing 75 rules", "pct": 47.4, "updated": "2026-08-25T04:51:15Z"}
+{"shard": 11, "stage": "testing", "done": 9, "total": 19, "rows": 546480, "note": "GMX 15m: rule 3/75 (fade15)", "pct": 47.4, "updated": "2026-08-25T04:52:09Z"}

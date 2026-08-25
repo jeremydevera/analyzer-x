@@ -101,15 +101,17 @@ def available() -> tuple[bool, str]:
 
 
 def dispatch(*, shards: int = 20, coins: int = 0, timeframes: str = "15m,30m",
-             min_days: int = 0) -> dict:
-    """Start a run and return its id and url."""
+             min_days: int = 0, days: int = 365) -> dict:
+    """Start a run and return its id and url. `days` is the history window the
+    shards measure -- the same number the Backtest screen sends the local job."""
     ok, slug = available()
     if not ok:
         raise CloudError(slug)
     before = _runs(slug, limit=1)
     _gh("workflow", "run", WORKFLOW, "--repo", slug,
         "-f", f"shards={shards}", "-f", f"coins={coins}",
-        "-f", f"timeframes={timeframes}", "-f", f"min_days={min_days}")
+        "-f", f"timeframes={timeframes}", "-f", f"min_days={min_days}",
+        "-f", f"days={days}")
     # `gh workflow run` prints no id, so wait for a run newer than the last one
     old = before[0]["databaseId"] if before else 0
     for _ in range(30):

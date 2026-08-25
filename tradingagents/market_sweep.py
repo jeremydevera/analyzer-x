@@ -496,7 +496,8 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
     coin = symbol.replace("_USDT", "")
     iv, bs, cap = br.TFS[tf]
     df, added, source = refresh_candles(symbol, tf, days=days)
-    if len(df) < 500:
+    # per timeframe, never a flat 500: that made 1d impossible (br.MIN_BARS)
+    if len(df) < br.min_bars(tf):
         return {"coin": coin, "tf": tf, "rows": [], "added": added,
                 "source": source, "why": f"only {len(df)} bars"}
     try:
@@ -702,6 +703,13 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
 # on. Per pair, never per sweep: a coin that fails must not restart the other
 # 4,964 (operator, 2026-08-25).
 PAIR_RETRIES = 2
+
+
+def min_bars(tf: str) -> int:
+    """The shared floor (backtest_report.MIN_BARS) -- one definition."""
+    from tradingagents import backtest_report as br
+
+    return br.min_bars(tf)
 
 PROGRESS = HOME / "progress.json"
 PIDFILE = HOME / "sweep.pid"

@@ -26,6 +26,14 @@ SHARDS = max(1, int(os.environ.get("SHARDS", "1")))
 PER_SHARD = int(os.environ.get("COINS", "0"))
 TFS = [t.strip() for t in os.environ.get("TFS", "15m,30m").split(",") if t.strip()]
 MIN_DAYS = int(os.environ.get("MIN_DAYS", "0"))
+# The history window, in days -- the same knob the Backtest screen sends the
+# local job ("Previous 2 months" = 60). Default a year, as before.
+DAYS = int(os.environ.get("DAYS", "365"))
+# How many times ONE pair is redone before the shard gives up on it. The
+# local sweep's rule (market_sweep.PAIR_RETRIES), and the operator's words on
+# 2026-08-25: "if the backtest failed for certain coin make sure to stop the
+# process for that specific coin and retry it". Never the whole shard.
+PAIR_RETRIES = 2
 BASE_MARGIN = 5.0
 GATE_BLOCK = 0.50
 
@@ -85,7 +93,23 @@ def eligible():
     return keep[:PER_SHARD] if PER_SHARD else keep
 
 
+class PairFailed(Exception):
+    """The venue failed this pair part-way. Nothing of it was written."""
+
+
+def window(df):
+    """The cut market_sweep.refresh_candles makes -- everything newer than
+    DAYS+30 days ago -- so a cloud pair and a local pair see the same bars."""
+    import pandas as pd
+
+    cut = pd.Timestamp.utcnow().tz_localize(None) - pd.Timedelta(days=DAYS + 30)
+    return df[df["Date"] >= cut].reset_index(drop=True)
+
+
 def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
+    """Measure one pair. Rows are BUFFERED and written only when the pair
+    completes, so a pair that raises leaves nothing behind to mix with its
+    redo. A venue failure raises PairFailed for main() to requeue."""
     iv, bs, cap = br.TFS[tf]
     report("testing", i, n, rows=rows_so_far,
            note=f"{sym.replace('_USDT', '')} {tf}: downloading candles")
@@ -99,9 +123,12 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
         rt = br.round_trip_cost(fee, book)
         df = at._closed_bars(fx.klines(sym, iv, cap), bs)
     except Exception as exc:
-        log(f"{sym} {tf}: {str(exc)[:60]}")
-        return 0
-    if len(df) < 2000:
+        raise PairFailed(f"{sym} {tf}: {str(exc)[:60]}") from exc
+    df = window(df)
+    # the shared floor (backtest_report.MIN_BARS), never a private 2000: that
+    # rejected 1h at 60 days and 1d always, while the local sweep measured them
+    if len(df) < br.min_bars(tf):
+        log(f"{sym} {tf}: only {len(df)} bars, skipped")
         return 0
     coin = sym.replace("_USDT", "")
     days = int((df["Date"].iloc[-1] - df["Date"].iloc[0]).days)
@@ -114,6 +141,7 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
     nbars = len(df)
     half = nbars // 2
     kept = 0
+    lines = []                  # written only when the pair completes
     # Once per frame, for fast_grid: funding as cumulative-rate arrays and
     # each bar's month as an index, so no trade ever formats a timestamp.
     f_ms, f_rate = [], []
@@ -188,7 +216,7 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
                     a = six[sz]["h1"]
                     b = six[sz]["h2"]
                     m = r["monthly"]
-                    out.write(json.dumps({
+                    lines.append(json.dumps({
                         "coin": coin, "tf": tf, "signal": sig, "th": thp,
                         "sl": round(sl * 100, 3), "tp": round(tp * 100, 3),
                         "rr": round(tp / sl, 2), "sizing": sz, "lev": at.LEVERAGE,
@@ -225,31 +253,54 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
         at.STRATEGY_SPECS.pop(key, None)
         report("testing", i, n, rows=rows_so_far + kept,
                note=f"{coin} {tf}: rule {si}/{len(br.SIGNALS)} ({sig})")
+    out.write("".join(lines))
     out.flush()
     return kept
 
 
 def main():
+    from collections import deque
+
     t0 = time.time()
     coins = eligible()
-    total = 0
+    log(f"window: last {DAYS} days (+30 lookback), floors {br.MIN_BARS}")
+    total, redos, failed = 0, 0, []
+    # a queue, not a nested loop: a pair the venue failed goes to the BACK and
+    # is redone by itself -- the other pairs keep going, the shard never restarts
+    queue = deque((i, sym, tf) for i, sym in enumerate(coins, 1) for tf in TFS)
+    tries: dict = {}
     with open(OUT, "w") as out:
-        for i, sym in enumerate(coins, 1):
-            for tf in TFS:
+        while queue:
+            i, sym, tf = queue.popleft()
+            try:
                 total += run_pair(sym, tf, out, i=i, n=len(coins),
                                   rows_so_far=total)
+            except PairFailed as exc:
+                n = tries.get((sym, tf), 0)
+                if n < PAIR_RETRIES:
+                    tries[(sym, tf)] = n + 1
+                    redos += 1
+                    log(f"{exc} · nothing written, redoing {n + 1}/{PAIR_RETRIES} "
+                        f"after the others")
+                    queue.append((i, sym, tf))
+                    continue
+                failed.append(f"{sym} {tf}: {exc}")
+                log(f"{exc} · gave up after {PAIR_RETRIES} redos")
             el = time.time() - t0
-            log(f"{i}/{len(coins)} {sym} · {total:,} rows · "
-                f"{el / 60:.0f} min elapsed · "
-                f"ETA {el / i * (len(coins) - i) / 60:.0f} min")
+            if tf == TFS[-1]:
+                log(f"{i}/{len(coins)} {sym} · {total:,} rows · "
+                    f"{el / 60:.0f} min elapsed · "
+                    f"ETA {el / i * (len(coins) - i) / 60:.0f} min")
             # A runner is killed at six hours with no artifact, so stop early
             # and keep what has been measured.
             if el > 5.2 * 3600:
                 log(f"stopping at {i}/{len(coins)} coins to protect the artifact")
                 break
     report("done", len(coins), len(coins), rows=total,
-           note=f"{total:,} rows", force=True)
-    log(f"done: {total:,} rows in {(time.time() - t0) / 60:.0f} min")
+           note=f"{total:,} rows · {redos} pair redo(s) · {len(failed)} pair(s) lost",
+           force=True)
+    log(f"done: {total:,} rows in {(time.time() - t0) / 60:.0f} min · "
+        f"{redos} redo(s) · lost: {failed or 'none'}")
     log("PARITY: every threshold and every row, winners and losers, exactly "
         "as market_sweep.run_pair measures them — a cloud pair and a local "
         "pair are the same measurement and can be compared row for row.")

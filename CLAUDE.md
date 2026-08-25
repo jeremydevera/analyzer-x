@@ -140,6 +140,14 @@ the search.
   filtering on it is the reader's decision made in the artifact — never a
   deletion made in the sweep.
 - A failed age check KEEPS the coin.
+- The bar floor is PER TIMEFRAME (`backtest_report.MIN_BARS`, shared by the
+  local sweep and the cloud shard). A flat 500 made 1d impossible: a year of
+  daily bars is ~395 and the 60-day sweep of 2026-08-25 gave ~90, so all 997
+  1d pairs were excluded as "only 90 bars" while the run reported five
+  timeframes. 1d's floor is 60 bars; depth is the row's own `days`/`bars`.
+- The cloud shard takes the same `days` window as the local job (workflow
+  input `days`), buffers a pair's rows until it completes, and redoes a failed
+  pair by itself (`PAIR_RETRIES`, same as the sweep) — never the whole shard.
 - Whatever really was excluded is counted out loud (rule 20).
 
 ## Date format (MANDATORY — asked three times, 2026-08-21 and 2026-08-22)

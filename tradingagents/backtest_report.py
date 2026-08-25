@@ -70,6 +70,22 @@ SIGNALS = [
 THRESH_SIGNALS = {"mom6", "mom15", "fade15"}
 
 # Timeframes, with the bar limit MEASURED against what MEXC serves (rule 13).
+# The fewest bars a pair may have and still be measured. This was a flat 500
+# inside market_sweep.run_pair, sized for 15m, and it made 1d IMPOSSIBLE: a
+# year of daily bars is at most ~395 (the window is days+30) and the 60-day
+# sweep of 2026-08-25 gave 1d exactly ~90, so all 997 1d pairs were excluded as
+# "only 90 bars" -- the fifth mandatory timeframe of the full grid, dropped by a
+# constant. The floor is the TECHNICAL minimum per timeframe (the longest
+# lookback, trend50, plus room for a half-split); depth is the row's own
+# `days`/`bars`, and filtering on it is the reader's decision in the artifact.
+# One definition, used by the local sweep and the cloud shard alike.
+MIN_BARS = {"15m": 500, "30m": 500, "1h": 500, "4h": 500, "1d": 60}
+
+
+def min_bars(tf: str) -> int:
+    return MIN_BARS.get(tf, 500)
+
+
 TFS: dict[str, tuple[str, int, int]] = {
     "15m": ("Min15", 900, 36000),
     "30m": ("Min30", 1800, 20000),

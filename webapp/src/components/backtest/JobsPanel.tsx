@@ -16,7 +16,7 @@ import CoinPicker from "./CoinPicker";
 
 const TFS = ["15m", "30m", "1h", "4h", "1d"];
 const WINDOWS: Record<string, number> = {
-  "Previous month": 30, "Previous 3 months": 90,
+  "Previous month": 30, "Previous 2 months": 60, "Previous 3 months": 90,
   "Previous 6 months": 180, "Previous 1 year": 365,
 };
 const inputCls =
@@ -63,7 +63,8 @@ export default function JobsPanel() {
   const startCloud = async () => {
     setErr("");
     try {
-      await api.cloudDispatch({ shards: 20, coins: coins.length, timeframes: tfs.join(",") });
+      // the same window as the local job, or the two stores are not one measurement
+      await api.cloudDispatch({ shards: 20, coins: coins.length, timeframes: tfs.join(","), days: WINDOWS[win] });
       api.cloudStatus().then(setCloud).catch(() => {});
     } catch (e) { setErr(String(e)); }
   };

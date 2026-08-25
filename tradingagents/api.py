@@ -1201,7 +1201,8 @@ def cloud_dispatch(body: dict) -> dict:
     run = cs.dispatch(shards=int(body.get("shards") or 20),
                       coins=int(body.get("coins") or 0),
                       timeframes=str(body.get("timeframes") or "15m,30m"),
-                      min_days=int(body.get("min_days") or 0))
+                      min_days=int(body.get("min_days") or 0),
+                      days=int(body.get("days") or 365))
     cs.remember(run)
     return run
 

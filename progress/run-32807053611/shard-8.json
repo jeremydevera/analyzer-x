@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 1, "total": 23, "rows": 7800, "note": "AEVO 15m: rule 33/75 (heikin)", "pct": 4.3, "updated": "2026-08-25T03:58:44Z"}
+{"shard": 8, "stage": "testing", "done": 1, "total": 23, "rows": 16000, "note": "AEVO 30m: 19,999 bars, testing 75 rules", "pct": 4.3, "updated": "2026-08-25T03:59:31Z"}

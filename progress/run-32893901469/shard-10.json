@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 11, "total": 51, "rows": 294580, "note": "CELR 30m: 4,319 bars, testing 75 rules", "pct": 21.6, "updated": "2026-08-25T20:26:01Z"}
+{"shard": 10, "stage": "testing", "done": 13, "total": 51, "rows": 319540, "note": "CSCOSTOCK 15m: rule 26/75 (adx14)", "pct": 25.5, "updated": "2026-08-25T20:26:46Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "screening", "done": 0, "total": 51, "rows": 0, "note": "checking contract ages", "pct": 0.0, "updated": "2026-08-25T03:57:06Z"}
+{"shard": 14, "stage": "testing", "done": 1, "total": 28, "rows": 1080, "note": "AAVE 15m: rule 2/75 (mom15)", "pct": 3.6, "updated": "2026-08-25T03:57:53Z"}

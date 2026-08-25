@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 38, "total": 51, "rows": 1793354, "note": "RIVER 15m: rule 16/75 (keltner)", "pct": 74.5, "updated": "2026-08-25T09:50:43Z"}
+{"shard": 2, "stage": "testing", "done": 38, "total": 51, "rows": 1797994, "note": "RIVER 15m: rule 45/75 (zscore20)", "pct": 74.5, "updated": "2026-08-25T09:51:29Z"}

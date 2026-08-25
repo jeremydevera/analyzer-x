@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 15, "total": 51, "rows": 397540, "note": "DRIFT 15m: rule 2/75 (mom15)", "pct": 29.4, "updated": "2026-08-25T20:24:38Z"}
+{"shard": 15, "stage": "testing", "done": 17, "total": 51, "rows": 435300, "note": "EWZ 15m: rule 49/75 (vwaprev)", "pct": 33.3, "updated": "2026-08-25T20:25:23Z"}

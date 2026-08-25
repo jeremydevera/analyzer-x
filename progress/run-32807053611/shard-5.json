@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 21, "total": 21, "rows": 1335680, "note": "ZBCN 30m: 19,999 bars, testing 75 rules", "pct": 100.0, "updated": "2026-08-25T05:45:44Z"}
+{"shard": 5, "stage": "testing", "done": 21, "total": 21, "rows": 1340880, "note": "ZBCN 30m: rule 20/75 (stoch14)", "pct": 100.0, "updated": "2026-08-25T05:46:30Z"}

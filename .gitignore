@@ -15,6 +15,11 @@ downloads/
 eggs/
 .eggs/
 lib/
+# `lib/` above is the Python packaging pattern, and it also swallowed
+# webapp/src/lib/ — api.ts, imported by 24 screens, was never committed, so a
+# fresh clone failed `next build` with 24x "Can't resolve '@/lib/api'"
+# (2026-08-25, Windows checkout). Re-include the web app's lib directory.
+!webapp/src/lib/
 lib64/
 parts/
 sdist/

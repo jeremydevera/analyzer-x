@@ -87,20 +87,28 @@ def _run(cmd: list[str]) -> str:
         return ""
 
 
-def kill(pid: int) -> None:
-    """Windows has no SIGTERM for other processes; taskkill /T takes the whole tree,
-    which matters because `npx next start` is a chain of three processes."""
+def kill(pid: int, *, tree: bool) -> None:
+    """Windows has no SIGTERM for other processes, so it is taskkill -- and the
+    choice of /T decides who else dies. `tree=True` takes the whole process tree,
+    right for the UI port: `npx next start` is a chain of three processes.
+    `tree=False` kills the one pid, right for the API port: its children are
+    the DETACHED JOBS (db_jobs backtest/download/stratbt, rows_index), each
+    checkpointed, supervised and pidfile-guarded. On 2026-08-25 3:55pm a /T on
+    the API killed a 4,985-pair backtest 60 pairs in, and the supervisor logged
+    "backtest restarted after a crash". The Mac never had this: `kill <pid>` is
+    one process, and the jobs live through an app restart there."""
     if WINDOWS:
-        subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True)
+        cmd = ["taskkill", "/PID", str(pid)] + (["/T"] if tree else []) + ["/F"]
+        subprocess.run(cmd, capture_output=True)
     else:
         with contextlib.suppress(ProcessLookupError):
             os.kill(pid, signal.SIGTERM)
 
 
-def free_port(port: int) -> None:
+def free_port(port: int, *, tree: bool) -> None:
     for pid in port_pids(port):
-        print(f"freeing port {port} (pid {pid})")
-        kill(pid)
+        print(f"freeing port {port} (pid {pid}{', with its tree' if tree else ''})")
+        kill(pid, tree=tree)
         time.sleep(1)
 
 
@@ -158,16 +166,16 @@ def cmd_status() -> int:
 
 
 def cmd_stop() -> int:
-    free_port(UI_PORT)
-    free_port(API_PORT)
+    free_port(UI_PORT, tree=True)
+    free_port(API_PORT, tree=False)
     print("stopped")
     return 0
 
 
 def cmd_start() -> int:
     LOGS.mkdir(exist_ok=True)
-    free_port(API_PORT)
-    free_port(UI_PORT)
+    free_port(API_PORT, tree=False)
+    free_port(UI_PORT, tree=True)
 
     print(f"starting API on {API_PORT}…")
     # UTF-8 everywhere: Windows' default text encoding is cp1252, and the

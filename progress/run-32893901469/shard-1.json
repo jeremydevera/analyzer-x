@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 38, "total": 52, "rows": 995240, "note": "RIF 30m: 4,319 bars, testing 75 rules", "pct": 73.1, "updated": "2026-08-25T20:49:30Z"}
+{"shard": 1, "stage": "testing", "done": 39, "total": 52, "rows": 1012840, "note": "SAGA 15m: 8,639 bars, testing 75 rules", "pct": 75.0, "updated": "2026-08-25T20:50:16Z"}

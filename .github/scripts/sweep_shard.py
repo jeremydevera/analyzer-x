@@ -25,7 +25,7 @@ SHARD = int(os.environ.get("SHARD", "0"))
 SHARDS = max(1, int(os.environ.get("SHARDS", "1")))
 PER_SHARD = int(os.environ.get("COINS", "0"))
 TFS = [t.strip() for t in os.environ.get("TFS", "15m,30m").split(",") if t.strip()]
-MIN_DAYS = int(os.environ.get("MIN_DAYS", "365"))
+MIN_DAYS = int(os.environ.get("MIN_DAYS", "0"))
 BASE_MARGIN = 5.0
 GATE_BLOCK = 0.50
 

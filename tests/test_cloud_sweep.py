@@ -218,3 +218,26 @@ def test_the_orchestrator_asks_for_every_contract():
     work = inspect.getsource(so.run)
     assert "min_days=MIN_DAYS" in work, (
         "passing nothing means 365, which is a cap nobody chose")
+
+
+def test_every_dispatch_path_asks_for_every_contract():
+    """The orchestrator was fixed to pass min_days=0, but the hand-off in
+    api._finish_handoff and POST /api/cloud/dispatch still called dispatch()
+    with nothing, and dispatch() defaulted to 365. On 2026-08-25 the hand-off
+    fired twice (1:03am, 10:32am: 390 then 384 unmeasured coins) and every one
+    of them younger than a year was age-screened out in the cloud -- the same
+    cap the rule that morning had just removed. So the DEFAULT is 0, at every
+    layer: the function, the workflow input, and the shard's env fallback."""
+    import inspect
+    import pathlib
+
+    from tradingagents import api, cloud_sweep as cs
+
+    assert inspect.signature(cs.dispatch).parameters["min_days"].default == 0
+    assert 'default: "0"' in pathlib.Path(".github/workflows/sweep.yml").read_text(
+    ).split("min_days:")[1].split("\n\n")[0]
+    assert 'os.environ.get("MIN_DAYS", "0")' in _shard_src()
+    for fn in (api._finish_handoff, api.cloud_dispatch):
+        assert "min_days=" in inspect.getsource(fn), (
+            f"{fn.__name__} must pass min_days explicitly -- a default is a "
+            f"cap nobody chose")

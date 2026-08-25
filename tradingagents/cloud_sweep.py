@@ -101,7 +101,7 @@ def available() -> tuple[bool, str]:
 
 
 def dispatch(*, shards: int = 20, coins: int = 0, timeframes: str = "15m,30m",
-             min_days: int = 365) -> dict:
+             min_days: int = 0) -> dict:
     """Start a run and return its id and url."""
     ok, slug = available()
     if not ok:

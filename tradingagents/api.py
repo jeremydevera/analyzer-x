@@ -57,7 +57,8 @@ def _finish_handoff() -> None:
         print("[handoff] nothing left unmeasured — no cloud run needed",
               flush=True)
         return
-    run = cs.dispatch(shards=20, coins=len(left), timeframes=",".join(tfs))
+    run = cs.dispatch(shards=20, coins=len(left), timeframes=",".join(tfs),
+                      min_days=0)      # every contract — never the 365 default nobody chose
     cs.remember(run)
     dj.clear_handoff(kind)              # the cloud has it; the request is served
     print(f"[handoff] {len(left)} coins the Mac never reached -> GitHub run "
@@ -1198,7 +1199,8 @@ def cloud_dispatch(body: dict) -> dict:
         raise HTTPException(400, why)
     run = cs.dispatch(shards=int(body.get("shards") or 20),
                       coins=int(body.get("coins") or 0),
-                      timeframes=str(body.get("timeframes") or "15m,30m"))
+                      timeframes=str(body.get("timeframes") or "15m,30m"),
+                      min_days=int(body.get("min_days") or 0))
     cs.remember(run)
     return run
 

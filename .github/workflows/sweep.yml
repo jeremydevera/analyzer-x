@@ -21,8 +21,8 @@ on:
         description: "Comma-separated, e.g. 15m,30m"
         default: "15m,30m"
       min_days:
-        description: "Minimum contract age in days"
-        default: "365"
+        description: "Minimum contract age in days (0 = every contract; depth is each row's own days column)"
+        default: "0"
 
 permissions:
   contents: write        # shards write their progress to the sweep-progress branch

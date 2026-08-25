@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 17, "total": 28, "rows": 1024540, "note": "NVIDIA 1h: 9,542 bars, testing 75 rules", "pct": 60.7, "updated": "2026-08-25T05:32:18Z"}
+{"shard": 14, "stage": "testing", "done": 17, "total": 28, "rows": 1056000, "note": "NVIDIA 4h: rule 56/75 (insidebrk)", "pct": 60.7, "updated": "2026-08-25T05:33:03Z"}

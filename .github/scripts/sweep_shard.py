@@ -190,7 +190,17 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
                         "days": days,
                         # the last bar this pair was measured through, so the
                         # merge can record freshness instead of guessing
-                        "last_ms": (ts[-1] * 1000) if ts else 0,
+                        # int(), because ts comes from a numpy array and a
+                        # numpy.int64 is not JSON serializable — every shard
+                        # of run 32801805912 died on that at the first row it
+                        # tried to write, 93 seconds in.
+                        #
+                        # And NO *1000: `ts` is already MILLISECONDS
+                        # (datetime64[ms]). Multiplying gave 1787623200000000,
+                        # a watermark a thousand times too large, which would
+                        # have printed "measured through" a date in the year
+                        # 58,000 and made every freshness comparison nonsense.
+                        "last_ms": int(ts[-1]) if len(ts) else 0,
                         "bars": nbars, "monthly": {k: round(v, 2) for k, v in m.items()},
                         "cost_of_tp": round(rt / tp * 100, 1), "rt": round(rt * 100, 4),
                         "gate": "warn" if rt / tp >= .2 else "ok"}) + "\n")

@@ -134,3 +134,24 @@ def test_a_real_auth_failure_still_says_what_to_run(monkeypatch):
     ok, why = cs.available()
     assert ok is False
     assert "gh auth refresh" in why
+
+
+def test_the_cloud_watermark_is_milliseconds_and_json_safe():
+    """Two bugs in one field. `numpy.int64` is not JSON serializable, so every
+    shard of run 32801805912 died at the first row it wrote, 93 seconds in.
+    And `ts` is already datetime64[ms], so multiplying by 1000 produced
+    1787623200000000 — a watermark a thousand times too large, which the
+    storage screen would render as a date in the year 58,000."""
+    import datetime as dt
+    import json
+
+    src = _shard_src()
+    i = src.index('"last_ms"')
+    line = src[i:i + 120]
+    assert "int(ts[-1])" in line, "it must be a plain int for json.dumps"
+    assert "* 1000" not in line, "ts is already milliseconds"
+
+    # and the value must land in a sane decade
+    now_ms = int(dt.datetime.now().timestamp() * 1000)
+    assert 1_600_000_000_000 < now_ms < 2_600_000_000_000
+    json.dumps({"last_ms": now_ms})     # a plain int survives this

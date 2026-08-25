@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 15, "total": 20, "rows": 934540, "note": "SLP 30m: 19,999 bars, testing 75 rules", "pct": 75.0, "updated": "2026-08-25T05:31:08Z"}
+{"shard": 18, "stage": "testing", "done": 15, "total": 20, "rows": 938280, "note": "SLP 30m: rule 11/75 (sr_break)", "pct": 75.0, "updated": "2026-08-25T05:31:53Z"}

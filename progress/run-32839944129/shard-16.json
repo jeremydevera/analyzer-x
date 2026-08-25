@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 16, "total": 51, "rows": 767472, "note": "ENSO 1d: downloading candles", "pct": 31.4, "updated": "2026-08-25T12:06:24Z"}
+{"shard": 16, "stage": "testing", "done": 18, "total": 51, "rows": 776132, "note": "FLUX 15m: rule 1/75 (mom6)", "pct": 35.3, "updated": "2026-08-25T12:07:23Z"}

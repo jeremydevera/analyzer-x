@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 23, "total": 52, "rows": 594220, "note": "ICP 15m: rule 47/75 (ibs)", "pct": 44.2, "updated": "2026-08-25T20:35:46Z"}
+{"shard": 3, "stage": "testing", "done": 24, "total": 52, "rows": 614540, "note": "IO 15m: 8,639 bars, testing 75 rules", "pct": 46.2, "updated": "2026-08-25T20:36:38Z"}

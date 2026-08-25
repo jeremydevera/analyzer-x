@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 9, "total": 15, "rows": 563700, "note": "PYTH 30m: 19,999 bars, testing 75 rules", "pct": 60.0, "updated": "2026-08-25T04:57:35Z"}
+{"shard": 13, "stage": "testing", "done": 9, "total": 15, "rows": 567500, "note": "PYTH 30m: rule 13/75 (pivot)", "pct": 60.0, "updated": "2026-08-25T04:58:21Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 14, "total": 51, "rows": 366420, "note": "DELLSTOCK 15m: 8,588 bars, testing 75 rules", "pct": 27.5, "updated": "2026-08-25T20:23:52Z"}
+{"shard": 15, "stage": "testing", "done": 15, "total": 51, "rows": 397540, "note": "DRIFT 15m: rule 2/75 (mom15)", "pct": 29.4, "updated": "2026-08-25T20:24:38Z"}

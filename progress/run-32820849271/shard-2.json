@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 1, "total": 51, "rows": 23260, "note": "1000000MOG 30m: rule 27/75 (aroon25)", "pct": 2.0, "updated": "2026-08-25T07:22:26Z"}
+{"shard": 2, "stage": "testing", "done": 1, "total": 51, "rows": 33600, "note": "1000000MOG 1h: 9,999 bars, testing 75 rules", "pct": 2.0, "updated": "2026-08-25T07:23:19Z"}

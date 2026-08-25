@@ -141,24 +141,22 @@ def test_the_mac_works_while_the_cloud_works():
 
 
 def test_a_restart_adopts_the_run_already_in_flight():
-    """Restarting dispatched a SECOND 20-shard run beside the first. GitHub
-    gives a free repo about 20 concurrent jobs, so the newcomer queued behind
-    the incumbent and both looked stalled."""
+    """Restarting dispatched a SECOND 20-shard run beside the first, which just
+    queued behind it. Worse, `remembered()` holds the last DISPATCHED run: on
+    2026-08-25 three existed at once and the orchestrator adopted a QUEUED one
+    while another had 20 shards live and half a million rows per shard, so it
+    reported "0/0 shards" while the cloud was most of the way through."""
     import inspect
 
     work = inspect.getsource(so.run)
-    assert "cs.remembered()" in work, "it must look for a run in flight"
+    assert "cs.working_run()" in work, "it must find the run actually MEASURING"
+    assert "cs.remembered()" not in work, (
+        "the last dispatched run is not the working one")
     # the cloud runs on its OWN thread: managing it is seconds of work and must
     # not queue behind a 30-minute local round
     assert "def cloud(" in work and "for fn in (scan, work, cloud)" in work
-    i = work.index("cs.remembered()")
-    body = work[i:i + 700]        # the liveness check grew; widen the window
-    assert 'st0.get("status") != "completed"' in body
-    assert 'conclusion' in body, (
-        "a cancelled run is remembered too; adopting one waits on a corpse")
-    assert "adopting GitHub run" in body
-    assert work.index("adopting GitHub run") < work.index("cs.dispatch("),         "adoption has to be tried BEFORE dispatching"
-
+    assert work.index("adopting GitHub run") < work.index("cs.dispatch("), \
+        "adoption has to be tried BEFORE dispatching"
 
 def test_shard_progress_is_read_from_git(monkeypatch):
     """The REST API poll burned 5,000 requests in an hour and blinded every

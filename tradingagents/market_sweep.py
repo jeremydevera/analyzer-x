@@ -33,8 +33,20 @@ import time
 from collections.abc import Sequence
 from pathlib import Path
 
-HOME = Path(os.path.expanduser("~/.tradingagents/backtest"))
-CANDLES = HOME / "candles"
+# TRADINGAGENTS_SWEEP_HOME lets a second sweep run against its OWN cache and
+# results, so two sessions on one Mac cannot overwrite each other's per-pair
+# state files (those writes are not atomic — a shared run risks a corrupt
+# state.json rather than merely a stale one). Unset, the default is unchanged.
+HOME = Path(os.path.expanduser(
+    os.environ.get("TRADINGAGENTS_SWEEP_HOME")
+    or "~/.tradingagents/backtest"))
+# Candles are IMMUTABLE once their bar closes, so an isolated run shares the
+# downloaded set rather than re-fetching 4,900 pairs from MEXC — isolation is
+# wanted for results and per-pair state, not for a read-only cache. Override
+# separately only if a run really must have its own copy.
+CANDLES = Path(os.path.expanduser(
+    os.environ.get("TRADINGAGENTS_CANDLES")
+    or "~/.tradingagents/backtest/candles"))
 STATES = HOME / "state"
 ROWS = HOME / "rows.jsonl"
 MANIFEST = HOME / "manifest.json"

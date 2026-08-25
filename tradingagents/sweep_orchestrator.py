@@ -278,15 +278,11 @@ def run(coins, tfs, *, prefer_cloud: bool = True) -> None:
                 run_ = shared["cloud"]
             if run_ is None:
                 try:
-                    rid0 = int((cs.remembered() or {}).get("id") or 0)
-                    st0 = cs.status(rid0) if rid0 else {}
-                    # a CANCELLED or FAILED run is remembered too, and
-                    # adopting one leaves the sweep waiting on a corpse
-                    alive = (st0.get("status") != "completed"
-                             and st0.get("conclusion") in (None, "", "in_progress"))
-                    if rid0 and alive:
-                        run_ = {"id": rid0}
-                        log(f"adopting GitHub run {rid0}, already in flight")
+                    # the run that is MEASURING, not merely the last dispatched
+                    found = cs.working_run()
+                    if found:
+                        run_ = found
+                        log(f"adopting GitHub run {found['id']}, shards live")
                 except Exception:
                     run_ = None
             if run_ is None:

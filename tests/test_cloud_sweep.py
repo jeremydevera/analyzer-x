@@ -7,6 +7,8 @@ the store produced a pair whose grid could not be reasoned about. These tests
 pin the parity.
 """
 
+import json
+
 import pytest
 
 
@@ -155,3 +157,29 @@ def test_the_cloud_watermark_is_milliseconds_and_json_safe():
     now_ms = int(dt.datetime.now().timestamp() * 1000)
     assert 1_600_000_000_000 < now_ms < 2_600_000_000_000
     json.dumps({"last_ms": now_ms})     # a plain int survives this
+
+
+def test_the_working_run_is_not_the_last_dispatched(monkeypatch):
+    """`remembered()` holds the last DISPATCHED run. On 2026-08-25 three runs
+    existed at once and the orchestrator adopted a QUEUED one while another had
+    20 shards live and half a million rows per shard — it reported "0/0 shards"
+    for twenty minutes while the cloud was most of the way through the grid."""
+    from tradingagents import cloud_sweep as cs
+
+    monkeypatch.setattr(cs, "repo_slug", lambda cwd=None: "me/repo")
+    monkeypatch.setattr(cs, "_gh", lambda *a, **k: json.dumps([
+        {"databaseId": 3, "status": "queued", "conclusion": None},
+        {"databaseId": 2, "status": "in_progress", "conclusion": None},
+        {"databaseId": 1, "status": "completed", "conclusion": "success"}]))
+    monkeypatch.setattr(cs, "status",
+                        lambda rid, slug=None: {"running": 20 if rid == 2 else 0})
+    assert cs.working_run() == {"id": 2, "repo": "me/repo"}
+
+
+def test_no_live_run_means_none(monkeypatch):
+    from tradingagents import cloud_sweep as cs
+
+    monkeypatch.setattr(cs, "repo_slug", lambda cwd=None: "me/repo")
+    monkeypatch.setattr(cs, "_gh", lambda *a, **k: json.dumps([
+        {"databaseId": 1, "status": "completed", "conclusion": "failure"}]))
+    assert cs.working_run() is None

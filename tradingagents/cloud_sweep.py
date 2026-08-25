@@ -224,6 +224,37 @@ def fetch(run_id: int, slug: str | None = None) -> list:
 RUNFILE = Path(os.path.expanduser("~/.tradingagents/backtest/cloud_run.json"))
 
 
+def working_run(slug: str | None = None) -> dict | None:
+    """The sweep run that is actually MEASURING right now, if any.
+
+    `remembered()` holds the LAST DISPATCHED run, which is not the same thing:
+    on 2026-08-25 three runs existed at once and the orchestrator adopted a
+    QUEUED one while a different run had 20 shards live and half a million rows
+    per shard. It then reported "0/0 shards" for twenty minutes while the cloud
+    was, in fact, most of the way through the grid.
+
+    Prefers a run with shards genuinely running over one merely not-completed.
+    """
+    slug = slug or repo_slug()
+    try:
+        rows = json.loads(_gh(
+            "run", "list", "--repo", slug, "--workflow", WORKFLOW,
+            "--limit", "8", "--json", "databaseId,status,conclusion"))
+    except CloudError:
+        return None
+    live = [r for r in rows if r.get("status") == "in_progress"]
+    for r in live:                       # a run whose shards have started wins
+        try:
+            st = status(int(r["databaseId"]), slug)
+        except CloudError:
+            continue
+        if int(st.get("running") or 0) > 0:
+            return {"id": int(r["databaseId"]), "repo": slug}
+    if live:
+        return {"id": int(live[0]["databaseId"]), "repo": slug}
+    return None
+
+
 def remember(run: dict) -> None:
     """Persist the run being watched, so it survives a browser reload, a tab
     switch, or the app restarting. Session state does not."""

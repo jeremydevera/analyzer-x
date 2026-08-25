@@ -148,7 +148,7 @@ def _run_batch(batch, tfs, args, n_workers):
             for c in batch for tf in tfs]
     out = []
     with cf.ProcessPoolExecutor(max_workers=min(n_workers, len(jobs))) as ex:
-        for sym, tf, n, err in ex.map(_pair_job, jobs):
+        for sym, tf, _n, err in ex.map(_pair_job, jobs):
             if err:
                 print(f"!! {sym} {tf}: {err}", flush=True)
                 continue

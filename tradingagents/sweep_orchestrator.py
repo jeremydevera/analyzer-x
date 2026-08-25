@@ -47,6 +47,15 @@ CLOUD_SHARDS = 20
 CLOUD_MAX_CONCURRENT = 1    # one cloud run at a time; shards are the parallelism
 GH_BUDGET_FLOOR = 200       # below this, stop asking GitHub and work here
 
+# How old a contract must be to enter the sweep. `cloud_sweep.dispatch` defaults
+# this to 365 and the orchestrator used to let it, which quietly cut the grid
+# from 993 coins to 455 -- 538 contracts younger than a year were never measured
+# and nothing said so. Rule 20: never drop a dimension silently. Every listed
+# contract is measured, and each row carries its own `days`/`months`/`bars`, so
+# a four-month coin reports four months rather than being deleted from the
+# search. Filtering on depth is the reader's decision, made in the artifact.
+MIN_DAYS = 0
+
 
 def log(msg: str) -> None:
     from tradingagents.positions_view import fmt_when
@@ -287,12 +296,15 @@ def run(coins, tfs, *, prefer_cloud: bool = True) -> None:
                     run_ = None
             if run_ is None:
                 try:
+                    n_coins = len({c for c, _ in left})
                     run_ = cs.dispatch(shards=CLOUD_SHARDS,
-                                       coins=len({c for c, _ in left}),
-                                       timeframes=",".join(tfs))
+                                       coins=n_coins,
+                                       timeframes=",".join(tfs),
+                                       min_days=MIN_DAYS)
                     cs.remember(run_)
                     log(f"dispatched GitHub run {run_.get('id')} for "
-                        f"{len({c for c, _ in left})} coins")
+                        f"{n_coins} coins x {len(tfs)} timeframes, "
+                        f"min_days={MIN_DAYS}")
                 except Exception as exc:
                     log(f"dispatch failed: {str(exc)[:70]}")
             with lock:

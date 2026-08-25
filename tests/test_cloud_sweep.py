@@ -183,3 +183,38 @@ def test_no_live_run_means_none(monkeypatch):
     monkeypatch.setattr(cs, "_gh", lambda *a, **k: json.dumps([
         {"databaseId": 1, "status": "completed", "conclusion": "failure"}]))
     assert cs.working_run() is None
+
+
+def test_the_age_screen_never_silently_deletes_a_coin():
+    """On 2026-08-25 the sweep covered 455 coins, not 993. Two causes, both in
+    `eligible()`: the orchestrator let min_days default to 365, and a coin whose
+    age check raised was dropped with only a log line. Rule 20 -- a capped grid
+    says what it capped."""
+    src = _shard_src()
+    i = src.index("def eligible(")
+    body = src[i:src.index("\ndef ", i + 10)]
+
+    # a failed age check keeps the coin
+    exc = body[body.index("except Exception"):]
+    assert "keep.append(sym)" in exc[:400], (
+        "an age-check failure must keep the coin, not delete it from the sweep")
+
+    # min_days = 0 skips the screen instead of fetching a Day1 series per coin
+    assert "if MIN_DAYS <= 0:" in body and "no age screen" in body
+
+    # and what WAS dropped is counted out loud
+    assert "young" in body and "dropped as younger than" in body
+
+
+def test_the_orchestrator_asks_for_every_contract():
+    """`dispatch` defaults min_days to 365. The orchestrator never passed it,
+    so 538 contracts younger than a year were never measured and the panel
+    still called it the whole market."""
+    import inspect
+
+    from tradingagents import sweep_orchestrator as so
+
+    assert so.MIN_DAYS == 0, "every listed contract enters the sweep"
+    work = inspect.getsource(so.run)
+    assert "min_days=MIN_DAYS" in work, (
+        "passing nothing means 365, which is a cap nobody chose")

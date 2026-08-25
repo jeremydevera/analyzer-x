@@ -45,26 +45,43 @@ def log(msg):
 def eligible():
     """Contracts at least MIN_DAYS old. Every shard screens the same list, in
     the same order, and then takes its own slice — cheap, and it needs no
-    coordination between runners."""
+    coordination between runners.
+
+    MIN_DAYS = 0 means measure everything, and then the screen is skipped
+    entirely: it would fetch a Day1 series per coin (about a thousand requests
+    across twenty shards) only to keep every one of them.
+
+    A coin whose age check RAISES is kept, not dropped. It used to be dropped,
+    so one timeout deleted a contract from the sweep with nothing but a log
+    line to say so — the row's own `days` column is the honest place to report
+    a short history, not silent removal from the search."""
     raw = fx._get_public(f"{fx.BASE}/api/v1/contract/detail").get("data") or []
     syms = sorted(x["symbol"] for x in raw
                   if str(x.get("symbol", "")).endswith("_USDT")
                   and int(x.get("state", 1)) == 0)
     mine = syms[SHARD::SHARDS]
     log(f"{len(syms)} contracts, {len(mine)} in this shard")
-    keep = []
+    if MIN_DAYS <= 0:
+        log(f"MIN_DAYS=0: no age screen, measuring all {len(mine)}")
+        return mine[:PER_SHARD] if PER_SHARD else mine
+    keep, young, unknown = [], 0, 0
     report("screening", 0, len(mine), note="checking contract ages", force=True)
     for i, sym in enumerate(mine, 1):
         try:
             d = fx.klines(sym, "Day1", 500)
             if (d["Date"].iloc[-1] - d["Date"].iloc[0]).days >= MIN_DAYS:
                 keep.append(sym)
+            else:
+                young += 1
         except Exception as exc:
-            log(f"{sym}: age check failed ({str(exc)[:50]})")
+            log(f"{sym}: age check failed ({str(exc)[:50]}), keeping it anyway")
+            keep.append(sym)
+            unknown += 1
         report("screening", i, len(mine),
                note=f"{len(keep)} old enough so far")
         time.sleep(0.05)
-    log(f"{len(keep)} are at least {MIN_DAYS} days old")
+    log(f"{len(keep)} kept ({unknown} age unknown), "
+        f"{young} dropped as younger than {MIN_DAYS} days")
     return keep[:PER_SHARD] if PER_SHARD else keep
 
 

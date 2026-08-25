@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 5, "total": 51, "rows": 125520, "note": "ASTSSTOCK 15m: downloading candles", "pct": 9.8, "updated": "2026-08-25T07:22:59Z"}
+{"shard": 13, "stage": "testing", "done": 5, "total": 51, "rows": 138320, "note": "ASTSSTOCK 30m: 6,332 bars, testing 75 rules", "pct": 9.8, "updated": "2026-08-25T07:23:46Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 27, "total": 51, "rows": 965058, "note": "LTC 30m: rule 2/75 (mom15)", "pct": 52.9, "updated": "2026-08-25T08:37:19Z"}
+{"shard": 12, "stage": "testing", "done": 27, "total": 51, "rows": 974058, "note": "LTC 30m: rule 45/75 (zscore20)", "pct": 52.9, "updated": "2026-08-25T08:38:04Z"}

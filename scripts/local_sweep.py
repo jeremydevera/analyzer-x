@@ -173,7 +173,6 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
 
     os.environ["TRADINGAGENTS_SWEEP_HOME"] = os.path.expanduser(args.home)
-    from tradingagents import backtest_report as br
     from tradingagents.dataflows import mexc_futures as fx
 
     tfs = [t.strip() for t in args.tfs.split(",") if t.strip()]

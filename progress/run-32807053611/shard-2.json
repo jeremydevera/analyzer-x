@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 19, "total": 27, "rows": 1231780, "note": "RIF 30m: rule 9/75 (fib382)", "pct": 70.4, "updated": "2026-08-25T06:04:09Z"}
+{"shard": 2, "stage": "testing", "done": 19, "total": 27, "rows": 1239700, "note": "RIF 30m: rule 45/75 (zscore20)", "pct": 70.4, "updated": "2026-08-25T06:04:55Z"}

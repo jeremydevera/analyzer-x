@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 2, "total": 25, "rows": 86280, "note": "AIOZ 30m: rule 20/75 (stoch14)", "pct": 8.0, "updated": "2026-08-25T04:08:14Z"}
+{"shard": 17, "stage": "testing", "done": 2, "total": 25, "rows": 96000, "note": "AIOZ 1h: 9,999 bars, testing 75 rules", "pct": 8.0, "updated": "2026-08-25T04:09:06Z"}

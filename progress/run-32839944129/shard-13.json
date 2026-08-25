@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 12, "total": 51, "rows": 549332, "note": "COLLECT 30m: 11,474 bars, testing 75 rules", "pct": 23.5, "updated": "2026-08-25T11:39:23Z"}
+{"shard": 13, "stage": "testing", "done": 12, "total": 51, "rows": 554392, "note": "COLLECT 30m: rule 17/75 (atrbreak)", "pct": 23.5, "updated": "2026-08-25T11:40:09Z"}

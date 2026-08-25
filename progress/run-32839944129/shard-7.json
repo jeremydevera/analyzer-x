@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 13, "total": 51, "rows": 437320, "note": "CRV 15m: 34,621 bars, testing 75 rules", "pct": 25.5, "updated": "2026-08-25T11:37:27Z"}
+{"shard": 7, "stage": "testing", "done": 13, "total": 51, "rows": 440200, "note": "CRV 15m: rule 12/75 (donchian20)", "pct": 25.5, "updated": "2026-08-25T11:38:13Z"}

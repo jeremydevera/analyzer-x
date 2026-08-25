@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 7, "total": 51, "rows": 331696, "note": "BANK 30m: rule 33/75 (heikin)", "pct": 13.7, "updated": "2026-08-25T11:34:43Z"}
+{"shard": 6, "stage": "testing", "done": 7, "total": 51, "rows": 339896, "note": "BANK 1h: 9,999 bars, testing 75 rules", "pct": 13.7, "updated": "2026-08-25T11:35:29Z"}

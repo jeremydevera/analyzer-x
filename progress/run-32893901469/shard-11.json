@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 45, "total": 51, "rows": 1101540, "note": "TRB 30m: 4,319 bars, testing 75 rules", "pct": 88.2, "updated": "2026-08-25T20:50:10Z"}
+{"shard": 11, "stage": "testing", "done": 46, "total": 51, "rows": 1122740, "note": "TWT 15m: rule 12/75 (donchian20)", "pct": 90.2, "updated": "2026-08-25T20:50:55Z"}

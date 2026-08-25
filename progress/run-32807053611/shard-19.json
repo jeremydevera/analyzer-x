@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "screening", "done": 0, "total": 51, "rows": 0, "note": "checking contract ages", "pct": 0.0, "updated": "2026-08-25T03:57:02Z"}
+{"shard": 19, "stage": "testing", "done": 1, "total": 27, "rows": 600, "note": "AIXBT 15m: rule 1/75 (mom6)", "pct": 3.7, "updated": "2026-08-25T03:57:49Z"}

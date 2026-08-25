@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 45, "total": 51, "rows": 1815556, "note": "TRX 15m: 34,626 bars, testing 75 rules", "pct": 88.2, "updated": "2026-08-25T12:50:44Z"}
+{"shard": 19, "stage": "testing", "done": 45, "total": 51, "rows": 1828756, "note": "TRX 15m: rule 55/75 (nhigh50)", "pct": 88.2, "updated": "2026-08-25T12:51:30Z"}

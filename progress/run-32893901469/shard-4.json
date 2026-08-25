@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 29, "total": 51, "rows": 740800, "note": "MEZO 15m: 8,639 bars, testing 75 rules", "pct": 56.9, "updated": "2026-08-25T20:40:02Z"}
+{"shard": 4, "stage": "testing", "done": 30, "total": 51, "rows": 763600, "note": "MSFTSTOCK 30m: rule 36/75 (stochrsi)", "pct": 58.8, "updated": "2026-08-25T20:40:47Z"}

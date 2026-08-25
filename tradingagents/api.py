@@ -1531,6 +1531,10 @@ def notifications_list(limit: int = 30, kind: str | None = None,
     rows = nt.recent(limit=limit, kind=kind, unread_only=unread)
     for r in rows:
         r["when"] = pv.fmt_when(float(r.get("ts") or 0))
+        # a failed download that has since been made whole says so, measured
+        # against the store — the 2:00pm row on 2026-08-25 read as live for
+        # an hour after both its pairs were back
+        r["resolved"], r["resolved_why"] = _download_resolution(r)
     return {"rows": rows, "unread": nt.unread_count(), "total": len(rows)}
 
 
@@ -1586,6 +1590,78 @@ def _stored_now(symbol: str, tf: str) -> dict:
         out["bars"] = None
     out.update(recovered=True, when=pv.fmt_when(path.stat().st_mtime))
     return out
+
+
+_TFS = ("15m", "30m", "1h", "4h", "1d")
+_COMPLETENESS_CACHE: dict = {"at": 0.0, "payload": None}
+
+
+def _store_completeness() -> dict:
+    """Every contract MEXC lists x the five timeframes, against the store's
+    own files. "Is the candles complete now?" answered by counting, not by
+    the absence of a red row. Cached 5 minutes (30 s after a failure): the
+    bell polls this through every download row, and list_contracts is a
+    request to the venue.
+    """
+    import time as _t
+
+    from tradingagents import parquet_store as pqs
+    from tradingagents.dataflows import mexc_futures as fx
+
+    now = _t.time()
+    c = _COMPLETENESS_CACHE
+    if c["payload"] is not None and now - c["at"] < 300:
+        return c["payload"]
+    try:
+        contracts = [r["symbol"] for r in fx.list_contracts()]
+    except Exception as exc:
+        payload = {"ok": False, "why": f"could not list MEXC contracts: {str(exc)[:80]}",
+                   "contracts": None, "wanted": None, "stored": None,
+                   "missing": [], "complete": None}
+        c.update(at=now - 270, payload=payload)
+        return payload
+    have = ({p.stem for p in pqs.CANDLES.glob("*.parquet")}
+            if pqs.CANDLES.exists() else set())
+    wanted = [(sym, tf) for sym in contracts for tf in _TFS]
+    missing = [{"symbol": sym, "timeframe": tf}
+               for sym, tf in wanted if f"{sym}-{tf}" not in have]
+    payload = {"ok": True, "why": "", "contracts": len(contracts),
+               "wanted": len(wanted), "stored": len(wanted) - len(missing),
+               "missing": missing, "complete": not missing}
+    c.update(at=now, payload=payload)
+    return payload
+
+
+def _download_resolution(row: dict) -> tuple[bool | None, str]:
+    """Is a FAILED download event still live? (None, "") when there is nothing
+    to resolve. Resolved means every pair the run NAMED is in the store and,
+    for the errors it did not name, the store is complete — measured, so a
+    2:00pm failure stops reading as live only once the files exist.
+    """
+    meta = row.get("meta") or {}
+    if row.get("ok") or meta.get("stopped") or row.get("kind") != "download":
+        return None, ""
+    named, unnamed = _named_lost(row)
+    still = [f"{sym} {tf}" for sym, tf in named if not _stored_now(sym, tf)["recovered"]]
+    if still:
+        return False, "still lost: " + ", ".join(still)
+    if unnamed:
+        comp = _store_completeness()
+        if not comp["ok"]:
+            return False, f"{unnamed} pair(s) that run did not name — {comp['why']}"
+        if not comp["complete"]:
+            return False, (f"{unnamed} pair(s) that run did not name — the store is "
+                           f"missing {len(comp['missing'])} of {comp['wanted']:,} pairs")
+        return True, (f"resolved — the store holds all {comp['wanted']:,} pairs "
+                      f"({comp['contracts']} contracts × 5 timeframes)")
+    return True, "resolved — every pair that run lost is back in the store"
+
+
+@app.get("/api/candles/completeness")
+def candles_completeness() -> dict:
+    """Contracts on MEXC x five timeframes vs the store — the whole answer to
+    "is the candles complete now?", with the missing pairs named."""
+    return _store_completeness()
 
 
 @app.get("/api/candles/lost")
@@ -1648,6 +1724,7 @@ def download_history(limit: int = 20) -> dict:
             "lost": [_stored_now(sym, tf) for sym, tf in named],
             "unnamed": unnamed,
         })
+        out[-1]["resolved"], out[-1]["resolved_why"] = _download_resolution(r)
     ok = sum(1 for r in out if r["ok"])
     return {"rows": out, "total": len(out), "ok": ok, "failed": len(out) - ok}
 

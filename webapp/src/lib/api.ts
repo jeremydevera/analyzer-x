@@ -238,6 +238,12 @@ export const api = {
     recovered: { symbol: string; timeframe: string; bars: number | null; when: string }[];
     failed_run_when: string; unnamed: number;
   }>("/api/candles/lost"),
+  /** contracts on MEXC x five timeframes vs the store — "is the candles complete?" */
+  candleCompleteness: () => get<{
+    ok: boolean; why: string; contracts: number | null; wanted: number | null;
+    stored: number | null; missing: { symbol: string; timeframe: string }[];
+    complete: boolean | null;
+  }>("/api/candles/completeness"),
   plan: (coins: string[], tfs: string[]) =>
     get<GridPlan>(`/api/backtest/plan?coins=${coins.join(",")}&tfs=${tfs.join(",")}`),
   deployedRows: (coins: string[], tfs: string[]) =>
@@ -718,6 +724,9 @@ export interface NotifyRow {
   ok: boolean;
   title: string;
   detail: string;
+  /** a FAILED download made whole since: true/false with the measured reason;
+   *  null when there is nothing to resolve */
+  resolved?: boolean | null; resolved_why?: string;
   read: boolean;
   meta: Record<string, unknown>;
 }
@@ -732,6 +741,7 @@ export interface DownloadHistoryRow {
   pairs?: number | null; bars?: number | null; errors?: number | null;
   stopped: boolean; mode: string;
   lost?: LostPair[]; unnamed?: number;
+  resolved?: boolean | null; resolved_why?: string;
 }
 export interface DownloadHistory {
   rows: DownloadHistoryRow[]; total: number; ok: number; failed: number;

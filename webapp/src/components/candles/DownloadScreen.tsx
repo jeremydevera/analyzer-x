@@ -23,6 +23,7 @@ export default function DownloadScreen() {
   const [coins, setCoins] = useState<string[]>([]);
   const [gaps, setGaps] = useState<Awaited<ReturnType<typeof api.candleGaps>> | null>(null);
   const [lost, setLost] = useState<Awaited<ReturnType<typeof api.candleLost>> | null>(null);
+  const [whole, setWhole] = useState<Awaited<ReturnType<typeof api.candleCompleteness>> | null>(null);
   const [tfs, setTfs] = useState<string[]>(["15m", "30m", "1h", "4h"]);
   const [dl, setDl] = useState<JobStatus | null>(null);
   const [err, setErr] = useState("");
@@ -38,6 +39,7 @@ export default function DownloadScreen() {
     // the lost list is rewritten by every download job, so it refreshes on
     // the same schedule: arrival, every minute, and when a job ends
     api.candleLost().then(setLost).catch(() => {});
+    api.candleCompleteness().then(setWhole).catch(() => {});
   }, []);
   useEffect(() => {
     poll();
@@ -137,6 +139,21 @@ export default function DownloadScreen() {
             {lost.unnamed
               ? ` · ${lost.unnamed} more error${lost.unnamed === 1 ? "" : "s"} from that run ${lost.unnamed === 1 ? "was" : "were"} not named`
               : ""}
+          </p>
+        )}
+        {/* "is the candles complete now?" — counted against every contract MEXC
+            lists x five timeframes, with the missing pairs named */}
+        {whole && (
+          <p className={`mt-3 text-theme-xs font-medium ${
+            whole.complete ? "text-success-600 dark:text-success-400"
+              : whole.ok ? "text-error-500" : "text-gray-500 dark:text-gray-400"}`}>
+            {!whole.ok
+              ? `store completeness unknown — ${whole.why}`
+              : whole.complete
+                ? `store complete: ${(whole.stored ?? 0).toLocaleString()} of ${(whole.wanted ?? 0).toLocaleString()} pairs (${whole.contracts} contracts × 5 timeframes)`
+                : `store missing ${whole.missing.length.toLocaleString()} of ${(whole.wanted ?? 0).toLocaleString()} pairs: ${
+                    whole.missing.slice(0, 8).map((m) => `${m.symbol.replace("_USDT", "")} ${m.timeframe}`).join(" · ")}${
+                    whole.missing.length > 8 ? ` · and ${whole.missing.length - 8} more` : ""}`}
           </p>
         )}
         {gaps && (

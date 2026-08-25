@@ -112,9 +112,19 @@ export default function NotificationDropdown() {
                         {r.detail}
                       </p>
                     )}
+                    {/* a failed download made whole since says so — measured against
+                        the store, so it never reads as live once the files exist */}
+                    {r.resolved_why && (
+                      <p className={`mt-0.5 break-words text-theme-xs ${
+                        r.resolved ? "text-success-600 dark:text-success-400" : "text-error-500"}`}>
+                        {r.resolved_why}
+                      </p>
+                    )}
                     <p className="mt-1 text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                      {k.label} · {r.when}
-                      {!r.ok && <span className="ml-1 font-semibold text-error-500">· FAILED</span>}
+                      {k.label} · <span className="normal-case">{r.when}</span>
+                      {!r.ok && (r.resolved
+                        ? <span className="ml-1 font-semibold text-success-600 dark:text-success-400">· FAILED, SINCE RESOLVED</span>
+                        : <span className="ml-1 font-semibold text-error-500">· FAILED</span>)}
                     </p>
                   </div>
                 </li>

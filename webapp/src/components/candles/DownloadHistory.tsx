@@ -42,8 +42,10 @@ export default function DownloadHistory({ refreshKey = 0 }: { refreshKey?: numbe
                 ? "bg-gray-100 text-gray-500 dark:bg-white/[0.06] dark:text-gray-400"
                 : r.ok
                   ? "bg-success-50 text-success-700 dark:bg-success-500/15 dark:text-success-400"
-                  : "bg-error-50 text-error-700 dark:bg-error-500/15 dark:text-error-400"}`}>
-              {r.stopped ? "stopped" : r.ok ? "success" : "failed"}
+                  : r.resolved
+                    ? "bg-gray-100 text-gray-600 dark:bg-white/[0.06] dark:text-gray-300"
+                    : "bg-error-50 text-error-700 dark:bg-error-500/15 dark:text-error-400"}`}>
+              {r.stopped ? "stopped" : r.ok ? "success" : r.resolved ? "failed · resolved" : "failed"}
             </span>
             <span className="font-mono text-theme-xs text-gray-700 dark:text-gray-300">
               {(r.bars ?? 0).toLocaleString()} bars
@@ -55,7 +57,12 @@ export default function DownloadHistory({ refreshKey = 0 }: { refreshKey?: numbe
               {r.when}
             </span>
             {!r.ok && r.detail && (
-              <p className="w-full break-words text-theme-xs text-error-500">{r.detail}</p>
+              <p className={`w-full break-words text-theme-xs ${
+                r.resolved ? "text-gray-400 line-through dark:text-gray-500" : "text-error-500"}`}>{r.detail}</p>
+            )}
+            {!r.ok && r.resolved_why && (
+              <p className={`w-full break-words text-theme-xs font-medium ${
+                r.resolved ? "text-success-600 dark:text-success-400" : "text-error-500"}`}>{r.resolved_why}</p>
             )}
             {/* is that failure still live? each named pair reads its own store
                 file: recovered (with bars and when) or still lost */}

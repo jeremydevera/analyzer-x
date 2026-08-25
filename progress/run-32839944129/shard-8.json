@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 42, "total": 51, "rows": 1521136, "note": "SPX500 15m: 19,979 bars, testing 75 rules", "pct": 82.4, "updated": "2026-08-25T12:49:06Z"}
+{"shard": 8, "stage": "testing", "done": 42, "total": 51, "rows": 1543516, "note": "SPX500 30m: rule 33/75 (heikin)", "pct": 82.4, "updated": "2026-08-25T12:49:51Z"}

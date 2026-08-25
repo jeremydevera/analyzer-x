@@ -75,6 +75,55 @@ saw "no changes" on GitHub and was right to.
 DO NOT commit the operator's private notes (`.obsidian/`, `*.md` scratch files
 in the repo root) — those are theirs, not the project's.
 
+## A failed coin is redone alone (MANDATORY — 2026-08-25)
+
+**If a coin fails: delete that coin's backtest, then redo THAT job — never the
+whole sweep.** The operator's words: *"if a coin fails, delete the backtest then
+redo again the last failed job (not the whole)"*.
+
+Both halves are load-bearing:
+
+* **DELETE first.** A pair that raised part-way has already written rows and a
+  state file whose watermark is stale or missing. Measuring on top leaves one
+  coin carrying a mixture of two runs, and no column anywhere says which rows
+  came from which. `market_sweep.discard_pair(coin, tf)` removes the rows file,
+  the state file and any `.tmp` beside them, under the pair lock. It runs inside
+  `_worker`, BEFORE the failure is reported, so nothing that merges the store
+  can see the wreckage. **Candles are kept** — they are the expensive part, they
+  are shared with every other timeframe, and they were not what failed.
+* **NOT THE WHOLE.** The failed pair is resubmitted into the same pool, up to
+  `market_sweep.PAIR_RETRIES`. The other 4,964 pairs keep running. Restarting a
+  sweep because one coin timed out throws away hours for one bad contract.
+
+Two traps that tests now hold shut
+(`tests/test_pair_retry.py`):
+
+* `total` counts PAIRS. A retry must never bump it, or the percentage runs
+  backwards the moment a coin fails.
+* A pair that never recovers is **named** in `progress.json`
+  (`BAD_USDT 1h: klines returned 0 bars`), not just counted — a bare "3 failed"
+  sends somebody back to the logs to find out which three.
+
+An INTERRUPTED pair is not a failed one. A SIGTERM or a closed laptop leaves a
+consistent checkpoint, and the next pass resumes from its watermark. Only an
+exception discards.
+
+## Never cap the grid with a default nobody chose (MANDATORY — 2026-08-25)
+
+`cloud_sweep.dispatch()` defaults `min_days=365` and `sweep_orchestrator` did
+not pass the argument. The sweep therefore measured **455 coins of 993** and the
+panel still called it the whole market; 538 contracts younger than a year were
+never in it. In the same function, a coin whose age check RAISED was dropped
+from the grid with nothing but a log line — one timeout deleted a contract from
+the search.
+
+- `sweep_orchestrator.MIN_DAYS = 0`, passed explicitly and logged with the
+  dispatch. Depth is reported by each row's own `days`/`months`/`bars`, and
+  filtering on it is the reader's decision made in the artifact — never a
+  deletion made in the sweep.
+- A failed age check KEEPS the coin.
+- Whatever really was excluded is counted out loud (rule 20).
+
 ## Date format (MANDATORY — asked three times, 2026-08-21 and 2026-08-22)
 
 **Every date and time this project puts on a screen, in a log, in a report or

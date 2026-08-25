@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 5, "total": 22, "rows": 260800, "note": "CRV 15m: 34,592 bars, testing 75 rules", "pct": 22.7, "updated": "2026-08-25T04:20:50Z"}
+{"shard": 9, "stage": "testing", "done": 5, "total": 22, "rows": 262600, "note": "CRV 15m: rule 4/75 (trend50)", "pct": 22.7, "updated": "2026-08-25T04:21:38Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 9, "total": 51, "rows": 438100, "note": "BOME 15m: rule 45/75 (zscore20)", "pct": 17.6, "updated": "2026-08-25T11:35:02Z"}
+{"shard": 8, "stage": "testing", "done": 9, "total": 51, "rows": 444480, "note": "BOME 30m: 19,999 bars, testing 75 rules", "pct": 17.6, "updated": "2026-08-25T11:35:48Z"}

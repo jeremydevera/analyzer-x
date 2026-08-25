@@ -199,9 +199,16 @@ export default function JobsPanel() {
             {/* Hand over WITHOUT losing anything: the local job finishes the
                 pairs it is measuring, then the cloud takes the coins the Mac
                 never reached. A plain STOP would leave those coins to nobody. */}
-            {bt?.running && hand?.available && !hand?.requested && (
-              <span title="Finish the pairs being measured right now, then dispatch GitHub Actions for the coins this Mac has not reached. Nothing already measured is re-run or overwritten.">
-                <Button size="sm" variant="outline" onClick={handOff} disabled={handing}>
+            {/* ALWAYS shown while a sweep runs. It used to hide itself when
+                GitHub was unreachable, so the control simply vanished and the
+                operator had no way to tell whether it had worked, broken, or
+                never existed. A button that cannot act says why. */}
+            {bt?.running && !hand?.requested && (
+              <span title={hand?.available
+                ? "Finish the pairs being measured right now, then dispatch GitHub Actions for the coins this Mac has not reached. Nothing already measured is re-run or overwritten."
+                : `Cannot hand over yet: ${hand?.why?.split("\n")[0] ?? "checking GitHub…"}`}>
+                <Button size="sm" variant="outline" onClick={handOff}
+                        disabled={handing || !hand?.available}>
                   {handing ? "HANDING OVER…" : "SWITCH TO GITHUB ACTIONS"}
                 </Button>
               </span>
@@ -231,10 +238,12 @@ export default function JobsPanel() {
               {hand.stalled_why}
             </p>
           )}
-          {hand?.requested && !hand?.available && (
+          {bt?.running && hand && !hand.available && (
             <p className="mt-2 text-theme-xs text-warning-600">
-              GitHub Actions is not usable right now, so the hand-off has
-              nowhere to go: {hand.why.split("\n")[0]}
+              SWITCH TO GITHUB ACTIONS is disabled: {hand.why.split("\n")[0]}
+              {hand.why.includes("gh auth refresh")
+                ? " — run `gh auth refresh -h github.com` in a terminal to fix it."
+                : ""}
             </p>
           )}
           <JobProgress s={bt}

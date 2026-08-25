@@ -322,6 +322,29 @@ CHECKPOINT_EVERY = 200
 # rarely.
 PUBLISH_EVERY = 20
 
+# The hand-off flag, read by the WORKERS.
+#
+# It used to be checked only when a whole PAIR finished, which is the natural
+# place — a pair is the unit of work. But a 15m pair is 34,000 bars by 17,820
+# combinations, and on 2026-08-25 nothing completed for EIGHT HOURS on a loaded
+# machine, so the request was never seen and the screen sat on "finishing the
+# current pairs, then handing over" the whole time.
+#
+# So the workers look too, at the checkpoint they already write. "Finish the
+# current task" becomes finish the current CHECKPOINT rather than the current
+# pair: no measured combination is lost, and the sweep stands down in seconds
+# instead of hours.
+HANDOFF_PATH = Path.home() / ".tradingagents" / "db_backtest.HANDOFF"
+_HANDOFF_EVERY = 200          # combinations between checks; a stat is cheap
+                              # but not free, and 200 is ~1 second of work
+
+
+def handoff_pending() -> bool:
+    try:
+        return HANDOFF_PATH.exists()
+    except OSError:
+        return False
+
 
 def be_polite() -> int:
     """Run this worker at low OS priority.
@@ -576,6 +599,20 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                 if done_combos % CHECKPOINT_EVERY == 0:
                     save_states(coin, tf, states)
                     merge_pair_rows(coin, tf, out_rows)
+                # STAND DOWN if the operator asked to hand over. Checked here,
+                # beside the checkpoint, so everything measured is on disk
+                # first and the pair resumes exactly here next time.
+                if (done_combos % _HANDOFF_EVERY == 0) and handoff_pending():
+                    save_states(coin, tf, states)
+                    merge_pair_rows(coin, tf, out_rows)
+                    worker_write(pair=f"{coin} {tf}", done=done_combos,
+                                 total=total_combos, rows=len(out_rows),
+                                 state="handed off")
+                    return {"coin": coin, "tf": tf, "rows": out_rows,
+                            "added": added, "source": source,
+                            "new_bars": (max(0, len(df) - start_at)
+                                         if incremental else len(df)),
+                            "why": "handed off to GitHub Actions"}
                 # "everything stored": losers are measurements too, and the
                 # store is what makes re-analysis free. Only the trade floor
                 # filters — a 3-trade row is noise, not a loser.

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import logging
 import os
 import subprocess
 import tempfile
@@ -24,6 +25,9 @@ from pathlib import Path
 
 WORKFLOW = "Market sweep (15m / 30m)"
 ARTIFACT = "sweep-results"
+
+
+logger = logging.getLogger(__name__)
 
 
 class CloudError(RuntimeError):
@@ -189,11 +193,21 @@ def fetch(run_id: int, slug: str | None = None) -> list:
     with tempfile.TemporaryDirectory() as tmp:
         _gh("run", "download", str(run_id), "--repo", slug, "-n", ARTIFACT,
             "-D", tmp, timeout=900)
-        rows = []
+        rows, bad = [], 0
         for f in Path(tmp).rglob("*.jsonl"):
             for line in f.read_text().splitlines():
-                if line.strip():
+                if not line.strip():
+                    continue
+                try:
                     rows.append(json.loads(line))
+                except ValueError:
+                    # One truncated line (a runner killed at the 6h ceiling)
+                    # used to raise here and return NOTHING, throwing away a
+                    # whole sweep's measured rows. Skip it and count it.
+                    bad += 1
+    if bad:
+        logger.warning("cloud sweep: skipped %d unparseable row line(s) — "
+                       "a shard was truncated; %d rows kept", bad, len(rows))
     return rows
 
 

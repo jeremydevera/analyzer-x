@@ -95,10 +95,33 @@ jobs:
       - name: Stitch the shards
         run: |
           mkdir -p out
-          cat shards/rows-*.jsonl > out/rows-all.jsonl || true
+          # `cat` glues the last line of one shard to the first of the next
+          # whenever a file lacks its trailing newline, and a runner killed at
+          # the 6h ceiling can leave a half-written line. Either produced a
+          # JSONDecodeError that binned an ENTIRE sweep: on 2026-08-24 all 21
+          # shards succeeded (14 MB of rows) and the merge threw the lot away
+          # at "line 1 column 105". Read line by line, skip what will not
+          # parse, and SAY how many were skipped — a silent drop reads as
+          # "that is all there was".
+          for f in shards/rows-*.jsonl; do
+            [ -s "$f" ] || continue
+            cat "$f" >> out/rows-all.jsonl
+            tail -c1 "$f" | read -r _ || echo >> out/rows-all.jsonl
+          done
           python3 - <<'PY'
           import json, collections
-          rows = [json.loads(l) for l in open("out/rows-all.jsonl")]
+          rows, bad = [], 0
+          for line in open("out/rows-all.jsonl"):
+              line = line.strip()
+              if not line:
+                  continue
+              try:
+                  rows.append(json.loads(line))
+              except ValueError:
+                  bad += 1
+          if bad:
+              print(f"!! {bad} unparseable line(s) skipped "
+                    f"(truncated shard or a glued join)")
           coins = {r["coin"] for r in rows}
           def surv(r):
               return (r["profit"] > 0 and r["h1"] > 0 and r["h2"] > 0

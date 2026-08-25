@@ -263,6 +263,9 @@ def test_the_handoff_waits_for_the_local_job_to_stand_down(monkeypatch):
                         lambda **kw: sent.append(kw) or {"id": 1})
     monkeypatch.setattr(cs, "remember", lambda run: None)
     monkeypatch.setattr(cs, "unmeasured", lambda coins, tfs: list(coins))
+    # gh is checked before dispatching now: a failed dispatch must not clear
+    # the request, so the completer refuses when GitHub is unusable
+    monkeypatch.setattr(cs, "available", lambda: (True, ""))
 
     monkeypatch.setattr(dj, "status", lambda kind: {"running": True})
     api._finish_handoff()
@@ -284,6 +287,9 @@ def test_a_handoff_with_nothing_left_does_not_dispatch(monkeypatch):
     sent = []
     monkeypatch.setattr(cs, "dispatch", lambda **kw: sent.append(kw) or {"id": 1})
     monkeypatch.setattr(cs, "unmeasured", lambda coins, tfs: [])
+    # gh is checked before dispatching now: a failed dispatch must not clear
+    # the request, so the completer refuses when GitHub is unusable
+    monkeypatch.setattr(cs, "available", lambda: (True, ""))
     monkeypatch.setattr(dj, "status", lambda kind: {"running": False})
     api._finish_handoff()
     assert not sent, "there was nothing for the cloud to do"
@@ -332,3 +338,48 @@ def test_a_handoff_with_no_github_says_so(monkeypatch):
     got = api.job_handoff_state("backtest")
     assert got["available"] is False
     assert "not logged in" in got["why"]
+
+
+def test_a_worker_stands_down_at_a_checkpoint_not_at_the_end_of_a_pair():
+    """Checked only when a whole PAIR finished, the request went unseen for
+    EIGHT HOURS on 2026-08-25: a 15m pair is 34,000 bars by 17,820
+    combinations, and on a loaded machine none completed. The workers look at
+    the checkpoint they already write, so nothing measured is lost and the
+    sweep stands down in seconds."""
+    import inspect
+
+    from tradingagents import market_sweep as msw
+
+    src = inspect.getsource(msw.run_pair)
+    assert "handoff_pending()" in src, "the worker must check the flag"
+    i = src.index("handoff_pending()")
+    body = src[i:i + 600]
+    assert "save_states" in body and "merge_pair_rows" in body, (
+        "it must checkpoint BEFORE returning, or the partial pair is lost")
+    assert '"handed off' in body
+    assert msw._HANDOFF_EVERY <= msw.CHECKPOINT_EVERY
+
+
+def test_a_failed_dispatch_keeps_the_request(monkeypatch):
+    """gh's token flapped all day. If the local job has stood down and the
+    dispatch fails, clearing the flag loses BOTH runs."""
+    from tradingagents import api, cloud_sweep as cs
+
+    dj.FILES["backtest"]["spec"].write_text(json.dumps(
+        {"coins": ["A_USDT"], "tfs": ["1h"]}))
+    dj.request_handoff("backtest")
+    monkeypatch.setattr(dj, "status", lambda kind: {"running": False})
+    monkeypatch.setattr(cs, "available", lambda: (False, "gh is not logged in"))
+    sent = []
+    monkeypatch.setattr(cs, "dispatch", lambda **kw: sent.append(kw) or {"id": 1})
+
+    api._finish_handoff()
+    assert not sent
+    assert dj.handoff_requested("backtest"), "the request must survive to retry"
+
+    # and once gh recovers, the next tick dispatches and clears it
+    monkeypatch.setattr(cs, "available", lambda: (True, ""))
+    monkeypatch.setattr(cs, "unmeasured", lambda coins, tfs: list(coins))
+    monkeypatch.setattr(cs, "remember", lambda run: None)
+    api._finish_handoff()
+    assert sent and not dj.handoff_requested("backtest")

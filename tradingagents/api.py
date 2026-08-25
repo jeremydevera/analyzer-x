@@ -42,14 +42,24 @@ def _finish_handoff() -> None:
     spec = dj._read(dj.FILES[kind]["spec"])
     coins = list(spec.get("coins") or [])
     tfs = list(spec.get("tfs") or [])
+    # gh flaps: its keyring token has been invalid on and off all day. If the
+    # local job has already stood down and the dispatch fails, clearing the
+    # flag would lose BOTH runs — so it is kept and retried on the next tick,
+    # and cleared only once the cloud actually has the work.
+    ok, why = cs.available()
+    if not ok:
+        print(f"[handoff] local job is down but GitHub is not usable ({why[:60]}) "
+              f"— keeping the request and retrying", flush=True)
+        return
     left = cs.unmeasured(coins, tfs)
-    dj.clear_handoff(kind)              # served, whatever happens next
     if not left:
+        dj.clear_handoff(kind)
         print("[handoff] nothing left unmeasured — no cloud run needed",
               flush=True)
         return
     run = cs.dispatch(shards=20, coins=len(left), timeframes=",".join(tfs))
     cs.remember(run)
+    dj.clear_handoff(kind)              # the cloud has it; the request is served
     print(f"[handoff] {len(left)} coins the Mac never reached -> GitHub run "
           f"{run.get('id')}", flush=True)
     try:

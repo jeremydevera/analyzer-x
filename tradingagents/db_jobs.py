@@ -466,7 +466,18 @@ def _run_backtest_inner(spec: dict) -> None:
                                "total": last["total"], "now": last["msg"],
                                "pct": last.get("pct"),
                                "cores": n_workers, "fresh": fresh,
-                               "workers": _msw.worker_read()})
+                               # Never MORE bars than there are cores. A pool
+                               # worker that has just been replaced is still
+                               # fresh enough to report while its successor
+                               # reports too, and the screen read "8 OF 7 CORES
+                               # WORKING" — a label arguing with its own
+                               # denominator. The freshest n_workers are the
+                               # ones actually working; the outgoing one is
+                               # always the stalest.
+                               "workers": sorted(
+                                   _msw.worker_read(),
+                                   key=lambda w: -(w.get("updated") or 0),
+                               )[:n_workers]})
 
     def prog(msg: str, frac: float, done: int | None = None,
              total: int | None = None) -> None:

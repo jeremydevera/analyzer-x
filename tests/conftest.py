@@ -180,6 +180,29 @@ def _never_touch_the_live_book(tmp_path, monkeypatch):
     # at 00:25:26 on 2026-08-22, while seven cores were still measuring. The
     # measurements were safe; the screen said the run had finished with
     # nothing. A test must never be able to narrate a real job.
+    # The sweep's HAND-OFF flag. It lives under ~/.tradingagents and the
+    # WORKERS read it, so an unsandboxed test saw the operator's real request
+    # and stood down mid-measurement — the run left no watermark and the
+    # resume test failed on the state of their machine.
+    try:
+        from tradingagents import market_sweep as _msw2
+
+        # EVERY module-level path, not just the flag. Individual tests patched
+        # ROWDIR and STATES themselves, so the ones that forgot wrote into the
+        # operator's real 15 GB store — and the hand-off flag let a test worker
+        # read a request they had made in the UI and stand down mid-measurement.
+        _sw = sandbox / "sweep"
+        _sw.mkdir(parents=True, exist_ok=True)
+        for _name, _leaf in (("HOME", ""), ("ROWDIR", "rows"),
+                             ("STATES", "state"), ("WORKERS", "workers"),
+                             ("CANDLES", "candles"),
+                             ("INDEX_PATH", "candle_index.json"),
+                             ("HANDOFF_PATH", "db_backtest.HANDOFF")):
+            if hasattr(_msw2, _name):
+                monkeypatch.setattr(_msw2, _name,
+                                    _sw / _leaf if _leaf else _sw)
+    except Exception:
+        pass
     try:
         from tradingagents import rows_index as _ri
 

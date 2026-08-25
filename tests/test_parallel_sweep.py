@@ -395,3 +395,38 @@ def test_completed_pairs_reads_only_the_tail(tmp_path, monkeypatch):
     assert msw.pair_watermark("BIG", "1h") == 1787450400000
     el = time.perf_counter() - t
     assert el < 0.05, f"{el*1000:.0f}ms — it is parsing the whole file"
+
+
+def test_the_panel_never_shows_more_cores_than_exist():
+    """It read "8 OF 7 CORES WORKING": a pool worker that has just been
+    replaced is still fresh enough to report while its successor reports too,
+    so the count of files exceeded the core count and the label argued with its
+    own denominator."""
+    import inspect
+
+    from tradingagents import db_jobs as dj
+
+    src = inspect.getsource(dj._run_backtest_inner)
+    i = src.index('"workers"')
+    body = src[i:i + 400]
+    assert "[:n_workers]" in body, "the list must be capped to the core count"
+    assert "-(w.get(\"updated\")" in body, (
+        "and capped by FRESHNESS — the outgoing worker is the stalest, so it "
+        "is the one to drop")
+
+
+def test_no_live_state_path_leaks_into_the_tests():
+    """Canary, third of its kind. market_sweep.HANDOFF_PATH pointed at the
+    operator's real flag, so a test worker read a request they had made in the
+    UI and stood down mid-measurement. Any new module-level path under
+    ~/.tradingagents belongs in the conftest sandbox on the day it is added."""
+    from pathlib import Path
+
+    from tradingagents import market_sweep as msw
+
+    home = str(Path.home() / ".tradingagents")
+    for name in ("HANDOFF_PATH", "ROWDIR", "STATES", "WORKERS", "CANDLES"):
+        got = getattr(msw, name, None)
+        if got is None:
+            continue
+        assert not str(got).startswith(home), f"{name} points at live state: {got}"

@@ -25,6 +25,7 @@ killed run continues where it stopped rather than starting the market again.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import sqlite3
@@ -62,6 +63,16 @@ CREATE INDEX IF NOT EXISTS ix_trades_day ON trades(day);
 CREATE INDEX IF NOT EXISTS ix_trades_row ON trades(row_id);
 CREATE TABLE IF NOT EXISTS done (coin TEXT PRIMARY KEY, rows INTEGER,
                                  secs REAL, at INTEGER);
+-- A pair that failed is NOT done. It is purged (its half-written rows
+-- deleted from this database AND its state/rows files removed on disk) and
+-- run again from clean, because a resumed state built from a crashed run is
+-- how a silently-wrong number gets in. Only the failed pair repeats, never
+-- the sweep. The operator asked for exactly this on 2026-08-25.
+CREATE TABLE IF NOT EXISTS failed (
+  coin TEXT, tf TEXT, error TEXT, attempts INTEGER, at INTEGER,
+  resolved INTEGER DEFAULT 0,
+  PRIMARY KEY (coin, tf)
+);
 """
 
 COLS = ("id", "coin", "tf", "signal", "th", "sl", "tp", "sizing", "lev",
@@ -139,6 +150,23 @@ def _read_pair_rows(home: str, symbol: str, tf: str) -> list:
     return (d.get("rows") if isinstance(d, dict) else d) or []
 
 
+def _purge_pair(db, home: str, symbol: str, tf: str) -> None:
+    """Erase every trace of one (coin, timeframe) so the redo starts clean:
+    its rows in this database, and its rows/state/lock files on disk. A
+    resume point left by a crashed run would otherwise be trusted."""
+    coin = symbol.replace("_USDT", "")
+    db.execute("DELETE FROM rows WHERE coin=? AND tf=?", (coin, tf))
+    db.execute("DELETE FROM trades WHERE row_id IN "
+               "(SELECT id FROM rows WHERE coin=? AND tf=?)", (coin, tf))
+    db.commit()
+    h = Path(home)
+    for f in (h / "rows" / f"{coin}-{tf}.json",
+              h / "state" / f"{coin}-{tf}.json",
+              h / "locks" / f"{coin}-{tf}.lock"):
+        with contextlib.suppress(OSError):
+            f.unlink()
+
+
 def _run_batch(batch, tfs, args, n_workers):
     """Every (coin, tf) of this batch, across ONE pool."""
     import concurrent.futures as cf
@@ -168,6 +196,8 @@ def main(argv=None) -> int:
     ap.add_argument("--days", type=int, default=365)
     ap.add_argument("--base", type=float, default=5.0)
     ap.add_argument("--workers", type=int, default=0, help="0 = cores - 1")
+    ap.add_argument("--retries", type=int, default=2,
+                    help="redo a FAILED pair this many times, purged first")
     ap.add_argument("--progress",
                     default="~/.tradingagents/sweeps/local-progress.json")
     args = ap.parse_args(argv)
@@ -202,14 +232,41 @@ def main(argv=None) -> int:
     for i in range(0, len(todo), args.chunk):
         batch = todo[i:i + args.chunk]
         t0 = time.time()
-        rows = _run_batch(batch, tfs, args, n_workers)
-        if rows is None:
-            continue
+        rows, failures = _run_batch(batch, tfs, args, n_workers)
+        # Redo ONLY what failed, from clean, up to --retries times.
+        home = os.path.expanduser(args.home)
+        for attempt in range(1, args.retries + 1):
+            if not failures:
+                break
+            again = [(c, tf) for c, tf, _ in failures]
+            print(f"   retry {attempt}/{args.retries} for "
+                  f"{[f'{c}/{t}' for c, t in again]}", flush=True)
+            for c, tf in again:
+                _purge_pair(db, home, c, tf)
+            retry_rows, failures = _run_batch(
+                [c for c, _ in again], [t for _, t in dict.fromkeys(again, 1)],
+                args, n_workers)
+            rows.extend(retry_rows)
+        bad_coins = set()
+        for c, tf, err in failures:
+            short = c.replace("_USDT", "")
+            bad_coins.add(short)
+            _purge_pair(db, home, c, tf)        # leave nothing half-written
+            db.execute(
+                "INSERT OR REPLACE INTO failed VALUES (?,?,?,?,?,0)",
+                (short, tf, err[:400], args.retries, int(time.time())))
+        db.commit()
         n = write_rows(db, rows)
         secs = time.time() - t0
         total += n
         for c in batch:
             short = c.replace("_USDT", "")
+            if short in bad_coins:
+                # NOT done: a later run picks it up again rather than
+                # inheriting a coin that is missing a timeframe.
+                print(f"   {short} left unfinished — it will be retried on "
+                      f"the next run", flush=True)
+                continue
             db.execute("INSERT OR REPLACE INTO done VALUES (?,?,?,?)",
                        (short, sum(1 for r in rows if r["coin"] == short),
                         secs / max(1, len(batch)), int(time.time())))

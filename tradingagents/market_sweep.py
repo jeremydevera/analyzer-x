@@ -397,6 +397,37 @@ def save_pair_rows(coin: str, tf: str, rows: list) -> None:
         tmp.replace(ROWDIR / f"{coin}-{tf}.json")
 
 
+def discard_pair(coin: str, tf: str) -> dict:
+    """Delete everything a half-finished pair left behind.
+
+    The operator, 2026-08-25: *"if a coin fails, delete the backtest then redo
+    again the last failed job (not the whole)"*.
+
+    A pair that raises part-way has usually already written some rows and a
+    state file whose watermark is stale or absent. Retrying on top of that
+    leaves the store carrying a mixture of two runs for one coin, and no column
+    anywhere says which rows came from which. So the retry starts from nothing:
+    the rows file, the state file and any `.tmp` beside them go first.
+
+    The candles are NOT deleted -- they are the expensive part, they are shared
+    with every other timeframe, and they were not what failed."""
+    _paths()
+    gone = []
+    with _pair_lock(coin, tf):
+        for f in (ROWDIR / f"{coin}-{tf}.json",
+                  ROWDIR / f"{coin}-{tf}.json.tmp",
+                  _state_file(coin, tf),
+                  _state_file(coin, tf).with_suffix(".json.tmp")):
+            try:
+                size = f.stat().st_size
+            except OSError:
+                continue
+            with contextlib.suppress(OSError):
+                f.unlink()
+                gone.append({"file": f.name, "bytes": size})
+    return {"coin": coin, "tf": tf, "deleted": gone}
+
+
 def _row_key(r: dict) -> str:
     """The combination a row measures — the identity a merge keys on."""
     return combo_key(str(r.get("signal")), float(r.get("th") or 0),
@@ -669,6 +700,11 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
 
 
 # --------------------------------------------------------------- background
+# How many times ONE pair is redone before the sweep gives up on it and moves
+# on. Per pair, never per sweep: a coin that fails must not restart the other
+# 4,964 (operator, 2026-08-25).
+PAIR_RETRIES = 2
+
 PROGRESS = HOME / "progress.json"
 PIDFILE = HOME / "sweep.pid"
 
@@ -712,7 +748,12 @@ def _worker(args):
                 "source": r.get("source"), "why": r.get("why"),
                 "new_bars": r.get("new_bars", 0)}
     except Exception as exc:                      # one coin must not stop 446
-        return {"sym": sym, "tf": tf, "rows": 0, "why": str(exc)[:80]}
+        # Delete what the half-finished pair left behind BEFORE anyone can
+        # merge it. A retry then starts from nothing rather than layering a
+        # second run's rows on top of a first run's wreckage.
+        drop = discard_pair(sym.replace("_USDT", ""), tf)
+        return {"sym": sym, "tf": tf, "rows": 0, "why": str(exc)[:80],
+                "failed": True, "discarded": len(drop["deleted"])}
 
 
 def run_market(symbols: Sequence[str], tfs: Sequence[str] = ("15m", "30m"), *,
@@ -723,7 +764,7 @@ def run_market(symbols: Sequence[str], tfs: Sequence[str] = ("15m", "30m"), *,
     Runs in whatever process calls it — the Back Test tab spawns this detached
     so a click in Streamlit cannot restart or kill it.
     """
-    from concurrent.futures import ProcessPoolExecutor, as_completed
+    from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
 
     _paths()
     workers = workers or max(1, (os.cpu_count() or 4) - 1)
@@ -732,26 +773,61 @@ def run_market(symbols: Sequence[str], tfs: Sequence[str] = ("15m", "30m"), *,
     t0 = time.time()
     state = {"phase": "sweeping",
              "total": len(jobs), "done": 0, "rows": 0, "new_bars": 0,
+             "retries": 0, "failed": 0, "failures": [],
              "started": fmt_stamp(), "workers": workers,
              "running": True, "last": "", "eta_min": None}
     PROGRESS.write_text(json.dumps(state))
     PIDFILE.write_text(str(os.getpid()))
+    tries: dict = {}
     try:
         with ProcessPoolExecutor(max_workers=workers) as ex:
-            futs = [ex.submit(_worker, j) for j in jobs]
-            for f in as_completed(futs):
-                r = f.result()
-                state["done"] += 1
-                state["rows"] += r.get("rows", 0)
-                state["new_bars"] += int(r.get("new_bars") or 0)
-                el = time.time() - t0
-                state["eta_min"] = round(
-                    el / max(state["done"], 1)
-                    * (state["total"] - state["done"]) / 60, 1)
-                state["elapsed_min"] = round(el / 60, 1)
-                state["last"] = (f"{r['sym']} {r['tf']} · {r.get('rows', 0)} "
-                                 f"rows{' · ' + r['why'] if r.get('why') else ''}")
-                PROGRESS.write_text(json.dumps(state))
+            # A dict rather than as_completed(): a failed pair is resubmitted
+            # into the SAME pool, so the retry set has to be able to grow while
+            # the sweep runs.
+            pending = {ex.submit(_worker, j): j for j in jobs}
+            while pending:
+                ready, _ = wait(list(pending), return_when=FIRST_COMPLETED)
+                for f in ready:
+                    job = pending.pop(f)
+                    r = f.result()
+                    key = (r["sym"], r["tf"])
+                    el = time.time() - t0
+
+                    # The operator, 2026-08-25: "if a coin fails, delete the
+                    # backtest then redo again the last failed job (not the
+                    # whole)". _worker has already deleted the half-written
+                    # pair; requeue THAT PAIR and nothing else. `total` counts
+                    # pairs, so a retry never inflates the denominator and the
+                    # percentage stays a percentage of the work asked for.
+                    if r.get("failed") and tries.get(key, 0) < PAIR_RETRIES:
+                        tries[key] = tries.get(key, 0) + 1
+                        state["retries"] += 1
+                        state["last"] = (
+                            f"{r['sym']} {r['tf']} failed ({r.get('why')}) "
+                            f"· discarded, redoing it "
+                            f"{tries[key]}/{PAIR_RETRIES}")
+                        pending[ex.submit(_worker, job)] = job
+                        PROGRESS.write_text(json.dumps(state))
+                        continue
+
+                    state["done"] += 1
+                    state["rows"] += r.get("rows", 0)
+                    state["new_bars"] += int(r.get("new_bars") or 0)
+                    if r.get("failed"):
+                        state["failed"] += 1
+                        # named, not just counted: a bare "3 failed" sends
+                        # somebody back to the logs to find out which three
+                        state["failures"] = (state["failures"] +
+                                             [f"{r['sym']} {r['tf']}: "
+                                              f"{r.get('why')}"])[-50:]
+                    state["eta_min"] = round(
+                        el / max(state["done"], 1)
+                        * (state["total"] - state["done"]) / 60, 1)
+                    state["elapsed_min"] = round(el / 60, 1)
+                    state["last"] = (
+                        f"{r['sym']} {r['tf']} · {r.get('rows', 0)} "
+                        f"rows{' · ' + r['why'] if r.get('why') else ''}")
+                    PROGRESS.write_text(json.dumps(state))
     finally:
         state["running"] = False
         state["finished"] = fmt_stamp()

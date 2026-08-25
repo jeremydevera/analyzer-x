@@ -69,9 +69,9 @@ def protected() -> set[int]:
     home = os.path.expanduser("~/.tradingagents")
     for name in os.listdir(home) if os.path.isdir(home) else []:
         if name.endswith(".pid"):
-            with contextlib.suppress(ValueError, OSError):
-                with open(os.path.join(home, name)) as fh:
-                    keep.add(int(fh.read().strip()))
+            with contextlib.suppress(ValueError, OSError), \
+                    open(os.path.join(home, name)) as fh:
+                keep.add(int(fh.read().strip()))
     for port in ("8787", "8503", "8501"):
         out = subprocess.run(["lsof", "-nP", f"-iTCP:{port}", "-sTCP:LISTEN", "-t"],
                              capture_output=True, text=True).stdout

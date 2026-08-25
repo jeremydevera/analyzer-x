@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 16, "total": 18, "rows": 1013300, "note": "TAG 1h: 9,999 bars, testing 75 rules", "pct": 88.9, "updated": "2026-08-25T05:27:41Z"}
+{"shard": 3, "stage": "testing", "done": 16, "total": 18, "rows": 1024740, "note": "TAG 1h: rule 46/75 (rsi2)", "pct": 88.9, "updated": "2026-08-25T05:28:26Z"}

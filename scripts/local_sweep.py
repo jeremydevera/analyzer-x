@@ -48,6 +48,18 @@ CREATE INDEX IF NOT EXISTS ix_rows_coin ON rows(coin);
 CREATE INDEX IF NOT EXISTS ix_rows_profit ON rows(profit);
 CREATE INDEX IF NOT EXISTS ix_rows_id ON rows(id);
 CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
+-- Trade-by-trade detail, for the rows worth inspecting day to day. NOT for
+-- all 18 million combinations: at ~500 trades each that is billions of rows,
+-- and every one of them is reproducible from (coin, tf, signal, th, sl, tp,
+-- sizing) anyway. Kept for the survivors, which is what gets compared.
+CREATE TABLE IF NOT EXISTS trades (
+  row_id TEXT, n INTEGER, opened TEXT, closed TEXT, day TEXT, side TEXT,
+  why TEXT, entry REAL, exit REAL, margin REAL, funding REAL,
+  pnl REAL, running REAL,
+  PRIMARY KEY (row_id, n)
+);
+CREATE INDEX IF NOT EXISTS ix_trades_day ON trades(day);
+CREATE INDEX IF NOT EXISTS ix_trades_row ON trades(row_id);
 CREATE TABLE IF NOT EXISTS done (coin TEXT PRIMARY KEY, rows INTEGER,
                                  secs REAL, at INTEGER);
 """
@@ -89,6 +101,59 @@ def write_rows(db: sqlite3.Connection, rows: list) -> int:
         f"VALUES ({','.join('?' * len(COLS))})", [pack(r) for r in rows])
     db.commit()
     return len(rows)
+
+
+def _pair_job(args_tuple):
+    """One (coin, timeframe) in a worker.
+
+    Returns a COUNT, never the rows. `run_pair` already writes them to
+    `HOME/rows/{coin}-{tf}.json`, and handing multi-megabyte lists back
+    through the pool's pipe deadlocks: measured 2026-08-25, both workers
+    finished (5,797 rows on disk) and then sat at 0% CPU for 15 minutes with
+    `done: 0`, because the pipe filled and nobody drained it. The parent
+    reads the files instead.
+    """
+    import os as _os
+    symbol, tf, home, base, days, thresholds = args_tuple
+    _os.environ["TRADINGAGENTS_SWEEP_HOME"] = home
+    from tradingagents import market_sweep as ms
+    try:
+        r = ms.run_pair(symbol, tf, base_margin=base, days=days,
+                        thresholds=thresholds)
+        n = len(r.get("rows") or []) if isinstance(r, dict) else len(r or [])
+        return symbol, tf, n, ""
+    except Exception as exc:
+        return symbol, tf, 0, f"{type(exc).__name__}: {exc}"
+
+
+def _read_pair_rows(home: str, symbol: str, tf: str) -> list:
+    """The rows this pair just wrote, straight off disk."""
+    coin = symbol.replace("_USDT", "")
+    f = Path(home) / "rows" / f"{coin}-{tf}.json"
+    if not f.exists():
+        return []
+    try:
+        d = json.loads(f.read_text())
+    except ValueError:
+        return []                       # a truncated file is not a crash
+    return (d.get("rows") if isinstance(d, dict) else d) or []
+
+
+def _run_batch(batch, tfs, args, n_workers):
+    """Every (coin, tf) of this batch, across ONE pool."""
+    import concurrent.futures as cf
+
+    home = os.path.expanduser(args.home)
+    jobs = [(c, tf, home, args.base, args.days, 3)
+            for c in batch for tf in tfs]
+    out = []
+    with cf.ProcessPoolExecutor(max_workers=min(n_workers, len(jobs))) as ex:
+        for sym, tf, n, err in ex.map(_pair_job, jobs):
+            if err:
+                print(f"!! {sym} {tf}: {err}", flush=True)
+                continue
+            out.extend(_read_pair_rows(home, sym, tf))
+    return out
 
 
 def main(argv=None) -> int:
@@ -133,17 +198,14 @@ def main(argv=None) -> int:
           f"{len(todo)} to run · tfs {tfs}", flush=True)
 
     total = 0
+    n_workers = args.workers or max(1, (os.cpu_count() or 2) - 1)
+    print(f"workers: {n_workers}", flush=True)
     for i in range(0, len(todo), args.chunk):
         batch = todo[i:i + args.chunk]
         t0 = time.time()
-        try:
-            payload = br.grid_from_store(
-                batch, tfs, base_margin=args.base, days=args.days,
-                workers=args.workers, embed_limit=0)
-        except Exception as exc:                 # one bad coin must not end it
-            print(f"!! {batch}: {type(exc).__name__}: {exc}", flush=True)
+        rows = _run_batch(batch, tfs, args, n_workers)
+        if rows is None:
             continue
-        rows = payload.get("rows") or []
         n = write_rows(db, rows)
         secs = time.time() - t0
         total += n
@@ -154,7 +216,6 @@ def main(argv=None) -> int:
                         secs / max(1, len(batch)), int(time.time())))
         db.commit()
         rows.clear()
-        payload.clear()
         el = time.time() - started
         pct = (i + len(batch)) / max(1, len(todo))
         eta = el / max(pct, 1e-9) - el

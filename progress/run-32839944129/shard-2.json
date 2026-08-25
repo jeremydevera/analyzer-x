@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 25, "total": 52, "rows": 1037176, "note": "JUP 30m: rule 11/75 (sr_break)", "pct": 48.1, "updated": "2026-08-25T12:07:24Z"}
+{"shard": 2, "stage": "testing", "done": 25, "total": 52, "rows": 1049776, "note": "JUP 1h: 9,999 bars, testing 75 rules", "pct": 48.1, "updated": "2026-08-25T12:08:16Z"}

@@ -38,6 +38,8 @@ import subprocess
 import time
 from pathlib import Path
 
+from tradingagents import portable
+
 HOME = Path.home() / ".tradingagents"
 STATE = HOME / "orchestrator.json"
 LOG = HOME / "orchestrator.log"
@@ -257,24 +259,18 @@ def shutdown_pool(grace: float = 4.0) -> int:
     an exception discards a pair (see `market_sweep.discard_pair`).
     """
     mine = os.getpid()
-    out = subprocess.run(["ps", "-eo", "pid,ppid"],
-                         capture_output=True, text=True).stdout.splitlines()
-    kids = []
-    for line in out[1:]:
-        parts = line.split()
-        if len(parts) == 2 and parts[1].isdigit() and int(parts[1]) == mine:
-            kids.append(int(parts[0]))
+    kids = portable.child_pids(mine)
     for pid in kids:
         with contextlib.suppress(ProcessLookupError, PermissionError):
             os.kill(pid, signal.SIGTERM)
     if kids:
         time.sleep(grace)
     for pid in kids:
-        # signal 0 raises ProcessLookupError if it already went; the suppress
-        # then skips the SIGKILL rather than aiming it at a recycled pid
+        # probe first, so a pid that already went is never re-aimed at. On
+        # Windows os.kill IS the kill — portable.pid_alive never signals.
         with contextlib.suppress(ProcessLookupError, PermissionError):
-            os.kill(pid, 0)
-            os.kill(pid, signal.SIGKILL)
+            if portable.pid_alive(pid):
+                portable.kill_hard(pid)
     return len(kids)
 
 

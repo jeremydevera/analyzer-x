@@ -17,6 +17,8 @@ import time
 import uuid
 from pathlib import Path
 
+from tradingagents import portable
+
 RUN_DIR = Path(os.path.expanduser("~/.tradingagents/analysis"))
 
 # The pipeline every run walks, in order. The four analysts are optional; the
@@ -78,11 +80,7 @@ def _read(path: Path) -> dict:
 
 
 def _alive(pid: int) -> bool:
-    try:
-        os.kill(pid, 0)
-    except (ProcessLookupError, PermissionError, TypeError):
-        return False
-    return True
+    return portable.pid_alive(pid)
 
 
 def _nonempty(v) -> bool:

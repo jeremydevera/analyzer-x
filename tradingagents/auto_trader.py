@@ -24,7 +24,6 @@ months, so capping is the conservative reading).
 
 from __future__ import annotations
 
-import fcntl
 import json
 import logging
 import os
@@ -35,6 +34,8 @@ import time
 from pathlib import Path
 
 import pandas as _pd
+
+from tradingagents import portable
 
 logger = logging.getLogger(__name__)
 
@@ -580,7 +581,7 @@ def save_state(state: dict, keys: list | None = None) -> None:
     if keys is None:
         keys = [k for k in state if k != "_rev"]
     with STATE_LOCK_PATH.open("a+", encoding="utf-8") as lock:
-        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        portable.lock_exclusive(lock)
         try:
             disk = _read_json(STATE_PATH)
             disk_rev = dict(disk.get("_rev") or {})
@@ -602,7 +603,7 @@ def save_state(state: dict, keys: list | None = None) -> None:
             # second save in the same cycle is not treated as stale.
             state["_rev"] = dict(disk_rev)
         finally:
-            fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+            portable.unlock(lock)
 
 
 def append_ledger(entry: dict) -> None:
@@ -707,7 +708,7 @@ def backfill_ledger_ids(path=None, *, dry_run: bool = False) -> dict:
                 "written": False}
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     with (STATE_DIR / "ledger.lock").open("a+") as lock:
-        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        portable.lock_exclusive(lock)
         try:
             # Re-read under the lock: the runner may have appended while the
             # pairing above was computed. Those tail rows are carried over
@@ -726,7 +727,7 @@ def backfill_ledger_ids(path=None, *, dry_run: bool = False) -> dict:
                     fh.write(ln + "\n")
             tmp.replace(p)
         finally:
-            fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+            portable.unlock(lock)
     return {"rows": len(rows), "entered": n_enter, "exited": n_exit,
             "written": True, "backup": str(bak)}
 
@@ -2896,11 +2897,7 @@ def runner_pid() -> int | None:
         pid = int(PID_PATH.read_text(encoding="utf-8").strip())
     except (OSError, ValueError):
         return None
-    try:
-        os.kill(pid, 0)
-    except (ProcessLookupError, PermissionError):
-        return None
-    return pid
+    return pid if portable.pid_alive(pid) else None
 
 
 def start_runner() -> int:
@@ -2964,8 +2961,7 @@ def next_sleep_seconds(now: float | None = None) -> float:
 
 def disk_free_mb() -> int:
     """Free space where the state, ledger and log live."""
-    st = os.statvfs(str(STATE_DIR if STATE_DIR.exists() else Path.home()))
-    return int(st.f_bavail * st.f_frsize / 1_000_000)
+    return portable.disk_free_mb(STATE_DIR if STATE_DIR.exists() else Path.home())
 
 
 MIN_FREE_MB = 500
@@ -3002,7 +2998,7 @@ def run_forever() -> None:
         # held for the life of the process ON PURPOSE: closing it releases
         # the flock, which is the only thing stopping a second runner
         _RUN_LOCK = open(LOCK_PATH, "w")   # noqa: SIM115
-        fcntl.flock(_RUN_LOCK, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        portable.lock_exclusive(_RUN_LOCK, blocking=False)
     except OSError:
         print("another auto-trader holds the run lock — exiting so trades are "
               "never doubled", file=sys.stderr)

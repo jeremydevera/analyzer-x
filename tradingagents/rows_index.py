@@ -32,7 +32,7 @@ import time
 from collections.abc import Iterable
 from pathlib import Path
 
-from tradingagents import market_sweep as msw
+from tradingagents import market_sweep as msw, portable
 
 DB_PATH = Path.home() / ".tradingagents" / "backtest" / "rows.db"
 
@@ -628,17 +628,11 @@ PIDFILE = DB_PATH.parent / "rows_index.pid"
 
 def _running_elsewhere() -> bool:
     """Is an indexer process already alive?"""
-    import os
-
     try:
         pid = int(PIDFILE.read_text().strip())
     except (OSError, ValueError):
         return False
-    try:
-        os.kill(pid, 0)
-        return True
-    except OSError:
-        return False
+    return portable.pid_alive(pid)
 
 
 def spawn_indexer() -> int | None:

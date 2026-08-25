@@ -24,7 +24,6 @@ Layout under ``~/.tradingagents/backtest/``::
 from __future__ import annotations
 
 import contextlib
-import fcntl
 import itertools
 import json
 import os
@@ -32,6 +31,8 @@ import re
 import time
 from collections.abc import Sequence
 from pathlib import Path
+
+from tradingagents import portable
 
 # TRADINGAGENTS_SWEEP_HOME lets a second sweep run against its OWN cache and
 # results, so two sessions on one Mac cannot overwrite each other's per-pair
@@ -161,10 +162,10 @@ def _pair_lock(coin: str, tf: str):
     LOCKS.mkdir(parents=True, exist_ok=True)
     f = (LOCKS / f"{coin}-{tf}.lock").open("w")
     try:
-        fcntl.flock(f, fcntl.LOCK_EX)
+        portable.lock_exclusive(f)
         yield
     finally:
-        fcntl.flock(f, fcntl.LOCK_UN)
+        portable.unlock(f)
         f.close()
 
 
@@ -291,10 +292,7 @@ def worker_read(stale_seconds: float = WORKER_STALE_SECONDS) -> list:
         # task's line still disappears.
         alive = True
         if pid:
-            try:
-                os.kill(pid, 0)
-            except (ProcessLookupError, PermissionError):
-                alive = False
+            alive = portable.pid_alive(pid)
         fresh = (now - float(row.get("updated") or 0)) <= stale_seconds
         if alive and fresh:
             out.append(row)
@@ -723,11 +721,7 @@ def is_running() -> bool:
         pid = int(PIDFILE.read_text().strip())
     except (OSError, ValueError):
         return False
-    try:
-        os.kill(pid, 0)
-        return True
-    except OSError:
-        return False
+    return portable.pid_alive(pid)
 
 
 def stop() -> bool:

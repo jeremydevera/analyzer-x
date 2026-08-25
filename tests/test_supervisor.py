@@ -119,10 +119,10 @@ def test_the_agent_never_starts_a_runner_on_its_own(monkeypatch):
 def test_a_second_runner_cannot_hold_the_lock(tmp_path, monkeypatch):
     """The pid check alone lost a race: both processes lived for seconds while
     the newcomer was importing. The lock cannot race."""
-    import fcntl
+    from tradingagents import portable
 
     holder = open(at.LOCK_PATH, "w")
-    fcntl.flock(holder, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    portable.lock_exclusive(holder, blocking=False)
 
     monkeypatch.setattr(at, "runner_pid", lambda: None)   # pid check passes
     monkeypatch.setattr(at, "disk_free_mb", lambda: 50_000)

@@ -202,8 +202,8 @@ def test_stop_takes_the_pool_down_instead_of_waiting_for_it():
     import inspect
 
     src = inspect.getsource(so.shutdown_pool)
-    assert "signal.SIGTERM" in src and "signal.SIGKILL" in src
-    assert "os.kill(pid, 0)" in src, "check it is alive before SIGKILL"
+    assert "signal.SIGTERM" in src and "portable.kill_hard" in src
+    assert "portable.pid_alive(pid)" in src, "check it is alive before SIGKILL"
 
     work = inspect.getsource(so.run)
     assert work.count("shutdown_pool()") == 2, (

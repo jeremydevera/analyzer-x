@@ -22,6 +22,8 @@ import threading as _threading
 import time
 from pathlib import Path
 
+from tradingagents import portable
+
 STATE_DIR = Path(os.path.expanduser("~/.tradingagents"))
 
 FILES = {
@@ -67,11 +69,7 @@ def _read(path: Path) -> dict:
 
 
 def _alive(pid: int) -> bool:
-    try:
-        os.kill(pid, 0)
-        return True
-    except OSError:
-        return False
+    return portable.pid_alive(pid)
 
 
 def status(kind: str) -> dict:

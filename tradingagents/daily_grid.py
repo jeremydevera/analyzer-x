@@ -27,6 +27,8 @@ import sys
 import time
 from pathlib import Path
 
+from tradingagents import portable
+
 HOME = Path.home() / ".tradingagents" / "backtest"
 STATE = HOME / "daily.json"
 PIDFILE = HOME / "daily.pid"
@@ -53,11 +55,7 @@ def is_running() -> bool:
         pid = int(PIDFILE.read_text().strip())
     except (OSError, ValueError):
         return False
-    try:
-        os.kill(pid, 0)
-        return True
-    except OSError:
-        return False
+    return portable.pid_alive(pid)
 
 
 def start(*, coins: list, tfs: list, base: float, days: int, deployed: list,

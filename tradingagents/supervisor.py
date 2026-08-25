@@ -22,6 +22,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from tradingagents import portable
+
 LABEL = "com.tradingagents.runner"
 PLIST = Path(os.path.expanduser(f"~/Library/LaunchAgents/{LABEL}.plist"))
 ROOT = Path(__file__).resolve().parent.parent
@@ -68,8 +70,7 @@ def loaded() -> bool:
 
 
 def free_mb() -> int:
-    st = os.statvfs(os.path.expanduser("~"))
-    return int(st.f_bavail * st.f_frsize / 1_000_000)
+    return portable.disk_free_mb(os.path.expanduser("~"))
 
 
 def status() -> dict:

@@ -29,6 +29,8 @@ import subprocess
 import sys
 import time
 
+from tradingagents import portable
+
 VENV = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                     ".venv")
 
@@ -43,6 +45,8 @@ NEVER = ("auto_trader", "uvicorn", "streamlit", "next", "node",
 
 
 def _ps() -> list[dict]:
+    if portable.WINDOWS:
+        return []        # no ps/lsof there; orphan reaping is a Mac/Linux job
     out = subprocess.run(["ps", "-eo", "pid,ppid,%cpu,etime,args"],
                          capture_output=True, text=True).stdout.splitlines()
     rows = []
@@ -72,7 +76,7 @@ def protected() -> set[int]:
             with contextlib.suppress(ValueError, OSError), \
                     open(os.path.join(home, name)) as fh:
                 keep.add(int(fh.read().strip()))
-    for port in ("8787", "8503", "8501"):
+    for port in () if portable.WINDOWS else ("8787", "8503", "8501"):
         out = subprocess.run(["lsof", "-nP", f"-iTCP:{port}", "-sTCP:LISTEN", "-t"],
                              capture_output=True, text=True).stdout
         keep.update(int(p) for p in out.split() if p.isdigit())
@@ -117,7 +121,7 @@ def reap(*, dry_run: bool = False, grace: float = 3.0) -> dict:
     for pid in termed:
         if pid in alive:
             try:
-                os.kill(pid, signal.SIGKILL)
+                portable.kill_hard(pid)
                 killed.append(pid)
             except (ProcessLookupError, PermissionError):
                 pass

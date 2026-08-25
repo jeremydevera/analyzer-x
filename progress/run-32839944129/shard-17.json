@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 21, "total": 51, "rows": 878366, "note": "HIVE 30m: 19,999 bars, testing 75 rules", "pct": 41.2, "updated": "2026-08-25T12:22:15Z"}
+{"shard": 17, "stage": "testing", "done": 21, "total": 51, "rows": 884086, "note": "HIVE 30m: rule 20/75 (stoch14)", "pct": 41.2, "updated": "2026-08-25T12:23:00Z"}

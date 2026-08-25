@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 38, "total": 51, "rows": 1643812, "note": "RSR 30m: 19,999 bars, testing 75 rules", "pct": 74.5, "updated": "2026-08-25T13:21:37Z"}
+{"shard": 16, "stage": "testing", "done": 38, "total": 51, "rows": 1647332, "note": "RSR 30m: rule 10/75 (sr_bounce)", "pct": 74.5, "updated": "2026-08-25T13:22:23Z"}

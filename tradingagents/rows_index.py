@@ -230,18 +230,31 @@ def ensure() -> None:
                          ("bytes", "INTEGER")):
             if col not in have:
                 con.execute(f"ALTER TABLE pairs ADD COLUMN {col} {typ}")
-        if con.execute("SELECT COUNT(*) FROM pairs WHERE coin IS NULL"
-                       ).fetchone()[0]:
-            con.executescript("""
-                UPDATE pairs SET
-                  coin = (SELECT coin FROM rows WHERE rows.pair = pairs.pair
-                          LIMIT 1),
-                  tf   = (SELECT tf FROM rows WHERE rows.pair = pairs.pair
-                          LIMIT 1),
-                  signals = (SELECT group_concat(s, char(10)) FROM
-                             (SELECT DISTINCT signal AS s FROM rows
-                              WHERE rows.pair = pairs.pair))
-                WHERE coin IS NULL;""")
+        # COIN AND TF COME FROM THE PAIR KEY, NOT FROM THE ROWS TABLE.
+        #
+        # This used to read them back out of `rows` with correlated subqueries.
+        # A pair whose backtest produced NO profitable row -- the shard only
+        # writes winners -- has nothing in `rows`, so the subquery returned NULL,
+        # `coin` stayed NULL, and the guard above fired again on the NEXT
+        # startup. On 2026-08-25 exactly one such pair (AASTOCK-30m, 0 rows) made
+        # every boot re-scan a 15 GB table: the supervisor sat silent for minutes
+        # before its first log line, looking hung, on every restart.
+        #
+        # The key IS the answer ("AASTOCK-30m" -> AASTOCK, 30m) and it is free,
+        # so `coin` can never come back NULL and the scan can never repeat.
+        need = [r[0] for r in
+                con.execute("SELECT pair FROM pairs WHERE coin IS NULL")]
+        if need:
+            print(f"[rows-index] backfilling coin/tf for {len(need)} pair(s)",
+                  flush=True)
+            for pair in need:
+                coin, _, tf = str(pair).rpartition("-")
+                sigs = con.execute(
+                    "SELECT group_concat(s, char(10)) FROM (SELECT DISTINCT "
+                    "signal AS s FROM rows WHERE pair = ?)", (pair,)
+                ).fetchone()[0]
+                con.execute("UPDATE pairs SET coin=?, tf=?, signals=? "
+                            "WHERE pair=?", (coin or pair, tf, sigs, pair))
         con.commit()
     _ready.add(str(DB_PATH))
 

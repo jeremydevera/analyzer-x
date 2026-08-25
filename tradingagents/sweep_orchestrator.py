@@ -293,9 +293,15 @@ def run(coins, tfs, *, prefer_cloud: bool = True) -> None:
 
     want = pairs_wanted(coins, tfs)
     total = len(want)
-    ri.ensure()
     started = time.time()
+    # LOG BEFORE ri.ensure(), NOT AFTER. ensure() opens a 15 GB index and can
+    # run a migration; on 2026-08-25 it held startup for over four minutes with
+    # nothing on screen, so a healthy boot was indistinguishable from a hang and
+    # I killed a working process twice before reading its stack.
     log(f"start: {total:,} pairs ({len(coins)} coins x {len(tfs)} timeframes)")
+    log("opening the row index...")
+    ri.ensure()
+    log(f"row index ready in {time.time() - started:.0f}s")
 
     shared = {"done": set(), "where": "starting", "cloud": None,
               "budget": 0, "reset_in": 0.0, "indexed": 0, "shards": {}}

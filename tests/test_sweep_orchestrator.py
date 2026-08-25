@@ -225,3 +225,19 @@ def test_shutdown_pool_only_signals_its_own_children(monkeypatch):
     monkeypatch.setattr(so.subprocess, "run", lambda *a, **k: R())
     assert so.shutdown_pool() == 2
     assert {p for p, _ in sent} == {100, 101}
+
+
+def test_startup_says_something_before_the_slow_part():
+    """ri.ensure() opens a 15 GB index and can migrate it. It ran BEFORE the
+    first log line, so a four-minute boot looked identical to a hang -- I killed
+    a healthy process twice on 2026-08-25 before reading its stack."""
+    import inspect
+
+    # the comment above the call names ri.ensure() too, so compare CODE
+    src = inspect.getsource(so.run)
+    code = "\n".join(ln for ln in src.splitlines()
+                     if not ln.lstrip().startswith("#"))
+    assert code.index('log(f"start:') < code.index("ri.ensure()"), (
+        "the start line comes first, or a slow index reads as a hang")
+    assert "opening the row index" in src
+    assert "row index ready in" in src

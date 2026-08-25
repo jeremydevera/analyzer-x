@@ -94,6 +94,8 @@ def connect(path: Path) -> sqlite3.Connection:
 
 
 def write_rows(db: sqlite3.Connection, rows: list) -> int:
+    from tradingagents.backtest_report import row_code
+
     def pack(r: dict) -> tuple:
         out = []
         for c in COLS:
@@ -104,6 +106,14 @@ def write_rows(db: sqlite3.Connection, rows: list) -> int:
                 v = json.dumps(r.get("mon") or r.get("monthly") or [])
             elif c == "stop_reachable":
                 v = 1 if v else 0
+            elif c == "id" and not v:
+                # `run_pair` returns no id — only the report path minted them,
+                # so every row landed with id NULL and "compare row #X across
+                # the two sessions" was impossible. Same content hash the grid
+                # pages use, so an id means the same combination everywhere.
+                v = row_code(r.get("coin"), r.get("tf"), r.get("signal"),
+                             r.get("th") or 0, r.get("sl"), r.get("tp"),
+                             r.get("sizing"))
             out.append(v)
         return tuple(out)
 

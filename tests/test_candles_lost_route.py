@@ -39,6 +39,11 @@ def test_the_route_names_and_counts_the_lost_pairs(lost_file):
     assert got["written"] == "Aug 25, 2026 2:00pm", "the operator's date format"
 
 
-def test_no_file_means_nothing_lost_not_an_error(lost_file):
+def test_no_file_means_nothing_lost_not_an_error(lost_file, monkeypatch):
+    from tradingagents import notifications as nt
+
+    monkeypatch.setattr(nt, "recent", lambda limit=20, kind=None: [])
     assert not lost_file.exists()
-    assert api.candles_lost() == {"pairs": [], "count": 0, "written": ""}
+    got = api.candles_lost()
+    assert (got["pairs"], got["count"], got["written"]) == ([], 0, "")
+    assert (got["recovered"], got["failed_run_when"], got["unnamed"]) == ([], "", 0)

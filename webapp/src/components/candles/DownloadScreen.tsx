@@ -129,6 +129,16 @@ export default function DownloadScreen() {
             {" "}— RETRY fetches exactly these
           </p>
         )}
+        {lost && !lost.count && !!lost.recovered?.length && (
+          <p className="mt-3 text-theme-xs text-gray-500 dark:text-gray-400">
+            nothing to retry — the pairs lost by the failed run at {lost.failed_run_when} are back in the store:{" "}
+            {lost.recovered.map((p) =>
+              `${p.symbol.replace("_USDT", "")} ${p.timeframe} (${(p.bars ?? 0).toLocaleString()} bars, stored ${p.when})`).join(" · ")}
+            {lost.unnamed
+              ? ` · ${lost.unnamed} more error${lost.unnamed === 1 ? "" : "s"} from that run ${lost.unnamed === 1 ? "was" : "were"} not named`
+              : ""}
+          </p>
+        )}
         {gaps && (
           <p className="mt-3 text-theme-xs text-gray-500 dark:text-gray-400">
             {gaps.pairs.toLocaleString()} pair(s) stored ·{" "}

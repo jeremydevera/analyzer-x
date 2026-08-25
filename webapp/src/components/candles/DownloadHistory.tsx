@@ -57,6 +57,26 @@ export default function DownloadHistory({ refreshKey = 0 }: { refreshKey?: numbe
             {!r.ok && r.detail && (
               <p className="w-full break-words text-theme-xs text-error-500">{r.detail}</p>
             )}
+            {/* is that failure still live? each named pair reads its own store
+                file: recovered (with bars and when) or still lost */}
+            {!r.ok && !!r.lost?.length && (
+              <p className="w-full break-words text-theme-xs">
+                {r.lost.map((p, i) => (
+                  <span key={`${p.symbol}-${p.timeframe}`}
+                    className={p.recovered ? "text-success-600 dark:text-success-400" : "text-error-500"}>
+                    {i ? " · " : ""}{p.symbol.replace("_USDT", "")} {p.timeframe} —{" "}
+                    {p.recovered
+                      ? `recovered · ${(p.bars ?? 0).toLocaleString()} bars · stored ${p.when}`
+                      : "still lost"}
+                  </span>
+                ))}
+                {r.unnamed ? (
+                  <span className="text-gray-500 dark:text-gray-400">
+                    {" "}· {r.unnamed} more error{r.unnamed === 1 ? "" : "s"} not named by that run
+                  </span>
+                ) : null}
+              </p>
+            )}
           </li>
         ))}
       </ul>

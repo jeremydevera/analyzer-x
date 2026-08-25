@@ -11,6 +11,7 @@ Run:  .venv/bin/uvicorn tradingagents.api:app --port 8787
 """
 from __future__ import annotations
 
+import re
 import time as _time
 
 from fastapi import FastAPI, HTTPException
@@ -1546,20 +1547,80 @@ def notifications_read(body: NotifyRead) -> dict:
     return {"marked": changed, "unread": nt.unread_count()}
 
 
+_LOST_PAIR_RE = re.compile(r"([A-Z0-9]+_USDT) (15m|30m|1h|4h|1d):")
+
+
+def _named_lost(row: dict) -> tuple[list[tuple[str, str]], int]:
+    """The pairs a download event names as lost, and how many of its errors it
+    did NOT name. Rows written after 2026-08-25 carry every pair in
+    meta.failed; the 2:00pm row that day carried only errors[0] in its detail,
+    so its second lost pair (NAORIS_USDT 30m) is an unnamed count, not a name.
+    """
+    meta = row.get("meta") or {}
+    texts = meta.get("failed")
+    if texts is None:
+        texts = [row.get("detail") or ""]
+    pairs: list[tuple[str, str]] = []
+    for text in texts:
+        for sym, tf in _LOST_PAIR_RE.findall(text):
+            if (sym, tf) not in pairs:
+                pairs.append((sym, tf))
+    return pairs, max(0, int(meta.get("errors") or 0) - len(pairs))
+
+
+def _stored_now(symbol: str, tf: str) -> dict:
+    """Is the pair in the store NOW — derived from its file, never a flag.
+    'recovered' means the parquet exists; bars and the file's own time ride
+    beside it so the label can be checked against the store."""
+    from tradingagents import parquet_store as pqs, positions_view as pv
+
+    path = pqs._candle_path(symbol, tf)
+    out = {"symbol": symbol, "timeframe": tf, "recovered": False, "bars": None, "when": ""}
+    if not path.exists():
+        return out
+    try:
+        import pyarrow.parquet as pq
+
+        out["bars"] = int(pq.read_metadata(path).num_rows)
+    except Exception:
+        out["bars"] = None
+    out.update(recovered=True, when=pv.fmt_when(path.stat().st_mtime))
+    return out
+
+
 @app.get("/api/candles/lost")
 def candles_lost() -> dict:
     """The pairs the last download gave up on — what RETRY FAILED will fetch.
 
     Read from the job's own lost file, so the button's count IS the retry's
     list, never a second bookkeeping of it. No file means nothing is lost.
+
+    Plus what the LAST FAILED run lost and whether it is back: on 2026-08-25
+    the operator read a 2:00pm "2 error(s)" row an hour after both pairs had
+    been re-downloaded, saw a disabled RETRY button, and called it "still
+    error". The button was right and the screen never said why.
     """
-    from tradingagents import db_jobs, positions_view as pv
+    from tradingagents import db_jobs, notifications as nt, positions_view as pv
 
     got = db_jobs._read(db_jobs.FILES["download"]["lost"])
     pairs = [{"symbol": p[0], "timeframe": p[1]}
              for p in (got.get("pairs") or []) if len(p) == 2]
+    recovered, failed_when, unnamed = [], "", 0
+    for row in nt.recent(limit=20, kind="download"):
+        meta = row.get("meta") or {}
+        if row.get("ok") or meta.get("stopped"):
+            continue
+        named, unnamed = _named_lost(row)
+        failed_when = pv.fmt_when(float(row.get("ts") or 0))
+        recovered = [{"symbol": r["symbol"], "timeframe": r["timeframe"],
+                      "bars": r["bars"], "when": r["when"]}
+                     for r in (_stored_now(sym, tf) for sym, tf in named)
+                     if r["recovered"]]
+        break
     return {"pairs": pairs, "count": len(pairs),
-            "written": pv.fmt_when(float(got["written"])) if got.get("written") else ""}
+            "written": pv.fmt_when(float(got["written"])) if got.get("written") else "",
+            "recovered": recovered, "failed_run_when": failed_when,
+            "unnamed": unnamed}
 
 
 @app.get("/api/candles/download-history")
@@ -1575,12 +1636,17 @@ def download_history(limit: int = 20) -> dict:
     out = []
     for r in rows:
         m = r.get("meta") or {}
+        named, unnamed = _named_lost(r)
         out.append({
             "ts": r["ts"], "when": pv.fmt_when(float(r.get("ts") or 0)),
             "ok": r["ok"], "title": r["title"], "detail": r["detail"],
             "pairs": m.get("pairs"), "bars": m.get("bars"),
             "errors": m.get("errors"), "stopped": bool(m.get("stopped")),
             "mode": m.get("mode") or "download",
+            # a FAILED row says whether its lost pairs are back — from the
+            # store's own files, so a fixed failure never reads as a live one
+            "lost": [_stored_now(sym, tf) for sym, tf in named],
+            "unnamed": unnamed,
         })
     ok = sum(1 for r in out if r["ok"])
     return {"rows": out, "total": len(out), "ok": ok, "failed": len(out) - ok}

@@ -234,6 +234,9 @@ export const api = {
   /** the pairs the last download gave up on — what RETRY FAILED fetches */
   candleLost: () => get<{
     pairs: { symbol: string; timeframe: string }[]; count: number; written: string;
+    /** what the LAST FAILED run lost that is back in the store now */
+    recovered: { symbol: string; timeframe: string; bars: number | null; when: string }[];
+    failed_run_when: string; unnamed: number;
   }>("/api/candles/lost"),
   plan: (coins: string[], tfs: string[]) =>
     get<GridPlan>(`/api/backtest/plan?coins=${coins.join(",")}&tfs=${tfs.join(",")}`),
@@ -720,10 +723,15 @@ export interface NotifyRow {
 }
 export interface NotifyPayload { rows: NotifyRow[]; unread: number; total: number }
 
+/** a pair a download gave up on, and whether the store has it NOW */
+export interface LostPair {
+  symbol: string; timeframe: string; recovered: boolean; bars: number | null; when: string;
+}
 export interface DownloadHistoryRow {
   ts: number; when: string; ok: boolean; title: string; detail: string;
   pairs?: number | null; bars?: number | null; errors?: number | null;
   stopped: boolean; mode: string;
+  lost?: LostPair[]; unnamed?: number;
 }
 export interface DownloadHistory {
   rows: DownloadHistoryRow[]; total: number; ok: number; failed: number;

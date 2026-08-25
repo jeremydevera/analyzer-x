@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 13, "total": 51, "rows": 697072, "note": "CTK 4h: 9,689 bars, testing 75 rules", "pct": 25.5, "updated": "2026-08-25T11:58:54Z"}
+{"shard": 16, "stage": "testing", "done": 13, "total": 51, "rows": 705872, "note": "CTK 4h: rule 34/75 (lrslope)", "pct": 25.5, "updated": "2026-08-25T11:59:39Z"}

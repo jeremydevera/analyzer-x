@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 5, "total": 28, "rows": 257600, "note": "COINBASE 15m: downloading candles", "pct": 17.9, "updated": "2026-08-25T04:21:52Z"}
+{"shard": 14, "stage": "testing", "done": 5, "total": 28, "rows": 260840, "note": "COINBASE 15m: rule 12/75 (donchian20)", "pct": 17.9, "updated": "2026-08-25T04:22:37Z"}

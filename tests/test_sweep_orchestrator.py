@@ -132,12 +132,12 @@ def test_the_mac_works_while_the_cloud_works():
     import inspect
 
     src = inspect.getsource(so.run)
-    work = src[src.index("def work("):src.index("for fn in (scan, work)")]
+    work = src[src.index("def work("):]
     assert "local_round(left" in work, "the Mac must measure every cycle"
-    i = work.index('mode == "cloud"')
-    j = work.index("local_round(left")
-    assert i < j, "the local round has to sit AFTER the cloud branch, not inside it"
-    assert "+ this Mac" in work
+    # and it must NOT be gated on the cloud: measuring happens either way
+    assert "cloud" not in work.split("local_round(left")[0].lower(), (
+        "the local round must not sit behind a cloud decision")
+    assert "+ this Mac" in src
 
 
 def test_a_restart_adopts_the_run_already_in_flight():
@@ -148,6 +148,9 @@ def test_a_restart_adopts_the_run_already_in_flight():
 
     work = inspect.getsource(so.run)
     assert "cs.remembered()" in work, "it must look for a run in flight"
+    # the cloud runs on its OWN thread: managing it is seconds of work and must
+    # not queue behind a 30-minute local round
+    assert "def cloud(" in work and "for fn in (scan, work, cloud)" in work
     i = work.index("cs.remembered()")
     body = work[i:i + 700]        # the liveness check grew; widen the window
     assert 'st0.get("status") != "completed"' in body

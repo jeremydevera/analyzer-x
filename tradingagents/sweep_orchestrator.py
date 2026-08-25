@@ -249,8 +249,75 @@ def run(coins, tfs, *, prefer_cloud: bool = True) -> None:
                 shared["indexed"] = n
             time.sleep(30)
 
+    def cloud() -> None:
+        """Keep GitHub busy. Its OWN thread, on its own clock.
+
+        This lived inside the work loop, which meant it only got a turn after a
+        local round finished — 30+ minutes — so a cancelled run sat adopted for
+        twenty minutes with nothing dispatched behind it. Managing the cloud is
+        seconds of work; it must not queue behind half an hour of measuring.
+        """
+        while not STOP.exists():
+            with lock:
+                done = set(shared["done"])
+            left = [p for p in want if p not in done]
+            if not left or not prefer_cloud:
+                time.sleep(TICK)
+                continue
+            if not online():
+                time.sleep(TICK)
+                continue
+            budget, reset_in = gh_budget()
+            with lock:
+                shared["budget"], shared["reset_in"] = budget, reset_in
+            if plan(online_=True, budget=budget, prefer_cloud=True) != "cloud":
+                time.sleep(TICK)
+                continue
+
+            with lock:
+                run_ = shared["cloud"]
+            if run_ is None:
+                try:
+                    rid0 = int((cs.remembered() or {}).get("id") or 0)
+                    st0 = cs.status(rid0) if rid0 else {}
+                    # a CANCELLED or FAILED run is remembered too, and
+                    # adopting one leaves the sweep waiting on a corpse
+                    alive = (st0.get("status") != "completed"
+                             and st0.get("conclusion") in (None, "", "in_progress"))
+                    if rid0 and alive:
+                        run_ = {"id": rid0}
+                        log(f"adopting GitHub run {rid0}, already in flight")
+                except Exception:
+                    run_ = None
+            if run_ is None:
+                try:
+                    run_ = cs.dispatch(shards=CLOUD_SHARDS,
+                                       coins=len({c for c, _ in left}),
+                                       timeframes=",".join(tfs))
+                    cs.remember(run_)
+                    log(f"dispatched GitHub run {run_.get('id')} for "
+                        f"{len({c for c, _ in left})} coins")
+                except Exception as exc:
+                    log(f"dispatch failed: {str(exc)[:70]}")
+            with lock:
+                shared["cloud"] = run_
+            if run_:
+                rid = int(run_.get("id") or 0)
+                sh = cloud_shards(rid)
+                with lock:
+                    shared["shards"] = sh
+                if collect_cloud(rid) is not None:
+                    with lock:
+                        shared["cloud"] = None      # ended; dispatch next pass
+                    log(f"run {rid} has ended — releasing the slot")
+                shared["where"] = (
+                    f"GitHub run {rid} "
+                    f"({sh.get('shards_done', 0)}/{sh.get('shards', 0)} shards, "
+                    f"{sh.get('cloud_rows', 0):,} rows) + this Mac")
+            time.sleep(TICK)
+
     def work() -> None:
-        """Keep measuring, wherever it can happen."""
+        """Measure here, always. The Mac has the candles and the cores."""
         while not STOP.exists():
             with lock:
                 done = set(shared["done"])
@@ -258,65 +325,11 @@ def run(coins, tfs, *, prefer_cloud: bool = True) -> None:
             if not left:
                 time.sleep(TICK)
                 continue
-            net = online()
-            budget, reset_in = gh_budget() if net else (0, 0.0)
-            with lock:
-                shared["budget"], shared["reset_in"] = budget, reset_in
-
-            mode = plan(online_=net, budget=budget, prefer_cloud=prefer_cloud)
-            if mode == "cloud":
-                with lock:
-                    cloud = shared["cloud"]
-                if cloud is None:
-                    try:
-                        rid0 = int((cs.remembered() or {}).get("id") or 0)
-                        st0 = cs.status(rid0) if rid0 else {}
-                        # a CANCELLED or FAILED run is remembered too, and
-                        # adopting one leaves the sweep waiting on a corpse
-                        alive = (st0.get("status") != "completed"
-                                 and st0.get("conclusion") in (None, "", "in_progress"))
-                        if rid0 and alive:
-                            cloud = {"id": rid0}
-                            log(f"adopting GitHub run {rid0}, already in flight")
-                    except Exception:
-                        cloud = None
-                if cloud is None:
-                    try:
-                        cloud = cs.dispatch(shards=CLOUD_SHARDS,
-                                            coins=len({c for c, _ in left}),
-                                            timeframes=",".join(tfs))
-                        cs.remember(cloud)
-                        log(f"dispatched GitHub run {cloud.get('id')} for "
-                            f"{len({c for c, _ in left})} coins")
-                    except Exception as exc:
-                        log(f"dispatch failed: {str(exc)[:70]}")
-                        cloud = None
-                with lock:
-                    shared["cloud"] = cloud
-                if cloud:
-                    rid = int(cloud.get("id") or 0)
-                    with lock:
-                        shared["shards"] = cloud_shards(rid)
-                    if collect_cloud(rid) is not None:
-                        with lock:
-                            shared["cloud"] = None
-                    with lock:
-                        sh = shared["shards"]
-                    shared["where"] = (
-                        f"GitHub run {rid} "
-                        f"({sh.get('shards_done', 0)}/{sh.get('shards', 0)} shards, "
-                        f"{sh.get('cloud_rows', 0):,} rows) + this Mac")
-            elif mode == "local":
-                shared["where"] = (f"this Mac (GitHub rate limited, "
-                                   f"{reset_in / 60:.0f} min to reset)")
-            else:
+            if not online():
                 shared["where"] = "this Mac (no internet — from stored candles)"
-
-            # the Mac measures in every case: it has the candles and the cores,
-            # and merge_into_store refuses any pair it already holds
             local_round(left[:24])
 
-    for fn in (scan, work):
+    for fn in (scan, work, cloud):
         threading.Thread(target=fn, name=fn.__name__, daemon=True).start()
 
     while not STOP.exists():

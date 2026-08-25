@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 1, "total": 51, "rows": 3200, "note": "1000BTT 15m: rule 10/75 (sr_bounce)", "pct": 2.0, "updated": "2026-08-25T07:18:27Z"}
+{"shard": 4, "stage": "testing", "done": 1, "total": 51, "rows": 10200, "note": "1000BTT 15m: rule 45/75 (zscore20)", "pct": 2.0, "updated": "2026-08-25T07:19:13Z"}

@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 11, "total": 51, "rows": 550940, "note": "CELR 4h: 9,725 bars, testing 75 rules", "pct": 21.6, "updated": "2026-08-25T08:09:36Z"}
+{"shard": 10, "stage": "testing", "done": 11, "total": 51, "rows": 556880, "note": "CELR 4h: rule 21/75 (cci20)", "pct": 21.6, "updated": "2026-08-25T08:10:22Z"}

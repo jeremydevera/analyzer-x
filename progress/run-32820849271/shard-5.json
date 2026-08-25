@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 36, "total": 51, "rows": 1321418, "note": "PUMPFUN 30m: 19,731 bars, testing 75 rules", "pct": 70.6, "updated": "2026-08-25T09:25:09Z"}
+{"shard": 5, "stage": "testing", "done": 36, "total": 51, "rows": 1323618, "note": "PUMPFUN 30m: rule 4/75 (trend50)", "pct": 70.6, "updated": "2026-08-25T09:25:59Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 24, "total": 51, "rows": 842658, "note": "JST 15m: rule 17/75 (atrbreak)", "pct": 47.1, "updated": "2026-08-25T08:31:00Z"}
+{"shard": 19, "stage": "testing", "done": 24, "total": 51, "rows": 848818, "note": "JST 15m: rule 45/75 (zscore20)", "pct": 47.1, "updated": "2026-08-25T08:31:45Z"}

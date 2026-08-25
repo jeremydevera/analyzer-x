@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 45, "total": 51, "rows": 2066634, "note": "TOAD 15m: downloading candles", "pct": 88.2, "updated": "2026-08-25T10:10:39Z"}
+{"shard": 2, "stage": "testing", "done": 46, "total": 51, "rows": 2067834, "note": "TST 15m: rule 2/75 (mom15)", "pct": 90.2, "updated": "2026-08-25T10:11:37Z"}

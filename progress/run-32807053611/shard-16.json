@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 13, "total": 27, "rows": 701940, "note": "HYPER 15m: rule 21/75 (cci20)", "pct": 48.1, "updated": "2026-08-25T05:07:44Z"}
+{"shard": 16, "stage": "testing", "done": 13, "total": 27, "rows": 707220, "note": "HYPER 15m: rule 45/75 (zscore20)", "pct": 48.1, "updated": "2026-08-25T05:08:30Z"}

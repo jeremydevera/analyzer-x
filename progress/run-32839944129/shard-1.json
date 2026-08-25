@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 10, "total": 52, "rows": 499480, "note": "BSV 30m: downloading candles", "pct": 19.2, "updated": "2026-08-25T11:45:01Z"}
+{"shard": 1, "stage": "testing", "done": 10, "total": 52, "rows": 503000, "note": "BSV 30m: rule 10/75 (sr_bounce)", "pct": 19.2, "updated": "2026-08-25T11:45:46Z"}

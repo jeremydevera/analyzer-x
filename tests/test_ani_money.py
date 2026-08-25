@@ -11,6 +11,9 @@ import re
 
 import pytest
 
+# app.py is the retired Streamlit screen; CI installs no streamlit, so these
+# tests skip there instead of failing collection (red CI #84-#90, 2026-08-25)
+pytest.importorskip("streamlit")
 import app
 
 

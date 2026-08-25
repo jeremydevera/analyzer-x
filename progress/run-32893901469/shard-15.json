@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 1, "total": 51, "rows": 0, "note": "ABNBSTOCK 15m: downloading candles", "pct": 2.0, "updated": "2026-08-25T20:12:01Z"}
+{"shard": 15, "stage": "testing", "done": 2, "total": 51, "rows": 18220, "note": "AIN 15m: rule 54/75 (fractal5)", "pct": 3.9, "updated": "2026-08-25T20:12:46Z"}

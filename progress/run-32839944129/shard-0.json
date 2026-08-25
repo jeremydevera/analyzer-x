@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 50, "total": 52, "rows": 2052452, "note": "XEC 1h: 9,999 bars, testing 75 rules", "pct": 96.2, "updated": "2026-08-25T13:55:11Z"}
+{"shard": 0, "stage": "testing", "done": 50, "total": 52, "rows": 2069612, "note": "XEC 1h: rule 73/75 (volspike)", "pct": 96.2, "updated": "2026-08-25T13:55:56Z"}

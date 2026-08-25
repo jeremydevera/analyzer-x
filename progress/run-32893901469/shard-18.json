@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 10, "total": 51, "rows": 296060, "note": "CATI 30m: 4,319 bars, testing 75 rules", "pct": 19.6, "updated": "2026-08-25T20:25:13Z"}
+{"shard": 18, "stage": "testing", "done": 11, "total": 51, "rows": 316000, "note": "CHIP 15m: rule 7/75 (fvg)", "pct": 21.6, "updated": "2026-08-25T20:25:59Z"}

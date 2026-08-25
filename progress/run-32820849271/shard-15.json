@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 3, "total": 51, "rows": 99060, "note": "AMDSTOCK 15m: rule 11/75 (sr_break)", "pct": 5.9, "updated": "2026-08-25T07:23:58Z"}
+{"shard": 15, "stage": "testing", "done": 3, "total": 51, "rows": 110580, "note": "AMDSTOCK 15m: rule 75/75 (relvolbrk)", "pct": 5.9, "updated": "2026-08-25T07:24:43Z"}

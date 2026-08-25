@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 1, "total": 22, "rows": 33600, "note": "AIN 1h: 9,978 bars, testing 75 rules", "pct": 4.5, "updated": "2026-08-25T04:03:39Z"}
+{"shard": 15, "stage": "testing", "done": 1, "total": 22, "rows": 43500, "note": "AIN 1h: rule 39/75 (fisher)", "pct": 4.5, "updated": "2026-08-25T04:04:24Z"}

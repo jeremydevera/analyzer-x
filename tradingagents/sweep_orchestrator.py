@@ -45,6 +45,7 @@ STOP = HOME / "orchestrator.STOP"
 TICK = 60.0                 # the operator asked for a percentage every minute
 CLOUD_SHARDS = 20
 CLOUD_MAX_CONCURRENT = 1    # one cloud run at a time; shards are the parallelism
+GH_BUDGET_FLOOR = 200       # below this, stop asking GitHub and work here
 
 
 def log(msg: str) -> None:
@@ -95,6 +96,85 @@ def gh_budget() -> tuple[int, float]:
         return 0, 0.0
 
 
+def cloud_shards(run_id: int) -> dict:
+    """What the shards say they are doing, read from the sweep-progress branch.
+
+    `git fetch` costs no API quota. Returns {"done": n, "total": n, "rows": n}.
+    """
+    try:
+        subprocess.run(["git", "fetch", "-q", "mine", "sweep-progress"],
+                       capture_output=True, timeout=90, check=False)
+        names = subprocess.run(
+            ["git", "ls-tree", "-r", "--name-only", "FETCH_HEAD"],
+            capture_output=True, text=True, timeout=60).stdout.splitlines()
+    except Exception:
+        return {}
+    want = [n for n in names if f"run-{run_id}/" in n]
+    done = rows = 0
+    for n in want:
+        try:
+            blob = subprocess.run(["git", "show", f"FETCH_HEAD:{n}"],
+                                  capture_output=True, text=True,
+                                  timeout=30).stdout
+            d = json.loads(blob)
+        except Exception:
+            continue
+        rows += int(d.get("rows") or 0)
+        if d.get("stage") == "done":
+            done += 1
+    return {"shards_done": done, "shards": len(want), "cloud_rows": rows}
+
+
+def collect_cloud(run_id: int):
+    """Fold a finished cloud run into the store.
+
+    Returns None while the run is still going, or the number of pairs merged
+    once it has ENDED — including 0. The distinction matters: a run that was
+    cancelled, or whose artifact cannot be downloaded, still has to release the
+    slot. Returning 0 for both "not finished" and "finished with nothing"
+    pinned the orchestrator to a cancelled run forever.
+
+    Without this the orchestrator dispatched and then simply waited: `done`
+    counts LOCAL watermarks, so the percentage sat at 0 for hours and then
+    jumped — the same false label as a counter that measures the process
+    instead of the work.
+    """
+    from tradingagents import cloud_sweep as cs
+
+    try:
+        st = cs.status(run_id)
+    except Exception:
+        return 0
+    if st.get("status") != "completed":
+        return None                      # still going: keep waiting
+    try:
+        rows = cs.fetch(run_id)
+    except Exception as exc:
+        log(f"run {run_id} ended with no usable artifact ({str(exc)[:60]}) "
+            f"— releasing it")
+        return 0
+    got = cs.merge_into_store(rows)
+    log(f"merged run {run_id}: {got.get('pairs')} pairs, "
+        f"{got.get('rows'):,} rows, {got.get('skipped')} skipped")
+    return int(got.get("pairs") or 0)
+
+
+def plan(*, online_: bool, budget: int, prefer_cloud: bool) -> str:
+    """Where should the next slice of work happen?
+
+    Pulled out of the loop so it can be tested without threads or a network.
+    Three outcomes, and the operator asked for each by name:
+      "cloud"   — GitHub has budget, dispatch there AND keep measuring here
+      "local"   — rate limited; "make sure to resume if it hits rate limit"
+      "offline" — "if i've been disconnected to wifi then continue local"
+    """
+    if not online_:
+        return "offline"
+    if prefer_cloud and budget > GH_BUDGET_FLOOR:
+        return "cloud"
+    return "local"
+
+
 # ----------------------------------------------------------------- the work
 def pairs_wanted(coins, tfs) -> list:
     return [(c, tf) for c in coins for tf in tfs]
@@ -135,65 +215,124 @@ def local_round(pairs_left, *, workers: int = 0) -> int:
 
 # ------------------------------------------------------------------- cycle
 def run(coins, tfs, *, prefer_cloud: bool = True) -> None:
+    """Publish every TICK; do the heavy work on threads.
+
+    The first version measured inline, so a tick took as long as 40 pairs and
+    the operator — who asked for "update on percentage every 1 min" — got one
+    every several minutes. Cadence and work are separate now: two daemon
+    threads carry the load, the loop only reports.
+    """
+    import threading
+
     from tradingagents import cloud_sweep as cs, rows_index as ri
 
     want = pairs_wanted(coins, tfs)
     total = len(want)
     ri.ensure()
-    cloud_run: dict | None = None
     started = time.time()
     log(f"start: {total:,} pairs ({len(coins)} coins x {len(tfs)} timeframes)")
 
+    shared = {"done": set(), "where": "starting", "cloud": None,
+              "budget": 0, "reset_in": 0.0, "indexed": 0, "shards": {}}
+    lock = threading.Lock()
+
+    def scan() -> None:
+        """Which pairs are finished, and fold them into the database."""
+        while not STOP.exists():
+            done = measured(want)
+            with lock:
+                shared["done"] = done
+            n = 0
+            for sym, tf in list(done)[:60]:
+                n += store_pair(sym.replace("_USDT", ""), tf)
+            with lock:
+                shared["indexed"] = n
+            time.sleep(30)
+
+    def work() -> None:
+        """Keep measuring, wherever it can happen."""
+        while not STOP.exists():
+            with lock:
+                done = set(shared["done"])
+            left = [p for p in want if p not in done]
+            if not left:
+                time.sleep(TICK)
+                continue
+            net = online()
+            budget, reset_in = gh_budget() if net else (0, 0.0)
+            with lock:
+                shared["budget"], shared["reset_in"] = budget, reset_in
+
+            mode = plan(online_=net, budget=budget, prefer_cloud=prefer_cloud)
+            if mode == "cloud":
+                with lock:
+                    cloud = shared["cloud"]
+                if cloud is None:
+                    try:
+                        rid0 = int((cs.remembered() or {}).get("id") or 0)
+                        st0 = cs.status(rid0) if rid0 else {}
+                        # a CANCELLED or FAILED run is remembered too, and
+                        # adopting one leaves the sweep waiting on a corpse
+                        alive = (st0.get("status") != "completed"
+                                 and st0.get("conclusion") in (None, "", "in_progress"))
+                        if rid0 and alive:
+                            cloud = {"id": rid0}
+                            log(f"adopting GitHub run {rid0}, already in flight")
+                    except Exception:
+                        cloud = None
+                if cloud is None:
+                    try:
+                        cloud = cs.dispatch(shards=CLOUD_SHARDS,
+                                            coins=len({c for c, _ in left}),
+                                            timeframes=",".join(tfs))
+                        cs.remember(cloud)
+                        log(f"dispatched GitHub run {cloud.get('id')} for "
+                            f"{len({c for c, _ in left})} coins")
+                    except Exception as exc:
+                        log(f"dispatch failed: {str(exc)[:70]}")
+                        cloud = None
+                with lock:
+                    shared["cloud"] = cloud
+                if cloud:
+                    rid = int(cloud.get("id") or 0)
+                    with lock:
+                        shared["shards"] = cloud_shards(rid)
+                    if collect_cloud(rid) is not None:
+                        with lock:
+                            shared["cloud"] = None
+                    with lock:
+                        sh = shared["shards"]
+                    shared["where"] = (
+                        f"GitHub run {rid} "
+                        f"({sh.get('shards_done', 0)}/{sh.get('shards', 0)} shards, "
+                        f"{sh.get('cloud_rows', 0):,} rows) + this Mac")
+            elif mode == "local":
+                shared["where"] = (f"this Mac (GitHub rate limited, "
+                                   f"{reset_in / 60:.0f} min to reset)")
+            else:
+                shared["where"] = "this Mac (no internet — from stored candles)"
+
+            # the Mac measures in every case: it has the candles and the cores,
+            # and merge_into_store refuses any pair it already holds
+            local_round(left[:24])
+
+    for fn in (scan, work):
+        threading.Thread(target=fn, name=fn.__name__, daemon=True).start()
+
     while not STOP.exists():
-        done = measured(want)
-        left = [p for p in want if p not in done]
+        with lock:
+            done, where = set(shared["done"]), shared["where"]
+            budget, indexed = shared["budget"], shared["indexed"]
         pct = 100.0 * len(done) / total if total else 0.0
-
-        # everything finished has to be IN THE DATABASE, not just on disk
-        indexed = 0
-        for sym, tf in list(done)[:40]:          # a slice per tick keeps it cheap
-            indexed += store_pair(sym.replace("_USDT", ""), tf)
-
-        net = online()
-        budget, reset_in = gh_budget() if net else (0, 0.0)
-        where = "waiting"
-
-        if not left:
-            _write(STATE, {"pct": 100.0, "done": len(done), "total": total,
-                           "where": "finished", "running": False,
-                           "elapsed_min": round((time.time() - started) / 60, 1)})
-            log(f"FINISHED {len(done):,}/{total:,} pairs")
-            return
-
-        if not net:
-            where = "this Mac (no internet — measuring from stored candles)"
-            log(f"{pct:5.1f}%  {len(done):,}/{total:,}  offline, measuring "
-                f"{min(len(left), 40)} pairs locally")
-            local_round(left[:40])
-        elif prefer_cloud and budget > 200:
-            if cloud_run is None:
-                unmeasured_coins = sorted({c for c, _ in left})
-                run_ = cs.dispatch(shards=CLOUD_SHARDS,
-                                   coins=len(unmeasured_coins),
-                                   timeframes=",".join(tfs))
-                cs.remember(run_)
-                cloud_run = run_
-                log(f"dispatched GitHub run {run_.get('id')} for "
-                    f"{len(unmeasured_coins)} coins")
-            where = f"GitHub Actions (run {cloud_run.get('id')})"
-        else:
-            where = ("this Mac (GitHub rate limited, "
-                     f"{reset_in / 60:.0f} min to reset)")
-            log(f"{pct:5.1f}%  rate limited — {budget} requests left, working "
-                f"locally for {reset_in / 60:.0f} min")
-            local_round(left[:40])
-
         _write(STATE, {"pct": round(pct, 2), "done": len(done), "total": total,
-                       "left": len(left), "where": where, "running": True,
-                       "indexed_rows": indexed,
-                       "gh_requests_left": budget,
+                       "left": total - len(done), "where": where,
+                       "running": len(done) < total,
+                       "indexed_rows": indexed, "gh_requests_left": budget,
                        "elapsed_min": round((time.time() - started) / 60, 1)})
         log(f"{pct:5.1f}%  {len(done):,}/{total:,} pairs  ·  {where}")
+        if len(done) >= total:
+            log(f"FINISHED {len(done):,}/{total:,} pairs")
+            return
         time.sleep(TICK)
 
     log("stopped by request")

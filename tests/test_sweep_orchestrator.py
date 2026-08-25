@@ -22,61 +22,29 @@ def _sandbox(tmp_path, monkeypatch):
     monkeypatch.setattr(so, "TICK", 0.01)
 
 
-def test_no_internet_means_it_measures_locally(monkeypatch):
+def test_no_internet_means_it_measures_locally():
     """"if i've been disconnected to wifi then continue the backtest local".
     4,946 candle files are already on disk; run_pair only calls the venue to
     TOP UP, so a dropped connection changes WHERE the work happens."""
-    monkeypatch.setattr(so, "online", lambda: False)
-    ran = []
-    monkeypatch.setattr(so, "local_round", lambda left, **k: ran.append(len(left)) or 0)
-    monkeypatch.setattr(so, "store_pair", lambda c, tf: 0)
-    seen = iter([set(), {("A_USDT", "1h")}])
-    monkeypatch.setattr(so, "measured", lambda pairs: next(seen))
-
-    so.run(["A_USDT"], ["1h"], prefer_cloud=True)
-    assert ran, "it did not measure locally while offline"
-    got = json.loads((so.STATE).read_text())
-    assert got["pct"] == 100.0 and got["where"] == "finished"
+    assert so.plan(online_=False, budget=5000, prefer_cloud=True) == "offline"
+    assert so.plan(online_=False, budget=0, prefer_cloud=False) == "offline"
 
 
-def test_a_rate_limit_does_not_stop_the_sweep(monkeypatch):
-    """"make sure to resume if it hits rate limit" — the sweep keeps going on
-    this Mac while the budget refills, instead of waiting idle."""
-    monkeypatch.setattr(so, "online", lambda: True)
-    monkeypatch.setattr(so, "gh_budget", lambda: (3, 1800.0))    # nearly spent
-    dispatched, ran = [], []
-    monkeypatch.setattr(so, "store_pair", lambda c, tf: 0)
-    monkeypatch.setattr(so, "local_round", lambda left, **k: ran.append(1) or 0)
-
-    from tradingagents import cloud_sweep as cs
-
-    monkeypatch.setattr(cs, "dispatch", lambda **kw: dispatched.append(kw) or {"id": 1})
-    seen = iter([set(), {("A_USDT", "1h")}])
-    monkeypatch.setattr(so, "measured", lambda pairs: next(seen))
-
-    so.run(["A_USDT"], ["1h"])
-    assert not dispatched, "it dispatched with no API budget left"
-    assert ran, "it went idle instead of working locally"
-    log = (so.LOG).read_text()
-    assert "rate limited" in log and "30 min to reset" in log
+def test_a_rate_limit_does_not_stop_the_sweep():
+    """"make sure to resume if it hits rate limit" — it keeps measuring here
+    while the budget refills, instead of waiting idle."""
+    assert so.plan(online_=True, budget=3, prefer_cloud=True) == "local"
+    assert so.plan(online_=True, budget=so.GH_BUDGET_FLOOR,
+                   prefer_cloud=True) == "local"
+    # and a comfortable budget goes to the cloud
+    assert so.plan(online_=True, budget=so.GH_BUDGET_FLOOR + 1,
+                   prefer_cloud=True) == "cloud"
 
 
-def test_it_dispatches_to_github_when_there_is_budget(monkeypatch):
-    monkeypatch.setattr(so, "online", lambda: True)
-    monkeypatch.setattr(so, "gh_budget", lambda: (4000, 0.0))
-    monkeypatch.setattr(so, "store_pair", lambda c, tf: 0)
-    sent = []
-
-    from tradingagents import cloud_sweep as cs
-
-    monkeypatch.setattr(cs, "dispatch", lambda **kw: sent.append(kw) or {"id": 77})
-    monkeypatch.setattr(cs, "remember", lambda run: None)
-    seen = iter([set(), {("A_USDT", "1h")}])
-    monkeypatch.setattr(so, "measured", lambda pairs: next(seen))
-
-    so.run(["A_USDT"], ["1h"])
-    assert sent and sent[0]["shards"] == so.CLOUD_SHARDS
-    assert "GitHub Actions (run 77)" in (so.LOG).read_text()
+def test_it_dispatches_to_github_when_there_is_budget():
+    assert so.plan(online_=True, budget=4000, prefer_cloud=True) == "cloud"
+    # unless the operator turned the cloud off
+    assert so.plan(online_=True, budget=4000, prefer_cloud=False) == "local"
 
 
 def test_progress_is_published_every_tick(monkeypatch):
@@ -85,8 +53,9 @@ def test_progress_is_published_every_tick(monkeypatch):
     monkeypatch.setattr(so, "online", lambda: False)
     monkeypatch.setattr(so, "local_round", lambda left, **k: 0)
     monkeypatch.setattr(so, "store_pair", lambda c, tf: 0)
-    seen = iter([set(), {("A_USDT", "1h"), ("A_USDT", "4h")}])
-    monkeypatch.setattr(so, "measured", lambda pairs: next(seen))
+    # threaded now: the scan thread may call this many times, so it must
+    # not be a one-shot iterator
+    monkeypatch.setattr(so, "measured", lambda pairs: set(pairs))
 
     so.run(["A_USDT"], ["1h", "4h"])
     got = json.loads((so.STATE).read_text())
@@ -126,3 +95,73 @@ def test_a_stop_file_ends_it(monkeypatch):
     so.run(["A_USDT"], ["1h"])
     assert time.time() - t < 5, "it ignored the stop file"
     assert "stopped by request" in (so.LOG).read_text()
+
+
+def test_a_finished_cloud_run_is_merged_not_just_awaited(monkeypatch):
+    """`done` counts LOCAL watermarks, so without collecting the artifact the
+    percentage sat at 0 for hours and then jumped — the same false label as a
+    counter that measures the process instead of the work."""
+    from tradingagents import cloud_sweep as cs
+
+    monkeypatch.setattr(cs, "status", lambda rid, slug=None: {"status": "completed"})
+    monkeypatch.setattr(cs, "fetch", lambda rid, slug=None: [{"coin": "A", "tf": "1h"}])
+    merged = []
+    monkeypatch.setattr(cs, "merge_into_store",
+                        lambda rows: merged.append(rows) or
+                        {"pairs": 1, "rows": len(rows), "skipped": 0})
+    assert so.collect_cloud(99) == 1
+    assert merged, "the artifact was never folded in"
+
+    # a run still going is left alone — None, not 0
+    monkeypatch.setattr(cs, "status", lambda rid, slug=None: {"status": "in_progress"})
+    merged.clear()
+    assert so.collect_cloud(99) is None and not merged
+
+    # a run that ENDED with no usable artifact still releases the slot, or the
+    # orchestrator stays pinned to a cancelled run forever
+    monkeypatch.setattr(cs, "status", lambda rid, slug=None: {"status": "completed"})
+    monkeypatch.setattr(cs, "fetch", lambda rid, slug=None: (_ for _ in ()).throw(
+        RuntimeError("no artifact")))
+    assert so.collect_cloud(99) == 0
+
+
+def test_the_mac_works_while_the_cloud_works():
+    """It dispatched and then idled — eight cores and 4,946 candle files doing
+    nothing for hours. merge_into_store refuses a pair this machine already
+    holds, so the two cannot overwrite each other."""
+    import inspect
+
+    src = inspect.getsource(so.run)
+    work = src[src.index("def work("):src.index("for fn in (scan, work)")]
+    assert "local_round(left" in work, "the Mac must measure every cycle"
+    i = work.index('mode == "cloud"')
+    j = work.index("local_round(left")
+    assert i < j, "the local round has to sit AFTER the cloud branch, not inside it"
+    assert "+ this Mac" in work
+
+
+def test_a_restart_adopts_the_run_already_in_flight():
+    """Restarting dispatched a SECOND 20-shard run beside the first. GitHub
+    gives a free repo about 20 concurrent jobs, so the newcomer queued behind
+    the incumbent and both looked stalled."""
+    import inspect
+
+    work = inspect.getsource(so.run)
+    assert "cs.remembered()" in work, "it must look for a run in flight"
+    i = work.index("cs.remembered()")
+    body = work[i:i + 400]
+    assert 'st0.get("status") != "completed"' in body
+    assert 'conclusion' in body, (
+        "a cancelled run is remembered too; adopting one waits on a corpse")
+    assert "adopting GitHub run" in body
+    assert work.index("adopting GitHub run") < work.index("cs.dispatch("),         "adoption has to be tried BEFORE dispatching"
+
+
+def test_shard_progress_is_read_from_git(monkeypatch):
+    """The REST API poll burned 5,000 requests in an hour and blinded every
+    tool at once."""
+    import inspect
+
+    src = inspect.getsource(so.cloud_shards)
+    assert '"git", "fetch"' in src and "sweep-progress" in src
+    assert "gh" not in src.replace("github", ""), "it must not touch the API"

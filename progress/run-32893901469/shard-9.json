@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 51, "total": 51, "rows": 1367760, "note": "ZEREBRO 15m: rule 31/75 (trix15)", "pct": 100.0, "updated": "2026-08-25T20:49:44Z"}
+{"shard": 9, "stage": "done", "done": 51, "total": 51, "rows": 1393960, "note": "1,393,960 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "pct": 100.0, "updated": "2026-08-25T20:50:27Z"}

@@ -221,7 +221,7 @@ def start(kind: str, spec: dict) -> int:
     proc = subprocess.Popen(
         [sys.executable, "-m", "tradingagents.db_jobs", kind],
         cwd=str(Path(__file__).resolve().parent.parent),
-        stdout=logf, stderr=logf, start_new_session=True)
+        stdout=logf, stderr=logf, **portable.DETACHED)
     f["pid"].write_text(str(proc.pid))
     _write(f["progress"], {"running": True, "started": int(time.time()),
                            "done": 0, "total": 0, "now": "starting"})

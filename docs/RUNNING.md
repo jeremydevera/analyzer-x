@@ -26,8 +26,17 @@ cd webapp && npm install && cd ..
 ./start.sh                            # Windows: start.cmd
 ```
 
-Needs Python 3.10+ and Node.js (for `npm`). Nothing else: `start.py` is
-standard library only. Backtest rows and settings live in `~/.tradingagents/`
+Needs Python 3.10+, Node.js (for `npm`) and git. Nothing else: `start.py` is
+standard library only.
+
+Windows notes: `start.py` sets `PYTHONUTF8=1` for the API and every job it
+spawns, so files are read and written as UTF-8 and not cp1252. If you run a
+module by hand (`python -m tradingagents.sweep_orchestrator`), set it yourself:
+`set PYTHONUTF8=1` in cmd, `$env:PYTHONUTF8=1` in PowerShell. The launchd
+auto-restart toggle is macOS-only; on Windows start the runner from the Trade
+tab. Windows has not been exercised end to end yet — the code paths were made
+portable on 2026-08-26 and unit-tested on macOS; the first real run there is
+the test. Backtest rows and settings live in `~/.tradingagents/`
 on whichever machine runs them — they are never part of the repository.
 `.env` (exchange keys) is not in the repository either; copy it by hand if
 the machine will trade live.

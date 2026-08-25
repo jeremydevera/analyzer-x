@@ -78,7 +78,7 @@ def start(*, coins: list, tfs: list, base: float, days: int, deployed: list,
         [sys.executable, "-m", "tradingagents.daily_grid",
          "--job", str(JOBFILE)],
         cwd=repo_root, stdout=log, stderr=subprocess.STDOUT,
-        start_new_session=True)
+        **portable.DETACHED)
     _atomic(PIDFILE.with_suffix(".json"), {"pid": proc.pid})
     PIDFILE.write_text(str(proc.pid))
     return init

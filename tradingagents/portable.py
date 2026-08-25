@@ -21,16 +21,26 @@ import os
 import shutil
 import signal
 import subprocess
+import sys
 import time
 from pathlib import Path
 
 WINDOWS = os.name == "nt"
+MACOS = sys.platform == "darwin"
 
 if WINDOWS:
     import ctypes
     import msvcrt
 else:
     import fcntl
+
+# Popen kwargs that make a job outlive the process that spawned it and ignore
+# its Ctrl-C. `start_new_session` is a no-op on Windows; there the equivalent
+# is a new process group with no console. Spread as `**portable.DETACHED`.
+DETACHED: dict = (
+    {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP    # type: ignore[attr-defined]
+     | subprocess.DETACHED_PROCESS}                          # type: ignore[attr-defined]
+    if WINDOWS else {"start_new_session": True})
 
 
 def _fd(fh) -> int:

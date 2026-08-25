@@ -170,9 +170,13 @@ def cmd_start() -> int:
     free_port(UI_PORT)
 
     print(f"starting API on {API_PORT}…")
+    # UTF-8 everywhere: Windows' default text encoding is cp1252, and the
+    # store's JSON/progress files carry em dashes and coin names. Every job the
+    # API spawns inherits this.
+    api_env = dict(os.environ, PYTHONUTF8="1")
     api_pid = spawn([venv_python(), "-m", "uvicorn", "tradingagents.api:app",
                      "--host", "127.0.0.1", "--port", str(API_PORT)],
-                    LOGS / "api.log", ROOT)
+                    LOGS / "api.log", ROOT, api_env)
     fresh(LOGS / "api.pid").write_text(f"{api_pid}\n")
 
     print("building the UI…")

@@ -154,7 +154,7 @@ def start(spec: dict) -> str:
     with p["log"].open("a", encoding="utf-8") as log:
         proc = subprocess.Popen(
             [sys.executable, "-m", "tradingagents.analysis_jobs", run_id],
-            stdout=log, stderr=log, start_new_session=True,
+            stdout=log, stderr=log, **portable.DETACHED,
             cwd=str(Path(__file__).resolve().parent.parent))
     p["pid"].write_text(str(proc.pid), encoding="utf-8")
     return run_id

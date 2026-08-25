@@ -656,7 +656,7 @@ def spawn_indexer() -> int | None:
     proc = subprocess.Popen(
         [sys.executable, "-m", "tradingagents.rows_index"],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        start_new_session=True,
+        **portable.DETACHED,
         env={**os.environ, "ROWS_INDEX_CHILD": "1"})
     PIDFILE.write_text(str(proc.pid))
     return proc.pid

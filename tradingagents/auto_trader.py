@@ -2911,7 +2911,7 @@ def start_runner() -> int:
     with LOG_PATH.open("a", encoding="utf-8") as log:
         proc = subprocess.Popen(
             [sys.executable, "-m", "tradingagents.auto_trader", "run"],
-            stdout=log, stderr=log, start_new_session=True,
+            stdout=log, stderr=log, **portable.DETACHED,
             cwd=str(Path(__file__).resolve().parent.parent))
     PID_PATH.write_text(str(proc.pid), encoding="utf-8")
     return proc.pid

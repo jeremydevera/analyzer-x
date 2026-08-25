@@ -56,6 +56,10 @@ def plist_body(python: str | None = None) -> dict:
     }
 
 
+NOT_MACOS = ("auto-restart uses launchd, which only macOS has — on this OS start the "
+             "runner from the Trade tab and keep the machine awake")
+
+
 def installed() -> bool:
     return PLIST.exists()
 
@@ -86,6 +90,8 @@ def status() -> dict:
 
 def install(python: str | None = None) -> dict:
     """Write and load the agent. Idempotent."""
+    if not portable.MACOS:
+        return {"ok": False, "stderr": NOT_MACOS, **status()}
     PLIST.parent.mkdir(parents=True, exist_ok=True)
     PLIST.write_bytes(plistlib.dumps(plist_body(python)))
     subprocess.run(["launchctl", "unload", str(PLIST)],
@@ -97,6 +103,8 @@ def install(python: str | None = None) -> dict:
 
 
 def uninstall() -> dict:
+    if not portable.MACOS:
+        return {"ok": False, "stderr": NOT_MACOS, **status()}
     subprocess.run(["launchctl", "unload", str(PLIST)],
                    capture_output=True, timeout=20)
     PLIST.unlink(missing_ok=True)

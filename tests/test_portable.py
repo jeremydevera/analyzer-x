@@ -24,7 +24,8 @@ FORBIDDEN = re.compile(
     r"^\s*(import|from)\s+(fcntl|msvcrt)\b"
     r"|os\.statvfs\("
     r"|os\.kill\(\s*\w+\s*,\s*0\s*\)"
-    r"|signal\.SIGKILL")
+    r"|signal\.SIGKILL"
+    r"|start_new_session=True")      # a no-op on Windows; spread portable.DETACHED
 
 
 def test_no_module_outside_portable_names_a_unix_only_api():

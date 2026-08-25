@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 50, "total": 51, "rows": 2055280, "note": "XPIN 30m: 17,101 bars, testing 75 rules", "pct": 98.0, "updated": "2026-08-25T10:35:25Z"}
+{"shard": 10, "stage": "testing", "done": 50, "total": 51, "rows": 2057920, "note": "XPIN 30m: rule 6/75 (sweep30)", "pct": 98.0, "updated": "2026-08-25T10:36:10Z"}

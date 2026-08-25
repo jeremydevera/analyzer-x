@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 14, "total": 18, "rows": 866100, "note": "SAHARA 30m: 19,999 bars, testing 75 rules", "pct": 77.8, "updated": "2026-08-25T05:14:21Z"}
+{"shard": 3, "stage": "testing", "done": 14, "total": 18, "rows": 870720, "note": "SAHARA 30m: rule 15/75 (bbbreak)", "pct": 77.8, "updated": "2026-08-25T05:15:06Z"}

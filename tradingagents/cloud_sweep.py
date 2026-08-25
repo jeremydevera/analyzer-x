@@ -71,11 +71,18 @@ def repo_slug(cwd: str | None = None) -> str:
 
 
 def available() -> tuple[bool, str]:
-    """Can we dispatch right now? Returns (ok, why-not)."""
-    try:
-        _gh("auth", "status", timeout=30)
-    except CloudError as exc:
-        return False, f"gh is not logged in ({exc})"
+    """Can we dispatch right now? Returns (ok, why-not).
+
+    Judged by whether the thing we NEED works, not by how `gh auth status`
+    feels about it. That command exits non-zero when ANY configured account is
+    unhealthy — the operator's keyring token was invalid all day on
+    2026-08-25 — while `gh workflow list` answered fine through another
+    credential. The strict check made the hand-off button vanish and reported
+    "gh is not logged in" about a CLI that was, demonstrably, logged in.
+
+    So: no auth pre-flight. Ask for the workflow list; if that answers, we can
+    dispatch, and if it does not, its own error is the honest reason.
+    """
     try:
         slug = repo_slug()
     except CloudError as exc:
@@ -84,7 +91,10 @@ def available() -> tuple[bool, str]:
         wf = json.loads(_gh("workflow", "list", "--repo", slug, "--json",
                             "name,state"))
     except CloudError as exc:
-        return False, str(exc)
+        msg = str(exc)
+        if "auth" in msg.lower() or "login" in msg.lower():
+            msg += " — run `gh auth refresh -h github.com`"
+        return False, msg
     if not any(w["name"] == WORKFLOW for w in wf):
         return False, f"{slug} has no '{WORKFLOW}' workflow"
     return True, slug

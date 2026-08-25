@@ -96,3 +96,41 @@ def test_the_merge_records_freshness_and_ownership(monkeypatch):
     st = saved_states[("NEW", "1h")]
     assert st["__last_ms__"] == 1787450400000
     assert st["__cloud__"] is True
+
+
+def test_availability_is_judged_by_the_call_we_need(monkeypatch):
+    """`gh auth status` exits non-zero when ANY configured account is
+    unhealthy. The operator's keyring token was invalid all day while
+    `gh workflow list` answered fine through another credential — so the
+    hand-off button vanished and the panel reported "gh is not logged in"
+    about a CLI that was demonstrably logged in."""
+    import inspect
+
+    from tradingagents import cloud_sweep as cs
+
+    src = inspect.getsource(cs.available)
+    assert '"auth", "status"' not in src, "no auth pre-flight"
+    assert '"workflow", "list"' in src, "ask for what we actually need"
+
+    calls = []
+    monkeypatch.setattr(cs, "repo_slug", lambda cwd=None: "me/repo")
+    monkeypatch.setattr(cs, "_gh",
+                        lambda *a, **k: calls.append(a) or
+                        '[{"name": "Market sweep (15m / 30m)", "state": "active"}]')
+    ok, why = cs.available()
+    assert ok is True and why == "me/repo"
+    assert not any("auth" in c for c in calls), calls
+
+
+def test_a_real_auth_failure_still_says_what_to_run(monkeypatch):
+    from tradingagents import cloud_sweep as cs
+
+    monkeypatch.setattr(cs, "repo_slug", lambda cwd=None: "me/repo")
+
+    def boom(*a, **k):
+        raise cs.CloudError("HTTP 401: Bad credentials (login required)")
+
+    monkeypatch.setattr(cs, "_gh", boom)
+    ok, why = cs.available()
+    assert ok is False
+    assert "gh auth refresh" in why

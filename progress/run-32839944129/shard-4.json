@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 10, "total": 51, "rows": 348960, "note": "BTW 30m: 3,929 bars, testing 75 rules", "pct": 19.6, "updated": "2026-08-25T11:27:23Z"}
+{"shard": 4, "stage": "testing", "done": 11, "total": 51, "rows": 364640, "note": "CCLSTOCK 15m: rule 26/75 (adx14)", "pct": 21.6, "updated": "2026-08-25T11:28:08Z"}

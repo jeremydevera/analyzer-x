@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 34, "total": 52, "rows": 2906284, "note": "PANWSTOCK 30m: rule 45/105 (zscore20)", "pct": 65.4, "updated": "2026-08-26T21:26:44Z"}
+{"shard": 3, "stage": "testing", "done": 34, "total": 52, "rows": 2952510, "note": "PANWSTOCK 1d: rule 4/105 (trend50)", "pct": 65.4, "updated": "2026-08-26T21:27:29Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 38, "total": 51, "rows": 2833664, "note": "RLS 15m: rule 36/105 (stochrsi)", "pct": 74.5, "updated": "2026-08-26T20:30:12Z"}
+{"shard": 8, "stage": "testing", "done": 38, "total": 51, "rows": 2844544, "note": "RLS 15m: rule 105/105 (cf_eqhl_l2)", "pct": 74.5, "updated": "2026-08-26T20:30:58Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 24, "total": 51, "rows": 534890, "note": "JPMSTOCK 1h: 5,912 bars, testing 75 rules", "pct": 47.1, "updated": "2026-08-26T14:21:23Z"}
+{"shard": 18, "stage": "testing", "done": 25, "total": 51, "rows": 579962, "note": "KLACSTOCK 15m: rule 36/75 (stochrsi)", "pct": 49.0, "updated": "2026-08-26T14:22:08Z"}

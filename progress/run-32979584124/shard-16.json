@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 40, "total": 51, "rows": 1006450, "note": "SKY 1h: downloading candles", "pct": 78.4, "updated": "2026-08-26T16:12:30Z"}
+{"shard": 16, "stage": "done", "done": 51, "total": 51, "rows": 1006450, "note": "1,006,450 rows \u00b7 76 pair redo(s) \u00b7 38 pair(s) lost", "pct": 100.0, "updated": "2026-08-26T16:13:21Z"}

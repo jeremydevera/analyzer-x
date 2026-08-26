@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 45, "total": 51, "rows": 1495642, "note": "TSEMSTOCK 15m: rule 1/75 (mom6)", "pct": 88.2, "updated": "2026-08-26T09:33:54Z"}
+{"shard": 17, "stage": "testing", "done": 46, "total": 51, "rows": 1545082, "note": "UNITREE 15m: rule 45/75 (zscore20)", "pct": 90.2, "updated": "2026-08-26T09:34:39Z"}

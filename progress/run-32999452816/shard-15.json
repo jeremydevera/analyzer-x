@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 42, "total": 51, "rows": 3366782, "note": "STABLE 30m: rule 97/105 (cf_ttm)", "pct": 82.4, "updated": "2026-08-26T21:52:29Z"}
+{"shard": 15, "stage": "testing", "done": 42, "total": 51, "rows": 3378882, "note": "STABLE 1h: rule 41/105 (tsi)", "pct": 82.4, "updated": "2026-08-26T21:53:14Z"}

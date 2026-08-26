@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 34, "total": 51, "rows": 2599942, "note": "PENGSTOCK 15m: rule 45/105 (zscore20)", "pct": 66.7, "updated": "2026-08-26T21:00:33Z"}
+{"shard": 11, "stage": "testing", "done": 35, "total": 51, "rows": 2639606, "note": "POL 15m: 34,563 bars, testing 105 rules", "pct": 68.6, "updated": "2026-08-26T21:01:26Z"}

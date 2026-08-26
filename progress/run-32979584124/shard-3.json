@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 30, "total": 52, "rows": 492540, "note": "MRVLSTOCK 1h: rule 99/105 (cf_ttm_l2)", "pct": 57.7, "updated": "2026-08-26T15:22:16Z"}
+{"shard": 3, "stage": "testing", "done": 33, "total": 52, "rows": 557940, "note": "ONDSSTOCK 1h: downloading candles", "pct": 63.5, "updated": "2026-08-26T15:23:06Z"}

@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 42, "total": 51, "rows": 3271400, "note": "SPX 1h: rule 3/105 (fade15)", "pct": 82.4, "updated": "2026-08-26T21:48:37Z"}
+{"shard": 10, "stage": "testing", "done": 42, "total": 51, "rows": 3289660, "note": "SPX 1h: rule 87/105 (cf_triple_l2)", "pct": 82.4, "updated": "2026-08-26T21:49:22Z"}

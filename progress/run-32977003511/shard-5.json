@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 14, "total": 51, "rows": 471768, "note": "CXMTSTOCK 15m: downloading candles", "pct": 27.5, "updated": "2026-08-26T14:14:21Z"}
+{"shard": 5, "stage": "testing", "done": 16, "total": 51, "rows": 507128, "note": "EBAYSTOCK 15m: 7,481 bars, testing 75 rules", "pct": 31.4, "updated": "2026-08-26T14:15:07Z"}

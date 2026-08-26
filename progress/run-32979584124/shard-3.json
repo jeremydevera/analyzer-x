@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 24, "total": 52, "rows": 865878, "note": "IO 1h: downloading candles", "pct": 46.2, "updated": "2026-08-26T15:30:19Z"}
+{"shard": 3, "stage": "testing", "done": 32, "total": 52, "rows": 865878, "note": "NOM 1h: downloading candles", "pct": 61.5, "updated": "2026-08-26T15:31:07Z"}

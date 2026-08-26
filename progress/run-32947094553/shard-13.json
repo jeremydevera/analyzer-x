@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 12, "total": 51, "rows": 592838, "note": "COLLECT 4h: 1,440 bars, testing 75 rules", "pct": 23.5, "updated": "2026-08-26T08:48:15Z"}
+{"shard": 13, "stage": "testing", "done": 13, "total": 51, "rows": 616818, "note": "CSPR 4h: downloading candles", "pct": 25.5, "updated": "2026-08-26T08:49:00Z"}

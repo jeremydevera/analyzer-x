@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 24, "total": 51, "rows": 850482, "note": "IRYS 1d: 274 bars, testing 75 rules", "pct": 47.1, "updated": "2026-08-26T09:05:50Z"}
+{"shard": 3, "stage": "testing", "done": 25, "total": 51, "rows": 861622, "note": "KAT 15m: rule 9/75 (fib382)", "pct": 49.0, "updated": "2026-08-26T09:06:36Z"}

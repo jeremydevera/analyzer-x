@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 12, "total": 51, "rows": 191794, "note": "CORE 30m: rule 24/75 (psar)", "pct": 23.5, "updated": "2026-08-26T14:10:33Z"}
+{"shard": 18, "stage": "testing", "done": 12, "total": 51, "rows": 201254, "note": "CORE 30m: rule 68/75 (dbltop)", "pct": 23.5, "updated": "2026-08-26T14:11:18Z"}

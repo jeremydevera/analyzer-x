@@ -6,7 +6,7 @@
  * (the label-must-match-data rule, ported).
  */
 import { useCallback, useEffect, useState } from "react";
-import { api, fmtMoney, STRATEGY_SORTS, StrategyRow, TradesResult,
+import { api, ApiError, fmtMoney, STRATEGY_SORTS, StrategyRow, TradesResult,
   type IndexStatus, type StrategySort } from "@/lib/api";
 import Badge from "@/components/ui/badge/Badge";
 import {
@@ -22,6 +22,14 @@ const sel =
   "text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 " +
   "dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300";
 
+/** Which order a clicked header stands for. Built FROM STRATEGY_SORTS, so
+ *  the header text, the caption and the query can never disagree — the
+ *  "win % ↓" marker used to be decoration: clicking it did nothing
+ *  (operator, 2026-08-26). */
+const HEAD_SORT: Record<string, StrategySort | undefined> =
+  Object.fromEntries(Object.entries(STRATEGY_SORTS)
+    .map(([k, label]) => [label, k as StrategySort]));
+
 export default function StrategiesPanel() {
   const [facets, setFacets] = useState<{ coins: string[]; tfs: string[]; signals: string[] }>({ coins: [], tfs: [], signals: [] });
   const [coin, setCoin] = useState("");
@@ -32,6 +40,9 @@ export default function StrategiesPanel() {
   // ranking by win % on the real store put "100.00% over 1 trade" first,
   // so picking win % asks for a denominator (editable, and said out loud)
   const [minTrades, setMinTrades] = useState(0);
+  // "ranking by win % needs its index" is a WAIT, not a failure: keep the
+  // rows on screen, say the sentence the API said, and come back for it
+  const [waiting, setWaiting] = useState("");
   const [rows, setRows] = useState<StrategyRow[]>([]);
   const [total, setTotal] = useState(0);
   // a filtered count stops at rows_index.COUNT_CAP, so the caption says
@@ -49,11 +60,21 @@ export default function StrategiesPanel() {
 
   const load = useCallback(() => {
     api.strategies({ coin: coin || undefined, tf: tf || undefined, signal: signal || undefined, profitable, sort, minTrades, limit: 300 })
-      .then((d) => { setRows(d.rows); setTotal(d.total); setCapped(!!d.total_capped); setIdx(d.index ?? null); setErr(""); })
-      .catch((e) => setErr(String(e)));
+      .then((d) => { setRows(d.rows); setTotal(d.total); setCapped(!!d.total_capped); setIdx(d.index ?? null); setErr(""); setWaiting(""); })
+      .catch((e) => {
+        if (e instanceof ApiError && e.status === 503) {
+          setWaiting(e.detail || "the index for this order is being built");
+          setErr("");
+        } else { setErr(String(e)); setWaiting(""); }
+      });
   }, [coin, tf, signal, profitable, sort, minTrades]);
 
   useEffect(load, [load]);
+  useEffect(() => {
+    if (!waiting) return;
+    const t = setTimeout(load, 15000);
+    return () => clearTimeout(t);
+  }, [waiting, load]);
   useEffect(() => {
     if (!idx || (!idx.syncing && idx.behind === 0)) return;
     const t = setTimeout(load, 5000);
@@ -145,16 +166,30 @@ export default function StrategiesPanel() {
         </div>
       </div>
       {err && <p className="px-5 pt-2 text-theme-sm text-error-500">{err}</p>}
+      {waiting && (
+        <p className="px-5 pt-2 text-theme-sm text-warning-600 dark:text-warning-400">
+          {waiting} — the rows below are still the {STRATEGY_SORTS[sort === "winrate" ? "profit" : sort]}
+          {" "}order; this list refreshes by itself when the index lands.
+        </p>
+      )}
       <div className="max-h-[480px] max-w-full overflow-auto p-2">
         <Table>
           <TableHeader className="sticky top-0 border-b border-gray-100 bg-white dark:border-white/[0.05] dark:bg-gray-900">
             <TableRow>
               {["id", "coin", "tf", "signal", "th%", "SL%", "TP%", "sizing", "lev", "margin $", "PROFIT $", "win %", "trades", "W", "L", "green", "dip $"].map((h) => (
                 <TableCell key={h} isHeader
+                  onClick={() => {
+                    const next = HEAD_SORT[h];
+                    if (!next) return;          // not a sortable column
+                    setSort(next);
+                    if (next === "winrate" && minTrades === 0) setMinTrades(100);
+                  }}
                   className={`px-3 py-3 text-theme-xs font-medium text-start ${
+                    HEAD_SORT[h] ? "cursor-pointer select-none hover:text-brand-600" : ""} ${
                     h === STRATEGY_SORTS[sort]
                       ? "text-brand-600 dark:text-brand-400"
-                      : "text-gray-500 dark:text-gray-400"}`}>
+                      : "text-gray-500 dark:text-gray-400"}`}
+                  title={HEAD_SORT[h] ? `sort by ${h}` : undefined}>
                   {h}{h === STRATEGY_SORTS[sort] ? " ↓" : ""}
                 </TableCell>
               ))}

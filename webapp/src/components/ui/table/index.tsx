@@ -32,6 +32,8 @@ interface TableCellProps {
   isHeader?: boolean; // If true, renders as <th>, otherwise <td>
   className?: string; // Optional className for styling
   style?: React.CSSProperties; // column widths for fixed-layout tables
+  onClick?: () => void; // sortable headers: the click that reorders
+  title?: string; // hover hint, e.g. "sort by win %"
 }
 
 // Table Component
@@ -70,12 +72,15 @@ const TableCell: React.FC<TableCellProps> = ({
   isHeader = false,
   className,
   style,
+  onClick,
+  title,
 }) => {
   const CellTag = isHeader ? "th" : "td";
   // break-words + align-top: a fixed-layout table must be allowed to wrap,
   // or one long cell pushes the whole screen sideways.
   return (
-    <CellTag style={style} className={`align-top break-words ${className ?? ""}`}>
+    <CellTag style={style} onClick={onClick} title={title}
+      className={`align-top break-words ${className ?? ""}`}>
       {children}
     </CellTag>
   );

@@ -12,9 +12,34 @@
  * point a browser at a backend on another host. */
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
+/** An API error that keeps the server's own sentence and its status.
+ *
+ * `Error: /api/strategies?sort=winrate… → HTTP 503` told the operator nothing;
+ * the API had said "ranking by winrate needs its index; it is being built in
+ * the background" and the screen threw it away (2026-08-26). */
+export class ApiError extends Error {
+  status: number;
+  detail: string;
+  constructor(path: string, status: number, detail: string) {
+    super(detail || `${path} → HTTP ${status}`);
+    this.name = "ApiError";
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
 async function get<T>(path: string): Promise<T> {
   const r = await fetch(`${API_BASE}${path}`, { cache: "no-store" });
-  if (!r.ok) throw new Error(`${path} → HTTP ${r.status}`);
+  if (!r.ok) {
+    let detail = "";
+    try {
+      const body = await r.json();
+      detail = typeof body?.detail === "string" ? body.detail : "";
+    } catch {
+      /* not JSON: the status is all there is */
+    }
+    throw new ApiError(path, r.status, detail);
+  }
   return r.json() as Promise<T>;
 }
 

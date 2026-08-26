@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 12, "total": 51, "rows": 961836, "note": "COLLECT 15m: rule 1/105 (mom6)", "pct": 23.5, "updated": "2026-08-26T19:07:16Z"}
+{"shard": 13, "stage": "testing", "done": 12, "total": 51, "rows": 964036, "note": "COLLECT 15m: rule 8/105 (fib618)", "pct": 23.5, "updated": "2026-08-26T19:08:02Z"}

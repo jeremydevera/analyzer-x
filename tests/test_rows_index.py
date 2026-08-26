@@ -586,7 +586,7 @@ def test_the_backlog_is_drained_in_one_bulk_pass_not_a_trickle():
     import inspect
 
     src = inspect.getsource(ri.sync)
-    assert "bulk = len(todo) > BULK_PAIRS" in src
+    assert "bulk = len(todo) > BIG_FILL" in src
     assert ri.BULK_PAIRS <= 16, "a whole sweep's backlog must take the bulk path"
 
 

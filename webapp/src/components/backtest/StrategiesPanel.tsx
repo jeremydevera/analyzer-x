@@ -54,6 +54,13 @@ export default function StrategiesPanel() {
   const [waiting, setWaiting] = useState("");
   // which end of the column: a second click on the same header flips it
   const [desc, setDesc] = useState(true);
+  // The order the SERVER SERVED, which is the only thing the rows on screen
+  // are actually in. `sort`/`desc` are the REQUEST: when the store answers
+  // 503 because an index is still building, the request moves and the rows
+  // do not, and captioning them with the request is a lie the operator
+  // read as "it only sorted the page" (2026-08-26).
+  const [servedSort, setServedSort] = useState<StrategySort>("profit");
+  const [servedDesc, setServedDesc] = useState(true);
   // 21,858,026 rows behind a 300-row window with no way to reach row 301:
   // "why is my stored strategy few ... where are those?" (2026-08-26)
   const [page, setPage] = useState(1);
@@ -82,7 +89,13 @@ export default function StrategiesPanel() {
     api.strategies({ coin: coin || undefined, tf: tf || undefined, signal: signal || undefined,
                      profitable, sort, minTrades, desc,
                      limit: perPage, offset: (page - 1) * perPage })
-      .then((d) => { setRows(d.rows); setTotal(d.total); setCapped(!!d.total_capped); setIdx(d.index ?? null); setErr(""); setWaiting(""); })
+      .then((d) => {
+        setRows(d.rows); setTotal(d.total); setCapped(!!d.total_capped);
+        setIdx(d.index ?? null); setErr(""); setWaiting("");
+        // what the rows are really in, straight from the payload
+        setServedSort((d.sort as StrategySort) ?? sort);
+        setServedDesc(d.desc ?? desc);
+      })
       .catch((e) => {
         if (e instanceof ApiError && e.status === 503) {
           setWaiting(e.detail || "the index for this order is being built");
@@ -159,7 +172,7 @@ export default function StrategiesPanel() {
           <p className="text-theme-xs text-gray-500 dark:text-gray-400">
             {total.toLocaleString()}{capped ? "+" : ""} {[coin, tf, signal, profitable ? "profitable only" : ""].some(Boolean) || minTrades > 0 ? "match" : "stored strategies"}
             {` · rows ${shown.length ? (page - 1) * perPage + 1 : 0}–${(page - 1) * perPage + shown.length} on screen`}
-            {` · ${desc ? "highest" : "lowest"} ${STRATEGY_SORTS[sort]} first`}
+            {` · ${servedDesc ? "highest" : "lowest"} ${STRATEGY_SORTS[servedSort]} first`}
             {/* A partial index must NOT be captioned as the whole store: the
                 sweep measures pairs faster than they are indexed, and "648,181
                 stored strategies" while 40 pairs are still queued is a false
@@ -271,8 +284,10 @@ export default function StrategiesPanel() {
       {err && <p className="px-5 pt-2 text-theme-sm text-error-500">{err}</p>}
       {waiting && (
         <p className="px-5 pt-2 text-theme-sm text-warning-600 dark:text-warning-400">
-          {waiting} — the rows below are still the {STRATEGY_SORTS[sort === "winrate" ? "profit" : sort]}
-          {" "}order; this list refreshes by itself when the index lands.
+          preparing <b>{STRATEGY_SORTS[sort]}</b> across all {total.toLocaleString()}
+          {capped ? "+" : ""} rows — {waiting}. Until it lands these rows are
+          still ordered by <b>{STRATEGY_SORTS[servedSort]}</b>; the list
+          refreshes by itself.
         </p>
       )}
       {/* taller than 480px: with 5,000 rows on screen the old box showed
@@ -293,11 +308,14 @@ export default function StrategiesPanel() {
                   }}
                   className={`px-3 py-3 text-theme-xs font-medium text-start ${
                     HEAD_SORT[h] ? "cursor-pointer select-none hover:text-brand-600" : ""} ${
-                    h === STRATEGY_SORTS[sort]
+                    h === STRATEGY_SORTS[servedSort]
                       ? "text-brand-600 dark:text-brand-400"
-                      : "text-gray-500 dark:text-gray-400"}`}
-                  title={HEAD_SORT[h] ? `sort by ${h}` : undefined}>
-                  {h}{h === STRATEGY_SORTS[sort] ? (desc ? " ↓" : " ↑") : ""}
+                      : h === STRATEGY_SORTS[sort]
+                        ? "text-warning-600 dark:text-warning-400"
+                        : "text-gray-500 dark:text-gray-400"}`}
+                  title={HEAD_SORT[h] ? `sort every row by ${h}` : undefined}>
+                  {h}{h === STRATEGY_SORTS[servedSort] ? (servedDesc ? " ↓" : " ↑")
+                     : h === STRATEGY_SORTS[sort] ? " …" : ""}
                 </TableCell>
               ))}
             </TableRow>

@@ -65,6 +65,7 @@ def test_without_the_index_it_does_not_name_it(store):
     assert not ri.has_index("rows_coin") or True
     with ri._open() as con:
         con.execute("DROP INDEX IF EXISTS rows_coin")
+    ri.forget_indexes()          # the production drop path does this too
     sql = ri.query_sql(coin="KAVA", sort="profit")
     assert "INDEXED BY" not in sql, "naming a missing index is a hard error in SQLite"
 
@@ -72,6 +73,7 @@ def test_without_the_index_it_does_not_name_it(store):
 def test_the_rows_are_the_same_either_way(store):
     with ri._open() as con:
         con.execute("DROP INDEX IF EXISTS rows_coin")
+    ri.forget_indexes()
     plain = [r["id"] for r in ri.query(coin="KAVA", sort="profit")["rows"]]
     ri.build_filter_index("coin")
     import time

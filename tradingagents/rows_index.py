@@ -109,25 +109,40 @@ CREATE TABLE IF NOT EXISTS pairs (
 # ORDER BY index can drive), nothing queries by id yet, and the count is
 # LIMIT-bounded without rows_trades — so carrying those four cost about
 # fifteen minutes of rebuild after every fill and bought nothing.
-FILTER_INDEXES = {
-    # the coin filter names this one explicitly (see _indexed_by): without it
-    # SQLite walked the whole profit index looking for one coin in 974 and the
-    # request did not return in 120 s
-    "rows_coin": "CREATE INDEX IF NOT EXISTS rows_coin ON rows (coin, profit DESC)",
-    # (winrate, trades, id) — trades IN the index, so "best win rate with at
-    # least N trades" is an index-only filter
-    "rows_winrate": "CREATE INDEX IF NOT EXISTS rows_winrate "
-                    "ON rows (winrate DESC, trades, id)",
-}
-# NEVER dropped: rows_profit serves the default view (the page the screen opens
-# on) and rows_pair serves delete-by-pair. Losing the first would make the grid
-# sort tens of millions of rows on every poll during the very window it is
-# slowest.
+# Dropped ONLY by a load big enough that rebuilding beats maintaining (BIG_FILL).
+# Everything the screen orders by lives in KEEP_INDEXES instead: on 2026-08-26
+# rows_winrate kept vanishing because every time the sweep paused, the indexer
+# found 800+ stale pairs, called it a bulk fill, dropped it — and any
+# interruption before the rebuild left the operator's ranking answering 503 for
+# hours. "when i clickk winrate header, the only sorted are the ones on the
+# page" was that, three times over.
+FILTER_INDEXES: dict = {}
+
+# NEVER dropped by an incremental fill:
+#   rows_pair    delete-by-pair needs it
+#   rows_profit  the order the screen opens on
+#   rows_coin    the coin filter names it explicitly (see _indexed_by); without
+#                it SQLite walked the whole profit index for one coin in 974 and
+#                the request did not return in 120 s
+#   rows_winrate (winrate, trades, id) — the operator's ranking, with the trade
+#                floor IN the index so "best win rate with at least N trades" is
+#                an index-only filter
+# Carrying them costs insert speed during a fill (six indexes measured 1.5
+# pairs/min against 73 with none); losing them costs the feature.
 KEEP_INDEXES = (
     "CREATE INDEX IF NOT EXISTS rows_pair ON rows (pair)",
     "CREATE INDEX IF NOT EXISTS rows_profit ON rows (profit DESC, id)",
+    "CREATE INDEX IF NOT EXISTS rows_coin ON rows (coin, profit DESC)",
+    "CREATE INDEX IF NOT EXISTS rows_winrate ON rows (winrate DESC, trades, id)",
 )
+# a load this size is a rebuild, not an update: there, dropping and recreating
+# is faster than maintaining (measured at 73 pairs/min against 1.5)
+BIG_FILL = 500
 READ_INDEXES = tuple(FILTER_INDEXES.values()) + KEEP_INDEXES
+# name -> DDL, for the on-demand builder (a kept index can still be
+# missing: an older database, or a BIG_FILL that was interrupted)
+INDEX_DDL = {**FILTER_INDEXES,
+             **{d.split()[5]: d for d in KEEP_INDEXES}}
 
 # more pairs than this in one go and it is a bulk fill, not an update
 BULK_PAIRS = 8
@@ -473,7 +488,9 @@ def sync(paths: Iterable[Path] | None = None, *, budget_s: float = 0.0,
     if max_pairs:
         todo = todo[:max_pairs]
     started, done, rows = time.time(), 0, 0
-    bulk = len(todo) > BULK_PAIRS
+    # BULK_PAIRS still decides how CHATTY the fill is; only BIG_FILL earns
+    # the right to drop the indexes the screen is ordering by right now.
+    bulk = len(todo) > BIG_FILL
     if DEBUG:
         print(f"[rows-index] sync: {len(todo)} to do, opening writer"
               f"{' (BULK)' if bulk else ''}", flush=True)
@@ -482,9 +499,9 @@ def sync(paths: Iterable[Path] | None = None, *, budget_s: float = 0.0,
             # readers still work while these are gone: SQLite falls back to a
             # scan, which is slower per query but never blocked, and status()
             # keeps saying the list is still filling in.
-            for name in FILTER_INDEXES:
+            for name in ("rows_profit", "rows_coin", "rows_winrate"):
                 con.execute(f"DROP INDEX IF EXISTS {name}")
-                forget_indexes()
+            forget_indexes()
             con.commit()
         if DEBUG:
             print("[rows-index] writer open", flush=True)
@@ -504,8 +521,9 @@ def sync(paths: Iterable[Path] | None = None, *, budget_s: float = 0.0,
                 break
         if bulk:
             t_idx = time.time()
-            for ddl in FILTER_INDEXES.values():
+            for ddl in READ_INDEXES:
                 con.execute(ddl)
+            forget_indexes()
             con.commit()
             if DEBUG:
                 print(f"[rows-index] rebuilt read indexes in "
@@ -696,7 +714,7 @@ def build_sort_index(sort: str) -> bool:
 def _build_index(name) -> bool:
     """Create one named index in the background. False when there is
     nothing to build or a build is already under way."""
-    ddl = FILTER_INDEXES.get(name or "")
+    ddl = INDEX_DDL.get(name or "")
     if not name or not ddl or name in _BUILDING or has_index(name) is True:
         return False
     _BUILDING.add(name)

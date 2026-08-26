@@ -27,29 +27,38 @@ def test_ensure_only_creates_the_indexes_nothing_drops():
         "ensure must NOT build the filter indexes a bulk fill drops"
 
 
-def test_the_fill_still_rebuilds_them_at_the_end():
+def test_only_a_huge_fill_drops_anything_and_it_rebuilds():
+    """A normal fill keeps every index now (the screen ordered by two of
+    them); only a BIG_FILL rebuild-from-files drops, and it puts them
+    back in the same call."""
     import inspect
 
     src = inspect.getsource(ri.sync)
-    assert "FILTER_INDEXES" in src, "sync drops them for the fill"
+    assert "len(todo) > BIG_FILL" in src
     assert "DROP INDEX IF EXISTS" in src
-    # and puts them back
-    assert src.count("FILTER_INDEXES") >= 2, "dropped AND rebuilt"
+    tail = src[src.index("DROP INDEX IF EXISTS"):]
+    assert "READ_INDEXES" in tail, "dropped AND rebuilt"
 
 
 def test_a_fresh_database_gets_its_tables_and_the_kept_indexes(tmp_path, monkeypatch):
     monkeypatch.setattr(ri, "DB_PATH", tmp_path / "rows.db")
     ri._ready.discard(str(tmp_path / "rows.db"))
     ri.ensure()
-    assert ri.has_index("rows_profit"), "the default order must never wait"
-    assert ri.has_index("rows_pair"), "delete-by-pair needs it"
+    for name in ("rows_profit", "rows_pair", "rows_coin", "rows_winrate"):
+        assert ri.has_index(name) is True, name
 
 
 def test_a_sort_index_is_built_on_demand_when_it_is_missing(tmp_path, monkeypatch):
+    """A kept index can still be absent — an older database, or a BIG_FILL
+    that was interrupted before its rebuild. The query that needs it says
+    so and builds it."""
     monkeypatch.setattr(ri, "DB_PATH", tmp_path / "rows2.db")
     ri._ready.discard(str(tmp_path / "rows2.db"))
     ri.ensure()
-    assert not ri.has_index("rows_winrate"), "not built up front any more"
+    with ri._open() as con:
+        con.execute("DROP INDEX IF EXISTS rows_winrate")
+    ri.forget_indexes()
+    assert ri.has_index("rows_winrate") is False
     assert ri.build_sort_index("winrate") is True
     import time
 

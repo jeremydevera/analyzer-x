@@ -18,11 +18,16 @@ from tradingagents import rows_index as ri
 
 
 def test_only_the_indexes_a_plan_names_are_maintained():
-    assert set(ri.FILTER_INDEXES) == {"rows_coin", "rows_winrate"}, \
-        sorted(ri.FILTER_INDEXES)
+    """Four indexes, and every one of them is named by a plan the screen
+    runs. The four that were not (rows_tf, rows_signal, rows_id,
+    rows_trades) cost ~15 min of rebuild after every fill and were never
+    chosen. They are KEPT rather than droppable — see
+    test_index_never_vanishes.py for why that changed."""
     kept = " ".join(ri.KEEP_INDEXES)
-    assert "rows_profit" in kept, "the default view must never wait"
-    assert "rows_pair" in kept, "delete-by-pair needs it"
+    for name in ("rows_pair", "rows_profit", "rows_coin", "rows_winrate"):
+        assert name in kept, name
+    for gone in ("rows_tf", "rows_signal", "rows_id", "rows_trades"):
+        assert gone not in kept and gone not in ri.FILTER_INDEXES, gone
 
 
 def test_the_sorts_that_have_no_index_are_not_offered_as_indexed():

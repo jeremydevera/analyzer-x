@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 31, "total": 51, "rows": 1019690, "note": "NEX 30m: 4,694 bars, testing 75 rules", "pct": 60.8, "updated": "2026-08-26T09:20:14Z"}
+{"shard": 7, "stage": "testing", "done": 32, "total": 51, "rows": 1071440, "note": "NVD 15m: rule 4/75 (trend50)", "pct": 62.7, "updated": "2026-08-26T09:20:59Z"}

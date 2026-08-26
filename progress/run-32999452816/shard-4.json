@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 1, "total": 51, "rows": 0, "note": "1000BTT 15m: downloading candles", "pct": 2.0, "updated": "2026-08-26T18:24:13Z"}
+{"shard": 4, "stage": "testing", "done": 1, "total": 51, "rows": 3080, "note": "1000BTT 15m: rule 8/105 (fib618)", "pct": 2.0, "updated": "2026-08-26T18:24:59Z"}

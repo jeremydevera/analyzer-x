@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 1, "total": 51, "rows": 47340, "note": "AAVE 1h: rule 72/75 (force13)", "pct": 2.0, "updated": "2026-08-26T08:24:36Z"}
+{"shard": 14, "stage": "testing", "done": 3, "total": 51, "rows": 84552, "note": "AMCSTOCK 15m: 7,302 bars, testing 75 rules", "pct": 5.9, "updated": "2026-08-26T08:25:22Z"}

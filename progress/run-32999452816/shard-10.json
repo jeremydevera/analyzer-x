@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 31, "total": 51, "rows": 2362292, "note": "NEWT 15m: rule 20/105 (stoch14)", "pct": 60.8, "updated": "2026-08-26T20:53:20Z"}
+{"shard": 10, "stage": "testing", "done": 31, "total": 51, "rows": 2367292, "note": "NEWT 15m: rule 45/105 (zscore20)", "pct": 60.8, "updated": "2026-08-26T20:54:06Z"}

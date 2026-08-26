@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 38, "total": 51, "rows": 2966886, "note": "RIVER 30m: 16,248 bars, testing 105 rules", "pct": 74.5, "updated": "2026-08-26T21:21:50Z"}
+{"shard": 4, "stage": "testing", "done": 38, "total": 51, "rows": 2969886, "note": "RIVER 30m: rule 9/105 (fib382)", "pct": 74.5, "updated": "2026-08-26T21:22:36Z"}

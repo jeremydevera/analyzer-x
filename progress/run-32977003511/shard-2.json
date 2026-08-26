@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 11, "total": 52, "rows": 292978, "note": "CBRSSTOCK 15m: 9,930 bars, testing 75 rules", "pct": 21.2, "updated": "2026-08-26T14:07:03Z"}
+{"shard": 2, "stage": "testing", "done": 11, "total": 52, "rows": 313578, "note": "CBRSSTOCK 30m: rule 33/75 (heikin)", "pct": 21.2, "updated": "2026-08-26T14:07:48Z"}

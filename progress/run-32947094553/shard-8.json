@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 33, "total": 51, "rows": 1020762, "note": "OPG 15m: rule 34/75 (lrslope)", "pct": 64.7, "updated": "2026-08-26T09:12:34Z"}
+{"shard": 8, "stage": "testing", "done": 33, "total": 51, "rows": 1039982, "note": "OPG 30m: rule 45/75 (zscore20)", "pct": 64.7, "updated": "2026-08-26T09:13:19Z"}

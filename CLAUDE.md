@@ -264,6 +264,34 @@ has an entry point.
 17. **Orphan sweep every cycle** — any exchange position the book is not tracking gets adopted
     and bracketed. A position must never be open without a stop for longer than one cycle.
 
+## The row index is a BULK LOAD, not a trickle (MANDATORY — 2026-08-26)
+
+The operator: *"why is my stored strategy few? ... where are those?"* and then
+*"i want it paginated load all the coins"*. Nothing was lost: 973 coins had
+measured rows on disk and the list offered **711**, because while a sweep runs
+the indexer trickles ONE pair a cycle (`TRICKLE_PAIRS`) — 1,094 pairs behind,
+about three hours away — and no button could ask it to hurry.
+
+Measured on the operator's own store (8.94 GB, 21,858,026 rows, mechanical
+disk), and every number here was paid for in wall-clock:
+
+* `ensure()` was creating FILTER_INDEXES, which the next bulk fill DROPS and
+  rebuilds. A forced catch-up sat at 7.8 s of CPU for thirteen minutes doing
+  exactly that (py-spy: `ensure -> con.execute(ddl)`); `rows_winrate` alone
+  takes **912 s**. It now creates `KEEP_INDEXES` only; a missing sort index is
+  built on demand (`build_sort_index`, and `query()` answers 503 with the
+  reason meanwhile).
+* An insert with the indexes in place managed **1.5 pairs/min**; with them
+  dropped, **75 pairs/min**. Fifty times. A fill of more than a handful of
+  pairs drops every index except `rows_pair` (delete-by-pair needs it), loads,
+  then rebuilds.
+* Do NOT repair a bloated file in place: this one carried **727,146 free pages
+  (2.8 GB)** and a single `DROP INDEX rows_profit` had not finished in
+  fourteen minutes. Loading a FRESH file sequentially and swapping it in is
+  faster and leaves a compact database.
+* `POST /api/strategies/reindex` is the operator's way to force it, and the
+  panel shows "index the missing N pair(s) now" beside the count.
+
 ## The fold streams; the page is capped and says so (MANDATORY — 2026-08-26)
 
 A market-wide sweep cannot be summarised in RAM. Measured on this PC's own

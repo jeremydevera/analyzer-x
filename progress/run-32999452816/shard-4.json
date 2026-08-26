@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 12, "total": 51, "rows": 828258, "note": "CLANKER 1d: 394 bars, testing 105 rules", "pct": 23.5, "updated": "2026-08-26T19:08:11Z"}
+{"shard": 4, "stage": "testing", "done": 13, "total": 51, "rows": 849354, "note": "CRMSTOCK 15m: rule 45/105 (zscore20)", "pct": 25.5, "updated": "2026-08-26T19:08:56Z"}

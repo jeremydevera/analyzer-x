@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 16, "total": 51, "rows": 1310828, "note": "ENS 1h: 9,479 bars, testing 105 rules", "pct": 31.4, "updated": "2026-08-26T19:45:03Z"}
+{"shard": 19, "stage": "testing", "done": 16, "total": 51, "rows": 1328648, "note": "ENS 1h: rule 76/105 (cf_mom)", "pct": 31.4, "updated": "2026-08-26T19:45:48Z"}

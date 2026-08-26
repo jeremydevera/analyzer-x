@@ -17,6 +17,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+const pageBtn =
+  "h-8 rounded-lg border border-gray-300 px-2 text-theme-xs text-gray-600 " +
+  "disabled:opacity-40 dark:border-gray-700 dark:text-gray-300";
+
 const sel =
   "h-10 rounded-lg border border-gray-300 bg-transparent px-3 text-theme-sm " +
   "text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 " +
@@ -26,6 +30,10 @@ const sel =
  *  the header text, the caption and the query can never disagree — the
  *  "win % ↓" marker used to be decoration: clicking it did nothing
  *  (operator, 2026-08-26). */
+// rows a page. 300 was the whole list; at 100 the pager is the way through
+// the store rather than a peek at the top of it.
+const PER_PAGE = 100;
+
 const HEAD_SORT: Record<string, StrategySort | undefined> =
   Object.fromEntries(Object.entries(STRATEGY_SORTS)
     .map(([k, label]) => [label, k as StrategySort]));
@@ -45,6 +53,9 @@ export default function StrategiesPanel() {
   const [waiting, setWaiting] = useState("");
   // which end of the column: a second click on the same header flips it
   const [desc, setDesc] = useState(true);
+  // 21,858,026 rows behind a 300-row window with no way to reach row 301:
+  // "why is my stored strategy few ... where are those?" (2026-08-26)
+  const [page, setPage] = useState(1);
   const [rows, setRows] = useState<StrategyRow[]>([]);
   const [total, setTotal] = useState(0);
   // a filtered count stops at rows_index.COUNT_CAP, so the caption says
@@ -61,7 +72,9 @@ export default function StrategiesPanel() {
   }, []);
 
   const load = useCallback(() => {
-    api.strategies({ coin: coin || undefined, tf: tf || undefined, signal: signal || undefined, profitable, sort, minTrades, desc, limit: 300 })
+    api.strategies({ coin: coin || undefined, tf: tf || undefined, signal: signal || undefined,
+                     profitable, sort, minTrades, desc,
+                     limit: PER_PAGE, offset: (page - 1) * PER_PAGE })
       .then((d) => { setRows(d.rows); setTotal(d.total); setCapped(!!d.total_capped); setIdx(d.index ?? null); setErr(""); setWaiting(""); })
       .catch((e) => {
         if (e instanceof ApiError && e.status === 503) {
@@ -69,9 +82,13 @@ export default function StrategiesPanel() {
           setErr("");
         } else { setErr(String(e)); setWaiting(""); }
       });
-  }, [coin, tf, signal, profitable, sort, minTrades, desc]);
+  }, [coin, tf, signal, profitable, sort, minTrades, desc, page]);
 
   useEffect(load, [load]);
+  // a new filter or order is a new list: page 1, or the operator lands on
+  // page 40 of something they have not seen the top of
+  useEffect(() => { setPage(1); },
+    [coin, tf, signal, profitable, sort, minTrades, desc]);
   useEffect(() => {
     if (!waiting) return;
     const t = setTimeout(load, 15000);
@@ -110,7 +127,8 @@ export default function StrategiesPanel() {
           <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Stored strategies</h3>
           <p className="text-theme-xs text-gray-500 dark:text-gray-400">
             {total.toLocaleString()}{capped ? "+" : ""} {[coin, tf, signal, profitable ? "profitable only" : ""].some(Boolean) || minTrades > 0 ? "match" : "stored strategies"}
-            {rows.length < total ? ` · showing ${rows.length} of them, ${desc ? "highest" : "lowest"} ${STRATEGY_SORTS[sort]} first` : ` · ${desc ? "highest" : "lowest"} ${STRATEGY_SORTS[sort]} first`}
+            {` · rows ${rows.length ? (page - 1) * PER_PAGE + 1 : 0}–${(page - 1) * PER_PAGE + rows.length}`}
+            {` · ${desc ? "highest" : "lowest"} ${STRATEGY_SORTS[sort]} first`}
             {/* A partial index must NOT be captioned as the whole store: the
                 sweep measures pairs faster than they are indexed, and "648,181
                 stored strategies" while 40 pairs are still queued is a false
@@ -172,6 +190,30 @@ export default function StrategiesPanel() {
             <input type="checkbox" checked={profitable} onChange={(e) => setProfitable(e.target.checked)} className="h-4 w-4 accent-brand-500" />
             profitable only
           </label>
+        </div>
+      </div>
+      {/* one row IS one combination — the operator's own words: "under those
+          coins i have multiple strategy and under that strategy is different
+          timeframe and combinations of tp and sl". Say so, and page through. */}
+      <div className="flex flex-wrap items-center gap-2 px-5 pt-3">
+        <span className="text-theme-xs text-gray-500 dark:text-gray-400">
+          one row = one coin × timeframe × signal × threshold × SL/TP × sizing
+        </span>
+        <div className="ml-auto flex items-center gap-1">
+          <span className="mr-2 text-theme-xs text-gray-500 dark:text-gray-400">
+            page {page} of {Math.max(1, Math.ceil(total / PER_PAGE)).toLocaleString()}
+            {capped ? "+" : ""}
+          </span>
+          <button onClick={() => setPage(1)} disabled={page <= 1}
+                  className={pageBtn}>first</button>
+          <button onClick={() => setPage(page - 1)} disabled={page <= 1}
+                  className={pageBtn}>prev</button>
+          <button onClick={() => setPage(page + 1)}
+                  disabled={rows.length < PER_PAGE}
+                  className={pageBtn}>next</button>
+          <button onClick={() => setPage(Math.max(1, Math.ceil(total / PER_PAGE)))}
+                  disabled={capped || page >= Math.ceil(total / PER_PAGE)}
+                  className={pageBtn}>last</button>
         </div>
       </div>
       {err && <p className="px-5 pt-2 text-theme-sm text-error-500">{err}</p>}

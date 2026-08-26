@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 2, "total": 51, "rows": 111288, "note": "AIOT 15m: rule 45/105 (zscore20)", "pct": 3.9, "updated": "2026-08-26T18:35:28Z"}
+{"shard": 16, "stage": "testing", "done": 2, "total": 51, "rows": 117488, "note": "AIOT 15m: rule 77/105 (cf_mom_l1)", "pct": 3.9, "updated": "2026-08-26T18:36:14Z"}

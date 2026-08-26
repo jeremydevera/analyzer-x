@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 12, "total": 51, "rows": 249408, "note": "COPPER 1h: 2,159 bars, testing 105 rules", "pct": 23.5, "updated": "2026-08-26T15:54:17Z"}
+{"shard": 16, "stage": "testing", "done": 15, "total": 51, "rows": 373796, "note": "DRAM 4h: rule 42/105 (rsidiv)", "pct": 29.4, "updated": "2026-08-26T15:55:47Z"}

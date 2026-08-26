@@ -127,7 +127,8 @@ BULK_PAIRS = 8
 # the strategy list is a convenience. So trickle: one pair per cycle is
 # 2 pairs/min, still faster than the sweep PRODUCES them (0.81 pairs/min
 # measured), so the backlog shrinks without competing for the machine.
-TRICKLE_PAIRS = 1
+TRICKLE_PAIRS = 1          # only an explicit force= caller trickles now
+_said_paused = [False]     # so the pause is logged once, not every 10 s
 
 
 def _machine_is_busy() -> bool:
@@ -426,11 +427,27 @@ def stale_pairs(now: float | None = None) -> list:
 
 
 def sync(paths: Iterable[Path] | None = None, *, budget_s: float = 0.0,
-         now: float | None = None, max_pairs: int = 0) -> dict:
+         now: float | None = None, max_pairs: int = 0,
+         force: bool = False) -> dict:
     """Index every changed pair. `budget_s` stops early so a caller on a timer
     never runs long; the rest is picked up next time. `now` moves the settle
-    window, which is how a test says "pretend a minute has passed"."""
+    window, which is how a test says "pretend a minute has passed".
+
+    WHILE A SWEEP IS RUNNING THIS DOES NOTHING unless `force`. Measured on
+    the operator's PC on Aug 26, 2026, store on a spinning HDD: trickling one
+    pair every 10 s held the sweep to 36 pairs/hour, and killing the indexer
+    took the same eleven workers to 220 pairs/hour. The disk was doing 384
+    random write IOPS at 5 MB/s with a queue of 5.2 while the workers waited
+    at 41% CPU. The trickle could not have caught up either: eleven workers
+    finish ~22 pairs a minute and the trickle indexes 6. So it stands down,
+    reports the backlog, and takes the lot in one BULK pass when the sweep
+    ends. `force` is for a person asking directly.
+    """
     ensure()
+    if not force and _machine_is_busy():
+        left = len(list(paths) if paths is not None else stale_pairs(now))
+        return {"pairs": 0, "rows": 0, "seconds": 0.0, "left": left,
+                "queued": left, "paused": True}
     todo = list(paths) if paths is not None else stale_pairs(now)
     queued = len(todo)
     if max_pairs:
@@ -482,15 +499,18 @@ def sync(paths: Iterable[Path] | None = None, *, budget_s: float = 0.0,
             "seconds": round(time.time() - started, 2)}
 
 
-def sync_in_background(budget_s: float = 0.0) -> bool:
-    """Kick a sync unless one is already running. Never blocks the caller."""
+def sync_in_background(budget_s: float = 0.0, *, force: bool = False) -> bool:
+    """Kick a sync unless one is already running -- or a sweep is (see sync).
+    Never blocks the caller."""
     if _syncing.is_set():
+        return False
+    if not force and _machine_is_busy():
         return False
     _syncing.set()
 
     def run() -> None:
         try:
-            sync(budget_s=budget_s)
+            sync(budget_s=budget_s, force=force)
         except Exception:
             pass
         finally:
@@ -612,9 +632,11 @@ def status() -> dict:
             return r[0], r[1], r[2]
 
     pairs, rows, newest = _missing_ok(_read, (0, 0, None))
+    busy = _machine_is_busy()
     return {"pairs_indexed": pairs, "pairs_on_disk": on_disk, "rows": rows,
             "behind": max(0, on_disk - pairs), "syncing": syncing(),
-            "trickling": _machine_is_busy(), "updated": newest}
+            # kept for older readers; both mean "a sweep owns the disk"
+            "trickling": busy, "paused": busy, "updated": newest}
 
 
 
@@ -675,21 +697,28 @@ def start_keeping_up(every_s: float = 10.0, budget_s: float = 60.0) -> bool:
         while first or not _loop_stop.wait(every_s):
             first = False
             try:
+                if _machine_is_busy():
+                    # stand down entirely: on a slow disk the indexer and the
+                    # sweep fight over the same platter and the sweep loses 6x
+                    if not _said_paused[0]:
+                        print(f"[rows-index] paused: a backtest is running "
+                              f"({len(stale_pairs())} pairs waiting; they are "
+                              f"indexed in one bulk pass when it ends)",
+                              flush=True)
+                        _said_paused[0] = True
+                    continue
+                _said_paused[0] = False
                 todo = stale_pairs()
                 if todo:
                     _syncing.set()         # so status() reports the timer too
-                    busy = _machine_is_busy()
                     try:
-                        got = sync(budget_s=budget_s,
-                                   max_pairs=TRICKLE_PAIRS if busy else 0)
+                        got = sync(budget_s=budget_s)
                     finally:
                         _syncing.clear()
                     checkpoint_if_bloated()
                     print(f"[rows-index] +{got['pairs']} pairs "
                           f"({got['rows']:,} rows) in {got['seconds']}s, "
-                          f"{got['left']} left"
-                          f"{' [trickling: a backtest is running]' if busy else ''}",
-                          flush=True)
+                          f"{got['left']} left", flush=True)
             except Exception as exc:
                 # never end the loop -- but never hide the reason either
                 print(f"[rows-index] sync failed: {exc!r}", flush=True)

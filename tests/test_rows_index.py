@@ -544,7 +544,15 @@ def test_the_indexer_yields_to_a_running_backtest(store, monkeypatch):
     """Measured 2026-08-22: with the sweep's seven workers on eight cores
     (load average 23-33) the same insert went from 0.25s to 16.42s, and a
     reader waiting on it timed out. The sweep is what the operator is waiting
-    three days for; the index trickles instead of competing."""
+    three days for.
+
+    It used to TRICKLE one pair per cycle. Measured again on the PC on
+    2026-08-26, store on a spinning HDD: trickling held the sweep to 36
+    pairs/hour where killing the indexer gave 220 from the same eleven
+    workers, and the trickle could never have drained the backlog anyway
+    (production ~22 pairs/min against 6 indexed). So it now stands down
+    COMPLETELY and takes the lot in one bulk pass afterwards -- see
+    tests/test_index_yields_to_the_sweep.py."""
     import time
 
     rows_dir, _ = store
@@ -553,29 +561,26 @@ def test_the_indexer_yields_to_a_running_backtest(store, monkeypatch):
             json.dumps([_row(f"MANY{i}", "1h", "mom6", float(i))]))
 
     monkeypatch.setattr(ri, "_machine_is_busy", lambda: True)
-    got = ri.sync(max_pairs=ri.TRICKLE_PAIRS,
-                  now=time.time() + ri.SETTLE_S + 1)
-    assert got["pairs"] == 1, f"indexed {got['pairs']} pairs while sweeping"
+    got = ri.sync(now=time.time() + ri.SETTLE_S + 1)
+    assert got["pairs"] == 0, f"indexed {got['pairs']} pairs while sweeping"
     assert got["left"] >= 20, "and it must report the backlog honestly"
-    assert ri.status()["trickling"] is True, "the screen has to be able to say"
+    assert ri.status()["paused"] is True, "the screen has to be able to say"
 
     # with the machine free it takes the lot
     monkeypatch.setattr(ri, "_machine_is_busy", lambda: False)
     got = ri.sync(now=time.time() + ri.SETTLE_S + 1)
     assert got["left"] == 0, f"idle machine still left {got['left']}"
-    assert ri.status()["trickling"] is False
+    assert ri.status()["paused"] is False
 
 
-def test_the_trickle_outpaces_what_the_sweep_produces():
-    """One pair per 10s cycle is 6/min; the sweep produces 0.81/min (71 pairs
-    in 88 minutes, measured). A trickle slower than production never catches
-    up, which would be a queue disguised as progress."""
+def test_the_backlog_is_drained_in_one_bulk_pass_not_a_trickle():
+    """A pause is only safe because the catch-up is the FAST path: BULK drops
+    the four filter indexes, inserts, and rebuilds them once."""
     import inspect
 
-    sig = inspect.signature(ri.start_keeping_up)
-    every = sig.parameters["every_s"].default
-    per_min = 60.0 / every * ri.TRICKLE_PAIRS
-    assert per_min > 0.81, f"{per_min:.1f} pairs/min cannot drain the backlog"
+    src = inspect.getsource(ri.sync)
+    assert "bulk = len(todo) > BULK_PAIRS" in src
+    assert ri.BULK_PAIRS <= 16, "a whole sweep's backlog must take the bulk path"
 
 
 def test_the_api_does_not_index_in_its_own_process(monkeypatch, tmp_path):

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 4, "total": 51, "rows": 124256, "note": "ANTHROPIC 30m: rule 4/75 (trend50)", "pct": 7.8, "updated": "2026-08-26T14:01:51Z"}
+{"shard": 4, "stage": "testing", "done": 5, "total": 51, "rows": 171136, "note": "ARWRSTOCK 15m: 3,282 bars, testing 75 rules", "pct": 9.8, "updated": "2026-08-26T14:02:38Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 12, "total": 51, "rows": 862390, "note": "COINBASE 1h: rule 13/105 (pivot)", "pct": 23.5, "updated": "2026-08-26T19:03:59Z"}
+{"shard": 12, "stage": "testing", "done": 12, "total": 51, "rows": 900030, "note": "COINBASE 1d: 394 bars, testing 105 rules", "pct": 23.5, "updated": "2026-08-26T19:04:47Z"}

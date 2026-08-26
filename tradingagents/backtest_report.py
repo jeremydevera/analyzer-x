@@ -66,6 +66,16 @@ SIGNALS = [
     # volume-based
     "obv20", "cmf20", "mfi14", "force13", "volspike", "volclimax",
     "relvolbrk",
+    # the ten researched CONFLUENCE setups, each at three levels
+    # (tradingagents/signals_conf.py; measured on BTC 1h before landing
+    #  here). level 1 = a moving-average side plus an engulfing candle;
+    #  level 2 also needs two of six things agreeing at the price.
+    "cf_mom", "cf_mom_l1", "cf_mom_l2", "cf_donch", "cf_donch_l1",
+    "cf_donch_l2", "cf_maobv", "cf_maobv_l1", "cf_maobv_l2", "cf_triple",
+    "cf_triple_l1", "cf_triple_l2", "cf_chan", "cf_chan_l1", "cf_chan_l2",
+    "cf_soup", "cf_soup_l1", "cf_soup_l2", "cf_emarsi", "cf_emarsi_l1",
+    "cf_emarsi_l2", "cf_ttm", "cf_ttm_l1", "cf_ttm_l2", "cf_soup1",
+    "cf_soup1_l1", "cf_soup1_l2", "cf_eqhl", "cf_eqhl_l1", "cf_eqhl_l2",
 ]
 THRESH_SIGNALS = {"mom6", "mom15", "fade15"}
 

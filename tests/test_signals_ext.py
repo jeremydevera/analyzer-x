@@ -96,13 +96,16 @@ def test_dispatcher_routes_every_new_signal():
 
 
 def test_signal_list_carries_all_of_them():
-    """The shared grid sweeps the 7 originals plus BOTH expansions — the
-    count is derived, because pinning it at 22 broke the day the second
-    expansion landed."""
+    """The shared grid sweeps the 7 originals plus EVERY expansion — the count
+    is derived, because pinning it at 22 broke the day the second expansion
+    landed, and pinning it at 75 broke the day the confluence set landed
+    (2026-08-26, signals_conf: ten researched setups x three levels)."""
     from tradingagents import backtest_report as br
+    from tradingagents.signals_conf import CONF_SIGNALS
     from tradingagents.signals_ext2 import EXTRA_SIGNALS2
 
-    assert len(br.SIGNALS) == 7 + len(sx.EXTRA_SIGNALS) + len(EXTRA_SIGNALS2)
+    assert len(br.SIGNALS) == (7 + len(sx.EXTRA_SIGNALS) + len(EXTRA_SIGNALS2)
+                               + len(CONF_SIGNALS))
     assert len(set(br.SIGNALS)) == len(br.SIGNALS)
     for name in ALL:
         assert name in br.SIGNALS

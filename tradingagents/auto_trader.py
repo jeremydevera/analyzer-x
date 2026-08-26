@@ -393,9 +393,17 @@ def signal_for(key: str, high: list, low: list, close: list,
     # 2026-08-19: this function never dispatched to them, so a deployed
     # fib618/sr_break/supertrend strategy would have silently emitted 0
     # forever. The grid and the runner must speak the same rules.
+    from tradingagents.signals_conf import CONF_SIGNALS
     from tradingagents.signals_ext import EXTRA_SIGNALS
     from tradingagents.signals_ext2 import EXTRA_SIGNALS2
 
+    # Same order as the backtest path. A rule the grid can pick and the runner
+    # cannot emit is a strategy that trades zero times once deployed.
+    for _name in sorted(CONF_SIGNALS, key=len, reverse=True):
+        if key == _name or key.startswith(_name + "_"):
+            dirs = CONF_SIGNALS[_name](opens or [], high, low, close,
+                                       volume or [], ts or [])
+            return dirs[-1] if dirs else 0
     for _name in sorted(EXTRA_SIGNALS2, key=len, reverse=True):
         if key == _name or key.startswith(_name + "_"):
             dirs = EXTRA_SIGNALS2[_name](opens or [], high, low, close,
@@ -975,9 +983,16 @@ def _dirs_for_backtest(key: str, high: list, low: list,
     # the longest name, so `sr_break_x` cannot be swallowed by a shorter key.
     # The second registry (volume/session rules, 2026-08-19) outranks the
     # first only in lookup order; names never collide across the two.
+    from tradingagents.signals_conf import CONF_SIGNALS
     from tradingagents.signals_ext import EXTRA_SIGNALS
     from tradingagents.signals_ext2 import EXTRA_SIGNALS2
 
+    # The confluence set (2026-08-26) is checked FIRST and by the longest name,
+    # so `cf_mom_l1_1h` cannot be swallowed by `cf_mom`.
+    for _name in sorted(CONF_SIGNALS, key=len, reverse=True):
+        if key == _name or key.startswith(_name + "_"):
+            return CONF_SIGNALS[_name](opens or [], high, low, close,
+                                       volume or [], ts or [])
     for _name in sorted(EXTRA_SIGNALS2, key=len, reverse=True):
         if key == _name or key.startswith(_name + "_"):
             return EXTRA_SIGNALS2[_name](opens or [], high, low, close,

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 4, "total": 51, "rows": 276382, "note": "ARB 30m: 18,959 bars, testing 105 rules", "pct": 7.8, "updated": "2026-08-26T18:45:50Z"}
+{"shard": 16, "stage": "testing", "done": 4, "total": 51, "rows": 281582, "note": "ARB 30m: rule 20/105 (stoch14)", "pct": 7.8, "updated": "2026-08-26T18:46:36Z"}

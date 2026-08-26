@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 51, "total": 52, "rows": 3865012, "note": "YB 15m: rule 87/105 (cf_triple_l2)", "pct": 98.1, "updated": "2026-08-26T22:01:21Z"}
+{"shard": 0, "stage": "testing", "done": 51, "total": 52, "rows": 3869512, "note": "YB 30m: rule 3/105 (fade15)", "pct": 98.1, "updated": "2026-08-26T22:02:11Z"}

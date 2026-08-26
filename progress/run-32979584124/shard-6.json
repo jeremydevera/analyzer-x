@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 30, "total": 51, "rows": 540830, "note": "MSSTOCK 1h: rule 2/105 (mom15)", "pct": 58.8, "updated": "2026-08-26T15:52:49Z"}
+{"shard": 6, "stage": "testing", "done": 34, "total": 51, "rows": 605576, "note": "PAYCSTOCK 4h: downloading candles", "pct": 66.7, "updated": "2026-08-26T15:53:34Z"}

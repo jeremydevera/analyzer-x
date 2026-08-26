@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 51, "total": 51, "rows": 1391076, "note": "ZKSYNC 4h: downloading candles", "pct": 100.0, "updated": "2026-08-26T09:56:14Z"}
+{"shard": 14, "stage": "done", "done": 51, "total": 51, "rows": 1391076, "note": "1,391,076 rows \u00b7 190 pair redo(s) \u00b7 95 pair(s) lost", "pct": 100.0, "updated": "2026-08-26T09:56:27Z"}

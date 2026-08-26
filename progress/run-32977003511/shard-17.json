@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 7, "total": 51, "rows": 215436, "note": "BDX 15m: 28,334 bars, testing 75 rules", "pct": 13.7, "updated": "2026-08-26T14:13:34Z"}
+{"shard": 17, "stage": "testing", "done": 7, "total": 51, "rows": 220076, "note": "BDX 15m: rule 53/75 (squeeze)", "pct": 13.7, "updated": "2026-08-26T14:14:20Z"}

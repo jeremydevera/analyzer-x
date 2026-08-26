@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 6, "total": 52, "rows": 421654, "note": "AUD 15m: 29,976 bars, testing 105 rules", "pct": 11.5, "updated": "2026-08-26T18:48:04Z"}
+{"shard": 0, "stage": "testing", "done": 6, "total": 52, "rows": 433094, "note": "AUD 15m: rule 46/105 (rsi2)", "pct": 11.5, "updated": "2026-08-26T18:48:50Z"}

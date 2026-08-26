@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 14, "total": 52, "rows": 1212732, "note": "CVC 4h: 2,369 bars, testing 105 rules", "pct": 26.9, "updated": "2026-08-26T19:50:02Z"}
+{"shard": 1, "stage": "testing", "done": 16, "total": 52, "rows": 1272568, "note": "DXCMSTOCK 15m: rule 77/105 (cf_mom_l1)", "pct": 30.8, "updated": "2026-08-26T19:50:47Z"}

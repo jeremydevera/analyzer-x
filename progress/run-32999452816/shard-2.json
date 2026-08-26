@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 1, "total": 52, "rows": 10200, "note": "1000000MOG 15m: rule 45/105 (zscore20)", "pct": 1.9, "updated": "2026-08-26T18:27:21Z"}
+{"shard": 2, "stage": "testing", "done": 1, "total": 52, "rows": 17000, "note": "1000000MOG 15m: rule 80/105 (cf_donch_l1)", "pct": 1.9, "updated": "2026-08-26T18:28:06Z"}

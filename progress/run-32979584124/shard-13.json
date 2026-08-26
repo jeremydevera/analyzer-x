@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 11, "total": 51, "rows": 262642, "note": "CFX 1h: downloading candles", "pct": 21.6, "updated": "2026-08-26T15:35:20Z"}
+{"shard": 13, "stage": "testing", "done": 12, "total": 51, "rows": 313220, "note": "COLLECT 1h: rule 15/105 (bbbreak)", "pct": 23.5, "updated": "2026-08-26T15:36:05Z"}

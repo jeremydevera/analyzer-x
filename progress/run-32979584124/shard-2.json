@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 32, "total": 52, "rows": 636196, "note": "NOKSTOCK 4h: 539 bars, testing 105 rules", "pct": 61.5, "updated": "2026-08-26T15:33:53Z"}
+{"shard": 2, "stage": "testing", "done": 37, "total": 52, "rows": 669874, "note": "RAM 1h: rule 99/105 (cf_ttm_l2)", "pct": 71.2, "updated": "2026-08-26T15:34:39Z"}

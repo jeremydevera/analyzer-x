@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 33, "total": 52, "rows": 539086, "note": "OL 1d: downloading candles", "pct": 63.5, "updated": "2026-08-26T14:18:03Z"}
+{"shard": 1, "stage": "testing", "done": 34, "total": 52, "rows": 555086, "note": "O 30m: 3,356 bars, testing 75 rules", "pct": 65.4, "updated": "2026-08-26T14:18:48Z"}

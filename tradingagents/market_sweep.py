@@ -324,6 +324,24 @@ def worker_clear() -> None:
 # small atomic write per 200 backtests.
 CHECKPOINT_EVERY = 200
 
+# ...and never more often than this, in seconds. The count was sized for a Mac
+# SSD, where 200 combinations is about a second of work. On the PC on
+# Aug 26, 2026 the data home sat on a spinning HDD: eleven workers each
+# rewrote a 5.8 MB state file plus the rows file every 200 combinations (~89
+# times per pair), the disk ran at 502% busy, and the workers spent their
+# time blocked in those writes -- a pair that took ~90 s in the afternoon took
+# ~23 minutes. A crash still costs at most this many seconds of work; a slow
+# disk gets a breath between writes instead of a queue of them. 0 restores the
+# pure count.
+CHECKPOINT_MIN_S = 30.0
+_clock = time.monotonic
+
+
+def checkpoint_due(last_at: float, now: float | None = None) -> bool:
+    """Has CHECKPOINT_MIN_S passed since the last checkpoint was written?"""
+    return ((_clock() if now is None else now) - last_at) >= CHECKPOINT_MIN_S
+
+
 # Telemetry is CHEAP (a ~130 byte file); a checkpoint is EXPENSIVE (it rewrites
 # the pair's whole row file, which reaches 17 MB). Tying the progress display to
 # the checkpoint made both wrong: seven workers each rewriting megabytes every
@@ -575,6 +593,7 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
     sigs = list(signals or br.SIGNALS)
     out_rows = []
     done_combos = 0
+    last_ckpt = _clock()           # the time floor starts when the pair does
     # The denominator, computed the same way the loops below iterate — a
     # percentage whose total is a guess is worse than no percentage.
     total_combos = 0
@@ -637,16 +656,19 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                                  pct=(round(100 * done_combos / total_combos, 2)
                                       if total_combos else 0.0),
                                  rows=len(out_rows), state="running")
-                # expensive: make the work survive a crash
-                if done_combos % CHECKPOINT_EVERY == 0:
+                # expensive: make the work survive a crash -- on the count,
+                # and only once the time floor has passed (see CHECKPOINT_MIN_S)
+                if done_combos % CHECKPOINT_EVERY == 0 and checkpoint_due(last_ckpt):
                     save_states(coin, tf, states)
                     merge_pair_rows(coin, tf, out_rows)
+                    last_ckpt = _clock()
                 # STAND DOWN if the operator asked to hand over. Checked here,
                 # beside the checkpoint, so everything measured is on disk
                 # first and the pair resumes exactly here next time.
                 if (done_combos % _HANDOFF_EVERY == 0) and handoff_pending():
                     save_states(coin, tf, states)
                     merge_pair_rows(coin, tf, out_rows)
+                    last_ckpt = _clock()
                     worker_write(pair=f"{coin} {tf}", done=done_combos,
                                  total=total_combos, rows=len(out_rows),
                                  state="handed off")

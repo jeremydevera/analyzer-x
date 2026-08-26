@@ -251,10 +251,10 @@ export interface SysLoad {
  *  rows_index.SORTS; the label is what the caption prints, so the caption
  *  can never disagree with the order (label-must-match-data). */
 export const STRATEGY_SORTS = {
-  profit: "profit $",
+  profit: "PROFIT $",
   winrate: "win %",
   trades: "trades",
-  dd: "smallest dip $",
+  dd: "dip $",
 } as const;
 export type StrategySort = keyof typeof STRATEGY_SORTS;
 
@@ -308,11 +308,14 @@ export const api = {
     /** a win rate with no denominator is not a result: 100% over 1 trade
      *  sat at the top of the live store until this existed */
     minTrades?: number;
+    /** false = lowest first; omit for the column's useful end */
+    desc?: boolean;
   }) => {
     const p = new URLSearchParams();
     if (q.coin) p.set("coin", q.coin);
     if (q.sort) p.set("sort", q.sort);
     if (q.minTrades) p.set("min_trades", String(q.minTrades));
+    if (q.desc !== undefined) p.set("desc", String(q.desc));
     if (q.tf) p.set("tf", q.tf);
     if (q.signal) p.set("signal", q.signal);
     if (q.profitable) p.set("profitable", "true");
@@ -320,7 +323,7 @@ export const api = {
     if (q.offset) p.set("offset", String(q.offset));
     return get<{ rows: StrategyRow[]; total: number; index?: IndexStatus;
       /** the order the server actually used, so the caption is derived */
-      sort?: StrategySort; min_trades?: number;
+      sort?: StrategySort; min_trades?: number; desc?: boolean;
       /** a filtered count stops at COUNT_CAP: print "N+" */
       total_capped?: boolean }>(
       `/api/strategies?${p.toString()}`,

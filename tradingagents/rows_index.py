@@ -537,7 +537,25 @@ def syncing() -> bool:
 
 # ------------------------------------------------------------------ reading
 def _where(coin=None, tf=None, signal=None, profitable=False,
-           min_trades=0) -> tuple:
+           min_trades=0, *, order_owns_index=False) -> tuple:
+    """The WHERE clause and its arguments.
+
+    `order_owns_index=True` writes the trade floor as `+trades >= ?`. The
+    `+` tells SQLite not to use an index for that term, which is the whole
+    point: the row query wants to STREAM the ORDER BY from its own index
+    (rows_winrate covers `trades`, so the filter is tested from the index)
+    and stop after LIMIT rows.
+
+    Without it, the moment rows_trades existed the planner chose
+        SEARCH rows USING INDEX rows_trades (trades>?)
+        USE TEMP B-TREE FOR ORDER BY
+    — a sort of every matching row out of 21,858,026 — and the request
+    that had answered in 0.08 s stopped returning at all: the browser got
+    HTTP 500 from the proxy's 30 s timeout and the operator reported that
+    clicking `win % ↓` did nothing (2026-08-26). The COUNT wants the
+    opposite (rows_trades makes it a 0.00 s covering scan), so it asks for
+    the plain form.
+    """
     sql, args = [], []
     for col, val in (("coin", coin), ("tf", tf), ("signal", signal)):
         if val:
@@ -550,7 +568,7 @@ def _where(coin=None, tf=None, signal=None, profitable=False,
     # `CHF 30m soldiers 100.00% over 1 trade` at the top: a rate with no
     # denominator is not a result.
     if min_trades and int(min_trades) > 0:
-        sql.append("trades >= ?")
+        sql.append(("+trades >= ?" if order_owns_index else "trades >= ?"))
         args.append(int(min_trades))
     return (" WHERE " + " AND ".join(sql) if sql else ""), args
 
@@ -558,11 +576,15 @@ def _where(coin=None, tf=None, signal=None, profitable=False,
 # What the screen may rank by. A whitelist, because the name arrives in a URL:
 # `?sort=profit; DROP TABLE rows` must be refused, never interpolated. Each one
 # is a real column with an index behind it (see FILTER_INDEXES / KEEP_INDEXES).
+# column -> the direction worth seeing first. Best profit and best win rate
+# are the TOP of the column; the smallest worst-dip is the BOTTOM. A second
+# click on the header flips it (`desc=`), which is what the operator meant
+# by "it does not sort to highes or lowest" (2026-08-26).
 SORTS = {
-    "profit": "profit DESC",
-    "winrate": "winrate DESC",
-    "trades": "trades DESC",
-    "dd": "dd ASC",              # smallest worst-dip first: least painful
+    "profit": True,
+    "winrate": True,
+    "trades": True,
+    "dd": False,                 # smallest worst-dip first: least painful
 }
 
 # Which index each order needs. Measured 2026-08-26 on the operator's own
@@ -631,7 +653,8 @@ def build_sort_index(sort: str) -> bool:
 
 
 def query(coin=None, tf=None, signal=None, profitable=False,
-          limit=500, offset=0, sort="profit", min_trades=0) -> dict:
+          limit=500, offset=0, sort="profit", min_trades=0,
+          desc=None) -> dict:
     """Rows sorted by `sort` (SORTS), profit first by default.
 
     STRICTLY READ-ONLY. It creates nothing and it indexes nothing.
@@ -644,12 +667,17 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     reports how far behind it is so the screen can say so.
     """
     where, args = _where(coin, tf, signal, profitable, min_trades)
+    # the row select streams its own ORDER BY index; the count rides the
+    # trades index instead (see _where)
+    row_where, row_args = _where(coin, tf, signal, profitable, min_trades,
+                                 order_owns_index=True)
     lim = max(0, min(int(limit), 2000))
     key = str(sort or "profit")
     if key not in SORTS:
         raise ValueError(
             f"unknown sort {key!r}; use one of {sorted(SORTS)}")
-    order = SORTS[key]
+    down = SORTS[key] if desc is None else bool(desc)
+    order = f"{key} {'DESC' if down else 'ASC'}"
     need = SORT_INDEX.get(key)
     # A missing index only matters at size. Sorting 4,000 rows without one is
     # instant; sorting 21,582,584 had not finished in ten minutes (measured
@@ -683,9 +711,9 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             # places between 4-second polls and the row moves out from under
             # the operator's cursor mid-click.
             got = con.execute(
-                f"SELECT * FROM rows{where} ORDER BY {order}, id ASC "
+                f"SELECT * FROM rows{row_where} ORDER BY {order}, id ASC "
                 f"LIMIT ? OFFSET ?",
-                (*args, lim, max(0, int(offset)))).fetchall()
+                (*row_args, lim, max(0, int(offset)))).fetchall()
         return total, got
 
     total, got = _missing_ok(_read, (0, []))
@@ -702,7 +730,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             d["monthly"] = {}
         out.append(d)
     # the caller captions the table with this, so it is never a literal
-    return {"rows": out, "total": total, "sort": key,
+    return {"rows": out, "total": total, "sort": key, "desc": down,
             # the caption prints "5,000+ match" when the count was capped,
             # never a bare 5,000 that reads as exact
             "total_capped": capped_count,

@@ -43,6 +43,8 @@ export default function StrategiesPanel() {
   // "ranking by win % needs its index" is a WAIT, not a failure: keep the
   // rows on screen, say the sentence the API said, and come back for it
   const [waiting, setWaiting] = useState("");
+  // which end of the column: a second click on the same header flips it
+  const [desc, setDesc] = useState(true);
   const [rows, setRows] = useState<StrategyRow[]>([]);
   const [total, setTotal] = useState(0);
   // a filtered count stops at rows_index.COUNT_CAP, so the caption says
@@ -59,7 +61,7 @@ export default function StrategiesPanel() {
   }, []);
 
   const load = useCallback(() => {
-    api.strategies({ coin: coin || undefined, tf: tf || undefined, signal: signal || undefined, profitable, sort, minTrades, limit: 300 })
+    api.strategies({ coin: coin || undefined, tf: tf || undefined, signal: signal || undefined, profitable, sort, minTrades, desc, limit: 300 })
       .then((d) => { setRows(d.rows); setTotal(d.total); setCapped(!!d.total_capped); setIdx(d.index ?? null); setErr(""); setWaiting(""); })
       .catch((e) => {
         if (e instanceof ApiError && e.status === 503) {
@@ -67,7 +69,7 @@ export default function StrategiesPanel() {
           setErr("");
         } else { setErr(String(e)); setWaiting(""); }
       });
-  }, [coin, tf, signal, profitable, sort, minTrades]);
+  }, [coin, tf, signal, profitable, sort, minTrades, desc]);
 
   useEffect(load, [load]);
   useEffect(() => {
@@ -108,7 +110,7 @@ export default function StrategiesPanel() {
           <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Stored strategies</h3>
           <p className="text-theme-xs text-gray-500 dark:text-gray-400">
             {total.toLocaleString()}{capped ? "+" : ""} {[coin, tf, signal, profitable ? "profitable only" : ""].some(Boolean) || minTrades > 0 ? "match" : "stored strategies"}
-            {rows.length < total ? ` · showing top ${rows.length} by ${STRATEGY_SORTS[sort]}` : ` · sorted by ${STRATEGY_SORTS[sort]}`}
+            {rows.length < total ? ` · showing ${rows.length} of them, ${desc ? "highest" : "lowest"} ${STRATEGY_SORTS[sort]} first` : ` · ${desc ? "highest" : "lowest"} ${STRATEGY_SORTS[sort]} first`}
             {/* A partial index must NOT be captioned as the whole store: the
                 sweep measures pairs faster than they are indexed, and "648,181
                 stored strategies" while 40 pairs are still queued is a false
@@ -120,6 +122,12 @@ export default function StrategiesPanel() {
                 still filling in
               </span>
             ) : null}
+            {/* how many CONTRACTS are in the list, asked 2026-08-26 — from the
+                facets the dropdowns already loaded, so it cannot disagree with
+                what the coin filter offers */}
+            {facets.coins.length ? ` · ${facets.coins.length.toLocaleString()} coins` : ""}
+            {facets.tfs.length ? ` · ${facets.tfs.length} timeframes` : ""}
+            {facets.signals.length ? ` · ${facets.signals.length} signals` : ""}
             {[coin, tf, signal].filter(Boolean).length ? ` · filters: ${[coin, tf, signal].filter(Boolean).join(" · ")}` : ""}
             {profitable ? " · profitable only" : " · losers included"}
             {minTrades > 0 ? ` · at least ${minTrades} trades` : ""}
@@ -144,6 +152,7 @@ export default function StrategiesPanel() {
                   onChange={(e) => {
                     const next = e.target.value as StrategySort;
                     setSort(next);
+                    setDesc(next !== "dd");     // smallest dip is the useful end
                     // a rate needs a denominator; a profit does not
                     if (next === "winrate" && minTrades === 0) setMinTrades(100);
                   }}
@@ -181,7 +190,9 @@ export default function StrategiesPanel() {
                   onClick={() => {
                     const next = HEAD_SORT[h];
                     if (!next) return;          // not a sortable column
+                    if (next === sort) { setDesc(!desc); return; }
                     setSort(next);
+                    setDesc(next !== "dd");
                     if (next === "winrate" && minTrades === 0) setMinTrades(100);
                   }}
                   className={`px-3 py-3 text-theme-xs font-medium text-start ${
@@ -190,7 +201,7 @@ export default function StrategiesPanel() {
                       ? "text-brand-600 dark:text-brand-400"
                       : "text-gray-500 dark:text-gray-400"}`}
                   title={HEAD_SORT[h] ? `sort by ${h}` : undefined}>
-                  {h}{h === STRATEGY_SORTS[sort] ? " ↓" : ""}
+                  {h}{h === STRATEGY_SORTS[sort] ? (desc ? " ↓" : " ↑") : ""}
                 </TableCell>
               ))}
             </TableRow>

@@ -210,3 +210,56 @@ def test_the_api_passes_min_trades(store):
     got = api.strategies(sort="winrate", min_trades=115)
     assert got["min_trades"] == 115
     assert all(r["trades"] >= 115 for r in got["rows"])
+
+
+def test_the_row_query_keeps_its_order_index_even_with_a_trade_floor(store):
+    """The plan, not just the answer.
+
+    The moment rows_trades existed the planner filtered on `trades` and then
+    sorted every match — `USE TEMP B-TREE FOR ORDER BY` over 21,858,026 rows —
+    so a request that answered in 0.08 s stopped returning and the browser got
+    HTTP 500 from the proxy's 30 s timeout. `+trades` keeps the ORDER BY index.
+    """
+    where, args = ri._where(min_trades=100)
+    assert where == " WHERE trades >= ?" and args == [100], where
+    row_where, row_args = ri._where(min_trades=100, order_owns_index=True)
+    assert row_where == " WHERE +trades >= ?", row_where
+    assert row_args == [100]
+
+    src = open("tradingagents/rows_index.py", encoding="utf-8").read()
+    q = src[src.index("def query("):src.index("def facets(")]
+    assert "FROM rows{row_where}" in q, "the row select must use the +trades form"
+    assert "FROM rows{where}" in q, "and the count the plain one"
+
+
+def test_the_answer_is_still_right_with_the_hint(store):
+    got = ri.query(sort="winrate", min_trades=100)
+    assert [r["winrate"] for r in got["rows"]] == [91.0, 77.5, 55.0, 31.0]
+    assert all(r["trades"] >= 100 for r in got["rows"])
+
+
+def test_a_second_click_flips_the_direction(store):
+    """Operator: "when i click win% it does not sort to highes or lowest" — one
+    click is descending, the next ascending, off the same index."""
+    down = ri.query(sort="winrate", desc=True)
+    up = ri.query(sort="winrate", desc=False)
+    assert [r["winrate"] for r in down["rows"]] == [91.0, 77.5, 55.0, 31.0]
+    assert [r["winrate"] for r in up["rows"]] == [31.0, 55.0, 77.5, 91.0]
+    assert down["desc"] is True and up["desc"] is False
+
+
+def test_the_direction_default_is_the_useful_end_of_each_column(store):
+    """Best profit and best win rate are the TOP; the smallest dip is the
+    BOTTOM — so each column's default direction is the one worth seeing."""
+    assert ri.query(sort="profit")["desc"] is True
+    assert ri.query(sort="winrate")["desc"] is True
+    assert ri.query(sort="trades")["desc"] is True
+    assert ri.query(sort="dd")["desc"] is False, "smallest worst-dip first"
+
+
+def test_the_api_carries_the_direction(store):
+    from tradingagents import api
+
+    got = api.strategies(sort="winrate", desc=False)
+    assert got["desc"] is False
+    assert got["rows"][0]["winrate"] == 31.0

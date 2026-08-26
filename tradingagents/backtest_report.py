@@ -863,6 +863,24 @@ def _prog_takes_counts(progress) -> bool:
 DEFAULT_ROW_CAP = 250_000
 
 
+def _slim_pair(res: dict) -> dict:
+    """What the PARENT needs from a measured pair -- nine numbers, never rows.
+
+    The fold re-reads every pair's rows from disk (`msw.pair_rows`), so holding
+    them in `measured` as well bought nothing. At 105 signals a pair is 24,420
+    combinations, and on 2026-08-26 the 1h/4h sweep died of MemoryError at
+    1,613 of 1,994 pairs with roughly 39 million row dicts alive in the parent
+    while eleven workers each built their own. `rows_n` keeps the one fact the
+    fold actually read off that list: how long it was.
+    """
+    return {"why": res.get("why"),
+            "rows_n": len(res.get("rows") or ()),
+            "incremental": res.get("incremental"),
+            "new_bars": res.get("new_bars"),
+            "bars": res.get("bars", 0), "days": res.get("days", 0),
+            "rt": res.get("rt"), "liq": res.get("liq"), "fee": res.get("fee")}
+
+
 def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
                     base_margin: float = 5.0, days: int = 365,
                     thresholds: int = 3,
@@ -1011,7 +1029,7 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
                         done = len(_seen)     # DISTINCT pairs, so one that was
                                               # already measured is not counted twice
                         _say(f"{show} {tf}: done ({done}/{total})")
-                        measured.append((sym, tf, res))
+                        measured.append((sym, tf, _slim_pair(res)))
         except _cf.process.BrokenProcessPool:
             pool.shutdown(wait=False, cancel_futures=True)
             # The pool itself could not start — spawn needs an importable
@@ -1046,9 +1064,9 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
                     progress(_msg, done / total, done, total)
                 else:
                     progress(_msg, done / total)
-            measured.append((sym, tf, msw.run_pair(
+            measured.append((sym, tf, _slim_pair(msw.run_pair(
                 sym, tf, base_margin=base_margin, days=days,
-                thresholds=thresholds, fresh=fresh)))
+                thresholds=thresholds, fresh=fresh))))
             _seen.add((sym, tf))
             done = len(_seen)
 
@@ -1098,7 +1116,7 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
         # "no new bars" is SUCCESS — the store answers in full. Only a why
         # with nothing behind it (fetch failed, too young, venue error)
         # excludes the pair.
-        if r.get("why") not in (None, "", "no new bars") and not r.get("rows"):
+        if r.get("why") not in (None, "", "no new bars") and not r.get("rows_n"):
             excluded.append({"coin": show, "tf": tf, "why": r["why"]})
             continue
         pair = msw.pair_rows(show, tf)
@@ -1112,7 +1130,7 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
             _take(row)
         if r.get("incremental"):
             fresh_n = (0 if r.get("why") == "no new bars"
-                       else len(r.get("rows") or []))
+                       else int(r.get("rows_n") or 0))
             reuse["stored_rows"] += max(0, len(pair) - fresh_n)
             reuse["new_bars"] += int(r.get("new_bars") or 0)
             reuse["recomputed_rows"] += fresh_n

@@ -193,3 +193,47 @@ def test_a_crashed_backtest_job_leaves_an_honest_progress_file(monkeypatch,
     left = _json.loads(prog.read_text())
     assert left["running"] is False
     assert "inconsistent keys" in left["error"]
+
+
+def test_the_parent_does_not_hold_every_pairs_rows(monkeypatch):
+    """The fold re-reads each pair's rows from disk, so keeping them in memory
+    as well buys nothing and costs everything.
+
+    Aug 26, 2026 7:07pm: the 1h/4h confluence sweep died with MemoryError at
+    1,613 of 1,994 pairs, in grid_from_store -> msw.pair_rows -> read_text.
+    At 105 signals a pair is 24,420 combinations, and `measured` was holding
+    every completed pair's full row list: ~39 million row dicts in the parent
+    while eleven workers were each building their own. The summary a pair
+    contributes is nine numbers; the rows live on disk.
+    """
+    stored = [_row(signal=f"s{i}", profit=float(i)) for i in range(40)]
+    msw.save_pair_rows("APEX", "1h", stored)
+    seen = []
+
+    def fake_run_pair(sym, tf, **kw):
+        # a worker returns its rows; the parent must not keep them
+        res = {"coin": "APEX", "tf": "1h", "rows": [dict(r) for r in stored],
+               "added": 0, "source": "cache", "why": None,
+               "incremental": True, "new_bars": 17, "fee": 0.0004,
+               "liq": 4.0, "rt": 0.002, "bars": 7000, "days": 300}
+        seen.append(res)
+        return res
+
+    monkeypatch.setattr(msw, "run_pair", fake_run_pair)
+    kept = []
+    real_add = None
+
+    p = br.grid_from_store(["APEX_USDT"], ["1h"], embed_limit=0)
+    # the accounting still comes out right
+    assert len(p["rows"]) == 40
+    assert p["reuse"]["new_bars"] == 17
+    assert p["reuse"]["recomputed_rows"] == 40, "an incremental pass reports its rows"
+    assert p["meta"]["APEX|1h"]["bars"] == 7000
+    assert p["meta"]["APEX|1h"]["days"] == 300
+
+    src = open("tradingagents/backtest_report.py", encoding="utf-8").read()
+    i = src.index("measured.append((sym, tf, ")
+    window = src[i:i + 120]
+    assert "_slim_pair(" in window, (
+        "the parent must keep a slim summary, never the pair's rows: " + window)
+    assert '_slim_pair' in src and '"rows_n"' in src

@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 41, "total": 51, "rows": 3161092, "note": "SNX 1h: 9,479 bars, testing 105 rules", "pct": 80.4, "updated": "2026-08-26T21:43:06Z"}
+{"shard": 10, "stage": "testing", "done": 41, "total": 51, "rows": 3174512, "note": "SNX 1h: rule 56/105 (insidebrk)", "pct": 80.4, "updated": "2026-08-26T21:43:51Z"}

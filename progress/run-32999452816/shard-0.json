@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 51, "total": 52, "rows": 3880312, "note": "YB 30m: rule 64/105 (hammer)", "pct": 98.1, "updated": "2026-08-26T22:02:56Z"}
+{"shard": 0, "stage": "testing", "done": 51, "total": 52, "rows": 3890932, "note": "YB 1h: rule 13/105 (pivot)", "pct": 98.1, "updated": "2026-08-26T22:03:42Z"}

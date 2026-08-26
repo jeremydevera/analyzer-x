@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 4, "total": 51, "rows": 237474, "note": "APT 15m: rule 45/105 (zscore20)", "pct": 7.8, "updated": "2026-08-26T18:42:04Z"}
+{"shard": 15, "stage": "testing", "done": 4, "total": 51, "rows": 244314, "note": "APT 15m: rule 84/105 (cf_maobv_l2)", "pct": 7.8, "updated": "2026-08-26T18:42:51Z"}

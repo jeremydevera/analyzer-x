@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 5, "total": 52, "rows": 139280, "note": "ARPA 30m: rule 24/75 (psar)", "pct": 9.6, "updated": "2026-08-26T14:01:56Z"}
+{"shard": 3, "stage": "testing", "done": 5, "total": 52, "rows": 150280, "note": "ARPA 1h: 9,479 bars, testing 75 rules", "pct": 9.6, "updated": "2026-08-26T14:02:48Z"}

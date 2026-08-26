@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 20, "total": 51, "rows": 353846, "note": "GLM 4h: downloading candles", "pct": 39.2, "updated": "2026-08-26T15:48:44Z"}
+{"shard": 5, "stage": "testing", "done": 23, "total": 51, "rows": 363746, "note": "ID 1h: rule 39/105 (fisher)", "pct": 45.1, "updated": "2026-08-26T15:49:29Z"}

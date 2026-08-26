@@ -228,8 +228,10 @@ def test_the_row_query_keeps_its_order_index_even_with_a_trade_floor(store):
 
     src = open("tradingagents/rows_index.py", encoding="utf-8").read()
     q = src[src.index("def query("):src.index("def facets(")]
-    assert "FROM rows{row_where}" in q, "the row select must use the +trades form"
-    assert "FROM rows{where}" in q, "and the count the plain one"
+    # the SQL now names the coin index too, so match the distinctive halves
+    assert "{_indexed_by(coin)}{row_where}" in q, (
+        "the row select must use the +trades form")
+    assert "{_indexed_by(coin)}{where}" in q, "and the count the plain one"
 
 
 def test_the_answer_is_still_right_with_the_hint(store):

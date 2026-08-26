@@ -101,26 +101,28 @@ CREATE TABLE IF NOT EXISTS pairs (
 # out at 25s. Built once at the end instead, which is the standard bulk-load
 # shape. rows_pair is NOT droppable -- delete-by-pair needs it.
 # Dropped during a bulk fill and rebuilt once at the end.
+# Dropped before every bulk fill and rebuilt at its end, so every entry here
+# is paid for again after each fill. Measured one at a time on the operator's
+# 31,159,970-row store: rows_coin 16.7 min, rows_winrate 4.4, rows_tf 4.1,
+# rows_signal 4.3, rows_id 3.5, rows_trades 3.4. The tf and signal indexes are
+# NEVER chosen (a plan that filters on them is written `+tf`/`+signal` so the
+# ORDER BY index can drive), nothing queries by id yet, and the count is
+# LIMIT-bounded without rows_trades — so carrying those four cost about
+# fifteen minutes of rebuild after every fill and bought nothing.
 FILTER_INDEXES = {
-    "rows_id": "CREATE INDEX IF NOT EXISTS rows_id ON rows (id)",
-    # the operator asked to rank by win rate (2026-08-26). Without an
-    # index that is a full sort of every row in the store on each poll.
-    # (winrate, trades, id) — NOT (winrate, id). The screen asks for
-    # "best win rate with at least N trades", and with `trades` absent from
-    # the index SQLite had to fetch every candidate row to test it: on the
-    # operator's 21,858,026-row store even LIMIT 300 did not return inside
-    # ten minutes. In the index it is an index-only filter.
+    # the coin filter names this one explicitly (see _indexed_by): without it
+    # SQLite walked the whole profit index looking for one coin in 974 and the
+    # request did not return in 120 s
+    "rows_coin": "CREATE INDEX IF NOT EXISTS rows_coin ON rows (coin, profit DESC)",
+    # (winrate, trades, id) — trades IN the index, so "best win rate with at
+    # least N trades" is an index-only filter
     "rows_winrate": "CREATE INDEX IF NOT EXISTS rows_winrate "
                     "ON rows (winrate DESC, trades, id)",
-    "rows_trades": "CREATE INDEX IF NOT EXISTS rows_trades "
-                   "ON rows (trades DESC, id)",
-    "rows_coin": "CREATE INDEX IF NOT EXISTS rows_coin ON rows (coin, profit DESC)",
-    "rows_tf": "CREATE INDEX IF NOT EXISTS rows_tf ON rows (tf, profit DESC)",
-    "rows_signal": "CREATE INDEX IF NOT EXISTS rows_signal ON rows (signal, profit DESC)",
 }
-# NEVER dropped: rows_profit serves the default view (top 300 by profit) and
-# rows_pair serves delete-by-pair. Losing the first would make the grid sort
-# millions of rows on every poll during the very window it is slowest.
+# NEVER dropped: rows_profit serves the default view (the page the screen opens
+# on) and rows_pair serves delete-by-pair. Losing the first would make the grid
+# sort tens of millions of rows on every poll during the very window it is
+# slowest.
 KEEP_INDEXES = (
     "CREATE INDEX IF NOT EXISTS rows_pair ON rows (pair)",
     "CREATE INDEX IF NOT EXISTS rows_profit ON rows (profit DESC, id)",
@@ -482,6 +484,7 @@ def sync(paths: Iterable[Path] | None = None, *, budget_s: float = 0.0,
             # keeps saying the list is still filling in.
             for name in FILTER_INDEXES:
                 con.execute(f"DROP INDEX IF EXISTS {name}")
+                forget_indexes()
             con.commit()
         if DEBUG:
             print("[rows-index] writer open", flush=True)
@@ -613,8 +616,10 @@ SORTS = {
 SORT_INDEX = {
     "profit": "rows_profit",
     "winrate": "rows_winrate",
-    "trades": "rows_trades",
-    "dd": None,                  # small: dd has no index, and is not offered
+    # no index, and none promised: these sort within the LIMIT and are never
+    # refused — removing a working feature to protect a plan is a bad trade
+    "trades": None,
+    "dd": None,
 }
 _BUILDING: set = set()
 # rows we are willing to sort with no index behind the order
@@ -640,21 +645,59 @@ class SortNotReady(RuntimeError):
     """This order needs an index that is still being built."""
 
 
-def has_index(name: str) -> bool:
+_INDEX_SEEN: dict = {}
+
+
+def forget_indexes() -> None:
+    """After a drop or a build, the cache must not answer from memory."""
+    _INDEX_SEEN.clear()
+
+
+def has_index(name: str):
+    """True, False, or None when the database could not be read.
+
+    None matters: this returned False while the DB was merely LOCKED, so the
+    coin guard refused a filter in 0.02 s with rows_coin sitting right there
+    (2026-08-26). A caller must not treat "I could not look" as "it is gone".
+    """
+    key = (str(DB_PATH), name)
+    if key in _INDEX_SEEN:
+        return _INDEX_SEEN[key]
+
     def _read():
         with _open(readonly=True) as con:
             return bool(con.execute(
                 "SELECT 1 FROM sqlite_master WHERE type='index' AND name=?",
                 (name,)).fetchone())
-    return bool(_missing_ok(_read, False))
+
+    got = _missing_ok(_read, None)
+    if got is not None:
+        _INDEX_SEEN[key] = bool(got)
+    return got
+
+
+# which index a FILTER column needs. Only `coin` is selective enough to be
+# worth naming (a pair is ~10k rows of 31 million); tf and signal step
+# aside for the ORDER BY instead (see _where).
+FILTER_INDEX_FOR = {"coin": "rows_coin"}
+
+
+def build_filter_index(col: str) -> bool:
+    """Create the index a filter column needs, in a daemon thread."""
+    return _build_index(FILTER_INDEX_FOR.get(col))
 
 
 def build_sort_index(sort: str) -> bool:
     """Create the index an order needs, in a daemon thread. Returns False when
     there is nothing to build or a build is already under way."""
-    name = SORT_INDEX.get(sort)
+    return _build_index(SORT_INDEX.get(sort))
+
+
+def _build_index(name) -> bool:
+    """Create one named index in the background. False when there is
+    nothing to build or a build is already under way."""
     ddl = FILTER_INDEXES.get(name or "")
-    if not name or not ddl or name in _BUILDING or has_index(name):
+    if not name or not ddl or name in _BUILDING or has_index(name) is True:
         return False
     _BUILDING.add(name)
 
@@ -663,6 +706,7 @@ def build_sort_index(sort: str) -> bool:
             with _open() as con:
                 con.execute("PRAGMA busy_timeout=600000")
                 con.execute(ddl)
+            forget_indexes()
             print(f"[rows-index] built {name}", flush=True)
         except Exception as exc:                                  # noqa: BLE001
             print(f"[rows-index] could not build {name}: {exc}", flush=True)
@@ -671,6 +715,51 @@ def build_sort_index(sort: str) -> bool:
 
     threading.Thread(target=_work, name=f"idx-{name}", daemon=True).start()
     return True
+
+
+def _indexed_by(coin) -> str:
+    """`INDEXED BY rows_coin` when a coin is named and that index exists.
+
+    Measured on the rebuilt store (31,159,970 rows, every index present):
+
+        SELECT * FROM rows WHERE coin = 'KAVA' ORDER BY profit DESC LIMIT 500
+        -> SCAN rows USING INDEX rows_profit
+
+    The planner took the index that satisfies the ORDER BY and walked all of it
+    looking for one coin in 974: the request did not return in 120 s and the
+    screen showed HTTP 500. rows_coin is (coin, profit DESC), so naming it
+    turns the same query into a seek that needs no sort. Naming an index that
+    does not exist is a hard SQLite error, hence the has_index check.
+    """
+    return (" INDEXED BY rows_coin"
+            if coin and has_index("rows_coin") is True else "")
+
+
+def query_sql(coin=None, tf=None, signal=None, profitable=False,
+              sort="profit", min_trades=0, desc=None) -> str:
+    """The row SELECT this query would run — for tests and for EXPLAIN."""
+    key = str(sort or "profit")
+    if key not in SORTS:
+        raise ValueError(f"unknown sort {key!r}; use one of {sorted(SORTS)}")
+    down = SORTS[key] if desc is None else bool(desc)
+    where, _ = _where(coin, tf, signal, profitable, min_trades,
+                      order_owns_index=True)
+    return (f"SELECT * FROM rows{_indexed_by(coin)}{where} "
+            f"ORDER BY {key} {'DESC' if down else 'ASC'}, id ASC LIMIT ? OFFSET ?")
+
+
+def explain(**kw) -> list:
+    """The plan for that SELECT, as SQLite describes it."""
+    sql = query_sql(**kw)
+    _, args = _where(kw.get("coin"), kw.get("tf"), kw.get("signal"),
+                     kw.get("profitable", False), kw.get("min_trades", 0),
+                     order_owns_index=True)
+
+    def _read():
+        with _open(readonly=True) as con:
+            return [r[3] for r in con.execute("EXPLAIN QUERY PLAN " + sql,
+                                              (*args, 1, 0))]
+    return list(_missing_ok(_read, []))
 
 
 def query(coin=None, tf=None, signal=None, profitable=False,
@@ -699,13 +788,22 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             f"unknown sort {key!r}; use one of {sorted(SORTS)}")
     down = SORTS[key] if desc is None else bool(desc)
     order = f"{key} {'DESC' if down else 'ASC'}"
+    # a coin filter without its index is the same trap as a sort without
+    # one: refuse fast, say why, build it behind the answer
+    if (coin and _rows_estimate() > UNINDEXED_LIMIT
+            and has_index("rows_coin") is False):
+        build_filter_index("coin")
+        raise SortNotReady(
+            "filtering by coin needs its index (rows_coin); it is being "
+            "built in the background — try again shortly")
     need = SORT_INDEX.get(key)
     # A missing index only matters at size. Sorting 4,000 rows without one is
     # instant; sorting 21,582,584 had not finished in ten minutes (measured
     # 2026-08-26) and became an HTTP 500 under a caption that already said
     # "top 300 by win %". So: small store, sort freely; big store, the order
     # must have its index and is refused with the reason until it does.
-    if need and _rows_estimate() > UNINDEXED_LIMIT and not has_index(need):
+    if (need and _rows_estimate() > UNINDEXED_LIMIT
+            and has_index(need) is False):
         build_sort_index(key)
         raise SortNotReady(
             f"ranking by {key} needs its index ({need}); it is being "
@@ -720,7 +818,8 @@ def query(coin=None, tf=None, signal=None, profitable=False,
                 # "+" — an exact number nobody can wait for is worth less
                 # than an honest bound.
                 total = con.execute(
-                    f"SELECT COUNT(*) FROM (SELECT 1 FROM rows{where} "
+                    f"SELECT COUNT(*) FROM (SELECT 1 FROM rows"
+                    f"{_indexed_by(coin)}{where} "
                     f"LIMIT {COUNT_CAP + 1})", args).fetchone()[0]
             else:
                 # COUNT(*) over every row is a full scan (25ms at 27k rows,
@@ -732,8 +831,8 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             # places between 4-second polls and the row moves out from under
             # the operator's cursor mid-click.
             got = con.execute(
-                f"SELECT * FROM rows{row_where} ORDER BY {order}, id ASC "
-                f"LIMIT ? OFFSET ?",
+                f"SELECT * FROM rows{_indexed_by(coin)}{row_where} "
+                f"ORDER BY {order}, id ASC LIMIT ? OFFSET ?",
                 (*row_args, lim, max(0, int(offset)))).fetchall()
         return total, got
 
@@ -773,8 +872,17 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
     key = str(sort or "profit")
     if key not in SORTS:
         raise ValueError(f"unknown sort {key!r}; use one of {sorted(SORTS)}")
+    # a coin filter without its index is the same trap as a sort without
+    # one: refuse fast, say why, build it behind the answer
+    if (coin and _rows_estimate() > UNINDEXED_LIMIT
+            and has_index("rows_coin") is False):
+        build_filter_index("coin")
+        raise SortNotReady(
+            "filtering by coin needs its index (rows_coin); it is being "
+            "built in the background — try again shortly")
     need = SORT_INDEX.get(key)
-    if need and _rows_estimate() > UNINDEXED_LIMIT and not has_index(need):
+    if (need and _rows_estimate() > UNINDEXED_LIMIT
+            and has_index(need) is False):
         build_sort_index(key)
         raise SortNotReady(
             f"ranking by {key} needs its index ({need}); it is being built in "
@@ -786,7 +894,8 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
     step = max(100, int(batch))
     with _open(readonly=True) as con:
         cur = con.execute(
-            f"SELECT * FROM rows{where} ORDER BY {order}, id ASC", args)
+            f"SELECT * FROM rows{_indexed_by(coin)}{where} "
+            f"ORDER BY {order}, id ASC", args)
         while True:
             got = cur.fetchmany(step)
             if not got:

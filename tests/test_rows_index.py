@@ -463,7 +463,7 @@ def test_nothing_the_ui_polls_scans_the_row_table(store):
     # it must come from the pair summaries instead
     assert 'COALESCE(SUM(n),0) FROM pairs' in q, \
         "the unfiltered total must come from the pair counts"
-    assert q.index("if where:") < q.index("FROM rows{where}"), \
+    assert q.index("if where:") < q.index("{_indexed_by(coin)}{where}"), \
         "the row COUNT must sit behind the filtered branch only"
     # and even there it is BOUNDED: an exact filtered count is a full scan —
     # 30 s on the operator's 21,858,026-row store, and the proxy gave up at 30

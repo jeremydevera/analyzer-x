@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 29, "total": 51, "rows": 2395078, "note": "MOVR 30m: 18,959 bars, testing 105 rules", "pct": 56.9, "updated": "2026-08-26T20:51:25Z"}
+{"shard": 19, "stage": "testing", "done": 29, "total": 51, "rows": 2398598, "note": "MOVR 30m: rule 10/105 (sr_bounce)", "pct": 56.9, "updated": "2026-08-26T20:52:11Z"}

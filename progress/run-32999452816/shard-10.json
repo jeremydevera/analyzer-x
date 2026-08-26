@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 32, "total": 51, "rows": 2463684, "note": "NVDL 15m: rule 1/105 (mom6)", "pct": 62.7, "updated": "2026-08-26T21:00:23Z"}
+{"shard": 10, "stage": "testing", "done": 33, "total": 51, "rows": 2513298, "note": "OPENLEDGER 15m: 33,832 bars, testing 105 rules", "pct": 64.7, "updated": "2026-08-26T21:01:14Z"}

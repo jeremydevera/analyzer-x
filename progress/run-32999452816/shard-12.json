@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 5, "total": 51, "rows": 294704, "note": "ASTR 15m: 34,649 bars, testing 105 rules", "pct": 9.8, "updated": "2026-08-26T18:32:46Z"}
+{"shard": 12, "stage": "testing", "done": 5, "total": 51, "rows": 297704, "note": "ASTR 15m: rule 9/105 (fib382)", "pct": 9.8, "updated": "2026-08-26T18:33:32Z"}

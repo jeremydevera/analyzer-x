@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 36, "total": 52, "rows": 2563096, "note": "PROM 15m: rule 33/105 (heikin)", "pct": 69.2, "updated": "2026-08-26T20:43:02Z"}
+{"shard": 0, "stage": "testing", "done": 36, "total": 52, "rows": 2568156, "note": "PROM 15m: rule 57/105 (orderblock)", "pct": 69.2, "updated": "2026-08-26T20:43:48Z"}

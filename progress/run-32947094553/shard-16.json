@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 47, "total": 51, "rows": 1192446, "note": "VELO 30m: rule 9/75 (fib382)", "pct": 92.2, "updated": "2026-08-26T09:16:13Z"}
+{"shard": 16, "stage": "testing", "done": 47, "total": 51, "rows": 1200366, "note": "VELO 30m: rule 45/75 (zscore20)", "pct": 92.2, "updated": "2026-08-26T09:16:58Z"}

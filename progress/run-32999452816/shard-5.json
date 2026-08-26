@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 49, "total": 51, "rows": 3918946, "note": "WLD 15m: rule 45/105 (zscore20)", "pct": 96.1, "updated": "2026-08-26T22:11:36Z"}
+{"shard": 5, "stage": "testing", "done": 49, "total": 51, "rows": 3925786, "note": "WLD 15m: rule 84/105 (cf_maobv_l2)", "pct": 96.1, "updated": "2026-08-26T22:12:23Z"}

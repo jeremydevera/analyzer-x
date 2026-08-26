@@ -105,8 +105,13 @@ FILTER_INDEXES = {
     "rows_id": "CREATE INDEX IF NOT EXISTS rows_id ON rows (id)",
     # the operator asked to rank by win rate (2026-08-26). Without an
     # index that is a full sort of every row in the store on each poll.
+    # (winrate, trades, id) — NOT (winrate, id). The screen asks for
+    # "best win rate with at least N trades", and with `trades` absent from
+    # the index SQLite had to fetch every candidate row to test it: on the
+    # operator's 21,858,026-row store even LIMIT 300 did not return inside
+    # ten minutes. In the index it is an index-only filter.
     "rows_winrate": "CREATE INDEX IF NOT EXISTS rows_winrate "
-                    "ON rows (winrate DESC, id)",
+                    "ON rows (winrate DESC, trades, id)",
     "rows_trades": "CREATE INDEX IF NOT EXISTS rows_trades "
                    "ON rows (trades DESC, id)",
     "rows_coin": "CREATE INDEX IF NOT EXISTS rows_coin ON rows (coin, profit DESC)",
@@ -531,7 +536,8 @@ def syncing() -> bool:
 
 
 # ------------------------------------------------------------------ reading
-def _where(coin=None, tf=None, signal=None, profitable=False) -> tuple:
+def _where(coin=None, tf=None, signal=None, profitable=False,
+           min_trades=0) -> tuple:
     sql, args = [], []
     for col, val in (("coin", coin), ("tf", tf), ("signal", signal)):
         if val:
@@ -539,6 +545,13 @@ def _where(coin=None, tf=None, signal=None, profitable=False) -> tuple:
             args.append(val)
     if profitable:
         sql.append("profit > 0")
+    # A COUNT, in the unit the trades column prints (CLAUDE.md rule G).
+    # Ranking the operator's 21,858,026-row store by win rate returned
+    # `CHF 30m soldiers 100.00% over 1 trade` at the top: a rate with no
+    # denominator is not a result.
+    if min_trades and int(min_trades) > 0:
+        sql.append("trades >= ?")
+        args.append(int(min_trades))
     return (" WHERE " + " AND ".join(sql) if sql else ""), args
 
 
@@ -567,6 +580,8 @@ SORT_INDEX = {
 _BUILDING: set = set()
 # rows we are willing to sort with no index behind the order
 UNINDEXED_LIMIT = 200_000
+# how far a FILTERED count will go before it answers "N+"
+COUNT_CAP = 5_000
 
 
 def _rows_estimate() -> int:
@@ -616,7 +631,7 @@ def build_sort_index(sort: str) -> bool:
 
 
 def query(coin=None, tf=None, signal=None, profitable=False,
-          limit=500, offset=0, sort="profit") -> dict:
+          limit=500, offset=0, sort="profit", min_trades=0) -> dict:
     """Rows sorted by `sort` (SORTS), profit first by default.
 
     STRICTLY READ-ONLY. It creates nothing and it indexes nothing.
@@ -628,7 +643,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     index catches up on its own timer (`start_keeping_up`), and `status()`
     reports how far behind it is so the screen can say so.
     """
-    where, args = _where(coin, tf, signal, profitable)
+    where, args = _where(coin, tf, signal, profitable, min_trades)
     lim = max(0, min(int(limit), 2000))
     key = str(sort or "profit")
     if key not in SORTS:
@@ -650,8 +665,14 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     def _read():
         with _open(readonly=True) as con:
             if where:
-                total = con.execute(f"SELECT COUNT(*) FROM rows{where}",
-                                    args).fetchone()[0]
+                # COUNT(*) with a filter is a full scan of tens of millions
+                # of rows (30 s on the operator's store, and the proxy gave
+                # up at 30). Stop at COUNT_CAP and let the caller print the
+                # "+" — an exact number nobody can wait for is worth less
+                # than an honest bound.
+                total = con.execute(
+                    f"SELECT COUNT(*) FROM (SELECT 1 FROM rows{where} "
+                    f"LIMIT {COUNT_CAP + 1})", args).fetchone()[0]
             else:
                 # COUNT(*) over every row is a full scan (25ms at 27k rows,
                 # and this table is heading for tens of millions). The pair
@@ -668,6 +689,8 @@ def query(coin=None, tf=None, signal=None, profitable=False,
         return total, got
 
     total, got = _missing_ok(_read, (0, []))
+    capped_count = bool(where) and total > COUNT_CAP
+    total = min(total, COUNT_CAP) if capped_count else total
     out = []
     for r in got:
         # r.keys(), NOT `in r`: a sqlite3.Row iterates its VALUES
@@ -679,7 +702,11 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             d["monthly"] = {}
         out.append(d)
     # the caller captions the table with this, so it is never a literal
-    return {"rows": out, "total": total, "sort": key}
+    return {"rows": out, "total": total, "sort": key,
+            # the caption prints "5,000+ match" when the count was capped,
+            # never a bare 5,000 that reads as exact
+            "total_capped": capped_count,
+            "min_trades": int(min_trades or 0)}
 
 
 def facets() -> dict:

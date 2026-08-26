@@ -280,16 +280,24 @@ export const api = {
     offset?: number;
     /** what to rank by — the server whitelists it (rows_index.SORTS) */
     sort?: StrategySort;
+    /** a win rate with no denominator is not a result: 100% over 1 trade
+     *  sat at the top of the live store until this existed */
+    minTrades?: number;
   }) => {
     const p = new URLSearchParams();
     if (q.coin) p.set("coin", q.coin);
     if (q.sort) p.set("sort", q.sort);
+    if (q.minTrades) p.set("min_trades", String(q.minTrades));
     if (q.tf) p.set("tf", q.tf);
     if (q.signal) p.set("signal", q.signal);
     if (q.profitable) p.set("profitable", "true");
     if (q.limit) p.set("limit", String(q.limit));
     if (q.offset) p.set("offset", String(q.offset));
-    return get<{ rows: StrategyRow[]; total: number; index?: IndexStatus }>(
+    return get<{ rows: StrategyRow[]; total: number; index?: IndexStatus;
+      /** the order the server actually used, so the caption is derived */
+      sort?: StrategySort; min_trades?: number;
+      /** a filtered count stops at COUNT_CAP: print "N+" */
+      total_capped?: boolean }>(
       `/api/strategies?${p.toString()}`,
     );
   },

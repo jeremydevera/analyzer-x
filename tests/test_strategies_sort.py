@@ -174,3 +174,39 @@ def test_the_api_says_503_while_the_index_builds(store, monkeypatch):
         api.strategies(sort="winrate")
     assert exc.value.status_code == 503
     assert "being built" in str(exc.value.detail)
+
+
+def test_min_trades_keeps_a_one_trade_100_percent_row_off_the_top(store, monkeypatch):
+    """Live on the operator's store, ranking by win rate returned
+    `BRL 15m rsidiv 100.00% over 6 trades` and `CHF 30m soldiers 100% over 1`.
+    A rate needs its denominator to mean anything, so the panel can demand a
+    trade count — in the unit the trades column prints (CLAUDE.md rule G)."""
+    import json
+
+    extra = [_row("BTC", "1h", "fluke", 3.0, 100.0, trades=2),
+             _row("BTC", "1h", "thin", 1.0, 95.0, trades=20)]
+    (ri.msw.ROWDIR / "BTC-1h.json").write_text(json.dumps(store + extra))
+    _settled(force=True)
+
+    loose = ri.query(sort="winrate", min_trades=0)
+    assert loose["rows"][0]["signal"] == "fluke", "unfiltered, the 2-trade row wins"
+
+    got = ri.query(sort="winrate", min_trades=100)
+    assert [r["signal"] for r in got["rows"]] == ["fade15", "rsi14", "trend50", "mom6"]
+    assert all(r["trades"] >= 100 for r in got["rows"])
+    assert got["min_trades"] == 100, "the payload says what it demanded"
+    assert got["total"] == 4, "and the count is of what MATCHES, not the store"
+
+
+def test_min_trades_is_a_count_not_a_percentage(store):
+    """It filters the column the trades header prints: 110 means 110 trades."""
+    assert ri.query(sort="winrate", min_trades=111)["total"] == 3
+    assert ri.query(sort="winrate", min_trades=121)["total"] == 0
+
+
+def test_the_api_passes_min_trades(store):
+    from tradingagents import api
+
+    got = api.strategies(sort="winrate", min_trades=115)
+    assert got["min_trades"] == 115
+    assert all(r["trades"] >= 115 for r in got["rows"])

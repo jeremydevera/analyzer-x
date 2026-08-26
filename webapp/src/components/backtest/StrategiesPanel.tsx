@@ -29,8 +29,14 @@ export default function StrategiesPanel() {
   const [signal, setSignal] = useState("");
   const [profitable, setProfitable] = useState(false);
   const [sort, setSort] = useState<StrategySort>("profit");
+  // ranking by win % on the real store put "100.00% over 1 trade" first,
+  // so picking win % asks for a denominator (editable, and said out loud)
+  const [minTrades, setMinTrades] = useState(0);
   const [rows, setRows] = useState<StrategyRow[]>([]);
   const [total, setTotal] = useState(0);
+  // a filtered count stops at rows_index.COUNT_CAP, so the caption says
+  // "5,000+ match" rather than a bare 5,000 that reads as exact
+  const [capped, setCapped] = useState(false);
   const [open, setOpen] = useState<StrategyRow | null>(null);
   const [trades, setTrades] = useState<TradesResult | null>(null);
   const [busy, setBusy] = useState(false);
@@ -42,10 +48,10 @@ export default function StrategiesPanel() {
   }, []);
 
   const load = useCallback(() => {
-    api.strategies({ coin: coin || undefined, tf: tf || undefined, signal: signal || undefined, profitable, sort, limit: 300 })
-      .then((d) => { setRows(d.rows); setTotal(d.total); setIdx(d.index ?? null); setErr(""); })
+    api.strategies({ coin: coin || undefined, tf: tf || undefined, signal: signal || undefined, profitable, sort, minTrades, limit: 300 })
+      .then((d) => { setRows(d.rows); setTotal(d.total); setCapped(!!d.total_capped); setIdx(d.index ?? null); setErr(""); })
       .catch((e) => setErr(String(e)));
-  }, [coin, tf, signal, profitable, sort]);
+  }, [coin, tf, signal, profitable, sort, minTrades]);
 
   useEffect(load, [load]);
   useEffect(() => {
@@ -80,7 +86,7 @@ export default function StrategiesPanel() {
         <div>
           <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Stored strategies</h3>
           <p className="text-theme-xs text-gray-500 dark:text-gray-400">
-            {total.toLocaleString()} {[coin, tf, signal, profitable ? "profitable only" : ""].some(Boolean) ? "match" : "stored strategies"}
+            {total.toLocaleString()}{capped ? "+" : ""} {[coin, tf, signal, profitable ? "profitable only" : ""].some(Boolean) || minTrades > 0 ? "match" : "stored strategies"}
             {rows.length < total ? ` · showing top ${rows.length} by ${STRATEGY_SORTS[sort]}` : ` · sorted by ${STRATEGY_SORTS[sort]}`}
             {/* A partial index must NOT be captioned as the whole store: the
                 sweep measures pairs faster than they are indexed, and "648,181
@@ -95,6 +101,7 @@ export default function StrategiesPanel() {
             ) : null}
             {[coin, tf, signal].filter(Boolean).length ? ` · filters: ${[coin, tf, signal].filter(Boolean).join(" · ")}` : ""}
             {profitable ? " · profitable only" : " · losers included"}
+            {minTrades > 0 ? ` · at least ${minTrades} trades` : ""}
           </p>
         </div>
         <div className="ml-auto flex flex-wrap gap-2">
@@ -113,12 +120,24 @@ export default function StrategiesPanel() {
           {/* the operator asked to rank by win rate (2026-08-26): profit alone
               cannot find a 70%-win configuration in millions of rows */}
           <select className={sel} value={sort}
-                  onChange={(e) => setSort(e.target.value as StrategySort)}
+                  onChange={(e) => {
+                    const next = e.target.value as StrategySort;
+                    setSort(next);
+                    // a rate needs a denominator; a profit does not
+                    if (next === "winrate" && minTrades === 0) setMinTrades(100);
+                  }}
                   aria-label="Sort by">
             {Object.entries(STRATEGY_SORTS).map(([k, label]) => (
               <option key={k} value={k}>sort: {label}</option>
             ))}
           </select>
+          <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300">
+            min trades
+            <input type="number" min={0} step={10} value={minTrades}
+                   onChange={(e) => setMinTrades(Math.max(0, Number(e.target.value) || 0))}
+                   aria-label="Minimum trades"
+                   className="h-10 w-20 rounded-lg border border-gray-300 bg-transparent px-2 text-theme-sm text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" />
+          </label>
           <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300">
             <input type="checkbox" checked={profitable} onChange={(e) => setProfitable(e.target.checked)} className="h-4 w-4 accent-brand-500" />
             profitable only

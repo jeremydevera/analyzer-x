@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 1, "total": 51, "rows": 0, "note": "AAVE 1h: downloading candles", "pct": 2.0, "updated": "2026-08-26T15:29:46Z"}
+{"shard": 14, "stage": "testing", "done": 3, "total": 51, "rows": 60000, "note": "AMCSTOCK 1h: rule 54/105 (fractal5)", "pct": 5.9, "updated": "2026-08-26T15:30:31Z"}

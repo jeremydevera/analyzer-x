@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 30, "total": 51, "rows": 2238084, "note": "MSFTSTOCK 15m: 33,531 bars, testing 105 rules", "pct": 58.8, "updated": "2026-08-26T20:25:38Z"}
+{"shard": 4, "stage": "testing", "done": 30, "total": 51, "rows": 2245104, "note": "MSFTSTOCK 15m: rule 33/105 (heikin)", "pct": 58.8, "updated": "2026-08-26T20:26:23Z"}

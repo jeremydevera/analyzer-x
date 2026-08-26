@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 12, "total": 51, "rows": 596806, "note": "COLLECT 1h: rule 33/75 (heikin)", "pct": 23.5, "updated": "2026-08-26T14:22:18Z"}
+{"shard": 13, "stage": "testing", "done": 13, "total": 51, "rows": 628904, "note": "CSPR 1h: downloading candles", "pct": 25.5, "updated": "2026-08-26T14:23:08Z"}

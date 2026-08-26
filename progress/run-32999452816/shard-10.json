@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 42, "total": 51, "rows": 3316060, "note": "SPX 1d: 394 bars, testing 105 rules", "pct": 82.4, "updated": "2026-08-26T21:50:16Z"}
+{"shard": 10, "stage": "testing", "done": 44, "total": 51, "rows": 3377384, "note": "TEMSTOCK 15m: rule 78/105 (cf_mom_l2)", "pct": 86.3, "updated": "2026-08-26T21:51:02Z"}

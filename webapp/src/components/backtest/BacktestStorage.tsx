@@ -6,18 +6,35 @@
  * re-run an hour ago can still be measured through yesterday, and showing only
  * one of the two hides that.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { BtStorage, backtestApi, fmtBytes } from "@/lib/api";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 
 const HEADS = ["coin", "tf", "rows", "combos", "size", "measured through", "last run"];
 
+const PER_PAGE = 25;
+
 export default function BacktestStorage() {
   const [d, setD] = useState<BtStorage | null>(null);
+  // 4,233 pairs in one table is a page nobody scrolls (asked 2026-08-26)
+  const [page, setPage] = useState(1);
+  const [q, setQ] = useState("");
   const load = useCallback(() => {
     backtestApi.storage().then(setD).catch(() => {});
   }, []);
   useEffect(() => { load(); const t = setInterval(load, 30_000); return () => clearInterval(t); }, [load]);
+
+  const shown = useMemo(() => {
+    const rows = d?.rows ?? [];
+    const needle = q.trim().toUpperCase();
+    return needle
+      ? rows.filter((r) => r.coin.toUpperCase().includes(needle)
+                        || r.tf.toUpperCase().includes(needle))
+      : rows;
+  }, [d, q]);
+  const pages = Math.max(1, Math.ceil(shown.length / PER_PAGE));
+  const at = Math.min(page, pages);
+  const slice = shown.slice((at - 1) * PER_PAGE, at * PER_PAGE);
 
   if (!d) return null;
   return (
@@ -41,7 +58,28 @@ export default function BacktestStorage() {
           </p>
         )}
       </div>
-      <div className="mt-3 w-full overflow-x-auto">
+      <div className="mt-3 flex flex-wrap items-center gap-2 px-5">
+        <input value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }}
+               placeholder="find a coin…" aria-label="Find a coin"
+               className="h-9 w-40 rounded-lg border border-gray-300 bg-transparent px-3 text-theme-xs text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" />
+        {/* the page, not the store: {d.pairs} pairs is said above */}
+        <span className="text-theme-xs text-gray-500 dark:text-gray-400">
+          page {at} of {pages} · rows {shown.length ? (at - 1) * PER_PAGE + 1 : 0}–
+          {Math.min(at * PER_PAGE, shown.length)} of {shown.length.toLocaleString()}
+          {q ? ` matching "${q}"` : " pair(s)"}
+        </span>
+        <div className="ml-auto flex items-center gap-1">
+          <button onClick={() => setPage(1)} disabled={at <= 1}
+                  className="h-8 rounded-lg border border-gray-300 px-2 text-theme-xs text-gray-600 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300">first</button>
+          <button onClick={() => setPage(at - 1)} disabled={at <= 1}
+                  className="h-8 rounded-lg border border-gray-300 px-2 text-theme-xs text-gray-600 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300">prev</button>
+          <button onClick={() => setPage(at + 1)} disabled={at >= pages}
+                  className="h-8 rounded-lg border border-gray-300 px-2 text-theme-xs text-gray-600 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300">next</button>
+          <button onClick={() => setPage(pages)} disabled={at >= pages}
+                  className="h-8 rounded-lg border border-gray-300 px-2 text-theme-xs text-gray-600 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300">last</button>
+        </div>
+      </div>
+      <div className="mt-2 w-full overflow-x-auto">
         <Table>
           <TableHeader className="border-y border-gray-100 dark:border-white/[0.05]">
             <TableRow>
@@ -51,7 +89,7 @@ export default function BacktestStorage() {
             </TableRow>
           </TableHeader>
           <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-            {d.rows.map((r) => (
+            {slice.map((r) => (
               <TableRow key={`${r.coin}-${r.tf}`}>
                 <TableCell className="px-4 py-2 text-theme-xs font-medium text-gray-800 dark:text-white/90">{r.coin}</TableCell>
                 <TableCell className="px-4 py-2 text-theme-xs text-gray-500 dark:text-gray-400">{r.tf}</TableCell>

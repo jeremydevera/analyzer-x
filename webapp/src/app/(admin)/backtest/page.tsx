@@ -15,9 +15,11 @@ export default function BacktestPage() {
   return (
     <div className="flex flex-col gap-5">
       <JobsPanel />
+      {/* Stored strategies FIRST: the operator reads the measured results
+          before the store's bookkeeping (asked 2026-08-26). */}
+      <StrategiesPanel />
       {/* how current the measured store is */}
       <BacktestStorage />
-      <StrategiesPanel />
       <HistoryPanel />
       {/* LAST, and laid out like Deployment history above it — the operator
           reads the two as the same kind of record */}

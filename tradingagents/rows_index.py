@@ -103,6 +103,12 @@ CREATE TABLE IF NOT EXISTS pairs (
 # Dropped during a bulk fill and rebuilt once at the end.
 FILTER_INDEXES = {
     "rows_id": "CREATE INDEX IF NOT EXISTS rows_id ON rows (id)",
+    # the operator asked to rank by win rate (2026-08-26). Without an
+    # index that is a full sort of every row in the store on each poll.
+    "rows_winrate": "CREATE INDEX IF NOT EXISTS rows_winrate "
+                    "ON rows (winrate DESC, id)",
+    "rows_trades": "CREATE INDEX IF NOT EXISTS rows_trades "
+                   "ON rows (trades DESC, id)",
     "rows_coin": "CREATE INDEX IF NOT EXISTS rows_coin ON rows (coin, profit DESC)",
     "rows_tf": "CREATE INDEX IF NOT EXISTS rows_tf ON rows (tf, profit DESC)",
     "rows_signal": "CREATE INDEX IF NOT EXISTS rows_signal ON rows (signal, profit DESC)",
@@ -536,9 +542,82 @@ def _where(coin=None, tf=None, signal=None, profitable=False) -> tuple:
     return (" WHERE " + " AND ".join(sql) if sql else ""), args
 
 
+# What the screen may rank by. A whitelist, because the name arrives in a URL:
+# `?sort=profit; DROP TABLE rows` must be refused, never interpolated. Each one
+# is a real column with an index behind it (see FILTER_INDEXES / KEEP_INDEXES).
+SORTS = {
+    "profit": "profit DESC",
+    "winrate": "winrate DESC",
+    "trades": "trades DESC",
+    "dd": "dd ASC",              # smallest worst-dip first: least painful
+}
+
+# Which index each order needs. Measured 2026-08-26 on the operator's own
+# 21,582,584-row store: `ORDER BY winrate DESC` with no index had not returned
+# after TEN MINUTES, and through the UI it was an HTTP 500 under a caption that
+# already said "showing top 300 by win %" — a false label on unsorted rows.
+# So an order whose index is missing is REFUSED, with the reason, and the index
+# is built in the background rather than the screen hanging on it.
+SORT_INDEX = {
+    "profit": "rows_profit",
+    "winrate": "rows_winrate",
+    "trades": "rows_trades",
+    "dd": None,                  # small: dd has no index, and is not offered
+}
+_BUILDING: set = set()
+# rows we are willing to sort with no index behind the order
+UNINDEXED_LIMIT = 200_000
+
+
+def _rows_estimate() -> int:
+    """How many rows the store holds, from the pair summaries (no scan)."""
+    def _read():
+        with _open(readonly=True) as con:
+            return int(con.execute(
+                "SELECT COALESCE(SUM(n),0) FROM pairs").fetchone()[0])
+    return int(_missing_ok(_read, 0))
+
+
+class SortNotReady(RuntimeError):
+    """This order needs an index that is still being built."""
+
+
+def has_index(name: str) -> bool:
+    def _read():
+        with _open(readonly=True) as con:
+            return bool(con.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='index' AND name=?",
+                (name,)).fetchone())
+    return bool(_missing_ok(_read, False))
+
+
+def build_sort_index(sort: str) -> bool:
+    """Create the index an order needs, in a daemon thread. Returns False when
+    there is nothing to build or a build is already under way."""
+    name = SORT_INDEX.get(sort)
+    ddl = FILTER_INDEXES.get(name or "")
+    if not name or not ddl or name in _BUILDING or has_index(name):
+        return False
+    _BUILDING.add(name)
+
+    def _work() -> None:
+        try:
+            with _open() as con:
+                con.execute("PRAGMA busy_timeout=600000")
+                con.execute(ddl)
+            print(f"[rows-index] built {name}", flush=True)
+        except Exception as exc:                                  # noqa: BLE001
+            print(f"[rows-index] could not build {name}: {exc}", flush=True)
+        finally:
+            _BUILDING.discard(name)
+
+    threading.Thread(target=_work, name=f"idx-{name}", daemon=True).start()
+    return True
+
+
 def query(coin=None, tf=None, signal=None, profitable=False,
-          limit=500, offset=0) -> dict:
-    """Rows sorted by profit, highest first — the grid's default order.
+          limit=500, offset=0, sort="profit") -> dict:
+    """Rows sorted by `sort` (SORTS), profit first by default.
 
     STRICTLY READ-ONLY. It creates nothing and it indexes nothing.
 
@@ -551,6 +630,22 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     """
     where, args = _where(coin, tf, signal, profitable)
     lim = max(0, min(int(limit), 2000))
+    key = str(sort or "profit")
+    if key not in SORTS:
+        raise ValueError(
+            f"unknown sort {key!r}; use one of {sorted(SORTS)}")
+    order = SORTS[key]
+    need = SORT_INDEX.get(key)
+    # A missing index only matters at size. Sorting 4,000 rows without one is
+    # instant; sorting 21,582,584 had not finished in ten minutes (measured
+    # 2026-08-26) and became an HTTP 500 under a caption that already said
+    # "top 300 by win %". So: small store, sort freely; big store, the order
+    # must have its index and is refused with the reason until it does.
+    if need and _rows_estimate() > UNINDEXED_LIMIT and not has_index(need):
+        build_sort_index(key)
+        raise SortNotReady(
+            f"ranking by {key} needs its index ({need}); it is being "
+            f"built in the background — try again shortly")
 
     def _read():
         with _open(readonly=True) as con:
@@ -567,7 +662,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             # places between 4-second polls and the row moves out from under
             # the operator's cursor mid-click.
             got = con.execute(
-                f"SELECT * FROM rows{where} ORDER BY profit DESC, id ASC "
+                f"SELECT * FROM rows{where} ORDER BY {order}, id ASC "
                 f"LIMIT ? OFFSET ?",
                 (*args, lim, max(0, int(offset)))).fetchall()
         return total, got
@@ -583,7 +678,8 @@ def query(coin=None, tf=None, signal=None, profitable=False,
         except ValueError:
             d["monthly"] = {}
         out.append(d)
-    return {"rows": out, "total": total}
+    # the caller captions the table with this, so it is never a literal
+    return {"rows": out, "total": total, "sort": key}
 
 
 def facets() -> dict:

@@ -13,6 +13,8 @@ import re
 import subprocess
 import time
 
+from tradingagents import portable
+
 _CACHE: dict = {"at": 0.0, "value": None}
 CACHE_SECONDS = 4.0          # `top` costs ~300ms; the UI polls far faster
 
@@ -72,13 +74,30 @@ def snapshot(force: bool = False) -> dict:
     now = time.time()
     if not force and _CACHE["value"] and now - _CACHE["at"] < CACHE_SECONDS:
         return _CACHE["value"]
-    load1, load5, load15 = os.getloadavg()
     n = cpu_count()
+    # A load average is a unix idea. On Windows os.getloadavg() does not exist
+    # and this route answered HTTP 500 on every page load of the operator's PC,
+    # so there the same question is asked as a CPU BUSY PERCENTAGE and the tile
+    # says which kind of number it is showing (label-must-match-data).
+    kind = "loadavg"
+    try:
+        if portable.WINDOWS:
+            kind = "cpu-percent"
+            per_core = min(1.0, portable.cpu_busy_percent() / 100.0)
+            load1 = load5 = load15 = round(per_core * n, 2)
+        else:
+            load1, load5, load15 = portable.load_average()
+            per_core = load1 / n
+    except (OSError, AttributeError, ValueError):
+        # a dead counter must not take every tile on the page with it
+        load1 = load5 = load15 = 0.0
+        per_core = 0.0
     got = {"cores": n,
            "load1": round(load1, 2), "load5": round(load5, 2),
            "load15": round(load15, 2),
            # load per core: 1.0 means every core has a runnable process
-           "load_per_core": round(load1 / n, 2),
+           "load_per_core": round(per_core, 2),
+           "load_kind": kind,
            "thermal": _thermal(), **_top_sample()}
     _CACHE.update(at=now, value=got)
     return got

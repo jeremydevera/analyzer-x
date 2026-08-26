@@ -201,7 +201,8 @@ def health() -> dict:
 @app.get("/api/strategies")
 def strategies(coin: str | None = None, tf: str | None = None,
                signal: str | None = None, profitable: bool = False,
-               limit: int = 500, offset: int = 0) -> dict:
+               limit: int = 500, offset: int = 0,
+               sort: str = "profit") -> dict:
     """Every stored strategy, filtered. Rows carry their stable id.
 
     Served from the SQLite index, NOT by re-reading the store. This route used
@@ -214,8 +215,19 @@ def strategies(coin: str | None = None, tf: str | None = None,
 
     # no sync kick here: a timer thread keeps the index current (see the
     # startup hook), so a page open does not decide whether data appears.
-    got = ri.query(coin=coin, tf=tf, signal=signal, profitable=profitable,
-                   limit=limit, offset=offset)
+    try:
+        got = ri.query(coin=coin, tf=tf, signal=signal,
+                       profitable=profitable, limit=limit,
+                       offset=offset, sort=sort)
+    except ri.SortNotReady as exc:
+        # 503: the request is fine, the store is not ready for it yet.
+        # The screen shows this sentence rather than hanging on a sort
+        # of 21 million rows (2026-08-26).
+        raise HTTPException(503, str(exc)) from exc
+    except ValueError as exc:
+        # 400, not 500: the request is wrong, and the message names
+        # what IS allowed rather than making the caller guess
+        raise HTTPException(400, str(exc)) from exc
     got["index"] = ri.status()             # so the UI can say "still indexing"
     return got
 

@@ -6,7 +6,8 @@
  * (the label-must-match-data rule, ported).
  */
 import { useCallback, useEffect, useState } from "react";
-import { api, fmtMoney, StrategyRow, TradesResult, type IndexStatus } from "@/lib/api";
+import { api, fmtMoney, STRATEGY_SORTS, StrategyRow, TradesResult,
+  type IndexStatus, type StrategySort } from "@/lib/api";
 import Badge from "@/components/ui/badge/Badge";
 import {
   Table,
@@ -27,6 +28,7 @@ export default function StrategiesPanel() {
   const [tf, setTf] = useState("");
   const [signal, setSignal] = useState("");
   const [profitable, setProfitable] = useState(false);
+  const [sort, setSort] = useState<StrategySort>("profit");
   const [rows, setRows] = useState<StrategyRow[]>([]);
   const [total, setTotal] = useState(0);
   const [open, setOpen] = useState<StrategyRow | null>(null);
@@ -40,10 +42,10 @@ export default function StrategiesPanel() {
   }, []);
 
   const load = useCallback(() => {
-    api.strategies({ coin: coin || undefined, tf: tf || undefined, signal: signal || undefined, profitable, limit: 300 })
+    api.strategies({ coin: coin || undefined, tf: tf || undefined, signal: signal || undefined, profitable, sort, limit: 300 })
       .then((d) => { setRows(d.rows); setTotal(d.total); setIdx(d.index ?? null); setErr(""); })
       .catch((e) => setErr(String(e)));
-  }, [coin, tf, signal, profitable]);
+  }, [coin, tf, signal, profitable, sort]);
 
   useEffect(load, [load]);
   useEffect(() => {
@@ -79,7 +81,7 @@ export default function StrategiesPanel() {
           <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Stored strategies</h3>
           <p className="text-theme-xs text-gray-500 dark:text-gray-400">
             {total.toLocaleString()} {[coin, tf, signal, profitable ? "profitable only" : ""].some(Boolean) ? "match" : "stored strategies"}
-            {rows.length < total ? ` · showing top ${rows.length} by profit` : ""}
+            {rows.length < total ? ` · showing top ${rows.length} by ${STRATEGY_SORTS[sort]}` : ` · sorted by ${STRATEGY_SORTS[sort]}`}
             {/* A partial index must NOT be captioned as the whole store: the
                 sweep measures pairs faster than they are indexed, and "648,181
                 stored strategies" while 40 pairs are still queued is a false
@@ -108,6 +110,15 @@ export default function StrategiesPanel() {
             <option value="">all signals</option>
             {facets.signals.map((s) => <option key={s}>{s}</option>)}
           </select>
+          {/* the operator asked to rank by win rate (2026-08-26): profit alone
+              cannot find a 70%-win configuration in millions of rows */}
+          <select className={sel} value={sort}
+                  onChange={(e) => setSort(e.target.value as StrategySort)}
+                  aria-label="Sort by">
+            {Object.entries(STRATEGY_SORTS).map(([k, label]) => (
+              <option key={k} value={k}>sort: {label}</option>
+            ))}
+          </select>
           <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300">
             <input type="checkbox" checked={profitable} onChange={(e) => setProfitable(e.target.checked)} className="h-4 w-4 accent-brand-500" />
             profitable only
@@ -120,8 +131,12 @@ export default function StrategiesPanel() {
           <TableHeader className="sticky top-0 border-b border-gray-100 bg-white dark:border-white/[0.05] dark:bg-gray-900">
             <TableRow>
               {["id", "coin", "tf", "signal", "th%", "SL%", "TP%", "sizing", "lev", "margin $", "PROFIT $", "win %", "trades", "W", "L", "green", "dip $"].map((h) => (
-                <TableCell key={h} isHeader className="px-3 py-3 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400">
-                  {h}
+                <TableCell key={h} isHeader
+                  className={`px-3 py-3 text-theme-xs font-medium text-start ${
+                    h === STRATEGY_SORTS[sort]
+                      ? "text-brand-600 dark:text-brand-400"
+                      : "text-gray-500 dark:text-gray-400"}`}>
+                  {h}{h === STRATEGY_SORTS[sort] ? " ↓" : ""}
                 </TableCell>
               ))}
             </TableRow>

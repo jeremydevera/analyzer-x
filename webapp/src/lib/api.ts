@@ -222,6 +222,17 @@ export interface SysLoad {
   };
 }
 
+/** The orders the stored-strategy list can be ranked by. Mirrors
+ *  rows_index.SORTS; the label is what the caption prints, so the caption
+ *  can never disagree with the order (label-must-match-data). */
+export const STRATEGY_SORTS = {
+  profit: "profit $",
+  winrate: "win %",
+  trades: "trades",
+  dd: "smallest dip $",
+} as const;
+export type StrategySort = keyof typeof STRATEGY_SORTS;
+
 export const api = {
   system: () => get<SysLoad>("/api/system"),
   contracts: () => get<{ rows: string[]; why: string }>("/api/contracts"),
@@ -267,9 +278,12 @@ export const api = {
     profitable?: boolean;
     limit?: number;
     offset?: number;
+    /** what to rank by — the server whitelists it (rows_index.SORTS) */
+    sort?: StrategySort;
   }) => {
     const p = new URLSearchParams();
     if (q.coin) p.set("coin", q.coin);
+    if (q.sort) p.set("sort", q.sort);
     if (q.tf) p.set("tf", q.tf);
     if (q.signal) p.set("signal", q.signal);
     if (q.profitable) p.set("profitable", "true");

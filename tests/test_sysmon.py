@@ -47,7 +47,12 @@ def test_a_top_that_fails_returns_nothing_rather_than_zeros(monkeypatch):
 
 
 def test_load_per_core_is_load_over_cores(monkeypatch):
-    monkeypatch.setattr(sysmon.os, "getloadavg", lambda: (16.0, 8.0, 4.0))
+    # through the portable seam: Windows has no getloadavg at all, and
+    # patching os.getloadavg there tested a call that is never made
+    from tradingagents import portable
+
+    monkeypatch.setattr(portable, "WINDOWS", False)
+    monkeypatch.setattr(portable, "load_average", lambda: (16.0, 8.0, 4.0))
     monkeypatch.setattr(sysmon, "cpu_count", lambda: 8)
     monkeypatch.setattr(sysmon, "_top_sample", lambda: {"busy": 99.0})
     monkeypatch.setattr(sysmon, "_thermal", lambda: {"available": False})

@@ -256,7 +256,8 @@ def test_a_second_database_still_gets_its_schema(tmp_path, monkeypatch):
     for name in ("a.db", "b.db"):
         monkeypatch.setattr(ri, "DB_PATH", tmp_path / name)
         ri.ensure()
-        assert ri.query(limit=1) == {"rows": [], "total": 0}, name
+        got2 = ri.query(limit=1)
+        assert got2["rows"] == [] and got2["total"] == 0, name
 
 
 def test_reading_never_writes(store, monkeypatch):
@@ -280,7 +281,9 @@ def test_an_empty_index_answers_empty_rather_than_indexing(store):
     """Nothing indexed yet is not an error and not a stall — it is zero rows
     plus a status line saying how far behind it is."""
     got = ri.query(limit=10)
-    assert got == {"rows": [], "total": 0}
+    # the payload also carries `sort` (the caption is derived from it), so
+    # assert what this test is about rather than the whole dict
+    assert got["rows"] == [] and got["total"] == 0
     st = ri.status()
     assert st["pairs_indexed"] == 0 and st["behind"] == 6
 

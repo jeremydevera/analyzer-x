@@ -148,6 +148,40 @@ def child_pids(parent: int) -> list[int]:
 
 
 # ----------------------------------------------------------------------- disk
+def load_average() -> tuple[float, float, float]:
+    """The unix 1/5/15-minute load average. POSIX only — see cpu_busy_percent."""
+    return os.getloadavg()
+
+
+def cpu_busy_percent(sample_s: float = 0.0) -> float:
+    """How busy the CPU is, 0-100. Windows has no load average, so this is the
+    equivalent question: `os.getloadavg()` raised AttributeError on the
+    operator's PC and /api/system answered HTTP 500 on every page load.
+
+    Read from the OS counter (typeperf is slow; WMI's LoadPercentage is one
+    call and needs nothing installed). Raises OSError when the counter cannot
+    be read, so the caller can decide what to show.
+    """
+    if not WINDOWS:
+        return min(100.0, 100.0 * load_average()[0] / max(1, (os.cpu_count() or 1)))
+    import subprocess
+
+    try:
+        out = subprocess.run(
+            ["wmic", "cpu", "get", "loadpercentage", "/value"],
+            capture_output=True, text=True, timeout=8,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise OSError(f"could not read the CPU counter: {exc}") from exc
+    for line in out.splitlines():
+        if "=" in line and line.split("=")[0].strip().lower() == "loadpercentage":
+            try:
+                return float(line.split("=", 1)[1].strip())
+            except ValueError:
+                break
+    raise OSError("the CPU counter returned nothing usable")
+
+
 def disk_free_mb(path) -> int:
     """Free space for an unprivileged writer at `path` (or its nearest existing
     parent), in MB — the same figure statvfs's f_bavail * f_frsize gave."""

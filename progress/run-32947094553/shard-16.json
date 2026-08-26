@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 40, "total": 51, "rows": 1013552, "note": "SMCISTOCK 15m: rule 6/75 (sweep30)", "pct": 78.4, "updated": "2026-08-26T09:09:10Z"}
+{"shard": 16, "stage": "testing", "done": 40, "total": 51, "rows": 1025672, "note": "SMCISTOCK 30m: rule 2/75 (mom15)", "pct": 78.4, "updated": "2026-08-26T09:09:57Z"}

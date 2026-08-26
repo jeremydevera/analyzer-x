@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 28, "total": 51, "rows": 2033462, "note": "MANTA 15m: rule 21/105 (cci20)", "pct": 54.9, "updated": "2026-08-26T20:10:37Z"}
+{"shard": 4, "stage": "testing", "done": 28, "total": 51, "rows": 2038742, "note": "MANTA 15m: rule 45/105 (zscore20)", "pct": 54.9, "updated": "2026-08-26T20:11:23Z"}

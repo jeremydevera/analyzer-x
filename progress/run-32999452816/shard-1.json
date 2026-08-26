@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 23, "total": 52, "rows": 1654484, "note": "ICNT 15m: rule 49/105 (vwaprev)", "pct": 44.2, "updated": "2026-08-26T20:15:20Z"}
+{"shard": 1, "stage": "testing", "done": 23, "total": 52, "rows": 1661144, "note": "ICNT 15m: rule 87/105 (cf_triple_l2)", "pct": 44.2, "updated": "2026-08-26T20:16:06Z"}

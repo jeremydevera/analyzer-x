@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 12, "total": 51, "rows": 576798, "note": "COLLECT 30m: rule 74/75 (volclimax)", "pct": 23.5, "updated": "2026-08-26T08:47:26Z"}
+{"shard": 13, "stage": "testing", "done": 12, "total": 51, "rows": 592838, "note": "COLLECT 4h: 1,440 bars, testing 75 rules", "pct": 23.5, "updated": "2026-08-26T08:48:15Z"}

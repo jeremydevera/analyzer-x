@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 5, "total": 51, "rows": 77020, "note": "ASMLSTOCK 15m: 26,398 bars, testing 75 rules", "pct": 9.8, "updated": "2026-08-26T14:03:35Z"}
+{"shard": 7, "stage": "testing", "done": 5, "total": 51, "rows": 84380, "note": "ASMLSTOCK 15m: rule 40/75 (crsi)", "pct": 9.8, "updated": "2026-08-26T14:04:21Z"}

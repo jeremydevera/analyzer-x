@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 43, "total": 52, "rows": 3537394, "note": "STO 30m: 18,959 bars, testing 105 rules", "pct": 82.7, "updated": "2026-08-26T22:03:22Z"}
+{"shard": 3, "stage": "testing", "done": 43, "total": 52, "rows": 3541594, "note": "STO 30m: rule 15/105 (bbbreak)", "pct": 82.7, "updated": "2026-08-26T22:04:07Z"}

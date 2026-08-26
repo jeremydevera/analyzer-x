@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 12, "total": 51, "rows": 388210, "note": "COINBASE 30m: rule 1/75 (mom6)", "pct": 23.5, "updated": "2026-08-26T08:39:59Z"}
+{"shard": 12, "stage": "testing", "done": 12, "total": 51, "rows": 397810, "note": "COINBASE 30m: rule 45/75 (zscore20)", "pct": 23.5, "updated": "2026-08-26T08:40:44Z"}

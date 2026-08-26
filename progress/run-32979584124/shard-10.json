@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 1, "total": 51, "rows": 0, "note": "AAOISTOCK 1h: downloading candles", "pct": 2.0, "updated": "2026-08-26T15:22:28Z"}
+{"shard": 10, "stage": "testing", "done": 2, "total": 51, "rows": 63822, "note": "AGLD 1h: rule 99/105 (cf_ttm_l2)", "pct": 3.9, "updated": "2026-08-26T15:23:14Z"}

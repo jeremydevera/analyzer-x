@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 3, "total": 51, "rows": 290826, "note": "ALPINE 1d: 394 bars, testing 105 rules", "pct": 5.9, "updated": "2026-08-26T18:42:29Z"}
+{"shard": 10, "stage": "testing", "done": 4, "total": 51, "rows": 304170, "note": "API3 15m: rule 2/105 (mom15)", "pct": 7.8, "updated": "2026-08-26T18:43:25Z"}

@@ -518,10 +518,12 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
     if len(df) < br.min_bars(tf):
         return {"coin": coin, "tf": tf, "rows": [], "added": added,
                 "source": source, "why": f"only {len(df)} bars"}
-    try:
-        fund = fx.funding_history(symbol)
-    except Exception:
-        fund = []
+    # NOT wrapped in `except Exception: fund = []`. That turned an unreadable
+    # funding history into a backtest with ZERO funding charged -- the same lie
+    # funding_history used to tell by returning half its pages. A read that
+    # fails now reaches the pool, which discards this pair and redoes it
+    # (PAIR_RETRIES); a contract with no settlements still returns [].
+    fund = fx.funding_history(symbol)
 
     try:
         fee = at.taker_fee(symbol, fx=fx)
@@ -951,10 +953,9 @@ def compute_combos(symbol: str, tf: str, combos: list, *,
         return []
     fee = at.taker_fee(symbol, fx=fx)
     liq = fx.liquidation_move_pct(symbol, at.LEVERAGE)
-    try:
-        fund = fx.funding_history(symbol)
-    except Exception:
-        fund = []
+    # same rule as run_pair: an unreadable funding history is an error, never
+    # silently zero funding (2026-08-26)
+    fund = fx.funding_history(symbol)
     try:
         book = fx.book_cost(symbol, base_margin * at.LEVERAGE)
         rt = br.round_trip_cost(fee, book)
@@ -1095,10 +1096,9 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
         liq = fx.liquidation_move_pct(symbol, at.LEVERAGE)
     except Exception:
         liq = None
-    try:
-        fund = fx.funding_history(symbol)
-    except Exception:
-        fund = []
+    # same rule as run_pair: an unreadable funding history is an error, never
+    # silently zero funding (2026-08-26)
+    fund = fx.funding_history(symbol)
     hi = [float(x) for x in df["High"]]
     lo = [float(x) for x in df["Low"]]
     cl = [float(x) for x in df["Close"]]

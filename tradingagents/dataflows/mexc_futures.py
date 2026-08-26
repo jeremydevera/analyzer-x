@@ -1248,25 +1248,41 @@ def funding_history(symbol: str, max_pages: int = 20) -> list:
         url = (f"{BASE}/api/v1/contract/funding_rate/history?"
                + urllib.parse.urlencode({"symbol": symbol, "page_num": pg,
                                          "page_size": 100}))
-        req = urllib.request.Request(url, headers={"User-Agent": _UA})
+        # _get_public, never a bare urlopen: this was the last keyless fetch in
+        # the module without the retry, and on 2026-08-26 it died with
+        # IncompleteRead(8984 bytes read) mid-study.
         try:
-            with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
-                payload = json.loads(resp.read())
-        except (OSError, json.JSONDecodeError) as exc:
-            logger.warning("funding history page %d failed for %s: %s",
-                           pg, symbol, exc)
-            break
+            payload = _get_public(url)
+        except Exception as exc:
+            # RAISE, never `break`. Breaking returned the pages already read,
+            # so an unreadable page silently shortened the history -- and
+            # funding is a mandatory cost, so a short history makes every trade
+            # in the missing window cheaper than it really was, in the
+            # direction that flatters the strategy, with no column to say so.
+            raise MexcFuturesError(
+                f"funding history for {symbol} is incomplete: page {pg} of "
+                f"{'?' if pg == 1 else total} failed ({exc})") from exc
         data = payload.get("data") or {}
         rows = data.get("resultList") or []
-        for r in rows:
-            out.append({"settle_ms": int(r["settleTime"]),
-                        "rate": float(r["fundingRate"]),
-                        "cycle_h": int(r.get("collectCycle") or 8)})
+        try:
+            for r in rows:
+                out.append({"settle_ms": int(r["settleTime"]),
+                            "rate": float(r["fundingRate"]),
+                            "cycle_h": int(r.get("collectCycle") or 8)})
+        except (TypeError, ValueError, KeyError) as exc:
+            raise MexcFuturesError(
+                f"funding history for {symbol}: page {pg} is malformed "
+                f"({exc})") from exc
         total = int(data.get("totalPage") or 1)
         if pg >= total or not rows:
             break
         pg += 1
         time.sleep(0.15)
+    else:
+        # ran out of page budget with pages still unread: also short
+        raise MexcFuturesError(
+            f"funding history for {symbol} is incomplete: stopped at the "
+            f"{max_pages}-page budget")
     out.sort(key=lambda d: d["settle_ms"])
     return out
 

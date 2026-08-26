@@ -506,11 +506,25 @@ _TRANSIENT_MARKS = ("transport failure", "urlopen", "temporary failure",
 
 
 def is_transient(exc: BaseException) -> bool:
-    """Would trying again, later, plausibly work?"""
-    if isinstance(exc, _TRANSIENT_TYPES):
-        return True
-    msg = str(exc).lower()
-    return any(m in msg for m in _TRANSIENT_MARKS)
+    """Would trying again, later, plausibly work?
+
+    The CAUSE CHAIN counts. On 2026-08-26 funding_history began wrapping a cut
+    connection in its own MexcFuturesError ("funding history is incomplete:
+    page 2 failed (IncompleteRead...)"). That is a RuntimeError carrying no
+    transient marker, so the supervisor read a dropped wire as a broken config
+    and would have refused to retry the pair. A wrapped transient failure is
+    still transient.
+    """
+    seen = 0
+    while exc is not None and seen < 8:
+        if isinstance(exc, _TRANSIENT_TYPES):
+            return True
+        msg = str(exc).lower()
+        if any(m in msg for m in _TRANSIENT_MARKS):
+            return True
+        exc = exc.__cause__ or exc.__context__
+        seen += 1
+    return False
 
 
 def _run_backtest(spec: dict) -> None:

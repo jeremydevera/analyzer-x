@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 17, "total": 51, "rows": 513382, "note": "EXPESTOCK 15m: downloading candles", "pct": 33.3, "updated": "2026-08-26T08:48:33Z"}
+{"shard": 16, "stage": "testing", "done": 19, "total": 51, "rows": 516190, "note": "GESTOCK 15m: 24,850 bars, testing 75 rules", "pct": 37.3, "updated": "2026-08-26T08:49:22Z"}

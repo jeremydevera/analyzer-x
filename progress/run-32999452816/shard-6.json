@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 8, "total": 51, "rows": 648152, "note": "BIGTIME 15m: rule 105/105 (cf_eqhl_l2)", "pct": 15.7, "updated": "2026-08-26T19:10:43Z"}
+{"shard": 6, "stage": "testing", "done": 8, "total": 51, "rows": 650352, "note": "BIGTIME 30m: rule 4/105 (trend50)", "pct": 15.7, "updated": "2026-08-26T19:11:29Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 25, "total": 51, "rows": 798516, "note": "KAT 15m: 17,030 bars, testing 75 rules", "pct": 49.0, "updated": "2026-08-26T14:33:12Z"}
+{"shard": 6, "stage": "testing", "done": 25, "total": 51, "rows": 809516, "note": "KAT 15m: rule 49/75 (vwaprev)", "pct": 49.0, "updated": "2026-08-26T14:33:57Z"}

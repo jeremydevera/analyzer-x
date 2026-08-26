@@ -30,9 +30,10 @@ const sel =
  *  the header text, the caption and the query can never disagree — the
  *  "win % ↓" marker used to be decoration: clicking it did nothing
  *  (operator, 2026-08-26). */
-// rows a page. 300 was the whole list; at 100 the pager is the way through
-// the store rather than a peek at the top of it.
-const PER_PAGE = 100;
+// rows a page. The operator asked to see the whole store, so the page size
+// is theirs to choose and LOAD MORE keeps appending; MAX_LIMIT (5,000) is
+// the server's ceiling per request, and the CSV has none at all.
+const PAGE_SIZES = [100, 500, 1000, 5000];
 
 const HEAD_SORT: Record<string, StrategySort | undefined> =
   Object.fromEntries(Object.entries(STRATEGY_SORTS)
@@ -56,6 +57,11 @@ export default function StrategiesPanel() {
   // 21,858,026 rows behind a 300-row window with no way to reach row 301:
   // "why is my stored strategy few ... where are those?" (2026-08-26)
   const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(500);
+  // LOAD MORE appends instead of replacing, so the table becomes one long
+  // list rather than a window that forgets what came before
+  const [extra, setExtra] = useState<StrategyRow[]>([]);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [rows, setRows] = useState<StrategyRow[]>([]);
   const [total, setTotal] = useState(0);
   // a filtered count stops at rows_index.COUNT_CAP, so the caption says
@@ -74,7 +80,7 @@ export default function StrategiesPanel() {
   const load = useCallback(() => {
     api.strategies({ coin: coin || undefined, tf: tf || undefined, signal: signal || undefined,
                      profitable, sort, minTrades, desc,
-                     limit: PER_PAGE, offset: (page - 1) * PER_PAGE })
+                     limit: perPage, offset: (page - 1) * perPage })
       .then((d) => { setRows(d.rows); setTotal(d.total); setCapped(!!d.total_capped); setIdx(d.index ?? null); setErr(""); setWaiting(""); })
       .catch((e) => {
         if (e instanceof ApiError && e.status === 503) {
@@ -82,13 +88,13 @@ export default function StrategiesPanel() {
           setErr("");
         } else { setErr(String(e)); setWaiting(""); }
       });
-  }, [coin, tf, signal, profitable, sort, minTrades, desc, page]);
+  }, [coin, tf, signal, profitable, sort, minTrades, desc, page, perPage]);
 
   useEffect(load, [load]);
   // a new filter or order is a new list: page 1, or the operator lands on
   // page 40 of something they have not seen the top of
-  useEffect(() => { setPage(1); },
-    [coin, tf, signal, profitable, sort, minTrades, desc]);
+  useEffect(() => { setPage(1); setExtra([]); },
+    [coin, tf, signal, profitable, sort, minTrades, desc, perPage]);
   useEffect(() => {
     if (!waiting) return;
     const t = setTimeout(load, 15000);
@@ -99,6 +105,20 @@ export default function StrategiesPanel() {
     const t = setTimeout(load, 5000);
     return () => clearTimeout(t);
   }, [idx, load]);
+
+  const shown = rows.concat(extra);
+
+  const loadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const d = await api.strategies({
+        coin: coin || undefined, tf: tf || undefined, signal: signal || undefined,
+        profitable, sort, minTrades, desc,
+        limit: perPage, offset: (page - 1) * perPage + shown.length,
+      });
+      setExtra((e) => e.concat(d.rows));
+    } catch (e) { setErr(String(e)); } finally { setLoadingMore(false); }
+  };
 
   const view = async (r: StrategyRow) => {
     setOpen(r);
@@ -127,7 +147,7 @@ export default function StrategiesPanel() {
           <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Stored strategies</h3>
           <p className="text-theme-xs text-gray-500 dark:text-gray-400">
             {total.toLocaleString()}{capped ? "+" : ""} {[coin, tf, signal, profitable ? "profitable only" : ""].some(Boolean) || minTrades > 0 ? "match" : "stored strategies"}
-            {` · rows ${rows.length ? (page - 1) * PER_PAGE + 1 : 0}–${(page - 1) * PER_PAGE + rows.length}`}
+            {` · rows ${shown.length ? (page - 1) * perPage + 1 : 0}–${(page - 1) * perPage + shown.length} on screen`}
             {` · ${desc ? "highest" : "lowest"} ${STRATEGY_SORTS[sort]} first`}
             {/* A partial index must NOT be captioned as the whole store: the
                 sweep measures pairs faster than they are indexed, and "648,181
@@ -199,9 +219,14 @@ export default function StrategiesPanel() {
         <span className="text-theme-xs text-gray-500 dark:text-gray-400">
           one row = one coin × timeframe × signal × threshold × SL/TP × sizing
         </span>
-        <div className="ml-auto flex items-center gap-1">
+        <div className="ml-auto flex flex-wrap items-center gap-1">
+          <select className={`${pageBtn} mr-1`} value={perPage}
+                  onChange={(e) => setPerPage(Number(e.target.value))}
+                  aria-label="Rows per page">
+            {PAGE_SIZES.map((n) => <option key={n} value={n}>{n.toLocaleString()} a page</option>)}
+          </select>
           <span className="mr-2 text-theme-xs text-gray-500 dark:text-gray-400">
-            page {page} of {Math.max(1, Math.ceil(total / PER_PAGE)).toLocaleString()}
+            page {page} of {Math.max(1, Math.ceil(total / perPage)).toLocaleString()}
             {capped ? "+" : ""}
           </span>
           <button onClick={() => setPage(1)} disabled={page <= 1}
@@ -209,11 +234,21 @@ export default function StrategiesPanel() {
           <button onClick={() => setPage(page - 1)} disabled={page <= 1}
                   className={pageBtn}>prev</button>
           <button onClick={() => setPage(page + 1)}
-                  disabled={rows.length < PER_PAGE}
+                  disabled={rows.length < perPage}
                   className={pageBtn}>next</button>
-          <button onClick={() => setPage(Math.max(1, Math.ceil(total / PER_PAGE)))}
-                  disabled={capped || page >= Math.ceil(total / PER_PAGE)}
+          <button onClick={() => setPage(Math.max(1, Math.ceil(total / perPage)))}
+                  disabled={capped || page >= Math.ceil(total / perPage)}
                   className={pageBtn}>last</button>
+          <button onClick={loadMore} disabled={loadingMore}
+                  className={`${pageBtn} ml-1`}>
+            {loadingMore ? "loading…" : `+${perPage.toLocaleString()} more`}
+          </button>
+          {/* the only honest "all": a file, streamed, with every column */}
+          <a className={`${pageBtn} ml-1 inline-flex items-center`}
+             href={api.strategiesCsvUrl({ coin: coin || undefined, tf: tf || undefined,
+               signal: signal || undefined, profitable, sort, minTrades, desc })}>
+            download all ({total.toLocaleString()}{capped ? "+" : ""}) CSV
+          </a>
         </div>
       </div>
       {err && <p className="px-5 pt-2 text-theme-sm text-error-500">{err}</p>}
@@ -223,7 +258,9 @@ export default function StrategiesPanel() {
           {" "}order; this list refreshes by itself when the index lands.
         </p>
       )}
-      <div className="max-h-[480px] max-w-full overflow-auto p-2">
+      {/* taller than 480px: with 5,000 rows on screen the old box showed
+          about nine of them at a time */}
+      <div className="max-h-[75vh] max-w-full overflow-auto p-2">
         <Table>
           <TableHeader className="sticky top-0 border-b border-gray-100 bg-white dark:border-white/[0.05] dark:bg-gray-900">
             <TableRow>
@@ -249,7 +286,7 @@ export default function StrategiesPanel() {
             </TableRow>
           </TableHeader>
           <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-            {rows.map((r) => (
+            {shown.map((r) => (
               <TableRow key={r.id} onClick={() => view(r)}
                 className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.03] ${open?.id === r.id ? "bg-brand-50 dark:bg-brand-500/10" : ""}`}>
                 <TableCell className="px-3 py-2 font-mono text-theme-xs text-brand-600 dark:text-brand-400">#{r.id}</TableCell>

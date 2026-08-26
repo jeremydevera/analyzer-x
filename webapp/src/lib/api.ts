@@ -296,6 +296,22 @@ export const api = {
       "/api/health",
     ),
 
+  /** EVERY matching row as a CSV download — the store is far larger than
+   *  any table: 21,858,026 rows when the operator asked for "all". */
+  strategiesCsvUrl: (q: {
+    coin?: string; tf?: string; signal?: string; profitable?: boolean;
+    sort?: StrategySort; minTrades?: number; desc?: boolean;
+  }) => {
+    const p = new URLSearchParams();
+    if (q.coin) p.set("coin", q.coin);
+    if (q.tf) p.set("tf", q.tf);
+    if (q.signal) p.set("signal", q.signal);
+    if (q.profitable) p.set("profitable", "true");
+    if (q.sort) p.set("sort", q.sort);
+    if (q.minTrades) p.set("min_trades", String(q.minTrades));
+    if (q.desc !== undefined) p.set("desc", String(q.desc));
+    return `${API_BASE}/api/strategies.csv?${p.toString()}`;
+  },
   strategies: (q: {
     coin?: string;
     tf?: string;

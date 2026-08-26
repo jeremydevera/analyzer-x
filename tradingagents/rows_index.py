@@ -540,42 +540,52 @@ def _where(coin=None, tf=None, signal=None, profitable=False,
            min_trades=0, *, order_owns_index=False) -> tuple:
     """The WHERE clause and its arguments.
 
-    `order_owns_index=True` writes the trade floor as `+trades >= ?`. The
-    `+` tells SQLite not to use an index for that term, which is the whole
-    point: the row query wants to STREAM the ORDER BY from its own index
-    (rows_winrate covers `trades`, so the filter is tested from the index)
-    and stop after LIMIT rows.
+    `order_owns_index=True` is for the ROW query, which has an ORDER BY and a
+    LIMIT: every filter except a named COIN is written `+col = ?`, the `+`
+    telling SQLite not to use an index for that term. Measured on the
+    operator's 21,858,026-row store, all indexes present:
 
-    Without it, the moment rows_trades existed the planner chose
-        SEARCH rows USING INDEX rows_trades (trades>?)
-        USE TEMP B-TREE FOR ORDER BY
-    — a sort of every matching row out of 21,858,026 — and the request
-    that had answered in 0.08 s stopped returning at all: the browser got
-    HTTP 500 from the proxy's 30 s timeout and the operator reported that
-    clicking `win % ↓` did nothing (2026-08-26). The COUNT wants the
-    opposite (rows_trades makes it a 0.00 s covering scan), so it asks for
-    the plain form.
+      WHERE tf='1h' AND coin='KAVA' AND trades>=100 ORDER BY winrate DESC
+        planner's choice  SEARCH rows USING INDEX rows_tf (tf=?)
+                          USE TEMP B-TREE FOR ORDER BY     -> minutes
+        with +tf, +trades SEARCH rows USING INDEX rows_coin (coin=?)  -> ms
+
+      WHERE trades >= 100 ORDER BY winrate DESC
+        planner's choice  SEARCH rows USING INDEX rows_trades (trades>?)
+                          USE TEMP B-TREE FOR ORDER BY     -> did not return
+        with +trades      SCAN rows USING INDEX rows_winrate -> 0.03 s
+
+    So: a coin is the one filter selective enough to drive the plan (~18k rows
+    for a pair); tf is 12% of the store and `trades >= 100` most of it, and
+    letting either drive means sorting millions of rows to return 300. The
+    COUNT has no ORDER BY, wants the most selective index it can get, and asks
+    for the plain form.
     """
     sql, args = [], []
-    for col, val in (("coin", coin), ("tf", tf), ("signal", signal)):
+    # A named coin outranks tf and signal in BOTH statements: the count chose
+    # `SEARCH rows USING INDEX rows_tf (tf=?)` — 2.5M rows for 1h — and hung,
+    # while rows_coin answers the same question in milliseconds (~18k rows for
+    # a pair). `trades` steps aside only for the row query, which has the
+    # ORDER BY to serve; the count wants rows_trades.
+    step_aside = "+" if (order_owns_index or coin) else ""
+    for col, val, keeps_index in (("coin", coin, True), ("tf", tf, False),
+                                  ("signal", signal, False)):
         if val:
-            sql.append(f"{col} = ?")
+            sql.append(f"{'' if keeps_index else step_aside}{col} = ?")
             args.append(val)
     if profitable:
         sql.append("profit > 0")
     # A COUNT, in the unit the trades column prints (CLAUDE.md rule G).
-    # Ranking the operator's 21,858,026-row store by win rate returned
-    # `CHF 30m soldiers 100.00% over 1 trade` at the top: a rate with no
-    # denominator is not a result.
+    # Ranking the operator's store by win rate returned `CHF 30m soldiers
+    # 100.00% over 1 trade` at the top: a rate with no denominator is not a
+    # result.
     if min_trades and int(min_trades) > 0:
-        sql.append(("+trades >= ?" if order_owns_index else "trades >= ?"))
+        floor_hint = "+" if (order_owns_index and not coin) else ""
+        sql.append(f"{floor_hint}trades >= ?")
         args.append(int(min_trades))
     return (" WHERE " + " AND ".join(sql) if sql else ""), args
 
 
-# What the screen may rank by. A whitelist, because the name arrives in a URL:
-# `?sort=profit; DROP TABLE rows` must be refused, never interpolated. Each one
-# is a real column with an index behind it (see FILTER_INDEXES / KEEP_INDEXES).
 # column -> the direction worth seeing first. Best profit and best win rate
 # are the TOP of the column; the smallest worst-dip is the BOTTOM. A second
 # click on the header flips it (`desc=`), which is what the operator meant
@@ -604,6 +614,10 @@ _BUILDING: set = set()
 UNINDEXED_LIMIT = 200_000
 # how far a FILTERED count will go before it answers "N+"
 COUNT_CAP = 5_000
+# rows one request may return. 2,000 was the cap while the screen showed a
+# fixed 300; the operator asked to see the whole store, so a page can now be
+# 5,000 and `iter_rows` streams the rest with no ceiling at all.
+MAX_LIMIT = 5_000
 
 
 def _rows_estimate() -> int:
@@ -671,7 +685,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     # trades index instead (see _where)
     row_where, row_args = _where(coin, tf, signal, profitable, min_trades,
                                  order_owns_index=True)
-    lim = max(0, min(int(limit), 2000))
+    lim = max(0, min(int(limit), MAX_LIMIT))
     key = str(sort or "profit")
     if key not in SORTS:
         raise ValueError(
@@ -735,6 +749,49 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             # never a bare 5,000 that reads as exact
             "total_capped": capped_count,
             "min_trades": int(min_trades or 0)}
+
+
+def iter_rows(coin=None, tf=None, signal=None, profitable=False,
+              sort="profit", min_trades=0, desc=None, batch=5_000):
+    """Every matching row, in the asked order, a batch at a time.
+
+    No limit and no list: 21,858,026 rows will not fit in a browser table or in
+    this process's memory, and the operator asked to see ALL of them ("i can
+    still only see like about 100 rows give me all", 2026-08-26). So the export
+    streams — the reader gets a cursor, not an array.
+
+    Yields dicts shaped exactly like `query()["rows"]`, so the CSV and the
+    screen can never show different fields for the same row (kit item F).
+    """
+    key = str(sort or "profit")
+    if key not in SORTS:
+        raise ValueError(f"unknown sort {key!r}; use one of {sorted(SORTS)}")
+    need = SORT_INDEX.get(key)
+    if need and _rows_estimate() > UNINDEXED_LIMIT and not has_index(need):
+        build_sort_index(key)
+        raise SortNotReady(
+            f"ranking by {key} needs its index ({need}); it is being built in "
+            f"the background — try again shortly")
+    down = SORTS[key] if desc is None else bool(desc)
+    order = f"{key} {'DESC' if down else 'ASC'}"
+    where, args = _where(coin, tf, signal, profitable, min_trades,
+                         order_owns_index=True)
+    step = max(100, int(batch))
+    with _open(readonly=True) as con:
+        cur = con.execute(
+            f"SELECT * FROM rows{where} ORDER BY {order}, id ASC", args)
+        while True:
+            got = cur.fetchmany(step)
+            if not got:
+                return
+            for r in got:
+                d = {k: r[k] for k in r.keys() if k != "pair"}   # noqa: SIM118
+                d["stop_reachable"] = bool(d.get("stop_reachable"))
+                try:
+                    d["monthly"] = json.loads(d.get("monthly") or "{}")
+                except ValueError:
+                    d["monthly"] = {}
+                yield d
 
 
 def facets() -> dict:

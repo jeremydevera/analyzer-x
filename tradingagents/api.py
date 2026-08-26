@@ -234,6 +234,87 @@ def strategies(coin: str | None = None, tf: str | None = None,
     return got
 
 
+def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
+                         sort="profit", min_trades=0, desc=None):
+    """The CSV, one chunk at a time — a module-level generator on purpose.
+
+    Inside the route it was only reachable through StreamingResponse's ASYNC
+    iterator, and draining that in a test needs an event loop, which on Windows
+    opens a socket and trips the no-network guard. A plain generator is
+    testable, and the route just wraps it.
+
+    Same filters, same order and the same fields as the table (kit item F),
+    plus the month figures as one JSON column.
+    """
+    import csv
+    import io as _io
+    import json as _json
+
+    from tradingagents import rows_index as ri
+
+    cols = list(ri.COLS)
+    buf = _io.StringIO()
+    w = csv.writer(buf, lineterminator="\n")
+
+    def flush() -> str:
+        out = buf.getvalue()
+        buf.seek(0)
+        buf.truncate(0)
+        return out
+
+    w.writerow(cols + ["monthly_json"])
+    yield flush()
+    for r in ri.iter_rows(coin=coin, tf=tf, signal=signal,
+                          profitable=profitable, sort=sort,
+                          min_trades=min_trades, desc=desc):
+        w.writerow([r.get(c) for c in cols]
+                   + [_json.dumps(r.get("monthly") or {}, separators=(",", ":"))])
+        yield flush()
+
+
+def strategies_csv_name(coin=None, tf=None, signal=None, min_trades=0,
+                        sort="profit") -> str:
+    """A filename that says which slice of the store is in the file."""
+    bits = [b for b in (coin, tf, signal,
+                        f"min{min_trades}" if min_trades else "", sort) if b]
+    return "strategies-" + "-".join(str(b) for b in bits) + ".csv"
+
+
+@app.get("/api/strategies.csv")
+def strategies_csv(coin: str | None = None, tf: str | None = None,
+                   signal: str | None = None, profitable: bool = False,
+                   sort: str = "profit", min_trades: int = 0,
+                   desc: bool | None = None):
+    """EVERY matching row as CSV — no limit, streamed.
+
+    The screen can hold a few thousand rows; the store holds 21,858,026. The
+    operator asked for all of them ("give me all", 2026-08-26), so this writes
+    all of them to a file instead of pretending a page is the whole list.
+    """
+    from fastapi.responses import StreamingResponse
+
+    from tradingagents import rows_index as ri
+
+    # fail BEFORE the stream starts: an error mid-download is a truncated file
+    # that looks complete
+    try:
+        next(ri.iter_rows(coin=coin, tf=tf, signal=signal,
+                          profitable=profitable, sort=sort,
+                          min_trades=min_trades, desc=desc), None)
+    except ri.SortNotReady as exc:
+        raise HTTPException(503, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+    name = strategies_csv_name(coin, tf, signal, min_trades, sort)
+    return StreamingResponse(
+        strategies_csv_lines(coin=coin, tf=tf, signal=signal,
+                            profitable=profitable, sort=sort,
+                            min_trades=min_trades, desc=desc),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
 @app.get("/api/strategies/facets")
 def strategy_facets() -> dict:
     """Distinct coins/timeframes/signals, for the filter dropdowns."""

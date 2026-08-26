@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 1, "total": 51, "rows": 0, "note": "AAPU 1h: downloading candles", "pct": 2.0, "updated": "2026-08-26T15:47:54Z"}
+{"shard": 12, "stage": "testing", "done": 5, "total": 51, "rows": 79974, "note": "ASTR 1h: 2,159 bars, testing 105 rules", "pct": 9.8, "updated": "2026-08-26T15:48:46Z"}

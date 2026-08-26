@@ -298,6 +298,11 @@ export const api = {
 
   /** EVERY matching row as a CSV download — the store is far larger than
    *  any table: 21,858,026 rows when the operator asked for "all". */
+  /** index every measured pair now — the trickle is one pair a cycle
+   *  while a sweep runs, which is hours when it falls behind */
+  strategiesReindex: () =>
+    post<{ started: boolean; behind: number; why: string }>(
+      "/api/strategies/reindex", {}),
   strategiesCsvUrl: (q: {
     coin?: string; tf?: string; signal?: string; profitable?: boolean;
     sort?: StrategySort; minTrades?: number; desc?: boolean;

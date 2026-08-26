@@ -228,7 +228,14 @@ def ensure() -> None:
                               "DROP TABLE IF EXISTS pairs;")
             print("[rows-index] pre-version index found: rebuilding", flush=True)
         con.executescript(_SCHEMA)
-        for ddl in READ_INDEXES:
+        # KEEP_INDEXES only. FILTER_INDEXES are dropped by every bulk fill and
+        # rebuilt at its end, so creating them here is work thrown away: a
+        # forced catch-up on the operator's 8.9 GB store sat here for thirteen
+        # minutes (py-spy: ensure -> con.execute(ddl)) building five indexes
+        # that sync() dropped seconds later, and rows_winrate alone measured
+        # 912 s. Every API startup paid the same toll. A missing sort index is
+        # built on demand instead — see build_sort_index / SortNotReady.
+        for ddl in KEEP_INDEXES:
             con.execute(ddl)
         con.execute("INSERT OR REPLACE INTO meta (k,v) VALUES ('schema',?)",
                     (str(SCHEMA_VERSION),))

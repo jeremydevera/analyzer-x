@@ -315,6 +315,30 @@ def strategies_csv(coin: str | None = None, tf: str | None = None,
         headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
 
+@app.post("/api/strategies/reindex")
+def strategies_reindex() -> dict:
+    """Index every measured pair NOW, instead of one per cycle.
+
+    While a sweep runs the indexer trickles a single pair a cycle so it cannot
+    steal the machine the operator is waiting on. On 2026-08-26 that left the
+    list with 711 of the 973 coins that had rows — 1,094 pairs behind, about
+    three hours of trickling — and nothing on screen could ask it to hurry.
+    This is that ask: `force=True`, in a background thread, one at a time.
+    """
+    from tradingagents import rows_index as ri
+
+    st = ri.status()
+    behind = int(st.get("behind") or 0)
+    if behind <= 0:
+        return {"started": False, "behind": 0,
+                "why": "the index is up to date with every measured pair"}
+    if st.get("syncing") or not ri.sync_in_background(force=True):
+        return {"started": False, "behind": behind,
+                "why": "already indexing — it is working through the backlog"}
+    return {"started": True, "behind": behind,
+            "why": f"indexing {behind:,} measured pair(s) now"}
+
+
 @app.get("/api/strategies/facets")
 def strategy_facets() -> dict:
     """Distinct coins/timeframes/signals, for the filter dropdowns."""

@@ -62,6 +62,7 @@ export default function StrategiesPanel() {
   // list rather than a window that forgets what came before
   const [extra, setExtra] = useState<StrategyRow[]>([]);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [reindexing, setReindexing] = useState("");
   const [rows, setRows] = useState<StrategyRow[]>([]);
   const [total, setTotal] = useState(0);
   // a filtered count stops at rows_index.COUNT_CAP, so the caption says
@@ -107,6 +108,16 @@ export default function StrategiesPanel() {
   }, [idx, load]);
 
   const shown = rows.concat(extra);
+
+  /** the coins missing from the list are measured, just not indexed yet */
+  const catchUp = async () => {
+    setReindexing("asking…");
+    try {
+      const d = await api.strategiesReindex();
+      setReindexing(d.why);
+      api.strategies({ limit: 1 }).catch(() => {});
+    } catch (e) { setReindexing(String(e)); }
+  };
 
   const loadMore = async () => {
     setLoadingMore(true);
@@ -171,6 +182,12 @@ export default function StrategiesPanel() {
             {minTrades > 0 ? ` · at least ${minTrades} trades` : ""}
           </p>
         </div>
+        {idx && idx.behind > 0 ? (
+          <button onClick={catchUp} disabled={!!reindexing}
+            className="h-10 rounded-lg border border-warning-500 px-3 text-theme-sm font-medium text-warning-600 hover:bg-warning-50 disabled:opacity-50 dark:text-warning-400">
+            {reindexing || `index the missing ${idx.behind.toLocaleString()} pair(s) now`}
+          </button>
+        ) : null}
         <div className="ml-auto flex flex-wrap gap-2">
           <select className={sel} value={coin} onChange={(e) => setCoin(e.target.value)} aria-label="Coin">
             <option value="">all coins</option>

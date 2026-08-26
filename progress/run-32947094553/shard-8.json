@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 45, "total": 51, "rows": 1248994, "note": "TREE 1h: downloading candles", "pct": 88.2, "updated": "2026-08-26T09:19:38Z"}
+{"shard": 8, "stage": "testing", "done": 46, "total": 51, "rows": 1261794, "note": "TXNSTOCK 1h: 2,883 bars, testing 75 rules", "pct": 90.2, "updated": "2026-08-26T09:20:25Z"}

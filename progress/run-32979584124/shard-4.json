@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 13, "total": 51, "rows": 212830, "note": "CRMSTOCK 1h: downloading candles", "pct": 25.5, "updated": "2026-08-26T15:47:32Z"}
+{"shard": 4, "stage": "testing", "done": 15, "total": 51, "rows": 270070, "note": "DISSTOCK 4h: 539 bars, testing 105 rules", "pct": 29.4, "updated": "2026-08-26T15:48:19Z"}

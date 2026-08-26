@@ -52,7 +52,21 @@ STATES = HOME / "state"
 ROWS = HOME / "rows.jsonl"
 MANIFEST = HOME / "manifest.json"
 
-MIN_TRADES = 100          # the short-timeframe floor
+# The fewest trades a combination needs before its row is worth keeping — PER
+# TIMEFRAME, because 100 is arithmetically impossible on a daily bar. A flat 100
+# deleted the whole 1d timeframe from the 2026-08-26 sweep: every one of the 739
+# 1d row files was `[]` while the state files held the work (SPX500-1d: 10,692
+# measured combinations, best 11 trades, median 3), so ~10.6 million measured
+# combinations were computed and dropped, and the run reported five timeframes
+# while the grid held two. This is a floor on EVIDENCE, not a judgement: the row
+# carries its own trades/days and the reader filters in the artifact (rule 20).
+MIN_TRADES = 100          # the intraday floor; see min_trades()
+MIN_TRADES_BY_TF = {"15m": 100, "30m": 100, "1h": 100, "4h": 40, "1d": 10}
+
+
+def min_trades(tf: str) -> int:
+    return MIN_TRADES_BY_TF.get(tf, MIN_TRADES)
+
 GATE_BLOCK = 0.50         # cost >= half the target: the trade cannot win
 CONTEXT_BARS = 300        # lookback a signal needs before the first new bar
 
@@ -682,7 +696,7 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                 # "everything stored": losers are measurements too, and the
                 # store is what makes re-analysis free. Only the trade floor
                 # filters — a 3-trade row is noise, not a loser.
-                if r["trades"] < MIN_TRADES:
+                if r["trades"] < min_trades(tf):
                     continue
                 m = r["monthly"]
                 mk = sorted(m)

@@ -145,6 +145,13 @@ the search.
   daily bars is ~395 and the 60-day sweep of 2026-08-25 gave ~90, so all 997
   1d pairs were excluded as "only 90 bars" while the run reported five
   timeframes. 1d's floor is 60 bars; depth is the row's own `days`/`bars`.
+- The TRADE floor is per timeframe too (`market_sweep.MIN_TRADES_BY_TF`).
+  A flat 100 deleted the whole 1d timeframe on 2026-08-26: all 739 1d row
+  files were `[]` while the state files held 10,692 measured combinations
+  per pair (SPX500-1d's best: 11 trades, median 3) — ~10.6 million
+  measured combinations computed and dropped, and the run said five
+  timeframes while the grid held two. 100 trades is impossible on ~90
+  daily bars. It is a floor on EVIDENCE, not a judgement.
 - The cloud shard takes the same `days` window as the local job (workflow
   input `days`), buffers a pair's rows until it completes, and redoes a failed
   pair by itself (`PAIR_RETRIES`, same as the sweep) — never the whole shard.

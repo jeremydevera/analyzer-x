@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 30, "total": 51, "rows": 2329006, "note": "MTL 4h: rule 8/105 (fib618)", "pct": 58.8, "updated": "2026-08-26T20:08:48Z"}
+{"shard": 8, "stage": "testing", "done": 32, "total": 51, "rows": 2392934, "note": "NTRASTOCK 15m: 1,564 bars, testing 105 rules", "pct": 62.7, "updated": "2026-08-26T20:09:33Z"}

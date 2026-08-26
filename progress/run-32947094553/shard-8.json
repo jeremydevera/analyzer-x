@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 20, "total": 51, "rows": 514218, "note": "GMX 30m: rule 56/75 (insidebrk)", "pct": 39.2, "updated": "2026-08-26T08:49:50Z"}
+{"shard": 8, "stage": "testing", "done": 20, "total": 51, "rows": 529618, "note": "GMX 1h: rule 45/75 (zscore20)", "pct": 39.2, "updated": "2026-08-26T08:50:35Z"}

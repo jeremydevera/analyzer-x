@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 7, "total": 51, "rows": 560620, "note": "BANK 30m: rule 85/105 (cf_triple)", "pct": 13.7, "updated": "2026-08-26T19:04:29Z"}
+{"shard": 6, "stage": "testing", "done": 7, "total": 51, "rows": 566620, "note": "BANK 1h: rule 4/105 (trend50)", "pct": 13.7, "updated": "2026-08-26T19:05:14Z"}

@@ -257,6 +257,30 @@ has an entry point.
 17. **Orphan sweep every cycle** — any exchange position the book is not tracking gets adopted
     and bracketed. A position must never be open without a stop for longer than one cycle.
 
+## The fold streams; the page is capped and says so (MANDATORY — 2026-08-26)
+
+A market-wide sweep cannot be summarised in RAM. Measured on this PC's own
+store: 12 pairs held 211,420 rows in 392 MB of Python, so the 2,991-pair
+2-month grid needed **~98 GB** on a 17.1 GB machine. At 5:20am the job died
+with `MemoryError` in `grid_from_store` (`rows += pair_rows(...)`) after
+measuring 2,367 pairs perfectly — hours of correct work, no report.
+
+* `parquet_store.GridSink` takes one pair at a time and writes EVERY row to
+  the run's snapshot; `grid_from_store` keeps `row_cap` rows (default
+  `DEFAULT_ROW_CAP = 250_000`, the most profitable, plus every deployed row —
+  rule 21) and the aggregates it counts while streaming. Peak: 596 MB.
+* A field outside the declared schema rides in the snapshot's `extra` column
+  and is NAMED in `payload["schema_extra"]` — never dropped (kit item F).
+* The page prints what was MEASURED, never its own length:
+  `backtest_report._tested()` / `_capped_note()` print "21,278,772
+  combinations — this page shows the 250,000 most profitable of them; every
+  one is in <snapshot>". A capped grid says what it capped (rule 20).
+* `persist_results` must NOT re-save `payload["rows"]` when `grid_path` is
+  set: that would replace a complete snapshot with the page's selection.
+* A failure names its exception type. `str(MemoryError())` is empty, so the
+  bell read "Backtest FAILED" with nothing after it and the progress file said
+  `failed: ` — the cause had to be read out of a stack trace.
+
 Any strategy analysis and the app's `1 YEAR` backtest button MUST run the same grid from
 `tradingagents.backtest_report` — never widen it locally for an artifact. They diverged
 once and the operator could not find a single recommended row inside their own app.

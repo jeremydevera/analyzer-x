@@ -468,6 +468,11 @@ def _signals_count() -> int:
     return len(br.SIGNALS)
 
 
+def _measured(payload: dict) -> int:
+    """Combinations MEASURED — the page may hold fewer (streaming fold)."""
+    return int(payload.get("rows_total") or len(payload.get("rows") or []))
+
+
 def persist_results(payload: dict, *, days: int, label: str,
                     mdb=None, pq=None) -> int:
     """Snapshot the full grid to the operator's own disk. Pure local — "i
@@ -476,6 +481,11 @@ def persist_results(payload: dict, *, days: int, label: str,
     immutable record of THIS run. A failed snapshot raises."""
     if pq is None:
         from tradingagents import parquet_store as pq
+    # The streaming fold already wrote every row as it read it (GridSink); the
+    # payload's own `rows` is only the page's bounded selection, so saving THAT
+    # would replace a complete snapshot with a truncated one.
+    if payload.get("grid_path"):
+        return int(payload.get("rows_total") or len(payload["rows"]))
     pq.save_grid(payload["rows"], label=label)
     return len(payload["rows"])
 
@@ -539,16 +549,21 @@ def _run_backtest(spec: dict) -> None:
         try:
             from tradingagents import notifications as _nt
 
+            # NAME THE TYPE. `str(MemoryError())` is "", so on 2026-08-26
+            # 5:20am the bell read "Backtest FAILED" with nothing after it and
+            # the progress file said `failed: ` — the operator had to be told
+            # what happened from a stack trace.
             _nt.record("backtest", "Backtest FAILED", ok=False,
-                       detail=str(exc)[:300], meta={"fatal": True})
+                       detail=f"{type(exc).__name__}: {exc}"[:300],
+                       meta={"fatal": True, "kind": type(exc).__name__})
         except Exception:
             pass
         _write(FILES["backtest"]["progress"], {
             "running": False, "finished": int(time.time()),
-            "error": str(exc)[:200],
+            "error": f"{type(exc).__name__}: {exc}"[:200],
             # the supervisor reads this flag; it never parses the message
             "transient": is_transient(exc),
-            "note": f"failed: {str(exc)[:160]}"})
+            "note": f"failed: {type(exc).__name__}: {exc}"[:160]})
         raise
 
 
@@ -728,14 +743,23 @@ def _run_backtest_inner(spec: dict) -> None:
         _nt.record(
             "backtest",
             "Backtest finished" if not save_err else "Backtest saved with errors",
-            detail=(f"{len(payload['rows']):,} rows · report {name}"
+            detail=(f"{_measured(payload):,} rows measured"
+                    + (f" · {len(payload['rows']):,} on the page"
+                       if payload.get("rows_capped") else "")
+                    + f" · report {name}"
                     + (f" · save error: {save_err}" if save_err else "")),
             ok=not save_err,
-            meta={"rows": len(payload["rows"]), "saved": saved,
+            meta={"rows": _measured(payload), "shown": len(payload["rows"]),
+                  "capped": bool(payload.get("rows_capped")),
+                  "grid": payload.get("grid_path") or "",
+                  "saved": saved,
                   "report": name, "save_error": save_err})
     except Exception:
         pass
-    _write(f["progress"], {"running": False, "rows": len(payload["rows"]),
+    _write(f["progress"], {"running": False, "rows": _measured(payload),
+                           "shown": len(payload["rows"]),
+                           "capped": bool(payload.get("rows_capped")),
+                           "grid": payload.get("grid_path") or "",
                            "saved": saved, "save_error": save_err,
                            "report": name, "finished": int(time.time())})
 

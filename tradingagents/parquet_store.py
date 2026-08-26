@@ -87,6 +87,140 @@ def save_grid(rows: list, *, label: str, day: str | None = None) -> Path:
     return _atomic(df, GRIDS / f"{day}-{label}.parquet")
 
 
+class GridSink:
+    """Write a sweep's rows to ONE parquet file AS THEY ARE READ, pair by pair.
+
+    `save_grid()` takes a list, which means the whole market in RAM. On
+    2026-08-26 5:20am the 2-month sweep died with MemoryError after measuring
+    2,367 pairs: the fold was doing `rows += pair_rows(...)` over 15.40 GB of
+    row JSON on a 17.1 GB machine. Nothing was wrong with the measuring -- only
+    with holding all of it at once. This sink keeps one pair in memory.
+
+    Two rules it exists to keep:
+
+    * EVERY row is written. A field the declared schema does not have rides in
+      an `extra` JSON column and is named in `extra_keys` -- never dropped
+      (kit item F).
+    * Numbers are float64. A column typed int64 from the first pair breaks the
+      moment a later pair carries a float in it, and the failure would land
+      mid-sweep after hours of work; a snapshot reading `trades = 120.0` is a
+      trade worth making.
+    """
+
+    def __init__(self, *, label: str, day: str | None = None,
+                 batch_rows: int = 20_000):
+        import time
+
+        self.label = label
+        self.day = day or time.strftime("%Y-%m-%d")
+        self.batch_rows = max(1, int(batch_rows))
+        self.path = GRIDS / f"{self.day}-{label}.parquet"
+        self.rows_written = 0
+        self.extra_keys: list = []
+        self._buf: list = []
+        self._schema = None
+        self._writer = None
+        self._tmp = None
+        self._cols: list = []
+        self._kind: dict = {}
+
+    # ---------------------------------------------------------------- schema
+    def _declare(self, rows: list) -> None:
+        import pyarrow as pa
+
+        cols, kind = [], {}
+        for r in rows:
+            for k, v in r.items():
+                if k in kind:
+                    if kind[k] == "null" and v is not None:
+                        kind[k] = self._kind_of(v)
+                    continue
+                cols.append(k)
+                kind[k] = self._kind_of(v)
+        cols.append("extra")
+        kind["extra"] = "str"
+        field = {"bool": pa.bool_(), "num": pa.float64(), "str": pa.string(),
+                 "null": pa.string()}
+        self._cols, self._kind = cols, kind
+        self._schema = pa.schema([pa.field(c, field[kind[c]]) for c in cols])
+
+    @staticmethod
+    def _kind_of(v) -> str:
+        if isinstance(v, bool):
+            return "bool"
+        if isinstance(v, (int, float)):
+            return "num"
+        if v is None:
+            return "null"
+        return "str"          # str, dict, list -> text (dicts/lists as JSON)
+
+    def _flat(self, r: dict) -> dict:
+        out, extra = {}, {}
+        for k, v in r.items():
+            if k not in self._kind:
+                extra[k] = v
+                continue
+            want = self._kind[k]
+            if v is None:
+                out[k] = None
+            elif want == "num":
+                out[k] = None if isinstance(v, (dict, list, str)) else float(v)
+            elif want == "bool":
+                out[k] = bool(v)
+            else:
+                out[k] = (json.dumps(v, default=str)
+                          if isinstance(v, (dict, list)) else str(v))
+        for k in self._cols:
+            out.setdefault(k, None)
+        if extra:
+            for k in extra:
+                if k not in self.extra_keys:
+                    self.extra_keys.append(k)
+            out["extra"] = json.dumps(extra, default=str)
+        return out
+
+    # ------------------------------------------------------------------ write
+    def add(self, rows: list) -> int:
+        """Take one pair's rows. They are flattened NOW, so the caller may
+        mutate its own dicts afterwards (the fold does) without touching what
+        this snapshot will hold."""
+        if not rows:
+            return 0
+        if self._schema is None:
+            self._declare(rows)
+        self._buf.extend(self._flat(r) for r in rows)
+        self.rows_written += len(rows)
+        if len(self._buf) >= self.batch_rows:
+            self._flush()
+        return len(rows)
+
+    def _flush(self) -> None:
+        if not self._buf:
+            return
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+
+        if self._writer is None:
+            GRIDS.mkdir(parents=True, exist_ok=True)
+            self._tmp = self.path.with_name(self.path.name + ".tmp")
+            self._writer = pq.ParquetWriter(self._tmp, self._schema,
+                                            compression=_COMPRESSION)
+        self._writer.write_table(pa.Table.from_pylist(self._buf,
+                                                      schema=self._schema))
+        self._buf = []
+
+    def close(self):
+        """Finish the file and return its path, or None when nothing was
+        written -- an empty snapshot must never license a prune."""
+        self._flush()
+        if self._writer is None:
+            return None
+        self._writer.close()
+        self._writer = None
+        self._tmp.replace(self.path)
+        return self.path
+
+
 def load_grid(path):
     import pandas as pd
 

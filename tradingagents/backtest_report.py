@@ -653,6 +653,29 @@ def _rle(text: str) -> str:
     return "".join(out)
 
 
+def _tested(payload: dict) -> int:
+    """How many combinations were MEASURED — not how many this page shows.
+
+    The fold streams the market to a snapshot and keeps a bounded selection in
+    memory, so `len(payload["rows"])` is the size of the TABLE. Printing that
+    as "combinations tested" would be a true number under a false label: on
+    2026-08-26 the 2-month sweep measured 21,278,772 of them and a page
+    capped at 250,000 would have claimed 250,000.
+    """
+    return int(payload.get("rows_total") or len(payload["rows"]))
+
+
+def _capped_note(payload: dict) -> str:
+    """Say what was capped, in the same breath as the count (rule 20)."""
+    total = _tested(payload)
+    shown = len(payload["rows"])
+    if not payload.get("rows_capped") or shown >= total:
+        return ""
+    where = payload.get("grid_path") or "the run's grid snapshot"
+    return (f" &mdash; this page shows the <b>{shown:,}</b> most profitable of "
+            f"them; every one of the {total:,} is in {where}")
+
+
 def render(payload: dict, *, title: str, headline: str = "",
            note: str = "") -> str:
     """Wrap the payload in the standalone grid page."""
@@ -671,8 +694,8 @@ def render(payload: dict, *, title: str, headline: str = "",
     prov = (
         f"{len(coins)} contract(s) &times; {len(tfs)} timeframe(s) &times; "
         f"{nsig} signals &times; up to 3 momentum thresholds &times; the "
-        f"barrier grid &times; 2 sizings = <b>{len(payload['rows'])} "
-        f"combinations</b>, all at {payload['lev']}x on a "
+        f"barrier grid &times; 2 sizings = <b>{_tested(payload):,} "
+        f"combinations</b>{_capped_note(payload)}, all at {payload['lev']}x on a "
         f"{payload['base']:g} USDT base ({payload['base'] * payload['lev']:g} "
         f"notional). Candles fetched <b>{payload['fetched']}</b> for the past "
         f"{payload['days_asked']} days &mdash; measured depth: {hist}. "
@@ -819,13 +842,26 @@ def _prog_takes_counts(progress) -> bool:
         return False
 
 
+# How many rows the PAGE keeps. The snapshot always keeps every row; this
+# bounds only what is held in memory and handed to the renderer. A
+# market-wide 2-month sweep measured 21,278,772 combinations by
+# 2026-08-26 -- about 30 GB as Python dicts -- and the fold died with
+# MemoryError on a 17.1 GB machine after 2,367 pairs of correct measuring.
+# Per-coin and few-coin runs (the app's own buttons, ~8k rows a pair) stay
+# far under this, so their pages are unchanged; a market run is capped and
+# SAYS SO (rule 20: a capped grid says what it capped).
+DEFAULT_ROW_CAP = 250_000
+
+
 def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
                     base_margin: float = 5.0, days: int = 365,
                     thresholds: int = 3,
                     deployed: Sequence[dict] | None = None,
                     progress: Callable[[str, float], None] | None = None,
                     embed_limit: int = 4,
-                    workers: int = 0, fresh: bool = False) -> dict:
+                    workers: int = 0, fresh: bool = False,
+                    row_cap: int = DEFAULT_ROW_CAP,
+                    grid_label: str = "grid") -> dict:
     """A ``run_grid``-shaped payload that READS THE STORE FIRST.
 
     The operator's rule: "when doing analysis its not doing from scratch."
@@ -1006,47 +1042,98 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
             _seen.add((sym, tf))
             done = len(_seen)
 
+    # ---- FOLD, STREAMING. Every row goes to the snapshot as its pair is read
+    # and is then let go; only a bounded selection stays in memory for the
+    # page. `rows += pair_rows(...)` over the whole market is what died with
+    # MemoryError at 5:20am on 2026-08-26 -- 15.40 GB of row JSON on a 17.1 GB
+    # machine -- after the measuring itself had gone perfectly.
+    import heapq
+
+    from tradingagents import parquet_store as pqs
+
+    cap = int(row_cap) if row_cap and int(row_cap) > 0 else 0
+    sink = pqs.GridSink(label=grid_label)
+
+    def _combo(r: dict) -> tuple:
+        return (r["coin"], r["tf"], r["signal"], round(float(r.get("th") or 0), 3),
+                round(float(r["sl"]), 3), round(float(r["tp"]), 3), r["sizing"])
+
+    want_deployed = {_combo(d) for d in deployed}
+    seen_deployed: set = set()
+    must_keep: list = []      # the operator's own rows: never capped away
+    heap: list = []           # the best `cap` of the rest, by profit
+    months_seen: set = set()
+    rows_total = profitable_total = trades_total = 0
+    order = 0
+
+    def _take(row: dict) -> None:
+        nonlocal order
+        k = _combo(row)
+        if k in want_deployed:
+            seen_deployed.add(k)
+            must_keep.append(row)          # rule 21: it must be on the page
+            return
+        if not cap:
+            must_keep.append(row)
+            return
+        order += 1
+        item = (float(row.get("profit") or 0.0), order, row)
+        if len(heap) < cap:
+            heapq.heappush(heap, item)
+        elif item[0] > heap[0][0]:
+            heapq.heapreplace(heap, item)
+
     for sym, tf, r in measured:
-        if True:
-            show = sym.replace("_USDT", "")
-            # "no new bars" is SUCCESS — the store answers in full. Only a
-            # why with nothing behind it (fetch failed, too young, venue
-            # error) excludes the pair.
-            if r.get("why") not in (None, "", "no new bars") \
-                    and not r.get("rows"):
-                excluded.append({"coin": show, "tf": tf, "why": r["why"]})
-                continue
-            pair = msw.pair_rows(show, tf)
-            rows += pair
-            if r.get("incremental"):
-                fresh_n = (0 if r.get("why") == "no new bars"
-                           else len(r.get("rows") or []))
-                reuse["stored_rows"] += max(0, len(pair) - fresh_n)
-                reuse["new_bars"] += int(r.get("new_bars") or 0)
-                reuse["recomputed_rows"] += fresh_n
-            else:
-                reuse["fresh_pairs"].append(f"{show} {tf}")
-            meta[f"{show}|{tf}"] = {
-                "bars": r.get("bars", 0), "days": r.get("days", 0),
-                "rt": (None if r.get("rt") is None
-                       else round(r["rt"] * 100, 4)),
-                "liq": round(r.get("liq") or 0, 3),
-                "fee": r.get("fee") or 0}
-    # rule 21: the exact live combination must exist on the page
-    have = {(r["coin"], r["tf"], r["signal"], round(r["th"], 3),
-             round(r["sl"], 3), round(r["tp"], 3), r["sizing"])
-            for r in rows}
+        show = sym.replace("_USDT", "")
+        # "no new bars" is SUCCESS — the store answers in full. Only a why
+        # with nothing behind it (fetch failed, too young, venue error)
+        # excludes the pair.
+        if r.get("why") not in (None, "", "no new bars") and not r.get("rows"):
+            excluded.append({"coin": show, "tf": tf, "why": r["why"]})
+            continue
+        pair = msw.pair_rows(show, tf)
+        sink.add(pair)                     # the snapshot keeps EVERY row
+        rows_total += len(pair)
+        for row in pair:
+            trades_total += int(row.get("trades") or 0)
+            if (row.get("profit") or 0) > 0:
+                profitable_total += 1
+            months_seen.update(row.get("monthly") or {})
+            _take(row)
+        if r.get("incremental"):
+            fresh_n = (0 if r.get("why") == "no new bars"
+                       else len(r.get("rows") or []))
+            reuse["stored_rows"] += max(0, len(pair) - fresh_n)
+            reuse["new_bars"] += int(r.get("new_bars") or 0)
+            reuse["recomputed_rows"] += fresh_n
+        else:
+            reuse["fresh_pairs"].append(f"{show} {tf}")
+        meta[f"{show}|{tf}"] = {
+            "bars": r.get("bars", 0), "days": r.get("days", 0),
+            "rt": (None if r.get("rt") is None
+                   else round(r["rt"] * 100, 4)),
+            "liq": round(r.get("liq") or 0, 3),
+            "fee": r.get("fee") or 0}
+    # rule 21: the exact live combination must exist on the page. Computed
+    # before the snapshot closes, so the record holds it too.
     for d in deployed:
-        k = (d["coin"], d["tf"], d["signal"], round(float(d["th"]), 3),
-             round(float(d["sl"]), 3), round(float(d["tp"]), 3), d["sizing"])
-        if k in have or d["tf"] not in tfs:
+        if _combo(d) in seen_deployed or d["tf"] not in tfs:
             continue
         got = msw.compute_combos(f"{d['coin']}_USDT", d["tf"], [d],
                                  base_margin=base_margin, days=days)
-        rows += got
+        sink.add(got)
+        rows_total += len(got)
+        for row in got:
+            months_seen.update(row.get("monthly") or {})
+            trades_total += int(row.get("trades") or 0)
+            if (row.get("profit") or 0) > 0:
+                profitable_total += 1
+            must_keep.append(row)
         reuse["deployed_computed"] += len(got)
-    months = sorted({m for r in rows for m in (r.get("monthly") or {})},
-                    reverse=True)
+    grid_path = sink.close()
+    rows = must_keep + [it[2] for it in sorted(heap, key=lambda it: -it[0])]
+    rows_capped = rows_total > len(rows)
+    months = sorted(months_seen, reverse=True)
     for r in rows:
         if "mon" not in r:
             r["mon"] = [(r.get("monthly") or {}).get(m) for m in months]
@@ -1124,7 +1211,13 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
                     pass
                 at.STRATEGY_SPECS.pop(k2, None)
             series[key] = sd
-    return {"rows": rows, "meta": meta, "series": series, "months": months,
+    return {"rows": rows, "rows_total": rows_total,
+            "rows_capped": rows_capped, "row_cap": cap,
+            "grid_path": (str(grid_path) if grid_path else ""),
+            "profitable_total": profitable_total,
+            "trades_total": trades_total,
+            "schema_extra": list(sink.extra_keys),
+            "meta": meta, "series": series, "months": months,
             "cur": months[0] if months else "", "lev": at.LEVERAGE,
             "slip": 0.0003, "base": base_margin,
             "ladder": [1, 1, 2, 2, 4, 4, 8], "deployed": list(deployed),

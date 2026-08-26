@@ -150,6 +150,13 @@ def _serial(monkeypatch):
         def __exit__(self, *a):
             return False
 
+        # grid_from_store owns its pool explicitly (it must CANCEL the
+        # queue on a STOP rather than wait for 4,985 pairs), so a
+        # stand-in needs shutdown() as well as the context manager that
+        # market_sweep.run() still uses.
+        def shutdown(self, wait=True, *, cancel_futures=False):
+            pass
+
         def submit(self, fn, *a):
             f = cf.Future()
             try:
@@ -247,6 +254,13 @@ def _inline_pool(monkeypatch):
 
         def __exit__(self, *a):
             return False
+
+        # grid_from_store owns its pool explicitly (it must CANCEL the
+        # queue on a STOP rather than wait for 4,985 pairs), so a
+        # stand-in needs shutdown() as well as the context manager that
+        # market_sweep.run() still uses.
+        def shutdown(self, wait=True, *, cancel_futures=False):
+            pass
 
         def submit(self, fn, *a, **k):
             f = cf.Future()

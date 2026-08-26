@@ -120,6 +120,12 @@ def test_trades_for_rebuilds_the_stored_rows_trades(monkeypatch, tmp_path):
                         lambda sym, tf, days=365: (df, 0, "cache"))
     import tradingagents.auto_trader as at
     monkeypatch.setattr(at, "taker_fee", lambda s, fx=None: 0.0004)
+    # funding is a mandatory cost and c360400b0 made an unreadable page
+    # RAISE rather than silently shorten the history — correct, and it
+    # means a unit test has to supply the settlements itself.
+    from tradingagents.dataflows import mexc_futures as fx
+
+    monkeypatch.setattr(fx, "funding_history", lambda symbol, **kw: [])
 
     got = msw.trades_for("FAKE", "1h", signal="mom6", th=0.3, sl=1.0,
                          tp=2.0, sizing="martingale")

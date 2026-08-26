@@ -40,6 +40,11 @@ def test_intraday_keeps_its_floor_and_daily_gets_a_reachable_one():
 def test_run_pair_applies_the_timeframe_floor(monkeypatch, tf, bars, step, short):
     monkeypatch.setattr(msw, "refresh_candles",
                         lambda symbol, tf, days=365: (_frame(bars, step), bars, "cache"))
+    # past the floor run_pair prices the pair, which asks the venue.
+    # A unit test stubs its I/O; the floor is what is under test.
+    from tradingagents.dataflows import mexc_futures as fx
+
+    monkeypatch.setattr(fx, "funding_history", lambda symbol, **kw: [])
     r = msw.run_pair("APEX_USDT", tf, days=60)
     if short:
         assert r["rows"] == [] and r["why"] == f"only {bars} bars"

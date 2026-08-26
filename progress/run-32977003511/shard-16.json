@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 31, "total": 51, "rows": 1809346, "note": "NIL 15m: downloading candles", "pct": 60.8, "updated": "2026-08-26T15:48:12Z"}
+{"shard": 16, "stage": "testing", "done": 37, "total": 51, "rows": 1809346, "note": "RENDER 30m: downloading candles", "pct": 72.5, "updated": "2026-08-26T15:48:58Z"}

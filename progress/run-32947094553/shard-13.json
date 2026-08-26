@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 5, "total": 51, "rows": 240242, "note": "ASTSSTOCK 30m: 6,382 bars, testing 75 rules", "pct": 9.8, "updated": "2026-08-26T08:26:01Z"}
+{"shard": 13, "stage": "testing", "done": 5, "total": 51, "rows": 281642, "note": "ASTSSTOCK 4h: rule 73/75 (volspike)", "pct": 9.8, "updated": "2026-08-26T08:26:46Z"}

@@ -121,3 +121,35 @@ def test_the_sweep_does_not_silently_charge_zero_funding():
     window = src[max(0, i - 300):i + 300]
     assert "fund = []" not in window, \
         "an unreadable funding history must not become zero funding"
+
+
+def test_the_page_budget_fits_a_four_hourly_coins_full_history(wire):
+    """The budget is a runaway backstop, not a cap on real history.
+
+    It was 20 pages. BTC settles every 8 hours and fills 17, so nothing looked
+    wrong -- but FLUX_USDT settles every FOUR hours and has 33. Once truncation
+    became an error (this file's first fix), the strictness turned those coins
+    into excluded pairs: on Aug 26, 2026 the 1h/4h sweep printed
+    "FLUX 4h: failed (funding history for FLUX_USDT is incomplete: stopped at
+    the 20-page budget)" and dropped the contract after its retries.
+    """
+    assert fx.funding_history.__defaults__[0] >= 100, \
+        "the budget must fit a 4-hourly coin's whole history"
+    pages = 33
+    for i in range(pages):
+        wire["script"].append(_page(_rows(100, start=1_700_000_000_000 + i * 100 * 14_400_000),
+                                    total_page=pages))
+    got = fx.funding_history("FLUX_USDT")
+    assert len(got) == pages * 100
+    assert len(wire["calls"]) == pages
+
+
+def test_a_history_longer_than_the_budget_is_still_an_error(wire, monkeypatch):
+    """Exhausting the backstop with pages the venue says exist is incomplete,
+    and incomplete funding is never returned quietly."""
+    monkeypatch.setattr(fx, "_PUBLIC_RETRIES", 1)
+    for i in range(3):
+        wire["script"].append(_page(_rows(100), total_page=99))
+    with pytest.raises(fx.MexcFuturesError) as exc:
+        fx.funding_history("LONG_USDT", max_pages=3)
+    assert "3-page budget" in str(exc.value)

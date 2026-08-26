@@ -1236,8 +1236,15 @@ def chase_guard(entry_ref: float, live: float, max_chase_pct: float) -> tuple[bo
 
 
 # ---------------------------------------------------------------- funding
-def funding_history(symbol: str, max_pages: int = 20) -> list:
+def funding_history(symbol: str, max_pages: int = 200) -> list:
     """Every published funding settlement, oldest last. Keyless.
+
+    ``max_pages`` is a runaway backstop, NOT a limit on real history. It was 20,
+    which silently truncated any longer history until 2026-08-26 and then --
+    once truncation became an error -- started REJECTING those coins outright.
+    Measured live: BTC settles every 8 hours and fills 17 pages; FLUX_USDT
+    settles every 4 hours and has 33. At 100 rows a page, 200 pages is about
+    nine years of 4-hourly settlements.
 
     Returned as ``[{"settle_ms": int, "rate": float, "cycle_h": int}, ...]``.
     Sign convention is MEXC's: a POSITIVE rate means longs pay shorts, so a

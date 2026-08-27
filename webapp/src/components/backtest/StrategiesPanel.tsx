@@ -39,6 +39,11 @@ const sel =
 // the server's ceiling per request, and the CSV has none at all.
 const PAGE_SIZES = [100, 500, 1000, 5000];
 
+/** The header of the window's own profit column. Not sortable: the store ranks
+ *  by the full-history columns it has indexes for, and a header that reordered
+ *  only the rows on screen is the "it only sorted the page" lie (2026-08-26). */
+const WINDOW_COL = "window $";
+
 const HEAD_SORT: Record<string, StrategySort | undefined> =
   Object.fromEntries(Object.entries(STRATEGY_SORTS)
     .map(([k, label]) => [label, k as StrategySort]));
@@ -71,6 +76,10 @@ export default function StrategiesPanel() {
   // strategies came from the ladder, not the signal (flat: 7/12–11/12,
   // CLAUDE.md rule 19) — so the two have to be visible apart.
   const [sizing, setSizing] = useState("");
+  // GROUP: the ten researched confluence setups (every rule named cf_..., three
+  // levels each) against the 75 signals that existed before them. The
+  // operator's own names, 2026-08-27: "Preset Confluence" / "Classic".
+  const [group, setGroup] = useState("");
   // "add filter to input a specific id, it should get speicic id example
   // #6YACZSXX" (operator, 2026-08-27) — and CLAUDE.md kit item H, where
   // quoting a row by its code is what stops the wrong config being deployed.
@@ -78,6 +87,15 @@ export default function StrategiesPanel() {
   // signal × threshold × SL/TP × sizing and nothing else: it OVERRIDES the
   // other filters rather than joining them, and opens that row's trades.
   const [rowId, setRowId] = useState("");
+  // "add filter Last x month / if i entered 2 months then adjust the number of
+  // trades, winrate, profit for last x month" (operator, 2026-08-27) and
+  // CLAUDE.md kit item G. The store keeps PROFIT per month (fast_grid and
+  // auto_trader both accumulate `monthly[month] += pnl` and nothing else), so
+  // the window's profit and months-green are exact and its trade count is not
+  // — that one needs the row's trades rebuilt, which a click already does.
+  const [months, setMonths] = useState(0);
+  // the window the SERVER used, in real month keys — never the box's number
+  const [window_, setWindow] = useState<string[]>([]);
   // the floors the SERVER actually applied. On a 503 the request moves and the
   // rows do not, so captioning them with the request is the lie the operator
   // read as "it only sorted the page" (label-must-match-data).
@@ -120,7 +138,8 @@ export default function StrategiesPanel() {
   // leaves when the operator says so, and the button is where the spinner is.
   const [applied, setApplied] = useState({
     coin: "", tf: "", signal: "", profitable: false,
-    minTrades: 0, minWinrate: 0, minTp: 0, sizing: "", rowId: "",
+    minTrades: 0, minWinrate: 0, minTp: 0, sizing: "", rowId: "", group: "",
+    months: 0,
   });
   // The filter set the ROWS ON SCREEN came from — set only when a request
   // SUCCEEDS. `applied` is what was asked for, and the two differ every time a
@@ -133,7 +152,8 @@ export default function StrategiesPanel() {
   // repo keeps paying for (label-must-match-data).
   const [servedFilters, setServedFilters] = useState({
     coin: "", tf: "", signal: "", profitable: false,
-    minTrades: 0, minWinrate: 0, minTp: 0, sizing: "", rowId: "",
+    minTrades: 0, minWinrate: 0, minTp: 0, sizing: "", rowId: "", group: "",
+    months: 0,
   });
   // how long the request that FAILED had been running, so the message can say
   // "did not answer in 34s" instead of a bare HTTP 500
@@ -186,6 +206,8 @@ export default function StrategiesPanel() {
                      minTrades: applied.minTrades, minWinrate: applied.minWinrate,
                      minTp: applied.minTp, sizing: applied.sizing || undefined,
                      rowId: applied.rowId || undefined,
+                     months: applied.months || undefined,
+                     group: (applied.group || undefined) as "preset" | "classic" | undefined,
                      desc, limit: perPage, offset: (page - 1) * perPage })
       .then((d) => {
         if (mine !== reqRef.current) return;   // a newer request owns the screen
@@ -198,6 +220,7 @@ export default function StrategiesPanel() {
         setServedWinrate(d.min_winrate ?? applied.minWinrate);
         setServedTp(d.min_tp ?? applied.minTp);
         setServedFilters(applied);   // these rows came from THIS set
+        setWindow(d.window ?? []);   // the window's real months, from the payload
         setFailedAfter(0);
       })
       .catch((e) => {
@@ -251,7 +274,7 @@ export default function StrategiesPanel() {
   }, [idHit?.id]);
   // what the boxes say right now, against what the store was asked
   const draft = { coin, tf, signal, profitable, minTrades, minWinrate, minTp,
-                  sizing,
+                  sizing, group, months,
                   // trim FIRST: " #6yaczsxx " pasted from chat kept its hash
                   // when the # was stripped before the spaces, and a real id
                   // then read as "not in the store"
@@ -275,11 +298,15 @@ export default function StrategiesPanel() {
     f.coin || "all coins",
     f.tf || "all timeframes",
     f.signal || "all signals",
+    f.group === "preset" ? "group = Preset Confluence"
+      : f.group === "classic" ? "group = Classic" : "all groups",
     f.minTrades > 0 ? `min trades = ${f.minTrades}` : "any trades",
     f.minWinrate > 0 ? `min win % = ${f.minWinrate}` : "any win %",
     f.minTp > 0 ? `min TP % = ${f.minTp}` : "any TP",
     f.sizing ? `sizing = ${f.sizing}` : "flat and martingale",
     f.profitable ? "profit > 0" : "losers included",
+    f.months > 0 ? `last ${f.months} month${f.months > 1 ? "s" : ""}`
+                 : "all history",
   ].join(" AND "));
   // The REQUEST in words — what the spinner is waiting for, not what is on
   // screen (the caption already says that). The SAME sentence the filter line
@@ -290,6 +317,22 @@ export default function StrategiesPanel() {
   // asked for, not served, and nothing in flight — i.e. the request failed
   const missed = !loading && (Object.keys(applied) as (keyof typeof applied)[])
     .some((k) => applied[k] !== servedFilters[k]);
+  /** The month columns. Newest first, and DERIVED: from the window the server
+   *  used when there is one, otherwise from the months the rows on screen
+   *  actually carry. Kit item G — months outside the window are REMOVED, not
+   *  printed as em dashes. */
+  const monthCols = (window_.length
+    ? window_
+    : Array.from(new Set(shown.flatMap((r) => Object.keys(r.monthly ?? {}))))
+        .sort().reverse()).slice(0, 24);
+  /** "2026-08" -> "Aug 2026". A month LABEL keeps its own form (CLAUDE.md);
+   *  the operator's example was "month of aug, july". */
+  const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                       "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const monthLabel = (k: string) => {
+    const [y, m] = k.split("-");
+    return `${MONTH_NAMES[Number(m) - 1] ?? m} ${y}`;
+  };
   const pages = Math.max(1, Math.ceil(total / perPage));
   // a numbered page is a jump, so the appended LOAD MORE rows go with it —
   // otherwise page 7 shows page 6's tail underneath it
@@ -319,7 +362,8 @@ export default function StrategiesPanel() {
         signal: applied.signal || undefined, profitable: applied.profitable,
         sort, minTrades: applied.minTrades, minWinrate: applied.minWinrate,
         minTp: applied.minTp, sizing: applied.sizing || undefined,
-        rowId: applied.rowId || undefined, desc,
+        rowId: applied.rowId || undefined,
+        months: applied.months || undefined, desc,
         limit: perPage, offset: (page - 1) * perPage + shown.length,
       });
       setExtra((e) => e.concat(d.rows));
@@ -339,6 +383,20 @@ export default function StrategiesPanel() {
     }
   };
 
+  /** the trades inside the window, by their EXIT month — a trade opened in
+   *  July and closed in August belongs to August's profit, which is how the
+   *  sweep counts it too (`monthly[_month_of(exit_bar)] += pnl`). */
+  const inWindow = (t: { "exit time": string }) => {
+    if (!window_.length) return true;
+    // "Aug 03, 2026 8:03pm" — the project's one date format
+    const m = /^([A-Za-z]{3}) \d{2}, (\d{4})/.exec(t["exit time"] || "");
+    if (!m) return true;                    // never hide a row we cannot place
+    const mm = MONTH_NAMES.indexOf(m[1]) + 1;
+    return window_.includes(`${m[2]}-${String(mm).padStart(2, "0")}`);
+  };
+  const winLog = (trades?.log ?? []).filter(inWindow);
+  const winWins = winLog.filter((t) => t["pnl $"] > 0).length;
+  const winSum = winLog.reduce((a, t) => a + (t["pnl $"] ?? 0), 0);
   const logSum = trades?.log?.reduce((a, t) => a + (t["pnl $"] ?? 0), 0) ?? 0;
   const drift =
     open && trades && trades.log.length
@@ -394,6 +452,9 @@ export default function StrategiesPanel() {
             {servedWinrate > 0 ? ` · win % ${servedWinrate} or better` : ""}
             {servedTp > 0 ? ` · TP ${servedTp}% or wider` : ""}
             {servedFilters.sizing ? ` · ${servedFilters.sizing} only` : ""}
+            {window_.length
+              ? ` · window ${monthLabel(window_[window_.length - 1])}–${monthLabel(window_[0])}`
+              : ""}
           </p>
           {/* while a slow filter runs, the numbers above still describe the
               PREVIOUS answer — so say out loud which request is in flight
@@ -412,6 +473,20 @@ export default function StrategiesPanel() {
           </button>
         ) : null}
         <div className="ml-auto flex flex-wrap gap-2">
+          {/* LAST N MONTHS — "if i entered 2 months then adjust the number of
+              trades, winrate, profit for last x month". 0 is everything the
+              store holds. The window's real month keys come back in the
+              payload, so the caption prints dates, not the number typed. */}
+          <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300"
+                 title="re-state every row over the last N months: its own profit and green months inside that window, and only those month columns">
+            last
+            <input type="number" min={0} max={24} step={1} value={months}
+                   onChange={(e) => setMonths(Math.min(24, Math.max(0, Number(e.target.value) || 0)))}
+                   onKeyDown={onFilterKey}
+                   aria-label="Last N months"
+                   className="h-10 w-16 rounded-lg border border-gray-300 bg-transparent px-2 text-theme-sm text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" />
+            month(s)
+          </label>
           {/* "#6YACZSXX" — the code the first column prints. Typed with or
               without the #, any case; it overrides the rest. */}
           <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300"
@@ -430,6 +505,15 @@ export default function StrategiesPanel() {
           <select className={sel} value={tf} onChange={(e) => setTf(e.target.value)} aria-label="Timeframe">
             <option value="">all timeframes</option>
             {facets.tfs.map((t) => <option key={t}>{t}</option>)}
+          </select>
+          {/* GROUP: the ten researched confluence setups — every rule named
+              cf_..., ten setups at three levels each — against the 75 signals
+              that existed before them. The operator's names, 2026-08-27. */}
+          <select className={sel} value={group}
+                  onChange={(e) => setGroup(e.target.value)} aria-label="Group">
+            <option value="">all groups</option>
+            <option value="preset">Preset Confluence</option>
+            <option value="classic">Classic</option>
           </select>
           <select className={sel} value={signal} onChange={(e) => setSignal(e.target.value)} aria-label="Signal">
             <option value="">all signals</option>
@@ -594,6 +678,23 @@ export default function StrategiesPanel() {
           </a>
         </div>
       </div>
+      {/* What the window CAN and CANNOT re-state. The sweep stores profit per
+          month (`monthly[month] += pnl`) and nothing else, so trades, W, L and
+          win % on this page are the row's WHOLE history even while the window
+          is on — saying which is which is the difference between a filter and
+          a false label. The row's own trade log is the exact answer for one
+          row, because it is rebuilt from the candles. */}
+      {window_.length > 0 && (
+        <p className="px-5 pt-2 text-theme-xs text-gray-600 dark:text-gray-300">
+          <b>{WINDOW_COL}</b> and <b>green</b> beside it are the window&apos;s own
+          ({window_.length} month{window_.length > 1 ? "s" : ""}:{" "}
+          {window_.map(monthLabel).join(", ")}), summed from the per-month
+          profits the sweep stored. <b>trades, W, L and win %</b> are still the
+          row&apos;s FULL history — the sweep keeps profit per month, not trades
+          — so click a row to rebuild its trades and read the window&apos;s own
+          count there.
+        </p>
+      )}
       {err && (
         <p className="px-5 pt-2 text-theme-sm text-error-500">
           {err}
@@ -653,7 +754,10 @@ export default function StrategiesPanel() {
         <Table>
           <TableHeader className="sticky top-0 border-b border-gray-100 bg-white dark:border-white/[0.05] dark:bg-gray-900">
             <TableRow>
-              {["id", "coin", "tf", "signal", "th%", "SL%", "TP%", "sizing", "lev", "margin $", "PROFIT $", "win %", "trades", "W", "L", "green", "dip $"].map((h) => (
+              {["id", "coin", "tf", "signal", "th%", "SL%", "TP%", "sizing", "lev", "margin $", "PROFIT $",
+                ...(servedFilters.months > 0 ? [WINDOW_COL] : []),
+                "win %", "trades", "W", "L", "green", "dip $",
+                ...monthCols.map(monthLabel)].map((h) => (
                 <TableCell key={h} isHeader
                   onClick={() => {
                     const next = HEAD_SORT[h];
@@ -723,12 +827,36 @@ export default function StrategiesPanel() {
                 <TableCell className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400">{r.lev ?? 20}x</TableCell>
                 <TableCell className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400">{r.base ?? 5} ({r.notional ?? 100} ntl)</TableCell>
                 <TableCell className={`px-3 py-2 text-theme-sm font-semibold ${(r.profit ?? 0) >= 0 ? "text-success-600" : "text-error-500"}`}>{fmtMoney(r.profit)}</TableCell>
+                {/* the window's OWN profit, summed from the months inside it */}
+                {servedFilters.months > 0 ? (
+                  <TableCell className={`px-3 py-2 text-theme-sm font-semibold ${(r.w_profit ?? 0) >= 0 ? "text-success-600" : "text-error-500"}`}>
+                    {r.w_profit === undefined ? "—" : fmtMoney(r.w_profit)}
+                    <span className="block text-theme-xs font-normal text-gray-500 dark:text-gray-400">
+                      {r.w_green ?? 0}/{r.w_months ?? 0} green
+                    </span>
+                  </TableCell>
+                ) : null}
                 <TableCell className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400">{r.winrate?.toFixed(2)}</TableCell>
                 <TableCell className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400">{r.trades}</TableCell>
                 <TableCell className="px-3 py-2 text-theme-sm text-success-600">{r.wins}</TableCell>
                 <TableCell className="px-3 py-2 text-theme-sm text-error-500">{r.losses}</TableCell>
                 <TableCell className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400">{r.green ?? "—"}/{r.months ?? "—"}</TableCell>
                 <TableCell className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400">{r.dd?.toFixed(2) ?? "—"}</TableCell>
+                {/* one column per month, the row's own profit in it. A month
+                    the row never traded is an em dash — that is missing DATA,
+                    not a hidden column (the columns themselves are the
+                    window's, see monthCols). */}
+                {monthCols.map((k) => {
+                  const v = (r.monthly ?? {})[k];
+                  return (
+                    <TableCell key={k}
+                      className={`px-3 py-2 text-theme-sm ${
+                        v === undefined ? "text-gray-400 dark:text-gray-500"
+                        : v >= 0 ? "text-success-600" : "text-error-500"}`}>
+                      {v === undefined ? "—" : fmtMoney(v)}
+                    </TableCell>
+                  );
+                })}
               </TableRow>
             ))}
           </TableBody>
@@ -751,6 +879,18 @@ export default function StrategiesPanel() {
                 <Badge size="sm" color={(trades.profit ?? 0) >= 0 ? "success" : "error"}>
                   TOTAL {fmtMoney(trades.profit ?? logSum)} USDT
                 </Badge>
+                {/* the window's OWN trades, wins and win % — counted from the
+                    rebuilt log, which is the only place they exist */}
+                {window_.length > 0 && (
+                  <Badge size="sm" color="info">
+                    last {window_.length} month{window_.length > 1 ? "s" : ""}:{" "}
+                    {winLog.length} trades · {winWins} W /{" "}
+                    {winLog.length - winWins} L ·{" "}
+                    {winLog.length
+                      ? ((100 * winWins) / winLog.length).toFixed(2)
+                      : "0.00"}% win · {fmtMoney(winSum)} USDT
+                  </Badge>
+                )}
               </>
             )}
           </div>

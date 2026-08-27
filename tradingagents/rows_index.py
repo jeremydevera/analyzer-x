@@ -633,6 +633,54 @@ def syncing() -> bool:
 
 
 # ------------------------------------------------------------------ reading
+def month_keys(months: int, anchor: str | None = None) -> list:
+    """The last `months` calendar months, newest first, as the store keys them
+    ("2026-08"). `anchor` is the month to count back FROM — the caller passes
+    the newest month the data actually has, so a window is never anchored on a
+    month nobody measured.
+
+    Operator, 2026-08-27: *"add filter Last x month / if i entered 2 months then
+    adjust the number of trades, winrate, profit for last x month"*. CLAUDE.md
+    kit item G asks for exactly this, and for the months outside the window to
+    be REMOVED rather than shown as em dashes.
+    """
+    n = max(0, int(months or 0))
+    if not n:
+        return []
+    if anchor:
+        y, m = (int(x) for x in str(anchor).split("-")[:2])
+    else:
+        import datetime as _dt
+
+        now = _dt.datetime.now()
+        y, m = now.year, now.month
+    out = []
+    for _ in range(n):
+        out.append(f"{y:04d}-{m:02d}")
+        m -= 1
+        if m == 0:
+            y, m = y - 1, 12
+    return out
+
+
+def window_figures(monthly: dict, window: list) -> dict:
+    """What a row DID inside the window, from the per-month profits the sweep
+    stored.
+
+    Exact for profit and for months-green. NOT trades, wins or win rate: the
+    sweep accumulates those per ROW only (`fast_grid` and `auto_trader` both
+    keep `monthly[month] += pnl` and nothing else), so the window's trade count
+    cannot be derived here — it has to be re-measured from the candles, which
+    is what the row's own trade log does on a click. Saying so is the point:
+    a win % that silently covered a different span than the profit beside it
+    would be the label-must-match-data failure this repo keeps paying for.
+    """
+    got = {k: float(monthly.get(k) or 0.0) for k in window if k in (monthly or {})}
+    return {"w_profit": round(sum(got.values()), 2),
+            "w_green": sum(1 for v in got.values() if v > 0),
+            "w_months": len(got)}
+
+
 def clean_row_id(row_id) -> str:
     """The id as the table PRINTS it, from whatever was typed or pasted.
 
@@ -643,9 +691,31 @@ def clean_row_id(row_id) -> str:
     return str(row_id or "").strip().lstrip("#").strip().upper()
 
 
+# The operator's two groups (2026-08-27): "i want to group this new backtests to
+# 'Preset Confluence' / then the existing backtests before this should be all
+# grouped to 'Classic'". Decided by the signal's own NAME -- every rule in
+# tradingagents/signals_conf.py is called `cf_...` -- so no column is added and
+# 35.8 million indexed rows do not have to be rewritten to answer the question.
+GROUPS = {
+    "preset": {"label": "Preset Confluence", "like": "cf\\_%"},
+    "classic": {"label": "Classic", "like": "cf\\_%", "negate": True},
+}
+
+
+def in_group(signal: str, group: str | None) -> bool:
+    """Does this signal belong to the group? No group means every signal."""
+    if not group:
+        return True
+    if group not in GROUPS:
+        raise ValueError(f"unknown group {group!r}; use one of "
+                         f"{', '.join(sorted(GROUPS))}")
+    is_preset = str(signal or "").startswith("cf_")
+    return (not is_preset) if GROUPS[group].get("negate") else is_preset
+
+
 def _where(coin=None, tf=None, signal=None, profitable=False,
            min_trades=0, min_winrate=0, min_tp=0, sizing=None, row_id=None,
-           *, order_owns_index=False, order_key=None,
+           group=None, *, order_owns_index=False, order_key=None,
            winrate_seeks=False) -> tuple:
     """The WHERE clause and its arguments.
 
@@ -695,6 +765,17 @@ def _where(coin=None, tf=None, signal=None, profitable=False,
         if val:
             sql.append(f"{'' if keeps_index else step_aside}{col} = ?")
             args.append(val)
+    # GROUP: matched on the signal name, and it steps aside for the ORDER BY
+    # like tf and signal do -- half the store is one group, so it can never be
+    # selective enough to drive a plan.
+    if group:
+        if group not in GROUPS:
+            raise ValueError(f"unknown group {group!r}; use one of "
+                             f"{', '.join(sorted(GROUPS))}")
+        g = GROUPS[group]
+        sql.append(f"{step_aside}signal {'NOT ' if g.get('negate') else ''}"
+                   f"LIKE ? ESCAPE '\\'")
+        args.append(g["like"])
     if profitable:
         sql.append("profit > 0")
     # A COUNT, in the unit the trades column prints (CLAUDE.md rule G).
@@ -1219,8 +1300,8 @@ def _page_rows(con, coin, row_where, row_args, order, lim, off,
 
 def query(coin=None, tf=None, signal=None, profitable=False,
           limit=500, offset=0, sort="profit", min_trades=0,
-          min_winrate=0, min_tp=0, sizing=None, row_id=None,
-          desc=None) -> dict:
+          min_winrate=0, min_tp=0, sizing=None, row_id=None, group=None,
+          months=0, desc=None) -> dict:
     """Rows sorted by `sort` (SORTS), profit first by default.
 
     STRICTLY READ-ONLY. It creates nothing and it indexes nothing.
@@ -1279,13 +1360,13 @@ def query(coin=None, tf=None, signal=None, profitable=False,
         elif _rows_estimate() > UNINDEXED_LIMIT:
             _build_index("rows_pr2")
     where, args = _where(coin, tf, signal, profitable, min_trades, min_winrate,
-                         min_tp, sizing, row_id)
+                         min_tp, sizing, row_id, group)
     # the row select streams its own ORDER BY index; the count rides the
     # trades index instead (see _where). The ORDER matters to the WHERE too:
     # a win-rate floor drives rows_winrate when the screen is ranked by win %
     # and steps aside otherwise.
     row_where, row_args = _where(coin, tf, signal, profitable, min_trades,
-                                 min_winrate, min_tp, sizing, row_id,
+                                 min_winrate, min_tp, sizing, row_id, group,
                                  order_owns_index=True, order_key=key,
                                  winrate_seeks=winrate_seeks)
     down = SORTS[key] if desc is None else bool(desc)
@@ -1313,8 +1394,12 @@ def query(coin=None, tf=None, signal=None, profitable=False,
 
     # coin and/or tf ALONE are answered by the pair summaries: exact, no scan
     # (see _pairs_total). Anything that cuts inside a pair is not.
+    # `group` belongs in this list: it cuts INSIDE a pair (half the signals in
+    # every pair file), so the pair summaries cannot answer it. Without it the
+    # count came from _pairs_total and both groups reported the whole store --
+    # 35,893,630 rows beside a table showing one group (2026-08-27).
     from_pairs = not (signal or profitable or min_trades or min_winrate
-                      or min_tp or sizing or row_id)
+                      or min_tp or sizing or row_id or group)
     # A win-rate floor (with or without a trade floor) is an index-only range
     # on rows_winrate, so its total is EXACT and costs nothing - no "+".
     # The total is EXACT only when the bounded count came back under its cap:
@@ -1322,7 +1407,8 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     # for is exactly the 25 s this request used to spend twice.
     from_winrate = bool(float(min_winrate or 0) > 0 and not coin and not tf
                         and not signal and not profitable and not min_tp
-                        and not sizing and not row_id and _winrate_index())
+                        and not sizing and not row_id and not group
+                        and _winrate_index())
 
     def _read():
         with _open(readonly=True) as con:
@@ -1334,6 +1420,16 @@ def query(coin=None, tf=None, signal=None, profitable=False,
                     total = -1          # over the cap: bound it, print the +
                 else:
                     total = got_total
+            elif where and group and not coin:
+                # A GROUP has no index to seek: `signal` is not indexed, so
+                # even the bounded count is a table scan -- measured 26.2 s for
+                # 5,001 preset rows on this 35.9M-row store, which the 20 s
+                # budget kills, and the whole request then fails. -1 is the
+                # module's existing "bounded, over its cap" answer and prints
+                # with the "+", so the caption says "5,000+ match" instead of
+                # either lying or timing out. With a COIN the count rides
+                # rows_coin and is cheap, so that case still counts for real.
+                total = -1
             elif where and from_pairs:
                 total = _pairs_total(coin, tf)
                 # EXACT, so zero means zero: skip the row query. Without this
@@ -1398,6 +1494,17 @@ def query(coin=None, tf=None, signal=None, profitable=False,
         except ValueError:
             d["monthly"] = {}
         out.append(d)
+    # LAST N MONTHS. Anchored on the newest month the ROWS themselves carry,
+    # never on today: a store whose last sweep ended in July must not report an
+    # empty August as "the last month" (kit item G — print the window's REAL
+    # dates). Profit and months-green are exact; trades and win % are not in
+    # the store per month (see window_figures).
+    newest = max((m for r in out for m in (r.get("monthly") or {})),
+                 default=None)
+    window = month_keys(months, newest)
+    if window:
+        for r in out:
+            r.update(window_figures(r.get("monthly") or {}, window))
     # the caller captions the table with this, so it is never a literal
     return {"rows": out, "total": total, "sort": key, "desc": down,
             # the caption prints "5,000+ match" when the count was capped,
@@ -1411,7 +1518,11 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             "sizing": sizing or "",
             # what was LOOKED UP, cleaned exactly as the query cleaned it, so
             # the panel can say "#6YACZSXX is not in the store" and mean it
-            "row_id": clean_row_id(row_id)}
+            "row_id": clean_row_id(row_id),
+            # the window's REAL months, newest first, so the screen prints the
+            # dates it has data for rather than the ones it asked for
+            "window": window,
+            "months_window": int(months or 0)}
 
 
 def iter_rows(coin=None, tf=None, signal=None, profitable=False,

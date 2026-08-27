@@ -205,7 +205,8 @@ def strategies(coin: str | None = None, tf: str | None = None,
                sort: str = "profit", min_trades: int = 0,
                min_winrate: float = 0.0, min_tp: float = 0.0,
                sizing: str | None = None, row_id: str | None = None,
-               desc: bool | None = None) -> dict:
+               group: str | None = None,
+               months: int = 0, desc: bool | None = None) -> dict:
     """Every stored strategy, filtered. Rows carry their stable id.
 
     Served from the SQLite index, NOT by re-reading the store. This route used
@@ -224,7 +225,7 @@ def strategies(coin: str | None = None, tf: str | None = None,
                        offset=offset, sort=sort,
                        min_trades=min_trades, min_winrate=min_winrate,
                        min_tp=min_tp, sizing=sizing, row_id=row_id,
-                       desc=desc)
+                       group=group, months=months, desc=desc)
     except ri.SortNotReady as exc:
         # 503: the request is fine, the store is not ready for it yet.
         # The screen shows this sentence rather than hanging on a sort

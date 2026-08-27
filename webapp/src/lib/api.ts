@@ -55,6 +55,15 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 
 // ---------------------------------------------------------------- types
 export interface StrategyRow {
+  /** LAST N MONTHS: what this row did inside the window. Profit and green are
+   *  exact (the sweep stores profit per month); there is deliberately no
+   *  w_trades or w_winrate, because the sweep does not keep those per month. */
+  /** month key ("2026-08") -> that month's profit for this row. The month
+   *  columns in the grid are these keys — the store's own, not a fixed ladder */
+  monthly?: Record<string, number>;
+  w_profit?: number;
+  w_green?: number;
+  w_months?: number;
   id: string;
   coin: string;
   tf: string;
@@ -316,6 +325,8 @@ export const api = {
     coin?: string; tf?: string; signal?: string; profitable?: boolean;
     sort?: StrategySort; minTrades?: number; minWinrate?: number;
     minTp?: number; sizing?: string; rowId?: string; desc?: boolean;
+    /** the download has to carry the same group as the table it came from */
+    group?: "preset" | "classic";
   }) => {
     const p = new URLSearchParams();
     if (q.coin) p.set("coin", q.coin);
@@ -327,6 +338,7 @@ export const api = {
     if (q.minWinrate) p.set("min_winrate", String(q.minWinrate));
     if (q.minTp) p.set("min_tp", String(q.minTp));
     if (q.sizing) p.set("sizing", q.sizing);
+    if (q.group) p.set("group", q.group);
     if (q.rowId) p.set("row_id", q.rowId);
     if (q.desc !== undefined) p.set("desc", String(q.desc));
     return `${API_BASE}/api/strategies.csv?${p.toString()}`;
@@ -355,6 +367,13 @@ export const api = {
     /** ONE row by the code in its first column (#6YACZSXX). It overrides every
      *  other filter — kit item H, and how a row is quoted without ambiguity */
     rowId?: string;
+    /** "preset" = the ten researched confluence setups at three levels each
+     *  (every rule named cf_...); "classic" = the 75 signals that existed
+     *  before them. The operator's own names: Preset Confluence / Classic */
+    group?: "preset" | "classic";
+    /** LAST N MONTHS: every row also reports what it did INSIDE that window —
+     *  profit and green months, the two the store keeps per month */
+    months?: number;
     /** false = lowest first; omit for the column's useful end */
     desc?: boolean;
   }) => {
@@ -365,7 +384,9 @@ export const api = {
     if (q.minWinrate) p.set("min_winrate", String(q.minWinrate));
     if (q.minTp) p.set("min_tp", String(q.minTp));
     if (q.sizing) p.set("sizing", q.sizing);
+    if (q.group) p.set("group", q.group);
     if (q.rowId) p.set("row_id", q.rowId);
+    if (q.months) p.set("months", String(q.months));
     if (q.desc !== undefined) p.set("desc", String(q.desc));
     if (q.tf) p.set("tf", q.tf);
     if (q.signal) p.set("signal", q.signal);
@@ -376,6 +397,8 @@ export const api = {
       /** the order the server actually used, so the caption is derived */
       sort?: StrategySort; min_trades?: number; min_winrate?: number;
       min_tp?: number; sizing?: string; row_id?: string; desc?: boolean;
+      /** the window's REAL months, newest first ("2026-08") */
+      window?: string[]; months_window?: number;
       /** a filtered count stops at COUNT_CAP: print "N+" */
       total_capped?: boolean }>(
       `/api/strategies?${p.toString()}`,

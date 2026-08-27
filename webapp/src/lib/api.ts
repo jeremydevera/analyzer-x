@@ -315,7 +315,7 @@ export const api = {
   strategiesCsvUrl: (q: {
     coin?: string; tf?: string; signal?: string; profitable?: boolean;
     sort?: StrategySort; minTrades?: number; minWinrate?: number;
-    minTp?: number; desc?: boolean;
+    minTp?: number; sizing?: string; desc?: boolean;
   }) => {
     const p = new URLSearchParams();
     if (q.coin) p.set("coin", q.coin);
@@ -326,6 +326,7 @@ export const api = {
     if (q.minTrades) p.set("min_trades", String(q.minTrades));
     if (q.minWinrate) p.set("min_winrate", String(q.minWinrate));
     if (q.minTp) p.set("min_tp", String(q.minTp));
+    if (q.sizing) p.set("sizing", q.sizing);
     if (q.desc !== undefined) p.set("desc", String(q.desc));
     return `${API_BASE}/api/strategies.csv?${p.toString()}`;
   },
@@ -347,6 +348,9 @@ export const api = {
     /** the take-profit floor, in the unit the TP% column PRINTS: 4 means TP
      *  4% or wider, not 0.04 (operator, 2026-08-27) */
     minTp?: number;
+    /** "flat" or "martingale" — the ladder is a sizing CHOICE, not a
+     *  measurement (rule 19), so it has to be possible to see one alone */
+    sizing?: string;
     /** false = lowest first; omit for the column's useful end */
     desc?: boolean;
   }) => {
@@ -356,6 +360,7 @@ export const api = {
     if (q.minTrades) p.set("min_trades", String(q.minTrades));
     if (q.minWinrate) p.set("min_winrate", String(q.minWinrate));
     if (q.minTp) p.set("min_tp", String(q.minTp));
+    if (q.sizing) p.set("sizing", q.sizing);
     if (q.desc !== undefined) p.set("desc", String(q.desc));
     if (q.tf) p.set("tf", q.tf);
     if (q.signal) p.set("signal", q.signal);
@@ -365,7 +370,7 @@ export const api = {
     return get<{ rows: StrategyRow[]; total: number; index?: IndexStatus;
       /** the order the server actually used, so the caption is derived */
       sort?: StrategySort; min_trades?: number; min_winrate?: number;
-      min_tp?: number; desc?: boolean;
+      min_tp?: number; sizing?: string; desc?: boolean;
       /** a filtered count stops at COUNT_CAP: print "N+" */
       total_capped?: boolean }>(
       `/api/strategies?${p.toString()}`,
@@ -376,7 +381,8 @@ export const api = {
     /** `tps` are the TP% values this store's timeframes can hold, from the
      *  measuring grid — the TP box offers them and caps itself at the
      *  largest, because a TP no row has costs a full scan to answer */
-    get<{ coins: string[]; tfs: string[]; signals: string[]; tps?: number[] }>(
+    get<{ coins: string[]; tfs: string[]; signals: string[]; tps?: number[];
+      sizings?: string[] }>(
       "/api/strategies/facets",
     ),
 

@@ -659,7 +659,7 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                 continue
             thp = 0.0 if th is None else round(th * 100, 3)
             for (sl, tp), sz in itertools.product(br.pairs_for(tf),
-                                                  ("flat", "martingale")):
+                                                  br.SIZINGS):
                 if liq is not None and sl * 100 >= liq:
                     continue
                 if rt is not None and rt / tp >= GATE_BLOCK:

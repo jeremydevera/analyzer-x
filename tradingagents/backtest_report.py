@@ -119,6 +119,22 @@ def _grid(sls, tps):
     return sorted((sl, tp) for sl in sls for tp in tps)
 
 
+# The two ways a position is sized, and the only two values the `sizing`
+# column ever holds. Named here because the operator asked to FILTER by it
+# ("i want filter to see flat / martingale", 2026-08-27) and a dropdown built
+# from a literal in the browser is a label that can drift from the data.
+# Rule 19: flat is always tested — the ladder is a sizing choice, not a
+# measurement.
+SIZINGS: tuple[str, ...] = ("flat", "martingale")
+
+# The two ways a position is sized, and the only two values the `sizing`
+# column ever holds. Named here because the operator asked to FILTER by it
+# ("i want filter to see flat / martingale", 2026-08-27) and a dropdown built
+# from a literal in the browser is a label that can drift from the data.
+# Rule 19: flat is always tested — the ladder is a sizing choice, not a
+# measurement.
+SIZINGS: tuple[str, ...] = ("flat", "martingale")
+
 BARRIERS: dict[str, list[tuple[float, float]]] = {
     "15m": _grid([.001, .002, .003, .004, .005, .006, .008, .010, .012, .015],
                  [.002, .003, .004, .006, .008, .010, .012, .015, .020, .025,
@@ -464,8 +480,7 @@ def run_grid(coins: Sequence[str], tfs: Sequence[str], *,
                                     f_ms=_fms, f_cum=_fcum, bar_ms=_ms)
                             except Exception:
                                 _fastr = None
-                        for sz, pl in itertools.product(
-                                ("flat", "martingale"), plans):
+                        for sz, pl in itertools.product(SIZINGS, plans):
                             # One position, several exits. `plans` defaults to
                             # (None,) — the single exit every existing row
                             # uses — so a page built without asking for splits

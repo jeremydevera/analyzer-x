@@ -1,0 +1,156 @@
+"""`ORDER BY profit` with a filter beside it needs profit's own wide index.
+
+Measured on the operator's store (35,863,520 rows, mechanical disk, a sweep
+running) the day the flat/martingale filter was added, 2026-08-27:
+
+    sizing=flat                              HTTP 503 at the 20s budget
+    sizing=flat AND tf=1h                    HTTP 503
+    sizing=flat AND 100+ trades              HTTP 503
+    sizing=flat AND profit > 0               HTTP 503
+    sizing=flat AND coin=KAVA                200 in 2.0 s
+
+The filter itself is correct in all five — the store simply cannot answer four
+of them in time. `rows_profit` is (profit DESC, id), so every candidate row has
+to be read off the disk to see its `sizing`, and EVERY one of the biggest
+profits in this store is a martingale row (the ladder multiplies them), so a
+`flat` page has to walk millions of rows before it finds 500.
+
+`rows_pr2` carries the filter columns next to profit, which makes that walk
+index-only — the same trick `rows_wr2` plays for the win % order. Built on
+demand, never by `ensure()`: it is tens of minutes on a store this size and
+everything works, slower, without it.
+"""
+import pytest
+
+from tradingagents import rows_index as ri
+
+
+def test_the_index_carries_every_filter_that_cuts_inside_a_pair():
+    ddl = ri.INDEX_DDL["rows_pr2"]
+    assert ddl == ri.WIDE_PROFIT
+    cols = ddl[ddl.index("(") + 1:ddl.rindex(")")]
+    # profit leads (it is the ORDER BY, and `profitable` is profit > 0), then
+    # every filter the panel can add to it
+    assert cols.startswith("profit DESC"), cols
+    for col in ("sizing", "tp", "winrate", "trades"):
+        assert col in cols, f"rows_pr2 cannot test {col} index-only: {cols}"
+    assert cols.rstrip().endswith("id"), cols
+
+
+def test_it_is_built_on_demand_not_by_ensure():
+    """45 min on the operator's store for the win-rate one; a page open must
+    not wait on that, and `ensure()` runs on every API start."""
+    assert all("rows_pr2" not in d for d in ri.KEEP_INDEXES)
+    assert "rows_pr2" not in " ".join(ri.FILTER_INDEXES.values())
+
+
+def test_the_index_is_named_only_when_it_exists(monkeypatch):
+    """Naming an index SQLite does not have is a hard error, so a store without
+    it must fall through to the planner's own choice."""
+    monkeypatch.setattr(ri, "has_index", lambda name: name == "rows_pr2")
+    assert ri._indexed_by(None, False, True) == " INDEXED BY rows_pr2"
+    monkeypatch.setattr(ri, "has_index", lambda name: False)
+    assert ri._indexed_by(None, False, True) == ""
+
+
+def test_a_coin_still_outranks_it(monkeypatch):
+    """~10k rows for a pair beats any scan of the profit index."""
+    monkeypatch.setattr(ri, "has_index", lambda name: True)
+    assert ri._indexed_by("KAVA", False, True) == " INDEXED BY rows_coin"
+
+
+def test_only_a_filter_that_lives_in_it_asks_for_it():
+    assert ri._wide_profit_helps(sizing="flat")
+    assert ri._wide_profit_helps(min_tp=4)
+    assert ri._wide_profit_helps(min_winrate=50)
+    assert ri._wide_profit_helps(min_trades=100)
+    assert ri._wide_profit_helps(profitable=True)
+    # an unfiltered page is what rows_profit is already perfect for
+    assert not ri._wide_profit_helps()
+    # a signal is a string and is not in the index: nothing to gain
+    assert not ri._wide_profit_helps(sizing=None, min_tp=0)
+
+
+def test_a_missing_index_starts_building_behind_the_answer(monkeypatch,
+                                                          tmp_path):
+    """The request still runs — the 20 s budget is what answers 503 — but the
+    build has to start, or the next attempt is just as slow."""
+    started = []
+    monkeypatch.setattr(ri, "DB_PATH", tmp_path / "rows.db")
+    monkeypatch.setattr(ri, "has_index", lambda name: name != "rows_pr2")
+    monkeypatch.setattr(ri, "_rows_estimate", lambda: ri.UNINDEXED_LIMIT + 1)
+    monkeypatch.setattr(ri, "_build_index", lambda name: started.append(name))
+    ri.query(sizing="flat")
+    assert started == ["rows_pr2"], started
+
+    # nothing to gain, nothing built
+    started.clear()
+    ri.query()
+    assert started == [], started
+
+
+def test_a_small_store_does_not_build_anything(monkeypatch, tmp_path):
+    """Sorting a few thousand rows without it is instant; a build on a laptop
+    store would be pure cost."""
+    started = []
+    monkeypatch.setattr(ri, "DB_PATH", tmp_path / "rows.db")
+    monkeypatch.setattr(ri, "has_index", lambda name: name != "rows_pr2")
+    monkeypatch.setattr(ri, "_rows_estimate", lambda: 4_000)
+    monkeypatch.setattr(ri, "_build_index", lambda name: started.append(name))
+    ri.query(sizing="flat")
+    assert started == [], started
+
+
+def test_the_timeout_names_the_sizing_case_and_what_answers_now(monkeypatch):
+    monkeypatch.setattr(ri, "has_index", lambda name: False)
+    why = ri._slow_why(None, None, None, 0, 0, "profit", sizing="flat")
+    assert "flat" in why and "wide profit index" in why
+    assert "rank by win %" in why and "coin" in why
+    # with the index in place that sentence would be a lie, so it goes
+    monkeypatch.setattr(ri, "has_index", lambda name: True)
+    later = ri._slow_why(None, None, None, 0, 0, "profit", sizing="flat")
+    assert "wide profit index" not in later
+
+
+@pytest.mark.parametrize("kw", [{"sizing": "flat"}, {"min_tp": 4},
+                                {"min_winrate": 50}])
+def test_the_answer_is_the_same_with_or_without_it(kw, tmp_path, monkeypatch):
+    """An index changes the PLAN, never the rows. Same store, same filter,
+    once with rows_pr2 named and once without."""
+    import json
+    import time
+
+    from tradingagents import market_sweep as msw
+
+    rows_dir = tmp_path / "rows"
+    rows_dir.mkdir()
+    monkeypatch.setattr(msw, "ROWDIR", rows_dir)
+    monkeypatch.setattr(ri, "DB_PATH", tmp_path / "rows.db")
+
+    def row(sig, profit, sizing, tp, winrate):
+        wins = round(120 * winrate / 100)
+        return {"coin": "AAA", "tf": "1h", "signal": sig, "th": 0.1, "sl": 0.3,
+                "tp": tp, "rr": 3.0, "sizing": sizing, "lev": 20, "base": 5.0,
+                "notional": 100.0, "trades": 120, "wins": wins,
+                "losses": 120 - wins, "winrate": winrate, "profit": profit,
+                "funding": -0.2, "h1": 1.0, "h2": 1.0, "green": 8,
+                "months": 12, "worst": -4.1, "dd": 22.0, "liqs": 0,
+                "stop_reachable": True, "days": 360, "bars": 34000,
+                "monthly": {}, "cost_of_tp": 12.5, "rt": 0.04, "gate": "ok"}
+
+    (rows_dir / "AAA-1h.json").write_text(json.dumps([
+        row("a", 900.0, "martingale", 2.0, 30.0),
+        row("b", 40.0, "flat", 5.0, 70.0),
+        row("c", 30.0, "flat", 2.0, 55.0),
+        row("d", -5.0, "martingale", 8.0, 90.0),
+    ]))
+    ri.sync(now=time.time() + ri.SETTLE_S + 1)
+
+    without = ri.query(**kw)
+    with ri._open() as con:
+        con.execute(ri.WIDE_PROFIT)
+    ri.forget_indexes()
+    assert ri.has_index("rows_pr2") is True
+    with_it = ri.query(**kw)
+    assert [r["id"] for r in with_it["rows"]] == [r["id"] for r in without["rows"]]
+    assert with_it["total"] == without["total"]

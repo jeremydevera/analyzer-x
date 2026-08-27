@@ -17,6 +17,7 @@ me strategies going for 4% a trade or more". Three things this holds shut:
   no 1d rows — had not returned after 25 s.
 """
 import json
+import re
 
 import pytest
 
@@ -196,8 +197,12 @@ def test_the_browser_sends_the_floor_and_caps_the_box_at_the_grid():
     assert 'aria-label="Minimum take profit percent"' in panel
     assert panel.count("applied.minTp") >= 3, "table, load-more and CSV"
     # the boxes are a DRAFT: the store is asked when Apply filters is clicked,
-    # and `draft` must carry the TP floor or the button cannot send it
-    assert "minTp }" in panel and "const apply = () =>" in panel
+    # and `draft` must carry the TP floor or the button cannot send it. Matched
+    # over the draft set rather than its last field, so the next filter added
+    # there does not break this test (the sizing filter did).
+    draft = re.search(r"const draft = \{([^}]*)\}", panel)
+    assert draft and "minTp" in draft.group(1), draft
+    assert "const apply = () =>" in panel
     # the ceiling is computed from the facets, not typed here
     assert "Math.max(...facets.tps)" in panel
     assert "max={tpCeiling}" in panel and "Math.min(tpCeiling" in panel

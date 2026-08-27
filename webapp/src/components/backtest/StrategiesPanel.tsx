@@ -44,7 +44,7 @@ const HEAD_SORT: Record<string, StrategySort | undefined> =
     .map(([k, label]) => [label, k as StrategySort]));
 
 export default function StrategiesPanel() {
-  const [facets, setFacets] = useState<{ coins: string[]; tfs: string[]; signals: string[]; tps?: number[] }>({ coins: [], tfs: [], signals: [], tps: [] });
+  const [facets, setFacets] = useState<{ coins: string[]; tfs: string[]; signals: string[]; tps?: number[]; sizings?: string[] }>({ coins: [], tfs: [], signals: [], tps: [], sizings: [] });
   const [coin, setCoin] = useState("");
   const [tf, setTf] = useState("");
   const [signal, setSignal] = useState("");
@@ -64,6 +64,13 @@ export default function StrategiesPanel() {
   // aims at, so 4 means "only strategies going for 4% a trade or more" — the
   // unit the TP% column prints, inclusive.
   const [minTp, setMinTp] = useState(0);
+  // "i want filter to see flat / martingale" (operator, 2026-08-27). Sizing is
+  // HOW MUCH is staked per trade: flat stakes the same every time, martingale
+  // doubles after a loss to win it back. It is a sizing choice, not a
+  // measurement — an audit proved the "13/13 green months" behind six live
+  // strategies came from the ladder, not the signal (flat: 7/12–11/12,
+  // CLAUDE.md rule 19) — so the two have to be visible apart.
+  const [sizing, setSizing] = useState("");
   // the floors the SERVER actually applied. On a 503 the request moves and the
   // rows do not, so captioning them with the request is the lie the operator
   // read as "it only sorted the page" (label-must-match-data).
@@ -106,7 +113,7 @@ export default function StrategiesPanel() {
   // leaves when the operator says so, and the button is where the spinner is.
   const [applied, setApplied] = useState({
     coin: "", tf: "", signal: "", profitable: false,
-    minTrades: 0, minWinrate: 0, minTp: 0,
+    minTrades: 0, minWinrate: 0, minTp: 0, sizing: "",
   });
   // The filter set the ROWS ON SCREEN came from — set only when a request
   // SUCCEEDS. `applied` is what was asked for, and the two differ every time a
@@ -119,7 +126,7 @@ export default function StrategiesPanel() {
   // repo keeps paying for (label-must-match-data).
   const [servedFilters, setServedFilters] = useState({
     coin: "", tf: "", signal: "", profitable: false,
-    minTrades: 0, minWinrate: 0, minTp: 0,
+    minTrades: 0, minWinrate: 0, minTp: 0, sizing: "",
   });
   // how long the request that FAILED had been running, so the message can say
   // "did not answer in 34s" instead of a bare HTTP 500
@@ -170,8 +177,8 @@ export default function StrategiesPanel() {
                      signal: applied.signal || undefined,
                      profitable: applied.profitable, sort,
                      minTrades: applied.minTrades, minWinrate: applied.minWinrate,
-                     minTp: applied.minTp, desc,
-                     limit: perPage, offset: (page - 1) * perPage })
+                     minTp: applied.minTp, sizing: applied.sizing || undefined,
+                     desc, limit: perPage, offset: (page - 1) * perPage })
       .then((d) => {
         if (mine !== reqRef.current) return;   // a newer request owns the screen
         setRows(d.rows); setTotal(d.total); setCapped(!!d.total_capped);
@@ -228,7 +235,8 @@ export default function StrategiesPanel() {
 
   const shown = rows.concat(extra);
   // what the boxes say right now, against what the store was asked
-  const draft = { coin, tf, signal, profitable, minTrades, minWinrate, minTp };
+  const draft = { coin, tf, signal, profitable, minTrades, minWinrate, minTp,
+                  sizing };
   const pending = (Object.keys(draft) as (keyof typeof draft)[])
     .filter((k) => draft[k] !== applied[k]);
   /** send the boxes to the store. Page 1, because a new filter is a new list
@@ -249,6 +257,7 @@ export default function StrategiesPanel() {
     f.minTrades > 0 ? `min trades = ${f.minTrades}` : "any trades",
     f.minWinrate > 0 ? `min win % = ${f.minWinrate}` : "any win %",
     f.minTp > 0 ? `min TP % = ${f.minTp}` : "any TP",
+    f.sizing ? `sizing = ${f.sizing}` : "flat and martingale",
     f.profitable ? "profit > 0" : "losers included",
   ].join(" AND ");
   // The REQUEST in words — what the spinner is waiting for, not what is on
@@ -288,7 +297,7 @@ export default function StrategiesPanel() {
         coin: applied.coin || undefined, tf: applied.tf || undefined,
         signal: applied.signal || undefined, profitable: applied.profitable,
         sort, minTrades: applied.minTrades, minWinrate: applied.minWinrate,
-        minTp: applied.minTp, desc,
+        minTp: applied.minTp, sizing: applied.sizing || undefined, desc,
         limit: perPage, offset: (page - 1) * perPage + shown.length,
       });
       setExtra((e) => e.concat(d.rows));
@@ -362,6 +371,7 @@ export default function StrategiesPanel() {
             {servedTrades > 0 ? ` · at least ${servedTrades} trades` : ""}
             {servedWinrate > 0 ? ` · win % ${servedWinrate} or better` : ""}
             {servedTp > 0 ? ` · TP ${servedTp}% or wider` : ""}
+            {servedFilters.sizing ? ` · ${servedFilters.sizing} only` : ""}
           </p>
           {/* while a slow filter runs, the numbers above still describe the
               PREVIOUS answer — so say out loud which request is in flight
@@ -391,6 +401,17 @@ export default function StrategiesPanel() {
           <select className={sel} value={signal} onChange={(e) => setSignal(e.target.value)} aria-label="Signal">
             <option value="">all signals</option>
             {facets.signals.map((s) => <option key={s}>{s}</option>)}
+          </select>
+          {/* "i want filter to see flat / martingale". The options come from
+              the grid that measured the rows (facets.sizings), so the dropdown
+              cannot offer a sizing the store does not hold. */}
+          <select className={sel} value={sizing}
+                  onChange={(e) => setSizing(e.target.value)}
+                  aria-label="Sizing">
+            <option value="">flat and martingale</option>
+            {(facets.sizings ?? []).map((z) => (
+              <option key={z} value={z}>{z} only</option>
+            ))}
           </select>
           <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300">
             min trades
@@ -534,7 +555,8 @@ export default function StrategiesPanel() {
                tf: applied.tf || undefined, signal: applied.signal || undefined,
                profitable: applied.profitable, sort,
                minTrades: applied.minTrades, minWinrate: applied.minWinrate,
-               minTp: applied.minTp, desc })}>
+               minTp: applied.minTp, sizing: applied.sizing || undefined,
+               desc })}>
             download all ({total.toLocaleString()}{capped ? "+" : ""}) CSV
           </a>
         </div>

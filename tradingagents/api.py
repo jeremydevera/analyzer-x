@@ -204,6 +204,7 @@ def strategies(coin: str | None = None, tf: str | None = None,
                limit: int = 500, offset: int = 0,
                sort: str = "profit", min_trades: int = 0,
                min_winrate: float = 0.0, min_tp: float = 0.0,
+               sizing: str | None = None,
                desc: bool | None = None) -> dict:
     """Every stored strategy, filtered. Rows carry their stable id.
 
@@ -222,7 +223,7 @@ def strategies(coin: str | None = None, tf: str | None = None,
                        profitable=profitable, limit=limit,
                        offset=offset, sort=sort,
                        min_trades=min_trades, min_winrate=min_winrate,
-                       min_tp=min_tp, desc=desc)
+                       min_tp=min_tp, sizing=sizing, desc=desc)
     except ri.SortNotReady as exc:
         # 503: the request is fine, the store is not ready for it yet.
         # The screen shows this sentence rather than hanging on a sort
@@ -238,7 +239,7 @@ def strategies(coin: str | None = None, tf: str | None = None,
 
 def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                          sort="profit", min_trades=0, min_winrate=0,
-                         min_tp=0, desc=None):
+                         min_tp=0, sizing=None, desc=None):
     """The CSV, one chunk at a time — a module-level generator on purpose.
 
     Inside the route it was only reachable through StreamingResponse's ASYNC
@@ -270,14 +271,15 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
     for r in ri.iter_rows(coin=coin, tf=tf, signal=signal,
                           profitable=profitable, sort=sort,
                           min_trades=min_trades, min_winrate=min_winrate,
-                          min_tp=min_tp, desc=desc):
+                          min_tp=min_tp, sizing=sizing, desc=desc):
         w.writerow([r.get(c) for c in cols]
                    + [_json.dumps(r.get("monthly") or {}, separators=(",", ":"))])
         yield flush()
 
 
 def strategies_csv_name(coin=None, tf=None, signal=None, min_trades=0,
-                        sort="profit", min_winrate=0, min_tp=0) -> str:
+                        sort="profit", min_winrate=0, min_tp=0,
+                        sizing=None) -> str:
     """A filename that says which slice of the store is in the file."""
     bits = [b for b in (coin, tf, signal,
                         f"min{min_trades}" if min_trades else "",
@@ -285,6 +287,7 @@ def strategies_csv_name(coin=None, tf=None, signal=None, min_trades=0,
                         # two downloads of the same coin differ only by it
                         f"wr{_trim(min_winrate)}" if min_winrate else "",
                         f"tp{_trim(min_tp)}" if min_tp else "",
+                        sizing or "",
                         sort) if b]
     return "strategies-" + "-".join(str(b) for b in bits) + ".csv"
 
@@ -301,6 +304,7 @@ def strategies_csv(coin: str | None = None, tf: str | None = None,
                    signal: str | None = None, profitable: bool = False,
                    sort: str = "profit", min_trades: int = 0,
                    min_winrate: float = 0.0, min_tp: float = 0.0,
+                   sizing: str | None = None,
                    desc: bool | None = None):
     """EVERY matching row as CSV — no limit, streamed.
 
@@ -318,19 +322,20 @@ def strategies_csv(coin: str | None = None, tf: str | None = None,
         next(ri.iter_rows(coin=coin, tf=tf, signal=signal,
                           profitable=profitable, sort=sort,
                           min_trades=min_trades, min_winrate=min_winrate,
-                          min_tp=min_tp, desc=desc), None)
+                          min_tp=min_tp, sizing=sizing, desc=desc), None)
     except ri.SortNotReady as exc:
         raise HTTPException(503, str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
 
     name = strategies_csv_name(coin, tf, signal, min_trades, sort,
-                               min_winrate=min_winrate, min_tp=min_tp)
+                               min_winrate=min_winrate, min_tp=min_tp,
+                               sizing=sizing)
     return StreamingResponse(
         strategies_csv_lines(coin=coin, tf=tf, signal=signal,
                             profitable=profitable, sort=sort,
                             min_trades=min_trades, min_winrate=min_winrate,
-                            min_tp=min_tp, desc=desc),
+                            min_tp=min_tp, sizing=sizing, desc=desc),
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{name}"'})
 

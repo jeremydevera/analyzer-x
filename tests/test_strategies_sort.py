@@ -232,8 +232,11 @@ def test_the_row_query_keeps_its_order_index_even_with_a_trade_floor(store):
     # halves of the rule still have to be there.
     page = src[src.index("def _page_rows("):src.index("def query(")]
     q = src[src.index("def query("):src.index("def facets(")]
-    assert "{_indexed_by(coin)}{row_where}" in page, (
-        "the row select must use the +trades form")
+    # `_indexed_by` gained a second argument when a selective win-rate floor
+    # became able to drive the plan too (2026-08-27), so match the halves that
+    # carry the rule rather than the exact call.
+    assert "_indexed_by(coin, winrate_seeks)" in page and "{row_where}" in page, (
+        "the row select must name the coin index and use the +trades form")
     assert "{_indexed_by(coin)}{where}" in q, "and the count the plain one"
 
 

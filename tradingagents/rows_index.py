@@ -697,9 +697,61 @@ def clean_row_id(row_id) -> str:
 # tradingagents/signals_conf.py is called `cf_...` -- so no column is added and
 # 35.8 million indexed rows do not have to be rewritten to answer the question.
 GROUPS = {
-    "preset": {"label": "Preset Confluence", "like": "cf\\_%"},
-    "classic": {"label": "Classic", "like": "cf\\_%", "negate": True},
+    "preset": {"label": "Preset Confluence"},
+    "classic": {"label": "Classic", "negate": True},
 }
+# The group as a RANGE on the signal name, not a LIKE.
+#
+# `signal LIKE 'cf\_%' ESCAPE ''` is correct and unusable: SQLite's LIKE
+# optimisation is off whenever ESCAPE is given, so no index can ever serve it
+# and a PARTIAL index cannot be matched to it either. '`' is the byte straight
+# after '_', so [cf_, cf`) is exactly "starts with cf_" -- and a range is
+# something the planner can use. The literals are INLINED, not bound: SQLite
+# decides at PREPARE time whether a query implies a partial index's WHERE, and
+# a parameter it cannot see yet defeats that. They are constants from this
+# module, never operator input.
+PRESET_LO, PRESET_HI = "cf_", "cf`"
+PRESET_TERMS = "signal >= '%s' AND signal < '%s'" % (PRESET_LO, PRESET_HI)
+CLASSIC_TERMS = "(signal < '%s' OR signal >= '%s')" % (PRESET_LO, PRESET_HI)
+GROUP_TERMS = {"preset": PRESET_TERMS, "classic": CLASSIC_TERMS}
+
+# ONE PARTIAL INDEX PER (GROUP, ORDER) -- and only for `preset`.
+#
+# Measured on the operator's store (35,893,630 rows, mechanical disk) the day
+# they hit it: "Preset Confluence" ranked by profit, LIMIT 500, walking
+# rows_profit and reading each candidate ROW off the disk to test its signal
+# took 78.7 s. The 20 s budget refused it, the proxy gave up before that, and
+# the panel printed `ApiError: /api/strategies?...&group=preset... -> HTTP 500`
+# under a caption that still said "all groups".
+#
+# The 30 cf_ rules are a slice of the store, so a PARTIAL index over just that
+# slice is small, quick to build, and already IN the order the page wants.
+#
+# Only `preset` gets one. `classic` is ~95% of the store: the plain profit walk
+# finds 500 of them at once (measured 1.5 s with no index), so an index there
+# would cost a build and buy nothing.
+GROUP_SORT_COLS = {
+    "profit": "profit DESC, id",
+    "winrate": "winrate DESC, trades, profit DESC, id",
+    "trades": "trades DESC, profit DESC, id",
+    "dd": "dd ASC, profit DESC, id",
+}
+GROUP_INDEXES = {
+    ("preset", k): ("CREATE INDEX IF NOT EXISTS rows_cf_%s ON rows (%s) "
+                    "WHERE %s" % (k, cols, PRESET_TERMS))
+    for k, cols in GROUP_SORT_COLS.items()
+}
+
+
+# _build_index() looks its DDL up here, so a partial index is built and
+# reported exactly like rows_wr2 or rows_id — the same 503-and-build contract.
+INDEX_DDL.update({ddl.split()[5]: ddl for ddl in GROUP_INDEXES.values()})
+
+
+def group_index(group=None, sort="profit") -> str:
+    """The partial index this (group, order) wants, or "" when there is none."""
+    ddl = GROUP_INDEXES.get((str(group or ""), str(sort or "")))
+    return ddl.split()[5] if ddl else ""
 
 
 def in_group(signal: str, group: str | None) -> bool:
@@ -772,10 +824,10 @@ def _where(coin=None, tf=None, signal=None, profitable=False,
         if group not in GROUPS:
             raise ValueError(f"unknown group {group!r}; use one of "
                              f"{', '.join(sorted(GROUPS))}")
-        g = GROUPS[group]
-        sql.append(f"{step_aside}signal {'NOT ' if g.get('negate') else ''}"
-                   f"LIKE ? ESCAPE '\\'")
-        args.append(g["like"])
+        # Inlined literals, and no "+": both are what let the planner match
+        # this term to the partial index (GROUP_INDEXES). There is no index on
+        # `signal` itself, so the missing "+" gives nothing away.
+        sql.append(GROUP_TERMS[group])
     if profitable:
         sql.append("profit > 0")
     # A COUNT, in the unit the trades column prints (CLAUDE.md rule G).
@@ -1211,7 +1263,7 @@ def _row_id_index() -> str:
 
 
 def _indexed_by(coin, winrate_seeks=False, profit_wide=False,
-                row_id=None) -> str:
+                row_id=None, group_idx="") -> str:
     """`INDEXED BY rows_coin` when a coin is named and that index exists.
 
     Measured on the rebuilt store (31,159,970 rows, every index present):
@@ -1230,6 +1282,11 @@ def _indexed_by(coin, winrate_seeks=False, profit_wide=False,
         return _row_id_index()
     if coin and has_index("rows_coin") is True:
         return " INDEXED BY rows_coin"
+    # A GROUP's own partial index is the filter AND the order at once (see
+    # GROUP_INDEXES), so nothing else beats it when no coin is named. The
+    # caller passes it only once it exists.
+    if group_idx:
+        return f" INDEXED BY {group_idx}"
     # No coin named and a selective win-rate floor: rows_winrate is the seek.
     # Only one index can be named, and a coin is always the better driver
     # (~10k rows for a pair), so this never competes with the line above.
@@ -1275,7 +1332,8 @@ def explain(**kw) -> list:
 
 
 def _page_rows(con, coin, row_where, row_args, order, lim, off,
-               winrate_seeks=False, profit_wide=False, row_id=None) -> list:
+               winrate_seeks=False, profit_wide=False, row_id=None,
+               group_idx="") -> list:
     """One page of rows, in `order`, skipping `off` of them.
 
     A shallow page is one statement. A DEEP page is two: the rowids from the
@@ -1284,7 +1342,7 @@ def _page_rows(con, coin, row_where, row_args, order, lim, off,
     store: 60.2 s as one statement, 1.4 s as two. See DEEP_OFFSET.
     """
     sql = (f"SELECT %s FROM rows"
-           f"{_indexed_by(coin, winrate_seeks, profit_wide, row_id)}"
+           f"{_indexed_by(coin, winrate_seeks, profit_wide, row_id, group_idx)}"
            f"{row_where} ORDER BY {order}, id ASC LIMIT ? OFFSET ?")
     if off <= DEEP_OFFSET:
         return con.execute(sql % "*", (*row_args, lim, off)).fetchall()
@@ -1379,6 +1437,23 @@ def query(coin=None, tf=None, signal=None, profitable=False,
         raise SortNotReady(
             "filtering by coin needs its index (rows_coin); it is being "
             "built in the background — try again shortly")
+    # A GROUP ranked without its own index reads every candidate ROW off the
+    # disk to test the signal: 78.7 s for the operator's 500 preset rows, which
+    # the 20 s budget kills and the proxy turned into a bare HTTP 500. So:
+    # refuse fast, SAY it, and build the partial index behind the answer — the
+    # same contract as a missing sort index. Only `preset` has one (classic is
+    # ~95% of the store and needs none), and a named coin is a better driver.
+    group_idx = "" if coin else group_index(group, key)
+    if group_idx and has_index(group_idx) is not True:
+        if _rows_estimate() > UNINDEXED_LIMIT:
+            _build_index(group_idx)
+            raise SortNotReady(
+                f"{GROUPS[group]['label']} ranked by {key} needs its own index "
+                f"({group_idx}) — without it the store reads millions of rows "
+                f"off the disk to find 500 (measured 78.7 s). It is being built "
+                f"in the background; try again shortly, or name a coin, which "
+                f"is answered now")
+        group_idx = ""          # small store: sorting it costs nothing
     need = SORT_INDEX.get(key)
     # A missing index only matters at size. Sorting 4,000 rows without one is
     # instant; sorting 21,582,584 had not finished in ten minutes (measured
@@ -1420,7 +1495,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
                     total = -1          # over the cap: bound it, print the +
                 else:
                     total = got_total
-            elif where and group and not coin:
+            elif where and group and not coin and not group_idx:
                 # A GROUP has no index to seek: `signal` is not indexed, so
                 # even the bounded count is a table scan -- measured 26.2 s for
                 # 5,001 preset rows on this 35.9M-row store, which the 20 s
@@ -1428,7 +1503,9 @@ def query(coin=None, tf=None, signal=None, profitable=False,
                 # module's existing "bounded, over its cap" answer and prints
                 # with the "+", so the caption says "5,000+ match" instead of
                 # either lying or timing out. With a COIN the count rides
-                # rows_coin and is cheap, so that case still counts for real.
+                # rows_coin and is cheap, so that case still counts for
+                # real — and so does the partial index once it is built: the
+                # bounded count then rides it and never touches the table.
                 total = -1
             elif where and from_pairs:
                 total = _pairs_total(coin, tf)
@@ -1448,7 +1525,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
                 # than an honest bound.
                 total = con.execute(
                     f"SELECT COUNT(*) FROM (SELECT 1 FROM rows"
-                    f"{_indexed_by(coin)}{where} "
+                    f"{_indexed_by(coin, group_idx=group_idx)}{where} "
                     f"LIMIT {COUNT_CAP + 1})", args).fetchone()[0]
             else:
                 # COUNT(*) over every row is a full scan (25ms at 27k rows,
@@ -1461,7 +1538,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             # the operator's cursor mid-click.
             got = _page_rows(con, coin, row_where, row_args, order, lim,
                              max(0, int(offset)), winrate_seeks, profit_wide,
-                             row_id)
+                             row_id, group_idx)
         return total, got
 
     try:
@@ -1527,7 +1604,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
 
 def iter_rows(coin=None, tf=None, signal=None, profitable=False,
               sort="profit", min_trades=0, min_winrate=0, min_tp=0,
-              sizing=None, row_id=None, desc=None, batch=5_000):
+              sizing=None, row_id=None, group=None, desc=None, batch=5_000):
     """Every matching row, in the asked order, a batch at a time.
 
     No limit and no list: 21,858,026 rows will not fit in a browser table or in
@@ -1549,6 +1626,18 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
         raise SortNotReady(
             "filtering by coin needs its index (rows_coin); it is being "
             "built in the background — try again shortly")
+    # the same partial index the page needs, and the same refusal: an export
+    # that scans 35 million rows to write its first line is a download that
+    # never starts (see GROUP_INDEXES)
+    group_idx = "" if coin else group_index(group, key)
+    if group_idx and has_index(group_idx) is not True:
+        if _rows_estimate() > UNINDEXED_LIMIT:
+            _build_index(group_idx)
+            raise SortNotReady(
+                f"{GROUPS[group]['label']} ranked by {key} needs its own index "
+                f"({group_idx}); it is being built in the background — try "
+                f"again shortly")
+        group_idx = ""
     need = SORT_INDEX.get(key)
     if (need and _rows_estimate() > UNINDEXED_LIMIT
             and has_index(need) is False):
@@ -1567,7 +1656,7 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
         n = _winrate_matches(min_winrate, min_trades, cap=cap)
         seeks = n is not None and n <= cap
     where, args = _where(coin, tf, signal, profitable, min_trades,
-                         min_winrate, min_tp, sizing, row_id,
+                         min_winrate, min_tp, sizing, row_id, group,
                          order_owns_index=True, order_key=key,
                          winrate_seeks=seeks)
     step = max(100, int(batch))
@@ -1576,7 +1665,7 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
     with _open(readonly=True, same_thread=False) as con:
         cur = con.execute(
             f"SELECT * FROM rows"
-            f"{_indexed_by(coin, seeks, (not row_id and key == 'profit' and not coin and _wide_profit_helps(sizing, min_tp, min_winrate, min_trades, profitable)), row_id)}"
+            f"{_indexed_by(coin, seeks, (not row_id and key == 'profit' and not coin and _wide_profit_helps(sizing, min_tp, min_winrate, min_trades, profitable)), row_id, group_idx)}"
             f"{where} "
             f"ORDER BY {order}, id ASC", args)
         while True:

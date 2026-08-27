@@ -39,15 +39,76 @@ def test_the_group_names_are_the_operators_words():
     assert set(ri.GROUPS) == {"preset", "classic"}
 
 
-@pytest.mark.parametrize("group,sql_has,sample_in,sample_out", [
-    ("preset", "LIKE", "cf_ttm_l2", "trend50"),
-    ("classic", "NOT LIKE", "trend50", "cf_ttm_l2"),
+@pytest.mark.parametrize("group,terms,sample_in,sample_out", [
+    ("preset", "signal >= 'cf_' AND signal < 'cf`'", "cf_ttm_l2", "trend50"),
+    ("classic", "(signal < 'cf_' OR signal >= 'cf`')", "trend50", "cf_ttm_l2"),
 ])
-def test_the_where_clause_selects_the_group(group, sql_has, sample_in, sample_out):
+def test_the_where_clause_selects_the_group(group, terms, sample_in, sample_out):
+    r"""A RANGE on the signal name, not a LIKE.
+
+    `signal LIKE 'cf\_%' ESCAPE '\'` is correct and unusable: SQLite turns
+    its LIKE optimisation off whenever ESCAPE is given, so no index can serve
+    it and a partial index cannot be matched to it. The operator paid for that
+    with `HTTP 500` on their own screen -- 78.7 s to rank 500 preset rows.
+    """
     sql, args = ri._where(group=group)
-    assert "signal" in sql and sql_has in sql, sql
+    assert terms in sql, sql
+    assert "LIKE" not in sql, "a LIKE cannot use an index; a range can"
+    assert args == [], "the bounds are INLINE: a bound parameter cannot be "                        "matched against a partial index at prepare time"
     assert ri.in_group(sample_in, group) is True
     assert ri.in_group(sample_out, group) is False
+
+
+def test_the_preset_group_has_a_partial_index_for_every_order():
+    """Every order the screen offers, over just the cf_ slice of the store."""
+    from tradingagents import rows_index as r
+    for sort in r.SORTS:
+        name = r.group_index("preset", sort)
+        assert name == f"rows_cf_{sort}", sort
+        ddl = r.INDEX_DDL[name]
+        assert ddl.startswith(f"CREATE INDEX IF NOT EXISTS {name} ON rows (")
+        assert f"WHERE {r.PRESET_TERMS}" in ddl,             "the index's WHERE must be the query's own terms, word for word, "             "or SQLite will not match them"
+        assert sort in ddl.split("WHERE")[0], "and it must be IN that order"
+    # classic is ~95% of the store: the plain profit walk finds 500 at once
+    # (1.5 s measured), so an index there is a build that buys nothing
+    for sort in r.SORTS:
+        assert r.group_index("classic", sort) == ""
+    assert r.group_index(None, "profit") == ""
+
+
+def test_a_group_without_its_index_is_refused_with_the_reason(monkeypatch):
+    """Not a 20 s hang and not a bare 500: the sentence, and a build behind it.
+
+    What the operator saw before this:
+        ApiError: /api/strategies?sort=profit&group=preset&desc=true&limit=500
+        -> HTTP 500
+    """
+    from tradingagents import rows_index as r
+
+    built = []
+    monkeypatch.setattr(r, "_rows_estimate", lambda: 35_893_630)
+    monkeypatch.setattr(r, "has_index", lambda name: False)
+    monkeypatch.setattr(r, "_build_index", lambda name: built.append(name))
+    with pytest.raises(r.SortNotReady) as exc:
+        r.query(group="preset", sort="profit")
+    said = str(exc.value)
+    assert "Preset Confluence" in said and "rows_cf_profit" in said
+    assert "coin" in said, "and it must say what IS answerable now"
+    assert built == ["rows_cf_profit"], built
+
+
+def test_the_csv_carries_the_group_too():
+    """The panel's download button sits under a filtered table; a CSV that
+    ignores the group is 35.9M rows under a name that says otherwise."""
+    import inspect
+
+    from tradingagents import api
+
+    assert "group" in inspect.signature(ri.iter_rows).parameters
+    for fn in (api.strategies_csv, api.strategies_csv_lines):
+        assert "group" in inspect.signature(fn).parameters, fn.__name__
+        assert "group=group" in inspect.getsource(fn), fn.__name__
+    assert "preset" in api.strategies_csv_name(group="preset"),         "and the FILENAME has to say which slice is in the file"
 
 
 def test_no_group_filters_nothing():
@@ -131,20 +192,22 @@ def test_a_group_is_counted_not_taken_from_the_pair_summaries():
         "and the win-rate shortcut too"
 
 
-def test_a_group_count_is_bounded_rather_than_scanned():
-    """`signal` has no index, so counting a group is a table scan: measured
+def test_a_group_count_is_bounded_until_its_index_exists():
+    """Counting a group is a table scan while `signal` has no index: measured
     26.2 s for the first 5,001 preset rows on the 35.9M-row store, which the
-    20 s query budget kills -- the filter then failed outright instead of
-    answering. -1 is this module's existing "bounded, over the cap" answer and
-    prints with the "+", so the caption reads "5,000+ match".
+    20 s budget kills, so the filter failed outright instead of answering. -1
+    is this module's existing "bounded, over the cap" answer and prints with
+    the "+", so the caption reads "5,000+ match". Once the partial index is
+    built the bounded count rides it instead and stays exact under the cap.
     """
     import inspect
 
     src = inspect.getsource(ri.query)
-    i = src.index("elif where and group and not coin:")
-    branch = src[i:i + 700]
+    i = src.index("elif where and group and not coin and not group_idx:")
+    branch = src[i:i + 900]
     assert "total = -1" in branch
-    assert "rows_coin" in branch, "with a coin the count is cheap and still exact"
-    # and -1 must still be turned into a capped count for the caption
+    # and with the index there, the generic bounded count must NAME it
+    assert "_indexed_by(coin, group_idx=group_idx)" in src,         "the count has to ride the partial index once it exists"
+    # -1 must still be turned into a capped count for the caption
     j = src.index("if total < 0:")
     assert "total, capped_count = COUNT_CAP, True" in src[j:j + 700],         "an unknown total must print as a bound, with the +"

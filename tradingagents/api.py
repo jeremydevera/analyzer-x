@@ -235,14 +235,19 @@ def strategies(coin: str | None = None, tf: str | None = None,
         # 400, not 500: the request is wrong, and the message names
         # what IS allowed rather than making the caller guess
         raise HTTPException(400, str(exc)) from exc
+    # the window's trades/W/L/win % where they can be EXACT (see restate_window)
+    if months and got.get("window") and len(got.get("rows") or []) <= RESTATE_MAX:
+        for r in got["rows"]:
+            r.update(restate_window(r, got["window"]))
+    got["restate_max"] = RESTATE_MAX
     got["index"] = ri.status()             # so the UI can say "still indexing"
     return got
 
 
 def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                          sort="profit", min_trades=0, min_winrate=0,
-                         min_tp=0, sizing=None, row_id=None, desc=None,
-                         batch=5_000):
+                         min_tp=0, sizing=None, row_id=None, group=None,
+                         desc=None, batch=5_000):
     """The CSV, one chunk at a time — a module-level generator on purpose.
 
     Inside the route it was only reachable through StreamingResponse's ASYNC
@@ -283,7 +288,7 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                               profitable=profitable, sort=sort,
                               min_trades=min_trades, min_winrate=min_winrate,
                               min_tp=min_tp, sizing=sizing, row_id=row_id,
-                              desc=desc, batch=batch):
+                              group=group, desc=desc, batch=batch):
             w.writerow([r.get(c) for c in cols]
                        + [_json.dumps(r.get("monthly") or {},
                                       separators=(",", ":"))])
@@ -300,7 +305,7 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
 
 def strategies_csv_name(coin=None, tf=None, signal=None, min_trades=0,
                         sort="profit", min_winrate=0, min_tp=0,
-                        sizing=None) -> str:
+                        sizing=None, group=None) -> str:
     """A filename that says which slice of the store is in the file."""
     bits = [b for b in (coin, tf, signal,
                         f"min{min_trades}" if min_trades else "",
@@ -309,6 +314,9 @@ def strategies_csv_name(coin=None, tf=None, signal=None, min_trades=0,
                         f"wr{_trim(min_winrate)}" if min_winrate else "",
                         f"tp{_trim(min_tp)}" if min_tp else "",
                         sizing or "",
+                        # the group is part of WHICH slice this file is: the
+                        # same coin and order differ entirely by it
+                        group or "",
                         sort) if b]
     return "strategies-" + "-".join(str(b) for b in bits) + ".csv"
 
@@ -326,7 +334,7 @@ def strategies_csv(coin: str | None = None, tf: str | None = None,
                    sort: str = "profit", min_trades: int = 0,
                    min_winrate: float = 0.0, min_tp: float = 0.0,
                    sizing: str | None = None, row_id: str | None = None,
-                   desc: bool | None = None):
+                   group: str | None = None, desc: bool | None = None):
     """EVERY matching row as CSV — no limit, streamed.
 
     The screen can hold a few thousand rows; the store holds 21,858,026. The
@@ -344,7 +352,7 @@ def strategies_csv(coin: str | None = None, tf: str | None = None,
                           profitable=profitable, sort=sort,
                           min_trades=min_trades, min_winrate=min_winrate,
                           min_tp=min_tp, sizing=sizing, row_id=row_id,
-                          desc=desc), None)
+                          group=group, desc=desc), None)
     except ri.SortNotReady as exc:
         raise HTTPException(503, str(exc)) from exc
     except ValueError as exc:
@@ -352,13 +360,13 @@ def strategies_csv(coin: str | None = None, tf: str | None = None,
 
     name = strategies_csv_name(coin, tf, signal, min_trades, sort,
                                min_winrate=min_winrate, min_tp=min_tp,
-                               sizing=sizing)
+                               sizing=sizing, group=group)
     return StreamingResponse(
         strategies_csv_lines(coin=coin, tf=tf, signal=signal,
                             profitable=profitable, sort=sort,
                             min_trades=min_trades, min_winrate=min_winrate,
                             min_tp=min_tp, sizing=sizing, row_id=row_id,
-                            desc=desc),
+                            group=group, desc=desc),
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
@@ -385,6 +393,63 @@ def strategies_reindex() -> dict:
                 "why": "already indexing — it is working through the backlog"}
     return {"started": True, "behind": behind,
             "why": f"indexing {behind:,} measured pair(s) now"}
+
+
+# How many rows a request may have restated from rebuilt trades. One: a rebuild
+# reads the pair's candles and replays them (~1 s), so a 500-row page would be a
+# ten-minute request. An #id lookup returns exactly one row, which is the case
+# the operator asked for.
+RESTATE_MAX = 1
+
+
+def restate_window(row: dict, window: list) -> dict:
+    """`w_trades`, `w_wins`, `w_losses`, `w_winrate` and the log's own window
+    profit, counted from this row's trades rebuilt from the candles.
+
+    By EXIT month, which is how the sweep counts a trade into a month
+    (`monthly[_month_of(exit_bar)] += pnl`). Returns {} when the log cannot be
+    rebuilt — a missing figure must stay missing rather than become a zero.
+    """
+    from tradingagents import market_sweep as msw
+    from tradingagents.positions_view import fmt_when          # noqa: F401
+
+    if not window:
+        return {}
+    try:
+        got = msw.trades_for(row["coin"], row["tf"], signal=row["signal"],
+                             th=float(row.get("th") or 0.0),
+                             sl=float(row["sl"]), tp=float(row["tp"]),
+                             sizing=row["sizing"],
+                             base_margin=float(row.get("base") or 5.0))
+    except Exception as exc:                                   # noqa: BLE001
+        print(f"[strategies] could not restate {row.get('id')}: "
+              f"{type(exc).__name__}: {exc}", flush=True)
+        return {}
+    log = got.get("log") or []
+    if not log:
+        return {}
+    months = {"Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "May": 5, "Jun": 6,
+              "Jul": 7, "Aug": 8, "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12}
+    keep = []
+    for t in log:
+        stamp = str(t.get("exit time") or "")
+        # "Aug 03, 2026 8:03pm" — the project's one date format
+        parts = stamp.replace(",", "").split()
+        if len(parts) < 3 or parts[0] not in months:
+            continue
+        key = f"{parts[2]}-{months[parts[0]]:02d}"
+        if key in window:
+            keep.append(t)
+    if not keep:
+        return {"w_trades": 0, "w_wins": 0, "w_losses": 0, "w_winrate": 0.0,
+                "w_profit_log": 0.0, "restated": True}
+    wins = sum(1 for t in keep if float(t.get("pnl $") or 0) > 0)
+    return {"w_trades": len(keep), "w_wins": wins,
+            "w_losses": len(keep) - wins,
+            "w_winrate": round(100 * wins / len(keep), 2),
+            "w_profit_log": round(sum(float(t.get("pnl $") or 0)
+                                      for t in keep), 2),
+            "restated": True}
 
 
 @app.get("/api/strategies/facets")
@@ -847,23 +912,27 @@ def trade_strategies(catalog: bool = False) -> dict:
             "coins": coins.get(key) or [],
             "base_margin": margins.get(key),
             "loss_cap": limits.get(key),
-            # The LADDER RUNG — and it belongs to the COIN AND BOOK, not to
-            # this strategy. Two strategies on one coin ADVANCE THE SAME
-            # counter, so a row showing 3W/1L can sit on rung 11 because a
-            # different strategy on the same coin lost eleven times. Calling
-            # it "N loss" on this row was a lie (2026-08-22); the payload now
-            # names the book and who else shares it so the label can be true.
+            # The LADDER RUNG. On the REAL book it belongs to the COIN, not
+            # to this strategy — the exchange nets every order on a contract
+            # into one position, so one counter is the truth there. On the
+            # PAPER book each strategy has had its own slot since 2026-08-27
+            # ("i want it isolated"), so a demo row's rung is its own and
+            # nobody else's. This used to read `coin + "#paper"`, which stops
+            # existing the moment the slots split, and every demo row would
+            # have shown rung 0 for ever.
             "streak": (streak := max(
-                (int((runstate.get(c + _bk_suffix) or {}).get("step", 0) or 0)
+                (int((runstate.get(at.state_key(c, not _is_real, key)) or {})
+                     .get("step", 0) or 0)
                  for c in (coins.get(key) or [])), default=0)),
-            "streak_book": ("real" if "real" in (books.get(key) or [])
-                            else "paper"),
+            "streak_book": ("real" if _is_real else "paper"),
+            # Only a REAL rung can be shared, and only by another real row on
+            # the same coin. A demo row shares nothing now, so this list is
+            # empty for it rather than naming strategies it no longer affects.
             "streak_shared_with": sorted(
                 other for other in at.STRATEGY_ORDER
-                if other != key and (books.get(other) or [])
-                and set(coins.get(other) or []) & set(coins.get(key) or [])
-                and (("real" in (books.get(other) or []))
-                     == ("real" in (books.get(key) or [])))),
+                if _is_real and other != key
+                and "real" in (books.get(other) or [])
+                and set(coins.get(other) or []) & set(coins.get(key) or [])),
             # PER ROW. A row that runs flat must not be drawn with a ladder:
             # the ladder column is what the operator reads before deploying.
             "sizing": at.sizing_for(settings, key),

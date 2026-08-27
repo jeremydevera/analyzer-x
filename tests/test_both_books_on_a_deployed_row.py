@@ -147,9 +147,30 @@ def test_the_screen_names_which_book_each_column_is():
     operator reads a demo profit as real money."""
     src = (open("webapp/src/components/trade/StrategiesGrid.tsx",
                 encoding="utf-8").read())
-    assert '["LIVE $ · W/L", "9%"]' in src
-    assert '["DEMO $ · W/L", "9%"]' in src
+    # FOUR columns: the money apart from the record, per book. Joined into
+    # one cell each they read as neither ("its confusing / separate the profit
+    # for demo and live", 2026-08-27).
+    for head in ("LIVE $", "LIVE W/L", "DEMO $", "DEMO W/L"):
+        assert f'["{head}", ' in src, head
     assert '["PROFIT $", "6%"]' not in src, "the unlabelled column is gone"
+    assert '["LIVE $ · W/L"' not in src, "the joined column is gone"
     assert '[["real", r.real], ["paper", r.paper]]' in src
-    # an unarmed book must not read as "no wins"
-    assert "not armed" in src and "opacity-45" in src
+    # a book with nothing on it prints an em dash, not a 0/0 it never tried
+    assert 'n === 0 ? "—"' in src
+    assert "opacity-45" in src and "not armed on the" in src
+
+
+def test_the_column_widths_sum_to_one_hundred():
+    """A table-fixed layout answers an over-budget total by squeezing every
+    column: at 109% "LIVE W/L" wrapped onto three lines and "DEMO $" broke as
+    "DEM O $". The next column added here must take its share from somewhere
+    rather than from everybody."""
+    import re
+
+    src = (open("webapp/src/components/trade/StrategiesGrid.tsx",
+                encoding="utf-8").read())
+    block = src[src.index('[["strategy", '):]
+    block = block[:block.index("as [string, string][]")]
+    pcts = [int(x) for x in re.findall(r'"(\d+)%"', block)]
+    assert len(pcts) == 16, pcts
+    assert sum(pcts) == 100, f"{sum(pcts)}%: {pcts}"

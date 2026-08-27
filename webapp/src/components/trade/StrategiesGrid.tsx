@@ -183,16 +183,23 @@ export default function StrategiesGrid() {
               {/* explicit widths: a table-fixed layout splits columns EVENLY
                   without them, which left "books" too narrow for its two
                   switches and they spilled over the coin beside them. */}
-              {([["strategy", "13%"], ["tf", "4%"], ["TP/SL %", "7%"],
-                 ["books", "12%"], ["coins", "8%"], ["margin $", "6%"],
-                 ["rung", "6%"], [`ladder $ · ${flat ? "flat" : "DEEP"}`, "10%"],
-                 ["next $", "5%"], ["loss cap $", "5%"], ["today $", "5%"],
-                 // BOTH books, named. A row ticked LIVE used to show only its
-                 // live record, so there was nowhere to see what its demo had
-                 // done — and "today $" printed the REAL book's figure even on
-                 // a demo-only row (both fixed 2026-08-27).
-                 ["LIVE $ · W/L", "9%"], ["DEMO $ · W/L", "9%"],
-                 ["backtest", "6%"]] as [string, string][])
+              {/* the widths SUM TO 100. They summed to 109 when the four
+                  book columns went in, and a table-fixed layout answers that
+                  by squeezing every column: "LIVE W/L" wrapped onto three
+                  lines and "DEMO $" broke as "DEM O $". */}
+              {([["strategy", "12%"], ["tf", "3%"], ["TP/SL %", "6%"],
+                 ["books", "9%"], ["coins", "7%"], ["margin $", "5%"],
+                 ["rung", "4%"], [`ladder $ · ${flat ? "flat" : "DEEP"}`, "8%"],
+                 ["next $", "4%"], ["loss cap $", "5%"], ["today $", "5%"],
+                 // BOTH books, and the money apart from the record. A row
+                 // ticked LIVE used to show only its live figures, so there
+                 // was nowhere to see what its demo had done; then both were
+                 // crammed into one cell each and read as neither
+                 // ("its confusing / separate the profit for demo and live",
+                 // 2026-08-27). A money column reads down the page.
+                 ["LIVE $", "7%"], ["LIVE W/L", "7%"],
+                 ["DEMO $", "7%"], ["DEMO W/L", "7%"],
+                 ["backtest", "4%"]] as [string, string][])
                 .map(([h, w]) => (
                 <TableCell key={h} isHeader style={{ width: w }}
                   className="px-2 py-1.5 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400">{h}</TableCell>
@@ -316,35 +323,44 @@ export default function StrategiesGrid() {
                 <TableCell className={`px-2 py-1.5 text-theme-xs ${(r.today ?? 0) >= 0 ? "text-success-600" : "text-error-500"}`}>
                   {fmtMoney(r.today)}{r.tripped && <span className="ml-1 font-semibold text-error-500">PAUSED</span>}
                 </TableCell>
-                {/* One cell per BOOK: its realized profit and its own W/L.
-                    Greyed when the row is not armed on that book, so an empty
-                    record reads as "not running there" and not as "no wins". */}
-                {([["real", r.real], ["paper", r.paper]] as const).map(([which, b]) => {
+                {/* TWO cells per book: the money, then the record. A book
+                    with nothing on it prints an em dash — "0/0" is a claim
+                    about trades that were never attempted, and it was the
+                    noise that made this table unreadable. */}
+                {([["real", r.real], ["paper", r.paper]] as const).flatMap(([which, b]) => {
                   const armed = b?.armed ?? (which === "real"
                     ? r.books.includes("real") : r.books.includes("paper"));
                   const pnl = b?.pnl ?? 0, w = b?.wins ?? 0, l = b?.losses ?? 0;
                   const n = w + l;
-                  return (
-                    <TableCell key={which}
-                      className={`px-2 py-1.5 text-theme-xs ${armed ? "" : "opacity-45"}`}>
-                      <span className={`font-semibold ${pnl >= 0 ? "text-success-600" : "text-error-500"}`}>
-                        {fmtMoney(pnl)}
-                      </span>
-                      <span className="ml-1 whitespace-nowrap">
-                        <span className="text-success-600">{w}</span>
-                        <span className="text-gray-400">/</span>
-                        <span className="text-error-500">{l}</span>
-                        {n > 0 && (
+                  const dim = armed ? "" : " opacity-45";
+                  const book = which === "real" ? "live" : "demo";
+                  return [
+                    <TableCell key={`${which}-pnl`}
+                      title={armed
+                        ? `realized on the ${book} book, all time`
+                        : `not armed on the ${book} book`}
+                      className={`px-2 py-1.5 text-theme-xs font-semibold${dim} ${
+                        n === 0 ? "text-gray-400"
+                        : pnl >= 0 ? "text-success-600" : "text-error-500"}`}>
+                      {n === 0 ? "—" : fmtMoney(pnl)}
+                    </TableCell>,
+                    <TableCell key={`${which}-wl`}
+                      title={armed
+                        ? `${w} won, ${l} lost on the ${book} book`
+                        : `not armed on the ${book} book`}
+                      className={`px-2 py-1.5 text-theme-xs whitespace-nowrap${dim}`}>
+                      {n === 0 ? <span className="text-gray-400">—</span> : (
+                        <>
+                          <span className="text-success-600">{w}</span>
+                          <span className="text-gray-400">/</span>
+                          <span className="text-error-500">{l}</span>
                           <span className="ml-1 text-gray-400">
                             {Math.round((100 * w) / n)}%
                           </span>
-                        )}
-                      </span>
-                      {!armed && n === 0 && (
-                        <span className="ml-1 text-gray-400">not armed</span>
+                        </>
                       )}
-                    </TableCell>
-                  );
+                    </TableCell>,
+                  ];
                 })}
                 <TableCell className="px-2 py-1.5">
                   <button onClick={() => runBacktest(r.key)}

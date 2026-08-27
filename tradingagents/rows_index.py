@@ -597,6 +597,12 @@ def sync(paths: Iterable[Path] | None = None, *, budget_s: float = 0.0,
                 con.execute(ddl)
             forget_indexes()
             con.commit()
+            # The store just grew by a bulk load. The on-demand indexes are not
+            # in READ_INDEXES on purpose (a fill pays for every index it
+            # carries: 1.5 pairs/min with six against 75 with none) — so kick
+            # them in DETACHED children afterwards instead of leaving the panel
+            # to discover they are missing. See .claude/skills/store-indexes.
+            _after_fill_indexes()
             if DEBUG:
                 print(f"[rows-index] rebuilt read indexes in "
                       f"{time.time() - t_idx:.1f}s", flush=True)
@@ -608,6 +614,18 @@ def sync(paths: Iterable[Path] | None = None, *, budget_s: float = 0.0,
         # is set with wal_autocheckpoint in ensure().
     return {"pairs": done, "rows": rows, "left": queued - done,
             "seconds": round(time.time() - started, 2)}
+
+
+def _after_fill_indexes() -> list:
+    """Start the on-demand indexes a fill did not build. Never raises: a fill
+    that finished must not be reported as failed because a build could not
+    start."""
+    try:
+        return build_missing_indexes()
+    except Exception as exc:                                      # noqa: BLE001
+        print(f"[rows-index] could not start the missing index builds: "
+              f"{type(exc).__name__}: {exc}", flush=True)
+        return []
 
 
 def sync_in_background(budget_s: float = 0.0, *, force: bool = False) -> bool:
@@ -1180,6 +1198,36 @@ def build_sort_index(sort: str) -> bool:
     """Create the index an order needs, in a daemon thread. Returns False when
     there is nothing to build or a build is already under way."""
     return _build_index(SORT_INDEX.get(sort))
+
+
+def missing_indexes() -> list:
+    """Every index in INDEX_DDL that the database does not have.
+
+    Nothing in the write path builds these: a backtest inserts rows, and
+    `ensure()` creates KEEP_INDEXES only (creating all of them there cost 13
+    minutes of every API start). So the on-demand ones — rows_wr2, rows_pr2,
+    rows_id, rows_cf_* — exist only because somebody asked, and a SCHEMA_VERSION
+    bump wipes them with the tables. On 2026-08-27 that left the operator's
+    Preset Confluence group with an empty table and no explanation.
+    """
+    forget_indexes()
+    return [n for n in INDEX_DDL if has_index(n) is False]
+
+
+def build_missing_indexes() -> list:
+    """Start a DETACHED build for every missing index. Returns the names.
+
+    Safe to call after any fill: `CREATE INDEX IF NOT EXISTS` is idempotent,
+    SQLite serialises the writers, and each child is nice(10) so a build never
+    outranks a click. Costly, and that is the point — the alternative is a
+    feature that quietly does not work (78.7 s a page for preset, 40 s+ for an
+    #id lookup) until a human notices.
+    """
+    started = [n for n in missing_indexes() if _build_index(n)]
+    if started:
+        print(f"[rows-index] building {len(started)} missing index(es): "
+              f"{', '.join(started)}", flush=True)
+    return started
 
 
 def build_index_now(name: str) -> bool:

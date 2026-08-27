@@ -313,3 +313,37 @@ def test_the_child_builds_one_index_and_does_not_become_an_indexer(monkeypatch):
     assert ri.main(["--build", "rows_id"]) == 0
     assert built == ["rows_id"] and kept == []
     assert ri.main(["--build"]) == 2, "a missing name is a usage error"
+
+
+def test_a_fill_starts_the_indexes_it_did_not_build(monkeypatch, tmp_path):
+    """Operator, 2026-08-27: *"i did a backtest to another session why was this
+    not built?"*
+
+    A backtest inserts rows; it does not create an index that does not exist.
+    `ensure()` builds KEEP_INDEXES only (all of them there cost 13 minutes of
+    every API start), so rows_wr2 / rows_pr2 / rows_id / rows_cf_* exist only
+    because somebody asked — and a SCHEMA_VERSION bump wipes them with the
+    tables. Preset Confluence was an empty table for an hour because of it.
+    """
+    monkeypatch.setattr(ri, "DB_PATH", tmp_path / "rows.db")
+    monkeypatch.setattr(ri, "has_index",
+                        lambda n: n not in ("rows_pr2", "rows_cf_dd"))
+    started = []
+    monkeypatch.setattr(ri, "_build_index", lambda n: started.append(n) or True)
+
+    assert sorted(ri.missing_indexes()) == ["rows_cf_dd", "rows_pr2"]
+    assert sorted(ri.build_missing_indexes()) == ["rows_cf_dd", "rows_pr2"]
+    assert sorted(started) == ["rows_cf_dd", "rows_pr2"]
+
+    # and a build that cannot start must never fail the fill that called it
+    monkeypatch.setattr(ri, "build_missing_indexes",
+                        lambda: (_ for _ in ()).throw(RuntimeError("no fork")))
+    assert ri._after_fill_indexes() == []
+
+
+def test_a_bulk_fill_calls_it(monkeypatch):
+    """The wiring, not just the helper: the end of a BULK pass is the moment the
+    store has grown and nothing has built the on-demand indexes."""
+    src = open("tradingagents/rows_index.py", encoding="utf-8").read()
+    body = src[src.index("        if bulk:"):src.index("# NO wal_checkpoint")]
+    assert "_after_fill_indexes()" in body, body[:400]

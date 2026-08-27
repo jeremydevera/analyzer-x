@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 18, "total": 51, "rows": 1170950, "note": "FHE 4h: rule 77/105 (cf_mom_l1)", "pct": 35.3, "updated": "2026-08-27T06:28:16Z"}
+{"shard": 5, "stage": "testing", "done": 20, "total": 51, "rows": 1236776, "note": "GLM 15m: 34,600 bars, testing 105 rules", "pct": 39.2, "updated": "2026-08-27T06:29:10Z"}

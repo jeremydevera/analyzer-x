@@ -289,18 +289,54 @@ def test_sweep_signal_fades_the_reclaimed_extreme():
 
 
 def test_every_strategy_has_a_timeframe_and_bracket():
-    """Both barriers real, and the target at least as far as the stop.
+    """Both barriers real, and a target inside the stop only WITH evidence.
 
     Equal barriers (1:1) are allowed: a strategy wins either by being paid
     more than it risks OR by being right more often than it is wrong. APEX
     runs sweep30 at 3.00/3.00 and wins 56.8% of 243 trades, comfortably past
-    the ~51.5% break-even once costs are paid. A target INSIDE the stop is
-    still refused -- that needs a win rate the search has never produced.
+    the ~51.5% break-even once costs are paid.
+
+    A target INSIDE the stop used to be refused outright, because "that needs
+    a win rate the search has never produced". On 2026-08-27 the search
+    produced one: 23 flat rows at SL 4.00% / TP 0.40-0.60% measuring 90-97%
+    over 84-90 days on 104-201 trades each. So the ban became arithmetic --
+    such a key must appear in INVERTED_BRACKETS with its MEASURED win rate
+    above the break-even its own average win and average loss imply.
     """
     for key in at.STRATEGY_ORDER:
         spec = at.STRATEGY_SPECS[key]
         assert spec["interval"] and spec["bar_seconds"] > 0
-        assert 0 < spec["sl"] <= spec["tp"], key
+        assert spec["sl"] > 0 and spec["tp"] > 0, key
+        if spec["sl"] <= spec["tp"]:
+            continue
+        proof = at.INVERTED_BRACKETS.get(key)
+        assert proof, f"{key} risks {spec['sl']:.2%} to win {spec['tp']:.2%} " \
+                      f"with no measurement in INVERTED_BRACKETS"
+        for coin, ev in proof.items():
+            breakeven, measured, avg_win, avg_loss, row_id = ev
+            assert measured > breakeven, (key, coin, row_id, measured,
+                                          breakeven)
+            # the break-even must BE the arithmetic of the two averages, not a
+            # number somebody typed next to them
+            # 0.05 because the averages here are rounded to cents-ish
+            # (3dp) themselves; it is loose enough for that and tight enough
+            # to catch a break-even somebody typed rather than measured
+            assert breakeven == pytest.approx(
+                100 * avg_loss / (avg_win + avg_loss), abs=0.05), (key, coin)
+            # and the averages must be on the right side of 1:1, or this key
+            # does not belong in this map at all
+            assert avg_loss > avg_win, (key, coin)
+
+
+def test_an_inverted_bracket_cannot_be_smuggled_in_without_its_numbers():
+    """Every key in the evidence map is a real spec whose TP really is inside
+    its SL -- otherwise the map is decoration and the guard above passes on
+    keys it never checked."""
+    for key, proof in at.INVERTED_BRACKETS.items():
+        spec = at.STRATEGY_SPECS.get(key)
+        assert spec, f"{key} is in INVERTED_BRACKETS but is not a spec"
+        assert spec["tp"] < spec["sl"], f"{key} is not an inverted bracket"
+        assert proof, key
 
 
 def test_realtime_sweep_enters_on_its_own_1m_timeframe(sandbox):

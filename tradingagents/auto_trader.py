@@ -258,7 +258,257 @@ STRATEGY_SPECS = {
                    "tp": 0.045, "sl": 0.015},
     "sweep30_4h": {"interval": "Hour4", "bar_seconds": 14400,
                    "tp": 0.045, "sl": 0.015},
+    # ---------------------------------------------------------------
+    # The 30-day win-rate screen, FLAT sizing (2026-08-27). The operator
+    # pasted 51 rows that were 100.00% over the last 30 days and asked
+    # for the flat ones live; 23 of them cleared the still-working gate
+    # (profitable in the 1-month, 3-month and full window, >= 3 of 4
+    # months green, >= 8 trades in 3 months, stop reachable before
+    # liquidation) and 28 did not — 14 of those LOSE money over the full
+    # window despite the perfect month (SPK elder -$21.21, MERL
+    # zscore20 -$16.45, ANIME psar -$15.37, BSV fib382 -$8.18 ...).
+    #
+    # Every figure below is FLAT sizing at $5 margin, $100 notional, 20x,
+    # measured with the taker fee from each contract's own book, 0.03%
+    # per side of slippage and every published funding settlement inside
+    # the trade's window. DEPTH: the candle store holds 84-90 days for
+    # these pairs, so the '3 months' and 'full history' windows are the
+    # SAME window — this is a 3-month screen, not a year (rule 13).
+    #
+    # Armed nowhere by this commit: a spec is a rule, and the coins and
+    # the book are assigned in the settings on the machine with the keys.
+    #
+    # GLM #ZL8KGSBN: +36.46 over 109 trades, 4/4 green,
+    #   1mo +14.30 (31 trades), dip -5.47, gate ok
+    "zscore20_1h_sl4tp06": {
+        "interval": "Min60", "bar_seconds": 3600,
+        "tp": 0.006, "sl": 0.04,
+    },
+    #
+    # ORDI #QCQU8R9D: +26.23 over 137 trades, 4/4 green,
+    #   1mo +19.78 (43 trades), dip -15.18, gate ok
+    "fisher_1h_sl4tp06": {
+        "interval": "Min60", "bar_seconds": 3600,
+        "tp": 0.006, "sl": 0.04,
+    },
+    #
+    # HBAR #4Z8R6ECY: +21.25 over 128 trades, 3/4 green,
+    #   1mo +13.33 (35 trades), dip -14.53, gate ok
+    "fvg_1h_sl4tp06": {
+        "interval": "Min60", "bar_seconds": 3600,
+        "tp": 0.006, "sl": 0.04,
+    },
+    #
+    # NEO #6TBBAGB8: +19.05 over 111 trades, 3/4 green,
+    #   1mo +15.85 (34 trades), dip -11.15, gate warn
+    "killzone_1h_sl4tp06": {
+        "interval": "Min60", "bar_seconds": 3600,
+        "tp": 0.006, "sl": 0.04,
+    },
+    #
+    # JELLYJELLY #KFS2A86K: +18.98 over 142 trades, 3/4 green,
+    #   1mo +17.80 (39 trades), dip -16.67, gate warn
+    "rsi2_1h_sl4tp06": {
+        "interval": "Min60", "bar_seconds": 3600,
+        "tp": 0.006, "sl": 0.04,
+    },
+    #
+    # HAEDAL #NH8V567C: +17.67 over 109 trades, 3/4 green,
+    #   1mo +17.44 (38 trades), dip -13.39, gate warn
+    "ibs_4h_sl3tp06": {
+        "interval": "Hour4", "bar_seconds": 14400,
+        "tp": 0.006, "sl": 0.03,
+    },
+    #
+    # SEI #LRZ35AZN: +15.97 over 128 trades, 3/4 green,
+    #   1mo +11.35 (43 trades), dip -4.91, gate warn
+    # FLOKI #FHX7MWRA: +0.66 over 121 trades, 3/4 green,
+    #   1mo +8.58 (33 trades), dip -17.80, gate warn
+    # PENDLE #W44WZ8YB: +0.67 over 121 trades, 3/4 green,
+    #   1mo +8.29 (32 trades), dip -18.58, gate warn
+    "ote_1h_sl4tp04": {
+        "interval": "Min60", "bar_seconds": 3600,
+        "tp": 0.004, "sl": 0.04,
+    },
+    #
+    # FET #V7YSJMY9: +13.21 over 135 trades, 2/3 green,
+    #   1mo +12.21 (47 trades), dip -12.06, gate warn
+    # NEO #BWM84WA5: +12.70 over 116 trades, 4/4 green,
+    #   1mo +9.83 (37 trades), dip -6.82, gate warn
+    "killzone_1h_sl4tp04": {
+        "interval": "Min60", "bar_seconds": 3600,
+        "tp": 0.004, "sl": 0.04,
+    },
+    #
+    # LYN #6JZRXUEQ: +13.16 over 134 trades, 3/4 green,
+    #   1mo +12.58 (48 trades), dip -9.64, gate warn
+    "psar_1h_sl4tp04": {
+        "interval": "Min60", "bar_seconds": 3600,
+        "tp": 0.004, "sl": 0.04,
+    },
+    #
+    # COMP #TSY3VV3B: +12.02 over 115 trades, 4/4 green,
+    #   1mo +9.14 (36 trades), dip -10.62, gate warn
+    "fisher_1h_sl4tp04": {
+        "interval": "Min60", "bar_seconds": 3600,
+        "tp": 0.004, "sl": 0.04,
+    },
+    #
+    # BTC #X6W2TA2Q: +9.93 over 107 trades, 3/4 green,
+    #   1mo +10.04 (34 trades), dip -12.39, gate ok
+    "fvg_1h_sl4tp04": {
+        "interval": "Min60", "bar_seconds": 3600,
+        "tp": 0.004, "sl": 0.04,
+    },
+    #
+    # XDC #5HDT6XRV: +8.39 over 100 trades, 3/4 green,
+    #   1mo +8.28 (32 trades), dip -3.36, gate warn
+    "killzone_1h_sl25tp04": {
+        "interval": "Min60", "bar_seconds": 3600,
+        "tp": 0.004, "sl": 0.025,
+    },
+    #
+    # UMA #NJ77PKJK: +8.15 over 150 trades, 3/4 green,
+    #   1mo +11.73 (45 trades), dip -8.97, gate warn
+    "elder_1h_sl4tp04": {
+        "interval": "Min60", "bar_seconds": 3600,
+        "tp": 0.004, "sl": 0.04,
+    },
+    #
+    # XEC #WX6QLM4M: +8.18 over 133 trades, 3/4 green,
+    #   1mo +11.96 (46 trades), dip -10.34, gate warn
+    "fib382_1h_sl4tp04": {
+        "interval": "Min60", "bar_seconds": 3600,
+        "tp": 0.004, "sl": 0.04,
+    },
+    #
+    # ARKM #DQMPNBW6: +7.56 over 114 trades, 3/4 green,
+    #   1mo +8.81 (34 trades), dip -13.19, gate warn
+    "sweep30_1h_sl4tp04": {
+        "interval": "Min60", "bar_seconds": 3600,
+        "tp": 0.004, "sl": 0.04,
+    },
+    #
+    # COMP #9VADZNBK: +6.40 over 144 trades, 3/4 green,
+    #   1mo +9.43 (37 trades), dip -10.36, gate warn
+    "hull20_1h_sl4tp04": {
+        "interval": "Min60", "bar_seconds": 3600,
+        "tp": 0.004, "sl": 0.04,
+    },
+    #
+    # HAEDAL #VKN5KX69: +6.33 over 116 trades, 3/4 green,
+    #   1mo +9.86 (38 trades), dip -14.14, gate warn
+    "ibs_4h_sl3tp04": {
+        "interval": "Hour4", "bar_seconds": 14400,
+        "tp": 0.004, "sl": 0.03,
+    },
+    #
+    # HAEDAL #CMQ6QS5S: +3.73 over 116 trades, 3/4 green,
+    #   1mo +9.86 (38 trades), dip -16.00, gate warn
+    "ibs_4h_sl4tp04": {
+        "interval": "Hour4", "bar_seconds": 14400,
+        "tp": 0.004, "sl": 0.04,
+    },
+    #
+    # PIPPIN #8Z7GRCHF: +3.30 over 107 trades, 3/4 green,
+    #   1mo +14.80 (32 trades), dip -19.34, gate warn
+    "lrslope_1h_sl4tp06": {
+        "interval": "Min60", "bar_seconds": 3600,
+        "tp": 0.006, "sl": 0.04,
+    },
+    #
+    # LUNANEW #8K53S64E: +0.33 over 120 trades, 3/4 green,
+    #   1mo +8.90 (35 trades), dip -19.00, gate warn
+    "pivot_4h_sl4tp04": {
+        "interval": "Hour4", "bar_seconds": 14400,
+        "tp": 0.004, "sl": 0.04,
+    },
 }
+
+
+# A target INSIDE the stop, and the measurement that justifies it.
+#
+# These barriers only win by being right far more often than wrong: at
+# SL 4.00% / TP 0.40% the average win measured $0.26 and the average loss
+# $4.14 at $5 margin, so ONE loss erases SIXTEEN wins. `breakeven` is the
+# win rate where the row stops making money, computed from that row's own
+# average win and average loss — the taker fee, the 0.03%/side slippage
+# and the funding settlements are already inside both figures. `measured`
+# is what the row actually did over the whole candle store (84-90 days,
+# 104-201 trades).
+#
+# The margin is the whole story, and it is thin at the bottom of this
+# list: LUNANEW pivot clears its break-even by 0.06 points, PENDLE and
+# FLOKI ote by 0.13 and 0.12 — one extra loss in 120 trades and they are
+# losers. GLM zscore20 clears by 7.27. Arm accordingly.
+#
+# key -> {coin: (break-even %, measured %, avg win $, avg loss $, row id)}
+INVERTED_BRACKETS = {
+    "zscore20_1h_sl4tp06": {
+        "GLM": (89.98, 97.25, 0.461, 4.14, "ZL8KGSBN"),
+    },
+    "fisher_1h_sl4tp06": {
+        "ORDI": (90.0, 94.16, 0.46, 4.139, "QCQU8R9D"),
+    },
+    "fvg_1h_sl4tp06": {
+        "HBAR": (91.69, 95.31, 0.381, 4.205, "4Z8R6ECY"),
+    },
+    "killzone_1h_sl4tp06": {
+        "NEO": (89.96, 93.69, 0.462, 4.136, "6TBBAGB8"),
+    },
+    "rsi2_1h_sl4tp06": {
+        "JELLYJELLY": (90.05, 92.96, 0.458, 4.144, "KFS2A86K"),
+    },
+    "ibs_4h_sl3tp06": {
+        "HAEDAL": (87.25, 91.74, 0.46, 3.144, "NH8V567C"),
+    },
+    "ote_1h_sl4tp04": {
+        "SEI": (94.04, 96.88, 0.262, 4.138, "LRZ35AZN"),
+        "FLOKI": (94.09, 94.21, 0.26, 4.14, "FHX7MWRA"),
+        "PENDLE": (94.09, 94.21, 0.26, 4.137, "W44WZ8YB"),
+    },
+    "killzone_1h_sl4tp04": {
+        "FET": (94.07, 96.3, 0.26, 4.13, "V7YSJMY9"),
+        "NEO": (94.06, 96.55, 0.261, 4.133, "BWM84WA5"),
+    },
+    "psar_1h_sl4tp04": {
+        "LYN": (94.01, 96.27, 0.261, 4.094, "6JZRXUEQ"),
+    },
+    "fisher_1h_sl4tp04": {
+        "COMP": (94.15, 96.52, 0.258, 4.15, "TSY3VV3B"),
+    },
+    "fvg_1h_sl4tp04": {
+        "BTC": (93.21, 95.33, 0.298, 4.092, "X6W2TA2Q"),
+    },
+    "killzone_1h_sl25tp04": {
+        "XDC": (91.09, 94.0, 0.257, 2.627, "5HDT6XRV"),
+    },
+    "elder_1h_sl4tp04": {
+        "UMA": (94.1, 95.33, 0.259, 4.136, "NJ77PKJK"),
+    },
+    "fib382_1h_sl4tp04": {
+        "XEC": (94.09, 95.49, 0.26, 4.14, "WX6QLM4M"),
+    },
+    "sweep30_1h_sl4tp04": {
+        "ARKM": (94.11, 95.61, 0.26, 4.146, "DQMPNBW6"),
+    },
+    "hull20_1h_sl4tp04": {
+        "COMP": (94.13, 95.14, 0.259, 4.149, "9VADZNBK"),
+    },
+    "ibs_4h_sl3tp04": {
+        "HAEDAL": (92.36, 93.97, 0.26, 3.14, "VKN5KX69"),
+    },
+    "ibs_4h_sl4tp04": {
+        "HAEDAL": (94.1, 94.83, 0.26, 4.14, "CMQ6QS5S"),
+    },
+    "lrslope_1h_sl4tp06": {
+        "PIPPIN": (89.98, 90.65, 0.461, 4.145, "8Z7GRCHF"),
+    },
+    "pivot_4h_sl4tp04": {
+        "LUNANEW": (94.1, 94.17, 0.259, 4.14, "8K53S64E"),
+    },
+}
+
 
 # Order matters: when several ticked strategies fire at once, the first one
 # here wins. FVG first — it is the config the tab was built for.
@@ -297,7 +547,16 @@ STRATEGY_ORDER = ("mom15_4h", "mom15_4h_b", "fvg_4h", "fvg_4h_b",
                   "trend50_30m_pi", "fade15_1h_pv2",
                   "ict_fvg", "fvg_1h", "rsi14_1h", "mom15_sp", "mom6",
                   "trend50", "sweep_1h", "sweep_rt", "mom15_1h", "fade15_1h",
-                  "fade15_15m", "fade15_1m")
+                  "fade15_15m", "fade15_1m",
+                  "zscore20_1h_sl4tp06", "fisher_1h_sl4tp06",
+                  "fvg_1h_sl4tp06", "killzone_1h_sl4tp06",
+                  "rsi2_1h_sl4tp06", "ibs_4h_sl3tp06", "ote_1h_sl4tp04",
+                  "killzone_1h_sl4tp04", "psar_1h_sl4tp04",
+                  "fisher_1h_sl4tp04", "fvg_1h_sl4tp04",
+                  "killzone_1h_sl25tp04", "elder_1h_sl4tp04",
+                  "fib382_1h_sl4tp04", "sweep30_1h_sl4tp04",
+                  "hull20_1h_sl4tp04", "ibs_4h_sl3tp04", "ibs_4h_sl4tp04",
+                  "lrslope_1h_sl4tp06", "pivot_4h_sl4tp04")
 
 
 # ------------------------------------------------------------------ signals

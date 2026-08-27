@@ -766,6 +766,26 @@ DEEP_OFFSET = 5_000
 # So: seek when the floor is selective, scan when it is loose. The crossover is
 # where the two costs meet - 500/(n/35.8M) == n, so n ~ 134,000.
 WINRATE_SEEK_MAX = 150_000
+# ...but that number was calibrated against the NARROW index, where the seek
+# has to fetch every matching row off the disk to find its profit. rows_wr2
+# carries the profit, so the seek never leaves the index and the arithmetic
+# changes completely. Measured on this store (35,863,520 rows) once rows_wr2
+# was built, `win % >= 50` (7,465,262 matches) ranked by profit, LIMIT 500:
+#
+#   +winrate, SCAN rows USING INDEX rows_profit                  479.26 s
+#   INDEXED BY rows_wr2, SEARCH (winrate>?) + temp b-tree          8.70 s
+#
+# 55x, and the reason the scan is so bad is not selectivity — 21% of rows
+# qualify, so it should meet 500 of them almost at once. It is CORRELATION:
+# the most profitable rows in this store are laddered rows with low win rates,
+# so reading in profit order walks a very long way before 500 rows clear a
+# win-rate floor. An earlier "4.10 s" for the same query was a warm page cache
+# reading what the previous identical query had just pulled in.
+#
+# 8.70 s for 7.5 million matches is ~1.2 s per million, so a 20 s budget
+# (QUERY_BUDGET_S) covers about 15 million. 12 million keeps room for the
+# 500 row fetches at the end.
+WIDE_SEEK_MAX = 12_000_000
 # How long ONE read may run before the store gives up and says so.
 #
 # The UI reaches the API through Next's rewrite, which gives up at 30 s with a
@@ -963,6 +983,18 @@ def _build_index(name) -> bool:
     return True
 
 
+def _winrate_seek_cap() -> int:
+    """How many matches the seek is worth, which depends on WHICH index exists.
+
+    Narrow (winrate, trades, id): the seek must read every matching row to get
+    its profit, so it is only worth it while the matches are few.
+    Wide (rows_wr2, + profit): the seek stays inside the index, and beats the
+    profit scan by 55x at 7.5 million matches.
+    """
+    return (WIDE_SEEK_MAX if has_index("rows_wr2") is True
+            else WINRATE_SEEK_MAX)
+
+
 def _winrate_index() -> str:
     """`INDEXED BY <the win-rate index>` - the wide one when it is there.
 
@@ -1083,8 +1115,9 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     # always the better driver.
     winrate_seeks = False
     if float(min_winrate or 0) > 0 and not coin and _winrate_index():
-        n = _winrate_matches(min_winrate, min_trades, cap=WINRATE_SEEK_MAX)
-        winrate_seeks = n is not None and n <= WINRATE_SEEK_MAX
+        cap = _winrate_seek_cap()
+        n = _winrate_matches(min_winrate, min_trades, cap=cap)
+        winrate_seeks = n is not None and n <= cap
     where, args = _where(coin, tf, signal, profitable, min_trades, min_winrate,
                          min_tp)
     # the row select streams its own ORDER BY index; the count rides the
@@ -1134,9 +1167,9 @@ def query(coin=None, tf=None, signal=None, profitable=False,
         with _open(readonly=True) as con:
             _budgeted(con)
             if where and from_winrate:
-                got_total = _winrate_matches(min_winrate, min_trades,
-                                             cap=WINRATE_SEEK_MAX)
-                if got_total is None or got_total > WINRATE_SEEK_MAX:
+                cap = _winrate_seek_cap()
+                got_total = _winrate_matches(min_winrate, min_trades, cap=cap)
+                if got_total is None or got_total > cap:
                     total = -1          # over the cap: bound it, print the +
                 else:
                     total = got_total
@@ -1252,8 +1285,9 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
     # export scans half a million rows to write its first line
     seeks = False
     if float(min_winrate or 0) > 0 and not coin and _winrate_index():
-        n = _winrate_matches(min_winrate, min_trades, cap=WINRATE_SEEK_MAX)
-        seeks = n is not None and n <= WINRATE_SEEK_MAX
+        cap = _winrate_seek_cap()
+        n = _winrate_matches(min_winrate, min_trades, cap=cap)
+        seeks = n is not None and n <= cap
     where, args = _where(coin, tf, signal, profitable, min_trades,
                          min_winrate, min_tp, order_owns_index=True,
                          order_key=key, winrate_seeks=seeks)

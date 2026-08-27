@@ -143,3 +143,42 @@ def test_the_wide_index_is_preferred_but_not_required(store, monkeypatch):
     assert ri._winrate_index() == "", "neither index: no INDEXED BY at all"
     # and the query still answers, without naming an index that is not there
     assert ri.query(min_winrate=95, limit=5)["total"] == 12
+
+
+def test_the_seek_cap_follows_which_index_exists(store):
+    """The 150,000 cap was calibrated against the NARROW index, where the seek
+    must read every matching row off the disk to find its profit. rows_wr2
+    carries the profit, so the seek stays inside the index and is worth it at
+    a hundred times the size. Measured on the operator's store, `win % >= 50`
+    (7,465,262 matches) ranked by profit, LIMIT 500:
+
+        +winrate, SCAN rows USING INDEX rows_profit        479.26 s
+        INDEXED BY rows_wr2, SEARCH + temp b-tree            8.70 s
+
+    The scan is not slow because the floor is unselective — 21% of rows clear
+    it. It is CORRELATION: this store's most profitable rows are laddered ones
+    with low win rates, so reading in profit order walks a very long way to
+    find 500 that clear a win-rate floor.
+    """
+    assert ri._winrate_seek_cap() == ri.WINRATE_SEEK_MAX
+    with ri._open() as con:
+        con.execute(ri.WIDE_WINRATE)
+    ri.forget_indexes()
+    assert ri._winrate_seek_cap() == ri.WIDE_SEEK_MAX
+    assert ri.WIDE_SEEK_MAX > ri.WINRATE_SEEK_MAX * 10
+
+
+def test_a_loose_floor_seeks_once_the_wide_index_is_there(store):
+    """The same filter that had to step aside for the order now drives it."""
+    with ri._open() as con:
+        con.execute(ri.WIDE_WINRATE)
+    ri.forget_indexes()
+    got = ri.query(min_winrate=50, limit=200)
+    assert got["total_capped"] is False, "under the wide cap, so exact"
+    assert got["rows"] and all(r["winrate"] >= 50 for r in got["rows"])
+    # and the answer is the same one the scan would have given
+    ids = [r["id"] for r in got["rows"]]
+    with ri._open() as con:
+        con.execute("DROP INDEX rows_wr2")
+    ri.forget_indexes()
+    assert [r["id"] for r in ri.query(min_winrate=50, limit=200)["rows"]] == ids

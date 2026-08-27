@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 1, "total": 52, "rows": 33220, "note": "0G 30m: rule 45/105 (zscore20)", "pct": 1.9, "updated": "2026-08-27T05:17:11Z"}
+{"shard": 0, "stage": "testing", "done": 1, "total": 52, "rows": 47520, "note": "0G 1h: rule 2/105 (mom15)", "pct": 1.9, "updated": "2026-08-27T05:17:58Z"}

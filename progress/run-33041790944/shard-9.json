@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 48, "total": 51, "rows": 3003260, "note": "VSTOCK 15m: rule 1/105 (mom6)", "pct": 94.1, "updated": "2026-08-27T07:55:41Z"}
+{"shard": 9, "stage": "testing", "done": 48, "total": 51, "rows": 3011900, "note": "VSTOCK 15m: rule 45/105 (zscore20)", "pct": 94.1, "updated": "2026-08-27T07:56:26Z"}

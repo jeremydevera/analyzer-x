@@ -692,6 +692,20 @@ _BUILDING: set = set()
 UNINDEXED_LIMIT = 200_000
 # how far a FILTERED count will go before it answers "N+"
 COUNT_CAP = 5_000
+# Past this offset a page is fetched in TWO steps — see `_page_rows`. The
+# operator's own click: page 50,000 of Stored strategies, offset 24,999,500.
+#
+#   SELECT * ... ORDER BY profit DESC, id LIMIT 500 OFFSET 24999500
+#     SCAN rows USING INDEX rows_profit                       60.2 s
+#   SELECT rowid ... same order, same offset
+#     SCAN rows USING COVERING INDEX rows_profit               1.4 s
+#   then SELECT * FROM rows WHERE rowid IN (those 500)         0.0 s
+#
+# `SELECT *` makes the index non-covering, so SQLite pulls all 25 million
+# skipped rows off the disk to throw them away. `SELECT rowid` never leaves
+# the index. Next's proxy gave up on the 60 s version with a 500 and the
+# screen showed the previous page under the new page number.
+DEEP_OFFSET = 5_000
 # rows one request may return. 2,000 was the cap while the screen showed a
 # fixed 300; the operator asked to see the whole store, so a page can now be
 # 5,000 and `iter_rows` streams the rest with no ceiling at all.
@@ -863,6 +877,28 @@ def explain(**kw) -> list:
     return list(_missing_ok(_read, []))
 
 
+def _page_rows(con, coin, row_where, row_args, order, lim, off) -> list:
+    """One page of rows, in `order`, skipping `off` of them.
+
+    A shallow page is one statement. A DEEP page is two: the rowids from the
+    ORDER BY's own index (covering, so the skipped rows are never read off the
+    disk), then those rowids. Measured at offset 24,999,500 on the operator's
+    store: 60.2 s as one statement, 1.4 s as two. See DEEP_OFFSET.
+    """
+    sql = (f"SELECT %s FROM rows{_indexed_by(coin)}{row_where} "
+           f"ORDER BY {order}, id ASC LIMIT ? OFFSET ?")
+    if off <= DEEP_OFFSET:
+        return con.execute(sql % "*", (*row_args, lim, off)).fetchall()
+    ids = [r[0] for r in con.execute(sql % "rowid", (*row_args, lim, off))]
+    if not ids:
+        return []
+    # rowid IS the table's own key, so this is 500 direct seeks. The ORDER BY
+    # is repeated because `IN` returns them in no particular order.
+    return con.execute(
+        "SELECT * FROM rows WHERE rowid IN (%s) ORDER BY %s, id ASC"
+        % (",".join("?" * len(ids)), order), ids).fetchall()
+
+
 def query(coin=None, tf=None, signal=None, profitable=False,
           limit=500, offset=0, sort="profit", min_trades=0,
           min_winrate=0, min_tp=0, desc=None) -> dict:
@@ -950,10 +986,8 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             # id breaks ties: without it two rows on the same profit swap
             # places between 4-second polls and the row moves out from under
             # the operator's cursor mid-click.
-            got = con.execute(
-                f"SELECT * FROM rows{_indexed_by(coin)}{row_where} "
-                f"ORDER BY {order}, id ASC LIMIT ? OFFSET ?",
-                (*row_args, lim, max(0, int(offset)))).fetchall()
+            got = _page_rows(con, coin, row_where, row_args, order, lim,
+                             max(0, int(offset)))
         return total, got
 
     total, got = _missing_ok(_read, (0, []))

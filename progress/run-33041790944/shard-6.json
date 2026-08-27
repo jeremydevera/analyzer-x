@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 51, "total": 51, "rows": 3779742, "note": "ZBT 15m: rule 21/105 (cci20)", "pct": 100.0, "updated": "2026-08-27T08:52:31Z"}
+{"shard": 6, "stage": "testing", "done": 51, "total": 51, "rows": 3785022, "note": "ZBT 15m: rule 45/105 (zscore20)", "pct": 100.0, "updated": "2026-08-27T08:53:16Z"}

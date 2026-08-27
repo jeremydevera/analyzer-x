@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 23, "total": 51, "rows": 1795110, "note": "INFQSTOCK 30m: rule 13/105 (pivot)", "pct": 45.1, "updated": "2026-08-27T07:04:27Z"}
+{"shard": 10, "stage": "testing", "done": 26, "total": 51, "rows": 1857898, "note": "LAB 15m: 30,337 bars, testing 105 rules", "pct": 51.0, "updated": "2026-08-27T07:05:14Z"}

@@ -773,11 +773,24 @@ DEEP_OFFSET = 5_000
 #     winrate >= 90    69,064 rows   0.01 s
 #     winrate >= 80   643,186 rows   1.06 s
 #
-# `min_winrate=95` ranked by PROFIT wrote `+winrate` and scanned rows_profit,
-# which reads roughly 500/0.0009 = half a million rows to fill a 500-row page.
-# On the operator's screen it never came back: two HTTP 500s from the proxy,
-# and the panel left the previous rows sitting under the new filter. Seeking
-# rows_winrate instead reads 31,768 rows and sorts those.
+# `min_winrate=95` ranked by PROFIT wrote `+winrate` and scanned rows_profit.
+# On the operator's screen that was two HTTP 500s from the proxy's 30 s
+# timeout, with the panel leaving the previous rows sitting under the new
+# filter. The benchmark left running to find out what it really cost came back
+# after TWO HOURS FIFTY-ONE MINUTES:
+#
+#     SELECT * ... WHERE +winrate >= 95 ORDER BY profit DESC LIMIT 500
+#       SCAN rows USING INDEX rows_profit                       10,771.7 s
+#     SELECT * ... INDEXED BY rows_winrate WHERE winrate >= 95  (same answer)
+#       SEARCH (winrate>?) + USE TEMP B-TREE FOR ORDER BY            10.0 s
+#
+# A thousand times, on the narrow index alone. (A 52.32 s figure for the seek
+# appears in the history of this file; that sample was competing with the
+# rows_wr2 build for the same disk. 10.0 s is the quiet-disk number.)
+#
+# It is not selectivity alone: 500/0.0009 is half a million rows, which is not
+# three hours. It is that `SELECT *` makes rows_profit non-covering, so every
+# one of those rows is a random read off a mechanical disk.
 #
 # The other direction is just as real: at `winrate >= 70` most of the store
 # qualifies, and sorting all of it in a temp b-tree did not return in 25 s
@@ -1031,13 +1044,17 @@ def _winrate_index() -> str:
     """`INDEXED BY <the win-rate index>` - the wide one when it is there.
 
     rows_wr2 is (winrate DESC, trades, profit DESC, id): the same seek as
-    rows_winrate plus the profit needed to RANK the matches, which is what
-    turns the operator's `win % >= 95` from 52.32 s into about a second. The
-    narrow rows_winrate is (winrate DESC, trades, id) and makes the same query
-    read all 31,768 matching ROWS off the disk to find their profit.
+    rows_winrate plus the profit needed to RANK the matches. The narrow
+    rows_winrate is (winrate DESC, trades, id), so the same query has to read
+    all 31,768 matching ROWS off the disk to find their profit. Measured on
+    the operator's `win % >= 95` ranked by profit, LIMIT 500:
+
+        no index named (SCAN rows_profit)      10,771.7 s
+        narrow rows_winrate                        10.0 s
+        wide rows_wr2                               0.25 s
 
     Both are accepted so an older database keeps working while the wide one
-    builds (45 min on this store) - naming an index that does not exist is a
+    builds (3,247 s on this store) - naming an index that does not exist is a
     hard SQLite error.
     """
     for name in ("rows_wr2", "rows_winrate"):

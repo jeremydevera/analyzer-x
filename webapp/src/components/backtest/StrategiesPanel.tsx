@@ -71,6 +71,13 @@ export default function StrategiesPanel() {
   // strategies came from the ladder, not the signal (flat: 7/12–11/12,
   // CLAUDE.md rule 19) — so the two have to be visible apart.
   const [sizing, setSizing] = useState("");
+  // "add filter to input a specific id, it should get speicic id example
+  // #6YACZSXX" (operator, 2026-08-27) — and CLAUDE.md kit item H, where
+  // quoting a row by its code is what stops the wrong config being deployed.
+  // The id is HASHED FROM THE COMBINATION, so it names one coin × timeframe ×
+  // signal × threshold × SL/TP × sizing and nothing else: it OVERRIDES the
+  // other filters rather than joining them, and opens that row's trades.
+  const [rowId, setRowId] = useState("");
   // the floors the SERVER actually applied. On a 503 the request moves and the
   // rows do not, so captioning them with the request is the lie the operator
   // read as "it only sorted the page" (label-must-match-data).
@@ -113,7 +120,7 @@ export default function StrategiesPanel() {
   // leaves when the operator says so, and the button is where the spinner is.
   const [applied, setApplied] = useState({
     coin: "", tf: "", signal: "", profitable: false,
-    minTrades: 0, minWinrate: 0, minTp: 0, sizing: "",
+    minTrades: 0, minWinrate: 0, minTp: 0, sizing: "", rowId: "",
   });
   // The filter set the ROWS ON SCREEN came from — set only when a request
   // SUCCEEDS. `applied` is what was asked for, and the two differ every time a
@@ -126,7 +133,7 @@ export default function StrategiesPanel() {
   // repo keeps paying for (label-must-match-data).
   const [servedFilters, setServedFilters] = useState({
     coin: "", tf: "", signal: "", profitable: false,
-    minTrades: 0, minWinrate: 0, minTp: 0, sizing: "",
+    minTrades: 0, minWinrate: 0, minTp: 0, sizing: "", rowId: "",
   });
   // how long the request that FAILED had been running, so the message can say
   // "did not answer in 34s" instead of a bare HTTP 500
@@ -178,6 +185,7 @@ export default function StrategiesPanel() {
                      profitable: applied.profitable, sort,
                      minTrades: applied.minTrades, minWinrate: applied.minWinrate,
                      minTp: applied.minTp, sizing: applied.sizing || undefined,
+                     rowId: applied.rowId || undefined,
                      desc, limit: perPage, offset: (page - 1) * perPage })
       .then((d) => {
         if (mine !== reqRef.current) return;   // a newer request owns the screen
@@ -234,9 +242,20 @@ export default function StrategiesPanel() {
   }, [idx, load]);
 
   const shown = rows.concat(extra);
+  // An id names ONE row and the reason to look it up is its trade log, so a
+  // hit opens it (kit item H). Keyed on the row so it fires once per lookup.
+  const idHit = servedFilters.rowId && rows.length === 1 ? rows[0] : null;
+  useEffect(() => {
+    if (idHit && open?.id !== idHit.id) view(idHit);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idHit?.id]);
   // what the boxes say right now, against what the store was asked
   const draft = { coin, tf, signal, profitable, minTrades, minWinrate, minTp,
-                  sizing };
+                  sizing,
+                  // trim FIRST: " #6yaczsxx " pasted from chat kept its hash
+                  // when the # was stripped before the spaces, and a real id
+                  // then read as "not in the store"
+                  rowId: rowId.trim().replace(/^#+/, "").trim().toUpperCase() };
   const pending = (Object.keys(draft) as (keyof typeof draft)[])
     .filter((k) => draft[k] !== applied[k]);
   /** send the boxes to the store. Page 1, because a new filter is a new list
@@ -250,7 +269,9 @@ export default function StrategiesPanel() {
    *  "all coins AND all timeframe AND all signals AND min trades =x AND min
    *  win% = x". Built from a set of terms, so a box that is added and not
    *  named here would be visibly missing rather than silently unmentioned. */
-  const andLine = (f: typeof draft) => [
+  const andLine = (f: typeof draft) => (f.rowId
+    ? `row #${f.rowId} — every other filter ignored, an id names one row`
+    : [
     f.coin || "all coins",
     f.tf || "all timeframes",
     f.signal || "all signals",
@@ -259,7 +280,7 @@ export default function StrategiesPanel() {
     f.minTp > 0 ? `min TP % = ${f.minTp}` : "any TP",
     f.sizing ? `sizing = ${f.sizing}` : "flat and martingale",
     f.profitable ? "profit > 0" : "losers included",
-  ].join(" AND ");
+  ].join(" AND "));
   // The REQUEST in words — what the spinner is waiting for, not what is on
   // screen (the caption already says that). The SAME sentence the filter line
   // prints, so "AND" means the same thing everywhere on this panel, and it
@@ -297,7 +318,8 @@ export default function StrategiesPanel() {
         coin: applied.coin || undefined, tf: applied.tf || undefined,
         signal: applied.signal || undefined, profitable: applied.profitable,
         sort, minTrades: applied.minTrades, minWinrate: applied.minWinrate,
-        minTp: applied.minTp, sizing: applied.sizing || undefined, desc,
+        minTp: applied.minTp, sizing: applied.sizing || undefined,
+        rowId: applied.rowId || undefined, desc,
         limit: perPage, offset: (page - 1) * perPage + shown.length,
       });
       setExtra((e) => e.concat(d.rows));
@@ -390,6 +412,17 @@ export default function StrategiesPanel() {
           </button>
         ) : null}
         <div className="ml-auto flex flex-wrap gap-2">
+          {/* "#6YACZSXX" — the code the first column prints. Typed with or
+              without the #, any case; it overrides the rest. */}
+          <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300"
+                 title="find one row by the id in its first column — this overrides the other filters">
+            #id
+            <input type="text" value={rowId} placeholder="6YACZSXX"
+                   onChange={(e) => setRowId(e.target.value)}
+                   onKeyDown={onFilterKey}
+                   aria-label="Row id"
+                   className="h-10 w-28 rounded-lg border border-gray-300 bg-transparent px-2 font-mono text-theme-sm uppercase text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" />
+          </label>
           <select className={sel} value={coin} onChange={(e) => setCoin(e.target.value)} aria-label="Coin">
             <option value="">all coins</option>
             {facets.coins.map((c) => <option key={c}>{c}</option>)}
@@ -556,7 +589,7 @@ export default function StrategiesPanel() {
                profitable: applied.profitable, sort,
                minTrades: applied.minTrades, minWinrate: applied.minWinrate,
                minTp: applied.minTp, sizing: applied.sizing || undefined,
-               desc })}>
+               rowId: applied.rowId || undefined, desc })}>
             download all ({total.toLocaleString()}{capped ? "+" : ""}) CSV
           </a>
         </div>
@@ -581,7 +614,15 @@ export default function StrategiesPanel() {
       )}
       {/* rule G: a filter that cannot leave anything says why, rather than
           showing an empty table the reader has to explain to themselves */}
-      {!err && !waiting && !shown.length && (minWinrate > 0 || minTrades > 0 || minTp > 0) && (
+      {!err && !waiting && !shown.length && !!servedFilters.rowId && !missed && (
+        <p className="px-5 pt-2 text-theme-sm text-warning-600 dark:text-warning-400">
+          no row <b>#{servedFilters.rowId}</b> in the store. The id is hashed
+          from the combination, so it changes if the row was re-measured with
+          different barriers — check it against the first column of the table
+          or the artifact you copied it from.
+        </p>
+      )}
+      {!err && !waiting && !shown.length && !servedFilters.rowId && (minWinrate > 0 || minTrades > 0 || minTp > 0) && (
         <p className="px-5 pt-2 text-theme-sm text-warning-600 dark:text-warning-400">
           no stored strategy passes{" "}
           <b>

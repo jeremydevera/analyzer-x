@@ -204,7 +204,7 @@ def strategies(coin: str | None = None, tf: str | None = None,
                limit: int = 500, offset: int = 0,
                sort: str = "profit", min_trades: int = 0,
                min_winrate: float = 0.0, min_tp: float = 0.0,
-               sizing: str | None = None,
+               sizing: str | None = None, row_id: str | None = None,
                desc: bool | None = None) -> dict:
     """Every stored strategy, filtered. Rows carry their stable id.
 
@@ -223,7 +223,8 @@ def strategies(coin: str | None = None, tf: str | None = None,
                        profitable=profitable, limit=limit,
                        offset=offset, sort=sort,
                        min_trades=min_trades, min_winrate=min_winrate,
-                       min_tp=min_tp, sizing=sizing, desc=desc)
+                       min_tp=min_tp, sizing=sizing, row_id=row_id,
+                       desc=desc)
     except ri.SortNotReady as exc:
         # 503: the request is fine, the store is not ready for it yet.
         # The screen shows this sentence rather than hanging on a sort
@@ -239,7 +240,7 @@ def strategies(coin: str | None = None, tf: str | None = None,
 
 def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                          sort="profit", min_trades=0, min_winrate=0,
-                         min_tp=0, sizing=None, desc=None):
+                         min_tp=0, sizing=None, row_id=None, desc=None):
     """The CSV, one chunk at a time — a module-level generator on purpose.
 
     Inside the route it was only reachable through StreamingResponse's ASYNC
@@ -271,7 +272,8 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
     for r in ri.iter_rows(coin=coin, tf=tf, signal=signal,
                           profitable=profitable, sort=sort,
                           min_trades=min_trades, min_winrate=min_winrate,
-                          min_tp=min_tp, sizing=sizing, desc=desc):
+                          min_tp=min_tp, sizing=sizing, row_id=row_id,
+                          desc=desc):
         w.writerow([r.get(c) for c in cols]
                    + [_json.dumps(r.get("monthly") or {}, separators=(",", ":"))])
         yield flush()
@@ -304,7 +306,7 @@ def strategies_csv(coin: str | None = None, tf: str | None = None,
                    signal: str | None = None, profitable: bool = False,
                    sort: str = "profit", min_trades: int = 0,
                    min_winrate: float = 0.0, min_tp: float = 0.0,
-                   sizing: str | None = None,
+                   sizing: str | None = None, row_id: str | None = None,
                    desc: bool | None = None):
     """EVERY matching row as CSV — no limit, streamed.
 
@@ -322,7 +324,8 @@ def strategies_csv(coin: str | None = None, tf: str | None = None,
         next(ri.iter_rows(coin=coin, tf=tf, signal=signal,
                           profitable=profitable, sort=sort,
                           min_trades=min_trades, min_winrate=min_winrate,
-                          min_tp=min_tp, sizing=sizing, desc=desc), None)
+                          min_tp=min_tp, sizing=sizing, row_id=row_id,
+                          desc=desc), None)
     except ri.SortNotReady as exc:
         raise HTTPException(503, str(exc)) from exc
     except ValueError as exc:
@@ -335,7 +338,8 @@ def strategies_csv(coin: str | None = None, tf: str | None = None,
         strategies_csv_lines(coin=coin, tf=tf, signal=signal,
                             profitable=profitable, sort=sort,
                             min_trades=min_trades, min_winrate=min_winrate,
-                            min_tp=min_tp, sizing=sizing, desc=desc),
+                            min_tp=min_tp, sizing=sizing, row_id=row_id,
+                            desc=desc),
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{name}"'})
 

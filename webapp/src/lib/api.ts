@@ -315,7 +315,7 @@ export const api = {
   strategiesCsvUrl: (q: {
     coin?: string; tf?: string; signal?: string; profitable?: boolean;
     sort?: StrategySort; minTrades?: number; minWinrate?: number;
-    minTp?: number; sizing?: string; desc?: boolean;
+    minTp?: number; sizing?: string; rowId?: string; desc?: boolean;
   }) => {
     const p = new URLSearchParams();
     if (q.coin) p.set("coin", q.coin);
@@ -327,6 +327,7 @@ export const api = {
     if (q.minWinrate) p.set("min_winrate", String(q.minWinrate));
     if (q.minTp) p.set("min_tp", String(q.minTp));
     if (q.sizing) p.set("sizing", q.sizing);
+    if (q.rowId) p.set("row_id", q.rowId);
     if (q.desc !== undefined) p.set("desc", String(q.desc));
     return `${API_BASE}/api/strategies.csv?${p.toString()}`;
   },
@@ -351,6 +352,9 @@ export const api = {
     /** "flat" or "martingale" — the ladder is a sizing CHOICE, not a
      *  measurement (rule 19), so it has to be possible to see one alone */
     sizing?: string;
+    /** ONE row by the code in its first column (#6YACZSXX). It overrides every
+     *  other filter — kit item H, and how a row is quoted without ambiguity */
+    rowId?: string;
     /** false = lowest first; omit for the column's useful end */
     desc?: boolean;
   }) => {
@@ -361,6 +365,7 @@ export const api = {
     if (q.minWinrate) p.set("min_winrate", String(q.minWinrate));
     if (q.minTp) p.set("min_tp", String(q.minTp));
     if (q.sizing) p.set("sizing", q.sizing);
+    if (q.rowId) p.set("row_id", q.rowId);
     if (q.desc !== undefined) p.set("desc", String(q.desc));
     if (q.tf) p.set("tf", q.tf);
     if (q.signal) p.set("signal", q.signal);
@@ -370,7 +375,7 @@ export const api = {
     return get<{ rows: StrategyRow[]; total: number; index?: IndexStatus;
       /** the order the server actually used, so the caption is derived */
       sort?: StrategySort; min_trades?: number; min_winrate?: number;
-      min_tp?: number; sizing?: string; desc?: boolean;
+      min_tp?: number; sizing?: string; row_id?: string; desc?: boolean;
       /** a filtered count stops at COUNT_CAP: print "N+" */
       total_capped?: boolean }>(
       `/api/strategies?${p.toString()}`,

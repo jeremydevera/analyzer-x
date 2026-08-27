@@ -150,6 +150,15 @@ WIDE_WINRATE = ("CREATE INDEX IF NOT EXISTS rows_wr2 ON rows "
 # filter columns next to profit makes the same walk index-only.
 WIDE_PROFIT = ("CREATE INDEX IF NOT EXISTS rows_pr2 ON rows "
                "(profit DESC, sizing, tp, winrate, trades, id)")
+# Finding one row by the code printed in its first column (#6YACZSXX). The
+# operator asked for it by example, 2026-08-27: "add filter to input a specific
+# id, it should get speicic id example #6YACZSXX" — and it is CLAUDE.md kit item
+# H, where quoting a row by its id is how the wrong config stops being deployed.
+# `id` carries no index of its own, so the lookup was a scan: measured on the
+# operator's store (35,863,520 rows), `WHERE id = ?` had not returned after 40 s
+# — plain (SCAN rows) and over both covering indexes that already hold the id
+# (rows_profit, rows_wr2). Built on demand like the other wide ones.
+ROW_ID_INDEX = "CREATE INDEX IF NOT EXISTS rows_id ON rows (id)"
 # a load this size is a rebuild, not an update: there, dropping and recreating
 # is faster than maintaining (measured at 73 pairs/min against 1.5)
 BIG_FILL = 500
@@ -159,7 +168,8 @@ READ_INDEXES = tuple(FILTER_INDEXES.values()) + KEEP_INDEXES
 INDEX_DDL = {**FILTER_INDEXES,
              **{d.split()[5]: d for d in KEEP_INDEXES},
              "rows_wr2": WIDE_WINRATE,
-             "rows_pr2": WIDE_PROFIT}
+             "rows_pr2": WIDE_PROFIT,
+             "rows_id": ROW_ID_INDEX}
 
 # more pairs than this in one go and it is a bulk fill, not an update
 BULK_PAIRS = 8
@@ -610,9 +620,19 @@ def syncing() -> bool:
 
 
 # ------------------------------------------------------------------ reading
+def clean_row_id(row_id) -> str:
+    """The id as the table PRINTS it, from whatever was typed or pasted.
+
+    Strip first, THEN the hash: `" #6yaczsxx "` had the space in front of the
+    `#`, so a `lstrip("#")` before the strip left the hash on and found
+    nothing — a pasted id looked like an id that is not in the store.
+    """
+    return str(row_id or "").strip().lstrip("#").strip().upper()
+
+
 def _where(coin=None, tf=None, signal=None, profitable=False,
-           min_trades=0, min_winrate=0, min_tp=0, sizing=None, *,
-           order_owns_index=False, order_key=None,
+           min_trades=0, min_winrate=0, min_tp=0, sizing=None, row_id=None,
+           *, order_owns_index=False, order_key=None,
            winrate_seeks=False) -> tuple:
     """The WHERE clause and its arguments.
 
@@ -638,6 +658,12 @@ def _where(coin=None, tf=None, signal=None, profitable=False,
     for the plain form.
     """
     sql, args = [], []
+    # A ROW ID names ONE row, so it is not a filter among filters: it OVERRIDES
+    # them (kit item H — "a find-by-ID box that overrides the other filters").
+    # Anything else in the WHERE could only contradict it, and a contradiction
+    # reads as "that id is not in the store" when it is.
+    if row_id:
+        return " WHERE id = ?", [clean_row_id(row_id)]
     # A named coin outranks tf and signal in BOTH statements: the count chose
     # `SEARCH rows USING INDEX rows_tf (tf=?)` — 2.5M rows for 1h — and hung,
     # while rows_coin answers the same question in milliseconds (~18k rows for
@@ -1082,7 +1108,13 @@ def _wide_profit_helps(sizing=None, min_tp=0, min_winrate=0, min_trades=0,
                 or int(min_trades or 0) > 0 or profitable)
 
 
-def _indexed_by(coin, winrate_seeks=False, profit_wide=False) -> str:
+def _row_id_index() -> str:
+    """`INDEXED BY rows_id` when the id index is there, else nothing."""
+    return " INDEXED BY rows_id" if has_index("rows_id") is True else ""
+
+
+def _indexed_by(coin, winrate_seeks=False, profit_wide=False,
+                row_id=None) -> str:
     """`INDEXED BY rows_coin` when a coin is named and that index exists.
 
     Measured on the rebuilt store (31,159,970 rows, every index present):
@@ -1096,6 +1128,9 @@ def _indexed_by(coin, winrate_seeks=False, profit_wide=False) -> str:
     turns the same query into a seek that needs no sort. Naming an index that
     does not exist is a hard SQLite error, hence the has_index check.
     """
+    # One row by its own code outranks everything: it is one seek.
+    if row_id:
+        return _row_id_index()
     if coin and has_index("rows_coin") is True:
         return " INDEXED BY rows_coin"
     # No coin named and a selective win-rate floor: rows_winrate is the seek.
@@ -1112,15 +1147,16 @@ def _indexed_by(coin, winrate_seeks=False, profit_wide=False) -> str:
 
 def query_sql(coin=None, tf=None, signal=None, profitable=False,
               sort="profit", min_trades=0, min_winrate=0, min_tp=0,
-              sizing=None, desc=None) -> str:
+              sizing=None, row_id=None, desc=None) -> str:
     """The row SELECT this query would run — for tests and for EXPLAIN."""
     key = str(sort or "profit")
     if key not in SORTS:
         raise ValueError(f"unknown sort {key!r}; use one of {sorted(SORTS)}")
     down = SORTS[key] if desc is None else bool(desc)
     where, _ = _where(coin, tf, signal, profitable, min_trades, min_winrate,
-                      min_tp, sizing, order_owns_index=True, order_key=key)
-    return (f"SELECT * FROM rows{_indexed_by(coin)}{where} "
+                      min_tp, sizing, row_id, order_owns_index=True,
+                      order_key=key)
+    return (f"SELECT * FROM rows{_indexed_by(coin, row_id=row_id)}{where} "
             f"ORDER BY {key} {'DESC' if down else 'ASC'}, id ASC LIMIT ? OFFSET ?")
 
 
@@ -1130,7 +1166,8 @@ def explain(**kw) -> list:
     _, args = _where(kw.get("coin"), kw.get("tf"), kw.get("signal"),
                      kw.get("profitable", False), kw.get("min_trades", 0),
                      kw.get("min_winrate", 0), kw.get("min_tp", 0),
-                     kw.get("sizing"), order_owns_index=True,
+                     kw.get("sizing"), kw.get("row_id"),
+                     order_owns_index=True,
                      order_key=str(kw.get("sort") or "profit"))
 
     def _read():
@@ -1141,7 +1178,7 @@ def explain(**kw) -> list:
 
 
 def _page_rows(con, coin, row_where, row_args, order, lim, off,
-               winrate_seeks=False, profit_wide=False) -> list:
+               winrate_seeks=False, profit_wide=False, row_id=None) -> list:
     """One page of rows, in `order`, skipping `off` of them.
 
     A shallow page is one statement. A DEEP page is two: the rowids from the
@@ -1149,7 +1186,8 @@ def _page_rows(con, coin, row_where, row_args, order, lim, off,
     disk), then those rowids. Measured at offset 24,999,500 on the operator's
     store: 60.2 s as one statement, 1.4 s as two. See DEEP_OFFSET.
     """
-    sql = (f"SELECT %s FROM rows{_indexed_by(coin, winrate_seeks, profit_wide)}"
+    sql = (f"SELECT %s FROM rows"
+           f"{_indexed_by(coin, winrate_seeks, profit_wide, row_id)}"
            f"{row_where} ORDER BY {order}, id ASC LIMIT ? OFFSET ?")
     if off <= DEEP_OFFSET:
         return con.execute(sql % "*", (*row_args, lim, off)).fetchall()
@@ -1165,7 +1203,8 @@ def _page_rows(con, coin, row_where, row_args, order, lim, off,
 
 def query(coin=None, tf=None, signal=None, profitable=False,
           limit=500, offset=0, sort="profit", min_trades=0,
-          min_winrate=0, min_tp=0, sizing=None, desc=None) -> dict:
+          min_winrate=0, min_tp=0, sizing=None, row_id=None,
+          desc=None) -> dict:
     """Rows sorted by `sort` (SORTS), profit first by default.
 
     STRICTLY READ-ONLY. It creates nothing and it indexes nothing.
@@ -1193,21 +1232,31 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     # `ORDER BY profit` with a filter beside it: the wide profit index makes
     # that walk index-only (see WIDE_PROFIT). When it is missing, start it —
     # the request itself still runs, and the 20 s budget is what answers 503.
+    # One row by its code: nothing else is asked, and it needs its own index
+    # or it is a 40-second scan (see ROW_ID_INDEX). Refuse fast, say why, build
+    # it behind the answer — the same contract as a missing sort index.
+    if row_id:
+        if has_index("rows_id") is not True and _rows_estimate() > UNINDEXED_LIMIT:
+            _build_index("rows_id")
+            raise SortNotReady(
+                f"finding row #{clean_row_id(row_id)} needs the id "
+                f"index (rows_id); it is being built in the background — try "
+                f"again shortly")
     profit_wide = False
-    if key == "profit" and not coin and _wide_profit_helps(
+    if not row_id and key == "profit" and not coin and _wide_profit_helps(
             sizing, min_tp, min_winrate, min_trades, profitable):
         if has_index("rows_pr2") is True:
             profit_wide = True
         elif _rows_estimate() > UNINDEXED_LIMIT:
             _build_index("rows_pr2")
     where, args = _where(coin, tf, signal, profitable, min_trades, min_winrate,
-                         min_tp, sizing)
+                         min_tp, sizing, row_id)
     # the row select streams its own ORDER BY index; the count rides the
     # trades index instead (see _where). The ORDER matters to the WHERE too:
     # a win-rate floor drives rows_winrate when the screen is ranked by win %
     # and steps aside otherwise.
     row_where, row_args = _where(coin, tf, signal, profitable, min_trades,
-                                 min_winrate, min_tp, sizing,
+                                 min_winrate, min_tp, sizing, row_id,
                                  order_owns_index=True, order_key=key,
                                  winrate_seeks=winrate_seeks)
     down = SORTS[key] if desc is None else bool(desc)
@@ -1236,7 +1285,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     # coin and/or tf ALONE are answered by the pair summaries: exact, no scan
     # (see _pairs_total). Anything that cuts inside a pair is not.
     from_pairs = not (signal or profitable or min_trades or min_winrate
-                      or min_tp or sizing)
+                      or min_tp or sizing or row_id)
     # A win-rate floor (with or without a trade floor) is an index-only range
     # on rows_winrate, so its total is EXACT and costs nothing - no "+".
     # The total is EXACT only when the bounded count came back under its cap:
@@ -1244,7 +1293,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     # for is exactly the 25 s this request used to spend twice.
     from_winrate = bool(float(min_winrate or 0) > 0 and not coin and not tf
                         and not signal and not profitable and not min_tp
-                        and not sizing and _winrate_index())
+                        and not sizing and not row_id and _winrate_index())
 
     def _read():
         with _open(readonly=True) as con:
@@ -1286,7 +1335,8 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             # places between 4-second polls and the row moves out from under
             # the operator's cursor mid-click.
             got = _page_rows(con, coin, row_where, row_args, order, lim,
-                             max(0, int(offset)), winrate_seeks, profit_wide)
+                             max(0, int(offset)), winrate_seeks, profit_wide,
+                             row_id)
         return total, got
 
     try:
@@ -1329,12 +1379,15 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             # literal it hopes matches (label-must-match-data)
             "min_winrate": float(min_winrate or 0),
             "min_tp": float(min_tp or 0),
-            "sizing": sizing or ""}
+            "sizing": sizing or "",
+            # what was LOOKED UP, cleaned exactly as the query cleaned it, so
+            # the panel can say "#6YACZSXX is not in the store" and mean it
+            "row_id": clean_row_id(row_id)}
 
 
 def iter_rows(coin=None, tf=None, signal=None, profitable=False,
               sort="profit", min_trades=0, min_winrate=0, min_tp=0,
-              sizing=None, desc=None, batch=5_000):
+              sizing=None, row_id=None, desc=None, batch=5_000):
     """Every matching row, in the asked order, a batch at a time.
 
     No limit and no list: 21,858,026 rows will not fit in a browser table or in
@@ -1374,13 +1427,14 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
         n = _winrate_matches(min_winrate, min_trades, cap=cap)
         seeks = n is not None and n <= cap
     where, args = _where(coin, tf, signal, profitable, min_trades,
-                         min_winrate, min_tp, sizing, order_owns_index=True,
-                         order_key=key, winrate_seeks=seeks)
+                         min_winrate, min_tp, sizing, row_id,
+                         order_owns_index=True, order_key=key,
+                         winrate_seeks=seeks)
     step = max(100, int(batch))
     with _open(readonly=True) as con:
         cur = con.execute(
             f"SELECT * FROM rows"
-            f"{_indexed_by(coin, seeks, key == 'profit' and not coin and _wide_profit_helps(sizing, min_tp, min_winrate, min_trades, profitable))}"
+            f"{_indexed_by(coin, seeks, (not row_id and key == 'profit' and not coin and _wide_profit_helps(sizing, min_tp, min_winrate, min_trades, profitable)), row_id)}"
             f"{where} "
             f"ORDER BY {order}, id ASC", args)
         while True:

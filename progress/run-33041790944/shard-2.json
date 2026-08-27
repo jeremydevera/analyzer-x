@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 9, "total": 52, "rows": 657264, "note": "BMT 1h: rule 13/105 (pivot)", "pct": 17.3, "updated": "2026-08-27T05:46:03Z"}
+{"shard": 2, "stage": "testing", "done": 9, "total": 52, "rows": 676844, "note": "BMT 4h: 2,369 bars, testing 105 rules", "pct": 17.3, "updated": "2026-08-27T05:46:52Z"}

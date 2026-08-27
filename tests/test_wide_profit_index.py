@@ -400,17 +400,27 @@ def test_two_processes_cannot_build_the_same_index_twice(monkeypatch, tmp_path):
                         lambda cmd, **kw: spawned.append(cmd) or FakeProc())
     ri._BUILDING.discard("rows_id")
     assert ri._build_index("rows_id") is True
-    assert ri.build_running("rows_id") is True, "the lock must be down"
+    # build_running returns the NAME it found, not a bool: the message can then
+    # say which index is holding the writer
+    assert ri.build_running("rows_id") == "rows_id", "the lock must be down"
 
     # another PROCESS asking (its own _BUILDING is empty) must not spawn a twin
     ri._BUILDING.discard("rows_id")
     assert ri._build_index("rows_id") is False
     assert len(spawned) == 1, spawned
 
+    # and a DIFFERENT index waits its turn: SQLite takes one writer, so a
+    # second CREATE INDEX can only queue — eighteen of them did (2026-08-27)
+    ri._BUILDING.discard("rows_pr2")
+    assert ri._build_index("rows_pr2") is False
+    assert len(spawned) == 1, spawned
+    assert ri.build_running() == "rows_id", ri.build_running()
+
     # the child clears it, whatever happened
     ri.build_index_now("rows_not_a_thing")          # unknown: returns early
     ri._build_lock("rows_id").unlink()
-    assert ri.build_running("rows_id") is False
+    assert ri.build_running() == "", "no lock, no build"
+    assert ri.build_running("rows_id") == ""
 
     # a lock older than any real build is stale, not forever
     lock = ri._build_lock("rows_id")
@@ -418,7 +428,7 @@ def test_two_processes_cannot_build_the_same_index_twice(monkeypatch, tmp_path):
     import os as _os
     old = ri.time.time() - ri.BUILD_LOCK_TTL_S - 60
     _os.utime(lock, (old, old))
-    assert ri.build_running("rows_id") is False
+    assert ri.build_running("rows_id") == ""
     assert not lock.exists(), "a stale lock is removed, not just ignored"
 
 

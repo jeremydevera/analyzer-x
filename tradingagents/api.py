@@ -264,6 +264,10 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
 
     from tradingagents import rows_index as ri
 
+    # kit item F: every row carries every column, the file included. `balanced`
+    # is derived, so it is appended rather than living in ri.COLS (the table's
+    # own shape) — and `iter_rows` does not compute it, so the CSV rates each
+    # row here with the same function the grid used.
     cols = list(ri.COLS)
     buf = _io.StringIO()
     w = csv.writer(buf, lineterminator="\n")
@@ -274,7 +278,7 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
         buf.truncate(0)
         return out
 
-    w.writerow(cols + ["monthly_json"])
+    w.writerow(cols + ["balanced", "balanced_why", "monthly_json"])
     yield flush()
     # A StreamingResponse has already sent 200 by the time a row fails, so an
     # exception here cannot become an error page — it just ENDS the download.
@@ -289,7 +293,8 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                               min_trades=min_trades, min_winrate=min_winrate,
                               min_tp=min_tp, sizing=sizing, row_id=row_id,
                               group=group, desc=desc, batch=batch):
-            w.writerow([r.get(c) for c in cols]
+            score, why = ri.balanced_score(r)
+            w.writerow([r.get(c) for c in cols] + [score, why]
                        + [_json.dumps(r.get("monthly") or {},
                                       separators=(",", ":"))])
             sent += 1

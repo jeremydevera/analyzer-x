@@ -645,6 +645,11 @@ export default function StrategiesPanel() {
       <div className="flex flex-wrap items-center gap-2 px-5 pt-3">
         <span className="text-theme-xs text-gray-500 dark:text-gray-400">
           one row = one coin × timeframe × signal × threshold × SL/TP × sizing
+          {" · "}
+          <span title="Profit is the anchor: a row that did not make money rates 1-3 whatever its win rate. A profitable one starts at 4 and earns up to 10 on profit per trade, win rate, green months and whether its take-profit clears the round-trip cost; it loses points for a dip bigger than what it earned, for a dip over 10x the stake, and for losing most of its trades (the ladder carrying the signal). Under 30 trades it cannot rate above 4, under 100 not above 7. Hover any score for its own working.">
+            <b>balanced</b> rates win rate AND profit together, 1-10 (hover a
+            score for the working)
+          </span>
         </span>
         <div className="ml-auto flex flex-wrap items-center gap-1">
           <select className={`${pageBtn} mr-1`} value={perPage}
@@ -786,6 +791,7 @@ export default function StrategiesPanel() {
                 winHead("L", servedFilters.months),
                 winHead("green", servedFilters.months),
                 "dip $",
+                winHead("balanced", servedFilters.months),
                 ...monthCols.map(monthLabel)].map((h) => (
                 <TableCell key={h} isHeader
                   onClick={() => {
@@ -893,6 +899,22 @@ export default function StrategiesPanel() {
                     : `${r.green ?? "—"}/${r.months ?? "—"}`}
                 </TableCell>
                 <TableCell className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400">{r.dd?.toFixed(2) ?? "—"}</TableCell>
+                {/* BALANCED, 1-10 over win rate AND profit. The tooltip is the
+                    working — "sometimes it has high winrate but since tp is low
+                    and sl is high, its still not profitable" is a number the
+                    operator has to be able to audit. Dimmed with the window on
+                    and the row not restated, because then the score mixes the
+                    window's profit with the row's whole-history win rate. */}
+                <TableCell className={`px-3 py-2 text-theme-sm font-semibold ${
+                    stale(r) ? "italic text-gray-400 dark:text-gray-500"
+                    : (r.balanced ?? 0) >= 8 ? "text-success-600"
+                    : (r.balanced ?? 0) >= 5 ? "text-warning-600 dark:text-warning-400"
+                    : "text-error-500"}`}
+                  title={stale(r)
+                    ? `${r.balanced_why ?? ""} — ${STALE_WHY}`
+                    : (r.balanced_why ?? "")}>
+                  {r.balanced ?? "—"}/10
+                </TableCell>
                 {/* one column per month, the row's own profit in it. A month
                     the row never traded is an em dash — that is missing DATA,
                     not a hidden column (the columns themselves are the

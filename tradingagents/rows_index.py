@@ -661,6 +661,129 @@ def syncing() -> bool:
 
 
 # ------------------------------------------------------------------ reading
+def balanced_score(row: dict, profit=None, winrate=None, trades=None,
+                   green=None, months=None) -> tuple:
+    """A 1-10 rating of win rate AND profit together, plus the sentence behind
+    it. Higher is better.
+
+    The operator's own brief, 2026-08-27: *"sometimes it has high winrate but
+    since tp is low and sl is high, its still not profitable so that would be
+    1-4/10"*. So PROFIT is the anchor, not the win rate:
+
+      * a row that did not make money scores 1-3 whatever its win rate — the
+        1-4 band the operator asked for, and the reason `high win % + TP 0.3 /
+        SL 3.0` cannot look good here;
+      * a profitable row starts at 4 and earns up to 10 on how much it makes per
+        trade, how often it wins, how many months it was green, and whether its
+        take-profit is even reachable against the round-trip cost (rule 11:
+        under 20% comfortable, near 50% fatal, over 100% arithmetically
+        impossible);
+      * and it LOSES up to 2 for a worst dip bigger than the profit it earned,
+        because that is the ladder emptying a $65 account on the way to a green
+        total (the APEX incident: -$79.80 over 13 trades).
+
+    `profit`/`winrate`/... override the row's own figures, which is how the
+    LAST N MONTHS window re-rates a row over its own slice.
+
+    Returns (score, why). The `why` is shown on hover: a number the operator
+    cannot audit is a number they cannot use.
+    """
+    def pick(given, key, default=0.0):
+        v = given if given is not None else row.get(key)
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return default
+
+    pf = pick(profit, "profit")
+    wr = pick(winrate, "winrate")
+    n = pick(trades, "trades")
+    dip = pick(None, "dd")
+    tp = pick(None, "tp")
+    sl = pick(None, "sl")
+    rt = pick(None, "rt")                     # round-trip cost, % of notional
+    base = pick(None, "base", 5.0) or 5.0
+    grn = pick(green, "green")
+    mos = pick(months, "months")
+
+    bits = []
+    if pf <= 0:
+        # 1..3, and the win rate can only move it inside that band
+        score = 1 + (1 if wr >= 50 else 0) + (1 if wr >= 70 else 0)
+        bits.append(f"lost {pf:,.2f} USDT — a losing row cannot rate above 3")
+        if wr >= 50 and tp and sl:
+            bits.append(f"wins {wr:.2f}% of the time but TP {tp:g}% against "
+                        f"SL {sl:g}%, so the losses are bigger than the wins")
+        return int(score), "; ".join(bits)
+
+    score = 4.0
+    bits.append(f"made {pf:,.2f} USDT")
+
+    # per-trade return on the margin staked: 0.5% of it is nothing, 5% is a lot
+    per = (pf / n / base * 100) if n and base else 0.0
+    add = min(2.0, max(0.0, per / 5.0 * 2.0))
+    score += add
+    bits.append(f"{per:.2f}% of the {base:g} USDT margin per trade (+{add:.1f})")
+
+    # win rate, scaled across the band that actually varies (40% -> 90%)
+    add = min(2.0, max(0.0, (wr - 40.0) / 50.0 * 2.0))
+    score += add
+    bits.append(f"{wr:.2f}% win rate (+{add:.1f})")
+
+    # consistency: months in the black
+    if mos:
+        add = min(1.0, max(0.0, grn / mos))
+        score += add
+        bits.append(f"green in {int(grn)}/{int(mos)} months (+{add:.1f})")
+
+    # is the target even reachable? cost/TP under 20% is comfortable (rule 11)
+    if tp and rt:
+        ratio = rt / tp
+        add = 1.0 if ratio <= 0.2 else (0.5 if ratio <= 0.5 else 0.0)
+        score += add
+        bits.append(f"round-trip cost is {ratio * 100:.0f}% of the TP "
+                    f"(+{add:.1f})")
+
+    # A row that loses most of its trades is carried by its sizing, not by its
+    # signal — the audit behind rule 19 (the ladder produced "13/13 green
+    # months"; flat was 7/12-11/12). Profitable or not, that is not BALANCED.
+    if wr < 20:
+        score -= 2.0
+        bits.append(f"loses {100 - wr:.1f}% of its trades — the ladder is "
+                    f"carrying this, not the signal (-2.0)")
+    elif wr < 35:
+        score -= 1.0
+        bits.append(f"loses {100 - wr:.1f}% of its trades (-1.0)")
+
+    # the dip that empties the account: against what the row earned, AND
+    # against the stake, because -79.80 over 13 trades emptied a $65 wallet
+    # while the total was still green (APEX, 2026-08-19)
+    if dip > 0 and pf > 0:
+        hit = 2.0 if dip > pf else (1.0 if dip > pf / 2 else 0.0)
+        score -= hit
+        if hit:
+            bits.append(f"worst dip {dip:,.2f} USDT against {pf:,.2f} earned "
+                        f"(-{hit:.1f})")
+    if dip > 10 * base:
+        score -= 1.0
+        bits.append(f"worst dip is {dip / base:.0f}x the {base:g} USDT stake "
+                    f"(-1.0)")
+
+    # EVIDENCE. A rate needs a denominator: "CHF 30m soldiers 100.00% over 1
+    # trade" was the top of this store once, and 10/10 for two trades is the
+    # same lie with a nicer number.
+    ceiling = 10.0
+    if n < 30:
+        ceiling = 4.0
+        bits.append(f"only {int(n)} trades — too few to rate above 4")
+    elif n < 100:
+        ceiling = 7.0
+        bits.append(f"{int(n)} trades — under 100, so it cannot rate above 7")
+    score = min(score, ceiling)
+
+    return int(max(1, min(10, round(score)))), "; ".join(bits)
+
+
 def month_keys(months: int, anchor: str | None = None) -> list:
     """The last `months` calendar months, newest first, as the store keys them
     ("2026-08"). `anchor` is the month to count back FROM — the caller passes
@@ -1226,19 +1349,30 @@ def _build_lock(name: str) -> Path:
     return DB_PATH.parent / f".build-{name}.pid"
 
 
-def build_running(name: str) -> bool:
-    """Is a build for this index already under way, in ANY process?"""
-    lock = _build_lock(name)
+def build_running(name: str | None = None) -> str:
+    """The index a build is running for, or "" — across ALL processes.
+
+    With a name: that index only. Without: ANY build, because SQLite takes one
+    writer and a second CREATE INDEX can only queue behind the first. Eighteen
+    of them queued on 2026-08-27, each holding memory and a connection, none
+    finishing. So one at a time, and the next asker comes back later.
+    """
     try:
-        age = time.time() - lock.stat().st_mtime
+        locks = ([_build_lock(name)] if name
+                 else list(DB_PATH.parent.glob(".build-*.pid")))
     except OSError:
-        return False
-    if age <= BUILD_LOCK_TTL_S:
-        return True
-    # older than any real build: the child died without cleaning up
-    with contextlib.suppress(OSError):
-        lock.unlink()
-    return False
+        return ""
+    for lock in locks:
+        try:
+            age = time.time() - lock.stat().st_mtime
+        except OSError:
+            continue
+        if age <= BUILD_LOCK_TTL_S:
+            return lock.name[len(".build-"):-len(".pid")]
+        # older than any real build: the child died without cleaning up
+        with contextlib.suppress(OSError):
+            lock.unlink()
+    return ""
 
 
 def missing_indexes() -> list:
@@ -1283,6 +1417,11 @@ def build_index_now(name: str) -> bool:
         print(f"[rows-index] no such index: {name}", flush=True)
         return False
     started = time.time()
+    # the lock is taken HERE as well as by the spawner: a build started
+    # directly (a script, a test, the child itself) must be visible to every
+    # other process, or the next asker spawns a twin (2026-08-27)
+    with contextlib.suppress(OSError):
+        _build_lock(name).write_text(str(os.getpid()), encoding="utf-8")
     try:
         with _open() as con:
             con.execute("PRAGMA busy_timeout=3600000")
@@ -1315,7 +1454,12 @@ def _build_index(name) -> bool:
         return False
     if has_index(name) is True:
         return False
-    if build_running(name):
+    busy = build_running()
+    if busy:
+        # already building something — this one waits its turn rather than
+        # queueing behind it on SQLite's single write lock
+        if busy != name:
+            print(f"[rows-index] {name} waits: {busy} is building", flush=True)
         return False
     # A build child must never spawn builds. It does not today, but a child that
     # fell through to the indexer loop once did: on 2026-08-27 thirteen
@@ -1733,6 +1877,19 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     if window:
         for r in out:
             r.update(window_figures(r.get("monthly") or {}, window))
+    # BALANCED, 1-10 over win rate AND profit. With a window it is rated on the
+    # window's own figures — the operator asked for exactly that: *"when i apply
+    # the months dropdown this column should adjust as well"*. Trades and win
+    # rate inside a window are only known where the row's log was rebuilt (see
+    # the API's restate_window), so the panel dims the score there, the same as
+    # it dims those columns.
+    for r in out:
+        if window:
+            r["balanced"], r["balanced_why"] = balanced_score(
+                r, profit=r.get("w_profit"), green=r.get("w_green"),
+                months=r.get("w_months"))
+        else:
+            r["balanced"], r["balanced_why"] = balanced_score(r)
     # the caller captions the table with this, so it is never a literal
     return {"rows": out, "total": total, "sort": key, "desc": down,
             # the caption prints "5,000+ match" when the count was capped,

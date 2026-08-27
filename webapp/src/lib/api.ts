@@ -58,6 +58,10 @@ export interface StrategyRow {
   /** LAST N MONTHS: what this row did inside the window. Profit and green are
    *  exact (the sweep stores profit per month); there is deliberately no
    *  w_trades or w_winrate, because the sweep does not keep those per month. */
+  /** 1-10 over win rate AND profit together, and the sentence behind it.
+   *  Re-rated on the window's own figures when a window is on. */
+  balanced?: number;
+  balanced_why?: string;
   /** month key ("2026-08") -> that month's profit for this row. The month
    *  columns in the grid are these keys — the store's own, not a fixed ladder */
   monthly?: Record<string, number>;

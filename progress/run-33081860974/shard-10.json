@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 17, "total": 51, "rows": 1489450, "note": "EUL 15m: 34,211 bars, testing 105 rules", "pct": 33.3, "updated": "2026-08-27T15:43:03Z"}
+{"shard": 10, "stage": "testing", "done": 17, "total": 51, "rows": 1491430, "note": "EUL 15m: rule 3/105 (fade15)", "pct": 33.3, "updated": "2026-08-27T15:44:05Z"}

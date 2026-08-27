@@ -46,6 +46,21 @@ function MachineLoad() {
         title={`${sys.load1} processes wanted to run across ${sys.cores} cores. Above 1.00x per core means work is queueing.`}>
         load {sys.load1.toFixed(2)}/{sys.cores} ({sys.load_per_core.toFixed(2)}x)
       </span>
+      {/* free MEMORY, beside the CPU numbers: the operator's PC froze twice on
+          Aug 27, 2026 while a sweep ran unattended and nothing on the page
+          said how much room was left. "unknown" is shown as unknown, never as
+          0 GB free. */}
+      <span className={sys.ram_free_gb != null && sys.ram_free_gb < 2
+                         ? "text-error-500"
+                         : sys.ram_free_gb != null && sys.ram_free_gb < 3
+                           ? "text-warning-600" : "text-gray-500 dark:text-gray-400"}
+        title={sys.ram_kind === "measured"
+          ? `${sys.ram_free_gb} GB of ${sys.ram_total_gb} GB free. A sweep keeps 2 GB for the desktop and takes about 0.2 GB per pair at 1h/4h, 0.5 GB at 15m/30m.`
+          : "this machine does not report its memory, so the sweep is not limited by it"}>
+        RAM {sys.ram_kind === "measured" && sys.ram_free_gb != null
+          ? `${sys.ram_free_gb.toFixed(1)}/${(sys.ram_total_gb ?? 0).toFixed(0)} GB free`
+          : "—"}
+      </span>
       <span className={th.throttled ? "text-error-500" : "text-gray-400"}
         title={th.why || `macOS reports the CPU running at ${th.speed_limit}% of full speed`}>
         {th.throttled
@@ -117,6 +132,17 @@ export default function JobProgress({ s, label }: { s: JobStatus | null; label?:
           <p className="mb-1 text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500">
             {s.workers.length} of {s.cores ?? s.workers.length} core
             {(s.cores ?? s.workers.length) === 1 ? "" : "s"} working
+            {/* WHY, when the run took fewer cores than the machine has: "4 of
+                11" on its own reads as a broken machine. */}
+            {s.cores_why ? (
+              <span className="ml-2 normal-case tracking-normal text-warning-600">
+                &middot; {s.cores_why}
+              </span>
+            ) : s.cores_offered && s.cores && s.cores_offered > s.cores ? (
+              <span className="ml-2 normal-case tracking-normal text-gray-400">
+                &middot; {s.cores_offered} offered
+              </span>
+            ) : null}
           </p>
           <div className="flex flex-col gap-1">
             {s.workers.map((w, i) => {

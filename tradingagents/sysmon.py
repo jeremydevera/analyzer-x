@@ -92,7 +92,18 @@ def snapshot(force: bool = False) -> dict:
         # a dead counter must not take every tile on the page with it
         load1 = load5 = load15 = 0.0
         per_core = 0.0
+    # Free MEMORY, beside the CPU number: on 2026-08-27 the operator's PC froze
+    # twice while a sweep ran unattended, and nothing on the page said how much
+    # room was left. Zeros from portable mean "this machine will not say", which
+    # the tile must show as unknown rather than as 0 GB free.
+    ram_total, ram_free = portable.ram_gb()
+    ram_known = ram_total > 0
     got = {"cores": n,
+           "ram_total_gb": round(ram_total, 2) if ram_known else None,
+           "ram_free_gb": round(ram_free, 2) if ram_known else None,
+           "ram_used_pct": (round(100 * (ram_total - ram_free) / ram_total, 1)
+                            if ram_known else None),
+           "ram_kind": "measured" if ram_known else "unknown",
            "load1": round(load1, 2), "load5": round(load5, 2),
            "load15": round(load15, 2),
            # load per core: 1.0 means every core has a runnable process

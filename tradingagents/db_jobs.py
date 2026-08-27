@@ -128,6 +128,71 @@ def status(kind: str) -> dict:
 # operator found out hours later.
 MAX_RETRIES = 20
 DISK_FLOOR_GB = 5.0
+
+# MEMORY, the same shape as the disk floor above. The operator's PC froze twice
+# on 2026-08-27 while a sweep ran unattended: 16 GB with 9.1 GB already held by
+# other apps, and once the rest went Windows paged to a MECHANICAL disk, which
+# is a freeze rather than a crash. Two guards, both measured on that machine:
+#
+#   * a worker on a 1h/4h pair peaks at 150-180 MB (eleven of them: 1.8 GB).
+#     A 15m/30m pair carries four times the bars, so it gets a bigger budget.
+#   * RAM_RESERVE_GB is left for Windows and whatever the operator has open.
+#   * under RAM_FLOOR_GB the run stands down like a full disk: every finished
+#     pair kept, the bell rung, the supervisor free to resume.
+RAM_PER_WORKER_GB = {"15m": 0.5, "30m": 0.5, "1h": 0.2, "4h": 0.2, "1d": 0.2}
+RAM_RESERVE_GB = 2.0
+RAM_FLOOR_GB = 1.0
+
+
+def free_ram_gb() -> float:
+    """Available physical memory, or 0.0 when the machine will not say."""
+    return portable.ram_gb()[1]
+
+
+def _per_worker_gb(tfs) -> float:
+    """The heaviest timeframe in the run decides the budget: one 15m pair in a
+    1h job still holds a 15m pair's rows."""
+    return max([RAM_PER_WORKER_GB.get(t, 0.2) for t in (tfs or [])] or [0.2])
+
+
+def workers_for_ram(cores: int, tfs, free_gb: float | None = None) -> int:
+    """How many pairs may be measured at once without paging to disk.
+
+    `cores` is what the machine offers (already one short of the total, so the
+    API and the runner keep a core). A machine that cannot report its memory
+    gets `cores` unchanged -- the guard must never silently halve a run on a
+    number it does not have.
+    """
+    if free_gb is None:
+        free = free_ram_gb()
+        if free <= 0:
+            # the machine will not say: leave the run exactly as it was
+            return max(1, int(cores))
+    else:
+        free = float(free_gb)        # an explicit 0.0 means measured, not unknown
+    budget = free - RAM_RESERVE_GB
+    fits = int(budget // _per_worker_gb(tfs))
+    return max(1, min(int(cores), fits))
+
+
+def ram_reason(chosen: int, offered: int, tfs, free_gb: float | None = None) -> str:
+    """Why the run is using fewer cores than the machine has -- printed beside
+    the number, because "4 of 11 cores" alone reads as a broken machine
+    (label-must-match-data). Empty when nothing was reduced.
+    """
+    if chosen >= offered:
+        return ""
+    free = free_ram_gb() if free_gb is None else float(free_gb)
+    return (f"{chosen} of {offered} cores: {free:.1f} GB free, "
+            f"{RAM_RESERVE_GB:.1f} GB reserved for the desktop, "
+            f"~{_per_worker_gb(tfs):.1f} GB per pair at this timeframe")
+
+
+def ram_exhausted() -> bool:
+    """Is memory so low that continuing would page to disk? A machine that
+    cannot report memory never pauses on it."""
+    free = free_ram_gb()
+    return bool(free) and free < RAM_FLOOR_GB
 RETRY_FILE = STATE_DIR / "db_retries.json"
 
 
@@ -417,6 +482,10 @@ class _LowDisk(Exception):
     """Not enough disk left to keep going safely."""
 
 
+class _LowRam(Exception):
+    """Not enough memory left to keep going without paging to disk."""
+
+
 class _StopRequested(Exception):
     pass
 
@@ -587,7 +656,12 @@ def _run_backtest_inner(spec: dict) -> None:
     from tradingagents import market_sweep as _msw
 
     # One pair per core, one core left free for the trading runner and the API.
-    n_workers = max(1, (_os.cpu_count() or 2) - 1)
+    cores_offered = max(1, (_os.cpu_count() or 2) - 1)
+    # Sized to the memory actually free, not just to the cores (2026-08-27).
+    n_workers = workers_for_ram(cores_offered, spec.get("tfs") or [])
+    cores_why = ram_reason(n_workers, cores_offered, spec.get("tfs") or [])
+    if cores_why:
+        print(f"[backtest] {cores_why}", flush=True)
 
     # What the heartbeat should say between pair completions.
     # done/total are the REAL pair counts once grid_from_store knows them.
@@ -606,7 +680,13 @@ def _run_backtest_inner(spec: dict) -> None:
                                "done": last["done"],
                                "total": last["total"], "now": last["msg"],
                                "pct": last.get("pct"),
-                               "cores": n_workers, "fresh": fresh,
+                               "cores": n_workers,
+                               # what the machine offered and why fewer are in
+                               # use, so "4 of 11" never reads as broken
+                               "cores_offered": cores_offered,
+                               "cores_why": cores_why,
+                               "ram_free_gb": round(free_ram_gb(), 2) or None,
+                               "fresh": fresh,
                                # Never MORE bars than there are cores. A pool
                                # worker that has just been replaced is still
                                # fresh enough to report while its successor
@@ -637,6 +717,11 @@ def _run_backtest_inner(spec: dict) -> None:
         # and lets the supervisor resume once there is space.
         if free_gb() < DISK_FLOOR_GB:
             raise _LowDisk(f"{free_gb():.1f} GB free")
+        # And the same for MEMORY: stopping with room left keeps every finished
+        # pair, where running the machine out makes Windows page to a
+        # mechanical disk and freezes the desktop the operator is using.
+        if ram_exhausted():
+            raise _LowRam(f"{free_ram_gb():.1f} GB of memory free")
         frac = max(0.0, min(1.0, frac))
         # no counts offered (a phase that only knows a fraction): keep the bar
         # moving on a permille scale rather than printing a rounded-to-zero one
@@ -698,6 +783,21 @@ def _run_backtest_inner(spec: dict) -> None:
             from tradingagents import notifications as _nt
 
             _nt.record("backtest", "Backtest paused — low disk", ok=False,
+                       detail=str(exc))
+        except Exception:
+            pass
+        return
+    except _LowRam as exc:
+        _write(f["progress"], {"running": False, "paused": True,
+                               "finished": int(time.time()),
+                               "done": last["done"], "total": last["total"],
+                               "note": f"paused — low memory ({exc}). Every "
+                                       f"finished pair is kept; it resumes by "
+                                       f"itself once there is memory"})
+        try:
+            from tradingagents import notifications as _nt
+
+            _nt.record("backtest", "Backtest paused — low memory", ok=False,
                        detail=str(exc))
         except Exception:
             pass

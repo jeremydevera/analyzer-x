@@ -143,6 +143,10 @@ export interface JobStatus {
   running: boolean;
   /** how many cores the sweep was given */
   cores?: number;
+  /** cores the machine offered, and why the run is using fewer (low memory) */
+  cores_offered?: number;
+  cores_why?: string;
+  ram_free_gb?: number | null;
   fresh?: boolean;      // true = replayed from scratch, false = gap fill
   /** live per-core progress, one entry per busy slot */
   workers?: WorkerSlot[];
@@ -230,6 +234,11 @@ export interface CloudStatus {
 
 export interface SysLoad {
   cores: number;
+  /** free physical memory, or null when the machine will not report it */
+  ram_total_gb?: number | null;
+  ram_free_gb?: number | null;
+  ram_used_pct?: number | null;
+  ram_kind?: "measured" | "unknown";
   load1: number;
   load5: number;
   load15: number;
@@ -305,7 +314,8 @@ export const api = {
       "/api/strategies/reindex", {}),
   strategiesCsvUrl: (q: {
     coin?: string; tf?: string; signal?: string; profitable?: boolean;
-    sort?: StrategySort; minTrades?: number; desc?: boolean;
+    sort?: StrategySort; minTrades?: number; minWinrate?: number;
+    desc?: boolean;
   }) => {
     const p = new URLSearchParams();
     if (q.coin) p.set("coin", q.coin);
@@ -314,6 +324,7 @@ export const api = {
     if (q.profitable) p.set("profitable", "true");
     if (q.sort) p.set("sort", q.sort);
     if (q.minTrades) p.set("min_trades", String(q.minTrades));
+    if (q.minWinrate) p.set("min_winrate", String(q.minWinrate));
     if (q.desc !== undefined) p.set("desc", String(q.desc));
     return `${API_BASE}/api/strategies.csv?${p.toString()}`;
   },
@@ -329,6 +340,9 @@ export const api = {
     /** a win rate with no denominator is not a result: 100% over 1 trade
      *  sat at the top of the live store until this existed */
     minTrades?: number;
+    /** the win-rate floor, in the unit the "win %" column PRINTS: 50 means
+     *  50.00% or better, inclusive — not 0.5 (operator, 2026-08-27) */
+    minWinrate?: number;
     /** false = lowest first; omit for the column's useful end */
     desc?: boolean;
   }) => {
@@ -336,6 +350,7 @@ export const api = {
     if (q.coin) p.set("coin", q.coin);
     if (q.sort) p.set("sort", q.sort);
     if (q.minTrades) p.set("min_trades", String(q.minTrades));
+    if (q.minWinrate) p.set("min_winrate", String(q.minWinrate));
     if (q.desc !== undefined) p.set("desc", String(q.desc));
     if (q.tf) p.set("tf", q.tf);
     if (q.signal) p.set("signal", q.signal);
@@ -344,7 +359,8 @@ export const api = {
     if (q.offset) p.set("offset", String(q.offset));
     return get<{ rows: StrategyRow[]; total: number; index?: IndexStatus;
       /** the order the server actually used, so the caption is derived */
-      sort?: StrategySort; min_trades?: number; desc?: boolean;
+      sort?: StrategySort; min_trades?: number; min_winrate?: number;
+      desc?: boolean;
       /** a filtered count stops at COUNT_CAP: print "N+" */
       total_capped?: boolean }>(
       `/api/strategies?${p.toString()}`,

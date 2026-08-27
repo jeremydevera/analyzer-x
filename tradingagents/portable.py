@@ -189,3 +189,91 @@ def disk_free_mb(path) -> int:
     while not p.exists() and p.parent != p:
         p = p.parent
     return int(shutil.disk_usage(str(p)).free / 1_000_000)
+
+
+# --------------------------------------------------------------------- memory
+# Why this exists: on 2026-08-27 the operator's PC froze twice while a sweep ran
+# unattended. Not a crash -- 16 GB with 9.1 GB already held by other apps, and
+# when the rest went Windows paged to a MECHANICAL disk. The sweep now sizes
+# itself to what is free, which needs one number the standard library will not
+# give: available physical memory. `psutil` is not a dependency of this project
+# and will not become one for two syscalls.
+def _ram_windows() -> tuple[float, float]:
+    """(total, available) in GB from GlobalMemoryStatusEx.
+
+    The structure is declared INSIDE the function: `ctypes` is imported at the
+    top of this module only on Windows (line 32), so a class body referring to
+    ctypes.Structure would raise NameError at import time on the operator's Mac
+    and take every module that imports portable with it.
+    """
+    if not WINDOWS:
+        return 0.0, 0.0
+    try:
+        class _MEMORYSTATUSEX(ctypes.Structure):
+            _fields_ = [("dwLength", ctypes.c_ulong),
+                        ("dwMemoryLoad", ctypes.c_ulong),
+                        ("ullTotalPhys", ctypes.c_ulonglong),
+                        ("ullAvailPhys", ctypes.c_ulonglong),
+                        ("ullTotalPageFile", ctypes.c_ulonglong),
+                        ("ullAvailPageFile", ctypes.c_ulonglong),
+                        ("ullTotalVirtual", ctypes.c_ulonglong),
+                        ("ullAvailVirtual", ctypes.c_ulonglong),
+                        ("ullAvailExtendedVirtual", ctypes.c_ulonglong)]
+
+        st = _MEMORYSTATUSEX()
+        st.dwLength = ctypes.sizeof(_MEMORYSTATUSEX)
+        if not ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(st)):
+            return 0.0, 0.0
+        return (round(st.ullTotalPhys / 2**30, 2),
+                round(st.ullAvailPhys / 2**30, 2))
+    except Exception:
+        return 0.0, 0.0
+
+
+def _ram_unix() -> tuple[float, float]:
+    """(total, available) in GB. MemAvailable on Linux -- the kernel's own
+    estimate of what a new process can have, which is the question being asked;
+    MemFree alone would read as "almost nothing" on any machine with a cache.
+    macOS has no /proc, so sysctl gives the total and vm_stat the free pages."""
+    try:
+        vals = {}
+        with open("/proc/meminfo", encoding="utf-8") as fh:
+            for line in fh:
+                k, _, rest = line.partition(":")
+                vals[k.strip()] = float(rest.strip().split()[0]) / 2**20
+        total = vals.get("MemTotal", 0.0)
+        avail = vals.get("MemAvailable", vals.get("MemFree", 0.0))
+        if total:
+            return round(total, 2), round(avail, 2)
+    except (OSError, ValueError, IndexError):
+        pass
+    try:
+        import subprocess
+
+        total = float(subprocess.run(["sysctl", "-n", "hw.memsize"],
+                                     capture_output=True, text=True,
+                                     timeout=5).stdout.strip()) / 2**30
+        out = subprocess.run(["vm_stat"], capture_output=True, text=True,
+                             timeout=5).stdout
+        page = 4096.0
+        free = spec = 0.0
+        for line in out.splitlines():
+            if "page size of" in line:
+                page = float(line.split("page size of")[1].split()[0])
+            if line.startswith("Pages free:"):
+                free = float(line.split(":")[1].strip().rstrip("."))
+            if line.startswith("Pages speculative:"):
+                spec = float(line.split(":")[1].strip().rstrip("."))
+        return round(total, 2), round((free + spec) * page / 2**30, 2)
+    except Exception:
+        return 0.0, 0.0
+
+
+def ram_gb() -> tuple[float, float]:
+    """(total, available) physical memory in GB, or (0.0, 0.0) if unreadable.
+
+    Zeros mean "this machine will not say" -- callers must then leave the
+    behaviour they would have had, never guess a number. Every other helper in
+    this module degrades the same way.
+    """
+    return _ram_windows() if WINDOWS else _ram_unix()

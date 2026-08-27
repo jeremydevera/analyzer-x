@@ -10,6 +10,88 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components
 
 const TF: Record<string, string> = { Min1: "1m", Min15: "15m", Min30: "30m", Min60: "1h", Hour4: "4h", Day1: "1d" };
 
+/** The row id with a copy button beside it.
+ *
+ *  Two things the previous version got wrong: there was no icon, so nobody
+ *  knew the id was copyable; and the write was
+ *  `navigator.clipboard?.writeText(...)`, which in a context without the
+ *  async clipboard did nothing and reported nothing. This says what happened
+ *  either way, and falls back to a hidden textarea.
+ */
+function CopyableId({ id }: { id: string }) {
+  const [state, setState] = useState<"" | "ok" | "fail">("");
+
+  const copy = async () => {
+    const text = `#${id}`;
+    let ok = false;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        ok = true;
+      }
+    } catch { ok = false; }
+    if (!ok) {
+      // no async clipboard (or it refused): the old selection route
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.top = "-1000px";
+        document.body.appendChild(ta);
+        ta.select();
+        ok = document.execCommand("copy");
+        ta.remove();
+      } catch { ok = false; }
+    }
+    setState(ok ? "ok" : "fail");
+    window.setTimeout(() => setState(""), 1500);
+  };
+
+  return (
+    <span className="flex items-center gap-1">
+      <button onClick={copy} title={`copy #${id} to the clipboard`}
+        className="font-mono text-[11px] font-semibold text-brand-500 hover:underline">
+        #{id}
+      </button>
+      <button onClick={copy} aria-label={`copy #${id}`}
+        title={`copy #${id} to the clipboard`}
+        className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-brand-500 dark:hover:bg-white/10">
+        {state === "ok" ? (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" strokeWidth="3" strokeLinecap="round"
+               strokeLinejoin="round" className="text-success-600">
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+        ) : state === "fail" ? (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" strokeWidth="3" strokeLinecap="round"
+               strokeLinejoin="round" className="text-error-500">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        ) : (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+               strokeLinejoin="round">
+            <rect x="9" y="9" width="11" height="11" rx="2" />
+            <path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" />
+          </svg>
+        )}
+      </button>
+      {state === "ok" && (
+        <span role="status" className="text-[10px] font-medium text-success-600">
+          copied
+        </span>
+      )}
+      {state === "fail" && (
+        <span role="status" className="text-[10px] font-medium text-error-500">
+          could not copy — select it and press Ctrl+C
+        </span>
+      )}
+    </span>
+  );
+}
+
 export default function StrategiesGrid() {
   const [rows, setRows] = useState<StrategyDeployRow[]>([]);
   const [sizing, setSizing] = useState("");
@@ -215,14 +297,7 @@ export default function StrategiesGrid() {
                       same row_code the reports use — so this is the id to paste
                       into a report's find-by-ID box. The key stays underneath
                       because it is what the runner logs. */}
-                  {r.id ? (
-                    <button
-                      onClick={() => navigator.clipboard?.writeText(r.id!)}
-                      title="copy this id"
-                      className="block font-mono text-[11px] font-semibold text-brand-500 hover:underline">
-                      #{r.id}
-                    </button>
-                  ) : null}
+                  {r.id ? <CopyableId id={r.id} /> : null}
                   {r.label ? (
                     <span className="block text-[10px] font-medium text-brand-500">
                       ({r.label})

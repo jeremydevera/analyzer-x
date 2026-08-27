@@ -193,3 +193,29 @@ def test_the_removed_columns_stay_removed():
     assert "ladder_rung" in src, "the ladder still boxes the current rung"
     assert 'api.jobStatus("stratbt")' in src, "the progress banner stays"
     assert "OPEN THE" in src, "and its link to the finished grid"
+
+
+def test_every_row_id_has_a_copy_button_that_reports_what_happened():
+    """Operator: *"i want copy icon beside the ids, when i click it i should be
+    able to copy it"*.
+
+    The id was already copy-on-click and invisibly so: no icon, and the write
+    was `navigator.clipboard?.writeText(...)` — an optional chain, so in a
+    context without the async clipboard the click did nothing AND said nothing.
+    """
+    src = (open("webapp/src/components/trade/StrategiesGrid.tsx",
+                encoding="utf-8").read())
+    assert "function CopyableId(" in src
+    assert "<CopyableId id={r.id} />" in src
+    # an icon, not just an underline
+    assert "<rect x=\"9\" y=\"9\"" in src, "the copy glyph"
+    # it says what happened, both ways
+    assert '"ok" | "fail"' in src
+    assert ">copied<" in src.replace("\n", "").replace(" ", "") or "copied" in src
+    assert "could not copy" in src, "a silent failure is the bug being fixed"
+    # and it does not depend on the async clipboard alone
+    assert "document.execCommand(\"copy\")" in src
+    assert "navigator.clipboard?.writeText(r.id" not in src, \
+        "the optional-chain-and-hope version is gone"
+    # what gets copied is what the operator sees; every find box strips the #
+    assert "const text = `#${id}`" in src

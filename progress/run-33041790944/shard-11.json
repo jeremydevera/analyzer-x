@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 11, "total": 51, "rows": 898420, "note": "CETUS 1h: 9,479 bars, testing 105 rules", "pct": 21.6, "updated": "2026-08-27T06:09:57Z"}
+{"shard": 11, "stage": "testing", "done": 11, "total": 51, "rows": 909200, "note": "CETUS 1h: rule 43/105 (macddiv)", "pct": 21.6, "updated": "2026-08-27T06:10:42Z"}

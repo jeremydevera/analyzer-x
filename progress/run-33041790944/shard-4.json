@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 46, "total": 51, "rows": 3420560, "note": "TSMSTOCK 15m: rule 68/105 (dbltop)", "pct": 90.2, "updated": "2026-08-27T08:16:24Z"}
+{"shard": 4, "stage": "testing", "done": 46, "total": 51, "rows": 3444620, "note": "TSMSTOCK 30m: rule 81/105 (cf_donch_l2)", "pct": 90.2, "updated": "2026-08-27T08:17:10Z"}

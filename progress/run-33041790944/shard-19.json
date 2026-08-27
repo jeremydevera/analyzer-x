@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 5, "total": 51, "rows": 301086, "note": "AUDIO 15m: rule 102/105 (cf_soup1_l2)", "pct": 9.8, "updated": "2026-08-27T05:29:23Z"}
+{"shard": 19, "stage": "testing", "done": 5, "total": 51, "rows": 305226, "note": "AUDIO 30m: rule 45/105 (zscore20)", "pct": 9.8, "updated": "2026-08-27T05:30:08Z"}

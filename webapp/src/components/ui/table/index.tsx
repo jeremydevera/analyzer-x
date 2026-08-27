@@ -34,6 +34,7 @@ interface TableCellProps {
   style?: React.CSSProperties; // column widths for fixed-layout tables
   onClick?: () => void; // sortable headers: the click that reorders
   title?: string; // hover hint, e.g. "sort by win %"
+  colSpan?: number; // one cell across the whole row: an empty-state message
 }
 
 // Table Component
@@ -74,12 +75,13 @@ const TableCell: React.FC<TableCellProps> = ({
   style,
   onClick,
   title,
+  colSpan,
 }) => {
   const CellTag = isHeader ? "th" : "td";
   // break-words + align-top: a fixed-layout table must be allowed to wrap,
   // or one long cell pushes the whole screen sideways.
   return (
-    <CellTag style={style} onClick={onClick} title={title}
+    <CellTag style={style} onClick={onClick} title={title} colSpan={colSpan}
       className={`align-top break-words ${className ?? ""}`}>
       {children}
     </CellTag>

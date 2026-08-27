@@ -616,7 +616,23 @@ export default function StrategiesPanel() {
             </TableRow>
           </TableHeader>
           <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-            {shown.map((r) => (
+            {/* the rows on screen came from `servedFilters`; when that is
+                not what was asked for, they are last question's answer and
+                showing them under this question's filters is the lie the
+                operator caught (2026-08-27) */}
+            {missed ? (
+              <TableRow>
+                <TableCell colSpan={17}
+                           className="px-3 py-6 text-theme-sm text-gray-500 dark:text-gray-400">
+                  no rows for {andLine(applied)} yet — the store did not answer
+                  {failedAfter >= 1 ? ` in ${failedAfter}s` : ""}. The previous
+                  answer is not shown here because it does not match these
+                  filters. Press <b>Apply filters</b> to ask again, or narrow it
+                  with a coin or timeframe.
+                </TableCell>
+              </TableRow>
+            ) : null}
+            {!missed && shown.map((r) => (
               <TableRow key={r.id} onClick={() => view(r)}
                 className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.03] ${open?.id === r.id ? "bg-brand-50 dark:bg-brand-500/10" : ""}`}>
                 <TableCell className="px-3 py-2 font-mono text-theme-xs text-brand-600 dark:text-brand-400">#{r.id}</TableCell>

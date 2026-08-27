@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 1, "total": 51, "rows": 48840, "note": "ACH 1h: rule 6/105 (sweep30)", "pct": 2.0, "updated": "2026-08-27T05:19:29Z"}
+{"shard": 17, "stage": "testing", "done": 1, "total": 51, "rows": 70180, "note": "ACH 4h: 2,369 bars, testing 105 rules", "pct": 2.0, "updated": "2026-08-27T05:20:20Z"}

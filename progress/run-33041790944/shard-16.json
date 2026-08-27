@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 1, "total": 51, "rows": 36000, "note": "ACE 30m: rule 76/105 (cf_mom)", "pct": 2.0, "updated": "2026-08-27T05:17:53Z"}
+{"shard": 16, "stage": "testing", "done": 1, "total": 51, "rows": 45120, "note": "ACE 1h: rule 10/105 (sr_bounce)", "pct": 2.0, "updated": "2026-08-27T05:18:39Z"}

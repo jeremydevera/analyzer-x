@@ -154,3 +154,114 @@ def test_the_answer_is_the_same_with_or_without_it(kw, tmp_path, monkeypatch):
     with_it = ri.query(**kw)
     assert [r["id"] for r in with_it["rows"]] == [r["id"] for r in without["rows"]]
     assert with_it["total"] == without["total"]
+
+def _tiny_store(tmp_path, monkeypatch, *, wide=True):
+    """A real store with the real indexes, so naming one is legal and the
+    decision can be watched. `_rows_estimate` is faked big: this is about which
+    index the code CHOOSES, not about how fast four rows are."""
+    import json
+    import time
+
+    from tradingagents import market_sweep as msw
+
+    rows_dir = tmp_path / "rows"
+    rows_dir.mkdir()
+    monkeypatch.setattr(msw, "ROWDIR", rows_dir)
+    monkeypatch.setattr(ri, "DB_PATH", tmp_path / "rows.db")
+
+    def row(sig, profit, sizing, winrate):
+        wins = round(120 * winrate / 100)
+        return {"coin": "AAA", "tf": "1h", "signal": sig, "th": 0.1, "sl": 0.3,
+                "tp": 2.0, "rr": 3.0, "sizing": sizing, "lev": 20, "base": 5.0,
+                "notional": 100.0, "trades": 120, "wins": wins,
+                "losses": 120 - wins, "winrate": winrate, "profit": profit,
+                "funding": -0.2, "h1": 1.0, "h2": 1.0, "green": 8,
+                "months": 12, "worst": -4.1, "dd": 22.0, "liqs": 0,
+                "stop_reachable": True, "days": 360, "bars": 34000,
+                "monthly": {}, "cost_of_tp": 12.5, "rt": 0.04, "gate": "ok"}
+
+    (rows_dir / "AAA-1h.json").write_text(json.dumps([
+        row("mom6", 900.0, "martingale", 11.0),
+        row("rsi14", 90.0, "flat", 88.0),
+        row("willr14", 60.0, "flat", 81.0),
+        row("fade15", -5.0, "flat", 95.0),
+    ]))
+    ri.sync(now=time.time() + ri.SETTLE_S + 1)
+    with ri._open() as con:
+        con.execute(ri.WIDE_WINRATE)
+        if wide:
+            con.execute(ri.WIDE_PROFIT)
+    ri.forget_indexes()
+    monkeypatch.setattr(ri, "_rows_estimate", lambda: ri.UNINDEXED_LIMIT + 1)
+
+
+def _watch_index(monkeypatch) -> list:
+    """Every `INDEXED BY` the query names, in order."""
+    named: list = []
+    real = ri._indexed_by
+
+    def spy(*a, **k):
+        got = real(*a, **k)
+        named.append(got)
+        return got
+
+    monkeypatch.setattr(ri, "_indexed_by", spy)
+    return named
+
+
+def test_ranked_by_profit_it_beats_the_win_rate_seek(tmp_path, monkeypatch):
+    """THE bug of 2026-08-27, and the one no test covered.
+
+    Operator: *"nothing is showing usgn this filter why"* — `flat only AND win %
+    >= 80 AND profit > 0`, ranked by PROFIT $, refused at the 20 s budget. A win
+    % floor made `query` seek rows_wr2 whatever the order was. Ranked by profit
+    that is doubly wrong: rows_wr2 is in WIN-RATE order, so every match has to be
+    re-sorted (~640,000 of them at >= 80 on the operator's store), and it carries
+    no `sizing`, so every candidate row was read off a 13.6 GB file to test it.
+    rows_pr2 is already in profit order and holds winrate AND sizing: no sort, no
+    row reads. 503 after 20 s became 200 in 1.64 s.
+
+    So the index must be chosen from the filter AND THE ORDER — which is exactly
+    what the old code did not do.
+    """
+    _tiny_store(tmp_path, monkeypatch)
+    named = _watch_index(monkeypatch)
+    got = ri.query(sizing="flat", min_winrate=80, profitable=True,
+                   sort="profit")
+    assert any("rows_pr2" in n for n in named), named
+    assert not any("rows_wr2" in n for n in named), named
+    # and the answer is right, not merely fast
+    assert [r["signal"] for r in got["rows"]] == ["rsi14", "willr14"]
+
+
+def test_without_the_wide_profit_index_the_seek_still_helps(tmp_path,
+                                                           monkeypatch):
+    """The fix must not leave an older store with nothing: no rows_pr2, and a
+    win % floor still drives its own index."""
+    _tiny_store(tmp_path, monkeypatch, wide=False)
+    named = _watch_index(monkeypatch)
+    ri.query(min_winrate=80, sort="profit")
+    assert any("rows_wr2" in n or "rows_winrate" in n for n in named), named
+
+
+def test_ranked_by_win_percent_the_seek_is_still_right(tmp_path, monkeypatch):
+    """The fix must not take the win-rate order's own index away from it: there
+    the seek IS the answer (0.77 s on the operator's store)."""
+    _tiny_store(tmp_path, monkeypatch)
+    named = _watch_index(monkeypatch)
+    ri.query(min_winrate=80, sort="winrate")
+    assert any("rows_wr2" in n or "rows_winrate" in n for n in named), named
+    assert not any("rows_pr2" in n for n in named), named
+
+
+def test_the_reason_never_claims_a_finished_build_is_running(monkeypatch):
+    """The second half of the same incident: "The wide win-rate index that makes
+    this instant is still being built" was a LITERAL in the message, so it kept
+    saying that hours after the index landed (built 05:5x, printed 12:33). Read
+    from the database, not from the string."""
+    monkeypatch.setattr(ri, "has_index", lambda name: True)
+    why = ri._slow_why(None, None, None, 80, 0, "profit")
+    assert "being built" not in why, why
+    assert "rank by win %" in why, "and it still says what DOES work"
+    monkeypatch.setattr(ri, "has_index", lambda name: False)
+    assert "being built" in ri._slow_why(None, None, None, 80, 0, "profit")

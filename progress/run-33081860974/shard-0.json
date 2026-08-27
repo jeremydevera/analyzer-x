@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 13, "total": 51, "rows": 1082532, "note": "COSTSTOCK 15m: rule 78/105 (cf_mom_l2)", "pct": 25.5, "updated": "2026-08-27T15:27:59Z"}
+{"shard": 0, "stage": "testing", "done": 13, "total": 51, "rows": 1097412, "note": "COSTSTOCK 30m: rule 45/105 (zscore20)", "pct": 25.5, "updated": "2026-08-27T15:28:44Z"}

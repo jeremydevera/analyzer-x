@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 14, "total": 51, "rows": 1048936, "note": "DATA 15m: rule 33/105 (heikin)", "pct": 27.5, "updated": "2026-08-27T06:14:28Z"}
+{"shard": 11, "stage": "testing", "done": 15, "total": 51, "rows": 1102352, "note": "DOLO 15m: 34,600 bars, testing 105 rules", "pct": 29.4, "updated": "2026-08-27T06:15:30Z"}

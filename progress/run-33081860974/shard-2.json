@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 32, "total": 51, "rows": 2856466, "note": "NOM 30m: 15,863 bars, testing 105 rules", "pct": 62.7, "updated": "2026-08-27T17:34:16Z"}
+{"shard": 2, "stage": "testing", "done": 32, "total": 51, "rows": 2860426, "note": "NOM 30m: rule 12/105 (donchian20)", "pct": 62.7, "updated": "2026-08-27T17:35:01Z"}

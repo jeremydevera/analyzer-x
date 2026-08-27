@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 45, "total": 51, "rows": 3385774, "note": "TREE 15m: 34,604 bars, testing 105 rules", "pct": 88.2, "updated": "2026-08-27T07:20:27Z"}
+{"shard": 13, "stage": "testing", "done": 45, "total": 51, "rows": 3388974, "note": "TREE 15m: rule 10/105 (sr_bounce)", "pct": 88.2, "updated": "2026-08-27T07:21:13Z"}

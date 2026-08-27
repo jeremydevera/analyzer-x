@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 9, "total": 51, "rows": 746070, "note": "BLUR 30m: 18,959 bars, testing 105 rules", "pct": 17.6, "updated": "2026-08-27T15:06:40Z"}
+{"shard": 0, "stage": "testing", "done": 9, "total": 51, "rows": 750690, "note": "BLUR 30m: rule 15/105 (bbbreak)", "pct": 17.6, "updated": "2026-08-27T15:07:26Z"}

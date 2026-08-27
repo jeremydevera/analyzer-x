@@ -344,6 +344,129 @@ _BELL_NAMES = 5              # lost pairs named in the bell before "and N more"
 _pause = time.sleep
 
 
+_LIVE_CACHE: dict = {"at": 0.0, "symbols": None}
+
+
+def live_symbols(max_age_s: float = 300.0):
+    """Every symbol MEXC lists right now, or None when the venue could not be
+    asked. Cached, because a download asks once per run and the list is 999
+    rows.
+
+    None is NOT an empty set: "I could not look" must never be read as "every
+    pair is delisted", which would skip the whole store.
+    """
+    from tradingagents.dataflows import mexc_futures as fx
+
+    c = _LIVE_CACHE
+    if c["symbols"] is not None and time.time() - c["at"] < max_age_s:
+        return c["symbols"]
+    try:
+        got = {str(r["symbol"]) for r in fx.list_contracts() if r.get("symbol")}
+    except Exception as exc:                                   # noqa: BLE001
+        print(f"[download] could not list MEXC contracts: "
+              f"{type(exc).__name__}: {str(exc)[:80]}", flush=True)
+        return None
+    if not got:
+        return None
+    c.update(at=time.time(), symbols=got)
+    return got
+
+
+# What the venue says when it has nothing for a contract. A pair is called
+# DELISTED only when the ERROR looks like this AND the symbol is missing from
+# the live list — two independent facts. A timeout on a live pair must never be
+# reclassified as gone, or one bad minute deletes a coin from the store.
+_GONE_ERRORS = ("no min", "no hour", "no day", "no candles", "returned 0 bars",
+                "contract not found", "invalid symbol", "symbol not exist")
+
+
+def looks_gone(exc_or_text) -> bool:
+    """Does this failure mean "the venue has nothing for this contract"?"""
+    text = str(exc_or_text).lower()
+    return any(k in text for k in _GONE_ERRORS)
+
+
+def is_delisted(symbol: str, live=None) -> bool:
+    """Is this contract gone from the venue?
+
+    MEZO_USDT and DRV_USDT failed every download and every retry on
+    2026-08-27 with `no Min15 candles for MEZO_USDT`, sat in `lost.json`, were
+    re-fetched by the next update, failed again, and kept the panel red for
+    ever: the operator's *"this update candles is not reliable"*. They are not
+    broken — they are not listed any more (999 contracts, neither in it).
+    Nothing can fetch them, so they are named and SKIPPED, never counted as an
+    error and never queued again.
+    """
+    if live is None:
+        live = live_symbols()
+    if not live:
+        # None (could not ask) AND empty (a request that came back useless)
+        # both mean "I do not know" — never "every contract is gone", which
+        # would skip the entire store on one bad response
+        return False
+    return str(symbol) not in live
+
+
+def update_pairs(lost: list | None = None) -> tuple:
+    """What an UPDATE must fetch, in the order that survives being stopped.
+
+    Three sources, and the store alone is none of them:
+
+      * every pair the store already has, MOST BEHIND FIRST. A stopped update
+        used to leave its tail untouched and the next one walked the same order
+        again — 3,722 pairs sat more than a bar behind, the furthest 50.3 h
+        (2026-08-27). Staleness order means a stop always did the work that
+        mattered most.
+      * every pair the venue lists that the store does NOT have. An update
+        walked the store, so a NEW contract was never fetched by it: the panel
+        read `store missing 20 of 4,995 pairs: DESTOCK 15m, IOTSTOCK 15m ...`
+        and no button would ever fill them.
+      * whatever the last run lost.
+
+    Minus anything delisted. Returns
+    (pairs, delisted, missing_added, lost_added) — `lost_added` being the lost
+    pairs that were NOT already in the store, which is what the run's note
+    counts ("N pair(s) the last download lost re-downloaded").
+    """
+    from tradingagents import market_sweep as msw
+
+    live = live_symbols()
+    now = time.time()
+    have, ordered = set(), []
+    for c in msw.candle_coverage():
+        sym, tf = c.get("symbol"), c.get("timeframe")
+        if not sym or not tf:
+            continue
+        have.add((sym, tf))
+        behind = now - float(c.get("last_ms") or 0) / 1000.0
+        ordered.append((behind, sym, tf))
+    # most behind first, then alphabetical — `sort(reverse=True)` would also
+    # reverse the tie-break, so two pairs the same distance behind came back in
+    # descending symbol order and the order looked arbitrary
+    ordered.sort(key=lambda x: (-x[0], x[1], x[2]))
+    pairs = [(sym, tf) for _behind, sym, tf in ordered]
+
+    missing = []
+    if live is not None:
+        for sym in sorted(live):
+            for tf in ("15m", "30m", "1h", "4h", "1d"):
+                if (sym, tf) not in have:
+                    missing.append((sym, tf))
+    # the store's gaps go FIRST: a pair with no file at all is worse than a
+    # pair that is one bar behind
+    pairs = missing + pairs
+
+    lost_added = [(p[0], p[1]) for p in (lost or [])
+                  if len(p) == 2 and (p[0], p[1]) not in have]
+    pairs += [p for p in lost_added if p not in set(missing)]
+
+    delisted = [f"{c} {tf}" for c, tf in pairs if is_delisted(c, live)]
+    gone = {tuple(x.split(" ")) for x in delisted}
+    pairs = [(c, tf) for c, tf in pairs if (c, tf) not in gone]
+    lost_added = [p for p in lost_added if p not in gone]
+    return pairs, delisted, len(missing), lost_added
+
+
 def _run_download(spec: dict) -> None:
     """DOWNLOAD/UPDATE fill the operator's OWN MACHINE — the store every
     backtest reads. Pure local: no database is touched.
@@ -369,17 +492,21 @@ def _run_download(spec: dict) -> None:
         for p in (_read(f["lost"]).get("pairs") or []):
             if len(p) == 2 and (p[0], p[1]) not in pairs:
                 pairs.append((p[0], p[1]))
+        # a contract that is gone cannot be retried: name it, drop it
+        live = live_symbols()
+        delisted = [f"{c} {tf}" for c, tf in pairs if is_delisted(c, live)]
+        gone = {tuple(x.split(" ")) for x in delisted}
+        pairs = [(c, tf) for c, tf in pairs if (c, tf) not in gone]
     elif mode == "update" and not spec.get("coins"):
-        pairs = [(c["symbol"], c["timeframe"]) for c in msw.candle_coverage()]
-        have = set(pairs)
-        lost_before = [(p[0], p[1]) for p in (_read(f["lost"]).get("pairs") or [])
-                       if len(p) == 2 and (p[0], p[1]) not in have]
-        pairs += lost_before
+        pairs, delisted, n_missing, lost_before = update_pairs(
+            _read(f["lost"]).get("pairs") or [])
     else:
         coins = spec["coins"]
         tfs = [t for t in spec["tfs"]
                if t in ("15m", "30m", "1h", "4h", "1d")]
         pairs = [(c, tf) for c in coins for tf in tfs]
+    delisted = locals().get("delisted") or []
+    n_missing = locals().get("n_missing") or 0
     stored, stopped, done, retries = 0, False, 0, 0
     failed: list[str] = []                 # "COIN tf: why" — one per pair given up on
     failed_pairs: list[list[str]] = []
@@ -417,6 +544,15 @@ def _run_download(spec: dict) -> None:
                       flush=True)
                 queue.append((c, tf))
                 continue
+            if looks_gone(why) and is_delisted(c):
+                # not an error and not lost: the contract is gone, so no run
+                # can ever fetch it and it must not be queued again
+                delisted.append(f"{c} {tf}")
+                print(f"[download] {fmt_when(time.time())} {c} {tf} is "
+                      f"DELISTED on MEXC — skipped, not counted as an error",
+                      flush=True)
+                done += 1
+                continue
             failed.append(f"{c} {tf}: {why}")
             failed_pairs.append([c, tf])
             print(f"[download] {fmt_when(time.time())} {c} {tf} gave up after "
@@ -439,11 +575,14 @@ def _run_download(spec: dict) -> None:
             detail=(f"{stored:,} bars over {len(pairs)} pair(s)"
                     + (" · nothing to retry" if mode == "retry" and not pairs else "")
                     + (f" · {len(failed)} error(s): {names}" if failed else "")
-                    + (f" · and {more} more" if more > 0 else "")),
+                    + (f" · and {more} more" if more > 0 else "")
+                    + (f" · {len(delisted)} delisted, skipped: "
+                       f"{' · '.join(delisted[:3])}" if delisted else "")),
             ok=_ok,
             meta={"pairs": len(pairs), "bars": stored,
                   "errors": len(failed), "failed": failed, "retries": retries,
-                  "stopped": bool(stopped),
+                  "stopped": bool(stopped), "delisted": delisted,
+                  "missing_added": n_missing,
                   "mode": spec.get("mode") or "download"})
     except Exception:
         pass
@@ -457,12 +596,18 @@ def _run_download(spec: dict) -> None:
         "failed": failed, "failed_pairs": failed_pairs, "retries": retries,
         "stopped": stopped, "finished": int(time.time()),
         "mode": spec.get("mode") or "download",
+        # named, never counted as errors: nothing can fetch a gone contract
+        "delisted": delisted, "missing_added": n_missing,
         "note": ("stopped by you — everything downloaded so far is kept"
                  if stopped else
                  (f"retried {len(pairs)} lost pair(s)" if pairs else
                   "nothing to retry — no pair is lost") if mode == "retry" else
                  f"{'gap-filled' if mode == 'update' else 'downloaded'} "
                  f"{len(pairs)} pair(s)"
+                 + (f" · {n_missing} pair(s) the store did not have at all"
+                    if n_missing else "")
+                 + (f" · {len(delisted)} delisted, skipped"
+                    if delisted else "")
                  + (f" · {len(lost_before)} pair(s) the last download lost "
                     f"re-downloaded" if lost_before else "")
                  + (f" · {len(failed)} still lost — named in failed" if failed else ""))})

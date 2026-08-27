@@ -131,6 +131,20 @@ export default function DownloadScreen() {
             {" "}— RETRY fetches exactly these
           </p>
         )}
+        {/* A contract MEXC dropped can never be fetched: it is NOT lost, and a
+            RETRY button offering it is a button that cannot succeed. MEZO and
+            DRV failed four times at 2:43pm on 2026-08-27 and would have failed
+            on every retry after it — the operator's "this update candles is not
+            reliable". Named here, skipped by every run. */}
+        {!!lost?.delisted_count && (
+          <p className="mt-3 text-theme-xs text-warning-600 dark:text-warning-400">
+            {lost.delisted_count} pair(s) DELISTED on MEXC, skipped by every
+            download and never retried:{" "}
+            {(lost.delisted ?? []).map((p) =>
+              `${p.symbol.replace("_USDT", "")} ${p.timeframe}`).join(" · ")}
+            {" "}— nothing can fetch a contract the venue dropped
+          </p>
+        )}
         {lost && !lost.count && !!lost.recovered?.length && (
           <p className="mt-3 text-theme-xs text-gray-500 dark:text-gray-400">
             nothing to retry — the pairs lost by the failed run at {lost.failed_run_when} are back in the store:{" "}

@@ -86,7 +86,10 @@ def test_a_named_pair_still_missing_keeps_the_failure_live(world):
     world(*[p for p in ALL_TEN if p != ("CHILLGUY_USDT", "15m")])
     row = api.notifications_list()["rows"][0]
     assert row["resolved"] is False
-    assert "CHILLGUY_USDT 15m" in row["resolved_why"]
+    # named the way every other line names a pair (no _USDT), and it says
+    # WHAT the store has: a file older than the run is not a recovery
+    assert "CHILLGUY 15m" in row["resolved_why"], row["resolved_why"]
+    assert "no file" in row["resolved_why"], row["resolved_why"]
 
 
 def test_history_rows_carry_the_same_verdict(world):

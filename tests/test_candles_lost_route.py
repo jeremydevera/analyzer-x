@@ -7,6 +7,7 @@ The endpoint function is called directly: conftest forbids sockets, and on
 Windows a TestClient cannot even build its event loop without one.
 """
 import json
+import re
 
 import pytest
 
@@ -36,7 +37,14 @@ def test_the_route_names_and_counts_the_lost_pairs(lost_file):
     assert got["count"] == 2
     assert got["pairs"] == [{"symbol": "CHILLGUY_USDT", "timeframe": "15m"},
                             {"symbol": "NAORIS_USDT", "timeframe": "30m"}]
-    assert got["written"] == "Aug 25, 2026 2:00pm", "the operator's date format"
+    # The FORMAT is the rule, not a fixed literal: the same epoch prints twelve
+    # hours apart in Manila and New York, and the operator moved this PC's
+    # timezone on 2026-08-27 — which failed this assertion and nothing else.
+    from tradingagents import positions_view as pv
+
+    assert got["written"] == pv.fmt_when(1787680852), "the operator's date format"
+    assert re.fullmatch(r"[A-Z][a-z]{2} \d{2}, \d{4} \d{1,2}:\d{2}[ap]m",
+                        got["written"]), got["written"]
 
 
 def test_no_file_means_nothing_lost_not_an_error(lost_file, monkeypatch):

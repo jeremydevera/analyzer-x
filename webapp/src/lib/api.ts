@@ -303,6 +303,9 @@ export const api = {
     /** what the LAST FAILED run lost that is back in the store now */
     recovered: { symbol: string; timeframe: string; bars: number | null; when: string }[];
     failed_run_when: string; unnamed: number;
+    /** contracts MEXC no longer lists: not lost, not retryable, named so the
+     *  screen can stop showing a button that cannot succeed */
+    delisted: { symbol: string; timeframe: string }[]; delisted_count: number;
   }>("/api/candles/lost"),
   /** contracts on MEXC x five timeframes vs the store — "is the candles complete?" */
   candleCompleteness: () => get<{

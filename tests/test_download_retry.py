@@ -171,6 +171,10 @@ def test_update_mode_fetches_the_pairs_the_last_download_lost(job, monkeypatch, 
     anything. Now the last run's failed_pairs are queued too."""
     from tradingagents import market_sweep as msw
 
+    # This test is about the LOST pairs. `update` also fills pairs the venue
+    # LISTS that the store has never seen, so the contract list is pinned out of
+    # the way here — that half is covered in test_candle_update_reliability.py.
+    monkeypatch.setattr(db_jobs, "live_symbols", lambda *a, **k: None)
     monkeypatch.setattr(msw, "candle_coverage", lambda: [
         {"symbol": "APEX_USDT", "timeframe": "1h"}])
     (tmp_path / "lost.json").write_text(json.dumps({
@@ -207,11 +211,17 @@ def test_a_deterministic_failure_is_named_at_once_not_retried(job, monkeypatch):
         raise fx.MexcFuturesError("no Min15 candles for GONE_USDT")
 
     monkeypatch.setattr(msw, "refresh_candles", refresh)
+    # GONE_USDT is still LISTED here, so "no candles" is an error to NAME. The
+    # delisted path needs both halves — the venue's empty answer AND the symbol
+    # being absent from the live list (test_candle_update_reliability.py).
+    monkeypatch.setattr(db_jobs, "live_symbols", lambda *a, **k: {"GONE_USDT"})
     db_jobs._run_download({"coins": ["GONE_USDT"], "tfs": ["15m"]})
     assert job["calls"] == [("GONE_USDT", "15m")]
     p = job["progress"]()
     assert p["failed"] == ["GONE_USDT 15m: no Min15 candles for GONE_USDT"]
     assert p["retries"] == 0
+    assert not p.get("delisted"), (
+        "a LISTED contract with no candles is an error, not a delisting")
 
 
 def test_a_connection_cut_mid_body_counts_as_transient():

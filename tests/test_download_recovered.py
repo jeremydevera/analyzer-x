@@ -94,7 +94,13 @@ def test_the_lost_route_reports_what_the_last_failed_run_lost_and_recovered(stor
     pqs.save_candles("CHILLGUY_USDT", "15m", _frame(5))
     got = api.candles_lost()
     assert got["count"] == 0 and got["pairs"] == []
-    assert got["failed_run_when"] == "Aug 25, 2026 2:00pm"
+    # NOT a hardcoded string: the same epoch prints 12 hours apart in Manila
+    # and New York, and the operator changed this PC's timezone on 2026-08-27.
+    # The rule is the FORMAT (positions_view.fmt_when), never a fixed literal.
+    from tradingagents import positions_view as pv
+
+    assert got["failed_run_when"] == pv.fmt_when(FAILED_2PM["ts"])
+    assert got["failed_run_when"].endswith(("am", "pm")), got["failed_run_when"]
     assert [(p["symbol"], p["timeframe"], p["bars"]) for p in got["recovered"]] == [
         ("CHILLGUY_USDT", "15m", 5)]
     assert got["unnamed"] == 1

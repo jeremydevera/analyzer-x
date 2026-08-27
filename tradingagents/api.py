@@ -1844,14 +1844,28 @@ def _named_lost(row: dict) -> tuple[list[tuple[str, str]], int]:
     return pairs, max(0, int(meta.get("errors") or 0) - len(pairs))
 
 
-def _stored_now(symbol: str, tf: str) -> dict:
-    """Is the pair in the store NOW — derived from its file, never a flag.
-    'recovered' means the parquet exists; bars and the file's own time ride
-    beside it so the label can be checked against the store."""
-    from tradingagents import parquet_store as pqs, positions_view as pv
+def _stored_now(symbol: str, tf: str, since: float = 0.0) -> dict:
+    """Is the pair in the store, fetched SINCE `since` — from its file, never a
+    flag.
+
+    `since` is what makes this honest. It used to mean only "a parquet exists",
+    so a retry that stored ZERO bars still read *"resolved — every pair that run
+    lost is back in the store"*: MEZO's file had been sitting there since
+    Aug 25, 1:22pm while the 2:43pm retry failed four times (operator's
+    screenshot, 2026-08-27). A file older than the run that lost the pair is
+    not a recovery.
+
+    `delisted` rides beside it: a contract MEXC no longer lists can never be
+    fetched by any run, so it is neither lost nor recovered — it is gone, and
+    saying so is the only thing that lets the panel go green.
+    """
+    from tradingagents import db_jobs as dj, parquet_store as pqs, \
+        positions_view as pv
 
     path = pqs._candle_path(symbol, tf)
-    out = {"symbol": symbol, "timeframe": tf, "recovered": False, "bars": None, "when": ""}
+    out = {"symbol": symbol, "timeframe": tf, "recovered": False,
+           "bars": None, "when": "", "exists": False,
+           "delisted": dj.is_delisted(symbol)}
     if not path.exists():
         return out
     try:
@@ -1860,7 +1874,9 @@ def _stored_now(symbol: str, tf: str) -> dict:
         out["bars"] = int(pq.read_metadata(path).num_rows)
     except Exception:
         out["bars"] = None
-    out.update(recovered=True, when=pv.fmt_when(path.stat().st_mtime))
+    mtime = path.stat().st_mtime
+    out.update(exists=True, when=pv.fmt_when(mtime),
+               recovered=mtime > float(since or 0.0))
     return out
 
 
@@ -1914,9 +1930,25 @@ def _download_resolution(row: dict) -> tuple[bool | None, str]:
     if row.get("ok") or meta.get("stopped") or row.get("kind") != "download":
         return None, ""
     named, unnamed = _named_lost(row)
-    still = [f"{sym} {tf}" for sym, tf in named if not _stored_now(sym, tf)["recovered"]]
+    when = float(row.get("ts") or 0)
+    gone, still = [], []
+    for sym, tf in named:
+        got = _stored_now(sym, tf, since=when)
+        if got["delisted"]:
+            gone.append(f"{sym.replace('_USDT', '')} {tf}")
+        elif not got["recovered"]:
+            still.append(f"{sym.replace('_USDT', '')} {tf}"
+                         + (f" (store has {got['bars']:,} bars from "
+                            f"{got['when']}, older than this run)"
+                            if got["exists"] else " (no file)"))
     if still:
         return False, "still lost: " + ", ".join(still)
+    if gone and not unnamed:
+        # nothing can fetch a contract the venue dropped, so this row is as
+        # resolved as it will ever be — and it says WHY rather than pretending
+        return True, ("resolved — " + ", ".join(gone)
+                      + f" {'is' if len(gone) == 1 else 'are'} DELISTED on "
+                        f"MEXC and cannot be fetched by any run")
     if unnamed:
         comp = _store_completeness()
         if not comp["ok"]:
@@ -1951,8 +1983,16 @@ def candles_lost() -> dict:
     from tradingagents import db_jobs, notifications as nt, positions_view as pv
 
     got = db_jobs._read(db_jobs.FILES["download"]["lost"])
-    pairs = [{"symbol": p[0], "timeframe": p[1]}
-             for p in (got.get("pairs") or []) if len(p) == 2]
+    all_pairs = [(p[0], p[1]) for p in (got.get("pairs") or []) if len(p) == 2]
+    # A contract MEXC no longer lists is not "lost": no run can fetch it, so
+    # offering it to RETRY FAILED is a button that cannot succeed. MEZO and DRV
+    # failed four times at 2:43pm on 2026-08-27 and would have failed on every
+    # retry after it — the operator's "this update candles is not reliable".
+    delisted = [{"symbol": s_, "timeframe": t_} for s_, t_ in all_pairs
+                if db_jobs.is_delisted(s_)]
+    gone = {(d["symbol"], d["timeframe"]) for d in delisted}
+    pairs = [{"symbol": s_, "timeframe": t_} for s_, t_ in all_pairs
+             if (s_, t_) not in gone]
     recovered, failed_when, unnamed = [], "", 0
     for row in nt.recent(limit=20, kind="download"):
         meta = row.get("meta") or {}
@@ -1968,7 +2008,9 @@ def candles_lost() -> dict:
     return {"pairs": pairs, "count": len(pairs),
             "written": pv.fmt_when(float(got["written"])) if got.get("written") else "",
             "recovered": recovered, "failed_run_when": failed_when,
-            "unnamed": unnamed}
+            "unnamed": unnamed,
+            # named so the screen can say "2 delisted — nothing to retry"
+            "delisted": delisted, "delisted_count": len(delisted)}
 
 
 @app.get("/api/candles/download-history")

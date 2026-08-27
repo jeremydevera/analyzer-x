@@ -679,11 +679,18 @@ def _capped_note(payload: dict) -> str:
     """Say what was capped, in the same breath as the count (rule 20)."""
     total = _tested(payload)
     shown = len(payload["rows"])
+    thin = int(payload.get("thin_rows") or 0)
+    # The trade floor is a cut too, and a silent one: on 2026-08-26 it dropped
+    # 26 of the 30 confluence rules out of a 60-day 1h/4h grid and the page
+    # said nothing, because the floor was a year's count on a sixth of a year.
+    floor = (f" &middot; <b>{thin:,}</b> further combinations were measured but "
+             f"fell under the trade floor for this window "
+             f"(min_trades scales with the days measured)" if thin else "")
     if not payload.get("rows_capped") or shown >= total:
-        return ""
+        return floor
     where = payload.get("grid_path") or "the run's grid snapshot"
     return (f" &mdash; this page shows the <b>{shown:,}</b> most profitable of "
-            f"them; every one of the {total:,} is in {where}")
+            f"them; every one of the {total:,} is in {where}" + floor)
 
 
 def render(payload: dict, *, title: str, headline: str = "",
@@ -875,6 +882,7 @@ def _slim_pair(res: dict) -> dict:
     """
     return {"why": res.get("why"),
             "rows_n": len(res.get("rows") or ()),
+            "thin": int(res.get("thin") or 0),
             "incremental": res.get("incremental"),
             "new_bars": res.get("new_bars"),
             "bars": res.get("bars", 0), "days": res.get("days", 0),
@@ -1091,7 +1099,7 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
     must_keep: list = []      # the operator's own rows: never capped away
     heap: list = []           # the best `cap` of the rest, by profit
     months_seen: set = set()
-    rows_total = profitable_total = trades_total = 0
+    rows_total = profitable_total = trades_total = thin_total = 0
     order = 0
 
     def _take(row: dict) -> None:
@@ -1119,6 +1127,7 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
         if r.get("why") not in (None, "", "no new bars") and not r.get("rows_n"):
             excluded.append({"coin": show, "tf": tf, "why": r["why"]})
             continue
+        thin_total += int(r.get("thin") or 0)
         pair = msw.pair_rows(show, tf)
         sink.add(pair)                     # the snapshot keeps EVERY row
         rows_total += len(pair)
@@ -1241,6 +1250,8 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
             series[key] = sd
     return {"rows": rows, "rows_total": rows_total,
             "rows_capped": rows_capped, "row_cap": cap,
+            # what the trade floor cut, so the page can say it (rule 20)
+            "thin_rows": thin_total,
             "grid_path": (str(grid_path) if grid_path else ""),
             "profitable_total": profitable_total,
             "trades_total": trades_total,

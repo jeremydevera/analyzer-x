@@ -63,9 +63,30 @@ MANIFEST = HOME / "manifest.json"
 MIN_TRADES = 100          # the intraday floor; see min_trades()
 MIN_TRADES_BY_TF = {"15m": 100, "30m": 100, "1h": 100, "4h": 40, "1d": 10}
 
+# Those numbers are a RATE, tuned against a YEAR of bars. Read as an absolute
+# count they delete the same thing the flat 100 deleted from 1d, one dimension
+# over: the 60-day 1h/4h sweep of 2026-08-26 finished with 9,439,792 rows and
+# only 58 of its 105 signals, because 100 trades in 60 days at 1h is one every
+# 14 hours. Gone were 26 of the 30 confluence rules the operator had just asked
+# for -- a confluence rule is SELECTIVE by construction -- plus 21 older ones.
+# So the floor scales with the days actually measured, and never drops below
+# MIN_TRADES_ABS, which is the "a handful of trades is not evidence" line 1d
+# has always used.
+MIN_TRADES_ABS = 10
+DAYS_PER_YEAR = 365
 
-def min_trades(tf: str) -> int:
-    return MIN_TRADES_BY_TF.get(tf, MIN_TRADES)
+
+def min_trades(tf: str, days: int | float | None = None) -> int:
+    """The fewest trades a row needs to be kept, for a window of `days`.
+
+    Without `days` the caller gets the per-timeframe rate unchanged, so no
+    existing path silently loosens.
+    """
+    floor = MIN_TRADES_BY_TF.get(tf, MIN_TRADES)
+    if not days or days <= 0:
+        return floor
+    scaled = round(floor * float(days) / DAYS_PER_YEAR)
+    return max(MIN_TRADES_ABS, min(floor, scaled))
 
 GATE_BLOCK = 0.50         # cost >= half the target: the trade cannot win
 CONTEXT_BARS = 300        # lookback a signal needs before the first new bar
@@ -547,6 +568,7 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
     except Exception as exc:
         return {"coin": coin, "tf": tf, "rows": [], "added": added,
                 "source": source, "why": f"venue: {str(exc)[:60]}"}
+    thin = 0               # rows the trade floor dropped, for the report
     states = {} if fresh else load_states(coin, tf)
     # A pair measured in the CLOUD carries a watermark but no per-combination
     # state, so resuming from it would start every combination at that bar with
@@ -578,7 +600,7 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
         save_states(coin, tf, states)          # persists a fresh __version__
         worker_write(pair=f"{coin} {tf}", done=0, total=0, pct=100.0,
                      state="no new bars")
-        return {"coin": coin, "tf": tf, "rows": pair_rows(coin, tf),
+        return {"coin": coin, "tf": tf, "rows": pair_rows(coin, tf), "thin": thin,
                 "added": added, "source": source, "why": "no new bars",
                 "incremental": True, "new_bars": 0, "fee": fee,
                 "liq": liq, "rt": rt, "bars": len(df),
@@ -688,7 +710,7 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                     worker_write(pair=f"{coin} {tf}", done=done_combos,
                                  total=total_combos, rows=len(out_rows),
                                  state="handed off")
-                    return {"coin": coin, "tf": tf, "rows": out_rows,
+                    return {"coin": coin, "tf": tf, "rows": out_rows, "thin": thin,
                             "added": added, "source": source,
                             "new_bars": (max(0, len(df) - start_at)
                                          if incremental else len(df)),
@@ -696,7 +718,8 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                 # "everything stored": losers are measurements too, and the
                 # store is what makes re-analysis free. Only the trade floor
                 # filters — a 3-trade row is noise, not a loser.
-                if r["trades"] < min_trades(tf):
+                if r["trades"] < min_trades(tf, days=days):
+                    thin += 1          # counted, never silent (rule 20)
                     continue
                 m = r["monthly"]
                 mk = sorted(m)
@@ -729,7 +752,7 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
     worker_write(pair=f"{coin} {tf}", done=done_combos,
                  total=total_combos, pct=100.0, rows=len(out_rows),
                  state="done")
-    return {"coin": coin, "tf": tf, "rows": out_rows, "added": added,
+    return {"coin": coin, "tf": tf, "rows": out_rows, "thin": thin, "added": added,
             "source": source, "incremental": incremental,
             "fee": fee, "liq": liq, "rt": rt,
             "new_bars": max(0, len(df) - start_at) if incremental else len(df),

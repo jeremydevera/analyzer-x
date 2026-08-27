@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 15, "total": 51, "rows": 1008058, "note": "DRIFT 15m: rule 46/105 (rsi2)", "pct": 29.4, "updated": "2026-08-27T06:19:55Z"}
+{"shard": 17, "stage": "testing", "done": 15, "total": 51, "rows": 1013258, "note": "DRIFT 15m: rule 99/105 (cf_ttm_l2)", "pct": 29.4, "updated": "2026-08-27T06:20:41Z"}

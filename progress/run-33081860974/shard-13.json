@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 43, "total": 51, "rows": 3349268, "note": "SWARMS 15m: rule 45/105 (zscore20)", "pct": 84.3, "updated": "2026-08-27T16:42:35Z"}
+{"shard": 13, "stage": "testing", "done": 43, "total": 51, "rows": 3358068, "note": "SWARMS 15m: rule 86/105 (cf_triple_l1)", "pct": 84.3, "updated": "2026-08-27T16:43:20Z"}

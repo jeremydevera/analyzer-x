@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 4, "total": 51, "rows": 201060, "note": "APR 30m: rule 100/105 (cf_soup1)", "pct": 7.8, "updated": "2026-08-27T05:27:18Z"}
+{"shard": 14, "stage": "testing", "done": 4, "total": 51, "rows": 212258, "note": "APR 1h: rule 45/105 (zscore20)", "pct": 7.8, "updated": "2026-08-27T05:28:03Z"}

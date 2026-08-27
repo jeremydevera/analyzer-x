@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 51, "total": 51, "rows": 3963224, "note": "ZRO 1h: 9,479 bars, testing 105 rules", "pct": 100.0, "updated": "2026-08-27T18:40:57Z"}
+{"shard": 18, "stage": "testing", "done": 51, "total": 51, "rows": 3974444, "note": "ZRO 1h: rule 45/105 (zscore20)", "pct": 100.0, "updated": "2026-08-27T18:41:42Z"}

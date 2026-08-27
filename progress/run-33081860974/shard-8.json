@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 42, "total": 51, "rows": 2963196, "note": "SPX500 1h: rule 43/105 (macddiv)", "pct": 82.4, "updated": "2026-08-27T16:38:11Z"}
+{"shard": 8, "stage": "testing", "done": 44, "total": 51, "rows": 3056228, "note": "TEMSTOCK 15m: rule 30/105 (kama10)", "pct": 86.3, "updated": "2026-08-27T16:38:56Z"}

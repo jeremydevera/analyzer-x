@@ -176,6 +176,7 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
             try:
                 dk = "rsi14_1h" if sig == "rsi14" else key
                 dirs = at._dirs_for_backtest(dk, hi, lo, cl, opens=op, volume=vol,
+                                             funding=fund,
                                              ts=ts)
             except Exception:
                 at.STRATEGY_SPECS.pop(key, None)

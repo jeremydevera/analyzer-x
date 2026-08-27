@@ -774,7 +774,7 @@ def sig_rsi14(close: list) -> int:
 
 def signal_for(key: str, high: list, low: list, close: list,
                opens: list | None = None, volume: list | None = None,
-               ts: list | None = None) -> int:
+               ts: list | None = None, funding: list | None = None) -> int:
     # The expansion rules (signals_ext, signals_ext2) were BACKTEST-ONLY until
     # 2026-08-19: this function never dispatched to them, so a deployed
     # fib618/sr_break/supertrend strategy would have silently emitted 0
@@ -787,8 +787,14 @@ def signal_for(key: str, high: list, low: list, close: list,
     # cannot emit is a strategy that trades zero times once deployed.
     for _name in sorted(CONF_SIGNALS, key=len, reverse=True):
         if key == _name or key.startswith(_name + "_"):
-            dirs = CONF_SIGNALS[_name](opens or [], high, low, close,
-                                       volume or [], ts or [])
+            _fn = CONF_SIGNALS[_name]
+            # the funding-extreme fade needs the settlement history; the runner
+            # passes it, and without it the rule abstains rather than guessing
+            dirs = (_fn(opens or [], high, low, close, volume or [], ts or [],
+                        funding or [])
+                    if getattr(_fn, "needs_funding", False)
+                    else _fn(opens or [], high, low, close, volume or [],
+                             ts or []))
             return dirs[-1] if dirs else 0
     for _name in sorted(EXTRA_SIGNALS2, key=len, reverse=True):
         if key == _name or key.startswith(_name + "_"):
@@ -1361,13 +1367,22 @@ def blocked_pairs(settings: dict, *, fx=None) -> list[dict]:
 def _dirs_for_backtest(key: str, high: list, low: list,
                        close: list, opens: list | None = None,
                        volume: list | None = None,
-                       ts: list | None = None) -> list[int]:
+                       ts: list | None = None,
+                       funding: list | None = None) -> list[int]:
     """Per-bar signal directions over a whole history — the same rules the
     live ``sig_*`` functions apply to the last bar, evaluated at every bar.
 
     ``opens``, ``volume`` and ``ts`` (epoch ms per bar) feed the second
     expansion's session/volume rules; a rule whose stream is missing abstains
     (all zeros) rather than guessing.
+
+    ``funding`` is MEXC's published settlement history
+    (``mexc_futures.funding_history``) and reaches only the rules that declare
+    ``needs_funding`` -- as of 2026-08-27 that is the confluence set's
+    funding-extreme fade, the one rule in the library that reads something
+    other than candles. Omitting it makes that rule abstain, which is why every
+    caller that measures a grid passes it: a rule that trades in the sweep and
+    abstains in the app is the divergence CLAUDE.md forbids.
     """
     n = len(close)
     out = [0] * n
@@ -1383,8 +1398,11 @@ def _dirs_for_backtest(key: str, high: list, low: list,
     # so `cf_mom_l1_1h` cannot be swallowed by `cf_mom`.
     for _name in sorted(CONF_SIGNALS, key=len, reverse=True):
         if key == _name or key.startswith(_name + "_"):
-            return CONF_SIGNALS[_name](opens or [], high, low, close,
-                                       volume or [], ts or [])
+            _fn = CONF_SIGNALS[_name]
+            if getattr(_fn, "needs_funding", False):
+                return _fn(opens or [], high, low, close, volume or [],
+                           ts or [], funding or [])
+            return _fn(opens or [], high, low, close, volume or [], ts or [])
     for _name in sorted(EXTRA_SIGNALS2, key=len, reverse=True):
         if key == _name or key.startswith(_name + "_"):
             return EXTRA_SIGNALS2[_name](opens or [], high, low, close,

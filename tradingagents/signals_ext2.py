@@ -184,12 +184,19 @@ def ichimoku(opens, high, low, close, volume, ts):
     return out
 
 
-def adx14(opens, high, low, close, volume, ts, n=14, floor=20.0):
-    """+DI/-DI cross while ADX says there IS a trend."""
+def _dmi(high, low, close, n=14):
+    """Wilder's +DI, -DI and ADX as three series.
+
+    Split out of ``adx14`` (2026-08-27) so the 4-hour confluence setups can ask
+    "is ADX above 25 on this bar" without a second copy of the arithmetic --
+    two copies of an indicator are two indicators the moment one is edited.
+    """
     m = len(close)
-    out = _zeros(close)
+    pdi = [math.nan] * m
+    ndi = [math.nan] * m
+    adx = [math.nan] * m
     if m <= 2 * n:
-        return out
+        return pdi, ndi, adx
     trs, pdms, ndms = [0.0], [0.0], [0.0]
     for i in range(1, m):
         trs.append(max(high[i] - low[i], abs(high[i] - close[i - 1]),
@@ -201,9 +208,6 @@ def adx14(opens, high, low, close, volume, ts, n=14, floor=20.0):
     tr = sum(trs[1:n + 1])
     pdm = sum(pdms[1:n + 1])
     ndm = sum(ndms[1:n + 1])
-    pdi = [math.nan] * m
-    ndi = [math.nan] * m
-    adx = [math.nan] * m
     dxs = []
     for i in range(n, m):
         if i > n:
@@ -212,12 +216,22 @@ def adx14(opens, high, low, close, volume, ts, n=14, floor=20.0):
             ndm = ndm - ndm / n + ndms[i]
         pdi[i] = 100 * pdm / tr if tr else 0.0
         ndi[i] = 100 * ndm / tr if tr else 0.0
-        s = pdi[i] + ndi[i]
-        dxs.append(100 * abs(pdi[i] - ndi[i]) / s if s else 0.0)
+        s_ = pdi[i] + ndi[i]
+        dxs.append(100 * abs(pdi[i] - ndi[i]) / s_ if s_ else 0.0)
         if len(dxs) == n:
             adx[i] = sum(dxs) / n
         elif len(dxs) > n:
             adx[i] = (adx[i - 1] * (n - 1) + dxs[-1]) / n
+    return pdi, ndi, adx
+
+
+def adx14(opens, high, low, close, volume, ts, n=14, floor=20.0):
+    """+DI/-DI cross while ADX says there IS a trend."""
+    m = len(close)
+    out = _zeros(close)
+    if m <= 2 * n:
+        return out
+    pdi, ndi, adx = _dmi(high, low, close, n)
     for i in range(n + 1, m):
         if math.isnan(adx[i]) or adx[i] < floor:
             continue

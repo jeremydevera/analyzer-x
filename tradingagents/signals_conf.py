@@ -1,4 +1,4 @@
-"""The ten CONFLUENCE setups from the research ledger, each at three levels.
+"""The FIFTEEN CONFLUENCE setups from the research ledger, at three levels.
 
 Where these come from: on 2026-08-25 the operator asked for deep research into
 "the best confluence out there", from reliable sources only. Six researchers
@@ -8,6 +8,15 @@ every candidate and dropped the ones that were not crisply codeable or whose
 sources did not support the claim. Ten survived. They were then measured on
 BTC_USDT 1h over 364 days (published artifact, 6,160 combinations) before being
 brought in here.
+
+The ledger published TWO rankings -- a 1-hour list and a 4-hour list -- and only
+the 1-hour ten were built at first; they were swept on 1h and 4h. On 2026-08-27
+the operator read the artifact against the store and asked "have you also tried
+this 10 strats to all coins?". Five setups sit only in the 4-hour ranking and
+had never been written: 4h CHoCH/BOS + FVG retrace (``bosfvg``), funding-extreme
+fade (``fundfade``), BOS -> order-block retest (``obretest``), DI-cross + ADX +
+EMA200 (``diadx``) and Supertrend flip + RSI + ADX (``stflip``). They are here
+now, so the set is fifteen setups x three levels = 45 rules.
 
 A "confluence" setup is two or more independent conditions that must agree
 before a trade is taken. Each of the ten is registered three times:
@@ -52,11 +61,16 @@ from __future__ import annotations
 import math
 
 from tradingagents.signals_ext import _atr, _ema
-from tradingagents.signals_ext2 import _ok, _sma, _stdev, _zeros
+from tradingagents.signals_ext2 import (_dmi, _ok, _sma, _stdev, _zeros,
+                                        supertrend as _supertrend)
 
 _DAY_MS = 86_400_000
+# The 1-HOUR list of ten, then the FIVE that appear only in the 4-hour
+# ranking (added 2026-08-27 -- they had never been built, and the operator
+# found it by reading the research artifact against the store).
 _NAMES = ("mom", "donch", "maobv", "triple", "chan",
-          "soup", "emarsi", "ttm", "soup1", "eqhl")
+          "soup", "emarsi", "ttm", "soup1", "eqhl",
+          "bosfvg", "fundfade", "obretest", "diadx", "stflip")
 
 
 # --------------------------------------------------------------- small helpers
@@ -187,6 +201,12 @@ def _bundle(opens, high, low, close, volume, ts):
     b["e50"] = _ema(close, 50)
     b["e200"] = _ema(close, 200)
     b["sd20"] = _stdev(close, 20)
+    # +DI/-DI/ADX from the ONE implementation (signals_ext2._dmi), and the
+    # supertrend flips from the one rule that already computed them -- the
+    # 4-hour setups read both, and a second copy of an indicator is a second
+    # indicator the moment one of them is edited.
+    b["pdi"], b["ndi"], b["adx"] = _dmi(high, low, close, 14)
+    b["st"] = _supertrend([], high, low, close, [], ts)
     b["hh20"] = _roll_max(high, 20)
     b["ll20"] = _roll_min(low, 20)
     b["hh50"] = _roll_max(high, 50)
@@ -210,7 +230,7 @@ def _nan(*vals) -> bool:
 
 
 # ----------------------------------------------------------------- the ten
-def _mom(opens, high, low, close, volume, ts, b):
+def _mom(opens, high, low, close, volume, ts, b, funding=None):
     """Momentum with a trend gate: a 48-bar move past 3%, in the SMA200's
     direction. (The published BTC study gated on a 30-day SMA; 200 bars here,
     for the incremental-lookback reason in the module docstring.)"""
@@ -227,7 +247,7 @@ def _mom(opens, high, low, close, volume, ts, b):
     return out
 
 
-def _donch(opens, high, low, close, volume, ts, b):
+def _donch(opens, high, low, close, volume, ts, b, funding=None):
     """Trend gate + 20-bar Donchian breakout + volume or money-flow behind it."""
     if not _ok(volume, close):
         return _zeros(close)
@@ -243,7 +263,7 @@ def _donch(opens, high, low, close, volume, ts, b):
     return out
 
 
-def _maobv(opens, high, low, close, volume, ts, b):
+def _maobv(opens, high, low, close, volume, ts, b, funding=None):
     """A 5/50 moving-average cross that on-balance volume agrees with."""
     if not _ok(volume, close):
         return _zeros(close)
@@ -261,7 +281,7 @@ def _maobv(opens, high, low, close, volume, ts, b):
     return out
 
 
-def _triple(opens, high, low, close, volume, ts, b):
+def _triple(opens, high, low, close, volume, ts, b, funding=None):
     """All three moving averages agreeing (20 > 50 > 200), on the flip into it."""
     out = _zeros(close)
     for i in range(1, len(close)):
@@ -277,7 +297,7 @@ def _triple(opens, high, low, close, volume, ts, b):
     return out
 
 
-def _chan(opens, high, low, close, volume, ts, b):
+def _chan(opens, high, low, close, volume, ts, b, funding=None):
     """A quiet 50-bar channel broken and HELD for a second bar."""
     out = _zeros(close)
     for i in range(2, len(close)):
@@ -293,7 +313,7 @@ def _chan(opens, high, low, close, volume, ts, b):
     return out
 
 
-def _soup(opens, high, low, close, volume, ts, b):
+def _soup(opens, high, low, close, volume, ts, b, funding=None):
     """ICT Turtle Soup: a confirmed swing is swept, price closes back inside,
     then it turns and leaves a fair-value gap behind, within five bars."""
     out = _zeros(close)
@@ -314,7 +334,7 @@ def _soup(opens, high, low, close, volume, ts, b):
     return out
 
 
-def _emarsi(opens, high, low, close, volume, ts, b):
+def _emarsi(opens, high, low, close, volume, ts, b, funding=None):
     """The EMA stack, an RSI pullback that re-crosses 50, and money flow."""
     if not _ok(volume, close):
         return _zeros(close)
@@ -337,7 +357,7 @@ def _emarsi(opens, high, low, close, volume, ts, b):
     return out
 
 
-def _ttm(opens, high, low, close, volume, ts, b):
+def _ttm(opens, high, low, close, volume, ts, b, funding=None):
     """TTM squeeze: Bollinger inside Keltner for at least three bars, then the
     release, taken in the direction price leaves the band."""
     out = _zeros(close)
@@ -361,7 +381,7 @@ def _ttm(opens, high, low, close, volume, ts, b):
     return out
 
 
-def _soup1(opens, high, low, close, volume, ts, b):
+def _soup1(opens, high, low, close, volume, ts, b, funding=None):
     """Connors-Raschke Turtle Soup +1: a new 20-bar low whose previous 20-bar
     low is at least four bars old, rejected on the bar."""
     out = _zeros(close)
@@ -375,7 +395,7 @@ def _soup1(opens, high, low, close, volume, ts, b):
     return out
 
 
-def _eqhl(opens, high, low, close, volume, ts, b):
+def _eqhl(opens, high, low, close, volume, ts, b, funding=None):
     """Equal highs or lows -- a pool of stops -- swept, then a gap the other way.
 
     The sweep may be up to three bars back. The BTC study required the sweep
@@ -409,9 +429,213 @@ def _eqhl(opens, high, low, close, volume, ts, b):
     return out
 
 
+
+# ---------------------------------------------------- the five 4-HOUR setups
+# The research ledger published TWO top-tens: a 1-hour list and a 4-hour list.
+# The ten above are the 1-hour list, and they were swept on 1h AND 4h. Five
+# setups appear only in the 4-hour ranking, and until 2026-08-27 they had never
+# been built -- the operator caught it ("have you also tried this 10 strats to
+# all coins?"). These are those five, same contract, same three levels.
+def _bosfvg(opens, high, low, close, volume, ts, b, funding=None):
+    """4h break of structure, then a retrace into the gap the break left.
+
+    The ledger's rule: trend up; close breaks the last confirmed swing high;
+    the breaking leg holds a bullish fair-value gap; enter on a limit at the
+    gap top within 10 bars; stop below the leg low.
+
+    Two deviations, both because of what this engine is: it enters at the NEXT
+    BAR OPEN (no resting limit orders in the backtest), so the signal is the
+    bar that trades back into the gap; and the stop/target come from the grid
+    (every row states its own SL/TP) rather than from the leg.
+    """
+    out = _zeros(close)
+    pend = None                      # (side, zone_lo, zone_hi, expiry)
+    for i in range(3, len(close)):
+        if _nan(b["s200"][i]):
+            continue
+        # a pending retrace, live for ten bars after the break
+        if pend:
+            side, zlo, zhi, exp = pend
+            if i > exp:
+                pend = None
+            elif side > 0 and low[i] <= zhi and close[i] >= zlo:
+                out[i] = 1
+                pend = None
+                continue
+            elif side < 0 and high[i] >= zlo and close[i] <= zhi:
+                out[i] = -1
+                pend = None
+                continue
+        if pend:
+            continue
+        up = (not _nan(b["ph5"][i]) and close[i] > b["ph5"][i]
+              and close[i] > b["s200"][i])
+        dn = (not _nan(b["pl5"][i]) and close[i] < b["pl5"][i]
+              and close[i] < b["s200"][i])
+        if not (up or dn):
+            continue
+        # the newest fair-value gap inside the breaking leg (last 20 bars)
+        for k in range(i, max(2, i - 20) - 1, -1):
+            if up and low[k] > high[k - 2]:
+                pend = (1, high[k - 2], low[k], i + 10)
+                break
+            if dn and high[k] < low[k - 2]:
+                pend = (-1, low[k - 2], high[k], i + 10)
+                break
+    return out
+
+
+def _fundfade(opens, high, low, close, volume, ts, b, funding=None):
+    """Fade a funding extreme once price stops confirming it.
+
+    The ledger's rule: funding at or above the 95th percentile of the trailing
+    90 days (or 0.05% per 8 hours, whichever is higher) AND the 4h close below
+    the prior 4h low -> short; mirrored for the negative extreme.
+
+    In plain terms: when everyone long is paying to stay long and price stops
+    going up, the crowded side pays twice. This is the one rule in the set that
+    reads something other than candles, so it needs MEXC's published funding
+    history (``mexc_futures.funding_history``). Without it the rule ABSTAINS --
+    zeros, never a guess -- which is the same contract every other rule here
+    follows for a missing stream.
+    """
+    out = _zeros(close)
+    if not funding or not ts or len(close) < 3:
+        return out
+    stl = sorted(((int(x["settle_ms"]), float(x["rate"])) for x in funding
+                  if x and x.get("settle_ms") is not None),
+                 key=lambda z: z[0])
+    if not stl:
+        return out
+    win_ms = 90 * _DAY_MS
+    j = 0                     # settlements consumed up to this bar
+    cur = None                # the rate in force
+    lo_i = 0                  # first settlement inside the 90-day window
+    hi_p = lo_p = None        # cached percentiles, recomputed when it moves
+    for i in range(1, len(close)):
+        t = int(ts[i])
+        moved = False
+        while j < len(stl) and stl[j][0] <= t:
+            cur = stl[j][1]
+            j += 1
+            moved = True
+        if cur is None:
+            continue
+        while lo_i < j and stl[lo_i][0] < t - win_ms:
+            lo_i += 1
+            moved = True
+        if moved or hi_p is None:
+            vals = sorted(r for _, r in stl[lo_i:j])
+            if len(vals) < 10:            # a 90-day window needs a history
+                hi_p = lo_p = None
+                continue
+            hi_p = vals[min(len(vals) - 1, int(0.95 * (len(vals) - 1)))]
+            lo_p = vals[max(0, int(0.05 * (len(vals) - 1)))]
+        if hi_p is None:
+            continue
+        if cur >= max(hi_p, 0.0005) and close[i] < low[i - 1]:
+            out[i] = -1                   # longs are paying and price failed
+        elif cur <= min(lo_p, -0.0005) and close[i] > high[i - 1]:
+            out[i] = 1                    # shorts are paying and price held
+    return out
+
+
+def _obretest(opens, high, low, close, volume, ts, b, funding=None):
+    """Break of structure, then a retest of the order block that caused it.
+
+    The ledger's rule: close breaks the prior swing high; the zone is the
+    lowest-low bar of that leg and must be narrower than 2xATR(200); enter on a
+    limit at the zone top, only while price sits in the swing's lower half.
+
+    Same two deviations as _bosfvg: entry is the bar that trades into the zone,
+    and the stop and target are the grid's.
+    """
+    out = _zeros(close)
+    pend = None                  # (side, zone_lo, zone_hi, half, expiry)
+    for i in range(20, len(close)):
+        if _nan(b["a200"][i]) or b["a200"][i] <= 0:
+            continue
+        if pend:
+            side, zlo, zhi, half, exp = pend
+            if i > exp:
+                pend = None
+            elif side > 0 and low[i] <= zhi and close[i] <= half:
+                out[i] = 1
+                pend = None
+                continue
+            elif side < 0 and high[i] >= zlo and close[i] >= half:
+                out[i] = -1
+                pend = None
+                continue
+        if pend:
+            continue
+        up = not _nan(b["ph5"][i]) and close[i] > b["ph5"][i]
+        dn = not _nan(b["pl5"][i]) and close[i] < b["pl5"][i]
+        if not (up or dn):
+            continue
+        leg = range(max(0, i - 20), i + 1)
+        if up:
+            k = min(leg, key=lambda z: low[z])          # the leg's origin
+            if high[k] - low[k] >= 2 * b["a200"][i]:
+                continue                                # zone too wide
+            rng = close[i] - low[k]
+            if rng <= 0:
+                continue
+            pend = (1, low[k], high[k], low[k] + rng / 2, i + 15)
+        else:
+            k = max(leg, key=lambda z: high[z])
+            if high[k] - low[k] >= 2 * b["a200"][i]:
+                continue
+            rng = high[k] - close[i]
+            if rng <= 0:
+                continue
+            pend = (-1, low[k], high[k], high[k] - rng / 2, i + 15)
+    return out
+
+
+def _diadx(opens, high, low, close, volume, ts, b, funding=None):
+    """+DI crosses -DI, ADX above 25, and price on the EMA200's side."""
+    out = _zeros(close)
+    pdi, ndi, adx = b["pdi"], b["ndi"], b["adx"]
+    for i in range(2, len(close)):
+        if _nan(adx[i], pdi[i], ndi[i], pdi[i - 1], ndi[i - 1], b["e200"][i]):
+            continue
+        if adx[i] < 25:
+            continue
+        if (pdi[i - 1] <= ndi[i - 1] and pdi[i] > ndi[i]
+                and close[i] > b["e200"][i]):
+            out[i] = 1
+        elif (pdi[i - 1] >= ndi[i - 1] and pdi[i] < ndi[i]
+                and close[i] < b["e200"][i]):
+            out[i] = -1
+    return out
+
+
+def _stflip(opens, high, low, close, volume, ts, b, funding=None):
+    """Supertrend(10,3) flips, with RSI in the trend half and ADX above 25.
+
+    RSI 50-70 for a long (rising but not yet stretched), 30-50 for the short.
+    """
+    out = _zeros(close)
+    st, adx, rsi = b["st"], b["adx"], b["rsi14"]
+    for i in range(2, len(close)):
+        if not st[i] or _nan(adx[i], rsi[i]) or adx[i] < 25:
+            continue
+        if st[i] > 0 and 50 <= rsi[i] <= 70:
+            out[i] = 1
+        elif st[i] < 0 and 30 <= rsi[i] <= 50:
+            out[i] = -1
+    return out
+
+
 _SETUPS = {"mom": _mom, "donch": _donch, "maobv": _maobv, "triple": _triple,
            "chan": _chan, "soup": _soup, "emarsi": _emarsi, "ttm": _ttm,
-           "soup1": _soup1, "eqhl": _eqhl}
+           "soup1": _soup1, "eqhl": _eqhl,
+           # the 4-hour list's own five (2026-08-27)
+           "bosfvg": _bosfvg, "fundfade": _fundfade, "obretest": _obretest,
+           "diadx": _diadx, "stflip": _stflip}
+# the only rule here that reads something other than candles
+NEEDS_FUNDING = ("fundfade",)
 
 
 # ------------------------------------------------------------------ the levels
@@ -494,11 +718,11 @@ def _level2_hits(opens, high, low, close, volume, ts, b):
 
 # ------------------------------------------------------------------ dispatch
 def _gated(name, level):
-    def rule(opens, high, low, close, volume, ts):
+    def rule(opens, high, low, close, volume, ts, funding=None):
         if not _ok(opens, close) or len(close) < 5:
             return _zeros(close)                        # no opens: abstain
         b = _bundle(opens, high, low, close, volume, ts)
-        dirs = _SETUPS[name](opens, high, low, close, volume, ts, b)
+        dirs = _SETUPS[name](opens, high, low, close, volume, ts, b, funding)
         if level == 0:
             return dirs
         l1 = _level1(opens, high, low, close, b)
@@ -510,6 +734,8 @@ def _gated(name, level):
         return [d if d and l1[i] == d and hits[i] >= 2 else 0
                 for i, d in enumerate(dirs)]
     rule.__name__ = f"cf_{name}" + (f"_l{level}" if level else "")
+    # the dispatchers pass funding only to the rules that ask for it
+    rule.needs_funding = name in NEEDS_FUNDING
     rule.__doc__ = (_SETUPS[name].__doc__ or "").strip()
     return rule
 

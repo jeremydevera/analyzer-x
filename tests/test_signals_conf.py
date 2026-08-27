@@ -25,8 +25,11 @@ import tradingagents.auto_trader as at
 from tradingagents import backtest_report as br, market_sweep as msw
 from tradingagents.signals_conf import CONF_SIGNALS
 
+# the 1-hour ten, then the five that appear only in the ledger's 4-hour
+# ranking (built 2026-08-27 -- see tests/test_signals_conf4.py)
 SETUPS = ("mom", "donch", "maobv", "triple", "chan",
-          "soup", "emarsi", "ttm", "soup1", "eqhl")
+          "soup", "emarsi", "ttm", "soup1", "eqhl",
+          "bosfvg", "fundfade", "obretest", "diadx", "stflip")
 HOUR_MS = 3_600_000
 
 
@@ -55,13 +58,32 @@ def _series(n=900, seed=7):
     return op, hi, lo, cl, vol, ts
 
 
+def _funding(ts, spike_every=40):
+    """A settlement history shaped like MEXC's: every 8 hours, mostly small,
+    with periodic extremes for the funding fade to find."""
+    out, t, k = [], ts[0], 0
+    while t <= ts[-1]:
+        rate = 0.0001 * (1 if k % 3 else -1)
+        if k % spike_every == 0:
+            rate = 0.0012
+        elif k % spike_every == spike_every // 2:
+            rate = -0.0012
+        out.append({"settle_ms": t, "rate": rate})
+        t += 8 * HOUR_MS
+        k += 1
+    return out
+
+
 @pytest.fixture(scope="module")
 def bars():
     return _series()
 
 
-def test_all_thirty_are_registered_and_in_the_grid():
-    assert len(CONF_SIGNALS) == 30
+def test_all_forty_five_are_registered_and_in_the_grid():
+    """Fifteen setups x three levels. It was thirty until 2026-08-27, when the
+    five setups from the ledger's 4-HOUR ranking were finally built."""
+    assert len(CONF_SIGNALS) == 45
+    assert len(SETUPS) == 15
     for n in SETUPS:
         for key in (f"cf_{n}", f"cf_{n}_l1", f"cf_{n}_l2"):
             assert key in CONF_SIGNALS
@@ -105,9 +127,15 @@ def test_a_longer_name_is_not_swallowed_by_a_shorter_one(bars):
 @pytest.mark.parametrize("name", SETUPS)
 def test_each_level_is_a_filter_on_the_one_below(name, bars):
     op, hi, lo, cl, vol, ts = bars
-    d0 = CONF_SIGNALS[f"cf_{name}"](op, hi, lo, cl, vol, ts)
-    d1 = CONF_SIGNALS[f"cf_{name}_l1"](op, hi, lo, cl, vol, ts)
-    d2 = CONF_SIGNALS[f"cf_{name}_l2"](op, hi, lo, cl, vol, ts)
+    fund = _funding(ts)
+
+    def run(key):
+        fn = CONF_SIGNALS[key]
+        return (fn(op, hi, lo, cl, vol, ts, fund)
+                if getattr(fn, "needs_funding", False)
+                else fn(op, hi, lo, cl, vol, ts))
+
+    d0, d1, d2 = run(f"cf_{name}"), run(f"cf_{name}_l1"), run(f"cf_{name}_l2")
     for i in range(len(cl)):
         if d1[i]:
             assert d1[i] == d0[i], "level 1 invented a signal the setup never gave"
@@ -177,11 +205,25 @@ def test_every_rule_actually_fires_on_a_market(bars):
     is deliberately rarer still.
     """
     op, hi, lo, cl, vol, ts = bars
-    dead = [k for k in CONF_SIGNALS
-            if not any(CONF_SIGNALS[k](op, hi, lo, cl, vol, ts))]
-    exempt = ("_l2", "cf_chan", "cf_eqhl")
-    assert [k for k in dead if not k.startswith(exempt) and not k.endswith("_l2")] == [], \
-        f"never fires: {dead}"
+    fund = _funding(ts)
+    dead = []
+    for k, fn in CONF_SIGNALS.items():
+        d = (fn(op, hi, lo, cl, vol, ts, fund)
+             if getattr(fn, "needs_funding", False)
+             else fn(op, hi, lo, cl, vol, ts))
+        if not any(d):
+            dead.append(k)
+    # Shapes this 900-bar synthetic series does not contain. Each is proved to
+    # fire on the REAL market instead, measured over 20 contracts of stored
+    # candles on 2026-08-27 (signals per coin per month):
+    #   cf_chan         0.05 on 1h  (a quiet 50-bar channel that then breaks)
+    #   cf_eqhl_l1      0.2  on 1h  (twin highs swept, then a gap)
+    #   cf_obretest_l1  0.6  on 1h, 0.1 on 4h
+    #   cf_stflip_l1    1.1  on 1h, 0.3 on 4h
+    exempt = ("cf_chan", "cf_chan_l1", "cf_eqhl_l1", "cf_obretest_l1",
+              "cf_stflip_l1")
+    left = [k for k in dead if not k.endswith("_l2") and k not in exempt]
+    assert left == [], f"never fires: {left}"
 
 
 def test_the_quiet_channel_breakout_fires_when_the_shape_exists():

@@ -583,12 +583,21 @@ def coverage() -> dict:
 def run_pair(symbol: str, tf: str, *, slot: int | None = None,
              base_margin: float = 5.0,
              days: int = 365, signals: Sequence[str] | None = None,
-             thresholds: int = 1, fresh: bool = False) -> dict:
+             thresholds: int = 1, fresh: bool = False,
+             merge: bool = False) -> dict:
     """Test (or continue) every combination for one contract and timeframe.
 
     `fresh=True` throws the resume point away and replays every combination
     from its first bar. That is what the BACKTEST button does; the UPDATE
-    button leaves it False so it only walks bars that printed since."""
+    button leaves it False so it only walks bars that printed since.
+
+    `merge=True` is for ADDING signals to a pair that is already measured: the
+    named `signals` are walked over the whole window, and the result is merged
+    into what is stored -- rows by combination, states by key, the watermark by
+    max -- so the combinations this pass did not touch keep their rows AND
+    their resume points. Registering the five 4-hour confluence setups took the
+    registry from 105 to 120 (2026-08-27); without this, adding them would have
+    re-measured 21.9 million rows to obtain 15 rules' worth of new ones."""
     import tradingagents.auto_trader as at
     from tradingagents import backtest_report as br
     from tradingagents.dataflows import mexc_futures as fx
@@ -616,20 +625,44 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
         return {"coin": coin, "tf": tf, "rows": [], "added": added,
                 "source": source, "why": f"venue: {str(exc)[:60]}"}
     thin = 0               # rows the trade floor dropped, for the report
-    states = {} if fresh else load_states(coin, tf)
+    states = {} if (fresh and not merge) else load_states(coin, tf)
+    # what this pass is measuring, and what the pair had measured before it
+    sig_set = set(signals or br.SIGNALS)
+    had_sigs = set(states.get("__signals__") or [])
     # A pair measured in the CLOUD carries a watermark but no per-combination
     # state, so resuming from it would start every combination at that bar with
     # no ladder rung or running total behind it — extending a measurement this
     # machine never made. Recompute instead; the cloud rows stand until it does.
     if states.get("__cloud__"):
         states = {}
-    last_ms = 0 if fresh else int(states.get("__last_ms__", 0))
+    # merge mode walks the whole window for the signals it was given: their
+    # combinations have no state behind them, so resuming would start them at
+    # the last bar with no ladder rung and no running total
+    last_ms = 0 if (fresh or merge) else int(states.get("__last_ms__", 0))
     # A store built with an older signal library must not be served as if it
     # were current: 54-signal rows silently missing 21 rules is a wrong answer
     # wearing a cached one's clothes. Version mismatch resets the pair.
-    ver = f"signals{len(signals or br.SIGNALS)}-th{thresholds}"
-    if last_ms and states.get("__version__") not in (None, ver):
-        states, last_ms = {}, 0
+    # A store built with an older signal library must not be served as if it
+    # were current: 54-signal rows silently missing 21 rules is a wrong answer
+    # wearing a cached one's clothes.
+    #
+    # The COUNT was the whole fingerprint until 2026-08-27, and adding five
+    # setups (105 -> 120 rules) therefore invalidated every pair in the store --
+    # 21.9 million rows, days of measurement, to obtain the new rules' first
+    # pass. A NAMED SET says the true thing instead: this pair is stale when the
+    # registry has a signal the pair has never measured. The count string is
+    # still written, and still used for a pair whose state predates the set.
+    # what the pair HOLDS after this pass, never what this pass measured: a
+    # merge of 15 rules onto 105 leaves 120 behind, and stamping "signals15"
+    # would be a true number under a false label.
+    ver = (f"signals{len(sig_set | had_sigs) if merge else len(signals or br.SIGNALS)}"
+           f"-th{thresholds}")
+    if last_ms and not merge:
+        if had_sigs:
+            if sig_set - had_sigs:
+                states, last_ms, had_sigs = {}, 0, set()
+        elif states.get("__version__") not in (None, ver):
+            states, last_ms = {}, 0
     states["__version__"] = ver
     # State without rows shows the operator nothing. If the grid for this pair
     # is missing (first build, or a store wiped by hand), ignore the resume
@@ -700,7 +733,7 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                 dk = "rsi14_1h" if sig == "rsi14" else key
                 dirs = at._dirs_for_backtest(dk, hi_l, lo_l, cl_l,
                                              opens=op_l, volume=vol_l,
-                                             ts=ts_l)
+                                             ts=ts_l, funding=fund)
             except Exception:
                 at.STRATEGY_SPECS.pop(key, None)
                 continue
@@ -801,9 +834,19 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                     "rt": round(rt * 100, 4),
                     "gate": "warn" if rt / tp >= .2 else "ok"})
             at.STRATEGY_SPECS.pop(key, None)
-    states["__last_ms__"] = int(ms[-1])
+    states["__last_ms__"] = max(int(ms[-1]),
+                                int(states.get("__last_ms__") or 0)) \
+        if merge else int(ms[-1])
+    # The named set the version check reads: what this pass measured, plus what
+    # the pair had measured before it (merge mode adds, it does not replace).
+    states["__signals__"] = sorted(sig_set | (had_sigs if merge else set()))
     save_states(coin, tf, states)
-    save_pair_rows(coin, tf, out_rows)
+    if merge:
+        # rows BY COMBINATION: the 105 signals this pass never looked at keep
+        # theirs, and the new ones are added beside them
+        merge_pair_rows(coin, tf, out_rows)
+    else:
+        save_pair_rows(coin, tf, out_rows)
     worker_write(pair=f"{coin} {tf}", done=done_combos,
                  total=total_combos, pct=100.0, rows=len(out_rows),
                  state="done")
@@ -857,11 +900,23 @@ def stop() -> bool:
         return False
 
 
+def br_signals():
+    """The signal registry, imported late (backtest_report imports this one)."""
+    from tradingagents import backtest_report as _br
+
+    return _br.SIGNALS
+
+
 def _worker(args):
-    sym, tf, base_margin, days, thresholds = args
+    # The tuple grew when the 4-hour confluence setups were added (2026-08-27):
+    # a pass may now name the SIGNALS it measures and merge them into what is
+    # already stored. Old five-tuples still work.
+    sym, tf, base_margin, days, thresholds = args[:5]
+    signals = args[5] if len(args) > 5 else None
+    merge = bool(args[6]) if len(args) > 6 else False
     try:
         r = run_pair(sym, tf, base_margin=base_margin, days=days,
-                     thresholds=thresholds)
+                     thresholds=thresholds, signals=signals, merge=merge)
         return {"sym": sym, "tf": tf, "rows": len(r.get("rows") or []),
                 "source": r.get("source"), "why": r.get("why"),
                 "new_bars": r.get("new_bars", 0)}
@@ -876,7 +931,9 @@ def _worker(args):
 
 def run_market(symbols: Sequence[str], tfs: Sequence[str] = ("15m", "30m"), *,
                base_margin: float = 5.0, days: int = 365,
-               thresholds: int = 1, workers: int = 0) -> dict:
+               thresholds: int = 1, workers: int = 0,
+               signals: Sequence[str] | None = None,
+               merge: bool = False) -> dict:
     """Sweep many contracts across every core, writing progress as it goes.
 
     Runs in whatever process calls it — the Back Test tab spawns this detached
@@ -886,10 +943,15 @@ def run_market(symbols: Sequence[str], tfs: Sequence[str] = ("15m", "30m"), *,
 
     _paths()
     workers = workers or max(1, (os.cpu_count() or 4) - 1)
-    jobs = [(s, tf, base_margin, days, thresholds) for s in symbols
-            for tf in tfs]
+    sigs = list(signals) if signals else None
+    jobs = [(s, tf, base_margin, days, thresholds, sigs, merge)
+            for s in symbols for tf in tfs]
     t0 = time.time()
-    state = {"phase": "sweeping",
+    state = {"phase": "adding signals" if merge else "sweeping",
+             # what is being measured, so the panel never reads a 15-rule pass
+             # as if it were the whole grid
+             "signals": len(sigs) if sigs else len(br_signals()),
+             "merging": bool(merge),
              "total": len(jobs), "done": 0, "rows": 0, "new_bars": 0,
              "retries": 0, "failed": 0, "failures": [],
              "started": fmt_stamp(), "workers": workers,
@@ -967,6 +1029,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     ap.add_argument("--base", type=float, default=5.0)
     ap.add_argument("--workers", type=int, default=0)
     ap.add_argument("--thresholds", type=int, default=1)
+    # The WINDOW, in days. run_market defaulted to 365 and the CLI never passed
+    # it, so a command line sweep always measured a year while the app's own
+    # 2-month job measured 89 days -- two windows under one store. Named here so
+    # a pass that ADDS signals can measure the same window the existing rows
+    # were measured over (refresh_candles fetches days + 30).
+    ap.add_argument("--days", type=int, default=365,
+                    help="window in days (the fetch adds 30 for warm-up)")
+    ap.add_argument("--signals", default="",
+                    help="comma-separated signal names to measure (default: "
+                         "every signal in backtest_report.SIGNALS)")
+    ap.add_argument("--merge", action="store_true",
+                    help="MERGE the measured signals into what is already "
+                         "stored instead of replacing the pair's rows -- how "
+                         "new rules are added without re-measuring the store")
     a = ap.parse_args(argv)
 
     import datetime as _dt
@@ -1015,9 +1091,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     if a.coins:
         keep = keep[:a.coins]
     print(f"{len(keep)} contracts at least {a.min_days} days old", flush=True)
+    sigs = [x.strip() for x in a.signals.split(",") if x.strip()] or None
+    if sigs:
+        from tradingagents import backtest_report as _br
+        unknown = [x for x in sigs if x not in _br.SIGNALS]
+        if unknown:
+            print(f"unknown signal(s): {', '.join(unknown)}", flush=True)
+            return 2
+        print(f"measuring {len(sigs)} signal(s), "
+              f"{'merging into' if a.merge else 'replacing'} the store",
+              flush=True)
     st = run_market(keep, [t.strip() for t in a.tfs.split(",") if t.strip()],
                     base_margin=a.base, thresholds=a.thresholds,
-                    workers=a.workers)
+                    workers=a.workers, signals=sigs, merge=a.merge,
+                    days=a.days)
     print(f"done: {st['done']}/{st['total']} jobs, {st['rows']:,} rows, "
           f"{st.get('elapsed_min')} min", flush=True)
     return 0
@@ -1074,7 +1161,7 @@ def compute_combos(symbol: str, tf: str, combos: list, *,
         try:
             dk = "rsi14_1h" if sig == "rsi14" else key
             dirs = at._dirs_for_backtest(dk, hi, lo, cl, opens=op,
-                                         volume=vol, ts=ts)
+                                         volume=vol, ts=ts, funding=fund)
             r = at.backtest_strategy(key, df, base_margin, fee=fee,
                                      sizing=sz, dirs=dirs, tp=tp, sl=sl,
                                      liq_move_pct=liq, funding=fund,
@@ -1203,7 +1290,7 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
     try:
         dk = "rsi14_1h" if signal == "rsi14" else key
         dirs = at._dirs_for_backtest(dk, hi, lo, cl, opens=op, volume=vol,
-                                     ts=ts)
+                                     ts=ts, funding=fund)
         r = at.backtest_strategy(key, df, base_margin, fee=fee, sizing=sizing,
                                  dirs=dirs, tp=float(tp) / 100,
                                  sl=float(sl) / 100, liq_move_pct=liq,

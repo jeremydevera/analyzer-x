@@ -76,6 +76,15 @@ SIGNALS = [
     "cf_soup", "cf_soup_l1", "cf_soup_l2", "cf_emarsi", "cf_emarsi_l1",
     "cf_emarsi_l2", "cf_ttm", "cf_ttm_l1", "cf_ttm_l2", "cf_soup1",
     "cf_soup1_l1", "cf_soup1_l2", "cf_eqhl", "cf_eqhl_l1", "cf_eqhl_l2",
+    # the FIVE that appear only in the research ledger's 4-HOUR ranking. They
+    # were never built until the operator read the artifact against the store
+    # (2026-08-27): CHoCH/BOS + FVG retrace, funding-extreme fade, BOS ->
+    # order-block retest, DI-cross + ADX + EMA200, Supertrend flip + RSI + ADX.
+    "cf_bosfvg", "cf_bosfvg_l1", "cf_bosfvg_l2",
+    "cf_fundfade", "cf_fundfade_l1", "cf_fundfade_l2",
+    "cf_obretest", "cf_obretest_l1", "cf_obretest_l2",
+    "cf_diadx", "cf_diadx_l1", "cf_diadx_l2",
+    "cf_stflip", "cf_stflip_l1", "cf_stflip_l2",
 ]
 THRESH_SIGNALS = {"mom6", "mom15", "fade15"}
 
@@ -446,7 +455,7 @@ def run_grid(coins: Sequence[str], tfs: Sequence[str], *,
                             dkey, hi, lo, cl, opens=op,
                             volume=([float(x) for x in df["Volume"]]
                                     if "Volume" in df.columns else None),
-                            ts=[int(x) for x in _ms])
+                            ts=[int(x) for x in _ms], funding=fund)
                     except Exception:
                         at.STRATEGY_SPECS.pop(key, None)
                         continue
@@ -1256,6 +1265,7 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
                 try:
                     dk = "rsi14_1h" if sig == "rsi14" else k2
                     dirs = at._dirs_for_backtest(dk, hi, lo, cl, opens=op,
+                                                 funding=fund,
                                                  volume=vol, ts=ts)
                     sd["d"][f"{sig}|{thp:g}"] = "".join(
                         "u" if x > 0 else "d" if x < 0 else "n" for x in dirs)

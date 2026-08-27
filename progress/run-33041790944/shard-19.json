@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 9, "total": 51, "rows": 640410, "note": "BSB 15m: 16,878 bars, testing 105 rules", "pct": 17.6, "updated": "2026-08-27T05:54:34Z"}
+{"shard": 19, "stage": "testing", "done": 9, "total": 51, "rows": 643930, "note": "BSB 15m: rule 16/105 (keltner)", "pct": 17.6, "updated": "2026-08-27T05:55:20Z"}

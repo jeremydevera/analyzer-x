@@ -1207,6 +1207,40 @@ def build_sort_index(sort: str) -> bool:
     return _build_index(SORT_INDEX.get(sort))
 
 
+# How long a build lock is believed. A build is minutes to hours (rows_pr2 was
+# 4,291 s), and a child that dies leaves its lock behind — so the lock has a TTL
+# rather than a liveness check, which is not portable across Windows and POSIX.
+BUILD_LOCK_TTL_S = 6 * 3600
+
+
+def _build_lock(name: str) -> Path:
+    """One file per index, beside the database. It exists while a build is
+    believed to be running, and the CHILD removes it when it finishes.
+
+    `_BUILDING` is per PROCESS and that was not enough: the check after every
+    indexed pair (a backtest, an update, the trickle) spawned one child per
+    pass, and 13 of them piled up blocked on the write lock within minutes
+    (2026-08-27). A file is the only thing the API, the indexer and a detached
+    child all share.
+    """
+    return DB_PATH.parent / f".build-{name}.pid"
+
+
+def build_running(name: str) -> bool:
+    """Is a build for this index already under way, in ANY process?"""
+    lock = _build_lock(name)
+    try:
+        age = time.time() - lock.stat().st_mtime
+    except OSError:
+        return False
+    if age <= BUILD_LOCK_TTL_S:
+        return True
+    # older than any real build: the child died without cleaning up
+    with contextlib.suppress(OSError):
+        lock.unlink()
+    return False
+
+
 def missing_indexes() -> list:
     """Every index in INDEX_DDL that the database does not have.
 
@@ -1262,6 +1296,10 @@ def build_index_now(name: str) -> bool:
               f"{time.time() - started:.0f}s: {type(exc).__name__}: {exc}",
               flush=True)
         return False
+    finally:
+        # whatever happened, the next asker must be able to try again
+        with contextlib.suppress(OSError):
+            _build_lock(name).unlink()
 
 
 def _build_index(name) -> bool:
@@ -1277,9 +1315,20 @@ def _build_index(name) -> bool:
         return False
     if has_index(name) is True:
         return False
+    if build_running(name):
+        return False
+    # A build child must never spawn builds. It does not today, but a child that
+    # fell through to the indexer loop once did: on 2026-08-27 thirteen
+    # `--build` processes existed inside a few minutes, each one indexing pairs
+    # and asking for the next missing index. One env marker ends that whole
+    # family of accidents.
+    if os.environ.get("TA_INDEX_BUILD"):
+        return False
     _BUILDING.add(name)                 # only stops THIS process re-asking
     cmd = [sys.executable, "-m", "tradingagents.rows_index", "--build", name]
-    kwargs: dict = {"stdout": subprocess.DEVNULL,
+    child_env = dict(os.environ, TA_INDEX_BUILD=name)
+    kwargs: dict = {"env": child_env,
+                    "stdout": subprocess.DEVNULL,
                     "stderr": subprocess.DEVNULL,
                     "stdin": subprocess.DEVNULL,
                     "cwd": str(Path(__file__).resolve().parent.parent)}
@@ -1291,6 +1340,10 @@ def _build_index(name) -> bool:
         kwargs["start_new_session"] = True
     try:
         proc = subprocess.Popen(cmd, **kwargs)                # noqa: S603
+        # the lock goes down HERE, with the child's pid in it, so a second
+        # asker in another process cannot spawn a twin before the child starts
+        with contextlib.suppress(OSError):
+            _build_lock(name).write_text(str(proc.pid), encoding="utf-8")
         print(f"[rows-index] building {name} in pid {proc.pid} (detached)",
               flush=True)
         return True

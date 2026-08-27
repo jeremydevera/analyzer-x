@@ -382,3 +382,63 @@ def test_ANY_pass_that_indexed_a_pair_calls_it(monkeypatch, tmp_path):
     src = open("tradingagents/rows_index.py", encoding="utf-8").read()
     tail = src[src.index("if done:"):src.index("return {\"pairs\": done")]
     assert "_after_fill_indexes()" in tail, tail
+
+
+def test_two_processes_cannot_build_the_same_index_twice(monkeypatch, tmp_path):
+    """2026-08-27: the check after every indexed pair spawned one child per
+    pass, `_BUILDING` is per PROCESS, and thirteen `--build` processes piled up
+    blocked on the write lock within minutes. A lock FILE beside the database is
+    the only thing the API, the indexer and a detached child all share."""
+    monkeypatch.setattr(ri, "DB_PATH", tmp_path / "rows.db")
+    monkeypatch.setattr(ri, "has_index", lambda n: False)
+    spawned = []
+
+    class FakeProc:
+        pid = 99
+
+    monkeypatch.setattr(ri.subprocess, "Popen",
+                        lambda cmd, **kw: spawned.append(cmd) or FakeProc())
+    ri._BUILDING.discard("rows_id")
+    assert ri._build_index("rows_id") is True
+    assert ri.build_running("rows_id") is True, "the lock must be down"
+
+    # another PROCESS asking (its own _BUILDING is empty) must not spawn a twin
+    ri._BUILDING.discard("rows_id")
+    assert ri._build_index("rows_id") is False
+    assert len(spawned) == 1, spawned
+
+    # the child clears it, whatever happened
+    ri.build_index_now("rows_not_a_thing")          # unknown: returns early
+    ri._build_lock("rows_id").unlink()
+    assert ri.build_running("rows_id") is False
+
+    # a lock older than any real build is stale, not forever
+    lock = ri._build_lock("rows_id")
+    lock.write_text("1", encoding="utf-8")
+    import os as _os
+    old = ri.time.time() - ri.BUILD_LOCK_TTL_S - 60
+    _os.utime(lock, (old, old))
+    assert ri.build_running("rows_id") is False
+    assert not lock.exists(), "a stale lock is removed, not just ignored"
+
+
+def test_a_build_child_never_spawns_a_build(monkeypatch, tmp_path):
+    """The recursion guard: TA_INDEX_BUILD is set in the child's environment."""
+    monkeypatch.setattr(ri, "DB_PATH", tmp_path / "rows.db")
+    monkeypatch.setattr(ri, "has_index", lambda n: False)
+    monkeypatch.setenv("TA_INDEX_BUILD", "rows_pr2")
+    ri._BUILDING.discard("rows_id")
+    assert ri._build_index("rows_id") is False
+
+    monkeypatch.delenv("TA_INDEX_BUILD")
+    seen = {}
+
+    class FakeProc:
+        pid = 7
+
+    monkeypatch.setattr(ri.subprocess, "Popen",
+                        lambda cmd, **kw: seen.update(kw) or FakeProc())
+    ri._BUILDING.discard("rows_id")
+    assert ri._build_index("rows_id") is True
+    assert seen["env"]["TA_INDEX_BUILD"] == "rows_id", seen.get("env", {})
+    ri._build_lock("rows_id").unlink(missing_ok=True)

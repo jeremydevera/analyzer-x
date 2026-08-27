@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 35, "total": 52, "rows": 2417968, "note": "PIPPIN 1d: 394 bars, testing 105 rules", "pct": 67.3, "updated": "2026-08-27T06:51:07Z"}
+{"shard": 0, "stage": "testing", "done": 36, "total": 52, "rows": 2431828, "note": "PROM 15m: rule 2/105 (mom15)", "pct": 69.2, "updated": "2026-08-27T06:51:54Z"}

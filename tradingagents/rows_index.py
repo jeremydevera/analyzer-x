@@ -203,16 +203,29 @@ _syncing = threading.Event()
 _ready: set = set()
 
 
-def _connect(readonly: bool = False) -> sqlite3.Connection:
+def _connect(readonly: bool = False,
+             same_thread: bool = True) -> sqlite3.Connection:
     """`synchronous=OFF` is deliberate: every row here is derived from a JSON
     file that is still the source of truth, so a torn write costs a re-index,
     never a measurement. Paid for by inserts that no longer fsync.
     """
+    # `same_thread=False` is for a GENERATOR that is handed between threads:
+    # Starlette advances a StreamingResponse's iterator in a threadpool, and
+    # each `next()` can land on a different worker. sqlite3 refuses a connection
+    # used off its creating thread, so the CSV export died mid-stream with
+    # `SQLite objects created in a thread can only be used in that same thread`
+    # — and StreamingResponse cannot send an error once it has started, so the
+    # download just STOPPED: 5,000 rows of the 43,867 that matched, a file that
+    # looked complete (operator, 2026-08-27: "i want thefilterd result to be
+    # downloaded only" — the filters were right, the file was cut short).
+    # Only ever passed by a serial consumer: one thread at a time, in order.
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     if readonly and DB_PATH.exists():
-        con = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True, timeout=60.0)
+        con = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True, timeout=60.0,
+                              check_same_thread=same_thread)
     else:
-        con = sqlite3.connect(DB_PATH, timeout=60.0)
+        con = sqlite3.connect(DB_PATH, timeout=60.0,
+                              check_same_thread=same_thread)
     con.row_factory = sqlite3.Row
     # busy_timeout, not "database is locked": the indexer holds the write lock
     # for seconds at a time and a reader must WAIT rather than fail the request.
@@ -230,7 +243,7 @@ def _connect(readonly: bool = False) -> sqlite3.Connection:
 
 
 @contextlib.contextmanager
-def _open(readonly: bool = False):
+def _open(readonly: bool = False, same_thread: bool = True):
     """`with sqlite3.connect(...)` COMMITS but does NOT CLOSE. Every poll of
     /api/strategies therefore leaked an open reader, and because each writer
     connection re-issued `PRAGMA journal_mode=WAL` -- which needs a brief
@@ -238,7 +251,7 @@ def _open(readonly: bool = False):
     `syncing: True` with the pair count frozen at 5 for four minutes, while the
     same code in a lone process did a pair every 0.7s.
     """
-    con = _connect(readonly)
+    con = _connect(readonly, same_thread)
     try:
         yield con
         if not readonly:
@@ -1447,7 +1460,9 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
                          order_owns_index=True, order_key=key,
                          winrate_seeks=seeks)
     step = max(100, int(batch))
-    with _open(readonly=True) as con:
+    # same_thread=False: this generator is drained by Starlette's threadpool
+    # (see _connect). Nothing else touches this connection.
+    with _open(readonly=True, same_thread=False) as con:
         cur = con.execute(
             f"SELECT * FROM rows"
             f"{_indexed_by(coin, seeks, (not row_id and key == 'profit' and not coin and _wide_profit_helps(sizing, min_tp, min_winrate, min_trades, profitable)), row_id)}"

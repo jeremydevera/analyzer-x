@@ -240,7 +240,8 @@ def strategies(coin: str | None = None, tf: str | None = None,
 
 def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                          sort="profit", min_trades=0, min_winrate=0,
-                         min_tp=0, sizing=None, row_id=None, desc=None):
+                         min_tp=0, sizing=None, row_id=None, desc=None,
+                         batch=5_000):
     """The CSV, one chunk at a time — a module-level generator on purpose.
 
     Inside the route it was only reachable through StreamingResponse's ASYNC
@@ -269,14 +270,31 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
 
     w.writerow(cols + ["monthly_json"])
     yield flush()
-    for r in ri.iter_rows(coin=coin, tf=tf, signal=signal,
-                          profitable=profitable, sort=sort,
-                          min_trades=min_trades, min_winrate=min_winrate,
-                          min_tp=min_tp, sizing=sizing, row_id=row_id,
-                          desc=desc):
-        w.writerow([r.get(c) for c in cols]
-                   + [_json.dumps(r.get("monthly") or {}, separators=(",", ":"))])
+    # A StreamingResponse has already sent 200 by the time a row fails, so an
+    # exception here cannot become an error page — it just ENDS the download.
+    # That is how 5,000 rows of 43,867 arrived looking like the whole file
+    # (2026-08-27). So: count what left, and if the stream dies, SAY SO in the
+    # file itself and in the log. A short file that says it is short is worth
+    # more than a short file that does not.
+    sent = 0
+    try:
+        for r in ri.iter_rows(coin=coin, tf=tf, signal=signal,
+                              profitable=profitable, sort=sort,
+                              min_trades=min_trades, min_winrate=min_winrate,
+                              min_tp=min_tp, sizing=sizing, row_id=row_id,
+                              desc=desc, batch=batch):
+            w.writerow([r.get(c) for c in cols]
+                       + [_json.dumps(r.get("monthly") or {},
+                                      separators=(",", ":"))])
+            sent += 1
+            yield flush()
+    except Exception as exc:                                   # noqa: BLE001
+        print(f"[strategies.csv] export stopped after {sent:,} rows: "
+              f"{type(exc).__name__}: {exc}", flush=True)
+        w.writerow([f"EXPORT INCOMPLETE after {sent} rows: "
+                    f"{type(exc).__name__}: {exc}"])
         yield flush()
+        raise
 
 
 def strategies_csv_name(coin=None, tf=None, signal=None, min_trades=0,

@@ -1591,10 +1591,18 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
     _dates = df["Date"].to_numpy()
     _stamp_cache: dict[int, str] = {}
 
+    from tradingagents import positions_view as _pv
+
     def stamp(k: int) -> str:
         v = _stamp_cache.get(k)
         if v is None:
-            v = _pd.Timestamp(_dates[k]).strftime("%Y-%m-%d %H:%M")
+            # The project's ONE date format, via its one implementation
+            # (CLAUDE.md, asked four times). `%Y-%m-%d %H:%M` is the banned
+            # compact stamp, and it was on every row of every trade log the
+            # operator opened — and it broke the "last N months" window, whose
+            # parser looked for "Aug 03, 2026 8:03pm" and matched nothing, so a
+            # 2-month badge counted all 3,297 trades (2026-08-27).
+            v = _pv.fmt_when(_pd.Timestamp(_dates[k]).timestamp())
             _stamp_cache[k] = v
         return v
     # One strftime per TRADE just to label its month was 14% of this function.
@@ -2048,7 +2056,10 @@ def panic_stop(*, fx=None, close_positions: bool = True) -> dict:
     state = load_state()
     cleared: list = []
     for key, st in list(state.items()):
-        if not isinstance(st, dict) or key.endswith("#paper"):
+        # `endswith` missed the per-strategy paper slots the moment they
+        # existed (SYM#paper#KEY), which would have put simulated positions
+        # into a real close sweep
+        if not isinstance(st, dict) or is_paper_slot(key):
             continue
         pos = st.get("position")
         if not pos:
@@ -2203,11 +2214,76 @@ def loss_limit_hit(settings: dict | None = None) -> bool:
 
 
 # ------------------------------------------------------------------ arming
-def state_key(symbol: str, dry: bool) -> str:
-    """Book key. Live and paper are separate books on the same coin, so a
+def state_key(symbol: str, dry: bool, strategy: str | None = None) -> str:
+    """Slot key. Live and paper are separate books on the same coin, so a
     simulated trade can never be mistaken for — or interfere with — a real
-    one, and each keeps its own martingale ladder step."""
-    return f"{symbol}#paper" if dry else symbol
+    one.
+
+    On the PAPER book the slot is per STRATEGY as well. Two demo strategies on
+    one coin used to share "BTC_USDT#paper", which holds one position and one
+    ladder step, so the first one to open blocked the others and one
+    strategy's losing run raised the other's stake — measured 2026-08-27:
+    after four losses by stoch14_1h_sl3tp3, pivot_1h_sl3tp3's next stake was
+    $20.00 instead of $5.00, having never lost a trade. Demo is exempt from
+    the live lock precisely so strategies can be compared side by side on one
+    coin, and that only works if each keeps its own book.
+
+    On the REAL book it stays one slot per coin, because that is the exchange:
+    MEXC nets every order on a contract into a single position, and
+    `timeframe_locks` refuses a second live strategy on a coin anyway.
+
+    `strategy=None` returns the legacy paper key, which is what a reader
+    scanning old state gets, and what `paper_slots` migrates from.
+    """
+    if not dry:
+        return symbol
+    return f"{symbol}#paper#{strategy}" if strategy else f"{symbol}#paper"
+
+
+def is_paper_slot(key: str) -> bool:
+    """Any paper slot, legacy `SYM#paper` or per-strategy `SYM#paper#KEY`."""
+    return "#paper" in str(key)
+
+
+def coin_of_slot(key: str) -> str:
+    """The contract a slot belongs to, whatever shape the key is."""
+    return str(key).split("#", 1)[0]
+
+
+def strategy_of_slot(key: str) -> str | None:
+    """The strategy a per-strategy paper slot belongs to, else None."""
+    bits = str(key).split("#")
+    return bits[2] if len(bits) >= 3 and bits[1] == "paper" else None
+
+
+def migrate_paper_slots(state: dict) -> int:
+    """Move legacy `SYM#paper` slots to `SYM#paper#<strategy>`.
+
+    An open demo position must not be orphaned by this change: the slot is
+    renamed to the strategy the position itself names. A legacy slot whose
+    position has no strategy, or which holds no position but a ladder step, is
+    LEFT ALONE — a step with no owner belongs to nobody, and dropping it is
+    the safe direction now that steps are per strategy.
+    """
+    moved = 0
+    for key in [k for k in state if is_paper_slot(k)
+                and strategy_of_slot(k) is None]:
+        slot = state.get(key)
+        if not isinstance(slot, dict):
+            continue
+        pos = slot.get("position")
+        owner = (pos or {}).get("strategy")
+        if not pos or not owner:
+            continue
+        fresh = state_key(coin_of_slot(key), True, owner)
+        if fresh in state and (state[fresh] or {}).get("position"):
+            continue                      # already migrated; leave both alone
+        state[fresh] = slot
+        state.pop(key, None)
+        moved += 1
+        logger.warning("moved the demo position on %s to its own slot %s "
+                       "(one slot per strategy now)", key, fresh)
+    return moved
 
 
 def _env_dry() -> bool:
@@ -2486,11 +2562,44 @@ def process_symbol(symbol: str, settings: dict, state: dict, *, fx,
                    dry: bool, tripped: frozenset = frozenset()) -> None:
     """One decision cycle for one coin. Mutates ``state`` in place.
 
-    Each enabled strategy is evaluated on ITS OWN timeframe — FVG on 4h
-    candles, the realtime sweep on 1m — with candles fetched once per
-    timeframe. The exit check runs on the finest enabled timeframe so a
-    simulated fill is caught as early as the data allows.
+    On the REAL book this is one pass over one slot: the exchange nets every
+    order on a contract into a single position, so a coin has one live trade
+    whatever is armed.
+
+    On the PAPER book it is one pass PER STRATEGY, each with its own slot, so
+    two demo strategies on a coin no longer share a position or a ladder rung
+    (see `state_key`). Slots belonging to strategies that are no longer armed
+    are still visited, or an open demo position would be orphaned.
     """
+    if not dry:
+        return _process_slot(symbol, settings, state, fx=fx, dry=False,
+                             tripped=tripped, only=None,
+                             slot_key=state_key(symbol, False))
+    migrate_paper_slots(state)
+    _books = settings.get("strategy_books") or {}
+    armed = [k for k in STRATEGY_ORDER
+             if k in settings.get("strategies", [])
+             and symbol in coins_for(k, settings)
+             and (k not in _books or True in books_for(k, settings))]
+    # every strategy that either is armed here or already owns a paper slot
+    owners = list(armed)
+    for k in state:
+        if not is_paper_slot(k) or coin_of_slot(k) != symbol:
+            continue
+        owner = strategy_of_slot(k)
+        if owner and owner not in owners and (state.get(k) or {}).get("position"):
+            owners.append(owner)
+    for key in owners:
+        _process_slot(symbol, settings, state, fx=fx, dry=True,
+                      tripped=tripped, only=key,
+                      slot_key=state_key(symbol, True, key))
+
+
+def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
+                  dry: bool, tripped: frozenset, only: str | None,
+                  slot_key: str) -> None:
+    """One book slot's cycle. `only` narrows it to a single strategy (paper);
+    None means every strategy armed on this coin in this book (real)."""
     # NOTE: tripped strategies are excluded from ENTRIES only, further down —
     # they must stay in this list so an open position's exit keeps being
     # tracked after its strategy trips.
@@ -2502,7 +2611,8 @@ def process_symbol(symbol: str, settings: dict, state: dict, *, fx,
     strategies = [k for k in STRATEGY_ORDER
                   if k in settings.get("strategies", [])
                   and symbol in coins_for(k, settings)
-                  and (k not in _books or dry in books_for(k, settings))]
+                  and (k not in _books or dry in books_for(k, settings))
+                  and (only is None or k == only)]
     # …but the book filter governs ENTRIES ONLY. A position already open in
     # THIS book still holds real money and still needs its exit tracked, even
     # once its strategy has been moved to demo, unticked, or renamed. Moving
@@ -2510,12 +2620,17 @@ def process_symbol(symbol: str, settings: dict, state: dict, *, fx,
     # exchange stopped it out at 01:22 and the bot never booked the -0.85,
     # showing a phantom position for over a day. Same rule as tripped
     # strategies, one filter later.
-    _held = (state.get(state_key(symbol, dry)) or {}).get("position")
+    _held = (state.get(slot_key) or {}).get("position")
     if _held and not strategies:
         _own = _held.get("strategy")
         _rescue = _own if _own in STRATEGY_SPECS else next(
             (k for k in STRATEGY_ORDER if symbol in coins_for(k, settings)),
             None)
+        # a per-strategy paper slot may only ever be rescued by ITS OWN
+        # strategy: adopting somebody else's would put two strategies back in
+        # one slot, which is the bug this split exists to fix
+        if only is not None and _rescue != only:
+            _rescue = _own if _own == only else None
         if _rescue:
             strategies = [_rescue]
             # EXITS ONLY. Adding it to `tripped` is what makes that true —
@@ -2553,7 +2668,7 @@ def process_symbol(symbol: str, settings: dict, state: dict, *, fx,
     if not frames:
         return
 
-    st = state.setdefault(state_key(symbol, dry),
+    st = state.setdefault(slot_key,
                           {"step": 0, "last_ts": {}, "position": None})
     if not isinstance(st.get("last_ts"), dict):   # pre-multi-TF state files
         st["last_ts"] = {}
@@ -3127,10 +3242,10 @@ def reconcile_unconfigured(settings: dict, state: dict, *, fx) -> None:
     for key, st in list(state.items()):
         if not isinstance(st, dict):
             continue
-        if key.endswith("#paper"):
+        if is_paper_slot(key):
             # Paper books have no exchange position; a de-configured paper
             # trade would otherwise sit in the UI forever.
-            sym = key[:-len("#paper")]
+            sym = coin_of_slot(key)
             if st.get("position") and sym not in configured:
                 st["position"] = None
                 logger.info("cleared a stranded PAPER position on %s "
@@ -3363,7 +3478,7 @@ def next_sleep_seconds(now: float | None = None) -> float:
     # burns the rate limit that protects the candle data.
     has_dry_position = any(
         isinstance(v, dict) and (v.get("position") or {}).get("dry")
-        for k, v in load_state().items() if k.endswith("#paper"))
+        for k, v in load_state().items() if is_paper_slot(k))
     cap = DRY_EXIT_POLL_SECONDS if has_dry_position else POLL_SECONDS
     return max(1.0, min(float(cap), to_boundary))
 

@@ -42,7 +42,13 @@ const PAGE_SIZES = [100, 500, 1000, 5000];
 /** The header of the window's own profit column. Not sortable: the store ranks
  *  by the full-history columns it has indexes for, and a header that reordered
  *  only the rows on screen is the "it only sorted the page" lie (2026-08-26). */
-const WINDOW_COL = "window $";
+/** Column headers when a window is on: the ones the store can restate exactly
+ *  for every row (profit, green) and the ones that need the row's log rebuilt
+ *  (trades, W, L, win %). Marked either way, because a column labelled
+ *  `PROFIT $` while showing two months of it is the label-must-match-data
+ *  failure this repo keeps paying for. */
+const winHead = (h: string, months: number) =>
+  months > 0 ? `${h} (${months}mo)` : h;
 
 const HEAD_SORT: Record<string, StrategySort | undefined> =
   Object.fromEntries(Object.entries(STRATEGY_SORTS)
@@ -333,6 +339,22 @@ export default function StrategiesPanel() {
     const [y, m] = k.split("-");
     return `${MONTH_NAMES[Number(m) - 1] ?? m} ${y}`;
   };
+  /** What to PRINT for a row: the window's figures when there is a window and
+   *  the server had them, the row's own otherwise. Profit and green come from
+   *  the stored per-month profits (exact for every row); trades, W, L and win %
+   *  exist only where the row's log was rebuilt (`restated`). */
+  const win = (r: StrategyRow) => (servedFilters.months > 0
+    ? {profit: r.w_profit ?? 0,
+       trades: r.restated ? r.w_trades : r.trades,
+       wins: r.restated ? r.w_wins : r.wins,
+       losses: r.restated ? r.w_losses : r.losses,
+       winrate: r.restated ? r.w_winrate : r.winrate}
+    : {profit: r.profit, trades: r.trades, wins: r.wins, losses: r.losses,
+       winrate: r.winrate});
+  const stale = (r: StrategyRow) => servedFilters.months > 0 && !r.restated;
+  const STALE_WHY = "the whole history, not the window: the sweep stores profit "
+    + "per month but not trades, so this row's log has to be rebuilt. Look one "
+    + "row up by #id and it is restated.";
   const pages = Math.max(1, Math.ceil(total / perPage));
   // a numbered page is a jump, so the appended LOAD MORE rows go with it —
   // otherwise page 7 shows page 6's tail underneath it
@@ -686,13 +708,15 @@ export default function StrategiesPanel() {
           row, because it is rebuilt from the candles. */}
       {window_.length > 0 && (
         <p className="px-5 pt-2 text-theme-xs text-gray-600 dark:text-gray-300">
-          <b>{WINDOW_COL}</b> and <b>green</b> beside it are the window&apos;s own
+<b>PROFIT $</b> and <b>green</b> are the window&apos;s own for every row
           ({window_.length} month{window_.length > 1 ? "s" : ""}:{" "}
-          {window_.map(monthLabel).join(", ")}), summed from the per-month
-          profits the sweep stored. <b>trades, W, L and win %</b> are still the
-          row&apos;s FULL history — the sweep keeps profit per month, not trades
-          — so click a row to rebuild its trades and read the window&apos;s own
-          count there.
+          {window_.map(monthLabel).join(", ")}) — summed from the per-month
+          profits the sweep stored, so they are exact.{" "}
+          <b>trades, W, L and win %</b> need this row&apos;s trades rebuilt from
+          the candles (the sweep keeps profit per month, not trades), which
+          takes about a second a row — so they are the window&apos;s on a{" "}
+          <b>single row</b> and the whole history, in grey italics, on the rest.
+          Type the row&apos;s <b>#id</b> to restate all five.
         </p>
       )}
       {err && (
@@ -754,13 +778,18 @@ export default function StrategiesPanel() {
         <Table>
           <TableHeader className="sticky top-0 border-b border-gray-100 bg-white dark:border-white/[0.05] dark:bg-gray-900">
             <TableRow>
-              {["id", "coin", "tf", "signal", "th%", "SL%", "TP%", "sizing", "lev", "margin $", "PROFIT $",
-                ...(servedFilters.months > 0 ? [WINDOW_COL] : []),
-                "win %", "trades", "W", "L", "green", "dip $",
+              {["id", "coin", "tf", "signal", "th%", "SL%", "TP%", "sizing", "lev", "margin $",
+                winHead("PROFIT $", servedFilters.months),
+                winHead("win %", servedFilters.months),
+                winHead("trades", servedFilters.months),
+                winHead("W", servedFilters.months),
+                winHead("L", servedFilters.months),
+                winHead("green", servedFilters.months),
+                "dip $",
                 ...monthCols.map(monthLabel)].map((h) => (
                 <TableCell key={h} isHeader
                   onClick={() => {
-                    const next = HEAD_SORT[h];
+                    const next = HEAD_SORT[h.replace(/ \(\d+mo\)$/, "")];
                     if (!next) return;          // not a sortable column
                     if (next === sort) { setDesc(!desc); return; }
                     setSort(next);
@@ -778,15 +807,18 @@ export default function StrategiesPanel() {
                     }
                   }}
                   className={`px-3 py-3 text-theme-xs font-medium text-start ${
-                    HEAD_SORT[h] ? "cursor-pointer select-none hover:text-brand-600" : ""} ${
-                    h === STRATEGY_SORTS[servedSort]
+                    HEAD_SORT[h.replace(/ \(\d+mo\)$/, "")] ? "cursor-pointer select-none hover:text-brand-600" : ""} ${
+                    h.replace(/ \(\d+mo\)$/, "") === STRATEGY_SORTS[servedSort]
                       ? "text-brand-600 dark:text-brand-400"
-                      : h === STRATEGY_SORTS[sort]
+                      : h.replace(/ \(\d+mo\)$/, "") === STRATEGY_SORTS[sort]
                         ? "text-warning-600 dark:text-warning-400"
                         : "text-gray-500 dark:text-gray-400"}`}
-                  title={HEAD_SORT[h] ? `sort every row by ${h}` : undefined}>
-                  {h}{h === STRATEGY_SORTS[servedSort] ? (servedDesc ? " ↓" : " ↑")
-                     : h === STRATEGY_SORTS[sort] ? " …" : ""}
+                  title={HEAD_SORT[h.replace(/ \(\d+mo\)$/, "")]
+                    ? `sort every row by ${h} — the ORDER is always over the whole history the store has`
+                    : undefined}>
+                  {h}{h.replace(/ \(\d+mo\)$/, "") === STRATEGY_SORTS[servedSort]
+                        ? (servedDesc ? " ↓" : " ↑")
+                     : h.replace(/ \(\d+mo\)$/, "") === STRATEGY_SORTS[sort] ? " …" : ""}
                 </TableCell>
               ))}
             </TableRow>
@@ -826,21 +858,40 @@ export default function StrategiesPanel() {
                 <TableCell className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400">{r.sizing}</TableCell>
                 <TableCell className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400">{r.lev ?? 20}x</TableCell>
                 <TableCell className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400">{r.base ?? 5} ({r.notional ?? 100} ntl)</TableCell>
-                <TableCell className={`px-3 py-2 text-theme-sm font-semibold ${(r.profit ?? 0) >= 0 ? "text-success-600" : "text-error-500"}`}>{fmtMoney(r.profit)}</TableCell>
-                {/* the window's OWN profit, summed from the months inside it */}
-                {servedFilters.months > 0 ? (
-                  <TableCell className={`px-3 py-2 text-theme-sm font-semibold ${(r.w_profit ?? 0) >= 0 ? "text-success-600" : "text-error-500"}`}>
-                    {r.w_profit === undefined ? "—" : fmtMoney(r.w_profit)}
-                    <span className="block text-theme-xs font-normal text-gray-500 dark:text-gray-400">
-                      {r.w_green ?? 0}/{r.w_months ?? 0} green
-                    </span>
-                  </TableCell>
-                ) : null}
-                <TableCell className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400">{r.winrate?.toFixed(2)}</TableCell>
-                <TableCell className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400">{r.trades}</TableCell>
-                <TableCell className="px-3 py-2 text-theme-sm text-success-600">{r.wins}</TableCell>
-                <TableCell className="px-3 py-2 text-theme-sm text-error-500">{r.losses}</TableCell>
-                <TableCell className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400">{r.green ?? "—"}/{r.months ?? "—"}</TableCell>
+                {/* PROFIT is the WINDOW'S profit when a window is on — summed
+                    from the per-month profits the sweep stored, exact for every
+                    row on the page. The full-history figure is in the title. */}
+                <TableCell className={`px-3 py-2 text-theme-sm font-semibold ${(win(r).profit ?? 0) >= 0 ? "text-success-600" : "text-error-500"}`}
+                           title={servedFilters.months > 0
+                             ? `${fmtMoney(r.profit)} over the whole history the store has`
+                             : undefined}>
+                  {fmtMoney(win(r).profit)}
+                </TableCell>
+                {/* trades / W / L / win % are the WINDOW'S only where the
+                    server could rebuild this row's log. Where it could not they
+                    are the whole history and they are DIMMED and titled, never
+                    printed as if they belonged to the window. */}
+                <TableCell className={`px-3 py-2 text-theme-sm ${stale(r) ? "italic text-gray-400 dark:text-gray-500" : "text-gray-500 dark:text-gray-400"}`}
+                           title={stale(r) ? STALE_WHY : undefined}>
+                  {win(r).winrate?.toFixed(2)}
+                </TableCell>
+                <TableCell className={`px-3 py-2 text-theme-sm ${stale(r) ? "italic text-gray-400 dark:text-gray-500" : "text-gray-500 dark:text-gray-400"}`}
+                           title={stale(r) ? STALE_WHY : undefined}>
+                  {win(r).trades}
+                </TableCell>
+                <TableCell className={`px-3 py-2 text-theme-sm ${stale(r) ? "italic text-gray-400 dark:text-gray-500" : "text-success-600"}`}
+                           title={stale(r) ? STALE_WHY : undefined}>
+                  {win(r).wins}
+                </TableCell>
+                <TableCell className={`px-3 py-2 text-theme-sm ${stale(r) ? "italic text-gray-400 dark:text-gray-500" : "text-error-500"}`}
+                           title={stale(r) ? STALE_WHY : undefined}>
+                  {win(r).losses}
+                </TableCell>
+                <TableCell className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400">
+                  {servedFilters.months > 0
+                    ? `${r.w_green ?? 0}/${r.w_months ?? 0}`
+                    : `${r.green ?? "—"}/${r.months ?? "—"}`}
+                </TableCell>
                 <TableCell className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400">{r.dd?.toFixed(2) ?? "—"}</TableCell>
                 {/* one column per month, the row's own profit in it. A month
                     the row never traded is an em dash — that is missing DATA,

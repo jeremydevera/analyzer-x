@@ -62,6 +62,14 @@ export interface StrategyRow {
    *  columns in the grid are these keys — the store's own, not a fixed ladder */
   monthly?: Record<string, number>;
   w_profit?: number;
+  /** the window's own trades, wins, losses and win rate — present only when the
+   *  server could rebuild this row's log (an #id lookup; see RESTATE_MAX) */
+  w_trades?: number;
+  w_wins?: number;
+  w_losses?: number;
+  w_winrate?: number;
+  w_profit_log?: number;
+  restated?: boolean;
   w_green?: number;
   w_months?: number;
   id: string;

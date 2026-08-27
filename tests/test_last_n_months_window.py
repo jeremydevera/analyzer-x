@@ -139,17 +139,24 @@ def test_the_panel_has_the_box_and_derives_its_month_columns():
     assert "setWindow(d.window ?? [])" in p, "the window comes from the payload"
     # "month of aug, july" — a month LABEL keeps its own form
     assert '"Jul", "Aug", "Sep"' in p and "monthLabel" in p
-    # the window's own profit column, and green inside the window
-    assert 'const WINDOW_COL = "window $"' in p
+    # the columns the operator NAMED are the window's: profit, win %, trades,
+    # W, L and green — headed "(2mo)" so the label cannot outlive the window
+    assert "const winHead = " in p and "(${months}mo)" in p
+    assert "const win = (r: StrategyRow)" in p
     assert "r.w_profit" in p and "r.w_green" in p
+    assert "r.w_trades" in p and "r.w_winrate" in p
 
 
 def test_the_panel_says_which_figures_the_window_does_NOT_restate():
     """The honest half: trades/W/L/win % stay full-history in the grid, and the
     screen says so rather than letting the reader assume."""
     p = open(PANEL, encoding="utf-8").read()
-    assert "are still the" in p and "FULL history" in p
-    assert "click a row" in p, "and it names where the exact answer is"
+    # trades/W/L/win % are the window's only where the row's log was rebuilt;
+    # everywhere else they are the whole history, dimmed, and titled with why
+    assert "const stale = (r: StrategyRow)" in p and "!r.restated" in p
+    assert "the whole history, not the window" in p
+    assert "italic text-gray-400" in p, "and they LOOK different, not just hover"
+    assert "Type the row&apos;s <b>#id</b> to restate all five." in p
     # the log itself counts the window's trades, wins and win %
     assert "const winLog = " in p and "const winWins = " in p
     assert "% win" in p

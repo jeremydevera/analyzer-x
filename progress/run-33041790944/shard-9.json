@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 12, "total": 51, "rows": 809948, "note": "COAI 30m: 16,126 bars, testing 105 rules", "pct": 23.5, "updated": "2026-08-27T06:03:49Z"}
+{"shard": 9, "stage": "testing", "done": 12, "total": 51, "rows": 812948, "note": "COAI 30m: rule 9/105 (fib382)", "pct": 23.5, "updated": "2026-08-27T06:04:35Z"}

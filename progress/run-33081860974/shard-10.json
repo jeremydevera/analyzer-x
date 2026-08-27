@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 4, "total": 51, "rows": 324774, "note": "API3 30m: 18,959 bars, testing 105 rules", "pct": 7.8, "updated": "2026-08-27T14:40:48Z"}
+{"shard": 10, "stage": "testing", "done": 4, "total": 51, "rows": 330934, "note": "API3 30m: rule 22/105 (engulf)", "pct": 7.8, "updated": "2026-08-27T14:41:35Z"}

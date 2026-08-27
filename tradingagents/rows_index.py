@@ -706,15 +706,21 @@ def balanced_score(row: dict, profit=None, winrate=None, trades=None,
     grn = pick(green, "green")
     mos = pick(months, "months")
 
+    payoff = (tp / sl) if sl else 0.0        # TP against SL: the operator's axis
+
     bits = []
     if pf <= 0:
-        # 1..3, and the win rate can only move it inside that band
-        score = 1 + (1 if wr >= 50 else 0) + (1 if wr >= 70 else 0)
-        bits.append(f"lost {pf:,.2f} USDT — a losing row cannot rate above 3")
-        if wr >= 50 and tp and sl:
-            bits.append(f"wins {wr:.2f}% of the time but TP {tp:g}% against "
-                        f"SL {sl:g}%, so the losses are bigger than the wins")
-        return int(score), "; ".join(bits)
+        # 1.0 - 3.0, and the win rate can only move it inside that band
+        score = min(3.0, 1.0 + 2.0 * max(0.0, wr) / 100.0)
+        bits.append(f"lost {pf:,.2f} USDT — a losing row cannot rate above 3.0")
+        if tp and sl:
+            bits.append(f"wins {wr:.2f}% of the time on TP {tp:g}% against SL "
+                        f"{sl:g}% (payoff {payoff:.2f}x): "
+                        + ("a tiny target behind a wide stop, so one loss "
+                           "erases many wins" if payoff < 1
+                           else "the target is wider than the stop, so the "
+                                "losses are elsewhere"))
+        return round(score, 1), "; ".join(bits)
 
     score = 4.0
     bits.append(f"made {pf:,.2f} USDT")
@@ -743,6 +749,27 @@ def balanced_score(row: dict, profit=None, winrate=None, trades=None,
         score += add
         bits.append(f"round-trip cost is {ratio * 100:.0f}% of the TP "
                     f"(+{add:.1f})")
+
+    # TP AGAINST SL, the axis the operator named. A target wider than the stop
+    # pays for itself; a tiny target behind a wide stop is the trap the artifact
+    # has warned about since it was written ("one loss erases hundreds of wins")
+    # and it is why a 90%-win row can still be a bad row.
+    if tp and sl:
+        if payoff >= 2:
+            add = 1.0
+        elif payoff >= 1:
+            add = 0.5
+        elif payoff >= 0.7:
+            add = -0.5
+        elif payoff >= 0.4:
+            add = -1.0
+        else:
+            # TP 0.4 behind SL 3.0 is the trap by name: one loss erases many
+            # wins, and a 10/10 there would be the number arguing with itself
+            add = -1.5
+        score += add
+        bits.append(f"TP {tp:g}% against SL {sl:g}% — payoff {payoff:.2f}x "
+                    f"({add:+.1f})")
 
     # A row that loses most of its trades is carried by its sizing, not by its
     # signal — the audit behind rule 19 (the ladder produced "13/13 green
@@ -781,7 +808,9 @@ def balanced_score(row: dict, profit=None, winrate=None, trades=None,
         bits.append(f"{int(n)} trades — under 100, so it cannot rate above 7")
     score = min(score, ceiling)
 
-    return int(max(1, min(10, round(score)))), "; ".join(bits)
+    # ONE DECIMAL, asked for by name: two rows that both "score 8" are not the
+    # same row, and the operator ranks by the difference (2026-08-27).
+    return round(max(1.0, min(10.0, score)), 1), "; ".join(bits)
 
 
 def month_keys(months: int, anchor: str | None = None) -> list:

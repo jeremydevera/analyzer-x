@@ -913,7 +913,7 @@ export default function StrategiesPanel() {
                   title={stale(r)
                     ? `${r.balanced_why ?? ""} — ${STALE_WHY}`
                     : (r.balanced_why ?? "")}>
-                  {r.balanced ?? "—"}/10
+                  {r.balanced === undefined ? "—" : r.balanced.toFixed(1)}/10
                 </TableCell>
                 {/* one column per month, the row's own profit in it. A month
                     the row never traded is an em dash — that is missing DATA,

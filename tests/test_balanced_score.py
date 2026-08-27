@@ -38,9 +38,12 @@ def test_the_operators_own_case_rates_in_the_1_to_4_band():
     """High win rate, tight TP, wide SL, and it still lost money."""
     score, why = ri.balanced_score(_row(winrate=82.0, profit=-45.0, tp=0.3,
                                         sl=3.0, dd=60.0))
-    assert 1 <= score <= 4, (score, why)
-    assert "cannot rate above 3" in why
+    assert 1.0 <= score <= 4.0, (score, why)
+    assert isinstance(score, float), "the operator asked for a decimal"
+    assert "cannot rate above 3.0" in why
     assert "TP 0.3% against SL 3%" in why, why
+    assert "payoff 0.10x" in why, "the TP/SL axis is named, not implied"
+    assert "one loss erases many wins" in why, why
 
 
 def test_no_win_rate_can_rescue_a_losing_row():
@@ -138,7 +141,8 @@ def test_the_window_re_rates_it(store):
 def test_every_row_has_a_score_and_a_why(store):
     for kw in ({}, {"months": 2}, {"months": 12}):
         for r in ri.query(**kw)["rows"]:
-            assert isinstance(r["balanced"], int) and 1 <= r["balanced"] <= 10
+            assert isinstance(r["balanced"], float)
+            assert 1.0 <= r["balanced"] <= 10.0
             assert r["balanced_why"]
 
 
@@ -150,15 +154,34 @@ def test_the_csv_carries_the_column_too(store):
     head = body.split("\n")[0].split(",")
     assert "balanced" in head and "balanced_why" in head, head
     row = body.split("\n")[1]
-    assert row.split(",")[head.index("balanced")].isdigit(), row[:120]
+    assert float(row.split(",")[head.index("balanced")]) >= 1.0, row[:120]
 
 
 def test_the_panel_prints_it_and_says_what_it_means():
     p = open("webapp/src/components/backtest/StrategiesPanel.tsx",
              encoding="utf-8").read()
     assert 'winHead("balanced"' in p, "the header follows the window"
-    assert "{r.balanced ?? \"—\"}/10" in p
+    assert "r.balanced.toFixed(1)" in p, "one decimal, asked for by name"
     assert "r.balanced_why" in p, "the working is on hover"
     assert "rates win rate AND profit together" in p
     # and it is dimmed where the window's win rate is not the row's own
     assert "stale(r)" in p
+
+
+def test_tp_against_sl_is_its_own_axis():
+    """*"i want decimal value ypu will access how balanced it is in terms of
+    profit, winrate, tp /sl"* — so the payoff ratio scores on its own, and two
+    rows that differ ONLY in TP/SL cannot score the same."""
+    wide = ri.balanced_score(_row(tp=3.0, sl=1.0))[0]     # 3.00x
+    even = ri.balanced_score(_row(tp=1.0, sl=1.0))[0]     # 1.00x
+    tight = ri.balanced_score(_row(tp=0.4, sl=3.0))[0]    # 0.13x
+    assert wide > even > tight, (wide, even, tight)
+    _, why = ri.balanced_score(_row(tp=0.4, sl=3.0))
+    assert "payoff 0.13x" in why, why
+
+
+def test_the_scores_are_decimals_that_separate_close_rows():
+    a = ri.balanced_score(_row(profit=100.0, winrate=60.0))[0]
+    b = ri.balanced_score(_row(profit=120.0, winrate=61.0))[0]
+    assert a != b, (a, b)
+    assert round(a, 1) == a and round(b, 1) == b, "one decimal place"

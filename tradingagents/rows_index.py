@@ -225,6 +225,24 @@ def _open(readonly: bool = False):
         con.close()
 
 
+def _budgeted(con, seconds=None):
+    """Abort this connection's work after `seconds` of wall clock.
+
+    SQLite calls the progress handler every N virtual-machine steps; returning
+    non-zero raises `sqlite3.OperationalError("interrupted")`. 10,000 steps is
+    a fraction of a millisecond of work, so the check is free and the deadline
+    is honoured to well under a second.
+    """
+    budget = QUERY_BUDGET_S if seconds is None else seconds
+    deadline = time.monotonic() + float(budget)
+
+    def _tick():
+        return 1 if time.monotonic() > deadline else 0
+
+    con.set_progress_handler(_tick, 10_000)
+    return deadline
+
+
 def ensure() -> None:
     if str(DB_PATH) in _ready:
         return
@@ -410,10 +428,18 @@ def _missing_ok(fn, default):
     """Readers never create anything: DDL on a read path put the indexer and
     every poll in a queue behind each other. If the schema is not there yet,
     say so with an empty answer -- ensure() runs at startup and before a sync.
+
+    An INTERRUPTION is re-raised. `_budgeted` stops a read that has run past
+    QUERY_BUDGET_S by raising OperationalError("interrupted"), and swallowing
+    that here turned "this filter needs longer than 20s" into "0 rows, total
+    0" -- an empty screen presented as an answer, which is worse than the
+    30-second HTTP 500 the budget exists to replace.
     """
     try:
         return fn()
-    except sqlite3.Error:
+    except sqlite3.Error as exc:
+        if "interrupt" in str(exc).lower():
+            raise
         return default
 
 
@@ -740,6 +766,18 @@ DEEP_OFFSET = 5_000
 # So: seek when the floor is selective, scan when it is loose. The crossover is
 # where the two costs meet - 500/(n/35.8M) == n, so n ~ 134,000.
 WINRATE_SEEK_MAX = 150_000
+# How long ONE read may run before the store gives up and says so.
+#
+# The UI reaches the API through Next's rewrite, which gives up at 30 s with a
+# bare HTTP 500 and no body. The panel then showed the PREVIOUS rows under the
+# new filter with nothing but a red line - the operator's "i thought its not
+# working" again, this time with the screen actively lying about which filter
+# the numbers belong to. `min_winrate=95` did that twice.
+#
+# So the store stops first, at 20 s, and raises SortNotReady - which the route
+# already maps to 503 and the panel already renders as "still working on it,
+# these rows are the previous answer". A sentence in 20 s beats a 500 in 30.
+QUERY_BUDGET_S = 20.0
 # rows one request may return. 2,000 was the cap while the screen showed a
 # fixed 300; the operator asked to see the whole store, so a page can now be
 # 5,000 and `iter_rows` streams the rest with no ceiling at all.
@@ -822,6 +860,35 @@ def _winrate_matches(min_winrate, min_trades=0, cap=None):
 
 class SortNotReady(RuntimeError):
     """This order needs an index that is still being built."""
+
+
+class QueryTooSlow(SortNotReady):
+    """This read hit QUERY_BUDGET_S.
+
+    A SortNotReady on purpose: the route already answers those with 503 and a
+    sentence, and the panel already keeps its rows and prints it. The screen
+    saying "still working on this, the numbers below are the previous answer"
+    is the truth; a 30-second HTTP 500 with the old rows under the new filter
+    is not.
+    """
+
+
+def _slow_why(coin, tf, signal, min_winrate, min_trades, sort) -> str:
+    """Why this read ran out of budget, and what makes it fast - named from the
+    REQUEST, so it cannot describe a filter that was not sent."""
+    what = ", ".join(str(x) for x in (coin, tf, signal) if x) or "the store"
+    if float(min_winrate or 0) > 0:
+        if not (min_trades and int(min_trades) > 0):
+            return (f"a win % floor of {float(min_winrate):g} over {what} "
+                    f"needs more than {QUERY_BUDGET_S:g}s on this store. "
+                    f"Add a min-trades floor - 100 answers in 0.2s - or rank "
+                    f"by win %. The wide win-rate index that makes this "
+                    f"instant is still being built")
+        return (f"win % >= {float(min_winrate):g} with {int(min_trades)}+ "
+                f"trades over {what} ran past {QUERY_BUDGET_S:g}s; the "
+                f"win-rate index is still being built")
+    return (f"ranking {what} by {sort} ran past {QUERY_BUDGET_S:g}s. "
+            f"Narrow it with a coin, a timeframe or a trade floor")
 
 
 _INDEX_SEEN: dict = {}
@@ -1065,6 +1132,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
 
     def _read():
         with _open(readonly=True) as con:
+            _budgeted(con)
             if where and from_winrate:
                 got_total = _winrate_matches(min_winrate, min_trades,
                                              cap=WINRATE_SEEK_MAX)
@@ -1105,7 +1173,14 @@ def query(coin=None, tf=None, signal=None, profitable=False,
                              max(0, int(offset)), winrate_seeks)
         return total, got
 
-    total, got = _missing_ok(_read, (0, []))
+    try:
+        total, got = _missing_ok(_read, (0, []))
+    except sqlite3.OperationalError as exc:
+        # "interrupted" is the budget, not a broken database (see _budgeted)
+        if "interrupt" not in str(exc).lower():
+            raise
+        raise QueryTooSlow(_slow_why(coin, tf, signal, min_winrate,
+                                     min_trades, key)) from exc
     if total < 0:
         # -1 is "the bounded count went over its cap" (or could not be read):
         # a BOUND, and it must print with the "+". Without this it printed

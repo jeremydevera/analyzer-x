@@ -194,8 +194,10 @@ def test_the_browser_sends_the_floor_and_caps_the_box_at_the_grid():
                  encoding="utf-8").read()
     assert "min TP %" in panel, "labelled in the column's unit"
     assert 'aria-label="Minimum take profit percent"' in panel
-    assert panel.count("minTp,") >= 3, "table, load-more and CSV"
-    assert "sort, minTrades, minWinrate, minTp, desc, perPage]" in panel
+    assert panel.count("applied.minTp") >= 3, "table, load-more and CSV"
+    # the boxes are a DRAFT: the store is asked when Apply filters is clicked,
+    # and `draft` must carry the TP floor or the button cannot send it
+    assert "minTp }" in panel and "const apply = () =>" in panel
     # the ceiling is computed from the facets, not typed here
     assert "Math.max(...facets.tps)" in panel
     assert "max={tpCeiling}" in panel and "Math.min(tpCeiling" in panel

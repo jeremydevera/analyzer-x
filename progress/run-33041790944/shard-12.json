@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 44, "total": 51, "rows": 3882730, "note": "TENDIES 1d: downloading candles", "pct": 86.3, "updated": "2026-08-27T07:34:50Z"}
+{"shard": 12, "stage": "done", "done": 51, "total": 51, "rows": 3882730, "note": "3,882,730 rows \u00b7 10 pair redo(s) \u00b7 5 pair(s) lost", "pct": 100.0, "updated": "2026-08-27T07:34:52Z"}

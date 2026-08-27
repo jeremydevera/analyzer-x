@@ -227,9 +227,12 @@ def test_the_row_query_keeps_its_order_index_even_with_a_trade_floor(store):
     assert row_args == [100]
 
     src = open("tradingagents/rows_index.py", encoding="utf-8").read()
+    # The row SELECT moved into `_page_rows` when deep pages became a
+    # two-statement read (2026-08-27); the COUNT stayed in `query`. Both
+    # halves of the rule still have to be there.
+    page = src[src.index("def _page_rows("):src.index("def query(")]
     q = src[src.index("def query("):src.index("def facets(")]
-    # the SQL now names the coin index too, so match the distinctive halves
-    assert "{_indexed_by(coin)}{row_where}" in q, (
+    assert "{_indexed_by(coin)}{row_where}" in page, (
         "the row select must use the +trades form")
     assert "{_indexed_by(coin)}{where}" in q, "and the count the plain one"
 

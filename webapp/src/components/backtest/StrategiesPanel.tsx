@@ -383,29 +383,6 @@ export default function StrategiesPanel() {
             <option value="">all signals</option>
             {facets.signals.map((s) => <option key={s}>{s}</option>)}
           </select>
-          {/* the operator asked to rank by win rate (2026-08-26): profit alone
-              cannot find a 70%-win configuration in millions of rows. The
-              column headers sort too, but this stays: it is the only control
-              that NAMES the orders available. Like a header click it is
-              INSTANT — an order is not one of the Apply filters. */}
-          <select className={sel} value={sort}
-                  onChange={(e) => {
-                    const next = e.target.value as StrategySort;
-                    setSort(next);
-                    setDesc(next !== "dd");     // smallest dip is the useful end
-                    // a rate needs a denominator, and it has to be applied in
-                    // the same breath or the store ranks by win % with no
-                    // floor and answers "100.00% over 1 trade"
-                    if (next === "winrate" && applied.minTrades === 0) {
-                      setMinTrades(100);
-                      setApplied((a) => ({ ...a, minTrades: 100 }));
-                    }
-                  }}
-                  aria-label="Sort by">
-            {Object.entries(STRATEGY_SORTS).map(([k, label]) => (
-              <option key={k} value={k}>sort: {label}</option>
-            ))}
-          </select>
           <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300">
             min trades
             <input type="number" min={0} step={10} value={minTrades}

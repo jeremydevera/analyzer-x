@@ -46,7 +46,19 @@ def test_a_refused_sort_says_it_is_preparing_and_names_what_is_shown():
     assert "STRATEGY_SORTS[sort]" in note and "STRATEGY_SORTS[servedSort]" in note, note
 
 
-def test_the_dropdown_still_shows_what_was_asked_for():
-    """The select is the REQUEST — it must not snap back, or the click looks
-    like it did nothing."""
-    assert "value={sort}" in SRC
+def test_the_headers_are_the_sort_control_and_they_show_the_request():
+    """The sort DROPDOWN is gone — the operator asked for it removed on
+    2026-08-27 ("also remove the sort dropddown field"), because the column
+    headers already sort and two controls for one thing disagree. So the rule
+    moves to the headers: a click sets the order, a second click flips it, and
+    the header that is highlighted is the one the rows are ACTUALLY in
+    (servedSort), with the requested one marked separately while it loads."""
+    assert "value={sort}" not in SRC, "the dropdown was asked to go"
+    click = SRC[SRC.index("const next = HEAD_SORT[h];"):]
+    click = click[:click.index("}}")]
+    assert "setSort(next)" in click and "setDesc(" in click, click
+    assert "if (next === sort) { setDesc(!desc); return; }" in click, click
+    # the highlight is derived from what the SERVER served, never the request
+    heads = SRC[SRC.index("HEAD_SORT[h]"):]
+    assert "STRATEGY_SORTS[servedSort]" in heads
+    assert "STRATEGY_SORTS[sort]" in heads

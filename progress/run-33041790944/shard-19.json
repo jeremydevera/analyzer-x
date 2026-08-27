@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 26, "total": 51, "rows": 2039496, "note": "LINEA 30m: rule 3/105 (fade15)", "pct": 51.0, "updated": "2026-08-27T07:13:36Z"}
+{"shard": 19, "stage": "testing", "done": 26, "total": 51, "rows": 2048736, "note": "LINEA 30m: rule 45/105 (zscore20)", "pct": 51.0, "updated": "2026-08-27T07:14:21Z"}

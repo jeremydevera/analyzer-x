@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 1, "total": 51, "rows": 48400, "note": "1INCH 1h: 9,479 bars, testing 105 rules", "pct": 2.0, "updated": "2026-08-27T14:29:00Z"}
+{"shard": 6, "stage": "testing", "done": 1, "total": 51, "rows": 64460, "note": "1INCH 1h: rule 68/105 (dbltop)", "pct": 2.0, "updated": "2026-08-27T14:29:45Z"}

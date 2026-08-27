@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 47, "total": 51, "rows": 3671852, "note": "USARSTOCK 15m: rule 45/105 (zscore20)", "pct": 92.2, "updated": "2026-08-27T18:01:44Z"}
+{"shard": 5, "stage": "testing", "done": 47, "total": 51, "rows": 3698332, "note": "USARSTOCK 30m: rule 99/105 (cf_ttm_l2)", "pct": 92.2, "updated": "2026-08-27T18:02:29Z"}

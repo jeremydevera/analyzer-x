@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 2, "total": 51, "rows": 107784, "note": "AGT 15m: rule 21/105 (cci20)", "pct": 3.9, "updated": "2026-08-27T14:29:05Z"}
+{"shard": 11, "stage": "testing", "done": 2, "total": 51, "rows": 113064, "note": "AGT 15m: rule 45/105 (zscore20)", "pct": 3.9, "updated": "2026-08-27T14:29:51Z"}

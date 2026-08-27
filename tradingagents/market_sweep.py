@@ -121,8 +121,37 @@ def save_manifest(m: dict) -> None:
 
 
 # ---------------------------------------------------------------- candles
+def save_candles_cache(symbol: str, tf: str, df) -> None:
+    """Write the sweep's working copy of a pair's bars.
+
+    ONE writer, because the reader below has to know the layout. `v` was
+    missing until 2026-08-27: the cache stored t/o/h/l/c, so every pair served
+    from it handed the signals volume=None, and the module contract makes a
+    rule with a missing stream ABSTAIN. Seventeen volume rules could therefore
+    never produce a row -- cf_donch and cf_maobv had none at all in a
+    22,478,876-row sweep, and cf_emarsi had rows only for the pairs that
+    happened to be fetched fresh.
+    """
+    (CANDLES / f"{symbol}-{tf}.json").write_text(json.dumps({
+        "t": [int(x) for x in df["Date"].to_numpy()
+              .astype("datetime64[ms]").astype("int64")],
+        "o": [float(x) for x in df["Open"]],
+        "h": [float(x) for x in df["High"]],
+        "l": [float(x) for x in df["Low"]],
+        "c": [float(x) for x in df["Close"]],
+        "v": ([float(x) for x in df["Volume"]]
+              if "Volume" in df.columns else None)}, separators=(",", ":")))
+
+
 def cached_candles(symbol: str, tf: str):
-    """Whatever bars are on disk for this contract, as a DataFrame or None."""
+    """Whatever bars are on disk for this contract, as a DataFrame or None.
+
+    Volume comes from the cache when it is there, and otherwise from the
+    PARQUET copy of the same bars, joined on Date. The 4,985 cache files
+    written before volume was stored are usable immediately that way -- the
+    parquet store has always kept it (BTC_USDT-1h: 9,479 bars, every one
+    non-zero), so no pair has to be downloaded again.
+    """
     import pandas as pd
 
     f = CANDLES / f"{symbol}-{tf}.json"
@@ -132,6 +161,23 @@ def cached_candles(symbol: str, tf: str):
     df = pd.DataFrame({"Date": pd.to_datetime(d["t"], unit="ms"),
                        "Open": d["o"], "High": d["h"], "Low": d["l"],
                        "Close": d["c"]})
+    if d.get("v"):
+        df["Volume"] = [float(x) for x in d["v"]]
+        return df
+    try:
+        from tradingagents import parquet_store as pqs
+
+        other = pqs.load_candles(symbol, tf)
+        if other is not None and "Volume" in other.columns and len(other):
+            # joined on the bar's own timestamp, never pasted by position: a
+            # parquet copy holding a longer history would otherwise land its
+            # volume on the wrong bars
+            vol = dict(zip(other["Date"], other["Volume"]))
+            got = [vol.get(t) for t in df["Date"]]
+            if all(v is not None for v in got):
+                df["Volume"] = [float(v) for v in got]
+    except Exception:
+        pass                     # no volume anywhere: the rules abstain, loudly
     return df
 
 
@@ -150,6 +196,13 @@ def refresh_candles(symbol: str, tf: str, *, days: int = 365):
     _paths()
     iv, bs, cap = br.TFS[tf]
     have = cached_candles(symbol, tf)
+    # A cached frame with no VOLUME makes every volume rule abstain (17 of them,
+    # 2026-08-27), and the tail of a delta fetch cannot repair the old bars. So
+    # a pair whose cache predates volume is fetched in full ONCE: the venue
+    # sends volume with the candles, save_candles_cache stores it, and every run
+    # after this one reads it from disk.
+    if have is not None and "Volume" not in have.columns:
+        have = None
     if have is None or len(have) < 100:
         raw = at._closed_bars(fx.klines(symbol, iv, cap), bs)
         df, added, source = raw, len(raw), "fetch"
@@ -171,13 +224,7 @@ def refresh_candles(symbol: str, tf: str, *, days: int = 365):
         source = "delta"
     cut = pd.Timestamp.utcnow().tz_localize(None) - pd.Timedelta(days=days + 30)
     df = df[df["Date"] >= cut].reset_index(drop=True)
-    (CANDLES / f"{symbol}-{tf}.json").write_text(json.dumps({
-        "t": [int(x) for x in df["Date"].to_numpy()
-              .astype("datetime64[ms]").astype("int64")],
-        "o": [float(x) for x in df["Open"]],
-        "h": [float(x) for x in df["High"]],
-        "l": [float(x) for x in df["Low"]],
-        "c": [float(x) for x in df["Close"]]}, separators=(",", ":")))
+    save_candles_cache(symbol, tf, df)
     return df, added, source
 
 

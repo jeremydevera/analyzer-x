@@ -76,6 +76,31 @@ Then, before reporting anything as working:
 3. **Report the seconds.** `build_index_now` logs `built <name> in <N>s`; that
    number is the only honest ETA for the next time.
 
+## What each button actually does
+
+The operator asked the right question — *"when i click backtest or update
+backtest will it work too?"* — and before 2026-08-27 the answer was NO.
+
+| the click | what it writes | who indexes it | does it build a missing index? |
+|---|---|---|---|
+| **BACKTEST** (a sweep) | row JSON files under `ROWDIR` | the indexer's next `sync()` | **yes, now** — any pass that indexed a pair calls `_after_fill_indexes()` |
+| **UPDATE BACKTEST** (`btupdate`) | the same row files, a few pairs | same | **yes, now** (it used to skip: see below) |
+| a one-coin backtest | one pair file | same | **yes, now** |
+| **index the missing N pair(s)** (`POST /api/strategies/reindex`) | nothing | a forced `sync()` | yes |
+| a candle DOWNLOAD | candles only, no rows | nobody | no rows, no index needed |
+
+`db_jobs` never touches `rows_index` at all: a job writes FILES, and the index
+is a separate process reading them. The check used to hang off `bulk`, which is
+`len(todo) > BIG_FILL` — **500 pairs** — so a backtest of one coin, an UPDATE, the
+reindex button and the trickle all skipped it. It now runs whenever a pass
+indexed at least one pair; the check is 11 `sqlite_master` lookups and spawns
+nothing when everything is there.
+
+**Still not automatic:** a `SCHEMA_VERSION` bump rebuilds the store inside
+`ensure()`, and `ensure()` deliberately does not build these. The first `sync()`
+after it will, but if nothing needs indexing, nothing runs — so after a version
+bump, run the check by hand.
+
 ## When to run it
 
 * after any sweep, backtest, `db_jobs` fill or `reindex` — the store grew, and

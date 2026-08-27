@@ -341,9 +341,44 @@ def test_a_fill_starts_the_indexes_it_did_not_build(monkeypatch, tmp_path):
     assert ri._after_fill_indexes() == []
 
 
-def test_a_bulk_fill_calls_it(monkeypatch):
-    """The wiring, not just the helper: the end of a BULK pass is the moment the
-    store has grown and nothing has built the on-demand indexes."""
+def test_ANY_pass_that_indexed_a_pair_calls_it(monkeypatch, tmp_path):
+    """Operator: *"when i click backtest or update backtest will it work too?"*
+
+    It would not have. `bulk` is `len(todo) > BIG_FILL` — 500 pairs — so hanging
+    the check off a bulk fill meant a backtest of one coin, an UPDATE BACKTEST,
+    the reindex button and the trickle all skipped it. Every pass that indexed a
+    pair means the store grew.
+    """
+    import json
+    import time as _t
+
+    from tradingagents import market_sweep as msw
+
+    rows_dir = tmp_path / "rows"
+    rows_dir.mkdir()
+    monkeypatch.setattr(msw, "ROWDIR", rows_dir)
+    monkeypatch.setattr(ri, "DB_PATH", tmp_path / "rows.db")
+    (rows_dir / "AAA-1h.json").write_text(json.dumps([{
+        "coin": "AAA", "tf": "1h", "signal": "mom6", "th": 0.1, "sl": 0.3,
+        "tp": 2.0, "rr": 3.0, "sizing": "flat", "lev": 20, "base": 5.0,
+        "notional": 100.0, "trades": 120, "wins": 72, "losses": 48,
+        "winrate": 60.0, "profit": 10.0, "funding": -0.2, "h1": 1.0, "h2": 1.0,
+        "green": 8, "months": 12, "worst": -4.1, "dd": 22.0, "liqs": 0,
+        "stop_reachable": True, "days": 360, "bars": 34000, "monthly": {},
+        "cost_of_tp": 12.5, "rt": 0.04, "gate": "ok"}]))
+
+    calls = []
+    monkeypatch.setattr(ri, "_after_fill_indexes", lambda: calls.append(1) or [])
+    got = ri.sync(now=_t.time() + ri.SETTLE_S + 1)
+    assert got["pairs"] == 1, got
+    assert calls == [1], "ONE pair is enough — this is the backtest button"
+
+    # nothing indexed, nothing to check
+    calls.clear()
+    ri.sync(now=_t.time() + ri.SETTLE_S + 1)
+    assert calls == [], "a pass that indexed nothing must not spawn anything"
+
+    # and it is not hidden behind `bulk`
     src = open("tradingagents/rows_index.py", encoding="utf-8").read()
-    body = src[src.index("        if bulk:"):src.index("# NO wal_checkpoint")]
-    assert "_after_fill_indexes()" in body, body[:400]
+    tail = src[src.index("if done:"):src.index("return {\"pairs\": done")]
+    assert "_after_fill_indexes()" in tail, tail

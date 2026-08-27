@@ -597,12 +597,6 @@ def sync(paths: Iterable[Path] | None = None, *, budget_s: float = 0.0,
                 con.execute(ddl)
             forget_indexes()
             con.commit()
-            # The store just grew by a bulk load. The on-demand indexes are not
-            # in READ_INDEXES on purpose (a fill pays for every index it
-            # carries: 1.5 pairs/min with six against 75 with none) — so kick
-            # them in DETACHED children afterwards instead of leaving the panel
-            # to discover they are missing. See .claude/skills/store-indexes.
-            _after_fill_indexes()
             if DEBUG:
                 print(f"[rows-index] rebuilt read indexes in "
                       f"{time.time() - t_idx:.1f}s", flush=True)
@@ -612,6 +606,19 @@ def sync(paths: Iterable[Path] | None = None, *, budget_s: float = 0.0,
         # the indexer sat at 26 pairs. SQLite's automatic checkpoint is PASSIVE
         # and keeps the WAL bounded without ever locking a reader out; the size
         # is set with wal_autocheckpoint in ensure().
+    # ANY pass that indexed a pair means the store grew — a BACKTEST of one
+    # coin, an UPDATE BACKTEST, the reindex button, the trickle. `bulk` is
+    # len(todo) > BIG_FILL (500 pairs), so hanging this off `bulk` meant the
+    # operator's normal clicks never triggered it: *"when i click backtest or
+    # update backtest will it work too?"* (2026-08-27) — no, it would not have.
+    # The on-demand indexes stay OUT of READ_INDEXES on purpose (a fill pays for
+    # every index it carries: 1.5 pairs/min with six against 75 with none), so
+    # they are started here, in DETACHED children, instead of the panel finding
+    # out they are missing. The check itself is 11 sqlite_master lookups and
+    # spawns nothing when they are all there.
+    # See .claude/skills/store-indexes.
+    if done:
+        _after_fill_indexes()
     return {"pairs": done, "rows": rows, "left": queued - done,
             "seconds": round(time.time() - started, 2)}
 

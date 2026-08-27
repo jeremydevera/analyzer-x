@@ -178,6 +178,16 @@ export default function DownloadScreen() {
                   {gaps.worst && <> · furthest is {gaps.worst.symbol.replace("_USDT", "")} {gaps.worst.timeframe}, {gaps.worst.hours_behind}h</>}
                   {" "}— UPDATE CANDLES fills exactly those gaps</>
               : "all up to date"}
+            {/* the ones no run can ever catch up: out of the count above, so
+                "N behind" can actually reach zero (review, 2026-08-27) */}
+            {gaps.delisted_count
+              ? <span className="text-warning-600 dark:text-warning-400">
+                  {" · "}{gaps.delisted_count} more stored but DELISTED on MEXC
+                  {gaps.delisted?.[0] && <> ({gaps.delisted[0].symbol.replace("_USDT", "")} {gaps.delisted[0].timeframe}
+                    {gaps.delisted.length > 1 ? ` and ${gaps.delisted.length - 1} more` : ""})</>}
+                  {" "}— nothing can fetch them; they are not counted above
+                </span>
+              : null}
           </p>
         )}
         <JobProgress s={dl} />

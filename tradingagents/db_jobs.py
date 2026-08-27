@@ -344,7 +344,9 @@ _BELL_NAMES = 5              # lost pairs named in the bell before "and N more"
 _pause = time.sleep
 
 
-_LIVE_CACHE: dict = {"at": 0.0, "symbols": None}
+_LIVE_CACHE: dict = {"at": 0.0, "symbols": None, "failed_at": 0.0}
+# how long a FAILED contract-list lookup is remembered (see live_symbols)
+FAIL_CACHE_S = 30.0
 
 
 def live_symbols(max_age_s: float = 300.0):
@@ -358,17 +360,26 @@ def live_symbols(max_age_s: float = 300.0):
     from tradingagents.dataflows import mexc_futures as fx
 
     c = _LIVE_CACHE
-    if c["symbols"] is not None and time.time() - c["at"] < max_age_s:
+    now = time.time()
+    if c["symbols"] is not None and now - c["at"] < max_age_s:
         return c["symbols"]
+    if now - c.get("failed_at", 0.0) < FAIL_CACHE_S:
+        # a FAILED lookup is remembered too, briefly. `is_delisted` runs per
+        # pair inside routes the panel polls every 20-60 s, and each miss would
+        # re-enter list_contracts -> _get_public with its own retry budget:
+        # a venue outage would block those requests for minutes.
+        return None
     try:
         got = {str(r["symbol"]) for r in fx.list_contracts() if r.get("symbol")}
     except Exception as exc:                                   # noqa: BLE001
         print(f"[download] could not list MEXC contracts: "
               f"{type(exc).__name__}: {str(exc)[:80]}", flush=True)
+        c["failed_at"] = now
         return None
     if not got:
+        c["failed_at"] = now
         return None
-    c.update(at=time.time(), symbols=got)
+    c.update(at=now, symbols=got, failed_at=0.0)
     return got
 
 
@@ -458,13 +469,17 @@ def update_pairs(lost: list | None = None) -> tuple:
 
     lost_added = [(p[0], p[1]) for p in (lost or [])
                   if len(p) == 2 and (p[0], p[1]) not in have]
-    pairs += [p for p in lost_added if p not in set(missing)]
+    missing_set = set(missing)
+    pairs += [p for p in lost_added if p not in missing_set]
 
-    delisted = [f"{c} {tf}" for c, tf in pairs if is_delisted(c, live)]
-    gone = {tuple(x.split(" ")) for x in delisted}
-    pairs = [(c, tf) for c, tf in pairs if (c, tf) not in gone]
-    lost_added = [p for p in lost_added if p not in gone]
-    return pairs, delisted, len(missing), lost_added
+    # Which of them the venue no longer lists — REPORTED, not removed. A pair
+    # is only ever called delisted after an attempt whose error agrees (see
+    # `looks_gone` in _run_download): the contract list is filtered by
+    # apiAllowed and by quote, and a partial or stale answer must not be able
+    # to delete work from the queue. CLAUDE.md: "A failed age check KEEPS the
+    # coin."
+    likely_gone = [f"{c} {tf}" for c, tf in pairs if is_delisted(c, live)]
+    return pairs, likely_gone, len(missing), lost_added
 
 
 def _run_download(spec: dict) -> None:
@@ -485,6 +500,10 @@ def _run_download(spec: dict) -> None:
     f = FILES["download"]
     mode = spec.get("mode") or "download"
     lost_before: list[tuple[str, str]] = []
+    # every branch sets these; declared here so a reordered branch cannot
+    # silently degrade them to a default nobody chose
+    delisted: list[str] = []
+    n_missing = 0
     if mode == "retry":
         # the RETRY FAILED button: exactly the pairs the last run gave up
         # on — no store walk, no re-download, one entry per pair
@@ -492,21 +511,23 @@ def _run_download(spec: dict) -> None:
         for p in (_read(f["lost"]).get("pairs") or []):
             if len(p) == 2 and (p[0], p[1]) not in pairs:
                 pairs.append((p[0], p[1]))
-        # a contract that is gone cannot be retried: name it, drop it
-        live = live_symbols()
-        delisted = [f"{c} {tf}" for c, tf in pairs if is_delisted(c, live)]
-        gone = {tuple(x.split(" ")) for x in delisted}
-        pairs = [(c, tf) for c, tf in pairs if (c, tf) not in gone]
+        # A contract the venue no longer lists is ATTEMPTED once here too, so
+        # the loop can classify it on the venue's own answer and clear it out of
+        # lost.json for good. Dropping it unattempted would leave it in that
+        # file for ever and the button would keep offering it.
+        delisted = []
     elif mode == "update" and not spec.get("coins"):
-        pairs, delisted, n_missing, lost_before = update_pairs(
+        pairs, likely_gone, n_missing, lost_before = update_pairs(
             _read(f["lost"]).get("pairs") or [])
+        if likely_gone:
+            print(f"[download] {len(likely_gone)} pair(s) the venue no longer "
+                  f"lists will be attempted once and then named as delisted: "
+                  f"{', '.join(likely_gone)}", flush=True)
     else:
         coins = spec["coins"]
         tfs = [t for t in spec["tfs"]
                if t in ("15m", "30m", "1h", "4h", "1d")]
         pairs = [(c, tf) for c in coins for tf in tfs]
-    delisted = locals().get("delisted") or []
-    n_missing = locals().get("n_missing") or 0
     stored, stopped, done, retries = 0, False, 0, 0
     failed: list[str] = []                 # "COIN tf: why" — one per pair given up on
     failed_pairs: list[list[str]] = []

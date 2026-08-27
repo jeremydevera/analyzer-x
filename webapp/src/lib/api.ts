@@ -296,6 +296,10 @@ export const api = {
             missing_bars: number; hours_behind: number }[];
     pairs: number; behind: number;
     worst: { symbol: string; timeframe: string; hours_behind: number } | null;
+    /** stored pairs the venue no longer lists: they can never catch up, so
+     *  they are OUT of `behind` and `worst` and named on their own */
+    delisted?: { symbol: string; timeframe: string; hours_behind: number }[];
+    delisted_count?: number;
   }>("/api/candles/gaps"),
   /** the pairs the last download gave up on — what RETRY FAILED fetches */
   candleLost: () => get<{

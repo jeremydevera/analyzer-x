@@ -101,9 +101,12 @@ def test_an_update_fetches_the_store_the_gaps_and_the_lost(monkeypatch):
     assert ("LOST_USDT", "4h") in pairs
     assert ("LOST_USDT", "4h") in lost_added, lost_added
 
-    # and the delisted are dropped, by name
+    # a pair the venue no longer lists is NAMED and still ATTEMPTED: the queue
+    # must not delete unattempted work on a filtered, cached contract list, and
+    # one attempt is what lets the loop classify it and clear lost.json
     assert "GONE_USDT 15m" in delisted
-    assert all(p[0] != "GONE_USDT" for p in pairs), pairs
+    assert ("GONE_USDT", "15m") in pairs, (
+        "named, not dropped — CLAUDE.md: a failed age check KEEPS the coin")
 
 
 def test_the_store_is_walked_most_behind_first(monkeypatch):
@@ -168,7 +171,11 @@ def test_a_pair_that_is_still_missing_is_still_lost(monkeypatch, tmp_path):
     assert "still lost" in why and "AAA 15m" in why and "no file" in why, why
 
 
-def test_the_retry_button_is_not_offered_a_pair_it_cannot_fetch(monkeypatch):
+def test_the_retry_button_names_a_delisted_pair_and_still_clears_it(monkeypatch):
+    """It is OFFERED, on purpose: one retry attempts it, the loop classifies it
+    on the venue's own answer, and lost.json is emptied. Dropping it from the
+    button instead would leave it in that file for ever with nothing able to
+    clear it — and would trust a filtered, cached list to delete work."""
     from tradingagents import api
 
     monkeypatch.setattr(dj, "_read", lambda *a, **k: {
@@ -176,7 +183,7 @@ def test_the_retry_button_is_not_offered_a_pair_it_cannot_fetch(monkeypatch):
         "written": time.time()})
     monkeypatch.setattr(dj, "live_symbols", lambda *a, **k: {"AAA_USDT"})
     got = api.candles_lost()
-    assert [p["symbol"] for p in got["pairs"]] == ["AAA_USDT"], got["pairs"]
+    assert [p["symbol"] for p in got["pairs"]] == ["MEZO_USDT", "AAA_USDT"]
     assert got["delisted_count"] == 1
     assert got["delisted"][0]["symbol"] == "MEZO_USDT"
 
@@ -187,3 +194,203 @@ def test_the_screen_names_the_delisted_and_the_gaps():
     assert "DELISTED on MEXC, skipped by every" in p
     assert "lost.delisted_count" in p
     assert "nothing can fetch a contract the venue dropped" in p
+
+
+def test_no_route_can_call_an_old_file_a_recovery(monkeypatch, tmp_path):
+    """Review, 2026-08-27: `_stored_now` was fixed in ONE of three call sites,
+    so the panel still printed "MEZO 15m (14,030 bars, stored Aug 26 1:22am)"
+    as RECOVERED for a run that failed on Aug 28 at 2:43am. `since` is required
+    now, and both read routes pass the run's own timestamp."""
+    import inspect
+
+    from tradingagents import api, parquet_store as pqs
+
+    sig = inspect.signature(api._stored_now)
+    assert sig.parameters["since"].default is inspect.Parameter.empty, (
+        "a default is what let two call sites keep the old lie")
+
+    f = tmp_path / "MEZO_USDT-15m.parquet"
+    f.write_bytes(b"x")
+    monkeypatch.setattr(pqs, "_candle_path", lambda *a, **k: f)
+    monkeypatch.setattr(dj, "live_symbols", lambda *a, **k: {"MEZO_USDT"})
+    run_ts = f.stat().st_mtime + 3600            # the run is an hour NEWER
+    monkeypatch.setattr(dj, "_read", lambda *a, **k: {"pairs": [], "written": 0})
+
+    row = {"kind": "download", "ok": False, "ts": run_ts,
+           "meta": {"failed": ["MEZO_USDT 15m: IncompleteRead(1 byte)"],
+                    "errors": 1}}
+    import tradingagents.notifications as nt
+
+    monkeypatch.setattr(nt, "recent", lambda limit=20, kind=None: [row])
+    got = api.candles_lost()
+    assert got["recovered"] == [], got["recovered"]
+    resolved, why = api._download_resolution(dict(row))
+    assert resolved is False and "still lost" in why, why
+    assert "older than this run" in why, why
+    # the fake file has no readable parquet metadata: `bars` is None, and
+    # f"{None:,}" would raise — a truncated file must not 500 this route
+    assert "unreadable" in why, why
+
+
+def test_a_delisted_pair_is_never_listed_as_recovered(monkeypatch, tmp_path):
+    from tradingagents import api, parquet_store as pqs
+    import tradingagents.notifications as nt
+
+    f = tmp_path / "MEZO_USDT-15m.parquet"
+    f.write_bytes(b"x")
+    monkeypatch.setattr(pqs, "_candle_path", lambda *a, **k: f)
+    monkeypatch.setattr(dj, "live_symbols", lambda *a, **k: {"OTHER_USDT"})
+    monkeypatch.setattr(dj, "_read", lambda *a, **k: {"pairs": [], "written": 0})
+    row = {"kind": "download", "ok": False, "ts": f.stat().st_mtime - 60,
+           "meta": {"failed": ["MEZO_USDT 15m: no Min15 candles"], "errors": 1}}
+    monkeypatch.setattr(nt, "recent", lambda limit=20, kind=None: [row])
+    got = api.candles_lost()
+    assert got["recovered"] == [], (
+        "the file is newer than the run, but the contract is GONE: it belongs "
+        "in the delisted line, not in recovered")
+
+
+def test_a_failed_contract_lookup_is_remembered_briefly(monkeypatch):
+    """`is_delisted` runs per pair inside routes the panel polls every 20-60 s.
+    Without a negative cache a venue outage would re-enter list_contracts (with
+    its own retry budget) on every one of them."""
+    from tradingagents.dataflows import mexc_futures as fx
+
+    calls = []
+    dj._LIVE_CACHE.update(at=0.0, symbols=None, failed_at=0.0)
+    monkeypatch.setattr(fx, "list_contracts",
+                        lambda *a, **k: calls.append(1) or (_ for _ in ())
+                        .throw(OSError("no net")))
+    assert dj.live_symbols() is None
+    assert dj.live_symbols() is None
+    assert len(calls) == 1, "the failure is cached, not re-tried per call"
+    dj._LIVE_CACHE.update(at=0.0, symbols=None, failed_at=0.0)
+
+
+def test_looks_gone_only_matches_the_venues_empty_answer():
+    assert dj.looks_gone("no Min15 candles for MEZO_USDT")
+    assert dj.looks_gone("klines returned 0 bars")
+    assert not dj.looks_gone("IncompleteRead(183452 bytes read)")
+    assert not dj.looks_gone("HTTPSConnectionPool: Read timed out")
+    assert not dj.looks_gone("429 Too Many Requests")
+
+
+def test_the_gaps_count_excludes_what_no_run_can_fetch(monkeypatch):
+    """Review, 2026-08-27: counting a delisted pair in "N behind by more than a
+    bar" makes that number unreachable and pins "furthest behind" on a contract
+    nothing can fetch — MEZO 15m at 50.4 h, for ever."""
+    import time as _t
+
+    from tradingagents import api, market_sweep as msw
+
+    now = _t.time()
+    api._GAP_CACHE.update(at=0.0, payload=None)
+    monkeypatch.setattr(api, "_warm_gap_index", lambda *a, **k: None)
+    monkeypatch.setattr(msw, "candle_index", lambda scan=False: {
+        "a": {"symbol": "GONE_USDT", "timeframe": "15m", "bars": 10,
+              "last_ms": (now - 200000) * 1000},
+        "b": {"symbol": "LIVE_USDT", "timeframe": "15m", "bars": 10,
+              "last_ms": (now - 7200) * 1000},
+    })
+    monkeypatch.setattr(dj, "live_symbols", lambda *a, **k: {"LIVE_USDT"})
+    got = api.candle_gaps()
+    assert got["behind"] == 1, got
+    assert got["worst"]["symbol"] == "LIVE_USDT", got["worst"]
+    assert got["delisted_count"] == 1
+    assert got["delisted"][0]["symbol"] == "GONE_USDT"
+    assert got["pairs"] == 2, "the STORE still holds both — that count is honest"
+    api._GAP_CACHE.update(at=0.0, payload=None)
+
+
+def test_the_screen_names_the_uncatchable_pairs():
+    p = open("webapp/src/components/candles/DownloadScreen.tsx",
+             encoding="utf-8").read()
+    assert "more stored but DELISTED on MEXC" in p
+    assert "they are not counted above" in p
+
+
+@pytest.fixture
+def job(monkeypatch, tmp_path):
+    """A real _run_download with the wire and the store stubbed, so the LOOP's
+    own classification is what gets tested (review: the fix lived in a branch no
+    test entered)."""
+    import json
+
+    from tradingagents import market_sweep as msw, parquet_store as pqs
+    from tradingagents.dataflows import mexc_futures as fx
+
+    calls, errors = [], {}
+
+    def refresh(c, tf, days=365):
+        calls.append((c, tf))
+        if (c, tf) in errors:
+            raise fx.MexcFuturesError(errors[(c, tf)])
+        return object(), 7, "delta"
+
+    monkeypatch.setattr(msw, "refresh_candles", refresh)
+    monkeypatch.setattr(pqs, "save_candles", lambda *a, **k: None)
+    monkeypatch.setattr(dj, "_stopping", lambda kind: False)
+    monkeypatch.setattr(dj, "_pause", lambda *a, **k: None)
+    monkeypatch.setattr(dj, "FILES", {"download": {
+        "progress": tmp_path / "p.json", "lost": tmp_path / "lost.json"}})
+    bell = []
+    import tradingagents.notifications as nt
+
+    monkeypatch.setattr(nt, "record", lambda *a, **k: bell.append((a, k)))
+    return {"calls": calls, "errors": errors, "bell": bell,
+            "progress": lambda: json.loads((tmp_path / "p.json").read_text()),
+            "lost": lambda: json.loads((tmp_path / "lost.json").read_text())}
+
+
+def test_the_loop_skips_a_delisted_pair_without_calling_it_an_error(job,
+                                                                   monkeypatch):
+    """The branch the fix lives in, end to end: not an error, not in lost.json,
+    the run still counts as OK, and the bell names it."""
+    job["errors"][("MEZO_USDT", "15m")] = "no Min15 candles for MEZO_USDT"
+    monkeypatch.setattr(dj, "live_symbols", lambda *a, **k: {"AAA_USDT"})
+    dj._run_download({"coins": ["MEZO_USDT", "AAA_USDT"], "tfs": ["15m"]})
+
+    p = job["progress"]()
+    assert p["errors"] == 0, p
+    assert p["failed"] == [] and p["failed_pairs"] == []
+    assert p["delisted"] == ["MEZO_USDT 15m"], p["delisted"]
+    assert job["lost"]()["pairs"] == [], "never queued again"
+    assert p["done"] == 2, "a skipped pair is still SETTLED, not left pending"
+    # the bell says OK and names it — a click that did nothing must be
+    # distinguishable from a click that worked
+    (args, kw) = job["bell"][-1]
+    assert kw["ok"] is True, kw
+    assert "delisted, skipped: MEZO_USDT 15m" in kw["detail"], kw["detail"]
+
+
+def test_a_transient_failure_on_a_delisted_symbol_is_still_a_failure(job,
+                                                                    monkeypatch):
+    """Both facts, in the loop: a WIRE error is retried and then named, even for
+    a symbol the venue no longer lists. Only the venue's own "no candles"
+    answer may reclassify a pair as gone."""
+    job["errors"][("MEZO_USDT", "15m")] = "IncompleteRead(183452 bytes read)"
+    monkeypatch.setattr(dj, "live_symbols", lambda *a, **k: {"AAA_USDT"})
+    dj._run_download({"coins": ["MEZO_USDT"], "tfs": ["15m"]})
+    p = job["progress"]()
+    assert p["errors"] == 1 and not p["delisted"], p
+    assert p["failed"] == ["MEZO_USDT 15m: IncompleteRead(183452 bytes read)"]
+    assert job["lost"]()["pairs"] == [["MEZO_USDT", "15m"]], (
+        "a wire failure stays LOST so the next update asks again — the retry "
+        "ladder itself is covered in test_download_retry.py")
+
+
+def test_retry_mode_attempts_a_delisted_pair_once_and_clears_it(job,
+                                                               monkeypatch):
+    """It is offered on purpose: one attempt lets the loop classify it and empty
+    lost.json, so the button can finally go quiet."""
+    import json
+
+    (dj.FILES["download"]["lost"]).write_text(json.dumps(
+        {"pairs": [["MEZO_USDT", "15m"]], "written": 0}))
+    job["errors"][("MEZO_USDT", "15m")] = "no Min15 candles for MEZO_USDT"
+    monkeypatch.setattr(dj, "live_symbols", lambda *a, **k: {"AAA_USDT"})
+    dj._run_download({"mode": "retry"})
+    assert job["calls"] == [("MEZO_USDT", "15m")], job["calls"]
+    p = job["progress"]()
+    assert p["errors"] == 0 and p["delisted"] == ["MEZO_USDT 15m"]
+    assert job["lost"]()["pairs"] == [], "cleared for good"

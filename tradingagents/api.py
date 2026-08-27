@@ -1784,8 +1784,23 @@ def candle_gaps() -> dict:
                      "missing_bars": missing,
                      "hours_behind": round((now - last) / 3600, 1)})
     rows.sort(key=lambda r: -r["missing_bars"])
-    payload = {"rows": rows[:200], "pairs": len(rows), "behind": behind,
-               "worst": rows[0] if rows else None, "indexing": False}
+    # A pair the venue no longer lists can never catch up, so counting it in
+    # "N behind" makes that number unreachable and pins "furthest behind" on a
+    # contract nothing can fetch — MEZO 15m at 50.4 h, for ever. Named
+    # separately instead (review, 2026-08-27).
+    from tradingagents import db_jobs as dj
+
+    live = dj.live_symbols()
+    dead = [r for r in rows if dj.is_delisted(r["symbol"], live)]
+    gone_keys = {(r["symbol"], r["timeframe"]) for r in dead}
+    live_rows = [r for r in rows if (r["symbol"], r["timeframe"]) not in gone_keys]
+    behind = sum(1 for r in live_rows if r["missing_bars"] > 1)
+    payload = {"rows": live_rows[:200], "pairs": len(rows), "behind": behind,
+               "worst": live_rows[0] if live_rows else None, "indexing": False,
+               # what UPDATE cannot fix however often it runs
+               "delisted": [{"symbol": r["symbol"], "timeframe": r["timeframe"],
+                             "hours_behind": r["hours_behind"]} for r in dead],
+               "delisted_count": len(dead)}
     _GAP_CACHE.update({"at": now, "payload": payload})
     return payload
 
@@ -1844,11 +1859,15 @@ def _named_lost(row: dict) -> tuple[list[tuple[str, str]], int]:
     return pairs, max(0, int(meta.get("errors") or 0) - len(pairs))
 
 
-def _stored_now(symbol: str, tf: str, since: float = 0.0) -> dict:
+def _stored_now(symbol: str, tf: str, since: float, live=None) -> dict:
     """Is the pair in the store, fetched SINCE `since` — from its file, never a
     flag.
 
-    `since` is what makes this honest. It used to mean only "a parquet exists",
+    `since` is REQUIRED, not defaulted: a default is exactly what let two of
+    the three call sites keep printing the old lie after the third was fixed
+    (found in review, 2026-08-27).
+
+    It is what makes this honest. It used to mean only "a parquet exists",
     so a retry that stored ZERO bars still read *"resolved — every pair that run
     lost is back in the store"*: MEZO's file had been sitting there since
     Aug 25, 1:22pm while the 2:43pm retry failed four times (operator's
@@ -1865,7 +1884,7 @@ def _stored_now(symbol: str, tf: str, since: float = 0.0) -> dict:
     path = pqs._candle_path(symbol, tf)
     out = {"symbol": symbol, "timeframe": tf, "recovered": False,
            "bars": None, "when": "", "exists": False,
-           "delisted": dj.is_delisted(symbol)}
+           "delisted": dj.is_delisted(symbol, live)}
     if not path.exists():
         return out
     try:
@@ -1926,21 +1945,28 @@ def _download_resolution(row: dict) -> tuple[bool | None, str]:
     for the errors it did not name, the store is complete — measured, so a
     2:00pm failure stops reading as live only once the files exist.
     """
+    from tradingagents import db_jobs
+
     meta = row.get("meta") or {}
     if row.get("ok") or meta.get("stopped") or row.get("kind") != "download":
         return None, ""
     named, unnamed = _named_lost(row)
     when = float(row.get("ts") or 0)
     gone, still = [], []
+    live = db_jobs.live_symbols() if named else None   # one lookup per row
     for sym, tf in named:
-        got = _stored_now(sym, tf, since=when)
+        got = _stored_now(sym, tf, since=when, live=live)
         if got["delisted"]:
             gone.append(f"{sym.replace('_USDT', '')} {tf}")
         elif not got["recovered"]:
+            # `bars` is None when the parquet's metadata cannot be read — a
+            # truncated or half-written file. `f"{None:,}"` RAISES, which would
+            # 500 this route on exactly the store that needs explaining.
+            bars = (f"{got['bars']:,} bars" if isinstance(got["bars"], int)
+                    else "unreadable")
             still.append(f"{sym.replace('_USDT', '')} {tf}"
-                         + (f" (store has {got['bars']:,} bars from "
-                            f"{got['when']}, older than this run)"
-                            if got["exists"] else " (no file)"))
+                         + (f" (store has {bars} from {got['when']}, older "
+                            f"than this run)" if got["exists"] else " (no file)"))
     if still:
         return False, "still lost: " + ", ".join(still)
     if gone and not unnamed:
@@ -1984,26 +2010,34 @@ def candles_lost() -> dict:
 
     got = db_jobs._read(db_jobs.FILES["download"]["lost"])
     all_pairs = [(p[0], p[1]) for p in (got.get("pairs") or []) if len(p) == 2]
-    # A contract MEXC no longer lists is not "lost": no run can fetch it, so
-    # offering it to RETRY FAILED is a button that cannot succeed. MEZO and DRV
-    # failed four times at 2:43pm on 2026-08-27 and would have failed on every
-    # retry after it — the operator's "this update candles is not reliable".
+    # Which of the lost pairs the venue no longer lists — NAMED, still offered.
+    # One retry attempts them, the download loop classifies them on the venue's
+    # own answer (db_jobs.looks_gone AND is_delisted, two facts) and clears them
+    # out of lost.json for good. Removing them here would leave them in that
+    # file for ever with no button able to clear it, and would let a filtered,
+    # cached contract list delete work that was never attempted.
+    live = db_jobs.live_symbols()          # one lookup for the whole route
     delisted = [{"symbol": s_, "timeframe": t_} for s_, t_ in all_pairs
-                if db_jobs.is_delisted(s_)]
-    gone = {(d["symbol"], d["timeframe"]) for d in delisted}
-    pairs = [{"symbol": s_, "timeframe": t_} for s_, t_ in all_pairs
-             if (s_, t_) not in gone]
+                if db_jobs.is_delisted(s_, live)]
+    pairs = [{"symbol": s_, "timeframe": t_} for s_, t_ in all_pairs]
     recovered, failed_when, unnamed = [], "", 0
     for row in nt.recent(limit=20, kind="download"):
         meta = row.get("meta") or {}
         if row.get("ok") or meta.get("stopped"):
             continue
         named, unnamed = _named_lost(row)
-        failed_when = pv.fmt_when(float(row.get("ts") or 0))
+        when = float(row.get("ts") or 0)
+        failed_when = pv.fmt_when(when)
+        # measured against the RUN that lost them, and a contract the venue
+        # dropped is never "recovered" — it belongs in the delisted line. Both
+        # were wrong here until review caught it: the screen printed "MEZO 15m
+        # (14,030 bars, stored Aug 26 1:22am)" as recovered for a run that
+        # failed on Aug 28 at 2:43am.
         recovered = [{"symbol": r["symbol"], "timeframe": r["timeframe"],
                       "bars": r["bars"], "when": r["when"]}
-                     for r in (_stored_now(sym, tf) for sym, tf in named)
-                     if r["recovered"]]
+                     for r in (_stored_now(sym, tf, since=when)
+                               for sym, tf in named)
+                     if r["recovered"] and not r["delisted"]]
         break
     return {"pairs": pairs, "count": len(pairs),
             "written": pv.fmt_when(float(got["written"])) if got.get("written") else "",
@@ -2035,7 +2069,11 @@ def download_history(limit: int = 20) -> dict:
             "mode": m.get("mode") or "download",
             # a FAILED row says whether its lost pairs are back — from the
             # store's own files, so a fixed failure never reads as a live one
-            "lost": [_stored_now(sym, tf) for sym, tf in named],
+            # since= the run's own time: a file older than the run is not a
+            # recovery, and `delisted` rides along so the row cannot call a
+            # dropped contract "recovered" (review, 2026-08-27)
+            "lost": [_stored_now(sym, tf, since=float(r.get("ts") or 0))
+                     for sym, tf in named],
             "unnamed": unnamed,
         })
         out[-1]["resolved"], out[-1]["resolved_why"] = _download_resolution(r)

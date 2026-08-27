@@ -229,6 +229,10 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
                         "h1": round(a["profit"], 2), "h2": round(b["profit"], 2),
                         "green": r["months_green"], "months": r["months_total"],
                         "worst": round(r["worst_trade"], 2), "dd": round(r["max_dd"], 2),
+                        # a cloud row and a local row sit side by side in the
+                        # store, so the mandatory streak columns must match
+                        "streak": round(r["worst_streak"], 2),
+                        "streak_len": r["worst_streak_len"],
                         # honest when liquidation could not be read: unreachable
                         # stops are only screened out when liq is known
                         "liqs": r["liqs"], "stop_reachable": liq is not None,

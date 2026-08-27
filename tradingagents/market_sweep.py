@@ -738,6 +738,14 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                     "h1": round(h1, 2), "h2": round(h2, 2),
                     "green": sum(1 for v in m.values() if v > 0),
                     "months": len(m), "worst": round(r["worst_trade"], 2),
+                    # The WORST UNBROKEN RUN of losses, and how many trades it
+                    # took. Mandatory since APEX (worst trade -$9.12, worst run
+                    # -$79.80 over 13 trades on a $65 wallet): on a ladder the
+                    # run is what empties the account, and a worst-trade column
+                    # alone hides it. The engine has computed both all along;
+                    # 17 GB of rows were written without them.
+                    "streak": round(r["worst_streak"], 2),
+                    "streak_len": r["worst_streak_len"],
                     "dd": round(r["max_dd"], 2), "liqs": r["liqs"],
                     "stop_reachable": True, "days": days_have,
                     "bars": len(df),

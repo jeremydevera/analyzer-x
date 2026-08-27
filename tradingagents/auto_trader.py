@@ -2260,10 +2260,14 @@ def migrate_paper_slots(state: dict) -> int:
     """Move legacy `SYM#paper` slots to `SYM#paper#<strategy>`.
 
     An open demo position must not be orphaned by this change: the slot is
-    renamed to the strategy the position itself names. A legacy slot whose
-    position has no strategy, or which holds no position but a ladder step, is
-    LEFT ALONE — a step with no owner belongs to nobody, and dropping it is
-    the safe direction now that steps are per strategy.
+    renamed to the strategy the position itself names.
+
+    A legacy slot with NO position is DROPPED. All it carries is a ladder step
+    that belonged to whichever strategies happened to share the coin, and
+    steps are per strategy now — keeping it would leave a stale rung in the
+    state file that nothing reads and that a summing reader could double
+    count. A slot whose position names no strategy is left exactly as it is:
+    something is open and nobody can say whose it is, which is for a human.
     """
     moved = 0
     for key in [k for k in state if is_paper_slot(k)
@@ -2273,8 +2277,11 @@ def migrate_paper_slots(state: dict) -> int:
             continue
         pos = slot.get("position")
         owner = (pos or {}).get("strategy")
-        if not pos or not owner:
+        if not pos:
+            state.pop(key, None)          # a rung with no owner and no trade
             continue
+        if not owner:
+            continue                      # open, unattributable: leave it
         fresh = state_key(coin_of_slot(key), True, owner)
         if fresh in state and (state[fresh] or {}).get("position"):
             continue                      # already migrated; leave both alone

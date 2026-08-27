@@ -130,6 +130,27 @@ class FakeFx:
 _T0 = int(time.time()) - 400 * at.BAR_SECONDS
 
 
+
+def _paper(state, symbol):
+    """The ONE paper slot for a coin, whatever the strategy is called.
+
+    Paper slots became per strategy on 2026-08-27 (`SYM#paper#KEY`), so
+    `state[at.state_key(sym, True)]` - the two-argument form - points at a key
+    that no longer exists. These tests care that the simulated book did the
+    right thing, not which strategy name the fixture happened to use.
+    """
+    keys = [k for k in state
+            if at.is_paper_slot(k) and at.coin_of_slot(k) == symbol]
+    assert len(keys) == 1, f"expected one paper slot for {symbol}, got {keys}"
+    return state[keys[0]]
+
+
+def _paper_or_none(state, symbol):
+    keys = [k for k in state
+            if at.is_paper_slot(k) and at.coin_of_slot(k) == symbol]
+    return state[keys[0]] if len(keys) == 1 else None
+
+
 def _bars(closes, *, spread=0.001):
     """Closed 4h bars ending well in the past so none is 'in progress'."""
     n = len(closes)
@@ -173,7 +194,7 @@ def test_dry_cycle_enters_on_signal_and_stays_dry(sandbox):
     assert order["side"] == FakeFx.SIDE_OPEN_LONG
     assert order["leverage"] == at.LEVERAGE
     assert fx.stops == [], "dry run must not rest a live stop"
-    pos = state[at.state_key("BTC_USDT", True)]["position"]
+    pos = _paper(state, "BTC_USDT")["position"]
     assert pos["strategy"] == "mom6" and pos["side"] == 1
     assert pos["margin"] == 10.0
     entries = [json.loads(x) for x in
@@ -187,7 +208,7 @@ def test_same_bar_is_not_traded_twice(sandbox):
     settings = {"strategies": ["mom6"], "coins": ["BTC_USDT"], "margin": 10.0}
     state = {}
     at.process_symbol("BTC_USDT", settings, state, fx=fx, dry=True)
-    state[at.state_key("BTC_USDT", True)]["position"] = None       # pretend it closed elsewhere
+    _paper(state, "BTC_USDT")["position"] = None       # pretend it closed elsewhere
     at.process_symbol("BTC_USDT", settings, state, fx=fx, dry=True)
     assert len(fx.orders) == 1, "one candle, one decision"
 
@@ -198,13 +219,13 @@ def test_stop_loss_advances_the_ladder_and_win_resets_it(sandbox):
     fx = FakeFx(_bars(closes))
     state = {}
     at.process_symbol("BTC_USDT", settings, state, fx=fx, dry=True)
-    pos = state[at.state_key("BTC_USDT", True)]["position"]
+    pos = _paper(state, "BTC_USDT")["position"]
     # Price then crashes through the stop on the next bar.
     crash = closes + [pos["sl"] * 0.99]
     fx2 = FakeFx(_bars(crash))
     at.process_symbol("BTC_USDT", settings, state, fx=fx2, dry=True)
-    assert state[at.state_key("BTC_USDT", True)]["position"] is None
-    assert state[at.state_key("BTC_USDT", True)]["step"] == 1, "a stop-out must move the ladder"
+    assert _paper(state, "BTC_USDT")["position"] is None
+    assert _paper(state, "BTC_USDT")["step"] == 1, "a stop-out must move the ladder"
     # Next entry sizes at the same rung value (ladder step 1 = 1× base).
     entries = [json.loads(x) for x in
                at.LEDGER_PATH.read_text().strip().splitlines()]
@@ -236,12 +257,12 @@ def test_dry_position_exits_on_live_tick_not_just_closed_bars(sandbox):
     fx = FakeFx(_bars(closes))
     state = {}
     at.process_symbol("BTC_USDT", settings, state, fx=fx, dry=True)
-    pos = state[at.state_key("BTC_USDT", True)]["position"]
+    pos = _paper(state, "BTC_USDT")["position"]
     # Same candles (no new closed bar), but the live tick is through the stop.
     fx.last_price = lambda symbol: pos["sl"] * 0.999
     at.process_symbol("BTC_USDT", settings, state, fx=fx, dry=True)
-    assert state[at.state_key("BTC_USDT", True)]["position"] is None
-    assert state[at.state_key("BTC_USDT", True)]["step"] == 1
+    assert _paper(state, "BTC_USDT")["position"] is None
+    assert _paper(state, "BTC_USDT")["step"] == 1
 
 
 def test_next_sleep_wakes_just_after_the_4h_boundary(sandbox):
@@ -265,7 +286,7 @@ def test_next_sleep_polls_fast_only_for_a_paper_position(sandbox):
     assert at.next_sleep_seconds(boundary + 100) == at.POLL_SECONDS, \
         "a live position must not trigger the fast poll"
     at.STATE_PATH.write_text(json.dumps(
-        {"BTC_USDT#paper": {"step": 0, "last_ts": 1,
+        {at.state_key("BTC_USDT", True, "mom6"): {"step": 0, "last_ts": 1,
                             "position": {"side": 1, "dry": True}}}))
     assert at.next_sleep_seconds(boundary + 100) == at.DRY_EXIT_POLL_SECONDS
 
@@ -355,7 +376,7 @@ def test_realtime_sweep_enters_on_its_own_1m_timeframe(sandbox):
     state = {}
     at.process_symbol("BTC_USDT", settings, state, fx=fx, dry=True)
     assert seen == ["Min1"], "realtime sweep must fetch 1-minute candles"
-    pos = state[at.state_key("BTC_USDT", True)]["position"]
+    pos = _paper(state, "BTC_USDT")["position"]
     assert pos["strategy"] == "sweep_rt" and pos["side"] == 1
     assert pos["tp"] == pytest.approx(100.0 * 1.018)
     assert pos["sl"] == pytest.approx(100.0 * 0.994)
@@ -486,12 +507,12 @@ def test_tripped_strategy_still_tracks_its_open_position_exit(sandbox):
     fx = FakeFx(_bars(closes))
     state = {}
     at.process_symbol("BTC_USDT", settings, state, fx=fx, dry=True)
-    pos = state[at.state_key("BTC_USDT", True)]["position"]
+    pos = _paper(state, "BTC_USDT")["position"]
     assert pos is not None
     fx.last_price = lambda sym: pos["sl"] * 0.999   # tick through the stop
     at.process_symbol("BTC_USDT", settings, state, fx=fx, dry=True,
                       tripped=frozenset({"mom6"}))
-    assert state[at.state_key("BTC_USDT", True)]["position"] is None, \
+    assert _paper(state, "BTC_USDT")["position"] is None, \
         "exit must be detected even while the strategy is paused"
 
 
@@ -509,7 +530,7 @@ def test_per_strategy_margin_overrides_the_global(sandbox):
                       {"strategies": ["mom6"], "coins": ["BTC_USDT"],
                        "margin": 10.0, "strategy_margins": {"mom6": 25}},
                       state, fx=fx, dry=True)
-    assert state[at.state_key("BTC_USDT", True)]["position"]["margin"] == 25
+    assert _paper(state, "BTC_USDT")["position"]["margin"] == 25
 
 
 def test_manual_close_records_the_exchanges_real_pnl(sandbox):
@@ -764,7 +785,7 @@ def test_paper_bracket_catches_an_intrabar_wick(sandbox):
     state = {}
     settings = {"strategies": ["mom6"], "coins": ["BTC_USDT"], "margin": 10.0}
     at.process_symbol("BTC_USDT", settings, state, fx=fx, dry=True)
-    st = state[at.state_key("BTC_USDT", True)]
+    st = _paper(state, "BTC_USDT")
     pos = st["position"]
     assert pos and pos["side"] == 1
 
@@ -805,7 +826,7 @@ def test_zero_price_never_books_a_paper_exit(sandbox):
         settings = {"strategies": ["mom6"], "coins": ["BTC_USDT"],
                     "margin": 10.0}
         at.process_symbol("BTC_USDT", settings, state, fx=fx, dry=True)
-        st = state[at.state_key("BTC_USDT", True)]
+        st = _paper(state, "BTC_USDT")
         assert st["position"] and st["position"]["side"] == side
         # now the ticker goes dark exactly the way MEXC does under a 510
         fx.last_price = lambda s: (_ for _ in ()).throw(
@@ -952,10 +973,12 @@ def test_flat_sizing_never_ladders(sandbox):
     assert at.staked_margin("mom6", s_mart, 6) == 5.0 * at.LADDER[6]
     # and end to end: a flat book sizes the order off the base margin
     fx = FakeFx(_bars([100.0] * 60 + [102.0]))
-    state = {at.state_key("BTC_USDT", True): {"step": 6, "last_ts": {},
-                                              "position": None}}
+    # the rung lives in the STRATEGY's own paper slot now, so seed it there
+    state = {at.state_key("BTC_USDT", True, "mom6"): {"step": 6,
+                                                      "last_ts": {},
+                                                      "position": None}}
     at.process_symbol("BTC_USDT", s_flat, state, fx=fx, dry=True)
-    pos = state[at.state_key("BTC_USDT", True)]["position"]
+    pos = _paper(state, "BTC_USDT")["position"]
     assert pos and pos["margin"] == 5.0, \
         "deep in the ladder, flat still stakes the base"
 
@@ -975,7 +998,7 @@ def test_demo_runs_the_same_entry_gates_as_live(sandbox):
     at.process_symbol("BDX_USDT",
                       {"strategies": ["fade15_1m"], "coins": ["BDX_USDT"],
                        "margin": 10.0}, state, fx=fx, dry=True)
-    assert state.get(at.state_key("BDX_USDT", True), {}).get("position") is None, \
+    assert (_paper_or_none(state, "BDX_USDT") or {}).get("position") is None, \
         "the demo must refuse a pair whose cost exceeds its target"
     entries = [json.loads(x) for x in
                at.LEDGER_PATH.read_text().strip().splitlines()]
@@ -1197,13 +1220,13 @@ def test_panic_stop_closes_everything(sandbox):
         {"symbol": "A_USDT", "positionType": 1, "holdVol": 10, "positionId": 1},
         {"symbol": "B_USDT", "positionType": 2, "holdVol": 20, "positionId": 2}]
     at.save_state({"A_USDT": {"step": 3, "position": {"side": 1}},
-                   "A_USDT#paper": {"step": 1, "position": {"side": 1}}})
+                   at.state_key("A_USDT", True, "mom6_1h_g"): {"step": 1, "position": {"side": 1}}})
     rep = at.panic_stop(fx=fx)
     assert rep["halted"] and set(rep["closed"]) == {"A_USDT", "B_USDT"}
     assert len(fx.orders) == 2, "every real position must get a close order"
     after = at.load_state()
     assert after["A_USDT"]["position"] is None, "live book cleared"
-    assert after["A_USDT#paper"]["position"] is not None, \
+    assert _paper(after, "A_USDT")["position"] is not None, \
         "paper book is not real money and must be left alone"
 
 
@@ -1216,7 +1239,7 @@ def test_capped_order_rewrites_its_margin(sandbox):
     at.process_symbol("BTC_USDT",
                       {"strategies": ["mom6"], "coins": ["BTC_USDT"],
                        "margin": 10.0}, state, fx=fx, dry=True)
-    pos = state[at.state_key("BTC_USDT", True)]["position"]
+    pos = _paper(state, "BTC_USDT")["position"]
     assert pos["vol"] == 50
     assert pos["margin"] == pytest.approx(2.5), \
         "margin must match the size that actually went to market"
@@ -1261,13 +1284,13 @@ def test_running_both_books_keeps_them_completely_separate(sandbox):
     for dry in at.active_modes({"enabled": True, "dry_run": True}):
         at.process_symbol("BTC_USDT", settings, state, fx=fx, dry=dry)
     live = state["BTC_USDT"]["position"]
-    paper = state[at.state_key("BTC_USDT", True)]["position"]
+    paper = _paper(state, "BTC_USDT")["position"]
     assert live and paper, "both books must hold a position"
     assert live["dry"] is False and paper["dry"] is True
     assert [o["dry_run"] for o in fx.orders] == [False, True], \
         "exactly one real order and one simulated order"
     # A loss on the paper book must not move the live book's ladder.
-    state[at.state_key("BTC_USDT", True)]["step"] = 4
+    _paper(state, "BTC_USDT")["step"] = 4
     assert state["BTC_USDT"]["step"] == 0
 
 
@@ -1661,7 +1684,7 @@ def test_a_failed_size_leaves_the_candle_unseen():
     ALICE's entry died, and the candle had already been ticked off — so the
     signal was never retried."""
     import inspect
-    src = inspect.getsource(at.process_symbol)
+    src = inspect.getsource(at._process_slot)
     assert "_prev_seen = st[\"last_ts\"].get(spec[\"interval\"], 0)" in src
     assert src.count('st["last_ts"][spec["interval"]] = _prev_seen') == 2, \
         "both the sizing and the order path must hand the candle back"

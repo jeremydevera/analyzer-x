@@ -11,6 +11,16 @@ import pandas as pd
 import tradingagents.auto_trader as at
 
 
+
+
+def _slot(state, symbol="FLAT_USDT"):
+    """The coin's one paper slot - per strategy since 2026-08-27."""
+    from tradingagents import auto_trader as _at
+
+    keys = [k for k in state
+            if _at.is_paper_slot(k) and _at.coin_of_slot(k) == symbol]
+    return state[keys[0]] if len(keys) == 1 else None
+
 def _bars(n=300, px=100.0):
     """Flat candles — no momentum, so no signal on any bar."""
     t0 = pd.Timestamp.utcnow().tz_localize(None).floor("h") - pd.Timedelta(hours=n)
@@ -45,7 +55,7 @@ SETTINGS = {"strategies": ["mom6_1h_g"],
 def test_a_quiet_bar_is_recorded_as_seen():
     fx, state = FX(_bars()), {}
     at.process_symbol("FLAT_USDT", SETTINGS, state, fx=fx, dry=True)
-    seen = (state.get("FLAT_USDT#paper") or {}).get("last_ts") or {}
+    seen = (_slot(state) or {}).get("last_ts") or {}
     assert seen.get("Min60"), (
         "a bar with no signal was not marked seen — it will be re-read until "
         "it goes stale, emitting a false stale_skip every quiet hour")
@@ -62,9 +72,9 @@ def test_a_quiet_bar_is_not_re_evaluated_forever(tmp_path, monkeypatch):
     monkeypatch.setattr(at, "MAX_SIGNAL_AGE_FRACTION", 10_000)
     fx, state = FX(_bars()), {}
     at.process_symbol("FLAT_USDT", SETTINGS, state, fx=fx, dry=True)
-    first = dict((state.get("FLAT_USDT#paper") or {}).get("last_ts") or {})
+    first = dict((_slot(state) or {}).get("last_ts") or {})
     at.process_symbol("FLAT_USDT", SETTINGS, state, fx=fx, dry=True)
-    assert (state.get("FLAT_USDT#paper") or {}).get("last_ts") == first
+    assert (_slot(state) or {}).get("last_ts") == first
     rows = at.ledger_tail(50) if at.LEDGER_PATH.exists() else []
     assert not [r for r in rows if r.get("action") == "stale_skip"], (
         "a quiet bar produced a stale_skip")

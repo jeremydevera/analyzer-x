@@ -186,8 +186,13 @@ export default function StrategiesGrid() {
               {([["strategy", "13%"], ["tf", "4%"], ["TP/SL %", "7%"],
                  ["books", "12%"], ["coins", "8%"], ["margin $", "6%"],
                  ["rung", "6%"], [`ladder $ · ${flat ? "flat" : "DEEP"}`, "10%"],
-                 ["next $", "5%"], ["loss cap $", "6%"], ["today $", "6%"],
-                 ["PROFIT $", "6%"], ["W / L", "5%"], ["backtest", "6%"]] as [string, string][])
+                 ["next $", "5%"], ["loss cap $", "5%"], ["today $", "5%"],
+                 // BOTH books, named. A row ticked LIVE used to show only its
+                 // live record, so there was nowhere to see what its demo had
+                 // done — and "today $" printed the REAL book's figure even on
+                 // a demo-only row (both fixed 2026-08-27).
+                 ["LIVE $ · W/L", "9%"], ["DEMO $ · W/L", "9%"],
+                 ["backtest", "6%"]] as [string, string][])
                 .map(([h, w]) => (
                 <TableCell key={h} isHeader style={{ width: w }}
                   className="px-2 py-1.5 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400">{h}</TableCell>
@@ -311,12 +316,36 @@ export default function StrategiesGrid() {
                 <TableCell className={`px-2 py-1.5 text-theme-xs ${(r.today ?? 0) >= 0 ? "text-success-600" : "text-error-500"}`}>
                   {fmtMoney(r.today)}{r.tripped && <span className="ml-1 font-semibold text-error-500">PAUSED</span>}
                 </TableCell>
-                <TableCell className={`px-2 py-1.5 text-theme-xs font-semibold ${r.pnl >= 0 ? "text-success-600" : "text-error-500"}`}>{fmtMoney(r.pnl)}</TableCell>
-                <TableCell className="px-2 py-1.5 text-theme-xs">
-                  <span className="text-success-600">{r.wins}</span>
-                  <span className="text-gray-400"> / </span>
-                  <span className="text-error-500">{r.losses}</span>
-                </TableCell>
+                {/* One cell per BOOK: its realized profit and its own W/L.
+                    Greyed when the row is not armed on that book, so an empty
+                    record reads as "not running there" and not as "no wins". */}
+                {([["real", r.real], ["paper", r.paper]] as const).map(([which, b]) => {
+                  const armed = b?.armed ?? (which === "real"
+                    ? r.books.includes("real") : r.books.includes("paper"));
+                  const pnl = b?.pnl ?? 0, w = b?.wins ?? 0, l = b?.losses ?? 0;
+                  const n = w + l;
+                  return (
+                    <TableCell key={which}
+                      className={`px-2 py-1.5 text-theme-xs ${armed ? "" : "opacity-45"}`}>
+                      <span className={`font-semibold ${pnl >= 0 ? "text-success-600" : "text-error-500"}`}>
+                        {fmtMoney(pnl)}
+                      </span>
+                      <span className="ml-1 whitespace-nowrap">
+                        <span className="text-success-600">{w}</span>
+                        <span className="text-gray-400">/</span>
+                        <span className="text-error-500">{l}</span>
+                        {n > 0 && (
+                          <span className="ml-1 text-gray-400">
+                            {Math.round((100 * w) / n)}%
+                          </span>
+                        )}
+                      </span>
+                      {!armed && n === 0 && (
+                        <span className="ml-1 text-gray-400">not armed</span>
+                      )}
+                    </TableCell>
+                  );
+                })}
                 <TableCell className="px-2 py-1.5">
                   <button onClick={() => runBacktest(r.key)}
                     disabled={!r.coins.length || (bt?.running && bt.key === r.key)}

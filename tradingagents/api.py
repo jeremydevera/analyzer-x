@@ -846,6 +846,18 @@ def trade_panic(body: dict) -> dict:
     return at.panic_stop(close_positions=bool(body.get("close_positions", True)))
 
 
+def _book_record(stats: dict, today: dict, key: str, armed: bool) -> dict:
+    """One book's realized record for one strategy, as the screen shows it."""
+    got = stats.get(key) or {}
+    return {"pnl": round(float(got.get("pnl") or 0.0), 2),
+            "trades": int(got.get("trades") or 0),
+            "wins": int(got.get("wins") or 0),
+            "losses": int(got.get("losses") or 0),
+            "winrate": got.get("winrate"),
+            "today": round(float(today.get(key) or 0.0), 2),
+            "armed": bool(armed)}
+
+
 @app.get("/api/trade/strategies")
 def trade_strategies(catalog: bool = False) -> dict:
     """The DEPLOYED strategies by default — the ones with a book or a coin.
@@ -870,7 +882,11 @@ def trade_strategies(catalog: bool = False) -> dict:
     runstate = at.load_state()
     tripped = at.tripped_strategies(settings)
     locks = at.timeframe_locks(settings)
-    today_by = at.pnl_today_by_strategy(dry=False)
+    # PER BOOK. This was `dry=False` for every row, so a demo-only row printed
+    # the real book's today — always 0.00 for a strategy that has never traded
+    # real money, whatever its demo did (label-must-match-data).
+    today_real = at.pnl_today_by_strategy(dry=False)
+    today_paper = at.pnl_today_by_strategy(dry=True)
     deployed = [k for k in at.STRATEGY_ORDER
                 if (books.get(k) or coins.get(k))]
     keys = at.STRATEGY_ORDER if catalog else deployed
@@ -944,11 +960,21 @@ def trade_strategies(catalog: bool = False) -> dict:
             "notional": round(base_m * at.LEVERAGE, 2),
             "tripped": key in tripped,
             "live_locked": locks.get(key),
-            "today": round(float(today_by.get(key) or 0.0), 2),
+            # the row's OWN book, unchanged for every existing reader
+            "today": round(float((today_real if _is_real else today_paper)
+                                 .get(key) or 0.0), 2),
             "pnl": round(float(st_row.get("pnl") or 0.0), 2),
             "trades": int(st_row.get("trades") or 0),
             "wins": int(st_row.get("wins") or 0),
             "losses": int(st_row.get("losses") or 0),
+            # ...and BOTH books, so the screen can show them side by side. A
+            # strategy ticked LIVE and DEMO has two separate records and they
+            # must never be blended into one "record" the operator judges it
+            # by — `strategy_stats(dry=...)` keeps them apart at the source.
+            "real": _book_record(stats_real, today_real, key,
+                                 "real" in (books.get(key) or [])),
+            "paper": _book_record(stats_paper, today_paper, key,
+                                  "paper" in (books.get(key) or [])),
             "open_on": open_real_on,
             "open_on_paper": open_paper_on,
         })

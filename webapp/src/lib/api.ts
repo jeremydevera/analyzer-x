@@ -580,13 +580,29 @@ export interface StrategyDeployRow {
   next_stake?: number;
   notional?: number;
   tripped?: boolean;
+  /** the row's OWN book */
   today?: number;
   pnl: number;
   trades: number;
   wins: number;
   losses: number;
+  /** BOTH books, so a row ticked LIVE can still show what its demo did.
+   *  Live and demo are separate records and are never blended. */
+  real?: BookRecord;
+  paper?: BookRecord;
   open_on: string[];
   open_on_paper: string[];
+}
+
+/** One book's realized record for a strategy. */
+export interface BookRecord {
+  pnl: number;
+  trades: number;
+  wins: number;
+  losses: number;
+  winrate?: number | null;
+  today: number;
+  armed: boolean;
 }
 
 export interface TradeStrategies {

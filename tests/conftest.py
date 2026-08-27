@@ -158,7 +158,12 @@ def _never_touch_the_live_book(tmp_path, monkeypatch):
                            ("SETTINGS_PATH", "auto_trade.json"),
                            ("LOG_PATH", "auto_trade.log"),
                            ("PID_PATH", "auto_trade.pid"),
-                           ("KILL_PATH", "auto_trade.KILL")):
+                           ("KILL_PATH", "auto_trade.KILL"),
+                           # found by the guard test on Aug 27, 2026: WANT is
+                           # how the supervisor is TOLD the live runner should
+                           # be running, and LOCK is what the runner holds
+                           ("LOCK_PATH", "auto_trade.lock"),
+                           ("WANT_PATH", "auto_trade.WANT")):
         if hasattr(at, name):
             monkeypatch.setattr(at, name, sandbox / filename)
     # The NOTIFICATION FEED is written from the same code paths, so it has to
@@ -197,7 +202,11 @@ def _never_touch_the_live_book(tmp_path, monkeypatch):
                              ("STATES", "state"), ("WORKERS", "workers"),
                              ("CANDLES", "candles"),
                              ("INDEX_PATH", "candle_index.json"),
-                             ("HANDOFF_PATH", "db_backtest.HANDOFF")):
+                             ("HANDOFF_PATH", "db_backtest.HANDOFF"),
+                             ("MANIFEST", "manifest.json"),
+                             ("PIDFILE", "sweep.pid"),
+                             ("PROGRESS", "progress.json"),
+                             ("ROWS", "rows.jsonl")):
             if hasattr(_msw2, _name):
                 monkeypatch.setattr(_msw2, _name,
                                     _sw / _leaf if _leaf else _sw)
@@ -207,6 +216,45 @@ def _never_touch_the_live_book(tmp_path, monkeypatch):
         from tradingagents import rows_index as _ri
 
         monkeypatch.setattr(_ri, "DB_PATH", sandbox / "rows.db")
+        if hasattr(_ri, "PIDFILE"):
+            monkeypatch.setattr(_ri, "PIDFILE", sandbox / "rows_index.pid")
+    except Exception:
+        pass
+    try:
+        # parquet_store was the hole this fixture's own comment warns about,
+        # still open. Aug 27, 2026 8:07am: the 60-day market sweep finished at
+        # 7:56am having measured 22,478,876 combinations and written its
+        # snapshot to ~/.tradingagents/parquet/grids/2026-08-27-grid.parquet;
+        # eleven minutes later a test that folds a grid replaced that file
+        # with its own 40 fixture rows (APEX 1h, signals s0..s39). The store
+        # itself survived because ROWDIR is sandboxed above; the snapshot the
+        # report page points at did not, and the day's fold had to be re-run.
+        from tradingagents import parquet_store as _pqs
+
+        _pq = sandbox / "parquet"
+        for _name, _leaf in (("ROOT", ""), ("CANDLES", "candles"),
+                             ("GRIDS", "grids")):
+            if hasattr(_pqs, _name):
+                monkeypatch.setattr(_pqs, _name,
+                                    _pq / _leaf if _leaf else _pq)
+    except Exception:
+        pass
+    try:
+        # parquet_store was the hole the comment above warns about, still open.
+        # Aug 27, 2026 8:07am: the 60-day sweep finished at 7:56am having
+        # measured 22,478,876 combinations and written its snapshot to
+        # ~/.tradingagents/parquet/grids/2026-08-27-grid.parquet; eleven
+        # minutes later a test that folds a grid replaced that file with 40
+        # fixture rows (APEX 1h, signals s0..s39). The previous day's snapshot
+        # is 338,936,957 bytes and 9,439,792 rows, for scale.
+        from tradingagents import parquet_store as _pqs
+
+        _pq = sandbox / "parquet"
+        for _name, _leaf in (("ROOT", ""), ("CANDLES", "candles"),
+                             ("GRIDS", "grids")):
+            if hasattr(_pqs, _name):
+                monkeypatch.setattr(_pqs, _name,
+                                    _pq / _leaf if _leaf else _pq)
     except Exception:
         pass
     try:

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 21, "total": 51, "rows": 1751928, "note": "HEI 15m: rule 13/105 (pivot)", "pct": 41.2, "updated": "2026-08-27T16:05:35Z"}
+{"shard": 11, "stage": "testing", "done": 21, "total": 51, "rows": 1757048, "note": "HEI 15m: rule 45/105 (zscore20)", "pct": 41.2, "updated": "2026-08-27T16:06:20Z"}

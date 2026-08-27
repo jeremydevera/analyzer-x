@@ -1,0 +1,587 @@
+{
+  "name": "win30-flat-23",
+  "why": "The flat rows that were 100.00% over the last 30 days AND still profitable in every window the candle store holds (84-90 days). 23 of 51 passed; 14 of the 28 that failed LOSE money over the full window. Screened 2026-08-27.",
+  "measured": {
+    "base_margin": 5.0,
+    "notional": 100.0,
+    "leverage": 20,
+    "sizing": "flat",
+    "costs": "taker fee from each contract's own book, 0.03%/side slippage on entry and exit, every published funding settlement inside each trade's window; stop checked before target inside a bar",
+    "depth": "84-90 days per pair, so the 3-month and full-history windows are the same window - this is a 3-month screen, not a year",
+    "shape": "SL 4.00% against TP 0.40% means the average win was $0.26 and the average loss $4.14 at $5 margin: ONE loss erases SIXTEEN wins, and the row needs ~94% forever. INVERTED_BRACKETS in auto_trader.py carries each row's own break-even against what it measured."
+  },
+  "base_margin": 5.0,
+  "sizing": "flat",
+  "book": [
+    "paper"
+  ],
+  "not_armed": [
+    {
+      "row": "BWM84WA5",
+      "coin": "NEO",
+      "tf": "1h",
+      "signal": "killzone",
+      "sl": 4.0,
+      "tp": 0.4,
+      "score": 2.12,
+      "why": "killzone SL 4.00/TP 0.60 (score +3.18) holds NEO 1h; MEXC nets two positions on one contract into one"
+    },
+    {
+      "row": "9VADZNBK",
+      "coin": "COMP",
+      "tf": "1h",
+      "signal": "hull20",
+      "sl": 4.0,
+      "tp": 0.4,
+      "score": 1.07,
+      "why": "fisher SL 4.00/TP 0.40 (score +2.00) holds COMP 1h; MEXC nets two positions on one contract into one"
+    },
+    {
+      "row": "VKN5KX69",
+      "coin": "HAEDAL",
+      "tf": "4h",
+      "signal": "ibs",
+      "sl": 3.0,
+      "tp": 0.4,
+      "score": 1.05,
+      "why": "ibs SL 3.00/TP 0.60 (score +2.95) holds HAEDAL 4h; MEXC nets two positions on one contract into one"
+    },
+    {
+      "row": "CMQ6QS5S",
+      "coin": "HAEDAL",
+      "tf": "4h",
+      "signal": "ibs",
+      "sl": 4.0,
+      "tp": 0.4,
+      "score": 0.62,
+      "why": "ibs SL 3.00/TP 0.60 (score +2.95) holds HAEDAL 4h; MEXC nets two positions on one contract into one"
+    }
+  ],
+  "strategies": {
+    "zscore20_1h_sl4tp06": {
+      "coins": [
+        "GLM_USDT"
+      ],
+      "rows": [
+        "ZL8KGSBN"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "paper"
+      ],
+      "measured": {
+        "GLM": {
+          "window_days": 89,
+          "profit_full": 36.46,
+          "trades_full": 109,
+          "winrate_full": 97.25,
+          "profit_1mo": 14.3,
+          "trades_1mo": 31,
+          "green": "4/4",
+          "dip": -5.47,
+          "worst_streak": -4.16,
+          "streak_trades": 1,
+          "gate": "ok",
+          "score_weakest_window": 6.08
+        }
+      }
+    },
+    "fisher_1h_sl4tp06": {
+      "coins": [
+        "ORDI_USDT"
+      ],
+      "rows": [
+        "QCQU8R9D"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "paper"
+      ],
+      "measured": {
+        "ORDI": {
+          "window_days": 90,
+          "profit_full": 26.23,
+          "trades_full": 137,
+          "winrate_full": 94.16,
+          "profit_1mo": 19.78,
+          "trades_1mo": 43,
+          "green": "4/4",
+          "dip": -15.18,
+          "worst_streak": -8.28,
+          "streak_trades": 2,
+          "gate": "ok",
+          "score_weakest_window": 4.37
+        }
+      }
+    },
+    "fvg_1h_sl4tp06": {
+      "coins": [
+        "HBAR_USDT"
+      ],
+      "rows": [
+        "4Z8R6ECY"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "paper"
+      ],
+      "measured": {
+        "HBAR": {
+          "window_days": 90,
+          "profit_full": 21.25,
+          "trades_full": 128,
+          "winrate_full": 95.31,
+          "profit_1mo": 13.33,
+          "trades_1mo": 35,
+          "green": "3/4",
+          "dip": -14.53,
+          "worst_streak": -8.37,
+          "streak_trades": 2,
+          "gate": "ok",
+          "score_weakest_window": 3.54
+        }
+      }
+    },
+    "killzone_1h_sl4tp06": {
+      "coins": [
+        "NEO_USDT"
+      ],
+      "rows": [
+        "6TBBAGB8"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "paper"
+      ],
+      "measured": {
+        "NEO": {
+          "window_days": 90,
+          "profit_full": 19.05,
+          "trades_full": 111,
+          "winrate_full": 93.69,
+          "profit_1mo": 15.85,
+          "trades_1mo": 34,
+          "green": "3/4",
+          "dip": -11.15,
+          "worst_streak": -4.2,
+          "streak_trades": 1,
+          "gate": "warn",
+          "score_weakest_window": 3.18
+        }
+      }
+    },
+    "rsi2_1h_sl4tp06": {
+      "coins": [
+        "JELLYJELLY_USDT"
+      ],
+      "rows": [
+        "KFS2A86K"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "paper"
+      ],
+      "measured": {
+        "JELLYJELLY": {
+          "window_days": 90,
+          "profit_full": 18.98,
+          "trades_full": 142,
+          "winrate_full": 92.96,
+          "profit_1mo": 17.8,
+          "trades_1mo": 39,
+          "green": "3/4",
+          "dip": -16.67,
+          "worst_streak": -8.28,
+          "streak_trades": 2,
+          "gate": "warn",
+          "score_weakest_window": 3.16
+        }
+      }
+    },
+    "ibs_4h_sl3tp06": {
+      "coins": [
+        "HAEDAL_USDT"
+      ],
+      "rows": [
+        "NH8V567C"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "paper"
+      ],
+      "measured": {
+        "HAEDAL": {
+          "window_days": 89,
+          "profit_full": 17.67,
+          "trades_full": 109,
+          "winrate_full": 91.74,
+          "profit_1mo": 17.44,
+          "trades_1mo": 38,
+          "green": "3/4",
+          "dip": -13.39,
+          "worst_streak": -12.56,
+          "streak_trades": 4,
+          "gate": "warn",
+          "score_weakest_window": 2.95
+        }
+      }
+    },
+    "ote_1h_sl4tp04": {
+      "coins": [
+        "SEI_USDT",
+        "FLOKI_USDT",
+        "PENDLE_USDT"
+      ],
+      "rows": [
+        "LRZ35AZN",
+        "FHX7MWRA",
+        "W44WZ8YB"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "paper"
+      ],
+      "measured": {
+        "SEI": {
+          "window_days": 90,
+          "profit_full": 15.97,
+          "trades_full": 128,
+          "winrate_full": 96.88,
+          "profit_1mo": 11.35,
+          "trades_1mo": 43,
+          "green": "3/4",
+          "dip": -4.91,
+          "worst_streak": -4.15,
+          "streak_trades": 1,
+          "gate": "warn",
+          "score_weakest_window": 2.66
+        },
+        "FLOKI": {
+          "window_days": 89,
+          "profit_full": 0.66,
+          "trades_full": 121,
+          "winrate_full": 94.21,
+          "profit_1mo": 8.58,
+          "trades_1mo": 33,
+          "green": "3/4",
+          "dip": -17.8,
+          "worst_streak": -4.14,
+          "streak_trades": 1,
+          "gate": "warn",
+          "score_weakest_window": 0.11
+        },
+        "PENDLE": {
+          "window_days": 90,
+          "profit_full": 0.67,
+          "trades_full": 121,
+          "winrate_full": 94.21,
+          "profit_1mo": 8.29,
+          "trades_1mo": 32,
+          "green": "3/4",
+          "dip": -18.58,
+          "worst_streak": -4.14,
+          "streak_trades": 1,
+          "gate": "warn",
+          "score_weakest_window": 0.11
+        }
+      }
+    },
+    "killzone_1h_sl4tp04": {
+      "coins": [
+        "FET_USDT"
+      ],
+      "rows": [
+        "V7YSJMY9"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "paper"
+      ],
+      "measured": {
+        "FET": {
+          "window_days": 84,
+          "profit_full": 13.21,
+          "trades_full": 135,
+          "winrate_full": 96.3,
+          "profit_1mo": 12.21,
+          "trades_1mo": 47,
+          "green": "2/3",
+          "dip": -12.06,
+          "worst_streak": -8.25,
+          "streak_trades": 2,
+          "gate": "warn",
+          "score_weakest_window": 2.2
+        }
+      }
+    },
+    "psar_1h_sl4tp04": {
+      "coins": [
+        "LYN_USDT"
+      ],
+      "rows": [
+        "6JZRXUEQ"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "paper"
+      ],
+      "measured": {
+        "LYN": {
+          "window_days": 90,
+          "profit_full": 13.16,
+          "trades_full": 134,
+          "winrate_full": 96.27,
+          "profit_1mo": 12.58,
+          "trades_1mo": 48,
+          "green": "3/4",
+          "dip": -9.64,
+          "worst_streak": -4.14,
+          "streak_trades": 1,
+          "gate": "warn",
+          "score_weakest_window": 2.19
+        }
+      }
+    },
+    "fisher_1h_sl4tp04": {
+      "coins": [
+        "COMP_USDT"
+      ],
+      "rows": [
+        "TSY3VV3B"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "paper"
+      ],
+      "measured": {
+        "COMP": {
+          "window_days": 89,
+          "profit_full": 12.02,
+          "trades_full": 115,
+          "winrate_full": 96.52,
+          "profit_1mo": 9.14,
+          "trades_1mo": 36,
+          "green": "4/4",
+          "dip": -10.62,
+          "worst_streak": -4.17,
+          "streak_trades": 1,
+          "gate": "warn",
+          "score_weakest_window": 2.0
+        }
+      }
+    },
+    "fvg_1h_sl4tp04": {
+      "coins": [
+        "BTC_USDT"
+      ],
+      "rows": [
+        "X6W2TA2Q"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "paper"
+      ],
+      "measured": {
+        "BTC": {
+          "window_days": 89,
+          "profit_full": 9.93,
+          "trades_full": 107,
+          "winrate_full": 95.33,
+          "profit_1mo": 10.04,
+          "trades_1mo": 34,
+          "green": "3/4",
+          "dip": -12.39,
+          "worst_streak": -8.19,
+          "streak_trades": 2,
+          "gate": "ok",
+          "score_weakest_window": 1.66
+        }
+      }
+    },
+    "killzone_1h_sl25tp04": {
+      "coins": [
+        "XDC_USDT"
+      ],
+      "rows": [
+        "5HDT6XRV"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "paper"
+      ],
+      "measured": {
+        "XDC": {
+          "window_days": 90,
+          "profit_full": 8.39,
+          "trades_full": 100,
+          "winrate_full": 94.0,
+          "profit_1mo": 8.28,
+          "trades_1mo": 32,
+          "green": "3/4",
+          "dip": -3.36,
+          "worst_streak": -2.66,
+          "streak_trades": 1,
+          "gate": "warn",
+          "score_weakest_window": 1.4
+        }
+      }
+    },
+    "elder_1h_sl4tp04": {
+      "coins": [
+        "UMA_USDT"
+      ],
+      "rows": [
+        "NJ77PKJK"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "paper"
+      ],
+      "measured": {
+        "UMA": {
+          "window_days": 90,
+          "profit_full": 8.15,
+          "trades_full": 150,
+          "winrate_full": 95.33,
+          "profit_1mo": 11.73,
+          "trades_1mo": 45,
+          "green": "3/4",
+          "dip": -8.97,
+          "worst_streak": -4.14,
+          "streak_trades": 1,
+          "gate": "warn",
+          "score_weakest_window": 1.36
+        }
+      }
+    },
+    "fib382_1h_sl4tp04": {
+      "coins": [
+        "XEC_USDT"
+      ],
+      "rows": [
+        "WX6QLM4M"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "paper"
+      ],
+      "measured": {
+        "XEC": {
+          "window_days": 90,
+          "profit_full": 8.18,
+          "trades_full": 133,
+          "winrate_full": 95.49,
+          "profit_1mo": 11.96,
+          "trades_1mo": 46,
+          "green": "3/4",
+          "dip": -10.34,
+          "worst_streak": -4.14,
+          "streak_trades": 1,
+          "gate": "warn",
+          "score_weakest_window": 1.36
+        }
+      }
+    },
+    "sweep30_1h_sl4tp04": {
+      "coins": [
+        "ARKM_USDT"
+      ],
+      "rows": [
+        "DQMPNBW6"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "paper"
+      ],
+      "measured": {
+        "ARKM": {
+          "window_days": 90,
+          "profit_full": 7.56,
+          "trades_full": 114,
+          "winrate_full": 95.61,
+          "profit_1mo": 8.81,
+          "trades_1mo": 34,
+          "green": "3/4",
+          "dip": -13.19,
+          "worst_streak": -8.28,
+          "streak_trades": 2,
+          "gate": "warn",
+          "score_weakest_window": 1.26
+        }
+      }
+    },
+    "lrslope_1h_sl4tp06": {
+      "coins": [
+        "PIPPIN_USDT"
+      ],
+      "rows": [
+        "8Z7GRCHF"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "paper"
+      ],
+      "measured": {
+        "PIPPIN": {
+          "window_days": 90,
+          "profit_full": 3.3,
+          "trades_full": 107,
+          "winrate_full": 90.65,
+          "profit_1mo": 14.8,
+          "trades_1mo": 32,
+          "green": "3/4",
+          "dip": -19.34,
+          "worst_streak": -8.31,
+          "streak_trades": 2,
+          "gate": "warn",
+          "score_weakest_window": 0.55
+        }
+      }
+    },
+    "pivot_4h_sl4tp04": {
+      "coins": [
+        "LUNANEW_USDT"
+      ],
+      "rows": [
+        "8K53S64E"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "paper"
+      ],
+      "measured": {
+        "LUNANEW": {
+          "window_days": 89,
+          "profit_full": 0.33,
+          "trades_full": 120,
+          "winrate_full": 94.17,
+          "profit_1mo": 8.9,
+          "trades_1mo": 35,
+          "green": "3/4",
+          "dip": -19.0,
+          "worst_streak": -4.15,
+          "streak_trades": 1,
+          "gate": "warn",
+          "score_weakest_window": 0.06
+        }
+      }
+    }
+  }
+}

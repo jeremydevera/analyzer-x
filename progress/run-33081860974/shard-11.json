@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 42, "total": 51, "rows": 3370826, "note": "SQD 15m: rule 77/105 (cf_mom_l1)", "pct": 82.4, "updated": "2026-08-27T17:32:58Z"}
+{"shard": 11, "stage": "testing", "done": 42, "total": 51, "rows": 3376986, "note": "SQD 30m: 18,959 bars, testing 105 rules", "pct": 82.4, "updated": "2026-08-27T17:33:46Z"}

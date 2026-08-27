@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 24, "total": 51, "rows": 1966422, "note": "JCT 1h: rule 87/105 (cf_triple_l2)", "pct": 47.1, "updated": "2026-08-27T07:18:50Z"}
+{"shard": 11, "stage": "testing", "done": 25, "total": 51, "rows": 2000918, "note": "KGEN 15m: 31,079 bars, testing 105 rules", "pct": 49.0, "updated": "2026-08-27T07:19:38Z"}

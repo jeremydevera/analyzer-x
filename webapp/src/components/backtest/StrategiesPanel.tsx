@@ -696,11 +696,16 @@ export default function StrategiesPanel() {
               <TableRow>
                 <TableCell colSpan={17}
                            className="px-3 py-6 text-theme-sm text-gray-500 dark:text-gray-400">
-                  no rows for {andLine(applied)} yet — the store did not answer
-                  {failedAfter >= 1 ? ` in ${failedAfter}s` : ""}. The previous
-                  answer is not shown here because it does not match these
-                  filters. Press <b>Apply filters</b> to ask again, or narrow it
-                  with a coin or timeframe.
+                  {applied.rowId
+                    ? <>row <b>#{applied.rowId}</b> has not come back</>
+                    : <>no rows for {andLine(applied)} yet</>}
+                  {" — "}
+                  {/* the store's OWN sentence when it gave one (a 503 says
+                      which index is building); otherwise say what happened */}
+                  {waiting || `the store did not answer${
+                    failedAfter >= 1 ? ` in ${failedAfter}s` : ""}`}
+                  . The previous answer is not shown here because it does not
+                  match {applied.rowId ? "that id" : "these filters"}.
                 </TableCell>
               </TableRow>
             ) : null}

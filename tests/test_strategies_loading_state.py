@@ -118,3 +118,27 @@ def test_every_filter_shares_the_one_indicator():
         assert box in draft.group(1), f"the draft ignores {box}"
     # the appending button keeps its own words, and still says them
     assert 'loadingMore ? "loading…"' in p
+
+def test_a_background_refresh_never_touches_the_button():
+    """Operator, 2026-08-27: *"why does the button apply serach keeps on
+    searching 1s? i dont want that"*. Two timers refresh this list by
+    themselves — every 5 s while the indexer is behind (2 pairs behind on this
+    store, so for ever) and every 15 s while an index builds. Both went through
+    the same `load` as the Apply click, so the button announced work nobody
+    asked for, twelve times a minute."""
+    p = _panel()
+    assert "const load = useCallback((background = false)" in p
+    assert "if (!background) setLoading(true)" in p, (
+        "a timer's refresh must not spin the button")
+    # both timers are background, and neither queues behind a slow request
+    assert p.count("if (!inFlight.current) load(true)") == 2, (
+        "the 5 s and the 15 s refresh")
+    assert "const inFlight = useRef(false)" in p
+    assert "inFlight.current = false" in p, "cleared when the request ends"
+
+
+def test_the_operators_own_action_still_spins():
+    """The click, the page and the header are foreground: `load()` with no
+    argument, which is what the effect calls."""
+    p = _panel()
+    assert "useEffect(load, [load]);" in p

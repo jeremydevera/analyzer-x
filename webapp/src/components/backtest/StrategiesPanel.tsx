@@ -134,6 +134,9 @@ export default function StrategiesPanel() {
   // in a row can come back in either order, and the SLOWER older one would
   // overwrite the newer rows under a caption that says otherwise.
   const reqRef = useRef(0);
+  // is a request on the wire? A background refresh must not queue behind a
+  // slow one and it must not restart the seconds counter
+  const inFlight = useRef(false);
   const [reindexing, setReindexing] = useState("");
   const [rows, setRows] = useState<StrategyRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -157,9 +160,12 @@ export default function StrategiesPanel() {
   // at over 25 s for tp >= 10 (which lives only in the 1d grid).
   const tpCeiling = facets.tps?.length ? Math.max(...facets.tps) : 100;
 
-  const load = useCallback(() => {
+  /** `background` = a timer asked, not the operator. Same request, same rows,
+   *  no spinner: the button belongs to the click. */
+  const load = useCallback((background = false) => {
     const mine = ++reqRef.current;
-    setLoading(true);
+    inFlight.current = true;
+    if (!background) setLoading(true);
     api.strategies({ coin: applied.coin || undefined, tf: applied.tf || undefined,
                      signal: applied.signal || undefined,
                      profitable: applied.profitable, sort,
@@ -187,7 +193,10 @@ export default function StrategiesPanel() {
           setErr("");
         } else { setErr(String(e)); setWaiting(""); }
       })
-      .finally(() => { if (mine === reqRef.current) setLoading(false); });
+      .finally(() => {
+        inFlight.current = false;
+        if (mine === reqRef.current) setLoading(false);
+      });
   }, [applied, sort, desc, page, perPage]);
 
   useEffect(load, [load]);
@@ -208,12 +217,12 @@ export default function StrategiesPanel() {
   useEffect(() => { setPage(1); setExtra([]); }, [sort, desc, perPage]);
   useEffect(() => {
     if (!waiting) return;
-    const t = setTimeout(load, 15000);
+    const t = setTimeout(() => { if (!inFlight.current) load(true); }, 15000);
     return () => clearTimeout(t);
   }, [waiting, load]);
   useEffect(() => {
     if (!idx || (!idx.syncing && idx.behind === 0)) return;
-    const t = setTimeout(load, 5000);
+    const t = setTimeout(() => { if (!inFlight.current) load(true); }, 5000);
     return () => clearTimeout(t);
   }, [idx, load]);
 

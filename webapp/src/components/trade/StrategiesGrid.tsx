@@ -45,12 +45,11 @@ export default function StrategiesGrid() {
     return () => clearInterval(t);
   }, []);
 
-  const runBacktest = async (key: string) => {
-    try {
-      await tradeApi.backtestStrategy(key, key);
-      setBt({ running: true, key, now: "starting" });
-    } catch (e) { setErr(String(e)); }
-  };
+  // The "1 YEAR" button that called `tradeApi.backtestStrategy` lived in the
+  // `backtest` column, which the operator had removed on 2026-08-27. It was
+  // the only trigger in the app for a per-strategy replay; the progress
+  // banner below and its polling stay, so a job started elsewhere still
+  // reports itself on this screen.
 
   const mut = (fn: (s: Record<string, unknown>) => void) => {
     if (!settings) return;
@@ -187,9 +186,12 @@ export default function StrategiesGrid() {
                   book columns went in, and a table-fixed layout answers that
                   by squeezing every column: "LIVE W/L" wrapped onto three
                   lines and "DEMO $" broke as "DEM O $". */}
-              {([["strategy", "12%"], ["tf", "3%"], ["TP/SL %", "6%"],
-                 ["books", "9%"], ["coins", "7%"], ["margin $", "5%"],
-                 ["rung", "4%"], [`ladder $ · ${flat ? "flat" : "DEEP"}`, "8%"],
+              {([["strategy", "14%"], ["tf", "3%"], ["TP/SL %", "6%"],
+                 ["books", "10%"], ["coins", "8%"], ["margin $", "5%"],
+                 // `rung` is gone (2026-08-27, operator): the ladder column
+                 // already boxes the rung the next stake stands on, and the
+                 // live-locked note above the table names it too.
+                 [`ladder $ · ${flat ? "flat" : "DEEP"}`, "8%"],
                  ["next $", "4%"], ["loss cap $", "5%"], ["today $", "5%"],
                  // BOTH books, and the money apart from the record. A row
                  // ticked LIVE used to show only its live figures, so there
@@ -197,9 +199,8 @@ export default function StrategiesGrid() {
                  // crammed into one cell each and read as neither
                  // ("its confusing / separate the profit for demo and live",
                  // 2026-08-27). A money column reads down the page.
-                 ["LIVE $", "7%"], ["LIVE W/L", "7%"],
-                 ["DEMO $", "7%"], ["DEMO W/L", "7%"],
-                 ["backtest", "4%"]] as [string, string][])
+                 ["LIVE $", "8%"], ["LIVE W/L", "8%"],
+                 ["DEMO $", "8%"], ["DEMO W/L", "8%"]] as [string, string][])
                 .map(([h, w]) => (
                 <TableCell key={h} isHeader style={{ width: w }}
                   className="px-2 py-1.5 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400">{h}</TableCell>
@@ -282,21 +283,6 @@ export default function StrategiesGrid() {
                     onBlur={(e) => setMargin(r.key, e.target.value)}
                     className="w-full min-w-0 rounded-lg border border-gray-200 bg-transparent px-1 py-1 text-[11px] text-gray-700 dark:border-gray-700 dark:text-gray-300" />
                 </TableCell>
-                <TableCell className="px-2 py-1.5 text-theme-xs leading-tight">
-                  {/* This is the LADDER RUNG of the coin+book, not this
-                      strategy's losing streak. Two strategies on one coin
-                      advance the SAME counter, so "11 loss" beside a 3W/1L
-                      record was a lie (2026-08-22). */}
-                  {r.streak ? (
-                    <span title={`${r.coins.map((c) => c.replace("_USDT", "")).join(", ")} ${r.streak_book} book is on ladder rung ${r.streak} — the next stake here is $${r.next_stake}. The rung belongs to the coin and book${r.streak_shared_with?.length ? `, and ${r.streak_shared_with.join(", ")} advance${r.streak_shared_with.length === 1 ? "s" : ""} it too` : ""}.`}>
-                      <span className="block font-medium text-error-500">{r.streak}</span>
-                      <span className="block text-[10px] text-gray-400">
-                        {r.streak_book} book
-                        {r.streak_shared_with?.length ? " · shared" : ""}
-                      </span>
-                    </span>
-                  ) : <span className="text-gray-400">—</span>}
-                </TableCell>
                 <TableCell className="px-2 py-1.5">
                   {/* the whole ladder in dollars, with the rung it stands on boxed —
                       so "next $" is never a number to work out */}
@@ -362,15 +348,6 @@ export default function StrategiesGrid() {
                     </TableCell>,
                   ];
                 })}
-                <TableCell className="px-2 py-1.5">
-                  <button onClick={() => runBacktest(r.key)}
-                    disabled={!r.coins.length || (bt?.running && bt.key === r.key)}
-                    title={`Replay ${r.key} over the last 365 days of MEXC history at this row's base margin.`}
-                    className="rounded-lg border border-gray-200 px-2 py-1 text-theme-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300">
-                    {bt?.running && bt.key === r.key
-                      ? `${(bt.pct ?? bt.done ?? 0).toFixed(2)}%` : "1 YEAR"}
-                  </button>
-                </TableCell>
               </TableRow>
             ))}
           </TableBody>

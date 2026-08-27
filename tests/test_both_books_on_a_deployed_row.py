@@ -164,7 +164,10 @@ def test_the_column_widths_sum_to_one_hundred():
     """A table-fixed layout answers an over-budget total by squeezing every
     column: at 109% "LIVE W/L" wrapped onto three lines and "DEMO $" broke as
     "DEM O $". The next column added here must take its share from somewhere
-    rather than from everybody."""
+    rather than from everybody.
+
+    Fourteen columns since the operator removed `rung` and `backtest`
+    (2026-08-27)."""
     import re
 
     src = (open("webapp/src/components/trade/StrategiesGrid.tsx",
@@ -172,5 +175,21 @@ def test_the_column_widths_sum_to_one_hundred():
     block = src[src.index('[["strategy", '):]
     block = block[:block.index("as [string, string][]")]
     pcts = [int(x) for x in re.findall(r'"(\d+)%"', block)]
-    assert len(pcts) == 16, pcts
+    assert len(pcts) == 14, pcts
     assert sum(pcts) == 100, f"{sum(pcts)}%: {pcts}"
+
+
+def test_the_removed_columns_stay_removed():
+    """`rung` and `backtest` were removed on the operator's word. The rung is
+    still readable — the ladder column boxes the rung the next stake stands on
+    — and the backtest PROGRESS banner stays, so a replay started elsewhere
+    still reports here; only the per-row trigger is gone."""
+    src = (open("webapp/src/components/trade/StrategiesGrid.tsx",
+                encoding="utf-8").read())
+    assert '["rung", ' not in src
+    assert '["backtest", ' not in src
+    assert "runBacktest" not in src, "the button's handler went with it"
+    # what must NOT have gone
+    assert "ladder_rung" in src, "the ladder still boxes the current rung"
+    assert 'api.jobStatus("stratbt")' in src, "the progress banner stays"
+    assert "OPEN THE" in src, "and its link to the finished grid"

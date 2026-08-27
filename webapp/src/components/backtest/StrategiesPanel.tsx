@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError, fmtMoney, STRATEGY_SORTS, StrategyRow, TradesResult,
   type IndexStatus, type StrategySort } from "@/lib/api";
+import { pageWindow } from "@/lib/pager";
 import Badge from "@/components/ui/badge/Badge";
 import {
   Table,
@@ -16,6 +17,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
+const pageNum =
+  "h-8 min-w-8 rounded-lg border px-2 text-theme-xs tabular-nums";
 
 const pageBtn =
   "h-8 rounded-lg border border-gray-300 px-2 text-theme-xs text-gray-600 " +
@@ -40,7 +44,7 @@ const HEAD_SORT: Record<string, StrategySort | undefined> =
     .map(([k, label]) => [label, k as StrategySort]));
 
 export default function StrategiesPanel() {
-  const [facets, setFacets] = useState<{ coins: string[]; tfs: string[]; signals: string[] }>({ coins: [], tfs: [], signals: [] });
+  const [facets, setFacets] = useState<{ coins: string[]; tfs: string[]; signals: string[]; tps?: number[] }>({ coins: [], tfs: [], signals: [], tps: [] });
   const [coin, setCoin] = useState("");
   const [tf, setTf] = useState("");
   const [signal, setSignal] = useState("");
@@ -55,11 +59,17 @@ export default function StrategiesPanel() {
   // and it runs in the STORE, not on the page: filtering the 500 rows on
   // screen would hide the 70%-win row sitting at position 900,000.
   const [minWinrate, setMinWinrate] = useState(0);
+  // "add filter 'TP' when i input 4 then show that has TP equal or greater
+  // than 4" (operator, 2026-08-27). TP is the profit target a winning trade
+  // aims at, so 4 means "only strategies going for 4% a trade or more" — the
+  // unit the TP% column prints, inclusive.
+  const [minTp, setMinTp] = useState(0);
   // the floors the SERVER actually applied. On a 503 the request moves and the
   // rows do not, so captioning them with the request is the lie the operator
   // read as "it only sorted the page" (label-must-match-data).
   const [servedTrades, setServedTrades] = useState(0);
   const [servedWinrate, setServedWinrate] = useState(0);
+  const [servedTp, setServedTp] = useState(0);
   // "ranking by win % needs its index" is a WAIT, not a failure: keep the
   // rows on screen, say the sentence the API said, and come back for it
   const [waiting, setWaiting] = useState("");
@@ -96,9 +106,16 @@ export default function StrategiesPanel() {
     api.facets().then(setFacets).catch((e) => setErr(String(e)));
   }, []);
 
+  // The widest TP this store can hold, from the measuring grid for the
+  // timeframes it actually has (facets.tps) — NOT a round number picked here.
+  // The box stops there on purpose: `tp` has no index, so asking for a TP no
+  // row has costs a scan of all 35,863,520 rows to answer "nothing", measured
+  // at over 25 s for tp >= 10 (which lives only in the 1d grid).
+  const tpCeiling = facets.tps?.length ? Math.max(...facets.tps) : 100;
+
   const load = useCallback(() => {
     api.strategies({ coin: coin || undefined, tf: tf || undefined, signal: signal || undefined,
-                     profitable, sort, minTrades, minWinrate, desc,
+                     profitable, sort, minTrades, minWinrate, minTp, desc,
                      limit: perPage, offset: (page - 1) * perPage })
       .then((d) => {
         setRows(d.rows); setTotal(d.total); setCapped(!!d.total_capped);
@@ -108,6 +125,7 @@ export default function StrategiesPanel() {
         setServedDesc(d.desc ?? desc);
         setServedTrades(d.min_trades ?? minTrades);
         setServedWinrate(d.min_winrate ?? minWinrate);
+        setServedTp(d.min_tp ?? minTp);
       })
       .catch((e) => {
         if (e instanceof ApiError && e.status === 503) {
@@ -115,13 +133,13 @@ export default function StrategiesPanel() {
           setErr("");
         } else { setErr(String(e)); setWaiting(""); }
       });
-  }, [coin, tf, signal, profitable, sort, minTrades, minWinrate, desc, page, perPage]);
+  }, [coin, tf, signal, profitable, sort, minTrades, minWinrate, minTp, desc, page, perPage]);
 
   useEffect(load, [load]);
   // a new filter or order is a new list: page 1, or the operator lands on
   // page 40 of something they have not seen the top of
   useEffect(() => { setPage(1); setExtra([]); },
-    [coin, tf, signal, profitable, sort, minTrades, minWinrate, desc, perPage]);
+    [coin, tf, signal, profitable, sort, minTrades, minWinrate, minTp, desc, perPage]);
   useEffect(() => {
     if (!waiting) return;
     const t = setTimeout(load, 15000);
@@ -134,6 +152,16 @@ export default function StrategiesPanel() {
   }, [idx, load]);
 
   const shown = rows.concat(extra);
+  const pages = Math.max(1, Math.ceil(total / perPage));
+  // a numbered page is a jump, so the appended LOAD MORE rows go with it —
+  // otherwise page 7 shows page 6's tail underneath it
+  const goto = (n: number) => {
+    // a CAPPED count is a floor, not the end: `pages` would pin the
+    // operator to page 10 of a filter that really has 4,000, so only an
+    // exact total is allowed to be a ceiling
+    setPage(capped ? Math.max(1, n) : Math.min(Math.max(1, n), pages));
+    setExtra([]);
+  };
 
   /** the coins missing from the list are measured, just not indexed yet */
   const catchUp = async () => {
@@ -150,7 +178,7 @@ export default function StrategiesPanel() {
     try {
       const d = await api.strategies({
         coin: coin || undefined, tf: tf || undefined, signal: signal || undefined,
-        profitable, sort, minTrades, minWinrate, desc,
+        profitable, sort, minTrades, minWinrate, minTp, desc,
         limit: perPage, offset: (page - 1) * perPage + shown.length,
       });
       setExtra((e) => e.concat(d.rows));
@@ -183,7 +211,7 @@ export default function StrategiesPanel() {
         <div>
           <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Stored strategies</h3>
           <p className="text-theme-xs text-gray-500 dark:text-gray-400">
-            {total.toLocaleString()}{capped ? "+" : ""} {[coin, tf, signal, profitable ? "profitable only" : ""].some(Boolean) || minTrades > 0 || minWinrate > 0 ? "match" : "stored strategies"}
+            {total.toLocaleString()}{capped ? "+" : ""} {[coin, tf, signal, profitable ? "profitable only" : ""].some(Boolean) || minTrades > 0 || minWinrate > 0 || minTp > 0 ? "match" : "stored strategies"}
             {` · rows ${shown.length ? (page - 1) * perPage + 1 : 0}–${(page - 1) * perPage + shown.length} on screen`}
             {` · ${servedDesc ? "highest" : "lowest"} ${STRATEGY_SORTS[servedSort]} first`}
             {/* A partial index must NOT be captioned as the whole store: the
@@ -207,6 +235,7 @@ export default function StrategiesPanel() {
             {profitable ? " · profitable only" : " · losers included"}
             {servedTrades > 0 ? ` · at least ${servedTrades} trades` : ""}
             {servedWinrate > 0 ? ` · win % ${servedWinrate} or better` : ""}
+            {servedTp > 0 ? ` · TP ${servedTp}% or wider` : ""}
           </p>
         </div>
         {idx && idx.behind > 0 ? (
@@ -261,6 +290,22 @@ export default function StrategiesPanel() {
                    aria-label="Minimum win rate percent"
                    className="h-10 w-20 rounded-lg border border-gray-300 bg-transparent px-2 text-theme-sm text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" />
           </label>
+          {/* "when i input 4 then show that has TP equal or greater than 4":
+              the take-profit target, in the unit the TP% column prints. The
+              list offers the values the grid really measured, so 4, 5, 6 and 8
+              are one keystroke away and 9.37 is not typed by accident. */}
+          <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300"
+                 title={`show only rows whose take-profit is this % or wider (this store measured up to ${tpCeiling}%)`}>
+            min TP %
+            <input type="number" min={0} max={tpCeiling} step={0.5} value={minTp}
+                   list="tp-values"
+                   onChange={(e) => setMinTp(Math.min(tpCeiling, Math.max(0, Number(e.target.value) || 0)))}
+                   aria-label="Minimum take profit percent"
+                   className="h-10 w-20 rounded-lg border border-gray-300 bg-transparent px-2 text-theme-sm text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" />
+            <datalist id="tp-values">
+              {(facets.tps ?? []).map((v) => <option key={v} value={v} />)}
+            </datalist>
+          </label>
           <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300">
             <input type="checkbox" checked={profitable} onChange={(e) => setProfitable(e.target.checked)} className="h-4 w-4 accent-brand-500" />
             profitable only
@@ -280,20 +325,35 @@ export default function StrategiesPanel() {
                   aria-label="Rows per page">
             {PAGE_SIZES.map((n) => <option key={n} value={n}>{n.toLocaleString()} a page</option>)}
           </select>
-          <span className="mr-2 text-theme-xs text-gray-500 dark:text-gray-400">
-            page {page} of {Math.max(1, Math.ceil(total / perPage)).toLocaleString()}
-            {capped ? "+" : ""}
-          </span>
-          <button onClick={() => setPage(1)} disabled={page <= 1}
-                  className={pageBtn}>first</button>
-          <button onClick={() => setPage(page - 1)} disabled={page <= 1}
+          <button onClick={() => goto(page - 1)} disabled={page <= 1}
                   className={pageBtn}>prev</button>
-          <button onClick={() => setPage(page + 1)}
+          {pageWindow(page, pages).map((n, i) => n == null ? (
+            <span key={`gap${i}`} aria-hidden
+                  className="px-1 text-theme-xs text-gray-400">…</span>
+          ) : (
+            <button key={n} onClick={() => goto(n)}
+                    aria-label={`page ${n}`}
+                    aria-current={n === page ? "page" : undefined}
+                    className={`${pageNum} ${n === page
+                      ? "border-brand-500 bg-brand-500 font-semibold text-white"
+                      : "border-gray-300 text-gray-600 hover:border-brand-400 dark:border-gray-700 dark:text-gray-300"}`}>
+              {n.toLocaleString()}
+            </button>
+          ))}
+          <button onClick={() => goto(page + 1)}
                   disabled={rows.length < perPage}
                   className={pageBtn}>next</button>
-          <button onClick={() => setPage(Math.max(1, Math.ceil(total / perPage)))}
-                  disabled={capped || page >= Math.ceil(total / perPage)}
-                  className={pageBtn}>last</button>
+          <input type="number" min={1} placeholder="page #"
+                 aria-label="Go to page"
+                 onKeyDown={(e) => {
+                   if (e.key !== "Enter") return;
+                   const n = Number((e.target as HTMLInputElement).value);
+                   if (n >= 1) goto(n);
+                 }}
+                 className={`${pageBtn} w-20`} />
+          <span className="text-theme-xs text-gray-500 dark:text-gray-400">
+            of {pages.toLocaleString()}{capped ? "+" : ""}
+          </span>
           <button onClick={loadMore} disabled={loadingMore}
                   className={`${pageBtn} ml-1`}>
             {loadingMore ? "loading…" : `+${perPage.toLocaleString()} more`}
@@ -302,7 +362,7 @@ export default function StrategiesPanel() {
           <a className={`${pageBtn} ml-1 inline-flex items-center`}
              href={api.strategiesCsvUrl({ coin: coin || undefined, tf: tf || undefined,
                signal: signal || undefined, profitable, sort, minTrades,
-               minWinrate, desc })}>
+               minWinrate, minTp, desc })}>
             download all ({total.toLocaleString()}{capped ? "+" : ""}) CSV
           </a>
         </div>
@@ -310,11 +370,15 @@ export default function StrategiesPanel() {
       {err && <p className="px-5 pt-2 text-theme-sm text-error-500">{err}</p>}
       {/* rule G: a filter that cannot leave anything says why, rather than
           showing an empty table the reader has to explain to themselves */}
-      {!err && !waiting && !shown.length && (minWinrate > 0 || minTrades > 0) && (
+      {!err && !waiting && !shown.length && (minWinrate > 0 || minTrades > 0 || minTp > 0) && (
         <p className="px-5 pt-2 text-theme-sm text-warning-600 dark:text-warning-400">
-          no stored strategy passes {minWinrate > 0 ? <b>win % ≥ {minWinrate}</b> : null}
-          {minWinrate > 0 && minTrades > 0 ? " with " : null}
-          {minTrades > 0 ? <b>{minTrades}+ trades</b> : null}
+          no stored strategy passes{" "}
+          <b>
+            {[minWinrate > 0 ? `win % ≥ ${minWinrate}` : "",
+              minTp > 0 ? `TP ≥ ${minTp}%` : "",
+              minTrades > 0 ? `${minTrades}+ trades` : ""]
+              .filter(Boolean).join(" with ")}
+          </b>
           {[coin, tf, signal].filter(Boolean).length ? ` and ${[coin, tf, signal].filter(Boolean).join(" · ")}` : ""}
           {profitable ? " and profit above zero" : ""} — lower the floor to see what is close.
         </p>

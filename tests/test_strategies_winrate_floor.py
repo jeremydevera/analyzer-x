@@ -13,6 +13,7 @@ Two things this holds shut:
   21 million — which is the whole reason the operator asked.
 """
 import json
+import re
 
 import pytest
 
@@ -176,7 +177,12 @@ def test_the_browser_sends_the_floor_and_the_box_prints_percent():
     assert 'aria-label="Minimum win rate percent"' in panel
     assert panel.count("minWinrate,") >= 3, "table, load-more and CSV"
     # a floor typed and then not re-requested from page 1 shows page 40 of a
-    # list the operator has not seen the top of
-    assert "sort, minTrades, minWinrate, desc, perPage]" in panel
+    # list the operator has not seen the top of. Matched as a REGEX over the
+    # reset effect's dependency array, not as a fixed string: the next filter
+    # added to that array must not break this test (the TP floor did).
+    reset = re.search(r"setPage\(1\); setExtra\(\[\]\); \},\s*\[([^\]]*)\]",
+                      panel)
+    assert reset, "the reset effect must exist"
+    assert "minWinrate" in reset.group(1), reset.group(1)
     # the caption comes from what the SERVER applied
     assert "servedWinrate > 0" in panel and "d.min_winrate" in panel

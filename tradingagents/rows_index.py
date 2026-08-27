@@ -568,7 +568,7 @@ def syncing() -> bool:
 
 # ------------------------------------------------------------------ reading
 def _where(coin=None, tf=None, signal=None, profitable=False,
-           min_trades=0, min_winrate=0, *, order_owns_index=False,
+           min_trades=0, min_winrate=0, min_tp=0, *, order_owns_index=False,
            order_key=None) -> tuple:
     """The WHERE clause and its arguments.
 
@@ -642,6 +642,23 @@ def _where(coin=None, tf=None, signal=None, profitable=False,
                      else "")
         sql.append(f"{rate_hint}winrate >= ?")
         args.append(float(min_winrate))
+    # The TAKE-PROFIT floor, in the unit the TP% column PRINTS: 4 means TP 4%
+    # or wider, not 0.04 (operator, 2026-08-27: "add filter 'TP' when i input 4
+    # then show that has TP equal or greater than 4"). TP is what a winning
+    # trade aims at, so this is "only show me strategies that go for 4% a
+    # trade or more".
+    #
+    # No index names `tp` (INDEX_DDL is pair/profit/coin/winrate), so the term
+    # cannot steal a plan the way `winrate >= ?` could -- measured identical
+    # on the operator's store, 35,863,520 rows, LIMIT 500:
+    #     tp >= 4 ORDER BY profit   plain 0.02 s   +tp 0.02 s
+    # It still steps aside in the row query for the same reason `trades` does:
+    # if a tp index is ever added, the `+` is what keeps the ORDER BY's own
+    # index instead of sorting every match in a temp b-tree.
+    if min_tp and float(min_tp) > 0:
+        tp_hint = "+" if (order_owns_index and not coin) else ""
+        sql.append(f"{tp_hint}tp >= ?")
+        args.append(float(min_tp))
     return (" WHERE " + " AND ".join(sql) if sql else ""), args
 
 
@@ -679,6 +696,38 @@ COUNT_CAP = 5_000
 # fixed 300; the operator asked to see the whole store, so a page can now be
 # 5,000 and `iter_rows` streams the rest with no ceiling at all.
 MAX_LIMIT = 5_000
+
+
+def _pairs_total(coin=None, tf=None) -> int:
+    """Exact row count for a coin and/or timeframe filter, from the pair
+    summaries — no row scan at all.
+
+    Numbered pages need a real LAST page, and a capped count cannot give one:
+    "of 10+" beside a filter that really has 4,255 pages is the same refusal
+    the operator was objecting to. A COUNT over the rows table cannot be
+    exact and fast at once — measured on this store, counting a `tf='1h'`
+    filter stopped at 5,000 rows in 0.69 s and had not reached 100,000 in
+    six minutes. But `pairs` already carries one row per coin+timeframe with
+    its own `n`, so the two filters that name a pair are a sum over ~4,200
+    tiny rows: exact, and instant.
+
+    Only coin/tf. A signal, a profit floor or a trade floor cuts INSIDE a
+    pair and the summaries know nothing about it — those still get the
+    capped count.
+    """
+    sql = "SELECT COALESCE(SUM(n),0) FROM pairs"
+    where, args = [], []
+    for col, val in (("coin", coin), ("tf", tf)):
+        if val:
+            where.append(f"{col} = ?")
+            args.append(val)
+    if where:
+        sql += " WHERE " + " AND ".join(where)
+
+    def _read():
+        with _open(readonly=True) as con:
+            return int(con.execute(sql, args).fetchone()[0])
+    return int(_missing_ok(_read, 0))
 
 
 def _rows_estimate() -> int:
@@ -785,14 +834,15 @@ def _indexed_by(coin) -> str:
 
 
 def query_sql(coin=None, tf=None, signal=None, profitable=False,
-              sort="profit", min_trades=0, min_winrate=0, desc=None) -> str:
+              sort="profit", min_trades=0, min_winrate=0, min_tp=0,
+              desc=None) -> str:
     """The row SELECT this query would run — for tests and for EXPLAIN."""
     key = str(sort or "profit")
     if key not in SORTS:
         raise ValueError(f"unknown sort {key!r}; use one of {sorted(SORTS)}")
     down = SORTS[key] if desc is None else bool(desc)
     where, _ = _where(coin, tf, signal, profitable, min_trades, min_winrate,
-                      order_owns_index=True, order_key=key)
+                      min_tp, order_owns_index=True, order_key=key)
     return (f"SELECT * FROM rows{_indexed_by(coin)}{where} "
             f"ORDER BY {key} {'DESC' if down else 'ASC'}, id ASC LIMIT ? OFFSET ?")
 
@@ -802,7 +852,8 @@ def explain(**kw) -> list:
     sql = query_sql(**kw)
     _, args = _where(kw.get("coin"), kw.get("tf"), kw.get("signal"),
                      kw.get("profitable", False), kw.get("min_trades", 0),
-                     kw.get("min_winrate", 0), order_owns_index=True,
+                     kw.get("min_winrate", 0), kw.get("min_tp", 0),
+                     order_owns_index=True,
                      order_key=str(kw.get("sort") or "profit"))
 
     def _read():
@@ -814,7 +865,7 @@ def explain(**kw) -> list:
 
 def query(coin=None, tf=None, signal=None, profitable=False,
           limit=500, offset=0, sort="profit", min_trades=0,
-          min_winrate=0, desc=None) -> dict:
+          min_winrate=0, min_tp=0, desc=None) -> dict:
     """Rows sorted by `sort` (SORTS), profit first by default.
 
     STRICTLY READ-ONLY. It creates nothing and it indexes nothing.
@@ -831,13 +882,14 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     if key not in SORTS:
         raise ValueError(
             f"unknown sort {key!r}; use one of {sorted(SORTS)}")
-    where, args = _where(coin, tf, signal, profitable, min_trades, min_winrate)
+    where, args = _where(coin, tf, signal, profitable, min_trades, min_winrate,
+                         min_tp)
     # the row select streams its own ORDER BY index; the count rides the
     # trades index instead (see _where). The ORDER matters to the WHERE too:
     # a win-rate floor drives rows_winrate when the screen is ranked by win %
     # and steps aside otherwise.
     row_where, row_args = _where(coin, tf, signal, profitable, min_trades,
-                                 min_winrate, order_owns_index=True,
+                                 min_winrate, min_tp, order_owns_index=True,
                                  order_key=key)
     down = SORTS[key] if desc is None else bool(desc)
     order = f"{key} {'DESC' if down else 'ASC'}"
@@ -862,9 +914,24 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             f"ranking by {key} needs its index ({need}); it is being "
             f"built in the background — try again shortly")
 
+    # coin and/or tf ALONE are answered by the pair summaries: exact, no scan
+    # (see _pairs_total). Anything that cuts inside a pair is not.
+    from_pairs = not (signal or profitable or min_trades or min_winrate
+                      or min_tp)
+
     def _read():
         with _open(readonly=True) as con:
-            if where:
+            if where and from_pairs:
+                total = _pairs_total(coin, tf)
+                # EXACT, so zero means zero: skip the row query. Without this
+                # a timeframe with no measured rows (1d, whose row files were
+                # all `[]` until the trade floor was fixed) made SQLite walk
+                # the whole 35,863,520-row profit index looking for a first
+                # match that does not exist — measured past five minutes,
+                # while the honest answer is an empty page in 0.08 s.
+                if total == 0:
+                    return 0, []
+            elif where:
                 # COUNT(*) with a filter is a full scan of tens of millions
                 # of rows (30 s on the operator's store, and the proxy gave
                 # up at 30). Stop at COUNT_CAP and let the caller print the
@@ -890,7 +957,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
         return total, got
 
     total, got = _missing_ok(_read, (0, []))
-    capped_count = bool(where) and total > COUNT_CAP
+    capped_count = bool(where) and not from_pairs and total > COUNT_CAP
     total = min(total, COUNT_CAP) if capped_count else total
     out = []
     for r in got:
@@ -910,12 +977,13 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             "min_trades": int(min_trades or 0),
             # the caption prints the floors it actually asked for, never a
             # literal it hopes matches (label-must-match-data)
-            "min_winrate": float(min_winrate or 0)}
+            "min_winrate": float(min_winrate or 0),
+            "min_tp": float(min_tp or 0)}
 
 
 def iter_rows(coin=None, tf=None, signal=None, profitable=False,
-              sort="profit", min_trades=0, min_winrate=0, desc=None,
-              batch=5_000):
+              sort="profit", min_trades=0, min_winrate=0, min_tp=0,
+              desc=None, batch=5_000):
     """Every matching row, in the asked order, a batch at a time.
 
     No limit and no list: 21,858,026 rows will not fit in a browser table or in
@@ -947,7 +1015,8 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
     down = SORTS[key] if desc is None else bool(desc)
     order = f"{key} {'DESC' if down else 'ASC'}"
     where, args = _where(coin, tf, signal, profitable, min_trades,
-                         min_winrate, order_owns_index=True, order_key=key)
+                         min_winrate, min_tp, order_owns_index=True,
+                         order_key=key)
     step = max(100, int(batch))
     with _open(readonly=True) as con:
         cur = con.execute(
@@ -967,6 +1036,31 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
                 yield d
 
 
+def take_profits(tfs) -> list:
+    """Every TP% the grid can have produced for these timeframes.
+
+    From `backtest_report.BARRIERS` — the grid that MEASURED the rows — so the
+    TP box offers values that exist instead of round numbers that do not.
+    It matters: `tp` has no index, so proving that nothing matches costs a scan
+    of every row. Measured on the operator's store (35,863,520 rows, a sweep
+    running), LIMIT 500 in the default profit order:
+
+        tp >= 4   0.02 s      tp >= 8    0.03 s
+        tp >= 6   0.02 s      tp >= 10   did not return in 25 s
+
+    TP 10 and above lives only in the 1d grid and this store holds no 1d rows,
+    so the answer was "nothing" and it took a full scan to say so. The panel
+    caps its box at the largest value here, which for 15m/30m/1h/4h is 8.
+    """
+    from tradingagents import backtest_report as br
+
+    out = set()
+    for tf in tfs or ():
+        for _sl, tp in br.BARRIERS.get(str(tf), ()):
+            out.add(round(float(tp) * 100, 6))
+    return sorted(out)
+
+
 def facets() -> dict:
     """Filter dropdowns, read from the per-pair summary — 85 short rows rather
     than three DISTINCT scans over every measurement."""
@@ -979,10 +1073,13 @@ def facets() -> dict:
                 if r["tf"]:
                     tfs.add(r["tf"])
                 signals.update(x for x in (r["signals"] or "").split("\n") if x)
+        # the TP list is derived from the timeframes THIS store holds, never a
+        # fixed ladder: with no 1d pairs there is no TP above 8% to ask for
         return {"coins": sorted(coins), "tfs": sorted(tfs),
-                "signals": sorted(signals)}
+                "signals": sorted(signals), "tps": take_profits(tfs)}
 
-    return _missing_ok(_read, {"coins": [], "tfs": [], "signals": []})
+    return _missing_ok(_read, {"coins": [], "tfs": [], "signals": [],
+                               "tps": []})
 
 
 def pair_storage() -> list:

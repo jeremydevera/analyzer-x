@@ -8,6 +8,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BtStorage, backtestApi, fmtBytes } from "@/lib/api";
+import { pageWindow } from "@/lib/pager";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 
 const HEADS = ["coin", "tf", "rows", "combos", "size", "measured through", "last run"];
@@ -68,15 +69,25 @@ export default function BacktestStorage() {
           {Math.min(at * PER_PAGE, shown.length)} of {shown.length.toLocaleString()}
           {q ? ` matching "${q}"` : " pair(s)"}
         </span>
-        <div className="ml-auto flex items-center gap-1">
-          <button onClick={() => setPage(1)} disabled={at <= 1}
-                  className="h-8 rounded-lg border border-gray-300 px-2 text-theme-xs text-gray-600 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300">first</button>
+        <div className="ml-auto flex flex-wrap items-center gap-1">
           <button onClick={() => setPage(at - 1)} disabled={at <= 1}
                   className="h-8 rounded-lg border border-gray-300 px-2 text-theme-xs text-gray-600 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300">prev</button>
+          {/* numbered pages, same pager as the strategy list */}
+          {pageWindow(at, pages).map((n, i) => n == null ? (
+            <span key={`gap${i}`} aria-hidden
+                  className="px-1 text-theme-xs text-gray-400">…</span>
+          ) : (
+            <button key={n} onClick={() => setPage(n)}
+                    aria-label={`page ${n}`}
+                    aria-current={n === at ? "page" : undefined}
+                    className={`h-8 min-w-8 rounded-lg border px-2 text-theme-xs tabular-nums ${n === at
+                      ? "border-brand-500 bg-brand-500 font-semibold text-white"
+                      : "border-gray-300 text-gray-600 hover:border-brand-400 dark:border-gray-700 dark:text-gray-300"}`}>
+              {n.toLocaleString()}
+            </button>
+          ))}
           <button onClick={() => setPage(at + 1)} disabled={at >= pages}
                   className="h-8 rounded-lg border border-gray-300 px-2 text-theme-xs text-gray-600 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300">next</button>
-          <button onClick={() => setPage(pages)} disabled={at >= pages}
-                  className="h-8 rounded-lg border border-gray-300 px-2 text-theme-xs text-gray-600 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300">last</button>
         </div>
       </div>
       <div className="mt-2 w-full overflow-x-auto">

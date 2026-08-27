@@ -969,15 +969,18 @@ def _slow_why(coin, tf, signal, min_winrate, min_trades, sort,
                 f"rows, so the profit index has to be walked a long way. Pick "
                 f"a coin, or rank by win %, and it answers now")
     if float(min_winrate or 0) > 0:
+        # "the wide win-rate index ... is still being built" was printed after
+        # it HAD been built (operator's screenshot, 2026-08-27) — a false label
+        # on a true refusal. Say it only while it is actually missing.
+        building = " The wide win-rate index that makes this instant is still being built." if has_index("rows_wr2") is not True else ""
         if not (min_trades and int(min_trades) > 0):
             return (f"a win % floor of {float(min_winrate):g} over {what} "
                     f"needs more than {QUERY_BUDGET_S:g}s on this store. "
                     f"Add a min-trades floor - 100 answers in 0.2s - or rank "
-                    f"by win %. The wide win-rate index that makes this "
-                    f"instant is still being built")
+                    f"by win %.{building}")
         return (f"win % >= {float(min_winrate):g} with {int(min_trades)}+ "
-                f"trades over {what} ran past {QUERY_BUDGET_S:g}s; the "
-                f"win-rate index is still being built")
+                f"trades over {what} ran past {QUERY_BUDGET_S:g}s. Rank by "
+                f"win %, or narrow it with a coin or a timeframe.{building}")
     return (f"ranking {what} by {sort} ran past {QUERY_BUDGET_S:g}s. "
             f"Narrow it with a coin, a timeframe or a trade floor")
 
@@ -1224,8 +1227,21 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     # How many rows the win-rate floor lets through decides the plan, and the
     # answer is index-only (0.01 s at >= 90). Only without a coin, which is
     # always the better driver.
+    # Which index drives when a win % floor is set. rows_wr2 SEEKS the floor
+    # but is in win-rate order, so ranking by profit means sorting every match
+    # — and it carries no `sizing`, so each match is read off the disk to test
+    # it. rows_pr2 is already IN profit order and holds winrate, sizing, tp and
+    # trades, so the same request is one index-only walk with no sort.
+    # Measured 2026-08-27 on the operator's store, `win % >= 80 AND sizing =
+    # flat AND profit > 0` ranked by profit: the win-rate seek ran past the 20 s
+    # budget (which is what the operator saw as "nothing is showing"), the wide
+    # profit index answers it. So: ranked by profit, rows_pr2 wins when it is
+    # there; ranked by win %, the seek is right.
+    wide_profit_ready = (key == "profit" and not coin
+                         and has_index("rows_pr2") is True)
     winrate_seeks = False
-    if float(min_winrate or 0) > 0 and not coin and _winrate_index():
+    if (float(min_winrate or 0) > 0 and not coin and not wide_profit_ready
+            and _winrate_index()):
         cap = _winrate_seek_cap()
         n = _winrate_matches(min_winrate, min_trades, cap=cap)
         winrate_seeks = n is not None and n <= cap
@@ -1245,7 +1261,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     profit_wide = False
     if not row_id and key == "profit" and not coin and _wide_profit_helps(
             sizing, min_tp, min_winrate, min_trades, profitable):
-        if has_index("rows_pr2") is True:
+        if wide_profit_ready:
             profit_wide = True
         elif _rows_estimate() > UNINDEXED_LIMIT:
             _build_index("rows_pr2")

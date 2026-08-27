@@ -314,6 +314,19 @@ def combo_key(signal: str, th: float, sl: float, tp: float,
     return f"{signal}|{th:g}|{sl:g}|{tp:g}|{sizing}"
 
 
+def signals_in(states: dict) -> set:
+    """Which signals a state file has measured, read from its own keys.
+
+    Every measured combination is a key -- ``signal|th|sl|tp|sizing`` -- so the
+    set is recoverable exactly, including signals whose rows the trade floor
+    dropped. That matters when ADDING rules to a pair whose state predates
+    ``__signals__`` (2026-08-27): the first merged pair wrote
+    ``__signals__: 15`` beside 17,592 rows from 80 other signals, which would
+    have sent the next pass back to re-measure all of it.
+    """
+    return {k.split("|", 1)[0] for k in states if not k.startswith("__")}
+
+
 # ------------------------------------------------------------- worker slots
 # A parallel run puts one PAIR on each core. A child process cannot call back
 # into the parent, so each worker publishes its own progress to its own small
@@ -628,7 +641,7 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
     states = {} if (fresh and not merge) else load_states(coin, tf)
     # what this pass is measuring, and what the pair had measured before it
     sig_set = set(signals or br.SIGNALS)
-    had_sigs = set(states.get("__signals__") or [])
+    had_sigs = set(states.get("__signals__") or signals_in(states))
     # A pair measured in the CLOUD carries a watermark but no per-combination
     # state, so resuming from it would start every combination at that bar with
     # no ladder rung or running total behind it — extending a measurement this

@@ -160,6 +160,35 @@ def test_merge_walks_the_whole_window_not_just_the_new_bars(store, offline):
         "the merged pass measured a different history from a fresh one"
 
 
+def test_a_state_file_written_before_the_named_set_is_read_from_its_keys(
+        store, offline):
+    """Every pair in the operator's store predates `__signals__`.
+
+    The first merged pair proved it: 1000BONK-1h came back with
+    `__signals__: ["cf_bosfvg", ...]` -- fifteen names -- beside 17,592 rows
+    from 80 other signals, because the previous set was read from a field that
+    did not exist yet. The next pass would then have called the pair stale and
+    re-measured all of it, which is the exact cost this feature exists to
+    avoid. The state's own KEYS carry the answer: one per measured
+    combination.
+    """
+    msw.run_pair("TEST_USDT", "4h", days=120, signals=["mom6", "fade15"],
+                 thresholds=1)
+    st = msw.load_states("TEST", "4h")
+    assert msw.signals_in(st) == {"mom6", "fade15"}
+    # forget the named set, exactly as every pair in the store has it
+    st.pop("__signals__", None)
+    msw.save_states("TEST", "4h", st)
+
+    msw.run_pair("TEST_USDT", "4h", days=120, signals=["trend50"],
+                 thresholds=1, merge=True)
+    after = msw.load_states("TEST", "4h")
+    assert after["__signals__"] == ["fade15", "mom6", "trend50"],         "the merge forgot what the pair had already measured"
+    assert after["__version__"].startswith("signals3-"),         "the version must count what the pair HOLDS, not what one pass measured"
+    assert _sigs_of(msw.pair_rows("TEST", "4h")) == {"mom6", "fade15",
+                                                    "trend50"}
+
+
 def test_the_persist_step_merges_rather_than_overwriting():
     """Source-level, because this is the line that would silently delete 105
     signals' rows if it were ever changed back."""

@@ -568,7 +568,8 @@ def syncing() -> bool:
 
 # ------------------------------------------------------------------ reading
 def _where(coin=None, tf=None, signal=None, profitable=False,
-           min_trades=0, *, order_owns_index=False) -> tuple:
+           min_trades=0, min_winrate=0, *, order_owns_index=False,
+           order_key=None) -> tuple:
     """The WHERE clause and its arguments.
 
     `order_owns_index=True` is for the ROW query, which has an ORDER BY and a
@@ -614,6 +615,33 @@ def _where(coin=None, tf=None, signal=None, profitable=False,
         floor_hint = "+" if (order_owns_index and not coin) else ""
         sql.append(f"{floor_hint}trades >= ?")
         args.append(int(min_trades))
+    # The WIN-RATE floor, in the unit the "win %" column PRINTS: 50 means
+    # 50.00%, not 0.5 (CLAUDE.md rule G). Operator, 2026-08-27: "add a textbox
+    # winrate, if i put 50 then show me coins with winrate equal or greater
+    # than 50" -- so it is >=, inclusive: a row at exactly 50.00 stays.
+    #
+    # Unlike every other filter here, this one is the SAME COLUMN one of the
+    # orders sorts by, so which form is fast depends on the ORDER BY. Measured
+    # on the operator's own store, 35,570,060 rows, mechanical disk, LIMIT 50:
+    #
+    #   ORDER BY winrate DESC, winrate >= 70
+    #     plain   SEARCH rows USING INDEX rows_winrate (winrate>?)   0.77 s
+    #     +       SCAN rows USING INDEX rows_winrate                24.93 s
+    #   ORDER BY profit DESC, winrate >= 70
+    #     plain   SEARCH rows USING INDEX rows_winrate (winrate>?)
+    #             + USE TEMP B-TREE FOR ORDER BY        did not return in 25 s
+    #     +       SCAN rows USING INDEX rows_profit                   1.01 s
+    #
+    # So the range drives its own index when the screen is ranked by win %,
+    # and steps aside when anything else owns the ORDER BY -- letting a
+    # `winrate >= ?` range drive a query that must ORDER BY profit is the
+    # `USE TEMP B-TREE` over millions of rows this module already paid for
+    # once with `trades`.
+    if min_winrate and float(min_winrate) > 0:
+        rate_hint = ("+" if (order_owns_index and str(order_key) != "winrate")
+                     else "")
+        sql.append(f"{rate_hint}winrate >= ?")
+        args.append(float(min_winrate))
     return (" WHERE " + " AND ".join(sql) if sql else ""), args
 
 
@@ -757,14 +785,14 @@ def _indexed_by(coin) -> str:
 
 
 def query_sql(coin=None, tf=None, signal=None, profitable=False,
-              sort="profit", min_trades=0, desc=None) -> str:
+              sort="profit", min_trades=0, min_winrate=0, desc=None) -> str:
     """The row SELECT this query would run — for tests and for EXPLAIN."""
     key = str(sort or "profit")
     if key not in SORTS:
         raise ValueError(f"unknown sort {key!r}; use one of {sorted(SORTS)}")
     down = SORTS[key] if desc is None else bool(desc)
-    where, _ = _where(coin, tf, signal, profitable, min_trades,
-                      order_owns_index=True)
+    where, _ = _where(coin, tf, signal, profitable, min_trades, min_winrate,
+                      order_owns_index=True, order_key=key)
     return (f"SELECT * FROM rows{_indexed_by(coin)}{where} "
             f"ORDER BY {key} {'DESC' if down else 'ASC'}, id ASC LIMIT ? OFFSET ?")
 
@@ -774,7 +802,8 @@ def explain(**kw) -> list:
     sql = query_sql(**kw)
     _, args = _where(kw.get("coin"), kw.get("tf"), kw.get("signal"),
                      kw.get("profitable", False), kw.get("min_trades", 0),
-                     order_owns_index=True)
+                     kw.get("min_winrate", 0), order_owns_index=True,
+                     order_key=str(kw.get("sort") or "profit"))
 
     def _read():
         with _open(readonly=True) as con:
@@ -785,7 +814,7 @@ def explain(**kw) -> list:
 
 def query(coin=None, tf=None, signal=None, profitable=False,
           limit=500, offset=0, sort="profit", min_trades=0,
-          desc=None) -> dict:
+          min_winrate=0, desc=None) -> dict:
     """Rows sorted by `sort` (SORTS), profit first by default.
 
     STRICTLY READ-ONLY. It creates nothing and it indexes nothing.
@@ -797,16 +826,19 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     index catches up on its own timer (`start_keeping_up`), and `status()`
     reports how far behind it is so the screen can say so.
     """
-    where, args = _where(coin, tf, signal, profitable, min_trades)
-    # the row select streams its own ORDER BY index; the count rides the
-    # trades index instead (see _where)
-    row_where, row_args = _where(coin, tf, signal, profitable, min_trades,
-                                 order_owns_index=True)
     lim = max(0, min(int(limit), MAX_LIMIT))
     key = str(sort or "profit")
     if key not in SORTS:
         raise ValueError(
             f"unknown sort {key!r}; use one of {sorted(SORTS)}")
+    where, args = _where(coin, tf, signal, profitable, min_trades, min_winrate)
+    # the row select streams its own ORDER BY index; the count rides the
+    # trades index instead (see _where). The ORDER matters to the WHERE too:
+    # a win-rate floor drives rows_winrate when the screen is ranked by win %
+    # and steps aside otherwise.
+    row_where, row_args = _where(coin, tf, signal, profitable, min_trades,
+                                 min_winrate, order_owns_index=True,
+                                 order_key=key)
     down = SORTS[key] if desc is None else bool(desc)
     order = f"{key} {'DESC' if down else 'ASC'}"
     # a coin filter without its index is the same trap as a sort without
@@ -875,11 +907,15 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             # the caption prints "5,000+ match" when the count was capped,
             # never a bare 5,000 that reads as exact
             "total_capped": capped_count,
-            "min_trades": int(min_trades or 0)}
+            "min_trades": int(min_trades or 0),
+            # the caption prints the floors it actually asked for, never a
+            # literal it hopes matches (label-must-match-data)
+            "min_winrate": float(min_winrate or 0)}
 
 
 def iter_rows(coin=None, tf=None, signal=None, profitable=False,
-              sort="profit", min_trades=0, desc=None, batch=5_000):
+              sort="profit", min_trades=0, min_winrate=0, desc=None,
+              batch=5_000):
     """Every matching row, in the asked order, a batch at a time.
 
     No limit and no list: 21,858,026 rows will not fit in a browser table or in
@@ -911,7 +947,7 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
     down = SORTS[key] if desc is None else bool(desc)
     order = f"{key} {'DESC' if down else 'ASC'}"
     where, args = _where(coin, tf, signal, profitable, min_trades,
-                         order_owns_index=True)
+                         min_winrate, order_owns_index=True, order_key=key)
     step = max(100, int(batch))
     with _open(readonly=True) as con:
         cur = con.execute(

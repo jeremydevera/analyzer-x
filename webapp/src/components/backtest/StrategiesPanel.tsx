@@ -49,6 +49,17 @@ export default function StrategiesPanel() {
   // ranking by win % on the real store put "100.00% over 1 trade" first,
   // so picking win % asks for a denominator (editable, and said out loud)
   const [minTrades, setMinTrades] = useState(0);
+  // "add a textbox winrate, if i put 50 then show me coins with winrate equal
+  // or greater than 50" (operator, 2026-08-27). It takes the unit the win %
+  // column PRINTS — 50 means 50.00% or better, inclusive (CLAUDE.md rule G) —
+  // and it runs in the STORE, not on the page: filtering the 500 rows on
+  // screen would hide the 70%-win row sitting at position 900,000.
+  const [minWinrate, setMinWinrate] = useState(0);
+  // the floors the SERVER actually applied. On a 503 the request moves and the
+  // rows do not, so captioning them with the request is the lie the operator
+  // read as "it only sorted the page" (label-must-match-data).
+  const [servedTrades, setServedTrades] = useState(0);
+  const [servedWinrate, setServedWinrate] = useState(0);
   // "ranking by win % needs its index" is a WAIT, not a failure: keep the
   // rows on screen, say the sentence the API said, and come back for it
   const [waiting, setWaiting] = useState("");
@@ -87,7 +98,7 @@ export default function StrategiesPanel() {
 
   const load = useCallback(() => {
     api.strategies({ coin: coin || undefined, tf: tf || undefined, signal: signal || undefined,
-                     profitable, sort, minTrades, desc,
+                     profitable, sort, minTrades, minWinrate, desc,
                      limit: perPage, offset: (page - 1) * perPage })
       .then((d) => {
         setRows(d.rows); setTotal(d.total); setCapped(!!d.total_capped);
@@ -95,6 +106,8 @@ export default function StrategiesPanel() {
         // what the rows are really in, straight from the payload
         setServedSort((d.sort as StrategySort) ?? sort);
         setServedDesc(d.desc ?? desc);
+        setServedTrades(d.min_trades ?? minTrades);
+        setServedWinrate(d.min_winrate ?? minWinrate);
       })
       .catch((e) => {
         if (e instanceof ApiError && e.status === 503) {
@@ -102,13 +115,13 @@ export default function StrategiesPanel() {
           setErr("");
         } else { setErr(String(e)); setWaiting(""); }
       });
-  }, [coin, tf, signal, profitable, sort, minTrades, desc, page, perPage]);
+  }, [coin, tf, signal, profitable, sort, minTrades, minWinrate, desc, page, perPage]);
 
   useEffect(load, [load]);
   // a new filter or order is a new list: page 1, or the operator lands on
   // page 40 of something they have not seen the top of
   useEffect(() => { setPage(1); setExtra([]); },
-    [coin, tf, signal, profitable, sort, minTrades, desc, perPage]);
+    [coin, tf, signal, profitable, sort, minTrades, minWinrate, desc, perPage]);
   useEffect(() => {
     if (!waiting) return;
     const t = setTimeout(load, 15000);
@@ -137,7 +150,7 @@ export default function StrategiesPanel() {
     try {
       const d = await api.strategies({
         coin: coin || undefined, tf: tf || undefined, signal: signal || undefined,
-        profitable, sort, minTrades, desc,
+        profitable, sort, minTrades, minWinrate, desc,
         limit: perPage, offset: (page - 1) * perPage + shown.length,
       });
       setExtra((e) => e.concat(d.rows));
@@ -170,7 +183,7 @@ export default function StrategiesPanel() {
         <div>
           <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Stored strategies</h3>
           <p className="text-theme-xs text-gray-500 dark:text-gray-400">
-            {total.toLocaleString()}{capped ? "+" : ""} {[coin, tf, signal, profitable ? "profitable only" : ""].some(Boolean) || minTrades > 0 ? "match" : "stored strategies"}
+            {total.toLocaleString()}{capped ? "+" : ""} {[coin, tf, signal, profitable ? "profitable only" : ""].some(Boolean) || minTrades > 0 || minWinrate > 0 ? "match" : "stored strategies"}
             {` · rows ${shown.length ? (page - 1) * perPage + 1 : 0}–${(page - 1) * perPage + shown.length} on screen`}
             {` · ${servedDesc ? "highest" : "lowest"} ${STRATEGY_SORTS[servedSort]} first`}
             {/* A partial index must NOT be captioned as the whole store: the
@@ -192,7 +205,8 @@ export default function StrategiesPanel() {
             {facets.signals.length ? ` · ${facets.signals.length} signals` : ""}
             {[coin, tf, signal].filter(Boolean).length ? ` · filters: ${[coin, tf, signal].filter(Boolean).join(" · ")}` : ""}
             {profitable ? " · profitable only" : " · losers included"}
-            {minTrades > 0 ? ` · at least ${minTrades} trades` : ""}
+            {servedTrades > 0 ? ` · at least ${servedTrades} trades` : ""}
+            {servedWinrate > 0 ? ` · win % ${servedWinrate} or better` : ""}
           </p>
         </div>
         {idx && idx.behind > 0 ? (
@@ -236,6 +250,17 @@ export default function StrategiesPanel() {
                    aria-label="Minimum trades"
                    className="h-10 w-20 rounded-lg border border-gray-300 bg-transparent px-2 text-theme-sm text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" />
           </label>
+          {/* the operator's own sentence: "if i put 50 then show me coins with
+              winrate equal or greater than 50" — a COUNT-free percentage box,
+              in the unit the win % column prints */}
+          <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300"
+                 title="show only rows whose win % is this or higher">
+            min win %
+            <input type="number" min={0} max={100} step={5} value={minWinrate}
+                   onChange={(e) => setMinWinrate(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                   aria-label="Minimum win rate percent"
+                   className="h-10 w-20 rounded-lg border border-gray-300 bg-transparent px-2 text-theme-sm text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" />
+          </label>
           <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300">
             <input type="checkbox" checked={profitable} onChange={(e) => setProfitable(e.target.checked)} className="h-4 w-4 accent-brand-500" />
             profitable only
@@ -276,12 +301,24 @@ export default function StrategiesPanel() {
           {/* the only honest "all": a file, streamed, with every column */}
           <a className={`${pageBtn} ml-1 inline-flex items-center`}
              href={api.strategiesCsvUrl({ coin: coin || undefined, tf: tf || undefined,
-               signal: signal || undefined, profitable, sort, minTrades, desc })}>
+               signal: signal || undefined, profitable, sort, minTrades,
+               minWinrate, desc })}>
             download all ({total.toLocaleString()}{capped ? "+" : ""}) CSV
           </a>
         </div>
       </div>
       {err && <p className="px-5 pt-2 text-theme-sm text-error-500">{err}</p>}
+      {/* rule G: a filter that cannot leave anything says why, rather than
+          showing an empty table the reader has to explain to themselves */}
+      {!err && !waiting && !shown.length && (minWinrate > 0 || minTrades > 0) && (
+        <p className="px-5 pt-2 text-theme-sm text-warning-600 dark:text-warning-400">
+          no stored strategy passes {minWinrate > 0 ? <b>win % ≥ {minWinrate}</b> : null}
+          {minWinrate > 0 && minTrades > 0 ? " with " : null}
+          {minTrades > 0 ? <b>{minTrades}+ trades</b> : null}
+          {[coin, tf, signal].filter(Boolean).length ? ` and ${[coin, tf, signal].filter(Boolean).join(" · ")}` : ""}
+          {profitable ? " and profit above zero" : ""} — lower the floor to see what is close.
+        </p>
+      )}
       {waiting && (
         <p className="px-5 pt-2 text-theme-sm text-warning-600 dark:text-warning-400">
           preparing <b>{STRATEGY_SORTS[sort]}</b> across all {total.toLocaleString()}

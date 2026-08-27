@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 24, "total": 51, "rows": 2089154, "note": "IRYS 30m: rule 90/105 (cf_chan_l2)", "pct": 47.1, "updated": "2026-08-27T07:36:02Z"}
+{"shard": 6, "stage": "testing", "done": 24, "total": 51, "rows": 2102552, "note": "IRYS 1h: rule 45/105 (zscore20)", "pct": 47.1, "updated": "2026-08-27T07:36:47Z"}

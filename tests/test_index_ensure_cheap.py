@@ -27,17 +27,16 @@ def test_ensure_only_creates_the_indexes_nothing_drops():
         "ensure must NOT build the filter indexes a bulk fill drops"
 
 
-def test_only_a_huge_fill_drops_anything_and_it_rebuilds():
-    """A normal fill keeps every index now (the screen ordered by two of
-    them); only a BIG_FILL rebuild-from-files drops, and it puts them
-    back in the same call."""
+def test_a_fill_leaves_every_index_in_place():
+    """ensure() creates the four the screen needs; sync() removes none of
+    them, at any size (see test_never_drop_the_page.py)."""
     import inspect
 
     src = inspect.getsource(ri.sync)
-    assert "len(todo) > BIG_FILL" in src
-    assert "DROP INDEX IF EXISTS" in src
-    tail = src[src.index("DROP INDEX IF EXISTS"):]
-    assert "READ_INDEXES" in tail, "dropped AND rebuilt"
+    assert "DROP INDEX" not in src
+    kept = " ".join(ri.KEEP_INDEXES)
+    for name in ("rows_profit", "rows_coin", "rows_winrate"):
+        assert name in kept, name
 
 
 def test_a_fresh_database_gets_its_tables_and_the_kept_indexes(tmp_path, monkeypatch):

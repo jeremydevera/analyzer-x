@@ -36,15 +36,17 @@ def test_a_normal_fill_drops_nothing(tmp_path, monkeypatch):
         "an 9-pair fill must not drop the screen's indexes"
 
 
-def test_a_huge_load_may_still_drop_them_for_speed():
-    assert ri.BIG_FILL >= 500, ri.BIG_FILL
+def test_not_even_a_huge_load_drops_them():
+    """The BIG_FILL exception lasted one evening. At 12:48am on 2026-08-27 the
+    indexer finished a 500+ pair fill, dropped rows_profit with it, and the
+    Stored strategies page showed nothing at all for the ~25 minutes of
+    rebuilds — "why does it not show anything". A slower fill costs the
+    operator nothing they can see."""
     import inspect
 
     src = inspect.getsource(ri.sync)
-    assert "DROP INDEX IF EXISTS" in src
-    # and it puts them back in the same call
-    tail = src[src.index("DROP INDEX IF EXISTS"):]
-    assert "READ_INDEXES" in tail, "the same call must put them back"
+    assert "DROP INDEX" not in src
+
 
 
 def test_the_sort_guard_still_covers_a_missing_index(tmp_path, monkeypatch):

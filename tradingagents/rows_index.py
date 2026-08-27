@@ -495,14 +495,17 @@ def sync(paths: Iterable[Path] | None = None, *, budget_s: float = 0.0,
         print(f"[rows-index] sync: {len(todo)} to do, opening writer"
               f"{' (BULK)' if bulk else ''}", flush=True)
     with _open() as con:
-        if bulk:
-            # readers still work while these are gone: SQLite falls back to a
-            # scan, which is slower per query but never blocked, and status()
-            # keeps saying the list is still filling in.
-            for name in ("rows_profit", "rows_coin", "rows_winrate"):
-                con.execute(f"DROP INDEX IF EXISTS {name}")
-            forget_indexes()
-            con.commit()
+        # NOTHING IS DROPPED HERE, however big the fill.
+        #
+        # It used to drop rows_profit/rows_coin/rows_winrate past BIG_FILL to
+        # reload faster and rebuild them at the end. On 2026-08-27 at 12:48am
+        # that emptied the screen: the default order answered "ranking by
+        # profit needs its index (rows_profit); it is being built" for the
+        # ~25 minutes the three rebuilds took, and the operator asked "why does
+        # it not show anything". A slower fill is a cost the operator never
+        # sees; a blank Stored strategies is the product not working. A
+        # rebuild-from-the-pair-files is a deliberate offline operation and can
+        # drop indexes itself.
         if DEBUG:
             print("[rows-index] writer open", flush=True)
         for f in todo:

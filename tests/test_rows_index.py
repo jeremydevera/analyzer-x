@@ -518,8 +518,11 @@ def test_a_bulk_fill_drops_and_rebuilds_its_indexes_exactly_once(store,
     ddl = []
     real_connect = ri._connect
 
-    def traced(readonly=False):
-        con = real_connect(readonly)
+    def traced(readonly=False, same_thread=True):
+        # `same_thread` exists because the CSV export streams its reader across
+        # Starlette's threadpool (see _connect); a stub that does not take it
+        # fails every fill with a TypeError
+        con = real_connect(readonly, same_thread)
         con.set_trace_callback(
             lambda sql: ddl.append(sql) if "INDEX" in (sql or "").upper()
             else None)

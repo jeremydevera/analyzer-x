@@ -26,7 +26,10 @@ from __future__ import annotations
 
 import contextlib
 import json
+import os
 import sqlite3
+import subprocess
+import sys
 import threading
 import time
 from collections.abc import Iterable
@@ -1179,28 +1182,68 @@ def build_sort_index(sort: str) -> bool:
     return _build_index(SORT_INDEX.get(sort))
 
 
-def _build_index(name) -> bool:
-    """Create one named index in the background. False when there is
-    nothing to build or a build is already under way."""
+def build_index_now(name: str) -> bool:
+    """Create one named index HERE, blocking. Returns True when it exists after.
+
+    This is what the detached child runs. `IF NOT EXISTS` makes it idempotent,
+    and the long busy_timeout is deliberate: another writer (the indexer, or a
+    second build) may hold the lock for many minutes and WAITING is right.
+    """
     ddl = INDEX_DDL.get(name or "")
-    if not name or not ddl or name in _BUILDING or has_index(name) is True:
+    if not ddl:
+        print(f"[rows-index] no such index: {name}", flush=True)
         return False
-    _BUILDING.add(name)
+    started = time.time()
+    try:
+        with _open() as con:
+            con.execute("PRAGMA busy_timeout=3600000")
+            con.execute(ddl)
+        forget_indexes()
+        print(f"[rows-index] built {name} in {time.time() - started:.0f}s",
+              flush=True)
+        return True
+    except Exception as exc:                                      # noqa: BLE001
+        print(f"[rows-index] could not build {name} after "
+              f"{time.time() - started:.0f}s: {type(exc).__name__}: {exc}",
+              flush=True)
+        return False
 
-    def _work() -> None:
-        try:
-            with _open() as con:
-                con.execute("PRAGMA busy_timeout=600000")
-                con.execute(ddl)
-            forget_indexes()
-            print(f"[rows-index] built {name}", flush=True)
-        except Exception as exc:                                  # noqa: BLE001
-            print(f"[rows-index] could not build {name}: {exc}", flush=True)
-        finally:
-            _BUILDING.discard(name)
 
-    threading.Thread(target=_work, name=f"idx-{name}", daemon=True).start()
-    return True
+def _build_index(name) -> bool:
+    """Start building one named index in a DETACHED CHILD PROCESS, so it
+    outlives whoever asked. False when there is nothing to build or this
+    process already started one.
+
+    A thread was not enough: the API restarts (every deploy), and each restart
+    killed the build mid-scan while the screen kept saying "being built in the
+    background" — Preset Confluence spent an afternoon like that, 2026-08-27.
+    """
+    if not name or name not in INDEX_DDL or name in _BUILDING:
+        return False
+    if has_index(name) is True:
+        return False
+    _BUILDING.add(name)                 # only stops THIS process re-asking
+    cmd = [sys.executable, "-m", "tradingagents.rows_index", "--build", name]
+    kwargs: dict = {"stdout": subprocess.DEVNULL,
+                    "stderr": subprocess.DEVNULL,
+                    "stdin": subprocess.DEVNULL,
+                    "cwd": str(Path(__file__).resolve().parent.parent)}
+    if os.name == "nt":
+        # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP: taskkill /T on the API
+        # (start.py does exactly that) must not reach the build.
+        kwargs["creationflags"] = 0x00000008 | 0x00000200
+    else:
+        kwargs["start_new_session"] = True
+    try:
+        proc = subprocess.Popen(cmd, **kwargs)                # noqa: S603
+        print(f"[rows-index] building {name} in pid {proc.pid} (detached)",
+              flush=True)
+        return True
+    except Exception as exc:                                      # noqa: BLE001
+        _BUILDING.discard(name)
+        print(f"[rows-index] could not start a build for {name}: "
+              f"{type(exc).__name__}: {exc}", flush=True)
+        return False
 
 
 def _winrate_seek_cap() -> int:
@@ -1902,9 +1945,22 @@ def checkpoint_if_bloated(cap: int = WAL_CAP_BYTES) -> dict:
     return {"checkpointed": True, "wal": after, "was": before}
 
 
-def main() -> int:
-    """The indexer process. Nice, so it never outranks a click either."""
-    import os
+def main(argv: list | None = None) -> int:
+    """The indexer process — or, with `--build <name>`, one index and out.
+
+    `--build` is what a detached child runs (see _build_index): it must not
+    start the keep-up loop, or every refused query would leave another indexer
+    running beside the real one.
+    """
+    args = list(sys.argv[1:] if argv is None else argv)
+    if args and args[0] == "--build":
+        if len(args) < 2:
+            print("usage: -m tradingagents.rows_index --build <index>",
+                  flush=True)
+            return 2
+        with contextlib.suppress(OSError, AttributeError):
+            os.nice(10)          # a build must never outrank a click
+        return 0 if build_index_now(args[1]) else 1
 
     with contextlib.suppress(OSError, AttributeError):
         os.nice(5)

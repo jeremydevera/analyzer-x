@@ -265,3 +265,51 @@ def test_the_reason_never_claims_a_finished_build_is_running(monkeypatch):
     assert "rank by win %" in why, "and it still says what DOES work"
     monkeypatch.setattr(ri, "has_index", lambda name: False)
     assert "being built" in ri._slow_why(None, None, None, 80, 0, "profit")
+
+
+def test_a_build_outlives_the_process_that_asked_for_it(monkeypatch, tmp_path):
+    """Operator, 2026-08-27: Preset Confluence said "It is being built in the
+    background; try again shortly" for an hour and nothing ever landed.
+
+    The build ran in a daemon THREAD inside the API, and the API was restarted
+    several times that afternoon shipping the day's fixes — every restart killed
+    it mid-scan, silently, and the next request started over. `start.py` kills
+    the API with `taskkill /T`, which would reach a child too, so the child is
+    spawned DETACHED (its own process group / session).
+    """
+    seen = {}
+
+    class FakeProc:
+        pid = 4242
+
+    def fake_popen(cmd, **kw):
+        seen["cmd"] = cmd
+        seen["kw"] = kw
+        return FakeProc()
+
+    monkeypatch.setattr(ri, "DB_PATH", tmp_path / "rows.db")
+    monkeypatch.setattr(ri, "has_index", lambda name: False)
+    monkeypatch.setattr(ri.subprocess, "Popen", fake_popen)
+    ri._BUILDING.discard("rows_pr2")
+    assert ri._build_index("rows_pr2") is True
+    assert seen["cmd"][1:] == ["-m", "tradingagents.rows_index",
+                               "--build", "rows_pr2"], seen["cmd"]
+    detached = (seen["kw"].get("creationflags", 0) & 0x00000008) or \
+        seen["kw"].get("start_new_session")
+    assert detached, seen["kw"]
+    ri._BUILDING.discard("rows_pr2")
+
+    # an index nobody defined is refused rather than spawned
+    assert ri._build_index("rows_not_a_thing") is False
+
+
+def test_the_child_builds_one_index_and_does_not_become_an_indexer(monkeypatch):
+    """`--build` must not start the keep-up loop, or every refused query would
+    leave another indexer running beside the real one."""
+    built, kept = [], []
+    monkeypatch.setattr(ri, "build_index_now", lambda n: built.append(n) or True)
+    monkeypatch.setattr(ri, "start_keeping_up", lambda *a, **k: kept.append(1))
+    monkeypatch.setattr(ri, "ensure", lambda: None)
+    assert ri.main(["--build", "rows_id"]) == 0
+    assert built == ["rows_id"] and kept == []
+    assert ri.main(["--build"]) == 2, "a missing name is a usage error"

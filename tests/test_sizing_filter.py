@@ -175,8 +175,13 @@ def test_the_browser_sends_it_and_offers_the_grid_values():
     assert "(facets.sizings ?? []).map" in panel, (
         "the options come from the grid, not from two literals here")
     assert panel.count("applied.sizing") >= 3, "table, load-more and CSV"
-    # it is one of the Apply filters, and it is in the ANDed sentence
-    assert "sizing };" in panel or "sizing }" in panel
+    # it is one of the Apply filters, and it is in the ANDed sentence. Matched
+    # over the draft set, not its last field: the next filter added there must
+    # not break this test (the row-id box did).
+    import re
+
+    draft = re.search(r"const draft = \{(.*?)\};", panel, re.S)
+    assert draft and "sizing" in draft.group(1), draft
     assert "`sizing = ${f.sizing}`" in panel
     # and the caption says it from the SERVED set
     assert "servedFilters.sizing" in panel

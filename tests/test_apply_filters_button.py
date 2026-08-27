@@ -72,7 +72,9 @@ def test_the_button_says_when_the_boxes_are_not_applied_yet():
 
 def test_the_filters_read_as_one_AND_sentence():
     p = _panel()
-    line = re.search(r"const andLine = \(f: typeof draft\) => \[(.*?)\]\.join",
+    # the helper now opens with the row-id override, so match from its name to
+    # the join rather than assuming the first thing after `=>` is the array
+    line = re.search(r"const andLine = \(f: typeof draft\) =>(.*?)\.join\(\" AND \"\)",
                      p, re.S)
     assert line, "the AND line must be built from the filter set"
     terms = line.group(1)

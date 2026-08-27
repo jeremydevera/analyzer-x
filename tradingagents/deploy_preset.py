@@ -19,9 +19,11 @@ real money before:
 
 * a key that is not in STRATEGY_SPECS — the repo is older than the preset, and
   arming a spec that does not exist is a row that trades nothing
-* a coin already claimed on that timeframe by a different strategy — MEXC nets
-  two positions on one contract into one, so the second entry resizes the
-  first and either stop closes part of a trade it does not own
+* a coin another strategy already trades with REAL money — MEXC nets two
+  positions on one contract into one, so the second entry resizes the first
+  and either stop closes part of a trade it does not own. Per COIN, whatever
+  the bar size, and only for a real book: a demo book has no position to fight
+  over, which is why the app locks nothing on demo either
 * a book the preset did not ask for. The preset says ``paper`` and applying
   keeps it paper; going live is a click the operator makes, on the machine
   that holds the keys, per row
@@ -52,20 +54,27 @@ def load(path) -> dict:
 
 
 def _claims(settings: dict) -> dict:
-    """(coin, timeframe) -> the strategy key already holding it.
+    """coin -> the strategy key already trading it with REAL money.
 
     Read from the TARGET machine's settings, so a preset cannot walk onto a
-    contract that machine is already trading on that timeframe.
-    """
-    from tradingagents import auto_trader as at
+    contract that machine is already trading.
 
+    Per COIN, not per coin+timeframe, and only for a REAL book — the same rule
+    `auto_trader.timeframe_locks` enforces: MEXC nets every order on a contract
+    into one position whatever the bar size, and a DEMO book has no position to
+    fight over ("for demo it can have multiple strategies so i can see if its
+    working"). This function keyed on (coin, interval) and counted demo rows,
+    so applying a preset twice refused four of its own strategies against the
+    demo rows it had just written.
+    """
     out: dict = {}
+    books = settings.get("strategy_books") or {}
     coins = settings.get("strategy_coins") or {}
     for key, got in coins.items():
-        spec = at.STRATEGY_SPECS.get(key) or {}
-        tf = str(spec.get("interval") or "")
+        if "real" not in (books.get(key) or []):
+            continue
         for coin in got or []:
-            out[(str(coin), tf)] = key
+            out.setdefault(str(coin), key)
     return out
 
 
@@ -82,12 +91,14 @@ def plan(preset: dict, settings: dict) -> dict:
             refused.append({"key": key, "why": "not in STRATEGY_SPECS — this "
                                                "repo is older than the preset"})
             continue
-        tf = str(spec.get("interval") or "")
         keep, clash = [], []
+        wants_real = "real" in list(one.get("book")
+                                    or preset.get("book") or ["paper"])
         for coin in one["coins"]:
-            holder = claimed.get((str(coin), tf))
-            if holder and holder != key:
-                clash.append(f"{coin} is already traded by {holder} on {tf}")
+            holder = claimed.get(str(coin))
+            # only a REAL book can be blocked, and only by another real one
+            if wants_real and holder and holder != key:
+                clash.append(f"{coin} is already traded live by {holder}")
             else:
                 keep.append(str(coin))
         if clash:

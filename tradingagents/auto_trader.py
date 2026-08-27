@@ -423,6 +423,127 @@ STRATEGY_SPECS = {
         "interval": "Hour4", "bar_seconds": 14400,
         "tp": 0.004, "sl": 0.04,
     },
+    # ---------------------------------------------------------------
+    # The 15 rows the operator named on 2026-08-27, sorted by the win %
+    # of the LAST MONTH: *"all 15, im looking for what's working this
+    # month"*, said after being shown that 13 of them fail the
+    # still-working screen. Their call, recorded here with what each one
+    # actually measured over the whole candle store so the next reader
+    # does not have to take the deploy on faith:
+    #
+    # 7 LOSE money over their full history - LYN cci20 2.5/4.0 -$83.85,
+    # LYN cci20 3.0/3.0 -$82.32, CYBER mom6 -$61.46, G rsi14 -$29.28,
+    # SWARMS ibs 3.0/3.0 -$24.05, VELO pivot -$23.60, SAPIEN rsi14
+    # -$11.24. Two more cannot win at ANY win rate: AMP's round trip
+    # measured 1.53% against a 2.00% target, 77% of it (100.5% when the
+    # book was thinner), and rule 11 puts the fatal line near 50%.
+    # Only stoch14_1h_sl3tp3 (LYN) and ibs_4h_sl4tp4 (SWARMS) pass every
+    # window.
+    #
+    # FLAT sizing at $5 margin / $100 notional / 20x, measured with the
+    # taker fee from each contract's own book, 0.03%/side slippage both
+    # ways and every published funding settlement inside each trade's own
+    # window. Depth is per row (days), 325-394 for most of these.
+    #
+    # LYN #37BG8EPY: full -82.32 over 357 trades, 3/11 green, 1mo +48.70,
+    #   win 48.46% vs break-even 52.30%, dip -169.46, cost 1.9% of target, gate ok, 325d - FAILS: full -82.32; green 3/11 months
+    "cci20_4h_sl3tp3": {
+        "interval": "Hour4", "bar_seconds": 14400,
+        "tp": 0.03, "sl": 0.03,
+    },
+    #
+    # SWARMS #CE9FLYDR: full -24.05 over 412 trades, 6/14 green, 1mo +50.29,
+    #   win 51.46% vs break-even 52.43%, dip -115.74, cost 5.5% of target, gate ok, 394d - FAILS: full -24.05; 6mo -43.83; green 6/14 months
+    "ibs_4h_sl3tp3": {
+        "interval": "Hour4", "bar_seconds": 14400,
+        "tp": 0.03, "sl": 0.03,
+    },
+    #
+    # PI #7JM3PHL4: full +2.32 over 304 trades, 7/14 green, 1mo +35.08,
+    #   win 49.67% vs break-even 49.53%, dip -69.30, cost 1.7% of target, gate ok, 394d - FAILS: green 7/14 months
+    "pivot_4h_sl25tp3": {
+        "interval": "Hour4", "bar_seconds": 14400,
+        "tp": 0.03, "sl": 0.025,
+    },
+    #
+    # SAPIEN #4Q2UXGVA: full -11.24 over 523 trades, 6/13 green, 1mo +22.76,
+    #   win 52.96% vs break-even 53.50%, dip -84.18, cost n/a of target, gate ok, 371d - FAILS: full -11.24; green 6/13 months
+    # G #MQ7AQLGG: full -29.28 over 424 trades, 5/14 green, 1mo +16.04,
+    #   win 53.77% vs break-even 55.50%, dip -76.16, cost n/a of target, gate ok, 394d - FAILS: full -29.28; green 5/14 months
+    "rsi14_30m_sl2tp2": {
+        "interval": "Min30", "bar_seconds": 1800,
+        "tp": 0.02, "sl": 0.02,
+    },
+    #
+    # CYBER #SL9H9PNA: full -61.46 over 443 trades, 4/14 green, 1mo +33.34,
+    #   win 50.11% vs break-even 52.43%, dip -147.48, cost n/a of target, gate ok, 394d - FAILS: full -61.46; green 4/14 months
+    "mom6_4h_sl3tp3": {
+        "interval": "Hour4", "bar_seconds": 14400,
+        "tp": 0.03, "sl": 0.03, "threshold": 0.006,
+    },
+    #
+    # LYN #R3HEXX66: full -83.85 over 352 trades, 4/11 green, 1mo +44.14,
+    #   win 36.93% vs break-even 40.59%, dip -171.46, cost 1.4% of target, gate ok, 325d - FAILS: full -83.85; green 4/11 months
+    "cci20_4h_sl25tp4": {
+        "interval": "Hour4", "bar_seconds": 14400,
+        "tp": 0.04, "sl": 0.025,
+    },
+    #
+    # TREE #UQK72Z7K: full +30.36 over 500 trades, 5/14 green, 1mo +38.52,
+    #   win 54.00% vs break-even 52.79%, dip -70.92, cost 4.1% of target, gate ok, 394d - FAILS: green 5/14 months
+    "fvg_1h_sl25tp25": {
+        "interval": "Min60", "bar_seconds": 3600,
+        "tp": 0.025, "sl": 0.025,
+    },
+    #
+    # PI #PXCQ9GRG: full +1.33 over 275 trades, 7/14 green, 1mo +29.93,
+    #   win 53.82% vs break-even 53.74%, dip -58.44, cost 1.7% of target, gate ok, 394d - FAILS: green 7/14 months
+    "pivot_4h_sl3tp3": {
+        "interval": "Hour4", "bar_seconds": 14400,
+        "tp": 0.03, "sl": 0.03,
+    },
+    #
+    # AMP #9DD9FSLR: full +220.54 over 439 trades, 11/14 green, 1mo +34.68,
+    #   win 66.06% vs break-even 53.50%, dip -19.74, cost 100.5% of target, gate warn, 394d - FAILS: cost is 100% of the target
+    "zscore20_1h_sl2tp2": {
+        "interval": "Min60", "bar_seconds": 3600,
+        "tp": 0.02, "sl": 0.02,
+    },
+    #
+    # LYN #AXKANEGZ: full +1.04 over 857 trades, 7/11 green, 1mo +44.40,
+    #   win 52.39% vs break-even 52.37%, dip -190.36, cost 1.9% of target, gate ok, 325d
+    "stoch14_1h_sl3tp3": {
+        "interval": "Min60", "bar_seconds": 3600,
+        "tp": 0.03, "sl": 0.03,
+    },
+    #
+    # VELO #6NSR62G5: full -23.60 over 744 trades, 7/14 green, 1mo +43.35,
+    #   win 51.88% vs break-even 52.41%, dip -122.92, cost 12.8% of target, gate ok, 394d - FAILS: full -23.60; green 7/14 months
+    "pivot_1h_sl3tp3": {
+        "interval": "Min60", "bar_seconds": 3600,
+        "tp": 0.03, "sl": 0.03,
+    },
+    #
+    # SWARMS #AYDB7ULN: full +40.89 over 341 trades, 10/14 green, 1mo +41.27,
+    #   win 53.37% vs break-even 51.87%, dip -89.82, cost 4.1% of target, gate ok, 394d
+    "ibs_4h_sl4tp4": {
+        "interval": "Hour4", "bar_seconds": 14400,
+        "tp": 0.04, "sl": 0.04,
+    },
+    #
+    # AMP #SDL5BQJH: full +244.32 over 512 trades, 11/14 green, 1mo +34.40,
+    #   win 65.43% vs break-even 53.50%, dip -19.08, cost 100.5% of target, gate warn, 394d - FAILS: cost is 100% of the target
+    "bb20_1h_sl2tp2": {
+        "interval": "Min60", "bar_seconds": 3600,
+        "tp": 0.02, "sl": 0.02,
+    },
+    #
+    # CTC #FQBW9FJ9: full +36.12 over 331 trades, 7/14 green, 1mo +26.60,
+    #   win 54.98% vs break-even 52.80%, dip -71.12, cost n/a of target, gate ok, 394d - FAILS: green 7/14 months
+    "ibs_4h_sl25tp25": {
+        "interval": "Hour4", "bar_seconds": 14400,
+        "tp": 0.025, "sl": 0.025,
+    },
 }
 
 
@@ -556,7 +677,13 @@ STRATEGY_ORDER = ("mom15_4h", "mom15_4h_b", "fvg_4h", "fvg_4h_b",
                   "killzone_1h_sl25tp04", "elder_1h_sl4tp04",
                   "fib382_1h_sl4tp04", "sweep30_1h_sl4tp04",
                   "hull20_1h_sl4tp04", "ibs_4h_sl3tp04", "ibs_4h_sl4tp04",
-                  "lrslope_1h_sl4tp06", "pivot_4h_sl4tp04")
+                  "lrslope_1h_sl4tp06", "pivot_4h_sl4tp04",
+                  "cci20_4h_sl3tp3", "ibs_4h_sl3tp3", "pivot_4h_sl25tp3",
+                  "rsi14_30m_sl2tp2", "mom6_4h_sl3tp3", "cci20_4h_sl25tp4",
+                  "fvg_1h_sl25tp25", "pivot_4h_sl3tp3",
+                  "zscore20_1h_sl2tp2", "stoch14_1h_sl3tp3",
+                  "pivot_1h_sl3tp3", "ibs_4h_sl4tp4", "bb20_1h_sl2tp2",
+                  "ibs_4h_sl25tp25")
 
 
 # ------------------------------------------------------------------ signals
@@ -674,7 +801,13 @@ def signal_for(key: str, high: list, low: list, close: list,
             return dirs[-1] if dirs else 0
     if key.startswith("fvg_") or key == "ict_fvg":
         return sig_ict_fvg(high, low, close)
-    if key == "rsi14_1h":
+    # `rsi14_1h` was the ONLY key that reached this rule, so any other rsi14
+    # spec fell through to `return 0` and would have traded exactly never.
+    # Found on 2026-08-27 while deploying rsi14 at 30m on SAPIEN and G: the
+    # grid measures rsi14 through `_dirs_for_backtest`, which had the same
+    # exact-match, and my screen only got real numbers because it passed the
+    # literal "rsi14_1h" as the dirs key. Prefix, like every other rule here.
+    if key == "rsi14_1h" or key.startswith("rsi14"):
         return sig_rsi14(close)
     if key.startswith("trend50"):
         return sig_trend50(close)
@@ -1259,7 +1392,9 @@ def _dirs_for_backtest(key: str, high: list, low: list,
     for _name in sorted(EXTRA_SIGNALS, key=len, reverse=True):
         if key == _name or key.startswith(_name + "_"):
             return EXTRA_SIGNALS[_name](high, low, close)
-    if key == "rsi14_1h":
+    # prefix, so the GRID and the RUNNER agree on every rsi14 spec and not
+    # just `rsi14_1h` (see signal_for)
+    if key == "rsi14_1h" or key.startswith("rsi14"):
         g = lo = 0.0
         for i in range(1, n):
             ch = close[i] - close[i - 1]

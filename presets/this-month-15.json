@@ -1,0 +1,597 @@
+{
+  "name": "this-month-15",
+  "why": "The 15 rows the operator named on 2026-08-27 after sorting the balanced page by the LAST MONTH's win rate: \"all 15, im looking for what's working this month\". Recorded as asked. THIRTEEN OF THEM FAIL the still-working screen; seven lose money over their full history and two cannot win at any win rate. Every number is in `measured` per coin - read it before applying this.",
+  "measured": {
+    "base_margin": 5.0,
+    "notional": 100.0,
+    "leverage": 20,
+    "sizing": "flat",
+    "costs": "taker fee from each contract's own book, 0.03%/side slippage both ways, every published funding settlement inside each trade's window; stop checked before target inside a bar",
+    "depth": "per row - see `days`; 325-394 for most, 28-43 for a few",
+    "one_live_per_coin": "MEXC nets every order on a contract into one position, so only one strategy per coin may hold the real book. These 15 rows cover 10 coins, so 9 keys are real (rsi14_30m carries two coins) and 5 rows are on the demo book. The live slot went to the highest LAST-MONTH profit on that coin.",
+    "warning": "AMP's round trip measured 1.53% against a 2.00% target (77% of it; 100.5% when the book was thinner). Rule 11 puts the fatal line near 50%: zscore20_1h_sl2tp2 and bb20_1h_sl2tp2 cannot win at any win rate, whatever the backtest shows."
+  },
+  "base_margin": 5.0,
+  "sizing": "flat",
+  "book": [
+    "paper"
+  ],
+  "strategies": {
+    "cci20_4h_sl3tp3": {
+      "coins": [
+        "LYN_USDT"
+      ],
+      "rows": [
+        "37BG8EPY"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "LYN": {
+          "row": "37BG8EPY",
+          "book": "real",
+          "days": 325,
+          "profit_full": -82.32,
+          "trades_full": 357,
+          "winrate_full": 48.46,
+          "breakeven": 52.3,
+          "edge_points": -3.84,
+          "profit_1mo": 48.7,
+          "profit_3mo": 87.14,
+          "profit_6mo": 40.28,
+          "green": "3/11",
+          "worst_month": -41.88,
+          "dip": -169.46,
+          "worst_streak": -21.98,
+          "streak_trades": 7,
+          "cost_over_tp_pct": 1.9,
+          "gate": "ok",
+          "still_working": false,
+          "why_not": [
+            "full -82.32",
+            "green 3/11 months"
+          ]
+        }
+      }
+    },
+    "ibs_4h_sl3tp3": {
+      "coins": [
+        "SWARMS_USDT"
+      ],
+      "rows": [
+        "CE9FLYDR"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "SWARMS": {
+          "row": "CE9FLYDR",
+          "book": "real",
+          "days": 394,
+          "profit_full": -24.05,
+          "trades_full": 412,
+          "winrate_full": 51.46,
+          "breakeven": 52.43,
+          "edge_points": -0.97,
+          "profit_1mo": 50.29,
+          "profit_3mo": 50.75,
+          "profit_6mo": -43.83,
+          "green": "6/14",
+          "worst_month": -49.34,
+          "dip": -115.74,
+          "worst_streak": -31.4,
+          "streak_trades": 10,
+          "cost_over_tp_pct": 5.5,
+          "gate": "ok",
+          "still_working": false,
+          "why_not": [
+            "full -24.05",
+            "6mo -43.83",
+            "green 6/14 months"
+          ]
+        }
+      }
+    },
+    "pivot_4h_sl25tp3": {
+      "coins": [
+        "PI_USDT"
+      ],
+      "rows": [
+        "7JM3PHL4"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "PI": {
+          "row": "7JM3PHL4",
+          "book": "real",
+          "days": 394,
+          "profit_full": 2.32,
+          "trades_full": 304,
+          "winrate_full": 49.67,
+          "breakeven": 49.53,
+          "edge_points": 0.14,
+          "profit_1mo": 35.08,
+          "profit_3mo": 47.58,
+          "profit_6mo": 52.46,
+          "green": "7/14",
+          "worst_month": -18.5,
+          "dip": -69.3,
+          "worst_streak": -24.48,
+          "streak_trades": 9,
+          "cost_over_tp_pct": 1.7,
+          "gate": "ok",
+          "still_working": false,
+          "why_not": [
+            "green 7/14 months"
+          ]
+        }
+      }
+    },
+    "rsi14_30m_sl2tp2": {
+      "coins": [
+        "SAPIEN_USDT",
+        "G_USDT"
+      ],
+      "rows": [
+        "4Q2UXGVA",
+        "MQ7AQLGG"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "SAPIEN": {
+          "row": "4Q2UXGVA",
+          "book": "real",
+          "days": 371,
+          "profit_full": -11.24,
+          "trades_full": 523,
+          "winrate_full": 52.96,
+          "breakeven": 53.5,
+          "edge_points": -0.54,
+          "profit_1mo": 22.76,
+          "profit_3mo": 51.66,
+          "profit_6mo": 31.88,
+          "green": "6/13",
+          "worst_month": -25.04,
+          "dip": -84.18,
+          "worst_streak": -21.4,
+          "streak_trades": 10,
+          "cost_over_tp_pct": null,
+          "gate": "ok",
+          "still_working": false,
+          "why_not": [
+            "full -11.24",
+            "green 6/13 months"
+          ]
+        },
+        "G": {
+          "row": "MQ7AQLGG",
+          "book": "real",
+          "days": 394,
+          "profit_full": -29.28,
+          "trades_full": 424,
+          "winrate_full": 53.77,
+          "breakeven": 55.5,
+          "edge_points": -1.73,
+          "profit_1mo": 16.04,
+          "profit_3mo": 39.3,
+          "profit_6mo": 22.2,
+          "green": "5/14",
+          "worst_month": -21.26,
+          "dip": -76.16,
+          "worst_streak": -13.32,
+          "streak_trades": 6,
+          "cost_over_tp_pct": null,
+          "gate": "ok",
+          "still_working": false,
+          "why_not": [
+            "full -29.28",
+            "green 5/14 months"
+          ]
+        }
+      }
+    },
+    "mom6_4h_sl3tp3": {
+      "coins": [
+        "CYBER_USDT"
+      ],
+      "rows": [
+        "SL9H9PNA"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "CYBER": {
+          "row": "SL9H9PNA",
+          "book": "real",
+          "days": 394,
+          "profit_full": -61.46,
+          "trades_full": 443,
+          "winrate_full": 50.11,
+          "breakeven": 52.43,
+          "edge_points": -2.32,
+          "profit_1mo": 33.34,
+          "profit_3mo": 50.06,
+          "profit_6mo": 47.1,
+          "green": "4/14",
+          "worst_month": -43.0,
+          "dip": -147.48,
+          "worst_streak": -40.82,
+          "streak_trades": 13,
+          "cost_over_tp_pct": null,
+          "gate": "ok",
+          "still_working": false,
+          "why_not": [
+            "full -61.46",
+            "green 4/14 months"
+          ]
+        }
+      }
+    },
+    "cci20_4h_sl25tp4": {
+      "coins": [
+        "LYN_USDT"
+      ],
+      "rows": [
+        "R3HEXX66"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "paper"
+      ],
+      "measured": {
+        "LYN": {
+          "row": "R3HEXX66",
+          "book": "paper",
+          "days": 325,
+          "profit_full": -83.85,
+          "trades_full": 352,
+          "winrate_full": 36.93,
+          "breakeven": 40.59,
+          "edge_points": -3.66,
+          "profit_1mo": 44.14,
+          "profit_3mo": 84.97,
+          "profit_6mo": 52.53,
+          "green": "4/11",
+          "worst_month": -31.46,
+          "dip": -171.46,
+          "worst_streak": -36.96,
+          "streak_trades": 14,
+          "cost_over_tp_pct": 1.4,
+          "gate": "ok",
+          "still_working": false,
+          "why_not": [
+            "full -83.85",
+            "green 4/11 months"
+          ]
+        }
+      }
+    },
+    "fvg_1h_sl25tp25": {
+      "coins": [
+        "TREE_USDT"
+      ],
+      "rows": [
+        "UQK72Z7K"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "TREE": {
+          "row": "UQK72Z7K",
+          "book": "real",
+          "days": 394,
+          "profit_full": 30.36,
+          "trades_full": 500,
+          "winrate_full": 54.0,
+          "breakeven": 52.79,
+          "edge_points": 1.21,
+          "profit_1mo": 38.52,
+          "profit_3mo": 83.16,
+          "profit_6mo": 95.28,
+          "green": "5/14",
+          "worst_month": -35.32,
+          "dip": -70.92,
+          "worst_streak": -15.84,
+          "streak_trades": 6,
+          "cost_over_tp_pct": 4.1,
+          "gate": "ok",
+          "still_working": false,
+          "why_not": [
+            "green 5/14 months"
+          ]
+        }
+      }
+    },
+    "pivot_4h_sl3tp3": {
+      "coins": [
+        "PI_USDT"
+      ],
+      "rows": [
+        "PXCQ9GRG"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "paper"
+      ],
+      "measured": {
+        "PI": {
+          "row": "PXCQ9GRG",
+          "book": "paper",
+          "days": 394,
+          "profit_full": 1.33,
+          "trades_full": 275,
+          "winrate_full": 53.82,
+          "breakeven": 53.74,
+          "edge_points": 0.08,
+          "profit_1mo": 29.93,
+          "profit_3mo": 40.65,
+          "profit_6mo": 53.79,
+          "green": "7/14",
+          "worst_month": -22.84,
+          "dip": -58.44,
+          "worst_streak": -28.98,
+          "streak_trades": 9,
+          "cost_over_tp_pct": 1.7,
+          "gate": "ok",
+          "still_working": false,
+          "why_not": [
+            "green 7/14 months"
+          ]
+        }
+      }
+    },
+    "zscore20_1h_sl2tp2": {
+      "coins": [
+        "AMP_USDT"
+      ],
+      "rows": [
+        "9DD9FSLR"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "AMP": {
+          "row": "9DD9FSLR",
+          "book": "real",
+          "days": 394,
+          "profit_full": 220.54,
+          "trades_full": 439,
+          "winrate_full": 66.06,
+          "breakeven": 53.5,
+          "edge_points": 12.56,
+          "profit_1mo": 34.68,
+          "profit_3mo": 60.6,
+          "profit_6mo": 138.04,
+          "green": "11/14",
+          "worst_month": -6.06,
+          "dip": -19.74,
+          "worst_streak": -10.7,
+          "streak_trades": 5,
+          "cost_over_tp_pct": 100.5,
+          "gate": "warn",
+          "still_working": false,
+          "why_not": [
+            "cost is 100% of the target"
+          ]
+        }
+      }
+    },
+    "stoch14_1h_sl3tp3": {
+      "coins": [
+        "LYN_USDT"
+      ],
+      "rows": [
+        "AXKANEGZ"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "paper"
+      ],
+      "measured": {
+        "LYN": {
+          "row": "AXKANEGZ",
+          "book": "paper",
+          "days": 325,
+          "profit_full": 1.04,
+          "trades_full": 857,
+          "winrate_full": 52.39,
+          "breakeven": 52.37,
+          "edge_points": 0.02,
+          "profit_1mo": 44.4,
+          "profit_3mo": 131.5,
+          "profit_6mo": 14.92,
+          "green": "7/11",
+          "worst_month": -112.74,
+          "dip": -190.36,
+          "worst_streak": -28.26,
+          "streak_trades": 9,
+          "cost_over_tp_pct": 1.9,
+          "gate": "ok",
+          "still_working": true,
+          "why_not": []
+        }
+      }
+    },
+    "pivot_1h_sl3tp3": {
+      "coins": [
+        "VELO_USDT"
+      ],
+      "rows": [
+        "6NSR62G5"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "VELO": {
+          "row": "6NSR62G5",
+          "book": "real",
+          "days": 394,
+          "profit_full": -23.6,
+          "trades_full": 744,
+          "winrate_full": 51.88,
+          "breakeven": 52.41,
+          "edge_points": -0.53,
+          "profit_1mo": 43.35,
+          "profit_3mo": 66.08,
+          "profit_6mo": 71.1,
+          "green": "7/14",
+          "worst_month": -47.82,
+          "dip": -122.92,
+          "worst_streak": -21.98,
+          "streak_trades": 7,
+          "cost_over_tp_pct": 12.8,
+          "gate": "ok",
+          "still_working": false,
+          "why_not": [
+            "full -23.60",
+            "green 7/14 months"
+          ]
+        }
+      }
+    },
+    "ibs_4h_sl4tp4": {
+      "coins": [
+        "SWARMS_USDT"
+      ],
+      "rows": [
+        "AYDB7ULN"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "paper"
+      ],
+      "measured": {
+        "SWARMS": {
+          "row": "AYDB7ULN",
+          "book": "paper",
+          "days": 394,
+          "profit_full": 40.89,
+          "trades_full": 341,
+          "winrate_full": 53.37,
+          "breakeven": 51.87,
+          "edge_points": 1.5,
+          "profit_1mo": 41.27,
+          "profit_3mo": 78.97,
+          "profit_6mo": 50.65,
+          "green": "10/14",
+          "worst_month": -40.06,
+          "dip": -89.82,
+          "worst_streak": -28.98,
+          "streak_trades": 7,
+          "cost_over_tp_pct": 4.1,
+          "gate": "ok",
+          "still_working": true,
+          "why_not": []
+        }
+      }
+    },
+    "bb20_1h_sl2tp2": {
+      "coins": [
+        "AMP_USDT"
+      ],
+      "rows": [
+        "SDL5BQJH"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "paper"
+      ],
+      "measured": {
+        "AMP": {
+          "row": "SDL5BQJH",
+          "book": "paper",
+          "days": 394,
+          "profit_full": 244.32,
+          "trades_full": 512,
+          "winrate_full": 65.43,
+          "breakeven": 53.5,
+          "edge_points": 11.93,
+          "profit_1mo": 34.4,
+          "profit_3mo": 61.06,
+          "profit_6mo": 150.68,
+          "green": "11/14",
+          "worst_month": -7.36,
+          "dip": -19.08,
+          "worst_streak": -10.7,
+          "streak_trades": 5,
+          "cost_over_tp_pct": 100.5,
+          "gate": "warn",
+          "still_working": false,
+          "why_not": [
+            "cost is 100% of the target"
+          ]
+        }
+      }
+    },
+    "ibs_4h_sl25tp25": {
+      "coins": [
+        "CTC_USDT"
+      ],
+      "rows": [
+        "FQBW9FJ9"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "CTC": {
+          "row": "FQBW9FJ9",
+          "book": "real",
+          "days": 394,
+          "profit_full": 36.12,
+          "trades_full": 331,
+          "winrate_full": 54.98,
+          "breakeven": 52.8,
+          "edge_points": 2.18,
+          "profit_1mo": 26.6,
+          "profit_3mo": 73.76,
+          "profit_6mo": 90.08,
+          "green": "7/14",
+          "worst_month": -23.36,
+          "dip": -71.12,
+          "worst_streak": -23.76,
+          "streak_trades": 9,
+          "cost_over_tp_pct": null,
+          "gate": "ok",
+          "still_working": false,
+          "why_not": [
+            "green 7/14 months"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 11, "total": 51, "rows": 643386, "note": "CGPT 30m: 18,959 bars, testing 105 rules", "pct": 21.6, "updated": "2026-08-27T05:42:28Z"}
+{"shard": 14, "stage": "testing", "done": 11, "total": 51, "rows": 647566, "note": "CGPT 30m: rule 13/105 (pivot)", "pct": 21.6, "updated": "2026-08-27T05:43:14Z"}

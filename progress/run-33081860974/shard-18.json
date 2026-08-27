@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 15, "total": 51, "rows": 1232546, "note": "DRIFT 15m: rule 3/105 (fade15)", "pct": 29.4, "updated": "2026-08-27T15:52:16Z"}
+{"shard": 18, "stage": "testing", "done": 15, "total": 51, "rows": 1236746, "note": "DRIFT 15m: rule 45/105 (zscore20)", "pct": 29.4, "updated": "2026-08-27T15:53:01Z"}

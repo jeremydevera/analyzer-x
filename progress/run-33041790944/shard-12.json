@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 42, "total": 51, "rows": 3099344, "note": "SQD 15m: rule 13/105 (pivot)", "pct": 82.4, "updated": "2026-08-27T07:03:22Z"}
+{"shard": 12, "stage": "testing", "done": 42, "total": 51, "rows": 3107264, "note": "SQD 15m: rule 50/105 (gapfade)", "pct": 82.4, "updated": "2026-08-27T07:04:07Z"}

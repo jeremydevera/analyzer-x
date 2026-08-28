@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 4, "total": 51, "rows": 340932, "note": "APE 15m: 34,648 bars, testing 120 rules", "pct": 7.8, "updated": "2026-08-28T18:18:02Z"}
+{"shard": 8, "stage": "testing", "done": 4, "total": 51, "rows": 344452, "note": "APE 15m: rule 16/120 (keltner)", "pct": 7.8, "updated": "2026-08-28T18:18:48Z"}

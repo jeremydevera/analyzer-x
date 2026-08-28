@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 22, "total": 51, "rows": 1766644, "note": "HMSTR 15m: rule 13/120 (pivot)", "pct": 43.1, "updated": "2026-08-28T19:25:21Z"}
+{"shard": 4, "stage": "testing", "done": 22, "total": 51, "rows": 1771264, "note": "HMSTR 15m: rule 34/120 (lrslope)", "pct": 43.1, "updated": "2026-08-28T19:26:07Z"}

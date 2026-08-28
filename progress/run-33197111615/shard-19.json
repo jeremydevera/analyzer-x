@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 46, "total": 51, "rows": 3879358, "note": "UB 15m: rule 84/120 (cf_maobv_l2)", "pct": 90.2, "updated": "2026-08-28T21:59:41Z"}
+{"shard": 19, "stage": "testing", "done": 46, "total": 51, "rows": 3886358, "note": "UB 30m: 16,828 bars, testing 120 rules", "pct": 90.2, "updated": "2026-08-28T22:00:34Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 18, "total": 51, "rows": 1520934, "note": "FLOKI 30m: rule 3/120 (fade15)", "pct": 35.3, "updated": "2026-08-28T19:11:10Z"}
+{"shard": 13, "stage": "testing", "done": 18, "total": 51, "rows": 1529334, "note": "FLOKI 30m: rule 45/120 (zscore20)", "pct": 35.3, "updated": "2026-08-28T19:11:55Z"}

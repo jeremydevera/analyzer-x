@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 8, "total": 51, "rows": 775086, "note": "BILL 15m: rule 81/120 (cf_donch_l2)", "pct": 15.7, "updated": "2026-08-28T18:42:12Z"}
+{"shard": 8, "stage": "testing", "done": 8, "total": 51, "rows": 803106, "note": "BILL 1h: 2,795 bars, testing 120 rules", "pct": 15.7, "updated": "2026-08-28T18:42:59Z"}

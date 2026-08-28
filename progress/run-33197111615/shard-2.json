@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 12, "total": 52, "rows": 1073194, "note": "CHZ 15m: rule 86/120 (cf_triple_l1)", "pct": 23.1, "updated": "2026-08-28T18:55:38Z"}
+{"shard": 2, "stage": "testing", "done": 12, "total": 52, "rows": 1078634, "note": "CHZ 30m: 18,959 bars, testing 120 rules", "pct": 23.1, "updated": "2026-08-28T18:56:25Z"}

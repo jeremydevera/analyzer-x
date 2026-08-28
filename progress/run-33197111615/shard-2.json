@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 12, "total": 52, "rows": 1066314, "note": "CHZ 15m: rule 42/120 (rsidiv)", "pct": 23.1, "updated": "2026-08-28T18:54:53Z"}
+{"shard": 2, "stage": "testing", "done": 12, "total": 52, "rows": 1073194, "note": "CHZ 15m: rule 86/120 (cf_triple_l1)", "pct": 23.1, "updated": "2026-08-28T18:55:38Z"}

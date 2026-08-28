@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 21, "total": 51, "rows": 1515294, "note": "GUA 1h: rule 45/120 (zscore20)", "pct": 41.2, "updated": "2026-08-28T05:00:26Z"}
+{"shard": 1, "stage": "testing", "done": 21, "total": 51, "rows": 1553310, "note": "GUA 1d: 274 bars, testing 120 rules", "pct": 41.2, "updated": "2026-08-28T05:01:16Z"}

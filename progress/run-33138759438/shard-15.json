@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 4, "total": 51, "rows": 269428, "note": "APT 30m: rule 20/120 (stoch14)", "pct": 7.8, "updated": "2026-08-28T03:43:08Z"}
+{"shard": 15, "stage": "testing", "done": 4, "total": 51, "rows": 280428, "note": "APT 30m: rule 76/120 (cf_mom)", "pct": 7.8, "updated": "2026-08-28T03:43:54Z"}

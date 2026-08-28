@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 6, "total": 51, "rows": 498820, "note": "AZNSTOCK 15m: rule 85/120 (cf_triple)", "pct": 11.8, "updated": "2026-08-28T18:30:01Z"}
+{"shard": 15, "stage": "testing", "done": 7, "total": 51, "rows": 552902, "note": "BB 15m: 34,649 bars, testing 120 rules", "pct": 13.7, "updated": "2026-08-28T18:30:48Z"}

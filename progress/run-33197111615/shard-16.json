@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 13, "total": 51, "rows": 1269600, "note": "CTC 15m: rule 84/120 (cf_maobv_l2)", "pct": 25.5, "updated": "2026-08-28T19:20:54Z"}
+{"shard": 16, "stage": "testing", "done": 13, "total": 51, "rows": 1275360, "note": "CTC 30m: 18,959 bars, testing 120 rules", "pct": 25.5, "updated": "2026-08-28T19:21:46Z"}

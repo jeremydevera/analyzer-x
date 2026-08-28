@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 47, "total": 51, "rows": 3873352, "note": "USELESS 1d: 394 bars, testing 120 rules", "pct": 92.2, "updated": "2026-08-28T20:38:36Z"}
+{"shard": 11, "stage": "testing", "done": 49, "total": 51, "rows": 3949816, "note": "WPMSTOCK 30m: rule 120/120 (cf_stflip_l2)", "pct": 96.1, "updated": "2026-08-28T20:39:21Z"}

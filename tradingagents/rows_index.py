@@ -417,8 +417,20 @@ def index_pair(path: Path, con: sqlite3.Connection | None = None) -> int:
             f"INSERT INTO rows ({','.join(COLS)},monthly,pair) VALUES {ph}",
             vals)
         t3 = _t()
-        coin = rows[0].get("coin") if rows else None
-        tf = rows[0].get("tf") if rows else None
+        # COIN AND TF COME FROM THE PAIR KEY, not from the first row.
+        #
+        # Reading them off rows[0] meant an EMPTY pair recorded neither, so its
+        # state watermark was never indexed (last_ms stayed 0) while the state
+        # file carried a real one -- and stale_watermark() then reported the
+        # pair unfinished forever. Measured on the operator's store after the
+        # rebuild of 2026-08-28: 758 pairs permanently stale, every one of them
+        # a 1d pair whose row file is `[]` because the trade floor kept nothing.
+        # The indexer re-read all 758 on every pass and produced nothing.
+        # ensure()'s own backfill had already learned this ("the key IS the
+        # answer"); index_pair had not.
+        coin, _, tf = pair.rpartition("-")
+        coin = coin or (rows[0].get("coin") if rows else None)
+        tf = tf or (rows[0].get("tf") if rows else None)
         # the state file too, so the storage screen never has to read 1.7 GB
         combos, version, last_ms, state_bytes = 0, "", 0, 0
         if coin and tf:

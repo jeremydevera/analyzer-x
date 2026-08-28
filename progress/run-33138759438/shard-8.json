@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 47, "total": 51, "rows": 3537046, "note": "USOIL 15m: downloading candles", "pct": 92.2, "updated": "2026-08-28T05:54:24Z"}
+{"shard": 8, "stage": "testing", "done": 47, "total": 51, "rows": 3542986, "note": "USOIL 15m: rule 21/120 (cci20)", "pct": 92.2, "updated": "2026-08-28T05:55:10Z"}

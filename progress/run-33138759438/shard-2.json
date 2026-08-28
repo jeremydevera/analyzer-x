@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 33, "total": 51, "rows": 3354398, "note": "ONDSSTOCK 4h: rule 86/120 (cf_triple_l1)", "pct": 64.7, "updated": "2026-08-28T07:16:51Z"}
+{"shard": 2, "stage": "testing", "done": 34, "total": 51, "rows": 3375718, "note": "PANWSTOCK 15m: rule 45/120 (zscore20)", "pct": 66.7, "updated": "2026-08-28T07:17:36Z"}

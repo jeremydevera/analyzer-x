@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 32, "total": 51, "rows": 2574994, "note": "NVIDIA 30m: rule 21/120 (cci20)", "pct": 62.7, "updated": "2026-08-28T20:15:48Z"}
+{"shard": 14, "stage": "testing", "done": 32, "total": 51, "rows": 2589994, "note": "NVIDIA 30m: rule 97/120 (cf_ttm)", "pct": 62.7, "updated": "2026-08-28T20:16:33Z"}

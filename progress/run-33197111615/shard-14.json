@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 6, "total": 51, "rows": 369356, "note": "AXTISTOCK 1h: 1,953 bars, testing 120 rules", "pct": 11.8, "updated": "2026-08-28T18:16:59Z"}
+{"shard": 14, "stage": "testing", "done": 7, "total": 51, "rows": 410210, "note": "BBSTOCK 15m: rule 78/120 (cf_mom_l2)", "pct": 13.7, "updated": "2026-08-28T18:17:44Z"}

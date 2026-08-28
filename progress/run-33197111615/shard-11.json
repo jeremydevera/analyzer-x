@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 1, "total": 51, "rows": 47880, "note": "AAPLSTOCK 30m: rule 120/120 (cf_stflip_l2)", "pct": 2.0, "updated": "2026-08-28T18:01:28Z"}
+{"shard": 11, "stage": "testing", "done": 1, "total": 51, "rows": 75380, "note": "AAPLSTOCK 4h: 2,369 bars, testing 120 rules", "pct": 2.0, "updated": "2026-08-28T18:02:16Z"}

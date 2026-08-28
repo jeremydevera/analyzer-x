@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 34, "total": 51, "rows": 2969010, "note": "PEPSTOCK 30m: rule 99/120 (cf_ttm_l2)", "pct": 66.7, "updated": "2026-08-28T20:31:26Z"}
+{"shard": 17, "stage": "testing", "done": 35, "total": 51, "rows": 3024560, "note": "PORTAL 15m: 34,561 bars, testing 120 rules", "pct": 68.6, "updated": "2026-08-28T20:32:26Z"}

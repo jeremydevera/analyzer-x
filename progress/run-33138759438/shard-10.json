@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 51, "total": 51, "rows": 4695726, "note": "ZIG 15m: 28,302 bars, testing 120 rules", "pct": 100.0, "updated": "2026-08-28T07:45:21Z"}
+{"shard": 10, "stage": "testing", "done": 51, "total": 51, "rows": 4697986, "note": "ZIG 15m: rule 111/120 (cf_fundfade_l2)", "pct": 100.0, "updated": "2026-08-28T07:46:07Z"}

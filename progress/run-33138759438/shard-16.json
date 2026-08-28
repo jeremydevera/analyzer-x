@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 34, "total": 51, "rows": 3069704, "note": "PHA 30m: rule 100/120 (cf_soup1)", "pct": 66.7, "updated": "2026-08-28T06:17:45Z"}
+{"shard": 16, "stage": "testing", "done": 34, "total": 51, "rows": 3078284, "note": "PHA 1h: rule 13/120 (pivot)", "pct": 66.7, "updated": "2026-08-28T06:18:30Z"}

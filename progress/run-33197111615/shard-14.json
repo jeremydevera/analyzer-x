@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 21, "total": 51, "rows": 1582196, "note": "HEMI 15m: rule 21/120 (cci20)", "pct": 41.2, "updated": "2026-08-28T19:14:15Z"}
+{"shard": 14, "stage": "testing", "done": 21, "total": 51, "rows": 1586996, "note": "HEMI 15m: rule 45/120 (zscore20)", "pct": 41.2, "updated": "2026-08-28T19:15:01Z"}

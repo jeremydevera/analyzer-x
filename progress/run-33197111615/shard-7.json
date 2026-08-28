@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 23, "total": 51, "rows": 1950440, "note": "ILV 15m: rule 86/120 (cf_triple_l1)", "pct": 45.1, "updated": "2026-08-28T19:40:01Z"}
+{"shard": 7, "stage": "testing", "done": 23, "total": 51, "rows": 1957240, "note": "ILV 30m: 18,959 bars, testing 120 rules", "pct": 45.1, "updated": "2026-08-28T19:40:53Z"}

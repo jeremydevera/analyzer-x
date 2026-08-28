@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 30, "total": 51, "rows": 2453914, "note": "MTL 30m: rule 3/120 (fade15)", "pct": 58.8, "updated": "2026-08-28T05:32:31Z"}
+{"shard": 7, "stage": "testing", "done": 30, "total": 51, "rows": 2463154, "note": "MTL 30m: rule 45/120 (zscore20)", "pct": 58.8, "updated": "2026-08-28T05:33:16Z"}

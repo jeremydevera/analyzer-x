@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 46, "total": 51, "rows": 3793342, "note": "TSMSTOCK 30m: rule 14/120 (bb20)", "pct": 90.2, "updated": "2026-08-28T07:01:24Z"}
+{"shard": 1, "stage": "testing", "done": 46, "total": 51, "rows": 3824638, "note": "TSMSTOCK 1h: rule 46/120 (rsi2)", "pct": 90.2, "updated": "2026-08-28T07:02:09Z"}

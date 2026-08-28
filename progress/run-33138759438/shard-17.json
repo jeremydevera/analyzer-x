@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 18, "total": 51, "rows": 1557230, "note": "FLUX 1d: 394 bars, testing 120 rules", "pct": 35.3, "updated": "2026-08-28T04:56:13Z"}
+{"shard": 17, "stage": "testing", "done": 19, "total": 51, "rows": 1576370, "note": "GESTOCK 15m: rule 93/120 (cf_soup_l2)", "pct": 37.3, "updated": "2026-08-28T04:56:59Z"}

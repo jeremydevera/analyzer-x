@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 51, "total": 51, "rows": 4450424, "note": "ZEN 4h: rule 21/120 (cci20)", "pct": 100.0, "updated": "2026-08-28T07:07:21Z"}
+{"shard": 4, "stage": "done", "done": 51, "total": 51, "rows": 4483776, "note": "4,483,776 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "pct": 100.0, "updated": "2026-08-28T07:07:42Z"}

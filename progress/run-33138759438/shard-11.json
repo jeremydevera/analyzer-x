@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 17, "total": 51, "rows": 1535256, "note": "EUR 30m: rule 61/120 (turtle)", "pct": 33.3, "updated": "2026-08-28T04:59:28Z"}
+{"shard": 11, "stage": "testing", "done": 17, "total": 51, "rows": 1545456, "note": "EUR 1h: 9,479 bars, testing 120 rules", "pct": 33.3, "updated": "2026-08-28T05:00:24Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 25, "total": 51, "rows": 2001822, "note": "KERNEL 15m: rule 2/120 (mom15)", "pct": 49.0, "updated": "2026-08-28T05:03:28Z"}
+{"shard": 7, "stage": "testing", "done": 25, "total": 51, "rows": 2005022, "note": "KERNEL 15m: rule 16/120 (keltner)", "pct": 49.0, "updated": "2026-08-28T05:04:16Z"}

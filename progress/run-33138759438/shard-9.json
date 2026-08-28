@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 34, "total": 51, "rows": 2487042, "note": "PENDLE 1h: rule 6/120 (sweep30)", "pct": 66.7, "updated": "2026-08-28T05:20:17Z"}
+{"shard": 9, "stage": "testing", "done": 34, "total": 51, "rows": 2511242, "note": "PENDLE 4h: 2,369 bars, testing 120 rules", "pct": 66.7, "updated": "2026-08-28T05:21:04Z"}

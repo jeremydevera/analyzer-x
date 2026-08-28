@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 12, "total": 51, "rows": 844076, "note": "COLLECT 15m: rule 96/120 (cf_emarsi_l2)", "pct": 23.5, "updated": "2026-08-28T03:55:32Z"}
+{"shard": 14, "stage": "testing", "done": 12, "total": 51, "rows": 850856, "note": "COLLECT 30m: rule 3/120 (fade15)", "pct": 23.5, "updated": "2026-08-28T03:56:18Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 40, "total": 51, "rows": 3285088, "note": "SIREN 15m: rule 45/120 (zscore20)", "pct": 78.4, "updated": "2026-08-28T20:25:54Z"}
+{"shard": 8, "stage": "testing", "done": 40, "total": 51, "rows": 3293008, "note": "SIREN 15m: rule 90/120 (cf_chan_l2)", "pct": 78.4, "updated": "2026-08-28T20:26:41Z"}

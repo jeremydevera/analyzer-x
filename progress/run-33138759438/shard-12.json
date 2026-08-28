@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 8, "total": 51, "rows": 611516, "note": "BITO 30m: rule 45/120 (zscore20)", "pct": 15.7, "updated": "2026-08-28T03:53:07Z"}
+{"shard": 12, "stage": "testing", "done": 9, "total": 51, "rows": 637456, "note": "BREV 15m: rule 3/120 (fade15)", "pct": 17.6, "updated": "2026-08-28T03:54:05Z"}

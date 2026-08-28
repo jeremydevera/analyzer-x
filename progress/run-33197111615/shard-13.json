@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 28, "total": 51, "rows": 2486494, "note": "MCDSTOCK 30m: rule 78/120 (cf_mom_l2)", "pct": 54.9, "updated": "2026-08-28T20:10:15Z"}
+{"shard": 13, "stage": "testing", "done": 28, "total": 51, "rows": 2503234, "note": "MCDSTOCK 1h: rule 45/120 (zscore20)", "pct": 54.9, "updated": "2026-08-28T20:11:00Z"}

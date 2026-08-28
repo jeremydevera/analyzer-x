@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 42, "total": 51, "rows": 3211306, "note": "SPX 1h: rule 120/120 (cf_stflip_l2)", "pct": 82.4, "updated": "2026-08-28T05:53:27Z"}
+{"shard": 9, "stage": "testing", "done": 43, "total": 51, "rows": 3250334, "note": "SUN 15m: 34,598 bars, testing 120 rules", "pct": 84.3, "updated": "2026-08-28T05:54:25Z"}

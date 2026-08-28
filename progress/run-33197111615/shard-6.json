@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 25, "total": 51, "rows": 2505704, "note": "KAS 1h: 9,479 bars, testing 120 rules", "pct": 49.0, "updated": "2026-08-28T20:52:17Z"}
+{"shard": 6, "stage": "testing", "done": 25, "total": 51, "rows": 2521764, "note": "KAS 1h: rule 68/120 (dbltop)", "pct": 49.0, "updated": "2026-08-28T20:53:02Z"}

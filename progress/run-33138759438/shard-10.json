@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 43, "total": 51, "rows": 3971258, "note": "SUPER 1d: 394 bars, testing 120 rules", "pct": 84.3, "updated": "2026-08-28T07:03:53Z"}
+{"shard": 10, "stage": "testing", "done": 44, "total": 51, "rows": 4010894, "note": "TERSTOCK 30m: rule 45/120 (zscore20)", "pct": 86.3, "updated": "2026-08-28T07:04:38Z"}

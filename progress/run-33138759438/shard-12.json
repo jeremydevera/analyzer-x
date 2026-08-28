@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 46, "total": 51, "rows": 3957420, "note": "T 15m: rule 68/120 (dbltop)", "pct": 90.2, "updated": "2026-08-28T07:09:39Z"}
+{"shard": 12, "stage": "testing", "done": 46, "total": 51, "rows": 3964900, "note": "T 15m: rule 102/120 (cf_soup1_l2)", "pct": 90.2, "updated": "2026-08-28T07:10:24Z"}

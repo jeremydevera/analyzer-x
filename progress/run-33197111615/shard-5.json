@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 21, "total": 51, "rows": 1620738, "note": "GWEI 30m: 10,525 bars, testing 120 rules", "pct": 41.2, "updated": "2026-08-28T18:52:57Z"}
+{"shard": 5, "stage": "testing", "done": 21, "total": 51, "rows": 1638558, "note": "GWEI 30m: rule 76/120 (cf_mom)", "pct": 41.2, "updated": "2026-08-28T18:53:42Z"}

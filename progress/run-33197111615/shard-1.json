@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 52, "total": 52, "rows": 4258942, "note": "ZORA 30m: 18,959 bars, testing 120 rules", "pct": 100.0, "updated": "2026-08-28T22:08:35Z"}
+{"shard": 1, "stage": "testing", "done": 52, "total": 52, "rows": 4262242, "note": "ZORA 30m: rule 9/120 (fib382)", "pct": 100.0, "updated": "2026-08-28T22:09:21Z"}

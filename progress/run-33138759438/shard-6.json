@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 7, "total": 51, "rows": 612228, "note": "BANK 30m: rule 3/120 (fade15)", "pct": 13.7, "updated": "2026-08-28T03:59:11Z"}
+{"shard": 6, "stage": "testing", "done": 7, "total": 51, "rows": 620628, "note": "BANK 30m: rule 45/120 (zscore20)", "pct": 13.7, "updated": "2026-08-28T03:59:56Z"}

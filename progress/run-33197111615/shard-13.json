@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 11, "total": 51, "rows": 1002298, "note": "CFG 1h: 4,406 bars, testing 120 rules", "pct": 21.6, "updated": "2026-08-28T18:39:57Z"}
+{"shard": 13, "stage": "testing", "done": 11, "total": 51, "rows": 1036552, "note": "CFG 4h: rule 43/120 (macddiv)", "pct": 21.6, "updated": "2026-08-28T18:40:42Z"}

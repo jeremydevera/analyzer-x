@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 13, "total": 51, "rows": 932542, "note": "CSPR 15m: 34,590 bars, testing 120 rules", "pct": 25.5, "updated": "2026-08-28T03:58:39Z"}
+{"shard": 14, "stage": "testing", "done": 13, "total": 51, "rows": 937522, "note": "CSPR 15m: rule 78/120 (cf_mom_l2)", "pct": 25.5, "updated": "2026-08-28T03:59:25Z"}

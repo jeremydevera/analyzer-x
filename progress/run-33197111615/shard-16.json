@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 5, "total": 51, "rows": 451432, "note": "ATOM 1h: 9,479 bars, testing 120 rules", "pct": 9.8, "updated": "2026-08-28T18:31:39Z"}
+{"shard": 16, "stage": "testing", "done": 5, "total": 51, "rows": 471032, "note": "ATOM 1h: rule 93/120 (cf_soup_l2)", "pct": 9.8, "updated": "2026-08-28T18:32:24Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 45, "total": 51, "rows": 3944330, "note": "TRUTH 1h: 7,939 bars, testing 120 rules", "pct": 88.2, "updated": "2026-08-28T07:01:31Z"}
+{"shard": 16, "stage": "testing", "done": 45, "total": 51, "rows": 3965912, "note": "TRUTH 1h: rule 105/120 (cf_eqhl_l2)", "pct": 88.2, "updated": "2026-08-28T07:02:16Z"}

@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 26, "total": 52, "rows": 2244404, "note": "KOMA 30m: 18,959 bars, testing 120 rules", "pct": 50.0, "updated": "2026-08-28T20:10:48Z"}
+{"shard": 2, "stage": "testing", "done": 26, "total": 52, "rows": 2248584, "note": "KOMA 30m: rule 13/120 (pivot)", "pct": 50.0, "updated": "2026-08-28T20:11:35Z"}

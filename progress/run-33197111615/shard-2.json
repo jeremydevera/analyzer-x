@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 40, "total": 52, "rows": 3473256, "note": "SHELL 30m: rule 68/120 (dbltop)", "pct": 76.9, "updated": "2026-08-28T21:23:38Z"}
+{"shard": 2, "stage": "testing", "done": 40, "total": 52, "rows": 3484696, "note": "SHELL 1h: 9,479 bars, testing 120 rules", "pct": 76.9, "updated": "2026-08-28T21:24:31Z"}

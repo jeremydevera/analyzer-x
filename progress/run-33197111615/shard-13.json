@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 12, "total": 51, "rows": 1125148, "note": "COINBASE 1h: rule 108/120 (cf_bosfvg_l2)", "pct": 23.5, "updated": "2026-08-28T18:46:08Z"}
+{"shard": 13, "stage": "testing", "done": 14, "total": 51, "rows": 1169040, "note": "DBR 15m: 34,650 bars, testing 120 rules", "pct": 27.5, "updated": "2026-08-28T18:47:24Z"}

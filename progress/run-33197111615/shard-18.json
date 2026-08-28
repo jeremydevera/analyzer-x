@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 23, "total": 51, "rows": 2021674, "note": "IN 30m: rule 41/120 (tsi)", "pct": 45.1, "updated": "2026-08-28T20:38:22Z"}
+{"shard": 18, "stage": "testing", "done": 23, "total": 51, "rows": 2038834, "note": "IN 1h: 9,275 bars, testing 120 rules", "pct": 45.1, "updated": "2026-08-28T20:40:03Z"}

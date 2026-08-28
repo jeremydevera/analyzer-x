@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 35, "total": 51, "rows": 2901358, "note": "PROM 15m: rule 113/120 (cf_obretest_l1)", "pct": 68.6, "updated": "2026-08-28T06:04:27Z"}
+{"shard": 19, "stage": "testing", "done": 35, "total": 51, "rows": 2904218, "note": "PROM 30m: rule 2/120 (mom15)", "pct": 68.6, "updated": "2026-08-28T06:05:14Z"}

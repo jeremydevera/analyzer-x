@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 29, "total": 52, "rows": 2574140, "note": "METIS 15m: 34,561 bars, testing 120 rules", "pct": 55.8, "updated": "2026-08-28T20:32:19Z"}
+{"shard": 2, "stage": "testing", "done": 29, "total": 52, "rows": 2576120, "note": "METIS 15m: rule 3/120 (fade15)", "pct": 55.8, "updated": "2026-08-28T20:33:20Z"}

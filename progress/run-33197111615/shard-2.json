@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 11, "total": 52, "rows": 970464, "note": "CBRSSTOCK 15m: rule 73/120 (volspike)", "pct": 21.2, "updated": "2026-08-28T18:51:45Z"}
+{"shard": 2, "stage": "testing", "done": 11, "total": 52, "rows": 995544, "note": "CBRSSTOCK 30m: rule 79/120 (cf_donch)", "pct": 21.2, "updated": "2026-08-28T18:52:30Z"}

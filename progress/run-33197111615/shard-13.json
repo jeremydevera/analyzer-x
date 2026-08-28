@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 49, "total": 51, "rows": 4069296, "note": "XAI 15m: rule 4/120 (trend50)", "pct": 96.1, "updated": "2026-08-28T21:20:14Z"}
+{"shard": 13, "stage": "testing", "done": 49, "total": 51, "rows": 4074096, "note": "XAI 15m: rule 34/120 (lrslope)", "pct": 96.1, "updated": "2026-08-28T21:21:00Z"}

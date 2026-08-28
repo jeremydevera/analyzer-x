@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 35, "total": 51, "rows": 3134214, "note": "POPCAT 15m: 34,600 bars, testing 120 rules", "pct": 68.6, "updated": "2026-08-28T06:17:52Z"}
+{"shard": 12, "stage": "testing", "done": 35, "total": 51, "rows": 3136014, "note": "POPCAT 15m: rule 3/120 (fade15)", "pct": 68.6, "updated": "2026-08-28T06:18:51Z"}

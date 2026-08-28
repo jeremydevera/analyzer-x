@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 10, "total": 51, "rows": 652850, "note": "CAP 15m: rule 76/120 (cf_mom)", "pct": 19.6, "updated": "2026-08-28T18:24:40Z"}
+{"shard": 14, "stage": "testing", "done": 10, "total": 51, "rows": 688592, "note": "CAP 1h: rule 3/120 (fade15)", "pct": 19.6, "updated": "2026-08-28T18:25:26Z"}

@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 24, "total": 51, "rows": 2291640, "note": "IO 15m: rule 76/120 (cf_mom)", "pct": 47.1, "updated": "2026-08-28T06:06:45Z"}
+{"shard": 2, "stage": "testing", "done": 24, "total": 51, "rows": 2297440, "note": "IO 15m: rule 105/120 (cf_eqhl_l2)", "pct": 47.1, "updated": "2026-08-28T06:07:31Z"}

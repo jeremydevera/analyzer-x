@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 4, "total": 51, "rows": 241134, "note": "ANTHROPIC 15m: rule 114/120 (cf_obretest_l2)", "pct": 7.8, "updated": "2026-08-28T03:36:25Z"}
+{"shard": 4, "stage": "testing", "done": 4, "total": 51, "rows": 266494, "note": "ANTHROPIC 1h: 3,264 bars, testing 120 rules", "pct": 7.8, "updated": "2026-08-28T03:37:12Z"}

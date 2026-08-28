@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 49, "total": 51, "rows": 4012250, "note": "XAN 15m: rule 84/120 (cf_maobv_l2)", "pct": 96.1, "updated": "2026-08-28T21:42:24Z"}
+{"shard": 14, "stage": "testing", "done": 49, "total": 51, "rows": 4020170, "note": "XAN 30m: 16,007 bars, testing 120 rules", "pct": 96.1, "updated": "2026-08-28T21:43:13Z"}

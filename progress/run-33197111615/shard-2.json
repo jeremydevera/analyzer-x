@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 17, "total": 52, "rows": 1551906, "note": "ERA 15m: rule 81/120 (cf_donch_l2)", "pct": 32.7, "updated": "2026-08-28T19:29:13Z"}
+{"shard": 2, "stage": "testing", "done": 17, "total": 52, "rows": 1560486, "note": "ERA 30m: 18,959 bars, testing 120 rules", "pct": 32.7, "updated": "2026-08-28T19:30:13Z"}

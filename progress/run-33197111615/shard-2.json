@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 3, "total": 52, "rows": 171096, "note": "AKT 30m: rule 68/120 (dbltop)", "pct": 5.8, "updated": "2026-08-28T18:15:06Z"}
+{"shard": 2, "stage": "testing", "done": 3, "total": 52, "rows": 182536, "note": "AKT 1h: 9,479 bars, testing 120 rules", "pct": 5.8, "updated": "2026-08-28T18:15:58Z"}

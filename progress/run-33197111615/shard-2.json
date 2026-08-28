@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 16, "total": 52, "rows": 1463070, "note": "DYDX 30m: rule 99/120 (cf_ttm_l2)", "pct": 30.8, "updated": "2026-08-28T19:23:30Z"}
+{"shard": 2, "stage": "testing", "done": 16, "total": 52, "rows": 1472310, "note": "DYDX 1h: rule 16/120 (keltner)", "pct": 30.8, "updated": "2026-08-28T19:24:15Z"}

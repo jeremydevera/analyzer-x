@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 12, "total": 52, "rows": 1058634, "note": "CHZ 15m: 34,650 bars, testing 120 rules", "pct": 23.1, "updated": "2026-08-28T18:53:22Z"}
+{"shard": 2, "stage": "testing", "done": 12, "total": 52, "rows": 1061194, "note": "CHZ 15m: rule 10/120 (sr_bounce)", "pct": 23.1, "updated": "2026-08-28T18:54:07Z"}

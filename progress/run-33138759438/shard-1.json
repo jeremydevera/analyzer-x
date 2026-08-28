@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 29, "total": 51, "rows": 2213020, "note": "MEW 30m: 18,959 bars, testing 120 rules", "pct": 56.9, "updated": "2026-08-28T05:39:58Z"}
+{"shard": 1, "stage": "testing", "done": 29, "total": 51, "rows": 2217640, "note": "MEW 30m: rule 15/120 (bbbreak)", "pct": 56.9, "updated": "2026-08-28T05:40:43Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 42, "total": 51, "rows": 3572896, "note": "SPX500 1h: rule 15/120 (bbbreak)", "pct": 82.4, "updated": "2026-08-28T20:28:02Z"}
+{"shard": 11, "stage": "testing", "done": 44, "total": 51, "rows": 3672760, "note": "TECKSTOCK 15m: rule 102/120 (cf_soup1_l2)", "pct": 86.3, "updated": "2026-08-28T20:28:47Z"}

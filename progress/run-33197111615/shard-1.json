@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 5, "total": 52, "rows": 420878, "note": "ARK 15m: 34,648 bars, testing 120 rules", "pct": 9.6, "updated": "2026-08-28T18:28:22Z"}
+{"shard": 1, "stage": "testing", "done": 5, "total": 52, "rows": 422878, "note": "ARK 15m: rule 4/120 (trend50)", "pct": 9.6, "updated": "2026-08-28T18:29:10Z"}

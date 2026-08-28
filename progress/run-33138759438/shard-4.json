@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 44, "total": 51, "rows": 3632772, "note": "TAO 30m: 18,959 bars, testing 120 rules", "pct": 86.3, "updated": "2026-08-28T06:21:41Z"}
+{"shard": 4, "stage": "testing", "done": 44, "total": 51, "rows": 3637172, "note": "TAO 30m: rule 16/120 (keltner)", "pct": 86.3, "updated": "2026-08-28T06:22:27Z"}

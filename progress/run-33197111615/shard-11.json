@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 33, "total": 51, "rows": 2999692, "note": "OPENAI 30m: rule 1/120 (mom6)", "pct": 64.7, "updated": "2026-08-28T20:07:42Z"}
+{"shard": 11, "stage": "testing", "done": 33, "total": 51, "rows": 3045072, "note": "OPENAI 4h: 821 bars, testing 120 rules", "pct": 64.7, "updated": "2026-08-28T20:08:28Z"}

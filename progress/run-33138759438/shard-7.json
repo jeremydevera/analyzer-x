@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 48, "total": 51, "rows": 3866316, "note": "VSTSTOCK 15m: rule 96/120 (cf_emarsi_l2)", "pct": 94.1, "updated": "2026-08-28T06:49:31Z"}
+{"shard": 7, "stage": "testing", "done": 50, "total": 51, "rows": 3944018, "note": "XPD 15m: 19,888 bars, testing 120 rules", "pct": 98.0, "updated": "2026-08-28T06:50:18Z"}

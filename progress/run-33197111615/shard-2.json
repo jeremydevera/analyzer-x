@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 46, "total": 52, "rows": 4071430, "note": "TRY 4h: rule 87/120 (cf_triple_l2)", "pct": 88.5, "updated": "2026-08-28T21:53:13Z"}
+{"shard": 2, "stage": "testing", "done": 47, "total": 52, "rows": 4092530, "note": "UNHSTOCK 15m: rule 78/120 (cf_mom_l2)", "pct": 90.4, "updated": "2026-08-28T21:53:59Z"}

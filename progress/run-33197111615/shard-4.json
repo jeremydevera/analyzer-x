@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 3, "total": 51, "rows": 197622, "note": "ALCH 30m: 18,959 bars, testing 120 rules", "pct": 5.9, "updated": "2026-08-28T18:08:44Z"}
+{"shard": 4, "stage": "testing", "done": 3, "total": 51, "rows": 203722, "note": "ALCH 30m: rule 56/120 (insidebrk)", "pct": 5.9, "updated": "2026-08-28T18:09:29Z"}

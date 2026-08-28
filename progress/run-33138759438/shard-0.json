@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 8, "total": 51, "rows": 652802, "note": "BEL 30m: 18,959 bars, testing 120 rules", "pct": 15.7, "updated": "2026-08-28T03:53:28Z"}
+{"shard": 0, "stage": "testing", "done": 8, "total": 51, "rows": 660502, "note": "BEL 30m: rule 29/120 (hull20)", "pct": 15.7, "updated": "2026-08-28T03:54:14Z"}

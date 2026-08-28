@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 13, "total": 51, "rows": 886060, "note": "CRDOSTOCK 15m: rule 45/120 (zscore20)", "pct": 25.5, "updated": "2026-08-28T04:07:44Z"}
+{"shard": 4, "stage": "testing", "done": 13, "total": 51, "rows": 923020, "note": "CRDOSTOCK 1h: rule 2/120 (mom15)", "pct": 25.5, "updated": "2026-08-28T04:08:30Z"}

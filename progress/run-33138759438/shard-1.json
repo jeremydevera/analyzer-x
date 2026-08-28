@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 43, "total": 51, "rows": 3477602, "note": "STO 30m: rule 97/120 (cf_ttm)", "pct": 84.3, "updated": "2026-08-28T06:39:46Z"}
+{"shard": 1, "stage": "testing", "done": 43, "total": 51, "rows": 3485402, "note": "STO 1h: rule 10/120 (sr_bounce)", "pct": 84.3, "updated": "2026-08-28T06:40:31Z"}

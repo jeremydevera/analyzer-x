@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 46, "total": 51, "rows": 4336768, "note": "TST 15m: 34,607 bars, testing 120 rules", "pct": 90.2, "updated": "2026-08-28T08:08:29Z"}
+{"shard": 2, "stage": "testing", "done": 46, "total": 51, "rows": 4337968, "note": "TST 15m: rule 2/120 (mom15)", "pct": 90.2, "updated": "2026-08-28T08:09:17Z"}

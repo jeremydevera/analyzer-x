@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 45, "total": 51, "rows": 3456062, "note": "TRADOOR 30m: rule 45/120 (zscore20)", "pct": 88.2, "updated": "2026-08-28T05:52:05Z"}
+{"shard": 8, "stage": "testing", "done": 45, "total": 51, "rows": 3472122, "note": "TRADOOR 1h: 8,585 bars, testing 120 rules", "pct": 88.2, "updated": "2026-08-28T05:52:54Z"}

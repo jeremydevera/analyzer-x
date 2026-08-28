@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 43, "total": 52, "rows": 3249658, "note": "STG 15m: rule 87/120 (cf_triple_l2)", "pct": 82.7, "updated": "2026-08-28T21:05:48Z"}
+{"shard": 1, "stage": "testing", "done": 43, "total": 52, "rows": 3256698, "note": "STG 30m: 18,959 bars, testing 120 rules", "pct": 82.7, "updated": "2026-08-28T21:06:36Z"}

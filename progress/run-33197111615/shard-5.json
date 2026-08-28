@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 6, "total": 51, "rows": 402518, "note": "AVAX 15m: rule 57/120 (orderblock)", "pct": 11.8, "updated": "2026-08-28T18:12:01Z"}
+{"shard": 5, "stage": "testing", "done": 6, "total": 51, "rows": 413858, "note": "AVAX 15m: rule 120/120 (cf_stflip_l2)", "pct": 11.8, "updated": "2026-08-28T18:12:46Z"}

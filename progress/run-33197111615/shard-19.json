@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 1, "total": 51, "rows": 79684, "note": "ACU 4h: rule 2/120 (mom15)", "pct": 2.0, "updated": "2026-08-28T18:04:04Z"}
+{"shard": 19, "stage": "testing", "done": 2, "total": 51, "rows": 111342, "note": "AIXBT 15m: 34,647 bars, testing 120 rules", "pct": 3.9, "updated": "2026-08-28T18:04:55Z"}

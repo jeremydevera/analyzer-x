@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 42, "total": 51, "rows": 3762612, "note": "STABLE 30m: rule 24/120 (psar)", "pct": 82.4, "updated": "2026-08-28T21:21:35Z"}
+{"shard": 17, "stage": "testing", "done": 42, "total": 51, "rows": 3777412, "note": "STABLE 30m: rule 100/120 (cf_soup1)", "pct": 82.4, "updated": "2026-08-28T21:22:20Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 32, "total": 51, "rows": 2780252, "note": "NVOSTOCK 15m: rule 2/120 (mom15)", "pct": 62.7, "updated": "2026-08-28T20:37:22Z"}
+{"shard": 15, "stage": "testing", "done": 32, "total": 51, "rows": 2816392, "note": "NVOSTOCK 30m: rule 90/120 (cf_chan_l2)", "pct": 62.7, "updated": "2026-08-28T20:38:07Z"}

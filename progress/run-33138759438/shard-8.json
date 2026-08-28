@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 28, "total": 51, "rows": 2274778, "note": "MASTOCK 30m: rule 45/120 (zscore20)", "pct": 54.9, "updated": "2026-08-28T05:15:45Z"}
+{"shard": 8, "stage": "testing", "done": 28, "total": 51, "rows": 2309028, "note": "MASTOCK 4h: rule 9/120 (fib382)", "pct": 54.9, "updated": "2026-08-28T05:16:30Z"}

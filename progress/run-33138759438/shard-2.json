@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 46, "total": 51, "rows": 4363968, "note": "TST 30m: rule 4/120 (trend50)", "pct": 90.2, "updated": "2026-08-28T08:14:10Z"}
+{"shard": 2, "stage": "testing", "done": 46, "total": 51, "rows": 4371008, "note": "TST 30m: rule 36/120 (stochrsi)", "pct": 90.2, "updated": "2026-08-28T08:14:55Z"}

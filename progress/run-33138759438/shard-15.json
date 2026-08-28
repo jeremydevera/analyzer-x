@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 49, "total": 51, "rows": 4392846, "note": "XDC 15m: 34,606 bars, testing 120 rules", "pct": 96.1, "updated": "2026-08-28T07:55:17Z"}
+{"shard": 15, "stage": "testing", "done": 49, "total": 51, "rows": 4395846, "note": "XDC 15m: rule 9/120 (fib382)", "pct": 96.1, "updated": "2026-08-28T07:56:03Z"}

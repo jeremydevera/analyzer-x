@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 26, "total": 51, "rows": 2150340, "note": "KSM 15m: rule 84/120 (cf_maobv_l2)", "pct": 51.0, "updated": "2026-08-28T05:29:06Z"}
+{"shard": 5, "stage": "testing", "done": 26, "total": 51, "rows": 2158260, "note": "KSM 30m: 18,959 bars, testing 120 rules", "pct": 51.0, "updated": "2026-08-28T05:29:58Z"}

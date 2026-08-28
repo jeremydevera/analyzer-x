@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 17, "total": 51, "rows": 1555476, "note": "EUR 30m: 18,959 bars, testing 120 rules", "pct": 33.3, "updated": "2026-08-28T19:15:51Z"}
+{"shard": 11, "stage": "testing", "done": 17, "total": 51, "rows": 1575476, "note": "EUR 30m: rule 99/120 (cf_ttm_l2)", "pct": 33.3, "updated": "2026-08-28T19:16:37Z"}

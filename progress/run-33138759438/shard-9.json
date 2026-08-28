@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 38, "total": 51, "rows": 2795102, "note": "ROBINHOOD 30m: 18,959 bars, testing 120 rules", "pct": 74.5, "updated": "2026-08-28T05:35:08Z"}
+{"shard": 9, "stage": "testing", "done": 38, "total": 51, "rows": 2807102, "note": "ROBINHOOD 30m: rule 54/120 (fractal5)", "pct": 74.5, "updated": "2026-08-28T05:35:54Z"}

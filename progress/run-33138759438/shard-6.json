@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 40, "total": 51, "rows": 3613442, "note": "SITMSTOCK 15m: rule 84/120 (cf_maobv_l2)", "pct": 78.4, "updated": "2026-08-28T06:40:08Z"}
+{"shard": 6, "stage": "testing", "done": 41, "total": 51, "rows": 3663618, "note": "SNPSSTOCK 30m: 1,859 bars, testing 120 rules", "pct": 80.4, "updated": "2026-08-28T06:40:53Z"}

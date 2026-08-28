@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 42, "total": 51, "rows": 3221208, "note": "SPX500 15m: rule 16/120 (keltner)", "pct": 82.4, "updated": "2026-08-28T05:44:18Z"}
+{"shard": 8, "stage": "testing", "done": 42, "total": 51, "rows": 3238488, "note": "SPX500 15m: rule 114/120 (cf_obretest_l2)", "pct": 82.4, "updated": "2026-08-28T05:45:04Z"}

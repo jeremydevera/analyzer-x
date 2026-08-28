@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 39, "total": 51, "rows": 3491560, "note": "SHARE 30m: rule 99/120 (cf_ttm_l2)", "pct": 76.5, "updated": "2026-08-28T06:38:12Z"}
+{"shard": 16, "stage": "testing", "done": 40, "total": 51, "rows": 3533234, "note": "SLBSTOCK 1h: 1,610 bars, testing 120 rules", "pct": 78.4, "updated": "2026-08-28T06:38:57Z"}

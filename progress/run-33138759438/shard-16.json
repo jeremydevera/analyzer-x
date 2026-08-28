@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 46, "total": 51, "rows": 4003642, "note": "UKOIL 15m: 20,173 bars, testing 120 rules", "pct": 90.2, "updated": "2026-08-28T07:03:08Z"}
+{"shard": 16, "stage": "testing", "done": 46, "total": 51, "rows": 4012882, "note": "UKOIL 15m: rule 36/120 (stochrsi)", "pct": 90.2, "updated": "2026-08-28T07:03:53Z"}

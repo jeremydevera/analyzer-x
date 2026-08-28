@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 17, "total": 51, "rows": 1533670, "note": "ETH 30m: rule 90/120 (cf_chan_l2)", "pct": 33.3, "updated": "2026-08-28T19:15:44Z"}
+{"shard": 8, "stage": "testing", "done": 17, "total": 51, "rows": 1551490, "note": "ETH 1h: rule 45/120 (zscore20)", "pct": 33.3, "updated": "2026-08-28T19:16:29Z"}

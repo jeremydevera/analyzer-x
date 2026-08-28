@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 5, "total": 51, "rows": 345304, "note": "ARPA 30m: rule 45/120 (zscore20)", "pct": 9.8, "updated": "2026-08-28T03:41:28Z"}
+{"shard": 3, "stage": "testing", "done": 5, "total": 51, "rows": 359604, "note": "ARPA 30m: rule 111/120 (cf_fundfade_l2)", "pct": 9.8, "updated": "2026-08-28T03:42:14Z"}

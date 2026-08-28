@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 44, "total": 51, "rows": 3868264, "note": "TAG 15m: rule 85/120 (cf_triple)", "pct": 86.3, "updated": "2026-08-28T21:26:02Z"}
+{"shard": 4, "stage": "testing", "done": 44, "total": 51, "rows": 3874564, "note": "TAG 30m: 18,959 bars, testing 120 rules", "pct": 86.3, "updated": "2026-08-28T21:26:55Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 49, "total": 51, "rows": 4265484, "note": "WIF 30m: 18,959 bars, testing 120 rules", "pct": 96.1, "updated": "2026-08-28T21:51:20Z"}
+{"shard": 4, "stage": "testing", "done": 49, "total": 51, "rows": 4269884, "note": "WIF 30m: rule 16/120 (keltner)", "pct": 96.1, "updated": "2026-08-28T21:52:06Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 33, "total": 51, "rows": 2321390, "note": "OPENLEDGER 15m: rule 46/120 (rsi2)", "pct": 64.7, "updated": "2026-08-28T05:09:20Z"}
+{"shard": 9, "stage": "testing", "done": 33, "total": 51, "rows": 2329390, "note": "OPENLEDGER 15m: rule 87/120 (cf_triple_l2)", "pct": 64.7, "updated": "2026-08-28T05:10:06Z"}

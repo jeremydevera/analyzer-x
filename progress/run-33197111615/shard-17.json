@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 1, "total": 51, "rows": 0, "note": "ACH 15m: downloading candles", "pct": 2.0, "updated": "2026-08-28T17:58:21Z"}
+{"shard": 17, "stage": "testing", "done": 1, "total": 51, "rows": 1800, "note": "ACH 15m: rule 3/120 (fade15)", "pct": 2.0, "updated": "2026-08-28T17:59:20Z"}

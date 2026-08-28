@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 7, "total": 51, "rows": 576862, "note": "BASECAT 30m: 517 bars, testing 120 rules", "pct": 13.7, "updated": "2026-08-28T03:49:10Z"}
+{"shard": 9, "stage": "testing", "done": 8, "total": 51, "rows": 594342, "note": "BIO 15m: rule 2/120 (mom15)", "pct": 15.7, "updated": "2026-08-28T03:50:08Z"}

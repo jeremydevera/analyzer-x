@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 35, "total": 51, "rows": 2953858, "note": "PROMPT 1h: 9,479 bars, testing 120 rules", "pct": 68.6, "updated": "2026-08-28T06:22:21Z"}
+{"shard": 18, "stage": "testing", "done": 35, "total": 51, "rows": 2965078, "note": "PROMPT 1h: rule 45/120 (zscore20)", "pct": 68.6, "updated": "2026-08-28T06:23:06Z"}

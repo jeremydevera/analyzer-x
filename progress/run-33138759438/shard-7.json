@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 33, "total": 51, "rows": 2643606, "note": "ON 30m: rule 84/120 (cf_maobv_l2)", "pct": 64.7, "updated": "2026-08-28T05:42:41Z"}
+{"shard": 7, "stage": "testing", "done": 33, "total": 51, "rows": 2654078, "note": "ON 1h: rule 8/120 (fib618)", "pct": 64.7, "updated": "2026-08-28T05:43:26Z"}

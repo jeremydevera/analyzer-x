@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 31, "total": 51, "rows": 2748284, "note": "NFLXSTOCK 15m: 7,640 bars, testing 120 rules", "pct": 60.8, "updated": "2026-08-28T06:12:43Z"}
+{"shard": 11, "stage": "testing", "done": 31, "total": 51, "rows": 2786684, "note": "NFLXSTOCK 30m: rule 79/120 (cf_donch)", "pct": 60.8, "updated": "2026-08-28T06:13:28Z"}

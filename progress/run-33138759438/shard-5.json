@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 31, "total": 51, "rows": 2605750, "note": "NEMSTOCK 15m: rule 105/120 (cf_eqhl_l2)", "pct": 60.8, "updated": "2026-08-28T05:52:35Z"}
+{"shard": 5, "stage": "testing", "done": 32, "total": 51, "rows": 2655388, "note": "NPC 15m: rule 45/120 (zscore20)", "pct": 62.7, "updated": "2026-08-28T05:53:20Z"}

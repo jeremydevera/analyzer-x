@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 27, "total": 51, "rows": 2045294, "note": "LMTSTOCK 15m: rule 85/120 (cf_triple)", "pct": 52.9, "updated": "2026-08-28T05:11:09Z"}
+{"shard": 4, "stage": "testing", "done": 27, "total": 51, "rows": 2067214, "note": "LMTSTOCK 30m: rule 78/120 (cf_mom_l2)", "pct": 52.9, "updated": "2026-08-28T05:11:54Z"}

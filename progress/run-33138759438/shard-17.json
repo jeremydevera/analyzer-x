@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 44, "total": 51, "rows": 4076200, "note": "TIA 30m: rule 76/120 (cf_mom)", "pct": 86.3, "updated": "2026-08-28T07:41:59Z"}
+{"shard": 17, "stage": "testing", "done": 44, "total": 51, "rows": 4085000, "note": "TIA 1h: 9,479 bars, testing 120 rules", "pct": 86.3, "updated": "2026-08-28T07:42:45Z"}

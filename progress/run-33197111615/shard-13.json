@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 49, "total": 51, "rows": 4080496, "note": "XAI 15m: rule 75/120 (relvolbrk)", "pct": 96.1, "updated": "2026-08-28T21:21:45Z"}
+{"shard": 13, "stage": "testing", "done": 49, "total": 51, "rows": 4086736, "note": "XAI 15m: rule 114/120 (cf_obretest_l2)", "pct": 96.1, "updated": "2026-08-28T21:22:31Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 42, "total": 51, "rows": 3131666, "note": "SPX 15m: rule 3/120 (fade15)", "pct": 82.4, "updated": "2026-08-28T05:47:10Z"}
+{"shard": 9, "stage": "testing", "done": 42, "total": 51, "rows": 3135846, "note": "SPX 15m: rule 22/120 (engulf)", "pct": 82.4, "updated": "2026-08-28T05:47:57Z"}

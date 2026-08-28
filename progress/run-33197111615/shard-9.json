@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 51, "total": 51, "rows": 4301994, "note": "ZEREBRO 4h: rule 4/120 (trend50)", "pct": 100.0, "updated": "2026-08-28T21:54:13Z"}
+{"shard": 9, "stage": "done", "done": 51, "total": 51, "rows": 4335434, "note": "4,335,434 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "pct": 100.0, "updated": "2026-08-28T21:54:42Z"}

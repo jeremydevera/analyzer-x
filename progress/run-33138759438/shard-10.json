@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 38, "total": 51, "rows": 3545534, "note": "ROBO 1h: 4,409 bars, testing 120 rules", "pct": 74.5, "updated": "2026-08-28T06:43:05Z"}
+{"shard": 10, "stage": "testing", "done": 38, "total": 51, "rows": 3587312, "note": "ROBO 4h: rule 90/120 (cf_chan_l2)", "pct": 74.5, "updated": "2026-08-28T06:43:50Z"}

@@ -162,6 +162,19 @@ WIDE_PROFIT = ("CREATE INDEX IF NOT EXISTS rows_pr2 ON rows "
 # — plain (SCAN rows) and over both covering indexes that already hold the id
 # (rows_profit, rows_wr2). Built on demand like the other wide ones.
 ROW_ID_INDEX = "CREATE INDEX IF NOT EXISTS rows_id ON rows (id)"
+# ONE SIGNAL, RANKED. Measured on the operator's rebuilt store
+# (49,043,628 rows) the moment the five 4-hour setups landed in it:
+#   /api/strategies?signal=cf_bosfvg   -> HTTP 500 after 30.1 s (the proxy
+#                                         gave up before the budget did)
+#   /api/strategies?signal=cf_fundfade -> HTTP 503 at the 20 s budget
+# `signal` had no index and stepped aside for the ORDER BY, on the
+# reasoning that one rule of 105 cannot drive a plan. That stopped being
+# true: cf_bosfvg is 161,828 rows of 49 million (0.3%), and the walk down
+# rows_profit read a candidate ROW off the disk for every test.
+# (signal, profit DESC, id) makes it a seek whose rows come out already
+# in order -- no temp b-tree either. ~5 min to build on a compact file.
+SIGNAL_INDEX = ("CREATE INDEX IF NOT EXISTS rows_signal ON rows "
+                "(signal, profit DESC, id)")
 # a load this size is a rebuild, not an update: there, dropping and recreating
 # is faster than maintaining (measured at 73 pairs/min against 1.5)
 BIG_FILL = 500
@@ -172,7 +185,8 @@ INDEX_DDL = {**FILTER_INDEXES,
              **{d.split()[5]: d for d in KEEP_INDEXES},
              "rows_wr2": WIDE_WINRATE,
              "rows_pr2": WIDE_PROFIT,
-             "rows_id": ROW_ID_INDEX}
+             "rows_id": ROW_ID_INDEX,
+             "rows_signal": SIGNAL_INDEX}
 
 # more pairs than this in one go and it is a bulk fill, not an update
 BULK_PAIRS = 8
@@ -948,7 +962,7 @@ def in_group(signal: str, group: str | None) -> bool:
 def _where(coin=None, tf=None, signal=None, profitable=False,
            min_trades=0, min_winrate=0, min_tp=0, sizing=None, row_id=None,
            group=None, *, order_owns_index=False, order_key=None,
-           winrate_seeks=False) -> tuple:
+           winrate_seeks=False, signal_seeks=False) -> tuple:
     """The WHERE clause and its arguments.
 
     `order_owns_index=True` is for the ROW query, which has an ORDER BY and a
@@ -991,8 +1005,11 @@ def _where(coin=None, tf=None, signal=None, profitable=False,
     # "i want filter to see flat / martingale" — the ladder produced the
     # "13/13 green months" behind six live strategies while flat was 7/12-11/12
     # (rule 19), so seeing one without the other is the whole point.
+    # `signal` used to step aside like tf and sizing. With rows_signal built
+    # it is a seek instead -- one confluence rule is 0.3% of the store -- so it
+    # keeps its index exactly like a named coin (see SIGNAL_INDEX).
     for col, val, keeps_index in (("coin", coin, True), ("tf", tf, False),
-                                  ("signal", signal, False),
+                                  ("signal", signal, bool(signal_seeks)),
                                   ("sizing", sizing, False)):
         if val:
             sql.append(f"{'' if keeps_index else step_aside}{col} = ?")
@@ -1345,7 +1362,7 @@ def has_index(name: str):
 # which index a FILTER column needs. Only `coin` is selective enough to be
 # worth naming (a pair is ~10k rows of 31 million); tf and signal step
 # aside for the ORDER BY instead (see _where).
-FILTER_INDEX_FOR = {"coin": "rows_coin"}
+FILTER_INDEX_FOR = {"coin": "rows_coin", "signal": "rows_signal"}
 
 
 def build_filter_index(col: str) -> bool:
@@ -1587,7 +1604,7 @@ def _row_id_index() -> str:
 
 
 def _indexed_by(coin, winrate_seeks=False, profit_wide=False,
-                row_id=None, group_idx="") -> str:
+                row_id=None, group_idx="", signal_seeks=False) -> str:
     """`INDEXED BY rows_coin` when a coin is named and that index exists.
 
     Measured on the rebuilt store (31,159,970 rows, every index present):
@@ -1606,6 +1623,9 @@ def _indexed_by(coin, winrate_seeks=False, profit_wide=False,
         return _row_id_index()
     if coin and has_index("rows_coin") is True:
         return " INDEXED BY rows_coin"
+    # ONE named signal with its index: a seek that arrives in profit order
+    if signal_seeks:
+        return " INDEXED BY rows_signal"
     # A GROUP's own partial index is the filter AND the order at once (see
     # GROUP_INDEXES), so nothing else beats it when no coin is named. The
     # caller passes it only once it exists.
@@ -1657,7 +1677,7 @@ def explain(**kw) -> list:
 
 def _page_rows(con, coin, row_where, row_args, order, lim, off,
                winrate_seeks=False, profit_wide=False, row_id=None,
-               group_idx="") -> list:
+               group_idx="", signal_seeks=False) -> list:
     """One page of rows, in `order`, skipping `off` of them.
 
     A shallow page is one statement. A DEEP page is two: the rowids from the
@@ -1666,7 +1686,7 @@ def _page_rows(con, coin, row_where, row_args, order, lim, off,
     store: 60.2 s as one statement, 1.4 s as two. See DEEP_OFFSET.
     """
     sql = (f"SELECT %s FROM rows"
-           f"{_indexed_by(coin, winrate_seeks, profit_wide, row_id, group_idx)}"
+           f"{_indexed_by(coin, winrate_seeks, profit_wide, row_id, group_idx, signal_seeks)}"
            f"{row_where} ORDER BY {order}, id ASC LIMIT ? OFFSET ?")
     if off <= DEEP_OFFSET:
         return con.execute(sql % "*", (*row_args, lim, off)).fetchall()
@@ -1713,6 +1733,20 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     # budget (which is what the operator saw as "nothing is showing"), the wide
     # profit index answers it. So: ranked by profit, rows_pr2 wins when it is
     # there; ranked by win %, the seek is right.
+    # ONE SIGNAL: its own index makes the filter a seek. Without it the walk
+    # is the 30-second HTTP 500 the operator saw on cf_bosfvg (SIGNAL_INDEX),
+    # so refuse fast, say why, and build it behind the answer.
+    signal_seeks = False
+    if signal and not coin and not row_id:
+        if has_index("rows_signal") is True:
+            signal_seeks = True
+        elif _rows_estimate() > UNINDEXED_LIMIT:
+            build_filter_index("signal")
+            raise SortNotReady(
+                f"filtering by one signal ({signal}) needs its index "
+                f"(rows_signal) on a store this size; it is being built in "
+                f"the background — try again shortly, or name a coin, which "
+                f"is answered now")
     wide_profit_ready = (key == "profit" and not coin
                          and has_index("rows_pr2") is True)
     winrate_seeks = False
@@ -1742,7 +1776,8 @@ def query(coin=None, tf=None, signal=None, profitable=False,
         elif _rows_estimate() > UNINDEXED_LIMIT:
             _build_index("rows_pr2")
     where, args = _where(coin, tf, signal, profitable, min_trades, min_winrate,
-                         min_tp, sizing, row_id, group)
+                         min_tp, sizing, row_id, group,
+                         signal_seeks=signal_seeks)
     # the row select streams its own ORDER BY index; the count rides the
     # trades index instead (see _where). The ORDER matters to the WHERE too:
     # a win-rate floor drives rows_winrate when the screen is ranked by win %
@@ -1750,7 +1785,8 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     row_where, row_args = _where(coin, tf, signal, profitable, min_trades,
                                  min_winrate, min_tp, sizing, row_id, group,
                                  order_owns_index=True, order_key=key,
-                                 winrate_seeks=winrate_seeks)
+                                 winrate_seeks=winrate_seeks,
+                                 signal_seeks=signal_seeks)
     down = SORTS[key] if desc is None else bool(desc)
     order = f"{key} {'DESC' if down else 'ASC'}"
     # a coin filter without its index is the same trap as a sort without
@@ -1767,7 +1803,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     # refuse fast, SAY it, and build the partial index behind the answer — the
     # same contract as a missing sort index. Only `preset` has one (classic is
     # ~95% of the store and needs none), and a named coin is a better driver.
-    group_idx = "" if coin else group_index(group, key)
+    group_idx = "" if (coin or signal_seeks) else group_index(group, key)
     if group_idx and has_index(group_idx) is not True:
         if _rows_estimate() > UNINDEXED_LIMIT:
             _build_index(group_idx)
@@ -1849,7 +1885,8 @@ def query(coin=None, tf=None, signal=None, profitable=False,
                 # than an honest bound.
                 total = con.execute(
                     f"SELECT COUNT(*) FROM (SELECT 1 FROM rows"
-                    f"{_indexed_by(coin, group_idx=group_idx)}{where} "
+                    f"{_indexed_by(coin, group_idx=group_idx, signal_seeks=signal_seeks)}"
+                    f"{where} "
                     f"LIMIT {COUNT_CAP + 1})", args).fetchone()[0]
             else:
                 # COUNT(*) over every row is a full scan (25ms at 27k rows,
@@ -1862,7 +1899,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             # the operator's cursor mid-click.
             got = _page_rows(con, coin, row_where, row_args, order, lim,
                              max(0, int(offset)), winrate_seeks, profit_wide,
-                             row_id, group_idx)
+                             row_id, group_idx, signal_seeks)
         return total, got
 
     try:
@@ -1966,7 +2003,21 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
     # the same partial index the page needs, and the same refusal: an export
     # that scans 35 million rows to write its first line is a download that
     # never starts (see GROUP_INDEXES)
-    group_idx = "" if coin else group_index(group, key)
+    # ONE SIGNAL: its own index makes the filter a seek. Without it the walk
+    # is the 30-second HTTP 500 the operator saw on cf_bosfvg (SIGNAL_INDEX),
+    # so refuse fast, say why, and build it behind the answer.
+    signal_seeks = False
+    if signal and not coin and not row_id:
+        if has_index("rows_signal") is True:
+            signal_seeks = True
+        elif _rows_estimate() > UNINDEXED_LIMIT:
+            build_filter_index("signal")
+            raise SortNotReady(
+                f"filtering by one signal ({signal}) needs its index "
+                f"(rows_signal) on a store this size; it is being built in "
+                f"the background — try again shortly, or name a coin, which "
+                f"is answered now")
+    group_idx = "" if (coin or signal_seeks) else group_index(group, key)
     if group_idx and has_index(group_idx) is not True:
         if _rows_estimate() > UNINDEXED_LIMIT:
             _build_index(group_idx)
@@ -1995,14 +2046,14 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
     where, args = _where(coin, tf, signal, profitable, min_trades,
                          min_winrate, min_tp, sizing, row_id, group,
                          order_owns_index=True, order_key=key,
-                         winrate_seeks=seeks)
+                         winrate_seeks=seeks, signal_seeks=signal_seeks)
     step = max(100, int(batch))
     # same_thread=False: this generator is drained by Starlette's threadpool
     # (see _connect). Nothing else touches this connection.
     with _open(readonly=True, same_thread=False) as con:
         cur = con.execute(
             f"SELECT * FROM rows"
-            f"{_indexed_by(coin, seeks, (not row_id and key == 'profit' and not coin and _wide_profit_helps(sizing, min_tp, min_winrate, min_trades, profitable)), row_id, group_idx)}"
+            f"{_indexed_by(coin, seeks, (not row_id and key == 'profit' and not coin and _wide_profit_helps(sizing, min_tp, min_winrate, min_trades, profitable)), row_id, group_idx, signal_seeks)}"
             f"{where} "
             f"ORDER BY {order}, id ASC", args)
         while True:

@@ -27,7 +27,9 @@ def test_the_two_groups_partition_the_signal_library():
     """Every signal belongs to exactly one group -- no gaps, no overlap."""
     preset = [s for s in br.SIGNALS if s.startswith("cf_")]
     classic = [s for s in br.SIGNALS if not s.startswith("cf_")]
-    assert len(preset) == 30 == len(CONF_SIGNALS)
+    # 15 setups x 3 levels: the 1-hour ten, plus the five that only the
+    # 4-hour ranking had (built 2026-08-28)
+    assert len(preset) == 45 == len(CONF_SIGNALS)
     assert len(classic) == 75
     assert len(preset) + len(classic) == len(br.SIGNALS)
     assert set(preset) == set(CONF_SIGNALS)
@@ -207,7 +209,7 @@ def test_a_group_count_is_bounded_until_its_index_exists():
     branch = src[i:i + 900]
     assert "total = -1" in branch
     # and with the index there, the generic bounded count must NAME it
-    assert "_indexed_by(coin, group_idx=group_idx)" in src,         "the count has to ride the partial index once it exists"
+    assert "_indexed_by(coin, group_idx=group_idx" in src,         "the count has to ride the partial index once it exists"
     # -1 must still be turned into a capped count for the caption
     j = src.index("if total < 0:")
     assert "total, capped_count = COUNT_CAP, True" in src[j:j + 700],         "an unknown total must print as a bound, with the +"

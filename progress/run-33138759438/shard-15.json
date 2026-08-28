@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 49, "total": 51, "rows": 4497506, "note": "XDC 1d: 394 bars, testing 120 rules", "pct": 96.1, "updated": "2026-08-28T08:02:57Z"}
+{"shard": 15, "stage": "testing", "done": 51, "total": 51, "rows": 4544426, "note": "ZKSYNC 15m: rule 1/120 (mom6)", "pct": 100.0, "updated": "2026-08-28T08:03:54Z"}

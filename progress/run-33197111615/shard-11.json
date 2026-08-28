@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 13, "total": 51, "rows": 1084440, "note": "CSCOSTOCK 15m: rule 99/120 (cf_ttm_l2)", "pct": 25.5, "updated": "2026-08-28T18:49:52Z"}
+{"shard": 11, "stage": "testing", "done": 13, "total": 51, "rows": 1103020, "note": "CSCOSTOCK 30m: rule 68/120 (dbltop)", "pct": 25.5, "updated": "2026-08-28T18:50:37Z"}

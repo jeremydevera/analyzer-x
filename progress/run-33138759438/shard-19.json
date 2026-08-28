@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 39, "total": 51, "rows": 3229672, "note": "SHELL 30m: 18,959 bars, testing 120 rules", "pct": 76.5, "updated": "2026-08-28T06:24:49Z"}
+{"shard": 19, "stage": "testing", "done": 39, "total": 51, "rows": 3233192, "note": "SHELL 30m: rule 10/120 (sr_bounce)", "pct": 76.5, "updated": "2026-08-28T06:25:35Z"}

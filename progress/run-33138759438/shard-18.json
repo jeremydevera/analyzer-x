@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 50, "total": 51, "rows": 4206218, "note": "YGG 30m: rule 53/120 (squeeze)", "pct": 98.0, "updated": "2026-08-28T07:42:07Z"}
+{"shard": 18, "stage": "testing", "done": 50, "total": 51, "rows": 4220958, "note": "YGG 30m: rule 120/120 (cf_stflip_l2)", "pct": 98.0, "updated": "2026-08-28T07:42:53Z"}

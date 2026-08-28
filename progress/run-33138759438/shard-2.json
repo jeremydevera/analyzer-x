@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 49, "total": 51, "rows": 4660186, "note": "WLD 30m: 18,959 bars, testing 120 rules", "pct": 96.1, "updated": "2026-08-28T08:35:23Z"}
+{"shard": 2, "stage": "testing", "done": 49, "total": 51, "rows": 4663586, "note": "WLD 30m: rule 11/120 (sr_break)", "pct": 96.1, "updated": "2026-08-28T08:36:09Z"}

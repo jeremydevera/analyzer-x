@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 36, "total": 51, "rows": 3137662, "note": "PYPLSTOCK 1d: downloading candles", "pct": 70.6, "updated": "2026-08-28T20:33:32Z"}
+{"shard": 13, "stage": "testing", "done": 37, "total": 51, "rows": 3159862, "note": "RDWSTOCK 15m: rule 108/120 (cf_bosfvg_l2)", "pct": 72.5, "updated": "2026-08-28T20:34:17Z"}

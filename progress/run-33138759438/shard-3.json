@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 44, "total": 51, "rows": 3811986, "note": "TAKE 30m: rule 76/120 (cf_mom)", "pct": 86.3, "updated": "2026-08-28T07:27:41Z"}
+{"shard": 3, "stage": "testing", "done": 44, "total": 51, "rows": 3821974, "note": "TAKE 1h: rule 2/120 (mom15)", "pct": 86.3, "updated": "2026-08-28T07:28:30Z"}

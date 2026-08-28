@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 47, "total": 52, "rows": 3762158, "note": "UMA 1h: 9,479 bars, testing 120 rules", "pct": 90.4, "updated": "2026-08-28T21:41:54Z"}
+{"shard": 1, "stage": "testing", "done": 47, "total": 52, "rows": 3779978, "note": "UMA 1h: rule 76/120 (cf_mom)", "pct": 90.4, "updated": "2026-08-28T21:42:40Z"}

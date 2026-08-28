@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 48, "total": 52, "rows": 4252350, "note": "VELO 1d: 394 bars, testing 120 rules", "pct": 92.3, "updated": "2026-08-28T22:04:02Z"}
+{"shard": 2, "stage": "testing", "done": 50, "total": 52, "rows": 4302178, "note": "XLE 15m: rule 9/120 (fib382)", "pct": 96.2, "updated": "2026-08-28T22:04:47Z"}

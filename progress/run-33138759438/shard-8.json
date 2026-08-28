@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 51, "total": 51, "rows": 4076650, "note": "ZHIPUSTOCK 1d: 67 bars, testing 120 rules", "pct": 100.0, "updated": "2026-08-28T06:20:31Z"}
+{"shard": 8, "stage": "done", "done": 51, "total": 51, "rows": 4083360, "note": "4,083,360 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "pct": 100.0, "updated": "2026-08-28T06:20:33Z"}

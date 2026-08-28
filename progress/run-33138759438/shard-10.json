@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 24, "total": 51, "rows": 2373766, "note": "JCT 15m: rule 68/120 (dbltop)", "pct": 47.1, "updated": "2026-08-28T05:48:19Z"}
+{"shard": 10, "stage": "testing", "done": 24, "total": 51, "rows": 2381326, "note": "JCT 15m: rule 111/120 (cf_fundfade_l2)", "pct": 47.1, "updated": "2026-08-28T05:49:05Z"}

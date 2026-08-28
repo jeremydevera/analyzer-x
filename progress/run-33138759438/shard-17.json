@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 26, "total": 51, "rows": 2147776, "note": "LINEA 15m: 34,596 bars, testing 120 rules", "pct": 51.0, "updated": "2026-08-28T05:24:23Z"}
+{"shard": 17, "stage": "testing", "done": 26, "total": 51, "rows": 2149576, "note": "LINEA 15m: rule 3/120 (fade15)", "pct": 51.0, "updated": "2026-08-28T05:25:20Z"}

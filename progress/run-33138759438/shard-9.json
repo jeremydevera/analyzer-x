@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 49, "total": 51, "rows": 3845512, "note": "XAI 1h: rule 102/120 (cf_soup1_l2)", "pct": 96.1, "updated": "2026-08-28T06:21:47Z"}
+{"shard": 9, "stage": "testing", "done": 50, "total": 51, "rows": 3881792, "note": "XPL 15m: 34,600 bars, testing 120 rules", "pct": 98.0, "updated": "2026-08-28T06:22:40Z"}

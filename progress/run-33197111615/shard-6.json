@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 48, "total": 51, "rows": 4263164, "note": "VIRTUAL 15m: rule 87/120 (cf_triple_l2)", "pct": 94.1, "updated": "2026-08-28T22:43:52Z"}
+{"shard": 6, "stage": "testing", "done": 48, "total": 51, "rows": 4269104, "note": "VIRTUAL 30m: 18,959 bars, testing 120 rules", "pct": 94.1, "updated": "2026-08-28T22:44:41Z"}

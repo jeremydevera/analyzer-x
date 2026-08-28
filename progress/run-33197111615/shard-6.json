@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 30, "total": 51, "rows": 2850864, "note": "MSFU 15m: rule 72/120 (force13)", "pct": 58.8, "updated": "2026-08-28T21:06:14Z"}
+{"shard": 6, "stage": "testing", "done": 32, "total": 51, "rows": 2880302, "note": "NOT 15m: rule 1/120 (mom6)", "pct": 62.7, "updated": "2026-08-28T21:07:06Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 41, "total": 51, "rows": 3487218, "note": "SOL 15m: 34,598 bars, testing 120 rules", "pct": 80.4, "updated": "2026-08-28T05:52:16Z"}
+{"shard": 13, "stage": "testing", "done": 41, "total": 51, "rows": 3490998, "note": "SOL 15m: rule 15/120 (bbbreak)", "pct": 80.4, "updated": "2026-08-28T05:53:01Z"}

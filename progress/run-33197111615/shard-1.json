@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 3, "total": 52, "rows": 247268, "note": "AKE 1h: 8,934 bars, testing 120 rules", "pct": 5.8, "updated": "2026-08-28T18:17:46Z"}
+{"shard": 1, "stage": "testing", "done": 3, "total": 52, "rows": 260714, "note": "AKE 1h: rule 78/120 (cf_mom_l2)", "pct": 5.8, "updated": "2026-08-28T18:18:31Z"}

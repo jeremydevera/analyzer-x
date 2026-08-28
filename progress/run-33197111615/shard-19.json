@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 1, "total": 51, "rows": 16060, "note": "ACU 15m: rule 68/120 (dbltop)", "pct": 2.0, "updated": "2026-08-28T18:00:59Z"}
+{"shard": 19, "stage": "testing", "done": 1, "total": 51, "rows": 27500, "note": "ACU 30m: 10,576 bars, testing 120 rules", "pct": 2.0, "updated": "2026-08-28T18:01:47Z"}

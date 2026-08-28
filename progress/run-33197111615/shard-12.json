@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 40, "total": 51, "rows": 3430568, "note": "SKHYSTOCK 15m: 4,822 bars, testing 120 rules", "pct": 78.4, "updated": "2026-08-28T21:19:53Z"}
+{"shard": 12, "stage": "testing", "done": 40, "total": 51, "rows": 3478248, "note": "SKHYSTOCK 1h: rule 2/120 (mom15)", "pct": 78.4, "updated": "2026-08-28T21:20:39Z"}

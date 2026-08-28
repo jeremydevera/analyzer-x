@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 48, "total": 51, "rows": 4185040, "note": "WAL 15m: rule 13/120 (pivot)", "pct": 94.1, "updated": "2026-08-28T07:23:58Z"}
+{"shard": 12, "stage": "testing", "done": 48, "total": 51, "rows": 4189440, "note": "WAL 15m: rule 33/120 (heikin)", "pct": 94.1, "updated": "2026-08-28T07:24:45Z"}

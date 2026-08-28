@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 23, "total": 51, "rows": 2046556, "note": "IN 1h: rule 33/120 (heikin)", "pct": 45.1, "updated": "2026-08-28T20:40:49Z"}
+{"shard": 18, "stage": "testing", "done": 23, "total": 51, "rows": 2063188, "note": "IN 4h: 2,319 bars, testing 120 rules", "pct": 45.1, "updated": "2026-08-28T20:41:35Z"}

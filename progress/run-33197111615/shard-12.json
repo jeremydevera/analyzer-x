@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 6, "total": 51, "rows": 424566, "note": "AXPSTOCK 15m: rule 102/120 (cf_soup1_l2)", "pct": 11.8, "updated": "2026-08-28T18:15:44Z"}
+{"shard": 12, "stage": "testing", "done": 7, "total": 51, "rows": 480306, "note": "BAS 15m: 34,648 bars, testing 120 rules", "pct": 13.7, "updated": "2026-08-28T18:16:30Z"}

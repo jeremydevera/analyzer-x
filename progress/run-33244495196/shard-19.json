@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 1, "total": 51, "rows": 14800, "note": "ACU 15m: rule 69/120 (obv20)", "pct": 2.0, "updated": "2026-08-29T09:04:02Z"}
+{"shard": 19, "stage": "testing", "done": 1, "total": 51, "rows": 25000, "note": "ACU 30m: 10,606 bars, testing 120 rules", "pct": 2.0, "updated": "2026-08-29T09:04:50Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 32, "total": 52, "rows": 2522878, "note": "NMR 15m: 34,619 bars, testing 120 rules", "pct": 61.5, "updated": "2026-08-29T11:10:42Z"}
+{"shard": 3, "stage": "testing", "done": 32, "total": 52, "rows": 2524858, "note": "NMR 15m: rule 3/120 (fade15)", "pct": 61.5, "updated": "2026-08-29T11:11:27Z"}

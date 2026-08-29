@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 15, "total": 52, "rows": 1087326, "note": "DIA 30m: 18,959 bars, testing 120 rules", "pct": 28.8, "updated": "2026-08-29T10:00:21Z"}
+{"shard": 3, "stage": "testing", "done": 15, "total": 52, "rows": 1093046, "note": "DIA 30m: rule 20/120 (stoch14)", "pct": 28.8, "updated": "2026-08-29T10:01:07Z"}

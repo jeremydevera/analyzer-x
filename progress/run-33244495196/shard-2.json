@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 40, "total": 52, "rows": 3324232, "note": "SHELL 15m: rule 2/120 (mom15)", "pct": 76.9, "updated": "2026-08-29T12:31:39Z"}
+{"shard": 2, "stage": "testing", "done": 40, "total": 52, "rows": 3326212, "note": "SHELL 15m: rule 9/120 (fib382)", "pct": 76.9, "updated": "2026-08-29T12:32:25Z"}

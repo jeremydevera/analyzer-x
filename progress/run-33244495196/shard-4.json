@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 42, "total": 51, "rows": 3567780, "note": "SOXX 15m: rule 93/120 (cf_soup_l2)", "pct": 82.4, "updated": "2026-08-29T12:09:38Z"}
+{"shard": 4, "stage": "testing", "done": 42, "total": 51, "rows": 3595820, "note": "SOXX 1h: 2,958 bars, testing 120 rules", "pct": 82.4, "updated": "2026-08-29T12:10:24Z"}

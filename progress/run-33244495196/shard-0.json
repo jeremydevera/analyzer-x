@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 37, "total": 52, "rows": 3306370, "note": "QTUM 15m: rule 53/120 (squeeze)", "pct": 71.2, "updated": "2026-08-29T12:20:19Z"}
+{"shard": 0, "stage": "testing", "done": 37, "total": 52, "rows": 3314510, "note": "QTUM 15m: rule 90/120 (cf_chan_l2)", "pct": 71.2, "updated": "2026-08-29T12:21:06Z"}

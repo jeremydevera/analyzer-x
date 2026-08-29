@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 37, "total": 51, "rows": 3141710, "note": "RDDTSTOCK 30m: rule 87/120 (cf_triple_l2)", "pct": 72.5, "updated": "2026-08-29T11:35:02Z"}
+{"shard": 12, "stage": "testing", "done": 38, "total": 51, "rows": 3191802, "note": "ROBINHOOD 15m: 34,552 bars, testing 120 rules", "pct": 74.5, "updated": "2026-08-29T11:35:51Z"}

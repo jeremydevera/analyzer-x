@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 29, "total": 52, "rows": 2461642, "note": "MERL 30m: 18,959 bars, testing 120 rules", "pct": 55.8, "updated": "2026-08-29T11:23:25Z"}
+{"shard": 0, "stage": "testing", "done": 29, "total": 52, "rows": 2464282, "note": "MERL 30m: rule 6/120 (sweep30)", "pct": 55.8, "updated": "2026-08-29T11:24:11Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 9, "total": 51, "rows": 747676, "note": "BSB 1h: 4,271 bars, testing 120 rules", "pct": 17.6, "updated": "2026-08-29T09:51:39Z"}
+{"shard": 19, "stage": "testing", "done": 9, "total": 51, "rows": 787456, "note": "BSB 4h: rule 86/120 (cf_triple_l1)", "pct": 17.6, "updated": "2026-08-29T09:52:24Z"}

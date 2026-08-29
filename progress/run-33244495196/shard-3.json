@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 25, "total": 52, "rows": 2005872, "note": "JUP 1h: 9,479 bars, testing 120 rules", "pct": 48.1, "updated": "2026-08-29T10:52:01Z"}
+{"shard": 3, "stage": "testing", "done": 25, "total": 52, "rows": 2026472, "note": "JUP 1h: rule 99/120 (cf_ttm_l2)", "pct": 48.1, "updated": "2026-08-29T10:52:47Z"}

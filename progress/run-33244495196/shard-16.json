@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 51, "total": 51, "rows": 4726378, "note": "ZINC 30m: rule 102/120 (cf_soup1_l2)", "pct": 100.0, "updated": "2026-08-29T12:46:00Z"}
+{"shard": 16, "stage": "done", "done": 51, "total": 51, "rows": 4771194, "note": "4,771,194 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "pct": 100.0, "updated": "2026-08-29T12:46:21Z"}

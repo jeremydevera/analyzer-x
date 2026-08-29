@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 45, "total": 52, "rows": 3857860, "note": "TLM 4h: rule 102/120 (cf_soup1_l2)", "pct": 86.5, "updated": "2026-08-29T13:04:14Z"}
+{"shard": 2, "stage": "testing", "done": 46, "total": 52, "rows": 3878116, "note": "TRY 15m: rule 9/120 (fib382)", "pct": 88.5, "updated": "2026-08-29T13:05:00Z"}

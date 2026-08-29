@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 3, "total": 51, "rows": 207936, "note": "ALL 30m: rule 73/120 (volspike)", "pct": 5.9, "updated": "2026-08-29T09:14:51Z"}
+{"shard": 9, "stage": "testing", "done": 3, "total": 51, "rows": 220476, "note": "ALL 1h: rule 4/120 (trend50)", "pct": 5.9, "updated": "2026-08-29T09:15:37Z"}

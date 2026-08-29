@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 33, "total": 51, "rows": 2451172, "note": "ONT 30m: 18,959 bars, testing 120 rules", "pct": 64.7, "updated": "2026-08-29T11:15:48Z"}
+{"shard": 9, "stage": "testing", "done": 33, "total": 51, "rows": 2455132, "note": "ONT 30m: rule 12/120 (donchian20)", "pct": 64.7, "updated": "2026-08-29T11:16:33Z"}

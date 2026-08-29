@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 33, "total": 51, "rows": 2868338, "note": "OP 30m: rule 13/120 (pivot)", "pct": 64.7, "updated": "2026-08-29T11:13:25Z"}
+{"shard": 16, "stage": "testing", "done": 33, "total": 51, "rows": 2881138, "note": "OP 30m: rule 78/120 (cf_mom_l2)", "pct": 64.7, "updated": "2026-08-29T11:14:11Z"}

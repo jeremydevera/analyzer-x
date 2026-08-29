@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 42, "total": 52, "rows": 3599296, "note": "SOXL 1h: rule 33/120 (heikin)", "pct": 80.8, "updated": "2026-08-29T12:44:48Z"}
+{"shard": 2, "stage": "testing", "done": 44, "total": 52, "rows": 3633716, "note": "S 15m: 34,626 bars, testing 120 rules", "pct": 84.6, "updated": "2026-08-29T12:45:38Z"}

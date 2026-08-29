@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 31, "total": 51, "rows": 2421540, "note": "NEAR 15m: 34,620 bars, testing 120 rules", "pct": 60.8, "updated": "2026-08-29T11:16:59Z"}
+{"shard": 5, "stage": "testing", "done": 31, "total": 51, "rows": 2423780, "note": "NEAR 15m: rule 8/120 (fib618)", "pct": 60.8, "updated": "2026-08-29T11:17:45Z"}

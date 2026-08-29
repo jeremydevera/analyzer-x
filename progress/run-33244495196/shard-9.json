@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 38, "total": 51, "rows": 2962080, "note": "RLC 30m: rule 45/120 (zscore20)", "pct": 74.5, "updated": "2026-08-29T11:49:28Z"}
+{"shard": 9, "stage": "testing", "done": 38, "total": 51, "rows": 2974180, "note": "RLC 30m: rule 101/120 (cf_soup1_l1)", "pct": 74.5, "updated": "2026-08-29T11:50:13Z"}

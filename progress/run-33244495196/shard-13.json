@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 14, "total": 51, "rows": 1131286, "note": "DBR 15m: 34,613 bars, testing 120 rules", "pct": 27.5, "updated": "2026-08-29T09:42:12Z"}
+{"shard": 13, "stage": "testing", "done": 14, "total": 51, "rows": 1136086, "note": "DBR 15m: rule 34/120 (lrslope)", "pct": 27.5, "updated": "2026-08-29T09:42:58Z"}

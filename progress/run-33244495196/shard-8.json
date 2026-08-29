@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 35, "total": 51, "rows": 2792498, "note": "PLTRSTOCK 15m: 33,783 bars, testing 120 rules", "pct": 68.6, "updated": "2026-08-29T11:42:10Z"}
+{"shard": 8, "stage": "testing", "done": 35, "total": 51, "rows": 2797178, "note": "PLTRSTOCK 15m: rule 20/120 (stoch14)", "pct": 68.6, "updated": "2026-08-29T11:42:56Z"}

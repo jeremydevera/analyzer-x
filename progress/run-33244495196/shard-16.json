@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 48, "total": 51, "rows": 4519614, "note": "WAL 1d: 394 bars, testing 120 rules", "pct": 94.1, "updated": "2026-08-29T12:38:48Z"}
+{"shard": 16, "stage": "testing", "done": 49, "total": 51, "rows": 4564934, "note": "XAU 30m: rule 28/120 (vortex14)", "pct": 96.1, "updated": "2026-08-29T12:39:33Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 45, "total": 51, "rows": 3554932, "note": "TREE 15m: rule 45/120 (zscore20)", "pct": 88.2, "updated": "2026-08-29T12:03:02Z"}
+{"shard": 14, "stage": "testing", "done": 45, "total": 51, "rows": 3562532, "note": "TREE 15m: rule 84/120 (cf_maobv_l2)", "pct": 88.2, "updated": "2026-08-29T12:03:48Z"}

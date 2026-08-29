@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 42, "total": 51, "rows": 3401674, "note": "SQD 1h: rule 17/120 (atrbreak)", "pct": 82.4, "updated": "2026-08-29T11:55:27Z"}
+{"shard": 14, "stage": "testing", "done": 42, "total": 51, "rows": 3423454, "note": "SQD 4h: 2,369 bars, testing 120 rules", "pct": 82.4, "updated": "2026-08-29T11:56:22Z"}

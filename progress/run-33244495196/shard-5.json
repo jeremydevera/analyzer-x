@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 39, "total": 51, "rows": 3229576, "note": "SAHARA 1d: 394 bars, testing 120 rules", "pct": 76.5, "updated": "2026-08-29T12:04:03Z"}
+{"shard": 5, "stage": "testing", "done": 40, "total": 51, "rows": 3251512, "note": "SHOPSTOCK 15m: rule 84/120 (cf_maobv_l2)", "pct": 78.4, "updated": "2026-08-29T12:04:48Z"}

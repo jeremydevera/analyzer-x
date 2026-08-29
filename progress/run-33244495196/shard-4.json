@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 25, "total": 51, "rows": 2022392, "note": "KAIA 15m: rule 86/120 (cf_triple_l1)", "pct": 49.0, "updated": "2026-08-29T10:51:30Z"}
+{"shard": 4, "stage": "testing", "done": 25, "total": 51, "rows": 2029872, "note": "KAIA 30m: 18,959 bars, testing 120 rules", "pct": 49.0, "updated": "2026-08-29T10:52:24Z"}

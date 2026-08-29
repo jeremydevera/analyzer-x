@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 47, "total": 51, "rows": 3866656, "note": "USO 15m: rule 47/120 (ibs)", "pct": 92.2, "updated": "2026-08-29T11:42:18Z"}
+{"shard": 13, "stage": "testing", "done": 49, "total": 51, "rows": 3915902, "note": "XAI 15m: 34,621 bars, testing 120 rules", "pct": 96.1, "updated": "2026-08-29T11:43:10Z"}

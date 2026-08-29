@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 23, "total": 52, "rows": 1572032, "note": "IBMSTOCK 15m: rule 102/120 (cf_soup1_l2)", "pct": 44.2, "updated": "2026-08-29T10:15:33Z"}
+{"shard": 1, "stage": "testing", "done": 23, "total": 52, "rows": 1597592, "note": "IBMSTOCK 1h: 5,067 bars, testing 120 rules", "pct": 44.2, "updated": "2026-08-29T10:16:19Z"}

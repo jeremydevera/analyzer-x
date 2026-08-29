@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 25, "total": 51, "rows": 1771342, "note": "KERNEL 30m: rule 36/120 (stochrsi)", "pct": 49.0, "updated": "2026-08-29T10:30:59Z"}
+{"shard": 9, "stage": "testing", "done": 25, "total": 51, "rows": 1782782, "note": "KERNEL 30m: rule 90/120 (cf_chan_l2)", "pct": 49.0, "updated": "2026-08-29T10:31:45Z"}

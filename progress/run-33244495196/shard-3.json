@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 44, "total": 52, "rows": 3637252, "note": "TAC 1h: 9,479 bars, testing 120 rules", "pct": 84.6, "updated": "2026-08-29T12:06:13Z"}
+{"shard": 3, "stage": "testing", "done": 44, "total": 52, "rows": 3651184, "note": "TAC 1h: rule 81/120 (cf_donch_l2)", "pct": 84.6, "updated": "2026-08-29T12:06:58Z"}

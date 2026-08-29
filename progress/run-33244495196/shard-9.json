@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 31, "total": 51, "rows": 2286338, "note": "NEO 30m: 18,959 bars, testing 120 rules", "pct": 60.8, "updated": "2026-08-29T11:06:09Z"}
+{"shard": 9, "stage": "testing", "done": 31, "total": 51, "rows": 2290958, "note": "NEO 30m: rule 15/120 (bbbreak)", "pct": 60.8, "updated": "2026-08-29T11:06:54Z"}

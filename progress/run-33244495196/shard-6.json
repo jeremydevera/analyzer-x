@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 46, "total": 51, "rows": 4089654, "note": "TST 15m: rule 49/120 (vwaprev)", "pct": 90.2, "updated": "2026-08-29T12:51:25Z"}
+{"shard": 6, "stage": "testing", "done": 46, "total": 51, "rows": 4098454, "note": "TST 15m: rule 90/120 (cf_chan_l2)", "pct": 90.2, "updated": "2026-08-29T12:52:10Z"}

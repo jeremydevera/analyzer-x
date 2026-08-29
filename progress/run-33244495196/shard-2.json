@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 5, "total": 52, "rows": 429356, "note": "ARMSTOCK 1h: rule 72/120 (force13)", "pct": 9.6, "updated": "2026-08-29T09:35:30Z"}
+{"shard": 2, "stage": "testing", "done": 6, "total": 52, "rows": 500140, "note": "AUSTOCK 1h: 552 bars, testing 120 rules", "pct": 11.5, "updated": "2026-08-29T09:36:15Z"}

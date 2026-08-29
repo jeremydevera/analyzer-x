@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 7, "total": 52, "rows": 555820, "note": "BABY 15m: 34,613 bars, testing 120 rules", "pct": 13.5, "updated": "2026-08-29T09:33:37Z"}
+{"shard": 1, "stage": "testing", "done": 7, "total": 52, "rows": 558520, "note": "BABY 15m: rule 9/120 (fib382)", "pct": 13.5, "updated": "2026-08-29T09:34:23Z"}

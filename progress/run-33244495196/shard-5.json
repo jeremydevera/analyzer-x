@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 34, "total": 51, "rows": 2767886, "note": "PANWSTOCK 30m: 8,933 bars, testing 120 rules", "pct": 66.7, "updated": "2026-08-29T11:36:23Z"}
+{"shard": 5, "stage": "testing", "done": 34, "total": 51, "rows": 2793950, "note": "PANWSTOCK 1h: rule 16/120 (keltner)", "pct": 66.7, "updated": "2026-08-29T11:37:08Z"}

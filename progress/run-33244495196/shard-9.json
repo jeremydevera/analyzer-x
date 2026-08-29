@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 5, "total": 51, "rows": 353072, "note": "ASR 30m: rule 90/120 (cf_chan_l2)", "pct": 9.8, "updated": "2026-08-29T09:22:39Z"}
+{"shard": 9, "stage": "testing", "done": 5, "total": 51, "rows": 361512, "note": "ASR 1h: rule 6/120 (sweep30)", "pct": 9.8, "updated": "2026-08-29T09:23:24Z"}

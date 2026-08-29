@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 27, "total": 51, "rows": 2216190, "note": "LPT 30m: 18,959 bars, testing 120 rules", "pct": 52.9, "updated": "2026-08-29T11:17:43Z"}
+{"shard": 8, "stage": "testing", "done": 27, "total": 51, "rows": 2221030, "note": "LPT 30m: rule 16/120 (keltner)", "pct": 52.9, "updated": "2026-08-29T11:18:29Z"}

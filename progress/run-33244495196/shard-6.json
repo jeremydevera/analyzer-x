@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 32, "total": 51, "rows": 2874506, "note": "NOT 15m: rule 8/120 (fib618)", "pct": 62.7, "updated": "2026-08-29T11:40:05Z"}
+{"shard": 6, "stage": "testing", "done": 32, "total": 51, "rows": 2880006, "note": "NOT 15m: rule 33/120 (heikin)", "pct": 62.7, "updated": "2026-08-29T11:40:52Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 42, "total": 51, "rows": 3534462, "note": "SPX500 4h: rule 30/120 (kama10)", "pct": 82.4, "updated": "2026-08-29T12:16:03Z"}
+{"shard": 11, "stage": "testing", "done": 45, "total": 51, "rows": 3608906, "note": "TQQQ 15m: 7,134 bars, testing 120 rules", "pct": 88.2, "updated": "2026-08-29T12:16:49Z"}

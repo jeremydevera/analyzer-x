@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 45, "total": 51, "rows": 3608906, "note": "TQQQ 15m: 7,134 bars, testing 120 rules", "pct": 88.2, "updated": "2026-08-29T12:16:49Z"}
+{"shard": 11, "stage": "testing", "done": 45, "total": 51, "rows": 3640066, "note": "TQQQ 30m: rule 40/120 (crsi)", "pct": 88.2, "updated": "2026-08-29T12:17:34Z"}

@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 47, "total": 51, "rows": 3745368, "note": "USDC 15m: rule 84/120 (cf_maobv_l2)", "pct": 92.2, "updated": "2026-08-29T12:01:19Z"}
+{"shard": 10, "stage": "testing", "done": 47, "total": 51, "rows": 3751528, "note": "USDC 30m: 18,959 bars, testing 120 rules", "pct": 92.2, "updated": "2026-08-29T12:02:07Z"}

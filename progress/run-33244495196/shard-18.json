@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 4, "total": 51, "rows": 380836, "note": "ARIA 30m: rule 16/120 (keltner)", "pct": 7.8, "updated": "2026-08-29T09:31:58Z"}
+{"shard": 18, "stage": "testing", "done": 4, "total": 51, "rows": 387216, "note": "ARIA 30m: rule 45/120 (zscore20)", "pct": 7.8, "updated": "2026-08-29T09:32:44Z"}

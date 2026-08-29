@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 5, "total": 51, "rows": 384832, "note": "ASR 1h: rule 115/120 (cf_diadx)", "pct": 9.8, "updated": "2026-08-29T09:24:09Z"}
+{"shard": 9, "stage": "testing", "done": 6, "total": 51, "rows": 425136, "note": "AWE 15m: 34,612 bars, testing 120 rules", "pct": 11.8, "updated": "2026-08-29T09:25:07Z"}

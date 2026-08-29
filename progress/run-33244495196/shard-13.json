@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 27, "total": 51, "rows": 2245912, "note": "LTC 30m: 18,959 bars, testing 120 rules", "pct": 52.9, "updated": "2026-08-29T10:42:09Z"}
+{"shard": 13, "stage": "testing", "done": 27, "total": 51, "rows": 2256312, "note": "LTC 30m: rule 46/120 (rsi2)", "pct": 52.9, "updated": "2026-08-29T10:42:54Z"}

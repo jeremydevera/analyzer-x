@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 44, "total": 51, "rows": 3794038, "note": "TESLA 1h: rule 40/120 (crsi)", "pct": 86.3, "updated": "2026-08-29T12:38:40Z"}
+{"shard": 15, "stage": "testing", "done": 44, "total": 51, "rows": 3838038, "note": "TESLA 4h: rule 120/120 (cf_stflip_l2)", "pct": 86.3, "updated": "2026-08-29T12:39:25Z"}

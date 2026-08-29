@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 25, "total": 51, "rows": 2236144, "note": "KGEN 1h: 7,822 bars, testing 120 rules", "pct": 49.0, "updated": "2026-08-29T11:17:18Z"}
+{"shard": 11, "stage": "testing", "done": 25, "total": 51, "rows": 2252182, "note": "KGEN 1h: rule 76/120 (cf_mom)", "pct": 49.0, "updated": "2026-08-29T11:18:04Z"}

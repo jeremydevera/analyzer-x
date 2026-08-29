@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 23, "total": 52, "rows": 1597592, "note": "IBMSTOCK 1h: 5,067 bars, testing 120 rules", "pct": 44.2, "updated": "2026-08-29T10:16:19Z"}
+{"shard": 1, "stage": "testing", "done": 24, "total": 52, "rows": 1650082, "note": "IOTA 15m: rule 1/120 (mom6)", "pct": 46.2, "updated": "2026-08-29T10:17:12Z"}

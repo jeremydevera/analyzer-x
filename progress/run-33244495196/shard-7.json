@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 51, "total": 51, "rows": 4464712, "note": "ZEC 1d: 394 bars, testing 120 rules", "pct": 100.0, "updated": "2026-08-29T12:58:09Z"}
+{"shard": 7, "stage": "done", "done": 51, "total": 51, "rows": 4478440, "note": "4,478,440 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "pct": 100.0, "updated": "2026-08-29T12:58:13Z"}

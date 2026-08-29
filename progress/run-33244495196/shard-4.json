@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 43, "total": 51, "rows": 3665270, "note": "STO 30m: 18,959 bars, testing 120 rules", "pct": 84.3, "updated": "2026-08-29T12:14:22Z"}
+{"shard": 4, "stage": "testing", "done": 43, "total": 51, "rows": 3669670, "note": "STO 30m: rule 16/120 (keltner)", "pct": 84.3, "updated": "2026-08-29T12:15:08Z"}

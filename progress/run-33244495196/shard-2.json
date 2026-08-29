@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 39, "total": 52, "rows": 3221492, "note": "RVN 15m: rule 85/120 (cf_triple)", "pct": 75.0, "updated": "2026-08-29T12:24:58Z"}
+{"shard": 2, "stage": "testing", "done": 39, "total": 52, "rows": 3229192, "note": "RVN 30m: 18,959 bars, testing 120 rules", "pct": 75.0, "updated": "2026-08-29T12:25:56Z"}

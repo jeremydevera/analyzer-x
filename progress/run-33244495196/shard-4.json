@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 43, "total": 51, "rows": 3690270, "note": "STO 1h: 9,479 bars, testing 120 rules", "pct": 84.3, "updated": "2026-08-29T12:16:42Z"}
+{"shard": 4, "stage": "testing", "done": 43, "total": 51, "rows": 3703470, "note": "STO 1h: rule 55/120 (nhigh50)", "pct": 84.3, "updated": "2026-08-29T12:17:27Z"}

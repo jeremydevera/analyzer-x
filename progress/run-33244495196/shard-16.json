@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 14, "total": 51, "rows": 1385124, "note": "DEEP 30m: 18,959 bars, testing 120 rules", "pct": 27.5, "updated": "2026-08-29T10:14:33Z"}
+{"shard": 16, "stage": "testing", "done": 14, "total": 51, "rows": 1390844, "note": "DEEP 30m: rule 20/120 (stoch14)", "pct": 27.5, "updated": "2026-08-29T10:15:20Z"}

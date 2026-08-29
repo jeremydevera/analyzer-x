@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 3, "total": 51, "rows": 174594, "note": "AMATSTOCK 30m: rule 45/120 (zscore20)", "pct": 5.9, "updated": "2026-08-29T09:06:20Z"}
+{"shard": 13, "stage": "testing", "done": 3, "total": 51, "rows": 212694, "note": "AMATSTOCK 1h: rule 100/120 (cf_soup1)", "pct": 5.9, "updated": "2026-08-29T09:07:05Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 30, "total": 52, "rows": 2241134, "note": "MPCSTOCK 15m: 1,720 bars, testing 120 rules", "pct": 57.7, "updated": "2026-08-29T10:41:09Z"}
+{"shard": 1, "stage": "testing", "done": 31, "total": 52, "rows": 2270394, "note": "NAORIS 15m: rule 2/120 (mom15)", "pct": 59.6, "updated": "2026-08-29T10:42:10Z"}

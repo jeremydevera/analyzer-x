@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 3, "total": 51, "rows": 246168, "note": "ALT 15m: rule 93/120 (cf_soup_l2)", "pct": 5.9, "updated": "2026-08-30T15:06:11Z"}
+{"shard": 11, "stage": "testing", "done": 3, "total": 51, "rows": 251568, "note": "ALT 30m: 18,959 bars, testing 120 rules", "pct": 5.9, "updated": "2026-08-30T15:06:59Z"}

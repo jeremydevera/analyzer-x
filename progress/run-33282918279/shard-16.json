@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 18, "total": 51, "rows": 1725796, "note": "FLUID 30m: rule 90/120 (cf_chan_l2)", "pct": 35.3, "updated": "2026-08-30T01:38:52Z"}
+{"shard": 16, "stage": "testing", "done": 18, "total": 51, "rows": 1743616, "note": "FLUID 1h: rule 45/120 (zscore20)", "pct": 35.3, "updated": "2026-08-30T01:39:37Z"}

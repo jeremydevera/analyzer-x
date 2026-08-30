@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 5, "total": 51, "rows": 475984, "note": "ASP 15m: rule 87/120 (cf_triple_l2)", "pct": 9.8, "updated": "2026-08-30T15:23:20Z"}
+{"shard": 8, "stage": "testing", "done": 5, "total": 51, "rows": 480604, "note": "ASP 30m: 18,959 bars, testing 120 rules", "pct": 9.8, "updated": "2026-08-30T15:24:09Z"}

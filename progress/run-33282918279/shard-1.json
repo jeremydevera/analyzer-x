@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 43, "total": 52, "rows": 3240134, "note": "STG 30m: rule 76/120 (cf_mom)", "pct": 82.7, "updated": "2026-08-30T03:24:22Z"}
+{"shard": 1, "stage": "testing", "done": 43, "total": 52, "rows": 3251134, "note": "STG 1h: rule 2/120 (mom15)", "pct": 82.7, "updated": "2026-08-30T03:25:11Z"}

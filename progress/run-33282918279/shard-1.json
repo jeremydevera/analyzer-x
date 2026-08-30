@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 44, "total": 52, "rows": 3351602, "note": "SYRUP 30m: rule 45/120 (zscore20)", "pct": 84.6, "updated": "2026-08-30T03:32:28Z"}
+{"shard": 1, "stage": "testing", "done": 44, "total": 52, "rows": 3363482, "note": "SYRUP 30m: rule 101/120 (cf_soup1_l1)", "pct": 84.6, "updated": "2026-08-30T03:33:13Z"}

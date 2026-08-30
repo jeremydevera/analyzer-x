@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 24, "total": 52, "rows": 1742900, "note": "IOTA 30m: rule 4/120 (trend50)", "pct": 46.2, "updated": "2026-08-30T16:21:26Z"}
+{"shard": 2, "stage": "testing", "done": 24, "total": 52, "rows": 1751920, "note": "IOTA 30m: rule 45/120 (zscore20)", "pct": 46.2, "updated": "2026-08-30T16:22:11Z"}

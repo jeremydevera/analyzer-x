@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 47, "total": 51, "rows": 4164290, "note": "US 1h: rule 111/120 (cf_fundfade_l2)", "pct": 92.2, "updated": "2026-08-30T18:52:55Z"}
+{"shard": 19, "stage": "testing", "done": 48, "total": 51, "rows": 4205474, "note": "WAL 15m: 34,650 bars, testing 120 rules", "pct": 94.1, "updated": "2026-08-30T18:53:49Z"}

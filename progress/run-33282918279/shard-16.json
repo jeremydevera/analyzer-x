@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 2, "total": 51, "rows": 138960, "note": "AIOT 30m: 18,959 bars, testing 120 rules", "pct": 3.9, "updated": "2026-08-30T00:27:29Z"}
+{"shard": 16, "stage": "testing", "done": 2, "total": 51, "rows": 143580, "note": "AIOT 30m: rule 15/120 (bbbreak)", "pct": 3.9, "updated": "2026-08-30T00:28:14Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 8, "total": 52, "rows": 703534, "note": "BIGTIME 15m: 34,637 bars, testing 120 rules", "pct": 15.4, "updated": "2026-08-30T15:34:44Z"}
+{"shard": 6, "stage": "testing", "done": 8, "total": 52, "rows": 705514, "note": "BIGTIME 15m: rule 3/120 (fade15)", "pct": 15.4, "updated": "2026-08-30T15:35:44Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 5, "total": 51, "rows": 478510, "note": "ASTER 1h: rule 96/120 (cf_emarsi_l2)", "pct": 9.8, "updated": "2026-08-30T15:18:36Z"}
+{"shard": 11, "stage": "testing", "done": 5, "total": 51, "rows": 509750, "note": "ASTER 1d: 345 bars, testing 120 rules", "pct": 9.8, "updated": "2026-08-30T15:19:25Z"}

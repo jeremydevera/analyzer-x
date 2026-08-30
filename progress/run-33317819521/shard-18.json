@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 50, "total": 51, "rows": 4055928, "note": "XRP 1h: rule 4/120 (trend50)", "pct": 98.0, "updated": "2026-08-30T18:51:39Z"}
+{"shard": 18, "stage": "testing", "done": 50, "total": 51, "rows": 4080348, "note": "XRP 1h: rule 120/120 (cf_stflip_l2)", "pct": 98.0, "updated": "2026-08-30T18:52:25Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 9, "total": 51, "rows": 493042, "note": "BRL 30m: 18,959 bars, testing 120 rules", "pct": 17.6, "updated": "2026-08-30T15:10:16Z"}
+{"shard": 14, "stage": "testing", "done": 9, "total": 51, "rows": 511082, "note": "BRL 30m: rule 78/120 (cf_mom_l2)", "pct": 17.6, "updated": "2026-08-30T15:11:02Z"}

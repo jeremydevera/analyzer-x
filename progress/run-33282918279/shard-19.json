@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 9, "total": 51, "rows": 792610, "note": "BSB 4h: 1,072 bars, testing 120 rules", "pct": 17.6, "updated": "2026-08-30T01:06:44Z"}
+{"shard": 19, "stage": "testing", "done": 10, "total": 51, "rows": 842600, "note": "CATSTOCK 30m: rule 15/120 (bbbreak)", "pct": 19.6, "updated": "2026-08-30T01:07:29Z"}

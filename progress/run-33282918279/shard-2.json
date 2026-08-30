@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 45, "total": 52, "rows": 3815452, "note": "TLM 15m: rule 114/120 (cf_obretest_l2)", "pct": 86.5, "updated": "2026-08-30T02:42:01Z"}
+{"shard": 2, "stage": "testing", "done": 45, "total": 52, "rows": 3821492, "note": "TLM 30m: rule 16/120 (keltner)", "pct": 86.5, "updated": "2026-08-30T02:42:47Z"}

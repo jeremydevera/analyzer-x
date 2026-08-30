@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 32, "total": 51, "rows": 2840676, "note": "NOT 15m: rule 112/120 (cf_obretest)", "pct": 62.7, "updated": "2026-08-30T17:39:56Z"}
+{"shard": 8, "stage": "testing", "done": 32, "total": 51, "rows": 2843756, "note": "NOT 30m: rule 2/120 (mom15)", "pct": 62.7, "updated": "2026-08-30T17:40:46Z"}

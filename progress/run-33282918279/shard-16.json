@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 48, "total": 51, "rows": 4442798, "note": "WAL 1h: rule 120/120 (cf_stflip_l2)", "pct": 94.1, "updated": "2026-08-30T03:32:11Z"}
+{"shard": 16, "stage": "testing", "done": 49, "total": 51, "rows": 4478438, "note": "XAU 15m: rule 1/120 (mom6)", "pct": 96.1, "updated": "2026-08-30T03:32:57Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 27, "total": 51, "rows": 2208674, "note": "LIT 1h: rule 45/120 (zscore20)", "pct": 52.9, "updated": "2026-08-30T02:23:07Z"}
+{"shard": 4, "stage": "testing", "done": 27, "total": 51, "rows": 2250034, "note": "LIT 1d: 251 bars, testing 120 rules", "pct": 52.9, "updated": "2026-08-30T02:23:56Z"}

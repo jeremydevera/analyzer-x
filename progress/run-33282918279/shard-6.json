@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 6, "total": 51, "rows": 471680, "note": "AVA 15m: rule 45/120 (zscore20)", "pct": 11.8, "updated": "2026-08-30T00:42:19Z"}
+{"shard": 6, "stage": "testing", "done": 6, "total": 51, "rows": 480040, "note": "AVA 15m: rule 84/120 (cf_maobv_l2)", "pct": 11.8, "updated": "2026-08-30T00:43:05Z"}

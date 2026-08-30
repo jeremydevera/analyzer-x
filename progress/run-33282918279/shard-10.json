@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 2, "total": 51, "rows": 85502, "note": "AGLD 15m: 34,576 bars, testing 120 rules", "pct": 3.9, "updated": "2026-08-30T00:18:23Z"}
+{"shard": 10, "stage": "testing", "done": 2, "total": 51, "rows": 87502, "note": "AGLD 15m: rule 4/120 (trend50)", "pct": 3.9, "updated": "2026-08-30T00:19:09Z"}

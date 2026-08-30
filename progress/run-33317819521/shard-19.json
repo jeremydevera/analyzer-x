@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 51, "total": 51, "rows": 4566190, "note": "ZINC 15m: rule 93/120 (cf_soup_l2)", "pct": 100.0, "updated": "2026-08-30T19:13:58Z"}
+{"shard": 19, "stage": "testing", "done": 51, "total": 51, "rows": 4594710, "note": "ZINC 1h: 3,678 bars, testing 120 rules", "pct": 100.0, "updated": "2026-08-30T19:14:45Z"}

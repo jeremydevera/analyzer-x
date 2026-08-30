@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 5, "total": 51, "rows": 509750, "note": "ASTER 1d: 345 bars, testing 120 rules", "pct": 9.8, "updated": "2026-08-30T15:19:25Z"}
+{"shard": 11, "stage": "testing", "done": 6, "total": 51, "rows": 552018, "note": "AXONSTOCK 30m: rule 46/120 (rsi2)", "pct": 11.8, "updated": "2026-08-30T15:20:10Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 6, "total": 52, "rows": 558598, "note": "AVA 4h: rule 35/120 (willr14)", "pct": 11.5, "updated": "2026-08-30T15:24:14Z"}
+{"shard": 6, "stage": "testing", "done": 7, "total": 52, "rows": 589178, "note": "BANK 15m: 34,636 bars, testing 120 rules", "pct": 13.5, "updated": "2026-08-30T15:24:59Z"}

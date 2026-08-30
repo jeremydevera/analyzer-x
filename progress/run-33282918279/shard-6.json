@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 10, "total": 51, "rows": 964820, "note": "BULLA 30m: 18,959 bars, testing 120 rules", "pct": 19.6, "updated": "2026-08-30T01:13:48Z"}
+{"shard": 6, "stage": "testing", "done": 10, "total": 51, "rows": 966800, "note": "BULLA 30m: rule 3/120 (fade15)", "pct": 19.6, "updated": "2026-08-30T01:14:37Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 17, "total": 51, "rows": 1508344, "note": "EUR 15m: rule 45/120 (zscore20)", "pct": 33.3, "updated": "2026-08-30T16:10:51Z"}
+{"shard": 12, "stage": "testing", "done": 17, "total": 51, "rows": 1517344, "note": "EUR 15m: rule 93/120 (cf_soup_l2)", "pct": 33.3, "updated": "2026-08-30T16:11:37Z"}

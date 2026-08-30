@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 1, "total": 51, "rows": 0, "note": "AAOISTOCK 15m: downloading candles", "pct": 2.0, "updated": "2026-08-30T00:16:51Z"}
+{"shard": 10, "stage": "testing", "done": 1, "total": 51, "rows": 18040, "note": "AAOISTOCK 30m: rule 1/120 (mom6)", "pct": 2.0, "updated": "2026-08-30T00:17:37Z"}

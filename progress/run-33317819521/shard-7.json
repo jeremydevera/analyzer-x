@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 31, "total": 51, "rows": 2451132, "note": "NEAR 30m: rule 48/120 (prank)", "pct": 60.8, "updated": "2026-08-30T17:15:45Z"}
+{"shard": 7, "stage": "testing", "done": 31, "total": 51, "rows": 2465332, "note": "NEAR 30m: rule 120/120 (cf_stflip_l2)", "pct": 60.8, "updated": "2026-08-30T17:16:32Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 11, "total": 51, "rows": 901196, "note": "CFG 15m: rule 24/120 (psar)", "pct": 21.6, "updated": "2026-08-30T15:26:54Z"}
+{"shard": 13, "stage": "testing", "done": 11, "total": 51, "rows": 912356, "note": "CFG 15m: rule 87/120 (cf_triple_l2)", "pct": 21.6, "updated": "2026-08-30T15:27:39Z"}

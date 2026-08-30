@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 2, "total": 52, "rows": 118852, "note": "ADA 15m: 34,576 bars, testing 120 rules", "pct": 3.8, "updated": "2026-08-30T00:25:29Z"}
+{"shard": 0, "stage": "testing", "done": 2, "total": 52, "rows": 121732, "note": "ADA 15m: rule 12/120 (donchian20)", "pct": 3.8, "updated": "2026-08-30T00:26:15Z"}

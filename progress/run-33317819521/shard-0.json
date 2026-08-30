@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 6, "total": 52, "rows": 436164, "note": "AUD 15m: rule 70/120 (cmf20)", "pct": 11.5, "updated": "2026-08-30T15:09:50Z"}
+{"shard": 0, "stage": "testing", "done": 6, "total": 52, "rows": 444364, "note": "AUD 30m: 15,988 bars, testing 120 rules", "pct": 11.5, "updated": "2026-08-30T15:10:44Z"}

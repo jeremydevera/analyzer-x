@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 10, "total": 52, "rows": 993480, "note": "BSV 30m: rule 117/120 (cf_diadx_l2)", "pct": 19.2, "updated": "2026-08-30T01:22:35Z"}
+{"shard": 1, "stage": "testing", "done": 10, "total": 52, "rows": 1005360, "note": "BSV 1h: rule 45/120 (zscore20)", "pct": 19.2, "updated": "2026-08-30T01:23:20Z"}

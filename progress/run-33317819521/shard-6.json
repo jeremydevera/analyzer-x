@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 12, "total": 52, "rows": 1209230, "note": "CLO 30m: 15,370 bars, testing 120 rules", "pct": 23.1, "updated": "2026-08-30T16:13:35Z"}
+{"shard": 6, "stage": "testing", "done": 12, "total": 52, "rows": 1211430, "note": "CLO 30m: rule 4/120 (trend50)", "pct": 23.1, "updated": "2026-08-30T16:14:22Z"}

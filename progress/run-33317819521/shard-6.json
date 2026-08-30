@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 52, "total": 52, "rows": 4832652, "note": "ZRX 4h: rule 84/120 (cf_maobv_l2)", "pct": 100.0, "updated": "2026-08-30T19:39:11Z"}
+{"shard": 6, "stage": "done", "done": 52, "total": 52, "rows": 4853156, "note": "4,853,156 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "pct": 100.0, "updated": "2026-08-30T19:39:28Z"}

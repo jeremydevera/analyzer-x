@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 16, "total": 51, "rows": 1074970, "note": "EDEN 15m: rule 45/120 (zscore20)", "pct": 31.4, "updated": "2026-08-30T15:52:18Z"}
+{"shard": 7, "stage": "testing", "done": 16, "total": 51, "rows": 1081790, "note": "EDEN 15m: rule 77/120 (cf_mom_l1)", "pct": 31.4, "updated": "2026-08-30T15:53:04Z"}

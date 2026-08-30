@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 10, "total": 51, "rows": 813296, "note": "CAKE 30m: rule 45/120 (zscore20)", "pct": 19.6, "updated": "2026-08-30T15:22:55Z"}
+{"shard": 13, "stage": "testing", "done": 10, "total": 51, "rows": 827596, "note": "CAKE 30m: rule 111/120 (cf_fundfade_l2)", "pct": 19.6, "updated": "2026-08-30T15:23:41Z"}

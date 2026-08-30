@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 49, "total": 51, "rows": 4045748, "note": "XAI 1h: rule 1/120 (mom6)", "pct": 96.1, "updated": "2026-08-30T17:43:33Z"}
+{"shard": 16, "stage": "testing", "done": 49, "total": 51, "rows": 4069508, "note": "XAI 1h: rule 120/120 (cf_stflip_l2)", "pct": 96.1, "updated": "2026-08-30T17:44:18Z"}

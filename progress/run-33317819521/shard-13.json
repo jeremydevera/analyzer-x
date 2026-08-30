@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 12, "total": 51, "rows": 1010566, "note": "COINBASE 15m: rule 105/120 (cf_eqhl_l2)", "pct": 23.5, "updated": "2026-08-30T15:32:14Z"}
+{"shard": 13, "stage": "testing", "done": 12, "total": 51, "rows": 1016046, "note": "COINBASE 30m: rule 17/120 (atrbreak)", "pct": 23.5, "updated": "2026-08-30T15:32:59Z"}

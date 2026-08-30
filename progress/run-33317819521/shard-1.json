@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 38, "total": 52, "rows": 3366806, "note": "RENDER 15m: rule 92/120 (cf_soup_l1)", "pct": 73.1, "updated": "2026-08-30T18:26:16Z"}
+{"shard": 1, "stage": "testing", "done": 38, "total": 52, "rows": 3371286, "note": "RENDER 30m: 18,959 bars, testing 120 rules", "pct": 73.1, "updated": "2026-08-30T18:27:02Z"}

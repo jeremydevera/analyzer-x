@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 12, "total": 51, "rows": 1032376, "note": "COINBASE 15m: rule 114/120 (cf_obretest_l2)", "pct": 23.5, "updated": "2026-08-30T00:44:45Z"}
+{"shard": 13, "stage": "testing", "done": 12, "total": 51, "rows": 1046536, "note": "COINBASE 30m: rule 68/120 (dbltop)", "pct": 23.5, "updated": "2026-08-30T00:45:30Z"}

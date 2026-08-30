@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 43, "total": 51, "rows": 3628608, "note": "STO 15m: rule 43/120 (macddiv)", "pct": 84.3, "updated": "2026-08-30T03:40:01Z"}
+{"shard": 4, "stage": "testing", "done": 43, "total": 51, "rows": 3635008, "note": "STO 15m: rule 84/120 (cf_maobv_l2)", "pct": 84.3, "updated": "2026-08-30T03:40:47Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 32, "total": 52, "rows": 2558928, "note": "NKESTOCK 15m: rule 114/120 (cf_obretest_l2)", "pct": 61.5, "updated": "2026-08-30T16:17:31Z"}
+{"shard": 4, "stage": "testing", "done": 33, "total": 52, "rows": 2631178, "note": "OKLOSTOCK 1h: 1,778 bars, testing 120 rules", "pct": 63.5, "updated": "2026-08-30T16:18:17Z"}

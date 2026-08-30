@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 21, "total": 51, "rows": 1917398, "note": "HFT 15m: 34,640 bars, testing 120 rules", "pct": 41.2, "updated": "2026-08-30T16:17:10Z"}
+{"shard": 16, "stage": "testing", "done": 21, "total": 51, "rows": 1919838, "note": "HFT 15m: rule 117/120 (cf_diadx_l2)", "pct": 41.2, "updated": "2026-08-30T16:17:56Z"}

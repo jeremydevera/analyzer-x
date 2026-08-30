@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 7, "total": 51, "rows": 693734, "note": "BARD 30m: rule 3/120 (fade15)", "pct": 13.7, "updated": "2026-08-30T15:40:40Z"}
+{"shard": 8, "stage": "testing", "done": 7, "total": 51, "rows": 702974, "note": "BARD 30m: rule 45/120 (zscore20)", "pct": 13.7, "updated": "2026-08-30T15:41:25Z"}

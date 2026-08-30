@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 16, "total": 52, "rows": 1232256, "note": "DYM 15m: 34,580 bars, testing 120 rules", "pct": 30.8, "updated": "2026-08-30T01:28:11Z"}
+{"shard": 3, "stage": "testing", "done": 16, "total": 52, "rows": 1234056, "note": "DYM 15m: rule 3/120 (fade15)", "pct": 30.8, "updated": "2026-08-30T01:29:09Z"}

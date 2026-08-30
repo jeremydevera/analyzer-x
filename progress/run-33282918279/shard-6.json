@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 32, "total": 51, "rows": 2924628, "note": "NOT 1h: rule 117/120 (cf_diadx_l2)", "pct": 62.7, "updated": "2026-08-30T03:00:09Z"}
+{"shard": 6, "stage": "testing", "done": 32, "total": 51, "rows": 2951248, "note": "NOT 1d: 394 bars, testing 120 rules", "pct": 62.7, "updated": "2026-08-30T03:00:55Z"}

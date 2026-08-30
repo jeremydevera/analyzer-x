@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 52, "total": 52, "rows": 4236722, "note": "ZRX 15m: 34,592 bars, testing 120 rules", "pct": 100.0, "updated": "2026-08-30T04:15:45Z"}
+{"shard": 3, "stage": "testing", "done": 52, "total": 52, "rows": 4238522, "note": "ZRX 15m: rule 3/120 (fade15)", "pct": 100.0, "updated": "2026-08-30T04:16:34Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 3, "total": 51, "rows": 234656, "note": "ALL 1h: rule 93/120 (cf_soup_l2)", "pct": 5.9, "updated": "2026-08-30T15:02:44Z"}
+{"shard": 9, "stage": "testing", "done": 4, "total": 51, "rows": 281964, "note": "APHSTOCK 15m: rule 90/120 (cf_chan_l2)", "pct": 7.8, "updated": "2026-08-30T15:03:29Z"}

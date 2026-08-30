@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 51, "total": 51, "rows": 4218116, "note": "ZHONGJISTOCK 15m: 1,584 bars, testing 120 rules", "pct": 100.0, "updated": "2026-08-30T17:52:02Z"}
+{"shard": 16, "stage": "done", "done": 51, "total": 51, "rows": 4256636, "note": "4,256,636 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "pct": 100.0, "updated": "2026-08-30T17:52:14Z"}

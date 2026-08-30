@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 48, "total": 51, "rows": 4205468, "note": "VTHO 1h: 9,479 bars, testing 120 rules", "pct": 94.1, "updated": "2026-08-30T04:30:52Z"}
+{"shard": 12, "stage": "testing", "done": 48, "total": 51, "rows": 4223288, "note": "VTHO 1h: rule 76/120 (cf_mom)", "pct": 94.1, "updated": "2026-08-30T04:31:37Z"}

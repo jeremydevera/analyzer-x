@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 30, "total": 52, "rows": 2354980, "note": "MOVR 30m: rule 45/120 (zscore20)", "pct": 57.7, "updated": "2026-08-30T16:55:47Z"}
+{"shard": 2, "stage": "testing", "done": 30, "total": 52, "rows": 2367300, "note": "MOVR 30m: rule 102/120 (cf_soup1_l2)", "pct": 57.7, "updated": "2026-08-30T16:56:33Z"}

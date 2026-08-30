@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 4, "total": 51, "rows": 270796, "note": "ARCSOL 15m: rule 21/120 (cci20)", "pct": 7.8, "updated": "2026-08-30T00:37:14Z"}
+{"shard": 17, "stage": "testing", "done": 4, "total": 51, "rows": 276076, "note": "ARCSOL 15m: rule 45/120 (zscore20)", "pct": 7.8, "updated": "2026-08-30T00:38:00Z"}

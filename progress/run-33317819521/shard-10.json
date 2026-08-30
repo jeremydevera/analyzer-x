@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 28, "total": 51, "rows": 2419652, "note": "MASK 15m: rule 83/120 (cf_maobv_l1)", "pct": 54.9, "updated": "2026-08-30T17:05:17Z"}
+{"shard": 10, "stage": "testing", "done": 28, "total": 51, "rows": 2427572, "note": "MASK 30m: 18,959 bars, testing 120 rules", "pct": 54.9, "updated": "2026-08-30T17:06:10Z"}

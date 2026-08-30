@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 8, "total": 51, "rows": 568768, "note": "BIO 15m: rule 53/120 (squeeze)", "pct": 15.7, "updated": "2026-08-30T15:23:51Z"}
+{"shard": 9, "stage": "testing", "done": 8, "total": 51, "rows": 575808, "note": "BIO 15m: rule 85/120 (cf_triple)", "pct": 15.7, "updated": "2026-08-30T15:24:37Z"}

@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 22, "total": 52, "rows": 1520880, "note": "HK50 15m: 19,244 bars, testing 120 rules", "pct": 42.3, "updated": "2026-08-30T16:11:08Z"}
+{"shard": 2, "stage": "testing", "done": 22, "total": 52, "rows": 1535600, "note": "HK50 15m: rule 87/120 (cf_triple_l2)", "pct": 42.3, "updated": "2026-08-30T16:11:54Z"}

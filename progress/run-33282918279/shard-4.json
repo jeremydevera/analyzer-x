@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 19, "total": 51, "rows": 1326314, "note": "FRAX 1h: rule 4/120 (trend50)", "pct": 37.3, "updated": "2026-08-30T01:21:52Z"}
+{"shard": 4, "stage": "testing", "done": 19, "total": 51, "rows": 1371656, "note": "FRAX 1d: 227 bars, testing 120 rules", "pct": 37.3, "updated": "2026-08-30T01:22:41Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 15, "total": 51, "rows": 1524560, "note": "DRAM 15m: rule 1/120 (mom6)", "pct": 29.4, "updated": "2026-08-30T16:36:40Z"}
+{"shard": 18, "stage": "testing", "done": 15, "total": 51, "rows": 1540240, "note": "DRAM 15m: rule 96/120 (cf_emarsi_l2)", "pct": 29.4, "updated": "2026-08-30T16:37:26Z"}

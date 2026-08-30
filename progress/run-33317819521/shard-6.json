@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 2, "total": 52, "rows": 142832, "note": "AEON1 15m: rule 102/120 (cf_soup1_l2)", "pct": 3.8, "updated": "2026-08-30T14:56:16Z"}
+{"shard": 6, "stage": "testing", "done": 3, "total": 52, "rows": 194466, "note": "ALICE 15m: 34,634 bars, testing 120 rules", "pct": 5.8, "updated": "2026-08-30T14:57:02Z"}

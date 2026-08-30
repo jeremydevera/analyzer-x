@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 18, "total": 51, "rows": 1588658, "note": "FLR 1h: 9,479 bars, testing 120 rules", "pct": 35.3, "updated": "2026-08-30T01:40:42Z"}
+{"shard": 15, "stage": "testing", "done": 18, "total": 51, "rows": 1611428, "note": "FLR 1h: rule 111/120 (cf_fundfade_l2)", "pct": 35.3, "updated": "2026-08-30T01:41:27Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 3, "total": 51, "rows": 269928, "note": "ALT 30m: rule 56/120 (insidebrk)", "pct": 5.9, "updated": "2026-08-30T00:37:00Z"}
+{"shard": 11, "stage": "testing", "done": 3, "total": 51, "rows": 283788, "note": "ALT 30m: rule 120/120 (cf_stflip_l2)", "pct": 5.9, "updated": "2026-08-30T00:37:46Z"}

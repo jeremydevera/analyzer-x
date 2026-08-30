@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 51, "total": 51, "rows": 4293414, "note": "ZAMA 1h: rule 36/120 (stochrsi)", "pct": 100.0, "updated": "2026-08-30T18:52:16Z"}
+{"shard": 7, "stage": "done", "done": 51, "total": 51, "rows": 4342628, "note": "4,342,628 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "pct": 100.0, "updated": "2026-08-30T18:52:59Z"}

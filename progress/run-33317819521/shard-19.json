@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 2, "total": 51, "rows": 120062, "note": "AIXBT 15m: rule 45/120 (zscore20)", "pct": 3.9, "updated": "2026-08-30T14:55:56Z"}
+{"shard": 19, "stage": "testing", "done": 2, "total": 51, "rows": 126662, "note": "AIXBT 15m: rule 76/120 (cf_mom)", "pct": 3.9, "updated": "2026-08-30T14:56:41Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 43, "total": 51, "rows": 3665760, "note": "ST 15m: rule 105/120 (cf_eqhl_l2)", "pct": 84.3, "updated": "2026-08-30T18:11:41Z"}
+{"shard": 12, "stage": "testing", "done": 44, "total": 51, "rows": 3686434, "note": "TA 15m: 34,647 bars, testing 120 rules", "pct": 86.3, "updated": "2026-08-30T18:12:39Z"}

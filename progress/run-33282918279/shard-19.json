@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 34, "total": 51, "rows": 2901968, "note": "PHA 30m: rule 36/120 (stochrsi)", "pct": 66.7, "updated": "2026-08-30T03:16:42Z"}
+{"shard": 19, "stage": "testing", "done": 34, "total": 51, "rows": 2913628, "note": "PHA 30m: rule 90/120 (cf_chan_l2)", "pct": 66.7, "updated": "2026-08-30T03:17:27Z"}

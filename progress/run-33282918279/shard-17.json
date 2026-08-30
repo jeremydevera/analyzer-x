@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 7, "total": 51, "rows": 622122, "note": "BDX 30m: 14,333 bars, testing 120 rules", "pct": 13.7, "updated": "2026-08-30T01:00:21Z"}
+{"shard": 17, "stage": "testing", "done": 7, "total": 51, "rows": 630670, "note": "BDX 1h: rule 99/120 (cf_ttm_l2)", "pct": 13.7, "updated": "2026-08-30T01:01:06Z"}

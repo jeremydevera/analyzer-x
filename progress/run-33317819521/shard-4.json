@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 15, "total": 52, "rows": 1013764, "note": "DIA 15m: 34,636 bars, testing 120 rules", "pct": 28.8, "updated": "2026-08-30T15:21:09Z"}
+{"shard": 4, "stage": "testing", "done": 15, "total": 52, "rows": 1018164, "note": "DIA 15m: rule 16/120 (keltner)", "pct": 28.8, "updated": "2026-08-30T15:21:54Z"}

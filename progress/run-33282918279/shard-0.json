@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 6, "total": 52, "rows": 492008, "note": "AUD 1h: rule 78/120 (cf_mom_l2)", "pct": 11.5, "updated": "2026-08-30T00:45:29Z"}
+{"shard": 0, "stage": "testing", "done": 6, "total": 52, "rows": 526108, "note": "AUD 1d: 394 bars, testing 120 rules", "pct": 11.5, "updated": "2026-08-30T00:46:21Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 16, "total": 51, "rows": 1431748, "note": "EIGEN 1h: 9,479 bars, testing 120 rules", "pct": 31.4, "updated": "2026-08-30T16:07:37Z"}
+{"shard": 12, "stage": "testing", "done": 16, "total": 51, "rows": 1442308, "note": "EIGEN 1h: rule 42/120 (rsidiv)", "pct": 31.4, "updated": "2026-08-30T16:08:22Z"}

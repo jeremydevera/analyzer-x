@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 37, "total": 51, "rows": 3211436, "note": "RCATSTOCK 15m: rule 114/120 (cf_obretest_l2)", "pct": 72.5, "updated": "2026-08-30T17:45:40Z"}
+{"shard": 13, "stage": "testing", "done": 38, "total": 51, "rows": 3258442, "note": "RLS 15m: 26,139 bars, testing 120 rules", "pct": 74.5, "updated": "2026-08-30T17:46:26Z"}

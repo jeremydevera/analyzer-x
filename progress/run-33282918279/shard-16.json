@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 4, "total": 51, "rows": 335402, "note": "ARB 1h: 9,479 bars, testing 120 rules", "pct": 7.8, "updated": "2026-08-30T00:35:55Z"}
+{"shard": 16, "stage": "testing", "done": 4, "total": 51, "rows": 360702, "note": "ARB 1h: rule 111/120 (cf_fundfade_l2)", "pct": 7.8, "updated": "2026-08-30T00:36:40Z"}

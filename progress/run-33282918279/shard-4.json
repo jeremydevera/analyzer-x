@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 4, "total": 51, "rows": 281570, "note": "ANTHROPIC 30m: rule 60/120 (eqraid)", "pct": 7.8, "updated": "2026-08-30T00:30:55Z"}
+{"shard": 4, "stage": "testing", "done": 4, "total": 51, "rows": 335270, "note": "ANTHROPIC 4h: rule 120/120 (cf_stflip_l2)", "pct": 7.8, "updated": "2026-08-30T00:31:40Z"}

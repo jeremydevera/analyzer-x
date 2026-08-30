@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 42, "total": 51, "rows": 3529498, "note": "SOXX 15m: 11,892 bars, testing 120 rules", "pct": 82.4, "updated": "2026-08-30T03:36:13Z"}
+{"shard": 4, "stage": "testing", "done": 42, "total": 51, "rows": 3547578, "note": "SOXX 15m: rule 111/120 (cf_fundfade_l2)", "pct": 82.4, "updated": "2026-08-30T03:36:58Z"}

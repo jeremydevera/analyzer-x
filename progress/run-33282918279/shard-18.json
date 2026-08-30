@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 36, "total": 51, "rows": 3012344, "note": "QNT 15m: rule 4/120 (trend50)", "pct": 70.6, "updated": "2026-08-30T02:16:27Z"}
+{"shard": 18, "stage": "testing", "done": 36, "total": 51, "rows": 3021364, "note": "QNT 15m: rule 45/120 (zscore20)", "pct": 70.6, "updated": "2026-08-30T02:17:13Z"}

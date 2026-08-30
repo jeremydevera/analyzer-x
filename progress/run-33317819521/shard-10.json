@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 44, "total": 51, "rows": 3871410, "note": "TAKE 15m: rule 45/120 (zscore20)", "pct": 86.3, "updated": "2026-08-30T18:13:16Z"}
+{"shard": 10, "stage": "testing", "done": 44, "total": 51, "rows": 3877570, "note": "TAKE 15m: rule 74/120 (volclimax)", "pct": 86.3, "updated": "2026-08-30T18:14:01Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 21, "total": 51, "rows": 1450792, "note": "HANA 30m: rule 20/120 (stoch14)", "pct": 41.2, "updated": "2026-08-30T01:31:15Z"}
+{"shard": 9, "stage": "testing", "done": 21, "total": 51, "rows": 1461572, "note": "HANA 30m: rule 70/120 (cmf20)", "pct": 41.2, "updated": "2026-08-30T01:32:01Z"}

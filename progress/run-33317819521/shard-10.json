@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 28, "total": 51, "rows": 2507872, "note": "MASK 1d: 394 bars, testing 120 rules", "pct": 54.9, "updated": "2026-08-30T17:10:04Z"}
+{"shard": 10, "stage": "testing", "done": 29, "total": 51, "rows": 2523052, "note": "MIRA 15m: rule 2/120 (mom15)", "pct": 56.9, "updated": "2026-08-30T17:11:01Z"}

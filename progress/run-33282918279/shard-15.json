@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 2, "total": 51, "rows": 65396, "note": "AIN 1h: 9,479 bars, testing 120 rules", "pct": 3.9, "updated": "2026-08-30T00:23:13Z"}
+{"shard": 15, "stage": "testing", "done": 2, "total": 51, "rows": 83436, "note": "AIN 1h: rule 77/120 (cf_mom_l1)", "pct": 3.9, "updated": "2026-08-30T00:23:59Z"}

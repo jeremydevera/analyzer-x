@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 51, "total": 51, "rows": 4508194, "note": "ZBCN 1h: rule 53/120 (squeeze)", "pct": 100.0, "updated": "2026-08-30T19:16:47Z"}
+{"shard": 8, "stage": "testing", "done": 51, "total": 51, "rows": 4533714, "note": "ZBCN 4h: rule 45/120 (zscore20)", "pct": 100.0, "updated": "2026-08-30T19:17:32Z"}

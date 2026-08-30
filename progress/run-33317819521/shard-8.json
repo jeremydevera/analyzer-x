@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 1, "total": 51, "rows": 12760, "note": "4 15m: rule 53/120 (squeeze)", "pct": 2.0, "updated": "2026-08-30T14:51:03Z"}
+{"shard": 8, "stage": "testing", "done": 1, "total": 51, "rows": 20240, "note": "4 15m: rule 87/120 (cf_triple_l2)", "pct": 2.0, "updated": "2026-08-30T14:51:50Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 39, "total": 52, "rows": 3054328, "note": "RVN 30m: 18,959 bars, testing 120 rules", "pct": 75.0, "updated": "2026-08-30T17:51:38Z"}
+{"shard": 5, "stage": "testing", "done": 39, "total": 52, "rows": 3059388, "note": "RVN 30m: rule 17/120 (atrbreak)", "pct": 75.0, "updated": "2026-08-30T17:52:23Z"}

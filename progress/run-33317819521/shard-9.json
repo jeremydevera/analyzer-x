@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 16, "total": 51, "rows": 1151086, "note": "EDU 30m: 18,959 bars, testing 120 rules", "pct": 31.4, "updated": "2026-08-30T15:53:45Z"}
+{"shard": 9, "stage": "testing", "done": 16, "total": 51, "rows": 1154386, "note": "EDU 30m: rule 9/120 (fib382)", "pct": 31.4, "updated": "2026-08-30T15:54:30Z"}

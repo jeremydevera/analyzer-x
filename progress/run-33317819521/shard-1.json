@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 13, "total": 52, "rows": 1052652, "note": "COSTSTOCK 15m: rule 20/120 (stoch14)", "pct": 25.0, "updated": "2026-08-30T15:59:21Z"}
+{"shard": 1, "stage": "testing", "done": 13, "total": 52, "rows": 1063432, "note": "COSTSTOCK 15m: rule 99/120 (cf_ttm_l2)", "pct": 25.0, "updated": "2026-08-30T16:00:07Z"}

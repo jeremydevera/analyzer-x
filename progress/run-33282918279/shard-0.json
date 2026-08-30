@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 24, "total": 52, "rows": 2013390, "note": "IOST 15m: rule 85/120 (cf_triple)", "pct": 46.2, "updated": "2026-08-30T02:11:44Z"}
+{"shard": 0, "stage": "testing", "done": 24, "total": 52, "rows": 2021090, "note": "IOST 15m: rule 120/120 (cf_stflip_l2)", "pct": 46.2, "updated": "2026-08-30T02:12:30Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 36, "total": 52, "rows": 2850774, "note": "PROM 30m: rule 3/120 (fade15)", "pct": 69.2, "updated": "2026-08-30T17:41:11Z"}
+{"shard": 5, "stage": "testing", "done": 36, "total": 52, "rows": 2858034, "note": "PROM 30m: rule 36/120 (stochrsi)", "pct": 69.2, "updated": "2026-08-30T17:41:57Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 18, "total": 51, "rows": 1530988, "note": "FLOCK 30m: 18,959 bars, testing 120 rules", "pct": 35.3, "updated": "2026-08-30T16:04:40Z"}
+{"shard": 13, "stage": "testing", "done": 18, "total": 51, "rows": 1533188, "note": "FLOCK 30m: rule 4/120 (trend50)", "pct": 35.3, "updated": "2026-08-30T16:05:25Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 28, "total": 52, "rows": 2232416, "note": "MAGMA 1h: 6,175 bars, testing 120 rules", "pct": 53.8, "updated": "2026-08-30T17:14:55Z"}
+{"shard": 3, "stage": "testing", "done": 28, "total": 52, "rows": 2253008, "note": "MAGMA 1h: rule 102/120 (cf_soup1_l2)", "pct": 53.8, "updated": "2026-08-30T17:15:40Z"}

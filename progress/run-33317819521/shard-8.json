@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 13, "total": 51, "rows": 1114352, "note": "CRO 15m: 34,638 bars, testing 120 rules", "pct": 25.5, "updated": "2026-08-30T15:59:32Z"}
+{"shard": 8, "stage": "testing", "done": 13, "total": 51, "rows": 1117152, "note": "CRO 15m: rule 8/120 (fib618)", "pct": 25.5, "updated": "2026-08-30T16:00:18Z"}

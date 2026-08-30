@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 43, "total": 52, "rows": 3268074, "note": "STG 1h: rule 78/120 (cf_mom_l2)", "pct": 82.7, "updated": "2026-08-30T03:25:56Z"}
+{"shard": 1, "stage": "testing", "done": 43, "total": 52, "rows": 3303494, "note": "STG 4h: rule 120/120 (cf_stflip_l2)", "pct": 82.7, "updated": "2026-08-30T03:26:42Z"}

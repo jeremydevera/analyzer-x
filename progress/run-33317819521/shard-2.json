@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 46, "total": 52, "rows": 3675920, "note": "TRUST 30m: rule 45/120 (zscore20)", "pct": 88.5, "updated": "2026-08-30T18:17:56Z"}
+{"shard": 2, "stage": "testing", "done": 46, "total": 52, "rows": 3692200, "note": "TRUST 1h: 7,161 bars, testing 120 rules", "pct": 88.5, "updated": "2026-08-30T18:18:48Z"}

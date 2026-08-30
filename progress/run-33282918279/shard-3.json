@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 28, "total": 52, "rows": 2325568, "note": "MANA 1h: 9,479 bars, testing 120 rules", "pct": 53.8, "updated": "2026-08-30T02:37:19Z"}
+{"shard": 3, "stage": "testing", "done": 28, "total": 52, "rows": 2341628, "note": "MANA 1h: rule 68/120 (dbltop)", "pct": 53.8, "updated": "2026-08-30T02:38:04Z"}

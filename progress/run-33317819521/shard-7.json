@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 27, "total": 51, "rows": 2183738, "note": "LMTSTOCK 15m: 17,113 bars, testing 120 rules", "pct": 52.9, "updated": "2026-08-30T17:03:24Z"}
+{"shard": 7, "stage": "testing", "done": 27, "total": 51, "rows": 2197418, "note": "LMTSTOCK 15m: rule 111/120 (cf_fundfade_l2)", "pct": 52.9, "updated": "2026-08-30T17:04:09Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 28, "total": 51, "rows": 2072606, "note": "MASK 30m: rule 36/120 (stochrsi)", "pct": 54.9, "updated": "2026-08-30T02:01:23Z"}
+{"shard": 9, "stage": "testing", "done": 28, "total": 51, "rows": 2086246, "note": "MASK 30m: rule 99/120 (cf_ttm_l2)", "pct": 54.9, "updated": "2026-08-30T02:02:08Z"}

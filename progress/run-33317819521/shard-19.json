@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 13, "total": 51, "rows": 1141846, "note": "CTR 4h: 576 bars, testing 120 rules", "pct": 25.5, "updated": "2026-08-30T15:46:09Z"}
+{"shard": 19, "stage": "testing", "done": 15, "total": 51, "rows": 1174590, "note": "DRIFT 15m: rule 36/120 (stochrsi)", "pct": 29.4, "updated": "2026-08-30T15:46:54Z"}

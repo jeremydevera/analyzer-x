@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 46, "total": 51, "rows": 4142146, "note": "TSMSTOCK 15m: 17,324 bars, testing 120 rules", "pct": 90.2, "updated": "2026-08-30T18:58:40Z"}
+{"shard": 8, "stage": "testing", "done": 46, "total": 51, "rows": 4155586, "note": "TSMSTOCK 15m: rule 78/120 (cf_mom_l2)", "pct": 90.2, "updated": "2026-08-30T18:59:26Z"}

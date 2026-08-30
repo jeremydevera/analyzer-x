@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 14, "total": 51, "rows": 1037674, "note": "DATA 15m: rule 117/120 (cf_diadx_l2)", "pct": 27.5, "updated": "2026-08-30T01:05:47Z"}
+{"shard": 12, "stage": "testing", "done": 15, "total": 51, "rows": 1084782, "note": "DOLO 15m: 34,579 bars, testing 120 rules", "pct": 29.4, "updated": "2026-08-30T01:06:42Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 31, "total": 51, "rows": 2746500, "note": "NICKEL 15m: rule 45/120 (zscore20)", "pct": 60.8, "updated": "2026-08-30T02:13:05Z"}
+{"shard": 16, "stage": "testing", "done": 31, "total": 51, "rows": 2784040, "note": "NICKEL 1h: rule 5/120 (rsi14)", "pct": 60.8, "updated": "2026-08-30T02:13:50Z"}

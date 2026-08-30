@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 12, "total": 51, "rows": 829104, "note": "CLSKSTOCK 15m: rule 20/120 (stoch14)", "pct": 23.5, "updated": "2026-08-30T15:38:48Z"}
+{"shard": 7, "stage": "testing", "done": 13, "total": 51, "rows": 877128, "note": "CROSS 15m: 34,637 bars, testing 120 rules", "pct": 25.5, "updated": "2026-08-30T15:39:35Z"}

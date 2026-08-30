@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 15, "total": 51, "rows": 1184410, "note": "DRIFT 1h: rule 2/120 (mom15)", "pct": 29.4, "updated": "2026-08-30T15:49:13Z"}
+{"shard": 19, "stage": "testing", "done": 15, "total": 51, "rows": 1198210, "note": "DRIFT 4h: 2,369 bars, testing 120 rules", "pct": 29.4, "updated": "2026-08-30T15:50:02Z"}

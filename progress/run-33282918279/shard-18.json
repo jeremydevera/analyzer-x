@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 18, "total": 51, "rows": 1557178, "note": "FLUX 15m: 34,580 bars, testing 120 rules", "pct": 35.3, "updated": "2026-08-30T01:24:38Z"}
+{"shard": 18, "stage": "testing", "done": 18, "total": 51, "rows": 1560698, "note": "FLUX 15m: rule 10/120 (sr_bounce)", "pct": 35.3, "updated": "2026-08-30T01:25:23Z"}

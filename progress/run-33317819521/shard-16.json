@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 29, "total": 51, "rows": 2565174, "note": "MOCA 1d: 394 bars, testing 120 rules", "pct": 56.9, "updated": "2026-08-30T16:46:11Z"}
+{"shard": 16, "stage": "testing", "done": 31, "total": 51, "rows": 2621286, "note": "NFLXSTOCK 30m: rule 24/120 (psar)", "pct": 60.8, "updated": "2026-08-30T16:46:56Z"}

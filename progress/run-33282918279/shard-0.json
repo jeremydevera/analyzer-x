@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 6, "total": 52, "rows": 442488, "note": "AUD 15m: rule 82/120 (cf_maobv)", "pct": 11.5, "updated": "2026-08-30T00:43:06Z"}
+{"shard": 0, "stage": "testing", "done": 6, "total": 52, "rows": 448888, "note": "AUD 30m: 15,988 bars, testing 120 rules", "pct": 11.5, "updated": "2026-08-30T00:43:59Z"}

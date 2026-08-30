@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 5, "total": 51, "rows": 353816, "note": "ATH 15m: 34,577 bars, testing 120 rules", "pct": 9.8, "updated": "2026-08-30T00:35:32Z"}
+{"shard": 15, "stage": "testing", "done": 5, "total": 51, "rows": 355816, "note": "ATH 15m: rule 4/120 (trend50)", "pct": 9.8, "updated": "2026-08-30T00:36:22Z"}

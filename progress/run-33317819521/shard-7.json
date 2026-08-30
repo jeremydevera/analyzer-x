@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 23, "total": 51, "rows": 1870830, "note": "ID 30m: rule 57/120 (orderblock)", "pct": 45.1, "updated": "2026-08-30T16:49:25Z"}
+{"shard": 7, "stage": "testing", "done": 23, "total": 51, "rows": 1884470, "note": "ID 30m: rule 120/120 (cf_stflip_l2)", "pct": 45.1, "updated": "2026-08-30T16:50:10Z"}

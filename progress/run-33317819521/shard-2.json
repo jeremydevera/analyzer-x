@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 43, "total": 52, "rows": 3402816, "note": "STBL 15m: rule 20/120 (stoch14)", "pct": 82.7, "updated": "2026-08-30T17:57:16Z"}
+{"shard": 2, "stage": "testing", "done": 43, "total": 52, "rows": 3406996, "note": "STBL 15m: rule 39/120 (fisher)", "pct": 82.7, "updated": "2026-08-30T17:58:01Z"}

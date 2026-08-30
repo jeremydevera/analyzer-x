@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 1, "total": 51, "rows": 33680, "note": "AAPLSTOCK 30m: rule 49/120 (vwaprev)", "pct": 2.0, "updated": "2026-08-30T00:19:50Z"}
+{"shard": 11, "stage": "testing", "done": 1, "total": 51, "rows": 47880, "note": "AAPLSTOCK 1h: 9,479 bars, testing 120 rules", "pct": 2.0, "updated": "2026-08-30T00:20:39Z"}

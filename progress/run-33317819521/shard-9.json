@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 14, "total": 51, "rows": 980804, "note": "CYS 15m: 25,182 bars, testing 120 rules", "pct": 27.5, "updated": "2026-08-30T15:42:04Z"}
+{"shard": 9, "stage": "testing", "done": 14, "total": 51, "rows": 982424, "note": "CYS 15m: rule 3/120 (fade15)", "pct": 27.5, "updated": "2026-08-30T15:42:55Z"}

@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 52, "total": 52, "rows": 4316312, "note": "ZKSYNC 30m: rule 56/120 (insidebrk)", "pct": 100.0, "updated": "2026-08-30T19:03:56Z"}
+{"shard": 2, "stage": "testing", "done": 52, "total": 52, "rows": 4330392, "note": "ZKSYNC 30m: rule 120/120 (cf_stflip_l2)", "pct": 100.0, "updated": "2026-08-30T19:04:41Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 16, "total": 51, "rows": 1424826, "note": "EDGE 15m: rule 16/120 (keltner)", "pct": 31.4, "updated": "2026-08-30T16:17:29Z"}
+{"shard": 8, "stage": "testing", "done": 16, "total": 51, "rows": 1436626, "note": "EDGE 15m: rule 76/120 (cf_mom)", "pct": 31.4, "updated": "2026-08-30T16:18:16Z"}

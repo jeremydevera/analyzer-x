@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 3, "total": 51, "rows": 216434, "note": "ALPINE 15m: rule 56/120 (insidebrk)", "pct": 5.9, "updated": "2026-08-30T00:26:49Z"}
+{"shard": 10, "stage": "testing", "done": 3, "total": 51, "rows": 224894, "note": "ALPINE 15m: rule 103/120 (cf_eqhl)", "pct": 5.9, "updated": "2026-08-30T00:27:34Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 14, "total": 52, "rows": 1181420, "note": "CTSI 30m: rule 45/120 (zscore20)", "pct": 26.9, "updated": "2026-08-30T16:07:16Z"}
+{"shard": 1, "stage": "testing", "done": 14, "total": 52, "rows": 1194840, "note": "CTSI 30m: rule 108/120 (cf_bosfvg_l2)", "pct": 26.9, "updated": "2026-08-30T16:08:02Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 12, "total": 51, "rows": 1074796, "note": "COINBASE 1h: rule 100/120 (cf_soup1)", "pct": 23.5, "updated": "2026-08-30T00:46:15Z"}
+{"shard": 13, "stage": "testing", "done": 14, "total": 51, "rows": 1115008, "note": "DBR 15m: 34,578 bars, testing 120 rules", "pct": 27.5, "updated": "2026-08-30T00:47:21Z"}

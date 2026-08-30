@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 16, "total": 51, "rows": 1387212, "note": "ENA 30m: 18,959 bars, testing 120 rules", "pct": 31.4, "updated": "2026-08-30T16:06:17Z"}
+{"shard": 15, "stage": "testing", "done": 16, "total": 51, "rows": 1392812, "note": "ENA 30m: rule 22/120 (engulf)", "pct": 31.4, "updated": "2026-08-30T16:07:02Z"}

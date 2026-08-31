@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 13, "total": 52, "rows": 1132692, "note": "CRV 15m: rule 21/120 (cci20)", "pct": 25.0, "updated": "2026-08-31T21:11:59Z"}
+{"shard": 11, "stage": "testing", "done": 13, "total": 52, "rows": 1137972, "note": "CRV 15m: rule 45/120 (zscore20)", "pct": 25.0, "updated": "2026-08-31T21:12:44Z"}

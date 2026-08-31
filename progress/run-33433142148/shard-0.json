@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 16, "total": 52, "rows": 1333282, "note": "DRAM 15m: rule 10/120 (sr_bounce)", "pct": 30.8, "updated": "2026-08-31T21:06:30Z"}
+{"shard": 0, "stage": "testing", "done": 16, "total": 52, "rows": 1353082, "note": "DRAM 15m: rule 120/120 (cf_stflip_l2)", "pct": 30.8, "updated": "2026-08-31T21:07:15Z"}

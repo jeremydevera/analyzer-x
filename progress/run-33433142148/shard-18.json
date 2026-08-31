@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 2, "total": 51, "rows": 200508, "note": "AIO 4h: rule 1/120 (mom6)", "pct": 3.9, "updated": "2026-08-31T20:14:28Z"}
+{"shard": 18, "stage": "testing", "done": 3, "total": 51, "rows": 235136, "note": "AMP 15m: 34,560 bars, testing 120 rules", "pct": 5.9, "updated": "2026-08-31T20:15:14Z"}

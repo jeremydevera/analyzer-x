@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 45, "total": 51, "rows": 4054040, "note": "TNSR 15m: 34,615 bars, testing 120 rules", "pct": 88.2, "updated": "2026-08-31T10:13:20Z"}
+{"shard": 8, "stage": "testing", "done": 45, "total": 51, "rows": 4055840, "note": "TNSR 15m: rule 3/120 (fade15)", "pct": 88.2, "updated": "2026-08-31T10:14:14Z"}

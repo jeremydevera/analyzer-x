@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 5, "total": 51, "rows": 315624, "note": "ASTR 30m: 18,959 bars, testing 120 rules", "pct": 9.8, "updated": "2026-08-31T06:30:26Z"}
+{"shard": 12, "stage": "testing", "done": 5, "total": 51, "rows": 320684, "note": "ASTR 30m: rule 17/120 (atrbreak)", "pct": 9.8, "updated": "2026-08-31T06:31:12Z"}

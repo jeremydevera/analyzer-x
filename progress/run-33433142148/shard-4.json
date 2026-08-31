@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 26, "total": 52, "rows": 1830028, "note": "KMNO 15m: 34,563 bars, testing 120 rules", "pct": 50.0, "updated": "2026-08-31T21:10:29Z"}
+{"shard": 4, "stage": "testing", "done": 26, "total": 52, "rows": 1832008, "note": "KMNO 15m: rule 3/120 (fade15)", "pct": 50.0, "updated": "2026-08-31T21:11:15Z"}

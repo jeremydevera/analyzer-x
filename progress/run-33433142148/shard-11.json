@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 2, "total": 52, "rows": 114716, "note": "AGT 15m: 34,559 bars, testing 120 rules", "pct": 3.8, "updated": "2026-08-31T20:00:43Z"}
+{"shard": 11, "stage": "testing", "done": 2, "total": 52, "rows": 116156, "note": "AGT 15m: rule 3/120 (fade15)", "pct": 3.8, "updated": "2026-08-31T20:01:43Z"}

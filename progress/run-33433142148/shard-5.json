@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 14, "total": 52, "rows": 1039442, "note": "CVC 30m: 1,999 bars, testing 120 rules", "pct": 26.9, "updated": "2026-08-31T21:00:06Z"}
+{"shard": 5, "stage": "testing", "done": 14, "total": 52, "rows": 1069406, "note": "CVC 1h: rule 12/120 (donchian20)", "pct": 26.9, "updated": "2026-08-31T21:00:51Z"}

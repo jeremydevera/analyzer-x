@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 43, "total": 52, "rows": 3719386, "note": "STBL 15m: 33,535 bars, testing 120 rules", "pct": 82.7, "updated": "2026-08-31T23:19:11Z"}
+{"shard": 7, "stage": "testing", "done": 43, "total": 52, "rows": 3721366, "note": "STBL 15m: rule 3/120 (fade15)", "pct": 82.7, "updated": "2026-08-31T23:20:09Z"}

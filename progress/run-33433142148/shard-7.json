@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 23, "total": 52, "rows": 1981072, "note": "ICP 15m: 34,566 bars, testing 120 rules", "pct": 44.2, "updated": "2026-08-31T21:47:55Z"}
+{"shard": 7, "stage": "testing", "done": 23, "total": 52, "rows": 1984592, "note": "ICP 15m: rule 16/120 (keltner)", "pct": 44.2, "updated": "2026-08-31T21:48:41Z"}

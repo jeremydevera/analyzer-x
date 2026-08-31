@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 25, "total": 51, "rows": 2333836, "note": "KAT 15m: 17,486 bars, testing 120 rules", "pct": 49.0, "updated": "2026-08-31T08:37:00Z"}
+{"shard": 8, "stage": "testing", "done": 25, "total": 51, "rows": 2339036, "note": "KAT 15m: rule 20/120 (stoch14)", "pct": 49.0, "updated": "2026-08-31T08:37:47Z"}

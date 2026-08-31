@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 19, "total": 52, "rows": 1610356, "note": "FLUX 30m: rule 60/120 (eqraid)", "pct": 36.5, "updated": "2026-08-31T21:39:11Z"}
+{"shard": 1, "stage": "testing", "done": 19, "total": 52, "rows": 1623556, "note": "FLUX 30m: rule 120/120 (cf_stflip_l2)", "pct": 36.5, "updated": "2026-08-31T21:39:57Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 42, "total": 52, "rows": 3614756, "note": "SOPH 15m: rule 45/120 (zscore20)", "pct": 80.8, "updated": "2026-08-31T23:48:30Z"}
+{"shard": 9, "stage": "testing", "done": 42, "total": 52, "rows": 3621796, "note": "SOPH 15m: rule 78/120 (cf_mom_l2)", "pct": 80.8, "updated": "2026-08-31T23:49:16Z"}

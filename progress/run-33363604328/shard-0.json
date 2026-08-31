@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 6, "total": 52, "rows": 414848, "note": "AUD 30m: rule 36/120 (stochrsi)", "pct": 11.5, "updated": "2026-08-31T06:44:41Z"}
+{"shard": 0, "stage": "testing", "done": 6, "total": 52, "rows": 431128, "note": "AUD 1h: 7,994 bars, testing 120 rules", "pct": 11.5, "updated": "2026-08-31T06:45:32Z"}

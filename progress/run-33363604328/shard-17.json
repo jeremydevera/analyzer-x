@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 36, "total": 51, "rows": 3108796, "note": "PYTH 1h: 9,479 bars, testing 120 rules", "pct": 70.6, "updated": "2026-08-31T09:20:25Z"}
+{"shard": 17, "stage": "testing", "done": 36, "total": 51, "rows": 3119576, "note": "PYTH 1h: rule 43/120 (macddiv)", "pct": 70.6, "updated": "2026-08-31T09:21:10Z"}

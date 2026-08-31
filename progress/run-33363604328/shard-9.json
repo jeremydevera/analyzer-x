@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 8, "total": 51, "rows": 606120, "note": "BIO 30m: 18,959 bars, testing 120 rules", "pct": 15.7, "updated": "2026-08-31T06:57:46Z"}
+{"shard": 9, "stage": "testing", "done": 8, "total": 51, "rows": 608320, "note": "BIO 30m: rule 4/120 (trend50)", "pct": 15.7, "updated": "2026-08-31T06:58:31Z"}

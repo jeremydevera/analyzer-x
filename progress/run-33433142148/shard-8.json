@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 39, "total": 52, "rows": 3283482, "note": "RTXSTOCK 30m: rule 45/120 (zscore20)", "pct": 75.0, "updated": "2026-08-31T22:52:15Z"}
+{"shard": 8, "stage": "testing", "done": 40, "total": 52, "rows": 3348808, "note": "SHAZSTOCK 30m: rule 80/120 (cf_donch_l1)", "pct": 76.9, "updated": "2026-08-31T22:53:00Z"}

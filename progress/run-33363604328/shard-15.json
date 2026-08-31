@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 51, "total": 51, "rows": 4446286, "note": "ZHIPUSTOCK 15m: rule 15/120 (bbbreak)", "pct": 100.0, "updated": "2026-08-31T10:58:56Z"}
+{"shard": 15, "stage": "testing", "done": 51, "total": 51, "rows": 4480786, "note": "ZHIPUSTOCK 1h: 1,686 bars, testing 120 rules", "pct": 100.0, "updated": "2026-08-31T10:59:43Z"}

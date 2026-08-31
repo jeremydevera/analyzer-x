@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 48, "total": 52, "rows": 3926192, "note": "VANA 30m: rule 49/120 (vwaprev)", "pct": 92.3, "updated": "2026-08-31T10:12:34Z"}
+{"shard": 2, "stage": "testing", "done": 48, "total": 52, "rows": 3940192, "note": "VANA 30m: rule 120/120 (cf_stflip_l2)", "pct": 92.3, "updated": "2026-08-31T10:13:20Z"}

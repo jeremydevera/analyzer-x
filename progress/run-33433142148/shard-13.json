@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 42, "total": 51, "rows": 3527128, "note": "SPACE 1h: rule 13/120 (pivot)", "pct": 82.4, "updated": "2026-08-31T22:28:06Z"}
+{"shard": 13, "stage": "testing", "done": 43, "total": 51, "rows": 3587628, "note": "STRCSTOCK 15m: 5,806 bars, testing 120 rules", "pct": 84.3, "updated": "2026-08-31T22:28:51Z"}

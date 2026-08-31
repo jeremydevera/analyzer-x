@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 3, "total": 51, "rows": 211516, "note": "ALL 30m: rule 90/120 (cf_chan_l2)", "pct": 5.9, "updated": "2026-08-31T06:32:08Z"}
+{"shard": 9, "stage": "testing", "done": 3, "total": 51, "rows": 223836, "note": "ALL 1h: rule 20/120 (stoch14)", "pct": 5.9, "updated": "2026-08-31T06:32:53Z"}

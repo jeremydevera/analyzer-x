@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 30, "total": 52, "rows": 2096154, "note": "MSFTSTOCK 15m: rule 10/120 (sr_bounce)", "pct": 57.7, "updated": "2026-08-31T21:59:10Z"}
+{"shard": 11, "stage": "testing", "done": 30, "total": 52, "rows": 2104434, "note": "MSFTSTOCK 15m: rule 56/120 (insidebrk)", "pct": 57.7, "updated": "2026-08-31T21:59:56Z"}

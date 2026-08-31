@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 51, "total": 52, "rows": 3996778, "note": "XPIN 30m: 17,414 bars, testing 120 rules", "pct": 98.1, "updated": "2026-08-31T23:08:49Z"}
+{"shard": 0, "stage": "testing", "done": 51, "total": 52, "rows": 3999858, "note": "XPIN 30m: rule 8/120 (fib618)", "pct": 98.1, "updated": "2026-08-31T23:09:34Z"}

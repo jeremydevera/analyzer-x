@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 13, "total": 52, "rows": 1025048, "note": "COW 15m: rule 90/120 (cf_chan_l2)", "pct": 25.0, "updated": "2026-08-31T07:22:46Z"}
+{"shard": 3, "stage": "testing", "done": 13, "total": 52, "rows": 1031048, "note": "COW 30m: 18,959 bars, testing 120 rules", "pct": 25.0, "updated": "2026-08-31T07:23:34Z"}

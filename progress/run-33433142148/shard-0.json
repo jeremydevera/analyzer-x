@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 8, "total": 52, "rows": 531280, "note": "BEAT 15m: rule 76/120 (cf_mom)", "pct": 15.4, "updated": "2026-08-31T20:30:53Z"}
+{"shard": 0, "stage": "testing", "done": 8, "total": 52, "rows": 538000, "note": "BEAT 15m: rule 120/120 (cf_stflip_l2)", "pct": 15.4, "updated": "2026-08-31T20:31:38Z"}

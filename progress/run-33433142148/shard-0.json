@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 49, "total": 52, "rows": 3755474, "note": "VTHO 15m: rule 84/120 (cf_maobv_l2)", "pct": 94.2, "updated": "2026-08-31T22:50:02Z"}
+{"shard": 0, "stage": "testing", "done": 49, "total": 52, "rows": 3763394, "note": "VTHO 30m: 18,959 bars, testing 120 rules", "pct": 94.2, "updated": "2026-08-31T22:50:59Z"}

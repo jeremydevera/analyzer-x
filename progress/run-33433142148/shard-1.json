@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 22, "total": 52, "rows": 1872364, "note": "HIVE 30m: rule 102/120 (cf_soup1_l2)", "pct": 42.3, "updated": "2026-08-31T21:59:09Z"}
+{"shard": 1, "stage": "testing", "done": 22, "total": 52, "rows": 1880504, "note": "HIVE 1h: rule 13/120 (pivot)", "pct": 42.3, "updated": "2026-08-31T21:59:54Z"}

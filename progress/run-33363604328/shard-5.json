@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 3, "total": 52, "rows": 154812, "note": "ALGO 15m: rule 78/120 (cf_mom_l2)", "pct": 5.8, "updated": "2026-08-31T06:30:45Z"}
+{"shard": 5, "stage": "testing", "done": 3, "total": 52, "rows": 162372, "note": "ALGO 15m: rule 120/120 (cf_stflip_l2)", "pct": 5.8, "updated": "2026-08-31T06:31:30Z"}

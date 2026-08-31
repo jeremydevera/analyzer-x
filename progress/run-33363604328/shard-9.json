@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 48, "total": 51, "rows": 3672038, "note": "VIRTUAL 30m: rule 114/120 (cf_obretest_l2)", "pct": 94.1, "updated": "2026-08-31T09:55:36Z"}
+{"shard": 9, "stage": "testing", "done": 48, "total": 51, "rows": 3678078, "note": "VIRTUAL 1h: rule 16/120 (keltner)", "pct": 94.1, "updated": "2026-08-31T09:56:21Z"}

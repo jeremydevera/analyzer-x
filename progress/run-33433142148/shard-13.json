@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 18, "total": 51, "rows": 1468128, "note": "FLEXSTOCK 15m: rule 96/120 (cf_emarsi_l2)", "pct": 35.3, "updated": "2026-08-31T21:01:27Z"}
+{"shard": 13, "stage": "testing", "done": 19, "total": 51, "rows": 1520920, "note": "FWDISTOCK 30m: rule 45/120 (zscore20)", "pct": 37.3, "updated": "2026-08-31T21:02:12Z"}

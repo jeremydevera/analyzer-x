@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 4, "total": 51, "rows": 307562, "note": "APT 30m: rule 3/120 (fade15)", "pct": 7.8, "updated": "2026-08-31T20:20:49Z"}
+{"shard": 16, "stage": "testing", "done": 4, "total": 51, "rows": 315962, "note": "APT 30m: rule 45/120 (zscore20)", "pct": 7.8, "updated": "2026-08-31T20:21:35Z"}

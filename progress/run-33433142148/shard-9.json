@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 35, "total": 52, "rows": 3071522, "note": "PIPPIN 30m: 18,959 bars, testing 120 rules", "pct": 67.3, "updated": "2026-08-31T23:12:23Z"}
+{"shard": 9, "stage": "testing", "done": 35, "total": 52, "rows": 3073522, "note": "PIPPIN 30m: rule 4/120 (trend50)", "pct": 67.3, "updated": "2026-08-31T23:13:10Z"}

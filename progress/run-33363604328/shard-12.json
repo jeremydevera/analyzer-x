@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 23, "total": 51, "rows": 2107952, "note": "INFQSTOCK 30m: rule 17/120 (atrbreak)", "pct": 45.1, "updated": "2026-08-31T08:12:27Z"}
+{"shard": 12, "stage": "testing", "done": 25, "total": 51, "rows": 2162666, "note": "KGEN 15m: 31,466 bars, testing 120 rules", "pct": 49.0, "updated": "2026-08-31T08:13:18Z"}

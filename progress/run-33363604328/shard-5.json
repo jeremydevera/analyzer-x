@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 6, "total": 52, "rows": 337754, "note": "AVAX 15m: 34,601 bars, testing 120 rules", "pct": 11.5, "updated": "2026-08-31T06:37:42Z"}
+{"shard": 5, "stage": "testing", "done": 6, "total": 52, "rows": 340814, "note": "AVAX 15m: rule 11/120 (sr_break)", "pct": 11.5, "updated": "2026-08-31T06:38:28Z"}

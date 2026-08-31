@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 42, "total": 52, "rows": 3414460, "note": "SOL 15m: rule 73/120 (volspike)", "pct": 80.8, "updated": "2026-08-31T22:30:14Z"}
+{"shard": 4, "stage": "testing", "done": 42, "total": 52, "rows": 3422920, "note": "SOL 30m: 18,959 bars, testing 120 rules", "pct": 80.8, "updated": "2026-08-31T22:31:03Z"}

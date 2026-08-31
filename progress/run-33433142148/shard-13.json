@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 39, "total": 51, "rows": 3245536, "note": "SAHARA 30m: rule 41/120 (tsi)", "pct": 76.5, "updated": "2026-08-31T22:19:01Z"}
+{"shard": 13, "stage": "testing", "done": 39, "total": 51, "rows": 3262476, "note": "SAHARA 30m: rule 120/120 (cf_stflip_l2)", "pct": 76.5, "updated": "2026-08-31T22:19:46Z"}

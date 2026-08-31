@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 11, "total": 51, "rows": 796570, "note": "CFX 15m: rule 87/120 (cf_triple_l2)", "pct": 21.6, "updated": "2026-08-31T20:30:26Z"}
+{"shard": 15, "stage": "testing", "done": 11, "total": 51, "rows": 803830, "note": "CFX 30m: 18,959 bars, testing 120 rules", "pct": 21.6, "updated": "2026-08-31T20:31:15Z"}

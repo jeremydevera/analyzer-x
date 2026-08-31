@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 42, "total": 52, "rows": 3345326, "note": "SOLV 15m: 34,567 bars, testing 120 rules", "pct": 80.8, "updated": "2026-08-31T22:09:08Z"}
+{"shard": 3, "stage": "testing", "done": 42, "total": 52, "rows": 3347326, "note": "SOLV 15m: rule 4/120 (trend50)", "pct": 80.8, "updated": "2026-08-31T22:09:55Z"}

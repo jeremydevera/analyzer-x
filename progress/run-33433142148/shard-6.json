@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 34, "total": 52, "rows": 2826612, "note": "ORDER 15m: rule 94/120 (cf_emarsi)", "pct": 65.4, "updated": "2026-08-31T22:44:27Z"}
+{"shard": 6, "stage": "testing", "done": 34, "total": 52, "rows": 2832332, "note": "ORDER 30m: 18,959 bars, testing 120 rules", "pct": 65.4, "updated": "2026-08-31T22:45:14Z"}

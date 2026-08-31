@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 6, "total": 52, "rows": 392846, "note": "AVA 15m: 34,560 bars, testing 120 rules", "pct": 11.5, "updated": "2026-08-31T20:19:44Z"}
+{"shard": 7, "stage": "testing", "done": 6, "total": 52, "rows": 395246, "note": "AVA 15m: rule 6/120 (sweep30)", "pct": 11.5, "updated": "2026-08-31T20:20:30Z"}

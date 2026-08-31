@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 22, "total": 52, "rows": 1880504, "note": "HIVE 1h: rule 13/120 (pivot)", "pct": 42.3, "updated": "2026-08-31T21:59:54Z"}
+{"shard": 1, "stage": "testing", "done": 22, "total": 52, "rows": 1903604, "note": "HIVE 4h: 2,369 bars, testing 120 rules", "pct": 42.3, "updated": "2026-08-31T22:00:50Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 3, "total": 51, "rows": 235136, "note": "AMP 15m: 34,560 bars, testing 120 rules", "pct": 5.9, "updated": "2026-08-31T20:15:14Z"}
+{"shard": 18, "stage": "testing", "done": 3, "total": 51, "rows": 235136, "note": "AMP 15m: rule 120/120 (cf_stflip_l2)", "pct": 5.9, "updated": "2026-08-31T20:16:00Z"}

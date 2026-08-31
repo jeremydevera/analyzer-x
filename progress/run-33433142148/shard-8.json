@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 7, "total": 52, "rows": 713148, "note": "BAN 30m: rule 64/120 (hammer)", "pct": 13.5, "updated": "2026-08-31T20:41:54Z"}
+{"shard": 8, "stage": "testing", "done": 7, "total": 52, "rows": 725248, "note": "BAN 1h: 9,479 bars, testing 120 rules", "pct": 13.5, "updated": "2026-08-31T20:42:45Z"}

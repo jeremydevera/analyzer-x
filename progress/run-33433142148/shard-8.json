@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 38, "total": 52, "rows": 3167162, "note": "RESOLV 15m: rule 86/120 (cf_triple_l1)", "pct": 73.1, "updated": "2026-08-31T22:46:03Z"}
+{"shard": 8, "stage": "testing", "done": 38, "total": 52, "rows": 3173962, "note": "RESOLV 30m: 18,959 bars, testing 120 rules", "pct": 73.1, "updated": "2026-08-31T22:46:56Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 49, "total": 52, "rows": 4158900, "note": "WAL 15m: rule 106/120 (cf_bosfvg)", "pct": 94.2, "updated": "2026-08-31T23:10:14Z"}
+{"shard": 4, "stage": "testing", "done": 49, "total": 52, "rows": 4163680, "note": "WAL 30m: rule 3/120 (fade15)", "pct": 94.2, "updated": "2026-08-31T23:11:05Z"}

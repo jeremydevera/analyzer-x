@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 34, "total": 51, "rows": 3070216, "note": "PAXG 15m: 34,569 bars, testing 120 rules", "pct": 66.7, "updated": "2026-08-31T22:37:31Z"}
+{"shard": 14, "stage": "testing", "done": 34, "total": 51, "rows": 3076376, "note": "PAXG 15m: rule 22/120 (engulf)", "pct": 66.7, "updated": "2026-08-31T22:38:17Z"}

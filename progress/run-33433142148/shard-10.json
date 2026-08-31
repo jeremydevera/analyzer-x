@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 40, "total": 52, "rows": 3429614, "note": "SHELL 15m: rule 114/120 (cf_obretest_l2)", "pct": 76.9, "updated": "2026-08-31T23:00:36Z"}
+{"shard": 10, "stage": "testing", "done": 40, "total": 52, "rows": 3432254, "note": "SHELL 30m: rule 2/120 (mom15)", "pct": 76.9, "updated": "2026-08-31T23:01:25Z"}

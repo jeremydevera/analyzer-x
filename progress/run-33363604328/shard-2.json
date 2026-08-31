@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 36, "total": 52, "rows": 2961594, "note": "PRL 30m: 7,630 bars, testing 120 rules", "pct": 69.2, "updated": "2026-08-31T09:13:09Z"}
+{"shard": 2, "stage": "testing", "done": 36, "total": 52, "rows": 2974574, "note": "PRL 30m: rule 54/120 (fractal5)", "pct": 69.2, "updated": "2026-08-31T09:13:54Z"}

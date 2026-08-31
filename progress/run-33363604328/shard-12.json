@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 40, "total": 51, "rows": 3453618, "note": "SITMSTOCK 30m: 3,838 bars, testing 120 rules", "pct": 78.4, "updated": "2026-08-31T09:34:51Z"}
+{"shard": 12, "stage": "testing", "done": 41, "total": 51, "rows": 3514670, "note": "SNPSSTOCK 30m: rule 15/120 (bbbreak)", "pct": 80.4, "updated": "2026-08-31T09:35:36Z"}

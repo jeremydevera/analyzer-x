@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 40, "total": 51, "rows": 3398406, "note": "SILVER 1h: 5,762 bars, testing 120 rules", "pct": 78.4, "updated": "2026-08-31T09:20:12Z"}
+{"shard": 10, "stage": "testing", "done": 40, "total": 51, "rows": 3434926, "note": "SILVER 4h: rule 36/120 (stochrsi)", "pct": 78.4, "updated": "2026-08-31T09:20:57Z"}

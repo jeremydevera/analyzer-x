@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 43, "total": 52, "rows": 3681906, "note": "STABLE 30m: rule 114/120 (cf_obretest_l2)", "pct": 82.7, "updated": "2026-08-31T23:42:08Z"}
+{"shard": 5, "stage": "testing", "done": 43, "total": 52, "rows": 3694226, "note": "STABLE 1h: rule 44/120 (elder)", "pct": 82.7, "updated": "2026-08-31T23:42:54Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 40, "total": 52, "rows": 3543788, "note": "SFP 30m: 18,959 bars, testing 120 rules", "pct": 76.9, "updated": "2026-08-31T23:37:17Z"}
+{"shard": 6, "stage": "testing", "done": 40, "total": 52, "rows": 3549508, "note": "SFP 30m: rule 20/120 (stoch14)", "pct": 76.9, "updated": "2026-08-31T23:38:02Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 51, "total": 51, "rows": 3989818, "note": "ZBT 1h: rule 117/120 (cf_diadx_l2)", "pct": 100.0, "updated": "2026-08-31T10:16:15Z"}
+{"shard": 9, "stage": "done", "done": 51, "total": 51, "rows": 4029506, "note": "4,029,506 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "pct": 100.0, "updated": "2026-08-31T10:16:57Z"}

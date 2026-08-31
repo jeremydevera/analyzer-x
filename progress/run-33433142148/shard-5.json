@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 7, "total": 52, "rows": 407428, "note": "BANANA 30m: rule 13/120 (pivot)", "pct": 13.5, "updated": "2026-08-31T20:21:58Z"}
+{"shard": 5, "stage": "testing", "done": 7, "total": 52, "rows": 414468, "note": "BANANA 30m: rule 45/120 (zscore20)", "pct": 13.5, "updated": "2026-08-31T20:22:43Z"}

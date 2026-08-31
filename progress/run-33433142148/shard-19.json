@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 10, "total": 51, "rows": 1007486, "note": "CATI 30m: rule 68/120 (dbltop)", "pct": 19.6, "updated": "2026-08-31T21:11:47Z"}
+{"shard": 19, "stage": "testing", "done": 10, "total": 51, "rows": 1018706, "note": "CATI 1h: 9,479 bars, testing 120 rules", "pct": 19.6, "updated": "2026-08-31T21:12:38Z"}

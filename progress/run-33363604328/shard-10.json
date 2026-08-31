@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 21, "total": 51, "rows": 1753976, "note": "HANA 30m: rule 110/120 (cf_fundfade_l1)", "pct": 41.2, "updated": "2026-08-31T08:03:03Z"}
+{"shard": 10, "stage": "testing", "done": 21, "total": 51, "rows": 1762116, "note": "HANA 1h: rule 21/120 (cci20)", "pct": 41.2, "updated": "2026-08-31T08:03:49Z"}

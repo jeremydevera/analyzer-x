@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 47, "total": 52, "rows": 3837840, "note": "UAI 30m: 14,329 bars, testing 120 rules", "pct": 90.4, "updated": "2026-08-31T23:49:13Z"}
+{"shard": 5, "stage": "testing", "done": 47, "total": 52, "rows": 3841040, "note": "UAI 30m: rule 10/120 (sr_bounce)", "pct": 90.4, "updated": "2026-08-31T23:49:58Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 25, "total": 52, "rows": 2015416, "note": "JPY 15m: rule 68/120 (dbltop)", "pct": 48.1, "updated": "2026-08-31T08:19:14Z"}
+{"shard": 1, "stage": "testing", "done": 25, "total": 52, "rows": 2022616, "note": "JPY 15m: rule 117/120 (cf_diadx_l2)", "pct": 48.1, "updated": "2026-08-31T08:20:01Z"}

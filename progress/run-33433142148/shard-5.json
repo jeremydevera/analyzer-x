@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 16, "total": 52, "rows": 1181878, "note": "DYDX 1h: 9,479 bars, testing 120 rules", "pct": 30.8, "updated": "2026-08-31T21:10:00Z"}
+{"shard": 5, "stage": "testing", "done": 16, "total": 52, "rows": 1194858, "note": "DYDX 1h: rule 54/120 (fractal5)", "pct": 30.8, "updated": "2026-08-31T21:10:45Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 41, "total": 52, "rows": 3424602, "note": "SKYAI 30m: 18,959 bars, testing 120 rules", "pct": 78.8, "updated": "2026-08-31T23:22:54Z"}
+{"shard": 5, "stage": "testing", "done": 41, "total": 52, "rows": 3426602, "note": "SKYAI 30m: rule 4/120 (trend50)", "pct": 78.8, "updated": "2026-08-31T23:23:41Z"}

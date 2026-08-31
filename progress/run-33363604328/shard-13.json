@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 6, "total": 51, "rows": 437438, "note": "AXS 30m: 18,959 bars, testing 120 rules", "pct": 11.8, "updated": "2026-08-31T06:32:50Z"}
+{"shard": 13, "stage": "testing", "done": 6, "total": 51, "rows": 442058, "note": "AXS 30m: rule 15/120 (bbbreak)", "pct": 11.8, "updated": "2026-08-31T06:33:35Z"}

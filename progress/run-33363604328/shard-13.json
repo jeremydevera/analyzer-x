@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 14, "total": 51, "rows": 1127744, "note": "DATA 30m: rule 16/120 (keltner)", "pct": 27.5, "updated": "2026-08-31T07:06:14Z"}
+{"shard": 13, "stage": "testing", "done": 15, "total": 51, "rows": 1175942, "note": "DOLO 15m: 34,603 bars, testing 120 rules", "pct": 29.4, "updated": "2026-08-31T07:07:08Z"}

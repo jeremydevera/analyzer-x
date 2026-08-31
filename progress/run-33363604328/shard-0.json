@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 34, "total": 52, "rows": 2725034, "note": "ORCLSTOCK 15m: rule 10/120 (sr_bounce)", "pct": 65.4, "updated": "2026-08-31T09:06:45Z"}
+{"shard": 0, "stage": "testing", "done": 34, "total": 52, "rows": 2731334, "note": "ORCLSTOCK 15m: rule 45/120 (zscore20)", "pct": 65.4, "updated": "2026-08-31T09:07:31Z"}

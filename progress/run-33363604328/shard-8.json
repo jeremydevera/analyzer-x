@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 33, "total": 51, "rows": 2988704, "note": "ONE 30m: rule 43/120 (macddiv)", "pct": 64.7, "updated": "2026-08-31T09:15:46Z"}
+{"shard": 8, "stage": "testing", "done": 33, "total": 51, "rows": 3001304, "note": "ONE 30m: rule 114/120 (cf_obretest_l2)", "pct": 64.7, "updated": "2026-08-31T09:16:31Z"}

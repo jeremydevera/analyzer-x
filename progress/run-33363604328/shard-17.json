@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 49, "total": 51, "rows": 4282822, "note": "XAN 15m: rule 87/120 (cf_triple_l2)", "pct": 96.1, "updated": "2026-08-31T10:36:31Z"}
+{"shard": 17, "stage": "testing", "done": 49, "total": 51, "rows": 4289422, "note": "XAN 30m: 16,129 bars, testing 120 rules", "pct": 96.1, "updated": "2026-08-31T10:37:16Z"}

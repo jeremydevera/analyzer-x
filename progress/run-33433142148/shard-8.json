@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 47, "total": 52, "rows": 4104696, "note": "UKOIL 30m: 10,264 bars, testing 120 rules", "pct": 90.4, "updated": "2026-08-31T23:46:05Z"}
+{"shard": 8, "stage": "testing", "done": 47, "total": 52, "rows": 4124496, "note": "UKOIL 30m: rule 84/120 (cf_maobv_l2)", "pct": 90.4, "updated": "2026-08-31T23:46:51Z"}

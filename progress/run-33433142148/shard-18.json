@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 38, "total": 51, "rows": 3152472, "note": "RLS 30m: rule 76/120 (cf_mom)", "pct": 74.5, "updated": "2026-08-31T23:11:33Z"}
+{"shard": 18, "stage": "testing", "done": 38, "total": 51, "rows": 3166272, "note": "RLS 1h: rule 20/120 (stoch14)", "pct": 74.5, "updated": "2026-08-31T23:12:19Z"}

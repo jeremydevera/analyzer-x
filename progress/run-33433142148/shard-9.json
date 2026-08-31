@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 18, "total": 52, "rows": 1564580, "note": "FIDA 4h: rule 20/120 (stoch14)", "pct": 34.6, "updated": "2026-08-31T21:34:48Z"}
+{"shard": 9, "stage": "testing", "done": 20, "total": 52, "rows": 1631440, "note": "GLM 15m: 34,565 bars, testing 120 rules", "pct": 38.5, "updated": "2026-08-31T21:35:53Z"}

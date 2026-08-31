@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 12, "total": 51, "rows": 1188868, "note": "COLLECT 1h: rule 61/120 (turtle)", "pct": 23.5, "updated": "2026-08-31T21:26:13Z"}
+{"shard": 16, "stage": "testing", "done": 14, "total": 51, "rows": 1223722, "note": "DBR 15m: 34,564 bars, testing 120 rules", "pct": 27.5, "updated": "2026-08-31T21:27:31Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 46, "total": 52, "rows": 4016454, "note": "TRUTH 30m: rule 115/120 (cf_diadx)", "pct": 88.5, "updated": "2026-08-31T23:42:13Z"}
+{"shard": 8, "stage": "testing", "done": 46, "total": 52, "rows": 4027652, "note": "TRUTH 1h: rule 45/120 (zscore20)", "pct": 88.5, "updated": "2026-08-31T23:42:59Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 39, "total": 51, "rows": 3559956, "note": "SAHARA 4h: rule 45/120 (zscore20)", "pct": 76.5, "updated": "2026-08-31T09:54:39Z"}
+{"shard": 8, "stage": "testing", "done": 40, "total": 51, "rows": 3592072, "note": "SHOPSTOCK 15m: rule 21/120 (cci20)", "pct": 78.4, "updated": "2026-08-31T09:55:24Z"}

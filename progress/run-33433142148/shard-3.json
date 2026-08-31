@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 33, "total": 52, "rows": 2707222, "note": "NXPC 15m: rule 45/120 (zscore20)", "pct": 63.5, "updated": "2026-08-31T21:42:34Z"}
+{"shard": 3, "stage": "testing", "done": 33, "total": 52, "rows": 2716242, "note": "NXPC 15m: rule 87/120 (cf_triple_l2)", "pct": 63.5, "updated": "2026-08-31T21:43:21Z"}

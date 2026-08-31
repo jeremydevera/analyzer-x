@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 36, "total": 52, "rows": 3092376, "note": "PROM 15m: rule 86/120 (cf_triple_l1)", "pct": 69.2, "updated": "2026-08-31T22:39:45Z"}
+{"shard": 10, "stage": "testing", "done": 36, "total": 52, "rows": 3099856, "note": "PROM 30m: 18,959 bars, testing 120 rules", "pct": 69.2, "updated": "2026-08-31T22:40:40Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 40, "total": 52, "rows": 3312592, "note": "SENT 30m: rule 33/120 (heikin)", "pct": 76.9, "updated": "2026-08-31T09:34:55Z"}
+{"shard": 0, "stage": "testing", "done": 40, "total": 52, "rows": 3329312, "note": "SENT 30m: rule 110/120 (cf_fundfade_l1)", "pct": 76.9, "updated": "2026-08-31T09:35:40Z"}

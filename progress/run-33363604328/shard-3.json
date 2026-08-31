@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 51, "total": 52, "rows": 4217334, "note": "YB 1h: rule 64/120 (hammer)", "pct": 98.1, "updated": "2026-08-31T10:43:58Z"}
+{"shard": 3, "stage": "testing", "done": 51, "total": 52, "rows": 4250400, "note": "YB 1d: 325 bars, testing 120 rules", "pct": 98.1, "updated": "2026-08-31T10:44:44Z"}

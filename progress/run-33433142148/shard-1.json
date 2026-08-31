@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 33, "total": 52, "rows": 2852920, "note": "NVOSTOCK 15m: 8,773 bars, testing 120 rules", "pct": 63.5, "updated": "2026-08-31T23:00:28Z"}
+{"shard": 1, "stage": "testing", "done": 33, "total": 52, "rows": 2882920, "note": "NVOSTOCK 30m: rule 44/120 (elder)", "pct": 63.5, "updated": "2026-08-31T23:01:14Z"}

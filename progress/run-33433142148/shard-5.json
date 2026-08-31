@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 41, "total": 52, "rows": 3434202, "note": "SKYAI 30m: rule 42/120 (rsidiv)", "pct": 78.8, "updated": "2026-08-31T23:24:26Z"}
+{"shard": 5, "stage": "testing", "done": 41, "total": 52, "rows": 3445202, "note": "SKYAI 30m: rule 99/120 (cf_ttm_l2)", "pct": 78.8, "updated": "2026-08-31T23:25:12Z"}

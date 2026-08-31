@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 3, "total": 52, "rows": 212946, "note": "ALICE 15m: rule 87/120 (cf_triple_l2)", "pct": 5.8, "updated": "2026-08-31T20:07:55Z"}
+{"shard": 6, "stage": "testing", "done": 3, "total": 52, "rows": 219546, "note": "ALICE 30m: 18,959 bars, testing 120 rules", "pct": 5.8, "updated": "2026-08-31T20:08:42Z"}

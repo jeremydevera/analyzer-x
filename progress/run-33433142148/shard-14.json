@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 40, "total": 51, "rows": 3641946, "note": "SIGN 1h: 9,479 bars, testing 120 rules", "pct": 78.4, "updated": "2026-08-31T23:15:46Z"}
+{"shard": 14, "stage": "testing", "done": 40, "total": 51, "rows": 3658006, "note": "SIGN 1h: rule 68/120 (dbltop)", "pct": 78.4, "updated": "2026-08-31T23:16:31Z"}

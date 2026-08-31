@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 34, "total": 51, "rows": 2736228, "note": "PANWSTOCK 15m: 18,099 bars, testing 120 rules", "pct": 66.7, "updated": "2026-08-31T22:03:08Z"}
+{"shard": 12, "stage": "testing", "done": 34, "total": 51, "rows": 2751768, "note": "PANWSTOCK 15m: rule 105/120 (cf_eqhl_l2)", "pct": 66.7, "updated": "2026-08-31T22:03:53Z"}

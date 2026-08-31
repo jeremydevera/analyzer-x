@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 7, "total": 51, "rows": 542514, "note": "BB 1h: 9,479 bars, testing 120 rules", "pct": 13.7, "updated": "2026-08-31T06:59:48Z"}
+{"shard": 15, "stage": "testing", "done": 7, "total": 51, "rows": 549774, "note": "BB 1h: rule 27/120 (aroon25)", "pct": 13.7, "updated": "2026-08-31T07:00:33Z"}

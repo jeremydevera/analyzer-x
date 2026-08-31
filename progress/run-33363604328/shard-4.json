@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 43, "total": 52, "rows": 3387678, "note": "STG 15m: 34,612 bars, testing 120 rules", "pct": 82.7, "updated": "2026-08-31T09:29:10Z"}
+{"shard": 4, "stage": "testing", "done": 43, "total": 52, "rows": 3388998, "note": "STG 15m: rule 2/120 (mom15)", "pct": 82.7, "updated": "2026-08-31T09:29:55Z"}

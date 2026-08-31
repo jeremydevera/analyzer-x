@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 11, "total": 52, "rows": 929150, "note": "CBRSSTOCK 15m: rule 108/120 (cf_bosfvg_l2)", "pct": 21.2, "updated": "2026-08-31T07:12:31Z"}
+{"shard": 2, "stage": "testing", "done": 11, "total": 52, "rows": 960468, "note": "CBRSSTOCK 1h: rule 15/120 (bbbreak)", "pct": 21.2, "updated": "2026-08-31T07:13:16Z"}

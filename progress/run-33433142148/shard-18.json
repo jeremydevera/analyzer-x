@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 19, "total": 51, "rows": 1476596, "note": "GBP 15m: rule 99/120 (cf_ttm_l2)", "pct": 37.3, "updated": "2026-08-31T21:29:27Z"}
+{"shard": 18, "stage": "testing", "done": 19, "total": 51, "rows": 1504656, "note": "GBP 1h: 7,993 bars, testing 120 rules", "pct": 37.3, "updated": "2026-08-31T21:30:23Z"}

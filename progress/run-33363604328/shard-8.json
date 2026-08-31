@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 17, "total": 51, "rows": 1536372, "note": "ETHW 15m: 34,606 bars, testing 120 rules", "pct": 33.3, "updated": "2026-08-31T07:47:04Z"}
+{"shard": 8, "stage": "testing", "done": 17, "total": 51, "rows": 1538172, "note": "ETHW 15m: rule 3/120 (fade15)", "pct": 33.3, "updated": "2026-08-31T07:47:54Z"}

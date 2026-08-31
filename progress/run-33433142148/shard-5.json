@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 16, "total": 52, "rows": 1171978, "note": "DYDX 30m: rule 73/120 (volspike)", "pct": 30.8, "updated": "2026-08-31T21:09:12Z"}
+{"shard": 5, "stage": "testing", "done": 16, "total": 52, "rows": 1181878, "note": "DYDX 1h: 9,479 bars, testing 120 rules", "pct": 30.8, "updated": "2026-08-31T21:10:00Z"}

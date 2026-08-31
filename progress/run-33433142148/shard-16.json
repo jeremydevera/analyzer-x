@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 35, "total": 51, "rows": 3071124, "note": "PLUME 1h: 9,479 bars, testing 120 rules", "pct": 68.6, "updated": "2026-08-31T23:22:05Z"}
+{"shard": 16, "stage": "testing", "done": 35, "total": 51, "rows": 3082344, "note": "PLUME 1h: rule 45/120 (zscore20)", "pct": 68.6, "updated": "2026-08-31T23:22:50Z"}

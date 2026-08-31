@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 25, "total": 52, "rows": 2047296, "note": "JPY 1h: 7,993 bars, testing 120 rules", "pct": 48.1, "updated": "2026-08-31T08:21:34Z"}
+{"shard": 1, "stage": "testing", "done": 25, "total": 52, "rows": 2073496, "note": "JPY 4h: rule 5/120 (rsi14)", "pct": 48.1, "updated": "2026-08-31T08:22:19Z"}

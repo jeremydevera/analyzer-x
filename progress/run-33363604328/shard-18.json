@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 43, "total": 51, "rows": 3399392, "note": "SUSHI 15m: rule 20/120 (stoch14)", "pct": 84.3, "updated": "2026-08-31T09:28:10Z"}
+{"shard": 18, "stage": "testing", "done": 43, "total": 51, "rows": 3404892, "note": "SUSHI 15m: rule 45/120 (zscore20)", "pct": 84.3, "updated": "2026-08-31T09:28:55Z"}

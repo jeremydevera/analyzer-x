@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 46, "total": 52, "rows": 3966582, "note": "TRY 15m: rule 90/120 (cf_chan_l2)", "pct": 88.5, "updated": "2026-08-31T23:30:28Z"}
+{"shard": 10, "stage": "testing", "done": 46, "total": 52, "rows": 3970262, "note": "TRY 30m: 18,959 bars, testing 120 rules", "pct": 88.5, "updated": "2026-08-31T23:31:19Z"}

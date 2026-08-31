@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 25, "total": 52, "rows": 1772280, "note": "JPMSTOCK 1h: rule 6/120 (sweep30)", "pct": 48.1, "updated": "2026-08-31T21:09:41Z"}
+{"shard": 4, "stage": "testing", "done": 26, "total": 52, "rows": 1830028, "note": "KMNO 15m: 34,563 bars, testing 120 rules", "pct": 50.0, "updated": "2026-08-31T21:10:29Z"}

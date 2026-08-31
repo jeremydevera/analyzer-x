@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 19, "total": 51, "rows": 1520920, "note": "FWDISTOCK 30m: rule 45/120 (zscore20)", "pct": 37.3, "updated": "2026-08-31T21:02:12Z"}
+{"shard": 13, "stage": "testing", "done": 20, "total": 51, "rows": 1552274, "note": "GMT 15m: rule 2/120 (mom15)", "pct": 39.2, "updated": "2026-08-31T21:03:05Z"}

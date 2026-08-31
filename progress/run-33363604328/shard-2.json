@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 13, "total": 52, "rows": 1172268, "note": "COTI 1h: 9,479 bars, testing 120 rules", "pct": 25.0, "updated": "2026-08-31T07:28:30Z"}
+{"shard": 2, "stage": "testing", "done": 13, "total": 52, "rows": 1185688, "note": "COTI 1h: rule 56/120 (insidebrk)", "pct": 25.0, "updated": "2026-08-31T07:29:15Z"}

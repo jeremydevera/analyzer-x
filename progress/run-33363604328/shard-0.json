@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 43, "total": 52, "rows": 3654174, "note": "STABLE 30m: rule 55/120 (nhigh50)", "pct": 82.7, "updated": "2026-08-31T09:59:28Z"}
+{"shard": 0, "stage": "testing", "done": 43, "total": 52, "rows": 3668254, "note": "STABLE 1h: 7,148 bars, testing 120 rules", "pct": 82.7, "updated": "2026-08-31T10:00:17Z"}

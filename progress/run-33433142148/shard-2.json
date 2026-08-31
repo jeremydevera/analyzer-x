@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 48, "total": 52, "rows": 3733100, "note": "USTC 15m: 34,570 bars, testing 120 rules", "pct": 92.3, "updated": "2026-08-31T22:48:31Z"}
+{"shard": 2, "stage": "testing", "done": 48, "total": 52, "rows": 3735080, "note": "USTC 15m: rule 3/120 (fade15)", "pct": 92.3, "updated": "2026-08-31T22:49:17Z"}

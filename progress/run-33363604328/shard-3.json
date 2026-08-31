@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 41, "total": 52, "rows": 3110908, "note": "SLP 15m: 34,613 bars, testing 120 rules", "pct": 78.8, "updated": "2026-08-31T09:32:29Z"}
+{"shard": 3, "stage": "testing", "done": 41, "total": 52, "rows": 3112888, "note": "SLP 15m: rule 3/120 (fade15)", "pct": 78.8, "updated": "2026-08-31T09:33:30Z"}

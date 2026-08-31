@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 38, "total": 52, "rows": 3347600, "note": "RENDER 15m: rule 85/120 (cf_triple)", "pct": 73.1, "updated": "2026-08-31T09:56:19Z"}
+{"shard": 1, "stage": "testing", "done": 38, "total": 52, "rows": 3353200, "note": "RENDER 30m: 18,959 bars, testing 120 rules", "pct": 73.1, "updated": "2026-08-31T09:57:14Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 17, "total": 52, "rows": 1538288, "note": "ENSO 1d: 321 bars, testing 120 rules", "pct": 32.7, "updated": "2026-08-31T21:31:59Z"}
+{"shard": 1, "stage": "testing", "done": 19, "total": 52, "rows": 1569216, "note": "FLUX 15m: rule 1/120 (mom6)", "pct": 36.5, "updated": "2026-08-31T21:32:52Z"}

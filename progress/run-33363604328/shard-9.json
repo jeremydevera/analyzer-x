@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 40, "total": 51, "rows": 3068684, "note": "SIGN 15m: 34,611 bars, testing 120 rules", "pct": 78.4, "updated": "2026-08-31T09:13:54Z"}
+{"shard": 9, "stage": "testing", "done": 40, "total": 51, "rows": 3070664, "note": "SIGN 15m: rule 3/120 (fade15)", "pct": 78.4, "updated": "2026-08-31T09:14:57Z"}

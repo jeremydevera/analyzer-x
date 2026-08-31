@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 23, "total": 51, "rows": 1799164, "note": "ILV 15m: 34,564 bars, testing 120 rules", "pct": 45.1, "updated": "2026-08-31T21:17:01Z"}
+{"shard": 12, "stage": "testing", "done": 23, "total": 51, "rows": 1801164, "note": "ILV 15m: rule 4/120 (trend50)", "pct": 45.1, "updated": "2026-08-31T21:17:50Z"}

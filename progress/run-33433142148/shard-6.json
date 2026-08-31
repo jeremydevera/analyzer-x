@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 23, "total": 52, "rows": 1719812, "note": "ICNT 15m: 34,565 bars, testing 120 rules", "pct": 44.2, "updated": "2026-08-31T21:32:41Z"}
+{"shard": 6, "stage": "testing", "done": 23, "total": 52, "rows": 1721432, "note": "ICNT 15m: rule 3/120 (fade15)", "pct": 44.2, "updated": "2026-08-31T21:33:44Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 45, "total": 51, "rows": 4078840, "note": "TNSR 30m: 18,959 bars, testing 120 rules", "pct": 88.2, "updated": "2026-08-31T10:17:22Z"}
+{"shard": 8, "stage": "testing", "done": 45, "total": 51, "rows": 4083020, "note": "TNSR 30m: rule 13/120 (pivot)", "pct": 88.2, "updated": "2026-08-31T10:18:08Z"}

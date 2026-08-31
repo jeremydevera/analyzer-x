@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 47, "total": 51, "rows": 3956090, "note": "USELESS 15m: rule 87/120 (cf_triple_l2)", "pct": 92.2, "updated": "2026-08-31T23:48:03Z"}
+{"shard": 19, "stage": "testing", "done": 47, "total": 51, "rows": 3963130, "note": "USELESS 30m: 18,959 bars, testing 120 rules", "pct": 92.2, "updated": "2026-08-31T23:48:57Z"}

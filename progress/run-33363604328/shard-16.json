@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 1, "total": 51, "rows": 100760, "note": "ACE 1d: 394 bars, testing 120 rules", "pct": 2.0, "updated": "2026-08-31T06:25:24Z"}
+{"shard": 16, "stage": "testing", "done": 2, "total": 51, "rows": 115040, "note": "AIOT 15m: rule 2/120 (mom15)", "pct": 3.9, "updated": "2026-08-31T06:26:16Z"}

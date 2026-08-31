@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 34, "total": 52, "rows": 2577156, "note": "ORCA 15m: 34,566 bars, testing 120 rules", "pct": 65.4, "updated": "2026-08-31T21:49:25Z"}
+{"shard": 4, "stage": "testing", "done": 34, "total": 52, "rows": 2580556, "note": "ORCA 15m: rule 11/120 (sr_break)", "pct": 65.4, "updated": "2026-08-31T21:50:11Z"}

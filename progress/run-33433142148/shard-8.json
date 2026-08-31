@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 38, "total": 52, "rows": 3241722, "note": "RESOLV 4h: rule 57/120 (orderblock)", "pct": 73.1, "updated": "2026-08-31T22:51:30Z"}
+{"shard": 8, "stage": "testing", "done": 39, "total": 52, "rows": 3283482, "note": "RTXSTOCK 30m: rule 45/120 (zscore20)", "pct": 75.0, "updated": "2026-08-31T22:52:15Z"}

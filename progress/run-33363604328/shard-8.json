@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 22, "total": 51, "rows": 2013320, "note": "HOME 30m: 18,959 bars, testing 120 rules", "pct": 43.1, "updated": "2026-08-31T08:16:45Z"}
+{"shard": 8, "stage": "testing", "done": 22, "total": 51, "rows": 2016840, "note": "HOME 30m: rule 10/120 (sr_bounce)", "pct": 43.1, "updated": "2026-08-31T08:17:31Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 21, "total": 51, "rows": 1630512, "note": "HANA 1h: rule 91/120 (cf_soup)", "pct": 41.2, "updated": "2026-08-31T21:08:59Z"}
+{"shard": 12, "stage": "testing", "done": 21, "total": 51, "rows": 1663732, "note": "HANA 1d: 339 bars, testing 120 rules", "pct": 41.2, "updated": "2026-08-31T21:09:47Z"}

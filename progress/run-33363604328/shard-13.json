@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 47, "total": 51, "rows": 4127308, "note": "USDC 30m: rule 87/120 (cf_triple_l2)", "pct": 92.2, "updated": "2026-08-31T10:04:32Z"}
+{"shard": 13, "stage": "testing", "done": 47, "total": 51, "rows": 4143588, "note": "USDC 1h: rule 45/120 (zscore20)", "pct": 92.2, "updated": "2026-08-31T10:05:18Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 38, "total": 51, "rows": 3125292, "note": "RLS 15m: rule 59/120 (choch)", "pct": 74.5, "updated": "2026-08-31T23:09:16Z"}
+{"shard": 18, "stage": "testing", "done": 38, "total": 51, "rows": 3134652, "note": "RLS 15m: rule 111/120 (cf_fundfade_l2)", "pct": 74.5, "updated": "2026-08-31T23:10:03Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 51, "total": 51, "rows": 4217756, "note": "ZBCN 15m: rule 77/120 (cf_mom_l1)", "pct": 100.0, "updated": "2026-08-31T22:55:13Z"}
+{"shard": 13, "stage": "testing", "done": 51, "total": 51, "rows": 4224636, "note": "ZBCN 30m: 18,959 bars, testing 120 rules", "pct": 100.0, "updated": "2026-08-31T22:56:01Z"}

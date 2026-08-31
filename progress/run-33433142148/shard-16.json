@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 12, "total": 51, "rows": 1174724, "note": "COLLECT 30m: rule 90/120 (cf_chan_l2)", "pct": 23.5, "updated": "2026-08-31T21:25:28Z"}
+{"shard": 16, "stage": "testing", "done": 12, "total": 51, "rows": 1188868, "note": "COLLECT 1h: rule 61/120 (turtle)", "pct": 23.5, "updated": "2026-08-31T21:26:13Z"}

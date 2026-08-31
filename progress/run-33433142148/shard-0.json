@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 16, "total": 52, "rows": 1382236, "note": "DRAM 1h: rule 17/120 (atrbreak)", "pct": 30.8, "updated": "2026-08-31T21:08:00Z"}
+{"shard": 0, "stage": "testing", "done": 18, "total": 52, "rows": 1474274, "note": "EXPESTOCK 30m: rule 10/120 (sr_bounce)", "pct": 34.6, "updated": "2026-08-31T21:08:45Z"}

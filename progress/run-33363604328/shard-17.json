@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 11, "total": 51, "rows": 867096, "note": "CHF 15m: 29,974 bars, testing 120 rules", "pct": 21.6, "updated": "2026-08-31T07:17:16Z"}
+{"shard": 17, "stage": "testing", "done": 11, "total": 51, "rows": 879196, "note": "CHF 15m: rule 49/120 (vwaprev)", "pct": 21.6, "updated": "2026-08-31T07:18:02Z"}

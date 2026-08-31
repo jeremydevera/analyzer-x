@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 29, "total": 52, "rows": 2345408, "note": "METASTOCK 1h: 9,479 bars, testing 120 rules", "pct": 55.8, "updated": "2026-08-31T22:12:04Z"}
+{"shard": 6, "stage": "testing", "done": 29, "total": 52, "rows": 2372588, "note": "METASTOCK 4h: rule 3/120 (fade15)", "pct": 55.8, "updated": "2026-08-31T22:12:49Z"}

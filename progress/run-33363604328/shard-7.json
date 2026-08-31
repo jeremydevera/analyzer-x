@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 39, "total": 51, "rows": 3311602, "note": "SAGA 4h: rule 16/120 (keltner)", "pct": 76.5, "updated": "2026-08-31T09:31:23Z"}
+{"shard": 7, "stage": "testing", "done": 40, "total": 51, "rows": 3352570, "note": "SHLD 15m: rule 45/120 (zscore20)", "pct": 78.4, "updated": "2026-08-31T09:32:08Z"}

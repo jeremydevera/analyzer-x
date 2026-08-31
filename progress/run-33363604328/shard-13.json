@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 37, "total": 51, "rows": 3245602, "note": "RCATSTOCK 15m: rule 13/120 (pivot)", "pct": 72.5, "updated": "2026-08-31T09:15:17Z"}
+{"shard": 13, "stage": "testing", "done": 37, "total": 51, "rows": 3280562, "note": "RCATSTOCK 30m: rule 85/120 (cf_triple)", "pct": 72.5, "updated": "2026-08-31T09:16:02Z"}

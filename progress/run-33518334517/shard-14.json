@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 39, "total": 52, "rows": 3002106, "note": "RVN 15m: 34,641 bars, testing 120 rules", "pct": 75.0, "updated": "2026-09-01T16:34:32Z"}
+{"shard": 14, "stage": "testing", "done": 39, "total": 52, "rows": 3004086, "note": "RVN 15m: rule 3/120 (fade15)", "pct": 75.0, "updated": "2026-09-01T16:35:25Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 7, "total": 51, "rows": 692762, "note": "BDX 30m: 14,457 bars, testing 120 rules", "pct": 13.7, "updated": "2026-09-01T15:13:15Z"}
+{"shard": 18, "stage": "testing", "done": 7, "total": 51, "rows": 704162, "note": "BDX 30m: rule 113/120 (cf_obretest_l1)", "pct": 13.7, "updated": "2026-09-01T15:14:00Z"}

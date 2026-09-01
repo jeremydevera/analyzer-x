@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 31, "total": 52, "rows": 2619828, "note": "MTL 15m: 34,642 bars, testing 120 rules", "pct": 59.6, "updated": "2026-09-01T16:48:11Z"}
+{"shard": 0, "stage": "testing", "done": 31, "total": 52, "rows": 2623628, "note": "MTL 15m: rule 13/120 (pivot)", "pct": 59.6, "updated": "2026-09-01T16:48:57Z"}

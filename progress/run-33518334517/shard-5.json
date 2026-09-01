@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 34, "total": 52, "rows": 2376028, "note": "OPG 30m: rule 42/120 (rsidiv)", "pct": 65.4, "updated": "2026-09-01T16:19:24Z"}
+{"shard": 5, "stage": "testing", "done": 34, "total": 52, "rows": 2410898, "note": "OPG 1h: rule 93/120 (cf_soup_l2)", "pct": 65.4, "updated": "2026-09-01T16:20:09Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 26, "total": 52, "rows": 2433060, "note": "KITE 30m: 14,747 bars, testing 120 rules", "pct": 50.0, "updated": "2026-09-01T16:41:07Z"}
+{"shard": 4, "stage": "testing", "done": 26, "total": 52, "rows": 2437680, "note": "KITE 30m: rule 15/120 (bbbreak)", "pct": 50.0, "updated": "2026-09-01T16:41:52Z"}

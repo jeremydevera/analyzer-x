@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 2, "total": 51, "rows": 200942, "note": "AIXBT 4h: rule 53/120 (squeeze)", "pct": 3.9, "updated": "2026-09-01T14:32:02Z"}
+{"shard": 19, "stage": "testing", "done": 3, "total": 51, "rows": 229838, "note": "AMZNSTOCK 15m: rule 3/120 (fade15)", "pct": 5.9, "updated": "2026-09-01T14:32:52Z"}

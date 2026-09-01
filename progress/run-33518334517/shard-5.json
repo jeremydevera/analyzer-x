@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 31, "total": 52, "rows": 2032200, "note": "MUSTOCK 15m: rule 11/120 (sr_break)", "pct": 59.6, "updated": "2026-09-01T16:06:23Z"}
+{"shard": 5, "stage": "testing", "done": 31, "total": 52, "rows": 2038320, "note": "MUSTOCK 15m: rule 45/120 (zscore20)", "pct": 59.6, "updated": "2026-09-01T16:07:08Z"}

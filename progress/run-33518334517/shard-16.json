@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 1, "total": 52, "rows": 18720, "note": "ACE 15m: rule 99/120 (cf_ttm_l2)", "pct": 1.9, "updated": "2026-09-01T14:19:29Z"}
+{"shard": 16, "stage": "testing", "done": 1, "total": 52, "rows": 22500, "note": "ACE 30m: 18,959 bars, testing 120 rules", "pct": 1.9, "updated": "2026-09-01T14:20:18Z"}

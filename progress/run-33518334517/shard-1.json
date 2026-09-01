@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 24, "total": 52, "rows": 2265228, "note": "INJ 1h: 9,479 bars, testing 120 rules", "pct": 46.2, "updated": "2026-09-01T15:42:49Z"}
+{"shard": 1, "stage": "testing", "done": 24, "total": 52, "rows": 2290308, "note": "INJ 1h: rule 110/120 (cf_fundfade_l1)", "pct": 46.2, "updated": "2026-09-01T15:43:34Z"}

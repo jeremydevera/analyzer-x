@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 17, "total": 52, "rows": 1233280, "note": "ETHFI 30m: rule 45/120 (zscore20)", "pct": 32.7, "updated": "2026-09-01T15:29:56Z"}
+{"shard": 10, "stage": "testing", "done": 17, "total": 52, "rows": 1244720, "note": "ETHFI 30m: rule 99/120 (cf_ttm_l2)", "pct": 32.7, "updated": "2026-09-01T15:30:41Z"}

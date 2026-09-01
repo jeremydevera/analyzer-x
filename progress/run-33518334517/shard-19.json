@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 35, "total": 51, "rows": 2850350, "note": "PLTRSTOCK 1h: rule 30/120 (kama10)", "pct": 68.6, "updated": "2026-09-01T16:57:14Z"}
+{"shard": 19, "stage": "testing", "done": 35, "total": 51, "rows": 2881150, "note": "PLTRSTOCK 4h: rule 45/120 (zscore20)", "pct": 68.6, "updated": "2026-09-01T16:57:59Z"}

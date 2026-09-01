@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 3, "total": 52, "rows": 298800, "note": "ALPINE 4h: 2,369 bars, testing 120 rules", "pct": 5.8, "updated": "2026-09-01T14:34:20Z"}
+{"shard": 10, "stage": "testing", "done": 4, "total": 52, "rows": 347188, "note": "APHSTOCK 15m: rule 47/120 (ibs)", "pct": 7.7, "updated": "2026-09-01T14:35:06Z"}

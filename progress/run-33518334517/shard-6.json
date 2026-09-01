@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 24, "total": 52, "rows": 2015280, "note": "IN 30m: rule 6/120 (sweep30)", "pct": 46.2, "updated": "2026-09-01T16:05:21Z"}
+{"shard": 6, "stage": "testing", "done": 24, "total": 52, "rows": 2023860, "note": "IN 30m: rule 45/120 (zscore20)", "pct": 46.2, "updated": "2026-09-01T16:06:06Z"}

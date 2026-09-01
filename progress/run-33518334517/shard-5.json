@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 41, "total": 52, "rows": 3000016, "note": "SKL 30m: rule 78/120 (cf_mom_l2)", "pct": 78.8, "updated": "2026-09-01T16:46:10Z"}
+{"shard": 5, "stage": "testing", "done": 41, "total": 52, "rows": 3010576, "note": "SKL 1h: rule 2/120 (mom15)", "pct": 78.8, "updated": "2026-09-01T16:47:00Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 51, "total": 51, "rows": 4334364, "note": "ZBT 30m: rule 49/120 (vwaprev)", "pct": 100.0, "updated": "2026-09-01T18:21:07Z"}
+{"shard": 19, "stage": "testing", "done": 51, "total": 51, "rows": 4349764, "note": "ZBT 1h: 7,663 bars, testing 120 rules", "pct": 100.0, "updated": "2026-09-01T18:22:02Z"}

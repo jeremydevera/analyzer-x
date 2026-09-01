@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 43, "total": 52, "rows": 3757246, "note": "SQD 15m: 34,641 bars, testing 120 rules", "pct": 82.7, "updated": "2026-09-01T16:43:23Z"}
+{"shard": 7, "stage": "testing", "done": 43, "total": 52, "rows": 3759446, "note": "SQD 15m: rule 4/120 (trend50)", "pct": 82.7, "updated": "2026-09-01T16:44:12Z"}

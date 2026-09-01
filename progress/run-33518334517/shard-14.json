@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 27, "total": 52, "rows": 2238714, "note": "LMTSTOCK 1h: rule 99/120 (cf_ttm_l2)", "pct": 51.9, "updated": "2026-09-01T16:04:56Z"}
+{"shard": 14, "stage": "testing", "done": 28, "total": 52, "rows": 2292384, "note": "MARASTOCK 30m: rule 34/120 (lrslope)", "pct": 53.8, "updated": "2026-09-01T16:05:41Z"}

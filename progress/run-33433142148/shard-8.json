@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 51, "total": 52, "rows": 4407724, "note": "YB 15m: rule 81/120 (cf_donch_l2)", "pct": 98.1, "updated": "2026-08-31T23:59:17Z"}
+{"shard": 8, "stage": "testing", "done": 51, "total": 52, "rows": 4415524, "note": "YB 30m: 15,619 bars, testing 120 rules", "pct": 98.1, "updated": "2026-09-01T00:00:05Z"}

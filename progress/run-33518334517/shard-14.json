@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 14, "total": 52, "rows": 1201582, "note": "C 30m: rule 99/120 (cf_ttm_l2)", "pct": 26.9, "updated": "2026-09-01T15:18:23Z"}
+{"shard": 14, "stage": "testing", "done": 14, "total": 52, "rows": 1208402, "note": "C 1h: rule 4/120 (trend50)", "pct": 26.9, "updated": "2026-09-01T15:19:10Z"}

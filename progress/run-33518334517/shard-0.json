@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 24, "total": 52, "rows": 1959164, "note": "INIT 30m: rule 120/120 (cf_stflip_l2)", "pct": 46.2, "updated": "2026-09-01T16:08:29Z"}
+{"shard": 0, "stage": "testing", "done": 24, "total": 52, "rows": 1967480, "note": "INIT 1h: rule 36/120 (stochrsi)", "pct": 46.2, "updated": "2026-09-01T16:09:15Z"}

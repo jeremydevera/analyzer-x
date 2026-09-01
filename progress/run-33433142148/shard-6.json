@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 51, "total": 52, "rows": 4506904, "note": "XVS 15m: rule 53/120 (squeeze)", "pct": 98.1, "updated": "2026-09-01T00:38:12Z"}
+{"shard": 6, "stage": "testing", "done": 51, "total": 52, "rows": 4514264, "note": "XVS 15m: rule 99/120 (cf_ttm_l2)", "pct": 98.1, "updated": "2026-09-01T00:38:58Z"}

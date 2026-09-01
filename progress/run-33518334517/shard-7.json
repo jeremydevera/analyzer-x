@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 10, "total": 52, "rows": 880150, "note": "BTX 15m: 25,361 bars, testing 120 rules", "pct": 19.2, "updated": "2026-09-01T14:57:03Z"}
+{"shard": 7, "stage": "testing", "done": 10, "total": 52, "rows": 884990, "note": "BTX 30m: rule 120/120 (cf_stflip_l2)", "pct": 19.2, "updated": "2026-09-01T14:57:49Z"}

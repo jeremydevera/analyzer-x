@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 35, "total": 52, "rows": 2801416, "note": "PENDLE 1h: rule 93/120 (cf_soup_l2)", "pct": 67.3, "updated": "2026-09-01T16:23:36Z"}
+{"shard": 3, "stage": "testing", "done": 35, "total": 52, "rows": 2833096, "note": "PENDLE 1d: 394 bars, testing 120 rules", "pct": 67.3, "updated": "2026-09-01T16:24:22Z"}

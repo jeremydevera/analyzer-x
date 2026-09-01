@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 51, "total": 51, "rows": 4771136, "note": "ZEN 1h: 9,479 bars, testing 120 rules", "pct": 100.0, "updated": "2026-09-01T01:06:12Z"}
+{"shard": 16, "stage": "testing", "done": 51, "total": 51, "rows": 4784336, "note": "ZEN 1h: rule 55/120 (nhigh50)", "pct": 100.0, "updated": "2026-09-01T01:06:57Z"}

@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 13, "total": 52, "rows": 907440, "note": "CROSS 15m: rule 39/120 (fisher)", "pct": 25.0, "updated": "2026-09-01T15:06:58Z"}
+{"shard": 10, "stage": "testing", "done": 13, "total": 52, "rows": 913600, "note": "CROSS 15m: rule 68/120 (dbltop)", "pct": 25.0, "updated": "2026-09-01T15:07:43Z"}

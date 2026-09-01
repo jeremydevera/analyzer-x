@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 2, "total": 52, "rows": 88560, "note": "AIGENSYN 30m: rule 78/120 (cf_mom_l2)", "pct": 3.8, "updated": "2026-09-01T14:17:52Z"}
+{"shard": 13, "stage": "testing", "done": 3, "total": 52, "rows": 152074, "note": "AMATSTOCK 15m: 21,922 bars, testing 120 rules", "pct": 5.8, "updated": "2026-09-01T14:18:39Z"}

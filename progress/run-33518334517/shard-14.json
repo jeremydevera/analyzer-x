@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 3, "total": 52, "rows": 156416, "note": "AMCSTOCK 15m: rule 40/120 (crsi)", "pct": 5.8, "updated": "2026-09-01T14:24:51Z"}
+{"shard": 14, "stage": "testing", "done": 4, "total": 52, "rows": 194428, "note": "APPSTOCK 15m: 9,259 bars, testing 120 rules", "pct": 7.7, "updated": "2026-09-01T14:25:40Z"}

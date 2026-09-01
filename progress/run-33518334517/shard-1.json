@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 22, "total": 52, "rows": 2069600, "note": "HFT 30m: rule 90/120 (cf_chan_l2)", "pct": 42.3, "updated": "2026-09-01T15:30:12Z"}
+{"shard": 1, "stage": "testing", "done": 22, "total": 52, "rows": 2080560, "note": "HFT 4h: 2,369 bars, testing 120 rules", "pct": 42.3, "updated": "2026-09-01T15:31:00Z"}

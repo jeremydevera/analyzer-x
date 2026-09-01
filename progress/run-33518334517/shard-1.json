@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 43, "total": 52, "rows": 3818600, "note": "SPK 15m: 34,641 bars, testing 120 rules", "pct": 82.7, "updated": "2026-09-01T16:42:24Z"}
+{"shard": 1, "stage": "testing", "done": 43, "total": 52, "rows": 3820800, "note": "SPK 15m: rule 4/120 (trend50)", "pct": 82.7, "updated": "2026-09-01T16:43:10Z"}

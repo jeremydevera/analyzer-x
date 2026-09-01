@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 1, "total": 52, "rows": 0, "note": "AAPU 15m: downloading candles", "pct": 1.9, "updated": "2026-09-01T14:15:36Z"}
+{"shard": 12, "stage": "testing", "done": 2, "total": 52, "rows": 41260, "note": "AIA 15m: rule 1/120 (mom6)", "pct": 3.8, "updated": "2026-09-01T14:16:26Z"}

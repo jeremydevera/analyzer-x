@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 13, "total": 52, "rows": 1265824, "note": "COSTSTOCK 30m: rule 3/120 (fade15)", "pct": 25.0, "updated": "2026-09-01T15:34:24Z"}
+{"shard": 4, "stage": "testing", "done": 13, "total": 52, "rows": 1288624, "note": "COSTSTOCK 30m: rule 120/120 (cf_stflip_l2)", "pct": 25.0, "updated": "2026-09-01T15:35:09Z"}

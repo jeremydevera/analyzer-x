@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 22, "total": 52, "rows": 1923388, "note": "HK1810 15m: rule 91/120 (cf_soup)", "pct": 42.3, "updated": "2026-09-01T15:59:31Z"}
+{"shard": 6, "stage": "testing", "done": 24, "total": 52, "rows": 1987640, "note": "IN 15m: 34,639 bars, testing 120 rules", "pct": 46.2, "updated": "2026-09-01T16:00:20Z"}

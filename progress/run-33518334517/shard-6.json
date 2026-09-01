@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 24, "total": 52, "rows": 2006040, "note": "IN 15m: rule 87/120 (cf_triple_l2)", "pct": 46.2, "updated": "2026-09-01T16:03:39Z"}
+{"shard": 6, "stage": "testing", "done": 24, "total": 52, "rows": 2012640, "note": "IN 30m: 18,734 bars, testing 120 rules", "pct": 46.2, "updated": "2026-09-01T16:04:35Z"}

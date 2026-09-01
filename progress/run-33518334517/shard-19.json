@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 25, "total": 51, "rows": 2134288, "note": "KGEN 30m: 15,797 bars, testing 120 rules", "pct": 49.0, "updated": "2026-09-01T16:21:14Z"}
+{"shard": 19, "stage": "testing", "done": 25, "total": 51, "rows": 2136268, "note": "KGEN 30m: rule 3/120 (fade15)", "pct": 49.0, "updated": "2026-09-01T16:21:59Z"}

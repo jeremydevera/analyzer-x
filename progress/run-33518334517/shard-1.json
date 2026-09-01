@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 6, "total": 52, "rows": 533384, "note": "AUD 30m: rule 17/120 (atrbreak)", "pct": 11.5, "updated": "2026-09-01T14:41:13Z"}
+{"shard": 1, "stage": "testing", "done": 6, "total": 52, "rows": 553844, "note": "AUD 1h: 7,994 bars, testing 120 rules", "pct": 11.5, "updated": "2026-09-01T14:42:00Z"}

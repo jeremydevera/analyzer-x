@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 10, "total": 52, "rows": 987096, "note": "BSB 30m: rule 2/120 (mom15)", "pct": 19.2, "updated": "2026-09-01T15:00:47Z"}
+{"shard": 1, "stage": "testing", "done": 10, "total": 52, "rows": 1010296, "note": "BSB 1h: 4,349 bars, testing 120 rules", "pct": 19.2, "updated": "2026-09-01T15:01:34Z"}

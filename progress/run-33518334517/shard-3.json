@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 34, "total": 52, "rows": 2652124, "note": "OPENLEDGER 30m: rule 86/120 (cf_triple_l1)", "pct": 65.4, "updated": "2026-09-01T16:13:06Z"}
+{"shard": 3, "stage": "testing", "done": 34, "total": 52, "rows": 2661584, "note": "OPENLEDGER 1h: rule 4/120 (trend50)", "pct": 65.4, "updated": "2026-09-01T16:13:52Z"}

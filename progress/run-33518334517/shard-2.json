@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 19, "total": 52, "rows": 1520058, "note": "FLUX 4h: 2,369 bars, testing 120 rules", "pct": 36.5, "updated": "2026-09-01T15:59:08Z"}
+{"shard": 2, "stage": "testing", "done": 20, "total": 52, "rows": 1559438, "note": "GEOD 15m: rule 90/120 (cf_chan_l2)", "pct": 38.5, "updated": "2026-09-01T15:59:53Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 52, "total": 52, "rows": 4529720, "note": "ZMSTOCK 30m: rule 72/120 (force13)", "pct": 100.0, "updated": "2026-09-01T00:04:39Z"}
+{"shard": 8, "stage": "done", "done": 52, "total": 52, "rows": 4565574, "note": "4,565,574 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "pct": 100.0, "updated": "2026-09-01T00:05:00Z"}

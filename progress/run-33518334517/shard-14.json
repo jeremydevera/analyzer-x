@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 36, "total": 52, "rows": 2785658, "note": "PROM 15m: rule 73/120 (volspike)", "pct": 69.2, "updated": "2026-09-01T16:26:00Z"}
+{"shard": 14, "stage": "testing", "done": 36, "total": 52, "rows": 2793358, "note": "PROM 15m: rule 108/120 (cf_bosfvg_l2)", "pct": 69.2, "updated": "2026-09-01T16:26:46Z"}

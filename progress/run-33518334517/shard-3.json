@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 13, "total": 52, "rows": 1041360, "note": "CORE 15m: 34,635 bars, testing 120 rules", "pct": 25.0, "updated": "2026-09-01T15:01:45Z"}
+{"shard": 3, "stage": "testing", "done": 13, "total": 52, "rows": 1043160, "note": "CORE 15m: rule 3/120 (fade15)", "pct": 25.0, "updated": "2026-09-01T15:02:44Z"}

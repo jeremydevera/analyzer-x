@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 24, "total": 52, "rows": 2088254, "note": "IN 1d: 390 bars, testing 120 rules", "pct": 46.2, "updated": "2026-09-01T16:09:14Z"}
+{"shard": 6, "stage": "testing", "done": 25, "total": 52, "rows": 2111444, "note": "JP225 15m: rule 64/120 (hammer)", "pct": 48.1, "updated": "2026-09-01T16:09:59Z"}

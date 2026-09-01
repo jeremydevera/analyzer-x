@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 43, "total": 52, "rows": 4032430, "note": "STABLE 1h: rule 16/120 (keltner)", "pct": 82.7, "updated": "2026-09-01T18:42:35Z"}
+{"shard": 10, "stage": "testing", "done": 43, "total": 52, "rows": 4055970, "note": "STABLE 4h: rule 2/120 (mom15)", "pct": 82.7, "updated": "2026-09-01T18:43:21Z"}

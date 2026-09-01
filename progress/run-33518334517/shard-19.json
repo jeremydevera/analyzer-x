@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 25, "total": 51, "rows": 2126488, "note": "KGEN 15m: rule 81/120 (cf_donch_l2)", "pct": 49.0, "updated": "2026-09-01T16:20:20Z"}
+{"shard": 19, "stage": "testing", "done": 25, "total": 51, "rows": 2134288, "note": "KGEN 30m: 15,797 bars, testing 120 rules", "pct": 49.0, "updated": "2026-09-01T16:21:14Z"}

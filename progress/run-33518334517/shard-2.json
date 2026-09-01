@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 19, "total": 52, "rows": 1492998, "note": "FLUX 1h: 9,479 bars, testing 120 rules", "pct": 36.5, "updated": "2026-09-01T15:57:32Z"}
+{"shard": 2, "stage": "testing", "done": 19, "total": 52, "rows": 1503338, "note": "FLUX 1h: rule 41/120 (tsi)", "pct": 36.5, "updated": "2026-09-01T15:58:18Z"}

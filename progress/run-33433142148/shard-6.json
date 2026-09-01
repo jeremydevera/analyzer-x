@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 50, "total": 52, "rows": 4396942, "note": "XCN 15m: rule 45/120 (zscore20)", "pct": 96.2, "updated": "2026-09-01T00:30:23Z"}
+{"shard": 6, "stage": "testing", "done": 50, "total": 52, "rows": 4404322, "note": "XCN 15m: rule 87/120 (cf_triple_l2)", "pct": 96.2, "updated": "2026-09-01T00:31:10Z"}

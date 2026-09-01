@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 10, "total": 52, "rows": 939970, "note": "BTC 30m: 18,959 bars, testing 120 rules", "pct": 19.2, "updated": "2026-09-01T15:19:45Z"}
+{"shard": 4, "stage": "testing", "done": 10, "total": 52, "rows": 947230, "note": "BTC 30m: rule 27/120 (aroon25)", "pct": 19.2, "updated": "2026-09-01T15:20:30Z"}

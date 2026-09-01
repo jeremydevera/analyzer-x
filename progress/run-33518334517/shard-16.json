@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 14, "total": 52, "rows": 1284826, "note": "DATA 30m: rule 6/120 (sweep30)", "pct": 26.9, "updated": "2026-09-01T15:31:19Z"}
+{"shard": 16, "stage": "testing", "done": 15, "total": 52, "rows": 1337164, "note": "DOLO 15m: 34,637 bars, testing 120 rules", "pct": 28.8, "updated": "2026-09-01T15:32:17Z"}

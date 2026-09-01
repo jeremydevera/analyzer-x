@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 28, "total": 51, "rows": 2566692, "note": "MASK 1h: rule 99/120 (cf_ttm_l2)", "pct": 54.9, "updated": "2026-09-01T16:21:26Z"}
+{"shard": 17, "stage": "testing", "done": 29, "total": 51, "rows": 2610912, "note": "MIRA 15m: 32,657 bars, testing 120 rules", "pct": 56.9, "updated": "2026-09-01T16:22:16Z"}

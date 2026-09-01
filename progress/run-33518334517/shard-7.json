@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 43, "total": 52, "rows": 3766486, "note": "SQD 15m: rule 36/120 (stochrsi)", "pct": 82.7, "updated": "2026-09-01T16:44:58Z"}
+{"shard": 7, "stage": "testing", "done": 43, "total": 52, "rows": 3777046, "note": "SQD 15m: rule 85/120 (cf_triple)", "pct": 82.7, "updated": "2026-09-01T16:45:43Z"}

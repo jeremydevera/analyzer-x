@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 41, "total": 52, "rows": 3760352, "note": "SLBSTOCK 15m: 6,870 bars, testing 120 rules", "pct": 78.8, "updated": "2026-09-01T17:52:10Z"}
+{"shard": 11, "stage": "testing", "done": 42, "total": 52, "rows": 3810544, "note": "SONYSTOCK 15m: rule 10/120 (sr_bounce)", "pct": 80.8, "updated": "2026-09-01T17:52:55Z"}

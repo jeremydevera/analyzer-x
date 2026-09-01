@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 34, "total": 52, "rows": 3005814, "note": "ORDER 4h: rule 45/120 (zscore20)", "pct": 65.4, "updated": "2026-09-01T17:35:31Z"}
+{"shard": 10, "stage": "testing", "done": 35, "total": 52, "rows": 3034690, "note": "PHA 15m: rule 1/120 (mom6)", "pct": 67.3, "updated": "2026-09-01T17:36:23Z"}

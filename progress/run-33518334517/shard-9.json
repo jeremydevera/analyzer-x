@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 5, "total": 52, "rows": 391862, "note": "ASP 15m: 34,633 bars, testing 120 rules", "pct": 9.6, "updated": "2026-09-01T14:38:19Z"}
+{"shard": 9, "stage": "testing", "done": 5, "total": 52, "rows": 394502, "note": "ASP 15m: rule 16/120 (keltner)", "pct": 9.6, "updated": "2026-09-01T14:39:05Z"}

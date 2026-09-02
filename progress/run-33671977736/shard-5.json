@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 25, "total": 52, "rows": 2029806, "note": "JDSTOCK 15m: 25,020 bars, testing 120 rules", "pct": 48.1, "updated": "2026-09-02T21:28:52Z"}
+{"shard": 5, "stage": "testing", "done": 25, "total": 52, "rows": 2037006, "note": "JDSTOCK 15m: rule 84/120 (cf_maobv_l2)", "pct": 48.1, "updated": "2026-09-02T21:29:38Z"}

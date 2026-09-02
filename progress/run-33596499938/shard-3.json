@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 42, "total": 52, "rows": 3637796, "note": "SNDKSTOCK 30m: rule 11/120 (sr_break)", "pct": 80.8, "updated": "2026-09-02T08:43:18Z"}
+{"shard": 3, "stage": "testing", "done": 42, "total": 52, "rows": 3676356, "note": "SNDKSTOCK 1h: rule 72/120 (force13)", "pct": 80.8, "updated": "2026-09-02T08:44:03Z"}

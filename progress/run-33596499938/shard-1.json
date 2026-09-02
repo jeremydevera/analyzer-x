@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 45, "total": 53, "rows": 3567508, "note": "TAG 30m: 18,959 bars, testing 120 rules", "pct": 84.9, "updated": "2026-09-02T07:59:07Z"}
+{"shard": 1, "stage": "testing", "done": 45, "total": 53, "rows": 3574508, "note": "TAG 30m: rule 29/120 (hull20)", "pct": 84.9, "updated": "2026-09-02T07:59:52Z"}

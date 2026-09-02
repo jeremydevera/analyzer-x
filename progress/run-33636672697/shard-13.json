@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 18, "total": 52, "rows": 1331912, "note": "FIDA 1h: 9,479 bars, testing 120 rules", "pct": 34.6, "updated": "2026-09-02T14:52:16Z"}
+{"shard": 13, "stage": "testing", "done": 18, "total": 52, "rows": 1345112, "note": "FIDA 1h: rule 55/120 (nhigh50)", "pct": 34.6, "updated": "2026-09-02T14:53:02Z"}

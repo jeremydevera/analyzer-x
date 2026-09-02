@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 49, "total": 52, "rows": 3834290, "note": "WAL 15m: rule 81/120 (cf_donch_l2)", "pct": 94.2, "updated": "2026-09-02T17:26:20Z"}
+{"shard": 16, "stage": "testing", "done": 49, "total": 52, "rows": 3842870, "note": "WAL 30m: 18,959 bars, testing 120 rules", "pct": 94.2, "updated": "2026-09-02T17:27:20Z"}

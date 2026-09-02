@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 19, "total": 53, "rows": 1740802, "note": "FLR 1h: 9,479 bars, testing 120 rules", "pct": 35.8, "updated": "2026-09-02T20:20:21Z"}
+{"shard": 2, "stage": "testing", "done": 19, "total": 53, "rows": 1771042, "note": "FLR 4h: rule 34/120 (lrslope)", "pct": 35.8, "updated": "2026-09-02T20:21:06Z"}

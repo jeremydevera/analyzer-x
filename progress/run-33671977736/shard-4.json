@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 16, "total": 53, "rows": 1315598, "note": "DRIFT 30m: rule 54/120 (fractal5)", "pct": 30.2, "updated": "2026-09-02T20:11:24Z"}
+{"shard": 4, "stage": "testing", "done": 16, "total": 53, "rows": 1323398, "note": "DRIFT 1h: 9,479 bars, testing 120 rules", "pct": 30.2, "updated": "2026-09-02T20:12:14Z"}

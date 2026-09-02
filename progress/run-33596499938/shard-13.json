@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 33, "total": 52, "rows": 2910388, "note": "OG 30m: 18,959 bars, testing 120 rules", "pct": 63.5, "updated": "2026-09-02T08:43:59Z"}
+{"shard": 13, "stage": "testing", "done": 33, "total": 52, "rows": 2915228, "note": "OG 30m: rule 16/120 (keltner)", "pct": 63.5, "updated": "2026-09-02T08:44:44Z"}

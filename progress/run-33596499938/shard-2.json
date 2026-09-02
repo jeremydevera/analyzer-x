@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 15, "total": 52, "rows": 1340430, "note": "DEEP 15m: rule 78/120 (cf_mom_l2)", "pct": 28.8, "updated": "2026-09-02T07:03:40Z"}
+{"shard": 2, "stage": "testing", "done": 15, "total": 52, "rows": 1347990, "note": "DEEP 30m: 18,959 bars, testing 120 rules", "pct": 28.8, "updated": "2026-09-02T07:04:35Z"}

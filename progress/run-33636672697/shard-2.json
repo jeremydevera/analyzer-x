@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 42, "total": 53, "rows": 3265848, "note": "SMRSTOCK 15m: rule 111/120 (cf_fundfade_l2)", "pct": 79.2, "updated": "2026-09-02T16:39:21Z"}
+{"shard": 2, "stage": "testing", "done": 44, "total": 53, "rows": 3309948, "note": "STO 15m: 34,641 bars, testing 120 rules", "pct": 83.0, "updated": "2026-09-02T16:40:07Z"}

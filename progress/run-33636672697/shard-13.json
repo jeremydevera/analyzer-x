@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 23, "total": 52, "rows": 1639174, "note": "ICNT 30m: rule 4/120 (trend50)", "pct": 44.2, "updated": "2026-09-02T15:08:44Z"}
+{"shard": 13, "stage": "testing", "done": 23, "total": 52, "rows": 1645174, "note": "ICNT 30m: rule 34/120 (lrslope)", "pct": 44.2, "updated": "2026-09-02T15:09:29Z"}

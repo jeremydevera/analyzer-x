@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 30, "total": 52, "rows": 2557974, "note": "MNT 30m: 18,959 bars, testing 120 rules", "pct": 57.7, "updated": "2026-09-02T08:02:58Z"}
+{"shard": 5, "stage": "testing", "done": 30, "total": 52, "rows": 2564134, "note": "MNT 30m: rule 22/120 (engulf)", "pct": 57.7, "updated": "2026-09-02T08:03:44Z"}

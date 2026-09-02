@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 27, "total": 52, "rows": 2074756, "note": "LDO 15m: 34,563 bars, testing 120 rules", "pct": 51.9, "updated": "2026-09-02T21:09:19Z"}
+{"shard": 6, "stage": "testing", "done": 27, "total": 52, "rows": 2076376, "note": "LDO 15m: rule 3/120 (fade15)", "pct": 51.9, "updated": "2026-09-02T21:10:06Z"}

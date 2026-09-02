@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 6, "total": 53, "rows": 494774, "note": "AUSTOCK 15m: rule 87/120 (cf_triple_l2)", "pct": 11.3, "updated": "2026-09-02T19:34:26Z"}
+{"shard": 4, "stage": "testing", "done": 7, "total": 53, "rows": 548314, "note": "BACSTOCK 15m: rule 78/120 (cf_mom_l2)", "pct": 13.2, "updated": "2026-09-02T19:35:12Z"}

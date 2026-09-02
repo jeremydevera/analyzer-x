@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 47, "total": 52, "rows": 3682384, "note": "TWLOSTOCK 15m: rule 49/120 (vwaprev)", "pct": 90.4, "updated": "2026-09-02T15:45:20Z"}
+{"shard": 11, "stage": "testing", "done": 48, "total": 52, "rows": 3733764, "note": "USELESS 15m: 34,638 bars, testing 120 rules", "pct": 92.3, "updated": "2026-09-02T15:46:08Z"}

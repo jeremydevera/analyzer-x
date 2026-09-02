@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 42, "total": 52, "rows": 3285616, "note": "SOPH 15m: 34,610 bars, testing 120 rules", "pct": 80.8, "updated": "2026-09-02T08:53:26Z"}
+{"shard": 17, "stage": "testing", "done": 42, "total": 52, "rows": 3287416, "note": "SOPH 15m: rule 3/120 (fade15)", "pct": 80.8, "updated": "2026-09-02T08:54:19Z"}

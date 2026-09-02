@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 5, "total": 53, "rows": 304980, "note": "ARKM 30m: 18,959 bars, testing 120 rules", "pct": 9.4, "updated": "2026-09-02T19:29:27Z"}
+{"shard": 2, "stage": "testing", "done": 5, "total": 53, "rows": 314220, "note": "ARKM 30m: rule 36/120 (stochrsi)", "pct": 9.4, "updated": "2026-09-02T19:30:12Z"}

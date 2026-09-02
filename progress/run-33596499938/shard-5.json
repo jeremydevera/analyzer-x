@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 33, "total": 52, "rows": 2896148, "note": "NVDL 15m: rule 78/120 (cf_mom_l2)", "pct": 63.5, "updated": "2026-09-02T08:21:50Z"}
+{"shard": 5, "stage": "testing", "done": 34, "total": 52, "rows": 2945982, "note": "OPENAI 15m: rule 15/120 (bbbreak)", "pct": 65.4, "updated": "2026-09-02T08:22:35Z"}

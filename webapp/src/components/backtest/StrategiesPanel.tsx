@@ -108,6 +108,14 @@ export default function StrategiesPanel() {
   // the window's profit and months-green are exact and its trade count is not
   // — that one needs the row's trades rebuilt, which a click already does.
   const [months, setMonths] = useState(0);
+  // "can you add days textbox isntead of using past 1 month only / if months
+  // is 0 then follow the days" (operator, 2026-09-02). A day window cannot be
+  // summed out of the store -- the sweep keeps profit per MONTH and no trade
+  // counts at all -- so this is a RE-MEASUREMENT from the stored candles, and
+  // the server caps how many rows one request may restate.
+  const [days, setDays] = useState(0);
+  // the window the SERVER measured, in real dates, and how it was reached
+  const [dayWin, setDayWin] = useState<string[]>([]);
   // the window the SERVER used, in real month keys — never the box's number
   const [window_, setWindow] = useState<string[]>([]);
   // the floors the SERVER actually applied. On a 503 the request moves and the
@@ -154,7 +162,7 @@ export default function StrategiesPanel() {
     coin: "", tf: "", signal: "", profitable: false,
     minTrades: 0, minWinrate: 0, minTp: 0, maxSl: 0, sizing: "", rowId: "",
     group: "",
-    months: 0,
+    months: 0, days: 0,
   });
   // The filter set the ROWS ON SCREEN came from — set only when a request
   // SUCCEEDS. `applied` is what was asked for, and the two differ every time a
@@ -169,7 +177,7 @@ export default function StrategiesPanel() {
     coin: "", tf: "", signal: "", profitable: false,
     minTrades: 0, minWinrate: 0, minTp: 0, maxSl: 0, sizing: "", rowId: "",
     group: "",
-    months: 0,
+    months: 0, days: 0,
   });
   // how long the request that FAILED had been running, so the message can say
   // "did not answer in 34s" instead of a bare HTTP 500
@@ -224,8 +232,9 @@ export default function StrategiesPanel() {
                      sizing: applied.sizing || undefined,
                      rowId: applied.rowId || undefined,
                      months: applied.months || undefined,
+        days: applied.months ? undefined : (applied.days || undefined),
                      group: (applied.group || undefined) as "preset" | "classic" | undefined,
-                     desc, limit: perPage, offset: (page - 1) * perPage })
+                     desc, limit: askPage, offset: (page - 1) * askPage })
       .then((d) => {
         if (mine !== reqRef.current) return;   // a newer request owns the screen
         setRows(d.rows); setTotal(d.total); setCapped(!!d.total_capped);
@@ -239,6 +248,7 @@ export default function StrategiesPanel() {
         setServedSl(d.max_sl ?? applied.maxSl);
         setServedFilters(applied);   // these rows came from THIS set
         setWindow(d.window ?? []);   // the window's real months, from the payload
+        setDayWin(d.days_window ?? []);   // and its real DATES when days is on
         setFailedAfter(0);
       })
       .catch((e) => {
@@ -291,9 +301,17 @@ export default function StrategiesPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idHit?.id]);
   // what the boxes say right now, against what the store was asked
+  // A DAYS window re-measures every row it returns (~0.2 s per coin/signal),
+  // so the request is capped server-side at 50 rows. Clamp the page here or the
+  // operator's default 500 would make their first try an error instead of an
+  // answer (measured 2026-09-02: "this page asked for 100").
+  const DAYS_PAGE = 25;
+  const askPage = applied.days > 0 && !applied.months
+    ? Math.min(perPage, DAYS_PAGE) : perPage;
+
   const draft = { coin, tf, signal, profitable, minTrades, minWinrate, minTp,
     maxSl,
-                  sizing, group, months,
+                  sizing, group, months, days,
                   // trim FIRST: " #6yaczsxx " pasted from chat kept its hash
                   // when the # was stripped before the spaces, and a real id
                   // then read as "not in the store"
@@ -326,7 +344,8 @@ export default function StrategiesPanel() {
     f.sizing ? `sizing = ${f.sizing}` : "flat and martingale",
     f.profitable ? "profit > 0" : "losers included",
     f.months > 0 ? `last ${f.months} month${f.months > 1 ? "s" : ""}`
-                 : "all history",
+      : f.days > 0 ? `last ${f.days} day${f.days > 1 ? "s" : ""}`
+      : "all history",
   ].join(" AND "));
   // The REQUEST in words — what the spinner is waiting for, not what is on
   // screen (the caption already says that). The SAME sentence the filter line
@@ -357,7 +376,7 @@ export default function StrategiesPanel() {
    *  the server had them, the row's own otherwise. Profit and green come from
    *  the stored per-month profits (exact for every row); trades, W, L and win %
    *  exist only where the row's log was rebuilt (`restated`). */
-  const win = (r: StrategyRow) => (servedFilters.months > 0
+  const win = (r: StrategyRow) => (servedFilters.months > 0 || servedFilters.days > 0
     ? {profit: r.w_profit ?? 0,
        trades: r.restated ? r.w_trades : r.trades,
        wins: r.restated ? r.w_wins : r.wins,
@@ -365,11 +384,15 @@ export default function StrategiesPanel() {
        winrate: r.restated ? r.w_winrate : r.winrate}
     : {profit: r.profit, trades: r.trades, wins: r.wins, losses: r.losses,
        winrate: r.winrate});
-  const stale = (r: StrategyRow) => servedFilters.months > 0 && !r.restated;
+  // A DAYS window restates every row it returns (the route caps the page for
+  // exactly that reason), so nothing is marked stale there; a MONTHS window
+  // can only restate RESTATE_MAX of them.
+  const stale = (r: StrategyRow) =>
+    (servedFilters.months > 0 || servedFilters.days > 0) && !r.restated;
   const STALE_WHY = "the whole history, not the window: the sweep stores profit "
     + "per month but not trades, so this row's log has to be rebuilt. Look one "
     + "row up by #id and it is restated.";
-  const pages = Math.max(1, Math.ceil(total / perPage));
+  const pages = Math.max(1, Math.ceil(total / askPage));
   // a numbered page is a jump, so the appended LOAD MORE rows go with it —
   // otherwise page 7 shows page 6's tail underneath it
   const goto = (n: number) => {
@@ -400,8 +423,9 @@ export default function StrategiesPanel() {
         minTp: applied.minTp, maxSl: applied.maxSl,
                      sizing: applied.sizing || undefined,
         rowId: applied.rowId || undefined,
-        months: applied.months || undefined, desc,
-        limit: perPage, offset: (page - 1) * perPage + shown.length,
+        months: applied.months || undefined,
+        days: applied.months ? undefined : (applied.days || undefined), desc,
+        limit: askPage, offset: (page - 1) * askPage + shown.length,
       });
       setExtra((e) => e.concat(d.rows));
     } catch (e) { setErr(String(e)); } finally { setLoadingMore(false); }
@@ -464,7 +488,7 @@ export default function StrategiesPanel() {
           </div>
           <p className="text-theme-xs text-gray-500 dark:text-gray-400">
             {total.toLocaleString()}{capped ? "+" : ""} {[applied.coin, applied.tf, applied.signal, applied.profitable ? "profitable only" : ""].some(Boolean) || applied.minTrades > 0 || applied.minWinrate > 0 || applied.minTp > 0 || applied.maxSl > 0 ? "match" : "stored strategies"}
-            {` · rows ${shown.length ? (page - 1) * perPage + 1 : 0}–${(page - 1) * perPage + shown.length} on screen`}
+            {` · rows ${shown.length ? (page - 1) * askPage + 1 : 0}–${(page - 1) * askPage + shown.length} on screen`}
             {` · ${servedDesc ? "highest" : "lowest"} ${STRATEGY_SORTS[servedSort]} first`}
             {/* A partial index must NOT be captioned as the whole store: the
                 sweep measures pairs faster than they are indexed, and "648,181
@@ -490,6 +514,9 @@ export default function StrategiesPanel() {
             {servedTp > 0 ? ` · TP ${servedTp}% or wider` : ""}
             {servedSl > 0 ? ` · SL ${servedSl}% or tighter` : ""}
             {servedFilters.sizing ? ` · ${servedFilters.sizing} only` : ""}
+            {dayWin.length === 2 && dayWin[0] && servedFilters.days > 0
+              ? ` · window ${dayWin[0]} to ${dayWin[1]} (${servedFilters.days} days, re-measured)`
+              : ""}
             {window_.length
               ? ` · window ${monthLabel(window_[window_.length - 1])}–${monthLabel(window_[0])}`
               : ""}
@@ -525,6 +552,27 @@ export default function StrategiesPanel() {
                    className="h-10 w-16 rounded-lg border border-gray-300 bg-transparent px-2 text-theme-sm text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" />
             month(s)
           </label>
+          {/* LAST N DAYS — "instead of using past 1 month only". It
+              RE-MEASURES each row from the stored candles (the store keeps
+              profit per month and no trade counts), so the page is capped and
+              months wins when both are set. */}
+          <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300"
+                 title="re-measure every row over the last N days from the candles already on this PC - trades, wins, losses, win % and profit are the window's own. Months wins if both are set.">
+            last
+            <input type="number" min={0} max={365} step={1} value={days}
+                   onChange={(e) => setDays(Math.min(365, Math.max(0, Number(e.target.value) || 0)))}
+                   onKeyDown={onFilterKey}
+                   aria-label="Last N days"
+                   disabled={months > 0}
+                   className="h-10 w-16 rounded-lg border border-gray-300 bg-transparent px-2 text-theme-sm text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 disabled:opacity-40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" />
+            day(s)
+          </label>
+          {applied.days > 0 && !applied.months && perPage > DAYS_PAGE ? (
+            <span className="self-center text-theme-xs text-gray-500 dark:text-gray-400">
+              {DAYS_PAGE} a page while a days window is on — each row is
+              re-measured
+            </span>
+          ) : null}
           {/* "#6YACZSXX" — the code the first column prints. Typed with or
               without the #, any case; it overrides the rest. */}
           <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300"
@@ -704,7 +752,7 @@ export default function StrategiesPanel() {
             </button>
           ))}
           <button onClick={() => goto(page + 1)}
-                  disabled={rows.length < perPage}
+                  disabled={rows.length < askPage}
                   className={pageBtn}>next</button>
           <input type="number" min={1} placeholder="page #"
                  aria-label="Go to page"

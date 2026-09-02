@@ -207,7 +207,8 @@ def strategies(coin: str | None = None, tf: str | None = None,
                max_sl: float = 0.0,
                sizing: str | None = None, row_id: str | None = None,
                group: str | None = None,
-               months: int = 0, desc: bool | None = None) -> dict:
+               months: int = 0, days: int = 0,
+               desc: bool | None = None) -> dict:
     """Every stored strategy, filtered. Rows carry their stable id.
 
     Served from the SQLite index, NOT by re-reading the store. This route used
@@ -241,6 +242,34 @@ def strategies(coin: str | None = None, tf: str | None = None,
         for r in got["rows"]:
             r.update(restate_window(r, got["window"]))
     got["restate_max"] = RESTATE_MAX
+    # LAST N DAYS. Operator, 2026-09-02: "can you add days textbox isntead of
+    # using past 1 month only / if months is 0 then follow the days" -- so
+    # MONTHS WINS when both are set, and the days window is a re-measurement
+    # (the store keeps profit per MONTH and no trade counts at all, so a day
+    # window cannot be derived from it). Every row on the page is restated or
+    # the request says why, rather than a table where some rows are the window
+    # and others are their whole history.
+    got["days"] = 0
+    if days and not months:
+        from tradingagents import market_sweep as msw
+
+        rows = got.get("rows") or []
+        if len(rows) > DAYS_ROW_MAX:
+            raise HTTPException(
+                503, f"a {int(days)}-day window re-measures every row from the "
+                     f"stored candles, so one request restates at most "
+                     f"{DAYS_ROW_MAX} rows — this page asked for {len(rows)}. "
+                     f"Set the page to {DAYS_ROW_MAX} rows or fewer (and it is "
+                     f"faster still with a coin named).")
+        try:
+            win = msw.window_rows(rows, int(days),
+                                  base_margin=float(rows[0].get("base") or 5.0)
+                                  if rows else 5.0)
+        except msw.WindowTooWide as exc:
+            raise HTTPException(503, str(exc)) from exc
+        got["days"] = int(days)
+        got["days_window"] = [win["first"], win["last"]]
+        got["days_groups"] = win["groups"]
     got["index"] = ri.status()             # so the UI can say "still indexing"
     return got
 
@@ -410,6 +439,11 @@ def strategies_reindex() -> dict:
 # ten-minute request. An #id lookup returns exactly one row, which is the case
 # the operator asked for.
 RESTATE_MAX = 1
+# How many rows a DAYS window may re-measure in one request. Each row is a walk
+# over the window (milliseconds) but each distinct coin/timeframe/signal costs
+# a signal computation (~1-2 s), so a 500-row page would be minutes. 50 keeps
+# the worst case near a minute, and the route says so rather than hanging.
+DAYS_ROW_MAX = 50
 
 
 def restate_window(row: dict, window: list) -> dict:

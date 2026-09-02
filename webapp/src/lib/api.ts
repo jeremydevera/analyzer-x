@@ -69,6 +69,9 @@ export interface StrategyRow {
   /** the window's own trades, wins, losses and win rate — present only when the
    *  server could rebuild this row's log (an #id lookup; see RESTATE_MAX) */
   w_trades?: number;
+  w_streak?: number;
+  w_streak_len?: number;
+  w_dd?: number;
   w_wins?: number;
   w_losses?: number;
   w_winrate?: number;
@@ -429,6 +432,11 @@ export const api = {
     /** LAST N MONTHS: every row also reports what it did INSIDE that window —
      *  profit and green months, the two the store keeps per month */
     months?: number;
+    /** LAST N DAYS — a RE-MEASUREMENT from the stored candles, because the
+     *  store keeps profit per month and no trade counts at all. Months wins
+     *  when both are set (operator, 2026-09-02: "if months is 0 then follow
+     *  the days"), and the server caps how many rows one request may restate. */
+    days?: number;
     /** false = lowest first; omit for the column's useful end */
     desc?: boolean;
   }) => {
@@ -443,6 +451,7 @@ export const api = {
     if (q.group) p.set("group", q.group);
     if (q.rowId) p.set("row_id", q.rowId);
     if (q.months) p.set("months", String(q.months));
+    if (q.days) p.set("days", String(q.days));
     if (q.desc !== undefined) p.set("desc", String(q.desc));
     if (q.tf) p.set("tf", q.tf);
     if (q.signal) p.set("signal", q.signal);
@@ -456,6 +465,9 @@ export const api = {
       desc?: boolean;
       /** the window's REAL months, newest first ("2026-08") */
       window?: string[]; months_window?: number;
+      /** the DAYS window the server measured, in real dates, and how many
+       *  coin/timeframe/signal groups it had to re-walk to answer */
+      days?: number; days_window?: string[]; days_groups?: number;
       /** a filtered count stops at COUNT_CAP: print "N+" */
       total_capped?: boolean }>(
       `/api/strategies?${p.toString()}`,

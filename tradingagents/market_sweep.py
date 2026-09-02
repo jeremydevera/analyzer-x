@@ -1452,6 +1452,155 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
             "costs": "cached" if costs is not None else "fetched once"}
 
 
+# How many (coin, timeframe, signal, threshold) groups one days-window request
+# may re-measure. The signal computation is the cost -- ~1-2 s per group on this
+# machine for a heavy rule -- and the browser's proxy gives up at 30 s: a 50-row
+# page spanning 50 different coins took 30.0 s and came back as a bare HTTP 500
+# (measured 2026-09-02). Measured again with the cache below, the panel's own
+# rows cost ~0.2 s a group, so 25 is about 15 s in the worst case; past that the
+# request SAYS what to narrow instead of dying.
+WINDOW_GROUP_MAX = 25
+# Signal directions, per (coin, timeframe, signal, threshold, last bar). Paging
+# and re-sorting the same coin then costs one walk per row (milliseconds)
+# instead of recomputing the rule over 2,000 bars every time.
+_DIRS_CACHE: dict = {}
+_DIRS_CACHE_MAX = 24
+MS_PER_DAY = 86_400_000
+
+
+class WindowTooWide(ValueError):
+    """Too many distinct pairs/signals on the page to re-measure at once."""
+
+
+def window_rows(rows: list, days: int, base_margin: float = 5.0,
+                group_max: int = 0) -> dict:
+    """Re-measure each row over the LAST `days` DAYS of its stored candles.
+
+    Returns ``{"rows": [...], "first": str, "last": str, "groups": n}`` and
+    mutates each row in place with the window's own figures -- ``w_trades``,
+    ``w_wins``, ``w_losses``, ``w_winrate``, ``w_profit``, ``w_dd``,
+    ``w_streak``, ``w_streak_len``, ``w_days`` -- and ``restated: True``.
+
+    Three things it does the same way the sweep does, or the numbers would not
+    be comparable with the row they sit beside:
+
+    * STORED CANDLES ONLY (`cached_candles`) -- opening a page must never
+      download (the operator's rule, 2026-09-02);
+    * the SIGNAL is computed over the whole history and only then cut to the
+      window, because starving the indicators of warm-up measures a different
+      rule (AGT 1h cf_soup1: 107 trades against the row's 108);
+    * all three costs, from the file the sweep wrote (`load_costs`): the taker
+      fee it was charged, the liquidation distance, and every real funding
+      settlement.
+    """
+    import tradingagents.auto_trader as at
+    from tradingagents import backtest_report as br
+    from tradingagents.dataflows import mexc_futures as fx
+
+    n = max(0, int(days or 0))
+    if not n or not rows:
+        return {"rows": rows, "first": "", "last": "", "groups": 0}
+    cap = int(group_max or WINDOW_GROUP_MAX)
+    groups: dict = {}
+    for r in rows:
+        key = (r["coin"], r["tf"], r["signal"], round(float(r.get("th") or 0), 4))
+        groups.setdefault(key, []).append(r)
+    if len(groups) > cap:
+        raise WindowTooWide(
+            f"a {n}-day window re-measures every row from the candles, and "
+            f"this page spans {len(groups)} different coin/timeframe/signal "
+            f"combinations — more than the {cap} one request can do inside the "
+            f"browser's 30-second limit. Name a COIN or a SIGNAL, or ask for "
+            f"fewer rows a page (10 works everywhere).")
+    first = last = ""
+    for (coin, tf, sig, th), grp in groups.items():
+        sym = f"{coin}_USDT"
+        try:
+            full = cached_candles(sym, tf)
+            if full is None or len(full) < 60:
+                continue
+            ms = full["Date"].to_numpy().astype("datetime64[ms]").astype("int64")
+            cut = int(ms[-1]) - n * MS_PER_DAY
+            want = sum(1 for v in ms if int(v) >= cut)
+            if want < 5:
+                continue
+            op = [float(x) for x in full["Open"]]
+            hi = [float(x) for x in full["High"]]
+            lo = [float(x) for x in full["Low"]]
+            cl = [float(x) for x in full["Close"]]
+            vol = ([float(x) for x in full["Volume"]]
+                   if "Volume" in full.columns else None)
+            ts = [int(v) for v in ms]
+            iv, bs, _cap = br.TFS[tf]
+            key = f"{sig}_win_{tf}"
+            at.STRATEGY_SPECS[key] = {"interval": iv, "bar_seconds": bs,
+                                      "tp": .02, "sl": .01,
+                                      "threshold": (th / 100.0) if th else .003}
+            costs = load_costs(sym)
+            if costs is None:
+                fee = at.taker_fee(sym, fx=fx)
+                try:
+                    liq = fx.liquidation_move_pct(sym, at.LEVERAGE)
+                except Exception:                              # noqa: BLE001
+                    liq = None
+                fund = fx.funding_history(sym)
+                save_costs(sym, fee=fee, liq=liq, funding=fund)
+            else:
+                fee = costs["fee"]
+                liq = costs.get("liq")
+                fund = costs.get("funding") or []
+            ck = (coin, tf, sig, th, int(ms[-1]), len(ms))
+            dirs = _DIRS_CACHE.get(ck)
+            if dirs is None:
+                dirs = at._dirs_for_backtest(key, hi, lo, cl, opens=op,
+                                             volume=vol, ts=ts, funding=fund)
+                if len(_DIRS_CACHE) >= _DIRS_CACHE_MAX:
+                    _DIRS_CACHE.clear()
+                _DIRS_CACHE[ck] = dirs
+            frame = full.iloc[-want:].reset_index(drop=True)
+            win_dirs = dirs[-want:]
+            f0, l0 = str(frame["Date"].iloc[0])[:16], str(frame["Date"].iloc[-1])[:16]
+            first = f0 if not first or f0 < first else first
+            last = l0 if not last or l0 > last else last
+            for r in grp:
+                # the ROW's own fee when it recorded one: a contract's fee
+                # changes, and today's is not what this row was measured under
+                row_fee = float(r.get("fee") or 0) or fee
+                res = at.backtest_strategy(
+                    key, frame, float(r.get("base") or base_margin),
+                    fee=row_fee, sizing=r["sizing"], dirs=win_dirs,
+                    tp=float(r["tp"]) / 100.0, sl=float(r["sl"]) / 100.0,
+                    liq_move_pct=liq, funding=fund, keep_log=True)
+                log = res.get("log") or []
+                wins = sum(1 for t in log if t["WIN/LOSE"] == "WIN")
+                run, runlen = 0.0, 0
+                worst, worst_len = 0.0, 0
+                for t in log:
+                    pnl = float(t["pnl $"])
+                    if pnl < 0:
+                        run += pnl
+                        runlen += 1
+                        if run < worst:
+                            worst, worst_len = run, runlen
+                    else:
+                        run, runlen = 0.0, 0
+                r.update({
+                    "w_trades": res["trades"], "w_wins": wins,
+                    "w_losses": res["trades"] - wins,
+                    "w_winrate": round(100.0 * wins / max(1, res["trades"]), 2),
+                    "w_profit": round(res["profit"], 2),
+                    "w_dd": round(res.get("max_dd") or 0, 2),
+                    "w_streak": round(worst, 2), "w_streak_len": worst_len,
+                    "w_funding": round(res.get("funding_total") or 0, 2),
+                    "w_days": round((int(ms[-1]) - int(ms[-want])) / MS_PER_DAY, 1),
+                    "w_first": f0, "w_last": l0, "restated": True})
+            at.STRATEGY_SPECS.pop(key, None)
+        except Exception as exc:                               # noqa: BLE001
+            print(f"[window] {coin} {tf} {sig}: {type(exc).__name__}: "
+                  f"{str(exc)[:70]}", flush=True)
+    return {"rows": rows, "first": first, "last": last, "groups": len(groups)}
+
+
 def storage_by_coin() -> list:
     """Disk cost per coin and timeframe, across every store that scales with
     coins: candles (json cache + parquet copy), measured rows, resume states.

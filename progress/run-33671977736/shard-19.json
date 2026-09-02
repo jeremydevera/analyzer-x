@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 8, "total": 52, "rows": 732402, "note": "BLESS 1h: 8,267 bars, testing 120 rules", "pct": 15.4, "updated": "2026-09-02T20:10:02Z"}
+{"shard": 19, "stage": "testing", "done": 8, "total": 52, "rows": 743622, "note": "BLESS 1h: rule 45/120 (zscore20)", "pct": 15.4, "updated": "2026-09-02T20:10:47Z"}

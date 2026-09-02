@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 36, "total": 52, "rows": 2657056, "note": "PROM 15m: rule 16/120 (keltner)", "pct": 69.2, "updated": "2026-09-02T16:19:15Z"}
+{"shard": 18, "stage": "testing", "done": 36, "total": 52, "rows": 2661456, "note": "PROM 15m: rule 36/120 (stochrsi)", "pct": 69.2, "updated": "2026-09-02T16:20:03Z"}

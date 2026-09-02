@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 1, "total": 52, "rows": 27500, "note": "ACU 30m: 10,818 bars, testing 120 rules", "pct": 1.9, "updated": "2026-09-02T19:17:32Z"}
+{"shard": 19, "stage": "testing", "done": 1, "total": 52, "rows": 36300, "note": "ACU 30m: rule 34/120 (lrslope)", "pct": 1.9, "updated": "2026-09-02T19:18:17Z"}

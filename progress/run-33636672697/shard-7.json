@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 10, "total": 52, "rows": 748740, "note": "BTW 30m: rule 21/120 (cci20)", "pct": 19.2, "updated": "2026-09-02T14:05:55Z"}
+{"shard": 7, "stage": "testing", "done": 10, "total": 52, "rows": 801994, "note": "BTW 4h: rule 45/120 (zscore20)", "pct": 19.2, "updated": "2026-09-02T14:06:40Z"}

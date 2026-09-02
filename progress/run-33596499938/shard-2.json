@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 7, "total": 52, "rows": 516392, "note": "BABASTOCK 15m: rule 45/120 (zscore20)", "pct": 13.5, "updated": "2026-09-02T06:24:10Z"}
+{"shard": 2, "stage": "testing", "done": 7, "total": 52, "rows": 526112, "note": "BABASTOCK 15m: rule 99/120 (cf_ttm_l2)", "pct": 13.5, "updated": "2026-09-02T06:24:56Z"}

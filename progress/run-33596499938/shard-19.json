@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 37, "total": 52, "rows": 3014260, "note": "RAM 30m: rule 4/120 (trend50)", "pct": 71.2, "updated": "2026-09-02T08:57:11Z"}
+{"shard": 19, "stage": "testing", "done": 38, "total": 52, "rows": 3057880, "note": "RIF 15m: 34,610 bars, testing 120 rules", "pct": 73.1, "updated": "2026-09-02T08:57:58Z"}

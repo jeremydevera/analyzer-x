@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 25, "total": 52, "rows": 2018052, "note": "JPY 15m: rule 120/120 (cf_stflip_l2)", "pct": 48.1, "updated": "2026-09-02T07:39:10Z"}
+{"shard": 11, "stage": "testing", "done": 25, "total": 52, "rows": 2031692, "note": "JPY 30m: rule 57/120 (orderblock)", "pct": 48.1, "updated": "2026-09-02T07:39:55Z"}

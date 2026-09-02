@@ -986,7 +986,7 @@ def in_group(signal: str, group: str | None) -> bool:
 
 def _where(coin=None, tf=None, signal=None, profitable=False,
            min_trades=0, min_winrate=0, min_tp=0, sizing=None, row_id=None,
-           group=None, *, order_owns_index=False, order_key=None,
+           group=None, max_sl=0, *, order_owns_index=False, order_key=None,
            winrate_seeks=False, signal_seeks=False) -> tuple:
     """The WHERE clause and its arguments.
 
@@ -1112,6 +1112,16 @@ def _where(coin=None, tf=None, signal=None, profitable=False,
         tp_hint = "+" if (order_owns_index and not coin) else ""
         sql.append(f"{tp_hint}tp >= ?")
         args.append(float(min_tp))
+    # MAX SL, the other direction on purpose: the useful end of a target is up
+    # and the useful end of a stop is DOWN (operator, 2026-09-02, on the
+    # artifact first: "for sl if i input 1 then show below 1 or equal 1"). No
+    # index names `sl` either, so it steps aside for the ORDER BY exactly like
+    # `tp` — the "+" is what keeps a future sl index from stealing the plan and
+    # sorting every match in a temp b-tree.
+    if max_sl and float(max_sl) > 0:
+        sl_hint = "+" if (order_owns_index and not coin) else ""
+        sql.append(f"{sl_hint}sl <= ?")
+        args.append(float(max_sl))
     return (" WHERE " + " AND ".join(sql) if sql else ""), args
 
 
@@ -1618,8 +1628,10 @@ def _profit_index() -> str:
 # request carrying one of these under `ORDER BY profit` is the case the wide
 # index exists for.
 def _wide_profit_helps(sizing=None, min_tp=0, min_winrate=0, min_trades=0,
+                       max_sl=0,
                        profitable=False) -> bool:
-    return bool(sizing or float(min_tp or 0) > 0 or float(min_winrate or 0) > 0
+    return bool(sizing or float(min_tp or 0) > 0 or float(max_sl or 0) > 0
+                or float(min_winrate or 0) > 0
                 or int(min_trades or 0) > 0 or profitable)
 
 
@@ -1728,7 +1740,7 @@ def _page_rows(con, coin, row_where, row_args, order, lim, off,
 def query(coin=None, tf=None, signal=None, profitable=False,
           limit=500, offset=0, sort="profit", min_trades=0,
           min_winrate=0, min_tp=0, sizing=None, row_id=None, group=None,
-          months=0, desc=None) -> dict:
+          max_sl=0, months=0, desc=None) -> dict:
     """Rows sorted by `sort` (SORTS), profit first by default.
 
     STRICTLY READ-ONLY. It creates nothing and it indexes nothing.
@@ -1801,7 +1813,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
         elif _rows_estimate() > UNINDEXED_LIMIT:
             _build_index("rows_pr2")
     where, args = _where(coin, tf, signal, profitable, min_trades, min_winrate,
-                         min_tp, sizing, row_id, group,
+                         min_tp, sizing, row_id, group, max_sl,
                          signal_seeks=signal_seeks)
     # the row select streams its own ORDER BY index; the count rides the
     # trades index instead (see _where). The ORDER matters to the WHERE too:
@@ -1809,7 +1821,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     # and steps aside otherwise.
     row_where, row_args = _where(coin, tf, signal, profitable, min_trades,
                                  min_winrate, min_tp, sizing, row_id, group,
-                                 order_owns_index=True, order_key=key,
+                                 max_sl, order_owns_index=True, order_key=key,
                                  winrate_seeks=winrate_seeks,
                                  signal_seeks=signal_seeks)
     down = SORTS[key] if desc is None else bool(desc)
@@ -1859,7 +1871,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     # count came from _pairs_total and both groups reported the whole store --
     # 35,893,630 rows beside a table showing one group (2026-08-27).
     from_pairs = not (signal or profitable or min_trades or min_winrate
-                      or min_tp or sizing or row_id or group)
+                      or min_tp or sizing or row_id or group or max_sl)
     # A win-rate floor (with or without a trade floor) is an index-only range
     # on rows_winrate, so its total is EXACT and costs nothing - no "+".
     # The total is EXACT only when the bounded count came back under its cap:
@@ -1868,6 +1880,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     from_winrate = bool(float(min_winrate or 0) > 0 and not coin and not tf
                         and not signal and not profitable and not min_tp
                         and not sizing and not row_id and not group
+                        and not max_sl
                         and _winrate_index())
 
     def _read():
@@ -1991,6 +2004,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             # literal it hopes matches (label-must-match-data)
             "min_winrate": float(min_winrate or 0),
             "min_tp": float(min_tp or 0),
+            "max_sl": float(max_sl or 0),
             "sizing": sizing or "",
             # what was LOOKED UP, cleaned exactly as the query cleaned it, so
             # the panel can say "#6YACZSXX is not in the store" and mean it
@@ -2003,7 +2017,8 @@ def query(coin=None, tf=None, signal=None, profitable=False,
 
 def iter_rows(coin=None, tf=None, signal=None, profitable=False,
               sort="profit", min_trades=0, min_winrate=0, min_tp=0,
-              sizing=None, row_id=None, group=None, desc=None, batch=5_000):
+              sizing=None, row_id=None, group=None, max_sl=0, desc=None,
+              batch=5_000):
     """Every matching row, in the asked order, a batch at a time.
 
     No limit and no list: 21,858,026 rows will not fit in a browser table or in
@@ -2069,7 +2084,7 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
         n = _winrate_matches(min_winrate, min_trades, cap=cap)
         seeks = n is not None and n <= cap
     where, args = _where(coin, tf, signal, profitable, min_trades,
-                         min_winrate, min_tp, sizing, row_id, group,
+                         min_winrate, min_tp, sizing, row_id, group, max_sl,
                          order_owns_index=True, order_key=key,
                          winrate_seeks=seeks, signal_seeks=signal_seeks)
     step = max(100, int(batch))
@@ -2127,6 +2142,24 @@ def _sizings() -> tuple:
     return tuple(br.SIZINGS)
 
 
+def stop_losses(tfs) -> list:
+    """Every SL% the grid can have produced for these timeframes.
+
+    The mirror of `take_profits`, for the MAX SL box (operator, 2026-09-02:
+    "can you add the sl filter in the Stored strategies as well" — a ceiling,
+    "if i input 1 then show below 1 or equal 1"). Same reason it is derived
+    rather than typed: `sl` has no index either, so offering a value the grid
+    never measured buys a full scan to answer "nothing".
+    """
+    from tradingagents import backtest_report as br
+
+    out = set()
+    for tf in tfs or ():
+        for sl, _tp in br.BARRIERS.get(str(tf), ()):
+            out.add(round(sl * 100, 3) if sl < 1 else round(float(sl), 3))
+    return sorted(out)
+
+
 def facets() -> dict:
     """Filter dropdowns, read from the per-pair summary — 85 short rows rather
     than three DISTINCT scans over every measurement."""
@@ -2143,12 +2176,14 @@ def facets() -> dict:
         # fixed ladder: with no 1d pairs there is no TP above 8% to ask for
         return {"coins": sorted(coins), "tfs": sorted(tfs),
                 "signals": sorted(signals), "tps": take_profits(tfs),
+                "sls": stop_losses(tfs),
                 # the two sizings come from the GRID that measured the rows,
                 # never a pair of literals in the browser
                 "sizings": list(_sizings())}
 
     return _missing_ok(_read, {"coins": [], "tfs": [], "signals": [],
-                               "tps": [], "sizings": list(_sizings())})
+                               "tps": [], "sls": [],
+                               "sizings": list(_sizings())})
 
 
 def pair_storage() -> list:

@@ -55,7 +55,7 @@ const HEAD_SORT: Record<string, StrategySort | undefined> =
     .map(([k, label]) => [label, k as StrategySort]));
 
 export default function StrategiesPanel() {
-  const [facets, setFacets] = useState<{ coins: string[]; tfs: string[]; signals: string[]; tps?: number[]; sizings?: string[] }>({ coins: [], tfs: [], signals: [], tps: [], sizings: [] });
+  const [facets, setFacets] = useState<{ coins: string[]; tfs: string[]; signals: string[]; tps?: number[]; sls?: number[]; sizings?: string[] }>({ coins: [], tfs: [], signals: [], tps: [], sls: [], sizings: [] });
   const [coin, setCoin] = useState("");
   const [tf, setTf] = useState("");
   const [signal, setSignal] = useState("");
@@ -75,6 +75,14 @@ export default function StrategiesPanel() {
   // aims at, so 4 means "only strategies going for 4% a trade or more" — the
   // unit the TP% column prints, inclusive.
   const [minTp, setMinTp] = useState(0);
+  // "can you add the sl filter in the Stored strategies as well" (operator,
+  // 2026-09-02). A CEILING, the opposite of the TP box beside it: 1 keeps rows
+  // whose stop is 1% or TIGHTER — their words, settled on the artifact first:
+  // "for sl if i input 1 then show below 1 or equal 1". It is how the lopsided
+  // rows get thrown out: JPY 30m fade15 ran TP 0.3% against SL 2%, won 96 of
+  // 96 trades in 30 days, and hands all of it back on one loss.
+  const [maxSl, setMaxSl] = useState(0);
+  const [servedSl, setServedSl] = useState(0);
   // "i want filter to see flat / martingale" (operator, 2026-08-27). Sizing is
   // HOW MUCH is staked per trade: flat stakes the same every time, martingale
   // doubles after a loss to win it back. It is a sizing choice, not a
@@ -144,7 +152,8 @@ export default function StrategiesPanel() {
   // leaves when the operator says so, and the button is where the spinner is.
   const [applied, setApplied] = useState({
     coin: "", tf: "", signal: "", profitable: false,
-    minTrades: 0, minWinrate: 0, minTp: 0, sizing: "", rowId: "", group: "",
+    minTrades: 0, minWinrate: 0, minTp: 0, maxSl: 0, sizing: "", rowId: "",
+    group: "",
     months: 0,
   });
   // The filter set the ROWS ON SCREEN came from — set only when a request
@@ -158,7 +167,8 @@ export default function StrategiesPanel() {
   // repo keeps paying for (label-must-match-data).
   const [servedFilters, setServedFilters] = useState({
     coin: "", tf: "", signal: "", profitable: false,
-    minTrades: 0, minWinrate: 0, minTp: 0, sizing: "", rowId: "", group: "",
+    minTrades: 0, minWinrate: 0, minTp: 0, maxSl: 0, sizing: "", rowId: "",
+    group: "",
     months: 0,
   });
   // how long the request that FAILED had been running, so the message can say
@@ -210,7 +220,8 @@ export default function StrategiesPanel() {
                      signal: applied.signal || undefined,
                      profitable: applied.profitable, sort,
                      minTrades: applied.minTrades, minWinrate: applied.minWinrate,
-                     minTp: applied.minTp, sizing: applied.sizing || undefined,
+                     minTp: applied.minTp, maxSl: applied.maxSl,
+                     sizing: applied.sizing || undefined,
                      rowId: applied.rowId || undefined,
                      months: applied.months || undefined,
                      group: (applied.group || undefined) as "preset" | "classic" | undefined,
@@ -225,6 +236,7 @@ export default function StrategiesPanel() {
         setServedTrades(d.min_trades ?? applied.minTrades);
         setServedWinrate(d.min_winrate ?? applied.minWinrate);
         setServedTp(d.min_tp ?? applied.minTp);
+        setServedSl(d.max_sl ?? applied.maxSl);
         setServedFilters(applied);   // these rows came from THIS set
         setWindow(d.window ?? []);   // the window's real months, from the payload
         setFailedAfter(0);
@@ -280,6 +292,7 @@ export default function StrategiesPanel() {
   }, [idHit?.id]);
   // what the boxes say right now, against what the store was asked
   const draft = { coin, tf, signal, profitable, minTrades, minWinrate, minTp,
+    maxSl,
                   sizing, group, months,
                   // trim FIRST: " #6yaczsxx " pasted from chat kept its hash
                   // when the # was stripped before the spaces, and a real id
@@ -309,6 +322,7 @@ export default function StrategiesPanel() {
     f.minTrades > 0 ? `min trades = ${f.minTrades}` : "any trades",
     f.minWinrate > 0 ? `min win % = ${f.minWinrate}` : "any win %",
     f.minTp > 0 ? `min TP % = ${f.minTp}` : "any TP",
+    f.maxSl > 0 ? `max SL % = ${f.maxSl}` : "any SL",
     f.sizing ? `sizing = ${f.sizing}` : "flat and martingale",
     f.profitable ? "profit > 0" : "losers included",
     f.months > 0 ? `last ${f.months} month${f.months > 1 ? "s" : ""}`
@@ -383,7 +397,8 @@ export default function StrategiesPanel() {
         coin: applied.coin || undefined, tf: applied.tf || undefined,
         signal: applied.signal || undefined, profitable: applied.profitable,
         sort, minTrades: applied.minTrades, minWinrate: applied.minWinrate,
-        minTp: applied.minTp, sizing: applied.sizing || undefined,
+        minTp: applied.minTp, maxSl: applied.maxSl,
+                     sizing: applied.sizing || undefined,
         rowId: applied.rowId || undefined,
         months: applied.months || undefined, desc,
         limit: perPage, offset: (page - 1) * perPage + shown.length,
@@ -448,7 +463,7 @@ export default function StrategiesPanel() {
             )}
           </div>
           <p className="text-theme-xs text-gray-500 dark:text-gray-400">
-            {total.toLocaleString()}{capped ? "+" : ""} {[applied.coin, applied.tf, applied.signal, applied.profitable ? "profitable only" : ""].some(Boolean) || applied.minTrades > 0 || applied.minWinrate > 0 || applied.minTp > 0 ? "match" : "stored strategies"}
+            {total.toLocaleString()}{capped ? "+" : ""} {[applied.coin, applied.tf, applied.signal, applied.profitable ? "profitable only" : ""].some(Boolean) || applied.minTrades > 0 || applied.minWinrate > 0 || applied.minTp > 0 || applied.maxSl > 0 ? "match" : "stored strategies"}
             {` · rows ${shown.length ? (page - 1) * perPage + 1 : 0}–${(page - 1) * perPage + shown.length} on screen`}
             {` · ${servedDesc ? "highest" : "lowest"} ${STRATEGY_SORTS[servedSort]} first`}
             {/* A partial index must NOT be captioned as the whole store: the
@@ -473,6 +488,7 @@ export default function StrategiesPanel() {
             {servedTrades > 0 ? ` · at least ${servedTrades} trades` : ""}
             {servedWinrate > 0 ? ` · win % ${servedWinrate} or better` : ""}
             {servedTp > 0 ? ` · TP ${servedTp}% or wider` : ""}
+            {servedSl > 0 ? ` · SL ${servedSl}% or tighter` : ""}
             {servedFilters.sizing ? ` · ${servedFilters.sizing} only` : ""}
             {window_.length
               ? ` · window ${monthLabel(window_[window_.length - 1])}–${monthLabel(window_[0])}`
@@ -589,6 +605,21 @@ export default function StrategiesPanel() {
               {(facets.tps ?? []).map((v) => <option key={v} value={v} />)}
             </datalist>
           </label>
+          {/* MAX SL: the ceiling, pointing the other way from min TP. 1 keeps
+              rows whose stop is 1% or tighter (operator, 2026-09-02). */}
+          <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300"
+                 title="show only rows whose stop-loss is this % or TIGHTER - a smaller stop risks less on each trade">
+            max SL %
+            <input type="number" min={0} step={0.5} value={maxSl}
+                   list="sl-values"
+                   onChange={(e) => setMaxSl(Math.max(0, Number(e.target.value) || 0))}
+                   aria-label="Maximum stop loss percent"
+                   onKeyDown={onFilterKey}
+                   className="h-10 w-20 rounded-lg border border-gray-300 bg-transparent px-2 text-theme-sm text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" />
+            <datalist id="sl-values">
+              {(facets.sls ?? []).map((v) => <option key={v} value={v} />)}
+            </datalist>
+          </label>
           <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300">
             <input type="checkbox" checked={profitable} onChange={(e) => setProfitable(e.target.checked)} className="h-4 w-4 accent-brand-500" />
             profitable only
@@ -699,7 +730,8 @@ export default function StrategiesPanel() {
                tf: applied.tf || undefined, signal: applied.signal || undefined,
                profitable: applied.profitable, sort,
                minTrades: applied.minTrades, minWinrate: applied.minWinrate,
-               minTp: applied.minTp, sizing: applied.sizing || undefined,
+               minTp: applied.minTp, maxSl: applied.maxSl,
+                     sizing: applied.sizing || undefined,
                rowId: applied.rowId || undefined, desc })}>
             download all ({total.toLocaleString()}{capped ? "+" : ""}) CSV
           </a>
@@ -752,7 +784,7 @@ export default function StrategiesPanel() {
           or the artifact you copied it from.
         </p>
       )}
-      {!err && !waiting && !shown.length && !servedFilters.rowId && (minWinrate > 0 || minTrades > 0 || minTp > 0) && (
+      {!err && !waiting && !shown.length && !servedFilters.rowId && (minWinrate > 0 || minTrades > 0 || minTp > 0 || maxSl > 0) && (
         <p className="px-5 pt-2 text-theme-sm text-warning-600 dark:text-warning-400">
           no stored strategy passes{" "}
           <b>

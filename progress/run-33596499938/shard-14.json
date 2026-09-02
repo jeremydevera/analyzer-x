@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 1, "total": 52, "rows": 31500, "note": "AAVE 30m: rule 39/120 (fisher)", "pct": 1.9, "updated": "2026-09-02T05:58:31Z"}
+{"shard": 14, "stage": "testing", "done": 1, "total": 52, "rows": 44500, "note": "AAVE 30m: rule 105/120 (cf_eqhl_l2)", "pct": 1.9, "updated": "2026-09-02T05:59:17Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 43, "total": 52, "rows": 3317270, "note": "SPX500 1h: rule 36/120 (stochrsi)", "pct": 82.7, "updated": "2026-09-02T09:00:30Z"}
+{"shard": 8, "stage": "testing", "done": 44, "total": 52, "rows": 3390934, "note": "SUMIELECSTOCK 30m: rule 2/120 (mom15)", "pct": 84.6, "updated": "2026-09-02T09:01:16Z"}

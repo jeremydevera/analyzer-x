@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 42, "total": 52, "rows": 3751200, "note": "SONIC 30m: 18,959 bars, testing 120 rules", "pct": 80.8, "updated": "2026-09-02T09:46:50Z"}
+{"shard": 14, "stage": "testing", "done": 42, "total": 52, "rows": 3754500, "note": "SONIC 30m: rule 9/120 (fib382)", "pct": 80.8, "updated": "2026-09-02T09:47:36Z"}

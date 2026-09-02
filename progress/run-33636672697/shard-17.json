@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 47, "total": 52, "rows": 3823880, "note": "UAI 1h: 7,206 bars, testing 120 rules", "pct": 90.4, "updated": "2026-09-02T17:49:57Z"}
+{"shard": 17, "stage": "testing", "done": 47, "total": 52, "rows": 3840440, "note": "UAI 1h: rule 87/120 (cf_triple_l2)", "pct": 90.4, "updated": "2026-09-02T17:50:42Z"}

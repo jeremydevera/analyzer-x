@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 26, "total": 52, "rows": 2164802, "note": "KOMA 30m: rule 72/120 (force13)", "pct": 50.0, "updated": "2026-09-02T07:51:20Z"}
+{"shard": 13, "stage": "testing", "done": 26, "total": 52, "rows": 2175142, "note": "KOMA 30m: rule 120/120 (cf_stflip_l2)", "pct": 50.0, "updated": "2026-09-02T07:52:05Z"}

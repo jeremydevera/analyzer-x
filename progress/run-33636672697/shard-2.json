@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 37, "total": 53, "rows": 2859968, "note": "PTB 15m: rule 90/120 (cf_chan_l2)", "pct": 69.8, "updated": "2026-09-02T16:16:43Z"}
+{"shard": 2, "stage": "testing", "done": 37, "total": 53, "rows": 2865368, "note": "PTB 30m: 17,481 bars, testing 120 rules", "pct": 69.8, "updated": "2026-09-02T16:17:32Z"}

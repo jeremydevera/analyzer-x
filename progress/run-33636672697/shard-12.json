@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 13, "total": 52, "rows": 1001040, "note": "CROSS 4h: 2,369 bars, testing 120 rules", "pct": 25.0, "updated": "2026-09-02T14:18:14Z"}
+{"shard": 12, "stage": "testing", "done": 14, "total": 52, "rows": 1047120, "note": "CXMTSTOCK 30m: rule 22/120 (engulf)", "pct": 26.9, "updated": "2026-09-02T14:18:59Z"}

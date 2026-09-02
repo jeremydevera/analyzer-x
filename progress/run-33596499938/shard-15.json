@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 5, "total": 52, "rows": 311754, "note": "ASTSSTOCK 30m: rule 114/120 (cf_obretest_l2)", "pct": 9.6, "updated": "2026-09-02T06:07:34Z"}
+{"shard": 15, "stage": "testing", "done": 6, "total": 52, "rows": 370446, "note": "AXS 15m: 34,599 bars, testing 120 rules", "pct": 11.5, "updated": "2026-09-02T06:08:31Z"}

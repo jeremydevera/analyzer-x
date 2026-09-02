@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 39, "total": 52, "rows": 2732722, "note": "ROBINHOOD 15m: rule 79/120 (cf_donch)", "pct": 75.0, "updated": "2026-09-02T16:47:49Z"}
+{"shard": 8, "stage": "testing", "done": 39, "total": 52, "rows": 2740102, "note": "ROBINHOOD 15m: rule 120/120 (cf_stflip_l2)", "pct": 75.0, "updated": "2026-09-02T16:48:34Z"}

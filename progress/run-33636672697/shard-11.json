@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 1, "total": 52, "rows": 10440, "note": "AAPLSTOCK 15m: rule 52/120 (nr7)", "pct": 1.9, "updated": "2026-09-02T13:37:06Z"}
+{"shard": 11, "stage": "testing", "done": 1, "total": 52, "rows": 22680, "note": "AAPLSTOCK 30m: 18,959 bars, testing 120 rules", "pct": 1.9, "updated": "2026-09-02T13:37:53Z"}

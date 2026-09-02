@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 36, "total": 52, "rows": 2829704, "note": "PROM 15m: rule 21/120 (cci20)", "pct": 69.2, "updated": "2026-09-02T08:24:56Z"}
+{"shard": 17, "stage": "testing", "done": 36, "total": 52, "rows": 2834764, "note": "PROM 15m: rule 44/120 (elder)", "pct": 69.2, "updated": "2026-09-02T08:25:41Z"}

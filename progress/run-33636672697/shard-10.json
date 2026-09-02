@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 48, "total": 52, "rows": 3407716, "note": "USDC 30m: rule 30/120 (kama10)", "pct": 92.3, "updated": "2026-09-02T16:26:48Z"}
+{"shard": 10, "stage": "testing", "done": 48, "total": 52, "rows": 3424436, "note": "USDC 1h: 9,479 bars, testing 120 rules", "pct": 92.3, "updated": "2026-09-02T16:27:39Z"}

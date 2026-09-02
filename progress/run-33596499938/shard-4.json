@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 34, "total": 52, "rows": 2543726, "note": "ON 1h: rule 57/120 (orderblock)", "pct": 65.4, "updated": "2026-09-02T08:08:48Z"}
+{"shard": 4, "stage": "testing", "done": 34, "total": 52, "rows": 2579366, "note": "ON 1d: 313 bars, testing 120 rules", "pct": 65.4, "updated": "2026-09-02T08:09:39Z"}

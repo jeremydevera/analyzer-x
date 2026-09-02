@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 16, "total": 52, "rows": 1076798, "note": "DYDX 15m: rule 93/120 (cf_soup_l2)", "pct": 30.8, "updated": "2026-09-02T15:04:04Z"}
+{"shard": 8, "stage": "testing", "done": 16, "total": 52, "rows": 1082198, "note": "DYDX 30m: 18,959 bars, testing 120 rules", "pct": 30.8, "updated": "2026-09-02T15:04:55Z"}

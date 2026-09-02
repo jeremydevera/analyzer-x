@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 27, "total": 52, "rows": 2297234, "note": "LDO 30m: 18,959 bars, testing 120 rules", "pct": 51.9, "updated": "2026-09-02T07:48:56Z"}
+{"shard": 5, "stage": "testing", "done": 27, "total": 52, "rows": 2302834, "note": "LDO 30m: rule 22/120 (engulf)", "pct": 51.9, "updated": "2026-09-02T07:49:43Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 52, "total": 52, "rows": 4228266, "note": "ZETA 1h: 9,479 bars, testing 120 rules", "pct": 100.0, "updated": "2026-09-02T09:19:32Z"}
+{"shard": 9, "stage": "testing", "done": 52, "total": 52, "rows": 4248506, "note": "ZETA 1h: rule 87/120 (cf_triple_l2)", "pct": 100.0, "updated": "2026-09-02T09:20:18Z"}

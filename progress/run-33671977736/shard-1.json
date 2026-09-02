@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 14, "total": 53, "rows": 1104578, "note": "CSTOCK 30m: rule 84/120 (cf_maobv_l2)", "pct": 26.4, "updated": "2026-09-02T20:14:51Z"}
+{"shard": 1, "stage": "testing", "done": 16, "total": 53, "rows": 1158546, "note": "DOT 15m: 34,560 bars, testing 120 rules", "pct": 30.2, "updated": "2026-09-02T20:15:37Z"}

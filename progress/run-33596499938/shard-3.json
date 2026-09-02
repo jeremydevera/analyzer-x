@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 22, "total": 52, "rows": 1811206, "note": "HEMI 30m: 17,718 bars, testing 120 rules", "pct": 42.3, "updated": "2026-09-02T07:14:46Z"}
+{"shard": 3, "stage": "testing", "done": 22, "total": 52, "rows": 1817606, "note": "HEMI 30m: rule 34/120 (lrslope)", "pct": 42.3, "updated": "2026-09-02T07:15:31Z"}

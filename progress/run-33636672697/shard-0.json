@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 30, "total": 53, "rows": 2392260, "note": "MINIMAXSTOCK 1h: rule 52/120 (nr7)", "pct": 56.6, "updated": "2026-09-02T16:00:28Z"}
+{"shard": 0, "stage": "testing", "done": 33, "total": 53, "rows": 2449094, "note": "NOT 15m: 34,639 bars, testing 120 rules", "pct": 62.3, "updated": "2026-09-02T16:01:25Z"}

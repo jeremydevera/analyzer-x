@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 33, "total": 52, "rows": 2505908, "note": "NVDL 30m: 2,603 bars, testing 120 rules", "pct": 63.5, "updated": "2026-09-02T16:08:21Z"}
+{"shard": 6, "stage": "testing", "done": 34, "total": 52, "rows": 2549882, "note": "OPENAI 15m: rule 12/120 (donchian20)", "pct": 65.4, "updated": "2026-09-02T16:09:06Z"}

@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 40, "total": 52, "rows": 3270948, "note": "SCR 15m: rule 45/120 (zscore20)", "pct": 76.9, "updated": "2026-09-02T08:52:21Z"}
+{"shard": 10, "stage": "testing", "done": 40, "total": 52, "rows": 3277768, "note": "SCR 15m: rule 77/120 (cf_mom_l1)", "pct": 76.9, "updated": "2026-09-02T08:53:06Z"}

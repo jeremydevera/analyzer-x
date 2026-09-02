@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 47, "total": 53, "rows": 3673248, "note": "TRY 1h: rule 72/120 (force13)", "pct": 88.7, "updated": "2026-09-02T17:08:12Z"}
+{"shard": 2, "stage": "testing", "done": 48, "total": 53, "rows": 3705148, "note": "UNHSTOCK 15m: 27,082 bars, testing 120 rules", "pct": 90.6, "updated": "2026-09-02T17:08:58Z"}

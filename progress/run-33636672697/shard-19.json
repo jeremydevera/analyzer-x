@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 7, "total": 52, "rows": 580970, "note": "BDX 30m: rule 117/120 (cf_diadx_l2)", "pct": 13.5, "updated": "2026-09-02T14:24:46Z"}
+{"shard": 19, "stage": "testing", "done": 7, "total": 52, "rows": 596516, "note": "BDX 4h: 1,813 bars, testing 120 rules", "pct": 13.5, "updated": "2026-09-02T14:25:32Z"}

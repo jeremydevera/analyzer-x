@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 34, "total": 52, "rows": 2953772, "note": "ORDER 1h: rule 108/120 (cf_bosfvg_l2)", "pct": 65.4, "updated": "2026-09-02T16:46:47Z"}
+{"shard": 14, "stage": "testing", "done": 35, "total": 52, "rows": 2982152, "note": "PHA 15m: 34,642 bars, testing 120 rules", "pct": 67.3, "updated": "2026-09-02T16:47:40Z"}

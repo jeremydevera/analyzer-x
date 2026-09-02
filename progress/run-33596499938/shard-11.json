@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 43, "total": 52, "rows": 3740720, "note": "SQD 30m: rule 87/120 (cf_triple_l2)", "pct": 82.7, "updated": "2026-09-02T09:32:20Z"}
+{"shard": 11, "stage": "testing", "done": 43, "total": 52, "rows": 3747980, "note": "SQD 1h: 9,479 bars, testing 120 rules", "pct": 82.7, "updated": "2026-09-02T09:33:10Z"}

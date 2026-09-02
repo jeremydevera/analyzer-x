@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 32, "total": 52, "rows": 2286848, "note": "NFLXSTOCK 1h: 2,040 bars, testing 120 rules", "pct": 61.5, "updated": "2026-09-02T16:25:57Z"}
+{"shard": 8, "stage": "testing", "done": 33, "total": 52, "rows": 2333810, "note": "NVIDIA 15m: rule 3/120 (fade15)", "pct": 63.5, "updated": "2026-09-02T16:26:48Z"}

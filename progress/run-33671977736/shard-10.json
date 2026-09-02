@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 3, "total": 52, "rows": 267750, "note": "ALL 30m: rule 90/120 (cf_chan_l2)", "pct": 5.8, "updated": "2026-09-02T19:28:44Z"}
+{"shard": 10, "stage": "testing", "done": 3, "total": 52, "rows": 283150, "note": "ALL 1h: rule 34/120 (lrslope)", "pct": 5.8, "updated": "2026-09-02T19:29:29Z"}

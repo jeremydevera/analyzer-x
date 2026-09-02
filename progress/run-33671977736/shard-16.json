@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 48, "total": 52, "rows": 4092426, "note": "US 15m: rule 36/120 (stochrsi)", "pct": 92.3, "updated": "2026-09-02T23:05:58Z"}
+{"shard": 16, "stage": "testing", "done": 48, "total": 52, "rows": 4101006, "note": "US 15m: rule 76/120 (cf_mom)", "pct": 92.3, "updated": "2026-09-02T23:06:46Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 42, "total": 52, "rows": 3502100, "note": "SOLV 15m: rule 49/120 (vwaprev)", "pct": 80.8, "updated": "2026-09-02T22:47:32Z"}
+{"shard": 12, "stage": "testing", "done": 42, "total": 52, "rows": 3510020, "note": "SOLV 15m: rule 86/120 (cf_triple_l1)", "pct": 80.8, "updated": "2026-09-02T22:48:18Z"}

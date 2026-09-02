@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 14, "total": 53, "rows": 1043500, "note": "CSTOCK 15m: rule 78/120 (cf_mom_l2)", "pct": 26.4, "updated": "2026-09-02T06:36:46Z"}
+{"shard": 1, "stage": "testing", "done": 14, "total": 53, "rows": 1095340, "note": "CSTOCK 4h: 875 bars, testing 120 rules", "pct": 26.4, "updated": "2026-09-02T06:37:32Z"}

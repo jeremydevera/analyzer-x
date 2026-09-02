@@ -1486,6 +1486,15 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
 
     * STORED CANDLES ONLY (`cached_candles`) -- opening a page must never
       download (the operator's rule, 2026-09-02);
+    * the window ENDS WHERE THE ROW'S OWN MEASUREMENT ENDS, never at the last
+      candle on disk. PONS 15m has candles to Sep 02 while row #AG8FFTN3 was
+      measured to Aug 26 04:15, so "last 1 day" reported 46 trades on Sep 01-02
+      -- days that row has never been backtested over. The operator caught the
+      same fault in the trade log the same morning ("why do i have sept 2
+      result when im not yet downloading candle and doing update backtest") and
+      it is the same answer: a window is a slice of the measurement, not of the
+      candle file. The row's `last_ms` when it has one, the pair's watermark
+      otherwise;
     * the SIGNAL is computed over the whole history and only then cut to the
       window, because starving the indicators of warm-up measures a different
       rule (AGT 1h cf_soup1: 107 trades against the row's 108);
@@ -1520,10 +1529,9 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
             if full is None or len(full) < 60:
                 continue
             ms = full["Date"].to_numpy().astype("datetime64[ms]").astype("int64")
-            cut = int(ms[-1]) - n * MS_PER_DAY
-            want = sum(1 for v in ms if int(v) >= cut)
-            if want < 5:
-                continue
+            # where the MEASUREMENT ends, not where the candle file does
+            wm = int(load_states(coin, tf).get("__last_ms__") or 0)
+            ends = {int(r.get("last_ms") or 0) or wm or int(ms[-1]) for r in grp}
             op = [float(x) for x in full["Open"]]
             hi = [float(x) for x in full["High"]]
             lo = [float(x) for x in full["Low"]]
@@ -1557,12 +1565,30 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
                 if len(_DIRS_CACHE) >= _DIRS_CACHE_MAX:
                     _DIRS_CACHE.clear()
                 _DIRS_CACHE[ck] = dirs
-            frame = full.iloc[-want:].reset_index(drop=True)
-            win_dirs = dirs[-want:]
-            f0, l0 = str(frame["Date"].iloc[0])[:16], str(frame["Date"].iloc[-1])[:16]
-            first = f0 if not first or f0 < first else first
-            last = l0 if not last or l0 > last else last
+            # one slice per distinct measurement end in this group (usually one)
+            frames = {}
+            for end in ends:
+                keep = [i for i, v in enumerate(ms) if int(v) <= end]
+                if len(keep) < 5:
+                    continue
+                stop = len(keep)
+                lo = int(ms[stop - 1]) - n * MS_PER_DAY
+                start = next((i for i in range(stop) if int(ms[i]) >= lo), 0)
+                if stop - start < 5:
+                    continue
+                fr = full.iloc[start:stop].reset_index(drop=True)
+                frames[end] = (fr, dirs[start:stop], start, stop)
+                f0 = str(fr["Date"].iloc[0])[:16]
+                l0 = str(fr["Date"].iloc[-1])[:16]
+                first = f0 if not first or f0 < first else first
+                last = l0 if not last or l0 > last else last
             for r in grp:
+                end = int(r.get("last_ms") or 0) or wm or int(ms[-1])
+                if end not in frames:
+                    continue
+                frame, win_dirs, start, stop = frames[end]
+                f0 = str(frame["Date"].iloc[0])[:16]
+                l0 = str(frame["Date"].iloc[-1])[:16]
                 # the ROW's own fee when it recorded one: a contract's fee
                 # changes, and today's is not what this row was measured under
                 row_fee = float(r.get("fee") or 0) or fee
@@ -1592,7 +1618,8 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
                     "w_dd": round(res.get("max_dd") or 0, 2),
                     "w_streak": round(worst, 2), "w_streak_len": worst_len,
                     "w_funding": round(res.get("funding_total") or 0, 2),
-                    "w_days": round((int(ms[-1]) - int(ms[-want])) / MS_PER_DAY, 1),
+                    "w_days": round((int(ms[stop - 1]) - int(ms[start]))
+                                    / MS_PER_DAY, 1),
                     "w_first": f0, "w_last": l0, "restated": True})
             at.STRATEGY_SPECS.pop(key, None)
         except Exception as exc:                               # noqa: BLE001

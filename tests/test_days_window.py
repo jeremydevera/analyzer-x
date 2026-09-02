@@ -97,6 +97,32 @@ def test_a_shorter_window_can_only_hold_fewer_trades(offline):
     assert short["w_days"] < long_["w_days"]
 
 
+def test_the_window_ends_where_the_ROW_was_measured(offline):
+    """Not at the last candle on disk — at the last bar the row was measured
+    over.
+
+    The operator caught this within minutes of the feature shipping: PONS 15m
+    has candles to Sep 02 while row #AG8FFTN3 was measured to Aug 26 04:15, and
+    "last 1 day" reported 46 trades on Sep 01-02 — days that row has never been
+    backtested over. Their words: *"i filtered to 1 day and it shows AG8FFTN3
+    even it does not have trade for sept"*. With the end taken from the row, the
+    same request is Aug 24 20:15 -> Aug 25 20:15, 48 trades, -$44.58.
+    """
+    df = offline
+    ms = df["Date"].to_numpy().astype("datetime64[ms]").astype("int64")
+    # the row stops 5 days before the candles do
+    end = int(ms[-1]) - 5 * msw.MS_PER_DAY
+    row = dict(_row(), last_ms=end)
+    got = msw.window_rows([row], 2)
+    r = got["rows"][0]
+    assert r["w_last"] <= str(pd.Timestamp(end, unit="ms"))[:16],         f"the window ran past the row's own measurement: {r['w_last']}"
+    assert r["w_first"] < r["w_last"]
+    assert 1.5 <= r["w_days"] <= 2.1, r["w_days"]
+    # and a row WITHOUT its own stamp falls back to the pair's watermark
+    plain = msw.window_rows([_row()], 2)["rows"][0]
+    assert plain["w_last"] >= r["w_last"],         "the fallback must not be earlier than a row that names its end"
+
+
 def test_zero_days_changes_nothing(offline):
     rows = [_row()]
     got = msw.window_rows(rows, 0)

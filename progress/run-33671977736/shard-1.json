@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 42, "total": 53, "rows": 3593564, "note": "SMH 15m: rule 45/120 (zscore20)", "pct": 79.2, "updated": "2026-09-02T22:10:01Z"}
+{"shard": 1, "stage": "testing", "done": 43, "total": 53, "rows": 3657504, "note": "SOXX 15m: rule 1/120 (mom6)", "pct": 81.1, "updated": "2026-09-02T22:10:47Z"}

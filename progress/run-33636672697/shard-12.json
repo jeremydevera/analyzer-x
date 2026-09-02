@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 23, "total": 52, "rows": 1639060, "note": "IBMSTOCK 30m: rule 73/120 (volspike)", "pct": 44.2, "updated": "2026-09-02T14:52:11Z"}
+{"shard": 12, "stage": "testing", "done": 24, "total": 52, "rows": 1695188, "note": "IOST 15m: 34,634 bars, testing 120 rules", "pct": 46.2, "updated": "2026-09-02T14:53:04Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 41, "total": 52, "rows": 3175200, "note": "SIREN 30m: rule 80/120 (cf_donch_l1)", "pct": 78.8, "updated": "2026-09-02T08:54:29Z"}
+{"shard": 4, "stage": "testing", "done": 41, "total": 52, "rows": 3183000, "note": "SIREN 1h: 9,479 bars, testing 120 rules", "pct": 78.8, "updated": "2026-09-02T08:55:16Z"}

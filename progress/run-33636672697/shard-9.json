@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 5, "total": 52, "rows": 340036, "note": "ASMLSTOCK 30m: 13,535 bars, testing 120 rules", "pct": 9.6, "updated": "2026-09-02T14:01:02Z"}
+{"shard": 9, "stage": "testing", "done": 5, "total": 52, "rows": 357136, "note": "ASMLSTOCK 30m: rule 90/120 (cf_chan_l2)", "pct": 9.6, "updated": "2026-09-02T14:01:47Z"}

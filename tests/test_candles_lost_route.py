@@ -35,8 +35,13 @@ def test_the_route_names_and_counts_the_lost_pairs(lost_file):
         "written": 1787680852}))
     got = api.candles_lost()
     assert got["count"] == 2
-    assert got["pairs"] == [{"symbol": "CHILLGUY_USDT", "timeframe": "15m"},
-                            {"symbol": "NAORIS_USDT", "timeframe": "30m"}]
+    # each pair now says WHY it is lost as well (2026-09-02): "26 still lost"
+    # was reading as 26 problems when 25 of them were the venue serving no
+    # candles at all, which no retry can change.
+    assert [(p["symbol"], p["timeframe"]) for p in got["pairs"]] == [
+        ("CHILLGUY_USDT", "15m"), ("NAORIS_USDT", "30m")]
+    assert all(p["kind"] in ("retry", "empty", "delisted", "recovered")
+               for p in got["pairs"]), got["pairs"]
     # The FORMAT is the rule, not a fixed literal: the same epoch prints twelve
     # hours apart in Manila and New York, and the operator moved this PC's
     # timezone on 2026-08-27 — which failed this assertion and nothing else.

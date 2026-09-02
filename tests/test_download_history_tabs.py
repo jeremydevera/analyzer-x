@@ -82,39 +82,53 @@ SRC = open("webapp/src/components/candles/DownloadHistory.tsx",
            encoding="utf-8").read()
 
 
-def test_there_are_two_tabs_and_the_runs_are_split_by_outcome():
-    assert '{ id: "fail", label: "errors" }' in SRC
-    assert '{ id: "ok", label: "success" }' in SRC
-    assert '(tab === "ok" ? r.ok : !r.ok)' in SRC, \
-        "errors go to the errors tab, success to the success tab"
-    # each tab carries its own count, from the payload and not a literal
-    assert "counts[t.id]" in SRC
-    assert "{ fail: d.failed, ok: d.ok }" in SRC
+def test_pending_is_a_tab_and_it_is_the_one_that_opens():
+    """Operator: *"i dont know if there are still errors or not ... if there
+    are unfinished or error or pending on my side, put that in the tab
+    'Pending'"*. The old tabs counted RUNS that had failed at some point; a run
+    that failed in August is not a thing to do in September."""
+    assert '{ id: "pending", label: "pending" }' in SRC
+    assert 'useState<Tab>("pending")' in SRC, "it must be the default tab"
+    assert '{ id: "fail", label: "failed runs" }' in SRC
+    assert '{ id: "ok", label: "clean runs" }' in SRC
+    assert "What still needs doing is in <b>pending</b>" in SRC
 
 
-def test_a_stopped_run_is_filed_with_the_errors():
-    """It is unfinished, which is what somebody opening that tab is after."""
-    assert "A STOPPED run is neither" in SRC
+def test_pending_reads_the_store_now_not_the_run_history():
+    for call in ("api.candleLost()", "api.candleCompleteness()",
+                 "api.candleGaps()"):
+        assert call in SRC, call
+    assert "notifyApi.downloadHistory" in SRC, "history still feeds its own tabs"
 
 
-def test_the_failures_are_grouped_by_contract_not_listed_per_timeframe():
-    assert "function groupFailures(" in SRC
-    assert "function parseFailure(" in SRC
-    # the same sentence with a different timeframe spliced in is ONE reason
-    assert r'replace(/no (Min\d+|Hour\d+|Day\d+) candles for \S+/i,' in SRC
-    assert '"no candles served"' in SRC
-    # the timeframes it hit are listed on the one line
+def test_only_what_a_button_can_fix_counts_as_pending():
+    """25 of the 26 lost pairs were the venue serving no candles. Counting
+    those as pending is what made "26 still lost" read as 26 problems."""
+    assert "const jobs = retry.length + missing.length + behind;" in SRC
+    assert "Only the things a BUTTON on this screen can change" in SRC
+    assert "nothing pending" in SRC
+
+
+def test_each_pending_thing_names_the_button_that_fixes_it():
+    assert 'fix="press UPDATE CANDLES"' in SRC
+    assert 'fix="press RETRY FAILED"' in SRC
+    assert "a retry gets the same empty answer" in SRC
+    assert "nothing can fetch a contract MEXC has dropped" in SRC
+
+
+def test_a_delisted_pair_is_not_drawn_as_a_retryable_error():
+    """The contradiction the operator was looking at: "FAILED · RESOLVED"
+    beside "4 pairs still lost", when those pairs were delisted."""
+    assert 'p.kind ?? "retry"' in SRC
+    assert '"delisted" ? "delisted &mdash; nothing can fetch these"' in SRC         or "delisted — nothing can fetch these" in SRC
+    assert "the venue serves no candles for these" in SRC
+
+
+def test_the_failures_are_grouped_by_contract():
+    assert "function groupBy(" in SRC
     assert 'g.tfs.join(" ")' in SRC
-    assert '(all)' in SRC, "five of five reads as (all)"
+    assert '"all 5"' in SRC, "five of five reads as one word"
 
 
 def test_the_wall_of_text_is_behind_a_click():
-    """The per-pair sentences still exist — they are just not the default."""
-    assert "what happened" in SRC and "hide the detail" in SRC
-    assert "still lost" in SRC and "recovered" in SRC
-    assert "open ? named.length : 6" in SRC, "six contracts, then a +N more"
-
-
-def test_the_panel_does_not_open_on_an_empty_tab():
-    assert "if (d && !d.failed && d.ok) setTab" in SRC
-    assert "no download has failed" in SRC
+    assert "which ones" in SRC and '{open ? "hide"' in SRC

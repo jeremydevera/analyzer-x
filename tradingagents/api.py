@@ -1859,6 +1859,41 @@ def _named_lost(row: dict) -> tuple[list[tuple[str, str]], int]:
     return pairs, max(0, int(meta.get("errors") or 0) - len(pairs))
 
 
+_EMPTY_HISTORY = None            # compiled on first use, below
+
+
+def _serves_nothing(symbol: str, tf: str, texts) -> bool:
+    """Did the run say the venue has NO candles for this pair?
+
+    "no Min15 candles for AJINOMOTOSTOCK_USDT" is the venue answering with an
+    empty list, which a retry repeats exactly. A cut connection or a truncated
+    body is a different thing and IS worth retrying, so the two must not be
+    counted together.
+    """
+    import re
+
+    global _EMPTY_HISTORY
+    if _EMPTY_HISTORY is None:
+        _EMPTY_HISTORY = re.compile(
+            r"no (?:Min\d+|Hour\d+|Day\d+) candles for", re.I)
+    want = f"{symbol} {tf}:"
+    for text in texts or ():
+        if str(text).startswith(want) and _EMPTY_HISTORY.search(str(text)):
+            return True
+    return False
+
+
+def _lost_kind(got: dict, symbol: str, tf: str, texts=None) -> str:
+    """One word for why a pair is on the lost list — see _serves_nothing."""
+    if got.get("recovered"):
+        return "recovered"
+    if got.get("delisted"):
+        return "delisted"
+    if _serves_nothing(symbol, tf, texts):
+        return "empty"
+    return "retry"
+
+
 def _stored_now(symbol: str, tf: str, since: float, live=None) -> dict:
     """Is the pair in the store, fetched SINCE `since` — from its file, never a
     flag.
@@ -2019,7 +2054,30 @@ def candles_lost() -> dict:
     live = db_jobs.live_symbols()          # one lookup for the whole route
     delisted = [{"symbol": s_, "timeframe": t_} for s_, t_ in all_pairs
                 if db_jobs.is_delisted(s_, live)]
-    pairs = [{"symbol": s_, "timeframe": t_} for s_, t_ in all_pairs]
+    # WHY each one is lost, so "26 pairs still lost" stops reading as 26
+    # things to do when 25 of them are the venue serving no candles at all
+    # (operator, 2026-09-02: "i dont know if there are still errors or not").
+    # Measured against the RUN THAT LOST THEM, never against "a file exists".
+    # ENPHSTOCK 1d has a parquet from Aug 26 and its Sep 02 fetch failed; with
+    # `since=0` that read as "recovered", which is the exact lie _stored_now's
+    # own docstring was written about. Older than the run = still lost.
+    _texts: list = []
+    _since = 0.0
+    for _row in nt.recent(limit=20, kind="download"):
+        _meta = _row.get("meta") or {}
+        if _row.get("ok") or _meta.get("stopped"):
+            continue
+        _texts = _meta.get("failed") or []
+        _since = float(_row.get("ts") or 0)
+        break
+    pairs = []
+    for s_, t_ in all_pairs:
+        # NOT `got`: that name already holds the lost FILE in this function,
+        # and shadowing it blanked the "written" stamp the panel prints
+        # ("lost by the last download (Sep 02, 2026 4:10pm)").
+        state = _stored_now(s_, t_, since=_since, live=live)
+        pairs.append({"symbol": s_, "timeframe": t_,
+                      "kind": _lost_kind(state, s_, t_, _texts)})
     recovered, failed_when, unnamed = [], "", 0
     for row in nt.recent(limit=20, kind="download"):
         meta = row.get("meta") or {}
@@ -2048,6 +2106,12 @@ def candles_lost() -> dict:
 
 
 @app.get("/api/candles/download-history")
+def _lost_kind_on(got: dict, symbol: str, tf: str, texts=None) -> dict:
+    """`_stored_now` plus the one word for WHY (see _lost_kind)."""
+    got["kind"] = _lost_kind(got, symbol, tf, texts)
+    return got
+
+
 def download_history(limit: int = 20) -> dict:
     """Every download this machine has run, newest first, with its outcome.
 
@@ -2072,7 +2136,13 @@ def download_history(limit: int = 20) -> dict:
             # since= the run's own time: a file older than the run is not a
             # recovery, and `delisted` rides along so the row cannot call a
             # dropped contract "recovered" (review, 2026-08-27)
-            "lost": [_stored_now(sym, tf, since=float(r.get("ts") or 0))
+            # `kind` per pair, so the screen can tell a delisted contract
+            # (nothing to do) from one a retry would fetch. Without it the
+            # panel drew both in red and a row could read
+            # "FAILED - RESOLVED" beside "4 pairs still lost".
+            "lost": [_lost_kind_on(_stored_now(sym, tf,
+                                               since=float(r.get("ts") or 0)),
+                                   sym, tf, m.get("failed"))
                      for sym, tf in named],
             "unnamed": unnamed,
         })

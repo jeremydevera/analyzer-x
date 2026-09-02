@@ -312,7 +312,10 @@ export const api = {
     rows: { symbol: string; timeframe: string; bars: number; last: string;
             missing_bars: number; hours_behind: number }[];
     pairs: number; behind: number;
-    worst: { symbol: string; timeframe: string; hours_behind: number } | null;
+    /** the route returns the whole row here — `last` and `bars` were missing
+     *  from this type, so the screen could not print the last bar it has */
+    worst: { symbol: string; timeframe: string; hours_behind: number;
+             bars?: number; last?: string; missing_bars?: number } | null;
     /** stored pairs the venue no longer lists: they can never catch up, so
      *  they are OUT of `behind` and `worst` and named on their own */
     delisted?: { symbol: string; timeframe: string; hours_behind: number }[];
@@ -320,7 +323,13 @@ export const api = {
   }>("/api/candles/gaps"),
   /** the pairs the last download gave up on — what RETRY FAILED fetches */
   candleLost: () => get<{
-    pairs: { symbol: string; timeframe: string }[]; count: number; written: string;
+    /** `kind` is WHY it is lost, measured against the run that lost it:
+     *  "retry" (a run would fetch it), "empty" (the venue serves no candles
+     *  for that pair, so a retry gets the same nothing), "delisted" (the
+     *  contract is gone) or "recovered" (stored since). Without it "26 still
+     *  lost" read as 26 problems when 25 were the venue having no data. */
+    pairs: { symbol: string; timeframe: string; kind?: string }[];
+    count: number; written: string;
     /** what the LAST FAILED run lost that is back in the store now */
     recovered: { symbol: string; timeframe: string; bars: number | null; when: string }[];
     failed_run_when: string; unnamed: number;
@@ -916,6 +925,8 @@ export interface NotifyPayload { rows: NotifyRow[]; unread: number; total: numbe
 /** a pair a download gave up on, and whether the store has it NOW */
 export interface LostPair {
   symbol: string; timeframe: string; recovered: boolean; bars: number | null; when: string;
+  /** why it is lost — see api.candleLost */
+  kind?: string;
 }
 export interface DownloadHistoryRow {
   ts: number; when: string; ok: boolean; title: string; detail: string;

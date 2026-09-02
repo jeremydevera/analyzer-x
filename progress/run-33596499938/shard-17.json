@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 34, "total": 52, "rows": 2783350, "note": "O 30m: rule 72/120 (force13)", "pct": 65.4, "updated": "2026-09-02T08:22:07Z"}
+{"shard": 17, "stage": "testing", "done": 36, "total": 52, "rows": 2823764, "note": "PROM 15m: 34,608 bars, testing 120 rules", "pct": 69.2, "updated": "2026-09-02T08:23:01Z"}

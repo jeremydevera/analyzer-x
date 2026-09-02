@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 52, "total": 52, "rows": 4086756, "note": "ZHIPUSTOCK 15m: rule 102/120 (cf_soup1_l2)", "pct": 100.0, "updated": "2026-09-02T16:59:38Z"}
+{"shard": 12, "stage": "done", "done": 52, "total": 52, "rows": 4137564, "note": "4,137,564 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "pct": 100.0, "updated": "2026-09-02T17:00:18Z"}

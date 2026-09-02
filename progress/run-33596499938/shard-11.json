@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 5, "total": 52, "rows": 388480, "note": "ASR 30m: rule 4/120 (trend50)", "pct": 9.6, "updated": "2026-09-02T06:20:52Z"}
+{"shard": 11, "stage": "testing", "done": 5, "total": 52, "rows": 396680, "note": "ASR 30m: rule 45/120 (zscore20)", "pct": 9.6, "updated": "2026-09-02T06:21:37Z"}

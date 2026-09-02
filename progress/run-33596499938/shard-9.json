@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 43, "total": 52, "rows": 3453236, "note": "SPX 15m: rule 87/120 (cf_triple_l2)", "pct": 82.7, "updated": "2026-09-02T08:47:16Z"}
+{"shard": 9, "stage": "testing", "done": 43, "total": 52, "rows": 3460496, "note": "SPX 30m: 18,959 bars, testing 120 rules", "pct": 82.7, "updated": "2026-09-02T08:48:02Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 52, "total": 52, "rows": 3891126, "note": "ZIL 1h: rule 93/120 (cf_soup_l2)", "pct": 100.0, "updated": "2026-09-02T17:33:30Z"}
+{"shard": 15, "stage": "done", "done": 52, "total": 52, "rows": 3923026, "note": "3,923,026 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "pct": 100.0, "updated": "2026-09-02T17:34:12Z"}

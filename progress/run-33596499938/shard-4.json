@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 14, "total": 52, "rows": 1067956, "note": "CTR 30m: rule 1/120 (mom6)", "pct": 26.9, "updated": "2026-09-02T06:47:04Z"}
+{"shard": 4, "stage": "testing", "done": 14, "total": 52, "rows": 1106610, "note": "CTR 1h: rule 68/120 (dbltop)", "pct": 26.9, "updated": "2026-09-02T06:47:49Z"}

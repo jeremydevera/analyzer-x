@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 37, "total": 52, "rows": 3152828, "note": "PYPLSTOCK 15m: rule 42/120 (rsidiv)", "pct": 71.2, "updated": "2026-09-02T21:19:11Z"}
+{"shard": 9, "stage": "testing", "done": 38, "total": 52, "rows": 3219268, "note": "RDWSTOCK 15m: rule 17/120 (atrbreak)", "pct": 73.1, "updated": "2026-09-02T21:19:57Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 5, "total": 52, "rows": 330044, "note": "ASTER 30m: 16,724 bars, testing 120 rules", "pct": 9.6, "updated": "2026-09-02T13:46:54Z"}
+{"shard": 13, "stage": "testing", "done": 5, "total": 52, "rows": 337044, "note": "ASTER 30m: rule 29/120 (hull20)", "pct": 9.6, "updated": "2026-09-02T13:47:39Z"}

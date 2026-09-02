@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 47, "total": 52, "rows": 3384654, "note": "TURBO 30m: 18,959 bars, testing 120 rules", "pct": 90.4, "updated": "2026-09-02T17:24:44Z"}
+{"shard": 8, "stage": "testing", "done": 47, "total": 52, "rows": 3388174, "note": "TURBO 30m: rule 10/120 (sr_bounce)", "pct": 90.4, "updated": "2026-09-02T17:25:29Z"}

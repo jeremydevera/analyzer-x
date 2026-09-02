@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 52, "total": 53, "rows": 3936320, "note": "YB 15m: rule 72/120 (force13)", "pct": 98.1, "updated": "2026-09-02T17:33:35Z"}
+{"shard": 0, "stage": "testing", "done": 52, "total": 53, "rows": 3943520, "note": "YB 15m: rule 117/120 (cf_diadx_l2)", "pct": 98.1, "updated": "2026-09-02T17:34:21Z"}

@@ -32,7 +32,7 @@ F. **every row carries every column.** If the payload is too big, compress the E
    Verify with every filter at its widest, on a row the default view hides.
 
 G. **filters for the columns that decide things**: min win rate, min profit total, min
-   months green (a count), max worst dip, and **last N months** — which RE-RUNS every row
+   months green (a count), max worst dip, **min TP %**, **min SL %**, and **last N months** — which RE-RUNS every row
    over that slice of candles rather than hiding rows, so profit, trades, wins, losses and
    win rate are the window's own; print the window's real dates beside the row count, and
    REMOVE the month columns outside the window rather than filling them with em dashes — live-typing, stacking, measured at the CURRENT base
@@ -41,6 +41,14 @@ G. **filters for the columns that decide things**: min win rate, min profit tota
    counts months — set 10 and a 9/12 row must vanish. A percent box beside a count column
    reads as broken, because 11 typed as a percent matches everything. And when a filter
    cannot cut anything in the current view, print why beside the count.
+   **MIN TP % and MIN SL % are on every artifact from 2026-09-02** — operator's words:
+   *"add a filter min tp and min sl / if i input 1 tp then show tp above 1 same for sl /
+   it should be read as AND / always remember this setting when generating artefact"*.
+   Both are inclusive minimums in the percent their column prints (TP 1 keeps 1% and
+   wider), they stack with every other filter as AND, and both are named in the row
+   count. They are how the reader throws out the pennies-in-front-of-a-steamroller rows
+   a win-rate ranking floats to the top: TP 0.3% against SL 2% wins 96 times and gives
+   it all back on one loss.
 H. **a stable row ID as the first column** (`#LLZM9D`), HASHED FROM THE COMBINATION
    (`backtest_report.row_code`), never a per-page sequence — a sequence gives the same
    live row a different number on every page, which is how "#05146 / #02054 / not there"

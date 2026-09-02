@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 13, "total": 52, "rows": 878042, "note": "CRMSTOCK 30m: rule 81/120 (cf_donch_l2)", "pct": 25.0, "updated": "2026-09-02T06:48:26Z"}
+{"shard": 11, "stage": "testing", "done": 13, "total": 52, "rows": 909796, "note": "CRMSTOCK 4h: 1,386 bars, testing 120 rules", "pct": 25.0, "updated": "2026-09-02T06:49:13Z"}

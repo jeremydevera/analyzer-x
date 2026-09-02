@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 47, "total": 53, "rows": 4129932, "note": "TRY 15m: 34,615 bars, testing 120 rules", "pct": 88.7, "updated": "2026-09-02T10:11:11Z"}
+{"shard": 0, "stage": "testing", "done": 47, "total": 53, "rows": 4140912, "note": "TRY 15m: rule 56/120 (insidebrk)", "pct": 88.7, "updated": "2026-09-02T10:11:56Z"}

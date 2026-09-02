@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 26, "total": 53, "rows": 2095484, "note": "KERNEL 30m: rule 29/120 (hull20)", "pct": 49.1, "updated": "2026-09-02T20:56:11Z"}
+{"shard": 1, "stage": "testing", "done": 26, "total": 53, "rows": 2110444, "note": "KERNEL 30m: rule 99/120 (cf_ttm_l2)", "pct": 49.1, "updated": "2026-09-02T20:56:56Z"}

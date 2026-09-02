@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 21, "total": 52, "rows": 1674134, "note": "HANA 30m: rule 87/120 (cf_triple_l2)", "pct": 40.4, "updated": "2026-09-02T15:46:05Z"}
+{"shard": 19, "stage": "testing", "done": 21, "total": 52, "rows": 1682494, "note": "HANA 1h: rule 2/120 (mom15)", "pct": 40.4, "updated": "2026-09-02T15:46:50Z"}

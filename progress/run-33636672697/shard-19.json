@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 48, "total": 52, "rows": 4263194, "note": "VANA 1h: rule 78/120 (cf_mom_l2)", "pct": 92.3, "updated": "2026-09-02T18:48:00Z"}
+{"shard": 19, "stage": "done", "done": 52, "total": 52, "rows": 4272214, "note": "4,272,214 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "pct": 100.0, "updated": "2026-09-02T18:48:14Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 28, "total": 53, "rows": 2229146, "note": "LSK 15m: rule 21/120 (cci20)", "pct": 52.8, "updated": "2026-09-02T21:10:40Z"}
+{"shard": 4, "stage": "testing", "done": 28, "total": 53, "rows": 2234426, "note": "LSK 15m: rule 45/120 (zscore20)", "pct": 52.8, "updated": "2026-09-02T21:11:26Z"}

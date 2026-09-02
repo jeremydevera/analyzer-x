@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 30, "total": 53, "rows": 2522350, "note": "MIRA 15m: 32,721 bars, testing 120 rules", "pct": 56.6, "updated": "2026-09-02T08:24:44Z"}
+{"shard": 0, "stage": "testing", "done": 30, "total": 53, "rows": 2524330, "note": "MIRA 15m: rule 3/120 (fade15)", "pct": 56.6, "updated": "2026-09-02T08:25:47Z"}

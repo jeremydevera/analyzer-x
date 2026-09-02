@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 7, "total": 52, "rows": 582024, "note": "BAND 15m: rule 19/120 (emacross)", "pct": 13.5, "updated": "2026-09-02T06:26:05Z"}
+{"shard": 7, "stage": "testing", "done": 7, "total": 52, "rows": 587744, "note": "BAND 15m: rule 45/120 (zscore20)", "pct": 13.5, "updated": "2026-09-02T06:26:51Z"}

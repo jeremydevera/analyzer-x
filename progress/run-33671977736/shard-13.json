@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 40, "total": 52, "rows": 3447550, "note": "SENT 15m: rule 76/120 (cf_mom)", "pct": 76.9, "updated": "2026-09-02T22:17:07Z"}
+{"shard": 13, "stage": "testing", "done": 40, "total": 52, "rows": 3456350, "note": "SENT 30m: 14,032 bars, testing 120 rules", "pct": 76.9, "updated": "2026-09-02T22:18:03Z"}

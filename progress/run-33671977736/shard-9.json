@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 42, "total": 52, "rows": 3593772, "note": "SNX 1h: rule 108/120 (cf_bosfvg_l2)", "pct": 80.8, "updated": "2026-09-02T21:31:29Z"}
+{"shard": 9, "stage": "testing", "done": 43, "total": 52, "rows": 3640144, "note": "SPX500 15m: rule 15/120 (bbbreak)", "pct": 82.7, "updated": "2026-09-02T21:32:15Z"}

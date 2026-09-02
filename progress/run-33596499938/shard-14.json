@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 37, "total": 52, "rows": 3384720, "note": "QQQSTOCK 30m: 14,776 bars, testing 120 rules", "pct": 71.2, "updated": "2026-09-02T09:22:10Z"}
+{"shard": 14, "stage": "testing", "done": 37, "total": 52, "rows": 3403120, "note": "QQQSTOCK 30m: rule 86/120 (cf_triple_l1)", "pct": 71.2, "updated": "2026-09-02T09:22:55Z"}

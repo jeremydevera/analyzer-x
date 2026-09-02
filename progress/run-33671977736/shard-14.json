@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 12, "total": 52, "rows": 1019378, "note": "COAI 30m: 16,442 bars, testing 120 rules", "pct": 23.1, "updated": "2026-09-02T20:09:27Z"}
+{"shard": 14, "stage": "testing", "done": 12, "total": 52, "rows": 1024578, "note": "COAI 30m: rule 20/120 (stoch14)", "pct": 23.1, "updated": "2026-09-02T20:10:13Z"}

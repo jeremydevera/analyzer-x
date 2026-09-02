@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 1, "total": 52, "rows": 54560, "note": "ACT 1h: 9,479 bars, testing 120 rules", "pct": 1.9, "updated": "2026-09-02T19:21:23Z"}
+{"shard": 18, "stage": "testing", "done": 1, "total": 52, "rows": 67980, "note": "ACT 1h: rule 56/120 (insidebrk)", "pct": 1.9, "updated": "2026-09-02T19:22:08Z"}

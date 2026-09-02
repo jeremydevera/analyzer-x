@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 16, "total": 52, "rows": 1459152, "note": "ELSA 15m: 21,651 bars, testing 120 rules", "pct": 30.8, "updated": "2026-09-02T20:50:04Z"}
+{"shard": 18, "stage": "testing", "done": 16, "total": 52, "rows": 1462352, "note": "ELSA 15m: rule 10/120 (sr_bounce)", "pct": 30.8, "updated": "2026-09-02T20:50:50Z"}

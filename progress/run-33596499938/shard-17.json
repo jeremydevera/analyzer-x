@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 44, "total": 52, "rows": 3523804, "note": "SYN 15m: 34,611 bars, testing 120 rules", "pct": 84.6, "updated": "2026-09-02T09:11:12Z"}
+{"shard": 17, "stage": "testing", "done": 44, "total": 52, "rows": 3525244, "note": "SYN 15m: rule 3/120 (fade15)", "pct": 84.6, "updated": "2026-09-02T09:12:03Z"}

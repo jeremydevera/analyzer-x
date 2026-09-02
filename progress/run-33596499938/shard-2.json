@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 26, "total": 52, "rows": 2208114, "note": "KGEN 30m: rule 20/120 (stoch14)", "pct": 50.0, "updated": "2026-09-02T07:51:00Z"}
+{"shard": 2, "stage": "testing", "done": 26, "total": 52, "rows": 2220914, "note": "KGEN 30m: rule 85/120 (cf_triple)", "pct": 50.0, "updated": "2026-09-02T07:51:46Z"}

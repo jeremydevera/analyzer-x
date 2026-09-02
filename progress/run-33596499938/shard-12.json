@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 10, "total": 52, "rows": 841080, "note": "BXSTOCK 30m: rule 9/120 (fib382)", "pct": 19.2, "updated": "2026-09-02T06:39:37Z"}
+{"shard": 12, "stage": "testing", "done": 11, "total": 52, "rows": 913070, "note": "CELHSTOCK 30m: 2,779 bars, testing 120 rules", "pct": 21.2, "updated": "2026-09-02T06:40:22Z"}

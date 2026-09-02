@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 49, "total": 52, "rows": 3765364, "note": "VIRTUAL 15m: rule 58/120 (bos)", "pct": 94.2, "updated": "2026-09-02T09:25:44Z"}
+{"shard": 4, "stage": "testing", "done": 49, "total": 52, "rows": 3772744, "note": "VIRTUAL 15m: rule 99/120 (cf_ttm_l2)", "pct": 94.2, "updated": "2026-09-02T09:26:31Z"}

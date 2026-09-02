@@ -32,7 +32,7 @@ F. **every row carries every column.** If the payload is too big, compress the E
    Verify with every filter at its widest, on a row the default view hides.
 
 G. **filters for the columns that decide things**: min win rate, min profit total, min
-   months green (a count), max worst dip, **min TP %**, **min SL %**, and **last N months** — which RE-RUNS every row
+   months green (a count), max worst dip, **min TP %**, **max SL %**, and **last N months** — which RE-RUNS every row
    over that slice of candles rather than hiding rows, so profit, trades, wins, losses and
    win rate are the window's own; print the window's real dates beside the row count, and
    REMOVE the month columns outside the window rather than filling them with em dashes — live-typing, stacking, measured at the CURRENT base
@@ -41,14 +41,21 @@ G. **filters for the columns that decide things**: min win rate, min profit tota
    counts months — set 10 and a 9/12 row must vanish. A percent box beside a count column
    reads as broken, because 11 typed as a percent matches everything. And when a filter
    cannot cut anything in the current view, print why beside the count.
-   **MIN TP % and MIN SL % are on every artifact from 2026-09-02** — operator's words:
-   *"add a filter min tp and min sl / if i input 1 tp then show tp above 1 same for sl /
-   it should be read as AND / always remember this setting when generating artefact"*.
-   Both are inclusive minimums in the percent their column prints (TP 1 keeps 1% and
-   wider), they stack with every other filter as AND, and both are named in the row
-   count. They are how the reader throws out the pennies-in-front-of-a-steamroller rows
-   a win-rate ranking floats to the top: TP 0.3% against SL 2% wins 96 times and gives
-   it all back on one loss.
+   **MIN TP % and MAX SL % are on every artifact from 2026-09-02** — operator's words:
+   *"add a filter min tp and min sl ... it should be read as AND / always remember this
+   setting when generating artefact"*, then, correcting the direction, *"for sl if i
+   input 1 then show below 1 or equal 1"*. They point OPPOSITE WAYS and that is the
+   point: **TP is a floor** (1 keeps 1% and wider), **SL is a ceiling** (1 keeps 1% and
+   tighter), because the useful end of a target is up and the useful end of a stop is
+   down. Both are inclusive, in the percent their column prints, stack with every other
+   filter as AND, and are named in the row count. They are how the reader throws out the
+   pennies-in-front-of-a-steamroller rows a win-rate ranking floats to the top: TP 0.3%
+   against SL 2% wins 96 times and gives it all back on one loss.
+   A filter must also be able to REACH THE DATA. `SL <= 1%` returned nothing on the
+   first version of that page because the page held the top 500 rows by win rate while
+   **61** rows with a stop that tight had passed the screen. Publish every row that
+   passed (all 3,613 there, logs included, 7.5 MB) or the filter answers about the page
+   instead of the measurement.
 H. **a stable row ID as the first column** (`#LLZM9D`), HASHED FROM THE COMBINATION
    (`backtest_report.row_code`), never a per-page sequence — a sequence gives the same
    live row a different number on every page, which is how "#05146 / #02054 / not there"

@@ -394,3 +394,41 @@ def test_retry_mode_attempts_a_delisted_pair_once_and_clears_it(job,
     p = job["progress"]()
     assert p["errors"] == 0 and p["delisted"] == ["MEZO_USDT 15m"]
     assert job["lost"]()["pairs"] == [], "cleared for good"
+
+
+def test_update_backtest_names_every_pair_that_failed(monkeypatch, tmp_path):
+    """Operator, 2026-09-02: "update the backtest". A spec that named coins
+    without `_USDT` made all 4,124 pairs raise `no Min15 candles for CETUS`, and
+    the job read `done: 860, rows: 0, new_bars: 0` with NO note and no error
+    count — 860 failures wearing the clothes of a run with nothing to do. The
+    download job's rule applies to the button beside it: every pair that failed
+    is NAMED, counted, and rung."""
+    import json
+
+    from tradingagents import market_sweep as msw
+
+    monkeypatch.setattr(dj, "_stopping", lambda kind: False)
+    monkeypatch.setattr(dj, "FILES", {"btupdate": {
+        "progress": tmp_path / "p.json", "spec": tmp_path / "s.json",
+        "pid": tmp_path / "pid", "stop": tmp_path / "STOP"}})
+    bell = []
+    import tradingagents.notifications as nt
+
+    monkeypatch.setattr(nt, "record", lambda *a, **k: bell.append((a, k)))
+
+    def boom(symbol, tf, **kw):
+        raise RuntimeError(f"no Min15 candles for {symbol}")
+
+    monkeypatch.setattr(msw, "run_pair", boom)
+    dj._run_btupdate({"coins": ["CETUS", "AAA"], "tfs": ["15m"], "days": 365,
+                      "base": 5.0})
+
+    p = json.loads((tmp_path / "p.json").read_text())
+    assert p["errors"] == 2, p
+    assert p["failed"] == ["CETUS 15m: no Min15 candles for CETUS",
+                           "AAA 15m: no Min15 candles for AAA"], p["failed"]
+    assert p["failed_pairs"] == [["CETUS", "15m"], ["AAA", "15m"]]
+    assert "2 of 2 pair(s) failed" in p["note"], p["note"]
+    (args, kw) = bell[-1]
+    assert kw["ok"] is False, kw
+    assert "2 error(s)" in kw["detail"] and "CETUS 15m" in kw["detail"], kw

@@ -1043,18 +1043,26 @@ def _run_btupdate(spec: dict) -> None:
     days = int(spec.get("days") or 365)
     base = float(spec.get("base") or 5.0)
     rows, new_bars, stopped, i, notes = [], 0, False, 0, []
+    # named, counted, and reported — not folded into notes[:3]
+    failed: list[str] = []
+    failed_pairs: list[list[str]] = []
     for i, (sym, tf) in enumerate(pairs):
         if _stopping("btupdate"):
             stopped = True
             break
         _write(f["progress"], {"running": True, "done": i,
                                "total": len(pairs), "now": f"{sym} {tf}",
-                               "rows": len(rows), "new_bars": new_bars})
+                               "rows": len(rows), "new_bars": new_bars,
+                               "errors": len(failed),
+                               "first_error": failed[0] if failed else ""})
         try:
             r = msw.run_pair(sym, tf, base_margin=base, days=days,
                              thresholds=3, fresh=False)   # UPDATE = gap fill
         except Exception as exc:
-            notes.append(f"{sym} {tf}: {str(exc)[:80]}")
+            failed.append(f"{sym} {tf}: {str(exc)[:80]}")
+            failed_pairs.append([sym, tf])
+            print(f"[btupdate] {sym} {tf} FAILED: {type(exc).__name__}: "
+                  f"{str(exc)[:120]}", flush=True)
             continue
         rows += r.get("rows") or []
         new_bars += int(r.get("new_bars") or 0)
@@ -1067,12 +1075,40 @@ def _run_btupdate(spec: dict) -> None:
         r.setdefault("id", br.row_code(
             r["coin"], r["tf"], r["signal"], r.get("th") or 0.0,
             r["sl"], r["tp"], r["sizing"]))
+    # One line in the bell, so a click that continued NOTHING is distinguishable
+    # from a click that worked — and every failed pair is named.
+    try:
+        from tradingagents import notifications as _nt
+
+        _ok = not failed and not stopped
+        names = " · ".join(failed[:_BELL_NAMES])
+        more = len(failed) - _BELL_NAMES
+        _nt.record(
+            "btupdate",
+            ("Backtest update stopped" if stopped else
+             "Backtest update finished" if _ok else
+             "Backtest update finished with errors"),
+            detail=(f"{new_bars:,} new bar(s) over {len(pairs)} pair(s), "
+                    f"{len(rows):,} row(s) continued"
+                    + (f" · {len(failed)} error(s): {names}" if failed else "")
+                    + (f" · and {more} more" if more > 0 else "")),
+            ok=_ok,
+            meta={"pairs": len(pairs), "rows": len(rows),
+                  "new_bars": new_bars, "errors": len(failed),
+                  "failed": failed, "stopped": bool(stopped)})
+    except Exception:
+        pass
     _write(f["progress"], {
         "running": False, "done": i if stopped else len(pairs),
         "total": len(pairs), "rows": len(rows), "saved": saved,
         "save_error": save_err, "new_bars": new_bars, "stopped": stopped,
         "finished": int(time.time()),
-        "note": ("stopped by you — every pair already continued is kept; " if stopped else "")
+        "errors": len(failed), "first_error": failed[0] if failed else "",
+        "failed": failed, "failed_pairs": failed_pairs,
+        "note": ("stopped by you — every pair already continued is kept; "
+                 if stopped else "")
+                + (f"{len(failed)} of {len(pairs)} pair(s) failed — named in "
+                   f"failed; " if failed else "")
                 + ("; ".join(notes[:3]))})
 
 

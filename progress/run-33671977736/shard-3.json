@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 19, "total": 53, "rows": 1593760, "note": "FLUID 15m: 32,968 bars, testing 120 rules", "pct": 35.8, "updated": "2026-09-02T20:25:04Z"}
+{"shard": 3, "stage": "testing", "done": 19, "total": 53, "rows": 1597720, "note": "FLUID 15m: rule 16/120 (keltner)", "pct": 35.8, "updated": "2026-09-02T20:25:50Z"}

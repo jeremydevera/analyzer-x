@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 25, "total": 52, "rows": 2028566, "note": "KAS 15m: 34,606 bars, testing 120 rules", "pct": 48.1, "updated": "2026-09-02T07:51:14Z"}
+{"shard": 17, "stage": "testing", "done": 25, "total": 52, "rows": 2030726, "note": "KAS 15m: rule 6/120 (sweep30)", "pct": 48.1, "updated": "2026-09-02T07:51:59Z"}

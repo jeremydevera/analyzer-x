@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 53, "total": 53, "rows": 4112968, "note": "ZRO 15m: rule 120/120 (cf_stflip_l2)", "pct": 100.0, "updated": "2026-09-02T17:34:57Z"}
+{"shard": 2, "stage": "testing", "done": 53, "total": 53, "rows": 4114768, "note": "ZRO 30m: rule 3/120 (fade15)", "pct": 100.0, "updated": "2026-09-02T17:35:45Z"}

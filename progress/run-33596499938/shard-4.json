@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 52, "total": 52, "rows": 4065720, "note": "ZBT 15m: rule 84/120 (cf_maobv_l2)", "pct": 100.0, "updated": "2026-09-02T09:44:34Z"}
+{"shard": 4, "stage": "testing", "done": 52, "total": 52, "rows": 4073640, "note": "ZBT 30m: 15,357 bars, testing 120 rules", "pct": 100.0, "updated": "2026-09-02T09:45:23Z"}

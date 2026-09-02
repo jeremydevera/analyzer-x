@@ -18,6 +18,7 @@ import contextlib
 import json
 import logging
 import os
+import pathlib
 import subprocess
 import tempfile
 import time
@@ -130,11 +131,44 @@ def _runs(slug: str, limit: int = 5) -> list:
                           "databaseId,status,conclusion,url,createdAt"))
 
 
+_STATUS_CACHE: dict = {"at": 0.0, "run": None, "payload": None,
+                       "failed_at": 0.0, "why": ""}
+# The one remaining API call per poll. Cached, because the panel polls every
+# 4 s and GitHub's SECONDARY limit for Actions endpoints does not care that the
+# primary budget is untouched: it 403'd this user for hours on 2026-09-02.
+STATUS_CACHE_S = 30.0
+STATUS_FAIL_S = 120.0
+
+
 def status(run_id: int, slug: str | None = None) -> dict:
-    """Where a run is, shard by shard."""
+    """Where a run is, shard by shard. Cached, and a rate-limited answer serves
+    the last good one rather than blanking the panel."""
+    import time as _t
+
+    now = _t.time()
+    c = _STATUS_CACHE
+    fresh = c["run"] == run_id and c["payload"] is not None
+    if fresh and now - c["at"] < STATUS_CACHE_S:
+        return c["payload"]
+    if fresh and now - c["failed_at"] < STATUS_FAIL_S:
+        # still inside a failure window: the run's own state is unknown, so say
+        # so on the payload instead of pretending it changed
+        out = dict(c["payload"])
+        out["stale"] = True
+        out["stale_why"] = c["why"]
+        return out
     slug = slug or repo_slug()
-    d = json.loads(_gh("run", "view", str(run_id), "--repo", slug, "--json",
-                       "status,conclusion,url,jobs"))
+    try:
+        d = json.loads(_gh("run", "view", str(run_id), "--repo", slug, "--json",
+                           "status,conclusion,url,jobs"))
+    except CloudError as exc:
+        c.update(failed_at=now, why=str(exc)[:200])
+        if fresh:
+            out = dict(c["payload"])
+            out["stale"] = True
+            out["stale_why"] = str(exc)[:200]
+            return out
+        raise
     jobs = [j for j in d.get("jobs", []) if j["name"].startswith("sweep")]
     plan = [j for j in d.get("jobs", []) if j["name"] == "plan"]
     done = sum(1 for j in jobs if j["status"] == "completed")
@@ -146,7 +180,7 @@ def status(run_id: int, slug: str | None = None) -> dict:
     # unless the panel says so.
     waiting = (not jobs and plan
                and plan[0].get("status") in ("queued", "waiting", "pending"))
-    return {"status": d.get("status"), "conclusion": d.get("conclusion"),
+    payload = {"status": d.get("status"), "conclusion": d.get("conclusion"),
             "url": d.get("url"), "shards": len(jobs), "shards_done": done,
             "running": running, "queued": queued,
             "waiting_for_runners": bool(waiting),
@@ -162,41 +196,85 @@ def status(run_id: int, slug: str | None = None) -> dict:
                                     None)}
                      for j in jobs],
             "failed": sum(1 for j in jobs if j.get("conclusion") == "failure")}
+    _STATUS_CACHE.update(at=_t.time(), run=run_id, payload=payload,
+                         failed_at=0.0, why="")
+    return payload
 
 
 PROGRESS_BRANCH = "sweep-progress"
 
 
+_PROGRESS_CACHE: dict = {"at": 0.0, "run": None, "rows": []}
+# how long a read of the progress branch is reused. The panel polls every 4 s;
+# the shards write every few seconds at most.
+PROGRESS_CACHE_S = 15.0
+# how long a fetch failure is remembered, so a network blip does not turn into
+# a fetch per poll
+FETCH_FAIL_S = 60.0
+_FETCH_FAILED_AT = [0.0]
+
+
+def _git(*args, timeout: int = 120) -> str:
+    """Run git in the repository, quietly. Raises CloudError on failure."""
+    root = pathlib.Path(__file__).resolve().parent.parent
+    try:
+        p = subprocess.run(("git", *args), cwd=str(root), capture_output=True,
+                           text=True, timeout=timeout)
+    except Exception as exc:                                   # noqa: BLE001
+        raise CloudError(f"git {args[0]}: {type(exc).__name__}: {exc}") from exc
+    if p.returncode:
+        raise CloudError(f"git {args[0]}: {(p.stderr or '').strip()[:160]}")
+    return p.stdout
+
+
 def live_progress(run_id: int, slug: str | None = None) -> list:
-    """What each machine says it is doing, right now.
+    """What each machine says it is doing, right now — read over GIT.
 
     GitHub serves no log for a running job, so the shards publish a small file
-    each — ``progress/run-<id>/shard-<n>.json`` on an orphan branch. This reads
-    them back. Empty list simply means nothing has reported yet.
-    """
-    slug = slug or repo_slug()
-    path = f"progress/run-{run_id}"
-    try:
-        listing = json.loads(_gh(
-            "api", f"repos/{slug}/contents/{path}?ref={PROGRESS_BRANCH}",
-            timeout=45))
-    except CloudError:
-        return []
-    out = []
-    for f in listing if isinstance(listing, list) else []:
-        try:
-            # --jq .content prints the raw base64 string, not JSON, so it must
-            # not be passed through json.loads first.
-            blob = _gh("api", f["url"], "--jq", ".content", timeout=45)
-        except CloudError:
-            continue
-        try:
-            import base64
+    each: ``progress/run-<id>/shard-<n>.json`` on the ``sweep-progress``
+    branch. Reading those through the CONTENTS API cost 21 calls a poll and
+    tripped GitHub's secondary rate limit for hours (see the note above), which
+    blinded this panel while the run was healthy. `git fetch` + `git show`
+    reads the same bytes with no API and no budget.
 
-            out.append(json.loads(base64.b64decode(blob.strip())))
-        except Exception:
+    Empty list means nothing has reported yet. A fetch that fails is remembered
+    for a minute and the last good rows are served meanwhile — a stale row is
+    labelled by its own `note`, an empty panel is not.
+    """
+    import time as _t
+
+    now = _t.time()
+    c = _PROGRESS_CACHE
+    if c["run"] == run_id and now - c["at"] < PROGRESS_CACHE_S:
+        return c["rows"]
+
+    if now - _FETCH_FAILED_AT[0] > FETCH_FAIL_S:
+        try:
+            _git("fetch", "--quiet", "origin",
+                 f"{PROGRESS_BRANCH}:refs/remotes/origin/{PROGRESS_BRANCH}",
+                 "--force", timeout=180)
+        except CloudError as exc:
+            _FETCH_FAILED_AT[0] = now
+            print(f"[cloud] could not fetch {PROGRESS_BRANCH}: {exc}",
+                  flush=True)
+
+    path = f"progress/run-{run_id}/"
+    try:
+        names = [n for n in _git("ls-tree", "--name-only",
+                                 f"origin/{PROGRESS_BRANCH}", path,
+                                 timeout=60).split() if n.endswith(".json")]
+    except CloudError:
+        return c["rows"] if c["run"] == run_id else []
+    out = []
+    for n in names:
+        try:
+            out.append(json.loads(_git("show", f"origin/{PROGRESS_BRANCH}:{n}",
+                                       timeout=60)))
+        except Exception:                                      # noqa: BLE001
             continue
-    return sorted(out, key=lambda d: d.get("shard", 0))
+    out.sort(key=lambda d: d.get("shard", 0))
+    c.update(at=now, run=run_id, rows=out)
+    return out
 
 
 def fetch(run_id: int, slug: str | None = None) -> list:

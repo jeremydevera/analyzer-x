@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 43, "total": 52, "rows": 3173582, "note": "SPX 15m: 34,566 bars, testing 120 rules", "pct": 82.7, "updated": "2026-09-02T21:50:08Z"}
+{"shard": 10, "stage": "testing", "done": 43, "total": 52, "rows": 3174902, "note": "SPX 15m: rule 2/120 (mom15)", "pct": 82.7, "updated": "2026-09-02T21:50:53Z"}

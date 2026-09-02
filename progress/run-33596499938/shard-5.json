@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 19, "total": 52, "rows": 1596710, "note": "FLUX 15m: rule 16/120 (keltner)", "pct": 36.5, "updated": "2026-09-02T07:15:52Z"}
+{"shard": 5, "stage": "testing", "done": 19, "total": 52, "rows": 1601770, "note": "FLUX 15m: rule 39/120 (fisher)", "pct": 36.5, "updated": "2026-09-02T07:16:38Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 13, "total": 52, "rows": 1123346, "note": "CRCLSTOCK 15m: 34,490 bars, testing 120 rules", "pct": 25.0, "updated": "2026-09-02T20:00:26Z"}
+{"shard": 9, "stage": "testing", "done": 13, "total": 52, "rows": 1128386, "note": "CRCLSTOCK 15m: rule 22/120 (engulf)", "pct": 25.0, "updated": "2026-09-02T20:01:13Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 11, "total": 53, "rows": 857478, "note": "CATI 15m: rule 78/120 (cf_mom_l2)", "pct": 20.8, "updated": "2026-09-02T20:02:05Z"}
+{"shard": 1, "stage": "testing", "done": 11, "total": 53, "rows": 865878, "note": "CATI 30m: 18,959 bars, testing 120 rules", "pct": 20.8, "updated": "2026-09-02T20:02:58Z"}

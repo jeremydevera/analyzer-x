@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 42, "total": 52, "rows": 3171934, "note": "SNOWSTOCK 15m: 18,092 bars, testing 120 rules", "pct": 80.8, "updated": "2026-09-02T17:09:51Z"}
+{"shard": 5, "stage": "testing", "done": 42, "total": 52, "rows": 3184534, "note": "SNOWSTOCK 15m: rule 84/120 (cf_maobv_l2)", "pct": 80.8, "updated": "2026-09-02T17:10:36Z"}

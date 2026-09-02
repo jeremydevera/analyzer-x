@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 43, "total": 52, "rows": 3640144, "note": "SPX500 15m: rule 15/120 (bbbreak)", "pct": 82.7, "updated": "2026-09-02T21:32:15Z"}
+{"shard": 9, "stage": "testing", "done": 43, "total": 52, "rows": 3658144, "note": "SPX500 15m: rule 117/120 (cf_diadx_l2)", "pct": 82.7, "updated": "2026-09-02T21:33:01Z"}

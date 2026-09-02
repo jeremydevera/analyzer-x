@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 3, "total": 52, "rows": 244466, "note": "ALGO 1h: 9,479 bars, testing 120 rules", "pct": 5.8, "updated": "2026-09-02T06:08:20Z"}
+{"shard": 6, "stage": "testing", "done": 3, "total": 52, "rows": 261186, "note": "ALGO 1h: rule 71/120 (mfi14)", "pct": 5.8, "updated": "2026-09-02T06:09:06Z"}

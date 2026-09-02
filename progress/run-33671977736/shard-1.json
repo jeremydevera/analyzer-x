@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 28, "total": 53, "rows": 2308476, "note": "LQTY 1h: rule 86/120 (cf_triple_l1)", "pct": 52.8, "updated": "2026-09-02T21:05:38Z"}
+{"shard": 1, "stage": "testing", "done": 29, "total": 53, "rows": 2355336, "note": "MASK 15m: 34,563 bars, testing 120 rules", "pct": 54.7, "updated": "2026-09-02T21:06:35Z"}

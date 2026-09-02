@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 36, "total": 53, "rows": 3139312, "note": "PLAY 15m: rule 49/120 (vwaprev)", "pct": 67.9, "updated": "2026-09-02T09:11:28Z"}
+{"shard": 0, "stage": "testing", "done": 36, "total": 53, "rows": 3145252, "note": "PLAY 15m: rule 77/120 (cf_mom_l1)", "pct": 67.9, "updated": "2026-09-02T09:12:15Z"}

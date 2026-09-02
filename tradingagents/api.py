@@ -1536,8 +1536,24 @@ def cloud_merge(body: dict) -> dict:
     run_id = int(body.get("run_id") or 0)
     if not run_id:
         raise HTTPException(400, "a run id is required")
-    rows = cs.fetch(run_id)
-    return {"fetched": len(rows), **cs.merge_into_store(rows)}
+    # `collect_into_store`, never `fetch`. Two reasons, both paid for:
+    #
+    # * fetch() asks for ONE artifact named "sweep-results", which the
+    #   workflow's merge job stopped producing after it was OOM-killed
+    #   concatenating 29.7 million rows on a 7 GB runner. Run 33636672697
+    #   produced rows-0..rows-19 (~300 MB each) and this route answered
+    #   HTTP 500 `no artifact matches any of the names or patterns provided`
+    #   (2026-09-03) — 82.7 million measured rows sitting in artifacts the
+    #   route would not look at.
+    # * fetch() also builds one Python list of every row, which is the same
+    #   MemoryError that killed the 5:20am grid on 2026-08-26.
+    #
+    # collect_into_store prefers the per-shard artifacts (they ARE the
+    # measurement; the merge job only concatenates them), streams each file a
+    # line at a time, and REFUSES to overwrite a pair this machine has already
+    # measured — its watermark promises every bar up to X was tested.
+    got = cs.collect_into_store(run_id)
+    return {"fetched": got.get("rows", 0), **got}
 
 
 @app.post("/api/cloud/forget")

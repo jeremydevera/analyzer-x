@@ -59,3 +59,37 @@ def test_the_shard_type_carries_the_fields_the_percentage_needs():
     seg = seg[:seg.index("}")]
     for f in ("done?: number", "total?: number", "rows?: number"):
         assert f in seg, (f, seg)
+
+
+def test_the_merge_route_streams_the_shard_artifacts():
+    """Operator, 2026-09-03: MERGE answered HTTP 500 with
+    `no artifact matches any of the names or patterns provided` while 82,736,360
+    measured rows sat in the run's twenty rows-N artifacts.
+
+    `fetch()` asks for ONE artifact named "sweep-results" — which the workflow's
+    merge job stopped producing after it was OOM-killed concatenating 29.7M rows
+    on a 7 GB runner — and it builds one Python list of every row, which is the
+    same MemoryError that killed the 5:20am grid on 2026-08-26. The route must
+    use `collect_into_store`, which prefers the per-shard artifacts, streams
+    them a line at a time, and refuses to overwrite a pair this machine has
+    already measured.
+    """
+    src = open("tradingagents/api.py", encoding="utf-8").read()
+    i = src.index('@app.post("/api/cloud/merge")')
+    body = src[i:i + 1800]
+    assert "cs.collect_into_store(run_id)" in body, body[:400]
+    assert "cs.fetch(" not in body, "fetch() is the single-artifact path"
+    assert "rows-0..rows-19" in body, "the incident is written down"
+
+
+def test_the_collector_prefers_the_per_shard_artifacts():
+    """They ARE the measurement; the merge job only concatenates them."""
+    from tradingagents import cloud_sweep as cs
+
+    src = open("tradingagents/cloud_sweep.py", encoding="utf-8").read()
+    seg = src[src.index("def artifact_names("):]
+    seg = seg[:seg.index("def collect_into_store(")]
+    assert 'n.startswith("rows-")' in seg
+    assert "return shards or [n for n in live if n == ARTIFACT]" in seg, (
+        "per-shard first, the merged file only as a fallback")
+    assert cs.ARTIFACT == "sweep-results"

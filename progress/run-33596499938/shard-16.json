@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 34, "total": 52, "rows": 3025512, "note": "OXYSTOCK 15m: 17,365 bars, testing 120 rules", "pct": 65.4, "updated": "2026-09-02T08:04:04Z"}
+{"shard": 16, "stage": "testing", "done": 34, "total": 52, "rows": 3040752, "note": "OXYSTOCK 30m: rule 1/120 (mom6)", "pct": 65.4, "updated": "2026-09-02T08:04:50Z"}

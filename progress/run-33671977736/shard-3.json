@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 26, "total": 53, "rows": 2177104, "note": "KGEN 1d: 330 bars, testing 120 rules", "pct": 49.1, "updated": "2026-09-02T20:51:07Z"}
+{"shard": 3, "stage": "testing", "done": 28, "total": 53, "rows": 2230492, "note": "LRC 15m: rule 1/120 (mom6)", "pct": 52.8, "updated": "2026-09-02T20:51:55Z"}

@@ -263,9 +263,24 @@ export default function JobsPanel() {
             <Badge size="sm" color={cloud.conclusion ? "success" : "info"}>
               {cloud.conclusion ?? "running"}
             </Badge>
-            <span className="text-theme-xs text-gray-500 dark:text-gray-400">
-              {cloud.shards.length} machine(s) reporting
-            </span>
+            {(() => {
+              const done = cloud.shards.reduce((a, s) => a + (s.done ?? 0), 0);
+              const total = cloud.shards.reduce((a, s) => a + (s.total ?? 0), 0);
+              const rows = cloud.shards.reduce((a, s) => a + (s.rows ?? 0), 0);
+              const fin = cloud.shards.filter((s) => s.stage === "done").length;
+              return (
+                <>
+                  <span className="text-theme-sm font-semibold text-brand-600 dark:text-brand-400 tabular-nums">
+                    {total ? ((100 * done) / total).toFixed(1) : "0.0"}%
+                  </span>
+                  <span className="text-theme-xs text-gray-500 dark:text-gray-400">
+                    {done.toLocaleString()}/{total.toLocaleString()} coins ·{" "}
+                    {rows.toLocaleString()} rows measured ·{" "}
+                    {fin}/{cloud.shards.length} machine(s) finished
+                  </span>
+                </>
+              );
+            })()}
             <div className="ml-auto flex gap-2">
               {!cloud.conclusion && (
                 <Button size="sm" variant="outline"
@@ -285,6 +300,33 @@ export default function JobsPanel() {
               </Button>
             </div>
           </div>
+          {/* one bar for the RUN, so the answer to "how far along?" is not
+              twenty tiles added up by eye */}
+          {(() => {
+            const done = cloud.shards.reduce((a, s) => a + (s.done ?? 0), 0);
+            const total = cloud.shards.reduce((a, s) => a + (s.total ?? 0), 0);
+            const pct = total ? (100 * done) / total : 0;
+            return (
+              <div className="mt-2 h-2 rounded-full bg-gray-200 dark:bg-gray-800">
+                <div className="h-2 rounded-full bg-brand-500 transition-[width]"
+                     style={{ width: `${pct.toFixed(1)}%` }} />
+              </div>
+            );
+          })()}
+          {/* Why the tiles can be EMPTY while the run is fine: this panel reads
+              the shards through GitHub's Actions API, which secondary-limits a
+              polling client (403 "API rate limit exceeded" at 9:59pm on
+              2026-09-02 while all 20 machines were working). An empty list is
+              not "nothing is running". */}
+          {!cloud.shards.length && (
+            <p className="mt-2 text-theme-xs text-warning-600 dark:text-warning-400">
+              no machine has reported through GitHub&apos;s API yet
+              {cloud.why ? ` — ${cloud.why}` : ""}. The run itself keeps going:
+              the machines publish progress to the <b>sweep-progress</b> branch,
+              and GitHub rate-limits this panel&apos;s polling long before it
+              stops the work.
+            </p>
+          )}
           <div className="mt-2 grid gap-1 sm:grid-cols-2 lg:grid-cols-4">
             {cloud.shards.map((sh) => (
               <div key={sh.shard} className="rounded-lg bg-gray-50 px-2 py-1.5 dark:bg-white/[0.03]">

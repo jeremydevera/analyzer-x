@@ -266,7 +266,18 @@ export interface GridPlan {
   note: string;
 }
 
-export interface CloudShard { shard: number; stage?: string; pct?: number; note?: string }
+export interface CloudShard {
+  shard: number;
+  stage?: string;
+  pct?: number;
+  note?: string;
+  /** coins this machine has finished, and how many it was given — the run's
+   *  own percentage is the sum of these, never a figure the panel keeps */
+  done?: number;
+  total?: number;
+  /** combinations this machine has measured so far */
+  rows?: number;
+}
 
 export interface CloudStatus {
   available: boolean;

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 51, "total": 52, "rows": 4524924, "note": "XPT 30m: rule 2/120 (mom15)", "pct": 98.1, "updated": "2026-09-02T10:22:05Z"}
+{"shard": 12, "stage": "testing", "done": 51, "total": 52, "rows": 4548724, "note": "XPT 30m: rule 120/120 (cf_stflip_l2)", "pct": 98.1, "updated": "2026-09-02T10:22:51Z"}

@@ -428,9 +428,22 @@ def index_pair(path: Path, con: sqlite3.Connection | None = None) -> int:
         # The indexer re-read all 758 on every pass and produced nothing.
         # ensure()'s own backfill had already learned this ("the key IS the
         # answer"); index_pair had not.
-        coin, _, tf = pair.rpartition("-")
-        coin = coin or (rows[0].get("coin") if rows else None)
-        tf = tf or (rows[0].get("tf") if rows else None)
+        # The ROW is authoritative when there is one: it carries the canonical
+        # coin ("AAA"), while a file stem may carry the symbol form
+        # ("AAA_USDT-1h") -- and reading the key first made a coin filter count
+        # zero rows (test_exact_page_count).
+        #
+        # The KEY is the fallback, and it is what fixes an EMPTY pair: with no
+        # rows to read, neither field was recorded, so the block below never
+        # copied the state watermark and stale_watermark() called the pair
+        # unfinished forever. Measured 2026-08-28: 758 pairs permanently
+        # stale, every one a 1d pair whose row file is `[]`.
+        coin = rows[0].get("coin") if rows else None
+        tf = rows[0].get("tf") if rows else None
+        if not coin or not tf:
+            k_coin, _, k_tf = pair.rpartition("-")
+            coin = coin or (k_coin.replace("_USDT", "") or None)
+            tf = tf or (k_tf or None)
         # the state file too, so the storage screen never has to read 1.7 GB
         combos, version, last_ms, state_bytes = 0, "", 0, 0
         if coin and tf:

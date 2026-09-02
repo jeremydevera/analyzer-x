@@ -64,7 +64,11 @@ def test_a_checkpoint_does_not_advance_the_watermark():
     assert "__last_ms__" not in window, \
         "the checkpoint must not advance __last_ms__"
     # and the real advance still happens, once, at the end
-    assert src.count('states["__last_ms__"] = int(ms[-1])') == 1
+    # The advance became a conditional expression when merge mode landed
+    # (2026-08-27): a pass that only ADDS signals must not pull the watermark
+    # BACK, so it keeps the larger of the two. Written exactly once, still.
+    assert src.count('states["__last_ms__"] = ') == 1
+    assert "int(ms[-1])" in src[src.index('states["__last_ms__"] = '):][:300]
 
 
 def test_the_checkpoint_writes_both_states_and_rows():
@@ -119,9 +123,13 @@ def test_the_final_save_is_the_authoritative_full_set():
     forever. Verified as a pair: checkpoint merges, completion replaces.
     """
     src = open("tradingagents/market_sweep.py", encoding="utf-8").read()
-    tail = src[src.index('states["__last_ms__"] = int(ms[-1])'):]
-    assert "save_pair_rows(coin, tf, out_rows)" in tail[:300], \
+    tail = src[src.index('states["__last_ms__"] = '):]
+    assert "save_pair_rows(coin, tf, out_rows)" in tail[:900], \
         "the completed pair must write its full set"
+    # merge mode is the ONE exception, and it is explicit: a pass that only
+    # ADDS signals merges by combination so the ones it never measured survive
+    # (2026-08-27, when the five 4-hour setups were added to 105 existing ones)
+    assert "merge_pair_rows(coin, tf, out_rows)" in tail[:900]
 
 
 def test_checkpointing_is_proven_against_a_real_mid_pair_crash():

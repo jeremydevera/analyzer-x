@@ -240,7 +240,15 @@ def test_the_row_query_keeps_its_order_index_even_with_a_trade_floor(store):
     assert re.search(r"_indexed_by\(coin[,)]", page), (
         "the row select must name the coin index")
     assert "{row_where}" in page, "and use the +trades form"
-    assert "{_indexed_by(coin)}{where}" in q, "and the count the plain one"
+    # The COUNT names the same chooser and interpolates the PLAIN where (no
+    # "+trades" form — a count wants the most selective index it can get). Its
+    # argument list keeps growing for the same reason the row select's does:
+    # a group's partial index (2026-08-27), then one signal's own (2026-08-28).
+    assert re.search(r"_indexed_by\(coin[,)]", q), \
+        "the count must name the index chooser too"
+    assert "{where}" in q, "and interpolate the plain WHERE"
+    assert "{row_where}" not in q.split("def _read()")[1].split("_page_rows")[0], \
+        "the count must not use the row query's stepped-aside form"
 
 
 def test_the_answer_is_still_right_with_the_hint(store):

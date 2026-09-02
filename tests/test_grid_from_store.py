@@ -116,8 +116,16 @@ def test_trades_for_rebuilds_the_stored_rows_trades(monkeypatch, tmp_path):
         "Open": close, "High": [c + 1.2 for c in close],
         "Low": [c - 1.2 for c in close], "Close": close,
         "Volume": [5.0] * n})
-    monkeypatch.setattr(msw, "refresh_candles",
-                        lambda sym, tf, days=365: (df, 0, "cache"))
+    # STORED candles, not fetched ones: opening a row is a read (2026-09-02).
+    # It used to call refresh_candles, which downloads the newest bars, so the
+    # log covered days the row never measured — 42 trades and +$164.40 under a
+    # row that says 40 and +$158.66 (see tests/test_trade_log_is_read_only.py).
+    monkeypatch.setattr(msw, "cached_candles", lambda sym, tf: df)
+    monkeypatch.setattr(msw, "refresh_candles", lambda *a, **k: (_ for _ in ()).throw(
+        AssertionError("opening a row must not fetch candles")))
+    monkeypatch.setattr(msw, "STATES", tmp_path / "state")
+    monkeypatch.setattr(msw, "ROWDIR", tmp_path / "rows")
+    monkeypatch.setattr(msw, "COSTS", tmp_path / "costs")
     import tradingagents.auto_trader as at
     monkeypatch.setattr(at, "taker_fee", lambda s, fx=None: 0.0004)
     # funding is a mandatory cost and c360400b0 made an unreadable page
@@ -135,6 +143,9 @@ def test_trades_for_rebuilds_the_stored_rows_trades(monkeypatch, tmp_path):
     total = round(sum(t["pnl $"] for t in got["log"]), 2)
     assert abs(total - got["profit"]) < 0.02, "the log must sum to the total"
     assert {"WIN", "LOSE"} >= {t["WIN/LOSE"] for t in got["log"]}
+    # and it says what it read, so a panel can label the log honestly
+    assert got["source"] == "stored candles"
+    assert got["bars"] == len(df)
 
 
 def test_every_store_writer_uses_the_same_threshold_count():

@@ -1010,6 +1010,31 @@ export default function StrategiesPanel() {
                 {fmtMoney(trades.log.filter((t) => t["pnl $"] <= 0).reduce((a, t) => a + t["pnl $"], 0))}, wins earned{" "}
                 {fmtMoney(trades.log.filter((t) => t["pnl $"] > 0).reduce((a, t) => a + t["pnl $"], 0))}.
               </p>
+              {/* WHAT WAS READ, and over WHICH DAYS. The operator found a Sep 02
+                  trade under a row measured to Aug 27 (2026-09-02): the click
+                  used to download the newest candles first. It reads stored
+                  candles now and stops where the row stopped — and when the row
+                  predates that stamp, this line says the window came from the
+                  pair's watermark instead, which is why a trade or two can
+                  differ. */}
+              {trades.first && (
+                <p className="mt-1 text-theme-xs text-gray-400 dark:text-gray-500">
+                  Rebuilt from {trades.source ?? "stored candles"} — {trades.bars?.toLocaleString()} bars,{" "}
+                  {trades.first} to {trades.last}
+                  {trades.window_from === "row"
+                    ? " (the window this row was measured over)"
+                    : " (this row predates the per-row window stamp, so the end comes from the pair's last update — a trade or two may differ until it is re-measured)"}
+                  . Nothing was downloaded.
+                  {trades.fee !== undefined && (
+                    <>
+                      {" "}Fee charged {(trades.fee * 100).toFixed(3)}%{" "}
+                      {trades.fee_from === "row"
+                        ? "— the fee this row was measured with."
+                        : "— the venue's fee TODAY; this row does not record what it was charged, and a contract's fee changes (PONS went 0.02% → 0.04%, worth 21% of one row's profit), so the total here can differ from the row until it is re-measured."}
+                    </>
+                  )}
+                </p>
+              )}
             </div>
           )}
         </div>

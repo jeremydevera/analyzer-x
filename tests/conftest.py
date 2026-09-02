@@ -201,6 +201,7 @@ def _never_touch_the_live_book(tmp_path, monkeypatch):
         for _name, _leaf in (("HOME", ""), ("ROWDIR", "rows"),
                              ("STATES", "state"), ("WORKERS", "workers"),
                              ("CANDLES", "candles"),
+                             ("COSTS", "costs"),
                              ("INDEX_PATH", "candle_index.json"),
                              ("HANDOFF_PATH", "db_backtest.HANDOFF"),
                              ("MANIFEST", "manifest.json"),

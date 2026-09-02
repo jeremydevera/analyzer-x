@@ -122,6 +122,23 @@ export interface TradesResult {
   profit?: number;
   winrate?: number;
   why?: string;
+  /** where the candles came from — always "stored candles" since 2026-09-02.
+   *  It used to DOWNLOAD the newest bars first, so the log covered days the
+   *  row never measured (42 trades and +$164.40 under a row saying 40). */
+  source?: string;
+  /** "row" = the row's own recorded end bar, so the log reproduces it;
+   *  "pair watermark" = an older row that predates `last_ms`, so the replay
+   *  can be a trade or two out and the panel says so. */
+  window_from?: string;
+  bars?: number;
+  first?: string;
+  last?: string;
+  /** the taker fee the replay charged, and where it came from. A contract's
+   *  fee CHANGES: PONS_USDT reads 0.04% today and its stored rows were
+   *  measured at 0.02%, which is +$1,638.14 against +$1,288.70 over the same
+   *  1,820 trades. Rows measured from 2026-09-02 carry their own. */
+  fee?: number;
+  fee_from?: string;
 }
 
 export interface CoinStorageRow {

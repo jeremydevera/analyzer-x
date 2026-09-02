@@ -491,6 +491,41 @@ def be_polite() -> int:
 
 # ------------------------------------------------------------------ rows
 ROWDIR = HOME / "rows"
+# Per-contract COSTS, written by the sweep that already fetched them and read
+# by the trade log so a click never has to. Measured on USELESS_USDT:
+# funding_history is 9.2 s and 2,869 settlements EVERY call (no cache), the
+# taker fee 0.17 s cold -- which is where a click's ten seconds went.
+COSTS = HOME / "costs"
+
+
+def save_costs(symbol: str, *, fee: float, liq, funding: list) -> None:
+    """Keep what the replay of this contract needs. Never raises: telemetry
+    for a click, not part of the measurement."""
+    try:
+        COSTS.mkdir(parents=True, exist_ok=True)
+        tmp = COSTS / f"{symbol}.tmp"
+        tmp.write_text(json.dumps({
+            "symbol": symbol, "fee": fee, "liq": liq,
+            "at": time.time(),
+            "funding": [{"settle_ms": int(f["settle_ms"]),
+                         "rate": float(f["rate"])}
+                        for f in (funding or [])
+                        if f and f.get("settle_ms") is not None],
+        }, separators=(",", ":")))
+        tmp.replace(COSTS / f"{symbol}.json")
+    except (OSError, TypeError, ValueError):
+        pass
+
+
+def load_costs(symbol: str) -> dict | None:
+    """The saved fee/liquidation/funding for one contract, or None."""
+    try:
+        got = json.loads((COSTS / f"{symbol}.json").read_text())
+    except (OSError, ValueError):
+        return None
+    if not isinstance(got, dict) or "fee" not in got:
+        return None
+    return got
 
 
 def pair_rows(coin: str, tf: str) -> list:
@@ -637,6 +672,8 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
     except Exception as exc:
         return {"coin": coin, "tf": tf, "rows": [], "added": added,
                 "source": source, "why": f"venue: {str(exc)[:60]}"}
+    # keep what the click will need, so opening a row later is a pure read
+    save_costs(symbol, fee=fee, liq=liq, funding=fund)
     thin = 0               # rows the trade floor dropped, for the report
     states = {} if (fresh and not merge) else load_states(coin, tf)
     # what this pass is measuring, and what the pair had measured before it
@@ -842,6 +879,20 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                     "dd": round(r["max_dd"], 2), "liqs": r["liqs"],
                     "stop_reachable": True, "days": days_have,
                     "bars": len(df),
+                    # WHERE THE WINDOW ENDED. The pair has one watermark and it
+                    # moves: a later pass that only ADDS signals advances it,
+                    # and an older row measured to Aug 27 12:00am can then no
+                    # longer be reproduced from it (AGT 1h cf_soup1 came back
+                    # 107 trades / $148.87 against 108 / $145.73). The row's
+                    # own last bar is 8 bytes and settles it.
+                    "last_ms": int(ms[-1]),
+                    # AND THE FEE IT WAS CHARGED. A contract's taker fee
+                    # changes: PONS_USDT reads 0.0004 today and its stored 15m
+                    # rows were measured at 0.0002, so replaying one with
+                    # today's fee turned +$1,638.14 into +$1,288.70 (21% off)
+                    # over the identical 1,820 trades. `rt` cannot recover it —
+                    # it mixes the fee with the book's spread at the time.
+                    "fee": round(fee, 8),
                     "monthly": {k2: round(v2, 2) for k2, v2 in m.items()},
                     "cost_of_tp": round(rt / tp * 100, 1),
                     "rt": round(rt * 100, 4),
@@ -1280,23 +1331,98 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
 
     symbol = f"{coin}_USDT"
     iv, bs, cap = br.TFS[tf]
-    df, _added, _src = refresh_candles(symbol, tf, days=days)
+    # DISK ONLY. This used to call refresh_candles(), which fetches the newest
+    # bars: the log then covered days the stored row never measured. On
+    # #2UK7Z2D5 (USELESS 1h) the row is 40 trades and +$158.66 over 2,159 bars
+    # to Aug 28 4:00am, and the click showed 42 trades and +$164.40 because it
+    # had just downloaded through Sep 02. The operator's rule, Sep 02, 2026:
+    # "when i click a row it should only read the backtest results it should
+    # never update backtest because it will load slowly".
+    df = cached_candles(symbol, tf)
     if df is None or len(df) < 60:
-        return {"log": [], "why": "no candles stored for this pair"}
-    fee = at.taker_fee(symbol, fx=fx)
-    try:
-        liq = fx.liquidation_move_pct(symbol, at.LEVERAGE)
-    except Exception:
-        liq = None
-    # same rule as run_pair: an unreadable funding history is an error, never
-    # silently zero funding (2026-08-26)
-    fund = fx.funding_history(symbol)
-    hi = [float(x) for x in df["High"]]
-    lo = [float(x) for x in df["Low"]]
-    cl = [float(x) for x in df["Close"]]
-    op = [float(x) for x in df["Open"]]
-    vol = [float(x) for x in df["Volume"]] if "Volume" in df.columns else None
-    ts = list(df["Date"].to_numpy().astype("datetime64[ms]").astype("int64"))
+        return {"log": [], "why": f"no candles stored for {coin} {tf} — "
+                                  f"download candles first"}
+    # ...and cut to the window the ROW was measured over: the pair's own
+    # watermark (the last bar the sweep saw) and the row's own bar count.
+    want_bars, row_end = 0, 0
+    for r in pair_rows(coin, tf):
+        # a row with a missing field must not turn a click into a 500
+        try:
+            same = (r.get("signal") == signal
+                    and abs(float(r.get("th") or 0) - float(th or 0)) < 1e-9
+                    and abs(float(r["sl"]) - float(sl)) < 1e-9
+                    and abs(float(r["tp"]) - float(tp)) < 1e-9
+                    and r.get("sizing") == sizing)
+        except (KeyError, TypeError, ValueError):
+            continue
+        if same:
+            want_bars = int(r.get("bars") or 0)
+            row_end = int(r.get("last_ms") or 0)
+            break
+    # The ROW's own last bar when it has one, the pair's watermark otherwise.
+    # Rows measured before `last_ms` existed fall back and can be a trade or
+    # two out; the answer says which basis it used so a caller can say so.
+    wm = row_end or int(load_states(coin, tf).get("__last_ms__") or 0)
+    if wm:
+        # A MASK, not a prefix slice, so the cut holds even if a cache ever
+        # comes back out of order -- and the conversion goes through
+        # `to_numpy().astype("datetime64[ms]")`, never `Series.astype("int64")`.
+        # The cached frame's Date is nanoseconds from the JSON cache and
+        # MILLISECONDS from the parquet copy, so dividing by 10**6 turned every
+        # timestamp into a number far below the watermark, the cut matched
+        # everything, and the window slid to Sep 02 again (caught here, 41
+        # trades against the row's 40, before it reached the operator).
+        ms = df["Date"].to_numpy().astype("datetime64[ms]").astype("int64")
+        cut = df[[int(v) <= wm for v in ms]]
+        if len(cut) >= 60:
+            df = cut.reset_index(drop=True)
+    # NOT sliced yet: the SIGNAL is computed on everything up to the watermark
+    # and only then cut to the window, because that is what the sweep did. A
+    # rule whose indicators start cold at the window's first bar is a different
+    # rule: AGT 1h cf_soup1 came back 107 trades / $148.87 against the row's
+    # 108 / $145.73 when the signal was computed on the slice alone.
+    full = df
+    if not (60 <= want_bars < len(full)):
+        want_bars = 0
+    # The costs the replay needs come from the file the sweep wrote (see
+    # save_costs): funding_history alone is 9.2 s per call on this contract and
+    # has no cache of its own. A pair measured before the file existed pays for
+    # them once, here, and every click after that is a read.
+    row_fee = 0.0
+    for r in pair_rows(coin, tf):
+        try:
+            if (r.get("signal") == signal
+                    and abs(float(r.get("th") or 0) - float(th or 0)) < 1e-9
+                    and abs(float(r["sl"]) - float(sl)) < 1e-9
+                    and abs(float(r["tp"]) - float(tp)) < 1e-9
+                    and r.get("sizing") == sizing):
+                row_fee = float(r.get("fee") or 0)
+                break
+        except (KeyError, TypeError, ValueError):
+            continue
+    costs = load_costs(symbol)
+    if costs is None:
+        fee = at.taker_fee(symbol, fx=fx)
+        try:
+            liq = fx.liquidation_move_pct(symbol, at.LEVERAGE)
+        except Exception:
+            liq = None
+        # same rule as run_pair: an unreadable funding history is an error,
+        # never silently zero funding (2026-08-26)
+        fund = fx.funding_history(symbol)
+        save_costs(symbol, fee=fee, liq=liq, funding=fund)
+    else:
+        fee, liq, fund = costs["fee"], costs.get("liq"), costs.get("funding") or []
+    # the ROW's own fee wins: the venue's fee today is not the fee this row was
+    # measured under (see the PONS figures above)
+    if row_fee > 0:
+        fee = row_fee
+    hi = [float(x) for x in full["High"]]
+    lo = [float(x) for x in full["Low"]]
+    cl = [float(x) for x in full["Close"]]
+    op = [float(x) for x in full["Open"]]
+    vol = [float(x) for x in full["Volume"]] if "Volume" in full.columns else None
+    ts = list(full["Date"].to_numpy().astype("datetime64[ms]").astype("int64"))
     key = f"{signal}_tf_{tf}"
     at.STRATEGY_SPECS[key] = {"interval": iv, "bar_seconds": bs, "tp": .02,
                               "sl": .01, "threshold": (float(th) / 100) or .003}
@@ -1304,6 +1430,9 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
         dk = "rsi14_1h" if signal == "rsi14" else key
         dirs = at._dirs_for_backtest(dk, hi, lo, cl, opens=op, volume=vol,
                                      ts=ts, funding=fund)
+        if want_bars:                      # signal first, THEN the window
+            df = full.iloc[-want_bars:].reset_index(drop=True)
+            dirs = dirs[-want_bars:]
         r = at.backtest_strategy(key, df, base_margin, fee=fee, sizing=sizing,
                                  dirs=dirs, tp=float(tp) / 100,
                                  sl=float(sl) / 100, liq_move_pct=liq,
@@ -1313,7 +1442,14 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
     return {"log": r["log"], "trades": r["trades"], "wins": r["wins"],
             "losses": r["losses"], "profit": round(r["profit"], 2),
             "max_dd": r["max_dd"],
-            "winrate": round(100 * r["wins"] / max(r["trades"], 1), 2)}
+            "winrate": round(100 * r["wins"] / max(r["trades"], 1), 2),
+            # what was READ, so the panel can say it and a mismatch is visible
+            "source": "stored candles",
+            "window_from": "row" if row_end else "pair watermark",
+            "fee": fee, "fee_from": "row" if row_fee > 0 else "the venue today",
+            "bars": len(df), "first": str(df["Date"].iloc[0])[:16],
+            "last": str(df["Date"].iloc[-1])[:16],
+            "costs": "cached" if costs is not None else "fetched once"}
 
 
 def storage_by_coin() -> list:

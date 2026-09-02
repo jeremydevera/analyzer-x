@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 31, "total": 53, "rows": 2389002, "note": "MSTRSTOCK 15m: 34,150 bars, testing 120 rules", "pct": 58.5, "updated": "2026-09-02T07:17:35Z"}
+{"shard": 1, "stage": "testing", "done": 31, "total": 53, "rows": 2395842, "note": "MSTRSTOCK 15m: rule 32/120 (gmma)", "pct": 58.5, "updated": "2026-09-02T07:18:20Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 30, "total": 52, "rows": 2343488, "note": "MONAD 30m: 15,797 bars, testing 120 rules", "pct": 57.7, "updated": "2026-09-02T08:01:00Z"}
+{"shard": 7, "stage": "testing", "done": 30, "total": 52, "rows": 2349208, "note": "MONAD 30m: rule 20/120 (stoch14)", "pct": 57.7, "updated": "2026-09-02T08:01:46Z"}

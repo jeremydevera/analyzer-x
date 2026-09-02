@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 7, "total": 52, "rows": 587744, "note": "BAND 15m: rule 45/120 (zscore20)", "pct": 13.5, "updated": "2026-09-02T06:26:51Z"}
+{"shard": 7, "stage": "testing", "done": 7, "total": 52, "rows": 596104, "note": "BAND 15m: rule 84/120 (cf_maobv_l2)", "pct": 13.5, "updated": "2026-09-02T06:27:37Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 48, "total": 52, "rows": 3761044, "note": "USELESS 30m: 18,959 bars, testing 120 rules", "pct": 92.3, "updated": "2026-09-02T15:49:28Z"}
+{"shard": 11, "stage": "testing", "done": 48, "total": 52, "rows": 3766764, "note": "USELESS 30m: rule 20/120 (stoch14)", "pct": 92.3, "updated": "2026-09-02T15:50:14Z"}

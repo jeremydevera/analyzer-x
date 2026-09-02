@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 21, "total": 52, "rows": 1637394, "note": "HANA 15m: rule 44/120 (elder)", "pct": 40.4, "updated": "2026-09-02T15:42:09Z"}
+{"shard": 19, "stage": "testing", "done": 21, "total": 52, "rows": 1643334, "note": "HANA 15m: rule 72/120 (force13)", "pct": 40.4, "updated": "2026-09-02T15:42:55Z"}

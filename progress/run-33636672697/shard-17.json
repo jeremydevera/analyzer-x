@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 52, "total": 52, "rows": 4171938, "note": "ZKC 30m: 16,904 bars, testing 120 rules", "pct": 100.0, "updated": "2026-09-02T18:12:46Z"}
+{"shard": 17, "stage": "testing", "done": 52, "total": 52, "rows": 4176998, "note": "ZKC 30m: rule 17/120 (atrbreak)", "pct": 100.0, "updated": "2026-09-02T18:13:31Z"}

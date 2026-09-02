@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 13, "total": 53, "rows": 1052970, "note": "COPSTOCK 30m: rule 99/120 (cf_ttm_l2)", "pct": 24.5, "updated": "2026-09-02T14:50:22Z"}
+{"shard": 3, "stage": "testing", "done": 14, "total": 53, "rows": 1095696, "note": "CTK 15m: 34,634 bars, testing 120 rules", "pct": 26.4, "updated": "2026-09-02T14:51:13Z"}

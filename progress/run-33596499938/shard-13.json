@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 52, "total": 52, "rows": 4837952, "note": "ZIL 15m: rule 87/120 (cf_triple_l2)", "pct": 100.0, "updated": "2026-09-02T10:52:26Z"}
+{"shard": 13, "stage": "testing", "done": 52, "total": 52, "rows": 4845212, "note": "ZIL 30m: 18,959 bars, testing 120 rules", "pct": 100.0, "updated": "2026-09-02T10:53:13Z"}

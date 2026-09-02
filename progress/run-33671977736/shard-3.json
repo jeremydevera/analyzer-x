@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 9, "total": 53, "rows": 852782, "note": "BMNRSTOCK 1h: rule 41/120 (tsi)", "pct": 17.0, "updated": "2026-09-02T19:59:54Z"}
+{"shard": 3, "stage": "testing", "done": 11, "total": 53, "rows": 907432, "note": "CAT 15m: 34,559 bars, testing 120 rules", "pct": 20.8, "updated": "2026-09-02T20:00:46Z"}

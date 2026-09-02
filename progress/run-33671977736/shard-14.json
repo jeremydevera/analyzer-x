@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 34, "total": 52, "rows": 3217804, "note": "ORDER 30m: 18,959 bars, testing 120 rules", "pct": 65.4, "updated": "2026-09-02T22:31:56Z"}
+{"shard": 14, "stage": "testing", "done": 34, "total": 52, "rows": 3222204, "note": "ORDER 30m: rule 14/120 (bb20)", "pct": 65.4, "updated": "2026-09-02T22:32:41Z"}

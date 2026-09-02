@@ -1620,7 +1620,12 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
                     "w_funding": round(res.get("funding_total") or 0, 2),
                     "w_days": round((int(ms[stop - 1]) - int(ms[start]))
                                     / MS_PER_DAY, 1),
-                    "w_first": f0, "w_last": l0, "restated": True})
+                    "w_first": f0, "w_last": l0,
+                    # epochs too, so the browser can print them in the one date
+                    # format (positions_view.fmt_when / fmtWhen) instead of
+                    # inventing a second one
+                    "w_first_ms": int(ms[start]), "w_last_ms": int(ms[stop - 1]),
+                    "restated": True})
             at.STRATEGY_SPECS.pop(key, None)
         except Exception as exc:                               # noqa: BLE001
             print(f"[window] {coin} {tf} {sig}: {type(exc).__name__}: "

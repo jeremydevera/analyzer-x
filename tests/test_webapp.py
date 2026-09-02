@@ -294,7 +294,7 @@ def test_the_ui_refuses_to_save_a_coin_on_two_timeframes():
     import app
 
     src = inspect.getsource(app.render_auto_trade_tab) \
-        if hasattr(app, "render_auto_trade_tab") else open("app.py").read()
+        if hasattr(app, "render_auto_trade_tab") else open("app.py", encoding="utf-8").read()
     assert "timeframe_conflicts" in src, "the save path must run the check"
     assert "is LIVE on two timeframes" in src, "and say which coin"
     assert "Nothing was written" in src, "and not write a broken config"
@@ -323,7 +323,7 @@ def test_the_contract_column_comes_from_the_TILE_not_the_saved_file():
     [], and the table then printed `contracts: none` — a row that could be
     armed and would trade nothing. The contract is part of the strategy
     (#3CRXP8 IS trend50/30m on PI), so the row shows its own."""
-    src = open("app.py").read()
+    src = open("app.py", encoding="utf-8").read()
     assert "_coins = list(default_coins)" in src, "the tile is the source"
     assert "saved_coins_by" not in src, \
         "reading the saved copy back is what produced 'contracts: none'"
@@ -399,7 +399,7 @@ def test_the_bands_use_apexs_card_treatment():
 
 
 def test_the_history_table_pages_ten_at_a_time_with_numbers():
-    src = open("app.py").read()
+    src = open("app.py", encoding="utf-8").read()
     assert "_per = 10" in src, "the operator asked for 10 rows a page"
     assert "_page_numbers(" in src, "numbered pages, not newer/older"
     assert "◀ newer" not in src and "older ▶" not in src
@@ -452,7 +452,7 @@ def test_a_line_with_no_timestamp_is_left_alone():
 
 
 def test_the_feed_actually_uses_the_formatter():
-    src = open("app.py").read()
+    src = open("app.py", encoding="utf-8").read()
     assert "html.escape(_fmt_log_line(l))" in src, \
         "the runner-log column must render through it"
 
@@ -580,7 +580,7 @@ def test_a_summary_row_prints_no_stray_dashes():
 def test_the_total_row_sums_the_margin_at_risk():
     """It printed an em dash, which reads as "no data" for the one number that
     says how much is exposed in this book."""
-    src = open("app.py").read()
+    src = open("app.py", encoding="utf-8").read()
     assert 'sum(float(r.get("margin $") or 0)' in src
 
 
@@ -589,7 +589,7 @@ def test_the_stop_column_is_silent_unless_the_stop_is_missing():
     already implies. But the column has a THIRD state — a rejected stop, which
     means real money is open with no protection — so the column keeps its space
     and only speaks for that."""
-    src = open("app.py").read()
+    src = open("app.py", encoding="utf-8").read()
     assert '"" if dry or _pos.get("bracket", True)' in src
     assert '"NO STOP — RETRYING"' in src
     assert '"on MEXC"' not in src, "the noise is gone"
@@ -740,7 +740,7 @@ def test_the_curve_draws_a_real_zero_axis_and_takes_its_sign():
 def test_the_legend_swatch_takes_the_curves_colour():
     """It was hardcoded green while the curve was coral, because the book is
     down. A legend that disagrees with its own line is a false label."""
-    src = open("app.py").read()
+    src = open("app.py", encoding="utf-8").read()
     assert "'var(--t-up)' if _last >= 0 else 'var(--t-dn)'" in src
 
 
@@ -771,7 +771,7 @@ def test_the_progress_figure_has_ONE_calculation():
     assert app._tm_prog_calc(100, 110, 95, 104, 0) is None, "no side, no bar"
     # the bar renders FROM the calc, so they cannot disagree
     assert "40%" in app._tm_progress(100, 110, 95, 104, 1)
-    src = open("app.py").read()
+    src = open("app.py", encoding="utf-8").read()
     assert 'r["prog_pct"], r["prog_to"]' in src, "the row carries the numbers"
     assert '_re.search(r">(\\d+)%' not in src, "and nobody parses the markup back"
 
@@ -785,7 +785,7 @@ def test_the_view_owns_its_markup_and_holds_no_widgets():
     for cls in (".mv-hero", ".mv-row", ".mv-ring", ".mv-av", ".mv-pill", ".mv-str"):
         assert cls in app.MODERN_CSS, f"{cls} missing"
     assert "prefers-reduced-motion" in app.MODERN_CSS, "the pulse must be optional"
-    src = open("app.py").read()
+    src = open("app.py", encoding="utf-8").read()
     # The close moved INTO the row on 2026-08-20 ("where is the close button in
     # open position?"). It is still not a widget inside our markup — it is an
     # anchor, which is how a designed table can own its own controls — and the
@@ -808,7 +808,7 @@ def test_backtest2_shows_the_storage_panel():
     """Growth must be visible before it is a problem — and pure local means
     the panel lists THIS MACHINE's stores and nothing else ("i told you that
     its pure local")."""
-    src = open("app.py").read()
+    src = open("app.py", encoding="utf-8").read()
     assert "def render_storage_panel" in src
     assert src.count("render_storage_panel()") >= 1
     body = src.split("def render_storage_panel", 1)[1].split("\ndef ", 1)[0]
@@ -833,14 +833,14 @@ def test_the_browser_uses_one_date_format_everywhere():
     src = pathlib.Path("webapp/src")
     offenders = []
     for f in list(src.rglob("*.tsx")) + list(src.rglob("*.ts")):
-        for i, line in enumerate(f.read_text().splitlines(), 1):
+        for i, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
             if re.search(r"new Date\([^)]*\)\.toLocale", line):
                 offenders.append(f"{f}:{i}")
     assert not offenders, (
         "these format a date in the browser instead of using fmtWhen:\n  "
         + "\n  ".join(offenders))
 
-    api = (src / "lib" / "api.ts").read_text()
+    api = (src / "lib" / "api.ts").read_text(encoding="utf-8")
     assert "export function fmtWhenMs" in api and "export const fmtWhen" in api
 
 
@@ -927,7 +927,7 @@ def test_no_module_formats_a_timestamp_by_hand():
     for f in pathlib.Path("tradingagents").rglob("*.py"):
         if f.name == "positions_view.py":
             continue                    # the one place it is allowed
-        for i, line in enumerate(f.read_text().splitlines(), 1):
+        for i, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
             # PARSING someone else's format (strptime) is fine — Twitter
             # sends what it sends. Only PRODUCING a stamp is the rule.
             # And a MONTH label ("Aug 2026") is not a timestamp: no clock
@@ -982,7 +982,7 @@ def test_no_logger_is_configured_with_a_bare_asctime():
     for f in [pathlib.Path("spx_bot.py"), *pathlib.Path("tradingagents").rglob("*.py")]:
         if not f.exists():
             continue
-        text = f.read_text()
+        text = f.read_text(encoding="utf-8")
         if "%(asctime)s" in text and "WhenFormatter" not in text:
             bad.append(str(f))
     assert not bad, ("these log ISO timestamps into an operator-facing log:\n  "

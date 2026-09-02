@@ -6,8 +6,8 @@
  * (the label-must-match-data rule, ported).
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, ApiError, fmtMoney, STRATEGY_SORTS, StrategyRow, TradesResult,
-  type IndexStatus, type StrategySort } from "@/lib/api";
+import { api, ApiError, fmtMoney, fmtWhenMs, STRATEGY_SORTS, StrategyRow,
+  TradesResult, type IndexStatus, type StrategySort } from "@/lib/api";
 import { pageWindow } from "@/lib/pager";
 import Badge from "@/components/ui/badge/Badge";
 import {
@@ -360,10 +360,15 @@ export default function StrategiesPanel() {
    *  used when there is one, otherwise from the months the rows on screen
    *  actually carry. Kit item G — months outside the window are REMOVED, not
    *  printed as em dashes. */
-  const monthCols = (window_.length
-    ? window_
-    : Array.from(new Set(shown.flatMap((r) => Object.keys(r.monthly ?? {}))))
-        .sort().reverse()).slice(0, 24);
+  const monthCols = (servedFilters.days > 0 && !servedFilters.months
+    // A DAY window inside a month cannot restate that month: the walk knows
+    // only the days it covered. Printing "Aug 2026 +933.70" beside a -44.58
+    // day would be three spans in one row (operator, 2026-09-03).
+    ? []
+    : window_.length
+      ? window_
+      : Array.from(new Set(shown.flatMap((r) => Object.keys(r.monthly ?? {}))))
+          .sort().reverse()).slice(0, 24);
   /** "2026-08" -> "Aug 2026". A month LABEL keeps its own form (CLAUDE.md);
    *  the operator's example was "month of aug, july". */
   const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -389,6 +394,14 @@ export default function StrategiesPanel() {
   // can only restate RESTATE_MAX of them.
   const stale = (r: StrategyRow) =>
     (servedFilters.months > 0 || servedFilters.days > 0) && !r.restated;
+  /** `balanced` scores the row's WHOLE measurement (its win rate and profit
+   *  over all of it), so inside a window it is a mixture: dim it and say why,
+   *  the same way a months window already does for an unrestated row. */
+  const mixedScore = (r: StrategyRow) =>
+    servedFilters.days > 0 && !servedFilters.months && !!r.restated;
+  const SCORE_WHY = "this score rates the row's WHOLE measurement, not the "
+    + "window on screen — the window's own profit, win rate and dip are in "
+    + "the columns to the left.";
   const STALE_WHY = "the whole history, not the window: the sweep stores profit "
     + "per month but not trades, so this row's log has to be rebuilt. Look one "
     + "row up by #id and it is restated.";
@@ -515,7 +528,10 @@ export default function StrategiesPanel() {
             {servedSl > 0 ? ` · SL ${servedSl}% or tighter` : ""}
             {servedFilters.sizing ? ` · ${servedFilters.sizing} only` : ""}
             {dayWin.length === 2 && dayWin[0] && servedFilters.days > 0
-              ? ` · window ${dayWin[0]} to ${dayWin[1]} (${servedFilters.days} days, re-measured)`
+              ? ` · each row re-measured over ITS OWN last ${servedFilters.days}`
+                + ` day${servedFilters.days > 1 ? "s" : ""}, ending where that row's`
+                + ` backtest ends (this page spans ${dayWin[0]} to ${dayWin[1]});`
+                + ` month columns are hidden because a day cannot restate a month`
               : ""}
             {window_.length
               ? ` · window ${monthLabel(window_[window_.length - 1])}–${monthLabel(window_[0])}`
@@ -869,7 +885,8 @@ export default function StrategiesPanel() {
                 winHead("trades", servedFilters.months),
                 winHead("W", servedFilters.months),
                 winHead("L", servedFilters.months),
-                winHead("green", servedFilters.months),
+                ...(servedFilters.days > 0 && !servedFilters.months
+                  ? ["window"] : [winHead("green", servedFilters.months)]),
                 "dip $",
                 winHead("balanced", servedFilters.months),
                 ...monthCols.map(monthLabel)].map((h) => (
@@ -973,12 +990,26 @@ export default function StrategiesPanel() {
                            title={stale(r) ? STALE_WHY : undefined}>
                   {win(r).losses}
                 </TableCell>
-                <TableCell className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400">
-                  {servedFilters.months > 0
-                    ? `${r.w_green ?? 0}/${r.w_months ?? 0}`
-                    : `${r.green ?? "—"}/${r.months ?? "—"}`}
+                <TableCell className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400"
+                           title={servedFilters.days > 0 && !servedFilters.months
+                             ? "the days this row was re-measured over — it ends where the row's own backtest ends, not where the candles do"
+                             : undefined}>
+                  {servedFilters.days > 0 && !servedFilters.months
+                    ? (r.w_first_ms && r.w_last_ms
+                        ? `${fmtWhenMs(r.w_first_ms)} → ${fmtWhenMs(r.w_last_ms)}`
+                        : "—")
+                    : servedFilters.months > 0
+                      ? `${r.w_green ?? 0}/${r.w_months ?? 0}`
+                      : `${r.green ?? "—"}/${r.months ?? "—"}`}
                 </TableCell>
-                <TableCell className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400">{r.dd?.toFixed(2) ?? "—"}</TableCell>
+                <TableCell className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400"
+                           title={servedFilters.days > 0 && !servedFilters.months && r.restated
+                             ? "the worst dip INSIDE this row's window, re-measured"
+                             : "the worst dip over the row's whole measurement"}>
+                  {servedFilters.days > 0 && !servedFilters.months && r.restated
+                    ? (r.w_dd?.toFixed(2) ?? "—")
+                    : (r.dd?.toFixed(2) ?? "—")}
+                </TableCell>
                 {/* BALANCED, 1-10 over win rate AND profit. The tooltip is the
                     working — "sometimes it has high winrate but since tp is low
                     and sl is high, its still not profitable" is a number the
@@ -986,13 +1017,15 @@ export default function StrategiesPanel() {
                     and the row not restated, because then the score mixes the
                     window's profit with the row's whole-history win rate. */}
                 <TableCell className={`px-3 py-2 text-theme-sm font-semibold ${
-                    stale(r) ? "italic text-gray-400 dark:text-gray-500"
+                    stale(r) || mixedScore(r) ? "italic text-gray-400 dark:text-gray-500"
                     : (r.balanced ?? 0) >= 8 ? "text-success-600"
                     : (r.balanced ?? 0) >= 5 ? "text-warning-600 dark:text-warning-400"
                     : "text-error-500"}`}
                   title={stale(r)
                     ? `${r.balanced_why ?? ""} — ${STALE_WHY}`
-                    : (r.balanced_why ?? "")}>
+                    : mixedScore(r)
+                      ? `${r.balanced_why ?? ""} — ${SCORE_WHY}`
+                      : (r.balanced_why ?? "")}>
                   {r.balanced === undefined ? "—" : r.balanced.toFixed(1)}/10
                 </TableCell>
                 {/* one column per month, the row's own profit in it. A month

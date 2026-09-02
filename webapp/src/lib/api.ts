@@ -69,6 +69,10 @@ export interface StrategyRow {
   /** the window's own trades, wins, losses and win rate — present only when the
    *  server could rebuild this row's log (an #id lookup; see RESTATE_MAX) */
   w_trades?: number;
+  /** the window THIS row was measured over — each row's own, because a window
+   *  ends where its measurement ends, not where the candle file does */
+  w_first_ms?: number;
+  w_last_ms?: number;
   w_streak?: number;
   w_streak_len?: number;
   w_dd?: number;

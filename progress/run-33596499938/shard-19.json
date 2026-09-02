@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 38, "total": 52, "rows": 3057880, "note": "RIF 15m: 34,610 bars, testing 120 rules", "pct": 73.1, "updated": "2026-09-02T08:57:58Z"}
+{"shard": 19, "stage": "testing", "done": 38, "total": 52, "rows": 3059860, "note": "RIF 15m: rule 3/120 (fade15)", "pct": 73.1, "updated": "2026-09-02T08:59:05Z"}

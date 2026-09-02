@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 7, "total": 52, "rows": 672280, "note": "BARD 30m: 16,743 bars, testing 120 rules", "pct": 13.5, "updated": "2026-09-02T06:37:02Z"}
+{"shard": 10, "stage": "testing", "done": 7, "total": 52, "rows": 678000, "note": "BARD 30m: rule 20/120 (stoch14)", "pct": 13.5, "updated": "2026-09-02T06:37:49Z"}

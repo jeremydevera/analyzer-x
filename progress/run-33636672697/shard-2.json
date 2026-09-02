@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 37, "total": 53, "rows": 2865368, "note": "PTB 30m: 17,481 bars, testing 120 rules", "pct": 69.8, "updated": "2026-09-02T16:17:32Z"}
+{"shard": 2, "stage": "testing", "done": 37, "total": 53, "rows": 2868368, "note": "PTB 30m: rule 9/120 (fib382)", "pct": 69.8, "updated": "2026-09-02T16:18:17Z"}

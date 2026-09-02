@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 48, "total": 52, "rows": 3632698, "note": "USDC 15m: rule 99/120 (cf_ttm_l2)", "pct": 92.3, "updated": "2026-09-02T09:12:32Z"}
+{"shard": 8, "stage": "testing", "done": 48, "total": 52, "rows": 3641278, "note": "USDC 30m: rule 17/120 (atrbreak)", "pct": 92.3, "updated": "2026-09-02T09:13:17Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 1, "total": 52, "rows": 0, "note": "AASTOCK 15m: downloading candles", "pct": 1.9, "updated": "2026-09-02T05:53:40Z"}
+{"shard": 13, "stage": "testing", "done": 2, "total": 52, "rows": 35640, "note": "AIGENSYN 15m: rule 4/120 (trend50)", "pct": 3.8, "updated": "2026-09-02T05:54:26Z"}

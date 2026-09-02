@@ -54,6 +54,65 @@ def _conn() -> sqlite3.Connection:
     return cx
 
 
+META_CHARS = 8000
+
+
+def pack_meta(meta: dict | None, cap: int = META_CHARS) -> str:
+    """`meta` as JSON that is guaranteed to PARSE, within `cap` characters.
+
+    This used to be `json.dumps(meta)[:2000]`, a blind cut of the finished
+    string. Sep 02, 2026 4:10pm: the candle update finished with 26 named
+    failures and 13 delisted contracts, its meta came to more than 2,000
+    characters, and the cut landed mid-string at `"mode`. `recent()` could not
+    parse it and fell back to `{}` — so a run that stored 1,280,408 bars over
+    5,117 pairs showed in the history as "FAILED · 0 bars · 0 pairs ·
+    download", with its mode defaulting to the wrong word.
+
+    The cut was also backwards: the more a run had to say about what went
+    wrong, the more certain it was to lose all of it, including the numbers
+    that had nothing to do with the failure.
+
+    So the CONTENT is trimmed instead. The longest list is halved, and the
+    number of entries it lost is recorded beside it as `<field>_dropped`, until
+    the whole thing fits. Scalars are never dropped — they are the cheap part
+    and the part the screen reads. Whatever comes out is round-tripped through
+    `json.loads` before it is returned; if even that fails, "{}" is returned,
+    because an empty object reads as "nothing recorded" while a fragment reads
+    as a broken store.
+    """
+    got = dict(meta or {})
+    for _ in range(40):
+        try:
+            text = json.dumps(got)
+        except (TypeError, ValueError):
+            got = {k: v for k, v in got.items()
+                   if isinstance(v, (str, int, float, bool, type(None)))}
+            continue
+        if len(text) <= cap:
+            try:
+                json.loads(text)
+                return text
+            except ValueError:
+                return "{}"
+        lists = [(len(v), k) for k, v in got.items() if isinstance(v, list) and v]
+        if not lists:
+            break
+        _n, key = max(lists)
+        keep = len(got[key]) // 2
+        dropped = int(got.get(f"{key}_dropped") or 0) + (len(got[key]) - keep)
+        got[key] = got[key][:keep]
+        got[f"{key}_dropped"] = dropped
+    # nothing but scalars left and still too long: keep the scalars alone
+    small = {k: v for k, v in got.items()
+             if isinstance(v, (int, float, bool, type(None)))}
+    try:
+        text = json.dumps(small)
+        json.loads(text)
+        return text if len(text) <= cap else "{}"
+    except (TypeError, ValueError):
+        return "{}"
+
+
 def record(kind: str, title: str, *, detail: str = "", ok: bool = True,
            meta: dict | None = None) -> int:
     """Append one event. Returns its id, or 0 if it could not be stored.
@@ -66,7 +125,7 @@ def record(kind: str, title: str, *, detail: str = "", ok: bool = True,
                 "INSERT INTO events (ts, kind, ok, title, detail, meta) "
                 "VALUES (?,?,?,?,?,?)",
                 (time.time(), str(kind), 1 if ok else 0, str(title)[:200],
-                 str(detail)[:500], json.dumps(meta or {})[:2000]))
+                 str(detail)[:500], pack_meta(meta)))
             return int(cur.lastrowid or 0)
     except Exception:
         return 0

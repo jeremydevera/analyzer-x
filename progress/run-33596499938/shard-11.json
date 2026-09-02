@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 38, "total": 52, "rows": 3214234, "note": "RED 15m: rule 45/120 (zscore20)", "pct": 73.1, "updated": "2026-09-02T08:52:32Z"}
+{"shard": 11, "stage": "testing", "done": 38, "total": 52, "rows": 3219434, "note": "RED 15m: rule 72/120 (force13)", "pct": 73.1, "updated": "2026-09-02T08:53:17Z"}

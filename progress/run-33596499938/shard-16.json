@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 52, "total": 52, "rows": 4607080, "note": "ZKP 15m: 24,665 bars, testing 120 rules", "pct": 100.0, "updated": "2026-09-02T09:27:17Z"}
+{"shard": 16, "stage": "testing", "done": 52, "total": 52, "rows": 4610380, "note": "ZKP 15m: rule 9/120 (fib382)", "pct": 100.0, "updated": "2026-09-02T09:28:02Z"}

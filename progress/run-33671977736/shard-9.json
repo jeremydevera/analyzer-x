@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 7, "total": 52, "rows": 633930, "note": "BAN 30m: rule 43/120 (macddiv)", "pct": 13.5, "updated": "2026-09-02T19:42:04Z"}
+{"shard": 9, "stage": "testing", "done": 7, "total": 52, "rows": 650430, "note": "BAN 1h: 9,479 bars, testing 120 rules", "pct": 13.5, "updated": "2026-09-02T19:42:58Z"}

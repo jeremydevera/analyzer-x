@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 46, "total": 52, "rows": 3991264, "note": "TRB 15m: rule 84/120 (cf_maobv_l2)", "pct": 88.5, "updated": "2026-09-02T22:42:56Z"}
+{"shard": 13, "stage": "testing", "done": 46, "total": 52, "rows": 3999184, "note": "TRB 30m: 18,959 bars, testing 120 rules", "pct": 88.5, "updated": "2026-09-02T22:43:50Z"}

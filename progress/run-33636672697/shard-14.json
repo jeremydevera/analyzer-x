@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 52, "total": 52, "rows": 4695394, "note": "ZIG 30m: 14,886 bars, testing 120 rules", "pct": 100.0, "updated": "2026-09-02T18:38:36Z"}
+{"shard": 14, "stage": "testing", "done": 52, "total": 52, "rows": 4707094, "note": "ZIG 30m: rule 114/120 (cf_obretest_l2)", "pct": 100.0, "updated": "2026-09-02T18:39:22Z"}

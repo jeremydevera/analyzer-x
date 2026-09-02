@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 45, "total": 52, "rows": 3834302, "note": "TEMSTOCK 15m: rule 99/120 (cf_ttm_l2)", "pct": 86.5, "updated": "2026-09-02T23:12:55Z"}
+{"shard": 12, "stage": "testing", "done": 46, "total": 52, "rows": 3885092, "note": "TRADOOR 15m: 34,571 bars, testing 120 rules", "pct": 88.5, "updated": "2026-09-02T23:13:48Z"}

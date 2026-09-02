@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 35, "total": 52, "rows": 2466308, "note": "PENDLE 30m: rule 35/120 (willr14)", "pct": 67.3, "updated": "2026-09-02T15:05:05Z"}
+{"shard": 7, "stage": "testing", "done": 35, "total": 52, "rows": 2484568, "note": "PENDLE 1h: 9,479 bars, testing 120 rules", "pct": 67.3, "updated": "2026-09-02T15:05:53Z"}

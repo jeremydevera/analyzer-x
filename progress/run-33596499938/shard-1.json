@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 20, "total": 53, "rows": 1522068, "note": "GAS 30m: rule 15/120 (bbbreak)", "pct": 37.7, "updated": "2026-09-02T06:51:59Z"}
+{"shard": 1, "stage": "testing", "done": 20, "total": 53, "rows": 1544948, "note": "GAS 30m: rule 120/120 (cf_stflip_l2)", "pct": 37.7, "updated": "2026-09-02T06:52:45Z"}

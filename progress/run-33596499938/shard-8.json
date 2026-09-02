@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 6, "total": 52, "rows": 487152, "note": "AVA 1d: 394 bars, testing 120 rules", "pct": 11.5, "updated": "2026-09-02T06:29:20Z"}
+{"shard": 8, "stage": "testing", "done": 7, "total": 52, "rows": 501432, "note": "BANK 15m: rule 2/120 (mom15)", "pct": 13.5, "updated": "2026-09-02T06:30:18Z"}

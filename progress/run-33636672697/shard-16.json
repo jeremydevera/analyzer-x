@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 25, "total": 52, "rows": 2195038, "note": "KAIA 30m: 18,959 bars, testing 120 rules", "pct": 48.1, "updated": "2026-09-02T15:54:21Z"}
+{"shard": 16, "stage": "testing", "done": 25, "total": 52, "rows": 2200758, "note": "KAIA 30m: rule 20/120 (stoch14)", "pct": 48.1, "updated": "2026-09-02T15:55:07Z"}

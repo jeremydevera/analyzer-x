@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 32, "total": 52, "rows": 2248998, "note": "NICKEL 15m: 15,006 bars, testing 120 rules", "pct": 61.5, "updated": "2026-09-02T20:59:41Z"}
+{"shard": 10, "stage": "testing", "done": 32, "total": 52, "rows": 2272698, "note": "NICKEL 30m: rule 86/120 (cf_triple_l1)", "pct": 61.5, "updated": "2026-09-02T21:00:27Z"}

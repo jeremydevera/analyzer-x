@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 19, "total": 53, "rows": 1523012, "note": "FLUID 30m: 16,474 bars, testing 120 rules", "pct": 35.8, "updated": "2026-09-02T15:07:55Z"}
+{"shard": 3, "stage": "testing", "done": 19, "total": 53, "rows": 1528732, "note": "FLUID 30m: rule 20/120 (stoch14)", "pct": 35.8, "updated": "2026-09-02T15:08:41Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 42, "total": 52, "rows": 3994272, "note": "SOXL 15m: rule 33/120 (heikin)", "pct": 80.8, "updated": "2026-09-02T23:38:03Z"}
+{"shard": 19, "stage": "testing", "done": 42, "total": 52, "rows": 4019952, "note": "SOXL 30m: rule 45/120 (zscore20)", "pct": 80.8, "updated": "2026-09-02T23:38:48Z"}

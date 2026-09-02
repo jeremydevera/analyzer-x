@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 21, "total": 52, "rows": 1701854, "note": "HANA 1h: rule 90/120 (cf_chan_l2)", "pct": 40.4, "updated": "2026-09-02T15:47:35Z"}
+{"shard": 19, "stage": "testing", "done": 22, "total": 52, "rows": 1735294, "note": "HOT 15m: 34,638 bars, testing 120 rules", "pct": 42.3, "updated": "2026-09-02T15:48:30Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 44, "total": 52, "rows": 3372980, "note": "SYN 30m: rule 47/120 (ibs)", "pct": 84.6, "updated": "2026-09-02T17:10:46Z"}
+{"shard": 18, "stage": "testing", "done": 44, "total": 52, "rows": 3385940, "note": "SYN 30m: rule 120/120 (cf_stflip_l2)", "pct": 84.6, "updated": "2026-09-02T17:11:32Z"}

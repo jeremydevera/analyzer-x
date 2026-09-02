@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 6, "total": 52, "rows": 550844, "note": "A 30m: 18,959 bars, testing 120 rules", "pct": 11.5, "updated": "2026-09-02T19:56:18Z"}
+{"shard": 19, "stage": "testing", "done": 6, "total": 52, "rows": 557564, "note": "A 30m: rule 36/120 (stochrsi)", "pct": 11.5, "updated": "2026-09-02T19:57:03Z"}

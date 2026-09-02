@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 34, "total": 52, "rows": 2448966, "note": "OPENLEDGER 1h: rule 105/120 (cf_eqhl_l2)", "pct": 65.4, "updated": "2026-09-02T07:55:21Z"}
+{"shard": 6, "stage": "testing", "done": 35, "total": 52, "rows": 2491558, "note": "PENDLE 15m: 34,606 bars, testing 120 rules", "pct": 67.3, "updated": "2026-09-02T07:56:14Z"}

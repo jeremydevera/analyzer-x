@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 1, "total": 52, "rows": 10440, "note": "AAVE 15m: rule 53/120 (squeeze)", "pct": 1.9, "updated": "2026-09-02T05:56:07Z"}
+{"shard": 14, "stage": "testing", "done": 1, "total": 52, "rows": 18180, "note": "AAVE 15m: rule 96/120 (cf_emarsi_l2)", "pct": 1.9, "updated": "2026-09-02T05:56:54Z"}

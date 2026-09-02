@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 49, "total": 52, "rows": 3778676, "note": "VTHO 30m: 18,959 bars, testing 120 rules", "pct": 94.2, "updated": "2026-09-02T16:42:17Z"}
+{"shard": 12, "stage": "testing", "done": 49, "total": 52, "rows": 3787916, "note": "VTHO 30m: rule 36/120 (stochrsi)", "pct": 94.2, "updated": "2026-09-02T16:43:03Z"}

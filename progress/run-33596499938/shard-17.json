@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 10, "total": 52, "rows": 923232, "note": "CAP 30m: rule 3/120 (fade15)", "pct": 19.2, "updated": "2026-09-02T06:52:55Z"}
+{"shard": 17, "stage": "testing", "done": 11, "total": 52, "rows": 978430, "note": "CFX 15m: 34,602 bars, testing 120 rules", "pct": 21.2, "updated": "2026-09-02T06:53:46Z"}

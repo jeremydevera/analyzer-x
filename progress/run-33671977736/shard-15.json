@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 18, "total": 52, "rows": 1281322, "note": "FIGSTOCK 30m: 2,467 bars, testing 120 rules", "pct": 34.6, "updated": "2026-09-02T20:19:34Z"}
+{"shard": 15, "stage": "testing", "done": 20, "total": 52, "rows": 1316502, "note": "GLWSTOCK 15m: rule 16/120 (keltner)", "pct": 38.5, "updated": "2026-09-02T20:20:19Z"}

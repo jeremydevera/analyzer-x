@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 30, "total": 53, "rows": 2223104, "note": "MIRA 30m: rule 99/120 (cf_ttm_l2)", "pct": 56.6, "updated": "2026-09-02T15:59:36Z"}
+{"shard": 1, "stage": "testing", "done": 30, "total": 53, "rows": 2233444, "note": "MIRA 1h: rule 20/120 (stoch14)", "pct": 56.6, "updated": "2026-09-02T16:00:22Z"}

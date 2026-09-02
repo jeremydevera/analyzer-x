@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 18, "total": 52, "rows": 1397942, "note": "FCXSTOCK 15m: 6,929 bars, testing 120 rules", "pct": 34.6, "updated": "2026-09-02T15:11:45Z"}
+{"shard": 9, "stage": "testing", "done": 18, "total": 52, "rows": 1440182, "note": "FCXSTOCK 30m: rule 110/120 (cf_fundfade_l1)", "pct": 34.6, "updated": "2026-09-02T15:12:30Z"}

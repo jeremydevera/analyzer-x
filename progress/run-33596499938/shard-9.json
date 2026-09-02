@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 15, "total": 52, "rows": 1202426, "note": "DIA 15m: 34,602 bars, testing 120 rules", "pct": 28.8, "updated": "2026-09-02T06:58:01Z"}
+{"shard": 9, "stage": "testing", "done": 15, "total": 52, "rows": 1204426, "note": "DIA 15m: rule 4/120 (trend50)", "pct": 28.8, "updated": "2026-09-02T06:58:48Z"}

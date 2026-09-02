@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 28, "total": 53, "rows": 2041380, "note": "LSK 30m: 18,959 bars, testing 120 rules", "pct": 52.8, "updated": "2026-09-02T14:50:46Z"}
+{"shard": 4, "stage": "testing", "done": 28, "total": 53, "rows": 2066900, "note": "LSK 30m: rule 111/120 (cf_fundfade_l2)", "pct": 52.8, "updated": "2026-09-02T14:52:17Z"}

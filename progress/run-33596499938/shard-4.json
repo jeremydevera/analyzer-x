@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 49, "total": 52, "rows": 3776524, "note": "VIRTUAL 30m: 18,959 bars, testing 120 rules", "pct": 94.2, "updated": "2026-09-02T09:27:21Z"}
+{"shard": 4, "stage": "testing", "done": 49, "total": 52, "rows": 3780324, "note": "VIRTUAL 30m: rule 13/120 (pivot)", "pct": 94.2, "updated": "2026-09-02T09:28:06Z"}

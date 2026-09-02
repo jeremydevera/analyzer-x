@@ -134,7 +134,13 @@ def test_the_panel_has_the_box_and_derives_its_month_columns():
     assert "months: applied.months || undefined" in p, "the request carries it"
     # the columns come from the window the SERVER used, or from the months the
     # rows carry — never a fixed ladder (kit item G)
-    assert "const monthCols = (window_.length" in p
+    # The month columns are DERIVED — from the served window when there is one,
+    # otherwise from the months the rows carry. A DAYS window (2026-09-03)
+    # removes them entirely, because a day cannot restate a month, so the
+    # expression gained a branch in front; the rule this test guards is that
+    # the columns are never a fixed list.
+    assert "const monthCols = (servedFilters.days > 0" in p
+    assert "? window_" in p and "Object.keys(r.monthly ?? {})" in p,         "the columns must still come from the window or from the rows"
     assert 'Object.keys(r.monthly ?? {})' in p
     assert "setWindow(d.window ?? [])" in p, "the window comes from the payload"
     # "month of aug, july" — a month LABEL keeps its own form

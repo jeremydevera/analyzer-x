@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 39, "total": 52, "rows": 3853146, "note": "SAFE 15m: rule 13/120 (pivot)", "pct": 75.0, "updated": "2026-09-02T09:58:14Z"}
+{"shard": 18, "stage": "testing", "done": 39, "total": 52, "rows": 3857766, "note": "SAFE 15m: rule 34/120 (lrslope)", "pct": 75.0, "updated": "2026-09-02T09:59:01Z"}

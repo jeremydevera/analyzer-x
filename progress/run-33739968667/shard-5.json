@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 44, "total": 53, "rows": 3641624, "note": "STRK 4h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 83.0, "updated": "2026-09-03T13:22:43Z"}
+{"shard": 5, "stage": "testing", "done": 47, "total": 53, "rows": 3683188, "note": "TSLL 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 88.7, "updated": "2026-09-03T13:23:28Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 24, "total": 53, "rows": 1983450, "note": "IMX 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 45.3, "updated": "2026-09-03T11:38:48Z"}
+{"shard": 0, "stage": "testing", "done": 24, "total": 53, "rows": 1987410, "note": "IMX 30m: rule 12/120 (donchian20)", "failed": [], "pct": 45.3, "updated": "2026-09-03T11:39:34Z"}

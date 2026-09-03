@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 49, "total": 53, "rows": 4047694, "note": "VELO 1h: rule 58/120 (bos)", "failed": [], "pct": 92.5, "updated": "2026-09-03T19:14:23Z"}
+{"shard": 3, "stage": "testing", "done": 50, "total": 53, "rows": 4085542, "note": "WENSTOCK 15m: 6,732 bars, testing 120 rules", "failed": [], "pct": 94.3, "updated": "2026-09-03T19:15:10Z"}

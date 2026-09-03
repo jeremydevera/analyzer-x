@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 28, "total": 53, "rows": 2228094, "note": "LQTY 15m: rule 44/120 (elder)", "failed": [], "pct": 52.8, "updated": "2026-09-03T11:53:46Z"}
+{"shard": 1, "stage": "testing", "done": 28, "total": 53, "rows": 2234254, "note": "LQTY 15m: rule 73/120 (volspike)", "failed": [], "pct": 52.8, "updated": "2026-09-03T11:54:31Z"}

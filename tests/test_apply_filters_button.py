@@ -54,8 +54,11 @@ def test_the_csv_downloads_what_the_table_shows_not_the_boxes():
     slice than it names (label-must-match-data)."""
     p = _panel()
     csv = p[p.index("api.strategiesCsvUrl({"):]
-    csv = csv[:csv.index("}}")]
+    csv = csv[:csv.index("})}")]
+    # every filter the TABLE sends. TP and SL are ranges since 2026-09-03, so
+    # both ends have to travel or the file holds more rows than the table
     for f in ("coin", "tf", "signal", "minTrades", "minWinrate", "maxTp",
+              "maxSl", "minTp", "minSl", "group", "sizing", "months", "days",
               "profitable"):
         assert f"applied.{f}" in csv, f"the CSV link ignores applied.{f}"
 

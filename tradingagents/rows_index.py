@@ -730,6 +730,14 @@ def balanced_score(row: dict, profit=None, winrate=None, trades=None,
         because that is the ladder emptying a $65 account on the way to a green
         total (the APEX incident: -$79.80 over 13 trades).
 
+    THE COMBINATION IS A CEILING, not one term among many. The operator's test
+    case, 2026-09-03: *"even if is 100% winrate and tp is 0.1% and sl is 10%
+    this should be not balanced"*. One win pays `tp - rt` and one loss costs
+    `sl + rt`, so the win rate that merely breaks even is
+    `(sl + rt) / ((tp - rt) + (sl + rt))` — 99.40% for TP 0.1% against SL 10%.
+    A row that wins 100% of the time there has 0.60 points of margin and one
+    loss erases a hundred wins, so it is capped at 3.0 however much it made.
+
     `profit`/`winrate`/... override the row's own figures, which is how the
     LAST N MONTHS window re-rates a row over its own slice.
 
@@ -757,6 +765,10 @@ def balanced_score(row: dict, profit=None, winrate=None, trades=None,
     payoff = (tp / sl) if sl else 0.0        # TP against SL: the operator's axis
 
     bits = []
+    # every ceiling this row earns; the LOWEST wins, and one of them is the
+    # trade count. Two separate `ceiling = ...` assignments would let whichever
+    # ran last decide, which is how a 10/10 on two trades used to be possible.
+    caps: list = []
     if pf <= 0:
         # 1.0 - 3.0, and the win rate can only move it inside that band
         score = min(3.0, 1.0 + 2.0 * max(0.0, wr) / 100.0)
@@ -819,6 +831,45 @@ def balanced_score(row: dict, profit=None, winrate=None, trades=None,
         bits.append(f"TP {tp:g}% against SL {sl:g}% — payoff {payoff:.2f}x "
                     f"({add:+.1f})")
 
+    # ...and the CEILING the combination puts on the whole row. A win rate
+    # cannot argue with the arithmetic of its own barriers: 100% on TP 0.1%
+    # against SL 10% is 0.60 points above break-even, which is one loss in 167
+    # wins from red. Before this it rated 7.3/10 (operator, 2026-09-03).
+    if tp and sl:
+        gain, loss = tp - rt, sl + rt
+        # a target smaller than the round-trip cost cannot win at ALL — rule
+        # 11: over 100% is arithmetically impossible, not merely bad
+        need = (100.0 * loss / (gain + loss)) if gain > 0 else 100.0
+        margin = wr - need
+        erases = (1.0 / payoff) if payoff > 0 else 0.0
+        if payoff <= 0.1:
+            caps.append(3.0)
+        elif payoff <= 0.25:
+            caps.append(5.0)
+        elif payoff <= 0.5:
+            caps.append(7.0)
+        if gain <= 0:
+            caps.append(2.0)
+        # NO break-even-margin ceiling. It was written and measured first: on
+        # 1,000 real rows from the operator's store it lowered 942 of them,
+        # including AMP 15m vwaprev (TP 2.5 / SL 1.2, 53.58% wins, +752.85
+        # USDT) from 9.0 to 3.0. The model was wrong, not the rows: `wins`
+        # counts every trade that ended positive, NOT the ones that reached
+        # TP, so "average win = tp" is an assumption the store's own columns
+        # do not support. What the row really earned per trade is already
+        # scored above, from the measurement itself.
+        if caps:
+            if gain <= 0:
+                bits.append(f"the round-trip cost ({rt:g}%) is bigger than the "
+                            f"{tp:g}% target — no win rate can pay for that, "
+                            f"so it cannot rate above {min(caps):.1f}")
+            else:
+                bits.append(
+                    f"ONE LOSS ERASES {erases:.0f} WINS (TP {tp:g}% against "
+                    f"SL {sl:g}%), so it cannot rate above {min(caps):.1f} — "
+                    f"those barriers need {need:.2f}% just to break even and "
+                    f"this wins {wr:.2f}% ({margin:+.2f} points of margin)")
+
     # A row that loses most of its trades is carried by its sizing, not by its
     # signal — the audit behind rule 19 (the ladder produced "13/13 green
     # months"; flat was 7/12-11/12). Profitable or not, that is not BALANCED.
@@ -847,14 +898,14 @@ def balanced_score(row: dict, profit=None, winrate=None, trades=None,
     # EVIDENCE. A rate needs a denominator: "CHF 30m soldiers 100.00% over 1
     # trade" was the top of this store once, and 10/10 for two trades is the
     # same lie with a nicer number.
-    ceiling = 10.0
     if n < 30:
-        ceiling = 4.0
+        caps.append(4.0)
         bits.append(f"only {int(n)} trades — too few to rate above 4")
     elif n < 100:
-        ceiling = 7.0
+        caps.append(7.0)
         bits.append(f"{int(n)} trades — under 100, so it cannot rate above 7")
-    score = min(score, ceiling)
+    if caps:
+        score = min(score, min(caps))
 
     # ONE DECIMAL, asked for by name: two rows that both "score 8" are not the
     # same row, and the operator ranks by the difference (2026-08-27).

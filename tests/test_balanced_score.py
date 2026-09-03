@@ -18,6 +18,7 @@ not by the signal, which is what rule 19's audit proved.
 Every score carries its own sentence: a rating the operator cannot audit is a
 rating they cannot use.
 """
+import inspect
 import json
 import time
 
@@ -185,3 +186,87 @@ def test_the_scores_are_decimals_that_separate_close_rows():
     b = ri.balanced_score(_row(profit=120.0, winrate=61.0))[0]
     assert a != b, (a, b)
     assert round(a, 1) == a and round(b, 1) == b, "one decimal place"
+
+
+# ---------------------------------------------------------------------------
+# The COMBINATION is a ceiling, not one term among many.
+#
+# Operator, 2026-09-03: *"DO YOU CALCULATE BALANCED COLUMN BASED ON WINRATE AND
+# SL /TP COMBINATION / MEANING EVEN IF IS 100% WINRATE AND TP IS 0.1% AND sl IS
+# 10% THIS SHOULD BE NOT BALANCED"*.
+#
+# It did use both, but the weights let the win rate win the argument. Measured
+# on exactly their row before the change: 7.3/10, because +2.0 for the win rate
+# and +1.0 for green months cancelled the -1.5 for the payoff.
+
+def _combo(**kw):
+    r = dict(profit=20.0, winrate=100.0, trades=120, tp=0.1, sl=10.0,
+             rt=0.04, base=5.0, green=12, months=12, dd=0.0)
+    r.update(kw)
+    return r
+
+
+def test_the_operators_own_case_cannot_be_called_balanced():
+    score, why = ri.balanced_score(_combo())
+    assert score <= 3.0, f"100% wins on TP 0.1 / SL 10 rated {score}: {why}"
+    assert "ONE LOSS ERASES 100 WINS" in why, why
+    assert "cannot rate above 3.0" in why
+
+
+def test_a_win_rate_cannot_argue_with_the_barriers():
+    """Every win rate from 50 to 100 on those barriers is capped."""
+    for wr in (50.0, 80.0, 95.0, 99.0, 100.0):
+        score, _ = ri.balanced_score(_combo(winrate=wr))
+        assert score <= 3.0, wr
+
+
+def test_the_bands_follow_how_many_wins_one_loss_erases():
+    # payoff 0.01 -> 100 wins: 3.0
+    assert ri.balanced_score(_combo(tp=0.1, sl=10.0))[0] <= 3.0
+    # payoff 0.15 -> ~7 wins (the JPY 30m fade15 trap): 5.0
+    assert ri.balanced_score(_combo(tp=0.3, sl=2.0, winrate=96.0))[0] <= 5.0
+    # payoff 0.4 -> 2.5 wins: 7.0
+    assert ri.balanced_score(_combo(tp=0.8, sl=2.0, winrate=80.0))[0] <= 7.0
+
+
+def test_a_healthy_payoff_is_not_touched():
+    """The ceiling must not demote the rows that are actually balanced. These
+    are real shapes from the operator's store."""
+    for tp, sl, wr in ((3.0, 1.0, 60.0), (2.0, 2.0, 70.0), (5.0, 1.0, 45.0),
+                       (2.5, 1.2, 53.58)):
+        score, why = ri.balanced_score(
+            _combo(tp=tp, sl=sl, winrate=wr, profit=400.0, trades=300))
+        assert score >= 7.0, (tp, sl, wr, score, why)
+
+
+def test_a_target_smaller_than_the_cost_is_arithmetically_impossible():
+    """Rule 11: over 100% of the target is not merely bad."""
+    score, why = ri.balanced_score(_combo(tp=0.03, sl=1.0, rt=0.05))
+    assert score <= 2.0
+    assert "bigger than the 0.03% target" in why
+
+
+def test_the_ceilings_do_not_overwrite_each_other():
+    """Two separate `ceiling = ...` assignments would let whichever ran last
+    decide — which is how a 10/10 on two trades was once possible."""
+    score, why = ri.balanced_score(
+        _combo(tp=3.0, sl=1.0, winrate=60.0, trades=12))
+    assert score <= 4.0, why
+    assert "too few to rate above 4" in why
+
+
+def test_the_break_even_model_is_NOT_used_as_a_ceiling():
+    """It was, for one measurement: on 1,000 real rows it lowered 942 of them,
+    including AMP 15m vwaprev (TP 2.5 / SL 1.2, 53.58% wins, +752.85 USDT)
+    from 9.0 to 3.0. `wins` counts every trade that ended positive, NOT the
+    ones that reached TP, so "average win = tp" is an assumption the store's
+    columns do not support."""
+    src = inspect.getsource(ri.balanced_score)
+    i = src.index("caps.append(2.0)")
+    assert "margin < 0" not in src[i:], "the margin must not cap the score"
+    # the AMP row keeps its rating
+    score, _ = ri.balanced_score(dict(
+        coin="AMP", tf="15m", signal="vwaprev", profit=752.85, winrate=53.58,
+        trades=1200, tp=2.5, sl=1.2, rt=0.8624, base=5.0, green=11, months=12,
+        dd=120.0))
+    assert score >= 7.0, score

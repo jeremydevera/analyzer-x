@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 20, "total": 53, "rows": 1514716, "note": "GAS 15m: rule 12/120 (donchian20)", "failed": [], "pct": 37.7, "updated": "2026-09-03T11:18:22Z"}
+{"shard": 1, "stage": "testing", "done": 20, "total": 53, "rows": 1519516, "note": "GAS 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 37.7, "updated": "2026-09-03T11:19:09Z"}

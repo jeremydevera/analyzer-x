@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 6, "total": 52, "rows": 541180, "note": "AVNT 15m: rule 61/120 (turtle)", "failed": [], "pct": 11.5, "updated": "2026-09-03T10:10:57Z"}
+{"shard": 10, "stage": "testing", "done": 6, "total": 52, "rows": 548020, "note": "AVNT 15m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 11.5, "updated": "2026-09-03T10:11:42Z"}

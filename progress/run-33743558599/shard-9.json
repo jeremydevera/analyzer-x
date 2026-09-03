@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 44, "total": 52, "rows": 1608612, "note": "STX 4h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 84.6, "updated": "2026-09-03T13:40:45Z"}
+{"shard": 9, "stage": "testing", "done": 45, "total": 52, "rows": 1621196, "note": "TAKE 1h: rule 22/120 (engulf)", "failed": [], "pct": 86.5, "updated": "2026-09-03T13:41:31Z"}

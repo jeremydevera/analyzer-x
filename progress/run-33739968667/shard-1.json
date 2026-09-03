@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 21, "total": 53, "rows": 1649252, "note": "GOOGLSTOCK 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 39.6, "updated": "2026-09-03T11:27:42Z"}
+{"shard": 1, "stage": "testing", "done": 21, "total": 53, "rows": 1656372, "note": "GOOGLSTOCK 30m: rule 8/120 (fib618)", "failed": [], "pct": 39.6, "updated": "2026-09-03T11:28:28Z"}

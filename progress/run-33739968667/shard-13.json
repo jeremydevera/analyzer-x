@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 46, "total": 52, "rows": 4127496, "note": "TRADOOR 4h: rule 115/120 (cf_diadx)", "failed": [], "pct": 88.5, "updated": "2026-09-03T12:54:54Z"}
+{"shard": 13, "stage": "testing", "done": 48, "total": 52, "rows": 4144920, "note": "USOIL 15m: rule 4/120 (trend50)", "failed": [], "pct": 92.3, "updated": "2026-09-03T12:55:41Z"}

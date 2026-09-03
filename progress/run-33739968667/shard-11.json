@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 51, "total": 52, "rows": 4428820, "note": "XOMSTOCK 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-03T13:43:50Z"}
+{"shard": 11, "stage": "testing", "done": 51, "total": 52, "rows": 4440040, "note": "XOMSTOCK 30m: rule 41/120 (tsi)", "failed": [], "pct": 98.1, "updated": "2026-09-03T13:44:35Z"}

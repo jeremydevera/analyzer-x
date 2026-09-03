@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 30, "total": 52, "rows": 511720, "note": "MONAD 15m: rule 120/120 (cf_stflip_l2)", "pct": 57.7, "updated": "2026-09-03T06:20:49Z"}
+{"shard": 8, "stage": "testing", "done": 33, "total": 52, "rows": 549840, "note": "NVIDIA 15m: 34,531 bars, testing 120 rules", "pct": 63.5, "updated": "2026-09-03T06:21:39Z"}

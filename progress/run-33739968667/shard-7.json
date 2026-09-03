@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 7, "total": 52, "rows": 626332, "note": "BAND 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 13.5, "updated": "2026-09-03T10:22:39Z"}
+{"shard": 7, "stage": "testing", "done": 8, "total": 52, "rows": 678552, "note": "BIDUSTOCK 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 15.4, "updated": "2026-09-03T10:23:25Z"}

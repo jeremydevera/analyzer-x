@@ -1392,6 +1392,14 @@ export default function StrategiesPanel() {
                profitable: applied.profitable, sort,
                minTrades: applied.minTrades, minWinrate: applied.minWinrate,
                maxTp: applied.maxTp, maxSl: applied.maxSl,
+               // BOTH ends of each range, and the GROUP. These three were
+               // missing here while the table sent them, so a file downloaded
+               // under "TP 0.5-2.5%, Preset Confluence" quietly held every
+               // TP below 2.5 from both groups — more rows than the table
+               // showed, which is the file-does-not-match-the-table failure
+               // this panel keeps paying for (kit item F).
+               minTp: applied.minTp, minSl: applied.minSl,
+               group: (applied.group || undefined) as "preset" | "classic" | undefined,
                sizing: applied.sizing || undefined,
                // the WINDOW too, or the file holds every row's whole history
                // under a filter that says "last 30 days" (operator, 2026-09-03)

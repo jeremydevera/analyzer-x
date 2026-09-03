@@ -112,7 +112,7 @@ def test_the_download_link_carries_the_window_too():
     panel = open("webapp/src/components/backtest/StrategiesPanel.tsx",
                  encoding="utf-8").read()
     i = panel.index("strategiesCsvUrl({")
-    href = panel[i:i + 900]
+    href = panel[i:panel.index("})}", i)]
     assert "months: applied.months" in href
     assert "days: applied.months ? undefined : (applied.days || undefined)" in href
     client = open("webapp/src/lib/api.ts", encoding="utf-8").read()
@@ -155,3 +155,27 @@ def test_the_proxy_waits_longer_than_a_download_takes():
     m = re.search(r"experimental:\s*\{[^}]*proxyTimeout:\s*([\d_]+)", cfg)
     assert m, "the setting itself, not just the comment explaining it"
     assert int(m.group(1).replace("_", "")) >= 600_000, m.group(1)
+
+
+def test_the_download_sends_EVERY_filter_the_table_sends():
+    """One list of filters, two call sites — they drift, and the file silently
+    holds rows the table never showed.
+
+    Found Sep 03, 2026 while verifying the download: the table request sent
+    `minTp`, `minSl` and `group`; the CSV href sent none of the three. Filter
+    "TP 0.5-2.5%" inside Preset Confluence, click download, and the file holds
+    every row with TP <= 2.5 from BOTH groups — kit item F, and the same
+    label-does-not-match-the-data shape as the ignored `days` window.
+    """
+    import re
+
+    panel = open("webapp/src/components/backtest/StrategiesPanel.tsx",
+                 encoding="utf-8").read()
+    table = panel[panel.index("api.strategies({"):]
+    table = table[:table.index("limit: askPage")]
+    href = panel[panel.index("api.strategiesCsvUrl({"):]
+    href = href[:href.index("})}")]
+    fields = lambda src: set(re.findall(r"applied\.([A-Za-z]+)", src))
+    missing = sorted(fields(table) - fields(href))
+    assert not missing, (f"the download drops {missing} — the file would hold "
+                         f"rows the table never showed")

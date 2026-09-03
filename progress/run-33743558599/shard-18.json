@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 19, "total": 52, "rows": 747726, "note": "F 1h: rule 85/120 (cf_triple)", "failed": [], "pct": 36.5, "updated": "2026-09-03T14:01:13Z"}
+{"shard": 18, "stage": "testing", "done": 19, "total": 52, "rows": 777646, "note": "F 4h: rule 100/120 (cf_soup1)", "failed": [], "pct": 36.5, "updated": "2026-09-03T14:01:58Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 14, "total": 53, "rows": 240000, "note": "CSPR 15m: rule 33/120 (heikin)", "pct": 26.4, "updated": "2026-09-03T05:34:57Z"}
+{"shard": 0, "stage": "testing", "done": 14, "total": 53, "rows": 246360, "note": "CSPR 15m: rule 87/120 (cf_triple_l2)", "pct": 26.4, "updated": "2026-09-03T05:35:44Z"}

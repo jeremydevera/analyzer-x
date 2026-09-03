@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 52, "total": 52, "rows": 993740, "note": "ZBT 15m: rule 105/120 (cf_eqhl_l2)", "pct": 100.0, "updated": "2026-09-03T07:04:36Z"}
+{"shard": 6, "stage": "done", "done": 52, "total": 52, "rows": 997040, "note": "997,040 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "pct": 100.0, "updated": "2026-09-03T07:04:51Z"}

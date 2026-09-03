@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 44, "total": 53, "rows": 1545386, "note": "STRCSTOCK 1h: rule 75/120 (relvolbrk)", "failed": [], "pct": 83.0, "updated": "2026-09-03T14:28:24Z"}
+{"shard": 5, "stage": "testing", "done": 48, "total": 53, "rows": 1573550, "note": "UNI 1h: rule 15/120 (bbbreak)", "failed": [], "pct": 90.6, "updated": "2026-09-03T14:29:10Z"}

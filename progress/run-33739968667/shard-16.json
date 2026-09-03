@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 9, "total": 52, "rows": 707450, "note": "BRKBSTOCK 15m: rule 56/120 (insidebrk)", "failed": [], "pct": 17.3, "updated": "2026-09-03T10:15:38Z"}
+{"shard": 16, "stage": "testing", "done": 9, "total": 52, "rows": 742140, "note": "BRKBSTOCK 1h: rule 19/120 (emacross)", "failed": [], "pct": 17.3, "updated": "2026-09-03T10:16:23Z"}

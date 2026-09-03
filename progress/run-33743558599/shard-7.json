@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 2, "total": 52, "rows": 75592, "note": "AERO 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 3.8, "updated": "2026-09-03T14:05:09Z"}
+{"shard": 7, "stage": "testing", "done": 3, "total": 52, "rows": 103972, "note": "ALICE 1h: rule 3/120 (fade15)", "failed": [], "pct": 5.8, "updated": "2026-09-03T14:05:58Z"}

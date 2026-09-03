@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 28, "total": 53, "rows": 2167214, "note": "LSK 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 52.8, "updated": "2026-09-03T11:38:04Z"}
+{"shard": 4, "stage": "testing", "done": 28, "total": 53, "rows": 2175354, "note": "LSK 1h: rule 16/120 (keltner)", "failed": [], "pct": 52.8, "updated": "2026-09-03T11:38:50Z"}

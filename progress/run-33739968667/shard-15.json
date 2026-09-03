@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 33, "total": 52, "rows": 2511632, "note": "OG 1h: rule 21/120 (cci20)", "failed": [], "pct": 63.5, "updated": "2026-09-03T11:56:50Z"}
+{"shard": 15, "stage": "testing", "done": 33, "total": 52, "rows": 2530838, "note": "OG 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 63.5, "updated": "2026-09-03T11:57:40Z"}

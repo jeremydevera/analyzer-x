@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 26, "total": 52, "rows": 896048, "note": "KMNO 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 50.0, "updated": "2026-09-03T13:54:07Z"}
+{"shard": 11, "stage": "testing", "done": 27, "total": 52, "rows": 924428, "note": "LINEA 1h: 8,813 bars, testing 120 rules", "failed": [], "pct": 51.9, "updated": "2026-09-03T13:54:54Z"}

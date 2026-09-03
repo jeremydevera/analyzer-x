@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 30, "total": 53, "rows": 2433392, "note": "MITO 4h: 2,225 bars, testing 120 rules", "failed": [], "pct": 56.6, "updated": "2026-09-03T11:56:23Z"}
+{"shard": 2, "stage": "testing", "done": 31, "total": 53, "rows": 2471396, "note": "MSTRSTOCK 15m: rule 1/120 (mom6)", "failed": [], "pct": 58.5, "updated": "2026-09-03T11:57:13Z"}

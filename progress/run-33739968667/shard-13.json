@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 36, "total": 52, "rows": 3080650, "note": "PORTAL 15m: rule 75/120 (relvolbrk)", "failed": [], "pct": 69.2, "updated": "2026-09-03T11:55:25Z"}
+{"shard": 13, "stage": "testing", "done": 36, "total": 52, "rows": 3089650, "note": "PORTAL 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 69.2, "updated": "2026-09-03T11:56:12Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 44, "total": 52, "rows": 3912556, "note": "SUN 1h: rule 19/120 (emacross)", "failed": [], "pct": 84.6, "updated": "2026-09-03T13:17:47Z"}
+{"shard": 11, "stage": "testing", "done": 44, "total": 52, "rows": 3934336, "note": "SUN 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 84.6, "updated": "2026-09-03T13:18:35Z"}

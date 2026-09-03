@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 15, "total": 52, "rows": 1354766, "note": "DOGE 15m: rule 18/120 (macd)", "failed": [], "pct": 28.8, "updated": "2026-09-03T10:46:07Z"}
+{"shard": 16, "stage": "testing", "done": 15, "total": 52, "rows": 1360346, "note": "DOGE 15m: rule 49/120 (vwaprev)", "failed": [], "pct": 28.8, "updated": "2026-09-03T10:46:53Z"}

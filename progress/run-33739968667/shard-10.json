@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 41, "total": 52, "rows": 3090074, "note": "SKHYSTOCK 30m: rule 2/120 (mom15)", "failed": [], "pct": 78.8, "updated": "2026-09-03T11:52:37Z"}
+{"shard": 10, "stage": "testing", "done": 42, "total": 52, "rows": 3139894, "note": "SNX 15m: rule 1/120 (mom6)", "failed": [], "pct": 80.8, "updated": "2026-09-03T11:53:35Z"}

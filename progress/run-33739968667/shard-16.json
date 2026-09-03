@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 3, "total": 52, "rows": 234884, "note": "AMDSTOCK 15m: rule 1/120 (mom6)", "failed": [], "pct": 5.8, "updated": "2026-09-03T09:58:44Z"}
+{"shard": 16, "stage": "testing", "done": 3, "total": 52, "rows": 239024, "note": "AMDSTOCK 15m: rule 20/120 (stoch14)", "failed": [], "pct": 5.8, "updated": "2026-09-03T09:59:31Z"}

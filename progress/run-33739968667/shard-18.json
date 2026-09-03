@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 29, "total": 52, "rows": 2420454, "note": "MICRODUCK 30m: downloading candles", "failed": [], "pct": 55.8, "updated": "2026-09-03T11:58:28Z"}
+{"shard": 18, "stage": "testing", "done": 30, "total": 52, "rows": 2424054, "note": "MRVLSTOCK 15m: rule 14/120 (bb20)", "failed": [], "pct": 57.7, "updated": "2026-09-03T11:59:13Z"}

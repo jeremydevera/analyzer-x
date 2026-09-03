@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 46, "total": 53, "rows": 794820, "note": "TLM 15m: 34,601 bars, testing 120 rules", "pct": 86.8, "updated": "2026-09-03T06:40:49Z"}
+{"shard": 2, "stage": "testing", "done": 46, "total": 53, "rows": 796620, "note": "TLM 15m: rule 3/120 (fade15)", "pct": 86.8, "updated": "2026-09-03T06:41:49Z"}

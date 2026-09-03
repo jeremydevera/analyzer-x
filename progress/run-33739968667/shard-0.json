@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 20, "total": 53, "rows": 1638734, "note": "GALA 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 37.7, "updated": "2026-09-03T11:22:03Z"}
+{"shard": 0, "stage": "testing", "done": 20, "total": 53, "rows": 1650534, "note": "GALA 1h: rule 54/120 (fractal5)", "failed": [], "pct": 37.7, "updated": "2026-09-03T11:22:48Z"}

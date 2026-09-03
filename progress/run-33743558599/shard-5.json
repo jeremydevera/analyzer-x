@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 1, "total": 53, "rows": 38720, "note": "1000RATS 4h: rule 48/120 (prank)", "failed": [], "pct": 1.9, "updated": "2026-09-03T13:44:18Z"}
+{"shard": 5, "stage": "testing", "done": 3, "total": 53, "rows": 56100, "note": "ALCH 1h: rule 8/120 (fib618)", "failed": [], "pct": 5.7, "updated": "2026-09-03T13:45:03Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 38, "total": 52, "rows": 3062420, "note": "RDDTSTOCK 30m: rule 27/120 (aroon25)", "failed": [], "pct": 73.1, "updated": "2026-09-03T12:34:56Z"}
+{"shard": 9, "stage": "testing", "done": 38, "total": 52, "rows": 3081572, "note": "RDDTSTOCK 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 73.1, "updated": "2026-09-03T12:35:41Z"}

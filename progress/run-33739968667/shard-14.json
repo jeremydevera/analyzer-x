@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 23, "total": 52, "rows": 2032192, "note": "ICP 30m: rule 24/120 (psar)", "failed": [], "pct": 44.2, "updated": "2026-09-03T11:57:09Z"}
+{"shard": 14, "stage": "testing", "done": 23, "total": 52, "rows": 2043392, "note": "ICP 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 44.2, "updated": "2026-09-03T11:57:55Z"}

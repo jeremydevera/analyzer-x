@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 46, "total": 52, "rows": 3488590, "note": "TOWNS 15m: 34,623 bars, testing 120 rules", "failed": [], "pct": 88.5, "updated": "2026-09-03T12:06:00Z"}
+{"shard": 10, "stage": "testing", "done": 46, "total": 52, "rows": 3490390, "note": "TOWNS 15m: rule 3/120 (fade15)", "failed": [], "pct": 88.5, "updated": "2026-09-03T12:06:58Z"}

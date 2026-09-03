@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 41, "total": 52, "rows": 694480, "note": "SKL 15m: 34,600 bars, testing 120 rules", "pct": 78.8, "updated": "2026-09-03T06:19:05Z"}
+{"shard": 10, "stage": "testing", "done": 41, "total": 52, "rows": 696460, "note": "SKL 15m: rule 3/120 (fade15)", "pct": 78.8, "updated": "2026-09-03T06:20:07Z"}

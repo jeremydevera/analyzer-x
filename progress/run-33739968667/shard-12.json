@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 17, "total": 52, "rows": 1362386, "note": "ETHFI 1h: rule 29/120 (hull20)", "failed": [], "pct": 32.7, "updated": "2026-09-03T10:53:51Z"}
+{"shard": 12, "stage": "testing", "done": 17, "total": 52, "rows": 1381746, "note": "ETHFI 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 32.7, "updated": "2026-09-03T10:54:38Z"}

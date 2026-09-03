@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 19, "total": 52, "rows": 1579234, "note": "GAIB 15m: 27,653 bars, testing 120 rules", "failed": [], "pct": 36.5, "updated": "2026-09-03T11:20:32Z"}
+{"shard": 19, "stage": "testing", "done": 19, "total": 52, "rows": 1583474, "note": "GAIB 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 36.5, "updated": "2026-09-03T11:21:18Z"}

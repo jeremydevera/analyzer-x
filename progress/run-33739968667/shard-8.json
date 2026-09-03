@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 8, "total": 52, "rows": 643368, "note": "BIGTIME 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 15.4, "updated": "2026-09-03T10:15:49Z"}
+{"shard": 8, "stage": "testing", "done": 8, "total": 52, "rows": 651948, "note": "BIGTIME 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 15.4, "updated": "2026-09-03T10:16:34Z"}

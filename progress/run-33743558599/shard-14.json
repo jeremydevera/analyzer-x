@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 50, "total": 52, "rows": 1850820, "note": "XAI 1h: rule 28/120 (vortex14)", "failed": [], "pct": 96.2, "updated": "2026-09-03T15:13:22Z"}
+{"shard": 14, "stage": "testing", "done": 50, "total": 52, "rows": 1866840, "note": "XAI 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 96.2, "updated": "2026-09-03T15:14:08Z"}

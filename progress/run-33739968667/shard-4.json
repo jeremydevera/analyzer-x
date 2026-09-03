@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 5, "total": 53, "rows": 414348, "note": "ARMSTOCK 1h: rule 35/120 (willr14)", "failed": [], "pct": 9.4, "updated": "2026-09-03T09:58:00Z"}
+{"shard": 4, "stage": "testing", "done": 6, "total": 53, "rows": 477552, "note": "AUSTOCK 15m: rule 82/120 (cf_maobv)", "failed": [], "pct": 11.3, "updated": "2026-09-03T09:58:45Z"}

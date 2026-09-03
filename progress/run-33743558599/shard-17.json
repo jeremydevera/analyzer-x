@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 8, "total": 52, "rows": 328724, "note": "BLAST 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 15.4, "updated": "2026-09-03T14:08:44Z"}
+{"shard": 17, "stage": "testing", "done": 9, "total": 52, "rows": 360404, "note": "BRL 1h: rule 20/120 (stoch14)", "failed": [], "pct": 17.3, "updated": "2026-09-03T14:09:29Z"}

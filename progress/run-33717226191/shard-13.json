@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 28, "total": 52, "rows": 513440, "note": "MAGIC 15m: rule 49/120 (vwaprev)", "pct": 53.8, "updated": "2026-09-03T05:58:45Z"}
+{"shard": 13, "stage": "testing", "done": 28, "total": 52, "rows": 521580, "note": "MAGIC 15m: rule 87/120 (cf_triple_l2)", "pct": 53.8, "updated": "2026-09-03T05:59:32Z"}

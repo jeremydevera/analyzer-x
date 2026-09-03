@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 28, "total": 53, "rows": 969794, "note": "LTC 1h: rule 6/120 (sweep30)", "failed": [], "pct": 52.8, "updated": "2026-09-03T14:14:45Z"}
+{"shard": 5, "stage": "testing", "done": 28, "total": 53, "rows": 993334, "note": "LTC 1h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 52.8, "updated": "2026-09-03T14:15:31Z"}

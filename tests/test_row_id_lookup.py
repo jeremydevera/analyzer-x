@@ -103,7 +103,7 @@ def test_an_id_overrides_every_other_filter(store):
     wanted = store[1]
     got = ri.query(row_id=wanted, coin="ZZZ", tf="4h", signal="nope",
                    sizing="martingale", min_winrate=99, min_trades=99999,
-                   min_tp=8, profitable=False)
+                   max_tp=8, profitable=False)
     assert [r["id"] for r in got["rows"]] == [wanted]
     assert got["total"] == 1
     where, args = ri._where(row_id=wanted, coin="ZZZ", min_winrate=99)

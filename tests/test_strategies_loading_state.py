@@ -9,7 +9,7 @@ running), which is why this is not a cosmetic ask:
 
     winrate >= 57 ORDER BY winrate DESC LIMIT 200   cold   30.33 s
     + TP >= 4 on top of it                                 55.01 s
-    min_tp = 4 in the default profit order                  0.18 s
+    max_tp = 4 in the default profit order                  0.18 s
 
 For thirty seconds the panel showed the PREVIOUS answer with nothing moving —
 the exact screen a filter that does nothing would give. Four things now:
@@ -68,7 +68,7 @@ def test_it_names_the_request_not_the_rows_on_screen():
     assert "STRATEGY_SORTS[sort]" in asking, "and which way it is ranked"
     # and that sentence names every box, so nothing sent goes unmentioned
     line = p[p.index("const andLine = "):p.index('.join(" AND ")')]
-    for box in ("coin", "tf", "signal", "minTrades", "minWinrate", "minTp",
+    for box in ("coin", "tf", "signal", "minTrades", "minWinrate", "maxTp",
                 "profitable"):
         assert f"f.{box}" in line, f"the loading line ignores {box}"
     assert "the figures above are still the previous" in p
@@ -114,7 +114,7 @@ def test_every_filter_shares_the_one_indicator():
     draft = re.search(r"const draft = \{([^}]*)\}", p)
     assert draft, "the draft set must exist"
     for box in ("coin", "tf", "signal", "profitable", "minTrades",
-                "minWinrate", "minTp"):
+                "minWinrate", "maxTp"):
         assert box in draft.group(1), f"the draft ignores {box}"
     # the appending button keeps its own words, and still says them
     assert 'loadingMore ? "loading…"' in p

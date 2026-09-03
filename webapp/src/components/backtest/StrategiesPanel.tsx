@@ -30,6 +30,44 @@ const sel =
   "text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 " +
   "dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300";
 
+/** every number box on this panel. BLANK is "off": six boxes all showing `0`
+ *  read as six filters set to zero, which is what the operator called
+ *  confusing on 2026-09-03. */
+const numIn =
+  "h-10 rounded-lg border border-gray-300 bg-transparent px-2 text-theme-sm " +
+  "text-gray-700 placeholder:text-gray-400 focus:outline-hidden " +
+  "focus:ring-2 focus:ring-brand-500/20 disabled:opacity-40 " +
+  "dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300";
+
+/** One labelled group of filters. The label is the fix: thirteen controls in
+ *  one undifferentiated wrap gave the eye nothing to hold on to, and the
+ *  operator could not tell which box belonged with which. */
+function FilterRow({ label, hint, children }: {
+  label: string; hint?: string; children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-3">
+      <div className="sm:w-28 sm:shrink-0 sm:pt-2.5 sm:text-right">
+        <span className="text-theme-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          {label}
+        </span>
+        {hint ? (
+          <span className="ml-2 text-theme-xs text-gray-400 sm:ml-0 sm:mt-0.5 sm:block dark:text-gray-500">
+            {hint}
+          </span>
+        ) : null}
+      </div>
+      <div className="flex min-w-0 flex-wrap items-center gap-2">{children}</div>
+    </div>
+  );
+}
+
+/** The group dropdown's two options, in the operator's own words — used by
+ *  both the <select> and the chip that names it, so they cannot drift. */
+const GROUP_LABEL: Record<string, string> = {
+  preset: "Preset Confluence", classic: "Classic",
+};
+
 /** Which order a clicked header stands for. Built FROM STRATEGY_SORTS, so
  *  the header text, the caption and the query can never disagree — the
  *  "win % ↓" marker used to be decoration: clicking it did nothing
@@ -74,7 +112,7 @@ export default function StrategiesPanel() {
   // than 4" (operator, 2026-08-27). TP is the profit target a winning trade
   // aims at, so 4 means "only strategies going for 4% a trade or more" — the
   // unit the TP% column prints, inclusive.
-  const [minTp, setMinTp] = useState(0);
+  const [maxTp, setMaxTp] = useState(0);
   // "can you add the sl filter in the Stored strategies as well" (operator,
   // 2026-09-02). A CEILING, the opposite of the TP box beside it: 1 keeps rows
   // whose stop is 1% or TIGHTER — their words, settled on the artifact first:
@@ -160,7 +198,7 @@ export default function StrategiesPanel() {
   // leaves when the operator says so, and the button is where the spinner is.
   const [applied, setApplied] = useState({
     coin: "", tf: "", signal: "", profitable: false,
-    minTrades: 0, minWinrate: 0, minTp: 0, maxSl: 0, sizing: "", rowId: "",
+    minTrades: 0, minWinrate: 0, maxTp: 0, maxSl: 0, sizing: "", rowId: "",
     group: "",
     months: 0, days: 0,
   });
@@ -175,7 +213,7 @@ export default function StrategiesPanel() {
   // repo keeps paying for (label-must-match-data).
   const [servedFilters, setServedFilters] = useState({
     coin: "", tf: "", signal: "", profitable: false,
-    minTrades: 0, minWinrate: 0, minTp: 0, maxSl: 0, sizing: "", rowId: "",
+    minTrades: 0, minWinrate: 0, maxTp: 0, maxSl: 0, sizing: "", rowId: "",
     group: "",
     months: 0, days: 0,
   });
@@ -228,7 +266,7 @@ export default function StrategiesPanel() {
                      signal: applied.signal || undefined,
                      profitable: applied.profitable, sort,
                      minTrades: applied.minTrades, minWinrate: applied.minWinrate,
-                     minTp: applied.minTp, maxSl: applied.maxSl,
+                     maxTp: applied.maxTp, maxSl: applied.maxSl,
                      sizing: applied.sizing || undefined,
                      rowId: applied.rowId || undefined,
                      months: applied.months || undefined,
@@ -244,7 +282,7 @@ export default function StrategiesPanel() {
         setServedDesc(d.desc ?? desc);
         setServedTrades(d.min_trades ?? applied.minTrades);
         setServedWinrate(d.min_winrate ?? applied.minWinrate);
-        setServedTp(d.min_tp ?? applied.minTp);
+        setServedTp(d.max_tp ?? applied.maxTp);
         setServedSl(d.max_sl ?? applied.maxSl);
         setServedFilters(applied);   // these rows came from THIS set
         setWindow(d.window ?? []);   // the window's real months, from the payload
@@ -309,7 +347,7 @@ export default function StrategiesPanel() {
   const askPage = applied.days > 0 && !applied.months
     ? Math.min(perPage, DAYS_PAGE) : perPage;
 
-  const draft = { coin, tf, signal, profitable, minTrades, minWinrate, minTp,
+  const draft = { coin, tf, signal, profitable, minTrades, minWinrate, maxTp,
     maxSl,
                   sizing, group, months, days,
                   // trim FIRST: " #6yaczsxx " pasted from chat kept its hash
@@ -325,6 +363,79 @@ export default function StrategiesPanel() {
   const onFilterKey = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") apply();
   };
+  // ------------------------------------------------------------ filter chips
+  // "its now confusing": the only summary was an eleven-clause sentence that
+  // said nothing was filtered, printed twice (caption and filter line), and
+  // dropping ONE filter meant hunting it among thirteen boxes. A chip per
+  // ACTIVE filter, with its own ×, is the whole state in one line.
+  const NO_FILTERS = {
+    coin: "", tf: "", signal: "", profitable: false,
+    minTrades: 0, minWinrate: 0, maxTp: 0, maxSl: 0, sizing: "", rowId: "",
+    group: "", months: 0, days: 0,
+  };
+  const setBox: Record<keyof typeof NO_FILTERS, (v: never) => void> = {
+    coin: setCoin, tf: setTf, signal: setSignal, group: setGroup,
+    sizing: setSizing, minTrades: setMinTrades, minWinrate: setMinWinrate,
+    maxTp: setMaxTp, maxSl: setMaxSl, profitable: setProfitable,
+    months: setMonths, days: setDays, rowId: setRowId,
+  } as Record<keyof typeof NO_FILTERS, (v: never) => void>;
+  const clearOne = (k: keyof typeof NO_FILTERS) => {
+    setBox[k](NO_FILTERS[k] as never);
+    // a chip describes the SERVED set, so removing it asks the store again
+    // straight away — one deliberate click, not a keystroke
+    setApplied((a) => ({ ...a, [k]: NO_FILTERS[k] }));
+    setPage(1); setExtra([]);
+  };
+  const clearAll = () => {
+    (Object.keys(NO_FILTERS) as (keyof typeof NO_FILTERS)[])
+      .forEach((k) => setBox[k](NO_FILTERS[k] as never));
+    setApplied({ ...NO_FILTERS });
+    setPage(1); setExtra([]);
+  };
+  /** One chip per active filter, in the unit its COLUMN prints (win % as a
+   *  percent, trades as a count, TP a floor, SL a ceiling). Built from a set
+   *  of terms like `andLine`, so a box added and not named here would be
+   *  visibly missing rather than silently unmentioned. */
+  const chipsOf = (f: typeof draft) => {
+    const out: { k: keyof typeof NO_FILTERS; text: string }[] = [];
+    if (f.rowId) {
+      return [{ k: "rowId" as const,
+                text: `#${f.rowId} — every other filter ignored` }];
+    }
+    if (f.coin) out.push({ k: "coin", text: f.coin });
+    if (f.tf) out.push({ k: "tf", text: f.tf });
+    if (f.group) out.push({ k: "group", text: `group ${GROUP_LABEL[f.group] ?? f.group}` });
+    if (f.signal) out.push({ k: "signal", text: f.signal });
+    if (f.sizing) out.push({ k: "sizing", text: `${f.sizing} only` });
+    if (f.minTrades > 0) out.push({ k: "minTrades", text: `trades ≥ ${f.minTrades}` });
+    if (f.minWinrate > 0) out.push({ k: "minWinrate", text: `win % ≥ ${f.minWinrate}` });
+    if (f.maxTp > 0) out.push({ k: "maxTp", text: `TP ≤ ${f.maxTp}%` });
+    if (f.maxSl > 0) out.push({ k: "maxSl", text: `SL ≤ ${f.maxSl}%` });
+    if (f.profitable) out.push({ k: "profitable", text: "profit > 0" });
+    if (f.months > 0) {
+      out.push({ k: "months", text: `last ${f.months} month${f.months > 1 ? "s" : ""}` });
+    } else if (f.days > 0) {
+      out.push({ k: "days", text: `last ${f.days} day${f.days > 1 ? "s" : ""}` });
+    }
+    return out;
+  };
+  // The chips read the SERVED set — the four floors from the API's OWN echo
+  // (`servedWinrate > 0` and friends, which is what the store says it
+  // applied), the rest from the request that succeeded. On a 503 the request
+  // moves and the rows do not, and a chip describing data it did not come
+  // from is the failure this repo keeps paying for (label-must-match-data).
+  const chips = chipsOf({
+    ...servedFilters,
+    minTrades: servedTrades > 0 ? servedTrades : servedFilters.minTrades,
+    minWinrate: servedWinrate > 0 ? servedWinrate : servedFilters.minWinrate,
+    maxTp: servedTp > 0 ? servedTp : servedFilters.maxTp,
+    maxSl: servedSl > 0 ? servedSl : servedFilters.maxSl,
+    // named, not just carried by the spread: the sizing chip has to come from
+    // what the STORE applied, and a test pins that in words
+    // (test_sizing_filter) because a chip describing the request while the
+    // rows came from an older one is the failure this panel keeps paying for
+    sizing: servedFilters.sizing,
+  });
   /** The filter set as ONE sentence, ANDed, in the operator's own reading:
    *  "all coins AND all timeframe AND all signals AND min trades =x AND min
    *  win% = x". Built from a set of terms, so a box that is added and not
@@ -339,12 +450,13 @@ export default function StrategiesPanel() {
       : f.group === "classic" ? "group = Classic" : "all groups",
     f.minTrades > 0 ? `min trades = ${f.minTrades}` : "any trades",
     f.minWinrate > 0 ? `min win % = ${f.minWinrate}` : "any win %",
-    f.minTp > 0 ? `min TP % = ${f.minTp}` : "any TP",
+    f.maxTp > 0 ? `max TP % = ${f.maxTp}` : "any TP",
     f.maxSl > 0 ? `max SL % = ${f.maxSl}` : "any SL",
     f.sizing ? `sizing = ${f.sizing}` : "flat and martingale",
     f.profitable ? "profit > 0" : "losers included",
     f.months > 0 ? `last ${f.months} month${f.months > 1 ? "s" : ""}`
-      : f.days > 0 ? `last ${f.days} day${f.days > 1 ? "s" : ""}`
+      : f.days > 0 ? `last ${f.days} day${f.days > 1 ? "s" : ""} of each row's own`
+        + " measurement"
       : "all history",
   ].join(" AND "));
   // The REQUEST in words — what the spinner is waiting for, not what is on
@@ -354,8 +466,9 @@ export default function StrategiesPanel() {
   const asking = `${andLine(applied)} — ${desc ? "highest" : "lowest"} `
     + `${STRATEGY_SORTS[sort]} first`;
   // asked for, not served, and nothing in flight — i.e. the request failed
-  const missed = !loading && (Object.keys(applied) as (keyof typeof applied)[])
-    .some((k) => applied[k] !== servedFilters[k]);
+  const missed = !loading && !waiting
+    && (Object.keys(applied) as (keyof typeof applied)[])
+      .some((k) => applied[k] !== servedFilters[k]);
   /** The month columns. Newest first, and DERIVED: from the window the server
    *  used when there is one, otherwise from the months the rows on screen
    *  actually carry. Kit item G — months outside the window are REMOVED, not
@@ -433,7 +546,7 @@ export default function StrategiesPanel() {
         coin: applied.coin || undefined, tf: applied.tf || undefined,
         signal: applied.signal || undefined, profitable: applied.profitable,
         sort, minTrades: applied.minTrades, minWinrate: applied.minWinrate,
-        minTp: applied.minTp, maxSl: applied.maxSl,
+        maxTp: applied.maxTp, maxSl: applied.maxSl,
                      sizing: applied.sizing || undefined,
         rowId: applied.rowId || undefined,
         months: applied.months || undefined,
@@ -487,20 +600,26 @@ export default function StrategiesPanel() {
             {/* The operator's own sentence: "i thought its not working, its
                 just loading". A spinner, WHAT it is waiting for, and how long
                 it has been waiting. `role=status` so it is announced too. */}
-            {showLoad && (
+            {(showLoad || waiting) && (
               <span role="status" aria-live="polite"
                     className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-2.5 py-1 text-theme-xs font-medium text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">
                 <span aria-hidden="true"
                       className="h-3 w-3 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
                 {/* the row count is the INDEX's own (idx.rows), never a
-                    literal that drifts as the store grows */}
-                searching {idx?.rows ? `${idx.rows.toLocaleString()}-row ` : ""}store…
+                    literal that drifts as the store grows. And the spinner
+                    stays up while a RETRY is pending: the operator read a
+                    still-running request as an empty result ("when i use min
+                    80% winrate for past 30 days its not letting me know its
+                    loading, and i thought there is no result", 2026-09-03). */}
+                {loading
+                  ? `searching ${idx?.rows ? `${idx.rows.toLocaleString()}-row ` : ""}store…`
+                  : "still working — asking again in a moment…"}
                 {waited >= 1 ? ` ${waited}s` : ""}
               </span>
             )}
           </div>
           <p className="text-theme-xs text-gray-500 dark:text-gray-400">
-            {total.toLocaleString()}{capped ? "+" : ""} {[applied.coin, applied.tf, applied.signal, applied.profitable ? "profitable only" : ""].some(Boolean) || applied.minTrades > 0 || applied.minWinrate > 0 || applied.minTp > 0 || applied.maxSl > 0 ? "match" : "stored strategies"}
+            {total.toLocaleString()}{capped ? "+" : ""} {[applied.coin, applied.tf, applied.signal, applied.profitable ? "profitable only" : ""].some(Boolean) || applied.minTrades > 0 || applied.minWinrate > 0 || applied.maxTp > 0 || applied.maxSl > 0 ? "match" : "stored strategies"}
             {` · rows ${shown.length ? (page - 1) * askPage + 1 : 0}–${(page - 1) * askPage + shown.length} on screen`}
             {` · ${servedDesc ? "highest" : "lowest"} ${STRATEGY_SORTS[servedSort]} first`}
             {/* A partial index must NOT be captioned as the whole store: the
@@ -520,13 +639,11 @@ export default function StrategiesPanel() {
             {facets.coins.length ? ` · ${facets.coins.length.toLocaleString()} coins` : ""}
             {facets.tfs.length ? ` · ${facets.tfs.length} timeframes` : ""}
             {facets.signals.length ? ` · ${facets.signals.length} signals` : ""}
-            {[applied.coin, applied.tf, applied.signal].filter(Boolean).length ? ` · filters: ${[applied.coin, applied.tf, applied.signal].filter(Boolean).join(" · ")}` : ""}
-            {applied.profitable ? " · profitable only" : " · losers included"}
-            {servedTrades > 0 ? ` · at least ${servedTrades} trades` : ""}
-            {servedWinrate > 0 ? ` · win % ${servedWinrate} or better` : ""}
-            {servedTp > 0 ? ` · TP ${servedTp}% or wider` : ""}
-            {servedSl > 0 ? ` · SL ${servedSl}% or tighter` : ""}
-            {servedFilters.sizing ? ` · ${servedFilters.sizing} only` : ""}
+            {/* The filters used to be named HERE as well as in the filter
+                line below - the same eleven facts twice, which is half of
+                what made this panel confusing. They live in the chips now,
+                one each, each with its own X. One of them was also WRONG:
+                `TP 4% or tighter` for a FLOOR that keeps 4% and WIDER. */}
             {dayWin.length === 2 && dayWin[0] && servedFilters.days > 0
               ? ` · each row re-measured over ITS OWN last ${servedFilters.days}`
                 + ` day${servedFilters.days > 1 ? "s" : ""}, ending where that row's`
@@ -553,186 +670,252 @@ export default function StrategiesPanel() {
             {reindexing || `index the missing ${idx.behind.toLocaleString()} pair(s) now`}
           </button>
         ) : null}
-        <div className="ml-auto flex flex-wrap gap-2">
-          {/* LAST N MONTHS — "if i entered 2 months then adjust the number of
-              trades, winrate, profit for last x month". 0 is everything the
-              store holds. The window's real month keys come back in the
-              payload, so the caption prints dates, not the number typed. */}
-          <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300"
-                 title="re-state every row over the last N months: its own profit and green months inside that window, and only those month columns">
-            last
-            <input type="number" min={0} max={24} step={1} value={months}
-                   onChange={(e) => setMonths(Math.min(24, Math.max(0, Number(e.target.value) || 0)))}
-                   onKeyDown={onFilterKey}
-                   aria-label="Last N months"
-                   className="h-10 w-16 rounded-lg border border-gray-300 bg-transparent px-2 text-theme-sm text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" />
-            month(s)
-          </label>
-          {/* LAST N DAYS — "instead of using past 1 month only". It
-              RE-MEASURES each row from the stored candles (the store keeps
-              profit per month and no trade counts), so the page is capped and
-              months wins when both are set. */}
-          <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300"
-                 title="re-measure every row over the last N days from the candles already on this PC - trades, wins, losses, win % and profit are the window's own. Months wins if both are set.">
-            last
-            <input type="number" min={0} max={365} step={1} value={days}
-                   onChange={(e) => setDays(Math.min(365, Math.max(0, Number(e.target.value) || 0)))}
-                   onKeyDown={onFilterKey}
-                   aria-label="Last N days"
-                   disabled={months > 0}
-                   className="h-10 w-16 rounded-lg border border-gray-300 bg-transparent px-2 text-theme-sm text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 disabled:opacity-40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" />
-            day(s)
-          </label>
-          {applied.days > 0 && !applied.months && perPage > DAYS_PAGE ? (
-            <span className="self-center text-theme-xs text-gray-500 dark:text-gray-400">
-              {DAYS_PAGE} a page while a days window is on — each row is
-              re-measured
-            </span>
-          ) : null}
-          {/* "#6YACZSXX" — the code the first column prints. Typed with or
-              without the #, any case; it overrides the rest. */}
-          <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300"
-                 title="find one row by the id in its first column — this overrides the other filters">
-            #id
-            <input type="text" value={rowId} placeholder="6YACZSXX"
-                   onChange={(e) => setRowId(e.target.value)}
-                   onKeyDown={onFilterKey}
-                   aria-label="Row id"
-                   className="h-10 w-28 rounded-lg border border-gray-300 bg-transparent px-2 font-mono text-theme-sm uppercase text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" />
-          </label>
-          <select className={sel} value={coin} onChange={(e) => setCoin(e.target.value)} aria-label="Coin">
-            <option value="">all coins</option>
-            {facets.coins.map((c) => <option key={c}>{c}</option>)}
-          </select>
-          <select className={sel} value={tf} onChange={(e) => setTf(e.target.value)} aria-label="Timeframe">
-            <option value="">all timeframes</option>
-            {facets.tfs.map((t) => <option key={t}>{t}</option>)}
-          </select>
-          {/* GROUP: the ten researched confluence setups — every rule named
-              cf_..., ten setups at three levels each — against the 75 signals
-              that existed before them. The operator's names, 2026-08-27. */}
-          <select className={sel} value={group}
-                  onChange={(e) => setGroup(e.target.value)} aria-label="Group">
-            <option value="">all groups</option>
-            <option value="preset">Preset Confluence</option>
-            <option value="classic">Classic</option>
-          </select>
-          <select className={sel} value={signal} onChange={(e) => setSignal(e.target.value)} aria-label="Signal">
-            <option value="">all signals</option>
-            {facets.signals.map((s) => <option key={s}>{s}</option>)}
-          </select>
-          {/* "i want filter to see flat / martingale". The options come from
-              the grid that measured the rows (facets.sizings), so the dropdown
-              cannot offer a sizing the store does not hold. */}
-          <select className={sel} value={sizing}
-                  onChange={(e) => setSizing(e.target.value)}
-                  aria-label="Sizing">
-            <option value="">flat and martingale</option>
-            {(facets.sizings ?? []).map((z) => (
-              <option key={z} value={z}>{z} only</option>
-            ))}
-          </select>
-          <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300">
-            min trades
-            <input type="number" min={0} step={10} value={minTrades}
-                   onChange={(e) => setMinTrades(Math.max(0, Number(e.target.value) || 0))}
-                   aria-label="Minimum trades"
-                   onKeyDown={onFilterKey}
-                   className="h-10 w-20 rounded-lg border border-gray-300 bg-transparent px-2 text-theme-sm text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" />
-          </label>
-          {/* the operator's own sentence: "if i put 50 then show me coins with
-              winrate equal or greater than 50" — a COUNT-free percentage box,
-              in the unit the win % column prints */}
-          <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300"
-                 title="show only rows whose win % is this or higher">
-            min win %
-            <input type="number" min={0} max={100} step={5} value={minWinrate}
-                   onChange={(e) => setMinWinrate(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
-                   aria-label="Minimum win rate percent"
-                   onKeyDown={onFilterKey}
-                   className="h-10 w-20 rounded-lg border border-gray-300 bg-transparent px-2 text-theme-sm text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" />
-          </label>
-          {/* "when i input 4 then show that has TP equal or greater than 4":
-              the take-profit target, in the unit the TP% column prints. The
-              list offers the values the grid really measured, so 4, 5, 6 and 8
-              are one keystroke away and 9.37 is not typed by accident. */}
-          <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300"
-                 title={`show only rows whose take-profit is this % or wider (this store measured up to ${tpCeiling}%)`}>
-            min TP %
-            <input type="number" min={0} max={tpCeiling} step={0.5} value={minTp}
-                   list="tp-values"
-                   onChange={(e) => setMinTp(Math.min(tpCeiling, Math.max(0, Number(e.target.value) || 0)))}
-                   aria-label="Minimum take profit percent"
-                   onKeyDown={onFilterKey}
-                   className="h-10 w-20 rounded-lg border border-gray-300 bg-transparent px-2 text-theme-sm text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" />
-            <datalist id="tp-values">
-              {(facets.tps ?? []).map((v) => <option key={v} value={v} />)}
-            </datalist>
-          </label>
-          {/* MAX SL: the ceiling, pointing the other way from min TP. 1 keeps
-              rows whose stop is 1% or tighter (operator, 2026-09-02). */}
-          <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300"
-                 title="show only rows whose stop-loss is this % or TIGHTER - a smaller stop risks less on each trade">
-            max SL %
-            <input type="number" min={0} step={0.5} value={maxSl}
-                   list="sl-values"
-                   onChange={(e) => setMaxSl(Math.max(0, Number(e.target.value) || 0))}
-                   aria-label="Maximum stop loss percent"
-                   onKeyDown={onFilterKey}
-                   className="h-10 w-20 rounded-lg border border-gray-300 bg-transparent px-2 text-theme-sm text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" />
-            <datalist id="sl-values">
-              {(facets.sls ?? []).map((v) => <option key={v} value={v} />)}
-            </datalist>
-          </label>
-          <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300">
-            <input type="checkbox" checked={profitable} onChange={(e) => setProfitable(e.target.checked)} className="h-4 w-4 accent-brand-500" />
-            profitable only
-          </label>
+      </div>
+      {/* FILTERS. Four labelled groups instead of thirteen controls in one
+          wrap: what to look at, how good it has to be, over which window, and
+          the one-row escape hatch. Every box still ANDs with every other and
+          still waits for Apply — only the reading of them changed. */}
+      <div className="mt-4 border-t border-gray-100 px-5 py-4 dark:border-white/[0.06]">
+        <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <span className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">
+            Filters
+          </span>
+          <span className="text-theme-xs text-gray-500 dark:text-gray-400">
+            every box narrows the SAME rows — they are ANDed
+          </span>
           {/* "i want a button 'Apply filters' so i know its loading". The
               button IS the progress: it names what it is doing and for how
               long, so a 30-second store read cannot look like a dead screen.
               It also says when the boxes differ from what is on screen. */}
-          <button type="button" onClick={apply}
-                  disabled={loading || !pending.length}
-                  aria-live="polite"
-                  className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-500 px-4 text-theme-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:bg-gray-300 dark:disabled:bg-gray-700">
-            {loading ? (
-              <>
-                <span aria-hidden="true"
-                      className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/60 border-t-transparent" />
-                searching{waited >= 1 ? ` ${waited}s` : "…"}
-              </>
-            ) : pending.length ? (
-              `Apply ${pending.length} filter${pending.length > 1 ? "s" : ""}`
-            ) : "Apply filters"}
-          </button>
-          {pending.length && !loading ? (
-            <span className="flex h-10 items-center text-theme-xs text-warning-600 dark:text-warning-400">
-              {pending.length} change{pending.length > 1 ? "s" : ""} not applied yet
-            </span>
-          ) : null}
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {pending.length && !loading ? (
+              <span className="text-theme-xs text-warning-600 dark:text-warning-400">
+                {pending.length} change{pending.length > 1 ? "s" : ""} not applied yet
+              </span>
+            ) : null}
+            <button type="button" onClick={apply}
+                    disabled={loading || !pending.length}
+                    aria-live="polite"
+                    title={pending.length ? "send the boxes to the store"
+                      : "the boxes already match the rows on screen"}
+                    className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-500 px-4 text-theme-sm font-medium text-white hover:bg-brand-600 disabled:cursor-default disabled:border disabled:border-gray-200 disabled:bg-transparent disabled:text-gray-400 dark:disabled:border-white/10 dark:disabled:text-gray-500">
+              {loading ? (
+                <>
+                  <span aria-hidden="true"
+                        className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/60 border-t-transparent" />
+                  searching{waited >= 1 ? ` ${waited}s` : "…"}
+                </>
+              ) : pending.length ? (
+                `Apply ${pending.length} filter${pending.length > 1 ? "s" : ""}`
+              ) : (
+                <>
+                  {/* not a dead grey button: it says the boxes are already
+                      what the table shows */}
+                  <span aria-hidden="true">✓</span> Apply filters
+                </>
+              )}
+            </button>
+          </div>
         </div>
-      </div>
-      {/* Every box narrows the SAME rows: they are ANDed, in SQL and here.
-          The line reads the DRAFT — what Apply will send — and says when that
-          is not yet what the table shows. */}
-      <div className="px-5 pt-3">
-        <p className="text-theme-xs text-gray-600 dark:text-gray-300">
-          {/* the ROWS' own set, never the request's: a failed request leaves
-              the two different, and this line describes the table */}
-          <span className="font-medium">showing rows where:</span>{" "}
-          {andLine(servedFilters)}
+        <div className="flex flex-col gap-3">
+          <FilterRow label="what">
+            <select className={sel} value={coin} onChange={(e) => setCoin(e.target.value)} aria-label="Coin">
+              <option value="">all coins</option>
+              {facets.coins.map((c) => <option key={c}>{c}</option>)}
+            </select>
+            <select className={sel} value={tf} onChange={(e) => setTf(e.target.value)} aria-label="Timeframe">
+              <option value="">all timeframes</option>
+              {facets.tfs.map((t) => <option key={t}>{t}</option>)}
+            </select>
+            {/* GROUP: the ten researched confluence setups — every rule named
+                cf_..., ten setups at three levels each — against the 75
+                signals that existed before them. The operator's names. */}
+            <select className={sel} value={group}
+                    onChange={(e) => setGroup(e.target.value)} aria-label="Group">
+              <option value="">all groups</option>
+              <option value="preset">{GROUP_LABEL.preset}</option>
+              <option value="classic">{GROUP_LABEL.classic}</option>
+            </select>
+            <select className={sel} value={signal} onChange={(e) => setSignal(e.target.value)} aria-label="Signal">
+              <option value="">all signals</option>
+              {facets.signals.map((s) => <option key={s}>{s}</option>)}
+            </select>
+            {/* "i want filter to see flat / martingale". The options come from
+                the grid that measured the rows (facets.sizings), so the
+                dropdown cannot offer a sizing the store does not hold. */}
+            <select className={sel} value={sizing}
+                    onChange={(e) => setSizing(e.target.value)}
+                    aria-label="Sizing">
+              <option value="">flat and martingale</option>
+              {(facets.sizings ?? []).map((z) => (
+                <option key={z} value={z}>{z} only</option>
+              ))}
+            </select>
+          </FilterRow>
+          <FilterRow label="how good" hint="blank = any">
+            <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300">
+              min trades
+              <input type="number" min={0} step={10} value={minTrades || ""}
+                     placeholder="any"
+                     onChange={(e) => setMinTrades(Math.max(0, Number(e.target.value) || 0))}
+                     aria-label="Minimum trades"
+                     onKeyDown={onFilterKey}
+                     className={`${numIn} w-20`} />
+            </label>
+            {/* the operator's own sentence: "if i put 50 then show me coins
+                with winrate equal or greater than 50" — in the unit the
+                win % column prints */}
+            <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300"
+                   title="show only rows whose win % is this or higher">
+              min win %
+              <input type="number" min={0} max={100} step={5} value={minWinrate || ""}
+                     placeholder="any"
+                     onChange={(e) => setMinWinrate(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                     aria-label="Minimum win rate percent"
+                     onKeyDown={onFilterKey}
+                     className={`${numIn} w-20`} />
+            </label>
+            {/* "when i input tp 3% it should show tp below 3%" (operator,
+                2026-09-03): a CEILING, in the unit the TP% column prints. The
+                list offers the values the grid really measured, so 3, 4 and 5
+                are one keystroke away and 9.37 is not typed by accident. */}
+            <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300"
+                   title={`show only rows whose take-profit is this % or TIGHTER - a smaller target is reached more often (this store measured up to ${tpCeiling}%)`}>
+              max TP %
+              <input type="number" min={0} max={tpCeiling} step={0.5} value={maxTp || ""}
+                     list="tp-values" placeholder="any"
+                     onChange={(e) => setMaxTp(Math.min(tpCeiling, Math.max(0, Number(e.target.value) || 0)))}
+                     aria-label="Maximum take profit percent"
+                     onKeyDown={onFilterKey}
+                     className={`${numIn} w-20`} />
+              <datalist id="tp-values">
+                {(facets.tps ?? []).map((v) => <option key={v} value={v} />)}
+              </datalist>
+            </label>
+            {/* MAX SL: the other ceiling, same direction as max TP. 1
+                keeps rows whose stop is 1% or tighter (operator, 2026-09-02).
+                They point OPPOSITE WAYS and that is the point: the useful end
+                of a target is up and the useful end of a stop is down. */}
+            <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300"
+                   title="show only rows whose stop-loss is this % or TIGHTER - a smaller stop risks less on each trade">
+              max SL %
+              <input type="number" min={0} step={0.5} value={maxSl || ""}
+                     list="sl-values" placeholder="any"
+                     onChange={(e) => setMaxSl(Math.max(0, Number(e.target.value) || 0))}
+                     aria-label="Maximum stop loss percent"
+                     onKeyDown={onFilterKey}
+                     className={`${numIn} w-20`} />
+              <datalist id="sl-values">
+                {(facets.sls ?? []).map((v) => <option key={v} value={v} />)}
+              </datalist>
+            </label>
+            <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300">
+              <input type="checkbox" checked={profitable} onChange={(e) => setProfitable(e.target.checked)} className="h-4 w-4 accent-brand-500" />
+              profitable only
+            </label>
+          </FilterRow>
+          {/* WINDOW. Two boxes both labelled "last", side by side, one
+              silently disabling the other — now one group that says which
+              wins, and the disabled one says why. */}
+          <FilterRow label="window" hint="blank = all history">
+            <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300"
+                   title="re-state every row over the last N months: its own profit and green months inside that window, and only those month columns">
+              last
+              <input type="number" min={0} max={24} step={1} value={months || ""}
+                     placeholder="all"
+                     onChange={(e) => setMonths(Math.min(24, Math.max(0, Number(e.target.value) || 0)))}
+                     onKeyDown={onFilterKey}
+                     aria-label="Last N months"
+                     className={`${numIn} w-16`} />
+              month(s)
+            </label>
+            <span className="text-theme-xs text-gray-400 dark:text-gray-500">or</span>
+            {/* LAST N DAYS — "instead of using past 1 month only". It
+                RE-MEASURES each row from the stored candles (the store keeps
+                profit per month and no trade counts), so the page is capped
+                and months wins when both are set. */}
+            <label className={`flex h-10 items-center gap-2 text-theme-sm ${months > 0 ? "text-gray-400 dark:text-gray-500" : "text-gray-700 dark:text-gray-300"}`}
+                   title="re-measure every row over the last N days from the candles already on this PC - trades, wins, losses, win % and profit are the window's own. Months wins if both are set.">
+              last
+              <input type="number" min={0} max={365} step={1} value={days || ""}
+                     placeholder="all"
+                     onChange={(e) => setDays(Math.min(365, Math.max(0, Number(e.target.value) || 0)))}
+                     onKeyDown={onFilterKey}
+                     aria-label="Last N days"
+                     disabled={months > 0}
+                     className={`${numIn} w-16`} />
+              day(s)
+            </label>
+            {months > 0 ? (
+              <span className="text-theme-xs text-gray-500 dark:text-gray-400">
+                months wins while it is set
+              </span>
+            ) : null}
+            {applied.days > 0 && !applied.months && perPage > DAYS_PAGE ? (
+              <span className="text-theme-xs text-gray-500 dark:text-gray-400">
+                {DAYS_PAGE} a page while a days window is on — each row is
+                re-measured
+              </span>
+            ) : null}
+          </FilterRow>
+          {/* "#6YACZSXX" — the code the first column prints. Typed with or
+              without the #, any case; it overrides the rest. */}
+          <FilterRow label="one row">
+            <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300"
+                   title="find one row by the id in its first column — this overrides the other filters">
+              #id
+              <input type="text" value={rowId} placeholder="6YACZSXX"
+                     onChange={(e) => setRowId(e.target.value)}
+                     onKeyDown={onFilterKey}
+                     aria-label="Row id"
+                     className={`${numIn} w-32 font-mono uppercase`} />
+            </label>
+            <span className="text-theme-xs text-gray-400 dark:text-gray-500">
+              an id names ONE row, so it overrides every filter above
+            </span>
+          </FilterRow>
+        </div>
+        {/* WHAT THE ROWS ON SCREEN ACTUALLY ARE, as one chip per filter with
+            its own × — the eleven-clause "all coins AND all timeframes AND
+            ..." sentence said nothing was filtered and could not be acted on.
+            The full sentence is still here, on hover. */}
+        <div className="mt-4 flex flex-wrap items-center gap-2"
+             title={andLine(servedFilters)}>
+          <span className="text-theme-xs font-medium text-gray-600 dark:text-gray-300">
+            showing rows where:
+          </span>
+          {chips.length ? chips.map((c) => (
+            <span key={c.k}
+                  className="inline-flex h-7 items-center gap-1 rounded-full border border-brand-200 bg-brand-50 pl-2.5 pr-1 text-theme-xs font-medium text-brand-700 dark:border-brand-500/30 dark:bg-brand-500/15 dark:text-brand-300">
+              {c.text}
+              <button type="button" onClick={() => clearOne(c.k)}
+                      aria-label={`remove filter ${c.text}`}
+                      className="flex h-5 w-5 items-center justify-center rounded-full text-brand-500 hover:bg-brand-500/20 hover:text-brand-700 dark:text-brand-300">
+                <span aria-hidden="true">×</span>
+              </button>
+            </span>
+          )) : (
+            <span className="text-theme-xs text-gray-500 dark:text-gray-400">
+              nothing — every stored strategy in the store
+            </span>
+          )}
+          {chips.length ? (
+            <button type="button" onClick={clearAll}
+                    className="h-7 rounded-full px-2 text-theme-xs font-medium text-gray-500 underline decoration-dotted hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+              clear all
+            </button>
+          ) : null}
           {pending.length ? (
-            <span className="text-warning-600 dark:text-warning-400">
-              {" "}— Apply filters will ask for {andLine(draft)}
+            <span className="text-theme-xs text-warning-600 dark:text-warning-400">
+              — Apply filters will ask for {andLine(draft)}
             </span>
           ) : missed ? (
-            <span className="text-error-500">
-              {" "}— {andLine(applied)} was asked for and did not come back
+            <span className="text-theme-xs text-error-500">
+              — {andLine(applied)} was asked for and did not come back
               {failedAfter >= 1 ? ` (${failedAfter}s)` : ""}
             </span>
           ) : null}
-        </p>
+        </div>
       </div>
       {/* one row IS one combination — the operator's own words: "under those
           coins i have multiple strategy and under that strategy is different
@@ -794,7 +977,7 @@ export default function StrategiesPanel() {
                tf: applied.tf || undefined, signal: applied.signal || undefined,
                profitable: applied.profitable, sort,
                minTrades: applied.minTrades, minWinrate: applied.minWinrate,
-               minTp: applied.minTp, maxSl: applied.maxSl,
+               maxTp: applied.maxTp, maxSl: applied.maxSl,
                      sizing: applied.sizing || undefined,
                rowId: applied.rowId || undefined, desc })}>
             download all ({total.toLocaleString()}{capped ? "+" : ""}) CSV
@@ -848,12 +1031,12 @@ export default function StrategiesPanel() {
           or the artifact you copied it from.
         </p>
       )}
-      {!err && !waiting && !shown.length && !servedFilters.rowId && (minWinrate > 0 || minTrades > 0 || minTp > 0 || maxSl > 0) && (
+      {!err && !waiting && !shown.length && !servedFilters.rowId && (minWinrate > 0 || minTrades > 0 || maxTp > 0 || maxSl > 0) && (
         <p className="px-5 pt-2 text-theme-sm text-warning-600 dark:text-warning-400">
           no stored strategy passes{" "}
           <b>
             {[minWinrate > 0 ? `win % ≥ ${minWinrate}` : "",
-              minTp > 0 ? `TP ≥ ${minTp}%` : "",
+              maxTp > 0 ? `TP ≤ ${maxTp}%` : "",
               minTrades > 0 ? `${minTrades}+ trades` : ""]
               .filter(Boolean).join(" with ")}
           </b>

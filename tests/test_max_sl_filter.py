@@ -4,10 +4,11 @@ Operator, Sep 02, 2026: *"can you add the sl filter in the Stored strategies as
 well"*, having just settled its direction on the artifact: *"for sl if i input 1
 then show below 1 or equal 1"*.
 
-So the two barrier boxes point OPPOSITE WAYS, and that is the whole point: the
-useful end of a target is up (min TP), the useful end of a stop is down (max SL).
-A box that read "min SL" would hand back exactly the rows the operator is trying
-to get rid of.
+Both barrier boxes are CEILINGS as of Sep 03, 2026, when the operator turned the
+TP box around too: *"when i input tp 3% it should show tp below 3%"*. What they
+are hunting is a target the market actually reaches with a stop that risks
+little — max TP % and max SL % — so a box that read "min SL" would hand back
+exactly the rows they are trying to get rid of.
 
 Why they wanted it: a win-rate ranking floats the lopsided rows to the top. The
 best win rate in the 30-day list was JPY 30m fade15 at TP 0.3% against SL 2% —
@@ -30,7 +31,8 @@ def test_the_clause_is_a_ceiling():
 
 def test_it_steps_aside_for_the_order_by_like_tp_does():
     """`sl` has no index, so the term cannot drive a plan; the `+` is what keeps
-    a future sl index from stealing the ORDER BY and sorting in a temp b-tree."""
+    a future sl index from stealing the ORDER BY and sorting in a temp b-tree.
+    (The TP box works the same way, and now in the same direction.)"""
     plain, _ = ri._where(max_sl=1.0)
     ordered, _ = ri._where(max_sl=1.0, order_owns_index=True)
     assert "+sl <= ?" in ordered
@@ -40,10 +42,13 @@ def test_it_steps_aside_for_the_order_by_like_tp_does():
     assert "sl <= ?" in with_coin and "+sl" not in with_coin
 
 
-def test_tp_and_sl_read_in_opposite_directions_together():
-    sql, args = ri._where(min_tp=2.0, max_sl=1.0, order_owns_index=True)
-    assert "+tp >= ?" in sql and "+sl <= ?" in sql, sql
-    assert args == [2.0, 1.0]
+def test_tp_and_sl_are_both_ceilings_together():
+    """One AND the other, both downwards: "TP 3% or smaller AND SL 1% or
+    tighter" is the question the operator actually asks of this store."""
+    sql, args = ri._where(max_tp=3.0, max_sl=1.0, order_owns_index=True)
+    assert "+tp <= ?" in sql and "+sl <= ?" in sql, sql
+    assert "tp >= ?" not in sql, "the TP box stopped being a floor on 2026-09-03"
+    assert args == [3.0, 1.0]
 
 
 def test_every_layer_takes_it():
@@ -60,10 +65,10 @@ def test_every_layer_takes_it():
 
 def test_the_download_says_which_slice_it_is():
     """Two downloads of the same coin and order differ only by the filters, so
-    the filename has to carry them (it already carried the TP floor)."""
+    the filename has to carry them (it already carried the TP box)."""
     from tradingagents import api
 
-    name = api.strategies_csv_name(coin="KAVA", min_tp=2, max_sl=1)
+    name = api.strategies_csv_name(coin="KAVA", max_tp=2, max_sl=1)
     assert "tp2" in name and "sl1" in name, name
 
 

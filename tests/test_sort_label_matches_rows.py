@@ -33,7 +33,7 @@ def test_the_panel_tracks_the_order_the_server_served():
 def test_the_caption_and_the_arrow_use_the_served_order():
     cap = SRC[SRC.index("rows ${shown.length"):SRC.index("</p>", SRC.index("rows ${shown.length"))]
     assert "servedSort" in cap, "the caption must name the order actually shown"
-    heads = SRC[SRC.index("HEAD_SORT[h]"):]
+    heads = SRC[SRC.index("HEAD_SORT[h"):]
     marker = heads[:heads.index("</TableCell>")]
     assert "servedSort" in marker, "the arrow must sit on the column actually sorted"
 
@@ -54,11 +54,11 @@ def test_the_headers_are_the_sort_control_and_they_show_the_request():
     the header that is highlighted is the one the rows are ACTUALLY in
     (servedSort), with the requested one marked separately while it loads."""
     assert "value={sort}" not in SRC, "the dropdown was asked to go"
-    click = SRC[SRC.index("const next = HEAD_SORT[h];"):]
+    click = SRC[SRC.index("const next = HEAD_SORT[h"):]
     click = click[:click.index("}}")]
     assert "setSort(next)" in click and "setDesc(" in click, click
     assert "if (next === sort) { setDesc(!desc); return; }" in click, click
     # the highlight is derived from what the SERVER served, never the request
-    heads = SRC[SRC.index("HEAD_SORT[h]"):]
+    heads = SRC[SRC.index("HEAD_SORT[h"):]
     assert "STRATEGY_SORTS[servedSort]" in heads
     assert "STRATEGY_SORTS[sort]" in heads

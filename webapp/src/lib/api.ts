@@ -418,7 +418,7 @@ export const api = {
   strategiesCsvUrl: (q: {
     coin?: string; tf?: string; signal?: string; profitable?: boolean;
     sort?: StrategySort; minTrades?: number; minWinrate?: number;
-    minTp?: number;
+    maxTp?: number;
     /** the stop's CEILING, so the download carries the same slice as the
      *  table: 1 keeps rows whose SL is 1% or tighter */
     maxSl?: number;
@@ -434,7 +434,7 @@ export const api = {
     if (q.sort) p.set("sort", q.sort);
     if (q.minTrades) p.set("min_trades", String(q.minTrades));
     if (q.minWinrate) p.set("min_winrate", String(q.minWinrate));
-    if (q.minTp) p.set("min_tp", String(q.minTp));
+    if (q.maxTp) p.set("max_tp", String(q.maxTp));
     if (q.maxSl) p.set("max_sl", String(q.maxSl));
     if (q.sizing) p.set("sizing", q.sizing);
     if (q.group) p.set("group", q.group);
@@ -459,9 +459,9 @@ export const api = {
     minWinrate?: number;
     /** the take-profit floor, in the unit the TP% column PRINTS: 4 means TP
      *  4% or wider, not 0.04 (operator, 2026-08-27) */
-    minTp?: number;
+    maxTp?: number;
     /** the stop's CEILING, in the unit the SL% column prints: 1 means SL 1%
-     *  or TIGHTER. The opposite direction from minTp on purpose (operator,
+     *  or TIGHTER. The opposite direction from maxTp on purpose (operator,
      *  2026-09-02: "for sl if i input 1 then show below 1 or equal 1") — the
      *  useful end of a target is up, the useful end of a stop is down. */
     maxSl?: number;
@@ -491,7 +491,7 @@ export const api = {
     if (q.sort) p.set("sort", q.sort);
     if (q.minTrades) p.set("min_trades", String(q.minTrades));
     if (q.minWinrate) p.set("min_winrate", String(q.minWinrate));
-    if (q.minTp) p.set("min_tp", String(q.minTp));
+    if (q.maxTp) p.set("max_tp", String(q.maxTp));
     if (q.maxSl) p.set("max_sl", String(q.maxSl));
     if (q.sizing) p.set("sizing", q.sizing);
     if (q.group) p.set("group", q.group);
@@ -507,7 +507,7 @@ export const api = {
     return get<{ rows: StrategyRow[]; total: number; index?: IndexStatus;
       /** the order the server actually used, so the caption is derived */
       sort?: StrategySort; min_trades?: number; min_winrate?: number;
-      min_tp?: number; max_sl?: number; sizing?: string; row_id?: string;
+      max_tp?: number; max_sl?: number; sizing?: string; row_id?: string;
       desc?: boolean;
       /** the window's REAL months, newest first ("2026-08") */
       window?: string[]; months_window?: number;

@@ -130,7 +130,7 @@ def test_a_stream_that_dies_says_so_in_the_file(store, monkeypatch):
 
 def test_the_filename_says_which_slice_is_in_the_file(store):
     name = api.strategies_csv_name(coin="KAVA", tf="1h", min_trades=100,
-                                   sort="profit", min_winrate=80, min_tp=4,
+                                   sort="profit", min_winrate=80, max_tp=4,
                                    sizing="flat")
     for bit in ("KAVA", "1h", "min100", "wr80", "tp4", "flat", "profit"):
         assert bit in name, (bit, name)

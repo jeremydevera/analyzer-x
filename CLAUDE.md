@@ -32,7 +32,7 @@ F. **every row carries every column.** If the payload is too big, compress the E
    Verify with every filter at its widest, on a row the default view hides.
 
 G. **filters for the columns that decide things**: min win rate, min profit total, min
-   months green (a count), max worst dip, **min TP %**, **max SL %**, and **last N months** — which RE-RUNS every row
+   months green (a count), max worst dip, **max TP %**, **max SL %**, and **last N months / last N days** — which RE-RUNS every row
    over that slice of candles rather than hiding rows, so profit, trades, wins, losses and
    win rate are the window's own; print the window's real dates beside the row count, and
    REMOVE the month columns outside the window rather than filling them with em dashes — live-typing, stacking, measured at the CURRENT base
@@ -41,16 +41,19 @@ G. **filters for the columns that decide things**: min win rate, min profit tota
    counts months — set 10 and a 9/12 row must vanish. A percent box beside a count column
    reads as broken, because 11 typed as a percent matches everything. And when a filter
    cannot cut anything in the current view, print why beside the count.
-   **MIN TP % and MAX SL % are on every artifact from 2026-09-02** — operator's words:
-   *"add a filter min tp and min sl ... it should be read as AND / always remember this
-   setting when generating artefact"*, then, correcting the direction, *"for sl if i
-   input 1 then show below 1 or equal 1"*. They point OPPOSITE WAYS and that is the
-   point: **TP is a floor** (1 keeps 1% and wider), **SL is a ceiling** (1 keeps 1% and
-   tighter), because the useful end of a target is up and the useful end of a stop is
-   down. Both are inclusive, in the percent their column prints, stack with every other
-   filter as AND, and are named in the row count. They are how the reader throws out the
-   pennies-in-front-of-a-steamroller rows a win-rate ranking floats to the top: TP 0.3%
-   against SL 2% wins 96 times and gives it all back on one loss.
+   **MAX TP % and MAX SL % are on every artifact and in Stored strategies** — the
+   operator's words, in the order they arrived: *"add a filter min tp and min sl ... it
+   should be read as AND / always remember this setting when generating artefact"*
+   (2026-09-02), then *"for sl if i input 1 then show below 1 or equal 1"*, then
+   *"when i input tp 3% it should show tp below 3%"* (2026-09-03). **BOTH ARE CEILINGS**:
+   3 keeps TP 3% and smaller, 1 keeps SL 1% and tighter. What they are hunting is a
+   target the market actually reaches with a stop that risks little — not the widest
+   target on the page. Both are inclusive, in the percent their column prints, stack
+   with every other filter as AND, and are named in the row count.
+   The TP box was a FLOOR for one day, which is why the parameter was RENAMED to
+   `max_tp` end to end rather than reused: a field still called `min_tp` while meaning a
+   maximum is a lie inside the API, and this repo has paid five times for a true number
+   under a false label.
    A filter must also be able to REACH THE DATA. `SL <= 1%` returned nothing on the
    first version of that page because the page held the top 500 rows by win rate while
    **61** rows with a stop that tight had passed the screen. Publish every row that

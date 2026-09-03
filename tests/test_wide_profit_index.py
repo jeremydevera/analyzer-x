@@ -61,14 +61,14 @@ def test_a_coin_still_outranks_it(monkeypatch):
 
 def test_only_a_filter_that_lives_in_it_asks_for_it():
     assert ri._wide_profit_helps(sizing="flat")
-    assert ri._wide_profit_helps(min_tp=4)
+    assert ri._wide_profit_helps(max_tp=4)
     assert ri._wide_profit_helps(min_winrate=50)
     assert ri._wide_profit_helps(min_trades=100)
     assert ri._wide_profit_helps(profitable=True)
     # an unfiltered page is what rows_profit is already perfect for
     assert not ri._wide_profit_helps()
     # a signal is a string and is not in the index: nothing to gain
-    assert not ri._wide_profit_helps(sizing=None, min_tp=0)
+    assert not ri._wide_profit_helps(sizing=None, max_tp=0)
 
 
 def test_a_missing_index_starts_building_behind_the_answer(monkeypatch,
@@ -112,7 +112,7 @@ def test_the_timeout_names_the_sizing_case_and_what_answers_now(monkeypatch):
     assert "wide profit index" not in later
 
 
-@pytest.mark.parametrize("kw", [{"sizing": "flat"}, {"min_tp": 4},
+@pytest.mark.parametrize("kw", [{"sizing": "flat"}, {"max_tp": 4},
                                 {"min_winrate": 50}])
 def test_the_answer_is_the_same_with_or_without_it(kw, tmp_path, monkeypatch):
     """An index changes the PLAN, never the rows. Same store, same filter,

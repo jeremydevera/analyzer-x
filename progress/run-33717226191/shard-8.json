@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 7, "total": 52, "rows": 124400, "note": "BANK 15m: rule 90/120 (cf_chan_l2)", "pct": 13.5, "updated": "2026-09-03T05:23:24Z"}
+{"shard": 8, "stage": "testing", "done": 8, "total": 52, "rows": 129800, "note": "BIGTIME 15m: 34,596 bars, testing 120 rules", "pct": 15.4, "updated": "2026-09-03T05:24:15Z"}

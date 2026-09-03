@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 12, "total": 52, "rows": 1035408, "note": "COMP 15m: rule 18/120 (macd)", "failed": [], "pct": 23.1, "updated": "2026-09-03T10:47:05Z"}
+{"shard": 19, "stage": "testing", "done": 12, "total": 52, "rows": 1040908, "note": "COMP 15m: rule 43/120 (macddiv)", "failed": [], "pct": 23.1, "updated": "2026-09-03T10:47:51Z"}

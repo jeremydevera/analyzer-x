@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 15, "total": 53, "rows": 557470, "note": "DEXE 1h: 1,739 bars, testing 120 rules", "failed": [], "pct": 28.3, "updated": "2026-09-03T14:01:07Z"}
+{"shard": 5, "stage": "testing", "done": 18, "total": 53, "rows": 616366, "note": "FARTCOIN 1h: downloading candles", "failed": [], "pct": 34.0, "updated": "2026-09-03T14:01:54Z"}

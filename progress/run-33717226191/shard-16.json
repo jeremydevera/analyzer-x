@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 24, "total": 52, "rows": 500320, "note": "IO 15m: rule 82/120 (cf_maobv)", "pct": 46.2, "updated": "2026-09-03T06:08:37Z"}
+{"shard": 16, "stage": "testing", "done": 25, "total": 52, "rows": 507920, "note": "KAIA 15m: 34,599 bars, testing 120 rules", "pct": 48.1, "updated": "2026-09-03T06:09:42Z"}

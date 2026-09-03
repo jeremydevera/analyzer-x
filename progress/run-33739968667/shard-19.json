@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 23, "total": 52, "rows": 1996918, "note": "ILV 15m: 34,622 bars, testing 120 rules", "failed": [], "pct": 44.2, "updated": "2026-09-03T11:47:29Z"}
+{"shard": 19, "stage": "testing", "done": 23, "total": 52, "rows": 1998718, "note": "ILV 15m: rule 3/120 (fade15)", "failed": [], "pct": 44.2, "updated": "2026-09-03T11:48:14Z"}

@@ -163,7 +163,10 @@ def test_the_caption_names_the_active_group():
         "the group must be a term in the caption's sentence"
     assert "group = Classic" in builder
     assert "all groups" in builder, "and the neutral case has to be named too"
-    assert "showing rows where" in src
+    # the line is labelled "Filter:" since 2026-09-03 ("show the text
+    # description on this part"), and the group is one of its chips
+    assert "Filter:" in src
+    assert "${GROUP_LABEL[f.group] ?? f.group} setups" in src
 
 
 def test_the_panel_sends_it_to_the_api():

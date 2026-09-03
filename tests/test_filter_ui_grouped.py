@@ -147,10 +147,20 @@ def test_there_is_one_chip_per_filter_and_none_is_missing():
                 "days", "rowId"):
         assert f"f.{key}" in body, key
     # in the unit its own COLUMN prints, and pointing the way the box points
-    assert "win % ≥ ${f.minWinrate}" in body
-    assert "trades ≥ ${f.minTrades}" in body
-    assert "TP ≤ ${f.maxTp}%" in body, "the TP box is a CEILING (2026-09-03)"
-    assert "SL ≤ ${f.maxSl}%" in body, "and the SL box always was"
+    # in the operator's own reading — "Filter: Past 30 days AND Winrate
+    # above 90% AND TP = 5%" — and INCLUSIVE, so never "above"/"below":
+    # 90 keeps a row that won exactly 90.00%
+    assert "Past ${f.days} days" in body
+    assert "At least ${f.minTrades} trades" in body
+    assert "Winrate ${f.minWinrate}% or better" in body
+    assert "TP ${f.maxTp}% or tighter" in body, "the TP box is a CEILING"
+    assert "SL ${f.maxSl}% or tighter" in body, "and the SL box always was"
+    assert "Made money" in body
+    # comments quote the operator's example ("Winrate above 90%"), so check
+    # the CODE: no chip may print "above" or "below" for an inclusive floor
+    code = re.sub(r"//.*", "", body)
+    for wrong in ("above", "below"):
+        assert wrong not in code, f"every floor here is inclusive: {wrong}"
     assert "every other filter ignored" in body, "an id names ONE row"
 
 
@@ -202,9 +212,13 @@ def test_nothing_filtered_says_so_in_one_line():
     """Eleven "all X AND" clauses to say the list is unfiltered was the worst
     of it — and it must not come back inside the modal either."""
     p = src()
-    assert "nothing — every stored strategy in the store" in p
+    assert "none — every stored strategy in the store" in p
     assert "no filters — showing every stored strategy in the store" in p
-    assert "showing rows where:" in p
+    # the label the operator asked for, and the chips joined by the word AND
+    # so the row READS as a sentence
+    assert "Filter:" in p
+    assert "chips.map((c, i) => (" in p, "the index is what puts AND between"
+    assert "                  AND" in p, "the word AND, between the chips"
     # the AND sentence survives only as the hover title and as the two lines
     # about a request in flight or a request that failed
     assert p.count("andLine(servedFilters)") == 1,         "the eleven-clause sentence belongs on hover, once"

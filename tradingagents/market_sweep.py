@@ -1540,10 +1540,12 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
     import tradingagents.auto_trader as at
     from tradingagents import backtest_report as br
     from tradingagents.dataflows import mexc_futures as fx
+    from tradingagents.positions_view import fmt_when
 
     n = max(0, int(days or 0))
     if not n or not rows:
-        return {"rows": rows, "first": "", "last": "", "groups": 0}
+        return {"rows": rows, "first": "", "last": "",
+                "first_ms": 0, "last_ms": 0, "groups": 0}
     cap = int(group_max or WINDOW_GROUP_MAX)
     groups: dict = {}
     for r in rows:
@@ -1556,7 +1558,10 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
             f"combinations — more than the {cap} one request can do inside the "
             f"browser's 30-second limit. Name a COIN or a SIGNAL, or ask for "
             f"fewer rows a page (10 works everywhere).")
-    first = last = ""
+    # EPOCHS while they are compared — a formatted date sorts alphabetically
+    # ("Aug 03, 2026" < "Jul 26, 2026"), so the string form is built once, at
+    # the end, by the project's one formatter
+    first_ms = last_ms = 0
     for (coin, tf, sig, th), grp in groups.items():
         sym = f"{coin}_USDT"
         try:
@@ -1613,17 +1618,19 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
                     continue
                 fr = full.iloc[start:stop].reset_index(drop=True)
                 frames[end] = (fr, dirs[start:stop], start, stop)
-                f0 = str(fr["Date"].iloc[0])[:16]
-                l0 = str(fr["Date"].iloc[-1])[:16]
-                first = f0 if not first or f0 < first else first
-                last = l0 if not last or l0 > last else last
+                f0ms, l0ms = int(ms[start]), int(ms[stop - 1])
+                first_ms = f0ms if not first_ms else min(first_ms, f0ms)
+                last_ms = l0ms if not last_ms else max(last_ms, l0ms)
             for r in grp:
                 end = int(r.get("last_ms") or 0) or wm or int(ms[-1])
                 if end not in frames:
                     continue
                 frame, win_dirs, start, stop = frames[end]
-                f0 = str(frame["Date"].iloc[0])[:16]
-                l0 = str(frame["Date"].iloc[-1])[:16]
+                # the project's ONE date format, never a hand-rolled slice
+                # of a Timestamp: `2026-07-26 20:00` reached the operator's
+                # screen on 2026-09-03 (CLAUDE.md bans compact stamps)
+                f0 = fmt_when(int(ms[start]) / 1000)
+                l0 = fmt_when(int(ms[stop - 1]) / 1000)
                 # the ROW's own fee when it recorded one: a contract's fee
                 # changes, and today's is not what this row was measured under
                 row_fee = float(r.get("fee") or 0) or fee
@@ -1665,7 +1672,11 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
         except Exception as exc:                               # noqa: BLE001
             print(f"[window] {coin} {tf} {sig}: {type(exc).__name__}: "
                   f"{str(exc)[:70]}", flush=True)
-    return {"rows": rows, "first": first, "last": last, "groups": len(groups)}
+    return {"rows": rows,
+            "first": fmt_when(first_ms / 1000) if first_ms else "",
+            "last": fmt_when(last_ms / 1000) if last_ms else "",
+            "first_ms": first_ms, "last_ms": last_ms,
+            "groups": len(groups)}
 
 
 def storage_by_coin() -> list:

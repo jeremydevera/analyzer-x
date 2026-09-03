@@ -115,12 +115,16 @@ def test_the_window_ends_where_the_ROW_was_measured(offline):
     row = dict(_row(), last_ms=end)
     got = msw.window_rows([row], 2)
     r = got["rows"][0]
-    assert r["w_last"] <= str(pd.Timestamp(end, unit="ms"))[:16],         f"the window ran past the row's own measurement: {r['w_last']}"
-    assert r["w_first"] < r["w_last"]
+    # compare the EPOCHS: `w_first`/`w_last` are formatted in the project's one
+    # date format now (Sep 08, 2026 2:06am), which does not sort as a string
+    # and is local time, not UTC
+    assert r["w_last_ms"] <= end,         f"the window ran past the row's own measurement: {r['w_last']}"
+    assert r["w_first_ms"] < r["w_last_ms"]
+    assert ", 20" in r["w_last"] and ("am" in r["w_last"] or "pm" in r["w_last"]),         f"the operator's date format, not a compact stamp: {r['w_last']}"
     assert 1.5 <= r["w_days"] <= 2.1, r["w_days"]
     # and a row WITHOUT its own stamp falls back to the pair's watermark
     plain = msw.window_rows([_row()], 2)["rows"][0]
-    assert plain["w_last"] >= r["w_last"],         "the fallback must not be earlier than a row that names its end"
+    assert plain["w_last_ms"] >= r["w_last_ms"],         "the fallback must not be earlier than a row that names its end"
 
 
 def test_zero_days_changes_nothing(offline):

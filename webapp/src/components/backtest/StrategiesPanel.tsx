@@ -788,8 +788,13 @@ export default function StrategiesPanel() {
           ) : null}
         </div>
         {missed ? (
-          <p className="w-full text-theme-xs text-error-500">
-            — {andLine(applied)} was asked for and did not come back
+          // the same plain words as the chips, not the eleven-clause sentence
+          // (which stays on hover): this line is read when something has
+          // already gone wrong, so it has to be readable
+          <p className="w-full text-theme-xs text-error-500"
+             title={andLine(applied)}>
+            — {chipsOf(applied).map((c) => c.text).join(" AND ")}{" "}
+            was asked for and did not come back
             {failedAfter >= 1 ? ` (${failedAfter}s)` : ""}
           </p>
         ) : null}

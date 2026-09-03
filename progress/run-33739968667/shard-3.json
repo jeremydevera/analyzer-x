@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 3604978, "note": "TAG 30m: rule 3/120 (fade15)", "failed": [], "pct": 84.9, "updated": "2026-09-03T18:52:45Z"}
+{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 3613578, "note": "TAG 30m: rule 46/120 (rsi2)", "failed": [], "pct": 84.9, "updated": "2026-09-03T18:53:30Z"}

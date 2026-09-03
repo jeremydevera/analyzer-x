@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 7, "total": 52, "rows": 610486, "note": "BCH 1h: rule 64/120 (hammer)", "failed": [], "pct": 13.5, "updated": "2026-09-03T10:21:04Z"}
+{"shard": 18, "stage": "testing", "done": 7, "total": 52, "rows": 648986, "note": "BCH 4h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 13.5, "updated": "2026-09-03T10:21:49Z"}

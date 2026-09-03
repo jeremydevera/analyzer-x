@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 32, "total": 52, "rows": 2472872, "note": "NIL 15m: rule 73/120 (volspike)", "failed": [], "pct": 61.5, "updated": "2026-09-03T12:00:04Z"}
+{"shard": 12, "stage": "testing", "done": 32, "total": 52, "rows": 2478592, "note": "NIL 15m: rule 100/120 (cf_soup1)", "failed": [], "pct": 61.5, "updated": "2026-09-03T12:00:51Z"}

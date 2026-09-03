@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 7, "total": 52, "rows": 210158, "note": "BAS 1h: rule 36/120 (stochrsi)", "failed": [], "pct": 13.5, "updated": "2026-09-03T14:19:19Z"}
+{"shard": 14, "stage": "testing", "done": 7, "total": 52, "rows": 229078, "note": "BAS 4h: rule 2/120 (mom15)", "failed": [], "pct": 13.5, "updated": "2026-09-03T14:20:05Z"}

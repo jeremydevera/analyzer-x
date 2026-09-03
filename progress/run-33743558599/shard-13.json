@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 1, "total": 52, "rows": 0, "note": "AASTOCK 1h: downloading candles", "failed": [], "pct": 1.9, "updated": "2026-09-03T13:48:31Z"}
+{"shard": 13, "stage": "testing", "done": 3, "total": 52, "rows": 69030, "note": "ALUMINUM 1h: rule 18/120 (macd)", "failed": [], "pct": 5.8, "updated": "2026-09-03T13:49:17Z"}

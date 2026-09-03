@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 30, "total": 52, "rows": 2159346, "note": "MOCA 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 57.7, "updated": "2026-09-03T11:37:18Z"}
+{"shard": 7, "stage": "testing", "done": 30, "total": 52, "rows": 2171886, "note": "MOCA 1h: rule 52/120 (nr7)", "failed": [], "pct": 57.7, "updated": "2026-09-03T11:38:04Z"}

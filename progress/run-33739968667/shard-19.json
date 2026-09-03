@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 31, "total": 52, "rows": 2852990, "note": "NEAR 15m: rule 2/120 (mom15)", "failed": [], "pct": 59.6, "updated": "2026-09-03T12:30:13Z"}
+{"shard": 19, "stage": "testing", "done": 31, "total": 52, "rows": 2855550, "note": "NEAR 15m: rule 16/120 (keltner)", "failed": [], "pct": 59.6, "updated": "2026-09-03T12:31:00Z"}

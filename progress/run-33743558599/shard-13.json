@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 3, "total": 52, "rows": 69030, "note": "ALUMINUM 1h: rule 18/120 (macd)", "failed": [], "pct": 5.8, "updated": "2026-09-03T13:49:17Z"}
+{"shard": 13, "stage": "testing", "done": 5, "total": 52, "rows": 144324, "note": "ASTER 1h: 8,386 bars, testing 120 rules", "failed": [], "pct": 9.6, "updated": "2026-09-03T13:50:02Z"}

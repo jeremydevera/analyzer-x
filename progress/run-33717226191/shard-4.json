@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 16, "total": 53, "rows": 271160, "note": "DRIFT 15m: rule 91/120 (cf_soup)", "pct": 30.2, "updated": "2026-09-03T05:28:31Z"}
+{"shard": 4, "stage": "testing", "done": 17, "total": 53, "rows": 275220, "note": "ENSO 15m: 31,089 bars, testing 120 rules", "pct": 32.1, "updated": "2026-09-03T05:29:18Z"}

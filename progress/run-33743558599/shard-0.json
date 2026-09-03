@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 34, "total": 53, "rows": 1190892, "note": "ONDO 4h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 64.2, "updated": "2026-09-03T14:27:33Z"}
+{"shard": 0, "stage": "testing", "done": 37, "total": 53, "rows": 1216016, "note": "PROM 1h: rule 1/120 (mom6)", "failed": [], "pct": 69.8, "updated": "2026-09-03T14:28:18Z"}

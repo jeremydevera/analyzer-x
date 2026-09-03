@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 43, "total": 53, "rows": 3623248, "note": "SOXL 15m: 8,192 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-03T13:11:54Z"}
+{"shard": 0, "stage": "testing", "done": 43, "total": 53, "rows": 3639448, "note": "SOXL 15m: rule 85/120 (cf_triple)", "failed": [], "pct": 81.1, "updated": "2026-09-03T13:12:39Z"}

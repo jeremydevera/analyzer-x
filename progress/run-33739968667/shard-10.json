@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 3, "total": 52, "rows": 236330, "note": "ALL 15m: rule 61/120 (turtle)", "failed": [], "pct": 5.8, "updated": "2026-09-03T09:52:09Z"}
+{"shard": 10, "stage": "testing", "done": 3, "total": 52, "rows": 244910, "note": "ALL 15m: rule 100/120 (cf_soup1)", "failed": [], "pct": 5.8, "updated": "2026-09-03T09:52:56Z"}

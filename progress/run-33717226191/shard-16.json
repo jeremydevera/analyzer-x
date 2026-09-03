@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 44, "total": 52, "rows": 812740, "note": "SXT 15m: rule 21/120 (cci20)", "pct": 84.6, "updated": "2026-09-03T06:40:33Z"}
+{"shard": 16, "stage": "testing", "done": 44, "total": 52, "rows": 818020, "note": "SXT 15m: rule 45/120 (zscore20)", "pct": 84.6, "updated": "2026-09-03T06:41:18Z"}

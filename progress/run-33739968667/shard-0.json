@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 44, "total": 53, "rows": 3739420, "note": "STG 15m: rule 47/120 (ibs)", "failed": [], "pct": 83.0, "updated": "2026-09-03T13:16:48Z"}
+{"shard": 0, "stage": "testing", "done": 44, "total": 53, "rows": 3746620, "note": "STG 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 83.0, "updated": "2026-09-03T13:17:35Z"}

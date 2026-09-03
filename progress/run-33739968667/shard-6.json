@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 7, "total": 53, "rows": 479690, "note": "BANANA 30m: rule 42/120 (rsidiv)", "failed": [], "pct": 13.2, "updated": "2026-09-03T10:05:10Z"}
+{"shard": 6, "stage": "testing", "done": 7, "total": 53, "rows": 492450, "note": "BANANA 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-03T10:05:55Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 50, "total": 52, "rows": 973900, "note": "W 15m: rule 99/120 (cf_ttm_l2)", "pct": 96.2, "updated": "2026-09-03T07:07:21Z"}
+{"shard": 12, "stage": "testing", "done": 51, "total": 52, "rows": 979120, "note": "XPIN 15m: rule 1/120 (mom6)", "pct": 98.1, "updated": "2026-09-03T07:08:23Z"}

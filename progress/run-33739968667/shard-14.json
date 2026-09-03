@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 44, "total": 52, "rows": 4035142, "note": "SUSHI 15m: rule 75/120 (relvolbrk)", "failed": [], "pct": 84.6, "updated": "2026-09-03T14:01:56Z"}
+{"shard": 14, "stage": "testing", "done": 44, "total": 52, "rows": 4043062, "note": "SUSHI 15m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 84.6, "updated": "2026-09-03T14:02:41Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 9, "total": 52, "rows": 919898, "note": "BRL 4h: rule 116/120 (cf_diadx_l1)", "failed": [], "pct": 17.3, "updated": "2026-09-03T10:36:24Z"}
+{"shard": 17, "stage": "testing", "done": 10, "total": 52, "rows": 939046, "note": "CAP 15m: rule 20/120 (stoch14)", "failed": [], "pct": 19.2, "updated": "2026-09-03T10:37:10Z"}

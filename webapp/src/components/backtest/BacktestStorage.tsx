@@ -63,32 +63,6 @@ export default function BacktestStorage() {
         <input value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }}
                placeholder="find a coin…" aria-label="Find a coin"
                className="h-9 w-40 rounded-lg border border-gray-300 bg-transparent px-3 text-theme-xs text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" />
-        {/* the page, not the store: {d.pairs} pairs is said above */}
-        <span className="text-theme-xs text-gray-500 dark:text-gray-400">
-          page {at} of {pages} · rows {shown.length ? (at - 1) * PER_PAGE + 1 : 0}–
-          {Math.min(at * PER_PAGE, shown.length)} of {shown.length.toLocaleString()}
-          {q ? ` matching "${q}"` : " pair(s)"}
-        </span>
-        <div className="ml-auto flex flex-wrap items-center gap-1">
-          <button onClick={() => setPage(at - 1)} disabled={at <= 1}
-                  className="h-8 rounded-lg border border-gray-300 px-2 text-theme-xs text-gray-600 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300">prev</button>
-          {/* numbered pages, same pager as the strategy list */}
-          {pageWindow(at, pages).map((n, i) => n == null ? (
-            <span key={`gap${i}`} aria-hidden
-                  className="px-1 text-theme-xs text-gray-400">…</span>
-          ) : (
-            <button key={n} onClick={() => setPage(n)}
-                    aria-label={`page ${n}`}
-                    aria-current={n === at ? "page" : undefined}
-                    className={`h-8 min-w-8 rounded-lg border px-2 text-theme-xs tabular-nums ${n === at
-                      ? "border-brand-500 bg-brand-500 font-semibold text-white"
-                      : "border-gray-300 text-gray-600 hover:border-brand-400 dark:border-gray-700 dark:text-gray-300"}`}>
-              {n.toLocaleString()}
-            </button>
-          ))}
-          <button onClick={() => setPage(at + 1)} disabled={at >= pages}
-                  className="h-8 rounded-lg border border-gray-300 px-2 text-theme-xs text-gray-600 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300">next</button>
-        </div>
       </div>
       <div className="mt-2 w-full overflow-x-auto">
         <Table>
@@ -120,6 +94,38 @@ export default function BacktestStorage() {
             ))}
           </TableBody>
         </Table>
+      </div>
+      {/* the pager under the table, not over it (operator, 2026-09-03).
+          The page count travels WITH the buttons that change it — a
+          "page 3 of 40" at the top and prev/next at the bottom is two
+          halves of one control in two places. */}
+      <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 px-5 py-3 dark:border-white/[0.05]">
+        {/* the page, not the store: {d.pairs} pairs is said above */}
+        <span className="text-theme-xs text-gray-500 dark:text-gray-400">
+          page {at} of {pages} · rows {shown.length ? (at - 1) * PER_PAGE + 1 : 0}–
+          {Math.min(at * PER_PAGE, shown.length)} of {shown.length.toLocaleString()}
+          {q ? ` matching "${q}"` : " pair(s)"}
+        </span>
+        <div className="ml-auto flex flex-wrap items-center gap-1">
+          <button onClick={() => setPage(at - 1)} disabled={at <= 1}
+                  className="h-8 rounded-lg border border-gray-300 px-2 text-theme-xs text-gray-600 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300">prev</button>
+          {/* numbered pages, same pager as the strategy list */}
+          {pageWindow(at, pages).map((n, i) => n == null ? (
+            <span key={`gap${i}`} aria-hidden
+                  className="px-1 text-theme-xs text-gray-400">…</span>
+          ) : (
+            <button key={n} onClick={() => setPage(n)}
+                    aria-label={`page ${n}`}
+                    aria-current={n === at ? "page" : undefined}
+                    className={`h-8 min-w-8 rounded-lg border px-2 text-theme-xs tabular-nums ${n === at
+                      ? "border-brand-500 bg-brand-500 font-semibold text-white"
+                      : "border-gray-300 text-gray-600 hover:border-brand-400 dark:border-gray-700 dark:text-gray-300"}`}>
+              {n.toLocaleString()}
+            </button>
+          ))}
+          <button onClick={() => setPage(at + 1)} disabled={at >= pages}
+                  className="h-8 rounded-lg border border-gray-300 px-2 text-theme-xs text-gray-600 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300">next</button>
+        </div>
       </div>
     </div>
   );

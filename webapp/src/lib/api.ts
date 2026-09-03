@@ -422,6 +422,9 @@ export const api = {
     /** the stop's CEILING, so the download carries the same slice as the
      *  table: 1 keeps rows whose SL is 1% or tighter */
     maxSl?: number;
+    /** the DAYS window, so the file holds the same measurement the table
+     *  showed rather than every row's whole history */
+    days?: number; months?: number;
     sizing?: string; rowId?: string; desc?: boolean;
     /** the download has to carry the same group as the table it came from */
     group?: "preset" | "classic";
@@ -493,6 +496,8 @@ export const api = {
     if (q.minWinrate) p.set("min_winrate", String(q.minWinrate));
     if (q.maxTp) p.set("max_tp", String(q.maxTp));
     if (q.maxSl) p.set("max_sl", String(q.maxSl));
+    if (q.months) p.set("months", String(q.months));
+    if (q.days) p.set("days", String(q.days));
     if (q.sizing) p.set("sizing", q.sizing);
     if (q.group) p.set("group", q.group);
     if (q.rowId) p.set("row_id", q.rowId);

@@ -142,6 +142,14 @@ KEEP_INDEXES = (
 # 35,863,520-row store, and everything works (slower) without it.
 WIDE_WINRATE = ("CREATE INDEX IF NOT EXISTS rows_wr2 ON rows "
                 "(winrate DESC, trades, profit DESC, id)")
+# THE WIN-RATE SEEK THAT CARRIES SIZING. rows_wr2 stops before it, so a
+# request with `sizing = flat` beside a win-rate floor still had to read every
+# candidate ROW off the disk to test it. Measured on the operator's own
+# request (win % >= 80 AND flat AND 100+ trades, ranked by profit, 49,770,670
+# rows): 3,071.7 s on rows_winrate against 0.34 s here, and 0.01 s when the
+# ranking is by win %. 41.7 min to build.
+WIDER_WINRATE = ("CREATE INDEX IF NOT EXISTS rows_wr3 ON rows "
+                 "(winrate DESC, trades, sizing, profit DESC, id)")
 # The wide PROFIT index — the same trick as rows_wr2, for the order the page
 # opens on. rows_profit is (profit DESC, id), so a filter on anything else has
 # to read every candidate ROW off the disk to test it. The biggest profits in
@@ -184,6 +192,7 @@ READ_INDEXES = tuple(FILTER_INDEXES.values()) + KEEP_INDEXES
 INDEX_DDL = {**FILTER_INDEXES,
              **{d.split()[5]: d for d in KEEP_INDEXES},
              "rows_wr2": WIDE_WINRATE,
+             "rows_wr3": WIDER_WINRATE,
              "rows_pr2": WIDE_PROFIT,
              "rows_id": ROW_ID_INDEX,
              "rows_signal": SIGNAL_INDEX}
@@ -1159,6 +1168,8 @@ _BUILDING: set = set()
 UNINDEXED_LIMIT = 200_000
 # how far a FILTERED count will go before it answers "N+"
 COUNT_CAP = 5_000
+# how many rows a WINDOWED csv re-measures before it stops and says so
+DAYS_CSV_MAX = 2_000
 # Past this offset a page is fetched in TWO steps — see `_page_rows`. The
 # operator's own click: page 50,000 of Stored strategies, offset 24,999,500.
 #
@@ -1591,8 +1602,18 @@ def _winrate_seek_cap() -> int:
     Wide (rows_wr2, + profit): the seek stays inside the index, and beats the
     profit scan by 55x at 7.5 million matches.
     """
-    return (WIDE_SEEK_MAX if has_index("rows_wr2") is True
-            else WINRATE_SEEK_MAX)
+    if has_index("rows_wr3") is True or has_index("rows_wr2") is True:
+        return WIDE_SEEK_MAX
+    return WINRATE_SEEK_MAX
+
+
+def winrate_index_name() -> str:
+    """The widest win-rate index this store HAS, or "" — for the health check
+    and for the panel's "this filter needs an index" sentence."""
+    for name in ("rows_wr3", "rows_wr2", "rows_winrate"):
+        if has_index(name) is True:
+            return name
+    return ""
 
 
 def _winrate_index() -> str:
@@ -1612,7 +1633,9 @@ def _winrate_index() -> str:
     builds (3,247 s on this store) - naming an index that does not exist is a
     hard SQLite error.
     """
-    for name in ("rows_wr2", "rows_winrate"):
+    # widest first: rows_wr3 adds `sizing`, which is what turned the
+    # operator's flat-only request from 3,071.7 s into 0.34 s (see WIDER_WINRATE)
+    for name in ("rows_wr3", "rows_wr2", "rows_winrate"):
         if has_index(name) is True:
             return f" INDEXED BY {name}"
     return ""
@@ -2021,8 +2044,8 @@ def query(coin=None, tf=None, signal=None, profitable=False,
 
 def iter_rows(coin=None, tf=None, signal=None, profitable=False,
               sort="profit", min_trades=0, min_winrate=0, max_tp=0,
-              sizing=None, row_id=None, group=None, max_sl=0, desc=None,
-              batch=5_000):
+              sizing=None, row_id=None, group=None, max_sl=0, days=0,
+              desc=None, batch=5_000):
     """Every matching row, in the asked order, a batch at a time.
 
     No limit and no list: 21,858,026 rows will not fit in a browser table or in
@@ -2091,7 +2114,19 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
                          min_winrate, max_tp, sizing, row_id, group, max_sl,
                          order_owns_index=True, order_key=key,
                          winrate_seeks=seeks, signal_seeks=signal_seeks)
-    step = max(100, int(batch))
+    # LAST N DAYS. The export RE-MEASURES what it exports, batch by batch, so
+    # the file holds the same window the table showed. Without this the route
+    # simply ignored the parameter (FastAPI drops an unknown one) and the
+    # download quietly held every row's WHOLE history under a filter that said
+    # "last 30 days" — the label-does-not-match-the-data failure this repo
+    # keeps paying for (operator, 2026-09-03).
+    win_days = max(0, int(days or 0))
+    step = min(250, max(100, int(batch))) if win_days else max(100, int(batch))
+    # A WINDOWED export re-measures every row it writes: ~0.09 s a row on this
+    # store, so all 58,212 matches of one real filter would be 87 minutes. The
+    # cap is stated in the file's last line and in its name (see
+    # api.strategies_csv_lines / strategies_csv_name).
+    win_left = DAYS_CSV_MAX if win_days else -1
     # same_thread=False: this generator is drained by Starlette's threadpool
     # (see _connect). Nothing else touches this connection.
     with _open(readonly=True, same_thread=False) as con:
@@ -2104,6 +2139,7 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
             got = cur.fetchmany(step)
             if not got:
                 return
+            batch_rows = []
             for r in got:
                 d = {k: r[k] for k in r.keys() if k != "pair"}   # noqa: SIM118
                 d["stop_reachable"] = bool(d.get("stop_reachable"))
@@ -2111,7 +2147,38 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
                     d["monthly"] = json.loads(d.get("monthly") or "{}")
                 except ValueError:
                     d["monthly"] = {}
-                yield d
+                batch_rows.append(d)
+            if win_days:
+                from tradingagents import market_sweep as _msw
+
+                if win_left <= 0:
+                    return
+                batch_rows = batch_rows[:win_left]
+                win_left -= len(batch_rows)
+                # one batch at a time, and the signal cache makes the second
+                # row of a pair free. group_max is the batch itself: a batch
+                # can never span more pairs than it has rows, so this never
+                # raises mid-stream — a stream that raises is a truncated file
+                # that looks complete.
+                _msw.window_rows(batch_rows, win_days,
+                                 group_max=len(batch_rows) + 1)
+                for d in batch_rows:
+                    if not d.get("restated"):
+                        continue
+                    # the WINDOW's figures in the row's own columns, so the
+                    # file says what the table said, plus the window itself
+                    d["trades"] = d["w_trades"]
+                    d["wins"] = d["w_wins"]
+                    d["losses"] = d["w_losses"]
+                    d["winrate"] = d["w_winrate"]
+                    d["profit"] = d["w_profit"]
+                    d["dd"] = d.get("w_dd", d.get("dd"))
+                    d["worst"] = d.get("w_worst", d.get("worst"))
+                    d["funding"] = d.get("w_funding", d.get("funding"))
+                    d["window_first"] = d.get("w_first")
+                    d["window_last"] = d.get("w_last")
+                    d["window_days"] = d.get("w_days")
+            yield from batch_rows
 
 
 def take_profits(tfs) -> list:

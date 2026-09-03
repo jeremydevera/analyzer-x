@@ -277,7 +277,7 @@ def strategies(coin: str | None = None, tf: str | None = None,
 def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                          sort="profit", min_trades=0, min_winrate=0,
                          max_tp=0, sizing=None, row_id=None, group=None,
-                         max_sl=0,
+                         max_sl=0, days=0,
                          desc=None, batch=5_000):
     """The CSV, one chunk at a time — a module-level generator on purpose.
 
@@ -300,6 +300,10 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
     # own shape) — and `iter_rows` does not compute it, so the CSV rates each
     # row here with the same function the grid used.
     cols = list(ri.COLS)
+    if days:
+        # the window travels with the rows, so the file can be read a week
+        # later without guessing which days it covered
+        cols += ["window_first", "window_last", "window_days"]
     buf = _io.StringIO()
     w = csv.writer(buf, lineterminator="\n")
 
@@ -323,13 +327,22 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                               profitable=profitable, sort=sort,
                               min_trades=min_trades, min_winrate=min_winrate,
                               max_tp=max_tp, sizing=sizing, row_id=row_id,
-                              group=group, max_sl=max_sl, desc=desc,
-                              batch=batch):
+                              group=group, max_sl=max_sl, days=days,
+                              desc=desc, batch=batch):
             score, why = ri.balanced_score(r)
             w.writerow([r.get(c) for c in cols] + [score, why]
                        + [_json.dumps(r.get("monthly") or {},
                                       separators=(",", ":"))])
             sent += 1
+            yield flush()
+        if days and sent >= ri.DAYS_CSV_MAX:
+            # a capped file SAYS it is capped, IN the file (kit rule: a capped
+            # grid says what it capped)
+            w.writerow([f"WINDOW CAPPED: this download re-measured the first "
+                        f"{sent} rows over the last {int(days)} days; a days "
+                        f"window is a re-measurement (~0.09 s a row), so it "
+                        f"stops there. Narrow the filter, or download without "
+                        f"the window for every matching row's whole history."])
             yield flush()
     except Exception as exc:                                   # noqa: BLE001
         print(f"[strategies.csv] export stopped after {sent:,} rows: "
@@ -342,7 +355,7 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
 
 def strategies_csv_name(coin=None, tf=None, signal=None, min_trades=0,
                         sort="profit", min_winrate=0, max_tp=0,
-                        sizing=None, group=None, max_sl=0) -> str:
+                        sizing=None, group=None, max_sl=0, days=0) -> str:
     """A filename that says which slice of the store is in the file."""
     bits = [b for b in (coin, tf, signal,
                         f"min{min_trades}" if min_trades else "",
@@ -351,6 +364,9 @@ def strategies_csv_name(coin=None, tf=None, signal=None, min_trades=0,
                         f"wr{_trim(min_winrate)}" if min_winrate else "",
                         f"tp{_trim(max_tp)}" if max_tp else "",
                         f"sl{_trim(max_sl)}" if max_sl else "",
+                        # the WINDOW belongs in the name: two downloads of the
+                        # same filter differ entirely by it
+                        f"last{int(days)}d" if days else "",
                         sizing or "",
                         # the group is part of WHICH slice this file is: the
                         # same coin and order differ entirely by it
@@ -373,7 +389,8 @@ def strategies_csv(coin: str | None = None, tf: str | None = None,
                    min_winrate: float = 0.0, max_tp: float = 0.0,
                    max_sl: float = 0.0,
                    sizing: str | None = None, row_id: str | None = None,
-                   group: str | None = None, desc: bool | None = None):
+                   group: str | None = None, months: int = 0, days: int = 0,
+                   desc: bool | None = None):
     """EVERY matching row as CSV — no limit, streamed.
 
     The screen can hold a few thousand rows; the store holds 21,858,026. The
@@ -391,7 +408,8 @@ def strategies_csv(coin: str | None = None, tf: str | None = None,
                           profitable=profitable, sort=sort,
                           min_trades=min_trades, min_winrate=min_winrate,
                           max_tp=max_tp, sizing=sizing, row_id=row_id,
-                          group=group, max_sl=max_sl, desc=desc), None)
+                          group=group, max_sl=max_sl,
+                          days=0 if months else days, desc=desc), None)
     except ri.SortNotReady as exc:
         raise HTTPException(503, str(exc)) from exc
     except ValueError as exc:
@@ -399,13 +417,15 @@ def strategies_csv(coin: str | None = None, tf: str | None = None,
 
     name = strategies_csv_name(coin, tf, signal, min_trades, sort,
                                min_winrate=min_winrate, max_tp=max_tp,
-                               sizing=sizing, group=group, max_sl=max_sl)
+                               sizing=sizing, group=group, max_sl=max_sl,
+                               days=0 if months else days)
     return StreamingResponse(
         strategies_csv_lines(coin=coin, tf=tf, signal=signal,
                             profitable=profitable, sort=sort,
                             min_trades=min_trades, min_winrate=min_winrate,
                             max_tp=max_tp, sizing=sizing, row_id=row_id,
-                            group=group, max_sl=max_sl, desc=desc),
+                            group=group, max_sl=max_sl,
+                            days=0 if months else days, desc=desc),
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{name}"'})
 

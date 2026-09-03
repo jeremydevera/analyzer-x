@@ -424,23 +424,37 @@ export default function StrategiesPanel() {
     const out: { k: keyof typeof NO_FILTERS; text: string }[] = [];
     if (f.rowId) {
       return [{ k: "rowId" as const,
-                text: `#${f.rowId} — every other filter ignored` }];
+                text: `Row #${f.rowId} only — every other filter ignored` }];
+    }
+    // The WINDOW comes first, because it changes what every other figure in
+    // the row MEANS. Then the rest, in the operator's own reading:
+    // "Filter: Past 30 days AND Winrate above 90% AND TP = 5%".
+    if (f.months > 0) {
+      out.push({ k: "months",
+                 text: `Past ${f.months} month${f.months > 1 ? "s" : ""}` });
+    } else if (f.days > 0) {
+      out.push({ k: "days", text: `Past ${f.days} days` });
     }
     if (f.coin) out.push({ k: "coin", text: f.coin });
-    if (f.tf) out.push({ k: "tf", text: f.tf });
-    if (f.group) out.push({ k: "group", text: `group ${GROUP_LABEL[f.group] ?? f.group}` });
-    if (f.signal) out.push({ k: "signal", text: f.signal });
-    if (f.sizing) out.push({ k: "sizing", text: `${f.sizing} only` });
-    if (f.minTrades > 0) out.push({ k: "minTrades", text: `trades ≥ ${f.minTrades}` });
-    if (f.minWinrate > 0) out.push({ k: "minWinrate", text: `win % ≥ ${f.minWinrate}` });
-    if (f.maxTp > 0) out.push({ k: "maxTp", text: `TP ≤ ${f.maxTp}%` });
-    if (f.maxSl > 0) out.push({ k: "maxSl", text: `SL ≤ ${f.maxSl}%` });
-    if (f.profitable) out.push({ k: "profitable", text: "profit > 0" });
-    if (f.months > 0) {
-      out.push({ k: "months", text: `last ${f.months} month${f.months > 1 ? "s" : ""}` });
-    } else if (f.days > 0) {
-      out.push({ k: "days", text: `last ${f.days} day${f.days > 1 ? "s" : ""}` });
+    if (f.tf) out.push({ k: "tf", text: `${f.tf} timeframe` });
+    if (f.group) {
+      out.push({ k: "group",
+                 text: `${GROUP_LABEL[f.group] ?? f.group} setups` });
     }
+    if (f.signal) out.push({ k: "signal", text: `Signal ${f.signal}` });
+    if (f.sizing) out.push({ k: "sizing", text: `${f.sizing} sizing only` });
+    if (f.minTrades > 0) {
+      out.push({ k: "minTrades", text: `At least ${f.minTrades} trades` });
+    }
+    // "or better" / "or tighter", never "above" or "below": every one of these
+    // is INCLUSIVE, so 90 keeps a row that won exactly 90.00% and a label
+    // reading "above 90%" would be wrong about its own filter.
+    if (f.minWinrate > 0) {
+      out.push({ k: "minWinrate", text: `Winrate ${f.minWinrate}% or better` });
+    }
+    if (f.maxTp > 0) out.push({ k: "maxTp", text: `TP ${f.maxTp}% or tighter` });
+    if (f.maxSl > 0) out.push({ k: "maxSl", text: `SL ${f.maxSl}% or tighter` });
+    if (f.profitable) out.push({ k: "profitable", text: "Made money" });
     return out;
   };
   // The chips read the SERVED set — the four floors from the API's OWN echo
@@ -725,21 +739,30 @@ export default function StrategiesPanel() {
         <div className="flex min-w-0 flex-wrap items-center gap-2"
              title={andLine(servedFilters)}>
           <span className="text-theme-xs font-medium text-gray-600 dark:text-gray-300">
-            showing rows where:
+            Filter:
           </span>
-          {chips.length ? chips.map((c) => (
-            <span key={c.k}
-                  className="inline-flex h-7 items-center gap-1 rounded-full border border-brand-200 bg-brand-50 pl-2.5 pr-1 text-theme-xs font-medium text-brand-700 dark:border-brand-500/30 dark:bg-brand-500/15 dark:text-brand-300">
-              {c.text}
-              <button type="button" onClick={() => clearOne(c.k)}
-                      aria-label={`remove filter ${c.text}`}
-                      className="flex h-5 w-5 items-center justify-center rounded-full text-brand-500 hover:bg-brand-500/20 hover:text-brand-700 dark:text-brand-300">
-                <span aria-hidden="true">×</span>
-              </button>
+          {chips.length ? chips.map((c, i) => (
+            <span key={c.k} className="inline-flex items-center gap-2">
+              {/* the word AND between them, so the row READS as the sentence
+                  the operator asked for — and each clause is still its own
+                  chip with its own × */}
+              {i > 0 ? (
+                <span className="text-theme-xs font-medium text-gray-400 dark:text-gray-500">
+                  AND
+                </span>
+              ) : null}
+              <span className="inline-flex h-7 items-center gap-1 rounded-full border border-brand-200 bg-brand-50 pl-2.5 pr-1 text-theme-xs font-medium text-brand-700 dark:border-brand-500/30 dark:bg-brand-500/15 dark:text-brand-300">
+                {c.text}
+                <button type="button" onClick={() => clearOne(c.k)}
+                        aria-label={`remove filter ${c.text}`}
+                        className="flex h-5 w-5 items-center justify-center rounded-full text-brand-500 hover:bg-brand-500/20 hover:text-brand-700 dark:text-brand-300">
+                  <span aria-hidden="true">×</span>
+                </button>
+              </span>
             </span>
           )) : (
             <span className="text-theme-xs text-gray-500 dark:text-gray-400">
-              nothing — every stored strategy in the store
+              none — every stored strategy in the store
             </span>
           )}
           {chips.length ? (
@@ -954,11 +977,11 @@ export default function StrategiesPanel() {
                     title={andLine(draft)}>
                 Apply will ask for{" "}
                 {chipsOf(draft).length
-                  ? chipsOf(draft).map((c) => c.text).join(" · ")
+                  ? chipsOf(draft).map((c) => c.text).join(" AND ")
                   : "every stored strategy in the store"}
               </span>
             ) : chips.length ? (
-              <>showing rows where: {chips.map((c) => c.text).join(" · ")}</>
+              <>Filter: {chips.map((c) => c.text).join(" AND ")}</>
             ) : (
               <>no filters — showing every stored strategy in the store</>
             )}
@@ -1001,18 +1024,12 @@ export default function StrategiesPanel() {
           </div>
         </div>
       </Modal>
-      {/* one row IS one combination — the operator's own words: "under those
-          coins i have multiple strategy and under that strategy is different
-          timeframe and combinations of tp and sl". Say so, and page through. */}
+      {/* The legend that sat here — "one row = one coin × timeframe × signal
+          × threshold × SL/TP × sizing · balanced rates win rate AND profit
+          together" — was removed on the operator's word (2026-09-03). What
+          `balanced` means now lives on the balanced COLUMN's own header, where
+          somebody reading that column will find it. */}
       <div className="flex flex-wrap items-center gap-2 px-5 pt-3">
-        <span className="text-theme-xs text-gray-500 dark:text-gray-400">
-          one row = one coin × timeframe × signal × threshold × SL/TP × sizing
-          {" · "}
-          <span title="Profit is the anchor: a row that did not make money rates 1-3 whatever its win rate. A profitable one starts at 4 and earns up to 10 on profit per trade, win rate, green months and whether its take-profit clears the round-trip cost; it loses points for a dip bigger than what it earned, for a dip over 10x the stake, and for losing most of its trades (the ladder carrying the signal). Under 30 trades it cannot rate above 4, under 100 not above 7. Hover any score for its own working.">
-            <b>balanced</b> rates win rate AND profit together, 1-10 (hover a
-            score for the working)
-          </span>
-        </span>
         <div className="ml-auto flex flex-wrap items-center gap-1">
           <select className={`${pageBtn} mr-1`} value={perPage}
                   onChange={(e) => setPerPage(Number(e.target.value))}
@@ -1179,9 +1196,11 @@ export default function StrategiesPanel() {
                       : h.replace(/ \(\d+mo\)$/, "") === STRATEGY_SORTS[sort]
                         ? "text-warning-600 dark:text-warning-400"
                         : "text-gray-500 dark:text-gray-400"}`}
-                  title={HEAD_SORT[h.replace(/ \(\d+mo\)$/, "")]
-                    ? `sort every row by ${h} — the ORDER is always over the whole history the store has`
-                    : undefined}>
+                  title={h.replace(/ \(\d+mo\)$/, "") === "balanced"
+                    ? "balanced rates win rate AND profit together, 1-10. Profit is the anchor: a row that did not make money rates 1-3 whatever its win rate. A profitable one starts at 4 and earns up to 10 on profit per trade, win rate, green months and whether its take-profit clears the round-trip cost; it loses points for a dip bigger than what it earned, for a dip over 10x the stake, and for losing most of its trades (the ladder carrying the signal). Under 30 trades it cannot rate above 4, under 100 not above 7. Hover any score for its own working. Click to sort by it."
+                    : HEAD_SORT[h.replace(/ \(\d+mo\)$/, "")]
+                      ? `sort every row by ${h} — the ORDER is always over the whole history the store has`
+                      : undefined}>
                   {h}{h.replace(/ \(\d+mo\)$/, "") === STRATEGY_SORTS[servedSort]
                         ? (servedDesc ? " ↓" : " ↑")
                      : h.replace(/ \(\d+mo\)$/, "") === STRATEGY_SORTS[sort] ? " …" : ""}

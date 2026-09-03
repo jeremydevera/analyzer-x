@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 11, "total": 52, "rows": 1089564, "note": "CFX 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 21.2, "updated": "2026-09-03T10:45:58Z"}
+{"shard": 17, "stage": "testing", "done": 11, "total": 52, "rows": 1124324, "note": "CFX 1d: 394 bars, testing 120 rules", "failed": [], "pct": 21.2, "updated": "2026-09-03T10:46:46Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 44, "total": 52, "rows": 1866480, "note": "SYN 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 84.6, "updated": "2026-09-03T15:13:53Z"}
+{"shard": 19, "stage": "testing", "done": 44, "total": 52, "rows": 1895080, "note": "SYN 4h: rule 110/120 (cf_fundfade_l1)", "failed": [], "pct": 84.6, "updated": "2026-09-03T15:14:38Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 30, "total": 53, "rows": 512920, "note": "MMT 15m: rule 78/120 (cf_mom_l2)", "pct": 56.6, "updated": "2026-09-03T06:01:55Z"}
+{"shard": 4, "stage": "testing", "done": 31, "total": 53, "rows": 521120, "note": "MTL 15m: 34,599 bars, testing 120 rules", "pct": 58.5, "updated": "2026-09-03T06:02:44Z"}

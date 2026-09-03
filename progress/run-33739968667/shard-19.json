@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 18, "total": 52, "rows": 1539326, "note": "FLOCK 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 34.6, "updated": "2026-09-03T11:19:38Z"}
+{"shard": 19, "stage": "testing", "done": 19, "total": 52, "rows": 1579234, "note": "GAIB 15m: 27,653 bars, testing 120 rules", "failed": [], "pct": 36.5, "updated": "2026-09-03T11:20:32Z"}

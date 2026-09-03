@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 5, "total": 53, "rows": 453372, "note": "ARK 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 9.4, "updated": "2026-09-03T10:11:58Z"}
+{"shard": 3, "stage": "testing", "done": 5, "total": 53, "rows": 463492, "note": "ARK 1h: rule 20/120 (stoch14)", "failed": [], "pct": 9.4, "updated": "2026-09-03T10:12:44Z"}

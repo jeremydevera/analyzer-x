@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 17, "total": 53, "rows": 1325982, "note": "ENA 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-03T11:04:38Z"}
+{"shard": 0, "stage": "testing", "done": 17, "total": 53, "rows": 1332242, "note": "ENA 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 32.1, "updated": "2026-09-03T11:05:23Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 42, "total": 52, "rows": 3183056, "note": "SNT 15m: 34,623 bars, testing 120 rules", "failed": [], "pct": 80.8, "updated": "2026-09-03T12:12:04Z"}
+{"shard": 8, "stage": "testing", "done": 42, "total": 52, "rows": 3188796, "note": "SNT 15m: rule 35/120 (willr14)", "failed": [], "pct": 80.8, "updated": "2026-09-03T12:12:50Z"}

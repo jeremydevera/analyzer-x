@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 4, "total": 52, "rows": 191944, "note": "APPSTOCK 15m: rule 13/120 (pivot)", "failed": [], "pct": 7.7, "updated": "2026-09-03T09:49:06Z"}
+{"shard": 15, "stage": "testing", "done": 4, "total": 52, "rows": 221262, "note": "APPSTOCK 1h: rule 3/120 (fade15)", "failed": [], "pct": 7.7, "updated": "2026-09-03T09:49:51Z"}

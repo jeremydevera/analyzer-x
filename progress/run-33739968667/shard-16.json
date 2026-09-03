@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 4, "total": 52, "rows": 362472, "note": "APR 15m: rule 70/120 (cmf20)", "failed": [], "pct": 7.7, "updated": "2026-09-03T10:07:10Z"}
+{"shard": 16, "stage": "testing", "done": 4, "total": 52, "rows": 370032, "note": "APR 15m: rule 112/120 (cf_obretest)", "failed": [], "pct": 7.7, "updated": "2026-09-03T10:07:55Z"}

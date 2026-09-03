@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 18, "total": 52, "rows": 1428214, "note": "FET 15m: rule 71/120 (mfi14)", "failed": [], "pct": 34.6, "updated": "2026-09-03T10:57:08Z"}
+{"shard": 10, "stage": "testing", "done": 18, "total": 52, "rows": 1434614, "note": "FET 15m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 34.6, "updated": "2026-09-03T10:57:54Z"}

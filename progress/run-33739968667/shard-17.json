@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 20, "total": 52, "rows": 1839860, "note": "GMESTOCK 15m: rule 40/120 (crsi)", "failed": [], "pct": 38.5, "updated": "2026-09-03T11:30:48Z"}
+{"shard": 17, "stage": "testing", "done": 20, "total": 52, "rows": 1870540, "note": "GMESTOCK 30m: rule 98/120 (cf_ttm_l1)", "failed": [], "pct": 38.5, "updated": "2026-09-03T11:31:33Z"}

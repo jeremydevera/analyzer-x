@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 39, "total": 53, "rows": 3176842, "note": "RIVER 30m: rule 16/120 (keltner)", "failed": [], "pct": 73.6, "updated": "2026-09-03T12:49:00Z"}
+{"shard": 3, "stage": "testing", "done": 39, "total": 53, "rows": 3187042, "note": "RIVER 30m: rule 68/120 (dbltop)", "failed": [], "pct": 73.6, "updated": "2026-09-03T12:49:45Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 6, "total": 53, "rows": 311890, "note": "AUDIO 15m: rule 41/120 (tsi)", "failed": [], "pct": 11.3, "updated": "2026-09-03T09:55:29Z"}
+{"shard": 1, "stage": "testing", "done": 6, "total": 53, "rows": 314690, "note": "AUDIO 15m: rule 112/120 (cf_obretest)", "failed": [], "pct": 11.3, "updated": "2026-09-03T09:56:14Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 32, "total": 53, "rows": 552780, "note": "NES 15m: rule 20/120 (stoch14)", "pct": 60.4, "updated": "2026-09-03T06:06:32Z"}
+{"shard": 4, "stage": "testing", "done": 34, "total": 53, "rows": 578140, "note": "ONT 15m: 34,599 bars, testing 120 rules", "pct": 64.2, "updated": "2026-09-03T06:07:20Z"}

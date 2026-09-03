@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 10, "total": 53, "rows": 909680, "note": "BTC 15m: rule 86/120 (cf_triple_l1)", "failed": [], "pct": 18.9, "updated": "2026-09-03T10:45:23Z"}
+{"shard": 5, "stage": "testing", "done": 10, "total": 53, "rows": 916940, "note": "BTC 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 18.9, "updated": "2026-09-03T10:46:12Z"}

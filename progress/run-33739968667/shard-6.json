@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 33, "total": 53, "rows": 2660222, "note": "NUSTOCK 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 62.3, "updated": "2026-09-03T12:13:02Z"}
+{"shard": 6, "stage": "testing", "done": 34, "total": 53, "rows": 2719700, "note": "ON 15m: 30,158 bars, testing 120 rules", "failed": [], "pct": 64.2, "updated": "2026-09-03T12:13:49Z"}

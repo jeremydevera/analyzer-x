@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 27, "total": 52, "rows": 950862, "note": "LIGHT 4h: rule 3/120 (fade15)", "failed": [], "pct": 51.9, "updated": "2026-09-03T14:39:40Z"}
+{"shard": 10, "stage": "testing", "done": 32, "total": 52, "rows": 1028912, "note": "NICKEL 1h: rule 27/120 (aroon25)", "failed": [], "pct": 61.5, "updated": "2026-09-03T14:40:25Z"}

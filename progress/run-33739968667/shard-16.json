@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 37, "total": 52, "rows": 3532800, "note": "QQQSTOCK 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 71.2, "updated": "2026-09-03T13:05:06Z"}
+{"shard": 16, "stage": "testing", "done": 37, "total": 52, "rows": 3540960, "note": "QQQSTOCK 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 71.2, "updated": "2026-09-03T13:05:53Z"}

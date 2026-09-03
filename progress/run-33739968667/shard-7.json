@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 42, "total": 52, "rows": 3107578, "note": "SNPSSTOCK 15m: rule 38/120 (ao)", "failed": [], "pct": 80.8, "updated": "2026-09-03T12:16:39Z"}
+{"shard": 7, "stage": "testing", "done": 43, "total": 52, "rows": 3168026, "note": "SPK 15m: 34,624 bars, testing 120 rules", "failed": [], "pct": 82.7, "updated": "2026-09-03T12:17:25Z"}

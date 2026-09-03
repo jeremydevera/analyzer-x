@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 11, "total": 52, "rows": 942080, "note": "CC 15m: 29,464 bars, testing 120 rules", "failed": [], "pct": 21.2, "updated": "2026-09-03T10:38:44Z"}
+{"shard": 9, "stage": "testing", "done": 11, "total": 52, "rows": 944060, "note": "CC 15m: rule 3/120 (fade15)", "failed": [], "pct": 21.2, "updated": "2026-09-03T10:39:39Z"}

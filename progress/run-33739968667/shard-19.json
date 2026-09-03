@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 23, "total": 52, "rows": 2069438, "note": "ILV 1h: rule 86/120 (cf_triple_l1)", "failed": [], "pct": 44.2, "updated": "2026-09-03T11:54:22Z"}
+{"shard": 19, "stage": "testing", "done": 23, "total": 52, "rows": 2102658, "note": "ILV 1d: 394 bars, testing 120 rules", "failed": [], "pct": 44.2, "updated": "2026-09-03T11:55:15Z"}

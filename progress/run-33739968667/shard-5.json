@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 48, "total": 53, "rows": 3723756, "note": "UNI 15m: rule 1/120 (mom6)", "failed": [], "pct": 90.6, "updated": "2026-09-03T13:24:27Z"}
+{"shard": 5, "stage": "testing", "done": 48, "total": 53, "rows": 3726096, "note": "UNI 15m: rule 10/120 (sr_bounce)", "failed": [], "pct": 90.6, "updated": "2026-09-03T13:25:12Z"}

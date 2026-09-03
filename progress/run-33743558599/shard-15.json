@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 46, "total": 52, "rows": 1874492, "note": "TREE 4h: rule 13/120 (pivot)", "failed": [], "pct": 88.5, "updated": "2026-09-03T14:55:21Z"}
+{"shard": 15, "stage": "testing", "done": 48, "total": 52, "rows": 1941772, "note": "USTC 1h: rule 2/120 (mom15)", "failed": [], "pct": 92.3, "updated": "2026-09-03T14:56:07Z"}

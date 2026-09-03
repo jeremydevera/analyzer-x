@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 3, "total": 53, "rows": 186508, "note": "AKT 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 5.7, "updated": "2026-09-03T09:51:31Z"}
+{"shard": 3, "stage": "testing", "done": 3, "total": 53, "rows": 191908, "note": "AKT 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 5.7, "updated": "2026-09-03T09:52:21Z"}

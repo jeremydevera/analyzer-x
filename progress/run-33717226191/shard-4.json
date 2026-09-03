@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 29, "total": 53, "rows": 476320, "note": "MAV 15m: 34,598 bars, testing 120 rules", "pct": 54.7, "updated": "2026-09-03T05:56:29Z"}
+{"shard": 4, "stage": "testing", "done": 29, "total": 53, "rows": 479040, "note": "MAV 15m: rule 11/120 (sr_break)", "pct": 54.7, "updated": "2026-09-03T05:57:14Z"}

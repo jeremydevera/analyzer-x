@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 20, "total": 53, "rows": 1596974, "note": "GALA 15m: rule 13/120 (pivot)", "failed": [], "pct": 37.7, "updated": "2026-09-03T11:17:24Z"}
+{"shard": 0, "stage": "testing", "done": 20, "total": 53, "rows": 1601614, "note": "GALA 15m: rule 42/120 (rsidiv)", "failed": [], "pct": 37.7, "updated": "2026-09-03T11:18:10Z"}

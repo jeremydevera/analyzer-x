@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 12, "total": 52, "rows": 1143512, "note": "COLLECT 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 23.1, "updated": "2026-09-03T10:55:53Z"}
+{"shard": 18, "stage": "testing", "done": 12, "total": 52, "rows": 1152752, "note": "COLLECT 30m: rule 1/120 (mom6)", "failed": [], "pct": 23.1, "updated": "2026-09-03T10:56:43Z"}

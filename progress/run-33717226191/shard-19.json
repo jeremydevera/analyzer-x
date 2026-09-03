@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 6, "total": 52, "rows": 107440, "note": "A 15m: 34,595 bars, testing 120 rules", "pct": 11.5, "updated": "2026-09-03T05:14:04Z"}
+{"shard": 19, "stage": "testing", "done": 6, "total": 52, "rows": 115840, "note": "A 15m: rule 79/120 (cf_donch)", "pct": 11.5, "updated": "2026-09-03T05:14:49Z"}

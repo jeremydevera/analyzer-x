@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 2, "total": 52, "rows": 119680, "note": "AIOT 15m: rule 20/120 (stoch14)", "failed": [], "pct": 3.8, "updated": "2026-09-03T09:50:09Z"}
+{"shard": 16, "stage": "testing", "done": 2, "total": 52, "rows": 124080, "note": "AIOT 15m: rule 40/120 (crsi)", "failed": [], "pct": 3.8, "updated": "2026-09-03T09:50:56Z"}

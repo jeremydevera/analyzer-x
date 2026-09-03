@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 9, "total": 53, "rows": 672660, "note": "BNCSTOCK 1d: downloading candles", "failed": [], "pct": 17.0, "updated": "2026-09-03T10:16:04Z"}
+{"shard": 6, "stage": "testing", "done": 10, "total": 53, "rows": 673740, "note": "BTR 15m: rule 2/120 (mom15)", "failed": [], "pct": 18.9, "updated": "2026-09-03T10:16:58Z"}

@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 22, "total": 53, "rows": 1874240, "note": "HDSTOCK 15m: rule 45/120 (zscore20)", "failed": [], "pct": 41.5, "updated": "2026-09-03T11:25:42Z"}
+{"shard": 2, "stage": "testing", "done": 22, "total": 53, "rows": 1906640, "note": "HDSTOCK 1h: 2,661 bars, testing 120 rules", "failed": [], "pct": 41.5, "updated": "2026-09-03T11:26:28Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 17, "total": 52, "rows": 1780216, "note": "EUR 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 32.7, "updated": "2026-09-03T11:29:18Z"}
+{"shard": 17, "stage": "testing", "done": 18, "total": 52, "rows": 1821222, "note": "FLEXSTOCK 1h: rule 35/120 (willr14)", "failed": [], "pct": 34.6, "updated": "2026-09-03T11:30:03Z"}

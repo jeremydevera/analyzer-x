@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 35, "total": 52, "rows": 2551446, "note": "PEAQ 1h: rule 33/120 (heikin)", "failed": [], "pct": 67.3, "updated": "2026-09-03T11:47:58Z"}
+{"shard": 7, "stage": "testing", "done": 35, "total": 52, "rows": 2572326, "note": "PEAQ 4h: rule 26/120 (adx14)", "failed": [], "pct": 67.3, "updated": "2026-09-03T11:48:43Z"}

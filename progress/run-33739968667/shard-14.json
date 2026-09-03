@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 34, "total": 52, "rows": 3122496, "note": "ORCLSTOCK 15m: rule 6/120 (sweep30)", "failed": [], "pct": 65.4, "updated": "2026-09-03T13:16:58Z"}
+{"shard": 14, "stage": "testing", "done": 34, "total": 52, "rows": 3128376, "note": "ORCLSTOCK 15m: rule 48/120 (prank)", "failed": [], "pct": 65.4, "updated": "2026-09-03T13:17:43Z"}

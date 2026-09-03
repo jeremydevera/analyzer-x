@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 43, "total": 52, "rows": 745640, "note": "SPX 15m: rule 47/120 (ibs)", "pct": 82.7, "updated": "2026-09-03T06:27:13Z"}
+{"shard": 10, "stage": "testing", "done": 43, "total": 52, "rows": 752240, "note": "SPX 15m: rule 78/120 (cf_mom_l2)", "pct": 82.7, "updated": "2026-09-03T06:28:00Z"}

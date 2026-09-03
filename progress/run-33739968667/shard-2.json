@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 31, "total": 53, "rows": 2542936, "note": "MSTRSTOCK 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 58.5, "updated": "2026-09-03T12:02:35Z"}
+{"shard": 2, "stage": "testing", "done": 32, "total": 53, "rows": 2590544, "note": "NEMSTOCK 15m: rule 16/120 (keltner)", "failed": [], "pct": 60.4, "updated": "2026-09-03T12:03:20Z"}

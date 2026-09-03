@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 39, "total": 52, "rows": 782660, "note": "SAFE 15m: 34,599 bars, testing 120 rules", "pct": 75.0, "updated": "2026-09-03T06:13:59Z"}
+{"shard": 19, "stage": "testing", "done": 39, "total": 52, "rows": 786180, "note": "SAFE 15m: rule 10/120 (sr_bounce)", "pct": 75.0, "updated": "2026-09-03T06:14:44Z"}

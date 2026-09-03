@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 31, "total": 52, "rows": 3009344, "note": "NAS100 4h: rule 79/120 (cf_donch)", "failed": [], "pct": 59.6, "updated": "2026-09-03T12:33:54Z"}
+{"shard": 16, "stage": "testing", "done": 32, "total": 52, "rows": 3052840, "note": "NKESTOCK 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 61.5, "updated": "2026-09-03T12:34:39Z"}

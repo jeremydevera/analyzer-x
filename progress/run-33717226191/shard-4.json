@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 42, "total": 53, "rows": 752400, "note": "SNDKSTOCK 15m: rule 21/120 (cci20)", "pct": 79.2, "updated": "2026-09-03T06:27:14Z"}
+{"shard": 4, "stage": "testing", "done": 42, "total": 53, "rows": 768240, "note": "SNDKSTOCK 15m: rule 110/120 (cf_fundfade_l1)", "pct": 79.2, "updated": "2026-09-03T06:27:59Z"}

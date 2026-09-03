@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 3, "total": 52, "rows": 233338, "note": "AMP 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 5.8, "updated": "2026-09-03T09:55:23Z"}
+{"shard": 19, "stage": "testing", "done": 4, "total": 52, "rows": 246738, "note": "ARCSOL 15m: rule 1/120 (mom6)", "failed": [], "pct": 7.7, "updated": "2026-09-03T09:56:24Z"}

@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 5, "total": 53, "rows": 133624, "note": "ARKM 1h: rule 75/120 (relvolbrk)", "failed": [], "pct": 9.4, "updated": "2026-09-03T13:23:58Z"}
+{"shard": 2, "stage": "testing", "done": 6, "total": 53, "rows": 169704, "note": "AUD 1h: 7,994 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-03T13:24:57Z"}

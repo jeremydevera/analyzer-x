@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 2, "total": 52, "rows": 113302, "note": "AIXBT 15m: rule 16/120 (keltner)", "failed": [], "pct": 3.8, "updated": "2026-09-03T09:45:59Z"}
+{"shard": 19, "stage": "testing", "done": 2, "total": 52, "rows": 118302, "note": "AIXBT 15m: rule 41/120 (tsi)", "failed": [], "pct": 3.8, "updated": "2026-09-03T09:46:45Z"}

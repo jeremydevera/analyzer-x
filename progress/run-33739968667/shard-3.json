@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 3602098, "note": "TAG 15m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-03T18:51:52Z"}
+{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 3604978, "note": "TAG 30m: rule 3/120 (fade15)", "failed": [], "pct": 84.9, "updated": "2026-09-03T18:52:45Z"}

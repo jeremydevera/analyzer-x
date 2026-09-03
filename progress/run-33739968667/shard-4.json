@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 9, "total": 53, "rows": 779650, "note": "BMT 1h: rule 62/120 (ote)", "failed": [], "pct": 17.0, "updated": "2026-09-03T10:11:19Z"}
+{"shard": 4, "stage": "testing", "done": 9, "total": 53, "rows": 803190, "note": "BMT 4h: rule 46/120 (rsi2)", "failed": [], "pct": 17.0, "updated": "2026-09-03T10:12:04Z"}

@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 31, "total": 53, "rows": 2519396, "note": "MSTRSTOCK 1h: rule 1/120 (mom6)", "failed": [], "pct": 58.5, "updated": "2026-09-03T12:01:50Z"}
+{"shard": 2, "stage": "testing", "done": 31, "total": 53, "rows": 2542936, "note": "MSTRSTOCK 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 58.5, "updated": "2026-09-03T12:02:35Z"}

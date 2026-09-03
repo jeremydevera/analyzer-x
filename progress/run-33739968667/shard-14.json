@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 26, "total": 52, "rows": 2258804, "note": "KOMA 15m: rule 41/120 (tsi)", "failed": [], "pct": 50.0, "updated": "2026-09-03T12:13:32Z"}
+{"shard": 14, "stage": "testing", "done": 26, "total": 52, "rows": 2265464, "note": "KOMA 15m: rule 79/120 (cf_donch)", "failed": [], "pct": 50.0, "updated": "2026-09-03T12:14:18Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 40, "total": 52, "rows": 1413702, "note": "SANTOS 4h: rule 49/120 (vwaprev)", "failed": [], "pct": 76.9, "updated": "2026-09-03T14:39:58Z"}
+{"shard": 7, "stage": "testing", "done": 41, "total": 52, "rows": 1430202, "note": "SIREN 1h: rule 3/120 (fade15)", "failed": [], "pct": 78.8, "updated": "2026-09-03T14:40:43Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 24, "total": 52, "rows": 1986488, "note": "INX 15m: rule 33/120 (heikin)", "failed": [], "pct": 46.2, "updated": "2026-09-03T11:39:42Z"}
+{"shard": 9, "stage": "testing", "done": 24, "total": 52, "rows": 1996748, "note": "INX 15m: rule 91/120 (cf_soup)", "failed": [], "pct": 46.2, "updated": "2026-09-03T11:40:27Z"}

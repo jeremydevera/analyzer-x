@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 36, "total": 53, "rows": 2933472, "note": "PLSTOCK 4h: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 67.9, "updated": "2026-09-03T12:27:59Z"}
+{"shard": 3, "stage": "testing", "done": 37, "total": 53, "rows": 2944380, "note": "PTB 15m: rule 2/120 (mom15)", "failed": [], "pct": 69.8, "updated": "2026-09-03T12:29:05Z"}

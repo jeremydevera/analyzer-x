@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 18, "total": 53, "rows": 616366, "note": "FARTCOIN 1h: downloading candles", "failed": [], "pct": 34.0, "updated": "2026-09-03T14:01:54Z"}
+{"shard": 5, "stage": "testing", "done": 18, "total": 53, "rows": 621206, "note": "FARTCOIN 1h: rule 16/120 (keltner)", "failed": [], "pct": 34.0, "updated": "2026-09-03T14:02:39Z"}

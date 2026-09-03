@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 4, "total": 52, "rows": 398752, "note": "APR 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 7.7, "updated": "2026-09-03T10:10:18Z"}
+{"shard": 16, "stage": "testing", "done": 4, "total": 52, "rows": 409840, "note": "APR 1h: rule 51/120 (orb)", "failed": [], "pct": 7.7, "updated": "2026-09-03T10:11:03Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 5, "total": 52, "rows": 310146, "note": "ASTR 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 9.6, "updated": "2026-09-03T09:59:10Z"}
+{"shard": 14, "stage": "testing", "done": 6, "total": 52, "rows": 356378, "note": "AXPSTOCK 15m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 11.5, "updated": "2026-09-03T09:59:55Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 1, "total": 52, "rows": 27500, "note": "4 4h: rule 1/120 (mom6)", "failed": [], "pct": 1.9, "updated": "2026-09-03T13:28:14Z"}
+{"shard": 8, "stage": "testing", "done": 2, "total": 52, "rows": 55000, "note": "AEVO 1h: rule 3/120 (fade15)", "failed": [], "pct": 3.8, "updated": "2026-09-03T13:29:02Z"}

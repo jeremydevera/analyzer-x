@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 30, "total": 52, "rows": 2573688, "note": "MORPHO 15m: rule 85/120 (cf_triple)", "failed": [], "pct": 57.7, "updated": "2026-09-03T11:54:17Z"}
+{"shard": 11, "stage": "testing", "done": 30, "total": 52, "rows": 2581388, "note": "MORPHO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 57.7, "updated": "2026-09-03T11:55:12Z"}

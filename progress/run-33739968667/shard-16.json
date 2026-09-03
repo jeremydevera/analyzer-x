@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 1, "total": 52, "rows": 42500, "note": "ACE 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-03T09:45:12Z"}
+{"shard": 16, "stage": "testing", "done": 1, "total": 52, "rows": 49280, "note": "ACE 1h: rule 3/120 (fade15)", "failed": [], "pct": 1.9, "updated": "2026-09-03T09:45:58Z"}

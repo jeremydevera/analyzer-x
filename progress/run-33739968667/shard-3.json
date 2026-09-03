@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 50, "total": 53, "rows": 4085542, "note": "WENSTOCK 15m: 6,732 bars, testing 120 rules", "failed": [], "pct": 94.3, "updated": "2026-09-03T19:15:10Z"}
+{"shard": 3, "stage": "testing", "done": 51, "total": 53, "rows": 4132042, "note": "XLE 15m: rule 20/120 (stoch14)", "failed": [], "pct": 96.2, "updated": "2026-09-03T19:15:55Z"}

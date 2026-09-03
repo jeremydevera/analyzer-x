@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 8, "total": 53, "rows": 480450, "note": "BEAT 15m: rule 24/120 (psar)", "failed": [], "pct": 15.1, "updated": "2026-09-03T10:10:10Z"}
+{"shard": 1, "stage": "testing", "done": 8, "total": 53, "rows": 485250, "note": "BEAT 15m: rule 55/120 (nhigh50)", "failed": [], "pct": 15.1, "updated": "2026-09-03T10:10:55Z"}

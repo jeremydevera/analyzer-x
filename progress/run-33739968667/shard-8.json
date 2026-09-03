@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 22, "total": 52, "rows": 1596024, "note": "HIVE 15m: rule 20/120 (stoch14)", "failed": [], "pct": 42.3, "updated": "2026-09-03T11:03:18Z"}
+{"shard": 8, "stage": "testing", "done": 22, "total": 52, "rows": 1604164, "note": "HIVE 15m: rule 58/120 (bos)", "failed": [], "pct": 42.3, "updated": "2026-09-03T11:04:03Z"}

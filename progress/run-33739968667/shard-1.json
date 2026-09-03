@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 9, "total": 53, "rows": 587318, "note": "BLUAI 15m: rule 20/120 (stoch14)", "failed": [], "pct": 17.0, "updated": "2026-09-03T10:18:36Z"}
+{"shard": 1, "stage": "testing", "done": 9, "total": 53, "rows": 591718, "note": "BLUAI 15m: rule 40/120 (crsi)", "failed": [], "pct": 17.0, "updated": "2026-09-03T10:19:22Z"}

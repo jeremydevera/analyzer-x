@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 8, "total": 52, "rows": 296794, "note": "BIO 4h: rule 13/120 (pivot)", "failed": [], "pct": 15.4, "updated": "2026-09-03T13:41:10Z"}
+{"shard": 11, "stage": "testing", "done": 12, "total": 52, "rows": 387644, "note": "CMCSASTOCK 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 23.1, "updated": "2026-09-03T13:41:55Z"}

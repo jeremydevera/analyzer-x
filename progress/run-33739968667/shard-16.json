@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 16, "total": 52, "rows": 1489946, "note": "EGLD 15m: rule 115/120 (cf_diadx)", "failed": [], "pct": 30.8, "updated": "2026-09-03T10:56:22Z"}
+{"shard": 16, "stage": "testing", "done": 16, "total": 52, "rows": 1493246, "note": "EGLD 30m: rule 4/120 (trend50)", "failed": [], "pct": 30.8, "updated": "2026-09-03T10:57:09Z"}

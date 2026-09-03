@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 10, "total": 52, "rows": 939046, "note": "CAP 15m: rule 20/120 (stoch14)", "failed": [], "pct": 19.2, "updated": "2026-09-03T10:37:10Z"}
+{"shard": 17, "stage": "testing", "done": 10, "total": 52, "rows": 963526, "note": "CAP 30m: rule 18/120 (macd)", "failed": [], "pct": 19.2, "updated": "2026-09-03T10:37:55Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 43, "total": 52, "rows": 3572626, "note": "STBL 30m: rule 45/120 (zscore20)", "failed": [], "pct": 82.7, "updated": "2026-09-03T13:11:43Z"}
+{"shard": 18, "stage": "testing", "done": 43, "total": 52, "rows": 3586486, "note": "STBL 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 82.7, "updated": "2026-09-03T13:12:29Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 2, "total": 52, "rows": 132552, "note": "AERO 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-03T09:51:54Z"}
+{"shard": 7, "stage": "testing", "done": 2, "total": 52, "rows": 139752, "note": "AERO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 3.8, "updated": "2026-09-03T09:52:50Z"}

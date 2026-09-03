@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 8, "total": 52, "rows": 668294, "note": "BLEND 15m: rule 25/120 (ichimoku)", "failed": [], "pct": 15.4, "updated": "2026-09-03T10:22:34Z"}
+{"shard": 18, "stage": "testing", "done": 8, "total": 52, "rows": 685214, "note": "BLEND 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 15.4, "updated": "2026-09-03T10:23:19Z"}

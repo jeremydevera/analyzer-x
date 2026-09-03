@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 34, "total": 53, "rows": 2896926, "note": "ONDSSTOCK 1h: rule 32/120 (gmma)", "failed": [], "pct": 64.2, "updated": "2026-09-03T12:33:18Z"}
+{"shard": 1, "stage": "testing", "done": 35, "total": 53, "rows": 2940704, "note": "PANWSTOCK 15m: rule 15/120 (bbbreak)", "failed": [], "pct": 66.0, "updated": "2026-09-03T12:34:03Z"}

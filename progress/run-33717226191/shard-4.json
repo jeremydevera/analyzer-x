@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 22, "total": 53, "rows": 371300, "note": "HEMI 15m: rule 85/120 (cf_triple)", "pct": 41.5, "updated": "2026-09-03T05:40:43Z"}
+{"shard": 4, "stage": "testing", "done": 24, "total": 53, "rows": 374100, "note": "INIT 15m: 34,597 bars, testing 120 rules", "pct": 45.3, "updated": "2026-09-03T05:41:35Z"}

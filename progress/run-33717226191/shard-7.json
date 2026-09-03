@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 35, "total": 52, "rows": 550500, "note": "PENDLE 15m: rule 64/120 (hammer)", "pct": 67.3, "updated": "2026-09-03T05:51:28Z"}
+{"shard": 7, "stage": "testing", "done": 35, "total": 52, "rows": 561280, "note": "PENDLE 15m: rule 113/120 (cf_obretest_l1)", "pct": 67.3, "updated": "2026-09-03T05:52:13Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 1, "total": 53, "rows": 7920, "note": "0G 1h: rule 30/120 (kama10)", "failed": [], "pct": 1.9, "updated": "2026-09-03T13:53:31Z"}
+{"shard": 0, "stage": "testing", "done": 1, "total": 53, "rows": 27280, "note": "0G 4h: 2,105 bars, testing 120 rules", "failed": [], "pct": 1.9, "updated": "2026-09-03T13:54:17Z"}

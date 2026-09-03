@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 26, "total": 53, "rows": 934182, "note": "KAVA 1h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 49.1, "updated": "2026-09-03T14:20:20Z"}
+{"shard": 0, "stage": "testing", "done": 28, "total": 53, "rows": 983572, "note": "LPT 1h: downloading candles", "failed": [], "pct": 52.8, "updated": "2026-09-03T14:21:06Z"}

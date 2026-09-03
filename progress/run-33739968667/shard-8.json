@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 22, "total": 52, "rows": 1604164, "note": "HIVE 15m: rule 58/120 (bos)", "failed": [], "pct": 42.3, "updated": "2026-09-03T11:04:03Z"}
+{"shard": 8, "stage": "testing", "done": 22, "total": 52, "rows": 1615824, "note": "HIVE 15m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 42.3, "updated": "2026-09-03T11:04:49Z"}

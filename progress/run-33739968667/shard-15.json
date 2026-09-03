@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 11, "total": 52, "rows": 912414, "note": "CETUS 1d: 394 bars, testing 120 rules", "failed": [], "pct": 21.2, "updated": "2026-09-03T10:27:34Z"}
+{"shard": 15, "stage": "testing", "done": 13, "total": 52, "rows": 948368, "note": "CRWDSTOCK 15m: rule 83/120 (cf_maobv_l1)", "failed": [], "pct": 25.0, "updated": "2026-09-03T10:28:19Z"}

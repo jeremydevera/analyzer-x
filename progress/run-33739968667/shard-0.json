@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 49, "total": 53, "rows": 4410116, "note": "VANA 4h: rule 18/120 (macd)", "failed": [], "pct": 92.5, "updated": "2026-09-03T14:06:23Z"}
+{"shard": 0, "stage": "testing", "done": 50, "total": 53, "rows": 4444348, "note": "WCT 15m: 34,631 bars, testing 120 rules", "failed": [], "pct": 94.3, "updated": "2026-09-03T14:07:21Z"}

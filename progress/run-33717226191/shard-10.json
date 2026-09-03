@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 3, "total": 52, "rows": 49700, "note": "ALL 15m: rule 4/120 (trend50)", "pct": 5.8, "updated": "2026-09-03T05:08:49Z"}
+{"shard": 10, "stage": "testing", "done": 3, "total": 52, "rows": 55200, "note": "ALL 15m: rule 29/120 (hull20)", "pct": 5.8, "updated": "2026-09-03T05:09:36Z"}

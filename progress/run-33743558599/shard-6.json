@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 19, "total": 53, "rows": 576326, "note": "FOGO 1h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 35.8, "updated": "2026-09-03T14:03:16Z"}
+{"shard": 6, "stage": "testing", "done": 20, "total": 53, "rows": 615638, "note": "GESTOCK 4h: 1,602 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-03T14:04:05Z"}

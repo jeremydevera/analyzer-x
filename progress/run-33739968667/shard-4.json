@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 25, "total": 53, "rows": 1883030, "note": "JCT 15m: rule 1/120 (mom6)", "failed": [], "pct": 47.2, "updated": "2026-09-03T11:15:20Z"}
+{"shard": 4, "stage": "testing", "done": 25, "total": 53, "rows": 1884430, "note": "JCT 15m: rule 4/120 (trend50)", "failed": [], "pct": 47.2, "updated": "2026-09-03T11:16:08Z"}

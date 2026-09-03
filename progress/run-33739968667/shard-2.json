@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 5, "total": 53, "rows": 323166, "note": "ARKM 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 9.4, "updated": "2026-09-03T10:04:39Z"}
+{"shard": 2, "stage": "testing", "done": 5, "total": 53, "rows": 334046, "note": "ARKM 1h: rule 2/120 (mom15)", "failed": [], "pct": 9.4, "updated": "2026-09-03T10:05:28Z"}

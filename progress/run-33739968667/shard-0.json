@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 2, "total": 53, "rows": 197496, "note": "ADA 4h: rule 27/120 (aroon25)", "failed": [], "pct": 3.8, "updated": "2026-09-03T09:55:28Z"}
+{"shard": 0, "stage": "testing", "done": 4, "total": 53, "rows": 249428, "note": "AMZNSTOCK 15m: 34,545 bars, testing 120 rules", "failed": [], "pct": 7.5, "updated": "2026-09-03T09:56:21Z"}

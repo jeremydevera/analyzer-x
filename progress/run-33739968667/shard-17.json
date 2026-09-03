@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 30, "total": 52, "rows": 2820858, "note": "MRNASTOCK 30m: rule 1/120 (mom6)", "failed": [], "pct": 57.7, "updated": "2026-09-03T12:25:38Z"}
+{"shard": 17, "stage": "testing", "done": 32, "total": 52, "rows": 2905258, "note": "NMR 15m: 34,624 bars, testing 120 rules", "failed": [], "pct": 61.5, "updated": "2026-09-03T12:26:24Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 11, "total": 52, "rows": 468018, "note": "CHF 4h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 21.2, "updated": "2026-09-03T14:29:40Z"}
+{"shard": 19, "stage": "testing", "done": 12, "total": 52, "rows": 480558, "note": "COOKIE 1h: rule 27/120 (aroon25)", "failed": [], "pct": 23.1, "updated": "2026-09-03T14:30:26Z"}

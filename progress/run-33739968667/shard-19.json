@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 22, "total": 52, "rows": 1902714, "note": "HOT 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 42.3, "updated": "2026-09-03T11:43:30Z"}
+{"shard": 19, "stage": "testing", "done": 22, "total": 52, "rows": 1906894, "note": "HOT 30m: rule 13/120 (pivot)", "failed": [], "pct": 42.3, "updated": "2026-09-03T11:44:16Z"}

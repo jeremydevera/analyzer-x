@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 10, "total": 52, "rows": 198640, "note": "BXSTOCK 15m: rule 84/120 (cf_maobv_l2)", "pct": 19.2, "updated": "2026-09-03T05:25:05Z"}
+{"shard": 12, "stage": "testing", "done": 13, "total": 52, "rows": 215900, "note": "CROSS 15m: 34,596 bars, testing 120 rules", "pct": 25.0, "updated": "2026-09-03T05:26:00Z"}

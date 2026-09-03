@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 5, "total": 52, "rows": 216282, "note": "ATH 4h: rule 76/120 (cf_mom)", "failed": [], "pct": 9.6, "updated": "2026-09-03T14:04:54Z"}
+{"shard": 17, "stage": "testing", "done": 7, "total": 52, "rows": 248864, "note": "BB 1h: rule 1/120 (mom6)", "failed": [], "pct": 13.5, "updated": "2026-09-03T14:05:40Z"}

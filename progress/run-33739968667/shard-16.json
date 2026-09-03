@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 22, "total": 52, "rows": 2075862, "note": "HOLO 30m: rule 43/120 (macddiv)", "failed": [], "pct": 42.3, "updated": "2026-09-03T11:35:56Z"}
+{"shard": 16, "stage": "testing", "done": 22, "total": 52, "rows": 2089942, "note": "HOLO 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 42.3, "updated": "2026-09-03T11:36:42Z"}

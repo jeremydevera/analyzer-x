@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 40, "total": 52, "rows": 3761864, "note": "SHARE 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 76.9, "updated": "2026-09-03T13:17:36Z"}
+{"shard": 16, "stage": "testing", "done": 41, "total": 52, "rows": 3774616, "note": "SKY 15m: 34,628 bars, testing 120 rules", "failed": [], "pct": 78.8, "updated": "2026-09-03T13:18:28Z"}

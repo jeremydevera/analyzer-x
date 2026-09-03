@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 43, "total": 52, "rows": 3804786, "note": "SQD 15m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 82.7, "updated": "2026-09-03T12:37:46Z"}
+{"shard": 13, "stage": "testing", "done": 43, "total": 52, "rows": 3807906, "note": "SQD 30m: rule 2/120 (mom15)", "failed": [], "pct": 82.7, "updated": "2026-09-03T12:38:32Z"}

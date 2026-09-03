@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 10, "total": 52, "rows": 864674, "note": "BXSTOCK 1h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 19.2, "updated": "2026-09-03T10:24:29Z"}
+{"shard": 12, "stage": "testing", "done": 11, "total": 52, "rows": 926924, "note": "CELHSTOCK 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 21.2, "updated": "2026-09-03T10:25:14Z"}

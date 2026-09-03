@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 4, "total": 53, "rows": 358744, "note": "ANTHROPIC 1h: rule 43/120 (macddiv)", "failed": [], "pct": 7.5, "updated": "2026-09-03T09:57:50Z"}
+{"shard": 6, "stage": "testing", "done": 6, "total": 53, "rows": 402640, "note": "AVAVSTOCK 15m: rule 41/120 (tsi)", "failed": [], "pct": 11.3, "updated": "2026-09-03T09:58:35Z"}

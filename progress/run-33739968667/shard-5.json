@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 11, "total": 53, "rows": 1066428, "note": "CBRSSTOCK 1h: rule 38/120 (ao)", "failed": [], "pct": 20.8, "updated": "2026-09-03T10:51:31Z"}
+{"shard": 5, "stage": "testing", "done": 12, "total": 53, "rows": 1113592, "note": "CHZ 15m: rule 1/120 (mom6)", "failed": [], "pct": 22.6, "updated": "2026-09-03T10:52:19Z"}

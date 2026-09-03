@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 24, "total": 52, "rows": 410780, "note": "IONQSTOCK 15m: 13,522 bars, testing 120 rules", "pct": 46.2, "updated": "2026-09-03T05:47:36Z"}
+{"shard": 11, "stage": "testing", "done": 24, "total": 52, "rows": 423740, "note": "IONQSTOCK 15m: rule 75/120 (relvolbrk)", "pct": 46.2, "updated": "2026-09-03T05:48:21Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 10, "total": 52, "rows": 874680, "note": "BTX 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 19.2, "updated": "2026-09-03T10:27:17Z"}
+{"shard": 8, "stage": "testing", "done": 11, "total": 52, "rows": 903890, "note": "CCLSTOCK 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 21.2, "updated": "2026-09-03T10:28:02Z"}

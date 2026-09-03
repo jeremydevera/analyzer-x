@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 32, "total": 53, "rows": 2606624, "note": "NES 30m: rule 1/120 (mom6)", "failed": [], "pct": 60.4, "updated": "2026-09-03T12:03:21Z"}
+{"shard": 4, "stage": "testing", "done": 33, "total": 53, "rows": 2661044, "note": "NTRASTOCK 15m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 62.3, "updated": "2026-09-03T12:04:06Z"}

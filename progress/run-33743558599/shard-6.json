@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 3, "total": 53, "rows": 103774, "note": "ALGO 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 5.7, "updated": "2026-09-03T13:49:20Z"}
+{"shard": 6, "stage": "testing", "done": 4, "total": 53, "rows": 151914, "note": "ANTHROPIC 4h: 855 bars, testing 120 rules", "failed": [], "pct": 7.5, "updated": "2026-09-03T13:50:07Z"}

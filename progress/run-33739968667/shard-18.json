@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 13, "total": 52, "rows": 1235868, "note": "CSOPSAMSUNG2L 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 25.0, "updated": "2026-09-03T10:59:44Z"}
+{"shard": 18, "stage": "testing", "done": 14, "total": 52, "rows": 1262928, "note": "DATA 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 26.9, "updated": "2026-09-03T11:00:29Z"}

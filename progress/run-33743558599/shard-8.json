@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 30, "total": 52, "rows": 1051022, "note": "MONAD 1h: 7,929 bars, testing 120 rules", "failed": [], "pct": 57.7, "updated": "2026-09-03T14:02:12Z"}
+{"shard": 8, "stage": "testing", "done": 30, "total": 52, "rows": 1067456, "note": "MONAD 1h: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 57.7, "updated": "2026-09-03T14:02:58Z"}

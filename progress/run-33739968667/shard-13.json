@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 49, "total": 52, "rows": 4298920, "note": "VTHO 30m: rule 32/120 (gmma)", "failed": [], "pct": 94.2, "updated": "2026-09-03T13:03:42Z"}
+{"shard": 13, "stage": "testing", "done": 49, "total": 52, "rows": 4313440, "note": "VTHO 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 94.2, "updated": "2026-09-03T13:04:27Z"}

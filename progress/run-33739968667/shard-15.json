@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 22, "total": 52, "rows": 1498598, "note": "HNT 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 42.3, "updated": "2026-09-03T10:55:52Z"}
+{"shard": 15, "stage": "testing", "done": 22, "total": 52, "rows": 1531818, "note": "HNT 1d: 394 bars, testing 120 rules", "failed": [], "pct": 42.3, "updated": "2026-09-03T10:56:39Z"}

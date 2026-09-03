@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 25, "total": 52, "rows": 2322422, "note": "KAITO 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 48.1, "updated": "2026-09-03T12:05:06Z"}
+{"shard": 17, "stage": "testing", "done": 25, "total": 52, "rows": 2329322, "note": "KAITO 1h: rule 9/120 (fib382)", "failed": [], "pct": 48.1, "updated": "2026-09-03T12:05:51Z"}

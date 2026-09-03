@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 17, "total": 53, "rows": 1481936, "note": "ENS 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-03T11:16:52Z"}
+{"shard": 5, "stage": "testing", "done": 17, "total": 53, "rows": 1490516, "note": "ENS 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-03T11:17:46Z"}

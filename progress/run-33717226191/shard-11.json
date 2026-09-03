@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 2, "total": 52, "rows": 46680, "note": "AGT 15m: rule 115/120 (cf_diadx)", "pct": 3.8, "updated": "2026-09-03T05:09:40Z"}
+{"shard": 11, "stage": "testing", "done": 3, "total": 52, "rows": 49000, "note": "ALPINE 15m: rule 2/120 (mom15)", "pct": 5.8, "updated": "2026-09-03T05:10:33Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 1, "total": 52, "rows": 0, "note": "ABNBSTOCK 1d: downloading candles", "pct": 1.9, "updated": "2026-09-03T04:48:53Z"}
+{"shard": 15, "stage": "testing", "done": 7, "total": 52, "rows": 65076, "note": "BAT 1d: rule 105/120 (cf_eqhl_l2)", "pct": 13.5, "updated": "2026-09-03T04:49:38Z"}

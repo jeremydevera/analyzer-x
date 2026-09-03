@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 3, "total": 53, "rows": 292946, "note": "ALGO 4h: rule 104/120 (cf_eqhl_l1)", "failed": [], "pct": 5.7, "updated": "2026-09-03T09:55:30Z"}
+{"shard": 6, "stage": "testing", "done": 4, "total": 53, "rows": 312526, "note": "ANTHROPIC 15m: rule 16/120 (keltner)", "failed": [], "pct": 7.5, "updated": "2026-09-03T09:56:15Z"}

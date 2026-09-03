@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 44, "total": 53, "rows": 3745302, "note": "STXSTOCK 4h: rule 3/120 (fade15)", "failed": [], "pct": 83.0, "updated": "2026-09-03T13:19:24Z"}
+{"shard": 6, "stage": "testing", "done": 46, "total": 53, "rows": 3785530, "note": "TNSR 15m: rule 1/120 (mom6)", "failed": [], "pct": 86.8, "updated": "2026-09-03T13:20:28Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 30, "total": 52, "rows": 2470334, "note": "MRVLSTOCK 1h: rule 4/120 (trend50)", "failed": [], "pct": 57.7, "updated": "2026-09-03T12:02:14Z"}
+{"shard": 18, "stage": "testing", "done": 30, "total": 52, "rows": 2514774, "note": "MRVLSTOCK 4h: rule 83/120 (cf_maobv_l1)", "failed": [], "pct": 57.7, "updated": "2026-09-03T12:02:59Z"}

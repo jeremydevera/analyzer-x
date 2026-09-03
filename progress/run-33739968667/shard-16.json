@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 23, "total": 52, "rows": 2181820, "note": "IDOL 30m: rule 33/120 (heikin)", "failed": [], "pct": 44.2, "updated": "2026-09-03T11:43:47Z"}
+{"shard": 16, "stage": "testing", "done": 23, "total": 52, "rows": 2193020, "note": "IDOL 30m: rule 91/120 (cf_soup)", "failed": [], "pct": 44.2, "updated": "2026-09-03T11:44:32Z"}

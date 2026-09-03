@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 42, "total": 53, "rows": 1501970, "note": "SMCISTOCK 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 79.2, "updated": "2026-09-03T13:28:33Z"}
+{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 1562090, "note": "S 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-03T13:29:25Z"}

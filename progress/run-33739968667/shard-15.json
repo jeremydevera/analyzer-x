@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 38, "total": 52, "rows": 3052370, "note": "RENDER 15m: 34,625 bars, testing 120 rules", "failed": [], "pct": 73.1, "updated": "2026-09-03T12:34:13Z"}
+{"shard": 15, "stage": "testing", "done": 38, "total": 52, "rows": 3054770, "note": "RENDER 15m: rule 9/120 (fib382)", "failed": [], "pct": 73.1, "updated": "2026-09-03T12:34:59Z"}

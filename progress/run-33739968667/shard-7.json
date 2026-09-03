@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 3, "total": 52, "rows": 263488, "note": "ALICE 30m: rule 12/120 (donchian20)", "failed": [], "pct": 5.8, "updated": "2026-09-03T10:02:33Z"}
+{"shard": 7, "stage": "testing", "done": 3, "total": 52, "rows": 271848, "note": "ALICE 30m: rule 51/120 (orb)", "failed": [], "pct": 5.8, "updated": "2026-09-03T10:03:18Z"}

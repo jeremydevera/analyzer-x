@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 5, "total": 53, "rows": 64280, "note": "ARKM 15m: 34,595 bars, testing 120 rules", "pct": 9.4, "updated": "2026-09-03T05:11:28Z"}
+{"shard": 2, "stage": "testing", "done": 5, "total": 53, "rows": 66080, "note": "ARKM 15m: rule 3/120 (fade15)", "pct": 9.4, "updated": "2026-09-03T05:12:22Z"}

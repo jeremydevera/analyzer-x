@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 28, "total": 52, "rows": 1021070, "note": "MAGIC 4h: rule 76/120 (cf_mom)", "failed": [], "pct": 53.8, "updated": "2026-09-03T14:13:55Z"}
+{"shard": 13, "stage": "testing", "done": 29, "total": 52, "rows": 1049830, "note": "METASTOCK 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 55.8, "updated": "2026-09-03T14:14:40Z"}

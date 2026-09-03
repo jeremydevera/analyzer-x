@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 3580356, "note": "TAG 15m: rule 41/120 (tsi)", "failed": [], "pct": 84.9, "updated": "2026-09-03T13:08:03Z"}
+{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 3586236, "note": "TAG 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-03T13:08:49Z"}

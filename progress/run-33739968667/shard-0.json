@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 34, "total": 53, "rows": 2746870, "note": "ONDO 15m: 34,624 bars, testing 120 rules", "failed": [], "pct": 64.2, "updated": "2026-09-03T12:15:53Z"}
+{"shard": 0, "stage": "testing", "done": 34, "total": 53, "rows": 2748490, "note": "ONDO 15m: rule 3/120 (fade15)", "failed": [], "pct": 64.2, "updated": "2026-09-03T12:16:39Z"}

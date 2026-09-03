@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 53, "total": 53, "rows": 4540580, "note": "ZMSTOCK 15m: rule 40/120 (crsi)", "failed": [], "pct": 100.0, "updated": "2026-09-03T14:01:20Z"}
+{"shard": 2, "stage": "testing", "done": 53, "total": 53, "rows": 4588322, "note": "ZMSTOCK 1h: rule 76/120 (cf_mom)", "failed": [], "pct": 100.0, "updated": "2026-09-03T14:02:05Z"}

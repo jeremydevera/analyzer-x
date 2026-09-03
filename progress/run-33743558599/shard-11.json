@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 13, "total": 52, "rows": 420224, "note": "CROSS 4h: rule 1/120 (mom6)", "failed": [], "pct": 25.0, "updated": "2026-09-03T13:43:27Z"}
+{"shard": 11, "stage": "testing", "done": 16, "total": 52, "rows": 465952, "note": "EDEN 1h: rule 1/120 (mom6)", "failed": [], "pct": 30.8, "updated": "2026-09-03T13:44:17Z"}

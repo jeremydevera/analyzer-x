@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 24, "total": 53, "rows": 1966628, "note": "INDEX 30m: 2,411 bars, testing 120 rules", "failed": [], "pct": 45.3, "updated": "2026-09-03T11:27:14Z"}
+{"shard": 2, "stage": "testing", "done": 25, "total": 53, "rows": 1967708, "note": "JASMY 15m: rule 2/120 (mom15)", "failed": [], "pct": 47.2, "updated": "2026-09-03T11:28:06Z"}

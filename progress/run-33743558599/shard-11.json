@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 6, "total": 52, "rows": 239154, "note": "AWE 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 11.5, "updated": "2026-09-03T13:38:53Z"}
+{"shard": 11, "stage": "testing", "done": 8, "total": 52, "rows": 266214, "note": "BIO 1h: rule 1/120 (mom6)", "failed": [], "pct": 15.4, "updated": "2026-09-03T13:39:39Z"}

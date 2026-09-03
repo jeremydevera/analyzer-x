@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 35, "total": 53, "rows": 2952944, "note": "PANWSTOCK 15m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 66.0, "updated": "2026-09-03T12:34:48Z"}
+{"shard": 1, "stage": "testing", "done": 35, "total": 53, "rows": 2973644, "note": "PANWSTOCK 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 66.0, "updated": "2026-09-03T12:35:34Z"}

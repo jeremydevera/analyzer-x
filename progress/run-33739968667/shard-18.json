@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 28, "total": 52, "rows": 2366334, "note": "MARASTOCK 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 53.8, "updated": "2026-09-03T11:57:42Z"}
+{"shard": 18, "stage": "testing", "done": 29, "total": 52, "rows": 2420454, "note": "MICRODUCK 30m: downloading candles", "failed": [], "pct": 55.8, "updated": "2026-09-03T11:58:28Z"}

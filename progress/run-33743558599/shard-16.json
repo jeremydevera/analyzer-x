@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 38, "total": 52, "rows": 1600810, "note": "RENDER 4h: rule 44/120 (elder)", "failed": [], "pct": 73.1, "updated": "2026-09-03T14:55:28Z"}
+{"shard": 16, "stage": "testing", "done": 39, "total": 52, "rows": 1620550, "note": "RPL 1h: rule 21/120 (cci20)", "failed": [], "pct": 75.0, "updated": "2026-09-03T14:56:14Z"}

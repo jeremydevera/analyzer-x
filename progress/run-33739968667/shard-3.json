@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 19, "total": 53, "rows": 1405262, "note": "FLUID 15m: rule 52/120 (nr7)", "failed": [], "pct": 35.8, "updated": "2026-09-03T17:03:00Z"}
+{"shard": 3, "stage": "testing", "done": 19, "total": 53, "rows": 1414262, "note": "FLUID 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 35.8, "updated": "2026-09-03T17:03:47Z"}

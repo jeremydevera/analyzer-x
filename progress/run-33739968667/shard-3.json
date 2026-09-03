@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 51, "total": 53, "rows": 4132042, "note": "XLE 15m: rule 20/120 (stoch14)", "failed": [], "pct": 96.2, "updated": "2026-09-03T19:15:55Z"}
+{"shard": 3, "stage": "testing", "done": 51, "total": 53, "rows": 4168622, "note": "XLE 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-03T19:16:41Z"}

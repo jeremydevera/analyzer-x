@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 28, "total": 53, "rows": 1011072, "note": "LPT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-03T14:22:45Z"}
+{"shard": 0, "stage": "testing", "done": 31, "total": 53, "rows": 1074300, "note": "MSFU 1h: downloading candles", "failed": [], "pct": 58.5, "updated": "2026-09-03T14:23:31Z"}

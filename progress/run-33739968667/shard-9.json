@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 32, "total": 52, "rows": 2608160, "note": "NGAS 15m: rule 100/120 (cf_soup1)", "failed": [], "pct": 61.5, "updated": "2026-09-03T12:14:38Z"}
+{"shard": 9, "stage": "testing", "done": 32, "total": 52, "rows": 2616040, "note": "NGAS 30m: rule 23/120 (supertrend)", "failed": [], "pct": 61.5, "updated": "2026-09-03T12:15:23Z"}

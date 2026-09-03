@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 23, "total": 52, "rows": 1565282, "note": "ICX 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 44.2, "updated": "2026-09-03T10:59:54Z"}
+{"shard": 15, "stage": "testing", "done": 23, "total": 52, "rows": 1571002, "note": "ICX 30m: rule 20/120 (stoch14)", "failed": [], "pct": 44.2, "updated": "2026-09-03T11:00:41Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 47, "total": 52, "rows": 1665000, "note": "TUT 1h: rule 31/120 (trix15)", "failed": [], "pct": 90.4, "updated": "2026-09-03T14:14:00Z"}
+{"shard": 11, "stage": "testing", "done": 47, "total": 52, "rows": 1682200, "note": "TUT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 90.4, "updated": "2026-09-03T14:14:52Z"}

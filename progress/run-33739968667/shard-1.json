@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 16, "total": 53, "rows": 1159376, "note": "DOT 30m: rule 20/120 (stoch14)", "failed": [], "pct": 30.2, "updated": "2026-09-03T11:00:48Z"}
+{"shard": 1, "stage": "testing", "done": 16, "total": 53, "rows": 1169776, "note": "DOT 30m: rule 73/120 (volspike)", "failed": [], "pct": 30.2, "updated": "2026-09-03T11:01:33Z"}

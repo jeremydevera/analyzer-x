@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 22, "total": 52, "rows": 1762672, "note": "HK50 30m: rule 26/120 (adx14)", "failed": [], "pct": 42.3, "updated": "2026-09-03T11:07:02Z"}
+{"shard": 11, "stage": "testing", "done": 22, "total": 52, "rows": 1798688, "note": "HK50 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 42.3, "updated": "2026-09-03T11:07:47Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 12, "total": 52, "rows": 1014062, "note": "CLANKER 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 23.1, "updated": "2026-09-03T10:35:07Z"}
+{"shard": 8, "stage": "testing", "done": 14, "total": 52, "rows": 1054454, "note": "CVC 15m: 34,617 bars, testing 120 rules", "failed": [], "pct": 26.9, "updated": "2026-09-03T10:36:04Z"}

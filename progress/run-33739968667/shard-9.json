@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 10, "total": 52, "rows": 880524, "note": "BULLA 1h: rule 20/120 (stoch14)", "failed": [], "pct": 19.2, "updated": "2026-09-03T10:36:59Z"}
+{"shard": 9, "stage": "testing", "done": 10, "total": 52, "rows": 901644, "note": "BULLA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 19.2, "updated": "2026-09-03T10:37:52Z"}

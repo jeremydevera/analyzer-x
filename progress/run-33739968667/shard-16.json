@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 18, "total": 52, "rows": 1769766, "note": "FILECOIN 1h: rule 69/120 (obv20)", "failed": [], "pct": 34.6, "updated": "2026-09-03T11:16:47Z"}
+{"shard": 16, "stage": "testing", "done": 18, "total": 52, "rows": 1805626, "note": "FILECOIN 4h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 34.6, "updated": "2026-09-03T11:17:32Z"}

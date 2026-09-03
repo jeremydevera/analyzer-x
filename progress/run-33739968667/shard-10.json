@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 17, "total": 52, "rows": 1322510, "note": "ESP 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 32.7, "updated": "2026-09-03T10:51:41Z"}
+{"shard": 10, "stage": "testing", "done": 17, "total": 52, "rows": 1332630, "note": "ESP 30m: rule 1/120 (mom6)", "failed": [], "pct": 32.7, "updated": "2026-09-03T10:52:26Z"}

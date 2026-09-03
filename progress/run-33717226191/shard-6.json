@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 32, "total": 52, "rows": 596440, "note": "NEWT 15m: rule 117/120 (cf_diadx_l2)", "pct": 61.5, "updated": "2026-09-03T06:14:53Z"}
+{"shard": 6, "stage": "testing", "done": 34, "total": 52, "rows": 616440, "note": "OPENAI 15m: rule 5/120 (rsi14)", "pct": 65.4, "updated": "2026-09-03T06:15:38Z"}

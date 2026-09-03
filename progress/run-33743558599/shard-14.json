@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 28, "total": 52, "rows": 944024, "note": "MAGMA 4h: rule 52/120 (nr7)", "failed": [], "pct": 53.8, "updated": "2026-09-03T14:43:31Z"}
+{"shard": 14, "stage": "testing", "done": 29, "total": 52, "rows": 960458, "note": "METIS 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 55.8, "updated": "2026-09-03T14:44:16Z"}

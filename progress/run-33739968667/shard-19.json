@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 49, "total": 52, "rows": 4404508, "note": "WAXP 15m: rule 17/120 (atrbreak)", "failed": [], "pct": 94.2, "updated": "2026-09-03T13:57:11Z"}
+{"shard": 19, "stage": "testing", "done": 49, "total": 52, "rows": 4410228, "note": "WAXP 15m: rule 43/120 (macddiv)", "failed": [], "pct": 94.2, "updated": "2026-09-03T13:57:56Z"}

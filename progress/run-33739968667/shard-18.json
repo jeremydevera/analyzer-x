@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 10, "total": 52, "rows": 909080, "note": "CARV 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 19.2, "updated": "2026-09-03T10:39:01Z"}
+{"shard": 18, "stage": "testing", "done": 10, "total": 52, "rows": 913920, "note": "CARV 30m: rule 16/120 (keltner)", "failed": [], "pct": 19.2, "updated": "2026-09-03T10:39:47Z"}

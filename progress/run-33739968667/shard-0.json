@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 21, "total": 53, "rows": 1785494, "note": "GOAT 4h: rule 40/120 (crsi)", "failed": [], "pct": 39.6, "updated": "2026-09-03T11:32:01Z"}
+{"shard": 0, "stage": "testing", "done": 23, "total": 53, "rows": 1871710, "note": "HPESTOCK 15m: 8,928 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-03T11:32:49Z"}

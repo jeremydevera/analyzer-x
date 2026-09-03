@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 6, "total": 53, "rows": 513476, "note": "AURASOL 4h: 704 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-03T16:21:23Z"}
+{"shard": 3, "stage": "testing", "done": 7, "total": 53, "rows": 526254, "note": "BABY 15m: rule 2/120 (mom15)", "failed": [], "pct": 13.2, "updated": "2026-09-03T16:22:19Z"}

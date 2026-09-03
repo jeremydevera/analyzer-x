@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 19, "total": 53, "rows": 1556610, "note": "FLOKI 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-03T11:15:42Z"}
+{"shard": 0, "stage": "testing", "done": 20, "total": 53, "rows": 1594414, "note": "GALA 15m: rule 1/120 (mom6)", "failed": [], "pct": 37.7, "updated": "2026-09-03T11:16:39Z"}

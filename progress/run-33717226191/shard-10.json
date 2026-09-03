@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 38, "total": 52, "rows": 685240, "note": "RECALL 15m: rule 111/120 (cf_fundfade_l2)", "pct": 73.1, "updated": "2026-09-03T06:18:18Z"}
+{"shard": 10, "stage": "testing", "done": 41, "total": 52, "rows": 694480, "note": "SKL 15m: 34,600 bars, testing 120 rules", "pct": 78.8, "updated": "2026-09-03T06:19:05Z"}

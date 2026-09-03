@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 37, "total": 52, "rows": 771140, "note": "Q 15m: rule 99/120 (cf_ttm_l2)", "pct": 71.2, "updated": "2026-09-03T06:13:11Z"}
+{"shard": 19, "stage": "testing", "done": 39, "total": 52, "rows": 782660, "note": "SAFE 15m: 34,599 bars, testing 120 rules", "pct": 75.0, "updated": "2026-09-03T06:13:59Z"}

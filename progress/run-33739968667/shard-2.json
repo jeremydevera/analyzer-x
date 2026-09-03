@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 47, "total": 53, "rows": 3914548, "note": "TRX 15m: rule 59/120 (choch)", "failed": [], "pct": 88.7, "updated": "2026-09-03T13:26:42Z"}
+{"shard": 2, "stage": "testing", "done": 47, "total": 53, "rows": 3922688, "note": "TRX 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 88.7, "updated": "2026-09-03T13:27:29Z"}

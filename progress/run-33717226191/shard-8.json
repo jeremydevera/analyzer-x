@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 2, "total": 52, "rows": 45000, "note": "AEVO 15m: rule 96/120 (cf_emarsi_l2)", "pct": 3.8, "updated": "2026-09-03T05:11:02Z"}
+{"shard": 8, "stage": "testing", "done": 5, "total": 52, "rows": 54800, "note": "AR 15m: 34,595 bars, testing 120 rules", "pct": 9.6, "updated": "2026-09-03T05:11:56Z"}

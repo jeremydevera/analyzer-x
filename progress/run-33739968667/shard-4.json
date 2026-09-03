@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 17, "total": 53, "rows": 1303890, "note": "ENSO 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-03T10:39:08Z"}
+{"shard": 4, "stage": "testing", "done": 17, "total": 53, "rows": 1311810, "note": "ENSO 15m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-03T10:39:53Z"}

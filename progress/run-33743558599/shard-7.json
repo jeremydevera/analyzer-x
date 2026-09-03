@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 24, "total": 52, "rows": 799614, "note": "INTUSTOCK 1h: 4,544 bars, testing 120 rules", "failed": [], "pct": 46.2, "updated": "2026-09-03T14:25:18Z"}
+{"shard": 7, "stage": "testing", "done": 26, "total": 52, "rows": 855270, "note": "KIOXIASTOCK 1h: rule 54/120 (fractal5)", "failed": [], "pct": 50.0, "updated": "2026-09-03T14:26:03Z"}

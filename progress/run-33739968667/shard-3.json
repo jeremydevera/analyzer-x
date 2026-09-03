@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 3594516, "note": "TAG 30m: rule 12/120 (donchian20)", "failed": [], "pct": 84.9, "updated": "2026-09-03T13:10:27Z"}
+{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 3602436, "note": "TAG 30m: rule 57/120 (orderblock)", "failed": [], "pct": 84.9, "updated": "2026-09-03T13:11:12Z"}

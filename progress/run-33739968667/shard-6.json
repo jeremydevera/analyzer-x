@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 47, "total": 53, "rows": 3914942, "note": "TSMSTOCK 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 88.7, "updated": "2026-09-03T13:30:40Z"}
+{"shard": 6, "stage": "testing", "done": 47, "total": 53, "rows": 3931622, "note": "TSMSTOCK 30m: rule 45/120 (zscore20)", "failed": [], "pct": 88.7, "updated": "2026-09-03T13:31:25Z"}

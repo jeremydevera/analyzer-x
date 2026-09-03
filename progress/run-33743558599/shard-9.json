@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 48, "total": 52, "rows": 1746836, "note": "UP 4h: rule 2/120 (mom15)", "failed": [], "pct": 92.3, "updated": "2026-09-03T13:45:19Z"}
+{"shard": 9, "stage": "testing", "done": 49, "total": 52, "rows": 1769156, "note": "VIRTUAL 1h: rule 3/120 (fade15)", "failed": [], "pct": 94.2, "updated": "2026-09-03T13:46:06Z"}

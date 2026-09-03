@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 32, "total": 52, "rows": 2993398, "note": "NMR 4h: rule 33/120 (heikin)", "failed": [], "pct": 61.5, "updated": "2026-09-03T12:34:22Z"}
+{"shard": 17, "stage": "testing", "done": 33, "total": 52, "rows": 3034166, "note": "OKLOSTOCK 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 63.5, "updated": "2026-09-03T12:35:08Z"}

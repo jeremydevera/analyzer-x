@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 17, "total": 53, "rows": 1289962, "note": "ENA 15m: rule 51/120 (orb)", "failed": [], "pct": 32.1, "updated": "2026-09-03T11:00:43Z"}
+{"shard": 0, "stage": "testing", "done": 17, "total": 53, "rows": 1296442, "note": "ENA 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-03T11:01:30Z"}

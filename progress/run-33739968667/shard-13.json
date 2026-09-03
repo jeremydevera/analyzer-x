@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 14, "total": 52, "rows": 1054912, "note": "CYBER 1h: rule 20/120 (stoch14)", "failed": [], "pct": 26.9, "updated": "2026-09-03T10:21:11Z"}
+{"shard": 13, "stage": "testing", "done": 14, "total": 52, "rows": 1076692, "note": "CYBER 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 26.9, "updated": "2026-09-03T10:21:59Z"}

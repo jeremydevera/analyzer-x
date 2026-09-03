@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 7, "total": 52, "rows": 553392, "note": "BANK 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 13.5, "updated": "2026-09-03T10:11:11Z"}
+{"shard": 8, "stage": "testing", "done": 7, "total": 52, "rows": 564432, "note": "BANK 1h: rule 26/120 (adx14)", "failed": [], "pct": 13.5, "updated": "2026-09-03T10:11:56Z"}

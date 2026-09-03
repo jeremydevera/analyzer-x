@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 1, "total": 52, "rows": 33000, "note": "2Z 30m: rule 20/120 (stoch14)", "failed": [], "pct": 1.9, "updated": "2026-09-03T09:44:31Z"}
+{"shard": 7, "stage": "testing", "done": 1, "total": 52, "rows": 77352, "note": "2Z 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-03T09:47:39Z"}

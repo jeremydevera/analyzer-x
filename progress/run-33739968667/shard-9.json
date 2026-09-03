@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 17, "total": 52, "rows": 1509984, "note": "ESPORTS 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 32.7, "updated": "2026-09-03T11:17:57Z"}
+{"shard": 9, "stage": "testing", "done": 18, "total": 52, "rows": 1553928, "note": "FCXSTOCK 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 34.6, "updated": "2026-09-03T11:18:42Z"}

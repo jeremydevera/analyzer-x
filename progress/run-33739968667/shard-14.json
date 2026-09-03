@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 17, "total": 52, "rows": 1463332, "note": "ETH 1h: rule 45/120 (zscore20)", "failed": [], "pct": 32.7, "updated": "2026-09-03T11:17:08Z"}
+{"shard": 14, "stage": "testing", "done": 17, "total": 52, "rows": 1489512, "note": "ETH 4h: rule 42/120 (rsidiv)", "failed": [], "pct": 32.7, "updated": "2026-09-03T11:17:53Z"}

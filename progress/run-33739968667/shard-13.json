@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 51, "total": 52, "rows": 4569044, "note": "XPIN 1h: rule 76/120 (cf_mom)", "failed": [], "pct": 98.1, "updated": "2026-09-03T13:21:06Z"}
+{"shard": 13, "stage": "testing", "done": 51, "total": 52, "rows": 4605256, "note": "XPIN 1d: rule 2/120 (mom15)", "failed": [], "pct": 98.1, "updated": "2026-09-03T13:21:51Z"}

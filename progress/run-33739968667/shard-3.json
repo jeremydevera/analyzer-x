@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 20, "total": 53, "rows": 1527730, "note": "GDX 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 37.7, "updated": "2026-09-03T17:07:48Z"}
+{"shard": 3, "stage": "testing", "done": 22, "total": 53, "rows": 1568620, "note": "HEI 15m: rule 1/120 (mom6)", "failed": [], "pct": 41.5, "updated": "2026-09-03T17:08:39Z"}

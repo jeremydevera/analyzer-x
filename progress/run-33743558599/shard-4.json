@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 10, "total": 53, "rows": 372524, "note": "BSV 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 18.9, "updated": "2026-09-03T13:56:53Z"}
+{"shard": 4, "stage": "testing", "done": 11, "total": 53, "rows": 400464, "note": "CBRSSTOCK 1h: 2,674 bars, testing 120 rules", "failed": [], "pct": 20.8, "updated": "2026-09-03T13:57:39Z"}

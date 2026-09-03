@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 10, "total": 52, "rows": 730986, "note": "C98 1h: rule 13/120 (pivot)", "failed": [], "pct": 19.2, "updated": "2026-09-03T10:27:29Z"}
+{"shard": 14, "stage": "testing", "done": 10, "total": 52, "rows": 753646, "note": "C98 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 19.2, "updated": "2026-09-03T10:28:22Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 32, "total": 52, "rows": 2457032, "note": "NIL 15m: rule 2/120 (mom15)", "failed": [], "pct": 61.5, "updated": "2026-09-03T11:57:00Z"}
+{"shard": 12, "stage": "testing", "done": 32, "total": 52, "rows": 2458792, "note": "NIL 15m: rule 8/120 (fib618)", "failed": [], "pct": 61.5, "updated": "2026-09-03T11:57:45Z"}

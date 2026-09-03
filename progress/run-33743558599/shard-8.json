@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 34, "total": 52, "rows": 1158518, "note": "OPENLEDGER 1h: rule 3/120 (fade15)", "failed": [], "pct": 65.4, "updated": "2026-09-03T14:04:30Z"}
+{"shard": 8, "stage": "testing", "done": 34, "total": 52, "rows": 1181618, "note": "OPENLEDGER 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 65.4, "updated": "2026-09-03T14:05:16Z"}

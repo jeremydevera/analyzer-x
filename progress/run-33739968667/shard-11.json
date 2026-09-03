@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 43, "total": 52, "rows": 3795516, "note": "SPX 1h: rule 36/120 (stochrsi)", "failed": [], "pct": 82.7, "updated": "2026-09-03T13:10:41Z"}
+{"shard": 11, "stage": "testing", "done": 43, "total": 52, "rows": 3812896, "note": "SPX 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 82.7, "updated": "2026-09-03T13:11:29Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 22, "total": 52, "rows": 1950674, "note": "HOT 1h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 42.3, "updated": "2026-09-03T11:46:32Z"}
+{"shard": 19, "stage": "testing", "done": 23, "total": 52, "rows": 1996918, "note": "ILV 15m: 34,622 bars, testing 120 rules", "failed": [], "pct": 44.2, "updated": "2026-09-03T11:47:29Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 20, "total": 53, "rows": 1439178, "note": "GESTOCK 1h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 37.7, "updated": "2026-09-03T11:01:29Z"}
+{"shard": 6, "stage": "testing", "done": 21, "total": 53, "rows": 1467398, "note": "GRAM 15m: rule 22/120 (engulf)", "failed": [], "pct": 39.6, "updated": "2026-09-03T11:02:14Z"}

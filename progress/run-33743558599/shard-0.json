@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 43, "total": 53, "rows": 1433746, "note": "SOPH 1h: rule 22/120 (engulf)", "failed": [], "pct": 81.1, "updated": "2026-09-03T14:35:11Z"}
+{"shard": 0, "stage": "testing", "done": 43, "total": 53, "rows": 1454646, "note": "SOPH 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-03T14:36:05Z"}

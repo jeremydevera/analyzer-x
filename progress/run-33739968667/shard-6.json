@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 30, "total": 53, "rows": 2395768, "note": "MNT 1d: 394 bars, testing 120 rules", "failed": [], "pct": 56.6, "updated": "2026-09-03T11:53:52Z"}
+{"shard": 6, "stage": "testing", "done": 31, "total": 53, "rows": 2409232, "note": "MUBARAK 15m: rule 1/120 (mom6)", "failed": [], "pct": 58.5, "updated": "2026-09-03T11:54:44Z"}

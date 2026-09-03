@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 12, "total": 53, "rows": 434272, "note": "CIENSTOCK 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-03T13:57:15Z"}
+{"shard": 5, "stage": "testing", "done": 13, "total": 53, "rows": 457150, "note": "COTI 1h: rule 21/120 (cci20)", "failed": [], "pct": 24.5, "updated": "2026-09-03T13:58:00Z"}

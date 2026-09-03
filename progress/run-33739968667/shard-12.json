@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 33, "total": 52, "rows": 2577944, "note": "NXPC 15m: rule 2/120 (mom15)", "failed": [], "pct": 63.5, "updated": "2026-09-03T12:07:08Z"}
+{"shard": 12, "stage": "testing", "done": 33, "total": 52, "rows": 2580804, "note": "NXPC 15m: rule 13/120 (pivot)", "failed": [], "pct": 63.5, "updated": "2026-09-03T12:07:53Z"}

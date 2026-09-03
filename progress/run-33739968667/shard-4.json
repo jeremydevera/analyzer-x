@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 36, "total": 53, "rows": 2718112, "note": "PLTRSTOCK 15m: rule 43/120 (macddiv)", "failed": [], "pct": 67.9, "updated": "2026-09-03T12:06:22Z"}
+{"shard": 4, "stage": "testing", "done": 36, "total": 53, "rows": 2725132, "note": "PLTRSTOCK 15m: rule 82/120 (cf_maobv)", "failed": [], "pct": 67.9, "updated": "2026-09-03T12:07:07Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 17, "total": 52, "rows": 1189976, "note": "EPIC 1h: rule 9/120 (fib382)", "failed": [], "pct": 32.7, "updated": "2026-09-03T10:52:24Z"}
+{"shard": 7, "stage": "testing", "done": 17, "total": 52, "rows": 1209776, "note": "EPIC 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 32.7, "updated": "2026-09-03T10:53:09Z"}

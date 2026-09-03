@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 32, "total": 52, "rows": 2355134, "note": "NICKEL 4h: rule 31/120 (trix15)", "failed": [], "pct": 61.5, "updated": "2026-09-03T11:29:15Z"}
+{"shard": 10, "stage": "testing", "done": 33, "total": 52, "rows": 2401552, "note": "NVOSTOCK 30m: rule 3/120 (fade15)", "failed": [], "pct": 63.5, "updated": "2026-09-03T11:30:00Z"}

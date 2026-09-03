@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 7, "total": 53, "rows": 580240, "note": "BANANAS31 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-03T10:23:32Z"}
+{"shard": 5, "stage": "testing", "done": 7, "total": 53, "rows": 588820, "note": "BANANAS31 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-03T10:24:33Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 1, "total": 53, "rows": 20600, "note": "1000BTT 1h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-03T13:49:14Z"}
+{"shard": 4, "stage": "testing", "done": 3, "total": 53, "rows": 69764, "note": "ALABSTOCK 1h: rule 3/120 (fade15)", "failed": [], "pct": 5.7, "updated": "2026-09-03T13:49:59Z"}

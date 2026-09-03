@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 11, "total": 52, "rows": 939342, "note": "CFG 30m: rule 57/120 (orderblock)", "failed": [], "pct": 21.2, "updated": "2026-09-03T10:27:52Z"}
+{"shard": 16, "stage": "testing", "done": 11, "total": 52, "rows": 961442, "note": "CFG 1h: rule 44/120 (elder)", "failed": [], "pct": 21.2, "updated": "2026-09-03T10:28:37Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 35, "total": 52, "rows": 2709214, "note": "PHA 15m: rule 95/120 (cf_emarsi_l1)", "failed": [], "pct": 67.3, "updated": "2026-09-03T12:11:28Z"}
+{"shard": 15, "stage": "testing", "done": 35, "total": 52, "rows": 2714714, "note": "PHA 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 67.3, "updated": "2026-09-03T12:12:16Z"}

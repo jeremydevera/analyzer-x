@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 17, "total": 53, "rows": 1279882, "note": "ENA 15m: 34,618 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-03T10:58:20Z"}
+{"shard": 0, "stage": "testing", "done": 17, "total": 53, "rows": 1281502, "note": "ENA 15m: rule 3/120 (fade15)", "failed": [], "pct": 32.1, "updated": "2026-09-03T10:59:13Z"}

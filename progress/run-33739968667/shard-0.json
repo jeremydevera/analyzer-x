@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 20, "total": 53, "rows": 1608174, "note": "GALA 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 37.7, "updated": "2026-09-03T11:18:57Z"}
+{"shard": 0, "stage": "testing", "done": 20, "total": 53, "rows": 1613934, "note": "GALA 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-03T11:19:45Z"}

@@ -84,6 +84,28 @@ def test_a_batch_can_never_raise_mid_stream():
     assert "group_max=len(batch_rows) + 1" in src
 
 
+def test_the_export_makes_the_SAME_index_choice_as_the_page():
+    """The page and the download must not disagree about which index to use.
+
+    They did, and the operator found it by clicking their own link:
+    /api/strategies.csv?sort=profit&min_winrate=90&max_tp=4&max_sl=2&sizing=flat
+    -> Internal Server Error, while the identical filter on the page answered
+    in 0.14 s. `iter_rows` handed `_wide_profit_helps(...)` in unconditionally,
+    so with a SIZING beside the win-rate floor it named rows_pr2 (profit DESC,
+    sizing, ...) and walked 49.8 million entries down the profit order looking
+    for flat rows above 90%: measured 259.0 s for the FIRST ROW. With the seek
+    winning, the same export is 1.32 s to the first row and 27,482 rows in
+    1.9 s (13.5 s through the browser, 11.6 MB).
+    """
+    src = inspect.getsource(ri.iter_rows)
+    i = src.index("_indexed_by(coin, seeks")
+    call = src[i:i + 260]
+    assert "not seeks and" in call,         "a win-rate seek must win over the wide profit index, as it does in query()"
+    # and query() has the same precedence, from the other direction
+    page = inspect.getsource(ri.query)
+    assert "not wide_profit_ready" in page or "wide_profit_ready" in page
+
+
 def test_the_download_link_carries_the_window_too():
     """A file that does not match the table it came from is the failure this
     panel keeps paying for, and the href is where that starts."""

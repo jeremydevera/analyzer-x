@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 12, "total": 52, "rows": 1048828, "note": "COMP 15m: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 23.1, "updated": "2026-09-03T10:48:37Z"}
+{"shard": 19, "stage": "testing", "done": 12, "total": 52, "rows": 1057628, "note": "COMP 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 23.1, "updated": "2026-09-03T10:49:32Z"}

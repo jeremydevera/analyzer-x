@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 26, "total": 53, "rows": 438760, "note": "KGEN 15m: rule 95/120 (cf_emarsi_l1)", "pct": 49.1, "updated": "2026-09-03T06:01:12Z"}
+{"shard": 3, "stage": "testing", "done": 28, "total": 53, "rows": 451080, "note": "LRC 15m: 34,599 bars, testing 120 rules", "pct": 52.8, "updated": "2026-09-03T06:02:09Z"}

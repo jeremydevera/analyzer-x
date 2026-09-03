@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 27, "total": 53, "rows": 1003004, "note": "LAB 1h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-03T13:45:43Z"}
+{"shard": 2, "stage": "testing", "done": 28, "total": 53, "rows": 1035440, "note": "LRCXSTOCK 1h: rule 42/120 (rsidiv)", "failed": [], "pct": 52.8, "updated": "2026-09-03T13:46:28Z"}

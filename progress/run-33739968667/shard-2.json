@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 30, "total": 53, "rows": 2373852, "note": "MITO 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 56.6, "updated": "2026-09-03T11:51:44Z"}
+{"shard": 2, "stage": "testing", "done": 30, "total": 53, "rows": 2380332, "note": "MITO 15m: rule 112/120 (cf_obretest)", "failed": [], "pct": 56.6, "updated": "2026-09-03T11:52:30Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 31, "total": 52, "rows": 1296606, "note": "NEAR 1h: rule 5/120 (rsi14)", "failed": [], "pct": 59.6, "updated": "2026-09-03T14:53:35Z"}
+{"shard": 19, "stage": "testing", "done": 31, "total": 52, "rows": 1318206, "note": "NEAR 1h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 59.6, "updated": "2026-09-03T14:54:21Z"}

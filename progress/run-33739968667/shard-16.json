@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 39, "total": 52, "rows": 3722440, "note": "RSR 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 75.0, "updated": "2026-09-03T13:16:51Z"}
+{"shard": 16, "stage": "testing", "done": 40, "total": 52, "rows": 3761864, "note": "SHARE 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 76.9, "updated": "2026-09-03T13:17:36Z"}

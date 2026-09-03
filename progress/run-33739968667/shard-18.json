@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 20, "total": 52, "rows": 1857168, "note": "GMT 15m: rule 52/120 (nr7)", "failed": [], "pct": 38.5, "updated": "2026-09-03T11:37:40Z"}
+{"shard": 18, "stage": "testing", "done": 20, "total": 52, "rows": 1864868, "note": "GMT 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 38.5, "updated": "2026-09-03T11:38:26Z"}

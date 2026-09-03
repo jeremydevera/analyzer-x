@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 30, "total": 53, "rows": 2361448, "note": "MNT 1h: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 56.6, "updated": "2026-09-03T11:53:04Z"}
+{"shard": 6, "stage": "testing", "done": 30, "total": 53, "rows": 2395768, "note": "MNT 1d: 394 bars, testing 120 rules", "failed": [], "pct": 56.6, "updated": "2026-09-03T11:53:52Z"}

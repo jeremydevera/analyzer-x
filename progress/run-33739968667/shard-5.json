@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 25, "total": 53, "rows": 2038920, "note": "JDSTOCK 30m: rule 62/120 (ote)", "failed": [], "pct": 47.2, "updated": "2026-09-03T11:53:53Z"}
+{"shard": 5, "stage": "testing", "done": 25, "total": 53, "rows": 2067360, "note": "JDSTOCK 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 47.2, "updated": "2026-09-03T11:54:39Z"}

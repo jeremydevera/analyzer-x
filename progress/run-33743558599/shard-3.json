@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 14, "total": 53, "rows": 564702, "note": "CTK 1h: rule 89/120 (cf_chan_l1)", "failed": [], "pct": 26.4, "updated": "2026-09-03T13:05:13Z"}
+{"shard": 3, "stage": "testing", "done": 14, "total": 53, "rows": 579102, "note": "CTK 4h: rule 36/120 (stochrsi)", "failed": [], "pct": 26.4, "updated": "2026-09-03T13:05:59Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 37, "total": 52, "rows": 3185256, "note": "QTUM 30m: rule 53/120 (squeeze)", "failed": [], "pct": 71.2, "updated": "2026-09-03T12:42:09Z"}
+{"shard": 17, "stage": "testing", "done": 37, "total": 52, "rows": 3199996, "note": "QTUM 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 71.2, "updated": "2026-09-03T12:43:01Z"}

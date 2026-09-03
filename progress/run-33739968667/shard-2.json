@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 20, "total": 53, "rows": 1761048, "note": "GBP 15m: rule 60/120 (eqraid)", "failed": [], "pct": 37.7, "updated": "2026-09-03T11:21:48Z"}
+{"shard": 2, "stage": "testing", "done": 20, "total": 53, "rows": 1769448, "note": "GBP 15m: rule 110/120 (cf_fundfade_l1)", "failed": [], "pct": 37.7, "updated": "2026-09-03T11:22:33Z"}

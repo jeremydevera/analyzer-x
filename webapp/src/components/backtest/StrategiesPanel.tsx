@@ -916,6 +916,26 @@ export default function StrategiesPanel() {
             </span>
           ) : null}
         </div>
+        {/* The store's OWN sentence, beside the boxes that caused it. A 503
+            here names the fix — "a win % floor of 55 over 1h needs more than
+            20s on this store. Add a min-trades floor - 100 answers in 0.2s -
+            or rank by win %." — and the operator never saw it: it was printed
+            above the table inside a paragraph about preparing a sort, under a
+            pill that just said "still working". Their words the same day:
+            "when i use min 80% winrate for past 30 days its not letting me
+            know its loading, and i thought there is no result". */}
+        {waiting && (
+          <p role="status" aria-live="polite"
+             className="mt-3 rounded-lg border border-warning-500/40 bg-warning-50 px-3 py-2 text-theme-sm text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-400">
+            the store has not answered this filter yet — {waiting} Until it
+            does, the rows below are the previous answer, ordered by{" "}
+            <b>{STRATEGY_SORTS[servedSort]}</b>
+            {sort !== servedSort
+              ? <> while <b>{STRATEGY_SORTS[sort]}</b> is being prepared</>
+              : null}
+            ; it retries by itself.
+          </p>
+        )}
       </div>
       {/* one row IS one combination — the operator's own words: "under those
           coins i have multiple strategy and under that strategy is different
@@ -1042,14 +1062,6 @@ export default function StrategiesPanel() {
           </b>
           {[coin, tf, signal].filter(Boolean).length ? ` and ${[coin, tf, signal].filter(Boolean).join(" · ")}` : ""}
           {profitable ? " and profit above zero" : ""} — lower the floor to see what is close.
-        </p>
-      )}
-      {waiting && (
-        <p className="px-5 pt-2 text-theme-sm text-warning-600 dark:text-warning-400">
-          preparing <b>{STRATEGY_SORTS[sort]}</b> across all {total.toLocaleString()}
-          {capped ? "+" : ""} rows — {waiting}. Until it lands these rows are
-          still ordered by <b>{STRATEGY_SORTS[servedSort]}</b>; the list
-          refreshes by itself.
         </p>
       )}
       {/* taller than 480px: with 5,000 rows on screen the old box showed

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 20, "total": 52, "rows": 1712018, "note": "GMX 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 38.5, "updated": "2026-09-03T11:30:52Z"}
+{"shard": 19, "stage": "testing", "done": 21, "total": 52, "rows": 1753246, "note": "HANA 15m: rule 1/120 (mom6)", "failed": [], "pct": 40.4, "updated": "2026-09-03T11:31:55Z"}

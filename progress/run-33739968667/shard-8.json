@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 12, "total": 52, "rows": 959942, "note": "CLANKER 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 23.1, "updated": "2026-09-03T10:31:59Z"}
+{"shard": 8, "stage": "testing", "done": 12, "total": 52, "rows": 965662, "note": "CLANKER 30m: rule 20/120 (stoch14)", "failed": [], "pct": 23.1, "updated": "2026-09-03T10:32:44Z"}

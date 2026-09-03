@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 51, "total": 52, "rows": 4656742, "note": "XRP 30m: rule 39/120 (fisher)", "failed": [], "pct": 98.1, "updated": "2026-09-03T14:11:04Z"}
+{"shard": 16, "stage": "testing", "done": 51, "total": 52, "rows": 4670342, "note": "XRP 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-03T14:11:50Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 28, "total": 53, "rows": 2134434, "note": "LSK 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 52.8, "updated": "2026-09-03T11:35:02Z"}
+{"shard": 4, "stage": "testing", "done": 28, "total": 53, "rows": 2143014, "note": "LSK 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 52.8, "updated": "2026-09-03T11:35:48Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 39, "total": 52, "rows": 3693180, "note": "RSR 30m: rule 112/120 (cf_obretest)", "failed": [], "pct": 75.0, "updated": "2026-09-03T13:15:19Z"}
+{"shard": 16, "stage": "testing", "done": 39, "total": 52, "rows": 3701540, "note": "RSR 1h: rule 24/120 (psar)", "failed": [], "pct": 75.0, "updated": "2026-09-03T13:16:04Z"}

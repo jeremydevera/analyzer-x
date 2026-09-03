@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 25, "total": 53, "rows": 2112730, "note": "ISRGSTOCK 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 47.2, "updated": "2026-09-03T11:44:13Z"}
+{"shard": 0, "stage": "testing", "done": 26, "total": 53, "rows": 2144130, "note": "KAVA 15m: rule 1/120 (mom6)", "failed": [], "pct": 49.1, "updated": "2026-09-03T11:45:05Z"}

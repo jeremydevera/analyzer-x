@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 42, "total": 52, "rows": 1380372, "note": "SNXX 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 80.8, "updated": "2026-09-03T14:45:42Z"}
+{"shard": 10, "stage": "testing", "done": 46, "total": 52, "rows": 1471740, "note": "TOWNS 1h: 9,458 bars, testing 120 rules", "failed": [], "pct": 88.5, "updated": "2026-09-03T14:46:35Z"}

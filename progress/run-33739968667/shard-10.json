@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 7, "total": 52, "rows": 647816, "note": "BARD 15m: rule 17/120 (atrbreak)", "failed": [], "pct": 13.5, "updated": "2026-09-03T10:18:04Z"}
+{"shard": 10, "stage": "testing", "done": 7, "total": 52, "rows": 653016, "note": "BARD 15m: rule 43/120 (macddiv)", "failed": [], "pct": 13.5, "updated": "2026-09-03T10:18:50Z"}

@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 6, "total": 53, "rows": 461894, "note": "AUD 1h: rule 68/120 (dbltop)", "failed": [], "pct": 11.3, "updated": "2026-09-03T10:10:49Z"}
+{"shard": 2, "stage": "testing", "done": 6, "total": 53, "rows": 497534, "note": "AUD 1d: 394 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-03T10:11:40Z"}

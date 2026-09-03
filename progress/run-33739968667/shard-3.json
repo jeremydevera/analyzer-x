@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 26, "total": 53, "rows": 1993092, "note": "KGEN 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 49.1, "updated": "2026-09-03T17:30:47Z"}
+{"shard": 3, "stage": "testing", "done": 26, "total": 53, "rows": 2005572, "note": "KGEN 1h: rule 55/120 (nhigh50)", "failed": [], "pct": 49.1, "updated": "2026-09-03T17:31:32Z"}

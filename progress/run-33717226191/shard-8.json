@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 52, "total": 52, "rows": 927940, "note": "ZEN 15m: rule 94/120 (cf_emarsi)", "pct": 100.0, "updated": "2026-09-03T07:04:11Z"}
+{"shard": 8, "stage": "done", "done": 52, "total": 52, "rows": 933660, "note": "933,660 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "pct": 100.0, "updated": "2026-09-03T07:04:41Z"}

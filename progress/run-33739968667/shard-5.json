@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 17, "total": 53, "rows": 1504156, "note": "ENS 30m: rule 57/120 (orderblock)", "failed": [], "pct": 32.1, "updated": "2026-09-03T11:19:17Z"}
+{"shard": 5, "stage": "testing", "done": 17, "total": 53, "rows": 1518016, "note": "ENS 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-03T11:20:07Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 20, "total": 52, "rows": 812240, "note": "GIGGLE 1h: rule 76/120 (cf_mom)", "failed": [], "pct": 38.5, "updated": "2026-09-03T14:27:49Z"}
+{"shard": 12, "stage": "testing", "done": 23, "total": 52, "rows": 844118, "note": "IBMSTOCK 1h: 5,191 bars, testing 120 rules", "failed": [], "pct": 44.2, "updated": "2026-09-03T14:28:37Z"}

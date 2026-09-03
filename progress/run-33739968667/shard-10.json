@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 13, "total": 52, "rows": 1154894, "note": "CRDOSTOCK 30m: rule 37/120 (ultosc)", "failed": [], "pct": 25.0, "updated": "2026-09-03T10:47:03Z"}
+{"shard": 10, "stage": "testing", "done": 14, "total": 52, "rows": 1215908, "note": "CVXSTOCK 15m: rule 26/120 (adx14)", "failed": [], "pct": 26.9, "updated": "2026-09-03T10:47:48Z"}

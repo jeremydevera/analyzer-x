@@ -323,6 +323,37 @@ export const STRATEGY_SORTS = {
 } as const;
 export type StrategySort = keyof typeof STRATEGY_SORTS;
 
+/** `GET /api/backtest/capacity` — where an update would run. */
+export type BacktestPlan = {
+  local: string[];
+  cloud: string[];
+  why: string;
+  local_free: boolean;
+  local_why: string;
+  cloud_free: boolean;
+  cloud_why: string;
+  workers: number;
+  runners: number;
+  timeframes: string[];
+};
+
+/** `GET /api/backtest/logs` — pending work and named errors. */
+export type BacktestLogs = {
+  pending: {
+    stored: number; measured: number; count: number;
+    by_timeframe: Record<string, number>;
+    pairs: { symbol: string; timeframe: string }[];
+    unnamed: number; checked: string;
+  };
+  errors: { where: string; job: string; when: string; pair: string; text: string }[];
+  error_count: number;
+  cloud: { ok: boolean; why?: string; run?: number | null; url?: string;
+           status?: string; shards?: number; silent?: number };
+  plan: { when?: number; why?: string; local?: string[]; cloud?: string[];
+          cloud_run?: number | null; cloud_url?: string; coins?: number };
+  checked: string;
+};
+
 export const api = {
   system: () => get<SysLoad>("/api/system"),
   contracts: () => get<{ rows: string[]; why: string }>("/api/contracts"),
@@ -513,6 +544,15 @@ export const api = {
 
   storageByCoin: () => get<{ rows: CoinStorageRow[] }>("/api/storage/by-coin"),
   coverage: () => get<{ rows: CoverageRow[] }>("/api/storage/coverage"),
+
+  /** Who is free to run a sweep right now — this PC, GitHub, or both, and
+   *  which timeframes each would take. Shown on the UPDATE button before it
+   *  is clicked. */
+  backtestCapacity: (timeframes?: string) =>
+    get<BacktestPlan>(`/api/backtest/capacity${timeframes ? `?timeframes=${encodeURIComponent(timeframes)}` : ""}`),
+  /** The LOGS section: pending pairs on this machine, and every named error
+   *  from this PC and from the GitHub shards. */
+  backtestLogs: () => get<BacktestLogs>("/api/backtest/logs"),
 
   jobStatus: (kind: "download" | "backtest" | "btupdate" | "stratbt") =>
     get<JobStatus>(`/api/jobs/${kind}`),

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import StrategiesPanel from "@/components/backtest/StrategiesPanel";
 import JobsPanel from "@/components/backtest/JobsPanel";
 import HistoryPanel from "@/components/backtest/HistoryPanel";
+import LogsPanel from "@/components/backtest/LogsPanel";
 import BacktestStorage from "@/components/backtest/BacktestStorage";
 import BacktestHistory from "@/components/backtest/BacktestHistory";
 
@@ -15,6 +16,10 @@ export default function BacktestPage() {
   return (
     <div className="flex flex-col gap-5">
       <JobsPanel />
+      {/* LOGS, right under the buttons that produce them: what is still
+          pending on this machine and every named error, from here and from
+          the GitHub shards (operator, 2026-09-03). */}
+      <LogsPanel />
       {/* Stored strategies FIRST: the operator reads the measured results
           before the store's bookkeeping (asked 2026-08-26). */}
       <StrategiesPanel />

@@ -291,6 +291,11 @@ def main():
                     continue
                 failed.append(f"{sym} {tf}: {exc}")
                 log(f"{exc} · gave up after {PAIR_RETRIES} redos")
+                # publish it NOW: a runner killed at six hours never reaches
+                # the "done" report, and its named losses would die with it
+                report("testing", i, len(coins), rows=total,
+                       note=f"{len(failed)} pair(s) lost so far",
+                       force=True, failed=failed)
             el = time.time() - t0
             if tf == TFS[-1]:
                 log(f"{i}/{len(coins)} {sym} · {total:,} rows · "
@@ -303,7 +308,7 @@ def main():
                 break
     report("done", len(coins), len(coins), rows=total,
            note=f"{total:,} rows · {redos} pair redo(s) · {len(failed)} pair(s) lost",
-           force=True)
+           force=True, failed=failed)
     log(f"done: {total:,} rows in {(time.time() - t0) / 60:.0f} min · "
         f"{redos} redo(s) · lost: {failed or 'none'}")
     log("PARITY: every threshold and every row, winners and losers, exactly "

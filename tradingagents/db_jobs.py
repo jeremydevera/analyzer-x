@@ -23,7 +23,7 @@ import threading as _threading
 import time
 from pathlib import Path
 
-from tradingagents import portable
+from tradingagents import capacity as cap, portable
 
 STATE_DIR = Path(os.path.expanduser("~/.tradingagents"))
 
@@ -1140,15 +1140,96 @@ def _run_btupdate(spec: dict) -> None:
         coins = stored_symbols()
         print(f"[btupdate] no coins named — continuing every pair in the "
               f"store: {len(coins):,} contract(s)", flush=True)
-    tfs = list(spec.get("tfs") or ["15m", "30m", "1h", "4h"])
+    tfs = list(spec.get("tfs") or list(cap.ALL_TFS))
+
+    # WHERE does it run? Both, when both are free. Operator, 2026-09-03: "i want
+    # you to detect if there is a free both in github and machine", after asking
+    # "why did you not use github since its free?" — GitHub had sat idle through
+    # a 4,124-pair run that took most of a day, because nothing ever looked.
+    #
+    # The split is BY TIMEFRAME, the only axis the cloud shard can be pointed
+    # at, which also means the two halves can never measure the same
+    # combination. `use_cloud: False` in the spec keeps it all here.
+    # `ignore=("btupdate",)`: this code runs INSIDE the update job, whose own
+    # pid and progress say "running". Without it the job reads itself as the
+    # busy machine and hands every frame to GitHub while this PC idles.
+    plan = cap.plan(tfs, ignore=("btupdate",)) if spec.get("use_cloud", True) else {
+        "local": list(tfs), "cloud": [],
+        "why": "GitHub was switched off for this run"}
+    print(f"[btupdate] {plan['why']}", flush=True)
+
+    dispatched = {}
+    if plan["cloud"]:
+        from tradingagents import cloud_sweep as cs
+
+        try:
+            dispatched = cs.dispatch(
+                shards=cap.CLOUD_RUNNERS, coins=0,
+                timeframes=",".join(plan["cloud"]),
+                min_days=0, days=int(spec.get("days") or 365))
+            print(f"[btupdate] GitHub run {dispatched.get('id')} started for "
+                  f"{', '.join(plan['cloud'])}: {dispatched.get('url')}",
+                  flush=True)
+        except Exception as exc:                               # noqa: BLE001
+            # A cloud that will not start is NOT a reason to measure nothing:
+            # this PC takes the frames back and the failure is named, not
+            # swallowed (the download job's rule, applied here).
+            print(f"[btupdate] GitHub refused the dispatch: "
+                  f"{type(exc).__name__}: {exc} — this PC takes "
+                  f"{', '.join(plan['cloud'])} as well", flush=True)
+            plan = {**plan, "local": tfs, "cloud": [],
+                    "why": f"GitHub refused the dispatch ({exc}); all of it "
+                           f"on this PC"}
+    _write_run_plan(plan, dispatched, coins, tfs)
+
+    if not plan["local"]:
+        # Everything went to GitHub. Finish cleanly and say so, rather than
+        # running a sweep over an empty timeframe list.
+        _finish_btupdate_cloud_only(plan, dispatched, coins)
+        return
+
     # `fresh` is forced: this entry point IS the continuation. A spec that
     # asked for a fresh sweep here would silently throw away every resume
     # point the store has.
-    _run_backtest({**spec, "coins": coins, "tfs": tfs,
-                         "base": float(spec.get("base") or 5.0),
-                         "days": int(spec.get("days") or 365),
+    _run_backtest({**spec, "coins": coins, "tfs": plan["local"],
+                   "base": float(spec.get("base") or 5.0),
+                   "days": int(spec.get("days") or 365),
                    "fresh": False},
                   files_key="btupdate", kind="btupdate")
+
+
+def _write_run_plan(plan: dict, dispatched: dict, coins, tfs) -> None:
+    """Record who took what, so the LOGS panel can say it after the fact."""
+    try:
+        _write(STATE_DIR / "db_btupdate.plan.json", {
+            "when": int(time.time()), "why": plan.get("why", ""),
+            "local": plan.get("local", []), "cloud": plan.get("cloud", []),
+            "cloud_run": dispatched.get("id"), "cloud_url": dispatched.get("url"),
+            "coins": len(coins), "timeframes": list(tfs)})
+    except Exception:                                          # noqa: BLE001
+        pass
+
+
+def _finish_btupdate_cloud_only(plan, dispatched, coins) -> None:
+    """Every frame went to GitHub — close the local job honestly."""
+    f = FILES["btupdate"]
+    note = (f"all of it went to GitHub: {', '.join(plan['cloud'])} over "
+            f"{len(coins):,} contract(s)"
+            + (f" · run {dispatched['id']}" if dispatched.get("id") else ""))
+    _write(f["progress"], {"running": False, "done": 0, "total": 0, "rows": 0,
+                           "new_bars": 0, "stopped": False, "errors": 0,
+                           "finished": int(time.time()),
+                           "cloud_run": dispatched.get("id"),
+                           "cloud_url": dispatched.get("url"),
+                           "note": note})
+    try:
+        from tradingagents import notifications as _nt
+
+        _nt.record("btupdate", "Backtest update handed to GitHub", detail=note,
+                   ok=True, meta={"cloud_run": dispatched.get("id"),
+                                  "timeframes": plan["cloud"]})
+    except Exception:                                          # noqa: BLE001
+        pass
 
 
 def _run_stratbt(spec: dict) -> None:

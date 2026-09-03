@@ -573,6 +573,33 @@ def _check_kind(kind: str) -> None:
         raise HTTPException(404, f"unknown job kind: {kind}")
 
 
+@app.get("/api/backtest/capacity")
+def backtest_capacity(timeframes: str = "") -> dict:
+    """Who is free to run a sweep right now — this PC, GitHub, or both.
+
+    The UPDATE BACKTEST button shows this BEFORE it is clicked, so the operator
+    can see where the work will go. Operator, 2026-09-03: "why did you not use
+    github since its free?" — GitHub had been idle all day because nothing ever
+    asked.
+    """
+    from tradingagents import capacity as cap
+
+    tfs = [t.strip() for t in timeframes.split(",") if t.strip()] or list(cap.ALL_TFS)
+    return cap.plan(tfs)
+
+
+@app.get("/api/backtest/logs")
+def backtest_logs(cloud: bool = True) -> dict:
+    """The LOGS section: what is still pending here, and every named error.
+
+    Operator, 2026-09-03: "create a seperate section called logs just like in
+    candles module si i can see what is pending on my side and what are errors".
+    """
+    from tradingagents import backtest_logs as bl
+
+    return bl.logs(include_cloud=cloud)
+
+
 @app.get("/api/jobs")
 def jobs_all() -> dict:
     """Every job's state in ONE call, for the header's running-job indicator.

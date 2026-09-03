@@ -52,8 +52,16 @@ class Reporter:
         self.enabled = bool(self.repo and self.token)
 
     def __call__(self, stage: str, done: int, total: int, rows: int = 0,
-                 note: str = "", force: bool = False) -> None:
-        """stage is 'screening' or 'testing' — what the machine is doing now."""
+                 note: str = "", force: bool = False,
+                 failed: list | None = None) -> None:
+        """stage is 'screening' or 'testing' — what the machine is doing now.
+
+        `failed` NAMES the pairs this shard lost. It used to be a count inside
+        `note` ("3 pair(s) lost"), which sends the reader to a runner log that
+        expires — the same mistake the download job made and the operator's
+        rule against it (CLAUDE.md: every pair still lost is NAMED). The
+        backtest LOGS panel reads these.
+        """
         if not self.enabled:
             return
         now = time.time()
@@ -62,6 +70,7 @@ class Reporter:
         self._last = now
         payload = {"shard": int(self.shard), "stage": stage, "done": done,
                    "total": total, "rows": rows, "note": note[:120],
+                   "failed": [str(x)[:120] for x in (failed or [])][:200],
                    "pct": round(100 * done / total, 1) if total else 0.0,
                    "updated": time.strftime("%Y-%m-%dT%H:%M:%SZ",
                                             time.gmtime())}

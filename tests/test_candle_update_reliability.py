@@ -423,6 +423,11 @@ def test_update_backtest_survives_its_own_handoff_check(monkeypatch, tmp_path):
         return {"rows": []}
 
     monkeypatch.setattr(br, "grid_from_store", grid)
+    # keep it on THIS PC and off the network: the capacity check lists GitHub
+    # runs, which a unit test must never do (2026-09-03)
+    monkeypatch.setattr(dj.cap, "plan",
+                        lambda tfs, ignore=(): {"local": list(tfs), "cloud": [],
+                                                "why": "stubbed"})
     monkeypatch.setattr(dj, "FILES", {"btupdate": {
         "progress": tmp_path / "p.json", "spec": tmp_path / "s.json",
         "pid": tmp_path / "pid", "stop": tmp_path / "STOP",

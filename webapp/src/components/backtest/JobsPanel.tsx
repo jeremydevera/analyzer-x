@@ -8,7 +8,7 @@
  * job's progress file on disk, not in this component.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, API_BASE, CloudStatus, GridPlan, JobStatus } from "@/lib/api";
+import { api, API_BASE, BacktestPlan, CloudStatus, GridPlan, JobStatus } from "@/lib/api";
 import Button from "@/components/ui/button/Button";
 import Badge from "@/components/ui/badge/Badge";
 import JobProgress from "@/components/jobs/JobProgress";
@@ -37,6 +37,10 @@ export default function JobsPanel() {
   const [deployed, setDeployed] = useState<{ coin: string; tf: string; key: string }[]>([]);
   const [where, setWhere] = useState<"mac" | "github">("mac");
   const [cloud, setCloud] = useState<CloudStatus | null>(null);
+  // WHERE an update would run — asked of the API, not guessed here, so the
+  // button can say it before it is clicked (operator: "detect if there is a
+  // free both in github and machine").
+  const [cap, setCap] = useState<BacktestPlan | null>(null);
   const [err, setErr] = useState("");
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -46,6 +50,15 @@ export default function JobsPanel() {
     api.cloudStatus().then(setCloud).catch(() => {});
     api.jobHandoffState("backtest").then(setHand).catch(() => {});
   }, []);
+
+  // the capacity check costs a GitHub run listing, so it is slower than the
+  // 4-second job poll and gets its own interval
+  useEffect(() => {
+    const ask = () => api.backtestCapacity(tfs.join(",")).then(setCap).catch(() => setCap(null));
+    ask();
+    const t = setInterval(ask, 30_000);
+    return () => clearInterval(t);
+  }, [tfs]);
 
   useEffect(() => {
     poll();
@@ -199,6 +212,24 @@ export default function JobsPanel() {
                     {coins.length ? "UPDATE BACKTEST" : "UPDATE ALL BACKTESTS"}
                   </Button>
                 </span>
+                {/* WHERE it will run, before it is clicked. GitHub sat idle
+                    through a 4,124-pair run that took most of a day because
+                    nothing ever looked (operator, 2026-09-03: "why did you not
+                    use github since its free?"). Every word here is DERIVED
+                    from /api/backtest/capacity. */}
+                {cap && (
+                  <span className="text-theme-xs text-gray-500 dark:text-gray-400">
+                    {cap.cloud.length && cap.local.length
+                      ? <>UPDATE splits it:{" "}
+                          <b className="text-brand-600 dark:text-brand-400">GitHub</b> takes {cap.cloud.join(", ")} on {cap.runners} runners,{" "}
+                          <b>this PC</b> takes {cap.local.join(", ")} on {cap.workers} worker(s)</>
+                      : cap.cloud.length
+                        ? <>UPDATE sends all of it to <b className="text-brand-600 dark:text-brand-400">GitHub</b> ({cap.cloud.join(", ")}) — {cap.local_why}</>
+                        : cap.local.length
+                          ? <>UPDATE runs all of it on <b>this PC</b> ({cap.local.join(", ")}) — GitHub: {cap.cloud_why}</>
+                          : <span className="text-warning-600 dark:text-warning-400">{cap.why}</span>}
+                  </span>
+                )}
               </>
             )}
             {bt?.running && (

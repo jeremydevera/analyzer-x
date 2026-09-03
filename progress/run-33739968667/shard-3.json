@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 9, "total": 53, "rows": 790430, "note": "BMNRSTOCK 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 17.0, "updated": "2026-09-03T10:34:24Z"}
+{"shard": 3, "stage": "testing", "done": 9, "total": 53, "rows": 805650, "note": "BMNRSTOCK 30m: rule 47/120 (ibs)", "failed": [], "pct": 17.0, "updated": "2026-09-03T10:35:10Z"}

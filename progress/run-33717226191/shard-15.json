@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 23, "total": 52, "rows": 330740, "note": "ICX 15m: 34,597 bars, testing 120 rules", "pct": 44.2, "updated": "2026-09-03T05:43:21Z"}
+{"shard": 15, "stage": "testing", "done": 23, "total": 52, "rows": 333300, "note": "ICX 15m: rule 10/120 (sr_bounce)", "pct": 44.2, "updated": "2026-09-03T05:44:06Z"}

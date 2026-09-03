@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 8, "total": 53, "rows": 93900, "note": "BEAT 15m: 29,360 bars, testing 120 rules", "pct": 15.1, "updated": "2026-09-03T05:10:16Z"}
+{"shard": 1, "stage": "testing", "done": 8, "total": 53, "rows": 96780, "note": "BEAT 15m: rule 12/120 (donchian20)", "pct": 15.1, "updated": "2026-09-03T05:11:02Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 45, "total": 52, "rows": 1624352, "note": "TAO 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 86.5, "updated": "2026-09-03T14:19:08Z"}
+{"shard": 8, "stage": "testing", "done": 48, "total": 52, "rows": 1697912, "note": "URNM 1h: rule 3/120 (fade15)", "failed": [], "pct": 92.3, "updated": "2026-09-03T14:19:53Z"}

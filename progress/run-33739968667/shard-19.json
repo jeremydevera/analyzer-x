@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 23, "total": 52, "rows": 2028738, "note": "ILV 30m: rule 25/120 (ichimoku)", "failed": [], "pct": 44.2, "updated": "2026-09-03T11:52:06Z"}
+{"shard": 19, "stage": "testing", "done": 23, "total": 52, "rows": 2039078, "note": "ILV 30m: rule 73/120 (volspike)", "failed": [], "pct": 44.2, "updated": "2026-09-03T11:52:51Z"}

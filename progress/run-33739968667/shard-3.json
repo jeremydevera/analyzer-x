@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 35, "total": 53, "rows": 2774556, "note": "PAXG 15m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 66.0, "updated": "2026-09-03T12:23:12Z"}
+{"shard": 3, "stage": "testing", "done": 35, "total": 53, "rows": 2780496, "note": "PAXG 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-03T12:23:57Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 26, "total": 52, "rows": 1907324, "note": "KITE 15m: rule 11/120 (sr_break)", "failed": [], "pct": 50.0, "updated": "2026-09-03T11:18:21Z"}
+{"shard": 8, "stage": "testing", "done": 26, "total": 52, "rows": 1913924, "note": "KITE 15m: rule 41/120 (tsi)", "failed": [], "pct": 50.0, "updated": "2026-09-03T11:19:06Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 16, "total": 53, "rows": 1373740, "note": "DUSK 30m: rule 16/120 (keltner)", "failed": [], "pct": 30.2, "updated": "2026-09-03T11:09:34Z"}
+{"shard": 5, "stage": "testing", "done": 16, "total": 53, "rows": 1381660, "note": "DUSK 30m: rule 53/120 (squeeze)", "failed": [], "pct": 30.2, "updated": "2026-09-03T11:10:19Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 45, "total": 52, "rows": 3983326, "note": "TEMSTOCK 15m: rule 92/120 (cf_soup_l1)", "failed": [], "pct": 86.5, "updated": "2026-09-03T12:47:51Z"}
+{"shard": 13, "stage": "testing", "done": 46, "total": 52, "rows": 4035876, "note": "TRADOOR 15m: rule 1/120 (mom6)", "failed": [], "pct": 88.5, "updated": "2026-09-03T12:48:46Z"}

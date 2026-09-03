@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 47, "total": 52, "rows": 862460, "note": "T 15m: rule 1/120 (mom6)", "pct": 90.4, "updated": "2026-09-03T06:47:41Z"}
+{"shard": 16, "stage": "testing", "done": 47, "total": 52, "rows": 865100, "note": "T 15m: rule 9/120 (fib382)", "pct": 90.4, "updated": "2026-09-03T06:48:27Z"}

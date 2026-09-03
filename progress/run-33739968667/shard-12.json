@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 16, "total": 52, "rows": 1220222, "note": "EDEN 30m: rule 26/120 (adx14)", "failed": [], "pct": 30.8, "updated": "2026-09-03T10:42:31Z"}
+{"shard": 12, "stage": "testing", "done": 16, "total": 52, "rows": 1231002, "note": "EDEN 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 30.8, "updated": "2026-09-03T10:43:16Z"}

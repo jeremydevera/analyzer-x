@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 25, "total": 52, "rows": 2117910, "note": "JST 1d: 394 bars, testing 120 rules", "failed": [], "pct": 48.1, "updated": "2026-09-03T11:10:09Z"}
+{"shard": 13, "stage": "testing", "done": 27, "total": 52, "rows": 2204170, "note": "LINSTOCK 15m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 51.9, "updated": "2026-09-03T11:10:54Z"}

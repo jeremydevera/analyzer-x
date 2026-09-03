@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 27, "total": 53, "rows": 934000, "note": "LAB 1h: rule 23/120 (supertrend)", "failed": [], "pct": 50.9, "updated": "2026-09-03T13:12:53Z"}
+{"shard": 3, "stage": "testing", "done": 27, "total": 53, "rows": 952600, "note": "LAB 4h: 1,940 bars, testing 120 rules", "failed": [], "pct": 50.9, "updated": "2026-09-03T13:13:38Z"}

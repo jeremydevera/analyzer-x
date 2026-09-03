@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 26, "total": 53, "rows": 2089542, "note": "KERNEL 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 49.1, "updated": "2026-09-03T11:48:08Z"}
+{"shard": 1, "stage": "testing", "done": 26, "total": 53, "rows": 2096362, "note": "KERNEL 1h: rule 7/120 (fvg)", "failed": [], "pct": 49.1, "updated": "2026-09-03T11:48:53Z"}

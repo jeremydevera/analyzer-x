@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 50, "total": 52, "rows": 4021698, "note": "XBI 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-03T13:33:02Z"}
+{"shard": 18, "stage": "testing", "done": 51, "total": 52, "rows": 4053558, "note": "XVG 15m: rule 1/120 (mom6)", "failed": [], "pct": 98.1, "updated": "2026-09-03T13:33:47Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 51, "total": 52, "rows": 4501344, "note": "XPIN 15m: rule 6/120 (sweep30)", "failed": [], "pct": 98.1, "updated": "2026-09-03T13:15:32Z"}
+{"shard": 13, "stage": "testing", "done": 51, "total": 52, "rows": 4506744, "note": "XPIN 15m: rule 33/120 (heikin)", "failed": [], "pct": 98.1, "updated": "2026-09-03T13:16:19Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 49, "total": 53, "rows": 1742536, "note": "VELVET 1h: rule 76/120 (cf_mom)", "failed": [], "pct": 92.5, "updated": "2026-09-03T14:34:42Z"}
+{"shard": 4, "stage": "testing", "done": 49, "total": 53, "rows": 1771336, "note": "VELVET 4h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 92.5, "updated": "2026-09-03T14:35:27Z"}

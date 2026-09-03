@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 45, "total": 52, "rows": 3733846, "note": "TFUEL 1d: 394 bars, testing 120 rules", "failed": [], "pct": 86.5, "updated": "2026-09-03T13:10:44Z"}
+{"shard": 17, "stage": "testing", "done": 46, "total": 52, "rows": 3743446, "note": "TRIA 15m: rule 2/120 (mom15)", "failed": [], "pct": 88.5, "updated": "2026-09-03T13:11:32Z"}

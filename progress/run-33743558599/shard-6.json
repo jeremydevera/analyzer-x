@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 33, "total": 53, "rows": 1140702, "note": "NUSTOCK 1h: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 62.3, "updated": "2026-09-03T14:19:31Z"}
+{"shard": 6, "stage": "testing", "done": 34, "total": 53, "rows": 1157532, "note": "ON 1h: rule 46/120 (rsi2)", "failed": [], "pct": 64.2, "updated": "2026-09-03T14:20:16Z"}

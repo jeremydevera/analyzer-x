@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 9, "total": 52, "rows": 728104, "note": "BOBA 15m: rule 17/120 (atrbreak)", "failed": [], "pct": 17.3, "updated": "2026-09-03T10:22:42Z"}
+{"shard": 9, "stage": "testing", "done": 9, "total": 52, "rows": 733224, "note": "BOBA 15m: rule 49/120 (vwaprev)", "failed": [], "pct": 17.3, "updated": "2026-09-03T10:23:27Z"}

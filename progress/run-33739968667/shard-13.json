@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 28, "total": 52, "rows": 2373830, "note": "MAGIC 1d: 394 bars, testing 120 rules", "failed": [], "pct": 53.8, "updated": "2026-09-03T11:18:59Z"}
+{"shard": 13, "stage": "testing", "done": 29, "total": 52, "rows": 2394250, "note": "METASTOCK 15m: rule 35/120 (willr14)", "failed": [], "pct": 55.8, "updated": "2026-09-03T11:19:44Z"}

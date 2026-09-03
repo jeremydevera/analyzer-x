@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 6, "total": 53, "rows": 402640, "note": "AVAVSTOCK 15m: rule 41/120 (tsi)", "failed": [], "pct": 11.3, "updated": "2026-09-03T09:58:35Z"}
+{"shard": 6, "stage": "testing", "done": 7, "total": 53, "rows": 441630, "note": "BANANA 15m: 34,614 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-03T09:59:25Z"}

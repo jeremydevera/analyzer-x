@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 27, "total": 53, "rows": 2068654, "note": "LAYER 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-03T11:30:08Z"}
+{"shard": 4, "stage": "testing", "done": 27, "total": 53, "rows": 2080534, "note": "LAYER 4h: rule 16/120 (keltner)", "failed": [], "pct": 50.9, "updated": "2026-09-03T11:30:53Z"}

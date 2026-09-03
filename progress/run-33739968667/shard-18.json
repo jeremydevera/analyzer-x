@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 11, "total": 52, "rows": 1049616, "note": "CGPT 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 21.2, "updated": "2026-09-03T10:50:15Z"}
+{"shard": 18, "stage": "testing", "done": 11, "total": 52, "rows": 1059516, "note": "CGPT 1h: rule 2/120 (mom15)", "failed": [], "pct": 21.2, "updated": "2026-09-03T10:51:02Z"}

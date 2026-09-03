@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 4, "total": 52, "rows": 106260, "note": "APDSTOCK 1h: 1,713 bars, testing 120 rules", "failed": [], "pct": 7.7, "updated": "2026-09-03T13:30:34Z"}
+{"shard": 8, "stage": "testing", "done": 5, "total": 52, "rows": 125924, "note": "AR 1h: rule 23/120 (supertrend)", "failed": [], "pct": 9.6, "updated": "2026-09-03T13:31:19Z"}

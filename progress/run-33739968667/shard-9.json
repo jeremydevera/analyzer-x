@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 15, "total": 52, "rows": 1222796, "note": "DIA 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 28.8, "updated": "2026-09-03T10:55:50Z"}
+{"shard": 9, "stage": "testing", "done": 15, "total": 52, "rows": 1228256, "note": "DIA 30m: rule 1/120 (mom6)", "failed": [], "pct": 28.8, "updated": "2026-09-03T10:56:40Z"}

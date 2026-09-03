@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 3, "total": 53, "rows": 170128, "note": "AKT 15m: rule 1/120 (mom6)", "failed": [], "pct": 5.7, "updated": "2026-09-03T09:48:30Z"}
+{"shard": 3, "stage": "testing", "done": 3, "total": 53, "rows": 172108, "note": "AKT 15m: rule 8/120 (fib618)", "failed": [], "pct": 5.7, "updated": "2026-09-03T09:49:15Z"}

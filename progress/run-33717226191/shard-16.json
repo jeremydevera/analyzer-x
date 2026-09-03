@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 51, "total": 52, "rows": 965920, "note": "XTZ 15m: 34,603 bars, testing 120 rules", "pct": 98.1, "updated": "2026-09-03T07:00:33Z"}
+{"shard": 16, "stage": "testing", "done": 51, "total": 52, "rows": 967900, "note": "XTZ 15m: rule 3/120 (fade15)", "pct": 98.1, "updated": "2026-09-03T07:01:21Z"}

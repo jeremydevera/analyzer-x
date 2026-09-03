@@ -132,7 +132,15 @@ def save_candles_cache(symbol: str, tf: str, df) -> None:
     22,478,876-row sweep, and cf_emarsi had rows only for the pairs that
     happened to be fetched fresh.
     """
-    (CANDLES / f"{symbol}-{tf}.json").write_text(json.dumps({
+    # ATOMIC. A plain write_text leaves a HALF FILE when the process dies
+    # mid-write, and on Windows that half is usually NUL bytes: the size is
+    # allocated before the data reaches the disk. ENPHSTOCK_USDT-1d.json was
+    # 597 bytes of NULs on Sep 03, 2026 — every download and every retry of
+    # that pair raised "Expecting value: line 1 column 1 (char 0)" from the
+    # CACHE READER, never from the venue (which serves the pair fine), so the
+    # pair could not be repaired by any button. start.py kills detached jobs
+    # with taskkill /T, so mid-write deaths are routine here.
+    text = json.dumps({
         "t": [int(x) for x in df["Date"].to_numpy()
               .astype("datetime64[ms]").astype("int64")],
         "o": [float(x) for x in df["Open"]],
@@ -140,7 +148,14 @@ def save_candles_cache(symbol: str, tf: str, df) -> None:
         "l": [float(x) for x in df["Low"]],
         "c": [float(x) for x in df["Close"]],
         "v": ([float(x) for x in df["Volume"]]
-              if "Volume" in df.columns else None)}, separators=(",", ":")))
+              if "Volume" in df.columns else None)}, separators=(",", ":"))
+    final = CANDLES / f"{symbol}-{tf}.json"
+    tmp = final.with_suffix(".json.tmp")
+    with open(tmp, "w", encoding="utf-8") as fh:
+        fh.write(text)
+        fh.flush()
+        os.fsync(fh.fileno())        # the bytes, not just the size
+    os.replace(tmp, final)
 
 
 def cached_candles(symbol: str, tf: str):
@@ -157,7 +172,27 @@ def cached_candles(symbol: str, tf: str):
     f = CANDLES / f"{symbol}-{tf}.json"
     if not f.exists():
         return None
-    d = json.loads(f.read_text())
+    try:
+        d = json.loads(f.read_text())
+    except (ValueError, OSError, UnicodeDecodeError) as exc:
+        # A cache file that will not parse is NO CACHE — never an error that
+        # travels up as the pair's answer. ENPHSTOCK_USDT 1d was 597 NUL bytes
+        # after a job was killed mid-write, and because this raised, the
+        # failure was reported as the DOWNLOAD's ("Expecting value: line 1
+        # column 1 (char 0)"), retried three times against a venue that was
+        # answering perfectly, and left on the lost list where no button could
+        # clear it. Quarantined, so the bad bytes are kept to look at once and
+        # can never be read as bars, and the caller re-downloads in full.
+        bad = f.with_suffix(".json.corrupt")
+        try:
+            os.replace(f, bad)
+        except OSError:
+            pass
+        print(f"[candles] {symbol} {tf}: the cache file was unreadable "
+              f"({type(exc).__name__}: {str(exc)[:60]}) — moved to "
+              f"{bad.name} and the pair will be downloaded in full",
+              flush=True)
+        return None
     df = pd.DataFrame({"Date": pd.to_datetime(d["t"], unit="ms"),
                        "Open": d["o"], "High": d["h"], "Low": d["l"],
                        "Close": d["c"]})

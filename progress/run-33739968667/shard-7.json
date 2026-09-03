@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 20, "total": 52, "rows": 1357660, "note": "GEVSTOCK 15m: 15,669 bars, testing 120 rules", "failed": [], "pct": 38.5, "updated": "2026-09-03T11:01:09Z"}
+{"shard": 7, "stage": "testing", "done": 20, "total": 52, "rows": 1371380, "note": "GEVSTOCK 15m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 38.5, "updated": "2026-09-03T11:01:55Z"}

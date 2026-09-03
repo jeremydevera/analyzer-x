@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 6, "total": 52, "rows": 449140, "note": "AXL 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 11.5, "updated": "2026-09-03T10:08:49Z"}
+{"shard": 12, "stage": "testing", "done": 6, "total": 52, "rows": 453100, "note": "AXL 30m: rule 12/120 (donchian20)", "failed": [], "pct": 11.5, "updated": "2026-09-03T10:09:35Z"}

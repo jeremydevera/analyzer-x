@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 40, "total": 53, "rows": 3395696, "note": "SAGA 30m: rule 67/120 (pinbar)", "failed": [], "pct": 75.5, "updated": "2026-09-03T13:04:12Z"}
+{"shard": 1, "stage": "testing", "done": 40, "total": 53, "rows": 3407356, "note": "SAGA 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-03T13:05:06Z"}

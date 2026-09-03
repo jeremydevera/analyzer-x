@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 43, "total": 52, "rows": 3962324, "note": "SQQQ 30m: rule 1/120 (mom6)", "failed": [], "pct": 82.7, "updated": "2026-09-03T13:57:52Z"}
+{"shard": 14, "stage": "testing", "done": 44, "total": 52, "rows": 4017542, "note": "SUSHI 15m: 34,630 bars, testing 120 rules", "failed": [], "pct": 84.6, "updated": "2026-09-03T13:58:42Z"}

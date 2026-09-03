@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 47, "total": 52, "rows": 925340, "note": "TWT 15m: rule 108/120 (cf_bosfvg_l2)", "pct": 90.4, "updated": "2026-09-03T06:48:03Z"}
+{"shard": 13, "stage": "testing", "done": 50, "total": 52, "rows": 950180, "note": "XAI 15m: 34,602 bars, testing 120 rules", "pct": 96.2, "updated": "2026-09-03T06:49:03Z"}

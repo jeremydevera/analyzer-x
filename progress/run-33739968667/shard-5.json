@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 12, "total": 53, "rows": 1116472, "note": "CHZ 15m: rule 15/120 (bbbreak)", "failed": [], "pct": 22.6, "updated": "2026-09-03T10:53:05Z"}
+{"shard": 5, "stage": "testing", "done": 12, "total": 53, "rows": 1121272, "note": "CHZ 15m: rule 45/120 (zscore20)", "failed": [], "pct": 22.6, "updated": "2026-09-03T10:53:50Z"}

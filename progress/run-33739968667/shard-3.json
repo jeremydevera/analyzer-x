@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 3, "total": 53, "rows": 181844, "note": "AKT 30m: rule 3/120 (fade15)", "failed": [], "pct": 5.7, "updated": "2026-09-03T16:02:22Z"}
+{"shard": 3, "stage": "testing", "done": 3, "total": 53, "rows": 191084, "note": "AKT 30m: rule 45/120 (zscore20)", "failed": [], "pct": 5.7, "updated": "2026-09-03T16:03:08Z"}

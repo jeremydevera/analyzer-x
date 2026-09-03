@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 46, "total": 52, "rows": 3563970, "note": "TOWNS 1h: rule 103/120 (cf_eqhl)", "failed": [], "pct": 88.5, "updated": "2026-09-03T12:13:54Z"}
+{"shard": 10, "stage": "testing", "done": 46, "total": 52, "rows": 3596662, "note": "TOWNS 1d: rule 15/120 (bbbreak)", "failed": [], "pct": 88.5, "updated": "2026-09-03T12:14:39Z"}

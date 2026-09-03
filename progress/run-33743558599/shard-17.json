@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 42, "total": 52, "rows": 1642958, "note": "SONIC 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 80.8, "updated": "2026-09-03T14:45:15Z"}
+{"shard": 17, "stage": "testing", "done": 42, "total": 52, "rows": 1660158, "note": "SONIC 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 80.8, "updated": "2026-09-03T14:46:00Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 1577270, "note": "S 1h: rule 64/120 (hammer)", "failed": [], "pct": 84.9, "updated": "2026-09-03T13:30:10Z"}
+{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 1597510, "note": "S 4h: rule 33/120 (heikin)", "failed": [], "pct": 84.9, "updated": "2026-09-03T13:30:56Z"}

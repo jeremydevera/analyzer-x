@@ -2154,7 +2154,16 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
     with _open(readonly=True, same_thread=False) as con:
         cur = con.execute(
             f"SELECT * FROM rows"
-            f"{_indexed_by(coin, seeks, (not row_id and key == 'profit' and not coin and _wide_profit_helps(sizing, max_tp, min_winrate, min_trades, profitable)), row_id, group_idx, signal_seeks)}"
+            # THE SAME CHOICE THE PAGE MAKES. This used to hand
+            # `_wide_profit_helps(...)` in unconditionally, so a win-rate floor
+            # WITH a sizing beside it named rows_pr2 (profit DESC, sizing, ...)
+            # and walked 49.8 million entries down the profit order looking for
+            # flat rows above 90%: measured 259.0 s for the FIRST ROW of the
+            # operator's own download, which the browser reads as a 500, while
+            # the identical filter on the page answered in 0.14 s. The win-rate
+            # SEEK is right whenever there is a win-rate floor and an index for
+            # it; the wide profit index is for the case with no floor.
+            f"{_indexed_by(coin, seeks, (not seeks and not row_id and key == 'profit' and not coin and _wide_profit_helps(sizing, max_tp, min_winrate, min_trades, profitable)), row_id, group_idx, signal_seeks)}"
             f"{where} "
             f"ORDER BY {order}, id ASC", args)
         while True:

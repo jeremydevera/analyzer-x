@@ -160,6 +160,40 @@ def _per_worker_gb(tfs) -> float:
     return max([RAM_PER_WORKER_GB.get(t, 0.2) for t in (tfs or [])] or [0.2])
 
 
+# How long to let memory SETTLE before sizing the pool, and how often to look.
+# A restart inherits the corpse of the process it replaces: on Sep 03, 2026 the
+# 3:30pm restart measured 3.9 GB free while the dead run's workers were still
+# being reaped, chose 3 of 11 cores, and stayed on 3 for the rest of the run —
+# 5.6 GB was free minutes later and two of the three workers sat pegged at 100%
+# of one core while nine cores idled. Measured rate on 3 cores: 15 pairs/hour,
+# 28.6 hours for the 429 pairs left.
+SETTLE_SECONDS = 20.0
+SETTLE_EVERY = 4.0
+
+
+def free_ram_settled(seconds: float = SETTLE_SECONDS,
+                     every: float = SETTLE_EVERY) -> float:
+    """The BEST free-memory reading over a short window, not the first one.
+
+    Sizing a pool on a single sample taken at the worst instant of a restart
+    locks a whole run to a fraction of the machine. Freeing is fast — a reaped
+    worker's pages come back in seconds — so the maximum over twenty seconds is
+    the honest figure, and it is never optimistic about memory that is genuinely
+    in use.
+    """
+    best = free_ram_gb()
+    if best <= 0:                      # the machine will not say
+        return best
+    waited = 0.0
+    while waited < seconds:
+        time.sleep(min(every, seconds - waited))
+        waited += every
+        got = free_ram_gb()
+        if got > best:
+            best = got
+    return best
+
+
 def workers_for_ram(cores: int, tfs, free_gb: float | None = None) -> int:
     """How many pairs may be measured at once without paging to disk.
 
@@ -894,9 +928,14 @@ def _run_backtest_inner(spec: dict, files_key: str = "backtest",
 
     # One pair per core, one core left free for the trading runner and the API.
     cores_offered = max(1, (_os.cpu_count() or 2) - 1)
-    # Sized to the memory actually free, not just to the cores (2026-08-27).
-    n_workers = workers_for_ram(cores_offered, spec.get("tfs") or [])
-    cores_why = ram_reason(n_workers, cores_offered, spec.get("tfs") or [])
+    # Sized to the memory actually free, not just to the cores (2026-08-27) --
+    # and to memory that has SETTLED, not to the instant of a restart
+    # (2026-09-03, see free_ram_settled).
+    _free = free_ram_settled()
+    n_workers = workers_for_ram(cores_offered, spec.get("tfs") or [],
+                                free_gb=_free if _free > 0 else None)
+    cores_why = ram_reason(n_workers, cores_offered, spec.get("tfs") or [],
+                           free_gb=_free if _free > 0 else None)
     if cores_why:
         print(f"[backtest] {cores_why}", flush=True)
 

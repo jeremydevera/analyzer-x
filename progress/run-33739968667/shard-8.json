@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 26, "total": 52, "rows": 1924264, "note": "KITE 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 50.0, "updated": "2026-09-03T11:19:52Z"}
+{"shard": 8, "stage": "testing", "done": 26, "total": 52, "rows": 1932184, "note": "KITE 30m: rule 2/120 (mom15)", "failed": [], "pct": 50.0, "updated": "2026-09-03T11:20:38Z"}

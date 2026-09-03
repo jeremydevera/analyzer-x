@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 7, "total": 52, "rows": 505914, "note": "BAT 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 13.5, "updated": "2026-09-03T10:05:25Z"}
+{"shard": 15, "stage": "testing", "done": 7, "total": 52, "rows": 510974, "note": "BAT 30m: rule 17/120 (atrbreak)", "failed": [], "pct": 13.5, "updated": "2026-09-03T10:06:11Z"}

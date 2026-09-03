@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 12, "total": 52, "rows": 1074788, "note": "COMP 30m: rule 73/120 (volspike)", "failed": [], "pct": 23.1, "updated": "2026-09-03T10:51:02Z"}
+{"shard": 19, "stage": "testing", "done": 12, "total": 52, "rows": 1086888, "note": "COMP 1h: rule 3/120 (fade15)", "failed": [], "pct": 23.1, "updated": "2026-09-03T10:51:50Z"}

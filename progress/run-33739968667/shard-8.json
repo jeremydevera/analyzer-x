@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 7, "total": 52, "rows": 532592, "note": "BANK 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 13.5, "updated": "2026-09-03T10:09:41Z"}
+{"shard": 8, "stage": "testing", "done": 7, "total": 52, "rows": 538192, "note": "BANK 30m: rule 22/120 (engulf)", "failed": [], "pct": 13.5, "updated": "2026-09-03T10:10:26Z"}

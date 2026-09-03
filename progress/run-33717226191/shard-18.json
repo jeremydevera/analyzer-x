@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 27, "total": 52, "rows": 513720, "note": "LMTSTOCK 15m: rule 36/120 (stochrsi)", "pct": 51.9, "updated": "2026-09-03T05:51:11Z"}
+{"shard": 18, "stage": "testing", "done": 30, "total": 52, "rows": 534600, "note": "MRVLSTOCK 15m: 25,606 bars, testing 120 rules", "pct": 57.7, "updated": "2026-09-03T05:52:01Z"}

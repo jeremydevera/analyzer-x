@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 40, "total": 53, "rows": 3120026, "note": "SAHARA 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-03T18:32:48Z"}
+{"shard": 3, "stage": "testing", "done": 40, "total": 53, "rows": 3122226, "note": "SAHARA 30m: rule 4/120 (trend50)", "failed": [], "pct": 75.5, "updated": "2026-09-03T18:33:36Z"}

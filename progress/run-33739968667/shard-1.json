@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 42, "total": 53, "rows": 3492564, "note": "SMCISTOCK 15m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 79.2, "updated": "2026-09-03T13:09:01Z"}
+{"shard": 1, "stage": "testing", "done": 42, "total": 53, "rows": 3506484, "note": "SMCISTOCK 30m: rule 54/120 (fractal5)", "failed": [], "pct": 79.2, "updated": "2026-09-03T13:09:46Z"}

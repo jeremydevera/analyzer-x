@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 36, "total": 52, "rows": 3393860, "note": "POWER 4h: 1,633 bars, testing 120 rules", "failed": [], "pct": 69.2, "updated": "2026-09-03T13:30:16Z"}
+{"shard": 14, "stage": "testing", "done": 37, "total": 52, "rows": 3432716, "note": "QNTSTOCK 15m: rule 21/120 (cci20)", "failed": [], "pct": 71.2, "updated": "2026-09-03T13:31:01Z"}

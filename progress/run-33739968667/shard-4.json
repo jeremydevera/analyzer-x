@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 27, "total": 53, "rows": 2003614, "note": "LAYER 15m: 34,620 bars, testing 120 rules", "failed": [], "pct": 50.9, "updated": "2026-09-03T11:23:10Z"}
+{"shard": 4, "stage": "testing", "done": 27, "total": 53, "rows": 2005854, "note": "LAYER 15m: rule 8/120 (fib618)", "failed": [], "pct": 50.9, "updated": "2026-09-03T11:23:56Z"}

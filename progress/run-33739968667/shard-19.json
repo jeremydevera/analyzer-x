@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 50, "total": 52, "rows": 4533082, "note": "XCN 15m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-03T14:06:37Z"}
+{"shard": 19, "stage": "testing", "done": 50, "total": 52, "rows": 4535562, "note": "XCN 30m: rule 4/120 (trend50)", "failed": [], "pct": 96.2, "updated": "2026-09-03T14:07:23Z"}

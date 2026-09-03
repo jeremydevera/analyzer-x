@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 3, "total": 52, "rows": 176104, "note": "ALPINE 15m: rule 29/120 (hull20)", "failed": [], "pct": 5.8, "updated": "2026-09-03T09:50:56Z"}
+{"shard": 11, "stage": "testing", "done": 3, "total": 52, "rows": 181824, "note": "ALPINE 15m: rule 56/120 (insidebrk)", "failed": [], "pct": 5.8, "updated": "2026-09-03T09:51:41Z"}

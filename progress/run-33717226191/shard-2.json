@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 48, "total": 53, "rows": 845640, "note": "UNHSTOCK 15m: rule 76/120 (cf_mom)", "pct": 90.6, "updated": "2026-09-03T06:45:46Z"}
+{"shard": 2, "stage": "testing", "done": 49, "total": 53, "rows": 849160, "note": "VELO 15m: 34,602 bars, testing 120 rules", "pct": 92.5, "updated": "2026-09-03T06:46:34Z"}

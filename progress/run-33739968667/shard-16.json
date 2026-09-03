@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 43, "total": 52, "rows": 4021740, "note": "STABLE 15m: rule 22/120 (engulf)", "failed": [], "pct": 82.7, "updated": "2026-09-03T13:37:40Z"}
+{"shard": 16, "stage": "testing", "done": 43, "total": 52, "rows": 4027140, "note": "STABLE 15m: rule 49/120 (vwaprev)", "failed": [], "pct": 82.7, "updated": "2026-09-03T13:38:26Z"}

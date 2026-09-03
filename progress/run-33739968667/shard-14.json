@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 46, "total": 52, "rows": 4228014, "note": "TRB 15m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 88.5, "updated": "2026-09-03T14:12:06Z"}
+{"shard": 14, "stage": "testing", "done": 46, "total": 52, "rows": 4230654, "note": "TRB 30m: rule 2/120 (mom15)", "failed": [], "pct": 88.5, "updated": "2026-09-03T14:12:57Z"}

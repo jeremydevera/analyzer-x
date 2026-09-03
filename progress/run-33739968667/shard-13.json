@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 13, "total": 52, "rows": 893228, "note": "CRO 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 25.0, "updated": "2026-09-03T10:11:27Z"}
+{"shard": 13, "stage": "testing", "done": 13, "total": 52, "rows": 901088, "note": "CRO 30m: rule 1/120 (mom6)", "failed": [], "pct": 25.0, "updated": "2026-09-03T10:12:16Z"}

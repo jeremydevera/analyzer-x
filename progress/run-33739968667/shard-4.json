@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 13, "total": 53, "rows": 1030990, "note": "CORE 15m: rule 24/120 (psar)", "failed": [], "pct": 24.5, "updated": "2026-09-03T10:23:17Z"}
+{"shard": 4, "stage": "testing", "done": 13, "total": 53, "rows": 1036050, "note": "CORE 15m: rule 47/120 (ibs)", "failed": [], "pct": 24.5, "updated": "2026-09-03T10:24:02Z"}

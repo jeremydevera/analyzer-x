@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 21, "total": 52, "rows": 374120, "note": "GSSTOCK 15m: 22,080 bars, testing 120 rules", "pct": 40.4, "updated": "2026-09-03T05:45:16Z"}
+{"shard": 11, "stage": "testing", "done": 21, "total": 52, "rows": 384040, "note": "GSSTOCK 15m: rule 120/120 (cf_stflip_l2)", "pct": 40.4, "updated": "2026-09-03T05:46:02Z"}

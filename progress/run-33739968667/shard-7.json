@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 30, "total": 52, "rows": 2127866, "note": "MOCA 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 57.7, "updated": "2026-09-03T11:34:06Z"}
+{"shard": 7, "stage": "testing", "done": 30, "total": 52, "rows": 2134346, "note": "MOCA 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 57.7, "updated": "2026-09-03T11:35:00Z"}

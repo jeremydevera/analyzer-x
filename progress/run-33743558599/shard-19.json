@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 30, "total": 52, "rows": 1266466, "note": "MSFTSTOCK 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 57.7, "updated": "2026-09-03T14:52:50Z"}
+{"shard": 19, "stage": "testing", "done": 31, "total": 52, "rows": 1296606, "note": "NEAR 1h: rule 5/120 (rsi14)", "failed": [], "pct": 59.6, "updated": "2026-09-03T14:53:35Z"}

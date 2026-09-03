@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 14, "total": 53, "rows": 1139674, "note": "CTR 15m: rule 25/120 (ichimoku)", "failed": [], "pct": 26.4, "updated": "2026-09-03T16:49:04Z"}
+{"shard": 3, "stage": "testing", "done": 14, "total": 53, "rows": 1162134, "note": "CTR 30m: rule 20/120 (stoch14)", "failed": [], "pct": 26.4, "updated": "2026-09-03T16:49:49Z"}

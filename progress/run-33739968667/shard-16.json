@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 35, "total": 52, "rows": 3318674, "note": "PIEVERSE 15m: rule 49/120 (vwaprev)", "failed": [], "pct": 67.3, "updated": "2026-09-03T12:54:53Z"}
+{"shard": 16, "stage": "testing", "done": 35, "total": 52, "rows": 3326814, "note": "PIEVERSE 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 67.3, "updated": "2026-09-03T12:55:38Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 14, "total": 52, "rows": 1076692, "note": "CYBER 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 26.9, "updated": "2026-09-03T10:21:59Z"}
+{"shard": 13, "stage": "testing", "done": 15, "total": 52, "rows": 1124920, "note": "DKNGSTOCK 15m: rule 46/120 (rsi2)", "failed": [], "pct": 28.8, "updated": "2026-09-03T10:22:44Z"}

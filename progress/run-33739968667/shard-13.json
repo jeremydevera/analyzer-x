@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 49, "total": 52, "rows": 4281980, "note": "VTHO 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 94.2, "updated": "2026-09-03T13:02:01Z"}
+{"shard": 13, "stage": "testing", "done": 49, "total": 52, "rows": 4290560, "note": "VTHO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 94.2, "updated": "2026-09-03T13:02:56Z"}

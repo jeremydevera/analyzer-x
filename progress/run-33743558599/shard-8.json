@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 29, "total": 52, "rows": 1001842, "note": "MELANIA 1h: rule 3/120 (fade15)", "failed": [], "pct": 55.8, "updated": "2026-09-03T14:00:41Z"}
+{"shard": 8, "stage": "testing", "done": 29, "total": 52, "rows": 1024842, "note": "MELANIA 1h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 55.8, "updated": "2026-09-03T14:01:26Z"}

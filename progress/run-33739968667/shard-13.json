@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 10, "total": 52, "rows": 654534, "note": "B 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 19.2, "updated": "2026-09-03T10:00:28Z"}
+{"shard": 13, "stage": "testing", "done": 10, "total": 52, "rows": 663774, "note": "B 1h: rule 36/120 (stochrsi)", "failed": [], "pct": 19.2, "updated": "2026-09-03T10:01:13Z"}

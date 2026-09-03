@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 18, "total": 52, "rows": 1485800, "note": "FIDA 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 34.6, "updated": "2026-09-03T10:40:12Z"}
+{"shard": 13, "stage": "testing", "done": 18, "total": 52, "rows": 1496360, "note": "FIDA 1h: rule 4/120 (trend50)", "failed": [], "pct": 34.6, "updated": "2026-09-03T10:40:58Z"}

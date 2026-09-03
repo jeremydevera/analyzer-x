@@ -509,7 +509,9 @@ export default function StrategiesPanel() {
     } else if (f.minSl > 0) {
       out.push({ k: "minSl", text: `SL ${f.minSl}% or wider` });
     }
-    if (f.tpOverSl) out.push({ k: "tpOverSl", text: "TP wider than SL" });
+    if (f.tpOverSl) {
+      out.push({ k: "tpOverSl", text: "TP at least as wide as SL" });
+    }
     if (f.profitable) out.push({ k: "profitable", text: "Made money" });
     return out;
   };
@@ -966,14 +968,14 @@ export default function StrategiesPanel() {
                 <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300">
                   <input type="checkbox" checked={tpOverSl}
                          onChange={(e) => setTpOverSl(e.target.checked)}
-                         aria-label="Only rows whose take profit is wider than their stop loss"
+                         aria-label="Only rows whose take profit is equal to or wider than their stop loss"
                          className="h-4 w-4 accent-brand-500" />
-                  TP is greater than SL
+                  TP is equal to or greater than SL
                 </label>
               </Field>
               <Field label="TP % between"
                      hint={tpOverSl
-                       ? "ignored while TP is greater than SL"
+                       ? "ignored while TP is equal to or greater than SL"
                        : `0.5 to 2.5 keeps both ends — this store measured TP up to ${tpCeiling}%`}>
                 <input type="number" min={0} max={tpCeiling} step={0.5} value={minTp || ""}
                        list="tp-values" placeholder="any" disabled={tpOverSl}
@@ -996,7 +998,7 @@ export default function StrategiesPanel() {
                   2026-09-02) — a smaller stop risks less on each trade. */}
               <Field label="SL % between"
                      hint={tpOverSl
-                       ? "ignored while TP is greater than SL"
+                       ? "ignored while TP is equal to or greater than SL"
                        : "a smaller stop risks less on each trade; both ends kept"}>
                 <input type="number" min={0} step={0.5} value={minSl || ""}
                        list="sl-values" placeholder="any" disabled={tpOverSl}

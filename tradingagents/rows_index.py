@@ -1205,7 +1205,11 @@ def _where(coin=None, tf=None, signal=None, profitable=False,
     # A payoff above 1 means one win pays for more than one loss — the shape
     # the BALANCED ceiling is about from the other end.
     if tp_over_sl:
-        sql.append("tp > sl")
+        # INCLUSIVE, on the operator's word (2026-09-04: "I WANT EQUAL OR
+        # GREATER TO"). TP 1% against SL 1% passes: the target pays for one
+        # loss exactly, which is the same reading every other box on this
+        # panel takes — 90 keeps a row that won exactly 90.00%.
+        sql.append("tp >= sl")
 
 
     return (" WHERE " + " AND ".join(sql) if sql else ""), args

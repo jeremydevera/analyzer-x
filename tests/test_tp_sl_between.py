@@ -216,18 +216,21 @@ def test_clear_all_and_the_served_set_know_about_the_new_ends():
 
 def test_the_checkbox_is_a_column_against_a_column():
     where, args = ri._where(tp_over_sl=True)
-    assert "tp > sl" in where
+    assert "tp >= sl" in where
     assert args == [], "nothing to type, so nothing to bind"
 
 
 def test_it_keeps_only_the_rows_whose_target_is_wider(store):
+    """INCLUSIVE, on the operator's word (2026-09-04: "I WANT EQUAL OR GREATER
+    TO"). It shipped strict for one commit; TP 1% against SL 1% pays for one
+    loss exactly, and every other box on this panel reads the same way."""
     got = ri.query(tp_over_sl=True)
     names = sorted(r["signal"] for r in got["rows"])
-    assert names == ["high_edge", "middle", "scalp", "wide"], names
-    assert all(r["tp"] > r["sl"] for r in got["rows"])
-    # low_edge is TP 0.5 against SL 0.5 — equal is NOT greater
-    assert "low_edge" not in names
-    assert got["total"] == 4
+    assert names == ["high_edge", "low_edge", "middle", "scalp", "wide"], names
+    assert all(r["tp"] >= r["sl"] for r in got["rows"])
+    # low_edge is TP 0.5 against SL 0.5 — EQUAL PASSES
+    assert "low_edge" in names
+    assert got["total"] == 5
 
 
 def test_the_checkbox_is_echoed_for_the_caption(store):
@@ -248,14 +251,16 @@ def test_the_download_carries_it_and_names_it():
 
 def test_the_csv_walks_the_same_rows(store):
     rows = list(ri.iter_rows(tp_over_sl=True))
-    assert sorted(r["signal"] for r in rows) == ["high_edge", "middle",
-                                                 "scalp", "wide"]
+    assert sorted(r["signal"] for r in rows) == ["high_edge", "low_edge",
+                                                 "middle", "scalp", "wide"]
 
 
 def test_the_box_greys_the_two_ranges_OUT_and_they_stop_filtering():
     p = io.open(PANEL, encoding="utf-8").read()
-    assert 'aria-label="Only rows whose take profit is wider than their stop loss"' in p
-    assert "TP is greater than SL" in p
+    assert ('aria-label="Only rows whose take profit is equal to or wider '
+            'than their stop loss"') in p
+    assert "TP is equal to or greater than SL" in p, (
+        "the label has to say INCLUSIVE, because the filter is")
     # every one of the four range inputs is disabled by it
     assert p.count("disabled={tpOverSl}") == 4, p.count("disabled={tpOverSl}")
     # ...and greyed out means IGNORED, not hidden-but-still-applied
@@ -263,9 +268,9 @@ def test_the_box_greys_the_two_ranges_OUT_and_they_stop_filtering():
     for f in ("maxTp: off(maxTp)", "maxSl: off(maxSl)",
               "minTp: off(minTp)", "minSl: off(minSl)"):
         assert f in p, f
-    assert "ignored while TP is greater than SL" in p
+    assert "ignored while TP is equal to or greater than SL" in p
     # the chip, and the download
-    assert 'text: "TP wider than SL"' in p
+    assert 'text: "TP at least as wide as SL"' in p
     assert "tpOverSl: applied.tpOverSl," in p
 
 

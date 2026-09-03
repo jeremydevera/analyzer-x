@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 18, "total": 53, "rows": 651754, "note": "EWY 4h: 1,029 bars, testing 120 rules", "failed": [], "pct": 34.0, "updated": "2026-09-03T14:12:41Z"}
+{"shard": 0, "stage": "testing", "done": 20, "total": 53, "rows": 682454, "note": "GALA 1h: rule 21/120 (cci20)", "failed": [], "pct": 37.7, "updated": "2026-09-03T14:13:27Z"}

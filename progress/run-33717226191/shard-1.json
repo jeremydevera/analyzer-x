@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 19, "total": 53, "rows": 302580, "note": "FLOW 15m: rule 96/120 (cf_emarsi_l2)", "pct": 35.8, "updated": "2026-09-03T05:29:00Z"}
+{"shard": 1, "stage": "testing", "done": 20, "total": 53, "rows": 309060, "note": "GAS 15m: rule 2/120 (mom15)", "pct": 37.7, "updated": "2026-09-03T05:29:50Z"}

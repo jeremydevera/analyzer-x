@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 38, "total": 52, "rows": 3274808, "note": "RESOLV 15m: rule 33/120 (heikin)", "failed": [], "pct": 73.1, "updated": "2026-09-03T12:47:12Z"}
+{"shard": 17, "stage": "testing", "done": 38, "total": 52, "rows": 3280208, "note": "RESOLV 15m: rule 61/120 (turtle)", "failed": [], "pct": 73.1, "updated": "2026-09-03T12:47:58Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 31, "total": 53, "rows": 1074300, "note": "MSFU 1h: downloading candles", "failed": [], "pct": 58.5, "updated": "2026-09-03T14:23:31Z"}
+{"shard": 0, "stage": "testing", "done": 33, "total": 53, "rows": 1091012, "note": "NOT 1h: rule 14/120 (bb20)", "failed": [], "pct": 62.3, "updated": "2026-09-03T14:24:16Z"}

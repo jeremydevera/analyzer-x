@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 10, "total": 53, "rows": 911746, "note": "BSV 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 18.9, "updated": "2026-09-03T10:19:59Z"}
+{"shard": 4, "stage": "testing", "done": 12, "total": 53, "rows": 964310, "note": "CHYMSTOCK 15m: 2,094 bars, testing 120 rules", "failed": [], "pct": 22.6, "updated": "2026-09-03T10:20:45Z"}

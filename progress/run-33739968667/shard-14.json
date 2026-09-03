@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 23, "total": 52, "rows": 2052992, "note": "ICP 1h: rule 4/120 (trend50)", "failed": [], "pct": 44.2, "updated": "2026-09-03T11:58:40Z"}
+{"shard": 14, "stage": "testing", "done": 23, "total": 52, "rows": 2075792, "note": "ICP 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 44.2, "updated": "2026-09-03T11:59:34Z"}

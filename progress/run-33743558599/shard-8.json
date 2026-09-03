@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 39, "total": 52, "rows": 1378618, "note": "RLS 4h: rule 2/120 (mom15)", "failed": [], "pct": 75.0, "updated": "2026-09-03T14:11:21Z"}
+{"shard": 8, "stage": "testing", "done": 40, "total": 52, "rows": 1406052, "note": "SAPIEN 1h: rule 7/120 (fvg)", "failed": [], "pct": 76.9, "updated": "2026-09-03T14:12:06Z"}

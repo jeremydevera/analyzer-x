@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 51, "total": 52, "rows": 4068958, "note": "XVG 15m: rule 68/120 (dbltop)", "failed": [], "pct": 98.1, "updated": "2026-09-03T13:36:49Z"}
+{"shard": 18, "stage": "testing", "done": 51, "total": 52, "rows": 4075998, "note": "XVG 15m: rule 100/120 (cf_soup1)", "failed": [], "pct": 98.1, "updated": "2026-09-03T13:37:36Z"}

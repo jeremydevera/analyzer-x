@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 47, "total": 53, "rows": 3767418, "note": "TSEMSTOCK 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 88.7, "updated": "2026-09-03T12:51:27Z"}
+{"shard": 4, "stage": "testing", "done": 48, "total": 53, "rows": 3816522, "note": "UNITREE 15m: rule 34/120 (lrslope)", "failed": [], "pct": 90.6, "updated": "2026-09-03T12:52:12Z"}

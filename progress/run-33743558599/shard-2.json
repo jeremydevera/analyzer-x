@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 39, "total": 53, "rows": 1414208, "note": "RIF 1h: rule 11/120 (sr_break)", "failed": [], "pct": 73.6, "updated": "2026-09-03T13:56:23Z"}
+{"shard": 2, "stage": "testing", "done": 39, "total": 53, "rows": 1435768, "note": "RIF 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 73.6, "updated": "2026-09-03T13:57:09Z"}

@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 5, "total": 53, "rows": 352846, "note": "ARKM 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-03T10:06:13Z"}
+{"shard": 2, "stage": "testing", "done": 5, "total": 53, "rows": 384046, "note": "ARKM 1d: 394 bars, testing 120 rules", "failed": [], "pct": 9.4, "updated": "2026-09-03T10:06:59Z"}

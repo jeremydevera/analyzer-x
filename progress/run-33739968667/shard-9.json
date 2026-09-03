@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 46, "total": 52, "rows": 3761814, "note": "TOSHI 1h: rule 21/120 (cci20)", "failed": [], "pct": 88.5, "updated": "2026-09-03T13:11:11Z"}
+{"shard": 9, "stage": "testing", "done": 46, "total": 52, "rows": 3783154, "note": "TOSHI 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 88.5, "updated": "2026-09-03T13:12:02Z"}

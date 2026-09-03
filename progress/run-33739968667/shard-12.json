@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 8, "total": 52, "rows": 661062, "note": "BIRB 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 15.4, "updated": "2026-09-03T10:19:10Z"}
+{"shard": 12, "stage": "testing", "done": 8, "total": 52, "rows": 671862, "note": "BIRB 15m: rule 91/120 (cf_soup)", "failed": [], "pct": 15.4, "updated": "2026-09-03T10:19:56Z"}

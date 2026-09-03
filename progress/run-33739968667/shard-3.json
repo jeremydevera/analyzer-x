@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 1, "total": 53, "rows": 28300, "note": "1000BONK 30m: rule 23/120 (supertrend)", "failed": [], "pct": 1.9, "updated": "2026-09-03T15:54:18Z"}
+{"shard": 3, "stage": "testing", "done": 1, "total": 53, "rows": 41900, "note": "1000BONK 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-03T15:55:04Z"}

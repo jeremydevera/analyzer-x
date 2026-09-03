@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 10, "total": 53, "rows": 835786, "note": "BSV 15m: rule 12/120 (donchian20)", "failed": [], "pct": 18.9, "updated": "2026-09-03T10:13:48Z"}
+{"shard": 4, "stage": "testing", "done": 10, "total": 53, "rows": 840586, "note": "BSV 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 18.9, "updated": "2026-09-03T10:14:34Z"}

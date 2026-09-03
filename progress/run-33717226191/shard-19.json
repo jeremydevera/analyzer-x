@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 36, "total": 52, "rows": 741100, "note": "PROVE 15m: rule 78/120 (cf_mom_l2)", "pct": 69.2, "updated": "2026-09-03T06:10:09Z"}
+{"shard": 19, "stage": "testing", "done": 37, "total": 52, "rows": 750340, "note": "Q 15m: 34,599 bars, testing 120 rules", "pct": 71.2, "updated": "2026-09-03T06:10:54Z"}

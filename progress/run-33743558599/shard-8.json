@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 5, "total": 52, "rows": 125924, "note": "AR 1h: rule 23/120 (supertrend)", "failed": [], "pct": 9.6, "updated": "2026-09-03T13:31:19Z"}
+{"shard": 8, "stage": "testing", "done": 5, "total": 52, "rows": 146604, "note": "AR 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 9.6, "updated": "2026-09-03T13:32:06Z"}

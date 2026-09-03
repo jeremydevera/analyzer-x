@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 30, "total": 52, "rows": 1112308, "note": "MORPHO 4h: rule 19/120 (emacross)", "failed": [], "pct": 57.7, "updated": "2026-09-03T14:01:49Z"}
+{"shard": 11, "stage": "testing", "done": 32, "total": 52, "rows": 1154988, "note": "NIGHT 1h: 6,437 bars, testing 120 rules", "failed": [], "pct": 61.5, "updated": "2026-09-03T14:02:36Z"}

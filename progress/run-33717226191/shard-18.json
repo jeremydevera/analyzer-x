@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 33, "total": 52, "rows": 617120, "note": "OL 15m: rule 120/120 (cf_stflip_l2)", "pct": 63.5, "updated": "2026-09-03T05:57:37Z"}
+{"shard": 18, "stage": "testing", "done": 36, "total": 52, "rows": 641720, "note": "PROM 15m: 34,598 bars, testing 120 rules", "pct": 69.2, "updated": "2026-09-03T05:58:40Z"}

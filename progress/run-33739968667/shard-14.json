@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 9, "total": 52, "rows": 568590, "note": "BRETT 15m: 34,615 bars, testing 120 rules", "failed": [], "pct": 17.3, "updated": "2026-09-03T10:11:50Z"}
+{"shard": 14, "stage": "testing", "done": 9, "total": 52, "rows": 570030, "note": "BRETT 15m: rule 3/120 (fade15)", "failed": [], "pct": 17.3, "updated": "2026-09-03T10:12:36Z"}

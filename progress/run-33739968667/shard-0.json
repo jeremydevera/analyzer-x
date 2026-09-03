@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 12, "total": 53, "rows": 880910, "note": "CHF 15m: 29,974 bars, testing 120 rules", "failed": [], "pct": 22.6, "updated": "2026-09-03T10:39:49Z"}
+{"shard": 0, "stage": "testing", "done": 12, "total": 53, "rows": 893890, "note": "CHF 15m: rule 54/120 (fractal5)", "failed": [], "pct": 22.6, "updated": "2026-09-03T10:40:34Z"}

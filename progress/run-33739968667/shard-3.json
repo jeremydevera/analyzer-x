@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 46, "total": 53, "rows": 3723920, "note": "TLM 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 86.8, "updated": "2026-09-03T13:20:39Z"}
+{"shard": 3, "stage": "testing", "done": 46, "total": 53, "rows": 3733600, "note": "TLM 1h: rule 20/120 (stoch14)", "failed": [], "pct": 86.8, "updated": "2026-09-03T13:21:24Z"}

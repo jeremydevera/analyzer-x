@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 9, "total": 53, "rows": 113580, "note": "BLUAI 15m: 30,408 bars, testing 120 rules", "pct": 17.0, "updated": "2026-09-03T05:12:33Z"}
+{"shard": 1, "stage": "testing", "done": 9, "total": 53, "rows": 116380, "note": "BLUAI 15m: rule 8/120 (fib618)", "pct": 17.0, "updated": "2026-09-03T05:13:18Z"}

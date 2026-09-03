@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 7, "total": 52, "rows": 229078, "note": "BAS 4h: rule 2/120 (mom15)", "failed": [], "pct": 13.5, "updated": "2026-09-03T14:20:05Z"}
+{"shard": 14, "stage": "testing", "done": 9, "total": 52, "rows": 272904, "note": "BRETT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 17.3, "updated": "2026-09-03T14:20:52Z"}

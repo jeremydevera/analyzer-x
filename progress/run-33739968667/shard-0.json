@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 16, "total": 53, "rows": 1215356, "note": "DOS 15m: rule 28/120 (vortex14)", "failed": [], "pct": 30.2, "updated": "2026-09-03T10:57:28Z"}
+{"shard": 0, "stage": "testing", "done": 17, "total": 53, "rows": 1279882, "note": "ENA 15m: 34,618 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-03T10:58:20Z"}

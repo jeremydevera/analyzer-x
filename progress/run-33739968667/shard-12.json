@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 4, "total": 52, "rows": 368344, "note": "API3 4h: rule 61/120 (turtle)", "failed": [], "pct": 7.7, "updated": "2026-09-03T10:02:25Z"}
+{"shard": 12, "stage": "testing", "done": 5, "total": 52, "rows": 393336, "note": "ASTEROID 15m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 9.6, "updated": "2026-09-03T10:03:11Z"}

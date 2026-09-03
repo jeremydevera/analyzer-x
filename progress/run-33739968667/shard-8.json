@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 34, "total": 52, "rows": 2611840, "note": "OPENLEDGER 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 65.4, "updated": "2026-09-03T11:46:37Z"}
+{"shard": 8, "stage": "testing", "done": 34, "total": 52, "rows": 2619700, "note": "OPENLEDGER 30m: rule 1/120 (mom6)", "failed": [], "pct": 65.4, "updated": "2026-09-03T11:47:24Z"}

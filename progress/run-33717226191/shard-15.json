@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 43, "total": 52, "rows": 759400, "note": "STABLE 15m: rule 55/120 (nhigh50)", "pct": 82.7, "updated": "2026-09-03T06:41:07Z"}
+{"shard": 15, "stage": "testing", "done": 43, "total": 52, "rows": 768200, "note": "STABLE 15m: rule 99/120 (cf_ttm_l2)", "pct": 82.7, "updated": "2026-09-03T06:41:53Z"}

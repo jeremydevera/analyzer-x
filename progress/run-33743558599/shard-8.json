@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 39, "total": 52, "rows": 1356838, "note": "RLS 1h: rule 22/120 (engulf)", "failed": [], "pct": 75.0, "updated": "2026-09-03T14:10:35Z"}
+{"shard": 8, "stage": "testing", "done": 39, "total": 52, "rows": 1378618, "note": "RLS 4h: rule 2/120 (mom15)", "failed": [], "pct": 75.0, "updated": "2026-09-03T14:11:21Z"}

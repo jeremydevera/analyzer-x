@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 10, "total": 52, "rows": 833482, "note": "CAKE 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 19.2, "updated": "2026-09-03T10:22:32Z"}
+{"shard": 16, "stage": "testing", "done": 10, "total": 52, "rows": 843602, "note": "CAKE 1h: rule 16/120 (keltner)", "failed": [], "pct": 19.2, "updated": "2026-09-03T10:23:17Z"}

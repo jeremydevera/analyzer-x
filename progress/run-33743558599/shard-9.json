@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 30, "total": 52, "rows": 1088940, "note": "MONAD 1h: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 57.7, "updated": "2026-09-03T13:27:01Z"}
+{"shard": 9, "stage": "testing", "done": 32, "total": 52, "rows": 1126056, "note": "NFLXSTOCK 1h: rule 22/120 (engulf)", "failed": [], "pct": 61.5, "updated": "2026-09-03T13:27:46Z"}

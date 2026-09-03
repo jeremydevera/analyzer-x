@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 31, "total": 53, "rows": 2338082, "note": "MSTU 15m: rule 20/120 (stoch14)", "failed": [], "pct": 58.5, "updated": "2026-09-03T17:48:07Z"}
+{"shard": 3, "stage": "testing", "done": 32, "total": 53, "rows": 2348062, "note": "NEO 15m: rule 3/120 (fade15)", "failed": [], "pct": 60.4, "updated": "2026-09-03T17:49:05Z"}

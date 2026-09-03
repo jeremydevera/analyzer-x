@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 38, "total": 52, "rows": 3091038, "note": "REZ 1h: rule 8/120 (fib618)", "failed": [], "pct": 73.1, "updated": "2026-09-03T12:36:30Z"}
+{"shard": 18, "stage": "testing", "done": 38, "total": 52, "rows": 3111058, "note": "REZ 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 73.1, "updated": "2026-09-03T12:37:15Z"}

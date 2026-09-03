@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 40, "total": 52, "rows": 3597596, "note": "SHELL 15m: rule 47/120 (ibs)", "failed": [], "pct": 76.9, "updated": "2026-09-03T13:14:27Z"}
+{"shard": 19, "stage": "testing", "done": 40, "total": 52, "rows": 3604796, "note": "SHELL 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 76.9, "updated": "2026-09-03T13:15:12Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 29, "total": 52, "rows": 540860, "note": "MERL 15m: rule 102/120 (cf_soup1_l2)", "pct": 55.8, "updated": "2026-09-03T06:09:17Z"}
+{"shard": 12, "stage": "testing", "done": 32, "total": 52, "rows": 561620, "note": "NIL 15m: 34,599 bars, testing 120 rules", "pct": 61.5, "updated": "2026-09-03T06:10:07Z"}

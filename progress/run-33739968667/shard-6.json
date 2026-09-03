@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 41, "total": 53, "rows": 3400686, "note": "SIREN 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 77.4, "updated": "2026-09-03T13:02:13Z"}
+{"shard": 6, "stage": "testing", "done": 41, "total": 53, "rows": 3406626, "note": "SIREN 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 77.4, "updated": "2026-09-03T13:03:11Z"}

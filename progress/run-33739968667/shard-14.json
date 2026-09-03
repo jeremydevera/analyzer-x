@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 50, "total": 52, "rows": 4573350, "note": "XAI 15m: rule 41/120 (tsi)", "failed": [], "pct": 96.2, "updated": "2026-09-03T14:29:26Z"}
+{"shard": 14, "stage": "testing", "done": 50, "total": 52, "rows": 4580070, "note": "XAI 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-03T14:30:12Z"}

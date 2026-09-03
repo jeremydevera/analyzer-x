@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 44, "total": 52, "rows": 4078922, "note": "SUSHI 1h: rule 24/120 (psar)", "failed": [], "pct": 84.6, "updated": "2026-09-03T14:05:48Z"}
+{"shard": 14, "stage": "testing", "done": 44, "total": 52, "rows": 4099602, "note": "SUSHI 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 84.6, "updated": "2026-09-03T14:06:35Z"}

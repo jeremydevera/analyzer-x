@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 48, "total": 53, "rows": 3816522, "note": "UNITREE 15m: rule 34/120 (lrslope)", "failed": [], "pct": 90.6, "updated": "2026-09-03T12:52:12Z"}
+{"shard": 4, "stage": "testing", "done": 49, "total": 53, "rows": 3877418, "note": "VELVET 15m: 34,626 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-03T12:53:03Z"}

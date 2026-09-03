@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 34, "total": 52, "rows": 2439280, "note": "OPENAI 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 65.4, "updated": "2026-09-03T11:44:07Z"}
+{"shard": 7, "stage": "testing", "done": 34, "total": 52, "rows": 2492216, "note": "OPENAI 1d: 142 bars, testing 120 rules", "failed": [], "pct": 65.4, "updated": "2026-09-03T11:44:53Z"}

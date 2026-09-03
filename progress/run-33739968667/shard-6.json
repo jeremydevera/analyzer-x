@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 21, "total": 53, "rows": 1502038, "note": "GRAM 30m: rule 67/120 (pinbar)", "failed": [], "pct": 39.6, "updated": "2026-09-03T11:02:59Z"}
+{"shard": 6, "stage": "testing", "done": 22, "total": 53, "rows": 1545832, "note": "HIMSSTOCK 15m: rule 3/120 (fade15)", "failed": [], "pct": 41.5, "updated": "2026-09-03T11:03:45Z"}

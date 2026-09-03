@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 1, "total": 52, "rows": 51420, "note": "ACT 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-03T09:46:08Z"}
+{"shard": 18, "stage": "testing", "done": 1, "total": 52, "rows": 59560, "note": "ACT 1h: rule 28/120 (vortex14)", "failed": [], "pct": 1.9, "updated": "2026-09-03T09:46:54Z"}

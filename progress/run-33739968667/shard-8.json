@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 14, "total": 52, "rows": 1136258, "note": "CVC 4h: rule 17/120 (atrbreak)", "failed": [], "pct": 26.9, "updated": "2026-09-03T10:41:23Z"}
+{"shard": 8, "stage": "testing", "done": 16, "total": 52, "rows": 1171570, "note": "DYDX 15m: rule 1/120 (mom6)", "failed": [], "pct": 30.8, "updated": "2026-09-03T10:42:16Z"}

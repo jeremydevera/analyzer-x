@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 33, "total": 52, "rows": 1408946, "note": "OL 1h: rule 79/120 (cf_donch)", "failed": [], "pct": 63.5, "updated": "2026-09-03T14:57:30Z"}
+{"shard": 19, "stage": "testing", "done": 34, "total": 52, "rows": 1437746, "note": "OXYSTOCK 1h: 4,372 bars, testing 120 rules", "failed": [], "pct": 65.4, "updated": "2026-09-03T14:58:17Z"}

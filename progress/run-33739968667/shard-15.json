@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 36, "total": 52, "rows": 2819126, "note": "POWR 15m: rule 40/120 (crsi)", "failed": [], "pct": 69.2, "updated": "2026-09-03T12:19:21Z"}
+{"shard": 15, "stage": "testing", "done": 36, "total": 52, "rows": 2825946, "note": "POWR 15m: rule 72/120 (force13)", "failed": [], "pct": 69.2, "updated": "2026-09-03T12:20:06Z"}

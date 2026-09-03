@@ -85,6 +85,7 @@ def plan(preset: dict, settings: dict) -> dict:
     claimed = _claims(settings)
     arm: dict = {}
     refused: list = []
+    shared: list = []
     for key, one in sorted(preset["strategies"].items()):
         spec = at.STRATEGY_SPECS.get(key)
         if not spec:
@@ -92,17 +93,21 @@ def plan(preset: dict, settings: dict) -> dict:
                                                "repo is older than the preset"})
             continue
         keep, clash = [], []
-        wants_real = "real" in list(one.get("book")
-                                    or preset.get("book") or ["paper"])
+        # A COIN ANOTHER REAL ROW TRADES IS NO LONGER A CLASH. The operator
+        # armed 35 rows over 9 coins on 2026-09-04 — 20 of them on GPNSTOCK —
+        # and asked for the runtime rule instead: one OPEN POSITION per coin,
+        # first signal wins, the rest refused until it closes
+        # (`auto_trader._busy_refusal`). `claimed` is still computed, and
+        # `plan` still reports who else is on the coin, because 20 rows on one
+        # contract is worth SEEING before applying.
         for coin in one["coins"]:
             holder = claimed.get(str(coin))
-            # only a REAL book can be blocked, and only by another real one
-            if wants_real and holder and holder != key:
-                clash.append(f"{coin} is already traded live by {holder}")
-            else:
-                keep.append(str(coin))
+            keep.append(str(coin))
+            if holder and holder != key:
+                clash.append(f"{coin} is also traded live by {holder} — "
+                             f"whichever signals first holds it")
         if clash:
-            refused.append({"key": key, "why": "; ".join(clash)})
+            shared.append({"key": key, "with": "; ".join(clash)})
         if keep:
             arm[key] = {"coins": keep,
                         "margin": float(one.get("margin")
@@ -111,22 +116,49 @@ def plan(preset: dict, settings: dict) -> dict:
                                       or preset.get("sizing") or "flat"),
                         "book": list(one.get("book")
                                      or preset.get("book") or ["paper"])}
-    return {"arm": arm, "refused": refused}
+    return {"arm": arm, "refused": refused, "shared": shared}
 
 
 def merged(preset: dict, settings: dict) -> dict:
-    """The settings this preset would produce — the existing file plus these
-    rows. Nothing the preset does not name is touched."""
+    """The settings this preset would produce.
+
+    By default it MERGES: the existing file plus these rows, and nothing the
+    preset does not name is touched.
+
+    `"replace": true` in the preset (or `--replace` on the CLI) means what the
+    operator asked for on 2026-09-04 — *"REMOVE THE EXISTING AUTO TRADE
+    STRATEGIES COMPLIETELY AND ADD THESE IDS"* — so every strategy NOT named
+    here is disarmed: it leaves the four arming maps holding the preset's keys
+    and nothing else. A row with no coins and no book trades nothing, which is
+    what disarmed means here.
+    """
     got = plan(preset, settings)
     out = dict(settings)
+    fields = (("strategy_coins", lambda v: v["coins"]),
+              ("strategy_margins", lambda v: v["margin"]),
+              ("strategy_sizing", lambda v: v["sizing"]),
+              ("strategy_books", lambda v: v["book"]))
+    if preset.get("replace"):
+        out["strategies"] = sorted(got["arm"])
+        for field, pick in fields:
+            out[field] = {k: pick(v) for k, v in got["arm"].items()}
+        # a loss limit or a label for a key nobody arms is dead weight, and it
+        # would come back the moment that key is armed again by hand
+        for field in ("strategy_loss_limits", "strategy_labels"):
+            if out.get(field):
+                out[field] = {k: v for k, v in out[field].items()
+                              if k in got["arm"]}
+        return _tail(preset, out)
     out["strategies"] = sorted(set(out.get("strategies") or [])
                                | set(got["arm"]))
-    for field, pick in (("strategy_coins", lambda v: v["coins"]),
-                        ("strategy_margins", lambda v: v["margin"]),
-                        ("strategy_sizing", lambda v: v["sizing"]),
-                        ("strategy_books", lambda v: v["book"])):
+    for field, pick in fields:
         out[field] = {**(out.get(field) or {}),
                       **{k: pick(v) for k, v in got["arm"].items()}}
+    return _tail(preset, out)
+
+
+def _tail(preset: dict, out: dict) -> dict:
+    """The account-wide fields, applied the same way by both modes."""
     # The account-wide default matters for a row armed LATER by hand: these
     # rows were measured flat, and the shipped default is martingale.
     if preset.get("sizing"):
@@ -155,15 +187,19 @@ def describe(preset: dict, settings: dict) -> str:
             + (f"  [{' '.join('#' + str(r) for r in ids)}]" if ids else ""))
     for bad in got["refused"]:
         lines.append(f"  REFUSED {bad['key']}: {bad['why']}")
+    for both in got.get("shared") or []:
+        lines.append(f"  SHARES A COIN {both['key']}: {both['with']}")
     return "\n".join(lines)
 
 
-def apply(path, *, write: bool = False) -> dict:
-    """Merge a preset into this machine's settings. `write=False` decides
-    nothing — it is the dry run the CLI prints."""
+def apply(path, *, write: bool = False, replace: bool | None = None) -> dict:
+    """Merge a preset into this machine's settings — or REPLACE the armed set
+    with it. `write=False` decides nothing; it is the dry run the CLI prints."""
     from tradingagents import auto_trader as at
 
     preset = load(path)
+    if replace is not None:
+        preset = {**preset, "replace": bool(replace)}
     settings = at.load_settings()
     out = merged(preset, settings)
     if write:
@@ -177,6 +213,7 @@ def main(argv=None) -> int:
 
     args = list(sys.argv[1:] if argv is None else argv)
     write = "--apply" in args
+    replace = True if "--replace" in args else None
     args = [a for a in args if not a.startswith("--")]
     if not args:
         here = sorted(p.name for p in PRESET_DIR.glob("*.json")) \
@@ -193,8 +230,13 @@ def main(argv=None) -> int:
         path = PRESET_DIR / path.name
     from tradingagents import auto_trader as at
 
-    got = apply(path, write=write)
+    got = apply(path, write=write, replace=replace)
     print(describe(got["preset"], got["settings"]))
+    if got["preset"].get("replace"):
+        print("")
+        print(f"REPLACE: only these "
+              f"{len(got['plan']['arm'])} strategies stay armed; "
+              f"every other row is disarmed.")
     if write:
         print(f"\nWRITTEN to {at.SETTINGS_PATH}")
         print("Every row is on the book the preset asked for. Going LIVE is a "

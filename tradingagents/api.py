@@ -1158,10 +1158,15 @@ def trade_settings_get() -> dict:
 def trade_settings_post(payload: dict) -> dict:
     """Save auto_trade.json. The deploy history records every change.
 
-    A save that would put TWO strategies on one coin with real money at
-    different timeframes is REFUSED, not warned about: MEXC nets them into
-    one position, so the second entry resizes the first and either stop
-    closes part of a trade it does not own.
+    TWO live strategies on one coin used to be REFUSED here. Since 2026-09-04
+    they are allowed, on the operator's instruction — they armed 35 rows over
+    9 coins, 20 of them on GPNSTOCK — because the protection moved to the
+    RUNTIME and got stronger there: a coin with a position open accepts no
+    other strategy's signal until it closes, whoever opened it
+    (`auto_trader._busy_refusal`, tests/test_one_position_per_coin.py). MEXC
+    nets by CONTRACT, and one open position per contract is exactly what that
+    rule guarantees. `timeframe_locks` returns {} now; the check is kept so a
+    future lock has somewhere to live.
     """
     import tradingagents.auto_trader as at
 

@@ -544,6 +544,81 @@ STRATEGY_SPECS = {
         "interval": "Hour4", "bar_seconds": 14400,
         "tp": 0.025, "sl": 0.025,
     },
+    # ---- the 35 rows the operator named on 2026-09-04, by id
+    # ("REMOVE THE EXISTING AUTO TRADE STRATEGIES COMPLIETELY AND ADD
+    #  THESE IDS"). Each key IS the row: signal + timeframe + SL + TP,
+    # with the sizing carried in the settings (all 35 are flat). 20 of
+    # them are GPNSTOCK, which one-position-per-coin now arbitrates.
+    "stoch14_30m_sl2tp2": {"interval": "Min30", "bar_seconds": 1800,
+                        "tp": 0.02, "sl": 0.02},
+    "willr14_30m_sl2tp2": {"interval": "Min30", "bar_seconds": 1800,
+                        "tp": 0.02, "sl": 0.02},
+    "prank_1h_sl3tp3": {"interval": "Min60", "bar_seconds": 3600,
+                     "tp": 0.03, "sl": 0.03},
+    "macddiv_4h_sl25tp3": {"interval": "Hour4", "bar_seconds": 14400,
+                        "tp": 0.03, "sl": 0.025},
+    "squeeze_1h_sl3tp3": {"interval": "Min60", "bar_seconds": 3600,
+                       "tp": 0.03, "sl": 0.03},
+    "macddiv_4h_sl3tp3": {"interval": "Hour4", "bar_seconds": 14400,
+                       "tp": 0.03, "sl": 0.03},
+    "bb20_1h_sl25tp25": {"interval": "Min60", "bar_seconds": 3600,
+                      "tp": 0.025, "sl": 0.025},
+    "zscore20_1h_sl25tp25": {"interval": "Min60", "bar_seconds": 3600,
+                          "tp": 0.025, "sl": 0.025},
+    "macddiv_4h_sl25tp25": {"interval": "Hour4", "bar_seconds": 14400,
+                         "tp": 0.025, "sl": 0.025},
+    "ultosc_1h_sl3tp3": {"interval": "Min60", "bar_seconds": 3600,
+                      "tp": 0.03, "sl": 0.03},
+    "eqraid_1h_sl25tp25": {"interval": "Min60", "bar_seconds": 3600,
+                        "tp": 0.025, "sl": 0.025},
+    "macddiv_15m_sl15tp2": {"interval": "Min15", "bar_seconds": 900,
+                         "tp": 0.02, "sl": 0.015},
+    "vwaprev_30m_sl2tp2": {"interval": "Min30", "bar_seconds": 1800,
+                        "tp": 0.02, "sl": 0.02},
+    "keltner_30m_sl2tp2": {"interval": "Min30", "bar_seconds": 1800,
+                        "tp": 0.02, "sl": 0.02},
+    "macddiv_15m_sl15tp15": {"interval": "Min15", "bar_seconds": 900,
+                          "tp": 0.015, "sl": 0.015},
+    "keltner_30m_sl1tp15": {"interval": "Min30", "bar_seconds": 1800,
+                         "tp": 0.015, "sl": 0.01},
+    "ultosc_15m_sl15tp15": {"interval": "Min15", "bar_seconds": 900,
+                         "tp": 0.015, "sl": 0.015},
+    "macddiv_15m_sl12tp12": {"interval": "Min15", "bar_seconds": 900,
+                          "tp": 0.012, "sl": 0.012},
+    "keltner_30m_sl12tp15": {"interval": "Min30", "bar_seconds": 1800,
+                          "tp": 0.015, "sl": 0.012},
+    "willr14_15m_sl1tp12": {"interval": "Min15", "bar_seconds": 900,
+                         "tp": 0.012, "sl": 0.01},
+    "stoch14_15m_sl1tp12": {"interval": "Min15", "bar_seconds": 900,
+                         "tp": 0.012, "sl": 0.01},
+    "keltner_30m_sl15tp15": {"interval": "Min30", "bar_seconds": 1800,
+                          "tp": 0.015, "sl": 0.015},
+    "willr14_15m_sl12tp12": {"interval": "Min15", "bar_seconds": 900,
+                          "tp": 0.012, "sl": 0.012},
+    "stoch14_15m_sl12tp12": {"interval": "Min15", "bar_seconds": 900,
+                          "tp": 0.012, "sl": 0.012},
+    "keltner_30m_sl08tp15": {"interval": "Min30", "bar_seconds": 1800,
+                          "tp": 0.015, "sl": 0.008},
+    "macddiv_15m_sl1tp12": {"interval": "Min15", "bar_seconds": 900,
+                         "tp": 0.012, "sl": 0.01},
+    "keltner_30m_sl1tp12": {"interval": "Min30", "bar_seconds": 1800,
+                         "tp": 0.012, "sl": 0.01},
+    "keltner_30m_sl12tp12": {"interval": "Min30", "bar_seconds": 1800,
+                          "tp": 0.012, "sl": 0.012},
+    "keltner_30m_sl08tp12": {"interval": "Min30", "bar_seconds": 1800,
+                          "tp": 0.012, "sl": 0.008},
+    "macddiv_15m_sl1tp1": {"interval": "Min15", "bar_seconds": 900,
+                        "tp": 0.01, "sl": 0.01},
+    "keltner_30m_sl1tp1": {"interval": "Min30", "bar_seconds": 1800,
+                        "tp": 0.01, "sl": 0.01},
+    "keltner_30m_sl08tp1": {"interval": "Min30", "bar_seconds": 1800,
+                         "tp": 0.01, "sl": 0.008},
+    "keltner_30m_sl08tp08": {"interval": "Min30", "bar_seconds": 1800,
+                          "tp": 0.008, "sl": 0.008},
+    "rsidiv_15m_sl06tp06": {"interval": "Min15", "bar_seconds": 900,
+                         "tp": 0.006, "sl": 0.006},
+    "rsidiv_15m_sl04tp04": {"interval": "Min15", "bar_seconds": 900,
+                         "tp": 0.004, "sl": 0.004},
 }
 
 
@@ -683,7 +758,43 @@ STRATEGY_ORDER = ("mom15_4h", "mom15_4h_b", "fvg_4h", "fvg_4h_b",
                   "fvg_1h_sl25tp25", "pivot_4h_sl3tp3",
                   "zscore20_1h_sl2tp2", "stoch14_1h_sl3tp3",
                   "pivot_1h_sl3tp3", "ibs_4h_sl4tp4", "bb20_1h_sl2tp2",
-                  "ibs_4h_sl25tp25")
+                  "ibs_4h_sl25tp25",
+                  "stoch14_30m_sl2tp2",
+                  "willr14_30m_sl2tp2",
+                  "prank_1h_sl3tp3",
+                  "macddiv_4h_sl25tp3",
+                  "squeeze_1h_sl3tp3",
+                  "macddiv_4h_sl3tp3",
+                  "bb20_1h_sl25tp25",
+                  "zscore20_1h_sl25tp25",
+                  "macddiv_4h_sl25tp25",
+                  "ultosc_1h_sl3tp3",
+                  "eqraid_1h_sl25tp25",
+                  "macddiv_15m_sl15tp2",
+                  "vwaprev_30m_sl2tp2",
+                  "keltner_30m_sl2tp2",
+                  "macddiv_15m_sl15tp15",
+                  "keltner_30m_sl1tp15",
+                  "ultosc_15m_sl15tp15",
+                  "macddiv_15m_sl12tp12",
+                  "keltner_30m_sl12tp15",
+                  "willr14_15m_sl1tp12",
+                  "stoch14_15m_sl1tp12",
+                  "keltner_30m_sl15tp15",
+                  "willr14_15m_sl12tp12",
+                  "stoch14_15m_sl12tp12",
+                  "keltner_30m_sl08tp15",
+                  "macddiv_15m_sl1tp12",
+                  "keltner_30m_sl1tp12",
+                  "keltner_30m_sl12tp12",
+                  "keltner_30m_sl08tp12",
+                  "macddiv_15m_sl1tp1",
+                  "keltner_30m_sl1tp1",
+                  "keltner_30m_sl08tp1",
+                  "keltner_30m_sl08tp08",
+                  "rsidiv_15m_sl06tp06",
+                  "rsidiv_15m_sl04tp04",
+                  )
 
 
 # ------------------------------------------------------------------ signals
@@ -2911,31 +3022,28 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
 
     # ---- entries: each strategy acts once per closed candle of its own TF
     if st.get("position") or halted():
+        # ONE OPEN POSITION PER COIN, and the operator asked to SEE it: with 20
+        # strategies armed on GPNSTOCK, a silent early return looks exactly
+        # like a strategy that never fires. Once per closed bar, and only when
+        # another strategy really is armed on this coin.
+        if st.get("position") and len(strategies) > 1:
+            _busy_refusal(symbol, st, strategies, frames, dry=dry)
         for tf, df in frames.items():
             st["last_ts"][tf] = max(st["last_ts"].get(tf, 0),
                                     int(df["Date"].iloc[-1].timestamp()))
         return
-    _live_locks = timeframe_locks(settings) if not dry else {}
+    # ONE OPEN POSITION PER COIN. Nothing to check here any more: real state
+    # is keyed by SYMBOL, the branch above returns while a position is open,
+    # and this function opens at most one (it returns after placing). So the
+    # first strategy whose signal fires holds the coin until it closes, and
+    # every other strategy on that coin is refused meanwhile — the operator's
+    # rule of 2026-09-04, replacing the ARMING lock that would have refused 19
+    # of their 20 GPNSTOCK rows outright.
+    #
+    # Same-bar ties break by STRATEGY_ORDER: two strategies whose bars close at
+    # the same instant have no "first" between them.
     for key in strategies:
         if key in tripped:                 # paused for the day — no entries
-            continue
-        # ONE LIVE STRATEGY PER COIN, enforced where the order is placed.
-        # The rule was checked only when SETTINGS WERE SAVED, so a config that
-        # was already double-booked kept trading both: on 2026-08-22 PROVE ran
-        # fade15_1h_pv2 and mom6_1h_pv live together, MEXC netted them into one
-        # position, and either stop could close part of a trade it did not own.
-        # A save-time check cannot protect a state that already exists.
-        # Demo is untouched — `_live_locks` is empty when dry.
-        _lock = _live_locks.get(key)
-        if _lock and symbol in (coins_for(key, settings) or []):
-            logger.warning(
-                "REFUSED live entry %s · %s: %s is already traded live by %s. "
-                "One live strategy per coin — disarm one of them to trade the "
-                "other.", symbol, key, _lock["coin"].replace("_USDT", ""),
-                _lock["held_by"])
-            append_ledger({"symbol": symbol, "action": "refused",
-                           "strategy": key, "why": "coin already live",
-                           "held_by": _lock["held_by"], "dry_run": dry})
             continue
         # The liquidity gate: never open a trade whose take-profit is
         # smaller than the cost of getting in and out. Checked live, per
@@ -3178,6 +3286,41 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
         except Exception:
             pass
         return
+
+
+def _busy_refusal(symbol: str, st: dict, strategies, frames,
+                  *, dry: bool) -> None:
+    """Say that this coin is taken, once per closed bar.
+
+    The operator armed 35 rows over 9 coins and asked for exactly this
+    (2026-09-04): a signal on one of the others must NOT be accepted while a
+    position is open, and the moment it closes the next signal is. With 20
+    strategies on GPNSTOCK, a silent skip is indistinguishable from a strategy
+    that never fires — which is what "i thought there is no result" has cost
+    before. Never allowed to raise into the cycle.
+    """
+    try:
+        pos = st.get("position") or {}
+        holder = str(pos.get("strategy") or "?")
+        others = [k for k in strategies if k != holder]
+        if not others:
+            return
+        bar = max((int(df["Date"].iloc[-1].timestamp())
+                   for df in frames.values()), default=0)
+        if not bar or st.get("busy_said") == bar:
+            return                        # already said for this bar
+        st["busy_said"] = bar
+        logger.info(
+            "%s is HELD by %s (%s) — %d other strateg%s armed on this coin "
+            "will not be accepted until it closes: %s",
+            symbol.replace("_USDT", ""), holder,
+            "paper" if dry else "live", len(others),
+            "y is" if len(others) == 1 else "ies are", ", ".join(others))
+        append_ledger({"symbol": symbol, "action": "coin_busy",
+                       "strategy": holder, "why": "one open position per coin",
+                       "waiting": others, "dry_run": dry})
+    except Exception:                                          # noqa: BLE001
+        pass
 
 
 def adopt_orphans(settings: dict, state: dict, *, fx, dry: bool) -> None:
@@ -3630,9 +3773,28 @@ def save_settings(payload: dict) -> list[dict]:
 
 
 def timeframe_locks(settings: dict | None = None) -> dict:
-    """Which strategies may not go LIVE, because their coin is already taken.
+    """NOTHING is locked any more. Kept because the API and the panel ask.
 
-    ONE LIVE STRATEGY PER COIN. Not one per timeframe — per coin, full stop.
+    It used to mean ONE ARMED LIVE STRATEGY PER COIN. The operator replaced
+    that with a runtime rule on 2026-09-04, arming 35 rows over 9 coins (20 of
+    them on GPNSTOCK): *"SINCE I RECEIVED A SIGNAL AND I HAVE OPEN POSITION
+    THEN DO NOT ACCEPT SIGNAL FOR [the others] ... FOR EXAMPLE 73YCAX4 HAS
+    BEEN CLOSED, THEN THAT'S THE TIME TO ACCEPT SIGNAL / WHICH EVER COMES
+    FIRST SHOULD BE THE ONE TO FOLLOWED"*.
+
+    ONE OPEN POSITION PER COIN is what actually protects the account, and it
+    is a TIGHTER guarantee than the old arming rule, not a looser one: real
+    state is keyed by SYMBOL, so a coin holds one position whoever opened it,
+    and `process_symbol` refuses every other strategy on that coin until it
+    closes (`_busy_refusal` says so in the log and the ledger). The netting
+    incident this function was written for — PROVE, 2026-08-22, `fade15_1h_pv2`
+    and `mom6_1h_pv` live together, either stop able to close part of a trade
+    it did not own — needed TWO OPEN POSITIONS, which that rule makes
+    impossible.
+
+    Returns {} always. The old docstring, kept because the reasoning still
+    applies to the position rule:
+
     MEXC nets every order on a contract into a single position, so a second
     live entry resizes the first and either stop closes part of a trade it does
     not own. The bar size is irrelevant to that; the contract is what nets.
@@ -3652,8 +3814,13 @@ def timeframe_locks(settings: dict | None = None) -> dict:
     rule is symmetric: claiming and locking in one sweep only ever locked rows
     below the holder.
 
-    Returns {locked_key: {"coin": ..., "held_by": ...}}.
+    Returns {locked_key: {"coin": ..., "held_by": ...}} — now always empty.
     """
+    return {}
+
+
+def _unused_timeframe_locks(settings: dict | None = None) -> dict:
+    """The old body, kept for the record. Nothing calls it."""
     if settings is None:
         settings = load_settings()
     books = settings.get("strategy_books") or {}

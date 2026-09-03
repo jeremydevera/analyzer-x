@@ -467,7 +467,13 @@ def test_the_equity_curve_is_built_from_the_same_exit_rows(client, monkeypatch):
 # part of a trade it does not own. Streamlit disabled the checkbox; the React
 # port had no guard at all.
 
-def test_two_live_strategies_on_one_coin_are_locked(client, monkeypatch):
+def test_many_live_strategies_on_one_coin_are_allowed_now(client, monkeypatch):
+    """Superseded 2026-09-04, on the operator's instruction: they armed 35 rows
+    over 9 coins, 20 of them on GPNSTOCK, and asked for the RUNTIME rule
+    instead — "SINCE I RECEIVED A SIGNAL AND I HAVE OPEN POSITION THEN DO NOT
+    ACCEPT SIGNAL FOR [the others] ... WHICH EVER COMES FIRST SHOULD BE THE ONE
+    TO FOLLOWED". One OPEN POSITION per coin is tighter than one ARMED row per
+    coin: see tests/test_one_position_per_coin.py."""
     at.SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
     at.SETTINGS_PATH.write_text(json.dumps({
         "strategy_books": {"trend50_30m_pi": ["real"], "mom15_4h_w": ["real"]},
@@ -475,14 +481,10 @@ def test_two_live_strategies_on_one_coin_are_locked(client, monkeypatch):
                            "mom15_4h_w": ["PI_USDT"]}}))
     monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None: {})
     got = client.get("/api/trade/strategies").json()
-    # the FIRST in STRATEGY_ORDER holds the coin; the other is locked
-    holder = next(k for k in at.STRATEGY_ORDER
-                  if k in ("trend50_30m_pi", "mom15_4h_w"))
-    other = "mom15_4h_w" if holder == "trend50_30m_pi" else "trend50_30m_pi"
-    assert other in got["locks"] and got["locks"][other]["held_by"] == holder
-    assert got["locks"][other]["coin"] == "PI_USDT"
-    row = next(r for r in got["rows"] if r["key"] == other)
-    assert row["live_locked"]["held_by"] == holder
+    assert got["locks"] == {}
+    for key in ("trend50_30m_pi", "mom15_4h_w"):
+        row = next(r for r in got["rows"] if r["key"] == key)
+        assert not row.get("live_locked"), row
 
 
 def test_paper_is_never_locked(client, monkeypatch):
@@ -495,33 +497,30 @@ def test_paper_is_never_locked(client, monkeypatch):
     assert client.get("/api/trade/strategies").json()["locks"] == {}
 
 
-def test_saving_a_clashing_live_pair_is_REFUSED_not_warned(client):
+def test_saving_two_live_strategies_on_one_coin_is_ACCEPTED_now(client):
+    """It was a 409 until 2026-09-04 (the PROVE incident: two live strategies
+    netting into one position). The protection moved to the runtime, where it
+    is stronger — a coin with a position open accepts no other strategy's
+    signal until it closes."""
     payload = {"strategy_books": {"trend50_30m_pi": ["real"],
                                   "mom15_4h_w": ["real"]},
                "strategy_coins": {"trend50_30m_pi": ["PI_USDT"],
                                   "mom15_4h_w": ["PI_USDT"]}}
     got = client.post("/api/trade/settings", json=payload)
-    assert got.status_code == 409
-    assert "already" in got.json()["detail"] and "PI" in got.json()["detail"]
-    # and nothing was written
-    assert not at.SETTINGS_PATH.exists() or json.loads(
-        at.SETTINGS_PATH.read_text()) != payload
+    assert got.status_code == 200, got.text
 
 
-def test_the_same_coin_on_the_SAME_timeframe_is_refused_too(client):
-    """This asserted the opposite until 2026-08-22, on the premise that "one
-    position on one bar size — the runner already handles that". It does not:
-    MEXC nets by CONTRACT, so two live strategies on one coin resize each
-    other's position whether the bars match or not. PROVE ran fade15_1h_pv2
-    and mom6_1h_pv live together at 1h and neither the save guard nor the
-    runner stopped it. The operator's rule: one live strategy per coin."""
+def test_the_same_coin_on_the_SAME_timeframe_is_allowed_now_too(client):
+    """The history, because it is the reason the runtime rule exists: MEXC nets
+    by CONTRACT, so two OPEN positions on one coin resize each other and either
+    stop closes part of a trade it does not own (PROVE, 2026-08-22,
+    fade15_1h_pv2 and mom6_1h_pv live together at 1h). Arming both is fine
+    because only one of them can HOLD the coin at a time."""
     got = client.post("/api/trade/settings", json={
         "strategy_books": {"mom6_1h_gx": ["real"], "mom6_1h_pv": ["real"]},
         "strategy_coins": {"mom6_1h_gx": ["XAUT_USDT"],
                            "mom6_1h_pv": ["XAUT_USDT"]}})
-    assert got.status_code == 409, "a second live strategy on XAUT was accepted"
-    assert "already" in got.json()["detail"]
-    assert "XAUT" in got.json()["detail"]
+    assert got.status_code == 200, got.text
 
 
 def test_the_same_coin_on_many_DEMO_strategies_is_allowed(client):

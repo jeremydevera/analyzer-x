@@ -77,33 +77,36 @@ def test_it_merges_and_never_deletes_what_the_machine_already_runs():
 THIS_MONTH = dp.PRESET_DIR / "this-month-15.json"
 
 
-def test_a_coin_another_strategy_trades_LIVE_is_refused_not_taken():
-    """A REAL holder blocks the coin — per coin, whatever the bar size, because
-    MEXC nets every order on a contract into one position. LYN is wanted live
-    by cci20_4h_sl3tp3 in this preset."""
+def test_a_coin_another_strategy_trades_LIVE_is_SHARED_not_refused():
+    """It was refused until 2026-09-04. The operator then armed 35 rows over
+    9 coins (20 on GPNSTOCK) and asked for the runtime rule — one OPEN
+    POSITION per coin, first signal wins — so the coin is SHARED and the plan
+    SAYS who else is on it, because 20 rows on one contract is worth seeing
+    before applying."""
     mine = {"strategy_coins": {"mom15_1h": ["LYN_USDT"]},
             "strategy_books": {"mom15_1h": ["real"]}}
     got = dp.plan(dp.load(THIS_MONTH), mine)
-    assert "cci20_4h_sl3tp3" not in got["arm"]
-    why = " ".join(b["why"] for b in got["refused"])
-    assert "LYN_USDT" in why and "mom15_1h" in why, why
-    # the rest still arm
-    assert "ibs_4h_sl3tp3" in got["arm"]
-    # and a DEMO holder blocks nothing at all
+    assert "cci20_4h_sl3tp3" in got["arm"]
+    assert "LYN_USDT" in got["arm"]["cci20_4h_sl3tp3"]["coins"]
+    assert not got["refused"], got["refused"]
+    shared = " ".join(f"{b['key']} {b['with']}" for b in got["shared"])
+    assert "LYN_USDT" in shared and "mom15_1h" in shared, shared
+    assert "signals first" in shared, "and it says how the tie is settled"
+    # a DEMO holder is not even worth mentioning: nothing nets on paper
     mine["strategy_books"]["mom15_1h"] = ["paper"]
-    assert not dp.plan(dp.load(THIS_MONTH), mine)["refused"]
+    assert not dp.plan(dp.load(THIS_MONTH), mine)["shared"]
 
 
-def test_one_coin_of_several_can_be_refused_without_losing_the_others():
-    """rsi14_30m_sl2tp2 carries SAPIEN and G on the real book. Taking G away
-    must not cost SAPIEN its slot."""
+def test_a_multi_coin_row_keeps_every_coin_and_names_the_shared_one():
+    """rsi14_30m_sl2tp2 carries SAPIEN and G on the real book. G is also
+    traded by another row here: both coins stay armed, and G is named."""
     mine = {"strategy_coins": {"mom15_1h": ["G_USDT"]},
             "strategy_books": {"mom15_1h": ["real"]}}
     got = dp.plan(dp.load(THIS_MONTH), mine)
-    armed = got["arm"]["rsi14_30m_sl2tp2"]["coins"]
-    assert armed == ["SAPIEN_USDT"], armed
-    why = " ".join(b["why"] for b in got["refused"])
-    assert "G_USDT" in why, why
+    armed = sorted(got["arm"]["rsi14_30m_sl2tp2"]["coins"])
+    assert armed == ["G_USDT", "SAPIEN_USDT"], armed
+    shared = " ".join(b["with"] for b in got["shared"])
+    assert "G_USDT" in shared, shared
 
 
 def test_the_same_strategy_keeping_its_own_coin_is_not_a_clash():
@@ -183,13 +186,14 @@ def test_demo_claims_nothing_and_locks_nobody():
     assert not got["refused"], got["refused"]
     assert "cci20_4h_sl3tp3" in got["arm"]
 
-    # a REAL holder on the same coin DOES block, even at another timeframe
+    # a REAL holder on the same coin is NAMED (not blocked) since 2026-09-04
     mine["strategy_books"]["stoch14_1h_sl3tp3"] = ["real"]
     got = dp.plan(dp.load(dp.PRESET_DIR / "this-month-15.json"), mine)
-    why = " ".join(b["why"] for b in got["refused"])
-    assert "LYN_USDT" in why and "stoch14_1h_sl3tp3" in why, why
-    assert "cci20_4h_sl3tp3" not in got["arm"]
-    # and a row that only wants the DEMO book is never blocked by it
+    shared = " ".join(f"{b['key']} {b['with']}" for b in got["shared"])
+    assert "LYN_USDT" in shared and "stoch14_1h_sl3tp3" in shared, shared
+    assert "cci20_4h_sl3tp3" in got["arm"], "named, not blocked"
+    assert not got["refused"], got["refused"]
+    # and a row that only wants the DEMO book is never even mentioned by it
     assert "cci20_4h_sl25tp4" in got["arm"], "that LYN row asks for paper"
 
 
@@ -214,3 +218,104 @@ def test_this_months_preset_records_what_it_is():
     assert len(ids) == 15, sorted(ids)
     assert failing == 13, failing
     assert real == 10, f"{real} coins on the real book"
+
+
+# ---------------------------------------------------------------------------
+# REPLACE, not merge.
+#
+# Operator, 2026-09-04: *"REMOVE THE EXISTING AUTO TRADE STRATEGIES
+# COMPLIETELY AND ADD THESE IDS"* — 35 of them, by id.
+
+LIVE35 = dp.PRESET_DIR / "live-35.json"
+
+
+def test_replace_disarms_everything_the_preset_does_not_name():
+    mine = {
+        "strategies": ["mom6_1h_g", "cci20_4h_sl3tp3"],
+        "strategy_coins": {"mom6_1h_g": ["G_USDT"],
+                           "cci20_4h_sl3tp3": ["LYN_USDT"]},
+        "strategy_books": {"mom6_1h_g": ["real"],
+                           "cci20_4h_sl3tp3": ["real"]},
+        "strategy_margins": {"mom6_1h_g": 5.0, "cci20_4h_sl3tp3": 5.0},
+        "strategy_sizing": {"mom6_1h_g": "martingale"},
+        "strategy_loss_limits": {"mom6_1h_g": 8.0},
+        "strategy_labels": {"mom6_1h_g": "old"},
+    }
+    out = dp.merged(dp.load(LIVE35), mine)
+    named = set(dp.load(LIVE35)["strategies"])
+    assert set(out["strategies"]) == named
+    for field in ("strategy_coins", "strategy_books", "strategy_margins",
+                  "strategy_sizing"):
+        assert set(out[field]) == named, field
+    # a limit or a label for a row nobody arms would come back the moment that
+    # row is armed by hand again
+    assert out["strategy_loss_limits"] == {}
+    assert out["strategy_labels"] == {}
+    # and the live switch is STILL not turned on by a preset
+    assert out["enabled"] is False and out["dry_run"] is True
+
+
+def test_merge_is_still_the_default():
+    mine = {"strategies": ["mom6_1h_g"],
+            "strategy_coins": {"mom6_1h_g": ["G_USDT"]},
+            "strategy_books": {"mom6_1h_g": ["real"]}}
+    out = dp.merged(dp.load(PRESET), mine)
+    assert "mom6_1h_g" in out["strategies"], "a merge touches nothing else"
+
+
+def test_the_35_rows_are_all_real_flat_and_one_id_each():
+    preset = dp.load(LIVE35)
+    assert preset["replace"] is True
+    assert len(preset["strategies"]) == 35
+    coins = set()
+    for key, one in preset["strategies"].items():
+        assert one["book"] == ["real"], key
+        assert one["sizing"] == "flat", key
+        assert one["margin"] == 5.0, key
+        assert len(one["rows"]) == 1, key
+        assert len(one["coins"]) == 1, key
+        coins.add(one["coins"][0])
+        # the KEY has to say the same barriers as the measurement, or the
+        # runner trades a combination nobody measured (rule 21)
+        got = list(one["measured"].values())[0]
+        assert f"_{got['tf']}_" in key, (key, got["tf"])
+        assert key.startswith(got["signal"] + "_"), (key, got["signal"])
+    assert len(coins) == 9, sorted(coins)
+    # 20 rows on one contract is the case the runtime rule exists for
+    per = {}
+    for one in preset["strategies"].values():
+        per[one["coins"][0]] = per.get(one["coins"][0], 0) + 1
+    assert per["GPNSTOCK_USDT"] == 20, per
+
+
+def test_every_key_in_the_preset_is_a_spec_the_runner_can_trade():
+    """A key whose rule the runner cannot emit trades exactly never — the
+    rsi14_30m lesson."""
+    from tradingagents import auto_trader as at
+    from tradingagents.signals_conf import CONF_SIGNALS
+    from tradingagents.signals_ext import EXTRA_SIGNALS
+    from tradingagents.signals_ext2 import EXTRA_SIGNALS2
+
+    known = set(CONF_SIGNALS) | set(EXTRA_SIGNALS) | set(EXTRA_SIGNALS2)
+    for key, one in dp.load(LIVE35)["strategies"].items():
+        spec = at.STRATEGY_SPECS.get(key)
+        assert spec, f"{key} is not in STRATEGY_SPECS"
+        assert key in at.STRATEGY_ORDER, f"{key} is not in STRATEGY_ORDER"
+        got = list(one["measured"].values())[0]
+        assert abs(spec["tp"] * 100 - got["tp_pct"]) < 1e-9, (key, spec)
+        assert abs(spec["sl"] * 100 - got["sl_pct"]) < 1e-9, (key, spec)
+        assert key.split("_")[0] in known, key
+
+
+def test_the_preset_says_how_thin_the_evidence_is():
+    """Every row has 18-48 trades over 1-3 months. A file that armed 35 live
+    rows without saying so would be the still-working rule quietly skipped."""
+    preset = dp.load(LIVE35)
+    why = preset["why"] + json.dumps(preset["measured"])
+    assert "THIN" in why
+    assert "still-working" in why
+    assert "one_position_per_coin" in json.dumps(preset["measured"])
+    for one in preset["strategies"].values():
+        got = list(one["measured"].values())[0]
+        assert got["trades"] >= 1 and got["profit"] is not None
+        assert "/" in got["green"], got

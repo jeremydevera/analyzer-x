@@ -1,0 +1,1152 @@
+{
+  "name": "live-35",
+  "why": "The 35 row ids the operator listed on 2026-09-04: \"REMOVE THE EXISTING AUTO TRADE STRATEGIES COMPLIETELY AND ADD THESE IDS\". Applied with --replace, so every strategy not named here is disarmed. READ `measured` BEFORE APPLYING: the evidence is THIN. Every row has 18-48 trades over 1-3 months (these are recently listed tokenised-stock contracts), which is why 33 of the 35 rate 4.0 balanced - under 30 trades a row cannot rate above 4, under 100 not above 7. None of them can pass the still-working screen, because the nested windows it needs (1/3/6 months) do not exist yet.",
+  "measured": {
+    "base_margin": 5.0,
+    "notional": 100.0,
+    "leverage": 20,
+    "sizing": "flat",
+    "costs": "taker fee from each contract's own book, 0.03%/side slippage both ways, every published funding settlement inside each trade's window; the stop is checked before the target inside a bar",
+    "one_position_per_coin": "The operator's rule, same message: \"SINCE I RECEIVED A SIGNAL AND I HAVE OPEN POSITION THEN DO NOT ACCEPT SIGNAL FOR [the others] ... WHICH EVER COMES FIRST SHOULD BE THE ONE TO FOLLOWED\". All 35 are armed live; a coin holds ONE position at a time, whoever opened it, and the others are refused until it closes (auto_trader._busy_refusal). So 35 strategies over 9 coins is at most 9 open positions.",
+    "strategies_per_coin": {
+      "CHYMSTOCK": 2,
+      "DVNSTOCK": 2,
+      "GPNSTOCK": 20,
+      "KITE": 1,
+      "NGAS": 1,
+      "PDDSTOCK": 1,
+      "PSXSTOCK": 4,
+      "ROLSTOCK": 1,
+      "STBL": 3
+    },
+    "depth": "per row - see `days` in each `measured` block"
+  },
+  "base_margin": 5.0,
+  "sizing": "flat",
+  "book": [
+    "real"
+  ],
+  "replace": true,
+  "strategies": {
+    "stoch14_30m_sl2tp2": {
+      "coins": [
+        "GPNSTOCK_USDT"
+      ],
+      "rows": [
+        "CGXLRJML"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "GPNSTOCK": {
+          "row": "CGXLRJML",
+          "tf": "30m",
+          "signal": "stoch14",
+          "tp_pct": 2.0,
+          "sl_pct": 2.0,
+          "trades": 48,
+          "winrate": 93.75,
+          "profit": 73.55,
+          "green": "2/2",
+          "days": 19.0,
+          "worst_trade": -2.25,
+          "worst_dip": 2.25,
+          "balanced": 7.0,
+          "round_trip_pct": 0.2681,
+          "cost_of_tp_pct": 13.4
+        }
+      }
+    },
+    "willr14_30m_sl2tp2": {
+      "coins": [
+        "GPNSTOCK_USDT"
+      ],
+      "rows": [
+        "DYKSLWB8"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "GPNSTOCK": {
+          "row": "DYKSLWB8",
+          "tf": "30m",
+          "signal": "willr14",
+          "tp_pct": 2.0,
+          "sl_pct": 2.0,
+          "trades": 48,
+          "winrate": 93.75,
+          "profit": 73.55,
+          "green": "2/2",
+          "days": 19.0,
+          "worst_trade": -2.25,
+          "worst_dip": 2.25,
+          "balanced": 7.0,
+          "round_trip_pct": 0.2681,
+          "cost_of_tp_pct": 13.4
+        }
+      }
+    },
+    "prank_1h_sl3tp3": {
+      "coins": [
+        "ROLSTOCK_USDT"
+      ],
+      "rows": [
+        "Y5UBBFPB"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "ROLSTOCK": {
+          "row": "Y5UBBFPB",
+          "tf": "1h",
+          "signal": "prank",
+          "tp_pct": 3.0,
+          "sl_pct": 3.0,
+          "trades": 19,
+          "winrate": 94.74,
+          "profit": 46.47,
+          "green": "2/2",
+          "days": 33.0,
+          "worst_trade": -2.84,
+          "worst_dip": 2.84,
+          "balanced": 4.0,
+          "round_trip_pct": 0.6791,
+          "cost_of_tp_pct": 22.6
+        }
+      }
+    },
+    "macddiv_4h_sl25tp3": {
+      "coins": [
+        "STBL_USDT"
+      ],
+      "rows": [
+        "F3S79YD2"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "STBL": {
+          "row": "F3S79YD2",
+          "tf": "4h",
+          "signal": "macddiv",
+          "tp_pct": 3.0,
+          "sl_pct": 2.5,
+          "trades": 18,
+          "winrate": 94.44,
+          "profit": 45.97,
+          "green": "3/3",
+          "days": 89.0,
+          "worst_trade": -2.66,
+          "worst_dip": 2.66,
+          "balanced": 4.0,
+          "round_trip_pct": 0.1429,
+          "cost_of_tp_pct": 4.8
+        }
+      }
+    },
+    "squeeze_1h_sl3tp3": {
+      "coins": [
+        "KITE_USDT"
+      ],
+      "rows": [
+        "YDMRLEZ5"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "KITE": {
+          "row": "YDMRLEZ5",
+          "tf": "1h",
+          "signal": "squeeze",
+          "tp_pct": 3.0,
+          "sl_pct": 3.0,
+          "trades": 18,
+          "winrate": 94.44,
+          "profit": 45.68,
+          "green": "3/3",
+          "days": 89.0,
+          "worst_trade": -3.12,
+          "worst_dip": 3.12,
+          "balanced": 4.0,
+          "round_trip_pct": 0.0956,
+          "cost_of_tp_pct": 3.2
+        }
+      }
+    },
+    "macddiv_4h_sl3tp3": {
+      "coins": [
+        "STBL_USDT"
+      ],
+      "rows": [
+        "EGH23XJ6"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "STBL": {
+          "row": "EGH23XJ6",
+          "tf": "4h",
+          "signal": "macddiv",
+          "tp_pct": 3.0,
+          "sl_pct": 3.0,
+          "trades": 18,
+          "winrate": 94.44,
+          "profit": 45.47,
+          "green": "3/3",
+          "days": 89.0,
+          "worst_trade": -3.16,
+          "worst_dip": 3.16,
+          "balanced": 4.0,
+          "round_trip_pct": 0.1429,
+          "cost_of_tp_pct": 4.8
+        }
+      }
+    },
+    "bb20_1h_sl25tp25": {
+      "coins": [
+        "CHYMSTOCK_USDT"
+      ],
+      "rows": [
+        "4CDXNDEG"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "CHYMSTOCK": {
+          "row": "4CDXNDEG",
+          "tf": "1h",
+          "signal": "bb20",
+          "tp_pct": 2.5,
+          "sl_pct": 2.5,
+          "trades": 23,
+          "winrate": 91.3,
+          "profit": 42.39,
+          "green": "2/2",
+          "days": 20.0,
+          "worst_trade": -2.72,
+          "worst_dip": 2.72,
+          "balanced": 4.0,
+          "round_trip_pct": 0.2524,
+          "cost_of_tp_pct": 10.1
+        }
+      }
+    },
+    "zscore20_1h_sl25tp25": {
+      "coins": [
+        "CHYMSTOCK_USDT"
+      ],
+      "rows": [
+        "64SR4JQJ"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "CHYMSTOCK": {
+          "row": "64SR4JQJ",
+          "tf": "1h",
+          "signal": "zscore20",
+          "tp_pct": 2.5,
+          "sl_pct": 2.5,
+          "trades": 22,
+          "winrate": 90.91,
+          "profit": 40.11,
+          "green": "2/2",
+          "days": 20.0,
+          "worst_trade": -2.72,
+          "worst_dip": 2.72,
+          "balanced": 4.0,
+          "round_trip_pct": 0.2524,
+          "cost_of_tp_pct": 10.1
+        }
+      }
+    },
+    "macddiv_4h_sl25tp25": {
+      "coins": [
+        "STBL_USDT"
+      ],
+      "rows": [
+        "SW8Q96E6"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "STBL": {
+          "row": "SW8Q96E6",
+          "tf": "4h",
+          "signal": "macddiv",
+          "tp_pct": 2.5,
+          "sl_pct": 2.5,
+          "trades": 19,
+          "winrate": 94.74,
+          "profit": 39.84,
+          "green": "3/3",
+          "days": 89.0,
+          "worst_trade": -2.64,
+          "worst_dip": 2.64,
+          "balanced": 4.0,
+          "round_trip_pct": 0.1429,
+          "cost_of_tp_pct": 5.7
+        }
+      }
+    },
+    "ultosc_1h_sl3tp3": {
+      "coins": [
+        "NGAS_USDT"
+      ],
+      "rows": [
+        "42VGE8DS"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "NGAS": {
+          "row": "42VGE8DS",
+          "tf": "1h",
+          "signal": "ultosc",
+          "tp_pct": 3.0,
+          "sl_pct": 3.0,
+          "trades": 20,
+          "winrate": 90.0,
+          "profit": 39.68,
+          "green": "2/3",
+          "days": 89.0,
+          "worst_trade": -3.44,
+          "worst_dip": 5.12,
+          "balanced": 4.0,
+          "round_trip_pct": 0.3324,
+          "cost_of_tp_pct": 11.1
+        }
+      }
+    },
+    "eqraid_1h_sl25tp25": {
+      "coins": [
+        "PDDSTOCK_USDT"
+      ],
+      "rows": [
+        "KYXPMZS8"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "PDDSTOCK": {
+          "row": "KYXPMZS8",
+          "tf": "1h",
+          "signal": "eqraid",
+          "tp_pct": 2.5,
+          "sl_pct": 2.5,
+          "trades": 21,
+          "winrate": 90.48,
+          "profit": 37.99,
+          "green": "3/3",
+          "days": 89.0,
+          "worst_trade": -2.78,
+          "worst_dip": 2.78,
+          "balanced": 4.0,
+          "round_trip_pct": 0.795,
+          "cost_of_tp_pct": 31.8
+        }
+      }
+    },
+    "macddiv_15m_sl15tp2": {
+      "coins": [
+        "GPNSTOCK_USDT"
+      ],
+      "rows": [
+        "GEM9D5ZS"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "GPNSTOCK": {
+          "row": "GEM9D5ZS",
+          "tf": "15m",
+          "signal": "macddiv",
+          "tp_pct": 2.0,
+          "sl_pct": 1.5,
+          "trades": 21,
+          "winrate": 95.24,
+          "profit": 33.89,
+          "green": "2/2",
+          "days": 19.0,
+          "worst_trade": -1.75,
+          "worst_dip": 1.75,
+          "balanced": 4.0,
+          "round_trip_pct": 0.2681,
+          "cost_of_tp_pct": 13.4
+        }
+      }
+    },
+    "vwaprev_30m_sl2tp2": {
+      "coins": [
+        "GPNSTOCK_USDT"
+      ],
+      "rows": [
+        "NLJLHPVR"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "GPNSTOCK": {
+          "row": "NLJLHPVR",
+          "tf": "30m",
+          "signal": "vwaprev",
+          "tp_pct": 2.0,
+          "sl_pct": 2.0,
+          "trades": 22,
+          "winrate": 90.91,
+          "profit": 31.26,
+          "green": "2/2",
+          "days": 19.0,
+          "worst_trade": -2.22,
+          "worst_dip": 2.22,
+          "balanced": 4.0,
+          "round_trip_pct": 0.2681,
+          "cost_of_tp_pct": 13.4
+        }
+      }
+    },
+    "keltner_30m_sl2tp2": {
+      "coins": [
+        "GPNSTOCK_USDT"
+      ],
+      "rows": [
+        "FLR88HBV"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "GPNSTOCK": {
+          "row": "FLR88HBV",
+          "tf": "30m",
+          "signal": "keltner",
+          "tp_pct": 2.0,
+          "sl_pct": 2.0,
+          "trades": 18,
+          "winrate": 94.44,
+          "profit": 26.65,
+          "green": "2/2",
+          "days": 19.0,
+          "worst_trade": -2.22,
+          "worst_dip": 2.22,
+          "balanced": 4.0,
+          "round_trip_pct": 0.2681,
+          "cost_of_tp_pct": 13.4
+        }
+      }
+    },
+    "macddiv_15m_sl15tp15": {
+      "coins": [
+        "GPNSTOCK_USDT"
+      ],
+      "rows": [
+        "QSM3S4XM"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "GPNSTOCK": {
+          "row": "QSM3S4XM",
+          "tf": "15m",
+          "signal": "macddiv",
+          "tp_pct": 1.5,
+          "sl_pct": 1.5,
+          "trades": 25,
+          "winrate": 92.0,
+          "profit": 25.89,
+          "green": "2/2",
+          "days": 19.0,
+          "worst_trade": -1.75,
+          "worst_dip": 1.75,
+          "balanced": 4.0,
+          "round_trip_pct": 0.2681,
+          "cost_of_tp_pct": 17.9
+        }
+      }
+    },
+    "keltner_30m_sl1tp15": {
+      "coins": [
+        "GPNSTOCK_USDT"
+      ],
+      "rows": [
+        "TLBL4HAU"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "GPNSTOCK": {
+          "row": "TLBL4HAU",
+          "tf": "30m",
+          "signal": "keltner",
+          "tp_pct": 1.5,
+          "sl_pct": 1.0,
+          "trades": 20,
+          "winrate": 95.0,
+          "profit": 22.19,
+          "green": "2/2",
+          "days": 19.0,
+          "worst_trade": -1.22,
+          "worst_dip": 1.22,
+          "balanced": 4.0,
+          "round_trip_pct": 0.2681,
+          "cost_of_tp_pct": 17.9
+        }
+      }
+    },
+    "ultosc_15m_sl15tp15": {
+      "coins": [
+        "GPNSTOCK_USDT"
+      ],
+      "rows": [
+        "PGNTEW5X"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "GPNSTOCK": {
+          "row": "PGNTEW5X",
+          "tf": "15m",
+          "signal": "ultosc",
+          "tp_pct": 1.5,
+          "sl_pct": 1.5,
+          "trades": 22,
+          "winrate": 90.91,
+          "profit": 22.04,
+          "green": "2/2",
+          "days": 19.0,
+          "worst_trade": -1.82,
+          "worst_dip": 1.82,
+          "balanced": 4.0,
+          "round_trip_pct": 0.2681,
+          "cost_of_tp_pct": 17.9
+        }
+      }
+    },
+    "macddiv_15m_sl12tp12": {
+      "coins": [
+        "GPNSTOCK_USDT"
+      ],
+      "rows": [
+        "S96DX9PB"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "GPNSTOCK": {
+          "row": "S96DX9PB",
+          "tf": "15m",
+          "signal": "macddiv",
+          "tp_pct": 1.2,
+          "sl_pct": 1.2,
+          "trades": 25,
+          "winrate": 96.0,
+          "profit": 22.03,
+          "green": "2/2",
+          "days": 19.0,
+          "worst_trade": -1.42,
+          "worst_dip": 1.42,
+          "balanced": 4.0,
+          "round_trip_pct": 0.2681,
+          "cost_of_tp_pct": 22.3
+        }
+      }
+    },
+    "keltner_30m_sl12tp15": {
+      "coins": [
+        "GPNSTOCK_USDT"
+      ],
+      "rows": [
+        "9VSDYLVR"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "GPNSTOCK": {
+          "row": "9VSDYLVR",
+          "tf": "30m",
+          "signal": "keltner",
+          "tp_pct": 1.5,
+          "sl_pct": 1.2,
+          "trades": 20,
+          "winrate": 95.0,
+          "profit": 22.0,
+          "green": "2/2",
+          "days": 19.0,
+          "worst_trade": -1.41,
+          "worst_dip": 1.41,
+          "balanced": 4.0,
+          "round_trip_pct": 0.2681,
+          "cost_of_tp_pct": 17.9
+        }
+      }
+    },
+    "willr14_15m_sl1tp12": {
+      "coins": [
+        "PSXSTOCK_USDT"
+      ],
+      "rows": [
+        "PNK3G9KZ"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "PSXSTOCK": {
+          "row": "PNK3G9KZ",
+          "tf": "15m",
+          "signal": "willr14",
+          "tp_pct": 1.2,
+          "sl_pct": 1.0,
+          "trades": 28,
+          "winrate": 92.86,
+          "profit": 21.98,
+          "green": "1/1",
+          "days": 6.0,
+          "worst_trade": -1.22,
+          "worst_dip": 1.22,
+          "balanced": 4.0,
+          "round_trip_pct": 0.5997,
+          "cost_of_tp_pct": 50.0
+        }
+      }
+    },
+    "stoch14_15m_sl1tp12": {
+      "coins": [
+        "PSXSTOCK_USDT"
+      ],
+      "rows": [
+        "Q5V5KWS7"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "PSXSTOCK": {
+          "row": "Q5V5KWS7",
+          "tf": "15m",
+          "signal": "stoch14",
+          "tp_pct": 1.2,
+          "sl_pct": 1.0,
+          "trades": 28,
+          "winrate": 92.86,
+          "profit": 21.98,
+          "green": "1/1",
+          "days": 6.0,
+          "worst_trade": -1.22,
+          "worst_dip": 1.22,
+          "balanced": 4.0,
+          "round_trip_pct": 0.5997,
+          "cost_of_tp_pct": 50.0
+        }
+      }
+    },
+    "keltner_30m_sl15tp15": {
+      "coins": [
+        "GPNSTOCK_USDT"
+      ],
+      "rows": [
+        "XJ64X8GU"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "GPNSTOCK": {
+          "row": "XJ64X8GU",
+          "tf": "30m",
+          "signal": "keltner",
+          "tp_pct": 1.5,
+          "sl_pct": 1.5,
+          "trades": 20,
+          "winrate": 95.0,
+          "profit": 21.69,
+          "green": "2/2",
+          "days": 19.0,
+          "worst_trade": -1.71,
+          "worst_dip": 1.71,
+          "balanced": 4.0,
+          "round_trip_pct": 0.2681,
+          "cost_of_tp_pct": 17.9
+        }
+      }
+    },
+    "willr14_15m_sl12tp12": {
+      "coins": [
+        "PSXSTOCK_USDT"
+      ],
+      "rows": [
+        "SXTPP9PL"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "PSXSTOCK": {
+          "row": "SXTPP9PL",
+          "tf": "15m",
+          "signal": "willr14",
+          "tp_pct": 1.2,
+          "sl_pct": 1.2,
+          "trades": 28,
+          "winrate": 92.86,
+          "profit": 21.58,
+          "green": "1/1",
+          "days": 6.0,
+          "worst_trade": -1.42,
+          "worst_dip": 1.42,
+          "balanced": 4.0,
+          "round_trip_pct": 0.5997,
+          "cost_of_tp_pct": 50.0
+        }
+      }
+    },
+    "stoch14_15m_sl12tp12": {
+      "coins": [
+        "PSXSTOCK_USDT"
+      ],
+      "rows": [
+        "XFU35SVM"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "PSXSTOCK": {
+          "row": "XFU35SVM",
+          "tf": "15m",
+          "signal": "stoch14",
+          "tp_pct": 1.2,
+          "sl_pct": 1.2,
+          "trades": 28,
+          "winrate": 92.86,
+          "profit": 21.58,
+          "green": "1/1",
+          "days": 6.0,
+          "worst_trade": -1.42,
+          "worst_dip": 1.42,
+          "balanced": 4.0,
+          "round_trip_pct": 0.5997,
+          "cost_of_tp_pct": 50.0
+        }
+      }
+    },
+    "keltner_30m_sl08tp15": {
+      "coins": [
+        "GPNSTOCK_USDT"
+      ],
+      "rows": [
+        "9SHT9QKK"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "GPNSTOCK": {
+          "row": "9SHT9QKK",
+          "tf": "30m",
+          "signal": "keltner",
+          "tp_pct": 1.5,
+          "sl_pct": 0.8,
+          "trades": 21,
+          "winrate": 90.48,
+          "profit": 21.38,
+          "green": "2/2",
+          "days": 19.0,
+          "worst_trade": -1.02,
+          "worst_dip": 1.02,
+          "balanced": 4.0,
+          "round_trip_pct": 0.2681,
+          "cost_of_tp_pct": 17.9
+        }
+      }
+    },
+    "macddiv_15m_sl1tp12": {
+      "coins": [
+        "GPNSTOCK_USDT"
+      ],
+      "rows": [
+        "UVYLA842"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "GPNSTOCK": {
+          "row": "UVYLA842",
+          "tf": "15m",
+          "signal": "macddiv",
+          "tp_pct": 1.2,
+          "sl_pct": 1.0,
+          "trades": 25,
+          "winrate": 92.0,
+          "profit": 20.03,
+          "green": "2/2",
+          "days": 19.0,
+          "worst_trade": -1.22,
+          "worst_dip": 1.22,
+          "balanced": 4.0,
+          "round_trip_pct": 0.2681,
+          "cost_of_tp_pct": 22.3
+        }
+      }
+    },
+    "keltner_30m_sl1tp12": {
+      "coins": [
+        "GPNSTOCK_USDT"
+      ],
+      "rows": [
+        "GPBB57WJ"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "GPNSTOCK": {
+          "row": "GPBB57WJ",
+          "tf": "30m",
+          "signal": "keltner",
+          "tp_pct": 1.2,
+          "sl_pct": 1.0,
+          "trades": 20,
+          "winrate": 95.0,
+          "profit": 17.39,
+          "green": "2/2",
+          "days": 19.0,
+          "worst_trade": -1.22,
+          "worst_dip": 1.22,
+          "balanced": 4.0,
+          "round_trip_pct": 0.2681,
+          "cost_of_tp_pct": 22.3
+        }
+      }
+    },
+    "keltner_30m_sl12tp12": {
+      "coins": [
+        "GPNSTOCK_USDT"
+      ],
+      "rows": [
+        "C28YJ3U3"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "GPNSTOCK": {
+          "row": "C28YJ3U3",
+          "tf": "30m",
+          "signal": "keltner",
+          "tp_pct": 1.2,
+          "sl_pct": 1.2,
+          "trades": 20,
+          "winrate": 95.0,
+          "profit": 17.2,
+          "green": "2/2",
+          "days": 19.0,
+          "worst_trade": -1.41,
+          "worst_dip": 1.41,
+          "balanced": 4.0,
+          "round_trip_pct": 0.2681,
+          "cost_of_tp_pct": 22.3
+        }
+      }
+    },
+    "keltner_30m_sl08tp12": {
+      "coins": [
+        "GPNSTOCK_USDT"
+      ],
+      "rows": [
+        "ZQL2ETND"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "GPNSTOCK": {
+          "row": "ZQL2ETND",
+          "tf": "30m",
+          "signal": "keltner",
+          "tp_pct": 1.2,
+          "sl_pct": 0.8,
+          "trades": 21,
+          "winrate": 90.48,
+          "profit": 16.58,
+          "green": "2/2",
+          "days": 19.0,
+          "worst_trade": -1.02,
+          "worst_dip": 1.02,
+          "balanced": 4.0,
+          "round_trip_pct": 0.2681,
+          "cost_of_tp_pct": 22.3
+        }
+      }
+    },
+    "macddiv_15m_sl1tp1": {
+      "coins": [
+        "GPNSTOCK_USDT"
+      ],
+      "rows": [
+        "KWYTPWEC"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "GPNSTOCK": {
+          "row": "KWYTPWEC",
+          "tf": "15m",
+          "signal": "macddiv",
+          "tp_pct": 1.0,
+          "sl_pct": 1.0,
+          "trades": 25,
+          "winrate": 92.0,
+          "profit": 15.43,
+          "green": "2/2",
+          "days": 19.0,
+          "worst_trade": -1.22,
+          "worst_dip": 1.22,
+          "balanced": 4.0,
+          "round_trip_pct": 0.2681,
+          "cost_of_tp_pct": 26.8
+        }
+      }
+    },
+    "keltner_30m_sl1tp1": {
+      "coins": [
+        "GPNSTOCK_USDT"
+      ],
+      "rows": [
+        "DDCZGFDH"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "GPNSTOCK": {
+          "row": "DDCZGFDH",
+          "tf": "30m",
+          "signal": "keltner",
+          "tp_pct": 1.0,
+          "sl_pct": 1.0,
+          "trades": 20,
+          "winrate": 95.0,
+          "profit": 13.59,
+          "green": "2/2",
+          "days": 19.0,
+          "worst_trade": -1.22,
+          "worst_dip": 1.22,
+          "balanced": 4.0,
+          "round_trip_pct": 0.2681,
+          "cost_of_tp_pct": 26.8
+        }
+      }
+    },
+    "keltner_30m_sl08tp1": {
+      "coins": [
+        "GPNSTOCK_USDT"
+      ],
+      "rows": [
+        "4UES5J9Z"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "GPNSTOCK": {
+          "row": "4UES5J9Z",
+          "tf": "30m",
+          "signal": "keltner",
+          "tp_pct": 1.0,
+          "sl_pct": 0.8,
+          "trades": 21,
+          "winrate": 90.48,
+          "profit": 12.78,
+          "green": "2/2",
+          "days": 19.0,
+          "worst_trade": -1.02,
+          "worst_dip": 1.02,
+          "balanced": 4.0,
+          "round_trip_pct": 0.2681,
+          "cost_of_tp_pct": 26.8
+        }
+      }
+    },
+    "keltner_30m_sl08tp08": {
+      "coins": [
+        "GPNSTOCK_USDT"
+      ],
+      "rows": [
+        "S54A9XG4"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "GPNSTOCK": {
+          "row": "S54A9XG4",
+          "tf": "30m",
+          "signal": "keltner",
+          "tp_pct": 0.8,
+          "sl_pct": 0.8,
+          "trades": 21,
+          "winrate": 90.48,
+          "profit": 8.99,
+          "green": "2/2",
+          "days": 19.0,
+          "worst_trade": -1.02,
+          "worst_dip": 1.02,
+          "balanced": 4.0,
+          "round_trip_pct": 0.2681,
+          "cost_of_tp_pct": 33.5
+        }
+      }
+    },
+    "rsidiv_15m_sl06tp06": {
+      "coins": [
+        "DVNSTOCK_USDT"
+      ],
+      "rows": [
+        "APPV4LS2"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "DVNSTOCK": {
+          "row": "APPV4LS2",
+          "tf": "15m",
+          "signal": "rsidiv",
+          "tp_pct": 0.6,
+          "sl_pct": 0.6,
+          "trades": 21,
+          "winrate": 90.48,
+          "profit": 5.61,
+          "green": "2/2",
+          "days": 22.0,
+          "worst_trade": -0.84,
+          "worst_dip": 0.84,
+          "balanced": 4.0,
+          "round_trip_pct": 0.1806,
+          "cost_of_tp_pct": 30.1
+        }
+      }
+    },
+    "rsidiv_15m_sl04tp04": {
+      "coins": [
+        "DVNSTOCK_USDT"
+      ],
+      "rows": [
+        "NX2YBVSA"
+      ],
+      "margin": 5.0,
+      "sizing": "flat",
+      "book": [
+        "real"
+      ],
+      "measured": {
+        "DVNSTOCK": {
+          "row": "NX2YBVSA",
+          "tf": "15m",
+          "signal": "rsidiv",
+          "tp_pct": 0.4,
+          "sl_pct": 0.4,
+          "trades": 21,
+          "winrate": 90.48,
+          "profit": 2.16,
+          "green": "2/2",
+          "days": 22.0,
+          "worst_trade": -0.62,
+          "worst_dip": 0.88,
+          "balanced": 4.0,
+          "round_trip_pct": 0.1806,
+          "cost_of_tp_pct": 45.1
+        }
+      }
+    }
+  }
+}

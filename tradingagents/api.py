@@ -208,6 +208,8 @@ def strategies(coin: str | None = None, tf: str | None = None,
                # the low end of each range: "BETWEEN .5 - 2.5", both ends
                # inclusive (operator, 2026-09-03)
                min_tp: float = 0.0, min_sl: float = 0.0,
+               # the checkbox: only rows whose target is wider than their stop
+               tp_over_sl: bool = False,
                sizing: str | None = None, row_id: str | None = None,
                group: str | None = None,
                months: int = 0, days: int = 0,
@@ -231,7 +233,8 @@ def strategies(coin: str | None = None, tf: str | None = None,
                        min_trades=min_trades, min_winrate=min_winrate,
                        max_tp=max_tp, sizing=sizing, row_id=row_id,
                        group=group, max_sl=max_sl, months=months, desc=desc,
-                       min_tp=min_tp, min_sl=min_sl)
+                       min_tp=min_tp, min_sl=min_sl,
+                       tp_over_sl=tp_over_sl)
     except ri.SortNotReady as exc:
         # 503: the request is fine, the store is not ready for it yet.
         # The screen shows this sentence rather than hanging on a sort
@@ -282,7 +285,8 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                          sort="profit", min_trades=0, min_winrate=0,
                          max_tp=0, sizing=None, row_id=None, group=None,
                          max_sl=0, days=0,
-                         desc=None, batch=5_000, min_tp=0, min_sl=0):
+                         desc=None, batch=5_000, min_tp=0, min_sl=0,
+                         tp_over_sl=False):
     """The CSV, one chunk at a time — a module-level generator on purpose.
 
     Inside the route it was only reachable through StreamingResponse's ASYNC
@@ -333,7 +337,8 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                               max_tp=max_tp, sizing=sizing, row_id=row_id,
                               group=group, max_sl=max_sl, days=days,
                               desc=desc, batch=batch,
-                              min_tp=min_tp, min_sl=min_sl):
+                              min_tp=min_tp, min_sl=min_sl,
+                              tp_over_sl=tp_over_sl):
             score, why = ri.balanced_score(r)
             w.writerow([r.get(c) for c in cols] + [score, why]
                        + [_json.dumps(r.get("monthly") or {},
@@ -361,7 +366,7 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
 def strategies_csv_name(coin=None, tf=None, signal=None, min_trades=0,
                         sort="profit", min_winrate=0, max_tp=0,
                         sizing=None, group=None, max_sl=0, days=0,
-                        min_tp=0, min_sl=0) -> str:
+                        min_tp=0, min_sl=0, tp_over_sl=False) -> str:
     """A filename that says which slice of the store is in the file."""
     bits = [b for b in (coin, tf, signal,
                         f"min{min_trades}" if min_trades else "",
@@ -377,6 +382,7 @@ def strategies_csv_name(coin=None, tf=None, signal=None, min_trades=0,
                         (f"sl{_trim(min_sl)}-{_trim(max_sl)}" if min_sl and max_sl
                          else f"sl{_trim(max_sl)}max" if max_sl
                          else f"sl{_trim(min_sl)}min" if min_sl else ""),
+                        "tp-over-sl" if tp_over_sl else "",
                         # the WINDOW belongs in the name: two downloads of the
                         # same filter differ entirely by it
                         f"last{int(days)}d" if days else "",
@@ -402,6 +408,7 @@ def strategies_csv(coin: str | None = None, tf: str | None = None,
                    min_winrate: float = 0.0, max_tp: float = 0.0,
                    max_sl: float = 0.0,
                    min_tp: float = 0.0, min_sl: float = 0.0,
+                   tp_over_sl: bool = False,
                    sizing: str | None = None, row_id: str | None = None,
                    group: str | None = None, months: int = 0, days: int = 0,
                    desc: bool | None = None):
@@ -436,6 +443,7 @@ def strategies_csv(coin: str | None = None, tf: str | None = None,
                                min_winrate=min_winrate, max_tp=max_tp,
                                sizing=sizing, group=group, max_sl=max_sl,
                                min_tp=min_tp, min_sl=min_sl,
+                               tp_over_sl=tp_over_sl,
                                days=0 if months else days)
     return StreamingResponse(
         strategies_csv_lines(coin=coin, tf=tf, signal=signal,
@@ -444,6 +452,7 @@ def strategies_csv(coin: str | None = None, tf: str | None = None,
                             max_tp=max_tp, sizing=sizing, row_id=row_id,
                             group=group, max_sl=max_sl,
                             min_tp=min_tp, min_sl=min_sl,
+                            tp_over_sl=tp_over_sl,
                             days=0 if months else days, desc=desc),
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{name}"'})

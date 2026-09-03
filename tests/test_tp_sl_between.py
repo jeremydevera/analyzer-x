@@ -201,3 +201,82 @@ def test_clear_all_and_the_served_set_know_about_the_new_ends():
     assert "servedMinTp > 0" in call and "servedMinSl > 0" in call
     assert "setServedMinTp(d.min_tp ?? applied.minTp);" in p
     assert "setServedMinSl(d.min_sl ?? applied.minSl);" in p
+
+
+# ---------------------------------------------------------------------------
+# TP GREATER THAN SL, as a checkbox.
+#
+# Operator, 2026-09-04: *"ADD FILTER tp IS GREATER THAN sl CHECKBOX IF THIS IS
+# CHECKED THEN THE BETWEEN TP AND SL SHOULD BE GREYED OUT / YOU WILL SHOW TP
+# THAT IS GREATER THAN SL"*.
+#
+# It compares the row's own two columns, so there is no number to type. And
+# GREYED OUT MEANS IGNORED: the boxes keep their text, the request carries
+# zeroes, and no chip claims them.
+
+def test_the_checkbox_is_a_column_against_a_column():
+    where, args = ri._where(tp_over_sl=True)
+    assert "tp > sl" in where
+    assert args == [], "nothing to type, so nothing to bind"
+
+
+def test_it_keeps_only_the_rows_whose_target_is_wider(store):
+    got = ri.query(tp_over_sl=True)
+    names = sorted(r["signal"] for r in got["rows"])
+    assert names == ["high_edge", "middle", "scalp", "wide"], names
+    assert all(r["tp"] > r["sl"] for r in got["rows"])
+    # low_edge is TP 0.5 against SL 0.5 — equal is NOT greater
+    assert "low_edge" not in names
+    assert got["total"] == 4
+
+
+def test_the_checkbox_is_echoed_for_the_caption(store):
+    assert ri.query(tp_over_sl=True)["tp_over_sl"] is True
+    assert ri.query()["tp_over_sl"] is False
+
+
+def test_it_stacks_with_the_other_filters(store):
+    got = ri.query(tp_over_sl=True, min_tp=1.0)
+    assert sorted(r["signal"] for r in got["rows"]) == ["high_edge", "middle",
+                                                        "wide"]
+
+
+def test_the_download_carries_it_and_names_it():
+    assert "tp-over-sl" in api.strategies_csv_name(tp_over_sl=True)
+    assert "tp-over-sl" not in api.strategies_csv_name()
+
+
+def test_the_csv_walks_the_same_rows(store):
+    rows = list(ri.iter_rows(tp_over_sl=True))
+    assert sorted(r["signal"] for r in rows) == ["high_edge", "middle",
+                                                 "scalp", "wide"]
+
+
+def test_the_box_greys_the_two_ranges_OUT_and_they_stop_filtering():
+    p = io.open(PANEL, encoding="utf-8").read()
+    assert 'aria-label="Only rows whose take profit is wider than their stop loss"' in p
+    assert "TP is greater than SL" in p
+    # every one of the four range inputs is disabled by it
+    assert p.count("disabled={tpOverSl}") == 4, p.count("disabled={tpOverSl}")
+    # ...and greyed out means IGNORED, not hidden-but-still-applied
+    assert "const off = (v: number) => (tpOverSl ? 0 : v);" in p
+    for f in ("maxTp: off(maxTp)", "maxSl: off(maxSl)",
+              "minTp: off(minTp)", "minSl: off(minSl)"):
+        assert f in p, f
+    assert "ignored while TP is greater than SL" in p
+    # the chip, and the download
+    assert 'text: "TP wider than SL"' in p
+    assert "tpOverSl: applied.tpOverSl," in p
+
+
+def test_the_COUNT_knows_about_every_row_level_filter(store):
+    """`from_pairs` totals each pair's row count, which cannot see INSIDE a
+    pair. A filter missing from that list makes the caption count rows the
+    table does not show — found 2026-09-04: `tp > sl` returned 4 rows under
+    "5 match", and the TP/SL ranges shipped the day before had the same hole."""
+    for kw in ({"tp_over_sl": True}, {"min_tp": 1.0}, {"min_sl": 1.0},
+               {"max_tp": 2.5}, {"max_sl": 1.5},
+               {"min_tp": 0.5, "max_tp": 2.5}):
+        got = ri.query(**kw)
+        assert got["total"] == len(got["rows"]), (kw, got["total"],
+                                                  len(got["rows"]))

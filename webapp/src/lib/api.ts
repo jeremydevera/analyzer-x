@@ -426,6 +426,9 @@ export const api = {
      *  same slice the table showed */
     minTp?: number;
     minSl?: number;
+    /** only rows whose target is wider than their stop, so the file holds the
+     *  same slice the table showed */
+    tpOverSl?: boolean;
     /** the DAYS window, so the file holds the same measurement the table
      *  showed rather than every row's whole history */
     days?: number; months?: number;
@@ -445,6 +448,7 @@ export const api = {
     if (q.maxSl) p.set("max_sl", String(q.maxSl));
     if (q.minTp) p.set("min_tp", String(q.minTp));
     if (q.minSl) p.set("min_sl", String(q.minSl));
+    if (q.tpOverSl) p.set("tp_over_sl", "true");
     if (q.sizing) p.set("sizing", q.sizing);
     if (q.group) p.set("group", q.group);
     if (q.rowId) p.set("row_id", q.rowId);
@@ -482,6 +486,11 @@ export const api = {
      *  smaller than the round-trip cost. */
     minTp?: number;
     minSl?: number;
+    /** TP WIDER THAN SL — a checkbox, because there is no number to type and
+     *  nothing to compare against but the row's own other column (operator,
+     *  2026-09-04). It supersedes the two ranges: while it is on, they are
+     *  greyed out and NOT sent. */
+    tpOverSl?: boolean;
     /** "flat" or "martingale" — the ladder is a sizing CHOICE, not a
      *  measurement (rule 19), so it has to be possible to see one alone */
     sizing?: string;
@@ -512,6 +521,7 @@ export const api = {
     if (q.maxSl) p.set("max_sl", String(q.maxSl));
     if (q.minTp) p.set("min_tp", String(q.minTp));
     if (q.minSl) p.set("min_sl", String(q.minSl));
+    if (q.tpOverSl) p.set("tp_over_sl", "true");
     if (q.months) p.set("months", String(q.months));
     if (q.days) p.set("days", String(q.days));
     if (q.sizing) p.set("sizing", q.sizing);
@@ -531,7 +541,7 @@ export const api = {
       max_tp?: number; max_sl?: number;
       /** the low end of each range, echoed so the chips describe what was
        *  APPLIED rather than what the boxes hold */
-      min_tp?: number; min_sl?: number;
+      min_tp?: number; min_sl?: number; tp_over_sl?: boolean;
       sizing?: string; row_id?: string;
       desc?: boolean;
       /** the window's REAL months, newest first ("2026-08") */

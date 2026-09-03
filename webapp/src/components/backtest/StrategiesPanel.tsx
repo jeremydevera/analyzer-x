@@ -139,6 +139,14 @@ export default function StrategiesPanel() {
   const [minSl, setMinSl] = useState(0);
   const [servedMinTp, setServedMinTp] = useState(0);
   const [servedMinSl, setServedMinSl] = useState(0);
+  // "ADD FILTER tp IS GREATER THAN sl CHECKBOX IF THIS IS CHECKED THEN THE
+  // BETWEEN TP AND SL SHOULD BE GREYED OUT" (operator, 2026-09-04). It
+  // compares the row's own two columns, so there is no number to type — and
+  // GREYED OUT MEANS IGNORED: while it is on, the four range boxes are
+  // disabled, their values are not sent and no chip claims them. A disabled
+  // box that still filtered is the label-must-match-data failure this panel
+  // keeps paying for. The typed text stays, so unchecking hands it back.
+  const [tpOverSl, setTpOverSl] = useState(false);
   // "can you add the sl filter in the Stored strategies as well" (operator,
   // 2026-09-02). A CEILING, the opposite of the TP box beside it: 1 keeps rows
   // whose stop is 1% or TIGHTER — their words, settled on the artifact first:
@@ -226,7 +234,7 @@ export default function StrategiesPanel() {
     coin: "", tf: "", signal: "", profitable: false,
     minTrades: 0, minWinrate: 0, maxTp: 0, maxSl: 0, sizing: "", rowId: "",
     group: "",
-    minTp: 0, minSl: 0,
+    minTp: 0, minSl: 0, tpOverSl: false,
     months: 0, days: 0,
   });
   // The filter set the ROWS ON SCREEN came from — set only when a request
@@ -242,7 +250,7 @@ export default function StrategiesPanel() {
     coin: "", tf: "", signal: "", profitable: false,
     minTrades: 0, minWinrate: 0, maxTp: 0, maxSl: 0, sizing: "", rowId: "",
     group: "",
-    minTp: 0, minSl: 0,
+    minTp: 0, minSl: 0, tpOverSl: false,
     months: 0, days: 0,
   });
   // how long the request that FAILED had been running, so the message can say
@@ -302,6 +310,7 @@ export default function StrategiesPanel() {
                      minTrades: applied.minTrades, minWinrate: applied.minWinrate,
                      maxTp: applied.maxTp, maxSl: applied.maxSl,
                      minTp: applied.minTp, minSl: applied.minSl,
+                     tpOverSl: applied.tpOverSl,
                      sizing: applied.sizing || undefined,
                      rowId: applied.rowId || undefined,
                      months: applied.months || undefined,
@@ -384,8 +393,13 @@ export default function StrategiesPanel() {
   const askPage = applied.days > 0 && !applied.months
     ? Math.min(perPage, DAYS_PAGE) : perPage;
 
-  const draft = { coin, tf, signal, profitable, minTrades, minWinrate, maxTp,
-    maxSl, minTp, minSl,
+  // GREYED OUT MEANS IGNORED: with `tp > sl` on, the four range boxes keep
+  // their typed text but the request carries zeroes, so the chips, the CSV
+  // link and the table can never disagree with what the boxes look like.
+  const off = (v: number) => (tpOverSl ? 0 : v);
+  const draft = { coin, tf, signal, profitable, minTrades, minWinrate,
+                  maxTp: off(maxTp), maxSl: off(maxSl),
+                  minTp: off(minTp), minSl: off(minSl), tpOverSl,
                   sizing, group, months, days,
                   // trim FIRST: " #6yaczsxx " pasted from chat kept its hash
                   // when the # was stripped before the spaces, and a real id
@@ -408,13 +422,13 @@ export default function StrategiesPanel() {
   const NO_FILTERS = {
     coin: "", tf: "", signal: "", profitable: false,
     minTrades: 0, minWinrate: 0, maxTp: 0, maxSl: 0, sizing: "", rowId: "",
-    group: "", minTp: 0, minSl: 0, months: 0, days: 0,
+    group: "", minTp: 0, minSl: 0, tpOverSl: false, months: 0, days: 0,
   };
   const setBox: Record<keyof typeof NO_FILTERS, (v: never) => void> = {
     coin: setCoin, tf: setTf, signal: setSignal, group: setGroup,
     sizing: setSizing, minTrades: setMinTrades, minWinrate: setMinWinrate,
     maxTp: setMaxTp, maxSl: setMaxSl, minTp: setMinTp, minSl: setMinSl,
-    profitable: setProfitable,
+    tpOverSl: setTpOverSl, profitable: setProfitable,
     months: setMonths, days: setDays, rowId: setRowId,
   } as Record<keyof typeof NO_FILTERS, (v: never) => void>;
   // a RANGE is one chip, so its × clears both ends — leaving the floor
@@ -495,6 +509,7 @@ export default function StrategiesPanel() {
     } else if (f.minSl > 0) {
       out.push({ k: "minSl", text: `SL ${f.minSl}% or wider` });
     }
+    if (f.tpOverSl) out.push({ k: "tpOverSl", text: "TP wider than SL" });
     if (f.profitable) out.push({ k: "profitable", text: "Made money" });
     return out;
   };
@@ -511,6 +526,7 @@ export default function StrategiesPanel() {
     maxSl: servedSl > 0 ? servedSl : servedFilters.maxSl,
     minTp: servedMinTp > 0 ? servedMinTp : servedFilters.minTp,
     minSl: servedMinSl > 0 ? servedMinSl : servedFilters.minSl,
+    tpOverSl: servedFilters.tpOverSl,
     // named, not just carried by the spread: the sizing chip has to come from
     // what the STORE applied, and a test pins that in words
     // (test_sizing_filter) because a chip describing the request while the
@@ -700,7 +716,7 @@ export default function StrategiesPanel() {
             )}
           </div>
           <p className="text-theme-xs text-gray-500 dark:text-gray-400">
-            {total.toLocaleString()}{capped ? "+" : ""} {[applied.coin, applied.tf, applied.signal, applied.profitable ? "profitable only" : ""].some(Boolean) || applied.minTrades > 0 || applied.minWinrate > 0 || applied.maxTp > 0 || applied.maxSl > 0 ? "match" : "stored strategies"}
+            {total.toLocaleString()}{capped ? "+" : ""} {chips.length ? "match" : "stored strategies"}
             {` · rows ${shown.length ? (page - 1) * askPage + 1 : 0}–${(page - 1) * askPage + shown.length} on screen`}
             {` · ${servedDesc ? "highest" : "lowest"} ${STRATEGY_SORTS[servedSort]} first`}
             {/* A partial index must NOT be captioned as the whole store: the
@@ -945,17 +961,29 @@ export default function StrategiesPanel() {
               {/* BETWEEN: a low box and a high box on one line, both ends
                   inclusive. "EXAMPLE BETWEEN .5 - 2.5" (operator,
                   2026-09-03). Either end alone still filters. */}
+              {/* the checkbox that supersedes both ranges */}
+              <Field label="TP vs SL">
+                <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300">
+                  <input type="checkbox" checked={tpOverSl}
+                         onChange={(e) => setTpOverSl(e.target.checked)}
+                         aria-label="Only rows whose take profit is wider than their stop loss"
+                         className="h-4 w-4 accent-brand-500" />
+                  TP is greater than SL
+                </label>
+              </Field>
               <Field label="TP % between"
-                     hint={`0.5 to 2.5 keeps both ends — this store measured TP up to ${tpCeiling}%`}>
+                     hint={tpOverSl
+                       ? "ignored while TP is greater than SL"
+                       : `0.5 to 2.5 keeps both ends — this store measured TP up to ${tpCeiling}%`}>
                 <input type="number" min={0} max={tpCeiling} step={0.5} value={minTp || ""}
-                       list="tp-values" placeholder="any"
+                       list="tp-values" placeholder="any" disabled={tpOverSl}
                        onChange={(e) => setMinTp(Math.min(tpCeiling, Math.max(0, Number(e.target.value) || 0)))}
                        aria-label="Minimum take profit percent"
                        onKeyDown={onFilterKey}
                        className={numIn} />
-                <span className="text-theme-xs text-gray-400 dark:text-gray-500">and</span>
+                <span className={`text-theme-xs ${tpOverSl ? "text-gray-300 dark:text-gray-600" : "text-gray-400 dark:text-gray-500"}`}>and</span>
                 <input type="number" min={0} max={tpCeiling} step={0.5} value={maxTp || ""}
-                       list="tp-values" placeholder="any"
+                       list="tp-values" placeholder="any" disabled={tpOverSl}
                        onChange={(e) => setMaxTp(Math.min(tpCeiling, Math.max(0, Number(e.target.value) || 0)))}
                        aria-label="Maximum take profit percent"
                        onKeyDown={onFilterKey}
@@ -967,16 +995,18 @@ export default function StrategiesPanel() {
               {/* MAX SL: 1 keeps rows whose stop is 1% or tighter (operator,
                   2026-09-02) — a smaller stop risks less on each trade. */}
               <Field label="SL % between"
-                     hint="a smaller stop risks less on each trade; both ends kept">
+                     hint={tpOverSl
+                       ? "ignored while TP is greater than SL"
+                       : "a smaller stop risks less on each trade; both ends kept"}>
                 <input type="number" min={0} step={0.5} value={minSl || ""}
-                       list="sl-values" placeholder="any"
+                       list="sl-values" placeholder="any" disabled={tpOverSl}
                        onChange={(e) => setMinSl(Math.max(0, Number(e.target.value) || 0))}
                        aria-label="Minimum stop loss percent"
                        onKeyDown={onFilterKey}
                        className={numIn} />
-                <span className="text-theme-xs text-gray-400 dark:text-gray-500">and</span>
+                <span className={`text-theme-xs ${tpOverSl ? "text-gray-300 dark:text-gray-600" : "text-gray-400 dark:text-gray-500"}`}>and</span>
                 <input type="number" min={0} step={0.5} value={maxSl || ""}
-                       list="sl-values" placeholder="any"
+                       list="sl-values" placeholder="any" disabled={tpOverSl}
                        onChange={(e) => setMaxSl(Math.max(0, Number(e.target.value) || 0))}
                        aria-label="Maximum stop loss percent"
                        onKeyDown={onFilterKey}
@@ -1143,14 +1173,13 @@ export default function StrategiesPanel() {
           or the artifact you copied it from.
         </p>
       )}
-      {!err && !waiting && !shown.length && !servedFilters.rowId && (minWinrate > 0 || minTrades > 0 || maxTp > 0 || maxSl > 0) && (
+      {!err && !waiting && !shown.length && !servedFilters.rowId && chips.length > 0 && (
         <p className="px-5 pt-2 text-theme-sm text-warning-600 dark:text-warning-400">
           no stored strategy passes{" "}
           <b>
-            {[minWinrate > 0 ? `win % ≥ ${minWinrate}` : "",
-              maxTp > 0 ? `TP ≤ ${maxTp}%` : "",
-              minTrades > 0 ? `${minTrades}+ trades` : ""]
-              .filter(Boolean).join(" with ")}
+            {/* the SERVED chips, so this sentence names the filter the
+                store actually ran rather than the boxes on screen */}
+            {chips.map((c) => c.text).join(" with ")}
           </b>
           {[coin, tf, signal].filter(Boolean).length ? ` and ${[coin, tf, signal].filter(Boolean).join(" · ")}` : ""}
           {profitable ? " and profit above zero" : ""} — lower the floor to see what is close.
@@ -1399,6 +1428,7 @@ export default function StrategiesPanel() {
                // showed, which is the file-does-not-match-the-table failure
                // this panel keeps paying for (kit item F).
                minTp: applied.minTp, minSl: applied.minSl,
+               tpOverSl: applied.tpOverSl,
                group: (applied.group || undefined) as "preset" | "classic" | undefined,
                sizing: applied.sizing || undefined,
                // the WINDOW too, or the file holds every row's whole history

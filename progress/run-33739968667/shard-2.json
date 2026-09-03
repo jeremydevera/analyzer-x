@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 20, "total": 53, "rows": 1834168, "note": "GBP 4h: rule 44/120 (elder)", "failed": [], "pct": 37.7, "updated": "2026-09-03T11:24:57Z"}
+{"shard": 2, "stage": "testing", "done": 22, "total": 53, "rows": 1874240, "note": "HDSTOCK 15m: rule 45/120 (zscore20)", "failed": [], "pct": 41.5, "updated": "2026-09-03T11:25:42Z"}

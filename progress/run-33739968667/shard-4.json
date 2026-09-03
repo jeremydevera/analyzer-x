@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 19, "total": 53, "rows": 1446810, "note": "FLUTSTOCK 1d: downloading candles", "failed": [], "pct": 35.8, "updated": "2026-09-03T10:44:37Z"}
+{"shard": 4, "stage": "testing", "done": 20, "total": 53, "rows": 1451210, "note": "GENIUS 15m: rule 14/120 (bb20)", "failed": [], "pct": 37.7, "updated": "2026-09-03T10:45:23Z"}

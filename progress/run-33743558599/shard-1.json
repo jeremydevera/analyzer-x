@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 25, "total": 53, "rows": 945714, "note": "IWM 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 47.2, "updated": "2026-09-03T14:25:39Z"}
+{"shard": 1, "stage": "testing", "done": 26, "total": 53, "rows": 979022, "note": "KERNEL 1h: rule 32/120 (gmma)", "failed": [], "pct": 49.1, "updated": "2026-09-03T14:26:24Z"}

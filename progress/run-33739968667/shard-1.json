@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 26, "total": 53, "rows": 2066222, "note": "KERNEL 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-03T11:45:52Z"}
+{"shard": 1, "stage": "testing", "done": 26, "total": 53, "rows": 2069742, "note": "KERNEL 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 49.1, "updated": "2026-09-03T11:46:38Z"}

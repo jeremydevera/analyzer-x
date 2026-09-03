@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 27, "total": 53, "rows": 2021694, "note": "LAYER 15m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-03T11:26:15Z"}
+{"shard": 4, "stage": "testing", "done": 27, "total": 53, "rows": 2024814, "note": "LAYER 30m: rule 2/120 (mom15)", "failed": [], "pct": 50.9, "updated": "2026-09-03T11:27:06Z"}

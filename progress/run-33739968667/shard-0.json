@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 40, "total": 53, "rows": 3303302, "note": "SAFE 15m: rule 54/120 (fractal5)", "failed": [], "pct": 75.5, "updated": "2026-09-03T12:55:50Z"}
+{"shard": 0, "stage": "testing", "done": 40, "total": 53, "rows": 3309902, "note": "SAFE 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-03T12:56:37Z"}

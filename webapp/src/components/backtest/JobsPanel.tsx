@@ -186,10 +186,17 @@ export default function JobsPanel() {
                     BACKTEST
                   </Button>
                 </span>
-                <span title="CONTINUE the stored backtests over new candles only — never from scratch.">
+                {/* No coin picked means EVERY pair this machine has candles
+                    for — the same meaning UPDATE has on the Candles screen.
+                    It used to be disabled without a selection, and the job
+                    behind it turned an empty list into zero pairs and reported
+                    "0/0" (2026-09-03). */}
+                <span title={coins.length
+                  ? "CONTINUE the stored backtests for the picked coins over new candles only — never from scratch."
+                  : "CONTINUE every stored backtest over new candles only — every pair this machine has candles for, never from scratch."}>
                   <Button size="sm" variant="outline" onClick={() => start("btupdate")}
-                    disabled={!coins.length || !tfs.length || !!upd?.running}>
-                    UPDATE BACKTEST
+                    disabled={!tfs.length || !!upd?.running || !!bt?.running}>
+                    {coins.length ? "UPDATE BACKTEST" : "UPDATE ALL BACKTESTS"}
                   </Button>
                 </span>
               </>

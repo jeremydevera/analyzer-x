@@ -503,6 +503,9 @@ def _run_download(spec: dict) -> None:
     # every branch sets these; declared here so a reordered branch cannot
     # silently degrade them to a default nobody chose
     delisted: list[str] = []
+    # LISTED contracts the venue serves no candles for. Named, never filed as
+    # a fault, never queued as lost — see the `looks_gone` branch below.
+    empty: list[str] = []
     n_missing = 0
     if mode == "retry":
         # the RETRY FAILED button: exactly the pairs the last run gave up
@@ -565,13 +568,29 @@ def _run_download(spec: dict) -> None:
                       flush=True)
                 queue.append((c, tf))
                 continue
-            if looks_gone(why) and is_delisted(c):
-                # not an error and not lost: the contract is gone, so no run
-                # can ever fetch it and it must not be queued again
-                delisted.append(f"{c} {tf}")
-                print(f"[download] {fmt_when(time.time())} {c} {tf} is "
-                      f"DELISTED on MEXC — skipped, not counted as an error",
-                      flush=True)
+            if looks_gone(why):
+                gone = is_delisted(c)
+                if gone:
+                    # not an error and not lost: the contract is gone, so no
+                    # run can ever fetch it and it must not be queued again
+                    delisted.append(f"{c} {tf}")
+                    print(f"[download] {fmt_when(time.time())} {c} {tf} is "
+                          f"DELISTED on MEXC — skipped, not counted as an "
+                          f"error", flush=True)
+                else:
+                    # LISTED, and the venue serves no candles for this pair.
+                    # A retry asks the same question and gets the same empty
+                    # answer, so this must not go on the lost list: 25 pairs
+                    # over five contracts did exactly that on Sep 02, 2026 and
+                    # every later update re-queued them, failed again and kept
+                    # the panel red — the same shape as the delisted case
+                    # above, which is why they now share this branch.
+                    # `update_pairs` still queues a pair the store lacks, so
+                    # each update attempts it once; only the FILING changes.
+                    empty.append(f"{c} {tf}")
+                    print(f"[download] {fmt_when(time.time())} {c} {tf}: the "
+                          f"venue serves no candles for this pair — named, "
+                          f"not counted as an error", flush=True)
                 done += 1
                 continue
             failed.append(f"{c} {tf}: {why}")
@@ -598,11 +617,14 @@ def _run_download(spec: dict) -> None:
                     + (f" · {len(failed)} error(s): {names}" if failed else "")
                     + (f" · and {more} more" if more > 0 else "")
                     + (f" · {len(delisted)} delisted, skipped: "
-                       f"{' · '.join(delisted[:3])}" if delisted else "")),
+                       f"{' · '.join(delisted[:3])}" if delisted else "")
+                    + (f" · {len(empty)} pair(s) the venue serves no candles "
+                       f"for: {' · '.join(empty[:3])}" if empty else "")),
             ok=_ok,
             meta={"pairs": len(pairs), "bars": stored,
                   "errors": len(failed), "failed": failed, "retries": retries,
                   "stopped": bool(stopped), "delisted": delisted,
+                  "empty": empty,
                   "missing_added": n_missing,
                   "mode": spec.get("mode") or "download"})
     except Exception:
@@ -617,8 +639,9 @@ def _run_download(spec: dict) -> None:
         "failed": failed, "failed_pairs": failed_pairs, "retries": retries,
         "stopped": stopped, "finished": int(time.time()),
         "mode": spec.get("mode") or "download",
-        # named, never counted as errors: nothing can fetch a gone contract
-        "delisted": delisted, "missing_added": n_missing,
+        # named, never counted as errors: nothing can fetch a gone contract,
+        # and a retry cannot conjure candles the venue does not have
+        "delisted": delisted, "empty": empty, "missing_added": n_missing,
         "note": ("stopped by you — everything downloaded so far is kept"
                  if stopped else
                  (f"retried {len(pairs)} lost pair(s)" if pairs else
@@ -629,6 +652,8 @@ def _run_download(spec: dict) -> None:
                     if n_missing else "")
                  + (f" · {len(delisted)} delisted, skipped"
                     if delisted else "")
+                 + (f" · {len(empty)} pair(s) the venue serves no candles for"
+                    if empty else "")
                  + (f" · {len(lost_before)} pair(s) the last download lost "
                     f"re-downloaded" if lost_before else "")
                  + (f" · {len(failed)} still lost — named in failed" if failed else ""))})
@@ -740,14 +765,24 @@ def persist_results(payload: dict, *, days: int, label: str,
 # http.client.HTTPException covers IncompleteRead / RemoteDisconnected — a
 # connection cut mid-body. It is NOT an OSError, which is how the error that
 # lost CHILLGUY_USDT 15m on 2026-08-25 would have read as deterministic.
-_TRANSIENT_TYPES = (OSError, TimeoutError, ConnectionError, http.client.HTTPException)
+# json.JSONDecodeError is a ValueError, not an OSError, so a body that came
+# back EMPTY or half-written used to read as a permanent fault. ENPHSTOCK 1d
+# failed the Sep 02, 2026 update with "Expecting value: line 1 column 1
+# (char 0)" — MEXC answered with nothing — and the run reported `retries: 0`
+# and left it on the lost list for the operator to press a button about. A
+# truncated body is the wire, and the wire is worth one more go.
+_TRANSIENT_TYPES = (OSError, TimeoutError, ConnectionError,
+                    http.client.HTTPException, json.JSONDecodeError)
 _TRANSIENT_MARKS = ("transport failure", "urlopen", "temporary failure",
                     "nodename nor servname", "timed out", "connection reset",
                     "connection refused", "rate limit", "too many requests",
                     # MEXC's own wording, taken from the runner's log:
                     # "code=510 msg='Requests are too frequent, please try
                     # again later'". "rate limit" alone never matched it.
-                    "too frequent")
+                    "too frequent",
+                    # an empty or half-written body, however it is wrapped
+                    "expecting value", "unterminated string",
+                    "unexpected end of", "incompleteread")
 
 
 def is_transient(exc: BaseException) -> bool:
@@ -772,12 +807,17 @@ def is_transient(exc: BaseException) -> bool:
     return False
 
 
-def _run_backtest(spec: dict) -> None:
+def _run_backtest(spec: dict, files_key: str = "backtest",
+                  kind: str = "backtest") -> None:
     """Crash containment: whatever happens inside, the progress file ends in
     running:false with the error named. A job that died at 80% once left
-    'running: true' on screen for half an hour."""
+    'running: true' on screen for half an hour.
+
+    UPDATE BACKTEST comes through here too (files_key="btupdate"), so a failed
+    update cannot leave its own progress file claiming to be running either.
+    """
     try:
-        _run_backtest_inner(spec)
+        _run_backtest_inner(spec, files_key=files_key, kind=kind)
     except _StopRequested:
         raise
     except Exception as exc:
@@ -788,12 +828,14 @@ def _run_backtest(spec: dict) -> None:
             # 5:20am the bell read "Backtest FAILED" with nothing after it and
             # the progress file said `failed: ` — the operator had to be told
             # what happened from a stack trace.
-            _nt.record("backtest", "Backtest FAILED", ok=False,
+            _nt.record(kind,
+                       "Backtest update FAILED" if kind == "btupdate"
+                       else "Backtest FAILED", ok=False,
                        detail=f"{type(exc).__name__}: {exc}"[:300],
                        meta={"fatal": True, "kind": type(exc).__name__})
         except Exception:
             pass
-        _write(FILES["backtest"]["progress"], {
+        _write(FILES[files_key]["progress"], {
             "running": False, "finished": int(time.time()),
             "error": f"{type(exc).__name__}: {exc}"[:200],
             # the supervisor reads this flag; it never parses the message
@@ -802,9 +844,14 @@ def _run_backtest(spec: dict) -> None:
         raise
 
 
-def _run_backtest_inner(spec: dict) -> None:
+def _run_backtest_inner(spec: dict, files_key: str = "backtest",
+                        kind: str = "backtest") -> None:
+    """`files_key`/`kind` exist so UPDATE BACKTEST can run this exact machinery
+    while keeping its own progress file, stop flag and bell entries. One
+    implementation: the update used to be a sequential loop beside it, which is
+    how it ended up days slower than the button next to it (2026-09-03)."""
     from tradingagents import backtest_report as br
-    f = FILES["backtest"]
+    f = FILES[files_key]
 
     # A missing field used to surface in the UI as `failed: 'coins'` -- a raw
     # KeyError repr, which says nothing to the person reading it. Name what is
@@ -868,13 +915,13 @@ def _run_backtest_inner(spec: dict) -> None:
 
     def prog(msg: str, frac: float, done: int | None = None,
              total: int | None = None) -> None:
-        if _stopping("backtest"):
+        if _stopping(kind):
             raise _StopRequested()
         # Raised from the per-PAIR callback on purpose: a pair has just
         # finished and checkpointed, and ProcessPoolExecutor's context manager
         # waits for the rest of the in-flight pairs on the way out. That is
         # "finish the current task", exactly as asked.
-        if handoff_requested("backtest"):
+        if handoff_requested(kind):
             raise _HandOff(msg)
         # STOP BEFORE the disk is gone. On 2026-08-22 the sweep ran the volume
         # to zero at 04:30:35 and the interpreter died printing the OSError --
@@ -932,7 +979,7 @@ def _run_backtest_inner(spec: dict) -> None:
         try:
             from tradingagents import notifications as _nt
 
-            _nt.record("backtest", "Handed off to GitHub Actions", ok=True,
+            _nt.record(kind, "Handed off to GitHub Actions", ok=True,
                        detail=f"stopped locally at {last['done']} of "
                               f"{last['total']} pairs; the cloud takes the rest")
         except Exception:
@@ -948,7 +995,7 @@ def _run_backtest_inner(spec: dict) -> None:
         try:
             from tradingagents import notifications as _nt
 
-            _nt.record("backtest", "Backtest paused — low disk", ok=False,
+            _nt.record(kind, "Backtest paused — low disk", ok=False,
                        detail=str(exc))
         except Exception:
             pass
@@ -963,7 +1010,7 @@ def _run_backtest_inner(spec: dict) -> None:
         try:
             from tradingagents import notifications as _nt
 
-            _nt.record("backtest", "Backtest paused — low memory", ok=False,
+            _nt.record(kind, "Backtest paused — low memory", ok=False,
                        detail=str(exc))
         except Exception:
             pass
@@ -1007,7 +1054,7 @@ def _run_backtest_inner(spec: dict) -> None:
         from tradingagents import notifications as _nt
 
         _nt.record(
-            "backtest",
+            kind,
             "Backtest finished" if not save_err else "Backtest saved with errors",
             detail=(f"{_measured(payload):,} rows measured"
                     + (f" · {len(payload['rows']):,} on the page"
@@ -1030,86 +1077,54 @@ def _run_backtest_inner(spec: dict) -> None:
                            "report": name, "finished": int(time.time())})
 
 
+def stored_symbols() -> list:
+    """Every contract this machine has candles for, as SYMBOLS.
+
+    `run_pair` takes `CETUS_USDT` — it passes the name straight to `klines` and
+    derives the coin by stripping `_USDT`. Handing it the bare coin makes every
+    pair raise `no Min15 candles for CETUS`, which is exactly what happened on
+    2026-09-03 when the spec was built by hand.
+    """
+    from tradingagents import market_sweep as msw
+
+    return sorted({c["symbol"] for c in msw.candle_coverage()
+                   if c.get("symbol")})
+
+
 def _run_btupdate(spec: dict) -> None:
     """CONTINUE stored backtests over new bars only — never from scratch.
 
-    Uses the sweep's per-combination resume state (`run_pair`): each
-    combination picks up with its ladder rung, running totals and any open
+    Runs the SAME parallel sweep the BACKTEST button runs, with `fresh=False`:
+    every combination picks up with its ladder rung, running totals and any open
     position from where the last run stopped, and walks only the bars that
-    printed since. A stopped update keeps every pair already continued."""
-    from tradingagents import backtest_report as br, market_sweep as msw
-    f = FILES["btupdate"]
-    pairs = [(c, tf) for c in spec["coins"] for tf in spec["tfs"]]
-    days = int(spec.get("days") or 365)
-    base = float(spec.get("base") or 5.0)
-    rows, new_bars, stopped, i, notes = [], 0, False, 0, []
-    # named, counted, and reported — not folded into notes[:3]
-    failed: list[str] = []
-    failed_pairs: list[list[str]] = []
-    for i, (sym, tf) in enumerate(pairs):
-        if _stopping("btupdate"):
-            stopped = True
-            break
-        _write(f["progress"], {"running": True, "done": i,
-                               "total": len(pairs), "now": f"{sym} {tf}",
-                               "rows": len(rows), "new_bars": new_bars,
-                               "errors": len(failed),
-                               "first_error": failed[0] if failed else ""})
-        try:
-            r = msw.run_pair(sym, tf, base_margin=base, days=days,
-                             thresholds=3, fresh=False)   # UPDATE = gap fill
-        except Exception as exc:
-            failed.append(f"{sym} {tf}: {str(exc)[:80]}")
-            failed_pairs.append([sym, tf])
-            print(f"[btupdate] {sym} {tf} FAILED: {type(exc).__name__}: "
-                  f"{str(exc)[:120]}", flush=True)
-            continue
-        rows += r.get("rows") or []
-        new_bars += int(r.get("new_bars") or 0)
-        if r.get("why"):
-            notes.append(f"{sym} {tf}: {r['why']}")
-    # run_pair already persisted every row into the local pair store — pure
-    # local, nothing else to write. `saved` reports what landed there.
-    saved, save_err = len(rows), ""
-    for r in rows:                         # ids for the progress readout
-        r.setdefault("id", br.row_code(
-            r["coin"], r["tf"], r["signal"], r.get("th") or 0.0,
-            r["sl"], r["tp"], r["sizing"]))
-    # One line in the bell, so a click that continued NOTHING is distinguishable
-    # from a click that worked — and every failed pair is named.
-    try:
-        from tradingagents import notifications as _nt
+    printed since. A stopped update keeps every pair already continued.
 
-        _ok = not failed and not stopped
-        names = " · ".join(failed[:_BELL_NAMES])
-        more = len(failed) - _BELL_NAMES
-        _nt.record(
-            "btupdate",
-            ("Backtest update stopped" if stopped else
-             "Backtest update finished" if _ok else
-             "Backtest update finished with errors"),
-            detail=(f"{new_bars:,} new bar(s) over {len(pairs)} pair(s), "
-                    f"{len(rows):,} row(s) continued"
-                    + (f" · {len(failed)} error(s): {names}" if failed else "")
-                    + (f" · and {more} more" if more > 0 else "")),
-            ok=_ok,
-            meta={"pairs": len(pairs), "rows": len(rows),
-                  "new_bars": new_bars, "errors": len(failed),
-                  "failed": failed, "stopped": bool(stopped)})
-    except Exception:
-        pass
-    _write(f["progress"], {
-        "running": False, "done": i if stopped else len(pairs),
-        "total": len(pairs), "rows": len(rows), "saved": saved,
-        "save_error": save_err, "new_bars": new_bars, "stopped": stopped,
-        "finished": int(time.time()),
-        "errors": len(failed), "first_error": failed[0] if failed else "",
-        "failed": failed, "failed_pairs": failed_pairs,
-        "note": ("stopped by you — every pair already continued is kept; "
-                 if stopped else "")
-                + (f"{len(failed)} of {len(pairs)} pair(s) failed — named in "
-                   f"failed; " if failed else "")
-                + ("; ".join(notes[:3]))})
+    Two things this used to get wrong, both found by running it for real on
+    2026-09-03 (operator: *"apply the fix to the button"*):
+
+    * it was SEQUENTIAL — one `run_pair` at a time, 90 s for the first pair and
+      4,124 pairs to go, while the button beside it used every core. The run
+      that actually did the work was the backtest job with `fresh: False`, so
+      that is what this is now.
+    * an EMPTY coin list meant ZERO PAIRS. `[(c, tf) for c in [] ...]` is
+      nothing, so clicking UPDATE without hand-picking 1,031 coins ran nothing
+      and reported "0/0". Empty now means every contract this machine has
+      candles for — what "update" means on the candles screen.
+    """
+    coins = list(spec.get("coins") or [])
+    if not coins:
+        coins = stored_symbols()
+        print(f"[btupdate] no coins named — continuing every pair in the "
+              f"store: {len(coins):,} contract(s)", flush=True)
+    tfs = list(spec.get("tfs") or ["15m", "30m", "1h", "4h"])
+    # `fresh` is forced: this entry point IS the continuation. A spec that
+    # asked for a fresh sweep here would silently throw away every resume
+    # point the store has.
+    _run_backtest({**spec, "coins": coins, "tfs": tfs,
+                         "base": float(spec.get("base") or 5.0),
+                         "days": int(spec.get("days") or 365),
+                   "fresh": False},
+                  files_key="btupdate", kind="btupdate")
 
 
 def _run_stratbt(spec: dict) -> None:

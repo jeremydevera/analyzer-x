@@ -106,6 +106,7 @@ def mock_llm_client():
 # A test that genuinely needs a live service belongs under the `integration`
 # marker, which is exempt below.
 _REAL_CONNECT = socket.socket.connect
+_REAL_SOCKETPAIR = socket.socketpair
 
 
 @pytest.fixture(autouse=True)
@@ -120,11 +121,30 @@ def _no_network(request):
             f"{address}. Unit tests must stub their I/O — mock the fetch, or mark "
             f"the test `@pytest.mark.integration` if it truly needs the service.")
 
+    def pair(*a, **kw):
+        """socket.socketpair() is NOT the network, and on Windows it connects.
+
+        Python has no AF_UNIX socketpair here, so `_fallback_socketpair`
+        listens on 127.0.0.1 and connects to itself. asyncio's ProactorEventLoop
+        builds its self-pipe that way, which means EVERY starlette TestClient
+        request tripped this guard: all 8 tests in test_api_crypto.py failed
+        with "tried to open a network connection to ('127.0.0.1', 65169)" —
+        an API surface with no coverage, failing for a reason that had nothing
+        to do with the API. The real connect is restored just for the pair.
+        """
+        socket.socket.connect = _REAL_CONNECT
+        try:
+            return _REAL_SOCKETPAIR(*a, **kw)
+        finally:
+            socket.socket.connect = blocked
+
     socket.socket.connect = blocked
+    socket.socketpair = pair
     try:
         yield
     finally:
         socket.socket.connect = _REAL_CONNECT
+        socket.socketpair = _REAL_SOCKETPAIR
 
 
 # --------------------------------------------------------------------------

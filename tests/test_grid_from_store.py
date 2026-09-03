@@ -192,8 +192,11 @@ def test_a_crashed_backtest_job_leaves_an_honest_progress_file(monkeypatch,
 
     prog = tmp_path / "p.json"
     monkeypatch.setitem(db_jobs.FILES, "backtest", {"progress": prog})
+    # the stub takes the keywords the wrapper passes: UPDATE BACKTEST runs the
+    # same inner function with its own files_key/kind (2026-09-03)
     monkeypatch.setattr(db_jobs, "_run_backtest_inner",
-                        lambda spec: (_ for _ in ()).throw(
+                        lambda spec, files_key="backtest", kind="backtest":
+                        (_ for _ in ()).throw(
                             RuntimeError("rows have inconsistent keys")))
     import pytest as _pt
 

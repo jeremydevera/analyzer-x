@@ -201,8 +201,10 @@ def test_a_handoff_is_not_a_stop(crashed):
     import inspect
 
     src = inspect.getsource(dj._run_backtest_inner)
-    assert 'handoff_requested("backtest")' in src, "the job must notice it"
-    i = src.index('handoff_requested("backtest")')
+    # `kind` rather than the literal: UPDATE BACKTEST runs this same function
+    # with kind="btupdate", so the handoff check follows whichever job it is
+    assert "handoff_requested(kind)" in src, "the job must notice it"
+    i = src.index("handoff_requested(kind)")
     assert "_HandOff" in src[i:i + 200], "and raise the handoff, not a stop"
 
     # the handler sits beside _LowDisk in the inner function, which is where

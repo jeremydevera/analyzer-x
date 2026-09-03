@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 45, "total": 52, "rows": 3623698, "note": "TA 15m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 86.5, "updated": "2026-09-03T13:00:07Z"}
+{"shard": 9, "stage": "testing", "done": 45, "total": 52, "rows": 3627118, "note": "TA 30m: rule 3/120 (fade15)", "failed": [], "pct": 86.5, "updated": "2026-09-03T13:00:57Z"}

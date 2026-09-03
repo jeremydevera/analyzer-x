@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 25, "total": 52, "rows": 929166, "note": "KAS 4h: rule 7/120 (fvg)", "failed": [], "pct": 48.1, "updated": "2026-09-03T14:06:35Z"}
+{"shard": 18, "stage": "testing", "done": 27, "total": 52, "rows": 987700, "note": "LMTSTOCK 4h: 1,093 bars, testing 120 rules", "failed": [], "pct": 51.9, "updated": "2026-09-03T14:07:21Z"}

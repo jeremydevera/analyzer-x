@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 3, "total": 52, "rows": 270704, "note": "ALPINE 4h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 5.8, "updated": "2026-09-03T09:57:02Z"}
+{"shard": 11, "stage": "testing", "done": 4, "total": 52, "rows": 329236, "note": "APHSTOCK 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 7.7, "updated": "2026-09-03T09:57:47Z"}

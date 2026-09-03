@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 13, "total": 52, "rows": 505100, "note": "CRCLSTOCK 4h: rule 21/120 (cci20)", "failed": [], "pct": 25.0, "updated": "2026-09-03T13:07:28Z"}
+{"shard": 9, "stage": "testing", "done": 15, "total": 52, "rows": 528420, "note": "DIA 1h: rule 4/120 (trend50)", "failed": [], "pct": 28.8, "updated": "2026-09-03T13:08:14Z"}

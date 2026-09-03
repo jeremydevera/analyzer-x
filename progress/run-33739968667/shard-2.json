@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 8, "total": 53, "rows": 677350, "note": "BEL 1h: rule 20/120 (stoch14)", "failed": [], "pct": 15.1, "updated": "2026-09-03T10:24:00Z"}
+{"shard": 2, "stage": "testing", "done": 8, "total": 53, "rows": 698910, "note": "BEL 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-03T10:24:52Z"}

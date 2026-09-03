@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 41, "total": 53, "rows": 1529570, "note": "SHOPSTOCK 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 77.4, "updated": "2026-09-03T14:29:12Z"}
+{"shard": 4, "stage": "testing", "done": 44, "total": 53, "rows": 1569650, "note": "STO 1h: rule 2/120 (mom15)", "failed": [], "pct": 83.0, "updated": "2026-09-03T14:30:01Z"}

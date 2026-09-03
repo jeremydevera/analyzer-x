@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 52, "total": 52, "rows": 1011540, "note": "ZEREBRO 15m: rule 114/120 (cf_obretest_l2)", "pct": 100.0, "updated": "2026-09-03T06:29:00Z"}
+{"shard": 9, "stage": "done", "done": 52, "total": 52, "rows": 1012740, "note": "1,012,740 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "pct": 100.0, "updated": "2026-09-03T06:29:05Z"}

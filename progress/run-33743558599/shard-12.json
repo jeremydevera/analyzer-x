@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 10, "total": 52, "rows": 406782, "note": "B 4h: rule 4/120 (trend50)", "failed": [], "pct": 19.2, "updated": "2026-09-03T14:16:07Z"}
+{"shard": 12, "stage": "testing", "done": 11, "total": 52, "rows": 435778, "note": "CELO 1h: rule 16/120 (keltner)", "failed": [], "pct": 21.2, "updated": "2026-09-03T14:16:52Z"}

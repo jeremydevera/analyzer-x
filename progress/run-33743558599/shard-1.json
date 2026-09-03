@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 14, "total": 53, "rows": 511350, "note": "CTC 4h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-03T14:16:13Z"}
+{"shard": 1, "stage": "testing", "done": 15, "total": 53, "rows": 525970, "note": "DEEP 1h: rule 35/120 (willr14)", "failed": [], "pct": 28.3, "updated": "2026-09-03T14:16:58Z"}

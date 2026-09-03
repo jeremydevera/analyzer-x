@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 7, "total": 52, "rows": 514992, "note": "BANK 15m: rule 9/120 (fib382)", "failed": [], "pct": 13.5, "updated": "2026-09-03T10:07:21Z"}
+{"shard": 8, "stage": "testing", "done": 7, "total": 52, "rows": 520912, "note": "BANK 15m: rule 46/120 (rsi2)", "failed": [], "pct": 13.5, "updated": "2026-09-03T10:08:07Z"}

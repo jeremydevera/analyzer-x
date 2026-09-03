@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 21, "total": 52, "rows": 615760, "note": "GUN 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 40.4, "updated": "2026-09-03T14:31:41Z"}
+{"shard": 14, "stage": "testing", "done": 22, "total": 52, "rows": 645680, "note": "HMSTR 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 42.3, "updated": "2026-09-03T14:32:37Z"}

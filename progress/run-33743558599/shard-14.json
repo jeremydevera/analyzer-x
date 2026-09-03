@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 27, "total": 52, "rows": 887880, "note": "LISTA 4h: rule 20/120 (stoch14)", "failed": [], "pct": 51.9, "updated": "2026-09-03T14:42:00Z"}
+{"shard": 14, "stage": "testing", "done": 28, "total": 52, "rows": 914324, "note": "MAGMA 1h: rule 22/120 (engulf)", "failed": [], "pct": 53.8, "updated": "2026-09-03T14:42:46Z"}

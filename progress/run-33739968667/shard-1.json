@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 47, "total": 53, "rows": 3963126, "note": "TRUTH 4h: 2,022 bars, testing 120 rules", "failed": [], "pct": 88.7, "updated": "2026-09-03T13:40:28Z"}
+{"shard": 1, "stage": "testing", "done": 48, "total": 53, "rows": 3998656, "note": "UKOIL 15m: rule 1/120 (mom6)", "failed": [], "pct": 90.6, "updated": "2026-09-03T13:41:17Z"}

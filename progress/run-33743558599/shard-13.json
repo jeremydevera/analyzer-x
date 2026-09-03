@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 29, "total": 52, "rows": 1049830, "note": "METASTOCK 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 55.8, "updated": "2026-09-03T14:14:40Z"}
+{"shard": 13, "stage": "testing", "done": 30, "total": 52, "rows": 1081910, "note": "MOVE 1h: rule 2/120 (mom15)", "failed": [], "pct": 57.7, "updated": "2026-09-03T14:15:27Z"}

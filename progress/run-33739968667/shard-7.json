@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 50, "total": 52, "rows": 3852788, "note": "WLD 15m: rule 1/120 (mom6)", "failed": [], "pct": 96.2, "updated": "2026-09-03T13:07:10Z"}
+{"shard": 7, "stage": "testing", "done": 50, "total": 52, "rows": 3854768, "note": "WLD 15m: rule 8/120 (fib618)", "failed": [], "pct": 96.2, "updated": "2026-09-03T13:07:55Z"}

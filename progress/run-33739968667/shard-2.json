@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 47, "total": 53, "rows": 3943148, "note": "TRX 30m: rule 64/120 (hammer)", "failed": [], "pct": 88.7, "updated": "2026-09-03T13:29:01Z"}
+{"shard": 2, "stage": "testing", "done": 47, "total": 53, "rows": 3955248, "note": "TRX 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 88.7, "updated": "2026-09-03T13:29:46Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 30, "total": 53, "rows": 561060, "note": "MINIMAXSTOCK 15m: rule 37/120 (ultosc)", "pct": 56.6, "updated": "2026-09-03T06:03:24Z"}
+{"shard": 0, "stage": "testing", "done": 33, "total": 53, "rows": 602780, "note": "NOT 15m: 34,599 bars, testing 120 rules", "pct": 62.3, "updated": "2026-09-03T06:04:15Z"}

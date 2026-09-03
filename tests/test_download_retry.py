@@ -211,17 +211,22 @@ def test_a_deterministic_failure_is_named_at_once_not_retried(job, monkeypatch):
         raise fx.MexcFuturesError("no Min15 candles for GONE_USDT")
 
     monkeypatch.setattr(msw, "refresh_candles", refresh)
-    # GONE_USDT is still LISTED here, so "no candles" is an error to NAME. The
-    # delisted path needs both halves — the venue's empty answer AND the symbol
-    # being absent from the live list (test_candle_update_reliability.py).
+    # GONE_USDT is still LISTED here. That is not a DELISTING — that path needs
+    # both halves, the venue's empty answer AND the symbol being absent from
+    # the live list (test_candle_update_reliability.py) — but it is not a fault
+    # to clear either: see test_update_settles_its_own_errors.py. 25 of the 26
+    # "errors" on Sep 02, 2026 were exactly this, and being filed as failures
+    # put them back on the queue at every update and kept the panel red.
     monkeypatch.setattr(db_jobs, "live_symbols", lambda *a, **k: {"GONE_USDT"})
     db_jobs._run_download({"coins": ["GONE_USDT"], "tfs": ["15m"]})
-    assert job["calls"] == [("GONE_USDT", "15m")]
+    assert job["calls"] == [("GONE_USDT", "15m")], "asked once, never redone"
     p = job["progress"]()
-    assert p["failed"] == ["GONE_USDT 15m: no Min15 candles for GONE_USDT"]
     assert p["retries"] == 0
+    assert p["empty"] == ["GONE_USDT 15m"], "named, so it is not a silence"
+    assert p["failed"] == [] and p["errors"] == 0
+    assert job["lost"]()["pairs"] == [], "and not queued for the retry button"
     assert not p.get("delisted"), (
-        "a LISTED contract with no candles is an error, not a delisting")
+        "a LISTED contract with no candles is not a delisting")
 
 
 def test_a_connection_cut_mid_body_counts_as_transient():

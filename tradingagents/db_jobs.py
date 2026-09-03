@@ -51,7 +51,12 @@ FILES = {
     "btupdate": {"progress": STATE_DIR / "db_btupdate.json",
                  "spec": STATE_DIR / "db_btupdate.spec.json",
                  "pid": STATE_DIR / "db_btupdate.pid",
-                 "stop": STATE_DIR / "db_btupdate.STOP"},
+                 "stop": STATE_DIR / "db_btupdate.STOP",
+                 # UPDATE BACKTEST runs `_run_backtest_inner`, whose per-pair
+                 # callback asks `handoff_requested(kind)`. Without this path
+                 # the very first pair raised KeyError: 'handoff' and the job
+                 # died reporting "Backtest update FAILED" (2026-09-03).
+                 "handoff": STATE_DIR / "db_btupdate.HANDOFF"},
 }
 
 # Where the finished backtest report page goes — the same folder the app's
@@ -282,17 +287,36 @@ def clear_retries(kind: str) -> None:
     _set_retries(kind, 0)
 
 
+def _handoff_path(kind: str):
+    """The handoff flag for a job, or None when that job has no such channel.
+
+    A MISSING path answers "nobody asked for a handoff" — never an exception.
+    `_run_backtest_inner` asks once per finished pair, so on 2026-09-03 the
+    first pair of every UPDATE BACKTEST raised KeyError: 'handoff' from inside
+    the progress callback, the run ended "Backtest update FAILED", and the
+    button the operator had just asked to rely on could not finish one pair.
+    A new job kind must never be able to kill a run by not declaring a file.
+    """
+    return (FILES.get(kind) or {}).get("handoff")
+
+
 def request_handoff(kind: str) -> None:
     """Ask a running job to finish its current pairs and hand over."""
-    FILES[kind]["handoff"].touch()
+    path = _handoff_path(kind)
+    if path is None:
+        raise KeyError(f"{kind} has no handoff channel")
+    path.touch()
 
 
 def handoff_requested(kind: str) -> bool:
-    return FILES[kind]["handoff"].exists()
+    path = _handoff_path(kind)
+    return bool(path is not None and path.exists())
 
 
 def clear_handoff(kind: str) -> None:
-    FILES[kind]["handoff"].unlink(missing_ok=True)
+    path = _handoff_path(kind)
+    if path is not None:
+        path.unlink(missing_ok=True)
 
 
 def request_stop(kind: str) -> None:

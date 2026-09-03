@@ -396,39 +396,66 @@ def test_retry_mode_attempts_a_delisted_pair_once_and_clears_it(job,
     assert job["lost"]()["pairs"] == [], "cleared for good"
 
 
-def test_update_backtest_names_every_pair_that_failed(monkeypatch, tmp_path):
-    """Operator, 2026-09-02: "update the backtest". A spec that named coins
-    without `_USDT` made all 4,124 pairs raise `no Min15 candles for CETUS`, and
-    the job read `done: 860, rows: 0, new_bars: 0` with NO note and no error
-    count — 860 failures wearing the clothes of a run with nothing to do. The
-    download job's rule applies to the button beside it: every pair that failed
-    is NAMED, counted, and rung."""
+def test_update_backtest_survives_its_own_handoff_check(monkeypatch, tmp_path):
+    """Operator, 2026-09-03: *"i want to use the backtest button"*.
+
+    UPDATE BACKTEST now delegates to the parallel sweep with its own
+    `kind="btupdate"`, and that sweep asks `handoff_requested(kind)` from the
+    per-pair callback. `FILES["btupdate"]` declared no handoff file, so the
+    FIRST finished pair raised `KeyError: 'handoff'` inside the progress
+    callback, `_run_backtest` caught it and the run ended
+    "Backtest update FAILED" — the button could not complete one pair. Every
+    test of that button was source inspection, which cannot see this.
+
+    So this one RUNS it, with the grid stubbed out: the stub calls the progress
+    callback exactly as a finished pair does.
+    """
     import json
 
-    from tradingagents import market_sweep as msw
+    from tradingagents import backtest_report as br
 
-    monkeypatch.setattr(dj, "_stopping", lambda kind: False)
+    seen = {}
+
+    def grid(coins, tfs, **kw):
+        seen.update(coins=list(coins), tfs=list(tfs), fresh=kw.get("fresh"))
+        # what a finished pair does — the line that used to raise
+        kw["progress"]("CETUS_USDT 15m", 0.5, 1, 2)
+        return {"rows": []}
+
+    monkeypatch.setattr(br, "grid_from_store", grid)
     monkeypatch.setattr(dj, "FILES", {"btupdate": {
         "progress": tmp_path / "p.json", "spec": tmp_path / "s.json",
-        "pid": tmp_path / "pid", "stop": tmp_path / "STOP"}})
-    bell = []
-    import tradingagents.notifications as nt
+        "pid": tmp_path / "pid", "stop": tmp_path / "STOP",
+        "handoff": tmp_path / "HANDOFF"}})
 
-    monkeypatch.setattr(nt, "record", lambda *a, **k: bell.append((a, k)))
-
-    def boom(symbol, tf, **kw):
-        raise RuntimeError(f"no Min15 candles for {symbol}")
-
-    monkeypatch.setattr(msw, "run_pair", boom)
-    dj._run_btupdate({"coins": ["CETUS", "AAA"], "tfs": ["15m"], "days": 365,
+    dj._run_btupdate({"coins": ["CETUS_USDT"], "tfs": ["15m"], "days": 365,
                       "base": 5.0})
 
     p = json.loads((tmp_path / "p.json").read_text())
-    assert p["errors"] == 2, p
-    assert p["failed"] == ["CETUS 15m: no Min15 candles for CETUS",
-                           "AAA 15m: no Min15 candles for AAA"], p["failed"]
-    assert p["failed_pairs"] == [["CETUS", "15m"], ["AAA", "15m"]]
-    assert "2 of 2 pair(s) failed" in p["note"], p["note"]
-    (args, kw) = bell[-1]
-    assert kw["ok"] is False, kw
-    assert "2 error(s)" in kw["detail"] and "CETUS 15m" in kw["detail"], kw
+    assert not p.get("failed"), p
+    assert p["running"] is False
+    assert seen["fresh"] is False, "an update CONTINUES; it never starts over"
+    assert seen["coins"] == ["CETUS_USDT"]
+
+
+def test_every_job_kind_answers_the_handoff_question(monkeypatch, tmp_path):
+    """A job kind that declares no handoff file answers False — never raises.
+    The check runs once per finished pair, so an exception there kills a run
+    that has already measured thousands of pairs."""
+    monkeypatch.setattr(dj, "FILES", {
+        "btupdate": {"progress": tmp_path / "p.json",
+                     "handoff": tmp_path / "HANDOFF"},
+        "stratbt": {"progress": tmp_path / "s.json"}})       # no handoff at all
+    assert dj.handoff_requested("stratbt") is False
+    assert dj.handoff_requested("btupdate") is False
+    dj.request_handoff("btupdate")
+    assert dj.handoff_requested("btupdate") is True
+    dj.clear_handoff("btupdate")
+    assert dj.handoff_requested("btupdate") is False
+    dj.clear_handoff("stratbt")                              # a no-op, not a raise
+
+
+def test_every_job_that_runs_the_sweep_declares_a_handoff_file():
+    """`_run_backtest_inner` asks for it; whoever runs it must declare it."""
+    for kind in ("backtest", "btupdate"):
+        assert "handoff" in dj.FILES[kind], kind

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 13, "total": 53, "rows": 867354, "note": "COTI 15m: rule 52/120 (nr7)", "failed": [], "pct": 24.5, "updated": "2026-09-03T10:28:49Z"}
+{"shard": 6, "stage": "testing", "done": 13, "total": 53, "rows": 875054, "note": "COTI 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 24.5, "updated": "2026-09-03T10:29:35Z"}

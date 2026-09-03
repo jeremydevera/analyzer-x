@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 50, "total": 53, "rows": 4032356, "note": "WIF 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 94.3, "updated": "2026-09-03T13:48:50Z"}
+{"shard": 5, "stage": "testing", "done": 50, "total": 53, "rows": 4061176, "note": "WIF 1d: 394 bars, testing 120 rules", "failed": [], "pct": 94.3, "updated": "2026-09-03T13:49:47Z"}

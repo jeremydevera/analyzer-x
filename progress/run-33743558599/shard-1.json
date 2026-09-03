@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 20, "total": 53, "rows": 758926, "note": "GAS 1h: rule 109/120 (cf_fundfade)", "failed": [], "pct": 37.7, "updated": "2026-09-03T14:22:33Z"}
+{"shard": 1, "stage": "testing", "done": 21, "total": 53, "rows": 792366, "note": "GOOGLSTOCK 1h: rule 15/120 (bbbreak)", "failed": [], "pct": 39.6, "updated": "2026-09-03T14:23:18Z"}

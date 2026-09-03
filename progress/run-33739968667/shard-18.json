@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 5, "total": 52, "rows": 399578, "note": "ATOM 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 9.6, "updated": "2026-09-03T10:10:16Z"}
+{"shard": 18, "stage": "testing", "done": 5, "total": 52, "rows": 428178, "note": "ATOM 1d: 394 bars, testing 120 rules", "failed": [], "pct": 9.6, "updated": "2026-09-03T10:11:02Z"}

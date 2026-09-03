@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 20, "total": 52, "rows": 1694348, "note": "GLM 30m: rule 95/120 (cf_emarsi_l1)", "failed": [], "pct": 38.5, "updated": "2026-09-03T11:30:45Z"}
+{"shard": 14, "stage": "testing", "done": 20, "total": 52, "rows": 1702048, "note": "GLM 1h: rule 4/120 (trend50)", "failed": [], "pct": 38.5, "updated": "2026-09-03T11:31:31Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 36, "total": 52, "rows": 3335558, "note": "PROM 1h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 69.2, "updated": "2026-09-03T13:00:51Z"}
+{"shard": 19, "stage": "testing", "done": 36, "total": 52, "rows": 3369130, "note": "PROM 1d: rule 52/120 (nr7)", "failed": [], "pct": 69.2, "updated": "2026-09-03T13:01:36Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 22, "total": 53, "rows": 1545832, "note": "HIMSSTOCK 15m: rule 3/120 (fade15)", "failed": [], "pct": 41.5, "updated": "2026-09-03T11:03:45Z"}
+{"shard": 6, "stage": "testing", "done": 22, "total": 53, "rows": 1560412, "note": "HIMSSTOCK 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-03T11:04:31Z"}

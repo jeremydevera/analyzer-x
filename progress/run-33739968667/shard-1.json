@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 6, "total": 53, "rows": 318370, "note": "AUDIO 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 11.3, "updated": "2026-09-03T09:56:59Z"}
+{"shard": 1, "stage": "testing", "done": 6, "total": 53, "rows": 324930, "note": "AUDIO 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-03T09:57:48Z"}

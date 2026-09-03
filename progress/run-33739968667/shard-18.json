@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 8, "total": 52, "rows": 709214, "note": "BLEND 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 15.4, "updated": "2026-09-03T10:24:05Z"}
+{"shard": 18, "stage": "testing", "done": 8, "total": 52, "rows": 756740, "note": "BLEND 1d: 132 bars, testing 120 rules", "failed": [], "pct": 15.4, "updated": "2026-09-03T10:24:52Z"}

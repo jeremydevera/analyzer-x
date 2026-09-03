@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 38, "total": 52, "rows": 3059730, "note": "RENDER 15m: rule 40/120 (crsi)", "failed": [], "pct": 73.1, "updated": "2026-09-03T12:35:45Z"}
+{"shard": 15, "stage": "testing", "done": 38, "total": 52, "rows": 3066130, "note": "RENDER 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 73.1, "updated": "2026-09-03T12:36:32Z"}

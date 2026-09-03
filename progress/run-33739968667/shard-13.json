@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 11, "total": 52, "rows": 732006, "note": "CELO 15m: rule 43/120 (macddiv)", "failed": [], "pct": 21.2, "updated": "2026-09-03T10:04:26Z"}
+{"shard": 13, "stage": "testing", "done": 11, "total": 52, "rows": 740206, "note": "CELO 15m: rule 85/120 (cf_triple)", "failed": [], "pct": 21.2, "updated": "2026-09-03T10:05:11Z"}

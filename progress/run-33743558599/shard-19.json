@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 38, "total": 52, "rows": 1587160, "note": "REZ 1h: rule 16/120 (keltner)", "failed": [], "pct": 73.1, "updated": "2026-09-03T15:03:44Z"}
+{"shard": 19, "stage": "testing", "done": 38, "total": 52, "rows": 1609380, "note": "REZ 1h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 73.1, "updated": "2026-09-03T15:04:29Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 18, "total": 52, "rows": 1469146, "note": "FLOCK 15m: rule 47/120 (ibs)", "failed": [], "pct": 34.6, "updated": "2026-09-03T11:13:51Z"}
+{"shard": 19, "stage": "testing", "done": 18, "total": 52, "rows": 1477066, "note": "FLOCK 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 34.6, "updated": "2026-09-03T11:14:37Z"}

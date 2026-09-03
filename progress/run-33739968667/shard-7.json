@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 8, "total": 52, "rows": 678552, "note": "BIDUSTOCK 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 15.4, "updated": "2026-09-03T10:23:25Z"}
+{"shard": 7, "stage": "testing", "done": 10, "total": 52, "rows": 748656, "note": "BTW 15m: downloading candles", "failed": [], "pct": 19.2, "updated": "2026-09-03T10:24:10Z"}

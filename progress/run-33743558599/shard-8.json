@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 22, "total": 52, "rows": 770278, "note": "HIVE 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 42.3, "updated": "2026-09-03T13:53:40Z"}
+{"shard": 8, "stage": "testing", "done": 23, "total": 52, "rows": 797778, "note": "H 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 44.2, "updated": "2026-09-03T13:54:31Z"}

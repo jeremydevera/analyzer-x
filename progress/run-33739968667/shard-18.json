@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 11, "total": 52, "rows": 1008916, "note": "CGPT 15m: rule 20/120 (stoch14)", "failed": [], "pct": 21.2, "updated": "2026-09-03T10:45:41Z"}
+{"shard": 18, "stage": "testing", "done": 11, "total": 52, "rows": 1013756, "note": "CGPT 15m: rule 42/120 (rsidiv)", "failed": [], "pct": 21.2, "updated": "2026-09-03T10:46:26Z"}

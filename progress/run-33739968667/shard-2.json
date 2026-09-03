@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 13, "total": 53, "rows": 1146346, "note": "COPPER 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 24.5, "updated": "2026-09-03T10:46:00Z"}
+{"shard": 2, "stage": "testing", "done": 13, "total": 53, "rows": 1181326, "note": "COPPER 4h: rule 29/120 (hull20)", "failed": [], "pct": 24.5, "updated": "2026-09-03T10:46:45Z"}

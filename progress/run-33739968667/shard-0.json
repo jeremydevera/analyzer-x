@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 7, "total": 53, "rows": 619026, "note": "B2 30m: rule 7/120 (fvg)", "failed": [], "pct": 13.2, "updated": "2026-09-03T10:25:41Z"}
+{"shard": 0, "stage": "testing", "done": 7, "total": 53, "rows": 626826, "note": "B2 30m: rule 46/120 (rsi2)", "failed": [], "pct": 13.2, "updated": "2026-09-03T10:26:27Z"}

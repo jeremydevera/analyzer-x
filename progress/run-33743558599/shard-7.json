@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 32, "total": 52, "rows": 1046460, "note": "NEX 1h: downloading candles", "failed": [], "pct": 61.5, "updated": "2026-09-03T14:30:41Z"}
+{"shard": 7, "stage": "testing", "done": 34, "total": 52, "rows": 1116624, "note": "OPENAI 1h: rule 3/120 (fade15)", "failed": [], "pct": 65.4, "updated": "2026-09-03T14:31:26Z"}

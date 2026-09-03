@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 43, "total": 52, "rows": 3423248, "note": "SPOTSTOCK 15m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 82.7, "updated": "2026-09-03T12:46:28Z"}
+{"shard": 9, "stage": "testing", "done": 43, "total": 52, "rows": 3441848, "note": "SPOTSTOCK 1h: 4,903 bars, testing 120 rules", "failed": [], "pct": 82.7, "updated": "2026-09-03T12:47:14Z"}

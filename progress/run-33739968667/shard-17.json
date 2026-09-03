@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 18, "total": 52, "rows": 1821222, "note": "FLEXSTOCK 1h: rule 35/120 (willr14)", "failed": [], "pct": 34.6, "updated": "2026-09-03T11:30:03Z"}
+{"shard": 17, "stage": "testing", "done": 20, "total": 52, "rows": 1839860, "note": "GMESTOCK 15m: rule 40/120 (crsi)", "failed": [], "pct": 38.5, "updated": "2026-09-03T11:30:48Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 10, "total": 53, "rows": 728100, "note": "BTR 1h: rule 55/120 (nhigh50)", "failed": [], "pct": 18.9, "updated": "2026-09-03T10:23:11Z"}
+{"shard": 6, "stage": "testing", "done": 10, "total": 53, "rows": 749538, "note": "BTR 4h: rule 45/120 (zscore20)", "failed": [], "pct": 18.9, "updated": "2026-09-03T10:23:56Z"}

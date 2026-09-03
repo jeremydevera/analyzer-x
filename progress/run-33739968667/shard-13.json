@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 35, "total": 52, "rows": 2988350, "note": "PEPSTOCK 15m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 67.3, "updated": "2026-09-03T11:51:22Z"}
+{"shard": 13, "stage": "testing", "done": 35, "total": 52, "rows": 3013130, "note": "PEPSTOCK 1h: rule 2/120 (mom15)", "failed": [], "pct": 67.3, "updated": "2026-09-03T11:52:08Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 6, "total": 52, "rows": 459484, "note": "AWE 15m: rule 58/120 (bos)", "failed": [], "pct": 11.5, "updated": "2026-09-03T10:08:08Z"}
+{"shard": 11, "stage": "testing", "done": 6, "total": 52, "rows": 465284, "note": "AWE 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 11.5, "updated": "2026-09-03T10:08:54Z"}

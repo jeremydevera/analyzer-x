@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 16, "total": 52, "rows": 1457488, "note": "ELSA 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 30.8, "updated": "2026-09-03T11:13:11Z"}
+{"shard": 18, "stage": "testing", "done": 16, "total": 52, "rows": 1464968, "note": "ELSA 30m: rule 4/120 (trend50)", "failed": [], "pct": 30.8, "updated": "2026-09-03T11:13:57Z"}

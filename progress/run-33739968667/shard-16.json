@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 52, "total": 52, "rows": 4743450, "note": "ZIG 1h: rule 2/120 (mom15)", "failed": [], "pct": 100.0, "updated": "2026-09-03T14:15:38Z"}
+{"shard": 16, "stage": "testing", "done": 52, "total": 52, "rows": 4758012, "note": "ZIG 1d: 372 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-03T14:16:30Z"}

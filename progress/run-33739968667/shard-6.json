@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 42, "total": 53, "rows": 3515806, "note": "SNOWSTOCK 30m: rule 13/120 (pivot)", "failed": [], "pct": 79.2, "updated": "2026-09-03T13:09:27Z"}
+{"shard": 6, "stage": "testing", "done": 42, "total": 53, "rows": 3545254, "note": "SNOWSTOCK 1h: rule 58/120 (bos)", "failed": [], "pct": 79.2, "updated": "2026-09-03T13:10:12Z"}

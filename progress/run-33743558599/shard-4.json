@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 25, "total": 53, "rows": 918788, "note": "JCT 4h: rule 27/120 (aroon25)", "failed": [], "pct": 47.2, "updated": "2026-09-03T14:12:39Z"}
+{"shard": 4, "stage": "testing", "done": 27, "total": 53, "rows": 954062, "note": "LAYER 1h: rule 2/120 (mom15)", "failed": [], "pct": 50.9, "updated": "2026-09-03T14:13:26Z"}

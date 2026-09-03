@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 22, "total": 53, "rows": 1574992, "note": "HIMSSTOCK 30m: rule 40/120 (crsi)", "failed": [], "pct": 41.5, "updated": "2026-09-03T11:05:16Z"}
+{"shard": 6, "stage": "testing", "done": 22, "total": 53, "rows": 1607194, "note": "HIMSSTOCK 1h: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-03T11:06:01Z"}

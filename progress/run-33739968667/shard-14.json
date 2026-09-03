@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 42, "total": 52, "rows": 3862256, "note": "SOL 30m: rule 62/120 (ote)", "failed": [], "pct": 80.8, "updated": "2026-09-03T13:54:46Z"}
+{"shard": 14, "stage": "testing", "done": 42, "total": 52, "rows": 3873456, "note": "SOL 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 80.8, "updated": "2026-09-03T13:55:31Z"}

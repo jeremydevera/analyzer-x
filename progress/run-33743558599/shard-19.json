@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 51, "total": 52, "rows": 2174664, "note": "XVS 4h: rule 43/120 (macddiv)", "failed": [], "pct": 98.1, "updated": "2026-09-03T15:22:18Z"}
+{"shard": 19, "stage": "testing", "done": 52, "total": 52, "rows": 2197324, "note": "ZKC 1h: rule 26/120 (adx14)", "failed": [], "pct": 100.0, "updated": "2026-09-03T15:23:03Z"}

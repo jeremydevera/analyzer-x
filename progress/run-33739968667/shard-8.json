@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 30, "total": 52, "rows": 2340744, "note": "MONAD 30m: rule 1/120 (mom6)", "failed": [], "pct": 57.7, "updated": "2026-09-03T11:39:39Z"}
+{"shard": 8, "stage": "testing", "done": 30, "total": 52, "rows": 2350204, "note": "MONAD 30m: rule 40/120 (crsi)", "failed": [], "pct": 57.7, "updated": "2026-09-03T11:40:24Z"}

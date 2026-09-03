@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 13, "total": 53, "rows": 1263432, "note": "COSTSTOCK 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 24.5, "updated": "2026-09-03T11:02:12Z"}
+{"shard": 5, "stage": "testing", "done": 13, "total": 53, "rows": 1315432, "note": "COSTSTOCK 1d: 254 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-03T11:03:00Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 45, "total": 52, "rows": 1621196, "note": "TAKE 1h: rule 22/120 (engulf)", "failed": [], "pct": 86.5, "updated": "2026-09-03T13:41:31Z"}
+{"shard": 9, "stage": "testing", "done": 45, "total": 52, "rows": 1639808, "note": "TAKE 4h: 2,244 bars, testing 120 rules", "failed": [], "pct": 86.5, "updated": "2026-09-03T13:42:17Z"}

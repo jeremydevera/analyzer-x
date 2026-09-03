@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 47, "total": 52, "rows": 3750994, "note": "UAI 15m: 28,905 bars, testing 120 rules", "failed": [], "pct": 90.4, "updated": "2026-09-03T13:17:09Z"}
+{"shard": 18, "stage": "testing", "done": 47, "total": 52, "rows": 3752614, "note": "UAI 15m: rule 3/120 (fade15)", "failed": [], "pct": 90.4, "updated": "2026-09-03T13:18:14Z"}

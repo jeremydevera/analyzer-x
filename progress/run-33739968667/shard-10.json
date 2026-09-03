@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 24, "total": 52, "rows": 1802210, "note": "IN 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 46.2, "updated": "2026-09-03T11:12:46Z"}
+{"shard": 10, "stage": "testing", "done": 25, "total": 52, "rows": 1839148, "note": "JP225 15m: 12,779 bars, testing 120 rules", "failed": [], "pct": 48.1, "updated": "2026-09-03T11:13:41Z"}

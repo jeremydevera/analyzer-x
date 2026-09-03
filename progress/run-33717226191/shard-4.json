@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 25, "total": 53, "rows": 425580, "note": "JCT 15m: rule 105/120 (cf_eqhl_l2)", "pct": 47.2, "updated": "2026-09-03T05:49:24Z"}
+{"shard": 4, "stage": "testing", "done": 27, "total": 53, "rows": 431320, "note": "LAYER 15m: 34,598 bars, testing 120 rules", "pct": 50.9, "updated": "2026-09-03T05:50:10Z"}

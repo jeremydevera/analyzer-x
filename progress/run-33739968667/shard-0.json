@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 5, "total": 53, "rows": 395508, "note": "ARIA 30m: rule 41/120 (tsi)", "failed": [], "pct": 9.4, "updated": "2026-09-03T10:09:04Z"}
+{"shard": 0, "stage": "testing", "done": 5, "total": 53, "rows": 407608, "note": "ARIA 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-03T10:09:51Z"}

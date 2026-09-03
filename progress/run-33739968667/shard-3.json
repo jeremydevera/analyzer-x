@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 28, "total": 53, "rows": 2109650, "note": "LRC 30m: rule 4/120 (trend50)", "failed": [], "pct": 52.8, "updated": "2026-09-03T17:36:14Z"}
+{"shard": 3, "stage": "testing", "done": 28, "total": 53, "rows": 2121050, "note": "LRC 30m: rule 62/120 (ote)", "failed": [], "pct": 52.8, "updated": "2026-09-03T17:36:59Z"}

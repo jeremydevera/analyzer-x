@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 52, "total": 52, "rows": 4525352, "note": "ZEREBRO 15m: rule 88/120 (cf_chan)", "failed": [], "pct": 100.0, "updated": "2026-09-03T13:50:25Z"}
+{"shard": 11, "stage": "testing", "done": 52, "total": 52, "rows": 4532392, "note": "ZEREBRO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-03T13:51:17Z"}

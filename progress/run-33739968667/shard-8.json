@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 6, "total": 52, "rows": 409632, "note": "AVA 15m: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 11.5, "updated": "2026-09-03T10:01:56Z"}
+{"shard": 8, "stage": "testing", "done": 6, "total": 52, "rows": 418432, "note": "AVA 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 11.5, "updated": "2026-09-03T10:02:43Z"}

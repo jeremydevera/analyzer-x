@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 20, "total": 52, "rows": 1647966, "note": "GIGGLE 4h: rule 38/120 (ao)", "failed": [], "pct": 38.5, "updated": "2026-09-03T11:14:40Z"}
+{"shard": 12, "stage": "testing", "done": 23, "total": 52, "rows": 1702506, "note": "IBMSTOCK 15m: rule 3/120 (fade15)", "failed": [], "pct": 44.2, "updated": "2026-09-03T11:15:27Z"}

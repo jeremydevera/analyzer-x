@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 8, "total": 52, "rows": 609132, "note": "BIO 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 15.4, "updated": "2026-09-03T10:18:20Z"}
+{"shard": 11, "stage": "testing", "done": 8, "total": 52, "rows": 617052, "note": "BIO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 15.4, "updated": "2026-09-03T10:19:19Z"}

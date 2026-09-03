@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 1, "total": 52, "rows": 53880, "note": "ACU 1h: rule 4/120 (trend50)", "failed": [], "pct": 1.9, "updated": "2026-09-03T09:43:33Z"}
+{"shard": 19, "stage": "testing", "done": 1, "total": 52, "rows": 99222, "note": "ACU 1d: 226 bars, testing 120 rules", "failed": [], "pct": 1.9, "updated": "2026-09-03T09:44:19Z"}

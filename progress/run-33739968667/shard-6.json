@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 39, "total": 53, "rows": 3145038, "note": "RLC 15m: rule 13/120 (pivot)", "failed": [], "pct": 73.6, "updated": "2026-09-03T12:42:34Z"}
+{"shard": 6, "stage": "testing", "done": 39, "total": 53, "rows": 3150238, "note": "RLC 15m: rule 39/120 (fisher)", "failed": [], "pct": 73.6, "updated": "2026-09-03T12:43:20Z"}

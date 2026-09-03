@@ -131,6 +131,14 @@ export default function StrategiesPanel() {
   // aims at, so 4 means "only strategies going for 4% a trade or more" — the
   // unit the TP% column prints, inclusive.
   const [maxTp, setMaxTp] = useState(0);
+  // "create filter to tp using between / EXAMPLE BETWEEN .5 - 2.5 / SAME FOR
+  // SL" (operator, 2026-09-03). The low end of each range, inclusive: a
+  // ceiling alone kept every 0.05% scalp whose target is smaller than the
+  // round-trip cost.
+  const [minTp, setMinTp] = useState(0);
+  const [minSl, setMinSl] = useState(0);
+  const [servedMinTp, setServedMinTp] = useState(0);
+  const [servedMinSl, setServedMinSl] = useState(0);
   // "can you add the sl filter in the Stored strategies as well" (operator,
   // 2026-09-02). A CEILING, the opposite of the TP box beside it: 1 keeps rows
   // whose stop is 1% or TIGHTER — their words, settled on the artifact first:
@@ -218,6 +226,7 @@ export default function StrategiesPanel() {
     coin: "", tf: "", signal: "", profitable: false,
     minTrades: 0, minWinrate: 0, maxTp: 0, maxSl: 0, sizing: "", rowId: "",
     group: "",
+    minTp: 0, minSl: 0,
     months: 0, days: 0,
   });
   // The filter set the ROWS ON SCREEN came from — set only when a request
@@ -233,6 +242,7 @@ export default function StrategiesPanel() {
     coin: "", tf: "", signal: "", profitable: false,
     minTrades: 0, minWinrate: 0, maxTp: 0, maxSl: 0, sizing: "", rowId: "",
     group: "",
+    minTp: 0, minSl: 0,
     months: 0, days: 0,
   });
   // how long the request that FAILED had been running, so the message can say
@@ -291,6 +301,7 @@ export default function StrategiesPanel() {
                      profitable: applied.profitable, sort,
                      minTrades: applied.minTrades, minWinrate: applied.minWinrate,
                      maxTp: applied.maxTp, maxSl: applied.maxSl,
+                     minTp: applied.minTp, minSl: applied.minSl,
                      sizing: applied.sizing || undefined,
                      rowId: applied.rowId || undefined,
                      months: applied.months || undefined,
@@ -307,6 +318,8 @@ export default function StrategiesPanel() {
         setServedTrades(d.min_trades ?? applied.minTrades);
         setServedWinrate(d.min_winrate ?? applied.minWinrate);
         setServedTp(d.max_tp ?? applied.maxTp);
+        setServedMinTp(d.min_tp ?? applied.minTp);
+        setServedMinSl(d.min_sl ?? applied.minSl);
         setServedSl(d.max_sl ?? applied.maxSl);
         setServedFilters(applied);   // these rows came from THIS set
         setWindow(d.window ?? []);   // the window's real months, from the payload
@@ -372,7 +385,7 @@ export default function StrategiesPanel() {
     ? Math.min(perPage, DAYS_PAGE) : perPage;
 
   const draft = { coin, tf, signal, profitable, minTrades, minWinrate, maxTp,
-    maxSl,
+    maxSl, minTp, minSl,
                   sizing, group, months, days,
                   // trim FIRST: " #6yaczsxx " pasted from chat kept its hash
                   // when the # was stripped before the spaces, and a real id
@@ -395,16 +408,29 @@ export default function StrategiesPanel() {
   const NO_FILTERS = {
     coin: "", tf: "", signal: "", profitable: false,
     minTrades: 0, minWinrate: 0, maxTp: 0, maxSl: 0, sizing: "", rowId: "",
-    group: "", months: 0, days: 0,
+    group: "", minTp: 0, minSl: 0, months: 0, days: 0,
   };
   const setBox: Record<keyof typeof NO_FILTERS, (v: never) => void> = {
     coin: setCoin, tf: setTf, signal: setSignal, group: setGroup,
     sizing: setSizing, minTrades: setMinTrades, minWinrate: setMinWinrate,
-    maxTp: setMaxTp, maxSl: setMaxSl, profitable: setProfitable,
+    maxTp: setMaxTp, maxSl: setMaxSl, minTp: setMinTp, minSl: setMinSl,
+    profitable: setProfitable,
     months: setMonths, days: setDays, rowId: setRowId,
   } as Record<keyof typeof NO_FILTERS, (v: never) => void>;
+  // a RANGE is one chip, so its × clears both ends — leaving the floor
+  // behind after removing "TP 0.5-2.5%" would keep filtering under a line
+  // that no longer says so
+  const PAIRED: Partial<Record<keyof typeof NO_FILTERS,
+                              keyof typeof NO_FILTERS>> = {
+    maxTp: "minTp", minTp: "maxTp", maxSl: "minSl", minSl: "maxSl",
+  };
   const clearOne = (k: keyof typeof NO_FILTERS) => {
     setBox[k](NO_FILTERS[k] as never);
+    const other = PAIRED[k];
+    if (other) {
+      setBox[other](NO_FILTERS[other] as never);
+      setApplied((a) => ({ ...a, [other]: NO_FILTERS[other] }));
+    }
     // a chip describes the SERVED set, so removing it asks the store again
     // straight away — one deliberate click, not a keystroke
     setApplied((a) => ({ ...a, [k]: NO_FILTERS[k] }));
@@ -452,8 +478,23 @@ export default function StrategiesPanel() {
     if (f.minWinrate > 0) {
       out.push({ k: "minWinrate", text: `Winrate ${f.minWinrate}% or better` });
     }
-    if (f.maxTp > 0) out.push({ k: "maxTp", text: `TP ${f.maxTp}% or tighter` });
-    if (f.maxSl > 0) out.push({ k: "maxSl", text: `SL ${f.maxSl}% or tighter` });
+    // A RANGE is ONE chip when both ends are set — "TP 0.5-2.5%" — and says
+    // which end it is when only one is, because a chip that hid that would
+    // describe a different filter than the one running.
+    if (f.minTp > 0 && f.maxTp > 0) {
+      out.push({ k: "maxTp", text: `TP ${f.minTp}-${f.maxTp}%` });
+    } else if (f.maxTp > 0) {
+      out.push({ k: "maxTp", text: `TP ${f.maxTp}% or tighter` });
+    } else if (f.minTp > 0) {
+      out.push({ k: "minTp", text: `TP ${f.minTp}% or wider` });
+    }
+    if (f.minSl > 0 && f.maxSl > 0) {
+      out.push({ k: "maxSl", text: `SL ${f.minSl}-${f.maxSl}%` });
+    } else if (f.maxSl > 0) {
+      out.push({ k: "maxSl", text: `SL ${f.maxSl}% or tighter` });
+    } else if (f.minSl > 0) {
+      out.push({ k: "minSl", text: `SL ${f.minSl}% or wider` });
+    }
     if (f.profitable) out.push({ k: "profitable", text: "Made money" });
     return out;
   };
@@ -468,6 +509,8 @@ export default function StrategiesPanel() {
     minWinrate: servedWinrate > 0 ? servedWinrate : servedFilters.minWinrate,
     maxTp: servedTp > 0 ? servedTp : servedFilters.maxTp,
     maxSl: servedSl > 0 ? servedSl : servedFilters.maxSl,
+    minTp: servedMinTp > 0 ? servedMinTp : servedFilters.minTp,
+    minSl: servedMinSl > 0 ? servedMinSl : servedFilters.minSl,
     // named, not just carried by the spread: the sizing chip has to come from
     // what the STORE applied, and a test pins that in words
     // (test_sizing_filter) because a chip describing the request while the
@@ -899,7 +942,18 @@ export default function StrategiesPanel() {
                   The list offers the values the grid really measured, so 3, 4
                   and 5 are one keystroke away and 9.37 is not typed by
                   accident. */}
-              <Field label="max TP %" hint={`3 keeps 3% and tighter — measured up to ${tpCeiling}%`}>
+              {/* BETWEEN: a low box and a high box on one line, both ends
+                  inclusive. "EXAMPLE BETWEEN .5 - 2.5" (operator,
+                  2026-09-03). Either end alone still filters. */}
+              <Field label="TP % between"
+                     hint={`0.5 to 2.5 keeps both ends — this store measured TP up to ${tpCeiling}%`}>
+                <input type="number" min={0} max={tpCeiling} step={0.5} value={minTp || ""}
+                       list="tp-values" placeholder="any"
+                       onChange={(e) => setMinTp(Math.min(tpCeiling, Math.max(0, Number(e.target.value) || 0)))}
+                       aria-label="Minimum take profit percent"
+                       onKeyDown={onFilterKey}
+                       className={numIn} />
+                <span className="text-theme-xs text-gray-400 dark:text-gray-500">and</span>
                 <input type="number" min={0} max={tpCeiling} step={0.5} value={maxTp || ""}
                        list="tp-values" placeholder="any"
                        onChange={(e) => setMaxTp(Math.min(tpCeiling, Math.max(0, Number(e.target.value) || 0)))}
@@ -912,7 +966,15 @@ export default function StrategiesPanel() {
               </Field>
               {/* MAX SL: 1 keeps rows whose stop is 1% or tighter (operator,
                   2026-09-02) — a smaller stop risks less on each trade. */}
-              <Field label="max SL %" hint="1 keeps 1% and tighter">
+              <Field label="SL % between"
+                     hint="a smaller stop risks less on each trade; both ends kept">
+                <input type="number" min={0} step={0.5} value={minSl || ""}
+                       list="sl-values" placeholder="any"
+                       onChange={(e) => setMinSl(Math.max(0, Number(e.target.value) || 0))}
+                       aria-label="Minimum stop loss percent"
+                       onKeyDown={onFilterKey}
+                       className={numIn} />
+                <span className="text-theme-xs text-gray-400 dark:text-gray-500">and</span>
                 <input type="number" min={0} step={0.5} value={maxSl || ""}
                        list="sl-values" placeholder="any"
                        onChange={(e) => setMaxSl(Math.max(0, Number(e.target.value) || 0))}
@@ -1034,66 +1096,6 @@ export default function StrategiesPanel() {
           together" — was removed on the operator's word (2026-09-03). What
           `balanced` means now lives on the balanced COLUMN's own header, where
           somebody reading that column will find it. */}
-      <div className="flex flex-wrap items-center gap-2 px-5 pt-3">
-        <div className="ml-auto flex flex-wrap items-center gap-1">
-          <select className={`${pageBtn} mr-1`} value={perPage}
-                  onChange={(e) => setPerPage(Number(e.target.value))}
-                  aria-label="Rows per page">
-            {PAGE_SIZES.map((n) => <option key={n} value={n}>{n.toLocaleString()} a page</option>)}
-          </select>
-          <button onClick={() => goto(page - 1)} disabled={page <= 1}
-                  className={pageBtn}>prev</button>
-          {pageWindow(page, pages).map((n, i) => n == null ? (
-            <span key={`gap${i}`} aria-hidden
-                  className="px-1 text-theme-xs text-gray-400">…</span>
-          ) : (
-            <button key={n} onClick={() => goto(n)}
-                    aria-label={`page ${n}`}
-                    aria-current={n === page ? "page" : undefined}
-                    className={`${pageNum} ${n === page
-                      ? "border-brand-500 bg-brand-500 font-semibold text-white"
-                      : "border-gray-300 text-gray-600 hover:border-brand-400 dark:border-gray-700 dark:text-gray-300"}`}>
-              {n.toLocaleString()}
-            </button>
-          ))}
-          <button onClick={() => goto(page + 1)}
-                  disabled={rows.length < askPage}
-                  className={pageBtn}>next</button>
-          <input type="number" min={1} placeholder="page #"
-                 aria-label="Go to page"
-                 onKeyDown={(e) => {
-                   if (e.key !== "Enter") return;
-                   const n = Number((e.target as HTMLInputElement).value);
-                   if (n >= 1) goto(n);
-                 }}
-                 className={`${pageBtn} w-20`} />
-          <span className="text-theme-xs text-gray-500 dark:text-gray-400">
-            of {pages.toLocaleString()}{capped ? "+" : ""}
-          </span>
-          <button onClick={loadMore} disabled={loadingMore}
-                  className={`${pageBtn} ml-1`}>
-            {loadingMore ? "loading…" : `+${perPage.toLocaleString()} more`}
-          </button>
-          {/* the only honest "all": a file, streamed, with every column */}
-          <a className={`${pageBtn} ml-1 inline-flex items-center`}
-             /* the APPLIED set, not the boxes: the link's own label is the
-                applied count ("download all (5,000+) CSV"), so a draft-based
-                href would hand over a different slice than it names */
-             href={api.strategiesCsvUrl({ coin: applied.coin || undefined,
-               tf: applied.tf || undefined, signal: applied.signal || undefined,
-               profitable: applied.profitable, sort,
-               minTrades: applied.minTrades, minWinrate: applied.minWinrate,
-               maxTp: applied.maxTp, maxSl: applied.maxSl,
-               sizing: applied.sizing || undefined,
-               // the WINDOW too, or the file holds every row's whole history
-               // under a filter that says "last 30 days" (operator, 2026-09-03)
-               months: applied.months || undefined,
-               days: applied.months ? undefined : (applied.days || undefined),
-               rowId: applied.rowId || undefined, desc })}>
-            download all ({total.toLocaleString()}{capped ? "+" : ""}) CSV
-          </a>
-        </div>
-      </div>
       {/* What the window CAN and CANNOT re-state. The sweep stores profit per
           month (`monthly[month] += pnl`) and nothing else, so trades, W, L and
           win % on this page are the row's WHOLE history even while the window
@@ -1334,6 +1336,71 @@ export default function StrategiesPanel() {
             ))}
           </TableBody>
         </Table>
+      </div>
+      {/* The pager lives UNDER the table (operator, 2026-09-03: "i want my
+          pagination to be on the bottom"). It reads as the table's footer —
+          rows per page, the page numbers, +more and the CSV of every row that
+          passed — so the last row on screen is followed by the way to the
+          next one. */}
+      <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 px-5 py-3 dark:border-white/[0.05]">
+        <div className="ml-auto flex flex-wrap items-center gap-1">
+          <select className={`${pageBtn} mr-1`} value={perPage}
+                  onChange={(e) => setPerPage(Number(e.target.value))}
+                  aria-label="Rows per page">
+            {PAGE_SIZES.map((n) => <option key={n} value={n}>{n.toLocaleString()} a page</option>)}
+          </select>
+          <button onClick={() => goto(page - 1)} disabled={page <= 1}
+                  className={pageBtn}>prev</button>
+          {pageWindow(page, pages).map((n, i) => n == null ? (
+            <span key={`gap${i}`} aria-hidden
+                  className="px-1 text-theme-xs text-gray-400">…</span>
+          ) : (
+            <button key={n} onClick={() => goto(n)}
+                    aria-label={`page ${n}`}
+                    aria-current={n === page ? "page" : undefined}
+                    className={`${pageNum} ${n === page
+                      ? "border-brand-500 bg-brand-500 font-semibold text-white"
+                      : "border-gray-300 text-gray-600 hover:border-brand-400 dark:border-gray-700 dark:text-gray-300"}`}>
+              {n.toLocaleString()}
+            </button>
+          ))}
+          <button onClick={() => goto(page + 1)}
+                  disabled={rows.length < askPage}
+                  className={pageBtn}>next</button>
+          <input type="number" min={1} placeholder="page #"
+                 aria-label="Go to page"
+                 onKeyDown={(e) => {
+                   if (e.key !== "Enter") return;
+                   const n = Number((e.target as HTMLInputElement).value);
+                   if (n >= 1) goto(n);
+                 }}
+                 className={`${pageBtn} w-20`} />
+          <span className="text-theme-xs text-gray-500 dark:text-gray-400">
+            of {pages.toLocaleString()}{capped ? "+" : ""}
+          </span>
+          <button onClick={loadMore} disabled={loadingMore}
+                  className={`${pageBtn} ml-1`}>
+            {loadingMore ? "loading…" : `+${perPage.toLocaleString()} more`}
+          </button>
+          {/* the only honest "all": a file, streamed, with every column */}
+          <a className={`${pageBtn} ml-1 inline-flex items-center`}
+             /* the APPLIED set, not the boxes: the link's own label is the
+                applied count ("download all (5,000+) CSV"), so a draft-based
+                href would hand over a different slice than it names */
+             href={api.strategiesCsvUrl({ coin: applied.coin || undefined,
+               tf: applied.tf || undefined, signal: applied.signal || undefined,
+               profitable: applied.profitable, sort,
+               minTrades: applied.minTrades, minWinrate: applied.minWinrate,
+               maxTp: applied.maxTp, maxSl: applied.maxSl,
+               sizing: applied.sizing || undefined,
+               // the WINDOW too, or the file holds every row's whole history
+               // under a filter that says "last 30 days" (operator, 2026-09-03)
+               months: applied.months || undefined,
+               days: applied.months ? undefined : (applied.days || undefined),
+               rowId: applied.rowId || undefined, desc })}>
+            download all ({total.toLocaleString()}{capped ? "+" : ""}) CSV
+          </a>
+        </div>
       </div>
 
       {open && (

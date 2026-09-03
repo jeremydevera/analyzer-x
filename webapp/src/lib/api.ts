@@ -422,6 +422,10 @@ export const api = {
     /** the stop's CEILING, so the download carries the same slice as the
      *  table: 1 keeps rows whose SL is 1% or tighter */
     maxSl?: number;
+    /** the LOW end of each range ("BETWEEN .5 - 2.5"), so the file holds the
+     *  same slice the table showed */
+    minTp?: number;
+    minSl?: number;
     /** the DAYS window, so the file holds the same measurement the table
      *  showed rather than every row's whole history */
     days?: number; months?: number;
@@ -439,6 +443,8 @@ export const api = {
     if (q.minWinrate) p.set("min_winrate", String(q.minWinrate));
     if (q.maxTp) p.set("max_tp", String(q.maxTp));
     if (q.maxSl) p.set("max_sl", String(q.maxSl));
+    if (q.minTp) p.set("min_tp", String(q.minTp));
+    if (q.minSl) p.set("min_sl", String(q.minSl));
     if (q.sizing) p.set("sizing", q.sizing);
     if (q.group) p.set("group", q.group);
     if (q.rowId) p.set("row_id", q.rowId);
@@ -468,6 +474,14 @@ export const api = {
      *  2026-09-02: "for sl if i input 1 then show below 1 or equal 1") — the
      *  useful end of a target is up, the useful end of a stop is down. */
     maxSl?: number;
+    /** The LOW ends. TP and SL are each a RANGE — "create filter to tp using
+     *  between / EXAMPLE BETWEEN .5 - 2.5" (operator, 2026-09-03) — and both
+     *  ends are INCLUSIVE, in the unit the column prints: minTp 0.5 with
+     *  maxTp 2.5 keeps a row measured at exactly 0.5% and one at exactly
+     *  2.5%. A ceiling alone also kept every 0.05% scalp whose target is
+     *  smaller than the round-trip cost. */
+    minTp?: number;
+    minSl?: number;
     /** "flat" or "martingale" — the ladder is a sizing CHOICE, not a
      *  measurement (rule 19), so it has to be possible to see one alone */
     sizing?: string;
@@ -496,6 +510,8 @@ export const api = {
     if (q.minWinrate) p.set("min_winrate", String(q.minWinrate));
     if (q.maxTp) p.set("max_tp", String(q.maxTp));
     if (q.maxSl) p.set("max_sl", String(q.maxSl));
+    if (q.minTp) p.set("min_tp", String(q.minTp));
+    if (q.minSl) p.set("min_sl", String(q.minSl));
     if (q.months) p.set("months", String(q.months));
     if (q.days) p.set("days", String(q.days));
     if (q.sizing) p.set("sizing", q.sizing);
@@ -512,7 +528,11 @@ export const api = {
     return get<{ rows: StrategyRow[]; total: number; index?: IndexStatus;
       /** the order the server actually used, so the caption is derived */
       sort?: StrategySort; min_trades?: number; min_winrate?: number;
-      max_tp?: number; max_sl?: number; sizing?: string; row_id?: string;
+      max_tp?: number; max_sl?: number;
+      /** the low end of each range, echoed so the chips describe what was
+       *  APPLIED rather than what the boxes hold */
+      min_tp?: number; min_sl?: number;
+      sizing?: string; row_id?: string;
       desc?: boolean;
       /** the window's REAL months, newest first ("2026-08") */
       window?: string[]; months_window?: number;

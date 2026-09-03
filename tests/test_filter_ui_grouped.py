@@ -90,7 +90,9 @@ def test_every_filter_is_one_line_and_every_control_the_same_width():
     fld = fld[:fld.index(chr(10) + "}" + chr(10))]
     assert "grid-cols-[6.5rem_minmax(0,1fr)]" in fld,         "the label column, then the control"
     for name in ("coin", "timeframe", "group", "signal", "sizing",
-                 "min trades", "min win %", "max TP %", "max SL %",
+                 # TP and SL are RANGES since 2026-09-03 ("create filter to
+                 # tp using between"), so each is one line with two boxes
+                 "min trades", "min win %", "TP % between", "SL % between",
                  "last months", "last days", "#id"):
         assert f'<Field label="{name}"' in p, name
     head = p[:p.index("export default function")]

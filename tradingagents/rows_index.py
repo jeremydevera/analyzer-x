@@ -995,7 +995,8 @@ def in_group(signal: str, group: str | None) -> bool:
 
 def _where(coin=None, tf=None, signal=None, profitable=False,
            min_trades=0, min_winrate=0, max_tp=0, sizing=None, row_id=None,
-           group=None, max_sl=0, *, order_owns_index=False, order_key=None,
+           group=None, max_sl=0, min_tp=0, min_sl=0,
+           *, order_owns_index=False, order_key=None,
            winrate_seeks=False, signal_seeks=False) -> tuple:
     """The WHERE clause and its arguments.
 
@@ -1121,10 +1122,19 @@ def _where(coin=None, tf=None, signal=None, profitable=False,
     # "when i input tp 3% it should show tp below 3%"). It was a floor for one
     # day, which is why the parameter is renamed rather than reused: a field
     # called max_tp that means a maximum is a lie in the API itself.
+    # ...and a FLOOR beside it, so the pair is a RANGE: "create filter to tp
+    # using between / EXAMPLE BETWEEN .5 - 2.5" (operator, 2026-09-03). Both
+    # ends inclusive: 0.5 keeps a row measured at exactly 0.5%. A ceiling
+    # alone kept every 0.05% scalp whose target is smaller than the
+    # round-trip cost, which is the pennies-in-front-of-a-steamroller row.
     if max_tp and float(max_tp) > 0:
         tp_hint = "+" if (order_owns_index and not coin) else ""
         sql.append(f"{tp_hint}tp <= ?")
         args.append(float(max_tp))
+    if min_tp and float(min_tp) > 0:
+        tp_hint = "+" if (order_owns_index and not coin) else ""
+        sql.append(f"{tp_hint}tp >= ?")
+        args.append(float(min_tp))
     # MAX SL, the other direction on purpose: the useful end of a target is up
     # and the useful end of a stop is DOWN (operator, 2026-09-02, on the
     # artifact first: "for sl if i input 1 then show below 1 or equal 1"). No
@@ -1135,6 +1145,10 @@ def _where(coin=None, tf=None, signal=None, profitable=False,
         sl_hint = "+" if (order_owns_index and not coin) else ""
         sql.append(f"{sl_hint}sl <= ?")
         args.append(float(max_sl))
+    if min_sl and float(min_sl) > 0:
+        sl_hint = "+" if (order_owns_index and not coin) else ""
+        sql.append(f"{sl_hint}sl >= ?")
+        args.append(float(min_sl))
     return (" WHERE " + " AND ".join(sql) if sql else ""), args
 
 
@@ -1655,9 +1669,10 @@ def _profit_index() -> str:
 # request carrying one of these under `ORDER BY profit` is the case the wide
 # index exists for.
 def _wide_profit_helps(sizing=None, max_tp=0, min_winrate=0, min_trades=0,
-                       max_sl=0,
+                       max_sl=0, min_tp=0, min_sl=0,
                        profitable=False) -> bool:
     return bool(sizing or float(max_tp or 0) > 0 or float(max_sl or 0) > 0
+                or float(min_tp or 0) > 0 or float(min_sl or 0) > 0
                 or float(min_winrate or 0) > 0
                 or int(min_trades or 0) > 0 or profitable)
 
@@ -1767,7 +1782,7 @@ def _page_rows(con, coin, row_where, row_args, order, lim, off,
 def query(coin=None, tf=None, signal=None, profitable=False,
           limit=500, offset=0, sort="profit", min_trades=0,
           min_winrate=0, max_tp=0, sizing=None, row_id=None, group=None,
-          max_sl=0, months=0, desc=None) -> dict:
+          max_sl=0, months=0, desc=None, min_tp=0, min_sl=0) -> dict:
     """Rows sorted by `sort` (SORTS), profit first by default.
 
     STRICTLY READ-ONLY. It creates nothing and it indexes nothing.
@@ -1840,7 +1855,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
         elif _rows_estimate() > UNINDEXED_LIMIT:
             _build_index("rows_pr2")
     where, args = _where(coin, tf, signal, profitable, min_trades, min_winrate,
-                         max_tp, sizing, row_id, group, max_sl,
+                         max_tp, sizing, row_id, group, max_sl, min_tp, min_sl,
                          signal_seeks=signal_seeks)
     # the row select streams its own ORDER BY index; the count rides the
     # trades index instead (see _where). The ORDER matters to the WHERE too:
@@ -1848,7 +1863,8 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     # and steps aside otherwise.
     row_where, row_args = _where(coin, tf, signal, profitable, min_trades,
                                  min_winrate, max_tp, sizing, row_id, group,
-                                 max_sl, order_owns_index=True, order_key=key,
+                                 max_sl, min_tp, min_sl,
+                                 order_owns_index=True, order_key=key,
                                  winrate_seeks=winrate_seeks,
                                  signal_seeks=signal_seeks)
     down = SORTS[key] if desc is None else bool(desc)
@@ -2032,6 +2048,11 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             "min_winrate": float(min_winrate or 0),
             "max_tp": float(max_tp or 0),
             "max_sl": float(max_sl or 0),
+            # both ends of each range, echoed like every other floor so the
+            # panel captions the rows with what was APPLIED, never with what
+            # the boxes happen to hold (label-must-match-data)
+            "min_tp": float(min_tp or 0),
+            "min_sl": float(min_sl or 0),
             "sizing": sizing or "",
             # what was LOOKED UP, cleaned exactly as the query cleaned it, so
             # the panel can say "#6YACZSXX is not in the store" and mean it
@@ -2045,7 +2066,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
 def iter_rows(coin=None, tf=None, signal=None, profitable=False,
               sort="profit", min_trades=0, min_winrate=0, max_tp=0,
               sizing=None, row_id=None, group=None, max_sl=0, days=0,
-              desc=None, batch=5_000):
+              desc=None, batch=5_000, min_tp=0, min_sl=0):
     """Every matching row, in the asked order, a batch at a time.
 
     No limit and no list: 21,858,026 rows will not fit in a browser table or in
@@ -2112,6 +2133,7 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
         seeks = n is not None and n <= cap
     where, args = _where(coin, tf, signal, profitable, min_trades,
                          min_winrate, max_tp, sizing, row_id, group, max_sl,
+                         min_tp, min_sl,
                          order_owns_index=True, order_key=key,
                          winrate_seeks=seeks, signal_seeks=signal_seeks)
     # LAST N DAYS. The export RE-MEASURES what it exports, batch by batch, so

@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 10, "total": 53, "rows": 921834, "note": "BSB 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 18.9, "updated": "2026-09-03T10:39:02Z"}
+{"shard": 2, "stage": "testing", "done": 11, "total": 53, "rows": 966152, "note": "CATSTOCK 30m: rule 3/120 (fade15)", "failed": [], "pct": 20.8, "updated": "2026-09-03T10:39:47Z"}

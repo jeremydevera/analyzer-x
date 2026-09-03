@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 17, "total": 53, "rows": 617270, "note": "ENJ 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-03T14:19:21Z"}
+{"shard": 1, "stage": "testing", "done": 19, "total": 53, "rows": 681046, "note": "FLOW 1h: rule 1/120 (mom6)", "failed": [], "pct": 35.8, "updated": "2026-09-03T14:20:07Z"}

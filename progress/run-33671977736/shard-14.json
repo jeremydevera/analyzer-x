@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 47, "total": 52, "rows": 4666464, "note": "TXNSTOCK 15m: rule 76/120 (cf_mom)", "pct": 90.4, "updated": "2026-09-03T00:01:21Z"}
+{"shard": 14, "stage": "testing", "done": 48, "total": 52, "rows": 4691158, "note": "USTC 15m: 34,575 bars, testing 120 rules", "pct": 92.3, "updated": "2026-09-03T00:02:12Z"}

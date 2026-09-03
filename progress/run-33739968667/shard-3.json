@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 28, "total": 53, "rows": 2245074, "note": "LRC 1h: rule 4/120 (trend50)", "failed": [], "pct": 52.8, "updated": "2026-09-03T11:51:48Z"}
+{"shard": 3, "stage": "testing", "done": 28, "total": 53, "rows": 2267954, "note": "LRC 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 52.8, "updated": "2026-09-03T11:52:34Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 11, "total": 52, "rows": 919512, "note": "CHEEMS 15m: rule 49/120 (vwaprev)", "failed": [], "pct": 21.2, "updated": "2026-09-03T10:40:06Z"}
+{"shard": 19, "stage": "testing", "done": 11, "total": 52, "rows": 928312, "note": "CHEEMS 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 21.2, "updated": "2026-09-03T10:40:51Z"}

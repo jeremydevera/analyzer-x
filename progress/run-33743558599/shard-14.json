@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 35, "total": 52, "rows": 1248066, "note": "PEPSTOCK 4h: rule 1/120 (mom6)", "failed": [], "pct": 67.3, "updated": "2026-09-03T14:54:01Z"}
+{"shard": 14, "stage": "testing", "done": 36, "total": 52, "rows": 1272586, "note": "PORTAL 1h: rule 13/120 (pivot)", "failed": [], "pct": 69.2, "updated": "2026-09-03T14:54:46Z"}

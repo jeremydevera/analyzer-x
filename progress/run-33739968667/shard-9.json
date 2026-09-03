@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 11, "total": 52, "rows": 955280, "note": "CC 15m: rule 55/120 (nhigh50)", "failed": [], "pct": 21.2, "updated": "2026-09-03T10:41:11Z"}
+{"shard": 9, "stage": "testing", "done": 11, "total": 52, "rows": 964300, "note": "CC 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 21.2, "updated": "2026-09-03T10:41:57Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 7, "total": 52, "rows": 603892, "note": "BAND 1h: rule 16/120 (keltner)", "failed": [], "pct": 13.5, "updated": "2026-09-03T10:21:50Z"}
+{"shard": 7, "stage": "testing", "done": 7, "total": 52, "rows": 626332, "note": "BAND 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 13.5, "updated": "2026-09-03T10:22:39Z"}

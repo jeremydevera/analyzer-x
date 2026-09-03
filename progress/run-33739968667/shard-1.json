@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 37, "total": 53, "rows": 3161034, "note": "PSTOCK 30m: rule 2/120 (mom15)", "failed": [], "pct": 69.8, "updated": "2026-09-03T12:45:32Z"}
+{"shard": 1, "stage": "testing", "done": 38, "total": 53, "rows": 3202914, "note": "RAM 30m: rule 48/120 (prank)", "failed": [], "pct": 71.7, "updated": "2026-09-03T12:46:17Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 40, "total": 53, "rows": 3434636, "note": "SAGA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-03T13:06:40Z"}
+{"shard": 1, "stage": "testing", "done": 42, "total": 53, "rows": 3474324, "note": "SMCISTOCK 15m: 20,192 bars, testing 120 rules", "failed": [], "pct": 79.2, "updated": "2026-09-03T13:07:30Z"}

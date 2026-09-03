@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 22, "total": 52, "rows": 896264, "note": "HOT 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 42.3, "updated": "2026-09-03T14:42:54Z"}
+{"shard": 19, "stage": "testing", "done": 23, "total": 52, "rows": 923764, "note": "ILV 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 44.2, "updated": "2026-09-03T14:43:41Z"}

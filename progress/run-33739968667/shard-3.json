@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 7, "total": 53, "rows": 557074, "note": "BABY 30m: rule 41/120 (tsi)", "failed": [], "pct": 13.2, "updated": "2026-09-03T16:26:13Z"}
+{"shard": 3, "stage": "testing", "done": 7, "total": 53, "rows": 571474, "note": "BABY 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-03T16:26:58Z"}

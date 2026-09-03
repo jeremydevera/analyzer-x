@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 28, "total": 53, "rows": 983572, "note": "LPT 1h: downloading candles", "failed": [], "pct": 52.8, "updated": "2026-09-03T14:21:06Z"}
+{"shard": 0, "stage": "testing", "done": 28, "total": 53, "rows": 990832, "note": "LPT 1h: rule 27/120 (aroon25)", "failed": [], "pct": 52.8, "updated": "2026-09-03T14:21:51Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 52, "total": 52, "rows": 938140, "note": "ZBCN 15m: rule 119/120 (cf_stflip_l1)", "pct": 100.0, "updated": "2026-09-03T07:05:17Z"}
+{"shard": 5, "stage": "done", "done": 52, "total": 52, "rows": 938320, "note": "938,320 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "pct": 100.0, "updated": "2026-09-03T07:05:20Z"}

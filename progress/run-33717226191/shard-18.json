@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 11, "total": 52, "rows": 227860, "note": "CGPT 15m: rule 78/120 (cf_mom_l2)", "pct": 21.2, "updated": "2026-09-03T05:27:49Z"}
+{"shard": 18, "stage": "testing", "done": 12, "total": 52, "rows": 237100, "note": "COLLECT 15m: 23,787 bars, testing 120 rules", "pct": 23.1, "updated": "2026-09-03T05:28:34Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 51, "total": 53, "rows": 4222914, "note": "XEC 15m: rule 47/120 (ibs)", "failed": [], "pct": 96.2, "updated": "2026-09-03T13:49:20Z"}
+{"shard": 1, "stage": "testing", "done": 51, "total": 53, "rows": 4230174, "note": "XEC 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-03T13:50:06Z"}

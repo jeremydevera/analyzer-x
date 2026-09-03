@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 49, "total": 52, "rows": 4136770, "note": "WAL 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 94.2, "updated": "2026-09-03T13:39:40Z"}
+{"shard": 17, "stage": "testing", "done": 49, "total": 52, "rows": 4145944, "note": "WAL 1h: rule 1/120 (mom6)", "failed": [], "pct": 94.2, "updated": "2026-09-03T13:40:28Z"}

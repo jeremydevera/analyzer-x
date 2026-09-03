@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 14, "total": 53, "rows": 1147054, "note": "CTR 15m: rule 3/120 (fade15)", "failed": [], "pct": 26.4, "updated": "2026-09-03T10:30:10Z"}
+{"shard": 4, "stage": "testing", "done": 14, "total": 53, "rows": 1167754, "note": "CTR 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-03T10:30:56Z"}

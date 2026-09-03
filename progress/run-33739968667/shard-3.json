@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 29, "total": 53, "rows": 2282206, "note": "MAVIA 4h: rule 1/120 (mom6)", "failed": [], "pct": 54.7, "updated": "2026-09-03T17:47:22Z"}
+{"shard": 3, "stage": "testing", "done": 31, "total": 53, "rows": 2338082, "note": "MSTU 15m: rule 20/120 (stoch14)", "failed": [], "pct": 58.5, "updated": "2026-09-03T17:48:07Z"}

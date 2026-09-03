@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 27, "total": 53, "rows": 248758, "note": "KSTR 1d: 63 bars, testing 120 rules", "pct": 50.9, "updated": "2026-09-03T04:53:50Z"}
+{"shard": 0, "stage": "testing", "done": 33, "total": 53, "rows": 294584, "note": "NOT 1d: rule 90/120 (cf_chan_l2)", "pct": 62.3, "updated": "2026-09-03T04:54:35Z"}

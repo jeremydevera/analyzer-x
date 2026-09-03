@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 17, "total": 52, "rows": 701078, "note": "EUR 1h: rule 53/120 (squeeze)", "failed": [], "pct": 32.7, "updated": "2026-09-03T14:32:44Z"}
+{"shard": 16, "stage": "testing", "done": 18, "total": 52, "rows": 755458, "note": "FLEXSTOCK 1h: rule 82/120 (cf_maobv)", "failed": [], "pct": 34.6, "updated": "2026-09-03T14:33:29Z"}

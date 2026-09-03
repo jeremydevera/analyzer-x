@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 4, "total": 53, "rows": 50680, "note": "AMZU 15m: rule 87/120 (cf_triple_l2)", "pct": 7.5, "updated": "2026-09-03T05:06:23Z"}
+{"shard": 1, "stage": "testing", "done": 6, "total": 53, "rows": 71400, "note": "AUDIO 15m: rule 93/120 (cf_soup_l2)", "pct": 11.3, "updated": "2026-09-03T05:07:09Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 30, "total": 52, "rows": 2612188, "note": "MORPHO 1h: rule 9/120 (fib382)", "failed": [], "pct": 57.7, "updated": "2026-09-03T11:58:14Z"}
+{"shard": 11, "stage": "testing", "done": 30, "total": 52, "rows": 2631768, "note": "MORPHO 1h: rule 100/120 (cf_soup1)", "failed": [], "pct": 57.7, "updated": "2026-09-03T11:59:00Z"}

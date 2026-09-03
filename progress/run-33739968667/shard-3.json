@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 44, "total": 53, "rows": 3522320, "note": "STO 1h: rule 53/120 (squeeze)", "failed": [], "pct": 83.0, "updated": "2026-09-03T13:04:50Z"}
+{"shard": 3, "stage": "testing", "done": 44, "total": 53, "rows": 3542640, "note": "STO 4h: rule 23/120 (supertrend)", "failed": [], "pct": 83.0, "updated": "2026-09-03T13:05:35Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 21, "total": 53, "rows": 1567480, "note": "GPS 15m: rule 48/120 (prank)", "failed": [], "pct": 39.6, "updated": "2026-09-03T10:51:44Z"}
+{"shard": 4, "stage": "testing", "done": 21, "total": 53, "rows": 1573860, "note": "GPS 15m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 39.6, "updated": "2026-09-03T10:52:29Z"}

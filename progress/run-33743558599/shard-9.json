@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 15, "total": 52, "rows": 551520, "note": "DIA 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 28.8, "updated": "2026-09-03T13:08:59Z"}
+{"shard": 9, "stage": "testing", "done": 16, "total": 52, "rows": 579240, "note": "DYM 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 30.8, "updated": "2026-09-03T13:09:55Z"}

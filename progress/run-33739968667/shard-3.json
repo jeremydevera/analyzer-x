@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 8, "total": 53, "rows": 678326, "note": "BERA 15m: rule 89/120 (cf_chan_l1)", "failed": [], "pct": 15.1, "updated": "2026-09-03T10:27:58Z"}
+{"shard": 3, "stage": "testing", "done": 8, "total": 53, "rows": 684526, "note": "BERA 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-03T10:28:55Z"}

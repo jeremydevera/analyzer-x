@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 27, "total": 53, "rows": 2036634, "note": "LDO 15m: rule 17/120 (atrbreak)", "failed": [], "pct": 50.9, "updated": "2026-09-03T11:31:49Z"}
+{"shard": 6, "stage": "testing", "done": 27, "total": 53, "rows": 2041434, "note": "LDO 15m: rule 47/120 (ibs)", "failed": [], "pct": 50.9, "updated": "2026-09-03T11:32:34Z"}

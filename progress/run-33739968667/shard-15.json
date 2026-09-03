@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 3, "total": 52, "rows": 133200, "note": "AMCSTOCK 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 5.8, "updated": "2026-09-03T09:48:21Z"}
+{"shard": 15, "stage": "testing", "done": 4, "total": 52, "rows": 191944, "note": "APPSTOCK 15m: rule 13/120 (pivot)", "failed": [], "pct": 7.7, "updated": "2026-09-03T09:49:06Z"}

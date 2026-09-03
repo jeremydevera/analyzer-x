@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 6, "total": 52, "rows": 535844, "note": "A 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 11.5, "updated": "2026-09-03T10:16:48Z"}
+{"shard": 19, "stage": "testing", "done": 7, "total": 52, "rows": 571124, "note": "BDX 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 13.5, "updated": "2026-09-03T10:17:33Z"}

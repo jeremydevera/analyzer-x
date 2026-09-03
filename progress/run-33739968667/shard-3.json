@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 1, "total": 53, "rows": 72300, "note": "1000BONK 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 1.9, "updated": "2026-09-03T15:56:39Z"}
+{"shard": 3, "stage": "testing", "done": 2, "total": 53, "rows": 118476, "note": "ADVANTESTSTOCK 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-03T15:57:24Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 3, "total": 53, "rows": 162472, "note": "ALCH 15m: rule 82/120 (cf_maobv)", "failed": [], "pct": 5.7, "updated": "2026-09-03T09:53:37Z"}
+{"shard": 5, "stage": "testing", "done": 3, "total": 53, "rows": 170072, "note": "ALCH 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 5.7, "updated": "2026-09-03T09:54:37Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 3, "total": 52, "rows": 166366, "note": "AMATSTOCK 1h: rule 20/120 (stoch14)", "failed": [], "pct": 5.8, "updated": "2026-09-03T09:50:32Z"}
+{"shard": 14, "stage": "testing", "done": 4, "total": 52, "rows": 221494, "note": "APOSTOCK 1h: 743 bars, testing 120 rules", "failed": [], "pct": 7.7, "updated": "2026-09-03T09:51:17Z"}

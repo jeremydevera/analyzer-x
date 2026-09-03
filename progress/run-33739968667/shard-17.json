@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 16, "total": 52, "rows": 1612060, "note": "EIGEN 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 30.8, "updated": "2026-09-03T11:19:02Z"}
+{"shard": 17, "stage": "testing", "done": 16, "total": 52, "rows": 1619980, "note": "EIGEN 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 30.8, "updated": "2026-09-03T11:20:00Z"}

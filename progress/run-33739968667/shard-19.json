@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 50, "total": 52, "rows": 4526682, "note": "XCN 15m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 96.2, "updated": "2026-09-03T14:05:52Z"}
+{"shard": 19, "stage": "testing", "done": 50, "total": 52, "rows": 4533082, "note": "XCN 15m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-03T14:06:37Z"}

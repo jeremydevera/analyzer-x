@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 22, "total": 52, "rows": 948456, "note": "HNT 4h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 42.3, "updated": "2026-09-03T14:37:55Z"}
+{"shard": 15, "stage": "testing", "done": 23, "total": 52, "rows": 973196, "note": "ICX 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 44.2, "updated": "2026-09-03T14:38:49Z"}

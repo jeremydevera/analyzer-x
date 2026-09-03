@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 35, "total": 53, "rows": 1171210, "note": "PAYCSTOCK 1h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 66.0, "updated": "2026-09-03T14:19:17Z"}
+{"shard": 5, "stage": "testing", "done": 36, "total": 53, "rows": 1194466, "note": "PLTRSTOCK 1h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 67.9, "updated": "2026-09-03T14:20:02Z"}

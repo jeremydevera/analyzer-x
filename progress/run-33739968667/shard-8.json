@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 8, "total": 52, "rows": 660308, "note": "BIGTIME 30m: rule 32/120 (gmma)", "failed": [], "pct": 15.4, "updated": "2026-09-03T10:17:19Z"}
+{"shard": 8, "stage": "testing", "done": 8, "total": 52, "rows": 676808, "note": "BIGTIME 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 15.4, "updated": "2026-09-03T10:18:05Z"}

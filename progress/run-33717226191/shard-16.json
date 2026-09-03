@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 49, "total": 52, "rows": 936660, "note": "WAL 15m: rule 108/120 (cf_bosfvg_l2)", "pct": 94.2, "updated": "2026-09-03T06:58:56Z"}
+{"shard": 16, "stage": "testing", "done": 50, "total": 52, "rows": 957120, "note": "XAU 15m: rule 76/120 (cf_mom)", "pct": 96.2, "updated": "2026-09-03T06:59:41Z"}

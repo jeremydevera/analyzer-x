@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 29, "total": 52, "rows": 2198766, "note": "MET 30m: rule 35/120 (willr14)", "failed": [], "pct": 55.8, "updated": "2026-09-03T11:36:59Z"}
+{"shard": 15, "stage": "testing", "done": 29, "total": 52, "rows": 2213066, "note": "MET 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 55.8, "updated": "2026-09-03T11:37:44Z"}

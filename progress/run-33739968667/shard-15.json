@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 31, "total": 52, "rows": 2385958, "note": "NAORIS 4h: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 59.6, "updated": "2026-09-03T11:48:48Z"}
+{"shard": 15, "stage": "testing", "done": 33, "total": 52, "rows": 2451286, "note": "OG 15m: 34,622 bars, testing 120 rules", "failed": [], "pct": 63.5, "updated": "2026-09-03T11:49:49Z"}

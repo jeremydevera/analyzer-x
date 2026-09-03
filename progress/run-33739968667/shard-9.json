@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 10, "total": 52, "rows": 860064, "note": "BULLA 30m: rule 52/120 (nr7)", "failed": [], "pct": 19.2, "updated": "2026-09-03T10:35:27Z"}
+{"shard": 9, "stage": "testing", "done": 10, "total": 52, "rows": 873484, "note": "BULLA 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 19.2, "updated": "2026-09-03T10:36:13Z"}

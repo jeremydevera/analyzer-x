@@ -1,4 +1,4 @@
-"""The Stored strategies filter bar, grouped — and every filter removable.
+"""The Stored strategies filters: one button, one modal, one column.
 
 Operator, 2026-09-03: *"can you fix the filter ui in stored strategy its now
 confusing"*. Measured on their own screen at 1600px before the change
@@ -18,10 +18,18 @@ confusing"*. Measured on their own screen at 1600px before the change
   same facts a second time.
 * No way to drop ONE filter, and no clear-all at all.
 
-Now: four labelled groups, blank boxes with an "any" placeholder, and one
-removable CHIP per applied filter with a clear-all beside them. The chips are
-built from what the store SERVED, never from the boxes — a chip describing
-rows it did not come from is the failure this repo keeps paying for.
+Grouping them in place was not enough. Looking at that: *"its more confusing
+now / and there are lots of unused space on right / what if it will just click
+a filter icon and then a modal will pop up showing all the filters / i want
+them in 1 column so its uniform"*.
+
+So the panel carries ONE button — a funnel, the word Filters, and the number of
+live filters — beside the chips that say what the rows on screen actually are.
+Every control lives in the modal, one field per line, each label in a fixed
+column and each control the SAME width (measured: 12 controls, all 344px wide
+at the same x). The chips are built from what the store SERVED, never from the
+boxes: a chip describing rows it did not come from is the failure this repo
+keeps paying for.
 """
 import io
 import re
@@ -35,16 +43,58 @@ def src() -> str:
 
 # ------------------------------------------------------------ the four groups
 
+def test_one_button_opens_a_modal_with_every_filter_in_it():
+    p = src()
+    assert 'import { Modal } from "@/components/ui/modal";' in p,         "the app's own modal - Escape, backdrop and scroll lock come with it"
+    assert "const [filtersOpen, setFiltersOpen] = useState(false);" in p
+    assert "<Modal isOpen={filtersOpen}" in p
+    assert "onClick={() => setFiltersOpen(true)}" in p, "the button opens it"
+    assert 'aria-haspopup="dialog"' in p and "aria-expanded={filtersOpen}" in p
+    assert '<svg aria-hidden="true"' in p, "a drawn funnel, not an emoji"
+    assert 'role="dialog"' in p and 'aria-label="Filters"' in p
+
+
+def test_the_button_carries_the_live_filter_count():
+    """A closed modal must not hide that a filter is on."""
+    p = src()
+    btn = p[p.index("onClick={() => setFiltersOpen(true)}"):][:1500]
+    assert "Filters" in btn
+    assert "{chips.length}" in btn, "the COUNT, from the served set"
+
+
+def test_applying_from_the_modal_closes_it():
+    p = src()
+    assert "onClick={() => { apply(); setFiltersOpen(false); }}" in p, (
+        "the answer is behind the modal, so Apply has to get out of the way")
+
+
 def test_the_filters_are_grouped_and_every_group_is_labelled():
     p = src()
-    assert "function FilterRow(" in p, "one labelled group, one component"
+    assert "function FilterSection(" in p, "one heading, one component"
     for label in ("what", "how good", "window", "one row"):
-        assert f'<FilterRow label="{label}"' in p, label
-    # the label is what the eye holds on to, so it must be a real element
-    row = p[p.index("function FilterRow("):]
-    row = row[:row.index("\n}\n")]
+        assert f'<FilterSection label="{label}"' in p, label
+    row = p[p.index("function FilterSection("):]
+    row = row[:row.index(chr(10) + "}" + chr(10))]
     assert "uppercase" in row and "{label}" in row
     assert "{children}" in row
+
+
+def test_every_filter_is_one_line_and_every_control_the_same_width():
+    """*"i want them in 1 column so its uniform"*. Both halves: one `Field`
+    per filter, its name in a fixed column; and both control classes carrying
+    `w-full`, so a select and a number box are never different widths.
+    Measured on screen: 12 controls, every one 344px wide at the same x."""
+    p = src()
+    assert "function Field(" in p
+    fld = p[p.index("function Field("):]
+    fld = fld[:fld.index(chr(10) + "}" + chr(10))]
+    assert "grid-cols-[6.5rem_minmax(0,1fr)]" in fld,         "the label column, then the control"
+    for name in ("coin", "timeframe", "group", "signal", "sizing",
+                 "min trades", "min win %", "max TP %", "max SL %",
+                 "last months", "last days", "#id"):
+        assert f'<Field label="{name}"' in p, name
+    head = p[:p.index("export default function")]
+    assert head.count("h-10 w-full rounded-lg") == 2,         "the select class AND the number class must both be full width"
 
 
 def test_every_control_still_exists_and_keeps_its_accessible_name():
@@ -77,13 +127,11 @@ def test_the_two_last_boxes_say_which_one_wins():
     """They sat side by side, both labelled "last", and setting months just
     greyed the other box out with no reason given."""
     p = src()
-    win = p[p.index('<FilterRow label="window"'):]
-    win = win[:win.index("</FilterRow>")]
-    assert "month(s)" in win and "day(s)" in win
+    win = p[p.index('<FilterSection label="window"'):]
+    win = win[:win.index("</FilterSection>")]
+    assert '<Field label="last months"' in win         and '<Field label="last days"' in win,         "two boxes both reading `last ...` was the confusion"
     assert "disabled={months > 0}" in win, "months still wins"
     assert "months wins while it is set" in win, "and now it SAYS so"
-    assert ">or<" in win.replace(" ", "").replace("\n", ""), \
-        "one window or the other, not two boxes reading `last … last …`"
 
 
 # ------------------------------------------------------------------ the chips
@@ -152,10 +200,15 @@ def test_there_is_a_clear_all_and_it_clears_every_filter():
 
 def test_nothing_filtered_says_so_in_one_line():
     """Eleven "all X AND" clauses to say the list is unfiltered was the worst
-    of it."""
+    of it — and it must not come back inside the modal either."""
     p = src()
     assert "nothing — every stored strategy in the store" in p
+    assert "no filters — showing every stored strategy in the store" in p
     assert "showing rows where:" in p
+    # the AND sentence survives only as the hover title and as the two lines
+    # about a request in flight or a request that failed
+    assert p.count("andLine(servedFilters)") == 1,         "the eleven-clause sentence belongs on hover, once"
+    assert "title={andLine(servedFilters)}" in p
 
 
 # ----------------------------------------------------- the caption stops repeating

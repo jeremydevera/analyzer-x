@@ -10,6 +10,7 @@ import { api, ApiError, fmtMoney, fmtWhenMs, STRATEGY_SORTS, StrategyRow,
   TradesResult, type IndexStatus, type StrategySort } from "@/lib/api";
 import { pageWindow } from "@/lib/pager";
 import Badge from "@/components/ui/badge/Badge";
+import { Modal } from "@/components/ui/modal";
 import {
   Table,
   TableBody,
@@ -26,7 +27,7 @@ const pageBtn =
   "disabled:opacity-40 dark:border-gray-700 dark:text-gray-300";
 
 const sel =
-  "h-10 rounded-lg border border-gray-300 bg-transparent px-3 text-theme-sm " +
+  "h-10 w-full rounded-lg border border-gray-300 bg-transparent px-3 text-theme-sm " +
   "text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 " +
   "dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300";
 
@@ -34,30 +35,47 @@ const sel =
  *  read as six filters set to zero, which is what the operator called
  *  confusing on 2026-09-03. */
 const numIn =
-  "h-10 rounded-lg border border-gray-300 bg-transparent px-2 text-theme-sm " +
+  "h-10 w-full rounded-lg border border-gray-300 bg-transparent px-2 text-theme-sm " +
   "text-gray-700 placeholder:text-gray-400 focus:outline-hidden " +
   "focus:ring-2 focus:ring-brand-500/20 disabled:opacity-40 " +
   "dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300";
 
-/** One labelled group of filters. The label is the fix: thirteen controls in
- *  one undifferentiated wrap gave the eye nothing to hold on to, and the
- *  operator could not tell which box belonged with which. */
-function FilterRow({ label, hint, children }: {
+/** One heading inside the filter modal. Four of them — what / how good /
+ *  window / one row — because thirteen controls in one wrap gave the eye
+ *  nothing to hold on to. */
+function FilterSection({ label, hint, children }: {
   label: string; hint?: string; children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-3">
-      <div className="sm:w-28 sm:shrink-0 sm:pt-2.5 sm:text-right">
-        <span className="text-theme-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-          {label}
-        </span>
+    <section className="border-t border-gray-100 pt-4 first:border-t-0 first:pt-0 dark:border-white/[0.06]">
+      <h5 className="mb-2.5 text-theme-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+        {label}
         {hint ? (
-          <span className="ml-2 text-theme-xs text-gray-400 sm:ml-0 sm:mt-0.5 sm:block dark:text-gray-500">
+          <span className="ml-2 font-normal normal-case tracking-normal text-gray-400 dark:text-gray-500">
             {hint}
           </span>
         ) : null}
-      </div>
-      <div className="flex min-w-0 flex-wrap items-center gap-2">{children}</div>
+      </h5>
+      <div className="flex flex-col gap-2.5">{children}</div>
+    </section>
+  );
+}
+
+/** One filter per line: its name in a fixed column, its control filling the
+ *  rest. The operator's words: *"i want them in 1 column so its uniform"* —
+ *  so every control is the SAME width, whatever kind it is. */
+function Field({ label, hint, children }: {
+  label: string; hint?: string; children: React.ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1">
+      <span className="text-theme-sm text-gray-500 dark:text-gray-400">{label}</span>
+      <div className="flex min-w-0 items-center gap-2">{children}</div>
+      {hint ? (
+        <span className="col-start-2 text-theme-xs text-gray-400 dark:text-gray-500">
+          {hint}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -234,6 +252,12 @@ export default function StrategiesPanel() {
   // slow one and it must not restart the seconds counter
   const inFlight = useRef(false);
   const [reindexing, setReindexing] = useState("");
+  // "what if it will just click a filter icon and then a modal will pop up
+  // showing all the filters" (operator, 2026-09-03). Thirteen controls on the
+  // panel left no room for the table and nothing to read them by; behind one
+  // button they are a list, and the panel keeps only the chips that say what
+  // is actually applied.
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [rows, setRows] = useState<StrategyRow[]>([]);
   const [total, setTotal] = useState(0);
   // a filtered count stops at rows_index.COUNT_CAP, so the caption says
@@ -671,215 +695,34 @@ export default function StrategiesPanel() {
           </button>
         ) : null}
       </div>
-      {/* FILTERS. Four labelled groups instead of thirteen controls in one
-          wrap: what to look at, how good it has to be, over which window, and
-          the one-row escape hatch. Every box still ANDs with every other and
-          still waits for Apply — only the reading of them changed. */}
-      <div className="mt-4 border-t border-gray-100 px-5 py-4 dark:border-white/[0.06]">
-        <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-          <span className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">
-            Filters
-          </span>
-          <span className="text-theme-xs text-gray-500 dark:text-gray-400">
-            every box narrows the SAME rows — they are ANDed
-          </span>
-          {/* "i want a button 'Apply filters' so i know its loading". The
-              button IS the progress: it names what it is doing and for how
-              long, so a 30-second store read cannot look like a dead screen.
-              It also says when the boxes differ from what is on screen. */}
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            {pending.length && !loading ? (
-              <span className="text-theme-xs text-warning-600 dark:text-warning-400">
-                {pending.length} change{pending.length > 1 ? "s" : ""} not applied yet
-              </span>
-            ) : null}
-            <button type="button" onClick={apply}
-                    disabled={loading || !pending.length}
-                    aria-live="polite"
-                    title={pending.length ? "send the boxes to the store"
-                      : "the boxes already match the rows on screen"}
-                    className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-500 px-4 text-theme-sm font-medium text-white hover:bg-brand-600 disabled:cursor-default disabled:border disabled:border-gray-200 disabled:bg-transparent disabled:text-gray-400 dark:disabled:border-white/10 dark:disabled:text-gray-500">
-              {loading ? (
-                <>
-                  <span aria-hidden="true"
-                        className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/60 border-t-transparent" />
-                  searching{waited >= 1 ? ` ${waited}s` : "…"}
-                </>
-              ) : pending.length ? (
-                `Apply ${pending.length} filter${pending.length > 1 ? "s" : ""}`
-              ) : (
-                <>
-                  {/* not a dead grey button: it says the boxes are already
-                      what the table shows */}
-                  <span aria-hidden="true">✓</span> Apply filters
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-        <div className="flex flex-col gap-3">
-          <FilterRow label="what">
-            <select className={sel} value={coin} onChange={(e) => setCoin(e.target.value)} aria-label="Coin">
-              <option value="">all coins</option>
-              {facets.coins.map((c) => <option key={c}>{c}</option>)}
-            </select>
-            <select className={sel} value={tf} onChange={(e) => setTf(e.target.value)} aria-label="Timeframe">
-              <option value="">all timeframes</option>
-              {facets.tfs.map((t) => <option key={t}>{t}</option>)}
-            </select>
-            {/* GROUP: the ten researched confluence setups — every rule named
-                cf_..., ten setups at three levels each — against the 75
-                signals that existed before them. The operator's names. */}
-            <select className={sel} value={group}
-                    onChange={(e) => setGroup(e.target.value)} aria-label="Group">
-              <option value="">all groups</option>
-              <option value="preset">{GROUP_LABEL.preset}</option>
-              <option value="classic">{GROUP_LABEL.classic}</option>
-            </select>
-            <select className={sel} value={signal} onChange={(e) => setSignal(e.target.value)} aria-label="Signal">
-              <option value="">all signals</option>
-              {facets.signals.map((s) => <option key={s}>{s}</option>)}
-            </select>
-            {/* "i want filter to see flat / martingale". The options come from
-                the grid that measured the rows (facets.sizings), so the
-                dropdown cannot offer a sizing the store does not hold. */}
-            <select className={sel} value={sizing}
-                    onChange={(e) => setSizing(e.target.value)}
-                    aria-label="Sizing">
-              <option value="">flat and martingale</option>
-              {(facets.sizings ?? []).map((z) => (
-                <option key={z} value={z}>{z} only</option>
-              ))}
-            </select>
-          </FilterRow>
-          <FilterRow label="how good" hint="blank = any">
-            <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300">
-              min trades
-              <input type="number" min={0} step={10} value={minTrades || ""}
-                     placeholder="any"
-                     onChange={(e) => setMinTrades(Math.max(0, Number(e.target.value) || 0))}
-                     aria-label="Minimum trades"
-                     onKeyDown={onFilterKey}
-                     className={`${numIn} w-20`} />
-            </label>
-            {/* the operator's own sentence: "if i put 50 then show me coins
-                with winrate equal or greater than 50" — in the unit the
-                win % column prints */}
-            <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300"
-                   title="show only rows whose win % is this or higher">
-              min win %
-              <input type="number" min={0} max={100} step={5} value={minWinrate || ""}
-                     placeholder="any"
-                     onChange={(e) => setMinWinrate(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
-                     aria-label="Minimum win rate percent"
-                     onKeyDown={onFilterKey}
-                     className={`${numIn} w-20`} />
-            </label>
-            {/* "when i input tp 3% it should show tp below 3%" (operator,
-                2026-09-03): a CEILING, in the unit the TP% column prints. The
-                list offers the values the grid really measured, so 3, 4 and 5
-                are one keystroke away and 9.37 is not typed by accident. */}
-            <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300"
-                   title={`show only rows whose take-profit is this % or TIGHTER - a smaller target is reached more often (this store measured up to ${tpCeiling}%)`}>
-              max TP %
-              <input type="number" min={0} max={tpCeiling} step={0.5} value={maxTp || ""}
-                     list="tp-values" placeholder="any"
-                     onChange={(e) => setMaxTp(Math.min(tpCeiling, Math.max(0, Number(e.target.value) || 0)))}
-                     aria-label="Maximum take profit percent"
-                     onKeyDown={onFilterKey}
-                     className={`${numIn} w-20`} />
-              <datalist id="tp-values">
-                {(facets.tps ?? []).map((v) => <option key={v} value={v} />)}
-              </datalist>
-            </label>
-            {/* MAX SL: the other ceiling, same direction as max TP. 1
-                keeps rows whose stop is 1% or tighter (operator, 2026-09-02).
-                They point OPPOSITE WAYS and that is the point: the useful end
-                of a target is up and the useful end of a stop is down. */}
-            <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300"
-                   title="show only rows whose stop-loss is this % or TIGHTER - a smaller stop risks less on each trade">
-              max SL %
-              <input type="number" min={0} step={0.5} value={maxSl || ""}
-                     list="sl-values" placeholder="any"
-                     onChange={(e) => setMaxSl(Math.max(0, Number(e.target.value) || 0))}
-                     aria-label="Maximum stop loss percent"
-                     onKeyDown={onFilterKey}
-                     className={`${numIn} w-20`} />
-              <datalist id="sl-values">
-                {(facets.sls ?? []).map((v) => <option key={v} value={v} />)}
-              </datalist>
-            </label>
-            <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300">
-              <input type="checkbox" checked={profitable} onChange={(e) => setProfitable(e.target.checked)} className="h-4 w-4 accent-brand-500" />
-              profitable only
-            </label>
-          </FilterRow>
-          {/* WINDOW. Two boxes both labelled "last", side by side, one
-              silently disabling the other — now one group that says which
-              wins, and the disabled one says why. */}
-          <FilterRow label="window" hint="blank = all history">
-            <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300"
-                   title="re-state every row over the last N months: its own profit and green months inside that window, and only those month columns">
-              last
-              <input type="number" min={0} max={24} step={1} value={months || ""}
-                     placeholder="all"
-                     onChange={(e) => setMonths(Math.min(24, Math.max(0, Number(e.target.value) || 0)))}
-                     onKeyDown={onFilterKey}
-                     aria-label="Last N months"
-                     className={`${numIn} w-16`} />
-              month(s)
-            </label>
-            <span className="text-theme-xs text-gray-400 dark:text-gray-500">or</span>
-            {/* LAST N DAYS — "instead of using past 1 month only". It
-                RE-MEASURES each row from the stored candles (the store keeps
-                profit per month and no trade counts), so the page is capped
-                and months wins when both are set. */}
-            <label className={`flex h-10 items-center gap-2 text-theme-sm ${months > 0 ? "text-gray-400 dark:text-gray-500" : "text-gray-700 dark:text-gray-300"}`}
-                   title="re-measure every row over the last N days from the candles already on this PC - trades, wins, losses, win % and profit are the window's own. Months wins if both are set.">
-              last
-              <input type="number" min={0} max={365} step={1} value={days || ""}
-                     placeholder="all"
-                     onChange={(e) => setDays(Math.min(365, Math.max(0, Number(e.target.value) || 0)))}
-                     onKeyDown={onFilterKey}
-                     aria-label="Last N days"
-                     disabled={months > 0}
-                     className={`${numIn} w-16`} />
-              day(s)
-            </label>
-            {months > 0 ? (
-              <span className="text-theme-xs text-gray-500 dark:text-gray-400">
-                months wins while it is set
-              </span>
-            ) : null}
-            {applied.days > 0 && !applied.months && perPage > DAYS_PAGE ? (
-              <span className="text-theme-xs text-gray-500 dark:text-gray-400">
-                {DAYS_PAGE} a page while a days window is on — each row is
-                re-measured
-              </span>
-            ) : null}
-          </FilterRow>
-          {/* "#6YACZSXX" — the code the first column prints. Typed with or
-              without the #, any case; it overrides the rest. */}
-          <FilterRow label="one row">
-            <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300"
-                   title="find one row by the id in its first column — this overrides the other filters">
-              #id
-              <input type="text" value={rowId} placeholder="6YACZSXX"
-                     onChange={(e) => setRowId(e.target.value)}
-                     onKeyDown={onFilterKey}
-                     aria-label="Row id"
-                     className={`${numIn} w-32 font-mono uppercase`} />
-            </label>
-            <span className="text-theme-xs text-gray-400 dark:text-gray-500">
-              an id names ONE row, so it overrides every filter above
+      {/* FILTERS live in a MODAL, one field per line. On the panel: the
+          button, the number of live filters on it, and the chips that say
+          what the rows on screen actually are. */}
+      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-gray-100 px-5 py-3 dark:border-white/[0.06]">
+        <button type="button" onClick={() => setFiltersOpen(true)}
+                aria-haspopup="dialog" aria-expanded={filtersOpen}
+                title="every filter — coin, timeframe, signal, sizing, the floors, the window and the row id"
+                className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-gray-300 px-3 text-theme-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/[0.03]">
+          {/* a funnel, drawn — not an emoji standing in for an icon */}
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16"
+               fill="none" stroke="currentColor" strokeWidth="1.5"
+               strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2 3.5h12l-4.6 5.2v3.9L6.6 14V8.7L2 3.5Z" />
+          </svg>
+          Filters
+          {/* the COUNT is the live one, so a closed modal never hides that a
+              filter is on (label-must-match-data) */}
+          {chips.length ? (
+            <span className="rounded-full bg-brand-500 px-1.5 py-0.5 text-theme-xs font-semibold text-white">
+              {chips.length}
             </span>
-          </FilterRow>
-        </div>
-        {/* WHAT THE ROWS ON SCREEN ACTUALLY ARE, as one chip per filter with
-            its own × — the eleven-clause "all coins AND all timeframes AND
-            ..." sentence said nothing was filtered and could not be acted on.
-            The full sentence is still here, on hover. */}
-        <div className="mt-4 flex flex-wrap items-center gap-2"
+          ) : null}
+        </button>
+        {/* WHAT THE ROWS ON SCREEN ACTUALLY ARE, one chip per filter with its
+            own × — the eleven-clause "all coins AND all timeframes AND ..."
+            sentence said nothing was filtered and could not be acted on. The
+            full sentence is still here, on hover. */}
+        <div className="flex min-w-0 flex-wrap items-center gap-2"
              title={andLine(servedFilters)}>
           <span className="text-theme-xs font-medium text-gray-600 dark:text-gray-300">
             showing rows where:
@@ -905,18 +748,29 @@ export default function StrategiesPanel() {
               clear all
             </button>
           ) : null}
-          {pending.length ? (
-            <span className="text-theme-xs text-warning-600 dark:text-warning-400">
-              — Apply filters will ask for {andLine(draft)}
-            </span>
-          ) : missed ? (
-            <span className="text-theme-xs text-error-500">
-              — {andLine(applied)} was asked for and did not come back
-              {failedAfter >= 1 ? ` (${failedAfter}s)` : ""}
-            </span>
+        </div>
+        {/* the boxes differ from the rows: say so on the panel, not only
+            inside the modal the operator has just closed */}
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          {pending.length && !loading ? (
+            <>
+              <span className="text-theme-xs text-warning-600 dark:text-warning-400">
+                {pending.length} change{pending.length > 1 ? "s" : ""} not applied yet
+              </span>
+              <button type="button" onClick={apply}
+                      className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-500 px-4 text-theme-sm font-medium text-white hover:bg-brand-600">
+                {`Apply ${pending.length} filter${pending.length > 1 ? "s" : ""}`}
+              </button>
+            </>
           ) : null}
         </div>
-        {/* The store's OWN sentence, beside the boxes that caused it. A 503
+        {missed ? (
+          <p className="w-full text-theme-xs text-error-500">
+            — {andLine(applied)} was asked for and did not come back
+            {failedAfter >= 1 ? ` (${failedAfter}s)` : ""}
+          </p>
+        ) : null}
+        {/* The store's OWN sentence, beside the filters that caused it. A 503
             here names the fix — "a win % floor of 55 over 1h needs more than
             20s on this store. Add a min-trades floor - 100 answers in 0.2s -
             or rank by win %." — and the operator never saw it: it was printed
@@ -926,7 +780,7 @@ export default function StrategiesPanel() {
             know its loading, and i thought there is no result". */}
         {waiting && (
           <p role="status" aria-live="polite"
-             className="mt-3 rounded-lg border border-warning-500/40 bg-warning-50 px-3 py-2 text-theme-sm text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-400">
+             className="w-full rounded-lg border border-warning-500/40 bg-warning-50 px-3 py-2 text-theme-sm text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-400">
             the store has not answered this filter yet — {waiting} Until it
             does, the rows below are the previous answer, ordered by{" "}
             <b>{STRATEGY_SORTS[servedSort]}</b>
@@ -937,6 +791,216 @@ export default function StrategiesPanel() {
           </p>
         )}
       </div>
+      <Modal isOpen={filtersOpen} onClose={() => setFiltersOpen(false)}
+             className="m-4 max-w-[520px] p-6 lg:p-7">
+        <div role="dialog" aria-modal="true" aria-label="Filters">
+          <h4 className="mb-1 text-lg font-semibold text-gray-800 dark:text-white/90">
+            Filters
+          </h4>
+          <p className="mb-5 text-theme-xs text-gray-500 dark:text-gray-400">
+            every box narrows the SAME rows — they are ANDed. Blank means the
+            filter is off.
+          </p>
+          <div className="flex max-h-[68vh] flex-col gap-4 overflow-y-auto pr-1">
+            <FilterSection label="what">
+              <Field label="coin">
+                <select className={sel} value={coin} onChange={(e) => setCoin(e.target.value)} aria-label="Coin">
+                  <option value="">all coins</option>
+                  {facets.coins.map((c) => <option key={c}>{c}</option>)}
+                </select>
+              </Field>
+              <Field label="timeframe">
+                <select className={sel} value={tf} onChange={(e) => setTf(e.target.value)} aria-label="Timeframe">
+                  <option value="">all timeframes</option>
+                  {facets.tfs.map((t) => <option key={t}>{t}</option>)}
+                </select>
+              </Field>
+              {/* GROUP: the ten researched confluence setups — every rule
+                  named cf_..., ten setups at three levels each — against the
+                  75 signals that existed before them. The operator's names. */}
+              <Field label="group">
+                <select className={sel} value={group}
+                        onChange={(e) => setGroup(e.target.value)} aria-label="Group">
+                  <option value="">all groups</option>
+                  <option value="preset">{GROUP_LABEL.preset}</option>
+                  <option value="classic">{GROUP_LABEL.classic}</option>
+                </select>
+              </Field>
+              <Field label="signal">
+                <select className={sel} value={signal} onChange={(e) => setSignal(e.target.value)} aria-label="Signal">
+                  <option value="">all signals</option>
+                  {facets.signals.map((s) => <option key={s}>{s}</option>)}
+                </select>
+              </Field>
+              {/* "i want filter to see flat / martingale". The options come
+                  from the grid that measured the rows (facets.sizings), so the
+                  dropdown cannot offer a sizing the store does not hold. */}
+              <Field label="sizing">
+                <select className={sel} value={sizing}
+                        onChange={(e) => setSizing(e.target.value)}
+                        aria-label="Sizing">
+                  <option value="">flat and martingale</option>
+                  {(facets.sizings ?? []).map((z) => (
+                    <option key={z} value={z}>{z} only</option>
+                  ))}
+                </select>
+              </Field>
+            </FilterSection>
+            <FilterSection label="how good" hint="blank = any">
+              <Field label="min trades">
+                <input type="number" min={0} step={10} value={minTrades || ""}
+                       placeholder="any"
+                       onChange={(e) => setMinTrades(Math.max(0, Number(e.target.value) || 0))}
+                       aria-label="Minimum trades"
+                       onKeyDown={onFilterKey}
+                       className={numIn} />
+              </Field>
+              {/* the operator's own sentence: "if i put 50 then show me coins
+                  with winrate equal or greater than 50" — in the unit the
+                  win % column prints */}
+              <Field label="min win %" hint="50 keeps 50.00% and better">
+                <input type="number" min={0} max={100} step={5} value={minWinrate || ""}
+                       placeholder="any"
+                       onChange={(e) => setMinWinrate(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                       aria-label="Minimum win rate percent"
+                       onKeyDown={onFilterKey}
+                       className={numIn} />
+              </Field>
+              {/* "when i input tp 3% it should show tp below 3%" (operator,
+                  2026-09-03): a CEILING, in the unit the TP% column prints.
+                  The list offers the values the grid really measured, so 3, 4
+                  and 5 are one keystroke away and 9.37 is not typed by
+                  accident. */}
+              <Field label="max TP %" hint={`3 keeps 3% and tighter — measured up to ${tpCeiling}%`}>
+                <input type="number" min={0} max={tpCeiling} step={0.5} value={maxTp || ""}
+                       list="tp-values" placeholder="any"
+                       onChange={(e) => setMaxTp(Math.min(tpCeiling, Math.max(0, Number(e.target.value) || 0)))}
+                       aria-label="Maximum take profit percent"
+                       onKeyDown={onFilterKey}
+                       className={numIn} />
+                <datalist id="tp-values">
+                  {(facets.tps ?? []).map((v) => <option key={v} value={v} />)}
+                </datalist>
+              </Field>
+              {/* MAX SL: 1 keeps rows whose stop is 1% or tighter (operator,
+                  2026-09-02) — a smaller stop risks less on each trade. */}
+              <Field label="max SL %" hint="1 keeps 1% and tighter">
+                <input type="number" min={0} step={0.5} value={maxSl || ""}
+                       list="sl-values" placeholder="any"
+                       onChange={(e) => setMaxSl(Math.max(0, Number(e.target.value) || 0))}
+                       aria-label="Maximum stop loss percent"
+                       onKeyDown={onFilterKey}
+                       className={numIn} />
+                <datalist id="sl-values">
+                  {(facets.sls ?? []).map((v) => <option key={v} value={v} />)}
+                </datalist>
+              </Field>
+              <Field label="profit">
+                <label className="flex h-10 items-center gap-2 text-theme-sm text-gray-700 dark:text-gray-300">
+                  <input type="checkbox" checked={profitable}
+                         onChange={(e) => setProfitable(e.target.checked)}
+                         className="h-4 w-4 accent-brand-500" />
+                  profitable only
+                </label>
+              </Field>
+            </FilterSection>
+            <FilterSection label="window" hint="blank = all history">
+              <Field label="last months"
+                     hint="every figure in the row is re-stated over those months">
+                <input type="number" min={0} max={24} step={1} value={months || ""}
+                       placeholder="all"
+                       onChange={(e) => setMonths(Math.min(24, Math.max(0, Number(e.target.value) || 0)))}
+                       onKeyDown={onFilterKey}
+                       aria-label="Last N months"
+                       className={numIn} />
+              </Field>
+              {/* LAST N DAYS — "instead of using past 1 month only". It
+                  RE-MEASURES each row from the stored candles (the store keeps
+                  profit per month and no trade counts), so the page is capped
+                  and months wins when both are set. */}
+              <Field label="last days"
+                     hint={months > 0 ? "months wins while it is set"
+                       : `re-measured from this PC's candles · ${DAYS_PAGE} rows a page`}>
+                <input type="number" min={0} max={365} step={1} value={days || ""}
+                       placeholder="all"
+                       onChange={(e) => setDays(Math.min(365, Math.max(0, Number(e.target.value) || 0)))}
+                       onKeyDown={onFilterKey}
+                       aria-label="Last N days"
+                       disabled={months > 0}
+                       className={numIn} />
+              </Field>
+            </FilterSection>
+            {/* "#6YACZSXX" — the code the first column prints. Typed with or
+                without the #, any case; it overrides the rest. */}
+            <FilterSection label="one row"
+                           hint="an id names ONE row, so it overrides everything above">
+              <Field label="#id">
+                <input type="text" value={rowId} placeholder="6YACZSXX"
+                       onChange={(e) => setRowId(e.target.value)}
+                       onKeyDown={onFilterKey}
+                       aria-label="Row id"
+                       className={`${numIn} font-mono uppercase`} />
+              </Field>
+            </FilterSection>
+          </div>
+          {/* what the modal will ASK for, in the operator's own reading, and
+              what the rows on screen are until it does */}
+          <p className="mt-4 text-theme-xs text-gray-500 dark:text-gray-400">
+            {pending.length ? (
+              // the CHANGED set in the units the columns print — the
+              // eleven-clause AND sentence is the hover text, not the line
+              // ("its more confusing now", 2026-09-03)
+              <span className="text-warning-600 dark:text-warning-400"
+                    title={andLine(draft)}>
+                Apply will ask for{" "}
+                {chipsOf(draft).length
+                  ? chipsOf(draft).map((c) => c.text).join(" · ")
+                  : "every stored strategy in the store"}
+              </span>
+            ) : chips.length ? (
+              <>showing rows where: {chips.map((c) => c.text).join(" · ")}</>
+            ) : (
+              <>no filters — showing every stored strategy in the store</>
+            )}
+          </p>
+          <div className="mt-5 flex items-center gap-3">
+            <button type="button" onClick={clearAll}
+                    disabled={!chips.length && !pending.length}
+                    className="h-11 rounded-lg border border-gray-300 px-4 text-theme-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/[0.03]">
+              clear all
+            </button>
+            <button type="button" onClick={() => setFiltersOpen(false)}
+                    className="ml-auto h-11 rounded-lg px-4 text-theme-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+              close
+            </button>
+            {/* "i want a button 'Apply filters' so i know its loading". The
+                button IS the progress: it names what it is doing and for how
+                long, so a 30-second store read cannot look like a dead
+                screen. It also says when the boxes differ from the rows. */}
+            <button type="button"
+                    onClick={() => { apply(); setFiltersOpen(false); }}
+                    disabled={loading || !pending.length}
+                    aria-live="polite"
+                    title={pending.length ? "send the boxes to the store"
+                      : "the boxes already match the rows on screen"}
+                    className="inline-flex h-11 items-center gap-2 rounded-lg bg-brand-500 px-5 text-theme-sm font-medium text-white hover:bg-brand-600 disabled:cursor-default disabled:bg-gray-200 disabled:text-gray-400 dark:disabled:bg-white/[0.06] dark:disabled:text-gray-500">
+              {loading ? (
+                <>
+                  <span aria-hidden="true"
+                        className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/60 border-t-transparent" />
+                  searching{waited >= 1 ? ` ${waited}s` : "…"}
+                </>
+              ) : pending.length ? (
+                `Apply ${pending.length} filter${pending.length > 1 ? "s" : ""}`
+              ) : (
+                <>
+                  <span aria-hidden="true">✓</span> Apply filters
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </Modal>
       {/* one row IS one combination — the operator's own words: "under those
           coins i have multiple strategy and under that strategy is different
           timeframe and combinations of tp and sl". Say so, and page through. */}
@@ -998,7 +1062,11 @@ export default function StrategiesPanel() {
                profitable: applied.profitable, sort,
                minTrades: applied.minTrades, minWinrate: applied.minWinrate,
                maxTp: applied.maxTp, maxSl: applied.maxSl,
-                     sizing: applied.sizing || undefined,
+               sizing: applied.sizing || undefined,
+               // the WINDOW too, or the file holds every row's whole history
+               // under a filter that says "last 30 days" (operator, 2026-09-03)
+               months: applied.months || undefined,
+               days: applied.months ? undefined : (applied.days || undefined),
                rowId: applied.rowId || undefined, desc })}>
             download all ({total.toLocaleString()}{capped ? "+" : ""}) CSV
           </a>

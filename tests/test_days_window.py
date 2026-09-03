@@ -175,7 +175,9 @@ def test_the_panel_has_the_box_and_says_which_window_it_shows():
     panel = open("webapp/src/components/backtest/StrategiesPanel.tsx",
                  encoding="utf-8").read()
     assert 'aria-label="Last N days"' in panel
-    assert "day(s)" in panel
+    # the filters live in a modal now, one field per line (2026-09-03), so the
+    # unit is the FIELD'S NAME rather than a `day(s)` suffix beside the box
+    assert '<Field label="last days"' in panel
     # months wins, and the box says so by being disabled
     assert "disabled={months > 0}" in panel
     assert "applied.months ? undefined : (applied.days || undefined)" in panel

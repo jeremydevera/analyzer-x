@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 12, "total": 53, "rows": 380948, "note": "CHIP 1h: rule 59/120 (choch)", "failed": [], "pct": 22.6, "updated": "2026-09-03T14:13:51Z"}
+{"shard": 1, "stage": "testing", "done": 13, "total": 53, "rows": 441690, "note": "COPPER 4h: 1,303 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-03T14:14:43Z"}

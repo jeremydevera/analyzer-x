@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 37, "total": 53, "rows": 650140, "note": "PTB 15m: rule 86/120 (cf_triple_l1)", "pct": 69.8, "updated": "2026-09-03T06:22:39Z"}
+{"shard": 2, "stage": "testing", "done": 38, "total": 53, "rows": 656080, "note": "RAVE 15m: 25,417 bars, testing 120 rules", "pct": 71.7, "updated": "2026-09-03T06:23:38Z"}

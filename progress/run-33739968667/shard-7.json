@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 21, "total": 52, "rows": 1450008, "note": "GRASS 15m: 34,619 bars, testing 120 rules", "failed": [], "pct": 40.4, "updated": "2026-09-03T11:03:35Z"}
+{"shard": 7, "stage": "testing", "done": 21, "total": 52, "rows": 1451328, "note": "GRASS 15m: rule 2/120 (mom15)", "failed": [], "pct": 40.4, "updated": "2026-09-03T11:04:30Z"}

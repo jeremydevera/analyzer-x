@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 37, "total": 52, "rows": 2785886, "note": "PYPLSTOCK 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 71.2, "updated": "2026-09-03T11:44:51Z"}
+{"shard": 10, "stage": "testing", "done": 38, "total": 52, "rows": 2843206, "note": "RDWSTOCK 15m: rule 3/120 (fade15)", "failed": [], "pct": 73.1, "updated": "2026-09-03T11:45:36Z"}

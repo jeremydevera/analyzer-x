@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 44, "total": 52, "rows": 3980808, "note": "SYN 15m: rule 2/120 (mom15)", "failed": [], "pct": 84.6, "updated": "2026-09-03T13:38:11Z"}
+{"shard": 19, "stage": "testing", "done": 44, "total": 52, "rows": 3984168, "note": "SYN 15m: rule 21/120 (cci20)", "failed": [], "pct": 84.6, "updated": "2026-09-03T13:38:57Z"}

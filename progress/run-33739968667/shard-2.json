@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 44, "total": 53, "rows": 3565426, "note": "STORJ 15m: rule 64/120 (hammer)", "failed": [], "pct": 83.0, "updated": "2026-09-03T13:00:35Z"}
+{"shard": 2, "stage": "testing", "done": 44, "total": 53, "rows": 3573026, "note": "STORJ 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 83.0, "updated": "2026-09-03T13:01:20Z"}

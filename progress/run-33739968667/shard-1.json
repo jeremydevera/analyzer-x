@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 2, "total": 53, "rows": 184830, "note": "ADBESTOCK 4h: rule 40/120 (crsi)", "failed": [], "pct": 3.8, "updated": "2026-09-03T09:53:12Z"}
+{"shard": 1, "stage": "testing", "done": 5, "total": 53, "rows": 242810, "note": "ARKK 15m: rule 2/120 (mom15)", "failed": [], "pct": 9.4, "updated": "2026-09-03T09:53:58Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 37, "total": 52, "rows": 3337160, "note": "PYTH 4h: rule 20/120 (stoch14)", "failed": [], "pct": 71.2, "updated": "2026-09-03T12:41:48Z"}
+{"shard": 11, "stage": "testing", "done": 38, "total": 52, "rows": 3371728, "note": "RECALL 15m: rule 1/120 (mom6)", "failed": [], "pct": 73.1, "updated": "2026-09-03T12:42:49Z"}

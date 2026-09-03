@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 18, "total": 52, "rows": 1466880, "note": "FIDA 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 34.6, "updated": "2026-09-03T10:38:40Z"}
+{"shard": 13, "stage": "testing", "done": 18, "total": 52, "rows": 1472600, "note": "FIDA 30m: rule 20/120 (stoch14)", "failed": [], "pct": 34.6, "updated": "2026-09-03T10:39:26Z"}

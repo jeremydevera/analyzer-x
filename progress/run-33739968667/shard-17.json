@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 12, "total": 52, "rows": 1158848, "note": "COINBASE 15m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 23.1, "updated": "2026-09-03T10:49:55Z"}
+{"shard": 17, "stage": "testing", "done": 12, "total": 52, "rows": 1165068, "note": "COINBASE 30m: rule 17/120 (atrbreak)", "failed": [], "pct": 23.1, "updated": "2026-09-03T10:50:41Z"}

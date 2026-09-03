@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 7, "total": 53, "rows": 554596, "note": "BACSTOCK 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-03T10:01:00Z"}
+{"shard": 4, "stage": "testing", "done": 7, "total": 53, "rows": 595196, "note": "BACSTOCK 4h: rule 59/120 (choch)", "failed": [], "pct": 13.2, "updated": "2026-09-03T10:01:45Z"}

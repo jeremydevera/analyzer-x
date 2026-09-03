@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 17, "total": 52, "rows": 1318246, "note": "ERA 30m: rule 4/120 (trend50)", "failed": [], "pct": 32.7, "updated": "2026-09-03T10:52:22Z"}
+{"shard": 8, "stage": "testing", "done": 17, "total": 52, "rows": 1332546, "note": "ERA 30m: rule 70/120 (cmf20)", "failed": [], "pct": 32.7, "updated": "2026-09-03T10:53:07Z"}

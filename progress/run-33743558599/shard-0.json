@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 41, "total": 53, "rows": 1359896, "note": "SHELL 1h: rule 13/120 (pivot)", "failed": [], "pct": 77.4, "updated": "2026-09-03T14:32:55Z"}
+{"shard": 0, "stage": "testing", "done": 41, "total": 53, "rows": 1382556, "note": "SHELL 1h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 77.4, "updated": "2026-09-03T14:33:40Z"}

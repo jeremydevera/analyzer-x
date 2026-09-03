@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 47, "total": 53, "rows": 3683188, "note": "TSLL 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 88.7, "updated": "2026-09-03T13:23:28Z"}
+{"shard": 5, "stage": "testing", "done": 48, "total": 53, "rows": 3723756, "note": "UNI 15m: rule 1/120 (mom6)", "failed": [], "pct": 90.6, "updated": "2026-09-03T13:24:27Z"}

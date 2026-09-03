@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 27, "total": 52, "rows": 1923350, "note": "LEAD 1d: 157 bars, testing 120 rules", "failed": [], "pct": 51.9, "updated": "2026-09-03T11:20:31Z"}
+{"shard": 7, "stage": "testing", "done": 28, "total": 52, "rows": 1933470, "note": "LUMIA 15m: rule 2/120 (mom15)", "failed": [], "pct": 53.8, "updated": "2026-09-03T11:21:35Z"}

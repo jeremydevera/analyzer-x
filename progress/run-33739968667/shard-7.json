@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 4, "total": 52, "rows": 355610, "note": "AONSTOCK 1d: downloading candles", "failed": [], "pct": 7.7, "updated": "2026-09-03T10:06:19Z"}
+{"shard": 7, "stage": "testing", "done": 5, "total": 52, "rows": 373970, "note": "ARX 15m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 9.6, "updated": "2026-09-03T10:07:04Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 18, "total": 52, "rows": 1521220, "note": "FIDA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 34.6, "updated": "2026-09-03T10:41:49Z"}
+{"shard": 13, "stage": "testing", "done": 19, "total": 52, "rows": 1600000, "note": "FTNTSTOCK 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 36.5, "updated": "2026-09-03T10:42:34Z"}

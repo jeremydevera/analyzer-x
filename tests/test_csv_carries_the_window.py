@@ -117,3 +117,41 @@ def test_the_download_link_carries_the_window_too():
     assert "days: applied.months ? undefined : (applied.days || undefined)" in href
     client = open("webapp/src/lib/api.ts", encoding="utf-8").read()
     assert client.count('p.set("days"') == 2, "the table AND the download"
+
+
+def test_the_download_is_checked_without_being_RUN_first():
+    """The route must not pull a row before streaming.
+
+    Operator, Sep 03, 2026: *"ITS STILL NOT WORKING I WANT YOU TO FIX THIS THE
+    NEXT TIME I DOWNLOAD CSV I WANT IT WORKING"* — their link came back
+    Internal Server Error at 30.017 s. Two faults, both measured on this store
+    (28.65 GB, 49,846,104 rows, mechanical disk, a backtest writing beside it):
+
+    1. The route probed with `next(iter_rows(...))`, so ONE download ran the
+       whole query TWICE — 126.1 s a pass COLD (0.8 s warm, which is why it
+       passed verification the first time). Nothing was written while that ran.
+    2. Next's rewrite proxy allows an upstream request 30 s and then answers
+       "Internal Server Error" ITSELF
+       (next/dist/server/lib/router-utils/proxy-request.js: `proxyTimeout ||
+       30000`). The API was still working; the proxy had already given up.
+    """
+    src = inspect.getsource(api.strategies_csv)
+    assert "next(ri.iter_rows" not in src, \
+        "a check that RUNS the query costs the download a whole extra pass"
+    assert "ri.export_plan(" in src, \
+        "check with export_plan: it reads no rows and refuses the same way"
+    # and it must still refuse the same two ways, or a missing index becomes a
+    # truncated file instead of a 503
+    assert "SortNotReady" in src and "503" in src
+    assert "ValueError" in src and "400" in src
+
+
+def test_the_proxy_waits_longer_than_a_download_takes():
+    cfg = open("webapp/next.config.ts", encoding="utf-8").read()
+    assert "proxyTimeout" in cfg, \
+        "Next answers 500 itself after 30 s; a CSV of 27,482 rows needs longer"
+    import re
+
+    m = re.search(r"experimental:\s*\{[^}]*proxyTimeout:\s*([\d_]+)", cfg)
+    assert m, "the setting itself, not just the comment explaining it"
+    assert int(m.group(1).replace("_", "")) >= 600_000, m.group(1)

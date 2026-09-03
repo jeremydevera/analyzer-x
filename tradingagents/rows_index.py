@@ -2063,19 +2063,20 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             "months_window": int(months or 0)}
 
 
-def iter_rows(coin=None, tf=None, signal=None, profitable=False,
-              sort="profit", min_trades=0, min_winrate=0, max_tp=0,
-              sizing=None, row_id=None, group=None, max_sl=0, days=0,
-              desc=None, batch=5_000, min_tp=0, min_sl=0):
-    """Every matching row, in the asked order, a batch at a time.
+def export_plan(coin=None, signal=None, sort="profit", row_id=None,
+                group=None, min_winrate=0, min_trades=0, desc=None):
+    """Everything that can REFUSE an export, and the index choices it makes —
+    WITHOUT running the query.
 
-    No limit and no list: 21,858,026 rows will not fit in a browser table or in
-    this process's memory, and the operator asked to see ALL of them ("i can
-    still only see like about 100 rows give me all", 2026-08-26). So the export
-    streams — the reader gets a cursor, not an array.
-
-    Yields dicts shaped exactly like `query()["rows"]`, so the CSV and the
-    screen can never show different fields for the same row (kit item F).
+    `/api/strategies.csv` used to check by pulling the first row out of
+    `iter_rows`, so the whole query ran TWICE for one download: once to be
+    thrown away, once to be written. Cold on this store (28.65 GB, mechanical
+    disk, with a backtest writing beside it) the operator's own filter
+    (win rate >= 90, TP <= 4, SL <= 2, flat, ranked by profit) measured
+    **126.1 s** to its first row — so the probe alone blew the proxy's 30 s
+    limit and the download came back "Internal Server Error" at 30.018 s,
+    twice, while the same query WARM is 0.8 s. Now the route calls this, which
+    reads no rows at all, and the stream starts sending immediately.
     """
     key = str(sort or "profit")
     if key not in SORTS:
@@ -2131,6 +2132,26 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
         cap = _winrate_seek_cap()
         n = _winrate_matches(min_winrate, min_trades, cap=cap)
         seeks = n is not None and n <= cap
+    return key, order, seeks, signal_seeks, group_idx
+
+
+def iter_rows(coin=None, tf=None, signal=None, profitable=False,
+              sort="profit", min_trades=0, min_winrate=0, max_tp=0,
+              sizing=None, row_id=None, group=None, max_sl=0, days=0,
+              desc=None, batch=5_000, min_tp=0, min_sl=0):
+    """Every matching row, in the asked order, a batch at a time.
+
+    No limit and no list: 21,858,026 rows will not fit in a browser table or in
+    this process's memory, and the operator asked to see ALL of them ("i can
+    still only see like about 100 rows give me all", 2026-08-26). So the export
+    streams — the reader gets a cursor, not an array.
+
+    Yields dicts shaped exactly like `query()["rows"]`, so the CSV and the
+    screen can never show different fields for the same row (kit item F).
+    """
+    key, order, seeks, signal_seeks, group_idx = export_plan(
+        coin=coin, signal=signal, sort=sort, row_id=row_id, group=group,
+        min_winrate=min_winrate, min_trades=min_trades, desc=desc)
     where, args = _where(coin, tf, signal, profitable, min_trades,
                          min_winrate, max_tp, sizing, row_id, group, max_sl,
                          min_tp, min_sl,

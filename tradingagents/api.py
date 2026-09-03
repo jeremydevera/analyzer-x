@@ -415,16 +415,18 @@ def strategies_csv(coin: str | None = None, tf: str | None = None,
 
     from tradingagents import rows_index as ri
 
-    # fail BEFORE the stream starts: an error mid-download is a truncated file
-    # that looks complete
+    # Fail BEFORE the stream starts — an error mid-download is a truncated file
+    # that looks complete — but WITHOUT running the query. This used to pull the
+    # first row out of `iter_rows`, so one download ran the whole query TWICE,
+    # and COLD on this store that is 126.1 s a pass (0.8 s warm): the check
+    # alone blew the 30 s proxy limit and the operator got "Internal Server
+    # Error" at 30.018 s with nothing written, twice (Sep 03, 2026: "ITS STILL
+    # NOT WORKING"). `export_plan` reads no rows and refuses with exactly what
+    # the query would have refused with, so the stream now starts at once.
     try:
-        next(ri.iter_rows(coin=coin, tf=tf, signal=signal,
-                          profitable=profitable, sort=sort,
-                          min_trades=min_trades, min_winrate=min_winrate,
-                          max_tp=max_tp, sizing=sizing, row_id=row_id,
-                          group=group, max_sl=max_sl,
-                          min_tp=min_tp, min_sl=min_sl,
-                          days=0 if months else days, desc=desc), None)
+        ri.export_plan(coin=coin, signal=signal, sort=sort, row_id=row_id,
+                       group=group, min_winrate=min_winrate,
+                       min_trades=min_trades, desc=desc)
     except ri.SortNotReady as exc:
         raise HTTPException(503, str(exc)) from exc
     except ValueError as exc:

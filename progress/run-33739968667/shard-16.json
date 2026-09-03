@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 42, "total": 52, "rows": 3915540, "note": "SONIC 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 80.8, "updated": "2026-09-03T13:30:22Z"}
+{"shard": 16, "stage": "testing", "done": 42, "total": 52, "rows": 3921540, "note": "SONIC 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 80.8, "updated": "2026-09-03T13:31:12Z"}

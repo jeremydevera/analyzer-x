@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 10, "total": 52, "rows": 941860, "note": "CARV 1h: rule 18/120 (macd)", "failed": [], "pct": 19.2, "updated": "2026-09-03T10:42:03Z"}
+{"shard": 18, "stage": "testing", "done": 10, "total": 52, "rows": 963860, "note": "CARV 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 19.2, "updated": "2026-09-03T10:42:59Z"}

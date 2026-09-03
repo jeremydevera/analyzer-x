@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 29, "total": 52, "rows": 2185786, "note": "MET 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 55.8, "updated": "2026-09-03T11:35:23Z"}
+{"shard": 15, "stage": "testing", "done": 29, "total": 52, "rows": 2191066, "note": "MET 30m: rule 2/120 (mom15)", "failed": [], "pct": 55.8, "updated": "2026-09-03T11:36:14Z"}

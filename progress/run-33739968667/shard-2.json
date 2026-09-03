@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 8, "total": 53, "rows": 654470, "note": "BEL 30m: rule 40/120 (crsi)", "failed": [], "pct": 15.1, "updated": "2026-09-03T10:22:29Z"}
+{"shard": 2, "stage": "testing", "done": 8, "total": 53, "rows": 667230, "note": "BEL 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 15.1, "updated": "2026-09-03T10:23:15Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 21, "total": 52, "rows": 710082, "note": "GSSTOCK 4h: rule 36/120 (stochrsi)", "failed": [], "pct": 40.4, "updated": "2026-09-03T13:51:05Z"}
+{"shard": 11, "stage": "testing", "done": 24, "total": 52, "rows": 785736, "note": "IONQSTOCK 1h: rule 4/120 (trend50)", "failed": [], "pct": 46.2, "updated": "2026-09-03T13:51:51Z"}

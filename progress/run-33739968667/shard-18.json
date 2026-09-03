@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 4, "total": 52, "rows": 297242, "note": "ARB 4h: rule 4/120 (trend50)", "failed": [], "pct": 7.7, "updated": "2026-09-03T10:04:08Z"}
+{"shard": 18, "stage": "testing", "done": 5, "total": 52, "rows": 334858, "note": "ATOM 15m: rule 1/120 (mom6)", "failed": [], "pct": 9.6, "updated": "2026-09-03T10:04:54Z"}

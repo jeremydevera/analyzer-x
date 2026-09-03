@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 42, "total": 52, "rows": 3215134, "note": "SNX 1h: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 80.8, "updated": "2026-09-03T12:01:26Z"}
+{"shard": 10, "stage": "testing", "done": 42, "total": 52, "rows": 3256670, "note": "SNX 1d: rule 72/120 (force13)", "failed": [], "pct": 80.8, "updated": "2026-09-03T12:02:11Z"}

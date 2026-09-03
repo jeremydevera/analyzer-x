@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 48, "total": 52, "rows": 4154024, "note": "USTC 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 92.3, "updated": "2026-09-03T13:49:28Z"}
+{"shard": 15, "stage": "testing", "done": 48, "total": 52, "rows": 4162604, "note": "USTC 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 92.3, "updated": "2026-09-03T13:50:29Z"}

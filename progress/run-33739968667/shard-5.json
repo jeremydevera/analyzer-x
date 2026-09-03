@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 23, "total": 53, "rows": 1796612, "note": "HYPER 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 43.4, "updated": "2026-09-03T11:38:12Z"}
+{"shard": 5, "stage": "testing", "done": 23, "total": 53, "rows": 1803812, "note": "HYPER 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-03T11:39:09Z"}

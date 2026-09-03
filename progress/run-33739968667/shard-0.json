@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 41, "total": 53, "rows": 3437762, "note": "SHIB 30m: rule 21/120 (cci20)", "failed": [], "pct": 77.4, "updated": "2026-09-03T13:06:25Z"}
+{"shard": 0, "stage": "testing", "done": 41, "total": 53, "rows": 3450162, "note": "SHIB 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 77.4, "updated": "2026-09-03T13:07:11Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 36, "total": 52, "rows": 3289138, "note": "PROM 30m: rule 33/120 (heikin)", "failed": [], "pct": 69.2, "updated": "2026-09-03T12:58:35Z"}
+{"shard": 19, "stage": "testing", "done": 36, "total": 52, "rows": 3301898, "note": "PROM 30m: rule 92/120 (cf_soup_l1)", "failed": [], "pct": 69.2, "updated": "2026-09-03T12:59:20Z"}

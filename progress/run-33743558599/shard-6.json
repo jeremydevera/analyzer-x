@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 32, "total": 53, "rows": 1096108, "note": "NEWT 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 60.4, "updated": "2026-09-03T14:18:46Z"}
+{"shard": 6, "stage": "testing", "done": 33, "total": 53, "rows": 1140702, "note": "NUSTOCK 1h: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 62.3, "updated": "2026-09-03T14:19:31Z"}

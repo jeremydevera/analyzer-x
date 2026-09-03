@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 30, "total": 52, "rows": 2322704, "note": "MONAD 15m: rule 40/120 (crsi)", "failed": [], "pct": 57.7, "updated": "2026-09-03T11:38:08Z"}
+{"shard": 8, "stage": "testing", "done": 30, "total": 52, "rows": 2332164, "note": "MONAD 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 57.7, "updated": "2026-09-03T11:38:53Z"}

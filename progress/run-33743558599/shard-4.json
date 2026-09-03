@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 4, "total": 53, "rows": 97044, "note": "ANKR 1h: rule 28/120 (vortex14)", "failed": [], "pct": 7.5, "updated": "2026-09-03T13:50:44Z"}
+{"shard": 4, "stage": "testing", "done": 4, "total": 53, "rows": 116844, "note": "ANKR 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 7.5, "updated": "2026-09-03T13:51:29Z"}

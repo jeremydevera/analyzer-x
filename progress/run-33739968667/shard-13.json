@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 15, "total": 52, "rows": 1124920, "note": "DKNGSTOCK 15m: rule 46/120 (rsi2)", "failed": [], "pct": 28.8, "updated": "2026-09-03T10:22:44Z"}
+{"shard": 13, "stage": "testing", "done": 15, "total": 52, "rows": 1203950, "note": "DKNGSTOCK 1d: rule 3/120 (fade15)", "failed": [], "pct": 28.8, "updated": "2026-09-03T10:23:29Z"}

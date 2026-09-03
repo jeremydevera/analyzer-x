@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 18, "total": 52, "rows": 1438718, "note": "FHE 15m: rule 79/120 (cf_donch)", "failed": [], "pct": 34.6, "updated": "2026-09-03T10:59:27Z"}
+{"shard": 12, "stage": "testing", "done": 18, "total": 52, "rows": 1446318, "note": "FHE 15m: rule 118/120 (cf_stflip)", "failed": [], "pct": 34.6, "updated": "2026-09-03T11:00:12Z"}

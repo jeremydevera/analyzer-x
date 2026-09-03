@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 29, "total": 53, "rows": 2201710, "note": "MEGA 15m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 54.7, "updated": "2026-09-03T11:41:14Z"}
+{"shard": 6, "stage": "testing", "done": 29, "total": 53, "rows": 2209090, "note": "MEGA 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 54.7, "updated": "2026-09-03T11:42:00Z"}

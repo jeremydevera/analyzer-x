@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 10, "total": 52, "rows": 963526, "note": "CAP 30m: rule 18/120 (macd)", "failed": [], "pct": 19.2, "updated": "2026-09-03T10:37:55Z"}
+{"shard": 17, "stage": "testing", "done": 11, "total": 52, "rows": 1015864, "note": "CFX 15m: 34,617 bars, testing 120 rules", "failed": [], "pct": 21.2, "updated": "2026-09-03T10:38:47Z"}

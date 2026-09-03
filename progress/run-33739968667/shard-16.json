@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 25, "total": 52, "rows": 2380878, "note": "KAIA 15m: rule 3/120 (fade15)", "failed": [], "pct": 48.1, "updated": "2026-09-03T11:57:15Z"}
+{"shard": 16, "stage": "testing", "done": 25, "total": 52, "rows": 2385278, "note": "KAIA 15m: rule 23/120 (supertrend)", "failed": [], "pct": 48.1, "updated": "2026-09-03T11:58:00Z"}

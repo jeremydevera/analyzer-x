@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 2, "total": 52, "rows": 125024, "note": "AGT 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-03T09:46:54Z"}
+{"shard": 11, "stage": "testing", "done": 2, "total": 52, "rows": 128564, "note": "AGT 1h: rule 6/120 (sweep30)", "failed": [], "pct": 3.8, "updated": "2026-09-03T09:47:39Z"}

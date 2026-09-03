@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 24, "total": 52, "rows": 911724, "note": "IOST 1h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 46.2, "updated": "2026-09-03T14:30:09Z"}
+{"shard": 12, "stage": "testing", "done": 25, "total": 52, "rows": 944724, "note": "JPY 1h: 7,993 bars, testing 120 rules", "failed": [], "pct": 48.1, "updated": "2026-09-03T14:30:58Z"}

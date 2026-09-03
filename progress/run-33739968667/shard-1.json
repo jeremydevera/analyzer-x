@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 16, "total": 53, "rows": 1224096, "note": "DOT 4h: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 30.2, "updated": "2026-09-03T11:03:49Z"}
+{"shard": 1, "stage": "testing", "done": 18, "total": 53, "rows": 1279036, "note": "EWY 15m: rule 2/120 (mom15)", "failed": [], "pct": 34.0, "updated": "2026-09-03T11:04:37Z"}

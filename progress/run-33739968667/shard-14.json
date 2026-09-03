@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 14, "total": 52, "rows": 1179586, "note": "CYS 1h: 1,999 bars, testing 120 rules", "failed": [], "pct": 26.9, "updated": "2026-09-03T11:00:02Z"}
+{"shard": 14, "stage": "testing", "done": 14, "total": 52, "rows": 1227700, "note": "CYS 1d: 266 bars, testing 120 rules", "failed": [], "pct": 26.9, "updated": "2026-09-03T11:00:53Z"}

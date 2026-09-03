@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 1, "total": 52, "rows": 9180, "note": "AAOISTOCK 15m: rule 45/120 (zscore20)", "failed": [], "pct": 1.9, "updated": "2026-09-03T09:39:44Z"}
+{"shard": 10, "stage": "testing", "done": 1, "total": 52, "rows": 31700, "note": "AAOISTOCK 30m: rule 40/120 (crsi)", "failed": [], "pct": 1.9, "updated": "2026-09-03T09:40:29Z"}

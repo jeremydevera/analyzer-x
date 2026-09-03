@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 51, "total": 53, "rows": 4253494, "note": "XEC 30m: rule 62/120 (ote)", "failed": [], "pct": 96.2, "updated": "2026-09-03T13:52:34Z"}
+{"shard": 1, "stage": "testing", "done": 51, "total": 53, "rows": 4266034, "note": "XEC 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 96.2, "updated": "2026-09-03T13:53:22Z"}

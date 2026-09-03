@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 21, "total": 52, "rows": 1506248, "note": "GRIFFAIN 30m: rule 24/120 (psar)", "failed": [], "pct": 40.4, "updated": "2026-09-03T10:59:28Z"}
+{"shard": 8, "stage": "testing", "done": 21, "total": 52, "rows": 1521048, "note": "GRIFFAIN 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 40.4, "updated": "2026-09-03T11:00:14Z"}

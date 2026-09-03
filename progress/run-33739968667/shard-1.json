@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 53, "total": 53, "rows": 4460440, "note": "ZKSYNC 30m: rule 1/120 (mom6)", "failed": [], "pct": 100.0, "updated": "2026-09-03T14:07:47Z"}
+{"shard": 1, "stage": "testing", "done": 53, "total": 53, "rows": 4465060, "note": "ZKSYNC 30m: rule 18/120 (macd)", "failed": [], "pct": 100.0, "updated": "2026-09-03T14:08:32Z"}

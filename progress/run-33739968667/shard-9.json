@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 7, "total": 52, "rows": 617844, "note": "BAN 15m: rule 75/120 (relvolbrk)", "failed": [], "pct": 13.5, "updated": "2026-09-03T10:14:58Z"}
+{"shard": 9, "stage": "testing", "done": 7, "total": 52, "rows": 624444, "note": "BAN 15m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 13.5, "updated": "2026-09-03T10:15:43Z"}

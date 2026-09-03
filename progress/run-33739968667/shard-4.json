@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 25, "total": 53, "rows": 1972878, "note": "JCT 4h: rule 69/120 (obv20)", "failed": [], "pct": 47.2, "updated": "2026-09-03T11:22:15Z"}
+{"shard": 4, "stage": "testing", "done": 27, "total": 53, "rows": 2003614, "note": "LAYER 15m: 34,620 bars, testing 120 rules", "failed": [], "pct": 50.9, "updated": "2026-09-03T11:23:10Z"}

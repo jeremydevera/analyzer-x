@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 24, "total": 53, "rows": 1777072, "note": "INIT 15m: rule 33/120 (heikin)", "failed": [], "pct": 45.3, "updated": "2026-09-03T11:08:14Z"}
+{"shard": 4, "stage": "testing", "done": 24, "total": 53, "rows": 1782132, "note": "INIT 15m: rule 57/120 (orderblock)", "failed": [], "pct": 45.3, "updated": "2026-09-03T11:09:00Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 30, "total": 52, "rows": 2112926, "note": "MOCA 15m: rule 2/120 (mom15)", "failed": [], "pct": 57.7, "updated": "2026-09-03T11:31:46Z"}
+{"shard": 7, "stage": "testing", "done": 30, "total": 52, "rows": 2116526, "note": "MOCA 15m: rule 20/120 (stoch14)", "failed": [], "pct": 57.7, "updated": "2026-09-03T11:32:34Z"}

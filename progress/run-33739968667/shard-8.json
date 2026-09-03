@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 6, "total": 52, "rows": 447912, "note": "AVA 1h: rule 3/120 (fade15)", "failed": [], "pct": 11.5, "updated": "2026-09-03T10:04:59Z"}
+{"shard": 8, "stage": "testing", "done": 6, "total": 52, "rows": 472992, "note": "AVA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 11.5, "updated": "2026-09-03T10:05:48Z"}

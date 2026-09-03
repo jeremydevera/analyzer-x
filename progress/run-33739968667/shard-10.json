@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 25, "total": 52, "rows": 1925852, "note": "JP225 4h: rule 110/120 (cf_fundfade_l1)", "failed": [], "pct": 48.1, "updated": "2026-09-03T11:15:57Z"}
+{"shard": 10, "stage": "testing", "done": 26, "total": 52, "rows": 1952152, "note": "KLACSTOCK 15m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 50.0, "updated": "2026-09-03T11:16:43Z"}

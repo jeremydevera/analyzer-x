@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 52, "total": 52, "rows": 4283216, "note": "ZBCN 15m: rule 85/120 (cf_triple)", "failed": [], "pct": 100.0, "updated": "2026-09-04T04:57:28Z"}
+{"shard": 7, "stage": "testing", "done": 52, "total": 52, "rows": 4290916, "note": "ZBCN 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-04T04:58:17Z"}

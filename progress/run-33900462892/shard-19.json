@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 40, "total": 52, "rows": 3441680, "note": "SFP 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 76.9, "updated": "2026-09-04T21:01:32Z"}
+{"shard": 19, "stage": "testing", "done": 40, "total": 52, "rows": 3448940, "note": "SFP 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 76.9, "updated": "2026-09-04T21:02:19Z"}

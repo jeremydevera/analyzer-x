@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 38, "total": 53, "rows": 3036706, "note": "RBLXSTOCK 30m: rule 53/120 (squeeze)", "failed": [], "pct": 71.7, "updated": "2026-09-04T04:04:36Z"}
+{"shard": 6, "stage": "testing", "done": 39, "total": 53, "rows": 3052526, "note": "RKLBSTOCK 15m: rule 33/120 (heikin)", "failed": [], "pct": 73.6, "updated": "2026-09-04T04:05:22Z"}

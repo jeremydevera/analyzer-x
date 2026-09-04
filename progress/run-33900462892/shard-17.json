@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 49, "total": 52, "rows": 4681300, "note": "VTHO 30m: rule 72/120 (force13)", "failed": [], "pct": 94.2, "updated": "2026-09-04T22:07:36Z"}
+{"shard": 17, "stage": "testing", "done": 49, "total": 52, "rows": 4691860, "note": "VTHO 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 94.2, "updated": "2026-09-04T22:08:24Z"}

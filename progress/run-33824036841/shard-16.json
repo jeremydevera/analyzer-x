@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 17, "total": 52, "rows": 1628970, "note": "EUR 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 32.7, "updated": "2026-09-04T02:28:27Z"}
+{"shard": 16, "stage": "testing", "done": 17, "total": 52, "rows": 1647150, "note": "EUR 1h: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 32.7, "updated": "2026-09-04T02:29:12Z"}

@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 36, "total": 52, "rows": 2935292, "note": "POL 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 69.2, "updated": "2026-09-04T02:47:46Z"}
+{"shard": 10, "stage": "testing", "done": 38, "total": 52, "rows": 2974892, "note": "RDDTSTOCK 15m: downloading candles", "failed": [], "pct": 73.1, "updated": "2026-09-04T02:48:33Z"}

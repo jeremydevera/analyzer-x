@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 3473002, "note": "TAG 30m: rule 63/120 (killzone)", "failed": [], "pct": 84.9, "updated": "2026-09-04T04:32:21Z"}
+{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 3484402, "note": "TAG 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-04T04:33:16Z"}

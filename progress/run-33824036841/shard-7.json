@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 28, "total": 52, "rows": 2081388, "note": "LUMIA 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 53.8, "updated": "2026-09-04T02:53:22Z"}
+{"shard": 7, "stage": "testing", "done": 28, "total": 52, "rows": 2087988, "note": "LUMIA 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 53.8, "updated": "2026-09-04T02:54:11Z"}

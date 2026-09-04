@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 50, "total": 53, "rows": 3666920, "note": "WET 15m: rule 35/120 (willr14)", "failed": [], "pct": 94.3, "updated": "2026-09-04T20:34:20Z"}
+{"shard": 8, "stage": "testing", "done": 50, "total": 53, "rows": 3675720, "note": "WET 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 94.3, "updated": "2026-09-04T20:35:07Z"}

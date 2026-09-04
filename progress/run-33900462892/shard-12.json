@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 4, "total": 52, "rows": 279024, "note": "API3 15m: rule 24/120 (psar)", "failed": [], "pct": 7.7, "updated": "2026-09-04T17:40:25Z"}
+{"shard": 12, "stage": "testing", "done": 4, "total": 52, "rows": 286624, "note": "API3 15m: rule 63/120 (killzone)", "failed": [], "pct": 7.7, "updated": "2026-09-04T17:41:11Z"}

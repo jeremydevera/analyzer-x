@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 15, "total": 52, "rows": 1014962, "note": "DODO 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 28.8, "updated": "2026-09-04T02:02:13Z"}
+{"shard": 14, "stage": "testing", "done": 15, "total": 52, "rows": 1028822, "note": "DODO 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 28.8, "updated": "2026-09-04T02:02:58Z"}

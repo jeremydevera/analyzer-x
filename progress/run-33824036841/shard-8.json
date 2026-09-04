@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 40, "total": 52, "rows": 3287632, "note": "SAPIEN 15m: rule 47/120 (ibs)", "failed": [], "pct": 76.9, "updated": "2026-09-04T04:29:27Z"}
+{"shard": 8, "stage": "testing", "done": 40, "total": 52, "rows": 3294232, "note": "SAPIEN 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 76.9, "updated": "2026-09-04T04:30:13Z"}

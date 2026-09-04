@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 14, "total": 52, "rows": 1291076, "note": "DDOGSTOCK 15m: rule 67/120 (pinbar)", "failed": [], "pct": 26.9, "updated": "2026-09-04T02:14:10Z"}
+{"shard": 19, "stage": "testing", "done": 15, "total": 52, "rows": 1362826, "note": "DOS 15m: rule 69/120 (obv20)", "failed": [], "pct": 28.8, "updated": "2026-09-04T02:14:55Z"}

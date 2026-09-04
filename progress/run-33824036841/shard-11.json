@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 38, "total": 52, "rows": 3268702, "note": "RDWSTOCK 4h: rule 1/120 (mom6)", "failed": [], "pct": 73.1, "updated": "2026-09-04T04:00:47Z"}
+{"shard": 11, "stage": "testing", "done": 39, "total": 52, "rows": 3295866, "note": "ROBO 15m: rule 3/120 (fade15)", "failed": [], "pct": 75.0, "updated": "2026-09-04T04:01:35Z"}

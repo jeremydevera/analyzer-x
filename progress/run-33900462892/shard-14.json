@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 46, "total": 52, "rows": 3903502, "note": "TOWNS 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 88.5, "updated": "2026-09-04T20:13:05Z"}
+{"shard": 14, "stage": "testing", "done": 46, "total": 52, "rows": 3916042, "note": "TOWNS 1h: rule 36/120 (stochrsi)", "failed": [], "pct": 88.5, "updated": "2026-09-04T20:13:51Z"}

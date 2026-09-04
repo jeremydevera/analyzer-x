@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 3, "total": 52, "rows": 237628, "note": "ALICE 15m: rule 1/120 (mom6)", "failed": [], "pct": 5.8, "updated": "2026-09-04T01:18:36Z"}
+{"shard": 7, "stage": "testing", "done": 3, "total": 52, "rows": 239428, "note": "ALICE 15m: rule 6/120 (sweep30)", "failed": [], "pct": 5.8, "updated": "2026-09-04T01:19:22Z"}

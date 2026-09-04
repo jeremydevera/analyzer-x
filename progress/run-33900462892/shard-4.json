@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 30, "total": 53, "rows": 2714160, "note": "MIRA 15m: rule 95/120 (cf_emarsi_l1)", "failed": [], "pct": 56.6, "updated": "2026-09-04T19:37:27Z"}
+{"shard": 4, "stage": "testing", "done": 30, "total": 53, "rows": 2719820, "note": "MIRA 30m: rule 1/120 (mom6)", "failed": [], "pct": 56.6, "updated": "2026-09-04T19:38:15Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 6, "total": 52, "rows": 469466, "note": "AVAX 30m: rule 65/120 (doji)", "failed": [], "pct": 11.5, "updated": "2026-09-04T01:33:12Z"}
+{"shard": 7, "stage": "testing", "done": 6, "total": 52, "rows": 480266, "note": "AVAX 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 11.5, "updated": "2026-09-04T01:34:00Z"}

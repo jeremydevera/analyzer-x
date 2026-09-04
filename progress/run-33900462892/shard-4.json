@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 36, "total": 53, "rows": 3205944, "note": "PIXEL 15m: rule 13/120 (pivot)", "failed": [], "pct": 67.9, "updated": "2026-09-04T19:58:36Z"}
+{"shard": 4, "stage": "testing", "done": 36, "total": 53, "rows": 3210564, "note": "PIXEL 15m: rule 34/120 (lrslope)", "failed": [], "pct": 67.9, "updated": "2026-09-04T19:59:21Z"}

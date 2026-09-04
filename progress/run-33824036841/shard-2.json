@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 40, "total": 53, "rows": 3332218, "note": "SAGA 15m: rule 85/120 (cf_triple)", "failed": [], "pct": 75.5, "updated": "2026-09-04T04:05:03Z"}
+{"shard": 2, "stage": "testing", "done": 40, "total": 53, "rows": 3339018, "note": "SAGA 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-04T04:06:02Z"}

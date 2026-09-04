@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 40, "total": 52, "rows": 3421440, "note": "SFP 15m: 34,562 bars, testing 120 rules", "failed": [], "pct": 76.9, "updated": "2026-09-04T20:58:22Z"}
+{"shard": 19, "stage": "testing", "done": 40, "total": 52, "rows": 3423420, "note": "SFP 15m: rule 3/120 (fade15)", "failed": [], "pct": 76.9, "updated": "2026-09-04T20:59:12Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 24, "total": 52, "rows": 1917860, "note": "INX 15m: rule 2/120 (mom15)", "failed": [], "pct": 46.2, "updated": "2026-09-04T02:46:42Z"}
+{"shard": 9, "stage": "testing", "done": 24, "total": 52, "rows": 1923800, "note": "INX 15m: rule 33/120 (heikin)", "failed": [], "pct": 46.2, "updated": "2026-09-04T02:47:28Z"}

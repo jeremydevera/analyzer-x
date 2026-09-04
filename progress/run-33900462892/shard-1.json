@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 8, "total": 53, "rows": 579854, "note": "BEL 30m: rule 33/120 (heikin)", "failed": [], "pct": 15.1, "updated": "2026-09-04T17:55:13Z"}
+{"shard": 1, "stage": "testing", "done": 8, "total": 53, "rows": 591514, "note": "BEL 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 15.1, "updated": "2026-09-04T17:55:58Z"}

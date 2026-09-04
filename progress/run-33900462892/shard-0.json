@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 34, "total": 53, "rows": 2959670, "note": "OKLOSTOCK 15m: rule 54/120 (fractal5)", "failed": [], "pct": 64.2, "updated": "2026-09-04T20:24:17Z"}
+{"shard": 0, "stage": "testing", "done": 35, "total": 53, "rows": 3003616, "note": "ORDI 15m: 34,560 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-04T20:25:12Z"}

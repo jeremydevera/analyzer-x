@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 25, "total": 52, "rows": 2410410, "note": "KAT 1h: rule 2/120 (mom15)", "failed": [], "pct": 48.1, "updated": "2026-09-04T03:07:47Z"}
+{"shard": 19, "stage": "testing", "done": 26, "total": 52, "rows": 2472406, "note": "KSM 15m: 34,587 bars, testing 120 rules", "failed": [], "pct": 50.0, "updated": "2026-09-04T03:08:39Z"}

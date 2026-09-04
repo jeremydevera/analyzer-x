@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 7, "total": 52, "rows": 555228, "note": "BASED 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 13.5, "updated": "2026-09-04T17:59:51Z"}
+{"shard": 11, "stage": "testing", "done": 8, "total": 52, "rows": 615926, "note": "BIRB 15m: 21,052 bars, testing 120 rules", "failed": [], "pct": 15.4, "updated": "2026-09-04T18:00:45Z"}

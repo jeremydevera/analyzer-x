@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 35, "total": 52, "rows": 3255024, "note": "PHAROS 30m: rule 1/120 (mom6)", "failed": [], "pct": 67.3, "updated": "2026-09-04T19:59:46Z"}
+{"shard": 18, "stage": "testing", "done": 35, "total": 52, "rows": 3293128, "note": "PHAROS 1h: rule 53/120 (squeeze)", "failed": [], "pct": 67.3, "updated": "2026-09-04T20:00:31Z"}

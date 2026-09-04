@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 2, "total": 52, "rows": 224940, "note": "AEVO 1d: 394 bars, testing 120 rules", "failed": [], "pct": 3.8, "updated": "2026-09-04T01:18:27Z"}
+{"shard": 8, "stage": "testing", "done": 5, "total": 52, "rows": 267874, "note": "AR 15m: 34,580 bars, testing 120 rules", "failed": [], "pct": 9.6, "updated": "2026-09-04T01:19:23Z"}

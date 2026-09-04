@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 43, "total": 52, "rows": 3462232, "note": "SPORTFUN 1d: 232 bars, testing 120 rules", "failed": [], "pct": 82.7, "updated": "2026-09-04T04:13:23Z"}
+{"shard": 9, "stage": "testing", "done": 44, "total": 52, "rows": 3473862, "note": "SUI 15m: rule 3/120 (fade15)", "failed": [], "pct": 84.6, "updated": "2026-09-04T04:14:18Z"}

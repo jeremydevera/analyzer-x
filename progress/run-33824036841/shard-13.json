@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 25, "total": 52, "rows": 2077742, "note": "JST 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 48.1, "updated": "2026-09-04T02:55:56Z"}
+{"shard": 13, "stage": "testing", "done": 25, "total": 52, "rows": 2098136, "note": "JST 1h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 48.1, "updated": "2026-09-04T02:56:41Z"}

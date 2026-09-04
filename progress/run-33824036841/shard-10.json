@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 42, "total": 52, "rows": 3315396, "note": "SNXX 15m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 80.8, "updated": "2026-09-04T02:58:29Z"}
+{"shard": 10, "stage": "testing", "done": 43, "total": 52, "rows": 3360326, "note": "SPOTSTOCK 15m: rule 20/120 (stoch14)", "failed": [], "pct": 82.7, "updated": "2026-09-04T02:59:14Z"}

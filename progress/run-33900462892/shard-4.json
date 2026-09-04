@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 23, "total": 53, "rows": 2154974, "note": "HUMA 15m: rule 13/120 (pivot)", "failed": [], "pct": 43.4, "updated": "2026-09-04T19:11:20Z"}
+{"shard": 4, "stage": "testing", "done": 23, "total": 53, "rows": 2159774, "note": "HUMA 15m: rule 43/120 (macddiv)", "failed": [], "pct": 43.4, "updated": "2026-09-04T19:12:06Z"}

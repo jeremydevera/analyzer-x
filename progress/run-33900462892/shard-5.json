@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 7, "total": 53, "rows": 541172, "note": "BANANA 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-04T18:01:43Z"}
+{"shard": 5, "stage": "testing", "done": 7, "total": 53, "rows": 556132, "note": "BANANA 1h: rule 63/120 (killzone)", "failed": [], "pct": 13.2, "updated": "2026-09-04T18:02:28Z"}

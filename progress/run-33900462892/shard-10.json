@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 11, "total": 53, "rows": 830680, "note": "CDNSSTOCK 15m: rule 1/120 (mom6)", "failed": [], "pct": 20.8, "updated": "2026-09-04T17:59:40Z"}
+{"shard": 10, "stage": "testing", "done": 12, "total": 53, "rows": 932068, "note": "CLSKSTOCK 1d: downloading candles", "failed": [], "pct": 22.6, "updated": "2026-09-04T18:00:26Z"}

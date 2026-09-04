@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 31, "total": 53, "rows": 2581320, "note": "MTL 15m: rule 52/120 (nr7)", "failed": [], "pct": 58.5, "updated": "2026-09-04T03:32:14Z"}
+{"shard": 4, "stage": "testing", "done": 31, "total": 53, "rows": 2589680, "note": "MTL 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 58.5, "updated": "2026-09-04T03:33:00Z"}

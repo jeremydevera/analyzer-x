@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 28, "total": 53, "rows": 2105478, "note": "LPT 15m: rule 47/120 (ibs)", "failed": [], "pct": 52.8, "updated": "2026-09-04T19:24:08Z"}
+{"shard": 2, "stage": "testing", "done": 28, "total": 53, "rows": 2113278, "note": "LPT 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 52.8, "updated": "2026-09-04T19:24:54Z"}

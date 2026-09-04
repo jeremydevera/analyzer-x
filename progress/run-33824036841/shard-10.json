@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 41, "total": 52, "rows": 3237788, "note": "SKHYNIXSTOCK 1h: 2,543 bars, testing 120 rules", "failed": [], "pct": 78.8, "updated": "2026-09-04T02:57:43Z"}
+{"shard": 10, "stage": "testing", "done": 42, "total": 52, "rows": 3315396, "note": "SNXX 15m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 80.8, "updated": "2026-09-04T02:58:29Z"}

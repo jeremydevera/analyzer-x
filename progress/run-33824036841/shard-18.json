@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 52, "total": 52, "rows": 3572082, "note": "ZINC 30m: rule 42/120 (rsidiv)", "failed": [], "pct": 100.0, "updated": "2026-09-04T04:20:05Z"}
+{"shard": 18, "stage": "testing", "done": 52, "total": 52, "rows": 3633014, "note": "ZINC 1d: 158 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-04T04:20:50Z"}

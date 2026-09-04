@@ -26,10 +26,8 @@ to two call sites that still assume one slot per coin:
 The REAL book is not affected either way: `state_key(sym, False)` returns the
 bare symbol in both places, and MEXC nets a contract into one position.
 """
-import pytest
 
-from tradingagents import auto_trader as at
-from tradingagents import positions_view as pv
+from tradingagents import auto_trader as at, positions_view as pv
 
 A, B = "keltner_30m_sl08tp08", "keltner_30m_sl08tp1"
 COIN = "GPNSTOCK_USDT"
@@ -156,8 +154,7 @@ def test_the_paper_book_route_returns_both_rows(monkeypatch):
     from fastapi.testclient import TestClient
 
     from tradingagents.api import app
-    from tradingagents.dataflows import mexc_credentials as cred
-    from tradingagents.dataflows import mexc_futures as fx
+    from tradingagents.dataflows import mexc_credentials as cred, mexc_futures as fx
 
     monkeypatch.setattr(cred, "load_into_env", lambda: None)
     monkeypatch.setattr(fx, "open_positions", lambda symbol=None: [])

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 34, "total": 53, "rows": 3103290, "note": "ON 4h: rule 3/120 (fade15)", "failed": [], "pct": 64.2, "updated": "2026-09-04T20:20:21Z"}
+{"shard": 9, "stage": "testing", "done": 35, "total": 53, "rows": 3139762, "note": "PAYPSTOCK 15m: rule 31/120 (trix15)", "failed": [], "pct": 66.0, "updated": "2026-09-04T20:21:06Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 27, "total": 53, "rows": 2254262, "note": "LAYER 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-04T19:24:10Z"}
+{"shard": 6, "stage": "testing", "done": 27, "total": 53, "rows": 2259702, "note": "LAYER 1h: rule 16/120 (keltner)", "failed": [], "pct": 50.9, "updated": "2026-09-04T19:24:56Z"}

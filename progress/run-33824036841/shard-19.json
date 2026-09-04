@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 6, "total": 52, "rows": 530712, "note": "A 30m: rule 33/120 (heikin)", "failed": [], "pct": 11.5, "updated": "2026-09-04T01:34:18Z"}
+{"shard": 19, "stage": "testing", "done": 6, "total": 52, "rows": 547212, "note": "A 30m: rule 109/120 (cf_fundfade)", "failed": [], "pct": 11.5, "updated": "2026-09-04T01:35:03Z"}

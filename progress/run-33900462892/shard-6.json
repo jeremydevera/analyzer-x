@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 5, "total": 53, "rows": 407494, "note": "ARWRSTOCK 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-04T17:45:04Z"}
+{"shard": 6, "stage": "testing", "done": 6, "total": 53, "rows": 421534, "note": "AVAX 15m: rule 3/120 (fade15)", "failed": [], "pct": 11.3, "updated": "2026-09-04T17:46:00Z"}

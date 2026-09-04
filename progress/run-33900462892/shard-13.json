@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 21, "total": 52, "rows": 1861314, "note": "GUA 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 40.4, "updated": "2026-09-04T19:02:59Z"}
+{"shard": 13, "stage": "testing", "done": 22, "total": 52, "rows": 1919444, "note": "HLSTOCK 30m: rule 2/120 (mom15)", "failed": [], "pct": 42.3, "updated": "2026-09-04T19:03:44Z"}

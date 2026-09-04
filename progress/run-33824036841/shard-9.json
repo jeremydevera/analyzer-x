@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 50, "total": 52, "rows": 4161510, "note": "WMTSTOCK 1h: rule 34/120 (lrslope)", "failed": [], "pct": 96.2, "updated": "2026-09-04T04:55:36Z"}
+{"shard": 9, "stage": "testing", "done": 51, "total": 52, "rows": 4217918, "note": "XMR 15m: 34,594 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-04T04:56:24Z"}

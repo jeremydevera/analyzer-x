@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 43, "total": 52, "rows": 3586120, "note": "SQD 15m: rule 63/120 (killzone)", "failed": [], "pct": 82.7, "updated": "2026-09-04T04:57:55Z"}
+{"shard": 14, "stage": "testing", "done": 43, "total": 52, "rows": 3593320, "note": "SQD 15m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 82.7, "updated": "2026-09-04T04:58:41Z"}

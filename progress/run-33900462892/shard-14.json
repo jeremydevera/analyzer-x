@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 5, "total": 52, "rows": 292854, "note": "ASTSSTOCK 15m: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 9.6, "updated": "2026-09-04T17:35:22Z"}
+{"shard": 14, "stage": "testing", "done": 5, "total": 52, "rows": 320774, "note": "ASTSSTOCK 1h: 3,416 bars, testing 120 rules", "failed": [], "pct": 9.6, "updated": "2026-09-04T17:36:08Z"}

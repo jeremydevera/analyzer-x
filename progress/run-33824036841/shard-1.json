@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 33, "total": 53, "rows": 2829552, "note": "NOWSTOCK 15m: rule 35/120 (willr14)", "failed": [], "pct": 62.3, "updated": "2026-09-04T03:19:58Z"}
+{"shard": 1, "stage": "testing", "done": 33, "total": 53, "rows": 2871592, "note": "NOWSTOCK 1h: rule 16/120 (keltner)", "failed": [], "pct": 62.3, "updated": "2026-09-04T03:20:44Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 8, "total": 53, "rows": 750700, "note": "BIGTIME 1h: rule 60/120 (eqraid)", "failed": [], "pct": 15.1, "updated": "2026-09-04T18:15:16Z"}
+{"shard": 7, "stage": "testing", "done": 8, "total": 53, "rows": 772260, "note": "BIGTIME 4h: rule 33/120 (heikin)", "failed": [], "pct": 15.1, "updated": "2026-09-04T18:16:02Z"}

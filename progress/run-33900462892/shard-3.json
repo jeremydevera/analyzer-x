@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 44, "total": 53, "rows": 3667612, "note": "STBL 15m: rule 44/120 (elder)", "failed": [], "pct": 83.0, "updated": "2026-09-04T20:52:14Z"}
+{"shard": 3, "stage": "testing", "done": 44, "total": 53, "rows": 3674432, "note": "STBL 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 83.0, "updated": "2026-09-04T20:53:02Z"}

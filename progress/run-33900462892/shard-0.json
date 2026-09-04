@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 3, "total": 53, "rows": 273428, "note": "AJGSTOCK 1h: 868 bars, testing 120 rules", "failed": [], "pct": 5.7, "updated": "2026-09-04T17:42:03Z"}
+{"shard": 0, "stage": "testing", "done": 4, "total": 53, "rows": 298828, "note": "AMZNSTOCK 15m: rule 20/120 (stoch14)", "failed": [], "pct": 7.5, "updated": "2026-09-04T17:42:48Z"}

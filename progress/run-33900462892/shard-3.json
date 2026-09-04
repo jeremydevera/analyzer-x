@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 3, "total": 53, "rows": 209996, "note": "AKT 15m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 5.7, "updated": "2026-09-04T17:39:32Z"}
+{"shard": 3, "stage": "testing", "done": 3, "total": 53, "rows": 214616, "note": "AKT 30m: rule 2/120 (mom15)", "failed": [], "pct": 5.7, "updated": "2026-09-04T17:40:27Z"}

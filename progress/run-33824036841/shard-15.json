@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 47, "total": 52, "rows": 4390788, "note": "TXNSTOCK 15m: rule 85/120 (cf_triple)", "failed": [], "pct": 90.4, "updated": "2026-09-04T04:56:57Z"}
+{"shard": 15, "stage": "testing", "done": 47, "total": 52, "rows": 4415540, "note": "TXNSTOCK 4h: 774 bars, testing 120 rules", "failed": [], "pct": 90.4, "updated": "2026-09-04T04:57:43Z"}

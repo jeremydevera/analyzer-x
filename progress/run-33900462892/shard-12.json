@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 5, "total": 52, "rows": 492056, "note": "ASTER 1d: 350 bars, testing 120 rules", "failed": [], "pct": 9.6, "updated": "2026-09-04T17:51:36Z"}
+{"shard": 12, "stage": "testing", "done": 6, "total": 52, "rows": 568292, "note": "AXONSTOCK 1d: 84 bars, testing 120 rules", "failed": [], "pct": 11.5, "updated": "2026-09-04T17:52:21Z"}

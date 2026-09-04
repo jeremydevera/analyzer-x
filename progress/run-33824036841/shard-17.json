@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 43, "total": 52, "rows": 3785360, "note": "STABLE 15m: rule 48/120 (prank)", "failed": [], "pct": 82.7, "updated": "2026-09-04T04:50:08Z"}
+{"shard": 17, "stage": "testing", "done": 43, "total": 52, "rows": 3793560, "note": "STABLE 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 82.7, "updated": "2026-09-04T04:50:54Z"}

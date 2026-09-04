@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 5, "total": 53, "rows": 350668, "note": "ARIA 15m: rule 49/120 (vwaprev)", "failed": [], "pct": 9.4, "updated": "2026-09-04T01:24:50Z"}
+{"shard": 0, "stage": "testing", "done": 5, "total": 53, "rows": 357488, "note": "ARIA 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-04T01:25:35Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 44, "total": 52, "rows": 4269380, "note": "SYN 30m: rule 4/120 (trend50)", "failed": [], "pct": 84.6, "updated": "2026-09-04T04:46:25Z"}
+{"shard": 19, "stage": "testing", "done": 44, "total": 52, "rows": 4281260, "note": "SYN 30m: rule 71/120 (mfi14)", "failed": [], "pct": 84.6, "updated": "2026-09-04T04:47:10Z"}

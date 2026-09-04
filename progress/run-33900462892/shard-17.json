@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 19, "total": 52, "rows": 1741744, "note": "FWDISTOCK 30m: rule 20/120 (stoch14)", "failed": [], "pct": 36.5, "updated": "2026-09-04T19:09:08Z"}
+{"shard": 17, "stage": "testing", "done": 20, "total": 52, "rows": 1787078, "note": "GMESTOCK 15m: rule 60/120 (eqraid)", "failed": [], "pct": 38.5, "updated": "2026-09-04T19:09:53Z"}

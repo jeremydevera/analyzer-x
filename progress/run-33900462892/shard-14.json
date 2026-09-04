@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 30, "total": 52, "rows": 2603620, "note": "MORPHO 15m: rule 55/120 (nhigh50)", "failed": [], "pct": 57.7, "updated": "2026-09-04T19:31:56Z"}
+{"shard": 14, "stage": "testing", "done": 30, "total": 52, "rows": 2613300, "note": "MORPHO 15m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 57.7, "updated": "2026-09-04T19:32:41Z"}

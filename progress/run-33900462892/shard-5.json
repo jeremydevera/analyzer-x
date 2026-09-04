@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 36, "total": 53, "rows": 2893444, "note": "PI 15m: rule 67/120 (pinbar)", "failed": [], "pct": 67.9, "updated": "2026-09-04T20:27:05Z"}
+{"shard": 5, "stage": "testing", "done": 36, "total": 53, "rows": 2901144, "note": "PI 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 67.9, "updated": "2026-09-04T20:27:53Z"}

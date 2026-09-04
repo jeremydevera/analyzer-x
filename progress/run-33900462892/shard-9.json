@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 21, "total": 53, "rows": 1893574, "note": "GRT 30m: rule 62/120 (ote)", "failed": [], "pct": 39.6, "updated": "2026-09-04T19:08:50Z"}
+{"shard": 9, "stage": "testing", "done": 21, "total": 53, "rows": 1906114, "note": "GRT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-04T19:09:37Z"}

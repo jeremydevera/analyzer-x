@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 12, "total": 52, "rows": 1085254, "note": "COMP 15m: rule 57/120 (orderblock)", "failed": [], "pct": 23.1, "updated": "2026-09-04T02:12:20Z"}
+{"shard": 18, "stage": "testing", "done": 12, "total": 52, "rows": 1093834, "note": "COMP 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 23.1, "updated": "2026-09-04T02:13:08Z"}

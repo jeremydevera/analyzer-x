@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 37, "total": 52, "rows": 2993738, "note": "PUNDIX 30m: rule 20/120 (stoch14)", "failed": [], "pct": 71.2, "updated": "2026-09-04T04:16:07Z"}
+{"shard": 8, "stage": "testing", "done": 37, "total": 52, "rows": 3004958, "note": "PUNDIX 30m: rule 72/120 (force13)", "failed": [], "pct": 71.2, "updated": "2026-09-04T04:16:52Z"}

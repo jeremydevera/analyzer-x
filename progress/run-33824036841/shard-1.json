@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 51, "total": 53, "rows": 4577564, "note": "XEC 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 96.2, "updated": "2026-09-04T04:45:10Z"}
+{"shard": 1, "stage": "testing", "done": 51, "total": 53, "rows": 4594284, "note": "XEC 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-04T04:45:55Z"}

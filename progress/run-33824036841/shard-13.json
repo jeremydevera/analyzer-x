@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 28, "total": 52, "rows": 2381986, "note": "MAGIC 4h: rule 61/120 (turtle)", "failed": [], "pct": 53.8, "updated": "2026-09-04T03:08:02Z"}
+{"shard": 13, "stage": "testing", "done": 29, "total": 52, "rows": 2409126, "note": "METASTOCK 15m: rule 3/120 (fade15)", "failed": [], "pct": 55.8, "updated": "2026-09-04T03:08:49Z"}

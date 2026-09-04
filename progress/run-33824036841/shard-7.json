@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 39, "total": 52, "rows": 3024460, "note": "RLC 30m: rule 46/120 (rsi2)", "failed": [], "pct": 75.0, "updated": "2026-09-04T03:39:17Z"}
+{"shard": 7, "stage": "testing", "done": 39, "total": 52, "rows": 3037880, "note": "RLC 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 75.0, "updated": "2026-09-04T03:40:02Z"}

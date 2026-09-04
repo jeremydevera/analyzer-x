@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 42, "total": 53, "rows": 3479062, "note": "SMCISTOCK 1h: rule 12/120 (donchian20)", "failed": [], "pct": 79.2, "updated": "2026-09-04T04:13:35Z"}
+{"shard": 2, "stage": "testing", "done": 43, "total": 53, "rows": 3529166, "note": "SOXS 15m: rule 20/120 (stoch14)", "failed": [], "pct": 81.1, "updated": "2026-09-04T04:14:21Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 25, "total": 52, "rows": 2383790, "note": "KAT 30m: rule 4/120 (trend50)", "failed": [], "pct": 48.1, "updated": "2026-09-04T03:07:01Z"}
+{"shard": 19, "stage": "testing", "done": 25, "total": 52, "rows": 2410410, "note": "KAT 1h: rule 2/120 (mom15)", "failed": [], "pct": 48.1, "updated": "2026-09-04T03:07:47Z"}

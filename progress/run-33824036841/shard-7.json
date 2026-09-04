@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 37, "total": 52, "rows": 2881872, "note": "PUMPFUN 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 71.2, "updated": "2026-09-04T03:31:27Z"}
+{"shard": 7, "stage": "testing", "done": 37, "total": 52, "rows": 2893312, "note": "PUMPFUN 1h: rule 46/120 (rsi2)", "failed": [], "pct": 71.2, "updated": "2026-09-04T03:32:12Z"}

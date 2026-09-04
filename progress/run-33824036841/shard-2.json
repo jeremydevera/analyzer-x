@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 7, "total": 53, "rows": 554990, "note": "BABASTOCK 15m: rule 79/120 (cf_donch)", "failed": [], "pct": 13.2, "updated": "2026-09-04T01:35:50Z"}
+{"shard": 2, "stage": "testing", "done": 7, "total": 53, "rows": 560730, "note": "BABASTOCK 30m: 16,872 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-04T01:36:38Z"}

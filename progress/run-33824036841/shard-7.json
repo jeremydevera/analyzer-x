@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 5, "total": 52, "rows": 377010, "note": "ARX 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 9.6, "updated": "2026-09-04T01:27:50Z"}
+{"shard": 7, "stage": "testing", "done": 5, "total": 52, "rows": 421152, "note": "ARX 1h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 9.6, "updated": "2026-09-04T01:28:35Z"}

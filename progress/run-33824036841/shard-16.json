@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 28, "total": 52, "rows": 2622086, "note": "MANTA 30m: rule 69/120 (obv20)", "failed": [], "pct": 53.8, "updated": "2026-09-04T03:31:03Z"}
+{"shard": 16, "stage": "testing", "done": 28, "total": 52, "rows": 2633306, "note": "MANTA 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 53.8, "updated": "2026-09-04T03:31:54Z"}

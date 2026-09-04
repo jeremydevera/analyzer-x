@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 17, "total": 53, "rows": 1288248, "note": "ENSO 4h: rule 2/120 (mom15)", "failed": [], "pct": 32.1, "updated": "2026-09-04T02:23:53Z"}
+{"shard": 3, "stage": "testing", "done": 19, "total": 53, "rows": 1343176, "note": "FLUID 15m: 33,088 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-04T02:24:48Z"}

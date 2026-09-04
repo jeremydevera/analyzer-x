@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 20, "total": 52, "rows": 1827912, "note": "GIGGLE 15m: rule 20/120 (stoch14)", "failed": [], "pct": 38.5, "updated": "2026-09-04T02:51:16Z"}
+{"shard": 12, "stage": "testing", "done": 20, "total": 52, "rows": 1831432, "note": "GIGGLE 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 38.5, "updated": "2026-09-04T02:52:02Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 38, "total": 52, "rows": 3260612, "note": "RENDER 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 73.1, "updated": "2026-09-04T20:47:49Z"}
+{"shard": 19, "stage": "testing", "done": 38, "total": 52, "rows": 3289212, "note": "RENDER 1d: 394 bars, testing 120 rules", "failed": [], "pct": 73.1, "updated": "2026-09-04T20:48:42Z"}

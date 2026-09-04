@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 31, "total": 53, "rows": 2396290, "note": "MSFTSTOCK 15m: rule 28/120 (vortex14)", "failed": [], "pct": 58.5, "updated": "2026-09-04T19:40:55Z"}
+{"shard": 2, "stage": "testing", "done": 31, "total": 53, "rows": 2404930, "note": "MSFTSTOCK 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 58.5, "updated": "2026-09-04T19:41:41Z"}

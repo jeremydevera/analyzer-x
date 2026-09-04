@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 14, "total": 52, "rows": 1027728, "note": "CVC 30m: rule 28/120 (vortex14)", "failed": [], "pct": 26.9, "updated": "2026-09-04T02:02:04Z"}
+{"shard": 7, "stage": "testing", "done": 14, "total": 52, "rows": 1039168, "note": "CVC 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 26.9, "updated": "2026-09-04T02:02:50Z"}

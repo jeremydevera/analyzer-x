@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 36, "total": 53, "rows": 3215624, "note": "PIXEL 15m: rule 58/120 (bos)", "failed": [], "pct": 67.9, "updated": "2026-09-04T20:00:07Z"}
+{"shard": 4, "stage": "testing", "done": 36, "total": 53, "rows": 3222004, "note": "PIXEL 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 67.9, "updated": "2026-09-04T20:00:53Z"}

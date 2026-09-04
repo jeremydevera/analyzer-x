@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 39, "total": 52, "rows": 3087912, "note": "ROBINHOOD 15m: rule 68/120 (dbltop)", "failed": [], "pct": 75.0, "updated": "2026-09-04T02:53:05Z"}
+{"shard": 10, "stage": "testing", "done": 39, "total": 52, "rows": 3097272, "note": "ROBINHOOD 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 75.0, "updated": "2026-09-04T02:53:55Z"}

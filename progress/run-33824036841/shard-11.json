@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 3, "total": 52, "rows": 247972, "note": "ALPINE 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 5.8, "updated": "2026-09-04T01:19:36Z"}
+{"shard": 11, "stage": "testing", "done": 3, "total": 52, "rows": 262932, "note": "ALPINE 1h: rule 63/120 (killzone)", "failed": [], "pct": 5.8, "updated": "2026-09-04T01:20:21Z"}

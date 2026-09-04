@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 16, "total": 53, "rows": 1508594, "note": "DUSK 1d: 394 bars, testing 120 rules", "failed": [], "pct": 30.2, "updated": "2026-09-04T18:44:52Z"}
+{"shard": 3, "stage": "testing", "done": 17, "total": 53, "rows": 1523510, "note": "ENS 15m: rule 2/120 (mom15)", "failed": [], "pct": 32.1, "updated": "2026-09-04T18:45:39Z"}

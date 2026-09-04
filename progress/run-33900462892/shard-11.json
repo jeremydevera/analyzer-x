@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 40, "total": 52, "rows": 3214648, "note": "SAPIEN 15m: rule 10/120 (sr_bounce)", "failed": [], "pct": 76.9, "updated": "2026-09-04T20:06:31Z"}
+{"shard": 11, "stage": "testing", "done": 40, "total": 52, "rows": 3218388, "note": "SAPIEN 15m: rule 27/120 (aroon25)", "failed": [], "pct": 76.9, "updated": "2026-09-04T20:07:16Z"}

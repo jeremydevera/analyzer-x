@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 5, "total": 52, "rows": 394686, "note": "ATOM 15m: rule 13/120 (pivot)", "failed": [], "pct": 9.6, "updated": "2026-09-04T17:50:48Z"}
+{"shard": 17, "stage": "testing", "done": 5, "total": 52, "rows": 399486, "note": "ATOM 15m: rule 43/120 (macddiv)", "failed": [], "pct": 9.6, "updated": "2026-09-04T17:51:33Z"}

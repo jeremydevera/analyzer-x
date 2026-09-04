@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 32, "total": 52, "rows": 2570588, "note": "NFLXSTOCK 15m: rule 1/120 (mom6)", "failed": [], "pct": 61.5, "updated": "2026-09-04T03:51:43Z"}
+{"shard": 8, "stage": "testing", "done": 32, "total": 52, "rows": 2606028, "note": "NFLXSTOCK 30m: rule 66/120 (soldiers)", "failed": [], "pct": 61.5, "updated": "2026-09-04T03:52:28Z"}

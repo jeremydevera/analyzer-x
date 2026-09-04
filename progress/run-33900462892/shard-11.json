@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 44, "total": 52, "rows": 3621212, "note": "STXSTOCK 15m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 84.6, "updated": "2026-09-04T20:26:34Z"}
+{"shard": 11, "stage": "testing", "done": 44, "total": 52, "rows": 3640052, "note": "STXSTOCK 30m: rule 113/120 (cf_obretest_l1)", "failed": [], "pct": 84.6, "updated": "2026-09-04T20:27:19Z"}

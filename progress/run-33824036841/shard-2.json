@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 8, "total": 53, "rows": 728230, "note": "BEL 4h: rule 1/120 (mom6)", "failed": [], "pct": 15.1, "updated": "2026-09-04T01:46:46Z"}
+{"shard": 2, "stage": "testing", "done": 9, "total": 53, "rows": 768226, "note": "BLUR 15m: 34,582 bars, testing 120 rules", "failed": [], "pct": 17.0, "updated": "2026-09-04T01:47:32Z"}

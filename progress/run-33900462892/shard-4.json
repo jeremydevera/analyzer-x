@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 15, "total": 53, "rows": 1502930, "note": "DEXE 1h: rule 119/120 (cf_stflip_l1)", "failed": [], "pct": 28.3, "updated": "2026-09-04T18:38:13Z"}
+{"shard": 4, "stage": "testing", "done": 17, "total": 53, "rows": 1603560, "note": "ENTGSTOCK 30m: rule 39/120 (fisher)", "failed": [], "pct": 32.1, "updated": "2026-09-04T18:38:58Z"}

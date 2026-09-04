@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 45, "total": 52, "rows": 3818012, "note": "TENCENTSTOCK 15m: rule 21/120 (cci20)", "failed": [], "pct": 86.5, "updated": "2026-09-04T05:13:01Z"}
+{"shard": 14, "stage": "testing", "done": 46, "total": 52, "rows": 3878612, "note": "TRB 15m: 34,595 bars, testing 120 rules", "failed": [], "pct": 88.5, "updated": "2026-09-04T05:13:56Z"}

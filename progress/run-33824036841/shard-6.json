@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 8, "total": 53, "rows": 593284, "note": "BICO 1h: rule 20/120 (stoch14)", "failed": [], "pct": 15.1, "updated": "2026-09-04T01:37:28Z"}
+{"shard": 6, "stage": "testing", "done": 8, "total": 53, "rows": 612684, "note": "BICO 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-04T01:38:15Z"}

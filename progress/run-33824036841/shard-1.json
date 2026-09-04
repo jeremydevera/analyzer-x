@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 19, "total": 53, "rows": 1593220, "note": "FLOW 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-04T02:23:47Z"}
+{"shard": 1, "stage": "testing", "done": 20, "total": 53, "rows": 1633216, "note": "GAS 15m: 34,584 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-04T02:24:35Z"}

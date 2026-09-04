@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 42, "total": 52, "rows": 3914058, "note": "SOL 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 80.8, "updated": "2026-09-04T04:31:04Z"}
+{"shard": 15, "stage": "testing", "done": 42, "total": 52, "rows": 3919258, "note": "SOL 30m: rule 20/120 (stoch14)", "failed": [], "pct": 80.8, "updated": "2026-09-04T04:31:50Z"}

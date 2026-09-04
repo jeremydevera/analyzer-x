@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 16, "total": 52, "rows": 1522894, "note": "EIGEN 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 30.8, "updated": "2026-09-04T02:22:55Z"}
+{"shard": 16, "stage": "testing", "done": 16, "total": 52, "rows": 1530154, "note": "EIGEN 1h: rule 3/120 (fade15)", "failed": [], "pct": 30.8, "updated": "2026-09-04T02:23:42Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 30, "total": 52, "rows": 2508368, "note": "MONAD 4h: 1,985 bars, testing 120 rules", "failed": [], "pct": 57.7, "updated": "2026-09-04T03:50:57Z"}
+{"shard": 8, "stage": "testing", "done": 32, "total": 52, "rows": 2570588, "note": "NFLXSTOCK 15m: rule 1/120 (mom6)", "failed": [], "pct": 61.5, "updated": "2026-09-04T03:51:43Z"}

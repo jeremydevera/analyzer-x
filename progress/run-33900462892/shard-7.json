@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 10, "total": 53, "rows": 924772, "note": "BTX 15m: rule 119/120 (cf_stflip_l1)", "failed": [], "pct": 18.9, "updated": "2026-09-04T18:24:34Z"}
+{"shard": 7, "stage": "testing", "done": 10, "total": 53, "rows": 926860, "note": "BTX 1h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 18.9, "updated": "2026-09-04T18:25:19Z"}

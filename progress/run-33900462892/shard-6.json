@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 25, "total": 53, "rows": 2103256, "note": "JDSTOCK 30m: rule 91/120 (cf_soup)", "failed": [], "pct": 47.2, "updated": "2026-09-04T19:16:18Z"}
+{"shard": 6, "stage": "testing", "done": 25, "total": 53, "rows": 2129276, "note": "JDSTOCK 1h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 47.2, "updated": "2026-09-04T19:17:03Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 6, "total": 52, "rows": 457380, "note": "AXL 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 11.5, "updated": "2026-09-04T01:31:38Z"}
+{"shard": 12, "stage": "testing", "done": 6, "total": 52, "rows": 465740, "note": "AXL 15m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 11.5, "updated": "2026-09-04T01:32:25Z"}

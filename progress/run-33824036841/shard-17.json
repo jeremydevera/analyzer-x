@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 34, "total": 52, "rows": 2970512, "note": "ORDI 15m: rule 91/120 (cf_soup)", "failed": [], "pct": 65.4, "updated": "2026-09-04T03:59:03Z"}
+{"shard": 17, "stage": "testing", "done": 34, "total": 52, "rows": 2975732, "note": "ORDI 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 65.4, "updated": "2026-09-04T03:59:50Z"}

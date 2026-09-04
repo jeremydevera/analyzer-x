@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 49, "total": 53, "rows": 4647148, "note": "VANA 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 92.5, "updated": "2026-09-04T21:36:31Z"}
+{"shard": 4, "stage": "testing", "done": 49, "total": 53, "rows": 4655728, "note": "VANA 1h: rule 3/120 (fade15)", "failed": [], "pct": 92.5, "updated": "2026-09-04T21:37:16Z"}

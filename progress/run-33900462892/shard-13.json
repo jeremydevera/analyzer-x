@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 43, "total": 52, "rows": 3581860, "note": "SPORTFUN 15m: 22,297 bars, testing 120 rules", "failed": [], "pct": 82.7, "updated": "2026-09-04T20:20:57Z"}
+{"shard": 13, "stage": "testing", "done": 43, "total": 52, "rows": 3583860, "note": "SPORTFUN 15m: rule 4/120 (trend50)", "failed": [], "pct": 82.7, "updated": "2026-09-04T20:21:45Z"}

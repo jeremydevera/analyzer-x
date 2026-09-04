@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 19, "total": 53, "rows": 1731836, "note": "FLR 30m: rule 39/120 (fisher)", "failed": [], "pct": 35.8, "updated": "2026-09-04T02:39:30Z"}
+{"shard": 2, "stage": "testing", "done": 19, "total": 53, "rows": 1745916, "note": "FLR 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 35.8, "updated": "2026-09-04T02:40:16Z"}

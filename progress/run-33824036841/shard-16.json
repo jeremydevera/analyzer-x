@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 28, "total": 52, "rows": 2593266, "note": "MANTA 15m: rule 63/120 (killzone)", "failed": [], "pct": 53.8, "updated": "2026-09-04T03:27:54Z"}
+{"shard": 16, "stage": "testing", "done": 28, "total": 52, "rows": 2601186, "note": "MANTA 15m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 53.8, "updated": "2026-09-04T03:28:39Z"}

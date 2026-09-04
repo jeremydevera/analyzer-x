@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 41, "total": 52, "rows": 3961140, "note": "SLP 1h: rule 100/120 (cf_soup1)", "failed": [], "pct": 78.8, "updated": "2026-09-04T04:26:36Z"}
+{"shard": 19, "stage": "testing", "done": 41, "total": 52, "rows": 3991060, "note": "SLP 1d: 394 bars, testing 120 rules", "failed": [], "pct": 78.8, "updated": "2026-09-04T04:27:21Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 6, "total": 52, "rows": 446466, "note": "AVAX 15m: rule 70/120 (cmf20)", "failed": [], "pct": 11.5, "updated": "2026-09-04T01:30:56Z"}
+{"shard": 7, "stage": "testing", "done": 6, "total": 52, "rows": 453846, "note": "AVAX 15m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 11.5, "updated": "2026-09-04T01:31:42Z"}

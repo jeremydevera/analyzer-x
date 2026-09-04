@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 33, "total": 52, "rows": 2537638, "note": "OGN 15m: rule 47/120 (ibs)", "failed": [], "pct": 63.5, "updated": "2026-09-04T03:47:30Z"}
+{"shard": 14, "stage": "testing", "done": 33, "total": 52, "rows": 2545558, "note": "OGN 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 63.5, "updated": "2026-09-04T03:48:17Z"}

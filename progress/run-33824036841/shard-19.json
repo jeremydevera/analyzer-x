@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 48, "total": 52, "rows": 4581898, "note": "UVXY 15m: rule 92/120 (cf_soup_l1)", "failed": [], "pct": 92.3, "updated": "2026-09-04T04:58:42Z"}
+{"shard": 19, "stage": "testing", "done": 49, "total": 52, "rows": 4658518, "note": "WAXP 15m: 34,594 bars, testing 120 rules", "failed": [], "pct": 94.2, "updated": "2026-09-04T04:59:39Z"}

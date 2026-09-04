@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 38, "total": 53, "rows": 3479544, "note": "Q 30m: rule 37/120 (ultosc)", "failed": [], "pct": 71.7, "updated": "2026-09-04T20:20:40Z"}
+{"shard": 4, "stage": "testing", "done": 38, "total": 53, "rows": 3491644, "note": "Q 30m: rule 94/120 (cf_emarsi)", "failed": [], "pct": 71.7, "updated": "2026-09-04T20:21:25Z"}

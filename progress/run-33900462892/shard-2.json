@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 51, "total": 53, "rows": 3926828, "note": "XBI 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-04T21:13:18Z"}
+{"shard": 2, "stage": "testing", "done": 52, "total": 53, "rows": 3982768, "note": "XVG 15m: 34,563 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-04T21:14:04Z"}

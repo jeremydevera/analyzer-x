@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 50, "total": 52, "rows": 4783864, "note": "W 15m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-04T22:14:48Z"}
+{"shard": 17, "stage": "testing", "done": 50, "total": 52, "rows": 4787824, "note": "W 30m: rule 2/120 (mom15)", "failed": [], "pct": 96.2, "updated": "2026-09-04T22:15:41Z"}

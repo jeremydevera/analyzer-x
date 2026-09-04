@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 46, "total": 52, "rows": 4238498, "note": "TQQQ 30m: rule 12/120 (donchian20)", "failed": [], "pct": 88.5, "updated": "2026-09-04T21:48:00Z"}
+{"shard": 16, "stage": "testing", "done": 47, "total": 52, "rows": 4293118, "note": "TWLOSTOCK 15m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 90.4, "updated": "2026-09-04T21:48:45Z"}

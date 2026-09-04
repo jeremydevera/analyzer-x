@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 4, "total": 53, "rows": 370490, "note": "ANTHROPIC 4h: 858 bars, testing 120 rules", "failed": [], "pct": 7.5, "updated": "2026-09-04T01:19:58Z"}
+{"shard": 6, "stage": "testing", "done": 6, "total": 53, "rows": 401954, "note": "AVAVSTOCK 30m: 3,203 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-04T01:20:45Z"}

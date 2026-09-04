@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 23, "total": 53, "rows": 1503126, "note": "HYPE 15m: 34,584 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-04T02:27:25Z"}
+{"shard": 6, "stage": "testing", "done": 23, "total": 53, "rows": 1504746, "note": "HYPE 15m: rule 3/120 (fade15)", "failed": [], "pct": 43.4, "updated": "2026-09-04T02:28:12Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 45, "total": 53, "rows": 3775240, "note": "SXT 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-04T20:29:48Z"}
+{"shard": 1, "stage": "testing", "done": 45, "total": 53, "rows": 3778100, "note": "SXT 30m: rule 7/120 (fvg)", "failed": [], "pct": 84.9, "updated": "2026-09-04T20:30:34Z"}

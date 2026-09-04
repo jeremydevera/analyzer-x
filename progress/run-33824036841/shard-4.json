@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 31, "total": 53, "rows": 2628620, "note": "MTL 1h: rule 16/120 (keltner)", "failed": [], "pct": 58.5, "updated": "2026-09-04T03:36:06Z"}
+{"shard": 4, "stage": "testing", "done": 31, "total": 53, "rows": 2651060, "note": "MTL 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 58.5, "updated": "2026-09-04T03:36:53Z"}

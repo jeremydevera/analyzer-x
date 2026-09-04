@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 36, "total": 52, "rows": 3541444, "note": "POPMARTSTOCK 15m: rule 18/120 (macd)", "failed": [], "pct": 69.2, "updated": "2026-09-04T21:05:39Z"}
+{"shard": 16, "stage": "testing", "done": 37, "total": 52, "rows": 3606104, "note": "QBTSSTOCK 15m: rule 63/120 (killzone)", "failed": [], "pct": 71.2, "updated": "2026-09-04T21:06:24Z"}

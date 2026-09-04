@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 32, "total": 52, "rows": 2564498, "note": "NKESTOCK 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 61.5, "updated": "2026-09-04T19:54:38Z"}
+{"shard": 19, "stage": "testing", "done": 33, "total": 52, "rows": 2597586, "note": "OKB 15m: rule 1/120 (mom6)", "failed": [], "pct": 63.5, "updated": "2026-09-04T19:55:29Z"}

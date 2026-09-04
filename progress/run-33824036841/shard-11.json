@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 19, "total": 52, "rows": 1550470, "note": "FRAX 1d: rule 40/120 (crsi)", "failed": [], "pct": 36.5, "updated": "2026-09-04T02:36:40Z"}
+{"shard": 11, "stage": "testing", "done": 21, "total": 52, "rows": 1614706, "note": "GSSTOCK 15m: rule 22/120 (engulf)", "failed": [], "pct": 40.4, "updated": "2026-09-04T02:37:25Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 43, "total": 53, "rows": 3524212, "note": "SONIC 15m: rule 75/120 (relvolbrk)", "failed": [], "pct": 81.1, "updated": "2026-09-04T20:11:18Z"}
+{"shard": 1, "stage": "testing", "done": 43, "total": 53, "rows": 3531472, "note": "SONIC 15m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-04T20:12:04Z"}

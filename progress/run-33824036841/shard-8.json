@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 5, "total": 52, "rows": 305854, "note": "AR 30m: rule 54/120 (fractal5)", "failed": [], "pct": 9.6, "updated": "2026-09-04T01:24:54Z"}
+{"shard": 8, "stage": "testing", "done": 5, "total": 52, "rows": 320154, "note": "AR 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 9.6, "updated": "2026-09-04T01:25:49Z"}

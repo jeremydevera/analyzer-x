@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 44, "total": 52, "rows": 3741652, "note": "SUI 1h: rule 22/120 (engulf)", "failed": [], "pct": 84.6, "updated": "2026-09-04T20:32:32Z"}
+{"shard": 13, "stage": "testing", "done": 44, "total": 52, "rows": 3762112, "note": "SUI 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 84.6, "updated": "2026-09-04T20:33:19Z"}

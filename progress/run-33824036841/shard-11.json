@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 36, "total": 52, "rows": 3067266, "note": "PONS 15m: rule 16/120 (keltner)", "failed": [], "pct": 69.2, "updated": "2026-09-04T03:57:01Z"}
+{"shard": 11, "stage": "testing", "done": 36, "total": 52, "rows": 3100046, "note": "PONS 30m: rule 47/120 (ibs)", "failed": [], "pct": 69.2, "updated": "2026-09-04T03:57:46Z"}

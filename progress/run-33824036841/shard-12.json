@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 48, "total": 52, "rows": 4169150, "note": "USELESS 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 92.3, "updated": "2026-09-04T05:20:19Z"}
+{"shard": 12, "stage": "testing", "done": 48, "total": 52, "rows": 4171130, "note": "USELESS 30m: rule 3/120 (fade15)", "failed": [], "pct": 92.3, "updated": "2026-09-04T05:21:10Z"}

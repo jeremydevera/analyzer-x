@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 45, "total": 52, "rows": 3785790, "note": "TAO 30m: rule 64/120 (hammer)", "failed": [], "pct": 86.5, "updated": "2026-09-04T04:59:43Z"}
+{"shard": 8, "stage": "testing", "done": 45, "total": 52, "rows": 3796990, "note": "TAO 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 86.5, "updated": "2026-09-04T05:00:31Z"}

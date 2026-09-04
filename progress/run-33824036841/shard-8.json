@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 34, "total": 52, "rows": 2749614, "note": "OPENLEDGER 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 65.4, "updated": "2026-09-04T04:00:19Z"}
+{"shard": 8, "stage": "testing", "done": 34, "total": 52, "rows": 2759514, "note": "OPENLEDGER 1h: rule 36/120 (stochrsi)", "failed": [], "pct": 65.4, "updated": "2026-09-04T04:01:04Z"}

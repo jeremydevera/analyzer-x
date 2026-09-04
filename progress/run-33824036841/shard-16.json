@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 41, "total": 52, "rows": 3974626, "note": "SKYAI 15m: rule 62/120 (ote)", "failed": [], "pct": 78.8, "updated": "2026-09-04T04:56:21Z"}
+{"shard": 16, "stage": "testing", "done": 41, "total": 52, "rows": 3980566, "note": "SKYAI 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 78.8, "updated": "2026-09-04T04:57:07Z"}

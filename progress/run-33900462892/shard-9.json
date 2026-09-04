@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 32, "total": 53, "rows": 2909674, "note": "NEWT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 60.4, "updated": "2026-09-04T20:11:47Z"}
+{"shard": 9, "stage": "testing", "done": 33, "total": 53, "rows": 2954778, "note": "NUSTOCK 15m: rule 18/120 (macd)", "failed": [], "pct": 62.3, "updated": "2026-09-04T20:12:32Z"}

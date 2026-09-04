@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 28, "total": 53, "rows": 2321962, "note": "LSK 15m: 34,652 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-04T19:27:08Z"}
+{"shard": 6, "stage": "testing", "done": 28, "total": 53, "rows": 2323762, "note": "LSK 15m: rule 3/120 (fade15)", "failed": [], "pct": 52.8, "updated": "2026-09-04T19:27:57Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 17, "total": 53, "rows": 1363890, "note": "EPIC 4h: rule 46/120 (rsi2)", "failed": [], "pct": 32.1, "updated": "2026-09-04T18:49:35Z"}
+{"shard": 5, "stage": "testing", "done": 19, "total": 53, "rows": 1391566, "note": "FLUX 15m: 34,650 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-04T18:50:22Z"}

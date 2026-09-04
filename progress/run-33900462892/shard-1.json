@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 13, "total": 53, "rows": 1056394, "note": "COPPER 15m: rule 59/120 (choch)", "failed": [], "pct": 24.5, "updated": "2026-09-04T18:17:16Z"}
+{"shard": 1, "stage": "testing", "done": 13, "total": 53, "rows": 1067194, "note": "COPPER 30m: 10,478 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-04T18:18:05Z"}

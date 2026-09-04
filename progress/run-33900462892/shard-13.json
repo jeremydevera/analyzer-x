@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 7, "total": 52, "rows": 554840, "note": "BAS 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 13.5, "updated": "2026-09-04T17:47:29Z"}
+{"shard": 13, "stage": "testing", "done": 7, "total": 52, "rows": 563420, "note": "BAS 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 13.5, "updated": "2026-09-04T17:48:14Z"}

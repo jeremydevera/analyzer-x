@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 36, "total": 52, "rows": 3526912, "note": "PROMPT 30m: rule 18/120 (macd)", "failed": [], "pct": 69.2, "updated": "2026-09-04T04:02:48Z"}
+{"shard": 19, "stage": "testing", "done": 36, "total": 52, "rows": 3539672, "note": "PROMPT 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 69.2, "updated": "2026-09-04T04:03:33Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 44, "total": 53, "rows": 3178084, "note": "STO 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 83.0, "updated": "2026-09-04T20:12:58Z"}
+{"shard": 8, "stage": "testing", "done": 44, "total": 53, "rows": 3185464, "note": "STO 1h: rule 3/120 (fade15)", "failed": [], "pct": 83.0, "updated": "2026-09-04T20:13:45Z"}

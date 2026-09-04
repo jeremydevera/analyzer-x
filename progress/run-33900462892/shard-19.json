@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 2, "total": 52, "rows": 163212, "note": "AIXBT 1h: rule 3/120 (fade15)", "failed": [], "pct": 3.8, "updated": "2026-09-04T17:38:58Z"}
+{"shard": 19, "stage": "testing", "done": 2, "total": 52, "rows": 181472, "note": "AIXBT 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-04T17:39:44Z"}

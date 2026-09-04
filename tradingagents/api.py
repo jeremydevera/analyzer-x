@@ -120,6 +120,27 @@ def _keep_the_row_index_current() -> None:
                                   flush=True)
                     except Exception:
                         pass
+                # AND THE RUNNER, on the machines launchd cannot watch.
+                # Operator, 2026-09-04: *"IF I RUN IT RUN IT / I DONT WANT ANY
+                # INCONVENIENCE"*. `supervisor.py` is a macOS LaunchAgent, so
+                # on Windows a runner that dies stays dead — three starts died
+                # in a row that morning and nothing brought them back. The
+                # WANT flag is the operator's own intent: STOP removes it and
+                # this loop leaves it alone. It cannot double a runner —
+                # `start_runner` returns the existing pid when one is alive,
+                # and the runner takes an exclusive lock before it trades.
+                try:
+                    import tradingagents.auto_trader as _at
+                    from tradingagents import portable as _portable
+
+                    if (not _portable.MACOS and _at.wants_runner()
+                            and not _at.runner_pid()):
+                        pid = _at.start_runner()
+                        print(f"[supervisor] runner was down — restarted "
+                              f"(pid {pid})", flush=True)
+                except Exception as exc:
+                    print(f"[supervisor] could not restart the runner: "
+                          f"{exc!r}", flush=True)
 
         _th.Thread(target=_watch, name="job-supervisor", daemon=True).start()
         print("[supervisor] watching for crashed jobs", flush=True)

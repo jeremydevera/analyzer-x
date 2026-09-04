@@ -52,6 +52,10 @@ def test_starting_records_the_intent_and_stopping_clears_it(monkeypatch):
 
     killed = []
     monkeypatch.setattr(at.os, "kill", lambda pid, sig: killed.append((pid, sig)))
+    # `stop_runner` only kills a pid that is ALIVE, and 4242 is a made-up
+    # number: whether it happens to exist decided this test until 2026-09-04,
+    # when it did not and the assert failed on a machine with nothing wrong
+    monkeypatch.setattr(at.portable, "pid_alive", lambda pid: int(pid) == 4242)
     at.stop_runner()
     assert at.wants_runner() is False, "a deliberate stop must not be undone"
     assert killed and killed[0][0] == 4242
@@ -136,3 +140,32 @@ def test_a_second_runner_cannot_hold_the_lock(tmp_path, monkeypatch):
     assert e.value.code == 1
     assert traded == [], "the loser must exit before it can trade"
     holder.close()
+
+
+def test_the_api_restarts_a_dead_runner_where_launchd_cannot():
+    """Operator, 2026-09-04: *"IF I RUN IT RUN IT / I DONT WANT ANY
+    INCONVENIENCE"*. `supervisor.py` is a macOS LaunchAgent; on Windows three
+    starts died in a row that morning and nothing brought them back. The
+    API's job-supervisor thread now also watches the runner — only off macOS,
+    where launchd already does it, and only while the WANT flag is there, so a
+    deliberate STOP is never undone."""
+    import inspect
+
+    from tradingagents import api
+
+    src = inspect.getsource(api)
+    i = src.index("[supervisor] runner was down")
+    frag = src[i - 700:i + 200]
+    assert "_at.wants_runner()" in frag, "intent first: STOP must stick"
+    assert "not _at.runner_pid()" in frag, "only when it is actually down"
+    assert "not _portable.MACOS" in frag, "launchd owns it on the Mac"
+    assert "_at.start_runner()" in frag
+
+
+def test_a_restart_cannot_double_the_runner():
+    """`start_runner` hands back the live pid instead of spawning a second."""
+    import inspect
+
+    src = inspect.getsource(at.start_runner)
+    assert "existing = runner_pid()" in src
+    assert "if existing:\n        return existing" in src

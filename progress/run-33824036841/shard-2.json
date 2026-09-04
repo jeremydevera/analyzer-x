@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 45, "total": 53, "rows": 3625388, "note": "TAC 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-04T04:20:15Z"}
+{"shard": 2, "stage": "testing", "done": 45, "total": 53, "rows": 3631328, "note": "TAC 30m: rule 1/120 (mom6)", "failed": [], "pct": 84.9, "updated": "2026-09-04T04:21:11Z"}

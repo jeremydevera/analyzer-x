@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 6, "total": 53, "rows": 430640, "note": "AURASOL 30m: rule 94/120 (cf_emarsi)", "failed": [], "pct": 11.3, "updated": "2026-09-04T17:54:21Z"}
+{"shard": 2, "stage": "testing", "done": 7, "total": 53, "rows": 449224, "note": "BABY 15m: 34,646 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-04T17:55:21Z"}

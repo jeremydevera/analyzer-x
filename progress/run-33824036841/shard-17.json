@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 45, "total": 52, "rows": 4028986, "note": "TFUEL 1h: rule 33/120 (heikin)", "failed": [], "pct": 86.5, "updated": "2026-09-04T05:07:27Z"}
+{"shard": 17, "stage": "testing", "done": 46, "total": 52, "rows": 4056006, "note": "TRIA 15m: 20,436 bars, testing 120 rules", "failed": [], "pct": 88.5, "updated": "2026-09-04T05:08:19Z"}

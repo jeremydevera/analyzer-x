@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 45, "total": 53, "rows": 3691160, "note": "TAC 30m: rule 23/120 (supertrend)", "failed": [], "pct": 84.9, "updated": "2026-09-04T20:51:39Z"}
+{"shard": 6, "stage": "testing", "done": 45, "total": 53, "rows": 3701500, "note": "TAC 30m: rule 71/120 (mfi14)", "failed": [], "pct": 84.9, "updated": "2026-09-04T20:52:24Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 30, "total": 53, "rows": 2393192, "note": "MINIMAXSTOCK 30m: rule 13/120 (pivot)", "failed": [], "pct": 56.6, "updated": "2026-09-04T03:14:12Z"}
+{"shard": 0, "stage": "testing", "done": 31, "total": 53, "rows": 2453166, "note": "MSFU 15m: rule 115/120 (cf_diadx)", "failed": [], "pct": 58.5, "updated": "2026-09-04T03:14:57Z"}

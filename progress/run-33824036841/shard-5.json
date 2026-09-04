@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 6, "total": 53, "rows": 418650, "note": "AVAAI 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 11.3, "updated": "2026-09-04T01:33:21Z"}
+{"shard": 5, "stage": "testing", "done": 6, "total": 53, "rows": 427230, "note": "AVAAI 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-04T01:34:24Z"}

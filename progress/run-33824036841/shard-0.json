@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 4, "total": 53, "rows": 255108, "note": "AMZNSTOCK 30m: rule 17/120 (atrbreak)", "failed": [], "pct": 7.5, "updated": "2026-09-04T01:19:21Z"}
+{"shard": 0, "stage": "testing", "done": 4, "total": 53, "rows": 270908, "note": "AMZNSTOCK 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 7.5, "updated": "2026-09-04T01:20:07Z"}

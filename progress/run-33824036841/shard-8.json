@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 18, "total": 52, "rows": 1509414, "note": "FCXSTOCK 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 34.6, "updated": "2026-09-04T02:45:42Z"}
+{"shard": 8, "stage": "testing", "done": 21, "total": 52, "rows": 1589372, "note": "GRIFFAIN 15m: 34,586 bars, testing 120 rules", "failed": [], "pct": 40.4, "updated": "2026-09-04T02:46:43Z"}

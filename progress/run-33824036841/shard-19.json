@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 49, "total": 52, "rows": 4667098, "note": "WAXP 15m: rule 33/120 (heikin)", "failed": [], "pct": 94.2, "updated": "2026-09-04T05:01:11Z"}
+{"shard": 19, "stage": "testing", "done": 49, "total": 52, "rows": 4675458, "note": "WAXP 15m: rule 72/120 (force13)", "failed": [], "pct": 94.2, "updated": "2026-09-04T05:01:57Z"}

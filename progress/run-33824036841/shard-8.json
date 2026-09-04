@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 44, "total": 52, "rows": 3681862, "note": "STX 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 84.6, "updated": "2026-09-04T04:52:29Z"}
+{"shard": 8, "stage": "testing", "done": 44, "total": 52, "rows": 3696382, "note": "STX 1h: rule 61/120 (turtle)", "failed": [], "pct": 84.6, "updated": "2026-09-04T04:53:14Z"}

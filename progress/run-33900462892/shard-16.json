@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 41, "total": 52, "rows": 3813970, "note": "SKL 15m: rule 52/120 (nr7)", "failed": [], "pct": 78.8, "updated": "2026-09-04T21:20:49Z"}
+{"shard": 16, "stage": "testing", "done": 41, "total": 52, "rows": 3821670, "note": "SKL 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 78.8, "updated": "2026-09-04T21:21:36Z"}

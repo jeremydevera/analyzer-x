@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 7, "total": 53, "rows": 593812, "note": "BABY 30m: rule 79/120 (cf_donch)", "failed": [], "pct": 13.2, "updated": "2026-09-04T01:44:54Z"}
+{"shard": 3, "stage": "testing", "done": 7, "total": 53, "rows": 602012, "note": "BABY 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-04T01:45:44Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 15, "total": 52, "rows": 1088230, "note": "DJTSTOCK 15m: downloading candles", "failed": [], "pct": 28.8, "updated": "2026-09-04T02:02:17Z"}
+{"shard": 11, "stage": "testing", "done": 16, "total": 52, "rows": 1104710, "note": "EDEN 15m: rule 1/120 (mom6)", "failed": [], "pct": 30.8, "updated": "2026-09-04T02:03:02Z"}

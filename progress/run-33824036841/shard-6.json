@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 28, "total": 53, "rows": 2004990, "note": "LULUSTOCK 15m: 1,498 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-04T02:58:38Z"}
+{"shard": 6, "stage": "testing", "done": 29, "total": 53, "rows": 2049610, "note": "MEGA 15m: rule 1/120 (mom6)", "failed": [], "pct": 54.7, "updated": "2026-09-04T02:59:31Z"}

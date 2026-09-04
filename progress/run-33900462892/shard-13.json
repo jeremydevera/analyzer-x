@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 11, "total": 52, "rows": 937416, "note": "CELR 15m: rule 49/120 (vwaprev)", "failed": [], "pct": 21.2, "updated": "2026-09-04T18:12:47Z"}
+{"shard": 13, "stage": "testing", "done": 11, "total": 52, "rows": 945416, "note": "CELR 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 21.2, "updated": "2026-09-04T18:13:35Z"}

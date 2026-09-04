@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 47, "total": 52, "rows": 3757706, "note": "TST 15m: downloading candles", "failed": [], "pct": 90.4, "updated": "2026-09-04T04:21:32Z"}
+{"shard": 7, "stage": "testing", "done": 47, "total": 52, "rows": 3759026, "note": "TST 15m: rule 2/120 (mom15)", "failed": [], "pct": 90.4, "updated": "2026-09-04T04:22:38Z"}

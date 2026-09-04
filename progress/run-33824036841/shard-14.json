@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 7, "total": 52, "rows": 445962, "note": "BAS 1h: 9,087 bars, testing 120 rules", "failed": [], "pct": 13.5, "updated": "2026-09-04T01:29:59Z"}
+{"shard": 14, "stage": "testing", "done": 7, "total": 52, "rows": 453002, "note": "BAS 1h: rule 26/120 (adx14)", "failed": [], "pct": 13.5, "updated": "2026-09-04T01:30:44Z"}

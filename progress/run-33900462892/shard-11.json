@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 19, "total": 52, "rows": 1636616, "note": "FRAX 30m: rule 41/120 (tsi)", "failed": [], "pct": 36.5, "updated": "2026-09-04T18:51:06Z"}
+{"shard": 11, "stage": "testing", "done": 19, "total": 52, "rows": 1654304, "note": "FRAX 1h: rule 2/120 (mom15)", "failed": [], "pct": 36.5, "updated": "2026-09-04T18:51:52Z"}

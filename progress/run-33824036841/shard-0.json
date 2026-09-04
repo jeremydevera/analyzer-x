@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 30, "total": 53, "rows": 2370032, "note": "MINIMAXSTOCK 15m: rule 1/120 (mom6)", "failed": [], "pct": 56.6, "updated": "2026-09-04T03:13:27Z"}
+{"shard": 0, "stage": "testing", "done": 30, "total": 53, "rows": 2393192, "note": "MINIMAXSTOCK 30m: rule 13/120 (pivot)", "failed": [], "pct": 56.6, "updated": "2026-09-04T03:14:12Z"}

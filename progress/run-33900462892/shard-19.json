@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 7, "total": 52, "rows": 667896, "note": "BEAMX 1h: rule 16/120 (keltner)", "failed": [], "pct": 13.5, "updated": "2026-09-04T18:21:18Z"}
+{"shard": 19, "stage": "testing", "done": 7, "total": 52, "rows": 690116, "note": "BEAMX 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 13.5, "updated": "2026-09-04T18:22:13Z"}

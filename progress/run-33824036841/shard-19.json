@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 51, "total": 52, "rows": 4905262, "note": "XVS 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-04T05:15:44Z"}
+{"shard": 19, "stage": "testing", "done": 51, "total": 52, "rows": 4911062, "note": "XVS 30m: rule 23/120 (supertrend)", "failed": [], "pct": 98.1, "updated": "2026-09-04T05:16:29Z"}

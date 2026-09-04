@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 35, "total": 53, "rows": 2910430, "note": "PARTI 30m: rule 42/120 (rsidiv)", "failed": [], "pct": 66.0, "updated": "2026-09-04T20:07:50Z"}
+{"shard": 6, "stage": "testing", "done": 35, "total": 53, "rows": 2922750, "note": "PARTI 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 66.0, "updated": "2026-09-04T20:08:36Z"}

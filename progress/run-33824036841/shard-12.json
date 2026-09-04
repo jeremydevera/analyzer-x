@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 45, "total": 52, "rows": 3992606, "note": "TECKSTOCK 30m: 1,429 bars, testing 120 rules", "failed": [], "pct": 86.5, "updated": "2026-09-04T05:12:08Z"}
+{"shard": 12, "stage": "testing", "done": 46, "total": 52, "rows": 4013666, "note": "TQQQ 15m: rule 115/120 (cf_diadx)", "failed": [], "pct": 88.5, "updated": "2026-09-04T05:12:53Z"}

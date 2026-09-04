@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 24, "total": 53, "rows": 1671946, "note": "INTUSTOCK 15m: 18,291 bars, testing 120 rules", "failed": [], "pct": 45.3, "updated": "2026-09-04T18:57:57Z"}
+{"shard": 8, "stage": "testing", "done": 24, "total": 53, "rows": 1684186, "note": "INTUSTOCK 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 45.3, "updated": "2026-09-04T18:58:43Z"}

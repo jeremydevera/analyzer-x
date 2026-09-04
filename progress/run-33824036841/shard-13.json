@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 16, "total": 52, "rows": 1257434, "note": "EDU 30m: rule 46/120 (rsi2)", "failed": [], "pct": 30.8, "updated": "2026-09-04T02:07:07Z"}
+{"shard": 13, "stage": "testing", "done": 16, "total": 52, "rows": 1270194, "note": "EDU 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 30.8, "updated": "2026-09-04T02:07:53Z"}

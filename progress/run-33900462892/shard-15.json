@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 5, "total": 52, "rows": 317886, "note": "ASXSTOCK 15m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 9.6, "updated": "2026-09-04T17:36:18Z"}
+{"shard": 15, "stage": "testing", "done": 6, "total": 52, "rows": 377924, "note": "AXTISTOCK 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 11.5, "updated": "2026-09-04T17:37:03Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 4, "total": 52, "rows": 247108, "note": "ARCSOL 15m: rule 3/120 (fade15)", "failed": [], "pct": 7.7, "updated": "2026-09-04T17:46:00Z"}
+{"shard": 19, "stage": "testing", "done": 4, "total": 52, "rows": 250848, "note": "ARCSOL 15m: rule 20/120 (stoch14)", "failed": [], "pct": 7.7, "updated": "2026-09-04T17:46:50Z"}

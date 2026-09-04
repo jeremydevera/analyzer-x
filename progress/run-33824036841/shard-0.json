@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 43, "total": 53, "rows": 3309040, "note": "SOPH 30m: rule 63/120 (killzone)", "failed": [], "pct": 81.1, "updated": "2026-09-04T04:11:02Z"}
+{"shard": 0, "stage": "testing", "done": 43, "total": 53, "rows": 3321360, "note": "SOPH 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-04T04:11:55Z"}

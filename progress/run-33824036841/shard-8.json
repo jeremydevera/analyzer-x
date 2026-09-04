@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 29, "total": 52, "rows": 2417984, "note": "MELANIA 1d: 394 bars, testing 120 rules", "failed": [], "pct": 55.8, "updated": "2026-09-04T03:43:00Z"}
+{"shard": 8, "stage": "testing", "done": 30, "total": 52, "rows": 2432516, "note": "MONAD 15m: rule 2/120 (mom15)", "failed": [], "pct": 57.7, "updated": "2026-09-04T03:43:59Z"}

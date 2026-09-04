@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 22, "total": 52, "rows": 2091256, "note": "HOLO 1d: 358 bars, testing 120 rules", "failed": [], "pct": 42.3, "updated": "2026-09-04T19:29:21Z"}
+{"shard": 17, "stage": "testing", "done": 23, "total": 52, "rows": 2103556, "note": "IDOL 15m: rule 2/120 (mom15)", "failed": [], "pct": 44.2, "updated": "2026-09-04T19:30:18Z"}

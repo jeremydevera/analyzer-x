@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 28, "total": 52, "rows": 2181380, "note": "MARASTOCK 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 53.8, "updated": "2026-09-04T03:19:29Z"}
+{"shard": 18, "stage": "testing", "done": 30, "total": 52, "rows": 2224170, "note": "MRVLSTOCK 15m: rule 1/120 (mom6)", "failed": [], "pct": 57.7, "updated": "2026-09-04T03:20:16Z"}

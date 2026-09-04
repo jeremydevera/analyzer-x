@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 27, "total": 52, "rows": 2389866, "note": "LINK 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 51.9, "updated": "2026-09-04T03:24:39Z"}
+{"shard": 12, "stage": "testing", "done": 27, "total": 52, "rows": 2395466, "note": "LINK 30m: rule 22/120 (engulf)", "failed": [], "pct": 51.9, "updated": "2026-09-04T03:25:24Z"}

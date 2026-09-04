@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 43, "total": 53, "rows": 3846912, "note": "SPACE 15m: rule 19/120 (emacross)", "failed": [], "pct": 81.1, "updated": "2026-09-04T20:59:29Z"}
+{"shard": 9, "stage": "testing", "done": 43, "total": 53, "rows": 3854512, "note": "SPACE 15m: rule 58/120 (bos)", "failed": [], "pct": 81.1, "updated": "2026-09-04T21:00:15Z"}

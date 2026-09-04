@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 5, "total": 52, "rows": 383266, "note": "ASMLSTOCK 15m: rule 20/120 (stoch14)", "failed": [], "pct": 9.6, "updated": "2026-09-04T01:24:13Z"}
+{"shard": 9, "stage": "testing", "done": 5, "total": 52, "rows": 391586, "note": "ASMLSTOCK 15m: rule 72/120 (force13)", "failed": [], "pct": 9.6, "updated": "2026-09-04T01:24:59Z"}

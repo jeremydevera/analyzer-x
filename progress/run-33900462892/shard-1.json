@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 8, "total": 53, "rows": 550474, "note": "BEL 15m: rule 15/120 (bbbreak)", "failed": [], "pct": 15.1, "updated": "2026-09-04T17:51:20Z"}
+{"shard": 1, "stage": "testing", "done": 8, "total": 53, "rows": 555274, "note": "BEL 15m: rule 39/120 (fisher)", "failed": [], "pct": 15.1, "updated": "2026-09-04T17:52:06Z"}

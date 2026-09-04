@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 7, "total": 53, "rows": 667804, "note": "BANK 1d: 394 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-04T18:07:01Z"}
+{"shard": 7, "stage": "testing", "done": 8, "total": 53, "rows": 682720, "note": "BIGTIME 15m: rule 2/120 (mom15)", "failed": [], "pct": 15.1, "updated": "2026-09-04T18:08:06Z"}

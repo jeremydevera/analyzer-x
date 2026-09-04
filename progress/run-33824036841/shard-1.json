@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 46, "total": 53, "rows": 4206324, "note": "THE 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 86.8, "updated": "2026-09-04T04:28:29Z"}
+{"shard": 1, "stage": "testing", "done": 47, "total": 53, "rows": 4246936, "note": "TRUTH 15m: rule 1/120 (mom6)", "failed": [], "pct": 88.7, "updated": "2026-09-04T04:29:31Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 16, "total": 53, "rows": 1381578, "note": "DRAM 15m: rule 22/120 (engulf)", "failed": [], "pct": 30.2, "updated": "2026-09-04T18:29:49Z"}
+{"shard": 1, "stage": "testing", "done": 16, "total": 53, "rows": 1400238, "note": "DRAM 30m: rule 2/120 (mom15)", "failed": [], "pct": 30.2, "updated": "2026-09-04T18:30:36Z"}

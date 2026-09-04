@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 5, "total": 52, "rows": 372572, "note": "ATOM 30m: rule 49/120 (vwaprev)", "failed": [], "pct": 9.6, "updated": "2026-09-04T01:31:35Z"}
+{"shard": 18, "stage": "testing", "done": 5, "total": 52, "rows": 386572, "note": "ATOM 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 9.6, "updated": "2026-09-04T01:32:21Z"}

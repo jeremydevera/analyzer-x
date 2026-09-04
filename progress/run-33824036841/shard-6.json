@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 52, "total": 53, "rows": 4126690, "note": "ZAMA 15m: rule 79/120 (cf_donch)", "failed": [], "pct": 98.1, "updated": "2026-09-04T04:57:29Z"}
+{"shard": 6, "stage": "testing", "done": 52, "total": 53, "rows": 4135710, "note": "ZAMA 30m: 11,415 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-04T04:58:14Z"}

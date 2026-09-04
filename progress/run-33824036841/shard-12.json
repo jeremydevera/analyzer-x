@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 34, "total": 52, "rows": 2944704, "note": "OP 15m: rule 20/120 (stoch14)", "failed": [], "pct": 65.4, "updated": "2026-09-04T04:00:52Z"}
+{"shard": 12, "stage": "testing", "done": 34, "total": 52, "rows": 2950464, "note": "OP 15m: rule 69/120 (obv20)", "failed": [], "pct": 65.4, "updated": "2026-09-04T04:01:38Z"}

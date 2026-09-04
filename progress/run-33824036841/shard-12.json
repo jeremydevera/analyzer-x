@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 16, "total": 52, "rows": 1439492, "note": "EDGE 15m: rule 2/120 (mom15)", "failed": [], "pct": 30.8, "updated": "2026-09-04T02:25:32Z"}
+{"shard": 12, "stage": "testing", "done": 16, "total": 52, "rows": 1445872, "note": "EDGE 15m: rule 29/120 (hull20)", "failed": [], "pct": 30.8, "updated": "2026-09-04T02:26:18Z"}

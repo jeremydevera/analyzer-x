@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 2, "total": 53, "rows": 118852, "note": "ADMSTOCK 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-04T01:10:21Z"}
+{"shard": 2, "stage": "testing", "done": 3, "total": 53, "rows": 138596, "note": "AKE 15m: rule 1/120 (mom6)", "failed": [], "pct": 5.7, "updated": "2026-09-04T01:11:23Z"}

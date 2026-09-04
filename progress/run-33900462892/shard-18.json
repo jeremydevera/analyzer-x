@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 7, "total": 52, "rows": 599966, "note": "BDX 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 13.5, "updated": "2026-09-04T17:59:50Z"}
+{"shard": 18, "stage": "testing", "done": 8, "total": 52, "rows": 623190, "note": "BLESS 15m: rule 1/120 (mom6)", "failed": [], "pct": 15.4, "updated": "2026-09-04T18:00:37Z"}

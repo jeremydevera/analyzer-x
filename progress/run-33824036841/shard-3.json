@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 5, "total": 53, "rows": 464752, "note": "ARK 30m: rule 107/120 (cf_bosfvg_l1)", "failed": [], "pct": 9.4, "updated": "2026-09-04T01:35:24Z"}
+{"shard": 3, "stage": "testing", "done": 5, "total": 53, "rows": 472452, "note": "ARK 1h: rule 16/120 (keltner)", "failed": [], "pct": 9.4, "updated": "2026-09-04T01:36:10Z"}

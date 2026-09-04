@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 41, "total": 53, "rows": 3035162, "note": "SIGN 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 77.4, "updated": "2026-09-04T20:05:12Z"}
+{"shard": 8, "stage": "testing", "done": 42, "total": 53, "rows": 3074190, "note": "SMRSTOCK 15m: 6,481 bars, testing 120 rules", "failed": [], "pct": 79.2, "updated": "2026-09-04T20:05:59Z"}

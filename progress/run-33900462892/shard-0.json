@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 51, "total": 53, "rows": 4278520, "note": "XAUT 30m: rule 25/120 (ichimoku)", "failed": [], "pct": 96.2, "updated": "2026-09-04T21:44:45Z"}
+{"shard": 0, "stage": "testing", "done": 51, "total": 53, "rows": 4294360, "note": "XAUT 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-04T21:45:30Z"}

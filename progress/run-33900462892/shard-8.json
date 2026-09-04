@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 42, "total": 53, "rows": 3074190, "note": "SMRSTOCK 15m: 6,481 bars, testing 120 rules", "failed": [], "pct": 79.2, "updated": "2026-09-04T20:05:59Z"}
+{"shard": 8, "stage": "testing", "done": 42, "total": 53, "rows": 3111362, "note": "SMRSTOCK 1h: rule 2/120 (mom15)", "failed": [], "pct": 79.2, "updated": "2026-09-04T20:06:44Z"}

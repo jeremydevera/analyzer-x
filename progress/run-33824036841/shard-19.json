@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 33, "total": 52, "rows": 3209108, "note": "OL 15m: rule 13/120 (pivot)", "failed": [], "pct": 63.5, "updated": "2026-09-04T03:43:06Z"}
+{"shard": 19, "stage": "testing", "done": 33, "total": 52, "rows": 3215128, "note": "OL 15m: rule 57/120 (orderblock)", "failed": [], "pct": 63.5, "updated": "2026-09-04T03:43:51Z"}

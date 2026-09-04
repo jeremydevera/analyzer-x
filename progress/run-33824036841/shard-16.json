@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 16, "total": 52, "rows": 1473394, "note": "EIGEN 15m: 34,584 bars, testing 120 rules", "failed": [], "pct": 30.8, "updated": "2026-09-04T02:15:39Z"}
+{"shard": 16, "stage": "testing", "done": 16, "total": 52, "rows": 1474714, "note": "EIGEN 15m: rule 2/120 (mom15)", "failed": [], "pct": 30.8, "updated": "2026-09-04T02:16:31Z"}

@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 4, "total": 53, "rows": 384858, "note": "APE 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 7.5, "updated": "2026-09-04T17:40:01Z"}
+{"shard": 10, "stage": "testing", "done": 4, "total": 53, "rows": 410658, "note": "APE 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 7.5, "updated": "2026-09-04T17:40:54Z"}

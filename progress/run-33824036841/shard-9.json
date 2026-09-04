@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 31, "total": 52, "rows": 2477532, "note": "MUSTOCK 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 59.6, "updated": "2026-09-04T03:18:43Z"}
+{"shard": 9, "stage": "testing", "done": 32, "total": 52, "rows": 2525360, "note": "NGAS 15m: 20,830 bars, testing 120 rules", "failed": [], "pct": 61.5, "updated": "2026-09-04T03:19:36Z"}

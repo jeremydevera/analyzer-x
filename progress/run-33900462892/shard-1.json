@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 8, "total": 53, "rows": 555274, "note": "BEL 15m: rule 39/120 (fisher)", "failed": [], "pct": 15.1, "updated": "2026-09-04T17:52:06Z"}
+{"shard": 1, "stage": "testing", "done": 8, "total": 53, "rows": 561874, "note": "BEL 15m: rule 73/120 (volspike)", "failed": [], "pct": 15.1, "updated": "2026-09-04T17:52:51Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 49, "total": 53, "rows": 3742988, "note": "VET 30m: rule 85/120 (cf_triple)", "failed": [], "pct": 92.5, "updated": "2026-09-04T04:45:56Z"}
+{"shard": 5, "stage": "testing", "done": 49, "total": 53, "rows": 3754208, "note": "VET 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 92.5, "updated": "2026-09-04T04:46:41Z"}

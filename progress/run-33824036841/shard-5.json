@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 43, "total": 53, "rows": 3350874, "note": "SPACE 15m: 21,481 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-04T04:25:44Z"}
+{"shard": 5, "stage": "testing", "done": 43, "total": 53, "rows": 3353274, "note": "SPACE 15m: rule 6/120 (sweep30)", "failed": [], "pct": 81.1, "updated": "2026-09-04T04:26:29Z"}

@@ -177,3 +177,77 @@ def test_the_paper_book_route_returns_both_rows(monkeypatch):
     by_key = {r["strategy"]: r for r in got["paper"]}
     assert by_key[A]["entry"] == 89.38 and by_key[B]["entry"] == 89.36
     assert all(r["coin"] == "GPNSTOCK" for r in got["paper"])
+
+
+# ------------------------------------------------------------ the invariant
+def test_any_slot_a_cycle_opens_reaches_the_disk(tmp_path, monkeypatch):
+    """The PROPERTY, not the string. A source check pins the one call site
+    that was wrong; this pins the rule that made it wrong — whatever slot the
+    pass writes a position into must survive the cycle. It fails for ANY
+    future save list that misses a slot, whatever the key is shaped like, so
+    the next person to change the key format is told by a test rather than by
+    the operator asking why their demo book is empty.
+    """
+    monkeypatch.setattr(at, "STATE_DIR", tmp_path)
+    monkeypatch.setattr(at, "STATE_PATH", tmp_path / "auto_trade_state.json")
+    monkeypatch.setattr(at, "STATE_LOCK_PATH", tmp_path / "state.lock")
+    monkeypatch.setattr(at, "LEDGER_PATH", tmp_path / "ledger.jsonl")
+    monkeypatch.setattr(at, "load_settings", lambda: {
+        "strategies": [A, B], "strategy_coins": {A: [COIN], B: [COIN]},
+        "strategy_books": {A: ["paper"], B: ["paper"]}})
+    monkeypatch.setattr(at, "active_modes", lambda s: [True])   # paper only
+    monkeypatch.setattr(at, "timeframe_conflicts", lambda s: [])
+    monkeypatch.setattr(at, "adopt_orphans",
+                        lambda *a, **k: None)
+    monkeypatch.setattr(at, "reconcile_unconfigured", lambda *a, **k: None)
+    monkeypatch.setattr(at, "tripped_strategies", lambda s, dry=None: [])
+    monkeypatch.setattr(at, "coins_for", lambda key, s: [COIN])
+
+    # the only thing the stub does is what the real pass did on Sep 04:
+    # put a position into this strategy's OWN slot
+    def _fake_pass(symbol, settings, state, *, fx, dry, tripped):
+        for key in (A, B):
+            state.setdefault(at.state_key(symbol, dry, key),
+                             {"step": 0, "last_ts": {}})
+            state[at.state_key(symbol, dry, key)]["position"] = _pos(key)
+
+    monkeypatch.setattr(at, "process_symbol", _fake_pass)
+    at.run_cycle(fx=object())
+
+    back = at.load_state()
+    for key in (A, B):
+        slot = at.state_key(COIN, True, key)
+        assert back.get(slot, {}).get("position"), \
+            f"the cycle opened {slot} and did not save it"
+        assert back[slot]["position"]["strategy"] == key
+
+
+def test_a_cycle_that_raises_still_saves_what_it_opened(tmp_path, monkeypatch):
+    """The position is written BEFORE the bracket rests, on purpose — so a
+    pass that dies after opening must not lose it. This is why the save list
+    is built in a `finally`."""
+    monkeypatch.setattr(at, "STATE_DIR", tmp_path)
+    monkeypatch.setattr(at, "STATE_PATH", tmp_path / "auto_trade_state.json")
+    monkeypatch.setattr(at, "STATE_LOCK_PATH", tmp_path / "state.lock")
+    monkeypatch.setattr(at, "LEDGER_PATH", tmp_path / "ledger.jsonl")
+    monkeypatch.setattr(at, "load_settings", lambda: {
+        "strategies": [A], "strategy_coins": {A: [COIN]},
+        "strategy_books": {A: ["paper"]}})
+    monkeypatch.setattr(at, "active_modes", lambda s: [True])
+    monkeypatch.setattr(at, "timeframe_conflicts", lambda s: [])
+    monkeypatch.setattr(at, "adopt_orphans", lambda *a, **k: None)
+    monkeypatch.setattr(at, "reconcile_unconfigured", lambda *a, **k: None)
+    monkeypatch.setattr(at, "tripped_strategies", lambda s, dry=None: [])
+    monkeypatch.setattr(at, "coins_for", lambda key, s: [COIN])
+
+    def _opens_then_dies(symbol, settings, state, *, fx, dry, tripped):
+        state[at.state_key(symbol, dry, A)] = {"step": 0, "last_ts": {},
+                                               "position": _pos(A)}
+        raise RuntimeError("MEXC 510 rate limit")
+
+    monkeypatch.setattr(at, "process_symbol", _opens_then_dies)
+    at.run_cycle(fx=object())          # must not propagate
+
+    slot = at.state_key(COIN, True, A)
+    assert at.load_state().get(slot, {}).get("position"), \
+        "a pass that raised after opening lost the position"

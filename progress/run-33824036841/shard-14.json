@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 11, "total": 52, "rows": 779108, "note": "CETUS 15m: rule 2/120 (mom15)", "failed": [], "pct": 21.2, "updated": "2026-09-04T01:46:31Z"}
+{"shard": 14, "stage": "testing", "done": 11, "total": 52, "rows": 782308, "note": "CETUS 15m: rule 16/120 (keltner)", "failed": [], "pct": 21.2, "updated": "2026-09-04T01:47:17Z"}

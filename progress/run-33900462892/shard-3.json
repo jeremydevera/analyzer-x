@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 52, "total": 53, "rows": 4403622, "note": "XVS 15m: rule 47/120 (ibs)", "failed": [], "pct": 98.1, "updated": "2026-09-04T21:38:51Z"}
+{"shard": 3, "stage": "testing", "done": 52, "total": 53, "rows": 4410882, "note": "XVS 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-04T21:39:37Z"}

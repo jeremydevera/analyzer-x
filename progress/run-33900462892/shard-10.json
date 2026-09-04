@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 46, "total": 53, "rows": 3969238, "note": "TNSR 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 86.8, "updated": "2026-09-04T19:46:56Z"}
+{"shard": 10, "stage": "testing", "done": 46, "total": 53, "rows": 3993196, "note": "TNSR 4h: rule 14/120 (bb20)", "failed": [], "pct": 86.8, "updated": "2026-09-04T19:47:42Z"}

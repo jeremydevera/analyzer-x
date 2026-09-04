@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 11, "total": 52, "rows": 1105552, "note": "CGPT 4h: rule 16/120 (keltner)", "failed": [], "pct": 21.2, "updated": "2026-09-04T02:14:43Z"}
+{"shard": 17, "stage": "testing", "done": 12, "total": 52, "rows": 1140928, "note": "COLLECT 15m: rule 1/120 (mom6)", "failed": [], "pct": 23.1, "updated": "2026-09-04T02:15:39Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 38, "total": 53, "rows": 3032420, "note": "QTUM 15m: rule 41/120 (tsi)", "failed": [], "pct": 71.7, "updated": "2026-09-04T19:41:57Z"}
+{"shard": 1, "stage": "testing", "done": 38, "total": 53, "rows": 3039900, "note": "QTUM 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 71.7, "updated": "2026-09-04T19:42:43Z"}

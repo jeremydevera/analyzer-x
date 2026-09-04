@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 16, "total": 52, "rows": 1477354, "note": "EIGEN 15m: rule 12/120 (donchian20)", "failed": [], "pct": 30.8, "updated": "2026-09-04T02:17:18Z"}
+{"shard": 16, "stage": "testing", "done": 16, "total": 52, "rows": 1481094, "note": "EIGEN 15m: rule 29/120 (hull20)", "failed": [], "pct": 30.8, "updated": "2026-09-04T02:18:03Z"}

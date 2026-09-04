@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 15, "total": 53, "rows": 1210544, "note": "DIA 15m: rule 16/120 (keltner)", "failed": [], "pct": 28.3, "updated": "2026-09-04T18:45:24Z"}
+{"shard": 7, "stage": "testing", "done": 15, "total": 53, "rows": 1215344, "note": "DIA 15m: rule 40/120 (crsi)", "failed": [], "pct": 28.3, "updated": "2026-09-04T18:46:10Z"}

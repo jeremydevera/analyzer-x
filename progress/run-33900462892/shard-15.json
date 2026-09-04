@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 33, "total": 52, "rows": 2907602, "note": "NXPC 15m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 63.5, "updated": "2026-09-04T19:23:57Z"}
+{"shard": 15, "stage": "testing", "done": 33, "total": 52, "rows": 2912442, "note": "NXPC 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 63.5, "updated": "2026-09-04T19:24:42Z"}

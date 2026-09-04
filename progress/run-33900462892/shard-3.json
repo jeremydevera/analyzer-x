@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 28, "total": 53, "rows": 2333410, "note": "LQTY 30m: rule 83/120 (cf_maobv_l1)", "failed": [], "pct": 52.8, "updated": "2026-09-04T19:27:32Z"}
+{"shard": 3, "stage": "testing", "done": 28, "total": 53, "rows": 2343310, "note": "LQTY 1h: rule 3/120 (fade15)", "failed": [], "pct": 52.8, "updated": "2026-09-04T19:28:18Z"}

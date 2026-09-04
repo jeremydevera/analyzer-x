@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 50, "total": 52, "rows": 4538402, "note": "XAU 15m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-04T05:39:10Z"}
+{"shard": 17, "stage": "testing", "done": 50, "total": 52, "rows": 4603302, "note": "XAU 4h: rule 41/120 (tsi)", "failed": [], "pct": 96.2, "updated": "2026-09-04T05:39:55Z"}

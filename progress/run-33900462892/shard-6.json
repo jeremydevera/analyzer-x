@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 48, "total": 53, "rows": 4098690, "note": "UMA 4h: rule 33/120 (heikin)", "failed": [], "pct": 90.6, "updated": "2026-09-04T21:18:19Z"}
+{"shard": 6, "stage": "testing", "done": 49, "total": 53, "rows": 4129842, "note": "VELODROME 15m: 34,564 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-04T21:19:04Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 11, "total": 53, "rows": 894876, "note": "CATSTOCK 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 20.8, "updated": "2026-09-04T18:12:36Z"}
+{"shard": 1, "stage": "testing", "done": 12, "total": 53, "rows": 946020, "note": "CHIP 15m: rule 1/120 (mom6)", "failed": [], "pct": 22.6, "updated": "2026-09-04T18:13:23Z"}

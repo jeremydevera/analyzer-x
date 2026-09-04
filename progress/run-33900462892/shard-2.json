@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 25, "total": 53, "rows": 1916738, "note": "IWM 15m: rule 2/120 (mom15)", "failed": [], "pct": 47.2, "updated": "2026-09-04T19:19:27Z"}
+{"shard": 2, "stage": "testing", "done": 25, "total": 53, "rows": 1957098, "note": "IWM 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 47.2, "updated": "2026-09-04T19:20:12Z"}

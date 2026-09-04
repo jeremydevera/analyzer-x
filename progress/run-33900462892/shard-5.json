@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 43, "total": 53, "rows": 3474836, "note": "SOXL 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-04T20:56:37Z"}
+{"shard": 5, "stage": "testing", "done": 43, "total": 53, "rows": 3509036, "note": "SOXL 1h: rule 18/120 (macd)", "failed": [], "pct": 81.1, "updated": "2026-09-04T20:57:22Z"}

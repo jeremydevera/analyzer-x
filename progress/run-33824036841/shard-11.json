@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 1, "total": 52, "rows": 25480, "note": "AAPLSTOCK 30m: rule 8/120 (fib618)", "failed": [], "pct": 1.9, "updated": "2026-09-04T01:03:40Z"}
+{"shard": 11, "stage": "testing", "done": 1, "total": 52, "rows": 41280, "note": "AAPLSTOCK 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-04T01:04:26Z"}

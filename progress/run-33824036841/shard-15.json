@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 4, "total": 52, "rows": 228448, "note": "APPSTOCK 30m: rule 23/120 (supertrend)", "failed": [], "pct": 7.7, "updated": "2026-09-04T01:13:15Z"}
+{"shard": 15, "stage": "testing", "done": 5, "total": 52, "rows": 285236, "note": "ASTSSTOCK 15m: rule 3/120 (fade15)", "failed": [], "pct": 9.6, "updated": "2026-09-04T01:14:01Z"}

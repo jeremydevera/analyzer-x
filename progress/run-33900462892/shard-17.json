@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 14, "total": 52, "rows": 1301134, "note": "DBR 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 26.9, "updated": "2026-09-04T18:49:33Z"}
+{"shard": 17, "stage": "testing", "done": 14, "total": 52, "rows": 1305814, "note": "DBR 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 26.9, "updated": "2026-09-04T18:50:52Z"}

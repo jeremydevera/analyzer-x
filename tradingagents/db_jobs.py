@@ -1206,7 +1206,17 @@ def _run_backtest_inner(spec: dict, files_key: str = "backtest",
                                # use, so "4 of 11" never reads as broken
                                "cores_offered": cores_offered,
                                "cores_why": _live["why"],
-                               "ram_free_gb": round(free_ram_gb(), 2) or None,
+                               # THE PLANNER'S OWN reading, not a fresh one.
+                               # A second call to free_ram_gb() here put the
+                               # number, the sentence and this figure on the
+                               # panel from three different instants — which
+                               # is how "3 of 11 cores: 3.9 GB free" came to
+                               # sit beside "RAM 5.6/16 GB free" and read as
+                               # a contradiction (operator, Sep 04, 2026).
+                               # One reading decides the window and describes
+                               # it (label-must-match-data).
+                               "ram_free_gb": (round(_planner.free_gb, 2)
+                                               or None),
                                "fresh": fresh,
                                # Never MORE bars than there are cores. A pool
                                # worker that has just been replaced is still

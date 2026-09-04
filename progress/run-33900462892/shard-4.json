@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 20, "total": 53, "rows": 1840404, "note": "GENIUS 30m: 6,894 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-04T18:50:51Z"}
+{"shard": 4, "stage": "testing", "done": 20, "total": 53, "rows": 1858444, "note": "GENIUS 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 37.7, "updated": "2026-09-04T18:51:36Z"}

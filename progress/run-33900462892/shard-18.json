@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 40, "total": 52, "rows": 3633548, "note": "SENT 15m: 28,247 bars, testing 120 rules", "failed": [], "pct": 76.9, "updated": "2026-09-04T20:12:59Z"}
+{"shard": 18, "stage": "testing", "done": 40, "total": 52, "rows": 3636748, "note": "SENT 15m: rule 10/120 (sr_bounce)", "failed": [], "pct": 76.9, "updated": "2026-09-04T20:13:44Z"}

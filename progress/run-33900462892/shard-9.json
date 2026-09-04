@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 37, "total": 53, "rows": 3386094, "note": "PUMPBTC 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 69.8, "updated": "2026-09-04T20:39:38Z"}
+{"shard": 9, "stage": "testing", "done": 37, "total": 53, "rows": 3393894, "note": "PUMPBTC 1h: rule 11/120 (sr_break)", "failed": [], "pct": 69.8, "updated": "2026-09-04T20:40:24Z"}

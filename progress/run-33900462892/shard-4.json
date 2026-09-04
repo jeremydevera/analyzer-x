@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 40, "total": 53, "rows": 3609630, "note": "SAFE 15m: rule 14/120 (bb20)", "failed": [], "pct": 75.5, "updated": "2026-09-04T20:26:11Z"}
+{"shard": 4, "stage": "testing", "done": 40, "total": 53, "rows": 3614250, "note": "SAFE 15m: rule 35/120 (willr14)", "failed": [], "pct": 75.5, "updated": "2026-09-04T20:27:00Z"}

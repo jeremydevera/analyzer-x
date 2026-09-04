@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 2, "total": 52, "rows": 164260, "note": "AIOT 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-04T01:16:43Z"}
+{"shard": 16, "stage": "testing", "done": 2, "total": 52, "rows": 169320, "note": "AIOT 1h: rule 8/120 (fib618)", "failed": [], "pct": 3.8, "updated": "2026-09-04T01:17:29Z"}

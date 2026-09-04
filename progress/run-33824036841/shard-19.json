@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 13, "total": 52, "rows": 1250440, "note": "CSPR 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 25.0, "updated": "2026-09-04T02:13:25Z"}
+{"shard": 19, "stage": "testing", "done": 14, "total": 52, "rows": 1291076, "note": "DDOGSTOCK 15m: rule 67/120 (pinbar)", "failed": [], "pct": 26.9, "updated": "2026-09-04T02:14:10Z"}

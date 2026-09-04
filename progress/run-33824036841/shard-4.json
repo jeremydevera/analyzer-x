@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 1, "total": 53, "rows": 47300, "note": "1000BTT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 1.9, "updated": "2026-09-04T01:05:18Z"}
+{"shard": 4, "stage": "testing", "done": 1, "total": 53, "rows": 68860, "note": "1000BTT 1h: rule 94/120 (cf_emarsi)", "failed": [], "pct": 1.9, "updated": "2026-09-04T01:06:03Z"}

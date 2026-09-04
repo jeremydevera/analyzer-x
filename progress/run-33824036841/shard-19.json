@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 31, "total": 52, "rows": 2987920, "note": "NEAR 15m: rule 40/120 (crsi)", "failed": [], "pct": 59.6, "updated": "2026-09-04T03:31:07Z"}
+{"shard": 19, "stage": "testing", "done": 31, "total": 52, "rows": 2996240, "note": "NEAR 15m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 59.6, "updated": "2026-09-04T03:31:53Z"}

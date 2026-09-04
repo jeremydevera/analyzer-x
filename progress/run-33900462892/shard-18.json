@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 12, "total": 52, "rows": 1061802, "note": "COMP 15m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 23.1, "updated": "2026-09-04T18:25:09Z"}
+{"shard": 18, "stage": "testing", "done": 12, "total": 52, "rows": 1068182, "note": "COMP 30m: rule 8/120 (fib618)", "failed": [], "pct": 23.1, "updated": "2026-09-04T18:25:54Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 20, "total": 53, "rows": 1679304, "note": "GEVSTOCK 30m: rule 20/120 (stoch14)", "failed": [], "pct": 37.7, "updated": "2026-09-04T19:18:26Z"}
+{"shard": 7, "stage": "testing", "done": 20, "total": 53, "rows": 1718904, "note": "GEVSTOCK 1h: rule 118/120 (cf_stflip)", "failed": [], "pct": 37.7, "updated": "2026-09-04T19:19:11Z"}

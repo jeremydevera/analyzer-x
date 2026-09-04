@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 13, "total": 52, "rows": 954248, "note": "CRWDSTOCK 1h: rule 29/120 (hull20)", "failed": [], "pct": 25.0, "updated": "2026-09-04T01:55:45Z"}
+{"shard": 14, "stage": "testing", "done": 15, "total": 52, "rows": 979042, "note": "DODO 15m: 34,582 bars, testing 120 rules", "failed": [], "pct": 28.8, "updated": "2026-09-04T01:56:42Z"}

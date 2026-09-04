@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 13, "total": 52, "rows": 1251544, "note": "CSOPSAMSUNG2L 15m: rule 92/120 (cf_soup_l1)", "failed": [], "pct": 25.0, "updated": "2026-09-04T02:22:41Z"}
+{"shard": 17, "stage": "testing", "done": 14, "total": 52, "rows": 1276144, "note": "DATA 30m: 3,067 bars, testing 120 rules", "failed": [], "pct": 26.9, "updated": "2026-09-04T02:23:28Z"}

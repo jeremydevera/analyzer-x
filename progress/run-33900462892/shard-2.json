@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 22, "total": 53, "rows": 1766278, "note": "HBAR 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-04T19:16:19Z"}
+{"shard": 2, "stage": "testing", "done": 22, "total": 53, "rows": 1777058, "note": "HBAR 1h: rule 13/120 (pivot)", "failed": [], "pct": 41.5, "updated": "2026-09-04T19:17:05Z"}

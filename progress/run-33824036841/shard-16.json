@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 2, "total": 52, "rows": 117560, "note": "AIOT 15m: rule 12/120 (donchian20)", "failed": [], "pct": 3.8, "updated": "2026-09-04T01:11:09Z"}
+{"shard": 16, "stage": "testing", "done": 2, "total": 52, "rows": 121760, "note": "AIOT 15m: rule 33/120 (heikin)", "failed": [], "pct": 3.8, "updated": "2026-09-04T01:11:56Z"}

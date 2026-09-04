@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 36, "total": 53, "rows": 2976490, "note": "PIPPIN 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 67.9, "updated": "2026-09-04T20:20:27Z"}
+{"shard": 2, "stage": "testing", "done": 36, "total": 53, "rows": 2982490, "note": "PIPPIN 1h: rule 2/120 (mom15)", "failed": [], "pct": 67.9, "updated": "2026-09-04T20:21:16Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 51, "total": 53, "rows": 4450898, "note": "XLE 30m: rule 25/120 (ichimoku)", "failed": [], "pct": 96.2, "updated": "2026-09-04T21:57:06Z"}
+{"shard": 7, "stage": "testing", "done": 52, "total": 53, "rows": 4517578, "note": "YGG 15m: 34,566 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-04T21:58:03Z"}

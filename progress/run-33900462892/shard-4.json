@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 29, "total": 53, "rows": 2608900, "note": "MASTOCK 15m: 25,757 bars, testing 120 rules", "failed": [], "pct": 54.7, "updated": "2026-09-04T19:31:18Z"}
+{"shard": 4, "stage": "testing", "done": 29, "total": 53, "rows": 2619460, "note": "MASTOCK 15m: rule 82/120 (cf_maobv)", "failed": [], "pct": 54.7, "updated": "2026-09-04T19:32:03Z"}

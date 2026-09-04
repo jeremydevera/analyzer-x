@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 11, "total": 52, "rows": 880128, "note": "CETUS 4h: rule 100/120 (cf_soup1)", "failed": [], "pct": 21.2, "updated": "2026-09-04T01:54:15Z"}
+{"shard": 14, "stage": "testing", "done": 13, "total": 52, "rows": 903998, "note": "CRWDSTOCK 15m: rule 2/120 (mom15)", "failed": [], "pct": 25.0, "updated": "2026-09-04T01:55:00Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 37, "total": 52, "rows": 3502200, "note": "QNTSTOCK 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 71.2, "updated": "2026-09-04T04:10:39Z"}
+{"shard": 15, "stage": "testing", "done": 38, "total": 52, "rows": 3576880, "note": "REGNSTOCK 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 73.1, "updated": "2026-09-04T04:11:24Z"}

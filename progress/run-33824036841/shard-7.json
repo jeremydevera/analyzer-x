@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 7, "total": 52, "rows": 576142, "note": "BAND 30m: rule 3/120 (fade15)", "failed": [], "pct": 13.5, "updated": "2026-09-04T01:40:19Z"}
+{"shard": 7, "stage": "testing", "done": 7, "total": 52, "rows": 584942, "note": "BAND 30m: rule 43/120 (macddiv)", "failed": [], "pct": 13.5, "updated": "2026-09-04T01:41:05Z"}

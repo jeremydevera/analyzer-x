@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 22, "total": 52, "rows": 1919444, "note": "HLSTOCK 30m: rule 2/120 (mom15)", "failed": [], "pct": 42.3, "updated": "2026-09-04T19:03:44Z"}
+{"shard": 13, "stage": "testing", "done": 23, "total": 52, "rows": 1948444, "note": "IBMSTOCK 15m: rule 44/120 (elder)", "failed": [], "pct": 44.2, "updated": "2026-09-04T19:04:30Z"}

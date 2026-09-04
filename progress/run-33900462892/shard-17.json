@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 20, "total": 52, "rows": 1787078, "note": "GMESTOCK 15m: rule 60/120 (eqraid)", "failed": [], "pct": 38.5, "updated": "2026-09-04T19:09:53Z"}
+{"shard": 17, "stage": "testing", "done": 20, "total": 52, "rows": 1814818, "note": "GMESTOCK 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 38.5, "updated": "2026-09-04T19:10:38Z"}

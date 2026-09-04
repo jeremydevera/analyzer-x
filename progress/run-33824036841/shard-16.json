@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 12, "total": 52, "rows": 1030002, "note": "COINBASE 15m: rule 3/120 (fade15)", "failed": [], "pct": 23.1, "updated": "2026-09-04T01:48:58Z"}
+{"shard": 16, "stage": "testing", "done": 12, "total": 52, "rows": 1036082, "note": "COINBASE 15m: rule 41/120 (tsi)", "failed": [], "pct": 23.1, "updated": "2026-09-04T01:49:43Z"}

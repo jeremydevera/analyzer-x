@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 48, "total": 52, "rows": 4239910, "note": "USTC 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 92.3, "updated": "2026-09-04T21:43:20Z"}
+{"shard": 19, "stage": "testing", "done": 48, "total": 52, "rows": 4255310, "note": "USTC 1h: rule 65/120 (doji)", "failed": [], "pct": 92.3, "updated": "2026-09-04T21:44:05Z"}

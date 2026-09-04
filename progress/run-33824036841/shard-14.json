@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 5, "total": 52, "rows": 262686, "note": "ASTR 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 9.6, "updated": "2026-09-04T01:17:11Z"}
+{"shard": 14, "stage": "testing", "done": 5, "total": 52, "rows": 268406, "note": "ASTR 30m: rule 20/120 (stoch14)", "failed": [], "pct": 9.6, "updated": "2026-09-04T01:17:57Z"}

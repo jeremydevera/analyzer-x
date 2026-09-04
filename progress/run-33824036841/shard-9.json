@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 2, "total": 52, "rows": 124948, "note": "AGI 4h: rule 4/120 (trend50)", "failed": [], "pct": 3.8, "updated": "2026-09-04T01:08:20Z"}
+{"shard": 9, "stage": "testing", "done": 3, "total": 52, "rows": 159016, "note": "ALLO 15m: rule 1/120 (mom6)", "failed": [], "pct": 5.8, "updated": "2026-09-04T01:09:13Z"}

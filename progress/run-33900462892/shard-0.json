@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 28, "total": 53, "rows": 2468486, "note": "LMTSTOCK 15m: rule 41/120 (tsi)", "failed": [], "pct": 52.8, "updated": "2026-09-04T20:03:02Z"}
+{"shard": 0, "stage": "testing", "done": 28, "total": 53, "rows": 2482446, "note": "LMTSTOCK 30m: rule 4/120 (trend50)", "failed": [], "pct": 52.8, "updated": "2026-09-04T20:03:47Z"}

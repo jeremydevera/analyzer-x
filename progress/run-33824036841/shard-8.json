@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 52, "total": 52, "rows": 4315624, "note": "ZBT 30m: rule 33/120 (heikin)", "failed": [], "pct": 100.0, "updated": "2026-09-04T05:19:26Z"}
+{"shard": 8, "stage": "testing", "done": 52, "total": 52, "rows": 4329264, "note": "ZBT 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-04T05:20:12Z"}

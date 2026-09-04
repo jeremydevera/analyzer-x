@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 36, "total": 52, "rows": 2890834, "note": "PORTAL 30m: rule 40/120 (crsi)", "failed": [], "pct": 69.2, "updated": "2026-09-04T04:11:19Z"}
+{"shard": 14, "stage": "testing", "done": 36, "total": 52, "rows": 2902714, "note": "PORTAL 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 69.2, "updated": "2026-09-04T04:12:04Z"}

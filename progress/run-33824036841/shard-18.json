@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 7, "total": 52, "rows": 578580, "note": "BCH 15m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 13.5, "updated": "2026-09-04T01:42:29Z"}
+{"shard": 18, "stage": "testing", "done": 7, "total": 52, "rows": 583400, "note": "BCH 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 13.5, "updated": "2026-09-04T01:43:14Z"}

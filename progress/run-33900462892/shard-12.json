@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 11, "total": 52, "rows": 850914, "note": "CELO 15m: rule 10/120 (sr_bounce)", "failed": [], "pct": 21.2, "updated": "2026-09-04T18:04:55Z"}
+{"shard": 12, "stage": "testing", "done": 11, "total": 52, "rows": 856634, "note": "CELO 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 21.2, "updated": "2026-09-04T18:05:41Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 28, "total": 53, "rows": 2139428, "note": "LRC 30m: rule 48/120 (prank)", "failed": [], "pct": 52.8, "updated": "2026-09-04T19:41:05Z"}
+{"shard": 5, "stage": "testing", "done": 28, "total": 53, "rows": 2153628, "note": "LRC 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-04T19:42:03Z"}

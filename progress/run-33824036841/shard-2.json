@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 10, "total": 53, "rows": 887286, "note": "BSB 15m: rule 1/120 (mom6)", "failed": [], "pct": 18.9, "updated": "2026-09-04T01:56:24Z"}
+{"shard": 2, "stage": "testing", "done": 10, "total": 53, "rows": 891426, "note": "BSB 15m: rule 20/120 (stoch14)", "failed": [], "pct": 18.9, "updated": "2026-09-04T01:57:09Z"}

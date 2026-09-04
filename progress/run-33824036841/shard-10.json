@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 3, "total": 52, "rows": 227090, "note": "ALL 15m: rule 18/120 (macd)", "failed": [], "pct": 5.8, "updated": "2026-09-04T01:10:06Z"}
+{"shard": 10, "stage": "testing", "done": 3, "total": 52, "rows": 234790, "note": "ALL 15m: rule 54/120 (fractal5)", "failed": [], "pct": 5.8, "updated": "2026-09-04T01:10:52Z"}

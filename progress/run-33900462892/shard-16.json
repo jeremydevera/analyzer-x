@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 40, "total": 52, "rows": 3764074, "note": "SCR 4h: rule 12/120 (donchian20)", "failed": [], "pct": 76.9, "updated": "2026-09-04T21:16:58Z"}
+{"shard": 16, "stage": "testing", "done": 41, "total": 52, "rows": 3801430, "note": "SKL 15m: 34,564 bars, testing 120 rules", "failed": [], "pct": 78.8, "updated": "2026-09-04T21:17:45Z"}

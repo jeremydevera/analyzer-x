@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 2, "total": 52, "rows": 101420, "note": "AIN 4h: rule 3/120 (fade15)", "failed": [], "pct": 3.8, "updated": "2026-09-04T17:33:17Z"}
+{"shard": 15, "stage": "testing", "done": 3, "total": 52, "rows": 184446, "note": "AMCSTOCK 1h: rule 76/120 (cf_mom)", "failed": [], "pct": 5.8, "updated": "2026-09-04T17:34:48Z"}

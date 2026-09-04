@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 36, "total": 52, "rows": 3258310, "note": "POPCAT 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 69.2, "updated": "2026-09-04T19:44:21Z"}
+{"shard": 15, "stage": "testing", "done": 36, "total": 52, "rows": 3269090, "note": "POPCAT 1h: rule 4/120 (trend50)", "failed": [], "pct": 69.2, "updated": "2026-09-04T19:45:07Z"}

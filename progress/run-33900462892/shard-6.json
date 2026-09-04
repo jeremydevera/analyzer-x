@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 51, "total": 53, "rows": 4365746, "note": "XIAOMISTOCK 15m: rule 45/120 (zscore20)", "failed": [], "pct": 96.2, "updated": "2026-09-04T21:31:40Z"}
+{"shard": 6, "stage": "testing", "done": 52, "total": 53, "rows": 4409850, "note": "YFI 15m: rule 1/120 (mom6)", "failed": [], "pct": 98.1, "updated": "2026-09-04T21:32:37Z"}

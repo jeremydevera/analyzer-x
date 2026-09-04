@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 14, "total": 53, "rows": 1119068, "note": "CVC 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-04T18:39:44Z"}
+{"shard": 7, "stage": "testing", "done": 14, "total": 53, "rows": 1124788, "note": "CVC 30m: rule 20/120 (stoch14)", "failed": [], "pct": 26.4, "updated": "2026-09-04T18:40:30Z"}

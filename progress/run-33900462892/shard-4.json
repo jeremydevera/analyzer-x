@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 34, "total": 53, "rows": 3103416, "note": "ONDSSTOCK 15m: rule 25/120 (ichimoku)", "failed": [], "pct": 64.2, "updated": "2026-09-04T19:54:26Z"}
+{"shard": 4, "stage": "testing", "done": 34, "total": 53, "rows": 3116296, "note": "ONDSSTOCK 30m: 8,802 bars, testing 120 rules", "failed": [], "pct": 64.2, "updated": "2026-09-04T19:55:14Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 28, "total": 52, "rows": 2657298, "note": "MANA 30m: rule 24/120 (psar)", "failed": [], "pct": 53.8, "updated": "2026-09-04T03:24:24Z"}
+{"shard": 15, "stage": "testing", "done": 28, "total": 52, "rows": 2668958, "note": "MANA 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 53.8, "updated": "2026-09-04T03:25:09Z"}

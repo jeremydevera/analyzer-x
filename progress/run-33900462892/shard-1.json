@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 27, "total": 53, "rows": 2406628, "note": "KSM 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 50.9, "updated": "2026-09-04T19:21:57Z"}
+{"shard": 1, "stage": "testing", "done": 27, "total": 53, "rows": 2420268, "note": "KSM 1h: rule 57/120 (orderblock)", "failed": [], "pct": 50.9, "updated": "2026-09-04T19:22:42Z"}

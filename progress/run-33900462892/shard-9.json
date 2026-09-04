@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 9, "total": 53, "rows": 826820, "note": "BOME 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 17.0, "updated": "2026-09-04T18:16:48Z"}
+{"shard": 9, "stage": "testing", "done": 9, "total": 53, "rows": 833420, "note": "BOME 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 17.0, "updated": "2026-09-04T18:17:40Z"}

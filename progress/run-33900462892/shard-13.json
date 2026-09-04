@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 49, "total": 52, "rows": 4273840, "note": "VRTSTOCK 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 94.2, "updated": "2026-09-04T21:04:30Z"}
+{"shard": 13, "stage": "testing", "done": 50, "total": 52, "rows": 4319600, "note": "WMTSTOCK 15m: rule 2/120 (mom15)", "failed": [], "pct": 96.2, "updated": "2026-09-04T21:05:18Z"}

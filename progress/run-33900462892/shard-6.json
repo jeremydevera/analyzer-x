@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 20, "total": 53, "rows": 1649872, "note": "GESTOCK 30m: rule 29/120 (hull20)", "failed": [], "pct": 37.7, "updated": "2026-09-04T18:50:35Z"}
+{"shard": 6, "stage": "testing", "done": 20, "total": 53, "rows": 1670428, "note": "GESTOCK 1h: rule 22/120 (engulf)", "failed": [], "pct": 37.7, "updated": "2026-09-04T18:51:20Z"}

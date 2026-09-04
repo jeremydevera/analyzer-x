@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 40, "total": 52, "rows": 3695654, "note": "SCR 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 76.9, "updated": "2026-09-04T21:11:36Z"}
+{"shard": 16, "stage": "testing", "done": 40, "total": 52, "rows": 3703354, "note": "SCR 15m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 76.9, "updated": "2026-09-04T21:12:22Z"}

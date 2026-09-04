@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 33, "total": 52, "rows": 2881422, "note": "NXPC 15m: 34,652 bars, testing 120 rules", "failed": [], "pct": 63.5, "updated": "2026-09-04T19:20:52Z"}
+{"shard": 15, "stage": "testing", "done": 33, "total": 52, "rows": 2883402, "note": "NXPC 15m: rule 3/120 (fade15)", "failed": [], "pct": 63.5, "updated": "2026-09-04T19:21:39Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 4, "total": 52, "rows": 349538, "note": "APT 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 7.7, "updated": "2026-09-04T01:23:15Z"}
+{"shard": 17, "stage": "testing", "done": 4, "total": 52, "rows": 383154, "note": "APT 1d: rule 1/120 (mom6)", "failed": [], "pct": 7.7, "updated": "2026-09-04T01:24:00Z"}

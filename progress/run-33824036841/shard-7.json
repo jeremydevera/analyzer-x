@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 8, "total": 52, "rows": 684522, "note": "BIDUSTOCK 15m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 15.4, "updated": "2026-09-04T01:44:07Z"}
+{"shard": 7, "stage": "testing", "done": 10, "total": 52, "rows": 734126, "note": "BTW 15m: rule 2/120 (mom15)", "failed": [], "pct": 19.2, "updated": "2026-09-04T01:44:55Z"}

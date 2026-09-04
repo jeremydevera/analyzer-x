@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 39, "total": 52, "rows": 3369248, "note": "ROBO 4h: 1,144 bars, testing 120 rules", "failed": [], "pct": 75.0, "updated": "2026-09-04T04:05:27Z"}
+{"shard": 11, "stage": "testing", "done": 40, "total": 52, "rows": 3423282, "note": "SBUXSTOCK 30m: rule 37/120 (ultosc)", "failed": [], "pct": 76.9, "updated": "2026-09-04T04:06:12Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 42, "total": 52, "rows": 3658216, "note": "SNX 30m: rule 40/120 (crsi)", "failed": [], "pct": 80.8, "updated": "2026-09-04T20:05:29Z"}
+{"shard": 15, "stage": "testing", "done": 42, "total": 52, "rows": 3674936, "note": "SNX 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 80.8, "updated": "2026-09-04T20:06:14Z"}

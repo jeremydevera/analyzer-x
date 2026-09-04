@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 23, "total": 53, "rows": 1711082, "note": "HUMA 4h: rule 6/120 (sweep30)", "failed": [], "pct": 43.4, "updated": "2026-09-04T02:50:23Z"}
+{"shard": 3, "stage": "testing", "done": 24, "total": 53, "rows": 1753582, "note": "INFQSTOCK 15m: rule 21/120 (cci20)", "failed": [], "pct": 45.3, "updated": "2026-09-04T02:51:08Z"}

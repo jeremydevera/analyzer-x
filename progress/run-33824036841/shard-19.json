@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 33, "total": 52, "rows": 3235148, "note": "OL 30m: rule 51/120 (orb)", "failed": [], "pct": 63.5, "updated": "2026-09-04T03:46:10Z"}
+{"shard": 19, "stage": "testing", "done": 33, "total": 52, "rows": 3248748, "note": "OL 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 63.5, "updated": "2026-09-04T03:46:59Z"}

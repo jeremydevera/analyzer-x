@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 32, "total": 52, "rows": 2843480, "note": "NMR 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 61.5, "updated": "2026-09-04T03:52:48Z"}
+{"shard": 17, "stage": "testing", "done": 32, "total": 52, "rows": 2852720, "note": "NMR 1h: rule 36/120 (stochrsi)", "failed": [], "pct": 61.5, "updated": "2026-09-04T03:53:34Z"}

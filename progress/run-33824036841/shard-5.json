@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 19, "total": 53, "rows": 1570590, "note": "FLUX 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 35.8, "updated": "2026-09-04T02:48:31Z"}
+{"shard": 5, "stage": "testing", "done": 19, "total": 53, "rows": 1577410, "note": "FLUX 1h: rule 4/120 (trend50)", "failed": [], "pct": 35.8, "updated": "2026-09-04T02:49:17Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 36, "total": 53, "rows": 3265526, "note": "PLUME 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 67.9, "updated": "2026-09-04T20:30:05Z"}
+{"shard": 9, "stage": "testing", "done": 36, "total": 53, "rows": 3272786, "note": "PLUME 1h: rule 3/120 (fade15)", "failed": [], "pct": 67.9, "updated": "2026-09-04T20:30:55Z"}

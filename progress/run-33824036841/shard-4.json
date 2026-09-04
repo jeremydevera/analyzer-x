@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 44, "total": 53, "rows": 3600318, "note": "STO 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 83.0, "updated": "2026-09-04T04:21:00Z"}
+{"shard": 4, "stage": "testing", "done": 44, "total": 53, "rows": 3609518, "note": "STO 30m: rule 62/120 (ote)", "failed": [], "pct": 83.0, "updated": "2026-09-04T04:21:45Z"}

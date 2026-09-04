@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 13, "total": 52, "rows": 922802, "note": "CROSS 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 25.0, "updated": "2026-09-04T01:55:10Z"}
+{"shard": 11, "stage": "testing", "done": 13, "total": 52, "rows": 931162, "note": "CROSS 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 25.0, "updated": "2026-09-04T01:56:09Z"}

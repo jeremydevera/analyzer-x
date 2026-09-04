@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 2, "total": 53, "rows": 128198, "note": "ADBESTOCK 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-04T01:10:06Z"}
+{"shard": 1, "stage": "testing", "done": 2, "total": 53, "rows": 136898, "note": "ADBESTOCK 30m: rule 21/120 (cci20)", "failed": [], "pct": 3.8, "updated": "2026-09-04T01:10:51Z"}

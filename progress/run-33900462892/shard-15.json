@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 23, "total": 52, "rows": 2108258, "note": "ICP 1h: rule 82/120 (cf_maobv)", "failed": [], "pct": 44.2, "updated": "2026-09-04T18:46:05Z"}
+{"shard": 15, "stage": "testing", "done": 25, "total": 52, "rows": 2171398, "note": "JTO 15m: downloading candles", "failed": [], "pct": 48.1, "updated": "2026-09-04T18:46:50Z"}

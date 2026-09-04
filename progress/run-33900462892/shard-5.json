@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 8, "total": 53, "rows": 701852, "note": "BICO 1d: 394 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-04T18:11:11Z"}
+{"shard": 5, "stage": "testing", "done": 10, "total": 53, "rows": 738292, "note": "BTR 15m: rule 1/120 (mom6)", "failed": [], "pct": 18.9, "updated": "2026-09-04T18:12:13Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 38, "total": 53, "rows": 3308206, "note": "RAVE 30m: 12,785 bars, testing 120 rules", "failed": [], "pct": 71.7, "updated": "2026-09-04T20:57:06Z"}
+{"shard": 7, "stage": "testing", "done": 38, "total": 53, "rows": 3313406, "note": "RAVE 30m: rule 20/120 (stoch14)", "failed": [], "pct": 71.7, "updated": "2026-09-04T20:57:51Z"}

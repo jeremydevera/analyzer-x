@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 42, "total": 53, "rows": 3257890, "note": "SLSSTOCK 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 79.2, "updated": "2026-09-04T04:04:47Z"}
+{"shard": 0, "stage": "testing", "done": 43, "total": 53, "rows": 3267240, "note": "SOPH 15m: rule 1/120 (mom6)", "failed": [], "pct": 81.1, "updated": "2026-09-04T04:05:33Z"}

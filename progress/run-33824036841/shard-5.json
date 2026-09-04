@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 3, "total": 53, "rows": 199312, "note": "ALCH 4h: rule 2/120 (mom15)", "failed": [], "pct": 5.7, "updated": "2026-09-04T01:19:03Z"}
+{"shard": 5, "stage": "testing", "done": 4, "total": 53, "rows": 239500, "note": "ANSEM 15m: rule 17/120 (atrbreak)", "failed": [], "pct": 7.5, "updated": "2026-09-04T01:19:48Z"}

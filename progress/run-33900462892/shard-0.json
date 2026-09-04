@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 16, "total": 53, "rows": 1470080, "note": "DPZSTOCK 30m: rule 20/120 (stoch14)", "failed": [], "pct": 30.2, "updated": "2026-09-04T19:04:57Z"}
+{"shard": 0, "stage": "testing", "done": 17, "total": 53, "rows": 1509960, "note": "ENJ 15m: rule 2/120 (mom15)", "failed": [], "pct": 32.1, "updated": "2026-09-04T19:06:02Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 21, "total": 53, "rows": 1602694, "note": "GPS 15m: rule 20/120 (stoch14)", "failed": [], "pct": 39.6, "updated": "2026-09-04T02:20:57Z"}
+{"shard": 4, "stage": "testing", "done": 21, "total": 53, "rows": 1606874, "note": "GPS 15m: rule 39/120 (fisher)", "failed": [], "pct": 39.6, "updated": "2026-09-04T02:21:44Z"}

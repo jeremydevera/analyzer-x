@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 30, "total": 53, "rows": 2606592, "note": "MNT 15m: rule 46/120 (rsi2)", "failed": [], "pct": 56.6, "updated": "2026-09-04T19:47:43Z"}
+{"shard": 9, "stage": "testing", "done": 30, "total": 53, "rows": 2613992, "note": "MNT 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 56.6, "updated": "2026-09-04T19:48:30Z"}

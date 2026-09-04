@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 16, "total": 53, "rows": 1205524, "note": "DYDX 15m: rule 2/120 (mom15)", "failed": [], "pct": 30.2, "updated": "2026-09-04T18:24:39Z"}
+{"shard": 6, "stage": "testing", "done": 16, "total": 53, "rows": 1208324, "note": "DYDX 15m: rule 14/120 (bb20)", "failed": [], "pct": 30.2, "updated": "2026-09-04T18:25:24Z"}

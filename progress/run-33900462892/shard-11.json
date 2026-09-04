@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 44, "total": 52, "rows": 3640052, "note": "STXSTOCK 30m: rule 113/120 (cf_obretest_l1)", "failed": [], "pct": 84.6, "updated": "2026-09-04T20:27:19Z"}
+{"shard": 11, "stage": "testing", "done": 45, "total": 52, "rows": 3690520, "note": "TAKE 15m: 34,560 bars, testing 120 rules", "failed": [], "pct": 86.5, "updated": "2026-09-04T20:28:07Z"}

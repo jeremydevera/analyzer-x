@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 13, "total": 52, "rows": 1080110, "note": "CROSS 4h: rule 36/120 (stochrsi)", "failed": [], "pct": 25.0, "updated": "2026-09-04T18:18:56Z"}
+{"shard": 11, "stage": "testing", "done": 14, "total": 52, "rows": 1123678, "note": "CXMTSTOCK 15m: rule 97/120 (cf_ttm)", "failed": [], "pct": 26.9, "updated": "2026-09-04T18:19:41Z"}

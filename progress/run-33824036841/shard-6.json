@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 17, "total": 53, "rows": 1049270, "note": "EPIC 15m: rule 49/120 (vwaprev)", "failed": [], "pct": 32.1, "updated": "2026-09-04T02:07:19Z"}
+{"shard": 6, "stage": "testing", "done": 17, "total": 53, "rows": 1056470, "note": "EPIC 15m: rule 86/120 (cf_triple_l1)", "failed": [], "pct": 32.1, "updated": "2026-09-04T02:08:04Z"}

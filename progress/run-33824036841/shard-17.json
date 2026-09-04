@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 15, "total": 52, "rows": 1349070, "note": "DOLO 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 28.8, "updated": "2026-09-04T02:27:38Z"}
+{"shard": 17, "stage": "testing", "done": 15, "total": 52, "rows": 1356870, "note": "DOLO 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 28.8, "updated": "2026-09-04T02:28:25Z"}

@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 32, "total": 53, "rows": 2624490, "note": "NEX 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 60.4, "updated": "2026-09-04T18:59:10Z"}
+{"shard": 10, "stage": "testing", "done": 33, "total": 53, "rows": 2708550, "note": "NVDL 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 62.3, "updated": "2026-09-04T18:59:55Z"}

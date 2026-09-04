@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 12, "total": 52, "rows": 1089322, "note": "COINBASE 1h: rule 71/120 (mfi14)", "failed": [], "pct": 23.1, "updated": "2026-09-04T01:53:31Z"}
+{"shard": 16, "stage": "testing", "done": 13, "total": 52, "rows": 1137974, "note": "CSCOSTOCK 15m: 27,213 bars, testing 120 rules", "failed": [], "pct": 25.0, "updated": "2026-09-04T01:54:20Z"}

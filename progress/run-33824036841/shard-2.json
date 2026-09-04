@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 47, "total": 53, "rows": 3837954, "note": "TRX 15m: rule 22/120 (engulf)", "failed": [], "pct": 88.7, "updated": "2026-09-04T04:35:22Z"}
+{"shard": 2, "stage": "testing", "done": 47, "total": 53, "rows": 3846314, "note": "TRX 15m: rule 61/120 (turtle)", "failed": [], "pct": 88.7, "updated": "2026-09-04T04:36:08Z"}

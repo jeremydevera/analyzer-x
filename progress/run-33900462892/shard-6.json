@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 20, "total": 53, "rows": 1629012, "note": "GESTOCK 15m: rule 16/120 (keltner)", "failed": [], "pct": 37.7, "updated": "2026-09-04T18:49:04Z"}
+{"shard": 6, "stage": "testing", "done": 20, "total": 53, "rows": 1639372, "note": "GESTOCK 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 37.7, "updated": "2026-09-04T18:49:50Z"}

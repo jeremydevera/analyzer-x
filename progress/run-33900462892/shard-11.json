@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 25, "total": 52, "rows": 2134976, "note": "JP225 1d: 134 bars, testing 120 rules", "failed": [], "pct": 48.1, "updated": "2026-09-04T19:09:11Z"}
+{"shard": 11, "stage": "testing", "done": 27, "total": 52, "rows": 2219216, "note": "LHXSTOCK 15m: rule 85/120 (cf_triple)", "failed": [], "pct": 51.9, "updated": "2026-09-04T19:09:56Z"}

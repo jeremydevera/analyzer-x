@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 35, "total": 52, "rows": 2835346, "note": "PEAQ 15m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 67.3, "updated": "2026-09-04T04:05:49Z"}
+{"shard": 8, "stage": "testing", "done": 35, "total": 52, "rows": 2840326, "note": "PEAQ 30m: rule 2/120 (mom15)", "failed": [], "pct": 67.3, "updated": "2026-09-04T04:06:45Z"}

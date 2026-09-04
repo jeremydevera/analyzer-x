@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 10, "total": 53, "rows": 749092, "note": "BTR 15m: rule 58/120 (bos)", "failed": [], "pct": 18.9, "updated": "2026-09-04T18:14:33Z"}
+{"shard": 5, "stage": "testing", "done": 10, "total": 53, "rows": 756112, "note": "BTR 15m: rule 97/120 (cf_ttm)", "failed": [], "pct": 18.9, "updated": "2026-09-04T18:15:18Z"}

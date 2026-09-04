@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 38, "total": 53, "rows": 2957100, "note": "RAY 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 71.7, "updated": "2026-09-04T04:10:06Z"}
+{"shard": 5, "stage": "testing", "done": 38, "total": 53, "rows": 2966560, "note": "RAY 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 71.7, "updated": "2026-09-04T04:10:51Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 35, "total": 52, "rows": 3045074, "note": "PENDLE 4h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 67.3, "updated": "2026-09-04T19:31:53Z"}
+{"shard": 12, "stage": "testing", "done": 36, "total": 52, "rows": 3062850, "note": "POLYX 15m: rule 2/120 (mom15)", "failed": [], "pct": 69.2, "updated": "2026-09-04T19:32:45Z"}

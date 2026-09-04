@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 9, "total": 52, "rows": 792016, "note": "BRKBSTOCK 1h: rule 106/120 (cf_bosfvg)", "failed": [], "pct": 17.3, "updated": "2026-09-04T01:37:46Z"}
+{"shard": 16, "stage": "testing", "done": 10, "total": 52, "rows": 833620, "note": "CAP 15m: rule 39/120 (fisher)", "failed": [], "pct": 19.2, "updated": "2026-09-04T01:38:32Z"}

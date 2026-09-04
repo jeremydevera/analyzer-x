@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 42, "total": 52, "rows": 3549000, "note": "SNT 4h: rule 21/120 (cci20)", "failed": [], "pct": 80.8, "updated": "2026-09-04T20:20:10Z"}
+{"shard": 13, "stage": "testing", "done": 43, "total": 52, "rows": 3581860, "note": "SPORTFUN 15m: 22,297 bars, testing 120 rules", "failed": [], "pct": 82.7, "updated": "2026-09-04T20:20:57Z"}

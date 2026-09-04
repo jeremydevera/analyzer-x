@@ -376,12 +376,30 @@ export type CandlePending = {
   checked: string;
 };
 
+/** `GET /api/system/staleness` — three states per process, never two:
+ *  stale, current, or `null` for unknown when git could not be read. */
+export type Staleness = {
+  processes: {
+    kind: string; running: boolean; stale: boolean | null;
+    commits_behind: number | null; started: string; why: string;
+  }[];
+  stale_count: number;
+  unknown_count: number;
+  head: { sha: string; committed: number; when: string } | null;
+  summary: string;
+};
+
 export const api = {
   system: () => get<SysLoad>("/api/system"),
   contracts: () => get<{ rows: string[]; why: string }>("/api/contracts"),
   /** How many things in the candle store a RESOLVE would fix — the ONE
    *  definition, shared by the RESOLVE PENDING button and the Pending tab.
    *  `unfixable` is reported apart and never counted as work. */
+  /** Which long-running process is still holding OLD CODE. A process keeps
+   *  the code it started with, and nothing said so: the backtest job ran 32
+   *  hours 24 commits behind, and the live runner held a loss-cap version that
+   *  killed the runner (Sep 04, 2026). */
+  staleness: () => get<Staleness>("/api/system/staleness"),
   candlePending: () => get<CandlePending>("/api/candles/pending"),
   candleGaps: () => get<{
     rows: { symbol: string; timeframe: string; bars: number; last: string;

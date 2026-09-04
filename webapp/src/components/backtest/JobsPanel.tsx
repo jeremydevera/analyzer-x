@@ -12,6 +12,7 @@ import { api, API_BASE, BacktestPlan, CloudStatus, GridPlan, JobStatus } from "@
 import Button from "@/components/ui/button/Button";
 import Badge from "@/components/ui/badge/Badge";
 import JobProgress from "@/components/jobs/JobProgress";
+import StaleCode from "@/components/jobs/StaleCode";
 import CoinPicker from "./CoinPicker";
 
 const TFS = ["15m", "30m", "1h", "4h", "1d"];
@@ -285,6 +286,10 @@ export default function JobsPanel() {
                 : ""}
             </p>
           )}
+          {/* Which running process is still on OLD CODE. Silent when
+              everything is current; the row exists for the case that had no
+              voice at all (Sep 04, 2026). */}
+          <StaleCode />
           <JobProgress s={bt}
             label={`full grid${bt?.fresh === false ? " · gap fill"
                      : bt?.fresh ? " · from scratch" : ""}`} />

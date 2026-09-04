@@ -1903,6 +1903,20 @@ def _warm_gap_index() -> None:
     threading.Thread(target=run, daemon=True).start()
 
 
+@app.get("/api/system/staleness")
+def system_staleness() -> dict:
+    """Which long-running process is still holding OLD CODE.
+
+    Operator, Sep 04, 2026: *"SO WHAT'S NOT UPDATED?"* — the only way to answer
+    was comparing process start times to `git log` by hand. The backtest job
+    had been 24 commits behind for 32 hours and the live runner was holding a
+    loss-cap version that killed the whole runner, two minutes stale.
+    """
+    from tradingagents import staleness
+
+    return staleness.report()
+
+
 @app.get("/api/candles/pending")
 def candles_pending() -> dict:
     """How many things in the candle store a RESOLVE would fix — one number.

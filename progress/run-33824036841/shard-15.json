@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 17, "total": 52, "rows": 1600038, "note": "EUL 30m: 17,463 bars, testing 120 rules", "failed": [], "pct": 32.7, "updated": "2026-09-04T02:25:58Z"}
+{"shard": 15, "stage": "testing", "done": 17, "total": 52, "rows": 1603998, "note": "EUL 30m: rule 12/120 (donchian20)", "failed": [], "pct": 32.7, "updated": "2026-09-04T02:26:44Z"}

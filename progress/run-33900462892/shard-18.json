@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 40, "total": 52, "rows": 3699116, "note": "SENT 1h: rule 61/120 (turtle)", "failed": [], "pct": 76.9, "updated": "2026-09-04T20:17:32Z"}
+{"shard": 18, "stage": "testing", "done": 42, "total": 52, "rows": 3748926, "note": "SOLV 15m: 34,560 bars, testing 120 rules", "failed": [], "pct": 80.8, "updated": "2026-09-04T20:18:32Z"}

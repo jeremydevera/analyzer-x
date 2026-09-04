@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 17, "total": 53, "rows": 1467642, "note": "ETC 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 32.1, "updated": "2026-09-04T18:40:52Z"}
+{"shard": 9, "stage": "testing", "done": 17, "total": 53, "rows": 1475562, "note": "ETC 15m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-04T18:41:38Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 50, "total": 52, "rows": 4109996, "note": "WLFI 15m: rule 4/120 (trend50)", "failed": [], "pct": 96.2, "updated": "2026-09-04T05:06:40Z"}
+{"shard": 8, "stage": "testing", "done": 50, "total": 52, "rows": 4115216, "note": "WLFI 15m: rule 33/120 (heikin)", "failed": [], "pct": 96.2, "updated": "2026-09-04T05:07:27Z"}

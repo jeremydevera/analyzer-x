@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 52, "total": 52, "rows": 5002862, "note": "ZKC 15m: rule 20/120 (stoch14)", "failed": [], "pct": 100.0, "updated": "2026-09-04T05:20:21Z"}
+{"shard": 19, "stage": "testing", "done": 52, "total": 52, "rows": 5009242, "note": "ZKC 15m: rule 49/120 (vwaprev)", "failed": [], "pct": 100.0, "updated": "2026-09-04T05:21:07Z"}

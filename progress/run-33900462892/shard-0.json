@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 35, "total": 53, "rows": 3021856, "note": "ORDI 15m: rule 109/120 (cf_fundfade)", "failed": [], "pct": 66.0, "updated": "2026-09-04T20:28:18Z"}
+{"shard": 0, "stage": "testing", "done": 35, "total": 53, "rows": 3024816, "note": "ORDI 30m: rule 2/120 (mom15)", "failed": [], "pct": 66.0, "updated": "2026-09-04T20:29:05Z"}

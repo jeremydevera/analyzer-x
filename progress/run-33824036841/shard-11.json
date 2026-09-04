@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 8, "total": 52, "rows": 630528, "note": "BIO 15m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 15.4, "updated": "2026-09-04T01:43:16Z"}
+{"shard": 11, "stage": "testing", "done": 8, "total": 52, "rows": 633828, "note": "BIO 30m: rule 2/120 (mom15)", "failed": [], "pct": 15.4, "updated": "2026-09-04T01:44:11Z"}

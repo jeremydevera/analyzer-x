@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 37, "total": 52, "rows": 3334962, "note": "QQQSTOCK 1h: rule 47/120 (ibs)", "failed": [], "pct": 71.2, "updated": "2026-09-04T04:19:22Z"}
+{"shard": 17, "stage": "testing", "done": 39, "total": 52, "rows": 3396242, "note": "RSR 15m: 34,592 bars, testing 120 rules", "failed": [], "pct": 75.0, "updated": "2026-09-04T04:20:14Z"}

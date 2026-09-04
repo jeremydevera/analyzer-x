@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 10, "total": 52, "rows": 709772, "note": "CAD 30m: rule 73/120 (volspike)", "failed": [], "pct": 19.2, "updated": "2026-09-04T01:43:53Z"}
+{"shard": 14, "stage": "testing", "done": 10, "total": 52, "rows": 723512, "note": "CAD 1h: rule 24/120 (psar)", "failed": [], "pct": 19.2, "updated": "2026-09-04T01:44:38Z"}

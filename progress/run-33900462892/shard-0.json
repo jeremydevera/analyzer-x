@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 11, "total": 53, "rows": 1022224, "note": "CATI 15m: rule 47/120 (ibs)", "failed": [], "pct": 20.8, "updated": "2026-09-04T18:38:15Z"}
+{"shard": 0, "stage": "testing", "done": 11, "total": 53, "rows": 1029704, "note": "CATI 15m: rule 82/120 (cf_maobv)", "failed": [], "pct": 20.8, "updated": "2026-09-04T18:39:00Z"}

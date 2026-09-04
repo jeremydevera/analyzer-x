@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 33, "total": 53, "rows": 2851802, "note": "NMR 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 62.3, "updated": "2026-09-04T20:18:50Z"}
+{"shard": 0, "stage": "testing", "done": 33, "total": 53, "rows": 2859602, "note": "NMR 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 62.3, "updated": "2026-09-04T20:19:35Z"}

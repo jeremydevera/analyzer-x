@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 49, "total": 52, "rows": 4602552, "note": "VVV 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 94.2, "updated": "2026-09-04T05:12:58Z"}
+{"shard": 15, "stage": "testing", "done": 49, "total": 52, "rows": 4613772, "note": "VVV 1h: rule 45/120 (zscore20)", "failed": [], "pct": 94.2, "updated": "2026-09-04T05:13:43Z"}

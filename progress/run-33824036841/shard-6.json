@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 40, "total": 53, "rows": 3207718, "note": "SAND 1h: rule 9/120 (fib382)", "failed": [], "pct": 75.5, "updated": "2026-09-04T04:14:48Z"}
+{"shard": 6, "stage": "testing", "done": 40, "total": 53, "rows": 3228178, "note": "SAND 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-04T04:15:33Z"}

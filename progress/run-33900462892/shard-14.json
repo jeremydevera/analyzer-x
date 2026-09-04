@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 39, "total": 52, "rows": 3419602, "note": "ROBO 30m: rule 2/120 (mom15)", "failed": [], "pct": 75.0, "updated": "2026-09-04T20:01:24Z"}
+{"shard": 14, "stage": "testing", "done": 39, "total": 52, "rows": 3441162, "note": "ROBO 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 75.0, "updated": "2026-09-04T20:02:10Z"}

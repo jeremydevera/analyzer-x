@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 53, "total": 53, "rows": 4396286, "note": "ZKP 15m: rule 13/120 (pivot)", "failed": [], "pct": 100.0, "updated": "2026-09-04T05:22:11Z"}
+{"shard": 0, "stage": "testing", "done": 53, "total": 53, "rows": 4403106, "note": "ZKP 15m: rule 44/120 (elder)", "failed": [], "pct": 100.0, "updated": "2026-09-04T05:22:57Z"}

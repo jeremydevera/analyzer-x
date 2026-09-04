@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 47, "total": 52, "rows": 3998380, "note": "TUT 15m: rule 40/120 (crsi)", "failed": [], "pct": 90.4, "updated": "2026-09-04T20:17:08Z"}
+{"shard": 15, "stage": "testing", "done": 47, "total": 52, "rows": 4006220, "note": "TUT 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 90.4, "updated": "2026-09-04T20:17:53Z"}

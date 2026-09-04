@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 25, "total": 52, "rows": 2370978, "note": "KAIA 4h: rule 2/120 (mom15)", "failed": [], "pct": 48.1, "updated": "2026-09-04T03:16:42Z"}
+{"shard": 16, "stage": "testing", "done": 26, "total": 52, "rows": 2426598, "note": "KOSPI 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 50.0, "updated": "2026-09-04T03:17:27Z"}

@@ -147,3 +147,33 @@ def test_a_paper_row_says_which_strategy_it_belongs_to():
                          leverage=20, now=1788_000_600)
     assert rows[0]["strategy"] == A
     assert rows[0]["side"] == "LONG"
+
+
+# ------------------------------------------------- the route the UI calls
+def test_the_paper_book_route_returns_both_rows(monkeypatch):
+    """End to end through `/api/trade/positions`, which is what the Paper
+    table on screen reads. Two strategies, one coin, two rows."""
+    from fastapi.testclient import TestClient
+
+    from tradingagents.api import app
+    from tradingagents.dataflows import mexc_credentials as cred
+    from tradingagents.dataflows import mexc_futures as fx
+
+    monkeypatch.setattr(cred, "load_into_env", lambda: None)
+    monkeypatch.setattr(fx, "open_positions", lambda symbol=None: [])
+    monkeypatch.setattr(fx, "last_price", lambda s: 90.0)
+    monkeypatch.setattr(fx, "contract_spec", lambda s: {"contractSize": 1.0})
+    monkeypatch.setattr(at, "coin_stats", lambda dry=None: {})
+    monkeypatch.setattr(at, "load_settings", lambda: {})
+    monkeypatch.setattr(at, "load_state", lambda: {
+        at.state_key(COIN, True, A): {"position": _pos(A, entry=89.38)},
+        at.state_key(COIN, True, B): {"position": _pos(B, entry=89.36)}})
+
+    got = TestClient(app).get("/api/trade/positions").json()
+    assert got["real"] == []
+    assert len(got["paper"]) == 2, [r["strategy"] for r in got["paper"]]
+    assert {r["strategy"] for r in got["paper"]} == {A, B}
+    # label-must-match-data: each row's entry belongs to the strategy beside it
+    by_key = {r["strategy"]: r for r in got["paper"]}
+    assert by_key[A]["entry"] == 89.38 and by_key[B]["entry"] == 89.36
+    assert all(r["coin"] == "GPNSTOCK" for r in got["paper"])

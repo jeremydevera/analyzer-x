@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 2, "total": 52, "rows": 116372, "note": "AGT 15m: rule 10/120 (sr_bounce)", "failed": [], "pct": 3.8, "updated": "2026-09-04T01:06:59Z"}
+{"shard": 11, "stage": "testing", "done": 2, "total": 52, "rows": 120572, "note": "AGT 15m: rule 45/120 (zscore20)", "failed": [], "pct": 3.8, "updated": "2026-09-04T01:07:44Z"}

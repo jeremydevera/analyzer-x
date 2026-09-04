@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 11, "total": 52, "rows": 865606, "note": "CFG 1h: 4,573 bars, testing 120 rules", "failed": [], "pct": 21.2, "updated": "2026-09-04T17:49:32Z"}
+{"shard": 15, "stage": "testing", "done": 12, "total": 52, "rows": 920606, "note": "COHRSTOCK 15m: 15,792 bars, testing 120 rules", "failed": [], "pct": 23.1, "updated": "2026-09-04T17:50:20Z"}

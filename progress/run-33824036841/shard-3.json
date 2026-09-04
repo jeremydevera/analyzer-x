@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 26, "total": 53, "rows": 1949202, "note": "KGEN 1d: rule 33/120 (heikin)", "failed": [], "pct": 49.1, "updated": "2026-09-04T03:00:49Z"}
+{"shard": 3, "stage": "testing", "done": 28, "total": 53, "rows": 1984528, "note": "LRC 15m: rule 1/120 (mom6)", "failed": [], "pct": 52.8, "updated": "2026-09-04T03:01:43Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 37, "total": 53, "rows": 3228244, "note": "PRL 15m: 15,690 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-04T20:41:08Z"}
+{"shard": 0, "stage": "testing", "done": 37, "total": 53, "rows": 3232444, "note": "PRL 15m: rule 15/120 (bbbreak)", "failed": [], "pct": 69.8, "updated": "2026-09-04T20:41:53Z"}

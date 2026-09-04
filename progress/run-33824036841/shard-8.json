@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 50, "total": 52, "rows": 4155496, "note": "WLFI 1h: 9,045 bars, testing 120 rules", "failed": [], "pct": 96.2, "updated": "2026-09-04T05:11:30Z"}
+{"shard": 8, "stage": "testing", "done": 50, "total": 52, "rows": 4172216, "note": "WLFI 1h: rule 71/120 (mfi14)", "failed": [], "pct": 96.2, "updated": "2026-09-04T05:12:15Z"}

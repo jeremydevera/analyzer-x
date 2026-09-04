@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 43, "total": 53, "rows": 3854512, "note": "SPACE 15m: rule 58/120 (bos)", "failed": [], "pct": 81.1, "updated": "2026-09-04T21:00:15Z"}
+{"shard": 9, "stage": "testing", "done": 43, "total": 53, "rows": 3866712, "note": "SPACE 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-04T21:01:01Z"}

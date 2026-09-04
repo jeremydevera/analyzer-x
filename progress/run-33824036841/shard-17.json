@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 8, "total": 52, "rows": 690068, "note": "BLAST 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 15.4, "updated": "2026-09-04T01:47:51Z"}
+{"shard": 17, "stage": "testing", "done": 8, "total": 52, "rows": 694908, "note": "BLAST 30m: rule 16/120 (keltner)", "failed": [], "pct": 15.4, "updated": "2026-09-04T01:48:36Z"}

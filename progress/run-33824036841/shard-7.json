@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 49, "total": 52, "rows": 4029160, "note": "VIRTUAL 1h: rule 53/120 (squeeze)", "failed": [], "pct": 94.2, "updated": "2026-09-04T04:43:07Z"}
+{"shard": 7, "stage": "testing", "done": 49, "total": 52, "rows": 4048520, "note": "VIRTUAL 4h: rule 16/120 (keltner)", "failed": [], "pct": 94.2, "updated": "2026-09-04T04:43:52Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 45, "total": 52, "rows": 3738400, "note": "TAKE 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 86.5, "updated": "2026-09-04T20:35:08Z"}
+{"shard": 11, "stage": "testing", "done": 45, "total": 52, "rows": 3745198, "note": "TAKE 1h: rule 5/120 (rsi14)", "failed": [], "pct": 86.5, "updated": "2026-09-04T20:35:54Z"}

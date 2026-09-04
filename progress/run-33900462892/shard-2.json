@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 36, "total": 53, "rows": 3010490, "note": "PIPPIN 4h: rule 18/120 (macd)", "failed": [], "pct": 67.9, "updated": "2026-09-04T20:22:47Z"}
+{"shard": 2, "stage": "testing", "done": 37, "total": 53, "rows": 3043550, "note": "PROMPT 15m: 34,560 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-04T20:23:39Z"}

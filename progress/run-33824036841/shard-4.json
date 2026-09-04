@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 38, "total": 53, "rows": 3227514, "note": "RAVE 4h: rule 2/120 (mom15)", "failed": [], "pct": 71.7, "updated": "2026-09-04T04:02:40Z"}
+{"shard": 4, "stage": "testing", "done": 39, "total": 53, "rows": 3259304, "note": "RIVER 15m: 33,292 bars, testing 120 rules", "failed": [], "pct": 73.6, "updated": "2026-09-04T04:03:25Z"}

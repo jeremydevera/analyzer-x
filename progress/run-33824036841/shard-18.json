@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 39, "total": 52, "rows": 2875838, "note": "RTXSTOCK 1d: 67 bars, testing 120 rules", "failed": [], "pct": 75.0, "updated": "2026-09-04T03:49:18Z"}
+{"shard": 18, "stage": "testing", "done": 40, "total": 52, "rows": 2941916, "note": "SHAZSTOCK 1d: downloading candles", "failed": [], "pct": 76.9, "updated": "2026-09-04T03:50:03Z"}

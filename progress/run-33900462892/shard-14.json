@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 51, "total": 52, "rows": 4390456, "note": "XNY 1h: rule 12/120 (donchian20)", "failed": [], "pct": 98.1, "updated": "2026-09-04T20:33:13Z"}
+{"shard": 14, "stage": "testing", "done": 51, "total": 52, "rows": 4413336, "note": "XNY 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-04T20:34:02Z"}

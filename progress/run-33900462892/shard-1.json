@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 51, "total": 53, "rows": 4419934, "note": "XAU 1h: rule 15/120 (bbbreak)", "failed": [], "pct": 96.2, "updated": "2026-09-04T21:10:16Z"}
+{"shard": 1, "stage": "testing", "done": 52, "total": 53, "rows": 4475902, "note": "XTZ 15m: 34,563 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-04T21:11:16Z"}

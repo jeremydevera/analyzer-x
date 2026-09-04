@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 1, "total": 53, "rows": 101860, "note": "0G 4h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-04T01:09:25Z"}
+{"shard": 0, "stage": "testing", "done": 2, "total": 53, "rows": 122576, "note": "ADA 15m: rule 2/120 (mom15)", "failed": [], "pct": 3.8, "updated": "2026-09-04T01:10:13Z"}

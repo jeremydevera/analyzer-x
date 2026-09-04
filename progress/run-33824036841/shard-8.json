@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 29, "total": 52, "rows": 2359904, "note": "MELANIA 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 55.8, "updated": "2026-09-04T03:40:43Z"}
+{"shard": 8, "stage": "testing", "done": 29, "total": 52, "rows": 2366724, "note": "MELANIA 1h: rule 4/120 (trend50)", "failed": [], "pct": 55.8, "updated": "2026-09-04T03:41:28Z"}

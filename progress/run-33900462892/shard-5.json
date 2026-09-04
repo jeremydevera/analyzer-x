@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 13, "total": 53, "rows": 947500, "note": "COTI 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 24.5, "updated": "2026-09-04T18:27:29Z"}
+{"shard": 5, "stage": "testing", "done": 13, "total": 53, "rows": 959820, "note": "COTI 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 24.5, "updated": "2026-09-04T18:28:14Z"}

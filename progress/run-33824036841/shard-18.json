@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 33, "total": 52, "rows": 2526522, "note": "OKTASTOCK 30m: downloading candles", "failed": [], "pct": 63.5, "updated": "2026-09-04T03:29:25Z"}
+{"shard": 18, "stage": "testing", "done": 34, "total": 52, "rows": 2548522, "note": "OUSTSTOCK 30m: rule 98/120 (cf_ttm_l1)", "failed": [], "pct": 65.4, "updated": "2026-09-04T03:30:10Z"}

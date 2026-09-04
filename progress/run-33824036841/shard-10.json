@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 36, "total": 52, "rows": 2860512, "note": "POL 15m: 34,585 bars, testing 120 rules", "failed": [], "pct": 69.2, "updated": "2026-09-04T02:42:22Z"}
+{"shard": 10, "stage": "testing", "done": 36, "total": 52, "rows": 2864472, "note": "POL 15m: rule 16/120 (keltner)", "failed": [], "pct": 69.2, "updated": "2026-09-04T02:43:08Z"}

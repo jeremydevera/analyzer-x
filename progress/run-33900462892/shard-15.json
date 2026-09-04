@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 18, "total": 52, "rows": 1608922, "note": "FILECOIN 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 34.6, "updated": "2026-09-04T18:23:24Z"}
+{"shard": 15, "stage": "testing", "done": 18, "total": 52, "rows": 1614442, "note": "FILECOIN 30m: rule 2/120 (mom15)", "failed": [], "pct": 34.6, "updated": "2026-09-04T18:24:09Z"}

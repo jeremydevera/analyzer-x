@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 47, "total": 53, "rows": 4094082, "note": "TSLL 30m: rule 57/120 (orderblock)", "failed": [], "pct": 88.7, "updated": "2026-09-04T21:05:32Z"}
+{"shard": 9, "stage": "testing", "done": 48, "total": 53, "rows": 4122810, "note": "UNI 15m: rule 2/120 (mom15)", "failed": [], "pct": 90.6, "updated": "2026-09-04T21:06:27Z"}

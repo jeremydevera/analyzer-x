@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 17, "total": 52, "rows": 1634342, "note": "EVAA 4h: 2,014 bars, testing 120 rules", "failed": [], "pct": 32.7, "updated": "2026-09-04T02:46:45Z"}
+{"shard": 17, "stage": "testing", "done": 18, "total": 52, "rows": 1675650, "note": "FLNCSTOCK 15m: rule 15/120 (bbbreak)", "failed": [], "pct": 34.6, "updated": "2026-09-04T02:47:30Z"}

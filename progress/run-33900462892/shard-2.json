@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 12, "total": 53, "rows": 980884, "note": "CHR 30m: rule 48/120 (prank)", "failed": [], "pct": 22.6, "updated": "2026-09-04T18:32:20Z"}
+{"shard": 2, "stage": "testing", "done": 12, "total": 53, "rows": 995184, "note": "CHR 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-04T18:33:06Z"}

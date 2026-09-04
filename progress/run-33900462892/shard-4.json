@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 5, "total": 53, "rows": 394190, "note": "ARMSTOCK 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-04T17:43:37Z"}
+{"shard": 4, "stage": "testing", "done": 5, "total": 53, "rows": 403230, "note": "ARMSTOCK 30m: rule 20/120 (stoch14)", "failed": [], "pct": 9.4, "updated": "2026-09-04T17:44:23Z"}

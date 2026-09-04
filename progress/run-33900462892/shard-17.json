@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 34, "total": 52, "rows": 3289898, "note": "ORCA 15m: rule 59/120 (choch)", "failed": [], "pct": 65.4, "updated": "2026-09-04T20:46:02Z"}
+{"shard": 17, "stage": "testing", "done": 34, "total": 52, "rows": 3297698, "note": "ORCA 15m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 65.4, "updated": "2026-09-04T20:46:49Z"}

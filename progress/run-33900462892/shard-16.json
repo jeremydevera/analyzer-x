@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 23, "total": 52, "rows": 2294186, "note": "ICX 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 44.2, "updated": "2026-09-04T19:40:52Z"}
+{"shard": 16, "stage": "testing", "done": 23, "total": 52, "rows": 2300386, "note": "ICX 15m: rule 68/120 (dbltop)", "failed": [], "pct": 44.2, "updated": "2026-09-04T19:41:38Z"}

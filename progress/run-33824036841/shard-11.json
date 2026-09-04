@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 48, "total": 52, "rows": 4038448, "note": "USDC 15m: rule 53/120 (squeeze)", "failed": [], "pct": 92.3, "updated": "2026-09-04T04:35:39Z"}
+{"shard": 11, "stage": "testing", "done": 48, "total": 52, "rows": 4045268, "note": "USDC 15m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 92.3, "updated": "2026-09-04T04:36:26Z"}

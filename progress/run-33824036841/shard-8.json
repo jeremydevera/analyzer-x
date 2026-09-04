@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 44, "total": 52, "rows": 3639402, "note": "STX 15m: rule 52/120 (nr7)", "failed": [], "pct": 84.6, "updated": "2026-09-04T04:48:36Z"}
+{"shard": 8, "stage": "testing", "done": 44, "total": 52, "rows": 3647102, "note": "STX 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 84.6, "updated": "2026-09-04T04:49:22Z"}

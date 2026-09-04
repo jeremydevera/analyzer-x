@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 37, "total": 53, "rows": 3249736, "note": "PTB 1h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 69.8, "updated": "2026-09-04T20:53:06Z"}
+{"shard": 7, "stage": "testing", "done": 38, "total": 53, "rows": 3285706, "note": "RAVE 15m: 25,571 bars, testing 120 rules", "failed": [], "pct": 71.7, "updated": "2026-09-04T20:53:59Z"}

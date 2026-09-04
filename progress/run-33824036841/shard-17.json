@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 18, "total": 52, "rows": 1696910, "note": "FLNCSTOCK 30m: rule 52/120 (nr7)", "failed": [], "pct": 34.6, "updated": "2026-09-04T02:48:15Z"}
+{"shard": 17, "stage": "testing", "done": 19, "total": 52, "rows": 1747798, "note": "FWDISTOCK 1h: 1,220 bars, testing 120 rules", "failed": [], "pct": 36.5, "updated": "2026-09-04T02:49:00Z"}

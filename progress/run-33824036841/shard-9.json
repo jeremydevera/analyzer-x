@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 40, "total": 52, "rows": 3107742, "note": "SATS 15m: rule 55/120 (nhigh50)", "failed": [], "pct": 76.9, "updated": "2026-09-04T03:53:23Z"}
+{"shard": 9, "stage": "testing", "done": 40, "total": 52, "rows": 3114322, "note": "SATS 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 76.9, "updated": "2026-09-04T03:54:11Z"}

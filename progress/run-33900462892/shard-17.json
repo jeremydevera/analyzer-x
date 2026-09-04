@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 49, "total": 52, "rows": 4670080, "note": "VTHO 30m: rule 20/120 (stoch14)", "failed": [], "pct": 94.2, "updated": "2026-09-04T22:06:51Z"}
+{"shard": 17, "stage": "testing", "done": 49, "total": 52, "rows": 4681300, "note": "VTHO 30m: rule 72/120 (force13)", "failed": [], "pct": 94.2, "updated": "2026-09-04T22:07:36Z"}

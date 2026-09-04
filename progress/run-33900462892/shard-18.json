@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 21, "total": 52, "rows": 1880986, "note": "HALSTOCK 15m: rule 44/120 (elder)", "failed": [], "pct": 40.4, "updated": "2026-09-04T18:59:17Z"}
+{"shard": 18, "stage": "testing", "done": 22, "total": 52, "rows": 1943356, "note": "HOME 15m: 34,651 bars, testing 120 rules", "failed": [], "pct": 42.3, "updated": "2026-09-04T19:00:02Z"}

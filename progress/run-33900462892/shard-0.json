@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 53, "total": 53, "rows": 4490164, "note": "ZIG 1h: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-04T21:56:17Z"}
+{"shard": 0, "stage": "testing", "done": 53, "total": 53, "rows": 4508660, "note": "ZIG 1d: rule 17/120 (atrbreak)", "failed": [], "pct": 100.0, "updated": "2026-09-04T21:57:02Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 7, "total": 52, "rows": 566520, "note": "BCH 15m: rule 43/120 (macddiv)", "failed": [], "pct": 13.5, "updated": "2026-09-04T01:40:56Z"}
+{"shard": 18, "stage": "testing", "done": 7, "total": 52, "rows": 572280, "note": "BCH 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 13.5, "updated": "2026-09-04T01:41:41Z"}

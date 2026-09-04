@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 23, "total": 53, "rows": 1734532, "note": "IBB 15m: downloading candles", "failed": [], "pct": 43.4, "updated": "2026-09-04T18:27:03Z"}
+{"shard": 10, "stage": "testing", "done": 24, "total": 53, "rows": 1787864, "note": "INX 15m: rule 3/120 (fade15)", "failed": [], "pct": 45.3, "updated": "2026-09-04T18:27:50Z"}

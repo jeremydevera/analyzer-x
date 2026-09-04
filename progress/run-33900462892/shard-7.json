@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 7, "total": 53, "rows": 618084, "note": "BANK 1h: rule 11/120 (sr_break)", "failed": [], "pct": 13.2, "updated": "2026-09-04T18:05:21Z"}
+{"shard": 7, "stage": "testing", "done": 7, "total": 53, "rows": 637224, "note": "BANK 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-04T18:06:06Z"}

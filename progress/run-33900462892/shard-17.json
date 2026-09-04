@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 12, "total": 52, "rows": 1189038, "note": "COLLECT 15m: rule 29/120 (hull20)", "failed": [], "pct": 23.1, "updated": "2026-09-04T18:42:16Z"}
+{"shard": 17, "stage": "testing", "done": 12, "total": 52, "rows": 1196638, "note": "COLLECT 15m: rule 68/120 (dbltop)", "failed": [], "pct": 23.1, "updated": "2026-09-04T18:43:01Z"}

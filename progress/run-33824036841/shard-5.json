@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 22, "total": 53, "rows": 1713924, "note": "HFT 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-04T02:54:44Z"}
+{"shard": 5, "stage": "testing", "done": 22, "total": 53, "rows": 1727004, "note": "HFT 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-04T02:55:29Z"}

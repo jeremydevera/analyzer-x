@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 20, "total": 52, "rows": 1505714, "note": "GEVSTOCK 30m: rule 71/120 (mfi14)", "failed": [], "pct": 38.5, "updated": "2026-09-04T02:31:19Z"}
+{"shard": 7, "stage": "testing", "done": 21, "total": 52, "rows": 1568582, "note": "GRASS 15m: 34,585 bars, testing 120 rules", "failed": [], "pct": 40.4, "updated": "2026-09-04T02:32:18Z"}

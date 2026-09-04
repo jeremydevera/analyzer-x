@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 19, "total": 52, "rows": 1551812, "note": "FORM 30m: rule 38/120 (ao)", "failed": [], "pct": 36.5, "updated": "2026-09-04T02:32:31Z"}
+{"shard": 9, "stage": "testing", "done": 19, "total": 52, "rows": 1560392, "note": "FORM 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 36.5, "updated": "2026-09-04T02:33:17Z"}

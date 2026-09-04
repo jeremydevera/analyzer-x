@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 2, "total": 53, "rows": 156760, "note": "AEHRSTOCK 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-04T17:32:30Z"}
+{"shard": 4, "stage": "testing", "done": 3, "total": 53, "rows": 199462, "note": "ALABSTOCK 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 5.7, "updated": "2026-09-04T17:33:15Z"}

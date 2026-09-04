@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 50, "total": 52, "rows": 4645642, "note": "XAUT 30m: rule 60/120 (eqraid)", "failed": [], "pct": 96.2, "updated": "2026-09-04T05:39:32Z"}
+{"shard": 16, "stage": "testing", "done": 50, "total": 52, "rows": 4658402, "note": "XAUT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 96.2, "updated": "2026-09-04T05:40:22Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 5, "total": 52, "rows": 398996, "note": "ASR 1h: rule 18/120 (macd)", "failed": [], "pct": 9.6, "updated": "2026-09-04T01:28:06Z"}
+{"shard": 11, "stage": "testing", "done": 5, "total": 52, "rows": 420776, "note": "ASR 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 9.6, "updated": "2026-09-04T01:29:01Z"}

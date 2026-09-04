@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 9, "total": 52, "rows": 800122, "note": "BNT 1h: rule 19/120 (emacross)", "failed": [], "pct": 17.3, "updated": "2026-09-04T02:00:28Z"}
+{"shard": 8, "stage": "testing", "done": 9, "total": 52, "rows": 821682, "note": "BNT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 17.3, "updated": "2026-09-04T02:01:19Z"}

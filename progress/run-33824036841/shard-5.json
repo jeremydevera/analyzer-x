@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 28, "total": 53, "rows": 2228132, "note": "LTC 15m: rule 82/120 (cf_maobv)", "failed": [], "pct": 52.8, "updated": "2026-09-04T03:31:20Z"}
+{"shard": 5, "stage": "testing", "done": 28, "total": 53, "rows": 2234792, "note": "LTC 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-04T03:32:11Z"}

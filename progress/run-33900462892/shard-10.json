@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 5, "total": 53, "rows": 457450, "note": "ASR 15m: rule 44/120 (elder)", "failed": [], "pct": 9.4, "updated": "2026-09-04T17:42:32Z"}
+{"shard": 10, "stage": "testing", "done": 5, "total": 53, "rows": 469690, "note": "ASR 15m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-04T17:43:18Z"}

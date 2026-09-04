@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 48, "total": 52, "rows": 3787338, "note": "USOIL 1h: rule 47/120 (ibs)", "failed": [], "pct": 92.3, "updated": "2026-09-04T04:20:31Z"}
+{"shard": 13, "stage": "testing", "done": 48, "total": 52, "rows": 3838290, "note": "USOIL 1d: rule 69/120 (obv20)", "failed": [], "pct": 92.3, "updated": "2026-09-04T04:21:16Z"}

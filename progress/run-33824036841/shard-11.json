@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 4, "total": 52, "rows": 325060, "note": "APHSTOCK 30m: rule 22/120 (engulf)", "failed": [], "pct": 7.7, "updated": "2026-09-04T01:21:51Z"}
+{"shard": 11, "stage": "testing", "done": 5, "total": 52, "rows": 347876, "note": "ASR 15m: rule 2/120 (mom15)", "failed": [], "pct": 9.6, "updated": "2026-09-04T01:22:43Z"}

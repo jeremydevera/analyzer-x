@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 11, "total": 52, "rows": 890156, "note": "CC 15m: rule 17/120 (atrbreak)", "failed": [], "pct": 21.2, "updated": "2026-09-04T02:05:23Z"}
+{"shard": 8, "stage": "testing", "done": 11, "total": 52, "rows": 895876, "note": "CC 15m: rule 43/120 (macddiv)", "failed": [], "pct": 21.2, "updated": "2026-09-04T02:06:08Z"}

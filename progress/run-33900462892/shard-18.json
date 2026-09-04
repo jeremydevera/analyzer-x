@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 46, "total": 52, "rows": 4200570, "note": "TRB 15m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 88.5, "updated": "2026-09-04T20:43:09Z"}
+{"shard": 18, "stage": "testing", "done": 46, "total": 52, "rows": 4205850, "note": "TRB 30m: rule 3/120 (fade15)", "failed": [], "pct": 88.5, "updated": "2026-09-04T20:43:55Z"}

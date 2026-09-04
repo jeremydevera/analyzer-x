@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 39, "total": 53, "rows": 3132426, "note": "RIF 15m: rule 73/120 (volspike)", "failed": [], "pct": 73.6, "updated": "2026-09-04T20:37:36Z"}
+{"shard": 5, "stage": "testing", "done": 39, "total": 53, "rows": 3138806, "note": "RIF 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 73.6, "updated": "2026-09-04T20:38:23Z"}

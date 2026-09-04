@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 39, "total": 52, "rows": 3857302, "note": "RON 30m: rule 16/120 (keltner)", "failed": [], "pct": 75.0, "updated": "2026-09-04T21:21:12Z"}
+{"shard": 17, "stage": "testing", "done": 39, "total": 52, "rows": 3866542, "note": "RON 30m: rule 59/120 (choch)", "failed": [], "pct": 75.0, "updated": "2026-09-04T21:21:58Z"}

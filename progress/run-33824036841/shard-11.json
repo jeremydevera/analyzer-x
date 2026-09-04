@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 25, "total": 52, "rows": 1912196, "note": "JPMSTOCK 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 48.1, "updated": "2026-09-04T02:44:58Z"}
+{"shard": 11, "stage": "testing", "done": 25, "total": 52, "rows": 1924076, "note": "JPMSTOCK 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 48.1, "updated": "2026-09-04T02:45:44Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 41, "total": 53, "rows": 3707848, "note": "SILVER 15m: rule 4/120 (trend50)", "failed": [], "pct": 77.4, "updated": "2026-09-04T20:53:57Z"}
+{"shard": 9, "stage": "testing", "done": 41, "total": 53, "rows": 3717028, "note": "SILVER 15m: rule 56/120 (insidebrk)", "failed": [], "pct": 77.4, "updated": "2026-09-04T20:54:42Z"}

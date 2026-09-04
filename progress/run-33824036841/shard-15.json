@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 20, "total": 52, "rows": 1849906, "note": "GLWSTOCK 30m: rule 16/120 (keltner)", "failed": [], "pct": 38.5, "updated": "2026-09-04T02:39:10Z"}
+{"shard": 15, "stage": "testing", "done": 20, "total": 52, "rows": 1911636, "note": "GLWSTOCK 4h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 38.5, "updated": "2026-09-04T02:39:55Z"}

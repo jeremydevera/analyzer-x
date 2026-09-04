@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 34, "total": 52, "rows": 2764452, "note": "OPENSTOCK 30m: rule 32/120 (gmma)", "failed": [], "pct": 65.4, "updated": "2026-09-04T03:29:42Z"}
+{"shard": 9, "stage": "testing", "done": 35, "total": 52, "rows": 2801848, "note": "PENDLE 15m: rule 1/120 (mom6)", "failed": [], "pct": 67.3, "updated": "2026-09-04T03:30:33Z"}

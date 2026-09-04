@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 7, "total": 52, "rows": 402402, "note": "BAS 15m: rule 45/120 (zscore20)", "failed": [], "pct": 13.5, "updated": "2026-09-04T01:25:10Z"}
+{"shard": 14, "stage": "testing", "done": 7, "total": 52, "rows": 408782, "note": "BAS 15m: rule 75/120 (relvolbrk)", "failed": [], "pct": 13.5, "updated": "2026-09-04T01:25:55Z"}

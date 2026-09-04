@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 18, "total": 53, "rows": 1450172, "note": "FASTSTOCK 15m: rule 30/120 (kama10)", "failed": [], "pct": 34.0, "updated": "2026-09-04T18:41:58Z"}
+{"shard": 6, "stage": "testing", "done": 19, "total": 53, "rows": 1514590, "note": "FOGO 15m: 22,766 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-04T18:42:52Z"}

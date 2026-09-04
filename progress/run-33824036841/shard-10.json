@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 25, "total": 52, "rows": 2140816, "note": "JP225 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 48.1, "updated": "2026-09-04T02:26:57Z"}
+{"shard": 10, "stage": "testing", "done": 26, "total": 52, "rows": 2181776, "note": "KLACSTOCK 15m: rule 61/120 (turtle)", "failed": [], "pct": 50.0, "updated": "2026-09-04T02:27:42Z"}

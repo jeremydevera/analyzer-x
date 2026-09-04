@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 43, "total": 52, "rows": 3647460, "note": "SQD 1h: rule 100/120 (cf_soup1)", "failed": [], "pct": 82.7, "updated": "2026-09-04T05:03:22Z"}
+{"shard": 14, "stage": "testing", "done": 43, "total": 52, "rows": 3678040, "note": "SQD 1d: 394 bars, testing 120 rules", "failed": [], "pct": 82.7, "updated": "2026-09-04T05:04:21Z"}

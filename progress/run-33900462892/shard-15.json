@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 32, "total": 52, "rows": 2768990, "note": "NIL 15m: rule 24/120 (psar)", "failed": [], "pct": 61.5, "updated": "2026-09-04T19:14:31Z"}
+{"shard": 15, "stage": "testing", "done": 32, "total": 52, "rows": 2775390, "note": "NIL 15m: rule 57/120 (orderblock)", "failed": [], "pct": 61.5, "updated": "2026-09-04T19:15:17Z"}

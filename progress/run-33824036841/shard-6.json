@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 33, "total": 53, "rows": 2554914, "note": "NUSTOCK 1h: 1,552 bars, testing 120 rules", "failed": [], "pct": 62.3, "updated": "2026-09-04T03:35:41Z"}
+{"shard": 6, "stage": "testing", "done": 34, "total": 53, "rows": 2585992, "note": "ON 15m: rule 2/120 (mom15)", "failed": [], "pct": 64.2, "updated": "2026-09-04T03:36:37Z"}

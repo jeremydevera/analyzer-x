@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 52, "total": 53, "rows": 4391334, "note": "YB 30m: rule 41/120 (tsi)", "failed": [], "pct": 98.1, "updated": "2026-09-04T21:52:02Z"}
+{"shard": 5, "stage": "testing", "done": 52, "total": 53, "rows": 4406734, "note": "YB 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-04T21:52:47Z"}

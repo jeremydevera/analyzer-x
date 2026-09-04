@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 29, "total": 52, "rows": 2815976, "note": "MINA 1h: rule 76/120 (cf_mom)", "failed": [], "pct": 55.8, "updated": "2026-09-04T03:24:54Z"}
+{"shard": 19, "stage": "testing", "done": 29, "total": 52, "rows": 2852056, "note": "MINA 1d: 394 bars, testing 120 rules", "failed": [], "pct": 55.8, "updated": "2026-09-04T03:25:46Z"}

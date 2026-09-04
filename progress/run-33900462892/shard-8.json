@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 53, "total": 53, "rows": 3786814, "note": "ZRO 15m: rule 29/120 (hull20)", "failed": [], "pct": 100.0, "updated": "2026-09-04T20:41:30Z"}
+{"shard": 8, "stage": "testing", "done": 53, "total": 53, "rows": 3791674, "note": "ZRO 15m: rule 57/120 (orderblock)", "failed": [], "pct": 100.0, "updated": "2026-09-04T20:42:15Z"}

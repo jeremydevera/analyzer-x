@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 23, "total": 52, "rows": 2046538, "note": "ICP 15m: rule 1/120 (mom6)", "failed": [], "pct": 44.2, "updated": "2026-09-04T18:41:32Z"}
+{"shard": 15, "stage": "testing", "done": 23, "total": 52, "rows": 2050698, "note": "ICP 15m: rule 23/120 (supertrend)", "failed": [], "pct": 44.2, "updated": "2026-09-04T18:42:17Z"}

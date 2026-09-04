@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 12, "total": 52, "rows": 1209678, "note": "COLLECT 30m: rule 6/120 (sweep30)", "failed": [], "pct": 23.1, "updated": "2026-09-04T18:44:33Z"}
+{"shard": 17, "stage": "testing", "done": 12, "total": 52, "rows": 1223098, "note": "COLLECT 30m: rule 68/120 (dbltop)", "failed": [], "pct": 23.1, "updated": "2026-09-04T18:45:18Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 36, "total": 52, "rows": 3401978, "note": "POWR 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 69.2, "updated": "2026-09-04T04:16:22Z"}
+{"shard": 16, "stage": "testing", "done": 36, "total": 52, "rows": 3407698, "note": "POWR 30m: rule 20/120 (stoch14)", "failed": [], "pct": 69.2, "updated": "2026-09-04T04:17:07Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 27, "total": 52, "rows": 2045192, "note": "LLYSTOCK 15m: 27,284 bars, testing 120 rules", "failed": [], "pct": 51.9, "updated": "2026-09-04T19:32:23Z"}
+{"shard": 19, "stage": "testing", "done": 27, "total": 52, "rows": 2051752, "note": "LLYSTOCK 15m: rule 35/120 (willr14)", "failed": [], "pct": 51.9, "updated": "2026-09-04T19:33:08Z"}

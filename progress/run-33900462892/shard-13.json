@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 52, "total": 52, "rows": 4546488, "note": "ZEC 15m: rule 2/120 (mom15)", "failed": [], "pct": 100.0, "updated": "2026-09-04T21:17:24Z"}
+{"shard": 13, "stage": "testing", "done": 52, "total": 52, "rows": 4549368, "note": "ZEC 15m: rule 16/120 (keltner)", "failed": [], "pct": 100.0, "updated": "2026-09-04T21:18:10Z"}

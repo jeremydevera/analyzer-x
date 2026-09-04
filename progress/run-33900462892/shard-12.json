@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 14, "total": 52, "rows": 1207220, "note": "CYBER 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 26.9, "updated": "2026-09-04T18:23:38Z"}
+{"shard": 12, "stage": "testing", "done": 15, "total": 52, "rows": 1302696, "note": "DOCUSTOCK 1h: rule 51/120 (orb)", "failed": [], "pct": 28.8, "updated": "2026-09-04T18:24:23Z"}

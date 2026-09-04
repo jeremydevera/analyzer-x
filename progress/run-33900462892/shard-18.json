@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 29, "total": 52, "rows": 2674890, "note": "MET 15m: rule 68/120 (dbltop)", "failed": [], "pct": 55.8, "updated": "2026-09-04T19:35:38Z"}
+{"shard": 18, "stage": "testing", "done": 29, "total": 52, "rows": 2688310, "note": "MET 30m: rule 3/120 (fade15)", "failed": [], "pct": 55.8, "updated": "2026-09-04T19:37:16Z"}

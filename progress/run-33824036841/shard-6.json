@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 31, "total": 53, "rows": 2289392, "note": "MUBARAK 15m: rule 68/120 (dbltop)", "failed": [], "pct": 58.5, "updated": "2026-09-04T03:19:04Z"}
+{"shard": 6, "stage": "testing", "done": 31, "total": 53, "rows": 2296432, "note": "MUBARAK 15m: rule 100/120 (cf_soup1)", "failed": [], "pct": 58.5, "updated": "2026-09-04T03:19:50Z"}

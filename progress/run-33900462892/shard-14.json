@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 26, "total": 52, "rows": 2205664, "note": "KNC 15m: rule 37/120 (ultosc)", "failed": [], "pct": 50.0, "updated": "2026-09-04T19:11:36Z"}
+{"shard": 14, "stage": "testing", "done": 26, "total": 52, "rows": 2214864, "note": "KNC 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 50.0, "updated": "2026-09-04T19:12:22Z"}

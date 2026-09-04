@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 28, "total": 52, "rows": 2611526, "note": "MANTA 30m: rule 20/120 (stoch14)", "failed": [], "pct": 53.8, "updated": "2026-09-04T03:30:17Z"}
+{"shard": 16, "stage": "testing", "done": 28, "total": 52, "rows": 2622086, "note": "MANTA 30m: rule 69/120 (obv20)", "failed": [], "pct": 53.8, "updated": "2026-09-04T03:31:03Z"}

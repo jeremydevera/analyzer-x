@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 46, "total": 53, "rows": 3392944, "note": "TMF 30m: rule 20/120 (stoch14)", "failed": [], "pct": 86.8, "updated": "2026-09-04T20:24:04Z"}
+{"shard": 8, "stage": "testing", "done": 47, "total": 53, "rows": 3453424, "note": "TSEMSTOCK 30m: rule 17/120 (atrbreak)", "failed": [], "pct": 88.7, "updated": "2026-09-04T20:24:49Z"}

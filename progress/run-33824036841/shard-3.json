@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 16, "total": 53, "rows": 1192848, "note": "DRIFT 1d: 394 bars, testing 120 rules", "failed": [], "pct": 30.2, "updated": "2026-09-04T02:15:57Z"}
+{"shard": 3, "stage": "testing", "done": 17, "total": 53, "rows": 1206408, "note": "ENSO 15m: rule 2/120 (mom15)", "failed": [], "pct": 32.1, "updated": "2026-09-04T02:16:55Z"}

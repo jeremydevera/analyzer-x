@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 42, "total": 52, "rows": 3679960, "note": "SONIC 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 80.8, "updated": "2026-09-04T04:42:55Z"}
+{"shard": 17, "stage": "testing", "done": 42, "total": 52, "rows": 3684140, "note": "SONIC 30m: rule 13/120 (pivot)", "failed": [], "pct": 80.8, "updated": "2026-09-04T04:43:41Z"}

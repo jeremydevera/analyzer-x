@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 41, "total": 53, "rows": 3330124, "note": "SHELL 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 77.4, "updated": "2026-09-04T20:26:35Z"}
+{"shard": 3, "stage": "testing", "done": 41, "total": 53, "rows": 3341784, "note": "SHELL 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 77.4, "updated": "2026-09-04T20:27:20Z"}

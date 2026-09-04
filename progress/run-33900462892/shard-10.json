@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 33, "total": 53, "rows": 2708550, "note": "NVDL 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 62.3, "updated": "2026-09-04T18:59:55Z"}
+{"shard": 10, "stage": "testing", "done": 34, "total": 53, "rows": 2752668, "note": "OPENAI 15m: rule 71/120 (mfi14)", "failed": [], "pct": 64.2, "updated": "2026-09-04T19:00:40Z"}

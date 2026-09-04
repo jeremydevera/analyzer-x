@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 38, "total": 53, "rows": 3285706, "note": "RAVE 15m: 25,571 bars, testing 120 rules", "failed": [], "pct": 71.7, "updated": "2026-09-04T20:53:59Z"}
+{"shard": 7, "stage": "testing", "done": 38, "total": 53, "rows": 3287326, "note": "RAVE 15m: rule 3/120 (fade15)", "failed": [], "pct": 71.7, "updated": "2026-09-04T20:54:47Z"}

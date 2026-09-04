@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 42, "total": 53, "rows": 3417908, "note": "SKY 30m: rule 20/120 (stoch14)", "failed": [], "pct": 79.2, "updated": "2026-09-04T20:04:08Z"}
+{"shard": 1, "stage": "testing", "done": 42, "total": 53, "rows": 3426708, "note": "SKY 30m: rule 61/120 (turtle)", "failed": [], "pct": 79.2, "updated": "2026-09-04T20:04:53Z"}

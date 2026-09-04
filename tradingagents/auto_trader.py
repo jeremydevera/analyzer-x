@@ -2517,6 +2517,51 @@ def halted() -> bool:
     return KILL_PATH.exists()
 
 
+def disarm_live(why: str, settings: dict | None = None) -> list[str]:
+    """Take the REAL book off every strategy that has it. Returns the keys.
+
+    The operator's rule for the account loss cap (2026-09-04): *"YOU WILL NEED
+    TO SWITCH OFF THE LIVE TRADE HERE NO NEED TO STOP RUNNER"* — and *"DEMO
+    TRADE SHOULD STILL WORK"*. So this is a per-strategy disarm written through
+    `save_settings`, not a halt: the deploy history records it, the LIVE/DEMO
+    toggles show it, and the paper book is untouched.
+
+    A strategy that is paper-only is left exactly as it is. Returns [] when
+    nothing was live, which is what stops the caller writing the same file
+    every cycle for the rest of the day.
+    """
+    if settings is None:
+        settings = load_settings()
+    books = dict(settings.get("strategy_books") or {})
+    hit = [k for k, v in books.items() if "real" in (v or [])]
+    if not hit:
+        return []
+    for k in hit:
+        books[k] = [b for b in books[k] if b != "real"]
+    out = dict(settings)
+    out["strategy_books"] = books
+    # the global switch too, or a row with no per-strategy entry falls back to
+    # it and keeps trading real money (books_for)
+    out["enabled"] = False
+    save_settings(out)
+    logger.error("LIVE SWITCHED OFF (%s): %d strateg%s disarmed from the real "
+                 "book — %s. The demo book is untouched and the runner keeps "
+                 "running.", why, len(hit),
+                 "y" if len(hit) == 1 else "ies", ", ".join(sorted(hit)))
+    append_ledger({"action": "live_disarmed", "why": why,
+                   "strategies": sorted(hit), "dry_run": False})
+    try:
+        from tradingagents import notifications as _nt
+
+        _nt.record("risk", "LIVE trading switched off", ok=False,
+                   detail=f"{why} — {len(hit)} strategies disarmed from the "
+                          f"real book; demo keeps running",
+                   meta={"strategies": sorted(hit), "why": why})
+    except Exception:
+        pass
+    return sorted(hit)
+
+
 # ------------------------------------------------------------ trade logic
 def ladder_margin(base: float, step: int) -> float:
     return base * LADDER[min(step, len(LADDER) - 1)]
@@ -3779,21 +3824,23 @@ def run_forever() -> None:
                 append_ledger({"action": "runner_stop", "why": "signal"})
                 break
             if loss_limit_hit():
-                day = pnl_today()
+                # LIVE OFF, RUNNER UP, DEMO RUNNING. This wrote the KILL file
+                # and `break` until 2026-09-04 — which stopped the simulation
+                # too (halted() gates both books) and made the operator
+                # restart the runner to get it back. Their words: "YOU WILL
+                # NEED TO SWITCH OFF THE LIVE TRADE HERE NO NEED TO STOP
+                # RUNNER ... DEMO TRADE SHOULD STILL WORK".
+                day = pnl_today(dry=False)
                 limit = settings.get("loss_limit")
-                KILL_PATH.write_text(
-                    f"account daily loss limit hit: realised "
-                    f"{day['total']:+.2f} USDT reached the limit of "
-                    f"-{abs(float(limit)):.2f} USDT")
-                logger.error(
-                    "DAILY LOSS LIMIT HIT: realized %+.2f USDT ≤ -%s — "
-                    "auto trade STOPPED. Open positions keep their "
-                    "exchange-side TP/SL. Re-enable by ticking Auto Trade "
-                    "and saving (that clears the kill file).",
-                    day["total"], limit)
-                append_ledger({"action": "loss_limit_stop",
-                               "pnl_today": day["total"], "limit": limit})
-                break
+                got = disarm_live(
+                    f"account loss cap: today's REAL trading is "
+                    f"{day['total']:+.2f} USDT against a cap of "
+                    f"-{abs(float(limit or 0)):.2f} USDT")
+                if got:
+                    append_ledger({"action": "loss_limit_stop",
+                                   "pnl_today": day["total"], "limit": limit,
+                                   "disarmed": got, "runner": "still running",
+                                   "demo": "still trading"})
             slept = 0.0
             target = next_sleep_seconds()
             while slept < target and not _stopping["flag"]:

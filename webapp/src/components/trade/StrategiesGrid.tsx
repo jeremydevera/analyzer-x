@@ -212,7 +212,12 @@ export default function StrategiesGrid() {
       {err && <p className="px-5 pt-2 text-theme-sm text-error-500">{err}</p>}
       {capHit && (
         <p className="mx-5 mt-2 rounded-lg bg-error-50 px-3 py-2 text-theme-sm font-medium text-error-600 dark:bg-error-500/10">
-          The account loss cap of ${acctCap} has been reached today — the runner has halted entries. Raise the cap or clear the halt to resume.
+          {/* It used to say "the runner has halted entries" — the cap wrote
+              the kill file and the runner EXITED, demo included. Since
+              2026-09-04 it switches LIVE off per strategy and leaves the demo
+              and the runner alone (operator: "YOU WILL NEED TO SWITCH OFF THE
+              LIVE TRADE HERE NO NEED TO STOP RUNNER"). */}
+          The account loss cap of ${acctCap} has been reached today — <b>LIVE has been switched off</b> on every strategy. The demo book keeps trading and the runner is still up. Raise the cap and tick LIVE again to resume real money.
         </p>
       )}
       {!!counts.catalog_count && rows.some((r) => r.tripped) && (

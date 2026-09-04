@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 20, "total": 53, "rows": 1740006, "note": "GALA 30m: rule 25/120 (ichimoku)", "failed": [], "pct": 37.7, "updated": "2026-09-04T19:20:07Z"}
+{"shard": 0, "stage": "testing", "done": 20, "total": 53, "rows": 1750006, "note": "GALA 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 37.7, "updated": "2026-09-04T19:20:53Z"}

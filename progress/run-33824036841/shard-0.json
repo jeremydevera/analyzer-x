@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 1, "total": 53, "rows": 32340, "note": "0G 30m: rule 16/120 (keltner)", "failed": [], "pct": 1.9, "updated": "2026-09-04T01:06:21Z"}
+{"shard": 0, "stage": "testing", "done": 1, "total": 53, "rows": 43780, "note": "0G 30m: rule 69/120 (obv20)", "failed": [], "pct": 1.9, "updated": "2026-09-04T01:07:07Z"}

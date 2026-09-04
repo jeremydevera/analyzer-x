@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 26, "total": 52, "rows": 2426598, "note": "KOSPI 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 50.0, "updated": "2026-09-04T03:17:27Z"}
+{"shard": 16, "stage": "testing", "done": 27, "total": 52, "rows": 2460430, "note": "LIT 15m: rule 2/120 (mom15)", "failed": [], "pct": 51.9, "updated": "2026-09-04T03:18:24Z"}

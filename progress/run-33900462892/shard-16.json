@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 52, "total": 52, "rows": 4651398, "note": "ZEST 15m: rule 2/120 (mom15)", "failed": [], "pct": 100.0, "updated": "2026-09-04T22:05:22Z"}
+{"shard": 16, "stage": "testing", "done": 52, "total": 52, "rows": 4667238, "note": "ZEST 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-04T22:06:08Z"}

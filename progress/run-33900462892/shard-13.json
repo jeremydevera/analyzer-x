@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 26, "total": 52, "rows": 2339052, "note": "KMNO 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 50.0, "updated": "2026-09-04T19:27:11Z"}
+{"shard": 13, "stage": "testing", "done": 26, "total": 52, "rows": 2368752, "note": "KMNO 1d: 394 bars, testing 120 rules", "failed": [], "pct": 50.0, "updated": "2026-09-04T19:28:04Z"}

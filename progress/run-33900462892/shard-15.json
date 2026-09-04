@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 21, "total": 52, "rows": 1872948, "note": "GWEI 1h: rule 15/120 (bbbreak)", "failed": [], "pct": 40.4, "updated": "2026-09-04T18:32:39Z"}
+{"shard": 15, "stage": "testing", "done": 22, "total": 52, "rows": 1923738, "note": "HMSTR 15m: 34,649 bars, testing 120 rules", "failed": [], "pct": 42.3, "updated": "2026-09-04T18:33:39Z"}

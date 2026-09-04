@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 43, "total": 52, "rows": 3808950, "note": "SPX 1h: rule 15/120 (bbbreak)", "failed": [], "pct": 82.7, "updated": "2026-09-04T05:00:44Z"}
+{"shard": 12, "stage": "testing", "done": 43, "total": 52, "rows": 3828530, "note": "SPX 1h: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 82.7, "updated": "2026-09-04T05:01:29Z"}

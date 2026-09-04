@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 42, "total": 52, "rows": 3526408, "note": "SOLV 1h: rule 88/120 (cf_chan)", "failed": [], "pct": 80.8, "updated": "2026-09-04T04:53:30Z"}
+{"shard": 14, "stage": "testing", "done": 42, "total": 52, "rows": 3559188, "note": "SOLV 1d: 394 bars, testing 120 rules", "failed": [], "pct": 80.8, "updated": "2026-09-04T04:54:26Z"}

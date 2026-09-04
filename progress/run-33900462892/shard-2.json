@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 37, "total": 53, "rows": 3055650, "note": "PROMPT 15m: rule 49/120 (vwaprev)", "failed": [], "pct": 69.8, "updated": "2026-09-04T20:26:42Z"}
+{"shard": 2, "stage": "testing", "done": 37, "total": 53, "rows": 3062690, "note": "PROMPT 15m: rule 82/120 (cf_maobv)", "failed": [], "pct": 69.8, "updated": "2026-09-04T20:27:28Z"}

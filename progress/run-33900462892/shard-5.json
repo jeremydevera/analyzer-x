@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 3, "total": 53, "rows": 215772, "note": "ALCH 1h: rule 3/120 (fade15)", "failed": [], "pct": 5.7, "updated": "2026-09-04T17:43:16Z"}
+{"shard": 5, "stage": "testing", "done": 3, "total": 53, "rows": 236012, "note": "ALCH 1h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 5.7, "updated": "2026-09-04T17:44:02Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 35, "total": 52, "rows": 2884146, "note": "PEAQ 1h: rule 86/120 (cf_triple_l1)", "failed": [], "pct": 67.3, "updated": "2026-09-04T04:09:47Z"}
+{"shard": 8, "stage": "testing", "done": 36, "total": 52, "rows": 2925938, "note": "POETSTOCK 15m: 7,543 bars, testing 120 rules", "failed": [], "pct": 69.2, "updated": "2026-09-04T04:10:33Z"}

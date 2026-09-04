@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 26, "total": 52, "rows": 2273426, "note": "KNC 30m: rule 2/120 (mom15)", "failed": [], "pct": 50.0, "updated": "2026-09-04T03:17:24Z"}
+{"shard": 12, "stage": "testing", "done": 26, "total": 52, "rows": 2281566, "note": "KNC 30m: rule 37/120 (ultosc)", "failed": [], "pct": 50.0, "updated": "2026-09-04T03:18:09Z"}

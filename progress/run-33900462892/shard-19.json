@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 28, "total": 52, "rows": 2151624, "note": "MANTRA 15m: 17,710 bars, testing 120 rules", "failed": [], "pct": 53.8, "updated": "2026-09-04T19:36:15Z"}
+{"shard": 19, "stage": "testing", "done": 28, "total": 52, "rows": 2156464, "note": "MANTRA 15m: rule 16/120 (keltner)", "failed": [], "pct": 53.8, "updated": "2026-09-04T19:37:01Z"}

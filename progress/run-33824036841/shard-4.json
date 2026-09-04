@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 22, "total": 53, "rows": 1770026, "note": "HEMI 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-04T02:36:36Z"}
+{"shard": 4, "stage": "testing", "done": 22, "total": 53, "rows": 1778566, "note": "HEMI 1h: rule 18/120 (macd)", "failed": [], "pct": 41.5, "updated": "2026-09-04T02:37:21Z"}

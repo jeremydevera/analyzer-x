@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 44, "total": 52, "rows": 3718908, "note": "STX 1h: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 84.6, "updated": "2026-09-04T20:01:26Z"}
+{"shard": 12, "stage": "testing", "done": 45, "total": 52, "rows": 3761896, "note": "TAO 15m: 34,559 bars, testing 120 rules", "failed": [], "pct": 86.5, "updated": "2026-09-04T20:02:14Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 16, "total": 52, "rows": 1685216, "note": "ELSA 1h: rule 44/120 (elder)", "failed": [], "pct": 30.8, "updated": "2026-09-04T19:05:41Z"}
+{"shard": 16, "stage": "testing", "done": 17, "total": 52, "rows": 1732384, "note": "EVAA 15m: 32,292 bars, testing 120 rules", "failed": [], "pct": 32.7, "updated": "2026-09-04T19:06:35Z"}

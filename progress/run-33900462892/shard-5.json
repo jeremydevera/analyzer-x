@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 52, "total": 53, "rows": 4461858, "note": "YB 1d: rule 100/120 (cf_soup1)", "failed": [], "pct": 98.1, "updated": "2026-09-04T21:54:18Z"}
+{"shard": 5, "stage": "testing", "done": 53, "total": 53, "rows": 4464058, "note": "ZKSYNC 15m: rule 2/120 (mom15)", "failed": [], "pct": 100.0, "updated": "2026-09-04T21:55:20Z"}

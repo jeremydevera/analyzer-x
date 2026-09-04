@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 8, "total": 53, "rows": 488858, "note": "BEAT 15m: rule 2/120 (mom15)", "failed": [], "pct": 15.1, "updated": "2026-09-04T01:26:02Z"}
+{"shard": 1, "stage": "testing", "done": 8, "total": 53, "rows": 492058, "note": "BEAT 15m: rule 20/120 (stoch14)", "failed": [], "pct": 15.1, "updated": "2026-09-04T01:26:47Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 48, "total": 52, "rows": 4161676, "note": "US30 15m: rule 75/120 (relvolbrk)", "failed": [], "pct": 92.3, "updated": "2026-09-04T21:01:29Z"}
+{"shard": 13, "stage": "testing", "done": 48, "total": 52, "rows": 4176876, "note": "US30 30m: rule 34/120 (lrslope)", "failed": [], "pct": 92.3, "updated": "2026-09-04T21:02:14Z"}

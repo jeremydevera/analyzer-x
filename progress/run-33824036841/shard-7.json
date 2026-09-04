@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 52, "total": 52, "rows": 4267376, "note": "ZBCN 15m: rule 12/120 (donchian20)", "failed": [], "pct": 100.0, "updated": "2026-09-04T04:55:09Z"}
+{"shard": 7, "stage": "testing", "done": 52, "total": 52, "rows": 4271336, "note": "ZBCN 15m: rule 30/120 (kama10)", "failed": [], "pct": 100.0, "updated": "2026-09-04T04:55:56Z"}

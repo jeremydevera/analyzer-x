@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 22, "total": 53, "rows": 1899664, "note": "HBAR 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 41.5, "updated": "2026-09-04T02:38:33Z"}
+{"shard": 1, "stage": "testing", "done": 22, "total": 53, "rows": 1916264, "note": "HBAR 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-04T02:39:18Z"}

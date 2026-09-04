@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 16, "total": 53, "rows": 1242426, "note": "DOT 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 30.2, "updated": "2026-09-04T02:22:05Z"}
+{"shard": 0, "stage": "testing", "done": 16, "total": 53, "rows": 1264646, "note": "DOT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 30.2, "updated": "2026-09-04T02:22:53Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 9, "total": 53, "rows": 702290, "note": "BLUR 30m: rule 44/120 (elder)", "failed": [], "pct": 17.0, "updated": "2026-09-04T18:03:59Z"}
+{"shard": 1, "stage": "testing", "done": 9, "total": 53, "rows": 715270, "note": "BLUR 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 17.0, "updated": "2026-09-04T18:04:45Z"}

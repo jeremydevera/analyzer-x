@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 27, "total": 53, "rows": 1929526, "note": "LDO 4h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-04T19:08:43Z"}
+{"shard": 8, "stage": "testing", "done": 29, "total": 53, "rows": 1994642, "note": "MEGA 15m: 30,444 bars, testing 120 rules", "failed": [], "pct": 54.7, "updated": "2026-09-04T19:09:39Z"}

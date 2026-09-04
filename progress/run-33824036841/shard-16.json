@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 38, "total": 52, "rows": 3626322, "note": "RENDER 15m: rule 47/120 (ibs)", "failed": [], "pct": 73.1, "updated": "2026-09-04T04:30:26Z"}
+{"shard": 16, "stage": "testing", "done": 38, "total": 52, "rows": 3631602, "note": "RENDER 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 73.1, "updated": "2026-09-04T04:31:12Z"}

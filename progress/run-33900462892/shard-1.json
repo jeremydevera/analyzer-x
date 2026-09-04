@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 1, "total": 53, "rows": 52280, "note": "1000000BABYDOGE 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 1.9, "updated": "2026-09-04T17:32:35Z"}
+{"shard": 1, "stage": "testing", "done": 1, "total": 53, "rows": 69308, "note": "1000000BABYDOGE 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-04T17:33:21Z"}

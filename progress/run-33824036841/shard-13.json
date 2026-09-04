@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 7, "total": 52, "rows": 500248, "note": "BASTOCK 15m: rule 69/120 (obv20)", "failed": [], "pct": 13.5, "updated": "2026-09-04T01:16:13Z"}
+{"shard": 13, "stage": "testing", "done": 7, "total": 52, "rows": 510448, "note": "BASTOCK 30m: rule 8/120 (fib618)", "failed": [], "pct": 13.5, "updated": "2026-09-04T01:16:58Z"}

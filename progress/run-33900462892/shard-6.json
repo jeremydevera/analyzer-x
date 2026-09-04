@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 36, "total": 53, "rows": 3062314, "note": "PLAY 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 67.9, "updated": "2026-09-04T20:19:41Z"}
+{"shard": 6, "stage": "testing", "done": 36, "total": 53, "rows": 3093994, "note": "PLAY 1d: 394 bars, testing 120 rules", "failed": [], "pct": 67.9, "updated": "2026-09-04T20:20:31Z"}

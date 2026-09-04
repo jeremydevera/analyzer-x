@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 26, "total": 53, "rows": 2053000, "note": "KAVA 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-04T03:00:57Z"}
+{"shard": 0, "stage": "testing", "done": 26, "total": 53, "rows": 2071920, "note": "KAVA 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 49.1, "updated": "2026-09-04T03:01:43Z"}

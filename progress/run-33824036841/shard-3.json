@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 14, "total": 53, "rows": 1090054, "note": "CTR 30m: 4,826 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-04T02:11:12Z"}
+{"shard": 3, "stage": "testing", "done": 14, "total": 53, "rows": 1120398, "note": "CTR 1h: rule 22/120 (engulf)", "failed": [], "pct": 26.4, "updated": "2026-09-04T02:11:57Z"}

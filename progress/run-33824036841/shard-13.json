@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 42, "total": 52, "rows": 3420878, "note": "SOFTBANKSTOCK 15m: rule 72/120 (force13)", "failed": [], "pct": 80.8, "updated": "2026-09-04T04:01:46Z"}
+{"shard": 13, "stage": "testing", "done": 43, "total": 52, "rows": 3492038, "note": "SPY 30m: rule 116/120 (cf_diadx_l1)", "failed": [], "pct": 82.7, "updated": "2026-09-04T04:02:31Z"}

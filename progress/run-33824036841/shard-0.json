@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 31, "total": 53, "rows": 2453166, "note": "MSFU 15m: rule 115/120 (cf_diadx)", "failed": [], "pct": 58.5, "updated": "2026-09-04T03:14:57Z"}
+{"shard": 0, "stage": "testing", "done": 33, "total": 53, "rows": 2492062, "note": "NOT 15m: rule 1/120 (mom6)", "failed": [], "pct": 62.3, "updated": "2026-09-04T03:15:58Z"}

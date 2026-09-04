@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 36, "total": 53, "rows": 3186488, "note": "PIEVERSE 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 67.9, "updated": "2026-09-04T20:40:22Z"}
+{"shard": 0, "stage": "testing", "done": 37, "total": 53, "rows": 3228244, "note": "PRL 15m: 15,690 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-04T20:41:08Z"}

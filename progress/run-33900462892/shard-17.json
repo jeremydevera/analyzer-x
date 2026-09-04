@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 11, "total": 52, "rows": 1142482, "note": "CGPT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 21.2, "updated": "2026-09-04T18:39:49Z"}
+{"shard": 17, "stage": "testing", "done": 12, "total": 52, "rows": 1182038, "note": "COLLECT 15m: 23,936 bars, testing 120 rules", "failed": [], "pct": 23.1, "updated": "2026-09-04T18:40:37Z"}

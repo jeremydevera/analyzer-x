@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 39, "total": 52, "rows": 3049760, "note": "RLC 1h: rule 36/120 (stochrsi)", "failed": [], "pct": 75.0, "updated": "2026-09-04T03:40:48Z"}
+{"shard": 7, "stage": "testing", "done": 39, "total": 52, "rows": 3072200, "note": "RLC 4h: rule 13/120 (pivot)", "failed": [], "pct": 75.0, "updated": "2026-09-04T03:41:33Z"}

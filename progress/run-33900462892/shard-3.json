@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 49, "total": 53, "rows": 4094800, "note": "UVXY 15m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 92.5, "updated": "2026-09-04T21:18:05Z"}
+{"shard": 3, "stage": "testing", "done": 50, "total": 53, "rows": 4162986, "note": "WAXP 15m: 34,564 bars, testing 120 rules", "failed": [], "pct": 94.3, "updated": "2026-09-04T21:19:00Z"}

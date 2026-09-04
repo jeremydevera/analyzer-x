@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 7, "total": 52, "rows": 626362, "note": "BASED 1h: rule 47/120 (ibs)", "failed": [], "pct": 13.5, "updated": "2026-09-04T01:41:43Z"}
+{"shard": 12, "stage": "testing", "done": 8, "total": 52, "rows": 670582, "note": "BIRB 15m: 20,986 bars, testing 120 rules", "failed": [], "pct": 15.4, "updated": "2026-09-04T01:42:36Z"}

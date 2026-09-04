@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 21, "total": 53, "rows": 1716478, "note": "GRAM 15m: rule 3/120 (fade15)", "failed": [], "pct": 39.6, "updated": "2026-09-04T18:52:06Z"}
+{"shard": 6, "stage": "testing", "done": 21, "total": 53, "rows": 1743258, "note": "GRAM 30m: rule 13/120 (pivot)", "failed": [], "pct": 39.6, "updated": "2026-09-04T18:52:51Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 36, "total": 52, "rows": 2749036, "note": "PNUT 30m: rule 64/120 (hammer)", "failed": [], "pct": 69.2, "updated": "2026-09-04T03:20:58Z"}
+{"shard": 7, "stage": "testing", "done": 36, "total": 52, "rows": 2761136, "note": "PNUT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 69.2, "updated": "2026-09-04T03:21:47Z"}

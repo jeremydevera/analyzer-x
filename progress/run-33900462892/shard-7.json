@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 2, "total": 53, "rows": 138652, "note": "AERO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 3.8, "updated": "2026-09-04T17:36:34Z"}
+{"shard": 7, "stage": "testing", "done": 2, "total": 53, "rows": 142612, "note": "AERO 30m: rule 12/120 (donchian20)", "failed": [], "pct": 3.8, "updated": "2026-09-04T17:37:19Z"}

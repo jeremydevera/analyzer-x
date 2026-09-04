@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 23, "total": 53, "rows": 1850948, "note": "HYPER 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 43.4, "updated": "2026-09-04T19:00:08Z"}
+{"shard": 6, "stage": "testing", "done": 23, "total": 53, "rows": 1858868, "note": "HYPER 15m: rule 112/120 (cf_obretest)", "failed": [], "pct": 43.4, "updated": "2026-09-04T19:00:53Z"}

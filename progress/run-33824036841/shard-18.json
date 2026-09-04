@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 27, "total": 52, "rows": 2128030, "note": "LMTSTOCK 1h: 4,385 bars, testing 120 rules", "failed": [], "pct": 51.9, "updated": "2026-09-04T03:18:44Z"}
+{"shard": 18, "stage": "testing", "done": 28, "total": 52, "rows": 2181380, "note": "MARASTOCK 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 53.8, "updated": "2026-09-04T03:19:29Z"}

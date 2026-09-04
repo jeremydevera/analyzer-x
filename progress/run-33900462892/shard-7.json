@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 41, "total": 53, "rows": 3565904, "note": "SHOPSTOCK 30m: 9,871 bars, testing 120 rules", "failed": [], "pct": 77.4, "updated": "2026-09-04T21:11:00Z"}
+{"shard": 7, "stage": "testing", "done": 41, "total": 53, "rows": 3588224, "note": "SHOPSTOCK 1h: 4,936 bars, testing 120 rules", "failed": [], "pct": 77.4, "updated": "2026-09-04T21:11:48Z"}

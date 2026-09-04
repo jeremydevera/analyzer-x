@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 16, "total": 53, "rows": 1219966, "note": "DOT 30m: rule 30/120 (kama10)", "failed": [], "pct": 30.2, "updated": "2026-09-04T02:20:34Z"}
+{"shard": 0, "stage": "testing", "done": 16, "total": 53, "rows": 1231566, "note": "DOT 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 30.2, "updated": "2026-09-04T02:21:20Z"}

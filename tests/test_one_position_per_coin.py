@@ -185,3 +185,30 @@ def test_the_dead_arming_check_is_gone_from_the_entry_loop():
     src = inspect.getsource(at._process_slot)
     assert "_live_locks" not in src
     assert "ONE OPEN POSITION PER COIN" in src, "and the rule is written down"
+
+
+# ---------------------------------------------------------------------------
+# The runner refused ITSELF on Windows.
+
+def test_the_runner_does_not_refuse_its_own_launcher():
+    """Measured 2026-09-04 on the operator's PC: `.venv/Scripts/python.exe` is
+    a LAUNCHER — `Popen.pid` was 7704 while the interpreter that booted inside
+    it had `os.getpid() == 5700`. `start_runner` writes Popen's pid, so the
+    runner read its own PARENT out of the pid file and exited about a second
+    later with "another auto-trader is already running (pid 7704)". Every
+    start from the Trade tab died that way, which is why the operator's runner
+    would not stay up.
+
+    The exclusive lock (LOCK_PATH) is what actually stops two runners, so
+    skipping the launcher here cannot double a trade."""
+    src = inspect.getsource(at.run_forever)
+    assert "other not in (os.getpid(), os.getppid())" in src, src[:400]
+    # and the lock is still the real guarantee, taken right after
+    i = src.index("other not in (os.getpid(), os.getppid())")
+    assert "lock_exclusive" in src[i:], "the lock must still be taken"
+
+
+def test_the_pid_file_ends_up_holding_the_REAL_runner():
+    """Otherwise STOP kills the launcher and leaves the runner trading."""
+    src = inspect.getsource(at.run_forever)
+    assert "PID_PATH.write_text(str(os.getpid())" in src

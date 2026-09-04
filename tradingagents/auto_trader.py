@@ -3676,7 +3676,16 @@ def run_forever() -> None:
     except (ValueError, OSError):
         pass
     other = runner_pid()
-    if other and other != os.getpid():
+    # ...but never our OWN LAUNCHER. On Windows a venv's python.exe is a shim:
+    # subprocess sees one pid and the interpreter that boots inside it has
+    # another. `start_runner` writes the shim's pid, so the runner read its own
+    # PARENT out of the file and refused ITSELF. Measured 2026-09-04 on this
+    # machine: Popen.pid 7704, the child's os.getpid() 5700 — and every start
+    # from the Trade tab died about a second later with "another auto-trader is
+    # already running (pid <its own parent>)", which is why the operator's
+    # runner would not stay up. The exclusive lock below is what actually stops
+    # two runners; this check only has to skip the launcher.
+    if other and other not in (os.getpid(), os.getppid()):
         # Two runners double every trade. Refuse loudly instead.
         print(f"another auto-trader is already running (pid {other}) — "
               f"stop it first:  kill {other}", file=sys.stderr)

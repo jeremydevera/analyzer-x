@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 2, "total": 52, "rows": 143580, "note": "AIOT 30m: rule 30/120 (kama10)", "failed": [], "pct": 3.8, "updated": "2026-09-04T17:38:49Z"}
+{"shard": 16, "stage": "testing", "done": 2, "total": 52, "rows": 153480, "note": "AIOT 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 3.8, "updated": "2026-09-04T17:39:35Z"}

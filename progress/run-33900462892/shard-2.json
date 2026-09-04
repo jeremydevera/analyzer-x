@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 3, "total": 53, "rows": 191402, "note": "AKE 1h: rule 24/120 (psar)", "failed": [], "pct": 5.7, "updated": "2026-09-04T17:42:44Z"}
+{"shard": 2, "stage": "testing", "done": 3, "total": 53, "rows": 209618, "note": "AKE 4h: 2,275 bars, testing 120 rules", "failed": [], "pct": 5.7, "updated": "2026-09-04T17:43:31Z"}

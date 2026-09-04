@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 9, "total": 53, "rows": 690744, "note": "BMT 30m: rule 13/120 (pivot)", "failed": [], "pct": 17.0, "updated": "2026-09-04T01:31:13Z"}
+{"shard": 4, "stage": "testing", "done": 9, "total": 53, "rows": 699544, "note": "BMT 30m: rule 54/120 (fractal5)", "failed": [], "pct": 17.0, "updated": "2026-09-04T01:31:58Z"}

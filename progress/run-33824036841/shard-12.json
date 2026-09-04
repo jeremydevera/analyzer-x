@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 51, "total": 52, "rows": 4358160, "note": "XPD 15m: rule 12/120 (donchian20)", "failed": [], "pct": 98.1, "updated": "2026-09-04T05:27:18Z"}
+{"shard": 12, "stage": "testing", "done": 51, "total": 52, "rows": 4369860, "note": "XPD 15m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-04T05:28:04Z"}

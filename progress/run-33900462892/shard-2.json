@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 20, "total": 53, "rows": 1596614, "note": "GBP 30m: rule 115/120 (cf_diadx)", "failed": [], "pct": 37.7, "updated": "2026-09-04T19:09:21Z"}
+{"shard": 2, "stage": "testing", "done": 20, "total": 53, "rows": 1620594, "note": "GBP 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 37.7, "updated": "2026-09-04T19:10:06Z"}

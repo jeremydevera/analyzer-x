@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 52, "total": 52, "rows": 4366618, "note": "ZEC 30m: rule 20/120 (stoch14)", "failed": [], "pct": 100.0, "updated": "2026-09-04T05:10:04Z"}
+{"shard": 9, "stage": "testing", "done": 52, "total": 52, "rows": 4376218, "note": "ZEC 30m: rule 69/120 (obv20)", "failed": [], "pct": 100.0, "updated": "2026-09-04T05:10:50Z"}

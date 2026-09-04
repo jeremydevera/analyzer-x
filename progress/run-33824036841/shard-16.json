@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 11, "total": 52, "rows": 925778, "note": "CFX 15m: rule 82/120 (cf_maobv)", "failed": [], "pct": 21.2, "updated": "2026-09-04T01:43:20Z"}
+{"shard": 16, "stage": "testing", "done": 11, "total": 52, "rows": 934138, "note": "CFX 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 21.2, "updated": "2026-09-04T01:44:15Z"}

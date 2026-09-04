@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 44, "total": 53, "rows": 3964112, "note": "STRCSTOCK 15m: rule 28/120 (vortex14)", "failed": [], "pct": 83.0, "updated": "2026-09-04T21:04:02Z"}
+{"shard": 9, "stage": "testing", "done": 46, "total": 53, "rows": 4031202, "note": "TMX 15m: rule 17/120 (atrbreak)", "failed": [], "pct": 86.8, "updated": "2026-09-04T21:04:47Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 5, "total": 52, "rows": 349580, "note": "ASTEROID 15m: 13,456 bars, testing 120 rules", "failed": [], "pct": 9.6, "updated": "2026-09-04T17:45:18Z"}
+{"shard": 11, "stage": "testing", "done": 5, "total": 52, "rows": 355640, "note": "ASTEROID 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 9.6, "updated": "2026-09-04T17:46:03Z"}

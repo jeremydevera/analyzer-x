@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 46, "total": 53, "rows": 3748950, "note": "TNSR 15m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 86.8, "updated": "2026-09-04T04:38:43Z"}
+{"shard": 6, "stage": "testing", "done": 46, "total": 53, "rows": 3757310, "note": "TNSR 15m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 86.8, "updated": "2026-09-04T04:39:30Z"}

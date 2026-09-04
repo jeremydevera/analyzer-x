@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 20, "total": 53, "rows": 1754804, "note": "GAS 30m: rule 47/120 (ibs)", "failed": [], "pct": 37.7, "updated": "2026-09-04T18:46:28Z"}
+{"shard": 1, "stage": "testing", "done": 20, "total": 53, "rows": 1769544, "note": "GAS 30m: rule 115/120 (cf_diadx)", "failed": [], "pct": 37.7, "updated": "2026-09-04T18:47:13Z"}

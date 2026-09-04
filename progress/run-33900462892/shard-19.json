@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 3, "total": 52, "rows": 232628, "note": "AMP 15m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 5.8, "updated": "2026-09-04T17:42:00Z"}
+{"shard": 19, "stage": "testing", "done": 3, "total": 52, "rows": 233468, "note": "AMP 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 5.8, "updated": "2026-09-04T17:43:30Z"}

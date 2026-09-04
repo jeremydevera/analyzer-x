@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 2, "total": 52, "rows": 110632, "note": "AIXBT 15m: rule 13/120 (pivot)", "failed": [], "pct": 3.8, "updated": "2026-09-04T17:32:52Z"}
+{"shard": 19, "stage": "testing", "done": 2, "total": 52, "rows": 115032, "note": "AIXBT 15m: rule 33/120 (heikin)", "failed": [], "pct": 3.8, "updated": "2026-09-04T17:33:37Z"}

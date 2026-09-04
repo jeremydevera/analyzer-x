@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 35, "total": 53, "rows": 3003616, "note": "ORDI 15m: 34,560 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-04T20:25:12Z"}
+{"shard": 0, "stage": "testing", "done": 35, "total": 53, "rows": 3005216, "note": "ORDI 15m: rule 4/120 (trend50)", "failed": [], "pct": 66.0, "updated": "2026-09-04T20:26:00Z"}

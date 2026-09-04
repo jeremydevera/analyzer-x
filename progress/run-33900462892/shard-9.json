@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 51, "total": 53, "rows": 4486974, "note": "XLK 15m: rule 58/120 (bos)", "failed": [], "pct": 96.2, "updated": "2026-09-04T21:31:23Z"}
+{"shard": 9, "stage": "testing", "done": 52, "total": 53, "rows": 4544208, "note": "YOM 15m: 8,782 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-04T21:32:10Z"}

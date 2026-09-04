@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 40, "total": 53, "rows": 3020246, "note": "RVN 15m: rule 17/120 (atrbreak)", "failed": [], "pct": 75.5, "updated": "2026-09-04T03:48:09Z"}
+{"shard": 0, "stage": "testing", "done": 40, "total": 53, "rows": 3025306, "note": "RVN 15m: rule 40/120 (crsi)", "failed": [], "pct": 75.5, "updated": "2026-09-04T03:48:55Z"}

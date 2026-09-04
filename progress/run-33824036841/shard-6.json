@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 41, "total": 53, "rows": 3270154, "note": "SILVER 15m: 23,411 bars, testing 120 rules", "failed": [], "pct": 77.4, "updated": "2026-09-04T04:16:25Z"}
+{"shard": 6, "stage": "testing", "done": 41, "total": 53, "rows": 3277174, "note": "SILVER 15m: rule 33/120 (heikin)", "failed": [], "pct": 77.4, "updated": "2026-09-04T04:17:11Z"}

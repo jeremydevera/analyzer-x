@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 5, "total": 52, "rows": 398426, "note": "AT 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 9.6, "updated": "2026-09-04T17:50:27Z"}
+{"shard": 18, "stage": "testing", "done": 5, "total": 52, "rows": 441986, "note": "AT 1d: 315 bars, testing 120 rules", "failed": [], "pct": 9.6, "updated": "2026-09-04T17:51:16Z"}

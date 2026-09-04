@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 3808168, "note": "SYN 30m: rule 71/120 (mfi14)", "failed": [], "pct": 84.9, "updated": "2026-09-04T21:04:11Z"}
+{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 3816988, "note": "SYN 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-04T21:04:58Z"}

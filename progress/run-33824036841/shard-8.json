@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 16, "total": 52, "rows": 1279050, "note": "DYM 30m: rule 8/120 (fib618)", "failed": [], "pct": 30.8, "updated": "2026-09-04T02:32:11Z"}
+{"shard": 8, "stage": "testing", "done": 16, "total": 52, "rows": 1287410, "note": "DYM 30m: rule 46/120 (rsi2)", "failed": [], "pct": 30.8, "updated": "2026-09-04T02:32:57Z"}

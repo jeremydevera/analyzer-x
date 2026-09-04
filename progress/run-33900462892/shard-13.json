@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 36, "total": 52, "rows": 3116410, "note": "POL 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 69.2, "updated": "2026-09-04T19:59:46Z"}
+{"shard": 13, "stage": "testing", "done": 37, "total": 52, "rows": 3156010, "note": "PURR 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 71.2, "updated": "2026-09-04T20:00:31Z"}

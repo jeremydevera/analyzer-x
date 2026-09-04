@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 21, "total": 52, "rows": 1915938, "note": "HAEDAL 30m: rule 94/120 (cf_emarsi)", "failed": [], "pct": 40.4, "updated": "2026-09-04T19:18:05Z"}
+{"shard": 17, "stage": "testing", "done": 21, "total": 52, "rows": 1923858, "note": "HAEDAL 1h: rule 4/120 (trend50)", "failed": [], "pct": 40.4, "updated": "2026-09-04T19:18:51Z"}

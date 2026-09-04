@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 22, "total": 52, "rows": 1851614, "note": "HK50 15m: rule 37/120 (ultosc)", "failed": [], "pct": 42.3, "updated": "2026-09-04T18:52:50Z"}
+{"shard": 12, "stage": "testing", "done": 22, "total": 52, "rows": 1873494, "note": "HK50 30m: rule 41/120 (tsi)", "failed": [], "pct": 42.3, "updated": "2026-09-04T18:53:35Z"}

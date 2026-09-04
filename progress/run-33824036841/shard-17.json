@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 8, "total": 52, "rows": 717568, "note": "BLAST 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 15.4, "updated": "2026-09-04T01:50:08Z"}
+{"shard": 17, "stage": "testing", "done": 8, "total": 52, "rows": 734068, "note": "BLAST 1h: rule 70/120 (cmf20)", "failed": [], "pct": 15.4, "updated": "2026-09-04T01:50:53Z"}

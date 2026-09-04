@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 25, "total": 53, "rows": 2367712, "note": "JBLSTOCK 30m: rule 46/120 (rsi2)", "failed": [], "pct": 47.2, "updated": "2026-09-04T19:19:49Z"}
+{"shard": 4, "stage": "testing", "done": 27, "total": 53, "rows": 2410172, "note": "LAB 15m: rule 1/120 (mom6)", "failed": [], "pct": 50.9, "updated": "2026-09-04T19:20:34Z"}

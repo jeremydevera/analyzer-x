@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 35, "total": 52, "rows": 2916150, "note": "PEPE 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 67.3, "updated": "2026-09-04T03:42:58Z"}
+{"shard": 13, "stage": "testing", "done": 35, "total": 52, "rows": 2930010, "note": "PEPE 1h: rule 58/120 (bos)", "failed": [], "pct": 67.3, "updated": "2026-09-04T03:43:43Z"}

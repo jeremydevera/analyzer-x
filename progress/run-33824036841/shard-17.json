@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 21, "total": 52, "rows": 1836756, "note": "HAEDAL 15m: rule 13/120 (pivot)", "failed": [], "pct": 40.4, "updated": "2026-09-04T02:52:17Z"}
+{"shard": 17, "stage": "testing", "done": 21, "total": 52, "rows": 1841376, "note": "HAEDAL 15m: rule 34/120 (lrslope)", "failed": [], "pct": 40.4, "updated": "2026-09-04T02:53:04Z"}

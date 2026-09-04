@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 18, "total": 52, "rows": 1749062, "note": "FIDA 4h: rule 1/120 (mom6)", "failed": [], "pct": 34.6, "updated": "2026-09-04T02:47:45Z"}
+{"shard": 12, "stage": "testing", "done": 19, "total": 52, "rows": 1791722, "note": "FRMISTOCK 15m: rule 45/120 (zscore20)", "failed": [], "pct": 36.5, "updated": "2026-09-04T02:48:30Z"}

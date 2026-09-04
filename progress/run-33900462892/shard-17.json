@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 26, "total": 52, "rows": 2450674, "note": "KORU 15m: rule 3/120 (fade15)", "failed": [], "pct": 50.0, "updated": "2026-09-04T19:56:38Z"}
+{"shard": 17, "stage": "testing", "done": 26, "total": 52, "rows": 2492914, "note": "KORU 1h: 1,217 bars, testing 120 rules", "failed": [], "pct": 50.0, "updated": "2026-09-04T19:57:24Z"}

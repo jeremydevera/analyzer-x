@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 31, "total": 53, "rows": 2753936, "note": "MUBARAK 30m: rule 55/120 (nhigh50)", "failed": [], "pct": 58.5, "updated": "2026-09-04T20:00:15Z"}
+{"shard": 9, "stage": "testing", "done": 31, "total": 53, "rows": 2768016, "note": "MUBARAK 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 58.5, "updated": "2026-09-04T20:01:00Z"}

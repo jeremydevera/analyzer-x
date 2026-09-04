@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 40, "total": 53, "rows": 3388850, "note": "SAHARA 1d: 394 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-04T20:39:15Z"}
+{"shard": 6, "stage": "testing", "done": 41, "total": 53, "rows": 3417090, "note": "SHLD 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 77.4, "updated": "2026-09-04T20:40:00Z"}

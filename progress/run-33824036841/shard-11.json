@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 42, "total": 52, "rows": 3588040, "note": "SNX 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 80.8, "updated": "2026-09-04T04:14:47Z"}
+{"shard": 11, "stage": "testing", "done": 42, "total": 52, "rows": 3597500, "note": "SNX 1h: rule 31/120 (trix15)", "failed": [], "pct": 80.8, "updated": "2026-09-04T04:15:32Z"}

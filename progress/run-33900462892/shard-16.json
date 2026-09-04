@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 1, "total": 52, "rows": 20340, "note": "ACE 15m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-04T17:29:38Z"}
+{"shard": 16, "stage": "testing", "done": 1, "total": 52, "rows": 46500, "note": "ACE 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 1.9, "updated": "2026-09-04T17:30:37Z"}

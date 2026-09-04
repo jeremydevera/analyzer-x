@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 1, "total": 52, "rows": 19440, "note": "AAPLSTOCK 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-04T17:27:49Z"}
+{"shard": 11, "stage": "testing", "done": 1, "total": 52, "rows": 24480, "note": "AAPLSTOCK 30m: rule 3/120 (fade15)", "failed": [], "pct": 1.9, "updated": "2026-09-04T17:28:34Z"}

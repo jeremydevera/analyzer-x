@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 7, "total": 52, "rows": 650812, "note": "BDX 30m: rule 89/120 (cf_chan_l1)", "failed": [], "pct": 13.5, "updated": "2026-09-04T01:39:40Z"}
+{"shard": 19, "stage": "testing", "done": 7, "total": 52, "rows": 673330, "note": "BDX 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 13.5, "updated": "2026-09-04T01:40:25Z"}

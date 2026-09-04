@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 19, "total": 52, "rows": 1678460, "note": "FRAX 4h: rule 2/120 (mom15)", "failed": [], "pct": 36.5, "updated": "2026-09-04T18:52:37Z"}
+{"shard": 11, "stage": "testing", "done": 21, "total": 52, "rows": 1767274, "note": "GSSTOCK 15m: downloading candles", "failed": [], "pct": 40.4, "updated": "2026-09-04T18:53:22Z"}

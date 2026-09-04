@@ -1903,6 +1903,25 @@ def _warm_gap_index() -> None:
     threading.Thread(target=run, daemon=True).start()
 
 
+@app.get("/api/candles/pending")
+def candles_pending() -> dict:
+    """How many things in the candle store a RESOLVE would fix — one number.
+
+    Operator, Sep 04, 2026: *"RESOLVE THE PENDINGS IN CANDLE STORE, CRATE A
+    BUTTON FIRST CALLED 'RESOLVE PENDING'"*. The button's count and the Pending
+    tab's count come from HERE, so they cannot disagree: the arithmetic used to
+    live in the component while the button read a different field entirely.
+
+    Pairs on delisted contracts and pairs the venue serves no candles for are
+    reported as `unfixable` and never added to `count` — a button offering them
+    cannot succeed, and a count including them can never reach zero.
+    """
+    from tradingagents import db_jobs, positions_view as pv
+
+    got = db_jobs.pending_work()
+    return {**got, "checked": pv.fmt_when(got.get("checked"))}
+
+
 @app.get("/api/candles/gaps")
 def candle_gaps() -> dict:
     """How far behind every stored pair is, so UPDATE can say what it fills.

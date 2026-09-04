@@ -24,6 +24,9 @@ export default function DownloadScreen() {
   const [gaps, setGaps] = useState<Awaited<ReturnType<typeof api.candleGaps>> | null>(null);
   const [lost, setLost] = useState<Awaited<ReturnType<typeof api.candleLost>> | null>(null);
   const [whole, setWhole] = useState<Awaited<ReturnType<typeof api.candleCompleteness>> | null>(null);
+  // ONE definition of pending, from the route — never counted in this
+  // component, which is how the button and the Pending tab came to disagree.
+  const [pending, setPending] = useState<Awaited<ReturnType<typeof api.candlePending>> | null>(null);
   const [tfs, setTfs] = useState<string[]>(["15m", "30m", "1h", "4h"]);
   const [dl, setDl] = useState<JobStatus | null>(null);
   const [err, setErr] = useState("");
@@ -40,6 +43,7 @@ export default function DownloadScreen() {
     // the same schedule: arrival, every minute, and when a job ends
     api.candleLost().then(setLost).catch(() => {});
     api.candleCompleteness().then(setWhole).catch(() => {});
+    api.candlePending().then(setPending).catch(() => {});
   }, []);
   useEffect(() => {
     poll();
@@ -61,6 +65,48 @@ export default function DownloadScreen() {
     setErr("");
     if (!confirm(`Update ${gaps?.pairs ?? 0} stored pair(s)?\n\nOnly the bars printed since each pair's last stored bar are fetched — nothing is downloaded again.`)) return;
     try { await api.jobStart("download", { mode: "update" }); poll(); }
+    catch (e) { setErr(String(e)); }
+  };
+
+  /** RESOLVE PENDING = every fixable pending in one run: the pairs the last
+   * run LOST (first — they are what the button was pressed for), the pairs the
+   * store has never had, and every pair behind by more than a bar.
+   *
+   * Operator, Sep 04, 2026: *"IF I CLICK THIS I WANT TO RESOLVE PENDINGS"*.
+   * Each kind used to need a different button, and UPDATE was disabled when
+   * the store had no gaps — so a lost-only pending had no enabled button at
+   * all. */
+  const resolve = async () => {
+    setErr("");
+    const n = pending?.count ?? 0;
+    if (!confirm(
+      `Resolve ${n.toLocaleString()} pending thing(s)?
+
+` +
+      `${(pending?.lost ?? 0).toLocaleString()} the last run lost (fetched first)
+` +
+      `${(pending?.missing ?? 0).toLocaleString()} the store has never had
+` +
+      `${(pending?.behind ?? 0).toLocaleString()} behind by more than a bar
+
+` +
+      `Only the bars printed since each pair's last stored bar are fetched.` +
+      // The QUEUE is longer than the COUNT: a pair on a contract MEXC dropped
+      // gets one confirming attempt, because the contract list is filtered and
+      // a stale answer must not delete work — but it is not pending, since
+      // nothing can fix it. Both numbers are shown rather than one standing in
+      // for the other (label-must-match-data).
+      ((pending?.queue ?? 0) > n
+        ? `
+
+${(pending!.queue - n).toLocaleString()} more pair(s) on delisted contracts are attempted once to confirm, so ${pending!.queue.toLocaleString()} pairs are touched in total. They are not counted as pending — nothing can fix them.`
+        : "") +
+      ((pending?.unfixable ?? 0) > 0
+        ? `
+
+${(pending?.unfixable ?? 0).toLocaleString()} pair(s) cannot be fixed by any run (delisted, or the venue serves no candles).`
+        : ""))) return;
+    try { await api.jobStart("download", { mode: "resolve" }); poll(); }
     catch (e) { setErr(String(e)); }
   };
 
@@ -115,6 +161,14 @@ export default function DownloadScreen() {
           {dl?.running && (
             <Button size="sm" variant="outline" onClick={() => api.jobStop("download").then(poll)}>STOP</Button>
           )}
+          {/* FIRST, because it is the one button that clears every kind. */}
+          <Button size="sm" onClick={resolve}
+            disabled={!pending?.count || !!dl?.running}>
+            {pending?.count
+              ? `RESOLVE ${pending.count.toLocaleString()} PENDING`
+              : pending?.indexing ? "RESOLVE PENDING · indexing"
+              : "RESOLVE PENDING · nothing pending"}
+          </Button>
           <Button size="sm" variant="outline" onClick={update} disabled={!gaps?.pairs || !!dl?.running}>
             UPDATE CANDLES
           </Button>

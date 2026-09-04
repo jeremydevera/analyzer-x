@@ -360,9 +360,29 @@ export type BacktestLogs = {
   checked: string;
 };
 
+/** `GET /api/candles/pending` */
+export type CandlePending = {
+  count: number;
+  behind: number;
+  missing: number;
+  lost: number;
+  delisted: number;
+  empty: number;
+  unfixable: number;
+  /** pairs the run actually touches — LONGER than `count` by the delisted
+   *  pairs, which get one confirming attempt each */
+  queue: number;
+  indexing?: boolean;
+  checked: string;
+};
+
 export const api = {
   system: () => get<SysLoad>("/api/system"),
   contracts: () => get<{ rows: string[]; why: string }>("/api/contracts"),
+  /** How many things in the candle store a RESOLVE would fix — the ONE
+   *  definition, shared by the RESOLVE PENDING button and the Pending tab.
+   *  `unfixable` is reported apart and never counted as work. */
+  candlePending: () => get<CandlePending>("/api/candles/pending"),
   candleGaps: () => get<{
     rows: { symbol: string; timeframe: string; bars: number; last: string;
             missing_bars: number; hours_behind: number }[];

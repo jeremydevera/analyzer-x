@@ -26,6 +26,7 @@ import {
 type LostPayload = Awaited<ReturnType<typeof api.candleLost>>;
 type CompPayload = Awaited<ReturnType<typeof api.candleCompleteness>>;
 type GapsPayload = Awaited<ReturnType<typeof api.candleGaps>>;
+type PendingPayload = Awaited<ReturnType<typeof api.candlePending>>;
 
 const TF_ORDER = ["15m", "30m", "1h", "4h", "1d"];
 
@@ -97,12 +98,17 @@ function Pending({ refreshKey }: { refreshKey: number }) {
   const [lost, setLost] = useState<LostPayload | null>(null);
   const [comp, setComp] = useState<CompPayload | null>(null);
   const [gaps, setGaps] = useState<GapsPayload | null>(null);
+  // THE count, from the route. This component used to add it up itself
+  // (`retry.length + missing.length + behind`) while the RESOLVE button read a
+  // different field, so one screen carried two answers to one question.
+  const [work, setWork] = useState<PendingPayload | null>(null);
   const [why, setWhy] = useState("");
 
   useEffect(() => {
     api.candleLost().then(setLost).catch((e) => setWhy(String(e)));
     api.candleCompleteness().then(setComp).catch(() => {});
     api.candleGaps().then(setGaps).catch(() => {});
+    api.candlePending().then(setWork).catch(() => {});
   }, [refreshKey]);
 
   const byKind = useMemo(() => {
@@ -125,8 +131,10 @@ function Pending({ refreshKey }: { refreshKey: number }) {
   }));
   const behind = gaps?.behind ?? 0;
 
-  // Only the things a BUTTON on this screen can change count as pending.
-  const jobs = retry.length + missing.length + behind;
+  // Only the things a BUTTON on this screen can change count as pending —
+  // counted by the ROUTE, so this number and the RESOLVE button's are one
+  // number. While it is still loading, fall back to what is on screen.
+  const jobs = work ? work.count : retry.length + missing.length + behind;
 
   if (why) {
     return <p className="mt-3 text-theme-xs text-error-500">could not read the store: {why}</p>;
@@ -141,7 +149,15 @@ function Pending({ refreshKey }: { refreshKey: number }) {
         jobs ? "text-warning-600 dark:text-warning-400" : "text-success-600 dark:text-success-400"}`}>
         {jobs
           ? `${jobs.toLocaleString()} thing${jobs === 1 ? "" : "s"} a run would fix`
+            + (work?.unfixable
+              ? ` · ${work.unfixable.toLocaleString()} more nothing can`
+              : "")
           : "nothing pending — every contract the venue serves is stored and current"}
+        {jobs > 0 && (
+          <span className="ml-2 font-normal text-theme-xs text-gray-500 dark:text-gray-400">
+            press <b>RESOLVE {jobs.toLocaleString()} PENDING</b> — it does all of them in one run
+          </span>
+        )}
       </p>
       <ul className="mt-2 flex flex-col gap-2">
         {behind > 0 && (

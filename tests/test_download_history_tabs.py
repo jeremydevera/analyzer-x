@@ -103,10 +103,20 @@ def test_pending_reads_the_store_now_not_the_run_history():
 
 def test_only_what_a_button_can_fix_counts_as_pending():
     """25 of the 26 lost pairs were the venue serving no candles. Counting
-    those as pending is what made "26 still lost" read as 26 problems."""
-    assert "const jobs = retry.length + missing.length + behind;" in SRC
+    those as pending is what made "26 still lost" read as 26 problems.
+
+    The count moved into the ROUTE on Sep 04, 2026 (`/api/candles/pending`),
+    so the Pending tab and the RESOLVE PENDING button read ONE number. This
+    component added it up itself while the button read a different field —
+    two answers to one question on one screen. The component keeps its own
+    arithmetic only as the fallback for the moment before the route answers.
+    """
+    assert "api.candlePending()" in SRC, "the count comes from the route"
+    assert "work ? work.count :" in SRC, "with the local sum only as fallback"
     assert "Only the things a BUTTON on this screen can change" in SRC
     assert "nothing pending" in SRC
+    # and the unfixable ones are still shown, just never added in
+    assert "more nothing can" in SRC
 
 
 def test_each_pending_thing_names_the_button_that_fixes_it():

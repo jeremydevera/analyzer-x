@@ -590,6 +590,166 @@ def update_pairs(lost: list | None = None) -> tuple:
     return pairs, likely_gone, len(missing), lost_added
 
 
+def resolve_pairs(lost: list | None = None) -> tuple:
+    """Every FIXABLE pending in the candle store — and NOTHING ELSE.
+
+    Operator, Sep 04, 2026: *"RESOLVE THE PENDINGS IN CANDLE STORE ... IF I
+    CLICK THIS I WANT TO RESOLVE PENDINGS"*. Three kinds each needed a
+    different button — pairs BEHIND and pairs NEVER STORED wanted UPDATE
+    CANDLES, pairs the last run LOST wanted RETRY FAILED — and UPDATE was
+    disabled when the store had no gaps, so a lost-only pending could not be
+    cleared by the button the panel pointed at.
+
+    Three differences from `update_pairs`, all so the number on the button is
+    the number of pairs the run touches:
+
+    * LOST FIRST, every one of them, even a pair already in the store. A pair
+      that failed part-way IS in the store, and `update_pairs` reached it only
+      as part of the store walk, in staleness order — last, if its stored bar
+      happened to be recent. It is what the operator pressed the button for.
+    * NEVER-STORED next: a pair with no file at all is worse than a stale one.
+    * ONLY THE PAIRS ACTUALLY BEHIND after that, most behind first, using the
+      gaps route's own test. `update_pairs` walks EVERY stored pair: measured
+      on this store it queued 5,192 when 5,067 things were pending, so 125
+      already-current pairs each cost a request that returns nothing and the
+      button's count disagreed with its own run.
+
+    Returns (pairs, likely_gone, missing_added, lost_added) — the same shape
+    `update_pairs` returns, so `_run_download` treats both the same way.
+    """
+    from tradingagents import backtest_report as br, market_sweep as msw
+
+    live = live_symbols()
+    now = time.time()
+    index = msw.candle_index(scan=False) or {}
+
+    first: list = []
+    for pr in (lost or []):
+        if len(pr) >= 2:
+            t = (pr[0], pr[1])
+            if t not in first:
+                first.append(t)
+
+    have, behind = set(), []
+    for c in index.values():
+        sym, tf = c.get("symbol"), c.get("timeframe")
+        if not sym or not tf:
+            continue
+        have.add((sym, tf))
+        bs = (br.TFS.get(tf) or (None, 3600, None))[1]
+        gap = now - int(c.get("last_ms") or 0) / 1000
+        if int(gap // bs) > 1:
+            behind.append((gap, sym, tf))
+    # most behind first, then alphabetical — `sort(reverse=True)` would also
+    # reverse the tie-break and the order would look arbitrary
+    behind.sort(key=lambda x: (-x[0], x[1], x[2]))
+
+    missing = []
+    if live is not None:
+        for sym in sorted(live):
+            for tf in ("15m", "30m", "1h", "4h", "1d"):
+                if (sym, tf) not in have:
+                    missing.append((sym, tf))
+
+    pairs, seen = [], set()
+    for group in (first, missing, [(s, t) for _g, s, t in behind]):
+        for t in group:
+            if t not in seen:
+                seen.add(t)
+                pairs.append(t)
+
+    # Which of them the venue no longer lists — REPORTED, not removed, and
+    # still ATTEMPTED ONCE. A pair is only ever called delisted after an
+    # attempt whose error agrees (see `looks_gone`): the contract list is
+    # filtered by apiAllowed and by quote, so a partial or stale answer must
+    # not be able to delete work from the queue (CLAUDE.md: "A failed age check
+    # KEEPS the coin"). They are NOT counted as pending — nothing can fix them
+    # — which is why the queue is longer than the count, by exactly this many.
+    likely_gone = [f"{c} {tf}" for c, tf in pairs if is_delisted(c, live)]
+    lost_added = [t for t in first if t not in have]
+    return pairs, likely_gone, len(missing), lost_added
+
+
+def _pending_sources() -> dict:
+    """The five raw counts behind "pending". Split out so the arithmetic above
+    it can be tested without a store.
+
+    "Behind" is the GAPS ROUTE'S OWN TEST — `missing_bars > 1` against
+    `backtest_report.TFS[tf]` — read from `market_sweep.candle_index`, not from
+    `candle_coverage()`, which opens every candle file and takes minutes on a
+    5,147-pair store. Two different definitions of behind would put two
+    different numbers on one screen.
+    """
+    from tradingagents import backtest_report as br, market_sweep as msw
+
+    live = live_symbols()
+    now = time.time()
+    index = msw.candle_index(scan=False) or {}
+    have, behind, delisted = set(), 0, 0
+    for c in index.values():
+        sym, tf = c.get("symbol"), c.get("timeframe")
+        if not sym or not tf:
+            continue
+        have.add((sym, tf))
+        if is_delisted(sym, live):
+            delisted += 1
+            continue                    # unfixable: counted apart, below
+        bs = (br.TFS.get(tf) or (None, 3600, None))[1]
+        if int((now - int(c.get("last_ms") or 0) / 1000) // bs) > 1:
+            behind += 1
+    missing = 0
+    if live is not None:
+        missing = sum(1 for sym in sorted(live)
+                      for tf in ("15m", "30m", "1h", "4h", "1d")
+                      if (sym, tf) not in have)
+    rows = _read(FILES["download"]["lost"]).get("pairs") or []
+    lost = empty = 0
+    for r in rows:
+        kind = r.get("kind") if isinstance(r, dict) else None
+        if kind in ("empty", "delisted"):
+            empty += 1
+        else:
+            lost += 1
+    return {"behind": behind, "missing": missing, "lost": lost,
+            "delisted": delisted, "empty": empty,
+            # a store still building its index cannot be counted; saying so
+            # keeps "nothing pending" honest
+            "indexing": not index}
+
+
+def pending_work() -> dict:
+    """How many things a RESOLVE would fix, and how many pairs it would touch.
+
+    ONE DEFINITION. The button's number and the Pending tab's number come from
+    here, so they cannot disagree; the arithmetic used to live in the component
+    (`retry.length + missing.length + behind`) while the button read a
+    different field entirely.
+
+    `count` is WORK — pairs behind, pairs never stored, pairs the last run
+    lost. A pair on a contract MEXC dropped, or one the venue serves no candles
+    for, is not work: a button offering it cannot succeed, and a count
+    including it can never reach zero. Those are `unfixable`.
+
+    `queue` is what the run actually touches, and it is LONGER than `count` by
+    the delisted pairs, which get one confirming attempt each (see
+    `resolve_pairs`). It is measured by calling `resolve_pairs`, not computed a
+    second time here: on this store the two arithmetics disagreed by 96 and the
+    button promised 5,067 while queueing 5,163.
+    """
+    src = _pending_sources()
+    count = int(src["behind"]) + int(src["missing"]) + int(src["lost"])
+    try:
+        rows = _read(FILES["download"]["lost"]).get("pairs") or []
+        queue = len(resolve_pairs([[r.get("symbol"), r.get("timeframe")]
+                                   if isinstance(r, dict) else r
+                                   for r in rows])[0])
+    except Exception:                                          # noqa: BLE001
+        queue = count
+    return {**src, "count": count, "queue": queue,
+            "unfixable": int(src["delisted"]) + int(src["empty"]),
+            "checked": int(time.time())}
+
+
 def _run_download(spec: dict) -> None:
     """DOWNLOAD/UPDATE fill the operator's OWN MACHINE — the store every
     backtest reads. Pure local: no database is touched.
@@ -627,6 +787,15 @@ def _run_download(spec: dict) -> None:
         # lost.json for good. Dropping it unattempted would leave it in that
         # file for ever and the button would keep offering it.
         delisted = []
+    elif mode == "resolve":
+        # The RESOLVE PENDING button: every fixable pending at once, with the
+        # known failures at the front (see resolve_pairs).
+        pairs, likely_gone, n_missing, lost_before = resolve_pairs(
+            _read(f["lost"]).get("pairs") or [])
+        if likely_gone:
+            print(f"[download] {len(likely_gone)} pair(s) the venue no longer "
+                  f"lists will be attempted once and then named as delisted: "
+                  f"{', '.join(likely_gone)}", flush=True)
     elif mode == "update" and not spec.get("coins"):
         pairs, likely_gone, n_missing, lost_before = update_pairs(
             _read(f["lost"]).get("pairs") or [])

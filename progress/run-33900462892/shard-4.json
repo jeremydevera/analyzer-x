@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 32, "total": 53, "rows": 2885474, "note": "NEIROCTO 15m: rule 4/120 (trend50)", "failed": [], "pct": 60.4, "updated": "2026-09-04T19:44:25Z"}
+{"shard": 4, "stage": "testing", "done": 32, "total": 53, "rows": 2889874, "note": "NEIROCTO 15m: rule 24/120 (psar)", "failed": [], "pct": 60.4, "updated": "2026-09-04T19:45:11Z"}

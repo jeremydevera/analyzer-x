@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 45, "total": 53, "rows": 3913486, "note": "TAG 15m: rule 2/120 (mom15)", "failed": [], "pct": 84.9, "updated": "2026-09-04T21:24:46Z"}
+{"shard": 7, "stage": "testing", "done": 45, "total": 53, "rows": 3915826, "note": "TAG 15m: rule 13/120 (pivot)", "failed": [], "pct": 84.9, "updated": "2026-09-04T21:25:36Z"}

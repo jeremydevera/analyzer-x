@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 34, "total": 52, "rows": 2537770, "note": "OPENAI 15m: rule 13/120 (pivot)", "failed": [], "pct": 65.4, "updated": "2026-09-04T03:10:32Z"}
+{"shard": 7, "stage": "testing", "done": 34, "total": 52, "rows": 2554690, "note": "OPENAI 15m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 65.4, "updated": "2026-09-04T03:11:17Z"}

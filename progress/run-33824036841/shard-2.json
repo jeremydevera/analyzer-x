@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 47, "total": 53, "rows": 3846314, "note": "TRX 15m: rule 61/120 (turtle)", "failed": [], "pct": 88.7, "updated": "2026-09-04T04:36:08Z"}
+{"shard": 2, "stage": "testing", "done": 47, "total": 53, "rows": 3855334, "note": "TRX 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 88.7, "updated": "2026-09-04T04:36:55Z"}

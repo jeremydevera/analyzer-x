@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 40, "total": 52, "rows": 3320880, "note": "SEI 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 76.9, "updated": "2026-09-04T04:40:05Z"}
+{"shard": 14, "stage": "testing", "done": 40, "total": 52, "rows": 3326640, "note": "SEI 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 76.9, "updated": "2026-09-04T04:40:51Z"}

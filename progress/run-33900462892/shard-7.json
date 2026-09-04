@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 4, "total": 53, "rows": 381128, "note": "AONSTOCK 30m: rule 41/120 (tsi)", "failed": [], "pct": 7.5, "updated": "2026-09-04T17:50:25Z"}
+{"shard": 7, "stage": "testing", "done": 5, "total": 53, "rows": 427088, "note": "ARX 15m: rule 47/120 (ibs)", "failed": [], "pct": 9.4, "updated": "2026-09-04T17:51:11Z"}

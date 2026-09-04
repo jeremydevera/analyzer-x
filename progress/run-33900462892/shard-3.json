@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 42, "total": 53, "rows": 3437688, "note": "SLP 15m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 79.2, "updated": "2026-09-04T20:33:50Z"}
+{"shard": 3, "stage": "testing", "done": 42, "total": 53, "rows": 3441408, "note": "SLP 30m: rule 2/120 (mom15)", "failed": [], "pct": 79.2, "updated": "2026-09-04T20:34:36Z"}

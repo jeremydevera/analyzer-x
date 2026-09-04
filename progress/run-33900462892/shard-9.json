@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 41, "total": 53, "rows": 3728548, "note": "SILVER 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 77.4, "updated": "2026-09-04T20:55:28Z"}
+{"shard": 9, "stage": "testing", "done": 41, "total": 53, "rows": 3740548, "note": "SILVER 30m: rule 55/120 (nhigh50)", "failed": [], "pct": 77.4, "updated": "2026-09-04T20:56:13Z"}

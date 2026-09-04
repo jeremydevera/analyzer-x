@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 4, "total": 52, "rows": 304498, "note": "APT 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 7.7, "updated": "2026-09-04T01:20:10Z"}
+{"shard": 17, "stage": "testing", "done": 4, "total": 52, "rows": 309498, "note": "APT 30m: rule 19/120 (emacross)", "failed": [], "pct": 7.7, "updated": "2026-09-04T01:20:56Z"}

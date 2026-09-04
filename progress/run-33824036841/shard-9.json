@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 40, "total": 52, "rows": 3137762, "note": "SATS 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 76.9, "updated": "2026-09-04T03:56:33Z"}
+{"shard": 9, "stage": "testing", "done": 40, "total": 52, "rows": 3149822, "note": "SATS 1h: rule 56/120 (insidebrk)", "failed": [], "pct": 76.9, "updated": "2026-09-04T03:57:19Z"}

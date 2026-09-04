@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 43, "total": 52, "rows": 3546166, "note": "SPK 30m: rule 55/120 (nhigh50)", "failed": [], "pct": 82.7, "updated": "2026-09-04T04:43:05Z"}
+{"shard": 8, "stage": "testing", "done": 43, "total": 52, "rows": 3560466, "note": "SPK 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 82.7, "updated": "2026-09-04T04:44:00Z"}

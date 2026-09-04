@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 17, "total": 53, "rows": 1329942, "note": "ESP 1h: rule 106/120 (cf_bosfvg)", "failed": [], "pct": 32.1, "updated": "2026-09-04T18:46:04Z"}
+{"shard": 8, "stage": "testing", "done": 18, "total": 53, "rows": 1373000, "note": "FCXSTOCK 30m: 3,568 bars, testing 120 rules", "failed": [], "pct": 34.0, "updated": "2026-09-04T18:46:50Z"}

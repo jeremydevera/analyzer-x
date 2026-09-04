@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 24, "total": 53, "rows": 1639350, "note": "INTCSTOCK 30m: rule 1/120 (mom6)", "failed": [], "pct": 45.3, "updated": "2026-09-04T02:38:13Z"}
+{"shard": 6, "stage": "testing", "done": 24, "total": 53, "rows": 1651550, "note": "INTCSTOCK 30m: rule 58/120 (bos)", "failed": [], "pct": 45.3, "updated": "2026-09-04T02:38:58Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 4, "total": 52, "rows": 373634, "note": "API3 4h: rule 3/120 (fade15)", "failed": [], "pct": 7.7, "updated": "2026-09-04T01:25:57Z"}
+{"shard": 12, "stage": "testing", "done": 5, "total": 52, "rows": 411166, "note": "ASTEROID 15m: 13,390 bars, testing 120 rules", "failed": [], "pct": 9.6, "updated": "2026-09-04T01:26:42Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 5, "total": 53, "rows": 472452, "note": "ARK 1h: rule 16/120 (keltner)", "failed": [], "pct": 9.4, "updated": "2026-09-04T01:36:10Z"}
+{"shard": 3, "stage": "testing", "done": 5, "total": 53, "rows": 494672, "note": "ARK 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 9.4, "updated": "2026-09-04T01:37:08Z"}

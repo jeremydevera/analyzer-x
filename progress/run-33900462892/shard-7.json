@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 19, "total": 53, "rows": 1555356, "note": "FOLKS 15m: rule 13/120 (pivot)", "failed": [], "pct": 35.8, "updated": "2026-09-04T19:11:36Z"}
+{"shard": 7, "stage": "testing", "done": 19, "total": 53, "rows": 1560476, "note": "FOLKS 15m: rule 45/120 (zscore20)", "failed": [], "pct": 35.8, "updated": "2026-09-04T19:12:21Z"}

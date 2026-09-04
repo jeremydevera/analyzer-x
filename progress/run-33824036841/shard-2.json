@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 48, "total": 53, "rows": 3954378, "note": "UMA 15m: rule 1/120 (mom6)", "failed": [], "pct": 90.6, "updated": "2026-09-04T04:40:56Z"}
+{"shard": 2, "stage": "testing", "done": 48, "total": 53, "rows": 3956798, "note": "UMA 15m: rule 8/120 (fib618)", "failed": [], "pct": 90.6, "updated": "2026-09-04T04:41:41Z"}

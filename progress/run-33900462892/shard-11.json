@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 40, "total": 52, "rows": 3228948, "note": "SAPIEN 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 76.9, "updated": "2026-09-04T20:08:48Z"}
+{"shard": 11, "stage": "testing", "done": 40, "total": 52, "rows": 3236648, "note": "SAPIEN 15m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 76.9, "updated": "2026-09-04T20:09:34Z"}

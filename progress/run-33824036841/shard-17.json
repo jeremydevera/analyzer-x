@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 15, "total": 52, "rows": 1363470, "note": "DOLO 30m: rule 24/120 (psar)", "failed": [], "pct": 28.8, "updated": "2026-09-04T02:30:03Z"}
+{"shard": 17, "stage": "testing", "done": 15, "total": 52, "rows": 1370070, "note": "DOLO 30m: rule 55/120 (nhigh50)", "failed": [], "pct": 28.8, "updated": "2026-09-04T02:30:49Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 34, "total": 53, "rows": 2614142, "note": "ONDO 15m: rule 2/120 (mom15)", "failed": [], "pct": 64.2, "updated": "2026-09-04T03:25:25Z"}
+{"shard": 0, "stage": "testing", "done": 34, "total": 53, "rows": 2617742, "note": "ONDO 15m: rule 20/120 (stoch14)", "failed": [], "pct": 64.2, "updated": "2026-09-04T03:26:13Z"}

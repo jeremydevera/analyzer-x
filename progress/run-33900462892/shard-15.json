@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 17, "total": 52, "rows": 1508590, "note": "EUR 15m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 32.7, "updated": "2026-09-04T18:18:43Z"}
+{"shard": 15, "stage": "testing", "done": 17, "total": 52, "rows": 1525210, "note": "EUR 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 32.7, "updated": "2026-09-04T18:19:29Z"}

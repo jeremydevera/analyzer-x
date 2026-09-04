@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 8, "total": 53, "rows": 606034, "note": "BESTOCK 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 15.1, "updated": "2026-09-04T01:25:16Z"}
+{"shard": 4, "stage": "testing", "done": 9, "total": 53, "rows": 659064, "note": "BMT 15m: 34,580 bars, testing 120 rules", "failed": [], "pct": 17.0, "updated": "2026-09-04T01:26:06Z"}

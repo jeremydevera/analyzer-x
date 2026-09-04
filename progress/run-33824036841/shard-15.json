@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 7, "total": 52, "rows": 541364, "note": "BAT 30m: rule 23/120 (supertrend)", "failed": [], "pct": 13.5, "updated": "2026-09-04T01:29:54Z"}
+{"shard": 15, "stage": "testing", "done": 7, "total": 52, "rows": 553024, "note": "BAT 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 13.5, "updated": "2026-09-04T01:30:39Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 27, "total": 52, "rows": 2357932, "note": "LINSTOCK 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 51.9, "updated": "2026-09-04T18:55:32Z"}
+{"shard": 15, "stage": "testing", "done": 27, "total": 52, "rows": 2414512, "note": "LINSTOCK 4h: rule 38/120 (ao)", "failed": [], "pct": 51.9, "updated": "2026-09-04T18:56:17Z"}

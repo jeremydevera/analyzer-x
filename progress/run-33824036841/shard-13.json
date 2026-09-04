@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 48, "total": 52, "rows": 3720458, "note": "USOIL 15m: 20,834 bars, testing 120 rules", "failed": [], "pct": 92.3, "updated": "2026-09-04T04:16:45Z"}
+{"shard": 13, "stage": "testing", "done": 48, "total": 52, "rows": 3726178, "note": "USOIL 15m: rule 20/120 (stoch14)", "failed": [], "pct": 92.3, "updated": "2026-09-04T04:17:30Z"}

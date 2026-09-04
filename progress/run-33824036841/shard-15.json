@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 46, "total": 52, "rows": 4288948, "note": "TREE 15m: rule 101/120 (cf_soup1_l1)", "failed": [], "pct": 88.5, "updated": "2026-09-04T04:51:25Z"}
+{"shard": 15, "stage": "testing", "done": 46, "total": 52, "rows": 4293688, "note": "TREE 30m: rule 2/120 (mom15)", "failed": [], "pct": 88.5, "updated": "2026-09-04T04:52:22Z"}

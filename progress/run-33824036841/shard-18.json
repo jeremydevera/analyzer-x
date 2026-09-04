@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 6, "total": 52, "rows": 507188, "note": "AZTEC 1h: rule 22/120 (engulf)", "failed": [], "pct": 11.5, "updated": "2026-09-04T01:38:29Z"}
+{"shard": 18, "stage": "testing", "done": 7, "total": 52, "rows": 557700, "note": "BCH 15m: 34,581 bars, testing 120 rules", "failed": [], "pct": 13.5, "updated": "2026-09-04T01:39:24Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 19, "total": 53, "rows": 1512920, "note": "FLOW 15m: rule 3/120 (fade15)", "failed": [], "pct": 35.8, "updated": "2026-09-04T02:17:27Z"}
+{"shard": 1, "stage": "testing", "done": 19, "total": 53, "rows": 1517540, "note": "FLOW 15m: rule 24/120 (psar)", "failed": [], "pct": 35.8, "updated": "2026-09-04T02:18:13Z"}

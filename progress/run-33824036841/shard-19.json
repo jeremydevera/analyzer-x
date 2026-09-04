@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 32, "total": 52, "rows": 3121220, "note": "NOM 30m: rule 35/120 (willr14)", "failed": [], "pct": 61.5, "updated": "2026-09-04T03:39:46Z"}
+{"shard": 19, "stage": "testing", "done": 32, "total": 52, "rows": 3139480, "note": "NOM 1h: 8,109 bars, testing 120 rules", "failed": [], "pct": 61.5, "updated": "2026-09-04T03:40:40Z"}

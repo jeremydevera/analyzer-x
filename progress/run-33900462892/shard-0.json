@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 2, "total": 53, "rows": 206096, "note": "ADA 4h: rule 71/120 (mfi14)", "failed": [], "pct": 3.8, "updated": "2026-09-04T17:41:18Z"}
+{"shard": 0, "stage": "testing", "done": 3, "total": 53, "rows": 273428, "note": "AJGSTOCK 1h: 868 bars, testing 120 rules", "failed": [], "pct": 5.7, "updated": "2026-09-04T17:42:03Z"}

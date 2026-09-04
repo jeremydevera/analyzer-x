@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 10, "total": 53, "rows": 800490, "note": "BSB 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 18.9, "updated": "2026-09-04T18:09:30Z"}
+{"shard": 1, "stage": "testing", "done": 10, "total": 53, "rows": 809130, "note": "BSB 30m: rule 3/120 (fade15)", "failed": [], "pct": 18.9, "updated": "2026-09-04T18:10:20Z"}

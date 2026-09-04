@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 43, "total": 52, "rows": 4011086, "note": "SQQQ 15m: rule 28/120 (vortex14)", "failed": [], "pct": 82.7, "updated": "2026-09-04T04:34:58Z"}
+{"shard": 15, "stage": "testing", "done": 43, "total": 52, "rows": 4049326, "note": "SQQQ 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 82.7, "updated": "2026-09-04T04:35:43Z"}

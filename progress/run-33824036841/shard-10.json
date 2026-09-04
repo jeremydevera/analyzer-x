@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 43, "total": 52, "rows": 3422574, "note": "SPOTSTOCK 1d: 205 bars, testing 120 rules", "failed": [], "pct": 82.7, "updated": "2026-09-04T03:00:44Z"}
+{"shard": 10, "stage": "testing", "done": 45, "total": 52, "rows": 3535418, "note": "TBT 1h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 86.5, "updated": "2026-09-04T03:01:29Z"}

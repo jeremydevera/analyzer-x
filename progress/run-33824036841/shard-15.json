@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 16, "total": 52, "rows": 1452418, "note": "EGLD 15m: rule 1/120 (mom6)", "failed": [], "pct": 30.8, "updated": "2026-09-04T02:13:17Z"}
+{"shard": 15, "stage": "testing", "done": 16, "total": 52, "rows": 1454838, "note": "EGLD 15m: rule 8/120 (fib618)", "failed": [], "pct": 30.8, "updated": "2026-09-04T02:14:03Z"}

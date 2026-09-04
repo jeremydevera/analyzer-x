@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 42, "total": 52, "rows": 3267010, "note": "SNT 15m: rule 60/120 (eqraid)", "failed": [], "pct": 80.8, "updated": "2026-09-04T04:00:50Z"}
+{"shard": 9, "stage": "testing", "done": 42, "total": 52, "rows": 3273590, "note": "SNT 15m: rule 107/120 (cf_bosfvg_l1)", "failed": [], "pct": 80.8, "updated": "2026-09-04T04:01:35Z"}

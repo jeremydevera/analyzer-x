@@ -1,0 +1,149 @@
+"""A demo position must reach the disk, and must reach the screen as ITSELF.
+
+Operator, Sep 04, 2026: *"I RECEIVED THIS NOTIFICATION BUT WHY IS IT NOT UNDER
+MY PAPER — DEMO, NOT REAL MONEY"* — three bell rows saying PAPER LONG GPNSTOCK
+(10:41am, 10:42am) and PAPER SHORT PSXSTOCK (10:46am) while the Paper book on
+`/api/trade/positions` returned an empty list.
+
+Nothing had closed them. `auto_trade_state.json` was 74 bytes and held no
+position at all, and its own `_rev` receipt named exactly one slot,
+`_tripped_logged`, in three saves. Two failures, one cause — the Aug 27, 2026
+change that made a paper slot per-STRATEGY (`SYM#paper#KEY`) was never carried
+to two call sites that still assume one slot per coin:
+
+1. WRITE. `run_cycle` built its save list as `state_key(symbol, dry)`, which
+   with no strategy returns the LEGACY `SYM#paper`. `save_state` skips a key
+   that is not in the dict (`if k not in state: continue`), so every paper slot
+   was dropped on every cycle and the position lived one cycle in RAM. The
+   ledger shows what that cost: GPNSTOCK keltner_30m_sl08tp08 entered at
+   10:41am at 89.38 and AGAIN at 10:42am at 89.36 under the same trade id
+   YMSUZZRU — the runner had already forgotten it held the position.
+2. READ. `positions_view.build_rows` keyed its rows by SYMBOL, so the two
+   GPNSTOCK strategies that opened a second apart would have collapsed into one
+   row even once they persisted — which is the whole thing per-strategy slots
+   were introduced to make possible.
+
+The REAL book is not affected either way: `state_key(sym, False)` returns the
+bare symbol in both places, and MEXC nets a contract into one position.
+"""
+import pytest
+
+from tradingagents import auto_trader as at
+from tradingagents import positions_view as pv
+
+A, B = "keltner_30m_sl08tp08", "keltner_30m_sl08tp1"
+COIN = "GPNSTOCK_USDT"
+
+
+def _pos(strategy, side=1, entry=89.36):
+    return {"side": side, "vol": 1.0, "entry": entry, "tp": entry * 1.008,
+            "sl": entry * 0.992, "margin": 5.0, "strategy": strategy,
+            "entry_ts": 1788_000_000, "opened_at": 1788_000_000,
+            "dry": True, "bracket": True, "step": 0}
+
+
+# --------------------------------------------------------------- the write
+def test_the_cycle_names_every_paper_slot_it_must_save():
+    """The bug in one assertion: the save list has to contain the slot the
+    position is actually in."""
+    state = {at.state_key(COIN, True, A): {"step": 0, "position": _pos(A)},
+             at.state_key(COIN, True, B): {"step": 0, "position": _pos(B)}}
+    slots = at.book_slots(state, COIN, True)
+    assert at.state_key(COIN, True, A) in slots
+    assert at.state_key(COIN, True, B) in slots
+    assert at.state_key(COIN, True) not in slots, \
+        "the legacy SYM#paper key is not a slot anything writes any more"
+
+
+def test_the_real_book_still_saves_one_slot_per_coin():
+    state = {COIN: {"step": 0, "position": None}}
+    assert at.book_slots(state, COIN, False) == [COIN]
+
+
+def test_a_legacy_slot_is_still_saved_if_one_is_on_disk():
+    """Migration runs inside the cycle, but a slot that has not been migrated
+    yet must not be dropped from the save on the way past."""
+    state = {f"{COIN}#paper": {"step": 3, "position": _pos(A)}}
+    assert f"{COIN}#paper" in at.book_slots(state, COIN, True)
+
+
+def test_another_coins_slots_are_never_touched():
+    state = {at.state_key(COIN, True, A): {"position": _pos(A)},
+             at.state_key("PSXSTOCK_USDT", True, A): {"position": _pos(A)}}
+    assert at.book_slots(state, COIN, True) == [at.state_key(COIN, True, A)]
+
+
+def test_a_paper_position_reaches_the_disk(tmp_path, monkeypatch):
+    """The end-to-end shape of the failure: open on paper, save the way the
+    cycle saves, read it back the way the API reads it."""
+    monkeypatch.setattr(at, "STATE_DIR", tmp_path)
+    monkeypatch.setattr(at, "STATE_PATH", tmp_path / "auto_trade_state.json")
+    monkeypatch.setattr(at, "STATE_LOCK_PATH", tmp_path / "state.lock")
+
+    state = at.load_state()
+    slot_a = at.state_key(COIN, True, A)
+    slot_b = at.state_key(COIN, True, B)
+    state[slot_a] = {"step": 0, "last_ts": {}, "position": _pos(A, entry=89.38)}
+    state[slot_b] = {"step": 0, "last_ts": {}, "position": _pos(B, entry=89.36)}
+    at.save_state(state, keys=at.book_slots(state, COIN, True))
+
+    back = at.load_state()
+    assert back.get(slot_a, {}).get("position"), "the demo position was lost"
+    assert back.get(slot_b, {}).get("position"), "the demo position was lost"
+    assert back[slot_a]["position"]["entry"] == 89.38
+    assert back[slot_b]["position"]["entry"] == 89.36
+    # the receipt that made the diagnosis: _rev names what was really written
+    assert set(back["_rev"]) == {slot_a, slot_b}
+
+
+def test_the_runner_cycle_uses_the_slot_list(monkeypatch):
+    """The call site itself, not just the helper — this is the line that was
+    wrong, and a passing helper with a stale caller changes nothing."""
+    import inspect
+
+    src = inspect.getsource(at.run_cycle)
+    assert "book_slots(" in src, \
+        "run_cycle must name the slots it visited, not a legacy key"
+    assert "touched.append(state_key(symbol, dry))" not in src, \
+        "state_key(symbol, dry) is the legacy paper key — it saves nothing"
+
+
+# ---------------------------------------------------------------- the read
+def test_two_demo_strategies_on_one_coin_are_two_rows():
+    """Collapsing them by symbol makes the per-strategy book invisible: the
+    operator opened GPNSTOCK twice, a second apart, on two strategies."""
+    state = {at.state_key(COIN, True, A): {"position": _pos(A, entry=89.38)},
+             at.state_key(COIN, True, B): {"position": _pos(B, entry=89.36)}}
+    rows = pv.build_rows(state=state, exchange_positions=[], stats={},
+                         dry=True, last_price=lambda s: 90.0,
+                         contract_size=lambda s: 1.0, taker_fee=0.0004,
+                         leverage=20, now=1788_000_600)
+    assert len(rows) == 2, [r.get("strategy") for r in rows]
+    assert {r["strategy"] for r in rows} == {A, B}
+    assert {r["entry"] for r in rows} == {89.38, 89.36}
+    for r in rows:
+        assert r["coin"] == "GPNSTOCK", "the coin name never carries the slot"
+
+
+def test_the_real_book_is_still_one_row_per_coin():
+    """MEXC nets a contract into a single position; two real rows on one coin
+    would be a position that cannot exist."""
+    live = [{"symbol": COIN, "side": "LONG", "vol": 1.0, "entry": 89.38}]
+    rows = pv.build_rows(state={COIN: {"position": dict(_pos(A), dry=False)}},
+                         exchange_positions=live, stats={}, dry=False,
+                         last_price=lambda s: 90.0,
+                         contract_size=lambda s: 1.0, taker_fee=0.0004,
+                         leverage=20, now=1788_000_600)
+    assert len(rows) == 1, rows
+
+
+def test_a_paper_row_says_which_strategy_it_belongs_to():
+    """label-must-match-data: two rows on one coin are only readable if each
+    names its own strategy."""
+    state = {at.state_key(COIN, True, A): {"position": _pos(A)}}
+    rows = pv.build_rows(state=state, exchange_positions=[], stats={},
+                         dry=True, last_price=lambda s: 90.0,
+                         contract_size=lambda s: 1.0, taker_fee=0.0004,
+                         leverage=20, now=1788_000_600)
+    assert rows[0]["strategy"] == A
+    assert rows[0]["side"] == "LONG"

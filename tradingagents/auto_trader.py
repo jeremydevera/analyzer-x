@@ -2385,6 +2385,28 @@ def strategy_of_slot(key: str) -> str | None:
     return bits[2] if len(bits) >= 3 and bits[1] == "paper" else None
 
 
+def book_slots(state: dict, symbol: str, dry: bool) -> list[str]:
+    """Every slot ONE coin holds on ONE book — the keys a cycle must save.
+
+    `state_key(symbol, dry)` is NOT this. With no strategy it returns the
+    LEGACY `SYM#paper`, and since Aug 27, 2026 a paper position lives in
+    `SYM#paper#STRATEGY`. `save_state` skips a key that is not in the dict, so
+    naming the legacy key saved nothing at all: on Sep 04, 2026 the bell said
+    PAPER LONG GPNSTOCK at 10:41am and the Paper book was empty, because the
+    position lived one cycle in RAM and was gone. The ledger shows the runner
+    then re-entering the SAME trade (id YMSUZZRU, 89.38 then 89.36 a minute
+    later), having forgotten it held one.
+
+    Read from `state`, not from the armed list: a slot whose strategy has since
+    been disarmed still holds a position that has to be saved, which is the
+    same reason `process_symbol` visits it.
+    """
+    if not dry:
+        return [state_key(symbol, False)]
+    return [k for k in state
+            if is_paper_slot(k) and coin_of_slot(k) == symbol]
+
+
 def migrate_paper_slots(state: dict) -> int:
     """Move legacy `SYM#paper` slots to `SYM#paper#<strategy>`.
 
@@ -3531,14 +3553,22 @@ def run_cycle(*, fx=None) -> None:
     for dry in modes:
       for symbol in symbols:
         try:
-            touched.append(state_key(symbol, dry))
             process_symbol(symbol, settings, state, fx=fx, dry=dry,
                            tripped=tripped_by_book.get(dry, frozenset()))
-            st = state.get(state_key(symbol, dry), {})
-            pos = st.get("position")
-            seen = st.get("last_ts") or {}
-            if not isinstance(seen, dict):     # pre-multi-TF state files
-                seen = {"Hour4": seen}
+            # EVERY slot this coin holds on this book, read AFTER the pass —
+            # a paper slot is CREATED by process_symbol, so a list built
+            # before it cannot contain the strategy that just opened.
+            slots = book_slots(state, symbol, dry)
+            # the union across slots: on paper each strategy watches its own
+            # bars, and one line per coin must not claim only one of them
+            seen: dict = {}
+            for _k in slots:
+                _ls = (state.get(_k) or {}).get("last_ts") or {}
+                if not isinstance(_ls, dict):  # pre-multi-TF state files
+                    _ls = {"Hour4": _ls}
+                for _tf, _ts in _ls.items():
+                    if _ts and _ts > seen.get(_tf, 0):
+                        seen[_tf] = _ts
             def _bar_stamp(ts: float) -> str:
                 # The scan log is shown in the Runner feed, so it uses THE
                 # format like everything else. This was a third hand-rolled
@@ -3552,12 +3582,21 @@ def run_cycle(*, fx=None) -> None:
             bars_txt = " ".join(
                 f"{tf}@{_bar_stamp(ts)}"
                 for tf, ts in sorted(seen.items())) or "none yet"
+            # Every OPEN slot, named. This line read the legacy paper key too,
+            # so the Runner feed printed "flat" for a coin holding two demo
+            # positions — a false label beside a true one (2026-09-04).
+            open_txt = ", ".join(
+                f"step={(state.get(k) or {}).get('step', 0)} "
+                f"{'LONG' if p['side'] > 0 else 'SHORT'} {p['strategy']} "
+                f"entry {p['entry']} tp {p['tp']:.2f} sl {p['sl']:.2f}"
+                for k in slots
+                for p in [(state.get(k) or {}).get("position")] if p)
             logger.info(
-                "scan %s: step=%s position=%s last_bars=%s", symbol,
-                st.get("step", 0),
-                (f"{'LONG' if pos['side'] > 0 else 'SHORT'} {pos['strategy']} "
-                 f"entry {pos['entry']} tp {pos['tp']:.2f} sl {pos['sl']:.2f}"
-                 if pos else "flat — no signal or waiting for a new candle"),
+                "scan %s[%s]: %s of %s slot(s) open · %s last_bars=%s",
+                symbol, "paper" if dry else "real",
+                sum(1 for k in slots if (state.get(k) or {}).get("position")),
+                len(slots),
+                open_txt or "flat — no signal or waiting for a new candle",
                 bars_txt)
         except Exception as exc:  # one sick coin must not stop the others
             msg = str(exc)
@@ -3575,6 +3614,12 @@ def run_cycle(*, fx=None) -> None:
                                symbol, exc)
                 append_ledger({"symbol": symbol, "action": "error",
                                "why": msg})
+        finally:
+            # In a finally, because a coin that RAISED half-way may already
+            # have opened or closed a position, and the old code's append
+            # happened before the pass for exactly that reason. It must still
+            # come after `process_symbol` to see a slot the pass created.
+            touched.extend(book_slots(state, symbol, dry))
     save_state(state, keys=touched)
 
 

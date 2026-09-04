@@ -153,7 +153,15 @@ def build_rows(*, state: dict, exchange_positions: list, stats: dict,
         if not pos or bool(pos.get("dry", False)) is not dry:
             continue
         sym = bkey.split("#", 1)[0]
-        r = rows.setdefault(sym, blank(sym))
+        # Keyed by SLOT, not by coin. On the paper book a slot is per strategy
+        # (`SYM#paper#KEY` since Aug 27, 2026), and `rows[sym]` collapsed them:
+        # the operator opened GPNSTOCK on keltner_30m_sl08tp08 at 89.38 and on
+        # keltner_30m_sl08tp1 at 89.36 a minute apart on Sep 04, 2026, and one
+        # row came back — the last one written. Comparing strategies side by
+        # side on one coin is the whole reason the slot was split.
+        # On the REAL book bkey IS the symbol, so this is unchanged there, and
+        # it must stay that way: MEXC nets a contract into one position.
+        r = rows.setdefault(bkey, blank(sym))
         when = pos.get("opened_at") or pos.get("entry_ts")
         unreal = None
         if dry:                       # the paper book has no exchange to ask

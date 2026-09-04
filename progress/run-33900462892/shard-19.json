@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 1, "total": 52, "rows": 62408, "note": "ACU 1h: rule 61/120 (turtle)", "failed": [], "pct": 1.9, "updated": "2026-09-04T17:30:18Z"}
+{"shard": 19, "stage": "testing", "done": 2, "total": 52, "rows": 106452, "note": "AIXBT 15m: 34,645 bars, testing 120 rules", "failed": [], "pct": 3.8, "updated": "2026-09-04T17:31:17Z"}

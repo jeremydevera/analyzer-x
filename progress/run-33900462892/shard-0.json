@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 18, "total": 53, "rows": 1640856, "note": "EWZ 15m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 34.0, "updated": "2026-09-04T19:14:32Z"}
+{"shard": 0, "stage": "testing", "done": 18, "total": 53, "rows": 1705996, "note": "EWZ 1d: 86 bars, testing 120 rules", "failed": [], "pct": 34.0, "updated": "2026-09-04T19:15:18Z"}

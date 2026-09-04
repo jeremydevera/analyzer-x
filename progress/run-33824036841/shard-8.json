@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 15, "total": 52, "rows": 1184222, "note": "DIA 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 28.8, "updated": "2026-09-04T02:24:59Z"}
+{"shard": 8, "stage": "testing", "done": 15, "total": 52, "rows": 1199182, "note": "DIA 1h: rule 63/120 (killzone)", "failed": [], "pct": 28.8, "updated": "2026-09-04T02:25:44Z"}

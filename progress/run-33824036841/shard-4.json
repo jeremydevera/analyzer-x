@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 5, "total": 53, "rows": 473298, "note": "ARMSTOCK 1d: 262 bars, testing 120 rules", "failed": [], "pct": 9.4, "updated": "2026-09-04T01:21:30Z"}
+{"shard": 4, "stage": "testing", "done": 7, "total": 53, "rows": 494930, "note": "BACSTOCK 15m: rule 68/120 (dbltop)", "failed": [], "pct": 13.2, "updated": "2026-09-04T01:22:15Z"}

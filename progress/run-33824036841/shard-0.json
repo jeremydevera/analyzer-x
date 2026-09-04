@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 37, "total": 53, "rows": 2815538, "note": "PROM 15m: rule 34/120 (lrslope)", "failed": [], "pct": 69.8, "updated": "2026-09-04T03:37:15Z"}
+{"shard": 0, "stage": "testing", "done": 37, "total": 53, "rows": 2821038, "note": "PROM 15m: rule 60/120 (eqraid)", "failed": [], "pct": 69.8, "updated": "2026-09-04T03:38:00Z"}

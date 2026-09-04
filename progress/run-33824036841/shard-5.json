@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 25, "total": 53, "rows": 2057912, "note": "JDSTOCK 4h: rule 16/120 (keltner)", "failed": [], "pct": 47.2, "updated": "2026-09-04T03:17:04Z"}
+{"shard": 5, "stage": "testing", "done": 27, "total": 53, "rows": 2089756, "note": "LA 15m: 34,588 bars, testing 120 rules", "failed": [], "pct": 50.9, "updated": "2026-09-04T03:17:56Z"}

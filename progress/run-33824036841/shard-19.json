@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 32, "total": 52, "rows": 3090800, "note": "NOM 15m: rule 12/120 (donchian20)", "failed": [], "pct": 61.5, "updated": "2026-09-04T03:36:40Z"}
+{"shard": 19, "stage": "testing", "done": 32, "total": 52, "rows": 3096400, "note": "NOM 15m: rule 40/120 (crsi)", "failed": [], "pct": 61.5, "updated": "2026-09-04T03:37:25Z"}

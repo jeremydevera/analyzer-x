@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 48, "total": 53, "rows": 3890764, "note": "UB 30m: rule 14/120 (bb20)", "failed": [], "pct": 90.6, "updated": "2026-09-04T04:52:11Z"}
+{"shard": 0, "stage": "testing", "done": 48, "total": 53, "rows": 3899124, "note": "UB 30m: rule 53/120 (squeeze)", "failed": [], "pct": 90.6, "updated": "2026-09-04T04:52:56Z"}

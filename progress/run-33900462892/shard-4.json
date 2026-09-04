@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 48, "total": 53, "rows": 4483356, "note": "UB 15m: rule 2/120 (mom15)", "failed": [], "pct": 90.6, "updated": "2026-09-04T21:22:15Z"}
+{"shard": 4, "stage": "testing", "done": 48, "total": 53, "rows": 4485756, "note": "UB 15m: rule 12/120 (donchian20)", "failed": [], "pct": 90.6, "updated": "2026-09-04T21:23:02Z"}

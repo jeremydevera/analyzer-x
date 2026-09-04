@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 30, "total": 53, "rows": 2548428, "note": "MIRA 15m: rule 55/120 (nhigh50)", "failed": [], "pct": 56.6, "updated": "2026-09-04T03:06:43Z"}
+{"shard": 1, "stage": "testing", "done": 30, "total": 53, "rows": 2558028, "note": "MIRA 15m: rule 103/120 (cf_eqhl)", "failed": [], "pct": 56.6, "updated": "2026-09-04T03:07:28Z"}

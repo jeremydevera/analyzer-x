@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 25, "total": 52, "rows": 2009108, "note": "JMKESTOCK 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 48.1, "updated": "2026-09-04T03:16:04Z"}
+{"shard": 8, "stage": "testing", "done": 26, "total": 52, "rows": 2018796, "note": "KITE 15m: rule 2/120 (mom15)", "failed": [], "pct": 50.0, "updated": "2026-09-04T03:17:04Z"}

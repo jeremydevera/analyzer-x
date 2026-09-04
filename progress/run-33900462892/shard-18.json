@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 42, "total": 52, "rows": 3778546, "note": "SOLV 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 80.8, "updated": "2026-09-04T20:22:31Z"}
+{"shard": 18, "stage": "testing", "done": 42, "total": 52, "rows": 3791086, "note": "SOLV 30m: rule 73/120 (volspike)", "failed": [], "pct": 80.8, "updated": "2026-09-04T20:23:16Z"}

@@ -913,6 +913,164 @@ def _slim_pair(res: dict) -> dict:
             "rt": res.get("rt"), "liq": res.get("liq"), "fee": res.get("fee")}
 
 
+def next_window(now: int, target, cap: int) -> int:
+    """The next in-flight width: CAUTIOUS UP, PROMPT DOWN.
+
+    `now` is how many pairs are in flight, `target` what the memory policy says
+    it can afford this instant, `cap` the pool's width. `target` of None means
+    the machine would not report its memory, and unknown must never move the
+    window.
+
+    Asymmetric on purpose. Growing one pair per completed pair keeps the ramp
+    gentle enough that the 1 GB emergency stop is never reached; shrinking the
+    whole way at once is what keeps a real squeeze from reaching it. Grow-only
+    leaves nothing between a genuine squeeze and a run that quits at 91% — the
+    failure this exists to avoid.
+    """
+    if target is None:
+        return now
+    want = max(1, min(int(target), int(cap)))
+    if want <= now:
+        return want                      # DOWN: all the way, immediately
+    return min(now + 1, want)            # UP: one step
+
+
+# What one IDLE pool worker holds, measured on the operator's machine on
+# Sep 04, 2026: eleven workers that had each measured a pair sat at 951 MB
+# total, 86 MB each, and stayed there — ProcessPoolExecutor never reaps an idle
+# worker. The pair's own working memory IS released (the 951 MB did not fall
+# after 25 s of idling, meaning 86 MB is the floor, not a decaying figure).
+IDLE_WORKER_GB = 0.086
+
+
+def wants_rebuild(*, peak: int, want: int, per_worker_gb: float) -> bool:
+    """Is this shrink big enough to be worth tearing the pool down?
+
+    A shrink leaves `peak - want` workers alive and idle at IDLE_WORKER_GB
+    each. During a memory squeeze that is exactly the memory the shrink was
+    trying to release: 11 -> 3 strands 692 MB, more than one worker's whole
+    budget. Rebuild when the stranded memory is worth at least one more worker;
+    below that a rebuild costs more (every worker re-imports) than it frees.
+    """
+    if float(per_worker_gb) <= 0:
+        return False       # no budget given: never tear a working pool down
+    stranded = max(0, int(peak) - int(want)) * IDLE_WORKER_GB
+    return stranded >= float(per_worker_gb)
+
+
+def _measure_pairs(pairs, *, cap, plan_workers, base_margin, days, thresholds,
+                   fresh, on_done, on_failed, on_window=None, serial=False,
+                   retries=None, discard=None, submit=None, rebuild=None,
+                   per_worker_gb=0.0):
+    """Measure every pair, keeping only as many in flight as memory allows.
+
+    The pool is built ONCE at `cap` and processes spawn lazily, so an 11-wide
+    pool running 3 pairs costs 3 processes. What changes is the WINDOW: pairs
+    are held in a queue and topped up after each completion, instead of all
+    4,124 being submitted up front — which is what made the worker count a
+    decision taken once, at the worst instant of a crash restart, and kept for
+    28 hours (Sep 03, 2026).
+
+    `serial=True` runs the same loop with a trivial executor, so the window
+    arithmetic can be tested without spawning processes.
+    """
+    from tradingagents import market_sweep as msw
+
+    retries = msw.PAIR_RETRIES if retries is None else retries
+    discard = discard or (lambda coin, tf: msw.discard_pair(coin, tf))
+    queue = list(pairs)
+    tries: dict = {}
+    inflight: dict = {}
+    width = max(1, next_window(1, plan_workers(), cap))
+
+    if serial:
+        import queue as _q
+
+        class _Fut:
+            def __init__(self, fn, *a, **k):
+                try:
+                    self._v, self._e = fn(*a, **k), None
+                except Exception as exc:               # noqa: BLE001
+                    self._v, self._e = None, exc
+
+            def result(self):
+                if self._e:
+                    raise self._e
+                return self._v
+
+        def _sub(sym, tf):
+            return _Fut(msw.run_pair, sym, tf, slot=None,
+                        base_margin=base_margin, days=days,
+                        thresholds=thresholds, fresh=fresh)
+
+        def _wait(fs):
+            return list(fs), []
+    else:
+        import concurrent.futures as _cf
+
+        _sub = submit
+        def _wait(fs):
+            return _cf.wait(list(fs), return_when=_cf.FIRST_COMPLETED)
+
+    # The widest the pool has actually been asked for. A shrink strands
+    # `peak - width` workers alive and idle (86 MB each, measured), so a big
+    # enough drop tears the pool down — see wants_rebuild.
+    peak = width
+    pending_rebuild = {"want": 0}
+
+    def _top_up():
+        if pending_rebuild["want"]:
+            return                       # draining: submit nothing new
+        while queue and len(inflight) < width:
+            sym, tf = queue.pop(0)
+            inflight[_sub(sym, tf)] = (sym, tf)
+
+    _top_up()
+    if on_window:
+        on_window(len(inflight))
+    while inflight:
+        ready, _ = _wait(inflight)
+        for fut in ready:
+            sym, tf = inflight.pop(fut)
+            show = sym.replace("_USDT", "")
+            try:
+                res = fut.result()
+            except Exception as exc:                   # noqa: BLE001
+                n = tries.get((sym, tf), 0)
+                if n < retries:
+                    tries[(sym, tf)] = n + 1
+                    discard(show, tf)
+                    queue.insert(0, (sym, tf))
+                    on_failed(sym, tf, exc, n + 1, False)
+                else:
+                    on_failed(sym, tf, exc, n, True)
+            else:
+                on_done(sym, tf, res)
+            # ONE step per completed pair — the ramp the design asks for
+            width = next_window(width, plan_workers(), cap)
+            peak = max(peak, width)
+            if (rebuild and not pending_rebuild["want"]
+                    and wants_rebuild(peak=peak, want=width,
+                                      per_worker_gb=per_worker_gb)):
+                # A pool cannot be torn down under running work, so stop
+                # topping up and let the pairs already measuring finish. They
+                # are NOT discarded — a rebuild loses no work, it costs one
+                # pair's worth of wall clock, which during a squeeze is the
+                # right trade because it is also the fastest way to hand the
+                # memory back.
+                pending_rebuild["want"] = width
+            if pending_rebuild["want"] and not inflight:
+                _new = rebuild(pending_rebuild["want"])
+                if _new is not None:
+                    _sub = _new
+                peak = width = pending_rebuild["want"]
+                pending_rebuild["want"] = 0
+            _top_up()
+            if on_window:
+                on_window(len(inflight))
+    return width
+
+
 def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
                     base_margin: float = 5.0, days: int = 365,
                     thresholds: int = 3,
@@ -921,7 +1079,19 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
                     embed_limit: int = 4,
                     workers: int = 0, fresh: bool = False,
                     row_cap: int = DEFAULT_ROW_CAP,
-                    grid_label: str = "grid") -> dict:
+                    grid_label: str = "grid",
+                    # Asked again after every completed pair: how many pairs
+                    # may be in flight NOW. Returning None means the machine
+                    # would not report its memory, which must never move the
+                    # window. The RAM policy lives in db_jobs (WorkerPlanner);
+                    # this module never learns what memory is.
+                    plan_workers=None,
+                    on_window=None,
+                    # What one pair costs in memory, from the caller's RAM
+                    # policy (db_jobs.RAM_PER_WORKER_GB). Used ONLY as the
+                    # threshold for rebuilding after a shrink — this module
+                    # still never reads the machine's memory. 0 disables it.
+                    per_worker_gb: float = 0.0) -> dict:
     """A ``run_grid``-shaped payload that READS THE STORE FIRST.
 
     The operator's rule: "when doing analysis its not doing from scratch."
@@ -1000,6 +1170,12 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
         # killing it. A stop, a hand-off or an error now CANCELS the queue and
         # waits only for the pairs already in a worker -- "finish the current
         # task", exactly as the operator asked -- then propagates.
+        # Built once at the CAP the machine offers, not at the current
+        # window: ProcessPoolExecutor spawns lazily, so an 11-wide pool
+        # running 3 pairs costs 3 processes. The window is enforced by how
+        # many futures are in flight, never by the pool's width — a pool
+        # cannot be resized, which is exactly why the old code could not
+        # take back the cores that freed up.
         pool = _cf.ProcessPoolExecutor(max_workers=n_workers,
                                        initializer=msw.be_polite)
         try:
@@ -1020,48 +1196,82 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
                     else:
                         progress(msg, done / total)
 
-                # A dict rather than as_completed(): a failed pair is put back
-                # into the SAME pool, so the work set grows while the run does.
-                futs = {_submit(sym, tf): (sym, tf) for sym, tf in pairs}
-                tries: dict = {}
-                while futs:
-                    ready, _ = _cf.wait(list(futs),
-                                        return_when=_cf.FIRST_COMPLETED)
-                    for fut in ready:
-                        sym, tf = futs.pop(fut)
-                        show = sym.replace("_USDT", "")
-                        try:
-                            res = fut.result()
-                        except Exception as exc:   # one pair dying is not the run
-                            # Operator, 2026-08-25: "if a coin fails, delete the
-                            # backtest then redo again the last failed job (not
-                            # the whole)". Delete FIRST -- a pair that raised
-                            # part-way has rows on disk and a state file whose
-                            # watermark is stale, and measuring on top of that
-                            # leaves one coin holding a mixture of two runs.
-                            n = tries.get((sym, tf), 0)
-                            if n < msw.PAIR_RETRIES:
-                                tries[(sym, tf)] = n + 1
-                                msw.discard_pair(show, tf)
-                                futs[_submit(sym, tf)] = (sym, tf)
-                                _say(f"{show} {tf}: failed "
-                                     f"({str(exc)[:40]}) · discarded, redoing "
-                                     f"{n + 1}/{msw.PAIR_RETRIES}")
-                                continue
-                            # out of retries: it is excluded, and only NOW does
-                            # it count as done
-                            excluded.append({"coin": show, "tf": tf,
-                                             "why": f"worker: {str(exc)[:60]}"})
-                            _seen.add((sym, tf))
-                            done = len(_seen)
-                            _say(f"{show} {tf}: gave up after "
-                                 f"{msw.PAIR_RETRIES} retries ({done}/{total})")
-                            continue
-                        _seen.add((sym, tf))
-                        done = len(_seen)     # DISTINCT pairs, so one that was
-                                              # already measured is not counted twice
-                        _say(f"{show} {tf}: done ({done}/{total})")
-                        measured.append((sym, tf, _slim_pair(res)))
+                # NOT submitted up front. `_measure_pairs` keeps an
+                # unsubmitted queue and tops the in-flight window up after
+                # each completed pair, asking `plan_workers()` how wide it may
+                # be. Submitting all 4,124 made the worker count a decision
+                # taken once — at the worst instant of a crash restart — and
+                # kept for 28 hours (Sep 03, 2026). Retries push back onto the
+                # queue exactly as they used to push back into the pool.
+                nonlocal_done = {"n": done}
+
+                def _on_done(sym, tf, res):
+                    _seen.add((sym, tf))
+                    nonlocal_done["n"] = len(_seen)
+                    show = sym.replace("_USDT", "")
+                    _say2(f"{show} {tf}: done "
+                          f"({nonlocal_done['n']}/{total})", nonlocal_done["n"])
+                    measured.append((sym, tf, _slim_pair(res)))
+
+                def _on_failed(sym, tf, exc, n, gave_up):
+                    # Operator, 2026-08-25: "if a coin fails, delete the
+                    # backtest then redo again the last failed job (not the
+                    # whole)". `_measure_pairs` has already discarded the
+                    # part-written pair before calling this.
+                    show = sym.replace("_USDT", "")
+                    if not gave_up:
+                        _say2(f"{show} {tf}: failed ({str(exc)[:40]}) · "
+                              f"discarded, redoing {n}/{msw.PAIR_RETRIES}",
+                              nonlocal_done["n"])
+                        return
+                    excluded.append({"coin": show, "tf": tf,
+                                     "why": f"worker: {str(exc)[:60]}"})
+                    _seen.add((sym, tf))
+                    nonlocal_done["n"] = len(_seen)
+                    _say2(f"{show} {tf}: gave up after {msw.PAIR_RETRIES} "
+                          f"retries ({nonlocal_done['n']}/{total})",
+                          nonlocal_done["n"])
+
+                def _say2(msg, d):
+                    if not progress:
+                        return
+                    if _counts:
+                        progress(msg, d / total, d, total)
+                    else:
+                        progress(msg, d / total)
+
+                # A big enough shrink tears the pool down: eleven idle
+                # workers hold 951 MB and never give it back (measured
+                # Sep 04, 2026), so shrinking without rebuilding hands back
+                # almost nothing during the squeeze that asked for it.
+                pool_box = {"p": pool}
+
+                def _rebuild(want):
+                    old_pool = pool_box["p"]
+                    old_pool.shutdown(wait=True)          # nothing is in flight
+                    new_pool = _cf.ProcessPoolExecutor(
+                        max_workers=n_workers, initializer=msw.be_polite)
+                    pool_box["p"] = new_pool
+                    print(f"[backtest] pool rebuilt at {want} worker(s): "
+                          f"{max(0, n_workers - want)} idle worker(s) were "
+                          f"holding ~"
+                          f"{max(0, n_workers - want) * IDLE_WORKER_GB:.1f} GB",
+                          flush=True)
+                    return lambda sym, tf: new_pool.submit(
+                        msw.run_pair, sym, tf, slot=None,
+                        base_margin=base_margin, days=days,
+                        thresholds=thresholds, fresh=fresh)
+
+                _measure_pairs(pairs, cap=n_workers,
+                               plan_workers=(plan_workers or (lambda: None)),
+                               base_margin=base_margin, days=days,
+                               thresholds=thresholds, fresh=fresh,
+                               on_done=_on_done, on_failed=_on_failed,
+                               on_window=on_window, submit=_submit,
+                               rebuild=_rebuild if plan_workers else None,
+                               per_worker_gb=per_worker_gb)
+                pool = pool_box["p"]
+                done = nonlocal_done["n"]
         except _cf.process.BrokenProcessPool:
             pool.shutdown(wait=False, cancel_futures=True)
             # The pool itself could not start — spawn needs an importable

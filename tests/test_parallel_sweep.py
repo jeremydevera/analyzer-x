@@ -115,10 +115,22 @@ def test_a_pool_that_cannot_start_falls_back_to_serial(monkeypatch):
 
 
 def test_the_job_passes_the_core_count_and_publishes_slots():
+    """The POOL is built at the machine's cap; the WINDOW follows memory.
+
+    This used to assert `workers=n_workers` — the one figure taken at startup.
+    A pool cannot be resized, so that number was the run's ceiling for its
+    whole life: a crash restart at 3.9 GB free on Sep 03, 2026 pinned a
+    28-hour run to 3 of 11 cores. The pool is now created at `cores_offered`
+    and spawns lazily (an 11-wide pool running 3 pairs costs 3 processes),
+    while `plan_workers` decides how many pairs may be in flight right now.
+    """
     src = open("tradingagents/db_jobs.py", encoding="utf-8").read()
-    assert "workers=n_workers" in src, "the job must ask for parallelism"
+    assert "workers=cores_offered" in src,         "the pool must be built at the CAP so cores can be taken back"
+    assert "plan_workers=plan_workers" in src,         "and the window must be asked for, not fixed at startup"
     assert "_msw.worker_read()" in src, "and publish per-core progress"
-    assert '"cores": n_workers' in src
+    # the PUBLISHED count is the live one, not the startup reading
+    assert '"cores": _live["cores"]' in src
+    assert '"cores_why": _live["why"]' in src
 
 
 def test_this_machine_would_actually_parallelise():

@@ -214,6 +214,56 @@ def workers_for_ram(cores: int, tfs, free_gb: float | None = None) -> int:
     return max(1, min(int(cores), fits))
 
 
+class WorkerPlanner:
+    """How many pairs may run at once, ASKED AGAIN each time a pair finishes.
+
+    The sweep used to decide this once, at startup. On Sep 03, 2026 a crash at
+    3:30pm restarted the job while the dead run's workers were still being
+    reaped: 3.9 GB free, 3 of 11 cores, and 3 of 11 cores for the next 28 hours
+    while 5.6 GB sat free and nine cores idled.
+
+    RAM POLICY LIVES HERE, not in the grid. `backtest_report` never learns what
+    memory is — it asks "how many now?" and gets a number, or None when the
+    machine will not say. `RAM_RESERVE_GB` and `RAM_PER_WORKER_GB` stay where
+    they already are.
+    """
+
+    def __init__(self, cores_offered: int, tfs):
+        self.cores_offered = max(1, int(cores_offered))
+        self.tfs = list(tfs or [])
+        self.chosen = self.cores_offered
+        self.free_gb = 0.0
+        self.why = ""
+
+    def plan(self):
+        """The figure for right now, or None when memory is unreadable.
+
+        None is not zero and not "keep going as you are, it's fine" — it is
+        the one answer that must never move the window, because a guess here
+        either starves a healthy machine or drives a squeezed one into the
+        1 GB stop.
+        """
+        free = free_ram_gb()
+        if free <= 0:
+            return None
+        self.free_gb = free
+        self.chosen = workers_for_ram(self.cores_offered, self.tfs,
+                                      free_gb=free)
+        # The REASON is refreshed with the number. A frozen "3.9 GB free"
+        # printed beside a live "RAM 5.6/16 GB free" is a label arguing with
+        # its own data (label-must-match-data).
+        self.why = ram_reason(self.chosen, self.cores_offered, self.tfs,
+                              free_gb=free)
+        return self.chosen
+
+
+def make_worker_planner(cores_offered: int, tfs) -> WorkerPlanner:
+    """A planner primed with one reading, so `.why` is never empty on arrival."""
+    p = WorkerPlanner(cores_offered, tfs)
+    p.plan()
+    return p
+
+
 def ram_reason(chosen: int, offered: int, tfs, free_gb: float | None = None) -> str:
     """Why the run is using fewer cores than the machine has -- printed beside
     the number, because "4 of 11 cores" alone reads as a broken machine
@@ -938,6 +988,29 @@ def _run_backtest_inner(spec: dict, files_key: str = "backtest",
                            free_gb=_free if _free > 0 else None)
     if cores_why:
         print(f"[backtest] {cores_why}", flush=True)
+    # ... and keep asking. The startup figure is only the FIRST answer: a run
+    # that begins during a memory squeeze used to keep that squeeze's worker
+    # count for its whole life (Sep 03, 2026 — 3 of 11 cores for 28 hours).
+    # The planner is re-asked after every completed pair; the grid widens by
+    # one and narrows all the way at once (backtest_report.next_window).
+    _planner = make_worker_planner(cores_offered, spec.get("tfs") or [])
+    # the pool is built at the CAP so cores can be taken BACK; the window
+    # starts where the settled reading put it
+    _live = {"cores": n_workers, "why": cores_why}
+
+    def plan_workers():
+        got = _planner.plan()
+        if got is None:               # the machine will not say: do not move
+            return None
+        # the panel's number and the sentence beside it are refreshed
+        # TOGETHER, or a frozen "3.9 GB free" sits beside a live
+        # "RAM 5.6/16 GB free" (label-must-match-data)
+        _live["cores"], _live["why"] = got, _planner.why
+        return got
+
+    def on_window(n_inflight: int) -> None:
+        """What is ACTUALLY in flight, not what was allowed."""
+        _live["inflight"] = int(n_inflight)
 
     # What the heartbeat should say between pair completions.
     # done/total are the REAL pair counts once grid_from_store knows them.
@@ -956,11 +1029,14 @@ def _run_backtest_inner(spec: dict, files_key: str = "backtest",
                                "done": last["done"],
                                "total": last["total"], "now": last["msg"],
                                "pct": last.get("pct"),
-                               "cores": n_workers,
+                               # LIVE, not the startup reading: the window
+                               # follows memory while the run goes
+                               "cores": _live["cores"],
+                               "cores_inflight": _live.get("inflight"),
                                # what the machine offered and why fewer are in
                                # use, so "4 of 11" never reads as broken
                                "cores_offered": cores_offered,
-                               "cores_why": cores_why,
+                               "cores_why": _live["why"],
                                "ram_free_gb": round(free_ram_gb(), 2) or None,
                                "fresh": fresh,
                                # Never MORE bars than there are cores. A pool
@@ -1031,7 +1107,9 @@ def _run_backtest_inner(spec: dict, files_key: str = "backtest",
         payload = br.grid_from_store(
             spec["coins"], spec["tfs"], base_margin=float(spec["base"]),
             days=int(spec["days"]), deployed=spec.get("deployed") or [],
-            progress=prog, workers=n_workers, fresh=fresh)
+            progress=prog, workers=cores_offered, fresh=fresh,
+            plan_workers=plan_workers, on_window=on_window,
+            per_worker_gb=_per_worker_gb(spec.get("tfs") or []))
     except _HandOff as exc:
         _write(f["progress"], {"running": False, "handoff": True,
                                "finished": int(time.time()),

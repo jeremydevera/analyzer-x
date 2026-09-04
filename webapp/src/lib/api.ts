@@ -186,8 +186,14 @@ export interface WorkerSlot {
 
 export interface JobStatus {
   running: boolean;
-  /** how many cores the sweep was given */
+  /** how many cores the sweep may use RIGHT NOW — re-asked after every
+   *  completed pair, so it rises when memory frees up and falls when it does
+   *  not. It used to be the reading taken at startup, which pinned a 28-hour
+   *  run to 3 of 11 cores after a crash restart (Sep 03, 2026). */
   cores?: number;
+  /** how many pairs are actually in flight, which lags `cores` while the
+   *  window ramps up one pair at a time */
+  cores_inflight?: number;
   /** cores the machine offered, and why the run is using fewer (low memory) */
   cores_offered?: number;
   cores_why?: string;

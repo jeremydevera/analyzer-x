@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 49, "total": 52, "rows": 4178956, "note": "VSTOCK 1h: 7,431 bars, testing 120 rules", "failed": [], "pct": 94.2, "updated": "2026-09-04T04:42:33Z"}
+{"shard": 11, "stage": "testing", "done": 49, "total": 52, "rows": 4228016, "note": "VSTOCK 4h: rule 94/120 (cf_emarsi)", "failed": [], "pct": 94.2, "updated": "2026-09-04T04:43:18Z"}

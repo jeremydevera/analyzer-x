@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 25, "total": 53, "rows": 2088260, "note": "JASMY 1h: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 47.2, "updated": "2026-09-04T02:55:44Z"}
+{"shard": 2, "stage": "testing", "done": 25, "total": 53, "rows": 2120820, "note": "JASMY 1d: 394 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-04T02:56:30Z"}

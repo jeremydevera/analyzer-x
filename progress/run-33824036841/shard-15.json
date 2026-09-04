@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 42, "total": 52, "rows": 3965498, "note": "SOL 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 80.8, "updated": "2026-09-04T04:34:13Z"}
+{"shard": 15, "stage": "testing", "done": 43, "total": 52, "rows": 4011086, "note": "SQQQ 15m: rule 28/120 (vortex14)", "failed": [], "pct": 82.7, "updated": "2026-09-04T04:34:58Z"}

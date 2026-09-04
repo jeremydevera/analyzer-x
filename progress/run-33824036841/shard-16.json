@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 7, "total": 52, "rows": 580310, "note": "BBSTOCK 15m: rule 3/120 (fade15)", "failed": [], "pct": 13.5, "updated": "2026-09-04T01:34:46Z"}
+{"shard": 16, "stage": "testing", "done": 7, "total": 52, "rows": 602490, "note": "BBSTOCK 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 13.5, "updated": "2026-09-04T01:35:31Z"}

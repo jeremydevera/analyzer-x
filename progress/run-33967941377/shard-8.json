@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 7, "total": 53, "rows": 262260, "note": "BAN 30m: rule 27/120 (aroon25)", "failed": [], "pct": 13.2, "updated": "2026-09-05T13:20:28Z"}
+{"shard": 8, "stage": "testing", "done": 7, "total": 53, "rows": 272820, "note": "BAN 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 13.2, "updated": "2026-09-05T13:21:14Z"}

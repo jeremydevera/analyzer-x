@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 17, "total": 53, "rows": 444986, "note": "ETHFI 1h: rule 55/120 (nhigh50)", "failed": [], "pct": 32.1, "updated": "2026-09-05T18:36:38Z"}
+{"shard": 10, "stage": "testing", "done": 18, "total": 53, "rows": 474290, "note": "FF 1h: rule 2/120 (mom15)", "failed": [], "pct": 34.0, "updated": "2026-09-05T18:37:27Z"}

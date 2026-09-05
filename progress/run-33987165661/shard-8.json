@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 53, "total": 53, "rows": 1624956, "note": "ZRO 30m: rule 47/120 (ibs)", "failed": [], "pct": 100.0, "updated": "2026-09-05T20:37:48Z"}
+{"shard": 8, "stage": "testing", "done": 53, "total": 53, "rows": 1636156, "note": "ZRO 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-05T20:38:34Z"}

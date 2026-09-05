@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 50, "total": 52, "rows": 2110550, "note": "W 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-05T11:40:25Z"}
+{"shard": 17, "stage": "testing", "done": 51, "total": 52, "rows": 2138930, "note": "XPIN 30m: 17,631 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-05T11:41:11Z"}

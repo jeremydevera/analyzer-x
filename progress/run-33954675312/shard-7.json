@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 37, "total": 53, "rows": 1034656, "note": "PTB 4h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 69.8, "updated": "2026-09-05T08:33:13Z"}
+{"shard": 7, "stage": "testing", "done": 39, "total": 53, "rows": 1073618, "note": "RIVER 1d: rule 16/120 (keltner)", "failed": [], "pct": 73.6, "updated": "2026-09-05T08:33:58Z"}

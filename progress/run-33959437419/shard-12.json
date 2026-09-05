@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 2, "total": 52, "rows": 52444, "note": "AIA 30m: rule 28/120 (vortex14)", "failed": [], "pct": 3.8, "updated": "2026-09-05T10:01:28Z"}
+{"shard": 12, "stage": "testing", "done": 3, "total": 52, "rows": 72244, "note": "ALT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 5.8, "updated": "2026-09-05T10:02:23Z"}

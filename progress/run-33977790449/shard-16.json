@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 14, "total": 52, "rows": 612380, "note": "DATA 30m: rule 21/120 (cci20)", "failed": [], "pct": 26.9, "updated": "2026-09-05T16:54:34Z"}
+{"shard": 16, "stage": "testing", "done": 15, "total": 52, "rows": 655860, "note": "DOLO 4h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 28.8, "updated": "2026-09-05T16:55:19Z"}

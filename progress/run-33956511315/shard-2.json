@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 39, "total": 53, "rows": 1101664, "note": "REZ 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 73.6, "updated": "2026-09-05T09:29:03Z"}
+{"shard": 2, "stage": "testing", "done": 39, "total": 53, "rows": 1113544, "note": "REZ 1h: rule 48/120 (prank)", "failed": [], "pct": 73.6, "updated": "2026-09-05T09:29:48Z"}

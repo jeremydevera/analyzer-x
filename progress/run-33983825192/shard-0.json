@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 30, "total": 53, "rows": 907884, "note": "ME 1h: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 56.6, "updated": "2026-09-05T18:53:28Z"}
+{"shard": 0, "stage": "testing", "done": 33, "total": 53, "rows": 946518, "note": "NMR 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 62.3, "updated": "2026-09-05T18:54:16Z"}

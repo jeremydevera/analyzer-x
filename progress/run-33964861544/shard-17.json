@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 1, "total": 52, "rows": 41008, "note": "ACH 1h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-05T12:03:05Z"}
+{"shard": 17, "stage": "testing", "done": 2, "total": 52, "rows": 63396, "note": "AIOZ 1h: rule 34/120 (lrslope)", "failed": [], "pct": 3.8, "updated": "2026-09-05T12:03:50Z"}

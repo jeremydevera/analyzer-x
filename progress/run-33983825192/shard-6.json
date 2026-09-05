@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 20, "total": 53, "rows": 544204, "note": "GESTOCK 1h: rule 34/120 (lrslope)", "failed": [], "pct": 37.7, "updated": "2026-09-05T18:35:10Z"}
+{"shard": 6, "stage": "testing", "done": 22, "total": 53, "rows": 592762, "note": "HFT 1h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-05T18:35:55Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 11, "total": 53, "rows": 293942, "note": "CC 4h: 1,852 bars, testing 120 rules", "failed": [], "pct": 20.8, "updated": "2026-09-05T06:35:47Z"}
+{"shard": 8, "stage": "testing", "done": 13, "total": 53, "rows": 346302, "note": "CRCLSTOCK 4h: rule 47/120 (ibs)", "failed": [], "pct": 24.5, "updated": "2026-09-05T06:36:32Z"}

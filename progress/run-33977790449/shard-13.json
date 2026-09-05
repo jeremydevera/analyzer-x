@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 4, "total": 52, "rows": 129936, "note": "APLDSTOCK 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 7.7, "updated": "2026-09-05T16:27:43Z"}
+{"shard": 13, "stage": "testing", "done": 5, "total": 52, "rows": 161156, "note": "ASTR 30m: rule 1/120 (mom6)", "failed": [], "pct": 9.6, "updated": "2026-09-05T16:28:33Z"}

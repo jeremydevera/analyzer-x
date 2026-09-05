@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 42, "total": 52, "rows": 926374, "note": "SNOWSTOCK 4h: 1,146 bars, testing 120 rules", "failed": [], "pct": 80.8, "updated": "2026-09-05T06:45:05Z"}
+{"shard": 11, "stage": "testing", "done": 44, "total": 52, "rows": 988986, "note": "STXSTOCK 1d: 158 bars, testing 120 rules", "failed": [], "pct": 84.6, "updated": "2026-09-05T06:45:52Z"}

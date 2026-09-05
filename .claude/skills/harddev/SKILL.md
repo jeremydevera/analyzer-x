@@ -28,6 +28,17 @@ of; the loop is for what you did not.
      rubbish, or returns slowly?
    - units and sides: percent vs fraction, bid vs ask, paper vs real
    - concurrency: the runner, the API thread, a second Claude session
+   - THE OTHER SESSION'S EDITS: `git diff` the files you touched before
+     shipping — on 2026-09-05 one session cached "unknown" gate verdicts
+     while the other made the screen REFUSE unknowns; each change was fine
+     alone, together they refused a healthy coin's signals for 5 minutes
+   - what does CACHING or STORING this result do to every READER of that
+     store — including readers changed since you last looked?
+   - venue behaviour that only exists under LOAD: a burst of calls in one
+     second can get answers a one-by-one probe never sees (MEXC answered
+     empty order books with a 200 during the 3:52pm burst); when the change
+     multiplies venue calls, watch the live runner through one real burst
+     before calling it done
 3. **FOUND ONE?** Revise, write the finding down, go to 2. DO NOT STOP THE
    LOOP EARLY. Each round is named in the commit message.
 4. **FOUND NONE?** Say so once — then TEST:

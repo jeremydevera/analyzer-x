@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 12, "total": 53, "rows": 440630, "note": "CHIP 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-05T22:43:03Z"}
+{"shard": 1, "stage": "testing", "done": 13, "total": 53, "rows": 475830, "note": "COPPER 30m: rule 39/120 (fisher)", "failed": [], "pct": 24.5, "updated": "2026-09-05T22:43:48Z"}

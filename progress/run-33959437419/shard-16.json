@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 26, "total": 52, "rows": 1149190, "note": "KOMA 30m: rule 71/120 (mfi14)", "failed": [], "pct": 50.0, "updated": "2026-09-05T10:55:51Z"}
+{"shard": 16, "stage": "testing", "done": 27, "total": 52, "rows": 1158790, "note": "LISTA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 51.9, "updated": "2026-09-05T10:56:38Z"}

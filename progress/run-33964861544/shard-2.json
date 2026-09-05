@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 44, "total": 53, "rows": 1232364, "note": "STAR 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 83.0, "updated": "2026-09-05T12:23:45Z"}
+{"shard": 2, "stage": "testing", "done": 48, "total": 53, "rows": 1291702, "note": "UAI 1h: 7,273 bars, testing 120 rules", "failed": [], "pct": 90.6, "updated": "2026-09-05T12:24:35Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 51, "total": 53, "rows": 1609058, "note": "XDC 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-05T22:07:33Z"}
+{"shard": 4, "stage": "testing", "done": 53, "total": 53, "rows": 1644704, "note": "ZKP 1h: rule 3/120 (fade15)", "failed": [], "pct": 100.0, "updated": "2026-09-05T22:08:19Z"}

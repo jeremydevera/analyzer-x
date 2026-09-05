@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 3, "total": 53, "rows": 85512, "note": "AKT 1h: rule 11/120 (sr_break)", "failed": [], "pct": 5.7, "updated": "2026-09-05T12:03:47Z"}
+{"shard": 3, "stage": "testing", "done": 4, "total": 53, "rows": 109052, "note": "ANIME 1d: 394 bars, testing 120 rules", "failed": [], "pct": 7.5, "updated": "2026-09-05T12:04:35Z"}

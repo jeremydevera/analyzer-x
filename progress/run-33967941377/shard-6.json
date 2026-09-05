@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 27, "total": 53, "rows": 878910, "note": "LAYER 4h: rule 4/120 (trend50)", "failed": [], "pct": 50.9, "updated": "2026-09-05T13:44:17Z"}
+{"shard": 6, "stage": "testing", "done": 27, "total": 53, "rows": 901110, "note": "LAYER 30m: rule 1/120 (mom6)", "failed": [], "pct": 50.9, "updated": "2026-09-05T13:45:07Z"}

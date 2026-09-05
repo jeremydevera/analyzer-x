@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 19, "total": 53, "rows": 719370, "note": "FLOW 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 35.8, "updated": "2026-09-05T10:25:35Z"}
+{"shard": 1, "stage": "testing", "done": 20, "total": 53, "rows": 750170, "note": "GAS 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-05T10:26:31Z"}

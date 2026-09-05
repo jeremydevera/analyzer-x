@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 24, "total": 53, "rows": 625958, "note": "INDA 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 45.3, "updated": "2026-09-05T07:28:04Z"}
+{"shard": 2, "stage": "testing", "done": 28, "total": 53, "rows": 702072, "note": "LPT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-05T07:29:01Z"}

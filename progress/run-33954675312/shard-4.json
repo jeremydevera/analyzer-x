@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 18, "total": 53, "rows": 446564, "note": "FARTCOIN 4h: rule 11/120 (sr_break)", "failed": [], "pct": 34.0, "updated": "2026-09-05T08:20:41Z"}
+{"shard": 4, "stage": "testing", "done": 21, "total": 53, "rows": 500772, "note": "GPS 1d: 394 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-05T08:21:26Z"}

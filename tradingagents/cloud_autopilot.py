@@ -21,6 +21,7 @@ hurts.
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import time
 from pathlib import Path
@@ -142,10 +143,8 @@ def collect_finished(*, now: float, state: dict) -> dict:
     pending = state.get("collecting")
     if pending is not None:
         st = {}
-        try:
+        with contextlib.suppress(Exception):                   # noqa: BLE001
             st = dj._read(dj.FILES["collect"]["progress"])
-        except Exception:                                      # noqa: BLE001
-            pass
         if st.get("run") == pending and not st.get("running"):
             state["collecting"] = None
             if st.get("error"):

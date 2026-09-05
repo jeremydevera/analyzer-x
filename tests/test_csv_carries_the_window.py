@@ -175,7 +175,8 @@ def test_the_download_sends_EVERY_filter_the_table_sends():
     table = table[:table.index("limit: askPage")]
     href = panel[panel.index("api.strategiesCsvUrl({"):]
     href = href[:href.index("})}")]
-    fields = lambda src: set(re.findall(r"applied\.([A-Za-z]+)", src))
+    def fields(src):
+        return set(re.findall(r"applied\.([A-Za-z]+)", src))
     missing = sorted(fields(table) - fields(href))
     assert not missing, (f"the download drops {missing} — the file would hold "
                          f"rows the table never showed")

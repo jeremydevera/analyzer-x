@@ -74,7 +74,7 @@ def test_the_in_flight_window_follows_the_plan(monkeypatch, tmp_path):
     assert seen[0] == 1, f"must start at the plan's figure, got {seen}"
     assert max(seen) <= 3, f"must never exceed the plan, got {seen}"
     # one step per completed pair, never a jump
-    assert all(b - a <= 1 for a, b in zip(seen, seen[1:])), seen
+    assert all(b - a <= 1 for a, b in zip(seen, seen[1:], strict=False)), seen
     assert 3 in seen, f"must reach the plan's figure, got {seen}"
 
 
@@ -96,7 +96,7 @@ def test_a_shrink_takes_effect_at_once(monkeypatch):
     # it climbed, then dropped to 1 in ONE step rather than easing down
     hi = max(seen)
     assert hi > 1, seen
-    drop = [b for a, b in zip(seen, seen[1:]) if b < a]
+    drop = [b for a, b in zip(seen, seen[1:], strict=False) if b < a]
     assert 1 in drop, f"the shrink must land on 1 immediately, got {seen}"
 
 

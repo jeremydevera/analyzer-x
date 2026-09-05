@@ -1250,7 +1250,13 @@ def funding_history(symbol: str, max_pages: int = 200) -> list:
     Sign convention is MEXC's: a POSITIVE rate means longs pay shorts, so a
     long position's funding PnL is ``-rate * notional`` per settlement.
     """
-    out, pg = [], 1
+    # `total` is read by the failure message below, which runs BEFORE the
+    # first page assigns it. Today the ternary there short-circuits on
+    # page 1 so it never actually raises NameError — but a message that
+    # is only safe because of the order of two branches is one edit away
+    # from replacing a funding error with a NameError, on the path that
+    # exists to make a short funding history impossible to ignore.
+    out, pg, total = [], 1, None
     while pg <= max_pages:
         url = (f"{BASE}/api/v1/contract/funding_rate/history?"
                + urllib.parse.urlencode({"symbol": symbol, "page_num": pg,
@@ -1268,7 +1274,7 @@ def funding_history(symbol: str, max_pages: int = 200) -> list:
             # direction that flatters the strategy, with no column to say so.
             raise MexcFuturesError(
                 f"funding history for {symbol} is incomplete: page {pg} of "
-                f"{'?' if pg == 1 else total} failed ({exc})") from exc
+                f"{total or '?'} failed ({exc})") from exc
         data = payload.get("data") or {}
         rows = data.get("resultList") or []
         try:

@@ -112,7 +112,7 @@ def test_the_sort_dropdown_is_gone_and_the_headers_still_sort():
     # the month-window headers carry a "(2mo)" suffix, which is stripped
     # before the lookup — so match the CALL, not one exact spelling of it
     assert "const next = HEAD_SORT[h" in p
-    assert '.replace(/ \(\d+mo\)$/, "")' in p, (
+    assert r'.replace(/ \(\d+mo\)$/, "")' in p, (
         "a windowed header must still find its own sort")
     assert "setDesc(!desc)" in p, "a second click flips the direction"
     assert "STRATEGY_SORTS[servedSort]" in p, "the arrow marks the SERVED order"

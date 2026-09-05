@@ -112,7 +112,9 @@ def test_the_fallback_is_shared_too():
 def test_nothing_is_cached_when_there_is_no_price_at_all():
     """No price = no entry, and no poison left behind for the next call."""
     fx = DeadFX()
-    with pytest.raises(Exception):
+    # the double's own error, not a blind Exception: catching everything would
+    # pass just as happily on a TypeError from a future signature change
+    with pytest.raises(RuntimeError, match="no price"):
         at.tradable_price("Z_USDT", -1, fx=fx)
     assert ("Z_USDT", -1) not in at._CYCLE_PRICES
     # the venue comes back: the next call reads fresh and works

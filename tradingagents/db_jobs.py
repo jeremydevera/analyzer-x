@@ -102,7 +102,7 @@ def _write(path: Path, payload: dict) -> None:
 def _read(path: Path) -> dict:
     # a reader can land between a writer's unlink and rename on Windows: try
     # again before answering {} -- {} reads as "the job died" on screen
-    for attempt in range(3):
+    for _attempt in range(3):
         try:
             return json.loads(path.read_text(encoding="utf-8"))
         except PermissionError:
@@ -1693,14 +1693,12 @@ def _run_btupdate(spec: dict) -> None:
 
 def _write_run_plan(plan: dict, dispatched: dict, coins, tfs) -> None:
     """Record who took what, so the LOGS panel can say it after the fact."""
-    try:
+    with contextlib.suppress(Exception):                       # noqa: BLE001
         _write(STATE_DIR / "db_btupdate.plan.json", {
             "when": int(time.time()), "why": plan.get("why", ""),
             "local": plan.get("local", []), "cloud": plan.get("cloud", []),
             "cloud_run": dispatched.get("id"), "cloud_url": dispatched.get("url"),
             "coins": len(coins), "timeframes": list(tfs)})
-    except Exception:                                          # noqa: BLE001
-        pass
 
 
 def _finish_btupdate_cloud_only(plan, dispatched, coins) -> None:

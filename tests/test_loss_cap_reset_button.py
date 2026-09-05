@@ -3,10 +3,7 @@
 Operator, 2026-09-05: *"IF I CLICK IT FORGET THE PREVIOUS LOSS, YOU WILL
 ASSUME I HAVE 0 LOSS AGAIN"*.
 """
-import json
 import time
-
-import pytest
 
 from tradingagents import auto_trader as at
 

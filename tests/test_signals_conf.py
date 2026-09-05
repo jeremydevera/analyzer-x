@@ -17,8 +17,6 @@ What has to hold before a rule may enter the grid:
 """
 from __future__ import annotations
 
-import math
-
 import pytest
 
 import tradingagents.auto_trader as at
@@ -275,7 +273,7 @@ def test_the_engulfing_form_works_on_a_gapless_market():
     """Measured on BTC 1h: 8,757 of 8,759 bars open exactly at the previous
     close, so the textbook engulfing (which needs a gap) fired once in a year.
     A hand-built gapless pair must still count as engulfing."""
-    from tradingagents.signals_conf import _level1, _bundle
+    from tradingagents.signals_conf import _bundle, _level1
 
     n = 260
     op, hi, lo, cl = [], [], [], []

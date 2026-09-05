@@ -233,8 +233,8 @@ def test_no_route_can_call_an_old_file_a_recovery(monkeypatch, tmp_path):
 
 
 def test_a_delisted_pair_is_never_listed_as_recovered(monkeypatch, tmp_path):
-    from tradingagents import api, parquet_store as pqs
     import tradingagents.notifications as nt
+    from tradingagents import api, parquet_store as pqs
 
     f = tmp_path / "MEZO_USDT-15m.parquet"
     f.write_bytes(b"x")

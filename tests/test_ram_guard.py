@@ -18,8 +18,6 @@ finished pair for the supervisor to resume.
 """
 from __future__ import annotations
 
-import pytest
-
 from tradingagents import db_jobs, portable, sysmon
 
 

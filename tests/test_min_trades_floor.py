@@ -14,7 +14,6 @@ A 60-day window is ~90 daily bars: 100 trades is arithmetically impossible
 there. The floor is now per timeframe, and it is a FLOOR ON EVIDENCE, not a
 judgement — the row carries its own trades/days and the reader filters.
 """
-import json
 
 import pytest
 
@@ -34,8 +33,8 @@ def test_the_floor_is_per_timeframe_and_reachable():
 
 def test_a_daily_row_with_eleven_trades_is_kept(tmp_path, monkeypatch):
     """SPX500-1d's best combination, from the operator's own state file."""
-    assert 11 >= msw.min_trades("1d"), "11 trades must clear the 1d floor"
-    assert 11 < msw.min_trades("1h"), "and would NOT clear the 1h floor"
+    assert msw.min_trades("1d") <= 11, "11 trades must clear the 1d floor"
+    assert msw.min_trades("1h") > 11, "and would NOT clear the 1h floor"
 
 
 def test_the_floor_is_named_in_one_place_only():

@@ -15,8 +15,6 @@ certain it was to lose all of it.
 """
 import json
 
-import pytest
-
 from tradingagents import notifications as nt
 
 

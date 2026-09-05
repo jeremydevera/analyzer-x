@@ -11,8 +11,6 @@ import pandas as pd
 import tradingagents.auto_trader as at
 
 
-
-
 def _slot(state, symbol="FLAT_USDT"):
     """The coin's one paper slot - per strategy since 2026-08-27."""
     from tradingagents import auto_trader as _at

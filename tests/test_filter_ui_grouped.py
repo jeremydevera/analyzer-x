@@ -31,14 +31,13 @@ at the same x). The chips are built from what the store SERVED, never from the
 boxes: a chip describing rows it did not come from is the failure this repo
 keeps paying for.
 """
-import io
 import re
 
 PANEL = "webapp/src/components/backtest/StrategiesPanel.tsx"
 
 
 def src() -> str:
-    return io.open(PANEL, encoding="utf-8").read()
+    return open(PANEL, encoding="utf-8").read()
 
 
 # ------------------------------------------------------------ the four groups

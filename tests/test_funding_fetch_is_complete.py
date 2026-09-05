@@ -148,7 +148,7 @@ def test_a_history_longer_than_the_budget_is_still_an_error(wire, monkeypatch):
     """Exhausting the backstop with pages the venue says exist is incomplete,
     and incomplete funding is never returned quietly."""
     monkeypatch.setattr(fx, "_PUBLIC_RETRIES", 1)
-    for i in range(3):
+    for _i in range(3):
         wire["script"].append(_page(_rows(100), total_page=99))
     with pytest.raises(fx.MexcFuturesError) as exc:
         fx.funding_history("LONG_USDT", max_pages=3)

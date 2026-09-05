@@ -539,7 +539,7 @@ def restate_window(row: dict, window: list) -> dict:
     rebuilt — a missing figure must stay missing rather than become a zero.
     """
     from tradingagents import market_sweep as msw
-    from tradingagents.positions_view import fmt_when          # noqa: F401
+    from tradingagents.positions_view import fmt_when  # noqa: F401
 
     if not window:
         return {}
@@ -2156,8 +2156,7 @@ def _stored_now(symbol: str, tf: str, since: float, live=None) -> dict:
     fetched by any run, so it is neither lost nor recovered — it is gone, and
     saying so is the only thing that lets the panel go green.
     """
-    from tradingagents import db_jobs as dj, parquet_store as pqs, \
-        positions_view as pv
+    from tradingagents import db_jobs as dj, parquet_store as pqs, positions_view as pv
 
     path = pqs._candle_path(symbol, tf)
     out = {"symbol": symbol, "timeframe": tf, "recovered": False,

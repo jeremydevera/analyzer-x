@@ -15,7 +15,6 @@ ONE DEFINITION of "pending". The count on the button and the count in the
 Pending tab come from the same route, so they cannot disagree — the arithmetic
 used to live in the component (`retry.length + missing.length + behind`).
 """
-import io
 
 import tradingagents.db_jobs as dj
 
@@ -24,7 +23,7 @@ HISTORY = "webapp/src/components/candles/DownloadHistory.tsx"
 
 
 def _r(p):
-    return io.open(p, encoding="utf-8").read()
+    return open(p, encoding="utf-8").read()
 
 
 # ------------------------------------------------------------- what it fetches

@@ -17,9 +17,7 @@ So the floor is a RATE, scaled to the days actually measured, with an absolute
 "not noise" minimum; and the count of rows it drops is reported, because a
 grid that cuts something has to say so (rule 20).
 """
-import math
 
-import pytest
 
 from tradingagents import market_sweep as msw
 

@@ -100,7 +100,7 @@ def _process_starts() -> dict:
     Read from the OS process table, not from a pid file: a pid file survives
     the process and would report a dead job as a running one.
     """
-    out = {k: None for k in KINDS}
+    out = dict.fromkeys(KINDS)
     try:
         import sys
 

@@ -130,11 +130,11 @@ def test_the_wide_index_is_preferred_but_not_required(store, monkeypatch):
     """rows_wr2 carries the profit needed to RANK the matches, which is the
     52.32 s -> ~1 s difference. It is built on demand (45 min on the real
     store), so the narrow one must keep working meanwhile."""
-    assert " INDEXED BY rows_winrate" == ri._winrate_index()
+    assert ri._winrate_index() == " INDEXED BY rows_winrate"
     with ri._open() as con:
         con.execute(ri.WIDE_WINRATE)
     ri.forget_indexes()
-    assert " INDEXED BY rows_wr2" == ri._winrate_index()
+    assert ri._winrate_index() == " INDEXED BY rows_wr2"
     assert ri.query(min_winrate=95, limit=5)["total"] == 12
     with ri._open() as con:
         con.execute("DROP INDEX rows_wr2")

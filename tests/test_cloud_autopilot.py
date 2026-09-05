@@ -204,7 +204,7 @@ def test_a_gap_that_GREW_is_real_new_work(monkeypatch):
 
 
 def test_an_improved_frame_is_sent_again(monkeypatch):
-    sent = _wire(monkeypatch, missing={"4h": 322, "1d": 285})
+    _wire(monkeypatch, missing={"4h": 322, "1d": 285})
     t = time.time()
     ca.consider(now=t)
     from tradingagents import cloud_sweep as cs  # noqa: F401
@@ -449,16 +449,15 @@ def test_the_collect_progress_callback_matches_what_calls_it():
     inspection cannot see this; the two signatures have to be checked against
     each other.
     """
-    import inspect
-    import re
-
-    from tradingagents import cloud_sweep as cs, db_jobs as dj
-
     # how many positional arguments the caller actually sends. Parsed, not
     # regexed: `len(names)` is an argument containing a bracket, and a regex
     # counted it as the end of the call.
     import ast
+    import inspect
+    import re
     import textwrap
+
+    from tradingagents import cloud_sweep as cs, db_jobs as dj
 
     tree = ast.parse(textwrap.dedent(inspect.getsource(cs.collect_into_store)))
     sent = max(len(n.args) for n in ast.walk(tree)

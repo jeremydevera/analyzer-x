@@ -13,8 +13,6 @@ cap is a risk control for real money; it was switching off the rehearsal too.
 import inspect
 import json
 
-import pytest
-
 from tradingagents import auto_trader as at
 
 A, B, C = "stoch14_1h_sl3tp3", "pivot_1h_sl3tp3", "cci20_4h_sl3tp3"

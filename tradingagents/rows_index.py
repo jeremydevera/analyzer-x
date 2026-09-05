@@ -990,8 +990,8 @@ GROUPS = {
 # a parameter it cannot see yet defeats that. They are constants from this
 # module, never operator input.
 PRESET_LO, PRESET_HI = "cf_", "cf`"
-PRESET_TERMS = "signal >= '%s' AND signal < '%s'" % (PRESET_LO, PRESET_HI)
-CLASSIC_TERMS = "(signal < '%s' OR signal >= '%s')" % (PRESET_LO, PRESET_HI)
+PRESET_TERMS = f"signal >= '{PRESET_LO}' AND signal < '{PRESET_HI}'"
+CLASSIC_TERMS = f"(signal < '{PRESET_LO}' OR signal >= '{PRESET_HI}')"
 GROUP_TERMS = {"preset": PRESET_TERMS, "classic": CLASSIC_TERMS}
 
 # ONE PARTIAL INDEX PER (GROUP, ORDER) -- and only for `preset`.
@@ -1016,8 +1016,8 @@ GROUP_SORT_COLS = {
     "dd": "dd ASC, profit DESC, id",
 }
 GROUP_INDEXES = {
-    ("preset", k): ("CREATE INDEX IF NOT EXISTS rows_cf_%s ON rows (%s) "
-                    "WHERE %s" % (k, cols, PRESET_TERMS))
+    ("preset", k): (f"CREATE INDEX IF NOT EXISTS rows_cf_{k} ON rows ({cols}) "
+                    f"WHERE {PRESET_TERMS}")
     for k, cols in GROUP_SORT_COLS.items()
 }
 
@@ -1838,9 +1838,10 @@ def _page_rows(con, coin, row_where, row_args, order, lim, off,
         return []
     # rowid IS the table's own key, so this is 500 direct seeks. The ORDER BY
     # is repeated because `IN` returns them in no particular order.
+    marks = ",".join("?" * len(ids))
     return con.execute(
-        "SELECT * FROM rows WHERE rowid IN (%s) ORDER BY %s, id ASC"
-        % (",".join("?" * len(ids)), order), ids).fetchall()
+        f"SELECT * FROM rows WHERE rowid IN ({marks}) "
+        f"ORDER BY {order}, id ASC", ids).fetchall()
 
 
 def query(coin=None, tf=None, signal=None, profitable=False,
@@ -1905,13 +1906,12 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     # One row by its code: nothing else is asked, and it needs its own index
     # or it is a 40-second scan (see ROW_ID_INDEX). Refuse fast, say why, build
     # it behind the answer — the same contract as a missing sort index.
-    if row_id:
-        if has_index("rows_id") is not True and _rows_estimate() > UNINDEXED_LIMIT:
-            _build_index("rows_id")
-            raise SortNotReady(
-                f"finding row #{clean_row_id(row_id)} needs the id "
-                f"index (rows_id); it is being built in the background — try "
-                f"again shortly")
+    if row_id and has_index("rows_id") is not True and _rows_estimate() > UNINDEXED_LIMIT:
+        _build_index("rows_id")
+        raise SortNotReady(
+            f"finding row #{clean_row_id(row_id)} needs the id "
+            f"index (rows_id); it is being built in the background — try "
+            f"again shortly")
     profit_wide = False
     if not row_id and key == "profit" and not coin and _wide_profit_helps(
             sizing, max_tp, min_winrate, min_trades, profitable):
@@ -1999,10 +1999,10 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             if where and from_winrate:
                 cap = _winrate_seek_cap()
                 got_total = _winrate_matches(min_winrate, min_trades, cap=cap)
-                if got_total is None or got_total > cap:
-                    total = -1          # over the cap: bound it, print the +
-                else:
-                    total = got_total
+                # -1 means "over the cap": bound it, and the panel prints
+                # the + beside the count rather than a number it cannot stand
+                # behind
+                total = -1 if got_total is None or got_total > cap else got_total
             elif where and group and not coin and not group_idx:
                 # A GROUP has no index to seek: `signal` is not indexed, so
                 # even the bounded count is a table scan -- measured 26.2 s for
@@ -2120,8 +2120,6 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             # the boxes happen to hold (label-must-match-data)
             "min_tp": float(min_tp or 0),
             "min_sl": float(min_sl or 0),
-            "tp_over_sl": bool(tp_over_sl),
-            "tp_over_sl": bool(tp_over_sl),
             "tp_over_sl": bool(tp_over_sl),
             "sizing": sizing or "",
             # what was LOOKED UP, cleaned exactly as the query cleaned it, so

@@ -12,9 +12,9 @@ from tradingagents import auto_trader as at
 
 def test_log_tail_survives_the_exact_byte_that_broke_it(tmp_path, monkeypatch):
     log = tmp_path / "auto_trade.log"
-    log.write_bytes("healthy line one\n".encode("utf-8")
+    log.write_bytes(b"healthy line one\n"
                     + b"stop it first \x97 kill 8284\n"      # the 0x97
-                    + "healthy line two\n".encode("utf-8"))
+                    + b"healthy line two\n")
     monkeypatch.setattr(at, "LOG_PATH", log)
     lines = at.log_tail(10)
     assert len(lines) == 3, "every line survives"

@@ -15,7 +15,6 @@ property of the job, not of my typing:
 3. the spec built by hand used BARE coin names, so all 4,124 pairs raised
    `no Min15 candles for CETUS`. `run_pair` takes `CETUS_USDT`.
 """
-import io
 
 import tradingagents.db_jobs as dj
 
@@ -72,7 +71,7 @@ def test_stored_symbols_are_symbols_not_bare_coins(monkeypatch):
 
 
 def test_the_button_is_clickable_without_picking_a_single_coin():
-    p = io.open(PANEL, encoding="utf-8").read()
+    p = open(PANEL, encoding="utf-8").read()
     i = p.index('start("btupdate")')
     frag = p[i - 400:i + 400]
     assert "!coins.length" not in frag, \
@@ -83,5 +82,5 @@ def test_the_button_is_clickable_without_picking_a_single_coin():
 
 
 def test_the_button_says_what_it_will_continue():
-    p = io.open(PANEL, encoding="utf-8").read()
+    p = open(PANEL, encoding="utf-8").read()
     assert "every pair this machine has candles for" in p

@@ -74,7 +74,7 @@ def store(tmp_path, monkeypatch):
 
 
 def test_every_row_reaches_the_grid_while_the_payload_is_capped(store):
-    for i, coin in enumerate(("AAA", "BBB", "CCC")):
+    for _i, coin in enumerate(("AAA", "BBB", "CCC")):
         store(coin, "1h", [_row(coin, "1h", f"sig{j}", 10.0 - j) for j in range(20)])
     got = br.grid_from_store(["AAA_USDT", "BBB_USDT", "CCC_USDT"], ["1h"],
                              workers=2, row_cap=25)

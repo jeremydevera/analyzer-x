@@ -233,7 +233,7 @@ def test_the_operators_own_config_reaches_the_strategies(monkeypatch):
         # LIVE armed, which is the state that triggered it — the guard was
         # live-only, so a paper-only check would have passed all night
         "strategy_books": {k: ["real", "paper"] for k in keys},
-        "strategy_margins": {k: 5.0 for k in keys},
+        "strategy_margins": dict.fromkeys(keys, 5.0),
     }
     monkeypatch.setattr(at, "load_settings", lambda: settings)
     monkeypatch.setattr(at, "load_state", lambda: {})

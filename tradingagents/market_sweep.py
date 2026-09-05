@@ -184,10 +184,8 @@ def cached_candles(symbol: str, tf: str):
         # clear it. Quarantined, so the bad bytes are kept to look at once and
         # can never be read as bars, and the caller re-downloads in full.
         bad = f.with_suffix(".json.corrupt")
-        try:
+        with contextlib.suppress(OSError):
             os.replace(f, bad)
-        except OSError:
-            pass
         print(f"[candles] {symbol} {tf}: the cache file was unreadable "
               f"({type(exc).__name__}: {str(exc)[:60]}) — moved to "
               f"{bad.name} and the pair will be downloaded in full",
@@ -207,7 +205,7 @@ def cached_candles(symbol: str, tf: str):
             # joined on the bar's own timestamp, never pasted by position: a
             # parquet copy holding a longer history would otherwise land its
             # volume on the wrong bars
-            vol = dict(zip(other["Date"], other["Volume"]))
+            vol = dict(zip(other["Date"], other["Volume"], strict=False))
             got = [vol.get(t) for t in df["Date"]]
             if all(v is not None for v in got):
                 df["Volume"] = [float(v) for v in got]

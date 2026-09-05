@@ -7,8 +7,6 @@ should not be"*.
 import json
 import time
 
-import pytest
-
 from tradingagents import auto_trader as at, feedcheck as fc
 
 

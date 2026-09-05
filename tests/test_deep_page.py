@@ -93,5 +93,8 @@ def test_the_deep_read_never_selects_star_over_the_skipped_rows():
     src = inspect.getsource(ri._page_rows)
     assert 'sql % "rowid"' in src
     assert "WHERE rowid IN" in src
-    # and the second statement re-sorts, because IN returns no order
-    assert "ORDER BY %s, id ASC" in src
+    # and the second statement re-sorts, because IN returns no order. Matched
+    # on the SQL rather than on how the string is built: this pinned
+    # "ORDER BY %s, id ASC" verbatim and broke when a lint pass turned the
+    # percent-format into an f-string, which changed no behaviour at all.
+    assert "ORDER BY {order}, id ASC" in src

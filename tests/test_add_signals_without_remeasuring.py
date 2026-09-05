@@ -18,13 +18,11 @@ Two things hold that shut:
 """
 from __future__ import annotations
 
-import json
-
 import pandas as pd
 import pytest
 
 import tradingagents.auto_trader as at
-from tradingagents import backtest_report as br, market_sweep as msw
+from tradingagents import market_sweep as msw
 from tradingagents.dataflows import mexc_futures as fx
 
 BAR_MS = 4 * 3_600_000

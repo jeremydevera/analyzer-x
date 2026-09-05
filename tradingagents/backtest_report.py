@@ -984,7 +984,6 @@ def _measure_pairs(pairs, *, cap, plan_workers, base_margin, days, thresholds,
     width = max(1, next_window(1, plan_workers(), cap))
 
     if serial:
-        import queue as _q
 
         class _Fut:
             def __init__(self, fn, *a, **k):

@@ -21,7 +21,6 @@ same reason the ceiling always did: if a tp or sl index is ever added, the `+`
 is what keeps the ORDER BY's own index instead of sorting every match in a
 temp b-tree.
 """
-import io
 import json
 
 import pytest
@@ -150,7 +149,7 @@ def test_the_file_name_says_both_ends():
 # ------------------------------------------------------------- the browser
 
 def test_the_modal_has_a_low_and_a_high_box_for_each():
-    p = io.open(PANEL, encoding="utf-8").read()
+    p = open(PANEL, encoding="utf-8").read()
     assert '<Field label="TP % between"' in p
     assert '<Field label="SL % between"' in p
     for name in ("Minimum take profit percent", "Maximum take profit percent",
@@ -158,12 +157,12 @@ def test_the_modal_has_a_low_and_a_high_box_for_each():
         assert f'aria-label="{name}"' in p, name
     # and the request carries both ends
     assert "minTp: applied.minTp, minSl: applied.minSl," in p
-    assert "min_tp?: number; min_sl?: number;" in io.open(
+    assert "min_tp?: number; min_sl?: number;" in open(
         "webapp/src/lib/api.ts", encoding="utf-8").read()
 
 
 def test_a_range_is_ONE_chip_and_says_which_end_when_only_one_is_set():
-    p = io.open(PANEL, encoding="utf-8").read()
+    p = open(PANEL, encoding="utf-8").read()
     body = p[p.index("const chipsOf ="):]
     body = body[:body.index("\n  };")]
     assert "TP ${f.minTp}-${f.maxTp}%" in body
@@ -177,7 +176,7 @@ def test_a_range_is_ONE_chip_and_says_which_end_when_only_one_is_set():
 def test_removing_a_range_chip_clears_BOTH_ends():
     """One chip, one ×: leaving the floor behind would keep filtering under a
     line that no longer says so."""
-    p = io.open(PANEL, encoding="utf-8").read()
+    p = open(PANEL, encoding="utf-8").read()
     assert "const PAIRED" in p
     pair = p[p.index("const PAIRED"):]
     pair = pair[:pair.index("};")]
@@ -192,7 +191,7 @@ def test_removing_a_range_chip_clears_BOTH_ends():
 
 
 def test_clear_all_and_the_served_set_know_about_the_new_ends():
-    p = io.open(PANEL, encoding="utf-8").read()
+    p = open(PANEL, encoding="utf-8").read()
     no = p[p.index("const NO_FILTERS = {"):]
     no = no[:no.index("\n  };")]
     assert "minTp: 0" in no and "minSl: 0" in no
@@ -256,7 +255,7 @@ def test_the_csv_walks_the_same_rows(store):
 
 
 def test_the_box_greys_the_two_ranges_OUT_and_they_stop_filtering():
-    p = io.open(PANEL, encoding="utf-8").read()
+    p = open(PANEL, encoding="utf-8").read()
     assert ('aria-label="Only rows whose take profit is equal to or wider '
             'than their stop loss"') in p
     assert "TP is equal to or greater than SL" in p, (

@@ -77,14 +77,14 @@ def test_iter_rows_batches_without_dropping_a_row_at_the_seam(store):
 
 def test_a_page_may_now_be_thousands_not_three_hundred():
     assert ri.MAX_LIMIT >= 5_000
-    from tradingagents import api
     import inspect
+
+    from tradingagents import api
 
     assert "limit" in inspect.signature(api.strategies).parameters
 
 
 def test_the_csv_carries_every_field_the_table_shows(store):
-    from tradingagents import api
 
     body = _csv()
     rows = list(csv.reader(io.StringIO(body)))
@@ -101,7 +101,6 @@ def test_the_csv_carries_every_field_the_table_shows(store):
 
 
 def test_the_csv_obeys_the_screens_filters(store):
-    from tradingagents import api
 
     body = _csv(coin="PI", sort="winrate", min_trades=0)
     rows = list(csv.reader(io.StringIO(body)))

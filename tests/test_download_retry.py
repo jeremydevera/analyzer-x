@@ -132,7 +132,7 @@ def test_a_pair_that_never_recovers_is_named_not_just_counted(job, capsys):
     assert kw["meta"]["failed"] == p["failed"]
 
     out = capsys.readouterr().out
-    assert "CHILLGUY_USDT 15m failed (1/%d)" % db_jobs.PAIR_RETRIES in out
+    assert f"CHILLGUY_USDT 15m failed (1/{db_jobs.PAIR_RETRIES})" in out
     assert "NAORIS_USDT 30m gave up" in out
     # the log line's own timestamp is the operator's format, never strftime's
     import re

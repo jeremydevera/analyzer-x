@@ -200,8 +200,8 @@ def test_the_scores_are_decimals_that_separate_close_rows():
 # and +1.0 for green months cancelled the -1.5 for the payoff.
 
 def _combo(**kw):
-    r = dict(profit=20.0, winrate=100.0, trades=120, tp=0.1, sl=10.0,
-             rt=0.04, base=5.0, green=12, months=12, dd=0.0)
+    r = {"profit": 20.0, "winrate": 100.0, "trades": 120, "tp": 0.1, "sl": 10.0,
+             "rt": 0.04, "base": 5.0, "green": 12, "months": 12, "dd": 0.0}
     r.update(kw)
     return r
 
@@ -265,8 +265,8 @@ def test_the_break_even_model_is_NOT_used_as_a_ceiling():
     i = src.index("caps.append(2.0)")
     assert "margin < 0" not in src[i:], "the margin must not cap the score"
     # the AMP row keeps its rating
-    score, _ = ri.balanced_score(dict(
-        coin="AMP", tf="15m", signal="vwaprev", profit=752.85, winrate=53.58,
-        trades=1200, tp=2.5, sl=1.2, rt=0.8624, base=5.0, green=11, months=12,
-        dd=120.0))
+    score, _ = ri.balanced_score({
+        "coin": "AMP", "tf": "15m", "signal": "vwaprev", "profit": 752.85, "winrate": 53.58,
+        "trades": 1200, "tp": 2.5, "sl": 1.2, "rt": 0.8624, "base": 5.0, "green": 11, "months": 12,
+        "dd": 120.0})
     assert score >= 7.0, score

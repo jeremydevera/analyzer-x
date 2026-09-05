@@ -236,7 +236,7 @@ def test_the_dmi_series_are_sane(bars):
     vals = [v for v in adx if v == v]                       # drop the NaNs
     assert vals, "ADX never became readable"
     assert min(vals) >= 0 and max(vals) <= 100
-    for a, b in zip(pdi, ndi):
+    for a, b in zip(pdi, ndi, strict=False):
         if a == a and b == b:
             assert 0 <= a <= 100 and 0 <= b <= 100
 

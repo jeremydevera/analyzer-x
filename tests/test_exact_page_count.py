@@ -14,8 +14,6 @@ still get the capped count with the "+".
 """
 import json
 
-import pytest
-
 import tradingagents.rows_index as ri
 
 

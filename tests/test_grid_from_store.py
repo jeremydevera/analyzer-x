@@ -234,8 +234,6 @@ def test_the_parent_does_not_hold_every_pairs_rows(monkeypatch):
         return res
 
     monkeypatch.setattr(msw, "run_pair", fake_run_pair)
-    kept = []
-    real_add = None
 
     p = br.grid_from_store(["APEX_USDT"], ["1h"], embed_limit=0)
     # the accounting still comes out right

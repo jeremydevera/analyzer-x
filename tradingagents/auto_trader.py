@@ -24,6 +24,7 @@ months, so capping is the conservative reading).
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import os
@@ -2702,10 +2703,8 @@ def reset_record(books=("paper", "real")) -> dict:
     drop_real = "real" in books
     was_running = runner_pid()
     if was_running:
-        try:
+        with contextlib.suppress(OSError):
             os.kill(was_running, signal.SIGTERM)
-        except OSError:
-            pass
         for _ in range(20):                      # let the cycle finish
             if not runner_pid():
                 break

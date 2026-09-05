@@ -61,8 +61,7 @@ from __future__ import annotations
 import math
 
 from tradingagents.signals_ext import _atr, _ema
-from tradingagents.signals_ext2 import (_dmi, _ok, _sma, _stdev, _zeros,
-                                        supertrend as _supertrend)
+from tradingagents.signals_ext2 import _dmi, _ok, _sma, _stdev, _zeros, supertrend as _supertrend
 
 _DAY_MS = 86_400_000
 # The 1-HOUR list of ten, then the FIVE that appear only in the 4-hour

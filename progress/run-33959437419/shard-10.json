@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 36, "total": 53, "rows": 1301022, "note": "PNUT 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 67.9, "updated": "2026-09-05T10:48:44Z"}
+{"shard": 10, "stage": "testing", "done": 37, "total": 53, "rows": 1329842, "note": "PUMPFUN 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-05T10:49:38Z"}

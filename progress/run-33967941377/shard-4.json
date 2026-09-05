@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 27, "total": 53, "rows": 984196, "note": "LAB 30m: rule 46/120 (rsi2)", "failed": [], "pct": 50.9, "updated": "2026-09-05T13:49:11Z"}
+{"shard": 4, "stage": "testing", "done": 27, "total": 53, "rows": 998196, "note": "LAB 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-05T13:49:56Z"}

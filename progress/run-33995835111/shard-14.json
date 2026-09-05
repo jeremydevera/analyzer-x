@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 7, "total": 52, "rows": 231160, "note": "BAT 30m: rule 34/120 (lrslope)", "failed": [], "pct": 13.5, "updated": "2026-09-05T22:34:39Z"}
+{"shard": 14, "stage": "testing", "done": 7, "total": 52, "rows": 243040, "note": "BAT 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 13.5, "updated": "2026-09-05T22:35:25Z"}

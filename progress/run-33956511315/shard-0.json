@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 21, "total": 53, "rows": 629016, "note": "GOAT 1h: rule 64/120 (hammer)", "failed": [], "pct": 39.6, "updated": "2026-09-05T09:17:34Z"}
+{"shard": 0, "stage": "testing", "done": 23, "total": 53, "rows": 673048, "note": "HOT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-05T09:18:19Z"}

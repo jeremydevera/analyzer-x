@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 30, "total": 53, "rows": 996754, "note": "MINA 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 56.6, "updated": "2026-09-05T20:12:04Z"}
+{"shard": 2, "stage": "testing", "done": 31, "total": 53, "rows": 1030634, "note": "MSFTSTOCK 4h: rule 106/120 (cf_bosfvg)", "failed": [], "pct": 58.5, "updated": "2026-09-05T20:12:49Z"}

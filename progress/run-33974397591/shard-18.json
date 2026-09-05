@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 38, "total": 52, "rows": 1129122, "note": "REGNSTOCK 1h: rule 42/120 (rsidiv)", "failed": [], "pct": 73.1, "updated": "2026-09-05T15:53:15Z"}
+{"shard": 18, "stage": "testing", "done": 39, "total": 52, "rows": 1156422, "note": "ROSE 1h: rule 18/120 (macd)", "failed": [], "pct": 75.0, "updated": "2026-09-05T15:54:00Z"}

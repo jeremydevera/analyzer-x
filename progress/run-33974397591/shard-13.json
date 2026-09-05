@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 6, "total": 52, "rows": 168992, "note": "AXPSTOCK 1h: rule 100/120 (cf_soup1)", "failed": [], "pct": 11.5, "updated": "2026-09-05T15:21:52Z"}
+{"shard": 13, "stage": "testing", "done": 7, "total": 52, "rows": 186960, "note": "BAS 1h: rule 4/120 (trend50)", "failed": [], "pct": 13.5, "updated": "2026-09-05T15:22:39Z"}

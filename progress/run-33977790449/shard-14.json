@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 3, "total": 52, "rows": 91900, "note": "AMATSTOCK 30m: rule 70/120 (cmf20)", "failed": [], "pct": 5.8, "updated": "2026-09-05T16:29:12Z"}
+{"shard": 14, "stage": "testing", "done": 5, "total": 52, "rows": 145300, "note": "ASTSSTOCK 30m: rule 112/120 (cf_obretest)", "failed": [], "pct": 9.6, "updated": "2026-09-05T16:30:43Z"}

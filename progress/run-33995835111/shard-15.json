@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 47, "total": 52, "rows": 1822776, "note": "TUT 30m: rule 75/120 (relvolbrk)", "failed": [], "pct": 90.4, "updated": "2026-09-05T23:41:52Z"}
+{"shard": 15, "stage": "testing", "done": 48, "total": 52, "rows": 1848296, "note": "USDC 4h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 92.3, "updated": "2026-09-05T23:42:37Z"}

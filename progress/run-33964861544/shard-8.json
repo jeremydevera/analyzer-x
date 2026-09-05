@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 4, "total": 53, "rows": 82104, "note": "APDSTOCK 1d: downloading candles", "failed": [], "pct": 7.5, "updated": "2026-09-05T12:04:43Z"}
+{"shard": 8, "stage": "testing", "done": 5, "total": 53, "rows": 121750, "note": "AR 1h: rule 4/120 (trend50)", "failed": [], "pct": 9.4, "updated": "2026-09-05T12:05:29Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 13, "total": 53, "rows": 590870, "note": "COSTSTOCK 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 24.5, "updated": "2026-09-05T19:53:25Z"}
+{"shard": 4, "stage": "testing", "done": 15, "total": 53, "rows": 618050, "note": "DEXE 30m: rule 47/120 (ibs)", "failed": [], "pct": 28.3, "updated": "2026-09-05T19:54:10Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 36, "total": 52, "rows": 1021652, "note": "POWR 1d: 394 bars, testing 120 rules", "failed": [], "pct": 69.2, "updated": "2026-09-05T21:52:42Z"}
+{"shard": 19, "stage": "testing", "done": 36, "total": 52, "rows": 1042596, "note": "POWR 1h: rule 28/120 (vortex14)", "failed": [], "pct": 69.2, "updated": "2026-09-05T21:53:28Z"}

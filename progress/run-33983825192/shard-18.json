@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 45, "total": 52, "rows": 1334808, "note": "TENCENTSTOCK 1h: downloading candles", "failed": [], "pct": 86.5, "updated": "2026-09-05T19:05:05Z"}
+{"shard": 18, "stage": "testing", "done": 46, "total": 52, "rows": 1371264, "note": "TRB 1h: rule 3/120 (fade15)", "failed": [], "pct": 88.5, "updated": "2026-09-05T19:05:51Z"}

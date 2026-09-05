@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 17, "total": 53, "rows": 618940, "note": "ENS 30m: rule 22/120 (engulf)", "failed": [], "pct": 32.1, "updated": "2026-09-05T13:35:52Z"}
+{"shard": 3, "stage": "testing", "done": 17, "total": 53, "rows": 630820, "note": "ENS 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 32.1, "updated": "2026-09-05T13:36:37Z"}

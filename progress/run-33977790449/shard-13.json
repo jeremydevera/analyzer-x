@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 24, "total": 52, "rows": 855254, "note": "IOST 4h: rule 9/120 (fib382)", "failed": [], "pct": 46.2, "updated": "2026-09-05T17:02:06Z"}
+{"shard": 13, "stage": "testing", "done": 24, "total": 52, "rows": 880334, "note": "IOST 30m: rule 3/120 (fade15)", "failed": [], "pct": 46.2, "updated": "2026-09-05T17:02:55Z"}

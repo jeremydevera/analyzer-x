@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 30, "total": 53, "rows": 923344, "note": "MNT 1h: rule 73/120 (volspike)", "failed": [], "pct": 56.6, "updated": "2026-09-05T21:35:30Z"}
+{"shard": 9, "stage": "testing", "done": 31, "total": 53, "rows": 947852, "note": "MUBARAK 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 58.5, "updated": "2026-09-05T21:36:15Z"}

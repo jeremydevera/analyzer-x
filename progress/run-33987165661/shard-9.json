@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 28, "total": 53, "rows": 1095740, "note": "LUMIA 30m: rule 58/120 (bos)", "failed": [], "pct": 52.8, "updated": "2026-09-05T20:13:06Z"}
+{"shard": 9, "stage": "testing", "done": 28, "total": 53, "rows": 1107840, "note": "LUMIA 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 52.8, "updated": "2026-09-05T20:13:52Z"}

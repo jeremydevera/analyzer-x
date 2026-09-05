@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 45, "total": 53, "rows": 1743408, "note": "TAG 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 84.9, "updated": "2026-09-05T11:11:05Z"}
+{"shard": 7, "stage": "testing", "done": 45, "total": 53, "rows": 1757808, "note": "TAG 30m: rule 109/120 (cf_fundfade)", "failed": [], "pct": 84.9, "updated": "2026-09-05T11:11:50Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 42, "total": 53, "rows": 1483034, "note": "SKY 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 79.2, "updated": "2026-09-05T17:21:39Z"}
+{"shard": 1, "stage": "testing", "done": 43, "total": 53, "rows": 1509874, "note": "SONIC 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-05T17:22:35Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 50, "total": 52, "rows": 1884746, "note": "WMTSTOCK 4h: rule 95/120 (cf_emarsi_l1)", "failed": [], "pct": 96.2, "updated": "2026-09-05T23:44:51Z"}
+{"shard": 13, "stage": "testing", "done": 50, "total": 52, "rows": 1908346, "note": "WMTSTOCK 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-05T23:45:37Z"}

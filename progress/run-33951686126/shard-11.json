@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 6, "total": 52, "rows": 175356, "note": "AXL 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 11.5, "updated": "2026-09-05T07:16:51Z"}
+{"shard": 11, "stage": "testing", "done": 8, "total": 52, "rows": 220918, "note": "BIRB 1h: 5,276 bars, testing 120 rules", "failed": [], "pct": 15.4, "updated": "2026-09-05T07:17:41Z"}

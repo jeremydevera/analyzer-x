@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 40, "total": 52, "rows": 1366410, "note": "SAPIEN 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 76.9, "updated": "2026-09-05T20:04:03Z"}
+{"shard": 11, "stage": "testing", "done": 42, "total": 52, "rows": 1428434, "note": "SNOWSTOCK 30m: rule 20/120 (stoch14)", "failed": [], "pct": 80.8, "updated": "2026-09-05T20:04:48Z"}

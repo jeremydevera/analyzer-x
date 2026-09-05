@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 6, "total": 53, "rows": 169642, "note": "AUD 30m: rule 64/120 (hammer)", "failed": [], "pct": 11.3, "updated": "2026-09-05T19:34:19Z"}
+{"shard": 1, "stage": "testing", "done": 7, "total": 53, "rows": 198682, "note": "BABASTOCK 4h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-05T19:35:04Z"}

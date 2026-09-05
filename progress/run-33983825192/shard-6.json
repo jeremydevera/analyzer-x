@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 40, "total": 53, "rows": 1127074, "note": "SAHARA 1h: rule 115/120 (cf_diadx)", "failed": [], "pct": 75.5, "updated": "2026-09-05T18:52:18Z"}
+{"shard": 6, "stage": "testing", "done": 43, "total": 53, "rows": 1186848, "note": "SOXS 1h: rule 12/120 (donchian20)", "failed": [], "pct": 81.1, "updated": "2026-09-05T18:53:03Z"}

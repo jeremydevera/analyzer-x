@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 40, "total": 53, "rows": 1403664, "note": "SAGA 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 75.5, "updated": "2026-09-05T14:15:41Z"}
+{"shard": 5, "stage": "testing", "done": 42, "total": 53, "rows": 1435042, "note": "SLX 30m: rule 1/120 (mom6)", "failed": [], "pct": 79.2, "updated": "2026-09-05T14:16:27Z"}

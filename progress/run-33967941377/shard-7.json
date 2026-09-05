@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 32, "total": 53, "rows": 1282072, "note": "NES 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 60.4, "updated": "2026-09-05T14:14:43Z"}
+{"shard": 7, "stage": "testing", "done": 35, "total": 53, "rows": 1324792, "note": "PAXG 4h: rule 79/120 (cf_donch)", "failed": [], "pct": 66.0, "updated": "2026-09-05T14:15:28Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 24, "total": 53, "rows": 798638, "note": "INJ 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 45.3, "updated": "2026-09-05T16:58:11Z"}
+{"shard": 6, "stage": "testing", "done": 24, "total": 53, "rows": 803038, "note": "INJ 30m: rule 16/120 (keltner)", "failed": [], "pct": 45.3, "updated": "2026-09-05T16:58:56Z"}

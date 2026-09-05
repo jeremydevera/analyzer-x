@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 34, "total": 53, "rows": 1332914, "note": "ON 30m: rule 64/120 (hammer)", "failed": [], "pct": 64.2, "updated": "2026-09-05T23:24:14Z"}
+{"shard": 9, "stage": "testing", "done": 35, "total": 53, "rows": 1366794, "note": "PAYPSTOCK 30m: rule 1/120 (mom6)", "failed": [], "pct": 66.0, "updated": "2026-09-05T23:25:00Z"}

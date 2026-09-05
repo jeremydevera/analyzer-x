@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 38, "total": 52, "rows": 1261950, "note": "RED 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 73.1, "updated": "2026-09-05T07:49:14Z"}
+{"shard": 17, "stage": "testing", "done": 39, "total": 52, "rows": 1276910, "note": "RON 1h: rule 4/120 (trend50)", "failed": [], "pct": 75.0, "updated": "2026-09-05T07:50:00Z"}

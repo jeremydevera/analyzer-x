@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 50, "total": 52, "rows": 1910028, "note": "XAN 30m: rule 43/120 (macddiv)", "failed": [], "pct": 96.2, "updated": "2026-09-05T23:55:37Z"}
+{"shard": 19, "stage": "testing", "done": 50, "total": 52, "rows": 1923668, "note": "XAN 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-05T23:56:23Z"}

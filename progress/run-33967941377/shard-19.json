@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 25, "total": 52, "rows": 865170, "note": "KAS 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 48.1, "updated": "2026-09-05T13:49:31Z"}
+{"shard": 19, "stage": "testing", "done": 26, "total": 52, "rows": 888350, "note": "KOSTOCK 30m: rule 116/120 (cf_diadx_l1)", "failed": [], "pct": 50.0, "updated": "2026-09-05T13:50:16Z"}

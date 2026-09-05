@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 24, "total": 53, "rows": 758302, "note": "INIT 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 45.3, "updated": "2026-09-05T19:53:49Z"}
+{"shard": 5, "stage": "testing", "done": 25, "total": 53, "rows": 791742, "note": "JCT 30m: 14,371 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-05T19:54:37Z"}

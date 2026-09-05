@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 3, "total": 52, "rows": 120866, "note": "AMP 4h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 5.8, "updated": "2026-09-05T10:06:06Z"}
+{"shard": 19, "stage": "testing", "done": 3, "total": 52, "rows": 124866, "note": "AMP 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 5.8, "updated": "2026-09-05T10:06:51Z"}

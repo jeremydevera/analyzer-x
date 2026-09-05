@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 10, "total": 52, "rows": 230202, "note": "C98 4h: rule 47/120 (ibs)", "failed": [], "pct": 19.2, "updated": "2026-09-05T06:33:17Z"}
+{"shard": 13, "stage": "testing", "done": 12, "total": 52, "rows": 285202, "note": "COAI 1d: 345 bars, testing 120 rules", "failed": [], "pct": 23.1, "updated": "2026-09-05T06:34:03Z"}

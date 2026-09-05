@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 12, "total": 52, "rows": 322156, "note": "COHRSTOCK 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 23.1, "updated": "2026-09-05T08:58:13Z"}
+{"shard": 15, "stage": "testing", "done": 14, "total": 52, "rows": 389036, "note": "DASH 1d: rule 46/120 (rsi2)", "failed": [], "pct": 26.9, "updated": "2026-09-05T08:58:58Z"}

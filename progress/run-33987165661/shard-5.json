@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 13, "total": 53, "rows": 438802, "note": "COTI 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 24.5, "updated": "2026-09-05T19:42:55Z"}
+{"shard": 5, "stage": "testing", "done": 14, "total": 53, "rows": 472902, "note": "CTSI 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-05T19:43:42Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 34, "total": 52, "rows": 659152, "note": "OPENLEDGER 1d: 362 bars, testing 120 rules", "failed": [], "pct": 65.4, "updated": "2026-09-05T08:22:25Z"}
+{"shard": 11, "stage": "testing", "done": 35, "total": 52, "rows": 716408, "note": "PEAQ 4h: rule 19/120 (emacross)", "failed": [], "pct": 67.3, "updated": "2026-09-05T08:23:10Z"}

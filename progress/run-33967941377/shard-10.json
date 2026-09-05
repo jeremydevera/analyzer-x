@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 17, "total": 53, "rows": 624704, "note": "ETHFI 30m: rule 39/120 (fisher)", "failed": [], "pct": 32.1, "updated": "2026-09-05T13:35:08Z"}
+{"shard": 10, "stage": "testing", "done": 17, "total": 53, "rows": 636804, "note": "ETHFI 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-05T13:35:54Z"}

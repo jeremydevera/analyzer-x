@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 20, "total": 52, "rows": 594184, "note": "GMX 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 38.5, "updated": "2026-09-05T21:40:04Z"}
+{"shard": 19, "stage": "testing", "done": 21, "total": 52, "rows": 614732, "note": "HANA 1h: 8,266 bars, testing 120 rules", "failed": [], "pct": 40.4, "updated": "2026-09-05T21:40:49Z"}

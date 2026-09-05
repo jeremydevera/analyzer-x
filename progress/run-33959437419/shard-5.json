@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 1, "total": 53, "rows": 41580, "note": "1000RATS 30m: rule 65/120 (doji)", "failed": [], "pct": 1.9, "updated": "2026-09-05T10:03:00Z"}
+{"shard": 5, "stage": "testing", "done": 2, "total": 53, "rows": 64760, "note": "AEMSTOCK 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-05T10:03:45Z"}

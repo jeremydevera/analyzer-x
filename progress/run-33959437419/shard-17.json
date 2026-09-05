@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 24, "total": 52, "rows": 1003450, "note": "IO 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 46.2, "updated": "2026-09-05T10:48:09Z"}
+{"shard": 17, "stage": "testing", "done": 25, "total": 52, "rows": 1014010, "note": "KAIA 4h: rule 2/120 (mom15)", "failed": [], "pct": 48.1, "updated": "2026-09-05T10:48:54Z"}

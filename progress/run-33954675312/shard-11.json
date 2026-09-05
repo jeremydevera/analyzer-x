@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 37, "total": 52, "rows": 770432, "note": "PUNDIX 4h: rule 72/120 (force13)", "failed": [], "pct": 71.2, "updated": "2026-09-05T08:23:55Z"}
+{"shard": 11, "stage": "testing", "done": 40, "total": 52, "rows": 856296, "note": "SAPIEN 4h: 2,284 bars, testing 120 rules", "failed": [], "pct": 76.9, "updated": "2026-09-05T08:24:46Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 36, "total": 52, "rows": 926714, "note": "POETSTOCK 1d: 80 bars, testing 120 rules", "failed": [], "pct": 69.2, "updated": "2026-09-05T12:26:38Z"}
+{"shard": 11, "stage": "testing", "done": 37, "total": 52, "rows": 963988, "note": "PUNDIX 1h: rule 2/120 (mom15)", "failed": [], "pct": 71.2, "updated": "2026-09-05T12:27:24Z"}

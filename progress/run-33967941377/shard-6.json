@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 40, "total": 53, "rows": 1394590, "note": "SAHARA 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-05T14:11:28Z"}
+{"shard": 6, "stage": "testing", "done": 41, "total": 53, "rows": 1433528, "note": "SHLD 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 77.4, "updated": "2026-09-05T14:12:13Z"}

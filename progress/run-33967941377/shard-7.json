@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 53, "total": 53, "rows": 2035048, "note": "ZORA 4h: rule 20/120 (stoch14)", "failed": [], "pct": 100.0, "updated": "2026-09-05T14:45:40Z"}
+{"shard": 7, "stage": "testing", "done": 53, "total": 53, "rows": 2056828, "note": "ZORA 30m: rule 2/120 (mom15)", "failed": [], "pct": 100.0, "updated": "2026-09-05T14:46:35Z"}

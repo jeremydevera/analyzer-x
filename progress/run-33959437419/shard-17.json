@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 20, "total": 52, "rows": 787624, "note": "GMESTOCK 30m: 5,761 bars, testing 120 rules", "failed": [], "pct": 38.5, "updated": "2026-09-05T10:36:15Z"}
+{"shard": 17, "stage": "testing", "done": 21, "total": 52, "rows": 817584, "note": "HAEDAL 4h: rule 40/120 (crsi)", "failed": [], "pct": 40.4, "updated": "2026-09-05T10:37:00Z"}

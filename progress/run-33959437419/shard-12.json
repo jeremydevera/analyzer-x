@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 46, "total": 52, "rows": 1689860, "note": "TOKYOELSTOCK 30m: rule 60/120 (eqraid)", "failed": [], "pct": 88.5, "updated": "2026-09-05T11:09:32Z"}
+{"shard": 12, "stage": "testing", "done": 49, "total": 52, "rows": 1759940, "note": "VLOSTOCK 30m: 1,197 bars, testing 120 rules", "failed": [], "pct": 94.2, "updated": "2026-09-05T11:10:17Z"}

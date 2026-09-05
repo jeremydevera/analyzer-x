@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 2, "total": 52, "rows": 47200, "note": "AIN 1h: rule 86/120 (cf_triple_l1)", "failed": [], "pct": 3.8, "updated": "2026-09-05T18:23:52Z"}
+{"shard": 15, "stage": "testing", "done": 5, "total": 52, "rows": 114536, "note": "ASXSTOCK 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 9.6, "updated": "2026-09-05T18:24:37Z"}

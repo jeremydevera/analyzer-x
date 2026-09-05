@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 39, "total": 52, "rows": 1152956, "note": "RPL 1h: rule 6/120 (sweep30)", "failed": [], "pct": 75.0, "updated": "2026-09-05T12:37:06Z"}
+{"shard": 19, "stage": "testing", "done": 39, "total": 52, "rows": 1175616, "note": "RPL 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 75.0, "updated": "2026-09-05T12:37:52Z"}

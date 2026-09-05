@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 12, "total": 53, "rows": 449094, "note": "CLANKER 30m: rule 65/120 (doji)", "failed": [], "pct": 22.6, "updated": "2026-09-05T19:51:33Z"}
+{"shard": 7, "stage": "testing", "done": 14, "total": 53, "rows": 460974, "note": "CVC 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-05T19:52:29Z"}

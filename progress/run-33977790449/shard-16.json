@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 6, "total": 52, "rows": 261860, "note": "AZNSTOCK 30m: rule 32/120 (gmma)", "failed": [], "pct": 11.5, "updated": "2026-09-05T16:39:37Z"}
+{"shard": 16, "stage": "testing", "done": 7, "total": 52, "rows": 296660, "note": "BB 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 13.5, "updated": "2026-09-05T16:40:36Z"}

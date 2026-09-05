@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 10, "total": 52, "rows": 344360, "note": "BXSTOCK 30m: 4,293 bars, testing 120 rules", "failed": [], "pct": 19.2, "updated": "2026-09-05T19:37:37Z"}
+{"shard": 11, "stage": "testing", "done": 13, "total": 52, "rows": 400940, "note": "CROSS 4h: rule 1/120 (mom6)", "failed": [], "pct": 25.0, "updated": "2026-09-05T19:38:22Z"}

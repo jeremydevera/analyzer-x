@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 25, "total": 52, "rows": 606806, "note": "KAS 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 48.1, "updated": "2026-09-05T08:23:58Z"}
+{"shard": 19, "stage": "testing", "done": 28, "total": 52, "rows": 694684, "note": "MANTRA 4h: rule 54/120 (fractal5)", "failed": [], "pct": 53.8, "updated": "2026-09-05T08:24:43Z"}

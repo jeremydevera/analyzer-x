@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 40, "total": 52, "rows": 1504054, "note": "SFP 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 76.9, "updated": "2026-09-05T23:36:38Z"}
+{"shard": 19, "stage": "testing", "done": 41, "total": 52, "rows": 1518134, "note": "SKUU 30m: downloading candles", "failed": [], "pct": 78.8, "updated": "2026-09-05T23:37:23Z"}

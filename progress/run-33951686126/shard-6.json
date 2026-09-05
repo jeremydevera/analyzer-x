@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 25, "total": 53, "rows": 672656, "note": "JDSTOCK 1h: rule 3/120 (fade15)", "failed": [], "pct": 47.2, "updated": "2026-09-05T07:26:19Z"}
+{"shard": 6, "stage": "testing", "done": 27, "total": 53, "rows": 712286, "note": "LAYER 1d: 394 bars, testing 120 rules", "failed": [], "pct": 50.9, "updated": "2026-09-05T07:27:13Z"}

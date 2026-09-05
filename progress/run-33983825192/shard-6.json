@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 36, "total": 53, "rows": 1000858, "note": "PLAY 1h: rule 3/120 (fade15)", "failed": [], "pct": 67.9, "updated": "2026-09-05T18:48:31Z"}
+{"shard": 6, "stage": "testing", "done": 36, "total": 53, "rows": 1021318, "note": "PLAY 1h: rule 100/120 (cf_soup1)", "failed": [], "pct": 67.9, "updated": "2026-09-05T18:49:16Z"}

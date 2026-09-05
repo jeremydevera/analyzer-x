@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 47, "total": 52, "rows": 1796128, "note": "TUT 30m: rule 85/120 (cf_triple)", "failed": [], "pct": 90.4, "updated": "2026-09-05T17:15:48Z"}
+{"shard": 15, "stage": "testing", "done": 48, "total": 52, "rows": 1836148, "note": "USDC 30m: rule 41/120 (tsi)", "failed": [], "pct": 92.3, "updated": "2026-09-05T17:16:34Z"}

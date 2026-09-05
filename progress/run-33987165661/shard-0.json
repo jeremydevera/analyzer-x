@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 30, "total": 53, "rows": 1157148, "note": "ME 30m: rule 72/120 (force13)", "failed": [], "pct": 56.6, "updated": "2026-09-05T20:25:46Z"}
+{"shard": 0, "stage": "testing", "done": 31, "total": 53, "rows": 1185888, "note": "MRNASTOCK 30m: rule 91/120 (cf_soup)", "failed": [], "pct": 58.5, "updated": "2026-09-05T20:26:31Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 9, "total": 52, "rows": 314296, "note": "BRETT 30m: rule 33/120 (heikin)", "failed": [], "pct": 17.3, "updated": "2026-09-05T10:11:36Z"}
+{"shard": 13, "stage": "testing", "done": 9, "total": 52, "rows": 325296, "note": "BRETT 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 17.3, "updated": "2026-09-05T10:12:21Z"}

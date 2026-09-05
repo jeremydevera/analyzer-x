@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 12, "total": 53, "rows": 429484, "note": "CHR 30m: rule 28/120 (vortex14)", "failed": [], "pct": 22.6, "updated": "2026-09-05T19:50:06Z"}
+{"shard": 2, "stage": "testing", "done": 12, "total": 53, "rows": 440484, "note": "CHR 30m: rule 79/120 (cf_donch)", "failed": [], "pct": 22.6, "updated": "2026-09-05T19:50:51Z"}

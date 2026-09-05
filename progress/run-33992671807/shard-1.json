@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 16, "total": 53, "rows": 495728, "note": "DRAM 1h: rule 67/120 (pinbar)", "failed": [], "pct": 30.2, "updated": "2026-09-05T21:30:37Z"}
+{"shard": 1, "stage": "testing", "done": 19, "total": 53, "rows": 548768, "note": "FLOW 1h: rule 2/120 (mom15)", "failed": [], "pct": 35.8, "updated": "2026-09-05T21:31:26Z"}

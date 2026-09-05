@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 34, "total": 53, "rows": 1112242, "note": "ONDO 30m: rule 22/120 (engulf)", "failed": [], "pct": 64.2, "updated": "2026-09-05T10:51:58Z"}
+{"shard": 3, "stage": "testing", "done": 34, "total": 53, "rows": 1123642, "note": "ONDO 30m: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 64.2, "updated": "2026-09-05T10:52:44Z"}

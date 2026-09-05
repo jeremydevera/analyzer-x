@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 1, "total": 53, "rows": 41000, "note": "1000BONK 30m: rule 68/120 (dbltop)", "failed": [], "pct": 1.9, "updated": "2026-09-05T19:30:26Z"}
+{"shard": 3, "stage": "testing", "done": 2, "total": 53, "rows": 56800, "note": "ADVANTESTSTOCK 30m: rule 29/120 (hull20)", "failed": [], "pct": 3.8, "updated": "2026-09-05T19:31:11Z"}

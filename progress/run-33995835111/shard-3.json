@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 1563566, "note": "SYN 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-05T23:44:48Z"}
+{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 1566986, "note": "SYN 30m: rule 13/120 (pivot)", "failed": [], "pct": 84.9, "updated": "2026-09-05T23:45:34Z"}

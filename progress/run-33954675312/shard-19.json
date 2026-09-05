@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 21, "total": 52, "rows": 544592, "note": "HANA 4h: rule 24/120 (psar)", "failed": [], "pct": 40.4, "updated": "2026-09-05T08:23:08Z"}
+{"shard": 19, "stage": "testing", "done": 25, "total": 52, "rows": 606806, "note": "KAS 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 48.1, "updated": "2026-09-05T08:23:58Z"}

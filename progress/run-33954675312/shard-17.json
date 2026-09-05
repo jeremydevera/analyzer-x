@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 36, "total": 52, "rows": 1060984, "note": "PORTAL 1d: 394 bars, testing 120 rules", "failed": [], "pct": 69.2, "updated": "2026-09-05T08:34:16Z"}
+{"shard": 17, "stage": "testing", "done": 37, "total": 52, "rows": 1111276, "note": "QCOMSTOCK 4h: 1,865 bars, testing 120 rules", "failed": [], "pct": 71.2, "updated": "2026-09-05T08:35:02Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 37, "total": 53, "rows": 1022886, "note": "PTB 4h: rule 64/120 (hammer)", "failed": [], "pct": 69.8, "updated": "2026-09-05T06:47:57Z"}
+{"shard": 7, "stage": "testing", "done": 39, "total": 53, "rows": 1066358, "note": "RIVER 1d: 348 bars, testing 120 rules", "failed": [], "pct": 73.6, "updated": "2026-09-05T06:48:42Z"}

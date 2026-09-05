@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 27, "total": 53, "rows": 900992, "note": "LAYER 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-05T10:40:06Z"}
+{"shard": 6, "stage": "testing", "done": 28, "total": 53, "rows": 909592, "note": "LSK 4h: rule 4/120 (trend50)", "failed": [], "pct": 52.8, "updated": "2026-09-05T10:40:51Z"}

@@ -883,8 +883,17 @@ def _pending_sources() -> dict:
             empty += 1
         else:
             lost += 1
+    # HOW OLD the index is. Every count above is computed from it, so a count
+    # from a 27-minute-old index is a 27-minute-old count — which is how a
+    # resolve run that was working perfectly appeared to make things worse.
+    age = 0
+    try:
+        age = max(0, int(time.time() - msw.INDEX_PATH.stat().st_mtime))
+    except OSError:
+        pass
     return {"behind": behind, "missing": missing, "lost": lost,
             "delisted": delisted, "empty": empty,
+            "index_age_s": age,
             # a store still building its index cannot be counted; saying so
             # keeps "nothing pending" honest
             "indexing": not index}
@@ -1085,6 +1094,40 @@ def _run_download(spec: dict) -> None:
                   "mode": spec.get("mode") or "download"})
     except Exception:
         pass
+    # REFRESH THE INDEX THIS RUN IS JUDGED BY. `pending_work` — the number on
+    # the RESOLVE PENDING button and in the Pending tab — reads
+    # `candle_index(scan=False)`, a CACHE. Nothing here updated it, so on
+    # 2026-09-05 a resolve stored 73,299 bars over 3,101 pairs with zero errors
+    # while the pending count went UP, from 5,055 to 5,095: the index was
+    # 27 minutes old and its stored `last_ms` values fell further behind with
+    # the clock. The button could never show its own work.
+    #
+    # Incremental — only files rewritten since the last pass are re-read — and
+    # at the END, because doing it per pair would rewrite a 900 KB index file
+    # five thousand times.
+    try:
+        from tradingagents import market_sweep as _msw2
+
+        # SAY SO. The refresh re-reads every rewritten file and took a minute
+        # on this store; without this the screen sits on the last pair's name
+        # with `running: true` and looks hung at the finish line.
+        _write(f["progress"], {"running": True, "done": done,
+                               "total": len(pairs), "mode": mode,
+                               "bars_stored": stored, "errors": len(failed),
+                               "retries": retries,
+                               "now": "refreshing the candle index so the "
+                                      "pending count reflects this run"})
+        t0 = time.time()
+        _msw2.candle_index()
+        print(f"[download] candle index refreshed in {time.time() - t0:.0f}s "
+              f"— the pending count now reflects this run", flush=True)
+    except Exception as exc:                                   # noqa: BLE001
+        # NAMED: a stale index makes the next pending count wrong, and a
+        # silently stale one is how this was missed for a whole run.
+        print(f"[download] could not refresh the candle index: "
+              f"{type(exc).__name__}: {exc} — the pending count will lag "
+              f"until something else rebuilds it", flush=True)
+
     # what this run could not get, for the next update to ask for again;
     # a clean run empties it
     _write(f["lost"], {"pairs": failed_pairs, "written": int(time.time())})

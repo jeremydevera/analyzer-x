@@ -153,6 +153,16 @@ function Pending({ refreshKey }: { refreshKey: number }) {
               ? ` · ${work.unfixable.toLocaleString()} more nothing can`
               : "")
           : "nothing pending — every contract the venue serves is stored and current"}
+        {/* HOW OLD this number is. Every count here comes from the candle
+            index, so a stale index is a stale count — on 2026-09-05 a resolve
+            stored 73,299 bars with zero errors while this figure went UP,
+            because the index behind it was 27 minutes old. */}
+        {(work?.index_age_s ?? 0) > 300 && (
+          <span className="ml-2 font-normal text-theme-xs text-warning-600 dark:text-warning-400">
+            · counted from an index {Math.round((work!.index_age_s ?? 0) / 60)} min old,
+            so a running job&apos;s work is not in it yet
+          </span>
+        )}
         {jobs > 0 && (
           <span className="ml-2 font-normal text-theme-xs text-gray-500 dark:text-gray-400">
             press <b>RESOLVE {jobs.toLocaleString()} PENDING</b> — it does all of them in one run

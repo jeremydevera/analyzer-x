@@ -373,6 +373,11 @@ export type CandlePending = {
    *  pairs, which get one confirming attempt each */
   queue: number;
   indexing?: boolean;
+  /** how old the candle index these counts come from is, in seconds. A count
+   *  from a 27-minute-old index is a 27-minute-old count — which is how a
+   *  RESOLVE run that was working perfectly appeared to make things worse
+   *  (2026-09-05). */
+  index_age_s?: number;
   checked: string;
 };
 

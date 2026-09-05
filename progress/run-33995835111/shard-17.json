@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 28, "total": 52, "rows": 1176214, "note": "MANA 30m: rule 33/120 (heikin)", "failed": [], "pct": 53.8, "updated": "2026-09-05T23:21:46Z"}
+{"shard": 17, "stage": "testing", "done": 28, "total": 52, "rows": 1187214, "note": "MANA 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 53.8, "updated": "2026-09-05T23:22:32Z"}

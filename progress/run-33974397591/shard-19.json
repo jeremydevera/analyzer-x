@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 47, "total": 52, "rows": 1424778, "note": "TXNSTOCK 1d: 130 bars, testing 120 rules", "failed": [], "pct": 90.4, "updated": "2026-09-05T15:55:12Z"}
+{"shard": 19, "stage": "testing", "done": 48, "total": 52, "rows": 1464052, "note": "USTC 1h: rule 2/120 (mom15)", "failed": [], "pct": 92.3, "updated": "2026-09-05T15:55:58Z"}

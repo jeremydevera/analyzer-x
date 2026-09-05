@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 45, "total": 52, "rows": 1633006, "note": "TAO 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 86.5, "updated": "2026-09-05T20:38:24Z"}
+{"shard": 12, "stage": "testing", "done": 48, "total": 52, "rows": 1695046, "note": "URNM 4h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 92.3, "updated": "2026-09-05T20:39:09Z"}

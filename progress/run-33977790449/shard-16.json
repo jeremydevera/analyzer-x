@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 33, "total": 52, "rows": 1449986, "note": "OFC 30m: rule 2/120 (mom15)", "failed": [], "pct": 63.5, "updated": "2026-09-05T17:34:32Z"}
+{"shard": 16, "stage": "testing", "done": 33, "total": 52, "rows": 1473746, "note": "OFC 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 63.5, "updated": "2026-09-05T17:35:17Z"}

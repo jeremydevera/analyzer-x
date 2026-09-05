@@ -401,6 +401,37 @@ Every label must be DERIVED from the data it describes — never a literal. Veri
 must assert the label AGREES with its source, and that itemised rows SUM to the total
 shown. Presence is not correctness.
 
+## Test the path the RUNNER takes, in the state it will run in (MANDATORY — 2026-09-05)
+
+The operator: *"It means you are not reviewing your code changes and testing
+it"*. They were right, and the receipt is exact.
+
+On 2026-09-04 the one-position-per-coin rule shipped with ELEVEN passing tests.
+The runner then traded NOTHING for nine hours — 548 identical `blocked` rows
+between 10:55pm and 8:01am, zero entries, both books — because a THIRD per-coin
+guard (`timeframe_conflicts`, inside `run_cycle`) refuses any coin armed LIVE
+on two bar sizes, and the operator's 35 rows put GPNSTOCK on 15m and 30m.
+
+Three failures, each avoidable:
+
+* **The tests drove `process_symbol`. The runner enters through `run_cycle`,**
+  which returned before ever reaching it. A test one layer below the entry
+  point proves nothing about the entry point. Drive the function the process
+  actually calls, with the operator's own settings shape.
+* **The verification ran in the wrong STATE.** The runner was confirmed working
+  at 10:41am while every row was paper-only; the guard is LIVE-ONLY and armed
+  at 10:55pm. Verify in the configuration the operator will actually run —
+  live-armed, multi-coin, multi-timeframe — or say plainly that you could not.
+* **One rule was replaced in two places out of three.** `timeframe_locks` and
+  `deploy_preset._claims` were found by NAME; `timeframe_conflicts` was not.
+  When changing a rule, grep for the CONCEPT (every guard keyed on the same
+  subject) and list them all before editing.
+
+And nothing raised a hand for nine hours: cycles ran, the ledger filled with
+identical refusals, and no alarm anywhere says *"the runner is up and has taken
+no action"*. A refusal repeated every cycle is a silence, not a message —
+rate-limit it (`_say_once`) and count it somewhere the operator reads.
+
 ## Read the emitter, not the label (MANDATORY — 2026-08-18)
 
 23. **Before explaining ANY log line, ledger action, counter or status string,

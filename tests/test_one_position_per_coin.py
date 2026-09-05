@@ -212,3 +212,49 @@ def test_the_pid_file_ends_up_holding_the_REAL_runner():
     """Otherwise STOP kills the launcher and leaves the runner trading."""
     src = inspect.getsource(at.run_forever)
     assert "PID_PATH.write_text(str(os.getpid())" in src
+
+
+# ---------------------------------------------------------------------------
+# THE PATH THE RUNNER ACTUALLY TAKES.
+#
+# On 2026-09-04 eleven tests in this file passed while the runner traded
+# NOTHING for nine hours. They all drove `process_symbol`; the runner enters
+# through `run_cycle`, which returned before reaching it because a THIRD
+# per-coin guard (`timeframe_conflicts`) refused any coin armed live on two
+# bar sizes — and the operator's own config has GPNSTOCK on 15m and 30m.
+#
+# So this test uses the operator's real shape and asserts the coin is REACHED.
+
+def test_the_operators_own_config_reaches_the_strategies(monkeypatch):
+    keys = ["keltner_30m_sl1tp1", "macddiv_15m_sl1tp12", "ultosc_15m_sl15tp15"]
+    settings = {
+        "strategies": keys, "enabled": True, "dry_run": True,
+        "strategy_coins": {k: [COIN] for k in keys},
+        # LIVE armed, which is the state that triggered it — the guard was
+        # live-only, so a paper-only check would have passed all night
+        "strategy_books": {k: ["real", "paper"] for k in keys},
+        "strategy_margins": {k: 5.0 for k in keys},
+    }
+    monkeypatch.setattr(at, "load_settings", lambda: settings)
+    monkeypatch.setattr(at, "load_state", lambda: {})
+    seen = []
+    monkeypatch.setattr(at, "adopt_orphans", lambda *a, **k: None)
+    monkeypatch.setattr(at, "process_symbol",
+                        lambda symbol, *a, **k: seen.append(symbol))
+    monkeypatch.setattr(at, "append_ledger", lambda e: seen.append(e["action"]))
+    at.run_cycle(fx=object())
+    assert COIN in seen, f"the cycle never reached the coin: {seen}"
+    assert "blocked" not in seen, "nothing may refuse a coin for its bar size"
+    # both books, because the demo is what the operator is testing win rates on
+    assert sorted(at.active_modes(settings)) == [False, True]
+
+
+def test_two_timeframes_on_one_coin_is_still_reported():
+    """The FACT has not changed — only what is done about it."""
+    keys = ["keltner_30m_sl1tp1", "macddiv_15m_sl1tp12"]
+    settings = {"strategies": keys,
+                "strategy_coins": {k: [COIN] for k in keys},
+                "strategy_books": {k: ["real"] for k in keys}}
+    got = at.timeframe_conflicts(settings)
+    assert got and got[0]["coin"] == COIN
+    assert sorted(got[0]["timeframes"]) == ["Min15", "Min30"]

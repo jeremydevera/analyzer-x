@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 4, "total": 53, "rows": 55330, "note": "ANKR 1d: 394 bars, testing 120 rules", "failed": [], "pct": 7.5, "updated": "2026-09-05T08:14:39Z"}
+{"shard": 4, "stage": "testing", "done": 5, "total": 53, "rows": 111902, "note": "ARMSTOCK 4h: rule 21/120 (cci20)", "failed": [], "pct": 9.4, "updated": "2026-09-05T08:15:24Z"}

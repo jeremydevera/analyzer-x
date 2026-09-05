@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 21, "total": 52, "rows": 748110, "note": "HANA 30m: rule 13/120 (pivot)", "failed": [], "pct": 40.4, "updated": "2026-09-05T10:39:16Z"}
+{"shard": 19, "stage": "testing", "done": 21, "total": 52, "rows": 758450, "note": "HANA 30m: rule 61/120 (turtle)", "failed": [], "pct": 40.4, "updated": "2026-09-05T10:40:01Z"}

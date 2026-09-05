@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 23, "total": 52, "rows": 967064, "note": "ICX 4h: rule 46/120 (rsi2)", "failed": [], "pct": 44.2, "updated": "2026-09-05T10:45:35Z"}
+{"shard": 16, "stage": "testing", "done": 23, "total": 52, "rows": 982330, "note": "ICX 30m: rule 4/120 (trend50)", "failed": [], "pct": 44.2, "updated": "2026-09-05T10:46:22Z"}

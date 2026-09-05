@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 16, "total": 53, "rows": 442904, "note": "DRIFT 1h: rule 48/120 (prank)", "failed": [], "pct": 30.2, "updated": "2026-09-05T07:22:43Z"}
+{"shard": 2, "stage": "testing", "done": 17, "total": 53, "rows": 463312, "note": "ENSO 1h: rule 3/120 (fade15)", "failed": [], "pct": 32.1, "updated": "2026-09-05T07:23:32Z"}

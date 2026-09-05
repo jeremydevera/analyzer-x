@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 48, "total": 53, "rows": 1570770, "note": "UAI 30m: 14,563 bars, testing 120 rules", "failed": [], "pct": 90.6, "updated": "2026-09-05T20:38:31Z"}
+{"shard": 2, "stage": "testing", "done": 48, "total": 53, "rows": 1575170, "note": "UAI 30m: rule 16/120 (keltner)", "failed": [], "pct": 90.6, "updated": "2026-09-05T20:39:18Z"}

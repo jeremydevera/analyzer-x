@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 31, "total": 52, "rows": 1320300, "note": "M 30m: rule 12/120 (donchian20)", "failed": [], "pct": 59.6, "updated": "2026-09-05T14:15:19Z"}
+{"shard": 17, "stage": "testing", "done": 31, "total": 52, "rows": 1326460, "note": "M 30m: rule 40/120 (crsi)", "failed": [], "pct": 59.6, "updated": "2026-09-05T14:16:04Z"}

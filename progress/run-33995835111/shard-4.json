@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 29, "total": 53, "rows": 1061878, "note": "MASTOCK 30m: rule 2/120 (mom15)", "failed": [], "pct": 54.7, "updated": "2026-09-05T23:10:38Z"}
+{"shard": 4, "stage": "testing", "done": 29, "total": 53, "rows": 1082398, "note": "MASTOCK 30m: rule 115/120 (cf_diadx)", "failed": [], "pct": 54.7, "updated": "2026-09-05T23:11:23Z"}

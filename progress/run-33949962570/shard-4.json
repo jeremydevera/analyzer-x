@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 37, "total": 53, "rows": 947888, "note": "PROVE 4h: rule 55/120 (nhigh50)", "failed": [], "pct": 69.8, "updated": "2026-09-05T06:45:36Z"}
+{"shard": 4, "stage": "testing", "done": 38, "total": 53, "rows": 990964, "note": "Q 4h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 71.7, "updated": "2026-09-05T06:46:21Z"}

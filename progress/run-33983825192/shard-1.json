@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 20, "total": 53, "rows": 589140, "note": "GAS 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-05T18:33:53Z"}
+{"shard": 1, "stage": "testing", "done": 21, "total": 53, "rows": 617608, "note": "GOOGLSTOCK 1d: rule 3/120 (fade15)", "failed": [], "pct": 39.6, "updated": "2026-09-05T18:34:38Z"}

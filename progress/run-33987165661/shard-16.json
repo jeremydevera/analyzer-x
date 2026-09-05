@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 29, "total": 52, "rows": 1300412, "note": "METASTOCK 30m: rule 38/120 (ao)", "failed": [], "pct": 55.8, "updated": "2026-09-05T20:31:13Z"}
+{"shard": 16, "stage": "testing", "done": 29, "total": 52, "rows": 1316012, "note": "METASTOCK 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 55.8, "updated": "2026-09-05T20:31:59Z"}

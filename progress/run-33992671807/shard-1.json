@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 30, "total": 53, "rows": 882972, "note": "MICRODUCK 1h: downloading candles", "failed": [], "pct": 56.6, "updated": "2026-09-05T21:40:09Z"}
+{"shard": 1, "stage": "testing", "done": 32, "total": 53, "rows": 920576, "note": "NBISSTOCK 1d: 158 bars, testing 120 rules", "failed": [], "pct": 60.4, "updated": "2026-09-05T21:40:55Z"}

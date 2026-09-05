@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 30, "total": 53, "rows": 1031050, "note": "MITSUBISHISTOCK 30m: downloading candles", "failed": [], "pct": 56.6, "updated": "2026-09-05T13:52:46Z"}
+{"shard": 6, "stage": "testing", "done": 32, "total": 53, "rows": 1069210, "note": "NEO 30m: rule 1/120 (mom6)", "failed": [], "pct": 60.4, "updated": "2026-09-05T13:53:38Z"}

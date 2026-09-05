@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 27, "total": 52, "rows": 1054776, "note": "LINSTOCK 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 51.9, "updated": "2026-09-05T13:46:16Z"}
+{"shard": 15, "stage": "testing", "done": 28, "total": 52, "rows": 1085096, "note": "MAGIC 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 53.8, "updated": "2026-09-05T13:47:10Z"}

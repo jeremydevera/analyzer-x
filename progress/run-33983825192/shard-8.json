@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 34, "total": 53, "rows": 745960, "note": "ONT 1h: rule 68/120 (dbltop)", "failed": [], "pct": 64.2, "updated": "2026-09-05T18:46:06Z"}
+{"shard": 8, "stage": "testing", "done": 36, "total": 53, "rows": 780268, "note": "PLTRSTOCK 1h: rule 21/120 (cci20)", "failed": [], "pct": 67.9, "updated": "2026-09-05T18:46:52Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 25, "total": 53, "rows": 988950, "note": "JELLYJELLY 30m: rule 67/120 (pinbar)", "failed": [], "pct": 47.2, "updated": "2026-09-05T14:00:10Z"}
+{"shard": 7, "stage": "testing", "done": 27, "total": 53, "rows": 1000610, "note": "LA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 50.9, "updated": "2026-09-05T14:01:23Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 27, "total": 53, "rows": 998196, "note": "LAB 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-05T13:49:56Z"}
+{"shard": 4, "stage": "testing", "done": 28, "total": 53, "rows": 1027856, "note": "LRCXSTOCK 30m: rule 37/120 (ultosc)", "failed": [], "pct": 52.8, "updated": "2026-09-05T13:50:41Z"}

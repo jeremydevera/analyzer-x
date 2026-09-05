@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 44, "total": 52, "rows": 1793394, "note": "SUPER 30m: rule 22/120 (engulf)", "failed": [], "pct": 84.6, "updated": "2026-09-05T11:28:00Z"}
+{"shard": 16, "stage": "testing", "done": 44, "total": 52, "rows": 1805274, "note": "SUPER 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 84.6, "updated": "2026-09-05T11:28:45Z"}

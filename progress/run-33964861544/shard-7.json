@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 37, "total": 53, "rows": 1130696, "note": "PTB 1h: rule 3/120 (fade15)", "failed": [], "pct": 69.8, "updated": "2026-09-05T12:31:07Z"}
+{"shard": 7, "stage": "testing", "done": 38, "total": 53, "rows": 1153070, "note": "RAVE 1d: 267 bars, testing 120 rules", "failed": [], "pct": 71.7, "updated": "2026-09-05T12:31:54Z"}

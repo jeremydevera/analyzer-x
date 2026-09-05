@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 12, "total": 52, "rows": 452904, "note": "COINBASE 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 23.1, "updated": "2026-09-05T12:17:10Z"}
+{"shard": 16, "stage": "testing", "done": 14, "total": 52, "rows": 498228, "note": "DATA 1h: 1,568 bars, testing 120 rules", "failed": [], "pct": 26.9, "updated": "2026-09-05T12:17:57Z"}

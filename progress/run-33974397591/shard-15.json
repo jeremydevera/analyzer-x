@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 2, "total": 52, "rows": 45000, "note": "AIN 1h: rule 76/120 (cf_mom)", "failed": [], "pct": 3.8, "updated": "2026-09-05T15:20:27Z"}
+{"shard": 15, "stage": "testing", "done": 4, "total": 52, "rows": 108408, "note": "APPSTOCK 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 7.7, "updated": "2026-09-05T15:21:12Z"}

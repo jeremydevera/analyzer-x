@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 44, "total": 53, "rows": 1360872, "note": "STO 30m: rule 12/120 (donchian20)", "failed": [], "pct": 83.0, "updated": "2026-09-05T23:10:09Z"}
+{"shard": 8, "stage": "testing", "done": 44, "total": 53, "rows": 1373472, "note": "STO 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 83.0, "updated": "2026-09-05T23:10:55Z"}

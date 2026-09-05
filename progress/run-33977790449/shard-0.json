@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 36, "total": 53, "rows": 1371846, "note": "PIEVERSE 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 67.9, "updated": "2026-09-05T17:31:15Z"}
+{"shard": 0, "stage": "testing", "done": 37, "total": 53, "rows": 1403192, "note": "PRL 30m: rule 3/120 (fade15)", "failed": [], "pct": 69.8, "updated": "2026-09-05T17:32:03Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 26, "total": 52, "rows": 944640, "note": "KNC 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 50.0, "updated": "2026-09-05T13:53:50Z"}
+{"shard": 14, "stage": "testing", "done": 26, "total": 52, "rows": 950360, "note": "KNC 30m: rule 20/120 (stoch14)", "failed": [], "pct": 50.0, "updated": "2026-09-05T13:54:36Z"}

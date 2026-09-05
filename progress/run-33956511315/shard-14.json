@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 35, "total": 52, "rows": 1056778, "note": "PENGU 1h: rule 52/120 (nr7)", "failed": [], "pct": 67.3, "updated": "2026-09-05T09:27:16Z"}
+{"shard": 14, "stage": "testing", "done": 37, "total": 52, "rows": 1100624, "note": "PYPLSTOCK 1h: 1,805 bars, testing 120 rules", "failed": [], "pct": 71.2, "updated": "2026-09-05T09:28:02Z"}

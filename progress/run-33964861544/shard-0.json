@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 33, "total": 53, "rows": 964528, "note": "NMR 1h: rule 51/120 (orb)", "failed": [], "pct": 62.3, "updated": "2026-09-05T12:27:52Z"}
+{"shard": 0, "stage": "testing", "done": 35, "total": 53, "rows": 1017458, "note": "ORDI 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-05T12:28:51Z"}

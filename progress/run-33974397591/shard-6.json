@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 48, "total": 53, "rows": 1320588, "note": "UMA 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 90.6, "updated": "2026-09-05T15:54:50Z"}
+{"shard": 6, "stage": "testing", "done": 48, "total": 53, "rows": 1344128, "note": "UMA 1h: rule 103/120 (cf_eqhl)", "failed": [], "pct": 90.6, "updated": "2026-09-05T15:55:35Z"}

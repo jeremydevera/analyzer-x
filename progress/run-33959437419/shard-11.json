@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 34, "total": 52, "rows": 1135762, "note": "OPENLEDGER 30m: rule 53/120 (squeeze)", "failed": [], "pct": 65.4, "updated": "2026-09-05T10:44:06Z"}
+{"shard": 11, "stage": "testing", "done": 35, "total": 52, "rows": 1150282, "note": "PEAQ 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 67.3, "updated": "2026-09-05T10:44:57Z"}

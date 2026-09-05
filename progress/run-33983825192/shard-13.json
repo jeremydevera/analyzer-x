@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 39, "total": 52, "rows": 1083814, "note": "ROBINHOOD 1h: rule 20/120 (stoch14)", "failed": [], "pct": 75.0, "updated": "2026-09-05T18:44:21Z"}
+{"shard": 13, "stage": "testing", "done": 42, "total": 52, "rows": 1140222, "note": "SNT 1d: 394 bars, testing 120 rules", "failed": [], "pct": 80.8, "updated": "2026-09-05T18:45:35Z"}

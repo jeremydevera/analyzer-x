@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 36, "total": 53, "rows": 788710, "note": "PLTRSTOCK 1h: rule 33/120 (heikin)", "failed": [], "pct": 67.9, "updated": "2026-09-05T15:41:43Z"}
+{"shard": 8, "stage": "testing", "done": 37, "total": 53, "rows": 817258, "note": "PUFFER 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-05T15:42:36Z"}

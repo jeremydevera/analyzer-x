@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 26, "total": 53, "rows": 775502, "note": "KAT 1d: 187 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-05T09:22:23Z"}
+{"shard": 0, "stage": "testing", "done": 28, "total": 53, "rows": 817222, "note": "LMTSTOCK 1d: 184 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-05T09:23:09Z"}

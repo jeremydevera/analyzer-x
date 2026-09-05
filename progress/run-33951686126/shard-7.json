@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 31, "total": 53, "rows": 955354, "note": "MTL 1d: 394 bars, testing 120 rules", "failed": [], "pct": 58.5, "updated": "2026-09-05T07:40:17Z"}
+{"shard": 7, "stage": "testing", "done": 31, "total": 53, "rows": 980214, "note": "MTL 1h: rule 44/120 (elder)", "failed": [], "pct": 58.5, "updated": "2026-09-05T07:41:02Z"}

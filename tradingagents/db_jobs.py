@@ -596,8 +596,12 @@ def start(kind: str, spec: dict) -> int:
         cwd=str(Path(__file__).resolve().parent.parent),
         stdout=logf, stderr=logf, **portable.DETACHED)
     f["pid"].write_text(str(proc.pid))
+    # `mode` from the very first tick. Without it the seconds between START
+    # and the first measured pair published no mode at all, so the badge fell
+    # through to "downloading" at the start of every RESOLVE and UPDATE.
     _write(f["progress"], {"running": True, "started": int(time.time()),
-                           "done": 0, "total": 0, "now": "starting"})
+                           "done": 0, "total": 0, "now": "starting",
+                           **({"mode": spec["mode"]} if spec.get("mode") else {})})
     return proc.pid
 
 
@@ -991,7 +995,13 @@ def _run_download(spec: dict) -> None:
         # `total` counts PAIRS and `done` counts pairs settled (stored or given
         # up). A redo bumps neither, or the percentage runs backwards the
         # moment a coin fails.
+        # `mode` is published on EVERY tick, not only in the final row. The
+        # badge reads `dl.mode`, and a live progress without it fell through
+        # to "downloading" — so a RESOLVE run wore a DOWNLOAD label for its
+        # whole hour (2026-09-05). A correct value under a false caption is
+        # the failure label-must-match-data exists to catch.
         _write(f["progress"], {"running": True, "done": done, "total": len(pairs),
+                               "mode": mode,
                                "now": f"{c} {tf}"
                                       + (f" (redo {n}/{PAIR_RETRIES})" if n else ""),
                                "bars_stored": stored, "errors": len(failed),

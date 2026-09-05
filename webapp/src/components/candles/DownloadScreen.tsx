@@ -175,7 +175,13 @@ ${(pending?.unfixable ?? 0).toLocaleString()} pair(s) cannot be fixed by any run
           <Button size="sm" variant="outline" onClick={retry} disabled={!lost?.count || !!dl?.running}>
             {lost?.count ? `RETRY ${lost.count} FAILED` : "RETRY FAILED · nothing lost"}
           </Button>
-          {dl?.running && <Badge size="sm" color="info">{dl.mode === "update" ? "updating" : dl.mode === "retry" ? "retrying" : "downloading"}</Badge>}
+          {dl?.running && <Badge size="sm" color="info">{
+            dl.mode === "update" ? "updating"
+            : dl.mode === "retry" ? "retrying"
+            /* RESOLVE had no case, so it wore the "downloading" label for a
+               whole run (2026-09-05) — every mode the job can be in needs one. */
+            : dl.mode === "resolve" ? "resolving pending"
+            : "downloading"}</Badge>}
           {!coins.length && <span className="text-theme-xs text-gray-500 dark:text-gray-400">DOWNLOAD needs a coin; UPDATE tops up everything already stored</span>}
         </div>
         {!!lost?.count && (

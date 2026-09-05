@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 39, "total": 52, "rows": 1083278, "note": "ROBINHOOD 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 75.0, "updated": "2026-09-05T12:30:32Z"}
+{"shard": 13, "stage": "testing", "done": 39, "total": 52, "rows": 1102878, "note": "ROBINHOOD 1h: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 75.0, "updated": "2026-09-05T12:31:18Z"}

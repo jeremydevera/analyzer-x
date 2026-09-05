@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 8, "total": 53, "rows": 207778, "note": "BEL 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-05T18:26:09Z"}
+{"shard": 1, "stage": "testing", "done": 8, "total": 53, "rows": 229778, "note": "BEL 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 15.1, "updated": "2026-09-05T18:26:55Z"}

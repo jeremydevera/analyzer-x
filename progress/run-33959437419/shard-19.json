@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 33, "total": 52, "rows": 1142002, "note": "OKB 30m: rule 8/120 (fib618)", "failed": [], "pct": 63.5, "updated": "2026-09-05T10:53:07Z"}
+{"shard": 19, "stage": "testing", "done": 33, "total": 52, "rows": 1153442, "note": "OKB 30m: rule 61/120 (turtle)", "failed": [], "pct": 63.5, "updated": "2026-09-05T10:53:52Z"}

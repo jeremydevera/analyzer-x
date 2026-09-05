@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 1, "total": 53, "rows": 47960, "note": "1000000MOG 30m: rule 95/120 (cf_emarsi_l1)", "failed": [], "pct": 1.9, "updated": "2026-09-05T10:03:03Z"}
+{"shard": 2, "stage": "testing", "done": 3, "total": 53, "rows": 63448, "note": "AKE 4h: rule 20/120 (stoch14)", "failed": [], "pct": 5.7, "updated": "2026-09-05T10:03:49Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 28, "total": 53, "rows": 1065598, "note": "LMTSTOCK 4h: rule 36/120 (stochrsi)", "failed": [], "pct": 52.8, "updated": "2026-09-05T14:02:25Z"}
+{"shard": 0, "stage": "testing", "done": 29, "total": 53, "rows": 1101148, "note": "MARASTOCK 30m: rule 3/120 (fade15)", "failed": [], "pct": 54.7, "updated": "2026-09-05T14:03:10Z"}

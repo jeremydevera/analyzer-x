@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 6, "total": 53, "rows": 208044, "note": "AUDIO 30m: rule 53/120 (squeeze)", "failed": [], "pct": 11.3, "updated": "2026-09-05T22:36:48Z"}
+{"shard": 0, "stage": "testing", "done": 7, "total": 53, "rows": 212004, "note": "B3 4h: rule 2/120 (mom15)", "failed": [], "pct": 13.2, "updated": "2026-09-05T22:37:34Z"}

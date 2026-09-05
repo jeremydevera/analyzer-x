@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 38, "total": 53, "rows": 1308692, "note": "RARE 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 71.7, "updated": "2026-09-05T11:01:58Z"}
+{"shard": 6, "stage": "testing", "done": 40, "total": 53, "rows": 1343352, "note": "SAHARA 4h: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 75.5, "updated": "2026-09-05T11:02:43Z"}

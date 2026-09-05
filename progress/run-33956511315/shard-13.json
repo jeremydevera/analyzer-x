@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 9, "total": 52, "rows": 248842, "note": "BRETT 1h: rule 24/120 (psar)", "failed": [], "pct": 17.3, "updated": "2026-09-05T09:00:26Z"}
+{"shard": 13, "stage": "testing", "done": 10, "total": 52, "rows": 267242, "note": "C98 1d: 394 bars, testing 120 rules", "failed": [], "pct": 19.2, "updated": "2026-09-05T09:01:16Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 46, "total": 53, "rows": 1799022, "note": "THETA 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 86.8, "updated": "2026-09-05T20:47:43Z"}
+{"shard": 4, "stage": "testing", "done": 47, "total": 53, "rows": 1813982, "note": "TRUST 4h: rule 23/120 (supertrend)", "failed": [], "pct": 88.7, "updated": "2026-09-05T20:48:28Z"}

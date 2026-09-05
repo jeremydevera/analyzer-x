@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 47, "total": 53, "rows": 1347180, "note": "TSMSTOCK 1h: 4,464 bars, testing 120 rules", "failed": [], "pct": 88.7, "updated": "2026-09-05T07:47:09Z"}
+{"shard": 10, "stage": "testing", "done": 51, "total": 53, "rows": 1412262, "note": "XLM 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 96.2, "updated": "2026-09-05T07:48:00Z"}

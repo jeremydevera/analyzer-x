@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 38, "total": 52, "rows": 1358768, "note": "RDDTSTOCK 30m: rule 24/120 (psar)", "failed": [], "pct": 73.1, "updated": "2026-09-05T23:21:39Z"}
+{"shard": 13, "stage": "testing", "done": 39, "total": 52, "rows": 1375868, "note": "ROBINHOOD 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 75.0, "updated": "2026-09-05T23:22:24Z"}

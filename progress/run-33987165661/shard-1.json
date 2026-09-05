@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 7, "total": 53, "rows": 215362, "note": "BABASTOCK 30m: rule 40/120 (crsi)", "failed": [], "pct": 13.2, "updated": "2026-09-05T19:35:49Z"}
+{"shard": 1, "stage": "testing", "done": 7, "total": 53, "rows": 231362, "note": "BABASTOCK 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-05T19:36:34Z"}

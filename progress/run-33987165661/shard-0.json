@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 25, "total": 53, "rows": 975674, "note": "IRYS 30m: 13,650 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-05T20:18:35Z"}
+{"shard": 0, "stage": "testing", "done": 25, "total": 53, "rows": 981394, "note": "IRYS 30m: rule 20/120 (stoch14)", "failed": [], "pct": 47.2, "updated": "2026-09-05T20:19:22Z"}

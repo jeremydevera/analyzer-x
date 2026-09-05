@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 17, "total": 52, "rows": 616802, "note": "EUL 30m: rule 43/120 (macddiv)", "failed": [], "pct": 32.7, "updated": "2026-09-05T13:36:37Z"}
+{"shard": 14, "stage": "testing", "done": 17, "total": 52, "rows": 629122, "note": "EUL 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 32.7, "updated": "2026-09-05T13:37:22Z"}

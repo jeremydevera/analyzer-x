@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 37, "total": 52, "rows": 1092316, "note": "QNT 1h: rule 71/120 (mfi14)", "failed": [], "pct": 71.2, "updated": "2026-09-05T21:55:06Z"}
+{"shard": 19, "stage": "testing", "done": 38, "total": 52, "rows": 1116340, "note": "RENDER 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 73.1, "updated": "2026-09-05T21:55:57Z"}

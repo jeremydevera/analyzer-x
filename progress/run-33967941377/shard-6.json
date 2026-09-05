@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 51, "total": 53, "rows": 1830106, "note": "XIAOMISTOCK 30m: rule 85/120 (cf_triple)", "failed": [], "pct": 96.2, "updated": "2026-09-05T14:29:21Z"}
+{"shard": 6, "stage": "testing", "done": 52, "total": 53, "rows": 1860226, "note": "YFI 30m: rule 1/120 (mom6)", "failed": [], "pct": 98.1, "updated": "2026-09-05T14:30:11Z"}

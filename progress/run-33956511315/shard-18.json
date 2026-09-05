@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 51, "total": 52, "rows": 1529126, "note": "XPL 1h: rule 75/120 (relvolbrk)", "failed": [], "pct": 98.1, "updated": "2026-09-05T09:30:02Z"}
+{"shard": 18, "stage": "done", "done": 52, "total": 52, "rows": 1565956, "note": "1,565,956 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "failed": [], "pct": 100.0, "updated": "2026-09-05T09:30:25Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 35, "total": 52, "rows": 1373054, "note": "PEOPLE 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 67.3, "updated": "2026-09-05T10:56:33Z"}
+{"shard": 15, "stage": "testing", "done": 36, "total": 52, "rows": 1387134, "note": "POPCAT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 69.2, "updated": "2026-09-05T10:57:29Z"}

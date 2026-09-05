@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 27, "total": 52, "rows": 962828, "note": "LIGHT 30m: rule 22/120 (engulf)", "failed": [], "pct": 51.9, "updated": "2026-09-05T20:09:32Z"}
+{"shard": 12, "stage": "testing", "done": 27, "total": 52, "rows": 974828, "note": "LIGHT 30m: rule 83/120 (cf_maobv_l1)", "failed": [], "pct": 51.9, "updated": "2026-09-05T20:10:17Z"}

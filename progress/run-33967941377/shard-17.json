@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 8, "total": 52, "rows": 344054, "note": "BLEND 30m: rule 6/120 (sweep30)", "failed": [], "pct": 15.4, "updated": "2026-09-05T13:23:25Z"}
+{"shard": 17, "stage": "testing", "done": 9, "total": 52, "rows": 366254, "note": "BROCCOLIF3B 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 17.3, "updated": "2026-09-05T13:24:18Z"}

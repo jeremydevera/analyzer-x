@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 11, "total": 53, "rows": 277380, "note": "CDNSSTOCK 1h: downloading candles", "failed": [], "pct": 20.8, "updated": "2026-09-05T15:29:43Z"}
+{"shard": 10, "stage": "testing", "done": 13, "total": 53, "rows": 333218, "note": "CRMSTOCK 1h: rule 59/120 (choch)", "failed": [], "pct": 24.5, "updated": "2026-09-05T15:30:29Z"}

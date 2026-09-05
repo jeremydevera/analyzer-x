@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 23, "total": 52, "rows": 808722, "note": "ICNT 30m: rule 47/120 (ibs)", "failed": [], "pct": 44.2, "updated": "2026-09-05T10:42:36Z"}
+{"shard": 14, "stage": "testing", "done": 23, "total": 52, "rows": 821122, "note": "ICNT 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 44.2, "updated": "2026-09-05T10:43:22Z"}

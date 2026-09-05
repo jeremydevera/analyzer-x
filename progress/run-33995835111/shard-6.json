@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 36, "total": 53, "rows": 1244326, "note": "PLAY 30m: rule 24/120 (psar)", "failed": [], "pct": 67.9, "updated": "2026-09-05T23:00:08Z"}
+{"shard": 6, "stage": "testing", "done": 37, "total": 53, "rows": 1265006, "note": "PSXSTOCK 30m: downloading candles", "failed": [], "pct": 69.8, "updated": "2026-09-05T23:00:53Z"}

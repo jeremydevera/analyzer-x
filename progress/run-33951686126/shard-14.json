@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 24, "total": 52, "rows": 667402, "note": "IOTA 1d: 394 bars, testing 120 rules", "failed": [], "pct": 46.2, "updated": "2026-09-05T07:29:48Z"}
+{"shard": 14, "stage": "testing", "done": 24, "total": 52, "rows": 691338, "note": "IOTA 1h: rule 44/120 (elder)", "failed": [], "pct": 46.2, "updated": "2026-09-05T07:30:34Z"}

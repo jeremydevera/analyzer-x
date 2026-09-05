@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 17, "total": 53, "rows": 549006, "note": "ESP 30m: rule 42/120 (rsidiv)", "failed": [], "pct": 32.1, "updated": "2026-09-05T13:33:41Z"}
+{"shard": 8, "stage": "testing", "done": 18, "total": 53, "rows": 579226, "note": "FCXSTOCK 30m: rule 70/120 (cmf20)", "failed": [], "pct": 34.0, "updated": "2026-09-05T13:34:26Z"}

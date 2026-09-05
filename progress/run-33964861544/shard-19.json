@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 21, "total": 52, "rows": 600628, "note": "HANA 1h: rule 2/120 (mom15)", "failed": [], "pct": 40.4, "updated": "2026-09-05T12:21:36Z"}
+{"shard": 19, "stage": "testing", "done": 21, "total": 52, "rows": 621308, "note": "HANA 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 40.4, "updated": "2026-09-05T12:22:21Z"}

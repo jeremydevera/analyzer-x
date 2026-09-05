@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 34, "total": 52, "rows": 781576, "note": "OPG 1d: 137 bars, testing 120 rules", "failed": [], "pct": 65.4, "updated": "2026-09-05T08:25:43Z"}
+{"shard": 13, "stage": "testing", "done": 36, "total": 52, "rows": 837346, "note": "POL 4h: rule 16/120 (keltner)", "failed": [], "pct": 69.2, "updated": "2026-09-05T08:26:28Z"}

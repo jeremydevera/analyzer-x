@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 36, "total": 53, "rows": 1041270, "note": "PLTRSTOCK 30m: rule 58/120 (bos)", "failed": [], "pct": 67.9, "updated": "2026-09-05T13:50:03Z"}
+{"shard": 8, "stage": "testing", "done": 37, "total": 53, "rows": 1052430, "note": "PUFFER 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-05T13:50:49Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 37, "total": 53, "rows": 1101428, "note": "PRL 1h: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 69.8, "updated": "2026-09-05T15:54:41Z"}
+{"shard": 0, "stage": "testing", "done": 40, "total": 53, "rows": 1144454, "note": "RSR 1d: downloading candles", "failed": [], "pct": 75.5, "updated": "2026-09-05T15:55:26Z"}

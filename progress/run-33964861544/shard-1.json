@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 45, "total": 53, "rows": 1285924, "note": "SXT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-05T12:29:54Z"}
+{"shard": 1, "stage": "testing", "done": 45, "total": 53, "rows": 1304844, "note": "SXT 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-05T12:30:39Z"}

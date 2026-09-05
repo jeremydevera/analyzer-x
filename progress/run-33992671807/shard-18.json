@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 20, "total": 52, "rows": 615740, "note": "GMT 1h: rule 15/120 (bbbreak)", "failed": [], "pct": 38.5, "updated": "2026-09-05T21:39:18Z"}
+{"shard": 18, "stage": "testing", "done": 21, "total": 52, "rows": 646422, "note": "HALSTOCK 1h: rule 1/120 (mom6)", "failed": [], "pct": 40.4, "updated": "2026-09-05T21:40:03Z"}

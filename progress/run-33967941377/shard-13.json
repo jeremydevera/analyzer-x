@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 43, "total": 52, "rows": 1538498, "note": "SPORTFUN 30m: 11,184 bars, testing 120 rules", "failed": [], "pct": 82.7, "updated": "2026-09-05T14:11:17Z"}
+{"shard": 13, "stage": "testing", "done": 43, "total": 52, "rows": 1544878, "note": "SPORTFUN 30m: rule 23/120 (supertrend)", "failed": [], "pct": 82.7, "updated": "2026-09-05T14:12:02Z"}

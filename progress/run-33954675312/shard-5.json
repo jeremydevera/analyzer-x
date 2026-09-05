@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 14, "total": 53, "rows": 327770, "note": "CTSI 4h: rule 3/120 (fade15)", "failed": [], "pct": 26.4, "updated": "2026-09-05T08:20:20Z"}
+{"shard": 5, "stage": "testing", "done": 17, "total": 53, "rows": 365566, "note": "EPIC 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-05T08:21:09Z"}

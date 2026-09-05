@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 52, "total": 53, "rows": 1535814, "note": "XTZ 1h: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-05T21:58:35Z"}
+{"shard": 1, "stage": "testing", "done": 53, "total": 53, "rows": 1558782, "note": "ZIL 1h: rule 2/120 (mom15)", "failed": [], "pct": 100.0, "updated": "2026-09-05T21:59:21Z"}

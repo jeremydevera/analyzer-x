@@ -87,3 +87,37 @@ def test_a_fresh_index_reports_a_small_age(tmp_path, monkeypatch):
     monkeypatch.setattr(dj, "live_symbols", lambda: None)
     monkeypatch.setattr(dj, "_read", lambda p: {"pairs": []})
     assert dj._pending_sources()["index_age_s"] < 5
+
+
+def test_a_verified_index_reads_as_fresh_even_when_nothing_changed(tmp_path,
+                                                                   monkeypatch):
+    """`index_age_s` is the index file's mtime, and `candle_index()` only
+    REWRITES it when something changed. So a scan that verified every file and
+    found nothing to update left the mtime old, and a perfectly current index
+    reported "70 minutes old" — the Pending tab warning about staleness that
+    did not exist (2026-09-05).
+
+    mtime means "last verified" now, not "last rewritten".
+    """
+    import json
+    import os
+    import time
+
+    from tradingagents import market_sweep as msw
+
+    candles = tmp_path / "candles"
+    candles.mkdir()
+    idx = tmp_path / "candle_index.json"
+    monkeypatch.setattr(msw, "CANDLES", candles)
+    monkeypatch.setattr(msw, "INDEX_PATH", idx)
+    monkeypatch.setattr(msw, "_paths", lambda: None)
+
+    (candles / "BTC_USDT-1h.json").write_text(json.dumps({"t": [1000, 2000]}))
+    msw.candle_index()                      # first pass writes it
+    assert idx.exists()
+
+    old = time.time() - 4000
+    os.utime(idx, (old, old))
+    msw.candle_index()                      # nothing changed
+    assert time.time() - idx.stat().st_mtime < 10, \
+        "a verified index must not read as stale"

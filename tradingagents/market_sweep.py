@@ -1783,6 +1783,17 @@ def candle_index(rebuild: bool = False, scan: bool = True) -> dict:
             tmp.replace(INDEX_PATH)
         except OSError:
             pass
+    else:
+        # NOTHING CHANGED — but the index was just VERIFIED against every file,
+        # so it is current, and its mtime is what `db_jobs._pending_sources`
+        # reports as `index_age_s`. Without this touch a perfectly fresh index
+        # read as "70 minutes old" and the Pending tab warned about staleness
+        # that did not exist (2026-09-05). mtime here means "last verified",
+        # never "last rewritten" — the per-file mtimes this function compares
+        # are the candle files' own, so touching this one changes nothing it
+        # relies on.
+        with contextlib.suppress(OSError):
+            INDEX_PATH.touch()
     return out
 
 

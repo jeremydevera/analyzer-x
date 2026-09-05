@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 34, "total": 53, "rows": 1000442, "note": "ONT 30m: rule 54/120 (fractal5)", "failed": [], "pct": 64.2, "updated": "2026-09-05T20:09:35Z"}
+{"shard": 8, "stage": "testing", "done": 34, "total": 53, "rows": 1014962, "note": "ONT 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 64.2, "updated": "2026-09-05T20:10:21Z"}

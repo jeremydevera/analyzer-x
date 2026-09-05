@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 26, "total": 52, "rows": 981414, "note": "KMNO 30m: rule 54/120 (fractal5)", "failed": [], "pct": 50.0, "updated": "2026-09-05T13:50:23Z"}
+{"shard": 13, "stage": "testing", "done": 26, "total": 52, "rows": 995494, "note": "KMNO 30m: rule 118/120 (cf_stflip)", "failed": [], "pct": 50.0, "updated": "2026-09-05T13:51:09Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 39, "total": 52, "rows": 1086214, "note": "ROAM 1d: 394 bars, testing 120 rules", "failed": [], "pct": 75.0, "updated": "2026-09-05T12:31:19Z"}
+{"shard": 12, "stage": "testing", "done": 39, "total": 52, "rows": 1104196, "note": "ROAM 1h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 75.0, "updated": "2026-09-05T12:32:05Z"}

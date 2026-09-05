@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 48, "total": 53, "rows": 1708678, "note": "UMA 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 90.6, "updated": "2026-09-05T20:11:29Z"}
+{"shard": 6, "stage": "testing", "done": 49, "total": 53, "rows": 1741678, "note": "VELODROME 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-05T20:12:18Z"}

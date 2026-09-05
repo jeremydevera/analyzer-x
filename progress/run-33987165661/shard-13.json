@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 52, "total": 52, "rows": 2005242, "note": "ZEC 30m: rule 52/120 (nr7)", "failed": [], "pct": 100.0, "updated": "2026-09-05T20:53:03Z"}
+{"shard": 13, "stage": "testing", "done": 52, "total": 52, "rows": 2018642, "note": "ZEC 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-05T20:53:49Z"}

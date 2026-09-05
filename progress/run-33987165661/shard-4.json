@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 37, "total": 53, "rows": 1396160, "note": "PROVE 30m: rule 33/120 (heikin)", "failed": [], "pct": 69.8, "updated": "2026-09-05T20:25:33Z"}
+{"shard": 4, "stage": "testing", "done": 37, "total": 53, "rows": 1407160, "note": "PROVE 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 69.8, "updated": "2026-09-05T20:26:18Z"}

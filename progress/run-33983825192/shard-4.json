@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 12, "total": 53, "rows": 438122, "note": "CHZ 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-05T18:34:32Z"}
+{"shard": 4, "stage": "testing", "done": 15, "total": 53, "rows": 492894, "note": "DEXE 1d: 74 bars, testing 120 rules", "failed": [], "pct": 28.3, "updated": "2026-09-05T18:35:20Z"}

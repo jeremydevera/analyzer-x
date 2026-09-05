@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 6, "total": 52, "rows": 145576, "note": "AXS 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 11.5, "updated": "2026-09-05T18:26:04Z"}
+{"shard": 14, "stage": "testing", "done": 7, "total": 52, "rows": 169380, "note": "BAT 1h: rule 9/120 (fib382)", "failed": [], "pct": 13.5, "updated": "2026-09-05T18:26:49Z"}

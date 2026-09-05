@@ -172,6 +172,12 @@ def _never_touch_the_live_book(tmp_path, monkeypatch):
     sandbox = tmp_path / "tradingagents_state"
     sandbox.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(at, "STATE_DIR", sandbox, raising=False)
+    # the per-cycle price store outlives a test the way it outlives a book:
+    # a price cached by one test's fake exchange would be handed to the next
+    # test's different fake for up to the backstop age (found by the harddev
+    # loop, 2026-09-05, before it bit)
+    if hasattr(at, "_CYCLE_PRICES"):
+        at._CYCLE_PRICES.clear()
     for name, filename in (("STATE_PATH", "auto_trade_state.json"),
                            ("STATE_LOCK_PATH", "auto_trade_state.lock"),
                            ("LEDGER_PATH", "auto_trade_ledger.jsonl"),

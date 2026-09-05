@@ -1398,6 +1398,19 @@ COST_RATIO_BLOCK = 0.50     # cost ≥ 50% of TP  → refuse
 COST_RATIO_WARN = 0.20      # cost ≥ 20% of TP  → allow, loudly
 
 
+# ONE PRICE PER COIN PER CYCLE, shared by both books. The operator's design,
+# 2026-09-05: *"read once, both books use that one number. Then luck is out of
+# it"*. Live and demo each read the price and got numbers 1.5% apart in the
+# same second (PSXSTOCK, bid 253.53 / ask 257.75) — three real losses beside
+# three demo wins on the same signals. Keyed by (symbol, side): a buy prices
+# at the ask, a sell at the bid, and those are different numbers on purpose.
+# `run_cycle` wipes it at the top, so a price can never outlive one pass; the
+# age cap below is a BACKSTOP for callers that are not run_cycle (tests,
+# tools), never the primary expiry.
+_CYCLE_PRICES: dict = {}
+_CYCLE_PRICE_MAX_AGE_S = 120.0
+
+
 def tradable_price(symbol: str, side: int, *, fx=None) -> float:
     """The price THIS side would actually transact at: ask to buy, bid to sell.
 
@@ -1407,21 +1420,36 @@ def tradable_price(symbol: str, side: int, *, fx=None) -> float:
     apart and the live stop was already behind the market (MEXC 5003). The
     book side does not flicker: it is the number an order gets.
 
+    READ ONCE PER CYCLE: the first book to ask stores the number and the
+    second book gets the same one, so the two can never disagree about the
+    price a signal fired at. The FALLBACK is cached too — consistency between
+    the books is the point, and a fallback one book took while the other read
+    the book fresh would be the same coin-flip again.
+
     Falls back to `last_price` when the book cannot be read, because no price
-    at all means no entry (the caller refuses).
+    at all means no entry (the caller refuses on the exception).
     """
     if fx is None:
         from tradingagents.dataflows import mexc_futures as fx  # noqa: PLC0415
+    key = (symbol, 1 if side > 0 else -1)
+    hit = _CYCLE_PRICES.get(key)
+    if hit is not None and time.time() - hit[0] < _CYCLE_PRICE_MAX_AGE_S:
+        return hit[1]
+    px = None
     try:
         book = fx.order_book(symbol)
         asks, bids = book.get("asks") or [], book.get("bids") or []
         if side > 0 and asks:
-            return float(asks[0][0])
-        if side < 0 and bids:
-            return float(bids[0][0])
+            px = float(asks[0][0])
+        elif side < 0 and bids:
+            px = float(bids[0][0])
     except Exception:                                          # noqa: BLE001
-        pass
-    return float(fx.last_price(symbol))
+        px = None
+    if px is None:
+        # may raise — then NOTHING is cached and the caller refuses to enter
+        px = float(fx.last_price(symbol))
+    _CYCLE_PRICES[key] = (time.time(), px)
+    return px
 
 
 def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None) -> dict:
@@ -3625,6 +3653,9 @@ def _say_once(tag: str, every_s: float) -> bool:
 
 
 def run_cycle(*, fx=None) -> None:
+    # a fresh cycle reads fresh prices — FIRST, before any early return, so a
+    # cycle that does nothing still cannot leave last cycle's numbers behind
+    _CYCLE_PRICES.clear()
     if fx is None:
         from tradingagents.dataflows import mexc_futures as fx  # noqa: PLC0415
     settings = load_settings()

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 28, "total": 52, "rows": 1090156, "note": "MAGIC 30m: rule 17/120 (atrbreak)", "failed": [], "pct": 53.8, "updated": "2026-09-05T13:47:55Z"}
+{"shard": 15, "stage": "testing", "done": 28, "total": 52, "rows": 1101156, "note": "MAGIC 30m: rule 68/120 (dbltop)", "failed": [], "pct": 53.8, "updated": "2026-09-05T13:48:40Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 24, "total": 52, "rows": 673498, "note": "IONQSTOCK 1h: rule 76/120 (cf_mom)", "failed": [], "pct": 46.2, "updated": "2026-09-05T12:20:59Z"}
+{"shard": 12, "stage": "testing", "done": 26, "total": 52, "rows": 728060, "note": "KLACSTOCK 1h: rule 14/120 (bb20)", "failed": [], "pct": 50.0, "updated": "2026-09-05T12:21:44Z"}

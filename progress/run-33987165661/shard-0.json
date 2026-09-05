@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 17, "total": 53, "rows": 674608, "note": "ENJ 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-05T20:05:11Z"}
+{"shard": 0, "stage": "testing", "done": 18, "total": 53, "rows": 719184, "note": "EWZ 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 34.0, "updated": "2026-09-05T20:05:56Z"}

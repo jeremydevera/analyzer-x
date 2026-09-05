@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 24, "total": 52, "rows": 855502, "note": "IOTA 30m: rule 34/120 (lrslope)", "failed": [], "pct": 46.2, "updated": "2026-09-05T17:07:03Z"}
+{"shard": 14, "stage": "testing", "done": 24, "total": 52, "rows": 866942, "note": "IOTA 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 46.2, "updated": "2026-09-05T17:07:49Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 29, "total": 52, "rows": 1022250, "note": "METASTOCK 1h: rule 31/120 (trix15)", "failed": [], "pct": 55.8, "updated": "2026-09-05T15:51:44Z"}
+{"shard": 16, "stage": "testing", "done": 30, "total": 52, "rows": 1055426, "note": "MOVE 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 57.7, "updated": "2026-09-05T15:52:43Z"}

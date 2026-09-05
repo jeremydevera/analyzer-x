@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 40, "total": 53, "rows": 1519618, "note": "RSR 30m: rule 28/120 (vortex14)", "failed": [], "pct": 75.5, "updated": "2026-09-05T10:59:12Z"}
+{"shard": 0, "stage": "testing", "done": 40, "total": 53, "rows": 1534138, "note": "RSR 30m: rule 95/120 (cf_emarsi_l1)", "failed": [], "pct": 75.5, "updated": "2026-09-05T10:59:57Z"}

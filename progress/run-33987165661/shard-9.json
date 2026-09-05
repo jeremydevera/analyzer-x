@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 6, "total": 53, "rows": 248468, "note": "AVNT 30m: rule 47/120 (ibs)", "failed": [], "pct": 11.3, "updated": "2026-09-05T19:38:47Z"}
+{"shard": 9, "stage": "testing", "done": 7, "total": 53, "rows": 262668, "note": "BARD 4h: 2,114 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-05T19:39:40Z"}

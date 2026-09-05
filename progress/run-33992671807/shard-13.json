@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 28, "total": 52, "rows": 839936, "note": "LYN 1h: rule 3/120 (fade15)", "failed": [], "pct": 53.8, "updated": "2026-09-05T21:42:24Z"}
+{"shard": 13, "stage": "testing", "done": 30, "total": 52, "rows": 862536, "note": "MOO 1d: downloading candles", "failed": [], "pct": 57.7, "updated": "2026-09-05T21:43:09Z"}

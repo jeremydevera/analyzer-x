@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 44, "total": 52, "rows": 1683836, "note": "SUN 4h: rule 15/120 (bbbreak)", "failed": [], "pct": 84.6, "updated": "2026-09-05T11:10:43Z"}
+{"shard": 15, "stage": "testing", "done": 44, "total": 52, "rows": 1707816, "note": "SUN 30m: rule 2/120 (mom15)", "failed": [], "pct": 84.6, "updated": "2026-09-05T11:11:31Z"}

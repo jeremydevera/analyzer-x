@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 11, "total": 52, "rows": 329942, "note": "CELR 1h: rule 34/120 (lrslope)", "failed": [], "pct": 21.2, "updated": "2026-09-05T12:10:12Z"}
+{"shard": 13, "stage": "testing", "done": 12, "total": 52, "rows": 347762, "note": "COAI 1d: 345 bars, testing 120 rules", "failed": [], "pct": 23.1, "updated": "2026-09-05T12:10:59Z"}

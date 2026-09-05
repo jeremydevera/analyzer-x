@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 19, "total": 53, "rows": 715410, "note": "FOLKS 30m: rule 72/120 (force13)", "failed": [], "pct": 35.8, "updated": "2026-09-05T22:58:51Z"}
+{"shard": 7, "stage": "testing", "done": 20, "total": 53, "rows": 755810, "note": "GEVSTOCK 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 37.7, "updated": "2026-09-05T22:59:36Z"}

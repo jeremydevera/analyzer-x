@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 2, "total": 52, "rows": 81720, "note": "AGT 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-05T13:10:45Z"}
+{"shard": 11, "stage": "testing", "done": 3, "total": 52, "rows": 110360, "note": "ALPINE 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 5.8, "updated": "2026-09-05T13:11:43Z"}

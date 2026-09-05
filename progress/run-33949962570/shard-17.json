@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 44, "total": 52, "rows": 1287412, "note": "SUPRA 1d: 394 bars, testing 120 rules", "failed": [], "pct": 84.6, "updated": "2026-09-05T06:55:20Z"}
+{"shard": 17, "stage": "testing", "done": 46, "total": 52, "rows": 1325410, "note": "TRADOOR 1d: rule 1/120 (mom6)", "failed": [], "pct": 88.5, "updated": "2026-09-05T06:56:05Z"}

@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 35, "total": 53, "rows": 956976, "note": "PDDSTOCK 1h: rule 73/120 (volspike)", "failed": [], "pct": 66.0, "updated": "2026-09-05T09:21:19Z"}
+{"shard": 10, "stage": "testing", "done": 36, "total": 53, "rows": 978332, "note": "PNUT 1h: rule 2/120 (mom15)", "failed": [], "pct": 67.9, "updated": "2026-09-05T09:22:08Z"}

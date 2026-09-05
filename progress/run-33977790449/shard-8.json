@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 39, "total": 53, "rows": 1173038, "note": "RIVNSTOCK 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 73.6, "updated": "2026-09-05T16:54:35Z"}
+{"shard": 8, "stage": "testing", "done": 41, "total": 53, "rows": 1224598, "note": "SIGN 4h: rule 1/120 (mom6)", "failed": [], "pct": 77.4, "updated": "2026-09-05T16:55:21Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 32, "total": 52, "rows": 873008, "note": "NKESTOCK 1h: rule 44/120 (elder)", "failed": [], "pct": 61.5, "updated": "2026-09-05T09:10:58Z"}
+{"shard": 19, "stage": "testing", "done": 33, "total": 52, "rows": 918480, "note": "OKB 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 63.5, "updated": "2026-09-05T09:11:43Z"}

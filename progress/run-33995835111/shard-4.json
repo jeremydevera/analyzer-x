@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 50, "total": 53, "rows": 1977118, "note": "WCT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 94.3, "updated": "2026-09-05T23:55:57Z"}
+{"shard": 4, "stage": "testing", "done": 50, "total": 53, "rows": 2004398, "note": "WCT 30m: rule 1/120 (mom6)", "failed": [], "pct": 94.3, "updated": "2026-09-05T23:56:50Z"}

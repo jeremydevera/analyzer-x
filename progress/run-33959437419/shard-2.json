@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 47, "total": 53, "rows": 1520112, "note": "TROLLSOL 4h: 745 bars, testing 120 rules", "failed": [], "pct": 88.7, "updated": "2026-09-05T11:12:41Z"}
+{"shard": 2, "stage": "testing", "done": 48, "total": 53, "rows": 1539452, "note": "UAI 4h: rule 31/120 (trix15)", "failed": [], "pct": 90.6, "updated": "2026-09-05T11:13:26Z"}

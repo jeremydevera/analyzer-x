@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 33, "total": 52, "rows": 1208628, "note": "NVIDIA 30m: rule 44/120 (elder)", "failed": [], "pct": 63.5, "updated": "2026-09-05T23:14:30Z"}
+{"shard": 12, "stage": "testing", "done": 34, "total": 52, "rows": 1223628, "note": "OPENSTOCK 30m: 2,956 bars, testing 120 rules", "failed": [], "pct": 65.4, "updated": "2026-09-05T23:15:15Z"}

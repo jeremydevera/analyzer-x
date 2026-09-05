@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 28, "total": 52, "rows": 826840, "note": "MAGIC 1h: rule 16/120 (keltner)", "failed": [], "pct": 53.8, "updated": "2026-09-05T18:43:39Z"}
+{"shard": 15, "stage": "testing", "done": 29, "total": 52, "rows": 849280, "note": "MERL 1d: 394 bars, testing 120 rules", "failed": [], "pct": 55.8, "updated": "2026-09-05T18:44:34Z"}

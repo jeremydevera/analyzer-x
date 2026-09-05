@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 33, "total": 53, "rows": 1233120, "note": "NOKSTOCK 30m: rule 14/120 (bb20)", "failed": [], "pct": 62.3, "updated": "2026-09-05T13:52:07Z"}
+{"shard": 1, "stage": "testing", "done": 35, "total": 53, "rows": 1281456, "note": "OUSTSTOCK 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 66.0, "updated": "2026-09-05T13:52:52Z"}

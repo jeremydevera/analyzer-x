@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 15, "total": 52, "rows": 477882, "note": "DOGE 4h: rule 16/120 (keltner)", "failed": [], "pct": 28.8, "updated": "2026-09-05T19:52:25Z"}
+{"shard": 14, "stage": "testing", "done": 15, "total": 52, "rows": 500782, "note": "DOGE 30m: rule 4/120 (trend50)", "failed": [], "pct": 28.8, "updated": "2026-09-05T19:53:11Z"}

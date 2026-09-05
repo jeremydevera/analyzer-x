@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 44, "total": 52, "rows": 1860868, "note": "SUPRA 30m: rule 3/120 (fade15)", "failed": [], "pct": 84.6, "updated": "2026-09-05T23:58:30Z"}
+{"shard": 17, "stage": "testing", "done": 45, "total": 52, "rows": 1865308, "note": "TEMSTOCK 30m: 3,639 bars, testing 120 rules", "failed": [], "pct": 86.5, "updated": "2026-09-05T23:59:16Z"}

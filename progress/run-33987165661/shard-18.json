@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 18, "total": 52, "rows": 684760, "note": "FLOCK 30m: rule 2/120 (mom15)", "failed": [], "pct": 34.6, "updated": "2026-09-05T20:02:09Z"}
+{"shard": 18, "stage": "testing", "done": 18, "total": 52, "rows": 689160, "note": "FLOCK 30m: rule 20/120 (stoch14)", "failed": [], "pct": 34.6, "updated": "2026-09-05T20:02:54Z"}

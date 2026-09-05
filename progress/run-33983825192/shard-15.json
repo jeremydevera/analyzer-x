@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 5, "total": 52, "rows": 114536, "note": "ASXSTOCK 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 9.6, "updated": "2026-09-05T18:24:37Z"}
+{"shard": 15, "stage": "testing", "done": 8, "total": 52, "rows": 185836, "note": "BKRSTOCK 1h: downloading candles", "failed": [], "pct": 15.4, "updated": "2026-09-05T18:25:22Z"}

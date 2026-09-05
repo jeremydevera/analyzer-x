@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 16, "total": 52, "rows": 477520, "note": "EGLD 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 30.8, "updated": "2026-09-05T12:15:20Z"}
+{"shard": 14, "stage": "testing", "done": 17, "total": 52, "rows": 500532, "note": "EUL 1h: rule 3/120 (fade15)", "failed": [], "pct": 32.7, "updated": "2026-09-05T12:16:09Z"}

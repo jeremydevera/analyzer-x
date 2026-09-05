@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 33, "total": 52, "rows": 1001492, "note": "NXPC 1h: rule 100/120 (cf_soup1)", "failed": [], "pct": 63.5, "updated": "2026-09-05T15:46:32Z"}
+{"shard": 15, "stage": "testing", "done": 34, "total": 52, "rows": 1023096, "note": "OP 1h: rule 11/120 (sr_break)", "failed": [], "pct": 65.4, "updated": "2026-09-05T15:47:17Z"}

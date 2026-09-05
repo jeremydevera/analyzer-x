@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 44, "total": 53, "rows": 1582836, "note": "STABLE 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 83.0, "updated": "2026-09-05T14:07:44Z"}
+{"shard": 1, "stage": "testing", "done": 45, "total": 53, "rows": 1596696, "note": "SXT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-05T14:08:31Z"}

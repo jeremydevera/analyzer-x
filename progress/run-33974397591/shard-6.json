@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 7, "total": 53, "rows": 196724, "note": "BAND 1h: rule 9/120 (fib382)", "failed": [], "pct": 13.2, "updated": "2026-09-05T15:24:09Z"}
+{"shard": 6, "stage": "testing", "done": 8, "total": 53, "rows": 237134, "note": "BIDUSTOCK 1h: rule 55/120 (nhigh50)", "failed": [], "pct": 15.1, "updated": "2026-09-05T15:24:54Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 44, "total": 53, "rows": 1345758, "note": "STO 30m: rule 13/120 (pivot)", "failed": [], "pct": 83.0, "updated": "2026-09-05T10:55:39Z"}
+{"shard": 8, "stage": "testing", "done": 44, "total": 53, "rows": 1354558, "note": "STO 30m: rule 58/120 (bos)", "failed": [], "pct": 83.0, "updated": "2026-09-05T10:56:25Z"}

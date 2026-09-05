@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 6, "total": 53, "rows": 161624, "note": "AUDIO 1d: rule 110/120 (cf_fundfade_l1)", "failed": [], "pct": 11.3, "updated": "2026-09-05T08:16:58Z"}
+{"shard": 0, "stage": "testing", "done": 7, "total": 53, "rows": 180872, "note": "B3 1d: 394 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-05T08:17:55Z"}

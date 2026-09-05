@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 16, "total": 52, "rows": 568622, "note": "EGLD 30m: rule 70/120 (cmf20)", "failed": [], "pct": 30.8, "updated": "2026-09-05T13:33:33Z"}
+{"shard": 14, "stage": "testing", "done": 16, "total": 52, "rows": 579622, "note": "EGLD 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 30.8, "updated": "2026-09-05T13:34:20Z"}

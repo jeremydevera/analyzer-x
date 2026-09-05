@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 29, "total": 53, "rows": 1153078, "note": "MCDSTOCK 30m: rule 47/120 (ibs)", "failed": [], "pct": 54.7, "updated": "2026-09-05T23:16:22Z"}
+{"shard": 7, "stage": "testing", "done": 30, "total": 53, "rows": 1174608, "note": "MMT 4h: rule 29/120 (hull20)", "failed": [], "pct": 56.6, "updated": "2026-09-05T23:17:07Z"}

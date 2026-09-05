@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 31, "total": 53, "rows": 989958, "note": "MTL 1h: rule 53/120 (squeeze)", "failed": [], "pct": 58.5, "updated": "2026-09-05T12:28:44Z"}
+{"shard": 7, "stage": "testing", "done": 35, "total": 53, "rows": 1057854, "note": "PAXG 1d: 394 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-05T12:29:35Z"}

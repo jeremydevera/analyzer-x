@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 28, "total": 52, "rows": 978396, "note": "MAGMA 1h: rule 6/120 (sweep30)", "failed": [], "pct": 53.8, "updated": "2026-09-05T21:50:50Z"}
+{"shard": 16, "stage": "testing", "done": 29, "total": 52, "rows": 1014366, "note": "METASTOCK 1h: rule 1/120 (mom6)", "failed": [], "pct": 55.8, "updated": "2026-09-05T21:51:37Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 22, "total": 53, "rows": 854738, "note": "HIMSSTOCK 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-05T23:03:30Z"}
+{"shard": 7, "stage": "testing", "done": 23, "total": 53, "rows": 887638, "note": "HYPE 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-05T23:04:19Z"}

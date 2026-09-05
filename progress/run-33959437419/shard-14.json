@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 43, "total": 52, "rows": 1586028, "note": "SPOTSTOCK 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 82.7, "updated": "2026-09-05T11:13:48Z"}
+{"shard": 14, "stage": "testing", "done": 46, "total": 52, "rows": 1636808, "note": "TOWNS 4h: rule 55/120 (nhigh50)", "failed": [], "pct": 88.5, "updated": "2026-09-05T11:14:33Z"}

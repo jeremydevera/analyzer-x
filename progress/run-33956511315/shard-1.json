@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 38, "total": 53, "rows": 1046978, "note": "QTUM 1h: rule 38/120 (ao)", "failed": [], "pct": 71.7, "updated": "2026-09-05T09:15:05Z"}
+{"shard": 1, "stage": "testing", "done": 39, "total": 53, "rows": 1077778, "note": "RESOLV 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 73.6, "updated": "2026-09-05T09:15:57Z"}

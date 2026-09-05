@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 42, "total": 52, "rows": 1625718, "note": "SNX 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 80.8, "updated": "2026-09-05T14:18:02Z"}
+{"shard": 15, "stage": "testing", "done": 43, "total": 52, "rows": 1665138, "note": "SPX500 30m: rule 14/120 (bb20)", "failed": [], "pct": 82.7, "updated": "2026-09-05T14:18:47Z"}

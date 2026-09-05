@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 44, "total": 53, "rows": 1526530, "note": "STG 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 83.0, "updated": "2026-09-05T23:21:39Z"}
+{"shard": 5, "stage": "testing", "done": 44, "total": 53, "rows": 1536430, "note": "STG 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 83.0, "updated": "2026-09-05T23:22:24Z"}

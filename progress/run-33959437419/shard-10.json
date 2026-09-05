@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 28, "total": 53, "rows": 970210, "note": "LUNANEW 30m: rule 24/120 (psar)", "failed": [], "pct": 52.8, "updated": "2026-09-05T10:37:38Z"}
+{"shard": 10, "stage": "testing", "done": 28, "total": 53, "rows": 985170, "note": "LUNANEW 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 52.8, "updated": "2026-09-05T10:38:23Z"}

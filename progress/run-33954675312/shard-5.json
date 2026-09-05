@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 24, "total": 53, "rows": 480846, "note": "INIT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 45.3, "updated": "2026-09-05T08:23:45Z"}
+{"shard": 5, "stage": "testing", "done": 25, "total": 53, "rows": 519676, "note": "JCT 4h: rule 14/120 (bb20)", "failed": [], "pct": 47.2, "updated": "2026-09-05T08:24:30Z"}

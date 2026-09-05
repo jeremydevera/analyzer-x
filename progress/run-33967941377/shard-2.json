@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 43, "total": 53, "rows": 1500832, "note": "SONYSTOCK 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-05T14:03:56Z"}
+{"shard": 2, "stage": "testing", "done": 47, "total": 53, "rows": 1532832, "note": "TROLLSOL 30m: rule 9/120 (fib382)", "failed": [], "pct": 88.7, "updated": "2026-09-05T14:04:41Z"}

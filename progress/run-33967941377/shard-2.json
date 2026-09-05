@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 12, "total": 53, "rows": 448354, "note": "CHR 30m: rule 52/120 (nr7)", "failed": [], "pct": 22.6, "updated": "2026-09-05T13:26:27Z"}
+{"shard": 2, "stage": "testing", "done": 13, "total": 53, "rows": 482430, "note": "COPSTOCK 30m: 8,837 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-05T13:27:14Z"}

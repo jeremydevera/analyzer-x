@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 2, "total": 53, "rows": 57838, "note": "AGLD 1h: rule 47/120 (ibs)", "failed": [], "pct": 3.8, "updated": "2026-09-05T08:55:48Z"}
+{"shard": 10, "stage": "testing", "done": 3, "total": 53, "rows": 86306, "note": "ALL 1d: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 5.7, "updated": "2026-09-05T08:56:33Z"}

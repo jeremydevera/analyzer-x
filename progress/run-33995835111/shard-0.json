@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 21, "total": 53, "rows": 814368, "note": "GOAT 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 39.6, "updated": "2026-09-05T23:08:11Z"}
+{"shard": 0, "stage": "testing", "done": 23, "total": 53, "rows": 848668, "note": "HOT 4h: rule 20/120 (stoch14)", "failed": [], "pct": 43.4, "updated": "2026-09-05T23:08:56Z"}

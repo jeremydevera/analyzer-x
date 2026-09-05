@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 28, "total": 53, "rows": 917616, "note": "LQTY 30m: rule 6/120 (sweep30)", "failed": [], "pct": 52.8, "updated": "2026-09-05T20:09:57Z"}
+{"shard": 3, "stage": "testing", "done": 28, "total": 53, "rows": 925756, "note": "LQTY 30m: rule 43/120 (macddiv)", "failed": [], "pct": 52.8, "updated": "2026-09-05T20:10:42Z"}

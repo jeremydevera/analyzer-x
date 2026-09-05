@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 47, "total": 53, "rows": 1348778, "note": "TRIA 1h: rule 4/120 (trend50)", "failed": [], "pct": 88.7, "updated": "2026-09-05T07:41:00Z"}
+{"shard": 1, "stage": "testing", "done": 48, "total": 53, "rows": 1384550, "note": "T 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 90.6, "updated": "2026-09-05T07:41:56Z"}

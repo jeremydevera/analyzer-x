@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 21, "total": 52, "rows": 776800, "note": "GUA 30m: rule 33/120 (heikin)", "failed": [], "pct": 40.4, "updated": "2026-09-05T16:59:50Z"}
+{"shard": 13, "stage": "testing", "done": 21, "total": 52, "rows": 791100, "note": "GUA 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 40.4, "updated": "2026-09-05T17:00:36Z"}

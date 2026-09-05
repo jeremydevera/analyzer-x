@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 52, "total": 53, "rows": 1593424, "note": "YGG 1h: rule 26/120 (adx14)", "failed": [], "pct": 98.1, "updated": "2026-09-05T09:46:06Z"}
+{"shard": 7, "stage": "testing", "done": 53, "total": 53, "rows": 1613224, "note": "ZORA 1d: 394 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-05T09:46:56Z"}

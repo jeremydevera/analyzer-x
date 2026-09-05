@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 13, "total": 52, "rows": 555600, "note": "CSCOSTOCK 4h: 1,711 bars, testing 120 rules", "failed": [], "pct": 25.0, "updated": "2026-09-05T16:53:04Z"}
+{"shard": 16, "stage": "testing", "done": 13, "total": 52, "rows": 592380, "note": "CSCOSTOCK 30m: rule 47/120 (ibs)", "failed": [], "pct": 25.0, "updated": "2026-09-05T16:53:49Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 5, "total": 52, "rows": 145300, "note": "ASTSSTOCK 30m: rule 112/120 (cf_obretest)", "failed": [], "pct": 9.6, "updated": "2026-09-05T16:30:43Z"}
+{"shard": 14, "stage": "testing", "done": 6, "total": 52, "rows": 173140, "note": "AXS 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 11.5, "updated": "2026-09-05T16:31:31Z"}

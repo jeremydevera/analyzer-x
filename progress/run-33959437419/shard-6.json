@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 3, "total": 53, "rows": 130820, "note": "ALGO 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 5.7, "updated": "2026-09-05T10:06:04Z"}
+{"shard": 6, "stage": "testing", "done": 5, "total": 53, "rows": 183394, "note": "ARWRSTOCK 30m: rule 52/120 (nr7)", "failed": [], "pct": 9.4, "updated": "2026-09-05T10:07:34Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 53, "total": 53, "rows": 1504688, "note": "ZKC 1h: rule 85/120 (cf_triple)", "failed": [], "pct": 100.0, "updated": "2026-09-05T07:57:59Z"}
+{"shard": 3, "stage": "done", "done": 53, "total": 53, "rows": 1512168, "note": "1,512,168 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "failed": [], "pct": 100.0, "updated": "2026-09-05T07:58:07Z"}

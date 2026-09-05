@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 31, "total": 53, "rows": 1059214, "note": "MSTRSTOCK 30m: rule 44/120 (elder)", "failed": [], "pct": 58.5, "updated": "2026-09-05T17:20:18Z"}
+{"shard": 5, "stage": "testing", "done": 32, "total": 53, "rows": 1074414, "note": "NEMSTOCK 30m: downloading candles", "failed": [], "pct": 60.4, "updated": "2026-09-05T17:21:05Z"}

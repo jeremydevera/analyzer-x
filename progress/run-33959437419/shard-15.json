@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 11, "total": 52, "rows": 367268, "note": "CFG 30m: rule 61/120 (turtle)", "failed": [], "pct": 21.2, "updated": "2026-09-05T10:10:00Z"}
+{"shard": 15, "stage": "testing", "done": 12, "total": 52, "rows": 406068, "note": "COHRSTOCK 30m: rule 14/120 (bb20)", "failed": [], "pct": 23.1, "updated": "2026-09-05T10:10:46Z"}

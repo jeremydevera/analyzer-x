@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 5, "total": 53, "rows": 154260, "note": "AR 30m: rule 29/120 (hull20)", "failed": [], "pct": 9.4, "updated": "2026-09-05T16:30:43Z"}
+{"shard": 8, "stage": "testing", "done": 6, "total": 53, "rows": 189240, "note": "AVGOSTOCK 4h: rule 72/120 (force13)", "failed": [], "pct": 11.3, "updated": "2026-09-05T16:31:28Z"}

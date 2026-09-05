@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 12, "total": 53, "rows": 431400, "note": "CKB 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-05T13:23:17Z"}
+{"shard": 6, "stage": "testing", "done": 13, "total": 53, "rows": 457800, "note": "COW 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-05T13:24:08Z"}

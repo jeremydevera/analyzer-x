@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 5, "total": 53, "rows": 100562, "note": "ARPA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 9.4, "updated": "2026-09-05T08:16:22Z"}
+{"shard": 5, "stage": "testing", "done": 7, "total": 53, "rows": 148412, "note": "BANANA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-05T08:17:16Z"}

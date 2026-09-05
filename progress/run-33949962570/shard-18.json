@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 43, "total": 52, "rows": 1112022, "note": "SQD 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 82.7, "updated": "2026-09-05T06:49:25Z"}
+{"shard": 18, "stage": "testing", "done": 44, "total": 52, "rows": 1152854, "note": "SUSHI 4h: rule 2/120 (mom15)", "failed": [], "pct": 84.6, "updated": "2026-09-05T06:50:11Z"}

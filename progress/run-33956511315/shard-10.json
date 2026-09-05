@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 30, "total": 53, "rows": 825918, "note": "MOCA 1h: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 56.6, "updated": "2026-09-05T09:19:49Z"}
+{"shard": 10, "stage": "testing", "done": 33, "total": 53, "rows": 892838, "note": "NVDL 1h: rule 59/120 (choch)", "failed": [], "pct": 62.3, "updated": "2026-09-05T09:20:34Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 52, "total": 53, "rows": 1850228, "note": "YFI 30m: rule 55/120 (nhigh50)", "failed": [], "pct": 98.1, "updated": "2026-09-05T11:25:29Z"}
+{"shard": 6, "stage": "testing", "done": 53, "total": 53, "rows": 1866328, "note": "ZMSTOCK 4h: rule 4/120 (trend50)", "failed": [], "pct": 100.0, "updated": "2026-09-05T11:26:14Z"}

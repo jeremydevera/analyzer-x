@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 38, "total": 52, "rows": 1197786, "note": "RECALL 1h: rule 110/120 (cf_fundfade_l1)", "failed": [], "pct": 73.1, "updated": "2026-09-05T21:53:55Z"}
+{"shard": 15, "stage": "testing", "done": 42, "total": 52, "rows": 1252756, "note": "SNX 1h: rule 2/120 (mom15)", "failed": [], "pct": 80.8, "updated": "2026-09-05T21:54:44Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 26, "total": 52, "rows": 775506, "note": "KMNO 1h: rule 112/120 (cf_obretest)", "failed": [], "pct": 50.0, "updated": "2026-09-05T18:38:52Z"}
+{"shard": 13, "stage": "testing", "done": 27, "total": 52, "rows": 800190, "note": "LINEA 1h: rule 37/120 (ultosc)", "failed": [], "pct": 51.9, "updated": "2026-09-05T18:39:37Z"}

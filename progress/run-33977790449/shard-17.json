@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 18, "total": 52, "rows": 759294, "note": "FLNCSTOCK 30m: rule 19/120 (emacross)", "failed": [], "pct": 34.6, "updated": "2026-09-05T17:00:38Z"}
+{"shard": 17, "stage": "testing", "done": 20, "total": 52, "rows": 804132, "note": "GMESTOCK 30m: rule 48/120 (prank)", "failed": [], "pct": 38.5, "updated": "2026-09-05T17:01:23Z"}

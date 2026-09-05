@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 38, "total": 52, "rows": 1681844, "note": "RED 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 73.1, "updated": "2026-09-05T17:45:19Z"}
+{"shard": 17, "stage": "testing", "done": 39, "total": 52, "rows": 1709168, "note": "RON 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 75.0, "updated": "2026-09-05T17:46:17Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 2, "total": 53, "rows": 32620, "note": "AGI 4h: rule 56/120 (insidebrk)", "failed": [], "pct": 3.8, "updated": "2026-09-05T10:00:42Z"}
+{"shard": 9, "stage": "testing", "done": 2, "total": 53, "rows": 48000, "note": "AGI 30m: rule 6/120 (sweep30)", "failed": [], "pct": 3.8, "updated": "2026-09-05T10:01:28Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 14, "total": 53, "rows": 548580, "note": "CVXSTOCK 30m: rule 34/120 (lrslope)", "failed": [], "pct": 26.4, "updated": "2026-09-05T13:26:33Z"}
+{"shard": 9, "stage": "testing", "done": 16, "total": 53, "rows": 611238, "note": "EBAYSTOCK 4h: rule 41/120 (tsi)", "failed": [], "pct": 30.2, "updated": "2026-09-05T13:27:18Z"}

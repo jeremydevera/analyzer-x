@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 12, "total": 52, "rows": 355476, "note": "COOKIE 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 23.1, "updated": "2026-09-05T09:02:14Z"}
+{"shard": 19, "stage": "testing", "done": 13, "total": 52, "rows": 389436, "note": "CSPR 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 25.0, "updated": "2026-09-05T09:03:07Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 21, "total": 53, "rows": 493392, "note": "GRABSTOCK 1h: rule 30/120 (kama10)", "failed": [], "pct": 39.6, "updated": "2026-09-05T21:36:04Z"}
+{"shard": 5, "stage": "testing", "done": 22, "total": 53, "rows": 520618, "note": "HEMI 1h: rule 4/120 (trend50)", "failed": [], "pct": 41.5, "updated": "2026-09-05T21:36:51Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 1, "total": 52, "rows": 22308, "note": "ACH 1h: rule 33/120 (heikin)", "failed": [], "pct": 1.9, "updated": "2026-09-05T07:08:48Z"}
+{"shard": 17, "stage": "testing", "done": 2, "total": 52, "rows": 55396, "note": "AIOZ 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 3.8, "updated": "2026-09-05T07:09:36Z"}

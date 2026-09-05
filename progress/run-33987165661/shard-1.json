@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 33, "total": 53, "rows": 1239808, "note": "NOKSTOCK 30m: rule 35/120 (willr14)", "failed": [], "pct": 62.3, "updated": "2026-09-05T20:13:11Z"}
+{"shard": 1, "stage": "testing", "done": 38, "total": 53, "rows": 1287004, "note": "QTUM 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 71.7, "updated": "2026-09-05T20:14:02Z"}

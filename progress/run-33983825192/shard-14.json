@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 5, "total": 52, "rows": 93860, "note": "ASTSSTOCK 1h: rule 13/120 (pivot)", "failed": [], "pct": 9.6, "updated": "2026-09-05T18:24:31Z"}
+{"shard": 14, "stage": "testing", "done": 6, "total": 52, "rows": 126656, "note": "AXS 1h: rule 2/120 (mom15)", "failed": [], "pct": 11.5, "updated": "2026-09-05T18:25:18Z"}

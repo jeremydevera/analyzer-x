@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 46, "total": 53, "rows": 1705842, "note": "TESLA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 86.8, "updated": "2026-09-05T11:07:56Z"}
+{"shard": 0, "stage": "testing", "done": 46, "total": 53, "rows": 1740262, "note": "TESLA 30m: rule 33/120 (heikin)", "failed": [], "pct": 86.8, "updated": "2026-09-05T11:08:41Z"}

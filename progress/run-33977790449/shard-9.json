@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 24, "total": 53, "rows": 983164, "note": "INTW 30m: downloading candles", "failed": [], "pct": 45.3, "updated": "2026-09-05T17:08:31Z"}
+{"shard": 9, "stage": "testing", "done": 26, "total": 53, "rows": 1029704, "note": "KIOXIASTOCK 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 49.1, "updated": "2026-09-05T17:09:16Z"}

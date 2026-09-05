@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 32, "total": 53, "rows": 841816, "note": "NEO 1h: rule 3/120 (fade15)", "failed": [], "pct": 60.4, "updated": "2026-09-05T09:20:22Z"}
+{"shard": 6, "stage": "testing", "done": 32, "total": 53, "rows": 866016, "note": "NEO 1h: rule 115/120 (cf_diadx)", "failed": [], "pct": 60.4, "updated": "2026-09-05T09:21:07Z"}

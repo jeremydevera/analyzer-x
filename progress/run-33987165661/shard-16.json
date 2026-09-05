@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 14, "total": 52, "rows": 608400, "note": "DATA 30m: rule 2/120 (mom15)", "failed": [], "pct": 26.9, "updated": "2026-09-05T19:57:19Z"}
+{"shard": 16, "stage": "testing", "done": 15, "total": 52, "rows": 647060, "note": "DOLO 4h: rule 68/120 (dbltop)", "failed": [], "pct": 28.8, "updated": "2026-09-05T19:58:04Z"}

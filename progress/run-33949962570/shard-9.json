@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 7, "total": 53, "rows": 210122, "note": "BARD 4h: rule 43/120 (macddiv)", "failed": [], "pct": 13.2, "updated": "2026-09-05T06:34:00Z"}
+{"shard": 9, "stage": "testing", "done": 9, "total": 53, "rows": 266700, "note": "BOME 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 17.0, "updated": "2026-09-05T06:34:53Z"}

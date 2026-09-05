@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 21, "total": 53, "rows": 748398, "note": "GPS 4h: rule 13/120 (pivot)", "failed": [], "pct": 39.6, "updated": "2026-09-05T19:59:34Z"}
+{"shard": 4, "stage": "testing", "done": 21, "total": 53, "rows": 793498, "note": "GPS 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 39.6, "updated": "2026-09-05T20:00:19Z"}

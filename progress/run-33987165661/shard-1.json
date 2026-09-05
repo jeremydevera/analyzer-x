@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 17, "total": 53, "rows": 653900, "note": "ENPHSTOCK 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-05T19:51:21Z"}
+{"shard": 1, "stage": "testing", "done": 19, "total": 53, "rows": 693000, "note": "FLOW 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-05T19:52:16Z"}

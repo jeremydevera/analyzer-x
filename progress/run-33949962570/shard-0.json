@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 3, "total": 53, "rows": 76268, "note": "AJGSTOCK 4h: downloading candles", "failed": [], "pct": 5.7, "updated": "2026-09-05T06:31:36Z"}
+{"shard": 0, "stage": "testing", "done": 5, "total": 53, "rows": 126182, "note": "ARIA 4h: rule 1/120 (mom6)", "failed": [], "pct": 9.4, "updated": "2026-09-05T06:32:23Z"}

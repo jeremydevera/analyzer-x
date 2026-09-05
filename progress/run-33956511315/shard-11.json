@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 40, "total": 52, "rows": 1055390, "note": "SAPIEN 1h: rule 35/120 (willr14)", "failed": [], "pct": 76.9, "updated": "2026-09-05T09:21:01Z"}
+{"shard": 11, "stage": "testing", "done": 42, "total": 52, "rows": 1096476, "note": "SNOWSTOCK 1d: 191 bars, testing 120 rules", "failed": [], "pct": 80.8, "updated": "2026-09-05T09:21:46Z"}

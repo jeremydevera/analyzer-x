@@ -1203,6 +1203,18 @@ def trade_settings_post(payload: dict) -> dict:
     return {"ok": True, "changes_recorded": len(changes)}
 
 
+@app.post("/api/trade/losscap/reset")
+def trade_losscap_reset(body: dict) -> dict:
+    """The RESET CAP button: forgive today's counted loss, delete nothing."""
+    import tradingagents.auto_trader as at
+
+    if body.get("confirm") is not True:
+        raise HTTPException(400, "reset requires confirm=true")
+    got = at.reset_loss_cap()
+    got["ok"] = True
+    return got
+
+
 @app.post("/api/trade/record/reset")
 def trade_record_reset(body: dict) -> dict:
     """The RESET W/L button. Requires {"confirm": true}; archives, never

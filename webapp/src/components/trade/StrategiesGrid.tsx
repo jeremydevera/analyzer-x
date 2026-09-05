@@ -196,6 +196,23 @@ export default function StrategiesGrid() {
           </p>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          {/* "IF I CLICK IT FORGET THE PREVIOUS LOSS, YOU WILL ASSUME I
+              HAVE 0 LOSS AGAIN" (operator, 2026-09-05). A baseline, not a
+              deletion: the breaker restarts at zero, the history and the
+              today tiles keep the real figure. */}
+          <Button size="sm" variant="outline" disabled={busy}
+            onClick={async () => {
+              if (!window.confirm(
+                "Reset the loss-cap counter to 0?" + String.fromCharCode(10) +
+                "The loss stays in your history and on the today tiles - " +
+                "only the breaker forgets it. Live stays off until you " +
+                "tick it back on.")) return;
+              try {
+                const got = await tradeApi.lossCapReset();
+                setNote(`cap counter reset: forgave ${got.forgave.toFixed(2)} USDT, counting from 0 of ${got.limit}`);
+                load();
+              } catch (e) { setErr(String(e)); }
+            }}>RESET CAP</Button>
           <label className="flex flex-col text-theme-xs text-gray-500 dark:text-gray-400">account loss cap $ (0 = off)
             <input type="number" step="1" min={0} value={acctCap}
               onChange={(e) => { const v = Number(e.target.value); setAcctCap(v); mut((s) => { s.loss_limit = v; }); }}

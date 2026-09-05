@@ -2447,8 +2447,42 @@ def close_one(symbol: str, *, fx=None) -> dict:
     return rep
 
 
+def loss_cap_pnl(settings: dict | None = None) -> float:
+    """What the loss cap COUNTS: today's realized real PnL past the baseline.
+
+    The RESET CAP button (operator, 2026-09-05: "FORGET THE PREVIOUS LOSS,
+    YOU WILL ASSUME I HAVE 0 LOSS AGAIN") writes a baseline — "count from
+    here" — instead of deleting rows, so the history and the today tiles keep
+    showing the truth while the breaker restarts at zero. The baseline names
+    its DAY: yesterday's mark can never soften today's cap.
+    """
+    if settings is None:
+        settings = load_settings()
+    total = pnl_today(dry=False)["total"]
+    base = settings.get("loss_cap_baseline") or {}
+    if base.get("day") == time.strftime("%Y-%m-%d"):
+        return round(total - float(base.get("total") or 0.0), 2)
+    return total
+
+
+def reset_loss_cap() -> dict:
+    """The button: the cap counts from zero, nothing is deleted."""
+    settings = load_settings()
+    was = pnl_today(dry=False)["total"]
+    settings["loss_cap_baseline"] = {"day": time.strftime("%Y-%m-%d"),
+                                     "total": was}
+    save_settings(settings)
+    append_ledger({"action": "loss_cap_reset", "forgave": was,
+                   "dry_run": False})
+    logger.warning("LOSS CAP RESET: %.2f USDT of today's realized result is "
+                   "forgiven for the breaker — the history still shows it. "
+                   "The cap counts from 0 now.", was)
+    return {"forgave": round(was, 2), "counted_now": loss_cap_pnl(settings),
+            "limit": float(settings.get("loss_limit") or 0)}
+
+
 def loss_limit_hit(settings: dict | None = None) -> bool:
-    """True when today's realized bot PnL has fallen to −loss_limit or worse.
+    """True when the cap's counter has fallen to −loss_limit or worse.
 
     Realized only — open positions are already capped by their exchange-side
     stops, so the limit guards the day's cumulative bleed, not one trade.
@@ -2460,7 +2494,7 @@ def loss_limit_hit(settings: dict | None = None) -> bool:
         return False
     # REAL money only. A demo drawdown is not a reason to halt live trading,
     # and this breaker exists to protect the account, not the simulation.
-    return pnl_today(dry=False)["total"] <= -limit
+    return loss_cap_pnl(settings) <= -limit
 
 
 # ------------------------------------------------------------------ arming
@@ -2706,6 +2740,11 @@ def reset_record(books=("paper", "real")) -> dict:
         save_state(st)
     if was_running:
         start_runner()
+    if drop_real:
+        s2 = load_settings()
+        if s2.get("loss_cap_baseline"):
+            s2.pop("loss_cap_baseline", None)
+            save_settings(s2)
     append_ledger({"action": "record_reset", "books": list(books),
                    "removed": removed, "backup": backup,
                    "paper_positions_cleared": cleared})
@@ -4093,15 +4132,15 @@ def run_forever() -> None:
                 # restart the runner to get it back. Their words: "YOU WILL
                 # NEED TO SWITCH OFF THE LIVE TRADE HERE NO NEED TO STOP
                 # RUNNER ... DEMO TRADE SHOULD STILL WORK".
-                day = pnl_today(dry=False)
+                counted = loss_cap_pnl(settings)
                 limit = settings.get("loss_limit")
                 got = disarm_live(
-                    f"account loss cap: today's REAL trading is "
-                    f"{day['total']:+.2f} USDT against a cap of "
+                    f"account loss cap: the counter is at "
+                    f"{counted:+.2f} USDT against a cap of "
                     f"-{abs(float(limit or 0)):.2f} USDT")
                 if got:
                     append_ledger({"action": "loss_limit_stop",
-                                   "pnl_today": day["total"], "limit": limit,
+                                   "counted": counted, "limit": limit,
                                    "disarmed": got, "runner": "still running",
                                    "demo": "still trading"})
             slept = 0.0

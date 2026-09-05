@@ -898,6 +898,11 @@ export const tradeApi = {
   positions: () => get<PositionsPayload>("/api/trade/positions"),
   /** the RESET W/L button: archives the trade rows, never deletes them.
    *  Resetting the real book also resets today's loss-cap counter. */
+  /** the RESET CAP button: the loss cap counts from zero again; nothing is
+   *  deleted and the today tiles keep showing the real figure */
+  lossCapReset: () =>
+    post<{ ok: boolean; forgave: number; counted_now: number; limit: number }>(
+      "/api/trade/losscap/reset", { confirm: true }),
   recordReset: (books: ("paper" | "real")[]) =>
     post<{ ok: boolean; removed: number; backup: string;
       paper_positions_cleared: number; runner_restarted: boolean;

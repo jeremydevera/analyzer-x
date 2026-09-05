@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 42, "total": 52, "rows": 1640784, "note": "SOLV 30m: rule 39/120 (fisher)", "failed": [], "pct": 80.8, "updated": "2026-09-05T17:36:49Z"}
+{"shard": 18, "stage": "testing", "done": 42, "total": 52, "rows": 1656184, "note": "SOLV 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 80.8, "updated": "2026-09-05T17:37:35Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 8, "total": 53, "rows": 282428, "note": "BESTOCK 30m: rule 17/120 (atrbreak)", "failed": [], "pct": 15.1, "updated": "2026-09-05T19:42:16Z"}
+{"shard": 3, "stage": "testing", "done": 9, "total": 53, "rows": 309368, "note": "BMT 4h: rule 43/120 (macddiv)", "failed": [], "pct": 17.0, "updated": "2026-09-05T19:43:01Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 27, "total": 52, "rows": 1042078, "note": "LINEA 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 51.9, "updated": "2026-09-05T10:46:01Z"}
+{"shard": 13, "stage": "testing", "done": 28, "total": 52, "rows": 1055058, "note": "LYN 4h: rule 10/120 (sr_bounce)", "failed": [], "pct": 53.8, "updated": "2026-09-05T10:46:46Z"}

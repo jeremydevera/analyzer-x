@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 39, "total": 52, "rows": 1158586, "note": "ROBO 1h: rule 4/120 (trend50)", "failed": [], "pct": 75.0, "updated": "2026-09-05T09:28:48Z"}
+{"shard": 14, "stage": "testing", "done": 41, "total": 52, "rows": 1222326, "note": "SKHYSTOCK 1h: rule 71/120 (mfi14)", "failed": [], "pct": 78.8, "updated": "2026-09-05T09:29:33Z"}

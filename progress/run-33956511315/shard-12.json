@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 36, "total": 52, "rows": 1052298, "note": "POLYX 1h: rule 40/120 (crsi)", "failed": [], "pct": 69.2, "updated": "2026-09-05T09:19:55Z"}
+{"shard": 12, "stage": "testing", "done": 39, "total": 52, "rows": 1095432, "note": "ROAM 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 75.0, "updated": "2026-09-05T09:20:51Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 42, "total": 52, "rows": 1244720, "note": "SNXX 1h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 80.8, "updated": "2026-09-05T21:53:17Z"}
+{"shard": 14, "stage": "testing", "done": 46, "total": 52, "rows": 1315538, "note": "TOWNS 1d: 394 bars, testing 120 rules", "failed": [], "pct": 88.5, "updated": "2026-09-05T21:54:06Z"}

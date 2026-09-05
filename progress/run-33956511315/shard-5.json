@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 40, "total": 53, "rows": 1078206, "note": "SAGA 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-05T09:29:51Z"}
+{"shard": 5, "stage": "testing", "done": 40, "total": 53, "rows": 1089866, "note": "SAGA 1h: rule 47/120 (ibs)", "failed": [], "pct": 75.5, "updated": "2026-09-05T09:30:36Z"}

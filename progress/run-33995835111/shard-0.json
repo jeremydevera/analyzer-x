@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 24, "total": 53, "rows": 936668, "note": "ILV 30m: rule 58/120 (bos)", "failed": [], "pct": 45.3, "updated": "2026-09-05T23:13:38Z"}
+{"shard": 0, "stage": "testing", "done": 25, "total": 53, "rows": 950308, "note": "IRYS 4h: 1,707 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-05T23:14:26Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 43, "total": 52, "rows": 1294632, "note": "SPX500 1h: rule 23/120 (supertrend)", "failed": [], "pct": 82.7, "updated": "2026-09-05T07:44:32Z"}
+{"shard": 15, "stage": "testing", "done": 44, "total": 52, "rows": 1328820, "note": "SUN 1h: rule 1/120 (mom6)", "failed": [], "pct": 84.6, "updated": "2026-09-05T07:45:19Z"}

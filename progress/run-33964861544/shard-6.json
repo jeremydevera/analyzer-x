@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 17, "total": 53, "rows": 449034, "note": "ERA 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-05T12:14:05Z"}
+{"shard": 6, "stage": "testing", "done": 17, "total": 53, "rows": 464434, "note": "ERA 1h: rule 65/120 (doji)", "failed": [], "pct": 32.1, "updated": "2026-09-05T12:14:50Z"}

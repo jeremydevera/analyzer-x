@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 38, "total": 52, "rows": 1534494, "note": "RECALL 4h: 1,952 bars, testing 120 rules", "failed": [], "pct": 73.1, "updated": "2026-09-05T23:30:08Z"}
+{"shard": 15, "stage": "testing", "done": 38, "total": 52, "rows": 1559376, "note": "RECALL 30m: rule 2/120 (mom15)", "failed": [], "pct": 73.1, "updated": "2026-09-05T23:30:59Z"}

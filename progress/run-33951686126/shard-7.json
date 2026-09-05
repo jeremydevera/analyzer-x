@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 52, "total": 53, "rows": 1602372, "note": "YGG 1h: rule 36/120 (stochrsi)", "failed": [], "pct": 98.1, "updated": "2026-09-05T07:59:48Z"}
+{"shard": 7, "stage": "testing", "done": 53, "total": 53, "rows": 1637880, "note": "ZORA 1h: rule 16/120 (keltner)", "failed": [], "pct": 100.0, "updated": "2026-09-05T08:03:42Z"}

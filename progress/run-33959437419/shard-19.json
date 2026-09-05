@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 12, "total": 52, "rows": 448386, "note": "COOKIE 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 23.1, "updated": "2026-09-05T10:23:33Z"}
+{"shard": 19, "stage": "testing", "done": 12, "total": 52, "rows": 451906, "note": "COOKIE 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 23.1, "updated": "2026-09-05T10:24:19Z"}

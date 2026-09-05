@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 39, "total": 52, "rows": 945998, "note": "ROAM 1d: 394 bars, testing 120 rules", "failed": [], "pct": 75.0, "updated": "2026-09-05T08:28:21Z"}
+{"shard": 12, "stage": "testing", "done": 40, "total": 52, "rows": 982908, "note": "SATS 4h: rule 20/120 (stoch14)", "failed": [], "pct": 76.9, "updated": "2026-09-05T08:29:06Z"}

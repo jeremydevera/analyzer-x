@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 36, "total": 52, "rows": 1193008, "note": "POPMARTSTOCK 1h: 1,074 bars, testing 120 rules", "failed": [], "pct": 69.2, "updated": "2026-09-05T21:58:14Z"}
+{"shard": 16, "stage": "testing", "done": 40, "total": 52, "rows": 1268346, "note": "SCR 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 76.9, "updated": "2026-09-05T21:59:08Z"}

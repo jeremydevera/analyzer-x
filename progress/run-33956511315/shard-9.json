@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 28, "total": 53, "rows": 836556, "note": "LUMIA 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-05T09:16:46Z"}
+{"shard": 9, "stage": "testing", "done": 28, "total": 53, "rows": 848876, "note": "LUMIA 1h: rule 51/120 (orb)", "failed": [], "pct": 52.8, "updated": "2026-09-05T09:17:31Z"}

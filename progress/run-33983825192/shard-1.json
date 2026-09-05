@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 21, "total": 53, "rows": 617608, "note": "GOOGLSTOCK 1d: rule 3/120 (fade15)", "failed": [], "pct": 39.6, "updated": "2026-09-05T18:34:38Z"}
+{"shard": 1, "stage": "testing", "done": 23, "total": 53, "rows": 671740, "note": "HPESTOCK 1h: rule 30/120 (kama10)", "failed": [], "pct": 43.4, "updated": "2026-09-05T18:35:23Z"}

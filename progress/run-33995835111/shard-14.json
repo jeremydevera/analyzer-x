@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 11, "total": 52, "rows": 387142, "note": "CETUS 30m: rule 55/120 (nhigh50)", "failed": [], "pct": 21.2, "updated": "2026-09-05T22:41:34Z"}
+{"shard": 14, "stage": "testing", "done": 12, "total": 52, "rows": 401442, "note": "COFSTOCK 30m: downloading candles", "failed": [], "pct": 23.1, "updated": "2026-09-05T22:42:19Z"}

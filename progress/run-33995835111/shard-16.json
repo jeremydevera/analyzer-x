@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 2, "total": 52, "rows": 95740, "note": "AIOT 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-05T22:31:33Z"}
+{"shard": 16, "stage": "testing", "done": 3, "total": 52, "rows": 128140, "note": "AMDSTOCK 30m: 16,962 bars, testing 120 rules", "failed": [], "pct": 5.8, "updated": "2026-09-05T22:32:18Z"}

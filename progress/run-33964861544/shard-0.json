@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 43, "total": 53, "rows": 1278310, "note": "SOMI 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-05T12:35:57Z"}
+{"shard": 0, "stage": "testing", "done": 44, "total": 53, "rows": 1301102, "note": "SSV 1h: rule 43/120 (macddiv)", "failed": [], "pct": 83.0, "updated": "2026-09-05T12:36:42Z"}

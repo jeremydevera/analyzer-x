@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 24, "total": 52, "rows": 1009194, "note": "IO 30m: rule 118/120 (cf_stflip)", "failed": [], "pct": 46.2, "updated": "2026-09-05T20:05:14Z"}
+{"shard": 17, "stage": "testing", "done": 25, "total": 52, "rows": 1036034, "note": "KAIA 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 48.1, "updated": "2026-09-05T20:06:03Z"}

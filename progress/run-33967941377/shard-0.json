@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 17, "total": 53, "rows": 660148, "note": "ENJ 30m: rule 13/120 (pivot)", "failed": [], "pct": 32.1, "updated": "2026-09-05T13:44:23Z"}
+{"shard": 0, "stage": "testing", "done": 17, "total": 53, "rows": 669388, "note": "ENJ 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 32.1, "updated": "2026-09-05T13:45:09Z"}

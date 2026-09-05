@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 9, "total": 53, "rows": 382400, "note": "BNB 30m: rule 51/120 (orb)", "failed": [], "pct": 17.0, "updated": "2026-09-05T10:18:42Z"}
+{"shard": 4, "stage": "testing", "done": 9, "total": 53, "rows": 395380, "note": "BNB 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 17.0, "updated": "2026-09-05T10:19:28Z"}

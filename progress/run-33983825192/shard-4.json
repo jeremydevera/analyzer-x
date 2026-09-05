@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 47, "total": 53, "rows": 1449682, "note": "TRUST 1h: rule 2/120 (mom15)", "failed": [], "pct": 88.7, "updated": "2026-09-05T19:04:57Z"}
+{"shard": 4, "stage": "testing", "done": 48, "total": 53, "rows": 1475642, "note": "UB 1d: 358 bars, testing 120 rules", "failed": [], "pct": 90.6, "updated": "2026-09-05T19:05:49Z"}

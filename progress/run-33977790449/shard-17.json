@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 21, "total": 52, "rows": 866672, "note": "HAEDAL 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 40.4, "updated": "2026-09-05T17:04:26Z"}
+{"shard": 17, "stage": "testing", "done": 22, "total": 52, "rows": 893798, "note": "HOLO 30m: 17,245 bars, testing 120 rules", "failed": [], "pct": 42.3, "updated": "2026-09-05T17:05:17Z"}

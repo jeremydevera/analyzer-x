@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 12, "total": 53, "rows": 349856, "note": "CLANKER 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 22.6, "updated": "2026-09-05T09:07:18Z"}
+{"shard": 7, "stage": "testing", "done": 12, "total": 53, "rows": 362616, "note": "CLANKER 1h: rule 53/120 (squeeze)", "failed": [], "pct": 22.6, "updated": "2026-09-05T09:08:04Z"}

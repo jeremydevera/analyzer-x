@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 52, "total": 53, "rows": 1454488, "note": "XVS 1h: rule 36/120 (stochrsi)", "failed": [], "pct": 98.1, "updated": "2026-09-05T16:02:33Z"}
+{"shard": 3, "stage": "testing", "done": 53, "total": 53, "rows": 1487048, "note": "ZKC 1h: 8,522 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-05T16:03:21Z"}

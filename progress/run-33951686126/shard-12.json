@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 10, "total": 52, "rows": 285136, "note": "B 1h: rule 82/120 (cf_maobv)", "failed": [], "pct": 19.2, "updated": "2026-09-05T07:16:43Z"}
+{"shard": 12, "stage": "testing", "done": 11, "total": 52, "rows": 306388, "note": "CELO 1h: rule 3/120 (fade15)", "failed": [], "pct": 21.2, "updated": "2026-09-05T07:17:29Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 1, "total": 52, "rows": 0, "note": "ACU 4h: downloading candles", "failed": [], "pct": 1.9, "updated": "2026-09-05T16:25:23Z"}
+{"shard": 19, "stage": "testing", "done": 1, "total": 52, "rows": 27566, "note": "ACU 30m: rule 14/120 (bb20)", "failed": [], "pct": 1.9, "updated": "2026-09-05T16:26:08Z"}

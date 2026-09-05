@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 31, "total": 53, "rows": 721218, "note": "MSTRSTOCK 4h: rule 44/120 (elder)", "failed": [], "pct": 58.5, "updated": "2026-09-05T06:42:37Z"}
+{"shard": 5, "stage": "testing", "done": 34, "total": 53, "rows": 781476, "note": "ONE 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 64.2, "updated": "2026-09-05T06:43:27Z"}

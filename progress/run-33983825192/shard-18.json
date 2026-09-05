@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 6, "total": 52, "rows": 183590, "note": "A 1h: rule 73/120 (volspike)", "failed": [], "pct": 11.5, "updated": "2026-09-05T18:29:22Z"}
+{"shard": 18, "stage": "testing", "done": 7, "total": 52, "rows": 206958, "note": "BDX 1h: rule 54/120 (fractal5)", "failed": [], "pct": 13.5, "updated": "2026-09-05T18:30:07Z"}

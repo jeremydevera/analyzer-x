@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 9, "total": 53, "rows": 344960, "note": "BLUAI 30m: 15,316 bars, testing 120 rules", "failed": [], "pct": 17.0, "updated": "2026-09-05T13:26:22Z"}
+{"shard": 0, "stage": "testing", "done": 9, "total": 53, "rows": 348920, "note": "BLUAI 30m: rule 12/120 (donchian20)", "failed": [], "pct": 17.0, "updated": "2026-09-05T13:27:07Z"}

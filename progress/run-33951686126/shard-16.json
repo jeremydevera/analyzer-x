@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 9, "total": 52, "rows": 317168, "note": "BRL 1h: rule 22/120 (engulf)", "failed": [], "pct": 17.3, "updated": "2026-09-05T07:22:47Z"}
+{"shard": 16, "stage": "testing", "done": 10, "total": 52, "rows": 362180, "note": "CAP 1h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 19.2, "updated": "2026-09-05T07:23:32Z"}

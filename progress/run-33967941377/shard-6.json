@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 13, "total": 53, "rows": 457800, "note": "COW 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-05T13:24:08Z"}
+{"shard": 6, "stage": "testing", "done": 13, "total": 53, "rows": 462640, "note": "COW 30m: rule 16/120 (keltner)", "failed": [], "pct": 24.5, "updated": "2026-09-05T13:24:53Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 38, "total": 53, "rows": 993172, "note": "QXOSTOCK 1h: rule 76/120 (cf_mom)", "failed": [], "pct": 71.7, "updated": "2026-09-05T12:24:54Z"}
+{"shard": 3, "stage": "testing", "done": 40, "total": 53, "rows": 1041046, "note": "RVN 1h: rule 1/120 (mom6)", "failed": [], "pct": 75.5, "updated": "2026-09-05T12:25:42Z"}

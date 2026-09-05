@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 36, "total": 53, "rows": 1009554, "note": "PIPPIN 1h: rule 48/120 (prank)", "failed": [], "pct": 67.9, "updated": "2026-09-05T07:38:19Z"}
+{"shard": 2, "stage": "testing", "done": 37, "total": 53, "rows": 1036750, "note": "PROMPT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-05T07:39:09Z"}

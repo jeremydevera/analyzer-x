@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 16, "total": 52, "rows": 477980, "note": "EIGEN 1h: rule 20/120 (stoch14)", "failed": [], "pct": 30.8, "updated": "2026-09-05T07:18:53Z"}
+{"shard": 15, "stage": "testing", "done": 17, "total": 52, "rows": 499320, "note": "EUR 1d: 394 bars, testing 120 rules", "failed": [], "pct": 32.7, "updated": "2026-09-05T07:19:46Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 37, "total": 53, "rows": 960362, "note": "PROM 1h: rule 3/120 (fade15)", "failed": [], "pct": 69.8, "updated": "2026-09-05T12:24:09Z"}
+{"shard": 3, "stage": "testing", "done": 38, "total": 53, "rows": 993172, "note": "QXOSTOCK 1h: rule 76/120 (cf_mom)", "failed": [], "pct": 71.7, "updated": "2026-09-05T12:24:54Z"}

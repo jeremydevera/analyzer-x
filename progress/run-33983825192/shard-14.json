@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 51, "total": 52, "rows": 1516930, "note": "XNY 1h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-05T19:03:17Z"}
+{"shard": 14, "stage": "testing", "done": 52, "total": 52, "rows": 1536642, "note": "ZEN 1h: rule 20/120 (stoch14)", "failed": [], "pct": 100.0, "updated": "2026-09-05T19:04:03Z"}

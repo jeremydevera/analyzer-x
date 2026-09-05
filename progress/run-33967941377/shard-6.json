@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 46, "total": 53, "rows": 1604246, "note": "TIA 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 86.8, "updated": "2026-09-05T14:20:00Z"}
+{"shard": 6, "stage": "testing", "done": 47, "total": 53, "rows": 1635226, "note": "TRX 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 88.7, "updated": "2026-09-05T14:20:48Z"}

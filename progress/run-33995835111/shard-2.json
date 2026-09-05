@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 20, "total": 53, "rows": 669718, "note": "GBP 4h: 1,998 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-05T23:04:22Z"}
+{"shard": 2, "stage": "testing", "done": 20, "total": 53, "rows": 703378, "note": "GBP 30m: rule 29/120 (hull20)", "failed": [], "pct": 37.7, "updated": "2026-09-05T23:05:07Z"}

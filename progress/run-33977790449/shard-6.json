@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 50, "total": 53, "rows": 1785068, "note": "WDCSTOCK 30m: rule 51/120 (orb)", "failed": [], "pct": 94.3, "updated": "2026-09-05T17:45:31Z"}
+{"shard": 6, "stage": "testing", "done": 52, "total": 53, "rows": 1824408, "note": "YFI 4h: rule 12/120 (donchian20)", "failed": [], "pct": 98.1, "updated": "2026-09-05T17:46:16Z"}

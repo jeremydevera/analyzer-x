@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 47, "total": 52, "rows": 1385812, "note": "TUT 1h: rule 62/120 (ote)", "failed": [], "pct": 90.4, "updated": "2026-09-05T21:59:21Z"}
+{"shard": 15, "stage": "testing", "done": 48, "total": 52, "rows": 1409748, "note": "USDC 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 92.3, "updated": "2026-09-05T22:00:08Z"}

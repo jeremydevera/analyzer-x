@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 17, "total": 53, "rows": 596756, "note": "ENSO 30m: rule 70/120 (cmf20)", "failed": [], "pct": 32.1, "updated": "2026-09-05T16:56:13Z"}
+{"shard": 2, "stage": "testing", "done": 19, "total": 53, "rows": 617664, "note": "FLR 4h: rule 2/120 (mom15)", "failed": [], "pct": 35.8, "updated": "2026-09-05T16:56:58Z"}

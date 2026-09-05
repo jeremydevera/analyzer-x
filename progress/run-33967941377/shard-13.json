@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 12, "total": 52, "rows": 470056, "note": "COAI 30m: rule 33/120 (heikin)", "failed": [], "pct": 23.1, "updated": "2026-09-05T13:27:28Z"}
+{"shard": 13, "stage": "testing", "done": 12, "total": 52, "rows": 482656, "note": "COAI 30m: rule 97/120 (cf_ttm)", "failed": [], "pct": 23.1, "updated": "2026-09-05T13:28:13Z"}

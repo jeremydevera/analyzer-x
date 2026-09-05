@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 9, "total": 53, "rows": 322478, "note": "BNT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 17.0, "updated": "2026-09-05T10:15:21Z"}
+{"shard": 7, "stage": "testing", "done": 9, "total": 53, "rows": 350858, "note": "BNT 30m: rule 3/120 (fade15)", "failed": [], "pct": 17.0, "updated": "2026-09-05T10:16:10Z"}

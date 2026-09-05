@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 37, "total": 53, "rows": 970046, "note": "PROM 1h: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 69.8, "updated": "2026-09-05T21:47:21Z"}
+{"shard": 3, "stage": "testing", "done": 40, "total": 53, "rows": 1020810, "note": "RVN 1d: 394 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-05T21:48:17Z"}

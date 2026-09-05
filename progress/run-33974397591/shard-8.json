@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 8, "total": 53, "rows": 227922, "note": "BIIBSTOCK 1h: downloading candles", "failed": [], "pct": 15.1, "updated": "2026-09-05T15:26:40Z"}
+{"shard": 8, "stage": "testing", "done": 9, "total": 53, "rows": 252644, "note": "BOBA 1h: rule 33/120 (heikin)", "failed": [], "pct": 17.0, "updated": "2026-09-05T15:27:26Z"}

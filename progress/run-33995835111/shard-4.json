@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 6, "total": 53, "rows": 228600, "note": "AVAAI 30m: rule 4/120 (trend50)", "failed": [], "pct": 11.3, "updated": "2026-09-05T22:34:31Z"}
+{"shard": 4, "stage": "testing", "done": 6, "total": 53, "rows": 236740, "note": "AVAAI 30m: rule 41/120 (tsi)", "failed": [], "pct": 11.3, "updated": "2026-09-05T22:35:17Z"}

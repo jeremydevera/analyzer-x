@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 11, "total": 52, "rows": 520706, "note": "CGPT 30m: rule 47/120 (ibs)", "failed": [], "pct": 21.2, "updated": "2026-09-05T10:25:43Z"}
+{"shard": 17, "stage": "testing", "done": 11, "total": 52, "rows": 534566, "note": "CGPT 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 21.2, "updated": "2026-09-05T10:26:28Z"}

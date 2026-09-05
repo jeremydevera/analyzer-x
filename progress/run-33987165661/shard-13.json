@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 25, "total": 52, "rows": 930408, "note": "JPY 30m: rule 4/120 (trend50)", "failed": [], "pct": 48.1, "updated": "2026-09-05T20:07:31Z"}
+{"shard": 13, "stage": "testing", "done": 25, "total": 52, "rows": 949608, "note": "JPY 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 48.1, "updated": "2026-09-05T20:08:16Z"}

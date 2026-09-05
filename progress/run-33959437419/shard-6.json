@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 40, "total": 53, "rows": 1371292, "note": "SAHARA 30m: rule 85/120 (cf_triple)", "failed": [], "pct": 75.5, "updated": "2026-09-05T11:05:05Z"}
+{"shard": 6, "stage": "testing", "done": 41, "total": 53, "rows": 1407590, "note": "SHLD 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 77.4, "updated": "2026-09-05T11:05:50Z"}

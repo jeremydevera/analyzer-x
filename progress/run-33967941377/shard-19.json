@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 35, "total": 52, "rows": 1249046, "note": "PHA 30m: rule 1/120 (mom6)", "failed": [], "pct": 67.3, "updated": "2026-09-05T14:01:23Z"}
+{"shard": 19, "stage": "testing", "done": 35, "total": 52, "rows": 1254106, "note": "PHA 30m: rule 20/120 (stoch14)", "failed": [], "pct": 67.3, "updated": "2026-09-05T14:02:10Z"}

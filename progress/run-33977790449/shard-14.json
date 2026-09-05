@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 16, "total": 52, "rows": 567922, "note": "EGLD 30m: rule 33/120 (heikin)", "failed": [], "pct": 30.8, "updated": "2026-09-05T16:51:19Z"}
+{"shard": 14, "stage": "testing", "done": 16, "total": 52, "rows": 579802, "note": "EGLD 30m: rule 88/120 (cf_chan)", "failed": [], "pct": 30.8, "updated": "2026-09-05T16:52:04Z"}

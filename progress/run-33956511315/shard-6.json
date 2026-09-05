@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 23, "total": 53, "rows": 605542, "note": "HYPER 1h: rule 73/120 (volspike)", "failed": [], "pct": 43.4, "updated": "2026-09-05T09:12:19Z"}
+{"shard": 6, "stage": "testing", "done": 24, "total": 53, "rows": 629654, "note": "INJ 1h: rule 2/120 (mom15)", "failed": [], "pct": 45.3, "updated": "2026-09-05T09:13:07Z"}

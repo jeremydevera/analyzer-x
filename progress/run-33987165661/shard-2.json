@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 40, "total": 53, "rows": 1459352, "note": "RUNE 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-05T20:36:09Z"}
+{"shard": 2, "stage": "testing", "done": 43, "total": 53, "rows": 1504412, "note": "SONYSTOCK 30m: rule 21/120 (cci20)", "failed": [], "pct": 81.1, "updated": "2026-09-05T20:36:54Z"}

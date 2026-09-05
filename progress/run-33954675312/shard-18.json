@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 16, "total": 52, "rows": 392290, "note": "ENA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 30.8, "updated": "2026-09-05T08:21:55Z"}
+{"shard": 18, "stage": "testing", "done": 18, "total": 52, "rows": 447350, "note": "FLOCK 1d: 394 bars, testing 120 rules", "failed": [], "pct": 34.6, "updated": "2026-09-05T08:22:48Z"}

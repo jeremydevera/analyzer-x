@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 7, "total": 53, "rows": 261340, "note": "BAN 30m: rule 47/120 (ibs)", "failed": [], "pct": 13.2, "updated": "2026-09-05T16:33:49Z"}
+{"shard": 8, "stage": "testing", "done": 9, "total": 53, "rows": 288290, "note": "BOBA 4h: rule 39/120 (fisher)", "failed": [], "pct": 17.0, "updated": "2026-09-05T16:34:34Z"}

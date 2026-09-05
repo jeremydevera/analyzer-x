@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 10, "total": 53, "rows": 437780, "note": "BTC 30m: rule 63/120 (killzone)", "failed": [], "pct": 18.9, "updated": "2026-09-05T22:45:36Z"}
+{"shard": 4, "stage": "testing", "done": 11, "total": 53, "rows": 472870, "note": "CBRSSTOCK 30m: 5,462 bars, testing 120 rules", "failed": [], "pct": 20.8, "updated": "2026-09-05T22:46:22Z"}

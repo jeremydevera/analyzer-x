@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 12, "total": 52, "rows": 369328, "note": "COOKIE 1h: rule 76/120 (cf_mom)", "failed": [], "pct": 23.1, "updated": "2026-09-05T21:33:09Z"}
+{"shard": 19, "stage": "testing", "done": 13, "total": 52, "rows": 390440, "note": "CSPR 1h: rule 1/120 (mom6)", "failed": [], "pct": 25.0, "updated": "2026-09-05T21:33:54Z"}

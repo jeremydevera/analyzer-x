@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 47, "total": 53, "rows": 1850248, "note": "TRUST 30m: rule 61/120 (turtle)", "failed": [], "pct": 88.7, "updated": "2026-09-05T14:28:59Z"}
+{"shard": 4, "stage": "testing", "done": 48, "total": 53, "rows": 1865208, "note": "UB 4h: rule 3/120 (fade15)", "failed": [], "pct": 90.6, "updated": "2026-09-05T14:29:45Z"}

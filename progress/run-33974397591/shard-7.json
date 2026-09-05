@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 47, "total": 53, "rows": 1466306, "note": "TRY 1h: rule 54/120 (fractal5)", "failed": [], "pct": 88.7, "updated": "2026-09-05T15:58:45Z"}
+{"shard": 7, "stage": "testing", "done": 49, "total": 53, "rows": 1508966, "note": "VELO 1d: 394 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-05T15:59:34Z"}

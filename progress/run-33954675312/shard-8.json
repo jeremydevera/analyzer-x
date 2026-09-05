@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 29, "total": 53, "rows": 537792, "note": "MEGA 1d: 318 bars, testing 120 rules", "failed": [], "pct": 54.7, "updated": "2026-09-05T08:23:28Z"}
+{"shard": 8, "stage": "testing", "done": 32, "total": 53, "rows": 571276, "note": "NETSTOCK 4h: downloading candles", "failed": [], "pct": 60.4, "updated": "2026-09-05T08:24:13Z"}

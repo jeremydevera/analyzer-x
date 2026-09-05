@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 2, "total": 53, "rows": 86640, "note": "ADA 30m: rule 43/120 (macddiv)", "failed": [], "pct": 3.8, "updated": "2026-09-05T10:03:52Z"}
+{"shard": 0, "stage": "testing", "done": 3, "total": 53, "rows": 101840, "note": "AJGSTOCK 30m: 1,769 bars, testing 120 rules", "failed": [], "pct": 5.7, "updated": "2026-09-05T10:04:38Z"}

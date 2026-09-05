@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 1, "total": 53, "rows": 50160, "note": "1000BTT 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-05T13:09:22Z"}
+{"shard": 4, "stage": "testing", "done": 3, "total": 53, "rows": 81760, "note": "ALABSTOCK 30m: rule 40/120 (crsi)", "failed": [], "pct": 5.7, "updated": "2026-09-05T13:10:07Z"}

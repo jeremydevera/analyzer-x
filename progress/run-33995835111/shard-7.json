@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 47, "total": 53, "rows": 1845038, "note": "TRY 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 88.7, "updated": "2026-09-05T23:40:32Z"}
+{"shard": 7, "stage": "testing", "done": 48, "total": 53, "rows": 1863278, "note": "UNHSTOCK 4h: 1,712 bars, testing 120 rules", "failed": [], "pct": 90.6, "updated": "2026-09-05T23:41:18Z"}

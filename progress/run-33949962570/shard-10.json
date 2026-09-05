@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 43, "total": 53, "rows": 1016754, "note": "SPCXSTOCK 1d: rule 9/120 (fib382)", "failed": [], "pct": 81.1, "updated": "2026-09-05T06:43:52Z"}
+{"shard": 10, "stage": "testing", "done": 44, "total": 53, "rows": 1077034, "note": "STRK 4h: rule 55/120 (nhigh50)", "failed": [], "pct": 83.0, "updated": "2026-09-05T06:44:37Z"}

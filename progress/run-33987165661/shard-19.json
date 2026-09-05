@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 51, "total": 52, "rows": 1947072, "note": "XPT 30m: rule 3/120 (fade15)", "failed": [], "pct": 98.1, "updated": "2026-09-05T21:01:47Z"}
+{"shard": 19, "stage": "testing", "done": 52, "total": 52, "rows": 1984512, "note": "ZHONGJISTOCK 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-05T21:02:32Z"}

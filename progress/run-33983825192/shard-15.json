@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 2, "total": 52, "rows": 29160, "note": "AIN 1h: rule 3/120 (fade15)", "failed": [], "pct": 3.8, "updated": "2026-09-05T18:23:07Z"}
+{"shard": 15, "stage": "testing", "done": 2, "total": 52, "rows": 47200, "note": "AIN 1h: rule 86/120 (cf_triple_l1)", "failed": [], "pct": 3.8, "updated": "2026-09-05T18:23:52Z"}

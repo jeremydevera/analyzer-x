@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 13, "total": 53, "rows": 439316, "note": "COW 4h: rule 3/120 (fade15)", "failed": [], "pct": 24.5, "updated": "2026-09-05T19:36:20Z"}
+{"shard": 6, "stage": "testing", "done": 13, "total": 53, "rows": 468576, "note": "COW 30m: rule 16/120 (keltner)", "failed": [], "pct": 24.5, "updated": "2026-09-05T19:37:05Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 43, "total": 52, "rows": 1561618, "note": "SPK 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 82.7, "updated": "2026-09-05T13:55:50Z"}
+{"shard": 12, "stage": "testing", "done": 43, "total": 52, "rows": 1568438, "note": "SPK 30m: rule 25/120 (ichimoku)", "failed": [], "pct": 82.7, "updated": "2026-09-05T13:56:35Z"}

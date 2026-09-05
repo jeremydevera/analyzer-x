@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 16, "total": 53, "rows": 625884, "note": "EBAYSTOCK 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 30.2, "updated": "2026-09-05T22:49:38Z"}
+{"shard": 9, "stage": "testing", "done": 17, "total": 53, "rows": 660244, "note": "ETC 30m: rule 1/120 (mom6)", "failed": [], "pct": 32.1, "updated": "2026-09-05T22:50:31Z"}

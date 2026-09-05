@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 8, "total": 53, "rows": 212098, "note": "BEL 1h: rule 25/120 (ichimoku)", "failed": [], "pct": 15.1, "updated": "2026-09-05T15:24:14Z"}
+{"shard": 1, "stage": "testing", "done": 9, "total": 53, "rows": 232558, "note": "BLUR 1d: 394 bars, testing 120 rules", "failed": [], "pct": 17.0, "updated": "2026-09-05T15:25:04Z"}

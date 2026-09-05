@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 8, "total": 52, "rows": 307698, "note": "BIRB 30m: rule 4/120 (trend50)", "failed": [], "pct": 15.4, "updated": "2026-09-05T13:20:51Z"}
+{"shard": 11, "stage": "testing", "done": 8, "total": 52, "rows": 323318, "note": "BIRB 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 15.4, "updated": "2026-09-05T13:21:37Z"}

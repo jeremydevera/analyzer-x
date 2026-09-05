@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 11, "total": 52, "rows": 369686, "note": "CHF 4h: 1,998 bars, testing 120 rules", "failed": [], "pct": 21.2, "updated": "2026-09-05T16:41:20Z"}
+{"shard": 19, "stage": "testing", "done": 11, "total": 52, "rows": 412146, "note": "CHF 30m: rule 71/120 (mfi14)", "failed": [], "pct": 21.2, "updated": "2026-09-05T16:42:05Z"}

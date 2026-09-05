@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 25, "total": 52, "rows": 755068, "note": "JTO 1h: rule 47/120 (ibs)", "failed": [], "pct": 48.1, "updated": "2026-09-05T15:38:47Z"}
+{"shard": 15, "stage": "testing", "done": 27, "total": 52, "rows": 810390, "note": "LINSTOCK 1h: rule 67/120 (pinbar)", "failed": [], "pct": 51.9, "updated": "2026-09-05T15:39:32Z"}

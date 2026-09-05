@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 26, "total": 53, "rows": 960720, "note": "KAVA 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-05T23:01:41Z"}
+{"shard": 1, "stage": "testing", "done": 26, "total": 53, "rows": 966440, "note": "KAVA 30m: rule 20/120 (stoch14)", "failed": [], "pct": 49.1, "updated": "2026-09-05T23:02:27Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 53, "total": 53, "rows": 1957110, "note": "ZIL 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-05T23:46:55Z"}
+{"shard": 1, "stage": "testing", "done": 53, "total": 53, "rows": 1984390, "note": "ZIL 30m: rule 2/120 (mom15)", "failed": [], "pct": 100.0, "updated": "2026-09-05T23:47:48Z"}

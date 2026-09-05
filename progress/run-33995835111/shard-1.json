@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 28, "total": 53, "rows": 1061496, "note": "LONGXIA 30m: rule 1/120 (mom6)", "failed": [], "pct": 52.8, "updated": "2026-09-05T23:07:04Z"}
+{"shard": 1, "stage": "testing", "done": 28, "total": 53, "rows": 1075256, "note": "LONGXIA 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 52.8, "updated": "2026-09-05T23:07:49Z"}

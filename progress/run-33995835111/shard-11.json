@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 3, "total": 52, "rows": 122360, "note": "ALPINE 30m: rule 83/120 (cf_maobv_l1)", "failed": [], "pct": 5.8, "updated": "2026-09-05T22:31:33Z"}
+{"shard": 11, "stage": "testing", "done": 5, "total": 52, "rows": 152988, "note": "ASTEROID 30m: 6,786 bars, testing 120 rules", "failed": [], "pct": 9.6, "updated": "2026-09-05T22:32:21Z"}

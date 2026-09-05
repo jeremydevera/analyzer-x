@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 27, "total": 53, "rows": 1043944, "note": "KSM 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-05T13:47:33Z"}
+{"shard": 1, "stage": "testing", "done": 28, "total": 53, "rows": 1067300, "note": "LONGXIA 30m: rule 4/120 (trend50)", "failed": [], "pct": 52.8, "updated": "2026-09-05T13:48:19Z"}

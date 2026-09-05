@@ -1514,7 +1514,7 @@ export default function StrategiesPanel() {
               <Table>
                 <TableHeader className="sticky top-0 bg-white dark:bg-gray-900">
                   <TableRow>
-                    {["opened", "closed", "side", "closed by", "entry", "exit", "rung", "margin $", "funding $", "W/L", "pnl $", "running $"].map((h) => (
+                    {["opened", "closed", "held", "side", "closed by", "entry", "exit", "rung", "margin $", "funding $", "W/L", "pnl $", "running $"].map((h) => (
                       <TableCell key={h} isHeader className="px-3 py-2 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400">{h}</TableCell>
                     ))}
                   </TableRow>
@@ -1524,6 +1524,10 @@ export default function StrategiesPanel() {
                     <TableRow key={i}>
                       <TableCell className="px-3 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{t["entry time"]}</TableCell>
                       <TableCell className="px-3 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{t["exit time"]}</TableCell>
+                      {/* how long it was held — the same words, from the same
+                          formatter, as the live Positions table's `held`
+                          column (operator, Sep 05, 2026) */}
+                      <TableCell className="px-3 py-1.5 text-theme-xs text-gray-600 dark:text-gray-300">{t.held ?? "—"}</TableCell>
                       <TableCell className="px-3 py-1.5 text-theme-xs text-gray-700 dark:text-gray-300">{t.side}</TableCell>
                       <TableCell className="px-3 py-1.5 text-theme-xs font-medium text-gray-700 dark:text-gray-300">{t.why}</TableCell>
                       <TableCell className="px-3 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{t.entry}</TableCell>

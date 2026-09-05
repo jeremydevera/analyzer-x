@@ -109,6 +109,13 @@ export interface StrategyRow {
 export interface TradeLogRow {
   "entry time": string;
   "exit time": string;
+  /** How long it was held, in the words the live Positions table uses —
+   *  "3d 4h", "5h 12m", "42m". A trade that exits inside its own entry bar
+   *  reads "<1h" (the frame), because the candles cannot say where in the bar
+   *  the barrier was hit and "0m" would claim it closed instantly. */
+  held?: string;
+  /** the exact bar-to-bar seconds behind `held`; 0 for a same-bar exit */
+  held_s?: number;
   side: string;
   why: string;
   entry: number;

@@ -64,8 +64,9 @@ def test_resolve_pending_lives_in_the_pending_tab():
 
 def test_the_github_errors_reach_the_errors_tab():
     """The backend half: cloud failures are in the SAME list the tab maps."""
-    from tradingagents import backtest_logs as bl
     import inspect
+
+    from tradingagents import backtest_logs as bl
 
     s = inspect.getsource(bl._cloud_errors)
     assert "GitHub shard" in s

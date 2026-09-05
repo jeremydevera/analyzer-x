@@ -1858,6 +1858,45 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
 
     from tradingagents import positions_view as _pv
 
+    def _held_s(a: int, b: int) -> int:
+        """Seconds between two BAR indexes — entry bar to exit bar."""
+        try:
+            return max(0, int(_pd.Timestamp(_dates[b]).timestamp()
+                              - _pd.Timestamp(_dates[a]).timestamp()))
+        except Exception:                                      # noqa: BLE001
+            return 0
+
+    # ONE bar's length, from the candles themselves — no interval string to
+    # get wrong, and it is right for a 15m frame and a 1d one alike.
+    try:
+        _bar_s = max(1, int(_pd.Timestamp(_dates[1]).timestamp()
+                            - _pd.Timestamp(_dates[0]).timestamp()))
+    except Exception:                                          # noqa: BLE001
+        _bar_s = 0
+
+    def _bar_label(sec: int) -> str:
+        """"15m" / "1h" / "4h" / "1d" — the frame, not a duration."""
+        if sec and sec % 86400 == 0:
+            return f"{sec // 86400}d"
+        if sec and sec % 3600 == 0:
+            return f"{sec // 3600}h"
+        return f"{max(1, sec // 60)}m"
+
+    def _held(a: int, b: int) -> str:
+        """"3d 4h" / "5h 12m" / "42m" — `positions_view.fmt_age`, the same
+        function the live Positions table's `held` column uses.
+
+        EXCEPT for a trade that exits inside its own entry bar, which is 57%
+        of them on a 1h grid: bar-to-bar arithmetic makes that ZERO, and "0m"
+        claims a trade closed the instant it opened. The candles cannot say
+        where in the bar the stop or target was hit, so the honest label is an
+        upper bound — "<1h" on an hourly frame (label-must-match-data).
+        """
+        secs = _held_s(a, b)
+        if secs <= 0 and _bar_s:
+            return f"<{_bar_label(_bar_s)}"
+        return _pv.fmt_age(secs)
+
     def stamp(k: int) -> str:
         v = _stamp_cache.get(k)
         if v is None:
@@ -2031,6 +2070,15 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                         "tp %": round(x["tp"] * 100, 4),
                         "sl %": round(x["sl"] * 100, 4),
                         "why": x["why"], "exit time": stamp(x["bar"]),
+                        # the slice's own hold, same formatter as the row's,
+                        # plus the BAR it left on. Ordering two slices by
+                        # their printed times compares strings, and
+                        # "Jan 01, 2026 9:00am" < "...10:00am" is False —
+                        # which is what tests/test_sliced_exits.py had been
+                        # asserting since the date format landed.
+                        "exit_bar": int(x["bar"]),
+                        "held": _held(_entry_bar, x["bar"]),
+                        "held_s": _held_s(_entry_bar, x["bar"]),
                         "exit": round(entry * (1 + s * x["out"]), 6)
                                 if x["why"] != "END" else round(close[-1], 6),
                         "funding $": round(x["fund"], 4),
@@ -2112,6 +2160,14 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
             i = j + 1             # entry price on every following bar
             continue
         log.append({"entry time": stamp(i + 1), "exit time": stamp(j),
+                    # HOW LONG IT WAS HELD, in the same words the live
+                    # Positions table uses (operator, Sep 05, 2026: "can you
+                    # show how many hours/days the trade was hold just like
+                    # the auto trade open trades"). Same formatter, so a
+                    # backtested trade and an open one cannot describe the
+                    # same duration differently — this repo has paid five
+                    # times for two implementations of one format.
+                    "held": _held(i + 1, j), "held_s": _held_s(i + 1, j),
                     "side": "LONG" if s > 0 else "SHORT", "step": step + 1,
                     "margin $": margin, "leverage": f"{lev}x",
                     "notional $": round(notional, 2),

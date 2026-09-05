@@ -80,7 +80,12 @@ def test_the_two_slices_exit_at_their_own_targets():
     assert r["trades"] == 1
     det = r["log"][0]["slices"]
     assert [d["why"] for d in det] == ["TP", "TP"]
-    assert det[0]["exit time"] < det[1]["exit time"], "A exits before B"
+    # ORDER BY THE BAR, not by the printed stamp. Comparing the strings put
+    # "Jan 01, 2026 9:00am" after "Jan 01, 2026 10:00am", because "9" > "1" —
+    # so this asserted the opposite of what it reads as, and had been failing
+    # ever since the date format landed.
+    assert det[0]["exit_bar"] < det[1]["exit_bar"], "A exits before B"
+    assert det[0]["held_s"] < det[1]["held_s"], "and was held for less time"
     # 0.5 x 2% + 0.5 x 5% of $100 notional = $3.50
     assert r["profit"] == pytest.approx(3.50, abs=1e-9)
     assert sum(d["pnl $"] for d in det) == pytest.approx(r["log"][0]["pnl $"],

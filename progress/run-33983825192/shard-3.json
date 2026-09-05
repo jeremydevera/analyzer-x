@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 50, "total": 53, "rows": 1362476, "note": "WAXP 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 94.3, "updated": "2026-09-05T19:04:22Z"}
+{"shard": 3, "stage": "testing", "done": 50, "total": 53, "rows": 1381088, "note": "WAXP 1h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 94.3, "updated": "2026-09-05T19:05:07Z"}

@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 47, "total": 53, "rows": 1559426, "note": "TROLLSOL 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 88.7, "updated": "2026-09-05T23:47:04Z"}
+{"shard": 2, "stage": "testing", "done": 48, "total": 53, "rows": 1589346, "note": "UAI 30m: 14,569 bars, testing 120 rules", "failed": [], "pct": 90.6, "updated": "2026-09-05T23:47:53Z"}

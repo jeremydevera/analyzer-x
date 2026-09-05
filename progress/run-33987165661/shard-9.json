@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 20, "total": 53, "rows": 796048, "note": "GGLL 30m: rule 29/120 (hull20)", "failed": [], "pct": 37.7, "updated": "2026-09-05T19:59:47Z"}
+{"shard": 9, "stage": "testing", "done": 21, "total": 53, "rows": 837088, "note": "GRT 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-05T20:00:37Z"}

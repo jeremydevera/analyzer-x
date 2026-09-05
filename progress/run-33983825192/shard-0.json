@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 18, "total": 53, "rows": 563044, "note": "EWZ 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 34.0, "updated": "2026-09-05T18:42:54Z"}
+{"shard": 0, "stage": "testing", "done": 20, "total": 53, "rows": 585008, "note": "GALA 1h: rule 29/120 (hull20)", "failed": [], "pct": 37.7, "updated": "2026-09-05T18:43:39Z"}

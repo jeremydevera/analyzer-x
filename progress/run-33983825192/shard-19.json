@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 43, "total": 52, "rows": 1294924, "note": "SQQQ 1h: 1,959 bars, testing 120 rules", "failed": [], "pct": 82.7, "updated": "2026-09-05T19:04:56Z"}
+{"shard": 19, "stage": "testing", "done": 44, "total": 52, "rows": 1333138, "note": "SWARMS 1h: rule 1/120 (mom6)", "failed": [], "pct": 84.6, "updated": "2026-09-05T19:05:43Z"}

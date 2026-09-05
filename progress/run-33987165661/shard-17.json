@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 29, "total": 52, "rows": 1212940, "note": "METIS 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 55.8, "updated": "2026-09-05T20:12:24Z"}
+{"shard": 17, "stage": "testing", "done": 30, "total": 52, "rows": 1231200, "note": "MOVR 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 57.7, "updated": "2026-09-05T20:13:22Z"}

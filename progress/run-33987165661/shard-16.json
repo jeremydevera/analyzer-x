@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 35, "total": 52, "rows": 1509830, "note": "PEPE 30m: rule 20/120 (stoch14)", "failed": [], "pct": 67.3, "updated": "2026-09-05T20:41:48Z"}
+{"shard": 16, "stage": "testing", "done": 35, "total": 52, "rows": 1521030, "note": "PEPE 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 67.3, "updated": "2026-09-05T20:42:34Z"}

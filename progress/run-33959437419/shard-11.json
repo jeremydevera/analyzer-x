@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 28, "total": 52, "rows": 957602, "note": "LUNC 30m: rule 20/120 (stoch14)", "failed": [], "pct": 53.8, "updated": "2026-09-05T10:37:04Z"}
+{"shard": 11, "stage": "testing", "done": 28, "total": 52, "rows": 968602, "note": "LUNC 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 53.8, "updated": "2026-09-05T10:37:50Z"}

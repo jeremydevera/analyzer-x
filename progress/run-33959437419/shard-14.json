@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 1, "total": 52, "rows": 26180, "note": "AAVE 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 1.9, "updated": "2026-09-05T10:00:41Z"}
+{"shard": 14, "stage": "testing", "done": 1, "total": 52, "rows": 30580, "note": "AAVE 30m: rule 16/120 (keltner)", "failed": [], "pct": 1.9, "updated": "2026-09-05T10:01:27Z"}

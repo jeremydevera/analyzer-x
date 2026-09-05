@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 42, "total": 52, "rows": 1620892, "note": "SOLV 30m: rule 2/120 (mom15)", "failed": [], "pct": 80.8, "updated": "2026-09-05T14:25:44Z"}
+{"shard": 18, "stage": "testing", "done": 42, "total": 52, "rows": 1628152, "note": "SOLV 30m: rule 33/120 (heikin)", "failed": [], "pct": 80.8, "updated": "2026-09-05T14:26:29Z"}

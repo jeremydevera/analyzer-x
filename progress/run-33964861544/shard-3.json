@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 53, "total": 53, "rows": 1509458, "note": "ZKC 1h: 8,518 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-05T12:38:09Z"}
+{"shard": 3, "stage": "testing", "done": 53, "total": 53, "rows": 1536078, "note": "ZKC 1h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-05T12:38:54Z"}

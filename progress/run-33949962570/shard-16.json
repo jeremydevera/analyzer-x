@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 43, "total": 52, "rows": 1187110, "note": "SPX 1d: 394 bars, testing 120 rules", "failed": [], "pct": 82.7, "updated": "2026-09-05T06:52:41Z"}
+{"shard": 16, "stage": "testing", "done": 44, "total": 52, "rows": 1226270, "note": "SUPER 1d: 394 bars, testing 120 rules", "failed": [], "pct": 84.6, "updated": "2026-09-05T06:53:38Z"}

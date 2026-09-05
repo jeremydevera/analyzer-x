@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 30, "total": 53, "rows": 788758, "note": "MINA 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 56.6, "updated": "2026-09-05T09:18:17Z"}
+{"shard": 2, "stage": "testing", "done": 30, "total": 53, "rows": 804158, "note": "MINA 1h: rule 65/120 (doji)", "failed": [], "pct": 56.6, "updated": "2026-09-05T09:19:02Z"}

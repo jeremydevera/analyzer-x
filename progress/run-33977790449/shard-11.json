@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 30, "total": 52, "rows": 1025690, "note": "MONAD 30m: rule 61/120 (turtle)", "failed": [], "pct": 57.7, "updated": "2026-09-05T17:04:14Z"}
+{"shard": 11, "stage": "testing", "done": 32, "total": 52, "rows": 1061368, "note": "NFLXSTOCK 4h: rule 66/120 (soldiers)", "failed": [], "pct": 61.5, "updated": "2026-09-05T17:04:59Z"}

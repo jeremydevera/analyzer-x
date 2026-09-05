@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 33, "total": 53, "rows": 1100318, "note": "NPC 4h: 1,459 bars, testing 120 rules", "failed": [], "pct": 62.3, "updated": "2026-09-05T10:55:18Z"}
+{"shard": 5, "stage": "testing", "done": 33, "total": 53, "rows": 1120278, "note": "NPC 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 62.3, "updated": "2026-09-05T10:56:03Z"}

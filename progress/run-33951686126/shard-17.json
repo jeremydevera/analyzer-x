@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 15, "total": 52, "rows": 491802, "note": "DOOD 1h: rule 20/120 (stoch14)", "failed": [], "pct": 28.8, "updated": "2026-09-05T07:24:25Z"}
+{"shard": 17, "stage": "testing", "done": 17, "total": 52, "rows": 512922, "note": "EWJ 1d: 172 bars, testing 120 rules", "failed": [], "pct": 32.7, "updated": "2026-09-05T07:25:10Z"}

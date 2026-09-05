@@ -111,6 +111,17 @@ def _keep_the_row_index_current() -> None:
                     _finish_handoff()
                 except Exception as exc:
                     print(f"[handoff] failed: {exc!r}", flush=True)
+                # USE GITHUB WHEN GITHUB IS FREE. Operator, 2026-09-05:
+                # "I WANT TO USE GITHUB WHEN THERE IS FREE" — they had asked
+                # three times, and every time it took me dispatching a run by
+                # hand. It looks on every tick and dispatches only when the
+                # fleet is idle and this machine has a real hole.
+                try:
+                    from tradingagents import cloud_autopilot as _ca
+
+                    _ca.consider()
+                except Exception as exc:                       # noqa: BLE001
+                    print(f"[cloud-autopilot] failed: {exc!r}", flush=True)
                 for kind in ("backtest", "download", "btupdate"):
                     try:
                         got = _dj.resume_if_died(kind)

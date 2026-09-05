@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 44, "total": 53, "rows": 1490442, "note": "STBL 30m: rule 22/120 (engulf)", "failed": [], "pct": 83.0, "updated": "2026-09-05T11:13:00Z"}
+{"shard": 3, "stage": "testing", "done": 44, "total": 53, "rows": 1502102, "note": "STBL 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 83.0, "updated": "2026-09-05T11:13:46Z"}

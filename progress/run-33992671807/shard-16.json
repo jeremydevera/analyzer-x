@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 48, "total": 52, "rows": 1538532, "note": "USELESS 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 92.3, "updated": "2026-09-05T22:07:39Z"}
+{"shard": 16, "stage": "testing", "done": 51, "total": 52, "rows": 1593128, "note": "XPD 1h: rule 25/120 (ichimoku)", "failed": [], "pct": 98.1, "updated": "2026-09-05T22:08:24Z"}

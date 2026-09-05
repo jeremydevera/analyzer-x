@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 22, "total": 52, "rows": 948540, "note": "HNT 30m: rule 98/120 (cf_ttm_l1)", "failed": [], "pct": 42.3, "updated": "2026-09-05T17:07:43Z"}
+{"shard": 16, "stage": "testing", "done": 23, "total": 52, "rows": 976348, "note": "ICX 4h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 44.2, "updated": "2026-09-05T17:08:28Z"}

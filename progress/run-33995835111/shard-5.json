@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 28, "total": 53, "rows": 918858, "note": "LRC 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 52.8, "updated": "2026-09-05T23:01:38Z"}
+{"shard": 5, "stage": "testing", "done": 29, "total": 53, "rows": 950198, "note": "MAVIA 4h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 54.7, "updated": "2026-09-05T23:02:23Z"}

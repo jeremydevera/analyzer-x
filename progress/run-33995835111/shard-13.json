@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 51, "total": 52, "rows": 1942066, "note": "XMR 30m: rule 4/120 (trend50)", "failed": [], "pct": 98.1, "updated": "2026-09-05T23:47:11Z"}
+{"shard": 13, "stage": "testing", "done": 51, "total": 52, "rows": 1951086, "note": "XMR 30m: rule 45/120 (zscore20)", "failed": [], "pct": 98.1, "updated": "2026-09-05T23:47:56Z"}

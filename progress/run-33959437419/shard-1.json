@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 47, "total": 53, "rows": 1705736, "note": "TRIA 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 88.7, "updated": "2026-09-05T11:04:33Z"}
+{"shard": 1, "stage": "testing", "done": 48, "total": 53, "rows": 1736096, "note": "T 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 90.6, "updated": "2026-09-05T11:05:26Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 28, "total": 53, "rows": 853086, "note": "LTC 1h: rule 13/120 (pivot)", "failed": [], "pct": 52.8, "updated": "2026-09-05T09:26:05Z"}
+{"shard": 7, "stage": "testing", "done": 29, "total": 53, "rows": 875746, "note": "MCDSTOCK 1d: 394 bars, testing 120 rules", "failed": [], "pct": 54.7, "updated": "2026-09-05T09:26:52Z"}

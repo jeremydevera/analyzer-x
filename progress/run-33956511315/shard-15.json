@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 22, "total": 52, "rows": 645740, "note": "HMSTR 1d: 394 bars, testing 120 rules", "failed": [], "pct": 42.3, "updated": "2026-09-05T09:05:03Z"}
+{"shard": 15, "stage": "testing", "done": 22, "total": 52, "rows": 676540, "note": "HMSTR 1h: rule 72/120 (force13)", "failed": [], "pct": 42.3, "updated": "2026-09-05T09:05:48Z"}

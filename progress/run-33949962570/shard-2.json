@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 20, "total": 53, "rows": 504150, "note": "GBP 4h: 1,998 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-05T06:38:19Z"}
+{"shard": 2, "stage": "testing", "done": 25, "total": 53, "rows": 570414, "note": "IWM 1d: downloading candles", "failed": [], "pct": 47.2, "updated": "2026-09-05T06:39:04Z"}

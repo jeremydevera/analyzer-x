@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 28, "total": 53, "rows": 612010, "note": "LSK 1d: 394 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-05T08:25:15Z"}
+{"shard": 6, "stage": "testing", "done": 29, "total": 53, "rows": 652006, "note": "MAV 1d: 394 bars, testing 120 rules", "failed": [], "pct": 54.7, "updated": "2026-09-05T08:26:03Z"}

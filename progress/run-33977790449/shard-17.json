@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 11, "total": 52, "rows": 526754, "note": "CGPT 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 21.2, "updated": "2026-09-05T16:50:27Z"}
+{"shard": 17, "stage": "testing", "done": 12, "total": 52, "rows": 557180, "note": "COLLECT 30m: 12,012 bars, testing 120 rules", "failed": [], "pct": 23.1, "updated": "2026-09-05T16:51:17Z"}

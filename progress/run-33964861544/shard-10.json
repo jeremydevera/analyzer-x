@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 51, "total": 53, "rows": 1419378, "note": "XLM 1h: rule 29/120 (hull20)", "failed": [], "pct": 96.2, "updated": "2026-09-05T12:39:54Z"}
+{"shard": 10, "stage": "testing", "done": 52, "total": 53, "rows": 1448968, "note": "ZAMA 1h: 5,739 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-05T12:40:39Z"}

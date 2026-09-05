@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 25, "total": 52, "rows": 705316, "note": "KAS 1h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 48.1, "updated": "2026-09-05T07:25:01Z"}
+{"shard": 19, "stage": "testing", "done": 28, "total": 52, "rows": 772482, "note": "MANTRA 1d: 185 bars, testing 120 rules", "failed": [], "pct": 53.8, "updated": "2026-09-05T07:25:46Z"}

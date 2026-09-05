@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 30, "total": 52, "rows": 860120, "note": "MOO 1d: downloading candles", "failed": [], "pct": 57.7, "updated": "2026-09-05T12:26:30Z"}
+{"shard": 13, "stage": "testing", "done": 34, "total": 52, "rows": 937872, "note": "OPG 1d: 137 bars, testing 120 rules", "failed": [], "pct": 65.4, "updated": "2026-09-05T12:27:19Z"}

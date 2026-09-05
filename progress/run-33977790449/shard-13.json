@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 48, "total": 52, "rows": 1801856, "note": "US30 30m: rule 41/120 (tsi)", "failed": [], "pct": 92.3, "updated": "2026-09-05T17:42:41Z"}
+{"shard": 13, "stage": "testing", "done": 49, "total": 52, "rows": 1837344, "note": "VRTSTOCK 30m: rule 20/120 (stoch14)", "failed": [], "pct": 94.2, "updated": "2026-09-05T17:43:26Z"}

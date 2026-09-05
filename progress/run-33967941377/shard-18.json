@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 20, "total": 52, "rows": 809940, "note": "GMT 30m: rule 92/120 (cf_soup_l1)", "failed": [], "pct": 38.5, "updated": "2026-09-05T13:49:14Z"}
+{"shard": 18, "stage": "testing", "done": 22, "total": 52, "rows": 830740, "note": "HOME 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 42.3, "updated": "2026-09-05T13:50:00Z"}

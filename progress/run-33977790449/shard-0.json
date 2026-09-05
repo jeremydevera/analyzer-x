@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 34, "total": 53, "rows": 1260466, "note": "OKLOSTOCK 30m: rule 2/120 (mom15)", "failed": [], "pct": 64.2, "updated": "2026-09-05T17:25:54Z"}
+{"shard": 0, "stage": "testing", "done": 35, "total": 53, "rows": 1295346, "note": "ORDI 4h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 66.0, "updated": "2026-09-05T17:26:39Z"}

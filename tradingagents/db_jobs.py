@@ -1744,9 +1744,22 @@ def _run_collect(spec: dict) -> None:
     _write(f["progress"], {"running": True, "run": run_id, "done": 0,
                            "total": 0, "now": "starting"})
 
-    def prog(msg: str, done: int = 0, total: int = 0) -> None:
-        _write(f["progress"], {"running": True, "run": run_id, "done": done,
-                               "total": total, "now": str(msg)[:120]})
+    def prog(name="", done=0, total=0, pairs=0, rows=0, *_extra) -> None:
+        """`collect_into_store` calls this as
+        `on_progress(name, n, len(names), kept, rows_seen)` — FIVE arguments.
+
+        The first version took three, so the call raised TypeError the moment
+        the first shard finished parsing: the download work was done and the
+        job then died reporting a crash. It is called from inside the parse
+        loop with no guard around it (cloud_sweep.py), so the signature has to
+        be right here. `*_extra` so a sixth argument added later cannot repeat
+        this.
+        """
+        _write(f["progress"], {"running": True, "run": run_id,
+                               "done": int(done or 0), "total": int(total or 0),
+                               "pairs": int(pairs or 0), "rows": int(rows or 0),
+                               "now": f"{name} — {int(rows or 0):,} row(s) "
+                                      f"over {int(pairs or 0):,} pair(s)"})
 
     try:
         got = cs.collect_into_store(run_id, on_progress=prog)

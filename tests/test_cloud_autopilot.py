@@ -437,3 +437,40 @@ def test_a_collect_that_succeeded_is_marked_done(monkeypatch):
     state = {"collecting": 7}
     ca.collect_finished(now=time.time(), state=state)
     assert 7 in state["collected"]
+
+
+def test_the_collect_progress_callback_matches_what_calls_it():
+    """`collect_into_store` calls `on_progress(name, n, len(names), kept,
+    rows_seen)` — FIVE arguments, from inside the parse loop with no guard.
+
+    The first version of `_run_collect` passed a three-argument callback, so
+    the call raised TypeError the moment the first shard finished parsing: all
+    the download work was done and the job then died reporting a crash. Source
+    inspection cannot see this; the two signatures have to be checked against
+    each other.
+    """
+    import inspect
+    import re
+
+    from tradingagents import cloud_sweep as cs, db_jobs as dj
+
+    # how many positional arguments the caller actually sends. Parsed, not
+    # regexed: `len(names)` is an argument containing a bracket, and a regex
+    # counted it as the end of the call.
+    import ast
+    import textwrap
+
+    tree = ast.parse(textwrap.dedent(inspect.getsource(cs.collect_into_store)))
+    sent = max(len(n.args) for n in ast.walk(tree)
+               if isinstance(n, ast.Call)
+               and getattr(n.func, "id", "") == "on_progress")
+    assert sent == 5, f"the caller now sends {sent}; update _run_collect"
+
+    # and the callback must swallow that many
+    body = inspect.getsource(dj._run_collect)
+    sig = re.search(r"def prog\(([^)]*)\)", body)
+    assert sig, "prog moved"
+    params = [a.strip() for a in sig.group(1).split(",") if a.strip()]
+    positional = [a for a in params if not a.startswith("*")]
+    assert len(positional) >= sent or any(a.startswith("*") for a in params), \
+        f"prog takes {len(positional)}, the caller sends {sent}"

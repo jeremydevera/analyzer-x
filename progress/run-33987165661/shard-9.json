@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 44, "total": 53, "rows": 1749286, "note": "STRCSTOCK 30m: rule 73/120 (volspike)", "failed": [], "pct": 83.0, "updated": "2026-09-05T20:40:39Z"}
+{"shard": 9, "stage": "testing", "done": 48, "total": 53, "rows": 1803646, "note": "UNI 4h: rule 91/120 (cf_soup)", "failed": [], "pct": 90.6, "updated": "2026-09-05T20:41:24Z"}

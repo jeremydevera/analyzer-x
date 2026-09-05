@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 16, "total": 53, "rows": 567970, "note": "EDEN 30m: rule 53/120 (squeeze)", "failed": [], "pct": 30.2, "updated": "2026-09-05T19:48:13Z"}
+{"shard": 10, "stage": "testing", "done": 17, "total": 53, "rows": 582490, "note": "ETHFI 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-05T19:48:59Z"}

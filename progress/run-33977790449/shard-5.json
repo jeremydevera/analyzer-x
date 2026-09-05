@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 22, "total": 53, "rows": 682456, "note": "HEMI 30m: rule 45/120 (zscore20)", "failed": [], "pct": 41.5, "updated": "2026-09-05T17:00:08Z"}
+{"shard": 5, "stage": "testing", "done": 22, "total": 53, "rows": 695216, "note": "HEMI 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-05T17:00:53Z"}

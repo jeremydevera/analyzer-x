@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 50, "total": 53, "rows": 1572236, "note": "WET 30m: rule 58/120 (bos)", "failed": [], "pct": 94.3, "updated": "2026-09-05T11:05:54Z"}
+{"shard": 8, "stage": "testing", "done": 53, "total": 53, "rows": 1585876, "note": "ZRO 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-05T11:06:42Z"}

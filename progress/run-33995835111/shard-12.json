@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 10, "total": 52, "rows": 337160, "note": "B 30m: rule 59/120 (choch)", "failed": [], "pct": 19.2, "updated": "2026-09-05T22:40:13Z"}
+{"shard": 12, "stage": "testing", "done": 11, "total": 52, "rows": 349160, "note": "CELO 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 21.2, "updated": "2026-09-05T22:41:02Z"}

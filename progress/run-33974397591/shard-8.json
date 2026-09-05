@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 7, "total": 53, "rows": 187486, "note": "BAN 1d: 394 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-05T15:25:09Z"}
+{"shard": 8, "stage": "testing", "done": 7, "total": 53, "rows": 206802, "note": "BAN 1h: rule 20/120 (stoch14)", "failed": [], "pct": 13.2, "updated": "2026-09-05T15:25:55Z"}

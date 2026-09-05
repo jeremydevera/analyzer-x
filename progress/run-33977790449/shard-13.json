@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 28, "total": 52, "rows": 1073554, "note": "LYN 30m: rule 33/120 (heikin)", "failed": [], "pct": 53.8, "updated": "2026-09-05T17:14:05Z"}
+{"shard": 13, "stage": "testing", "done": 28, "total": 52, "rows": 1085154, "note": "LYN 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 53.8, "updated": "2026-09-05T17:14:51Z"}

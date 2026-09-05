@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 36, "total": 52, "rows": 1160772, "note": "PORTAL 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 69.2, "updated": "2026-09-05T07:45:25Z"}
+{"shard": 17, "stage": "testing", "done": 36, "total": 52, "rows": 1170892, "note": "PORTAL 1h: rule 40/120 (crsi)", "failed": [], "pct": 69.2, "updated": "2026-09-05T07:46:10Z"}

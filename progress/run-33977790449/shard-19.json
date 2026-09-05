@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 49, "total": 52, "rows": 1888180, "note": "VVV 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 94.2, "updated": "2026-09-05T17:38:43Z"}
+{"shard": 19, "stage": "testing", "done": 50, "total": 52, "rows": 1898360, "note": "XAN 4h: rule 3/120 (fade15)", "failed": [], "pct": 96.2, "updated": "2026-09-05T17:39:29Z"}

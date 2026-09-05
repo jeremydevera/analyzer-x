@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 28, "total": 52, "rows": 954576, "note": "MANTRA 30m: rule 20/120 (stoch14)", "failed": [], "pct": 53.8, "updated": "2026-09-05T10:46:51Z"}
+{"shard": 19, "stage": "testing", "done": 29, "total": 52, "rows": 975696, "note": "MEW 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 55.8, "updated": "2026-09-05T10:47:44Z"}

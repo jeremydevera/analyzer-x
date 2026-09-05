@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 18, "total": 53, "rows": 546588, "note": "FARTCOIN 1h: rule 2/120 (mom15)", "failed": [], "pct": 34.0, "updated": "2026-09-05T07:20:21Z"}
+{"shard": 4, "stage": "testing", "done": 18, "total": 53, "rows": 563088, "note": "FARTCOIN 1h: rule 76/120 (cf_mom)", "failed": [], "pct": 34.0, "updated": "2026-09-05T07:21:06Z"}

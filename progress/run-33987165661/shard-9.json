@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 41, "total": 53, "rows": 1649866, "note": "SILVER 30m: rule 2/120 (mom15)", "failed": [], "pct": 77.4, "updated": "2026-09-05T20:37:32Z"}
+{"shard": 9, "stage": "testing", "done": 41, "total": 53, "rows": 1669266, "note": "SILVER 30m: rule 98/120 (cf_ttm_l1)", "failed": [], "pct": 77.4, "updated": "2026-09-05T20:38:17Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 52, "total": 53, "rows": 1928016, "note": "XRP 30m: rule 61/120 (turtle)", "failed": [], "pct": 98.1, "updated": "2026-09-05T17:55:33Z"}
+{"shard": 0, "stage": "testing", "done": 53, "total": 53, "rows": 1939616, "note": "ZIG 4h: 1,860 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-05T17:56:20Z"}

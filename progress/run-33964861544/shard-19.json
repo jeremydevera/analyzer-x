@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 4, "total": 52, "rows": 104222, "note": "ARCSOL 1d: 394 bars, testing 120 rules", "failed": [], "pct": 7.7, "updated": "2026-09-05T12:06:18Z"}
+{"shard": 19, "stage": "testing", "done": 4, "total": 52, "rows": 124374, "note": "ARCSOL 1h: rule 19/120 (emacross)", "failed": [], "pct": 7.7, "updated": "2026-09-05T12:07:03Z"}

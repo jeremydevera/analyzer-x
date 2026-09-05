@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 32, "total": 52, "rows": 944954, "note": "NIGHT 1h: 6,478 bars, testing 120 rules", "failed": [], "pct": 61.5, "updated": "2026-09-05T07:38:48Z"}
+{"shard": 14, "stage": "testing", "done": 32, "total": 52, "rows": 970254, "note": "NIGHT 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 61.5, "updated": "2026-09-05T07:39:33Z"}

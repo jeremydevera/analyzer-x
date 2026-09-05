@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 12, "total": 53, "rows": 338898, "note": "CHR 1h: rule 35/120 (willr14)", "failed": [], "pct": 22.6, "updated": "2026-09-05T07:19:39Z"}
+{"shard": 2, "stage": "testing", "done": 13, "total": 53, "rows": 373202, "note": "COPSTOCK 1h: rule 36/120 (stochrsi)", "failed": [], "pct": 24.5, "updated": "2026-09-05T07:20:24Z"}

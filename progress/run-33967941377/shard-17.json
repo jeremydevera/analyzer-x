@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 6, "total": 52, "rows": 261326, "note": "AZTEC 30m: rule 91/120 (cf_soup)", "failed": [], "pct": 11.5, "updated": "2026-09-05T13:20:14Z"}
+{"shard": 17, "stage": "testing", "done": 7, "total": 52, "rows": 293886, "note": "BCH 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 13.5, "updated": "2026-09-05T13:21:09Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 51, "total": 52, "rows": 2164890, "note": "XPIN 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-05T11:43:30Z"}
+{"shard": 17, "stage": "testing", "done": 52, "total": 52, "rows": 2192390, "note": "ZETA 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-05T11:44:22Z"}

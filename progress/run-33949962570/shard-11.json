@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 34, "total": 52, "rows": 701246, "note": "OPENLEDGER 4h: rule 44/120 (elder)", "failed": [], "pct": 65.4, "updated": "2026-09-05T06:41:56Z"}
+{"shard": 11, "stage": "testing", "done": 36, "total": 52, "rows": 751090, "note": "POETSTOCK 1d: 80 bars, testing 120 rules", "failed": [], "pct": 69.2, "updated": "2026-09-05T06:42:42Z"}

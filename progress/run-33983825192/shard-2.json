@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 3, "total": 53, "rows": 86196, "note": "AKE 1h: rule 76/120 (cf_mom)", "failed": [], "pct": 5.7, "updated": "2026-09-05T18:25:25Z"}
+{"shard": 2, "stage": "testing", "done": 5, "total": 53, "rows": 133680, "note": "ARKM 1h: rule 1/120 (mom6)", "failed": [], "pct": 9.4, "updated": "2026-09-05T18:26:11Z"}

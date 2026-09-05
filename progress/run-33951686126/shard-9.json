@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 19, "total": 53, "rows": 604110, "note": "FORM 1h: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 35.8, "updated": "2026-09-05T07:21:56Z"}
+{"shard": 9, "stage": "testing", "done": 21, "total": 53, "rows": 646222, "note": "GRT 1h: rule 23/120 (supertrend)", "failed": [], "pct": 39.6, "updated": "2026-09-05T07:22:41Z"}

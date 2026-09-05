@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 49, "total": 53, "rows": 1346116, "note": "UVXY 1h: rule 26/120 (adx14)", "failed": [], "pct": 92.5, "updated": "2026-09-05T15:59:31Z"}
+{"shard": 3, "stage": "testing", "done": 50, "total": 53, "rows": 1383450, "note": "WAXP 1h: rule 56/120 (insidebrk)", "failed": [], "pct": 94.3, "updated": "2026-09-05T16:00:16Z"}

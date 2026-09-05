@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 48, "total": 52, "rows": 1810458, "note": "US30 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 92.3, "updated": "2026-09-05T23:43:21Z"}
+{"shard": 13, "stage": "testing", "done": 49, "total": 52, "rows": 1848074, "note": "VRTSTOCK 4h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 94.2, "updated": "2026-09-05T23:44:06Z"}

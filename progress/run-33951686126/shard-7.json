@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 43, "total": 53, "rows": 1305578, "note": "SOXX 1h: rule 55/120 (nhigh50)", "failed": [], "pct": 81.1, "updated": "2026-09-05T07:51:27Z"}
+{"shard": 7, "stage": "testing", "done": 44, "total": 53, "rows": 1334334, "note": "STORJ 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 83.0, "updated": "2026-09-05T07:52:12Z"}

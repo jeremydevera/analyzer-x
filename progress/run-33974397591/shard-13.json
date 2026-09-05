@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 25, "total": 52, "rows": 714078, "note": "JPY 1h: rule 40/120 (crsi)", "failed": [], "pct": 48.1, "updated": "2026-09-05T15:39:39Z"}
+{"shard": 13, "stage": "testing", "done": 26, "total": 52, "rows": 738034, "note": "KMNO 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 50.0, "updated": "2026-09-05T15:40:26Z"}

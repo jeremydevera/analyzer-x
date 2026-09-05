@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 29, "total": 53, "rows": 1038650, "note": "MELANIA 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 54.7, "updated": "2026-09-05T17:06:40Z"}
+{"shard": 10, "stage": "testing", "done": 29, "total": 53, "rows": 1052950, "note": "MELANIA 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 54.7, "updated": "2026-09-05T17:07:25Z"}

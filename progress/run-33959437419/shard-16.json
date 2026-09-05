@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 48, "total": 52, "rows": 1918720, "note": "USELESS 30m: rule 79/120 (cf_donch)", "failed": [], "pct": 92.3, "updated": "2026-09-05T11:33:32Z"}
+{"shard": 16, "stage": "testing", "done": 49, "total": 52, "rows": 1948140, "note": "VSTSTOCK 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 94.2, "updated": "2026-09-05T11:34:17Z"}

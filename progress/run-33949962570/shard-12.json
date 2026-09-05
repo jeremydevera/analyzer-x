@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 16, "total": 52, "rows": 398726, "note": "EDU 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 30.8, "updated": "2026-09-05T06:36:32Z"}
+{"shard": 12, "stage": "testing", "done": 17, "total": 52, "rows": 444222, "note": "ETH 4h: rule 22/120 (engulf)", "failed": [], "pct": 32.7, "updated": "2026-09-05T06:37:17Z"}

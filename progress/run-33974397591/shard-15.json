@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 22, "total": 52, "rows": 674196, "note": "HMSTR 1h: rule 53/120 (squeeze)", "failed": [], "pct": 42.3, "updated": "2026-09-05T15:35:42Z"}
+{"shard": 15, "stage": "testing", "done": 23, "total": 52, "rows": 703456, "note": "ICP 1h: rule 1/120 (mom6)", "failed": [], "pct": 44.2, "updated": "2026-09-05T15:36:29Z"}

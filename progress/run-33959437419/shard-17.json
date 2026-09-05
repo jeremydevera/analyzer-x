@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 5, "total": 52, "rows": 215640, "note": "ATOM 30m: rule 53/120 (squeeze)", "failed": [], "pct": 9.6, "updated": "2026-09-05T10:10:40Z"}
+{"shard": 17, "stage": "testing", "done": 5, "total": 52, "rows": 227840, "note": "ATOM 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 9.6, "updated": "2026-09-05T10:11:25Z"}

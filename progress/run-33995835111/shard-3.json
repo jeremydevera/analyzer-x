@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 4, "total": 53, "rows": 177700, "note": "ANIME 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 7.5, "updated": "2026-09-05T22:35:44Z"}
+{"shard": 3, "stage": "testing", "done": 5, "total": 53, "rows": 204100, "note": "ARK 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 9.4, "updated": "2026-09-05T22:36:37Z"}

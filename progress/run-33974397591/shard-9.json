@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 12, "total": 53, "rows": 350160, "note": "CLO 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 22.6, "updated": "2026-09-05T15:27:29Z"}
+{"shard": 9, "stage": "testing", "done": 14, "total": 53, "rows": 407424, "note": "CVXSTOCK 1h: 4,472 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-05T15:28:16Z"}

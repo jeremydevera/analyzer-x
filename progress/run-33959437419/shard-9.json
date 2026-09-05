@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 8, "total": 53, "rows": 314716, "note": "BILL 4h: 745 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-05T10:14:32Z"}
+{"shard": 9, "stage": "testing", "done": 8, "total": 53, "rows": 350236, "note": "BILL 30m: rule 70/120 (cmf20)", "failed": [], "pct": 15.1, "updated": "2026-09-05T10:15:17Z"}

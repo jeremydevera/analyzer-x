@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 49, "total": 53, "rows": 1543678, "note": "VELO 1h: rule 59/120 (choch)", "failed": [], "pct": 92.5, "updated": "2026-09-05T12:40:17Z"}
+{"shard": 7, "stage": "testing", "done": 52, "total": 53, "rows": 1601856, "note": "YGG 1d: 394 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-05T12:41:02Z"}

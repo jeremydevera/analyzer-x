@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 42, "total": 52, "rows": 1459226, "note": "SNT 4h: rule 1/120 (mom6)", "failed": [], "pct": 80.8, "updated": "2026-09-05T17:25:36Z"}
+{"shard": 13, "stage": "testing", "done": 42, "total": 52, "rows": 1485406, "note": "SNT 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 80.8, "updated": "2026-09-05T17:26:24Z"}

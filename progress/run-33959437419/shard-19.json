@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 34, "total": 52, "rows": 1197882, "note": "ORDER 30m: rule 20/120 (stoch14)", "failed": [], "pct": 65.4, "updated": "2026-09-05T10:56:12Z"}
+{"shard": 19, "stage": "testing", "done": 34, "total": 52, "rows": 1208222, "note": "ORDER 30m: rule 68/120 (dbltop)", "failed": [], "pct": 65.4, "updated": "2026-09-05T10:56:57Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 2, "total": 52, "rows": 60796, "note": "AIOZ 1h: rule 21/120 (cci20)", "failed": [], "pct": 3.8, "updated": "2026-09-05T15:21:10Z"}
+{"shard": 17, "stage": "testing", "done": 4, "total": 52, "rows": 97778, "note": "APT 1d: 394 bars, testing 120 rules", "failed": [], "pct": 7.7, "updated": "2026-09-05T15:22:01Z"}

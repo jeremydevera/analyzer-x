@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 26, "total": 52, "rows": 916402, "note": "KKRSTOCK 30m: 1,144 bars, testing 120 rules", "failed": [], "pct": 50.0, "updated": "2026-09-05T10:35:34Z"}
+{"shard": 11, "stage": "testing", "done": 28, "total": 52, "rows": 952402, "note": "LUNC 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 53.8, "updated": "2026-09-05T10:36:19Z"}

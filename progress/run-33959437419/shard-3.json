@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 17, "total": 53, "rows": 620042, "note": "ENS 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-05T10:30:17Z"}
+{"shard": 3, "stage": "testing", "done": 19, "total": 53, "rows": 642702, "note": "FLUID 4h: rule 71/120 (mfi14)", "failed": [], "pct": 35.8, "updated": "2026-09-05T10:31:02Z"}

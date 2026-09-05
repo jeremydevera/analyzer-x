@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 5, "total": 52, "rows": 155774, "note": "AUCTION 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 9.6, "updated": "2026-09-05T21:26:05Z"}
+{"shard": 19, "stage": "testing", "done": 5, "total": 52, "rows": 174034, "note": "AUCTION 1h: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 9.6, "updated": "2026-09-05T21:26:51Z"}

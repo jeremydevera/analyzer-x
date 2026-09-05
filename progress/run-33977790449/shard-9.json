@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 40, "total": 53, "rows": 1622832, "note": "SAND 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-05T17:37:11Z"}
+{"shard": 9, "stage": "testing", "done": 41, "total": 53, "rows": 1656052, "note": "SILVER 30m: 11,759 bars, testing 120 rules", "failed": [], "pct": 77.4, "updated": "2026-09-05T17:37:58Z"}

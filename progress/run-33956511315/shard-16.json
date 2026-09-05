@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 11, "total": 52, "rows": 384792, "note": "CFX 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 21.2, "updated": "2026-09-05T09:07:05Z"}
+{"shard": 16, "stage": "testing", "done": 11, "total": 52, "rows": 401072, "note": "CFX 1h: rule 69/120 (obv20)", "failed": [], "pct": 21.2, "updated": "2026-09-05T09:07:50Z"}

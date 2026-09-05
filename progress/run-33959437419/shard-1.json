@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 10, "total": 53, "rows": 368760, "note": "BSB 30m: rule 33/120 (heikin)", "failed": [], "pct": 18.9, "updated": "2026-09-05T10:15:27Z"}
+{"shard": 1, "stage": "testing", "done": 11, "total": 53, "rows": 398920, "note": "CATSTOCK 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 20.8, "updated": "2026-09-05T10:16:12Z"}

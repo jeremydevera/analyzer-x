@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 22, "total": 53, "rows": 766486, "note": "HDSTOCK 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-05T23:01:13Z"}
+{"shard": 3, "stage": "testing", "done": 25, "total": 53, "rows": 795366, "note": "JASMY 4h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 47.2, "updated": "2026-09-05T23:01:58Z"}

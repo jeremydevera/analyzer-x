@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 44, "total": 52, "rows": 1662978, "note": "SWARMS 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 84.6, "updated": "2026-09-05T20:48:28Z"}
+{"shard": 19, "stage": "testing", "done": 46, "total": 52, "rows": 1689858, "note": "TREE 4h: rule 26/120 (adx14)", "failed": [], "pct": 88.5, "updated": "2026-09-05T20:49:13Z"}

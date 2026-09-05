@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 23, "total": 53, "rows": 891498, "note": "HUMA 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 43.4, "updated": "2026-09-05T13:46:02Z"}
+{"shard": 4, "stage": "testing", "done": 24, "total": 53, "rows": 921876, "note": "INFQSTOCK 30m: rule 13/120 (pivot)", "failed": [], "pct": 45.3, "updated": "2026-09-05T13:46:47Z"}

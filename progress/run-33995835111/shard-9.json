@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 15, "total": 53, "rows": 551346, "note": "DISSTOCK 4h: 680 bars, testing 120 rules", "failed": [], "pct": 28.3, "updated": "2026-09-05T22:48:53Z"}
+{"shard": 9, "stage": "testing", "done": 16, "total": 53, "rows": 625884, "note": "EBAYSTOCK 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 30.2, "updated": "2026-09-05T22:49:38Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 2, "total": 53, "rows": 94440, "note": "ADA 30m: rule 83/120 (cf_maobv_l1)", "failed": [], "pct": 3.8, "updated": "2026-09-05T22:30:42Z"}
+{"shard": 0, "stage": "testing", "done": 4, "total": 53, "rows": 112280, "note": "AMZNSTOCK 4h: rule 53/120 (squeeze)", "failed": [], "pct": 7.5, "updated": "2026-09-05T22:31:27Z"}

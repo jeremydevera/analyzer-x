@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 39, "total": 52, "rows": 1157372, "note": "ROBO 1h: rule 23/120 (supertrend)", "failed": [], "pct": 75.0, "updated": "2026-09-05T18:55:33Z"}
+{"shard": 14, "stage": "testing", "done": 42, "total": 52, "rows": 1226590, "note": "SNXX 1h: 1,280 bars, testing 120 rules", "failed": [], "pct": 80.8, "updated": "2026-09-05T18:56:20Z"}

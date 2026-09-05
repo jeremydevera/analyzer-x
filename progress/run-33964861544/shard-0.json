@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 42, "total": 53, "rows": 1215450, "note": "SKYAI 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 79.2, "updated": "2026-09-05T12:33:39Z"}
+{"shard": 0, "stage": "testing", "done": 42, "total": 53, "rows": 1231850, "note": "SKYAI 1h: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 79.2, "updated": "2026-09-05T12:34:24Z"}

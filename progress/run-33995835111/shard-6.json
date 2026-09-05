@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 10, "total": 53, "rows": 333276, "note": "BTW 30m: 4,833 bars, testing 120 rules", "failed": [], "pct": 18.9, "updated": "2026-09-05T22:32:54Z"}
+{"shard": 6, "stage": "testing", "done": 12, "total": 53, "rows": 383476, "note": "CKB 4h: rule 26/120 (adx14)", "failed": [], "pct": 22.6, "updated": "2026-09-05T22:33:39Z"}

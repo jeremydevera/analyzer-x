@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 35, "total": 52, "rows": 1191390, "note": "PEAQ 30m: rule 20/120 (stoch14)", "failed": [], "pct": 67.3, "updated": "2026-09-05T17:09:47Z"}
+{"shard": 11, "stage": "testing", "done": 35, "total": 52, "rows": 1201650, "note": "PEAQ 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 67.3, "updated": "2026-09-05T17:10:33Z"}

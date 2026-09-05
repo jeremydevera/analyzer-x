@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 47, "total": 53, "rows": 1323344, "note": "TRUTH 1h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 88.7, "updated": "2026-09-05T22:02:05Z"}
+{"shard": 5, "stage": "testing", "done": 48, "total": 53, "rows": 1351988, "note": "UKOIL 1h: rule 45/120 (zscore20)", "failed": [], "pct": 90.6, "updated": "2026-09-05T22:02:50Z"}

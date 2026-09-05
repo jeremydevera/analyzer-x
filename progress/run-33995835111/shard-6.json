@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 23, "total": 53, "rows": 715686, "note": "HYPER 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-05T22:42:56Z"}
+{"shard": 6, "stage": "testing", "done": 23, "total": 53, "rows": 744286, "note": "HYPER 30m: rule 4/120 (trend50)", "failed": [], "pct": 43.4, "updated": "2026-09-05T22:43:41Z"}

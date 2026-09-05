@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 38, "total": 53, "rows": 1304858, "note": "RARE 30m: rule 45/120 (zscore20)", "failed": [], "pct": 71.7, "updated": "2026-09-05T17:24:34Z"}
+{"shard": 6, "stage": "testing", "done": 38, "total": 53, "rows": 1318498, "note": "RARE 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 71.7, "updated": "2026-09-05T17:25:19Z"}

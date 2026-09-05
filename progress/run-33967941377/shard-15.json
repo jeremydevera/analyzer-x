@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 33, "total": 52, "rows": 1288756, "note": "NXPC 30m: rule 118/120 (cf_stflip)", "failed": [], "pct": 63.5, "updated": "2026-09-05T13:59:46Z"}
+{"shard": 15, "stage": "testing", "done": 34, "total": 52, "rows": 1315756, "note": "OP 30m: rule 1/120 (mom6)", "failed": [], "pct": 65.4, "updated": "2026-09-05T14:00:40Z"}

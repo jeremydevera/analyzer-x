@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 44, "total": 52, "rows": 1672026, "note": "SWARMS 30m: rule 70/120 (cmf20)", "failed": [], "pct": 84.6, "updated": "2026-09-05T14:23:05Z"}
+{"shard": 19, "stage": "testing", "done": 45, "total": 52, "rows": 1687346, "note": "TERSTOCK 30m: rule 18/120 (macd)", "failed": [], "pct": 86.5, "updated": "2026-09-05T14:23:50Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 8, "total": 52, "rows": 351446, "note": "BLKSTOCK 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 15.4, "updated": "2026-09-05T22:44:55Z"}
+{"shard": 19, "stage": "testing", "done": 11, "total": 52, "rows": 391166, "note": "CHF 30m: 15,987 bars, testing 120 rules", "failed": [], "pct": 21.2, "updated": "2026-09-05T22:45:46Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 26, "total": 53, "rows": 648942, "note": "KERNEL 1h: rule 1/120 (mom6)", "failed": [], "pct": 49.1, "updated": "2026-09-05T18:41:46Z"}
+{"shard": 3, "stage": "testing", "done": 26, "total": 53, "rows": 663462, "note": "KERNEL 1h: rule 64/120 (hammer)", "failed": [], "pct": 49.1, "updated": "2026-09-05T18:42:31Z"}

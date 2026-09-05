@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 51, "total": 53, "rows": 1597478, "note": "XDC 1d: 394 bars, testing 120 rules", "failed": [], "pct": 96.2, "updated": "2026-09-05T19:10:46Z"}
+{"shard": 4, "stage": "testing", "done": 51, "total": 53, "rows": 1620974, "note": "XDC 1h: rule 39/120 (fisher)", "failed": [], "pct": 96.2, "updated": "2026-09-05T19:11:32Z"}

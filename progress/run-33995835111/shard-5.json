@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 13, "total": 53, "rows": 434780, "note": "COTI 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 24.5, "updated": "2026-09-05T22:43:05Z"}
+{"shard": 5, "stage": "testing", "done": 14, "total": 53, "rows": 466900, "note": "CTSI 30m: rule 1/120 (mom6)", "failed": [], "pct": 26.4, "updated": "2026-09-05T22:43:54Z"}

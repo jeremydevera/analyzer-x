@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 14, "total": 53, "rows": 374410, "note": "CTC 4h: rule 119/120 (cf_stflip_l1)", "failed": [], "pct": 26.4, "updated": "2026-09-05T06:37:13Z"}
+{"shard": 1, "stage": "testing", "done": 19, "total": 53, "rows": 453084, "note": "FLOW 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-05T06:37:59Z"}

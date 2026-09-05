@@ -147,6 +147,10 @@ export default function StrategiesPanel() {
   // box that still filtered is the label-must-match-data failure this panel
   // keeps paying for. The typed text stays, so unchecking hands it back.
   const [tpOverSl, setTpOverSl] = useState(false);
+  // crypto coins vs tokenized stocks (the STOCK-suffix contracts that go
+  // quiet outside US market hours) — operator, 2026-09-05, right after
+  // finding 6 of their 9 deployed coins were stocks
+  const [asset, setAsset] = useState("");
   // "can you add the sl filter in the Stored strategies as well" (operator,
   // 2026-09-02). A CEILING, the opposite of the TP box beside it: 1 keeps rows
   // whose stop is 1% or TIGHTER — their words, settled on the artifact first:
@@ -234,7 +238,7 @@ export default function StrategiesPanel() {
     coin: "", tf: "", signal: "", profitable: false,
     minTrades: 0, minWinrate: 0, maxTp: 0, maxSl: 0, sizing: "", rowId: "",
     group: "",
-    minTp: 0, minSl: 0, tpOverSl: false,
+    minTp: 0, minSl: 0, tpOverSl: false, asset: "",
     months: 0, days: 0,
   });
   // The filter set the ROWS ON SCREEN came from — set only when a request
@@ -250,7 +254,7 @@ export default function StrategiesPanel() {
     coin: "", tf: "", signal: "", profitable: false,
     minTrades: 0, minWinrate: 0, maxTp: 0, maxSl: 0, sizing: "", rowId: "",
     group: "",
-    minTp: 0, minSl: 0, tpOverSl: false,
+    minTp: 0, minSl: 0, tpOverSl: false, asset: "",
     months: 0, days: 0,
   });
   // how long the request that FAILED had been running, so the message can say
@@ -311,6 +315,8 @@ export default function StrategiesPanel() {
                      maxTp: applied.maxTp, maxSl: applied.maxSl,
                      minTp: applied.minTp, minSl: applied.minSl,
                      tpOverSl: applied.tpOverSl,
+                     asset: (applied.asset || undefined) as
+                       "crypto" | "stocks" | undefined,
                      sizing: applied.sizing || undefined,
                      rowId: applied.rowId || undefined,
                      months: applied.months || undefined,
@@ -399,7 +405,7 @@ export default function StrategiesPanel() {
   const off = (v: number) => (tpOverSl ? 0 : v);
   const draft = { coin, tf, signal, profitable, minTrades, minWinrate,
                   maxTp: off(maxTp), maxSl: off(maxSl),
-                  minTp: off(minTp), minSl: off(minSl), tpOverSl,
+                  minTp: off(minTp), minSl: off(minSl), tpOverSl, asset,
                   sizing, group, months, days,
                   // trim FIRST: " #6yaczsxx " pasted from chat kept its hash
                   // when the # was stripped before the spaces, and a real id
@@ -422,13 +428,14 @@ export default function StrategiesPanel() {
   const NO_FILTERS = {
     coin: "", tf: "", signal: "", profitable: false,
     minTrades: 0, minWinrate: 0, maxTp: 0, maxSl: 0, sizing: "", rowId: "",
-    group: "", minTp: 0, minSl: 0, tpOverSl: false, months: 0, days: 0,
+    group: "", minTp: 0, minSl: 0, tpOverSl: false, asset: "",
+    months: 0, days: 0,
   };
   const setBox: Record<keyof typeof NO_FILTERS, (v: never) => void> = {
     coin: setCoin, tf: setTf, signal: setSignal, group: setGroup,
     sizing: setSizing, minTrades: setMinTrades, minWinrate: setMinWinrate,
     maxTp: setMaxTp, maxSl: setMaxSl, minTp: setMinTp, minSl: setMinSl,
-    tpOverSl: setTpOverSl, profitable: setProfitable,
+    tpOverSl: setTpOverSl, asset: setAsset, profitable: setProfitable,
     months: setMonths, days: setDays, rowId: setRowId,
   } as Record<keyof typeof NO_FILTERS, (v: never) => void>;
   // a RANGE is one chip, so its × clears both ends — leaving the floor
@@ -474,6 +481,11 @@ export default function StrategiesPanel() {
                  text: `Past ${f.months} month${f.months > 1 ? "s" : ""}` });
     } else if (f.days > 0) {
       out.push({ k: "days", text: `Past ${f.days} days` });
+    }
+    if (f.asset === "crypto") {
+      out.push({ k: "asset", text: "Crypto coins only" });
+    } else if (f.asset === "stocks") {
+      out.push({ k: "asset", text: "Tokenized stocks only" });
     }
     if (f.coin) out.push({ k: "coin", text: f.coin });
     if (f.tf) out.push({ k: "tf", text: `${f.tf} timeframe` });
@@ -892,6 +904,18 @@ export default function StrategiesPanel() {
           </p>
           <div className="flex max-h-[68vh] flex-col gap-4 overflow-y-auto pr-1">
             <FilterSection label="what">
+              {/* real coins trade around the clock; the STOCK-suffix
+                  contracts go quiet outside US market hours — which is why
+                  6 of the operator's 9 deployed coins never traded by day */}
+              <Field label="kind">
+                <select className={sel} value={asset}
+                        onChange={(e) => setAsset(e.target.value)}
+                        aria-label="Asset kind">
+                  <option value="">coins and stocks</option>
+                  <option value="crypto">crypto coins only</option>
+                  <option value="stocks">tokenized stocks only</option>
+                </select>
+              </Field>
               <Field label="coin">
                 <select className={sel} value={coin} onChange={(e) => setCoin(e.target.value)} aria-label="Coin">
                   <option value="">all coins</option>
@@ -1431,6 +1455,8 @@ export default function StrategiesPanel() {
                // this panel keeps paying for (kit item F).
                minTp: applied.minTp, minSl: applied.minSl,
                tpOverSl: applied.tpOverSl,
+               asset: (applied.asset || undefined) as
+                 "crypto" | "stocks" | undefined,
                group: (applied.group || undefined) as "preset" | "classic" | undefined,
                sizing: applied.sizing || undefined,
                // the WINDOW too, or the file holds every row's whole history

@@ -473,6 +473,9 @@ export const api = {
     /** only rows whose target is wider than their stop, so the file holds the
      *  same slice the table showed */
     tpOverSl?: boolean;
+    /** "crypto" or "stocks" — tokenized stocks carry a STOCK suffix and go
+     *  quiet outside US market hours */
+    asset?: "crypto" | "stocks";
     /** the DAYS window, so the file holds the same measurement the table
      *  showed rather than every row's whole history */
     days?: number; months?: number;
@@ -493,6 +496,7 @@ export const api = {
     if (q.minTp) p.set("min_tp", String(q.minTp));
     if (q.minSl) p.set("min_sl", String(q.minSl));
     if (q.tpOverSl) p.set("tp_over_sl", "true");
+    if (q.asset) p.set("asset", q.asset);
     if (q.sizing) p.set("sizing", q.sizing);
     if (q.group) p.set("group", q.group);
     if (q.rowId) p.set("row_id", q.rowId);
@@ -535,6 +539,9 @@ export const api = {
      *  2026-09-04). It supersedes the two ranges: while it is on, they are
      *  greyed out and NOT sent. */
     tpOverSl?: boolean;
+    /** "crypto" keeps real coins; "stocks" keeps the tokenized stocks (the
+     *  STOCK-suffix contracts that go quiet outside US market hours) */
+    asset?: "crypto" | "stocks";
     /** "flat" or "martingale" — the ladder is a sizing CHOICE, not a
      *  measurement (rule 19), so it has to be possible to see one alone */
     sizing?: string;
@@ -566,6 +573,7 @@ export const api = {
     if (q.minTp) p.set("min_tp", String(q.minTp));
     if (q.minSl) p.set("min_sl", String(q.minSl));
     if (q.tpOverSl) p.set("tp_over_sl", "true");
+    if (q.asset) p.set("asset", q.asset);
     if (q.months) p.set("months", String(q.months));
     if (q.days) p.set("days", String(q.days));
     if (q.sizing) p.set("sizing", q.sizing);
@@ -586,6 +594,7 @@ export const api = {
       /** the low end of each range, echoed so the chips describe what was
        *  APPLIED rather than what the boxes hold */
       min_tp?: number; min_sl?: number; tp_over_sl?: boolean;
+      asset?: string;
       sizing?: string; row_id?: string;
       desc?: boolean;
       /** the window's REAL months, newest first ("2026-08") */

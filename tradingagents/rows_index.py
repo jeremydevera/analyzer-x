@@ -1053,6 +1053,7 @@ def in_group(signal: str, group: str | None) -> bool:
 def _where(coin=None, tf=None, signal=None, profitable=False,
            min_trades=0, min_winrate=0, max_tp=0, sizing=None, row_id=None,
            group=None, max_sl=0, min_tp=0, min_sl=0, tp_over_sl=False,
+           asset=None,
            *, order_owns_index=False, order_key=None,
            winrate_seeks=False, signal_seeks=False) -> tuple:
     """The WHERE clause and its arguments.
@@ -1216,6 +1217,20 @@ def _where(coin=None, tf=None, signal=None, profitable=False,
         # loss exactly, which is the same reading every other box on this
         # panel takes — 90 keeps a row that won exactly 90.00%.
         sql.append("tp >= sl")
+    # CRYPTO vs TOKENIZED STOCKS (operator, 2026-09-05). MEXC names every
+    # tokenized stock with a STOCK suffix, so the coin's own name is the
+    # split. The pattern rides in args, NEVER in the SQL text: `_page_rows`
+    # runs `sql % "*"`, and a literal '%STOCK' inside that string is a
+    # broken format spec (found by this filter's own first test run). LIKE
+    # cannot drive an index, so no `+` hint is needed either way.
+    if asset == "stocks":
+        sql.append("coin LIKE ?")
+        args.append("%STOCK")
+    elif asset == "crypto":
+        sql.append("coin NOT LIKE ?")
+        args.append("%STOCK")
+    elif asset:
+        raise ValueError(f"unknown asset {asset!r}; use crypto or stocks")
 
 
     return (" WHERE " + " AND ".join(sql) if sql else ""), args
@@ -1856,7 +1871,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
           limit=500, offset=0, sort="profit", min_trades=0,
           min_winrate=0, max_tp=0, sizing=None, row_id=None, group=None,
           max_sl=0, months=0, desc=None, min_tp=0, min_sl=0,
-          tp_over_sl=False) -> dict:
+          tp_over_sl=False, asset=None) -> dict:
     """Rows sorted by `sort` (SORTS), profit first by default.
 
     STRICTLY READ-ONLY. It creates nothing and it indexes nothing.
@@ -1929,7 +1944,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             _build_index("rows_pr2")
     where, args = _where(coin, tf, signal, profitable, min_trades, min_winrate,
                          max_tp, sizing, row_id, group, max_sl, min_tp, min_sl,
-                         tp_over_sl, signal_seeks=signal_seeks)
+                         tp_over_sl, asset, signal_seeks=signal_seeks)
     # the row select streams its own ORDER BY index; the count rides the
     # trades index instead (see _where). The ORDER matters to the WHERE too:
     # a win-rate floor drives rows_winrate when the screen is ranked by win %
@@ -1937,6 +1952,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     row_where, row_args = _where(coin, tf, signal, profitable, min_trades,
                                  min_winrate, max_tp, sizing, row_id, group,
                                  max_sl, min_tp, min_sl, tp_over_sl,
+                                 asset,
                                  order_owns_index=True, order_key=key,
                                  winrate_seeks=winrate_seeks,
                                  signal_seeks=signal_seeks)
@@ -1988,7 +2004,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     # 35,893,630 rows beside a table showing one group (2026-08-27).
     from_pairs = not (signal or profitable or min_trades or min_winrate
                       or max_tp or sizing or row_id or group or max_sl
-                      or min_tp or min_sl or tp_over_sl)
+                      or min_tp or min_sl or tp_over_sl or asset)
     # A win-rate floor (with or without a trade floor) is an index-only range
     # on rows_winrate, so its total is EXACT and costs nothing - no "+".
     # The total is EXACT only when the bounded count came back under its cap:
@@ -1998,7 +2014,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
                         and not signal and not profitable and not max_tp
                         and not sizing and not row_id and not group
                         and not max_sl and not min_tp and not min_sl
-                        and not tp_over_sl
+                        and not tp_over_sl and not asset
                         and _winrate_index())
 
     def _read():
@@ -2129,6 +2145,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             "min_tp": float(min_tp or 0),
             "min_sl": float(min_sl or 0),
             "tp_over_sl": bool(tp_over_sl),
+            "asset": asset or "",
             "sizing": sizing or "",
             # what was LOOKED UP, cleaned exactly as the query cleaned it, so
             # the panel can say "#6YACZSXX is not in the store" and mean it
@@ -2215,7 +2232,7 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
               sort="profit", min_trades=0, min_winrate=0, max_tp=0,
               sizing=None, row_id=None, group=None, max_sl=0, days=0,
               desc=None, batch=5_000, min_tp=0, min_sl=0,
-              tp_over_sl=False):
+              tp_over_sl=False, asset=None):
     """Every matching row, in the asked order, a batch at a time.
 
     No limit and no list: 21,858,026 rows will not fit in a browser table or in
@@ -2231,7 +2248,7 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
         min_winrate=min_winrate, min_trades=min_trades, desc=desc)
     where, args = _where(coin, tf, signal, profitable, min_trades,
                          min_winrate, max_tp, sizing, row_id, group, max_sl,
-                         min_tp, min_sl, tp_over_sl,
+                         min_tp, min_sl, tp_over_sl, asset,
                          order_owns_index=True, order_key=key,
                          winrate_seeks=seeks, signal_seeks=signal_seeks)
     # LAST N DAYS. The export RE-MEASURES what it exports, batch by batch, so

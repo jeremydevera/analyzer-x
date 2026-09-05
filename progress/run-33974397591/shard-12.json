@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 18, "total": 52, "rows": 529648, "note": "FIDA 1h: rule 27/120 (aroon25)", "failed": [], "pct": 34.6, "updated": "2026-09-05T15:35:02Z"}
+{"shard": 12, "stage": "testing", "done": 20, "total": 52, "rows": 559798, "note": "GIGGLE 1d: 348 bars, testing 120 rules", "failed": [], "pct": 38.5, "updated": "2026-09-05T15:35:56Z"}

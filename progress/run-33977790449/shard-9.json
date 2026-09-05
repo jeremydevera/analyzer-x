@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 4, "total": 53, "rows": 141308, "note": "APEX 30m: 16,479 bars, testing 120 rules", "failed": [], "pct": 7.5, "updated": "2026-09-05T16:31:41Z"}
+{"shard": 9, "stage": "testing", "done": 4, "total": 53, "rows": 146508, "note": "APEX 30m: rule 20/120 (stoch14)", "failed": [], "pct": 7.5, "updated": "2026-09-05T16:32:26Z"}

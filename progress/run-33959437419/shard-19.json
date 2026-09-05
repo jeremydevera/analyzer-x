@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 1, "total": 52, "rows": 25146, "note": "ACU 30m: rule 3/120 (fade15)", "failed": [], "pct": 1.9, "updated": "2026-09-05T10:00:42Z"}
+{"shard": 19, "stage": "testing", "done": 1, "total": 52, "rows": 40986, "note": "ACU 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 1.9, "updated": "2026-09-05T10:01:28Z"}

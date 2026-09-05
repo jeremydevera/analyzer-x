@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 40, "total": 53, "rows": 1517638, "note": "RSR 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 75.5, "updated": "2026-09-05T23:36:13Z"}
+{"shard": 0, "stage": "testing", "done": 41, "total": 53, "rows": 1539618, "note": "SHARE 30m: rule 40/120 (crsi)", "failed": [], "pct": 77.4, "updated": "2026-09-05T23:36:58Z"}

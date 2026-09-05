@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 23, "total": 52, "rows": 801142, "note": "ICNT 30m: rule 20/120 (stoch14)", "failed": [], "pct": 44.2, "updated": "2026-09-05T17:03:53Z"}
+{"shard": 14, "stage": "testing", "done": 23, "total": 52, "rows": 808542, "note": "ICNT 30m: rule 58/120 (bos)", "failed": [], "pct": 44.2, "updated": "2026-09-05T17:04:38Z"}

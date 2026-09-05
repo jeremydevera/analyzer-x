@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 5, "total": 52, "rows": 125200, "note": "ASXSTOCK 30m: downloading candles", "failed": [], "pct": 9.6, "updated": "2026-09-05T19:31:52Z"}
+{"shard": 15, "stage": "testing", "done": 7, "total": 52, "rows": 199294, "note": "BBSTOCK 30m: rule 1/120 (mom6)", "failed": [], "pct": 13.5, "updated": "2026-09-05T19:32:37Z"}

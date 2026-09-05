@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 48, "total": 52, "rows": 1943116, "note": "USELESS 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 92.3, "updated": "2026-09-05T14:39:17Z"}
+{"shard": 16, "stage": "testing", "done": 51, "total": 52, "rows": 1988416, "note": "XPD 30m: rule 3/120 (fade15)", "failed": [], "pct": 98.1, "updated": "2026-09-05T14:40:03Z"}

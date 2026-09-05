@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 25, "total": 53, "rows": 531754, "note": "JCT 4h: rule 76/120 (cf_mom)", "failed": [], "pct": 47.2, "updated": "2026-09-05T06:39:30Z"}
+{"shard": 5, "stage": "testing", "done": 28, "total": 53, "rows": 575314, "note": "LRC 1d: 394 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-05T06:40:22Z"}

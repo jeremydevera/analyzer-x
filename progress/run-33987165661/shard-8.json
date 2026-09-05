@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 11, "total": 53, "rows": 414742, "note": "CC 30m: rule 11/120 (sr_break)", "failed": [], "pct": 20.8, "updated": "2026-09-05T19:50:01Z"}
+{"shard": 8, "stage": "testing", "done": 11, "total": 53, "rows": 425962, "note": "CC 30m: rule 63/120 (killzone)", "failed": [], "pct": 20.8, "updated": "2026-09-05T19:50:46Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 21, "total": 53, "rows": 594744, "note": "GRIFFAIN 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-05T10:27:59Z"}
+{"shard": 8, "stage": "testing", "done": 21, "total": 53, "rows": 619344, "note": "GRIFFAIN 30m: rule 1/120 (mom6)", "failed": [], "pct": 39.6, "updated": "2026-09-05T10:28:46Z"}

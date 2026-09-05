@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 15, "total": 53, "rows": 585530, "note": "DELLSTOCK 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 28.3, "updated": "2026-09-05T16:47:38Z"}
+{"shard": 1, "stage": "testing", "done": 16, "total": 53, "rows": 630100, "note": "DRAM 30m: rule 106/120 (cf_bosfvg)", "failed": [], "pct": 30.2, "updated": "2026-09-05T16:48:23Z"}

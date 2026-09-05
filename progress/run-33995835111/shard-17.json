@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 37, "total": 52, "rows": 1577032, "note": "QCOMSTOCK 4h: rule 36/120 (stochrsi)", "failed": [], "pct": 71.2, "updated": "2026-09-05T23:44:40Z"}
+{"shard": 17, "stage": "testing", "done": 37, "total": 52, "rows": 1599352, "note": "QCOMSTOCK 30m: rule 42/120 (rsidiv)", "failed": [], "pct": 71.2, "updated": "2026-09-05T23:45:25Z"}

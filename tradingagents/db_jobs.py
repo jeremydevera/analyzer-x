@@ -48,6 +48,14 @@ FILES = {
                 "spec": STATE_DIR / "db_stratbt.spec.json",
                 "pid": STATE_DIR / "db_stratbt.pid",
                 "stop": STATE_DIR / "db_stratbt.STOP"},
+    # COLLECT: pull a finished cloud run's shard artifacts into the pair
+    # store. Detached, because a 20-artifact run is gigabytes and minutes —
+    # far too long for the supervisor's 30-second tick, which is where the
+    # autopilot asks for it (2026-09-05).
+    "collect": {"progress": STATE_DIR / "db_collect.json",
+                "spec": STATE_DIR / "db_collect.spec.json",
+                "pid": STATE_DIR / "db_collect.pid",
+                "stop": STATE_DIR / "db_collect.STOP"},
     "btupdate": {"progress": STATE_DIR / "db_btupdate.json",
                  "spec": STATE_DIR / "db_btupdate.spec.json",
                  "pid": STATE_DIR / "db_btupdate.pid",
@@ -535,8 +543,37 @@ def _stopping(kind: str) -> bool:
     return FILES[kind]["stop"].exists()
 
 
+class LocalSweepsOff(RuntimeError):
+    """Asked to measure a market-wide grid on this PC after the move to GitHub."""
+
+
+# Which jobs are MEASURING (moved to the fleet) and which are not.
+#   backtest  — the from-scratch market grid. Its GitHub twin is
+#               /api/cloud/dispatch, so this one has nowhere to run here.
+#   btupdate  — NOT blocked: this job IS the dispatcher. It reads
+#               `capacity.plan`, sends every frame to GitHub and finishes.
+#               Blocking it would remove the very thing that reaches GitHub.
+#   download  — candles, and the store lives on this machine. Stays.
+#   stratbt   — ONE combination for the deploy check (rule 21). Seconds, and
+#               a round trip to GitHub for it would make rule 21 unusable.
+LOCAL_SWEEP_KINDS = ("backtest",)
+
+
 def start(kind: str, spec: dict) -> int:
     """Write the job's spec and launch it detached. Refuses to double-start."""
+    from tradingagents import capacity as _cap
+
+    if kind in LOCAL_SWEEP_KINDS and not _cap.LOCAL_SWEEPS:
+        # Defence in depth. The panel no longer offers this, but a stale
+        # browser tab, a curl, or a script from before the move would still
+        # ask — and a silent local sweep is exactly what the operator removed
+        # (Sep 05, 2026). Refuse loudly rather than quietly measuring here.
+        raise LocalSweepsOff(
+            "measuring moved to GitHub Actions — this PC no longer runs the "
+            "market grid. Use RUN ON GITHUB (/api/cloud/dispatch) for a "
+            "from-scratch sweep, or UPDATE ALL BACKTESTS, which dispatches "
+            "every timeframe to the fleet. The candle and row stores are "
+            "unchanged and still on this machine.")
     st = status(kind)
     if st.get("running"):
         return st.get("pid") or 0
@@ -1689,6 +1726,64 @@ def _run_stratbt(spec: dict) -> None:
         raise
 
 
+def _run_collect(spec: dict) -> None:
+    """Pull a finished cloud run's rows into the pair store.
+
+    Five runs finished between Sep 03 and Sep 05, 2026 — 100 shard artifacts,
+    roughly 150 million rows — and not one reached the store, because the
+    workflow's merge job prints "collect with: collect_into_store(<run id>)"
+    and waits for a person. The artifacts delete themselves after 14 days
+    (Sep 17-18), so the work was on a timer to be lost.
+
+    `collect_into_store` REFUSES to overwrite a pair this machine has already
+    measured, so this is safe to run while a local sweep is going.
+    """
+    from tradingagents import cloud_sweep as cs
+    f = FILES["collect"]
+    run_id = int(spec["run"])
+    _write(f["progress"], {"running": True, "run": run_id, "done": 0,
+                           "total": 0, "now": "starting"})
+
+    def prog(msg: str, done: int = 0, total: int = 0) -> None:
+        _write(f["progress"], {"running": True, "run": run_id, "done": done,
+                               "total": total, "now": str(msg)[:120]})
+
+    try:
+        got = cs.collect_into_store(run_id, on_progress=prog)
+    except Exception as exc:                                   # noqa: BLE001
+        # NAMED, with its type: str(MemoryError()) is empty and once put
+        # "Backtest FAILED" on screen with nothing after it.
+        note = f"{type(exc).__name__}: {exc}"
+        print(f"[collect] run {run_id} FAILED: {note}", flush=True)
+        _write(f["progress"], {"running": False, "run": run_id, "error": note,
+                               "finished": int(time.time()), "note": note})
+        try:
+            from tradingagents import notifications as _nt
+
+            _nt.record("backtest", "Collecting the cloud run FAILED",
+                       detail=note, ok=False, meta={"run": run_id})
+        except Exception:                                      # noqa: BLE001
+            pass
+        return
+    note = (f"run {run_id}: {got.get('rows', 0):,} row(s) over "
+            f"{got.get('pairs', 0):,} pair(s) from {got.get('artifacts', 0)} "
+            f"shard file(s)"
+            + (f" · {got.get('skipped', 0)} pair(s) skipped, already measured "
+               f"here" if got.get("skipped") else ""))
+    print(f"[collect] {note}", flush=True)
+    _write(f["progress"], {"running": False, "run": run_id,
+                           "finished": int(time.time()), "note": note,
+                           **{k: got.get(k) for k in
+                              ("rows", "pairs", "coins", "skipped", "artifacts")}})
+    try:
+        from tradingagents import notifications as _nt
+
+        _nt.record("backtest", "Cloud run collected into the store",
+                   detail=note, ok=True, meta={"run": run_id, **got})
+    except Exception:                                          # noqa: BLE001
+        pass
+
+
 def main(argv: list[str]) -> int:
     kind = argv[0]
     spec = _read(FILES[kind]["spec"])
@@ -1700,6 +1795,8 @@ def main(argv: list[str]) -> int:
         _run_backtest(spec)
     elif kind == "btupdate":
         _run_btupdate(spec)
+    elif kind == "collect":
+        _run_collect(spec)
     else:
         print(f"unknown job: {kind}", file=sys.stderr)
         return 2

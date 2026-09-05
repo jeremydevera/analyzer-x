@@ -44,6 +44,11 @@ MAX_TFS = 2
 # whose SECONDARY rate limit 403'd this account for hours on Sep 02, 2026.
 CHECK_EVERY_S = 5 * 60
 
+# How many times one run's collect is retried before it is named and dropped.
+# A collect that dies half-way leaves a run partly landed, and `resume_if_died`
+# does not watch this job kind.
+COLLECT_RETRIES = 3
+
 STATE = Path.home() / ".tradingagents" / "cloud_autopilot.json"
 
 
@@ -107,6 +112,93 @@ def pick(missing: dict, *, busy_local=(), limit: int = MAX_TFS, skip=()) -> list
     return [t for _n, t in rows[:limit]]
 
 
+def collect_finished(*, now: float, state: dict) -> dict:
+    """Land the rows of any finished cloud run that has not been collected.
+
+    One at a time and DETACHED (`db_jobs.start("collect", ...)`): a 20-artifact
+    run is gigabytes and minutes, and this is called from the supervisor's
+    30-second tick.
+
+    Only runs THIS autopilot dispatched, plus whatever the operator asked for
+    by hand, are chased — it walks the recent run list rather than guessing.
+    """
+    from tradingagents import cloud_sweep as cs, db_jobs as dj
+
+    try:
+        if dj.status("collect").get("running"):
+            return {"started": False, "why": "a collect is already running"}
+    except Exception:                                          # noqa: BLE001
+        pass
+
+    if now - float(state.get("last_collect_look") or 0) < CHECK_EVERY_S:
+        return {"started": False, "why": "waiting before asking GitHub again"}
+    state["last_collect_look"] = now
+    _write(state)
+
+    done = set(state.get("collected") or [])
+
+    # Did the LAST collect finish? Its own progress file is the truth — the
+    # autopilot never waits for it.
+    pending = state.get("collecting")
+    if pending is not None:
+        st = {}
+        try:
+            st = dj._read(dj.FILES["collect"]["progress"])
+        except Exception:                                      # noqa: BLE001
+            pass
+        if st.get("run") == pending and not st.get("running"):
+            state["collecting"] = None
+            if st.get("error"):
+                n = int((state.get("collect_tries") or {}).get(str(pending), 0))
+                if n >= COLLECT_RETRIES:
+                    print(f"[cloud-autopilot] run {pending} could not be "
+                          f"collected after {n} attempt(s): {st['error']} — "
+                          f"giving up on it", flush=True)
+                    done.add(pending)      # named above, not silently dropped
+                # under the limit it is left OUT of `done`, so the next look
+                # picks it up again
+            else:
+                done.add(pending)
+            state["collected"] = sorted(done)
+            _write(state)
+
+    try:
+        runs = cs._runs(cs.repo_slug(), limit=10)
+    except Exception as exc:                                   # noqa: BLE001
+        return {"started": False, "why": f"cannot list runs: {exc}"}
+    for r in runs:
+        rid = r.get("databaseId")
+        if rid in done or r.get("status") != "completed":
+            continue
+        if r.get("conclusion") not in ("success", "failure"):
+            continue           # cancelled/skipped produced nothing to collect
+        try:
+            if not cs.artifact_names(rid):
+                # expired or never uploaded: remember it so the list is not
+                # walked for it on every tick for ever
+                done.add(rid)
+                continue
+            pid = dj.start("collect", {"run": rid})
+        except Exception as exc:                               # noqa: BLE001
+            return {"started": False, "why": f"could not start: {exc}"}
+        # NOT marked collected yet — only when the job SAYS it finished. A
+        # collect that dies half-way used to be marked done here and never
+        # retried, leaving a run partly landed with nothing to say so, and
+        # `resume_if_died` does not watch this kind.
+        tries = dict(state.get("collect_tries") or {})
+        tries[str(rid)] = int(tries.get(str(rid), 0)) + 1
+        state["collect_tries"] = tries
+        state["collecting"] = rid
+        _write(state)
+        print(f"[cloud-autopilot] collecting run {rid} into the store "
+              f"(pid {pid})", flush=True)
+        return {"started": True, "run": rid, "pid": pid}
+    if done != set(state.get("collected") or []):
+        state["collected"] = sorted(done)
+        _write(state)
+    return {"started": False, "why": "nothing finished is uncollected"}
+
+
 def consider(*, now: float | None = None) -> dict:
     """Look once. Dispatch if GitHub is free and there is a real hole.
 
@@ -117,6 +209,24 @@ def consider(*, now: float | None = None) -> dict:
 
     now = time.time() if now is None else now
     state = _read()
+
+    # COLLECT FIRST, BEFORE EVERY OTHER GUARD. Without this the autopilot eats
+    # itself: the cloud finishes, nothing lands the rows, the gap is unchanged,
+    # the "did it improve?" guard calls those pairs unmeasurable and skips the
+    # frame — three dispatches later every frame is dead and it answers
+    # "nothing left to aim at" for good. Five runs had already finished that
+    # way (100 artifacts, ~150M rows, deleting themselves Sep 17-18) because
+    # the workflow prints "collect with: ..." and waits for a person.
+    #
+    # BEFORE the cooldown and before the MIN_MISSING check, both of which are
+    # about DISPATCHING: a store with nothing missing still has rows to land,
+    # and waiting 30 minutes to collect helps nobody.
+    col = collect_finished(now=now, state=state)
+    if col.get("started"):
+        return {"dispatched": False, "collecting": col,
+                "why": (f"collecting run {col['run']} into the store — a gap "
+                        f"cannot shrink until its rows land")}
+
     last = float(state.get("last_dispatch") or 0)
     if now - last < COOLDOWN_S:
         return {"dispatched": False,

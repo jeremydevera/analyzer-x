@@ -734,7 +734,12 @@ def job_start(kind: str, spec: dict) -> dict:
     # a run the operator starts by hand is a fresh budget of retries, so an
     # earlier bad patch cannot leave the supervisor refusing to restart this one
     db_jobs.clear_retries(kind)
-    return {"pid": db_jobs.start(kind, spec)}
+    try:
+        return {"pid": db_jobs.start(kind, spec)}
+    except db_jobs.LocalSweepsOff as exc:
+        # 409, not 500: nothing is broken — this machine no longer measures.
+        # A 500 would read as a crash and send the operator to the logs.
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @app.post("/api/jobs/{kind}/handoff")

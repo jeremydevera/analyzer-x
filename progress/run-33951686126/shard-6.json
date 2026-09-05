@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 7, "total": 53, "rows": 216232, "note": "BAND 1h: rule 109/120 (cf_fundfade)", "failed": [], "pct": 13.2, "updated": "2026-09-05T07:14:12Z"}
+{"shard": 6, "stage": "testing", "done": 10, "total": 53, "rows": 269572, "note": "BTW 1h: rule 76/120 (cf_mom)", "failed": [], "pct": 18.9, "updated": "2026-09-05T07:14:58Z"}

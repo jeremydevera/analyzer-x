@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 40, "total": 52, "rows": 1119072, "note": "SATS 1h: rule 1/120 (mom6)", "failed": [], "pct": 76.9, "updated": "2026-09-05T15:50:13Z"}
+{"shard": 12, "stage": "testing", "done": 40, "total": 52, "rows": 1136672, "note": "SATS 1h: rule 86/120 (cf_triple_l1)", "failed": [], "pct": 76.9, "updated": "2026-09-05T15:50:58Z"}

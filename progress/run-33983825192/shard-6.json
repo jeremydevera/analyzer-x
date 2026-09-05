@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 32, "total": 53, "rows": 874092, "note": "NEO 1h: rule 69/120 (obv20)", "failed": [], "pct": 60.4, "updated": "2026-09-05T18:44:36Z"}
+{"shard": 6, "stage": "testing", "done": 34, "total": 53, "rows": 917786, "note": "ONG 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 64.2, "updated": "2026-09-05T18:45:27Z"}

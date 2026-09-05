@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 33, "total": 53, "rows": 993102, "note": "NOKSTOCK 1h: rule 107/120 (cf_bosfvg_l1)", "failed": [], "pct": 62.3, "updated": "2026-09-05T12:22:30Z"}
+{"shard": 1, "stage": "testing", "done": 38, "total": 53, "rows": 1041170, "note": "QTUM 1h: rule 3/120 (fade15)", "failed": [], "pct": 71.7, "updated": "2026-09-05T12:23:18Z"}

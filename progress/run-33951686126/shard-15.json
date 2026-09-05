@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 25, "total": 52, "rows": 761308, "note": "JTO 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 48.1, "updated": "2026-09-05T07:28:08Z"}
+{"shard": 15, "stage": "testing", "done": 28, "total": 52, "rows": 811082, "note": "MAGIC 1d: 394 bars, testing 120 rules", "failed": [], "pct": 53.8, "updated": "2026-09-05T07:28:56Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 11, "total": 52, "rows": 293684, "note": "CFG 1h: rule 33/120 (heikin)", "failed": [], "pct": 21.2, "updated": "2026-09-05T21:24:35Z"}
+{"shard": 15, "stage": "testing", "done": 13, "total": 52, "rows": 345854, "note": "CRWVSTOCK 1d: rule 11/120 (sr_break)", "failed": [], "pct": 25.0, "updated": "2026-09-05T21:25:20Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 39, "total": 53, "rows": 1378494, "note": "RESOLV 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 73.6, "updated": "2026-09-05T17:17:53Z"}
+{"shard": 1, "stage": "testing", "done": 40, "total": 53, "rows": 1405714, "note": "RTXSTOCK 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-05T17:18:38Z"}

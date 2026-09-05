@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 42, "total": 52, "rows": 1226590, "note": "SNXX 1h: 1,280 bars, testing 120 rules", "failed": [], "pct": 80.8, "updated": "2026-09-05T18:56:20Z"}
+{"shard": 14, "stage": "testing", "done": 45, "total": 52, "rows": 1295446, "note": "TBT 1h: downloading candles", "failed": [], "pct": 86.5, "updated": "2026-09-05T18:57:06Z"}

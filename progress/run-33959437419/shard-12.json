@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 20, "total": 52, "rows": 789986, "note": "GIGGLE 30m: rule 89/120 (cf_chan_l1)", "failed": [], "pct": 38.5, "updated": "2026-09-05T10:35:38Z"}
+{"shard": 12, "stage": "testing", "done": 22, "total": 52, "rows": 828066, "note": "HK50 30m: rule 47/120 (ibs)", "failed": [], "pct": 42.3, "updated": "2026-09-05T10:36:23Z"}

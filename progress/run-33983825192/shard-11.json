@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 13, "total": 52, "rows": 358264, "note": "CROSS 1d: 394 bars, testing 120 rules", "failed": [], "pct": 25.0, "updated": "2026-09-05T18:31:29Z"}
+{"shard": 11, "stage": "testing", "done": 13, "total": 52, "rows": 379472, "note": "CROSS 1h: rule 28/120 (vortex14)", "failed": [], "pct": 25.0, "updated": "2026-09-05T18:32:14Z"}

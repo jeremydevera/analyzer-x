@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 25, "total": 53, "rows": 712628, "note": "IRYS 4h: rule 37/120 (ultosc)", "failed": [], "pct": 47.2, "updated": "2026-09-05T06:43:22Z"}
+{"shard": 0, "stage": "testing", "done": 30, "total": 53, "rows": 797078, "note": "ME 1d: 394 bars, testing 120 rules", "failed": [], "pct": 56.6, "updated": "2026-09-05T06:44:24Z"}

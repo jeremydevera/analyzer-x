@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 25, "total": 52, "rows": 841802, "note": "KAS 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 48.1, "updated": "2026-09-05T20:10:10Z"}
+{"shard": 19, "stage": "testing", "done": 27, "total": 52, "rows": 881502, "note": "LLYSTOCK 30m: rule 4/120 (trend50)", "failed": [], "pct": 51.9, "updated": "2026-09-05T20:10:55Z"}

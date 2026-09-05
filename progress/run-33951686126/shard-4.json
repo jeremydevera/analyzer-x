@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 36, "total": 53, "rows": 1024278, "note": "PIXEL 1d: downloading candles", "failed": [], "pct": 67.9, "updated": "2026-09-05T07:32:02Z"}
+{"shard": 4, "stage": "testing", "done": 36, "total": 53, "rows": 1041526, "note": "PIXEL 1h: rule 13/120 (pivot)", "failed": [], "pct": 67.9, "updated": "2026-09-05T07:32:48Z"}

@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 1, "total": 53, "rows": 0, "note": "AAOISTOCK 4h: downloading candles", "failed": [], "pct": 1.9, "updated": "2026-09-05T16:25:23Z"}
+{"shard": 10, "stage": "testing", "done": 1, "total": 53, "rows": 40572, "note": "AAOISTOCK 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-05T16:26:08Z"}

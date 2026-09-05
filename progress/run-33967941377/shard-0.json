@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 5, "total": 53, "rows": 186904, "note": "ARIA 30m: rule 75/120 (relvolbrk)", "failed": [], "pct": 9.4, "updated": "2026-09-05T13:17:11Z"}
+{"shard": 0, "stage": "testing", "done": 6, "total": 53, "rows": 196364, "note": "AUDIO 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-05T13:18:01Z"}

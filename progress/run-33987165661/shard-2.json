@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 22, "total": 53, "rows": 771384, "note": "HBAR 30m: rule 3/120 (fade15)", "failed": [], "pct": 41.5, "updated": "2026-09-05T20:04:12Z"}
+{"shard": 2, "stage": "testing", "done": 22, "total": 53, "rows": 781184, "note": "HBAR 30m: rule 53/120 (squeeze)", "failed": [], "pct": 41.5, "updated": "2026-09-05T20:04:57Z"}

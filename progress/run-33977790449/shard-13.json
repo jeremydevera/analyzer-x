@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 47, "total": 52, "rows": 1750832, "note": "TURBO 30m: rule 35/120 (willr14)", "failed": [], "pct": 90.4, "updated": "2026-09-05T17:41:11Z"}
+{"shard": 13, "stage": "testing", "done": 47, "total": 52, "rows": 1762052, "note": "TURBO 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 90.4, "updated": "2026-09-05T17:41:56Z"}

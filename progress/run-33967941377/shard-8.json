@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 38, "total": 53, "rows": 1153810, "note": "RAY 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 71.7, "updated": "2026-09-05T13:56:19Z"}
+{"shard": 8, "stage": "testing", "done": 40, "total": 53, "rows": 1219986, "note": "SAMSUNGSTOCK 30m: rule 2/120 (mom15)", "failed": [], "pct": 75.5, "updated": "2026-09-05T13:57:05Z"}

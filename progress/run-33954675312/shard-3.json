@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 17, "total": 53, "rows": 431424, "note": "ENS 4h: rule 13/120 (pivot)", "failed": [], "pct": 32.1, "updated": "2026-09-05T08:21:38Z"}
+{"shard": 3, "stage": "testing", "done": 19, "total": 53, "rows": 475732, "note": "FLUID 4h: rule 39/120 (fisher)", "failed": [], "pct": 35.8, "updated": "2026-09-05T08:22:23Z"}

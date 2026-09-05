@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 39, "total": 52, "rows": 1458074, "note": "RPL 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 75.0, "updated": "2026-09-05T23:34:23Z"}
+{"shard": 19, "stage": "testing", "done": 40, "total": 52, "rows": 1485354, "note": "SFP 4h: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 76.9, "updated": "2026-09-05T23:35:08Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 27, "total": 53, "rows": 1023272, "note": "LEAD 4h: rule 26/120 (adx14)", "failed": [], "pct": 50.9, "updated": "2026-09-05T20:09:59Z"}
+{"shard": 9, "stage": "testing", "done": 28, "total": 53, "rows": 1055920, "note": "LUMIA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-05T20:10:47Z"}

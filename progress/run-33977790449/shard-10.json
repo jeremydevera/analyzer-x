@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 12, "total": 53, "rows": 398432, "note": "CLSKSTOCK 30m: rule 46/120 (rsi2)", "failed": [], "pct": 22.6, "updated": "2026-09-05T16:43:10Z"}
+{"shard": 10, "stage": "testing", "done": 13, "total": 53, "rows": 444012, "note": "CRMSTOCK 30m: rule 59/120 (choch)", "failed": [], "pct": 24.5, "updated": "2026-09-05T16:43:55Z"}

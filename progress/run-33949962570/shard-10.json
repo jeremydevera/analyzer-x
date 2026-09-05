@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 22, "total": 53, "rows": 460922, "note": "HK0700 1d: downloading candles", "failed": [], "pct": 41.5, "updated": "2026-09-05T06:36:33Z"}
+{"shard": 10, "stage": "testing", "done": 25, "total": 53, "rows": 515922, "note": "JOE 4h: rule 27/120 (aroon25)", "failed": [], "pct": 47.2, "updated": "2026-09-05T06:37:18Z"}

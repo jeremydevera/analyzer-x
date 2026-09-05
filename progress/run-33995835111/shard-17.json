@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 17, "total": 52, "rows": 706794, "note": "EWJ 30m: rule 13/120 (pivot)", "failed": [], "pct": 32.7, "updated": "2026-09-05T23:00:40Z"}
+{"shard": 17, "stage": "testing", "done": 18, "total": 52, "rows": 749394, "note": "FLNCSTOCK 30m: rule 4/120 (trend50)", "failed": [], "pct": 34.6, "updated": "2026-09-05T23:01:25Z"}

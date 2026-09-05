@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 6, "total": 52, "rows": 199156, "note": "AXPSTOCK 30m: rule 57/120 (orderblock)", "failed": [], "pct": 11.5, "updated": "2026-09-05T16:30:49Z"}
+{"shard": 13, "stage": "testing", "done": 7, "total": 52, "rows": 237336, "note": "BAS 30m: 18,253 bars, testing 120 rules", "failed": [], "pct": 13.5, "updated": "2026-09-05T16:31:41Z"}

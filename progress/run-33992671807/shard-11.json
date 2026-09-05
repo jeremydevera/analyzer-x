@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 30, "total": 52, "rows": 793520, "note": "MONAD 1h: rule 6/120 (sweep30)", "failed": [], "pct": 57.7, "updated": "2026-09-05T21:38:03Z"}
+{"shard": 11, "stage": "testing", "done": 32, "total": 52, "rows": 822846, "note": "NFLXSTOCK 1h: 2,117 bars, testing 120 rules", "failed": [], "pct": 61.5, "updated": "2026-09-05T21:38:50Z"}

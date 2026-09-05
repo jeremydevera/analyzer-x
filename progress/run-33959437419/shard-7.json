@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 49, "total": 53, "rows": 1933708, "note": "VELO 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 92.5, "updated": "2026-09-05T11:18:43Z"}
+{"shard": 7, "stage": "testing", "done": 52, "total": 53, "rows": 1985548, "note": "YGG 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-05T11:19:37Z"}

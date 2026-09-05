@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 13, "total": 53, "rows": 466388, "note": "CORE 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 24.5, "updated": "2026-09-05T10:23:23Z"}
+{"shard": 3, "stage": "testing", "done": 14, "total": 53, "rows": 501222, "note": "CTR 30m: rule 31/120 (trix15)", "failed": [], "pct": 26.4, "updated": "2026-09-05T10:24:08Z"}

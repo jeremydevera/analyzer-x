@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 4, "total": 52, "rows": 116768, "note": "APT 1h: rule 27/120 (aroon25)", "failed": [], "pct": 7.7, "updated": "2026-09-05T21:22:53Z"}
+{"shard": 17, "stage": "testing", "done": 5, "total": 52, "rows": 150780, "note": "ATOM 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 9.6, "updated": "2026-09-05T21:23:45Z"}

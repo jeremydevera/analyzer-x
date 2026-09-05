@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 20, "total": 52, "rows": 559976, "note": "GLM 1h: rule 41/120 (tsi)", "failed": [], "pct": 38.5, "updated": "2026-09-05T21:35:16Z"}
+{"shard": 14, "stage": "testing", "done": 21, "total": 52, "rows": 590908, "note": "GUN 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 40.4, "updated": "2026-09-05T21:36:09Z"}

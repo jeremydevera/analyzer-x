@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 8, "total": 52, "rows": 268776, "note": "BITO 30m: rule 20/120 (stoch14)", "failed": [], "pct": 15.4, "updated": "2026-09-05T10:09:16Z"}
+{"shard": 13, "stage": "testing", "done": 9, "total": 52, "rows": 293696, "note": "BRETT 4h: rule 49/120 (vwaprev)", "failed": [], "pct": 17.3, "updated": "2026-09-05T10:10:01Z"}

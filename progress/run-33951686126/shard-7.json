@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 44, "total": 53, "rows": 1334334, "note": "STORJ 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 83.0, "updated": "2026-09-05T07:52:12Z"}
+{"shard": 7, "stage": "testing", "done": 44, "total": 53, "rows": 1357654, "note": "STORJ 1h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 83.0, "updated": "2026-09-05T07:52:57Z"}

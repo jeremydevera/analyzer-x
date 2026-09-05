@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 9, "total": 52, "rows": 284000, "note": "BROSSTOCK 1h: 713 bars, testing 120 rules", "failed": [], "pct": 17.3, "updated": "2026-09-05T07:15:35Z"}
+{"shard": 19, "stage": "testing", "done": 11, "total": 52, "rows": 335744, "note": "CHF 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 21.2, "updated": "2026-09-05T07:16:20Z"}

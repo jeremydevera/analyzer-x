@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 1, "total": 52, "rows": 0, "note": "ABNBSTOCK 1d: downloading candles", "failed": [], "pct": 1.9, "updated": "2026-09-05T08:54:16Z"}
+{"shard": 15, "stage": "testing", "done": 2, "total": 52, "rows": 31580, "note": "AIN 1h: rule 14/120 (bb20)", "failed": [], "pct": 3.8, "updated": "2026-09-05T08:55:01Z"}

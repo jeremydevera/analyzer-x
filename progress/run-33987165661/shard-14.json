@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 16, "total": 52, "rows": 569982, "note": "EGLD 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 30.8, "updated": "2026-09-05T19:57:11Z"}
+{"shard": 14, "stage": "testing", "done": 17, "total": 52, "rows": 589562, "note": "EUL 4h: rule 51/120 (orb)", "failed": [], "pct": 32.7, "updated": "2026-09-05T19:57:56Z"}

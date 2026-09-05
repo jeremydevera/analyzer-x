@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 2, "total": 53, "rows": 40876, "note": "ADA 1d: 394 bars, testing 120 rules", "failed": [], "pct": 3.8, "updated": "2026-09-05T08:56:33Z"}
+{"shard": 0, "stage": "testing", "done": 2, "total": 53, "rows": 66208, "note": "ADA 1h: rule 55/120 (nhigh50)", "failed": [], "pct": 3.8, "updated": "2026-09-05T08:57:18Z"}

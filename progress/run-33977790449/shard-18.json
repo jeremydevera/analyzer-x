@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 20, "total": 52, "rows": 811272, "note": "GMT 30m: rule 58/120 (bos)", "failed": [], "pct": 38.5, "updated": "2026-09-05T17:02:43Z"}
+{"shard": 18, "stage": "testing", "done": 21, "total": 52, "rows": 829712, "note": "HALSTOCK 30m: rule 34/120 (lrslope)", "failed": [], "pct": 40.4, "updated": "2026-09-05T17:03:28Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 50, "total": 52, "rows": 1362920, "note": "WLD 1h: rule 4/120 (trend50)", "failed": [], "pct": 96.2, "updated": "2026-09-05T09:29:27Z"}
+{"shard": 11, "stage": "testing", "done": 50, "total": 52, "rows": 1384040, "note": "WLD 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-05T09:30:12Z"}

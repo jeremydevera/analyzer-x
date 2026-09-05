@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 35, "total": 52, "rows": 1331288, "note": "PENGU 30m: rule 45/120 (zscore20)", "failed": [], "pct": 67.3, "updated": "2026-09-05T23:27:18Z"}
+{"shard": 14, "stage": "testing", "done": 35, "total": 52, "rows": 1343088, "note": "PENGU 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 67.3, "updated": "2026-09-05T23:28:03Z"}

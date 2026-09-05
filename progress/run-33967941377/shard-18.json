@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 17, "total": 52, "rows": 637840, "note": "EWT 30m: rule 33/120 (heikin)", "failed": [], "pct": 32.7, "updated": "2026-09-05T13:39:43Z"}
+{"shard": 18, "stage": "testing", "done": 18, "total": 52, "rows": 661000, "note": "FLOCK 4h: rule 22/120 (engulf)", "failed": [], "pct": 34.6, "updated": "2026-09-05T13:40:28Z"}

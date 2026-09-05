@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 19, "total": 53, "rows": 482978, "note": "FOGO 1d: 238 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-05T15:31:23Z"}
+{"shard": 6, "stage": "testing", "done": 20, "total": 53, "rows": 522766, "note": "GESTOCK 1d: rule 52/120 (nr7)", "failed": [], "pct": 37.7, "updated": "2026-09-05T15:32:08Z"}

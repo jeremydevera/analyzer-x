@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 38, "total": 52, "rows": 997666, "note": "RCATSTOCK 1d: 85 bars, testing 120 rules", "failed": [], "pct": 73.1, "updated": "2026-09-05T18:48:26Z"}
+{"shard": 11, "stage": "testing", "done": 39, "total": 52, "rows": 1041584, "note": "RLS 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 75.0, "updated": "2026-09-05T18:49:11Z"}

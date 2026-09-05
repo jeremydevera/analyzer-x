@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 38, "total": 53, "rows": 1110442, "note": "RAY 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 71.7, "updated": "2026-09-05T16:53:05Z"}
+{"shard": 8, "stage": "testing", "done": 38, "total": 53, "rows": 1122322, "note": "RAY 30m: rule 48/120 (prank)", "failed": [], "pct": 71.7, "updated": "2026-09-05T16:53:50Z"}

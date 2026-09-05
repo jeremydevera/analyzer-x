@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 25, "total": 53, "rows": 607864, "note": "JCT 1h: rule 3/120 (fade15)", "failed": [], "pct": 47.2, "updated": "2026-09-05T15:39:40Z"}
+{"shard": 5, "stage": "testing", "done": 26, "total": 53, "rows": 628204, "note": "KGEN 1d: 333 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-05T15:40:27Z"}

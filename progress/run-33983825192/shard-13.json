@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 21, "total": 52, "rows": 603780, "note": "GUA 1h: 6,778 bars, testing 120 rules", "failed": [], "pct": 40.4, "updated": "2026-09-05T18:34:57Z"}
+{"shard": 13, "stage": "testing", "done": 23, "total": 52, "rows": 639684, "note": "IBMSTOCK 1h: rule 3/120 (fade15)", "failed": [], "pct": 44.2, "updated": "2026-09-05T18:35:42Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 3, "total": 52, "rows": 74602, "note": "AMP 1d: 394 bars, testing 120 rules", "failed": [], "pct": 5.8, "updated": "2026-09-05T08:55:57Z"}
+{"shard": 19, "stage": "testing", "done": 4, "total": 52, "rows": 106662, "note": "ARCSOL 1d: 394 bars, testing 120 rules", "failed": [], "pct": 7.7, "updated": "2026-09-05T08:56:45Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 47, "total": 53, "rows": 1640548, "note": "TRX 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 88.7, "updated": "2026-09-05T17:38:39Z"}
+{"shard": 6, "stage": "testing", "done": 48, "total": 53, "rows": 1666068, "note": "UMA 4h: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 90.6, "updated": "2026-09-05T17:39:24Z"}

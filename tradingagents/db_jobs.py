@@ -1145,7 +1145,11 @@ def _run_download(spec: dict) -> None:
                  if stopped else
                  (f"retried {len(pairs)} lost pair(s)" if pairs else
                   "nothing to retry — no pair is lost") if mode == "retry" else
-                 f"{'gap-filled' if mode == 'update' else 'downloaded'} "
+                 # Every mode names ITSELF. A resolve run finished reading
+                 # "downloaded 5152 pair(s)" on 2026-09-05 — true of what it
+                 # did, false about which button did it, and the history list
+                 # keeps that sentence for good.
+                 f"{ {'update': 'gap-filled', 'resolve': 'resolved'}.get(mode, 'downloaded') } "
                  f"{len(pairs)} pair(s)"
                  + (f" · {n_missing} pair(s) the store did not have at all"
                     if n_missing else "")

@@ -51,3 +51,25 @@ def test_every_mode_the_job_accepts_has_a_badge():
 def test_resolve_says_resolving_not_downloading():
     screen = open(SCREEN, encoding="utf-8").read()
     assert '"resolving pending"' in screen
+
+
+def test_the_finish_note_names_the_mode_that_ran():
+    """A resolve run finished reading "downloaded 5152 pair(s)" on
+    2026-09-05 — true of what it did, false about which button did it, and the
+    download history keeps that sentence for good."""
+    src = inspect.getsource(dj._run_download)
+    assert "'resolve': 'resolved'" in src
+    assert "'update': 'gap-filled'" in src
+
+
+def test_every_mode_has_a_word_for_its_finish_note():
+    """Derived from the job itself: a mode added later without a word here
+    silently borrows 'downloaded'."""
+    src = inspect.getsource(dj._run_download)
+    modes = set(re.findall(r'mode == "(\w+)"', src))
+    # the window must START AT THE DICT, not at "gap-filled" — 'update' is
+    # the KEY whose value is 'gap-filled', so it sits before it
+    i = src.index("'update': 'gap-filled'")
+    note = src[i:i + 400]
+    for m in modes:
+        assert m in note or m == "retry", f"{m} has no word in the finish note"

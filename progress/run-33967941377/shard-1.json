@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 7, "total": 53, "rows": 184002, "note": "BABASTOCK 4h: rule 15/120 (bbbreak)", "failed": [], "pct": 13.2, "updated": "2026-09-05T13:13:50Z"}
+{"shard": 1, "stage": "testing", "done": 7, "total": 53, "rows": 211362, "note": "BABASTOCK 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 13.2, "updated": "2026-09-05T13:14:36Z"}

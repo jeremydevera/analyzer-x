@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 18, "total": 52, "rows": 682050, "note": "FHE 30m: rule 73/120 (volspike)", "failed": [], "pct": 34.6, "updated": "2026-09-05T13:34:46Z"}
+{"shard": 11, "stage": "testing", "done": 19, "total": 52, "rows": 694812, "note": "FRAX 4h: rule 13/120 (pivot)", "failed": [], "pct": 36.5, "updated": "2026-09-05T13:35:31Z"}

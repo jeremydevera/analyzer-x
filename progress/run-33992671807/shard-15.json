@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 32, "total": 52, "rows": 947140, "note": "NIL 1h: rule 57/120 (orderblock)", "failed": [], "pct": 61.5, "updated": "2026-09-05T21:44:34Z"}
+{"shard": 15, "stage": "testing", "done": 33, "total": 52, "rows": 973936, "note": "NXPC 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 63.5, "updated": "2026-09-05T21:45:24Z"}

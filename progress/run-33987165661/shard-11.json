@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 30, "total": 52, "rows": 994458, "note": "MONAD 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 57.7, "updated": "2026-09-05T19:54:00Z"}
+{"shard": 11, "stage": "testing", "done": 32, "total": 52, "rows": 1043138, "note": "NFLXSTOCK 30m: 4,231 bars, testing 120 rules", "failed": [], "pct": 61.5, "updated": "2026-09-05T19:54:45Z"}

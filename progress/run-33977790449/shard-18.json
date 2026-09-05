@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 25, "total": 52, "rows": 972212, "note": "KAITO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 48.1, "updated": "2026-09-05T17:10:01Z"}
+{"shard": 18, "stage": "testing", "done": 25, "total": 52, "rows": 977612, "note": "KAITO 30m: rule 21/120 (cci20)", "failed": [], "pct": 48.1, "updated": "2026-09-05T17:10:47Z"}

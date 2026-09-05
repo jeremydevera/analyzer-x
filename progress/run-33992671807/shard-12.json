@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 22, "total": 52, "rows": 584760, "note": "HK50 1d: 206 bars, testing 120 rules", "failed": [], "pct": 42.3, "updated": "2026-09-05T21:36:20Z"}
+{"shard": 12, "stage": "testing", "done": 24, "total": 52, "rows": 660420, "note": "IONQSTOCK 1h: rule 112/120 (cf_obretest)", "failed": [], "pct": 46.2, "updated": "2026-09-05T21:37:05Z"}

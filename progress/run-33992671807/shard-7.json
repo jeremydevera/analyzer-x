@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 30, "total": 53, "rows": 947698, "note": "MMT 1h: rule 71/120 (mfi14)", "failed": [], "pct": 56.6, "updated": "2026-09-05T21:51:08Z"}
+{"shard": 7, "stage": "testing", "done": 31, "total": 53, "rows": 975704, "note": "MTL 1h: rule 16/120 (keltner)", "failed": [], "pct": 58.5, "updated": "2026-09-05T21:51:53Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 40, "total": 52, "rows": 1068348, "note": "SAPIEN 1h: rule 13/120 (pivot)", "failed": [], "pct": 76.9, "updated": "2026-09-05T21:45:05Z"}
+{"shard": 11, "stage": "testing", "done": 41, "total": 52, "rows": 1094572, "note": "SITMSTOCK 1d: rule 58/120 (bos)", "failed": [], "pct": 78.8, "updated": "2026-09-05T21:45:50Z"}

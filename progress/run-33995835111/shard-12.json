@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 5, "total": 52, "rows": 170444, "note": "ASTER 4h: 2,111 bars, testing 120 rules", "failed": [], "pct": 9.6, "updated": "2026-09-05T22:33:56Z"}
+{"shard": 12, "stage": "testing", "done": 5, "total": 52, "rows": 198864, "note": "ASTER 30m: rule 3/120 (fade15)", "failed": [], "pct": 9.6, "updated": "2026-09-05T22:34:46Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 36, "total": 53, "rows": 943386, "note": "PLUME 1d: rule 79/120 (cf_donch)", "failed": [], "pct": 67.9, "updated": "2026-09-05T06:45:57Z"}
+{"shard": 9, "stage": "testing", "done": 37, "total": 53, "rows": 973394, "note": "PUMPBTC 1d: 394 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-05T06:46:48Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 29, "total": 52, "rows": 800488, "note": "MEW 1h: rule 20/120 (stoch14)", "failed": [], "pct": 55.8, "updated": "2026-09-05T09:10:13Z"}
+{"shard": 19, "stage": "testing", "done": 32, "total": 52, "rows": 873008, "note": "NKESTOCK 1h: rule 44/120 (elder)", "failed": [], "pct": 61.5, "updated": "2026-09-05T09:10:58Z"}

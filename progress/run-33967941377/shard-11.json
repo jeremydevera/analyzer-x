@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 28, "total": 52, "rows": 953680, "note": "LUNC 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 53.8, "updated": "2026-09-05T13:43:23Z"}
+{"shard": 11, "stage": "testing", "done": 28, "total": 52, "rows": 959080, "note": "LUNC 30m: rule 24/120 (psar)", "failed": [], "pct": 53.8, "updated": "2026-09-05T13:44:08Z"}

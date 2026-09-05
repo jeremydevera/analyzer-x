@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 5, "total": 52, "rows": 174034, "note": "AUCTION 1h: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 9.6, "updated": "2026-09-05T21:26:51Z"}
+{"shard": 19, "stage": "testing", "done": 6, "total": 52, "rows": 197310, "note": "B2 1h: rule 1/120 (mom6)", "failed": [], "pct": 11.5, "updated": "2026-09-05T21:27:41Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 40, "total": 53, "rows": 933066, "note": "SAMSUNGSTOCK 1h: rule 44/120 (elder)", "failed": [], "pct": 75.5, "updated": "2026-09-05T15:45:37Z"}
+{"shard": 8, "stage": "testing", "done": 41, "total": 53, "rows": 962194, "note": "SIGN 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 77.4, "updated": "2026-09-05T15:46:29Z"}

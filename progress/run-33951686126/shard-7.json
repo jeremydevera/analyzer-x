@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 37, "total": 53, "rows": 1136026, "note": "PTB 1h: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 69.8, "updated": "2026-09-05T07:47:41Z"}
+{"shard": 7, "stage": "testing", "done": 38, "total": 53, "rows": 1156530, "note": "RAVE 1h: rule 8/120 (fib618)", "failed": [], "pct": 71.7, "updated": "2026-09-05T07:48:26Z"}

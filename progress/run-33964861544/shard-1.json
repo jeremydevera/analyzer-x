@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 20, "total": 53, "rows": 623882, "note": "GAS 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 37.7, "updated": "2026-09-05T12:14:50Z"}
+{"shard": 1, "stage": "testing", "done": 21, "total": 53, "rows": 666342, "note": "GOOGLSTOCK 1h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 39.6, "updated": "2026-09-05T12:15:36Z"}

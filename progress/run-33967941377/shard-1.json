@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 46, "total": 53, "rows": 1651024, "note": "TFUEL 4h: rule 2/120 (mom15)", "failed": [], "pct": 86.8, "updated": "2026-09-05T14:11:37Z"}
+{"shard": 1, "stage": "testing", "done": 46, "total": 53, "rows": 1667092, "note": "TFUEL 30m: rule 45/120 (zscore20)", "failed": [], "pct": 86.8, "updated": "2026-09-05T14:12:22Z"}

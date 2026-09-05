@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 14, "total": 53, "rows": 523334, "note": "CTK 30m: rule 61/120 (turtle)", "failed": [], "pct": 26.4, "updated": "2026-09-05T22:55:45Z"}
+{"shard": 2, "stage": "testing", "done": 15, "total": 53, "rows": 536094, "note": "DELTA 30m: downloading candles", "failed": [], "pct": 28.3, "updated": "2026-09-05T22:56:31Z"}

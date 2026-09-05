@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 45, "total": 52, "rows": 1295446, "note": "TBT 1h: downloading candles", "failed": [], "pct": 86.5, "updated": "2026-09-05T18:57:06Z"}
+{"shard": 14, "stage": "testing", "done": 46, "total": 52, "rows": 1332254, "note": "TOWNS 1h: rule 4/120 (trend50)", "failed": [], "pct": 88.5, "updated": "2026-09-05T18:57:51Z"}

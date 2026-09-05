@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 51, "total": 52, "rows": 1973840, "note": "XPT 30m: 10,350 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-05T17:41:52Z"}
+{"shard": 19, "stage": "testing", "done": 52, "total": 52, "rows": 2016860, "note": "ZHONGJISTOCK 30m: rule 112/120 (cf_obretest)", "failed": [], "pct": 100.0, "updated": "2026-09-05T17:42:37Z"}

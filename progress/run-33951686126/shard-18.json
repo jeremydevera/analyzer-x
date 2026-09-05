@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 6, "total": 52, "rows": 181610, "note": "A 1h: rule 64/120 (hammer)", "failed": [], "pct": 11.5, "updated": "2026-09-05T07:15:11Z"}
+{"shard": 18, "stage": "testing", "done": 7, "total": 52, "rows": 207104, "note": "BDX 1h: rule 13/120 (pivot)", "failed": [], "pct": 13.5, "updated": "2026-09-05T07:15:56Z"}

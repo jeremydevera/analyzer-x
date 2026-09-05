@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 33, "total": 53, "rows": 892838, "note": "NVDL 1h: rule 59/120 (choch)", "failed": [], "pct": 62.3, "updated": "2026-09-05T09:20:34Z"}
+{"shard": 10, "stage": "testing", "done": 35, "total": 53, "rows": 956976, "note": "PDDSTOCK 1h: rule 73/120 (volspike)", "failed": [], "pct": 66.0, "updated": "2026-09-05T09:21:19Z"}

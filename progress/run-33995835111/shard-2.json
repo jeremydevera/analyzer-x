@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 35, "total": 53, "rows": 1219846, "note": "OXYSTOCK 30m: rule 40/120 (crsi)", "failed": [], "pct": 66.0, "updated": "2026-09-05T23:29:44Z"}
+{"shard": 2, "stage": "testing", "done": 36, "total": 53, "rows": 1234546, "note": "PIPPIN 4h: rule 2/120 (mom15)", "failed": [], "pct": 67.9, "updated": "2026-09-05T23:30:31Z"}

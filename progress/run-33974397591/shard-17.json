@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 15, "total": 52, "rows": 512102, "note": "DOOD 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 28.8, "updated": "2026-09-05T15:37:27Z"}
+{"shard": 17, "stage": "testing", "done": 18, "total": 52, "rows": 563612, "note": "FLNCSTOCK 1h: rule 49/120 (vwaprev)", "failed": [], "pct": 34.6, "updated": "2026-09-05T15:38:12Z"}

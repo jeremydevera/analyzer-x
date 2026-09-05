@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 46, "total": 52, "rows": 1412932, "note": "TREE 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 88.5, "updated": "2026-09-05T12:43:56Z"}
+{"shard": 19, "stage": "testing", "done": 48, "total": 52, "rows": 1457706, "note": "USTC 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 92.3, "updated": "2026-09-05T12:44:45Z"}

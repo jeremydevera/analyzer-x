@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 9, "total": 52, "rows": 393794, "note": "BROCCOLIF3B 30m: rule 33/120 (heikin)", "failed": [], "pct": 17.3, "updated": "2026-09-05T19:41:12Z"}
+{"shard": 17, "stage": "testing", "done": 9, "total": 52, "rows": 410514, "note": "BROCCOLIF3B 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 17.3, "updated": "2026-09-05T19:41:58Z"}

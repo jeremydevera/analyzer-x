@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 23, "total": 52, "rows": 780178, "note": "ICX 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 44.2, "updated": "2026-09-05T15:43:00Z"}
+{"shard": 16, "stage": "testing", "done": 23, "total": 52, "rows": 797602, "note": "ICX 1h: rule 83/120 (cf_maobv_l1)", "failed": [], "pct": 44.2, "updated": "2026-09-05T15:43:45Z"}

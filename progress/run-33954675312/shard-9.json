@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 9, "total": 53, "rows": 270608, "note": "BOME 4h: rule 13/120 (pivot)", "failed": [], "pct": 17.0, "updated": "2026-09-05T08:17:38Z"}
+{"shard": 9, "stage": "testing", "done": 13, "total": 53, "rows": 335750, "note": "CRDOSTOCK 4h: 534 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-05T08:18:24Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 16, "total": 52, "rows": 445410, "note": "EDU 1h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 30.8, "updated": "2026-09-05T18:36:34Z"}
+{"shard": 12, "stage": "testing", "done": 17, "total": 52, "rows": 470886, "note": "ETH 1h: rule 16/120 (keltner)", "failed": [], "pct": 32.7, "updated": "2026-09-05T18:37:20Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 21, "total": 52, "rows": 621308, "note": "HANA 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 40.4, "updated": "2026-09-05T12:22:21Z"}
+{"shard": 19, "stage": "testing", "done": 25, "total": 52, "rows": 657678, "note": "KAS 1d: 394 bars, testing 120 rules", "failed": [], "pct": 48.1, "updated": "2026-09-05T12:23:13Z"}

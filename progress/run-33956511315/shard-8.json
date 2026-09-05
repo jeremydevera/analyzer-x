@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 25, "total": 53, "rows": 576324, "note": "JIMOTHY 1h: 1,124 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-05T09:11:59Z"}
+{"shard": 8, "stage": "testing", "done": 27, "total": 53, "rows": 615948, "note": "LDO 1h: rule 3/120 (fade15)", "failed": [], "pct": 50.9, "updated": "2026-09-05T09:12:44Z"}

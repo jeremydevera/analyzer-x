@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 7, "total": 52, "rows": 184560, "note": "BAT 1h: rule 79/120 (cf_donch)", "failed": [], "pct": 13.5, "updated": "2026-09-05T21:24:29Z"}
+{"shard": 14, "stage": "testing", "done": 9, "total": 52, "rows": 230596, "note": "BREV 1h: rule 13/120 (pivot)", "failed": [], "pct": 17.3, "updated": "2026-09-05T21:25:14Z"}

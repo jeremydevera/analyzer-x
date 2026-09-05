@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 6, "total": 52, "rows": 226840, "note": "AZTEC 4h: 1,239 bars, testing 120 rules", "failed": [], "pct": 11.5, "updated": "2026-09-05T16:36:15Z"}
+{"shard": 17, "stage": "testing", "done": 6, "total": 52, "rows": 255286, "note": "AZTEC 30m: rule 18/120 (macd)", "failed": [], "pct": 11.5, "updated": "2026-09-05T16:37:00Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 40, "total": 53, "rows": 1379564, "note": "SAGA 30m: rule 59/120 (choch)", "failed": [], "pct": 75.5, "updated": "2026-09-05T17:32:52Z"}
+{"shard": 5, "stage": "testing", "done": 42, "total": 53, "rows": 1392984, "note": "SLX 4h: 619 bars, testing 120 rules", "failed": [], "pct": 79.2, "updated": "2026-09-05T17:33:40Z"}

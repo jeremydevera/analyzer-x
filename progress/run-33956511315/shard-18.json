@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 37, "total": 52, "rows": 1108942, "note": "QNTSTOCK 1h: 2,381 bars, testing 120 rules", "failed": [], "pct": 71.2, "updated": "2026-09-05T09:20:21Z"}
+{"shard": 18, "stage": "testing", "done": 39, "total": 52, "rows": 1153278, "note": "ROSE 1h: rule 38/120 (ao)", "failed": [], "pct": 75.0, "updated": "2026-09-05T09:21:06Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 46, "total": 53, "rows": 1285136, "note": "THE 1h: rule 26/120 (adx14)", "failed": [], "pct": 86.8, "updated": "2026-09-05T12:41:50Z"}
+{"shard": 5, "stage": "testing", "done": 47, "total": 53, "rows": 1305156, "note": "TRUTH 1d: 339 bars, testing 120 rules", "failed": [], "pct": 88.7, "updated": "2026-09-05T12:42:37Z"}

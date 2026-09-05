@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 1, "total": 53, "rows": 17116, "note": "0G 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 1.9, "updated": "2026-09-05T07:08:44Z"}
+{"shard": 0, "stage": "testing", "done": 2, "total": 53, "rows": 54208, "note": "ADA 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 3.8, "updated": "2026-09-05T07:09:34Z"}

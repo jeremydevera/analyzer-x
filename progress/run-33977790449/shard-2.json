@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 40, "total": 53, "rows": 1415568, "note": "RUNE 30m: rule 20/120 (stoch14)", "failed": [], "pct": 75.5, "updated": "2026-09-05T17:33:05Z"}
+{"shard": 2, "stage": "testing", "done": 40, "total": 53, "rows": 1427008, "note": "RUNE 30m: rule 73/120 (volspike)", "failed": [], "pct": 75.5, "updated": "2026-09-05T17:33:50Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 48, "total": 52, "rows": 1894664, "note": "USO 30m: downloading candles", "failed": [], "pct": 92.3, "updated": "2026-09-05T17:48:57Z"}
+{"shard": 18, "stage": "testing", "done": 50, "total": 52, "rows": 1943390, "note": "XAI 4h: rule 21/120 (cci20)", "failed": [], "pct": 96.2, "updated": "2026-09-05T17:49:42Z"}

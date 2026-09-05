@@ -28,7 +28,7 @@ here** — this file exists because the operator won't remember them all
 | `/analyze1hr4hr` | Same, for 1h + 4h. |
 | `/yearly-strategy-sweep` | Re-runs the whole-market sweep ("what's working now"). |
 | `/store-indexes` | Fixes the Stored-strategies page when it is slow or missing rows after a big sweep. |
-| `/feedcheck` | Reads the runner feed/log/ledger and says what is normal and what is a bug, with proof. |
+| `/feedcheck` | Trade report since the LAST feedcheck (opened, won, lost and why, refused and why, EMERGENCY list), then judges the feed lines: normal or bug. |
 
 ## Building and checking the app
 

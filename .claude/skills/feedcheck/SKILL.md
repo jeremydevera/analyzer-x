@@ -9,7 +9,24 @@ RULE ONE: read the emitter, not the label (CLAUDE.md rule 23). Before calling
 any line a bug, open the code that writes it. Every wrong diagnosis this repo
 has paid for started with reading a line's NAME instead of its WRITER.
 
-## The check, in order
+## Step 0 — the window report (always first)
+
+```bash
+.venv/Scripts/python -m tradingagents.feedcheck
+```
+
+It reports everything SINCE THE LAST FEEDCHECK (first run: 24 hours): trades
+opened and closed per book, wins and losses with the reasons, every refused
+entry grouped by reason, and an EMERGENCY list of things that should not have
+happened (a stop that could not rest, a position without its stop, an exit the
+strategy did not make itself, a second real position on one coin, the dead
+nine-hour-freeze guard firing). It then writes a `feedcheck` marker row into
+the ledger, so the next run starts where this one ended. The marker is not a
+trade — no record, P&L or reset counts it.
+
+Report those numbers to the operator FIRST, then run the checks below.
+
+## The checks, in order
 
 1. **Is the runner alive?** `at.runner_pid()` and the log's mtime. A pid file
    with a DEAD pid = it started and died (that happened 3x on 2026-09-04: the

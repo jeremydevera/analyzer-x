@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 2, "total": 52, "rows": 57460, "note": "AIN 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-05T13:10:13Z"}
+{"shard": 15, "stage": "testing", "done": 4, "total": 52, "rows": 113860, "note": "APPSTOCK 30m: rule 20/120 (stoch14)", "failed": [], "pct": 7.7, "updated": "2026-09-05T13:10:58Z"}

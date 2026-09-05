@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 40, "total": 52, "rows": 1534882, "note": "SFP 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 76.9, "updated": "2026-09-05T11:16:07Z"}
+{"shard": 19, "stage": "testing", "done": 42, "total": 52, "rows": 1582702, "note": "SOL 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 80.8, "updated": "2026-09-05T11:16:58Z"}

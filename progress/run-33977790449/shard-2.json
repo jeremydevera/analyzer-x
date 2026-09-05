@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 5, "total": 53, "rows": 174418, "note": "ARKM 30m: rule 64/120 (hammer)", "failed": [], "pct": 9.4, "updated": "2026-09-05T16:34:48Z"}
+{"shard": 2, "stage": "testing", "done": 6, "total": 53, "rows": 186738, "note": "AURASOL 4h: 716 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-05T16:35:39Z"}

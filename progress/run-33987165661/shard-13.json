@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 4, "total": 52, "rows": 120892, "note": "APLDSTOCK 30m: rule 44/120 (elder)", "failed": [], "pct": 7.7, "updated": "2026-09-05T19:30:18Z"}
+{"shard": 13, "stage": "testing", "done": 5, "total": 52, "rows": 153712, "note": "ASTR 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 9.6, "updated": "2026-09-05T19:31:08Z"}

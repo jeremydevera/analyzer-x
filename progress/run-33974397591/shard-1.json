@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 10, "total": 53, "rows": 282588, "note": "BSB 1h: rule 2/120 (mom15)", "failed": [], "pct": 18.9, "updated": "2026-09-05T15:26:36Z"}
+{"shard": 1, "stage": "testing", "done": 12, "total": 53, "rows": 336656, "note": "CHIP 1h: 3,416 bars, testing 120 rules", "failed": [], "pct": 22.6, "updated": "2026-09-05T15:27:22Z"}

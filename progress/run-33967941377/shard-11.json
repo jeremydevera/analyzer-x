@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 3, "total": 52, "rows": 110360, "note": "ALPINE 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 5.8, "updated": "2026-09-05T13:11:43Z"}
+{"shard": 11, "stage": "testing", "done": 3, "total": 52, "rows": 115200, "note": "ALPINE 30m: rule 16/120 (keltner)", "failed": [], "pct": 5.8, "updated": "2026-09-05T13:12:28Z"}

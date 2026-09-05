@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 9, "total": 52, "rows": 179162, "note": "BRETT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 17.3, "updated": "2026-09-05T06:32:32Z"}
+{"shard": 13, "stage": "testing", "done": 10, "total": 52, "rows": 230202, "note": "C98 4h: rule 47/120 (ibs)", "failed": [], "pct": 19.2, "updated": "2026-09-05T06:33:17Z"}

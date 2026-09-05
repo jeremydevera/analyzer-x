@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 28, "total": 52, "rows": 984610, "note": "LUNC 30m: rule 106/120 (cf_bosfvg)", "failed": [], "pct": 53.8, "updated": "2026-09-05T17:01:56Z"}
+{"shard": 11, "stage": "testing", "done": 30, "total": 52, "rows": 1011170, "note": "MONAD 30m: 15,959 bars, testing 120 rules", "failed": [], "pct": 57.7, "updated": "2026-09-05T17:02:43Z"}

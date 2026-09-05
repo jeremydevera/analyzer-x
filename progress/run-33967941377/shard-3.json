@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 29, "total": 53, "rows": 982280, "note": "MASK 30m: rule 1/120 (mom6)", "failed": [], "pct": 54.7, "updated": "2026-09-05T13:50:48Z"}
+{"shard": 3, "stage": "testing", "done": 29, "total": 53, "rows": 988220, "note": "MASK 30m: rule 24/120 (psar)", "failed": [], "pct": 54.7, "updated": "2026-09-05T13:51:33Z"}

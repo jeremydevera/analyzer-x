@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 40, "total": 52, "rows": 1314234, "note": "SEI 1h: rule 8/120 (fib618)", "failed": [], "pct": 76.9, "updated": "2026-09-05T19:06:00Z"}
+{"shard": 17, "stage": "testing", "done": 40, "total": 52, "rows": 1337994, "note": "SEI 1h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 76.9, "updated": "2026-09-05T19:06:46Z"}

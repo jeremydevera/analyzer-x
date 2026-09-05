@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 2, "total": 53, "rows": 48546, "note": "ADBESTOCK 1h: rule 3/120 (fade15)", "failed": [], "pct": 3.8, "updated": "2026-09-05T18:23:52Z"}
+{"shard": 1, "stage": "testing", "done": 6, "total": 53, "rows": 112826, "note": "AUD 1d: 394 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-05T18:24:39Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 51, "total": 52, "rows": 1577330, "note": "XPT 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-05T09:24:24Z"}
+{"shard": 19, "stage": "done", "done": 52, "total": 52, "rows": 1600850, "note": "1,600,850 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "failed": [], "pct": 100.0, "updated": "2026-09-05T09:24:32Z"}

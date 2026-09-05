@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 50, "total": 52, "rows": 1614254, "note": "W 1h: rule 100/120 (cf_soup1)", "failed": [], "pct": 96.2, "updated": "2026-09-05T09:35:11Z"}
+{"shard": 17, "stage": "testing", "done": 51, "total": 52, "rows": 1635682, "note": "XPIN 1h: rule 14/120 (bb20)", "failed": [], "pct": 98.1, "updated": "2026-09-05T09:35:57Z"}

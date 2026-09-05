@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 39, "total": 53, "rows": 1049152, "note": "RIF 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 73.6, "updated": "2026-09-05T18:56:04Z"}
+{"shard": 5, "stage": "testing", "done": 39, "total": 53, "rows": 1070712, "note": "RIF 1h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 73.6, "updated": "2026-09-05T18:56:49Z"}

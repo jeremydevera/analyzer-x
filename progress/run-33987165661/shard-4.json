@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 12, "total": 53, "rows": 535610, "note": "CHZ 30m: rule 53/120 (squeeze)", "failed": [], "pct": 22.6, "updated": "2026-09-05T19:51:51Z"}
+{"shard": 4, "stage": "testing", "done": 13, "total": 53, "rows": 549010, "note": "COSTSTOCK 4h: 1,539 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-05T19:52:39Z"}

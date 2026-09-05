@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 26, "total": 53, "rows": 915430, "note": "KITE 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 49.1, "updated": "2026-09-05T10:35:57Z"}
+{"shard": 10, "stage": "testing", "done": 28, "total": 53, "rows": 963610, "note": "LUNANEW 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-05T10:36:53Z"}

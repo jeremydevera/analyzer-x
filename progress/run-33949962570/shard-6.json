@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 47, "total": 53, "rows": 1119470, "note": "TRX 4h: rule 18/120 (macd)", "failed": [], "pct": 88.7, "updated": "2026-09-05T06:51:02Z"}
+{"shard": 6, "stage": "testing", "done": 48, "total": 53, "rows": 1155022, "note": "UMA 4h: rule 2/120 (mom15)", "failed": [], "pct": 90.6, "updated": "2026-09-05T06:51:48Z"}

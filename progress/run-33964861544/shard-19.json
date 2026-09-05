@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 35, "total": 52, "rows": 978072, "note": "PHA 1d: rule 4/120 (trend50)", "failed": [], "pct": 67.3, "updated": "2026-09-05T12:30:56Z"}
+{"shard": 19, "stage": "testing", "done": 35, "total": 52, "rows": 997564, "note": "PHA 1h: rule 25/120 (ichimoku)", "failed": [], "pct": 67.3, "updated": "2026-09-05T12:31:41Z"}

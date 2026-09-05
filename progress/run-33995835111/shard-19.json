@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 2, "total": 52, "rows": 91586, "note": "AIXBT 30m: rule 63/120 (killzone)", "failed": [], "pct": 3.8, "updated": "2026-09-05T22:29:57Z"}
+{"shard": 19, "stage": "testing", "done": 3, "total": 52, "rows": 103906, "note": "AMP 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 5.8, "updated": "2026-09-05T22:30:49Z"}

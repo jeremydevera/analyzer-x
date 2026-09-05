@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 21, "total": 53, "rows": 648604, "note": "GOOGLSTOCK 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 39.6, "updated": "2026-09-05T21:34:27Z"}
+{"shard": 1, "stage": "testing", "done": 24, "total": 53, "rows": 699724, "note": "IMX 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 45.3, "updated": "2026-09-05T21:35:25Z"}

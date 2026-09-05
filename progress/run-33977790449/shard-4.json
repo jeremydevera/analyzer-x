@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 24, "total": 53, "rows": 920616, "note": "INFQSTOCK 30m: rule 4/120 (trend50)", "failed": [], "pct": 45.3, "updated": "2026-09-05T17:06:15Z"}
+{"shard": 4, "stage": "testing", "done": 27, "total": 53, "rows": 950636, "note": "LAB 4h: rule 1/120 (mom6)", "failed": [], "pct": 50.9, "updated": "2026-09-05T17:07:00Z"}

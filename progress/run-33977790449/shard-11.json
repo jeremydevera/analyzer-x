@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 34, "total": 52, "rows": 1146590, "note": "OPENLEDGER 30m: rule 33/120 (heikin)", "failed": [], "pct": 65.4, "updated": "2026-09-05T17:07:24Z"}
+{"shard": 11, "stage": "testing", "done": 34, "total": 52, "rows": 1159350, "note": "OPENLEDGER 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 65.4, "updated": "2026-09-05T17:08:10Z"}

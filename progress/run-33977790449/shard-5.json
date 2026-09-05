@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 5, "total": 53, "rows": 163040, "note": "ARPA 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 9.4, "updated": "2026-09-05T16:34:44Z"}
+{"shard": 5, "stage": "testing", "done": 6, "total": 53, "rows": 177840, "note": "AVAVSTOCK 30m: rule 2/120 (mom15)", "failed": [], "pct": 11.3, "updated": "2026-09-05T16:35:29Z"}

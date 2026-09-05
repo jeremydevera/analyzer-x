@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 27, "total": 53, "rows": 877434, "note": "KSTR 30m: rule 112/120 (cf_obretest)", "failed": [], "pct": 50.9, "updated": "2026-09-05T13:39:32Z"}
+{"shard": 2, "stage": "testing", "done": 28, "total": 53, "rows": 905594, "note": "LPT 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-05T13:40:23Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 29, "total": 53, "rows": 762222, "note": "MASK 1h: rule 15/120 (bbbreak)", "failed": [], "pct": 54.7, "updated": "2026-09-05T15:41:14Z"}
+{"shard": 3, "stage": "testing", "done": 30, "total": 53, "rows": 791702, "note": "MINIMAXSTOCK 1h: 1,906 bars, testing 120 rules", "failed": [], "pct": 56.6, "updated": "2026-09-05T15:42:00Z"}

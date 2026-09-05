@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 23, "total": 52, "rows": 721482, "note": "ID 1h: rule 14/120 (bb20)", "failed": [], "pct": 44.2, "updated": "2026-09-05T21:42:20Z"}
+{"shard": 18, "stage": "testing", "done": 24, "total": 52, "rows": 744142, "note": "IQVSTOCK 1h: downloading candles", "failed": [], "pct": 46.2, "updated": "2026-09-05T21:43:06Z"}

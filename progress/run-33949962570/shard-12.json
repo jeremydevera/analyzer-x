@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 39, "total": 52, "rows": 954350, "note": "ROAM 4h: rule 2/120 (mom15)", "failed": [], "pct": 75.0, "updated": "2026-09-05T06:44:51Z"}
+{"shard": 12, "stage": "testing", "done": 40, "total": 52, "rows": 1000558, "note": "SATS 4h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 76.9, "updated": "2026-09-05T06:45:36Z"}

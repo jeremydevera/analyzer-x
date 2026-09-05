@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 14, "total": 53, "rows": 378678, "note": "CVX 1h: rule 106/120 (cf_bosfvg)", "failed": [], "pct": 26.4, "updated": "2026-09-05T07:19:48Z"}
+{"shard": 10, "stage": "testing", "done": 16, "total": 53, "rows": 396036, "note": "EDEN 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 30.2, "updated": "2026-09-05T07:20:33Z"}

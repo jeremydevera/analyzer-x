@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 7, "total": 53, "rows": 283380, "note": "BANANAS31 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 13.2, "updated": "2026-09-05T13:19:24Z"}
+{"shard": 4, "stage": "testing", "done": 7, "total": 53, "rows": 291520, "note": "BANANAS31 30m: rule 47/120 (ibs)", "failed": [], "pct": 13.2, "updated": "2026-09-05T13:20:09Z"}

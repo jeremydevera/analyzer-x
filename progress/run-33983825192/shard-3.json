@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 44, "total": 53, "rows": 1201744, "note": "STBL 1h: rule 33/120 (heikin)", "failed": [], "pct": 83.0, "updated": "2026-09-05T18:59:34Z"}
+{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 1221368, "note": "SYN 1d: rule 6/120 (sweep30)", "failed": [], "pct": 84.9, "updated": "2026-09-05T19:00:19Z"}

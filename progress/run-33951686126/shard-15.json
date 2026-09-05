@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 5, "total": 52, "rows": 120782, "note": "ASXSTOCK 1h: rule 45/120 (zscore20)", "failed": [], "pct": 9.6, "updated": "2026-09-05T07:10:22Z"}
+{"shard": 15, "stage": "testing", "done": 9, "total": 52, "rows": 217954, "note": "BRKBSTOCK 1h: rule 34/120 (lrslope)", "failed": [], "pct": 17.3, "updated": "2026-09-05T07:11:07Z"}

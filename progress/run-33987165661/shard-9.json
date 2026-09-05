@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 31, "total": 53, "rows": 1213482, "note": "MUBARAK 30m: rule 27/120 (aroon25)", "failed": [], "pct": 58.5, "updated": "2026-09-05T20:18:39Z"}
+{"shard": 9, "stage": "testing", "done": 31, "total": 53, "rows": 1224042, "note": "MUBARAK 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 58.5, "updated": "2026-09-05T20:19:25Z"}

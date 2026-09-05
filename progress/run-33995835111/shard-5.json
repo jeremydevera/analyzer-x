@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 26, "total": 53, "rows": 851938, "note": "KGEN 30m: rule 68/120 (dbltop)", "failed": [], "pct": 49.1, "updated": "2026-09-05T22:59:22Z"}
+{"shard": 5, "stage": "testing", "done": 28, "total": 53, "rows": 877678, "note": "LRC 4h: rule 5/120 (rsi14)", "failed": [], "pct": 52.8, "updated": "2026-09-05T23:00:07Z"}

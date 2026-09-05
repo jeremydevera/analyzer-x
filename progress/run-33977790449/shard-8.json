@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 46, "total": 53, "rows": 1408458, "note": "TMF 30m: rule 63/120 (killzone)", "failed": [], "pct": 86.8, "updated": "2026-09-05T17:00:54Z"}
+{"shard": 8, "stage": "testing", "done": 49, "total": 53, "rows": 1485158, "note": "VELVET 4h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 92.5, "updated": "2026-09-05T17:01:39Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 37, "total": 52, "rows": 945254, "note": "PYPLSTOCK 1d: 75 bars, testing 120 rules", "failed": [], "pct": 71.2, "updated": "2026-09-05T08:30:59Z"}
+{"shard": 14, "stage": "testing", "done": 43, "total": 52, "rows": 1015148, "note": "SPOTSTOCK 1d: 206 bars, testing 120 rules", "failed": [], "pct": 82.7, "updated": "2026-09-05T08:31:46Z"}

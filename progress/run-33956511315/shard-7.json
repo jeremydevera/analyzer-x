@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 24, "total": 53, "rows": 749510, "note": "INTCSTOCK 1h: rule 104/120 (cf_eqhl_l1)", "failed": [], "pct": 45.3, "updated": "2026-09-05T09:21:21Z"}
+{"shard": 7, "stage": "testing", "done": 25, "total": 53, "rows": 768606, "note": "JELLYJELLY 1h: rule 2/120 (mom15)", "failed": [], "pct": 47.2, "updated": "2026-09-05T09:22:10Z"}

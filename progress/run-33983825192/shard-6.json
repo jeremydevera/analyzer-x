@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 13, "total": 53, "rows": 371570, "note": "COW 1h: rule 6/120 (sweep30)", "failed": [], "pct": 24.5, "updated": "2026-09-05T18:30:38Z"}
+{"shard": 6, "stage": "testing", "done": 14, "total": 53, "rows": 397938, "note": "CUPSEY 1h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-05T18:31:23Z"}

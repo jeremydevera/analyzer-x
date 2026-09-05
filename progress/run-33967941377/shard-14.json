@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 47, "total": 52, "rows": 1650884, "note": "TURTLE 4h: 1,908 bars, testing 120 rules", "failed": [], "pct": 90.4, "updated": "2026-09-05T14:21:37Z"}
+{"shard": 14, "stage": "testing", "done": 47, "total": 52, "rows": 1675370, "note": "TURTLE 30m: rule 2/120 (mom15)", "failed": [], "pct": 90.4, "updated": "2026-09-05T14:22:23Z"}

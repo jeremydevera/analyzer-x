@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 1, "total": 52, "rows": 20878, "note": "ACU 1h: rule 51/120 (orb)", "failed": [], "pct": 1.9, "updated": "2026-09-05T15:19:36Z"}
+{"shard": 19, "stage": "testing", "done": 2, "total": 52, "rows": 58982, "note": "AIXBT 1h: rule 46/120 (rsi2)", "failed": [], "pct": 3.8, "updated": "2026-09-05T15:21:07Z"}

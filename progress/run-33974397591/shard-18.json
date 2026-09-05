@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 33, "total": 52, "rows": 986364, "note": "OG 1h: rule 45/120 (zscore20)", "failed": [], "pct": 63.5, "updated": "2026-09-05T15:50:14Z"}
+{"shard": 18, "stage": "testing", "done": 34, "total": 52, "rows": 1019738, "note": "ORCLSTOCK 1h: rule 20/120 (stoch14)", "failed": [], "pct": 65.4, "updated": "2026-09-05T15:50:59Z"}

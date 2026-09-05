@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 9, "total": 53, "rows": 342600, "note": "BLUAI 30m: rule 16/120 (keltner)", "failed": [], "pct": 17.0, "updated": "2026-09-05T22:44:38Z"}
+{"shard": 0, "stage": "testing", "done": 9, "total": 53, "rows": 354040, "note": "BLUAI 30m: rule 69/120 (obv20)", "failed": [], "pct": 17.0, "updated": "2026-09-05T22:45:23Z"}

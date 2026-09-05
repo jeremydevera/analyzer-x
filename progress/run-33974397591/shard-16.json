@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 9, "total": 52, "rows": 317120, "note": "BRL 1h: rule 9/120 (fib382)", "failed": [], "pct": 17.3, "updated": "2026-09-05T15:30:29Z"}
+{"shard": 16, "stage": "testing", "done": 10, "total": 52, "rows": 355290, "note": "CAP 1h: rule 34/120 (lrslope)", "failed": [], "pct": 19.2, "updated": "2026-09-05T15:31:14Z"}

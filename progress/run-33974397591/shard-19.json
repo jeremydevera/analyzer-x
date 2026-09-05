@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 46, "total": 52, "rows": 1398378, "note": "TREE 1h: rule 1/120 (mom6)", "failed": [], "pct": 88.5, "updated": "2026-09-05T15:54:26Z"}
+{"shard": 19, "stage": "testing", "done": 47, "total": 52, "rows": 1424778, "note": "TXNSTOCK 1d: 130 bars, testing 120 rules", "failed": [], "pct": 90.4, "updated": "2026-09-05T15:55:12Z"}

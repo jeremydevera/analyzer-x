@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 23, "total": 52, "rows": 800924, "note": "ICX 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 44.2, "updated": "2026-09-05T18:43:16Z"}
+{"shard": 16, "stage": "testing", "done": 24, "total": 52, "rows": 826884, "note": "IOTX 1h: rule 46/120 (rsi2)", "failed": [], "pct": 46.2, "updated": "2026-09-05T18:44:01Z"}

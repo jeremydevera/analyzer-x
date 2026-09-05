@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 48, "total": 52, "rows": 1457706, "note": "USTC 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 92.3, "updated": "2026-09-05T12:44:45Z"}
+{"shard": 19, "stage": "testing", "done": 48, "total": 52, "rows": 1474426, "note": "USTC 1h: rule 71/120 (mfi14)", "failed": [], "pct": 92.3, "updated": "2026-09-05T12:45:31Z"}

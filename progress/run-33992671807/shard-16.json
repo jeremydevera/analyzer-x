@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 33, "total": 52, "rows": 1144256, "note": "OFC 1h: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 63.5, "updated": "2026-09-05T21:56:43Z"}
+{"shard": 16, "stage": "testing", "done": 35, "total": 52, "rows": 1170348, "note": "PEPE 1h: rule 13/120 (pivot)", "failed": [], "pct": 67.3, "updated": "2026-09-05T21:57:29Z"}

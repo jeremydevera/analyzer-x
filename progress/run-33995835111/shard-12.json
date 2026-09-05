@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 14, "total": 52, "rows": 522598, "note": "CYBER 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 26.9, "updated": "2026-09-05T22:49:00Z"}
+{"shard": 12, "stage": "testing", "done": 16, "total": 52, "rows": 564578, "note": "EDU 4h: rule 76/120 (cf_mom)", "failed": [], "pct": 30.8, "updated": "2026-09-05T22:49:46Z"}

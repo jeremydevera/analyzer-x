@@ -25,6 +25,8 @@ export default function LogsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
   const [d, setD] = useState<BacktestLogs | null>(null);
   const [err, setErr] = useState("");
   const [openPending, setOpenPending] = useState(false);
+  const [resolving, setResolving] = useState(false);
+  const [resolved, setResolved] = useState("");
 
   const load = useCallback(() => {
     api.backtestLogs()
@@ -37,6 +39,24 @@ export default function LogsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
     const t = setInterval(load, 30_000);
     return () => clearInterval(t);
   }, [load, refreshKey]);
+
+  /** RESOLVE PENDING — one dispatch for every never-measured pair.
+   *
+   * Operator, Sep 05, 2026: "when i click this i want you to resolve all
+   * pending". What comes back is what was SENT (the count and the frames), so
+   * the line below reports the dispatch instead of claiming one. */
+  const resolvePending = async () => {
+    setResolving(true); setResolved("");
+    try {
+      const r = await api.backtestResolvePending();
+      setResolved(r.why);
+      load();
+    } catch (e) {
+      setResolved(String((e as Error)?.message ?? e));
+    } finally {
+      setResolving(false);
+    }
+  };
 
   if (err) {
     return (
@@ -74,10 +94,35 @@ export default function LogsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
             ? `${d.error_count.toLocaleString()} error${d.error_count === 1 ? "" : "s"}`
             : cloudBlind ? "no error on this PC" : "no errors"}
         </Badge>
+        {/* RESOLVE PENDING. Its LABEL carries the count, so a button that
+            cannot do anything says so instead of looking armed — and the
+            count comes from the same `pending` payload as the badge beside
+            it, never a second source (label-must-match-data). */}
+        <button
+          onClick={resolvePending}
+          disabled={resolving || !p.count}
+          title={p.count
+            ? `Measure the ${p.count.toLocaleString()} pair(s) this PC has candles for but has never measured. Dispatches GitHub Actions for the timeframes they are in; pairs already measured here are not overwritten.`
+            : "Every pair with candles on this PC has been measured"}
+          className={`rounded-lg px-3 py-1 text-theme-xs font-medium ${
+            p.count && !resolving
+              ? "bg-warning-500 text-white hover:bg-warning-600"
+              : "cursor-default bg-gray-100 text-gray-400 dark:bg-white/[0.06] dark:text-gray-500"}`}>
+          {resolving
+            ? "RESOLVE PENDING · dispatching…"
+            : p.count
+              ? `RESOLVE PENDING · ${p.count.toLocaleString()}`
+              : "RESOLVE PENDING · nothing pending"}
+        </button>
         <span className="ml-auto text-theme-xs text-gray-500 dark:text-gray-400">
           checked {d.checked}
         </span>
       </div>
+      {resolved && (
+        <p className="mt-2 text-theme-xs text-brand-600 dark:text-brand-400">
+          {resolved}
+        </p>
+      )}
 
       {/* ------------------------------------------------ pending, on this PC */}
       <p className="mt-3 text-theme-xs text-gray-500 dark:text-gray-400">

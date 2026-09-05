@@ -37,6 +37,27 @@ def _fmt(ts) -> str:
         return ""
 
 
+def pending_pairs() -> list[tuple[str, str]]:
+    """EVERY pending (symbol, timeframe) — the full list, not the sample.
+
+    `pending()` names only the first `NAME_LIMIT` for the panel. An ACTION on
+    the pendings (the RESOLVE PENDING button) has to see all of them, or it
+    reports on a truncated slice of its own work.
+    """
+    from tradingagents import market_sweep as msw
+
+    measured = {f.stem for f in msw.STATES.glob("*.json")}
+    out = []
+    for f in msw.CANDLES.glob("*.json"):
+        try:
+            sym, tf = f.stem.rsplit("-", 1)
+        except ValueError:
+            continue
+        if f"{sym.replace('_USDT', '')}-{tf}" not in measured:
+            out.append((sym, tf))
+    return sorted(out)
+
+
 def pending(force: bool = False) -> dict:
     """Pairs this machine holds candles for but has NEVER measured.
 
@@ -57,17 +78,11 @@ def pending(force: bool = False) -> dict:
         except ValueError:
             continue
         stored.add((sym, tf))
-    # state files are keyed on the COIN (no _USDT); candle files on the SYMBOL
-    measured = set()
-    for f in msw.STATES.glob("*.json"):
-        try:
-            coin, tf = f.stem.rsplit("-", 1)
-        except ValueError:
-            continue
-        measured.add((coin, tf))
-
-    missing = sorted((s, t) for s, t in stored
-                     if (s.replace("_USDT", ""), t) not in measured)
+    # ONE definition of "pending", shared with the RESOLVE PENDING button.
+    # Both used to walk the two directories themselves, and two copies of a
+    # rule is one rule waiting to drift — the button would then have reported
+    # a split of a set the badge beside it did not agree with.
+    missing = pending_pairs()
     by_tf: dict = {}
     for _s, t in missing:
         by_tf[t] = by_tf.get(t, 0) + 1

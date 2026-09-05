@@ -689,6 +689,96 @@ def backtest_logs(cloud: bool = True) -> dict:
     return bl.logs(include_cloud=cloud)
 
 
+@app.post("/api/backtest/pending/resolve")
+def backtest_pending_resolve() -> dict:
+    """RESOLVE PENDING — measure every pair this PC has candles for but has
+    never measured, in one dispatch.
+
+    Operator, Sep 05, 2026: *"can you create a buitton called 'Resolve Pending'
+    when i click this i want you to resolve all pending, currently there is 681
+    pending"*.
+
+    WHAT IT SENDS, and why that is honest rather than a "681 pairs" claim: the
+    sweep workflow slices its coins BY INDEX inside each shard, so a run cannot
+    be pointed at an arbitrary list of pairs. What it can be pointed at is
+    TIMEFRAMES, and the pendings are exactly a set of frames — 4h: 318, 1d:
+    211, 1h: 84, 30m: 36, 15m: 32 when the operator asked. So this dispatches
+    the frames the pendings live in.
+
+    The fleet will therefore re-measure pairs this machine has already done.
+    That costs GitHub time and costs the store nothing: `collect_into_store`
+    REFUSES to overwrite a pair whose local watermark is above zero, because
+    that watermark promises every bar up to X was tested. And a collected pair
+    DOES get a state file (`save_states` with `__cloud__`), which is what makes
+    it stop being pending — without that, this button could never move the
+    number it is named after.
+    """
+    from tradingagents import backtest_logs as bl, capacity as cap, cloud_sweep as cs, db_jobs as dj
+    from tradingagents.dataflows import mexc_futures as fx
+
+    pend = bl.pending(force=True)          # never a cached count for an ACTION
+    frames = [t for t in ("15m", "30m", "1h", "4h", "1d")
+              if pend["by_timeframe"].get(t)]
+    if not frames:
+        return {"dispatched": False, "pending": 0, "timeframes": [],
+                "unreachable": 0, "unreachable_coins": [],
+                "why": "nothing is pending — every pair with candles on this "
+                       "PC has been measured"}
+
+    # PAIRS THE FLEET CANNOT REACH. A shard builds its coin list from MEXC's
+    # LIVE contract detail, so a pair whose coin has been delisted has candles
+    # here and can never be measured there. Measured Sep 05, 2026: 24 of the
+    # 681 pending, over 6 coins (ASP, BULLCOIN, CZ, DRV, MEZO, ST). Left
+    # unsaid, this button would stall the count at 24 and read as broken.
+    unreachable, dead_coins = 0, []
+    try:
+        live = {x["symbol"] for x in
+                (fx._get_public(f"{fx.BASE}/api/v1/contract/detail").get("data")
+                 or []) if int(x.get("state", 1)) == 0}
+        pairs = bl.pending_pairs()
+        dead = {s for s, _t in pairs if s not in live}
+        dead_coins = sorted(c.replace("_USDT", "") for c in dead)
+        unreachable = sum(1 for s, _t in pairs if s in dead)
+    except Exception:                                          # noqa: BLE001
+        # the venue is not answering: report the dispatch without the split
+        # rather than inventing one
+        unreachable, dead_coins = 0, []
+    if unreachable and unreachable >= pend["count"]:
+        return {"dispatched": False, "pending": pend["count"],
+                "timeframes": [], "unreachable": unreachable,
+                "unreachable_coins": dead_coins,
+                "why": f"all {pend['count']} pending pair(s) are on contracts "
+                       f"MEXC no longer lists ({', '.join(dead_coins)}) — no "
+                       f"fleet can measure them, so nothing was dispatched"}
+    ok, why = cs.available()
+    if not ok:
+        raise HTTPException(400, f"GitHub cannot take it: {why}")
+    free, cwhy = cap.cloud_free()
+    if not free:
+        # One sweep at a time: two runs measure the same contracts and the
+        # merge then has to choose a winner.
+        raise HTTPException(409, f"GitHub is busy — {cwhy}. The pending pairs "
+                                 f"are measured by the run already going, or "
+                                 f"press this again when it finishes.")
+    spec = dj._read(dj.FILES["backtest"]["spec"]) or {}
+    run = cs.dispatch(shards=cap.CLOUD_RUNNERS, coins=0,
+                      timeframes=",".join(frames), min_days=0,
+                      # the operator's own window and stake, not a default
+                      days=int(spec.get("days") or 365),
+                      base=float(spec.get("base") or 5.0))
+    cs.remember(run)
+    reach = pend["count"] - unreachable
+    note = (f" · {unreachable} on delisted contract(s) "
+            f"({', '.join(dead_coins)}) no fleet can reach"
+            if unreachable else "")
+    return {"dispatched": True, "run": run, "pending": pend["count"],
+            "reachable": reach, "unreachable": unreachable,
+            "unreachable_coins": dead_coins,
+            "timeframes": frames, "by_timeframe": pend["by_timeframe"],
+            "why": f"{reach:,} of {pend['count']:,} pending pair(s) sent over "
+                   f"{', '.join(frames)} — GitHub run {run.get('id')}{note}"}
+
+
 @app.get("/api/jobs")
 def jobs_all() -> dict:
     """Every job's state in ONE call, for the header's running-job indicator.

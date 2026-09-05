@@ -1,0 +1,171 @@
+"""RESOLVE PENDING on the Backtest screen — measure what was never measured.
+
+Operator, Sep 05, 2026: *"can you create a buitton called 'Resolve Pending'
+when i click this i want you to resolve all pending, currently there is 681
+pending"*.
+
+PENDING here is not the Candles screen's pending (that button already exists
+and is about candle files). It is a pair this PC holds candles for and has
+NEVER measured — no state file. 681 of them when the operator asked, over
+4h: 318, 1d: 211, 1h: 84, 30m: 36, 15m: 32.
+
+WHY IT DISPATCHES TIMEFRAMES AND NOT A PAIR LIST. The sweep workflow slices
+its coins by index inside each shard (`syms[SHARD::SHARDS]`), so a run cannot
+be aimed at an arbitrary list. It CAN be aimed at timeframes, and the pendings
+are exactly a set of those. The fleet then re-measures pairs this machine has
+already done, which costs GitHub time and costs the store nothing:
+`collect_into_store` refuses to overwrite a pair whose local watermark is
+above zero. And a collected pair DOES get a state file (`save_states` with
+`__cloud__`), which is what makes it stop being pending — without that this
+button could never move the number it is named after.
+
+WHAT THE HARDDEV LOOP FOUND. 24 of the 681 are on 6 contracts MEXC no longer
+lists (ASP, BULLCOIN, CZ, DRV, MEZO, ST). A shard builds its coin list from
+the LIVE contract detail, so no fleet can ever reach them. Unsaid, this button
+would stall the count at 24 and read as broken; it reports the split instead.
+"""
+from __future__ import annotations
+
+import pytest
+from fastapi.testclient import TestClient
+
+from tradingagents import api as api_mod, backtest_logs as bl, capacity as cap, cloud_sweep as cs
+from tradingagents.dataflows import mexc_futures as fx
+
+PENDING = {"count": 681, "stored": 5192, "measured": 4511,
+           "by_timeframe": {"15m": 32, "30m": 36, "1h": 84, "4h": 318,
+                            "1d": 211}}
+
+
+@pytest.fixture()
+def client(monkeypatch):
+    monkeypatch.setattr(bl, "pending", lambda force=False: dict(PENDING))
+    monkeypatch.setattr(bl, "pending_pairs", lambda: [("AAA_USDT", "4h")])
+    monkeypatch.setattr(cs, "available", lambda: (True, "me/repo"))
+    monkeypatch.setattr(cap, "cloud_free", lambda: (True, "free"))
+    monkeypatch.setattr(cs, "remember", lambda run: None)
+    monkeypatch.setattr(fx, "_get_public",
+                        lambda url: {"data": [{"symbol": "AAA_USDT", "state": 0}]})
+    return TestClient(api_mod.app)
+
+
+def _dispatch_spy(sent: dict):
+    def _d(**kw):
+        sent.update(kw)
+        return {"id": 42, "url": "https://gh/run/42"}
+    return _d
+
+
+def test_it_dispatches_the_frames_the_pendings_are_in(client, monkeypatch):
+    sent: dict = {}
+    monkeypatch.setattr(cs, "dispatch", _dispatch_spy(sent))
+    got = client.post("/api/backtest/pending/resolve").json()
+    assert got["dispatched"] is True
+    assert got["run"]["id"] == 42
+    assert set(sent["timeframes"].split(",")) == {"15m", "30m", "1h", "4h", "1d"}
+    assert got["pending"] == 681
+    assert "681" in got["why"], got["why"]
+
+
+def test_only_the_frames_that_actually_have_pendings_are_sent(client, monkeypatch):
+    """Sending a frame with nothing pending is twenty runners doing nothing."""
+    monkeypatch.setattr(bl, "pending", lambda force=False: {
+        **PENDING, "count": 318, "by_timeframe": {"4h": 318}})
+    sent: dict = {}
+    monkeypatch.setattr(cs, "dispatch", _dispatch_spy(sent))
+    client.post("/api/backtest/pending/resolve")
+    assert sent["timeframes"] == "4h"
+
+
+def test_the_count_is_re_read_not_cached(client, monkeypatch):
+    """The badge may be up to a minute old; an ACTION must not run on it."""
+    asked: list = []
+    monkeypatch.setattr(bl, "pending",
+                        lambda force=False: asked.append(force) or dict(PENDING))
+    monkeypatch.setattr(cs, "dispatch", _dispatch_spy({}))
+    client.post("/api/backtest/pending/resolve")
+    assert asked == [True], "the pending count must be forced, not reused"
+
+
+def test_nothing_pending_dispatches_nothing(client, monkeypatch):
+    monkeypatch.setattr(bl, "pending", lambda force=False: {
+        **PENDING, "count": 0, "by_timeframe": {}})
+    called: list = []
+    monkeypatch.setattr(cs, "dispatch", lambda **k: called.append(k))
+    got = client.post("/api/backtest/pending/resolve").json()
+    assert got["dispatched"] is False and not called
+    assert "nothing is pending" in got["why"]
+
+
+# ------------------------------------------- what the fleet cannot reach
+def test_delisted_pairs_are_named_not_silently_left_behind(client, monkeypatch):
+    """24 of the operator's 681 were on contracts MEXC no longer lists."""
+    monkeypatch.setattr(bl, "pending_pairs",
+                        lambda: [("AAA_USDT", "4h"), ("CZ_USDT", "1d"),
+                                 ("MEZO_USDT", "1d")])
+    monkeypatch.setattr(cs, "dispatch", _dispatch_spy({}))
+    got = client.post("/api/backtest/pending/resolve").json()
+    assert got["dispatched"] is True
+    assert got["unreachable"] == 2
+    assert got["unreachable_coins"] == ["CZ", "MEZO"]
+    assert "CZ" in got["why"] and "delisted" in got["why"]
+    assert got["reachable"] == 679, "and the number it CAN do is said too"
+
+
+def test_all_delisted_means_no_pointless_dispatch(client, monkeypatch):
+    monkeypatch.setattr(bl, "pending", lambda force=False: {
+        **PENDING, "count": 2, "by_timeframe": {"1d": 2}})
+    monkeypatch.setattr(bl, "pending_pairs",
+                        lambda: [("CZ_USDT", "1d"), ("MEZO_USDT", "1d")])
+    called: list = []
+    monkeypatch.setattr(cs, "dispatch", lambda **k: called.append(k))
+    got = client.post("/api/backtest/pending/resolve").json()
+    assert got["dispatched"] is False and not called, \
+        "twenty runners must not be started for work none of them can do"
+    assert "no longer lists" in got["why"]
+
+
+def test_a_venue_that_will_not_answer_still_dispatches(client, monkeypatch):
+    """The delisted check is a nicety. Losing it must not lose the button."""
+    def _boom(url):
+        raise RuntimeError("contract detail unreachable")
+
+    monkeypatch.setattr(fx, "_get_public", _boom)
+    monkeypatch.setattr(cs, "dispatch", _dispatch_spy({}))
+    got = client.post("/api/backtest/pending/resolve").json()
+    assert got["dispatched"] is True
+    assert got["unreachable"] == 0, "unknown is reported as no split, not a guess"
+
+
+# ---------------------------------------------------------- one at a time
+def test_a_busy_fleet_is_refused_with_a_reason(client, monkeypatch):
+    """Two runs measure the same contracts and the merge must then pick a
+    winner. The refusal says what to do instead."""
+    monkeypatch.setattr(cap, "cloud_free",
+                        lambda: (False, "run 99 is already in progress"))
+    called: list = []
+    monkeypatch.setattr(cs, "dispatch", lambda **k: called.append(k))
+    r = client.post("/api/backtest/pending/resolve")
+    assert r.status_code == 409 and not called
+    assert "run 99" in r.json()["detail"]
+
+
+def test_no_github_is_a_refusal_not_a_crash(client, monkeypatch):
+    monkeypatch.setattr(cs, "available", lambda: (False, "gh is not installed"))
+    r = client.post("/api/backtest/pending/resolve")
+    assert r.status_code == 400
+    assert "gh is not installed" in r.json()["detail"]
+
+
+def test_the_operators_own_window_and_stake_are_used(client, monkeypatch, tmp_path):
+    """Not the dispatch defaults: a resolve run must be the same measurement
+    as the rest of the grid, or the store holds two."""
+    from tradingagents import db_jobs as dj
+
+    spec = tmp_path / "spec.json"
+    spec.write_text('{"days": 60, "base": 25.0}', encoding="utf-8")
+    monkeypatch.setitem(dj.FILES["backtest"], "spec", spec)
+    sent: dict = {}
+    monkeypatch.setattr(cs, "dispatch", _dispatch_spy(sent))
+    client.post("/api/backtest/pending/resolve")
+    assert sent["days"] == 60 and sent["base"] == 25.0

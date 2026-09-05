@@ -441,6 +441,13 @@ export const api = {
   deployedRows: (coins: string[], tfs: string[]) =>
     get<{ rows: { coin: string; tf: string; signal: string; sl: number; tp: number; sizing: string; key: string }[] }>(
       `/api/backtest/deployed?coins=${coins.join(",")}&tfs=${tfs.join(",")}`),
+  /** RESOLVE PENDING on the Backtest screen: measure every pair this PC has
+   *  candles for but has never measured, in one GitHub dispatch. Returns what
+   *  it sent, so the panel can say it rather than assume it. */
+  backtestResolvePending: () =>
+    post<{ dispatched: boolean; pending: number; timeframes: string[];
+           why: string; run?: { id?: number; url?: string } }>(
+      "/api/backtest/pending/resolve", {}),
   cloudStatus: () => get<CloudStatus>("/api/cloud/status"),
   cloudDispatch: (spec: { shards?: number; coins?: number; timeframes?: string; days?: number; base?: number }) =>
     post<{ id?: number; url?: string }>("/api/cloud/dispatch", spec),

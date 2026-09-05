@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 22, "total": 52, "rows": 882272, "note": "HMSTR 30m: rule 82/120 (cf_maobv)", "failed": [], "pct": 42.3, "updated": "2026-09-05T13:39:15Z"}
+{"shard": 15, "stage": "testing", "done": 23, "total": 52, "rows": 900532, "note": "ICP 4h: rule 39/120 (fisher)", "failed": [], "pct": 44.2, "updated": "2026-09-05T13:40:00Z"}

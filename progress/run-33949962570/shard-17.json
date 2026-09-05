@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 7, "total": 52, "rows": 226660, "note": "BCH 4h: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 13.5, "updated": "2026-09-05T06:35:37Z"}
+{"shard": 17, "stage": "testing", "done": 9, "total": 52, "rows": 271960, "note": "BROCCOLIF3B 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 17.3, "updated": "2026-09-05T06:36:32Z"}

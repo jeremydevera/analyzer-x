@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 20, "total": 53, "rows": 752310, "note": "GEVSTOCK 30m: rule 113/120 (cf_obretest_l1)", "failed": [], "pct": 37.7, "updated": "2026-09-05T20:07:20Z"}
+{"shard": 7, "stage": "testing", "done": 21, "total": 53, "rows": 779250, "note": "GRASS 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-05T20:08:12Z"}

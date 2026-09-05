@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 43, "total": 52, "rows": 1662216, "note": "SPX500 30m: rule 33/120 (heikin)", "failed": [], "pct": 82.7, "updated": "2026-09-05T11:09:58Z"}
+{"shard": 15, "stage": "testing", "done": 44, "total": 52, "rows": 1683836, "note": "SUN 4h: rule 15/120 (bbbreak)", "failed": [], "pct": 84.6, "updated": "2026-09-05T11:10:43Z"}

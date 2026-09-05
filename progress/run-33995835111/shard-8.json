@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 11, "total": 53, "rows": 432700, "note": "CC 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 20.8, "updated": "2026-09-05T22:43:57Z"}
+{"shard": 8, "stage": "testing", "done": 13, "total": 53, "rows": 467340, "note": "CRCLSTOCK 30m: rule 2/120 (mom15)", "failed": [], "pct": 24.5, "updated": "2026-09-05T22:44:46Z"}

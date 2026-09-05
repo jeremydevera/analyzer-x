@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 2, "total": 52, "rows": 98362, "note": "AIO 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-05T19:34:26Z"}
+{"shard": 18, "stage": "testing", "done": 4, "total": 52, "rows": 121902, "note": "ARB 4h: rule 75/120 (relvolbrk)", "failed": [], "pct": 7.7, "updated": "2026-09-05T19:35:12Z"}

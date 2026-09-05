@@ -1,9 +1,9 @@
 ---
-name: check-runner-feed
+name: feedcheck
 description: Read the runner feed/log/ledger and say what is NORMAL and what is a BUG, with the evidence. Use when the operator asks "is the runner ok", "what are these lines", "why no trades", or pastes feed lines. Built from this repo's real incidents.
 ---
 
-# check-runner-feed — what the feed is saying, and what is actually a bug
+# feedcheck — what the feed is saying, and what is actually a bug
 
 RULE ONE: read the emitter, not the label (CLAUDE.md rule 23). Before calling
 any line a bug, open the code that writes it. Every wrong diagnosis this repo

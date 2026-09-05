@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 11, "total": 52, "rows": 415036, "note": "CFX 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 21.2, "updated": "2026-09-05T21:32:56Z"}
+{"shard": 16, "stage": "testing", "done": 12, "total": 52, "rows": 446208, "note": "COINBASE 1h: rule 70/120 (cmf20)", "failed": [], "pct": 23.1, "updated": "2026-09-05T21:33:41Z"}

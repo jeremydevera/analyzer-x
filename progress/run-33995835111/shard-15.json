@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 20, "total": 52, "rows": 776448, "note": "GLWSTOCK 30m: rule 35/120 (willr14)", "failed": [], "pct": 38.5, "updated": "2026-09-05T22:52:03Z"}
+{"shard": 15, "stage": "testing", "done": 21, "total": 52, "rows": 816810, "note": "GWEI 30m: 10,917 bars, testing 120 rules", "failed": [], "pct": 40.4, "updated": "2026-09-05T22:52:50Z"}

@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 14, "total": 53, "rows": 507952, "note": "CVX 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-05T16:46:59Z"}
+{"shard": 10, "stage": "testing", "done": 16, "total": 53, "rows": 553870, "note": "EDEN 30m: rule 1/120 (mom6)", "failed": [], "pct": 30.2, "updated": "2026-09-05T16:47:51Z"}

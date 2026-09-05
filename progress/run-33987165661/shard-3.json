@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 9, "total": 53, "rows": 345228, "note": "BMT 30m: rule 85/120 (cf_triple)", "failed": [], "pct": 17.0, "updated": "2026-09-05T19:45:17Z"}
+{"shard": 3, "stage": "testing", "done": 10, "total": 53, "rows": 359748, "note": "BSV 4h: rule 25/120 (ichimoku)", "failed": [], "pct": 18.9, "updated": "2026-09-05T19:46:02Z"}

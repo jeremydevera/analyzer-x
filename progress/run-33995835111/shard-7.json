@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 28, "total": 53, "rows": 1117878, "note": "LTC 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 52.8, "updated": "2026-09-05T23:15:36Z"}
+{"shard": 7, "stage": "testing", "done": 29, "total": 53, "rows": 1153078, "note": "MCDSTOCK 30m: rule 47/120 (ibs)", "failed": [], "pct": 54.7, "updated": "2026-09-05T23:16:22Z"}

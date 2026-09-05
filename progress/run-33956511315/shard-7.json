@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 45, "total": 53, "rows": 1372942, "note": "TAG 1h: rule 18/120 (macd)", "failed": [], "pct": 84.9, "updated": "2026-09-05T09:39:50Z"}
+{"shard": 7, "stage": "testing", "done": 45, "total": 53, "rows": 1393182, "note": "TAG 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-05T09:40:35Z"}

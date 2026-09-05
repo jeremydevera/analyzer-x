@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 14, "total": 53, "rows": 431166, "note": "CTC 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-05T15:29:39Z"}
+{"shard": 1, "stage": "testing", "done": 16, "total": 53, "rows": 500128, "note": "DRAM 1h: rule 100/120 (cf_soup1)", "failed": [], "pct": 30.2, "updated": "2026-09-05T15:30:24Z"}

@@ -1398,6 +1398,32 @@ COST_RATIO_BLOCK = 0.50     # cost ≥ 50% of TP  → refuse
 COST_RATIO_WARN = 0.20      # cost ≥ 20% of TP  → allow, loudly
 
 
+def tradable_price(symbol: str, side: int, *, fx=None) -> float:
+    """The price THIS side would actually transact at: ask to buy, bid to sell.
+
+    `last_price` is whichever side printed last. On PSXSTOCK, whose two sides
+    are ~1.6% apart, the live and paper cycles read 253.50 and 257.35 in the
+    same second on 2026-09-05 — so the two books opened the same signal 1.5%
+    apart and the live stop was already behind the market (MEXC 5003). The
+    book side does not flicker: it is the number an order gets.
+
+    Falls back to `last_price` when the book cannot be read, because no price
+    at all means no entry (the caller refuses).
+    """
+    if fx is None:
+        from tradingagents.dataflows import mexc_futures as fx  # noqa: PLC0415
+    try:
+        book = fx.order_book(symbol)
+        asks, bids = book.get("asks") or [], book.get("bids") or []
+        if side > 0 and asks:
+            return float(asks[0][0])
+        if side < 0 and bids:
+            return float(bids[0][0])
+    except Exception:                                          # noqa: BLE001
+        pass
+    return float(fx.last_price(symbol))
+
+
 def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None) -> dict:
     """Can this strategy's edge survive this contract's real trading cost?
 
@@ -3005,10 +3031,15 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                 cost = 2 * FEE_FALLBACK
             if pos_dry:
                 # A PAPER fill lands on the exact TP/SL price, which no real
-                # order gets. Charge the same slippage the backtest charges,
-                # or the demo flatters itself against the very numbers it is
-                # supposed to be validating.
-                cost += 2 * PAPER_SLIPPAGE
+                # order gets. Charge THIS CONTRACT's measured round trip —
+                # the same number the gate reads from the book — so a demo
+                # trade can never be cheaper than the live one beside it.
+                # Flat 0.03%/side was 30x too cheap on PSXSTOCK (round trip
+                # 2%), which is how a row that went 0 for 3 live showed 8-1
+                # on demo (operator, 2026-09-05: "live trade and demo is not
+                # the same"). Falls back to the flat figure for a position
+                # opened before this was carried.
+                cost += float(pos.get("rt_cost") or 0) or 2 * PAPER_SLIPPAGE
             pnl = (move - cost) * pos["margin"] * LEVERAGE
             if live_gone and not outcome:
                 # Gone from the exchange without our barriers being crossed —
@@ -3191,7 +3222,9 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
         # happened is not the trade that was measured.
         if True:
             try:
-                live_px = float(fx.last_price(symbol))
+                # the side we would really transact at, not the last print —
+                # see tradable_price (2026-09-05)
+                live_px = float(tradable_price(symbol, side, fx=fx))
             except Exception as exc:
                 # No price = no entry. A chase guard that switches itself off
                 # whenever the venue hiccups is not a guard.
@@ -3319,6 +3352,11 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
         _tid = trade_code(symbol, key, last_ts, side, bool(dry))
         st["position"] = {"side": side, "vol": vol, "entry": entry,
                           "tp": tp_px, "sl": sl_px, "margin": margin,
+                          # what getting in and out of THIS contract costs,
+                          # measured from the book at entry. The paper book
+                          # charges it at exit so a demo trade cannot be
+                          # cheaper than the live one beside it.
+                          "rt_cost": float(gate.get("round_trip_cost") or 0.0),
                           "strategy": key, "entry_ts": last_ts,
                           "position_id": position_id, "dry": bool(dry),
                           # entry_ts is the CANDLE's time; opened_at is when

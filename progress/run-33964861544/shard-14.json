@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 10, "total": 52, "rows": 286964, "note": "CAD 1h: rule 115/120 (cf_diadx)", "failed": [], "pct": 19.2, "updated": "2026-09-05T12:09:09Z"}
+{"shard": 14, "stage": "testing", "done": 11, "total": 52, "rows": 302680, "note": "CETUS 1h: rule 2/120 (mom15)", "failed": [], "pct": 21.2, "updated": "2026-09-05T12:09:56Z"}

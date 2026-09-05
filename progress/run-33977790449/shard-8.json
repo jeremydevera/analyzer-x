@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 44, "total": 53, "rows": 1317978, "note": "STO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-05T16:57:52Z"}
+{"shard": 8, "stage": "testing", "done": 44, "total": 53, "rows": 1328578, "note": "STO 30m: rule 47/120 (ibs)", "failed": [], "pct": 83.0, "updated": "2026-09-05T16:58:38Z"}

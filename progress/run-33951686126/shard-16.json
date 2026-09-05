@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 37, "total": 52, "rows": 1211584, "note": "QBTSSTOCK 1d: rule 6/120 (sweep30)", "failed": [], "pct": 71.2, "updated": "2026-09-05T07:48:59Z"}
+{"shard": 16, "stage": "testing", "done": 40, "total": 52, "rows": 1262874, "note": "SCR 1h: rule 1/120 (mom6)", "failed": [], "pct": 76.9, "updated": "2026-09-05T07:49:44Z"}

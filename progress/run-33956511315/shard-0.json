@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 43, "total": 53, "rows": 1236256, "note": "SOMI 1d: 376 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-05T09:35:10Z"}
+{"shard": 0, "stage": "testing", "done": 43, "total": 53, "rows": 1256936, "note": "SOMI 1h: rule 28/120 (vortex14)", "failed": [], "pct": 81.1, "updated": "2026-09-05T09:35:55Z"}

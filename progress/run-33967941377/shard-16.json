@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 22, "total": 52, "rows": 946964, "note": "HNT 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 42.3, "updated": "2026-09-05T13:50:53Z"}
+{"shard": 16, "stage": "testing", "done": 23, "total": 52, "rows": 975146, "note": "ICX 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 44.2, "updated": "2026-09-05T13:51:42Z"}

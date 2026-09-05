@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 39, "total": 53, "rows": 1345000, "note": "RIF 30m: rule 35/120 (willr14)", "failed": [], "pct": 73.6, "updated": "2026-09-05T20:11:59Z"}
+{"shard": 5, "stage": "testing", "done": 40, "total": 53, "rows": 1363480, "note": "SAGA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-05T20:12:51Z"}

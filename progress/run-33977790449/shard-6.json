@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 23, "total": 53, "rows": 770678, "note": "HYPER 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 43.4, "updated": "2026-09-05T16:57:23Z"}
+{"shard": 6, "stage": "testing", "done": 24, "total": 53, "rows": 798638, "note": "INJ 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 45.3, "updated": "2026-09-05T16:58:11Z"}

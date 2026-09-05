@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 32, "total": 53, "rows": 916366, "note": "NAVERSTOCK 1h: rule 8/120 (fib618)", "failed": [], "pct": 60.4, "updated": "2026-09-05T09:25:28Z"}
+{"shard": 0, "stage": "testing", "done": 33, "total": 53, "rows": 952336, "note": "NMR 1h: rule 3/120 (fade15)", "failed": [], "pct": 62.3, "updated": "2026-09-05T09:26:15Z"}

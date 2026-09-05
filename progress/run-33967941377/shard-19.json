@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 11, "total": 52, "rows": 398506, "note": "CHF 30m: 15,987 bars, testing 120 rules", "failed": [], "pct": 21.2, "updated": "2026-09-05T13:27:50Z"}
+{"shard": 19, "stage": "testing", "done": 11, "total": 52, "rows": 420066, "note": "CHF 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 21.2, "updated": "2026-09-05T13:28:35Z"}

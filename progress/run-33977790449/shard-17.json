@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 35, "total": 52, "rows": 1494260, "note": "PEPSTOCK 4h: rule 28/120 (vortex14)", "failed": [], "pct": 67.3, "updated": "2026-09-05T17:36:34Z"}
+{"shard": 17, "stage": "testing", "done": 35, "total": 52, "rows": 1528280, "note": "PEPSTOCK 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 67.3, "updated": "2026-09-05T17:37:20Z"}

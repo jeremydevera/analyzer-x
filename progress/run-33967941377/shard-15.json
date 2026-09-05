@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 2, "total": 52, "rows": 45860, "note": "AIN 30m: rule 44/120 (elder)", "failed": [], "pct": 3.8, "updated": "2026-09-05T13:09:27Z"}
+{"shard": 15, "stage": "testing", "done": 2, "total": 52, "rows": 57460, "note": "AIN 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-05T13:10:13Z"}

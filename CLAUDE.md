@@ -356,19 +356,24 @@ A bug that never fired is labelled "NEVER HAPPENED YET" before its hypothetical
 timeline. Applies to "what are the bugs", "is there a bug", reporting one found in
 passing, and explaining any fix.
 
-ALWAYS ON — `short-answers`. STRICT, and the operator's last warning after five
-requests. Hard caps: a fact = 1 sentence. "why" = 3. "explain" = 6. Reporting
-work done = 3 plus the numbers. Over the cap, delete paragraphs before sending.
-No unrequested caveats, no "worth noting", no stapled second findings, no recap
-of the reply just given, no offering the next three things. Verify as rigorously
-as ever — then report only the answer.
-
-ALWAYS ON — `one-word`. A factual question gets the fact and nothing else. No table
-for a single number, no "worth noticing", no restating the question, no re-explaining
-what is settled. Expand ONLY when asked why/how/explain, when a qualifier is part of the
-fact, or when a table/artifact is requested. Verify as thoroughly as ever — then report
-only the answer. The operator has asked for this twice: "give me options short and
-accurate" and "can you just tell me in 1 word ... this is getting annoying".
+ALWAYS ON — `short-and-plain`. STRICT. Every reply is SHORT **and** in BEGINNER
+language, both at once — one skill, because three separate ones (the deleted
+short-answers, one-word and plain-words) each got followed alone: jargon, or
+plain but four paragraphs long. Operator, 2026-09-05: *"COMBINE THEM IN ONE
+CREATE NEW SKILL AND REMOVE THE EIXSTING 3"*.
+Hard caps: a fact = 1 sentence. "why" = 3. "explain" = 6. Reporting work done =
+3 plus the numbers. Over the cap, delete paragraphs before sending. No
+unrequested caveats, no "worth noting", no stapled second findings, no recap of
+the reply just given, no offering the next three things, no table for a single
+number, no restating the question.
+And in plain words: define a term the first time it appears, in six words or
+fewer; lead with what it MEANS for them, then the number; money, not ratios; one
+idea per sentence; yes/no answers start with yes or no. Words a 12-year-old
+knows — *"STOP USING LONG WORDS AND DEEP WORDS FROM NOW ON I WANT BASIC WORDS,
+ENABLE THIS FOR ALL SESSION"*. It took five repeats of one question ("why did
+demo win and live lose") before the answer was small enough to use.
+Compress structure, never comprehension. Verify as rigorously as ever — then
+report only the answer.
 
 ALWAYS ON — `say-done`. After finishing ANY task the operator asked for — code
 changed, sweep finished, artifact published, bug fixed — speak one calm sentence
@@ -380,22 +385,6 @@ a failure. NEVER call `say` directly — always the script below, which reads
 ```bash
 bash .claude/skills/say-done/speak.sh "<what was finished>" &
 ```
-
-ALWAYS ON — BASIC WORDS (2026-09-05, for every session). The operator:
-*"STOP USING LONG WORDS AND DEEP WORDS FROM NOW ON I WANT BASIC WORDS, ENABLE
-THIS FOR ALL SESSION"*. Short sentences. One idea each. Words a 12-year-old
-knows. Say the number first, then the plain fact. Money, not percentages,
-wherever both work. It took five repeats of one question ("why did demo win
-and live lose") before the answer was small enough to use — that is the cost
-of ignoring this. Verify as hard as ever, then write it small.
-
-ALWAYS ON — `plain-words`. The operator is new to crypto trading and said so:
-"I don't know the terms you are talking about." Define a term the first time it
-appears, in six words or fewer. Lead with what it MEANS for them, then the number.
-Use money, not ratios. One idea per sentence. This is not optional and does not
-wait to be invoked — it was skipped for an entire session of leverage, drawdown
-and liquidation answers, which is exactly when it mattered most. It combines with
-`one-word`: answer short AND in plain language, not one or the other.
 
 ALWAYS ON — `label-must-match-data`. Run it before reporting ANY change that puts a
 figure on screen: a tile, table, artifact, caption or badge. This is not optional and does

@@ -75,7 +75,7 @@ Never let a hypothetical read as history.
 
 ## Combines with
 
-`short-answers` — the timeline IS the answer, so the caps apply to the prose
-around it, not the timeline itself. `plain-words` — no jargon in the steps.
+`short-and-plain` — the timeline IS the answer, so the caps apply to the prose
+around it, not the timeline itself, and the steps carry no jargon.
 `label-must-match-data` — every number in the timeline must be verified, not
 recalled.

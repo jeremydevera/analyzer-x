@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 33, "total": 53, "rows": 1196978, "note": "NOKSTOCK 4h: rule 26/120 (adx14)", "failed": [], "pct": 62.3, "updated": "2026-09-05T17:10:55Z"}
+{"shard": 1, "stage": "testing", "done": 35, "total": 53, "rows": 1248794, "note": "OUSTSTOCK 30m: rule 2/120 (mom15)", "failed": [], "pct": 66.0, "updated": "2026-09-05T17:11:40Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 41, "total": 53, "rows": 986668, "note": "SIGN 1h: rule 116/120 (cf_diadx_l1)", "failed": [], "pct": 77.4, "updated": "2026-09-05T09:23:47Z"}
+{"shard": 8, "stage": "testing", "done": 44, "total": 53, "rows": 1026258, "note": "STO 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-05T09:24:33Z"}

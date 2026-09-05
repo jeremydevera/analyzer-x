@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 3, "total": 52, "rows": 85260, "note": "ALPINE 1h: rule 13/120 (pivot)", "failed": [], "pct": 5.8, "updated": "2026-09-05T07:14:31Z"}
+{"shard": 11, "stage": "testing", "done": 5, "total": 52, "rows": 129812, "note": "ASTEROID 1h: 3,378 bars, testing 120 rules", "failed": [], "pct": 9.6, "updated": "2026-09-05T07:15:19Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 20, "total": 52, "rows": 502672, "note": "GIGGLE 1d: 348 bars, testing 120 rules", "failed": [], "pct": 38.5, "updated": "2026-09-05T08:22:32Z"}
+{"shard": 12, "stage": "testing", "done": 24, "total": 52, "rows": 579484, "note": "IONQSTOCK 1d: rule 47/120 (ibs)", "failed": [], "pct": 46.2, "updated": "2026-09-05T08:23:17Z"}

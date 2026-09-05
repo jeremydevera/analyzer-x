@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 19, "total": 53, "rows": 463414, "note": "FLUID 1d: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 35.8, "updated": "2026-09-05T06:40:04Z"}
+{"shard": 3, "stage": "testing", "done": 24, "total": 53, "rows": 518574, "note": "INDEX 1d: downloading candles", "failed": [], "pct": 45.3, "updated": "2026-09-05T06:40:50Z"}

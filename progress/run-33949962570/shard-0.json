@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 40, "total": 53, "rows": 1053116, "note": "RSR 4h: rule 35/120 (willr14)", "failed": [], "pct": 75.5, "updated": "2026-09-05T06:48:31Z"}
+{"shard": 0, "stage": "testing", "done": 42, "total": 53, "rows": 1091646, "note": "SKYAI 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 79.2, "updated": "2026-09-05T06:49:16Z"}

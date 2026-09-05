@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 49, "total": 53, "rows": 1440322, "note": "VET 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-05T18:47:33Z"}
+{"shard": 9, "stage": "testing", "done": 50, "total": 53, "rows": 1480802, "note": "WIF 1d: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 94.3, "updated": "2026-09-05T18:48:18Z"}

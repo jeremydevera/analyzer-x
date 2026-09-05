@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 1244382, "note": "SYN 1h: rule 2/120 (mom15)", "failed": [], "pct": 84.9, "updated": "2026-09-05T12:32:02Z"}
+{"shard": 3, "stage": "testing", "done": 46, "total": 53, "rows": 1267982, "note": "THCSTOCK 1h: 767 bars, testing 120 rules", "failed": [], "pct": 86.8, "updated": "2026-09-05T12:32:47Z"}

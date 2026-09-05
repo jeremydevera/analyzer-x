@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 14, "total": 52, "rows": 488840, "note": "DASH 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 26.9, "updated": "2026-09-05T16:33:49Z"}
+{"shard": 15, "stage": "testing", "done": 14, "total": 52, "rows": 518040, "note": "DASH 30m: rule 8/120 (fib618)", "failed": [], "pct": 26.9, "updated": "2026-09-05T16:34:34Z"}

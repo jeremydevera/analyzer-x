@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 44, "total": 52, "rows": 1277256, "note": "SUMIELECSTOCK 1h: 1,081 bars, testing 120 rules", "failed": [], "pct": 84.6, "updated": "2026-09-05T07:44:52Z"}
+{"shard": 14, "stage": "testing", "done": 46, "total": 52, "rows": 1329564, "note": "TOWNS 1h: rule 2/120 (mom15)", "failed": [], "pct": 88.5, "updated": "2026-09-05T07:45:38Z"}

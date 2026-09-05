@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 1, "total": 52, "rows": 0, "note": "ACT 1d: downloading candles", "failed": [], "pct": 1.9, "updated": "2026-09-05T12:02:47Z"}
+{"shard": 18, "stage": "testing", "done": 1, "total": 52, "rows": 15400, "note": "ACT 1h: rule 4/120 (trend50)", "failed": [], "pct": 1.9, "updated": "2026-09-05T12:03:34Z"}

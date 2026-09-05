@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 17, "total": 53, "rows": 414874, "note": "ESP 1h: rule 1/120 (mom6)", "failed": [], "pct": 32.1, "updated": "2026-09-05T12:14:38Z"}
+{"shard": 8, "stage": "testing", "done": 20, "total": 53, "rows": 465592, "note": "GFSSTOCK 1d: downloading candles", "failed": [], "pct": 37.7, "updated": "2026-09-05T12:15:23Z"}

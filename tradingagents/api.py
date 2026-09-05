@@ -246,6 +246,8 @@ def strategies(coin: str | None = None, tf: str | None = None,
                min_tp: float = 0.0, min_sl: float = 0.0,
                # the checkbox: only rows whose target is wider than their stop
                tp_over_sl: bool = False,
+               # "crypto" or "stocks" — tokenized stocks carry a STOCK suffix
+               asset: str | None = None,
                sizing: str | None = None, row_id: str | None = None,
                group: str | None = None,
                months: int = 0, days: int = 0,
@@ -270,7 +272,7 @@ def strategies(coin: str | None = None, tf: str | None = None,
                        max_tp=max_tp, sizing=sizing, row_id=row_id,
                        group=group, max_sl=max_sl, months=months, desc=desc,
                        min_tp=min_tp, min_sl=min_sl,
-                       tp_over_sl=tp_over_sl)
+                       tp_over_sl=tp_over_sl, asset=asset or None)
     except ri.SortNotReady as exc:
         # 503: the request is fine, the store is not ready for it yet.
         # The screen shows this sentence rather than hanging on a sort
@@ -322,7 +324,7 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                          max_tp=0, sizing=None, row_id=None, group=None,
                          max_sl=0, days=0,
                          desc=None, batch=5_000, min_tp=0, min_sl=0,
-                         tp_over_sl=False):
+                         tp_over_sl=False, asset=None):
     """The CSV, one chunk at a time — a module-level generator on purpose.
 
     Inside the route it was only reachable through StreamingResponse's ASYNC
@@ -374,7 +376,7 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                               group=group, max_sl=max_sl, days=days,
                               desc=desc, batch=batch,
                               min_tp=min_tp, min_sl=min_sl,
-                              tp_over_sl=tp_over_sl):
+                              tp_over_sl=tp_over_sl, asset=asset):
             score, why = ri.balanced_score(r)
             w.writerow([r.get(c) for c in cols] + [score, why]
                        + [_json.dumps(r.get("monthly") or {},
@@ -402,7 +404,8 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
 def strategies_csv_name(coin=None, tf=None, signal=None, min_trades=0,
                         sort="profit", min_winrate=0, max_tp=0,
                         sizing=None, group=None, max_sl=0, days=0,
-                        min_tp=0, min_sl=0, tp_over_sl=False) -> str:
+                        min_tp=0, min_sl=0, tp_over_sl=False,
+                        asset=None) -> str:
     """A filename that says which slice of the store is in the file."""
     bits = [b for b in (coin, tf, signal,
                         f"min{min_trades}" if min_trades else "",
@@ -419,6 +422,7 @@ def strategies_csv_name(coin=None, tf=None, signal=None, min_trades=0,
                          else f"sl{_trim(max_sl)}max" if max_sl
                          else f"sl{_trim(min_sl)}min" if min_sl else ""),
                         "tp-over-sl" if tp_over_sl else "",
+                        str(asset or ""),
                         # the WINDOW belongs in the name: two downloads of the
                         # same filter differ entirely by it
                         f"last{int(days)}d" if days else "",
@@ -445,6 +449,7 @@ def strategies_csv(coin: str | None = None, tf: str | None = None,
                    max_sl: float = 0.0,
                    min_tp: float = 0.0, min_sl: float = 0.0,
                    tp_over_sl: bool = False,
+                   asset: str | None = None,
                    sizing: str | None = None, row_id: str | None = None,
                    group: str | None = None, months: int = 0, days: int = 0,
                    desc: bool | None = None):
@@ -479,7 +484,7 @@ def strategies_csv(coin: str | None = None, tf: str | None = None,
                                min_winrate=min_winrate, max_tp=max_tp,
                                sizing=sizing, group=group, max_sl=max_sl,
                                min_tp=min_tp, min_sl=min_sl,
-                               tp_over_sl=tp_over_sl,
+                               tp_over_sl=tp_over_sl, asset=asset,
                                days=0 if months else days)
     return StreamingResponse(
         strategies_csv_lines(coin=coin, tf=tf, signal=signal,
@@ -488,7 +493,7 @@ def strategies_csv(coin: str | None = None, tf: str | None = None,
                             max_tp=max_tp, sizing=sizing, row_id=row_id,
                             group=group, max_sl=max_sl,
                             min_tp=min_tp, min_sl=min_sl,
-                            tp_over_sl=tp_over_sl,
+                            tp_over_sl=tp_over_sl, asset=asset,
                             days=0 if months else days, desc=desc),
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{name}"'})
@@ -1630,6 +1635,26 @@ def credentials_test(body: dict) -> dict:
 
 
 # ------------------------------------------------------------ cloud sweeps
+_WORKING_RUN: dict = {"at": 0.0, "run": None}
+_WORKING_RUN_TTL = 45.0        # the panel polls every 4 s; `gh` must not
+
+
+def _working_run_cached() -> dict | None:
+    """The run GitHub is really measuring, at most once every 45 seconds."""
+    import time as _t
+
+    from tradingagents import cloud_sweep as cs
+
+    if _t.time() - _WORKING_RUN["at"] < _WORKING_RUN_TTL:
+        return _WORKING_RUN["run"]
+    try:
+        got = cs.working_run()
+    except Exception:                                          # noqa: BLE001
+        got = None                     # never let the panel fail on this
+    _WORKING_RUN.update({"at": _t.time(), "run": got})
+    return got
+
+
 @app.get("/api/cloud/status")
 def cloud_status() -> dict:
     """Whether GitHub Actions can be used, and what the remembered run is
@@ -1639,7 +1664,22 @@ def cloud_status() -> dict:
 
     ok, why = cs.available()
     out = {"available": ok, "why": why, "run": None, "shards": []}
-    run = cs.remembered()
+    # WHAT IS MEASURING beats what this machine last dispatched. `remembered()`
+    # holds only our own last dispatch, so a run started by the autopilot, the
+    # orchestrator, another PC or a session whose remember-file was cleared was
+    # invisible: on Sep 05, 2026 the panel showed nothing while run 33954675312
+    # had been measuring for 36 minutes and the operator said "i cannot see it
+    # running in ui". A STALE remembered run hides a live one the same way,
+    # which is the 2026-08-25 shape — three runs at once and the wrong one
+    # adopted, reporting "0/0 shards" while the cloud was most of the way
+    # through the grid. So the live run wins, and the remembered one is the
+    # fallback that keeps a finished run's summary on screen.
+    #
+    # CACHED: this endpoint is polled every 4 s by the panel, and `working_run`
+    # costs a `gh run list` plus a status call per live run. Polling the REST
+    # API burned 5,000 requests in an hour on 2026-08-25 and blinded every tool
+    # at once.
+    run = (_working_run_cached() if ok else None) or cs.remembered()
     if run and run.get("id"):
         out["run"] = run
         try:

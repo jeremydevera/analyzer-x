@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 13, "total": 52, "rows": 374600, "note": "CROSS 1h: rule 25/120 (ichimoku)", "failed": [], "pct": 25.0, "updated": "2026-09-05T12:10:57Z"}
+{"shard": 11, "stage": "testing", "done": 14, "total": 52, "rows": 394840, "note": "CXMTSTOCK 1h: 1,248 bars, testing 120 rules", "failed": [], "pct": 26.9, "updated": "2026-09-05T12:11:47Z"}

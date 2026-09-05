@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 35, "total": 53, "rows": 1299666, "note": "PANASONICSTOCK 30m: downloading candles", "failed": [], "pct": 66.0, "updated": "2026-09-05T13:59:59Z"}
+{"shard": 4, "stage": "testing", "done": 36, "total": 53, "rows": 1335246, "note": "PIXEL 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 67.9, "updated": "2026-09-05T14:00:55Z"}

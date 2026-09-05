@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 30, "total": 52, "rows": 834674, "note": "MOODENG 1h: rule 52/120 (nr7)", "failed": [], "pct": 57.7, "updated": "2026-09-05T15:42:05Z"}
+{"shard": 12, "stage": "testing", "done": 31, "total": 52, "rows": 865342, "note": "MUSTOCK 1h: rule 9/120 (fib382)", "failed": [], "pct": 59.6, "updated": "2026-09-05T15:42:50Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 22, "total": 53, "rows": 693340, "note": "HIVE 1h: rule 83/120 (cf_maobv_l1)", "failed": [], "pct": 41.5, "updated": "2026-09-05T09:13:38Z"}
+{"shard": 9, "stage": "testing", "done": 23, "total": 53, "rows": 715384, "note": "H 1h: rule 1/120 (mom6)", "failed": [], "pct": 43.4, "updated": "2026-09-05T09:14:24Z"}

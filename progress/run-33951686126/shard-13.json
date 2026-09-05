@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 48, "total": 52, "rows": 1384432, "note": "US30 1d: 219 bars, testing 120 rules", "failed": [], "pct": 92.3, "updated": "2026-09-05T07:47:31Z"}
+{"shard": 13, "stage": "testing", "done": 49, "total": 52, "rows": 1442656, "note": "VRTSTOCK 1h: rule 107/120 (cf_bosfvg_l1)", "failed": [], "pct": 94.2, "updated": "2026-09-05T07:48:16Z"}

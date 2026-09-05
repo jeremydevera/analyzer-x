@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 47, "total": 53, "rows": 1699998, "note": "TRUTH 30m: rule 38/120 (ao)", "failed": [], "pct": 88.7, "updated": "2026-09-05T20:23:08Z"}
+{"shard": 5, "stage": "testing", "done": 48, "total": 53, "rows": 1720458, "note": "UKOIL 4h: rule 6/120 (sweep30)", "failed": [], "pct": 90.6, "updated": "2026-09-05T20:23:53Z"}

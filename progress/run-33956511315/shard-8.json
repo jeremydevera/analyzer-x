@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 23, "total": 53, "rows": 523346, "note": "HYUNDAISTOCK 1h: rule 1/120 (mom6)", "failed": [], "pct": 43.4, "updated": "2026-09-05T09:11:13Z"}
+{"shard": 8, "stage": "testing", "done": 25, "total": 53, "rows": 576324, "note": "JIMOTHY 1h: 1,124 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-05T09:11:59Z"}

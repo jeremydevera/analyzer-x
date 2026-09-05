@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 34, "total": 53, "rows": 1136846, "note": "ONDO 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 64.2, "updated": "2026-09-05T17:16:20Z"}
+{"shard": 3, "stage": "testing", "done": 35, "total": 53, "rows": 1153566, "note": "O 30m: rule 40/120 (crsi)", "failed": [], "pct": 66.0, "updated": "2026-09-05T17:17:05Z"}

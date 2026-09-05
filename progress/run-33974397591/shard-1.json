@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 42, "total": 53, "rows": 1167394, "note": "SKY 1h: rule 20/120 (stoch14)", "failed": [], "pct": 79.2, "updated": "2026-09-05T15:45:53Z"}
+{"shard": 1, "stage": "testing", "done": 43, "total": 53, "rows": 1188954, "note": "SONIC 1d: 394 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-05T15:46:43Z"}

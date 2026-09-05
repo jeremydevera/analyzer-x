@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 14, "total": 52, "rows": 439974, "note": "DBR 1d: 394 bars, testing 120 rules", "failed": [], "pct": 26.9, "updated": "2026-09-05T15:34:11Z"}
+{"shard": 17, "stage": "testing", "done": 14, "total": 52, "rows": 454926, "note": "DBR 1h: rule 3/120 (fade15)", "failed": [], "pct": 26.9, "updated": "2026-09-05T15:34:58Z"}

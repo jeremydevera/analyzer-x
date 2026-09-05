@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 44, "total": 53, "rows": 1687536, "note": "SSV 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 83.0, "updated": "2026-09-05T17:46:11Z"}
+{"shard": 0, "stage": "testing", "done": 46, "total": 53, "rows": 1730376, "note": "TESLA 30m: rule 1/120 (mom6)", "failed": [], "pct": 86.8, "updated": "2026-09-05T17:46:58Z"}

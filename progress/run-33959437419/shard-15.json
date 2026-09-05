@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 12, "total": 52, "rows": 406068, "note": "COHRSTOCK 30m: rule 14/120 (bb20)", "failed": [], "pct": 23.1, "updated": "2026-09-05T10:10:46Z"}
+{"shard": 15, "stage": "testing", "done": 13, "total": 52, "rows": 426868, "note": "CRWVSTOCK 4h: 979 bars, testing 120 rules", "failed": [], "pct": 25.0, "updated": "2026-09-05T10:11:31Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 14, "total": 53, "rows": 418292, "note": "CVC 1h: rule 61/120 (turtle)", "failed": [], "pct": 26.4, "updated": "2026-09-05T15:31:20Z"}
+{"shard": 7, "stage": "testing", "done": 15, "total": 53, "rows": 443702, "note": "DIA 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 28.3, "updated": "2026-09-05T15:32:09Z"}

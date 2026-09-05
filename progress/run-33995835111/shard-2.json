@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 42, "total": 53, "rows": 1473286, "note": "SLBSTOCK 30m: rule 48/120 (prank)", "failed": [], "pct": 79.2, "updated": "2026-09-05T23:44:47Z"}
+{"shard": 2, "stage": "testing", "done": 45, "total": 53, "rows": 1500886, "note": "SYFSTOCK 30m: 3,156 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-05T23:45:32Z"}

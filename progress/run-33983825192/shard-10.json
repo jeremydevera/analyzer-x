@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 8, "total": 53, "rows": 248010, "note": "BIO 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-05T18:30:15Z"}
+{"shard": 10, "stage": "testing", "done": 8, "total": 53, "rows": 259450, "note": "BIO 1h: rule 46/120 (rsi2)", "failed": [], "pct": 15.1, "updated": "2026-09-05T18:31:00Z"}

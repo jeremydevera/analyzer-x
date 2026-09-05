@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 52, "total": 53, "rows": 1698770, "note": "XVG 30m: rule 54/120 (fractal5)", "failed": [], "pct": 98.1, "updated": "2026-09-05T14:10:57Z"}
+{"shard": 2, "stage": "done", "done": 53, "total": 53, "rows": 1738182, "note": "1,738,182 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "failed": [], "pct": 100.0, "updated": "2026-09-05T14:12:12Z"}

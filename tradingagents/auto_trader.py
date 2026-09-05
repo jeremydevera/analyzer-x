@@ -1479,6 +1479,15 @@ def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None) -> dict:
                else "warn" if ratio >= COST_RATIO_WARN else "ok")
     if m["book_exhausted"]:
         verdict = "block"
+    # A STOP INSIDE THE SPREAD IS DEAD ON ARRIVAL. The fill lands on one side
+    # of the gap and the venue checks the stop against the other side, so a
+    # stop closer than the gap is already passed when it is placed. PSXSTOCK,
+    # 2026-09-05: gap 1.66%, SL 1.0% — MEXC refused the stop (5003) three
+    # times, the runner force-closed three times, -5.36 USDT.
+    sl = float(spec.get("sl") or 0)
+    stop_dead = bool(sl and m["spread"] >= sl)
+    if stop_dead:
+        verdict = "block"
     return {"verdict": verdict, "strategy": key, "symbol": symbol,
             "tp": tp, "spread": m["spread"], "slippage": m["slippage"],
             "round_trip_cost": round_trip, "cost_ratio": ratio,
@@ -1486,8 +1495,36 @@ def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None) -> dict:
             "reason": (
                 f"round-trip cost {round_trip:.3%} vs take-profit {tp:.2%} "
                 f"= {ratio:.0%} of the target"
+                + (f" · the gap between buy and sell ({m['spread']:.3%}) is "
+                   f"wider than the {sl:.2%} stop — a stop inside the gap is "
+                   f"already passed when it is placed"
+                   if stop_dead else "")
                 + (" · book cannot even fill the deepest ladder rung"
                    if m["book_exhausted"] else ""))}
+
+
+# the FRESH verdicts of this cycle, one per (key, symbol), shared by both
+# books — read once, both use it. Wiped by run_cycle with the prices.
+_CYCLE_GATES: dict = {}
+
+
+def _entry_gate(key: str, symbol: str, margin: float, *, fx) -> dict:
+    """The gate, measured FRESH at the moment a signal fires.
+
+    The screening cache (below) is 5 minutes old by design — it runs for every
+    armed strategy every cycle. But PSXSTOCK's book flickers between 0.3% and
+    2% wide, and one lucky cached sample waved three real orders through on
+    2026-09-05. A signal is rare, so one fresh read here is cheap, and the
+    verdict is stored for the cycle so the paper book shares the SAME one.
+    """
+    hit = _CYCLE_GATES.get((key, symbol))
+    if hit is not None:
+        return hit
+    r = edge_check(key, symbol, margin, fx=fx)
+    _CYCLE_GATES[(key, symbol)] = r
+    # the screen may as well learn what we just paid to measure
+    _GATE_CACHE[(key, symbol)] = (time.time(), r)
+    return r
 
 
 _GATE_CACHE: dict = {}
@@ -3320,6 +3357,26 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                                    "limit": round(limit, 5), "dry_run": dry})
                     return
                 entry = live_px          # size and bracket off the real price
+        # THE LAST LOOK, fresh, before any order. The screen above ran on a
+        # sample up to 5 minutes old; this one is measured now, and "unknown"
+        # refuses too — a book you cannot read is not an ok (rule 12). Both
+        # books share the verdict, so demo cannot trade what live refused.
+        gate = _entry_gate(key, symbol, margin_for(key, settings), fx=fx)
+        if gate["verdict"] not in ("ok", "warn"):
+            # the bar is NOT marked seen: the real book shares one slot per
+            # coin, so consuming it here would eat this bar for every other
+            # strategy on the same timeframe (harddev find, 2026-09-05). The
+            # next cycle measures fresh — if the book has tightened by then,
+            # the trade can still happen on this bar.
+            logger.error(
+                "ENTRY GATE: refusing %s on %s at the last look — %s. No "
+                "order placed; the next cycle measures again.", key, symbol,
+                gate.get("reason") or gate["verdict"])
+            append_ledger({"symbol": symbol, "action": "gate_blocked",
+                           "strategy": key, "at_entry": True,
+                           "why": gate.get("reason") or gate["verdict"],
+                           "dry_run": dry})
+            continue
         try:
             vol = fx.contracts_for(symbol, notional, price=entry)
         except Exception as exc:
@@ -3653,9 +3710,11 @@ def _say_once(tag: str, every_s: float) -> bool:
 
 
 def run_cycle(*, fx=None) -> None:
-    # a fresh cycle reads fresh prices — FIRST, before any early return, so a
-    # cycle that does nothing still cannot leave last cycle's numbers behind
+    # a fresh cycle reads fresh prices and fresh gate verdicts — FIRST,
+    # before any early return, so a cycle that does nothing still cannot
+    # leave last cycle's numbers behind
     _CYCLE_PRICES.clear()
+    _CYCLE_GATES.clear()
     if fx is None:
         from tradingagents.dataflows import mexc_futures as fx  # noqa: PLC0415
     settings = load_settings()

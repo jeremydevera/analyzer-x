@@ -178,6 +178,10 @@ def _never_touch_the_live_book(tmp_path, monkeypatch):
     # loop, 2026-09-05, before it bit)
     if hasattr(at, "_CYCLE_PRICES"):
         at._CYCLE_PRICES.clear()
+    if hasattr(at, "_CYCLE_GATES"):
+        at._CYCLE_GATES.clear()
+    if hasattr(at, "_GATE_CACHE"):
+        at._GATE_CACHE.clear()
     for name, filename in (("STATE_PATH", "auto_trade_state.json"),
                            ("STATE_LOCK_PATH", "auto_trade_state.lock"),
                            ("LEDGER_PATH", "auto_trade_ledger.jsonl"),

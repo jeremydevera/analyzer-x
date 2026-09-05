@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 46, "total": 52, "rows": 1737614, "note": "TREE 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 88.5, "updated": "2026-09-05T23:46:51Z"}
+{"shard": 19, "stage": "testing", "done": 48, "total": 52, "rows": 1769068, "note": "USTC 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 92.3, "updated": "2026-09-05T23:47:40Z"}

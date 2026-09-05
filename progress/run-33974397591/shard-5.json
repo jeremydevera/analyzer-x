@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 53, "total": 53, "rows": 1509780, "note": "ZKSYNC 1h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-05T16:06:28Z"}
+{"shard": 5, "stage": "done", "done": 53, "total": 53, "rows": 1517260, "note": "1,517,260 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "failed": [], "pct": 100.0, "updated": "2026-09-05T16:06:41Z"}

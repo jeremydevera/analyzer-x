@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 25, "total": 52, "rows": 881380, "note": "JUP 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 48.1, "updated": "2026-09-05T21:46:56Z"}
+{"shard": 16, "stage": "testing", "done": 26, "total": 52, "rows": 898888, "note": "KOMA 1h: rule 3/120 (fade15)", "failed": [], "pct": 50.0, "updated": "2026-09-05T21:47:45Z"}

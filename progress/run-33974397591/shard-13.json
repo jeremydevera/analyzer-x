@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 12, "total": 52, "rows": 360170, "note": "COAI 1h: rule 2/120 (mom15)", "failed": [], "pct": 23.1, "updated": "2026-09-05T15:28:58Z"}
+{"shard": 13, "stage": "testing", "done": 12, "total": 52, "rows": 379574, "note": "COAI 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 23.1, "updated": "2026-09-05T15:29:44Z"}

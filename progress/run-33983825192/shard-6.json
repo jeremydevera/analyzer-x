@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 34, "total": 53, "rows": 917786, "note": "ONG 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 64.2, "updated": "2026-09-05T18:45:27Z"}
+{"shard": 6, "stage": "testing", "done": 34, "total": 53, "rows": 938466, "note": "ONG 1h: rule 89/120 (cf_chan_l1)", "failed": [], "pct": 64.2, "updated": "2026-09-05T18:46:12Z"}

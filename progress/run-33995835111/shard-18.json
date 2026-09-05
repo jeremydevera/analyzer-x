@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 1, "total": 52, "rows": 51480, "note": "ACT 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-05T22:28:26Z"}
+{"shard": 18, "stage": "testing", "done": 2, "total": 52, "rows": 77022, "note": "AIO 30m: 18,645 bars, testing 120 rules", "failed": [], "pct": 3.8, "updated": "2026-09-05T22:29:15Z"}

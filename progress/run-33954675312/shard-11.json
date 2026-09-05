@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 28, "total": 52, "rows": 590062, "note": "LUNC 4h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 53.8, "updated": "2026-09-05T08:21:35Z"}
+{"shard": 11, "stage": "testing", "done": 34, "total": 52, "rows": 659152, "note": "OPENLEDGER 1d: 362 bars, testing 120 rules", "failed": [], "pct": 65.4, "updated": "2026-09-05T08:22:25Z"}

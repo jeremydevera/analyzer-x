@@ -1203,6 +1203,27 @@ def trade_settings_post(payload: dict) -> dict:
     return {"ok": True, "changes_recorded": len(changes)}
 
 
+@app.post("/api/trade/record/reset")
+def trade_record_reset(body: dict) -> dict:
+    """The RESET W/L button. Requires {"confirm": true}; archives, never
+    deletes. Resetting the real book also resets today's loss-cap counter —
+    the response says so, and the button's confirm text says it first."""
+    import tradingagents.auto_trader as at
+
+    if body.get("confirm") is not True:
+        raise HTTPException(400, "reset requires confirm=true")
+    books = [b for b in (body.get("books") or ["paper", "real"])
+             if b in ("paper", "real")]
+    if not books:
+        raise HTTPException(400, "books must name paper and/or real")
+    try:
+        got = at.reset_record(books)
+    except RuntimeError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    got["ok"] = True
+    return got
+
+
 @app.post("/api/trade/runner/start")
 def runner_start() -> dict:
     import tradingagents.auto_trader as at

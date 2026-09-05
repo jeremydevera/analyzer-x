@@ -2638,6 +2638,83 @@ def halted() -> bool:
     return KILL_PATH.exists()
 
 
+def reset_record(books=("paper", "real")) -> dict:
+    """Zero the W/L record by removing the ledger's trade rows — archived
+    first, never deleted (operator's button, 2026-09-05).
+
+    * the FULL ledger is copied to a timestamped .before-reset file;
+    * only `enter`/`exit` rows of the chosen books are removed — gate rows,
+      refusals and runner marks stay, they are diagnostics not records;
+    * open PAPER positions are cleared (their exits would dirty the fresh
+      record); open REAL positions are NEVER touched — they are money resting
+      on the exchange, and their eventual exit rows belong in the new record;
+    * the runner is paused for the rewrite and restarted, so a row appended
+      mid-edit cannot be lost;
+    * RESETTING THE REAL BOOK ALSO RESETS TODAY'S LOSS-CAP COUNTER — the cap
+      reads the same exit rows. The API says so in its response.
+    """
+    import shutil
+
+    books = tuple(books or ())
+    drop_dry = "paper" in books
+    drop_real = "real" in books
+    was_running = runner_pid()
+    if was_running:
+        try:
+            os.kill(was_running, signal.SIGTERM)
+        except OSError:
+            pass
+        for _ in range(20):                      # let the cycle finish
+            if not runner_pid():
+                break
+            time.sleep(0.5)
+        if runner_pid():
+            # rewriting the file while the runner can still append would race
+            # it and could lose a trade row (harddev find, 2026-09-05) —
+            # refuse instead, with words
+            raise RuntimeError("the runner is mid-cycle and did not stop in "
+                               "10s — nothing was reset, try again")
+    removed, kept, backup = 0, [], ""
+    if LEDGER_PATH.exists():
+        stamp = time.strftime("%Y%m%d-%H%M%S")
+        bak = LEDGER_PATH.with_suffix(f".jsonl.before-reset-{stamp}")
+        shutil.copy2(LEDGER_PATH, bak)
+        backup = bak.name
+        for line in LEDGER_PATH.read_text(encoding="utf-8").splitlines():
+            try:
+                r = json.loads(line)
+            except ValueError:
+                kept.append(line)
+                continue
+            is_trade = r.get("action") in ("enter", "exit")
+            is_dry = bool(r.get("dry_run"))
+            if is_trade and ((is_dry and drop_dry)
+                             or (not is_dry and drop_real)):
+                removed += 1
+                continue
+            kept.append(line)
+        LEDGER_PATH.write_text(chr(10).join(kept) + (chr(10) if kept else ''),
+                               encoding="utf-8")
+    cleared = 0
+    if drop_dry:
+        st = load_state()
+        for k, v in st.items():
+            if isinstance(v, dict) and is_paper_slot(k) and v.get("position"):
+                v["position"] = None
+                v["step"] = 0
+                cleared += 1
+        save_state(st)
+    if was_running:
+        start_runner()
+    append_ledger({"action": "record_reset", "books": list(books),
+                   "removed": removed, "backup": backup,
+                   "paper_positions_cleared": cleared})
+    return {"removed": removed, "backup": backup,
+            "paper_positions_cleared": cleared,
+            "runner_restarted": bool(was_running),
+            "loss_cap_counter_reset": drop_real}
+
+
 def disarm_live(why: str, settings: dict | None = None) -> list[str]:
     """Take the REAL book off every strategy that has it. Returns the keys.
 

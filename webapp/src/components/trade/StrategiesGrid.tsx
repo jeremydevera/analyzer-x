@@ -206,6 +206,24 @@ export default function StrategiesGrid() {
           </label>
           {note && !dirty && <span className="text-theme-xs text-success-600">{note}</span>}
           {dirty && <span className="text-theme-xs text-warning-600">unsaved changes</span>}
+          {/* "CREATE A BUTTON TO RESET WIN RATE OF ALL" (operator,
+              2026-09-05). Archives the trade rows, never deletes them; the
+              confirm says the two side effects out loud before anything
+              happens. */}
+          <Button size="sm" variant="outline" disabled={busy}
+            onClick={async () => {
+              if (!window.confirm(
+                ["Reset the WIN/LOSS record of every strategy, demo AND live?", "",
+                 "- the old trades are archived to a backup file, not deleted",
+                 "- open demo positions are cleared; real positions are untouched",
+                 "- today's loss-cap counter resets too (it reads the same rows)",
+                ].join(String.fromCharCode(10)))) return;
+              try {
+                const got = await tradeApi.recordReset(["paper", "real"]);
+                setNote(`record reset: ${got.removed} trades archived to ${got.backup}`);
+                load();
+              } catch (e) { setErr(String(e)); }
+            }}>RESET W/L</Button>
           <Button size="sm" disabled={!dirty || busy} onClick={save}>SAVE CONFIG</Button>
         </div>
       </div>

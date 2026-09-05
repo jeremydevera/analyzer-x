@@ -896,6 +896,13 @@ export const tradeApi = {
   history: (dry: boolean, page = 1, per_page = 5) =>
     get<HistoryPayload>(`/api/trade/history?dry=${dry}&page=${page}&per_page=${per_page}`),
   positions: () => get<PositionsPayload>("/api/trade/positions"),
+  /** the RESET W/L button: archives the trade rows, never deletes them.
+   *  Resetting the real book also resets today's loss-cap counter. */
+  recordReset: (books: ("paper" | "real")[]) =>
+    post<{ ok: boolean; removed: number; backup: string;
+      paper_positions_cleared: number; runner_restarted: boolean;
+      loss_cap_counter_reset: boolean }>(
+      "/api/trade/record/reset", { confirm: true, books }),
   closeOne: (symbol: string) =>
     post<{ closed: boolean; why?: string; pnl?: number }>("/api/trade/positions/close", { symbol }),
   panic: (close_positions = true) =>

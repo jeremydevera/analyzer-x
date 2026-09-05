@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 7, "total": 53, "rows": 200746, "note": "B3 1h: rule 4/120 (trend50)", "failed": [], "pct": 13.2, "updated": "2026-09-05T18:30:45Z"}
+{"shard": 0, "stage": "testing", "done": 7, "total": 53, "rows": 221866, "note": "B3 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-05T18:31:30Z"}

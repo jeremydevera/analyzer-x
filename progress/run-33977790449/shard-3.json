@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 16, "total": 53, "rows": 562126, "note": "DUSK 30m: rule 27/120 (aroon25)", "failed": [], "pct": 30.2, "updated": "2026-09-05T16:50:35Z"}
+{"shard": 3, "stage": "testing", "done": 16, "total": 53, "rows": 572686, "note": "DUSK 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 30.2, "updated": "2026-09-05T16:51:21Z"}

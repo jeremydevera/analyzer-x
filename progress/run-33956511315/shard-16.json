@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 25, "total": 52, "rows": 854696, "note": "JUP 1h: rule 1/120 (mom6)", "failed": [], "pct": 48.1, "updated": "2026-09-05T09:21:18Z"}
+{"shard": 16, "stage": "testing", "done": 25, "total": 52, "rows": 870496, "note": "JUP 1h: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 48.1, "updated": "2026-09-05T09:22:04Z"}

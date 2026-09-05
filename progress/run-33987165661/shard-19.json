@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 27, "total": 52, "rows": 902022, "note": "LLYSTOCK 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 51.9, "updated": "2026-09-05T20:11:40Z"}
+{"shard": 19, "stage": "testing", "done": 28, "total": 52, "rows": 930732, "note": "MANTRA 30m: rule 21/120 (cci20)", "failed": [], "pct": 53.8, "updated": "2026-09-05T20:12:26Z"}

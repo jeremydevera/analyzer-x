@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 36, "total": 53, "rows": 1251168, "note": "PIPPIN 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 67.9, "updated": "2026-09-05T17:23:40Z"}
+{"shard": 2, "stage": "testing", "done": 36, "total": 53, "rows": 1258968, "note": "PIPPIN 30m: rule 55/120 (nhigh50)", "failed": [], "pct": 67.9, "updated": "2026-09-05T17:24:25Z"}

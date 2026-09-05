@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 50, "total": 52, "rows": 1350570, "note": "XAN 4h: rule 21/120 (cci20)", "failed": [], "pct": 96.2, "updated": "2026-09-05T08:34:44Z"}
+{"shard": 19, "stage": "done", "done": 52, "total": 52, "rows": 1403982, "note": "1,403,982 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "failed": [], "pct": 100.0, "updated": "2026-09-05T08:35:09Z"}

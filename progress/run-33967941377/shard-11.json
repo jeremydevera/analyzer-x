@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 15, "total": 52, "rows": 532062, "note": "DKNGSTOCK 30m: rule 72/120 (force13)", "failed": [], "pct": 28.8, "updated": "2026-09-05T13:27:01Z"}
+{"shard": 11, "stage": "testing", "done": 16, "total": 52, "rows": 563314, "note": "EDGE 30m: rule 2/120 (mom15)", "failed": [], "pct": 30.8, "updated": "2026-09-05T13:27:50Z"}

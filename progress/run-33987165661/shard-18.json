@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 44, "total": 52, "rows": 1739372, "note": "SUSHI 30m: rule 40/120 (crsi)", "failed": [], "pct": 84.6, "updated": "2026-09-05T20:54:25Z"}
+{"shard": 18, "stage": "testing", "done": 44, "total": 52, "rows": 1751912, "note": "SUSHI 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 84.6, "updated": "2026-09-05T20:55:10Z"}

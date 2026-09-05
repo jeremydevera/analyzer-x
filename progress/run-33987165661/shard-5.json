@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 44, "total": 53, "rows": 1507058, "note": "STG 4h: rule 3/120 (fade15)", "failed": [], "pct": 83.0, "updated": "2026-09-05T20:15:59Z"}
+{"shard": 5, "stage": "testing", "done": 44, "total": 53, "rows": 1533678, "note": "STG 30m: rule 4/120 (trend50)", "failed": [], "pct": 83.0, "updated": "2026-09-05T20:16:44Z"}

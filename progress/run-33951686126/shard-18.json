@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 40, "total": 52, "rows": 1197696, "note": "SENT 1h: rule 56/120 (insidebrk)", "failed": [], "pct": 76.9, "updated": "2026-09-05T07:48:22Z"}
+{"shard": 18, "stage": "testing", "done": 42, "total": 52, "rows": 1223304, "note": "SOLV 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 80.8, "updated": "2026-09-05T07:49:14Z"}

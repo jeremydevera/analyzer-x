@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 18, "total": 52, "rows": 636402, "note": "FLOKI 30m: rule 54/120 (fractal5)", "failed": [], "pct": 34.6, "updated": "2026-09-05T22:56:41Z"}
+{"shard": 19, "stage": "testing", "done": 19, "total": 52, "rows": 649402, "note": "GAIB 4h: 1,743 bars, testing 120 rules", "failed": [], "pct": 36.5, "updated": "2026-09-05T22:57:32Z"}

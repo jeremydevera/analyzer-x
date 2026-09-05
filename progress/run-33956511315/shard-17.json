@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 46, "total": 52, "rows": 1475544, "note": "TRADOOR 1h: 8,781 bars, testing 120 rules", "failed": [], "pct": 88.5, "updated": "2026-09-05T09:31:20Z"}
+{"shard": 17, "stage": "testing", "done": 46, "total": 52, "rows": 1495784, "note": "TRADOOR 1h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 88.5, "updated": "2026-09-05T09:32:05Z"}

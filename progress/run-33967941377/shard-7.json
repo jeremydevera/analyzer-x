@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 52, "total": 53, "rows": 2020968, "note": "YGG 30m: rule 82/120 (cf_maobv)", "failed": [], "pct": 98.1, "updated": "2026-09-05T14:44:55Z"}
+{"shard": 7, "stage": "testing", "done": 53, "total": 53, "rows": 2035048, "note": "ZORA 4h: rule 20/120 (stoch14)", "failed": [], "pct": 100.0, "updated": "2026-09-05T14:45:40Z"}

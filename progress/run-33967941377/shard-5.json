@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 31, "total": 53, "rows": 1064334, "note": "MSTRSTOCK 30m: rule 22/120 (engulf)", "failed": [], "pct": 58.5, "updated": "2026-09-05T14:00:41Z"}
+{"shard": 5, "stage": "testing", "done": 31, "total": 53, "rows": 1079134, "note": "MSTRSTOCK 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 58.5, "updated": "2026-09-05T14:01:27Z"}

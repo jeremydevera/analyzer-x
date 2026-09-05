@@ -37,7 +37,13 @@ from pathlib import Path
 
 from tradingagents import market_sweep as msw, portable
 
-DB_PATH = Path.home() / ".tradingagents" / "backtest" / "rows.db"
+# `TA_ROWS_DB` overrides it. The index BUILD runs in a detached child that
+# re-imports this module, so without an override the child always opened the
+# default database no matter what the caller had configured — a build aimed at
+# a different store silently indexed the wrong file, and a test that pointed
+# DB_PATH at a temp directory could never see its index appear.
+DB_PATH = Path(os.environ.get("TA_ROWS_DB")
+               or Path.home() / ".tradingagents" / "backtest" / "rows.db")
 
 # Bump when the table shape changes. The index is DERIVED, so a mismatch is
 # rebuilt from the JSON files rather than migrated -- there is nothing here to
@@ -1643,7 +1649,9 @@ def _build_index(name) -> bool:
         return False
     _BUILDING.add(name)                 # only stops THIS process re-asking
     cmd = [sys.executable, "-m", "tradingagents.rows_index", "--build", name]
-    child_env = dict(os.environ, TA_INDEX_BUILD=name)
+    # the child must open the SAME database this process is using
+    child_env = dict(os.environ, TA_INDEX_BUILD=name,
+                     TA_ROWS_DB=str(DB_PATH))
     kwargs: dict = {"env": child_env,
                     "stdout": subprocess.DEVNULL,
                     "stderr": subprocess.DEVNULL,

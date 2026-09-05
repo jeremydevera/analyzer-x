@@ -1156,6 +1156,38 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
     n_workers = max(1, min(n_workers, len(pairs)))
     measured: list = []
 
+    # CAN a pool even be built here? The fallback below catches a pool that
+    # BREAKS, but the constructor itself sat outside that try — and the case it
+    # was written for is precisely a constructor failure: "spawn needs an
+    # importable __main__, so a caller running from stdin or a REPL has none".
+    # An OSError there killed the whole sweep instead of measuring in-process,
+    # which is what tests/test_parallel_sweep.py has been asserting all along.
+    pool = None
+    if n_workers > 1:
+        import concurrent.futures as _cf0
+
+        from tradingagents import market_sweep as _msw0
+
+        try:
+            # THE REAL POOL, built here rather than below. The fallback further
+            # down catches a pool that BREAKS, but the constructor sat outside
+            # that try — and the case it was written for is a constructor
+            # failure: "spawn needs an importable __main__, so a caller running
+            # from stdin or a REPL has none". An OSError there killed the whole
+            # sweep instead of measuring in-process, which is what
+            # tests/test_parallel_sweep.py has been asserting all along.
+            #
+            # Not a throwaway probe pool: the first version of this built one
+            # and shut it down, which a test counting pool shutdowns saw as an
+            # extra (False, False).
+            pool = _cf0.ProcessPoolExecutor(max_workers=n_workers,
+                                            initializer=_msw0.be_polite)
+        except Exception as exc:                               # noqa: BLE001
+            print(f"[backtest] no worker pool on this machine "
+                  f"({type(exc).__name__}: {exc}) — measuring in-process",
+                  flush=True)
+            n_workers = 1
+
     if n_workers > 1:
         import concurrent.futures as _cf
 
@@ -1175,8 +1207,7 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
         # many futures are in flight, never by the pool's width — a pool
         # cannot be resized, which is exactly why the old code could not
         # take back the cores that freed up.
-        pool = _cf.ProcessPoolExecutor(max_workers=n_workers,
-                                       initializer=msw.be_polite)
+        # built above, so a constructor failure is a fallback and not a crash
         try:
             if True:
                 # no slot= : `i % n_workers` labelled the TASK, not the

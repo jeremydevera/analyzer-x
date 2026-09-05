@@ -439,9 +439,13 @@ def test_the_streak_is_read_from_the_book_the_row_trades(client, monkeypatch):
         "strategy_coins": {"mom6_1h_pv": ["PROVE_USDT"]},
         "strategy_margins": {"mom6_1h_pv": 5.0}}))
     monkeypatch.setattr(at, "sizing_for", lambda s, key=None: "martingale")
+    # The paper slot has been PER STRATEGY since Aug 27, 2026 (`state_key`), and
+    # the route reads `at.state_key(c, not _is_real, key)`. Stubbing the legacy
+    # `PROVE_USDT#paper` left the route looking at a slot nothing had written,
+    # so this failed on a rung of 0 while asserting the API was wrong.
     monkeypatch.setattr(at, "load_state", lambda: {
         "PROVE_USDT": {"step": 6},            # the LIVE book, not this row's
-        "PROVE_USDT#paper": {"step": 1}})
+        at.state_key("PROVE_USDT", True, "mom6_1h_pv"): {"step": 1}})
     monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None: {})
     r = next(x for x in client.get("/api/trade/strategies").json()["rows"]
              if x["key"] == "mom6_1h_pv")
@@ -595,9 +599,14 @@ def test_the_rung_names_its_book_and_who_shares_it(client, monkeypatch):
         "strategy_coins": {"mom6_1h_pv": ["PROVE_USDT"],
                            "fade15_1h_pv2": ["PROVE_USDT"],
                            "mom6_1h_gx": ["XAUT_USDT"]}}))
+    # per-strategy paper slots, as `state_key` has minted them since
+    # Aug 27, 2026 — the legacy `SYM#paper` keys are what the route stopped
+    # reading, not what it should read
     monkeypatch.setattr(at, "load_state", lambda: {
-        "PROVE_USDT": {"step": 11}, "PROVE_USDT#paper": {"step": 0},
-        "XAUT_USDT#paper": {"step": 2}, "XAUT_USDT": {"step": 9}})
+        "PROVE_USDT": {"step": 11},
+        at.state_key("PROVE_USDT", True, "mom6_1h_pv"): {"step": 0},
+        at.state_key("XAUT_USDT", True, "mom6_1h_gx"): {"step": 2},
+        "XAUT_USDT": {"step": 9}})
     monkeypatch.setattr(at, "strategy_stats",
                         lambda dry=None: ({"mom6_1h_pv": {"wins": 3, "losses": 1,
                                                           "trades": 4, "pnl": 20.35}}

@@ -156,11 +156,28 @@ def test_alert_text_summarises_several_coins(watcher):
 # --- notifier selection ---------------------------------------------------
 
 
-def test_macos_uses_osascript_and_afplay(watcher):
+def test_macos_uses_osascript_and_afplay(watcher, monkeypatch):
+    """The DECISION, not the machine running the test.
+
+    `afplay` is appended only when the macOS sound file is on disk, so this
+    asserted a filesystem fact about the runner: green on a Mac, red on every
+    Linux CI box and on the operator's Windows PC. Pointing `_MAC_SOUND` at a
+    file that certainly exists tests the branch instead.
+    """
+    monkeypatch.setattr(watcher, "_MAC_SOUND", __file__)
     cmds = watcher.notify_commands("Darwin", "title", "body", sound=True)
     joined = " ".join(" ".join(c) for c in cmds)
     assert "osascript" in joined
     assert "afplay" in joined
+
+
+def test_macos_still_notifies_when_the_sound_is_missing(watcher, monkeypatch):
+    """A missing sound file must cost the SOUND, never the notification."""
+    monkeypatch.setattr(watcher, "_MAC_SOUND", "/nope/not/here.aiff")
+    cmds = watcher.notify_commands("Darwin", "title", "body", sound=True)
+    joined = " ".join(" ".join(c) for c in cmds)
+    assert "osascript" in joined
+    assert "afplay" not in joined
 
 
 def test_linux_uses_notify_send(watcher):

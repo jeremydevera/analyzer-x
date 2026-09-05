@@ -41,7 +41,12 @@ def test_the_floor_is_named_in_one_place_only():
     """Two copies of a floor is one floor waiting to drift."""
     src = open("tradingagents/market_sweep.py", encoding="utf-8").read()
     body = src[src.index("def run_pair("):src.index("def _worker(")]
-    assert "min_trades(tf)" in body, "run_pair asks for the timeframe's floor"
+    # `min_trades(tf`, not `min_trades(tf)`: the call gained a `days=` argument
+    # so the floor scales with the window actually measured, and pinning the
+    # exact old signature failed a test while the rule it guards was intact.
+    # What matters is that run_pair ASKS for the timeframe's floor and never
+    # compares against the flat one.
+    assert "min_trades(tf" in body, "run_pair asks for the timeframe's floor"
     assert "< MIN_TRADES" not in body, "and never compares against the flat one"
 
 

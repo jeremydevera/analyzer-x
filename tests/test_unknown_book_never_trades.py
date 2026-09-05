@@ -125,14 +125,22 @@ def test_the_entry_path_uses_the_shared_decision():
 def test_a_refusal_is_always_recorded():
     """`unknown` used to leave NO log line and NO ledger row — the live order
     was the only evidence it had happened. Every refusal is written down."""
+    import ast
     import inspect
+    import textwrap
 
-    src = inspect.getsource(at._process_slot)
-    i = src.index("gate_refuses(")
-    tail = src[i:i + 2000]
-    assert "append_ledger(" in tail, "a refused entry must reach the ledger"
-    assert "gate_blocked" in tail
-    assert "continue" in tail, "and must not fall through to the order"
+    # The `if gate_refuses(...)` BLOCK, taken from the syntax tree. A character
+    # window was the first version and it broke the moment that block grew (it
+    # gained the bar-seen fix on Sep 05, 2026) — a test that fails because the
+    # code it approves of got longer.
+    tree = ast.parse(textwrap.dedent(inspect.getsource(at._process_slot)))
+    block = next(
+        n for n in ast.walk(tree)
+        if isinstance(n, ast.If) and "gate_refuses" in ast.unparse(n.test))
+    body = ast.unparse(block)
+    assert "append_ledger(" in body, "a refused entry must reach the ledger"
+    assert "gate_blocked" in body
+    assert "continue" in body, "and must not fall through to the order"
 
 
 def test_the_reason_survives_an_exception(monkeypatch):

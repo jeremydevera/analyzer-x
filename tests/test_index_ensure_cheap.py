@@ -61,7 +61,13 @@ def test_a_sort_index_is_built_on_demand_when_it_is_missing(tmp_path, monkeypatc
     assert ri.build_sort_index("winrate") is True
     import time
 
-    for _ in range(50):
+    # `forget_indexes()` between polls: `has_index` CACHES in `_INDEX_SEEN` on
+    # purpose (the coin guard must not re-query SQLite on every filter), so the
+    # loop was re-reading the False it had cached two lines above and could
+    # never see the child's work. The build itself runs in a detached process,
+    # which is why it is polled at all.
+    for _ in range(100):
+        ri.forget_indexes()
         if ri.has_index("rows_winrate"):
             break
         time.sleep(0.1)

@@ -3,10 +3,6 @@
 None of them had fired yet; each was one bad day away.
 """
 import inspect
-import json
-import time
-
-import pytest
 
 from tradingagents import auto_trader as at
 

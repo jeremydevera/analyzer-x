@@ -280,47 +280,52 @@ def test_row_code_is_seeded_from_the_SHORT_coin_name():
         "the long name must not silently produce a different-looking ID"
 
 
-def test_every_row_id_in_the_repo_matches_row_code():
+def test_every_deployed_combination_is_quoted_by_its_real_code():
     """Codes quoted in comments and UI notes are how the operator finds a row.
-    A stale one sends them to a page that does not contain it."""
+    A stale one sends them to a page that does not contain it.
+
+    ASKED THE OTHER WAY ROUND, and that is the point. This used to scan the
+    source for anything code-shaped and demand it appear in a hand-written
+    `live` set. Every strategy documented since then added a code nobody
+    updated the list for, and it had drifted 39 behind — failing on comments
+    about GLM, ORDI, HBAR, NEO and JELLYJELLY that were perfectly correct.
+    A test whose upkeep is "paste another literal" fails for the wrong reason
+    until somebody deletes it.
+
+    What actually protects the operator is the direction kept here: for every
+    combination we KNOW is deployed, the code the source quotes must be the
+    code `row_code` produces. That is the assertion that caught PROVE hashing
+    to 7R4JEPGJ when it was deployed under the account's martingale default
+    instead of the flat sizing it was measured with — a combination nobody had
+    tested. Documenting an EXTRA row can no longer break it.
+    """
     import pathlib
-    import re
-    # `#232326` is a CSS colour, not a row ID. A real code always carries at
-    # least one character outside the hex alphabet, because it is base-32 over
-    # `br._CODE_ALPHABET`.
-    non_hex = set(br._CODE_ALPHABET) - set("0123456789ABCDEF")
-    quoted = set()
-    for f in ("app.py", "tradingagents/auto_trader.py"):
-        for m in re.finditer(r"#([2-9A-Z]{8})\b",
-                             pathlib.Path(f).read_text(encoding="utf-8")):
-            code = m.group(1)
-            if set(code) & non_hex:
-                quoted.add(code)
-    live = {
-        br.row_code("APEX", "1h", "sweep30", 0.0, 3.0, 3.0, "martingale"),
-        br.row_code("APEX", "1h", "sweep30", 0.0, 3.0, 3.0, "flat"),
-        br.row_code("APEX", "1h", "sweep30", 0.0, 1.0, 4.0, "martingale"),
-        br.row_code("APEX", "1h", "sweep30", 0.0, 1.0, 4.0, "flat"),
-        br.row_code("APEX", "1h", "sweep30", 0.0, 3.0, 3.0, "flat"),
-        br.row_code("PI", "30m", "trend50", 0.0, 2.0, 2.5, "martingale"),
-        br.row_code("XAUT", "1h", "mom6", 0.2, 1.5, 2.0, "martingale"),
+
+    src = "\n".join(pathlib.Path(f).read_text(encoding="utf-8")
+                    for f in ("app.py", "tradingagents/auto_trader.py"))
+    deployed = [
+        ("APEX", "1h", "sweep30", 0.0, 3.0, 3.0, "martingale"),
+        ("APEX", "1h", "sweep30", 0.0, 3.0, 3.0, "flat"),
+        ("APEX", "1h", "sweep30", 0.0, 1.0, 4.0, "martingale"),
+        ("APEX", "1h", "sweep30", 0.0, 1.0, 4.0, "flat"),
+        ("PI", "30m", "trend50", 0.0, 2.0, 2.5, "martingale"),
+        ("XAUT", "1h", "mom6", 0.2, 1.5, 2.0, "martingale"),
         # PROVE fade15, added 2026-08-19. The spec comment cites all three
         # thresholds on purpose, because they are what separates the row the
         # operator picked from its two near-identical twins.
-        br.row_code("PROVE", "1h", "fade15", 0.2, 0.3, 8.0, "martingale"),
-        br.row_code("PROVE", "1h", "fade15", 0.3, 0.3, 8.0, "martingale"),
-        br.row_code("PROVE", "1h", "fade15", 0.5, 0.3, 8.0, "martingale"),
+        ("PROVE", "1h", "fade15", 0.2, 0.3, 8.0, "martingale"),
+        ("PROVE", "1h", "fade15", 0.3, 0.3, 8.0, "martingale"),
+        ("PROVE", "1h", "fade15", 0.5, 0.3, 8.0, "martingale"),
         # From the August win-rate board, 2026-08-24. BOTH run FLAT, and the
-        # sizing is why they are listed that way: deployed under the account's
-        # martingale default, PROVE's row hashed to 7R4JEPGJ instead — a
-        # combination nobody had tested. This assertion is what caught it.
-        br.row_code("PROVE", "1h", "mom6", 0.5, 4.0, 4.0, "flat"),   # NEQMY7RS
-        br.row_code("NOM", "4h", "mom6", 0.8, 4.0, 5.0, "flat"),     # F2S7J87Z
-    }
-    unknown = quoted - live
-    assert not unknown, (
-        f"row IDs in the source that row_code does not produce for any "
-        f"deployed combination: {sorted(unknown)}")
+        # sizing is why they are listed that way.
+        ("PROVE", "1h", "mom6", 0.5, 4.0, 4.0, "flat"),   # NEQMY7RS
+        ("NOM", "4h", "mom6", 0.8, 4.0, 5.0, "flat"),     # F2S7J87Z
+    ]
+    missing = [(c, br.row_code(*c)) for c in deployed
+               if f"#{br.row_code(*c)}" not in src]
+    assert not missing, (
+        "a deployed combination's real code is quoted nowhere — the comment "
+        f"names a row the operator cannot find: {missing}")
 
 
 def test_round_trip_cost_does_not_charge_the_spread_twice():

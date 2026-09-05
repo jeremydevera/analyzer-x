@@ -11,13 +11,18 @@ asked "is anything missing?".
 """
 import pathlib
 
+# Every read is EXPLICITLY utf-8. `read_text()` uses the platform default —
+# cp1252 on Windows — and the app's own .tsx files are full of em dashes and
+# arrows, so the audit died with `UnicodeDecodeError: 'charmap' codec can't
+# decode byte 0x9d` before it could check anything.
+
 WEB = pathlib.Path("webapp/src")
-blob = "\n".join(p.read_text() for p in WEB.rglob("*.tsx")) + \
-       "\n".join(p.read_text() for p in WEB.rglob("*.ts"))
+blob = "\n".join(p.read_text(encoding="utf-8") for p in WEB.rglob("*.tsx")) + \
+       "\n".join(p.read_text(encoding="utf-8") for p in WEB.rglob("*.ts"))
 # the API plus the modules whose BEHAVIOUR the checks below describe: a
 # runner-side guarantee lives in auto_trader/supervisor, and searching only
 # the web app made "two runners can never coexist" unprovable.
-py = "\n".join(pathlib.Path(f).read_text() for f in (
+py = "\n".join(pathlib.Path(f).read_text(encoding="utf-8") for f in (
     "tradingagents/api.py",
     "tradingagents/auto_trader.py",
     "tradingagents/supervisor.py",
@@ -67,10 +72,17 @@ CHECKS = {
     "UPDATE BACKTEST": ["UPDATE BACKTEST"],
     "DOWNLOAD": ["DOWNLOAD CANDLES"],
     "STOP": ["jobStop"],
-    "Run where (GitHub)": ["Run where", "cloudDispatch"],
+    # The "Run where" chooser was REMOVED on Sep 05, 2026 — measuring moved to
+    # GitHub Actions and there is no longer a this-PC option to choose. What
+    # must still exist is the dispatch itself and the panel saying where it
+    # runs, which is what these two look for.
+    "runs on GitHub": ["cloudDispatch", "Runs on"],
     "cost preview": ["combinations"],
     "storage per coin": ["Size per coin"],
-    "candle coverage": ["Candles on this Mac"],
+    # renamed with the rest of the "this Mac" wording (Sep 05, 2026): the
+    # machine is a Windows PC, and the phrase no longer has to distinguish a
+    # place work RUNS, only where it is kept
+    "candle coverage": ["Candles on this PC"],
     "stored strategies filters": ["profitable only"],
     "trade viewer": ["PAST TRADES", "trades ·", "trades}"],
   },

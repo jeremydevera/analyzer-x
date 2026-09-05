@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 1, "total": 53, "rows": 33462, "note": "1000000BABYDOGE 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-05T08:55:51Z"}
+{"shard": 1, "stage": "testing", "done": 4, "total": 53, "rows": 75906, "note": "AMZU 1h: rule 22/120 (engulf)", "failed": [], "pct": 7.5, "updated": "2026-09-05T08:56:36Z"}

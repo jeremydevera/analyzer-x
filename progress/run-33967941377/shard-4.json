@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 34, "total": 53, "rows": 1276066, "note": "ONDSSTOCK 30m: rule 2/120 (mom15)", "failed": [], "pct": 64.2, "updated": "2026-09-05T13:59:13Z"}
+{"shard": 4, "stage": "testing", "done": 35, "total": 53, "rows": 1299666, "note": "PANASONICSTOCK 30m: downloading candles", "failed": [], "pct": 66.0, "updated": "2026-09-05T13:59:59Z"}

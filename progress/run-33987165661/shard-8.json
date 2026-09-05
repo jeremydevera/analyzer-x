@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 51, "total": 53, "rows": 1590556, "note": "XLI 30m: downloading candles", "failed": [], "pct": 96.2, "updated": "2026-09-05T20:35:24Z"}
+{"shard": 8, "stage": "testing", "done": 53, "total": 53, "rows": 1614356, "note": "ZRO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-05T20:36:16Z"}

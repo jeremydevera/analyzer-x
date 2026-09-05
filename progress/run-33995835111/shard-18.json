@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 12, "total": 52, "rows": 499364, "note": "COMP 30m: rule 73/120 (volspike)", "failed": [], "pct": 23.1, "updated": "2026-09-05T22:52:39Z"}
+{"shard": 18, "stage": "testing", "done": 14, "total": 52, "rows": 520364, "note": "DDOGSTOCK 30m: rule 63/120 (killzone)", "failed": [], "pct": 26.9, "updated": "2026-09-05T22:53:24Z"}

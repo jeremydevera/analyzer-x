@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 49, "total": 52, "rows": 1871580, "note": "VVV 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 94.2, "updated": "2026-09-05T17:37:12Z"}
+{"shard": 19, "stage": "testing", "done": 49, "total": 52, "rows": 1876580, "note": "VVV 30m: rule 19/120 (emacross)", "failed": [], "pct": 94.2, "updated": "2026-09-05T17:37:57Z"}

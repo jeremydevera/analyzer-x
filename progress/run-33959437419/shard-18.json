@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 16, "total": 52, "rows": 594064, "note": "ENA 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 30.8, "updated": "2026-09-05T10:32:55Z"}
+{"shard": 18, "stage": "testing", "done": 17, "total": 52, "rows": 632036, "note": "EWT 30m: rule 28/120 (vortex14)", "failed": [], "pct": 32.7, "updated": "2026-09-05T10:33:40Z"}

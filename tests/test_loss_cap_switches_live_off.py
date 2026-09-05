@@ -77,13 +77,15 @@ def test_a_second_pass_writes_nothing(tmp_path, monkeypatch):
 def test_the_runner_does_not_exit_and_does_not_halt_the_demo():
     src = inspect.getsource(at.run_forever)
     i = src.index("loss_limit_hit()")
-    branch = src[i:i + 1200]
+    # up to the sleep that follows the branch — the guard added on 2026-09-05
+    # made the branch longer than a fixed window
+    branch = src[i:src.index("slept = 0.0", i)]
     assert "disarm_live(" in branch
     assert "KILL_PATH" not in branch, (
         "the kill file gates BOTH books — it stopped the demo too")
     # the cap's own branch must not leave the loop. Comments quote the old
     # behaviour ("and `break` until 2026-09-04"), so read the CODE.
-    body = branch[:branch.index('slept = 0.0')].split(chr(10))
+    body = branch.split(chr(10))     # branch already ends at the sleep
     code = chr(10).join(l for l in body if not l.strip().startswith('#'))
     assert 'break' not in code, code
 

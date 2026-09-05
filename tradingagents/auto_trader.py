@@ -3259,6 +3259,27 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                 # opened before this was carried.
                 cost += float(pos.get("rt_cost") or 0) or 2 * PAPER_SLIPPAGE
             pnl = (move - cost) * pos["margin"] * LEVERAGE
+            pnl_source = "simulated" if pos_dry else "estimate"
+            if not pos_dry and outcome:
+                # THE EXCHANGE IS THE SOURCE OF TRUTH (rule 14). The bracket
+                # filled at MEXC, and MEXC knows what it realized — our
+                # barrier-price arithmetic is an estimate (measured off by a
+                # cent or two on the 2026-09-05 trades, and funding on a long
+                # hold drifts it further). The estimate stays as the fallback:
+                # a venue hiccup must not lose the exit row.
+                try:
+                    hist = fx.position_history(symbol, 10)
+                    match = next(
+                        (h for h in hist
+                         if int(h.get("positionId") or 0) ==
+                         int(pos.get("position_id") or -1)), None)
+                    if match is not None and match.get("realised") is not None:
+                        pnl = float(match["realised"])
+                        pnl_source = "exchange"
+                        if match.get("closeAvgPrice"):
+                            exit_px = float(match["closeAvgPrice"])
+                except Exception:                          # noqa: BLE001
+                    pass
             if live_gone and not outcome:
                 # Gone from the exchange without our barriers being crossed —
                 # usually a manual close. Record MEXC's REAL realized PnL,
@@ -3315,7 +3336,11 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                                      else None,
                            "side": "LONG" if pos.get("side", 0) > 0 else "SHORT",
                            "entry": pos.get("entry"), "exit": exit_px,
-                           "pnl_est": round(pnl, 2), "step_next": st["step"],
+                           "pnl_est": round(pnl, 2),
+                           # which book the NUMBER came from: MEXC's realized
+                           # figure when it could be read, else our estimate
+                           "pnl_source": pnl_source,
+                           "step_next": st["step"],
                            "dry_run": pos_dry})
             try:
                 from tradingagents import notifications as _nt
@@ -3613,8 +3638,9 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                           # to see both.
                           "opened_at": _opened_at, "trade_id": _tid,
                           "bracket": bool(dry)}
-        if not dry:
-            _rest_bracket(symbol, st["position"], fx=fx)
+        # the ENTER row goes down BEFORE the bracket attempt: on 2026-09-05
+        # the ledger read `forced_close 8:45` then `enter 8:45` — the story
+        # backwards, because the bracket (and its failure handling) ran first
         append_ledger({"symbol": symbol, "action": "enter", "strategy": key,
                        "trade_id": _tid, "opened_at": _opened_at,
                        "side": "LONG" if side > 0 else "SHORT", "vol": vol,
@@ -3622,6 +3648,8 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                        "sl": round(sl_px, 6), "margin": margin,
                        "leverage": LEVERAGE, "step": st["step"],
                        "dry_run": dry})
+        if not dry:
+            _rest_bracket(symbol, st["position"], fx=fx)
         # The bell. Wrapped because this is the live money path: a feed write
         # failing must never be able to interrupt an order or a bracket.
         try:
@@ -4135,24 +4163,34 @@ def run_forever() -> None:
             if _stopping["flag"]:
                 append_ledger({"action": "runner_stop", "why": "signal"})
                 break
-            if loss_limit_hit():
-                # LIVE OFF, RUNNER UP, DEMO RUNNING. This wrote the KILL file
-                # and `break` until 2026-09-04 — which stopped the simulation
-                # too (halted() gates both books) and made the operator
-                # restart the runner to get it back. Their words: "YOU WILL
-                # NEED TO SWITCH OFF THE LIVE TRADE HERE NO NEED TO STOP
-                # RUNNER ... DEMO TRADE SHOULD STILL WORK".
-                counted = loss_cap_pnl(settings)
-                limit = settings.get("loss_limit")
-                got = disarm_live(
-                    f"account loss cap: the counter is at "
-                    f"{counted:+.2f} USDT against a cap of "
-                    f"-{abs(float(limit or 0)):.2f} USDT")
-                if got:
-                    append_ledger({"action": "loss_limit_stop",
-                                   "counted": counted, "limit": limit,
-                                   "disarmed": got, "runner": "still running",
-                                   "demo": "still trading"})
+            try:
+                if loss_limit_hit():
+                    # LIVE OFF, RUNNER UP, DEMO RUNNING. This wrote the KILL file
+                    # and `break` until 2026-09-04 — which stopped the simulation
+                    # too (halted() gates both books) and made the operator
+                    # restart the runner to get it back. Their words: "YOU WILL
+                    # NEED TO SWITCH OFF THE LIVE TRADE HERE NO NEED TO STOP
+                    # RUNNER ... DEMO TRADE SHOULD STILL WORK".
+                    counted = loss_cap_pnl(settings)
+                    limit = settings.get("loss_limit")
+                    got = disarm_live(
+                        f"account loss cap: the counter is at "
+                        f"{counted:+.2f} USDT against a cap of "
+                        f"-{abs(float(limit or 0)):.2f} USDT")
+                    if got:
+                        append_ledger({"action": "loss_limit_stop",
+                                       "counted": counted, "limit": limit,
+                                       "disarmed": got, "runner": "still running",
+                                       "demo": "still trading"})
+            except Exception as exc:                       # noqa: BLE001
+                # A failed settings save must not kill the loop: the watchdog
+                # would restart it onto the same disk and it would die again -
+                # a crash loop wearing a safety feature's clothes. Say it
+                # loudly, once an hour, and try again next cycle.
+                if _say_once("cap-disarm-failed", 3600):
+                    logger.critical(
+                        "LOSS CAP DISARM FAILED (%s) - live may still be "
+                        "armed past the cap. Retrying every cycle.", exc)
             slept = 0.0
             target = next_sleep_seconds()
             while slept < target and not _stopping["flag"]:

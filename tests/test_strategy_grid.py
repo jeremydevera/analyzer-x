@@ -187,7 +187,7 @@ def test_a_locked_row_cannot_go_LIVE_but_DEMO_stays_free():
     """`disabled=` must be wired to the lock, or the guard is decorative — and
     it must be wired to LIVE only: the operator papers two timeframes on one
     coin on purpose, to compare them."""
-    src = open("app.py").read()
+    src = open("app.py", encoding="utf-8").read()
     assert 'key=f"g_live_{key}", disabled=bool(_lock)' in src
     assert 'key=f"g_demo_{key}", disabled=bool(_lock)' not in src, \
         "DEMO is never locked"
@@ -216,7 +216,7 @@ def test_an_already_double_booked_row_does_not_claim_a_second_coin():
 def test_the_streak_column_reads_the_book_the_row_trades():
     """`3 loss` was read from the LIVE ladder on a DEMO-only row. The ladder
     lives on the coin AND the book — `PI_USDT` vs `PI_USDT#paper`."""
-    src = open("app.py").read()
+    src = open("app.py", encoding="utf-8").read()
     assert '_bk = "" if (False in _bks or not _bks) else "#paper"' in src
     assert '_runstate.get(c + _bk)' in src
 
@@ -225,7 +225,7 @@ def test_the_streak_column_names_whose_streak_it_is():
     """label-must-match-data: `3 loss` on the trend50 row read as trend50's
     record. trend50 had never traded — it was PI's ladder, inherited from
     mom15_4h_w, and it is what NEXT $ is computed from."""
-    src = open("app.py").read()
+    src = open("app.py", encoding="utf-8").read()
     assert 'loss &middot; {_who}' in src
     assert "_who = " in src
 
@@ -309,7 +309,7 @@ def test_the_new_tile_is_offered_in_the_ui():
 def test_the_operators_row_name_is_drawn_in_the_strategy_column():
     """"i said to add the 8.67 in the name" — the tile label only appears on the
     backtest header, so the name has to reach the grid row itself."""
-    src = open("app.py").read()
+    src = open("app.py", encoding="utf-8").read()
     assert "_TILE_TAGS" in src
     assert app._TILE_TAGS.get("fade15_1h_pv2") == "Best 8.67 for August"
     assert "_tag = _TILE_TAGS.get(key)" in src
@@ -332,11 +332,13 @@ def _cfg(books, coins):
             "strategy_coins": coins}
 
 
-def test_two_live_strategies_on_one_coin_is_blocked_at_any_timeframe():
-    """The guard compared TIMEFRAMES, so it only caught clashes across
-    different bar sizes. PROVE ran fade15_1h_pv2 and mom6_1h_pv live together
-    at the same 1h on 2026-08-22 and it waved them through. MEXC nets by
-    CONTRACT; the bar size has nothing to do with it."""
+def test_two_live_strategies_on_one_coin_lock_NOTHING_now():
+    """History first: the ARMING lock existed because PROVE ran two live
+    strategies at once on 2026-08-22 and MEXC netted them into one position.
+    The operator replaced it on 2026-09-04 — 35 rows over 9 coins, 20 on one
+    contract — with ONE OPEN POSITION PER COIN, first signal wins, which is
+    the tighter guarantee (tests/test_one_position_per_coin.py). So the lock
+    is a no-op and arming both is allowed."""
     order = list(at.STRATEGY_ORDER)
     pair = [k for k in order if (at.STRATEGY_SPECS.get(k) or {}).get("interval")]
     a, b = pair[0], next(k for k in pair[1:]
@@ -344,11 +346,7 @@ def test_two_live_strategies_on_one_coin_is_blocked_at_any_timeframe():
                              == at.STRATEGY_SPECS[pair[0]].get("interval")))
     cfg = _cfg({a: ["real"], b: ["real"]},
                {a: ["PROVE_USDT"], b: ["PROVE_USDT"]})
-    locks = at.timeframe_locks(cfg)
-    assert len(locks) == 1, f"same-timeframe clash not caught: {locks}"
-    loser = next(iter(locks))
-    assert locks[loser]["coin"] == "PROVE_USDT"
-    assert locks[loser]["held_by"] != loser
+    assert at.timeframe_locks(cfg) == {}
 
 
 def test_demo_may_run_as_many_strategies_on_one_coin_as_it_likes():
@@ -372,16 +370,14 @@ def test_a_live_row_does_not_lock_a_demo_row_on_the_same_coin():
     assert set(locks) <= {d1, d2}
 
 
-def test_the_runner_refuses_a_live_entry_on_a_coin_already_live():
-    """A save-time check cannot protect a config that is ALREADY double-booked
-    — which is exactly the state the operator's machine was in."""
+def test_the_runner_holds_a_coin_with_the_position_not_a_lock():
+    """The runtime protection since 2026-09-04: the real book keeps ONE slot
+    per coin, a held coin refuses every other strategy out loud, and the old
+    lock consultation is gone from the entry path."""
     import inspect
 
-    src = inspect.getsource(at.process_symbol)
-    assert "_live_locks = timeframe_locks(settings) if not dry else {}" in src, (
-        "the runner must consult the lock, not just the settings screen")
-    i = src.index("_live_locks.get(key)")
-    body = src[i:i + 900]
-    assert "REFUSED live entry" in body, "a refusal must be logged loudly"
-    assert '"action": "refused"' in body, "and recorded in the ledger"
-    assert "continue" in body, "and must actually skip the order"
+    src = inspect.getsource(at._process_slot)
+    assert "_live_locks" not in src, "the arming lock is gone from the runner"
+    assert "ONE OPEN POSITION PER COIN" in src, "the rule is written down"
+    assert at.state_key("PROVE_USDT", False, "a") == "PROVE_USDT"
+    assert at.state_key("PROVE_USDT", False, "b") == "PROVE_USDT",         "one real slot per coin is what enforces it"

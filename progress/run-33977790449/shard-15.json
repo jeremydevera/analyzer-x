@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 51, "total": 52, "rows": 1978936, "note": "XOMSTOCK 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-05T17:19:34Z"}
+{"shard": 15, "stage": "testing", "done": 52, "total": 52, "rows": 2003776, "note": "ZEREBRO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-05T17:20:21Z"}

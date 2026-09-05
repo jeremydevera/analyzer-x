@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 6, "total": 52, "rows": 296226, "note": "B2 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 11.5, "updated": "2026-09-05T13:23:45Z"}
+{"shard": 19, "stage": "testing", "done": 7, "total": 52, "rows": 326366, "note": "BEAMX 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 13.5, "updated": "2026-09-05T13:24:41Z"}

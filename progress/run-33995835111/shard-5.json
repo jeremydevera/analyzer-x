@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 44, "total": 53, "rows": 1514650, "note": "STG 4h: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 83.0, "updated": "2026-09-05T23:20:53Z"}
+{"shard": 5, "stage": "testing", "done": 44, "total": 53, "rows": 1526530, "note": "STG 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 83.0, "updated": "2026-09-05T23:21:39Z"}

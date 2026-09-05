@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 42, "total": 52, "rows": 1628436, "note": "SOLV 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 80.8, "updated": "2026-09-05T23:44:01Z"}
+{"shard": 18, "stage": "testing", "done": 43, "total": 52, "rows": 1638336, "note": "SQD 4h: rule 1/120 (mom6)", "failed": [], "pct": 82.7, "updated": "2026-09-05T23:44:48Z"}

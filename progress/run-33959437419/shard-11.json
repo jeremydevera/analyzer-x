@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 50, "total": 52, "rows": 1798420, "note": "WLD 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-05T11:14:39Z"}
+{"shard": 11, "stage": "testing", "done": 52, "total": 52, "rows": 1828380, "note": "ZBCN 4h: rule 23/120 (supertrend)", "failed": [], "pct": 100.0, "updated": "2026-09-05T11:15:24Z"}

@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 26, "total": 53, "rows": 884250, "note": "KITE 4h: rule 51/120 (orb)", "failed": [], "pct": 49.1, "updated": "2026-09-05T19:58:16Z"}
+{"shard": 10, "stage": "testing", "done": 26, "total": 53, "rows": 900530, "note": "KITE 30m: rule 6/120 (sweep30)", "failed": [], "pct": 49.1, "updated": "2026-09-05T19:59:01Z"}

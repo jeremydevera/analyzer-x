@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 33, "total": 52, "rows": 838498, "note": "NVIDIA 4h: rule 22/120 (engulf)", "failed": [], "pct": 63.5, "updated": "2026-09-05T06:42:35Z"}
+{"shard": 12, "stage": "testing", "done": 35, "total": 52, "rows": 881024, "note": "PENDLE 4h: rule 3/120 (fade15)", "failed": [], "pct": 67.3, "updated": "2026-09-05T06:43:21Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 18, "total": 52, "rows": 667708, "note": "FHE 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 34.6, "updated": "2026-09-05T19:46:12Z"}
+{"shard": 11, "stage": "testing", "done": 19, "total": 52, "rows": 700994, "note": "FRAX 30m: rule 22/120 (engulf)", "failed": [], "pct": 36.5, "updated": "2026-09-05T19:46:58Z"}

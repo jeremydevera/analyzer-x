@@ -381,6 +381,14 @@ a failure. NEVER call `say` directly — always the script below, which reads
 bash .claude/skills/say-done/speak.sh "<what was finished>" &
 ```
 
+ALWAYS ON — BASIC WORDS (2026-09-05, for every session). The operator:
+*"STOP USING LONG WORDS AND DEEP WORDS FROM NOW ON I WANT BASIC WORDS, ENABLE
+THIS FOR ALL SESSION"*. Short sentences. One idea each. Words a 12-year-old
+knows. Say the number first, then the plain fact. Money, not percentages,
+wherever both work. It took five repeats of one question ("why did demo win
+and live lose") before the answer was small enough to use — that is the cost
+of ignoring this. Verify as hard as ever, then write it small.
+
 ALWAYS ON — `plain-words`. The operator is new to crypto trading and said so:
 "I don't know the terms you are talking about." Define a term the first time it
 appears, in six words or fewer. Lead with what it MEANS for them, then the number.

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 32, "total": 53, "rows": 1074414, "note": "NEMSTOCK 30m: downloading candles", "failed": [], "pct": 60.4, "updated": "2026-09-05T17:21:05Z"}
+{"shard": 5, "stage": "testing", "done": 33, "total": 53, "rows": 1100154, "note": "NPC 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 62.3, "updated": "2026-09-05T17:21:51Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 18, "total": 52, "rows": 492886, "note": "FIDA 1d: 394 bars, testing 120 rules", "failed": [], "pct": 34.6, "updated": "2026-09-05T18:38:14Z"}
+{"shard": 12, "stage": "testing", "done": 18, "total": 52, "rows": 512686, "note": "FIDA 1h: rule 21/120 (cci20)", "failed": [], "pct": 34.6, "updated": "2026-09-05T18:39:00Z"}

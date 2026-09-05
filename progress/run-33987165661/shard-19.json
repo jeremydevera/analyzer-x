@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 28, "total": 52, "rows": 930732, "note": "MANTRA 30m: rule 21/120 (cci20)", "failed": [], "pct": 53.8, "updated": "2026-09-05T20:12:26Z"}
+{"shard": 19, "stage": "testing", "done": 29, "total": 52, "rows": 951632, "note": "MEW 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 55.8, "updated": "2026-09-05T20:13:19Z"}

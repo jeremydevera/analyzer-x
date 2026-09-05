@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 46, "total": 53, "rows": 1395784, "note": "THETA 1h: rule 18/120 (macd)", "failed": [], "pct": 86.8, "updated": "2026-09-05T09:34:38Z"}
+{"shard": 4, "stage": "testing", "done": 47, "total": 53, "rows": 1417344, "note": "TRUST 1d: 304 bars, testing 120 rules", "failed": [], "pct": 88.7, "updated": "2026-09-05T09:35:27Z"}

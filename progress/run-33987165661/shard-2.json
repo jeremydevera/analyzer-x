@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 47, "total": 53, "rows": 1542002, "note": "TROLLSOL 4h: rule 60/120 (eqraid)", "failed": [], "pct": 88.7, "updated": "2026-09-05T20:37:39Z"}
+{"shard": 2, "stage": "testing", "done": 48, "total": 53, "rows": 1570770, "note": "UAI 30m: 14,563 bars, testing 120 rules", "failed": [], "pct": 90.6, "updated": "2026-09-05T20:38:31Z"}

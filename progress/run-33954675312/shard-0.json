@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 25, "total": 53, "rows": 720276, "note": "IRYS 4h: rule 28/120 (vortex14)", "failed": [], "pct": 47.2, "updated": "2026-09-05T08:28:15Z"}
+{"shard": 0, "stage": "testing", "done": 30, "total": 53, "rows": 807804, "note": "ME 1d: downloading candles", "failed": [], "pct": 56.6, "updated": "2026-09-05T08:29:01Z"}

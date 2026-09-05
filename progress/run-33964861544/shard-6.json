@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 20, "total": 53, "rows": 536240, "note": "GESTOCK 1h: rule 3/120 (fade15)", "failed": [], "pct": 37.7, "updated": "2026-09-05T12:16:21Z"}
+{"shard": 6, "stage": "testing", "done": 22, "total": 53, "rows": 586478, "note": "HFT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 41.5, "updated": "2026-09-05T12:17:10Z"}

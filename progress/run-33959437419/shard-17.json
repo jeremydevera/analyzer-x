@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 48, "total": 52, "rows": 1987284, "note": "USOIL 30m: rule 25/120 (ichimoku)", "failed": [], "pct": 92.3, "updated": "2026-09-05T11:33:56Z"}
+{"shard": 17, "stage": "testing", "done": 49, "total": 52, "rows": 2008184, "note": "VTHO 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 94.2, "updated": "2026-09-05T11:34:47Z"}

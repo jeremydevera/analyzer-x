@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 15, "total": 52, "rows": 421944, "note": "DOT 1h: rule 45/120 (zscore20)", "failed": [], "pct": 28.8, "updated": "2026-09-05T09:03:52Z"}
+{"shard": 19, "stage": "testing", "done": 18, "total": 52, "rows": 502096, "note": "FLOKI 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 34.6, "updated": "2026-09-05T09:04:41Z"}

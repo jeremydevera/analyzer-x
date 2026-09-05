@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 1221368, "note": "SYN 1d: rule 6/120 (sweep30)", "failed": [], "pct": 84.9, "updated": "2026-09-05T19:00:19Z"}
+{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 1238716, "note": "SYN 1h: rule 22/120 (engulf)", "failed": [], "pct": 84.9, "updated": "2026-09-05T19:01:04Z"}

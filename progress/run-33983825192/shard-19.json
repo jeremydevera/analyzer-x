@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 29, "total": 52, "rows": 819986, "note": "MEW 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 55.8, "updated": "2026-09-05T18:49:27Z"}
+{"shard": 19, "stage": "testing", "done": 29, "total": 52, "rows": 834506, "note": "MEW 1h: rule 61/120 (turtle)", "failed": [], "pct": 55.8, "updated": "2026-09-05T18:50:12Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 45, "total": 53, "rows": 1374438, "note": "TAIKO 30m: rule 20/120 (stoch14)", "failed": [], "pct": 84.9, "updated": "2026-09-05T17:00:09Z"}
+{"shard": 8, "stage": "testing", "done": 46, "total": 53, "rows": 1408458, "note": "TMF 30m: rule 63/120 (killzone)", "failed": [], "pct": 86.8, "updated": "2026-09-05T17:00:54Z"}

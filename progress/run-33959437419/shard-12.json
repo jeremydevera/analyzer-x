@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 49, "total": 52, "rows": 1759940, "note": "VLOSTOCK 30m: 1,197 bars, testing 120 rules", "failed": [], "pct": 94.2, "updated": "2026-09-05T11:10:17Z"}
+{"shard": 12, "stage": "testing", "done": 50, "total": 52, "rows": 1793800, "note": "WLFI 30m: rule 1/120 (mom6)", "failed": [], "pct": 96.2, "updated": "2026-09-05T11:11:05Z"}

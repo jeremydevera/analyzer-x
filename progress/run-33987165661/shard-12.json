@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 30, "total": 52, "rows": 1056270, "note": "MOODENG 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 57.7, "updated": "2026-09-05T20:11:59Z"}
+{"shard": 12, "stage": "testing", "done": 30, "total": 52, "rows": 1060230, "note": "MOODENG 30m: rule 12/120 (donchian20)", "failed": [], "pct": 57.7, "updated": "2026-09-05T20:12:44Z"}

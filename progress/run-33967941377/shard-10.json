@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 41, "total": 53, "rows": 1516774, "note": "SIREN 30m: rule 1/120 (mom6)", "failed": [], "pct": 77.4, "updated": "2026-09-05T14:10:55Z"}
+{"shard": 10, "stage": "testing", "done": 41, "total": 53, "rows": 1521374, "note": "SIREN 30m: rule 20/120 (stoch14)", "failed": [], "pct": 77.4, "updated": "2026-09-05T14:11:42Z"}

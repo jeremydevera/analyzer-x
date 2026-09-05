@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 2, "total": 53, "rows": 46178, "note": "AGLD 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 3.8, "updated": "2026-09-05T08:55:02Z"}
+{"shard": 10, "stage": "testing", "done": 2, "total": 53, "rows": 57838, "note": "AGLD 1h: rule 47/120 (ibs)", "failed": [], "pct": 3.8, "updated": "2026-09-05T08:55:48Z"}

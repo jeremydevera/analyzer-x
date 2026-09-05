@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 3, "total": 53, "rows": 83776, "note": "AKE 4h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 5.7, "updated": "2026-09-05T16:29:19Z"}
+{"shard": 2, "stage": "testing", "done": 3, "total": 53, "rows": 91318, "note": "AKE 30m: rule 3/120 (fade15)", "failed": [], "pct": 5.7, "updated": "2026-09-05T16:30:12Z"}

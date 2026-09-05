@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 35, "total": 52, "rows": 1376476, "note": "PEOPLE 30m: rule 40/120 (crsi)", "failed": [], "pct": 67.3, "updated": "2026-09-05T14:04:35Z"}
+{"shard": 15, "stage": "testing", "done": 35, "total": 52, "rows": 1389236, "note": "PEOPLE 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 67.3, "updated": "2026-09-05T14:05:20Z"}

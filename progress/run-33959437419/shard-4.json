@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 46, "total": 53, "rows": 1781818, "note": "THETA 30m: rule 3/120 (fade15)", "failed": [], "pct": 86.8, "updated": "2026-09-05T11:20:26Z"}
+{"shard": 4, "stage": "testing", "done": 46, "total": 53, "rows": 1789958, "note": "THETA 30m: rule 40/120 (crsi)", "failed": [], "pct": 86.8, "updated": "2026-09-05T11:21:11Z"}

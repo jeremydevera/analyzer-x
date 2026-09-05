@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 30, "total": 52, "rows": 985218, "note": "MONAD 30m: 15,964 bars, testing 120 rules", "failed": [], "pct": 57.7, "updated": "2026-09-05T19:53:14Z"}
+{"shard": 11, "stage": "testing", "done": 30, "total": 52, "rows": 994458, "note": "MONAD 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 57.7, "updated": "2026-09-05T19:54:00Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 7, "total": 52, "rows": 218304, "note": "BBSTOCK 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 13.5, "updated": "2026-09-05T16:29:10Z"}
+{"shard": 15, "stage": "testing", "done": 10, "total": 52, "rows": 297322, "note": "CAKE 4h: rule 27/120 (aroon25)", "failed": [], "pct": 19.2, "updated": "2026-09-05T16:29:55Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 36, "total": 52, "rows": 1350450, "note": "POLYX 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 69.2, "updated": "2026-09-05T20:25:23Z"}
+{"shard": 12, "stage": "testing", "done": 39, "total": 52, "rows": 1388562, "note": "ROAM 4h: rule 16/120 (keltner)", "failed": [], "pct": 75.0, "updated": "2026-09-05T20:26:08Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 52, "total": 53, "rows": 1938240, "note": "XTZ 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-05T17:43:53Z"}
+{"shard": 1, "stage": "testing", "done": 52, "total": 53, "rows": 1943080, "note": "XTZ 30m: rule 16/120 (keltner)", "failed": [], "pct": 98.1, "updated": "2026-09-05T17:44:38Z"}

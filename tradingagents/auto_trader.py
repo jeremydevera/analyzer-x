@@ -1531,8 +1531,14 @@ def _entry_gate(key: str, symbol: str, margin: float, *, fx) -> dict:
         return hit
     r = edge_check(key, symbol, margin, fx=fx)
     _CYCLE_GATES[(key, symbol)] = r
-    # the screen may as well learn what we just paid to measure
-    _GATE_CACHE[(key, symbol)] = (time.time(), r)
+    # the screen may as well learn what we just paid to measure — but an
+    # UNKNOWN is not a measurement: written into the 5-minute cache it made
+    # the screen refuse a healthy coin for 5 minutes after one throttled
+    # depth call (KITE/STBL/ROLSTOCK, 2026-09-05 3:52pm burst). Within THIS
+    # cycle both books still share the unknown via _CYCLE_GATES, which is the
+    # consistency that matters.
+    if not _unknown_gate(r):
+        _GATE_CACHE[(key, symbol)] = (time.time(), r)
     return r
 
 
@@ -3418,6 +3424,28 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                                    "why": gate.get("reason"),
                                    "unreadable_book": unreadable,
                                    "dry_run": dry})
+                # A REFUSED bar has still been EXAMINED. Leaving it unmarked
+                # made the runner re-read the same candle every cycle until it
+                # aged past the staleness limit, so a gated coin emitted a
+                # `stale_skip` every quiet hour — the feed reading "the signal
+                # was too old" about a bar that was never going to be traded.
+                # Measured in the operator's own ledger on Sep 05, 2026: 160 of
+                # 166 stale_skip rows were on a coin+strategy the gate was
+                # refusing. Same shape as the quiet-bar fix
+                # (tests/test_quiet_bar_is_marked_seen.py) and the `stale_skip`
+                # incident behind rule 23.
+                #
+                # BLOCK only. An UNKNOWN is a book that could not be READ — it
+                # is transient by definition (a 510, a timeout), and marking the
+                # bar seen would skip the trade for good when the venue answers
+                # a second later. Missing a trade is a money problem; one honest
+                # stale line on a coin whose book is down is not.
+                if not unreadable:
+                    _spec = STRATEGY_SPECS.get(key) or {}
+                    _df = frames.get(_spec.get("interval"))
+                    if _df is not None and len(_df):
+                        st["last_ts"][_spec["interval"]] = int(
+                            _df["Date"].iloc[-1].timestamp())
                 continue
         spec = STRATEGY_SPECS[key]
         df = frames.get(spec["interval"])

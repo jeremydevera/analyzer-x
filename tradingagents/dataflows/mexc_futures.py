@@ -493,6 +493,15 @@ def book_cost(symbol: str, notional_usd: float = 200.0) -> dict:
     book = order_book(symbol)
     asks, bids = book["asks"], book["bids"]
     if not asks or not bids:
+        # ONE more look before believing it. During a burst (many gate checks
+        # at a bar close) MEXC answers some depth calls with an EMPTY book and
+        # a 200 — measured 2026-09-05 at 3:52pm: KITE, STBL, ROLSTOCK and
+        # GPNSTOCK all "had no order book" in the same second, then read fine
+        # one-by-one (10 of 10). A blip must not decide a trade.
+        time.sleep(0.5)
+        book = order_book(symbol)
+        asks, bids = book["asks"], book["bids"]
+    if not asks or not bids:
         raise MexcFuturesError(f"no order book for {symbol}")
     mid = (asks[0][0] + bids[0][0]) / 2.0
     size = float(contract_spec(symbol).get("contractSize") or 0.0)

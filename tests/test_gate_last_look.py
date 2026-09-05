@@ -119,3 +119,49 @@ def test_an_entry_block_does_not_eat_the_bar_for_the_other_strategies():
     frag = src[i:src.index("vol = fx.contracts_for", i)]
     assert 'st["last_ts"]' not in frag, frag
     assert "continue" in frag, "this strategy steps aside; the others still run"
+
+
+def test_an_unknown_last_look_is_not_written_into_the_screen_cache(monkeypatch):
+    """One throttled depth call at 3:52pm (2026-09-05) put "unknown" in the
+    5-minute cache and the screen refused KITE, STBL and ROLSTOCK signals for
+    the whole window. Within one cycle both books still share the unknown."""
+    calls = []
+
+    def fake_edge(key, symbol, margin, *, fx=None):
+        calls.append(key)
+        return {"verdict": "unknown", "reason": "no order book for X"}
+
+    monkeypatch.setattr(at, "edge_check", fake_edge)
+    got = at._entry_gate("k2", "X_USDT", 5.0, fx=object())
+    assert got["verdict"] == "unknown"
+    assert ("k2", "X_USDT") not in at._GATE_CACHE, \
+        "an unknown is not a measurement"
+    assert at._CYCLE_GATES[("k2", "X_USDT")] is got, \
+        "but THIS cycle's two books still share it"
+
+
+def test_an_empty_book_is_read_twice_before_it_is_believed(monkeypatch):
+    """The burst blip: MEXC answered depth calls with an empty book and a 200
+    for several coins in the same second, then served all of them fine
+    one-by-one. One more look, half a second later, before deciding."""
+    from tradingagents.dataflows import mexc_futures as fx
+
+    seq = [{"asks": [], "bids": []},
+           {"asks": [[100.0, 50]], "bids": [[99.9, 50]]}]
+    monkeypatch.setattr(fx, "order_book", lambda s: seq.pop(0))
+    monkeypatch.setattr(fx, "contract_spec",
+                        lambda s: {"contractSize": 1, "takerFeeRate": 0.0002})
+    monkeypatch.setattr(fx.time, "sleep", lambda s: None)
+    got = fx.book_cost("KITE_USDT", 100.0)
+    assert got["mid"] == pytest.approx(99.95)
+    assert seq == [], "the second look was taken"
+
+
+def test_a_book_empty_twice_still_raises(monkeypatch):
+    from tradingagents.dataflows import mexc_futures as fx
+
+    monkeypatch.setattr(fx, "order_book",
+                        lambda s: {"asks": [], "bids": []})
+    monkeypatch.setattr(fx.time, "sleep", lambda s: None)
+    with pytest.raises(fx.MexcFuturesError, match="no order book"):
+        fx.book_cost("KITE_USDT", 100.0)

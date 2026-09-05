@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 25, "total": 52, "rows": 759620, "note": "KAITO 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 48.1, "updated": "2026-09-05T07:34:23Z"}
+{"shard": 18, "stage": "testing", "done": 25, "total": 52, "rows": 772160, "note": "KAITO 1h: rule 52/120 (nr7)", "failed": [], "pct": 48.1, "updated": "2026-09-05T07:35:08Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 24, "total": 52, "rows": 744142, "note": "IQVSTOCK 1h: downloading candles", "failed": [], "pct": 46.2, "updated": "2026-09-05T21:43:06Z"}
+{"shard": 18, "stage": "testing", "done": 25, "total": 52, "rows": 761374, "note": "KAITO 1h: rule 3/120 (fade15)", "failed": [], "pct": 48.1, "updated": "2026-09-05T21:43:51Z"}

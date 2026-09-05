@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 44, "total": 53, "rows": 1685062, "note": "STRK 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 83.0, "updated": "2026-09-05T17:31:03Z"}
+{"shard": 10, "stage": "testing", "done": 46, "total": 53, "rows": 1710802, "note": "TNSR 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 86.8, "updated": "2026-09-05T17:31:56Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 40, "total": 52, "rows": 856296, "note": "SAPIEN 4h: 2,284 bars, testing 120 rules", "failed": [], "pct": 76.9, "updated": "2026-09-05T08:24:46Z"}
+{"shard": 11, "stage": "testing", "done": 43, "total": 52, "rows": 945996, "note": "SPELL 4h: rule 1/120 (mom6)", "failed": [], "pct": 82.7, "updated": "2026-09-05T08:25:32Z"}

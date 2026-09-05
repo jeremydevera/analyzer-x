@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 23, "total": 53, "rows": 579552, "note": "HUMA 1d: 394 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-05T08:23:05Z"}
+{"shard": 4, "stage": "testing", "done": 26, "total": 53, "rows": 646732, "note": "KEYENCESTOCK 4h: downloading candles", "failed": [], "pct": 49.1, "updated": "2026-09-05T08:23:51Z"}

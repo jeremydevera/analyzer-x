@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 17, "total": 53, "rows": 679248, "note": "ETC 30m: rule 47/120 (ibs)", "failed": [], "pct": 32.1, "updated": "2026-09-05T10:25:27Z"}
+{"shard": 9, "stage": "testing", "done": 17, "total": 53, "rows": 693988, "note": "ETC 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-05T10:26:13Z"}

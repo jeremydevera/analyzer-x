@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 6, "total": 53, "rows": 307552, "note": "AWE 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 11.3, "updated": "2026-09-05T16:39:17Z"}
+{"shard": 10, "stage": "testing", "done": 8, "total": 53, "rows": 346932, "note": "BIO 4h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 15.1, "updated": "2026-09-05T16:40:02Z"}

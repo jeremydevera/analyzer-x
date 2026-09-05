@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 13, "total": 53, "rows": 421422, "note": "COTI 30m: rule 4/120 (trend50)", "failed": [], "pct": 24.5, "updated": "2026-09-05T19:42:10Z"}
+{"shard": 5, "stage": "testing", "done": 13, "total": 53, "rows": 438802, "note": "COTI 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 24.5, "updated": "2026-09-05T19:42:55Z"}

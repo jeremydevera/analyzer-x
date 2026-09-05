@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 2, "total": 52, "rows": 76164, "note": "AIOT 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-05T15:22:43Z"}
+{"shard": 16, "stage": "testing", "done": 3, "total": 52, "rows": 106832, "note": "AMDSTOCK 1h: rule 56/120 (insidebrk)", "failed": [], "pct": 5.8, "updated": "2026-09-05T15:23:28Z"}

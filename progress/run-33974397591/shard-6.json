@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 8, "total": 53, "rows": 237134, "note": "BIDUSTOCK 1h: rule 55/120 (nhigh50)", "failed": [], "pct": 15.1, "updated": "2026-09-05T15:24:54Z"}
+{"shard": 6, "stage": "testing", "done": 11, "total": 53, "rows": 287464, "note": "CCJSTOCK 1h: 1,763 bars, testing 120 rules", "failed": [], "pct": 20.8, "updated": "2026-09-05T15:25:39Z"}

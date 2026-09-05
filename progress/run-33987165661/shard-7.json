@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 53, "total": 53, "rows": 2058764, "note": "ZORA 30m: rule 62/120 (ote)", "failed": [], "pct": 100.0, "updated": "2026-09-05T21:05:43Z"}
+{"shard": 7, "stage": "done", "done": 53, "total": 53, "rows": 2071304, "note": "2,071,304 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "failed": [], "pct": 100.0, "updated": "2026-09-05T21:06:24Z"}

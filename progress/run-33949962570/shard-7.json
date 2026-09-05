@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 28, "total": 53, "rows": 794858, "note": "LTC 4h: rule 17/120 (atrbreak)", "failed": [], "pct": 52.8, "updated": "2026-09-05T06:44:55Z"}
+{"shard": 7, "stage": "testing", "done": 30, "total": 53, "rows": 866732, "note": "MMT 4h: 1,877 bars, testing 120 rules", "failed": [], "pct": 56.6, "updated": "2026-09-05T06:45:42Z"}

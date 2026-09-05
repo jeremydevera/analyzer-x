@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 49, "total": 52, "rows": 1884896, "note": "VSTOCK 4h: rule 23/120 (supertrend)", "failed": [], "pct": 94.2, "updated": "2026-09-05T23:44:07Z"}
+{"shard": 15, "stage": "testing", "done": 49, "total": 52, "rows": 1916036, "note": "VSTOCK 30m: rule 67/120 (pinbar)", "failed": [], "pct": 94.2, "updated": "2026-09-05T23:44:53Z"}

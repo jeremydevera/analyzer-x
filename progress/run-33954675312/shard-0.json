@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 1, "total": 53, "rows": 13596, "note": "0G 4h: 2,116 bars, testing 120 rules", "failed": [], "pct": 1.9, "updated": "2026-09-05T08:14:37Z"}
+{"shard": 0, "stage": "testing", "done": 2, "total": 53, "rows": 53268, "note": "ADA 4h: rule 1/120 (mom6)", "failed": [], "pct": 3.8, "updated": "2026-09-05T08:15:22Z"}

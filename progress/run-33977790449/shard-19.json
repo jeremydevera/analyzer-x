@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 29, "total": 52, "rows": 1027540, "note": "MEW 30m: rule 74/120 (volclimax)", "failed": [], "pct": 55.8, "updated": "2026-09-05T17:05:17Z"}
+{"shard": 19, "stage": "testing", "done": 31, "total": 52, "rows": 1075260, "note": "NAS100 30m: 10,526 bars, testing 120 rules", "failed": [], "pct": 59.6, "updated": "2026-09-05T17:06:02Z"}

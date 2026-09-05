@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 23, "total": 53, "rows": 764806, "note": "HYPER 30m: rule 47/120 (ibs)", "failed": [], "pct": 43.4, "updated": "2026-09-05T19:44:56Z"}
+{"shard": 6, "stage": "testing", "done": 24, "total": 53, "rows": 807046, "note": "INJ 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 45.3, "updated": "2026-09-05T19:45:48Z"}

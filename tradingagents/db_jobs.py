@@ -887,10 +887,8 @@ def _pending_sources() -> dict:
     # from a 27-minute-old index is a 27-minute-old count — which is how a
     # resolve run that was working perfectly appeared to make things worse.
     age = 0
-    try:
+    with _contextlib.suppress(OSError):
         age = max(0, int(time.time() - msw.INDEX_PATH.stat().st_mtime))
-    except OSError:
-        pass
     return {"behind": behind, "missing": missing, "lost": lost,
             "delisted": delisted, "empty": empty,
             "index_age_s": age,

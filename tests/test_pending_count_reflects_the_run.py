@@ -17,7 +17,6 @@ Two things follow, and both are tested here: the job must refresh the index it
 is judged by, and until it does, a stale count must SAY it is stale.
 """
 import inspect
-import io
 import re
 
 from tradingagents import db_jobs as dj
@@ -70,7 +69,7 @@ def test_pending_reports_how_old_its_index_is(monkeypatch, tmp_path):
 
 
 def test_the_screen_says_when_the_count_is_stale():
-    body = io.open(HISTORY, encoding="utf-8").read()
+    body = open(HISTORY, encoding="utf-8").read()
     assert "index_age_s" in body
     assert "min old" in body
     # only when it MATTERS — a fresh index needs no apology

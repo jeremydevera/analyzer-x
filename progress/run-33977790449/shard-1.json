@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 45, "total": 53, "rows": 1643634, "note": "SXT 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-05T17:30:20Z"}
+{"shard": 1, "stage": "testing", "done": 46, "total": 53, "rows": 1653112, "note": "TFUEL 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 86.8, "updated": "2026-09-05T17:31:06Z"}

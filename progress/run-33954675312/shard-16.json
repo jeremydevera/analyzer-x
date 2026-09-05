@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 35, "total": 52, "rows": 1069952, "note": "PEPE 4h: rule 3/120 (fade15)", "failed": [], "pct": 67.3, "updated": "2026-09-05T08:32:53Z"}
+{"shard": 16, "stage": "testing", "done": 40, "total": 52, "rows": 1116108, "note": "SCR 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 76.9, "updated": "2026-09-05T08:33:46Z"}

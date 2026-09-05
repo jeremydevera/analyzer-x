@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 48, "total": 52, "rows": 1794792, "note": "USTC 30m: rule 16/120 (keltner)", "failed": [], "pct": 92.3, "updated": "2026-09-05T20:53:54Z"}
+{"shard": 19, "stage": "testing", "done": 48, "total": 52, "rows": 1805132, "note": "USTC 30m: rule 64/120 (hammer)", "failed": [], "pct": 92.3, "updated": "2026-09-05T20:54:39Z"}

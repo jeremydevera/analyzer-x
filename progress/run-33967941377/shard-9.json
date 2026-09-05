@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 16, "total": 53, "rows": 611238, "note": "EBAYSTOCK 4h: rule 41/120 (tsi)", "failed": [], "pct": 30.2, "updated": "2026-09-05T13:27:18Z"}
+{"shard": 9, "stage": "testing", "done": 17, "total": 53, "rows": 673878, "note": "ETC 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-05T13:28:11Z"}

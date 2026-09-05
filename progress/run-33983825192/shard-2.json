@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 29, "total": 53, "rows": 779368, "note": "MARSTOCK 1h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 54.7, "updated": "2026-09-05T18:44:16Z"}
+{"shard": 2, "stage": "testing", "done": 30, "total": 53, "rows": 801810, "note": "MINA 1h: rule 32/120 (gmma)", "failed": [], "pct": 56.6, "updated": "2026-09-05T18:45:01Z"}

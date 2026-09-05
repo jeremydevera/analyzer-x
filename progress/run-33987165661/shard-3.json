@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 40, "total": 53, "rows": 1316416, "note": "RVN 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-05T20:28:56Z"}
+{"shard": 3, "stage": "testing", "done": 41, "total": 53, "rows": 1328956, "note": "SHELL 4h: rule 13/120 (pivot)", "failed": [], "pct": 77.4, "updated": "2026-09-05T20:29:41Z"}

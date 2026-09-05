@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 52, "total": 52, "rows": 2155318, "note": "ZETA 4h: rule 20/120 (stoch14)", "failed": [], "pct": 100.0, "updated": "2026-09-05T15:03:21Z"}
+{"shard": 17, "stage": "testing", "done": 52, "total": 52, "rows": 2177098, "note": "ZETA 30m: rule 2/120 (mom15)", "failed": [], "pct": 100.0, "updated": "2026-09-05T15:04:16Z"}

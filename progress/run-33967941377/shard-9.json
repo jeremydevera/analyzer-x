@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 6, "total": 53, "rows": 242436, "note": "AVNT 30m: rule 6/120 (sweep30)", "failed": [], "pct": 11.3, "updated": "2026-09-05T13:15:37Z"}
+{"shard": 9, "stage": "testing", "done": 6, "total": 53, "rows": 256036, "note": "AVNT 30m: rule 75/120 (relvolbrk)", "failed": [], "pct": 11.3, "updated": "2026-09-05T13:16:22Z"}

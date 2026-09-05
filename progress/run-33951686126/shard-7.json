@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 39, "total": 53, "rows": 1194314, "note": "RIVER 1h: rule 24/120 (psar)", "failed": [], "pct": 73.6, "updated": "2026-09-05T07:49:57Z"}
+{"shard": 7, "stage": "testing", "done": 41, "total": 53, "rows": 1239340, "note": "SHOPSTOCK 1h: rule 1/120 (mom6)", "failed": [], "pct": 77.4, "updated": "2026-09-05T07:50:42Z"}

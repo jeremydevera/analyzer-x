@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 53, "total": 53, "rows": 2062768, "note": "ZORA 30m: rule 27/120 (aroon25)", "failed": [], "pct": 100.0, "updated": "2026-09-05T14:47:20Z"}
+{"shard": 7, "stage": "testing", "done": 53, "total": 53, "rows": 2073328, "note": "ZORA 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 100.0, "updated": "2026-09-05T14:48:06Z"}

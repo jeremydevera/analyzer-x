@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 7, "total": 52, "rows": 252056, "note": "BASED 30m: rule 35/120 (willr14)", "failed": [], "pct": 13.5, "updated": "2026-09-05T16:37:04Z"}
+{"shard": 11, "stage": "testing", "done": 8, "total": 52, "rows": 291634, "note": "BIRB 4h: rule 110/120 (cf_fundfade_l1)", "failed": [], "pct": 15.4, "updated": "2026-09-05T16:37:49Z"}

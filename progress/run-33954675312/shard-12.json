@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 27, "total": 52, "rows": 659014, "note": "LIGHT 4h: rule 2/120 (mom15)", "failed": [], "pct": 51.9, "updated": "2026-09-05T08:24:03Z"}
+{"shard": 12, "stage": "testing", "done": 30, "total": 52, "rows": 716604, "note": "MOODENG 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 57.7, "updated": "2026-09-05T08:24:50Z"}

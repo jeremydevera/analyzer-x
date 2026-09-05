@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 42, "total": 53, "rows": 1555472, "note": "SNDKSTOCK 30m: rule 1/120 (mom6)", "failed": [], "pct": 79.2, "updated": "2026-09-05T23:34:51Z"}
+{"shard": 10, "stage": "testing", "done": 43, "total": 53, "rows": 1577852, "note": "SPCXSTOCK 4h: rule 1/120 (mom6)", "failed": [], "pct": 81.1, "updated": "2026-09-05T23:35:36Z"}

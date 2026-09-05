@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 17, "total": 53, "rows": 645044, "note": "ETC 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-05T16:50:26Z"}
+{"shard": 9, "stage": "testing", "done": 17, "total": 53, "rows": 672324, "note": "ETC 30m: rule 2/120 (mom15)", "failed": [], "pct": 32.1, "updated": "2026-09-05T16:51:12Z"}

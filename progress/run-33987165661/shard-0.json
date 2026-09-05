@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 9, "total": 53, "rows": 323244, "note": "BLUAI 4h: 1,916 bars, testing 120 rules", "failed": [], "pct": 17.0, "updated": "2026-09-05T19:46:47Z"}
+{"shard": 0, "stage": "testing", "done": 9, "total": 53, "rows": 348720, "note": "BLUAI 30m: rule 2/120 (mom15)", "failed": [], "pct": 17.0, "updated": "2026-09-05T19:47:39Z"}

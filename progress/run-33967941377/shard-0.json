@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 33, "total": 53, "rows": 1258048, "note": "NMR 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 62.3, "updated": "2026-09-05T14:09:21Z"}
+{"shard": 0, "stage": "testing", "done": 34, "total": 53, "rows": 1282008, "note": "OKLOSTOCK 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 64.2, "updated": "2026-09-05T14:10:06Z"}

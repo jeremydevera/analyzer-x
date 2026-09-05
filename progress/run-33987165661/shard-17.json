@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 17, "total": 52, "rows": 715054, "note": "EWJ 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 32.7, "updated": "2026-09-05T19:54:39Z"}
+{"shard": 17, "stage": "testing", "done": 20, "total": 52, "rows": 779672, "note": "GMESTOCK 30m: 5,779 bars, testing 120 rules", "failed": [], "pct": 38.5, "updated": "2026-09-05T19:55:25Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 10, "total": 53, "rows": 359748, "note": "BSV 4h: rule 25/120 (ichimoku)", "failed": [], "pct": 18.9, "updated": "2026-09-05T19:46:02Z"}
+{"shard": 3, "stage": "testing", "done": 10, "total": 53, "rows": 381528, "note": "BSV 30m: rule 3/120 (fade15)", "failed": [], "pct": 18.9, "updated": "2026-09-05T19:46:54Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 22, "total": 53, "rows": 578104, "note": "HFT 1h: rule 116/120 (cf_diadx_l1)", "failed": [], "pct": 41.5, "updated": "2026-09-05T07:23:18Z"}
+{"shard": 6, "stage": "testing", "done": 23, "total": 53, "rows": 595660, "note": "HYPER 1h: rule 12/120 (donchian20)", "failed": [], "pct": 43.4, "updated": "2026-09-05T07:24:03Z"}

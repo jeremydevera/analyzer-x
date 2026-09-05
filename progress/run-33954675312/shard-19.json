@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 7, "total": 52, "rows": 258820, "note": "BEAMX 4h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 13.5, "updated": "2026-09-05T08:18:28Z"}
+{"shard": 19, "stage": "testing", "done": 12, "total": 52, "rows": 308648, "note": "COOKIE 1d: 394 bars, testing 120 rules", "failed": [], "pct": 23.1, "updated": "2026-09-05T08:19:21Z"}

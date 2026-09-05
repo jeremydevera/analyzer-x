@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 42, "total": 53, "rows": 1149938, "note": "SMCISTOCK 1h: rule 1/120 (mom6)", "failed": [], "pct": 79.2, "updated": "2026-09-05T07:41:05Z"}
+{"shard": 6, "stage": "testing", "done": 45, "total": 53, "rows": 1195118, "note": "TAC 1d: 394 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-05T07:41:52Z"}

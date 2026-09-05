@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 13, "total": 53, "rows": 348524, "note": "CRCLSTOCK 4h: rule 67/120 (pinbar)", "failed": [], "pct": 24.5, "updated": "2026-09-05T08:20:11Z"}
+{"shard": 8, "stage": "testing", "done": 20, "total": 53, "rows": 406098, "note": "GFSSTOCK 4h: downloading candles", "failed": [], "pct": 37.7, "updated": "2026-09-05T08:20:56Z"}

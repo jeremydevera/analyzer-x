@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 2, "total": 52, "rows": 55632, "note": "AGT 4h: rule 53/120 (squeeze)", "failed": [], "pct": 3.8, "updated": "2026-09-05T08:14:37Z"}
+{"shard": 11, "stage": "testing", "done": 5, "total": 52, "rows": 103220, "note": "ASTEROID 1d: 141 bars, testing 120 rules", "failed": [], "pct": 9.6, "updated": "2026-09-05T08:15:23Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 40, "total": 52, "rows": 1744960, "note": "SEI 30m: rule 39/120 (fisher)", "failed": [], "pct": 76.9, "updated": "2026-09-05T14:42:12Z"}
+{"shard": 17, "stage": "testing", "done": 40, "total": 52, "rows": 1756760, "note": "SEI 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 76.9, "updated": "2026-09-05T14:42:59Z"}

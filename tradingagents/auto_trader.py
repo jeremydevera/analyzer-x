@@ -1468,14 +1468,44 @@ _GATE_LOGGED: dict = {}
 _GATE_LOG_EVERY = 3600    # one loud line per pair per hour, not per candle
 
 
+def gate_refuses(gate: dict) -> bool:
+    """Does this gate result forbid the order? BLOCK and UNKNOWN both do.
+
+    CLAUDE.md rule 12: "`unknown` (book unreadable) is never treated as ok."
+    The caller used to refuse only on "block", so a `book_cost` that raised —
+    a 510 rate limit, a timeout — read as permission. Sep 05, 2026: three live
+    SHORTs on PSXSTOCK_USDT (08:45:09, 09:01:18, 09:17:21) went out that way
+    on a contract whose book is ~1.9% round trip against a 1.20% take-profit.
+    Every reading the gate DID manage on that pair that morning said block
+    (162% of the target, 09:06:44 and 09:12:10). The three that traded took no
+    reading at all. Each sold into a bid ~1.5% under the last price, had its
+    stop recomputed from that fill, found it already breached (MEXC 5003) and
+    closed at the ask: -1.80, -1.78, -1.78.
+
+    A result with no verdict at all is less information than "unknown", not
+    more, so it refuses too — defaulting to trade is how this was written.
+    """
+    return str((gate or {}).get("verdict")) not in ("ok", "warn")
+
+
 def _edge_gate_cached(key: str, symbol: str, margin: float, *, fx) -> dict:
     hit = _GATE_CACHE.get((key, symbol))
     now = time.time()
     if hit and now - hit[0] < _GATE_TTL:
         return hit[1]
     r = edge_check(key, symbol, margin, fx=fx)
-    _GATE_CACHE[(key, symbol)] = (now, r)
+    # An UNKNOWN is not a measurement and must not be remembered as one. Cached
+    # for the 300 s TTL, a single failed read opened a five-minute window in
+    # which every signal on that pair traded ungated. Not cached, the next
+    # cycle walks the book again — a transient rate limit costs one cycle.
+    if not _unknown_gate(r):
+        _GATE_CACHE[(key, symbol)] = (now, r)
     return r
+
+
+def _unknown_gate(gate: dict) -> bool:
+    """Refused because the book could not be READ, rather than measured."""
+    return str((gate or {}).get("verdict")) not in ("ok", "warn", "block")
 
 
 def _gate_should_log(symbol: str, key: str, dry: bool = False) -> bool:
@@ -3155,14 +3185,25 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
         if True:
             gate = _edge_gate_cached(key, symbol, margin_for(key, settings),
                                      fx=fx)
-            if gate["verdict"] == "block":
+            if gate_refuses(gate):
+                unreadable = _unknown_gate(gate)
                 if _gate_should_log(symbol, key, dry):
                     logger.error(
                         "LIQUIDITY GATE: refusing %s on %s — %s. No order "
-                        "placed. Pick a deeper-book contract or a strategy "
-                        "with a wider target.", key, symbol, gate["reason"])
+                        "placed. %s", key, symbol,
+                        (f"the order book could not be read ({gate.get('reason')})"
+                         if unreadable else gate.get("reason")),
+                        ("Retrying next cycle — an unreadable book is never "
+                         "treated as permission to trade (rule 12)."
+                         if unreadable else
+                         "Pick a deeper-book contract or a strategy with a "
+                         "wider target."))
+                    # An unknown used to leave NO log line and NO ledger row:
+                    # the live order was the only evidence it had happened.
                     append_ledger({"symbol": symbol, "action": "gate_blocked",
-                                   "strategy": key, "why": gate["reason"],
+                                   "strategy": key,
+                                   "why": gate.get("reason"),
+                                   "unreadable_book": unreadable,
                                    "dry_run": dry})
                 continue
         spec = STRATEGY_SPECS[key]

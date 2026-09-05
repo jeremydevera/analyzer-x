@@ -100,6 +100,15 @@ class FakeFx:
     def contract_spec(self, symbol):
         return {"priceScale": 2, "maxVol": self.max_vol}
 
+    # A READABLE, cheap book. This double had no `book_cost` at all, so every
+    # cycle in this file hit the liquidity gate's exception path and read as
+    # verdict "unknown" — which used to fall through to the order, so twenty
+    # tests here were passing BECAUSE of the rule-12 defect fixed on
+    # Sep 05, 2026 (see tests/test_unknown_book_never_trades.py). Tests that
+    # want an expensive or unreadable book define their own double.
+    def book_cost(self, symbol, notional_usd=200.0):
+        return {"spread": 0.0002, "slippage": 0.0002, "book_exhausted": False}
+
     def position_history(self, symbol=None, page_size=20):
         return getattr(self, "history", [])
 

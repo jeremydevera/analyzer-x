@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 26, "total": 52, "rows": 978460, "note": "KNC 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 50.0, "updated": "2026-09-05T17:13:22Z"}
+{"shard": 14, "stage": "testing", "done": 27, "total": 52, "rows": 1005900, "note": "LINK 30m: rule 1/120 (mom6)", "failed": [], "pct": 51.9, "updated": "2026-09-05T17:14:12Z"}

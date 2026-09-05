@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 25, "total": 53, "rows": 1007238, "note": "JMKESTOCK 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 47.2, "updated": "2026-09-05T13:43:10Z"}
+{"shard": 9, "stage": "testing", "done": 27, "total": 53, "rows": 1066070, "note": "LEAD 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-05T13:43:55Z"}

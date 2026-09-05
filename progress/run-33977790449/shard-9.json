@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 15, "total": 53, "rows": 591044, "note": "DISSTOCK 30m: rule 54/120 (fractal5)", "failed": [], "pct": 28.3, "updated": "2026-09-05T16:49:37Z"}
+{"shard": 9, "stage": "testing", "done": 17, "total": 53, "rows": 645044, "note": "ETC 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-05T16:50:26Z"}

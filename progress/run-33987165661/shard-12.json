@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 4, "total": 52, "rows": 163844, "note": "API3 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 7.7, "updated": "2026-09-05T19:36:25Z"}
+{"shard": 12, "stage": "testing", "done": 5, "total": 52, "rows": 191784, "note": "ASTER 4h: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 9.6, "updated": "2026-09-05T19:37:10Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 25, "total": 52, "rows": 914800, "note": "JP225 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 48.1, "updated": "2026-09-05T13:42:28Z"}
+{"shard": 11, "stage": "testing", "done": 28, "total": 52, "rows": 953680, "note": "LUNC 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 53.8, "updated": "2026-09-05T13:43:23Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 51, "total": 52, "rows": 2132218, "note": "XPIN 30m: rule 39/120 (fisher)", "failed": [], "pct": 98.1, "updated": "2026-09-05T15:01:51Z"}
+{"shard": 17, "stage": "testing", "done": 51, "total": 52, "rows": 2142558, "note": "XPIN 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-05T15:02:36Z"}

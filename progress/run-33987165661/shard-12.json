@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 10, "total": 52, "rows": 340188, "note": "B 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 19.2, "updated": "2026-09-05T19:43:28Z"}
+{"shard": 12, "stage": "testing", "done": 11, "total": 52, "rows": 354048, "note": "CELO 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 21.2, "updated": "2026-09-05T19:44:22Z"}

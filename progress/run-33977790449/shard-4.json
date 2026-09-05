@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 51, "total": 53, "rows": 2051192, "note": "XDC 30m: rule 54/120 (fractal5)", "failed": [], "pct": 96.2, "updated": "2026-09-05T17:59:21Z"}
+{"shard": 4, "stage": "testing", "done": 52, "total": 53, "rows": 2066432, "note": "XYZSTOCK 30m: rule 2/120 (mom15)", "failed": [], "pct": 98.1, "updated": "2026-09-05T18:00:07Z"}

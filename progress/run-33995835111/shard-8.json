@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 2, "total": 53, "rows": 93280, "note": "AEVO 30m: rule 57/120 (orderblock)", "failed": [], "pct": 3.8, "updated": "2026-09-05T22:29:56Z"}
+{"shard": 8, "stage": "testing", "done": 4, "total": 53, "rows": 122620, "note": "APDSTOCK 30m: rule 107/120 (cf_bosfvg_l1)", "failed": [], "pct": 7.5, "updated": "2026-09-05T22:30:41Z"}

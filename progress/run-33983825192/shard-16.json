@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 44, "total": 52, "rows": 1410090, "note": "SUPER 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 84.6, "updated": "2026-09-05T18:59:45Z"}
+{"shard": 16, "stage": "testing", "done": 44, "total": 52, "rows": 1434070, "note": "SUPER 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 84.6, "updated": "2026-09-05T19:00:31Z"}

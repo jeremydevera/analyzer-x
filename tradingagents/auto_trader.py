@@ -3530,28 +3530,45 @@ def reconcile_unconfigured(settings: dict, state: dict, *, fx) -> None:
                        "dry_run": False})
 
 
+_SAID: dict = {}
+
+
+def _say_once(tag: str, every_s: float) -> bool:
+    """True at most once per `every_s` for this tag, per process.
+
+    548 identical lines in one night is how a real message becomes invisible.
+    """
+    now = time.time()
+    if now - _SAID.get(tag, 0.0) < every_s:
+        return False
+    _SAID[tag] = now
+    return True
+
+
 def run_cycle(*, fx=None) -> None:
     if fx is None:
         from tradingagents.dataflows import mexc_futures as fx  # noqa: PLC0415
     settings = load_settings()
     if not active_modes(settings):
         return
-    # One timeframe per coin. Two strategies on the same coin at different bar
-    # sizes net into ONE MEXC position, so the second entry resizes the first
-    # and either stop closes part of a trade it does not own. Refuse the cycle
-    # rather than trade a position neither strategy thinks it owns.
+    # ONE OPEN POSITION PER COIN handles this now. Until 2026-09-05 a coin
+    # armed live on two timeframes REFUSED THE WHOLE CYCLE — every coin, both
+    # books — and the operator's 35-row deploy put GPNSTOCK on 15m and 30m, so
+    # the runner did nothing at all for 9 hours and wrote 548 identical
+    # `blocked` rows while they waited for trades. The netting it guarded
+    # against (MEXC merges same-symbol positions, so a second entry resizes the
+    # first) needs TWO OPEN POSITIONS, which the per-symbol slot makes
+    # impossible: the first strategy to fire holds the coin until it closes,
+    # whatever its bar size (`_busy_refusal`). Same replacement as
+    # `timeframe_locks`, on the same instruction.
     conflicts = timeframe_conflicts(settings)
-    if conflicts:
+    if conflicts and _say_once("tf-conflicts", 3600):
         for c in conflicts:
-            logger.error(
-                "REFUSING TO TRADE %s: enabled on %s at once (%s). One "
-                "timeframe per coin -- untick all but one.", c["coin"],
-                " and ".join(c["timeframes"]), ", ".join(c["strategies"]))
-            append_ledger({"symbol": c["coin"], "action": "blocked",
-                           "why": "coin enabled on multiple timeframes",
-                           "strategies": c["strategies"],
-                           "timeframes": c["timeframes"]})
-        return
+            logger.info(
+                "%s is armed live on %s (%s) — one open position per coin, so "
+                "whichever signals first holds it until it closes.",
+                c["coin"], " and ".join(c["timeframes"]),
+                ", ".join(c["strategies"]))
     state = load_state()
     try:
         # Orphan rescue is a LIVE concern. Gate it on whether the live book is

@@ -1548,8 +1548,15 @@ def test_different_coins_on_different_timeframes_are_fine():
     assert at.timeframe_conflicts(s) == []
 
 
-def test_the_runner_refuses_a_cycle_while_a_coin_is_double_booked(monkeypatch):
-    """Reporting the conflict is not enough — it must not trade."""
+def test_a_coin_on_two_timeframes_still_TRADES(monkeypatch):
+    """It refused the WHOLE CYCLE until 2026-09-05 — every coin, both books.
+
+    The operator's 35-row deploy put GPNSTOCK on 15m and 30m, so from 10:55pm
+    the runner did nothing at all for nine hours and wrote 548 identical
+    `blocked` rows while they waited for trades. The netting it guarded against
+    needs TWO OPEN POSITIONS on one contract, and the per-symbol slot makes
+    that impossible: whichever strategy fires first holds the coin until it
+    closes, whatever its bar size (see tests/test_one_position_per_coin.py)."""
     s = {"strategies": ["mom15_4h_w", "trend50_30m_pi"], "enabled": True,
          "strategy_coins": {"mom15_4h_w": ["PI_USDT"],
                             "trend50_30m_pi": ["PI_USDT"]},
@@ -1564,9 +1571,18 @@ def test_the_runner_refuses_a_cycle_while_a_coin_is_double_booked(monkeypatch):
                         lambda *a, **k: touched.append("process"))
     monkeypatch.setattr(at, "append_ledger", lambda e: touched.append(e["action"]))
     at.run_cycle(fx=object())
-    assert "process" not in touched, "must not trade a double-booked coin"
-    assert "adopt" not in touched
-    assert "blocked" in touched, "and must say so in the ledger"
+    assert "process" in touched, "the cycle must run"
+    assert "blocked" not in touched, "and nothing is refused for the bar size"
+    # the conflict is still REPORTED, just not once per cycle
+    assert at.timeframe_conflicts(s), "the fact itself has not changed"
+
+
+def test_the_same_line_is_not_written_every_cycle():
+    """548 identical lines in one night is how a real message becomes
+    invisible."""
+    at._SAID.clear()
+    assert at._say_once("x", 3600) is True
+    assert at._say_once("x", 3600) is False
 
 
 def test_the_new_pi_key_carries_its_own_barriers():

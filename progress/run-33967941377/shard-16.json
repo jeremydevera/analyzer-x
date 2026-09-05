@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 3, "total": 52, "rows": 147420, "note": "AMDSTOCK 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 5.8, "updated": "2026-09-05T13:15:10Z"}
+{"shard": 16, "stage": "testing", "done": 4, "total": 52, "rows": 173442, "note": "APR 4h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 7.7, "updated": "2026-09-05T13:15:55Z"}

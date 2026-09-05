@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 14, "total": 52, "rows": 327642, "note": "C 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 26.9, "updated": "2026-09-05T06:35:37Z"}
+{"shard": 14, "stage": "testing", "done": 15, "total": 52, "rows": 369662, "note": "DOGE 4h: rule 3/120 (fade15)", "failed": [], "pct": 28.8, "updated": "2026-09-05T06:36:22Z"}

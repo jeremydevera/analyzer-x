@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 8, "total": 53, "rows": 279920, "note": "BICO 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 15.1, "updated": "2026-09-05T22:37:39Z"}
+{"shard": 5, "stage": "testing", "done": 9, "total": 53, "rows": 296520, "note": "BNCSTOCK 30m: 2,528 bars, testing 120 rules", "failed": [], "pct": 17.0, "updated": "2026-09-05T22:38:24Z"}

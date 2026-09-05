@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 38, "total": 53, "rows": 854062, "note": "RAY 1d: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 71.7, "updated": "2026-09-05T07:36:16Z"}
+{"shard": 8, "stage": "testing", "done": 38, "total": 53, "rows": 866426, "note": "RAY 1h: rule 46/120 (rsi2)", "failed": [], "pct": 71.7, "updated": "2026-09-05T07:37:01Z"}

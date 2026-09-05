@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 24, "total": 53, "rows": 518574, "note": "INDEX 1d: downloading candles", "failed": [], "pct": 45.3, "updated": "2026-09-05T06:40:50Z"}
+{"shard": 3, "stage": "testing", "done": 26, "total": 53, "rows": 559054, "note": "KERNEL 1d: 394 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-05T06:41:47Z"}

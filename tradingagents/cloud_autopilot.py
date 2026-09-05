@@ -202,3 +202,24 @@ def consider(*, now: float | None = None) -> dict:
         pass
     return {"dispatched": True, "run": run.get("id"), "timeframes": tfs,
             "missing": missing, "covered": covered, "why": line}
+
+
+_LAST_SAID = {"why": ""}
+
+
+def tick() -> dict:
+    """`consider()`, with its answer logged WHENEVER IT CHANGES.
+
+    The module's own docstring says a silent no-op is indistinguishable from a
+    broken autopilot, and then every no-op was silent: nothing in the log said
+    "GitHub is busy" or "waiting for the gap to change", so the only way to
+    know it was alive was to run it by hand. Logging every tick would be a line
+    every 30 seconds; logging only CHANGES is one line per real event.
+    """
+    got = consider()
+    why = str(got.get("why") or "")
+    if why and why != _LAST_SAID["why"] and not got.get("dispatched"):
+        # a dispatch prints its own, fuller line inside consider()
+        print(f"[cloud-autopilot] {why}", flush=True)
+    _LAST_SAID["why"] = why
+    return got

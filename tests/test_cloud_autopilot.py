@@ -220,9 +220,9 @@ def test_a_corrupt_state_file_is_not_fatal():
 def test_the_supervisor_calls_it():
     src = open("tradingagents/api.py", encoding="utf-8").read()
     assert "cloud_autopilot" in src
-    assert "_ca.consider()" in src
+    assert "_ca.tick()" in src
     # and a failure there must never take the supervisor down with it
-    i = src.index("_ca.consider()")
+    i = src.index("_ca.tick()")
     assert "except Exception" in src[i:i + 300]
 
 
@@ -248,3 +248,24 @@ def test_missing_is_counted_from_directory_listings(monkeypatch, tmp_path):
     monkeypatch.setattr(msw, "CANDLES", candles)
     monkeypatch.setattr(msw, "STATES", states)
     assert ca.missing_by_timeframe() == {"1d": 2}
+
+
+def test_a_no_op_is_logged_when_the_reason_changes(monkeypatch, capsys):
+    """The module's docstring says a silent no-op is indistinguishable from a
+    broken autopilot — and then every no-op was silent. Logging every tick
+    would be a line every 30 seconds; logging only CHANGES is one per event."""
+    reasons = iter([{"dispatched": False, "why": "GitHub is not free: run 7"},
+                    {"dispatched": False, "why": "GitHub is not free: run 7"},
+                    {"dispatched": False, "why": "cooling down, 12 min left"}])
+    monkeypatch.setattr(ca, "consider", lambda: next(reasons))
+    ca._LAST_SAID["why"] = ""
+    for _ in range(3):
+        ca.tick()
+    out = capsys.readouterr().out
+    assert out.count("[cloud-autopilot]") == 2, out
+    assert "run 7" in out and "cooling down" in out
+
+
+def test_the_supervisor_calls_tick_not_consider():
+    src = open("tradingagents/api.py", encoding="utf-8").read()
+    assert "_ca.tick()" in src

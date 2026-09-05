@@ -119,7 +119,7 @@ def _keep_the_row_index_current() -> None:
                 try:
                     from tradingagents import cloud_autopilot as _ca
 
-                    _ca.consider()
+                    _ca.tick()
                 except Exception as exc:                       # noqa: BLE001
                     print(f"[cloud-autopilot] failed: {exc!r}", flush=True)
                 for kind in ("backtest", "download", "btupdate"):

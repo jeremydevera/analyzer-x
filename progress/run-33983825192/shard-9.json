@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 39, "total": 53, "rows": 1219104, "note": "RKLBSTOCK 1h: rule 68/120 (dbltop)", "failed": [], "pct": 73.6, "updated": "2026-09-05T18:44:19Z"}
+{"shard": 9, "stage": "testing", "done": 40, "total": 53, "rows": 1261520, "note": "SAND 1h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-05T18:45:05Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 43, "total": 52, "rows": 1536764, "note": "SPOTSTOCK 4h: rule 58/120 (bos)", "failed": [], "pct": 82.7, "updated": "2026-09-05T14:17:04Z"}
+{"shard": 14, "stage": "testing", "done": 44, "total": 52, "rows": 1562184, "note": "SUMIELECSTOCK 30m: 2,175 bars, testing 120 rules", "failed": [], "pct": 84.6, "updated": "2026-09-05T14:17:49Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 49, "total": 52, "rows": 2026772, "note": "VTHO 30m: rule 34/120 (lrslope)", "failed": [], "pct": 94.2, "updated": "2026-09-05T14:54:49Z"}
+{"shard": 17, "stage": "testing", "done": 49, "total": 52, "rows": 2039532, "note": "VTHO 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 94.2, "updated": "2026-09-05T14:55:35Z"}

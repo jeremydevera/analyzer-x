@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 9, "total": 53, "rows": 302498, "note": "BNB 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 17.0, "updated": "2026-09-05T12:08:42Z"}
+{"shard": 4, "stage": "testing", "done": 10, "total": 53, "rows": 339414, "note": "BTC 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 18.9, "updated": "2026-09-05T12:09:31Z"}

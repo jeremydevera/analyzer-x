@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 5, "total": 52, "rows": 219864, "note": "ASTER 30m: rule 61/120 (turtle)", "failed": [], "pct": 9.6, "updated": "2026-09-05T10:10:10Z"}
+{"shard": 12, "stage": "testing", "done": 6, "total": 52, "rows": 253686, "note": "AXONSTOCK 30m: rule 23/120 (supertrend)", "failed": [], "pct": 11.5, "updated": "2026-09-05T10:10:55Z"}

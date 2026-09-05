@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 21, "total": 52, "rows": 809650, "note": "GWEI 30m: rule 2/120 (mom15)", "failed": [], "pct": 40.4, "updated": "2026-09-05T10:27:29Z"}
+{"shard": 15, "stage": "testing", "done": 21, "total": 52, "rows": 820210, "note": "GWEI 30m: rule 48/120 (prank)", "failed": [], "pct": 40.4, "updated": "2026-09-05T10:28:15Z"}

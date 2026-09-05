@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 52, "total": 52, "rows": 1993766, "note": "ZEC 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-05T23:49:32Z"}
+{"shard": 13, "stage": "testing", "done": 52, "total": 52, "rows": 1997166, "note": "ZEC 30m: rule 11/120 (sr_break)", "failed": [], "pct": 100.0, "updated": "2026-09-05T23:50:17Z"}

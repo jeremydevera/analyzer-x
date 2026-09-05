@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 21, "total": 53, "rows": 771484, "note": "GOAT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-05T13:49:09Z"}
+{"shard": 0, "stage": "testing", "done": 21, "total": 53, "rows": 798324, "note": "GOAT 30m: rule 1/120 (mom6)", "failed": [], "pct": 39.6, "updated": "2026-09-05T13:49:59Z"}

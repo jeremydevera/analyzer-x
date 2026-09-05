@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 43, "total": 52, "rows": 1568438, "note": "SPK 30m: rule 25/120 (ichimoku)", "failed": [], "pct": 82.7, "updated": "2026-09-05T13:56:35Z"}
+{"shard": 12, "stage": "testing", "done": 43, "total": 52, "rows": 1584718, "note": "SPK 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 82.7, "updated": "2026-09-05T13:57:20Z"}

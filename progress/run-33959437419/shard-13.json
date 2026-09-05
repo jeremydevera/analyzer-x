@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 15, "total": 52, "rows": 619380, "note": "DODO 30m: rule 20/120 (stoch14)", "failed": [], "pct": 28.8, "updated": "2026-09-05T10:28:52Z"}
+{"shard": 13, "stage": "testing", "done": 15, "total": 52, "rows": 629720, "note": "DODO 30m: rule 68/120 (dbltop)", "failed": [], "pct": 28.8, "updated": "2026-09-05T10:29:37Z"}

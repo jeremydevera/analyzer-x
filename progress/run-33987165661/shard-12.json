@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 30, "total": 52, "rows": 1068810, "note": "MOODENG 30m: rule 52/120 (nr7)", "failed": [], "pct": 57.7, "updated": "2026-09-05T20:13:30Z"}
+{"shard": 12, "stage": "testing", "done": 30, "total": 52, "rows": 1082450, "note": "MOODENG 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 57.7, "updated": "2026-09-05T20:14:15Z"}

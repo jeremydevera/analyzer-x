@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 16, "total": 53, "rows": 630100, "note": "DRAM 30m: rule 106/120 (cf_bosfvg)", "failed": [], "pct": 30.2, "updated": "2026-09-05T16:48:23Z"}
+{"shard": 1, "stage": "testing", "done": 19, "total": 53, "rows": 668240, "note": "FLOW 4h: rule 46/120 (rsi2)", "failed": [], "pct": 35.8, "updated": "2026-09-05T16:49:08Z"}

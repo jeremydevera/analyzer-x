@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 24, "total": 52, "rows": 747260, "note": "IOTX 4h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 46.2, "updated": "2026-09-05T08:26:39Z"}
+{"shard": 16, "stage": "testing", "done": 25, "total": 52, "rows": 777340, "note": "JUP 4h: rule 41/120 (tsi)", "failed": [], "pct": 48.1, "updated": "2026-09-05T08:27:24Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 27, "total": 52, "rows": 922392, "note": "LISTA 1d: 394 bars, testing 120 rules", "failed": [], "pct": 51.9, "updated": "2026-09-05T18:47:14Z"}
+{"shard": 16, "stage": "testing", "done": 27, "total": 52, "rows": 946724, "note": "LISTA 1h: rule 41/120 (tsi)", "failed": [], "pct": 51.9, "updated": "2026-09-05T18:48:00Z"}

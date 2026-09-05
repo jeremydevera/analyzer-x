@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 49, "total": 52, "rows": 1958876, "note": "VSTSTOCK 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 94.2, "updated": "2026-09-05T23:58:59Z"}
+{"shard": 16, "stage": "testing", "done": 51, "total": 52, "rows": 1993496, "note": "XPD 30m: rule 30/120 (kama10)", "failed": [], "pct": 98.1, "updated": "2026-09-05T23:59:44Z"}

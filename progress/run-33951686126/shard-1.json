@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 14, "total": 53, "rows": 405232, "note": "CTC 1d: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-05T07:17:15Z"}
+{"shard": 1, "stage": "testing", "done": 14, "total": 53, "rows": 416848, "note": "CTC 1h: rule 45/120 (zscore20)", "failed": [], "pct": 26.4, "updated": "2026-09-05T07:18:00Z"}

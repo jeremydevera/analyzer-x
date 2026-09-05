@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 29, "total": 53, "rows": 671484, "note": "MEGA 1h: rule 85/120 (cf_triple)", "failed": [], "pct": 54.7, "updated": "2026-09-05T07:31:39Z"}
+{"shard": 8, "stage": "testing", "done": 34, "total": 53, "rows": 727506, "note": "ONT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 64.2, "updated": "2026-09-05T07:32:30Z"}

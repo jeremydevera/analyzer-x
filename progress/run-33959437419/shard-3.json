@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 14, "total": 53, "rows": 501222, "note": "CTR 30m: rule 31/120 (trix15)", "failed": [], "pct": 26.4, "updated": "2026-09-05T10:24:08Z"}
+{"shard": 3, "stage": "testing", "done": 16, "total": 53, "rows": 530722, "note": "DUSK 4h: rule 49/120 (vwaprev)", "failed": [], "pct": 30.2, "updated": "2026-09-05T10:24:53Z"}

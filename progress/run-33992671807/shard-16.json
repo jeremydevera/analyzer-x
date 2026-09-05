@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 43, "total": 52, "rows": 1380978, "note": "SPX 1h: rule 19/120 (emacross)", "failed": [], "pct": 82.7, "updated": "2026-09-05T22:03:00Z"}
+{"shard": 16, "stage": "testing", "done": 43, "total": 52, "rows": 1402098, "note": "SPX 1h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 82.7, "updated": "2026-09-05T22:03:45Z"}

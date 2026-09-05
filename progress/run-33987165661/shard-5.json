@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 48, "total": 53, "rows": 1720458, "note": "UKOIL 4h: rule 6/120 (sweep30)", "failed": [], "pct": 90.6, "updated": "2026-09-05T20:23:53Z"}
+{"shard": 5, "stage": "testing", "done": 48, "total": 53, "rows": 1764458, "note": "UKOIL 30m: rule 91/120 (cf_soup)", "failed": [], "pct": 90.6, "updated": "2026-09-05T20:24:38Z"}

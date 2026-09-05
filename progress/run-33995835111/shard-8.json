@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 17, "total": 53, "rows": 566384, "note": "ESP 30m: rule 34/120 (lrslope)", "failed": [], "pct": 32.1, "updated": "2026-09-05T22:47:04Z"}
+{"shard": 8, "stage": "testing", "done": 20, "total": 53, "rows": 606824, "note": "GFSSTOCK 30m: 1,561 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-05T22:47:49Z"}

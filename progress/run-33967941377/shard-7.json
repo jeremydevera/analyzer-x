@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 31, "total": 53, "rows": 1242892, "note": "MTL 30m: rule 30/120 (kama10)", "failed": [], "pct": 58.5, "updated": "2026-09-05T14:13:12Z"}
+{"shard": 7, "stage": "testing", "done": 31, "total": 53, "rows": 1255872, "note": "MTL 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 58.5, "updated": "2026-09-05T14:13:58Z"}

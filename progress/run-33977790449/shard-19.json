@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 20, "total": 52, "rows": 704770, "note": "GMX 30m: rule 35/120 (willr14)", "failed": [], "pct": 38.5, "updated": "2026-09-05T16:53:40Z"}
+{"shard": 19, "stage": "testing", "done": 20, "total": 52, "rows": 721930, "note": "GMX 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 38.5, "updated": "2026-09-05T16:54:26Z"}

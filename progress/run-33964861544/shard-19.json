@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 7, "total": 52, "rows": 254130, "note": "BEAMX 1h: rule 60/120 (eqraid)", "failed": [], "pct": 13.5, "updated": "2026-09-05T12:11:53Z"}
+{"shard": 19, "stage": "testing", "done": 11, "total": 52, "rows": 300236, "note": "CHF 1d: 394 bars, testing 120 rules", "failed": [], "pct": 21.2, "updated": "2026-09-05T12:12:47Z"}

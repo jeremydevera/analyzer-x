@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 49, "total": 53, "rows": 1823262, "note": "USUAL 30m: rule 73/120 (volspike)", "failed": [], "pct": 92.5, "updated": "2026-09-05T11:11:48Z"}
+{"shard": 0, "stage": "testing", "done": 51, "total": 53, "rows": 1844722, "note": "XAUT 4h: rule 23/120 (supertrend)", "failed": [], "pct": 96.2, "updated": "2026-09-05T11:12:33Z"}

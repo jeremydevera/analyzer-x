@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 1, "total": 53, "rows": 0, "note": "AALSTOCK 4h: downloading candles", "failed": [], "pct": 1.9, "updated": "2026-09-05T16:25:21Z"}
+{"shard": 9, "stage": "testing", "done": 2, "total": 53, "rows": 25000, "note": "AGI 4h: rule 23/120 (supertrend)", "failed": [], "pct": 3.8, "updated": "2026-09-05T16:26:06Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 17, "total": 52, "rows": 619250, "note": "EVAA 1h: rule 44/120 (elder)", "failed": [], "pct": 32.7, "updated": "2026-09-05T12:21:54Z"}
+{"shard": 16, "stage": "testing", "done": 19, "total": 52, "rows": 665022, "note": "FUTUSTOCK 1h: 6,838 bars, testing 120 rules", "failed": [], "pct": 36.5, "updated": "2026-09-05T12:22:40Z"}

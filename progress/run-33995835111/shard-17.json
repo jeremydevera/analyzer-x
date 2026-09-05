@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 34, "total": 52, "rows": 1474380, "note": "ORCA 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 65.4, "updated": "2026-09-05T23:39:59Z"}
+{"shard": 17, "stage": "testing", "done": 35, "total": 52, "rows": 1510152, "note": "PEPSTOCK 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 67.3, "updated": "2026-09-05T23:40:45Z"}

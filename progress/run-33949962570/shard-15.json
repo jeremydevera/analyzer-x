@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 29, "total": 52, "rows": 785576, "note": "MERL 4h: rule 20/120 (stoch14)", "failed": [], "pct": 55.8, "updated": "2026-09-05T06:41:41Z"}
+{"shard": 15, "stage": "testing", "done": 32, "total": 52, "rows": 825858, "note": "NIL 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 61.5, "updated": "2026-09-05T06:42:26Z"}

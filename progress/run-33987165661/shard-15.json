@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 52, "total": 52, "rows": 2027588, "note": "ZEREBRO 30m: rule 60/120 (eqraid)", "failed": [], "pct": 100.0, "updated": "2026-09-05T20:38:30Z"}
+{"shard": 15, "stage": "done", "done": 52, "total": 52, "rows": 2040348, "note": "2,040,348 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "failed": [], "pct": 100.0, "updated": "2026-09-05T20:39:05Z"}

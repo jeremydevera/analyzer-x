@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 2, "total": 52, "rows": 53284, "note": "AIOT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 3.8, "updated": "2026-09-05T08:56:48Z"}
+{"shard": 16, "stage": "testing", "done": 2, "total": 52, "rows": 62304, "note": "AIOT 1h: rule 35/120 (willr14)", "failed": [], "pct": 3.8, "updated": "2026-09-05T08:57:34Z"}

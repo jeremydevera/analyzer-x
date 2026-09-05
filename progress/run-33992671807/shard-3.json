@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 16, "total": 53, "rows": 434320, "note": "DUSK 1h: rule 8/120 (fib618)", "failed": [], "pct": 30.2, "updated": "2026-09-05T21:32:28Z"}
+{"shard": 3, "stage": "testing", "done": 16, "total": 53, "rows": 452360, "note": "DUSK 1h: rule 94/120 (cf_emarsi)", "failed": [], "pct": 30.2, "updated": "2026-09-05T21:33:13Z"}

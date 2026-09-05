@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 8, "total": 53, "rows": 264070, "note": "BIO 1h: rule 68/120 (dbltop)", "failed": [], "pct": 15.1, "updated": "2026-09-05T21:26:53Z"}
+{"shard": 10, "stage": "testing", "done": 12, "total": 53, "rows": 309528, "note": "CLSKSTOCK 1h: rule 115/120 (cf_diadx)", "failed": [], "pct": 22.6, "updated": "2026-09-05T21:27:38Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 37, "total": 52, "rows": 963302, "note": "PUNDIX 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 71.2, "updated": "2026-09-05T07:33:18Z"}
+{"shard": 11, "stage": "testing", "done": 39, "total": 52, "rows": 1009860, "note": "RLS 1h: rule 13/120 (pivot)", "failed": [], "pct": 75.0, "updated": "2026-09-05T07:34:03Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 32, "total": 52, "rows": 959558, "note": "NIULAI 1h: downloading candles", "failed": [], "pct": 61.5, "updated": "2026-09-05T07:41:28Z"}
+{"shard": 18, "stage": "testing", "done": 33, "total": 52, "rows": 973198, "note": "OG 1h: rule 4/120 (trend50)", "failed": [], "pct": 63.5, "updated": "2026-09-05T07:42:14Z"}

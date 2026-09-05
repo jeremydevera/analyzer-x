@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 10, "total": 53, "rows": 358782, "note": "BSB 30m: rule 19/120 (emacross)", "failed": [], "pct": 18.9, "updated": "2026-09-05T13:22:30Z"}
+{"shard": 1, "stage": "testing", "done": 11, "total": 53, "rows": 378182, "note": "CATSTOCK 30m: 3,216 bars, testing 120 rules", "failed": [], "pct": 20.8, "updated": "2026-09-05T13:23:16Z"}

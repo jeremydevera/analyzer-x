@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 8, "total": 52, "rows": 185836, "note": "BKRSTOCK 1h: downloading candles", "failed": [], "pct": 15.4, "updated": "2026-09-05T18:25:22Z"}
+{"shard": 15, "stage": "testing", "done": 10, "total": 52, "rows": 243898, "note": "CAKE 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 19.2, "updated": "2026-09-05T18:26:09Z"}

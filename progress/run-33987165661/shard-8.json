@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 42, "total": 53, "rows": 1302678, "note": "SMRSTOCK 30m: rule 3/120 (fade15)", "failed": [], "pct": 79.2, "updated": "2026-09-05T20:22:42Z"}
+{"shard": 8, "stage": "testing", "done": 44, "total": 53, "rows": 1339158, "note": "STO 4h: rule 70/120 (cmf20)", "failed": [], "pct": 83.0, "updated": "2026-09-05T20:23:27Z"}

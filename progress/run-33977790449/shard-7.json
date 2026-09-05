@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 21, "total": 53, "rows": 806922, "note": "GRASS 30m: rule 4/120 (trend50)", "failed": [], "pct": 39.6, "updated": "2026-09-05T17:07:38Z"}
+{"shard": 7, "stage": "testing", "done": 21, "total": 53, "rows": 815062, "note": "GRASS 30m: rule 41/120 (tsi)", "failed": [], "pct": 39.6, "updated": "2026-09-05T17:08:24Z"}

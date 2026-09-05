@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 23, "total": 53, "rows": 762986, "note": "HYPER 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 43.4, "updated": "2026-09-05T22:44:26Z"}
+{"shard": 6, "stage": "testing", "done": 24, "total": 53, "rows": 797186, "note": "INJ 30m: rule 2/120 (mom15)", "failed": [], "pct": 45.3, "updated": "2026-09-05T22:45:14Z"}

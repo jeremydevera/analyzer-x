@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 27, "total": 53, "rows": 829628, "note": "KSM 1h: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-05T09:12:04Z"}
+{"shard": 1, "stage": "testing", "done": 29, "total": 53, "rows": 868898, "note": "MARSCOIN 1h: downloading candles", "failed": [], "pct": 54.7, "updated": "2026-09-05T09:12:50Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 39, "total": 52, "rows": 1181094, "note": "RPL 1h: rule 85/120 (cf_triple)", "failed": [], "pct": 75.0, "updated": "2026-09-05T19:01:54Z"}
+{"shard": 19, "stage": "testing", "done": 40, "total": 52, "rows": 1203930, "note": "SFP 1h: rule 5/120 (rsi14)", "failed": [], "pct": 76.9, "updated": "2026-09-05T19:02:39Z"}

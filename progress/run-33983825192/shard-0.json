@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 25, "total": 53, "rows": 745616, "note": "IRYS 1d: rule 16/120 (keltner)", "failed": [], "pct": 47.2, "updated": "2026-09-05T18:48:55Z"}
+{"shard": 0, "stage": "testing", "done": 25, "total": 53, "rows": 765922, "note": "IRYS 1h: rule 57/120 (orderblock)", "failed": [], "pct": 47.2, "updated": "2026-09-05T18:49:40Z"}

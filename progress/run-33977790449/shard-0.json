@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 30, "total": 53, "rows": 1151206, "note": "ME 30m: rule 68/120 (dbltop)", "failed": [], "pct": 56.6, "updated": "2026-09-05T17:21:57Z"}
+{"shard": 0, "stage": "testing", "done": 32, "total": 53, "rows": 1185426, "note": "NAVERSTOCK 30m: downloading candles", "failed": [], "pct": 60.4, "updated": "2026-09-05T17:22:42Z"}

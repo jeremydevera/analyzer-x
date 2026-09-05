@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 37, "total": 53, "rows": 1071282, "note": "PUFFER 30m: rule 54/120 (fractal5)", "failed": [], "pct": 69.8, "updated": "2026-09-05T16:52:17Z"}
+{"shard": 8, "stage": "testing", "done": 38, "total": 53, "rows": 1110442, "note": "RAY 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 71.7, "updated": "2026-09-05T16:53:05Z"}

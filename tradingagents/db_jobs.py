@@ -154,10 +154,64 @@ def free_ram_gb() -> float:
     return portable.ram_gb()[1]
 
 
+# Above this many hard page faults a second the machine is reading memory back
+# off the disk, and a bigger pool makes it worse rather than faster. Measured on
+# the operator's PC on Sep 04, 2026: 152/sec was the whole of the 576 KB/s that
+# pinned their mechanical disk at 98% busy while the CPU sat at 42%.
+PAGING_STOP_GROWTH = 50.0
+
+# At least this many live workers before their measured size is trusted over
+# the table. One sample is a worker that may have just started.
+RSS_MIN_SAMPLES = 2
+
+
 def _per_worker_gb(tfs) -> float:
     """The heaviest timeframe in the run decides the budget: one 15m pair in a
-    1h job still holds a 15m pair's rows."""
+    1h job still holds a 15m pair's rows.
+
+    A GUESS, and only the fallback. `measured_per_worker_gb` replaces it as
+    soon as real workers can be read — the table said 0.5 GB for a 15m/30m run
+    while four live workers measured 0.27-0.32 GB (peak 0.41) on Sep 05, 2026,
+    which cost the operator three workers on an 11-core machine. Their words:
+    *"ITS LIKE YOU ARE USING 20% OF MY PC'S POWER"*.
+    """
     return max([RAM_PER_WORKER_GB.get(t, 0.2) for t in (tfs or [])] or [0.2])
+
+
+def measured_per_worker_gb(tfs=None) -> float | None:
+    """What a sweep worker ACTUALLY holds right now, in GB — or None.
+
+    Working set, not private commit: commit beyond RAM lives in the page file,
+    and it is the working set that decides how many workers fit before Windows
+    starts paging. The HIGHEST of the live workers is used, not the mean, so a
+    pair that has only just started cannot drag the budget down.
+
+    None means "not enough evidence" — fewer than RSS_MIN_SAMPLES workers are
+    alive, or the machine would not answer. The caller then keeps the table.
+    """
+    from tradingagents import market_sweep as msw
+
+    try:
+        pids = [w.get("pid") for w in msw.worker_read() if w.get("pid")]
+    except Exception:                                          # noqa: BLE001
+        return None
+    if len(pids) < RSS_MIN_SAMPLES:
+        return None
+    got = portable.rss_gb(pids)
+    if len(got) < RSS_MIN_SAMPLES:
+        return None
+    peak = max(got.values())
+    # A worker cannot really hold less than 64 MB; that reading means the
+    # sample caught a process that had not started measuring yet, and trusting
+    # it would licence far too many workers.
+    if peak < 0.064:
+        return None
+    # A reading ABOVE the table is not rejected — it is BELIEVED, and the
+    # bigger of the two wins. Rejecting it fell back to the SMALLER table
+    # figure, which is over-subscription: the one direction that ends in
+    # paging and a frozen desktop (2026-08-27). Only a too-small reading is
+    # thrown away.
+    return max(peak, _per_worker_gb(tfs)) if peak > 4 * _per_worker_gb(tfs) else peak
 
 
 # How long to let memory SETTLE before sizing the pool, and how often to look.
@@ -194,7 +248,8 @@ def free_ram_settled(seconds: float = SETTLE_SECONDS,
     return best
 
 
-def workers_for_ram(cores: int, tfs, free_gb: float | None = None) -> int:
+def workers_for_ram(cores: int, tfs, free_gb: float | None = None,
+                    per_worker_gb: float | None = None) -> int:
     """How many pairs may be measured at once without paging to disk.
 
     `cores` is what the machine offers (already one short of the total, so the
@@ -210,7 +265,8 @@ def workers_for_ram(cores: int, tfs, free_gb: float | None = None) -> int:
     else:
         free = float(free_gb)        # an explicit 0.0 means measured, not unknown
     budget = free - RAM_RESERVE_GB
-    fits = int(budget // _per_worker_gb(tfs))
+    each = per_worker_gb if per_worker_gb and per_worker_gb > 0 else _per_worker_gb(tfs)
+    fits = int(budget // each)
     return max(1, min(int(cores), fits))
 
 
@@ -228,12 +284,28 @@ class WorkerPlanner:
     they already are.
     """
 
-    def __init__(self, cores_offered: int, tfs):
+    # How long a measurement is reused. `plan()` runs after EVERY completed
+    # pair, and both the worker sizes and the page-fault rate cost a
+    # subprocess each on Windows — two spawns per pair, on a run of 4,124
+    # pairs, purely to re-learn a number that moves slowly.
+    PROBE_EVERY_S = 20.0
+
+    def __init__(self, cores_offered: int, tfs, inflight=None):
         self.cores_offered = max(1, int(cores_offered))
         self.tfs = list(tfs or [])
+        # what is ACTUALLY in flight, so a paging hold freezes the real window
+        # rather than the last plan — see plan()
+        self.inflight = inflight
+        self._probed_at = 0.0
         self.chosen = self.cores_offered
         self.free_gb = 0.0
         self.why = ""
+        self.per_worker = _per_worker_gb(self.tfs)
+        self.measured = False
+        self.paging = 0.0
+        # what the window was last told, so a paging hold can refuse a GROW
+        # without also refusing a shrink
+        self.last = self.cores_offered
 
     def plan(self):
         """The figure for right now, or None when memory is unreadable.
@@ -242,29 +314,75 @@ class WorkerPlanner:
         the one answer that must never move the window, because a guess here
         either starves a healthy machine or drives a squeezed one into the
         1 GB stop.
+
+        Two things this asks that the first version did not, both because the
+        operator was right that an 11-core machine was doing a third of its
+        work (*"ITS LIKE YOU ARE USING 20% OF MY PC'S POWER"*):
+
+        * WHAT A WORKER REALLY COSTS, measured off the live workers rather
+          than read from a table. The table said 0.5 GB; four live workers
+          measured 0.27-0.32 GB.
+        * WHETHER THE MACHINE IS PAGING. Free memory alone cannot see it: at
+          108 hard faults a second there is memory "free" and the machine is
+          still reading it back off a mechanical disk. Growing then is slower,
+          not faster, so growth stops until it settles. SHRINKING is never
+          blocked.
         """
         free = free_ram_gb()
         if free <= 0:
             return None
         self.free_gb = free
+        now = time.time()
+        if now - self._probed_at >= self.PROBE_EVERY_S:
+            self._probed_at = now
+            got = measured_per_worker_gb(self.tfs)
+            if got:
+                self.per_worker = got
+                self.measured = True
+            elif not self.measured:
+                # never measured yet: the table is all there is
+                self.per_worker = _per_worker_gb(self.tfs)
+            # ... and once it HAS been measured, a probe that comes back empty
+            # keeps the last real figure. Falling back to the table cost 0.32
+            # -> 0.50 GB per pair, which is 6 workers -> 4, and the next probe
+            # put it back: the window would saw up and down every 20 seconds
+            # for no reason but a pool rebuild emptying the worker list.
+            self.paging = portable.page_reads_per_sec()
         self.chosen = workers_for_ram(self.cores_offered, self.tfs,
-                                      free_gb=free)
+                                      free_gb=free,
+                                      per_worker_gb=self.per_worker)
+        if self.paging >= PAGING_STOP_GROWTH:
+            # Freeze at what is ACTUALLY IN FLIGHT, not at the last plan. The
+            # plan runs ahead of the window (the window climbs one pair at a
+            # time), so comparing plan to plan let the window keep growing all
+            # the way up to a stale allowance while the disk thrashed.
+            # A SHRINK is never blocked.
+            try:
+                now_open = self.inflight() if self.inflight else None
+            except Exception:                                  # noqa: BLE001
+                now_open = None            # a broken view must not stop the run
+            if now_open:
+                self.chosen = min(self.chosen, max(1, int(now_open)))
+        self.last = self.chosen
         # The REASON is refreshed with the number. A frozen "3.9 GB free"
         # printed beside a live "RAM 5.6/16 GB free" is a label arguing with
         # its own data (label-must-match-data).
         self.why = ram_reason(self.chosen, self.cores_offered, self.tfs,
-                              free_gb=free)
+                              free_gb=free, per_worker_gb=self.per_worker,
+                              measured=self.measured, paging=self.paging)
         return self.chosen
 
 
-def make_worker_planner(cores_offered: int, tfs) -> WorkerPlanner:
+def make_worker_planner(cores_offered: int, tfs, inflight=None) -> WorkerPlanner:
     """A planner primed with one reading, so `.why` is never empty on arrival."""
-    p = WorkerPlanner(cores_offered, tfs)
+    p = WorkerPlanner(cores_offered, tfs, inflight=inflight)
     p.plan()
     return p
 
 
-def ram_reason(chosen: int, offered: int, tfs, free_gb: float | None = None) -> str:
+def ram_reason(chosen: int, offered: int, tfs, free_gb: float | None = None,
+               per_worker_gb: float | None = None, measured: bool = False,
+               paging: float = 0.0) -> str:
     """Why the run is using fewer cores than the machine has -- printed beside
     the number, because "4 of 11 cores" alone reads as a broken machine
     (label-must-match-data). Empty when nothing was reduced.
@@ -272,9 +390,15 @@ def ram_reason(chosen: int, offered: int, tfs, free_gb: float | None = None) -> 
     if chosen >= offered:
         return ""
     free = free_ram_gb() if free_gb is None else float(free_gb)
-    return (f"{chosen} of {offered} cores: {free:.1f} GB free, "
-            f"{RAM_RESERVE_GB:.1f} GB reserved for the desktop, "
-            f"~{_per_worker_gb(tfs):.1f} GB per pair at this timeframe")
+    each = per_worker_gb if per_worker_gb and per_worker_gb > 0 else _per_worker_gb(tfs)
+    why = (f"{chosen} of {offered} cores: {free:.1f} GB free, "
+           f"{RAM_RESERVE_GB:.1f} GB reserved for the desktop, "
+           f"{each:.2f} GB per pair "
+           f"({'measured on the live workers' if measured else 'estimated'})")
+    if paging >= PAGING_STOP_GROWTH:
+        why += (f" · holding: the machine is reading {paging:.0f} page(s) a "
+                f"second back off the disk, so more workers would be slower")
+    return why
 
 
 def ram_exhausted() -> bool:
@@ -1162,7 +1286,9 @@ def _run_backtest_inner(spec: dict, files_key: str = "backtest",
     # count for its whole life (Sep 03, 2026 — 3 of 11 cores for 28 hours).
     # The planner is re-asked after every completed pair; the grid widens by
     # one and narrows all the way at once (backtest_report.next_window).
-    _planner = make_worker_planner(cores_offered, spec.get("tfs") or [])
+    _live_window = {"n": 0}
+    _planner = make_worker_planner(cores_offered, spec.get("tfs") or [],
+                                   inflight=lambda: _live_window["n"])
     # the pool is built at the CAP so cores can be taken BACK; the window
     # starts where the settled reading put it
     _live = {"cores": n_workers, "why": cores_why}
@@ -1180,6 +1306,7 @@ def _run_backtest_inner(spec: dict, files_key: str = "backtest",
     def on_window(n_inflight: int) -> None:
         """What is ACTUALLY in flight, not what was allowed."""
         _live["inflight"] = int(n_inflight)
+        _live_window["n"] = int(n_inflight)
 
     # What the heartbeat should say between pair completions.
     # done/total are the REAL pair counts once grid_from_store knows them.

@@ -269,6 +269,70 @@ def _ram_unix() -> tuple[float, float]:
         return 0.0, 0.0
 
 
+def rss_gb(pids) -> dict:
+    """Physical memory (working set) held by each pid, in GB.
+
+    Working set is what competes for RAM. Private commit is larger — a worker
+    measured 0.29 GB working against 0.66 GB commit on Sep 05, 2026 — but
+    commit beyond RAM lives in the page file, and it is the working set that
+    decides how many workers fit before Windows starts paging.
+
+    Missing or dead pids are simply absent from the result; a machine that
+    will not answer returns {}.
+    """
+    out: dict = {}
+    pids = [int(p) for p in pids if p]
+    if not pids:
+        return out
+    try:
+        if WINDOWS:
+            want = ",".join(str(p) for p in pids)
+            ps = (f"Get-Process -Id {want} -ErrorAction SilentlyContinue | "
+                  f"ForEach-Object {{ \"$($_.Id) $($_.WorkingSet64)\" }}")
+            raw = subprocess.run(["powershell", "-NoProfile", "-NonInteractive",
+                                  "-Command", ps], capture_output=True,
+                                 text=True, timeout=30).stdout
+        else:
+            raw = subprocess.run(["ps", "-o", "pid=,rss=", "-p",
+                                  ",".join(str(p) for p in pids)],
+                                 capture_output=True, text=True,
+                                 timeout=30).stdout
+    except Exception:                                          # noqa: BLE001
+        return out
+    for line in raw.splitlines():
+        bits = line.split()
+        if len(bits) != 2:
+            continue
+        try:
+            pid, n = int(bits[0]), int(bits[1])
+        except ValueError:
+            continue
+        # ps reports KB, PowerShell reports bytes
+        out[pid] = (n / 1024.0 / 1024.0) if not WINDOWS else (n / 1024.0 ** 3)
+    return out
+
+
+def page_reads_per_sec() -> float:
+    """Hard page faults a second — memory being read back off the disk.
+
+    The honest sign that the machine is out of RAM. On Sep 04, 2026 this read
+    152/sec, which was the whole of the 576 KB/s pinning the operator's
+    mechanical disk at 98% busy. Returns 0.0 when the machine will not say,
+    which must never be read as "definitely fine".
+    """
+    if not WINDOWS:
+        return 0.0
+    try:
+        ps = ("(Get-CimInstance Win32_PerfFormattedData_PerfOS_Memory)"
+              ".PageReadsPerSec")
+        raw = subprocess.run(["powershell", "-NoProfile", "-NonInteractive",
+                              "-Command", ps], capture_output=True, text=True,
+                             timeout=30).stdout.strip()
+        return float(raw) if raw else 0.0
+    except Exception:                                          # noqa: BLE001
+        return 0.0
+
+
 def ram_gb() -> tuple[float, float]:
     """(total, available) physical memory in GB, or (0.0, 0.0) if unreadable.
 

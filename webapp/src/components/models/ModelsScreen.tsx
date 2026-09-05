@@ -61,7 +61,7 @@ export default function ModelsScreen() {
       <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-white/[0.05] dark:bg-white/[0.03]">
         <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Add a model</h3>
         <p className="text-theme-xs text-gray-500 dark:text-gray-400">
-          Saved to this Mac and available in every analysis dropdown immediately.
+          Saved to this PC and available in every analysis dropdown immediately.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <input className={`${input} w-56`} placeholder="vendor/model-id" value={form.model_id}

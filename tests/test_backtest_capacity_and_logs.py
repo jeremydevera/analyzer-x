@@ -12,7 +12,8 @@ because nothing ever asked whether it was free. And a backtest that failed on
 nowhere to show an error.
 """
 import inspect
-import io
+
+import pytest
 
 from tradingagents import capacity as cap
 
@@ -22,11 +23,22 @@ PAGE = "webapp/src/app/(admin)/backtest/page.tsx"
 
 
 def _r(p: str) -> str:
-    return io.open(p, encoding="utf-8").read()
+    return open(p, encoding="utf-8").read()
 
 
 # --------------------------------------------------------------- the split
-def test_both_free_means_both_run_and_neither_repeats_the_other():
+@pytest.fixture()
+def local_allowed(monkeypatch):
+    """The rota BEFORE Sep 05, 2026, when this PC still measured.
+
+    The split itself did not change — `capacity.LOCAL_SWEEPS` decides whether
+    it is consulted at all — so the proportional logic stays covered rather
+    than deleted. Flip the switch and these are the rules that come back.
+    """
+    monkeypatch.setattr(cap, "LOCAL_SWEEPS", True)
+
+
+def test_both_free_means_both_run_and_neither_repeats_the_other(local_allowed):
     got = cap.split(["15m", "30m", "1h", "4h", "1d"],
                     to_local=True, to_cloud=True, workers=8)
     assert got["local"] and got["cloud"], "both free must mean both work"
@@ -35,20 +47,20 @@ def test_both_free_means_both_run_and_neither_repeats_the_other():
     assert set(got["local"]) | set(got["cloud"]) == {"15m", "30m", "1h", "4h", "1d"}
 
 
-def test_the_heavy_frames_go_to_the_twenty_runners():
+def test_the_heavy_frames_go_to_the_twenty_runners(local_allowed):
     got = cap.split(["15m", "30m", "1h", "4h", "1d"],
                     to_local=True, to_cloud=True, workers=8)
     # 15m is 35,040 bars a year against 1d's 365 — the fleet takes the pain
     assert "15m" in got["cloud"] and "1d" in got["local"]
 
 
-def test_one_timeframe_is_never_split_into_an_empty_half():
+def test_one_timeframe_is_never_split_into_an_empty_half(local_allowed):
     got = cap.split(["1d"], to_local=True, to_cloud=True, workers=8)
     assert got["cloud"] == ["1d"] and got["local"] == []
     assert "cannot be split" in got["why"]
 
 
-def test_a_busy_side_gets_nothing():
+def test_a_busy_side_gets_nothing(local_allowed):
     busy_cloud = cap.split(["15m", "1d"], to_local=True, to_cloud=False)
     assert busy_cloud["cloud"] == [] and busy_cloud["local"] == ["15m", "1d"]
     busy_local = cap.split(["15m", "1d"], to_local=False, to_cloud=True)
@@ -56,6 +68,44 @@ def test_a_busy_side_gets_nothing():
     neither = cap.split(["15m"], to_local=False, to_cloud=False)
     assert neither["local"] == [] and neither["cloud"] == []
     assert "nothing is free" in neither["why"]
+
+
+# ------------------------------------------- after the move to the fleet
+def test_this_pc_is_never_given_a_timeframe():
+    """Operator, Sep 05, 2026: "there will be no option 'this mac'"."""
+    got = cap.split(["15m", "30m", "1h", "4h", "1d"],
+                    to_local=True, to_cloud=True, workers=8)
+    assert got["local"] == []
+    assert set(got["cloud"]) == {"15m", "30m", "1h", "4h", "1d"},         "everything asked for must still be measured, just elsewhere"
+
+
+def test_a_busy_fleet_means_wait_not_run_it_here():
+    """The fallback IS the option that was removed. `to_local=True` is the
+    trap: this PC being free must not put it back in the rota."""
+    got = cap.split(["15m", "1d"], to_local=True, to_cloud=False)
+    assert got["local"] == [] and got["cloud"] == []
+    assert "waiting" in got["why"].lower() or "busy" in got["why"].lower()
+    assert "no longer runs sweeps" in got["why"]
+
+
+def test_the_reason_stops_naming_a_machine_that_cannot_take_it(monkeypatch):
+    """label-must-match-data: `plan()` used to answer "nothing is free — this
+    PC: a backtest is running; GitHub: ...", naming a machine that was never
+    going to take the work either way."""
+    monkeypatch.setattr(cap, "local_free", lambda ignore=(): (False, "a backtest is running"))
+    monkeypatch.setattr(cap, "cloud_free", lambda: (False, "run 7 is in progress"))
+    got = cap.plan(["15m"])
+    assert got["local"] == [] and got["cloud"] == []
+    assert "a backtest is running" not in got["why"], got["why"]
+    assert "run 7 is in progress" in got["why"]
+    assert got["local_sweeps"] is False
+
+
+def test_the_switch_is_reversible(monkeypatch):
+    """It is one named constant, not a change scattered through the module."""
+    monkeypatch.setattr(cap, "LOCAL_SWEEPS", True)
+    got = cap.split(["15m", "1d"], to_local=True, to_cloud=False)
+    assert got["local"] == ["15m", "1d"], "flipping it brings this PC back"
 
 
 def test_a_running_job_makes_this_pc_busy(monkeypatch):
@@ -90,12 +140,30 @@ def test_the_update_job_asks_where_to_run_and_dispatches_the_cloud_half():
 
 
 def test_the_button_says_where_it_will_run_before_it_is_clicked():
+    """It still says WHERE before it is clicked — there is just one answer now.
+    The split sentence and the "this PC takes ..." half went with the chooser
+    (Sep 05, 2026); what stays is that every word is DERIVED from
+    /api/backtest/capacity rather than typed into the page."""
     p = _r(PANEL)
     assert "api.backtestCapacity(" in p
-    assert "UPDATE splits it" in p
-    assert "cap.runners" in p and "cap.workers" in p
-    # DERIVED, never a literal: the reason a side is skipped is the API's own
-    assert "cap.local_why" in p and "cap.cloud_why" in p
+    assert "cap.cloud.join" in p and "cap.runners" in p
+    assert "cap.why" in p, "and a fleet that cannot take it says why"
+
+
+def test_the_panel_offers_no_way_to_run_it_here():
+    """The option itself, not just its default."""
+    p = _r(PANEL)
+    for gone in ('"this Mac"', "Run where", 'setWhere', '"mac" | "github"'):
+        assert gone not in p, f"the chooser is still there: {gone}"
+    assert "this PC takes" not in p, "the split sentence outlived the split"
+    assert "Runs on" in p and "GitHub Actions" in p
+
+
+def test_the_page_stops_calling_itself_pure_local():
+    """A caption arguing with its own buttons."""
+    page = _r(PAGE)
+    assert "Pure-local" not in page
+    assert "GitHub Actions" in page and "stored on this PC" in page
 
 
 # ---------------------------------------------------------------- the LOGS

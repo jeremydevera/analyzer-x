@@ -1,5 +1,5 @@
 "use client";
-/** What the measured grid costs on this Mac, and how current each pair is.
+/** What the measured grid costs on this PC, and how current each pair is.
  *
  * Two freshness figures on purpose. `measured through` is the last CANDLE the
  * grid was tested against; `last run` is when the file was written. A pair
@@ -47,7 +47,7 @@ export default function BacktestStorage() {
         <p className="text-theme-xs text-gray-500 dark:text-gray-400">
           {d.total_rows.toLocaleString()} measured rows over {d.pairs} pair
           {d.pairs === 1 ? "" : "s"} · {d.coins} coin{d.coins === 1 ? "" : "s"} ·{" "}
-          {fmtBytes(d.total_bytes)} on this Mac
+          {fmtBytes(d.total_bytes)} on this PC
           {d.newest_measured ? ` · newest bar tested ${d.newest_measured}` : ""}
         </p>
         {d.incomplete > 0 && (

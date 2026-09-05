@@ -18,7 +18,7 @@ export default function FeedPanel() {
     <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <h3 className="px-5 pt-4 text-base font-semibold text-gray-800 dark:text-white/90">Runner feed</h3>
       <p className="px-5 text-theme-xs text-gray-500 dark:text-gray-400">
-        last {lines.length} lines from the runner&apos;s log on this Mac
+        last {lines.length} lines from the runner&apos;s log on this PC
       </p>
       {err && <p className="px-5 pt-2 text-theme-sm text-error-500">{err}</p>}
       <pre className="m-4 max-h-80 overflow-auto rounded-xl bg-gray-50 p-3 text-theme-xs leading-relaxed text-gray-600 dark:bg-white/[0.03] dark:text-gray-300">

@@ -324,7 +324,7 @@ export default function DownloadHistory({ refreshKey = 0 }: { refreshKey?: numbe
       <div className="flex flex-wrap items-baseline gap-2">
         <h4 className="text-sm font-semibold text-gray-800 dark:text-white/90">Candle store</h4>
         <span className="text-theme-xs text-gray-500 dark:text-gray-400">
-          {d ? `${d.total} download${d.total === 1 ? "" : "s"} run on this Mac` : ""}
+          {d ? `${d.total} download${d.total === 1 ? "" : "s"} run on this PC` : ""}
         </span>
         <div className="ml-auto flex gap-1">
           {TABS.map((t) => (
@@ -357,7 +357,7 @@ export default function DownloadHistory({ refreshKey = 0 }: { refreshKey?: numbe
       ) : (
         <p className="mt-3 text-theme-xs text-gray-500 dark:text-gray-400">
           {tab === "fail"
-            ? "no download has ever failed on this Mac"
+            ? "no download has ever failed on this PC"
             : "no download has finished clean yet"}
         </p>
       )}

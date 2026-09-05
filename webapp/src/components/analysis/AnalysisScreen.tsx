@@ -261,7 +261,7 @@ export default function AnalysisScreen() {
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
         <h3 className="px-5 pt-4 text-base font-semibold text-gray-800 dark:text-white/90">Recent runs</h3>
         <p className="px-5 text-theme-xs text-gray-500 dark:text-gray-400">
-          {recent.length} on this Mac · {recent.filter((r) => r.running).length} still running
+          {recent.length} on this PC · {recent.filter((r) => r.running).length} still running
         </p>
         <div className="flex flex-col gap-1 p-3">
           {recent.map((r) => (
@@ -275,7 +275,7 @@ export default function AnalysisScreen() {
               {r.started_at && <span className="text-theme-xs text-gray-400">{fmtWhen(r.started_at)}</span>}
             </button>
           ))}
-          {!recent.length && <p className="px-2 py-3 text-theme-sm text-gray-500 dark:text-gray-400">No runs on this Mac yet.</p>}
+          {!recent.length && <p className="px-2 py-3 text-theme-sm text-gray-500 dark:text-gray-400">No runs on this PC yet.</p>}
         </div>
       </div>
     </div>

@@ -471,6 +471,16 @@ def resume_if_died(kind: str) -> dict:
     """
     if not died_unfinished(kind):
         return {"resumed": False, "why": "not a crashed job"}
+    if kind in LOCAL_SWEEP_KINDS and not cap.LOCAL_SWEEPS:
+        # The API ticks this for "backtest" every cycle. Left alone it would
+        # call `start()`, take a LocalSweepsOff, and either crash the tick or
+        # print a traceback a minute forever — and a resume is exactly the
+        # silent route back to measuring here that the Sep 05, 2026 move
+        # closed. Say it plainly, once, and burn no retry.
+        return {"resumed": False,
+                "why": "measuring moved to GitHub Actions — a crashed local "
+                       "sweep is not restarted here. Re-run it with BACKTEST "
+                       "(GitHub) or UPDATE ALL BACKTESTS."}
     if free_gb() < DISK_FLOOR_GB:
         # exactly what killed it. Restarting into a full disk just kills it
         # again, and the log fills the last of the space doing so.
@@ -561,9 +571,7 @@ LOCAL_SWEEP_KINDS = ("backtest",)
 
 def start(kind: str, spec: dict) -> int:
     """Write the job's spec and launch it detached. Refuses to double-start."""
-    from tradingagents import capacity as _cap
-
-    if kind in LOCAL_SWEEP_KINDS and not _cap.LOCAL_SWEEPS:
+    if kind in LOCAL_SWEEP_KINDS and not cap.LOCAL_SWEEPS:
         # Defence in depth. The panel no longer offers this, but a stale
         # browser tab, a curl, or a script from before the move would still
         # ask — and a silent local sweep is exactly what the operator removed
@@ -1613,9 +1621,15 @@ def _run_btupdate(spec: dict) -> None:
     # `ignore=("btupdate",)`: this code runs INSIDE the update job, whose own
     # pid and progress say "running". Without it the job reads itself as the
     # busy machine and hands every frame to GitHub while this PC idles.
-    plan = cap.plan(tfs, ignore=("btupdate",)) if spec.get("use_cloud", True) else {
-        "local": list(tfs), "cloud": [],
-        "why": "GitHub was switched off for this run"}
+    # `use_cloud: False` used to force everything onto this PC. After the move
+    # it is honoured only while this PC is still in the rota — otherwise it is
+    # a spec field that reinstates the removed option, and the tests that pass
+    # it would have been measuring a local sweep they believed was disabled.
+    if spec.get("use_cloud", True) or not cap.LOCAL_SWEEPS:
+        plan = cap.plan(tfs, ignore=("btupdate",))
+    else:
+        plan = {"local": list(tfs), "cloud": [],
+                "why": "GitHub was switched off for this run"}
     print(f"[btupdate] {plan['why']}", flush=True)
 
     dispatched = {}
@@ -1626,20 +1640,39 @@ def _run_btupdate(spec: dict) -> None:
             dispatched = cs.dispatch(
                 shards=cap.CLOUD_RUNNERS, coins=0,
                 timeframes=",".join(plan["cloud"]),
-                min_days=0, days=int(spec.get("days") or 365))
+                min_days=0, days=int(spec.get("days") or 365),
+                # the spec's OWN stake, not the shard's hardcoded $5. This
+                # path already dispatched before the Sep 05, 2026 move, so it
+                # had been measuring at a stake nobody chose for longer.
+                base=float(spec.get("base") or 5.0))
             print(f"[btupdate] GitHub run {dispatched.get('id')} started for "
                   f"{', '.join(plan['cloud'])}: {dispatched.get('url')}",
                   flush=True)
         except Exception as exc:                               # noqa: BLE001
-            # A cloud that will not start is NOT a reason to measure nothing:
-            # this PC takes the frames back and the failure is named, not
-            # swallowed (the download job's rule, applied here).
-            print(f"[btupdate] GitHub refused the dispatch: "
-                  f"{type(exc).__name__}: {exc} — this PC takes "
-                  f"{', '.join(plan['cloud'])} as well", flush=True)
-            plan = {**plan, "local": tfs, "cloud": [],
-                    "why": f"GitHub refused the dispatch ({exc}); all of it "
-                           f"on this PC"}
+            # A cloud that will not start is NOT a reason to measure nothing —
+            # while this PC was still in the rota it took the frames back, and
+            # the failure was named rather than swallowed (the download job's
+            # rule, applied here).
+            #
+            # After Sep 05, 2026 that fallback IS the removed option. A refused
+            # dispatch would have quietly started a full local sweep, which is
+            # the loudest possible version of "no option 'this mac'" being
+            # untrue. The failure is still named; nothing is measured here.
+            if cap.LOCAL_SWEEPS:
+                print(f"[btupdate] GitHub refused the dispatch: "
+                      f"{type(exc).__name__}: {exc} — this PC takes "
+                      f"{', '.join(plan['cloud'])} as well", flush=True)
+                plan = {**plan, "local": tfs, "cloud": [],
+                        "why": f"GitHub refused the dispatch ({exc}); all of "
+                               f"it on this PC"}
+            else:
+                print(f"[btupdate] GitHub refused the dispatch: "
+                      f"{type(exc).__name__}: {exc} — NOTHING was measured. "
+                      f"This PC no longer runs sweeps; fix GitHub and press "
+                      f"UPDATE again.", flush=True)
+                plan = {**plan, "local": [], "cloud": [],
+                        "why": f"GitHub refused the dispatch ({exc}) and this "
+                               f"PC no longer runs sweeps — nothing measured"}
     _write_run_plan(plan, dispatched, coins, tfs)
 
     if not plan["local"]:
@@ -1671,13 +1704,30 @@ def _write_run_plan(plan: dict, dispatched: dict, coins, tfs) -> None:
 
 
 def _finish_btupdate_cloud_only(plan, dispatched, coins) -> None:
-    """Every frame went to GitHub — close the local job honestly."""
+    """Nothing left for this machine — close the local job honestly.
+
+    TWO ways to get here, and they must not read the same. Everything went to
+    GitHub, or the dispatch was refused and this PC no longer picks it up
+    (Sep 05, 2026). Printing "all of it went to GitHub" for the second is a
+    true sentence about a run that does not exist — the label-must-match-data
+    failure this repo keeps paying for.
+    """
     f = FILES["btupdate"]
-    note = (f"all of it went to GitHub: {', '.join(plan['cloud'])} over "
-            f"{len(coins):,} contract(s)"
-            + (f" · run {dispatched['id']}" if dispatched.get("id") else ""))
+    nothing = not plan.get("cloud")
+    note = (
+        (f"NOTHING was measured — {plan.get('why') or 'GitHub took none of it'}"
+         ". This PC no longer runs sweeps; fix GitHub and press UPDATE again.")
+        if nothing else
+        (f"all of it went to GitHub: {', '.join(plan['cloud'])} over "
+         f"{len(coins):,} contract(s)"
+         + (f" · run {dispatched['id']}" if dispatched.get("id") else "")))
     _write(f["progress"], {"running": False, "done": 0, "total": 0, "rows": 0,
-                           "new_bars": 0, "stopped": False, "errors": 0,
+                           "new_bars": 0, "stopped": False,
+                           # a dispatch that never happened is an ERROR, not a
+                           # tidy finish: the panel's green tick would say the
+                           # update was done when nothing had been measured
+                           "errors": 1 if nothing else 0,
+                           "first_error": plan.get("why", "") if nothing else "",
                            "finished": int(time.time()),
                            "cloud_run": dispatched.get("id"),
                            "cloud_url": dispatched.get("url"),
@@ -1685,9 +1735,12 @@ def _finish_btupdate_cloud_only(plan, dispatched, coins) -> None:
     try:
         from tradingagents import notifications as _nt
 
-        _nt.record("btupdate", "Backtest update handed to GitHub", detail=note,
-                   ok=True, meta={"cloud_run": dispatched.get("id"),
-                                  "timeframes": plan["cloud"]})
+        _nt.record("btupdate",
+                   "Backtest update measured NOTHING" if nothing
+                   else "Backtest update handed to GitHub",
+                   detail=note, ok=not nothing,
+                   meta={"cloud_run": dispatched.get("id"),
+                         "timeframes": plan.get("cloud") or []})
     except Exception:                                          # noqa: BLE001
         pass
 

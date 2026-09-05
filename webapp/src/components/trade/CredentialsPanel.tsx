@@ -41,7 +41,7 @@ export default function CredentialsPanel() {
     catch (e) { setErr(String(e)); } finally { setBusy(""); }
   };
   const forget = async () => {
-    if (!confirm("Forget the saved keys?\n\nThe file on this Mac is deleted. A key exported in your shell would still apply, and the runner keeps using whatever is loaded until it restarts.")) return;
+    if (!confirm("Forget the saved keys?\n\nThe file on this PC is deleted. A key exported in your shell would still apply, and the runner keeps using whatever is loaded until it restarts.")) return;
     setBusy("forget");
     try { setSt(await tradeApi.credsForget()); } catch (e) { setErr(String(e)); } finally { setBusy(""); }
   };

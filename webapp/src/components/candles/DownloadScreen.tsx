@@ -1,6 +1,6 @@
 "use client";
 /**
- * Download candles onto this Mac. Its own screen because the Backtest screen
+ * Download candles onto this PC. Its own screen because the Backtest screen
  * is for backtesting — mixing the two put a multi-hour download one click
  * away from a grid run.
  *
@@ -131,7 +131,7 @@ ${(pending?.unfixable ?? 0).toLocaleString()} pair(s) cannot be fixed by any run
       <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-white/[0.05] dark:bg-white/[0.03]">
         <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Download candles</h3>
         <p className="mb-4 text-theme-xs text-gray-500 dark:text-gray-400">
-          Fills this Mac&apos;s store — the candles every backtest reads. Runs detached: leaving this
+          Fills this PC&apos;s store — the candles every backtest reads. Runs detached: leaving this
           screen or closing the browser does not stop it. After the first fill, only new bars are fetched.
         </p>
         <div className="grid gap-3 sm:grid-cols-2">

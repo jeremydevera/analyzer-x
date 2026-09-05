@@ -36,7 +36,6 @@ export default function JobsPanel() {
   const [base, setBase] = useState(5);
   const [plan, setPlan] = useState<GridPlan | null>(null);
   const [deployed, setDeployed] = useState<{ coin: string; tf: string; key: string }[]>([]);
-  const [where, setWhere] = useState<"mac" | "github">("mac");
   const [cloud, setCloud] = useState<CloudStatus | null>(null);
   // WHERE an update would run — asked of the API, not guessed here, so the
   // button can say it before it is clicked (operator: "detect if there is a
@@ -78,7 +77,9 @@ export default function JobsPanel() {
     setErr("");
     try {
       // the same window as the local job, or the two stores are not one measurement
-      await api.cloudDispatch({ shards: 20, coins: coins.length, timeframes: tfs.join(","), days: WINDOWS[win] });
+      // `base` travels with the run: every dollar figure the fleet measures is
+      // at the stake typed above. The shard used to hardcode $5 (Sep 05, 2026).
+      await api.cloudDispatch({ shards: 20, coins: coins.length, timeframes: tfs.join(","), days: WINDOWS[win], base });
       api.cloudStatus().then(setCloud).catch(() => {});
     } catch (e) { setErr(String(e)); }
   };
@@ -111,7 +112,7 @@ export default function JobsPanel() {
     <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 dark:border-white/[0.05] dark:bg-white/[0.03]">
       <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Backtest</h3>
       <p className="mb-4 text-theme-xs text-gray-500 dark:text-gray-400">
-        Every signal × barrier pair × both sizings, over the candles already stored on this Mac.
+        Every signal × barrier pair × both sizings, over the candles already stored on this PC.
         Runs detached — leaving this screen does not stop it. Candles are downloaded on the{" "}
         <a href="/candles" className="text-brand-500 hover:underline">Candles</a> screen.
       </p>
@@ -149,23 +150,24 @@ export default function JobsPanel() {
           <input type="number" min={1} step={1} className={inputCls} value={base}
             onChange={(e) => setBase(Number(e.target.value) || 1)} />
         </div>
+        {/* There is no chooser any more. Operator, Sep 05, 2026: "i WILL FULLY
+            TRANSITION TO GITHUB ACTIONS INSTEAD OF MY PC meaning there will be
+            no option 'this mac'". What moved is the MEASURING; the candles and
+            the measured rows still live on this machine, which is why that half
+            of the sentence is said out loud rather than left to be discovered.
+            Every word below is DERIVED from /api/cloud/status — a hardcoded
+            "running on GitHub" would be a caption, not a report. */}
         <div className="sm:col-span-2">
-          <label className="mb-1 block text-theme-xs text-gray-500 dark:text-gray-400">Run where</label>
-          <div className="flex gap-2 pt-1.5">
-            {([["mac", "this Mac"], ["github", "GitHub Actions"]] as const).map(([k, lab]) => (
-              <button key={k} onClick={() => setWhere(k)}
-                className={`rounded-full px-3 py-1 text-theme-xs font-medium ${where === k
-                  ? "bg-brand-500 text-white" : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"}`}>
-                {lab}
-              </button>
-            ))}
-            {where === "github" && (
-              <span className="self-center text-theme-xs text-gray-500 dark:text-gray-400">
-                {cloud?.available
-                  ? "their machines run the same grid; rows come back in an artifact you merge into this Mac"
-                  : `unavailable — ${cloud?.why ?? "checking…"}`}
-              </span>
-            )}
+          <label className="mb-1 block text-theme-xs text-gray-500 dark:text-gray-400">Runs on</label>
+          <div className="flex flex-wrap items-center gap-2 pt-1.5">
+            <span className="rounded-full bg-brand-500 px-3 py-1 text-theme-xs font-medium text-white">
+              GitHub Actions
+            </span>
+            <span className="text-theme-xs text-gray-500 dark:text-gray-400">
+              {cloud?.available
+                ? `${cap?.runners ? `${cap.runners} runners` : "GitHub's runners"} measure the grid; every row comes back into the store on this PC`
+                : `GitHub is not available — ${cloud?.why ?? "checking…"}. Nothing will run until it is; this PC no longer measures.`}
+            </span>
           </div>
         </div>
       </div>
@@ -187,16 +189,12 @@ export default function JobsPanel() {
       <div className="mt-4">
         <div>
           <div className="flex flex-wrap items-center gap-3">
-            {where === "github" ? (
-              <Button size="sm" onClick={startCloud}
-                disabled={!coins.length || !tfs.length || !cloud?.available}>
-                RUN ON GITHUB
-              </Button>
-            ) : (
-              <>
-                <span title="FROM SCRATCH — every combination replays from its first candle. Slower; use UPDATE BACKTEST to only add new candles.">
-                  <Button size="sm" onClick={() => start("backtest")}
-                    disabled={!coins.length || !tfs.length || !!bt?.running}>
+            {/* BACKTEST now dispatches the fleet instead of this PC. The
+                button keeps its name because it is the same job — from
+                scratch, same grid — only measured somewhere else. */}
+                <span title="FROM SCRATCH on GitHub Actions — every combination replays from its first candle. Slower; use UPDATE ALL BACKTESTS to only add new candles.">
+                  <Button size="sm" onClick={startCloud}
+                    disabled={!coins.length || !tfs.length || !cloud?.available}>
                     BACKTEST
                   </Button>
                 </span>
@@ -220,19 +218,11 @@ export default function JobsPanel() {
                     from /api/backtest/capacity. */}
                 {cap && (
                   <span className="text-theme-xs text-gray-500 dark:text-gray-400">
-                    {cap.cloud.length && cap.local.length
-                      ? <>UPDATE splits it:{" "}
-                          <b className="text-brand-600 dark:text-brand-400">GitHub</b> takes {cap.cloud.join(", ")} on {cap.runners} runners,{" "}
-                          <b>this PC</b> takes {cap.local.join(", ")} on {cap.workers} worker(s)</>
-                      : cap.cloud.length
-                        ? <>UPDATE sends all of it to <b className="text-brand-600 dark:text-brand-400">GitHub</b> ({cap.cloud.join(", ")}) — {cap.local_why}</>
-                        : cap.local.length
-                          ? <>UPDATE runs all of it on <b>this PC</b> ({cap.local.join(", ")}) — GitHub: {cap.cloud_why}</>
-                          : <span className="text-warning-600 dark:text-warning-400">{cap.why}</span>}
+                    {cap.cloud.length
+                      ? <>UPDATE sends all of it to <b className="text-brand-600 dark:text-brand-400">GitHub</b> ({cap.cloud.join(", ")}) on {cap.runners} runners</>
+                      : <span className="text-warning-600 dark:text-warning-400">{cap.why}</span>}
                   </span>
                 )}
-              </>
-            )}
             {bt?.running && (
               <Button size="sm" variant="outline" onClick={() => api.jobStop("backtest").then(poll)}>STOP</Button>
             )}
@@ -245,7 +235,7 @@ export default function JobsPanel() {
                 never existed. A button that cannot act says why. */}
             {bt?.running && !hand?.requested && (
               <span title={hand?.available
-                ? "Finish the pairs being measured right now, then dispatch GitHub Actions for the coins this Mac has not reached. Nothing already measured is re-run or overwritten."
+                ? "Finish the pairs being measured right now, then dispatch GitHub Actions for the coins this PC has not reached. Nothing already measured is re-run or overwritten."
                 : `Cannot hand over yet: ${hand?.why?.split("\n")[0] ?? "checking GitHub…"}`}>
                 <Button size="sm" variant="outline" onClick={handOff}
                         disabled={handing || !hand?.available}>
@@ -297,7 +287,7 @@ export default function JobsPanel() {
         </div>
       </div>
 
-      {where === "github" && cloud?.run?.id && (
+      {cloud?.run?.id && (
         <div className="mt-4 rounded-xl border border-gray-200 p-3 dark:border-white/[0.08]">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-theme-sm font-medium text-gray-800 dark:text-white/90">
@@ -333,8 +323,8 @@ export default function JobsPanel() {
               )}
               {cloud.conclusion === "success" && (
                 <Button size="sm"
-                  onClick={() => api.cloudMerge(cloud.run!.id!).then((r) => setErr(`merged ${r.fetched} rows into this Mac`))}>
-                  MERGE INTO THIS MAC
+                  onClick={() => api.cloudMerge(cloud.run!.id!).then((r) => setErr(`merged ${r.fetched} rows into this PC`))}>
+                  MERGE INTO THIS PC
                 </Button>
               )}
               <Button size="sm" variant="outline"

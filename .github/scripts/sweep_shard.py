@@ -34,7 +34,11 @@ DAYS = int(os.environ.get("DAYS", "365"))
 # 2026-08-25: "if the backtest failed for certain coin make sure to stop the
 # process for that specific coin and retry it". Never the whole shard.
 PAIR_RETRIES = 2
-BASE_MARGIN = 5.0
+# The operator's stake, sent by the dispatch. It was hardcoded at 5.0 while
+# the local job took `base` from the Backtest screen, so after the move to
+# GitHub (Sep 05, 2026) every dollar figure would have been measured at a
+# stake nobody chose. Same default as before when the input is absent.
+BASE_MARGIN = float(os.environ.get("BASE_MARGIN") or 5.0)
 GATE_BLOCK = 0.50
 
 OUT = os.path.join("out", f"rows-{SHARD}.jsonl")

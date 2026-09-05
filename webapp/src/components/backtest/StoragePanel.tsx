@@ -235,7 +235,7 @@ export default function StoragePanel() {
 
       <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
         <div className="flex flex-wrap items-baseline justify-between gap-3 px-5 pt-4">
-          <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Candles on this Mac</h3>
+          <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Candles on this PC</h3>
           <span className="text-theme-xs text-gray-500 dark:text-gray-400">
             {coverage.reduce((a, c) => a + c.bars, 0).toLocaleString()} bars ·{" "}
             {coverage.length} coin/timeframe pairs

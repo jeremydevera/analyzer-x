@@ -442,7 +442,7 @@ export const api = {
     get<{ rows: { coin: string; tf: string; signal: string; sl: number; tp: number; sizing: string; key: string }[] }>(
       `/api/backtest/deployed?coins=${coins.join(",")}&tfs=${tfs.join(",")}`),
   cloudStatus: () => get<CloudStatus>("/api/cloud/status"),
-  cloudDispatch: (spec: { shards?: number; coins?: number; timeframes?: string; days?: number }) =>
+  cloudDispatch: (spec: { shards?: number; coins?: number; timeframes?: string; days?: number; base?: number }) =>
     post<{ id?: number; url?: string }>("/api/cloud/dispatch", spec),
   cloudCancel: (run_id: number) => post<{ cancelled: number }>("/api/cloud/cancel", { run_id }),
   cloudMerge: (run_id: number) => post<{ fetched: number } & Record<string, unknown>>("/api/cloud/merge", { run_id }),

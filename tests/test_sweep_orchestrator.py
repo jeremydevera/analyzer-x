@@ -22,7 +22,20 @@ def _sandbox(tmp_path, monkeypatch):
     monkeypatch.setattr(so, "TICK", 0.01)
 
 
-def test_no_internet_means_it_measures_locally():
+@pytest.fixture()
+def local_allowed(monkeypatch):
+    """The rota BEFORE Sep 05, 2026, when this PC still measured.
+
+    The switch is meant to be reversible, so the old routing is still covered
+    rather than deleted — flip `capacity.LOCAL_SWEEPS` and these are the rules
+    that come back.
+    """
+    from tradingagents import capacity as cap
+
+    monkeypatch.setattr(cap, "LOCAL_SWEEPS", True)
+
+
+def test_no_internet_means_it_measures_locally(local_allowed):
     """"if i've been disconnected to wifi then continue the backtest local".
     4,946 candle files are already on disk; run_pair only calls the venue to
     TOP UP, so a dropped connection changes WHERE the work happens."""
@@ -30,7 +43,7 @@ def test_no_internet_means_it_measures_locally():
     assert so.plan(online_=False, budget=0, prefer_cloud=False) == "offline"
 
 
-def test_a_rate_limit_does_not_stop_the_sweep():
+def test_a_rate_limit_does_not_stop_the_sweep(local_allowed):
     """"make sure to resume if it hits rate limit" — it keeps measuring here
     while the budget refills, instead of waiting idle."""
     assert so.plan(online_=True, budget=3, prefer_cloud=True) == "local"
@@ -41,10 +54,94 @@ def test_a_rate_limit_does_not_stop_the_sweep():
                    prefer_cloud=True) == "cloud"
 
 
-def test_it_dispatches_to_github_when_there_is_budget():
+def test_it_dispatches_to_github_when_there_is_budget(local_allowed):
     assert so.plan(online_=True, budget=4000, prefer_cloud=True) == "cloud"
     # unless the operator turned the cloud off
     assert so.plan(online_=True, budget=4000, prefer_cloud=False) == "local"
+
+
+# --------------------------------------------- after the move to the fleet
+def test_offline_now_waits_instead_of_measuring_here():
+    """Operator, Sep 05, 2026: "there will be no option 'this mac'".
+
+    No wifi is also no GitHub, so there is no slice of work this PC could take
+    that the operator still wants taken. "offline" used to mean "measure here";
+    it now means wait.
+    """
+    assert so.plan(online_=False, budget=5000, prefer_cloud=True) == "wait"
+    assert so.plan(online_=False, budget=0, prefer_cloud=False) == "wait"
+
+
+def test_a_rate_limit_now_waits_too():
+    """The old answer was "keep measuring here while the budget refills". With
+    this PC out of the rota the honest answer is that nothing runs until the
+    budget comes back."""
+    assert so.plan(online_=True, budget=3, prefer_cloud=True) == "wait"
+    assert so.plan(online_=True, budget=so.GH_BUDGET_FLOOR,
+                   prefer_cloud=True) == "wait"
+
+
+def test_a_comfortable_budget_still_goes_to_the_cloud():
+    assert so.plan(online_=True, budget=so.GH_BUDGET_FLOOR + 1,
+                   prefer_cloud=True) == "cloud"
+    # prefer_cloud is now irrelevant: there is nowhere else to prefer
+    assert so.plan(online_=True, budget=4000, prefer_cloud=False) == "cloud"
+
+
+def test_the_loop_treats_wait_as_do_nothing():
+    """The cloud thread only acts on exactly "cloud" (`!= "cloud": continue`),
+    so a new verdict can never be mistaken for permission to dispatch."""
+    import inspect
+
+    src = inspect.getsource(so.run)
+    assert '!= "cloud"' in src,         "the dispatch must be gated on the one verdict that means dispatch"
+
+
+def test_the_local_thread_asks_before_it_measures():
+    """The real back door: `work()` called `local_round` every tick with
+    nothing consulted, and published "this Mac" as the place the work was
+    happening — while `plan()` said wait.
+
+    The decision is a named function now, so it can be CALLED. Two earlier
+    versions of this test were worse: a source check that passed against its
+    own docstring, and a threaded one that raced the scan thread.
+    """
+    from tradingagents import capacity as cap
+
+    assert so.local_measuring_on() is cap.LOCAL_SWEEPS
+    assert so.local_measuring_on() is False,         "this PC is out of the rota after Sep 05, 2026"
+
+
+def test_the_switch_is_read_at_call_time(monkeypatch):
+    """Flipping it must need no restart — and a stale import would make the
+    whole switch a lie."""
+    from tradingagents import capacity as cap
+
+    monkeypatch.setattr(cap, "LOCAL_SWEEPS", True)
+    assert so.local_measuring_on() is True
+    monkeypatch.setattr(cap, "LOCAL_SWEEPS", False)
+    assert so.local_measuring_on() is False
+
+
+def test_the_measuring_thread_is_gated_on_it():
+    """The helper must be the thing `work()` asks, and it must ask BEFORE it
+    measures. Checked on the code with its docstring stripped, because the
+    first version of this test matched its own prose."""
+    import ast
+    import inspect
+    import textwrap
+
+    src = textwrap.dedent(inspect.getsource(so.run))
+    tree = ast.parse(src)
+    work = next(n for n in ast.walk(tree)
+                if isinstance(n, ast.FunctionDef) and n.name == "work")
+    work.body = [n for n in work.body
+                 if not (isinstance(n, ast.Expr)
+                         and isinstance(n.value, ast.Constant)
+                         and isinstance(n.value.value, str))]
+    body = ast.unparse(work)
+    assert "local_measuring_on" in body,         "the measuring thread must consult the switch"
+    assert body.index("local_measuring_on") < body.index("local_round"),         "and must consult it BEFORE it measures anything"
 
 
 def test_progress_is_published_every_tick(monkeypatch):

@@ -34,6 +34,23 @@ BARS_PER_YEAR = {
 
 ALL_TFS = ("15m", "30m", "1h", "4h", "1d")
 
+# THE SWITCH. Operator, Sep 05, 2026: *"i WILL FULLY TRANSITION TO GITHUB
+# ACTIONS INSTEAD OF MY PC meaning there will be no option 'this mac'"*.
+#
+# Measuring moves to the fleet; STORAGE stays here. A GitHub runner is 4 cores
+# against this machine's 11, but there are twenty of them — 80 cores against
+# the 7 this PC was managing, and the PC keeps its RAM for the desktop. The
+# rows and candles still live in ~/.tradingagents; `cloud_sweep`'s artifacts
+# are streamed straight into the pair store, which is what makes this a move
+# of the CPU and not of the data.
+#
+# When this is False the planner never hands a timeframe to this PC — not even
+# as a fallback when GitHub is busy. A busy fleet means WAIT, because "GitHub
+# is busy, so run it here" is exactly the option the operator removed. Set it
+# back to True to restore local sweeps; the split logic below is unchanged and
+# still tested for both settings.
+LOCAL_SWEEPS = False
+
 
 def local_workers() -> int:
     """How many pairs this PC measures at once. The sweep's own pool size."""
@@ -118,6 +135,19 @@ def split(tfs, *, to_local: bool, to_cloud: bool,
     tfs = [t for t in tfs if t]
     if not tfs:
         return {"local": [], "cloud": [], "why": "no timeframe was asked for"}
+    # The operator's transition (see LOCAL_SWEEPS). This PC is not an option,
+    # so it is not a fallback either: a busy fleet means wait, never "run it
+    # here instead". Checked BEFORE the free/busy branches, or the `not
+    # to_cloud` case below would quietly hand everything back to this machine.
+    if not LOCAL_SWEEPS:
+        if not to_cloud:
+            return {"local": [], "cloud": [],
+                    "why": "GitHub is busy — waiting for it. This PC no "
+                           "longer runs sweeps (measuring is on the fleet; "
+                           "the store stays here)"}
+        return {"local": [], "cloud": list(tfs),
+                "why": f"GitHub takes all of it ({', '.join(tfs)}) on "
+                       f"{runners} runners"}
     if not to_local and not to_cloud:
         return {"local": [], "cloud": [], "why": "nothing is free"}
     if not to_cloud:
@@ -144,7 +174,7 @@ def split(tfs, *, to_local: bool, to_cloud: bool,
            f"{runners} runners")
     why += (f", this PC takes {', '.join(local)} on {workers} worker(s)"
             if local else
-            f"; nothing left for this PC — one timeframe cannot be split")
+            "; nothing left for this PC — one timeframe cannot be split")
     return {"local": local, "cloud": cloud, "why": why}
 
 
@@ -159,8 +189,17 @@ def plan(tfs=ALL_TFS, ignore=()) -> dict:
     out = split(tfs, to_local=lf, to_cloud=cf)
     out.update({"local_free": lf, "local_why": lwhy,
                 "cloud_free": cf, "cloud_why": cwhy,
+                "local_sweeps": LOCAL_SWEEPS,
                 "workers": local_workers(), "runners": CLOUD_RUNNERS,
                 "timeframes": list(tfs)})
-    if not lf and not cf:
+    # With this PC out of the rota its busy/free state decides NOTHING, so it
+    # must not appear in the reason either. This line used to read "nothing is
+    # free — this PC: a backtest is running; GitHub: ...", naming a machine
+    # that was never going to take the work (label-must-match-data).
+    if not LOCAL_SWEEPS:
+        if not cf:
+            out["why"] = (f"waiting for GitHub — {cwhy}. This PC no longer "
+                          f"runs sweeps.")
+    elif not lf and not cf:
         out["why"] = f"nothing is free — this PC: {lwhy}; GitHub: {cwhy}"
     return out

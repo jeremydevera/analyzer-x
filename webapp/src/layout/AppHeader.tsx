@@ -129,8 +129,13 @@ const AppHeader: React.FC = () => {
                 it — the per-screen pollers die on navigation */}
             <RunningJobs />
           </div>
+          {/* It said "this Mac · pure local" until Sep 05, 2026, when the
+              measuring moved to GitHub Actions and only the STORE stayed here
+              — a badge on every screen claiming the opposite. It also said Mac
+              on a Windows PC. Both halves are named now, because "local" alone
+              is what made the old one wrong. */}
           <span className="text-theme-sm font-medium text-gray-700 dark:text-gray-300">
-            this Mac · pure local
+            GitHub Actions · store on this PC
           </span>
         </div>
       </div>

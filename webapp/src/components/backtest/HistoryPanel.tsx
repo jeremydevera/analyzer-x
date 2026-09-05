@@ -1,5 +1,5 @@
 "use client";
-/** Deployment history and the trade ledger — both from this Mac's files. */
+/** Deployment history and the trade ledger — both from this PC's files. */
 import { useEffect, useState } from "react";
 import { api, DeploymentRow, fmtMoney, LedgerRow } from "@/lib/api";
 import {
@@ -57,7 +57,7 @@ export default function HistoryPanel() {
           Trade ledger
         </h3>
         <p className="px-5 text-theme-xs text-gray-500 dark:text-gray-400">
-          {total.toLocaleString()} lines on this Mac — showing the latest entries/exits
+          {total.toLocaleString()} lines on this PC — showing the latest entries/exits
         </p>
         <div className="max-h-72 max-w-full overflow-auto p-2">
           <Table>

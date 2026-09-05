@@ -59,7 +59,11 @@ def _finish_handoff() -> None:
               flush=True)
         return
     run = cs.dispatch(shards=20, coins=len(left), timeframes=",".join(tfs),
-                      min_days=0)      # every contract — never the 365 default nobody chose
+                      min_days=0,      # every contract — never the 365 default nobody chose
+                      # and the HANDED-OVER job's own stake and window, or the
+                      # two halves of one sweep are two different measurements
+                      days=int(spec.get("days") or 365),
+                      base=float(spec.get("base") or 5.0))
     cs.remember(run)
     dj.clear_handoff(kind)              # the cloud has it; the request is served
     print(f"[handoff] {len(left)} coins the Mac never reached -> GitHub run "
@@ -1662,7 +1666,8 @@ def cloud_dispatch(body: dict) -> dict:
                       coins=int(body.get("coins") or 0),
                       timeframes=str(body.get("timeframes") or "15m,30m"),
                       min_days=int(body.get("min_days") or 0),
-                      days=int(body.get("days") or 365))
+                      days=int(body.get("days") or 365),
+                      base=float(body.get("base") or 5.0))
     cs.remember(run)
     return run
 

@@ -26,6 +26,9 @@ on:
       days:
         description: "History window in days (the Backtest screen's Previous N months; 60 = 2 months)"
         default: "365"
+      base:
+        description: "Base margin $ per trade — every dollar figure is measured at this stake"
+        default: "5"
 
 permissions:
   contents: write        # shards write their progress to the sweep-progress branch
@@ -76,6 +79,7 @@ jobs:
           TFS: ${{ github.event.inputs.timeframes }}
           MIN_DAYS: ${{ github.event.inputs.min_days }}
           DAYS: ${{ github.event.inputs.days }}
+          BASE_MARGIN: ${{ github.event.inputs.base }}
         run: python .github/scripts/sweep_shard.py
 
       - uses: actions/upload-artifact@v4

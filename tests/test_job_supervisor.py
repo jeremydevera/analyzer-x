@@ -16,7 +16,20 @@ from tradingagents import db_jobs as dj
 
 @pytest.fixture
 def crashed(monkeypatch):
-    """A job whose progress says running while its pid is long gone."""
+    """A job whose progress says running while its pid is long gone.
+
+    These tests are about the RESTART MACHINERY — resume from the checkpoint,
+    the disk floor, the retry budget — not about which job it is. After
+    Sep 05, 2026 a crashed `backtest` is no longer restarted here at all
+    (measuring moved to GitHub Actions), so the switch is flipped on for them
+    and the refusal has its own test in
+    tests/test_measuring_moved_to_github.py. The machinery still runs for
+    `download`, whose store lives on this machine, and comes straight back for
+    `backtest` if `capacity.LOCAL_SWEEPS` is set to True.
+    """
+    from tradingagents import capacity as cap
+
+    monkeypatch.setattr(cap, "LOCAL_SWEEPS", True)
     f = dj.FILES["backtest"]
     f["progress"].write_text(json.dumps({"running": True, "done": 466,
                                          "total": 3960, "now": "AXS 15m"}))

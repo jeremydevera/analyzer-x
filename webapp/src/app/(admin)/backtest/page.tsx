@@ -8,8 +8,13 @@ import BacktestHistory from "@/components/backtest/BacktestHistory";
 
 export const metadata: Metadata = {
   title: "Backtest | TradingAgents",
+  // On Sep 05, 2026 the measuring moved to GitHub Actions and only the STORE
+  // stayed on this machine. Saying which half went where is the whole point: a
+  // page still describing itself as local-only would be a caption arguing with
+  // its own buttons. (The old wording is not repeated here — a test greps this
+  // file for it, and a comment quoting it would defeat that.)
   description:
-    "Pure-local backtesting: candles, strategies, jobs and history on this Mac",
+    "Backtesting measured on GitHub Actions; candles, rows and history stored on this PC",
 };
 
 export default function BacktestPage() {

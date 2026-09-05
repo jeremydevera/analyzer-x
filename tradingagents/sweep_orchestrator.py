@@ -186,6 +186,19 @@ def collect_cloud(run_id: int):
     return int(got.get("pairs") or 0)
 
 
+def local_measuring_on() -> bool:
+    """Does this PC still take sweep work?
+
+    A named decision rather than a condition buried inside a daemon thread —
+    `work()` was the back door precisely because nothing about it could be
+    called, only read. Read at call time, not import time, so flipping
+    `capacity.LOCAL_SWEEPS` needs no restart and a test can monkeypatch it.
+    """
+    from tradingagents import capacity as _cap
+
+    return bool(_cap.LOCAL_SWEEPS)
+
+
 def plan(*, online_: bool, budget: int, prefer_cloud: bool) -> str:
     """Where should the next slice of work happen?
 
@@ -195,6 +208,14 @@ def plan(*, online_: bool, budget: int, prefer_cloud: bool) -> str:
       "local"   — rate limited; "make sure to resume if it hits rate limit"
       "offline" — "if i've been disconnected to wifi then continue local"
     """
+    # The move to GitHub closes this module's back door too. It is not reachable
+    # from the panel, so it was never one of the OPTIONS the operator removed —
+    # but `python -m tradingagents.sweep_orchestrator` would still have measured
+    # here, and a switch with an exception is not a switch (Sep 05, 2026).
+    # Offline now means WAIT: no wifi is also no GitHub, so there is no slice of
+    # work this PC could take that the operator still wants taken.
+    if not local_measuring_on():
+        return "cloud" if (online_ and budget > GH_BUDGET_FLOOR) else "wait"
     if not online_:
         return "offline"
     if prefer_cloud and budget > GH_BUDGET_FLOOR:
@@ -383,8 +404,18 @@ def run(coins, tfs, *, prefer_cloud: bool = True) -> None:
             time.sleep(TICK)
 
     def work() -> None:
-        """Measure here, always. The Mac has the candles and the cores."""
+        """Measure here — only while this PC is still in the rota.
+
+        It used to say "always", and called `local_round` on every tick with
+        nothing consulted. That made it the real back door after the Sep 05,
+        2026 move to GitHub: `plan()` could return "wait" all day while this
+        thread quietly measured 24 pairs a round and published "this Mac" as
+        the place the work was happening.
+        """
         while not STOP.exists():
+            if not local_measuring_on():
+                time.sleep(TICK)
+                continue
             with lock:
                 done = set(shared["done"])
             left = [p for p in want if p not in done]

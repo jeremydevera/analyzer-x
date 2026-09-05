@@ -48,6 +48,17 @@ dev = [
     "pytest>=8.0",
     "pytest-subtests>=0.13",
     "tradingagents[api]",
+    # `tests/test_webapp.py` execs app.py, the retired Streamlit screen, and
+    # app.py imports streamlit at line 29. Declared nowhere, so CI failed with
+    # `ModuleNotFoundError: No module named 'streamlit'` 424 times a run across
+    # four Python versions — the bulk of every "CI: Some jobs were not
+    # successful" email, and enough noise to bury the ~28 real failures under
+    # it. Same fix, and the same reason, as `fastapi` above.
+    #
+    # It goes when app.py goes. Twenty of that file's 65 tests exec app.py; the
+    # rest read webapp/*.tsx and never needed streamlit at all, so they belong
+    # in a module that does not import it.
+    "streamlit>=1.40",
 ]
 # Amazon Bedrock support (AWS SigV4 auth + boto3). Optional so the core install
 # stays lean: pip install "tradingagents[bedrock]".

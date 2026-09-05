@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 41, "total": 52, "rows": 1501812, "note": "SKHYSTOCK 30m: rule 11/120 (sr_break)", "failed": [], "pct": 78.8, "updated": "2026-09-05T11:12:16Z"}
+{"shard": 14, "stage": "testing", "done": 43, "total": 52, "rows": 1563528, "note": "SPOTSTOCK 30m: 9,899 bars, testing 120 rules", "failed": [], "pct": 82.7, "updated": "2026-09-05T11:13:03Z"}

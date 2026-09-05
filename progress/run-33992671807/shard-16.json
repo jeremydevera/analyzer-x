@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 15, "total": 52, "rows": 536642, "note": "DOLO 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 28.8, "updated": "2026-09-05T21:35:20Z"}
+{"shard": 16, "stage": "testing", "done": 15, "total": 52, "rows": 549402, "note": "DOLO 1h: rule 53/120 (squeeze)", "failed": [], "pct": 28.8, "updated": "2026-09-05T21:36:05Z"}

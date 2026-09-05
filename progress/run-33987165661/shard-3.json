@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 25, "total": 53, "rows": 805136, "note": "JASMY 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 47.2, "updated": "2026-09-05T20:04:30Z"}
+{"shard": 3, "stage": "testing", "done": 26, "total": 53, "rows": 815716, "note": "KERNEL 4h: rule 3/120 (fade15)", "failed": [], "pct": 49.1, "updated": "2026-09-05T20:05:16Z"}

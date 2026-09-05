@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 34, "total": 53, "rows": 1157878, "note": "ONE 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 64.2, "updated": "2026-09-05T23:10:46Z"}
+{"shard": 5, "stage": "testing", "done": 35, "total": 53, "rows": 1190588, "note": "PANWSTOCK 30m: 9,292 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-05T23:11:32Z"}

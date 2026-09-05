@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 27, "total": 53, "rows": 791630, "note": "LAB 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-05T07:27:26Z"}
+{"shard": 4, "stage": "testing", "done": 29, "total": 53, "rows": 842924, "note": "MASTOCK 1h: 6,451 bars, testing 120 rules", "failed": [], "pct": 54.7, "updated": "2026-09-05T07:28:13Z"}

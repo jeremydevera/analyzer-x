@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 53, "total": 53, "rows": 1763678, "note": "ZINC 30m: rule 61/120 (turtle)", "failed": [], "pct": 100.0, "updated": "2026-09-05T23:57:09Z"}
+{"shard": 2, "stage": "done", "done": 53, "total": 53, "rows": 1769078, "note": "1,769,078 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "failed": [], "pct": 100.0, "updated": "2026-09-05T23:57:23Z"}

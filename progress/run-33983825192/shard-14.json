@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 21, "total": 52, "rows": 609532, "note": "GUN 1h: rule 70/120 (cmf20)", "failed": [], "pct": 40.4, "updated": "2026-09-05T18:40:05Z"}
+{"shard": 14, "stage": "testing", "done": 23, "total": 52, "rows": 637576, "note": "ICNT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 44.2, "updated": "2026-09-05T18:40:53Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 3, "total": 53, "rows": 54252, "note": "ALGO 4h: rule 2/120 (mom15)", "failed": [], "pct": 5.7, "updated": "2026-09-05T06:31:39Z"}
+{"shard": 6, "stage": "testing", "done": 6, "total": 53, "rows": 114830, "note": "AVAX 1d: rule 43/120 (macddiv)", "failed": [], "pct": 11.3, "updated": "2026-09-05T06:32:24Z"}

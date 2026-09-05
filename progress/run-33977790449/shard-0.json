@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 42, "total": 53, "rows": 1575588, "note": "SKYAI 30m: rule 58/120 (bos)", "failed": [], "pct": 79.2, "updated": "2026-09-05T17:39:49Z"}
+{"shard": 0, "stage": "testing", "done": 43, "total": 53, "rows": 1587788, "note": "SOMI 4h: 2,258 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-05T17:40:40Z"}

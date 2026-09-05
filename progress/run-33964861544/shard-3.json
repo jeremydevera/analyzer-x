@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 28, "total": 53, "rows": 703772, "note": "LQTY 1d: 394 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-05T12:17:57Z"}
+{"shard": 3, "stage": "testing", "done": 28, "total": 53, "rows": 731492, "note": "LQTY 1h: rule 58/120 (bos)", "failed": [], "pct": 52.8, "updated": "2026-09-05T12:18:43Z"}

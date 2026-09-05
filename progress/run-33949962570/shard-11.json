@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 17, "total": 52, "rows": 391600, "note": "ETHW 4h: rule 6/120 (sweep30)", "failed": [], "pct": 32.7, "updated": "2026-09-05T06:36:34Z"}
+{"shard": 11, "stage": "testing", "done": 18, "total": 52, "rows": 426470, "note": "FHE 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 34.6, "updated": "2026-09-05T06:37:20Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 25, "total": 52, "rows": 697094, "note": "JPMSTOCK 1h: rule 56/120 (insidebrk)", "failed": [], "pct": 48.1, "updated": "2026-09-05T07:28:11Z"}
+{"shard": 12, "stage": "testing", "done": 27, "total": 52, "rows": 752216, "note": "LIGHT 1h: 8,228 bars, testing 120 rules", "failed": [], "pct": 51.9, "updated": "2026-09-05T07:29:00Z"}

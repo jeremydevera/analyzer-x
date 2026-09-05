@@ -1250,9 +1250,17 @@ def backfill_ledger_ids(path=None, *, dry_run: bool = False) -> dict:
 
 
 def log_tail(n: int = 200) -> list[str]:
-    """Last ``n`` lines of the runner's own log (scan lines and warnings)."""
+    """Last ``n`` lines of the runner's own log (scan lines and warnings).
+
+    NEVER strict about the bytes. On 2026-09-05 one Windows-1252 em dash
+    (0x97), written by a runner spawned without PYTHONUTF8, made this raise —
+    and the Runner feed answered 500 and showed NOTHING while the runner was
+    healthy: the operator read an empty feed as a dead runner. A feed must
+    survive any byte; the odd bad character shows as � instead.
+    """
     try:
-        return LOG_PATH.read_text(encoding="utf-8").strip().splitlines()[-n:]
+        return (LOG_PATH.read_bytes().decode("utf-8", errors="replace")
+                .strip().splitlines()[-n:])
     except OSError:
         return []
 
@@ -3996,7 +4004,10 @@ def start_runner() -> int:
         proc = subprocess.Popen(
             [sys.executable, "-m", "tradingagents.auto_trader", "run"],
             stdout=log, stderr=log, **portable.DETACHED,
-            cwd=str(Path(__file__).resolve().parent.parent))
+            cwd=str(Path(__file__).resolve().parent.parent),
+            # the child prints em dashes; without this Windows writes them as
+            # cp1252 bytes into a log every reader treats as UTF-8
+            env={**os.environ, "PYTHONUTF8": "1"})
     PID_PATH.write_text(str(proc.pid), encoding="utf-8")
     return proc.pid
 

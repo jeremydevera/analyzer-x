@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 48, "total": 52, "rows": 1836148, "note": "USDC 30m: rule 41/120 (tsi)", "failed": [], "pct": 92.3, "updated": "2026-09-05T17:16:34Z"}
+{"shard": 15, "stage": "testing", "done": 49, "total": 52, "rows": 1876648, "note": "VSTOCK 30m: rule 6/120 (sweep30)", "failed": [], "pct": 94.2, "updated": "2026-09-05T17:17:19Z"}

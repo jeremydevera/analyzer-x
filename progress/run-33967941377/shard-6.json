@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 24, "total": 53, "rows": 800990, "note": "INJ 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 45.3, "updated": "2026-09-05T13:40:27Z"}
+{"shard": 6, "stage": "testing", "done": 24, "total": 53, "rows": 805990, "note": "INJ 30m: rule 19/120 (emacross)", "failed": [], "pct": 45.3, "updated": "2026-09-05T13:41:12Z"}

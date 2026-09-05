@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 11, "total": 52, "rows": 480200, "note": "CFX 30m: rule 2/120 (mom15)", "failed": [], "pct": 21.2, "updated": "2026-09-05T19:51:54Z"}
+{"shard": 16, "stage": "testing", "done": 11, "total": 52, "rows": 487680, "note": "CFX 30m: rule 34/120 (lrslope)", "failed": [], "pct": 21.2, "updated": "2026-09-05T19:52:40Z"}

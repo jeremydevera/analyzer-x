@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 20, "total": 52, "rows": 700902, "note": "GLM 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 38.5, "updated": "2026-09-05T20:03:33Z"}
+{"shard": 14, "stage": "testing", "done": 21, "total": 52, "rows": 721142, "note": "GUN 4h: rule 63/120 (killzone)", "failed": [], "pct": 40.4, "updated": "2026-09-05T20:04:18Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 33, "total": 52, "rows": 1250272, "note": "NVIDIA 30m: rule 92/120 (cf_soup_l1)", "failed": [], "pct": 63.5, "updated": "2026-09-05T17:07:29Z"}
+{"shard": 12, "stage": "testing", "done": 35, "total": 52, "rows": 1291932, "note": "PENDLE 4h: rule 76/120 (cf_mom)", "failed": [], "pct": 67.3, "updated": "2026-09-05T17:08:14Z"}

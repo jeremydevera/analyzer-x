@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 19, "total": 53, "rows": 384556, "note": "FOGO 1d: 238 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-05T08:20:59Z"}
+{"shard": 6, "stage": "testing", "done": 22, "total": 53, "rows": 447238, "note": "HFT 1d: 394 bars, testing 120 rules", "failed": [], "pct": 41.5, "updated": "2026-09-05T08:21:46Z"}

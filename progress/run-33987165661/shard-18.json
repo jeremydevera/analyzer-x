@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 50, "total": 52, "rows": 1957472, "note": "XAI 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-05T21:04:24Z"}
+{"shard": 18, "stage": "testing", "done": 51, "total": 52, "rows": 1984632, "note": "XPL 30m: rule 1/120 (mom6)", "failed": [], "pct": 98.1, "updated": "2026-09-05T21:05:19Z"}

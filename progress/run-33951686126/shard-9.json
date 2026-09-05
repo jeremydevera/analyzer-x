@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 13, "total": 53, "rows": 387904, "note": "CRDOSTOCK 1h: rule 29/120 (hull20)", "failed": [], "pct": 24.5, "updated": "2026-09-05T07:17:58Z"}
+{"shard": 9, "stage": "testing", "done": 17, "total": 53, "rows": 490826, "note": "ETC 1d: 394 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-05T07:18:48Z"}

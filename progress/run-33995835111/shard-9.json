@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 12, "total": 53, "rows": 466018, "note": "CLO 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-05T22:47:22Z"}
+{"shard": 9, "stage": "testing", "done": 14, "total": 53, "rows": 514338, "note": "CVXSTOCK 4h: rule 14/120 (bb20)", "failed": [], "pct": 26.4, "updated": "2026-09-05T22:48:07Z"}

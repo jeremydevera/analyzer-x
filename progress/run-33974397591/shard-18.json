@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 47, "total": 52, "rows": 1397676, "note": "TWT 1d: rule 4/120 (trend50)", "failed": [], "pct": 90.4, "updated": "2026-09-05T16:01:45Z"}
+{"shard": 18, "stage": "testing", "done": 47, "total": 52, "rows": 1420512, "note": "TWT 1h: rule 45/120 (zscore20)", "failed": [], "pct": 90.4, "updated": "2026-09-05T16:02:31Z"}

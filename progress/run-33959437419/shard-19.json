@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 44, "total": 52, "rows": 1659842, "note": "SWARMS 30m: rule 4/120 (trend50)", "failed": [], "pct": 84.6, "updated": "2026-09-05T11:20:58Z"}
+{"shard": 19, "stage": "testing", "done": 44, "total": 52, "rows": 1667762, "note": "SWARMS 30m: rule 40/120 (crsi)", "failed": [], "pct": 84.6, "updated": "2026-09-05T11:21:43Z"}

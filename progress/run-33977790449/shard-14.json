@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 43, "total": 52, "rows": 1559824, "note": "SPOTSTOCK 30m: rule 1/120 (mom6)", "failed": [], "pct": 82.7, "updated": "2026-09-05T17:34:24Z"}
+{"shard": 14, "stage": "testing", "done": 45, "total": 52, "rows": 1595784, "note": "TBT 30m: downloading candles", "failed": [], "pct": 86.5, "updated": "2026-09-05T17:35:10Z"}

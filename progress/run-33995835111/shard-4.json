@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 43, "total": 53, "rows": 1648218, "note": "SOPH 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-05T23:37:40Z"}
+{"shard": 4, "stage": "testing", "done": 44, "total": 53, "rows": 1665818, "note": "STEEM 4h: rule 44/120 (elder)", "failed": [], "pct": 83.0, "updated": "2026-09-05T23:38:26Z"}

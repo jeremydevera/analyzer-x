@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 17, "total": 53, "rows": 411076, "note": "ESP 1h: rule 20/120 (stoch14)", "failed": [], "pct": 32.1, "updated": "2026-09-05T07:25:13Z"}
+{"shard": 8, "stage": "testing", "done": 21, "total": 53, "rows": 471982, "note": "GRIFFAIN 1d: 394 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-05T07:26:04Z"}

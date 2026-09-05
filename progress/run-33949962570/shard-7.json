@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 25, "total": 53, "rows": 713898, "note": "JELLYJELLY 4h: rule 16/120 (keltner)", "failed": [], "pct": 47.2, "updated": "2026-09-05T06:43:05Z"}
+{"shard": 7, "stage": "testing", "done": 27, "total": 53, "rows": 749714, "note": "LA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 50.9, "updated": "2026-09-05T06:44:10Z"}

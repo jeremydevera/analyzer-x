@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 52, "total": 52, "rows": 1548432, "note": "ZEN 1h: rule 73/120 (volspike)", "failed": [], "pct": 100.0, "updated": "2026-09-05T07:52:34Z"}
+{"shard": 14, "stage": "done", "done": 52, "total": 52, "rows": 1558552, "note": "1,558,552 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "failed": [], "pct": 100.0, "updated": "2026-09-05T07:52:51Z"}

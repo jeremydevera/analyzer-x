@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 51, "total": 52, "rows": 1593128, "note": "XPD 1h: rule 25/120 (ichimoku)", "failed": [], "pct": 98.1, "updated": "2026-09-05T22:08:24Z"}
+{"shard": 16, "stage": "done", "done": 52, "total": 52, "rows": 1644244, "note": "1,644,244 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "failed": [], "pct": 100.0, "updated": "2026-09-05T22:09:07Z"}

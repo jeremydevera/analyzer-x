@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 44, "total": 52, "rows": 1421910, "note": "SUPER 1h: rule 61/120 (turtle)", "failed": [], "pct": 84.6, "updated": "2026-09-05T09:41:15Z"}
+{"shard": 16, "stage": "testing", "done": 47, "total": 52, "rows": 1482742, "note": "TWLOSTOCK 1h: 2,039 bars, testing 120 rules", "failed": [], "pct": 90.4, "updated": "2026-09-05T09:42:01Z"}

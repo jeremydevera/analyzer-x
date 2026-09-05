@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 32, "total": 53, "rows": 1155076, "note": "NEIROCTO 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 60.4, "updated": "2026-09-05T13:55:22Z"}
+{"shard": 4, "stage": "testing", "done": 32, "total": 53, "rows": 1181916, "note": "NEIROCTO 30m: rule 1/120 (mom6)", "failed": [], "pct": 60.4, "updated": "2026-09-05T13:56:09Z"}

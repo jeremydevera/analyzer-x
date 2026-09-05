@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 20, "total": 52, "rows": 715770, "note": "GMX 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 38.5, "updated": "2026-09-05T10:37:35Z"}
+{"shard": 19, "stage": "testing", "done": 21, "total": 52, "rows": 743930, "note": "HANA 30m: 16,511 bars, testing 120 rules", "failed": [], "pct": 40.4, "updated": "2026-09-05T10:38:30Z"}

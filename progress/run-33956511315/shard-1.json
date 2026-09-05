@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 14, "total": 53, "rows": 439554, "note": "CTC 1h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-05T09:04:19Z"}
+{"shard": 1, "stage": "testing", "done": 18, "total": 53, "rows": 540514, "note": "EXPESTOCK 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 34.0, "updated": "2026-09-05T09:05:04Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 30, "total": 52, "rows": 880952, "note": "MORPHO 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 57.7, "updated": "2026-09-05T09:22:36Z"}
+{"shard": 14, "stage": "testing", "done": 30, "total": 52, "rows": 895032, "note": "MORPHO 1h: rule 59/120 (choch)", "failed": [], "pct": 57.7, "updated": "2026-09-05T09:23:22Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 29, "total": 53, "rows": 742988, "note": "MAVIA 1h: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 54.7, "updated": "2026-09-05T09:20:23Z"}
+{"shard": 5, "stage": "testing", "done": 30, "total": 53, "rows": 766792, "note": "MITO 1h: rule 2/120 (mom15)", "failed": [], "pct": 56.6, "updated": "2026-09-05T09:21:13Z"}

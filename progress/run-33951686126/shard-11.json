@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 40, "total": 52, "rows": 1044070, "note": "SAPIEN 1h: 9,134 bars, testing 120 rules", "failed": [], "pct": 76.9, "updated": "2026-09-05T07:34:50Z"}
+{"shard": 11, "stage": "testing", "done": 40, "total": 52, "rows": 1061692, "note": "SAPIEN 1h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 76.9, "updated": "2026-09-05T07:35:35Z"}

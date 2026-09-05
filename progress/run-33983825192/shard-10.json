@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 46, "total": 53, "rows": 1323966, "note": "TNSR 1h: rule 29/120 (hull20)", "failed": [], "pct": 86.8, "updated": "2026-09-05T19:00:04Z"}
+{"shard": 10, "stage": "testing", "done": 47, "total": 53, "rows": 1352874, "note": "TSMSTOCK 1h: rule 6/120 (sweep30)", "failed": [], "pct": 88.7, "updated": "2026-09-05T19:00:49Z"}

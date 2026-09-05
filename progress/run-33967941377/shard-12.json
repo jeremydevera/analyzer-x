@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 36, "total": 52, "rows": 1385348, "note": "POLYX 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 69.2, "updated": "2026-09-05T13:51:10Z"}
+{"shard": 12, "stage": "testing", "done": 39, "total": 52, "rows": 1426888, "note": "ROAM 4h: rule 4/120 (trend50)", "failed": [], "pct": 75.0, "updated": "2026-09-05T13:51:55Z"}

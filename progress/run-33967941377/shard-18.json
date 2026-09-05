@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 12, "total": 52, "rows": 489940, "note": "COMP 30m: rule 20/120 (stoch14)", "failed": [], "pct": 23.1, "updated": "2026-09-05T13:34:21Z"}
+{"shard": 18, "stage": "testing", "done": 12, "total": 52, "rows": 501600, "note": "COMP 30m: rule 74/120 (volclimax)", "failed": [], "pct": 23.1, "updated": "2026-09-05T13:35:06Z"}

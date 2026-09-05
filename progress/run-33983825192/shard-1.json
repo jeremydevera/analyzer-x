@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 32, "total": 53, "rows": 942010, "note": "NBISSTOCK 1h: rule 21/120 (cci20)", "failed": [], "pct": 60.4, "updated": "2026-09-05T18:40:42Z"}
+{"shard": 1, "stage": "testing", "done": 38, "total": 53, "rows": 1021396, "note": "QTUM 1d: 394 bars, testing 120 rules", "failed": [], "pct": 71.7, "updated": "2026-09-05T18:41:30Z"}

@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 35, "total": 53, "rows": 757092, "note": "PDDSTOCK 4h: 979 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-05T08:25:37Z"}
+{"shard": 10, "stage": "testing", "done": 36, "total": 53, "rows": 798828, "note": "PNUT 4h: rule 51/120 (orb)", "failed": [], "pct": 67.9, "updated": "2026-09-05T08:26:23Z"}

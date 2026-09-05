@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 26, "total": 53, "rows": 864540, "note": "KGEN 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 49.1, "updated": "2026-09-05T19:57:38Z"}
+{"shard": 5, "stage": "testing", "done": 28, "total": 53, "rows": 908320, "note": "LRC 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-05T19:58:32Z"}

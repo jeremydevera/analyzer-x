@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 17, "total": 53, "rows": 518182, "note": "ENJ 1h: rule 33/120 (heikin)", "failed": [], "pct": 32.1, "updated": "2026-09-05T18:42:09Z"}
+{"shard": 0, "stage": "testing", "done": 18, "total": 53, "rows": 563044, "note": "EWZ 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 34.0, "updated": "2026-09-05T18:42:54Z"}

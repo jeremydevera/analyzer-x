@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 4, "total": 53, "rows": 156560, "note": "ANTHROPIC 30m: rule 21/120 (cci20)", "failed": [], "pct": 7.5, "updated": "2026-09-05T13:13:08Z"}
+{"shard": 6, "stage": "testing", "done": 6, "total": 53, "rows": 187460, "note": "AVAX 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-05T13:13:58Z"}

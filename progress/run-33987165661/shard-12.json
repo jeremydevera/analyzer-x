@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 10, "total": 52, "rows": 327428, "note": "B 30m: rule 1/120 (mom6)", "failed": [], "pct": 19.2, "updated": "2026-09-05T19:41:58Z"}
+{"shard": 12, "stage": "testing", "done": 10, "total": 52, "rows": 331608, "note": "B 30m: rule 16/120 (keltner)", "failed": [], "pct": 19.2, "updated": "2026-09-05T19:42:43Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 5, "total": 53, "rows": 154602, "note": "ARIA 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-05T07:11:59Z"}
+{"shard": 0, "stage": "testing", "done": 6, "total": 53, "rows": 180266, "note": "AUDIO 1h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 11.3, "updated": "2026-09-05T07:12:44Z"}

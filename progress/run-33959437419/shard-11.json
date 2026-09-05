@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 8, "total": 52, "rows": 309374, "note": "BIRB 30m: rule 64/120 (hammer)", "failed": [], "pct": 15.4, "updated": "2026-09-05T10:14:39Z"}
+{"shard": 11, "stage": "testing", "done": 10, "total": 52, "rows": 360320, "note": "BXSTOCK 30m: rule 2/120 (mom15)", "failed": [], "pct": 19.2, "updated": "2026-09-05T10:15:25Z"}

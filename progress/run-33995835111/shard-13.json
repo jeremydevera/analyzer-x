@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 27, "total": 52, "rows": 1053272, "note": "LINEA 30m: rule 59/120 (choch)", "failed": [], "pct": 51.9, "updated": "2026-09-05T23:12:00Z"}
+{"shard": 13, "stage": "testing", "done": 28, "total": 52, "rows": 1066472, "note": "LYN 4h: 2,008 bars, testing 120 rules", "failed": [], "pct": 53.8, "updated": "2026-09-05T23:12:51Z"}

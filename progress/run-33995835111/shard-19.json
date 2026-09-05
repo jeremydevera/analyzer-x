@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 20, "total": 52, "rows": 704542, "note": "GMX 30m: rule 107/120 (cf_bosfvg_l1)", "failed": [], "pct": 38.5, "updated": "2026-09-05T23:00:40Z"}
+{"shard": 19, "stage": "testing", "done": 21, "total": 52, "rows": 734242, "note": "HANA 30m: 16,536 bars, testing 120 rules", "failed": [], "pct": 40.4, "updated": "2026-09-05T23:01:36Z"}

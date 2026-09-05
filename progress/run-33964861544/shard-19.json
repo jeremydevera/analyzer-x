@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 25, "total": 52, "rows": 679766, "note": "KAS 1h: rule 32/120 (gmma)", "failed": [], "pct": 48.1, "updated": "2026-09-05T12:23:58Z"}
+{"shard": 19, "stage": "testing", "done": 26, "total": 52, "rows": 726136, "note": "KOSTOCK 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 50.0, "updated": "2026-09-05T12:24:43Z"}

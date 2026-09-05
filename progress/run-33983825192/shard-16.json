@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 24, "total": 52, "rows": 826884, "note": "IOTX 1h: rule 46/120 (rsi2)", "failed": [], "pct": 46.2, "updated": "2026-09-05T18:44:01Z"}
+{"shard": 16, "stage": "testing", "done": 25, "total": 52, "rows": 856364, "note": "JUP 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 48.1, "updated": "2026-09-05T18:44:48Z"}

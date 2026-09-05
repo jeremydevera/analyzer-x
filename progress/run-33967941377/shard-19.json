@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 18, "total": 52, "rows": 664730, "note": "FLOKI 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 34.6, "updated": "2026-09-05T13:39:25Z"}
+{"shard": 19, "stage": "testing", "done": 19, "total": 52, "rows": 670490, "note": "GAIB 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 36.5, "updated": "2026-09-05T13:40:11Z"}

@@ -17,6 +17,7 @@ here** — this file exists because the operator won't remember them all
 | `verify-ui-change` | Any change to how the app looks gets checked with a real browser screenshot before saying done. |
 | `harddev` | Every code change: build → loop "is there a potential bug?" until none → only then test. Made 2026-09-05. |
 | `blast-radius` | After any code change: check what else that change touches. |
+| `press-and-watch` | Any of the long jobs — DOWNLOAD CANDLES, UPDATE CANDLES, RESOLVE PENDING, BACKTEST, UPDATE ALL BACKTEST — is watched to the END, not for ten seconds. Guess what will break first, press it the way the button does, fix with `harddev`, press again. Made 2026-09-05. |
 
 ## Trading (type these when you want them)
 

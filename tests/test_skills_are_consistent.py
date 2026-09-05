@@ -121,3 +121,19 @@ def test_it_says_both_halves_apply_at_once():
     assert "SHORT AND PLAIN, both" in body
     assert "Compress **structure**, never **comprehension**" in body
     assert "Short answer, plain words. Not short words, long answer." in body
+
+
+def test_every_skill_has_a_row_in_skills_md():
+    """SKILLS.md says "When a new skill is made, add a row here" — and then
+    `press-and-watch` was made without one (2026-09-05), so the operator asked
+    "i dont see it in skills md why?". A hand-kept index only stays true if
+    something checks it.
+    """
+    index = pathlib.Path("SKILLS.md")
+    if not index.exists():
+        return                       # the index is optional; the check is not
+    body = _text(index)
+    missing = [d.name for d in sorted(SKILLS.iterdir())
+               if d.is_dir() and (d / "SKILL.md").exists()
+               and f"`{d.name}`" not in body and f"`/{d.name}`" not in body]
+    assert not missing, f"not listed in SKILLS.md: {missing}"

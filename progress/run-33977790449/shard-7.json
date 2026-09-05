@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 29, "total": 53, "rows": 1157994, "note": "MCDSTOCK 30m: rule 33/120 (heikin)", "failed": [], "pct": 54.7, "updated": "2026-09-05T17:24:54Z"}
+{"shard": 7, "stage": "testing", "done": 29, "total": 53, "rows": 1173294, "note": "MCDSTOCK 30m: rule 118/120 (cf_stflip)", "failed": [], "pct": 54.7, "updated": "2026-09-05T17:25:40Z"}

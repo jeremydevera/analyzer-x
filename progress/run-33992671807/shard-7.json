@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 44, "total": 53, "rows": 1327592, "note": "STORJ 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-05T21:59:33Z"}
+{"shard": 7, "stage": "testing", "done": 44, "total": 53, "rows": 1345192, "note": "STORJ 1h: rule 75/120 (relvolbrk)", "failed": [], "pct": 83.0, "updated": "2026-09-05T22:00:19Z"}

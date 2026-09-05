@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 3, "total": 53, "rows": 65520, "note": "ALLO 4h: 1,789 bars, testing 120 rules", "failed": [], "pct": 5.7, "updated": "2026-09-05T13:09:24Z"}
+{"shard": 9, "stage": "testing", "done": 3, "total": 53, "rows": 93060, "note": "ALLO 30m: rule 3/120 (fade15)", "failed": [], "pct": 5.7, "updated": "2026-09-05T13:10:09Z"}

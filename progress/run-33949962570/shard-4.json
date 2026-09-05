@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 23, "total": 53, "rows": 596644, "note": "HUMA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-05T06:40:17Z"}
+{"shard": 4, "stage": "testing", "done": 27, "total": 53, "rows": 649568, "note": "LAB 1d: rule 1/120 (mom6)", "failed": [], "pct": 50.9, "updated": "2026-09-05T06:41:02Z"}

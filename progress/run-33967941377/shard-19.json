@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 40, "total": 52, "rows": 1517546, "note": "SFP 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 76.9, "updated": "2026-09-05T14:16:17Z"}
+{"shard": 19, "stage": "testing", "done": 40, "total": 52, "rows": 1531186, "note": "SFP 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 76.9, "updated": "2026-09-05T14:17:02Z"}

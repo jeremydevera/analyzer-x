@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 14, "total": 53, "rows": 397938, "note": "CUPSEY 1h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-05T18:31:23Z"}
+{"shard": 6, "stage": "testing", "done": 16, "total": 53, "rows": 418808, "note": "DYDX 1h: rule 29/120 (hull20)", "failed": [], "pct": 30.2, "updated": "2026-09-05T18:32:08Z"}

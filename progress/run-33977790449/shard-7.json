@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 8, "total": 53, "rows": 337298, "note": "BIGTIME 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 15.1, "updated": "2026-09-05T16:43:19Z"}
+{"shard": 7, "stage": "testing", "done": 9, "total": 53, "rows": 352038, "note": "BNT 4h: rule 17/120 (atrbreak)", "failed": [], "pct": 17.0, "updated": "2026-09-05T16:44:04Z"}

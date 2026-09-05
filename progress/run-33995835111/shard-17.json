@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 7, "total": 52, "rows": 298666, "note": "BCH 30m: downloading candles", "failed": [], "pct": 13.5, "updated": "2026-09-05T22:38:25Z"}
+{"shard": 17, "stage": "testing", "done": 7, "total": 52, "rows": 303866, "note": "BCH 30m: rule 20/120 (stoch14)", "failed": [], "pct": 13.5, "updated": "2026-09-05T22:39:10Z"}

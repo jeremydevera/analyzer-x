@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 48, "total": 53, "rows": 1696166, "note": "UMA 30m: rule 27/120 (aroon25)", "failed": [], "pct": 90.6, "updated": "2026-09-05T14:23:57Z"}
+{"shard": 6, "stage": "testing", "done": 48, "total": 53, "rows": 1707826, "note": "UMA 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 90.6, "updated": "2026-09-05T14:24:42Z"}

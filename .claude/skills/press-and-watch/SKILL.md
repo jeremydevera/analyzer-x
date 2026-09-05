@@ -80,6 +80,27 @@ process itself, repeatedly, and specifically:
 * did the count go BACKWARDS — that is a restart re-counting, not progress
 * what does the log's last line say — read the emitter, not the label
 
+### 3b. A QUESTION IS NOT A REASON TO STOP
+
+Operator, 2026-09-05: *"if you have question then ask your self what is best
+approach that wont cause any bug"*.
+
+When something is unclear mid-run — which of two fixes, whether to restart,
+whether a number is right — **do not stop and ask.** Ask yourself instead:
+*what is the approach that cannot cause a bug?* Then take it.
+
+The safe approach is almost always the one that:
+
+* **measures instead of assuming** — read the emitter, count the thing, time it;
+* **keeps the work already done** — checkpoint and resume rather than restart;
+* **is reversible** — a new file beside the old one, never in-place;
+* **fails loudly rather than quietly** — a named error beats a silent default;
+* **does less** — fix the one thing, do not widen the change mid-run.
+
+Only stop and ask when proceeding either way could **lose data or move real
+money**. Everything else: pick the safe path, say which you picked and why in
+the report, and keep going.
+
 ### 4. FIX — with the harddev loop
 
 Any error, any freeze, any silent no-op: invoke **`harddev`** and follow it.
@@ -91,10 +112,26 @@ then test, then push. A bug found here gets a test so it stays fixed.
 The fix is not proven by tests. Press the button again and watch it again.
 Repeat 1-5 until the job finishes and the data is where it belongs.
 
-### 6. REPORT what actually happened
+### 6. REPORT WHAT CHANGED
 
-The numbers the job produced, and every failure on the way with its real
-timestamp. Never "it works now" without the run that proves it.
+Operator, 2026-09-05: *"then report me what changed after press and watch"*.
+
+Not "it worked". A before-and-after, in numbers, plus what is different in the
+code. Every report ends with:
+
+| | |
+|---|---|
+| **Before** | the count when the button was pressed |
+| **After** | the count now, measured, not assumed |
+| **The run(s)** | pairs done, what was stored, errors, how many presses |
+| **What broke** | each failure, its real timestamp, and whether it is fixed |
+| **What changed in the code** | every file and why, or "nothing — it just worked" |
+| **What is still not right** | named, or "nothing" |
+
+Never "it works now" without the run that proves it. If the count did not move,
+say so first — a run that finished cleanly and changed nothing is a bug, not a
+success (2026-09-05: 3,101 pairs, 73,299 bars, zero errors, and the pending
+count went UP).
 
 ## Rules
 

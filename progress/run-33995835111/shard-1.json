@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 27, "total": 53, "rows": 1022540, "note": "KSM 30m: rule 30/120 (kama10)", "failed": [], "pct": 50.9, "updated": "2026-09-05T23:05:32Z"}
+{"shard": 1, "stage": "testing", "done": 27, "total": 53, "rows": 1034200, "note": "KSM 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-05T23:06:17Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 29, "total": 52, "rows": 1139836, "note": "MET 30m: rule 47/120 (ibs)", "failed": [], "pct": 55.8, "updated": "2026-09-05T11:00:36Z"}
+{"shard": 18, "stage": "testing", "done": 30, "total": 52, "rows": 1155456, "note": "MPCSTOCK 30m: 1,197 bars, testing 120 rules", "failed": [], "pct": 57.7, "updated": "2026-09-05T11:01:22Z"}

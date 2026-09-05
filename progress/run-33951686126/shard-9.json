@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 9, "total": 53, "rows": 315440, "note": "BOME 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 17.0, "updated": "2026-09-05T07:16:28Z"}
+{"shard": 9, "stage": "testing", "done": 12, "total": 53, "rows": 352190, "note": "CLO 1h: rule 8/120 (fib618)", "failed": [], "pct": 22.6, "updated": "2026-09-05T07:17:13Z"}

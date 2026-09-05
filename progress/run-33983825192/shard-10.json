@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 26, "total": 53, "rows": 660550, "note": "KITE 1d: 311 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-05T18:41:23Z"}
+{"shard": 10, "stage": "testing", "done": 26, "total": 53, "rows": 682638, "note": "KITE 1h: rule 35/120 (willr14)", "failed": [], "pct": 49.1, "updated": "2026-09-05T18:42:08Z"}

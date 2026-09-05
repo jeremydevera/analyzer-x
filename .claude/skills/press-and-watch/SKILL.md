@@ -109,6 +109,14 @@ timestamp. Never "it works now" without the run that proves it.
   redo that item (`market_sweep.discard_pair`, `PAIR_RETRIES`).
 * **Push every fix as it is made**, not at the end — anything CI runs from
   `main` is doubly urgent.
+* **A `npm run build` under a running `next start` BREAKS the operator's
+  screen.** `next start` serves the build it found when it launched, so
+  rebuilding underneath it leaves the browser asking for chunk files that no
+  longer exist — "Application error: a client-side exception has occurred
+  while loading localhost", on every page. It happened on 2026-09-05: the
+  server started 8:13:15pm, the rebuild landed 8:23:56pm, and the Candles page
+  died. **Restart the web UI after every build**, and check a real page
+  answers 200 with all its chunks present before saying the change is live.
 * **Say what you left broken.** If something is another session's, or cannot be
   fixed from here, name it rather than letting it read as clean.
 

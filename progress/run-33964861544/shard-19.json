@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 26, "total": 52, "rows": 726136, "note": "KOSTOCK 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 50.0, "updated": "2026-09-05T12:24:43Z"}
+{"shard": 19, "stage": "testing", "done": 28, "total": 52, "rows": 773422, "note": "MANTRA 1h: 4,444 bars, testing 120 rules", "failed": [], "pct": 53.8, "updated": "2026-09-05T12:25:30Z"}

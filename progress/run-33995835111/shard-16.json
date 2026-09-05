@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 1, "total": 52, "rows": 26180, "note": "ACE 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 1.9, "updated": "2026-09-05T22:26:06Z"}
+{"shard": 16, "stage": "testing", "done": 1, "total": 52, "rows": 29580, "note": "ACE 30m: rule 11/120 (sr_break)", "failed": [], "pct": 1.9, "updated": "2026-09-05T22:26:51Z"}

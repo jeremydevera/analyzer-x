@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 19, "total": 53, "rows": 675554, "note": "FLR 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 35.8, "updated": "2026-09-05T13:34:59Z"}
+{"shard": 2, "stage": "testing", "done": 20, "total": 53, "rows": 703274, "note": "GBP 4h: rule 58/120 (bos)", "failed": [], "pct": 37.7, "updated": "2026-09-05T13:35:44Z"}

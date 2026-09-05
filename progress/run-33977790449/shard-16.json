@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 40, "total": 52, "rows": 1630766, "note": "SCR 30m: rule 79/120 (cf_donch)", "failed": [], "pct": 76.9, "updated": "2026-09-05T17:41:29Z"}
+{"shard": 16, "stage": "testing", "done": 41, "total": 52, "rows": 1643086, "note": "SKL 4h: rule 9/120 (fib382)", "failed": [], "pct": 78.8, "updated": "2026-09-05T17:42:14Z"}

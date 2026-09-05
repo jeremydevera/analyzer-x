@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 30, "total": 53, "rows": 998774, "note": "MINA 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 56.6, "updated": "2026-09-05T13:44:17Z"}
+{"shard": 2, "stage": "testing", "done": 31, "total": 53, "rows": 1035934, "note": "MSFTSTOCK 30m: rule 17/120 (atrbreak)", "failed": [], "pct": 58.5, "updated": "2026-09-05T13:45:02Z"}

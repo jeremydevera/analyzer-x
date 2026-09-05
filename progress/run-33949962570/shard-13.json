@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 51, "total": 52, "rows": 1317950, "note": "XMR 4h: rule 10/120 (sr_bounce)", "failed": [], "pct": 98.1, "updated": "2026-09-05T06:46:40Z"}
+{"shard": 13, "stage": "done", "done": 52, "total": 52, "rows": 1380078, "note": "1,380,078 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "failed": [], "pct": 100.0, "updated": "2026-09-05T06:47:24Z"}

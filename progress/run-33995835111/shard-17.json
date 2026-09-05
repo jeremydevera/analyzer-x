@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 25, "total": 52, "rows": 1043574, "note": "KAIA 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 48.1, "updated": "2026-09-05T23:16:22Z"}
+{"shard": 17, "stage": "testing", "done": 25, "total": 52, "rows": 1048634, "note": "KAIA 30m: rule 17/120 (atrbreak)", "failed": [], "pct": 48.1, "updated": "2026-09-05T23:17:07Z"}

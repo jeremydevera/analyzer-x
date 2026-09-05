@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 11, "total": 53, "rows": 442000, "note": "CATI 4h: rule 55/120 (nhigh50)", "failed": [], "pct": 20.8, "updated": "2026-09-05T19:53:08Z"}
+{"shard": 0, "stage": "testing", "done": 11, "total": 53, "rows": 457180, "note": "CATI 30m: rule 3/120 (fade15)", "failed": [], "pct": 20.8, "updated": "2026-09-05T19:54:01Z"}

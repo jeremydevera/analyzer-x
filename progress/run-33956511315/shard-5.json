@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 35, "total": 53, "rows": 941472, "note": "PANWSTOCK 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 66.0, "updated": "2026-09-05T09:25:48Z"}
+{"shard": 5, "stage": "testing", "done": 36, "total": 53, "rows": 961116, "note": "PI 1h: rule 2/120 (mom15)", "failed": [], "pct": 67.9, "updated": "2026-09-05T09:26:33Z"}

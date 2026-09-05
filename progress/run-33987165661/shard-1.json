@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 19, "total": 53, "rows": 707300, "note": "FLOW 30m: rule 60/120 (eqraid)", "failed": [], "pct": 35.8, "updated": "2026-09-05T19:53:46Z"}
+{"shard": 1, "stage": "testing", "done": 20, "total": 53, "rows": 720500, "note": "GAS 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-05T19:54:40Z"}

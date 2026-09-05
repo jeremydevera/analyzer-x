@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 17, "total": 53, "rows": 571226, "note": "ESP 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-05T19:55:22Z"}
+{"shard": 8, "stage": "testing", "done": 20, "total": 53, "rows": 615946, "note": "GFSSTOCK 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 37.7, "updated": "2026-09-05T19:56:07Z"}

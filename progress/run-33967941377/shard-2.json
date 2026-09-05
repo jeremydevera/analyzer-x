@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 35, "total": 53, "rows": 1228992, "note": "OXYSTOCK 30m: rule 43/120 (macddiv)", "failed": [], "pct": 66.0, "updated": "2026-09-05T13:52:49Z"}
+{"shard": 2, "stage": "testing", "done": 36, "total": 53, "rows": 1256312, "note": "PIPPIN 4h: rule 74/120 (volclimax)", "failed": [], "pct": 67.9, "updated": "2026-09-05T13:53:34Z"}

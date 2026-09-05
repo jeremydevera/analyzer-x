@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 23, "total": 53, "rows": 961824, "note": "H 30m: rule 21/120 (cci20)", "failed": [], "pct": 43.4, "updated": "2026-09-05T17:07:00Z"}
+{"shard": 9, "stage": "testing", "done": 23, "total": 53, "rows": 970404, "note": "H 30m: rule 61/120 (turtle)", "failed": [], "pct": 43.4, "updated": "2026-09-05T17:07:45Z"}

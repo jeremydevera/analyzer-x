@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 27, "total": 52, "rows": 847948, "note": "LITESTOCK 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 51.9, "updated": "2026-09-05T15:46:55Z"}
+{"shard": 17, "stage": "testing", "done": 28, "total": 52, "rows": 871892, "note": "MANA 1h: rule 22/120 (engulf)", "failed": [], "pct": 53.8, "updated": "2026-09-05T15:47:41Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 33, "total": 53, "rows": 946128, "note": "NMR 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 62.3, "updated": "2026-09-05T07:32:04Z"}
+{"shard": 0, "stage": "testing", "done": 33, "total": 53, "rows": 971648, "note": "NMR 1h: rule 112/120 (cf_obretest)", "failed": [], "pct": 62.3, "updated": "2026-09-05T07:32:49Z"}

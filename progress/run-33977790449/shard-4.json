@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 23, "total": 53, "rows": 881558, "note": "HUMA 30m: rule 21/120 (cci20)", "failed": [], "pct": 43.4, "updated": "2026-09-05T17:04:45Z"}
+{"shard": 4, "stage": "testing", "done": 23, "total": 53, "rows": 892158, "note": "HUMA 30m: rule 75/120 (relvolbrk)", "failed": [], "pct": 43.4, "updated": "2026-09-05T17:05:30Z"}

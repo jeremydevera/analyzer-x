@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 27, "total": 53, "rows": 996718, "note": "LAB 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-05T23:09:06Z"}
+{"shard": 4, "stage": "testing", "done": 28, "total": 53, "rows": 1027318, "note": "LRCXSTOCK 30m: rule 41/120 (tsi)", "failed": [], "pct": 52.8, "updated": "2026-09-05T23:09:52Z"}

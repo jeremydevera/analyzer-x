@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 45, "total": 52, "rows": 1816446, "note": "TECKSTOCK 30m: 1,502 bars, testing 120 rules", "failed": [], "pct": 86.5, "updated": "2026-09-05T17:51:57Z"}
+{"shard": 16, "stage": "testing", "done": 47, "total": 52, "rows": 1871786, "note": "TWLOSTOCK 30m: rule 68/120 (dbltop)", "failed": [], "pct": 90.4, "updated": "2026-09-05T17:52:42Z"}

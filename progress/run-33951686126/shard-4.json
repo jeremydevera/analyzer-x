@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 36, "total": 53, "rows": 1041526, "note": "PIXEL 1h: rule 13/120 (pivot)", "failed": [], "pct": 67.9, "updated": "2026-09-05T07:32:48Z"}
+{"shard": 4, "stage": "testing", "done": 37, "total": 53, "rows": 1063746, "note": "PROVE 1d: 394 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-05T07:33:34Z"}

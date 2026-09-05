@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 41, "total": 52, "rows": 1416292, "note": "SITMSTOCK 30m: rule 21/120 (cci20)", "failed": [], "pct": 78.8, "updated": "2026-09-05T10:56:40Z"}
+{"shard": 11, "stage": "testing", "done": 42, "total": 52, "rows": 1452884, "note": "SNOWSTOCK 30m: rule 39/120 (fisher)", "failed": [], "pct": 80.8, "updated": "2026-09-05T10:57:25Z"}

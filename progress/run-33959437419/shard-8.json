@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 13, "total": 53, "rows": 468240, "note": "CRCLSTOCK 30m: rule 18/120 (macd)", "failed": [], "pct": 24.5, "updated": "2026-09-05T10:24:11Z"}
+{"shard": 8, "stage": "testing", "done": 13, "total": 53, "rows": 480040, "note": "CRCLSTOCK 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 24.5, "updated": "2026-09-05T10:24:56Z"}

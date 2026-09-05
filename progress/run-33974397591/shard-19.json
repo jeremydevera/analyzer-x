@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 5, "total": 52, "rows": 176294, "note": "AUCTION 1h: rule 72/120 (force13)", "failed": [], "pct": 9.6, "updated": "2026-09-05T15:25:12Z"}
+{"shard": 19, "stage": "testing", "done": 6, "total": 52, "rows": 200230, "note": "B2 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 11.5, "updated": "2026-09-05T15:25:58Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 3, "total": 53, "rows": 81760, "note": "ALABSTOCK 30m: rule 40/120 (crsi)", "failed": [], "pct": 5.7, "updated": "2026-09-05T13:10:07Z"}
+{"shard": 4, "stage": "testing", "done": 4, "total": 53, "rows": 121760, "note": "ANKR 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 7.5, "updated": "2026-09-05T13:10:55Z"}

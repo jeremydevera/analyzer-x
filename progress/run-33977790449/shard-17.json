@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 35, "total": 52, "rows": 1528280, "note": "PEPSTOCK 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 67.3, "updated": "2026-09-05T17:37:20Z"}
+{"shard": 17, "stage": "testing", "done": 36, "total": 52, "rows": 1556720, "note": "PORTAL 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 69.2, "updated": "2026-09-05T17:38:19Z"}

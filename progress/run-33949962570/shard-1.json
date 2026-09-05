@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 1, "total": 53, "rows": 34254, "note": "1000000BABYDOGE 4h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-05T06:32:38Z"}
+{"shard": 1, "stage": "testing", "done": 6, "total": 53, "rows": 89408, "note": "AUD 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-05T06:33:26Z"}

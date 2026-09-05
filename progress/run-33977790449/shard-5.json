@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 24, "total": 53, "rows": 734296, "note": "INIT 30m: rule 39/120 (fisher)", "failed": [], "pct": 45.3, "updated": "2026-09-05T17:03:15Z"}
+{"shard": 5, "stage": "testing", "done": 24, "total": 53, "rows": 745956, "note": "INIT 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 45.3, "updated": "2026-09-05T17:04:00Z"}

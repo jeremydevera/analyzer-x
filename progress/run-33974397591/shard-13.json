@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 45, "total": 52, "rows": 1270358, "note": "TA 1h: rule 47/120 (ibs)", "failed": [], "pct": 86.5, "updated": "2026-09-05T15:55:33Z"}
+{"shard": 13, "stage": "testing", "done": 46, "total": 52, "rows": 1297754, "note": "TOSHI 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 88.5, "updated": "2026-09-05T15:56:29Z"}

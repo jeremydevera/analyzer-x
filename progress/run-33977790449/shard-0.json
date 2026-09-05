@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 38, "total": 53, "rows": 1425992, "note": "QQQSTOCK 4h: 1,867 bars, testing 120 rules", "failed": [], "pct": 71.7, "updated": "2026-09-05T17:32:48Z"}
+{"shard": 0, "stage": "testing", "done": 38, "total": 53, "rows": 1462792, "note": "QQQSTOCK 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 71.7, "updated": "2026-09-05T17:33:34Z"}

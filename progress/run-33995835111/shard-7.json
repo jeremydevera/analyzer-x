@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 31, "total": 53, "rows": 1270220, "note": "MTL 30m: rule 110/120 (cf_fundfade_l1)", "failed": [], "pct": 58.5, "updated": "2026-09-05T23:20:56Z"}
+{"shard": 7, "stage": "testing", "done": 34, "total": 53, "rows": 1315940, "note": "ONSTOCK 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 64.2, "updated": "2026-09-05T23:21:42Z"}

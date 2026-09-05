@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 53, "total": 53, "rows": 1590036, "note": "ZRO 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 100.0, "updated": "2026-09-05T17:05:25Z"}
+{"shard": 8, "stage": "testing", "done": 53, "total": 53, "rows": 1609236, "note": "ZRO 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-05T17:06:11Z"}

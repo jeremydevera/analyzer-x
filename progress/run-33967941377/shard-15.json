@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 25, "total": 52, "rows": 967572, "note": "JTO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 48.1, "updated": "2026-09-05T13:43:14Z"}
+{"shard": 15, "stage": "testing", "done": 25, "total": 52, "rows": 971092, "note": "JTO 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 48.1, "updated": "2026-09-05T13:44:00Z"}

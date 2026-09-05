@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 46, "total": 52, "rows": 1717370, "note": "TOSHI 30m: rule 45/120 (zscore20)", "failed": [], "pct": 88.5, "updated": "2026-09-05T20:41:15Z"}
+{"shard": 13, "stage": "testing", "done": 46, "total": 52, "rows": 1730370, "note": "TOSHI 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 88.5, "updated": "2026-09-05T20:42:01Z"}

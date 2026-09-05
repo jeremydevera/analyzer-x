@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 21, "total": 53, "rows": 819144, "note": "GOOGLSTOCK 30m: rule 83/120 (cf_maobv_l1)", "failed": [], "pct": 39.6, "updated": "2026-09-05T13:37:29Z"}
+{"shard": 1, "stage": "testing", "done": 23, "total": 53, "rows": 854264, "note": "HPESTOCK 30m: rule 37/120 (ultosc)", "failed": [], "pct": 43.4, "updated": "2026-09-05T13:38:14Z"}

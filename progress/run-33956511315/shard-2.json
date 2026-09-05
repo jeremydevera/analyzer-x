@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 5, "total": 53, "rows": 136248, "note": "ARKM 1h: rule 21/120 (cci20)", "failed": [], "pct": 9.4, "updated": "2026-09-05T08:59:03Z"}
+{"shard": 2, "stage": "testing", "done": 6, "total": 53, "rows": 157588, "note": "AURASOL 1d: 119 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-05T08:59:50Z"}

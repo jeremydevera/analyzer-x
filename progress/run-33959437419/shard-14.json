@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 43, "total": 52, "rows": 1563528, "note": "SPOTSTOCK 30m: 9,899 bars, testing 120 rules", "failed": [], "pct": 82.7, "updated": "2026-09-05T11:13:03Z"}
+{"shard": 14, "stage": "testing", "done": 43, "total": 52, "rows": 1586028, "note": "SPOTSTOCK 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 82.7, "updated": "2026-09-05T11:13:48Z"}

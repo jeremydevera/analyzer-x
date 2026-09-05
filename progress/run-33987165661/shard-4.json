@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 12, "total": 53, "rows": 509790, "note": "CHZ 4h: rule 33/120 (heikin)", "failed": [], "pct": 22.6, "updated": "2026-09-05T19:50:19Z"}
+{"shard": 4, "stage": "testing", "done": 12, "total": 53, "rows": 526010, "note": "CHZ 30m: rule 4/120 (trend50)", "failed": [], "pct": 22.6, "updated": "2026-09-05T19:51:06Z"}

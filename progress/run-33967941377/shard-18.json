@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 27, "total": 52, "rows": 1058100, "note": "LIT 30m: rule 75/120 (relvolbrk)", "failed": [], "pct": 51.9, "updated": "2026-09-05T14:01:00Z"}
+{"shard": 18, "stage": "testing", "done": 28, "total": 52, "rows": 1070530, "note": "MANTA 4h: rule 9/120 (fib382)", "failed": [], "pct": 53.8, "updated": "2026-09-05T14:01:45Z"}

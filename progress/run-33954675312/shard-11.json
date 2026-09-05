@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 13, "total": 52, "rows": 306576, "note": "CROSS 4h: rule 118/120 (cf_stflip)", "failed": [], "pct": 25.0, "updated": "2026-09-05T08:17:39Z"}
+{"shard": 11, "stage": "testing", "done": 17, "total": 52, "rows": 364186, "note": "ETHW 1d: 394 bars, testing 120 rules", "failed": [], "pct": 32.7, "updated": "2026-09-05T08:18:26Z"}

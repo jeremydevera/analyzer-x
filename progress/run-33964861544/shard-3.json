@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 30, "total": 53, "rows": 794852, "note": "MINIMAXSTOCK 1h: rule 4/120 (trend50)", "failed": [], "pct": 56.6, "updated": "2026-09-05T12:20:14Z"}
+{"shard": 3, "stage": "testing", "done": 33, "total": 53, "rows": 847172, "note": "NOT 1h: rule 1/120 (mom6)", "failed": [], "pct": 62.3, "updated": "2026-09-05T12:21:02Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 37, "total": 52, "rows": 1106646, "note": "PYPLSTOCK 1h: rule 68/120 (dbltop)", "failed": [], "pct": 71.2, "updated": "2026-09-05T18:54:48Z"}
+{"shard": 14, "stage": "testing", "done": 39, "total": 52, "rows": 1157372, "note": "ROBO 1h: rule 23/120 (supertrend)", "failed": [], "pct": 75.0, "updated": "2026-09-05T18:55:33Z"}

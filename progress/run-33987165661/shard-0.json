@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 18, "total": 53, "rows": 719184, "note": "EWZ 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 34.0, "updated": "2026-09-05T20:05:56Z"}
+{"shard": 0, "stage": "testing", "done": 20, "total": 53, "rows": 747004, "note": "GALA 30m: rule 1/120 (mom6)", "failed": [], "pct": 37.7, "updated": "2026-09-05T20:06:46Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 15, "total": 53, "rows": 462036, "note": "DELLSTOCK 1h: rule 83/120 (cf_maobv_l1)", "failed": [], "pct": 28.3, "updated": "2026-09-05T07:18:45Z"}
+{"shard": 1, "stage": "testing", "done": 19, "total": 53, "rows": 531048, "note": "FLOW 1d: rule 2/120 (mom15)", "failed": [], "pct": 35.8, "updated": "2026-09-05T07:19:30Z"}

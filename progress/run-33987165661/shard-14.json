@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 52, "total": 52, "rows": 1908426, "note": "ZEN 30m: rule 67/120 (pinbar)", "failed": [], "pct": 100.0, "updated": "2026-09-05T20:56:40Z"}
+{"shard": 14, "stage": "done", "done": 52, "total": 52, "rows": 1919866, "note": "1,919,866 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "failed": [], "pct": 100.0, "updated": "2026-09-05T20:57:18Z"}

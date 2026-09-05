@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 44, "total": 52, "rows": 1869624, "note": "SUPRA 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 84.6, "updated": "2026-09-05T11:28:28Z"}
+{"shard": 17, "stage": "testing", "done": 44, "total": 52, "rows": 1876504, "note": "SUPRA 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 84.6, "updated": "2026-09-05T11:29:14Z"}

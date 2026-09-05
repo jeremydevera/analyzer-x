@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 43, "total": 53, "rows": 1643450, "note": "SOXX 30m: rule 63/120 (killzone)", "failed": [], "pct": 81.1, "updated": "2026-09-05T14:27:48Z"}
+{"shard": 7, "stage": "testing", "done": 44, "total": 53, "rows": 1677850, "note": "STORJ 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-05T14:28:45Z"}

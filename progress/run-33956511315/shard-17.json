@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 12, "total": 52, "rows": 424198, "note": "COLLECT 1h: rule 22/120 (engulf)", "failed": [], "pct": 23.1, "updated": "2026-09-05T09:04:55Z"}
+{"shard": 17, "stage": "testing", "done": 14, "total": 52, "rows": 442414, "note": "DBR 1d: 394 bars, testing 120 rules", "failed": [], "pct": 26.9, "updated": "2026-09-05T09:05:41Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 46, "total": 52, "rows": 1341600, "note": "TOWNS 1h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 88.5, "updated": "2026-09-05T12:38:52Z"}
+{"shard": 14, "stage": "testing", "done": 47, "total": 52, "rows": 1361268, "note": "TURTLE 1h: rule 15/120 (bbbreak)", "failed": [], "pct": 90.4, "updated": "2026-09-05T12:39:37Z"}

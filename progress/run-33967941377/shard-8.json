@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 5, "total": 53, "rows": 176760, "note": "AR 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-05T13:16:35Z"}
+{"shard": 8, "stage": "testing", "done": 6, "total": 53, "rows": 206960, "note": "AVGOSTOCK 30m: rule 13/120 (pivot)", "failed": [], "pct": 11.3, "updated": "2026-09-05T13:17:21Z"}

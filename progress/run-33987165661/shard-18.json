@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 7, "total": 52, "rows": 274820, "note": "BDX 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 13.5, "updated": "2026-09-05T19:43:38Z"}
+{"shard": 18, "stage": "testing", "done": 8, "total": 52, "rows": 284660, "note": "BLESS 4h: rule 10/120 (sr_bounce)", "failed": [], "pct": 15.4, "updated": "2026-09-05T19:44:23Z"}

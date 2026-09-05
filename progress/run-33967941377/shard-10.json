@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 10, "total": 53, "rows": 376872, "note": "BUTTCOIN 4h: downloading candles", "failed": [], "pct": 18.9, "updated": "2026-09-05T13:24:56Z"}
+{"shard": 10, "stage": "testing", "done": 12, "total": 53, "rows": 406026, "note": "CLSKSTOCK 30m: rule 43/120 (macddiv)", "failed": [], "pct": 22.6, "updated": "2026-09-05T13:25:41Z"}

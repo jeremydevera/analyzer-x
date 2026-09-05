@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 49, "total": 53, "rows": 1961338, "note": "VANA 30m: rule 85/120 (cf_triple)", "failed": [], "pct": 92.5, "updated": "2026-09-05T11:30:40Z"}
+{"shard": 4, "stage": "testing", "done": 50, "total": 53, "rows": 1975418, "note": "WCT 4h: rule 23/120 (supertrend)", "failed": [], "pct": 94.3, "updated": "2026-09-05T11:31:25Z"}

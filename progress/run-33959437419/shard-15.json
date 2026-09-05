@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 7, "total": 52, "rows": 198592, "note": "BBSTOCK 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 13.5, "updated": "2026-09-05T10:05:22Z"}
+{"shard": 15, "stage": "testing", "done": 9, "total": 52, "rows": 277430, "note": "BRKBSTOCK 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 17.3, "updated": "2026-09-05T10:06:07Z"}

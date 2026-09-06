@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 37, "total": 53, "rows": 1318116, "note": "PTB 15m: rule 72/120 (force13)", "failed": [], "pct": 69.8, "updated": "2026-09-06T03:04:14Z"}
+{"shard": 7, "stage": "testing", "done": 37, "total": 53, "rows": 1326576, "note": "PTB 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 69.8, "updated": "2026-09-06T03:05:01Z"}

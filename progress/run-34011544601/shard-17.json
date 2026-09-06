@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 44, "total": 52, "rows": 1943760, "note": "SUPRA 15m: 34,600 bars, testing 120 rules", "failed": [], "pct": 84.6, "updated": "2026-09-06T06:27:38Z"}
+{"shard": 17, "stage": "testing", "done": 44, "total": 52, "rows": 1944000, "note": "SUPRA 30m: rule 2/120 (mom15)", "failed": [], "pct": 84.6, "updated": "2026-09-06T06:28:24Z"}

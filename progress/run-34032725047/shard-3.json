@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 51, "total": 53, "rows": 2331806, "note": "XAUT 30m: rule 21/120 (cci20)", "failed": [], "pct": 96.2, "updated": "2026-09-06T15:00:13Z"}
+{"shard": 3, "stage": "testing", "done": 52, "total": 53, "rows": 2366414, "note": "XRP 15m: rule 2/120 (mom15)", "failed": [], "pct": 98.1, "updated": "2026-09-06T15:00:59Z"}

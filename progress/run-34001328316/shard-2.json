@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 36, "total": 53, "rows": 1027836, "note": "PIPPIN 1h: rule 9/120 (fib382)", "failed": [], "pct": 67.9, "updated": "2026-09-06T00:59:12Z"}
+{"shard": 2, "stage": "testing", "done": 36, "total": 53, "rows": 1047236, "note": "PIPPIN 1h: rule 110/120 (cf_fundfade_l1)", "failed": [], "pct": 67.9, "updated": "2026-09-06T00:59:57Z"}

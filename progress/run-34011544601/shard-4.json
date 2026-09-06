@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 53, "total": 53, "rows": 2179820, "note": "ZKP 15m: 25,043 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-06T07:57:36Z"}
+{"shard": 4, "stage": "testing", "done": 53, "total": 53, "rows": 2181800, "note": "ZKP 15m: rule 3/120 (fade15)", "failed": [], "pct": 100.0, "updated": "2026-09-06T07:58:24Z"}

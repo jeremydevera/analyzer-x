@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 50, "total": 53, "rows": 1389268, "note": "WET 4h: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 94.3, "updated": "2026-09-06T19:45:51Z"}
+{"shard": 16, "stage": "testing", "done": 53, "total": 53, "rows": 1432212, "note": "ZRO 4h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-06T19:46:36Z"}

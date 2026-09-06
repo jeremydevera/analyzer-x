@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 25, "total": 53, "rows": 529914, "note": "JOE 4h: rule 28/120 (vortex14)", "failed": [], "pct": 47.2, "updated": "2026-09-06T16:33:57Z"}
+{"shard": 12, "stage": "testing", "done": 26, "total": 53, "rows": 588214, "note": "KITE 1d: 312 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-06T16:34:44Z"}

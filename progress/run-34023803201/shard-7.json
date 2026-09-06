@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 38, "total": 53, "rows": 1439822, "note": "RARE 30m: rule 43/120 (macddiv)", "failed": [], "pct": 71.7, "updated": "2026-09-06T10:33:54Z"}
+{"shard": 7, "stage": "testing", "done": 38, "total": 53, "rows": 1453242, "note": "RARE 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 71.7, "updated": "2026-09-06T10:34:40Z"}

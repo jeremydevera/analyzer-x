@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 35, "total": 52, "rows": 1222028, "note": "PENGU 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 67.3, "updated": "2026-09-06T03:09:58Z"}
+{"shard": 14, "stage": "testing", "done": 35, "total": 52, "rows": 1248968, "note": "PENGU 15m: rule 1/120 (mom6)", "failed": [], "pct": 67.3, "updated": "2026-09-06T03:10:55Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 1, "total": 53, "rows": 0, "note": "AAVE 1h: downloading candles", "failed": [], "pct": 1.9, "updated": "2026-09-06T16:57:03Z"}
+{"shard": 14, "stage": "testing", "done": 1, "total": 53, "rows": 8580, "note": "AAVE 1h: rule 33/120 (heikin)", "failed": [], "pct": 1.9, "updated": "2026-09-06T16:57:49Z"}

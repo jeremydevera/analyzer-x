@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 5, "total": 52, "rows": 203204, "note": "ASTER 15m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 9.6, "updated": "2026-09-06T01:51:02Z"}
+{"shard": 12, "stage": "testing", "done": 6, "total": 52, "rows": 228548, "note": "AXONSTOCK 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 11.5, "updated": "2026-09-06T01:51:48Z"}

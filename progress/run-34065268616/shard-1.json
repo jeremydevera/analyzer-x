@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 29, "total": 53, "rows": 1039004, "note": "MANTRA 1h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 54.7, "updated": "2026-09-06T23:37:02Z"}
+{"shard": 1, "stage": "testing", "done": 29, "total": 53, "rows": 1059244, "note": "MANTRA 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 54.7, "updated": "2026-09-06T23:37:47Z"}

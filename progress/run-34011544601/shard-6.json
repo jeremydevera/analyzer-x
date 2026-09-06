@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 13, "total": 53, "rows": 488220, "note": "COW 15m: rule 48/120 (prank)", "failed": [], "pct": 24.5, "updated": "2026-09-06T05:09:30Z"}
+{"shard": 6, "stage": "testing", "done": 13, "total": 53, "rows": 495620, "note": "COW 15m: rule 86/120 (cf_triple_l1)", "failed": [], "pct": 24.5, "updated": "2026-09-06T05:10:15Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 19, "total": 52, "rows": 833722, "note": "F 1h: rule 8/120 (fib618)", "failed": [], "pct": 36.5, "updated": "2026-09-06T09:57:08Z"}
+{"shard": 19, "stage": "testing", "done": 19, "total": 52, "rows": 856822, "note": "F 1h: rule 115/120 (cf_diadx)", "failed": [], "pct": 36.5, "updated": "2026-09-06T09:57:53Z"}

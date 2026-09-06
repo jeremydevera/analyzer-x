@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 46, "total": 53, "rows": 1925742, "note": "TIA 30m: rule 63/120 (killzone)", "failed": [], "pct": 86.8, "updated": "2026-09-06T18:31:45Z"}
+{"shard": 14, "stage": "testing", "done": 47, "total": 53, "rows": 1937142, "note": "TRX 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 88.7, "updated": "2026-09-06T18:32:31Z"}

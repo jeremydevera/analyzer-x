@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 51, "total": 53, "rows": 1688106, "note": "XCN 15m: 34,586 bars, testing 120 rules", "failed": [], "pct": 96.2, "updated": "2026-09-06T02:57:17Z"}
+{"shard": 3, "stage": "testing", "done": 51, "total": 53, "rows": 1693306, "note": "XCN 15m: rule 20/120 (stoch14)", "failed": [], "pct": 96.2, "updated": "2026-09-06T02:58:04Z"}

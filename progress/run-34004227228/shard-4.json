@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 49, "total": 53, "rows": 1804936, "note": "VANA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-06T03:25:55Z"}
+{"shard": 4, "stage": "testing", "done": 49, "total": 53, "rows": 1831716, "note": "VANA 15m: rule 1/120 (mom6)", "failed": [], "pct": 92.5, "updated": "2026-09-06T03:26:40Z"}

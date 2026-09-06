@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 39, "total": 53, "rows": 1502420, "note": "RLC 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 73.6, "updated": "2026-09-06T06:18:33Z"}
+{"shard": 10, "stage": "testing", "done": 39, "total": 53, "rows": 1509020, "note": "RLC 30m: rule 2/120 (mom15)", "failed": [], "pct": 73.6, "updated": "2026-09-06T06:19:19Z"}

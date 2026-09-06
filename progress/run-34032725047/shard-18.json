@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 39, "total": 52, "rows": 2057380, "note": "RON 30m: rule 32/120 (gmma)", "failed": [], "pct": 75.0, "updated": "2026-09-06T15:30:15Z"}
+{"shard": 18, "stage": "testing", "done": 39, "total": 52, "rows": 2068820, "note": "RON 30m: rule 85/120 (cf_triple)", "failed": [], "pct": 75.0, "updated": "2026-09-06T15:31:00Z"}

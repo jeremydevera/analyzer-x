@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 24, "total": 53, "rows": 638208, "note": "ILV 4h: rule 63/120 (killzone)", "failed": [], "pct": 45.3, "updated": "2026-09-06T16:37:37Z"}
+{"shard": 2, "stage": "testing", "done": 25, "total": 53, "rows": 686146, "note": "IRYS 1d: 285 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-06T16:38:26Z"}

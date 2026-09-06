@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 52, "total": 53, "rows": 2328798, "note": "ZBCN 30m: rule 1/120 (mom6)", "failed": [], "pct": 98.1, "updated": "2026-09-06T21:19:54Z"}
+{"shard": 19, "stage": "testing", "done": 52, "total": 53, "rows": 2340198, "note": "ZBCN 30m: rule 55/120 (nhigh50)", "failed": [], "pct": 98.1, "updated": "2026-09-06T21:20:39Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 42, "total": 52, "rows": 2223020, "note": "SOFISTOCK 15m: rule 49/120 (vwaprev)", "failed": [], "pct": 80.8, "updated": "2026-09-06T15:44:26Z"}
+{"shard": 18, "stage": "testing", "done": 43, "total": 52, "rows": 2258340, "note": "SPX 15m: rule 18/120 (macd)", "failed": [], "pct": 82.7, "updated": "2026-09-06T15:45:11Z"}

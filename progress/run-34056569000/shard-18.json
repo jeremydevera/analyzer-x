@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 27, "total": 53, "rows": 1105166, "note": "LISTA 1h: rule 21/120 (cci20)", "failed": [], "pct": 50.9, "updated": "2026-09-06T20:56:50Z"}
+{"shard": 18, "stage": "testing", "done": 27, "total": 53, "rows": 1126286, "note": "LISTA 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 50.9, "updated": "2026-09-06T20:57:46Z"}

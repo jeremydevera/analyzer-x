@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 36, "total": 53, "rows": 1420800, "note": "PIXEL 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 67.9, "updated": "2026-09-06T10:21:36Z"}
+{"shard": 5, "stage": "testing", "done": 37, "total": 53, "rows": 1429000, "note": "PROVE 1h: rule 4/120 (trend50)", "failed": [], "pct": 69.8, "updated": "2026-09-06T10:22:21Z"}

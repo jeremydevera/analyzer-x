@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 42, "total": 52, "rows": 1502300, "note": "SNOWSTOCK 15m: rule 53/120 (squeeze)", "failed": [], "pct": 80.8, "updated": "2026-09-06T06:31:33Z"}
+{"shard": 11, "stage": "testing", "done": 42, "total": 52, "rows": 1513860, "note": "SNOWSTOCK 30m: rule 16/120 (keltner)", "failed": [], "pct": 80.8, "updated": "2026-09-06T06:32:18Z"}

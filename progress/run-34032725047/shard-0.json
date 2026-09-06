@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 39, "total": 53, "rows": 1790142, "note": "RENDER 15m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 73.6, "updated": "2026-09-06T13:50:29Z"}
+{"shard": 0, "stage": "testing", "done": 39, "total": 53, "rows": 1795422, "note": "RENDER 30m: rule 18/120 (macd)", "failed": [], "pct": 73.6, "updated": "2026-09-06T13:51:14Z"}

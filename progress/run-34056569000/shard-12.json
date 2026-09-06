@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 9, "total": 53, "rows": 356292, "note": "BOTSTOCK 30m: rule 19/120 (emacross)", "failed": [], "pct": 17.0, "updated": "2026-09-06T20:08:55Z"}
+{"shard": 12, "stage": "testing", "done": 12, "total": 53, "rows": 486764, "note": "CMCSASTOCK 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-06T20:09:40Z"}

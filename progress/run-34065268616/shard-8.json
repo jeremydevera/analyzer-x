@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 2, "total": 53, "rows": 100700, "note": "AEVO 30m: rule 94/120 (cf_emarsi)", "failed": [], "pct": 3.8, "updated": "2026-09-06T23:00:42Z"}
+{"shard": 8, "stage": "testing", "done": 5, "total": 53, "rows": 138104, "note": "AR 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 9.4, "updated": "2026-09-06T23:01:31Z"}

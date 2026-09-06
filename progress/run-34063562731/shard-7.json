@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 37, "total": 53, "rows": 931708, "note": "PROVE 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-06T22:32:03Z"}
+{"shard": 7, "stage": "testing", "done": 38, "total": 53, "rows": 980416, "note": "Q 4h: rule 36/120 (stochrsi)", "failed": [], "pct": 71.7, "updated": "2026-09-06T22:32:48Z"}

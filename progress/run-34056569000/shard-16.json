@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 11, "total": 53, "rows": 502240, "note": "CFG 30m: rule 47/120 (ibs)", "failed": [], "pct": 20.8, "updated": "2026-09-06T20:29:55Z"}
+{"shard": 16, "stage": "testing", "done": 12, "total": 53, "rows": 533180, "note": "COHRSTOCK 1h: rule 72/120 (force13)", "failed": [], "pct": 22.6, "updated": "2026-09-06T20:30:40Z"}

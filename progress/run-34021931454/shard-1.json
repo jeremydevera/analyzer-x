@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 26, "total": 53, "rows": 663296, "note": "KAT 1d: rule 13/120 (pivot)", "failed": [], "pct": 49.1, "updated": "2026-09-06T08:38:08Z"}
+{"shard": 1, "stage": "testing", "done": 30, "total": 53, "rows": 724798, "note": "ME 4h: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 56.6, "updated": "2026-09-06T08:38:53Z"}

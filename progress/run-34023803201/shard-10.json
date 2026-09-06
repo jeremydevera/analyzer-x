@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 35, "total": 53, "rows": 1553286, "note": "PAYPSTOCK 30m: rule 11/120 (sr_break)", "failed": [], "pct": 66.0, "updated": "2026-09-06T10:24:21Z"}
+{"shard": 10, "stage": "testing", "done": 36, "total": 53, "rows": 1574686, "note": "PLUME 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 67.9, "updated": "2026-09-06T10:25:07Z"}

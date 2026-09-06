@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 52, "total": 53, "rows": 1985210, "note": "ZAMA 30m: 11,523 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-06T10:37:22Z"}
+{"shard": 13, "stage": "testing", "done": 52, "total": 53, "rows": 1992910, "note": "ZAMA 30m: rule 29/120 (hull20)", "failed": [], "pct": 98.1, "updated": "2026-09-06T10:38:08Z"}

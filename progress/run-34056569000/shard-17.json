@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 7, "total": 53, "rows": 321700, "note": "BCH 1h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-06T20:16:55Z"}
+{"shard": 17, "stage": "testing", "done": 7, "total": 53, "rows": 331900, "note": "BCH 30m: rule 12/120 (donchian20)", "failed": [], "pct": 13.2, "updated": "2026-09-06T20:17:41Z"}

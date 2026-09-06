@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 47, "total": 53, "rows": 1801106, "note": "TRIA 30m: rule 25/120 (ichimoku)", "failed": [], "pct": 88.7, "updated": "2026-09-06T18:36:40Z"}
+{"shard": 9, "stage": "testing", "done": 47, "total": 53, "rows": 1819586, "note": "TRIA 30m: rule 112/120 (cf_obretest)", "failed": [], "pct": 88.7, "updated": "2026-09-06T18:37:25Z"}

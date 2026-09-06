@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 52, "total": 53, "rows": 1951320, "note": "YB 15m: 31,746 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-06T07:18:28Z"}
+{"shard": 5, "stage": "testing", "done": 52, "total": 53, "rows": 1954200, "note": "YB 15m: rule 12/120 (donchian20)", "failed": [], "pct": 98.1, "updated": "2026-09-06T07:19:14Z"}

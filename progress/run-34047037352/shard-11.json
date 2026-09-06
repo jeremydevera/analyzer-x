@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 52, "total": 53, "rows": 2073616, "note": "XVS 30m: rule 75/120 (relvolbrk)", "failed": [], "pct": 98.1, "updated": "2026-09-06T18:35:37Z"}
+{"shard": 11, "stage": "testing", "done": 53, "total": 53, "rows": 2084176, "note": "ZKC 1h: rule 1/120 (mom6)", "failed": [], "pct": 100.0, "updated": "2026-09-06T18:36:23Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 13, "total": 53, "rows": 501226, "note": "COOKIE 30m: rule 17/120 (atrbreak)", "failed": [], "pct": 24.5, "updated": "2026-09-06T23:24:28Z"}
+{"shard": 0, "stage": "testing", "done": 13, "total": 53, "rows": 509366, "note": "COOKIE 30m: rule 55/120 (nhigh50)", "failed": [], "pct": 24.5, "updated": "2026-09-06T23:25:13Z"}

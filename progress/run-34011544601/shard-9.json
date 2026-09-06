@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 7, "total": 53, "rows": 301600, "note": "BARD 30m: rule 2/120 (mom15)", "failed": [], "pct": 13.2, "updated": "2026-09-06T04:59:57Z"}
+{"shard": 9, "stage": "testing", "done": 7, "total": 53, "rows": 309520, "note": "BARD 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 13.2, "updated": "2026-09-06T05:00:43Z"}

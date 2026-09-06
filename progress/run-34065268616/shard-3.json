@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 3, "total": 53, "rows": 113512, "note": "AKT 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 5.7, "updated": "2026-09-06T22:59:12Z"}
+{"shard": 3, "stage": "testing", "done": 3, "total": 53, "rows": 117472, "note": "AKT 30m: rule 12/120 (donchian20)", "failed": [], "pct": 5.7, "updated": "2026-09-06T22:59:57Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 40, "total": 52, "rows": 2079362, "note": "SCR 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 76.9, "updated": "2026-09-06T15:02:34Z"}
+{"shard": 17, "stage": "testing", "done": 42, "total": 52, "rows": 2103738, "note": "SNX 15m: 34,635 bars, testing 120 rules", "failed": [], "pct": 80.8, "updated": "2026-09-06T15:03:31Z"}

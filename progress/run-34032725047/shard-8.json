@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 24, "total": 53, "rows": 1075422, "note": "INTCSTOCK 15m: rule 59/120 (choch)", "failed": [], "pct": 45.3, "updated": "2026-09-06T14:04:20Z"}
+{"shard": 8, "stage": "testing", "done": 24, "total": 53, "rows": 1083742, "note": "INTCSTOCK 15m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 45.3, "updated": "2026-09-06T14:05:06Z"}

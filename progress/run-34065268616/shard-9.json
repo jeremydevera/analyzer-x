@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 17, "total": 53, "rows": 608786, "note": "ESP 1h: 5,006 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-06T23:13:16Z"}
+{"shard": 9, "stage": "testing", "done": 17, "total": 53, "rows": 636924, "note": "ESP 30m: rule 13/120 (pivot)", "failed": [], "pct": 32.1, "updated": "2026-09-06T23:14:01Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 17, "total": 53, "rows": 553824, "note": "EUR 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-06T16:36:42Z"}
+{"shard": 16, "stage": "testing", "done": 23, "total": 53, "rows": 711682, "note": "ICNT 4h: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 43.4, "updated": "2026-09-06T16:42:00Z"}

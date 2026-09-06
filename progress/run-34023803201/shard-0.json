@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 32, "total": 53, "rows": 1119114, "note": "NAS100 1h: rule 19/120 (emacross)", "failed": [], "pct": 60.4, "updated": "2026-09-06T10:11:17Z"}
+{"shard": 0, "stage": "testing", "done": 32, "total": 53, "rows": 1154314, "note": "NAS100 30m: rule 72/120 (force13)", "failed": [], "pct": 60.4, "updated": "2026-09-06T10:12:02Z"}

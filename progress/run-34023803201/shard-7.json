@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 21, "total": 53, "rows": 800202, "note": "GRAM 30m: rule 2/120 (mom15)", "failed": [], "pct": 39.6, "updated": "2026-09-06T09:53:19Z"}
+{"shard": 7, "stage": "testing", "done": 22, "total": 53, "rows": 825282, "note": "HFT 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 41.5, "updated": "2026-09-06T09:54:11Z"}

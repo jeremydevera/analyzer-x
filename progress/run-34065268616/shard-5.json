@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 26, "total": 53, "rows": 1016234, "note": "KERNEL 30m: rule 20/120 (stoch14)", "failed": [], "pct": 49.1, "updated": "2026-09-06T23:41:55Z"}
+{"shard": 5, "stage": "testing", "done": 26, "total": 53, "rows": 1023934, "note": "KERNEL 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 49.1, "updated": "2026-09-06T23:42:40Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 16, "total": 53, "rows": 606860, "note": "DUSK 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 30.2, "updated": "2026-09-06T05:26:41Z"}
+{"shard": 3, "stage": "testing", "done": 17, "total": 53, "rows": 612140, "note": "ENS 15m: rule 2/120 (mom15)", "failed": [], "pct": 32.1, "updated": "2026-09-06T05:27:35Z"}

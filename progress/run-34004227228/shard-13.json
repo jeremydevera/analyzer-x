@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 3, "total": 52, "rows": 84364, "note": "ALUMINUM 15m: rule 3/120 (fade15)", "failed": [], "pct": 5.8, "updated": "2026-09-06T01:37:32Z"}
+{"shard": 13, "stage": "testing", "done": 4, "total": 52, "rows": 111116, "note": "APLDSTOCK 15m: 10,250 bars, testing 120 rules", "failed": [], "pct": 7.7, "updated": "2026-09-06T01:38:18Z"}

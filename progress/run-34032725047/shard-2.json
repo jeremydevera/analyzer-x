@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 7, "total": 53, "rows": 263380, "note": "BABY 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 13.2, "updated": "2026-09-06T12:50:41Z"}
+{"shard": 2, "stage": "testing", "done": 7, "total": 53, "rows": 275980, "note": "BABY 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 13.2, "updated": "2026-09-06T12:51:27Z"}

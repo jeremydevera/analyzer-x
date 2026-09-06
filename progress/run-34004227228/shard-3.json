@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 48, "total": 53, "rows": 1569386, "note": "UBERSTOCK 15m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 90.6, "updated": "2026-09-06T02:52:56Z"}
+{"shard": 3, "stage": "testing", "done": 50, "total": 53, "rows": 1613086, "note": "WAXP 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 94.3, "updated": "2026-09-06T02:53:54Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 37, "total": 53, "rows": 1391936, "note": "PRL 30m: rule 20/120 (stoch14)", "failed": [], "pct": 69.8, "updated": "2026-09-06T21:04:22Z"}
+{"shard": 3, "stage": "testing", "done": 38, "total": 53, "rows": 1416156, "note": "QQQSTOCK 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 71.7, "updated": "2026-09-06T21:05:07Z"}

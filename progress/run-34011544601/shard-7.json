@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 16, "total": 53, "rows": 628360, "note": "DYM 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 30.2, "updated": "2026-09-06T05:32:06Z"}
+{"shard": 7, "stage": "testing", "done": 16, "total": 53, "rows": 629680, "note": "DYM 30m: rule 2/120 (mom15)", "failed": [], "pct": 30.2, "updated": "2026-09-06T05:32:54Z"}

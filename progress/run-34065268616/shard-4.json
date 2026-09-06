@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 32, "total": 53, "rows": 1270016, "note": "NEAR 30m: rule 29/120 (hull20)", "failed": [], "pct": 60.4, "updated": "2026-09-06T23:57:21Z"}
+{"shard": 4, "stage": "testing", "done": 32, "total": 53, "rows": 1280016, "note": "NEAR 30m: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 60.4, "updated": "2026-09-06T23:58:06Z"}

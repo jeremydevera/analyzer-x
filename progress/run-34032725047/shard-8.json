@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 14, "total": 53, "rows": 545274, "note": "CVC 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 26.4, "updated": "2026-09-06T13:15:21Z"}
+{"shard": 8, "stage": "testing", "done": 14, "total": 53, "rows": 553634, "note": "CVC 15m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-06T13:16:09Z"}

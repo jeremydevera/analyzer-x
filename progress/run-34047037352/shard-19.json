@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 44, "total": 53, "rows": 1970406, "note": "STX 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 83.0, "updated": "2026-09-06T18:43:00Z"}
+{"shard": 19, "stage": "testing", "done": 45, "total": 53, "rows": 1977864, "note": "TAKE 1h: rule 15/120 (bbbreak)", "failed": [], "pct": 84.9, "updated": "2026-09-06T18:43:45Z"}

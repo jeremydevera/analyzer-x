@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 12, "total": 53, "rows": 460054, "note": "CHF 15m: 29,974 bars, testing 120 rules", "failed": [], "pct": 22.6, "updated": "2026-09-06T12:46:39Z"}
+{"shard": 0, "stage": "testing", "done": 12, "total": 53, "rows": 481254, "note": "CHF 15m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-06T12:47:25Z"}

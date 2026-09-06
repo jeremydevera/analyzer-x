@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 8, "total": 52, "rows": 324000, "note": "BLAST 15m: rule 17/120 (atrbreak)", "failed": [], "pct": 15.4, "updated": "2026-09-06T05:08:35Z"}
+{"shard": 16, "stage": "testing", "done": 8, "total": 52, "rows": 329000, "note": "BLAST 15m: rule 42/120 (rsidiv)", "failed": [], "pct": 15.4, "updated": "2026-09-06T05:09:20Z"}

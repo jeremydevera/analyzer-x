@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 12, "total": 53, "rows": 379544, "note": "COMP 4h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-06T19:32:30Z"}
+{"shard": 19, "stage": "testing", "done": 16, "total": 53, "rows": 412324, "note": "ENA 4h: rule 46/120 (rsi2)", "failed": [], "pct": 30.2, "updated": "2026-09-06T19:33:15Z"}

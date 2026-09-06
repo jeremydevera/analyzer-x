@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 46, "total": 53, "rows": 2131014, "note": "THE 30m: rule 33/120 (heikin)", "failed": [], "pct": 86.8, "updated": "2026-09-06T15:29:03Z"}
+{"shard": 8, "stage": "testing", "done": 46, "total": 53, "rows": 2142014, "note": "THE 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 86.8, "updated": "2026-09-06T15:29:48Z"}

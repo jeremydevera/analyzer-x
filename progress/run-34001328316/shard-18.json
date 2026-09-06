@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 6, "total": 52, "rows": 172590, "note": "A 1h: rule 22/120 (engulf)", "failed": [], "pct": 11.5, "updated": "2026-09-06T00:35:00Z"}
+{"shard": 18, "stage": "testing", "done": 7, "total": 52, "rows": 193710, "note": "BDX 1d: 306 bars, testing 120 rules", "failed": [], "pct": 13.5, "updated": "2026-09-06T00:35:46Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 20, "total": 52, "rows": 718486, "note": "GLWSTOCK 15m: 10,627 bars, testing 120 rules", "failed": [], "pct": 38.5, "updated": "2026-09-06T02:14:31Z"}
+{"shard": 15, "stage": "testing", "done": 20, "total": 52, "rows": 733606, "note": "GLWSTOCK 15m: rule 79/120 (cf_donch)", "failed": [], "pct": 38.5, "updated": "2026-09-06T02:15:16Z"}

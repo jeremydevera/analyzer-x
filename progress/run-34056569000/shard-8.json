@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 6, "total": 53, "rows": 210930, "note": "AVGOSTOCK 1h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 11.3, "updated": "2026-09-06T20:11:42Z"}
+{"shard": 8, "stage": "testing", "done": 6, "total": 53, "rows": 220730, "note": "AVGOSTOCK 30m: rule 40/120 (crsi)", "failed": [], "pct": 11.3, "updated": "2026-09-06T20:12:27Z"}

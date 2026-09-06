@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 23, "total": 52, "rows": 758462, "note": "ICP 4h: rule 71/120 (mfi14)", "failed": [], "pct": 44.2, "updated": "2026-09-06T08:41:08Z"}
+{"shard": 16, "stage": "testing", "done": 25, "total": 52, "rows": 796742, "note": "JTO 4h: rule 63/120 (killzone)", "failed": [], "pct": 48.1, "updated": "2026-09-06T08:41:53Z"}

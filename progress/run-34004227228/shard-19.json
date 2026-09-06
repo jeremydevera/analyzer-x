@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 21, "total": 52, "rows": 702990, "note": "HANA 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 40.4, "updated": "2026-09-06T02:29:15Z"}
+{"shard": 19, "stage": "testing", "done": 24, "total": 52, "rows": 730830, "note": "IRENSTOCK 15m: 17,728 bars, testing 120 rules", "failed": [], "pct": 46.2, "updated": "2026-09-06T02:30:03Z"}

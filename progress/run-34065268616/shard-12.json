@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 33, "total": 53, "rows": 1463052, "note": "NVDL 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 62.3, "updated": "2026-09-06T23:51:38Z"}
+{"shard": 12, "stage": "testing", "done": 34, "total": 53, "rows": 1497612, "note": "OPENAI 30m: rule 30/120 (kama10)", "failed": [], "pct": 64.2, "updated": "2026-09-06T23:52:24Z"}

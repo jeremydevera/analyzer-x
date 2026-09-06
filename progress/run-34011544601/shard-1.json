@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 23, "total": 53, "rows": 864280, "note": "HPESTOCK 15m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 43.4, "updated": "2026-09-06T05:34:15Z"}
+{"shard": 1, "stage": "testing", "done": 24, "total": 53, "rows": 892680, "note": "IMX 15m: 34,597 bars, testing 120 rules", "failed": [], "pct": 45.3, "updated": "2026-09-06T05:35:03Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 5, "total": 53, "rows": 205428, "note": "ASTEROID 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-06T20:08:20Z"}
+{"shard": 11, "stage": "testing", "done": 6, "total": 53, "rows": 209668, "note": "AXL 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 11.3, "updated": "2026-09-06T20:09:06Z"}

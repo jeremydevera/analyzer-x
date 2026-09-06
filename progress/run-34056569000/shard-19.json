@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 16, "total": 53, "rows": 719104, "note": "ENA 30m: rule 85/120 (cf_triple)", "failed": [], "pct": 30.2, "updated": "2026-09-06T20:27:01Z"}
+{"shard": 19, "stage": "testing", "done": 18, "total": 53, "rows": 773024, "note": "FLOCK 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 34.0, "updated": "2026-09-06T20:28:00Z"}

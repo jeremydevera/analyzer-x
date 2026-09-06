@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 2, "total": 53, "rows": 57130, "note": "AGLD 15m: rule 37/120 (ultosc)", "failed": [], "pct": 3.8, "updated": "2026-09-06T12:21:27Z"}
+{"shard": 10, "stage": "testing", "done": 2, "total": 53, "rows": 69450, "note": "AGLD 15m: rule 94/120 (cf_emarsi)", "failed": [], "pct": 3.8, "updated": "2026-09-06T12:22:12Z"}

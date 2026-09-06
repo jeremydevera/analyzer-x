@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 16, "total": 53, "rows": 565620, "note": "EDEN 15m: rule 14/120 (bb20)", "failed": [], "pct": 30.2, "updated": "2026-09-06T05:10:06Z"}
+{"shard": 10, "stage": "testing", "done": 16, "total": 53, "rows": 570460, "note": "EDEN 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 30.2, "updated": "2026-09-06T05:10:53Z"}

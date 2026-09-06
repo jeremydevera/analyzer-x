@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 24, "total": 53, "rows": 612302, "note": "IMX 4h: rule 16/120 (keltner)", "failed": [], "pct": 45.3, "updated": "2026-09-06T08:39:14Z"}
+{"shard": 2, "stage": "testing", "done": 26, "total": 53, "rows": 654982, "note": "KAVA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-06T08:40:01Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 9, "total": 52, "rows": 455932, "note": "BROCCOLIF3B 1d: 394 bars, testing 120 rules", "failed": [], "pct": 17.3, "updated": "2026-09-06T13:07:33Z"}
+{"shard": 18, "stage": "testing", "done": 10, "total": 52, "rows": 470992, "note": "CARV 15m: rule 2/120 (mom15)", "failed": [], "pct": 19.2, "updated": "2026-09-06T13:08:28Z"}

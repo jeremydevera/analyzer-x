@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 43, "total": 53, "rows": 1846328, "note": "SPK 1h: rule 28/120 (vortex14)", "failed": [], "pct": 81.1, "updated": "2026-09-06T21:26:55Z"}
+{"shard": 17, "stage": "testing", "done": 43, "total": 53, "rows": 1866128, "note": "SPK 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-06T21:27:46Z"}

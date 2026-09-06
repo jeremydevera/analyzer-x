@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 10, "total": 53, "rows": 449972, "note": "BSV 1h: rule 33/120 (heikin)", "failed": [], "pct": 18.9, "updated": "2026-09-06T23:19:15Z"}
+{"shard": 4, "stage": "testing", "done": 10, "total": 53, "rows": 468672, "note": "BSV 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 18.9, "updated": "2026-09-06T23:20:01Z"}

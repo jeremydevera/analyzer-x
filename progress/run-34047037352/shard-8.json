@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 24, "total": 53, "rows": 851704, "note": "INJ 1h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 45.3, "updated": "2026-09-06T17:43:47Z"}
+{"shard": 8, "stage": "testing", "done": 24, "total": 53, "rows": 860884, "note": "INJ 30m: rule 8/120 (fib618)", "failed": [], "pct": 45.3, "updated": "2026-09-06T17:44:32Z"}

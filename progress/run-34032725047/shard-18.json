@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 49, "total": 52, "rows": 2543648, "note": "VSTOCK 30m: rule 1/120 (mom6)", "failed": [], "pct": 94.2, "updated": "2026-09-06T16:06:15Z"}
+{"shard": 18, "stage": "testing", "done": 49, "total": 52, "rows": 2561848, "note": "VSTOCK 30m: rule 88/120 (cf_chan)", "failed": [], "pct": 94.2, "updated": "2026-09-06T16:07:00Z"}

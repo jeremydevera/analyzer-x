@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 24, "total": 53, "rows": 913394, "note": "INTCSTOCK 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 45.3, "updated": "2026-09-06T17:43:28Z"}
+{"shard": 9, "stage": "testing", "done": 25, "total": 53, "rows": 920414, "note": "JELLYJELLY 1h: rule 21/120 (cci20)", "failed": [], "pct": 47.2, "updated": "2026-09-06T17:44:14Z"}

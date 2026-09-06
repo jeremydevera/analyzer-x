@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 49, "total": 53, "rows": 2005478, "note": "USTC 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 92.5, "updated": "2026-09-06T21:54:44Z"}
+{"shard": 7, "stage": "testing", "done": 50, "total": 53, "rows": 2010978, "note": "VVV 1h: rule 13/120 (pivot)", "failed": [], "pct": 94.3, "updated": "2026-09-06T21:55:29Z"}

@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 49, "total": 53, "rows": 1886420, "note": "VGT 15m: 3,043 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-06T06:49:11Z"}
+{"shard": 10, "stage": "testing", "done": 51, "total": 53, "rows": 1925380, "note": "XLM 15m: rule 2/120 (mom15)", "failed": [], "pct": 96.2, "updated": "2026-09-06T06:50:01Z"}

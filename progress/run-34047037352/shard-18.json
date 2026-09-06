@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 6, "total": 53, "rows": 257846, "note": "A 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 11.3, "updated": "2026-09-06T17:15:12Z"}
+{"shard": 18, "stage": "testing", "done": 7, "total": 53, "rows": 272078, "note": "BDX 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-06T17:15:57Z"}

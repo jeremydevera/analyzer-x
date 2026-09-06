@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 20, "total": 53, "rows": 826400, "note": "GGLL 30m: rule 4/120 (trend50)", "failed": [], "pct": 37.7, "updated": "2026-09-06T05:41:38Z"}
+{"shard": 9, "stage": "testing", "done": 21, "total": 53, "rows": 845320, "note": "GRT 15m: rule 2/120 (mom15)", "failed": [], "pct": 39.6, "updated": "2026-09-06T05:42:32Z"}

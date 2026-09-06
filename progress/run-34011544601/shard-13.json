@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 14, "total": 52, "rows": 584640, "note": "CYS 15m: rule 69/120 (obv20)", "failed": [], "pct": 26.9, "updated": "2026-09-06T05:23:43Z"}
+{"shard": 13, "stage": "testing", "done": 14, "total": 52, "rows": 592640, "note": "CYS 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 26.9, "updated": "2026-09-06T05:24:30Z"}

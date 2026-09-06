@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 25, "total": 52, "rows": 972040, "note": "JP225 15m: rule 67/120 (pinbar)", "failed": [], "pct": 48.1, "updated": "2026-09-06T05:42:34Z"}
+{"shard": 11, "stage": "testing", "done": 25, "total": 52, "rows": 984820, "note": "JP225 30m: rule 59/120 (choch)", "failed": [], "pct": 48.1, "updated": "2026-09-06T05:43:19Z"}

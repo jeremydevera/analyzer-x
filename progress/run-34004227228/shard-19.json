@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 8, "total": 52, "rows": 335366, "note": "BLKSTOCK 15m: 7,261 bars, testing 120 rules", "failed": [], "pct": 15.4, "updated": "2026-09-06T02:02:12Z"}
+{"shard": 19, "stage": "testing", "done": 11, "total": 52, "rows": 365966, "note": "CHF 15m: 29,974 bars, testing 120 rules", "failed": [], "pct": 21.2, "updated": "2026-09-06T02:03:07Z"}

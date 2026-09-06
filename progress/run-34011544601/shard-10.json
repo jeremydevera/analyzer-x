@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 1, "total": 53, "rows": 20520, "note": "AAOISTOCK 15m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-06T04:28:35Z"}
+{"shard": 10, "stage": "testing", "done": 2, "total": 53, "rows": 47940, "note": "AGLD 15m: rule 1/120 (mom6)", "failed": [], "pct": 3.8, "updated": "2026-09-06T04:29:32Z"}

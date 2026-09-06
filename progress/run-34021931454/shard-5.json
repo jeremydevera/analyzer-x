@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 30, "total": 53, "rows": 743054, "note": "MIRA 4h: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 56.6, "updated": "2026-09-06T08:40:54Z"}
+{"shard": 5, "stage": "testing", "done": 32, "total": 53, "rows": 772666, "note": "NEIROCTO 4h: rule 45/120 (zscore20)", "failed": [], "pct": 60.4, "updated": "2026-09-06T08:41:39Z"}

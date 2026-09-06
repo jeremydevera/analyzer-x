@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 45, "total": 53, "rows": 1214542, "note": "SUPRA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-06T08:50:15Z"}
+{"shard": 0, "stage": "testing", "done": 47, "total": 53, "rows": 1250716, "note": "TRADOOR 4h: rule 1/120 (mom6)", "failed": [], "pct": 88.7, "updated": "2026-09-06T08:51:02Z"}

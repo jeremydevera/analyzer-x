@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 17, "total": 53, "rows": 678940, "note": "ETHFI 15m: rule 22/120 (engulf)", "failed": [], "pct": 32.1, "updated": "2026-09-06T13:10:05Z"}
+{"shard": 11, "stage": "testing", "done": 17, "total": 53, "rows": 684440, "note": "ETHFI 15m: rule 47/120 (ibs)", "failed": [], "pct": 32.1, "updated": "2026-09-06T13:10:53Z"}

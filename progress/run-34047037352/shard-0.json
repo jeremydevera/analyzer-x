@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 7, "total": 53, "rows": 263998, "note": "B3 30m: rule 71/120 (mfi14)", "failed": [], "pct": 13.2, "updated": "2026-09-06T17:15:39Z"}
+{"shard": 0, "stage": "testing", "done": 8, "total": 53, "rows": 274558, "note": "BEAT 1h: 7,424 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-06T17:16:25Z"}

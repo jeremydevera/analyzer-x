@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 36, "total": 52, "rows": 1695942, "note": "PONS 15m: rule 13/120 (pivot)", "failed": [], "pct": 69.2, "updated": "2026-09-06T13:28:54Z"}
+{"shard": 15, "stage": "testing", "done": 37, "total": 52, "rows": 1759742, "note": "PYPLSTOCK 15m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 71.2, "updated": "2026-09-06T13:29:39Z"}

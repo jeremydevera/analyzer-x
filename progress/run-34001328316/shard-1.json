@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 1, "total": 53, "rows": 16236, "note": "1000000BABYDOGE 1h: rule 16/120 (keltner)", "failed": [], "pct": 1.9, "updated": "2026-09-06T00:29:00Z"}
+{"shard": 1, "stage": "testing", "done": 2, "total": 53, "rows": 46926, "note": "ADBESTOCK 1h: 8,483 bars, testing 120 rules", "failed": [], "pct": 3.8, "updated": "2026-09-06T00:29:47Z"}

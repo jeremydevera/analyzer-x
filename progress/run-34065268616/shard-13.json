@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 17, "total": 53, "rows": 738428, "note": "ETH 30m: rule 69/120 (obv20)", "failed": [], "pct": 32.1, "updated": "2026-09-06T23:26:58Z"}
+{"shard": 13, "stage": "testing", "done": 18, "total": 53, "rows": 749648, "note": "FIDA 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 34.0, "updated": "2026-09-06T23:27:44Z"}

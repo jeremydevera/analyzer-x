@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 32, "total": 52, "rows": 1257760, "note": "NIGHT 30m: rule 33/120 (heikin)", "failed": [], "pct": 61.5, "updated": "2026-09-06T06:11:20Z"}
+{"shard": 14, "stage": "testing", "done": 33, "total": 52, "rows": 1280780, "note": "NVTSSTOCK 15m: rule 67/120 (pinbar)", "failed": [], "pct": 63.5, "updated": "2026-09-06T06:12:05Z"}

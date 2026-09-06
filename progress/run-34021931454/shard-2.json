@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 21, "total": 53, "rows": 550610, "note": "GOOGLSTOCK 4h: rule 46/120 (rsi2)", "failed": [], "pct": 39.6, "updated": "2026-09-06T08:38:29Z"}
+{"shard": 2, "stage": "testing", "done": 24, "total": 53, "rows": 612302, "note": "IMX 4h: rule 16/120 (keltner)", "failed": [], "pct": 45.3, "updated": "2026-09-06T08:39:14Z"}

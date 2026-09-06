@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 30, "total": 53, "rows": 1262544, "note": "MINA 15m: rule 9/120 (fib382)", "failed": [], "pct": 56.6, "updated": "2026-09-06T13:40:43Z"}
+{"shard": 3, "stage": "testing", "done": 30, "total": 53, "rows": 1267824, "note": "MINA 15m: rule 33/120 (heikin)", "failed": [], "pct": 56.6, "updated": "2026-09-06T13:41:29Z"}

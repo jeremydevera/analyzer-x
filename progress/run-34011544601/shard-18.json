@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 37, "total": 52, "rows": 1551560, "note": "QNTSTOCK 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 71.2, "updated": "2026-09-06T07:09:35Z"}
+{"shard": 18, "stage": "testing", "done": 39, "total": 52, "rows": 1580960, "note": "ROSE 15m: 34,603 bars, testing 120 rules", "failed": [], "pct": 75.0, "updated": "2026-09-06T07:10:22Z"}

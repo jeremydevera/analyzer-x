@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 40, "total": 53, "rows": 1509306, "note": "RON 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-06T17:50:46Z"}
+{"shard": 1, "stage": "testing", "done": 40, "total": 53, "rows": 1516786, "note": "RON 30m: rule 28/120 (vortex14)", "failed": [], "pct": 75.5, "updated": "2026-09-06T17:51:32Z"}

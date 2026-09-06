@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 48, "total": 53, "rows": 1196414, "note": "TXNSTOCK 1d: rule 28/120 (vortex14)", "failed": [], "pct": 90.6, "updated": "2026-09-06T19:42:21Z"}
+{"shard": 7, "stage": "testing", "done": 50, "total": 53, "rows": 1240744, "note": "VVV 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 94.3, "updated": "2026-09-06T19:43:12Z"}

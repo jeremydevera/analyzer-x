@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 8, "total": 53, "rows": 285984, "note": "BERA 30m: rule 29/120 (hull20)", "failed": [], "pct": 15.1, "updated": "2026-09-06T09:28:27Z"}
+{"shard": 2, "stage": "testing", "done": 8, "total": 53, "rows": 296544, "note": "BERA 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 15.1, "updated": "2026-09-06T09:29:12Z"}

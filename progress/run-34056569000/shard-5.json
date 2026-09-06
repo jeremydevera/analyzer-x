@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 42, "total": 53, "rows": 1694220, "note": "SKYAI 30m: rule 9/120 (fib382)", "failed": [], "pct": 79.2, "updated": "2026-09-06T21:15:27Z"}
+{"shard": 5, "stage": "testing", "done": 42, "total": 53, "rows": 1701820, "note": "SKYAI 30m: rule 47/120 (ibs)", "failed": [], "pct": 79.2, "updated": "2026-09-06T21:16:12Z"}

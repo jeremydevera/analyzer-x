@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 17, "total": 53, "rows": 765260, "note": "ENSO 15m: rule 68/120 (dbltop)", "failed": [], "pct": 32.1, "updated": "2026-09-06T13:15:15Z"}
+{"shard": 3, "stage": "testing", "done": 17, "total": 53, "rows": 774720, "note": "ENSO 15m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-06T13:16:00Z"}

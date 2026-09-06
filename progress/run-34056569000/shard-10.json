@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 29, "total": 53, "rows": 1168740, "note": "MEGA 30m: rule 60/120 (eqraid)", "failed": [], "pct": 54.7, "updated": "2026-09-06T20:36:00Z"}
+{"shard": 10, "stage": "testing", "done": 34, "total": 53, "rows": 1279412, "note": "ONT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 64.2, "updated": "2026-09-06T20:36:58Z"}

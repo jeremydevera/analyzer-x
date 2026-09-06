@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 42, "total": 53, "rows": 1520484, "note": "SKY 30m: rule 46/120 (rsi2)", "failed": [], "pct": 79.2, "updated": "2026-09-06T21:12:46Z"}
+{"shard": 6, "stage": "testing", "done": 42, "total": 53, "rows": 1534564, "note": "SKY 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 79.2, "updated": "2026-09-06T21:13:31Z"}

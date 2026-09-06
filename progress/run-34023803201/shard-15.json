@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 2, "total": 52, "rows": 37676, "note": "AIN 30m: rule 4/120 (trend50)", "failed": [], "pct": 3.8, "updated": "2026-09-06T09:11:27Z"}
+{"shard": 15, "stage": "testing", "done": 2, "total": 52, "rows": 45156, "note": "AIN 30m: rule 38/120 (ao)", "failed": [], "pct": 3.8, "updated": "2026-09-06T09:12:13Z"}

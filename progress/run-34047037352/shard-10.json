@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 6, "total": 53, "rows": 286416, "note": "AWE 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-06T17:14:23Z"}
+{"shard": 10, "stage": "testing", "done": 6, "total": 53, "rows": 291036, "note": "AWE 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 11.3, "updated": "2026-09-06T17:15:08Z"}

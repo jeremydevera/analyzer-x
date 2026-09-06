@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 30, "total": 53, "rows": 952280, "note": "MINA 15m: rule 58/120 (bos)", "failed": [], "pct": 56.6, "updated": "2026-09-06T06:03:09Z"}
+{"shard": 2, "stage": "testing", "done": 30, "total": 53, "rows": 959540, "note": "MINA 15m: rule 91/120 (cf_soup)", "failed": [], "pct": 56.6, "updated": "2026-09-06T06:03:54Z"}

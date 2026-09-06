@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 19, "total": 53, "rows": 944878, "note": "FORM 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 35.8, "updated": "2026-09-06T13:04:41Z"}
+{"shard": 10, "stage": "testing", "done": 19, "total": 53, "rows": 956078, "note": "FORM 15m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 35.8, "updated": "2026-09-06T13:05:27Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 23, "total": 53, "rows": 854464, "note": "HYPE 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 43.4, "updated": "2026-09-06T23:20:12Z"}
+{"shard": 9, "stage": "testing", "done": 24, "total": 53, "rows": 882184, "note": "INTCSTOCK 1h: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 45.3, "updated": "2026-09-06T23:20:57Z"}

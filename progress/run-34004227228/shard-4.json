@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 48, "total": 53, "rows": 1796136, "note": "UB 15m: rule 79/120 (cf_donch)", "failed": [], "pct": 90.6, "updated": "2026-09-06T03:25:03Z"}
+{"shard": 4, "stage": "testing", "done": 49, "total": 53, "rows": 1804936, "note": "VANA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-06T03:25:55Z"}

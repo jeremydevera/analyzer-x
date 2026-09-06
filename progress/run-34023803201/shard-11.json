@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 41, "total": 53, "rows": 1599956, "note": "SILVER 1h: 5,879 bars, testing 120 rules", "failed": [], "pct": 77.4, "updated": "2026-09-06T10:24:33Z"}
+{"shard": 11, "stage": "testing", "done": 41, "total": 53, "rows": 1628436, "note": "SILVER 30m: rule 2/120 (mom15)", "failed": [], "pct": 77.4, "updated": "2026-09-06T10:25:20Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 21, "total": 53, "rows": 535658, "note": "GRASS 4h: rule 64/120 (hammer)", "failed": [], "pct": 39.6, "updated": "2026-09-06T08:39:29Z"}
+{"shard": 8, "stage": "testing", "done": 23, "total": 53, "rows": 587736, "note": "HYPE 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-06T08:40:18Z"}

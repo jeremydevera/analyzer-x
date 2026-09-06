@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 13, "total": 53, "rows": 486020, "note": "COPPER 15m: rule 73/120 (volspike)", "failed": [], "pct": 24.5, "updated": "2026-09-06T05:07:04Z"}
+{"shard": 1, "stage": "testing", "done": 13, "total": 53, "rows": 495780, "note": "COPPER 30m: rule 6/120 (sweep30)", "failed": [], "pct": 24.5, "updated": "2026-09-06T05:07:49Z"}

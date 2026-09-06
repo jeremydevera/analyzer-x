@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 50, "total": 53, "rows": 1149932, "note": "WAVES 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 94.3, "updated": "2026-09-06T22:35:03Z"}
+{"shard": 10, "stage": "testing", "done": 52, "total": 53, "rows": 1208188, "note": "XVG 4h: rule 45/120 (zscore20)", "failed": [], "pct": 98.1, "updated": "2026-09-06T22:35:48Z"}

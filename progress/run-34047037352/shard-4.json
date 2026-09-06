@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 1, "total": 53, "rows": 37180, "note": "1000BTT 30m: rule 40/120 (crsi)", "failed": [], "pct": 1.9, "updated": "2026-09-06T16:58:32Z"}
+{"shard": 4, "stage": "testing", "done": 2, "total": 53, "rows": 67588, "note": "AEHRSTOCK 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-06T16:59:17Z"}

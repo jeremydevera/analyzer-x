@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 27, "total": 53, "rows": 988720, "note": "LAYER 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-06T06:02:30Z"}
+{"shard": 6, "stage": "testing", "done": 28, "total": 53, "rows": 996920, "note": "LSK 15m: 34,599 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-06T06:03:23Z"}

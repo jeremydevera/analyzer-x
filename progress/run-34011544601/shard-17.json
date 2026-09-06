@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 39, "total": 52, "rows": 1732640, "note": "RON 30m: rule 20/120 (stoch14)", "failed": [], "pct": 75.0, "updated": "2026-09-06T06:19:42Z"}
+{"shard": 17, "stage": "testing", "done": 39, "total": 52, "rows": 1753760, "note": "RON 30m: rule 118/120 (cf_stflip)", "failed": [], "pct": 75.0, "updated": "2026-09-06T06:20:27Z"}

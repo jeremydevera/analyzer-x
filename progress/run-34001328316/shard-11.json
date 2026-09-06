@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 2, "total": 52, "rows": 37672, "note": "AGT 1d: 394 bars, testing 120 rules", "failed": [], "pct": 3.8, "updated": "2026-09-06T00:28:51Z"}
+{"shard": 11, "stage": "testing", "done": 2, "total": 52, "rows": 62212, "note": "AGT 1h: rule 76/120 (cf_mom)", "failed": [], "pct": 3.8, "updated": "2026-09-06T00:29:36Z"}

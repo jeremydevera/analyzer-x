@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 8, "total": 53, "rows": 319784, "note": "BIRB 1h: rule 64/120 (hammer)", "failed": [], "pct": 15.1, "updated": "2026-09-06T17:14:03Z"}
+{"shard": 11, "stage": "testing", "done": 8, "total": 53, "rows": 334458, "note": "BIRB 30m: rule 13/120 (pivot)", "failed": [], "pct": 15.1, "updated": "2026-09-06T17:14:49Z"}

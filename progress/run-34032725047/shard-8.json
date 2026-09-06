@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 35, "total": 53, "rows": 1623786, "note": "PAXG 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 66.0, "updated": "2026-09-06T14:49:29Z"}
+{"shard": 8, "stage": "testing", "done": 36, "total": 53, "rows": 1646538, "note": "PLSTOCK 15m: rule 1/120 (mom6)", "failed": [], "pct": 67.9, "updated": "2026-09-06T14:50:15Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 10, "total": 53, "rows": 505912, "note": "BTC 15m: rule 109/120 (cf_fundfade)", "failed": [], "pct": 18.9, "updated": "2026-09-06T13:03:10Z"}
+{"shard": 5, "stage": "testing", "done": 10, "total": 53, "rows": 512072, "note": "BTC 30m: rule 12/120 (donchian20)", "failed": [], "pct": 18.9, "updated": "2026-09-06T13:03:55Z"}

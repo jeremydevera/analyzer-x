@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 47, "total": 52, "rows": 1762534, "note": "TWLOSTOCK 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 90.4, "updated": "2026-09-06T03:52:41Z"}
+{"shard": 16, "stage": "testing", "done": 48, "total": 52, "rows": 1787500, "note": "USELESS 15m: 34,590 bars, testing 120 rules", "failed": [], "pct": 92.3, "updated": "2026-09-06T03:53:36Z"}

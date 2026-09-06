@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 39, "total": 52, "rows": 1948156, "note": "ROSE 15m: rule 55/120 (nhigh50)", "failed": [], "pct": 75.0, "updated": "2026-09-06T15:12:29Z"}
+{"shard": 19, "stage": "testing", "done": 39, "total": 52, "rows": 1955856, "note": "ROSE 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 75.0, "updated": "2026-09-06T15:13:16Z"}

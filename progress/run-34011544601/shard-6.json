@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 4, "total": 53, "rows": 190900, "note": "ANTHROPIC 30m: rule 85/120 (cf_triple)", "failed": [], "pct": 7.5, "updated": "2026-09-06T04:43:31Z"}
+{"shard": 6, "stage": "testing", "done": 6, "total": 53, "rows": 199580, "note": "AVAX 15m: rule 1/120 (mom6)", "failed": [], "pct": 11.3, "updated": "2026-09-06T04:44:17Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 36, "total": 52, "rows": 1238002, "note": "POL 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 69.2, "updated": "2026-09-06T02:58:20Z"}
+{"shard": 13, "stage": "testing", "done": 38, "total": 52, "rows": 1245184, "note": "RDDTSTOCK 4h: rule 5/120 (rsi14)", "failed": [], "pct": 73.1, "updated": "2026-09-06T02:59:05Z"}

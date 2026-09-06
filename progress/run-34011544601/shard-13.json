@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 26, "total": 52, "rows": 1029080, "note": "KMNO 30m: rule 38/120 (ao)", "failed": [], "pct": 50.0, "updated": "2026-09-06T06:01:54Z"}
+{"shard": 13, "stage": "testing", "done": 26, "total": 52, "rows": 1040960, "note": "KMNO 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 50.0, "updated": "2026-09-06T06:02:40Z"}

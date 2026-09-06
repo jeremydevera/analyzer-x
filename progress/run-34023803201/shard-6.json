@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 22, "total": 53, "rows": 772974, "note": "HEMI 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 41.5, "updated": "2026-09-06T09:42:47Z"}
+{"shard": 6, "stage": "testing", "done": 22, "total": 53, "rows": 795634, "note": "HEMI 30m: 17,915 bars, testing 120 rules", "failed": [], "pct": 41.5, "updated": "2026-09-06T09:43:39Z"}

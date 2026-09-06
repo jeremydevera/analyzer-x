@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 32, "total": 53, "rows": 1412674, "note": "NIL 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 60.4, "updated": "2026-09-06T21:08:37Z"}
+{"shard": 17, "stage": "testing", "done": 32, "total": 53, "rows": 1424334, "note": "NIL 1h: rule 47/120 (ibs)", "failed": [], "pct": 60.4, "updated": "2026-09-06T21:09:22Z"}

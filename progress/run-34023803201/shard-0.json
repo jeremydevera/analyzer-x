@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 41, "total": 53, "rows": 1613900, "note": "SFP 30m: rule 30/120 (kama10)", "failed": [], "pct": 77.4, "updated": "2026-09-06T10:40:13Z"}
+{"shard": 0, "stage": "testing", "done": 41, "total": 53, "rows": 1626880, "note": "SFP 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 77.4, "updated": "2026-09-06T10:40:59Z"}

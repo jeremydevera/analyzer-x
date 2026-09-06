@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 1, "total": 53, "rows": 0, "note": "1000000BABYDOGE 4h: downloading candles", "failed": [], "pct": 1.9, "updated": "2026-09-06T19:24:30Z"}
+{"shard": 1, "stage": "testing", "done": 2, "total": 53, "rows": 50346, "note": "ADBESTOCK 4h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-06T19:25:15Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 20, "total": 53, "rows": 848904, "note": "GEVSTOCK 15m: rule 59/120 (choch)", "failed": [], "pct": 37.7, "updated": "2026-09-06T13:45:15Z"}
+{"shard": 8, "stage": "testing", "done": 20, "total": 53, "rows": 865024, "note": "GEVSTOCK 30m: rule 49/120 (vwaprev)", "failed": [], "pct": 37.7, "updated": "2026-09-06T13:46:00Z"}

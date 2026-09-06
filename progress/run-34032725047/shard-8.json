@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 6, "total": 53, "rows": 259768, "note": "AVGOSTOCK 30m: rule 30/120 (kama10)", "failed": [], "pct": 11.3, "updated": "2026-09-06T12:48:26Z"}
+{"shard": 8, "stage": "testing", "done": 6, "total": 53, "rows": 275768, "note": "AVGOSTOCK 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 11.3, "updated": "2026-09-06T12:49:11Z"}

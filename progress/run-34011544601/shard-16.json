@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 22, "total": 52, "rows": 919840, "note": "HNT 15m: 34,599 bars, testing 120 rules", "failed": [], "pct": 42.3, "updated": "2026-09-06T06:00:45Z"}
+{"shard": 16, "stage": "testing", "done": 22, "total": 52, "rows": 921160, "note": "HNT 15m: rule 2/120 (mom15)", "failed": [], "pct": 42.3, "updated": "2026-09-06T06:01:35Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 34, "total": 53, "rows": 1283510, "note": "ONDSSTOCK 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 64.2, "updated": "2026-09-06T21:01:11Z"}
+{"shard": 6, "stage": "testing", "done": 37, "total": 53, "rows": 1287150, "note": "PROM 1h: rule 4/120 (trend50)", "failed": [], "pct": 69.8, "updated": "2026-09-06T21:01:57Z"}

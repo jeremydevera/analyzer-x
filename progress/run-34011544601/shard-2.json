@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 48, "total": 53, "rows": 1569680, "note": "UAI 15m: rule 69/120 (obv20)", "failed": [], "pct": 90.6, "updated": "2026-09-06T07:05:10Z"}
+{"shard": 2, "stage": "testing", "done": 48, "total": 53, "rows": 1576720, "note": "UAI 15m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 90.6, "updated": "2026-09-06T07:05:57Z"}

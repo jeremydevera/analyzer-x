@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 17, "total": 53, "rows": 737482, "note": "EPIC 30m: rule 1/120 (mom6)", "failed": [], "pct": 32.1, "updated": "2026-09-06T13:14:40Z"}
+{"shard": 6, "stage": "testing", "done": 17, "total": 53, "rows": 741662, "note": "EPIC 30m: rule 16/120 (keltner)", "failed": [], "pct": 32.1, "updated": "2026-09-06T13:15:26Z"}

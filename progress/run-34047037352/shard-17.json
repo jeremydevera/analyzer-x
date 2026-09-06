@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 10, "total": 53, "rows": 460720, "note": "CAP 1h: rule 54/120 (fractal5)", "failed": [], "pct": 18.9, "updated": "2026-09-06T17:20:40Z"}
+{"shard": 17, "stage": "testing", "done": 11, "total": 53, "rows": 499616, "note": "CFX 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 20.8, "updated": "2026-09-06T17:21:29Z"}

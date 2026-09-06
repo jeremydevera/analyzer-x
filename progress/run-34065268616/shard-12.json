@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 17, "total": 53, "rows": 711594, "note": "ETHW 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-06T23:19:07Z"}
+{"shard": 12, "stage": "testing", "done": 17, "total": 53, "rows": 716214, "note": "ETHW 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 32.1, "updated": "2026-09-06T23:19:53Z"}

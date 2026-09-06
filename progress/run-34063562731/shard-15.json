@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 5, "total": 53, "rows": 94864, "note": "ASXSTOCK 1d: 62 bars, testing 120 rules", "failed": [], "pct": 9.4, "updated": "2026-09-06T22:19:01Z"}
+{"shard": 15, "stage": "testing", "done": 9, "total": 53, "rows": 174006, "note": "BREV 1d: 250 bars, testing 120 rules", "failed": [], "pct": 17.0, "updated": "2026-09-06T22:19:50Z"}

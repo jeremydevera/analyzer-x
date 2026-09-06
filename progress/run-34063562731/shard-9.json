@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 4, "total": 53, "rows": 99482, "note": "APEX 4h: rule 76/120 (cf_mom)", "failed": [], "pct": 7.5, "updated": "2026-09-06T22:19:02Z"}
+{"shard": 9, "stage": "testing", "done": 6, "total": 53, "rows": 149732, "note": "AVNT 4h: 2,174 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-06T22:19:55Z"}

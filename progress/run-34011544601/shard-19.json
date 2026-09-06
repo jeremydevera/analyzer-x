@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 18, "total": 52, "rows": 605160, "note": "FLOKI 15m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 34.6, "updated": "2026-09-06T05:30:04Z"}
+{"shard": 19, "stage": "testing", "done": 18, "total": 52, "rows": 609120, "note": "FLOKI 30m: rule 9/120 (fib382)", "failed": [], "pct": 34.6, "updated": "2026-09-06T05:30:49Z"}

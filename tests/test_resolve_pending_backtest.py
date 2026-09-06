@@ -32,9 +32,16 @@ from fastapi.testclient import TestClient
 from tradingagents import api as api_mod, backtest_logs as bl, capacity as cap, cloud_sweep as cs
 from tradingagents.dataflows import mexc_futures as fx
 
+_BY_TF = {"15m": 32, "30m": 36, "1h": 84, "4h": 318, "1d": 211}
+# The default fixture is a store where every pending pair CAN be measured —
+# `measurable_by_timeframe` mirrors `by_timeframe`. The split into short and
+# delisted pairs has its own fixture below (SHORT), because those cases are
+# about what the button must REFUSE to promise.
 PENDING = {"count": 681, "stored": 5192, "measured": 4511,
-           "by_timeframe": {"15m": 32, "30m": 36, "1h": 84, "4h": 318,
-                            "1d": 211}}
+           "by_timeframe": dict(_BY_TF),
+           "measurable": 681, "measurable_by_timeframe": dict(_BY_TF),
+           "too_short": 0, "too_short_by_timeframe": {},
+           "delisted": 0, "delisted_coins": []}
 
 
 @pytest.fixture()
@@ -70,7 +77,8 @@ def test_it_dispatches_the_frames_the_pendings_are_in(client, monkeypatch):
 def test_only_the_frames_that_actually_have_pendings_are_sent(client, monkeypatch):
     """Sending a frame with nothing pending is twenty runners doing nothing."""
     monkeypatch.setattr(bl, "pending", lambda force=False: {
-        **PENDING, "count": 318, "by_timeframe": {"4h": 318}})
+        **PENDING, "count": 318, "by_timeframe": {"4h": 318},
+        "measurable": 318, "measurable_by_timeframe": {"4h": 318}})
     sent: dict = {}
     monkeypatch.setattr(cs, "dispatch", _dispatch_spy(sent))
     client.post("/api/backtest/pending/resolve")
@@ -89,7 +97,8 @@ def test_the_count_is_re_read_not_cached(client, monkeypatch):
 
 def test_nothing_pending_dispatches_nothing(client, monkeypatch):
     monkeypatch.setattr(bl, "pending", lambda force=False: {
-        **PENDING, "count": 0, "by_timeframe": {}})
+        **PENDING, "count": 0, "by_timeframe": {},
+        "measurable": 0, "measurable_by_timeframe": {}})
     called: list = []
     monkeypatch.setattr(cs, "dispatch", lambda **k: called.append(k))
     got = client.post("/api/backtest/pending/resolve").json()
@@ -100,23 +109,24 @@ def test_nothing_pending_dispatches_nothing(client, monkeypatch):
 # ------------------------------------------- what the fleet cannot reach
 def test_delisted_pairs_are_named_not_silently_left_behind(client, monkeypatch):
     """24 of the operator's 681 were on contracts MEXC no longer lists."""
-    monkeypatch.setattr(bl, "pending_pairs",
-                        lambda: [("AAA_USDT", "4h"), ("CZ_USDT", "1d"),
-                                 ("MEZO_USDT", "1d")])
+    monkeypatch.setattr(bl, "pending", lambda force=False: {
+        **PENDING, "count": 681, "measurable": 679,
+        "delisted": 2, "delisted_coins": ["CZ", "MEZO"]})
     monkeypatch.setattr(cs, "dispatch", _dispatch_spy({}))
     got = client.post("/api/backtest/pending/resolve").json()
     assert got["dispatched"] is True
     assert got["unreachable"] == 2
     assert got["unreachable_coins"] == ["CZ", "MEZO"]
     assert "CZ" in got["why"] and "delisted" in got["why"]
-    assert got["reachable"] == 679, "and the number it CAN do is said too"
+    assert got["measurable"] == 679, "and the number it CAN do is said too"
 
 
 def test_all_delisted_means_no_pointless_dispatch(client, monkeypatch):
     monkeypatch.setattr(bl, "pending", lambda force=False: {
-        **PENDING, "count": 2, "by_timeframe": {"1d": 2}})
-    monkeypatch.setattr(bl, "pending_pairs",
-                        lambda: [("CZ_USDT", "1d"), ("MEZO_USDT", "1d")])
+        **PENDING, "count": 2, "by_timeframe": {"1d": 2},
+        "measurable": 0, "measurable_by_timeframe": {},
+        "too_short": 0, "too_short_by_timeframe": {},
+        "delisted": 2, "delisted_coins": ["CZ", "MEZO"]})
     called: list = []
     monkeypatch.setattr(cs, "dispatch", lambda **k: called.append(k))
     got = client.post("/api/backtest/pending/resolve").json()
@@ -226,3 +236,52 @@ def test_an_unknown_busy_run_claims_no_coverage(client, monkeypatch):
     said = client.post("/api/backtest/pending/resolve").json()["detail"]
     assert "not recorded here" in said
     assert "4h" not in said, "a stale record must not be reported as coverage"
+
+
+# --------------- what a sweep can ACTUALLY do (press-and-watch, Sep 06)
+SHORT = {**PENDING, "count": 653, "measurable": 8,
+         "measurable_by_timeframe": {"15m": 7, "30m": 1},
+         "too_short": 645,
+         "too_short_by_timeframe": {"4h": 313, "1d": 208, "1h": 79,
+                                    "15m": 19, "30m": 26},
+         "delisted": 24, "delisted_coins": ["ASP", "BULLCOIN", "CZ"]}
+
+
+def test_only_frames_with_MEASURABLE_pendings_are_sent(client, monkeypatch):
+    """653 pending was 8 measurable. Sending all five frames would put twenty
+    runners on an hour of work to move the count by 8."""
+    monkeypatch.setattr(bl, "pending", lambda force=False: dict(SHORT))
+    sent: dict = {}
+    monkeypatch.setattr(cs, "dispatch", _dispatch_spy(sent))
+    got = client.post("/api/backtest/pending/resolve").json()
+    assert set(sent["timeframes"].split(",")) == {"15m", "30m"}, sent
+    assert got["measurable"] == 8
+    assert "8 of 653" in got["why"], got["why"]
+    assert "645 under their bar floor" in got["why"]
+
+
+def test_nothing_measurable_dispatches_nothing_and_says_why(client, monkeypatch):
+    """A store whose every pending pair is a young contract. The button must
+    not start a run, and must not read as broken either."""
+    monkeypatch.setattr(bl, "pending", lambda force=False: {
+        **SHORT, "measurable": 0, "measurable_by_timeframe": {}})
+    called: list = []
+    monkeypatch.setattr(cs, "dispatch", lambda **k: called.append(k))
+    got = client.post("/api/backtest/pending/resolve").json()
+    assert got["dispatched"] is False and not called
+    assert "bar floor" in got["why"] and "645" in got["why"]
+    assert "4h: 313" in got["why"], "the frames are named, never just counted"
+    assert "no longer lists" in got["why"] and "ASP" in got["why"]
+
+
+def test_the_split_comes_from_pending_not_a_second_source(client, monkeypatch):
+    """One payload decides the badge, the button and the dispatch. The route
+    used to re-derive the delisted set with its own venue call."""
+    import inspect
+
+    from tradingagents import api as api_mod
+
+    src = inspect.getsource(api_mod.backtest_pending_resolve)
+    assert "measurable_by_timeframe" in src
+    assert "contract/detail" not in src, \
+        "the delisted set is pending()'s job, not a second venue call here"

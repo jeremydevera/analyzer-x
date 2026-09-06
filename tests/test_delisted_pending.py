@@ -11,7 +11,6 @@ The split uses THE SHARD'S OWN RULE (`sweep_shard.py`: state == 0) — NOT
 `db_jobs.live_symbols`, which also drops apiAllowed=False contracts and
 called 50 pairs unreachable when only 24 were.
 """
-import json
 
 import pytest
 

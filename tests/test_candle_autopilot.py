@@ -27,7 +27,6 @@ below:
 
 Rounds 3 and 5 came back clean and are named in the commit.
 """
-import io
 import time
 
 import pytest
@@ -142,13 +141,13 @@ def test_a_missing_behind_hours_is_shouted_not_swallowed(monkeypatch):
 
 def test_a_measurement_in_a_comment_is_the_measured_one():
     """ROUND 2a: the first version claimed 0.02 s, which was never measured."""
-    body = io.open("tradingagents/candle_autopilot.py", encoding="utf-8").read()
+    body = open("tradingagents/candle_autopilot.py", encoding="utf-8").read()
     assert "0.122 s" in body
     assert "0.02 s" not in body
 
 
 def test_the_threshold_and_the_prose_agree():
-    body = io.open("tradingagents/candle_autopilot.py", encoding="utf-8").read()
+    body = open("tradingagents/candle_autopilot.py", encoding="utf-8").read()
     assert cda.STALE_HOURS == 3.0
     assert "under two hours" not in body, "the docstring said two, the constant says three"
 
@@ -181,7 +180,7 @@ def test_a_corrupt_state_file_is_not_fatal():
 
 # ------------------------------------------------------------- plumbing
 def test_the_supervisor_calls_it():
-    src = io.open("tradingagents/api.py", encoding="utf-8").read()
+    src = open("tradingagents/api.py", encoding="utf-8").read()
     assert "candle_autopilot" in src and "_cda.tick()" in src
     i = src.index("_cda.tick()")
     assert "except Exception" in src[i:i + 300], \
@@ -203,7 +202,7 @@ def test_no_ops_are_logged_when_the_reason_changes(monkeypatch, capsys):
 def test_the_screen_says_why_the_buttons_are_grey():
     """A top-up now starts by itself, so these grey out at a moment the
     operator did not cause."""
-    body = io.open("webapp/src/components/candles/DownloadScreen.tsx",
+    body = open("webapp/src/components/candles/DownloadScreen.tsx",
                    encoding="utf-8").read()
     assert "the buttons wait while a" in body
     assert "top up on their own once the store is 3h behind" in body

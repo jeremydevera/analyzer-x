@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 20, "total": 53, "rows": 963814, "note": "GIGADEVSTOCK 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 37.7, "updated": "2026-09-06T13:24:53Z"}
+{"shard": 12, "stage": "testing", "done": 21, "total": 53, "rows": 1000054, "note": "GSSTOCK 15m: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 39.6, "updated": "2026-09-06T13:25:38Z"}

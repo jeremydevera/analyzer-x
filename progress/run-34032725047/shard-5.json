@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 48, "total": 53, "rows": 2275388, "note": "UAI 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 90.6, "updated": "2026-09-06T15:23:31Z"}
+{"shard": 5, "stage": "testing", "done": 50, "total": 53, "rows": 2291208, "note": "WAVES 15m: rule 2/120 (mom15)", "failed": [], "pct": 94.3, "updated": "2026-09-06T15:24:29Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 25, "total": 53, "rows": 915368, "note": "ISRGSTOCK 1h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 47.2, "updated": "2026-09-06T17:46:55Z"}
+{"shard": 3, "stage": "testing", "done": 26, "total": 53, "rows": 935240, "note": "KAVA 1h: rule 6/120 (sweep30)", "failed": [], "pct": 49.1, "updated": "2026-09-06T17:47:41Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 6, "total": 53, "rows": 203360, "note": "AVAX 15m: rule 1/120 (mom6)", "failed": [], "pct": 11.3, "updated": "2026-09-06T01:46:13Z"}
+{"shard": 6, "stage": "testing", "done": 6, "total": 53, "rows": 206960, "note": "AVAX 15m: rule 17/120 (atrbreak)", "failed": [], "pct": 11.3, "updated": "2026-09-06T01:46:59Z"}

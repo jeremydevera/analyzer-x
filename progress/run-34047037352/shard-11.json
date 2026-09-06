@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 41, "total": 53, "rows": 1620616, "note": "SHOPSTOCK 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 77.4, "updated": "2026-09-06T18:14:13Z"}
+{"shard": 11, "stage": "testing", "done": 42, "total": 53, "rows": 1648984, "note": "SMCISTOCK 1h: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 79.2, "updated": "2026-09-06T18:14:59Z"}

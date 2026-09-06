@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 26, "total": 53, "rows": 1009922, "note": "KMNO 30m: rule 61/120 (turtle)", "failed": [], "pct": 49.1, "updated": "2026-09-06T17:46:39Z"}
+{"shard": 15, "stage": "testing", "done": 27, "total": 53, "rows": 1022902, "note": "LINEA 1h: 8,889 bars, testing 120 rules", "failed": [], "pct": 50.9, "updated": "2026-09-06T17:47:32Z"}

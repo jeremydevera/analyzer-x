@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 11, "total": 53, "rows": 528866, "note": "CC 30m: rule 94/120 (cf_emarsi)", "failed": [], "pct": 20.8, "updated": "2026-09-06T23:11:00Z"}
+{"shard": 9, "stage": "testing", "done": 13, "total": 53, "rows": 556806, "note": "CRCLSTOCK 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 24.5, "updated": "2026-09-06T23:11:45Z"}

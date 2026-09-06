@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 19, "total": 53, "rows": 904436, "note": "FUTUSTOCK 30m: rule 19/120 (emacross)", "failed": [], "pct": 35.8, "updated": "2026-09-06T20:43:03Z"}
+{"shard": 17, "stage": "testing", "done": 20, "total": 53, "rows": 922616, "note": "GLXYSTOCK 30m: downloading candles", "failed": [], "pct": 37.7, "updated": "2026-09-06T20:43:49Z"}

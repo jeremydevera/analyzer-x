@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 40, "total": 53, "rows": 1240366, "note": "RVN 15m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-06T02:34:10Z"}
+{"shard": 3, "stage": "testing", "done": 41, "total": 53, "rows": 1268086, "note": "SHELL 15m: 34,585 bars, testing 120 rules", "failed": [], "pct": 77.4, "updated": "2026-09-06T02:35:00Z"}

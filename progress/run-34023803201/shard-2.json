@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 19, "total": 53, "rows": 772814, "note": "FLOW 30m: rule 16/120 (keltner)", "failed": [], "pct": 35.8, "updated": "2026-09-06T09:46:28Z"}
+{"shard": 2, "stage": "testing", "done": 19, "total": 53, "rows": 782934, "note": "FLOW 30m: rule 63/120 (killzone)", "failed": [], "pct": 35.8, "updated": "2026-09-06T09:47:14Z"}

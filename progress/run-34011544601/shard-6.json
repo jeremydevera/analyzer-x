@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 23, "total": 53, "rows": 807260, "note": "HYPER 15m: rule 3/120 (fade15)", "failed": [], "pct": 43.4, "updated": "2026-09-06T05:40:13Z"}
+{"shard": 6, "stage": "testing", "done": 23, "total": 53, "rows": 811000, "note": "HYPER 15m: rule 20/120 (stoch14)", "failed": [], "pct": 43.4, "updated": "2026-09-06T05:41:02Z"}

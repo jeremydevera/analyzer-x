@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 53, "total": 53, "rows": 1354548, "note": "ZORA 4h: rule 24/120 (psar)", "failed": [], "pct": 100.0, "updated": "2026-09-06T16:48:24Z"}
+{"shard": 15, "stage": "done", "done": 53, "total": 53, "rows": 1387196, "note": "1,387,196 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "failed": [], "pct": 100.0, "updated": "2026-09-06T16:48:49Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 17, "total": 52, "rows": 598680, "note": "EUL 15m: rule 3/120 (fade15)", "failed": [], "pct": 32.7, "updated": "2026-09-06T05:15:39Z"}
+{"shard": 14, "stage": "testing", "done": 17, "total": 52, "rows": 603080, "note": "EUL 15m: rule 23/120 (supertrend)", "failed": [], "pct": 32.7, "updated": "2026-09-06T05:16:24Z"}

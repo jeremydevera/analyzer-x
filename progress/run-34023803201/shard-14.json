@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 39, "total": 53, "rows": 1510198, "note": "ROBINHOOD 30m: rule 30/120 (kama10)", "failed": [], "pct": 73.6, "updated": "2026-09-06T10:03:48Z"}
+{"shard": 14, "stage": "testing", "done": 41, "total": 53, "rows": 1547114, "note": "SKDD 30m: 1,291 bars, testing 120 rules", "failed": [], "pct": 77.4, "updated": "2026-09-06T10:04:33Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 21, "total": 53, "rows": 786788, "note": "GRIFFAIN 30m: rule 85/120 (cf_triple)", "failed": [], "pct": 39.6, "updated": "2026-09-06T09:47:57Z"}
+{"shard": 9, "stage": "testing", "done": 23, "total": 53, "rows": 830742, "note": "HYUNDAISTOCK 30m: rule 2/120 (mom15)", "failed": [], "pct": 43.4, "updated": "2026-09-06T09:48:42Z"}

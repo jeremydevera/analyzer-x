@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 47, "total": 53, "rows": 1781772, "note": "TRB 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 88.7, "updated": "2026-09-06T18:06:01Z"}
+{"shard": 6, "stage": "testing", "done": 47, "total": 53, "rows": 1789032, "note": "TRB 30m: rule 27/120 (aroon25)", "failed": [], "pct": 88.7, "updated": "2026-09-06T18:06:46Z"}

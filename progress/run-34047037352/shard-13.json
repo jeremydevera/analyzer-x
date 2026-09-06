@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 41, "total": 53, "rows": 1535524, "note": "SIGN 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 77.4, "updated": "2026-09-06T18:13:02Z"}
+{"shard": 13, "stage": "testing", "done": 41, "total": 53, "rows": 1550484, "note": "SIGN 1h: rule 63/120 (killzone)", "failed": [], "pct": 77.4, "updated": "2026-09-06T18:13:47Z"}

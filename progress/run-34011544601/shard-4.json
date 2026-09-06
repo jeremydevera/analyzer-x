@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 21, "total": 53, "rows": 827320, "note": "GPS 15m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 39.6, "updated": "2026-09-06T05:39:15Z"}
+{"shard": 4, "stage": "testing", "done": 21, "total": 53, "rows": 831940, "note": "GPS 30m: rule 2/120 (mom15)", "failed": [], "pct": 39.6, "updated": "2026-09-06T05:40:11Z"}

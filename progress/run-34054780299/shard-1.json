@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 48, "total": 53, "rows": 1242626, "note": "TURBO 1d: 394 bars, testing 120 rules", "failed": [], "pct": 90.6, "updated": "2026-09-06T19:40:16Z"}
+{"shard": 1, "stage": "testing", "done": 52, "total": 53, "rows": 1374040, "note": "XMR 4h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-06T19:41:01Z"}

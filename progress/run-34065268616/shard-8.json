@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 6, "total": 53, "rows": 198644, "note": "AVGOSTOCK 1h: rule 25/120 (ichimoku)", "failed": [], "pct": 11.3, "updated": "2026-09-06T23:05:28Z"}
+{"shard": 8, "stage": "testing", "done": 6, "total": 53, "rows": 219044, "note": "AVGOSTOCK 30m: rule 3/120 (fade15)", "failed": [], "pct": 11.3, "updated": "2026-09-06T23:06:15Z"}

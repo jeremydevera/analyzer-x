@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 29, "total": 53, "rows": 832562, "note": "MARSTOCK 15m: rule 27/120 (aroon25)", "failed": [], "pct": 54.7, "updated": "2026-09-06T02:40:00Z"}
+{"shard": 2, "stage": "testing", "done": 30, "total": 53, "rows": 868182, "note": "MINA 15m: 34,585 bars, testing 120 rules", "failed": [], "pct": 56.6, "updated": "2026-09-06T02:40:55Z"}

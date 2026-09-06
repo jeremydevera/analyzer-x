@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 43, "total": 53, "rows": 1760900, "note": "SOMI 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 81.1, "updated": "2026-09-06T21:20:09Z"}
+{"shard": 5, "stage": "testing", "done": 44, "total": 53, "rows": 1772120, "note": "SSV 1h: rule 4/120 (trend50)", "failed": [], "pct": 83.0, "updated": "2026-09-06T21:20:55Z"}

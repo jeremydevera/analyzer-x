@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 22, "total": 53, "rows": 848392, "note": "HDSTOCK 1h: rule 3/120 (fade15)", "failed": [], "pct": 41.5, "updated": "2026-09-06T23:35:03Z"}
+{"shard": 5, "stage": "testing", "done": 23, "total": 53, "rows": 917862, "note": "HUBSSTOCK 30m: rule 44/120 (elder)", "failed": [], "pct": 43.4, "updated": "2026-09-06T23:35:48Z"}

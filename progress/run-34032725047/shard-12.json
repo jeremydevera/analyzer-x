@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 51, "total": 53, "rows": 2363812, "note": "XLK 30m: rule 98/120 (cf_ttm_l1)", "failed": [], "pct": 96.2, "updated": "2026-09-06T15:11:43Z"}
+{"shard": 12, "stage": "testing", "done": 53, "total": 53, "rows": 2382042, "note": "ZRX 15m: 34,635 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-06T15:12:31Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 34, "total": 53, "rows": 1331320, "note": "ONDSSTOCK 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 64.2, "updated": "2026-09-06T06:24:56Z"}
+{"shard": 4, "stage": "testing", "done": 34, "total": 53, "rows": 1346440, "note": "ONDSSTOCK 30m: rule 57/120 (orderblock)", "failed": [], "pct": 64.2, "updated": "2026-09-06T06:25:41Z"}

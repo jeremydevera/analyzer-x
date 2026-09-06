@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 37, "total": 53, "rows": 1186020, "note": "PUFFER 30m: rule 43/120 (macddiv)", "failed": [], "pct": 69.8, "updated": "2026-09-06T06:03:13Z"}
+{"shard": 8, "stage": "testing", "done": 37, "total": 53, "rows": 1199660, "note": "PUFFER 30m: rule 106/120 (cf_bosfvg)", "failed": [], "pct": 69.8, "updated": "2026-09-06T06:03:58Z"}

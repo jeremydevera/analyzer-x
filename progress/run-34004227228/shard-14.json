@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 27, "total": 52, "rows": 924600, "note": "LINK 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 51.9, "updated": "2026-09-06T02:47:50Z"}
+{"shard": 14, "stage": "testing", "done": 27, "total": 52, "rows": 951200, "note": "LINK 15m: rule 2/120 (mom15)", "failed": [], "pct": 51.9, "updated": "2026-09-06T02:48:47Z"}

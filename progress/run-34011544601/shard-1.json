@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 53, "total": 53, "rows": 2088260, "note": "ZIL 15m: rule 22/120 (engulf)", "failed": [], "pct": 100.0, "updated": "2026-09-06T07:21:46Z"}
+{"shard": 1, "stage": "testing", "done": 53, "total": 53, "rows": 2093760, "note": "ZIL 15m: rule 47/120 (ibs)", "failed": [], "pct": 100.0, "updated": "2026-09-06T07:22:32Z"}

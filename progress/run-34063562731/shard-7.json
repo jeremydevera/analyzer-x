@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 8, "total": 53, "rows": 210242, "note": "BIGTIME 4h: rule 63/120 (killzone)", "failed": [], "pct": 15.1, "updated": "2026-09-06T22:21:35Z"}
+{"shard": 7, "stage": "testing", "done": 12, "total": 53, "rows": 274746, "note": "CKB 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 22.6, "updated": "2026-09-06T22:22:26Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 13, "total": 52, "rows": 586300, "note": "CSOPSAMSUNG2L 15m: 2,479 bars, testing 120 rules", "failed": [], "pct": 25.0, "updated": "2026-09-06T05:04:52Z"}
+{"shard": 17, "stage": "testing", "done": 14, "total": 52, "rows": 587020, "note": "DBR 15m: rule 2/120 (mom15)", "failed": [], "pct": 26.9, "updated": "2026-09-06T05:05:40Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 49, "total": 53, "rows": 1369778, "note": "VELVET 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 92.5, "updated": "2026-09-06T02:57:18Z"}
+{"shard": 8, "stage": "testing", "done": 49, "total": 53, "rows": 1376338, "note": "VELVET 15m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 92.5, "updated": "2026-09-06T02:58:04Z"}

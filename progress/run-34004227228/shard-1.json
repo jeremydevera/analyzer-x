@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 29, "total": 53, "rows": 1003262, "note": "MARSCOIN 15m: rule 4/120 (trend50)", "failed": [], "pct": 54.7, "updated": "2026-09-06T02:40:01Z"}
+{"shard": 1, "stage": "testing", "done": 31, "total": 53, "rows": 1053422, "note": "MRVLSTOCK 15m: 25,881 bars, testing 120 rules", "failed": [], "pct": 58.5, "updated": "2026-09-06T02:40:50Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 6, "total": 53, "rows": 178480, "note": "AUD 15m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 11.3, "updated": "2026-09-06T04:41:04Z"}
+{"shard": 1, "stage": "testing", "done": 6, "total": 53, "rows": 192600, "note": "AUD 30m: rule 51/120 (orb)", "failed": [], "pct": 11.3, "updated": "2026-09-06T04:41:49Z"}

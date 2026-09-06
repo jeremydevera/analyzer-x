@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 48, "total": 52, "rows": 2069140, "note": "USELESS 30m: rule 61/120 (turtle)", "failed": [], "pct": 92.3, "updated": "2026-09-06T11:00:02Z"}
+{"shard": 19, "stage": "testing", "done": 49, "total": 52, "rows": 2081460, "note": "VSTSTOCK 1h: 1,825 bars, testing 120 rules", "failed": [], "pct": 94.2, "updated": "2026-09-06T11:00:48Z"}

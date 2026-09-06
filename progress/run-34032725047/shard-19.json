@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 18, "total": 52, "rows": 930446, "note": "FLOCK 30m: rule 69/120 (obv20)", "failed": [], "pct": 34.6, "updated": "2026-09-06T13:45:33Z"}
+{"shard": 19, "stage": "testing", "done": 18, "total": 52, "rows": 941446, "note": "FLOCK 1d: 394 bars, testing 120 rules", "failed": [], "pct": 34.6, "updated": "2026-09-06T13:46:32Z"}

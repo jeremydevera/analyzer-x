@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 2, "total": 53, "rows": 53040, "note": "ADMSTOCK 15m: rule 25/120 (ichimoku)", "failed": [], "pct": 3.8, "updated": "2026-09-06T01:39:54Z"}
+{"shard": 2, "stage": "testing", "done": 3, "total": 53, "rows": 80280, "note": "AKE 15m: 34,581 bars, testing 120 rules", "failed": [], "pct": 5.7, "updated": "2026-09-06T01:40:49Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 39, "total": 53, "rows": 1791548, "note": "RIVER 15m: 33,528 bars, testing 120 rules", "failed": [], "pct": 73.6, "updated": "2026-09-06T15:03:20Z"}
+{"shard": 8, "stage": "testing", "done": 39, "total": 53, "rows": 1792988, "note": "RIVER 15m: rule 3/120 (fade15)", "failed": [], "pct": 73.6, "updated": "2026-09-06T15:04:21Z"}

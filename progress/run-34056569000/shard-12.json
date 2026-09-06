@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 34, "total": 53, "rows": 1443116, "note": "OPENAI 1h: 3,497 bars, testing 120 rules", "failed": [], "pct": 64.2, "updated": "2026-09-06T20:31:59Z"}
+{"shard": 12, "stage": "testing", "done": 35, "total": 53, "rows": 1510534, "note": "PAYPSTOCK 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 66.0, "updated": "2026-09-06T20:32:44Z"}

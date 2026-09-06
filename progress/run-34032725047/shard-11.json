@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 34, "total": 53, "rows": 1465664, "note": "OPENAI 15m: rule 25/120 (ichimoku)", "failed": [], "pct": 64.2, "updated": "2026-09-06T14:02:59Z"}
+{"shard": 11, "stage": "testing", "done": 34, "total": 53, "rows": 1482044, "note": "OPENAI 30m: 6,981 bars, testing 120 rules", "failed": [], "pct": 64.2, "updated": "2026-09-06T14:03:47Z"}

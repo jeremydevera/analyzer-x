@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 5, "total": 53, "rows": 173410, "note": "ASR 1d: rule 13/120 (pivot)", "failed": [], "pct": 9.4, "updated": "2026-09-06T22:19:58Z"}
+{"shard": 10, "stage": "testing", "done": 6, "total": 53, "rows": 210106, "note": "AWE 1d: 394 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-06T22:20:44Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 29, "total": 52, "rows": 1153916, "note": "METIS 15m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 55.8, "updated": "2026-09-06T03:01:13Z"}
+{"shard": 17, "stage": "testing", "done": 30, "total": 52, "rows": 1181736, "note": "MOVR 15m: 34,587 bars, testing 120 rules", "failed": [], "pct": 57.7, "updated": "2026-09-06T03:02:12Z"}

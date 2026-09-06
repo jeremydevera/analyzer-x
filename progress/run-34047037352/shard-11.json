@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 1, "total": 53, "rows": 47140, "note": "AAPLSTOCK 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-06T16:59:20Z"}
+{"shard": 11, "stage": "testing", "done": 2, "total": 53, "rows": 53800, "note": "AGT 1h: rule 28/120 (vortex14)", "failed": [], "pct": 3.8, "updated": "2026-09-06T17:00:05Z"}

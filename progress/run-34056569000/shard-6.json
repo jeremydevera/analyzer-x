@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 33, "total": 53, "rows": 1221584, "note": "NOWSTOCK 30m: rule 2/120 (mom15)", "failed": [], "pct": 62.3, "updated": "2026-09-06T20:59:40Z"}
+{"shard": 6, "stage": "testing", "done": 34, "total": 53, "rows": 1260250, "note": "ONDSSTOCK 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 64.2, "updated": "2026-09-06T21:00:26Z"}

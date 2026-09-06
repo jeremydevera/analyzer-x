@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 27, "total": 53, "rows": 640550, "note": "LIGHT 4h: rule 23/120 (supertrend)", "failed": [], "pct": 50.9, "updated": "2026-09-06T22:26:40Z"}
+{"shard": 14, "stage": "testing", "done": 30, "total": 53, "rows": 693838, "note": "MOODENG 4h: rule 6/120 (sweep30)", "failed": [], "pct": 56.6, "updated": "2026-09-06T22:27:25Z"}

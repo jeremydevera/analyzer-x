@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 34, "total": 52, "rows": 1155362, "note": "OPG 15m: 13,215 bars, testing 120 rules", "failed": [], "pct": 65.4, "updated": "2026-09-06T02:52:59Z"}
+{"shard": 13, "stage": "testing", "done": 34, "total": 52, "rows": 1161962, "note": "OPG 15m: rule 27/120 (aroon25)", "failed": [], "pct": 65.4, "updated": "2026-09-06T02:53:44Z"}

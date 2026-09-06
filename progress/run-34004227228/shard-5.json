@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 7, "total": 53, "rows": 193520, "note": "BANANA 4h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-06T01:50:04Z"}
+{"shard": 5, "stage": "testing", "done": 7, "total": 53, "rows": 200560, "note": "BANANA 15m: rule 2/120 (mom15)", "failed": [], "pct": 13.2, "updated": "2026-09-06T01:51:05Z"}

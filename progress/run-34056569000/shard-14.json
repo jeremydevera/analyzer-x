@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 11, "total": 53, "rows": 400574, "note": "CELR 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 20.8, "updated": "2026-09-06T20:18:09Z"}
+{"shard": 14, "stage": "testing", "done": 11, "total": 53, "rows": 408054, "note": "CELR 30m: rule 6/120 (sweep30)", "failed": [], "pct": 20.8, "updated": "2026-09-06T20:18:54Z"}

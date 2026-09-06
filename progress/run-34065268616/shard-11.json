@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 4, "total": 53, "rows": 167888, "note": "APHSTOCK 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 7.5, "updated": "2026-09-06T23:00:29Z"}
+{"shard": 11, "stage": "testing", "done": 6, "total": 53, "rows": 182224, "note": "AXL 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-06T23:01:29Z"}

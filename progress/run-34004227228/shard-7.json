@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 2, "total": 53, "rows": 81438, "note": "AERO 15m: rule 13/120 (pivot)", "failed": [], "pct": 3.8, "updated": "2026-09-06T01:39:55Z"}
+{"shard": 7, "stage": "testing", "done": 2, "total": 53, "rows": 87438, "note": "AERO 15m: rule 43/120 (macddiv)", "failed": [], "pct": 3.8, "updated": "2026-09-06T01:40:40Z"}

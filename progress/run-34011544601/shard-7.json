@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 3, "total": 53, "rows": 153700, "note": "ALICE 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 5.7, "updated": "2026-09-06T04:46:13Z"}
+{"shard": 7, "stage": "testing", "done": 5, "total": 53, "rows": 203760, "note": "ARX 15m: downloading candles", "failed": [], "pct": 9.4, "updated": "2026-09-06T04:46:58Z"}

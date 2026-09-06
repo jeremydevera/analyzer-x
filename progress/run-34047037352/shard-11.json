@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 43, "total": 53, "rows": 1721000, "note": "SOXS 30m: rule 95/120 (cf_emarsi_l1)", "failed": [], "pct": 81.1, "updated": "2026-09-06T18:16:29Z"}
+{"shard": 11, "stage": "testing", "done": 45, "total": 53, "rows": 1728000, "note": "SYN 1h: rule 6/120 (sweep30)", "failed": [], "pct": 84.9, "updated": "2026-09-06T18:17:14Z"}

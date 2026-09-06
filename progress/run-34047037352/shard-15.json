@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 27, "total": 53, "rows": 1070422, "note": "LINEA 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-06T17:50:42Z"}
+{"shard": 15, "stage": "testing", "done": 28, "total": 53, "rows": 1078822, "note": "LYN 1h: rule 3/120 (fade15)", "failed": [], "pct": 52.8, "updated": "2026-09-06T17:51:29Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 4, "total": 53, "rows": 174018, "note": "ANKR 30m: rule 20/120 (stoch14)", "failed": [], "pct": 7.5, "updated": "2026-09-06T09:15:50Z"}
+{"shard": 4, "stage": "testing", "done": 4, "total": 53, "rows": 186118, "note": "ANKR 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 7.5, "updated": "2026-09-06T09:16:36Z"}

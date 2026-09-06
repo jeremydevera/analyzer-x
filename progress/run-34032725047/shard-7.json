@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 20, "total": 53, "rows": 899614, "note": "GESTOCK 15m: rule 40/120 (crsi)", "failed": [], "pct": 37.7, "updated": "2026-09-06T13:33:12Z"}
+{"shard": 7, "stage": "testing", "done": 20, "total": 53, "rows": 904414, "note": "GESTOCK 30m: 12,963 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-06T13:33:57Z"}

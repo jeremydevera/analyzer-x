@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 26, "total": 53, "rows": 1033046, "note": "KLACSTOCK 30m: 3,878 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-06T23:42:55Z"}
+{"shard": 14, "stage": "testing", "done": 27, "total": 53, "rows": 1056986, "note": "LIGHT 1h: rule 3/120 (fade15)", "failed": [], "pct": 50.9, "updated": "2026-09-06T23:43:40Z"}

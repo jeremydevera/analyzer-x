@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 1, "total": 52, "rows": 32440, "note": "ACE 15m: rule 42/120 (rsidiv)", "failed": [], "pct": 1.9, "updated": "2026-09-06T01:37:41Z"}
+{"shard": 16, "stage": "testing", "done": 1, "total": 52, "rows": 39100, "note": "ACE 15m: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 1.9, "updated": "2026-09-06T01:38:26Z"}

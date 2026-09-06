@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 10, "total": 53, "rows": 246154, "note": "BTX 1d: rule 2/120 (mom15)", "failed": [], "pct": 18.9, "updated": "2026-09-06T08:33:35Z"}
+{"shard": 8, "stage": "testing", "done": 12, "total": 53, "rows": 284844, "note": "CLANKER 1d: 394 bars, testing 120 rules", "failed": [], "pct": 22.6, "updated": "2026-09-06T08:34:29Z"}

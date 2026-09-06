@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 16, "total": 52, "rows": 798018, "note": "ENA 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 30.8, "updated": "2026-09-06T13:34:54Z"}
+{"shard": 19, "stage": "testing", "done": 16, "total": 52, "rows": 805418, "note": "ENA 30m: rule 47/120 (ibs)", "failed": [], "pct": 30.8, "updated": "2026-09-06T13:35:40Z"}

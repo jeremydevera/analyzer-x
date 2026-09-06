@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 51, "total": 53, "rows": 2129760, "note": "XLK 30m: rule 1/120 (mom6)", "failed": [], "pct": 96.2, "updated": "2026-09-06T07:32:07Z"}
+{"shard": 9, "stage": "testing", "done": 53, "total": 53, "rows": 2153360, "note": "ZRX 15m: 34,605 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-06T07:32:59Z"}

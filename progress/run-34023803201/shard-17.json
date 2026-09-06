@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 40, "total": 52, "rows": 1766042, "note": "SCR 30m: rule 39/120 (fisher)", "failed": [], "pct": 76.9, "updated": "2026-09-06T10:40:47Z"}
+{"shard": 17, "stage": "testing", "done": 40, "total": 52, "rows": 1779022, "note": "SCR 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 76.9, "updated": "2026-09-06T10:41:33Z"}

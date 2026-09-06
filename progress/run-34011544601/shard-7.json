@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 8, "total": 53, "rows": 370620, "note": "BIGTIME 30m: rule 82/120 (cf_maobv)", "failed": [], "pct": 15.1, "updated": "2026-09-06T05:03:38Z"}
+{"shard": 7, "stage": "testing", "done": 9, "total": 53, "rows": 379640, "note": "BNT 15m: rule 1/120 (mom6)", "failed": [], "pct": 17.0, "updated": "2026-09-06T05:04:24Z"}

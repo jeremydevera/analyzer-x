@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 40, "total": 52, "rows": 1105970, "note": "SCR 1d: 394 bars, testing 120 rules", "failed": [], "pct": 76.9, "updated": "2026-09-06T08:44:32Z"}
+{"shard": 17, "stage": "testing", "done": 44, "total": 52, "rows": 1199162, "note": "SUMIELECSTOCK 1d: downloading candles", "failed": [], "pct": 84.6, "updated": "2026-09-06T08:45:18Z"}

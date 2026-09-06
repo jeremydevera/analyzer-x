@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 45, "total": 53, "rows": 1977864, "note": "TAKE 1h: rule 15/120 (bbbreak)", "failed": [], "pct": 84.9, "updated": "2026-09-06T18:43:45Z"}
+{"shard": 19, "stage": "testing", "done": 45, "total": 53, "rows": 1997862, "note": "TAKE 30m: 18,109 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-06T18:44:39Z"}

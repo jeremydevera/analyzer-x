@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 6, "total": 53, "rows": 204370, "note": "AUD 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 11.3, "updated": "2026-09-06T12:31:47Z"}
+{"shard": 1, "stage": "testing", "done": 6, "total": 53, "rows": 209770, "note": "AUD 30m: 15,988 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-06T12:32:38Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 38, "total": 53, "rows": 1535648, "note": "QCOMSTOCK 30m: rule 3/120 (fade15)", "failed": [], "pct": 71.7, "updated": "2026-09-06T21:27:29Z"}
+{"shard": 0, "stage": "testing", "done": 38, "total": 53, "rows": 1552248, "note": "QCOMSTOCK 30m: rule 86/120 (cf_triple_l1)", "failed": [], "pct": 71.7, "updated": "2026-09-06T21:28:14Z"}

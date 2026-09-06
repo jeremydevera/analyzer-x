@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 44, "total": 53, "rows": 1764216, "note": "STG 1h: rule 14/120 (bb20)", "failed": [], "pct": 83.0, "updated": "2026-09-06T18:23:43Z"}
+{"shard": 10, "stage": "testing", "done": 44, "total": 53, "rows": 1786436, "note": "STG 1h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 83.0, "updated": "2026-09-06T18:24:29Z"}

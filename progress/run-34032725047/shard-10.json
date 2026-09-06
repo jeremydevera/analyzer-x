@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 46, "total": 53, "rows": 2380244, "note": "TLM 30m: rule 74/120 (volclimax)", "failed": [], "pct": 86.8, "updated": "2026-09-06T14:16:53Z"}
+{"shard": 10, "stage": "testing", "done": 47, "total": 53, "rows": 2405760, "note": "TRY 15m: rule 3/120 (fade15)", "failed": [], "pct": 88.7, "updated": "2026-09-06T14:17:39Z"}

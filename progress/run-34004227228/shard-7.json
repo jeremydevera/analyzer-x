@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 46, "total": 53, "rows": 1645034, "note": "TLM 15m: rule 21/120 (cci20)", "failed": [], "pct": 86.8, "updated": "2026-09-06T03:23:01Z"}
+{"shard": 7, "stage": "testing", "done": 46, "total": 53, "rows": 1651834, "note": "TLM 15m: rule 56/120 (insidebrk)", "failed": [], "pct": 86.8, "updated": "2026-09-06T03:23:46Z"}

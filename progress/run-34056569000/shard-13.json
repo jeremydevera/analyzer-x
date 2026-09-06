@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 24, "total": 53, "rows": 1007558, "note": "IN 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 45.3, "updated": "2026-09-06T20:46:48Z"}
+{"shard": 13, "stage": "testing", "done": 25, "total": 53, "rows": 1020582, "note": "JP225 1h: rule 16/120 (keltner)", "failed": [], "pct": 47.2, "updated": "2026-09-06T20:47:33Z"}

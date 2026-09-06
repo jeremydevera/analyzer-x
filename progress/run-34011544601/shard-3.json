@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 19, "total": 53, "rows": 718320, "note": "FLUID 30m: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 35.8, "updated": "2026-09-06T05:39:16Z"}
+{"shard": 3, "stage": "testing", "done": 20, "total": 53, "rows": 754640, "note": "GDX 30m: rule 34/120 (lrslope)", "failed": [], "pct": 37.7, "updated": "2026-09-06T05:40:01Z"}

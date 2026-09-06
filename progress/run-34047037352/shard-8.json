@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 35, "total": 53, "rows": 1273812, "note": "PANWSTOCK 1h: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 66.0, "updated": "2026-09-06T18:02:36Z"}
+{"shard": 8, "stage": "testing", "done": 36, "total": 53, "rows": 1298094, "note": "PI 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 67.9, "updated": "2026-09-06T18:03:29Z"}

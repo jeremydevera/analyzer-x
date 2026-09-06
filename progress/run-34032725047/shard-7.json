@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 7, "total": 53, "rows": 316328, "note": "BANK 15m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-06T12:49:15Z"}
+{"shard": 7, "stage": "testing", "done": 7, "total": 53, "rows": 319208, "note": "BANK 30m: rule 3/120 (fade15)", "failed": [], "pct": 13.2, "updated": "2026-09-06T12:50:09Z"}

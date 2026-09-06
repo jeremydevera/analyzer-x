@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 24, "total": 53, "rows": 1066144, "note": "INJ 15m: rule 20/120 (stoch14)", "failed": [], "pct": 45.3, "updated": "2026-09-06T13:46:05Z"}
+{"shard": 7, "stage": "testing", "done": 24, "total": 53, "rows": 1071004, "note": "INJ 15m: rule 47/120 (ibs)", "failed": [], "pct": 45.3, "updated": "2026-09-06T13:46:51Z"}

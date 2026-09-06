@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 22, "total": 52, "rows": 835274, "note": "HOLO 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 42.3, "updated": "2026-09-06T02:35:56Z"}
+{"shard": 17, "stage": "testing", "done": 23, "total": 52, "rows": 841874, "note": "IDOL 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 44.2, "updated": "2026-09-06T02:36:43Z"}

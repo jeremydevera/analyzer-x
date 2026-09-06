@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 21, "total": 53, "rows": 863096, "note": "GRVT 30m: rule 17/120 (atrbreak)", "failed": [], "pct": 39.6, "updated": "2026-09-06T13:22:43Z"}
+{"shard": 11, "stage": "testing", "done": 23, "total": 53, "rows": 929496, "note": "IBB 15m: 3,840 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-06T13:23:28Z"}

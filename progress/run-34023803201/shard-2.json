@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 28, "total": 53, "rows": 1153796, "note": "LONGXIA 30m: 8,695 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-06T10:04:21Z"}
+{"shard": 2, "stage": "testing", "done": 28, "total": 53, "rows": 1168036, "note": "LONGXIA 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 52.8, "updated": "2026-09-06T10:05:07Z"}

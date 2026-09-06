@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 51, "total": 53, "rows": 2047842, "note": "XDC 1h: rule 20/120 (stoch14)", "failed": [], "pct": 96.2, "updated": "2026-09-06T11:08:20Z"}
+{"shard": 7, "stage": "testing", "done": 51, "total": 53, "rows": 2068962, "note": "XDC 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 96.2, "updated": "2026-09-06T11:09:11Z"}

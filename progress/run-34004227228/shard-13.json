@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 48, "total": 52, "rows": 1709618, "note": "US30 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 92.3, "updated": "2026-09-06T03:31:09Z"}
+{"shard": 13, "stage": "testing", "done": 49, "total": 52, "rows": 1734486, "note": "VRTSTOCK 15m: rule 47/120 (ibs)", "failed": [], "pct": 94.2, "updated": "2026-09-06T03:31:54Z"}

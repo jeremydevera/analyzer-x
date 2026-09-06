@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 52, "total": 53, "rows": 2316286, "note": "YFI 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-06T14:47:49Z"}
+{"shard": 9, "stage": "testing", "done": 53, "total": 53, "rows": 2354614, "note": "ZMSTOCK 30m: rule 37/120 (ultosc)", "failed": [], "pct": 100.0, "updated": "2026-09-06T14:48:34Z"}

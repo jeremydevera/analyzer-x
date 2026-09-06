@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 7, "total": 53, "rows": 197010, "note": "BARD 4h: rule 33/120 (heikin)", "failed": [], "pct": 13.2, "updated": "2026-09-06T22:20:40Z"}
+{"shard": 9, "stage": "testing", "done": 9, "total": 53, "rows": 253104, "note": "BOBA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 17.0, "updated": "2026-09-06T22:21:32Z"}

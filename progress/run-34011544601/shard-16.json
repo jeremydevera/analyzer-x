@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 25, "total": 52, "rows": 1120920, "note": "JUP 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 48.1, "updated": "2026-09-06T06:26:13Z"}
+{"shard": 16, "stage": "testing", "done": 26, "total": 52, "rows": 1127580, "note": "KOMA 15m: rule 1/120 (mom6)", "failed": [], "pct": 50.0, "updated": "2026-09-06T06:27:10Z"}

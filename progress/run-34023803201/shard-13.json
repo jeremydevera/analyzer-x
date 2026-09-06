@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 43, "total": 53, "rows": 1714788, "note": "SPELL 30m: rule 94/120 (cf_emarsi)", "failed": [], "pct": 81.1, "updated": "2026-09-06T10:26:36Z"}
+{"shard": 13, "stage": "testing", "done": 44, "total": 53, "rows": 1741068, "note": "STXSTOCK 30m: rule 4/120 (trend50)", "failed": [], "pct": 83.0, "updated": "2026-09-06T10:27:21Z"}

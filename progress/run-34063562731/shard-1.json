@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 21, "total": 53, "rows": 510948, "note": "GOAT 1d: 394 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-06T22:23:52Z"}
+{"shard": 1, "stage": "testing", "done": 25, "total": 53, "rows": 571076, "note": "IRENSTOCK 4h: rule 30/120 (kama10)", "failed": [], "pct": 47.2, "updated": "2026-09-06T22:24:37Z"}

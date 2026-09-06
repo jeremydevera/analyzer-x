@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 19, "total": 53, "rows": 821800, "note": "FLR 15m: 34,628 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-06T13:18:25Z"}
+{"shard": 3, "stage": "testing", "done": 19, "total": 53, "rows": 824880, "note": "FLR 15m: rule 8/120 (fib618)", "failed": [], "pct": 35.8, "updated": "2026-09-06T13:19:10Z"}

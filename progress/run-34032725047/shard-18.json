@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 34, "total": 52, "rows": 1742272, "note": "ORCA 15m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 65.4, "updated": "2026-09-06T15:01:34Z"}
+{"shard": 18, "stage": "testing", "done": 34, "total": 52, "rows": 1747672, "note": "ORCA 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 65.4, "updated": "2026-09-06T15:02:23Z"}

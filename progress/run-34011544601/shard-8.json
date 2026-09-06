@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 7, "total": 53, "rows": 223080, "note": "BAN 15m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-06T04:54:17Z"}
+{"shard": 8, "stage": "testing", "done": 7, "total": 53, "rows": 228480, "note": "BAN 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-06T04:55:12Z"}

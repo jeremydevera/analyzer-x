@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 9, "total": 53, "rows": 216626, "note": "BLUR 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 17.0, "updated": "2026-09-06T16:31:33Z"}
+{"shard": 2, "stage": "testing", "done": 10, "total": 53, "rows": 267094, "note": "BSB 4h: rule 51/120 (orb)", "failed": [], "pct": 18.9, "updated": "2026-09-06T16:32:18Z"}

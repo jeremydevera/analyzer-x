@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 12, "total": 53, "rows": 400094, "note": "CLANKER 1h: rule 118/120 (cf_stflip)", "failed": [], "pct": 22.6, "updated": "2026-09-06T17:17:11Z"}
+{"shard": 8, "stage": "testing", "done": 12, "total": 53, "rows": 402734, "note": "CLANKER 30m: rule 5/120 (rsi14)", "failed": [], "pct": 22.6, "updated": "2026-09-06T17:17:56Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 13, "total": 52, "rows": 556740, "note": "CRV 30m: rule 44/120 (elder)", "failed": [], "pct": 25.0, "updated": "2026-09-06T05:20:33Z"}
+{"shard": 13, "stage": "testing", "done": 13, "total": 52, "rows": 569060, "note": "CRV 30m: rule 101/120 (cf_soup1_l1)", "failed": [], "pct": 25.0, "updated": "2026-09-06T05:21:18Z"}

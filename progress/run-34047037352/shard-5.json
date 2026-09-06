@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 52, "total": 53, "rows": 2122608, "note": "XPIN 30m: 17,693 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-06T18:52:52Z"}
+{"shard": 5, "stage": "testing", "done": 52, "total": 53, "rows": 2125808, "note": "XPIN 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 98.1, "updated": "2026-09-06T18:53:37Z"}

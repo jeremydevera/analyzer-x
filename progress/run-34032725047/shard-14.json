@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 12, "total": 53, "rows": 555510, "note": "COAI 30m: rule 69/120 (obv20)", "failed": [], "pct": 22.6, "updated": "2026-09-06T13:08:15Z"}
+{"shard": 14, "stage": "testing", "done": 13, "total": 53, "rows": 576930, "note": "CRV 15m: 34,627 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-06T13:09:10Z"}

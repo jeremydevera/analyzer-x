@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 17, "total": 53, "rows": 728180, "note": "ETHW 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-06T09:31:15Z"}
+{"shard": 12, "stage": "testing", "done": 18, "total": 53, "rows": 735704, "note": "FHE 1h: rule 22/120 (engulf)", "failed": [], "pct": 34.0, "updated": "2026-09-06T09:32:00Z"}

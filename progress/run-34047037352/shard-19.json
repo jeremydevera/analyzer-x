@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 22, "total": 53, "rows": 971794, "note": "HOLO 30m: rule 41/120 (tsi)", "failed": [], "pct": 41.5, "updated": "2026-09-06T17:54:41Z"}
+{"shard": 19, "stage": "testing", "done": 22, "total": 53, "rows": 985654, "note": "HOLO 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-06T17:55:27Z"}

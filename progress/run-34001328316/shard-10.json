@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 40, "total": 53, "rows": 1107992, "note": "SANTOS 1d: 394 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-06T01:00:43Z"}
+{"shard": 10, "stage": "testing", "done": 40, "total": 53, "rows": 1127704, "note": "SANTOS 1h: rule 23/120 (supertrend)", "failed": [], "pct": 75.5, "updated": "2026-09-06T01:01:28Z"}

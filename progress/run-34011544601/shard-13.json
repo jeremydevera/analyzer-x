@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 33, "total": 52, "rows": 1240960, "note": "NVOSTOCK 30m: rule 3/120 (fade15)", "failed": [], "pct": 63.5, "updated": "2026-09-06T06:19:06Z"}
+{"shard": 13, "stage": "testing", "done": 34, "total": 52, "rows": 1263640, "note": "OPG 15m: rule 3/120 (fade15)", "failed": [], "pct": 65.4, "updated": "2026-09-06T06:19:55Z"}

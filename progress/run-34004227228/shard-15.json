@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 39, "total": 52, "rows": 1505274, "note": "ROKSTOCK 15m: 5,843 bars, testing 120 rules", "failed": [], "pct": 75.0, "updated": "2026-09-06T03:17:57Z"}
+{"shard": 15, "stage": "testing", "done": 42, "total": 52, "rows": 1534454, "note": "SNX 4h: rule 3/120 (fade15)", "failed": [], "pct": 80.8, "updated": "2026-09-06T03:18:44Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 31, "total": 52, "rows": 969868, "note": "NAORIS 1h: rule 76/120 (cf_mom)", "failed": [], "pct": 59.6, "updated": "2026-09-06T00:59:56Z"}
+{"shard": 18, "stage": "testing", "done": 33, "total": 52, "rows": 1010518, "note": "OG 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 63.5, "updated": "2026-09-06T01:00:49Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 34, "total": 53, "rows": 1292556, "note": "OPG 30m: rule 85/120 (cf_triple)", "failed": [], "pct": 64.2, "updated": "2026-09-06T17:57:35Z"}
+{"shard": 15, "stage": "testing", "done": 35, "total": 53, "rows": 1305536, "note": "PENDLE 1h: rule 22/120 (engulf)", "failed": [], "pct": 66.0, "updated": "2026-09-06T17:58:20Z"}

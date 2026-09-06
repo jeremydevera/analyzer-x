@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 8, "total": 53, "rows": 320378, "note": "BEAT 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 15.1, "updated": "2026-09-06T23:15:50Z"}
+{"shard": 0, "stage": "testing", "done": 9, "total": 53, "rows": 330338, "note": "BLUAI 1h: rule 14/120 (bb20)", "failed": [], "pct": 17.0, "updated": "2026-09-06T23:16:35Z"}

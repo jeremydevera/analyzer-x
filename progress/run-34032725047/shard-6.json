@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 44, "total": 53, "rows": 1972590, "note": "STEEM 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 83.0, "updated": "2026-09-06T15:05:13Z"}
+{"shard": 6, "stage": "testing", "done": 44, "total": 53, "rows": 1979190, "note": "STEEM 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-06T15:06:07Z"}

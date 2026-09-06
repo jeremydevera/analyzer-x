@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 45, "total": 52, "rows": 2144160, "note": "TAO 30m: rule 59/120 (choch)", "failed": [], "pct": 86.5, "updated": "2026-09-06T13:43:15Z"}
+{"shard": 15, "stage": "testing", "done": 46, "total": 52, "rows": 2186700, "note": "TOKYOELSTOCK 15m: rule 97/120 (cf_ttm)", "failed": [], "pct": 88.5, "updated": "2026-09-06T13:44:00Z"}

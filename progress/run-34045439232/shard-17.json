@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 25, "total": 53, "rows": 693416, "note": "JTO 4h: rule 3/120 (fade15)", "failed": [], "pct": 47.2, "updated": "2026-09-06T16:38:41Z"}
+{"shard": 17, "stage": "testing", "done": 27, "total": 53, "rows": 744984, "note": "LINSTOCK 4h: rule 83/120 (cf_maobv_l1)", "failed": [], "pct": 50.9, "updated": "2026-09-06T16:39:27Z"}

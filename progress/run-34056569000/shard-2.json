@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 19, "total": 53, "rows": 787006, "note": "FLOW 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 35.8, "updated": "2026-09-06T20:36:06Z"}
+{"shard": 2, "stage": "testing", "done": 19, "total": 53, "rows": 796686, "note": "FLOW 30m: rule 60/120 (eqraid)", "failed": [], "pct": 35.8, "updated": "2026-09-06T20:36:52Z"}

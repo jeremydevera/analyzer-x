@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 7, "total": 53, "rows": 191040, "note": "BDX 4h: rule 61/120 (turtle)", "failed": [], "pct": 13.2, "updated": "2026-09-06T19:28:26Z"}
+{"shard": 18, "stage": "testing", "done": 8, "total": 53, "rows": 229752, "note": "BLESS 1d: 348 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-06T19:29:12Z"}

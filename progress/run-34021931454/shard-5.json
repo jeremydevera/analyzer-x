@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 18, "total": 53, "rows": 403988, "note": "FARTCOIN 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 34.0, "updated": "2026-09-06T08:35:35Z"}
+{"shard": 5, "stage": "testing", "done": 20, "total": 53, "rows": 445700, "note": "GENIUS 4h: rule 2/120 (mom15)", "failed": [], "pct": 37.7, "updated": "2026-09-06T08:36:21Z"}

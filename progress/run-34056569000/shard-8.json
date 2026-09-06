@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 40, "total": 53, "rows": 1491156, "note": "SAFE 1h: rule 4/120 (trend50)", "failed": [], "pct": 75.5, "updated": "2026-09-06T21:27:47Z"}
+{"shard": 8, "stage": "testing", "done": 40, "total": 53, "rows": 1513156, "note": "SAFE 1h: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-06T21:28:32Z"}

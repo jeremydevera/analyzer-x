@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 51, "total": 53, "rows": 2370798, "note": "XAN 30m: rule 1/120 (mom6)", "failed": [], "pct": 96.2, "updated": "2026-09-06T15:25:22Z"}
+{"shard": 2, "stage": "testing", "done": 51, "total": 53, "rows": 2375858, "note": "XAN 30m: rule 20/120 (stoch14)", "failed": [], "pct": 96.2, "updated": "2026-09-06T15:26:08Z"}

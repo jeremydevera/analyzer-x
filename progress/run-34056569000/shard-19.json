@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 20, "total": 53, "rows": 920424, "note": "GMT 30m: rule 45/120 (zscore20)", "failed": [], "pct": 37.7, "updated": "2026-09-06T20:34:48Z"}
+{"shard": 19, "stage": "testing", "done": 22, "total": 53, "rows": 936704, "note": "HOLO 1h: 8,650 bars, testing 120 rules", "failed": [], "pct": 41.5, "updated": "2026-09-06T20:35:36Z"}

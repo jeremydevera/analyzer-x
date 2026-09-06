@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 20, "total": 53, "rows": 459002, "note": "GFSSTOCK 1d: downloading candles", "failed": [], "pct": 37.7, "updated": "2026-09-06T00:43:24Z"}
+{"shard": 8, "stage": "testing", "done": 21, "total": 53, "rows": 491186, "note": "GRIFFAIN 1h: rule 2/120 (mom15)", "failed": [], "pct": 39.6, "updated": "2026-09-06T00:44:10Z"}

@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 20, "total": 53, "rows": 796258, "note": "GAS 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 37.7, "updated": "2026-09-06T23:32:33Z"}
+{"shard": 2, "stage": "testing", "done": 20, "total": 53, "rows": 818478, "note": "GAS 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-06T23:33:25Z"}

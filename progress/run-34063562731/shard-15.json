@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 45, "total": 53, "rows": 1122262, "note": "TAG 1d: 394 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-06T22:36:45Z"}
+{"shard": 15, "stage": "testing", "done": 46, "total": 53, "rows": 1165866, "note": "TLM 1d: rule 20/120 (stoch14)", "failed": [], "pct": 86.8, "updated": "2026-09-06T22:37:30Z"}

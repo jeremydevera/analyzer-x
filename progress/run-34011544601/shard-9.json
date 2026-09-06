@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 37, "total": 53, "rows": 1602260, "note": "PUMPBTC 30m: rule 59/120 (choch)", "failed": [], "pct": 69.8, "updated": "2026-09-06T06:54:39Z"}
+{"shard": 9, "stage": "testing", "done": 38, "total": 53, "rows": 1621780, "note": "RBLXSTOCK 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 71.7, "updated": "2026-09-06T06:55:24Z"}

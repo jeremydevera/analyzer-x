@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 36, "total": 53, "rows": 1339840, "note": "PIEVERSE 30m: rule 16/120 (keltner)", "failed": [], "pct": 67.9, "updated": "2026-09-06T21:02:05Z"}
+{"shard": 3, "stage": "testing", "done": 36, "total": 53, "rows": 1352820, "note": "PIEVERSE 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 67.9, "updated": "2026-09-06T21:02:51Z"}

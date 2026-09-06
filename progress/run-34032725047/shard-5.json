@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 43, "total": 53, "rows": 2099048, "note": "SOONNETWORK 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-06T15:09:04Z"}
+{"shard": 5, "stage": "testing", "done": 44, "total": 53, "rows": 2119112, "note": "STBL 15m: 34,078 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-06T15:09:52Z"}

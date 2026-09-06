@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 25, "total": 53, "rows": 963874, "note": "JASMY 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 47.2, "updated": "2026-09-06T09:57:47Z"}
+{"shard": 4, "stage": "testing", "done": 26, "total": 53, "rows": 970634, "note": "KERNEL 1h: rule 22/120 (engulf)", "failed": [], "pct": 49.1, "updated": "2026-09-06T09:58:33Z"}

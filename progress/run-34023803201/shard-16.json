@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 29, "total": 52, "rows": 1342438, "note": "MERL 30m: rule 25/120 (ichimoku)", "failed": [], "pct": 55.8, "updated": "2026-09-06T10:21:05Z"}
+{"shard": 16, "stage": "testing", "done": 29, "total": 52, "rows": 1353438, "note": "MERL 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 55.8, "updated": "2026-09-06T10:21:53Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 37, "total": 53, "rows": 853508, "note": "PUMPBTC 4h: rule 20/120 (stoch14)", "failed": [], "pct": 69.8, "updated": "2026-09-06T16:38:41Z"}
+{"shard": 12, "stage": "testing", "done": 40, "total": 53, "rows": 941214, "note": "SAMSUNGSTOCK 1d: 108 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-06T16:39:26Z"}

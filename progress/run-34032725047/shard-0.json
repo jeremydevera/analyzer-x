@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 38, "total": 53, "rows": 1733222, "note": "QNT 30m: rule 9/120 (fib382)", "failed": [], "pct": 71.7, "updated": "2026-09-06T13:47:26Z"}
+{"shard": 0, "stage": "testing", "done": 38, "total": 53, "rows": 1752802, "note": "QNT 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 71.7, "updated": "2026-09-06T13:48:12Z"}

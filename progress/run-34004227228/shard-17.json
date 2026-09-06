@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 12, "total": 52, "rows": 493224, "note": "COLLECT 4h: rule 15/120 (bbbreak)", "failed": [], "pct": 23.1, "updated": "2026-09-06T02:11:52Z"}
+{"shard": 17, "stage": "testing", "done": 12, "total": 52, "rows": 513510, "note": "COLLECT 15m: rule 2/120 (mom15)", "failed": [], "pct": 23.1, "updated": "2026-09-06T02:12:41Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 10, "total": 53, "rows": 368980, "note": "BTW 30m: rule 6/120 (sweep30)", "failed": [], "pct": 18.9, "updated": "2026-09-06T04:59:21Z"}
+{"shard": 6, "stage": "testing", "done": 11, "total": 53, "rows": 397780, "note": "CCJSTOCK 15m: rule 49/120 (vwaprev)", "failed": [], "pct": 20.8, "updated": "2026-09-06T05:00:07Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 36, "total": 53, "rows": 1529160, "note": "PLUME 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 67.9, "updated": "2026-09-06T06:45:10Z"}
+{"shard": 9, "stage": "testing", "done": 36, "total": 53, "rows": 1536960, "note": "PLUME 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 67.9, "updated": "2026-09-06T06:46:09Z"}

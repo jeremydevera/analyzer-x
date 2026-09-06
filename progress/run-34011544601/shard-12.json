@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 6, "total": 52, "rows": 243480, "note": "AXONSTOCK 15m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 11.5, "updated": "2026-09-06T04:52:00Z"}
+{"shard": 12, "stage": "testing", "done": 7, "total": 52, "rows": 269620, "note": "BASTOCK 15m: rule 16/120 (keltner)", "failed": [], "pct": 13.5, "updated": "2026-09-06T04:52:45Z"}

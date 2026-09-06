@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 35, "total": 52, "rows": 973752, "note": "PENDLE 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 67.3, "updated": "2026-09-06T00:52:13Z"}
+{"shard": 12, "stage": "testing", "done": 35, "total": 52, "rows": 992232, "note": "PENDLE 1h: rule 79/120 (cf_donch)", "failed": [], "pct": 67.3, "updated": "2026-09-06T00:52:58Z"}

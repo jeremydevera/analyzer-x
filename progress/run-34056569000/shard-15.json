@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 48, "total": 53, "rows": 1917702, "note": "UNHSTOCK 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 90.6, "updated": "2026-09-06T21:10:24Z"}
+{"shard": 15, "stage": "testing", "done": 49, "total": 53, "rows": 1931082, "note": "VELO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-06T21:11:09Z"}

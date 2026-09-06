@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 13, "total": 53, "rows": 604920, "note": "CRWVSTOCK 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 24.5, "updated": "2026-09-06T17:22:18Z"}
+{"shard": 16, "stage": "testing", "done": 14, "total": 53, "rows": 622080, "note": "DASH 1h: rule 73/120 (volspike)", "failed": [], "pct": 26.4, "updated": "2026-09-06T17:23:03Z"}

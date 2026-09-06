@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 6, "total": 53, "rows": 214416, "note": "AXL 30m: rule 41/120 (tsi)", "failed": [], "pct": 11.3, "updated": "2026-09-06T09:22:04Z"}
+{"shard": 11, "stage": "testing", "done": 6, "total": 53, "rows": 227616, "note": "AXL 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 11.3, "updated": "2026-09-06T09:22:51Z"}

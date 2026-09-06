@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 27, "total": 53, "rows": 1233438, "note": "LINK 30m: rule 52/120 (nr7)", "failed": [], "pct": 50.9, "updated": "2026-09-06T21:10:52Z"}
+{"shard": 16, "stage": "testing", "done": 28, "total": 53, "rows": 1246638, "note": "LYTE 30m: downloading candles", "failed": [], "pct": 52.8, "updated": "2026-09-06T21:11:37Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 31, "total": 53, "rows": 1053422, "note": "MRVLSTOCK 15m: 25,881 bars, testing 120 rules", "failed": [], "pct": 58.5, "updated": "2026-09-06T02:40:50Z"}
+{"shard": 1, "stage": "testing", "done": 31, "total": 53, "rows": 1058282, "note": "MRVLSTOCK 15m: rule 21/120 (cci20)", "failed": [], "pct": 58.5, "updated": "2026-09-06T02:41:37Z"}

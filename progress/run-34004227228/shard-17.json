@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 37, "total": 52, "rows": 1497384, "note": "QCOMSTOCK 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 71.2, "updated": "2026-09-06T03:29:35Z"}
+{"shard": 17, "stage": "testing", "done": 38, "total": 52, "rows": 1502244, "note": "RED 4h: rule 1/120 (mom6)", "failed": [], "pct": 73.1, "updated": "2026-09-06T03:30:20Z"}

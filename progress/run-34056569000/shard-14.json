@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 52, "total": 53, "rows": 2170366, "note": "YFI 1h: rule 4/120 (trend50)", "failed": [], "pct": 98.1, "updated": "2026-09-06T21:25:43Z"}
+{"shard": 14, "stage": "testing", "done": 52, "total": 53, "rows": 2195446, "note": "YFI 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-06T21:26:29Z"}

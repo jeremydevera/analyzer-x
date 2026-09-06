@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 26, "total": 53, "rows": 654982, "note": "KAVA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-06T08:40:01Z"}
+{"shard": 2, "stage": "testing", "done": 27, "total": 53, "rows": 696518, "note": "KSM 4h: rule 2/120 (mom15)", "failed": [], "pct": 50.9, "updated": "2026-09-06T08:40:47Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 16, "total": 53, "rows": 629680, "note": "DYM 30m: rule 2/120 (mom15)", "failed": [], "pct": 30.2, "updated": "2026-09-06T05:32:54Z"}
+{"shard": 7, "stage": "testing", "done": 16, "total": 53, "rows": 636940, "note": "DYM 30m: rule 33/120 (heikin)", "failed": [], "pct": 30.2, "updated": "2026-09-06T05:33:40Z"}

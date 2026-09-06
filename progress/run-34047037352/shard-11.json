@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 17, "total": 53, "rows": 631958, "note": "ETHFI 30m: rule 68/120 (dbltop)", "failed": [], "pct": 32.1, "updated": "2026-09-06T17:29:04Z"}
+{"shard": 11, "stage": "testing", "done": 18, "total": 53, "rows": 643178, "note": "FF 1h: 8,212 bars, testing 120 rules", "failed": [], "pct": 34.0, "updated": "2026-09-06T17:29:55Z"}

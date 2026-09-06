@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 8, "total": 52, "rows": 325436, "note": "BLESS 30m: rule 75/120 (relvolbrk)", "failed": [], "pct": 15.4, "updated": "2026-09-06T09:29:33Z"}
+{"shard": 18, "stage": "testing", "done": 9, "total": 52, "rows": 333836, "note": "BROCCOLIF3B 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 17.3, "updated": "2026-09-06T09:30:20Z"}

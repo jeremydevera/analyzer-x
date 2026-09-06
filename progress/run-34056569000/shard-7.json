@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 22, "total": 53, "rows": 879658, "note": "HEMI 30m: rule 112/120 (cf_obretest)", "failed": [], "pct": 41.5, "updated": "2026-09-06T20:48:43Z"}
+{"shard": 7, "stage": "testing", "done": 24, "total": 53, "rows": 891728, "note": "INIT 1h: rule 4/120 (trend50)", "failed": [], "pct": 45.3, "updated": "2026-09-06T20:49:29Z"}

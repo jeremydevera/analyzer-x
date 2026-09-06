@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 37, "total": 53, "rows": 1610176, "note": "POWR 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 69.8, "updated": "2026-09-06T21:16:07Z"}
+{"shard": 2, "stage": "testing", "done": 38, "total": 53, "rows": 1621616, "note": "QNT 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 71.7, "updated": "2026-09-06T21:16:53Z"}

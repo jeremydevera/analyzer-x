@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 39, "total": 52, "rows": 1646180, "note": "ROLSTOCK 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 75.0, "updated": "2026-09-06T07:16:03Z"}
+{"shard": 16, "stage": "testing", "done": 40, "total": 52, "rows": 1661120, "note": "SCR 15m: rule 1/120 (mom6)", "failed": [], "pct": 76.9, "updated": "2026-09-06T07:16:49Z"}

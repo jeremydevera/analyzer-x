@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 15, "total": 53, "rows": 548638, "note": "DOGE 1h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 28.3, "updated": "2026-09-06T23:12:05Z"}
+{"shard": 15, "stage": "testing", "done": 15, "total": 53, "rows": 558598, "note": "DOGE 30m: rule 13/120 (pivot)", "failed": [], "pct": 28.3, "updated": "2026-09-06T23:12:51Z"}

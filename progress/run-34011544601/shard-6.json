@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 32, "total": 53, "rows": 1129580, "note": "NEO 15m: rule 10/120 (sr_bounce)", "failed": [], "pct": 60.4, "updated": "2026-09-06T06:17:41Z"}
+{"shard": 6, "stage": "testing", "done": 32, "total": 53, "rows": 1134640, "note": "NEO 15m: rule 33/120 (heikin)", "failed": [], "pct": 60.4, "updated": "2026-09-06T06:18:28Z"}

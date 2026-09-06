@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 13, "total": 53, "rows": 344810, "note": "COOKIE 1d: 394 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-06T19:31:40Z"}
+{"shard": 0, "stage": "testing", "done": 15, "total": 53, "rows": 383790, "note": "DEBIT 1d: downloading candles", "failed": [], "pct": 28.3, "updated": "2026-09-06T19:32:25Z"}

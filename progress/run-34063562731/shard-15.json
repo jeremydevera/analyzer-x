@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 21, "total": 53, "rows": 466694, "note": "GUN 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-06T22:25:33Z"}
+{"shard": 15, "stage": "testing", "done": 23, "total": 53, "rows": 511002, "note": "IBMSTOCK 4h: rule 16/120 (keltner)", "failed": [], "pct": 43.4, "updated": "2026-09-06T22:26:18Z"}

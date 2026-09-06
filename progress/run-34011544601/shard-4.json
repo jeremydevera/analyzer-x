@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 24, "total": 53, "rows": 962960, "note": "INFQSTOCK 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 45.3, "updated": "2026-09-06T05:56:00Z"}
+{"shard": 4, "stage": "testing", "done": 24, "total": 53, "rows": 991680, "note": "INFQSTOCK 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 45.3, "updated": "2026-09-06T05:56:46Z"}

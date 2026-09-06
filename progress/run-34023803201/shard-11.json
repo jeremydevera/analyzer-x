@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 5, "total": 53, "rows": 177016, "note": "ASTEROID 30m: 6,807 bars, testing 120 rules", "failed": [], "pct": 9.4, "updated": "2026-09-06T09:18:53Z"}
+{"shard": 11, "stage": "testing", "done": 6, "total": 53, "rows": 179216, "note": "AXL 1h: rule 4/120 (trend50)", "failed": [], "pct": 11.3, "updated": "2026-09-06T09:19:39Z"}

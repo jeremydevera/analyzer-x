@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 30, "total": 53, "rows": 933338, "note": "MITO 15m: rule 20/120 (stoch14)", "failed": [], "pct": 56.6, "updated": "2026-09-06T02:56:00Z"}
+{"shard": 5, "stage": "testing", "done": 30, "total": 53, "rows": 937518, "note": "MITO 15m: rule 39/120 (fisher)", "failed": [], "pct": 56.6, "updated": "2026-09-06T02:56:45Z"}

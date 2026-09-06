@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 17, "total": 53, "rows": 635638, "note": "ENSO 30m: 15,724 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-06T23:28:45Z"}
+{"shard": 3, "stage": "testing", "done": 17, "total": 53, "rows": 640698, "note": "ENSO 30m: rule 17/120 (atrbreak)", "failed": [], "pct": 32.1, "updated": "2026-09-06T23:29:31Z"}

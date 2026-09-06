@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 6, "total": 53, "rows": 136468, "note": "AVAX 1d: rule 24/120 (psar)", "failed": [], "pct": 11.3, "updated": "2026-09-06T16:29:04Z"}
+{"shard": 6, "stage": "testing", "done": 10, "total": 53, "rows": 190584, "note": "BTR 4h: 2,252 bars, testing 120 rules", "failed": [], "pct": 18.9, "updated": "2026-09-06T16:29:51Z"}

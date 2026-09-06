@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 7, "total": 52, "rows": 192282, "note": "BDX 4h: rule 40/120 (crsi)", "failed": [], "pct": 13.5, "updated": "2026-09-06T08:32:41Z"}
+{"shard": 18, "stage": "testing", "done": 8, "total": 52, "rows": 237998, "note": "BLESS 1d: 348 bars, testing 120 rules", "failed": [], "pct": 15.4, "updated": "2026-09-06T08:33:33Z"}

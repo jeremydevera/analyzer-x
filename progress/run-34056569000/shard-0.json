@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 24, "total": 53, "rows": 962130, "note": "ID 30m: rule 79/120 (cf_donch)", "failed": [], "pct": 45.3, "updated": "2026-09-06T20:56:00Z"}
+{"shard": 0, "stage": "testing", "done": 26, "total": 53, "rows": 970930, "note": "KAITO 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-06T20:56:53Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 50, "total": 53, "rows": 1107468, "note": "WIF 4h: rule 40/120 (crsi)", "failed": [], "pct": 94.3, "updated": "2026-09-06T08:46:40Z"}
+{"shard": 12, "stage": "testing", "done": 53, "total": 53, "rows": 1155272, "note": "ZRX 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-06T08:47:30Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 42, "total": 53, "rows": 1553860, "note": "SLP 15m: rule 63/120 (killzone)", "failed": [], "pct": 79.2, "updated": "2026-09-06T06:50:10Z"}
+{"shard": 3, "stage": "testing", "done": 42, "total": 53, "rows": 1562000, "note": "SLP 15m: rule 100/120 (cf_soup1)", "failed": [], "pct": 79.2, "updated": "2026-09-06T06:50:57Z"}

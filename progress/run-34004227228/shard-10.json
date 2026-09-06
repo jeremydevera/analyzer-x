@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 10, "total": 53, "rows": 365772, "note": "BUTTCOIN 4h: 1,031 bars, testing 120 rules", "failed": [], "pct": 18.9, "updated": "2026-09-06T01:52:33Z"}
+{"shard": 10, "stage": "testing", "done": 12, "total": 53, "rows": 387332, "note": "CLSKSTOCK 15m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-06T01:53:19Z"}

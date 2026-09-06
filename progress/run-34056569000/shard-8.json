@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 36, "total": 53, "rows": 1301076, "note": "PI 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 67.9, "updated": "2026-09-06T21:19:14Z"}
+{"shard": 8, "stage": "testing", "done": 36, "total": 53, "rows": 1317136, "note": "PI 1h: rule 68/120 (dbltop)", "failed": [], "pct": 67.9, "updated": "2026-09-06T21:19:59Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 13, "total": 53, "rows": 428892, "note": "CORE 15m: rule 63/120 (killzone)", "failed": [], "pct": 24.5, "updated": "2026-09-06T01:56:14Z"}
+{"shard": 3, "stage": "testing", "done": 14, "total": 53, "rows": 440886, "note": "CTR 4h: rule 1/120 (mom6)", "failed": [], "pct": 26.4, "updated": "2026-09-06T01:56:59Z"}

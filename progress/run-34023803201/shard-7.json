@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 32, "total": 53, "rows": 1193838, "note": "NEO 30m: rule 29/120 (hull20)", "failed": [], "pct": 60.4, "updated": "2026-09-06T10:17:26Z"}
+{"shard": 7, "stage": "testing", "done": 32, "total": 53, "rows": 1206378, "note": "NEO 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 60.4, "updated": "2026-09-06T10:18:12Z"}

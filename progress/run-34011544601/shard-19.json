@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 6, "total": 52, "rows": 263420, "note": "B2 30m: rule 49/120 (vwaprev)", "failed": [], "pct": 11.5, "updated": "2026-09-06T05:00:46Z"}
+{"shard": 19, "stage": "testing", "done": 6, "total": 52, "rows": 278600, "note": "B2 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 11.5, "updated": "2026-09-06T05:01:32Z"}

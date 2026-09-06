@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 30, "total": 53, "rows": 1142124, "note": "MET 1h: rule 116/120 (cf_diadx_l1)", "failed": [], "pct": 56.6, "updated": "2026-09-06T18:04:31Z"}
+{"shard": 0, "stage": "testing", "done": 30, "total": 53, "rows": 1145116, "note": "MET 30m: rule 4/120 (trend50)", "failed": [], "pct": 56.6, "updated": "2026-09-06T18:05:17Z"}

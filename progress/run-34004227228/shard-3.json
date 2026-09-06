@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 51, "total": 53, "rows": 1704106, "note": "XCN 15m: rule 75/120 (relvolbrk)", "failed": [], "pct": 96.2, "updated": "2026-09-06T02:58:49Z"}
+{"shard": 3, "stage": "testing", "done": 52, "total": 53, "rows": 1717286, "note": "XVS 4h: rule 13/120 (pivot)", "failed": [], "pct": 98.1, "updated": "2026-09-06T02:59:34Z"}

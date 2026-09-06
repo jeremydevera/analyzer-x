@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 3, "total": 53, "rows": 102882, "note": "AKE 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 5.7, "updated": "2026-09-06T12:37:05Z"}
+{"shard": 2, "stage": "testing", "done": 4, "total": 53, "rows": 125462, "note": "ANETSTOCK 15m: rule 21/120 (cci20)", "failed": [], "pct": 7.5, "updated": "2026-09-06T12:37:51Z"}

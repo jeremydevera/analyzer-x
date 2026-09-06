@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 22, "total": 53, "rows": 770694, "note": "HIMSSTOCK 15m: rule 15/120 (bbbreak)", "failed": [], "pct": 41.5, "updated": "2026-09-06T02:28:34Z"}
+{"shard": 7, "stage": "testing", "done": 23, "total": 53, "rows": 785254, "note": "HYPE 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-06T02:29:27Z"}

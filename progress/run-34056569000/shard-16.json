@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 36, "total": 53, "rows": 1654402, "note": "POL 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 67.9, "updated": "2026-09-06T21:30:06Z"}
+{"shard": 16, "stage": "testing", "done": 38, "total": 53, "rows": 1675732, "note": "RDDTSTOCK 30m: rule 1/120 (mom6)", "failed": [], "pct": 71.7, "updated": "2026-09-06T21:30:51Z"}

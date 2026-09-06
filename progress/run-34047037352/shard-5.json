@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 44, "total": 53, "rows": 1781134, "note": "SSV 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-06T18:31:23Z"}
+{"shard": 5, "stage": "testing", "done": 44, "total": 53, "rows": 1791628, "note": "SSV 1h: rule 47/120 (ibs)", "failed": [], "pct": 83.0, "updated": "2026-09-06T18:32:09Z"}

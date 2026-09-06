@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 48, "total": 53, "rows": 2014274, "note": "UNI 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 90.6, "updated": "2026-09-06T18:35:02Z"}
+{"shard": 17, "stage": "testing", "done": 48, "total": 53, "rows": 2019474, "note": "UNI 30m: rule 20/120 (stoch14)", "failed": [], "pct": 90.6, "updated": "2026-09-06T18:35:48Z"}

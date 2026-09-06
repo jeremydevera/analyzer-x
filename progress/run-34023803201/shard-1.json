@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 43, "total": 53, "rows": 1662264, "note": "SOL 30m: rule 72/120 (force13)", "failed": [], "pct": 81.1, "updated": "2026-09-06T10:30:10Z"}
+{"shard": 1, "stage": "testing", "done": 44, "total": 53, "rows": 1695620, "note": "SQQQ 30m: 3,948 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-06T10:30:56Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 12, "total": 53, "rows": 602334, "note": "COINBASE 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-06T20:29:08Z"}
+{"shard": 17, "stage": "testing", "done": 13, "total": 53, "rows": 629514, "note": "CSCOSTOCK 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 24.5, "updated": "2026-09-06T20:29:53Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 14, "total": 53, "rows": 581134, "note": "CVC 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-06T13:18:27Z"}
+{"shard": 8, "stage": "testing", "done": 15, "total": 53, "rows": 593724, "note": "DIA 15m: rule 1/120 (mom6)", "failed": [], "pct": 28.3, "updated": "2026-09-06T13:19:16Z"}

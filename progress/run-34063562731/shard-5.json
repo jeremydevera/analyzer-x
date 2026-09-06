@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 9, "total": 53, "rows": 212036, "note": "BNB 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 17.0, "updated": "2026-09-06T22:21:38Z"}
+{"shard": 5, "stage": "testing", "done": 10, "total": 53, "rows": 257092, "note": "BTC 4h: rule 21/120 (cci20)", "failed": [], "pct": 18.9, "updated": "2026-09-06T22:22:23Z"}

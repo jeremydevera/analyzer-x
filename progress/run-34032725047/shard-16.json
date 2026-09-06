@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 11, "total": 52, "rows": 559274, "note": "CFG 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 21.2, "updated": "2026-09-06T13:14:11Z"}
+{"shard": 16, "stage": "testing", "done": 11, "total": 52, "rows": 566314, "note": "CFG 30m: rule 4/120 (trend50)", "failed": [], "pct": 21.2, "updated": "2026-09-06T13:14:57Z"}

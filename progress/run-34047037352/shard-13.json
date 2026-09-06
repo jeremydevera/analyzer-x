@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 41, "total": 53, "rows": 1579524, "note": "SIGN 30m: rule 71/120 (mfi14)", "failed": [], "pct": 77.4, "updated": "2026-09-06T18:16:06Z"}
+{"shard": 13, "stage": "testing", "done": 42, "total": 53, "rows": 1609038, "note": "SMRSTOCK 30m: 3,333 bars, testing 120 rules", "failed": [], "pct": 79.2, "updated": "2026-09-06T18:16:52Z"}

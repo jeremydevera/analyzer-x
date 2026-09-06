@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 47, "total": 52, "rows": 2039640, "note": "TWT 30m: rule 103/120 (cf_eqhl)", "failed": [], "pct": 90.4, "updated": "2026-09-06T07:58:06Z"}
+{"shard": 18, "stage": "testing", "done": 48, "total": 52, "rows": 2076220, "note": "USO 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 92.3, "updated": "2026-09-06T07:58:51Z"}

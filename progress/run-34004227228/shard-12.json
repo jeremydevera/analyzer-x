@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 14, "total": 52, "rows": 490976, "note": "CYBER 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 26.9, "updated": "2026-09-06T02:12:18Z"}
+{"shard": 12, "stage": "testing", "done": 15, "total": 52, "rows": 513676, "note": "DOCUSTOCK 15m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 28.8, "updated": "2026-09-06T02:13:03Z"}

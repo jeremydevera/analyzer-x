@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 46, "total": 53, "rows": 2008374, "note": "TLM 1h: rule 3/120 (fade15)", "failed": [], "pct": 86.8, "updated": "2026-09-06T10:50:02Z"}
+{"shard": 10, "stage": "testing", "done": 46, "total": 53, "rows": 2029714, "note": "TLM 1h: rule 103/120 (cf_eqhl)", "failed": [], "pct": 86.8, "updated": "2026-09-06T10:50:47Z"}

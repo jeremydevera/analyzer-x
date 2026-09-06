@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 30, "total": 53, "rows": 1413986, "note": "MMT 30m: rule 59/120 (choch)", "failed": [], "pct": 56.6, "updated": "2026-09-06T14:37:04Z"}
+{"shard": 8, "stage": "testing", "done": 31, "total": 53, "rows": 1438516, "note": "MTL 15m: 34,633 bars, testing 120 rules", "failed": [], "pct": 58.5, "updated": "2026-09-06T14:37:57Z"}

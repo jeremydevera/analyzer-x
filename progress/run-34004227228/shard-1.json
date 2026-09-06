@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 16, "total": 53, "rows": 578566, "note": "DRAM 15m: rule 45/120 (zscore20)", "failed": [], "pct": 30.2, "updated": "2026-09-06T02:09:37Z"}
+{"shard": 1, "stage": "testing", "done": 18, "total": 53, "rows": 604606, "note": "EXPESTOCK 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 34.0, "updated": "2026-09-06T02:10:22Z"}

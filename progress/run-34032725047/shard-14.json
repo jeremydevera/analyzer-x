@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 7, "total": 53, "rows": 244592, "note": "BAT 15m: rule 55/120 (nhigh50)", "failed": [], "pct": 13.2, "updated": "2026-09-06T12:38:42Z"}
+{"shard": 14, "stage": "testing", "done": 7, "total": 53, "rows": 252952, "note": "BAT 15m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-06T12:39:29Z"}

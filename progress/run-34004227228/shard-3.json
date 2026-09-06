@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 26, "total": 53, "rows": 831206, "note": "KERNEL 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 49.1, "updated": "2026-09-06T02:13:29Z"}
+{"shard": 3, "stage": "testing", "done": 28, "total": 53, "rows": 876846, "note": "LQTY 15m: rule 1/120 (mom6)", "failed": [], "pct": 52.8, "updated": "2026-09-06T02:14:20Z"}

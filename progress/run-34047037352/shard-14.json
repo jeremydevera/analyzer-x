@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 35, "total": 53, "rows": 1415890, "note": "PEAQ 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-06T18:03:52Z"}
+{"shard": 14, "stage": "testing", "done": 35, "total": 53, "rows": 1420930, "note": "PEAQ 30m: rule 30/120 (kama10)", "failed": [], "pct": 66.0, "updated": "2026-09-06T18:04:37Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 31, "total": 53, "rows": 1432588, "note": "MUSTOCK 15m: rule 12/120 (donchian20)", "failed": [], "pct": 58.5, "updated": "2026-09-06T13:45:18Z"}
+{"shard": 13, "stage": "testing", "done": 31, "total": 53, "rows": 1439248, "note": "MUSTOCK 15m: rule 49/120 (vwaprev)", "failed": [], "pct": 58.5, "updated": "2026-09-06T13:46:03Z"}

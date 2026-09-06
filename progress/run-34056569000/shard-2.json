@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 21, "total": 53, "rows": 878746, "note": "GOOGLSTOCK 1h: rule 58/120 (bos)", "failed": [], "pct": 39.6, "updated": "2026-09-06T20:41:35Z"}
+{"shard": 2, "stage": "testing", "done": 21, "total": 53, "rows": 897146, "note": "GOOGLSTOCK 30m: rule 20/120 (stoch14)", "failed": [], "pct": 39.6, "updated": "2026-09-06T20:42:21Z"}

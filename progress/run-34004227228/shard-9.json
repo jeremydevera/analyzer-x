@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 5, "total": 53, "rows": 189520, "note": "ASMLSTOCK 15m: rule 94/120 (cf_emarsi)", "failed": [], "pct": 9.4, "updated": "2026-09-06T01:48:35Z"}
+{"shard": 9, "stage": "testing", "done": 6, "total": 53, "rows": 204680, "note": "AVNT 4h: rule 44/120 (elder)", "failed": [], "pct": 11.3, "updated": "2026-09-06T01:49:20Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 20, "total": 53, "rows": 737220, "note": "GESTOCK 15m: rule 39/120 (fisher)", "failed": [], "pct": 37.7, "updated": "2026-09-06T05:34:14Z"}
+{"shard": 6, "stage": "testing", "done": 20, "total": 53, "rows": 742080, "note": "GESTOCK 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 37.7, "updated": "2026-09-06T05:35:00Z"}

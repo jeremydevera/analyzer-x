@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 24, "total": 52, "rows": 1129182, "note": "IOTX 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 46.2, "updated": "2026-09-06T10:06:16Z"}
+{"shard": 17, "stage": "testing", "done": 25, "total": 52, "rows": 1136442, "note": "JUP 1h: rule 18/120 (macd)", "failed": [], "pct": 48.1, "updated": "2026-09-06T10:07:01Z"}

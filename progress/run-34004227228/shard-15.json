@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 24, "total": 52, "rows": 898808, "note": "IOTSTOCK 15m: rule 27/120 (aroon25)", "failed": [], "pct": 46.2, "updated": "2026-09-06T02:28:11Z"}
+{"shard": 15, "stage": "testing", "done": 25, "total": 52, "rows": 935968, "note": "JTO 15m: 34,584 bars, testing 120 rules", "failed": [], "pct": 48.1, "updated": "2026-09-06T02:29:04Z"}

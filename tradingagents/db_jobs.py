@@ -859,6 +859,13 @@ def _pending_sources() -> dict:
     now = time.time()
     index = msw.candle_index(scan=False) or {}
     have, behind, delisted = set(), 0, 0
+    # HOW FAR behind, not just how many. "5,095 pending" reads as 5,095
+    # problems; it means "your candles are 11 hours old", which is a different
+    # sentence and the only one the operator can act on. The count returns to
+    # ~5,000 within hours of ANY run — every stored pair is behind again as
+    # soon as a bar prints — so a bare count can never be a to-do list
+    # (2026-09-06: 0 at 10:55pm, 5,095 by 9:33am, nothing wrong).
+    gaps: list = []
     for c in index.values():
         sym, tf = c.get("symbol"), c.get("timeframe")
         if not sym or not tf:
@@ -868,8 +875,10 @@ def _pending_sources() -> dict:
             delisted += 1
             continue                    # unfixable: counted apart, below
         bs = (br.TFS.get(tf) or (None, 3600, None))[1]
-        if int((now - int(c.get("last_ms") or 0) / 1000) // bs) > 1:
+        gap = now - int(c.get("last_ms") or 0) / 1000
+        if int(gap // bs) > 1:
             behind += 1
+            gaps.append(gap)
     missing = 0
     if live is not None:
         missing = sum(1 for sym in sorted(live)
@@ -889,8 +898,12 @@ def _pending_sources() -> dict:
     age = 0
     with _contextlib.suppress(OSError):
         age = max(0, int(time.time() - msw.INDEX_PATH.stat().st_mtime))
+    gaps.sort()
     return {"behind": behind, "missing": missing, "lost": lost,
             "delisted": delisted, "empty": empty,
+            # the MEDIAN pair's age, in hours — what "behind" actually means
+            "behind_hours": round(gaps[len(gaps) // 2] / 3600, 1) if gaps else 0.0,
+            "worst_hours": round(gaps[-1] / 3600, 1) if gaps else 0.0,
             "index_age_s": age,
             # a store still building its index cannot be counted; saying so
             # keeps "nothing pending" honest

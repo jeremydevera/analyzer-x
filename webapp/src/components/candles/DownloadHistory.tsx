@@ -147,8 +147,19 @@ function Pending({ refreshKey }: { refreshKey: number }) {
     <>
       <p className={`mt-3 text-theme-sm font-medium ${
         jobs ? "text-warning-600 dark:text-warning-400" : "text-success-600 dark:text-success-400"}`}>
+        {/* WHAT THE NUMBER MEANS, not just the number. "5,095 pending" reads
+            as 5,095 problems; it means "your candles are 12.6 hours old". The
+            count climbs back to ~5,000 within hours of ANY run, because every
+            stored pair is behind again as soon as a bar prints — it was 0 at
+            10:55pm and 5,095 by 9:33am with nothing wrong (2026-09-06). A
+            count that resets nightly is a clock, not a to-do list. */}
         {jobs
-          ? `${jobs.toLocaleString()} thing${jobs === 1 ? "" : "s"} a run would fix`
+          ? (work?.behind && work.behind_hours
+              ? `your candles are ${work.behind_hours}h behind — ${jobs.toLocaleString()} pair${jobs === 1 ? "" : "s"} to top up`
+              : `${jobs.toLocaleString()} thing${jobs === 1 ? "" : "s"} a run would fix`)
+            + (work?.missing
+              ? ` · ${work.missing.toLocaleString()} never stored`
+              : "")
             + (work?.unfixable
               ? ` · ${work.unfixable.toLocaleString()} more nothing can`
               : "")

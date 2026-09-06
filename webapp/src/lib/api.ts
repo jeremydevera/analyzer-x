@@ -385,6 +385,13 @@ export type CandlePending = {
    *  RESOLVE run that was working perfectly appeared to make things worse
    *  (2026-09-05). */
   index_age_s?: number;
+  /** how far behind the MEDIAN stale pair is, in hours — what "behind"
+   *  actually means. The count returns to ~5,000 within hours of any run
+   *  because every stored pair is behind again as soon as a bar prints, so a
+   *  bare count can never be a to-do list (2026-09-06). */
+  behind_hours?: number;
+  /** the furthest-behind pair, in hours */
+  worst_hours?: number;
   checked: string;
 };
 

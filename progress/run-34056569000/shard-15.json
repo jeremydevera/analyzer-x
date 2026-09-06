@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 40, "total": 53, "rows": 1492320, "note": "SAPIEN 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-06T20:52:10Z"}
+{"shard": 15, "stage": "testing", "done": 40, "total": 53, "rows": 1496742, "note": "SAPIEN 30m: rule 6/120 (sweep30)", "failed": [], "pct": 75.5, "updated": "2026-09-06T20:52:56Z"}

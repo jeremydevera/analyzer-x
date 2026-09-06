@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 19, "total": 53, "rows": 662242, "note": "FOXASTOCK 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 35.8, "updated": "2026-09-06T02:07:44Z"}
+{"shard": 10, "stage": "testing", "done": 22, "total": 53, "rows": 716182, "note": "HK0700 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-06T02:08:30Z"}

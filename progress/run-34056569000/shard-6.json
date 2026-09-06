@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 9, "total": 53, "rows": 369006, "note": "BNCSTOCK 30m: rule 4/120 (trend50)", "failed": [], "pct": 17.0, "updated": "2026-09-06T20:15:50Z"}
+{"shard": 6, "stage": "testing", "done": 10, "total": 53, "rows": 382026, "note": "BTR 1h: rule 29/120 (hull20)", "failed": [], "pct": 18.9, "updated": "2026-09-06T20:16:35Z"}

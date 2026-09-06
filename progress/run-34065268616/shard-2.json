@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 3, "total": 53, "rows": 98496, "note": "AKE 30m: rule 97/120 (cf_ttm)", "failed": [], "pct": 5.7, "updated": "2026-09-06T23:01:21Z"}
+{"shard": 2, "stage": "testing", "done": 5, "total": 53, "rows": 136468, "note": "ARKM 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 9.4, "updated": "2026-09-06T23:02:12Z"}

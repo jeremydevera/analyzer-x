@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 47, "total": 52, "rows": 2538572, "note": "TURBO 15m: rule 4/120 (trend50)", "failed": [], "pct": 90.4, "updated": "2026-09-06T15:48:07Z"}
+{"shard": 16, "stage": "testing", "done": 47, "total": 52, "rows": 2542972, "note": "TURBO 15m: rule 24/120 (psar)", "failed": [], "pct": 90.4, "updated": "2026-09-06T15:48:53Z"}

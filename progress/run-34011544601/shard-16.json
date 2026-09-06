@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 51, "total": 52, "rows": 2120080, "note": "XPD 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-06T08:00:03Z"}
+{"shard": 16, "stage": "testing", "done": 52, "total": 52, "rows": 2127760, "note": "ZEST 15m: rule 24/120 (psar)", "failed": [], "pct": 100.0, "updated": "2026-09-06T08:00:48Z"}

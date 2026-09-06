@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 50, "total": 52, "rows": 1765846, "note": "WMTSTOCK 15m: 24,659 bars, testing 120 rules", "failed": [], "pct": 96.2, "updated": "2026-09-06T03:32:40Z"}
+{"shard": 13, "stage": "testing", "done": 50, "total": 52, "rows": 1775926, "note": "WMTSTOCK 15m: rule 50/120 (gapfade)", "failed": [], "pct": 96.2, "updated": "2026-09-06T03:33:25Z"}

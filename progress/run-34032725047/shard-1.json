@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 7, "total": 53, "rows": 270026, "note": "BABASTOCK 30m: rule 1/120 (mom6)", "failed": [], "pct": 13.2, "updated": "2026-09-06T12:36:30Z"}
+{"shard": 1, "stage": "testing", "done": 7, "total": 53, "rows": 284606, "note": "BABASTOCK 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-06T12:37:16Z"}

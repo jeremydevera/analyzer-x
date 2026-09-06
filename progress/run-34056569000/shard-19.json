@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 20, "total": 53, "rows": 882144, "note": "GMT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-06T20:33:11Z"}
+{"shard": 19, "stage": "testing", "done": 20, "total": 53, "rows": 909204, "note": "GMT 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-06T20:34:03Z"}

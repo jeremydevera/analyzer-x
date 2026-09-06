@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 49, "total": 53, "rows": 1919826, "note": "USELESS 30m: rule 11/120 (sr_break)", "failed": [], "pct": 92.5, "updated": "2026-09-06T21:23:52Z"}
+{"shard": 4, "stage": "testing", "done": 49, "total": 53, "rows": 1925986, "note": "USELESS 30m: rule 39/120 (fisher)", "failed": [], "pct": 92.5, "updated": "2026-09-06T21:24:38Z"}

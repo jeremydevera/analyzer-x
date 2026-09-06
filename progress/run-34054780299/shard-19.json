@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 49, "total": 53, "rows": 1240670, "note": "VIRTUAL 4h: rule 36/120 (stochrsi)", "failed": [], "pct": 92.5, "updated": "2026-09-06T19:48:39Z"}
+{"shard": 19, "stage": "testing", "done": 50, "total": 53, "rows": 1283218, "note": "WLD 4h: rule 44/120 (elder)", "failed": [], "pct": 94.3, "updated": "2026-09-06T19:49:24Z"}

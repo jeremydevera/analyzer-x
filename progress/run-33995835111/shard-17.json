@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 46, "total": 52, "rows": 1904728, "note": "TRADOOR 4h: rule 76/120 (cf_mom)", "failed": [], "pct": 88.5, "updated": "2026-09-06T00:00:01Z"}
+{"shard": 17, "stage": "testing", "done": 46, "total": 52, "rows": 1915108, "note": "TRADOOR 30m: rule 3/120 (fade15)", "failed": [], "pct": 88.5, "updated": "2026-09-06T00:00:57Z"}

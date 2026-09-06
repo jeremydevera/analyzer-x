@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 44, "total": 52, "rows": 2372132, "note": "SUI 15m: rule 112/120 (cf_obretest)", "failed": [], "pct": 84.6, "updated": "2026-09-06T15:31:19Z"}
+{"shard": 16, "stage": "testing", "done": 44, "total": 52, "rows": 2375772, "note": "SUI 30m: rule 5/120 (rsi14)", "failed": [], "pct": 84.6, "updated": "2026-09-06T15:32:04Z"}

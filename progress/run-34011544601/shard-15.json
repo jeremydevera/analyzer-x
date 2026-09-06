@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 26, "total": 52, "rows": 1030680, "note": "KODEX200 30m: rule 1/120 (mom6)", "failed": [], "pct": 50.0, "updated": "2026-09-06T05:34:55Z"}
+{"shard": 15, "stage": "testing", "done": 27, "total": 52, "rows": 1068640, "note": "LINSTOCK 30m: rule 73/120 (volspike)", "failed": [], "pct": 51.9, "updated": "2026-09-06T05:35:40Z"}

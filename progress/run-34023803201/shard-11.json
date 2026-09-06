@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 10, "total": 53, "rows": 332974, "note": "BUTTCOIN 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 18.9, "updated": "2026-09-06T09:27:29Z"}
+{"shard": 11, "stage": "testing", "done": 13, "total": 53, "rows": 398992, "note": "CRMSTOCK 1h: 5,644 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-06T09:28:14Z"}

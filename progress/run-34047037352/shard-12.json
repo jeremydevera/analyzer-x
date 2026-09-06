@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 7, "total": 53, "rows": 327076, "note": "BASTOCK 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-06T17:12:37Z"}
+{"shard": 12, "stage": "testing", "done": 10, "total": 53, "rows": 400416, "note": "BXSTOCK 30m: rule 11/120 (sr_break)", "failed": [], "pct": 18.9, "updated": "2026-09-06T17:13:22Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 32, "total": 53, "rows": 1148280, "note": "NEO 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 60.4, "updated": "2026-09-06T06:20:01Z"}
+{"shard": 6, "stage": "testing", "done": 32, "total": 53, "rows": 1153560, "note": "NEO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 60.4, "updated": "2026-09-06T06:20:52Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 3, "total": 53, "rows": 103510, "note": "ALGO 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 5.7, "updated": "2026-09-06T20:04:18Z"}
+{"shard": 6, "stage": "testing", "done": 3, "total": 53, "rows": 120670, "note": "ALGO 1h: rule 73/120 (volspike)", "failed": [], "pct": 5.7, "updated": "2026-09-06T20:05:03Z"}

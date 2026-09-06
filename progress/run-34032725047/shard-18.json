@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 47, "total": 52, "rows": 2412128, "note": "TUT 15m: rule 58/120 (bos)", "failed": [], "pct": 90.4, "updated": "2026-09-06T15:56:49Z"}
+{"shard": 18, "stage": "testing", "done": 47, "total": 52, "rows": 2419508, "note": "TUT 15m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 90.4, "updated": "2026-09-06T15:57:36Z"}

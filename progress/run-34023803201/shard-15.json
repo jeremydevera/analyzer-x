@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 9, "total": 52, "rows": 307488, "note": "BREV 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 17.3, "updated": "2026-09-06T09:17:29Z"}
+{"shard": 15, "stage": "testing", "done": 9, "total": 52, "rows": 324428, "note": "BREV 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 17.3, "updated": "2026-09-06T09:18:14Z"}

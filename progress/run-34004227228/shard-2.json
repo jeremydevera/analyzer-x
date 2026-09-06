@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 52, "total": 53, "rows": 1543540, "note": "XVG 15m: rule 56/120 (insidebrk)", "failed": [], "pct": 98.1, "updated": "2026-09-06T03:36:41Z"}
+{"shard": 2, "stage": "testing", "done": 52, "total": 53, "rows": 1551020, "note": "XVG 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-06T03:37:27Z"}

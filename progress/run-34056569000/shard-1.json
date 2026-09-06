@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 14, "total": 53, "rows": 501654, "note": "CSTOCK 30m: rule 1/120 (mom6)", "failed": [], "pct": 26.4, "updated": "2026-09-06T20:19:04Z"}
+{"shard": 1, "stage": "testing", "done": 15, "total": 53, "rows": 524914, "note": "DEEP 1h: rule 4/120 (trend50)", "failed": [], "pct": 28.3, "updated": "2026-09-06T20:19:50Z"}

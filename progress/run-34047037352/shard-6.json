@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 7, "total": 53, "rows": 302330, "note": "BAND 30m: rule 21/120 (cci20)", "failed": [], "pct": 13.2, "updated": "2026-09-06T17:08:40Z"}
+{"shard": 6, "stage": "testing", "done": 7, "total": 53, "rows": 314430, "note": "BAND 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 13.2, "updated": "2026-09-06T17:09:25Z"}

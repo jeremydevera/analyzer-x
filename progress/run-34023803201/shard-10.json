@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 12, "total": 53, "rows": 514768, "note": "CLO 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-06T09:38:27Z"}
+{"shard": 10, "stage": "testing", "done": 13, "total": 53, "rows": 556228, "note": "CRDOSTOCK 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 24.5, "updated": "2026-09-06T09:39:13Z"}

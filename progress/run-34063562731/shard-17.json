@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 19, "total": 53, "rows": 542872, "note": "FUTUSTOCK 4h: rule 4/120 (trend50)", "failed": [], "pct": 35.8, "updated": "2026-09-06T22:24:25Z"}
+{"shard": 17, "stage": "testing", "done": 21, "total": 53, "rows": 596180, "note": "G 1d: 394 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-06T22:25:14Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 17, "total": 53, "rows": 671256, "note": "EWJ 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-06T23:40:49Z"}
+{"shard": 18, "stage": "testing", "done": 18, "total": 53, "rows": 711336, "note": "FLNCSTOCK 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 34.0, "updated": "2026-09-06T23:41:34Z"}

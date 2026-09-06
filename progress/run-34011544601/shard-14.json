@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 7, "total": 52, "rows": 210460, "note": "BAT 15m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 13.5, "updated": "2026-09-06T04:44:52Z"}
+{"shard": 14, "stage": "testing", "done": 7, "total": 52, "rows": 215740, "note": "BAT 30m: rule 9/120 (fib382)", "failed": [], "pct": 13.5, "updated": "2026-09-06T04:45:38Z"}

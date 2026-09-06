@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 1, "total": 52, "rows": 36740, "note": "ACU 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 1.9, "updated": "2026-09-06T04:31:49Z"}
+{"shard": 19, "stage": "testing", "done": 2, "total": 52, "rows": 54340, "note": "AIXBT 15m: 34,593 bars, testing 120 rules", "failed": [], "pct": 3.8, "updated": "2026-09-06T04:32:42Z"}

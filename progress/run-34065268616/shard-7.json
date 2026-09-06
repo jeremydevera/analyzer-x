@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 19, "total": 53, "rows": 742228, "note": "FOGO 30m: rule 52/120 (nr7)", "failed": [], "pct": 35.8, "updated": "2026-09-06T23:27:24Z"}
+{"shard": 7, "stage": "testing", "done": 20, "total": 53, "rows": 772560, "note": "GESTOCK 30m: 12,982 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-06T23:28:11Z"}

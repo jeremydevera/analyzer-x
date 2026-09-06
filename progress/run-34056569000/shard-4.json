@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 8, "total": 53, "rows": 363140, "note": "BIANRENSHENG 30m: rule 4/120 (trend50)", "failed": [], "pct": 15.1, "updated": "2026-09-06T20:17:34Z"}
+{"shard": 4, "stage": "testing", "done": 8, "total": 53, "rows": 373360, "note": "BIANRENSHENG 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 15.1, "updated": "2026-09-06T20:18:19Z"}

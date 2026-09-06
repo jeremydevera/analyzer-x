@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 36, "total": 53, "rows": 1411420, "note": "PLTRSTOCK 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 67.9, "updated": "2026-09-06T13:49:36Z"}
+{"shard": 9, "stage": "testing", "done": 36, "total": 53, "rows": 1418200, "note": "PLTRSTOCK 30m: rule 6/120 (sweep30)", "failed": [], "pct": 67.9, "updated": "2026-09-06T13:50:21Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 23, "total": 53, "rows": 522128, "note": "HYPE 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-06T19:33:06Z"}
+{"shard": 9, "stage": "testing", "done": 24, "total": 53, "rows": 562692, "note": "INTCSTOCK 4h: rule 3/120 (fade15)", "failed": [], "pct": 45.3, "updated": "2026-09-06T19:33:52Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 30, "total": 53, "rows": 1072888, "note": "ME 15m: rule 55/120 (nhigh50)", "failed": [], "pct": 56.6, "updated": "2026-09-06T02:53:56Z"}
+{"shard": 0, "stage": "testing", "done": 30, "total": 53, "rows": 1081908, "note": "ME 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 56.6, "updated": "2026-09-06T02:54:42Z"}

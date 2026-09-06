@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 21, "total": 52, "rows": 619632, "note": "HANA 1h: rule 67/120 (pinbar)", "failed": [], "pct": 40.4, "updated": "2026-09-06T00:48:44Z"}
+{"shard": 19, "stage": "testing", "done": 24, "total": 52, "rows": 650032, "note": "IRENSTOCK 1h: rule 54/120 (fractal5)", "failed": [], "pct": 46.2, "updated": "2026-09-06T00:49:29Z"}

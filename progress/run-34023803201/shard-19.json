@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 23, "total": 52, "rows": 1027342, "note": "ID 1h: rule 1/120 (mom6)", "failed": [], "pct": 44.2, "updated": "2026-09-06T10:08:44Z"}
+{"shard": 19, "stage": "testing", "done": 23, "total": 52, "rows": 1044722, "note": "ID 1h: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 44.2, "updated": "2026-09-06T10:09:29Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 1, "total": 53, "rows": 44700, "note": "1000BONK 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-06T17:00:55Z"}
+{"shard": 3, "stage": "testing", "done": 2, "total": 53, "rows": 69292, "note": "ADVANTESTSTOCK 30m: 3,482 bars, testing 120 rules", "failed": [], "pct": 3.8, "updated": "2026-09-06T17:01:42Z"}

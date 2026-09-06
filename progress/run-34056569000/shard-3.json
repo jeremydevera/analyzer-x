@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 37, "total": 53, "rows": 1372356, "note": "PRL 1h: rule 46/120 (rsi2)", "failed": [], "pct": 69.8, "updated": "2026-09-06T21:03:36Z"}
+{"shard": 3, "stage": "testing", "done": 37, "total": 53, "rows": 1391936, "note": "PRL 30m: rule 20/120 (stoch14)", "failed": [], "pct": 69.8, "updated": "2026-09-06T21:04:22Z"}

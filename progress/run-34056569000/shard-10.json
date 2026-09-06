@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 40, "total": 53, "rows": 1594148, "note": "SAHARA 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-06T20:49:09Z"}
+{"shard": 10, "stage": "testing", "done": 40, "total": 53, "rows": 1604268, "note": "SAHARA 30m: rule 40/120 (crsi)", "failed": [], "pct": 75.5, "updated": "2026-09-06T20:49:54Z"}

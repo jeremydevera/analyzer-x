@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 17, "total": 53, "rows": 678524, "note": "EPIC 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-06T17:23:32Z"}
+{"shard": 6, "stage": "testing", "done": 19, "total": 53, "rows": 690184, "note": "FLUX 1h: rule 38/120 (ao)", "failed": [], "pct": 35.8, "updated": "2026-09-06T17:24:18Z"}

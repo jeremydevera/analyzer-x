@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 14, "total": 53, "rows": 544512, "note": "CYS 1h: rule 45/120 (zscore20)", "failed": [], "pct": 26.4, "updated": "2026-09-06T20:26:36Z"}
+{"shard": 14, "stage": "testing", "done": 14, "total": 53, "rows": 559292, "note": "CYS 30m: rule 4/120 (trend50)", "failed": [], "pct": 26.4, "updated": "2026-09-06T20:27:22Z"}

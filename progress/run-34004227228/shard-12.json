@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 7, "total": 52, "rows": 269708, "note": "BASTOCK 15m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 13.5, "updated": "2026-09-06T01:53:19Z"}
+{"shard": 12, "stage": "testing", "done": 9, "total": 52, "rows": 275618, "note": "BP 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 17.3, "updated": "2026-09-06T01:54:05Z"}

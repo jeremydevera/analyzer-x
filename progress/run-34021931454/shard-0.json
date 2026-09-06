@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 1, "total": 53, "rows": 25740, "note": "0G 1d: 354 bars, testing 120 rules", "failed": [], "pct": 1.9, "updated": "2026-09-06T08:29:25Z"}
+{"shard": 0, "stage": "testing", "done": 4, "total": 53, "rows": 78268, "note": "AMZNSTOCK 4h: rule 4/120 (trend50)", "failed": [], "pct": 7.5, "updated": "2026-09-06T08:30:10Z"}

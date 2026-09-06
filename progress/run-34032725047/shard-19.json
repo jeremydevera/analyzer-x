@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 7, "total": 52, "rows": 394934, "note": "BEAMX 1d: 394 bars, testing 120 rules", "failed": [], "pct": 13.5, "updated": "2026-09-06T13:03:47Z"}
+{"shard": 19, "stage": "testing", "done": 9, "total": 52, "rows": 423434, "note": "BROCCOLI 15m: 34,627 bars, testing 120 rules", "failed": [], "pct": 17.3, "updated": "2026-09-06T13:04:36Z"}

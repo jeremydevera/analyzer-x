@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 48, "total": 53, "rows": 2156492, "note": "UBERSTOCK 15m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 90.6, "updated": "2026-09-06T15:22:03Z"}
+{"shard": 6, "stage": "testing", "done": 48, "total": 53, "rows": 2173172, "note": "UBERSTOCK 30m: rule 72/120 (force13)", "failed": [], "pct": 90.6, "updated": "2026-09-06T15:22:48Z"}

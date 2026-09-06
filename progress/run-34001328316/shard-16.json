@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 28, "total": 52, "rows": 973958, "note": "MAGMA 1h: rule 4/120 (trend50)", "failed": [], "pct": 53.8, "updated": "2026-09-06T00:59:12Z"}
+{"shard": 16, "stage": "testing", "done": 29, "total": 52, "rows": 1009664, "note": "METASTOCK 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 55.8, "updated": "2026-09-06T00:59:58Z"}

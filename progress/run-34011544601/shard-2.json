@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 39, "total": 53, "rows": 1329380, "note": "REZ 15m: rule 49/120 (vwaprev)", "failed": [], "pct": 73.6, "updated": "2026-09-06T06:48:32Z"}
+{"shard": 2, "stage": "testing", "done": 39, "total": 53, "rows": 1336180, "note": "REZ 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 73.6, "updated": "2026-09-06T06:49:18Z"}

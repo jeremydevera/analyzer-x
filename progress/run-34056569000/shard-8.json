@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 24, "total": 53, "rows": 884124, "note": "INJ 30m: rule 112/120 (cf_obretest)", "failed": [], "pct": 45.3, "updated": "2026-09-06T20:57:21Z"}
+{"shard": 8, "stage": "testing", "done": 25, "total": 53, "rows": 906284, "note": "JDSTOCK 30m: rule 2/120 (mom15)", "failed": [], "pct": 47.2, "updated": "2026-09-06T20:58:07Z"}

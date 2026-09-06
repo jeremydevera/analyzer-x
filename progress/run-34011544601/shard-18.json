@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 39, "total": 52, "rows": 1580960, "note": "ROSE 15m: 34,603 bars, testing 120 rules", "failed": [], "pct": 75.0, "updated": "2026-09-06T07:10:22Z"}
+{"shard": 18, "stage": "testing", "done": 39, "total": 52, "rows": 1582940, "note": "ROSE 15m: rule 3/120 (fade15)", "failed": [], "pct": 75.0, "updated": "2026-09-06T07:11:26Z"}

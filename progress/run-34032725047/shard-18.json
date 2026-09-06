@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 48, "total": 52, "rows": 2462212, "note": "USDC 15m: 34,639 bars, testing 120 rules", "failed": [], "pct": 92.3, "updated": "2026-09-06T16:00:51Z"}
+{"shard": 18, "stage": "testing", "done": 48, "total": 52, "rows": 2475192, "note": "USDC 15m: rule 54/120 (fractal5)", "failed": [], "pct": 92.3, "updated": "2026-09-06T16:01:37Z"}

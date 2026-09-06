@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 28, "total": 52, "rows": 1246576, "note": "MANTA 30m: rule 13/120 (pivot)", "failed": [], "pct": 53.8, "updated": "2026-09-06T10:21:14Z"}
+{"shard": 19, "stage": "testing", "done": 28, "total": 52, "rows": 1255376, "note": "MANTA 30m: rule 54/120 (fractal5)", "failed": [], "pct": 53.8, "updated": "2026-09-06T10:21:59Z"}

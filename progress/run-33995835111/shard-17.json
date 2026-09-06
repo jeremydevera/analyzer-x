@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 50, "total": 52, "rows": 2093494, "note": "W 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-06T00:10:22Z"}
+{"shard": 17, "stage": "testing", "done": 51, "total": 52, "rows": 2122534, "note": "XPIN 30m: 17,656 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-06T00:11:15Z"}

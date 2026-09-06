@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 4, "total": 53, "rows": 146036, "note": "APEX 1h: rule 3/120 (fade15)", "failed": [], "pct": 7.5, "updated": "2026-09-06T17:04:49Z"}
+{"shard": 9, "stage": "testing", "done": 4, "total": 53, "rows": 168608, "note": "APEX 30m: 16,528 bars, testing 120 rules", "failed": [], "pct": 7.5, "updated": "2026-09-06T17:05:44Z"}

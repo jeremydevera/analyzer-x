@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 47, "total": 52, "rows": 1614822, "note": "TURTLE 15m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 90.4, "updated": "2026-09-06T03:31:56Z"}
+{"shard": 14, "stage": "testing", "done": 48, "total": 52, "rows": 1639598, "note": "USARSTOCK 15m: rule 16/120 (keltner)", "failed": [], "pct": 92.3, "updated": "2026-09-06T03:32:41Z"}

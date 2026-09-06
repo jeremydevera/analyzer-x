@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 2, "total": 53, "rows": 63012, "note": "AGT 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-06T12:24:38Z"}
+{"shard": 11, "stage": "testing", "done": 2, "total": 53, "rows": 66812, "note": "AGT 30m: rule 32/120 (gmma)", "failed": [], "pct": 3.8, "updated": "2026-09-06T12:25:23Z"}

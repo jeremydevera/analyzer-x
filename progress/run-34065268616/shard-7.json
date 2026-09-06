@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 26, "total": 53, "rows": 1034124, "note": "KGEN 30m: rule 44/120 (elder)", "failed": [], "pct": 49.1, "updated": "2026-09-06T23:40:38Z"}
+{"shard": 7, "stage": "testing", "done": 27, "total": 53, "rows": 1067346, "note": "LASERTECSTOCK 30m: rule 16/120 (keltner)", "failed": [], "pct": 50.9, "updated": "2026-09-06T23:41:23Z"}

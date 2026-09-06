@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 11, "total": 52, "rows": 393568, "note": "CETUS 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 21.2, "updated": "2026-09-06T09:21:28Z"}
+{"shard": 15, "stage": "testing", "done": 11, "total": 52, "rows": 397528, "note": "CETUS 30m: rule 12/120 (donchian20)", "failed": [], "pct": 21.2, "updated": "2026-09-06T09:22:13Z"}

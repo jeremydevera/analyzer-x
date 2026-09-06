@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 36, "total": 52, "rows": 1664110, "note": "POPCAT 30m: rule 16/120 (keltner)", "failed": [], "pct": 69.2, "updated": "2026-09-06T10:39:46Z"}
+{"shard": 16, "stage": "testing", "done": 36, "total": 52, "rows": 1674510, "note": "POPCAT 30m: rule 69/120 (obv20)", "failed": [], "pct": 69.2, "updated": "2026-09-06T10:40:32Z"}

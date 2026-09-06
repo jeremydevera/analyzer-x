@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 21, "total": 53, "rows": 820946, "note": "GPS 1h: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 39.6, "updated": "2026-09-06T20:36:09Z"}
+{"shard": 5, "stage": "testing", "done": 21, "total": 53, "rows": 825566, "note": "GPS 30m: rule 3/120 (fade15)", "failed": [], "pct": 39.6, "updated": "2026-09-06T20:37:02Z"}

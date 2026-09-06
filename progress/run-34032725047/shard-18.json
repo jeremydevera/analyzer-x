@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 48, "total": 52, "rows": 2508192, "note": "USDC 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 92.3, "updated": "2026-09-06T16:03:56Z"}
+{"shard": 18, "stage": "testing", "done": 49, "total": 52, "rows": 2525928, "note": "VSTOCK 15m: rule 13/120 (pivot)", "failed": [], "pct": 94.2, "updated": "2026-09-06T16:04:41Z"}

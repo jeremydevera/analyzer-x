@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 19, "total": 53, "rows": 434778, "note": "FOGO 4h: 1,435 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-06T19:31:32Z"}
+{"shard": 7, "stage": "testing", "done": 22, "total": 53, "rows": 505098, "note": "HEMI 4h: rule 15/120 (bbbreak)", "failed": [], "pct": 41.5, "updated": "2026-09-06T19:32:18Z"}

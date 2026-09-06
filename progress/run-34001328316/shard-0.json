@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 37, "total": 53, "rows": 1079258, "note": "PRL 1h: rule 2/120 (mom15)", "failed": [], "pct": 69.8, "updated": "2026-09-06T01:02:11Z"}
+{"shard": 0, "stage": "testing", "done": 38, "total": 53, "rows": 1126586, "note": "QQQSTOCK 1h: rule 56/120 (insidebrk)", "failed": [], "pct": 71.7, "updated": "2026-09-06T01:02:56Z"}

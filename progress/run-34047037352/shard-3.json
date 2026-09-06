@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 41, "total": 53, "rows": 1559796, "note": "SFP 30m: rule 64/120 (hammer)", "failed": [], "pct": 77.4, "updated": "2026-09-06T18:14:54Z"}
+{"shard": 3, "stage": "testing", "done": 43, "total": 53, "rows": 1583616, "note": "SOLV 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-06T18:15:50Z"}

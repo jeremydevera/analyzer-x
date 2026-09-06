@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 8, "total": 53, "rows": 380604, "note": "BILL 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 15.1, "updated": "2026-09-06T09:28:30Z"}
+{"shard": 9, "stage": "testing", "done": 9, "total": 53, "rows": 396664, "note": "BOBA 1h: rule 72/120 (force13)", "failed": [], "pct": 17.0, "updated": "2026-09-06T09:29:15Z"}

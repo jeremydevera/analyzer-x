@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 23, "total": 53, "rows": 850808, "note": "HUMA 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-06T20:41:55Z"}
+{"shard": 6, "stage": "testing", "done": 23, "total": 53, "rows": 854328, "note": "HUMA 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 43.4, "updated": "2026-09-06T20:42:40Z"}

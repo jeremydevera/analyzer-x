@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 1, "total": 53, "rows": 10780, "note": "4 1h: rule 43/120 (macddiv)", "failed": [], "pct": 1.9, "updated": "2026-09-06T16:57:47Z"}
+{"shard": 8, "stage": "testing", "done": 1, "total": 53, "rows": 27500, "note": "4 30m: rule 1/120 (mom6)", "failed": [], "pct": 1.9, "updated": "2026-09-06T16:58:41Z"}

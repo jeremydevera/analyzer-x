@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 10, "total": 53, "rows": 281676, "note": "BSV 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 18.9, "updated": "2026-09-06T19:29:30Z"}
+{"shard": 4, "stage": "testing", "done": 13, "total": 53, "rows": 323960, "note": "CORE 4h: rule 4/120 (trend50)", "failed": [], "pct": 24.5, "updated": "2026-09-06T19:30:16Z"}

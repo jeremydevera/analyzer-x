@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 30, "total": 53, "rows": 726898, "note": "MITO 4h: rule 20/120 (stoch14)", "failed": [], "pct": 56.6, "updated": "2026-09-06T16:40:05Z"}
+{"shard": 7, "stage": "testing", "done": 31, "total": 53, "rows": 784362, "note": "MSTRSTOCK 4h: rule 103/120 (cf_eqhl)", "failed": [], "pct": 58.5, "updated": "2026-09-06T16:40:50Z"}

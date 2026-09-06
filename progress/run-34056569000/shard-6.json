@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 48, "total": 53, "rows": 1834952, "note": "TWT 30m: rule 20/120 (stoch14)", "failed": [], "pct": 90.6, "updated": "2026-09-06T21:30:41Z"}
+{"shard": 6, "stage": "testing", "done": 48, "total": 53, "rows": 1846172, "note": "TWT 30m: rule 72/120 (force13)", "failed": [], "pct": 90.6, "updated": "2026-09-06T21:31:26Z"}

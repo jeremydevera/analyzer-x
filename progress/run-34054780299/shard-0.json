@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 34, "total": 53, "rows": 825264, "note": "OG 4h: rule 1/120 (mom6)", "failed": [], "pct": 64.2, "updated": "2026-09-06T19:40:52Z"}
+{"shard": 0, "stage": "testing", "done": 35, "total": 53, "rows": 874850, "note": "ORCLSTOCK 4h: rule 76/120 (cf_mom)", "failed": [], "pct": 66.0, "updated": "2026-09-06T19:41:37Z"}

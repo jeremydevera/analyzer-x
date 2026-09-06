@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 5, "total": 52, "rows": 255482, "note": "ATH 15m: rule 47/120 (ibs)", "failed": [], "pct": 9.6, "updated": "2026-09-06T12:50:33Z"}
+{"shard": 16, "stage": "testing", "done": 5, "total": 52, "rows": 262682, "note": "ATH 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 9.6, "updated": "2026-09-06T12:51:21Z"}

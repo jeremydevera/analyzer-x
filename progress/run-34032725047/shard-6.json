@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 53, "total": 53, "rows": 2460592, "note": "ZKC 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-06T15:48:14Z"}
+{"shard": 6, "stage": "testing", "done": 53, "total": 53, "rows": 2468952, "note": "ZKC 30m: 17,091 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-06T15:49:09Z"}

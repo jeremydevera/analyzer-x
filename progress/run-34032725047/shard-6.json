@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 25, "total": 53, "rows": 1044738, "note": "JCT 30m: rule 34/120 (lrslope)", "failed": [], "pct": 47.2, "updated": "2026-09-06T13:45:05Z"}
+{"shard": 6, "stage": "testing", "done": 25, "total": 53, "rows": 1058158, "note": "JCT 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 47.2, "updated": "2026-09-06T13:45:51Z"}

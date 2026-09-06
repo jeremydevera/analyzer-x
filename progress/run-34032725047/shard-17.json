@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 5, "total": 52, "rows": 241524, "note": "ATOM 15m: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 9.6, "updated": "2026-09-06T12:40:14Z"}
+{"shard": 17, "stage": "testing", "done": 5, "total": 52, "rows": 247924, "note": "ATOM 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 9.6, "updated": "2026-09-06T12:41:08Z"}

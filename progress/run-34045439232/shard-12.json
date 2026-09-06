@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 40, "total": 53, "rows": 941214, "note": "SAMSUNGSTOCK 1d: 108 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-06T16:39:26Z"}
+{"shard": 12, "stage": "testing", "done": 45, "total": 53, "rows": 1008776, "note": "SYRUP 4h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-06T16:40:11Z"}

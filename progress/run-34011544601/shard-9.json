@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 12, "total": 53, "rows": 454800, "note": "CLO 15m: 31,368 bars, testing 120 rules", "failed": [], "pct": 22.6, "updated": "2026-09-06T05:11:52Z"}
+{"shard": 9, "stage": "testing", "done": 12, "total": 53, "rows": 456000, "note": "CLO 15m: rule 2/120 (mom15)", "failed": [], "pct": 22.6, "updated": "2026-09-06T05:12:41Z"}

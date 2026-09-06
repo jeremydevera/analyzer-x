@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 37, "total": 53, "rows": 1358680, "note": "PROM 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 69.8, "updated": "2026-09-06T06:30:59Z"}
+{"shard": 3, "stage": "testing", "done": 38, "total": 53, "rows": 1372760, "note": "QXOSTOCK 15m: 5,635 bars, testing 120 rules", "failed": [], "pct": 71.7, "updated": "2026-09-06T06:31:45Z"}

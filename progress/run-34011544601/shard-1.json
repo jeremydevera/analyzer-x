@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 14, "total": 53, "rows": 518180, "note": "CTC 15m: 34,595 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-06T05:08:41Z"}
+{"shard": 1, "stage": "testing", "done": 14, "total": 53, "rows": 520740, "note": "CTC 15m: rule 10/120 (sr_bounce)", "failed": [], "pct": 26.4, "updated": "2026-09-06T05:09:27Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 18, "total": 53, "rows": 604606, "note": "EXPESTOCK 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 34.0, "updated": "2026-09-06T02:10:22Z"}
+{"shard": 1, "stage": "testing", "done": 19, "total": 53, "rows": 632686, "note": "FLOW 15m: 34,583 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-06T02:11:19Z"}

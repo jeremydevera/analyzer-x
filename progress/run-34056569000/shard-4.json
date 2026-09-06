@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 5, "total": 53, "rows": 208440, "note": "ARMSTOCK 30m: 12,700 bars, testing 120 rules", "failed": [], "pct": 9.4, "updated": "2026-09-06T20:07:28Z"}
+{"shard": 4, "stage": "testing", "done": 5, "total": 53, "rows": 223640, "note": "ARMSTOCK 30m: rule 70/120 (cmf20)", "failed": [], "pct": 9.4, "updated": "2026-09-06T20:08:13Z"}

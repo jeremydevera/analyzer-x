@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 9, "total": 53, "rows": 315260, "note": "BMNRSTOCK 15m: rule 73/120 (volspike)", "failed": [], "pct": 17.0, "updated": "2026-09-06T05:04:30Z"}
+{"shard": 2, "stage": "testing", "done": 9, "total": 53, "rows": 327440, "note": "BMNRSTOCK 30m: rule 29/120 (hull20)", "failed": [], "pct": 17.0, "updated": "2026-09-06T05:05:16Z"}

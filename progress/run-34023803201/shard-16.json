@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 22, "total": 52, "rows": 1033610, "note": "HMSTR 30m: rule 32/120 (gmma)", "failed": [], "pct": 42.3, "updated": "2026-09-06T10:05:25Z"}
+{"shard": 16, "stage": "testing", "done": 22, "total": 52, "rows": 1045050, "note": "HMSTR 30m: rule 85/120 (cf_triple)", "failed": [], "pct": 42.3, "updated": "2026-09-06T10:06:11Z"}

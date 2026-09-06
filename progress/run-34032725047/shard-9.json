@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 17, "total": 53, "rows": 758390, "note": "ESP 15m: rule 43/120 (macddiv)", "failed": [], "pct": 32.1, "updated": "2026-09-06T13:17:46Z"}
+{"shard": 9, "stage": "testing", "done": 17, "total": 53, "rows": 772250, "note": "ESP 15m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-06T13:18:31Z"}

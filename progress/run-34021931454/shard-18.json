@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 6, "total": 52, "rows": 146446, "note": "A 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 11.5, "updated": "2026-09-06T08:31:56Z"}
+{"shard": 18, "stage": "testing", "done": 7, "total": 52, "rows": 192282, "note": "BDX 4h: rule 40/120 (crsi)", "failed": [], "pct": 13.5, "updated": "2026-09-06T08:32:41Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 34, "total": 52, "rows": 1371550, "note": "OPN 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 65.4, "updated": "2026-09-06T10:17:30Z"}
+{"shard": 15, "stage": "testing", "done": 35, "total": 52, "rows": 1383650, "note": "PENGU 1h: rule 11/120 (sr_break)", "failed": [], "pct": 67.3, "updated": "2026-09-06T10:18:16Z"}

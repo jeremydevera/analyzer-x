@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 28, "total": 53, "rows": 1004488, "note": "LRCXSTOCK 30m: rule 21/120 (cci20)", "failed": [], "pct": 52.8, "updated": "2026-09-06T20:49:35Z"}
+{"shard": 6, "stage": "testing", "done": 29, "total": 53, "rows": 1027168, "note": "MASTOCK 1h: rule 29/120 (hull20)", "failed": [], "pct": 54.7, "updated": "2026-09-06T20:50:20Z"}

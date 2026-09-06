@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 26, "total": 53, "rows": 1024620, "note": "KII 15m: 2,180 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-06T06:11:38Z"}
+{"shard": 7, "stage": "testing", "done": 27, "total": 53, "rows": 1025280, "note": "LA 15m: rule 1/120 (mom6)", "failed": [], "pct": 50.9, "updated": "2026-09-06T06:12:33Z"}

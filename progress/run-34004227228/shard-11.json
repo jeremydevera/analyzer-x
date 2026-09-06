@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 19, "total": 52, "rows": 653694, "note": "FRAX 15m: rule 68/120 (dbltop)", "failed": [], "pct": 36.5, "updated": "2026-09-06T02:18:29Z"}
+{"shard": 11, "stage": "testing", "done": 20, "total": 52, "rows": 665454, "note": "GIGADEVSTOCK 15m: rule 5/120 (rsi14)", "failed": [], "pct": 38.5, "updated": "2026-09-06T02:19:14Z"}

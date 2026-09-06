@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 2, "total": 53, "rows": 94620, "note": "AIOZ 30m: rule 60/120 (eqraid)", "failed": [], "pct": 3.8, "updated": "2026-09-06T22:58:11Z"}
+{"shard": 17, "stage": "testing", "done": 4, "total": 53, "rows": 146022, "note": "APT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 7.5, "updated": "2026-09-06T22:59:00Z"}

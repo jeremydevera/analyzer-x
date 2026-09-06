@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 26, "total": 53, "rows": 1028522, "note": "KGEN 30m: 16,040 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-06T17:54:35Z"}
+{"shard": 7, "stage": "testing", "done": 26, "total": 53, "rows": 1030722, "note": "KGEN 30m: rule 4/120 (trend50)", "failed": [], "pct": 49.1, "updated": "2026-09-06T17:55:22Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 27, "total": 52, "rows": 970056, "note": "LINEA 15m: rule 4/120 (trend50)", "failed": [], "pct": 51.9, "updated": "2026-09-06T02:43:40Z"}
+{"shard": 13, "stage": "testing", "done": 27, "total": 52, "rows": 974456, "note": "LINEA 15m: rule 24/120 (psar)", "failed": [], "pct": 51.9, "updated": "2026-09-06T02:44:25Z"}

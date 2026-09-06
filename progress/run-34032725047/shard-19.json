@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 35, "total": 52, "rows": 1778800, "note": "PHAROS 15m: rule 3/120 (fade15)", "failed": [], "pct": 67.3, "updated": "2026-09-06T15:01:29Z"}
+{"shard": 19, "stage": "testing", "done": 35, "total": 52, "rows": 1793200, "note": "PHAROS 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 67.3, "updated": "2026-09-06T15:02:15Z"}

@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 32, "total": 53, "rows": 1423946, "note": "NEWT 30m: rule 85/120 (cf_triple)", "failed": [], "pct": 60.4, "updated": "2026-09-06T10:19:48Z"}
+{"shard": 10, "stage": "testing", "done": 33, "total": 53, "rows": 1472614, "note": "NUSTOCK 30m: rule 85/120 (cf_triple)", "failed": [], "pct": 62.3, "updated": "2026-09-06T10:20:33Z"}

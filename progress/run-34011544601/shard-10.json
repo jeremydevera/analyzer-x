@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 8, "total": 53, "rows": 355120, "note": "BIO 30m: rule 2/120 (mom15)", "failed": [], "pct": 15.1, "updated": "2026-09-06T04:58:13Z"}
+{"shard": 10, "stage": "testing", "done": 8, "total": 53, "rows": 362380, "note": "BIO 30m: rule 33/120 (heikin)", "failed": [], "pct": 15.1, "updated": "2026-09-06T04:59:00Z"}

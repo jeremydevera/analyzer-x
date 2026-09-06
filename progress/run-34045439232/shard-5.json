@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 47, "total": 53, "rows": 1088526, "note": "TRADOOR 1d: 367 bars, testing 120 rules", "failed": [], "pct": 88.7, "updated": "2026-09-06T16:44:49Z"}
+{"shard": 5, "stage": "testing", "done": 50, "total": 53, "rows": 1140622, "note": "VTHO 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 94.3, "updated": "2026-09-06T16:45:39Z"}

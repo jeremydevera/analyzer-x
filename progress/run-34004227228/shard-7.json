@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 8, "total": 53, "rows": 302018, "note": "BIGTIME 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 15.1, "updated": "2026-09-06T01:55:56Z"}
+{"shard": 7, "stage": "testing", "done": 9, "total": 53, "rows": 333698, "note": "BNT 15m: 34,582 bars, testing 120 rules", "failed": [], "pct": 17.0, "updated": "2026-09-06T01:56:50Z"}

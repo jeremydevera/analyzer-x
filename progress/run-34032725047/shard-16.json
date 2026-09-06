@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 52, "total": 52, "rows": 2837882, "note": "ZEC 15m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-06T16:09:57Z"}
+{"shard": 16, "stage": "testing", "done": 52, "total": 52, "rows": 2845442, "note": "ZEC 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-06T16:10:44Z"}

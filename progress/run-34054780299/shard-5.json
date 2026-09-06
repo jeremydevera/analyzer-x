@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 26, "total": 53, "rows": 584982, "note": "KERNEL 4h: rule 1/120 (mom6)", "failed": [], "pct": 49.1, "updated": "2026-09-06T19:34:34Z"}
+{"shard": 5, "stage": "testing", "done": 28, "total": 53, "rows": 624274, "note": "LQTY 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-06T19:35:21Z"}

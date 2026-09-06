@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 25, "total": 53, "rows": 958234, "note": "JASMY 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-06T23:37:20Z"}
+{"shard": 5, "stage": "testing", "done": 25, "total": 53, "rows": 963434, "note": "JASMY 30m: rule 20/120 (stoch14)", "failed": [], "pct": 47.2, "updated": "2026-09-06T23:38:06Z"}

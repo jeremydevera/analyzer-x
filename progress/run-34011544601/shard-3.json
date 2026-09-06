@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 1714120, "note": "SYN 15m: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 84.9, "updated": "2026-09-06T07:11:01Z"}
+{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 1720520, "note": "SYN 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-06T07:11:59Z"}

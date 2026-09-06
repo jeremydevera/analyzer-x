@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 51, "total": 53, "rows": 2049442, "note": "WMTSTOCK 30m: rule 13/120 (pivot)", "failed": [], "pct": 96.2, "updated": "2026-09-06T21:18:10Z"}
+{"shard": 1, "stage": "testing", "done": 52, "total": 53, "rows": 2072822, "note": "XMR 1h: rule 3/120 (fade15)", "failed": [], "pct": 98.1, "updated": "2026-09-06T21:18:56Z"}

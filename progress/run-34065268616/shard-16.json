@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 2, "total": 53, "rows": 81120, "note": "AIOT 30m: rule 4/120 (trend50)", "failed": [], "pct": 3.8, "updated": "2026-09-06T22:59:17Z"}
+{"shard": 16, "stage": "testing", "done": 2, "total": 53, "rows": 89040, "note": "AIOT 30m: rule 40/120 (crsi)", "failed": [], "pct": 3.8, "updated": "2026-09-06T23:00:02Z"}

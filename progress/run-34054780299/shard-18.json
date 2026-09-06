@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 23, "total": 53, "rows": 643508, "note": "ICX 4h: rule 41/120 (tsi)", "failed": [], "pct": 43.4, "updated": "2026-09-06T19:36:52Z"}
+{"shard": 18, "stage": "testing", "done": 24, "total": 53, "rows": 693404, "note": "IOTX 4h: rule 110/120 (cf_fundfade_l1)", "failed": [], "pct": 45.3, "updated": "2026-09-06T19:37:37Z"}

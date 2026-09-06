@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 30, "total": 53, "rows": 1222806, "note": "MITO 30m: rule 52/120 (nr7)", "failed": [], "pct": 56.6, "updated": "2026-09-06T23:50:04Z"}
+{"shard": 7, "stage": "testing", "done": 31, "total": 53, "rows": 1239086, "note": "MSTRSTOCK 1h: rule 2/120 (mom15)", "failed": [], "pct": 58.5, "updated": "2026-09-06T23:50:50Z"}

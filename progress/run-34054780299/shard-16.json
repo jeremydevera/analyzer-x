@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 16, "total": 53, "rows": 519788, "note": "EIGEN 4h: rule 29/120 (hull20)", "failed": [], "pct": 30.2, "updated": "2026-09-06T19:32:39Z"}
+{"shard": 16, "stage": "testing", "done": 17, "total": 53, "rows": 570224, "note": "EUR 4h: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-06T19:33:24Z"}

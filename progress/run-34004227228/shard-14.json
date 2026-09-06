@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 49, "total": 52, "rows": 1663338, "note": "VRTXSTOCK 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 94.2, "updated": "2026-09-06T03:33:26Z"}
+{"shard": 14, "stage": "testing", "done": 50, "total": 52, "rows": 1680178, "note": "WOO 15m: rule 4/120 (trend50)", "failed": [], "pct": 96.2, "updated": "2026-09-06T03:34:11Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 24, "total": 53, "rows": 671380, "note": "IO 4h: rule 13/120 (pivot)", "failed": [], "pct": 45.3, "updated": "2026-09-06T22:30:52Z"}
+{"shard": 19, "stage": "testing", "done": 25, "total": 53, "rows": 709880, "note": "KAIA 4h: rule 3/120 (fade15)", "failed": [], "pct": 47.2, "updated": "2026-09-06T22:31:38Z"}

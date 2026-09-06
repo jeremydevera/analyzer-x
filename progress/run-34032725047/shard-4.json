@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 34, "total": 53, "rows": 1547122, "note": "ONDO 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 64.2, "updated": "2026-09-06T13:54:28Z"}
+{"shard": 4, "stage": "testing", "done": 34, "total": 53, "rows": 1551322, "note": "ONDO 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 64.2, "updated": "2026-09-06T13:55:14Z"}

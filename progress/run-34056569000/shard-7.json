@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 39, "total": 53, "rows": 1587418, "note": "RGTISTOCK 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 73.6, "updated": "2026-09-06T21:32:31Z"}
+{"shard": 7, "stage": "testing", "done": 40, "total": 53, "rows": 1601398, "note": "RVN 1h: rule 15/120 (bbbreak)", "failed": [], "pct": 75.5, "updated": "2026-09-06T21:33:16Z"}

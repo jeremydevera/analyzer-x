@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 20, "total": 53, "rows": 765794, "note": "GESTOCK 30m: 12,977 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-06T20:43:22Z"}
+{"shard": 7, "stage": "testing", "done": 21, "total": 53, "rows": 788688, "note": "GRAM 1h: rule 47/120 (ibs)", "failed": [], "pct": 39.6, "updated": "2026-09-06T20:44:07Z"}

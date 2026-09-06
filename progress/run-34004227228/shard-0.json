@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 43, "total": 53, "rows": 1531650, "note": "SOMI 15m: rule 106/120 (cf_bosfvg)", "failed": [], "pct": 81.1, "updated": "2026-09-06T03:24:54Z"}
+{"shard": 0, "stage": "testing", "done": 44, "total": 53, "rows": 1557418, "note": "SSV 15m: 34,588 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-06T03:25:42Z"}

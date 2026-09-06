@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 12, "total": 53, "rows": 335308, "note": "CHZ 4h: rule 64/120 (hammer)", "failed": [], "pct": 22.6, "updated": "2026-09-06T19:30:33Z"}
+{"shard": 5, "stage": "testing", "done": 18, "total": 53, "rows": 402178, "note": "FARTCOIN 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 34.0, "updated": "2026-09-06T19:31:29Z"}

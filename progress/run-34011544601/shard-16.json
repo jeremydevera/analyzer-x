@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 2, "total": 52, "rows": 63320, "note": "AIOT 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-06T04:38:20Z"}
+{"shard": 16, "stage": "testing", "done": 2, "total": 52, "rows": 69800, "note": "AIOT 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 3.8, "updated": "2026-09-06T04:39:12Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 14, "total": 52, "rows": 447588, "note": "DASH 4h: rule 20/120 (stoch14)", "failed": [], "pct": 26.9, "updated": "2026-09-06T01:53:51Z"}
+{"shard": 15, "stage": "testing", "done": 14, "total": 52, "rows": 467468, "note": "DASH 15m: rule 2/120 (mom15)", "failed": [], "pct": 26.9, "updated": "2026-09-06T01:54:45Z"}

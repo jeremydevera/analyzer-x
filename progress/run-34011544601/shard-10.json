@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 13, "total": 53, "rows": 440840, "note": "CRMSTOCK 15m: rule 17/120 (atrbreak)", "failed": [], "pct": 24.5, "updated": "2026-09-06T05:01:17Z"}
+{"shard": 10, "stage": "testing", "done": 13, "total": 53, "rows": 453080, "note": "CRMSTOCK 30m: 11,279 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-06T05:02:05Z"}

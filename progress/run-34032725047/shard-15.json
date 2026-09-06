@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 25, "total": 52, "rows": 1074566, "note": "JST 15m: rule 3/120 (fade15)", "failed": [], "pct": 48.1, "updated": "2026-09-06T13:02:43Z"}
+{"shard": 15, "stage": "testing", "done": 25, "total": 52, "rows": 1086006, "note": "JST 15m: rule 56/120 (insidebrk)", "failed": [], "pct": 48.1, "updated": "2026-09-06T13:03:29Z"}

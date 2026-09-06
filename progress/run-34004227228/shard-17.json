@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 43, "total": 52, "rows": 1715588, "note": "SPY 15m: rule 27/120 (aroon25)", "failed": [], "pct": 82.7, "updated": "2026-09-06T03:46:59Z"}
+{"shard": 17, "stage": "testing", "done": 44, "total": 52, "rows": 1747412, "note": "SUPRA 4h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 84.6, "updated": "2026-09-06T03:47:44Z"}

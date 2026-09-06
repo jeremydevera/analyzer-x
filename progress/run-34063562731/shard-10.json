@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 23, "total": 53, "rows": 608800, "note": "HYUNDAISTOCK 4h: rule 24/120 (psar)", "failed": [], "pct": 43.4, "updated": "2026-09-06T22:26:20Z"}
+{"shard": 10, "stage": "testing", "done": 27, "total": 53, "rows": 682386, "note": "LDO 4h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-06T22:27:05Z"}

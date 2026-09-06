@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 31, "total": 53, "rows": 1198556, "note": "MSFTSTOCK 30m: rule 4/120 (trend50)", "failed": [], "pct": 58.5, "updated": "2026-09-06T17:42:18Z"}
+{"shard": 4, "stage": "testing", "done": 31, "total": 53, "rows": 1219156, "note": "MSFTSTOCK 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 58.5, "updated": "2026-09-06T17:43:04Z"}

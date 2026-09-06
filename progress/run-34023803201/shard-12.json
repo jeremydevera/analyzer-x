@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 50, "total": 53, "rows": 1951112, "note": "WIF 1h: rule 20/120 (stoch14)", "failed": [], "pct": 94.3, "updated": "2026-09-06T10:17:30Z"}
+{"shard": 12, "stage": "testing", "done": 50, "total": 53, "rows": 1972232, "note": "WIF 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 94.3, "updated": "2026-09-06T10:18:21Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 41, "total": 53, "rows": 1659040, "note": "SHAZSTOCK 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 77.4, "updated": "2026-09-06T21:13:09Z"}
+{"shard": 5, "stage": "testing", "done": 42, "total": 53, "rows": 1672220, "note": "SKYAI 1h: rule 23/120 (supertrend)", "failed": [], "pct": 79.2, "updated": "2026-09-06T21:13:54Z"}

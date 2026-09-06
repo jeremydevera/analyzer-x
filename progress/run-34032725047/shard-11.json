@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 41, "total": 53, "rows": 1852840, "note": "SILVER 15m: rule 33/120 (heikin)", "failed": [], "pct": 77.4, "updated": "2026-09-06T14:35:14Z"}
+{"shard": 11, "stage": "testing", "done": 41, "total": 53, "rows": 1864000, "note": "SILVER 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 77.4, "updated": "2026-09-06T14:36:01Z"}

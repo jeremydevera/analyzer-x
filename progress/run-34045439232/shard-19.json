@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 2, "total": 53, "rows": 37356, "note": "AIXBT 4h: rule 14/120 (bb20)", "failed": [], "pct": 3.8, "updated": "2026-09-06T16:27:36Z"}
+{"shard": 19, "stage": "testing", "done": 3, "total": 53, "rows": 75732, "note": "AMP 4h: rule 10/120 (sr_bounce)", "failed": [], "pct": 5.7, "updated": "2026-09-06T16:28:21Z"}

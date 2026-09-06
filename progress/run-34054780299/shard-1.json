@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 15, "total": 53, "rows": 349502, "note": "DEEP 4h: rule 35/120 (willr14)", "failed": [], "pct": 28.3, "updated": "2026-09-06T19:29:06Z"}
+{"shard": 1, "stage": "testing", "done": 17, "total": 53, "rows": 406790, "note": "ENJ 1d: 394 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-06T19:29:56Z"}

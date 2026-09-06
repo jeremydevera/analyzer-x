@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 7, "total": 52, "rows": 357506, "note": "BCH 15m: rule 45/120 (zscore20)", "failed": [], "pct": 13.5, "updated": "2026-09-06T12:48:48Z"}
+{"shard": 17, "stage": "testing", "done": 7, "total": 52, "rows": 364886, "note": "BCH 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 13.5, "updated": "2026-09-06T12:49:34Z"}

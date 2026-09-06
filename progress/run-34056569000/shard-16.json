@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 14, "total": 53, "rows": 649860, "note": "DASH 30m: rule 33/120 (heikin)", "failed": [], "pct": 26.4, "updated": "2026-09-06T20:35:17Z"}
+{"shard": 16, "stage": "testing", "done": 14, "total": 53, "rows": 660460, "note": "DASH 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-06T20:36:02Z"}

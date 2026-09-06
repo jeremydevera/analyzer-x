@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 47, "total": 53, "rows": 2086072, "note": "TST 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 88.7, "updated": "2026-09-06T21:11:23Z"}
+{"shard": 19, "stage": "testing", "done": 47, "total": 53, "rows": 2094652, "note": "TST 30m: rule 33/120 (heikin)", "failed": [], "pct": 88.7, "updated": "2026-09-06T21:12:09Z"}

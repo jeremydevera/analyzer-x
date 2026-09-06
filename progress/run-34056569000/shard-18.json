@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 46, "total": 53, "rows": 1917124, "note": "TNSR 1h: rule 21/120 (cci20)", "failed": [], "pct": 86.8, "updated": "2026-09-06T21:33:32Z"}
+{"shard": 18, "stage": "testing", "done": 46, "total": 53, "rows": 1936330, "note": "TNSR 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 86.8, "updated": "2026-09-06T21:34:19Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 45, "total": 53, "rows": 1818100, "note": "TAC 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-06T21:10:06Z"}
+{"shard": 14, "stage": "testing", "done": 45, "total": 53, "rows": 1836316, "note": "TAC 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-06T21:10:52Z"}

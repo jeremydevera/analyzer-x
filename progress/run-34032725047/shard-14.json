@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 8, "total": 53, "rows": 304676, "note": "BKNGSTOCK 15m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 15.1, "updated": "2026-09-06T12:42:35Z"}
+{"shard": 14, "stage": "testing", "done": 9, "total": 53, "rows": 326746, "note": "BRETT 15m: rule 1/120 (mom6)", "failed": [], "pct": 17.0, "updated": "2026-09-06T12:43:23Z"}

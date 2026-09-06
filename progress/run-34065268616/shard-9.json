@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 13, "total": 53, "rows": 572686, "note": "CRCLSTOCK 30m: rule 47/120 (ibs)", "failed": [], "pct": 24.5, "updated": "2026-09-06T23:12:31Z"}
+{"shard": 9, "stage": "testing", "done": 17, "total": 53, "rows": 608786, "note": "ESP 1h: 5,006 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-06T23:13:16Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 46, "total": 53, "rows": 2043018, "note": "TMF 30m: rule 72/120 (force13)", "failed": [], "pct": 86.8, "updated": "2026-09-06T21:46:05Z"}
+{"shard": 16, "stage": "testing", "done": 48, "total": 53, "rows": 2128100, "note": "UNITREE 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 90.6, "updated": "2026-09-06T21:46:50Z"}

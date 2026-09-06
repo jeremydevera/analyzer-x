@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 5, "total": 52, "rows": 226680, "note": "ASTER 30m: rule 75/120 (relvolbrk)", "failed": [], "pct": 9.6, "updated": "2026-09-06T04:51:14Z"}
+{"shard": 12, "stage": "testing", "done": 6, "total": 52, "rows": 243480, "note": "AXONSTOCK 15m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 11.5, "updated": "2026-09-06T04:52:00Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 27, "total": 53, "rows": 970534, "note": "LA 15m: rule 54/120 (fractal5)", "failed": [], "pct": 50.9, "updated": "2026-09-06T02:43:36Z"}
+{"shard": 7, "stage": "testing", "done": 27, "total": 53, "rows": 980434, "note": "LA 15m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-06T02:44:23Z"}

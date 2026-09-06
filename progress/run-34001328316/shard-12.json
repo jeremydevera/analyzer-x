@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 38, "total": 52, "rows": 1041336, "note": "RCLSTOCK 1d: downloading candles", "failed": [], "pct": 73.1, "updated": "2026-09-06T00:54:32Z"}
+{"shard": 12, "stage": "testing", "done": 39, "total": 52, "rows": 1069732, "note": "ROAM 1h: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 75.0, "updated": "2026-09-06T00:55:17Z"}

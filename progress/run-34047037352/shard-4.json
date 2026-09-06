@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 43, "total": 53, "rows": 1624010, "note": "SOL 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-06T18:00:52Z"}
+{"shard": 4, "stage": "testing", "done": 43, "total": 53, "rows": 1650850, "note": "SOL 1h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-06T18:01:37Z"}

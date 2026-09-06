@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 21, "total": 53, "rows": 765180, "note": "GRVT 30m: rule 20/120 (stoch14)", "failed": [], "pct": 39.6, "updated": "2026-09-06T05:26:33Z"}
+{"shard": 10, "stage": "testing", "done": 23, "total": 53, "rows": 842520, "note": "IBB 30m: 1,904 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-06T05:27:19Z"}

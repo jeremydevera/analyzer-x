@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 40, "total": 53, "rows": 1597012, "note": "SAHARA 1h: rule 70/120 (cmf20)", "failed": [], "pct": 75.5, "updated": "2026-09-06T18:17:35Z"}
+{"shard": 10, "stage": "testing", "done": 40, "total": 53, "rows": 1608012, "note": "SAHARA 30m: rule 1/120 (mom6)", "failed": [], "pct": 75.5, "updated": "2026-09-06T18:18:23Z"}

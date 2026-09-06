@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 10, "total": 53, "rows": 433160, "note": "BTC 15m: 34,595 bars, testing 120 rules", "failed": [], "pct": 18.9, "updated": "2026-09-06T05:08:45Z"}
+{"shard": 4, "stage": "testing", "done": 10, "total": 53, "rows": 436680, "note": "BTC 15m: rule 10/120 (sr_bounce)", "failed": [], "pct": 18.9, "updated": "2026-09-06T05:09:31Z"}

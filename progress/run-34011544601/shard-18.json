@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 39, "total": 52, "rows": 1618860, "note": "ROSE 30m: rule 46/120 (rsi2)", "failed": [], "pct": 75.0, "updated": "2026-09-06T07:16:07Z"}
+{"shard": 18, "stage": "testing", "done": 39, "total": 52, "rows": 1631460, "note": "ROSE 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 75.0, "updated": "2026-09-06T07:16:53Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 28, "total": 53, "rows": 594518, "note": "LPT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-06T22:28:09Z"}
+{"shard": 4, "stage": "testing", "done": 29, "total": 53, "rows": 634382, "note": "MARSTOCK 1d: downloading candles", "failed": [], "pct": 54.7, "updated": "2026-09-06T22:28:54Z"}

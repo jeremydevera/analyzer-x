@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 38, "total": 52, "rows": 1315726, "note": "RENDER 15m: rule 69/120 (obv20)", "failed": [], "pct": 73.1, "updated": "2026-09-06T03:09:17Z"}
+{"shard": 19, "stage": "testing", "done": 38, "total": 52, "rows": 1322926, "note": "RENDER 15m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 73.1, "updated": "2026-09-06T03:10:03Z"}

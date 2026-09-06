@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 30, "total": 53, "rows": 1073104, "note": "MEW 1h: rule 27/120 (aroon25)", "failed": [], "pct": 56.6, "updated": "2026-09-06T23:38:32Z"}
+{"shard": 1, "stage": "testing", "done": 30, "total": 53, "rows": 1093344, "note": "MEW 30m: rule 1/120 (mom6)", "failed": [], "pct": 56.6, "updated": "2026-09-06T23:39:23Z"}

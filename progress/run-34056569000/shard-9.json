@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 3, "total": 53, "rows": 112814, "note": "ALLO 1h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 5.7, "updated": "2026-09-06T20:04:28Z"}
+{"shard": 9, "stage": "testing", "done": 3, "total": 53, "rows": 120594, "note": "ALLO 30m: rule 12/120 (donchian20)", "failed": [], "pct": 5.7, "updated": "2026-09-06T20:05:14Z"}

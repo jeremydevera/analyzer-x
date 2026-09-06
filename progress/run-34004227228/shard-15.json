@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 42, "total": 52, "rows": 1559094, "note": "SNX 15m: rule 1/120 (mom6)", "failed": [], "pct": 80.8, "updated": "2026-09-06T03:19:31Z"}
+{"shard": 15, "stage": "testing", "done": 42, "total": 52, "rows": 1560634, "note": "SNX 15m: rule 4/120 (trend50)", "failed": [], "pct": 80.8, "updated": "2026-09-06T03:20:23Z"}

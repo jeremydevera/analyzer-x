@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 49, "total": 53, "rows": 1912780, "note": "US 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 92.5, "updated": "2026-09-06T07:04:59Z"}
+{"shard": 1, "stage": "testing", "done": 50, "total": 53, "rows": 1922460, "note": "WAL 15m: rule 1/120 (mom6)", "failed": [], "pct": 94.3, "updated": "2026-09-06T07:05:54Z"}

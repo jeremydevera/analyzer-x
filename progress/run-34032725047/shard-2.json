@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 23, "total": 53, "rows": 1038072, "note": "HPESTOCK 30m: 4,612 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-06T13:41:26Z"}
+{"shard": 2, "stage": "testing", "done": 24, "total": 53, "rows": 1068512, "note": "IMX 15m: rule 1/120 (mom6)", "failed": [], "pct": 45.3, "updated": "2026-09-06T13:42:27Z"}

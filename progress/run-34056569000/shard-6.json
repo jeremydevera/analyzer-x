@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 37, "total": 53, "rows": 1309810, "note": "PROM 1h: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 69.8, "updated": "2026-09-06T21:02:43Z"}
+{"shard": 6, "stage": "testing", "done": 37, "total": 53, "rows": 1313110, "note": "PROM 30m: rule 1/120 (mom6)", "failed": [], "pct": 69.8, "updated": "2026-09-06T21:03:36Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 32, "total": 53, "rows": 1181064, "note": "NEIROCTO 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 60.4, "updated": "2026-09-06T17:42:53Z"}
+{"shard": 6, "stage": "testing", "done": 32, "total": 53, "rows": 1184584, "note": "NEIROCTO 30m: rule 4/120 (trend50)", "failed": [], "pct": 60.4, "updated": "2026-09-06T17:43:40Z"}

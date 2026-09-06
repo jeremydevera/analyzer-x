@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 46, "total": 53, "rows": 1636858, "note": "TESLA 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 86.8, "updated": "2026-09-06T03:31:59Z"}
+{"shard": 0, "stage": "testing", "done": 49, "total": 53, "rows": 1660698, "note": "USUAL 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-06T03:32:55Z"}

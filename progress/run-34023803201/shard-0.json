@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 30, "total": 53, "rows": 1088394, "note": "MEW 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 56.6, "updated": "2026-09-06T10:10:32Z"}
+{"shard": 0, "stage": "testing", "done": 32, "total": 53, "rows": 1119114, "note": "NAS100 1h: rule 19/120 (emacross)", "failed": [], "pct": 60.4, "updated": "2026-09-06T10:11:17Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 36, "total": 53, "rows": 1552564, "note": "PNUT 15m: rule 4/120 (trend50)", "failed": [], "pct": 67.9, "updated": "2026-09-06T14:07:12Z"}
+{"shard": 11, "stage": "testing", "done": 36, "total": 53, "rows": 1556964, "note": "PNUT 15m: rule 24/120 (psar)", "failed": [], "pct": 67.9, "updated": "2026-09-06T14:07:58Z"}

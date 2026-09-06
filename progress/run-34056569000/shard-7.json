@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 17, "total": 53, "rows": 658338, "note": "ERA 30m: rule 61/120 (turtle)", "failed": [], "pct": 32.1, "updated": "2026-09-06T20:39:32Z"}
+{"shard": 7, "stage": "testing", "done": 18, "total": 53, "rows": 680012, "note": "FASTSTOCK 1h: rule 64/120 (hammer)", "failed": [], "pct": 34.0, "updated": "2026-09-06T20:40:17Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 18, "total": 52, "rows": 843332, "note": "FLNCSTOCK 15m: rule 3/120 (fade15)", "failed": [], "pct": 34.6, "updated": "2026-09-06T13:42:27Z"}
+{"shard": 18, "stage": "testing", "done": 18, "total": 52, "rows": 861732, "note": "FLNCSTOCK 30m: 5,327 bars, testing 120 rules", "failed": [], "pct": 34.6, "updated": "2026-09-06T13:43:12Z"}

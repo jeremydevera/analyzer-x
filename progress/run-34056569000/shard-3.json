@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 50, "total": 53, "rows": 1878456, "note": "VSTOCK 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 94.3, "updated": "2026-09-06T21:30:53Z"}
+{"shard": 3, "stage": "testing", "done": 50, "total": 53, "rows": 1896856, "note": "VSTOCK 30m: rule 68/120 (dbltop)", "failed": [], "pct": 94.3, "updated": "2026-09-06T21:31:38Z"}

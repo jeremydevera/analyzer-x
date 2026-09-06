@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 19, "total": 53, "rows": 601302, "note": "FLR 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 35.8, "updated": "2026-09-06T02:26:44Z"}
+{"shard": 2, "stage": "testing", "done": 19, "total": 53, "rows": 609882, "note": "FLR 15m: rule 115/120 (cf_diadx)", "failed": [], "pct": 35.8, "updated": "2026-09-06T02:27:29Z"}

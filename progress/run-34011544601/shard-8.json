@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 6, "total": 53, "rows": 170740, "note": "AVGOSTOCK 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 11.3, "updated": "2026-09-06T04:48:35Z"}
+{"shard": 8, "stage": "testing", "done": 6, "total": 53, "rows": 178480, "note": "AVGOSTOCK 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 11.3, "updated": "2026-09-06T04:49:21Z"}

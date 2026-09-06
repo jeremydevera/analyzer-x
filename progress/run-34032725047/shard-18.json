@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 21, "total": 52, "rows": 969472, "note": "HAEDAL 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 40.4, "updated": "2026-09-06T13:49:49Z"}
+{"shard": 18, "stage": "testing", "done": 21, "total": 52, "rows": 973652, "note": "HAEDAL 30m: rule 13/120 (pivot)", "failed": [], "pct": 40.4, "updated": "2026-09-06T13:50:35Z"}

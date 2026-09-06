@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 27, "total": 53, "rows": 1144546, "note": "LISTA 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-06T20:59:17Z"}
+{"shard": 18, "stage": "testing", "done": 28, "total": 53, "rows": 1158714, "note": "MAGMA 1h: rule 20/120 (stoch14)", "failed": [], "pct": 52.8, "updated": "2026-09-06T21:00:02Z"}

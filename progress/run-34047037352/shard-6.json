@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 10, "total": 53, "rows": 414214, "note": "BTR 30m: rule 42/120 (rsidiv)", "failed": [], "pct": 18.9, "updated": "2026-09-06T17:12:29Z"}
+{"shard": 6, "stage": "testing", "done": 12, "total": 53, "rows": 429214, "note": "CIENSTOCK 1h: 2,122 bars, testing 120 rules", "failed": [], "pct": 22.6, "updated": "2026-09-06T17:13:14Z"}

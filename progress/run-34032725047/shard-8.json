@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 23, "total": 53, "rows": 1051558, "note": "HYPE 1d: 394 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-06T14:02:49Z"}
+{"shard": 8, "stage": "testing", "done": 24, "total": 53, "rows": 1068062, "note": "INTCSTOCK 15m: rule 13/120 (pivot)", "failed": [], "pct": 45.3, "updated": "2026-09-06T14:03:34Z"}

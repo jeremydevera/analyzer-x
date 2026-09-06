@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 44, "total": 53, "rows": 1449240, "note": "STO 30m: rule 19/120 (emacross)", "failed": [], "pct": 83.0, "updated": "2026-09-06T06:23:41Z"}
+{"shard": 8, "stage": "testing", "done": 44, "total": 53, "rows": 1460440, "note": "STO 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 83.0, "updated": "2026-09-06T06:24:27Z"}

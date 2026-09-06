@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 9, "total": 52, "rows": 414032, "note": "BROCCOLIF3B 15m: rule 23/120 (supertrend)", "failed": [], "pct": 17.3, "updated": "2026-09-06T13:02:37Z"}
+{"shard": 18, "stage": "testing", "done": 9, "total": 52, "rows": 418712, "note": "BROCCOLIF3B 15m: rule 50/120 (gapfade)", "failed": [], "pct": 17.3, "updated": "2026-09-06T13:03:22Z"}

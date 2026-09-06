@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 21, "total": 53, "rows": 857116, "note": "GOAT 15m: rule 11/120 (sr_break)", "failed": [], "pct": 39.6, "updated": "2026-09-06T13:29:12Z"}
+{"shard": 1, "stage": "testing", "done": 21, "total": 53, "rows": 861616, "note": "GOAT 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 39.6, "updated": "2026-09-06T13:29:58Z"}

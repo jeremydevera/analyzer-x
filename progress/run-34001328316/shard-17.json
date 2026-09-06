@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 40, "total": 52, "rows": 1308050, "note": "SEI 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 76.9, "updated": "2026-09-06T01:11:28Z"}
+{"shard": 17, "stage": "testing", "done": 40, "total": 52, "rows": 1324990, "note": "SEI 1h: rule 72/120 (force13)", "failed": [], "pct": 76.9, "updated": "2026-09-06T01:12:13Z"}

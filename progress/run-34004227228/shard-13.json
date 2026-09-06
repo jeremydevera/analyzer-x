@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 27, "total": 52, "rows": 987436, "note": "LINEA 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 51.9, "updated": "2026-09-06T02:45:58Z"}
+{"shard": 13, "stage": "testing", "done": 28, "total": 52, "rows": 995356, "note": "LYN 4h: 2,009 bars, testing 120 rules", "failed": [], "pct": 53.8, "updated": "2026-09-06T02:46:49Z"}

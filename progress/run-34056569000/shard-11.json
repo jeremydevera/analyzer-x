@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 6, "total": 53, "rows": 209668, "note": "AXL 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 11.3, "updated": "2026-09-06T20:09:06Z"}
+{"shard": 11, "stage": "testing", "done": 6, "total": 53, "rows": 233208, "note": "AXL 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-06T20:10:00Z"}

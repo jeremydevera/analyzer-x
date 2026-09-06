@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 44, "total": 52, "rows": 1514514, "note": "SUI 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 84.6, "updated": "2026-09-06T03:16:02Z"}
+{"shard": 13, "stage": "testing", "done": 45, "total": 52, "rows": 1520814, "note": "TA 4h: rule 3/120 (fade15)", "failed": [], "pct": 86.5, "updated": "2026-09-06T03:16:48Z"}

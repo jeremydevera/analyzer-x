@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 52, "total": 53, "rows": 1996092, "note": "XRP 1h: rule 8/120 (fib618)", "failed": [], "pct": 98.1, "updated": "2026-09-06T21:55:55Z"}
+{"shard": 8, "stage": "testing", "done": 52, "total": 53, "rows": 2019632, "note": "XRP 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-06T21:56:47Z"}

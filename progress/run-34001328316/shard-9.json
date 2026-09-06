@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 9, "total": 53, "rows": 307958, "note": "BOME 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 17.0, "updated": "2026-09-06T00:35:44Z"}
+{"shard": 9, "stage": "testing", "done": 12, "total": 53, "rows": 343064, "note": "CLO 1h: rule 1/120 (mom6)", "failed": [], "pct": 22.6, "updated": "2026-09-06T00:36:33Z"}

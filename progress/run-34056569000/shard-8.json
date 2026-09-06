@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 17, "total": 53, "rows": 589324, "note": "ESPORTS 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-06T20:37:01Z"}
+{"shard": 8, "stage": "testing", "done": 17, "total": 53, "rows": 601324, "note": "ESPORTS 1h: rule 55/120 (nhigh50)", "failed": [], "pct": 32.1, "updated": "2026-09-06T20:37:47Z"}

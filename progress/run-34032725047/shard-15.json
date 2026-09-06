@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 32, "total": 52, "rows": 1509870, "note": "NIGHT 30m: rule 21/120 (cci20)", "failed": [], "pct": 61.5, "updated": "2026-09-06T13:22:00Z"}
+{"shard": 15, "stage": "testing", "done": 33, "total": 52, "rows": 1550494, "note": "NVTSSTOCK 30m: 3,220 bars, testing 120 rules", "failed": [], "pct": 63.5, "updated": "2026-09-06T13:22:46Z"}

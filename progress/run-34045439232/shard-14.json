@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 12, "total": 53, "rows": 319950, "note": "COAI 4h: rule 58/120 (bos)", "failed": [], "pct": 22.6, "updated": "2026-09-06T16:32:19Z"}
+{"shard": 14, "stage": "testing", "done": 13, "total": 53, "rows": 358890, "note": "CRV 4h: rule 76/120 (cf_mom)", "failed": [], "pct": 24.5, "updated": "2026-09-06T16:33:05Z"}

@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 17, "total": 53, "rows": 827458, "note": "ETC 15m: rule 73/120 (volspike)", "failed": [], "pct": 32.1, "updated": "2026-09-06T12:57:34Z"}
+{"shard": 10, "stage": "testing", "done": 17, "total": 53, "rows": 838678, "note": "ETC 30m: rule 2/120 (mom15)", "failed": [], "pct": 32.1, "updated": "2026-09-06T12:58:22Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 45, "total": 52, "rows": 1772672, "note": "TEMSTOCK 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 86.5, "updated": "2026-09-06T03:50:51Z"}
+{"shard": 17, "stage": "testing", "done": 46, "total": 52, "rows": 1802852, "note": "TRADOOR 15m: 34,590 bars, testing 120 rules", "failed": [], "pct": 88.5, "updated": "2026-09-06T03:51:43Z"}

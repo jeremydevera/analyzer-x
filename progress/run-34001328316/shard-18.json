@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 11, "total": 52, "rows": 341018, "note": "CHEEMS 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 21.2, "updated": "2026-09-06T00:40:33Z"}
+{"shard": 18, "stage": "testing", "done": 11, "total": 52, "rows": 354218, "note": "CHEEMS 1h: rule 55/120 (nhigh50)", "failed": [], "pct": 21.2, "updated": "2026-09-06T00:41:19Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 34, "total": 52, "rows": 1621294, "note": "OPN 1d: 207 bars, testing 120 rules", "failed": [], "pct": 65.4, "updated": "2026-09-06T13:25:06Z"}
+{"shard": 15, "stage": "testing", "done": 35, "total": 52, "rows": 1632334, "note": "PENGU 15m: rule 4/120 (trend50)", "failed": [], "pct": 67.3, "updated": "2026-09-06T13:25:51Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 16, "total": 53, "rows": 566202, "note": "EDEN 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 30.2, "updated": "2026-09-06T23:19:21Z"}
+{"shard": 11, "stage": "testing", "done": 17, "total": 53, "rows": 573462, "note": "ETHFI 1h: rule 12/120 (donchian20)", "failed": [], "pct": 32.1, "updated": "2026-09-06T23:20:06Z"}

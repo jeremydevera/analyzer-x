@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 13, "total": 52, "rows": 405908, "note": "CROSS 15m: rule 71/120 (mfi14)", "failed": [], "pct": 25.0, "updated": "2026-09-06T02:01:14Z"}
+{"shard": 11, "stage": "testing", "done": 13, "total": 52, "rows": 413308, "note": "CROSS 15m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 25.0, "updated": "2026-09-06T02:02:01Z"}

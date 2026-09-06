@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 33, "total": 53, "rows": 804902, "note": "NMR 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 62.3, "updated": "2026-09-06T22:30:13Z"}
+{"shard": 2, "stage": "testing", "done": 35, "total": 53, "rows": 853060, "note": "ORDI 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-06T22:31:00Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 34, "total": 52, "rows": 1103506, "note": "ORDER 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 65.4, "updated": "2026-09-06T02:52:10Z"}
+{"shard": 19, "stage": "testing", "done": 34, "total": 52, "rows": 1110766, "note": "ORDER 15m: rule 70/120 (cmf20)", "failed": [], "pct": 65.4, "updated": "2026-09-06T02:52:56Z"}

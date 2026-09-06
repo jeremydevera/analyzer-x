@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 44, "total": 53, "rows": 1785268, "note": "STORJ 1h: rule 25/120 (ichimoku)", "failed": [], "pct": 83.0, "updated": "2026-09-06T18:21:38Z"}
+{"shard": 14, "stage": "testing", "done": 44, "total": 53, "rows": 1805948, "note": "STORJ 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-06T18:22:26Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 4, "total": 53, "rows": 179900, "note": "ANKR 30m: rule 103/120 (cf_eqhl)", "failed": [], "pct": 7.5, "updated": "2026-09-06T20:06:41Z"}
+{"shard": 4, "stage": "testing", "done": 5, "total": 53, "rows": 208440, "note": "ARMSTOCK 30m: 12,700 bars, testing 120 rules", "failed": [], "pct": 9.4, "updated": "2026-09-06T20:07:28Z"}

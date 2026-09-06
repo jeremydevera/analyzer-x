@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 13, "total": 53, "rows": 566046, "note": "COSTSTOCK 30m: rule 16/120 (keltner)", "failed": [], "pct": 24.5, "updated": "2026-09-06T23:23:21Z"}
+{"shard": 5, "stage": "testing", "done": 14, "total": 53, "rows": 601610, "note": "CTSHSTOCK 30m: rule 4/120 (trend50)", "failed": [], "pct": 26.4, "updated": "2026-09-06T23:24:06Z"}

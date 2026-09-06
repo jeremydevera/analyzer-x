@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 50, "total": 53, "rows": 2194620, "note": "WENSTOCK 1h: rule 109/120 (cf_fundfade)", "failed": [], "pct": 94.3, "updated": "2026-09-06T10:59:12Z"}
+{"shard": 10, "stage": "testing", "done": 51, "total": 53, "rows": 2247474, "note": "XLE 30m: rule 95/120 (cf_emarsi_l1)", "failed": [], "pct": 96.2, "updated": "2026-09-06T10:59:57Z"}

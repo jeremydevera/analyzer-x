@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 27, "total": 52, "rows": 1068640, "note": "LINSTOCK 30m: rule 73/120 (volspike)", "failed": [], "pct": 51.9, "updated": "2026-09-06T05:35:40Z"}
+{"shard": 15, "stage": "testing", "done": 28, "total": 52, "rows": 1075360, "note": "MAGIC 15m: rule 2/120 (mom15)", "failed": [], "pct": 53.8, "updated": "2026-09-06T05:36:34Z"}

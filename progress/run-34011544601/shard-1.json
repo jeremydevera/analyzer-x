@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 11, "total": 53, "rows": 414260, "note": "CATSTOCK 15m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 20.8, "updated": "2026-09-06T05:03:16Z"}
+{"shard": 1, "stage": "testing", "done": 12, "total": 53, "rows": 428440, "note": "CHIP 15m: rule 4/120 (trend50)", "failed": [], "pct": 22.6, "updated": "2026-09-06T05:04:02Z"}

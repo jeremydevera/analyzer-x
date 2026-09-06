@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 47, "total": 53, "rows": 1918048, "note": "TREE 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 88.7, "updated": "2026-09-06T21:50:01Z"}
+{"shard": 7, "stage": "testing", "done": 48, "total": 53, "rows": 1949238, "note": "TXNSTOCK 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 90.6, "updated": "2026-09-06T21:50:46Z"}

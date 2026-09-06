@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 52, "total": 53, "rows": 1302786, "note": "XNY 4h: rule 37/120 (ultosc)", "failed": [], "pct": 98.1, "updated": "2026-09-06T16:49:00Z"}
+{"shard": 2, "stage": "testing", "done": 53, "total": 53, "rows": 1346522, "note": "ZEN 4h: rule 49/120 (vwaprev)", "failed": [], "pct": 100.0, "updated": "2026-09-06T16:49:45Z"}

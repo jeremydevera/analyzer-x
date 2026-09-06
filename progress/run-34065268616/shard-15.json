@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 20, "total": 53, "rows": 747026, "note": "GLM 30m: rule 66/120 (soldiers)", "failed": [], "pct": 37.7, "updated": "2026-09-06T23:23:47Z"}
+{"shard": 15, "stage": "testing", "done": 21, "total": 53, "rows": 758906, "note": "GUN 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-06T23:24:34Z"}

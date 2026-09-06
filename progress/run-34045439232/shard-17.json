@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 37, "total": 53, "rows": 1000374, "note": "PYPLSTOCK 1d: downloading candles", "failed": [], "pct": 69.8, "updated": "2026-09-06T16:45:02Z"}
+{"shard": 17, "stage": "testing", "done": 43, "total": 53, "rows": 1042504, "note": "SPK 4h: rule 33/120 (heikin)", "failed": [], "pct": 81.1, "updated": "2026-09-06T16:45:47Z"}

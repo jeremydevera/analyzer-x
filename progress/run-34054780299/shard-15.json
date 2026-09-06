@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 26, "total": 53, "rows": 646964, "note": "KMNO 1d: rule 7/120 (fvg)", "failed": [], "pct": 49.1, "updated": "2026-09-06T19:34:10Z"}
+{"shard": 15, "stage": "testing", "done": 28, "total": 53, "rows": 698268, "note": "LYN 4h: 2,013 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-06T19:34:58Z"}

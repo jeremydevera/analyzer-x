@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 29, "total": 52, "rows": 1108160, "note": "MEME 30m: rule 49/120 (vwaprev)", "failed": [], "pct": 55.8, "updated": "2026-09-06T06:00:20Z"}
+{"shard": 14, "stage": "testing", "done": 30, "total": 52, "rows": 1123560, "note": "MORPHO 15m: 34,599 bars, testing 120 rules", "failed": [], "pct": 57.7, "updated": "2026-09-06T06:01:15Z"}

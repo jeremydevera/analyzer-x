@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 17, "total": 53, "rows": 409756, "note": "ETH 1d: rule 47/120 (ibs)", "failed": [], "pct": 32.1, "updated": "2026-09-06T16:32:09Z"}
+{"shard": 13, "stage": "testing", "done": 19, "total": 53, "rows": 455956, "note": "FRMISTOCK 1d: downloading candles", "failed": [], "pct": 35.8, "updated": "2026-09-06T16:32:54Z"}

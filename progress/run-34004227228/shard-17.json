@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 32, "total": 52, "rows": 1263136, "note": "NIOSTOCK 15m: 6,605 bars, testing 120 rules", "failed": [], "pct": 61.5, "updated": "2026-09-06T03:12:01Z"}
+{"shard": 17, "stage": "testing", "done": 33, "total": 52, "rows": 1293216, "note": "OGN 4h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 63.5, "updated": "2026-09-06T03:12:46Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 36, "total": 53, "rows": 888458, "note": "POETSTOCK 1d: downloading candles", "failed": [], "pct": 67.9, "updated": "2026-09-06T16:40:09Z"}
+{"shard": 14, "stage": "testing", "done": 37, "total": 53, "rows": 932920, "note": "PUNDIX 1d: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 69.8, "updated": "2026-09-06T16:40:54Z"}

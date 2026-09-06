@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 7, "total": 53, "rows": 353256, "note": "BEAMX 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 13.2, "updated": "2026-09-06T23:17:57Z"}
+{"shard": 19, "stage": "testing", "done": 8, "total": 53, "rows": 383228, "note": "BLKSTOCK 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 15.1, "updated": "2026-09-06T23:18:42Z"}

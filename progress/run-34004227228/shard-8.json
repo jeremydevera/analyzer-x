@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 29, "total": 53, "rows": 773622, "note": "MEGA 4h: 1,910 bars, testing 120 rules", "failed": [], "pct": 54.7, "updated": "2026-09-06T02:23:12Z"}
+{"shard": 8, "stage": "testing", "done": 29, "total": 53, "rows": 795402, "note": "MEGA 15m: rule 1/120 (mom6)", "failed": [], "pct": 54.7, "updated": "2026-09-06T02:24:08Z"}

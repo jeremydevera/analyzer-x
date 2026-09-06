@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 38, "total": 53, "rows": 1432616, "note": "RARE 1h: rule 21/120 (cci20)", "failed": [], "pct": 71.7, "updated": "2026-09-06T21:09:31Z"}
+{"shard": 9, "stage": "testing", "done": 38, "total": 53, "rows": 1453956, "note": "RARE 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 71.7, "updated": "2026-09-06T21:10:18Z"}

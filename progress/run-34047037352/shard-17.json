@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 23, "total": 53, "rows": 1073218, "note": "ICP 30m: rule 51/120 (orb)", "failed": [], "pct": 43.4, "updated": "2026-09-06T17:51:58Z"}
+{"shard": 17, "stage": "testing", "done": 23, "total": 53, "rows": 1086218, "note": "ICP 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 43.4, "updated": "2026-09-06T17:52:44Z"}

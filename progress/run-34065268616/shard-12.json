@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 21, "total": 53, "rows": 884790, "note": "GSSTOCK 1h: rule 16/120 (keltner)", "failed": [], "pct": 39.6, "updated": "2026-09-06T23:28:40Z"}
+{"shard": 12, "stage": "testing", "done": 21, "total": 53, "rows": 914170, "note": "GSSTOCK 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 39.6, "updated": "2026-09-06T23:29:26Z"}

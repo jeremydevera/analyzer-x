@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 18, "total": 53, "rows": 766974, "note": "FET 30m: rule 43/120 (macddiv)", "failed": [], "pct": 34.0, "updated": "2026-09-06T23:33:21Z"}
+{"shard": 10, "stage": "testing", "done": 18, "total": 53, "rows": 778574, "note": "FET 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 34.0, "updated": "2026-09-06T23:34:06Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 30, "total": 52, "rows": 1142780, "note": "MOODENG 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 57.7, "updated": "2026-09-06T06:08:49Z"}
+{"shard": 12, "stage": "testing", "done": 31, "total": 52, "rows": 1145840, "note": "MUSTOCK 15m: rule 11/120 (sr_break)", "failed": [], "pct": 59.6, "updated": "2026-09-06T06:09:35Z"}

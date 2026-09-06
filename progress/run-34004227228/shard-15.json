@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 43, "total": 52, "rows": 1624654, "note": "SPX500 15m: rule 60/120 (eqraid)", "failed": [], "pct": 82.7, "updated": "2026-09-06T03:24:13Z"}
+{"shard": 15, "stage": "testing", "done": 43, "total": 52, "rows": 1634014, "note": "SPX500 15m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 82.7, "updated": "2026-09-06T03:24:59Z"}

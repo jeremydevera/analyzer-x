@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 24, "total": 53, "rows": 1016340, "note": "INTW 15m: rule 44/120 (elder)", "failed": [], "pct": 45.3, "updated": "2026-09-06T06:03:24Z"}
+{"shard": 9, "stage": "testing", "done": 26, "total": 53, "rows": 1056820, "note": "KIOXIASTOCK 15m: 7,949 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-06T06:04:09Z"}

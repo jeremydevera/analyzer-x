@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 44, "total": 53, "rows": 2220696, "note": "STO 15m: rule 3/120 (fade15)", "failed": [], "pct": 83.0, "updated": "2026-09-06T14:05:06Z"}
+{"shard": 10, "stage": "testing", "done": 44, "total": 53, "rows": 2228696, "note": "STO 15m: rule 54/120 (fractal5)", "failed": [], "pct": 83.0, "updated": "2026-09-06T14:05:51Z"}

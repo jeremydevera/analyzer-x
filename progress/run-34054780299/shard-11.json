@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 25, "total": 53, "rows": 505264, "note": "JMKESTOCK 1d: downloading candles", "failed": [], "pct": 47.2, "updated": "2026-09-06T19:34:13Z"}
+{"shard": 11, "stage": "testing", "done": 28, "total": 53, "rows": 562972, "note": "LUMIA 4h: rule 39/120 (fisher)", "failed": [], "pct": 52.8, "updated": "2026-09-06T19:34:58Z"}

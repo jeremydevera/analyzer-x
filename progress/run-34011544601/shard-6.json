@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 46, "total": 53, "rows": 1683120, "note": "TIA 30m: rule 20/120 (stoch14)", "failed": [], "pct": 86.8, "updated": "2026-09-06T07:19:41Z"}
+{"shard": 6, "stage": "testing", "done": 46, "total": 53, "rows": 1691720, "note": "TIA 30m: rule 64/120 (hammer)", "failed": [], "pct": 86.8, "updated": "2026-09-06T07:20:26Z"}

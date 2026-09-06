@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 43, "total": 53, "rows": 1650664, "note": "SOL 30m: rule 13/120 (pivot)", "failed": [], "pct": 81.1, "updated": "2026-09-06T10:29:25Z"}
+{"shard": 1, "stage": "testing", "done": 43, "total": 53, "rows": 1662264, "note": "SOL 30m: rule 72/120 (force13)", "failed": [], "pct": 81.1, "updated": "2026-09-06T10:30:10Z"}

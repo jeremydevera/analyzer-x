@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 40, "total": 53, "rows": 1783578, "note": "SCCOSTOCK 30m: rule 39/120 (fisher)", "failed": [], "pct": 75.5, "updated": "2026-09-06T18:37:36Z"}
+{"shard": 19, "stage": "testing", "done": 42, "total": 53, "rows": 1862510, "note": "SNXX 30m: rule 1/120 (mom6)", "failed": [], "pct": 79.2, "updated": "2026-09-06T18:38:21Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 2, "total": 53, "rows": 42840, "note": "AIA 15m: rule 44/120 (elder)", "failed": [], "pct": 3.8, "updated": "2026-09-06T12:21:30Z"}
+{"shard": 12, "stage": "testing", "done": 2, "total": 53, "rows": 52560, "note": "AIA 15m: rule 100/120 (cf_soup1)", "failed": [], "pct": 3.8, "updated": "2026-09-06T12:22:15Z"}

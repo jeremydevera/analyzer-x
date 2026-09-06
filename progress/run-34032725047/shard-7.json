@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 22, "total": 53, "rows": 985164, "note": "HFT 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-06T13:36:15Z"}
+{"shard": 7, "stage": "testing", "done": 22, "total": 53, "rows": 985164, "note": "HFT 30m: rule 49/120 (vwaprev)", "failed": [], "pct": 41.5, "updated": "2026-09-06T13:37:00Z"}

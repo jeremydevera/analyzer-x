@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 16, "total": 53, "rows": 562704, "note": "DYM 30m: rule 1/120 (mom6)", "failed": [], "pct": 30.2, "updated": "2026-09-06T20:34:33Z"}
+{"shard": 8, "stage": "testing", "done": 16, "total": 53, "rows": 567764, "note": "DYM 30m: rule 20/120 (stoch14)", "failed": [], "pct": 30.2, "updated": "2026-09-06T20:35:19Z"}

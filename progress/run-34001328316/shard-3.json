@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 52, "total": 53, "rows": 1455776, "note": "XVS 1h: rule 53/120 (squeeze)", "failed": [], "pct": 98.1, "updated": "2026-09-06T01:10:13Z"}
+{"shard": 3, "stage": "testing", "done": 53, "total": 53, "rows": 1486136, "note": "ZKC 1h: rule 2/120 (mom15)", "failed": [], "pct": 100.0, "updated": "2026-09-06T01:11:02Z"}

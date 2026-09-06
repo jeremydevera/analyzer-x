@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 33, "total": 53, "rows": 1458548, "note": "NOM 15m: rule 49/120 (vwaprev)", "failed": [], "pct": 62.3, "updated": "2026-09-06T13:56:20Z"}
+{"shard": 3, "stage": "testing", "done": 33, "total": 53, "rows": 1467568, "note": "NOM 15m: rule 91/120 (cf_soup)", "failed": [], "pct": 62.3, "updated": "2026-09-06T13:57:05Z"}

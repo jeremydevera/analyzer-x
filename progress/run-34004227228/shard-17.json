@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 33, "total": 52, "rows": 1318376, "note": "OGN 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 63.5, "updated": "2026-09-06T03:15:58Z"}
+{"shard": 17, "stage": "testing", "done": 34, "total": 52, "rows": 1324376, "note": "ORCA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 65.4, "updated": "2026-09-06T03:16:48Z"}

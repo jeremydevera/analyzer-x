@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 31, "total": 52, "rows": 1067620, "note": "NAS100 30m: rule 61/120 (turtle)", "failed": [], "pct": 59.6, "updated": "2026-09-06T06:08:57Z"}
+{"shard": 19, "stage": "testing", "done": 32, "total": 52, "rows": 1092400, "note": "NKESTOCK 30m: 3,919 bars, testing 120 rules", "failed": [], "pct": 61.5, "updated": "2026-09-06T06:09:42Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 28, "total": 53, "rows": 698268, "note": "LYN 4h: 2,013 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-06T19:34:58Z"}
+{"shard": 15, "stage": "testing", "done": 33, "total": 53, "rows": 779316, "note": "NVOSTOCK 1d: 97 bars, testing 120 rules", "failed": [], "pct": 62.3, "updated": "2026-09-06T19:35:43Z"}

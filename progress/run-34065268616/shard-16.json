@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 15, "total": 53, "rows": 666420, "note": "DOGS 1h: rule 16/120 (keltner)", "failed": [], "pct": 28.3, "updated": "2026-09-06T23:29:54Z"}
+{"shard": 16, "stage": "testing", "done": 15, "total": 53, "rows": 688860, "note": "DOGS 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 28.3, "updated": "2026-09-06T23:30:56Z"}

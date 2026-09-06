@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 32, "total": 53, "rows": 1203718, "note": "NICKEL 30m: rule 43/120 (macddiv)", "failed": [], "pct": 60.4, "updated": "2026-09-06T20:42:24Z"}
+{"shard": 15, "stage": "testing", "done": 34, "total": 53, "rows": 1260094, "note": "OPG 1h: rule 20/120 (stoch14)", "failed": [], "pct": 64.2, "updated": "2026-09-06T20:43:09Z"}

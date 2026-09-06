@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 1, "total": 53, "rows": 0, "note": "AAPLSTOCK 4h: downloading candles", "failed": [], "pct": 1.9, "updated": "2026-09-06T16:26:46Z"}
+{"shard": 11, "stage": "testing", "done": 2, "total": 53, "rows": 35532, "note": "AGT 4h: rule 3/120 (fade15)", "failed": [], "pct": 3.8, "updated": "2026-09-06T16:27:31Z"}

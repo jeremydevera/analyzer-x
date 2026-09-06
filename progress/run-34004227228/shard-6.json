@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 27, "total": 53, "rows": 846566, "note": "LAYER 15m: rule 58/120 (bos)", "failed": [], "pct": 50.9, "updated": "2026-09-06T02:35:39Z"}
+{"shard": 6, "stage": "testing", "done": 27, "total": 53, "rows": 853946, "note": "LAYER 15m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-06T02:36:24Z"}

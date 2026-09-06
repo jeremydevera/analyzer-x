@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 47, "total": 53, "rows": 1785180, "note": "TRIA 30m: 10,317 bars, testing 120 rules", "failed": [], "pct": 88.7, "updated": "2026-09-06T06:51:48Z"}
+{"shard": 1, "stage": "testing", "done": 47, "total": 53, "rows": 1791780, "note": "TRIA 30m: rule 24/120 (psar)", "failed": [], "pct": 88.7, "updated": "2026-09-06T06:52:33Z"}

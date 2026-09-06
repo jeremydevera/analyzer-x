@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 40, "total": 53, "rows": 1306308, "note": "SAGA 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-06T03:25:29Z"}
+{"shard": 5, "stage": "testing", "done": 42, "total": 53, "rows": 1313308, "note": "SLX 4h: 621 bars, testing 120 rules", "failed": [], "pct": 79.2, "updated": "2026-09-06T03:26:14Z"}

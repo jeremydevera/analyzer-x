@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 13, "total": 53, "rows": 640614, "note": "CSCOSTOCK 30m: rule 49/120 (vwaprev)", "failed": [], "pct": 24.5, "updated": "2026-09-06T20:30:39Z"}
+{"shard": 17, "stage": "testing", "done": 14, "total": 53, "rows": 655176, "note": "DATA 1h: rule 3/120 (fade15)", "failed": [], "pct": 26.4, "updated": "2026-09-06T20:31:24Z"}

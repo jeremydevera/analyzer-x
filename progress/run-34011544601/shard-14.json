@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 35, "total": 52, "rows": 1352040, "note": "PENGU 15m: rule 5/120 (rsi14)", "failed": [], "pct": 67.3, "updated": "2026-09-06T06:16:51Z"}
+{"shard": 14, "stage": "testing", "done": 35, "total": 52, "rows": 1357620, "note": "PENGU 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 67.3, "updated": "2026-09-06T06:17:37Z"}

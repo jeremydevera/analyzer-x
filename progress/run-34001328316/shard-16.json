@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 2, "total": 52, "rows": 63624, "note": "AIOT 1h: rule 41/120 (tsi)", "failed": [], "pct": 3.8, "updated": "2026-09-06T00:31:08Z"}
+{"shard": 16, "stage": "testing", "done": 3, "total": 52, "rows": 94512, "note": "AMDSTOCK 1h: rule 2/120 (mom15)", "failed": [], "pct": 5.8, "updated": "2026-09-06T00:31:54Z"}

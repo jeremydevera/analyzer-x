@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 8, "total": 53, "rows": 359538, "note": "BLEND 1h: rule 36/120 (stochrsi)", "failed": [], "pct": 15.1, "updated": "2026-09-06T23:08:11Z"}
+{"shard": 17, "stage": "testing", "done": 8, "total": 53, "rows": 395378, "note": "BLEND 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 15.1, "updated": "2026-09-06T23:08:56Z"}

@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 42, "total": 53, "rows": 1353220, "note": "SLBSTOCK 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 79.2, "updated": "2026-09-06T03:21:57Z"}
+{"shard": 2, "stage": "testing", "done": 44, "total": 53, "rows": 1371100, "note": "STAR 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 83.0, "updated": "2026-09-06T03:22:43Z"}

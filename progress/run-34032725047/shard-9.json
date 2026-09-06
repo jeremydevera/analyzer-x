@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 8, "total": 53, "rows": 408680, "note": "BILL 15m: 12,021 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-06T12:53:12Z"}
+{"shard": 9, "stage": "testing", "done": 8, "total": 53, "rows": 419240, "note": "BILL 15m: rule 61/120 (turtle)", "failed": [], "pct": 15.1, "updated": "2026-09-06T12:53:57Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 25, "total": 53, "rows": 1068600, "note": "IWM 30m: rule 14/120 (bb20)", "failed": [], "pct": 47.2, "updated": "2026-09-06T13:32:05Z"}
+{"shard": 3, "stage": "testing", "done": 27, "total": 53, "rows": 1122340, "note": "KSTR 30m: 3,173 bars, testing 120 rules", "failed": [], "pct": 50.9, "updated": "2026-09-06T13:32:51Z"}

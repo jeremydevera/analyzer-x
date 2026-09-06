@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 15, "total": 53, "rows": 424076, "note": "DOLO 4h: rule 1/120 (mom6)", "failed": [], "pct": 28.3, "updated": "2026-09-06T22:22:55Z"}
+{"shard": 17, "stage": "testing", "done": 16, "total": 53, "rows": 485830, "note": "ELSA 4h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 30.2, "updated": "2026-09-06T22:23:40Z"}

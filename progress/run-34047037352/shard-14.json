@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 11, "total": 53, "rows": 408386, "note": "CELR 30m: rule 1/120 (mom6)", "failed": [], "pct": 20.8, "updated": "2026-09-06T17:20:29Z"}
+{"shard": 14, "stage": "testing", "done": 11, "total": 53, "rows": 413446, "note": "CELR 30m: rule 20/120 (stoch14)", "failed": [], "pct": 20.8, "updated": "2026-09-06T17:21:16Z"}

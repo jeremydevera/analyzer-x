@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 36, "total": 52, "rows": 1011764, "note": "POL 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 69.2, "updated": "2026-09-06T00:50:15Z"}
+{"shard": 13, "stage": "testing", "done": 38, "total": 52, "rows": 1043432, "note": "RDDTSTOCK 1h: rule 3/120 (fade15)", "failed": [], "pct": 73.1, "updated": "2026-09-06T00:51:01Z"}

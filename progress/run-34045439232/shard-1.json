@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 1, "total": 53, "rows": 31812, "note": "1000000BABYDOGE 1d: rule 72/120 (force13)", "failed": [], "pct": 1.9, "updated": "2026-09-06T16:27:29Z"}
+{"shard": 1, "stage": "testing", "done": 6, "total": 53, "rows": 83754, "note": "AUD 4h: rule 43/120 (macddiv)", "failed": [], "pct": 11.3, "updated": "2026-09-06T16:28:14Z"}

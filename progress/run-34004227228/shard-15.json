@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 25, "total": 52, "rows": 944548, "note": "JTO 15m: rule 33/120 (heikin)", "failed": [], "pct": 48.1, "updated": "2026-09-06T02:31:24Z"}
+{"shard": 15, "stage": "testing", "done": 25, "total": 52, "rows": 949388, "note": "JTO 15m: rule 56/120 (insidebrk)", "failed": [], "pct": 48.1, "updated": "2026-09-06T02:32:09Z"}

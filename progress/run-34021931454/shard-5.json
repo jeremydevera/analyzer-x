@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 48, "total": 53, "rows": 1211328, "note": "UAI 4h: rule 72/120 (force13)", "failed": [], "pct": 90.6, "updated": "2026-09-06T08:49:30Z"}
+{"shard": 5, "stage": "testing", "done": 50, "total": 53, "rows": 1257220, "note": "WAVES 1d: 394 bars, testing 120 rules", "failed": [], "pct": 94.3, "updated": "2026-09-06T08:50:20Z"}

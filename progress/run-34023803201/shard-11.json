@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 34, "total": 53, "rows": 1287380, "note": "OPENAI 1h: rule 59/120 (choch)", "failed": [], "pct": 64.2, "updated": "2026-09-06T10:07:02Z"}
+{"shard": 11, "stage": "testing", "done": 34, "total": 53, "rows": 1318640, "note": "OPENAI 30m: rule 101/120 (cf_soup1_l1)", "failed": [], "pct": 64.2, "updated": "2026-09-06T10:07:47Z"}

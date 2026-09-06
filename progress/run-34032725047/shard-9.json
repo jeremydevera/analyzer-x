@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 23, "total": 53, "rows": 992666, "note": "HYUNDAISTOCK 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 43.4, "updated": "2026-09-06T13:28:05Z"}
+{"shard": 9, "stage": "testing", "done": 24, "total": 53, "rows": 1012106, "note": "INTUSTOCK 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 45.3, "updated": "2026-09-06T13:28:51Z"}

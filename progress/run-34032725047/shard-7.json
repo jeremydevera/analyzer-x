@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 2, "total": 53, "rows": 108680, "note": "AERO 30m: rule 62/120 (ote)", "failed": [], "pct": 3.8, "updated": "2026-09-06T12:32:06Z"}
+{"shard": 7, "stage": "testing", "done": 2, "total": 53, "rows": 120780, "note": "AERO 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-06T12:32:51Z"}

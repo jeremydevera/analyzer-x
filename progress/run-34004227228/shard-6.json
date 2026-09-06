@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 33, "total": 53, "rows": 1047278, "note": "NTAPSTOCK 15m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 62.3, "updated": "2026-09-06T02:50:47Z"}
+{"shard": 6, "stage": "testing", "done": 34, "total": 53, "rows": 1074018, "note": "ONG 15m: 34,586 bars, testing 120 rules", "failed": [], "pct": 64.2, "updated": "2026-09-06T02:51:43Z"}

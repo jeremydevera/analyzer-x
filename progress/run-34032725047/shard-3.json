@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 12, "total": 53, "rows": 547720, "note": "CHR 30m: rule 45/120 (zscore20)", "failed": [], "pct": 22.6, "updated": "2026-09-06T13:00:02Z"}
+{"shard": 3, "stage": "testing", "done": 12, "total": 53, "rows": 564000, "note": "CHR 1d: 394 bars, testing 120 rules", "failed": [], "pct": 22.6, "updated": "2026-09-06T13:00:53Z"}

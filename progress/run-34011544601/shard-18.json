@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 9, "total": 52, "rows": 348580, "note": "BROCCOLI 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 17.3, "updated": "2026-09-06T05:14:35Z"}
+{"shard": 18, "stage": "testing", "done": 9, "total": 52, "rows": 356500, "note": "BROCCOLI 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 17.3, "updated": "2026-09-06T05:15:33Z"}

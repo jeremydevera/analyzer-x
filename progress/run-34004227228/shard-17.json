@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 5, "total": 52, "rows": 202340, "note": "ATOM 15m: rule 100/120 (cf_soup1)", "failed": [], "pct": 9.6, "updated": "2026-09-06T01:50:12Z"}
+{"shard": 17, "stage": "testing", "done": 6, "total": 52, "rows": 228706, "note": "AZTEC 15m: 19,857 bars, testing 120 rules", "failed": [], "pct": 11.5, "updated": "2026-09-06T01:50:57Z"}

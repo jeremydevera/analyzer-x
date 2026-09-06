@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 46, "total": 53, "rows": 1829060, "note": "TNSR 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 86.8, "updated": "2026-09-06T06:46:55Z"}
+{"shard": 10, "stage": "testing", "done": 47, "total": 53, "rows": 1842700, "note": "TSMSTOCK 15m: rule 16/120 (keltner)", "failed": [], "pct": 88.7, "updated": "2026-09-06T06:47:40Z"}

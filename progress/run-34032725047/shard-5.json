@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 42, "total": 53, "rows": 1998628, "note": "SLP 15m: rule 62/120 (ote)", "failed": [], "pct": 79.2, "updated": "2026-09-06T14:58:03Z"}
+{"shard": 5, "stage": "testing", "done": 42, "total": 53, "rows": 2006008, "note": "SLP 15m: rule 103/120 (cf_eqhl)", "failed": [], "pct": 79.2, "updated": "2026-09-06T14:58:49Z"}

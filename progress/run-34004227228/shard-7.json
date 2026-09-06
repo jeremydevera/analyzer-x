@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 46, "total": 53, "rows": 1630614, "note": "TLM 4h: rule 76/120 (cf_mom)", "failed": [], "pct": 86.8, "updated": "2026-09-06T03:21:27Z"}
+{"shard": 7, "stage": "testing", "done": 46, "total": 53, "rows": 1640834, "note": "TLM 15m: rule 2/120 (mom15)", "failed": [], "pct": 86.8, "updated": "2026-09-06T03:22:15Z"}

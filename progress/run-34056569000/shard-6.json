@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 19, "total": 53, "rows": 713354, "note": "FLUX 30m: rule 72/120 (force13)", "failed": [], "pct": 35.8, "updated": "2026-09-06T20:35:30Z"}
+{"shard": 6, "stage": "testing", "done": 20, "total": 53, "rows": 738230, "note": "GEOD 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 37.7, "updated": "2026-09-06T20:36:15Z"}

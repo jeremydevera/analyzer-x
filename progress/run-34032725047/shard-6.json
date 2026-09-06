@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 53, "total": 53, "rows": 2473792, "note": "ZKC 30m: rule 16/120 (keltner)", "failed": [], "pct": 100.0, "updated": "2026-09-06T15:49:55Z"}
+{"shard": 6, "stage": "testing", "done": 53, "total": 53, "rows": 2485232, "note": "ZKC 30m: rule 69/120 (obv20)", "failed": [], "pct": 100.0, "updated": "2026-09-06T15:50:41Z"}

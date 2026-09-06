@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 22, "total": 53, "rows": 817282, "note": "HIVE 30m: rule 34/120 (lrslope)", "failed": [], "pct": 41.5, "updated": "2026-09-06T20:31:23Z"}
+{"shard": 11, "stage": "testing", "done": 22, "total": 53, "rows": 834662, "note": "HIVE 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-06T20:32:08Z"}

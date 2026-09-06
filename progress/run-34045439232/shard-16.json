@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 45, "total": 53, "rows": 1323228, "note": "TAIKO 1d: 394 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-06T16:52:04Z"}
+{"shard": 16, "stage": "testing", "done": 49, "total": 53, "rows": 1365512, "note": "VELVET 1d: 394 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-06T16:52:57Z"}

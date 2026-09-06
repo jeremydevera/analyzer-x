@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 12, "total": 53, "rows": 411206, "note": "CLANKER 15m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-06T02:04:05Z"}
+{"shard": 7, "stage": "testing", "done": 14, "total": 53, "rows": 419606, "note": "CVC 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-06T02:05:01Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 51, "total": 52, "rows": 2215592, "note": "XNY 30m: rule 47/120 (ibs)", "failed": [], "pct": 98.1, "updated": "2026-09-06T11:01:10Z"}
+{"shard": 17, "stage": "testing", "done": 51, "total": 52, "rows": 2227472, "note": "XNY 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-06T11:01:56Z"}

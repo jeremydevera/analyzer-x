@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 47, "total": 53, "rows": 1549550, "note": "TRX 15m: rule 43/120 (macddiv)", "failed": [], "pct": 88.7, "updated": "2026-09-06T03:31:16Z"}
+{"shard": 6, "stage": "testing", "done": 47, "total": 53, "rows": 1558130, "note": "TRX 15m: rule 83/120 (cf_maobv_l1)", "failed": [], "pct": 88.7, "updated": "2026-09-06T03:32:01Z"}

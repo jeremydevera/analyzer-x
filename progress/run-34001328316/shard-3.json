@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 17, "total": 53, "rows": 479068, "note": "ENS 1h: rule 44/120 (elder)", "failed": [], "pct": 32.1, "updated": "2026-09-06T00:42:28Z"}
+{"shard": 3, "stage": "testing", "done": 19, "total": 53, "rows": 507756, "note": "FLUID 1h: 8,318 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-06T00:43:14Z"}

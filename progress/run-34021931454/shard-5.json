@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 21, "total": 53, "rows": 495640, "note": "GPS 4h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 39.6, "updated": "2026-09-06T08:37:06Z"}
+{"shard": 5, "stage": "testing", "done": 22, "total": 53, "rows": 525852, "note": "HEI 4h: rule 41/120 (tsi)", "failed": [], "pct": 41.5, "updated": "2026-09-06T08:37:51Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 3, "total": 53, "rows": 108430, "note": "ALUMINUM 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 5.7, "updated": "2026-09-06T12:22:15Z"}
+{"shard": 13, "stage": "testing", "done": 4, "total": 53, "rows": 139260, "note": "APLDSTOCK 15m: rule 20/120 (stoch14)", "failed": [], "pct": 7.5, "updated": "2026-09-06T12:23:00Z"}

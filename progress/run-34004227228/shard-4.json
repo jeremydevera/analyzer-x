@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 23, "total": 53, "rows": 824398, "note": "HUMA 15m: rule 23/120 (supertrend)", "failed": [], "pct": 43.4, "updated": "2026-09-06T02:23:22Z"}
+{"shard": 4, "stage": "testing", "done": 23, "total": 53, "rows": 830338, "note": "HUMA 15m: rule 51/120 (orb)", "failed": [], "pct": 43.4, "updated": "2026-09-06T02:24:07Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 24, "total": 53, "rows": 857186, "note": "IMX 30m: rule 44/120 (elder)", "failed": [], "pct": 45.3, "updated": "2026-09-06T23:39:32Z"}
+{"shard": 3, "stage": "testing", "done": 24, "total": 53, "rows": 869066, "note": "IMX 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 45.3, "updated": "2026-09-06T23:40:17Z"}

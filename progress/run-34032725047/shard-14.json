@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 45, "total": 53, "rows": 2025046, "note": "TAKE 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 84.9, "updated": "2026-09-06T14:51:27Z"}
+{"shard": 14, "stage": "testing", "done": 45, "total": 53, "rows": 2032046, "note": "TAKE 15m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-06T14:52:14Z"}

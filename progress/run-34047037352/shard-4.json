@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 28, "total": 53, "rows": 1023844, "note": "LPT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-06T17:35:23Z"}
+{"shard": 4, "stage": "testing", "done": 28, "total": 53, "rows": 1048044, "note": "LPT 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 52.8, "updated": "2026-09-06T17:36:08Z"}

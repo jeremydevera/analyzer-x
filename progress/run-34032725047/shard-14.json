@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 50, "total": 53, "rows": 2260464, "note": "WLD 15m: rule 27/120 (aroon25)", "failed": [], "pct": 94.3, "updated": "2026-09-06T15:14:17Z"}
+{"shard": 14, "stage": "testing", "done": 50, "total": 53, "rows": 2265684, "note": "WLD 15m: rule 57/120 (orderblock)", "failed": [], "pct": 94.3, "updated": "2026-09-06T15:15:02Z"}

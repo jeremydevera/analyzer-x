@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 39, "total": 53, "rows": 1437460, "note": "RESOLV 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 73.6, "updated": "2026-09-06T06:18:38Z"}
+{"shard": 1, "stage": "testing", "done": 40, "total": 53, "rows": 1463020, "note": "RTXSTOCK 30m: rule 30/120 (kama10)", "failed": [], "pct": 75.5, "updated": "2026-09-06T06:19:23Z"}

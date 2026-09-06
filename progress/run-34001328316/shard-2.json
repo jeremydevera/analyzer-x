@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 32, "total": 53, "rows": 885922, "note": "NEAR 1h: rule 30/120 (kama10)", "failed": [], "pct": 60.4, "updated": "2026-09-06T00:54:20Z"}
+{"shard": 2, "stage": "testing", "done": 33, "total": 53, "rows": 916850, "note": "NOM 1h: 8,154 bars, testing 120 rules", "failed": [], "pct": 62.3, "updated": "2026-09-06T00:55:14Z"}

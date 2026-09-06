@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 12, "total": 53, "rows": 445502, "note": "CHF 30m: rule 46/120 (rsi2)", "failed": [], "pct": 22.6, "updated": "2026-09-06T09:36:57Z"}
+{"shard": 0, "stage": "testing", "done": 13, "total": 53, "rows": 460242, "note": "COOKIE 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-06T09:37:46Z"}

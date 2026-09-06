@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 22, "total": 53, "rows": 861776, "note": "HK50 1h: rule 30/120 (kama10)", "failed": [], "pct": 41.5, "updated": "2026-09-06T23:39:08Z"}
+{"shard": 14, "stage": "testing", "done": 22, "total": 53, "rows": 896076, "note": "HK50 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-06T23:39:53Z"}

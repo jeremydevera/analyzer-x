@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 15, "total": 53, "rows": 614918, "note": "DOOD 30m: rule 27/120 (aroon25)", "failed": [], "pct": 28.3, "updated": "2026-09-06T17:39:58Z"}
+{"shard": 18, "stage": "testing", "done": 15, "total": 53, "rows": 625478, "note": "DOOD 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 28.3, "updated": "2026-09-06T17:40:45Z"}

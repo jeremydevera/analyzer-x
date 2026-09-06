@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 32, "total": 53, "rows": 1062560, "note": "NEAR 30m: rule 3/120 (fade15)", "failed": [], "pct": 60.4, "updated": "2026-09-06T06:14:52Z"}
+{"shard": 2, "stage": "testing", "done": 32, "total": 53, "rows": 1070960, "note": "NEAR 30m: rule 45/120 (zscore20)", "failed": [], "pct": 60.4, "updated": "2026-09-06T06:15:38Z"}

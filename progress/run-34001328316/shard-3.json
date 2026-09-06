@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 19, "total": 53, "rows": 521616, "note": "FLUID 1h: rule 58/120 (bos)", "failed": [], "pct": 35.8, "updated": "2026-09-06T00:43:59Z"}
+{"shard": 3, "stage": "testing", "done": 23, "total": 53, "rows": 586016, "note": "HUBSSTOCK 1h: 947 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-06T00:44:44Z"}

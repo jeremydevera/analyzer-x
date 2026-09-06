@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 26, "total": 53, "rows": 939518, "note": "KHCSTOCK 30m: 3,245 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-06T20:58:53Z"}
+{"shard": 8, "stage": "testing", "done": 27, "total": 53, "rows": 962438, "note": "LAYER 1h: rule 2/120 (mom15)", "failed": [], "pct": 50.9, "updated": "2026-09-06T20:59:41Z"}

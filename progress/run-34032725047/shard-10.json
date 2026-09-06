@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 30, "total": 53, "rows": 1497350, "note": "MNT 30m: rule 12/120 (donchian20)", "failed": [], "pct": 56.6, "updated": "2026-09-06T13:30:18Z"}
+{"shard": 10, "stage": "testing", "done": 30, "total": 53, "rows": 1514510, "note": "MNT 30m: rule 91/120 (cf_soup)", "failed": [], "pct": 56.6, "updated": "2026-09-06T13:31:03Z"}

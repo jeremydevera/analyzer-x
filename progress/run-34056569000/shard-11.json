@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 37, "total": 53, "rows": 1469232, "note": "PUFFER 30m: rule 64/120 (hammer)", "failed": [], "pct": 69.8, "updated": "2026-09-06T20:57:22Z"}
+{"shard": 11, "stage": "testing", "done": 38, "total": 53, "rows": 1481752, "note": "RAY 1h: rule 2/120 (mom15)", "failed": [], "pct": 71.7, "updated": "2026-09-06T20:58:08Z"}

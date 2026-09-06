@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 29, "total": 52, "rows": 1223300, "note": "MET 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 55.8, "updated": "2026-09-06T06:40:57Z"}
+{"shard": 18, "stage": "testing", "done": 29, "total": 52, "rows": 1231220, "note": "MET 30m: 15,879 bars, testing 120 rules", "failed": [], "pct": 55.8, "updated": "2026-09-06T06:41:46Z"}

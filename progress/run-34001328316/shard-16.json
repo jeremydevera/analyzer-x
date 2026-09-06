@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 27, "total": 52, "rows": 953018, "note": "LISTA 1h: rule 76/120 (cf_mom)", "failed": [], "pct": 51.9, "updated": "2026-09-06T00:58:27Z"}
+{"shard": 16, "stage": "testing", "done": 28, "total": 52, "rows": 973958, "note": "MAGMA 1h: rule 4/120 (trend50)", "failed": [], "pct": 53.8, "updated": "2026-09-06T00:59:12Z"}

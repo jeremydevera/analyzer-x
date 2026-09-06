@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 4, "total": 53, "rows": 208590, "note": "APE 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 7.5, "updated": "2026-09-06T12:29:52Z"}
+{"shard": 10, "stage": "testing", "done": 4, "total": 53, "rows": 227590, "note": "APE 30m: rule 106/120 (cf_bosfvg)", "failed": [], "pct": 7.5, "updated": "2026-09-06T12:30:37Z"}

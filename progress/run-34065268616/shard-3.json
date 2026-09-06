@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 27, "total": 53, "rows": 1011546, "note": "KSM 30m: rule 75/120 (relvolbrk)", "failed": [], "pct": 50.9, "updated": "2026-09-06T23:47:17Z"}
+{"shard": 3, "stage": "testing", "done": 28, "total": 53, "rows": 1024304, "note": "LONGXIA 1h: rule 13/120 (pivot)", "failed": [], "pct": 52.8, "updated": "2026-09-06T23:48:02Z"}

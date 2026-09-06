@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 34, "total": 53, "rows": 718776, "note": "ON 4h: 1,905 bars, testing 120 rules", "failed": [], "pct": 64.2, "updated": "2026-09-06T22:31:15Z"}
+{"shard": 11, "stage": "testing", "done": 36, "total": 53, "rows": 768990, "note": "PLTRSTOCK 4h: rule 76/120 (cf_mom)", "failed": [], "pct": 67.9, "updated": "2026-09-06T22:32:00Z"}

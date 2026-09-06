@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 40, "total": 53, "rows": 1823248, "note": "SANTOS 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-06T14:33:40Z"}
+{"shard": 11, "stage": "testing", "done": 41, "total": 53, "rows": 1845820, "note": "SILVER 15m: 23,519 bars, testing 120 rules", "failed": [], "pct": 77.4, "updated": "2026-09-06T14:34:29Z"}

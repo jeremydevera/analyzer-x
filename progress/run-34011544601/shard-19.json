@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 15, "total": 52, "rows": 495160, "note": "DOT 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 28.8, "updated": "2026-09-06T05:23:07Z"}
+{"shard": 19, "stage": "testing", "done": 15, "total": 52, "rows": 501760, "note": "DOT 30m: rule 27/120 (aroon25)", "failed": [], "pct": 28.8, "updated": "2026-09-06T05:23:53Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 25, "total": 53, "rows": 857006, "note": "ISRGSTOCK 15m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 47.2, "updated": "2026-09-06T02:27:49Z"}
+{"shard": 1, "stage": "testing", "done": 26, "total": 53, "rows": 885546, "note": "KAVA 15m: 34,584 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-06T02:28:52Z"}

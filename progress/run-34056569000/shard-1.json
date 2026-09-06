@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 45, "total": 53, "rows": 1728710, "note": "SUI 1h: rule 9/120 (fib382)", "failed": [], "pct": 84.9, "updated": "2026-09-06T21:05:00Z"}
+{"shard": 1, "stage": "testing", "done": 45, "total": 53, "rows": 1752630, "note": "SUI 30m: rule 1/120 (mom6)", "failed": [], "pct": 84.9, "updated": "2026-09-06T21:05:47Z"}

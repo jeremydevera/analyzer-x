@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 24, "total": 53, "rows": 907258, "note": "INIT 1h: rule 21/120 (cci20)", "failed": [], "pct": 45.3, "updated": "2026-09-06T17:46:29Z"}
+{"shard": 7, "stage": "testing", "done": 24, "total": 53, "rows": 925870, "note": "INIT 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 45.3, "updated": "2026-09-06T17:47:20Z"}

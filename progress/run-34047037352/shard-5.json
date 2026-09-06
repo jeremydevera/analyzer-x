@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 12, "total": 53, "rows": 534302, "note": "CHZ 30m: rule 20/120 (stoch14)", "failed": [], "pct": 22.6, "updated": "2026-09-06T17:28:06Z"}
+{"shard": 5, "stage": "testing", "done": 12, "total": 53, "rows": 542902, "note": "CHZ 30m: rule 64/120 (hammer)", "failed": [], "pct": 22.6, "updated": "2026-09-06T17:28:51Z"}

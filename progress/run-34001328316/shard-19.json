@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 1, "total": 52, "rows": 17512, "note": "ACU 1h: rule 33/120 (heikin)", "failed": [], "pct": 1.9, "updated": "2026-09-06T00:28:37Z"}
+{"shard": 19, "stage": "testing", "done": 2, "total": 52, "rows": 47542, "note": "AIXBT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 3.8, "updated": "2026-09-06T00:29:27Z"}

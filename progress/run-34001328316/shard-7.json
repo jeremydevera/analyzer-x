@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 21, "total": 53, "rows": 643018, "note": "GRASS 1h: rule 118/120 (cf_stflip)", "failed": [], "pct": 39.6, "updated": "2026-09-06T00:49:54Z"}
+{"shard": 7, "stage": "testing", "done": 23, "total": 53, "rows": 685596, "note": "HYPE 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-06T00:50:47Z"}

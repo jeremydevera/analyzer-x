@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 12, "total": 53, "rows": 305666, "note": "CLO 4h: rule 3/120 (fade15)", "failed": [], "pct": 22.6, "updated": "2026-09-06T19:29:19Z"}
+{"shard": 10, "stage": "testing", "done": 16, "total": 53, "rows": 429652, "note": "EBAYSTOCK 4h: rule 54/120 (fractal5)", "failed": [], "pct": 30.2, "updated": "2026-09-06T19:30:04Z"}

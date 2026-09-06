@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 28, "total": 53, "rows": 1024694, "note": "LTC 15m: rule 71/120 (mfi14)", "failed": [], "pct": 52.8, "updated": "2026-09-06T02:46:52Z"}
+{"shard": 7, "stage": "testing", "done": 29, "total": 53, "rows": 1033334, "note": "MCDSTOCK 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 54.7, "updated": "2026-09-06T02:47:38Z"}

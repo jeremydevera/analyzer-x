@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 18, "total": 52, "rows": 657756, "note": "FIDA 15m: rule 44/120 (elder)", "failed": [], "pct": 34.6, "updated": "2026-09-06T02:26:07Z"}
+{"shard": 12, "stage": "testing", "done": 18, "total": 52, "rows": 664576, "note": "FIDA 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 34.6, "updated": "2026-09-06T02:26:54Z"}

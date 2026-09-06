@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 41, "total": 53, "rows": 953514, "note": "SIREN 4h: rule 13/120 (pivot)", "failed": [], "pct": 77.4, "updated": "2026-09-06T22:34:13Z"}
+{"shard": 15, "stage": "testing", "done": 42, "total": 53, "rows": 1013254, "note": "SNDKSTOCK 1d: 170 bars, testing 120 rules", "failed": [], "pct": 79.2, "updated": "2026-09-06T22:35:00Z"}

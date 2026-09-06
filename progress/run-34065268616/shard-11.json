@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 11, "total": 53, "rows": 360772, "note": "CDNSSTOCK 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 20.8, "updated": "2026-09-06T23:09:56Z"}
+{"shard": 11, "stage": "testing", "done": 13, "total": 53, "rows": 418780, "note": "CRMSTOCK 1h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 24.5, "updated": "2026-09-06T23:10:42Z"}

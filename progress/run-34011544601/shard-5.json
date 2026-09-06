@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 7, "total": 53, "rows": 212980, "note": "BANANA 15m: rule 13/120 (pivot)", "failed": [], "pct": 13.2, "updated": "2026-09-06T04:48:04Z"}
+{"shard": 5, "stage": "testing", "done": 7, "total": 53, "rows": 218980, "note": "BANANA 15m: rule 43/120 (macddiv)", "failed": [], "pct": 13.2, "updated": "2026-09-06T04:48:50Z"}

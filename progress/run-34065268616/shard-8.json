@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 15, "total": 53, "rows": 488978, "note": "DIA 1h: rule 7/120 (fvg)", "failed": [], "pct": 28.3, "updated": "2026-09-06T23:24:43Z"}
+{"shard": 8, "stage": "testing", "done": 15, "total": 53, "rows": 511418, "note": "DIA 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 28.3, "updated": "2026-09-06T23:25:28Z"}

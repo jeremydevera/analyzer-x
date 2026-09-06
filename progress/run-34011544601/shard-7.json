@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 43, "total": 53, "rows": 1722020, "note": "SOXX 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-06T07:05:05Z"}
+{"shard": 7, "stage": "testing", "done": 44, "total": 53, "rows": 1751080, "note": "STORJ 15m: 34,603 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-06T07:06:03Z"}

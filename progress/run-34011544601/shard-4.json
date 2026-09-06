@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 43, "total": 53, "rows": 1704600, "note": "SOPH 15m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-06T07:03:59Z"}
+{"shard": 4, "stage": "testing", "done": 43, "total": 53, "rows": 1710000, "note": "SOPH 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-06T07:04:45Z"}

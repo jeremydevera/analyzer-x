@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 12, "total": 53, "rows": 415134, "note": "CLANKER 30m: rule 68/120 (dbltop)", "failed": [], "pct": 22.6, "updated": "2026-09-06T17:18:42Z"}
+{"shard": 8, "stage": "testing", "done": 14, "total": 53, "rows": 425334, "note": "CVC 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-06T17:19:29Z"}

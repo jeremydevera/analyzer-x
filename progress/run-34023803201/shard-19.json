@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 51, "total": 52, "rows": 2132030, "note": "XPD 1h: rule 40/120 (crsi)", "failed": [], "pct": 98.1, "updated": "2026-09-06T11:01:33Z"}
+{"shard": 19, "stage": "testing", "done": 51, "total": 52, "rows": 2157430, "note": "XPD 30m: rule 43/120 (macddiv)", "failed": [], "pct": 98.1, "updated": "2026-09-06T11:02:19Z"}

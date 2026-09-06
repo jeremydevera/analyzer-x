@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 48, "total": 53, "rows": 1822380, "note": "UKOIL 15m: rule 48/120 (prank)", "failed": [], "pct": 90.6, "updated": "2026-09-06T07:11:27Z"}
+{"shard": 5, "stage": "testing", "done": 48, "total": 53, "rows": 1838220, "note": "UKOIL 30m: 10,519 bars, testing 120 rules", "failed": [], "pct": 90.6, "updated": "2026-09-06T07:12:18Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 38, "total": 53, "rows": 1621780, "note": "RBLXSTOCK 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 71.7, "updated": "2026-09-06T06:55:24Z"}
+{"shard": 9, "stage": "testing", "done": 39, "total": 53, "rows": 1642860, "note": "RKLBSTOCK 15m: rule 29/120 (hull20)", "failed": [], "pct": 73.6, "updated": "2026-09-06T06:56:10Z"}

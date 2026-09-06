@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 40, "total": 52, "rows": 1665960, "note": "SENT 30m: rule 29/120 (hull20)", "failed": [], "pct": 76.9, "updated": "2026-09-06T07:21:35Z"}
+{"shard": 18, "stage": "testing", "done": 40, "total": 52, "rows": 1681140, "note": "SENT 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 76.9, "updated": "2026-09-06T07:22:20Z"}

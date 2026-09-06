@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 44, "total": 53, "rows": 1460440, "note": "STO 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 83.0, "updated": "2026-09-06T06:24:27Z"}
+{"shard": 8, "stage": "testing", "done": 45, "total": 53, "rows": 1469240, "note": "TAIKO 15m: 34,600 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-06T06:25:15Z"}

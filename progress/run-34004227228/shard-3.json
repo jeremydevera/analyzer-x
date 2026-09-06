@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 32, "total": 53, "rows": 983006, "note": "NECSTOCK 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 60.4, "updated": "2026-09-06T02:19:46Z"}
+{"shard": 3, "stage": "testing", "done": 33, "total": 53, "rows": 1009746, "note": "NOT 15m: 34,584 bars, testing 120 rules", "failed": [], "pct": 62.3, "updated": "2026-09-06T02:20:36Z"}

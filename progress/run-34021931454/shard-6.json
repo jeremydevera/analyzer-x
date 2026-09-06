@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 13, "total": 53, "rows": 252614, "note": "COTI 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-06T08:32:32Z"}
+{"shard": 6, "stage": "testing", "done": 14, "total": 53, "rows": 294106, "note": "CTSI 4h: rule 6/120 (sweep30)", "failed": [], "pct": 26.4, "updated": "2026-09-06T08:33:17Z"}

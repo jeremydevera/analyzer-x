@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 14, "total": 53, "rows": 590170, "note": "CTSI 15m: rule 9/120 (fib382)", "failed": [], "pct": 26.4, "updated": "2026-09-06T13:03:37Z"}
+{"shard": 6, "stage": "testing", "done": 14, "total": 53, "rows": 594970, "note": "CTSI 15m: rule 33/120 (heikin)", "failed": [], "pct": 26.4, "updated": "2026-09-06T13:04:24Z"}

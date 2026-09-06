@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 25, "total": 53, "rows": 700760, "note": "KAIA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-06T19:39:00Z"}
+{"shard": 19, "stage": "testing", "done": 27, "total": 53, "rows": 756020, "note": "LITESTOCK 4h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-06T19:39:45Z"}

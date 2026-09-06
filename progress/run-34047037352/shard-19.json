@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 33, "total": 53, "rows": 1482362, "note": "OGN 1h: rule 22/120 (engulf)", "failed": [], "pct": 62.3, "updated": "2026-09-06T18:25:37Z"}
+{"shard": 19, "stage": "testing", "done": 33, "total": 53, "rows": 1503262, "note": "OGN 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 62.3, "updated": "2026-09-06T18:26:34Z"}

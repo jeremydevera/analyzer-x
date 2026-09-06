@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 5, "total": 52, "rows": 154080, "note": "ASTR 15m: rule 49/120 (vwaprev)", "failed": [], "pct": 9.6, "updated": "2026-09-06T04:35:37Z"}
+{"shard": 13, "stage": "testing", "done": 5, "total": 52, "rows": 162000, "note": "ASTR 15m: rule 86/120 (cf_triple_l1)", "failed": [], "pct": 9.6, "updated": "2026-09-06T04:36:22Z"}

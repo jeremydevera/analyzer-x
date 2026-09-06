@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 36, "total": 53, "rows": 749862, "note": "PLTRSTOCK 4h: rule 43/120 (macddiv)", "failed": [], "pct": 67.9, "updated": "2026-09-06T16:41:00Z"}
+{"shard": 11, "stage": "testing", "done": 37, "total": 53, "rows": 800086, "note": "PUFFER 4h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 69.8, "updated": "2026-09-06T16:41:45Z"}

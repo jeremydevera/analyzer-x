@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 4, "total": 53, "rows": 149064, "note": "AMZNSTOCK 30m: rule 70/120 (cmf20)", "failed": [], "pct": 7.5, "updated": "2026-09-06T23:02:06Z"}
+{"shard": 0, "stage": "testing", "done": 5, "total": 53, "rows": 159658, "note": "ARIA 1h: rule 1/120 (mom6)", "failed": [], "pct": 9.4, "updated": "2026-09-06T23:02:55Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 17, "total": 52, "rows": 450752, "note": "EWT 1d: 97 bars, testing 120 rules", "failed": [], "pct": 32.7, "updated": "2026-09-06T08:37:52Z"}
+{"shard": 19, "stage": "testing", "done": 18, "total": 52, "rows": 483752, "note": "FLOCK 4h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 34.6, "updated": "2026-09-06T08:38:37Z"}

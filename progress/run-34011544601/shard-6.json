@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 29, "total": 53, "rows": 1081720, "note": "MAV 30m: rule 43/120 (macddiv)", "failed": [], "pct": 54.7, "updated": "2026-09-06T06:15:13Z"}
+{"shard": 6, "stage": "testing", "done": 29, "total": 53, "rows": 1093320, "note": "MAV 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 54.7, "updated": "2026-09-06T06:16:00Z"}

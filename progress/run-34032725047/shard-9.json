@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 27, "total": 53, "rows": 1081696, "note": "LDO 15m: rule 47/120 (ibs)", "failed": [], "pct": 50.9, "updated": "2026-09-06T13:31:56Z"}
+{"shard": 9, "stage": "testing", "done": 27, "total": 53, "rows": 1089856, "note": "LDO 15m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-06T13:32:42Z"}

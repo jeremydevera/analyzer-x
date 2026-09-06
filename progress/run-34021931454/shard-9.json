@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 10, "total": 53, "rows": 288284, "note": "BULLA 4h: rule 3/120 (fade15)", "failed": [], "pct": 18.9, "updated": "2026-09-06T08:33:39Z"}
+{"shard": 9, "stage": "testing", "done": 11, "total": 53, "rows": 332812, "note": "CC 4h: rule 21/120 (cci20)", "failed": [], "pct": 20.8, "updated": "2026-09-06T08:34:24Z"}

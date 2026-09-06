@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 25, "total": 53, "rows": 685842, "note": "IRYS 1d: rule 7/120 (fvg)", "failed": [], "pct": 47.2, "updated": "2026-09-06T22:28:30Z"}
+{"shard": 2, "stage": "testing", "done": 30, "total": 53, "rows": 764246, "note": "ME 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 56.6, "updated": "2026-09-06T22:29:20Z"}

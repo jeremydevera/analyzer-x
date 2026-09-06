@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 26, "total": 52, "rows": 1216462, "note": "KOMA 30m: rule 20/120 (stoch14)", "failed": [], "pct": 50.0, "updated": "2026-09-06T10:12:42Z"}
+{"shard": 17, "stage": "testing", "done": 26, "total": 52, "rows": 1226802, "note": "KOMA 30m: rule 68/120 (dbltop)", "failed": [], "pct": 50.0, "updated": "2026-09-06T10:13:27Z"}

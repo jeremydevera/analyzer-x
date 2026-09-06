@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 15, "total": 52, "rows": 537940, "note": "DOGS 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 28.8, "updated": "2026-09-06T04:57:06Z"}
+{"shard": 15, "stage": "testing", "done": 15, "total": 52, "rows": 540140, "note": "DOGS 30m: rule 4/120 (trend50)", "failed": [], "pct": 28.8, "updated": "2026-09-06T04:57:52Z"}

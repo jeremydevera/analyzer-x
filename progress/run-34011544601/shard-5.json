@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 8, "total": 53, "rows": 305260, "note": "BICO 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 15.1, "updated": "2026-09-06T04:57:26Z"}
+{"shard": 5, "stage": "testing", "done": 10, "total": 53, "rows": 311820, "note": "BTR 15m: rule 1/120 (mom6)", "failed": [], "pct": 18.9, "updated": "2026-09-06T04:58:14Z"}

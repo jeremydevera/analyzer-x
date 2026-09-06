@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 53, "total": 53, "rows": 2073872, "note": "ZIG 30m: rule 28/120 (vortex14)", "failed": [], "pct": 100.0, "updated": "2026-09-06T22:00:43Z"}
+{"shard": 8, "stage": "testing", "done": 53, "total": 53, "rows": 2086852, "note": "ZIG 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-06T22:01:28Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 13, "total": 53, "rows": 455916, "note": "COPPER 15m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 24.5, "updated": "2026-09-06T02:04:02Z"}
+{"shard": 1, "stage": "testing", "done": 14, "total": 53, "rows": 480276, "note": "CTC 15m: 34,583 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-06T02:05:00Z"}

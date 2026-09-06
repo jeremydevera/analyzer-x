@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 11, "total": 53, "rows": 372228, "note": "CCLSTOCK 30m: rule 21/120 (cci20)", "failed": [], "pct": 20.8, "updated": "2026-09-06T23:16:14Z"}
+{"shard": 8, "stage": "testing", "done": 12, "total": 53, "rows": 383708, "note": "CLANKER 1h: rule 12/120 (donchian20)", "failed": [], "pct": 22.6, "updated": "2026-09-06T23:16:59Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 43, "total": 53, "rows": 2050486, "note": "SOLV 30m: rule 79/120 (cf_donch)", "failed": [], "pct": 81.1, "updated": "2026-09-06T14:04:22Z"}
+{"shard": 0, "stage": "testing", "done": 44, "total": 53, "rows": 2072618, "note": "SQD 15m: 34,631 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-06T14:05:08Z"}

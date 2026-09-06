@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 35, "total": 53, "rows": 950618, "note": "PARTI 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-06T00:56:22Z"}
+{"shard": 6, "stage": "testing", "done": 35, "total": 53, "rows": 962718, "note": "PARTI 1h: rule 49/120 (vwaprev)", "failed": [], "pct": 66.0, "updated": "2026-09-06T00:57:07Z"}

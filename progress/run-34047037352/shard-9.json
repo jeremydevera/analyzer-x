@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 7, "total": 53, "rows": 298906, "note": "BARD 1h: rule 25/120 (ichimoku)", "failed": [], "pct": 13.2, "updated": "2026-09-06T17:13:18Z"}
+{"shard": 9, "stage": "testing", "done": 7, "total": 53, "rows": 316924, "note": "BARD 30m: 16,956 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-06T17:14:05Z"}

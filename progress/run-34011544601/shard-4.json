@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 48, "total": 53, "rows": 1989500, "note": "UB 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 90.6, "updated": "2026-09-06T07:38:15Z"}
+{"shard": 4, "stage": "testing", "done": 49, "total": 53, "rows": 1999780, "note": "VANA 15m: rule 1/120 (mom6)", "failed": [], "pct": 92.5, "updated": "2026-09-06T07:39:13Z"}

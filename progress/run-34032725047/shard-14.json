@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 11, "total": 53, "rows": 503690, "note": "CELR 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 20.8, "updated": "2026-09-06T13:02:30Z"}
+{"shard": 14, "stage": "testing", "done": 12, "total": 53, "rows": 519290, "note": "COAI 15m: rule 2/120 (mom15)", "failed": [], "pct": 22.6, "updated": "2026-09-06T13:03:31Z"}

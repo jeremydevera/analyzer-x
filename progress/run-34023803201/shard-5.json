@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 34, "total": 53, "rows": 1330188, "note": "ONDSSTOCK 1h: rule 31/120 (trix15)", "failed": [], "pct": 64.2, "updated": "2026-09-06T10:16:51Z"}
+{"shard": 5, "stage": "testing", "done": 34, "total": 53, "rows": 1355460, "note": "ONDSSTOCK 30m: rule 57/120 (orderblock)", "failed": [], "pct": 64.2, "updated": "2026-09-06T10:17:36Z"}

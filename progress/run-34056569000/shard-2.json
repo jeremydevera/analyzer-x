@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 47, "total": 53, "rows": 2061340, "note": "TOWNS 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 88.7, "updated": "2026-09-06T21:37:11Z"}
+{"shard": 2, "stage": "testing", "done": 48, "total": 53, "rows": 2075992, "note": "TURTLE 1h: rule 69/120 (obv20)", "failed": [], "pct": 90.6, "updated": "2026-09-06T21:37:56Z"}

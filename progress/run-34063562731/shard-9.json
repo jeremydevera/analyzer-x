@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 28, "total": 53, "rows": 677086, "note": "LTC 4h: rule 1/120 (mom6)", "failed": [], "pct": 52.8, "updated": "2026-09-06T22:28:26Z"}
+{"shard": 9, "stage": "testing", "done": 30, "total": 53, "rows": 753254, "note": "MMT 4h: 1,887 bars, testing 120 rules", "failed": [], "pct": 56.6, "updated": "2026-09-06T22:29:18Z"}

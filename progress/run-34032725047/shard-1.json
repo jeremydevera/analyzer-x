@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 45, "total": 53, "rows": 2034032, "note": "SUSHI 15m: rule 118/120 (cf_stflip)", "failed": [], "pct": 84.9, "updated": "2026-09-06T14:52:32Z"}
+{"shard": 1, "stage": "testing", "done": 45, "total": 53, "rows": 2036672, "note": "SUSHI 30m: rule 4/120 (trend50)", "failed": [], "pct": 84.9, "updated": "2026-09-06T14:53:18Z"}

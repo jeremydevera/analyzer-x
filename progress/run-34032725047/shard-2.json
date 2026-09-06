@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 38, "total": 53, "rows": 1650342, "note": "QTUM 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 71.7, "updated": "2026-09-06T14:20:04Z"}
+{"shard": 2, "stage": "testing", "done": 39, "total": 53, "rows": 1672386, "note": "RESOLV 15m: 34,632 bars, testing 120 rules", "failed": [], "pct": 73.6, "updated": "2026-09-06T14:20:58Z"}

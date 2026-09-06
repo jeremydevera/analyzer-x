@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 2, "total": 53, "rows": 49920, "note": "AGI 15m: rule 49/120 (vwaprev)", "failed": [], "pct": 3.8, "updated": "2026-09-06T04:31:00Z"}
+{"shard": 9, "stage": "testing", "done": 2, "total": 53, "rows": 57280, "note": "AGI 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-06T04:31:46Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 48, "total": 52, "rows": 1741280, "note": "UP 30m: rule 54/120 (fractal5)", "failed": [], "pct": 92.3, "updated": "2026-09-06T06:57:01Z"}
+{"shard": 11, "stage": "testing", "done": 49, "total": 52, "rows": 1752220, "note": "VIRTUAL 15m: rule 1/120 (mom6)", "failed": [], "pct": 94.2, "updated": "2026-09-06T06:57:54Z"}

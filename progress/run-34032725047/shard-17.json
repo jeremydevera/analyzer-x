@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 10, "total": 52, "rows": 539862, "note": "CAP 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 19.2, "updated": "2026-09-06T12:59:26Z"}
+{"shard": 17, "stage": "testing", "done": 10, "total": 52, "rows": 580452, "note": "CAP 1d: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 19.2, "updated": "2026-09-06T13:00:11Z"}

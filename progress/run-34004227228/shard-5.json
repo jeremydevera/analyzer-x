@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 44, "total": 53, "rows": 1426706, "note": "STG 15m: rule 20/120 (stoch14)", "failed": [], "pct": 83.0, "updated": "2026-09-06T03:31:06Z"}
+{"shard": 5, "stage": "testing", "done": 44, "total": 53, "rows": 1430886, "note": "STG 15m: rule 39/120 (fisher)", "failed": [], "pct": 83.0, "updated": "2026-09-06T03:31:51Z"}

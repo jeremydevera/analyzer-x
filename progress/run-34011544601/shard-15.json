@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 29, "total": 52, "rows": 1167760, "note": "MERL 30m: rule 45/120 (zscore20)", "failed": [], "pct": 55.8, "updated": "2026-09-06T05:46:49Z"}
+{"shard": 15, "stage": "testing", "done": 30, "total": 52, "rows": 1183820, "note": "MOSTOCK 15m: 1,040 bars, testing 120 rules", "failed": [], "pct": 57.7, "updated": "2026-09-06T05:47:35Z"}

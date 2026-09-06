@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 43, "total": 53, "rows": 1226672, "note": "SONYSTOCK 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-06T01:05:21Z"}
+{"shard": 2, "stage": "testing", "done": 47, "total": 53, "rows": 1247608, "note": "TROLLSOL 1d: 125 bars, testing 120 rules", "failed": [], "pct": 88.7, "updated": "2026-09-06T01:06:08Z"}

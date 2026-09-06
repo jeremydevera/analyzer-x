@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 16, "total": 52, "rows": 794298, "note": "ELSA 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 30.8, "updated": "2026-09-06T09:46:02Z"}
+{"shard": 17, "stage": "testing", "done": 17, "total": 52, "rows": 801118, "note": "EVAA 1h: rule 16/120 (keltner)", "failed": [], "pct": 32.7, "updated": "2026-09-06T09:46:47Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 1, "total": 52, "rows": 14400, "note": "ACU 15m: rule 67/120 (pinbar)", "failed": [], "pct": 1.9, "updated": "2026-09-06T12:21:32Z"}
+{"shard": 19, "stage": "testing", "done": 1, "total": 52, "rows": 25000, "note": "ACU 30m: 10,996 bars, testing 120 rules", "failed": [], "pct": 1.9, "updated": "2026-09-06T12:22:21Z"}

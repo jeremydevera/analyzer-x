@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 12, "total": 53, "rows": 479286, "note": "CHIP 30m: rule 8/120 (fib618)", "failed": [], "pct": 22.6, "updated": "2026-09-06T20:26:14Z"}
+{"shard": 2, "stage": "testing", "done": 13, "total": 53, "rows": 503286, "note": "COPPER 1h: rule 6/120 (sweep30)", "failed": [], "pct": 24.5, "updated": "2026-09-06T20:26:59Z"}

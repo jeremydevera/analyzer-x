@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 1, "total": 53, "rows": 33418, "note": "2Z 15m: rule 37/120 (ultosc)", "failed": [], "pct": 1.9, "updated": "2026-09-06T01:36:44Z"}
+{"shard": 7, "stage": "testing", "done": 1, "total": 53, "rows": 42438, "note": "2Z 15m: rule 79/120 (cf_donch)", "failed": [], "pct": 1.9, "updated": "2026-09-06T01:37:30Z"}

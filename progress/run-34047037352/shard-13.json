@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 33, "total": 53, "rows": 1198532, "note": "NVD 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 62.3, "updated": "2026-09-06T17:52:16Z"}
+{"shard": 13, "stage": "testing", "done": 34, "total": 53, "rows": 1210348, "note": "OPENLEDGER 1h: rule 24/120 (psar)", "failed": [], "pct": 64.2, "updated": "2026-09-06T17:53:02Z"}

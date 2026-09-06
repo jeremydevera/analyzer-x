@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 36, "total": 52, "rows": 1390780, "note": "POLYX 15m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 69.2, "updated": "2026-09-06T06:31:24Z"}
+{"shard": 12, "stage": "testing", "done": 36, "total": 52, "rows": 1394740, "note": "POLYX 30m: rule 3/120 (fade15)", "failed": [], "pct": 69.2, "updated": "2026-09-06T06:32:17Z"}

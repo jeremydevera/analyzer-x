@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 42, "total": 53, "rows": 1013254, "note": "SNDKSTOCK 1d: 170 bars, testing 120 rules", "failed": [], "pct": 79.2, "updated": "2026-09-06T22:35:00Z"}
+{"shard": 15, "stage": "testing", "done": 44, "total": 53, "rows": 1083146, "note": "STO 1d: 394 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-06T22:35:57Z"}

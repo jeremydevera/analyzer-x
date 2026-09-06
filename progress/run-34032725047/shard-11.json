@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 33, "total": 53, "rows": 1437944, "note": "NVDL 30m: 2,791 bars, testing 120 rules", "failed": [], "pct": 62.3, "updated": "2026-09-06T14:02:14Z"}
+{"shard": 11, "stage": "testing", "done": 34, "total": 53, "rows": 1465664, "note": "OPENAI 15m: rule 25/120 (ichimoku)", "failed": [], "pct": 64.2, "updated": "2026-09-06T14:02:59Z"}

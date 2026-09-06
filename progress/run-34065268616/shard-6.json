@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 33, "total": 53, "rows": 1209244, "note": "NOWSTOCK 1h: rule 58/120 (bos)", "failed": [], "pct": 62.3, "updated": "2026-09-06T23:52:40Z"}
+{"shard": 6, "stage": "testing", "done": 34, "total": 53, "rows": 1249906, "note": "ONDSSTOCK 1h: rule 55/120 (nhigh50)", "failed": [], "pct": 64.2, "updated": "2026-09-06T23:53:25Z"}

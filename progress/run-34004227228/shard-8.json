@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 10, "total": 53, "rows": 341040, "note": "BULLA 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 18.9, "updated": "2026-09-06T02:01:43Z"}
+{"shard": 8, "stage": "testing", "done": 11, "total": 53, "rows": 349400, "note": "CC 4h: 1,857 bars, testing 120 rules", "failed": [], "pct": 20.8, "updated": "2026-09-06T02:02:30Z"}

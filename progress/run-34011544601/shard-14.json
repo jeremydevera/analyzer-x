@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 20, "total": 52, "rows": 680760, "note": "GLM 15m: rule 41/120 (tsi)", "failed": [], "pct": 38.5, "updated": "2026-09-06T05:22:43Z"}
+{"shard": 14, "stage": "testing", "done": 20, "total": 52, "rows": 690000, "note": "GLM 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 38.5, "updated": "2026-09-06T05:23:30Z"}

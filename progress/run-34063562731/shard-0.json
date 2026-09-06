@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 28, "total": 53, "rows": 699686, "note": "LIT 4h: rule 47/120 (ibs)", "failed": [], "pct": 52.8, "updated": "2026-09-06T22:31:19Z"}
+{"shard": 0, "stage": "testing", "done": 29, "total": 53, "rows": 747580, "note": "MANTA 4h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 54.7, "updated": "2026-09-06T22:32:04Z"}

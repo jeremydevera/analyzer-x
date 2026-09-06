@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 14, "total": 53, "rows": 561556, "note": "CYS 30m: rule 18/120 (macd)", "failed": [], "pct": 26.4, "updated": "2026-09-06T23:27:34Z"}
+{"shard": 14, "stage": "testing", "done": 14, "total": 53, "rows": 573956, "note": "CYS 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-06T23:28:20Z"}

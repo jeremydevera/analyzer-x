@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 16, "total": 53, "rows": 606418, "note": "EGLD 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 30.2, "updated": "2026-09-06T23:15:12Z"}
+{"shard": 15, "stage": "testing", "done": 16, "total": 53, "rows": 612358, "note": "EGLD 30m: rule 21/120 (cci20)", "failed": [], "pct": 30.2, "updated": "2026-09-06T23:15:58Z"}

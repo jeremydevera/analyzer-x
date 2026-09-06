@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 2, "total": 53, "rows": 97020, "note": "AEVO 30m: rule 72/120 (force13)", "failed": [], "pct": 3.8, "updated": "2026-09-06T20:06:23Z"}
+{"shard": 8, "stage": "testing", "done": 4, "total": 53, "rows": 124890, "note": "APDSTOCK 30m: 3,583 bars, testing 120 rules", "failed": [], "pct": 7.5, "updated": "2026-09-06T20:07:09Z"}

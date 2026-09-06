@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 28, "total": 53, "rows": 638118, "note": "LLYSTOCK 4h: 1,718 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-06T22:25:24Z"}
+{"shard": 1, "stage": "testing", "done": 30, "total": 53, "rows": 728094, "note": "MEW 4h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 56.6, "updated": "2026-09-06T22:26:09Z"}

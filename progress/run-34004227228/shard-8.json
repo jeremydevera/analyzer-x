@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 26, "total": 53, "rows": 687022, "note": "KIMISTOCK 15m: 2,972 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-06T02:19:01Z"}
+{"shard": 8, "stage": "testing", "done": 27, "total": 53, "rows": 732402, "note": "LDO 15m: 34,584 bars, testing 120 rules", "failed": [], "pct": 50.9, "updated": "2026-09-06T02:19:53Z"}

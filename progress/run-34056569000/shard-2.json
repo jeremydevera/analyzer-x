@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 23, "total": 53, "rows": 987074, "note": "HOT 30m: rule 9/120 (fib382)", "failed": [], "pct": 43.4, "updated": "2026-09-06T20:45:23Z"}
+{"shard": 2, "stage": "testing", "done": 23, "total": 53, "rows": 996534, "note": "HOT 30m: rule 53/120 (squeeze)", "failed": [], "pct": 43.4, "updated": "2026-09-06T20:46:08Z"}

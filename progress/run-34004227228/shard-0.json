@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 5, "total": 53, "rows": 176764, "note": "ARIA 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 9.4, "updated": "2026-09-06T01:48:43Z"}
+{"shard": 0, "stage": "testing", "done": 5, "total": 53, "rows": 185784, "note": "ARIA 15m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-06T01:49:29Z"}

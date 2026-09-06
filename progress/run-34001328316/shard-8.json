@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 36, "total": 53, "rows": 788488, "note": "PLTRSTOCK 1h: rule 68/120 (dbltop)", "failed": [], "pct": 67.9, "updated": "2026-09-06T00:51:59Z"}
+{"shard": 8, "stage": "testing", "done": 37, "total": 53, "rows": 811756, "note": "PUFFER 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-06T00:52:46Z"}

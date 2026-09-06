@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 52, "total": 53, "rows": 2042142, "note": "XLV 1h: rule 2/120 (mom15)", "failed": [], "pct": 98.1, "updated": "2026-09-06T21:48:19Z"}
+{"shard": 0, "stage": "testing", "done": 53, "total": 53, "rows": 2085958, "note": "ZBT 1h: rule 13/120 (pivot)", "failed": [], "pct": 100.0, "updated": "2026-09-06T21:49:04Z"}

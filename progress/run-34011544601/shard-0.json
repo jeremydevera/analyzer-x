@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 37, "total": 53, "rows": 1458020, "note": "PRL 15m: rule 95/120 (cf_emarsi_l1)", "failed": [], "pct": 69.8, "updated": "2026-09-06T05:52:10Z"}
+{"shard": 0, "stage": "testing", "done": 38, "total": 53, "rows": 1490080, "note": "QQQSTOCK 15m: 29,923 bars, testing 120 rules", "failed": [], "pct": 71.7, "updated": "2026-09-06T05:53:02Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 17, "total": 53, "rows": 667932, "note": "ENSO 30m: rule 47/120 (ibs)", "failed": [], "pct": 32.1, "updated": "2026-09-06T20:36:34Z"}
+{"shard": 3, "stage": "testing", "done": 18, "total": 53, "rows": 684312, "note": "EYE 30m: rule 3/120 (fade15)", "failed": [], "pct": 34.0, "updated": "2026-09-06T20:37:19Z"}

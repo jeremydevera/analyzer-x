@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 29, "total": 52, "rows": 1118504, "note": "MET 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 55.8, "updated": "2026-09-06T02:27:20Z"}
+{"shard": 18, "stage": "testing", "done": 31, "total": 52, "rows": 1149624, "note": "NAORIS 4h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 59.6, "updated": "2026-09-06T02:28:05Z"}

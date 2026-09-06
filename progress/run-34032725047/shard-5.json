@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 50, "total": 53, "rows": 2349816, "note": "WAVES 1d: rule 33/120 (heikin)", "failed": [], "pct": 94.3, "updated": "2026-09-06T15:29:49Z"}
+{"shard": 5, "stage": "testing", "done": 52, "total": 53, "rows": 2402304, "note": "XVG 15m: 34,637 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-06T15:30:43Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 41, "total": 53, "rows": 1595956, "note": "SCR 1h: rule 73/120 (volspike)", "failed": [], "pct": 77.4, "updated": "2026-09-06T18:28:51Z"}
+{"shard": 0, "stage": "testing", "done": 41, "total": 53, "rows": 1607396, "note": "SCR 30m: rule 2/120 (mom15)", "failed": [], "pct": 77.4, "updated": "2026-09-06T18:29:44Z"}

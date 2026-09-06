@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 2, "total": 53, "rows": 50346, "note": "ADBESTOCK 4h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-06T19:25:15Z"}
+{"shard": 1, "stage": "testing", "done": 7, "total": 53, "rows": 120670, "note": "BABASTOCK 4h: rule 28/120 (vortex14)", "failed": [], "pct": 13.2, "updated": "2026-09-06T19:26:00Z"}

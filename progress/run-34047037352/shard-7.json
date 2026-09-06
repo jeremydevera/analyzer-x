@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 29, "total": 53, "rows": 1141550, "note": "MAVIA 1h: rule 4/120 (trend50)", "failed": [], "pct": 54.7, "updated": "2026-09-06T18:01:30Z"}
+{"shard": 7, "stage": "testing", "done": 29, "total": 53, "rows": 1161130, "note": "MAVIA 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 54.7, "updated": "2026-09-06T18:02:16Z"}

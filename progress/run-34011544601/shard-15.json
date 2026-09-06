@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 17, "total": 52, "rows": 646600, "note": "EUR 30m: rule 17/120 (atrbreak)", "failed": [], "pct": 32.7, "updated": "2026-09-06T05:07:29Z"}
+{"shard": 15, "stage": "testing", "done": 17, "total": 52, "rows": 663400, "note": "EUR 30m: rule 107/120 (cf_bosfvg_l1)", "failed": [], "pct": 32.7, "updated": "2026-09-06T05:08:14Z"}

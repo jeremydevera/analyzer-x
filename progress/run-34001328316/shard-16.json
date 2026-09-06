@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 30, "total": 52, "rows": 1034864, "note": "MOVE 1d: 394 bars, testing 120 rules", "failed": [], "pct": 57.7, "updated": "2026-09-06T01:00:53Z"}
+{"shard": 16, "stage": "testing", "done": 30, "total": 52, "rows": 1055500, "note": "MOVE 1h: rule 26/120 (adx14)", "failed": [], "pct": 57.7, "updated": "2026-09-06T01:01:38Z"}

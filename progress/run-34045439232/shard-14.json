@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 41, "total": 53, "rows": 1047538, "note": "SILVER 4h: rule 27/120 (aroon25)", "failed": [], "pct": 77.4, "updated": "2026-09-06T16:42:32Z"}
+{"shard": 14, "stage": "testing", "done": 44, "total": 53, "rows": 1116662, "note": "STORJ 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-06T16:43:21Z"}

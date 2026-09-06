@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 46, "total": 53, "rows": 1813838, "note": "THE 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 86.8, "updated": "2026-09-06T10:09:13Z"}
+{"shard": 8, "stage": "testing", "done": 46, "total": 53, "rows": 1825278, "note": "THE 30m: rule 46/120 (rsi2)", "failed": [], "pct": 86.8, "updated": "2026-09-06T10:09:58Z"}

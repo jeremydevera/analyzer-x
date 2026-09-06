@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 36, "total": 52, "rows": 1457006, "note": "PONS 30m: rule 9/120 (fib382)", "failed": [], "pct": 69.2, "updated": "2026-09-06T10:22:06Z"}
+{"shard": 15, "stage": "testing", "done": 38, "total": 52, "rows": 1520334, "note": "RDWSTOCK 1h: rule 9/120 (fib382)", "failed": [], "pct": 73.1, "updated": "2026-09-06T10:22:51Z"}

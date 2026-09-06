@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 21, "total": 53, "rows": 983232, "note": "GPS 1d: 394 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-06T13:34:57Z"}
+{"shard": 5, "stage": "testing", "done": 22, "total": 53, "rows": 998184, "note": "HEI 15m: rule 2/120 (mom15)", "failed": [], "pct": 41.5, "updated": "2026-09-06T13:35:48Z"}

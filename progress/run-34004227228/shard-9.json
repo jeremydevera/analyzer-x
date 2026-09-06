@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 4, "total": 53, "rows": 133600, "note": "APEX 15m: rule 2/120 (mom15)", "failed": [], "pct": 7.5, "updated": "2026-09-06T01:44:01Z"}
+{"shard": 9, "stage": "testing", "done": 4, "total": 53, "rows": 136800, "note": "APEX 15m: rule 20/120 (stoch14)", "failed": [], "pct": 7.5, "updated": "2026-09-06T01:44:47Z"}

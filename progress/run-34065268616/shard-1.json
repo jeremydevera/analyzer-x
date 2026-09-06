@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 41, "total": 53, "rows": 1565652, "note": "SEI 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 77.4, "updated": "2026-09-06T23:57:17Z"}
+{"shard": 1, "stage": "testing", "done": 42, "total": 53, "rows": 1578952, "note": "SKL 1h: rule 50/120 (gapfade)", "failed": [], "pct": 79.2, "updated": "2026-09-06T23:58:02Z"}

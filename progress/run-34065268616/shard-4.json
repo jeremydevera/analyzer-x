@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 1, "total": 53, "rows": 48860, "note": "1000BTT 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-06T22:55:57Z"}
+{"shard": 4, "stage": "testing", "done": 3, "total": 53, "rows": 92432, "note": "ALABSTOCK 1h: 1,929 bars, testing 120 rules", "failed": [], "pct": 5.7, "updated": "2026-09-06T22:56:42Z"}

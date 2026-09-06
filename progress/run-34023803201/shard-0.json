@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 26, "total": 53, "rows": 892496, "note": "KAS 30m: rule 2/120 (mom15)", "failed": [], "pct": 49.1, "updated": "2026-09-06T10:01:55Z"}
+{"shard": 0, "stage": "testing", "done": 26, "total": 53, "rows": 900896, "note": "KAS 30m: rule 42/120 (rsidiv)", "failed": [], "pct": 49.1, "updated": "2026-09-06T10:02:41Z"}

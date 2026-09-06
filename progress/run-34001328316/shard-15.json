@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 33, "total": 52, "rows": 995134, "note": "NXPC 1h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 63.5, "updated": "2026-09-06T00:53:06Z"}
+{"shard": 15, "stage": "testing", "done": 34, "total": 52, "rows": 1018278, "note": "OP 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 65.4, "updated": "2026-09-06T00:53:51Z"}

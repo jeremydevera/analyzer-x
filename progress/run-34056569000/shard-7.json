@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 31, "total": 53, "rows": 1237946, "note": "MSTRSTOCK 1h: rule 5/120 (rsi14)", "failed": [], "pct": 58.5, "updated": "2026-09-06T21:12:15Z"}
+{"shard": 7, "stage": "testing", "done": 31, "total": 53, "rows": 1263026, "note": "MSTRSTOCK 30m: 17,295 bars, testing 120 rules", "failed": [], "pct": 58.5, "updated": "2026-09-06T21:13:05Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 41, "total": 53, "rows": 1074516, "note": "SHOPSTOCK 4h: rule 33/120 (heikin)", "failed": [], "pct": 77.4, "updated": "2026-09-06T08:49:09Z"}
+{"shard": 8, "stage": "testing", "done": 45, "total": 53, "rows": 1126782, "note": "S 4h: rule 1/120 (mom6)", "failed": [], "pct": 84.9, "updated": "2026-09-06T08:49:54Z"}

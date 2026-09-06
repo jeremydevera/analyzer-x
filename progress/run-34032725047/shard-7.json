@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 28, "total": 53, "rows": 1302990, "note": "LSK 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 52.8, "updated": "2026-09-06T14:05:42Z"}
+{"shard": 7, "stage": "testing", "done": 29, "total": 53, "rows": 1322406, "note": "MAV 15m: rule 1/120 (mom6)", "failed": [], "pct": 54.7, "updated": "2026-09-06T14:06:39Z"}

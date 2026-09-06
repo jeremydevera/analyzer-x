@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 15, "total": 53, "rows": 665560, "note": "DEXE 30m: rule 3/120 (fade15)", "failed": [], "pct": 28.3, "updated": "2026-09-06T05:24:06Z"}
+{"shard": 4, "stage": "testing", "done": 18, "total": 53, "rows": 697480, "note": "FARTCOIN 15m: 34,596 bars, testing 120 rules", "failed": [], "pct": 34.0, "updated": "2026-09-06T05:24:57Z"}

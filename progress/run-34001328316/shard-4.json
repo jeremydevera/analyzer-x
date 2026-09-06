@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 12, "total": 53, "rows": 420890, "note": "CHZ 1h: rule 24/120 (psar)", "failed": [], "pct": 22.6, "updated": "2026-09-06T00:40:12Z"}
+{"shard": 4, "stage": "testing", "done": 13, "total": 53, "rows": 454830, "note": "COSTSTOCK 1h: rule 9/120 (fib382)", "failed": [], "pct": 24.5, "updated": "2026-09-06T00:40:57Z"}

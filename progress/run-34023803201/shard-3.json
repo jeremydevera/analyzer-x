@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 19, "total": 53, "rows": 670826, "note": "FLR 1h: rule 47/120 (ibs)", "failed": [], "pct": 35.8, "updated": "2026-09-06T09:47:26Z"}
+{"shard": 3, "stage": "testing", "done": 19, "total": 53, "rows": 686204, "note": "FLR 30m: rule 2/120 (mom15)", "failed": [], "pct": 35.8, "updated": "2026-09-06T09:48:16Z"}

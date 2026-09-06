@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 48, "total": 53, "rows": 2113352, "note": "UP 1h: 4,259 bars, testing 120 rules", "failed": [], "pct": 90.6, "updated": "2026-09-06T21:12:57Z"}
+{"shard": 19, "stage": "testing", "done": 48, "total": 53, "rows": 2147894, "note": "UP 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 90.6, "updated": "2026-09-06T21:13:42Z"}

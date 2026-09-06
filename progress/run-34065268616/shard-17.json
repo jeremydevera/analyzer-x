@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 34, "total": 53, "rows": 1533808, "note": "OP 30m: rule 23/120 (supertrend)", "failed": [], "pct": 64.2, "updated": "2026-09-06T23:55:50Z"}
+{"shard": 17, "stage": "testing", "done": 34, "total": 53, "rows": 1546808, "note": "OP 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 64.2, "updated": "2026-09-06T23:56:35Z"}

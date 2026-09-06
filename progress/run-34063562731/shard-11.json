@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 2, "total": 53, "rows": 39832, "note": "AGT 4h: rule 1/120 (mom6)", "failed": [], "pct": 3.8, "updated": "2026-09-06T22:18:16Z"}
+{"shard": 11, "stage": "testing", "done": 3, "total": 53, "rows": 74452, "note": "ALPINE 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 5.7, "updated": "2026-09-06T22:19:02Z"}

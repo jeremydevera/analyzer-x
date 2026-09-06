@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 9, "total": 52, "rows": 300676, "note": "BRETT 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 17.3, "updated": "2026-09-06T01:53:05Z"}
+{"shard": 13, "stage": "testing", "done": 10, "total": 52, "rows": 306436, "note": "C98 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 19.2, "updated": "2026-09-06T01:53:53Z"}

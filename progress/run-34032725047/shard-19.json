@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 23, "total": 52, "rows": 1228484, "note": "ID 30m: rule 64/120 (hammer)", "failed": [], "pct": 44.2, "updated": "2026-09-06T14:15:39Z"}
+{"shard": 19, "stage": "testing", "done": 23, "total": 52, "rows": 1240584, "note": "ID 1d: 394 bars, testing 120 rules", "failed": [], "pct": 44.2, "updated": "2026-09-06T14:16:26Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 51, "total": 53, "rows": 1942926, "note": "XEC 1h: rule 4/120 (trend50)", "failed": [], "pct": 96.2, "updated": "2026-09-06T21:34:31Z"}
+{"shard": 13, "stage": "testing", "done": 51, "total": 53, "rows": 1968006, "note": "XEC 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 96.2, "updated": "2026-09-06T21:35:27Z"}

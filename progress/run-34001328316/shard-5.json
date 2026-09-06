@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 19, "total": 53, "rows": 471964, "note": "FLUX 1h: rule 64/120 (hammer)", "failed": [], "pct": 35.8, "updated": "2026-09-06T00:44:41Z"}
+{"shard": 5, "stage": "testing", "done": 22, "total": 53, "rows": 520066, "note": "HEMI 1d: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-06T00:45:26Z"}

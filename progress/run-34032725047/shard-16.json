@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 38, "total": 52, "rows": 2122072, "note": "RECALL 30m: rule 35/120 (willr14)", "failed": [], "pct": 73.1, "updated": "2026-09-06T15:22:14Z"}
+{"shard": 16, "stage": "testing", "done": 38, "total": 52, "rows": 2135712, "note": "RECALL 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 73.1, "updated": "2026-09-06T15:23:00Z"}

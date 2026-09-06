@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 24, "total": 53, "rows": 795240, "note": "INIT 30m: rule 22/120 (engulf)", "failed": [], "pct": 45.3, "updated": "2026-09-06T05:40:57Z"}
+{"shard": 5, "stage": "testing", "done": 24, "total": 53, "rows": 808000, "note": "INIT 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 45.3, "updated": "2026-09-06T05:41:43Z"}

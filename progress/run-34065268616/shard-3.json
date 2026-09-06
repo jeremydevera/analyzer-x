@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 13, "total": 53, "rows": 497952, "note": "COPSTOCK 1h: rule 107/120 (cf_bosfvg_l1)", "failed": [], "pct": 24.5, "updated": "2026-09-06T23:20:07Z"}
+{"shard": 3, "stage": "testing", "done": 14, "total": 53, "rows": 520218, "note": "CTK 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-06T23:20:56Z"}

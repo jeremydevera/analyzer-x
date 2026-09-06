@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 48, "total": 52, "rows": 2483112, "note": "USDC 15m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 92.3, "updated": "2026-09-06T16:02:25Z"}
+{"shard": 18, "stage": "testing", "done": 48, "total": 52, "rows": 2492352, "note": "USDC 30m: rule 20/120 (stoch14)", "failed": [], "pct": 92.3, "updated": "2026-09-06T16:03:11Z"}

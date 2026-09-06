@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 8, "total": 53, "rows": 330180, "note": "BILL 15m: rule 9/120 (fib382)", "failed": [], "pct": 15.1, "updated": "2026-09-06T05:02:14Z"}
+{"shard": 9, "stage": "testing", "done": 8, "total": 53, "rows": 344900, "note": "BILL 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 15.1, "updated": "2026-09-06T05:02:59Z"}

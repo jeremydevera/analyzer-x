@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 14, "total": 52, "rows": 470708, "note": "DASH 15m: rule 18/120 (macd)", "failed": [], "pct": 26.9, "updated": "2026-09-06T01:55:31Z"}
+{"shard": 15, "stage": "testing", "done": 14, "total": 52, "rows": 475568, "note": "DASH 15m: rule 45/120 (zscore20)", "failed": [], "pct": 26.9, "updated": "2026-09-06T01:56:17Z"}

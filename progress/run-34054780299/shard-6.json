@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 19, "total": 53, "rows": 372236, "note": "FLUX 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-06T19:31:00Z"}
+{"shard": 6, "stage": "testing", "done": 22, "total": 53, "rows": 411616, "note": "HEI 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 41.5, "updated": "2026-09-06T19:31:52Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 41, "total": 53, "rows": 1144038, "note": "SIGN 15m: rule 8/120 (fib618)", "failed": [], "pct": 77.4, "updated": "2026-09-06T02:43:06Z"}
+{"shard": 8, "stage": "testing", "done": 41, "total": 53, "rows": 1149538, "note": "SIGN 15m: rule 33/120 (heikin)", "failed": [], "pct": 77.4, "updated": "2026-09-06T02:43:53Z"}

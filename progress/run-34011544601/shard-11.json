@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 14, "total": 52, "rows": 517840, "note": "CXMTSTOCK 30m: rule 31/120 (trix15)", "failed": [], "pct": 26.9, "updated": "2026-09-06T05:08:53Z"}
+{"shard": 11, "stage": "testing", "done": 15, "total": 52, "rows": 550100, "note": "DKNGSTOCK 30m: rule 3/120 (fade15)", "failed": [], "pct": 28.8, "updated": "2026-09-06T05:09:38Z"}

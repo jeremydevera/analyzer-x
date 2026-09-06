@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 37, "total": 52, "rows": 1520800, "note": "PYTH 15m: rule 40/120 (crsi)", "failed": [], "pct": 71.2, "updated": "2026-09-06T06:17:06Z"}
+{"shard": 15, "stage": "testing", "done": 37, "total": 52, "rows": 1529080, "note": "PYTH 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 71.2, "updated": "2026-09-06T06:17:52Z"}

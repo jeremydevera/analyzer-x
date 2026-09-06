@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 6, "total": 53, "rows": 294944, "note": "AXONSTOCK 15m: rule 53/120 (squeeze)", "failed": [], "pct": 11.3, "updated": "2026-09-06T12:45:15Z"}
+{"shard": 12, "stage": "testing", "done": 7, "total": 53, "rows": 330734, "note": "BASTOCK 15m: 22,588 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-06T12:46:02Z"}

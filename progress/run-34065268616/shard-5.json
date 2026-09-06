@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 8, "total": 53, "rows": 318950, "note": "BICO 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 15.1, "updated": "2026-09-06T23:12:36Z"}
+{"shard": 5, "stage": "testing", "done": 9, "total": 53, "rows": 330650, "note": "BNB 1h: rule 9/120 (fib382)", "failed": [], "pct": 17.0, "updated": "2026-09-06T23:13:21Z"}

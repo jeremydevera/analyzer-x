@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 21, "total": 52, "rows": 819088, "note": "G 15m: rule 4/120 (trend50)", "failed": [], "pct": 40.4, "updated": "2026-09-06T02:36:46Z"}
+{"shard": 16, "stage": "testing", "done": 21, "total": 52, "rows": 824288, "note": "G 15m: rule 30/120 (kama10)", "failed": [], "pct": 40.4, "updated": "2026-09-06T02:37:32Z"}

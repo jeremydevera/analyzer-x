@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 12, "total": 52, "rows": 479760, "note": "COAI 15m: rule 32/120 (gmma)", "failed": [], "pct": 23.1, "updated": "2026-09-06T05:10:18Z"}
+{"shard": 13, "stage": "testing", "done": 12, "total": 52, "rows": 484720, "note": "COAI 15m: rule 64/120 (hammer)", "failed": [], "pct": 23.1, "updated": "2026-09-06T05:11:03Z"}

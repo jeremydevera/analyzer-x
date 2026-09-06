@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 34, "total": 53, "rows": 1318640, "note": "OPENAI 30m: rule 101/120 (cf_soup1_l1)", "failed": [], "pct": 64.2, "updated": "2026-09-06T10:07:47Z"}
+{"shard": 11, "stage": "testing", "done": 36, "total": 53, "rows": 1351740, "note": "PNUT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 67.9, "updated": "2026-09-06T10:08:46Z"}

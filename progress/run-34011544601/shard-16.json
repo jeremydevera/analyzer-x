@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 11, "total": 52, "rows": 519800, "note": "CFX 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 21.2, "updated": "2026-09-06T05:24:41Z"}
+{"shard": 16, "stage": "testing", "done": 12, "total": 52, "rows": 528100, "note": "COINBASE 15m: rule 3/120 (fade15)", "failed": [], "pct": 23.1, "updated": "2026-09-06T05:25:30Z"}

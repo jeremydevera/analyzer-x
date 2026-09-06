@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 28, "total": 52, "rows": 862878, "note": "MANTA 1d: 394 bars, testing 120 rules", "failed": [], "pct": 53.8, "updated": "2026-09-06T00:56:03Z"}
+{"shard": 18, "stage": "testing", "done": 28, "total": 52, "rows": 879246, "note": "MANTA 1h: rule 20/120 (stoch14)", "failed": [], "pct": 53.8, "updated": "2026-09-06T00:56:49Z"}

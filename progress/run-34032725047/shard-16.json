@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 51, "total": 52, "rows": 2774674, "note": "XMR 15m: rule 85/120 (cf_triple)", "failed": [], "pct": 98.1, "updated": "2026-09-06T16:03:40Z"}
+{"shard": 16, "stage": "testing", "done": 51, "total": 52, "rows": 2782374, "note": "XMR 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-06T16:04:29Z"}

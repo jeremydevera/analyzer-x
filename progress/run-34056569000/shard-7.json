@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 26, "total": 53, "rows": 1024938, "note": "KGEN 30m: rule 33/120 (heikin)", "failed": [], "pct": 49.1, "updated": "2026-09-06T20:58:57Z"}
+{"shard": 7, "stage": "testing", "done": 26, "total": 53, "rows": 1037698, "note": "KGEN 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 49.1, "updated": "2026-09-06T20:59:42Z"}

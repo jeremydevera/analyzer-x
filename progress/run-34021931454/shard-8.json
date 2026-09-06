@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 30, "total": 53, "rows": 847626, "note": "MMT 1d: 314 bars, testing 120 rules", "failed": [], "pct": 56.6, "updated": "2026-09-06T08:45:10Z"}
+{"shard": 8, "stage": "testing", "done": 32, "total": 53, "rows": 901526, "note": "NES 1d: rule 21/120 (cci20)", "failed": [], "pct": 60.4, "updated": "2026-09-06T08:45:55Z"}

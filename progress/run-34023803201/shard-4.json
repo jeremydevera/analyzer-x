@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 42, "total": 53, "rows": 1663312, "note": "SLBSTOCK 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 79.2, "updated": "2026-09-06T10:31:24Z"}
+{"shard": 4, "stage": "testing", "done": 45, "total": 53, "rows": 1703872, "note": "SXT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-06T10:32:16Z"}

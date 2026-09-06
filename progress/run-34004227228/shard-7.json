@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 15, "total": 53, "rows": 502902, "note": "DIA 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 28.3, "updated": "2026-09-06T02:10:31Z"}
+{"shard": 7, "stage": "testing", "done": 15, "total": 53, "rows": 511302, "note": "DIA 15m: rule 79/120 (cf_donch)", "failed": [], "pct": 28.3, "updated": "2026-09-06T02:11:16Z"}

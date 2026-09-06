@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 40, "total": 53, "rows": 1315838, "note": "SAHARA 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-06T03:15:21Z"}
+{"shard": 6, "stage": "testing", "done": 41, "total": 53, "rows": 1323758, "note": "SHLD 4h: 699 bars, testing 120 rules", "failed": [], "pct": 77.4, "updated": "2026-09-06T03:16:06Z"}

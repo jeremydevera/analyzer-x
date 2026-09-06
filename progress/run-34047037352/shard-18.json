@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 14, "total": 53, "rows": 566778, "note": "DBR 30m: rule 40/120 (crsi)", "failed": [], "pct": 26.4, "updated": "2026-09-06T17:36:02Z"}
+{"shard": 18, "stage": "testing", "done": 14, "total": 53, "rows": 578118, "note": "DBR 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-06T17:36:48Z"}

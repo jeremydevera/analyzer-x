@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 30, "total": 53, "rows": 1140574, "note": "MNT 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 56.6, "updated": "2026-09-06T17:51:02Z"}
+{"shard": 11, "stage": "testing", "done": 31, "total": 53, "rows": 1146514, "note": "MUBARAK 1h: rule 4/120 (trend50)", "failed": [], "pct": 58.5, "updated": "2026-09-06T17:51:47Z"}

@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 21, "total": 53, "rows": 958840, "note": "GOOGLSTOCK 15m: 34,560 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-06T13:36:52Z"}
+{"shard": 2, "stage": "testing", "done": 21, "total": 53, "rows": 964780, "note": "GOOGLSTOCK 15m: rule 27/120 (aroon25)", "failed": [], "pct": 39.6, "updated": "2026-09-06T13:37:37Z"}

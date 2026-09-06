@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 11, "total": 52, "rows": 423380, "note": "CELR 15m: rule 4/120 (trend50)", "failed": [], "pct": 21.2, "updated": "2026-09-06T05:02:35Z"}
+{"shard": 13, "stage": "testing", "done": 11, "total": 52, "rows": 427340, "note": "CELR 15m: rule 22/120 (engulf)", "failed": [], "pct": 21.2, "updated": "2026-09-06T05:03:21Z"}

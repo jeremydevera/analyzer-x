@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 46, "total": 52, "rows": 1936100, "note": "TRB 15m: 34,606 bars, testing 120 rules", "failed": [], "pct": 88.5, "updated": "2026-09-06T07:45:10Z"}
+{"shard": 18, "stage": "testing", "done": 46, "total": 52, "rows": 1937900, "note": "TRB 15m: rule 3/120 (fade15)", "failed": [], "pct": 88.5, "updated": "2026-09-06T07:45:57Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 41, "total": 53, "rows": 1549652, "note": "SEI 30m: rule 33/120 (heikin)", "failed": [], "pct": 77.4, "updated": "2026-09-06T23:56:32Z"}
+{"shard": 1, "stage": "testing", "done": 41, "total": 53, "rows": 1565652, "note": "SEI 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 77.4, "updated": "2026-09-06T23:57:17Z"}

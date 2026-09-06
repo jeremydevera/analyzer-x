@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 7, "total": 53, "rows": 324740, "note": "BANANAS31 30m: rule 40/120 (crsi)", "failed": [], "pct": 13.2, "updated": "2026-09-06T20:15:16Z"}
+{"shard": 4, "stage": "testing", "done": 7, "total": 53, "rows": 337720, "note": "BANANAS31 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 13.2, "updated": "2026-09-06T20:16:02Z"}

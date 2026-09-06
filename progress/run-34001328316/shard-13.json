@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 39, "total": 52, "rows": 1085720, "note": "ROBINHOOD 1h: rule 36/120 (stochrsi)", "failed": [], "pct": 75.0, "updated": "2026-09-06T00:51:46Z"}
+{"shard": 13, "stage": "testing", "done": 41, "total": 52, "rows": 1121668, "note": "SKHYNIXSTOCK 1h: rule 30/120 (kama10)", "failed": [], "pct": 78.8, "updated": "2026-09-06T00:52:31Z"}

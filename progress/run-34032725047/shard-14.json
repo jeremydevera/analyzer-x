@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 27, "total": 53, "rows": 1307032, "note": "LINEA 30m: rule 60/120 (eqraid)", "failed": [], "pct": 50.9, "updated": "2026-09-06T14:06:41Z"}
+{"shard": 14, "stage": "testing", "done": 27, "total": 53, "rows": 1320012, "note": "LINEA 1d: 370 bars, testing 120 rules", "failed": [], "pct": 50.9, "updated": "2026-09-06T14:07:30Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 18, "total": 53, "rows": 866280, "note": "FILECOIN 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 34.0, "updated": "2026-09-06T20:50:01Z"}
+{"shard": 16, "stage": "testing", "done": 20, "total": 53, "rows": 905360, "note": "GLWSTOCK 30m: rule 2/120 (mom15)", "failed": [], "pct": 37.7, "updated": "2026-09-06T20:50:47Z"}

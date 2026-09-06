@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 30, "total": 52, "rows": 1111200, "note": "MONAD 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 57.7, "updated": "2026-09-06T05:56:01Z"}
+{"shard": 11, "stage": "testing", "done": 32, "total": 52, "rows": 1143480, "note": "NFLXSTOCK 15m: rule 53/120 (squeeze)", "failed": [], "pct": 61.5, "updated": "2026-09-06T05:56:46Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 30, "total": 53, "rows": 1384914, "note": "MITSUBISHISTOCK 15m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 56.6, "updated": "2026-09-06T14:11:59Z"}
+{"shard": 7, "stage": "testing", "done": 32, "total": 53, "rows": 1413274, "note": "NEO 15m: rule 2/120 (mom15)", "failed": [], "pct": 60.4, "updated": "2026-09-06T14:12:54Z"}

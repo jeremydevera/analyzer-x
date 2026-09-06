@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 30, "total": 53, "rows": 1093708, "note": "MIRA 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 56.6, "updated": "2026-09-06T20:54:11Z"}
+{"shard": 6, "stage": "testing", "done": 30, "total": 53, "rows": 1108668, "note": "MIRA 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 56.6, "updated": "2026-09-06T20:54:57Z"}

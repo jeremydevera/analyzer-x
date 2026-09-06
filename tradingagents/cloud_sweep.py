@@ -230,6 +230,39 @@ def _git(*args, timeout: int = 120) -> str:
     return p.stdout
 
 
+def _fetch_progress() -> None:
+    """Fetch the progress branch, surviving a LOCK RACE on its tracking ref.
+
+    `--force` overrides a non-fast-forward; it does NOT help when another git
+    process is writing the same ref at that instant, which is what happens
+    when the API polls this branch while a sweep, an orchestrator or a person
+    runs `git fetch origin` (that fetches every ref, this one included). Git
+    then refuses with:
+
+        cannot lock ref 'refs/remotes/origin/sweep-progress':
+        is at 1c14b6d8... but expected 418409e6...
+
+    Seen on Sep 06, 2026 while watching run 34011544601: the panel showed no
+    machines at all for minutes on a healthy run, because the only symptom was
+    one line in the API log. A stale tracking ref is worth nothing on its own —
+    the branch is re-fetched whole — so on that error the ref is dropped and
+    the fetch retried once. Any other failure is raised as before.
+    """
+    ref = f"refs/remotes/origin/{PROGRESS_BRANCH}"
+    try:
+        _git("fetch", "--quiet", "origin", f"{PROGRESS_BRANCH}:{ref}",
+             "--force", timeout=180)
+        return
+    except CloudError as exc:
+        if "cannot lock ref" not in str(exc):
+            raise
+    # drop the wedged tracking ref and take the branch again from scratch
+    with contextlib.suppress(CloudError):
+        _git("update-ref", "-d", ref, timeout=30)
+    _git("fetch", "--quiet", "origin", f"{PROGRESS_BRANCH}:{ref}",
+         "--force", timeout=180)
+
+
 def live_progress(run_id: int, slug: str | None = None) -> list:
     """What each machine says it is doing, right now — read over GIT.
 
@@ -253,9 +286,7 @@ def live_progress(run_id: int, slug: str | None = None) -> list:
 
     if now - _FETCH_FAILED_AT[0] > FETCH_FAIL_S:
         try:
-            _git("fetch", "--quiet", "origin",
-                 f"{PROGRESS_BRANCH}:refs/remotes/origin/{PROGRESS_BRANCH}",
-                 "--force", timeout=180)
+            _fetch_progress()
         except CloudError as exc:
             _FETCH_FAILED_AT[0] = now
             print(f"[cloud] could not fetch {PROGRESS_BRANCH}: {exc}",

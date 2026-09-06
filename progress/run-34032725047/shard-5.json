@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 52, "total": 53, "rows": 2430524, "note": "XVG 30m: rule 20/120 (stoch14)", "failed": [], "pct": 98.1, "updated": "2026-09-06T15:35:28Z"}
+{"shard": 5, "stage": "testing", "done": 52, "total": 53, "rows": 2440644, "note": "XVG 30m: rule 67/120 (pinbar)", "failed": [], "pct": 98.1, "updated": "2026-09-06T15:36:13Z"}

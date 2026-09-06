@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 43, "total": 53, "rows": 1618932, "note": "SPCXSTOCK 1h: rule 44/120 (elder)", "failed": [], "pct": 81.1, "updated": "2026-09-06T18:17:06Z"}
+{"shard": 15, "stage": "testing", "done": 44, "total": 53, "rows": 1659352, "note": "STO 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-06T18:18:00Z"}

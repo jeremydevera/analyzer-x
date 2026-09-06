@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 18, "total": 52, "rows": 686488, "note": "FILECOIN 15m: rule 91/120 (cf_soup)", "failed": [], "pct": 34.6, "updated": "2026-09-06T02:13:43Z"}
+{"shard": 15, "stage": "testing", "done": 20, "total": 52, "rows": 718486, "note": "GLWSTOCK 15m: 10,627 bars, testing 120 rules", "failed": [], "pct": 38.5, "updated": "2026-09-06T02:14:31Z"}

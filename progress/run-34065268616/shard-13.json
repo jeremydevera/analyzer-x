@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 11, "total": 53, "rows": 446888, "note": "CELO 30m: rule 13/120 (pivot)", "failed": [], "pct": 20.8, "updated": "2026-09-06T23:11:32Z"}
+{"shard": 13, "stage": "testing", "done": 11, "total": 53, "rows": 455908, "note": "CELO 30m: rule 55/120 (nhigh50)", "failed": [], "pct": 20.8, "updated": "2026-09-06T23:12:17Z"}

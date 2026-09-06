@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 22, "total": 52, "rows": 829668, "note": "HMSTR 15m: rule 47/120 (ibs)", "failed": [], "pct": 42.3, "updated": "2026-09-06T02:22:44Z"}
+{"shard": 15, "stage": "testing", "done": 22, "total": 52, "rows": 836928, "note": "HMSTR 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 42.3, "updated": "2026-09-06T02:23:30Z"}

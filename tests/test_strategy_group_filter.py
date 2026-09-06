@@ -212,7 +212,8 @@ def test_a_group_count_is_bounded_until_its_index_exists():
     branch = src[i:i + 900]
     assert "total = -1" in branch
     # and with the index there, the generic bounded count must NAME it
-    assert "_indexed_by(coin, group_idx=group_idx" in src,         "the count has to ride the partial index once it exists"
+    assert "_indexed_by(coin, winrate_seeks, group_idx=group_idx" in src, \
+        "the count has to ride the partial index once it exists"
     # -1 must still be turned into a capped count for the caption
     j = src.index("if total < 0:")
     assert "total, capped_count = COUNT_CAP, True" in src[j:j + 700],         "an unknown total must print as a bound, with the +"

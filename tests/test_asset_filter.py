@@ -128,6 +128,12 @@ def test_the_panel_has_the_dropdown_and_its_chip():
     # the chip the AND-line prints, one text per direction
     assert 'text: "Crypto coins only"' in p
     assert 'text: "Tokenized stocks only"' in p
+    # the AND-line (the spinner's "asking …" and the filter sentence) names
+    # the kind, on or off: a slow crypto-only request once waited under a
+    # line that never said crypto, and the operator read that as "the crypto
+    # coins only filter is not working" (2026-09-06)
+    assert 'f.asset === "crypto" ? "crypto coins only"' in p
+    assert '"coins and stocks",' in p
     # cleared with the rest, sent with the rest, kept for the CSV
     assert p.count('asset: ""') >= 3, "NO_FILTERS + applied + servedFilters"
     assert "asset: setAsset" in p

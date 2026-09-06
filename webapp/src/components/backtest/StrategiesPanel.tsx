@@ -554,6 +554,12 @@ export default function StrategiesPanel() {
   const andLine = (f: typeof draft) => (f.rowId
     ? `row #${f.rowId} — every other filter ignored, an id names one row`
     : [
+    // KIND was missing from this sentence while the box sent it, so a slow
+    // "crypto coins only" request waited under a line that never said crypto
+    // — which the operator read as "the filter is not working" (2026-09-06).
+    // Every box this panel sends is named here, on or off.
+    f.asset === "crypto" ? "crypto coins only"
+      : f.asset === "stocks" ? "tokenized stocks only" : "coins and stocks",
     f.coin || "all coins",
     f.tf || "all timeframes",
     f.signal || "all signals",
@@ -561,8 +567,17 @@ export default function StrategiesPanel() {
       : f.group === "classic" ? "group = Classic" : "all groups",
     f.minTrades > 0 ? `min trades = ${f.minTrades}` : "any trades",
     f.minWinrate > 0 ? `min win % = ${f.minWinrate}` : "any win %",
-    f.maxTp > 0 ? `max TP % = ${f.maxTp}` : "any TP",
-    f.maxSl > 0 ? `max SL % = ${f.maxSl}` : "any SL",
+    // the RANGES and the checkbox, in the same words their chips use — with
+    // `TP >= SL` on, the four range boxes are sent as zeroes, so this
+    // sentence can never claim a range the request did not carry
+    f.tpOverSl ? "TP >= SL"
+      : f.minTp > 0 && f.maxTp > 0 ? `TP ${f.minTp}-${f.maxTp}%`
+      : f.maxTp > 0 ? `max TP % = ${f.maxTp}`
+      : f.minTp > 0 ? `TP ${f.minTp}% or wider` : "any TP",
+    f.tpOverSl ? "any SL"
+      : f.minSl > 0 && f.maxSl > 0 ? `SL ${f.minSl}-${f.maxSl}%`
+      : f.maxSl > 0 ? `max SL % = ${f.maxSl}`
+      : f.minSl > 0 ? `SL ${f.minSl}% or wider` : "any SL",
     f.sizing ? `sizing = ${f.sizing}` : "flat and martingale",
     f.profitable ? "profit > 0" : "losers included",
     f.months > 0 ? `last ${f.months} month${f.months > 1 ? "s" : ""}`

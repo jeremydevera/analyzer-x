@@ -156,6 +156,21 @@ WIDE_WINRATE = ("CREATE INDEX IF NOT EXISTS rows_wr2 ON rows "
 # ranking is by win %. 41.7 min to build.
 WIDER_WINRATE = ("CREATE INDEX IF NOT EXISTS rows_wr3 ON rows "
                  "(winrate DESC, trades, sizing, profit DESC, id)")
+# THE WIN-RATE SEEK THAT CARRIES EVERY FILTER THE PANEL CAN SEND. rows_wr3
+# stops at sizing, so a floor with tp, sl, tf, a signal or the crypto/stocks
+# split beside it had to read every floor-passing ROW off the disk to test
+# the rest. Measured 2026-09-06 on the operator's own filter (win % >= 90,
+# 20+ trades, TP >= SL, crypto only, ranked by profit; 50,507,354 rows,
+# mechanical disk): 102,026 rows cleared the floor, 2 passed the rest, and
+# proving that cost 358.2 s of random reads — the 20 s budget refused it on
+# every try and the panel's 15 s retry made that an endless 503 loop the
+# operator read as "the crypto filter is not working". With every filter
+# column IN the index the same request is one index-only walk. `signal`
+# also answers the GROUP terms (they are ranges on signal), and `coin`
+# answers the asset split (a suffix test on coin).
+WIDEST_WINRATE = ("CREATE INDEX IF NOT EXISTS rows_wr4 ON rows "
+                  "(winrate DESC, trades, sizing, tf, signal, tp, sl, coin, "
+                  "profit DESC, id)")
 # The wide PROFIT index — the same trick as rows_wr2, for the order the page
 # opens on. rows_profit is (profit DESC, id), so a filter on anything else has
 # to read every candidate ROW off the disk to test it. The biggest profits in
@@ -199,6 +214,7 @@ INDEX_DDL = {**FILTER_INDEXES,
              **{d.split()[5]: d for d in KEEP_INDEXES},
              "rows_wr2": WIDE_WINRATE,
              "rows_wr3": WIDER_WINRATE,
+             "rows_wr4": WIDEST_WINRATE,
              "rows_pr2": WIDE_PROFIT,
              "rows_id": ROW_ID_INDEX,
              "rows_signal": SIGNAL_INDEX}
@@ -1336,6 +1352,15 @@ WINRATE_SEEK_MAX = 150_000
 # (QUERY_BUDGET_S) covers about 15 million. 12 million keeps room for the
 # 500 row fetches at the end.
 WIDE_SEEK_MAX = 12_000_000
+# When rows_pr2 ALSO exists, both plans are real and the match count picks:
+# below this many matches the floor is selective, which is exactly when the
+# profit-order scan dies of correlation (win % >= 90 AND 20+ trades = 102,026
+# matches: seek 2.1 s, rows_pr2 scan past 300 s — 2026-09-06, 50,507,354
+# rows). Above it the floor is loose, the scan meets a page of matches almost
+# at once, and the seek's own decision count would cost more than the answer
+# — so rows_pr2 keeps those. One million keeps the count itself always cheap
+# (an index-only walk that stops at the cap, ~1 s a million entries).
+SEEK_OVER_PR2_MAX = 1_000_000
 # How long ONE read may run before the store gives up and says so.
 #
 # The UI reaches the API through Next's rewrite, which gives up at 30 s with a
@@ -1702,15 +1727,48 @@ def _winrate_seek_cap() -> int:
     Wide (rows_wr2, + profit): the seek stays inside the index, and beats the
     profit scan by 55x at 7.5 million matches.
     """
-    if has_index("rows_wr3") is True or has_index("rows_wr2") is True:
+    if (has_index("rows_wr4") is True or has_index("rows_wr3") is True
+            or has_index("rows_wr2") is True):
         return WIDE_SEEK_MAX
     return WINRATE_SEEK_MAX
+
+
+def _winrate_covers(name, *, sizing=None, tf=None, signal=None, group=None,
+                    max_tp=0, min_tp=0, max_sl=0, min_sl=0, tp_over_sl=False,
+                    asset=None) -> bool:
+    """Can this win-rate index test every one of these filters without
+    reading rows off the disk?
+
+    Every wide one carries trades and profit. rows_wr3 adds sizing; only
+    rows_wr4 carries tf, signal (which also answers the GROUP ranges), tp,
+    sl and coin (which answers the crypto/stocks suffix split). A filter the
+    index cannot see costs one random read PER floor-passing row — 358.2 s
+    for 102,026 of them on this store (see WIDEST_WINRATE).
+    """
+    if name == "rows_wr4":
+        return True
+    if (tf or signal or group or float(max_tp or 0) > 0
+            or float(min_tp or 0) > 0 or float(max_sl or 0) > 0
+            or float(min_sl or 0) > 0 or tp_over_sl or asset):
+        return False
+    return not sizing or name == "rows_wr3"
+
+
+def _pr2_covers(*, tf=None, signal=None, signal_seeks=False, group=None,
+                max_sl=0, min_sl=0, tp_over_sl=False, asset=None) -> bool:
+    """Can rows_pr2 test every filter index-only? It carries profit, sizing,
+    tp, winrate and trades — not sl, tf, signal or coin (a signal with its
+    own seek is not pr2's problem). tp_over_sl compares tp WITH sl, so it
+    needs the row too."""
+    return not (tf or (signal and not signal_seeks) or group
+                or float(max_sl or 0) > 0 or float(min_sl or 0) > 0
+                or tp_over_sl or asset)
 
 
 def winrate_index_name() -> str:
     """The widest win-rate index this store HAS, or "" — for the health check
     and for the panel's "this filter needs an index" sentence."""
-    for name in ("rows_wr3", "rows_wr2", "rows_winrate"):
+    for name in ("rows_wr4", "rows_wr3", "rows_wr2", "rows_winrate"):
         if has_index(name) is True:
             return name
     return ""
@@ -1733,9 +1791,10 @@ def _winrate_index() -> str:
     builds (3,247 s on this store) - naming an index that does not exist is a
     hard SQLite error.
     """
-    # widest first: rows_wr3 adds `sizing`, which is what turned the
-    # operator's flat-only request from 3,071.7 s into 0.34 s (see WIDER_WINRATE)
-    for name in ("rows_wr3", "rows_wr2", "rows_winrate"):
+    # widest first: rows_wr3 added `sizing` (3,071.7 s -> 0.34 s, see
+    # WIDER_WINRATE) and rows_wr4 adds the rest of the panel's filter columns
+    # (358.2 s -> index-only, see WIDEST_WINRATE)
+    for name in ("rows_wr4", "rows_wr3", "rows_wr2", "rows_winrate"):
         if has_index(name) is True:
             return f" INDEXED BY {name}"
     return ""
@@ -1917,12 +1976,42 @@ def query(coin=None, tf=None, signal=None, profitable=False,
                 f"is answered now")
     wide_profit_ready = (key == "profit" and not coin
                          and has_index("rows_pr2") is True)
+    # THE SEEK OUTRANKS rows_pr2 WHEN THE WIN-RATE FLOOR IS SELECTIVE. This
+    # used to skip the seek whenever rows_pr2 existed, on the reasoning that
+    # the wide profit walk is index-only. It is — but CORRELATION kills it
+    # (see WIDE_SEEK_MAX): the biggest profits are laddered low-win-rate rows,
+    # so `win % >= 90 AND 20+ trades` ranked by profit walked rows_pr2 past
+    # the 20 s budget on EVERY try, and the panel's 15 s retry turned that
+    # into a 503 loop the operator read as "the filter is not working"
+    # (2026-09-06, this 50,507,354-row store: the seek answers the same page
+    # in 2.1 s; the rows_pr2 scan had not returned after 300 s). A LOOSE
+    # floor is the other way around — at win % >= 50 a fifth of the store
+    # qualifies, the scan meets 25 matches almost at once, and the seek would
+    # pay a multi-million-entry count plus an 8.7 s sort for nothing — so
+    # rows_pr2 keeps those, and the bounded count (cheap: it stops at the
+    # cap) is what decides which side of the line this request is on.
     winrate_seeks = False
-    if (float(min_winrate or 0) > 0 and not coin and not wide_profit_ready
-            and _winrate_index()):
-        cap = _winrate_seek_cap()
+    seek_covered = True
+    if float(min_winrate or 0) > 0 and not coin and _winrate_index():
+        cap = (min(_winrate_seek_cap(), SEEK_OVER_PR2_MAX)
+               if wide_profit_ready else _winrate_seek_cap())
         n = _winrate_matches(min_winrate, min_trades, cap=cap)
-        winrate_seeks = n is not None and n <= cap
+        if n is not None and n <= cap:
+            # a covered seek never leaves its index — take it. An uncovered
+            # one reads every floor-passing row off the disk, so rows_pr2
+            # keeps the shapes IT covers (flat + win % >= 80 + profit > 0
+            # was 1.64 s there against a 3,071.7 s narrow seek, 2026-08-27);
+            # only a shape NEITHER index can test stays on the seek, and the
+            # gate below refuses it and builds rows_wr4.
+            seek_covered = _winrate_covers(
+                winrate_index_name(), sizing=sizing, tf=tf, signal=signal,
+                group=group, max_tp=max_tp, min_tp=min_tp, max_sl=max_sl,
+                min_sl=min_sl, tp_over_sl=tp_over_sl, asset=asset)
+            winrate_seeks = seek_covered or not (
+                wide_profit_ready and _pr2_covers(
+                    tf=tf, signal=signal, signal_seeks=signal_seeks,
+                    group=group, max_sl=max_sl, min_sl=min_sl,
+                    tp_over_sl=tp_over_sl, asset=asset))
     # `ORDER BY profit` with a filter beside it: the wide profit index makes
     # that walk index-only (see WIDE_PROFIT). When it is missing, start it —
     # the request itself still runs, and the 20 s budget is what answers 503.
@@ -1936,8 +2025,16 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             f"index (rows_id); it is being built in the background — try "
             f"again shortly")
     profit_wide = False
-    if not row_id and key == "profit" and not coin and _wide_profit_helps(
-            sizing, max_tp, min_winrate, min_trades, profitable):
+    # `winrate_seeks` outranks it (and _indexed_by checks it first): once the
+    # floor is selective enough to seek, walking the profit order is the plan
+    # this store just measured at 300+ s. Keywords, not positions: the old
+    # positional call put `profitable` in the `max_sl` slot — same truth
+    # table by luck (everything ORs), but a lie waiting for the next edit.
+    if not row_id and key == "profit" and not coin and not winrate_seeks \
+            and _wide_profit_helps(
+                sizing=sizing, max_tp=max_tp, min_winrate=min_winrate,
+                min_trades=min_trades, max_sl=max_sl, min_tp=min_tp,
+                min_sl=min_sl, tp_over_sl=tp_over_sl, profitable=profitable):
         if wide_profit_ready:
             profit_wide = True
         elif _rows_estimate() > UNINDEXED_LIMIT:
@@ -1983,6 +2080,25 @@ def query(coin=None, tf=None, signal=None, profitable=False,
                 f"in the background; try again shortly, or name a coin, which "
                 f"is answered now")
         group_idx = ""          # small store: sorting it costs nothing
+    # THE SEEK MUST ANSWER FROM THE INDEX. rows_wr3 stops at sizing, so a
+    # selective floor with tp, sl, a timeframe, a signal, a group or the
+    # crypto/stocks split beside it read every floor-passing ROW off the disk
+    # to test the rest — 358.2 s for the operator's own filter, of which TWO
+    # rows survived (2026-09-06, see WIDEST_WINRATE). Same contract as every
+    # other missing index: refuse fast, say why, build it behind the answer.
+    # signal_seeks / group_idx drive their own indexes instead, so they are
+    # not this seek's problem.
+    if (winrate_seeks and not seek_covered
+            and not signal_seeks and not group_idx
+            and _rows_estimate() > UNINDEXED_LIMIT):
+        _build_index("rows_wr4")
+        raise SortNotReady(
+            f"win % >= {float(min_winrate):g} with filters beside it (TP, SL, "
+            f"timeframe, signal or the crypto/stocks split) needs the widest "
+            f"win-rate index (rows_wr4) — without it every row above the "
+            f"floor is read off the disk to test the rest. It is being built "
+            f"in the background; try again in a while, or name a coin, which "
+            f"is answered now")
     need = SORT_INDEX.get(key)
     # A missing index only matters at size. Sorting 4,000 rows without one is
     # instant; sorting 21,582,584 had not finished in ten minutes (measured
@@ -2055,9 +2171,13 @@ def query(coin=None, tf=None, signal=None, profitable=False,
                 # up at 30). Stop at COUNT_CAP and let the caller print the
                 # "+" — an exact number nobody can wait for is worth less
                 # than an honest bound.
+                # the count rides the SAME seek as the rows when the win-rate
+                # floor drives: left to itself the planner picked the narrow
+                # rows_wr2 here and read 102,026 rows off the disk to test
+                # tp/sl/coin — 358.2 s for the answer "2" (2026-09-06)
                 total = con.execute(
                     f"SELECT COUNT(*) FROM (SELECT 1 FROM rows"
-                    f"{_indexed_by(coin, group_idx=group_idx, signal_seeks=signal_seeks)}"
+                    f"{_indexed_by(coin, winrate_seeks, group_idx=group_idx, signal_seeks=signal_seeks)}"
                     f"{where} "
                     f"LIMIT {COUNT_CAP + 1})", args).fetchone()[0]
             else:
@@ -2080,6 +2200,15 @@ def query(coin=None, tf=None, signal=None, profitable=False,
         # "interrupted" is the budget, not a broken database (see _budgeted)
         if "interrupt" not in str(exc).lower():
             raise
+        # A win-rate floor that ran out of budget is the correlation trap:
+        # `win % >= 90 AND 20+ trades` walked rows_pr2 past the budget on
+        # every try because the biggest profits are low-win-rate laddered
+        # rows (2026-09-06). rows_wr4 answers it index-only — start it, so
+        # the loop the operator was stuck in ends on its own.
+        if (float(min_winrate or 0) > 0 and not coin
+                and has_index("rows_wr4") is not True
+                and _rows_estimate() > UNINDEXED_LIMIT):
+            _build_index("rows_wr4")
         raise QueryTooSlow(_slow_why(coin, tf, signal, min_winrate,
                                      min_trades, key, sizing,
                                      max_tp)) from exc
@@ -2278,7 +2407,7 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
             # the identical filter on the page answered in 0.14 s. The win-rate
             # SEEK is right whenever there is a win-rate floor and an index for
             # it; the wide profit index is for the case with no floor.
-            f"{_indexed_by(coin, seeks, (not seeks and not row_id and key == 'profit' and not coin and _wide_profit_helps(sizing, max_tp, min_winrate, min_trades, profitable)), row_id, group_idx, signal_seeks)}"
+            f"{_indexed_by(coin, seeks, (not seeks and not row_id and key == 'profit' and not coin and _wide_profit_helps(sizing=sizing, max_tp=max_tp, min_winrate=min_winrate, min_trades=min_trades, max_sl=max_sl, min_tp=min_tp, min_sl=min_sl, tp_over_sl=tp_over_sl, profitable=profitable)), row_id, group_idx, signal_seeks)}"
             f"{where} "
             f"ORDER BY {order}, id ASC", args)
         while True:

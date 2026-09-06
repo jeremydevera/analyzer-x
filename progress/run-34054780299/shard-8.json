@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 44, "total": 53, "rows": 1171270, "note": "STBL 4h: 2,131 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-06T19:48:25Z"}
+{"shard": 8, "stage": "testing", "done": 46, "total": 53, "rows": 1214566, "note": "TESLA 4h: rule 13/120 (pivot)", "failed": [], "pct": 86.8, "updated": "2026-09-06T19:49:10Z"}

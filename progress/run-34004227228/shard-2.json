@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 51, "total": 53, "rows": 1500580, "note": "XBI 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-06T03:32:49Z"}
+{"shard": 2, "stage": "testing", "done": 52, "total": 53, "rows": 1530120, "note": "XVG 15m: 34,589 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-06T03:33:37Z"}

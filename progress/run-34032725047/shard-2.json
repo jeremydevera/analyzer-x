@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 14, "total": 53, "rows": 656900, "note": "CTC 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-06T13:19:43Z"}
+{"shard": 2, "stage": "testing", "done": 15, "total": 53, "rows": 678260, "note": "DELLSTOCK 15m: rule 16/120 (keltner)", "failed": [], "pct": 28.3, "updated": "2026-09-06T13:20:28Z"}

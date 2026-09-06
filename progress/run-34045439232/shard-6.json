@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 42, "total": 53, "rows": 845440, "note": "SKY 4h: rule 56/120 (insidebrk)", "failed": [], "pct": 79.2, "updated": "2026-09-06T16:39:58Z"}
+{"shard": 6, "stage": "testing", "done": 43, "total": 53, "rows": 889484, "note": "SONIC 4h: rule 76/120 (cf_mom)", "failed": [], "pct": 81.1, "updated": "2026-09-06T16:40:43Z"}

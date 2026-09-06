@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 21, "total": 52, "rows": 854080, "note": "GUA 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 40.4, "updated": "2026-09-06T05:44:48Z"}
+{"shard": 13, "stage": "testing", "done": 23, "total": 52, "rows": 873280, "note": "IBMSTOCK 15m: rule 16/120 (keltner)", "failed": [], "pct": 44.2, "updated": "2026-09-06T05:45:33Z"}

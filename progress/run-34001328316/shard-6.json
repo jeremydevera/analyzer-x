@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 36, "total": 53, "rows": 1001306, "note": "PLAY 1h: rule 41/120 (tsi)", "failed": [], "pct": 67.9, "updated": "2026-09-06T00:58:41Z"}
+{"shard": 6, "stage": "testing", "done": 38, "total": 53, "rows": 1017806, "note": "RARE 1d: 394 bars, testing 120 rules", "failed": [], "pct": 71.7, "updated": "2026-09-06T00:59:26Z"}

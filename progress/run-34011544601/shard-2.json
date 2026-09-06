@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 30, "total": 53, "rows": 970540, "note": "MINA 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 56.6, "updated": "2026-09-06T06:05:26Z"}
+{"shard": 2, "stage": "testing", "done": 30, "total": 53, "rows": 980000, "note": "MINA 30m: rule 59/120 (choch)", "failed": [], "pct": 56.6, "updated": "2026-09-06T06:06:12Z"}

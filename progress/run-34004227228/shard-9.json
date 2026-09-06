@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 20, "total": 53, "rows": 730100, "note": "GGLL 15m: rule 3/120 (fade15)", "failed": [], "pct": 37.7, "updated": "2026-09-06T02:26:48Z"}
+{"shard": 9, "stage": "testing", "done": 21, "total": 53, "rows": 764800, "note": "GRT 15m: 34,584 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-06T02:27:42Z"}

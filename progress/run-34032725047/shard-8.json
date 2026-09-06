@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 21, "total": 53, "rows": 939952, "note": "GRASS 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 39.6, "updated": "2026-09-06T13:54:02Z"}
+{"shard": 8, "stage": "testing", "done": 22, "total": 53, "rows": 959728, "note": "HIMSSTOCK 15m: rule 24/120 (psar)", "failed": [], "pct": 41.5, "updated": "2026-09-06T13:54:47Z"}

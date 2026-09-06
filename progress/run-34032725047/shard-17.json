@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 50, "total": 52, "rows": 2507662, "note": "WOO 15m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-06T15:30:15Z"}
+{"shard": 17, "stage": "testing", "done": 50, "total": 52, "rows": 2511022, "note": "WOO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 96.2, "updated": "2026-09-06T15:31:09Z"}

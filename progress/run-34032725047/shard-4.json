@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 29, "total": 53, "rows": 1329292, "note": "MASK 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 54.7, "updated": "2026-09-06T13:42:00Z"}
+{"shard": 4, "stage": "testing", "done": 29, "total": 53, "rows": 1336412, "note": "MASK 30m: rule 2/120 (mom15)", "failed": [], "pct": 54.7, "updated": "2026-09-06T13:42:49Z"}

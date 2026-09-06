@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 4, "total": 53, "rows": 118974, "note": "APR 4h: rule 13/120 (pivot)", "failed": [], "pct": 7.5, "updated": "2026-09-06T16:29:14Z"}
+{"shard": 16, "stage": "testing", "done": 5, "total": 53, "rows": 152062, "note": "ATH 4h: rule 3/120 (fade15)", "failed": [], "pct": 9.4, "updated": "2026-09-06T16:30:00Z"}

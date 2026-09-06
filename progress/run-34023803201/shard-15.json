@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 3, "total": 52, "rows": 94528, "note": "AMCSTOCK 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 5.8, "updated": "2026-09-06T09:13:43Z"}
+{"shard": 15, "stage": "testing", "done": 5, "total": 52, "rows": 151572, "note": "ASXSTOCK 30m: rule 69/120 (obv20)", "failed": [], "pct": 9.6, "updated": "2026-09-06T09:14:28Z"}

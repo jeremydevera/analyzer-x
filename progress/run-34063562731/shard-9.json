@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 6, "total": 53, "rows": 149732, "note": "AVNT 4h: 2,174 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-06T22:19:55Z"}
+{"shard": 9, "stage": "testing", "done": 7, "total": 53, "rows": 197010, "note": "BARD 4h: rule 33/120 (heikin)", "failed": [], "pct": 13.2, "updated": "2026-09-06T22:20:40Z"}

@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 14, "total": 53, "rows": 551806, "note": "CTC 1h: rule 2/120 (mom15)", "failed": [], "pct": 26.4, "updated": "2026-09-06T20:28:31Z"}
+{"shard": 2, "stage": "testing", "done": 14, "total": 53, "rows": 572706, "note": "CTC 1h: rule 97/120 (cf_ttm)", "failed": [], "pct": 26.4, "updated": "2026-09-06T20:29:16Z"}

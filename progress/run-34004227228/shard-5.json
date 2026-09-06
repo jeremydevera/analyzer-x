@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 19, "total": 53, "rows": 583820, "note": "FLUX 15m: rule 82/120 (cf_maobv)", "failed": [], "pct": 35.8, "updated": "2026-09-06T02:24:08Z"}
+{"shard": 5, "stage": "testing", "done": 20, "total": 53, "rows": 592180, "note": "GEOD 15m: downloading candles", "failed": [], "pct": 37.7, "updated": "2026-09-06T02:24:53Z"}

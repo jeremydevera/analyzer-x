@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 24, "total": 53, "rows": 1136168, "note": "INFQSTOCK 15m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 45.3, "updated": "2026-09-06T13:49:25Z"}
+{"shard": 5, "stage": "testing", "done": 25, "total": 53, "rows": 1169078, "note": "JBLSTOCK 30m: 1,198 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-06T13:50:10Z"}

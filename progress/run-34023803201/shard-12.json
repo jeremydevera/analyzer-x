@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 40, "total": 53, "rows": 1553844, "note": "SAPIEN 30m: 18,322 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-06T10:00:54Z"}
+{"shard": 12, "stage": "testing", "done": 40, "total": 53, "rows": 1558464, "note": "SAPIEN 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 75.5, "updated": "2026-09-06T10:01:40Z"}

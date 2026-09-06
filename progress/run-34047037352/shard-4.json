@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 49, "total": 53, "rows": 1916432, "note": "USELESS 30m: rule 49/120 (vwaprev)", "failed": [], "pct": 92.5, "updated": "2026-09-06T18:10:55Z"}
+{"shard": 4, "stage": "testing", "done": 50, "total": 53, "rows": 1937490, "note": "VSTSTOCK 1h: rule 33/120 (heikin)", "failed": [], "pct": 94.3, "updated": "2026-09-06T18:11:40Z"}

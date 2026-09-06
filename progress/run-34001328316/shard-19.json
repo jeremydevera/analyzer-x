@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 49, "total": 52, "rows": 1494264, "note": "VVV 1h: rule 13/120 (pivot)", "failed": [], "pct": 94.2, "updated": "2026-09-06T01:14:03Z"}
+{"shard": 19, "stage": "testing", "done": 49, "total": 52, "rows": 1510984, "note": "VVV 1h: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 94.2, "updated": "2026-09-06T01:14:48Z"}

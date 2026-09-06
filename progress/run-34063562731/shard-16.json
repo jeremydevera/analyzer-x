@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 36, "total": 53, "rows": 1076238, "note": "POL 1d: 394 bars, testing 120 rules", "failed": [], "pct": 67.9, "updated": "2026-09-06T22:35:47Z"}
+{"shard": 16, "stage": "testing", "done": 39, "total": 53, "rows": 1144688, "note": "ROBINHOOD 4h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 73.6, "updated": "2026-09-06T22:36:32Z"}

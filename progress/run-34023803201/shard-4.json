@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 39, "total": 53, "rows": 1480678, "note": "RE 1h: rule 13/120 (pivot)", "failed": [], "pct": 73.6, "updated": "2026-09-06T10:22:50Z"}
+{"shard": 4, "stage": "testing", "done": 40, "total": 53, "rows": 1524680, "note": "RVN 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-06T10:23:45Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 39, "total": 53, "rows": 1408844, "note": "RIVER 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 73.6, "updated": "2026-09-06T03:11:15Z"}
+{"shard": 7, "stage": "testing", "done": 41, "total": 53, "rows": 1449074, "note": "SHOPSTOCK 15m: 19,861 bars, testing 120 rules", "failed": [], "pct": 77.4, "updated": "2026-09-06T03:12:02Z"}

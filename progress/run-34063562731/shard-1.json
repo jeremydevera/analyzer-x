@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 45, "total": 53, "rows": 1124682, "note": "SUI 1d: 394 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-06T22:30:49Z"}
+{"shard": 1, "stage": "testing", "done": 47, "total": 53, "rows": 1179946, "note": "TOSHI 4h: rule 2/120 (mom15)", "failed": [], "pct": 88.7, "updated": "2026-09-06T22:31:35Z"}

@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 26, "total": 53, "rows": 1121580, "note": "KIOXIASTOCK 30m: rule 1/120 (mom6)", "failed": [], "pct": 49.1, "updated": "2026-09-06T10:03:59Z"}
+{"shard": 10, "stage": "testing", "done": 27, "total": 53, "rows": 1168596, "note": "LEAD 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 50.9, "updated": "2026-09-06T10:04:44Z"}

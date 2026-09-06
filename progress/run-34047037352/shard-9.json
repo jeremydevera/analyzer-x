@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 21, "total": 53, "rows": 771550, "note": "GRIFFAIN 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 39.6, "updated": "2026-09-06T17:36:26Z"}
+{"shard": 9, "stage": "testing", "done": 22, "total": 53, "rows": 797254, "note": "HIMSSTOCK 30m: 8,567 bars, testing 120 rules", "failed": [], "pct": 41.5, "updated": "2026-09-06T17:37:12Z"}

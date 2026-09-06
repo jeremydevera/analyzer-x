@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 46, "total": 52, "rows": 1153802, "note": "TQQQ 1d: downloading candles", "failed": [], "pct": 88.5, "updated": "2026-09-06T08:51:10Z"}
+{"shard": 19, "stage": "testing", "done": 48, "total": 52, "rows": 1208318, "note": "USELESS 1d: 394 bars, testing 120 rules", "failed": [], "pct": 92.3, "updated": "2026-09-06T08:52:05Z"}

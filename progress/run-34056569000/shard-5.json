@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 53, "total": 53, "rows": 2163804, "note": "ZETA 1h: rule 4/120 (trend50)", "failed": [], "pct": 100.0, "updated": "2026-09-06T21:42:58Z"}
+{"shard": 5, "stage": "testing", "done": 53, "total": 53, "rows": 2188444, "note": "ZETA 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-06T21:43:55Z"}

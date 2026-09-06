@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 34, "total": 53, "rows": 1074102, "note": "OL 15m: rule 33/120 (heikin)", "failed": [], "pct": 64.2, "updated": "2026-09-06T02:58:42Z"}
+{"shard": 2, "stage": "testing", "done": 34, "total": 53, "rows": 1080042, "note": "OL 15m: rule 67/120 (pinbar)", "failed": [], "pct": 64.2, "updated": "2026-09-06T02:59:27Z"}

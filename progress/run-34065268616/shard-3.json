@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 28, "total": 53, "rows": 1043888, "note": "LONGXIA 30m: rule 11/120 (sr_break)", "failed": [], "pct": 52.8, "updated": "2026-09-06T23:48:47Z"}
+{"shard": 3, "stage": "testing", "done": 29, "total": 53, "rows": 1063148, "note": "MARSCOIN 1h: 922 bars, testing 120 rules", "failed": [], "pct": 54.7, "updated": "2026-09-06T23:49:32Z"}

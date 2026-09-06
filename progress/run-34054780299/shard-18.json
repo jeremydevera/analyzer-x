@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 36, "total": 53, "rows": 1058932, "note": "POPCAT 4h: rule 36/120 (stochrsi)", "failed": [], "pct": 67.9, "updated": "2026-09-06T19:44:38Z"}
+{"shard": 18, "stage": "testing", "done": 37, "total": 53, "rows": 1094176, "note": "PYTH 4h: rule 13/120 (pivot)", "failed": [], "pct": 69.8, "updated": "2026-09-06T19:45:23Z"}

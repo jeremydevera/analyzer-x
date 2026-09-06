@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 21, "total": 53, "rows": 931752, "note": "GPS 15m: rule 10/120 (sr_bounce)", "failed": [], "pct": 39.6, "updated": "2026-09-06T13:28:43Z"}
+{"shard": 5, "stage": "testing", "done": 21, "total": 53, "rows": 935492, "note": "GPS 15m: rule 27/120 (aroon25)", "failed": [], "pct": 39.6, "updated": "2026-09-06T13:29:29Z"}

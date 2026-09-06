@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 50, "total": 52, "rows": 1564568, "note": "WPMSTOCK 1h: 736 bars, testing 120 rules", "failed": [], "pct": 96.2, "updated": "2026-09-06T01:16:07Z"}
+{"shard": 16, "stage": "testing", "done": 52, "total": 52, "rows": 1609696, "note": "ZEST 1h: 2,628 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-06T01:16:52Z"}

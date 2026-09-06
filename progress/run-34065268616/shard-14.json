@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 21, "total": 53, "rows": 829996, "note": "GUA 30m: rule 3/120 (fade15)", "failed": [], "pct": 39.6, "updated": "2026-09-06T23:37:38Z"}
+{"shard": 14, "stage": "testing", "done": 21, "total": 53, "rows": 840116, "note": "GUA 30m: rule 50/120 (gapfade)", "failed": [], "pct": 39.6, "updated": "2026-09-06T23:38:23Z"}

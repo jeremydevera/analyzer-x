@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 14, "total": 52, "rows": 501140, "note": "DASH 30m: rule 61/120 (turtle)", "failed": [], "pct": 26.9, "updated": "2026-09-06T04:53:16Z"}
+{"shard": 15, "stage": "testing", "done": 15, "total": 52, "rows": 512940, "note": "DOGS 15m: 34,594 bars, testing 120 rules", "failed": [], "pct": 28.8, "updated": "2026-09-06T04:54:04Z"}

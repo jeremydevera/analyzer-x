@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 24, "total": 53, "rows": 488644, "note": "INX 4h: downloading candles", "failed": [], "pct": 45.3, "updated": "2026-09-06T22:25:29Z"}
+{"shard": 12, "stage": "testing", "done": 25, "total": 53, "rows": 522524, "note": "JOE 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-06T22:26:14Z"}

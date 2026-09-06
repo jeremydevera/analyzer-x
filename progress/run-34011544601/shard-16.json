@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 51, "total": 52, "rows": 2098840, "note": "XPD 30m: 10,378 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-06T07:59:18Z"}
+{"shard": 16, "stage": "testing", "done": 51, "total": 52, "rows": 2120080, "note": "XPD 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-06T08:00:03Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 7, "total": 52, "rows": 233840, "note": "BAT 15m: rule 91/120 (cf_soup)", "failed": [], "pct": 13.5, "updated": "2026-09-06T01:51:02Z"}
+{"shard": 14, "stage": "testing", "done": 8, "total": 52, "rows": 241900, "note": "BKNGSTOCK 15m: rule 22/120 (engulf)", "failed": [], "pct": 15.4, "updated": "2026-09-06T01:51:47Z"}

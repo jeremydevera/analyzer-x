@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 38, "total": 53, "rows": 1677682, "note": "RCATSTOCK 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 71.7, "updated": "2026-09-06T14:14:31Z"}
+{"shard": 12, "stage": "testing", "done": 39, "total": 53, "rows": 1691782, "note": "RLS 15m: rule 2/120 (mom15)", "failed": [], "pct": 73.6, "updated": "2026-09-06T14:15:28Z"}

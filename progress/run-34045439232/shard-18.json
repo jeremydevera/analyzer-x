@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 31, "total": 53, "rows": 945102, "note": "MYX 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 58.5, "updated": "2026-09-06T16:44:47Z"}
+{"shard": 18, "stage": "testing", "done": 31, "total": 53, "rows": 970290, "note": "MYX 1d: rule 3/120 (fade15)", "failed": [], "pct": 58.5, "updated": "2026-09-06T16:45:32Z"}

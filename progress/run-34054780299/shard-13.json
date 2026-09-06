@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 51, "total": 53, "rows": 1095568, "note": "XEC 4h: rule 20/120 (stoch14)", "failed": [], "pct": 96.2, "updated": "2026-09-06T19:44:38Z"}
+{"shard": 13, "stage": "testing", "done": 52, "total": 53, "rows": 1145992, "note": "YB 4h: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 98.1, "updated": "2026-09-06T19:45:23Z"}

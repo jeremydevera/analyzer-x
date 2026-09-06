@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 44, "total": 53, "rows": 1473638, "note": "STABLE 15m: rule 56/120 (insidebrk)", "failed": [], "pct": 83.0, "updated": "2026-09-06T03:10:01Z"}
+{"shard": 1, "stage": "testing", "done": 44, "total": 53, "rows": 1481638, "note": "STABLE 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 83.0, "updated": "2026-09-06T03:10:47Z"}

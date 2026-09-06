@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 5, "total": 53, "rows": 243974, "note": "ATH 30m: rule 24/120 (psar)", "failed": [], "pct": 9.4, "updated": "2026-09-06T23:10:00Z"}
+{"shard": 16, "stage": "testing", "done": 5, "total": 53, "rows": 255194, "note": "ATH 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 9.4, "updated": "2026-09-06T23:10:47Z"}

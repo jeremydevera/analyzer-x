@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 29, "total": 53, "rows": 1174722, "note": "MASK 30m: rule 61/120 (turtle)", "failed": [], "pct": 54.7, "updated": "2026-09-06T17:58:23Z"}
+{"shard": 5, "stage": "testing", "done": 30, "total": 53, "rows": 1188076, "note": "MINIMAXSTOCK 1h: rule 1/120 (mom6)", "failed": [], "pct": 56.6, "updated": "2026-09-06T17:59:08Z"}

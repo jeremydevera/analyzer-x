@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 35, "total": 52, "rows": 990388, "note": "PENGSTOCK 1h: rule 100/120 (cf_soup1)", "failed": [], "pct": 67.3, "updated": "2026-09-06T00:49:30Z"}
+{"shard": 13, "stage": "testing", "done": 36, "total": 52, "rows": 1011764, "note": "POL 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 69.2, "updated": "2026-09-06T00:50:15Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 5, "total": 52, "rows": 199664, "note": "AT 15m: rule 10/120 (sr_bounce)", "failed": [], "pct": 9.6, "updated": "2026-09-06T12:41:05Z"}
+{"shard": 18, "stage": "testing", "done": 5, "total": 52, "rows": 204864, "note": "AT 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 9.6, "updated": "2026-09-06T12:41:51Z"}

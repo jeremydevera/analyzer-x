@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 24, "total": 52, "rows": 1004870, "note": "IOTA 15m: 34,626 bars, testing 120 rules", "failed": [], "pct": 46.2, "updated": "2026-09-06T12:58:56Z"}
+{"shard": 15, "stage": "testing", "done": 24, "total": 52, "rows": 1010590, "note": "IOTA 15m: rule 20/120 (stoch14)", "failed": [], "pct": 46.2, "updated": "2026-09-06T12:59:41Z"}

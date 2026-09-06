@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 27, "total": 53, "rows": 815284, "note": "LISTA 1d: 394 bars, testing 120 rules", "failed": [], "pct": 50.9, "updated": "2026-09-06T19:40:07Z"}
+{"shard": 18, "stage": "testing", "done": 29, "total": 53, "rows": 879942, "note": "METASTOCK 4h: rule 71/120 (mfi14)", "failed": [], "pct": 54.7, "updated": "2026-09-06T19:40:52Z"}

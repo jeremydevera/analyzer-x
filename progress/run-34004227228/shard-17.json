@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 18, "total": 52, "rows": 687910, "note": "FLNCSTOCK 15m: rule 13/120 (pivot)", "failed": [], "pct": 34.6, "updated": "2026-09-06T02:25:20Z"}
+{"shard": 17, "stage": "testing", "done": 19, "total": 52, "rows": 704710, "note": "FWDISTOCK 15m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 36.5, "updated": "2026-09-06T02:26:05Z"}

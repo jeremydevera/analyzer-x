@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 40, "total": 52, "rows": 1504460, "note": "SATS 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 76.9, "updated": "2026-09-06T06:41:02Z"}
+{"shard": 12, "stage": "testing", "done": 42, "total": 52, "rows": 1560540, "note": "SNPSSTOCK 30m: rule 4/120 (trend50)", "failed": [], "pct": 80.8, "updated": "2026-09-06T06:41:47Z"}

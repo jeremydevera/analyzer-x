@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 43, "total": 53, "rows": 1593824, "note": "SONIC 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 81.1, "updated": "2026-09-06T17:58:58Z"}
+{"shard": 6, "stage": "testing", "done": 44, "total": 53, "rows": 1609884, "note": "STABLE 1h: rule 47/120 (ibs)", "failed": [], "pct": 83.0, "updated": "2026-09-06T17:59:44Z"}

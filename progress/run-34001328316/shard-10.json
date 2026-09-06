@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 2, "total": 53, "rows": 46838, "note": "AGLD 1h: rule 1/120 (mom6)", "failed": [], "pct": 3.8, "updated": "2026-09-06T00:29:18Z"}
+{"shard": 10, "stage": "testing", "done": 2, "total": 53, "rows": 64438, "note": "AGLD 1h: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-06T00:30:03Z"}

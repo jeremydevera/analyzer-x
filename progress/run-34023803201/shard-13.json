@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 28, "total": 53, "rows": 1123580, "note": "LUNRSTOCK 30m: rule 72/120 (force13)", "failed": [], "pct": 52.8, "updated": "2026-09-06T09:59:41Z"}
+{"shard": 13, "stage": "testing", "done": 30, "total": 53, "rows": 1176320, "note": "MOODENG 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 56.6, "updated": "2026-09-06T10:00:35Z"}

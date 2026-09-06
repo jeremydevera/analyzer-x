@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 39, "total": 53, "rows": 871846, "note": "RIVNSTOCK 4h: rule 46/120 (rsi2)", "failed": [], "pct": 73.6, "updated": "2026-09-06T19:40:43Z"}
+{"shard": 11, "stage": "testing", "done": 45, "total": 53, "rows": 942720, "note": "SYN 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-06T19:41:40Z"}

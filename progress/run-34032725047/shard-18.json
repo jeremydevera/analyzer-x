@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 5, "total": 52, "rows": 227624, "note": "AT 30m: rule 22/120 (engulf)", "failed": [], "pct": 9.6, "updated": "2026-09-06T12:44:17Z"}
+{"shard": 18, "stage": "testing", "done": 5, "total": 52, "rows": 242144, "note": "AT 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 9.6, "updated": "2026-09-06T12:45:02Z"}

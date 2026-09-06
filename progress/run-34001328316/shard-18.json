@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 4, "total": 52, "rows": 89518, "note": "ARB 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 7.7, "updated": "2026-09-06T00:31:48Z"}
+{"shard": 18, "stage": "testing", "done": 4, "total": 52, "rows": 102938, "note": "ARB 1h: rule 56/120 (insidebrk)", "failed": [], "pct": 7.7, "updated": "2026-09-06T00:32:33Z"}

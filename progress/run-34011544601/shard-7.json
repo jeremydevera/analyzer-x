@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 15, "total": 53, "rows": 551460, "note": "DIA 15m: rule 1/120 (mom6)", "failed": [], "pct": 28.3, "updated": "2026-09-06T05:22:42Z"}
+{"shard": 7, "stage": "testing", "done": 15, "total": 53, "rows": 554060, "note": "DIA 15m: rule 10/120 (sr_bounce)", "failed": [], "pct": 28.3, "updated": "2026-09-06T05:23:27Z"}

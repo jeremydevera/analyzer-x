@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 38, "total": 52, "rows": 1043432, "note": "RDDTSTOCK 1h: rule 3/120 (fade15)", "failed": [], "pct": 73.1, "updated": "2026-09-06T00:51:01Z"}
+{"shard": 13, "stage": "testing", "done": 39, "total": 52, "rows": 1085720, "note": "ROBINHOOD 1h: rule 36/120 (stochrsi)", "failed": [], "pct": 75.0, "updated": "2026-09-06T00:51:46Z"}

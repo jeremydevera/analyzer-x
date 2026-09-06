@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 20, "total": 52, "rows": 782680, "note": "GMESTOCK 15m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 38.5, "updated": "2026-09-06T05:15:10Z"}
+{"shard": 17, "stage": "testing", "done": 21, "total": 52, "rows": 809180, "note": "HAEDAL 15m: rule 1/120 (mom6)", "failed": [], "pct": 40.4, "updated": "2026-09-06T05:15:59Z"}

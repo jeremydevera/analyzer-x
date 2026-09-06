@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 44, "total": 52, "rows": 2365112, "note": "SUI 15m: rule 73/120 (volspike)", "failed": [], "pct": 84.6, "updated": "2026-09-06T15:30:34Z"}
+{"shard": 16, "stage": "testing", "done": 44, "total": 52, "rows": 2372132, "note": "SUI 15m: rule 112/120 (cf_obretest)", "failed": [], "pct": 84.6, "updated": "2026-09-06T15:31:19Z"}

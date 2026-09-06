@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 53, "total": 53, "rows": 2207100, "note": "ZKP 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-06T08:00:42Z"}
+{"shard": 4, "stage": "testing", "done": 53, "total": 53, "rows": 2212820, "note": "ZKP 30m: rule 20/120 (stoch14)", "failed": [], "pct": 100.0, "updated": "2026-09-06T08:01:28Z"}

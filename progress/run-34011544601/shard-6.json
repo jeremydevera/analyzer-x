@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 53, "total": 53, "rows": 1996320, "note": "ZMSTOCK 15m: rule 7/120 (fvg)", "failed": [], "pct": 100.0, "updated": "2026-09-06T07:49:37Z"}
+{"shard": 6, "stage": "testing", "done": 53, "total": 53, "rows": 2026100, "note": "ZMSTOCK 30m: rule 43/120 (macddiv)", "failed": [], "pct": 100.0, "updated": "2026-09-06T07:50:22Z"}

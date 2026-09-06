@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 25, "total": 53, "rows": 709880, "note": "KAIA 4h: rule 3/120 (fade15)", "failed": [], "pct": 47.2, "updated": "2026-09-06T22:31:38Z"}
+{"shard": 19, "stage": "testing", "done": 28, "total": 53, "rows": 777200, "note": "MANA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-06T22:32:29Z"}

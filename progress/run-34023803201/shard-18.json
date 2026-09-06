@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 40, "total": 52, "rows": 1787428, "note": "SEI 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 76.9, "updated": "2026-09-06T10:47:45Z"}
+{"shard": 18, "stage": "testing", "done": 41, "total": 52, "rows": 1797208, "note": "SKL 1h: rule 3/120 (fade15)", "failed": [], "pct": 78.8, "updated": "2026-09-06T10:48:31Z"}

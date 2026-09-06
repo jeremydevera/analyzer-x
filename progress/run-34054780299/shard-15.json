@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 47, "total": 53, "rows": 1177200, "note": "TRY 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 88.7, "updated": "2026-09-06T19:42:13Z"}
+{"shard": 15, "stage": "testing", "done": 49, "total": 53, "rows": 1243676, "note": "VELO 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-06T19:43:01Z"}

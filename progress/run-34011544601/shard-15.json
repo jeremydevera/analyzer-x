@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 11, "total": 52, "rows": 334620, "note": "CFG 15m: rule 1/120 (mom6)", "failed": [], "pct": 21.2, "updated": "2026-09-06T04:43:17Z"}
+{"shard": 15, "stage": "testing", "done": 11, "total": 52, "rows": 342180, "note": "CFG 15m: rule 39/120 (fisher)", "failed": [], "pct": 21.2, "updated": "2026-09-06T04:44:02Z"}

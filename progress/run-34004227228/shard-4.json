@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 23, "total": 53, "rows": 839138, "note": "HUMA 15m: rule 91/120 (cf_soup)", "failed": [], "pct": 43.4, "updated": "2026-09-06T02:24:53Z"}
+{"shard": 4, "stage": "testing", "done": 24, "total": 53, "rows": 866956, "note": "INFQSTOCK 15m: rule 21/120 (cci20)", "failed": [], "pct": 45.3, "updated": "2026-09-06T02:25:38Z"}

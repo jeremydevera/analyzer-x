@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 34, "total": 53, "rows": 1277650, "note": "ONDSSTOCK 30m: rule 2/120 (mom15)", "failed": [], "pct": 64.2, "updated": "2026-09-06T17:45:57Z"}
+{"shard": 6, "stage": "testing", "done": 37, "total": 53, "rows": 1298890, "note": "PROM 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-06T17:46:43Z"}

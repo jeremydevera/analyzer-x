@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 23, "total": 53, "rows": 579294, "note": "HTZSTOCK 1d: downloading candles", "failed": [], "pct": 43.4, "updated": "2026-09-06T08:38:56Z"}
+{"shard": 3, "stage": "testing", "done": 28, "total": 53, "rows": 627694, "note": "LPT 4h: rule 22/120 (engulf)", "failed": [], "pct": 52.8, "updated": "2026-09-06T08:39:41Z"}

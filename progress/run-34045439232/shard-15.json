@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 44, "total": 53, "rows": 1081452, "note": "STO 4h: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 83.0, "updated": "2026-09-06T16:43:52Z"}
+{"shard": 15, "stage": "testing", "done": 45, "total": 53, "rows": 1111768, "note": "TAG 4h: rule 64/120 (hammer)", "failed": [], "pct": 84.9, "updated": "2026-09-06T16:44:37Z"}

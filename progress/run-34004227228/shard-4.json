@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 52, "total": 53, "rows": 1971596, "note": "XYZSTOCK 15m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-06T03:37:42Z"}
+{"shard": 4, "stage": "testing", "done": 53, "total": 53, "rows": 1996896, "note": "ZKP 15m: rule 1/120 (mom6)", "failed": [], "pct": 100.0, "updated": "2026-09-06T03:38:27Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 48, "total": 53, "rows": 1870994, "note": "UKOIL 30m: rule 3/120 (fade15)", "failed": [], "pct": 90.6, "updated": "2026-09-06T21:32:59Z"}
+{"shard": 13, "stage": "testing", "done": 48, "total": 53, "rows": 1894314, "note": "UKOIL 30m: rule 109/120 (cf_fundfade)", "failed": [], "pct": 90.6, "updated": "2026-09-06T21:33:45Z"}

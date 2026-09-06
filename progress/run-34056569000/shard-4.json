@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 1, "total": 53, "rows": 17000, "note": "1000BTT 1h: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 1.9, "updated": "2026-09-06T20:00:35Z"}
+{"shard": 4, "stage": "testing", "done": 1, "total": 53, "rows": 27480, "note": "1000BTT 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 1.9, "updated": "2026-09-06T20:01:20Z"}

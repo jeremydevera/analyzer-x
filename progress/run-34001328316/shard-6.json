@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 52, "total": 53, "rows": 1483276, "note": "YFI 1h: rule 85/120 (cf_triple)", "failed": [], "pct": 98.1, "updated": "2026-09-06T01:12:37Z"}
+{"shard": 6, "stage": "done", "done": 53, "total": 53, "rows": 1520856, "note": "1,520,856 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "failed": [], "pct": 100.0, "updated": "2026-09-06T01:13:04Z"}

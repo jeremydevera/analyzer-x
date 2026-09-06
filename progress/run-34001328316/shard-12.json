@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 43, "total": 52, "rows": 1164870, "note": "SPK 1h: rule 2/120 (mom15)", "failed": [], "pct": 82.7, "updated": "2026-09-06T00:57:35Z"}
+{"shard": 12, "stage": "testing", "done": 43, "total": 52, "rows": 1189510, "note": "SPK 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 82.7, "updated": "2026-09-06T00:58:20Z"}

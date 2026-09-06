@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 52, "total": 53, "rows": 1760126, "note": "YB 15m: rule 61/120 (turtle)", "failed": [], "pct": 98.1, "updated": "2026-09-06T03:59:00Z"}
+{"shard": 5, "stage": "testing", "done": 52, "total": 53, "rows": 1767646, "note": "YB 15m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-06T03:59:47Z"}

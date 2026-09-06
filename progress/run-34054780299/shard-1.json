@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 11, "total": 53, "rows": 242374, "note": "CATI 4h: rule 33/120 (heikin)", "failed": [], "pct": 20.8, "updated": "2026-09-06T19:27:35Z"}
+{"shard": 1, "stage": "testing", "done": 12, "total": 53, "rows": 282634, "note": "CHILLGUY 4h: rule 36/120 (stochrsi)", "failed": [], "pct": 22.6, "updated": "2026-09-06T19:28:20Z"}

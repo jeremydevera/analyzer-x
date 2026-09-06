@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 36, "total": 53, "rows": 1448074, "note": "PIPPIN 30m: rule 1/120 (mom6)", "failed": [], "pct": 67.9, "updated": "2026-09-06T21:03:01Z"}
+{"shard": 5, "stage": "testing", "done": 36, "total": 53, "rows": 1452674, "note": "PIPPIN 30m: rule 20/120 (stoch14)", "failed": [], "pct": 67.9, "updated": "2026-09-06T21:03:48Z"}

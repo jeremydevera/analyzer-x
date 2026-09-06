@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 33, "total": 52, "rows": 1393494, "note": "OFC 15m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 63.5, "updated": "2026-09-06T03:25:42Z"}
+{"shard": 16, "stage": "testing", "done": 35, "total": 52, "rows": 1420334, "note": "PEPE 15m: 34,588 bars, testing 120 rules", "failed": [], "pct": 67.3, "updated": "2026-09-06T03:26:28Z"}

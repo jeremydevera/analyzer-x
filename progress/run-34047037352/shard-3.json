@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 38, "total": 53, "rows": 1451196, "note": "QQQSTOCK 30m: rule 92/120 (cf_soup_l1)", "failed": [], "pct": 71.7, "updated": "2026-09-06T18:07:49Z"}
+{"shard": 3, "stage": "testing", "done": 40, "total": 53, "rows": 1464756, "note": "RPL 1h: rule 3/120 (fade15)", "failed": [], "pct": 75.5, "updated": "2026-09-06T18:08:36Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 24, "total": 52, "rows": 759780, "note": "IRENSTOCK 15m: rule 100/120 (cf_soup1)", "failed": [], "pct": 46.2, "updated": "2026-09-06T05:48:03Z"}
+{"shard": 19, "stage": "testing", "done": 24, "total": 52, "rows": 774200, "note": "IRENSTOCK 30m: rule 49/120 (vwaprev)", "failed": [], "pct": 46.2, "updated": "2026-09-06T05:48:48Z"}

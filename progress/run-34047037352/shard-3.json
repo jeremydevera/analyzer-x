@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 52, "total": 53, "rows": 1983696, "note": "XOMSTOCK 30m: rule 12/120 (donchian20)", "failed": [], "pct": 98.1, "updated": "2026-09-06T18:37:37Z"}
+{"shard": 3, "stage": "testing", "done": 53, "total": 53, "rows": 2004696, "note": "ZEREBRO 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-06T18:38:30Z"}

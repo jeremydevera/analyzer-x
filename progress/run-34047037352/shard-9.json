@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 3, "total": 53, "rows": 119654, "note": "ALLO 30m: 14,364 bars, testing 120 rules", "failed": [], "pct": 5.7, "updated": "2026-09-06T17:02:32Z"}
+{"shard": 9, "stage": "testing", "done": 3, "total": 53, "rows": 125054, "note": "ALLO 30m: rule 21/120 (cci20)", "failed": [], "pct": 5.7, "updated": "2026-09-06T17:03:18Z"}

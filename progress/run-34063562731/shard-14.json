@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 1, "total": 53, "rows": 0, "note": "AAVE 4h: downloading candles", "failed": [], "pct": 1.9, "updated": "2026-09-06T22:17:32Z"}
+{"shard": 14, "stage": "testing", "done": 3, "total": 53, "rows": 39776, "note": "AMATSTOCK 4h: downloading candles", "failed": [], "pct": 5.7, "updated": "2026-09-06T22:18:18Z"}

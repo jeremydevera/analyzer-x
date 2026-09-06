@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 26, "total": 53, "rows": 1141910, "note": "KAT 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 49.1, "updated": "2026-09-06T20:54:11Z"}
+{"shard": 2, "stage": "testing", "done": 26, "total": 53, "rows": 1154450, "note": "KAT 30m: rule 42/120 (rsidiv)", "failed": [], "pct": 49.1, "updated": "2026-09-06T20:54:56Z"}

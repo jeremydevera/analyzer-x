@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 30, "total": 53, "rows": 613286, "note": "MONAD 1d: 333 bars, testing 120 rules", "failed": [], "pct": 56.6, "updated": "2026-09-06T22:28:46Z"}
+{"shard": 13, "stage": "testing", "done": 34, "total": 53, "rows": 673016, "note": "OPENLEDGER 4h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 64.2, "updated": "2026-09-06T22:29:32Z"}

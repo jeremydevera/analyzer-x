@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 20, "total": 53, "rows": 468780, "note": "GENIUS 1d: rule 29/120 (hull20)", "failed": [], "pct": 37.7, "updated": "2026-09-06T16:33:41Z"}
+{"shard": 5, "stage": "testing", "done": 21, "total": 53, "rows": 500020, "note": "GPS 1d: 394 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-06T16:34:27Z"}

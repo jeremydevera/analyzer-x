@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 51, "total": 53, "rows": 2044134, "note": "W 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 96.2, "updated": "2026-09-06T18:47:26Z"}
+{"shard": 5, "stage": "testing", "done": 51, "total": 53, "rows": 2057004, "note": "W 1h: rule 60/120 (eqraid)", "failed": [], "pct": 96.2, "updated": "2026-09-06T18:48:11Z"}

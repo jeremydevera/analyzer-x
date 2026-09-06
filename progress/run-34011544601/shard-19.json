@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 29, "total": 52, "rows": 963260, "note": "MEW 15m: rule 49/120 (vwaprev)", "failed": [], "pct": 55.8, "updated": "2026-09-06T06:03:32Z"}
+{"shard": 19, "stage": "testing", "done": 29, "total": 52, "rows": 971400, "note": "MEW 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 55.8, "updated": "2026-09-06T06:04:19Z"}

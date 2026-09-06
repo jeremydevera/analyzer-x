@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 50, "total": 52, "rows": 2146940, "note": "XAI 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-06T08:04:27Z"}
+{"shard": 18, "stage": "testing", "done": 51, "total": 52, "rows": 2154320, "note": "XPL 15m: rule 1/120 (mom6)", "failed": [], "pct": 98.1, "updated": "2026-09-06T08:05:28Z"}

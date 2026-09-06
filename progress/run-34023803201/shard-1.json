@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 51, "total": 53, "rows": 2031258, "note": "XAI 30m: rule 13/120 (pivot)", "failed": [], "pct": 96.2, "updated": "2026-09-06T10:45:27Z"}
+{"shard": 1, "stage": "testing", "done": 51, "total": 53, "rows": 2038458, "note": "XAI 30m: rule 49/120 (vwaprev)", "failed": [], "pct": 96.2, "updated": "2026-09-06T10:46:12Z"}

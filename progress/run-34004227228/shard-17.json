@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 28, "total": 52, "rows": 1084290, "note": "MANA 15m: rule 16/120 (keltner)", "failed": [], "pct": 53.8, "updated": "2026-09-06T02:54:11Z"}
+{"shard": 17, "stage": "testing", "done": 28, "total": 52, "rows": 1089350, "note": "MANA 15m: rule 39/120 (fisher)", "failed": [], "pct": 53.8, "updated": "2026-09-06T02:54:57Z"}

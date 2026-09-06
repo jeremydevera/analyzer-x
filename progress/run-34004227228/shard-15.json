@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 49, "total": 52, "rows": 1825754, "note": "VSTOCK 15m: rule 50/120 (gapfade)", "failed": [], "pct": 94.2, "updated": "2026-09-06T03:36:48Z"}
+{"shard": 15, "stage": "testing", "done": 49, "total": 52, "rows": 1835034, "note": "VSTOCK 15m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 94.2, "updated": "2026-09-06T03:37:35Z"}

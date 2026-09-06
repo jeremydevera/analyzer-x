@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 4, "total": 52, "rows": 192800, "note": "APR 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 7.7, "updated": "2026-09-06T01:52:08Z"}
+{"shard": 16, "stage": "testing", "done": 5, "total": 52, "rows": 201780, "note": "ATH 4h: rule 13/120 (pivot)", "failed": [], "pct": 9.6, "updated": "2026-09-06T01:52:54Z"}

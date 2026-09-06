@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 3, "total": 52, "rows": 118460, "note": "ALPINE 15m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 5.8, "updated": "2026-09-06T01:43:49Z"}
+{"shard": 11, "stage": "testing", "done": 5, "total": 52, "rows": 132840, "note": "ASTEROID 4h: 849 bars, testing 120 rules", "failed": [], "pct": 9.6, "updated": "2026-09-06T01:44:34Z"}

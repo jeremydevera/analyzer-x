@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 45, "total": 53, "rows": 1666320, "note": "S 15m: rule 73/120 (volspike)", "failed": [], "pct": 84.9, "updated": "2026-09-06T06:55:24Z"}
+{"shard": 5, "stage": "testing", "done": 45, "total": 53, "rows": 1675720, "note": "S 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-06T06:56:10Z"}

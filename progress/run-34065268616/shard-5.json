@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 5, "total": 53, "rows": 182710, "note": "ARPA 30m: rule 79/120 (cf_donch)", "failed": [], "pct": 9.4, "updated": "2026-09-06T23:04:47Z"}
+{"shard": 5, "stage": "testing", "done": 6, "total": 53, "rows": 221490, "note": "AVAVSTOCK 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 11.3, "updated": "2026-09-06T23:05:32Z"}

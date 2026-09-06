@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 37, "total": 53, "rows": 1444860, "note": "PTB 15m: rule 47/120 (ibs)", "failed": [], "pct": 69.8, "updated": "2026-09-06T06:47:01Z"}
+{"shard": 7, "stage": "testing", "done": 37, "total": 53, "rows": 1451460, "note": "PTB 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 69.8, "updated": "2026-09-06T06:47:46Z"}

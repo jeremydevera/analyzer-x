@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 10, "total": 53, "rows": 422942, "note": "BR 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 18.9, "updated": "2026-09-06T12:51:48Z"}
+{"shard": 1, "stage": "testing", "done": 11, "total": 53, "rows": 440630, "note": "CATI 15m: 34,626 bars, testing 120 rules", "failed": [], "pct": 20.8, "updated": "2026-09-06T12:52:33Z"}

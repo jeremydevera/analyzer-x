@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 24, "total": 53, "rows": 871260, "note": "INJ 15m: rule 56/120 (insidebrk)", "failed": [], "pct": 45.3, "updated": "2026-09-06T05:49:50Z"}
+{"shard": 6, "stage": "testing", "done": 24, "total": 53, "rows": 877920, "note": "INJ 15m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 45.3, "updated": "2026-09-06T05:50:37Z"}

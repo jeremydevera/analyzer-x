@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 45, "total": 53, "rows": 1869604, "note": "TAC 30m: rule 32/120 (gmma)", "failed": [], "pct": 84.9, "updated": "2026-09-06T14:17:03Z"}
+{"shard": 9, "stage": "testing", "done": 45, "total": 53, "rows": 1881924, "note": "TAC 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-06T14:17:48Z"}

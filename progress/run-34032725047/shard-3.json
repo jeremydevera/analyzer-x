@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 53, "total": 53, "rows": 2438534, "note": "ZIG 30m: rule 20/120 (stoch14)", "failed": [], "pct": 100.0, "updated": "2026-09-06T15:07:07Z"}
+{"shard": 3, "stage": "testing", "done": 53, "total": 53, "rows": 2450174, "note": "ZIG 1d: 372 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-06T15:07:58Z"}

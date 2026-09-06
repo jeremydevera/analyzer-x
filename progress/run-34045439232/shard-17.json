@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 11, "total": 53, "rows": 328468, "note": "CFX 1d: rule 2/120 (mom15)", "failed": [], "pct": 20.8, "updated": "2026-09-06T16:32:30Z"}
+{"shard": 17, "stage": "testing", "done": 13, "total": 53, "rows": 401552, "note": "CSCOSTOCK 1d: 286 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-06T16:33:16Z"}

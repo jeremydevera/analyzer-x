@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 36, "total": 53, "rows": 1479224, "note": "POPCAT 1h: rule 22/120 (engulf)", "failed": [], "pct": 67.9, "updated": "2026-09-06T21:15:41Z"}
+{"shard": 18, "stage": "testing", "done": 36, "total": 53, "rows": 1499904, "note": "POPCAT 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 67.9, "updated": "2026-09-06T21:16:26Z"}

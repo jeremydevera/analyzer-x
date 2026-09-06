@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 41, "total": 52, "rows": 1425552, "note": "SKHYSTOCK 15m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 78.8, "updated": "2026-09-06T03:20:01Z"}
+{"shard": 14, "stage": "testing", "done": 43, "total": 52, "rows": 1468436, "note": "SPOTSTOCK 15m: 19,862 bars, testing 120 rules", "failed": [], "pct": 82.7, "updated": "2026-09-06T03:20:49Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 14, "total": 53, "rows": 396492, "note": "CVC 1h: rule 40/120 (crsi)", "failed": [], "pct": 26.4, "updated": "2026-09-06T00:41:23Z"}
+{"shard": 7, "stage": "testing", "done": 15, "total": 53, "rows": 424806, "note": "DIA 1d: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 28.3, "updated": "2026-09-06T00:42:08Z"}

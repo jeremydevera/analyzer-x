@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 45, "total": 52, "rows": 2077512, "note": "TA 30m: rule 39/120 (fisher)", "failed": [], "pct": 86.5, "updated": "2026-09-06T10:56:42Z"}
+{"shard": 16, "stage": "testing", "done": 45, "total": 52, "rows": 2089612, "note": "TA 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 86.5, "updated": "2026-09-06T10:57:28Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 48, "total": 52, "rows": 1867780, "note": "US30 30m: rule 60/120 (eqraid)", "failed": [], "pct": 92.3, "updated": "2026-09-06T07:17:04Z"}
+{"shard": 13, "stage": "testing", "done": 49, "total": 52, "rows": 1882940, "note": "VRTSTOCK 15m: rule 27/120 (aroon25)", "failed": [], "pct": 94.2, "updated": "2026-09-06T07:17:49Z"}

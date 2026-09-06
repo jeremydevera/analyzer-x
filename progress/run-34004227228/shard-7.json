@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 29, "total": 53, "rows": 1059534, "note": "MCDSTOCK 15m: rule 23/120 (supertrend)", "failed": [], "pct": 54.7, "updated": "2026-09-06T02:48:23Z"}
+{"shard": 7, "stage": "testing", "done": 29, "total": 53, "rows": 1068914, "note": "MCDSTOCK 15m: rule 91/120 (cf_soup)", "failed": [], "pct": 54.7, "updated": "2026-09-06T02:49:09Z"}

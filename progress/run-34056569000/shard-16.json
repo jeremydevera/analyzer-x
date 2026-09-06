@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 12, "total": 53, "rows": 561300, "note": "COHRSTOCK 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-06T20:31:25Z"}
+{"shard": 16, "stage": "testing", "done": 13, "total": 53, "rows": 594520, "note": "CRWVSTOCK 30m: rule 3/120 (fade15)", "failed": [], "pct": 24.5, "updated": "2026-09-06T20:32:10Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 45, "total": 53, "rows": 1758376, "note": "SWARM 30m: rule 2/120 (mom15)", "failed": [], "pct": 84.9, "updated": "2026-09-06T21:45:53Z"}
+{"shard": 8, "stage": "testing", "done": 46, "total": 53, "rows": 1793016, "note": "TESLA 1h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 86.8, "updated": "2026-09-06T21:46:39Z"}

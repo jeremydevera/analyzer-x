@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 7, "total": 53, "rows": 260102, "note": "BAND 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-06T23:04:50Z"}
+{"shard": 6, "stage": "testing", "done": 7, "total": 53, "rows": 277042, "note": "BAND 1h: rule 72/120 (force13)", "failed": [], "pct": 13.2, "updated": "2026-09-06T23:05:35Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 21, "total": 53, "rows": 685160, "note": "GRABSTOCK 15m: rule 100/120 (cf_soup1)", "failed": [], "pct": 39.6, "updated": "2026-09-06T05:28:48Z"}
+{"shard": 5, "stage": "testing", "done": 22, "total": 53, "rows": 705340, "note": "HEMI 15m: rule 1/120 (mom6)", "failed": [], "pct": 41.5, "updated": "2026-09-06T05:29:40Z"}

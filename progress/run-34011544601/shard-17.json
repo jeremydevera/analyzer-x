@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 15, "total": 52, "rows": 637940, "note": "DOOD 15m: rule 79/120 (cf_donch)", "failed": [], "pct": 28.8, "updated": "2026-09-06T05:10:36Z"}
+{"shard": 17, "stage": "testing", "done": 15, "total": 52, "rows": 646140, "note": "DOOD 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 28.8, "updated": "2026-09-06T05:11:25Z"}

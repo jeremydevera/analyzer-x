@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 25, "total": 52, "rows": 1367954, "note": "JUP 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 48.1, "updated": "2026-09-06T14:06:21Z"}
+{"shard": 17, "stage": "testing", "done": 25, "total": 52, "rows": 1373234, "note": "JUP 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 48.1, "updated": "2026-09-06T14:07:14Z"}

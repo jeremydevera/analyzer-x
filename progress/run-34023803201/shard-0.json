@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 35, "total": 53, "rows": 1289320, "note": "ORDER 30m: rule 21/120 (cci20)", "failed": [], "pct": 66.0, "updated": "2026-09-06T10:18:18Z"}
+{"shard": 0, "stage": "testing", "done": 35, "total": 53, "rows": 1299880, "note": "ORDER 30m: rule 70/120 (cmf20)", "failed": [], "pct": 66.0, "updated": "2026-09-06T10:19:04Z"}

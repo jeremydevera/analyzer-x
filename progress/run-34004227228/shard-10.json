@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 4, "total": 53, "rows": 184172, "note": "APE 15m: rule 45/120 (zscore20)", "failed": [], "pct": 7.5, "updated": "2026-09-06T01:42:24Z"}
+{"shard": 10, "stage": "testing", "done": 4, "total": 53, "rows": 195532, "note": "APE 15m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 7.5, "updated": "2026-09-06T01:43:09Z"}

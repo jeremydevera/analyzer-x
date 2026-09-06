@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 43, "total": 53, "rows": 1799940, "note": "SPACE 15m: rule 33/120 (heikin)", "failed": [], "pct": 81.1, "updated": "2026-09-06T07:08:46Z"}
+{"shard": 9, "stage": "testing", "done": 43, "total": 53, "rows": 1809400, "note": "SPACE 15m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 81.1, "updated": "2026-09-06T07:09:32Z"}

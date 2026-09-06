@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 33, "total": 52, "rows": 1018080, "note": "OKB 4h: 2,332 bars, testing 120 rules", "failed": [], "pct": 63.5, "updated": "2026-09-06T02:45:40Z"}
+{"shard": 19, "stage": "testing", "done": 33, "total": 52, "rows": 1042566, "note": "OKB 15m: rule 2/120 (mom15)", "failed": [], "pct": 63.5, "updated": "2026-09-06T02:46:32Z"}

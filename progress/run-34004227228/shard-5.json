@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 28, "total": 53, "rows": 848198, "note": "LRC 15m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 52.8, "updated": "2026-09-06T02:48:02Z"}
+{"shard": 5, "stage": "testing", "done": 29, "total": 53, "rows": 876218, "note": "MAVIA 15m: 34,586 bars, testing 120 rules", "failed": [], "pct": 54.7, "updated": "2026-09-06T02:49:04Z"}

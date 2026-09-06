@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 40, "total": 53, "rows": 1699500, "note": "SAND 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-06T07:01:01Z"}
+{"shard": 9, "stage": "testing", "done": 40, "total": 53, "rows": 1707420, "note": "SAND 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-06T07:01:50Z"}

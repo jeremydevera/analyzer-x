@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 37, "total": 53, "rows": 1706078, "note": "PTB 30m: rule 41/120 (tsi)", "failed": [], "pct": 69.8, "updated": "2026-09-06T14:56:54Z"}
+{"shard": 8, "stage": "testing", "done": 37, "total": 53, "rows": 1718398, "note": "PTB 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 69.8, "updated": "2026-09-06T14:57:39Z"}

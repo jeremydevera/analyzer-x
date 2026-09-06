@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 8, "total": 53, "rows": 226546, "note": "BIO 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-06T16:31:22Z"}
+{"shard": 10, "stage": "testing", "done": 9, "total": 53, "rows": 266454, "note": "BOME 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 17.0, "updated": "2026-09-06T16:32:19Z"}

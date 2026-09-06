@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 34, "total": 53, "rows": 1482044, "note": "OPENAI 30m: 6,981 bars, testing 120 rules", "failed": [], "pct": 64.2, "updated": "2026-09-06T14:03:47Z"}
+{"shard": 11, "stage": "testing", "done": 35, "total": 53, "rows": 1515044, "note": "PDDSTOCK 15m: 15,773 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-06T14:04:34Z"}

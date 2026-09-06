@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 53, "total": 53, "rows": 1906754, "note": "ZORA 15m: rule 68/120 (dbltop)", "failed": [], "pct": 100.0, "updated": "2026-09-06T03:38:25Z"}
+{"shard": 7, "stage": "testing", "done": 53, "total": 53, "rows": 1916214, "note": "ZORA 15m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-06T03:39:10Z"}

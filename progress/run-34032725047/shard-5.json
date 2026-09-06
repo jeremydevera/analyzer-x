@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 36, "total": 53, "rows": 1655240, "note": "PIXEL 30m: rule 51/120 (orb)", "failed": [], "pct": 67.9, "updated": "2026-09-06T14:25:54Z"}
+{"shard": 5, "stage": "testing", "done": 36, "total": 53, "rows": 1669100, "note": "PIXEL 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 67.9, "updated": "2026-09-06T14:26:39Z"}

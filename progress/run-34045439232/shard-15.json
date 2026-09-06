@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 17, "total": 53, "rows": 392914, "note": "EUL 4h: rule 3/120 (fade15)", "failed": [], "pct": 32.1, "updated": "2026-09-06T16:32:23Z"}
+{"shard": 15, "stage": "testing", "done": 20, "total": 53, "rows": 430666, "note": "GLM 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-06T16:33:09Z"}

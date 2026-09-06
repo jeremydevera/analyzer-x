@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 44, "total": 53, "rows": 1600780, "note": "STG 15m: rule 16/120 (keltner)", "failed": [], "pct": 83.0, "updated": "2026-09-06T06:48:18Z"}
+{"shard": 5, "stage": "testing", "done": 44, "total": 53, "rows": 1606280, "note": "STG 15m: rule 41/120 (tsi)", "failed": [], "pct": 83.0, "updated": "2026-09-06T06:49:04Z"}

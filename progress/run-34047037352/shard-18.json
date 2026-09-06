@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 7, "total": 53, "rows": 272078, "note": "BDX 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-06T17:15:57Z"}
+{"shard": 18, "stage": "testing", "done": 8, "total": 53, "rows": 277998, "note": "BLESS 1h: 8,360 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-06T17:16:51Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 21, "total": 53, "rows": 740578, "note": "GPS 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 39.6, "updated": "2026-09-06T02:16:50Z"}
+{"shard": 4, "stage": "testing", "done": 22, "total": 53, "rows": 747178, "note": "HEI 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 41.5, "updated": "2026-09-06T02:17:38Z"}

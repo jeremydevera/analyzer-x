@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 10, "total": 53, "rows": 355340, "note": "BTR 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 18.9, "updated": "2026-09-06T05:02:54Z"}
+{"shard": 5, "stage": "testing", "done": 12, "total": 53, "rows": 380360, "note": "CIENSTOCK 30m: rule 21/120 (cci20)", "failed": [], "pct": 22.6, "updated": "2026-09-06T05:03:39Z"}

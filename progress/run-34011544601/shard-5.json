@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 25, "total": 53, "rows": 816580, "note": "JCT 15m: 28,782 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-06T05:42:32Z"}
+{"shard": 5, "stage": "testing", "done": 25, "total": 53, "rows": 818560, "note": "JCT 15m: rule 3/120 (fade15)", "failed": [], "pct": 47.2, "updated": "2026-09-06T05:43:37Z"}

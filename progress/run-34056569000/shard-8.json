@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 52, "total": 53, "rows": 2041032, "note": "XRP 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-06T21:58:18Z"}
+{"shard": 8, "stage": "testing", "done": 53, "total": 53, "rows": 2049472, "note": "ZIG 1h: rule 22/120 (engulf)", "failed": [], "pct": 100.0, "updated": "2026-09-06T21:59:04Z"}

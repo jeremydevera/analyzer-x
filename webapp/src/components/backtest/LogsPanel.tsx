@@ -92,6 +92,13 @@ export default function LogsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
 
   const p = d.pending;
   const tfs = TF_ORDER.filter((t) => p.by_timeframe[t]);
+  // THE BUTTON PROMISES WHAT A SWEEP CAN DO. 653 pending on Sep 06, 2026 was
+  // 8 measurable and 645 under their timeframe's bar floor — a button offering
+  // to resolve 653 would send twenty runners for an hour, move the count by 8
+  // and read as broken (label-must-match-data).
+  const can = p.measurable ?? p.count;
+  const short = p.too_short ?? 0;
+  const shortTfs = TF_ORDER.filter((t) => (p.too_short_by_timeframe ?? {})[t]);
   // the cloud half of "0 errors": a shard that never reported cannot be read
   // for failures, so a green count has to say how many were silent
   const cloudBlind = !d.cloud.ok || !!d.cloud.silent;
@@ -166,6 +173,15 @@ export default function LogsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 {" "}— UPDATE BACKTEST measures exactly these
               </>
             ) : " — every pair with candles has been measured"}
+            {!!p.delisted && (
+              <>
+                {" · "}
+                <span title="MEXC no longer lists these contracts, so no run anywhere can measure them. Their candles stay stored; they are simply not counted as pending.">
+                  {p.delisted} pair(s) on delisted contracts left out
+                  ({(p.delisted_coins ?? []).join(", ")})
+                </span>
+              </>
+            )}
           </p>
           {!!p.pairs.length && (
             <>
@@ -188,20 +204,39 @@ export default function LogsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
           <div className="mt-3">
             <button
               onClick={resolvePending}
-              disabled={resolving || !p.count}
-              title={p.count
-                ? `Measure the ${p.count.toLocaleString()} pair(s) this PC has candles for but has never measured. Dispatches GitHub Actions for the timeframes they are in; pairs already measured here are not overwritten.`
-                : "Every pair with candles on this PC has been measured"}
+              disabled={resolving || !can}
+              title={can
+                ? `Measure the ${can.toLocaleString()} pending pair(s) a sweep can actually do. Dispatches GitHub Actions for the timeframes they are in; pairs already measured here are not overwritten.${short ? ` The other ${short.toLocaleString()} are under their timeframe's bar floor — too young for any sweep to make a row from.` : ""}`
+                : p.count
+                  ? `None of the ${p.count.toLocaleString()} pending pair(s) can be measured — ${short.toLocaleString()} are under their timeframe's bar floor`
+                  : "Every pair with candles on this PC has been measured"}
               className={`rounded-lg px-3 py-1 text-theme-xs font-medium ${
-                p.count && !resolving
+                can && !resolving
                   ? "bg-warning-500 text-white hover:bg-warning-600"
                   : "cursor-default bg-gray-100 text-gray-400 dark:bg-white/[0.06] dark:text-gray-500"}`}>
               {resolving
                 ? "RESOLVE PENDING · dispatching…"
-                : p.count
-                  ? `RESOLVE PENDING · ${p.count.toLocaleString()}`
-                  : "RESOLVE PENDING · nothing pending"}
+                : can
+                  ? `RESOLVE PENDING · ${can.toLocaleString()}`
+                  : p.count
+                    ? "RESOLVE PENDING · none measurable"
+                    : "RESOLVE PENDING · nothing pending"}
             </button>
+            {/* WHY the number will not reach zero. Without this the operator
+                sees a disabled button beside a badge saying 653 and has no way
+                to learn that 645 of them are young contracts. */}
+            {!!short && (
+              <p className="mt-2 text-theme-xs text-gray-500 dark:text-gray-400">
+                <b className="text-warning-600 dark:text-warning-400">
+                  {short.toLocaleString()}
+                </b>{" "}
+                of the {p.count.toLocaleString()} are under their timeframe&apos;s
+                bar floor{shortTfs.length
+                  ? ` (${shortTfs.map((t) => `${t}: ${(p.too_short_by_timeframe ?? {})[t]}`).join(" · ")})`
+                  : ""} — young contracts, and no sweep makes a row from a
+                history that short. They stay pending until they have more candles.
+              </p>
+            )}
             {resolved && (
               <p className="mt-2 text-theme-xs text-brand-600 dark:text-brand-400">
                 {resolved}

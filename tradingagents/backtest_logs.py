@@ -58,6 +58,37 @@ def pending_pairs() -> list[tuple[str, str]]:
     return sorted(out)
 
 
+_FLEET = {"at": 0.0, "symbols": None}
+
+
+def fleet_symbols(max_age_s: float = 300.0):
+    """Every contract a GitHub SHARD would sweep, or None when the venue could
+    not be asked.
+
+    THE SHARD'S OWN RULE, verbatim (`sweep_shard.py`): `state == 0`, quote
+    USDT — NOT `db_jobs.live_symbols`, which also drops `apiAllowed=False`
+    contracts. Those are listed and shard-reachable: using the download list
+    here called 50 pairs unreachable when only 24 were (Sep 06, 2026). None
+    is never an empty set: "could not look" must not uncount everything.
+    """
+    from tradingagents.dataflows import mexc_futures as fx
+
+    now = time.time()
+    if _FLEET["symbols"] is not None and now - _FLEET["at"] < max_age_s:
+        return _FLEET["symbols"]
+    try:
+        raw = fx._get_public(f"{fx.BASE}/api/v1/contract/detail").get("data") or []
+        got = {str(x["symbol"]) for x in raw
+               if str(x.get("symbol", "")).endswith("_USDT")
+               and int(x.get("state", 1)) == 0}
+    except Exception:                                          # noqa: BLE001
+        return None
+    if not got:
+        return None
+    _FLEET.update(at=now, symbols=got)
+    return got
+
+
 def pending(force: bool = False) -> dict:
     """Pairs this machine holds candles for but has NEVER measured.
 
@@ -83,14 +114,72 @@ def pending(force: bool = False) -> dict:
     # rule is one rule waiting to drift — the button would then have reported
     # a split of a set the badge beside it did not agree with.
     missing = pending_pairs()
+    # DELISTED contracts are NAMED, never counted (Sep 06, 2026). 24 of the
+    # 677 pending sat on coins MEXC no longer lists (ASP, BULLCOIN, CZ, DRV,
+    # MEZO, ST): GitHub shards build their coin lists from the live venue so
+    # no fleet can reach them, this PC no longer sweeps, and even a hand-run
+    # dies walking their order book — a delisted contract has no live costs,
+    # so its rows would be fiction on fees (rule 9). The candles module made
+    # the same call for the same coins on 2026-08-27: named and skipped,
+    # never queued again. An UNREADABLE venue list keeps every pair counted
+    # ("a failed age check KEEPS the coin") — is_delisted returns False then.
+    live = fleet_symbols()
+    gone = ([] if live is None
+            else [(s, t) for s, t in missing if s not in live])
+    missing = [p for p in missing if p not in set(gone)]
+    # NEVER MEASURED is not the same as MEASURABLE. A pair needs
+    # `backtest_report.MIN_BARS[tf]` candles before any sweep produces a row —
+    # 500 on 15m/30m/1h/4h, 60 on 1d — and a young contract has plenty of 15m
+    # bars and almost no 4h ones. Measured Sep 06, 2026: of 677 never-measured
+    # pairs, 649 were UNDER their floor and only 28 above it, and every short
+    # one was JUST under (4h 493 of 500, 1h 490, 1d 59 of 60).
+    #
+    # Counting all 677 made the badge a promise nothing could keep: RESOLVE
+    # PENDING would send twenty runners for an hour to measure 28 pairs and
+    # the number would sit at 649 for ever, reading as a broken button instead
+    # of as a store with young contracts in it. Same rule as the delisted
+    # split above — counted out loud, never silently dropped (rule 20).
+    #
+    # `scan=False` on purpose: this answers an HTTP poll, and an incremental
+    # scan of 5,000 candle files takes a minute while a download runs.
+    from tradingagents import backtest_report as _br
+
+    try:
+        idx = msw.candle_index(scan=False) or {}
+    except Exception:                                          # noqa: BLE001
+        idx = {}
+    short, ready = [], []
+    for sym, t in missing:
+        e = idx.get(f"{sym}-{t}") if idx else None
+        floor = _br.MIN_BARS.get(t, 500)
+        bars = int((e or {}).get("bars") or 0)
+        # NO index entry means UNKNOWN, and unknown stays measurable: refusing
+        # to try is worse than trying and finding out (the age-check rule).
+        (short if e and bars < floor else ready).append((sym, t, bars, floor))
+
+    def _tally(rows, i=1):
+        out: dict = {}
+        for r in rows:
+            out[r[i]] = out.get(r[i], 0) + 1
+        return out
+
     by_tf: dict = {}
     for _s, t in missing:
         by_tf[t] = by_tf.get(t, 0) + 1
     payload = {
-        "stored": len(stored), "measured": len(stored) - len(missing),
+        "stored": len(stored), "measured": len(stored) - len(missing) - len(gone),
         "count": len(missing), "by_timeframe": by_tf,
+        # what a sweep can actually do — what RESOLVE PENDING promises
+        "measurable": len(ready), "measurable_by_timeframe": _tally(ready),
+        # and what it never will, with the reason attached to each pair
+        "too_short": len(short), "too_short_by_timeframe": _tally(short),
+        "too_short_pairs": [{"symbol": s, "timeframe": t, "bars": b,
+                             "floor": f} for s, t, b, f in short[:NAME_LIMIT]],
         "pairs": [{"symbol": s, "timeframe": t} for s, t in missing[:NAME_LIMIT]],
         "unnamed": max(0, len(missing) - NAME_LIMIT),
+        # counted OUT LOUD (rule 20): the panel prints these beside the count
+        "delisted": len(gone),
+        "delisted_coins": sorted({s.replace("_USDT", "") for s, _t in gone}),
         "checked": _fmt(now),
     }
     _PENDING.update(at=now, payload=payload)

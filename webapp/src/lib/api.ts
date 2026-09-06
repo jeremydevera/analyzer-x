@@ -357,6 +357,20 @@ export type BacktestLogs = {
     by_timeframe: Record<string, number>;
     pairs: { symbol: string; timeframe: string }[];
     unnamed: number; checked: string;
+    /** pairs on contracts MEXC no longer lists — named, never counted:
+     *  no fleet can measure them (Sep 06, 2026) */
+    delisted?: number; delisted_coins?: string[];
+    /** the half a sweep can ACTUALLY do — what RESOLVE PENDING promises.
+     *  A pair needs MIN_BARS[tf] candles (500, or 60 on 1d) before any sweep
+     *  makes a row for it, and a young contract has plenty of 15m bars and
+     *  almost no 4h ones: 653 pending on Sep 06, 2026 was 8 measurable and
+     *  645 short. */
+    measurable?: number;
+    measurable_by_timeframe?: Record<string, number>;
+    too_short?: number;
+    too_short_by_timeframe?: Record<string, number>;
+    too_short_pairs?: { symbol: string; timeframe: string; bars: number;
+                        floor: number }[];
   };
   errors: { where: string; job: string; when: string; pair: string; text: string }[];
   error_count: number;
@@ -464,7 +478,8 @@ export const api = {
    *  candles for but has never measured, in one GitHub dispatch. Returns what
    *  it sent, so the panel can say it rather than assume it. */
   backtestResolvePending: () =>
-    post<{ dispatched: boolean; pending: number; timeframes: string[];
+    post<{ dispatched: boolean; pending: number; measurable?: number;
+           too_short?: number; unreachable?: number; timeframes: string[];
            why: string; run?: { id?: number; url?: string } }>(
       "/api/backtest/pending/resolve", {}),
   cloudStatus: () => get<CloudStatus>("/api/cloud/status"),

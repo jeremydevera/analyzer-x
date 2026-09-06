@@ -75,16 +75,22 @@ def missing_by_timeframe() -> dict:
     every candle file and takes minutes on a 5,000-pair store. This runs every
     supervisor tick.
     """
-    from tradingagents import market_sweep as msw
+    from tradingagents import backtest_logs as bl, market_sweep as msw
 
     measured = {p.stem for p in msw.STATES.glob("*.json")}
+    # DELISTED pairs are not missing: no shard can measure a coin the venue
+    # no longer lists, so counting them would dispatch runs forever for pairs
+    # nothing can touch (Sep 06, 2026). `fleet_symbols` is the SHARD'S own
+    # rule (state == 0), cached 300s; unreadable keeps every pair counted.
+    live = bl.fleet_symbols()
     out: dict = {}
     for p in msw.CANDLES.glob("*.json"):
         try:
             sym, tf = p.stem.rsplit("-", 1)
         except ValueError:
             continue
-        if f"{sym.replace('_USDT', '')}-{tf}" not in measured:
+        if (f"{sym.replace('_USDT', '')}-{tf}" not in measured
+                and (live is None or sym in live)):
             out[tf] = out.get(tf, 0) + 1
     return out
 

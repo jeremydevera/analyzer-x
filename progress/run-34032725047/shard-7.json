@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 27, "total": 53, "rows": 1219810, "note": "LAYER 30m: rule 20/120 (stoch14)", "failed": [], "pct": 50.9, "updated": "2026-09-06T13:57:50Z"}
+{"shard": 7, "stage": "testing", "done": 27, "total": 53, "rows": 1231210, "note": "LAYER 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-06T13:58:36Z"}

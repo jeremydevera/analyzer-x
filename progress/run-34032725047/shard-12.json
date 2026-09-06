@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 19, "total": 53, "rows": 894194, "note": "FRAX 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 35.8, "updated": "2026-09-06T13:21:47Z"}
+{"shard": 12, "stage": "testing", "done": 19, "total": 53, "rows": 903874, "note": "FRAX 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 35.8, "updated": "2026-09-06T13:22:33Z"}

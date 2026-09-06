@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 44, "total": 52, "rows": 1944248, "note": "SUN 1h: rule 2/120 (mom15)", "failed": [], "pct": 84.6, "updated": "2026-09-06T10:55:46Z"}
+{"shard": 18, "stage": "testing", "done": 44, "total": 52, "rows": 1970208, "note": "SUN 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 84.6, "updated": "2026-09-06T10:56:38Z"}

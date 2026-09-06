@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 21, "total": 53, "rows": 806646, "note": "GUN 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 39.6, "updated": "2026-09-06T23:27:47Z"}
+{"shard": 15, "stage": "testing", "done": 23, "total": 53, "rows": 842676, "note": "IBMSTOCK 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 43.4, "updated": "2026-09-06T23:28:32Z"}

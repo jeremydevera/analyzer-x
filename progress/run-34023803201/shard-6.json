@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 36, "total": 53, "rows": 1405108, "note": "PI 30m: rule 45/120 (zscore20)", "failed": [], "pct": 67.9, "updated": "2026-09-06T10:16:13Z"}
+{"shard": 6, "stage": "testing", "done": 37, "total": 53, "rows": 1420948, "note": "PSTOCK 1h: 549 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-06T10:16:58Z"}

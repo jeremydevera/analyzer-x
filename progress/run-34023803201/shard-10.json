@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 49, "total": 53, "rows": 2171994, "note": "VELO 30m: rule 47/120 (ibs)", "failed": [], "pct": 92.5, "updated": "2026-09-06T10:58:27Z"}
+{"shard": 10, "stage": "testing", "done": 50, "total": 53, "rows": 2194620, "note": "WENSTOCK 1h: rule 109/120 (cf_fundfade)", "failed": [], "pct": 94.3, "updated": "2026-09-06T10:59:12Z"}

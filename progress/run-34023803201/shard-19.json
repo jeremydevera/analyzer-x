@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 6, "total": 52, "rows": 283696, "note": "B2 30m: rule 6/120 (sweep30)", "failed": [], "pct": 11.5, "updated": "2026-09-06T09:29:02Z"}
+{"shard": 19, "stage": "testing", "done": 6, "total": 52, "rows": 291396, "note": "B2 30m: rule 41/120 (tsi)", "failed": [], "pct": 11.5, "updated": "2026-09-06T09:29:48Z"}

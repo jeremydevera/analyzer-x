@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 19, "total": 53, "rows": 723080, "note": "FOGO 30m: rule 68/120 (dbltop)", "failed": [], "pct": 35.8, "updated": "2026-09-06T05:33:29Z"}
+{"shard": 6, "stage": "testing", "done": 20, "total": 53, "rows": 737220, "note": "GESTOCK 15m: rule 39/120 (fisher)", "failed": [], "pct": 37.7, "updated": "2026-09-06T05:34:14Z"}

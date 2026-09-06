@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 20, "total": 53, "rows": 754640, "note": "GDX 30m: rule 34/120 (lrslope)", "failed": [], "pct": 37.7, "updated": "2026-09-06T05:40:01Z"}
+{"shard": 3, "stage": "testing", "done": 22, "total": 53, "rows": 789920, "note": "HDSTOCK 15m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-06T05:40:46Z"}

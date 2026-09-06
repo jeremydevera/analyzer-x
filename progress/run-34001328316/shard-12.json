@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 52, "total": 52, "rows": 1424390, "note": "ZBT 1d: 324 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-06T01:03:01Z"}
+{"shard": 12, "stage": "testing", "done": 52, "total": 52, "rows": 1450218, "note": "ZBT 1h: rule 53/120 (squeeze)", "failed": [], "pct": 100.0, "updated": "2026-09-06T01:03:46Z"}

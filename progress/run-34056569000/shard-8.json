@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 42, "total": 53, "rows": 1599796, "note": "SLP 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 79.2, "updated": "2026-09-06T21:34:48Z"}
+{"shard": 8, "stage": "testing", "done": 42, "total": 53, "rows": 1622016, "note": "SLP 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 79.2, "updated": "2026-09-06T21:35:44Z"}

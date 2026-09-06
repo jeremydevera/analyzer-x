@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 4, "total": 53, "rows": 153434, "note": "API3 1h: rule 70/120 (cmf20)", "failed": [], "pct": 7.5, "updated": "2026-09-06T17:05:01Z"}
+{"shard": 12, "stage": "testing", "done": 4, "total": 53, "rows": 164654, "note": "API3 30m: rule 1/120 (mom6)", "failed": [], "pct": 7.5, "updated": "2026-09-06T17:05:47Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 2, "total": 53, "rows": 90440, "note": "ADA 15m: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 3.8, "updated": "2026-09-06T01:41:35Z"}
+{"shard": 0, "stage": "testing", "done": 3, "total": 53, "rows": 96520, "note": "AJGSTOCK 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 5.7, "updated": "2026-09-06T01:42:20Z"}

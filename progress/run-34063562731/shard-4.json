@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 4, "total": 53, "rows": 70840, "note": "ANKR 4h: rule 65/120 (doji)", "failed": [], "pct": 7.5, "updated": "2026-09-06T22:19:03Z"}
+{"shard": 4, "stage": "testing", "done": 6, "total": 53, "rows": 130212, "note": "AVAAI 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-06T22:19:53Z"}

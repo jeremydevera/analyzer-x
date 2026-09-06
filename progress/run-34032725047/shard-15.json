@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 26, "total": 52, "rows": 1152136, "note": "KNC 15m: rule 60/120 (eqraid)", "failed": [], "pct": 50.0, "updated": "2026-09-06T13:06:40Z"}
+{"shard": 15, "stage": "testing", "done": 26, "total": 52, "rows": 1165456, "note": "KNC 30m: rule 2/120 (mom15)", "failed": [], "pct": 50.0, "updated": "2026-09-06T13:07:29Z"}

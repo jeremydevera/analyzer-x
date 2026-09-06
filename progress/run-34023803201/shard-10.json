@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 18, "total": 53, "rows": 741312, "note": "FET 1h: rule 1/120 (mom6)", "failed": [], "pct": 34.0, "updated": "2026-09-06T09:44:33Z"}
+{"shard": 10, "stage": "testing", "done": 18, "total": 53, "rows": 759512, "note": "FET 1h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 34.0, "updated": "2026-09-06T09:45:18Z"}

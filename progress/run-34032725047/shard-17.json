@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 12, "total": 52, "rows": 655486, "note": "COINBASE 15m: rule 33/120 (heikin)", "failed": [], "pct": 23.1, "updated": "2026-09-06T13:08:02Z"}
+{"shard": 17, "stage": "testing", "done": 12, "total": 52, "rows": 663006, "note": "COINBASE 15m: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 23.1, "updated": "2026-09-06T13:08:47Z"}

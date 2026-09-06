@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 47, "total": 53, "rows": 1860880, "note": "TSMSTOCK 15m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 88.7, "updated": "2026-09-06T06:48:25Z"}
+{"shard": 10, "stage": "testing", "done": 49, "total": 53, "rows": 1886420, "note": "VGT 15m: 3,043 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-06T06:49:11Z"}

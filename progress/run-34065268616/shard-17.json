@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 29, "total": 53, "rows": 1286356, "note": "MERL 1h: rule 8/120 (fib618)", "failed": [], "pct": 54.7, "updated": "2026-09-06T23:43:58Z"}
+{"shard": 17, "stage": "testing", "done": 29, "total": 53, "rows": 1310116, "note": "MERL 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 54.7, "updated": "2026-09-06T23:44:53Z"}

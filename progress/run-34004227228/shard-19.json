@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 51, "total": 52, "rows": 1854500, "note": "XPT 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-06T03:47:51Z"}
+{"shard": 19, "stage": "done", "done": 52, "total": 52, "rows": 1871020, "note": "1,871,020 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "failed": [], "pct": 100.0, "updated": "2026-09-06T03:48:01Z"}

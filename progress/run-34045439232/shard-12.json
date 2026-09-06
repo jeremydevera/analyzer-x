@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 34, "total": 53, "rows": 756998, "note": "OPENAI 4h: rule 46/120 (rsi2)", "failed": [], "pct": 64.2, "updated": "2026-09-06T16:37:11Z"}
+{"shard": 12, "stage": "testing", "done": 36, "total": 53, "rows": 821600, "note": "PLUME 4h: rule 58/120 (bos)", "failed": [], "pct": 67.9, "updated": "2026-09-06T16:37:56Z"}

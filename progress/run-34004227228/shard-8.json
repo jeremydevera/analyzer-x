@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 1, "total": 53, "rows": 39580, "note": "4 15m: rule 62/120 (ote)", "failed": [], "pct": 1.9, "updated": "2026-09-06T01:37:47Z"}
+{"shard": 8, "stage": "testing", "done": 1, "total": 53, "rows": 47980, "note": "4 15m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-06T01:38:34Z"}

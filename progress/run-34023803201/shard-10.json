@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 45, "total": 53, "rows": 1998594, "note": "TAG 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-06T10:49:14Z"}
+{"shard": 10, "stage": "testing", "done": 46, "total": 53, "rows": 2008374, "note": "TLM 1h: rule 3/120 (fade15)", "failed": [], "pct": 86.8, "updated": "2026-09-06T10:50:02Z"}

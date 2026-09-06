@@ -261,3 +261,57 @@ def test_the_shard_artifacts_are_kept_long_enough_to_recover_from(monkeypatch):
     days = int(re.search(r"retention-days:\s*(\d+)", sweep).group(1))
     assert days >= 14, "a fortnight to notice and re-collect"
     assert "name: rows-${{ matrix.shard }}" in sweep
+
+
+# ------------------------------------------------------- pair-done markers
+def _mark(coin, tf, last_ms=1000, rows=0):
+    return {"coin": coin, "tf": tf, "pair_done": True,
+            "last_ms": last_ms, "rows": rows, "bars": 5000}
+
+
+def test_a_zero_row_pair_with_a_marker_becomes_measured(monkeypatch, store):
+    """ROAM_USDT 15m (35,764 bars) survived two whole-market sweeps on
+    Sep 06, 2026 and stayed 'pending': every combination fell under the trade
+    floor, so the shard wrote nothing and the collect could not know the pair
+    had been measured. The marker is that knowledge."""
+    from tradingagents import market_sweep as msw
+    _download(monkeypatch, {"rows-0": [_mark("ROAM", "15m", last_ms=2000)]})
+    r = cs.collect_into_store(1)
+    assert r["pairs"] == 1
+    assert r["rows"] == 0, "a marker is bookkeeping, never a row"
+    assert msw.pair_rows("ROAM", "15m") == []
+    assert msw.pair_watermark("ROAM", "15m") == 2000
+    assert msw.load_states("ROAM", "15m").get("__cloud__") is True
+
+
+def test_a_marker_beside_rows_changes_nothing_but_the_watermark(monkeypatch,
+                                                                store):
+    from tradingagents import market_sweep as msw
+    _download(monkeypatch, {
+        "rows-0": [_row("APEX", "1h", "mom6", last_ms=900),
+                   _mark("APEX", "1h", last_ms=1000, rows=1)]})
+    r = cs.collect_into_store(1)
+    assert r["pairs"] == 1 and r["rows"] == 1
+    assert len(msw.pair_rows("APEX", "1h")) == 1
+    assert msw.pair_watermark("APEX", "1h") == 1000, \
+        "the marker's last_ms counts with the rows'"
+
+
+def test_a_marker_never_overwrites_a_locally_measured_pair(monkeypatch, store):
+    from tradingagents import market_sweep as msw
+    msw.save_pair_rows("APEX", "1h", [{"coin": "APEX", "tf": "1h"}])
+    msw.save_states("APEX", "1h", {"__last_ms__": 5000})
+    _download(monkeypatch, {"rows-0": [_mark("APEX", "1h", last_ms=9000)]})
+    r = cs.collect_into_store(1)
+    assert r["pairs"] == 0 and r["skipped"] == 1
+    assert msw.pair_watermark("APEX", "1h") == 5000, "the Mac's stays"
+
+
+def test_the_shard_writes_one_marker_per_measured_pair():
+    s = open(".github/scripts/sweep_shard.py", encoding="utf-8").read()
+    assert '"pair_done": True' in s
+    i = s.index('"pair_done": True')
+    assert s.index("if len(df) < br.min_bars(tf):") < i, \
+        "an under-floor pair returns BEFORE the marker — too_short pairs must stay pending"
+    assert s.index('lines.append(json.dumps({"coin": coin, "tf": tf, "pair_done"') \
+        < s.index('out.write("".join(lines))'), "the marker rides in the same write"

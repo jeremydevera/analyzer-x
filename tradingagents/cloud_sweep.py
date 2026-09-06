@@ -397,6 +397,35 @@ def collect_into_store(run_id: int, slug: str | None = None, *,
         if not key or not buf:
             return
         coin, tf = key
+        # PAIR-DONE MARKERS (Sep 06, 2026): the shard writes one line per
+        # measured pair even when every combination fell under the trade
+        # floor. Without it a zero-row pair left no trace, no state file was
+        # written, and the pair stayed "pending" through every sweep — ROAM,
+        # QUID, SHARE, STAR, TOAD and IGV were measured twice in one day and
+        # counted as never measured both times.
+        marks = [r for r in buf if r.get("pair_done")]
+        buf = [r for r in buf if not r.get("pair_done")]
+        if not buf and marks:
+            if key in refused or key in written:
+                return
+            if msw.pair_watermark(coin, tf) > 0:
+                refused.add(key)
+                skipped.append(f"{coin} {tf}")
+                return
+            last_ms = max(int(m.get("last_ms") or 0) for m in marks)
+            # an EMPTY rows file, exactly what a local sweep leaves when the
+            # trade floor drops everything (the 1d incident, 2026-08-26) —
+            # the state file beside it is what says "measured"
+            msw.save_pair_rows(coin, tf, [])
+            if last_ms:
+                msw.save_states(coin, tf, {"__cloud__": True,
+                                           "__last_ms__": last_ms})
+            kept += 1
+            written.add(key)
+            coins.add(coin)
+            return
+        if not buf:
+            return
         # A pair refused once stays refused. It has to be its OWN set: marking
         # it in `written` would make the second sighting of the same pair take
         # the append branch below and overwrite the very rows being protected.
@@ -415,7 +444,7 @@ def collect_into_store(run_id: int, slug: str | None = None, *,
         else:
             kept += 1
         msw.save_pair_rows(coin, tf, buf)
-        last_ms = max(int(r.get("last_ms") or 0) for r in buf)
+        last_ms = max(int(r.get("last_ms") or 0) for r in buf + marks)
         if last_ms:
             # __last_ms__ LAST. `pair_watermark` reads the final 256 bytes and
             # its regex anchors the key to the closing brace, so writing it
@@ -450,7 +479,10 @@ def collect_into_store(run_id: int, slug: str | None = None, *,
                             # last line; skipping it must not lose the file
                             bad += 1
                             continue
-                        rows_seen += 1
+                        # a pair-done marker is bookkeeping, not a row —
+                        # counting it would inflate the "N row(s)" note
+                        if not r.get("pair_done"):
+                            rows_seen += 1
                         k = (r["coin"], r["tf"])
                         if k != key:
                             flush(key, buf)

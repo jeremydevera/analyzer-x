@@ -262,6 +262,17 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
         at.STRATEGY_SPECS.pop(key, None)
         report("testing", i, n, rows=rows_so_far + kept,
                note=f"{coin} {tf}: rule {si}/{len(br.SIGNALS)} ({sig})")
+    # ONE MARKER PER MEASURED PAIR, rows or no rows. A thin coin whose every
+    # combination fell under the trade floor wrote NOTHING, so the collect
+    # could never know it was measured: ROAM_USDT 15m (35,764 bars) survived
+    # two whole-market sweeps on Sep 06, 2026 and stayed "pending" — every
+    # future run re-measured it for nothing. The marker carries the same
+    # coin/tf keys as a row so the collector's pair grouping sees it, and
+    # last_ms so the pair gets a real watermark.
+    lines.append(json.dumps({"coin": coin, "tf": tf, "pair_done": True,
+                             "last_ms": int(ts[-1]) if len(ts) else 0,
+                             "rows": kept, "bars": nbars}) + "
+")
     out.write("".join(lines))
     out.flush()
     return kept

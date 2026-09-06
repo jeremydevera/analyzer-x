@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 36, "total": 53, "rows": 1056532, "note": "POPCAT 4h: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 67.9, "updated": "2026-09-06T22:36:54Z"}
+{"shard": 18, "stage": "testing", "done": 37, "total": 53, "rows": 1095076, "note": "PYTH 4h: rule 69/120 (obv20)", "failed": [], "pct": 69.8, "updated": "2026-09-06T22:37:40Z"}

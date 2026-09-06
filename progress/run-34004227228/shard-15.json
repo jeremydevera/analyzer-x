@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 16, "total": 52, "rows": 566688, "note": "EIGEN 15m: rule 1/120 (mom6)", "failed": [], "pct": 30.8, "updated": "2026-09-06T02:03:42Z"}
+{"shard": 15, "stage": "testing", "done": 16, "total": 52, "rows": 568008, "note": "EIGEN 15m: rule 3/120 (fade15)", "failed": [], "pct": 30.8, "updated": "2026-09-06T02:04:28Z"}

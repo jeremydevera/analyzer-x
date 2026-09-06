@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 10, "total": 53, "rows": 308444, "note": "BR 1h: rule 19/120 (emacross)", "failed": [], "pct": 18.9, "updated": "2026-09-06T00:39:35Z"}
+{"shard": 0, "stage": "testing", "done": 11, "total": 53, "rows": 329784, "note": "CATI 1d: 394 bars, testing 120 rules", "failed": [], "pct": 20.8, "updated": "2026-09-06T00:40:30Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 3, "total": 53, "rows": 104696, "note": "AMP 1h: rule 4/120 (trend50)", "failed": [], "pct": 5.7, "updated": "2026-09-06T22:59:56Z"}
+{"shard": 19, "stage": "testing", "done": 3, "total": 53, "rows": 124856, "note": "AMP 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 5.7, "updated": "2026-09-06T23:00:52Z"}

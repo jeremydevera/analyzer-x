@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 6, "total": 53, "rows": 278800, "note": "AZTEC 30m: rule 17/120 (atrbreak)", "failed": [], "pct": 11.3, "updated": "2026-09-06T20:15:17Z"}
+{"shard": 17, "stage": "testing", "done": 7, "total": 53, "rows": 301020, "note": "BCH 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-06T20:16:10Z"}

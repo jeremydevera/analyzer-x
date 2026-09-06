@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 31, "total": 53, "rows": 1278066, "note": "MSTRSTOCK 30m: rule 58/120 (bos)", "failed": [], "pct": 58.5, "updated": "2026-09-06T23:52:21Z"}
+{"shard": 7, "stage": "testing", "done": 32, "total": 53, "rows": 1324626, "note": "NEMSTOCK 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 60.4, "updated": "2026-09-06T23:53:06Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 27, "total": 53, "rows": 1067346, "note": "LASERTECSTOCK 30m: rule 16/120 (keltner)", "failed": [], "pct": 50.9, "updated": "2026-09-06T23:41:23Z"}
+{"shard": 7, "stage": "testing", "done": 28, "total": 53, "rows": 1087146, "note": "LRC 1h: rule 39/120 (fisher)", "failed": [], "pct": 52.8, "updated": "2026-09-06T23:42:08Z"}

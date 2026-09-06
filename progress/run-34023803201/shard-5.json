@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 9, "total": 53, "rows": 354464, "note": "BNB 1h: rule 100/120 (cf_soup1)", "failed": [], "pct": 17.0, "updated": "2026-09-06T09:30:12Z"}
+{"shard": 5, "stage": "testing", "done": 9, "total": 53, "rows": 362604, "note": "BNB 30m: rule 13/120 (pivot)", "failed": [], "pct": 17.0, "updated": "2026-09-06T09:30:58Z"}

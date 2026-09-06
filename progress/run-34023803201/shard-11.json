@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 40, "total": 53, "rows": 1572456, "note": "SANTOS 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-06T10:22:16Z"}
+{"shard": 11, "stage": "testing", "done": 40, "total": 53, "rows": 1577296, "note": "SANTOS 30m: rule 16/120 (keltner)", "failed": [], "pct": 75.5, "updated": "2026-09-06T10:23:02Z"}

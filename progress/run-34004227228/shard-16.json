@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 42, "total": 52, "rows": 1602234, "note": "SOFISTOCK 15m: rule 37/120 (ultosc)", "failed": [], "pct": 80.8, "updated": "2026-09-06T03:40:57Z"}
+{"shard": 16, "stage": "testing", "done": 43, "total": 52, "rows": 1626974, "note": "SPX 4h: rule 72/120 (force13)", "failed": [], "pct": 82.7, "updated": "2026-09-06T03:41:42Z"}

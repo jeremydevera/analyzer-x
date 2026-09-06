@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 13, "total": 52, "rows": 391908, "note": "CROSS 15m: rule 2/120 (mom15)", "failed": [], "pct": 25.0, "updated": "2026-09-06T01:58:56Z"}
+{"shard": 11, "stage": "testing", "done": 13, "total": 52, "rows": 394708, "note": "CROSS 15m: rule 14/120 (bb20)", "failed": [], "pct": 25.0, "updated": "2026-09-06T01:59:42Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 14, "total": 53, "rows": 366438, "note": "CTSI 1h: rule 2/120 (mom15)", "failed": [], "pct": 26.4, "updated": "2026-09-06T00:40:43Z"}
+{"shard": 5, "stage": "testing", "done": 14, "total": 53, "rows": 386458, "note": "CTSI 1h: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-06T00:41:29Z"}

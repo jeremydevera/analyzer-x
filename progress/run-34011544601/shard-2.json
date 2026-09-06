@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 20, "total": 53, "rows": 679600, "note": "GBP 30m: rule 27/120 (aroon25)", "failed": [], "pct": 37.7, "updated": "2026-09-06T05:44:13Z"}
+{"shard": 2, "stage": "testing", "done": 20, "total": 53, "rows": 696760, "note": "GBP 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 37.7, "updated": "2026-09-06T05:44:59Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 5, "total": 53, "rows": 151884, "note": "ARMSTOCK 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 9.4, "updated": "2026-09-06T00:31:42Z"}
+{"shard": 4, "stage": "testing", "done": 6, "total": 53, "rows": 187260, "note": "AVAAI 1d: rule 94/120 (cf_emarsi)", "failed": [], "pct": 11.3, "updated": "2026-09-06T00:32:27Z"}

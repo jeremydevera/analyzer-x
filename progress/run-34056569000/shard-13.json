@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 20, "total": 53, "rows": 882872, "note": "GIGGLE 30m: 16,776 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-06T20:40:45Z"}
+{"shard": 13, "stage": "testing", "done": 20, "total": 53, "rows": 886172, "note": "GIGGLE 30m: rule 9/120 (fib382)", "failed": [], "pct": 37.7, "updated": "2026-09-06T20:41:30Z"}

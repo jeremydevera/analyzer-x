@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 24, "total": 53, "rows": 1011054, "note": "ILV 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 45.3, "updated": "2026-09-06T20:47:05Z"}
+{"shard": 2, "stage": "testing", "done": 24, "total": 53, "rows": 1026014, "note": "ILV 1h: rule 63/120 (killzone)", "failed": [], "pct": 45.3, "updated": "2026-09-06T20:47:50Z"}

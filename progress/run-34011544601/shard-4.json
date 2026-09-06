@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 23, "total": 53, "rows": 938120, "note": "HUMA 30m: rule 29/120 (hull20)", "failed": [], "pct": 43.4, "updated": "2026-09-06T05:54:30Z"}
+{"shard": 4, "stage": "testing", "done": 23, "total": 53, "rows": 948680, "note": "HUMA 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 43.4, "updated": "2026-09-06T05:55:15Z"}

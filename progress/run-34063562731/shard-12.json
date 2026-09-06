@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 13, "total": 53, "rows": 258480, "note": "CROSS 4h: rule 20/120 (stoch14)", "failed": [], "pct": 24.5, "updated": "2026-09-06T22:21:40Z"}
+{"shard": 12, "stage": "testing", "done": 15, "total": 53, "rows": 312948, "note": "DKNGSTOCK 1d: 88 bars, testing 120 rules", "failed": [], "pct": 28.3, "updated": "2026-09-06T22:22:25Z"}

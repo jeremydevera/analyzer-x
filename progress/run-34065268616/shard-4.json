@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 22, "total": 53, "rows": 896530, "note": "HBAR 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-06T23:42:34Z"}
+{"shard": 4, "stage": "testing", "done": 25, "total": 53, "rows": 948662, "note": "IWM 1h: 2,174 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-06T23:43:20Z"}

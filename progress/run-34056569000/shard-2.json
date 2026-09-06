@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 10, "total": 53, "rows": 409316, "note": "BSB 30m: rule 60/120 (eqraid)", "failed": [], "pct": 18.9, "updated": "2026-09-06T20:24:42Z"}
+{"shard": 2, "stage": "testing", "done": 12, "total": 53, "rows": 452924, "note": "CHIP 1h: 3,445 bars, testing 120 rules", "failed": [], "pct": 22.6, "updated": "2026-09-06T20:25:28Z"}

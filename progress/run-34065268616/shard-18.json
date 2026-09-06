@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 18, "total": 53, "rows": 711336, "note": "FLNCSTOCK 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 34.0, "updated": "2026-09-06T23:41:34Z"}
+{"shard": 18, "stage": "testing", "done": 20, "total": 53, "rows": 754428, "note": "GMESTOCK 30m: rule 74/120 (volclimax)", "failed": [], "pct": 37.7, "updated": "2026-09-06T23:42:19Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 22, "total": 53, "rows": 713886, "note": "HDSTOCK 15m: rule 43/120 (macddiv)", "failed": [], "pct": 41.5, "updated": "2026-09-06T02:07:16Z"}
+{"shard": 3, "stage": "testing", "done": 25, "total": 53, "rows": 738486, "note": "JASMY 4h: rule 41/120 (tsi)", "failed": [], "pct": 47.2, "updated": "2026-09-06T02:08:01Z"}

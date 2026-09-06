@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 19, "total": 53, "rows": 487848, "note": "FLR 4h: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 35.8, "updated": "2026-09-06T16:35:14Z"}
+{"shard": 3, "stage": "testing", "done": 23, "total": 53, "rows": 548464, "note": "HPESTOCK 4h: rule 12/120 (donchian20)", "failed": [], "pct": 43.4, "updated": "2026-09-06T16:35:59Z"}

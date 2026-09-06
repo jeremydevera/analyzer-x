@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 47, "total": 52, "rows": 1742454, "note": "TUT 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 90.4, "updated": "2026-09-06T03:33:00Z"}
+{"shard": 15, "stage": "testing", "done": 48, "total": 52, "rows": 1770554, "note": "USDC 15m: rule 3/120 (fade15)", "failed": [], "pct": 92.3, "updated": "2026-09-06T03:33:46Z"}

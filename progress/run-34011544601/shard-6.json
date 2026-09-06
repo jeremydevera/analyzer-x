@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 13, "total": 53, "rows": 479220, "note": "COW 15m: rule 3/120 (fade15)", "failed": [], "pct": 24.5, "updated": "2026-09-06T05:07:59Z"}
+{"shard": 6, "stage": "testing", "done": 13, "total": 53, "rows": 483220, "note": "COW 15m: rule 23/120 (supertrend)", "failed": [], "pct": 24.5, "updated": "2026-09-06T05:08:45Z"}

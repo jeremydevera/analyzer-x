@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 30, "total": 53, "rows": 895668, "note": "MNT 1h: rule 16/120 (keltner)", "failed": [], "pct": 56.6, "updated": "2026-09-06T00:48:12Z"}
+{"shard": 9, "stage": "testing", "done": 31, "total": 53, "rows": 919758, "note": "MUBARAK 1d: rule 13/120 (pivot)", "failed": [], "pct": 58.5, "updated": "2026-09-06T00:48:57Z"}

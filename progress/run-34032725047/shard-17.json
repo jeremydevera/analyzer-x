@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 15, "total": 52, "rows": 825682, "note": "DOLO 15m: rule 20/120 (stoch14)", "failed": [], "pct": 28.8, "updated": "2026-09-06T13:17:31Z"}
+{"shard": 17, "stage": "testing", "done": 15, "total": 52, "rows": 830082, "note": "DOLO 15m: rule 40/120 (crsi)", "failed": [], "pct": 28.8, "updated": "2026-09-06T13:18:17Z"}

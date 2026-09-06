@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 25, "total": 53, "rows": 1161944, "note": "JPY 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 47.2, "updated": "2026-09-06T13:51:37Z"}
+{"shard": 14, "stage": "testing", "done": 25, "total": 53, "rows": 1165784, "note": "JPY 30m: 15,987 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-06T13:52:22Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 43, "total": 53, "rows": 1596460, "note": "SOPH 1h: rule 16/120 (keltner)", "failed": [], "pct": 81.1, "updated": "2026-09-06T21:17:25Z"}
+{"shard": 9, "stage": "testing", "done": 43, "total": 53, "rows": 1615380, "note": "SOPH 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-06T21:18:10Z"}

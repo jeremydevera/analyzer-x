@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 19, "total": 53, "rows": 824476, "note": "FOXASTOCK 30m: rule 112/120 (cf_obretest)", "failed": [], "pct": 35.8, "updated": "2026-09-06T13:21:58Z"}
+{"shard": 11, "stage": "testing", "done": 21, "total": 53, "rows": 863096, "note": "GRVT 30m: rule 17/120 (atrbreak)", "failed": [], "pct": 39.6, "updated": "2026-09-06T13:22:43Z"}

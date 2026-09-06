@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 39, "total": 53, "rows": 1518914, "note": "RENESASSTOCK 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 73.6, "updated": "2026-09-06T10:23:17Z"}
+{"shard": 1, "stage": "testing", "done": 40, "total": 53, "rows": 1529374, "note": "RSR 1h: rule 41/120 (tsi)", "failed": [], "pct": 75.5, "updated": "2026-09-06T10:24:02Z"}

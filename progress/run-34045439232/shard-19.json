@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 11, "total": 53, "rows": 344308, "note": "CHEEMS 1d: 394 bars, testing 120 rules", "failed": [], "pct": 20.8, "updated": "2026-09-06T16:33:58Z"}
+{"shard": 19, "stage": "testing", "done": 14, "total": 53, "rows": 398604, "note": "DDOGSTOCK 1d: downloading candles", "failed": [], "pct": 26.4, "updated": "2026-09-06T16:34:43Z"}

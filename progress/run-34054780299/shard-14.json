@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 45, "total": 53, "rows": 1175932, "note": "TAC 4h: rule 69/120 (obv20)", "failed": [], "pct": 84.9, "updated": "2026-09-06T19:39:18Z"}
+{"shard": 14, "stage": "testing", "done": 46, "total": 53, "rows": 1222528, "note": "TIA 1d: 394 bars, testing 120 rules", "failed": [], "pct": 86.8, "updated": "2026-09-06T19:40:13Z"}

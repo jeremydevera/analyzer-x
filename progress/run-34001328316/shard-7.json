@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 47, "total": 53, "rows": 1457056, "note": "TRY 1h: rule 61/120 (turtle)", "failed": [], "pct": 88.7, "updated": "2026-09-06T01:12:35Z"}
+{"shard": 7, "stage": "testing", "done": 48, "total": 53, "rows": 1493056, "note": "UNHSTOCK 1h: rule 91/120 (cf_soup)", "failed": [], "pct": 90.6, "updated": "2026-09-06T01:13:20Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 10, "total": 52, "rows": 416776, "note": "CARV 30m: rule 13/120 (pivot)", "failed": [], "pct": 19.2, "updated": "2026-09-06T09:36:05Z"}
+{"shard": 18, "stage": "testing", "done": 10, "total": 52, "rows": 426896, "note": "CARV 30m: rule 60/120 (eqraid)", "failed": [], "pct": 19.2, "updated": "2026-09-06T09:36:50Z"}

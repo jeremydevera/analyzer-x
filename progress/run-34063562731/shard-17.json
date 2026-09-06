@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 28, "total": 53, "rows": 755740, "note": "MAGIC 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-06T22:27:39Z"}
+{"shard": 17, "stage": "testing", "done": 29, "total": 53, "rows": 797760, "note": "MERL 4h: rule 3/120 (fade15)", "failed": [], "pct": 54.7, "updated": "2026-09-06T22:28:25Z"}

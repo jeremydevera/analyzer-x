@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 42, "total": 52, "rows": 1513860, "note": "SNOWSTOCK 30m: rule 16/120 (keltner)", "failed": [], "pct": 80.8, "updated": "2026-09-06T06:32:18Z"}
+{"shard": 11, "stage": "testing", "done": 43, "total": 52, "rows": 1530880, "note": "SPELL 15m: rule 1/120 (mom6)", "failed": [], "pct": 82.7, "updated": "2026-09-06T06:33:12Z"}

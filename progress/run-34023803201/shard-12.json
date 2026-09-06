@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 12, "total": 53, "rows": 486486, "note": "CMCSASTOCK 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-06T09:22:39Z"}
+{"shard": 12, "stage": "testing", "done": 13, "total": 53, "rows": 499766, "note": "CROSS 1h: rule 47/120 (ibs)", "failed": [], "pct": 24.5, "updated": "2026-09-06T09:23:24Z"}

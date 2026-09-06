@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 5, "total": 53, "rows": 95050, "note": "ARKM 4h: rule 47/120 (ibs)", "failed": [], "pct": 9.4, "updated": "2026-09-06T16:29:06Z"}
+{"shard": 2, "stage": "testing", "done": 7, "total": 53, "rows": 137294, "note": "BABY 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-06T16:29:53Z"}

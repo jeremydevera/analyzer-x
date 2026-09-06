@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 10, "total": 52, "rows": 356620, "note": "BXSTOCK 15m: rule 64/120 (hammer)", "failed": [], "pct": 19.2, "updated": "2026-09-06T04:59:40Z"}
+{"shard": 11, "stage": "testing", "done": 11, "total": 52, "rows": 393560, "note": "CELHSTOCK 15m: rule 82/120 (cf_maobv)", "failed": [], "pct": 21.2, "updated": "2026-09-06T05:00:25Z"}

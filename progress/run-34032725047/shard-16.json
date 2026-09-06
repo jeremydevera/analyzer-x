@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 25, "total": 52, "rows": 1391910, "note": "JTO 1d: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 48.1, "updated": "2026-09-06T14:18:13Z"}
+{"shard": 16, "stage": "testing", "done": 27, "total": 52, "rows": 1443418, "note": "LINSTOCK 15m: rule 73/120 (volspike)", "failed": [], "pct": 51.9, "updated": "2026-09-06T14:18:58Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 33, "total": 52, "rows": 1434180, "note": "OGN 30m: rule 22/120 (engulf)", "failed": [], "pct": 63.5, "updated": "2026-09-06T05:58:48Z"}
+{"shard": 17, "stage": "testing", "done": 34, "total": 52, "rows": 1455520, "note": "ORCA 15m: 34,598 bars, testing 120 rules", "failed": [], "pct": 65.4, "updated": "2026-09-06T05:59:52Z"}

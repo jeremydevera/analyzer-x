@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 6, "total": 53, "rows": 179300, "note": "AXS 30m: rule 53/120 (squeeze)", "failed": [], "pct": 11.3, "updated": "2026-09-06T20:07:24Z"}
+{"shard": 14, "stage": "testing", "done": 7, "total": 53, "rows": 193820, "note": "BAT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-06T20:08:10Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 39, "total": 53, "rows": 1584724, "note": "REZ 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 73.6, "updated": "2026-09-06T21:12:24Z"}
+{"shard": 5, "stage": "testing", "done": 41, "total": 53, "rows": 1659040, "note": "SHAZSTOCK 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 77.4, "updated": "2026-09-06T21:13:09Z"}

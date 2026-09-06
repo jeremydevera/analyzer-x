@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 31, "total": 53, "rows": 1398822, "note": "M 1h: rule 13/120 (pivot)", "failed": [], "pct": 58.5, "updated": "2026-09-06T18:21:01Z"}
+{"shard": 19, "stage": "testing", "done": 31, "total": 53, "rows": 1419502, "note": "M 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 58.5, "updated": "2026-09-06T18:21:47Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 41, "total": 52, "rows": 2185048, "note": "SKL 30m: rule 32/120 (gmma)", "failed": [], "pct": 78.8, "updated": "2026-09-06T15:42:56Z"}
+{"shard": 18, "stage": "testing", "done": 41, "total": 52, "rows": 2196488, "note": "SKL 30m: rule 85/120 (cf_triple)", "failed": [], "pct": 78.8, "updated": "2026-09-06T15:43:41Z"}

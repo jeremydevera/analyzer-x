@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 3, "total": 53, "rows": 41492, "note": "ALCH 4h: rule 2/120 (mom15)", "failed": [], "pct": 5.7, "updated": "2026-09-06T19:26:01Z"}
+{"shard": 5, "stage": "testing", "done": 5, "total": 53, "rows": 87230, "note": "ARPA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 9.4, "updated": "2026-09-06T19:26:46Z"}

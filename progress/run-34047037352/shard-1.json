@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 48, "total": 53, "rows": 1916226, "note": "TURBO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 90.6, "updated": "2026-09-06T18:09:56Z"}
+{"shard": 1, "stage": "testing", "done": 48, "total": 53, "rows": 1921946, "note": "TURBO 30m: rule 20/120 (stoch14)", "failed": [], "pct": 90.6, "updated": "2026-09-06T18:10:41Z"}

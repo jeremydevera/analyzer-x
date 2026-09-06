@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 48, "total": 52, "rows": 1835320, "note": "US30 15m: rule 8/120 (fib618)", "failed": [], "pct": 92.3, "updated": "2026-09-06T07:15:33Z"}
+{"shard": 13, "stage": "testing", "done": 48, "total": 52, "rows": 1849720, "note": "US30 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 92.3, "updated": "2026-09-06T07:16:19Z"}

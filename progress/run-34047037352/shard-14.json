@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 41, "total": 53, "rows": 1696888, "note": "SILVER 30m: rule 16/120 (keltner)", "failed": [], "pct": 77.4, "updated": "2026-09-06T18:17:51Z"}
+{"shard": 14, "stage": "testing", "done": 42, "total": 53, "rows": 1717488, "note": "SMTCSTOCK 30m: 876 bars, testing 120 rules", "failed": [], "pct": 79.2, "updated": "2026-09-06T18:18:37Z"}

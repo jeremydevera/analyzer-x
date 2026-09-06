@@ -689,6 +689,30 @@ def backtest_logs(cloud: bool = True) -> dict:
     return bl.logs(include_cloud=cloud)
 
 
+def _busy_run_covers(by_tf: dict):
+    """(frames the in-progress run measures, pending frames it does NOT).
+
+    Read from `cloud_autopilot`'s own record of what it dispatched, and only
+    when that record names the run GitHub is actually running — a stale entry
+    for a finished run must not be reported as coverage. `(None, {})` means we
+    do not know, which is said out loud rather than guessed.
+    """
+    from tradingagents import cloud_autopilot as ca, cloud_sweep as cs
+
+    try:
+        live = cs.working_run() or {}
+        st = ca._read()
+        if not live.get("id") or int(st.get("run") or 0) != int(live["id"]):
+            return None, {}
+        covered = list(st.get("timeframes") or [])
+        if not covered:
+            return None, {}
+        return covered, {t: n for t, n in by_tf.items()
+                         if n and t not in covered}
+    except Exception:                                          # noqa: BLE001
+        return None, {}
+
+
 @app.post("/api/backtest/pending/resolve")
 def backtest_pending_resolve() -> dict:
     """RESOLVE PENDING — measure every pair this PC has candles for but has
@@ -757,9 +781,28 @@ def backtest_pending_resolve() -> dict:
     if not free:
         # One sweep at a time: two runs measure the same contracts and the
         # merge then has to choose a winner.
-        raise HTTPException(409, f"GitHub is busy — {cwhy}. The pending pairs "
-                                 f"are measured by the run already going, or "
-                                 f"press this again when it finishes.")
+        #
+        # WHAT THE BUSY RUN ACTUALLY COVERS. This used to say "the pending
+        # pairs are measured by the run already going" — flatly untrue when
+        # pressed on Sep 06, 2026: run 34004227228 was measuring 4h and 15m
+        # only (the autopilot sends at most MAX_TFS frames), which is 350 of
+        # the 677 pending. The other 327, on 1d/1h/30m, were not in it and the
+        # refusal said they were. A refusal that lies about why is worse than
+        # no refusal (label-must-match-data).
+        covered, left = _busy_run_covers(pend["by_timeframe"])
+        if covered is None:
+            extra = ("Press this again when it finishes — what that run "
+                     "covers is not recorded here.")
+        elif left:
+            extra = (f"That run covers {', '.join(covered)} only "
+                     f"({pend['count'] - sum(left.values()):,} of "
+                     f"{pend['count']:,} pending). It does NOT reach "
+                     f"{', '.join(f'{t}: {n}' for t, n in left.items())} — "
+                     f"press this again when it finishes and those go next.")
+        else:
+            extra = (f"That run covers {', '.join(covered)}, which is every "
+                     f"pending frame — nothing is left for a second run.")
+        raise HTTPException(409, f"GitHub is busy — {cwhy}. {extra}")
     spec = dj._read(dj.FILES["backtest"]["spec"]) or {}
     run = cs.dispatch(shards=cap.CLOUD_RUNNERS, coins=0,
                       timeframes=",".join(frames), min_days=0,

@@ -169,3 +169,60 @@ def test_the_operators_own_window_and_stake_are_used(client, monkeypatch, tmp_pa
     monkeypatch.setattr(cs, "dispatch", _dispatch_spy(sent))
     client.post("/api/backtest/pending/resolve")
     assert sent["days"] == 60 and sent["base"] == 25.0
+
+
+# ------------------------------- what the BUSY run really covers (Sep 06)
+def test_the_refusal_names_what_the_busy_run_does_not_reach(client, monkeypatch):
+    """Pressed for real on Sep 06, 2026 and the refusal LIED.
+
+    It said "the pending pairs are measured by the run already going" while run
+    34004227228 was measuring 4h and 15m only — the autopilot sends at most
+    MAX_TFS frames. That was 350 of 677; the other 327 on 1d/1h/30m were not in
+    it. A refusal that misstates why is worse than no refusal.
+    """
+    from tradingagents import cloud_autopilot as ca
+
+    monkeypatch.setattr(cap, "cloud_free",
+                        lambda: (False, "run 34004227228 is already in progress"))
+    monkeypatch.setattr(cs, "working_run",
+                        lambda slug=None: {"id": 34004227228, "repo": "me/repo"})
+    monkeypatch.setattr(ca, "_read",
+                        lambda: {"run": 34004227228, "timeframes": ["4h", "15m"]})
+    r = client.post("/api/backtest/pending/resolve")
+    assert r.status_code == 409
+    said = r.json()["detail"]
+    assert "4h, 15m" in said, said
+    assert "does NOT reach" in said
+    # the FIXTURE's own numbers, not the live store's — 30m was 36 in this
+    # snapshot and 32 when the button was pressed
+    for frame in ("1d: 211", "1h: 84", "30m: 36"):
+        assert frame in said, f"{frame} missing from {said}"
+    assert "are measured by the run already going" not in said
+
+
+def test_a_busy_run_that_covers_everything_says_so(client, monkeypatch):
+    from tradingagents import cloud_autopilot as ca
+
+    monkeypatch.setattr(cap, "cloud_free", lambda: (False, "run 7 in progress"))
+    monkeypatch.setattr(cs, "working_run",
+                        lambda slug=None: {"id": 7, "repo": "me/repo"})
+    monkeypatch.setattr(ca, "_read", lambda: {
+        "run": 7, "timeframes": ["15m", "30m", "1h", "4h", "1d"]})
+    said = client.post("/api/backtest/pending/resolve").json()["detail"]
+    assert "every pending frame" in said
+    assert "does NOT reach" not in said
+
+
+def test_an_unknown_busy_run_claims_no_coverage(client, monkeypatch):
+    """A stale autopilot entry for a FINISHED run must not be read as
+    coverage of the one actually running."""
+    from tradingagents import cloud_autopilot as ca
+
+    monkeypatch.setattr(cap, "cloud_free", lambda: (False, "run 9 in progress"))
+    monkeypatch.setattr(cs, "working_run",
+                        lambda slug=None: {"id": 9, "repo": "me/repo"})
+    monkeypatch.setattr(ca, "_read",
+                        lambda: {"run": 5, "timeframes": ["4h"]})   # a different run
+    said = client.post("/api/backtest/pending/resolve").json()["detail"]
+    assert "not recorded here" in said
+    assert "4h" not in said, "a stale record must not be reported as coverage"

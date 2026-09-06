@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 30, "total": 53, "rows": 1185620, "note": "MONAD 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 56.6, "updated": "2026-09-06T20:55:27Z"}
+{"shard": 13, "stage": "testing", "done": 33, "total": 53, "rows": 1247664, "note": "NVD 1h: rule 52/120 (nr7)", "failed": [], "pct": 62.3, "updated": "2026-09-06T20:56:12Z"}

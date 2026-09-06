@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 45, "total": 53, "rows": 1505900, "note": "TAIKO 30m: rule 47/120 (ibs)", "failed": [], "pct": 84.9, "updated": "2026-09-06T06:29:53Z"}
+{"shard": 8, "stage": "testing", "done": 45, "total": 53, "rows": 1521740, "note": "TAIKO 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-06T06:30:39Z"}

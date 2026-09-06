@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 1, "total": 53, "rows": 8600, "note": "1000000MOG 15m: rule 37/120 (ultosc)", "failed": [], "pct": 1.9, "updated": "2026-09-06T12:26:15Z"}
+{"shard": 2, "stage": "testing", "done": 1, "total": 53, "rows": 15400, "note": "1000000MOG 15m: rule 72/120 (force13)", "failed": [], "pct": 1.9, "updated": "2026-09-06T12:27:00Z"}

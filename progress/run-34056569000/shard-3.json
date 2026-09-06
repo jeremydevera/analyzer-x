@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 41, "total": 53, "rows": 1520696, "note": "SFP 1h: rule 2/120 (mom15)", "failed": [], "pct": 77.4, "updated": "2026-09-06T21:10:36Z"}
+{"shard": 3, "stage": "testing", "done": 41, "total": 53, "rows": 1542256, "note": "SFP 1h: rule 100/120 (cf_soup1)", "failed": [], "pct": 77.4, "updated": "2026-09-06T21:11:21Z"}

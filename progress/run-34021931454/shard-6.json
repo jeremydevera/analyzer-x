@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 34, "total": 53, "rows": 765876, "note": "ONE 1d: 394 bars, testing 120 rules", "failed": [], "pct": 64.2, "updated": "2026-09-06T08:41:43Z"}
+{"shard": 6, "stage": "testing", "done": 36, "total": 53, "rows": 833304, "note": "PI 4h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 67.9, "updated": "2026-09-06T08:42:28Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 34, "total": 53, "rows": 1287472, "note": "OPENLEDGER 30m: rule 13/120 (pivot)", "failed": [], "pct": 64.2, "updated": "2026-09-06T20:58:35Z"}
+{"shard": 13, "stage": "testing", "done": 34, "total": 53, "rows": 1297152, "note": "OPENLEDGER 30m: rule 58/120 (bos)", "failed": [], "pct": 64.2, "updated": "2026-09-06T20:59:21Z"}

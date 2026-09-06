@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 32, "total": 52, "rows": 1092400, "note": "NKESTOCK 30m: 3,919 bars, testing 120 rules", "failed": [], "pct": 61.5, "updated": "2026-09-06T06:09:42Z"}
+{"shard": 19, "stage": "testing", "done": 33, "total": 52, "rows": 1113560, "note": "OKB 15m: rule 2/120 (mom15)", "failed": [], "pct": 63.5, "updated": "2026-09-06T06:10:35Z"}

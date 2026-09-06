@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 33, "total": 53, "rows": 1583468, "note": "NVIDIA 30m: rule 74/120 (volclimax)", "failed": [], "pct": 62.3, "updated": "2026-09-06T13:54:14Z"}
+{"shard": 13, "stage": "testing", "done": 34, "total": 53, "rows": 1616912, "note": "OPENSTOCK 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 64.2, "updated": "2026-09-06T13:54:59Z"}

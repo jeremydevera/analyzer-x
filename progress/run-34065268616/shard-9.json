@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 28, "total": 53, "rows": 1050344, "note": "LTC 30m: rule 6/120 (sweep30)", "failed": [], "pct": 52.8, "updated": "2026-09-06T23:29:00Z"}
+{"shard": 9, "stage": "testing", "done": 28, "total": 53, "rows": 1068944, "note": "LTC 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 52.8, "updated": "2026-09-06T23:29:45Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 35, "total": 53, "rows": 1313906, "note": "PENDLE 1h: rule 33/120 (heikin)", "failed": [], "pct": 66.0, "updated": "2026-09-06T20:44:39Z"}
+{"shard": 15, "stage": "testing", "done": 35, "total": 53, "rows": 1333486, "note": "PENDLE 30m: rule 2/120 (mom15)", "failed": [], "pct": 66.0, "updated": "2026-09-06T20:45:32Z"}

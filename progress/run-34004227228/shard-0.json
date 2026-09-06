@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 17, "total": 53, "rows": 625408, "note": "ENJ 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 32.1, "updated": "2026-09-06T02:25:55Z"}
+{"shard": 0, "stage": "testing", "done": 17, "total": 53, "rows": 635088, "note": "ENJ 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-06T02:26:42Z"}

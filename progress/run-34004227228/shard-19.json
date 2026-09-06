@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 45, "total": 52, "rows": 1572726, "note": "TERSTOCK 15m: rule 40/120 (crsi)", "failed": [], "pct": 86.5, "updated": "2026-09-06T03:27:57Z"}
+{"shard": 19, "stage": "testing", "done": 46, "total": 52, "rows": 1609906, "note": "TREE 15m: 34,588 bars, testing 120 rules", "failed": [], "pct": 88.5, "updated": "2026-09-06T03:28:53Z"}

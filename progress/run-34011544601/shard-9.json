@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 32, "total": 53, "rows": 1340800, "note": "NEWT 15m: rule 60/120 (eqraid)", "failed": [], "pct": 60.4, "updated": "2026-09-06T06:29:49Z"}
+{"shard": 9, "stage": "testing", "done": 32, "total": 53, "rows": 1348600, "note": "NEWT 15m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 60.4, "updated": "2026-09-06T06:30:34Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 22, "total": 52, "rows": 884600, "note": "HOLO 15m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 42.3, "updated": "2026-09-06T05:22:09Z"}
+{"shard": 17, "stage": "testing", "done": 22, "total": 52, "rows": 890540, "note": "HOLO 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 42.3, "updated": "2026-09-06T05:22:54Z"}

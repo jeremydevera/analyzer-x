@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 30, "total": 53, "rows": 1214168, "note": "MET 30m: rule 112/120 (cf_obretest)", "failed": [], "pct": 56.6, "updated": "2026-09-06T21:10:41Z"}
+{"shard": 0, "stage": "testing", "done": 32, "total": 53, "rows": 1227144, "note": "NAORIS 1h: rule 9/120 (fib382)", "failed": [], "pct": 60.4, "updated": "2026-09-06T21:11:26Z"}

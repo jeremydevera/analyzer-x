@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 4, "total": 53, "rows": 167624, "note": "APE 1h: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 7.5, "updated": "2026-09-06T20:05:11Z"}
+{"shard": 10, "stage": "testing", "done": 4, "total": 53, "rows": 180824, "note": "APE 30m: rule 20/120 (stoch14)", "failed": [], "pct": 7.5, "updated": "2026-09-06T20:05:56Z"}

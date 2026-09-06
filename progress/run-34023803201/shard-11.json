@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 49, "total": 53, "rows": 1953638, "note": "VELVET 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-06T10:33:53Z"}
+{"shard": 11, "stage": "testing", "done": 49, "total": 53, "rows": 1965518, "note": "VELVET 1h: rule 61/120 (turtle)", "failed": [], "pct": 92.5, "updated": "2026-09-06T10:34:38Z"}

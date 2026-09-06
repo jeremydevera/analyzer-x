@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 15, "total": 53, "rows": 626236, "note": "DODO 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 28.3, "updated": "2026-09-06T23:32:12Z"}
+{"shard": 14, "stage": "testing", "done": 17, "total": 53, "rows": 658338, "note": "ETNSTOCK 30m: rule 13/120 (pivot)", "failed": [], "pct": 32.1, "updated": "2026-09-06T23:32:57Z"}

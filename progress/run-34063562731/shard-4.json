@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 19, "total": 53, "rows": 473606, "note": "FLUID 4h: 2,085 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-06T22:26:21Z"}
+{"shard": 4, "stage": "testing", "done": 22, "total": 53, "rows": 512634, "note": "HBAR 4h: rule 1/120 (mom6)", "failed": [], "pct": 41.5, "updated": "2026-09-06T22:27:06Z"}

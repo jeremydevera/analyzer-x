@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 39, "total": 53, "rows": 1507912, "note": "RESOLV 30m: rule 16/120 (keltner)", "failed": [], "pct": 73.6, "updated": "2026-09-06T17:57:44Z"}
+{"shard": 4, "stage": "testing", "done": 39, "total": 53, "rows": 1520672, "note": "RESOLV 30m: rule 75/120 (relvolbrk)", "failed": [], "pct": 73.6, "updated": "2026-09-06T17:58:29Z"}

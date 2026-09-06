@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 5, "total": 53, "rows": 135580, "note": "ARIA 4h: 2,283 bars, testing 120 rules", "failed": [], "pct": 9.4, "updated": "2026-09-06T01:44:39Z"}
+{"shard": 0, "stage": "testing", "done": 5, "total": 53, "rows": 159604, "note": "ARIA 15m: rule 1/120 (mom6)", "failed": [], "pct": 9.4, "updated": "2026-09-06T01:45:34Z"}

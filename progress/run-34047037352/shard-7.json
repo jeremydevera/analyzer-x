@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 45, "total": 53, "rows": 1816234, "note": "SWARMS 30m: rule 1/120 (mom6)", "failed": [], "pct": 84.9, "updated": "2026-09-06T18:40:01Z"}
+{"shard": 7, "stage": "testing", "done": 45, "total": 53, "rows": 1819754, "note": "SWARMS 30m: rule 13/120 (pivot)", "failed": [], "pct": 84.9, "updated": "2026-09-06T18:40:46Z"}

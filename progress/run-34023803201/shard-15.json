@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 23, "total": 52, "rows": 812412, "note": "ICNT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 44.2, "updated": "2026-09-06T09:47:13Z"}
+{"shard": 15, "stage": "testing", "done": 23, "total": 52, "rows": 822532, "note": "ICNT 1h: rule 40/120 (crsi)", "failed": [], "pct": 44.2, "updated": "2026-09-06T09:47:59Z"}

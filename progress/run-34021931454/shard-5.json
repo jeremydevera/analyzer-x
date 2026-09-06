@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 7, "total": 53, "rows": 133922, "note": "BANANA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-06T08:31:39Z"}
+{"shard": 5, "stage": "testing", "done": 8, "total": 53, "rows": 174342, "note": "BICO 4h: rule 1/120 (mom6)", "failed": [], "pct": 15.1, "updated": "2026-09-06T08:32:25Z"}

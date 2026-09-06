@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 14, "total": 53, "rows": 552292, "note": "CTK 30m: rule 14/120 (bb20)", "failed": [], "pct": 26.4, "updated": "2026-09-06T17:28:13Z"}
+{"shard": 3, "stage": "testing", "done": 14, "total": 53, "rows": 561532, "note": "CTK 30m: rule 57/120 (orderblock)", "failed": [], "pct": 26.4, "updated": "2026-09-06T17:28:58Z"}

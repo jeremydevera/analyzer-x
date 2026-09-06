@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 1477986, "note": "SYN 15m: rule 40/120 (crsi)", "failed": [], "pct": 84.9, "updated": "2026-09-06T02:48:22Z"}
+{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 1488226, "note": "SYN 15m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-06T02:49:08Z"}

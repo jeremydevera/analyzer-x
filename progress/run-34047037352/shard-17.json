@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 5, "total": 53, "rows": 237222, "note": "ATOM 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-06T17:11:05Z"}
+{"shard": 17, "stage": "testing", "done": 6, "total": 53, "rows": 252924, "note": "AZTEC 1h: rule 43/120 (macddiv)", "failed": [], "pct": 11.3, "updated": "2026-09-06T17:11:50Z"}

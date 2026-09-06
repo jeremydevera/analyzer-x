@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 2, "total": 53, "rows": 81620, "note": "AIOZ 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 3.8, "updated": "2026-09-06T20:05:11Z"}
+{"shard": 17, "stage": "testing", "done": 2, "total": 53, "rows": 85940, "note": "AIOZ 30m: rule 18/120 (macd)", "failed": [], "pct": 3.8, "updated": "2026-09-06T20:05:56Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 3, "total": 53, "rows": 129872, "note": "ALGO 15m: rule 45/120 (zscore20)", "failed": [], "pct": 5.7, "updated": "2026-09-06T12:28:40Z"}
+{"shard": 6, "stage": "testing", "done": 3, "total": 53, "rows": 137072, "note": "ALGO 15m: rule 86/120 (cf_triple_l1)", "failed": [], "pct": 5.7, "updated": "2026-09-06T12:29:25Z"}

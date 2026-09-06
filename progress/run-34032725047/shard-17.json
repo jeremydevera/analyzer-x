@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 2, "total": 52, "rows": 71248, "note": "AIOZ 15m: rule 12/120 (donchian20)", "failed": [], "pct": 3.8, "updated": "2026-09-06T12:27:07Z"}
+{"shard": 17, "stage": "testing", "done": 2, "total": 52, "rows": 76008, "note": "AIOZ 15m: rule 46/120 (rsi2)", "failed": [], "pct": 3.8, "updated": "2026-09-06T12:27:52Z"}

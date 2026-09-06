@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 2, "total": 53, "rows": 53052, "note": "AGT 4h: rule 115/120 (cf_diadx)", "failed": [], "pct": 3.8, "updated": "2026-09-06T08:29:22Z"}
+{"shard": 11, "stage": "testing", "done": 3, "total": 53, "rows": 93792, "note": "ALPINE 1d: 394 bars, testing 120 rules", "failed": [], "pct": 5.7, "updated": "2026-09-06T08:30:15Z"}

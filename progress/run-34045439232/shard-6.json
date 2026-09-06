@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 17, "total": 53, "rows": 334426, "note": "EPIC 4h: rule 20/120 (stoch14)", "failed": [], "pct": 32.1, "updated": "2026-09-06T16:32:08Z"}
+{"shard": 6, "stage": "testing", "done": 19, "total": 53, "rows": 370462, "note": "FLUX 4h: rule 6/120 (sweep30)", "failed": [], "pct": 35.8, "updated": "2026-09-06T16:32:53Z"}

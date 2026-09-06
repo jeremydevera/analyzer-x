@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 47, "total": 53, "rows": 1172638, "note": "TST 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 88.7, "updated": "2026-09-06T16:48:48Z"}
+{"shard": 19, "stage": "testing", "done": 48, "total": 53, "rows": 1221840, "note": "UP 4h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 90.6, "updated": "2026-09-06T16:49:33Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 16, "total": 53, "rows": 485830, "note": "ELSA 4h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 30.2, "updated": "2026-09-06T22:23:40Z"}
+{"shard": 17, "stage": "testing", "done": 19, "total": 53, "rows": 542872, "note": "FUTUSTOCK 4h: rule 4/120 (trend50)", "failed": [], "pct": 35.8, "updated": "2026-09-06T22:24:25Z"}

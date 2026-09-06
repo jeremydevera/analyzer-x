@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 45, "total": 53, "rows": 2280992, "note": "TAG 15m: rule 16/120 (keltner)", "failed": [], "pct": 84.9, "updated": "2026-09-06T14:09:45Z"}
+{"shard": 10, "stage": "testing", "done": 45, "total": 53, "rows": 2288912, "note": "TAG 15m: rule 61/120 (turtle)", "failed": [], "pct": 84.9, "updated": "2026-09-06T14:10:31Z"}

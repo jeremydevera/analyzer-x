@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 22, "total": 53, "rows": 997310, "note": "HMSTR 30m: rule 4/120 (trend50)", "failed": [], "pct": 41.5, "updated": "2026-09-06T23:32:08Z"}
+{"shard": 17, "stage": "testing", "done": 22, "total": 53, "rows": 1008310, "note": "HMSTR 30m: rule 55/120 (nhigh50)", "failed": [], "pct": 41.5, "updated": "2026-09-06T23:32:54Z"}

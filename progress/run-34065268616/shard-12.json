@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 25, "total": 53, "rows": 1074990, "note": "JOE 30m: rule 37/120 (ultosc)", "failed": [], "pct": 47.2, "updated": "2026-09-06T23:34:46Z"}
+{"shard": 12, "stage": "testing", "done": 25, "total": 53, "rows": 1086430, "note": "JOE 30m: rule 91/120 (cf_soup)", "failed": [], "pct": 47.2, "updated": "2026-09-06T23:35:32Z"}

@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 51, "total": 53, "rows": 1279822, "note": "XAN 4h: rule 23/120 (supertrend)", "failed": [], "pct": 96.2, "updated": "2026-09-06T08:50:16Z"}
+{"shard": 2, "stage": "done", "done": 53, "total": 53, "rows": 1348130, "note": "1,348,130 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "failed": [], "pct": 100.0, "updated": "2026-09-06T08:51:01Z"}

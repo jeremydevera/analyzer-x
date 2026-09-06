@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 27, "total": 53, "rows": 980434, "note": "LA 15m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-06T02:44:23Z"}
+{"shard": 7, "stage": "testing", "done": 28, "total": 53, "rows": 1011014, "note": "LTC 15m: 34,586 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-06T02:45:20Z"}

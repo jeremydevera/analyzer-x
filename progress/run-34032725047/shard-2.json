@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 35, "total": 53, "rows": 1577902, "note": "OUSTSTOCK 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 66.0, "updated": "2026-09-06T14:13:39Z"}
+{"shard": 2, "stage": "testing", "done": 38, "total": 53, "rows": 1603922, "note": "QTUM 15m: 34,631 bars, testing 120 rules", "failed": [], "pct": 71.7, "updated": "2026-09-06T14:14:34Z"}

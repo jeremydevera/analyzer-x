@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 27, "total": 53, "rows": 1105978, "note": "LINEA 30m: rule 49/120 (vwaprev)", "failed": [], "pct": 50.9, "updated": "2026-09-06T09:52:58Z"}
+{"shard": 14, "stage": "testing", "done": 28, "total": 53, "rows": 1121758, "note": "LYN 1h: rule 1/120 (mom6)", "failed": [], "pct": 52.8, "updated": "2026-09-06T09:53:44Z"}

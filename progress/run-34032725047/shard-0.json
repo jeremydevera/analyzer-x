@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 26, "total": 53, "rows": 1026664, "note": "KAS 15m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 49.1, "updated": "2026-09-06T13:15:37Z"}
+{"shard": 0, "stage": "testing", "done": 26, "total": 53, "rows": 1034564, "note": "KAS 30m: rule 20/120 (stoch14)", "failed": [], "pct": 49.1, "updated": "2026-09-06T13:16:23Z"}

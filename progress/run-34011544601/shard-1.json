@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 32, "total": 53, "rows": 1238620, "note": "NBISSTOCK 30m: rule 20/120 (stoch14)", "failed": [], "pct": 60.4, "updated": "2026-09-06T06:02:58Z"}
+{"shard": 1, "stage": "testing", "done": 33, "total": 53, "rows": 1262260, "note": "NOKSTOCK 15m: rule 18/120 (macd)", "failed": [], "pct": 62.3, "updated": "2026-09-06T06:03:43Z"}

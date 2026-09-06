@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 47, "total": 53, "rows": 2082196, "note": "TST 30m: rule 17/120 (atrbreak)", "failed": [], "pct": 88.7, "updated": "2026-09-06T18:49:59Z"}
+{"shard": 19, "stage": "testing", "done": 47, "total": 53, "rows": 2090556, "note": "TST 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 88.7, "updated": "2026-09-06T18:50:45Z"}

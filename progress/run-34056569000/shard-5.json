@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 18, "total": 53, "rows": 716304, "note": "FARTCOIN 30m: rule 33/120 (heikin)", "failed": [], "pct": 34.0, "updated": "2026-09-06T20:32:23Z"}
+{"shard": 5, "stage": "testing", "done": 18, "total": 53, "rows": 728304, "note": "FARTCOIN 30m: rule 95/120 (cf_emarsi_l1)", "failed": [], "pct": 34.0, "updated": "2026-09-06T20:33:08Z"}

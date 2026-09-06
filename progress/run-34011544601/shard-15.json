@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 49, "total": 52, "rows": 1924820, "note": "VSTOCK 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 94.2, "updated": "2026-09-06T06:46:25Z"}
+{"shard": 15, "stage": "testing", "done": 49, "total": 52, "rows": 1936340, "note": "VSTOCK 15m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 94.2, "updated": "2026-09-06T06:47:11Z"}

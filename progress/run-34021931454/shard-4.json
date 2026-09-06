@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 19, "total": 53, "rows": 499526, "note": "FLUID 1d: 347 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-06T08:35:02Z"}
+{"shard": 4, "stage": "testing", "done": 26, "total": 53, "rows": 581614, "note": "KERNEL 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-06T08:35:56Z"}

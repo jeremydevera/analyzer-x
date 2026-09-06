@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 3, "total": 53, "rows": 82210, "note": "AKE 1h: rule 47/120 (ibs)", "failed": [], "pct": 5.7, "updated": "2026-09-06T00:30:59Z"}
+{"shard": 2, "stage": "testing", "done": 5, "total": 53, "rows": 124866, "note": "ARKM 1d: rule 13/120 (pivot)", "failed": [], "pct": 9.4, "updated": "2026-09-06T00:31:44Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 14, "total": 53, "rows": 327200, "note": "CVC 1d: rule 35/120 (willr14)", "failed": [], "pct": 26.4, "updated": "2026-09-06T16:32:27Z"}
+{"shard": 8, "stage": "testing", "done": 16, "total": 53, "rows": 372828, "note": "DYM 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 30.2, "updated": "2026-09-06T16:33:23Z"}

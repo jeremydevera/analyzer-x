@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 12, "total": 53, "rows": 409862, "note": "CHR 15m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-06T02:11:05Z"}
+{"shard": 2, "stage": "testing", "done": 13, "total": 53, "rows": 435898, "note": "COPSTOCK 15m: rule 28/120 (vortex14)", "failed": [], "pct": 24.5, "updated": "2026-09-06T02:11:50Z"}

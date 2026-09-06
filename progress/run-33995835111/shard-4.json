@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 51, "total": 53, "rows": 2080958, "note": "XDC 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-06T00:01:32Z"}
+{"shard": 4, "stage": "testing", "done": 53, "total": 53, "rows": 2121938, "note": "ZKP 30m: 12,506 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-06T00:02:26Z"}

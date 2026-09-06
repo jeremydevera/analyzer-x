@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 19, "total": 53, "rows": 699090, "note": "FOXASTOCK 30m: rule 70/120 (cmf20)", "failed": [], "pct": 35.8, "updated": "2026-09-06T09:44:24Z"}
+{"shard": 11, "stage": "testing", "done": 22, "total": 53, "rows": 777770, "note": "HK0700 30m: rule 20/120 (stoch14)", "failed": [], "pct": 41.5, "updated": "2026-09-06T09:45:09Z"}

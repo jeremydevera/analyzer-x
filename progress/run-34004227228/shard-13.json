@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 24, "total": 52, "rows": 838296, "note": "IOST 15m: rule 91/120 (cf_soup)", "failed": [], "pct": 46.2, "updated": "2026-09-06T02:34:04Z"}
+{"shard": 13, "stage": "testing", "done": 25, "total": 52, "rows": 846476, "note": "JPY 4h: rule 3/120 (fade15)", "failed": [], "pct": 48.1, "updated": "2026-09-06T02:34:49Z"}

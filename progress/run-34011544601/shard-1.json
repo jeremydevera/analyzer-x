@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 46, "total": 53, "rows": 1748200, "note": "TFUEL 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 86.8, "updated": "2026-09-06T06:47:46Z"}
+{"shard": 1, "stage": "testing", "done": 47, "total": 53, "rows": 1757680, "note": "TRIA 15m: 20,635 bars, testing 120 rules", "failed": [], "pct": 88.7, "updated": "2026-09-06T06:48:38Z"}

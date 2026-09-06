@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 12, "total": 53, "rows": 318336, "note": "CKB 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 22.6, "updated": "2026-09-06T00:35:37Z"}
+{"shard": 6, "stage": "testing", "done": 12, "total": 53, "rows": 331756, "note": "CKB 1h: rule 56/120 (insidebrk)", "failed": [], "pct": 22.6, "updated": "2026-09-06T00:36:22Z"}

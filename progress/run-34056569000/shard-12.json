@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 31, "total": 53, "rows": 1349856, "note": "MUFGSTOCK 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 58.5, "updated": "2026-09-06T20:31:13Z"}
+{"shard": 12, "stage": "testing", "done": 34, "total": 53, "rows": 1443116, "note": "OPENAI 1h: 3,497 bars, testing 120 rules", "failed": [], "pct": 64.2, "updated": "2026-09-06T20:31:59Z"}

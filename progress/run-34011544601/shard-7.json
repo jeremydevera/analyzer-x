@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 20, "total": 53, "rows": 745640, "note": "GEVSTOCK 15m: rule 21/120 (cci20)", "failed": [], "pct": 37.7, "updated": "2026-09-06T05:45:28Z"}
+{"shard": 7, "stage": "testing", "done": 20, "total": 53, "rows": 761360, "note": "GEVSTOCK 30m: rule 18/120 (macd)", "failed": [], "pct": 37.7, "updated": "2026-09-06T05:46:13Z"}

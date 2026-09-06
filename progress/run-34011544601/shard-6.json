@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 19, "total": 53, "rows": 680840, "note": "FOGO 15m: rule 2/120 (mom15)", "failed": [], "pct": 35.8, "updated": "2026-09-06T05:29:37Z"}
+{"shard": 6, "stage": "testing", "done": 19, "total": 53, "rows": 685240, "note": "FOGO 15m: rule 20/120 (stoch14)", "failed": [], "pct": 35.8, "updated": "2026-09-06T05:30:23Z"}

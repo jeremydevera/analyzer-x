@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 18, "total": 52, "rows": 585910, "note": "FLOKI 15m: rule 57/120 (orderblock)", "failed": [], "pct": 34.6, "updated": "2026-09-06T02:18:14Z"}
+{"shard": 19, "stage": "testing", "done": 18, "total": 52, "rows": 593650, "note": "FLOKI 15m: rule 100/120 (cf_soup1)", "failed": [], "pct": 34.6, "updated": "2026-09-06T02:19:00Z"}

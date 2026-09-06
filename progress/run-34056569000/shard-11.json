@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 37, "total": 53, "rows": 1457432, "note": "PUFFER 30m: rule 4/120 (trend50)", "failed": [], "pct": 69.8, "updated": "2026-09-06T20:56:37Z"}
+{"shard": 11, "stage": "testing", "done": 37, "total": 53, "rows": 1469232, "note": "PUFFER 30m: rule 64/120 (hammer)", "failed": [], "pct": 69.8, "updated": "2026-09-06T20:57:22Z"}

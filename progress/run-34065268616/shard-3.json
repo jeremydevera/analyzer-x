@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 5, "total": 53, "rows": 199312, "note": "ARK 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 9.4, "updated": "2026-09-06T23:06:05Z"}
+{"shard": 3, "stage": "testing", "done": 5, "total": 53, "rows": 222852, "note": "ARK 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 9.4, "updated": "2026-09-06T23:07:01Z"}

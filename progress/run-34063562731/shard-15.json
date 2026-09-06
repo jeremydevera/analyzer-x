@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 32, "total": 53, "rows": 741968, "note": "NICKEL 4h: rule 54/120 (fractal5)", "failed": [], "pct": 60.4, "updated": "2026-09-06T22:30:22Z"}
+{"shard": 15, "stage": "testing", "done": 35, "total": 53, "rows": 820604, "note": "PENDLE 4h: rule 13/120 (pivot)", "failed": [], "pct": 66.0, "updated": "2026-09-06T22:31:07Z"}

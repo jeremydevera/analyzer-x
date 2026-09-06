@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 8, "total": 53, "rows": 224756, "note": "BILL 4h: 753 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-06T19:28:21Z"}
+{"shard": 9, "stage": "testing", "done": 9, "total": 53, "rows": 280586, "note": "BOBA 1d: rule 43/120 (macddiv)", "failed": [], "pct": 17.0, "updated": "2026-09-06T19:29:06Z"}

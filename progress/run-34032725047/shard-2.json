@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 24, "total": 53, "rows": 1081512, "note": "IMX 15m: rule 63/120 (killzone)", "failed": [], "pct": 45.3, "updated": "2026-09-06T13:44:45Z"}
+{"shard": 2, "stage": "testing", "done": 24, "total": 53, "rows": 1089312, "note": "IMX 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 45.3, "updated": "2026-09-06T13:45:32Z"}

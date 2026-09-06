@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 28, "total": 53, "rows": 1292838, "note": "MAGIC 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 52.8, "updated": "2026-09-06T18:01:19Z"}
+{"shard": 17, "stage": "testing", "done": 29, "total": 53, "rows": 1300758, "note": "MERL 1h: rule 2/120 (mom15)", "failed": [], "pct": 54.7, "updated": "2026-09-06T18:02:06Z"}

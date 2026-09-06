@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 4, "total": 52, "rows": 179846, "note": "ARCSOL 15m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 7.7, "updated": "2026-09-06T01:49:48Z"}
+{"shard": 19, "stage": "testing", "done": 5, "total": 52, "rows": 207346, "note": "AUCTION 15m: 34,582 bars, testing 120 rules", "failed": [], "pct": 9.6, "updated": "2026-09-06T01:50:36Z"}

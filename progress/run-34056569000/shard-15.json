@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 26, "total": 53, "rows": 1006106, "note": "KMNO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-06T20:34:32Z"}
+{"shard": 15, "stage": "testing", "done": 26, "total": 53, "rows": 1012706, "note": "KMNO 30m: rule 24/120 (psar)", "failed": [], "pct": 49.1, "updated": "2026-09-06T20:35:17Z"}

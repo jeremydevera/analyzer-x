@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 45, "total": 52, "rows": 1520814, "note": "TA 4h: rule 3/120 (fade15)", "failed": [], "pct": 86.5, "updated": "2026-09-06T03:16:48Z"}
+{"shard": 13, "stage": "testing", "done": 45, "total": 52, "rows": 1545454, "note": "TA 15m: 34,588 bars, testing 120 rules", "failed": [], "pct": 86.5, "updated": "2026-09-06T03:17:34Z"}

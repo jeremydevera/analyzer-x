@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 21, "total": 53, "rows": 489210, "note": "GPS 4h: rule 63/120 (killzone)", "failed": [], "pct": 39.6, "updated": "2026-09-06T19:32:59Z"}
+{"shard": 5, "stage": "testing", "done": 25, "total": 53, "rows": 543842, "note": "JASMY 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-06T19:33:47Z"}

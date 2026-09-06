@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 32, "total": 52, "rows": 1702280, "note": "NIL 15m: rule 41/120 (tsi)", "failed": [], "pct": 61.5, "updated": "2026-09-06T14:38:13Z"}
+{"shard": 16, "stage": "testing", "done": 32, "total": 52, "rows": 1708880, "note": "NIL 15m: rule 72/120 (force13)", "failed": [], "pct": 61.5, "updated": "2026-09-06T14:39:00Z"}

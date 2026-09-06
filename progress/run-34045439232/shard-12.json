@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 21, "total": 53, "rows": 461840, "note": "GSSTOCK 4h: 1,401 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-06T16:33:12Z"}
+{"shard": 12, "stage": "testing", "done": 25, "total": 53, "rows": 529914, "note": "JOE 4h: rule 28/120 (vortex14)", "failed": [], "pct": 47.2, "updated": "2026-09-06T16:33:57Z"}

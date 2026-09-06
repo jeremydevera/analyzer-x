@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 33, "total": 53, "rows": 1509582, "note": "NOKSTOCK 15m: rule 10/120 (sr_bounce)", "failed": [], "pct": 62.3, "updated": "2026-09-06T14:12:09Z"}
+{"shard": 2, "stage": "testing", "done": 33, "total": 53, "rows": 1532642, "note": "NOKSTOCK 30m: rule 27/120 (aroon25)", "failed": [], "pct": 62.3, "updated": "2026-09-06T14:12:54Z"}

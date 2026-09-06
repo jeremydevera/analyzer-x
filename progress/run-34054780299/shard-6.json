@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 37, "total": 53, "rows": 748552, "note": "PROM 4h: rule 2/120 (mom15)", "failed": [], "pct": 69.8, "updated": "2026-09-06T19:36:28Z"}
+{"shard": 6, "stage": "testing", "done": 40, "total": 53, "rows": 794576, "note": "RUNE 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-06T19:37:14Z"}

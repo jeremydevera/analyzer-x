@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 43, "total": 53, "rows": 1649296, "note": "SOONNETWORK 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-06T21:38:10Z"}
+{"shard": 8, "stage": "testing", "done": 43, "total": 53, "rows": 1661396, "note": "SOONNETWORK 1h: rule 49/120 (vwaprev)", "failed": [], "pct": 81.1, "updated": "2026-09-06T21:38:55Z"}

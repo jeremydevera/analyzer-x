@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 2, "total": 52, "rows": 102728, "note": "AIOZ 30m: rule 70/120 (cmf20)", "failed": [], "pct": 3.8, "updated": "2026-09-06T12:30:59Z"}
+{"shard": 17, "stage": "testing", "done": 3, "total": 52, "rows": 128116, "note": "AMGNSTOCK 15m: 3,195 bars, testing 120 rules", "failed": [], "pct": 5.8, "updated": "2026-09-06T12:31:45Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 14, "total": 52, "rows": 576676, "note": "DBR 30m: rule 47/120 (ibs)", "failed": [], "pct": 26.9, "updated": "2026-09-06T09:46:29Z"}
+{"shard": 18, "stage": "testing", "done": 14, "total": 52, "rows": 589456, "note": "DBR 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 26.9, "updated": "2026-09-06T09:47:14Z"}

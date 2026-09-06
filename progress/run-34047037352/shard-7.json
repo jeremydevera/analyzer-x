@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 52, "total": 53, "rows": 2137176, "note": "XPT 1h: rule 56/120 (insidebrk)", "failed": [], "pct": 98.1, "updated": "2026-09-06T18:59:22Z"}
+{"shard": 7, "stage": "testing", "done": 52, "total": 53, "rows": 2161476, "note": "XPT 30m: rule 60/120 (eqraid)", "failed": [], "pct": 98.1, "updated": "2026-09-06T19:00:07Z"}

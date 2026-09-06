@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 50, "total": 52, "rows": 1628980, "note": "WLFI 15m: rule 73/120 (volspike)", "failed": [], "pct": 96.2, "updated": "2026-09-06T03:31:30Z"}
+{"shard": 12, "stage": "testing", "done": 50, "total": 52, "rows": 1636180, "note": "WLFI 15m: rule 113/120 (cf_obretest_l1)", "failed": [], "pct": 96.2, "updated": "2026-09-06T03:32:15Z"}

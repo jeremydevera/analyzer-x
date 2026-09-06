@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 30, "total": 53, "rows": 950718, "note": "MITO 15m: rule 100/120 (cf_soup1)", "failed": [], "pct": 56.6, "updated": "2026-09-06T02:58:17Z"}
+{"shard": 5, "stage": "testing", "done": 31, "total": 53, "rows": 981958, "note": "MSTRSTOCK 15m: 34,516 bars, testing 120 rules", "failed": [], "pct": 58.5, "updated": "2026-09-06T02:59:09Z"}

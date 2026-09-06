@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 51, "total": 53, "rows": 1956932, "note": "XAUT 1h: rule 76/120 (cf_mom)", "failed": [], "pct": 96.2, "updated": "2026-09-06T21:53:39Z"}
+{"shard": 8, "stage": "testing", "done": 51, "total": 53, "rows": 1969472, "note": "XAUT 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 96.2, "updated": "2026-09-06T21:54:25Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 48, "total": 53, "rows": 2192720, "note": "TWT 15m: rule 19/120 (emacross)", "failed": [], "pct": 90.6, "updated": "2026-09-06T15:04:17Z"}
+{"shard": 1, "stage": "testing", "done": 48, "total": 53, "rows": 2197920, "note": "TWT 15m: rule 45/120 (zscore20)", "failed": [], "pct": 90.6, "updated": "2026-09-06T15:05:02Z"}

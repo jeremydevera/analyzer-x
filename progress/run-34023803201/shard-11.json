@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 49, "total": 53, "rows": 1990358, "note": "VELVET 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 92.5, "updated": "2026-09-06T10:36:56Z"}
+{"shard": 11, "stage": "testing", "done": 50, "total": 53, "rows": 1999466, "note": "WET 1h: rule 2/120 (mom15)", "failed": [], "pct": 94.3, "updated": "2026-09-06T10:37:42Z"}

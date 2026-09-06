@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 21, "total": 53, "rows": 728038, "note": "GMX 1h: rule 8/120 (fib618)", "failed": [], "pct": 39.6, "updated": "2026-09-06T17:41:14Z"}
+{"shard": 0, "stage": "testing", "done": 21, "total": 53, "rows": 750038, "note": "GMX 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 39.6, "updated": "2026-09-06T17:41:59Z"}

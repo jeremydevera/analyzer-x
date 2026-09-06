@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 46, "total": 53, "rows": 1908894, "note": "TIA 15m: rule 43/120 (macddiv)", "failed": [], "pct": 86.8, "updated": "2026-09-06T14:20:18Z"}
+{"shard": 9, "stage": "testing", "done": 46, "total": 53, "rows": 1916094, "note": "TIA 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 86.8, "updated": "2026-09-06T14:21:05Z"}

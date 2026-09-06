@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 29, "total": 53, "rows": 879942, "note": "METASTOCK 4h: rule 71/120 (mfi14)", "failed": [], "pct": 54.7, "updated": "2026-09-06T19:40:52Z"}
+{"shard": 18, "stage": "testing", "done": 30, "total": 53, "rows": 927770, "note": "MOVE 4h: rule 115/120 (cf_diadx)", "failed": [], "pct": 56.6, "updated": "2026-09-06T19:41:37Z"}

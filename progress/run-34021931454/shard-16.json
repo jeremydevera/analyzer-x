@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 47, "total": 52, "rows": 1358974, "note": "TURBO 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 90.4, "updated": "2026-09-06T08:52:08Z"}
+{"shard": 16, "stage": "testing", "done": 48, "total": 52, "rows": 1422642, "note": "US30 4h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 92.3, "updated": "2026-09-06T08:52:53Z"}

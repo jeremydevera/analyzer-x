@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 21, "total": 52, "rows": 742504, "note": "GUA 15m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 40.4, "updated": "2026-09-06T02:28:35Z"}
+{"shard": 13, "stage": "testing", "done": 23, "total": 52, "rows": 772416, "note": "IBMSTOCK 15m: rule 18/120 (macd)", "failed": [], "pct": 44.2, "updated": "2026-09-06T02:29:21Z"}

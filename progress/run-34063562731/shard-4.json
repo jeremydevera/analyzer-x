@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 31, "total": 53, "rows": 682518, "note": "MSFTSTOCK 4h: 2,162 bars, testing 120 rules", "failed": [], "pct": 58.5, "updated": "2026-09-06T22:29:40Z"}
+{"shard": 4, "stage": "testing", "done": 32, "total": 53, "rows": 740206, "note": "NEAR 4h: rule 85/120 (cf_triple)", "failed": [], "pct": 60.4, "updated": "2026-09-06T22:30:26Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 17, "total": 53, "rows": 639616, "note": "ENJ 30m: rule 33/120 (heikin)", "failed": [], "pct": 32.1, "updated": "2026-09-06T17:22:18Z"}
+{"shard": 1, "stage": "testing", "done": 17, "total": 53, "rows": 657656, "note": "ENJ 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-06T17:23:04Z"}

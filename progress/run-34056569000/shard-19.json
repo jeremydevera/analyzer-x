@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 50, "total": 53, "rows": 2252614, "note": "WLD 30m: rule 85/120 (cf_triple)", "failed": [], "pct": 94.3, "updated": "2026-09-06T21:18:19Z"}
+{"shard": 19, "stage": "testing", "done": 52, "total": 53, "rows": 2303118, "note": "ZBCN 1h: rule 3/120 (fade15)", "failed": [], "pct": 98.1, "updated": "2026-09-06T21:19:07Z"}

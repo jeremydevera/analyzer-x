@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 24, "total": 53, "rows": 1092382, "note": "INTCSTOCK 30m: rule 34/120 (lrslope)", "failed": [], "pct": 45.3, "updated": "2026-09-06T14:05:52Z"}
+{"shard": 8, "stage": "testing", "done": 24, "total": 53, "rows": 1112218, "note": "INTCSTOCK 1d: rule 27/120 (aroon25)", "failed": [], "pct": 45.3, "updated": "2026-09-06T14:06:37Z"}

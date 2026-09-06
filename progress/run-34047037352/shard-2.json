@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 25, "total": 53, "rows": 1106046, "note": "IRYS 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 47.2, "updated": "2026-09-06T17:32:58Z"}
+{"shard": 2, "stage": "testing", "done": 26, "total": 53, "rows": 1140806, "note": "KAT 30m: rule 3/120 (fade15)", "failed": [], "pct": 49.1, "updated": "2026-09-06T17:33:46Z"}

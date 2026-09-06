@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 29, "total": 53, "rows": 1182250, "note": "MAVIA 30m: rule 67/120 (pinbar)", "failed": [], "pct": 54.7, "updated": "2026-09-06T18:04:37Z"}
+{"shard": 7, "stage": "testing", "done": 30, "total": 53, "rows": 1193690, "note": "MITO 1h: 8,980 bars, testing 120 rules", "failed": [], "pct": 56.6, "updated": "2026-09-06T18:05:28Z"}

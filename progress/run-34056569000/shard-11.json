@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 6, "total": 53, "rows": 254768, "note": "AXL 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 11.3, "updated": "2026-09-06T20:11:32Z"}
+{"shard": 11, "stage": "testing", "done": 7, "total": 53, "rows": 284930, "note": "BASED 30m: rule 1/120 (mom6)", "failed": [], "pct": 13.2, "updated": "2026-09-06T20:12:21Z"}

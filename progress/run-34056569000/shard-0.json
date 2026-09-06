@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 26, "total": 53, "rows": 1011190, "note": "KAITO 30m: rule 61/120 (turtle)", "failed": [], "pct": 49.1, "updated": "2026-09-06T20:59:54Z"}
+{"shard": 0, "stage": "testing", "done": 27, "total": 53, "rows": 1041620, "note": "KOSPI 1h: rule 119/120 (cf_stflip_l1)", "failed": [], "pct": 50.9, "updated": "2026-09-06T21:00:39Z"}

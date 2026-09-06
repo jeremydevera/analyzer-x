@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 36, "total": 53, "rows": 1049228, "note": "PIEVERSE 1h: rule 18/120 (macd)", "failed": [], "pct": 67.9, "updated": "2026-09-06T01:01:24Z"}
+{"shard": 0, "stage": "testing", "done": 37, "total": 53, "rows": 1079258, "note": "PRL 1h: rule 2/120 (mom15)", "failed": [], "pct": 69.8, "updated": "2026-09-06T01:02:11Z"}

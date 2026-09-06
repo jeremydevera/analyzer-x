@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 6, "total": 53, "rows": 142778, "note": "AVGOSTOCK 4h: rule 82/120 (cf_maobv)", "failed": [], "pct": 11.3, "updated": "2026-09-06T22:20:02Z"}
+{"shard": 8, "stage": "testing", "done": 7, "total": 53, "rows": 189814, "note": "BAN 1d: 394 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-06T22:20:53Z"}

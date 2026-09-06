@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 32, "total": 53, "rows": 1427248, "note": "NEAR 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 60.4, "updated": "2026-09-06T13:53:06Z"}
+{"shard": 3, "stage": "testing", "done": 33, "total": 53, "rows": 1447108, "note": "NOM 15m: rule 1/120 (mom6)", "failed": [], "pct": 62.3, "updated": "2026-09-06T13:54:02Z"}

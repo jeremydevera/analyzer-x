@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 40, "total": 53, "rows": 1806608, "note": "RVN 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-06T14:08:49Z"}
+{"shard": 4, "stage": "testing", "done": 40, "total": 53, "rows": 1814968, "note": "RVN 30m: rule 32/120 (gmma)", "failed": [], "pct": 75.5, "updated": "2026-09-06T14:09:34Z"}

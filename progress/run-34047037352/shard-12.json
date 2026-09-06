@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 2, "total": 53, "rows": 56634, "note": "AIA 30m: rule 2/120 (mom15)", "failed": [], "pct": 3.8, "updated": "2026-09-06T16:58:43Z"}
+{"shard": 12, "stage": "testing", "done": 2, "total": 53, "rows": 66534, "note": "AIA 30m: rule 45/120 (zscore20)", "failed": [], "pct": 3.8, "updated": "2026-09-06T16:59:28Z"}

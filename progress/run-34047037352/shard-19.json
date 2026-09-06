@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 23, "total": 53, "rows": 1025306, "note": "IDOL 30m: rule 54/120 (fractal5)", "failed": [], "pct": 43.4, "updated": "2026-09-06T17:58:39Z"}
+{"shard": 19, "stage": "testing", "done": 24, "total": 53, "rows": 1038306, "note": "IO 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 45.3, "updated": "2026-09-06T17:59:37Z"}

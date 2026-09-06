@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 5, "total": 53, "rows": 159418, "note": "ASXSTOCK 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-06T22:58:16Z"}
+{"shard": 15, "stage": "testing", "done": 7, "total": 53, "rows": 204778, "note": "BBSTOCK 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 13.2, "updated": "2026-09-06T22:59:01Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 19, "total": 53, "rows": 761120, "note": "FLUID 1h: rule 13/120 (pivot)", "failed": [], "pct": 35.8, "updated": "2026-09-06T23:36:16Z"}
+{"shard": 4, "stage": "testing", "done": 19, "total": 53, "rows": 784220, "note": "FLUID 30m: 16,683 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-06T23:37:10Z"}

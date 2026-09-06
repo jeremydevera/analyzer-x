@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 28, "total": 53, "rows": 1286878, "note": "LTC 30m: rule 22/120 (engulf)", "failed": [], "pct": 52.8, "updated": "2026-09-06T14:26:45Z"}
+{"shard": 8, "stage": "testing", "done": 28, "total": 53, "rows": 1299078, "note": "LTC 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 52.8, "updated": "2026-09-06T14:27:30Z"}

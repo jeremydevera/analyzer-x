@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 15, "total": 53, "rows": 571100, "note": "DEEP 30m: rule 2/120 (mom15)", "failed": [], "pct": 28.3, "updated": "2026-09-06T05:08:30Z"}
+{"shard": 0, "stage": "testing", "done": 15, "total": 53, "rows": 587600, "note": "DEEP 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 28.3, "updated": "2026-09-06T05:09:16Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 12, "total": 53, "rows": 486470, "note": "CMCSASTOCK 30m: rule 46/120 (rsi2)", "failed": [], "pct": 22.6, "updated": "2026-09-06T23:10:33Z"}
+{"shard": 12, "stage": "testing", "done": 13, "total": 53, "rows": 504790, "note": "CROSS 1h: rule 20/120 (stoch14)", "failed": [], "pct": 24.5, "updated": "2026-09-06T23:11:19Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 46, "total": 53, "rows": 1691416, "note": "THETA 15m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 86.8, "updated": "2026-09-06T03:17:01Z"}
+{"shard": 4, "stage": "testing", "done": 47, "total": 53, "rows": 1720236, "note": "TRUST 4h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 88.7, "updated": "2026-09-06T03:17:46Z"}

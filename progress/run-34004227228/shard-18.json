@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 43, "total": 52, "rows": 1625896, "note": "SQD 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 82.7, "updated": "2026-09-06T02:48:44Z"}
+{"shard": 18, "stage": "testing", "done": 44, "total": 52, "rows": 1658456, "note": "SUSHI 4h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 84.6, "updated": "2026-09-06T02:49:29Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 9, "total": 53, "rows": 426432, "note": "BMT 30m: rule 52/120 (nr7)", "failed": [], "pct": 17.0, "updated": "2026-09-06T23:17:43Z"}
+{"shard": 4, "stage": "testing", "done": 9, "total": 53, "rows": 439412, "note": "BMT 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 17.0, "updated": "2026-09-06T23:18:29Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 34, "total": 53, "rows": 1274994, "note": "ONDSSTOCK 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 64.2, "updated": "2026-09-06T23:54:11Z"}
+{"shard": 6, "stage": "testing", "done": 37, "total": 53, "rows": 1289574, "note": "PROM 1h: rule 5/120 (rsi14)", "failed": [], "pct": 69.8, "updated": "2026-09-06T23:54:56Z"}

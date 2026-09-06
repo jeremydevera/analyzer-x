@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 7, "total": 53, "rows": 137098, "note": "BAS 4h: rule 43/120 (macddiv)", "failed": [], "pct": 13.2, "updated": "2026-09-06T16:28:16Z"}
+{"shard": 13, "stage": "testing", "done": 10, "total": 53, "rows": 183596, "note": "B 4h: rule 3/120 (fade15)", "failed": [], "pct": 18.9, "updated": "2026-09-06T16:29:01Z"}

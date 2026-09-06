@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 22, "total": 53, "rows": 985164, "note": "HFT 30m: rule 49/120 (vwaprev)", "failed": [], "pct": 41.5, "updated": "2026-09-06T13:37:00Z"}
+{"shard": 7, "stage": "testing", "done": 23, "total": 53, "rows": 992868, "note": "HYPER 15m: 34,629 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-06T13:37:45Z"}

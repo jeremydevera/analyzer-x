@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 50, "total": 52, "rows": 2613108, "note": "WOTAMALAILE 30m: rule 45/120 (zscore20)", "failed": [], "pct": 96.2, "updated": "2026-09-06T16:11:04Z"}
+{"shard": 18, "stage": "testing", "done": 51, "total": 52, "rows": 2638048, "note": "XOMSTOCK 15m: 22,601 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-06T16:11:50Z"}

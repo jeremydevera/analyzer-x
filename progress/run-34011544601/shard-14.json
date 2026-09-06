@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 25, "total": 52, "rows": 909120, "note": "JST 30m: rule 1/120 (mom6)", "failed": [], "pct": 48.1, "updated": "2026-09-06T05:44:33Z"}
+{"shard": 14, "stage": "testing", "done": 25, "total": 52, "rows": 919240, "note": "JST 30m: rule 43/120 (macddiv)", "failed": [], "pct": 48.1, "updated": "2026-09-06T05:45:18Z"}

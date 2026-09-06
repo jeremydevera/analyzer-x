@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 2, "total": 52, "rows": 116240, "note": "AIO 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-06T12:33:50Z"}
+{"shard": 18, "stage": "testing", "done": 4, "total": 52, "rows": 136780, "note": "ARB 15m: rule 2/120 (mom15)", "failed": [], "pct": 7.7, "updated": "2026-09-06T12:34:46Z"}

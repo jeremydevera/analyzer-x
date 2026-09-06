@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 47, "total": 52, "rows": 2439488, "note": "TUT 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 90.4, "updated": "2026-09-06T15:59:57Z"}
+{"shard": 18, "stage": "testing", "done": 48, "total": 52, "rows": 2462212, "note": "USDC 15m: 34,639 bars, testing 120 rules", "failed": [], "pct": 92.3, "updated": "2026-09-06T16:00:51Z"}

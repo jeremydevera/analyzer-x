@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 17, "total": 53, "rows": 711812, "note": "ETH 30m: rule 27/120 (aroon25)", "failed": [], "pct": 32.1, "updated": "2026-09-06T09:42:43Z"}
+{"shard": 13, "stage": "testing", "done": 17, "total": 53, "rows": 722812, "note": "ETH 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-06T09:43:28Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 4, "total": 53, "rows": 179022, "note": "APT 30m: rule 47/120 (ibs)", "failed": [], "pct": 7.5, "updated": "2026-09-06T17:07:12Z"}
+{"shard": 17, "stage": "testing", "done": 4, "total": 53, "rows": 192622, "note": "APT 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 7.5, "updated": "2026-09-06T17:07:58Z"}

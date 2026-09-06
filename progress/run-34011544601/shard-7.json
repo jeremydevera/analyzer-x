@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 37, "total": 53, "rows": 1461260, "note": "PTB 30m: rule 4/120 (trend50)", "failed": [], "pct": 69.8, "updated": "2026-09-06T06:49:21Z"}
+{"shard": 7, "stage": "testing", "done": 37, "total": 53, "rows": 1470060, "note": "PTB 30m: rule 44/120 (elder)", "failed": [], "pct": 69.8, "updated": "2026-09-06T06:50:07Z"}

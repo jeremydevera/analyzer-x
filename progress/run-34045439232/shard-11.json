@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 38, "total": 53, "rows": 842414, "note": "RAY 1d: 394 bars, testing 120 rules", "failed": [], "pct": 71.7, "updated": "2026-09-06T16:42:35Z"}
+{"shard": 11, "stage": "testing", "done": 44, "total": 53, "rows": 937960, "note": "STONKBROKER 1d: downloading candles", "failed": [], "pct": 83.0, "updated": "2026-09-06T16:43:20Z"}

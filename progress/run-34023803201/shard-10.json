@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 41, "total": 53, "rows": 1845220, "note": "SIGN 30m: rule 43/120 (macddiv)", "failed": [], "pct": 77.4, "updated": "2026-09-06T10:40:38Z"}
+{"shard": 10, "stage": "testing", "done": 41, "total": 53, "rows": 1857760, "note": "SIGN 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 77.4, "updated": "2026-09-06T10:41:23Z"}

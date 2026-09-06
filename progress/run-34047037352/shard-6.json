@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 19, "total": 53, "rows": 730444, "note": "FLUX 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 35.8, "updated": "2026-09-06T17:26:34Z"}
+{"shard": 6, "stage": "testing", "done": 22, "total": 53, "rows": 783618, "note": "HEI 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 41.5, "updated": "2026-09-06T17:27:22Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 13, "total": 53, "rows": 399080, "note": "COTI 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 24.5, "updated": "2026-09-06T02:08:36Z"}
+{"shard": 5, "stage": "testing", "done": 14, "total": 53, "rows": 407660, "note": "CTSI 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-06T02:09:28Z"}

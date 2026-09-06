@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 30, "total": 53, "rows": 1350132, "note": "MOCA 1d: 394 bars, testing 120 rules", "failed": [], "pct": 56.6, "updated": "2026-09-06T13:59:58Z"}
+{"shard": 11, "stage": "testing", "done": 32, "total": 53, "rows": 1372624, "note": "NEX 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 60.4, "updated": "2026-09-06T14:00:44Z"}

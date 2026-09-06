@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 35, "total": 52, "rows": 1562160, "note": "PEPE 1h: rule 4/120 (trend50)", "failed": [], "pct": 67.3, "updated": "2026-09-06T10:33:50Z"}
+{"shard": 17, "stage": "testing", "done": 35, "total": 52, "rows": 1584820, "note": "PEPE 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 67.3, "updated": "2026-09-06T10:34:36Z"}

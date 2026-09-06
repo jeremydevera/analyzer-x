@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 24, "total": 53, "rows": 1099364, "note": "INJ 30m: rule 72/120 (force13)", "failed": [], "pct": 45.3, "updated": "2026-09-06T13:49:56Z"}
+{"shard": 7, "stage": "testing", "done": 25, "total": 53, "rows": 1121436, "note": "JDSTOCK 15m: 25,374 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-06T13:50:43Z"}

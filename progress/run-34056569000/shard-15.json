@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 23, "total": 53, "rows": 874066, "note": "IBMSTOCK 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 43.4, "updated": "2026-09-06T20:29:11Z"}
+{"shard": 15, "stage": "testing", "done": 24, "total": 53, "rows": 896506, "note": "IOST 1h: rule 67/120 (pinbar)", "failed": [], "pct": 45.3, "updated": "2026-09-06T20:29:56Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 10, "total": 53, "rows": 474392, "note": "BSV 30m: rule 20/120 (stoch14)", "failed": [], "pct": 18.9, "updated": "2026-09-06T23:20:48Z"}
+{"shard": 4, "stage": "testing", "done": 10, "total": 53, "rows": 485392, "note": "BSV 30m: rule 71/120 (mfi14)", "failed": [], "pct": 18.9, "updated": "2026-09-06T23:21:34Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 13, "total": 53, "rows": 454830, "note": "COSTSTOCK 1h: rule 9/120 (fib382)", "failed": [], "pct": 24.5, "updated": "2026-09-06T00:40:57Z"}
+{"shard": 4, "stage": "testing", "done": 15, "total": 53, "rows": 514484, "note": "DEXE 1h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 28.3, "updated": "2026-09-06T00:41:42Z"}

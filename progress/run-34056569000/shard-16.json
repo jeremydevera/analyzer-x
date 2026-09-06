@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 27, "total": 53, "rows": 1218958, "note": "LINK 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-06T21:09:21Z"}
+{"shard": 16, "stage": "testing", "done": 27, "total": 53, "rows": 1225038, "note": "LINK 30m: rule 9/120 (fib382)", "failed": [], "pct": 50.9, "updated": "2026-09-06T21:10:06Z"}

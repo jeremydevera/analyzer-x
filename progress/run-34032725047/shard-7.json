@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 7, "total": 53, "rows": 298868, "note": "BANK 15m: rule 16/120 (keltner)", "failed": [], "pct": 13.2, "updated": "2026-09-06T12:46:58Z"}
+{"shard": 7, "stage": "testing", "done": 7, "total": 53, "rows": 303368, "note": "BANK 15m: rule 41/120 (tsi)", "failed": [], "pct": 13.2, "updated": "2026-09-06T12:47:44Z"}

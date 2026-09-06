@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 2, "total": 53, "rows": 46926, "note": "ADBESTOCK 1h: 8,483 bars, testing 120 rules", "failed": [], "pct": 3.8, "updated": "2026-09-06T00:29:47Z"}
+{"shard": 1, "stage": "testing", "done": 5, "total": 53, "rows": 93278, "note": "ARKK 1h: rule 15/120 (bbbreak)", "failed": [], "pct": 9.4, "updated": "2026-09-06T00:30:32Z"}

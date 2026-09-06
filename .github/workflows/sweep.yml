@@ -134,6 +134,13 @@ jobs:
                       except ValueError:
                           bad += 1
                           continue
+                      # a pair-done marker is bookkeeping, not a row — the
+                      # shard writes one per measured pair (zero rows
+                      # included) so the collect can see thin pairs; this
+                      # counter died on the first one (KeyError: 'signal',
+                      # run 34032725047)
+                      if r.get("pair_done"):
+                          continue
                       rows += 1
                       coins.add(r["coin"])
                       by[r["signal"]] += 1

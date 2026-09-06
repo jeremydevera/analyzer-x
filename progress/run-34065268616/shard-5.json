@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 25, "total": 53, "rows": 937114, "note": "JASMY 1h: rule 22/120 (engulf)", "failed": [], "pct": 47.2, "updated": "2026-09-06T23:36:34Z"}
+{"shard": 5, "stage": "testing", "done": 25, "total": 53, "rows": 958234, "note": "JASMY 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-06T23:37:20Z"}

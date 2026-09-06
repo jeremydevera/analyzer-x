@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 41, "total": 53, "rows": 1863588, "note": "SHELL 15m: rule 70/120 (cmf20)", "failed": [], "pct": 77.4, "updated": "2026-09-06T14:13:29Z"}
+{"shard": 4, "stage": "testing", "done": 41, "total": 53, "rows": 1872608, "note": "SHELL 15m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 77.4, "updated": "2026-09-06T14:14:14Z"}

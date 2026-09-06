@@ -126,6 +126,16 @@ def _keep_the_row_index_current() -> None:
                     _ca.tick()
                 except Exception as exc:                       # noqa: BLE001
                     print(f"[cloud-autopilot] failed: {exc!r}", flush=True)
+                # KEEP THE CANDLES FRESH. The store goes stale on its own —
+                # 0 pending at 10:55pm, 5,095 by 9:33am — because "behind" is
+                # measured against the clock and nothing ever topped it up
+                # without a person pressing UPDATE CANDLES (2026-09-06).
+                try:
+                    from tradingagents import candle_autopilot as _cda
+
+                    _cda.tick()
+                except Exception as exc:                       # noqa: BLE001
+                    print(f"[candle-autopilot] failed: {exc!r}", flush=True)
                 for kind in ("backtest", "download", "btupdate"):
                     try:
                         got = _dj.resume_if_died(kind)
@@ -738,42 +748,40 @@ def backtest_pending_resolve() -> dict:
     number it is named after.
     """
     from tradingagents import backtest_logs as bl, capacity as cap, cloud_sweep as cs, db_jobs as dj
-    from tradingagents.dataflows import mexc_futures as fx
 
     pend = bl.pending(force=True)          # never a cached count for an ACTION
+    # MEASURABLE, not "never measured". `pending()` already splits out the
+    # delisted contracts no fleet can reach and the pairs under their
+    # timeframe's bar floor, which no sweep will ever produce a row for.
+    # Measured Sep 06, 2026: 653 pending, 8 measurable, 645 too short, 24
+    # delisted. Promising 653 would send twenty runners for an hour to measure
+    # 8 pairs and leave the number at 645 for ever — a button that reads as
+    # broken because it was asked to do the impossible.
     frames = [t for t in ("15m", "30m", "1h", "4h", "1d")
-              if pend["by_timeframe"].get(t)]
+              if pend.get("measurable_by_timeframe", {}).get(t)]
+    short, dead = pend.get("too_short", 0), pend.get("delisted", 0)
+    dead_coins = pend.get("delisted_coins") or []
     if not frames:
-        return {"dispatched": False, "pending": 0, "timeframes": [],
-                "unreachable": 0, "unreachable_coins": [],
-                "why": "nothing is pending — every pair with candles on this "
-                       "PC has been measured"}
-
-    # PAIRS THE FLEET CANNOT REACH. A shard builds its coin list from MEXC's
-    # LIVE contract detail, so a pair whose coin has been delisted has candles
-    # here and can never be measured there. Measured Sep 05, 2026: 24 of the
-    # 681 pending, over 6 coins (ASP, BULLCOIN, CZ, DRV, MEZO, ST). Left
-    # unsaid, this button would stall the count at 24 and read as broken.
-    unreachable, dead_coins = 0, []
-    try:
-        live = {x["symbol"] for x in
-                (fx._get_public(f"{fx.BASE}/api/v1/contract/detail").get("data")
-                 or []) if int(x.get("state", 1)) == 0}
-        pairs = bl.pending_pairs()
-        dead = {s for s, _t in pairs if s not in live}
-        dead_coins = sorted(c.replace("_USDT", "") for c in dead)
-        unreachable = sum(1 for s, _t in pairs if s in dead)
-    except Exception:                                          # noqa: BLE001
-        # the venue is not answering: report the dispatch without the split
-        # rather than inventing one
-        unreachable, dead_coins = 0, []
-    if unreachable and unreachable >= pend["count"]:
+        blocked = []
+        if short:
+            worst = ", ".join(
+                f"{t}: {n}" for t, n in
+                sorted((pend.get("too_short_by_timeframe") or {}).items(),
+                       key=lambda kv: -kv[1]))
+            blocked.append(f"{short:,} under their timeframe's bar floor "
+                           f"({worst}) — young contracts, and no sweep makes "
+                           f"a row from a history that short")
+        if dead:
+            blocked.append(f"{dead} on contracts MEXC no longer lists "
+                           f"({', '.join(dead_coins)})")
         return {"dispatched": False, "pending": pend["count"],
-                "timeframes": [], "unreachable": unreachable,
-                "unreachable_coins": dead_coins,
-                "why": f"all {pend['count']} pending pair(s) are on contracts "
-                       f"MEXC no longer lists ({', '.join(dead_coins)}) — no "
-                       f"fleet can measure them, so nothing was dispatched"}
+                "measurable": 0, "too_short": short,
+                "unreachable": dead, "unreachable_coins": dead_coins,
+                "timeframes": [],
+                "why": ("nothing is pending — every pair with candles on this "
+                        "PC has been measured" if not pend["count"] else
+                        "nothing left that a sweep can measure: "
+                        + "; ".join(blocked))}
     ok, why = cs.available()
     if not ok:
         raise HTTPException(400, f"GitHub cannot take it: {why}")
@@ -810,16 +818,21 @@ def backtest_pending_resolve() -> dict:
                       days=int(spec.get("days") or 365),
                       base=float(spec.get("base") or 5.0))
     cs.remember(run)
-    reach = pend["count"] - unreachable
-    note = (f" · {unreachable} on delisted contract(s) "
-            f"({', '.join(dead_coins)}) no fleet can reach"
-            if unreachable else "")
+    reach = pend.get("measurable", 0)
+    rest = []
+    if short:
+        rest.append(f"{short:,} under their bar floor")
+    if dead:
+        rest.append(f"{dead} delisted ({', '.join(dead_coins)})")
+    note = f" · the other {'; '.join(rest)}" if rest else ""
     return {"dispatched": True, "run": run, "pending": pend["count"],
-            "reachable": reach, "unreachable": unreachable,
+            "measurable": reach, "reachable": reach,
+            "too_short": short, "unreachable": dead,
             "unreachable_coins": dead_coins,
             "timeframes": frames, "by_timeframe": pend["by_timeframe"],
-            "why": f"{reach:,} of {pend['count']:,} pending pair(s) sent over "
-                   f"{', '.join(frames)} — GitHub run {run.get('id')}{note}"}
+            "why": f"{reach:,} of {pend['count']:,} pending pair(s) can be "
+                   f"measured — sent over {', '.join(frames)}, GitHub run "
+                   f"{run.get('id')}{note}"}
 
 
 @app.get("/api/jobs")

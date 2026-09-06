@@ -182,7 +182,17 @@ ${(pending?.unfixable ?? 0).toLocaleString()} pair(s) cannot be fixed by any run
                whole run (2026-09-05) — every mode the job can be in needs one. */
             : dl.mode === "resolve" ? "resolving pending"
             : "downloading"}</Badge>}
-          {!coins.length && <span className="text-theme-xs text-gray-500 dark:text-gray-400">DOWNLOAD needs a coin; UPDATE tops up everything already stored</span>}
+          {/* WHY the buttons are grey. A top-up now starts BY ITSELF when the
+              store goes 3h stale (candle_autopilot), so from 2026-09-06 these
+              can be disabled at a moment the operator did not cause — and a
+              button that greys out for no stated reason reads as broken. */}
+          {dl?.running
+            ? <span className="text-theme-xs text-gray-500 dark:text-gray-400">
+                the buttons wait while a {dl.mode === "update" ? "top-up"
+                  : dl.mode === "resolve" ? "resolve" : "download"} is running
+                — candles top up on their own once the store is 3h behind
+              </span>
+            : !coins.length && <span className="text-theme-xs text-gray-500 dark:text-gray-400">DOWNLOAD needs a coin; UPDATE tops up everything already stored</span>}
         </div>
         {!!lost?.count && (
           <p className="mt-3 text-theme-xs text-error-500">

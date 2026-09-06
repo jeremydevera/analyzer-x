@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 18, "total": 53, "rows": 728494, "note": "EXPESTOCK 30m: 1,830 bars, testing 120 rules", "failed": [], "pct": 34.0, "updated": "2026-09-06T09:44:07Z"}
+{"shard": 2, "stage": "testing", "done": 19, "total": 53, "rows": 747294, "note": "FLOW 1h: rule 24/120 (psar)", "failed": [], "pct": 35.8, "updated": "2026-09-06T09:44:52Z"}

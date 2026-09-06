@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 40, "total": 53, "rows": 1018796, "note": "SANTOS 1d: 394 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-06T22:32:02Z"}
+{"shard": 14, "stage": "testing", "done": 43, "total": 53, "rows": 1095312, "note": "SPACE 4h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-06T22:32:47Z"}

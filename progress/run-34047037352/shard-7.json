@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 5, "total": 53, "rows": 162896, "note": "ARX 1h: 1,831 bars, testing 120 rules", "failed": [], "pct": 9.4, "updated": "2026-09-06T17:08:52Z"}
+{"shard": 7, "stage": "testing", "done": 6, "total": 53, "rows": 211472, "note": "AVA 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-06T17:09:50Z"}

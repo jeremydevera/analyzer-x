@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 35, "total": 53, "rows": 1302682, "note": "ORDER 30m: rule 52/120 (nr7)", "failed": [], "pct": 66.0, "updated": "2026-09-06T23:47:23Z"}
+{"shard": 1, "stage": "testing", "done": 36, "total": 53, "rows": 1319600, "note": "PHAROS 1h: rule 5/120 (rsi14)", "failed": [], "pct": 67.9, "updated": "2026-09-06T23:48:08Z"}

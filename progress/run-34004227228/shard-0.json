@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 2, "total": 53, "rows": 82920, "note": "ADA 15m: rule 32/120 (gmma)", "failed": [], "pct": 3.8, "updated": "2026-09-06T01:40:50Z"}
+{"shard": 0, "stage": "testing", "done": 2, "total": 53, "rows": 90440, "note": "ADA 15m: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 3.8, "updated": "2026-09-06T01:41:35Z"}

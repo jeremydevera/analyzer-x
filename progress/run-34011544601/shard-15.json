@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 10, "total": 52, "rows": 291180, "note": "CAKE 15m: rule 49/120 (vwaprev)", "failed": [], "pct": 19.2, "updated": "2026-09-06T04:40:08Z"}
+{"shard": 15, "stage": "testing", "done": 10, "total": 52, "rows": 301960, "note": "CAKE 15m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 19.2, "updated": "2026-09-06T04:40:55Z"}

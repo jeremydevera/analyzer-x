@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 31, "total": 53, "rows": 1143418, "note": "MUBARAK 1h: rule 4/120 (trend50)", "failed": [], "pct": 58.5, "updated": "2026-09-06T23:46:51Z"}
+{"shard": 11, "stage": "testing", "done": 31, "total": 53, "rows": 1163812, "note": "MUBARAK 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 58.5, "updated": "2026-09-06T23:47:37Z"}

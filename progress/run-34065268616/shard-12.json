@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 13, "total": 53, "rows": 526130, "note": "CROSS 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-06T23:12:12Z"}
+{"shard": 12, "stage": "testing", "done": 13, "total": 53, "rows": 529650, "note": "CROSS 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 24.5, "updated": "2026-09-06T23:12:58Z"}

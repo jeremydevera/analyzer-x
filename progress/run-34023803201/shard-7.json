@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 17, "total": 53, "rows": 662042, "note": "ERA 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-06T09:48:41Z"}
+{"shard": 7, "stage": "testing", "done": 19, "total": 53, "rows": 696882, "note": "FOGO 1h: rule 1/120 (mom6)", "failed": [], "pct": 35.8, "updated": "2026-09-06T09:49:26Z"}

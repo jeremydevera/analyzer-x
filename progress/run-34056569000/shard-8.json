@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 44, "total": 53, "rows": 1730476, "note": "STBL 30m: 17,052 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-06T21:43:37Z"}
+{"shard": 8, "stage": "testing", "done": 44, "total": 53, "rows": 1734216, "note": "STBL 30m: rule 11/120 (sr_break)", "failed": [], "pct": 83.0, "updated": "2026-09-06T21:44:22Z"}

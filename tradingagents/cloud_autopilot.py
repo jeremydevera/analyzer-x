@@ -299,8 +299,16 @@ def consider(*, now: float | None = None) -> dict:
         return {"dispatched": False, "missing": missing,
                 "why": f"dispatch refused: {type(exc).__name__}: {exc}"}
 
-    _write({"last_dispatch": now, "last_check": now, "run": run.get("id"),
-            "timeframes": tfs, "missing": missing})
+    # MERGE, never replace. This wrote a fresh dict and so deleted the whole
+    # collect ledger — `collected`, `collecting`, `collect_tries` — on every
+    # dispatch. With no memory of what had landed, the next tick re-collected
+    # runs it had already collected: measured Sep 06, 2026 from
+    # db_collect.log, 46 completions over 17 distinct runs, one of them FIVE
+    # times, each downloading 30-40 million rows of artifacts to keep zero
+    # pairs. The state file at that moment held only the five dispatch keys
+    # and no `collected` at all, which is what made it visible.
+    _write({**_read(), "last_dispatch": now, "last_check": now,
+            "run": run.get("id"), "timeframes": tfs, "missing": missing})
     covered = sum(missing.get(t, 0) for t in tfs)
     line = (f"[cloud-autopilot] GitHub was free — sent {', '.join(tfs)} "
             f"({covered} unmeasured pair(s) of {total}) to run "

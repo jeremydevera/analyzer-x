@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 29, "total": 53, "rows": 1183382, "note": "MASK 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 54.7, "updated": "2026-09-06T20:52:33Z"}
+{"shard": 5, "stage": "testing", "done": 31, "total": 53, "rows": 1246292, "note": "MSFU 1h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 58.5, "updated": "2026-09-06T20:53:18Z"}

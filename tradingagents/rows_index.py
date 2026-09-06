@@ -1669,7 +1669,19 @@ def _build_index(name) -> bool:
     killed the build mid-scan while the screen kept saying "being built in the
     background" — Preset Confluence spent an afternoon like that, 2026-08-27.
     """
-    if not name or name not in INDEX_DDL or name in _BUILDING:
+    if not name or name not in INDEX_DDL:
+        return False
+    # A DETACHED build ends without telling this process: the child clears
+    # the LOCK FILE, but _BUILDING and the has_index cache in the API still
+    # said "building" / False — so the panel kept answering "it is being
+    # built" FOREVER after the index existed, until a restart. rows_wr4 hit
+    # exactly this on 2026-09-06: built in 41 min, still refused after. The
+    # lock's absence is the signal the child finished (or died): forget this
+    # process's memory of it and look at the database again.
+    if name in _BUILDING and not _build_lock(name).exists():
+        _BUILDING.discard(name)
+        _INDEX_SEEN.pop((str(DB_PATH), name), None)
+    if name in _BUILDING:
         return False
     if has_index(name) is True:
         return False

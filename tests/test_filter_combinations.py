@@ -156,6 +156,27 @@ def test_row_id_overrides_every_filter(store):
     assert [r["id"] for r in got["rows"]] == [rid]
 
 
+def test_a_finished_detached_build_is_noticed_without_a_restart(store):
+    """The rows_wr4 build finished in 41 min on 2026-09-06 and the API kept
+    503ing 'it is being built' anyway: the detached child clears the lock
+    FILE, but the asking process's _BUILDING set and has_index cache were
+    never told. _build_index must notice the lock is gone and forget both,
+    so the next retry sees the built index instead of the stale refusal."""
+    name = "rows_wr2"
+    ri.build_index_now(name)          # the index EXISTS on disk
+    assert not ri._build_lock(name).exists()
+    # ...but this process still believes it is building and absent
+    ri._BUILDING.add(name)
+    ri._INDEX_SEEN[(str(ri.DB_PATH), name)] = False
+    try:
+        assert ri._build_index(name) is False   # nothing to build
+        assert name not in ri._BUILDING
+        assert ri.has_index(name) is True, \
+            "the cache still says the built index is missing"
+    finally:
+        ri._BUILDING.discard(name)
+
+
 def test_a_new_filter_must_join_this_spec(store):
     """Add a parameter to query() and this fails until the filter has an
     oracle here — which puts it through the alone/pairs/all sweeps above."""

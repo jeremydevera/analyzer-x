@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 50, "total": 52, "rows": 1829480, "note": "WLD 30m: rule 33/120 (heikin)", "failed": [], "pct": 96.2, "updated": "2026-09-06T07:08:56Z"}
+{"shard": 11, "stage": "testing", "done": 50, "total": 52, "rows": 1840480, "note": "WLD 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-06T07:09:41Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 39, "total": 53, "rows": 1434580, "note": "RIF 30m: rule 16/120 (keltner)", "failed": [], "pct": 73.6, "updated": "2026-09-06T06:36:24Z"}
+{"shard": 5, "stage": "testing", "done": 39, "total": 53, "rows": 1446460, "note": "RIF 30m: rule 71/120 (mfi14)", "failed": [], "pct": 73.6, "updated": "2026-09-06T06:37:10Z"}

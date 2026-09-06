@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 35, "total": 53, "rows": 1607338, "note": "PENGSTOCK 30m: rule 40/120 (crsi)", "failed": [], "pct": 66.0, "updated": "2026-09-06T14:19:51Z"}
+{"shard": 14, "stage": "testing", "done": 36, "total": 53, "rows": 1628068, "note": "POL 15m: rule 2/120 (mom15)", "failed": [], "pct": 67.9, "updated": "2026-09-06T14:20:39Z"}

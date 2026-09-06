@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 12, "total": 52, "rows": 433766, "note": "COOKIE 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 23.1, "updated": "2026-09-06T02:08:49Z"}
+{"shard": 19, "stage": "testing", "done": 13, "total": 52, "rows": 440690, "note": "CSPR 15m: 34,583 bars, testing 120 rules", "failed": [], "pct": 25.0, "updated": "2026-09-06T02:09:44Z"}

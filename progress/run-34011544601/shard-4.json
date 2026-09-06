@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 41, "total": 53, "rows": 1669680, "note": "SHIB 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 77.4, "updated": "2026-09-06T07:00:07Z"}
+{"shard": 4, "stage": "testing", "done": 43, "total": 53, "rows": 1685000, "note": "SOPH 15m: 34,603 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-06T07:00:55Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 25, "total": 53, "rows": 546718, "note": "JP225 1d: 136 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-06T16:34:30Z"}
+{"shard": 13, "stage": "testing", "done": 30, "total": 53, "rows": 596548, "note": "MONAD 4h: rule 3/120 (fade15)", "failed": [], "pct": 56.6, "updated": "2026-09-06T16:35:16Z"}

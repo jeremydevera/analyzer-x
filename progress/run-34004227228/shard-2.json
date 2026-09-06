@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 8, "total": 53, "rows": 268252, "note": "BERA 15m: rule 91/120 (cf_soup)", "failed": [], "pct": 15.1, "updated": "2026-09-06T01:59:50Z"}
+{"shard": 2, "stage": "testing", "done": 9, "total": 53, "rows": 291062, "note": "BMNRSTOCK 4h: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 17.0, "updated": "2026-09-06T02:00:35Z"}

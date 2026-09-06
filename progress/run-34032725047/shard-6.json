@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 52, "total": 53, "rows": 2378312, "note": "XVS 15m: rule 16/120 (keltner)", "failed": [], "pct": 98.1, "updated": "2026-09-06T15:39:39Z"}
+{"shard": 6, "stage": "testing", "done": 52, "total": 53, "rows": 2383372, "note": "XVS 15m: rule 39/120 (fisher)", "failed": [], "pct": 98.1, "updated": "2026-09-06T15:40:26Z"}

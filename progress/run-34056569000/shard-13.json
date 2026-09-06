@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 13, "total": 53, "rows": 568990, "note": "CRO 30m: rule 39/120 (fisher)", "failed": [], "pct": 24.5, "updated": "2026-09-06T20:23:28Z"}
+{"shard": 13, "stage": "testing", "done": 13, "total": 53, "rows": 582410, "note": "CRO 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 24.5, "updated": "2026-09-06T20:24:14Z"}

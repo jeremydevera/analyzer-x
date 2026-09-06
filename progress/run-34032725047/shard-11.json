@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 23, "total": 53, "rows": 929496, "note": "IBB 15m: 3,840 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-06T13:23:28Z"}
+{"shard": 11, "stage": "testing", "done": 24, "total": 53, "rows": 954096, "note": "INX 15m: rule 2/120 (mom15)", "failed": [], "pct": 45.3, "updated": "2026-09-06T13:24:15Z"}

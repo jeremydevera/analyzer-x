@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 44, "total": 52, "rows": 2202288, "note": "SUPER 15m: rule 21/120 (cci20)", "failed": [], "pct": 84.6, "updated": "2026-09-06T15:30:31Z"}
+{"shard": 19, "stage": "testing", "done": 44, "total": 52, "rows": 2207568, "note": "SUPER 15m: rule 45/120 (zscore20)", "failed": [], "pct": 84.6, "updated": "2026-09-06T15:31:16Z"}

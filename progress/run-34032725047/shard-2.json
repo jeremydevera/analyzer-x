@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 7, "total": 53, "rows": 275980, "note": "BABY 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 13.2, "updated": "2026-09-06T12:51:27Z"}
+{"shard": 2, "stage": "testing", "done": 8, "total": 53, "rows": 294368, "note": "BERA 15m: 34,626 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-06T12:52:15Z"}

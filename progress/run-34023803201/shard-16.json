@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 16, "total": 52, "rows": 780020, "note": "EIGEN 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 30.8, "updated": "2026-09-06T09:53:15Z"}
+{"shard": 16, "stage": "testing", "done": 17, "total": 52, "rows": 792780, "note": "EUR 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 32.7, "updated": "2026-09-06T09:54:00Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 28, "total": 53, "rows": 1011764, "note": "LUMIA 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 52.8, "updated": "2026-09-06T02:49:09Z"}
+{"shard": 9, "stage": "testing", "done": 30, "total": 53, "rows": 1034804, "note": "MNT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 56.6, "updated": "2026-09-06T02:50:01Z"}

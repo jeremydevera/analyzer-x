@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 35, "total": 53, "rows": 1570930, "note": "PANWSTOCK 30m: rule 55/120 (nhigh50)", "failed": [], "pct": 66.0, "updated": "2026-09-06T14:30:48Z"}
+{"shard": 6, "stage": "testing", "done": 36, "total": 53, "rows": 1593190, "note": "PI 15m: rule 1/120 (mom6)", "failed": [], "pct": 67.9, "updated": "2026-09-06T14:31:47Z"}

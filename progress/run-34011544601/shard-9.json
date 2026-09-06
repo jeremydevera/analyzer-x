@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 1, "total": 53, "rows": 17120, "note": "AALSTOCK 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-06T04:28:39Z"}
+{"shard": 9, "stage": "testing", "done": 2, "total": 53, "rows": 41600, "note": "AGI 15m: rule 1/120 (mom6)", "failed": [], "pct": 3.8, "updated": "2026-09-06T04:29:29Z"}

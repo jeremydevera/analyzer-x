@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 39, "total": 53, "rows": 1027702, "note": "RED 4h: rule 94/120 (cf_emarsi)", "failed": [], "pct": 73.6, "updated": "2026-09-06T22:36:46Z"}
+{"shard": 0, "stage": "testing", "done": 41, "total": 53, "rows": 1054410, "note": "SCR 4h: rule 32/120 (gmma)", "failed": [], "pct": 77.4, "updated": "2026-09-06T22:37:31Z"}

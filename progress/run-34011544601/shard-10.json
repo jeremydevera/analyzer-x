@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 2, "total": 53, "rows": 87320, "note": "AGLD 30m: rule 52/120 (nr7)", "failed": [], "pct": 3.8, "updated": "2026-09-06T04:34:09Z"}
+{"shard": 10, "stage": "testing", "done": 3, "total": 53, "rows": 102280, "note": "ALL 15m: 34,593 bars, testing 120 rules", "failed": [], "pct": 5.7, "updated": "2026-09-06T04:34:54Z"}

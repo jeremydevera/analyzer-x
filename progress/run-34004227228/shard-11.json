@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 39, "total": 52, "rows": 1202548, "note": "RLS 15m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 75.0, "updated": "2026-09-06T02:54:01Z"}
+{"shard": 11, "stage": "testing", "done": 40, "total": 52, "rows": 1210948, "note": "SAPIEN 4h: 2,288 bars, testing 120 rules", "failed": [], "pct": 76.9, "updated": "2026-09-06T02:54:48Z"}

@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 9, "total": 53, "rows": 304200, "note": "BMNRSTOCK 15m: 16,588 bars, testing 120 rules", "failed": [], "pct": 17.0, "updated": "2026-09-06T05:03:45Z"}
+{"shard": 2, "stage": "testing", "done": 9, "total": 53, "rows": 315260, "note": "BMNRSTOCK 15m: rule 73/120 (volspike)", "failed": [], "pct": 17.0, "updated": "2026-09-06T05:04:30Z"}

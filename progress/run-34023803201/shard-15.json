@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 24, "total": 52, "rows": 902552, "note": "IOTA 30m: rule 44/120 (elder)", "failed": [], "pct": 46.2, "updated": "2026-09-06T09:53:29Z"}
+{"shard": 15, "stage": "testing", "done": 24, "total": 52, "rows": 915092, "note": "IOTA 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 46.2, "updated": "2026-09-06T09:54:14Z"}

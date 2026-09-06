@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 21, "total": 53, "rows": 962138, "note": "GWEI 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 39.6, "updated": "2026-09-06T23:46:24Z"}
+{"shard": 16, "stage": "testing", "done": 23, "total": 53, "rows": 974850, "note": "ICNT 1h: rule 12/120 (donchian20)", "failed": [], "pct": 43.4, "updated": "2026-09-06T23:47:09Z"}

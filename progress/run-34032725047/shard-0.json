@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 30, "total": 53, "rows": 1259948, "note": "MEW 30m: rule 40/120 (crsi)", "failed": [], "pct": 56.6, "updated": "2026-09-06T13:24:57Z"}
+{"shard": 0, "stage": "testing", "done": 30, "total": 53, "rows": 1289780, "note": "MEW 1d: rule 104/120 (cf_eqhl_l1)", "failed": [], "pct": 56.6, "updated": "2026-09-06T13:25:42Z"}

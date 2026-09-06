@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 17, "total": 53, "rows": 593426, "note": "ETHFI 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-06T20:23:15Z"}
+{"shard": 11, "stage": "testing", "done": 17, "total": 53, "rows": 613886, "note": "ETHFI 1h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-06T20:24:00Z"}

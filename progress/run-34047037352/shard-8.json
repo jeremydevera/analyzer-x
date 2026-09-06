@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 44, "total": 53, "rows": 1737834, "note": "STBL 30m: rule 41/120 (tsi)", "failed": [], "pct": 83.0, "updated": "2026-09-06T18:24:54Z"}
+{"shard": 8, "stage": "testing", "done": 45, "total": 53, "rows": 1758474, "note": "SWARM 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-06T18:25:39Z"}

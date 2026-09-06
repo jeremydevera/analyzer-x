@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 17, "total": 52, "rows": 635760, "note": "ETH 15m: rule 6/120 (sweep30)", "failed": [], "pct": 32.7, "updated": "2026-09-06T05:29:11Z"}
+{"shard": 12, "stage": "testing", "done": 17, "total": 52, "rows": 641700, "note": "ETH 15m: rule 33/120 (heikin)", "failed": [], "pct": 32.7, "updated": "2026-09-06T05:29:57Z"}

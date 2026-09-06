@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 7, "total": 53, "rows": 178336, "note": "BACSTOCK 4h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-06T16:30:41Z"}
+{"shard": 3, "stage": "testing", "done": 11, "total": 53, "rows": 255630, "note": "CAT 4h: rule 9/120 (fib382)", "failed": [], "pct": 20.8, "updated": "2026-09-06T16:31:26Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 45, "total": 53, "rows": 1651460, "note": "TAC 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-06T07:14:11Z"}
+{"shard": 6, "stage": "testing", "done": 46, "total": 53, "rows": 1655960, "note": "TIA 15m: rule 1/120 (mom6)", "failed": [], "pct": 86.8, "updated": "2026-09-06T07:14:59Z"}

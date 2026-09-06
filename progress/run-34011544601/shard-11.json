@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 4, "total": 52, "rows": 135020, "note": "APHSTOCK 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 7.7, "updated": "2026-09-06T04:42:29Z"}
+{"shard": 11, "stage": "testing", "done": 5, "total": 52, "rows": 148680, "note": "ASTEROID 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 9.6, "updated": "2026-09-06T04:43:14Z"}

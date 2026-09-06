@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 44, "total": 53, "rows": 1988072, "note": "STAR 1d: 115 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-06T14:18:11Z"}
+{"shard": 4, "stage": "testing", "done": 45, "total": 53, "rows": 1989272, "note": "SXT 15m: rule 2/120 (mom15)", "failed": [], "pct": 84.9, "updated": "2026-09-06T14:18:57Z"}

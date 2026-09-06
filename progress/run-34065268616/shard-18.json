@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 24, "total": 53, "rows": 951002, "note": "IOTX 30m: rule 1/120 (mom6)", "failed": [], "pct": 45.3, "updated": "2026-09-06T23:55:39Z"}
+{"shard": 18, "stage": "testing", "done": 24, "total": 53, "rows": 956062, "note": "IOTX 30m: rule 20/120 (stoch14)", "failed": [], "pct": 45.3, "updated": "2026-09-06T23:56:25Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 22, "total": 52, "rows": 1000342, "note": "HNT 30m: rule 1/120 (mom6)", "failed": [], "pct": 42.3, "updated": "2026-09-06T09:57:05Z"}
+{"shard": 17, "stage": "testing", "done": 22, "total": 52, "rows": 1005402, "note": "HNT 30m: rule 20/120 (stoch14)", "failed": [], "pct": 42.3, "updated": "2026-09-06T09:57:51Z"}

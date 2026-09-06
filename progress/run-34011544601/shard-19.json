@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 25, "total": 52, "rows": 816500, "note": "KAS 30m: rule 24/120 (psar)", "failed": [], "pct": 48.1, "updated": "2026-09-06T05:53:35Z"}
+{"shard": 19, "stage": "testing", "done": 25, "total": 52, "rows": 829500, "note": "KAS 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 48.1, "updated": "2026-09-06T05:54:20Z"}

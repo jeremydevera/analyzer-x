@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 26, "total": 53, "rows": 979400, "note": "KAVA 30m: rule 51/120 (orb)", "failed": [], "pct": 49.1, "updated": "2026-09-06T20:49:47Z"}
+{"shard": 3, "stage": "testing", "done": 26, "total": 53, "rows": 994360, "note": "KAVA 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 49.1, "updated": "2026-09-06T20:50:32Z"}

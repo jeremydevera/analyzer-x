@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 33, "total": 53, "rows": 1311118, "note": "NOM 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 62.3, "updated": "2026-09-06T20:57:17Z"}
+{"shard": 4, "stage": "testing", "done": 33, "total": 53, "rows": 1326958, "note": "NOM 30m: rule 110/120 (cf_fundfade_l1)", "failed": [], "pct": 62.3, "updated": "2026-09-06T20:58:02Z"}

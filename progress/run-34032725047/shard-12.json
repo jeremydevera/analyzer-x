@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 19, "total": 53, "rows": 884954, "note": "FRAX 15m: 22,481 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-06T13:20:15Z"}
+{"shard": 12, "stage": "testing", "done": 19, "total": 53, "rows": 887594, "note": "FRAX 15m: rule 6/120 (sweep30)", "failed": [], "pct": 35.8, "updated": "2026-09-06T13:21:02Z"}

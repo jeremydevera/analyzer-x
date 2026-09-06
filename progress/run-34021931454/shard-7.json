@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 42, "total": 53, "rows": 1028708, "note": "SLX 4h: rule 33/120 (heikin)", "failed": [], "pct": 79.2, "updated": "2026-09-06T08:47:13Z"}
+{"shard": 7, "stage": "testing", "done": 44, "total": 53, "rows": 1107048, "note": "STG 1d: 394 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-06T08:48:03Z"}

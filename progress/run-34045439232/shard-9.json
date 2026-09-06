@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 38, "total": 53, "rows": 938850, "note": "RARE 1d: 394 bars, testing 120 rules", "failed": [], "pct": 71.7, "updated": "2026-09-06T16:43:19Z"}
+{"shard": 9, "stage": "testing", "done": 40, "total": 53, "rows": 979066, "note": "SAGA 1d: 394 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-06T16:44:15Z"}

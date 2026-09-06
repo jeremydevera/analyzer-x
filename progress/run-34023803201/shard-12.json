@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 15, "total": 53, "rows": 607782, "note": "DKNGSTOCK 30m: rule 20/120 (stoch14)", "failed": [], "pct": 28.3, "updated": "2026-09-06T09:26:33Z"}
+{"shard": 12, "stage": "testing", "done": 16, "total": 53, "rows": 649200, "note": "EDGE 30m: 8,198 bars, testing 120 rules", "failed": [], "pct": 30.2, "updated": "2026-09-06T09:27:26Z"}

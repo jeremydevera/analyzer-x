@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 9, "total": 53, "rows": 330420, "note": "BLUAI 30m: rule 23/120 (supertrend)", "failed": [], "pct": 17.0, "updated": "2026-09-06T04:52:32Z"}
+{"shard": 0, "stage": "testing", "done": 10, "total": 53, "rows": 351320, "note": "BR 15m: 34,594 bars, testing 120 rules", "failed": [], "pct": 18.9, "updated": "2026-09-06T04:53:25Z"}

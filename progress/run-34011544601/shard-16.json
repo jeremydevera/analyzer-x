@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 7, "total": 52, "rows": 302460, "note": "BB 30m: rule 42/120 (rsidiv)", "failed": [], "pct": 13.5, "updated": "2026-09-06T05:06:08Z"}
+{"shard": 16, "stage": "testing", "done": 7, "total": 52, "rows": 314560, "note": "BB 30m: rule 98/120 (cf_ttm_l1)", "failed": [], "pct": 13.5, "updated": "2026-09-06T05:06:53Z"}

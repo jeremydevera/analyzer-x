@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 16, "total": 53, "rows": 611246, "note": "EGLD 30m: rule 1/120 (mom6)", "failed": [], "pct": 30.2, "updated": "2026-09-06T20:17:53Z"}
+{"shard": 15, "stage": "testing", "done": 16, "total": 53, "rows": 620486, "note": "EGLD 30m: rule 39/120 (fisher)", "failed": [], "pct": 30.2, "updated": "2026-09-06T20:18:39Z"}

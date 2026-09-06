@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 38, "total": 52, "rows": 1489674, "note": "RECALL 15m: rule 41/120 (tsi)", "failed": [], "pct": 73.1, "updated": "2026-09-06T03:16:25Z"}
+{"shard": 15, "stage": "testing", "done": 38, "total": 52, "rows": 1496874, "note": "RECALL 15m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 73.1, "updated": "2026-09-06T03:17:12Z"}

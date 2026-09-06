@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 43, "total": 53, "rows": 1070220, "note": "SPOTSTOCK 4h: 1,245 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-06T16:47:10Z"}
+{"shard": 19, "stage": "testing", "done": 44, "total": 53, "rows": 1130046, "note": "STX 1d: rule 46/120 (rsi2)", "failed": [], "pct": 83.0, "updated": "2026-09-06T16:47:55Z"}

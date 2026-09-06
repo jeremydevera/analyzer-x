@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 41, "total": 53, "rows": 1662520, "note": "SHOPSTOCK 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 77.4, "updated": "2026-09-06T07:03:35Z"}
+{"shard": 7, "stage": "testing", "done": 42, "total": 53, "rows": 1700960, "note": "SMH 30m: rule 95/120 (cf_emarsi_l1)", "failed": [], "pct": 79.2, "updated": "2026-09-06T07:04:20Z"}

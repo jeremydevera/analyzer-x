@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 45, "total": 53, "rows": 1884862, "note": "TAC 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-06T18:28:36Z"}
+{"shard": 14, "stage": "testing", "done": 46, "total": 53, "rows": 1892122, "note": "TIA 1h: rule 27/120 (aroon25)", "failed": [], "pct": 86.8, "updated": "2026-09-06T18:29:21Z"}

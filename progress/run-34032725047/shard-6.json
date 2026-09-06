@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 39, "total": 53, "rows": 1786230, "note": "RIF 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 73.6, "updated": "2026-09-06T14:46:35Z"}
+{"shard": 6, "stage": "testing", "done": 40, "total": 53, "rows": 1800294, "note": "SAGA 15m: rule 1/120 (mom6)", "failed": [], "pct": 75.5, "updated": "2026-09-06T14:47:32Z"}

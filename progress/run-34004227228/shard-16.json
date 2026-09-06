@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 22, "total": 52, "rows": 872668, "note": "HNT 15m: rule 16/120 (keltner)", "failed": [], "pct": 42.3, "updated": "2026-09-06T02:41:30Z"}
+{"shard": 16, "stage": "testing", "done": 22, "total": 52, "rows": 877468, "note": "HNT 15m: rule 40/120 (crsi)", "failed": [], "pct": 42.3, "updated": "2026-09-06T02:42:16Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 3, "total": 53, "rows": 109890, "note": "ALGO 1h: rule 23/120 (supertrend)", "failed": [], "pct": 5.7, "updated": "2026-09-06T22:57:36Z"}
+{"shard": 6, "stage": "testing", "done": 3, "total": 53, "rows": 131010, "note": "ALGO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 5.7, "updated": "2026-09-06T22:58:22Z"}

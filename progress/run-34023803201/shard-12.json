@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 24, "total": 53, "rows": 1000534, "note": "IN 30m: rule 55/120 (nhigh50)", "failed": [], "pct": 45.3, "updated": "2026-09-06T09:40:25Z"}
+{"shard": 12, "stage": "testing", "done": 25, "total": 53, "rows": 1014834, "note": "JP225 1h: 3,265 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-06T09:41:13Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 53, "total": 53, "rows": 1804626, "note": "ZKC 15m: rule 44/120 (elder)", "failed": [], "pct": 100.0, "updated": "2026-09-06T03:04:21Z"}
+{"shard": 3, "stage": "testing", "done": 53, "total": 53, "rows": 1816946, "note": "ZKC 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-06T03:05:07Z"}

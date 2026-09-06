@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 52, "total": 53, "rows": 2261396, "note": "XNY 30m: rule 63/120 (killzone)", "failed": [], "pct": 98.1, "updated": "2026-09-06T21:47:12Z"}
+{"shard": 2, "stage": "testing", "done": 53, "total": 53, "rows": 2273276, "note": "ZEN 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-06T21:48:01Z"}

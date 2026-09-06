@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 15, "total": 53, "rows": 740650, "note": "DISCOSTOCK 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 28.3, "updated": "2026-09-06T13:16:11Z"}
+{"shard": 9, "stage": "testing", "done": 17, "total": 53, "rows": 749590, "note": "ESP 15m: rule 3/120 (fade15)", "failed": [], "pct": 32.1, "updated": "2026-09-06T13:17:01Z"}

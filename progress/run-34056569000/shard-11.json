@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 3, "total": 53, "rows": 133540, "note": "ALPINE 30m: rule 61/120 (turtle)", "failed": [], "pct": 5.7, "updated": "2026-09-06T20:06:50Z"}
+{"shard": 11, "stage": "testing", "done": 4, "total": 53, "rows": 177048, "note": "APHSTOCK 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 7.5, "updated": "2026-09-06T20:07:35Z"}

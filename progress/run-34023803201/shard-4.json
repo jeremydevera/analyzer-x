@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 6, "total": 53, "rows": 251378, "note": "AVAAI 1h: rule 9/120 (fib382)", "failed": [], "pct": 11.3, "updated": "2026-09-06T09:19:39Z"}
+{"shard": 4, "stage": "testing", "done": 6, "total": 53, "rows": 270518, "note": "AVAAI 1h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 11.3, "updated": "2026-09-06T09:20:25Z"}

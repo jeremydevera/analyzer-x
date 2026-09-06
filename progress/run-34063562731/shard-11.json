@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 42, "total": 53, "rows": 940990, "note": "SMCISTOCK 4h: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 79.2, "updated": "2026-09-06T22:34:15Z"}
+{"shard": 11, "stage": "testing", "done": 45, "total": 53, "rows": 974108, "note": "SYN 4h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-06T22:35:00Z"}

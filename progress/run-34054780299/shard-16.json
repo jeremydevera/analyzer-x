@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 17, "total": 53, "rows": 570224, "note": "EUR 4h: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-06T19:33:24Z"}
+{"shard": 16, "stage": "testing", "done": 18, "total": 53, "rows": 613956, "note": "FILECOIN 1d: 394 bars, testing 120 rules", "failed": [], "pct": 34.0, "updated": "2026-09-06T19:34:14Z"}

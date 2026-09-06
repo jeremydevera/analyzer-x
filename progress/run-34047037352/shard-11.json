@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 52, "total": 53, "rows": 2056016, "note": "XVS 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-06T18:34:05Z"}
+{"shard": 11, "stage": "testing", "done": 52, "total": 53, "rows": 2061736, "note": "XVS 30m: rule 20/120 (stoch14)", "failed": [], "pct": 98.1, "updated": "2026-09-06T18:34:52Z"}

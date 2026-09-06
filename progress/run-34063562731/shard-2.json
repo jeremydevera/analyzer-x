@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 39, "total": 53, "rows": 1022280, "note": "RENDER 4h: rule 47/120 (ibs)", "failed": [], "pct": 73.6, "updated": "2026-09-06T22:34:06Z"}
+{"shard": 2, "stage": "testing", "done": 40, "total": 53, "rows": 1060384, "note": "ROSE 4h: rule 46/120 (rsi2)", "failed": [], "pct": 75.5, "updated": "2026-09-06T22:34:52Z"}

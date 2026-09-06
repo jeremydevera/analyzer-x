@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 37, "total": 53, "rows": 1409880, "note": "PUMPFUN 15m: rule 21/120 (cci20)", "failed": [], "pct": 69.8, "updated": "2026-09-06T06:10:44Z"}
+{"shard": 10, "stage": "testing", "done": 37, "total": 53, "rows": 1415160, "note": "PUMPFUN 15m: rule 45/120 (zscore20)", "failed": [], "pct": 69.8, "updated": "2026-09-06T06:11:29Z"}

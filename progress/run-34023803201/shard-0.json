@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 9, "total": 53, "rows": 364854, "note": "BLUAI 30m: rule 61/120 (turtle)", "failed": [], "pct": 17.0, "updated": "2026-09-06T09:34:41Z"}
+{"shard": 0, "stage": "testing", "done": 11, "total": 53, "rows": 394894, "note": "CATE 1h: 988 bars, testing 120 rules", "failed": [], "pct": 20.8, "updated": "2026-09-06T09:35:26Z"}

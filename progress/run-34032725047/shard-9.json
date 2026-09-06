@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 37, "total": 53, "rows": 1463824, "note": "PUFFER 15m: rule 56/120 (insidebrk)", "failed": [], "pct": 69.8, "updated": "2026-09-06T13:53:33Z"}
+{"shard": 9, "stage": "testing", "done": 37, "total": 53, "rows": 1472104, "note": "PUFFER 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 69.8, "updated": "2026-09-06T13:54:18Z"}

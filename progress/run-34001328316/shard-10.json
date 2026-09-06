@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 4, "total": 53, "rows": 139950, "note": "APE 1h: rule 54/120 (fractal5)", "failed": [], "pct": 7.5, "updated": "2026-09-06T00:32:19Z"}
+{"shard": 10, "stage": "testing", "done": 5, "total": 53, "rows": 165554, "note": "ASR 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 9.4, "updated": "2026-09-06T00:33:10Z"}

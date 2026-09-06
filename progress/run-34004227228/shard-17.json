@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 49, "total": 52, "rows": 1931112, "note": "VTHO 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 94.2, "updated": "2026-09-06T04:02:55Z"}
+{"shard": 17, "stage": "testing", "done": 50, "total": 52, "rows": 1937712, "note": "W 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 96.2, "updated": "2026-09-06T04:03:43Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 18, "total": 53, "rows": 758850, "note": "FHE 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 34.0, "updated": "2026-09-06T20:16:39Z"}
+{"shard": 12, "stage": "testing", "done": 18, "total": 53, "rows": 766770, "note": "FHE 30m: rule 30/120 (kama10)", "failed": [], "pct": 34.0, "updated": "2026-09-06T20:17:24Z"}

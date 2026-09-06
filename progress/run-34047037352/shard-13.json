@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 28, "total": 53, "rows": 1075442, "note": "LUNC 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 52.8, "updated": "2026-09-06T17:47:40Z"}
+{"shard": 13, "stage": "testing", "done": 30, "total": 53, "rows": 1084064, "note": "MONAD 1h: rule 13/120 (pivot)", "failed": [], "pct": 56.6, "updated": "2026-09-06T17:48:26Z"}

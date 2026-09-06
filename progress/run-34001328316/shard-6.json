@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 38, "total": 53, "rows": 1040642, "note": "RARE 1h: rule 33/120 (heikin)", "failed": [], "pct": 71.7, "updated": "2026-09-06T01:00:12Z"}
+{"shard": 6, "stage": "testing", "done": 40, "total": 53, "rows": 1080222, "note": "SAHARA 1d: 394 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-06T01:01:10Z"}

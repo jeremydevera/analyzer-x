@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 46, "total": 53, "rows": 1561820, "note": "TFUEL 15m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 86.8, "updated": "2026-09-06T03:18:46Z"}
+{"shard": 1, "stage": "testing", "done": 47, "total": 53, "rows": 1585748, "note": "TRIA 15m: rule 1/120 (mom6)", "failed": [], "pct": 88.7, "updated": "2026-09-06T03:19:35Z"}

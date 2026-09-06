@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 43, "total": 53, "rows": 1038234, "note": "SOXL 4h: rule 63/120 (killzone)", "failed": [], "pct": 81.1, "updated": "2026-09-06T19:38:08Z"}
+{"shard": 10, "stage": "testing", "done": 47, "total": 53, "rows": 1100366, "note": "TROLLSOL 4h: 753 bars, testing 120 rules", "failed": [], "pct": 88.7, "updated": "2026-09-06T19:38:53Z"}

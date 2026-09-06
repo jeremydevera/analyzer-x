@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 52, "total": 53, "rows": 2037540, "note": "XTZ 1h: rule 2/120 (mom15)", "failed": [], "pct": 98.1, "updated": "2026-09-06T10:51:15Z"}
+{"shard": 4, "stage": "testing", "done": 52, "total": 53, "rows": 2058880, "note": "XTZ 1h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-06T10:52:00Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 15, "total": 53, "rows": 658808, "note": "DOCUSTOCK 30m: downloading candles", "failed": [], "pct": 28.3, "updated": "2026-09-06T20:28:16Z"}
+{"shard": 13, "stage": "testing", "done": 16, "total": 53, "rows": 685988, "note": "EDU 1h: rule 21/120 (cci20)", "failed": [], "pct": 30.2, "updated": "2026-09-06T20:29:01Z"}

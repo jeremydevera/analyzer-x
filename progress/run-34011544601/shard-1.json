@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 1, "total": 53, "rows": 4600, "note": "1000000BABYDOGE 15m: rule 17/120 (atrbreak)", "failed": [], "pct": 1.9, "updated": "2026-09-06T04:29:30Z"}
+{"shard": 1, "stage": "testing", "done": 1, "total": 53, "rows": 10000, "note": "1000000BABYDOGE 15m: rule 44/120 (elder)", "failed": [], "pct": 1.9, "updated": "2026-09-06T04:30:17Z"}

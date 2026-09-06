@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 26, "total": 53, "rows": 786998, "note": "KGEN 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 49.1, "updated": "2026-09-06T02:43:14Z"}
+{"shard": 5, "stage": "testing", "done": 27, "total": 53, "rows": 800318, "note": "LASERTECSTOCK 15m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-06T02:43:59Z"}

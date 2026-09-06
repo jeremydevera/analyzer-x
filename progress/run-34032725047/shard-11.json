@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 40, "total": 53, "rows": 1811368, "note": "SANTOS 30m: rule 23/120 (supertrend)", "failed": [], "pct": 75.5, "updated": "2026-09-06T14:32:53Z"}
+{"shard": 11, "stage": "testing", "done": 40, "total": 53, "rows": 1823248, "note": "SANTOS 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-06T14:33:40Z"}

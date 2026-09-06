@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 29, "total": 53, "rows": 641058, "note": "MELANIA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 54.7, "updated": "2026-09-06T16:35:41Z"}
+{"shard": 12, "stage": "testing", "done": 30, "total": 53, "rows": 682970, "note": "MOCA 4h: rule 6/120 (sweep30)", "failed": [], "pct": 56.6, "updated": "2026-09-06T16:36:26Z"}

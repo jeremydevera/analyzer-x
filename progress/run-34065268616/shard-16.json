@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 14, "total": 53, "rows": 659180, "note": "DASH 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-06T23:29:09Z"}
+{"shard": 16, "stage": "testing", "done": 15, "total": 53, "rows": 666420, "note": "DOGS 1h: rule 16/120 (keltner)", "failed": [], "pct": 28.3, "updated": "2026-09-06T23:29:54Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 21, "total": 52, "rows": 653488, "note": "HALSTOCK 1d: rule 21/120 (cci20)", "failed": [], "pct": 40.4, "updated": "2026-09-06T00:49:58Z"}
+{"shard": 18, "stage": "testing", "done": 22, "total": 52, "rows": 690370, "note": "HOME 1h: rule 2/120 (mom15)", "failed": [], "pct": 42.3, "updated": "2026-09-06T00:50:46Z"}

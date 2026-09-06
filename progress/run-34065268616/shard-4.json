@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 28, "total": 53, "rows": 1091284, "note": "LPT 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 52.8, "updated": "2026-09-06T23:48:00Z"}
+{"shard": 4, "stage": "testing", "done": 30, "total": 53, "rows": 1131116, "note": "MINA 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 56.6, "updated": "2026-09-06T23:48:47Z"}

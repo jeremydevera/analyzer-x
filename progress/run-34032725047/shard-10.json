@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 13, "total": 53, "rows": 620768, "note": "CRDOSTOCK 15m: 8,653 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-06T12:52:59Z"}
+{"shard": 10, "stage": "testing", "done": 14, "total": 53, "rows": 671138, "note": "CVXSTOCK 15m: rule 2/120 (mom15)", "failed": [], "pct": 26.4, "updated": "2026-09-06T12:53:44Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 5, "total": 52, "rows": 249854, "note": "ATH 30m: rule 97/120 (cf_ttm)", "failed": [], "pct": 9.6, "updated": "2026-09-06T09:26:00Z"}
+{"shard": 16, "stage": "testing", "done": 7, "total": 52, "rows": 282108, "note": "BB 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 13.5, "updated": "2026-09-06T09:26:46Z"}

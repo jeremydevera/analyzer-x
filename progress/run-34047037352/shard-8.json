@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 36, "total": 53, "rows": 1324934, "note": "PI 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 67.9, "updated": "2026-09-06T18:04:30Z"}
+{"shard": 8, "stage": "testing", "done": 36, "total": 53, "rows": 1333514, "note": "PI 30m: rule 33/120 (heikin)", "failed": [], "pct": 67.9, "updated": "2026-09-06T18:05:16Z"}

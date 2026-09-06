@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 41, "total": 53, "rows": 1557926, "note": "SEI 1h: rule 94/120 (cf_emarsi)", "failed": [], "pct": 77.4, "updated": "2026-09-06T17:53:03Z"}
+{"shard": 1, "stage": "testing", "done": 41, "total": 53, "rows": 1568826, "note": "SEI 30m: rule 21/120 (cci20)", "failed": [], "pct": 77.4, "updated": "2026-09-06T17:53:48Z"}

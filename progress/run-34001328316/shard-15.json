@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 18, "total": 52, "rows": 572152, "note": "FILECOIN 1h: rule 94/120 (cf_emarsi)", "failed": [], "pct": 34.6, "updated": "2026-09-06T00:40:27Z"}
+{"shard": 15, "stage": "testing", "done": 21, "total": 52, "rows": 619694, "note": "GWEI 1h: 5,460 bars, testing 120 rules", "failed": [], "pct": 40.4, "updated": "2026-09-06T00:41:12Z"}

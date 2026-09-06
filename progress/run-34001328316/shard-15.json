@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 2, "total": 52, "rows": 49620, "note": "AIN 1h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-06T00:29:24Z"}
+{"shard": 15, "stage": "testing", "done": 6, "total": 52, "rows": 138780, "note": "AXTISTOCK 1h: rule 4/120 (trend50)", "failed": [], "pct": 11.5, "updated": "2026-09-06T00:30:09Z"}

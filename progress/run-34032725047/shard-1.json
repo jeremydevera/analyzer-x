@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 30, "total": 53, "rows": 1295102, "note": "ME 15m: 34,631 bars, testing 120 rules", "failed": [], "pct": 56.6, "updated": "2026-09-06T14:00:05Z"}
+{"shard": 1, "stage": "testing", "done": 30, "total": 53, "rows": 1297082, "note": "ME 15m: rule 3/120 (fade15)", "failed": [], "pct": 56.6, "updated": "2026-09-06T14:01:00Z"}

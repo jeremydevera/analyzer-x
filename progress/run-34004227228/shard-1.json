@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 42, "total": 53, "rows": 1356138, "note": "SKY 15m: 34,586 bars, testing 120 rules", "failed": [], "pct": 79.2, "updated": "2026-09-06T02:58:15Z"}
+{"shard": 1, "stage": "testing", "done": 42, "total": 53, "rows": 1358118, "note": "SKY 15m: rule 3/120 (fade15)", "failed": [], "pct": 79.2, "updated": "2026-09-06T02:59:03Z"}

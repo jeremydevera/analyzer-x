@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 21, "total": 53, "rows": 927314, "note": "GRAM 15m: rule 2/120 (mom15)", "failed": [], "pct": 39.6, "updated": "2026-09-06T13:34:44Z"}
+{"shard": 7, "stage": "testing", "done": 21, "total": 53, "rows": 952714, "note": "GRAM 30m: rule 4/120 (trend50)", "failed": [], "pct": 39.6, "updated": "2026-09-06T13:35:29Z"}

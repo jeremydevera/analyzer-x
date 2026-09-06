@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 46, "total": 52, "rows": 1961100, "note": "TRB 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 88.5, "updated": "2026-09-06T07:49:07Z"}
+{"shard": 18, "stage": "testing", "done": 46, "total": 52, "rows": 1965720, "note": "TRB 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 88.5, "updated": "2026-09-06T07:49:52Z"}

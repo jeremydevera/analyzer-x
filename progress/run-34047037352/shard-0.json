@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 5, "total": 53, "rows": 204538, "note": "ARIA 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-06T17:10:11Z"}
+{"shard": 0, "stage": "testing", "done": 6, "total": 53, "rows": 216598, "note": "AUDIO 1h: rule 100/120 (cf_soup1)", "failed": [], "pct": 11.3, "updated": "2026-09-06T17:10:56Z"}

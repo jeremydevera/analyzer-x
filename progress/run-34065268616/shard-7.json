@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 13, "total": 53, "rows": 532762, "note": "COW 30m: rule 24/120 (psar)", "failed": [], "pct": 24.5, "updated": "2026-09-06T23:18:00Z"}
+{"shard": 7, "stage": "testing", "done": 13, "total": 53, "rows": 548382, "note": "COW 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 24.5, "updated": "2026-09-06T23:18:46Z"}

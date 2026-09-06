@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 41, "total": 53, "rows": 1639716, "note": "SCR 1h: rule 16/120 (keltner)", "failed": [], "pct": 77.4, "updated": "2026-09-06T21:31:19Z"}
+{"shard": 0, "stage": "testing", "done": 41, "total": 53, "rows": 1662156, "note": "SCR 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 77.4, "updated": "2026-09-06T21:32:20Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 25, "total": 53, "rows": 1191074, "note": "JP225 30m: rule 57/120 (orderblock)", "failed": [], "pct": 47.2, "updated": "2026-09-06T13:36:34Z"}
+{"shard": 12, "stage": "testing", "done": 27, "total": 53, "rows": 1217574, "note": "LHXSTOCK 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-06T13:37:19Z"}

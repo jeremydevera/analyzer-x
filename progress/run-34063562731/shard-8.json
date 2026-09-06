@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 7, "total": 53, "rows": 189814, "note": "BAN 1d: 394 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-06T22:20:53Z"}
+{"shard": 8, "stage": "testing", "done": 10, "total": 53, "rows": 244594, "note": "BTX 4h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 18.9, "updated": "2026-09-06T22:21:38Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 25, "total": 53, "rows": 734456, "note": "JUP 1d: 394 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-06T19:38:31Z"}
+{"shard": 18, "stage": "testing", "done": 26, "total": 53, "rows": 774936, "note": "KOMA 1d: 394 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-06T19:39:20Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 26, "total": 53, "rows": 504056, "note": "KITE 4h: rule 68/120 (dbltop)", "failed": [], "pct": 49.1, "updated": "2026-09-06T08:37:04Z"}
+{"shard": 11, "stage": "testing", "done": 28, "total": 53, "rows": 553204, "note": "LUNANEW 1d: 394 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-06T08:37:57Z"}

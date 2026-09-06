@@ -315,3 +315,15 @@ def test_the_shard_writes_one_marker_per_measured_pair():
         "an under-floor pair returns BEFORE the marker — too_short pairs must stay pending"
     assert s.index('lines.append(json.dumps({"coin": coin, "tf": tf, "pair_done"') \
         < s.index('out.write("".join(lines))'), "the marker rides in the same write"
+
+
+def test_every_ci_script_actually_compiles():
+    """Run 34032342553 (Sep 06, 2026 8:11pm): all 20 shards died in five
+    minutes on a SyntaxError a text-grepping test could not see — a heredoc
+    had turned the marker's newline escape into a literal newline. A CI
+    script's first test is that Python can read it."""
+    import pathlib
+    import py_compile
+
+    for f in pathlib.Path(".github/scripts").glob("*.py"):
+        py_compile.compile(str(f), doraise=True)

@@ -271,8 +271,7 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
     # last_ms so the pair gets a real watermark.
     lines.append(json.dumps({"coin": coin, "tf": tf, "pair_done": True,
                              "last_ms": int(ts[-1]) if len(ts) else 0,
-                             "rows": kept, "bars": nbars}) + "
-")
+                             "rows": kept, "bars": nbars}) + "\n")
     out.write("".join(lines))
     out.flush()
     return kept

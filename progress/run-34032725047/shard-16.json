@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 8, "total": 52, "rows": 409084, "note": "BLAST 1d: 394 bars, testing 120 rules", "failed": [], "pct": 15.4, "updated": "2026-09-06T13:04:45Z"}
+{"shard": 16, "stage": "testing", "done": 9, "total": 52, "rows": 441304, "note": "BRKBSTOCK 30m: 5,326 bars, testing 120 rules", "failed": [], "pct": 17.3, "updated": "2026-09-06T13:05:31Z"}

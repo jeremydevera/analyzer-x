@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 37, "total": 53, "rows": 1510410, "note": "PUNDIX 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 69.8, "updated": "2026-09-06T18:09:11Z"}
+{"shard": 14, "stage": "testing", "done": 38, "total": 53, "rows": 1551668, "note": "RCATSTOCK 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 71.7, "updated": "2026-09-06T18:09:56Z"}

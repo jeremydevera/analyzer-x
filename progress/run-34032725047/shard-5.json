@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 8, "total": 53, "rows": 374652, "note": "BICO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-06T12:52:17Z"}
+{"shard": 5, "stage": "testing", "done": 8, "total": 53, "rows": 377852, "note": "BICO 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 15.1, "updated": "2026-09-06T12:53:02Z"}

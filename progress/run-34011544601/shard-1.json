@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 44, "total": 53, "rows": 1632800, "note": "STABLE 15m: rule 3/120 (fade15)", "failed": [], "pct": 83.0, "updated": "2026-09-06T06:33:37Z"}
+{"shard": 1, "stage": "testing", "done": 44, "total": 53, "rows": 1637600, "note": "STABLE 15m: rule 27/120 (aroon25)", "failed": [], "pct": 83.0, "updated": "2026-09-06T06:34:23Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 5, "total": 53, "rows": 118800, "note": "ASTER 4h: rule 17/120 (atrbreak)", "failed": [], "pct": 9.4, "updated": "2026-09-06T16:29:17Z"}
+{"shard": 12, "stage": "testing", "done": 10, "total": 53, "rows": 238258, "note": "BXSTOCK 1d: rule 54/120 (fractal5)", "failed": [], "pct": 18.9, "updated": "2026-09-06T16:30:02Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 33, "total": 53, "rows": 1274272, "note": "NMR 30m: rule 43/120 (macddiv)", "failed": [], "pct": 62.3, "updated": "2026-09-06T10:11:41Z"}
+{"shard": 1, "stage": "testing", "done": 33, "total": 53, "rows": 1287692, "note": "NMR 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 62.3, "updated": "2026-09-06T10:12:28Z"}

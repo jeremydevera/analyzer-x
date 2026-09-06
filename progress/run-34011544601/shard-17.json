@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 29, "total": 52, "rows": 1221380, "note": "METIS 15m: rule 58/120 (bos)", "failed": [], "pct": 55.8, "updated": "2026-09-06T05:43:25Z"}
+{"shard": 17, "stage": "testing", "done": 29, "total": 52, "rows": 1233780, "note": "METIS 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 55.8, "updated": "2026-09-06T05:44:24Z"}

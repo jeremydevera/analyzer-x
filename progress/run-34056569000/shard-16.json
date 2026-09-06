@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 38, "total": 53, "rows": 1675732, "note": "RDDTSTOCK 30m: rule 1/120 (mom6)", "failed": [], "pct": 71.7, "updated": "2026-09-06T21:30:51Z"}
+{"shard": 16, "stage": "testing", "done": 38, "total": 53, "rows": 1693332, "note": "RDDTSTOCK 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 71.7, "updated": "2026-09-06T21:31:36Z"}

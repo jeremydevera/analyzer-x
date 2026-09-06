@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 22, "total": 53, "rows": 788298, "note": "HEI 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-06T02:20:42Z"}
+{"shard": 4, "stage": "testing", "done": 23, "total": 53, "rows": 818018, "note": "HUMA 15m: 34,584 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-06T02:21:40Z"}

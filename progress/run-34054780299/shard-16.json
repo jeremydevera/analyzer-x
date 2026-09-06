@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 11, "total": 53, "rows": 353528, "note": "CFG 4h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 20.8, "updated": "2026-09-06T19:30:24Z"}
+{"shard": 16, "stage": "testing", "done": 14, "total": 53, "rows": 436012, "note": "DASH 4h: rule 10/120 (sr_bounce)", "failed": [], "pct": 26.4, "updated": "2026-09-06T19:31:09Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 30, "total": 53, "rows": 1060348, "note": "ME 15m: rule 1/120 (mom6)", "failed": [], "pct": 56.6, "updated": "2026-09-06T02:51:39Z"}
+{"shard": 0, "stage": "testing", "done": 30, "total": 53, "rows": 1062768, "note": "ME 15m: rule 8/120 (fib618)", "failed": [], "pct": 56.6, "updated": "2026-09-06T02:52:25Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 45, "total": 53, "rows": 2012912, "note": "SUSHI 15m: rule 21/120 (cci20)", "failed": [], "pct": 84.9, "updated": "2026-09-06T14:50:14Z"}
+{"shard": 1, "stage": "testing", "done": 45, "total": 53, "rows": 2018192, "note": "SUSHI 15m: rule 45/120 (zscore20)", "failed": [], "pct": 84.9, "updated": "2026-09-06T14:51:01Z"}

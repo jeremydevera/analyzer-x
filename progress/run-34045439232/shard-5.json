@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 3, "total": 53, "rows": 66572, "note": "ALCH 1d: 394 bars, testing 120 rules", "failed": [], "pct": 5.7, "updated": "2026-09-06T16:28:17Z"}
+{"shard": 5, "stage": "testing", "done": 6, "total": 53, "rows": 126552, "note": "AVAVSTOCK 1d: 69 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-06T16:29:03Z"}

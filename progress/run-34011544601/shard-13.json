@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 44, "total": 52, "rows": 1641040, "note": "SUI 15m: rule 49/120 (vwaprev)", "failed": [], "pct": 84.6, "updated": "2026-09-06T06:51:16Z"}
+{"shard": 13, "stage": "testing", "done": 44, "total": 52, "rows": 1648780, "note": "SUI 15m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 84.6, "updated": "2026-09-06T06:52:03Z"}

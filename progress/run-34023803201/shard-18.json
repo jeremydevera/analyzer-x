@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 23, "total": 52, "rows": 922626, "note": "IDOL 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 44.2, "updated": "2026-09-06T10:01:26Z"}
+{"shard": 18, "stage": "testing", "done": 23, "total": 52, "rows": 927226, "note": "IDOL 30m: rule 17/120 (atrbreak)", "failed": [], "pct": 44.2, "updated": "2026-09-06T10:02:12Z"}

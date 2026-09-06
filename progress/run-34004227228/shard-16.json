@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 1, "total": 52, "rows": 27760, "note": "ACE 15m: rule 16/120 (keltner)", "failed": [], "pct": 1.9, "updated": "2026-09-06T01:36:56Z"}
+{"shard": 16, "stage": "testing", "done": 1, "total": 52, "rows": 32440, "note": "ACE 15m: rule 42/120 (rsidiv)", "failed": [], "pct": 1.9, "updated": "2026-09-06T01:37:41Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 7, "total": 52, "rows": 163956, "note": "BAT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 13.5, "updated": "2026-09-06T00:32:34Z"}
+{"shard": 14, "stage": "testing", "done": 7, "total": 52, "rows": 180676, "note": "BAT 1h: rule 71/120 (mfi14)", "failed": [], "pct": 13.5, "updated": "2026-09-06T00:33:19Z"}

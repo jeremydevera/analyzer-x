@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 10, "total": 53, "rows": 380320, "note": "BTW 30m: rule 20/120 (stoch14)", "failed": [], "pct": 18.9, "updated": "2026-09-06T20:23:55Z"}
+{"shard": 7, "stage": "testing", "done": 11, "total": 53, "rows": 433394, "note": "CCJSTOCK 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 20.8, "updated": "2026-09-06T20:24:40Z"}

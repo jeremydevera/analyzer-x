@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 1, "total": 53, "rows": 0, "note": "0G 1h: downloading candles", "failed": [], "pct": 1.9, "updated": "2026-09-06T22:52:55Z"}
+{"shard": 0, "stage": "testing", "done": 1, "total": 53, "rows": 8580, "note": "0G 1h: rule 33/120 (heikin)", "failed": [], "pct": 1.9, "updated": "2026-09-06T22:53:40Z"}

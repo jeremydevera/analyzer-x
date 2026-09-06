@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 15, "total": 52, "rows": 482604, "note": "DOGS 4h: rule 3/120 (fade15)", "failed": [], "pct": 28.8, "updated": "2026-09-06T08:36:31Z"}
+{"shard": 16, "stage": "testing", "done": 16, "total": 52, "rows": 520488, "note": "EIGEN 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 30.8, "updated": "2026-09-06T08:37:16Z"}

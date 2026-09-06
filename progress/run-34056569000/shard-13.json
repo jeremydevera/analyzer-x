@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 39, "total": 53, "rows": 1510928, "note": "RLC 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 73.6, "updated": "2026-09-06T21:11:10Z"}
+{"shard": 13, "stage": "testing", "done": 39, "total": 53, "rows": 1520608, "note": "RLC 30m: rule 60/120 (eqraid)", "failed": [], "pct": 73.6, "updated": "2026-09-06T21:11:55Z"}

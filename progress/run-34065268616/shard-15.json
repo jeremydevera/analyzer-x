@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 37, "total": 53, "rows": 1402414, "note": "PURRSTOCK 30m: rule 4/120 (trend50)", "failed": [], "pct": 69.8, "updated": "2026-09-06T23:53:41Z"}
+{"shard": 15, "stage": "testing", "done": 39, "total": 53, "rows": 1452614, "note": "ROAM 1h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 73.6, "updated": "2026-09-06T23:54:26Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 51, "total": 53, "rows": 2147880, "note": "XDC 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-06T07:56:47Z"}
+{"shard": 4, "stage": "testing", "done": 53, "total": 53, "rows": 2179820, "note": "ZKP 15m: 25,043 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-06T07:57:36Z"}

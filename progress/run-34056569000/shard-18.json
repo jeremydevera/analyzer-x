@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 46, "total": 53, "rows": 1955690, "note": "TNSR 30m: rule 83/120 (cf_maobv_l1)", "failed": [], "pct": 86.8, "updated": "2026-09-06T21:35:50Z"}
+{"shard": 18, "stage": "testing", "done": 47, "total": 53, "rows": 1988382, "note": "TSMSTOCK 30m: 9,004 bars, testing 120 rules", "failed": [], "pct": 88.7, "updated": "2026-09-06T21:36:35Z"}

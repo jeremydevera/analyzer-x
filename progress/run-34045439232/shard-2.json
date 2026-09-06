@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 14, "total": 53, "rows": 384922, "note": "CTC 1d: 394 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-06T16:33:51Z"}
+{"shard": 2, "stage": "testing", "done": 19, "total": 53, "rows": 465200, "note": "FLOW 4h: rule 4/120 (trend50)", "failed": [], "pct": 35.8, "updated": "2026-09-06T16:34:36Z"}

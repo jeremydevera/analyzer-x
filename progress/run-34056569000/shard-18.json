@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 52, "total": 53, "rows": 2142520, "note": "ZAMA 30m: rule 5/120 (rsi14)", "failed": [], "pct": 98.1, "updated": "2026-09-06T21:41:07Z"}
+{"shard": 18, "stage": "testing", "done": 52, "total": 53, "rows": 2162980, "note": "ZAMA 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 98.1, "updated": "2026-09-06T21:41:52Z"}

@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 8, "total": 53, "rows": 326960, "note": "BIO 15m: rule 1/120 (mom6)", "failed": [], "pct": 15.1, "updated": "2026-09-06T04:54:21Z"}
+{"shard": 10, "stage": "testing", "done": 8, "total": 53, "rows": 328940, "note": "BIO 15m: rule 6/120 (sweep30)", "failed": [], "pct": 15.1, "updated": "2026-09-06T04:55:07Z"}

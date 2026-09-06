@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 52, "total": 52, "rows": 2237372, "note": "ZEN 1h: rule 24/120 (psar)", "failed": [], "pct": 100.0, "updated": "2026-09-06T11:02:41Z"}
+{"shard": 17, "stage": "testing", "done": 52, "total": 52, "rows": 2258052, "note": "ZEN 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-06T11:03:27Z"}

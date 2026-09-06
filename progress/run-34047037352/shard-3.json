@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 3, "total": 53, "rows": 89532, "note": "AKT 1h: rule 9/120 (fib382)", "failed": [], "pct": 5.7, "updated": "2026-09-06T17:02:28Z"}
+{"shard": 3, "stage": "testing", "done": 3, "total": 53, "rows": 111532, "note": "AKT 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 5.7, "updated": "2026-09-06T17:03:13Z"}

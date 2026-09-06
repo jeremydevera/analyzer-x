@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 24, "total": 52, "rows": 977720, "note": "IO 15m: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 46.2, "updated": "2026-09-06T05:29:54Z"}
+{"shard": 17, "stage": "testing", "done": 24, "total": 52, "rows": 985720, "note": "IO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 46.2, "updated": "2026-09-06T05:30:44Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 29, "total": 53, "rows": 731362, "note": "MAVIA 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 54.7, "updated": "2026-09-06T00:53:17Z"}
+{"shard": 5, "stage": "testing", "done": 29, "total": 53, "rows": 745442, "note": "MAVIA 1h: rule 59/120 (choch)", "failed": [], "pct": 54.7, "updated": "2026-09-06T00:54:02Z"}

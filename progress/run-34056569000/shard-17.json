@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 49, "total": 53, "rows": 2089344, "note": "VET 30m: rule 46/120 (rsi2)", "failed": [], "pct": 92.5, "updated": "2026-09-06T21:40:13Z"}
+{"shard": 17, "stage": "testing", "done": 49, "total": 53, "rows": 2103424, "note": "VET 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 92.5, "updated": "2026-09-06T21:40:58Z"}

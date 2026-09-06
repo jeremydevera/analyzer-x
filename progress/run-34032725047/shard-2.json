@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 43, "total": 53, "rows": 1895560, "note": "SOMI 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-06T14:40:27Z"}
+{"shard": 2, "stage": "testing", "done": 43, "total": 53, "rows": 1902160, "note": "SOMI 30m: 18,105 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-06T14:41:16Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 22, "total": 53, "rows": 860904, "note": "HEMI 30m: 17,943 bars, testing 120 rules", "failed": [], "pct": 41.5, "updated": "2026-09-06T23:30:31Z"}
+{"shard": 7, "stage": "testing", "done": 22, "total": 53, "rows": 865744, "note": "HEMI 30m: rule 16/120 (keltner)", "failed": [], "pct": 41.5, "updated": "2026-09-06T23:31:17Z"}

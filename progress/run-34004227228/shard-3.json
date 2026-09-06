@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 30, "total": 53, "rows": 951826, "note": "MINIMAXSTOCK 15m: downloading candles", "failed": [], "pct": 56.6, "updated": "2026-09-06T02:19:01Z"}
+{"shard": 3, "stage": "testing", "done": 32, "total": 53, "rows": 983006, "note": "NECSTOCK 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 60.4, "updated": "2026-09-06T02:19:46Z"}

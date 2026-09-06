@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 7, "total": 53, "rows": 216252, "note": "BABY 15m: rule 82/120 (cf_maobv)", "failed": [], "pct": 13.2, "updated": "2026-09-06T01:54:48Z"}
+{"shard": 2, "stage": "testing", "done": 8, "total": 53, "rows": 223092, "note": "BERA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-06T01:55:46Z"}

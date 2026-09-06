@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 32, "total": 53, "rows": 680536, "note": "NEIROCTO 1d: 394 bars, testing 120 rules", "failed": [], "pct": 60.4, "updated": "2026-09-06T16:37:43Z"}
+{"shard": 6, "stage": "testing", "done": 37, "total": 53, "rows": 749740, "note": "PROM 4h: rule 16/120 (keltner)", "failed": [], "pct": 69.8, "updated": "2026-09-06T16:38:28Z"}

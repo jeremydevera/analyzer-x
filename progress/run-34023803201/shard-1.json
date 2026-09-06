@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 18, "total": 53, "rows": 662608, "note": "EWZ 30m: rule 13/120 (pivot)", "failed": [], "pct": 34.0, "updated": "2026-09-06T09:43:28Z"}
+{"shard": 1, "stage": "testing", "done": 20, "total": 53, "rows": 688608, "note": "GALA 1h: rule 20/120 (stoch14)", "failed": [], "pct": 37.7, "updated": "2026-09-06T09:44:13Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 7, "total": 53, "rows": 257038, "note": "B3 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 13.2, "updated": "2026-09-06T20:17:05Z"}
+{"shard": 0, "stage": "testing", "done": 7, "total": 53, "rows": 265178, "note": "B3 30m: rule 47/120 (ibs)", "failed": [], "pct": 13.2, "updated": "2026-09-06T20:17:51Z"}

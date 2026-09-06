@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 34, "total": 52, "rows": 1263640, "note": "OPG 15m: rule 3/120 (fade15)", "failed": [], "pct": 65.4, "updated": "2026-09-06T06:19:55Z"}
+{"shard": 13, "stage": "testing", "done": 34, "total": 52, "rows": 1274040, "note": "OPG 15m: rule 56/120 (insidebrk)", "failed": [], "pct": 65.4, "updated": "2026-09-06T06:20:40Z"}

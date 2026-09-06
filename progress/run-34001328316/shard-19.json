@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 29, "total": 52, "rows": 827838, "note": "MEW 1h: rule 92/120 (cf_soup_l1)", "failed": [], "pct": 55.8, "updated": "2026-09-06T00:54:05Z"}
+{"shard": 19, "stage": "testing", "done": 32, "total": 52, "rows": 877430, "note": "NKESTOCK 1h: 1,954 bars, testing 120 rules", "failed": [], "pct": 61.5, "updated": "2026-09-06T00:54:53Z"}

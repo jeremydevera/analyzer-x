@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 53, "total": 53, "rows": 2155360, "note": "ZRX 15m: rule 4/120 (trend50)", "failed": [], "pct": 100.0, "updated": "2026-09-06T07:33:49Z"}
+{"shard": 9, "stage": "testing", "done": 53, "total": 53, "rows": 2160560, "note": "ZRX 15m: rule 30/120 (kama10)", "failed": [], "pct": 100.0, "updated": "2026-09-06T07:34:34Z"}

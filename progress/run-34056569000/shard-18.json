@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 37, "total": 53, "rows": 1575484, "note": "PYTH 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 69.8, "updated": "2026-09-06T21:21:11Z"}
+{"shard": 18, "stage": "testing", "done": 38, "total": 53, "rows": 1589782, "note": "RECALL 1h: rule 45/120 (zscore20)", "failed": [], "pct": 71.7, "updated": "2026-09-06T21:21:56Z"}

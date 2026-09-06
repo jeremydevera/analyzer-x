@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 34, "total": 53, "rows": 1296960, "note": "OPENAI 15m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 64.2, "updated": "2026-09-06T06:00:44Z"}
+{"shard": 10, "stage": "testing", "done": 35, "total": 53, "rows": 1324400, "note": "PDDSTOCK 15m: 15,741 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-06T06:01:33Z"}

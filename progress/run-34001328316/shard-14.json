@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 26, "total": 52, "rows": 770120, "note": "KNC 1h: rule 40/120 (crsi)", "failed": [], "pct": 50.0, "updated": "2026-09-06T00:51:07Z"}
+{"shard": 14, "stage": "testing", "done": 27, "total": 52, "rows": 800744, "note": "LINK 1h: rule 1/120 (mom6)", "failed": [], "pct": 51.9, "updated": "2026-09-06T00:51:53Z"}

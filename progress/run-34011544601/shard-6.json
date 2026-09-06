@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 45, "total": 53, "rows": 1609240, "note": "TAC 15m: rule 14/120 (bb20)", "failed": [], "pct": 84.9, "updated": "2026-09-06T07:08:50Z"}
+{"shard": 6, "stage": "testing", "done": 45, "total": 53, "rows": 1613200, "note": "TAC 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 84.9, "updated": "2026-09-06T07:09:36Z"}

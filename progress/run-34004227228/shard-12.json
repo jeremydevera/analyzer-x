@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 35, "total": 52, "rows": 1195126, "note": "PENDLE 15m: rule 71/120 (mfi14)", "failed": [], "pct": 67.3, "updated": "2026-09-06T03:00:46Z"}
+{"shard": 12, "stage": "testing", "done": 35, "total": 52, "rows": 1202606, "note": "PENDLE 15m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 67.3, "updated": "2026-09-06T03:01:31Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 20, "total": 53, "rows": 754428, "note": "GMESTOCK 30m: rule 74/120 (volclimax)", "failed": [], "pct": 37.7, "updated": "2026-09-06T23:42:19Z"}
+{"shard": 18, "stage": "testing", "done": 21, "total": 53, "rows": 767148, "note": "HAEDAL 1h: rule 15/120 (bbbreak)", "failed": [], "pct": 39.6, "updated": "2026-09-06T23:43:04Z"}

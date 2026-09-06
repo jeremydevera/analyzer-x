@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 40, "total": 53, "rows": 976126, "note": "SAGA 4h: rule 92/120 (cf_soup_l1)", "failed": [], "pct": 75.5, "updated": "2026-09-06T19:42:02Z"}
+{"shard": 9, "stage": "testing", "done": 43, "total": 53, "rows": 1003604, "note": "SOPH 4h: rule 2/120 (mom15)", "failed": [], "pct": 81.1, "updated": "2026-09-06T19:42:48Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 5, "total": 52, "rows": 148690, "note": "ASTER 1h: rule 19/120 (emacross)", "failed": [], "pct": 9.6, "updated": "2026-09-06T00:32:36Z"}
+{"shard": 12, "stage": "testing", "done": 7, "total": 52, "rows": 207276, "note": "BASTOCK 1h: 5,635 bars, testing 120 rules", "failed": [], "pct": 13.5, "updated": "2026-09-06T00:33:23Z"}

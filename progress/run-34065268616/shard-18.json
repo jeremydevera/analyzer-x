@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 4, "total": 53, "rows": 151434, "note": "ARB 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 7.5, "updated": "2026-09-06T23:04:47Z"}
+{"shard": 18, "stage": "testing", "done": 5, "total": 53, "rows": 160012, "note": "AT 1h: rule 5/120 (rsi14)", "failed": [], "pct": 9.4, "updated": "2026-09-06T23:05:33Z"}

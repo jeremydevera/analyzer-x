@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 13, "total": 53, "rows": 440286, "note": "CRMSTOCK 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 24.5, "updated": "2026-09-06T23:11:27Z"}
+{"shard": 11, "stage": "testing", "done": 14, "total": 53, "rows": 449246, "note": "CVX 1h: rule 18/120 (macd)", "failed": [], "pct": 26.4, "updated": "2026-09-06T23:12:13Z"}

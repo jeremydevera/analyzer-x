@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 16, "total": 53, "rows": 674910, "note": "DUSK 30m: rule 47/120 (ibs)", "failed": [], "pct": 30.2, "updated": "2026-09-06T17:25:08Z"}
+{"shard": 4, "stage": "testing", "done": 17, "total": 53, "rows": 690750, "note": "ENS 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-06T17:25:57Z"}

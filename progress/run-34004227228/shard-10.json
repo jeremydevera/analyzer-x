@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 5, "total": 53, "rows": 241312, "note": "ASR 15m: rule 100/120 (cf_soup1)", "failed": [], "pct": 9.4, "updated": "2026-09-06T01:45:25Z"}
+{"shard": 10, "stage": "testing", "done": 6, "total": 53, "rows": 271132, "note": "AWE 15m: 34,582 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-06T01:46:20Z"}

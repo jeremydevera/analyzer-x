@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 44, "total": 53, "rows": 2020884, "note": "STRK 15m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 83.0, "updated": "2026-09-06T14:45:01Z"}
+{"shard": 12, "stage": "testing", "done": 44, "total": 53, "rows": 2029024, "note": "STRK 15m: rule 115/120 (cf_diadx)", "failed": [], "pct": 83.0, "updated": "2026-09-06T14:45:46Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 8, "total": 52, "rows": 336000, "note": "BLAST 15m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 15.4, "updated": "2026-09-06T05:10:05Z"}
+{"shard": 16, "stage": "testing", "done": 8, "total": 52, "rows": 343800, "note": "BLAST 15m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 15.4, "updated": "2026-09-06T05:10:50Z"}

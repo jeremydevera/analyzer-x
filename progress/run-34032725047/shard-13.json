@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 17, "total": 53, "rows": 819716, "note": "ETH 15m: rule 44/120 (elder)", "failed": [], "pct": 32.1, "updated": "2026-09-06T13:09:38Z"}
+{"shard": 13, "stage": "testing", "done": 17, "total": 53, "rows": 829616, "note": "ETH 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-06T13:10:25Z"}

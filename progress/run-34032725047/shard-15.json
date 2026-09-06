@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 9, "total": 52, "rows": 362154, "note": "BREV 1d: rule 112/120 (cf_obretest)", "failed": [], "pct": 17.3, "updated": "2026-09-06T12:28:20Z"}
+{"shard": 15, "stage": "testing", "done": 10, "total": 52, "rows": 373464, "note": "CAD 15m: rule 112/120 (cf_obretest)", "failed": [], "pct": 19.2, "updated": "2026-09-06T12:29:05Z"}

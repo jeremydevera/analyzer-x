@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 2, "total": 53, "rows": 77810, "note": "AGLD 30m: rule 6/120 (sweep30)", "failed": [], "pct": 3.8, "updated": "2026-09-06T12:22:58Z"}
+{"shard": 10, "stage": "testing", "done": 2, "total": 53, "rows": 96070, "note": "AGLD 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-06T12:23:43Z"}

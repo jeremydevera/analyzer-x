@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 51, "total": 53, "rows": 2240102, "note": "XLM 15m: 34,633 bars, testing 120 rules", "failed": [], "pct": 96.2, "updated": "2026-09-06T14:31:44Z"}
+{"shard": 13, "stage": "testing", "done": 51, "total": 53, "rows": 2243342, "note": "XLM 15m: rule 12/120 (donchian20)", "failed": [], "pct": 96.2, "updated": "2026-09-06T14:32:30Z"}

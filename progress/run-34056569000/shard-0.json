@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 1, "total": 53, "rows": 0, "note": "0G 1h: downloading candles", "failed": [], "pct": 1.9, "updated": "2026-09-06T19:59:47Z"}
+{"shard": 0, "stage": "testing", "done": 1, "total": 53, "rows": 26180, "note": "0G 30m: 17,000 bars, testing 120 rules", "failed": [], "pct": 1.9, "updated": "2026-09-06T20:00:33Z"}

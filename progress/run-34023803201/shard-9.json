@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 40, "total": 53, "rows": 1417842, "note": "SAMSUNGSTOCK 1h: rule 36/120 (stochrsi)", "failed": [], "pct": 75.5, "updated": "2026-09-06T10:12:03Z"}
+{"shard": 9, "stage": "testing", "done": 41, "total": 53, "rows": 1460042, "note": "SHROOM 30m: downloading candles", "failed": [], "pct": 77.4, "updated": "2026-09-06T10:12:48Z"}

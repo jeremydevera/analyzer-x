@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 36, "total": 53, "rows": 1139400, "note": "PLTRSTOCK 30m: rule 32/120 (gmma)", "failed": [], "pct": 67.9, "updated": "2026-09-06T05:57:26Z"}
+{"shard": 8, "stage": "testing", "done": 37, "total": 53, "rows": 1155240, "note": "PUFFER 15m: 34,598 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-06T05:58:30Z"}

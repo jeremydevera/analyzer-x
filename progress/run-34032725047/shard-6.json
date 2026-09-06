@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 32, "total": 53, "rows": 1425192, "note": "NEMSTOCK 15m: rule 73/120 (volspike)", "failed": [], "pct": 60.4, "updated": "2026-09-06T14:19:41Z"}
+{"shard": 6, "stage": "testing", "done": 33, "total": 53, "rows": 1457772, "note": "NPC 15m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 62.3, "updated": "2026-09-06T14:20:27Z"}

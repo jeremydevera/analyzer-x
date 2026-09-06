@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 12, "total": 53, "rows": 299574, "note": "CHILLGUY 1d: 394 bars, testing 120 rules", "failed": [], "pct": 22.6, "updated": "2026-09-06T22:21:31Z"}
+{"shard": 1, "stage": "testing", "done": 16, "total": 53, "rows": 380610, "note": "DPZSTOCK 1d: downloading candles", "failed": [], "pct": 30.2, "updated": "2026-09-06T22:22:16Z"}

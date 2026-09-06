@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 26, "total": 53, "rows": 997420, "note": "KAT 15m: rule 3/120 (fade15)", "failed": [], "pct": 49.1, "updated": "2026-09-06T05:32:19Z"}
+{"shard": 0, "stage": "testing", "done": 26, "total": 53, "rows": 1016820, "note": "KAT 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 49.1, "updated": "2026-09-06T05:33:04Z"}

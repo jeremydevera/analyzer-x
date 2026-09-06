@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 45, "total": 53, "rows": 1849678, "note": "SYRUP 1h: rule 8/120 (fib618)", "failed": [], "pct": 84.9, "updated": "2026-09-06T18:09:30Z"}
+{"shard": 12, "stage": "testing", "done": 45, "total": 53, "rows": 1871018, "note": "SYRUP 1h: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-06T18:10:16Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 19, "total": 53, "rows": 557112, "note": "FLOW 1h: rule 33/120 (heikin)", "failed": [], "pct": 35.8, "updated": "2026-09-06T00:40:35Z"}
+{"shard": 1, "stage": "testing", "done": 20, "total": 53, "rows": 579112, "note": "GAS 1d: rule 19/120 (emacross)", "failed": [], "pct": 37.7, "updated": "2026-09-06T00:41:20Z"}

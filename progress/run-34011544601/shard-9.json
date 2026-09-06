@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 48, "total": 53, "rows": 1993460, "note": "UNI 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 90.6, "updated": "2026-09-06T07:17:58Z"}
+{"shard": 9, "stage": "testing", "done": 49, "total": 53, "rows": 2002520, "note": "VET 15m: rule 1/120 (mom6)", "failed": [], "pct": 92.5, "updated": "2026-09-06T07:18:51Z"}

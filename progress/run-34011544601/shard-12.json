@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 43, "total": 52, "rows": 1595520, "note": "SPK 15m: rule 64/120 (hammer)", "failed": [], "pct": 82.7, "updated": "2026-09-06T06:45:05Z"}
+{"shard": 12, "stage": "testing", "done": 43, "total": 52, "rows": 1603660, "note": "SPK 15m: rule 101/120 (cf_soup1_l1)", "failed": [], "pct": 82.7, "updated": "2026-09-06T06:45:50Z"}

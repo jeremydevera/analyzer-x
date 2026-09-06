@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 52, "total": 53, "rows": 1747040, "note": "XVG 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-06T07:21:39Z"}
+{"shard": 2, "stage": "testing", "done": 53, "total": 53, "rows": 1756820, "note": "ZINC 30m: rule 2/120 (mom15)", "failed": [], "pct": 100.0, "updated": "2026-09-06T07:22:24Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 48, "total": 53, "rows": 2041422, "note": "UMA 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 90.6, "updated": "2026-09-06T18:38:11Z"}
+{"shard": 14, "stage": "testing", "done": 49, "total": 53, "rows": 2048682, "note": "VELODROME 1h: rule 3/120 (fade15)", "failed": [], "pct": 92.5, "updated": "2026-09-06T18:38:57Z"}

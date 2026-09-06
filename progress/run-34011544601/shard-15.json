@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 33, "total": 52, "rows": 1325160, "note": "NXPC 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 63.5, "updated": "2026-09-06T05:57:07Z"}
+{"shard": 15, "stage": "testing", "done": 33, "total": 52, "rows": 1331760, "note": "NXPC 30m: rule 2/120 (mom15)", "failed": [], "pct": 63.5, "updated": "2026-09-06T05:57:59Z"}

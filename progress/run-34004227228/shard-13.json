@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 25, "total": 52, "rows": 884636, "note": "JPY 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 48.1, "updated": "2026-09-06T02:36:21Z"}
+{"shard": 13, "stage": "testing", "done": 26, "total": 52, "rows": 893936, "note": "KMNO 4h: rule 21/120 (cci20)", "failed": [], "pct": 50.0, "updated": "2026-09-06T02:37:07Z"}

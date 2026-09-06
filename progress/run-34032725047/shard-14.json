@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 39, "total": 53, "rows": 1786898, "note": "ROBINHOOD 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 73.6, "updated": "2026-09-06T14:33:00Z"}
+{"shard": 14, "stage": "testing", "done": 42, "total": 53, "rows": 1847734, "note": "SNPSSTOCK 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 79.2, "updated": "2026-09-06T14:33:45Z"}

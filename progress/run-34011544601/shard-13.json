@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 47, "total": 52, "rows": 1783740, "note": "TURBO 15m: rule 20/120 (stoch14)", "failed": [], "pct": 90.4, "updated": "2026-09-06T07:10:05Z"}
+{"shard": 13, "stage": "testing", "done": 47, "total": 52, "rows": 1788140, "note": "TURBO 15m: rule 40/120 (crsi)", "failed": [], "pct": 90.4, "updated": "2026-09-06T07:10:50Z"}

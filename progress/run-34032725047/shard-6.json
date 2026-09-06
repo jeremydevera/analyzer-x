@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 28, "total": 53, "rows": 1185368, "note": "LRC 30m: rule 21/120 (cci20)", "failed": [], "pct": 52.8, "updated": "2026-09-06T13:57:49Z"}
+{"shard": 6, "stage": "testing", "done": 28, "total": 53, "rows": 1196568, "note": "LRC 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 52.8, "updated": "2026-09-06T13:58:34Z"}

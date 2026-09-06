@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 36, "total": 53, "rows": 1165260, "note": "PIPPIN 15m: rule 100/120 (cf_soup1)", "failed": [], "pct": 67.9, "updated": "2026-09-06T03:06:01Z"}
+{"shard": 2, "stage": "testing", "done": 37, "total": 53, "rows": 1175720, "note": "PROMPT 4h: rule 27/120 (aroon25)", "failed": [], "pct": 69.8, "updated": "2026-09-06T03:06:46Z"}

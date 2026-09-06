@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 28, "total": 53, "rows": 893946, "note": "LQTY 15m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 52.8, "updated": "2026-09-06T02:15:51Z"}
+{"shard": 3, "stage": "testing", "done": 29, "total": 53, "rows": 924546, "note": "MASK 15m: 34,584 bars, testing 120 rules", "failed": [], "pct": 54.7, "updated": "2026-09-06T02:16:41Z"}

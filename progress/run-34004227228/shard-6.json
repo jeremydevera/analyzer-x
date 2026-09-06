@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 41, "total": 53, "rows": 1323758, "note": "SHLD 4h: 699 bars, testing 120 rules", "failed": [], "pct": 77.4, "updated": "2026-09-06T03:16:06Z"}
+{"shard": 6, "stage": "testing", "done": 42, "total": 53, "rows": 1355436, "note": "SMCISTOCK 4h: rule 4/120 (trend50)", "failed": [], "pct": 79.2, "updated": "2026-09-06T03:16:51Z"}

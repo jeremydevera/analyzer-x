@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 5, "total": 52, "rows": 122760, "note": "ASXSTOCK 15m: rule 1/120 (mom6)", "failed": [], "pct": 9.6, "updated": "2026-09-06T01:41:27Z"}
+{"shard": 15, "stage": "testing", "done": 6, "total": 52, "rows": 160134, "note": "AXTISTOCK 15m: rule 39/120 (fisher)", "failed": [], "pct": 11.5, "updated": "2026-09-06T01:42:12Z"}

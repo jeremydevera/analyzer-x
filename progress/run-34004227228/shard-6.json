@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 32, "total": 53, "rows": 1025546, "note": "NEO 15m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 60.4, "updated": "2026-09-06T02:50:02Z"}
+{"shard": 6, "stage": "testing", "done": 33, "total": 53, "rows": 1047278, "note": "NTAPSTOCK 15m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 62.3, "updated": "2026-09-06T02:50:47Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 3, "total": 53, "rows": 115316, "note": "AKT 15m: rule 71/120 (mfi14)", "failed": [], "pct": 5.7, "updated": "2026-09-06T12:28:43Z"}
+{"shard": 3, "stage": "testing", "done": 3, "total": 53, "rows": 124116, "note": "AKT 15m: rule 112/120 (cf_obretest)", "failed": [], "pct": 5.7, "updated": "2026-09-06T12:29:28Z"}

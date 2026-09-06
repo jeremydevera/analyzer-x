@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 33, "total": 53, "rows": 1376804, "note": "OFC 1h: rule 18/120 (macd)", "failed": [], "pct": 62.3, "updated": "2026-09-06T21:11:05Z"}
+{"shard": 18, "stage": "testing", "done": 33, "total": 53, "rows": 1405904, "note": "OFC 30m: rule 55/120 (nhigh50)", "failed": [], "pct": 62.3, "updated": "2026-09-06T21:11:50Z"}

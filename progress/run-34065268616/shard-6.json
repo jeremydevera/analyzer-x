@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 7, "total": 53, "rows": 307622, "note": "BAND 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-06T23:07:52Z"}
+{"shard": 6, "stage": "testing", "done": 9, "total": 53, "rows": 355436, "note": "BNCSTOCK 1h: 1,289 bars, testing 120 rules", "failed": [], "pct": 17.0, "updated": "2026-09-06T23:08:39Z"}

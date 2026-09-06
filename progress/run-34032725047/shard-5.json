@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 22, "total": 53, "rows": 1017224, "note": "HEI 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 41.5, "updated": "2026-09-06T13:38:55Z"}
+{"shard": 5, "stage": "testing", "done": 22, "total": 53, "rows": 1021024, "note": "HEI 30m: rule 13/120 (pivot)", "failed": [], "pct": 41.5, "updated": "2026-09-06T13:39:41Z"}

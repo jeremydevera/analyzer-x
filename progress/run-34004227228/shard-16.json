@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 41, "total": 52, "rows": 1591334, "note": "SKL 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 78.8, "updated": "2026-09-06T03:40:12Z"}
+{"shard": 16, "stage": "testing", "done": 42, "total": 52, "rows": 1602234, "note": "SOFISTOCK 15m: rule 37/120 (ultosc)", "failed": [], "pct": 80.8, "updated": "2026-09-06T03:40:57Z"}

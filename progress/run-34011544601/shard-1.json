@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 1, "total": 53, "rows": 33580, "note": "1000000BABYDOGE 30m: rule 33/120 (heikin)", "failed": [], "pct": 1.9, "updated": "2026-09-06T04:33:24Z"}
+{"shard": 1, "stage": "testing", "done": 1, "total": 53, "rows": 45900, "note": "1000000BABYDOGE 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-06T04:34:10Z"}

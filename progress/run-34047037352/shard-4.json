@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 20, "total": 53, "rows": 818940, "note": "GDX 30m: 1,846 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-06T17:31:20Z"}
+{"shard": 4, "stage": "testing", "done": 22, "total": 53, "rows": 853000, "note": "HBAR 1h: rule 49/120 (vwaprev)", "failed": [], "pct": 41.5, "updated": "2026-09-06T17:32:05Z"}

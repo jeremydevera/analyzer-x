@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 49, "total": 53, "rows": 1935226, "note": "USELESS 30m: rule 82/120 (cf_maobv)", "failed": [], "pct": 92.5, "updated": "2026-09-06T21:25:23Z"}
+{"shard": 4, "stage": "testing", "done": 51, "total": 53, "rows": 1983882, "note": "WPMSTOCK 1h: rule 92/120 (cf_soup_l1)", "failed": [], "pct": 96.2, "updated": "2026-09-06T21:26:08Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 34, "total": 52, "rows": 1490660, "note": "ORCA 30m: rule 41/120 (tsi)", "failed": [], "pct": 65.4, "updated": "2026-09-06T06:03:10Z"}
+{"shard": 17, "stage": "testing", "done": 35, "total": 52, "rows": 1509000, "note": "PEPSTOCK 15m: rule 4/120 (trend50)", "failed": [], "pct": 67.3, "updated": "2026-09-06T06:03:56Z"}

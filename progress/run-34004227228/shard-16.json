@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 25, "total": 52, "rows": 1021430, "note": "JUP 15m: rule 40/120 (crsi)", "failed": [], "pct": 48.1, "updated": "2026-09-06T02:54:50Z"}
+{"shard": 16, "stage": "testing", "done": 25, "total": 52, "rows": 1027830, "note": "JUP 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 48.1, "updated": "2026-09-06T02:55:38Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 49, "total": 53, "rows": 1962294, "note": "USOIL 30m: rule 1/120 (mom6)", "failed": [], "pct": 92.5, "updated": "2026-09-06T18:42:35Z"}
+{"shard": 5, "stage": "testing", "done": 49, "total": 53, "rows": 1980334, "note": "USOIL 30m: rule 79/120 (cf_donch)", "failed": [], "pct": 92.5, "updated": "2026-09-06T18:43:20Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 46, "total": 52, "rows": 1591414, "note": "TOSHI 15m: 34,588 bars, testing 120 rules", "failed": [], "pct": 88.5, "updated": "2026-09-06T03:21:35Z"}
+{"shard": 13, "stage": "testing", "done": 46, "total": 52, "rows": 1593214, "note": "TOSHI 15m: rule 4/120 (trend50)", "failed": [], "pct": 88.5, "updated": "2026-09-06T03:22:23Z"}

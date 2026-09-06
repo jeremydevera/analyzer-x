@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 48, "total": 53, "rows": 2302848, "note": "UB 30m: rule 4/120 (trend50)", "failed": [], "pct": 90.6, "updated": "2026-09-06T15:32:06Z"}
+{"shard": 7, "stage": "testing", "done": 48, "total": 53, "rows": 2311208, "note": "UB 30m: rule 42/120 (rsidiv)", "failed": [], "pct": 90.6, "updated": "2026-09-06T15:32:51Z"}

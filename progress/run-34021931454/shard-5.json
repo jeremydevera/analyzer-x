@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 40, "total": 53, "rows": 1004894, "note": "SAFE 1d: 394 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-06T08:45:34Z"}
+{"shard": 5, "stage": "testing", "done": 41, "total": 53, "rows": 1049598, "note": "SHIB 1d: rule 36/120 (stochrsi)", "failed": [], "pct": 77.4, "updated": "2026-09-06T08:46:19Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 34, "total": 53, "rows": 1397212, "note": "ONE 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 64.2, "updated": "2026-09-06T18:16:58Z"}
+{"shard": 7, "stage": "testing", "done": 36, "total": 53, "rows": 1414352, "note": "PIXEL 1h: rule 6/120 (sweep30)", "failed": [], "pct": 67.9, "updated": "2026-09-06T18:17:43Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 24, "total": 53, "rows": 838570, "note": "INIT 1h: rule 31/120 (trix15)", "failed": [], "pct": 45.3, "updated": "2026-09-06T09:46:41Z"}
+{"shard": 6, "stage": "testing", "done": 24, "total": 53, "rows": 855202, "note": "INIT 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 45.3, "updated": "2026-09-06T09:47:30Z"}

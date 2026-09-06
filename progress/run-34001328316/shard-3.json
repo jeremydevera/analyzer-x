@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 34, "total": 53, "rows": 901280, "note": "ONDO 1h: rule 63/120 (killzone)", "failed": [], "pct": 64.2, "updated": "2026-09-06T00:54:04Z"}
+{"shard": 3, "stage": "testing", "done": 37, "total": 53, "rows": 943894, "note": "PROM 1d: 394 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-06T00:54:54Z"}

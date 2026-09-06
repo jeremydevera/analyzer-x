@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 40, "total": 53, "rows": 1593106, "note": "SATS 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-06T10:22:01Z"}
+{"shard": 13, "stage": "testing", "done": 41, "total": 53, "rows": 1625578, "note": "SITMSTOCK 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 77.4, "updated": "2026-09-06T10:22:46Z"}

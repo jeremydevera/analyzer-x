@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 31, "total": 53, "rows": 1381058, "note": "MRNASTOCK 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 58.5, "updated": "2026-09-06T14:07:30Z"}
+{"shard": 1, "stage": "testing", "done": 33, "total": 53, "rows": 1448978, "note": "NMR 15m: 34,631 bars, testing 120 rules", "failed": [], "pct": 62.3, "updated": "2026-09-06T14:08:18Z"}

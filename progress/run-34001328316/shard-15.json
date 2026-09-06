@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 26, "total": 52, "rows": 773186, "note": "KODEX200 1h: rule 35/120 (willr14)", "failed": [], "pct": 50.0, "updated": "2026-09-06T00:46:44Z"}
+{"shard": 15, "stage": "testing", "done": 28, "total": 52, "rows": 827112, "note": "MAGIC 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 53.8, "updated": "2026-09-06T00:47:37Z"}

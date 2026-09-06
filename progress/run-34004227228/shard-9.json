@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 4, "total": 53, "rows": 148800, "note": "APEX 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 7.5, "updated": "2026-09-06T01:46:18Z"}
+{"shard": 9, "stage": "testing", "done": 5, "total": 53, "rows": 173520, "note": "ASMLSTOCK 15m: 27,405 bars, testing 120 rules", "failed": [], "pct": 9.4, "updated": "2026-09-06T01:47:04Z"}

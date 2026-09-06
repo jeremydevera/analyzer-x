@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 36, "total": 53, "rows": 1637120, "note": "PIXEL 15m: rule 91/120 (cf_soup)", "failed": [], "pct": 67.9, "updated": "2026-09-06T14:23:36Z"}
+{"shard": 5, "stage": "testing", "done": 36, "total": 53, "rows": 1642920, "note": "PIXEL 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 67.9, "updated": "2026-09-06T14:24:23Z"}

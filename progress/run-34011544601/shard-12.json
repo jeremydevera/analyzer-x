@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 3, "total": 52, "rows": 92740, "note": "ALT 15m: rule 47/120 (ibs)", "failed": [], "pct": 5.8, "updated": "2026-09-06T04:35:44Z"}
+{"shard": 12, "stage": "testing", "done": 3, "total": 52, "rows": 100000, "note": "ALT 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 5.8, "updated": "2026-09-06T04:36:31Z"}

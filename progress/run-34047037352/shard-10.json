@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 29, "total": 53, "rows": 1189614, "note": "MEGA 30m: rule 72/120 (force13)", "failed": [], "pct": 54.7, "updated": "2026-09-06T17:57:15Z"}
+{"shard": 10, "stage": "testing", "done": 31, "total": 53, "rows": 1246154, "note": "MTSISTOCK 30m: rule 46/120 (rsi2)", "failed": [], "pct": 58.5, "updated": "2026-09-06T17:58:00Z"}

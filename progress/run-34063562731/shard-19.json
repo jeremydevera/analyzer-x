@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 1, "total": 53, "rows": 0, "note": "ACU 4h: downloading candles", "failed": [], "pct": 1.9, "updated": "2026-09-06T22:17:30Z"}
+{"shard": 19, "stage": "testing", "done": 2, "total": 53, "rows": 32956, "note": "AIXBT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 3.8, "updated": "2026-09-06T22:18:19Z"}

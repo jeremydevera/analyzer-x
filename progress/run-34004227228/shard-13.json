@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 25, "total": 52, "rows": 874076, "note": "JPY 15m: rule 29/120 (hull20)", "failed": [], "pct": 48.1, "updated": "2026-09-06T02:35:35Z"}
+{"shard": 13, "stage": "testing", "done": 25, "total": 52, "rows": 884636, "note": "JPY 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 48.1, "updated": "2026-09-06T02:36:21Z"}

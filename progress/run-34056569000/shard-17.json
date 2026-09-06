@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 43, "total": 53, "rows": 1878888, "note": "SPK 30m: rule 53/120 (squeeze)", "failed": [], "pct": 81.1, "updated": "2026-09-06T21:29:18Z"}
+{"shard": 17, "stage": "testing", "done": 43, "total": 53, "rows": 1893628, "note": "SPK 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-06T21:30:03Z"}

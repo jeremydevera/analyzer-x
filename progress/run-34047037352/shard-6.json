@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 52, "total": 53, "rows": 2024710, "note": "XPL 30m: rule 51/120 (orb)", "failed": [], "pct": 98.1, "updated": "2026-09-06T18:16:56Z"}
+{"shard": 6, "stage": "testing", "done": 53, "total": 53, "rows": 2038110, "note": "ZHIPUSTOCK 1h: 1,838 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-06T18:17:43Z"}

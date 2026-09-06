@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 22, "total": 52, "rows": 823580, "note": "HK50 30m: rule 30/120 (kama10)", "failed": [], "pct": 42.3, "updated": "2026-09-06T05:49:20Z"}
+{"shard": 12, "stage": "testing", "done": 23, "total": 52, "rows": 847540, "note": "IBKRSTOCK 30m: rule 19/120 (emacross)", "failed": [], "pct": 44.2, "updated": "2026-09-06T05:50:05Z"}

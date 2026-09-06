@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 9, "total": 53, "rows": 405880, "note": "BNT 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 17.0, "updated": "2026-09-06T13:02:33Z"}
+{"shard": 8, "stage": "testing", "done": 10, "total": 53, "rows": 429244, "note": "BTX 15m: 25,834 bars, testing 120 rules", "failed": [], "pct": 18.9, "updated": "2026-09-06T13:03:21Z"}

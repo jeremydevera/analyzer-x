@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 23, "total": 53, "rows": 560272, "note": "IBKRSTOCK 1d: rule 15/120 (bbbreak)", "failed": [], "pct": 43.4, "updated": "2026-09-06T22:25:55Z"}
+{"shard": 14, "stage": "testing", "done": 27, "total": 53, "rows": 640550, "note": "LIGHT 4h: rule 23/120 (supertrend)", "failed": [], "pct": 50.9, "updated": "2026-09-06T22:26:40Z"}

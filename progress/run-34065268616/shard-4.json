@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 19, "total": 53, "rows": 800280, "note": "FLUID 30m: rule 68/120 (dbltop)", "failed": [], "pct": 35.8, "updated": "2026-09-06T23:38:41Z"}
+{"shard": 4, "stage": "testing", "done": 20, "total": 53, "rows": 833390, "note": "GDX 30m: rule 13/120 (pivot)", "failed": [], "pct": 37.7, "updated": "2026-09-06T23:39:26Z"}

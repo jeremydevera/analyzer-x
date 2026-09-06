@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 39, "total": 53, "rows": 1833200, "note": "RGTISTOCK 15m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 73.6, "updated": "2026-09-06T14:42:17Z"}
+{"shard": 5, "stage": "testing", "done": 40, "total": 53, "rows": 1861000, "note": "SAFE 15m: rule 1/120 (mom6)", "failed": [], "pct": 75.5, "updated": "2026-09-06T14:43:15Z"}

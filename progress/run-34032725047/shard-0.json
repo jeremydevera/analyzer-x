@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 39, "total": 53, "rows": 1815622, "note": "RENDER 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 73.6, "updated": "2026-09-06T13:52:00Z"}
+{"shard": 0, "stage": "testing", "done": 40, "total": 53, "rows": 1830406, "note": "RPL 15m: rule 2/120 (mom15)", "failed": [], "pct": 75.5, "updated": "2026-09-06T13:52:53Z"}

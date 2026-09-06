@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 29, "total": 53, "rows": 1165954, "note": "MASK 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 54.7, "updated": "2026-09-06T10:08:49Z"}
+{"shard": 4, "stage": "testing", "done": 30, "total": 53, "rows": 1211458, "note": "MINIMAXSTOCK 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 56.6, "updated": "2026-09-06T10:09:35Z"}

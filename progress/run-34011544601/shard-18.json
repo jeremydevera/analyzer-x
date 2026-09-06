@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 36, "total": 52, "rows": 1506960, "note": "POWER 15m: 26,388 bars, testing 120 rules", "failed": [], "pct": 69.2, "updated": "2026-09-06T07:04:55Z"}
+{"shard": 18, "stage": "testing", "done": 36, "total": 52, "rows": 1508560, "note": "POWER 15m: rule 4/120 (trend50)", "failed": [], "pct": 69.2, "updated": "2026-09-06T07:05:40Z"}

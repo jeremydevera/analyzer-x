@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 17, "total": 53, "rows": 724820, "note": "ENS 1h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-06T23:33:14Z"}
+{"shard": 4, "stage": "testing", "done": 17, "total": 53, "rows": 731420, "note": "ENS 30m: rule 3/120 (fade15)", "failed": [], "pct": 32.1, "updated": "2026-09-06T23:34:00Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 15, "total": 52, "rows": 539688, "note": "DOLO 1h: rule 27/120 (aroon25)", "failed": [], "pct": 28.8, "updated": "2026-09-06T00:44:19Z"}
+{"shard": 16, "stage": "testing", "done": 16, "total": 52, "rows": 570048, "note": "ELSA 1h: 5,488 bars, testing 120 rules", "failed": [], "pct": 30.8, "updated": "2026-09-06T00:45:10Z"}

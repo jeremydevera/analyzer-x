@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 2, "total": 53, "rows": 88354, "note": "AGI 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-06T22:55:03Z"}
+{"shard": 9, "stage": "testing", "done": 3, "total": 53, "rows": 116114, "note": "ALLO 1h: rule 115/120 (cf_diadx)", "failed": [], "pct": 5.7, "updated": "2026-09-06T22:55:48Z"}

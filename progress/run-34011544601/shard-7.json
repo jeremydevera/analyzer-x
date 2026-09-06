@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 29, "total": 53, "rows": 1144080, "note": "MCDSTOCK 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 54.7, "updated": "2026-09-06T06:25:51Z"}
+{"shard": 7, "stage": "testing", "done": 29, "total": 53, "rows": 1160640, "note": "MCDSTOCK 30m: rule 86/120 (cf_triple_l1)", "failed": [], "pct": 54.7, "updated": "2026-09-06T06:26:36Z"}

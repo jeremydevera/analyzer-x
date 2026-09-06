@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 43, "total": 53, "rows": 1618900, "note": "SONIC 30m: rule 65/120 (doji)", "failed": [], "pct": 81.1, "updated": "2026-09-06T06:31:58Z"}
+{"shard": 1, "stage": "testing", "done": 44, "total": 53, "rows": 1631000, "note": "STABLE 15m: 29,152 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-06T06:32:45Z"}

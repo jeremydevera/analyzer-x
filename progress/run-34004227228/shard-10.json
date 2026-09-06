@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 25, "total": 53, "rows": 817382, "note": "JOE 15m: rule 63/120 (killzone)", "failed": [], "pct": 47.2, "updated": "2026-09-06T02:12:29Z"}
+{"shard": 10, "stage": "testing", "done": 26, "total": 53, "rows": 828782, "note": "KITE 4h: 1,870 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-06T02:13:15Z"}

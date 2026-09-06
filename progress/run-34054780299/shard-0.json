@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 2, "total": 53, "rows": 43736, "note": "ADA 4h: rule 16/120 (keltner)", "failed": [], "pct": 3.8, "updated": "2026-09-06T19:26:00Z"}
+{"shard": 0, "stage": "testing", "done": 4, "total": 53, "rows": 112872, "note": "AMZNSTOCK 1d: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 7.5, "updated": "2026-09-06T19:26:45Z"}

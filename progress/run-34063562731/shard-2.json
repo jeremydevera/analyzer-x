@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 12, "total": 53, "rows": 315150, "note": "CHIP 1d: rule 21/120 (cci20)", "failed": [], "pct": 22.6, "updated": "2026-09-06T22:23:02Z"}
+{"shard": 2, "stage": "testing", "done": 14, "total": 53, "rows": 370788, "note": "CTC 4h: rule 49/120 (vwaprev)", "failed": [], "pct": 26.4, "updated": "2026-09-06T22:23:47Z"}

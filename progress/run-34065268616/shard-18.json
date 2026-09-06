@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 24, "total": 53, "rows": 966842, "note": "IOTX 30m: rule 70/120 (cmf20)", "failed": [], "pct": 45.3, "updated": "2026-09-06T23:57:11Z"}
+{"shard": 18, "stage": "testing", "done": 25, "total": 53, "rows": 977842, "note": "JUP 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-06T23:58:03Z"}

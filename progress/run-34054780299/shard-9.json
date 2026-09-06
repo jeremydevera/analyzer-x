@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 1, "total": 53, "rows": 0, "note": "AALSTOCK 4h: downloading candles", "failed": [], "pct": 1.9, "updated": "2026-09-06T19:24:29Z"}
+{"shard": 9, "stage": "testing", "done": 3, "total": 53, "rows": 47696, "note": "ALLO 4h: 1,796 bars, testing 120 rules", "failed": [], "pct": 5.7, "updated": "2026-09-06T19:25:20Z"}

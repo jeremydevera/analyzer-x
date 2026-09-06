@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 19, "total": 53, "rows": 818034, "note": "FORM 30m: rule 35/120 (willr14)", "failed": [], "pct": 35.8, "updated": "2026-09-06T23:37:19Z"}
+{"shard": 10, "stage": "testing", "done": 19, "total": 53, "rows": 829254, "note": "FORM 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 35.8, "updated": "2026-09-06T23:38:05Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 17, "total": 53, "rows": 413346, "note": "ERA 4h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-06T08:37:04Z"}
+{"shard": 7, "stage": "testing", "done": 20, "total": 53, "rows": 465002, "note": "GESTOCK 4h: 1,619 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-06T08:37:50Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 21, "total": 52, "rows": 709854, "note": "GSSTOCK 15m: rule 27/120 (aroon25)", "failed": [], "pct": 40.4, "updated": "2026-09-06T02:19:59Z"}
+{"shard": 11, "stage": "testing", "done": 21, "total": 52, "rows": 723134, "note": "GSSTOCK 15m: rule 112/120 (cf_obretest)", "failed": [], "pct": 40.4, "updated": "2026-09-06T02:20:44Z"}

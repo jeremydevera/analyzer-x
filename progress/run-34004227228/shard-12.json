@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 46, "total": 52, "rows": 1532160, "note": "TOKYOELSTOCK 15m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 88.5, "updated": "2026-09-06T03:26:56Z"}
+{"shard": 12, "stage": "testing", "done": 48, "total": 52, "rows": 1570240, "note": "URNM 15m: rule 18/120 (macd)", "failed": [], "pct": 92.3, "updated": "2026-09-06T03:27:41Z"}

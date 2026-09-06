@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 39, "total": 53, "rows": 1705118, "note": "RKLBSTOCK 30m: rule 37/120 (ultosc)", "failed": [], "pct": 73.6, "updated": "2026-09-06T18:06:29Z"}
+{"shard": 12, "stage": "testing", "done": 40, "total": 53, "rows": 1744818, "note": "SAMSUNGSTOCK 30m: rule 1/120 (mom6)", "failed": [], "pct": 75.5, "updated": "2026-09-06T18:07:15Z"}

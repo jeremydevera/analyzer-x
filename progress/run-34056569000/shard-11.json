@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 6, "total": 53, "rows": 233208, "note": "AXL 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-06T20:10:00Z"}
+{"shard": 11, "stage": "testing", "done": 6, "total": 53, "rows": 239368, "note": "AXL 30m: rule 22/120 (engulf)", "failed": [], "pct": 11.3, "updated": "2026-09-06T20:10:46Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 24, "total": 53, "rows": 1002362, "note": "INX 1h: rule 63/120 (killzone)", "failed": [], "pct": 45.3, "updated": "2026-09-06T17:34:12Z"}
+{"shard": 12, "stage": "testing", "done": 24, "total": 53, "rows": 1017454, "note": "INX 30m: rule 16/120 (keltner)", "failed": [], "pct": 45.3, "updated": "2026-09-06T17:34:57Z"}

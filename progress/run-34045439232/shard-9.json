@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 43, "total": 53, "rows": 1004134, "note": "SOPH 4h: rule 16/120 (keltner)", "failed": [], "pct": 81.1, "updated": "2026-09-06T16:45:00Z"}
+{"shard": 9, "stage": "testing", "done": 44, "total": 53, "rows": 1038322, "note": "STEEM 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-06T16:46:00Z"}

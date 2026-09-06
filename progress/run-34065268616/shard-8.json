@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 2, "total": 53, "rows": 88160, "note": "AEVO 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 3.8, "updated": "2026-09-06T22:59:57Z"}
+{"shard": 8, "stage": "testing", "done": 2, "total": 53, "rows": 100700, "note": "AEVO 30m: rule 94/120 (cf_emarsi)", "failed": [], "pct": 3.8, "updated": "2026-09-06T23:00:42Z"}

@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 21, "total": 53, "rows": 1031342, "note": "GRT 15m: 34,627 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-06T13:07:59Z"}
+{"shard": 10, "stage": "testing", "done": 21, "total": 53, "rows": 1035302, "note": "GRT 15m: rule 12/120 (donchian20)", "failed": [], "pct": 39.6, "updated": "2026-09-06T13:08:44Z"}

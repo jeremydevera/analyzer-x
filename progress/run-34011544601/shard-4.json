@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 9, "total": 53, "rows": 381900, "note": "BNB 15m: rule 10/120 (sr_bounce)", "failed": [], "pct": 17.0, "updated": "2026-09-06T05:04:07Z"}
+{"shard": 4, "stage": "testing", "done": 9, "total": 53, "rows": 387620, "note": "BNB 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 17.0, "updated": "2026-09-06T05:04:54Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 3, "total": 53, "rows": 102862, "note": "AMCSTOCK 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 5.7, "updated": "2026-09-06T17:02:35Z"}
+{"shard": 15, "stage": "testing", "done": 5, "total": 53, "rows": 155750, "note": "ASXSTOCK 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-06T17:03:21Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 12, "total": 53, "rows": 513310, "note": "CMESTOCK 30m: rule 3/120 (fade15)", "failed": [], "pct": 22.6, "updated": "2026-09-06T20:21:09Z"}
+{"shard": 13, "stage": "testing", "done": 13, "total": 53, "rows": 545010, "note": "CRO 1h: rule 54/120 (fractal5)", "failed": [], "pct": 24.5, "updated": "2026-09-06T20:21:55Z"}

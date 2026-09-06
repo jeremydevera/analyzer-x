@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 38, "total": 52, "rows": 1530124, "note": "RED 15m: rule 8/120 (fib618)", "failed": [], "pct": 73.1, "updated": "2026-09-06T03:32:02Z"}
+{"shard": 17, "stage": "testing", "done": 38, "total": 52, "rows": 1534124, "note": "RED 15m: rule 28/120 (vortex14)", "failed": [], "pct": 73.1, "updated": "2026-09-06T03:32:47Z"}

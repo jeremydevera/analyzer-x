@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 27, "total": 53, "rows": 965902, "note": "LAB 30m: rule 47/120 (ibs)", "failed": [], "pct": 50.9, "updated": "2026-09-06T20:48:03Z"}
+{"shard": 6, "stage": "testing", "done": 28, "total": 53, "rows": 979702, "note": "LRCXSTOCK 1h: 5,655 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-06T20:48:49Z"}

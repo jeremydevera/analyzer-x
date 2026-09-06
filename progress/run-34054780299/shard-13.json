@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 16, "total": 53, "rows": 353712, "note": "EDU 4h: rule 13/120 (pivot)", "failed": [], "pct": 30.2, "updated": "2026-09-06T19:30:40Z"}
+{"shard": 13, "stage": "testing", "done": 17, "total": 53, "rows": 393004, "note": "ETH 4h: rule 11/120 (sr_break)", "failed": [], "pct": 32.1, "updated": "2026-09-06T19:31:25Z"}

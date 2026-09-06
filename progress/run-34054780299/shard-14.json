@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 10, "total": 53, "rows": 241742, "note": "C98 4h: rule 64/120 (hammer)", "failed": [], "pct": 18.9, "updated": "2026-09-06T19:27:51Z"}
+{"shard": 14, "stage": "testing", "done": 12, "total": 53, "rows": 306290, "note": "COAI 4h: 2,079 bars, testing 120 rules", "failed": [], "pct": 22.6, "updated": "2026-09-06T19:28:46Z"}

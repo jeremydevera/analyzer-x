@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 29, "total": 53, "rows": 1268840, "note": "MELANIA 30m: rule 26/120 (adx14)", "failed": [], "pct": 54.7, "updated": "2026-09-06T13:52:04Z"}
+{"shard": 11, "stage": "testing", "done": 29, "total": 53, "rows": 1279620, "note": "MELANIA 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 54.7, "updated": "2026-09-06T13:52:49Z"}

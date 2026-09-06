@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 2, "total": 52, "rows": 67782, "note": "AIO 1h: rule 64/120 (hammer)", "failed": [], "pct": 3.8, "updated": "2026-09-06T09:13:44Z"}
+{"shard": 18, "stage": "testing", "done": 2, "total": 52, "rows": 79794, "note": "AIO 30m: rule 2/120 (mom15)", "failed": [], "pct": 3.8, "updated": "2026-09-06T09:14:41Z"}

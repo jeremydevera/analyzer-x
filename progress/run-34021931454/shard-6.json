@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 29, "total": 53, "rows": 606418, "note": "MAVIA 4h: rule 49/120 (vwaprev)", "failed": [], "pct": 54.7, "updated": "2026-09-06T08:39:19Z"}
+{"shard": 6, "stage": "testing", "done": 30, "total": 53, "rows": 651694, "note": "MITO 4h: rule 71/120 (mfi14)", "failed": [], "pct": 56.6, "updated": "2026-09-06T08:40:05Z"}

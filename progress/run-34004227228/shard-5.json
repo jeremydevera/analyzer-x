@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 19, "total": 53, "rows": 571280, "note": "FLUX 15m: rule 24/120 (psar)", "failed": [], "pct": 35.8, "updated": "2026-09-06T02:22:35Z"}
+{"shard": 5, "stage": "testing", "done": 19, "total": 53, "rows": 576560, "note": "FLUX 15m: rule 48/120 (prank)", "failed": [], "pct": 35.8, "updated": "2026-09-06T02:23:23Z"}

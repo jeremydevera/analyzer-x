@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 13, "total": 53, "rows": 354914, "note": "CRV 4h: rule 47/120 (ibs)", "failed": [], "pct": 24.5, "updated": "2026-09-06T08:35:27Z"}
+{"shard": 14, "stage": "testing", "done": 14, "total": 53, "rows": 405474, "note": "CYS 1d: 269 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-06T08:36:13Z"}

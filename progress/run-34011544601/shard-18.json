@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 1, "total": 52, "rows": 5720, "note": "ACT 15m: rule 20/120 (stoch14)", "failed": [], "pct": 1.9, "updated": "2026-09-06T04:30:20Z"}
+{"shard": 18, "stage": "testing", "done": 1, "total": 52, "rows": 13420, "note": "ACT 15m: rule 56/120 (insidebrk)", "failed": [], "pct": 1.9, "updated": "2026-09-06T04:31:52Z"}

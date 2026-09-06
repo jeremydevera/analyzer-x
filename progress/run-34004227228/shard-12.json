@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 33, "total": 52, "rows": 1118946, "note": "NVIDIA 15m: rule 10/120 (sr_bounce)", "failed": [], "pct": 63.5, "updated": "2026-09-06T02:54:20Z"}
+{"shard": 12, "stage": "testing", "done": 33, "total": 52, "rows": 1125786, "note": "NVIDIA 15m: rule 48/120 (prank)", "failed": [], "pct": 63.5, "updated": "2026-09-06T02:55:06Z"}

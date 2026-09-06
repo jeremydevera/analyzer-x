@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 31, "total": 53, "rows": 1024320, "note": "MSFTSTOCK 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 58.5, "updated": "2026-09-06T06:10:05Z"}
+{"shard": 2, "stage": "testing", "done": 31, "total": 53, "rows": 1040920, "note": "MSFTSTOCK 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 58.5, "updated": "2026-09-06T06:10:50Z"}

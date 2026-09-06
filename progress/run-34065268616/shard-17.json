@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 17, "total": 53, "rows": 809786, "note": "EVAA 1h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-06T23:23:42Z"}
+{"shard": 17, "stage": "testing", "done": 17, "total": 53, "rows": 817586, "note": "EVAA 30m: rule 4/120 (trend50)", "failed": [], "pct": 32.1, "updated": "2026-09-06T23:24:30Z"}

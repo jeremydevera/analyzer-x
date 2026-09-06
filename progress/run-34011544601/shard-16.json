@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 12, "total": 52, "rows": 547360, "note": "COINBASE 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 23.1, "updated": "2026-09-06T05:27:47Z"}
+{"shard": 16, "stage": "testing", "done": 12, "total": 52, "rows": 558520, "note": "COINBASE 30m: rule 72/120 (force13)", "failed": [], "pct": 23.1, "updated": "2026-09-06T05:28:32Z"}

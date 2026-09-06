@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 31, "total": 53, "rows": 1177212, "note": "MPCSTOCK 30m: rule 37/120 (ultosc)", "failed": [], "pct": 58.5, "updated": "2026-09-06T18:06:47Z"}
+{"shard": 0, "stage": "testing", "done": 32, "total": 53, "rows": 1183792, "note": "NAORIS 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 60.4, "updated": "2026-09-06T18:07:32Z"}

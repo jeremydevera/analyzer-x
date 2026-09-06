@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 17, "total": 52, "rows": 793200, "note": "EVAA 30m: rule 45/120 (zscore20)", "failed": [], "pct": 32.7, "updated": "2026-09-06T05:49:43Z"}
+{"shard": 16, "stage": "testing", "done": 17, "total": 52, "rows": 807200, "note": "EVAA 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 32.7, "updated": "2026-09-06T05:50:29Z"}

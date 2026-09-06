@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 20, "total": 53, "rows": 699464, "note": "GALA 1h: rule 40/120 (crsi)", "failed": [], "pct": 37.7, "updated": "2026-09-06T20:26:00Z"}
+{"shard": 1, "stage": "testing", "done": 20, "total": 53, "rows": 716464, "note": "GALA 30m: rule 3/120 (fade15)", "failed": [], "pct": 37.7, "updated": "2026-09-06T20:26:49Z"}

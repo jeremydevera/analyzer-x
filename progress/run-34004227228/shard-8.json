@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 13, "total": 53, "rows": 448200, "note": "CRCLSTOCK 15m: rule 71/120 (mfi14)", "failed": [], "pct": 24.5, "updated": "2026-09-06T02:08:10Z"}
+{"shard": 8, "stage": "testing", "done": 13, "total": 53, "rows": 457020, "note": "CRCLSTOCK 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 24.5, "updated": "2026-09-06T02:08:55Z"}

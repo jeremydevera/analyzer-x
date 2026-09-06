@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 1, "total": 53, "rows": 0, "note": "AAPU 4h: downloading candles", "failed": [], "pct": 1.9, "updated": "2026-09-06T22:17:31Z"}
+{"shard": 12, "stage": "testing", "done": 3, "total": 53, "rows": 33264, "note": "ALT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 5.7, "updated": "2026-09-06T22:18:26Z"}

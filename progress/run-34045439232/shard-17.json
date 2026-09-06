@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 52, "total": 53, "rows": 1240030, "note": "YOM 4h: rule 36/120 (stochrsi)", "failed": [], "pct": 98.1, "updated": "2026-09-06T16:49:40Z"}
+{"shard": 17, "stage": "testing", "done": 53, "total": 53, "rows": 1276916, "note": "ZRX 1d: 394 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-06T16:50:30Z"}

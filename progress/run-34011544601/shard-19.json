@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 26, "total": 52, "rows": 852940, "note": "KOSTOCK 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 50.0, "updated": "2026-09-06T05:55:06Z"}
+{"shard": 19, "stage": "testing", "done": 27, "total": 52, "rows": 862020, "note": "LLYSTOCK 15m: rule 42/120 (rsidiv)", "failed": [], "pct": 51.9, "updated": "2026-09-06T05:55:51Z"}

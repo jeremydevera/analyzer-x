@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 2, "total": 52, "rows": 28746, "note": "AIA 1h: rule 16/120 (keltner)", "failed": [], "pct": 3.8, "updated": "2026-09-06T00:28:43Z"}
+{"shard": 12, "stage": "testing", "done": 3, "total": 52, "rows": 62670, "note": "ALT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 5.8, "updated": "2026-09-06T00:29:35Z"}

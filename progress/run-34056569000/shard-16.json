@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 10, "total": 53, "rows": 464448, "note": "CAKE 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 18.9, "updated": "2026-09-06T20:28:20Z"}
+{"shard": 16, "stage": "testing", "done": 11, "total": 53, "rows": 491640, "note": "CFG 30m: 9,247 bars, testing 120 rules", "failed": [], "pct": 20.8, "updated": "2026-09-06T20:29:09Z"}

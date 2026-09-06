@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 4, "total": 53, "rows": 105754, "note": "ARB 1h: rule 2/120 (mom15)", "failed": [], "pct": 7.5, "updated": "2026-09-06T20:06:10Z"}
+{"shard": 18, "stage": "testing", "done": 4, "total": 53, "rows": 131714, "note": "ARB 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 7.5, "updated": "2026-09-06T20:07:01Z"}

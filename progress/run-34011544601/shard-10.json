@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 16, "total": 53, "rows": 588060, "note": "EDEN 15m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 30.2, "updated": "2026-09-06T05:12:24Z"}
+{"shard": 10, "stage": "testing", "done": 16, "total": 53, "rows": 590700, "note": "EDEN 30m: rule 3/120 (fade15)", "failed": [], "pct": 30.2, "updated": "2026-09-06T05:13:09Z"}

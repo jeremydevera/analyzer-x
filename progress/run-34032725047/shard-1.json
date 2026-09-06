@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 30, "total": 53, "rows": 1332502, "note": "ME 30m: rule 39/120 (fisher)", "failed": [], "pct": 56.6, "updated": "2026-09-06T14:05:59Z"}
+{"shard": 1, "stage": "testing", "done": 30, "total": 53, "rows": 1345262, "note": "ME 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 56.6, "updated": "2026-09-06T14:06:45Z"}

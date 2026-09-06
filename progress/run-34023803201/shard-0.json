@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 36, "total": 53, "rows": 1353340, "note": "PHA 30m: rule 68/120 (dbltop)", "failed": [], "pct": 67.9, "updated": "2026-09-06T10:23:03Z"}
+{"shard": 0, "stage": "testing", "done": 37, "total": 53, "rows": 1364780, "note": "POWR 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-06T10:23:56Z"}

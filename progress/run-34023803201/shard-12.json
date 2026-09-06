@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 33, "total": 53, "rows": 1249070, "note": "NVD 30m: 2,161 bars, testing 120 rules", "failed": [], "pct": 62.3, "updated": "2026-09-06T09:48:15Z"}
+{"shard": 12, "stage": "testing", "done": 34, "total": 53, "rows": 1267690, "note": "OPENLEDGER 1h: rule 47/120 (ibs)", "failed": [], "pct": 64.2, "updated": "2026-09-06T09:49:00Z"}

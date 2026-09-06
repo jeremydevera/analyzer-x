@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 37, "total": 53, "rows": 1328234, "note": "PRL 15m: rule 73/120 (volspike)", "failed": [], "pct": 69.8, "updated": "2026-09-06T03:09:52Z"}
+{"shard": 0, "stage": "testing", "done": 38, "total": 53, "rows": 1360434, "note": "QQQSTOCK 15m: rule 2/120 (mom15)", "failed": [], "pct": 71.7, "updated": "2026-09-06T03:10:37Z"}

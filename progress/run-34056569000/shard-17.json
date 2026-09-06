@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 51, "total": 53, "rows": 2159744, "note": "XLK 1h: 1,960 bars, testing 120 rules", "failed": [], "pct": 96.2, "updated": "2026-09-06T21:45:00Z"}
+{"shard": 17, "stage": "testing", "done": 52, "total": 53, "rows": 2211580, "note": "YOM 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-06T21:45:45Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 23, "total": 53, "rows": 465400, "note": "H 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-06T19:33:27Z"}
+{"shard": 11, "stage": "testing", "done": 25, "total": 53, "rows": 505264, "note": "JMKESTOCK 1d: downloading candles", "failed": [], "pct": 47.2, "updated": "2026-09-06T19:34:13Z"}

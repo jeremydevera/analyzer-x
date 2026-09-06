@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 15, "total": 53, "rows": 619610, "note": "DEEP 15m: rule 35/120 (willr14)", "failed": [], "pct": 28.3, "updated": "2026-09-06T13:09:25Z"}
+{"shard": 1, "stage": "testing", "done": 15, "total": 53, "rows": 626090, "note": "DEEP 15m: rule 72/120 (force13)", "failed": [], "pct": 28.3, "updated": "2026-09-06T13:10:11Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 48, "total": 53, "rows": 1458488, "note": "UB 1d: 359 bars, testing 120 rules", "failed": [], "pct": 90.6, "updated": "2026-09-06T01:11:36Z"}
+{"shard": 4, "stage": "testing", "done": 48, "total": 53, "rows": 1477540, "note": "UB 1h: rule 20/120 (stoch14)", "failed": [], "pct": 90.6, "updated": "2026-09-06T01:12:21Z"}

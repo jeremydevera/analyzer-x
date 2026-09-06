@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 20, "total": 52, "rows": 601570, "note": "GMX 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 38.5, "updated": "2026-09-06T02:20:32Z"}
+{"shard": 19, "stage": "testing", "done": 20, "total": 52, "rows": 629070, "note": "GMX 15m: rule 2/120 (mom15)", "failed": [], "pct": 38.5, "updated": "2026-09-06T02:21:33Z"}

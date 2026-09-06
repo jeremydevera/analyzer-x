@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 7, "total": 53, "rows": 294490, "note": "BAS 30m: rule 47/120 (ibs)", "failed": [], "pct": 13.2, "updated": "2026-09-06T17:08:01Z"}
+{"shard": 13, "stage": "testing", "done": 7, "total": 53, "rows": 307470, "note": "BAS 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-06T17:08:47Z"}

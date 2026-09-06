@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 33, "total": 52, "rows": 1161740, "note": "OKB 30m: rule 98/120 (cf_ttm_l1)", "failed": [], "pct": 63.5, "updated": "2026-09-06T06:15:14Z"}
+{"shard": 19, "stage": "testing", "done": 34, "total": 52, "rows": 1167180, "note": "ORDER 15m: rule 1/120 (mom6)", "failed": [], "pct": 65.4, "updated": "2026-09-06T06:16:00Z"}

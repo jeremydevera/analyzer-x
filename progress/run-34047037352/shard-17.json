@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 2, "total": 53, "rows": 86940, "note": "AIOZ 30m: rule 45/120 (zscore20)", "failed": [], "pct": 3.8, "updated": "2026-09-06T17:03:20Z"}
+{"shard": 17, "stage": "testing", "done": 2, "total": 53, "rows": 99340, "note": "AIOZ 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-06T17:04:06Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 6, "total": 53, "rows": 222884, "note": "AVAVSTOCK 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 11.3, "updated": "2026-09-06T09:21:23Z"}
+{"shard": 5, "stage": "testing", "done": 7, "total": 53, "rows": 232484, "note": "BANANA 1h: rule 16/120 (keltner)", "failed": [], "pct": 13.2, "updated": "2026-09-06T09:22:08Z"}

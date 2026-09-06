@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 45, "total": 53, "rows": 1163914, "note": "TAKE 1d: rule 45/120 (zscore20)", "failed": [], "pct": 84.9, "updated": "2026-09-06T19:47:06Z"}
+{"shard": 19, "stage": "testing", "done": 47, "total": 53, "rows": 1193834, "note": "TST 1d: 394 bars, testing 120 rules", "failed": [], "pct": 88.7, "updated": "2026-09-06T19:47:54Z"}

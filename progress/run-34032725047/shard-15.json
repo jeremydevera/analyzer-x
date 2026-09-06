@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 33, "total": 52, "rows": 1550494, "note": "NVTSSTOCK 30m: 3,220 bars, testing 120 rules", "failed": [], "pct": 63.5, "updated": "2026-09-06T13:22:46Z"}
+{"shard": 15, "stage": "testing", "done": 34, "total": 52, "rows": 1574414, "note": "OPN 15m: rule 20/120 (stoch14)", "failed": [], "pct": 65.4, "updated": "2026-09-06T13:23:31Z"}

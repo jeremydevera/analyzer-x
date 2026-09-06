@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 14, "total": 53, "rows": 535258, "note": "CSPR 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-06T23:26:44Z"}
+{"shard": 0, "stage": "testing", "done": 14, "total": 53, "rows": 540812, "note": "CSPR 30m: rule 13/120 (pivot)", "failed": [], "pct": 26.4, "updated": "2026-09-06T23:27:30Z"}

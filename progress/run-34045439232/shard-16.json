@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 16, "total": 53, "rows": 514488, "note": "EIGEN 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 30.2, "updated": "2026-09-06T16:35:51Z"}
+{"shard": 16, "stage": "testing", "done": 17, "total": 53, "rows": 553824, "note": "EUR 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-06T16:36:42Z"}

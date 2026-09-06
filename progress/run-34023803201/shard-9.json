@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 17, "total": 53, "rows": 634790, "note": "ESP 30m: 9,984 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-06T09:42:33Z"}
+{"shard": 9, "stage": "testing", "done": 17, "total": 53, "rows": 645790, "note": "ESP 30m: rule 44/120 (elder)", "failed": [], "pct": 32.1, "updated": "2026-09-06T09:43:18Z"}

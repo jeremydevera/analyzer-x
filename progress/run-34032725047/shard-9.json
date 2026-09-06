@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 2, "total": 53, "rows": 89820, "note": "AGI 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 3.8, "updated": "2026-09-06T12:28:53Z"}
+{"shard": 9, "stage": "testing", "done": 3, "total": 53, "rows": 108496, "note": "ALLO 15m: rule 2/120 (mom15)", "failed": [], "pct": 5.7, "updated": "2026-09-06T12:29:49Z"}

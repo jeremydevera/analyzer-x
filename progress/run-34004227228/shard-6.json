@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 11, "total": 53, "rows": 338156, "note": "CCJSTOCK 15m: rule 1/120 (mom6)", "failed": [], "pct": 20.8, "updated": "2026-09-06T01:55:27Z"}
+{"shard": 6, "stage": "testing", "done": 12, "total": 53, "rows": 367836, "note": "CKB 4h: rule 72/120 (force13)", "failed": [], "pct": 22.6, "updated": "2026-09-06T01:56:12Z"}

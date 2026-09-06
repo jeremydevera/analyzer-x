@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 49, "total": 52, "rows": 1418232, "note": "VRTSTOCK 1h: 4,267 bars, testing 120 rules", "failed": [], "pct": 94.2, "updated": "2026-09-06T01:00:54Z"}
+{"shard": 13, "stage": "testing", "done": 51, "total": 52, "rows": 1475632, "note": "XMR 1d: 394 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-06T01:01:41Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 5, "total": 53, "rows": 146420, "note": "ARPA 15m: rule 20/120 (stoch14)", "failed": [], "pct": 9.4, "updated": "2026-09-06T01:47:02Z"}
+{"shard": 5, "stage": "testing", "done": 5, "total": 53, "rows": 151820, "note": "ARPA 15m: rule 47/120 (ibs)", "failed": [], "pct": 9.4, "updated": "2026-09-06T01:47:49Z"}

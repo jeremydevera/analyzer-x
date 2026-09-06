@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 52, "total": 53, "rows": 1220372, "note": "XPIN 4h: rule 18/120 (macd)", "failed": [], "pct": 98.1, "updated": "2026-09-06T16:47:10Z"}
+{"shard": 5, "stage": "testing", "done": 53, "total": 53, "rows": 1263140, "note": "ZETA 4h: rule 33/120 (heikin)", "failed": [], "pct": 100.0, "updated": "2026-09-06T16:47:55Z"}

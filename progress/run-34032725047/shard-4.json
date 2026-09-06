@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 29, "total": 53, "rows": 1310292, "note": "MASK 15m: 34,629 bars, testing 120 rules", "failed": [], "pct": 54.7, "updated": "2026-09-06T13:39:43Z"}
+{"shard": 4, "stage": "testing", "done": 29, "total": 53, "rows": 1313492, "note": "MASK 15m: rule 10/120 (sr_bounce)", "failed": [], "pct": 54.7, "updated": "2026-09-06T13:40:29Z"}

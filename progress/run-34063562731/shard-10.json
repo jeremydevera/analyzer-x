@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 27, "total": 53, "rows": 682386, "note": "LDO 4h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-06T22:27:05Z"}
+{"shard": 10, "stage": "testing", "done": 29, "total": 53, "rows": 713280, "note": "MEGA 4h: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 54.7, "updated": "2026-09-06T22:27:50Z"}

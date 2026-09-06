@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 12, "total": 53, "rows": 323508, "note": "CHZ 4h: rule 4/120 (trend50)", "failed": [], "pct": 22.6, "updated": "2026-09-06T22:23:08Z"}
+{"shard": 5, "stage": "testing", "done": 15, "total": 53, "rows": 395248, "note": "DEXE 1d: 75 bars, testing 120 rules", "failed": [], "pct": 28.3, "updated": "2026-09-06T22:23:54Z"}

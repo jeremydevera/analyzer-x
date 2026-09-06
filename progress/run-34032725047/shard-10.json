@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 21, "total": 53, "rows": 1057522, "note": "GRT 15m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 39.6, "updated": "2026-09-06T13:10:16Z"}
+{"shard": 10, "stage": "testing", "done": 21, "total": 53, "rows": 1065442, "note": "GRT 30m: rule 24/120 (psar)", "failed": [], "pct": 39.6, "updated": "2026-09-06T13:11:01Z"}

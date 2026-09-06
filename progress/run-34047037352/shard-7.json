@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 8, "total": 53, "rows": 333852, "note": "BIGTIME 30m: rule 2/120 (mom15)", "failed": [], "pct": 15.1, "updated": "2026-09-06T17:18:24Z"}
+{"shard": 7, "stage": "testing", "done": 8, "total": 53, "rows": 340672, "note": "BIGTIME 30m: rule 31/120 (trix15)", "failed": [], "pct": 15.1, "updated": "2026-09-06T17:19:09Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 11, "total": 53, "rows": 500722, "note": "CAT 30m: rule 2/120 (mom15)", "failed": [], "pct": 20.8, "updated": "2026-09-07T14:21:49Z"}
+{"shard": 4, "stage": "testing", "done": 11, "total": 53, "rows": 508202, "note": "CAT 30m: rule 34/120 (lrslope)", "failed": [], "pct": 20.8, "updated": "2026-09-07T14:22:34Z"}

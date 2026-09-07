@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 51, "total": 53, "rows": 2246004, "note": "WOO 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 96.2, "updated": "2026-09-07T12:17:56Z"}
+{"shard": 4, "stage": "testing", "done": 51, "total": 53, "rows": 2267344, "note": "WOO 1h: rule 95/120 (cf_emarsi_l1)", "failed": [], "pct": 96.2, "updated": "2026-09-07T12:18:41Z"}

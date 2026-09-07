@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 16, "total": 54, "rows": 615898, "note": "DOOD 30m: rule 9/120 (fib382)", "failed": [], "pct": 29.6, "updated": "2026-09-07T17:44:11Z"}
+{"shard": 0, "stage": "testing", "done": 16, "total": 54, "rows": 624038, "note": "DOOD 30m: rule 46/120 (rsi2)", "failed": [], "pct": 29.6, "updated": "2026-09-07T17:44:57Z"}

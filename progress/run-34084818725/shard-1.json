@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 35, "total": 53, "rows": 1328578, "note": "ORDER 30m: rule 28/120 (vortex14)", "failed": [], "pct": 66.0, "updated": "2026-09-07T06:02:47Z"}
+{"shard": 1, "stage": "testing", "done": 35, "total": 53, "rows": 1339138, "note": "ORDER 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 66.0, "updated": "2026-09-07T06:03:33Z"}

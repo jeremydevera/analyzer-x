@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 49, "total": 54, "rows": 1154406, "note": "URNM 1d: 90 bars, testing 120 rules", "failed": [], "pct": 90.7, "updated": "2026-09-07T16:49:00Z"}
+{"shard": 2, "stage": "testing", "done": 51, "total": 54, "rows": 1200232, "note": "WLFI 1d: rule 88/120 (cf_chan)", "failed": [], "pct": 94.4, "updated": "2026-09-07T16:49:45Z"}

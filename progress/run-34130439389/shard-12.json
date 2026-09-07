@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 38, "total": 53, "rows": 1397586, "note": "RAVE 1h: rule 16/120 (keltner)", "failed": [], "pct": 71.7, "updated": "2026-09-07T14:57:47Z"}
+{"shard": 12, "stage": "testing", "done": 38, "total": 53, "rows": 1418382, "note": "RAVE 30m: rule 1/120 (mom6)", "failed": [], "pct": 71.7, "updated": "2026-09-07T14:58:34Z"}

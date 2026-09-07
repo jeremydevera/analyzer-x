@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 43, "total": 53, "rows": 1675684, "note": "SOL 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-07T09:18:29Z"}
+{"shard": 4, "stage": "testing", "done": 45, "total": 53, "rows": 1723784, "note": "SUPER 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-07T09:19:34Z"}

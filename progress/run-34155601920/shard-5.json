@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 20, "total": 53, "rows": 1469186, "note": "GBP 1d: rule 54/120 (fractal5)", "failed": [], "pct": 37.7, "updated": "2026-09-07T20:54:18Z"}
+{"shard": 5, "stage": "testing", "done": 23, "total": 53, "rows": 1492402, "note": "HPESTOCK 15m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 43.4, "updated": "2026-09-07T20:55:03Z"}

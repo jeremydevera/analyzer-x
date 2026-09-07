@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 46, "total": 53, "rows": 1882600, "note": "TIA 1h: rule 3/120 (fade15)", "failed": [], "pct": 86.8, "updated": "2026-09-07T00:26:05Z"}
+{"shard": 14, "stage": "testing", "done": 46, "total": 53, "rows": 1903800, "note": "TIA 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 86.8, "updated": "2026-09-07T00:26:51Z"}

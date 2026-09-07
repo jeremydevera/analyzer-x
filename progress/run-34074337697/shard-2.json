@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 37, "total": 53, "rows": 1550922, "note": "POWR 30m: rule 29/120 (hull20)", "failed": [], "pct": 69.8, "updated": "2026-09-07T03:07:14Z"}
+{"shard": 2, "stage": "testing", "done": 37, "total": 53, "rows": 1563022, "note": "POWR 30m: rule 85/120 (cf_triple)", "failed": [], "pct": 69.8, "updated": "2026-09-07T03:07:59Z"}

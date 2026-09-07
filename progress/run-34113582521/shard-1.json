@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 45, "total": 54, "rows": 1854118, "note": "STX 30m: rule 22/120 (engulf)", "failed": [], "pct": 83.3, "updated": "2026-09-07T12:02:11Z"}
+{"shard": 1, "stage": "testing", "done": 45, "total": 54, "rows": 1869518, "note": "STX 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 83.3, "updated": "2026-09-07T12:02:56Z"}

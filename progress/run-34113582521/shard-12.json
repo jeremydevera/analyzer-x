@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 32, "total": 53, "rows": 1192998, "note": "NETSTOCK 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 60.4, "updated": "2026-09-07T11:35:21Z"}
+{"shard": 12, "stage": "testing", "done": 34, "total": 53, "rows": 1215318, "note": "ONT 1h: rule 22/120 (engulf)", "failed": [], "pct": 64.2, "updated": "2026-09-07T11:36:07Z"}

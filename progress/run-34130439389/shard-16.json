@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 5, "total": 53, "rows": 242814, "note": "ATH 30m: rule 72/120 (force13)", "failed": [], "pct": 9.4, "updated": "2026-09-07T14:16:59Z"}
+{"shard": 16, "stage": "testing", "done": 6, "total": 53, "rows": 268008, "note": "AZNSTOCK 30m: rule 2/120 (mom15)", "failed": [], "pct": 11.3, "updated": "2026-09-07T14:17:44Z"}

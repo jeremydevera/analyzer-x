@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 50, "total": 53, "rows": 2227018, "note": "WLD 30m: rule 3/120 (fade15)", "failed": [], "pct": 94.3, "updated": "2026-09-07T06:55:38Z"}
+{"shard": 19, "stage": "testing", "done": 50, "total": 53, "rows": 2235418, "note": "WLD 30m: rule 45/120 (zscore20)", "failed": [], "pct": 94.3, "updated": "2026-09-07T06:56:23Z"}

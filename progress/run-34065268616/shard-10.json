@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 44, "total": 53, "rows": 1820264, "note": "STG 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 83.0, "updated": "2026-09-07T00:21:06Z"}
+{"shard": 10, "stage": "testing", "done": 47, "total": 53, "rows": 1861732, "note": "TROLLSOL 1h: 3,017 bars, testing 120 rules", "failed": [], "pct": 88.7, "updated": "2026-09-07T00:21:52Z"}

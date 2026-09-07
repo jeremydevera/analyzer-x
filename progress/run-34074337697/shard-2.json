@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 38, "total": 53, "rows": 1572702, "note": "QNT 1h: rule 3/120 (fade15)", "failed": [], "pct": 71.7, "updated": "2026-09-07T03:08:47Z"}
+{"shard": 2, "stage": "testing", "done": 38, "total": 53, "rows": 1596682, "note": "QNT 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 71.7, "updated": "2026-09-07T03:09:33Z"}

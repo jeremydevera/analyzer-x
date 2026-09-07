@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 11, "total": 53, "rows": 520296, "note": "CFX 30m: rule 20/120 (stoch14)", "failed": [], "pct": 20.8, "updated": "2026-09-07T05:17:59Z"}
+{"shard": 17, "stage": "testing", "done": 11, "total": 53, "rows": 531736, "note": "CFX 30m: rule 73/120 (volspike)", "failed": [], "pct": 20.8, "updated": "2026-09-07T05:18:44Z"}

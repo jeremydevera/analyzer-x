@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 47, "total": 54, "rows": 4199622, "note": "TNSR 1h: rule 109/120 (cf_fundfade)", "failed": [], "pct": 87.0, "updated": "2026-09-07T22:54:19Z"}
+{"shard": 0, "stage": "testing", "done": 47, "total": 54, "rows": 4225362, "note": "TNSR 1d: 394 bars, testing 120 rules", "failed": [], "pct": 87.0, "updated": "2026-09-07T22:55:04Z"}

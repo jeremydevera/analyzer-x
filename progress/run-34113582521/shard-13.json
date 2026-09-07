@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 29, "total": 53, "rows": 1145756, "note": "MEITUANSTOCK 30m: 1,300 bars, testing 120 rules", "failed": [], "pct": 54.7, "updated": "2026-09-07T11:20:35Z"}
+{"shard": 13, "stage": "testing", "done": 30, "total": 53, "rows": 1191976, "note": "MNT 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 56.6, "updated": "2026-09-07T11:21:21Z"}

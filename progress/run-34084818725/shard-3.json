@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 27, "total": 53, "rows": 986820, "note": "KSM 1h: rule 3/120 (fade15)", "failed": [], "pct": 50.9, "updated": "2026-09-07T05:46:55Z"}
+{"shard": 3, "stage": "testing", "done": 27, "total": 53, "rows": 1010140, "note": "KSM 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-07T05:47:40Z"}

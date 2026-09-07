@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 44, "total": 53, "rows": 1798380, "note": "SSV 1h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 83.0, "updated": "2026-09-07T03:22:41Z"}
+{"shard": 5, "stage": "testing", "done": 44, "total": 53, "rows": 1804782, "note": "SSV 30m: rule 1/120 (mom6)", "failed": [], "pct": 83.0, "updated": "2026-09-07T03:23:28Z"}

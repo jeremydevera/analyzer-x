@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 13, "total": 53, "rows": 606378, "note": "CORE 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 24.5, "updated": "2026-09-07T14:31:35Z"}
+{"shard": 6, "stage": "testing", "done": 13, "total": 53, "rows": 609898, "note": "CORE 30m: rule 4/120 (trend50)", "failed": [], "pct": 24.5, "updated": "2026-09-07T14:32:22Z"}

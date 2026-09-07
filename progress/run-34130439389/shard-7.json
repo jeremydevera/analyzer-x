@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 21, "total": 53, "rows": 717762, "note": "GPS 1h: rule 21/120 (cci20)", "failed": [], "pct": 39.6, "updated": "2026-09-07T14:27:33Z"}
+{"shard": 7, "stage": "testing", "done": 21, "total": 53, "rows": 738662, "note": "GPS 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-07T14:28:23Z"}

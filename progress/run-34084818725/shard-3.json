@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 19, "total": 53, "rows": 736264, "note": "FLR 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 35.8, "updated": "2026-09-07T05:35:58Z"}
+{"shard": 3, "stage": "testing", "done": 20, "total": 53, "rows": 761784, "note": "GBP 1h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 37.7, "updated": "2026-09-07T05:36:43Z"}

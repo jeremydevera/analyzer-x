@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 3, "total": 53, "rows": 230088, "note": "AMP 15m: rule 41/120 (tsi)", "failed": [], "pct": 5.7, "updated": "2026-09-07T19:40:43Z"}
+{"shard": 19, "stage": "testing", "done": 3, "total": 53, "rows": 238068, "note": "AMP 15m: rule 100/120 (cf_soup1)", "failed": [], "pct": 5.7, "updated": "2026-09-07T19:41:28Z"}

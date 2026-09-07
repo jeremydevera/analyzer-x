@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 19, "total": 53, "rows": 1571654, "note": "FRMISTOCK 15m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 35.8, "updated": "2026-09-07T20:50:14Z"}
+{"shard": 15, "stage": "testing", "done": 20, "total": 53, "rows": 1585354, "note": "GIGGLE 15m: rule 1/120 (mom6)", "failed": [], "pct": 37.7, "updated": "2026-09-07T20:51:08Z"}

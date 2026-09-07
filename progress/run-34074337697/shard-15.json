@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 36, "total": 53, "rows": 1363090, "note": "POLYX 1h: rule 33/120 (heikin)", "failed": [], "pct": 67.9, "updated": "2026-09-07T02:54:13Z"}
+{"shard": 15, "stage": "testing", "done": 36, "total": 53, "rows": 1381790, "note": "POLYX 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 67.9, "updated": "2026-09-07T02:55:03Z"}

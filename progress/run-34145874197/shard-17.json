@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 52, "total": 53, "rows": 2157190, "note": "YGG 30m: rule 47/120 (ibs)", "failed": [], "pct": 98.1, "updated": "2026-09-07T19:00:33Z"}
+{"shard": 17, "stage": "testing", "done": 52, "total": 53, "rows": 2171050, "note": "YGG 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-07T19:01:19Z"}

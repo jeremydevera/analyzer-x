@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 24, "total": 54, "rows": 934962, "note": "ICX 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 44.4, "updated": "2026-09-07T17:59:47Z"}
+{"shard": 0, "stage": "testing", "done": 25, "total": 54, "rows": 944202, "note": "IOTX 1h: rule 27/120 (aroon25)", "failed": [], "pct": 46.3, "updated": "2026-09-07T18:00:32Z"}

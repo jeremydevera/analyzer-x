@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 49, "total": 53, "rows": 2186290, "note": "VELODROME 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-07T18:51:20Z"}
+{"shard": 16, "stage": "testing", "done": 49, "total": 53, "rows": 2190690, "note": "VELODROME 30m: rule 14/120 (bb20)", "failed": [], "pct": 92.5, "updated": "2026-09-07T18:52:06Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 13, "total": 53, "rows": 497190, "note": "CRMSTOCK 30m: rule 2/120 (mom15)", "failed": [], "pct": 24.5, "updated": "2026-09-07T14:13:26Z"}
+{"shard": 13, "stage": "testing", "done": 13, "total": 53, "rows": 518990, "note": "CRMSTOCK 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 24.5, "updated": "2026-09-07T14:14:11Z"}

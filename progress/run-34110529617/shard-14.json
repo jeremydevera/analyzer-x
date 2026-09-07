@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 46, "total": 53, "rows": 1073978, "note": "THETA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 86.8, "updated": "2026-09-07T10:34:27Z"}
+{"shard": 14, "stage": "testing", "done": 47, "total": 53, "rows": 1115778, "note": "TRUST 4h: rule 6/120 (sweep30)", "failed": [], "pct": 88.7, "updated": "2026-09-07T10:35:12Z"}

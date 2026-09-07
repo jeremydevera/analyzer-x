@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 53, "total": 53, "rows": 4573366, "note": "ZRO 15m: rule 6/120 (sweep30)", "failed": [], "pct": 100.0, "updated": "2026-09-07T23:03:44Z"}
+{"shard": 19, "stage": "testing", "done": 53, "total": 53, "rows": 4578946, "note": "ZRO 15m: rule 37/120 (ultosc)", "failed": [], "pct": 100.0, "updated": "2026-09-07T23:04:29Z"}

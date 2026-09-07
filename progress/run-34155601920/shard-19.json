@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 38, "total": 53, "rows": 3694958, "note": "RDWSTOCK 1d: 102 bars, testing 120 rules", "failed": [], "pct": 71.7, "updated": "2026-09-07T22:25:31Z"}
+{"shard": 19, "stage": "testing", "done": 42, "total": 53, "rows": 3775226, "note": "SNPSSTOCK 30m: 2,370 bars, testing 120 rules", "failed": [], "pct": 79.2, "updated": "2026-09-07T22:26:17Z"}

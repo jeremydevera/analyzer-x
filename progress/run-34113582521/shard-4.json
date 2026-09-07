@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 26, "total": 53, "rows": 1206092, "note": "KAT 30m: rule 12/120 (donchian20)", "failed": [], "pct": 49.1, "updated": "2026-09-07T11:41:17Z"}
+{"shard": 4, "stage": "testing", "done": 28, "total": 53, "rows": 1234492, "note": "LMTSTOCK 1h: rule 24/120 (psar)", "failed": [], "pct": 52.8, "updated": "2026-09-07T11:42:02Z"}

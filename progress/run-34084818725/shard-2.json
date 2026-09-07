@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 20, "total": 53, "rows": 807028, "note": "GAS 1h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 37.7, "updated": "2026-09-07T05:34:50Z"}
+{"shard": 2, "stage": "testing", "done": 20, "total": 53, "rows": 815608, "note": "GAS 30m: rule 3/120 (fade15)", "failed": [], "pct": 37.7, "updated": "2026-09-07T05:35:37Z"}

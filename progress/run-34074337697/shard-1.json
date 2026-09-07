@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 47, "total": 53, "rows": 1877552, "note": "TOSHI 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 88.7, "updated": "2026-09-07T03:01:55Z"}
+{"shard": 1, "stage": "testing", "done": 47, "total": 53, "rows": 1883272, "note": "TOSHI 30m: rule 16/120 (keltner)", "failed": [], "pct": 88.7, "updated": "2026-09-07T03:02:41Z"}

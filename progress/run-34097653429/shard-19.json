@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 20, "total": 53, "rows": 913232, "note": "GMT 30m: rule 107/120 (cf_bosfvg_l1)", "failed": [], "pct": 37.7, "updated": "2026-09-07T08:48:15Z"}
+{"shard": 19, "stage": "testing", "done": 22, "total": 53, "rows": 920844, "note": "HOLO 1h: rule 18/120 (macd)", "failed": [], "pct": 41.5, "updated": "2026-09-07T08:49:00Z"}

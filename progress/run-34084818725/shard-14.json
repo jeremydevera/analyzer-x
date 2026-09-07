@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 24, "total": 53, "rows": 967380, "note": "IONQSTOCK 30m: rule 22/120 (engulf)", "failed": [], "pct": 45.3, "updated": "2026-09-07T05:43:59Z"}
+{"shard": 14, "stage": "testing", "done": 25, "total": 53, "rows": 1002660, "note": "JPMSTOCK 1h: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 47.2, "updated": "2026-09-07T05:44:45Z"}

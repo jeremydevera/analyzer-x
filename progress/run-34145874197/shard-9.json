@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 25, "total": 53, "rows": 1021566, "note": "JCT 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 47.2, "updated": "2026-09-07T17:34:19Z"}
+{"shard": 9, "stage": "testing", "done": 26, "total": 53, "rows": 1044930, "note": "KGEN 1h: rule 106/120 (cf_bosfvg)", "failed": [], "pct": 49.1, "updated": "2026-09-07T17:35:04Z"}

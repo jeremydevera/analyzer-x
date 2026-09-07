@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 19, "total": 53, "rows": 1463764, "note": "FORM 15m: rule 47/120 (ibs)", "failed": [], "pct": 35.8, "updated": "2026-09-07T20:30:04Z"}
+{"shard": 12, "stage": "testing", "done": 19, "total": 53, "rows": 1470804, "note": "FORM 15m: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 35.8, "updated": "2026-09-07T20:30:49Z"}

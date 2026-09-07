@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 18, "total": 53, "rows": 675152, "note": "FF 30m: rule 58/120 (bos)", "failed": [], "pct": 34.0, "updated": "2026-09-07T08:27:31Z"}
+{"shard": 11, "stage": "testing", "done": 19, "total": 53, "rows": 693864, "note": "FOXASTOCK 1h: rule 36/120 (stochrsi)", "failed": [], "pct": 35.8, "updated": "2026-09-07T08:28:16Z"}

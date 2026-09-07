@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 45, "total": 53, "rows": 1131686, "note": "SWARMS 4h: rule 72/120 (force13)", "failed": [], "pct": 84.9, "updated": "2026-09-07T16:48:14Z"}
+{"shard": 9, "stage": "testing", "done": 47, "total": 53, "rows": 1169592, "note": "TREE 4h: rule 33/120 (heikin)", "failed": [], "pct": 88.7, "updated": "2026-09-07T16:48:59Z"}

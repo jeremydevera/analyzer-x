@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 14, "total": 53, "rows": 476214, "note": "CVXSTOCK 30m: 9,043 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-07T17:21:56Z"}
+{"shard": 12, "stage": "testing", "done": 15, "total": 53, "rows": 508950, "note": "DISSTOCK 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 28.3, "updated": "2026-09-07T17:22:41Z"}

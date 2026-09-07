@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 39, "total": 53, "rows": 3508106, "note": "ROBINHOOD 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 73.6, "updated": "2026-09-07T22:42:41Z"}
+{"shard": 18, "stage": "testing", "done": 39, "total": 53, "rows": 3521706, "note": "ROBINHOOD 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 73.6, "updated": "2026-09-07T22:43:27Z"}

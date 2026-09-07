@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 17, "total": 53, "rows": 1348650, "note": "ETHW 1h: rule 2/120 (mom15)", "failed": [], "pct": 32.1, "updated": "2026-09-07T20:41:07Z"}
+{"shard": 14, "stage": "testing", "done": 17, "total": 53, "rows": 1367570, "note": "ETHW 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-07T20:41:53Z"}

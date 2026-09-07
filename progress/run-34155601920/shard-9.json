@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 19, "total": 53, "rows": 1614300, "note": "FOGO 1d: 240 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-07T21:17:30Z"}
+{"shard": 9, "stage": "testing", "done": 20, "total": 53, "rows": 1628490, "note": "GESTOCK 15m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 37.7, "updated": "2026-09-07T21:18:17Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 20, "total": 54, "rows": 741452, "note": "F 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 37.0, "updated": "2026-09-07T11:17:33Z"}
+{"shard": 1, "stage": "testing", "done": 20, "total": 54, "rows": 747172, "note": "F 30m: rule 20/120 (stoch14)", "failed": [], "pct": 37.0, "updated": "2026-09-07T11:18:18Z"}

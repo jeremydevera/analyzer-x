@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 14, "total": 53, "rows": 593738, "note": "CTSI 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-07T14:37:48Z"}
+{"shard": 8, "stage": "testing", "done": 17, "total": 53, "rows": 640988, "note": "EPIC 1h: rule 1/120 (mom6)", "failed": [], "pct": 32.1, "updated": "2026-09-07T14:38:35Z"}

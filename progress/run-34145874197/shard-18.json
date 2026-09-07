@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 38, "total": 53, "rows": 1656158, "note": "RDDTSTOCK 30m: rule 29/120 (hull20)", "failed": [], "pct": 71.7, "updated": "2026-09-07T18:30:15Z"}
+{"shard": 18, "stage": "testing", "done": 39, "total": 53, "rows": 1674158, "note": "ROBINHOOD 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 73.6, "updated": "2026-09-07T18:31:00Z"}

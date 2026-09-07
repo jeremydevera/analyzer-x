@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 13, "total": 53, "rows": 373032, "note": "COPPER 4h: 1,327 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-07T13:24:59Z"}
+{"shard": 4, "stage": "testing", "done": 14, "total": 53, "rows": 427240, "note": "CTC 4h: rule 72/120 (force13)", "failed": [], "pct": 26.4, "updated": "2026-09-07T13:25:44Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 47, "total": 53, "rows": 3892282, "note": "TQQQ 15m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 88.7, "updated": "2026-09-07T23:05:45Z"}
+{"shard": 6, "stage": "testing", "done": 48, "total": 53, "rows": 3969056, "note": "TWLOSTOCK 15m: 8,401 bars, testing 120 rules", "failed": [], "pct": 90.6, "updated": "2026-09-07T23:06:31Z"}

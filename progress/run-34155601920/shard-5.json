@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 14, "total": 53, "rows": 926100, "note": "CTK 15m: rule 1/120 (mom6)", "failed": [], "pct": 26.4, "updated": "2026-09-07T20:20:28Z"}
+{"shard": 5, "stage": "testing", "done": 14, "total": 53, "rows": 928700, "note": "CTK 15m: rule 10/120 (sr_bounce)", "failed": [], "pct": 26.4, "updated": "2026-09-07T20:21:14Z"}

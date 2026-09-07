@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 18, "total": 53, "rows": 1218662, "note": "FARTCOIN 15m: 34,559 bars, testing 120 rules", "failed": [], "pct": 34.0, "updated": "2026-09-07T20:07:09Z"}
+{"shard": 7, "stage": "testing", "done": 18, "total": 53, "rows": 1220822, "note": "FARTCOIN 15m: rule 6/120 (sweep30)", "failed": [], "pct": 34.0, "updated": "2026-09-07T20:07:54Z"}

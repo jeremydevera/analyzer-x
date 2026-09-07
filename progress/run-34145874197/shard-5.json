@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 53, "total": 53, "rows": 1958128, "note": "ZEN 30m: rule 13/120 (pivot)", "failed": [], "pct": 100.0, "updated": "2026-09-07T18:39:41Z"}
+{"shard": 5, "stage": "testing", "done": 53, "total": 53, "rows": 1967148, "note": "ZEN 30m: rule 55/120 (nhigh50)", "failed": [], "pct": 100.0, "updated": "2026-09-07T18:40:27Z"}

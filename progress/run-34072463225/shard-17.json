@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 2, "total": 53, "rows": 44748, "note": "AIOZ 4h: rule 14/120 (bb20)", "failed": [], "pct": 3.8, "updated": "2026-09-07T01:17:00Z"}
+{"shard": 17, "stage": "testing", "done": 4, "total": 53, "rows": 86856, "note": "APT 4h: rule 20/120 (stoch14)", "failed": [], "pct": 7.5, "updated": "2026-09-07T01:17:45Z"}

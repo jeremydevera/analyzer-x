@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 3, "total": 53, "rows": 84384, "note": "AMCSTOCK 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 5.7, "updated": "2026-09-07T10:56:19Z"}
+{"shard": 15, "stage": "testing", "done": 4, "total": 53, "rows": 133324, "note": "APPSTOCK 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 7.5, "updated": "2026-09-07T10:57:04Z"}

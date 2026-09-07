@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 38, "total": 54, "rows": 3466684, "note": "QBTSSTOCK 15m: rule 91/120 (cf_soup)", "failed": [], "pct": 70.4, "updated": "2026-09-07T22:54:22Z"}
+{"shard": 1, "stage": "testing", "done": 38, "total": 54, "rows": 3510538, "note": "QBTSSTOCK 1d: 82 bars, testing 120 rules", "failed": [], "pct": 70.4, "updated": "2026-09-07T22:55:07Z"}

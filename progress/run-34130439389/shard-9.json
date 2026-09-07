@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 12, "total": 53, "rows": 524060, "note": "CLANKER 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-07T14:23:37Z"}
+{"shard": 9, "stage": "testing", "done": 13, "total": 53, "rows": 537480, "note": "COW 1h: rule 46/120 (rsi2)", "failed": [], "pct": 24.5, "updated": "2026-09-07T14:24:23Z"}

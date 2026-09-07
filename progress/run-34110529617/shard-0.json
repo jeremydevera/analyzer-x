@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 54, "total": 54, "rows": 1505846, "note": "ZRX 4h: rule 76/120 (cf_mom)", "failed": [], "pct": 100.0, "updated": "2026-09-07T10:42:13Z"}
+{"shard": 0, "stage": "done", "done": 54, "total": 54, "rows": 1528110, "note": "1,528,110 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "failed": [], "pct": 100.0, "updated": "2026-09-07T10:42:29Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 40, "total": 53, "rows": 1760818, "note": "SATS 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-07T00:27:29Z"}
+{"shard": 16, "stage": "testing", "done": 40, "total": 53, "rows": 1765678, "note": "SATS 30m: rule 8/120 (fib618)", "failed": [], "pct": 75.5, "updated": "2026-09-07T00:28:14Z"}

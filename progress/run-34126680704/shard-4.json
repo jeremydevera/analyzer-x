@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 24, "total": 53, "rows": 687776, "note": "ILV 4h: rule 70/120 (cmf20)", "failed": [], "pct": 45.3, "updated": "2026-09-07T13:29:48Z"}
+{"shard": 4, "stage": "testing", "done": 25, "total": 53, "rows": 728432, "note": "IRYS 4h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 47.2, "updated": "2026-09-07T13:30:33Z"}

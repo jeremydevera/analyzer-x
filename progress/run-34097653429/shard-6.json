@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 30, "total": 53, "rows": 1100054, "note": "MIRA 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 56.6, "updated": "2026-09-07T08:42:29Z"}
+{"shard": 6, "stage": "testing", "done": 30, "total": 53, "rows": 1108634, "note": "MIRA 30m: rule 3/120 (fade15)", "failed": [], "pct": 56.6, "updated": "2026-09-07T08:43:16Z"}

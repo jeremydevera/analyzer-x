@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 36, "total": 53, "rows": 825376, "note": "PLSTOCK 4h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 67.9, "updated": "2026-09-07T01:28:46Z"}
+{"shard": 10, "stage": "testing", "done": 38, "total": 53, "rows": 869096, "note": "RAVE 4h: 1,611 bars, testing 120 rules", "failed": [], "pct": 71.7, "updated": "2026-09-07T01:29:33Z"}

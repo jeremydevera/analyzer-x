@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 53, "total": 53, "rows": 2129444, "note": "ZEC 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-07T09:29:26Z"}
+{"shard": 1, "stage": "testing", "done": 53, "total": 53, "rows": 2145504, "note": "ZEC 1h: rule 68/120 (dbltop)", "failed": [], "pct": 100.0, "updated": "2026-09-07T09:30:11Z"}

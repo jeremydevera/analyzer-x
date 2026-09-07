@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 46, "total": 54, "rows": 1977364, "note": "TAKE 30m: rule 69/120 (obv20)", "failed": [], "pct": 85.2, "updated": "2026-09-07T15:42:24Z"}
+{"shard": 1, "stage": "testing", "done": 47, "total": 54, "rows": 2000472, "note": "TOAD 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 87.0, "updated": "2026-09-07T15:43:09Z"}

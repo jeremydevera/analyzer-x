@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 22, "total": 53, "rows": 955642, "note": "HK50 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-07T14:52:00Z"}
+{"shard": 16, "stage": "testing", "done": 23, "total": 53, "rows": 982218, "note": "IBKRSTOCK 1h: 1,665 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-07T14:52:47Z"}

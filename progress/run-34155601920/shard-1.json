@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 35, "total": 54, "rows": 3186132, "note": "ORCA 30m: rule 13/120 (pivot)", "failed": [], "pct": 64.8, "updated": "2026-09-07T22:41:50Z"}
+{"shard": 1, "stage": "testing", "done": 35, "total": 54, "rows": 3194712, "note": "ORCA 30m: rule 53/120 (squeeze)", "failed": [], "pct": 64.8, "updated": "2026-09-07T22:42:35Z"}

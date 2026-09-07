@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 41, "total": 53, "rows": 1667848, "note": "SHARE 1h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 77.4, "updated": "2026-09-07T15:23:26Z"}
+{"shard": 6, "stage": "testing", "done": 43, "total": 53, "rows": 1707808, "note": "SOL 1h: rule 3/120 (fade15)", "failed": [], "pct": 81.1, "updated": "2026-09-07T15:24:13Z"}

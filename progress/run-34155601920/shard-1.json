@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 29, "total": 54, "rows": 2539216, "note": "MANA 30m: rule 4/120 (trend50)", "failed": [], "pct": 53.7, "updated": "2026-09-07T21:55:41Z"}
+{"shard": 1, "stage": "testing", "done": 29, "total": 54, "rows": 2548676, "note": "MANA 30m: rule 47/120 (ibs)", "failed": [], "pct": 53.7, "updated": "2026-09-07T21:56:28Z"}

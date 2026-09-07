@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 35, "total": 53, "rows": 1065938, "note": "PENGU 4h: rule 112/120 (cf_obretest)", "failed": [], "pct": 66.0, "updated": "2026-09-07T13:38:23Z"}
+{"shard": 19, "stage": "testing", "done": 43, "total": 53, "rows": 1114976, "note": "SPK 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-07T13:39:17Z"}

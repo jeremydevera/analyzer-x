@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 52, "total": 53, "rows": 2067978, "note": "XVG 30m: rule 57/120 (orderblock)", "failed": [], "pct": 98.1, "updated": "2026-09-07T06:39:41Z"}
+{"shard": 10, "stage": "testing", "done": 52, "total": 53, "rows": 2080518, "note": "XVG 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-07T06:40:27Z"}

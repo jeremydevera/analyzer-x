@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 20, "total": 53, "rows": 866636, "note": "GLWSTOCK 30m: rule 61/120 (turtle)", "failed": [], "pct": 37.7, "updated": "2026-09-07T17:49:21Z"}
+{"shard": 18, "stage": "testing", "done": 21, "total": 53, "rows": 885572, "note": "GWEI 1h: rule 36/120 (stochrsi)", "failed": [], "pct": 39.6, "updated": "2026-09-07T17:50:07Z"}

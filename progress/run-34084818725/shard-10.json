@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 50, "total": 53, "rows": 1976378, "note": "WAVES 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 94.3, "updated": "2026-09-07T06:35:00Z"}
+{"shard": 10, "stage": "testing", "done": 51, "total": 53, "rows": 2006898, "note": "XBI 30m: rule 3/120 (fade15)", "failed": [], "pct": 96.2, "updated": "2026-09-07T06:35:45Z"}

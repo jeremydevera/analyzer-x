@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 19, "total": 53, "rows": 743400, "note": "FLUX 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 35.8, "updated": "2026-09-07T11:27:38Z"}
+{"shard": 8, "stage": "testing", "done": 21, "total": 53, "rows": 787434, "note": "GRABSTOCK 30m: rule 19/120 (emacross)", "failed": [], "pct": 39.6, "updated": "2026-09-07T11:28:23Z"}

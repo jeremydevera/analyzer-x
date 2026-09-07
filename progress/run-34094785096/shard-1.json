@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 52, "total": 53, "rows": 1358808, "note": "XMR 4h: rule 2/120 (mom15)", "failed": [], "pct": 98.1, "updated": "2026-09-07T07:40:50Z"}
+{"shard": 1, "stage": "testing", "done": 53, "total": 53, "rows": 1401796, "note": "ZEC 4h: rule 20/120 (stoch14)", "failed": [], "pct": 100.0, "updated": "2026-09-07T07:41:35Z"}

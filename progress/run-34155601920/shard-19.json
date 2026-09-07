@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 8, "total": 53, "rows": 802184, "note": "BLESS 15m: rule 46/120 (rsi2)", "failed": [], "pct": 15.1, "updated": "2026-09-07T20:15:30Z"}
+{"shard": 19, "stage": "testing", "done": 8, "total": 53, "rows": 809864, "note": "BLESS 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 15.1, "updated": "2026-09-07T20:16:15Z"}

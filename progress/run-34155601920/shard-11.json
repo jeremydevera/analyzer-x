@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 48, "total": 53, "rows": 3927066, "note": "T 15m: rule 9/120 (fib382)", "failed": [], "pct": 90.6, "updated": "2026-09-07T23:31:06Z"}
+{"shard": 11, "stage": "testing", "done": 48, "total": 53, "rows": 3931906, "note": "T 15m: rule 31/120 (trix15)", "failed": [], "pct": 90.6, "updated": "2026-09-07T23:31:51Z"}

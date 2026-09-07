@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 37, "total": 53, "rows": 2794874, "note": "PUMPFUN 4h: rule 10/120 (sr_bounce)", "failed": [], "pct": 69.8, "updated": "2026-09-07T21:58:02Z"}
+{"shard": 15, "stage": "testing", "done": 38, "total": 53, "rows": 2850830, "note": "RBRKSTOCK 1h: rule 2/120 (mom15)", "failed": [], "pct": 71.7, "updated": "2026-09-07T21:58:47Z"}

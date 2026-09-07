@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 14, "total": 53, "rows": 492636, "note": "CVX 30m: rule 47/120 (ibs)", "failed": [], "pct": 26.4, "updated": "2026-09-07T08:15:42Z"}
+{"shard": 11, "stage": "testing", "done": 14, "total": 53, "rows": 505836, "note": "CVX 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-07T08:16:28Z"}

@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 7, "total": 53, "rows": 227484, "note": "BABY 30m: rule 20/120 (stoch14)", "failed": [], "pct": 13.2, "updated": "2026-09-07T08:07:19Z"}
+{"shard": 2, "stage": "testing", "done": 7, "total": 53, "rows": 238684, "note": "BABY 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 13.2, "updated": "2026-09-07T08:08:04Z"}

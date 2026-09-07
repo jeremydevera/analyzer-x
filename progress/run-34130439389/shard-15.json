@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 13, "total": 53, "rows": 465492, "note": "CRO 30m: rule 2/120 (mom15)", "failed": [], "pct": 24.5, "updated": "2026-09-07T14:19:18Z"}
+{"shard": 15, "stage": "testing", "done": 13, "total": 53, "rows": 475392, "note": "CRO 30m: rule 45/120 (zscore20)", "failed": [], "pct": 24.5, "updated": "2026-09-07T14:20:03Z"}

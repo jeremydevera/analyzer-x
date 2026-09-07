@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 21, "total": 53, "rows": 796666, "note": "GPS 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-07T02:29:53Z"}
+{"shard": 5, "stage": "testing", "done": 21, "total": 53, "rows": 808106, "note": "GPS 1h: rule 46/120 (rsi2)", "failed": [], "pct": 39.6, "updated": "2026-09-07T02:30:38Z"}

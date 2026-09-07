@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 52, "total": 53, "rows": 1955684, "note": "XVG 30m: rule 69/120 (obv20)", "failed": [], "pct": 98.1, "updated": "2026-09-07T12:14:45Z"}
+{"shard": 12, "stage": "testing", "done": 53, "total": 53, "rows": 1966904, "note": "ZIL 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-07T12:15:32Z"}

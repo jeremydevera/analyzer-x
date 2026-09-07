@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 47, "total": 53, "rows": 1872454, "note": "TRY 30m: rule 53/120 (squeeze)", "failed": [], "pct": 88.7, "updated": "2026-09-07T06:26:37Z"}
+{"shard": 15, "stage": "testing", "done": 48, "total": 53, "rows": 1886214, "note": "UNHSTOCK 1h: rule 3/120 (fade15)", "failed": [], "pct": 90.6, "updated": "2026-09-07T06:27:22Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 43, "total": 53, "rows": 1664286, "note": "SOXL 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-07T15:10:31Z"}
+{"shard": 12, "stage": "testing", "done": 44, "total": 53, "rows": 1673066, "note": "STG 1h: rule 3/120 (fade15)", "failed": [], "pct": 83.0, "updated": "2026-09-07T15:11:17Z"}

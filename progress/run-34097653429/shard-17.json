@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 2, "total": 53, "rows": 88540, "note": "AIOZ 30m: rule 54/120 (fractal5)", "failed": [], "pct": 3.8, "updated": "2026-09-07T07:58:34Z"}
+{"shard": 17, "stage": "testing", "done": 4, "total": 53, "rows": 138762, "note": "APT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 7.5, "updated": "2026-09-07T07:59:21Z"}

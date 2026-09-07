@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 53, "total": 53, "rows": 4561128, "note": "ZORA 15m: 34,572 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-07T23:29:16Z"}
+{"shard": 18, "stage": "testing", "done": 53, "total": 53, "rows": 4563108, "note": "ZORA 15m: rule 3/120 (fade15)", "failed": [], "pct": 100.0, "updated": "2026-09-07T23:30:23Z"}

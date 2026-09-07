@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 39, "total": 53, "rows": 1700020, "note": "RKLBSTOCK 1h: rule 20/120 (stoch14)", "failed": [], "pct": 73.6, "updated": "2026-09-07T00:02:37Z"}
+{"shard": 12, "stage": "testing", "done": 39, "total": 53, "rows": 1729720, "note": "RKLBSTOCK 30m: rule 63/120 (killzone)", "failed": [], "pct": 73.6, "updated": "2026-09-07T00:03:22Z"}

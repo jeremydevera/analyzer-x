@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 23, "total": 54, "rows": 828660, "note": "HOLO 1h: rule 20/120 (stoch14)", "failed": [], "pct": 42.6, "updated": "2026-09-07T11:22:51Z"}
+{"shard": 1, "stage": "testing", "done": 23, "total": 54, "rows": 848724, "note": "HOLO 30m: rule 1/120 (mom6)", "failed": [], "pct": 42.6, "updated": "2026-09-07T11:23:38Z"}

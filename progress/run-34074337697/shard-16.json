@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 2, "total": 53, "rows": 54940, "note": "AIOT 1h: rule 7/120 (fvg)", "failed": [], "pct": 3.8, "updated": "2026-09-07T01:56:10Z"}
+{"shard": 16, "stage": "testing", "done": 2, "total": 53, "rows": 71000, "note": "AIOT 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-07T01:56:56Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 45, "total": 53, "rows": 1857924, "note": "SYRUP 1h: rule 16/120 (keltner)", "failed": [], "pct": 84.9, "updated": "2026-09-07T09:09:15Z"}
+{"shard": 12, "stage": "testing", "done": 45, "total": 53, "rows": 1879484, "note": "SYRUP 1h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-07T09:10:00Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 44, "total": 53, "rows": 1757832, "note": "SPX500 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 83.0, "updated": "2026-09-07T00:34:27Z"}
+{"shard": 0, "stage": "testing", "done": 46, "total": 53, "rows": 1767092, "note": "TAO 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 86.8, "updated": "2026-09-07T00:35:13Z"}

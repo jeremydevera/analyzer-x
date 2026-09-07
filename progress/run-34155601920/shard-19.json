@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 21, "total": 53, "rows": 2082298, "note": "G 1h: rule 16/120 (keltner)", "failed": [], "pct": 39.6, "updated": "2026-09-07T21:14:25Z"}
+{"shard": 19, "stage": "testing", "done": 21, "total": 53, "rows": 2104738, "note": "G 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-07T21:15:10Z"}

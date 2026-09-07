@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 48, "total": 53, "rows": 1322486, "note": "UNHSTOCK 4h: rule 18/120 (macd)", "failed": [], "pct": 90.6, "updated": "2026-09-07T10:33:16Z"}
+{"shard": 17, "stage": "testing", "done": 51, "total": 53, "rows": 1412136, "note": "XLE 1d: 119 bars, testing 120 rules", "failed": [], "pct": 96.2, "updated": "2026-09-07T10:34:02Z"}

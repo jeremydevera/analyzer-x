@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 51, "total": 53, "rows": 1974542, "note": "XAU 1h: rule 40/120 (crsi)", "failed": [], "pct": 96.2, "updated": "2026-09-07T03:26:09Z"}
+{"shard": 9, "stage": "testing", "done": 52, "total": 53, "rows": 2017002, "note": "XTZ 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-07T03:27:07Z"}

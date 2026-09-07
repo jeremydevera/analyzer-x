@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 17, "total": 54, "rows": 353386, "note": "ENA 4h: downloading candles", "failed": [], "pct": 31.5, "updated": "2026-09-07T13:24:31Z"}
+{"shard": 1, "stage": "testing", "done": 17, "total": 54, "rows": 389726, "note": "ENA 1d: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 31.5, "updated": "2026-09-07T13:25:16Z"}

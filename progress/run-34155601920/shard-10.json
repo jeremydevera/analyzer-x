@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 43, "total": 53, "rows": 3713172, "note": "SOONNETWORK 30m: rule 45/120 (zscore20)", "failed": [], "pct": 81.1, "updated": "2026-09-07T23:23:40Z"}
+{"shard": 10, "stage": "testing", "done": 43, "total": 53, "rows": 3725272, "note": "SOONNETWORK 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-07T23:24:25Z"}

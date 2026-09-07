@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 30, "total": 53, "rows": 616576, "note": "MNT 4h: rule 55/120 (nhigh50)", "failed": [], "pct": 56.6, "updated": "2026-09-07T04:30:39Z"}
+{"shard": 11, "stage": "testing", "done": 31, "total": 53, "rows": 658156, "note": "MUBARAK 4h: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 58.5, "updated": "2026-09-07T04:31:24Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 32, "total": 54, "rows": 1353740, "note": "MYX 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 59.3, "updated": "2026-09-07T18:29:54Z"}
+{"shard": 0, "stage": "testing", "done": 34, "total": 54, "rows": 1375216, "note": "OFC 1h: rule 36/120 (stochrsi)", "failed": [], "pct": 63.0, "updated": "2026-09-07T18:30:40Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 8, "total": 53, "rows": 349268, "note": "BLAST 1h: rule 6/120 (sweep30)", "failed": [], "pct": 15.1, "updated": "2026-09-07T11:14:47Z"}
+{"shard": 16, "stage": "testing", "done": 8, "total": 53, "rows": 373028, "note": "BLAST 1h: rule 116/120 (cf_diadx_l1)", "failed": [], "pct": 15.1, "updated": "2026-09-07T11:15:32Z"}

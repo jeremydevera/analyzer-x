@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 7, "total": 53, "rows": 304734, "note": "BARD 30m: 16,986 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-07T08:05:27Z"}
+{"shard": 9, "stage": "testing", "done": 7, "total": 53, "rows": 312654, "note": "BARD 30m: rule 30/120 (kama10)", "failed": [], "pct": 13.2, "updated": "2026-09-07T08:06:12Z"}

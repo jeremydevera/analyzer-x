@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 22, "total": 53, "rows": 1732880, "note": "HK1810 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-07T20:59:36Z"}
+{"shard": 15, "stage": "testing", "done": 24, "total": 53, "rows": 1803232, "note": "IN 15m: 34,563 bars, testing 120 rules", "failed": [], "pct": 45.3, "updated": "2026-09-07T21:00:30Z"}

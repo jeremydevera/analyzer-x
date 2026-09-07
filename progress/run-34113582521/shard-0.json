@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 54, "total": 54, "rows": 2226684, "note": "ZRX 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-07T13:00:47Z"}
+{"shard": 0, "stage": "testing", "done": 54, "total": 54, "rows": 2237024, "note": "ZRX 30m: rule 3/120 (fade15)", "failed": [], "pct": 100.0, "updated": "2026-09-07T13:01:40Z"}

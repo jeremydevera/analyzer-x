@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 14, "total": 53, "rows": 399586, "note": "DBR 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-07T07:27:13Z"}
+{"shard": 18, "stage": "testing", "done": 14, "total": 53, "rows": 430458, "note": "DBR 1d: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-07T07:27:58Z"}

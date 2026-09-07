@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 3, "total": 53, "rows": 177790, "note": "ALLO 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 5.7, "updated": "2026-09-07T19:39:00Z"}
+{"shard": 9, "stage": "testing", "done": 3, "total": 53, "rows": 184810, "note": "ALLO 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 5.7, "updated": "2026-09-07T19:39:47Z"}

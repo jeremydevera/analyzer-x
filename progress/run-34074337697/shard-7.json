@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 5, "total": 53, "rows": 198896, "note": "ARX 30m: rule 67/120 (pinbar)", "failed": [], "pct": 9.4, "updated": "2026-09-07T02:01:09Z"}
+{"shard": 7, "stage": "testing", "done": 6, "total": 53, "rows": 224436, "note": "AVA 1h: rule 103/120 (cf_eqhl)", "failed": [], "pct": 11.3, "updated": "2026-09-07T02:01:54Z"}

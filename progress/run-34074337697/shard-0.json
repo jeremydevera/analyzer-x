@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 53, "total": 53, "rows": 2036086, "note": "ZBT 1h: rule 86/120 (cf_triple_l1)", "failed": [], "pct": 100.0, "updated": "2026-09-07T03:43:40Z"}
+{"shard": 0, "stage": "testing", "done": 53, "total": 53, "rows": 2045106, "note": "ZBT 30m: rule 3/120 (fade15)", "failed": [], "pct": 100.0, "updated": "2026-09-07T03:44:33Z"}

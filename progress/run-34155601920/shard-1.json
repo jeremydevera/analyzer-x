@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 51, "total": 54, "rows": 4488622, "note": "WLD 4h: rule 1/120 (mom6)", "failed": [], "pct": 94.4, "updated": "2026-09-07T23:49:26Z"}
+{"shard": 1, "stage": "testing", "done": 52, "total": 54, "rows": 4535446, "note": "XLU 15m: rule 64/120 (hammer)", "failed": [], "pct": 96.3, "updated": "2026-09-07T23:50:11Z"}

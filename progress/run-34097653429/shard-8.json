@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 40, "total": 53, "rows": 1560560, "note": "SAFE 30m: rule 48/120 (prank)", "failed": [], "pct": 75.5, "updated": "2026-09-07T09:26:15Z"}
+{"shard": 8, "stage": "testing", "done": 40, "total": 53, "rows": 1574200, "note": "SAFE 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-07T09:27:00Z"}

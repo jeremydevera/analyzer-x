@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 18, "total": 53, "rows": 760646, "note": "FET 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 34.0, "updated": "2026-09-07T08:31:13Z"}
+{"shard": 10, "stage": "testing", "done": 18, "total": 53, "rows": 764846, "note": "FET 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 34.0, "updated": "2026-09-07T08:31:59Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 49, "total": 54, "rows": 1186008, "note": "UP 4h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 90.7, "updated": "2026-09-07T13:38:50Z"}
+{"shard": 1, "stage": "testing", "done": 50, "total": 54, "rows": 1222528, "note": "VIRTUAL 1d: 394 bars, testing 120 rules", "failed": [], "pct": 92.6, "updated": "2026-09-07T13:39:38Z"}

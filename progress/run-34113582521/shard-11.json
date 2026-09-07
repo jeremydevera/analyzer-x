@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 3, "total": 53, "rows": 142240, "note": "ALPINE 30m: rule 32/120 (gmma)", "failed": [], "pct": 5.7, "updated": "2026-09-07T11:01:02Z"}
+{"shard": 11, "stage": "testing", "done": 3, "total": 53, "rows": 154780, "note": "ALPINE 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 5.7, "updated": "2026-09-07T11:01:48Z"}

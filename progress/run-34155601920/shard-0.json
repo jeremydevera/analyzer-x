@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 13, "total": 54, "rows": 1140048, "note": "COLLECT 4h: rule 23/120 (supertrend)", "failed": [], "pct": 24.1, "updated": "2026-09-07T20:28:11Z"}
+{"shard": 0, "stage": "testing", "done": 15, "total": 54, "rows": 1167900, "note": "DBR 15m: 34,560 bars, testing 120 rules", "failed": [], "pct": 27.8, "updated": "2026-09-07T20:29:01Z"}

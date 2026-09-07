@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 40, "total": 53, "rows": 1121108, "note": "SATS 4h: rule 3/120 (fade15)", "failed": [], "pct": 75.5, "updated": "2026-09-07T13:36:49Z"}
+{"shard": 18, "stage": "testing", "done": 43, "total": 53, "rows": 1206366, "note": "SPELL 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-07T13:37:40Z"}

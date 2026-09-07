@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 48, "total": 53, "rows": 1941708, "note": "TURBO 30m: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 90.6, "updated": "2026-09-07T06:39:22Z"}
+{"shard": 1, "stage": "testing", "done": 49, "total": 53, "rows": 1970286, "note": "US30 1h: rule 97/120 (cf_ttm)", "failed": [], "pct": 92.5, "updated": "2026-09-07T06:40:07Z"}

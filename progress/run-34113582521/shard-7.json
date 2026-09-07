@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 7, "total": 53, "rows": 277876, "note": "BANK 30m: rule 1/120 (mom6)", "failed": [], "pct": 13.2, "updated": "2026-09-07T11:08:49Z"}
+{"shard": 7, "stage": "testing", "done": 7, "total": 53, "rows": 281476, "note": "BANK 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 13.2, "updated": "2026-09-07T11:09:34Z"}

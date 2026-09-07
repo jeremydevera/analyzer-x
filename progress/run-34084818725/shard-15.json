@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 43, "total": 53, "rows": 1655414, "note": "SPCXSTOCK 30m: rule 3/120 (fade15)", "failed": [], "pct": 81.1, "updated": "2026-09-07T06:13:23Z"}
+{"shard": 15, "stage": "testing", "done": 44, "total": 53, "rows": 1679614, "note": "STO 1h: rule 2/120 (mom15)", "failed": [], "pct": 83.0, "updated": "2026-09-07T06:14:08Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 25, "total": 53, "rows": 2093136, "note": "JOE 1h: rule 115/120 (cf_diadx)", "failed": [], "pct": 47.2, "updated": "2026-09-07T21:15:03Z"}
+{"shard": 14, "stage": "testing", "done": 26, "total": 53, "rows": 2134056, "note": "KITE 15m: 30,089 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-07T21:15:52Z"}

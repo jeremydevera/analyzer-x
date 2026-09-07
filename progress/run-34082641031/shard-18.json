@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 42, "total": 53, "rows": 1250372, "note": "SNT 1d: rule 16/120 (keltner)", "failed": [], "pct": 79.2, "updated": "2026-09-07T04:41:11Z"}
+{"shard": 18, "stage": "testing", "done": 46, "total": 53, "rows": 1329124, "note": "TNSR 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 86.8, "updated": "2026-09-07T04:42:04Z"}

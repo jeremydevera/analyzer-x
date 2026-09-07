@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 9, "total": 53, "rows": 426008, "note": "BROCCOLI 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 17.0, "updated": "2026-09-07T05:24:03Z"}
+{"shard": 19, "stage": "testing", "done": 10, "total": 53, "rows": 468548, "note": "CASHCAT 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 18.9, "updated": "2026-09-07T05:24:48Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 5, "total": 53, "rows": 86634, "note": "ASTR 4h: rule 1/120 (mom6)", "failed": [], "pct": 9.4, "updated": "2026-09-07T04:20:14Z"}
+{"shard": 13, "stage": "testing", "done": 6, "total": 53, "rows": 125486, "note": "AXPSTOCK 1d: downloading candles", "failed": [], "pct": 11.3, "updated": "2026-09-07T04:21:00Z"}

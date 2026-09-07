@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 29, "total": 53, "rows": 698066, "note": "MELISTOCK 1d: downloading candles", "failed": [], "pct": 54.7, "updated": "2026-09-07T07:28:27Z"}
+{"shard": 14, "stage": "testing", "done": 30, "total": 53, "rows": 724026, "note": "MOODENG 1d: 394 bars, testing 120 rules", "failed": [], "pct": 56.6, "updated": "2026-09-07T07:29:16Z"}

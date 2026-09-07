@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 18, "total": 53, "rows": 828818, "note": "FLEXSTOCK 1h: rule 3/120 (fade15)", "failed": [], "pct": 34.0, "updated": "2026-09-07T05:32:06Z"}
+{"shard": 17, "stage": "testing", "done": 19, "total": 53, "rows": 873298, "note": "FUTUSTOCK 30m: 13,758 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-07T05:32:55Z"}

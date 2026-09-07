@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 3, "total": 53, "rows": 90776, "note": "AKT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 5.7, "updated": "2026-09-07T14:04:28Z"}
+{"shard": 3, "stage": "testing", "done": 3, "total": 53, "rows": 115416, "note": "AKT 1h: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 5.7, "updated": "2026-09-07T14:05:59Z"}

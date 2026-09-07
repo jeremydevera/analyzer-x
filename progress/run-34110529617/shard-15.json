@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 53, "total": 53, "rows": 1161166, "note": "ZKP 4h: rule 1/120 (mom6)", "failed": [], "pct": 100.0, "updated": "2026-09-07T10:35:50Z"}
+{"shard": 15, "stage": "testing", "done": 12, "total": 53, "rows": 1194892, "note": "1 pair(s) lost so far", "failed": ["CNPY_USDT 4h: CNPY_USDT 4h: no order book for CNPY_USDT"], "pct": 22.6, "updated": "2026-09-07T10:36:15Z"}

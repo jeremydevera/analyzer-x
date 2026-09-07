@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 44, "total": 53, "rows": 1729042, "note": "SPX500 30m: rule 1/120 (mom6)", "failed": [], "pct": 83.0, "updated": "2026-09-07T03:33:26Z"}
+{"shard": 0, "stage": "testing", "done": 46, "total": 53, "rows": 1753242, "note": "TAO 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 86.8, "updated": "2026-09-07T03:34:22Z"}

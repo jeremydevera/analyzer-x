@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 20, "total": 54, "rows": 820360, "note": "F 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 37.0, "updated": "2026-09-07T14:39:26Z"}
+{"shard": 1, "stage": "testing", "done": 20, "total": 54, "rows": 823160, "note": "F 30m: rule 8/120 (fib618)", "failed": [], "pct": 37.0, "updated": "2026-09-07T14:40:12Z"}

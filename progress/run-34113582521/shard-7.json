@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 47, "total": 53, "rows": 1821122, "note": "TRADOOR 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 88.7, "updated": "2026-09-07T12:28:46Z"}
+{"shard": 7, "stage": "testing", "done": 47, "total": 53, "rows": 1833882, "note": "TRADOOR 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 88.7, "updated": "2026-09-07T12:29:32Z"}

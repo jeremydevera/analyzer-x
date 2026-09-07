@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 17, "total": 54, "rows": 1317840, "note": "ENA 15m: rule 9/120 (fib382)", "failed": [], "pct": 31.5, "updated": "2026-09-07T20:34:49Z"}
+{"shard": 1, "stage": "testing", "done": 17, "total": 54, "rows": 1322160, "note": "ENA 15m: rule 33/120 (heikin)", "failed": [], "pct": 31.5, "updated": "2026-09-07T20:35:36Z"}

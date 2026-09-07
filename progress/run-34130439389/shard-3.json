@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 11, "total": 53, "rows": 459544, "note": "CATSTOCK 30m: 3,315 bars, testing 120 rules", "failed": [], "pct": 20.8, "updated": "2026-09-07T14:30:03Z"}
+{"shard": 3, "stage": "testing", "done": 12, "total": 53, "rows": 497746, "note": "CHIP 30m: 6,927 bars, testing 120 rules", "failed": [], "pct": 22.6, "updated": "2026-09-07T14:30:49Z"}

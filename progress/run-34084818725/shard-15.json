@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 28, "total": 53, "rows": 1111652, "note": "LYN 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 52.8, "updated": "2026-09-07T05:50:13Z"}
+{"shard": 15, "stage": "testing", "done": 31, "total": 53, "rows": 1154652, "note": "MUU 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 58.5, "updated": "2026-09-07T05:50:58Z"}

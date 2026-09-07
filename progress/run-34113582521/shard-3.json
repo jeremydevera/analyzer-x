@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 32, "total": 53, "rows": 1163032, "note": "NAS100 1h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 60.4, "updated": "2026-09-07T11:46:36Z"}
+{"shard": 3, "stage": "testing", "done": 32, "total": 53, "rows": 1186072, "note": "NAS100 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 60.4, "updated": "2026-09-07T11:47:22Z"}

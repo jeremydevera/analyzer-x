@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 17, "total": 53, "rows": 653080, "note": "ENJ 1h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-07T17:39:13Z"}
+{"shard": 3, "stage": "testing", "done": 17, "total": 53, "rows": 661660, "note": "ENJ 30m: rule 3/120 (fade15)", "failed": [], "pct": 32.1, "updated": "2026-09-07T17:40:08Z"}

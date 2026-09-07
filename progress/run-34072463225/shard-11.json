@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 52, "total": 53, "rows": 1161520, "note": "XVS 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-07T01:32:17Z"}
+{"shard": 11, "stage": "testing", "done": 53, "total": 53, "rows": 1226420, "note": "ZKC 4h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-07T01:33:02Z"}

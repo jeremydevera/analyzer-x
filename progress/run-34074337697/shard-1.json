@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 38, "total": 53, "rows": 1456442, "note": "QNTSTOCK 30m: 4,845 bars, testing 120 rules", "failed": [], "pct": 71.7, "updated": "2026-09-07T02:44:05Z"}
+{"shard": 1, "stage": "testing", "done": 40, "total": 53, "rows": 1501810, "note": "RON 1h: rule 28/120 (vortex14)", "failed": [], "pct": 75.5, "updated": "2026-09-07T02:44:50Z"}

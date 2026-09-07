@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 51, "total": 53, "rows": 2236728, "note": "XDC 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 96.2, "updated": "2026-09-07T05:57:04Z"}
+{"shard": 12, "stage": "testing", "done": 51, "total": 53, "rows": 2251688, "note": "XDC 30m: rule 63/120 (killzone)", "failed": [], "pct": 96.2, "updated": "2026-09-07T05:57:49Z"}

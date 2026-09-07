@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 23, "total": 53, "rows": 979076, "note": "HOT 30m: rule 79/120 (cf_donch)", "failed": [], "pct": 43.4, "updated": "2026-09-07T05:42:34Z"}
+{"shard": 2, "stage": "testing", "done": 24, "total": 53, "rows": 989196, "note": "ILV 1h: rule 2/120 (mom15)", "failed": [], "pct": 45.3, "updated": "2026-09-07T05:43:23Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 35, "total": 53, "rows": 1395802, "note": "OXYSTOCK 30m: rule 13/120 (pivot)", "failed": [], "pct": 66.0, "updated": "2026-09-07T09:02:54Z"}
+{"shard": 4, "stage": "testing", "done": 38, "total": 53, "rows": 1422498, "note": "QTUM 1h: downloading candles", "failed": [], "pct": 71.7, "updated": "2026-09-07T09:03:39Z"}

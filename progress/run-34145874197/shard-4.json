@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 17, "total": 53, "rows": 797472, "note": "ENPHSTOCK 30m: rule 40/120 (crsi)", "failed": [], "pct": 32.1, "updated": "2026-09-07T17:38:55Z"}
+{"shard": 4, "stage": "testing", "done": 19, "total": 53, "rows": 832324, "note": "FLOW 1h: rule 7/120 (fvg)", "failed": [], "pct": 35.8, "updated": "2026-09-07T17:39:40Z"}

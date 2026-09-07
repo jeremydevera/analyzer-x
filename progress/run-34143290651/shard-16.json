@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 12, "total": 53, "rows": 377456, "note": "COAI 1d: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-07T16:34:58Z"}
+{"shard": 16, "stage": "testing", "done": 14, "total": 53, "rows": 418486, "note": "CYS 4h: 1,622 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-07T16:35:44Z"}

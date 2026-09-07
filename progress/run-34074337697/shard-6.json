@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 20, "total": 53, "rows": 761586, "note": "GEOD 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 37.7, "updated": "2026-09-07T02:20:15Z"}
+{"shard": 6, "stage": "testing", "done": 22, "total": 53, "rows": 802704, "note": "HEI 1h: rule 14/120 (bb20)", "failed": [], "pct": 41.5, "updated": "2026-09-07T02:21:00Z"}

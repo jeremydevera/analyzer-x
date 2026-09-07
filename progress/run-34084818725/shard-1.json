@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 49, "total": 53, "rows": 1997248, "note": "US30 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 92.5, "updated": "2026-09-07T06:40:52Z"}
+{"shard": 1, "stage": "testing", "done": 50, "total": 53, "rows": 2023840, "note": "VRTSTOCK 30m: rule 58/120 (bos)", "failed": [], "pct": 94.3, "updated": "2026-09-07T06:41:37Z"}

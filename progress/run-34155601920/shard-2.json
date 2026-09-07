@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 23, "total": 54, "rows": 1631880, "note": "HOME 1h: rule 86/120 (cf_triple_l1)", "failed": [], "pct": 42.6, "updated": "2026-09-07T21:13:56Z"}
+{"shard": 2, "stage": "testing", "done": 23, "total": 54, "rows": 1663560, "note": "HOME 4h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 42.6, "updated": "2026-09-07T21:14:41Z"}

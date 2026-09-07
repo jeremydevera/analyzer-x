@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 39, "total": 53, "rows": 1007490, "note": "ROAM 4h: downloading candles", "failed": [], "pct": 73.6, "updated": "2026-09-07T10:28:44Z"}
+{"shard": 17, "stage": "testing", "done": 40, "total": 53, "rows": 1026778, "note": "SAPIEN 4h: rule 22/120 (engulf)", "failed": [], "pct": 75.5, "updated": "2026-09-07T10:29:29Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 27, "total": 53, "rows": 1022380, "note": "KOSPI 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-07T08:54:06Z"}
+{"shard": 0, "stage": "testing", "done": 28, "total": 53, "rows": 1036940, "note": "LIT 1h: rule 53/120 (squeeze)", "failed": [], "pct": 52.8, "updated": "2026-09-07T08:54:51Z"}

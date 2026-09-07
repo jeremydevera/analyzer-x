@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 8, "total": 54, "rows": 651242, "note": "BEAT 30m: rule 35/120 (willr14)", "failed": [], "pct": 14.8, "updated": "2026-09-07T20:05:05Z"}
+{"shard": 0, "stage": "testing", "done": 8, "total": 54, "rows": 668042, "note": "BEAT 1h: 7,451 bars, testing 120 rules", "failed": [], "pct": 14.8, "updated": "2026-09-07T20:05:56Z"}

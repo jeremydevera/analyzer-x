@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 12, "total": 53, "rows": 1012654, "note": "CHIP 15m: rule 71/120 (mfi14)", "failed": [], "pct": 22.6, "updated": "2026-09-07T20:34:28Z"}
+{"shard": 3, "stage": "testing", "done": 12, "total": 53, "rows": 1024274, "note": "CHIP 30m: rule 8/120 (fib618)", "failed": [], "pct": 22.6, "updated": "2026-09-07T20:35:13Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 32, "total": 53, "rows": 1437146, "note": "NIGHT 30m: rule 20/120 (stoch14)", "failed": [], "pct": 60.4, "updated": "2026-09-07T00:14:29Z"}
+{"shard": 16, "stage": "testing", "done": 32, "total": 53, "rows": 1450126, "note": "NIGHT 30m: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 60.4, "updated": "2026-09-07T00:15:14Z"}

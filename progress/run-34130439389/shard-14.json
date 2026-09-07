@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 32, "total": 53, "rows": 1339388, "note": "NEX 1h: rule 76/120 (cf_mom)", "failed": [], "pct": 60.4, "updated": "2026-09-07T15:03:48Z"}
+{"shard": 14, "stage": "testing", "done": 33, "total": 53, "rows": 1387730, "note": "NVDL 1h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 62.3, "updated": "2026-09-07T15:04:33Z"}

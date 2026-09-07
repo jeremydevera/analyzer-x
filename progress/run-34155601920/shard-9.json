@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 43, "total": 53, "rows": 3686262, "note": "SONYSTOCK 1d: downloading candles", "failed": [], "pct": 81.1, "updated": "2026-09-07T23:46:27Z"}
+{"shard": 9, "stage": "testing", "done": 44, "total": 53, "rows": 3693192, "note": "STAR 1d: 116 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-07T23:47:13Z"}

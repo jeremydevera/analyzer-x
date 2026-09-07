@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 48, "total": 53, "rows": 1944202, "note": "TWSTSTOCK 30m: downloading candles", "failed": [], "pct": 90.6, "updated": "2026-09-07T00:31:50Z"}
+{"shard": 5, "stage": "testing", "done": 49, "total": 53, "rows": 1971482, "note": "USOIL 30m: 10,554 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-07T00:32:39Z"}

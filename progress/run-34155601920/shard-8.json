@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 28, "total": 53, "rows": 2171218, "note": "LRCXSTOCK 4h: rule 63/120 (killzone)", "failed": [], "pct": 52.8, "updated": "2026-09-07T21:20:35Z"}
+{"shard": 8, "stage": "testing", "done": 29, "total": 53, "rows": 2196564, "note": "MASTOCK 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 54.7, "updated": "2026-09-07T21:21:21Z"}

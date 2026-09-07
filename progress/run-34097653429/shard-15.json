@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 47, "total": 53, "rows": 1893806, "note": "TRY 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 88.7, "updated": "2026-09-07T09:08:45Z"}
+{"shard": 15, "stage": "testing", "done": 48, "total": 53, "rows": 1922106, "note": "UNHSTOCK 30m: rule 51/120 (orb)", "failed": [], "pct": 90.6, "updated": "2026-09-07T09:09:30Z"}

@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 7, "total": 53, "rows": 219520, "note": "BABY 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-07T05:09:16Z"}
+{"shard": 2, "stage": "testing", "done": 7, "total": 53, "rows": 223920, "note": "BABY 30m: rule 16/120 (keltner)", "failed": [], "pct": 13.2, "updated": "2026-09-07T05:10:02Z"}

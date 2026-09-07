@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 39, "total": 53, "rows": 3677924, "note": "RENDER 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 73.6, "updated": "2026-09-07T22:39:07Z"}
+{"shard": 4, "stage": "testing", "done": 39, "total": 53, "rows": 3704724, "note": "RENDER 1d: 394 bars, testing 120 rules", "failed": [], "pct": 73.6, "updated": "2026-09-07T22:39:54Z"}

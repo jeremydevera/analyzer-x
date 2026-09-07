@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 6, "total": 53, "rows": 615412, "note": "AWE 1h: rule 73/120 (volspike)", "failed": [], "pct": 11.3, "updated": "2026-09-07T20:06:44Z"}
+{"shard": 10, "stage": "testing", "done": 6, "total": 53, "rows": 635872, "note": "AWE 4h: rule 41/120 (tsi)", "failed": [], "pct": 11.3, "updated": "2026-09-07T20:07:29Z"}

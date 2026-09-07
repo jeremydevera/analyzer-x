@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 9, "total": 53, "rows": 323730, "note": "BOTSTOCK 1h: 1,348 bars, testing 120 rules", "failed": [], "pct": 17.0, "updated": "2026-09-07T14:11:09Z"}
+{"shard": 13, "stage": "testing", "done": 10, "total": 53, "rows": 393650, "note": "BXSTOCK 30m: rule 66/120 (soldiers)", "failed": [], "pct": 18.9, "updated": "2026-09-07T14:11:54Z"}

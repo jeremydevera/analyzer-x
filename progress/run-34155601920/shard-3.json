@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 10, "total": 53, "rows": 930484, "note": "BR 4h: rule 58/120 (bos)", "failed": [], "pct": 18.9, "updated": "2026-09-07T20:32:07Z"}
+{"shard": 3, "stage": "testing", "done": 11, "total": 53, "rows": 965872, "note": "CATSTOCK 30m: rule 8/120 (fib618)", "failed": [], "pct": 20.8, "updated": "2026-09-07T20:32:52Z"}

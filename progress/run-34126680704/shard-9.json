@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 13, "total": 53, "rows": 347178, "note": "COW 4h: rule 15/120 (bbbreak)", "failed": [], "pct": 24.5, "updated": "2026-09-07T13:24:35Z"}
+{"shard": 9, "stage": "testing", "done": 16, "total": 53, "rows": 383962, "note": "DYDX 4h: rule 5/120 (rsi14)", "failed": [], "pct": 30.2, "updated": "2026-09-07T13:25:20Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 41, "total": 53, "rows": 1642158, "note": "SHIB 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 77.4, "updated": "2026-09-07T06:31:41Z"}
+{"shard": 8, "stage": "testing", "done": 41, "total": 53, "rows": 1655758, "note": "SHIB 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 77.4, "updated": "2026-09-07T06:32:27Z"}

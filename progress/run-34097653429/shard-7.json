@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 45, "total": 53, "rows": 1824828, "note": "SWARMS 30m: rule 54/120 (fractal5)", "failed": [], "pct": 84.9, "updated": "2026-09-07T09:38:14Z"}
+{"shard": 7, "stage": "testing", "done": 45, "total": 53, "rows": 1838688, "note": "SWARMS 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-07T09:38:59Z"}

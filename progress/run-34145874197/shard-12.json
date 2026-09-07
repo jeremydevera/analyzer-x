@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 27, "total": 53, "rows": 1020932, "note": "LDO 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 50.9, "updated": "2026-09-07T17:43:32Z"}
+{"shard": 12, "stage": "testing", "done": 29, "total": 53, "rows": 1050612, "note": "MEGA 1h: 7,681 bars, testing 120 rules", "failed": [], "pct": 54.7, "updated": "2026-09-07T17:44:25Z"}

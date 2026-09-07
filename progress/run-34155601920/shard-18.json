@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 50, "total": 53, "rows": 4476022, "note": "WET 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 94.3, "updated": "2026-09-07T23:26:07Z"}
+{"shard": 18, "stage": "testing", "done": 50, "total": 53, "rows": 4490322, "note": "WET 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 94.3, "updated": "2026-09-07T23:26:53Z"}

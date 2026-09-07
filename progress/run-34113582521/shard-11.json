@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 45, "total": 53, "rows": 1612910, "note": "SXT 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 84.9, "updated": "2026-09-07T12:17:47Z"}
+{"shard": 11, "stage": "testing", "done": 45, "total": 53, "rows": 1633370, "note": "SXT 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-07T12:18:32Z"}

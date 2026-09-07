@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 18, "total": 53, "rows": 591124, "note": "FILECOIN 4h: rule 59/120 (choch)", "failed": [], "pct": 34.0, "updated": "2026-09-07T01:26:30Z"}
+{"shard": 16, "stage": "testing", "done": 21, "total": 53, "rows": 661044, "note": "GWEI 4h: rule 73/120 (volspike)", "failed": [], "pct": 39.6, "updated": "2026-09-07T01:27:15Z"}

@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 53, "total": 54, "rows": 1230284, "note": "ZBT 1d: rule 13/120 (pivot)", "failed": [], "pct": 98.1, "updated": "2026-09-07T16:50:30Z"}
+{"shard": 2, "stage": "done", "done": 54, "total": 54, "rows": 1240844, "note": "1,240,844 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "failed": [], "pct": 100.0, "updated": "2026-09-07T16:50:34Z"}

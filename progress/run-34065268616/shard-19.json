@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 46, "total": 53, "rows": 2053202, "note": "TOAD 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 86.8, "updated": "2026-09-07T00:41:39Z"}
+{"shard": 19, "stage": "testing", "done": 47, "total": 53, "rows": 2061306, "note": "TST 1h: rule 22/120 (engulf)", "failed": [], "pct": 88.7, "updated": "2026-09-07T00:42:25Z"}

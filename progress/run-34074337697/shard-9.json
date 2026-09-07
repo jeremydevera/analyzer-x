@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 5, "total": 53, "rows": 207188, "note": "ASMLSTOCK 30m: rule 24/120 (psar)", "failed": [], "pct": 9.4, "updated": "2026-09-07T02:00:54Z"}
+{"shard": 9, "stage": "testing", "done": 6, "total": 53, "rows": 224288, "note": "AVNT 1h: 8,701 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-07T02:01:45Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 52, "total": 53, "rows": 1988462, "note": "XOMSTOCK 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-07T03:07:22Z"}
+{"shard": 3, "stage": "testing", "done": 53, "total": 53, "rows": 1998380, "note": "ZEREBRO 1h: rule 25/120 (ichimoku)", "failed": [], "pct": 100.0, "updated": "2026-09-07T03:08:07Z"}

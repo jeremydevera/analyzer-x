@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 6, "total": 53, "rows": 237876, "note": "AVA 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-07T11:05:34Z"}
+{"shard": 7, "stage": "testing", "done": 6, "total": 53, "rows": 246276, "note": "AVA 30m: rule 65/120 (doji)", "failed": [], "pct": 11.3, "updated": "2026-09-07T11:06:19Z"}

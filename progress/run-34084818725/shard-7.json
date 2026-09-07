@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 49, "total": 53, "rows": 1956264, "note": "USTC 1h: rule 1/120 (mom6)", "failed": [], "pct": 92.5, "updated": "2026-09-07T06:41:55Z"}
+{"shard": 7, "stage": "testing", "done": 49, "total": 53, "rows": 1974964, "note": "USTC 1h: rule 83/120 (cf_maobv_l1)", "failed": [], "pct": 92.5, "updated": "2026-09-07T06:42:40Z"}

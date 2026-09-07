@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 52, "total": 53, "rows": 4756732, "note": "XNY 30m: rule 1/120 (mom6)", "failed": [], "pct": 98.1, "updated": "2026-09-07T23:34:49Z"}
+{"shard": 4, "stage": "testing", "done": 52, "total": 53, "rows": 4760252, "note": "XNY 30m: rule 13/120 (pivot)", "failed": [], "pct": 98.1, "updated": "2026-09-07T23:35:35Z"}

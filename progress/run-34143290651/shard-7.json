@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 28, "total": 53, "rows": 553250, "note": "LQTY 4h: rule 79/120 (cf_donch)", "failed": [], "pct": 52.8, "updated": "2026-09-07T16:36:56Z"}
+{"shard": 7, "stage": "testing", "done": 29, "total": 53, "rows": 600330, "note": "MASK 1d: 394 bars, testing 120 rules", "failed": [], "pct": 54.7, "updated": "2026-09-07T16:37:45Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 52, "total": 53, "rows": 1350162, "note": "XNY 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-07T10:36:11Z"}
+{"shard": 4, "stage": "testing", "done": 53, "total": 53, "rows": 1392314, "note": "ZEC 4h: rule 2/120 (mom15)", "failed": [], "pct": 100.0, "updated": "2026-09-07T10:36:56Z"}

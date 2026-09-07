@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 48, "total": 54, "rows": 1373268, "note": "TSMSTOCK 4h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 88.9, "updated": "2026-09-07T16:51:44Z"}
+{"shard": 0, "stage": "testing", "done": 53, "total": 54, "rows": 1424666, "note": "ZAMA 4h: 1,448 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-07T16:52:33Z"}

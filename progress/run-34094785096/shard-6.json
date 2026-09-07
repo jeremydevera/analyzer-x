@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 51, "total": 53, "rows": 1115954, "note": "XAI 1d: 394 bars, testing 120 rules", "failed": [], "pct": 96.2, "updated": "2026-09-07T07:35:42Z"}
+{"shard": 6, "stage": "testing", "done": 53, "total": 53, "rows": 1167082, "note": "ZHIPUSTOCK 1d: 77 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-07T07:36:28Z"}

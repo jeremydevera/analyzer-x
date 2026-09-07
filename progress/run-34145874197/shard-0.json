@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 38, "total": 54, "rows": 1562362, "note": "PYTH 30m: rule 63/120 (killzone)", "failed": [], "pct": 70.4, "updated": "2026-09-07T18:43:04Z"}
+{"shard": 0, "stage": "testing", "done": 39, "total": 54, "rows": 1573762, "note": "RECALL 1h: 7,854 bars, testing 120 rules", "failed": [], "pct": 72.2, "updated": "2026-09-07T18:43:51Z"}

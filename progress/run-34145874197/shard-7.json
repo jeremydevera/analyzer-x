@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 10, "total": 53, "rows": 428902, "note": "BTC 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 18.9, "updated": "2026-09-07T17:25:27Z"}
+{"shard": 7, "stage": "testing", "done": 13, "total": 53, "rows": 472578, "note": "COSTSTOCK 1h: 6,203 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-07T17:26:15Z"}

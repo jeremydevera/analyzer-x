@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 21, "total": 53, "rows": 521688, "note": "GOAT 4h: rule 2/120 (mom15)", "failed": [], "pct": 39.6, "updated": "2026-09-07T16:36:41Z"}
+{"shard": 3, "stage": "testing", "done": 22, "total": 53, "rows": 560276, "note": "HANA 4h: 2,078 bars, testing 120 rules", "failed": [], "pct": 41.5, "updated": "2026-09-07T16:37:28Z"}

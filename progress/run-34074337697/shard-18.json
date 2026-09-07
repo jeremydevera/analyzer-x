@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 51, "total": 53, "rows": 2056800, "note": "XLM 1h: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 96.2, "updated": "2026-09-07T03:54:51Z"}
+{"shard": 18, "stage": "testing", "done": 51, "total": 53, "rows": 2067840, "note": "XLM 30m: rule 3/120 (fade15)", "failed": [], "pct": 96.2, "updated": "2026-09-07T03:55:38Z"}

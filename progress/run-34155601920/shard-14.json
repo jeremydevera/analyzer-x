@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 25, "total": 53, "rows": 2048256, "note": "JOE 30m: rule 33/120 (heikin)", "failed": [], "pct": 47.2, "updated": "2026-09-07T21:12:47Z"}
+{"shard": 14, "stage": "testing", "done": 25, "total": 53, "rows": 2059476, "note": "JOE 30m: rule 85/120 (cf_triple)", "failed": [], "pct": 47.2, "updated": "2026-09-07T21:13:32Z"}

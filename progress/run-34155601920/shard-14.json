@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 3, "total": 53, "rows": 120108, "note": "AMATSTOCK 15m: rule 19/120 (emacross)", "failed": [], "pct": 5.7, "updated": "2026-09-07T19:35:47Z"}
+{"shard": 14, "stage": "testing", "done": 3, "total": 53, "rows": 130048, "note": "AMATSTOCK 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 5.7, "updated": "2026-09-07T19:36:33Z"}

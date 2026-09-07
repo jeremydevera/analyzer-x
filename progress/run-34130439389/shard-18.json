@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 27, "total": 53, "rows": 1181512, "note": "LINK 30m: rule 49/120 (vwaprev)", "failed": [], "pct": 50.9, "updated": "2026-09-07T15:07:38Z"}
+{"shard": 18, "stage": "testing", "done": 28, "total": 53, "rows": 1195112, "note": "LYTE 1h: 512 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-07T15:08:24Z"}

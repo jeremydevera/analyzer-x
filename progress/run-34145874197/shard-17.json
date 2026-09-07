@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 20, "total": 53, "rows": 794624, "note": "GLM 1h: rule 1/120 (mom6)", "failed": [], "pct": 37.7, "updated": "2026-09-07T17:47:19Z"}
+{"shard": 17, "stage": "testing", "done": 20, "total": 53, "rows": 813764, "note": "GLM 1h: rule 85/120 (cf_triple)", "failed": [], "pct": 37.7, "updated": "2026-09-07T17:48:04Z"}

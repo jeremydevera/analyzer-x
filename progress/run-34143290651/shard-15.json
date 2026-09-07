@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 52, "total": 53, "rows": 1133528, "note": "YB 4h: 1,993 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-07T16:46:27Z"}
+{"shard": 15, "stage": "testing", "done": 53, "total": 53, "rows": 1184854, "note": "ZKP 4h: rule 79/120 (cf_donch)", "failed": [], "pct": 100.0, "updated": "2026-09-07T16:47:12Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 16, "total": 53, "rows": 755656, "note": "DRAM 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 30.2, "updated": "2026-09-07T17:38:10Z"}
+{"shard": 4, "stage": "testing", "done": 17, "total": 53, "rows": 797472, "note": "ENPHSTOCK 30m: rule 40/120 (crsi)", "failed": [], "pct": 32.1, "updated": "2026-09-07T17:38:55Z"}

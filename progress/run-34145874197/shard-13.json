@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 7, "total": 53, "rows": 310350, "note": "BAS 30m: rule 69/120 (obv20)", "failed": [], "pct": 13.2, "updated": "2026-09-07T17:11:03Z"}
+{"shard": 13, "stage": "testing", "done": 9, "total": 53, "rows": 340466, "note": "BOTSTOCK 30m: 2,701 bars, testing 120 rules", "failed": [], "pct": 17.0, "updated": "2026-09-07T17:11:49Z"}

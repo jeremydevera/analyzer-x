@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 2, "total": 53, "rows": 86968, "note": "ADBESTOCK 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-07T01:55:19Z"}
+{"shard": 1, "stage": "testing", "done": 6, "total": 53, "rows": 163908, "note": "AUD 1h: 7,994 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-07T01:56:13Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 5, "total": 53, "rows": 200704, "note": "ASTER 1h: rule 16/120 (keltner)", "failed": [], "pct": 9.4, "updated": "2026-09-07T11:02:44Z"}
+{"shard": 12, "stage": "testing", "done": 5, "total": 53, "rows": 222484, "note": "ASTER 30m: 16,959 bars, testing 120 rules", "failed": [], "pct": 9.4, "updated": "2026-09-07T11:03:35Z"}

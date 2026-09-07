@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 39, "total": 53, "rows": 1560840, "note": "RIVER 30m: rule 68/120 (dbltop)", "failed": [], "pct": 73.6, "updated": "2026-09-07T03:05:25Z"}
+{"shard": 10, "stage": "testing", "done": 40, "total": 53, "rows": 1571040, "note": "SAHARA 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-07T03:06:18Z"}

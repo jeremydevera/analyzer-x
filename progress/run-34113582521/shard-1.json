@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 46, "total": 54, "rows": 1880408, "note": "TAKE 1h: rule 19/120 (emacross)", "failed": [], "pct": 85.2, "updated": "2026-09-07T12:03:41Z"}
+{"shard": 1, "stage": "testing", "done": 46, "total": 54, "rows": 1899614, "note": "TAKE 30m: 18,144 bars, testing 120 rules", "failed": [], "pct": 85.2, "updated": "2026-09-07T12:04:34Z"}

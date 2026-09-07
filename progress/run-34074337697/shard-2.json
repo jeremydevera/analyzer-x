@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 48, "total": 53, "rows": 2084898, "note": "TURTLE 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 90.6, "updated": "2026-09-07T03:32:52Z"}
+{"shard": 2, "stage": "testing", "done": 49, "total": 53, "rows": 2116358, "note": "USARSTOCK 30m: rule 29/120 (hull20)", "failed": [], "pct": 92.5, "updated": "2026-09-07T03:33:38Z"}

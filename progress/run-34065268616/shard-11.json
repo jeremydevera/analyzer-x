@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 52, "total": 53, "rows": 2047884, "note": "XVS 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-07T00:30:02Z"}
+{"shard": 11, "stage": "testing", "done": 52, "total": 53, "rows": 2052944, "note": "XVS 30m: rule 17/120 (atrbreak)", "failed": [], "pct": 98.1, "updated": "2026-09-07T00:30:47Z"}

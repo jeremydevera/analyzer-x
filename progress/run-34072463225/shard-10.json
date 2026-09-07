@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 48, "total": 53, "rows": 1138608, "note": "UAI 1d: 305 bars, testing 120 rules", "failed": [], "pct": 90.6, "updated": "2026-09-07T01:33:24Z"}
+{"shard": 10, "stage": "testing", "done": 52, "total": 53, "rows": 1196644, "note": "XVG 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-07T01:34:11Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 34, "total": 53, "rows": 1242740, "note": "ONT 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 64.2, "updated": "2026-09-07T17:51:29Z"}
+{"shard": 12, "stage": "testing", "done": 35, "total": 53, "rows": 1256600, "note": "PAXG 1h: rule 27/120 (aroon25)", "failed": [], "pct": 66.0, "updated": "2026-09-07T17:52:14Z"}

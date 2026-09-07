@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 29, "total": 54, "rows": 1194980, "note": "MANA 1h: rule 25/120 (ichimoku)", "failed": [], "pct": 53.7, "updated": "2026-09-07T18:06:12Z"}
+{"shard": 1, "stage": "testing", "done": 29, "total": 54, "rows": 1215220, "note": "MANA 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 53.7, "updated": "2026-09-07T18:07:00Z"}

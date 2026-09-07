@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 1, "total": 53, "rows": 34320, "note": "1000RATS 30m: rule 30/120 (kama10)", "failed": [], "pct": 1.9, "updated": "2026-09-07T14:02:06Z"}
+{"shard": 5, "stage": "testing", "done": 1, "total": 53, "rows": 44660, "note": "1000RATS 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-07T14:02:52Z"}

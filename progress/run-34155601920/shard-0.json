@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 24, "total": 54, "rows": 1973546, "note": "ICX 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 44.4, "updated": "2026-09-07T21:05:34Z"}
+{"shard": 0, "stage": "testing", "done": 25, "total": 54, "rows": 2006786, "note": "IOTX 15m: rule 1/120 (mom6)", "failed": [], "pct": 46.3, "updated": "2026-09-07T21:06:19Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 51, "total": 53, "rows": 2115810, "note": "XAN 30m: rule 82/120 (cf_maobv)", "failed": [], "pct": 96.2, "updated": "2026-09-07T09:55:00Z"}
+{"shard": 7, "stage": "testing", "done": 52, "total": 53, "rows": 2138690, "note": "XPT 1h: rule 63/120 (killzone)", "failed": [], "pct": 98.1, "updated": "2026-09-07T09:55:45Z"}

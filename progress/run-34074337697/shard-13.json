@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 48, "total": 53, "rows": 1822714, "note": "UKOIL 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 90.6, "updated": "2026-09-07T03:23:02Z"}
+{"shard": 13, "stage": "testing", "done": 48, "total": 53, "rows": 1840974, "note": "UKOIL 30m: rule 39/120 (fisher)", "failed": [], "pct": 90.6, "updated": "2026-09-07T03:23:47Z"}

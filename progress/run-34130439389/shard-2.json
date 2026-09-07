@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 32, "total": 54, "rows": 1133744, "note": "NAORIS 30m: rule 32/120 (gmma)", "failed": [], "pct": 59.3, "updated": "2026-09-07T14:57:56Z"}
+{"shard": 2, "stage": "testing", "done": 32, "total": 54, "rows": 1143644, "note": "NAORIS 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 59.3, "updated": "2026-09-07T14:58:41Z"}

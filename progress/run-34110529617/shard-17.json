@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 35, "total": 53, "rows": 954030, "note": "PENDLE 1d: 394 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-07T10:27:59Z"}
+{"shard": 17, "stage": "testing", "done": 39, "total": 53, "rows": 1007490, "note": "ROAM 4h: downloading candles", "failed": [], "pct": 73.6, "updated": "2026-09-07T10:28:44Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 49, "total": 53, "rows": 2002050, "note": "VELO 1h: rule 27/120 (aroon25)", "failed": [], "pct": 92.5, "updated": "2026-09-07T18:53:25Z"}
+{"shard": 17, "stage": "testing", "done": 49, "total": 53, "rows": 2020050, "note": "VELO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-07T18:54:10Z"}

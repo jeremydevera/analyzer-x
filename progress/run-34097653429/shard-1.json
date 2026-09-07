@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 26, "total": 53, "rows": 941650, "note": "KAS 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 49.1, "updated": "2026-09-07T08:38:21Z"}
+{"shard": 1, "stage": "testing", "done": 28, "total": 53, "rows": 980450, "note": "LLYSTOCK 1h: rule 11/120 (sr_break)", "failed": [], "pct": 52.8, "updated": "2026-09-07T08:39:06Z"}

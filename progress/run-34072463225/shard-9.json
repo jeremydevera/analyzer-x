@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 5, "total": 53, "rows": 136554, "note": "ASMLSTOCK 4h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-07T01:18:43Z"}
+{"shard": 9, "stage": "testing", "done": 7, "total": 53, "rows": 189486, "note": "BARD 4h: 2,122 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-07T01:19:38Z"}

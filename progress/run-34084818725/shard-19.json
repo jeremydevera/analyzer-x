@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 18, "total": 53, "rows": 766144, "note": "FLOCK 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 34.0, "updated": "2026-09-07T05:37:37Z"}
+{"shard": 19, "stage": "testing", "done": 18, "total": 53, "rows": 777804, "note": "FLOCK 1h: rule 47/120 (ibs)", "failed": [], "pct": 34.0, "updated": "2026-09-07T05:38:23Z"}

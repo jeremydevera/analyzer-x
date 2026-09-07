@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 5, "total": 53, "rows": 448524, "note": "ATH 15m: rule 1/120 (mom6)", "failed": [], "pct": 9.4, "updated": "2026-09-07T19:59:29Z"}
+{"shard": 16, "stage": "testing", "done": 5, "total": 53, "rows": 450124, "note": "ATH 15m: rule 5/120 (rsi14)", "failed": [], "pct": 9.4, "updated": "2026-09-07T20:00:14Z"}

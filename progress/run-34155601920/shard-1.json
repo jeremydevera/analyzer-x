@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 31, "total": 54, "rows": 2773252, "note": "MOVR 30m: rule 2/120 (mom15)", "failed": [], "pct": 57.4, "updated": "2026-09-07T22:13:46Z"}
+{"shard": 1, "stage": "testing", "done": 31, "total": 54, "rows": 2779192, "note": "MOVR 30m: rule 27/120 (aroon25)", "failed": [], "pct": 57.4, "updated": "2026-09-07T22:14:31Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 12, "total": 53, "rows": 1194892, "note": "1 pair(s) lost so far", "failed": ["CNPY_USDT 4h: CNPY_USDT 4h: no order book for CNPY_USDT"], "pct": 22.6, "updated": "2026-09-07T10:36:15Z"}
+{"shard": 15, "stage": "testing", "done": 12, "total": 53, "rows": 1194892, "note": "2 pair(s) lost so far", "failed": ["CNPY_USDT 4h: CNPY_USDT 4h: no order book for CNPY_USDT", "CNPY_USDT 1d: CNPY_USDT 1d: no order book for CNPY_USDT"], "pct": 22.6, "updated": "2026-09-07T10:36:19Z"}

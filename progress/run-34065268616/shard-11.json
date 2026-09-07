@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 46, "total": 53, "rows": 1769408, "note": "THCSTOCK 1h: 803 bars, testing 120 rules", "failed": [], "pct": 86.8, "updated": "2026-09-07T00:16:02Z"}
+{"shard": 11, "stage": "testing", "done": 47, "total": 53, "rows": 1786186, "note": "TRUMPOFFICIAL 1h: rule 39/120 (fisher)", "failed": [], "pct": 88.7, "updated": "2026-09-07T00:16:47Z"}

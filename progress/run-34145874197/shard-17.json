@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 11, "total": 53, "rows": 489510, "note": "CFG 30m: rule 21/120 (cci20)", "failed": [], "pct": 20.8, "updated": "2026-09-07T17:30:41Z"}
+{"shard": 17, "stage": "testing", "done": 12, "total": 53, "rows": 515352, "note": "COFSTOCK 30m: 3,289 bars, testing 120 rules", "failed": [], "pct": 22.6, "updated": "2026-09-07T17:31:28Z"}

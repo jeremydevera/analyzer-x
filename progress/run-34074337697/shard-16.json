@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 14, "total": 53, "rows": 640500, "note": "DASH 30m: rule 52/120 (nr7)", "failed": [], "pct": 26.4, "updated": "2026-09-07T02:27:38Z"}
+{"shard": 16, "stage": "testing", "done": 14, "total": 53, "rows": 654100, "note": "DASH 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-07T02:28:23Z"}

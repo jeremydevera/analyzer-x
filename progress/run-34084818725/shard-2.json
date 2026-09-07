@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 24, "total": 53, "rows": 1037156, "note": "ILV 30m: rule 97/120 (cf_ttm)", "failed": [], "pct": 45.3, "updated": "2026-09-07T05:46:31Z"}
+{"shard": 2, "stage": "testing", "done": 25, "total": 53, "rows": 1047562, "note": "IRYS 1h: rule 21/120 (cci20)", "failed": [], "pct": 47.2, "updated": "2026-09-07T05:47:17Z"}

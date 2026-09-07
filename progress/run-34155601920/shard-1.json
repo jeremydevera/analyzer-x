@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 6, "total": 54, "rows": 336134, "note": "AUD 15m: rule 6/120 (sweep30)", "failed": [], "pct": 11.1, "updated": "2026-09-07T19:42:40Z"}
+{"shard": 1, "stage": "testing", "done": 6, "total": 54, "rows": 348134, "note": "AUD 15m: rule 67/120 (pinbar)", "failed": [], "pct": 11.1, "updated": "2026-09-07T19:43:25Z"}

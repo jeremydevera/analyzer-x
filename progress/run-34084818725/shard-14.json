@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 31, "total": 53, "rows": 1249654, "note": "MUSTOCK 1h: rule 115/120 (cf_diadx)", "failed": [], "pct": 58.5, "updated": "2026-09-07T05:55:35Z"}
+{"shard": 14, "stage": "testing", "done": 31, "total": 53, "rows": 1258754, "note": "MUSTOCK 30m: rule 34/120 (lrslope)", "failed": [], "pct": 58.5, "updated": "2026-09-07T05:56:21Z"}

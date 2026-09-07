@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 28, "total": 53, "rows": 1017780, "note": "LRCXSTOCK 1h: rule 119/120 (cf_stflip_l1)", "failed": [], "pct": 52.8, "updated": "2026-09-07T18:03:51Z"}
+{"shard": 8, "stage": "testing", "done": 28, "total": 53, "rows": 1034262, "note": "LRCXSTOCK 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 52.8, "updated": "2026-09-07T18:04:36Z"}

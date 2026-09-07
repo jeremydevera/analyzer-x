@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 29, "total": 53, "rows": 1101754, "note": "MEGA 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 54.7, "updated": "2026-09-07T14:45:22Z"}
+{"shard": 12, "stage": "testing", "done": 32, "total": 53, "rows": 1183708, "note": "NETSTOCK 30m: 1,688 bars, testing 120 rules", "failed": [], "pct": 60.4, "updated": "2026-09-07T14:46:09Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 47, "total": 53, "rows": 1856104, "note": "TQQQ 1h: rule 57/120 (orderblock)", "failed": [], "pct": 88.7, "updated": "2026-09-07T11:42:02Z"}
+{"shard": 6, "stage": "testing", "done": 49, "total": 53, "rows": 1931902, "note": "USELESS 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-07T11:42:48Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 10, "total": 53, "rows": 390164, "note": "BTR 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 18.9, "updated": "2026-09-07T14:26:14Z"}
+{"shard": 8, "stage": "testing", "done": 11, "total": 53, "rows": 420558, "note": "CCJSTOCK 30m: rule 13/120 (pivot)", "failed": [], "pct": 20.8, "updated": "2026-09-07T14:27:00Z"}

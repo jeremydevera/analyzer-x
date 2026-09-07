@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 50, "total": 53, "rows": 2118044, "note": "WENSTOCK 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 94.3, "updated": "2026-09-07T12:40:07Z"}
+{"shard": 17, "stage": "testing", "done": 52, "total": 53, "rows": 2167404, "note": "YGG 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-07T12:41:02Z"}

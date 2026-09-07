@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 14, "total": 53, "rows": 570436, "note": "CYBER 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-07T08:18:55Z"}
+{"shard": 13, "stage": "testing", "done": 14, "total": 53, "rows": 575056, "note": "CYBER 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 26.4, "updated": "2026-09-07T08:19:41Z"}

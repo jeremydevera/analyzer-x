@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 1, "total": 53, "rows": 34080, "note": "AAVE 30m: rule 28/120 (vortex14)", "failed": [], "pct": 1.9, "updated": "2026-09-07T04:57:07Z"}
+{"shard": 14, "stage": "testing", "done": 1, "total": 53, "rows": 45680, "note": "AAVE 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-07T04:57:52Z"}

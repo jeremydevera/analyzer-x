@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 19, "total": 53, "rows": 756814, "note": "FRAX 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 35.8, "updated": "2026-09-07T14:39:32Z"}
+{"shard": 14, "stage": "testing", "done": 19, "total": 53, "rows": 766582, "note": "FRAX 30m: rule 27/120 (aroon25)", "failed": [], "pct": 35.8, "updated": "2026-09-07T14:40:17Z"}

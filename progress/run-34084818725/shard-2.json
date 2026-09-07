@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 19, "total": 53, "rows": 777328, "note": "FLOW 30m: rule 79/120 (cf_donch)", "failed": [], "pct": 35.8, "updated": "2026-09-07T05:33:18Z"}
+{"shard": 2, "stage": "testing", "done": 20, "total": 53, "rows": 787668, "note": "GAS 1h: rule 2/120 (mom15)", "failed": [], "pct": 37.7, "updated": "2026-09-07T05:34:05Z"}

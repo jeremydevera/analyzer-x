@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 34, "total": 53, "rows": 1206266, "note": "OPENLEDGER 1h: 8,727 bars, testing 120 rules", "failed": [], "pct": 64.2, "updated": "2026-09-07T02:47:03Z"}
+{"shard": 13, "stage": "testing", "done": 34, "total": 53, "rows": 1221006, "note": "OPENLEDGER 1h: rule 62/120 (ote)", "failed": [], "pct": 64.2, "updated": "2026-09-07T02:47:48Z"}

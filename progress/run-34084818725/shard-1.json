@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 20, "total": 53, "rows": 740682, "note": "GALA 30m: rule 52/120 (nr7)", "failed": [], "pct": 37.7, "updated": "2026-09-07T05:33:37Z"}
+{"shard": 1, "stage": "testing", "done": 21, "total": 53, "rows": 754082, "note": "GOAT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-07T05:34:35Z"}

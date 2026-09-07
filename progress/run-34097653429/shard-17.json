@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 49, "total": 53, "rows": 2047508, "note": "VET 30m: rule 46/120 (rsi2)", "failed": [], "pct": 92.5, "updated": "2026-09-07T09:08:10Z"}
+{"shard": 17, "stage": "testing", "done": 50, "total": 53, "rows": 2063568, "note": "WIF 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 94.3, "updated": "2026-09-07T09:08:59Z"}

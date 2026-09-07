@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 15, "total": 53, "rows": 529878, "note": "DIA 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 28.3, "updated": "2026-09-07T08:27:43Z"}
+{"shard": 8, "stage": "testing", "done": 16, "total": 53, "rows": 539558, "note": "DYM 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 30.2, "updated": "2026-09-07T08:28:29Z"}

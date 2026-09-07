@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 37, "total": 53, "rows": 839182, "note": "PROM 1d: 394 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-07T16:39:34Z"}
+{"shard": 8, "stage": "testing", "done": 42, "total": 53, "rows": 904682, "note": "SKY 4h: 2,302 bars, testing 120 rules", "failed": [], "pct": 79.2, "updated": "2026-09-07T16:40:27Z"}

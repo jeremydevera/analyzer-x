@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 25, "total": 53, "rows": 1030162, "note": "JOE 30m: rule 62/120 (ote)", "failed": [], "pct": 47.2, "updated": "2026-09-07T14:48:00Z"}
+{"shard": 14, "stage": "testing", "done": 26, "total": 53, "rows": 1042702, "note": "KITE 1h: 7,515 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-07T14:48:49Z"}

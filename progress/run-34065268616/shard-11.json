@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 37, "total": 53, "rows": 1402858, "note": "PUFFER 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-07T00:01:22Z"}
+{"shard": 11, "stage": "testing", "done": 37, "total": 53, "rows": 1415618, "note": "PUFFER 1h: rule 53/120 (squeeze)", "failed": [], "pct": 69.8, "updated": "2026-09-07T00:02:07Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 4, "total": 53, "rows": 180036, "note": "ARCSOL 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 7.5, "updated": "2026-09-07T14:11:36Z"}
+{"shard": 19, "stage": "testing", "done": 5, "total": 53, "rows": 192356, "note": "AUCTION 1h: rule 41/120 (tsi)", "failed": [], "pct": 9.4, "updated": "2026-09-07T14:12:21Z"}

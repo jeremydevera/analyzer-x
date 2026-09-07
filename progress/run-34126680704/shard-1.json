@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 21, "total": 54, "rows": 506622, "note": "GMT 4h: rule 37/120 (ultosc)", "failed": [], "pct": 38.9, "updated": "2026-09-07T13:27:31Z"}
+{"shard": 1, "stage": "testing", "done": 23, "total": 54, "rows": 550974, "note": "HOLO 4h: rule 61/120 (turtle)", "failed": [], "pct": 42.6, "updated": "2026-09-07T13:28:16Z"}

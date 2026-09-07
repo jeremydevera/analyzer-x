@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 25, "total": 53, "rows": 1131452, "note": "KAIA 30m: rule 71/120 (mfi14)", "failed": [], "pct": 47.2, "updated": "2026-09-07T03:04:09Z"}
+{"shard": 19, "stage": "testing", "done": 26, "total": 53, "rows": 1162932, "note": "KORU 30m: 2,546 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-07T03:04:54Z"}

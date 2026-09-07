@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 37, "total": 53, "rows": 1476272, "note": "PTB 30m: rule 63/120 (killzone)", "failed": [], "pct": 69.8, "updated": "2026-09-07T00:03:12Z"}
+{"shard": 10, "stage": "testing", "done": 38, "total": 53, "rows": 1488592, "note": "RAVE 1h: 6,444 bars, testing 120 rules", "failed": [], "pct": 71.7, "updated": "2026-09-07T00:04:02Z"}

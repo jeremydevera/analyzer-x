@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 25, "total": 53, "rows": 1005122, "note": "JUP 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-06T23:59:33Z"}
+{"shard": 18, "stage": "testing", "done": 25, "total": 53, "rows": 1007122, "note": "JUP 30m: rule 4/120 (trend50)", "failed": [], "pct": 47.2, "updated": "2026-09-07T00:00:18Z"}

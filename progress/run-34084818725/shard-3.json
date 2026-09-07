@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 31, "total": 53, "rows": 1171722, "note": "MRVLSTOCK 30m: rule 72/120 (force13)", "failed": [], "pct": 58.5, "updated": "2026-09-07T05:53:53Z"}
+{"shard": 3, "stage": "testing", "done": 32, "total": 53, "rows": 1200262, "note": "NBISSTOCK 1h: rule 82/120 (cf_maobv)", "failed": [], "pct": 60.4, "updated": "2026-09-07T05:54:38Z"}

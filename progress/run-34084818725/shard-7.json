@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 26, "total": 53, "rows": 1026866, "note": "KGEN 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 49.1, "updated": "2026-09-07T05:51:42Z"}
+{"shard": 7, "stage": "testing", "done": 28, "total": 53, "rows": 1066594, "note": "LRC 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-07T05:52:30Z"}

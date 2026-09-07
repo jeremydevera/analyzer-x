@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 20, "total": 53, "rows": 1586594, "note": "GFSSTOCK 1h: rule 98/120 (cf_ttm_l1)", "failed": [], "pct": 37.7, "updated": "2026-09-07T21:00:13Z"}
+{"shard": 11, "stage": "testing", "done": 21, "total": 53, "rows": 1590134, "note": "GRIFFAIN 15m: rule 2/120 (mom15)", "failed": [], "pct": 39.6, "updated": "2026-09-07T21:01:06Z"}

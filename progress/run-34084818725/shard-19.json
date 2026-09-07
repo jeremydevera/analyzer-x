@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 2, "total": 53, "rows": 93876, "note": "AIXBT 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-07T05:00:59Z"}
+{"shard": 19, "stage": "testing", "done": 3, "total": 53, "rows": 103316, "note": "AMP 1h: rule 1/120 (mom6)", "failed": [], "pct": 5.7, "updated": "2026-09-07T05:01:45Z"}

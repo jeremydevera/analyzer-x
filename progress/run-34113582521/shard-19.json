@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 50, "total": 53, "rows": 2113536, "note": "WIF 30m: rule 37/120 (ultosc)", "failed": [], "pct": 94.3, "updated": "2026-09-07T12:05:44Z"}
+{"shard": 19, "stage": "testing", "done": 51, "total": 53, "rows": 2153536, "note": "XLK 30m: 3,949 bars, testing 120 rules", "failed": [], "pct": 96.2, "updated": "2026-09-07T12:06:29Z"}

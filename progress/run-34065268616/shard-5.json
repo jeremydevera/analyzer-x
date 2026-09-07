@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 43, "total": 53, "rows": 1719432, "note": "SOMI 1h: rule 18/120 (macd)", "failed": [], "pct": 81.1, "updated": "2026-09-07T00:17:45Z"}
+{"shard": 5, "stage": "testing", "done": 43, "total": 53, "rows": 1740992, "note": "SOMI 30m: 18,124 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-07T00:18:36Z"}

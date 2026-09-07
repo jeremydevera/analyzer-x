@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 24, "total": 53, "rows": 935666, "note": "INX 1h: rule 54/120 (fractal5)", "failed": [], "pct": 45.3, "updated": "2026-09-07T17:44:48Z"}
+{"shard": 14, "stage": "testing", "done": 24, "total": 53, "rows": 950540, "note": "INX 30m: rule 6/120 (sweep30)", "failed": [], "pct": 45.3, "updated": "2026-09-07T17:45:33Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 29, "total": 53, "rows": 1083954, "note": "MEGA 30m: 15,357 bars, testing 120 rules", "failed": [], "pct": 54.7, "updated": "2026-09-07T14:43:51Z"}
+{"shard": 12, "stage": "testing", "done": 29, "total": 53, "rows": 1089154, "note": "MEGA 30m: rule 20/120 (stoch14)", "failed": [], "pct": 54.7, "updated": "2026-09-07T14:44:37Z"}

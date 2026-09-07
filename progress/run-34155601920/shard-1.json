@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 45, "total": 54, "rows": 3914904, "note": "STX 1h: rule 70/120 (cmf20)", "failed": [], "pct": 83.3, "updated": "2026-09-07T23:09:00Z"}
+{"shard": 1, "stage": "testing", "done": 45, "total": 54, "rows": 3947244, "note": "STX 4h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 83.3, "updated": "2026-09-07T23:09:45Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 27, "total": 53, "rows": 638258, "note": "LA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 50.9, "updated": "2026-09-07T01:26:45Z"}
+{"shard": 9, "stage": "testing", "done": 28, "total": 53, "rows": 699374, "note": "LTC 4h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 52.8, "updated": "2026-09-07T01:28:21Z"}

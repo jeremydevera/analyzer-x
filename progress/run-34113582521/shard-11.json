@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 32, "total": 53, "rows": 1177572, "note": "NES 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 60.4, "updated": "2026-09-07T11:52:42Z"}
+{"shard": 11, "stage": "testing", "done": 35, "total": 53, "rows": 1233448, "note": "PARTI 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-07T11:53:29Z"}

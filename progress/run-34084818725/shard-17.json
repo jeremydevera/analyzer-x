@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 49, "total": 53, "rows": 2044936, "note": "VET 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 92.5, "updated": "2026-09-07T06:25:19Z"}
+{"shard": 17, "stage": "testing", "done": 49, "total": 53, "rows": 2052636, "note": "VET 30m: rule 45/120 (zscore20)", "failed": [], "pct": 92.5, "updated": "2026-09-07T06:26:04Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 49, "total": 53, "rows": 1849722, "note": "USOIL 1h: rule 42/120 (rsidiv)", "failed": [], "pct": 92.5, "updated": "2026-09-07T12:30:17Z"}
+{"shard": 7, "stage": "testing", "done": 49, "total": 53, "rows": 1871282, "note": "USOIL 30m: rule 16/120 (keltner)", "failed": [], "pct": 92.5, "updated": "2026-09-07T12:31:03Z"}

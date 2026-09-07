@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 25, "total": 53, "rows": 884946, "note": "IRENSTOCK 30m: rule 5/120 (rsi14)", "failed": [], "pct": 47.2, "updated": "2026-09-07T05:43:14Z"}
+{"shard": 1, "stage": "testing", "done": 26, "total": 53, "rows": 905286, "note": "KAS 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-07T05:44:08Z"}

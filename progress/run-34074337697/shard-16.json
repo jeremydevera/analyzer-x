@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 8, "total": 53, "rows": 345288, "note": "BLAST 1h: rule 104/120 (cf_eqhl_l1)", "failed": [], "pct": 15.1, "updated": "2026-09-07T02:14:45Z"}
+{"shard": 16, "stage": "testing", "done": 9, "total": 53, "rows": 401028, "note": "BRKBSTOCK 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 17.0, "updated": "2026-09-07T02:17:01Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 45, "total": 53, "rows": 1788710, "note": "SUPRA 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-07T18:32:18Z"}
+{"shard": 7, "stage": "testing", "done": 47, "total": 53, "rows": 1829510, "note": "TRADOOR 1h: 8,838 bars, testing 120 rules", "failed": [], "pct": 88.7, "updated": "2026-09-07T18:33:12Z"}

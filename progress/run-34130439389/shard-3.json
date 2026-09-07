@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 5, "total": 53, "rows": 227736, "note": "ARK 30m: rule 8/120 (fib618)", "failed": [], "pct": 9.4, "updated": "2026-09-07T14:14:36Z"}
+{"shard": 3, "stage": "testing", "done": 5, "total": 53, "rows": 237336, "note": "ARK 30m: rule 57/120 (orderblock)", "failed": [], "pct": 9.4, "updated": "2026-09-07T14:15:21Z"}

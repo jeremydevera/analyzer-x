@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 40, "total": 53, "rows": 1017840, "note": "RVN 4h: rule 45/120 (zscore20)", "failed": [], "pct": 75.5, "updated": "2026-09-07T07:34:50Z"}
+{"shard": 7, "stage": "testing", "done": 41, "total": 53, "rows": 1053700, "note": "SHELL 4h: rule 30/120 (kama10)", "failed": [], "pct": 77.4, "updated": "2026-09-07T07:35:35Z"}

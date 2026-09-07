@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 44, "total": 53, "rows": 1758816, "note": "STAR 1h: 2,781 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-07T03:07:20Z"}
+{"shard": 7, "stage": "testing", "done": 45, "total": 53, "rows": 1762776, "note": "SWARMS 1h: rule 12/120 (donchian20)", "failed": [], "pct": 84.9, "updated": "2026-09-07T03:08:06Z"}

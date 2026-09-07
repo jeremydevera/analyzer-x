@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 4, "total": 53, "rows": 296038, "note": "APEX 15m: rule 70/120 (cmf20)", "failed": [], "pct": 7.5, "updated": "2026-09-07T19:47:45Z"}
+{"shard": 9, "stage": "testing", "done": 4, "total": 53, "rows": 302338, "note": "APEX 15m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 7.5, "updated": "2026-09-07T19:48:31Z"}

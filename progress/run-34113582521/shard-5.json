@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 16, "total": 53, "rows": 565282, "note": "DRIFT 1h: rule 2/120 (mom15)", "failed": [], "pct": 30.2, "updated": "2026-09-07T11:23:33Z"}
+{"shard": 5, "stage": "testing", "done": 16, "total": 53, "rows": 583202, "note": "DRIFT 1h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 30.2, "updated": "2026-09-07T11:24:18Z"}

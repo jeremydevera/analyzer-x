@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 8, "total": 53, "rows": 609206, "note": "BIANRENSHENG 1h: rule 63/120 (killzone)", "failed": [], "pct": 15.1, "updated": "2026-09-07T20:07:08Z"}
+{"shard": 5, "stage": "testing", "done": 8, "total": 53, "rows": 637366, "note": "BIANRENSHENG 1d: 335 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-07T20:07:54Z"}

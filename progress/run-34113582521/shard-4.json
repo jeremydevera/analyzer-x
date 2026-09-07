@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 15, "total": 53, "rows": 671112, "note": "DELLSTOCK 1h: rule 32/120 (gmma)", "failed": [], "pct": 28.3, "updated": "2026-09-07T11:22:03Z"}
+{"shard": 4, "stage": "testing", "done": 16, "total": 53, "rows": 733220, "note": "DRAM 1h: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 30.2, "updated": "2026-09-07T11:22:48Z"}

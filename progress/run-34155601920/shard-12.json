@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 43, "total": 53, "rows": 3364082, "note": "SOXL 1h: rule 101/120 (cf_soup1_l1)", "failed": [], "pct": 81.1, "updated": "2026-09-07T21:57:59Z"}
+{"shard": 12, "stage": "testing", "done": 44, "total": 53, "rows": 3401406, "note": "STG 15m: rule 2/120 (mom15)", "failed": [], "pct": 83.0, "updated": "2026-09-07T21:58:54Z"}

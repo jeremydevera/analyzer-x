@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 49, "total": 53, "rows": 2217204, "note": "USARSTOCK 1h: rule 2/120 (mom15)", "failed": [], "pct": 92.5, "updated": "2026-09-07T15:35:03Z"}
+{"shard": 4, "stage": "testing", "done": 50, "total": 53, "rows": 2261924, "note": "VRTXSTOCK 1h: 778 bars, testing 120 rules", "failed": [], "pct": 94.3, "updated": "2026-09-07T15:35:49Z"}

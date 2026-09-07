@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 37, "total": 54, "rows": 1384086, "note": "PORTAL 30m: rule 17/120 (atrbreak)", "failed": [], "pct": 68.5, "updated": "2026-09-07T18:23:40Z"}
+{"shard": 2, "stage": "testing", "done": 37, "total": 54, "rows": 1392666, "note": "PORTAL 30m: rule 57/120 (orderblock)", "failed": [], "pct": 68.5, "updated": "2026-09-07T18:24:25Z"}

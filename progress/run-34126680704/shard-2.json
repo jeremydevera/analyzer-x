@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 46, "total": 54, "rows": 1096822, "note": "TAO 1d: 394 bars, testing 120 rules", "failed": [], "pct": 85.2, "updated": "2026-09-07T13:39:07Z"}
+{"shard": 2, "stage": "testing", "done": 51, "total": 54, "rows": 1179352, "note": "WLFI 1d: 380 bars, testing 120 rules", "failed": [], "pct": 94.4, "updated": "2026-09-07T13:39:58Z"}

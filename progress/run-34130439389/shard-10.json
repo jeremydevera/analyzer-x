@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 15, "total": 53, "rows": 538148, "note": "DIA 1h: rule 57/120 (orderblock)", "failed": [], "pct": 28.3, "updated": "2026-09-07T14:33:05Z"}
+{"shard": 10, "stage": "testing", "done": 15, "total": 53, "rows": 552448, "note": "DIA 30m: rule 1/120 (mom6)", "failed": [], "pct": 28.3, "updated": "2026-09-07T14:33:56Z"}

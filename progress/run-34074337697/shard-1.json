@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 36, "total": 53, "rows": 1395278, "note": "PHAROS 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 67.9, "updated": "2026-09-07T02:41:49Z"}
+{"shard": 1, "stage": "testing", "done": 37, "total": 53, "rows": 1422118, "note": "POWER 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 69.8, "updated": "2026-09-07T02:42:34Z"}

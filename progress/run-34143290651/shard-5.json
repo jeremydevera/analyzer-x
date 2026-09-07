@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 19, "total": 53, "rows": 393364, "note": "FLR 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-07T16:34:33Z"}
+{"shard": 5, "stage": "testing", "done": 20, "total": 53, "rows": 435538, "note": "GBP 4h: rule 30/120 (kama10)", "failed": [], "pct": 37.7, "updated": "2026-09-07T16:35:18Z"}

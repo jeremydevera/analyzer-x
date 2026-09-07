@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 7, "total": 53, "rows": 217532, "note": "BCH 1d: 394 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-07T01:19:18Z"}
+{"shard": 17, "stage": "testing", "done": 10, "total": 53, "rows": 298428, "note": "CAP 1d: downloading candles", "failed": [], "pct": 18.9, "updated": "2026-09-07T01:20:04Z"}

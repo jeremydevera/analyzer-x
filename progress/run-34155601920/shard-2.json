@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 11, "total": 54, "rows": 712054, "note": "CATI 1d: 394 bars, testing 120 rules", "failed": [], "pct": 20.4, "updated": "2026-09-07T20:13:34Z"}
+{"shard": 2, "stage": "testing", "done": 12, "total": 54, "rows": 726334, "note": "CHILLGUY 15m: rule 2/120 (mom15)", "failed": [], "pct": 22.2, "updated": "2026-09-07T20:14:30Z"}

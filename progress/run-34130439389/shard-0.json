@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 17, "total": 54, "rows": 652278, "note": "ELSTOCK 30m: 823 bars, testing 120 rules", "failed": [], "pct": 31.5, "updated": "2026-09-07T14:44:11Z"}
+{"shard": 0, "stage": "testing", "done": 18, "total": 54, "rows": 694672, "note": "EWJ 30m: rule 51/120 (orb)", "failed": [], "pct": 33.3, "updated": "2026-09-07T14:44:56Z"}

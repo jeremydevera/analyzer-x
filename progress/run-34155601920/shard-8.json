@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 5, "total": 53, "rows": 330568, "note": "AR 1h: rule 1/120 (mom6)", "failed": [], "pct": 9.4, "updated": "2026-09-07T19:48:21Z"}
+{"shard": 8, "stage": "testing", "done": 5, "total": 53, "rows": 354768, "note": "AR 1h: rule 110/120 (cf_fundfade_l1)", "failed": [], "pct": 9.4, "updated": "2026-09-07T19:49:06Z"}

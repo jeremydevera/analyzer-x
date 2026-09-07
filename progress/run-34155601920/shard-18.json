@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 49, "total": 53, "rows": 4361382, "note": "VELVET 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 92.5, "updated": "2026-09-07T23:16:47Z"}
+{"shard": 18, "stage": "testing", "done": 49, "total": 53, "rows": 4367142, "note": "VELVET 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-07T23:17:37Z"}

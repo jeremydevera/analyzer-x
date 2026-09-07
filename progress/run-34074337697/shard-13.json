@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 47, "total": 53, "rows": 1797854, "note": "TRUTH 30m: rule 94/120 (cf_emarsi)", "failed": [], "pct": 88.7, "updated": "2026-09-07T03:22:17Z"}
+{"shard": 13, "stage": "testing", "done": 48, "total": 53, "rows": 1822714, "note": "UKOIL 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 90.6, "updated": "2026-09-07T03:23:02Z"}

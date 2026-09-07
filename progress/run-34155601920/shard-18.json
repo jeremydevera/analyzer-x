@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 50, "total": 53, "rows": 4526732, "note": "WET 4h: rule 6/120 (sweep30)", "failed": [], "pct": 94.3, "updated": "2026-09-07T23:28:23Z"}
+{"shard": 18, "stage": "testing", "done": 53, "total": 53, "rows": 4561128, "note": "ZORA 15m: 34,572 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-07T23:29:16Z"}

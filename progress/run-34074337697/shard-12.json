@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 10, "total": 53, "rows": 385068, "note": "BXSTOCK 30m: rule 33/120 (heikin)", "failed": [], "pct": 18.9, "updated": "2026-09-07T02:08:44Z"}
+{"shard": 12, "stage": "testing", "done": 12, "total": 53, "rows": 455796, "note": "CMCSASTOCK 30m: rule 14/120 (bb20)", "failed": [], "pct": 22.6, "updated": "2026-09-07T02:09:29Z"}

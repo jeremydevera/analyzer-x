@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 47, "total": 53, "rows": 1790500, "note": "TRB 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 88.7, "updated": "2026-09-07T06:20:46Z"}
+{"shard": 6, "stage": "testing", "done": 47, "total": 53, "rows": 1800180, "note": "TRB 30m: rule 2/120 (mom15)", "failed": [], "pct": 88.7, "updated": "2026-09-07T06:21:33Z"}

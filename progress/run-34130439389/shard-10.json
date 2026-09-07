@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 27, "total": 53, "rows": 1030276, "note": "LAYER 30m: rule 38/120 (ao)", "failed": [], "pct": 50.9, "updated": "2026-09-07T15:05:45Z"}
+{"shard": 10, "stage": "testing", "done": 27, "total": 53, "rows": 1042876, "note": "LAYER 30m: rule 103/120 (cf_eqhl)", "failed": [], "pct": 50.9, "updated": "2026-09-07T15:06:30Z"}

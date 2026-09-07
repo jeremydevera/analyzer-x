@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 8, "total": 53, "rows": 656764, "note": "BIGTIME 15m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 15.1, "updated": "2026-09-07T20:05:03Z"}
+{"shard": 8, "stage": "testing", "done": 8, "total": 53, "rows": 662044, "note": "BIGTIME 30m: rule 3/120 (fade15)", "failed": [], "pct": 15.1, "updated": "2026-09-07T20:05:54Z"}

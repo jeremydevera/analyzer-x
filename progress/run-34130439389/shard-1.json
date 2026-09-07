@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 8, "total": 54, "rows": 313748, "note": "BEL 30m: rule 94/120 (cf_emarsi)", "failed": [], "pct": 14.8, "updated": "2026-09-07T14:13:48Z"}
+{"shard": 1, "stage": "testing", "done": 9, "total": 54, "rows": 322636, "note": "BLUAI 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 16.7, "updated": "2026-09-07T14:14:33Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 25, "total": 53, "rows": 734754, "note": "JST 4h: rule 43/120 (macddiv)", "failed": [], "pct": 47.2, "updated": "2026-09-07T13:30:44Z"}
+{"shard": 18, "stage": "testing", "done": 26, "total": 53, "rows": 780800, "note": "KNC 4h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 49.1, "updated": "2026-09-07T13:31:29Z"}

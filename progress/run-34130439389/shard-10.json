@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 32, "total": 53, "rows": 1227776, "note": "NEO 30m: rule 71/120 (mfi14)", "failed": [], "pct": 60.4, "updated": "2026-09-07T15:17:12Z"}
+{"shard": 10, "stage": "testing", "done": 33, "total": 53, "rows": 1251066, "note": "NTAPSTOCK 30m: rule 18/120 (macd)", "failed": [], "pct": 62.3, "updated": "2026-09-07T15:17:57Z"}

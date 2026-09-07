@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 29, "total": 54, "rows": 2548676, "note": "MANA 30m: rule 47/120 (ibs)", "failed": [], "pct": 53.7, "updated": "2026-09-07T21:56:28Z"}
+{"shard": 1, "stage": "testing", "done": 29, "total": 54, "rows": 2562976, "note": "MANA 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 53.7, "updated": "2026-09-07T21:57:13Z"}

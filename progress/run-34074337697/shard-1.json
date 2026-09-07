@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 6, "total": 53, "rows": 163908, "note": "AUD 1h: 7,994 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-07T01:56:13Z"}
+{"shard": 1, "stage": "testing", "done": 6, "total": 53, "rows": 199768, "note": "AUD 30m: rule 40/120 (crsi)", "failed": [], "pct": 11.3, "updated": "2026-09-07T01:56:58Z"}

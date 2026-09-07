@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 52, "total": 53, "rows": 1156794, "note": "XVS 4h: rule 3/120 (fade15)", "failed": [], "pct": 98.1, "updated": "2026-09-07T04:39:49Z"}
+{"shard": 11, "stage": "testing", "done": 53, "total": 53, "rows": 1206514, "note": "ZKC 4h: rule 50/120 (gapfade)", "failed": [], "pct": 100.0, "updated": "2026-09-07T04:40:34Z"}

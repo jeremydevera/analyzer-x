@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 23, "total": 53, "rows": 950616, "note": "ICNT 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 43.4, "updated": "2026-09-07T14:52:10Z"}
+{"shard": 18, "stage": "testing", "done": 23, "total": 53, "rows": 958856, "note": "ICNT 30m: rule 2/120 (mom15)", "failed": [], "pct": 43.4, "updated": "2026-09-07T14:52:58Z"}

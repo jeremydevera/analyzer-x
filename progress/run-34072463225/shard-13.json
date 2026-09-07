@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 25, "total": 53, "rows": 545306, "note": "JP225 4h: rule 86/120 (cf_triple_l1)", "failed": [], "pct": 47.2, "updated": "2026-09-07T01:26:07Z"}
+{"shard": 13, "stage": "testing", "done": 28, "total": 53, "rows": 572326, "note": "LUNC 4h: rule 62/120 (ote)", "failed": [], "pct": 52.8, "updated": "2026-09-07T01:26:52Z"}

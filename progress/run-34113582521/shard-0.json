@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 2, "total": 54, "rows": 101380, "note": "ADA 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 3.7, "updated": "2026-09-07T10:58:37Z"}
+{"shard": 0, "stage": "testing", "done": 4, "total": 54, "rows": 122524, "note": "AMZNSTOCK 1h: rule 57/120 (orderblock)", "failed": [], "pct": 7.4, "updated": "2026-09-07T10:59:23Z"}

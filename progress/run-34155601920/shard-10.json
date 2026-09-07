@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 39, "total": 53, "rows": 3205260, "note": "RIF 15m: rule 3/120 (fade15)", "failed": [], "pct": 73.6, "updated": "2026-09-07T22:43:22Z"}
+{"shard": 10, "stage": "testing", "done": 39, "total": 53, "rows": 3209000, "note": "RIF 15m: rule 20/120 (stoch14)", "failed": [], "pct": 73.6, "updated": "2026-09-07T22:44:09Z"}

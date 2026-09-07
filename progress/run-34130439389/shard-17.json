@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 47, "total": 53, "rows": 1913082, "note": "TRY 1h: rule 89/120 (cf_chan_l1)", "failed": [], "pct": 88.7, "updated": "2026-09-07T15:42:59Z"}
+{"shard": 17, "stage": "testing", "done": 47, "total": 53, "rows": 1926942, "note": "TRY 30m: rule 47/120 (ibs)", "failed": [], "pct": 88.7, "updated": "2026-09-07T15:43:44Z"}

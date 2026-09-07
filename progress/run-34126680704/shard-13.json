@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 14, "total": 53, "rows": 271142, "note": "CVX 1d: rule 3/120 (fade15)", "failed": [], "pct": 26.4, "updated": "2026-09-07T13:22:55Z"}
+{"shard": 13, "stage": "testing", "done": 17, "total": 53, "rows": 318574, "note": "ETHFI 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-07T13:23:46Z"}

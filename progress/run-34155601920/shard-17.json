@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 40, "total": 53, "rows": 3333524, "note": "SAPIEN 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-07T22:42:46Z"}
+{"shard": 17, "stage": "testing", "done": 40, "total": 53, "rows": 3340784, "note": "SAPIEN 30m: 18,395 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-07T22:43:36Z"}

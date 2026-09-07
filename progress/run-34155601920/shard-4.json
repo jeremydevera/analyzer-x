@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 45, "total": 53, "rows": 4147804, "note": "SUMIELECSTOCK 15m: rule 35/120 (willr14)", "failed": [], "pct": 84.9, "updated": "2026-09-07T23:01:48Z"}
+{"shard": 4, "stage": "testing", "done": 46, "total": 53, "rows": 4213592, "note": "TBT 30m: 1,938 bars, testing 120 rules", "failed": [], "pct": 86.8, "updated": "2026-09-07T23:02:33Z"}

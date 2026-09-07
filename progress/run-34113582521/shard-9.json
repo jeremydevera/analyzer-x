@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 16, "total": 53, "rows": 573736, "note": "DYDX 1h: rule 100/120 (cf_soup1)", "failed": [], "pct": 30.2, "updated": "2026-09-07T11:24:28Z"}
+{"shard": 9, "stage": "testing", "done": 16, "total": 53, "rows": 580116, "note": "DYDX 30m: rule 3/120 (fade15)", "failed": [], "pct": 30.2, "updated": "2026-09-07T11:25:19Z"}

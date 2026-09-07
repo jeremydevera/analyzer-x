@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 51, "total": 53, "rows": 2220632, "note": "XDC 30m: rule 46/120 (rsi2)", "failed": [], "pct": 96.2, "updated": "2026-09-07T12:38:24Z"}
+{"shard": 14, "stage": "testing", "done": 51, "total": 53, "rows": 2235372, "note": "XDC 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-07T12:39:10Z"}

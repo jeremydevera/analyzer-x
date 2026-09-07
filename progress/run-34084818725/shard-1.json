@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 48, "total": 53, "rows": 1914868, "note": "TURBO 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 90.6, "updated": "2026-09-07T06:36:57Z"}
+{"shard": 1, "stage": "testing", "done": 48, "total": 53, "rows": 1924328, "note": "TURBO 30m: rule 2/120 (mom15)", "failed": [], "pct": 90.6, "updated": "2026-09-07T06:37:52Z"}

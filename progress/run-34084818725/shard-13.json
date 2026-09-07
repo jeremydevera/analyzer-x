@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 40, "total": 53, "rows": 1511942, "note": "SAND 1h: rule 33/120 (heikin)", "failed": [], "pct": 75.5, "updated": "2026-09-07T06:02:04Z"}
+{"shard": 13, "stage": "testing", "done": 40, "total": 53, "rows": 1531082, "note": "SAND 30m: rule 1/120 (mom6)", "failed": [], "pct": 75.5, "updated": "2026-09-07T06:02:54Z"}

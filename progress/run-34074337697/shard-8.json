@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 41, "total": 53, "rows": 1593314, "note": "SHIB 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 77.4, "updated": "2026-09-07T03:27:47Z"}
+{"shard": 8, "stage": "testing", "done": 41, "total": 53, "rows": 1612234, "note": "SHIB 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 77.4, "updated": "2026-09-07T03:28:33Z"}

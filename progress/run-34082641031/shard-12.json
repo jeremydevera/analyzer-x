@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 18, "total": 53, "rows": 390196, "note": "FHE 4h: rule 4/120 (trend50)", "failed": [], "pct": 34.0, "updated": "2026-09-07T04:25:55Z"}
+{"shard": 12, "stage": "testing", "done": 19, "total": 53, "rows": 443590, "note": "FRAX 4h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 35.8, "updated": "2026-09-07T04:26:40Z"}

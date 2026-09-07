@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 42, "total": 53, "rows": 1602272, "note": "SKL 30m: rule 31/120 (trix15)", "failed": [], "pct": 79.2, "updated": "2026-09-06T23:59:33Z"}
+{"shard": 1, "stage": "testing", "done": 42, "total": 53, "rows": 1617232, "note": "SKL 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 79.2, "updated": "2026-09-07T00:00:18Z"}

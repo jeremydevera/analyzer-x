@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 31, "total": 53, "rows": 2152722, "note": "MRVLSTOCK 15m: rule 20/120 (stoch14)", "failed": [], "pct": 58.5, "updated": "2026-09-07T21:27:38Z"}
+{"shard": 5, "stage": "testing", "done": 31, "total": 53, "rows": 2162102, "note": "MRVLSTOCK 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 58.5, "updated": "2026-09-07T21:28:24Z"}

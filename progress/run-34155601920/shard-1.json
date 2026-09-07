@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 37, "total": 54, "rows": 3406444, "note": "POPMARTSTOCK 15m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 68.5, "updated": "2026-09-07T22:53:37Z"}
+{"shard": 1, "stage": "testing", "done": 38, "total": 54, "rows": 3466684, "note": "QBTSSTOCK 15m: rule 91/120 (cf_soup)", "failed": [], "pct": 70.4, "updated": "2026-09-07T22:54:22Z"}

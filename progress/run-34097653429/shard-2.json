@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 39, "total": 53, "rows": 1653430, "note": "RENDER 30m: rule 2/120 (mom15)", "failed": [], "pct": 73.6, "updated": "2026-09-07T09:10:32Z"}
+{"shard": 2, "stage": "testing", "done": 39, "total": 53, "rows": 1661230, "note": "RENDER 30m: rule 39/120 (fisher)", "failed": [], "pct": 73.6, "updated": "2026-09-07T09:11:18Z"}

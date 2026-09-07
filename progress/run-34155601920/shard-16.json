@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 50, "total": 53, "rows": 4617064, "note": "WDCSTOCK 15m: 16,103 bars, testing 120 rules", "failed": [], "pct": 94.3, "updated": "2026-09-07T23:37:11Z"}
+{"shard": 16, "stage": "testing", "done": 50, "total": 53, "rows": 4629104, "note": "WDCSTOCK 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 94.3, "updated": "2026-09-07T23:37:56Z"}

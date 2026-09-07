@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 48, "total": 53, "rows": 2009464, "note": "UNI 30m: rule 40/120 (crsi)", "failed": [], "pct": 90.6, "updated": "2026-09-07T00:10:47Z"}
+{"shard": 17, "stage": "testing", "done": 49, "total": 53, "rows": 2025264, "note": "VET 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-07T00:11:38Z"}

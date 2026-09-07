@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 23, "total": 53, "rows": 1010262, "note": "ICNT 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 43.4, "updated": "2026-09-07T05:40:01Z"}
+{"shard": 16, "stage": "testing", "done": 24, "total": 53, "rows": 1020342, "note": "IOTA 1h: rule 8/120 (fib618)", "failed": [], "pct": 45.3, "updated": "2026-09-07T05:40:46Z"}

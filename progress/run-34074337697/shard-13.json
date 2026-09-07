@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 5, "total": 53, "rows": 192690, "note": "ASTR 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-07T01:56:10Z"}
+{"shard": 13, "stage": "testing", "done": 5, "total": 53, "rows": 199290, "note": "ASTR 30m: rule 9/120 (fib382)", "failed": [], "pct": 9.4, "updated": "2026-09-07T01:56:56Z"}

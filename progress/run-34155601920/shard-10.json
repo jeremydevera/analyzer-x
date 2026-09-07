@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 14, "total": 53, "rows": 1080830, "note": "CVC 15m: rule 10/120 (sr_bounce)", "failed": [], "pct": 26.4, "updated": "2026-09-07T20:30:04Z"}
+{"shard": 10, "stage": "testing", "done": 14, "total": 53, "rows": 1085670, "note": "CVC 15m: rule 32/120 (gmma)", "failed": [], "pct": 26.4, "updated": "2026-09-07T20:30:49Z"}

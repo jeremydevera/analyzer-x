@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 7, "total": 53, "rows": 311410, "note": "BAS 30m: rule 63/120 (killzone)", "failed": [], "pct": 13.2, "updated": "2026-09-07T14:10:24Z"}
+{"shard": 13, "stage": "testing", "done": 9, "total": 53, "rows": 323730, "note": "BOTSTOCK 1h: 1,348 bars, testing 120 rules", "failed": [], "pct": 17.0, "updated": "2026-09-07T14:11:09Z"}

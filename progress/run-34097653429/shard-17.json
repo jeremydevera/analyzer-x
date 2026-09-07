@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 48, "total": 53, "rows": 1963768, "note": "UNI 1h: rule 26/120 (adx14)", "failed": [], "pct": 90.6, "updated": "2026-09-07T09:04:24Z"}
+{"shard": 17, "stage": "testing", "done": 48, "total": 53, "rows": 1984988, "note": "UNI 30m: rule 2/120 (mom15)", "failed": [], "pct": 90.6, "updated": "2026-09-07T09:05:09Z"}

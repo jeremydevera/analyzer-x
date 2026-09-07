@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 50, "total": 53, "rows": 3938932, "note": "WAXP 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 94.3, "updated": "2026-09-07T22:47:05Z"}
+{"shard": 13, "stage": "testing", "done": 50, "total": 53, "rows": 3946192, "note": "WAXP 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 94.3, "updated": "2026-09-07T22:47:59Z"}

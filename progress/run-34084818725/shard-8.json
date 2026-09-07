@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 1, "total": 53, "rows": 0, "note": "4 1h: downloading candles", "failed": [], "pct": 1.9, "updated": "2026-09-07T04:54:47Z"}
+{"shard": 8, "stage": "testing", "done": 1, "total": 53, "rows": 7260, "note": "4 1h: rule 27/120 (aroon25)", "failed": [], "pct": 1.9, "updated": "2026-09-07T04:55:32Z"}

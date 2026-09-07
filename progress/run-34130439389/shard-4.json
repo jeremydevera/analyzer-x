@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 36, "total": 53, "rows": 1603270, "note": "PHA 30m: rule 13/120 (pivot)", "failed": [], "pct": 67.9, "updated": "2026-09-07T15:08:09Z"}
+{"shard": 4, "stage": "testing", "done": 36, "total": 53, "rows": 1612510, "note": "PHA 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 67.9, "updated": "2026-09-07T15:08:54Z"}

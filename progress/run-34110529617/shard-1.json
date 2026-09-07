@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 48, "total": 54, "rows": 1058870, "note": "TST 4h: downloading candles", "failed": [], "pct": 88.9, "updated": "2026-09-07T10:34:24Z"}
+{"shard": 1, "stage": "testing", "done": 48, "total": 54, "rows": 1089560, "note": "TST 1d: rule 59/120 (choch)", "failed": [], "pct": 88.9, "updated": "2026-09-07T10:35:09Z"}

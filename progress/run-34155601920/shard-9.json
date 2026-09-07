@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 21, "total": 53, "rows": 1709086, "note": "GRAM 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 39.6, "updated": "2026-09-07T21:21:17Z"}
+{"shard": 9, "stage": "testing", "done": 22, "total": 53, "rows": 1769082, "note": "HEMI 15m: 34,564 bars, testing 120 rules", "failed": [], "pct": 41.5, "updated": "2026-09-07T21:22:06Z"}

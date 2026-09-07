@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 35, "total": 53, "rows": 1381854, "note": "OXYSTOCK 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 66.0, "updated": "2026-09-07T06:04:51Z"}
+{"shard": 4, "stage": "testing", "done": 36, "total": 53, "rows": 1409106, "note": "PIPEDOG 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 67.9, "updated": "2026-09-07T06:05:36Z"}

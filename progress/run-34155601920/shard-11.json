@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 45, "total": 53, "rows": 3736590, "note": "SXT 1h: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-07T23:19:55Z"}
+{"shard": 11, "stage": "testing", "done": 45, "total": 53, "rows": 3768710, "note": "SXT 1d: 394 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-07T23:20:49Z"}

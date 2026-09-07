@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 50, "total": 53, "rows": 1345322, "note": "WDCSTOCK 4h: 1,001 bars, testing 120 rules", "failed": [], "pct": 94.3, "updated": "2026-09-07T01:33:13Z"}
+{"shard": 14, "stage": "testing", "done": 53, "total": 53, "rows": 1435160, "note": "ZMSTOCK 4h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-07T01:33:58Z"}

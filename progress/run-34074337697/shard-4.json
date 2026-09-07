@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 48, "total": 53, "rows": 1840472, "note": "TWLOSTOCK 1h: rule 26/120 (adx14)", "failed": [], "pct": 90.6, "updated": "2026-09-07T03:21:28Z"}
+{"shard": 4, "stage": "testing", "done": 49, "total": 53, "rows": 1875002, "note": "USELESS 1h: rule 1/120 (mom6)", "failed": [], "pct": 92.5, "updated": "2026-09-07T03:22:17Z"}

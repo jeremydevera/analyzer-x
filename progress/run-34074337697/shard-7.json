@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 45, "total": 53, "rows": 1762776, "note": "SWARMS 1h: rule 12/120 (donchian20)", "failed": [], "pct": 84.9, "updated": "2026-09-07T03:08:06Z"}
+{"shard": 7, "stage": "testing", "done": 45, "total": 53, "rows": 1785656, "note": "SWARMS 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-07T03:09:00Z"}

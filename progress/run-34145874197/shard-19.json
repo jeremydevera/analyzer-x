@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 12, "total": 53, "rows": 600576, "note": "COINBASE 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-07T17:43:28Z"}
+{"shard": 19, "stage": "testing", "done": 13, "total": 53, "rows": 627336, "note": "CSCOSTOCK 30m: 13,782 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-07T17:44:16Z"}

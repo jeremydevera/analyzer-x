@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 14, "total": 53, "rows": 321624, "note": "CTSI 4h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-07T04:23:59Z"}
+{"shard": 6, "stage": "testing", "done": 17, "total": 53, "rows": 343404, "note": "EPIC 4h: rule 33/120 (heikin)", "failed": [], "pct": 32.1, "updated": "2026-09-07T04:24:44Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 35, "total": 53, "rows": 1289156, "note": "PDDSTOCK 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 66.0, "updated": "2026-09-07T08:54:37Z"}
+{"shard": 13, "stage": "testing", "done": 36, "total": 53, "rows": 1296596, "note": "PNUT 1h: rule 21/120 (cci20)", "failed": [], "pct": 67.9, "updated": "2026-09-07T08:55:22Z"}

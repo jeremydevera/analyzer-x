@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 32, "total": 53, "rows": 1353946, "note": "NGAS 30m: rule 2/120 (mom15)", "failed": [], "pct": 60.4, "updated": "2026-09-07T15:07:29Z"}
+{"shard": 16, "stage": "testing", "done": 32, "total": 53, "rows": 1375006, "note": "NGAS 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 60.4, "updated": "2026-09-07T15:08:15Z"}

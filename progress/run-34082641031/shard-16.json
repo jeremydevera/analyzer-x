@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 24, "total": 53, "rows": 726050, "note": "IOTA 4h: rule 45/120 (zscore20)", "failed": [], "pct": 45.3, "updated": "2026-09-07T04:32:10Z"}
+{"shard": 16, "stage": "testing", "done": 25, "total": 53, "rows": 771722, "note": "JST 4h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 47.2, "updated": "2026-09-07T04:32:55Z"}

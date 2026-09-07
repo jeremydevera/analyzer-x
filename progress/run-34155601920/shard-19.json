@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 12, "total": 53, "rows": 1285044, "note": "COINBASE 30m: rule 63/120 (killzone)", "failed": [], "pct": 22.6, "updated": "2026-09-07T20:41:45Z"}
+{"shard": 19, "stage": "testing", "done": 12, "total": 53, "rows": 1302644, "note": "COINBASE 1h: rule 25/120 (ichimoku)", "failed": [], "pct": 22.6, "updated": "2026-09-07T20:42:30Z"}

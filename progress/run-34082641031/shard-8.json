@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 36, "total": 53, "rows": 967008, "note": "PI 4h: rule 49/120 (vwaprev)", "failed": [], "pct": 67.9, "updated": "2026-09-07T04:37:58Z"}
+{"shard": 8, "stage": "testing", "done": 39, "total": 53, "rows": 993628, "note": "RIF 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 73.6, "updated": "2026-09-07T04:38:43Z"}

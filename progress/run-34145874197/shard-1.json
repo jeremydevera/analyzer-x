@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 23, "total": 54, "rows": 939700, "note": "HOLO 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 42.6, "updated": "2026-09-07T17:52:02Z"}
+{"shard": 1, "stage": "testing", "done": 24, "total": 54, "rows": 946960, "note": "IDOL 1h: rule 4/120 (trend50)", "failed": [], "pct": 44.4, "updated": "2026-09-07T17:52:48Z"}

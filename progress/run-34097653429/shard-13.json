@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 18, "total": 53, "rows": 796774, "note": "FIDA 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 34.0, "updated": "2026-09-07T08:32:48Z"}
+{"shard": 13, "stage": "testing", "done": 20, "total": 53, "rows": 808264, "note": "GIGGLE 1h: rule 4/120 (trend50)", "failed": [], "pct": 37.7, "updated": "2026-09-07T08:33:34Z"}

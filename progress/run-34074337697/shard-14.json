@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 3, "total": 53, "rows": 64880, "note": "AMATSTOCK 1h: rule 64/120 (hammer)", "failed": [], "pct": 5.7, "updated": "2026-09-07T01:55:30Z"}
+{"shard": 14, "stage": "testing", "done": 3, "total": 53, "rows": 84680, "note": "AMATSTOCK 30m: rule 49/120 (vwaprev)", "failed": [], "pct": 5.7, "updated": "2026-09-07T01:56:15Z"}

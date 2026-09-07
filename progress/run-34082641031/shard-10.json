@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 44, "total": 53, "rows": 1082758, "note": "STG 1d: 394 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-07T04:37:39Z"}
+{"shard": 10, "stage": "testing", "done": 48, "total": 53, "rows": 1133842, "note": "UAI 4h: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 90.6, "updated": "2026-09-07T04:38:24Z"}

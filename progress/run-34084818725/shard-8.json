@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 28, "total": 53, "rows": 1075286, "note": "LSK 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 52.8, "updated": "2026-09-07T06:04:15Z"}
+{"shard": 8, "stage": "testing", "done": 29, "total": 53, "rows": 1083866, "note": "MAV 1h: rule 21/120 (cci20)", "failed": [], "pct": 54.7, "updated": "2026-09-07T06:05:00Z"}

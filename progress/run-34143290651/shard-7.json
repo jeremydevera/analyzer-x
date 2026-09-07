@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 49, "total": 53, "rows": 1025548, "note": "USOIL 4h: 1,324 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-07T16:46:46Z"}
+{"shard": 7, "stage": "testing", "done": 50, "total": 53, "rows": 1068580, "note": "VTHO 4h: rule 17/120 (atrbreak)", "failed": [], "pct": 94.3, "updated": "2026-09-07T16:47:31Z"}

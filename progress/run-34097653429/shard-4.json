@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 23, "total": 53, "rows": 901080, "note": "HTZSTOCK 1h: 746 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-07T08:40:27Z"}
+{"shard": 4, "stage": "testing", "done": 25, "total": 53, "rows": 973474, "note": "IWM 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 47.2, "updated": "2026-09-07T08:41:12Z"}

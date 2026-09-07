@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 50, "total": 53, "rows": 1947212, "note": "WAXP 30m: rule 21/120 (cci20)", "failed": [], "pct": 94.3, "updated": "2026-09-07T00:23:45Z"}
+{"shard": 11, "stage": "testing", "done": 50, "total": 53, "rows": 1959092, "note": "WAXP 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 94.3, "updated": "2026-09-07T00:24:30Z"}

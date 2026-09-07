@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 1, "total": 54, "rows": 47740, "note": "1000000MOG 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-07T17:06:23Z"}
+{"shard": 2, "stage": "testing", "done": 2, "total": 54, "rows": 80708, "note": "ADMSTOCK 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 3.7, "updated": "2026-09-07T17:07:08Z"}

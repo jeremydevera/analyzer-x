@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 52, "total": 53, "rows": 4786144, "note": "YFI 15m: rule 45/120 (zscore20)", "failed": [], "pct": 98.1, "updated": "2026-09-07T23:42:35Z"}
+{"shard": 16, "stage": "testing", "done": 52, "total": 53, "rows": 4793844, "note": "YFI 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-07T23:43:20Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 15, "total": 53, "rows": 745382, "note": "DOLO 30m: rule 45/120 (zscore20)", "failed": [], "pct": 28.3, "updated": "2026-09-07T14:39:58Z"}
+{"shard": 19, "stage": "testing", "done": 15, "total": 53, "rows": 761442, "note": "DOLO 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 28.3, "updated": "2026-09-07T14:40:44Z"}

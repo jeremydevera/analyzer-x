@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 32, "total": 53, "rows": 1357622, "note": "NGAS 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 60.4, "updated": "2026-09-07T12:01:00Z"}
+{"shard": 16, "stage": "testing", "done": 33, "total": 53, "rows": 1379702, "note": "NVIDIA 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 62.3, "updated": "2026-09-07T12:01:45Z"}

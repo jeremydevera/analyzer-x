@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 41, "total": 53, "rows": 3322964, "note": "SEI 15m: rule 8/120 (fib618)", "failed": [], "pct": 77.4, "updated": "2026-09-07T22:29:52Z"}
+{"shard": 3, "stage": "testing", "done": 41, "total": 53, "rows": 3328004, "note": "SEI 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 77.4, "updated": "2026-09-07T22:30:38Z"}

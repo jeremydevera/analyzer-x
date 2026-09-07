@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 28, "total": 53, "rows": 1035618, "note": "LSK 1h: rule 3/120 (fade15)", "failed": [], "pct": 52.8, "updated": "2026-09-06T23:59:43Z"}
+{"shard": 8, "stage": "testing", "done": 28, "total": 53, "rows": 1058718, "note": "LSK 1h: rule 110/120 (cf_fundfade_l1)", "failed": [], "pct": 52.8, "updated": "2026-09-07T00:00:28Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 45, "total": 53, "rows": 2013150, "note": "SUMIELECSTOCK 30m: rule 21/120 (cci20)", "failed": [], "pct": 84.9, "updated": "2026-09-07T12:11:03Z"}
+{"shard": 4, "stage": "testing", "done": 47, "total": 53, "rows": 2073030, "note": "TOWNS 1h: rule 16/120 (keltner)", "failed": [], "pct": 88.7, "updated": "2026-09-07T12:11:48Z"}

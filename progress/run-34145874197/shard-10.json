@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 21, "total": 53, "rows": 831732, "note": "GRASS 30m: rule 40/120 (crsi)", "failed": [], "pct": 39.6, "updated": "2026-09-07T17:52:09Z"}
+{"shard": 10, "stage": "testing", "done": 21, "total": 53, "rows": 843612, "note": "GRASS 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 39.6, "updated": "2026-09-07T17:52:55Z"}

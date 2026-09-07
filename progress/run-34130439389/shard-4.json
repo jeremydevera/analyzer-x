@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 51, "total": 53, "rows": 2301344, "note": "WOO 1h: rule 33/120 (heikin)", "failed": [], "pct": 96.2, "updated": "2026-09-07T15:36:34Z"}
+{"shard": 4, "stage": "testing", "done": 51, "total": 53, "rows": 2320264, "note": "WOO 30m: rule 1/120 (mom6)", "failed": [], "pct": 96.2, "updated": "2026-09-07T15:37:23Z"}

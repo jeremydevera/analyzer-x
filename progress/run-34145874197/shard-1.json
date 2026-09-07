@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 18, "total": 54, "rows": 714288, "note": "EWT 30m: rule 21/120 (cci20)", "failed": [], "pct": 33.3, "updated": "2026-09-07T17:35:56Z"}
+{"shard": 1, "stage": "testing", "done": 19, "total": 54, "rows": 732408, "note": "FLOCK 1h: rule 1/120 (mom6)", "failed": [], "pct": 35.2, "updated": "2026-09-07T17:36:41Z"}

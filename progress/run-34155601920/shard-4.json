@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 12, "total": 53, "rows": 1172892, "note": "CHR 1h: rule 116/120 (cf_diadx_l1)", "failed": [], "pct": 22.6, "updated": "2026-09-07T20:31:18Z"}
+{"shard": 4, "stage": "testing", "done": 13, "total": 53, "rows": 1213548, "note": "COPPER 15m: 21,253 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-07T20:32:07Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 46, "total": 53, "rows": 1903430, "note": "TLM 30m: rule 58/120 (bos)", "failed": [], "pct": 86.8, "updated": "2026-09-07T18:48:33Z"}
+{"shard": 17, "stage": "testing", "done": 47, "total": 53, "rows": 1917070, "note": "TRY 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 88.7, "updated": "2026-09-07T18:49:29Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 33, "total": 53, "rows": 1387730, "note": "NVDL 1h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 62.3, "updated": "2026-09-07T15:04:33Z"}
+{"shard": 14, "stage": "testing", "done": 34, "total": 53, "rows": 1435520, "note": "OPENAI 1h: rule 119/120 (cf_stflip_l1)", "failed": [], "pct": 64.2, "updated": "2026-09-07T15:05:18Z"}

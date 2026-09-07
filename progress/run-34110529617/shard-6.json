@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 45, "total": 53, "rows": 1019734, "note": "SUPER 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-07T10:33:59Z"}
+{"shard": 6, "stage": "testing", "done": 47, "total": 53, "rows": 1059730, "note": "TQQQ 4h: downloading candles", "failed": [], "pct": 88.7, "updated": "2026-09-07T10:34:45Z"}

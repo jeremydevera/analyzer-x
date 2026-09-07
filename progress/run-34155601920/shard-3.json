@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 48, "total": 53, "rows": 4137224, "note": "TURBO 1h: rule 56/120 (insidebrk)", "failed": [], "pct": 90.6, "updated": "2026-09-07T23:27:55Z"}
+{"shard": 3, "stage": "testing", "done": 48, "total": 53, "rows": 4155704, "note": "TURBO 4h: rule 16/120 (keltner)", "failed": [], "pct": 90.6, "updated": "2026-09-07T23:28:40Z"}

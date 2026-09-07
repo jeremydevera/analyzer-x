@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 49, "total": 54, "rows": 3781632, "note": "URNM 4h: 541 bars, testing 120 rules", "failed": [], "pct": 90.7, "updated": "2026-09-07T23:11:50Z"}
+{"shard": 2, "stage": "testing", "done": 51, "total": 54, "rows": 3830512, "note": "WLFI 15m: rule 2/120 (mom15)", "failed": [], "pct": 94.4, "updated": "2026-09-07T23:12:46Z"}

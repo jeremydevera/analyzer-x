@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 6, "total": 53, "rows": 331028, "note": "AXS 15m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 11.3, "updated": "2026-09-07T19:45:18Z"}
+{"shard": 14, "stage": "testing", "done": 6, "total": 53, "rows": 333888, "note": "AXS 30m: rule 4/120 (trend50)", "failed": [], "pct": 11.3, "updated": "2026-09-07T19:46:05Z"}

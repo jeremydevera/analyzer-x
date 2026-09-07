@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 11, "total": 53, "rows": 391182, "note": "CELO 30m: rule 2/120 (mom15)", "failed": [], "pct": 20.8, "updated": "2026-09-07T17:23:01Z"}
+{"shard": 14, "stage": "testing", "done": 11, "total": 53, "rows": 398442, "note": "CELO 30m: rule 33/120 (heikin)", "failed": [], "pct": 20.8, "updated": "2026-09-07T17:23:47Z"}

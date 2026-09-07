@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 27, "total": 53, "rows": 1122340, "note": "LISTA 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 50.9, "updated": "2026-09-07T03:06:23Z"}
+{"shard": 18, "stage": "testing", "done": 28, "total": 53, "rows": 1136200, "note": "MAGMA 1h: 6,353 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-07T03:07:15Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 36, "total": 53, "rows": 1320938, "note": "PIPPIN 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 67.9, "updated": "2026-09-07T14:51:01Z"}
+{"shard": 7, "stage": "testing", "done": 36, "total": 53, "rows": 1336938, "note": "PIPPIN 1h: rule 75/120 (relvolbrk)", "failed": [], "pct": 67.9, "updated": "2026-09-07T14:51:46Z"}

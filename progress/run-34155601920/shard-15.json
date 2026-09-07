@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 8, "total": 53, "rows": 518076, "note": "BKNGSTOCK 15m: rule 59/120 (choch)", "failed": [], "pct": 15.1, "updated": "2026-09-07T19:43:26Z"}
+{"shard": 15, "stage": "testing", "done": 9, "total": 53, "rows": 565102, "note": "BRETT 15m: 34,653 bars, testing 120 rules", "failed": [], "pct": 17.0, "updated": "2026-09-07T19:44:18Z"}

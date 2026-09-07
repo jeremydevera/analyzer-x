@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 3, "total": 53, "rows": 84392, "note": "AMATSTOCK 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 5.7, "updated": "2026-09-07T10:56:11Z"}
+{"shard": 14, "stage": "testing", "done": 5, "total": 53, "rows": 105092, "note": "ASTSSTOCK 1h: rule 25/120 (ichimoku)", "failed": [], "pct": 9.4, "updated": "2026-09-07T10:56:56Z"}

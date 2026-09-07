@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 12, "total": 54, "rows": 967156, "note": "CHF 30m: rule 49/120 (vwaprev)", "failed": [], "pct": 22.2, "updated": "2026-09-07T20:21:37Z"}
+{"shard": 1, "stage": "testing", "done": 12, "total": 54, "rows": 981236, "note": "CHF 1h: 7,993 bars, testing 120 rules", "failed": [], "pct": 22.2, "updated": "2026-09-07T20:22:26Z"}

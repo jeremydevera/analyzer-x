@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 29, "total": 54, "rows": 2536796, "note": "MANA 15m: rule 119/120 (cf_stflip_l1)", "failed": [], "pct": 53.7, "updated": "2026-09-07T21:54:55Z"}
+{"shard": 1, "stage": "testing", "done": 29, "total": 54, "rows": 2539216, "note": "MANA 30m: rule 4/120 (trend50)", "failed": [], "pct": 53.7, "updated": "2026-09-07T21:55:41Z"}

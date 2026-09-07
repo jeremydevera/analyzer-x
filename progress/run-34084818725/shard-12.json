@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 24, "total": 53, "rows": 1010094, "note": "INX 1h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 45.3, "updated": "2026-09-07T05:18:47Z"}
+{"shard": 12, "stage": "testing", "done": 24, "total": 53, "rows": 1028494, "note": "INX 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 45.3, "updated": "2026-09-07T05:19:32Z"}

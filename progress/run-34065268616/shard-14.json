@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 35, "total": 53, "rows": 1433006, "note": "PEAQ 30m: rule 33/120 (heikin)", "failed": [], "pct": 66.0, "updated": "2026-09-07T00:01:00Z"}
+{"shard": 14, "stage": "testing", "done": 35, "total": 53, "rows": 1443606, "note": "PEAQ 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 66.0, "updated": "2026-09-07T00:01:46Z"}

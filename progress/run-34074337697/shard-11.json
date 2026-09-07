@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 43, "total": 53, "rows": 1699914, "note": "SOXS 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 81.1, "updated": "2026-09-07T03:12:01Z"}
+{"shard": 11, "stage": "testing", "done": 45, "total": 53, "rows": 1712914, "note": "SYN 1h: rule 3/120 (fade15)", "failed": [], "pct": 84.9, "updated": "2026-09-07T03:12:46Z"}

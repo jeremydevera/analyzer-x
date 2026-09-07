@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 46, "total": 53, "rows": 1784674, "note": "TLM 1h: rule 15/120 (bbbreak)", "failed": [], "pct": 86.8, "updated": "2026-09-07T06:21:57Z"}
+{"shard": 15, "stage": "testing", "done": 46, "total": 53, "rows": 1807114, "note": "TLM 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 86.8, "updated": "2026-09-07T06:22:51Z"}

@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 37, "total": 53, "rows": 1467032, "note": "PTB 30m: rule 20/120 (stoch14)", "failed": [], "pct": 69.8, "updated": "2026-09-07T00:02:26Z"}
+{"shard": 10, "stage": "testing", "done": 37, "total": 53, "rows": 1476272, "note": "PTB 30m: rule 63/120 (killzone)", "failed": [], "pct": 69.8, "updated": "2026-09-07T00:03:12Z"}

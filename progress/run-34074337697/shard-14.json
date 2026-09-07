@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 14, "total": 53, "rows": 557682, "note": "CYS 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-07T02:24:48Z"}
+{"shard": 14, "stage": "testing", "done": 14, "total": 53, "rows": 562502, "note": "CYS 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 26.4, "updated": "2026-09-07T02:25:33Z"}

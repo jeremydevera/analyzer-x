@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 47, "total": 53, "rows": 1988694, "note": "TRX 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 88.7, "updated": "2026-09-07T09:31:45Z"}
+{"shard": 14, "stage": "testing", "done": 48, "total": 53, "rows": 1998594, "note": "UMA 1h: rule 36/120 (stochrsi)", "failed": [], "pct": 90.6, "updated": "2026-09-07T09:32:30Z"}

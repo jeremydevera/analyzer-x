@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 44, "total": 53, "rows": 1782090, "note": "STG 30m: rule 19/120 (emacross)", "failed": [], "pct": 83.0, "updated": "2026-09-07T09:17:03Z"}
+{"shard": 10, "stage": "testing", "done": 44, "total": 53, "rows": 1791110, "note": "STG 30m: rule 61/120 (turtle)", "failed": [], "pct": 83.0, "updated": "2026-09-07T09:17:48Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 46, "total": 54, "rows": 1915454, "note": "TAKE 30m: rule 67/120 (pinbar)", "failed": [], "pct": 85.2, "updated": "2026-09-07T12:06:04Z"}
+{"shard": 1, "stage": "testing", "done": 48, "total": 54, "rows": 1939922, "note": "TST 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 88.9, "updated": "2026-09-07T12:06:58Z"}

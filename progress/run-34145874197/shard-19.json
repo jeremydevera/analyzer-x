@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 35, "total": 53, "rows": 1572570, "note": "PENGU 1h: rule 8/120 (fib618)", "failed": [], "pct": 66.0, "updated": "2026-09-07T18:34:23Z"}
+{"shard": 19, "stage": "testing", "done": 35, "total": 53, "rows": 1593910, "note": "PENGU 1h: rule 109/120 (cf_fundfade)", "failed": [], "pct": 66.0, "updated": "2026-09-07T18:35:09Z"}

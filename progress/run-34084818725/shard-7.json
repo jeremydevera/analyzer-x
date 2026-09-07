@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 30, "total": 53, "rows": 1170534, "note": "MITO 1h: 8,991 bars, testing 120 rules", "failed": [], "pct": 56.6, "updated": "2026-09-07T05:59:44Z"}
+{"shard": 7, "stage": "testing", "done": 30, "total": 53, "rows": 1183954, "note": "MITO 1h: rule 56/120 (insidebrk)", "failed": [], "pct": 56.6, "updated": "2026-09-07T06:00:30Z"}

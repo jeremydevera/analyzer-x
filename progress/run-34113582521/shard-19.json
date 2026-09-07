@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 19, "total": 53, "rows": 875832, "note": "FUTUSTOCK 1h: rule 39/120 (fisher)", "failed": [], "pct": 35.8, "updated": "2026-09-07T11:26:24Z"}
+{"shard": 19, "stage": "testing", "done": 19, "total": 53, "rows": 912012, "note": "FUTUSTOCK 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 35.8, "updated": "2026-09-07T11:27:09Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 5, "total": 53, "rows": 238814, "note": "ASTER 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-07T05:03:53Z"}
+{"shard": 12, "stage": "testing", "done": 7, "total": 53, "rows": 298898, "note": "BASTOCK 30m: rule 18/120 (macd)", "failed": [], "pct": 13.2, "updated": "2026-09-07T05:04:38Z"}

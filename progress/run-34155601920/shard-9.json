@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 2, "total": 53, "rows": 91094, "note": "AGI 30m: rule 25/120 (ichimoku)", "failed": [], "pct": 3.8, "updated": "2026-09-07T19:33:27Z"}
+{"shard": 9, "stage": "testing", "done": 2, "total": 53, "rows": 100454, "note": "AGI 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-07T19:34:13Z"}

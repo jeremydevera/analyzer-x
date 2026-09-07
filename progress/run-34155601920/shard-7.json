@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 37, "total": 53, "rows": 2807650, "note": "PROMPT 15m: rule 57/120 (orderblock)", "failed": [], "pct": 69.8, "updated": "2026-09-07T21:07:26Z"}
+{"shard": 7, "stage": "testing", "done": 37, "total": 53, "rows": 2820250, "note": "PROMPT 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-07T21:08:26Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 48, "total": 54, "rows": 4276622, "note": "TSMSTOCK 30m: rule 83/120 (cf_maobv_l1)", "failed": [], "pct": 88.9, "updated": "2026-09-07T22:56:35Z"}
+{"shard": 0, "stage": "testing", "done": 49, "total": 54, "rows": 4341242, "note": "UPROBINHOOD 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 90.7, "updated": "2026-09-07T22:57:20Z"}

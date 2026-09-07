@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 38, "total": 53, "rows": 1574694, "note": "RAY 30m: rule 28/120 (vortex14)", "failed": [], "pct": 71.7, "updated": "2026-09-07T15:10:42Z"}
+{"shard": 13, "stage": "testing", "done": 38, "total": 53, "rows": 1585474, "note": "RAY 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 71.7, "updated": "2026-09-07T15:11:28Z"}

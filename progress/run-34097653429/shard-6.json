@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 29, "total": 53, "rows": 1058934, "note": "MASTOCK 30m: rule 3/120 (fade15)", "failed": [], "pct": 54.7, "updated": "2026-09-07T08:40:55Z"}
+{"shard": 6, "stage": "testing", "done": 30, "total": 53, "rows": 1079814, "note": "MIRA 1h: 8,300 bars, testing 120 rules", "failed": [], "pct": 56.6, "updated": "2026-09-07T08:41:44Z"}

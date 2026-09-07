@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 52, "total": 53, "rows": 2219762, "note": "YFI 30m: rule 37/120 (ultosc)", "failed": [], "pct": 98.1, "updated": "2026-09-07T03:40:32Z"}
+{"shard": 14, "stage": "testing", "done": 52, "total": 53, "rows": 2233182, "note": "YFI 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-07T03:41:18Z"}

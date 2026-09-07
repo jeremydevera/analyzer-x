@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 1, "total": 53, "rows": 34320, "note": "4 30m: rule 28/120 (vortex14)", "failed": [], "pct": 1.9, "updated": "2026-09-07T01:54:45Z"}
+{"shard": 8, "stage": "testing", "done": 1, "total": 53, "rows": 44660, "note": "4 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 1.9, "updated": "2026-09-07T01:55:33Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 2, "total": 53, "rows": 54938, "note": "AEHRSTOCK 1h: rule 13/120 (pivot)", "failed": [], "pct": 3.8, "updated": "2026-09-07T01:54:32Z"}
+{"shard": 4, "stage": "testing", "done": 3, "total": 53, "rows": 113412, "note": "ALABSTOCK 30m: rule 5/120 (rsi14)", "failed": [], "pct": 5.7, "updated": "2026-09-07T01:55:18Z"}

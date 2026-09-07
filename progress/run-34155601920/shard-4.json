@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 53, "total": 53, "rows": 4873084, "note": "ZEC 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-07T23:43:22Z"}
+{"shard": 4, "stage": "testing", "done": 53, "total": 53, "rows": 4875084, "note": "ZEC 30m: rule 4/120 (trend50)", "failed": [], "pct": 100.0, "updated": "2026-09-07T23:44:08Z"}

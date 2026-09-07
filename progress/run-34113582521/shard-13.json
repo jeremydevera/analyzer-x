@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 48, "total": 53, "rows": 1913860, "note": "UBERSTOCK 30m: 12,731 bars, testing 120 rules", "failed": [], "pct": 90.6, "updated": "2026-09-07T11:43:54Z"}
+{"shard": 13, "stage": "testing", "done": 49, "total": 53, "rows": 1968040, "note": "UVXY 30m: rule 49/120 (vwaprev)", "failed": [], "pct": 92.5, "updated": "2026-09-07T11:44:39Z"}

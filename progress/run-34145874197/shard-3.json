@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 46, "total": 53, "rows": 1861478, "note": "TA 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 86.8, "updated": "2026-09-07T18:41:24Z"}
+{"shard": 3, "stage": "testing", "done": 47, "total": 53, "rows": 1868238, "note": "TOSHI 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 88.7, "updated": "2026-09-07T18:42:10Z"}

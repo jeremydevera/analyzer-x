@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 14, "total": 53, "rows": 574678, "note": "CTC 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-07T08:23:41Z"}
+{"shard": 2, "stage": "testing", "done": 15, "total": 53, "rows": 621118, "note": "DELLSTOCK 30m: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 28.3, "updated": "2026-09-07T08:24:26Z"}

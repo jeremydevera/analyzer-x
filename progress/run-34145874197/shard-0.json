@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 48, "total": 54, "rows": 2003980, "note": "TSMSTOCK 30m: rule 35/120 (willr14)", "failed": [], "pct": 88.9, "updated": "2026-09-07T19:03:50Z"}
+{"shard": 0, "stage": "testing", "done": 51, "total": 54, "rows": 2068156, "note": "WINGSTOCK 30m: 1,546 bars, testing 120 rules", "failed": [], "pct": 94.4, "updated": "2026-09-07T19:04:35Z"}

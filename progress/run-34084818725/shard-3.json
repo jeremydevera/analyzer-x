@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 1, "total": 53, "rows": 5060, "note": "1000BONK 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 1.9, "updated": "2026-09-07T04:55:34Z"}
+{"shard": 3, "stage": "testing", "done": 1, "total": 53, "rows": 25520, "note": "1000BONK 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-07T04:56:19Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 4, "total": 53, "rows": 175328, "note": "APEX 30m: rule 112/120 (cf_obretest)", "failed": [], "pct": 7.5, "updated": "2026-09-07T11:01:34Z"}
+{"shard": 9, "stage": "testing", "done": 5, "total": 53, "rows": 193612, "note": "ASMLSTOCK 1h: rule 97/120 (cf_ttm)", "failed": [], "pct": 9.4, "updated": "2026-09-07T11:02:19Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 28, "total": 53, "rows": 1030352, "note": "LUNC 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 52.8, "updated": "2026-09-07T14:45:56Z"}
+{"shard": 15, "stage": "testing", "done": 30, "total": 53, "rows": 1045070, "note": "MONAD 1h: rule 5/120 (rsi14)", "failed": [], "pct": 56.6, "updated": "2026-09-07T14:46:41Z"}

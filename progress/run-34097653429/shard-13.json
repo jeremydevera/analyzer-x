@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 8, "total": 53, "rows": 348818, "note": "BITO 30m: rule 44/120 (elder)", "failed": [], "pct": 15.1, "updated": "2026-09-07T08:05:23Z"}
+{"shard": 13, "stage": "testing", "done": 10, "total": 53, "rows": 362282, "note": "B 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 18.9, "updated": "2026-09-07T08:06:12Z"}

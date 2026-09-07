@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 48, "total": 53, "rows": 3626250, "note": "UAI 30m: rule 33/120 (heikin)", "failed": [], "pct": 90.6, "updated": "2026-09-07T22:11:23Z"}
+{"shard": 12, "stage": "testing", "done": 48, "total": 53, "rows": 3643050, "note": "UAI 1h: 7,331 bars, testing 120 rules", "failed": [], "pct": 90.6, "updated": "2026-09-07T22:12:15Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 2, "total": 53, "rows": 99700, "note": "AGT 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-07T17:08:44Z"}
+{"shard": 11, "stage": "testing", "done": 3, "total": 53, "rows": 106740, "note": "ALPINE 1h: rule 5/120 (rsi14)", "failed": [], "pct": 5.7, "updated": "2026-09-07T17:09:29Z"}

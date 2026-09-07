@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 17, "total": 53, "rows": 530920, "note": "EUR 1d: 394 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-07T13:27:42Z"}
+{"shard": 18, "stage": "testing", "done": 20, "total": 53, "rows": 592828, "note": "GLWSTOCK 4h: rule 38/120 (ao)", "failed": [], "pct": 37.7, "updated": "2026-09-07T13:28:27Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 45, "total": 53, "rows": 1154218, "note": "SWARMS 1d: rule 23/120 (supertrend)", "failed": [], "pct": 84.9, "updated": "2026-09-07T13:37:54Z"}
+{"shard": 9, "stage": "testing", "done": 48, "total": 53, "rows": 1211176, "note": "TXNSTOCK 4h: 794 bars, testing 120 rules", "failed": [], "pct": 90.6, "updated": "2026-09-07T13:38:40Z"}

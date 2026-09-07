@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 36, "total": 54, "rows": 1474322, "note": "PEOPLE 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 66.7, "updated": "2026-09-07T15:32:28Z"}
+{"shard": 0, "stage": "testing", "done": 37, "total": 54, "rows": 1484002, "note": "POPCAT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 68.5, "updated": "2026-09-07T15:33:13Z"}

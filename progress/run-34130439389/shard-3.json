@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 30, "total": 53, "rows": 1154338, "note": "MEW 30m: rule 85/120 (cf_triple)", "failed": [], "pct": 56.6, "updated": "2026-09-07T15:05:12Z"}
+{"shard": 3, "stage": "testing", "done": 32, "total": 53, "rows": 1192758, "note": "NAS100 1h: rule 56/120 (insidebrk)", "failed": [], "pct": 60.4, "updated": "2026-09-07T15:05:57Z"}

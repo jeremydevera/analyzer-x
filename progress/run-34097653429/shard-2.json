@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 8, "total": 53, "rows": 274784, "note": "BERA 30m: rule 1/120 (mom6)", "failed": [], "pct": 15.1, "updated": "2026-09-07T08:10:28Z"}
+{"shard": 2, "stage": "testing", "done": 8, "total": 53, "rows": 280064, "note": "BERA 30m: rule 21/120 (cci20)", "failed": [], "pct": 15.1, "updated": "2026-09-07T08:11:15Z"}

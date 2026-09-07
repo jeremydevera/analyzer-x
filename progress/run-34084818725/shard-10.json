@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 26, "total": 53, "rows": 1087852, "note": "KIMISTOCK 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 49.1, "updated": "2026-09-07T05:48:26Z"}
+{"shard": 10, "stage": "testing", "done": 27, "total": 53, "rows": 1110556, "note": "LDO 1h: rule 18/120 (macd)", "failed": [], "pct": 50.9, "updated": "2026-09-07T05:49:12Z"}

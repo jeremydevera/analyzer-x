@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 5, "total": 53, "rows": 126802, "note": "ARIA 4h: rule 47/120 (ibs)", "failed": [], "pct": 9.4, "updated": "2026-09-07T04:21:46Z"}
+{"shard": 0, "stage": "testing", "done": 6, "total": 53, "rows": 165892, "note": "AUDIO 4h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 11.3, "updated": "2026-09-07T04:22:31Z"}

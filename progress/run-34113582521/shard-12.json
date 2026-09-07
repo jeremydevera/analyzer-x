@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 52, "total": 53, "rows": 1916964, "note": "XVG 1h: rule 16/120 (keltner)", "failed": [], "pct": 98.1, "updated": "2026-09-07T12:11:30Z"}
+{"shard": 12, "stage": "testing", "done": 52, "total": 53, "rows": 1932364, "note": "XVG 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-07T12:12:15Z"}

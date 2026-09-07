@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 7, "total": 53, "rows": 293122, "note": "BAND 30m: rule 9/120 (fib382)", "failed": [], "pct": 13.2, "updated": "2026-09-07T02:02:17Z"}
+{"shard": 6, "stage": "testing", "done": 7, "total": 53, "rows": 304342, "note": "BAND 30m: rule 61/120 (turtle)", "failed": [], "pct": 13.2, "updated": "2026-09-07T02:03:02Z"}

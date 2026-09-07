@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 39, "total": 53, "rows": 1700978, "note": "ROBINHOOD 30m: rule 19/120 (emacross)", "failed": [], "pct": 73.6, "updated": "2026-09-07T15:30:10Z"}
+{"shard": 18, "stage": "testing", "done": 39, "total": 53, "rows": 1714178, "note": "ROBINHOOD 30m: rule 85/120 (cf_triple)", "failed": [], "pct": 73.6, "updated": "2026-09-07T15:30:55Z"}

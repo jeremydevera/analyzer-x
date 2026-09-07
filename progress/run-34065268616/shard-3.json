@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 52, "total": 53, "rows": 1975280, "note": "XOMSTOCK 30m: 11,317 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-07T00:29:43Z"}
+{"shard": 3, "stage": "testing", "done": 53, "total": 53, "rows": 1994960, "note": "ZEREBRO 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-07T00:30:35Z"}

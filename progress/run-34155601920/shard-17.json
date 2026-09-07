@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 13, "total": 53, "rows": 1130160, "note": "CRWDSTOCK 30m: rule 7/120 (fvg)", "failed": [], "pct": 24.5, "updated": "2026-09-07T20:32:41Z"}
+{"shard": 17, "stage": "testing", "done": 14, "total": 53, "rows": 1182674, "note": "C 15m: 34,561 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-07T20:33:27Z"}

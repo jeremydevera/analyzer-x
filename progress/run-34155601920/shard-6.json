@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 43, "total": 53, "rows": 3537842, "note": "SOL 15m: rule 40/120 (crsi)", "failed": [], "pct": 81.1, "updated": "2026-09-07T22:47:55Z"}
+{"shard": 6, "stage": "testing", "done": 43, "total": 53, "rows": 3544502, "note": "SOL 15m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-07T22:48:40Z"}

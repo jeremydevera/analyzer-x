@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 39, "total": 53, "rows": 3509910, "note": "RLS 4h: rule 16/120 (keltner)", "failed": [], "pct": 73.6, "updated": "2026-09-07T22:31:38Z"}
+{"shard": 16, "stage": "testing", "done": 40, "total": 53, "rows": 3545110, "note": "SANTOS 15m: rule 1/120 (mom6)", "failed": [], "pct": 75.5, "updated": "2026-09-07T22:32:34Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 3, "total": 53, "rows": 116648, "note": "ALLO 30m: rule 25/120 (ichimoku)", "failed": [], "pct": 5.7, "updated": "2026-09-07T14:05:07Z"}
+{"shard": 9, "stage": "testing", "done": 4, "total": 53, "rows": 135048, "note": "APEX 1h: 8,285 bars, testing 120 rules", "failed": [], "pct": 7.5, "updated": "2026-09-07T14:06:02Z"}

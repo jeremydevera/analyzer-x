@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 37, "total": 53, "rows": 778640, "note": "PUMPFUN 4h: rule 2/120 (mom15)", "failed": [], "pct": 69.8, "updated": "2026-09-07T04:31:30Z"}
+{"shard": 13, "stage": "testing", "done": 39, "total": 53, "rows": 828052, "note": "RLC 4h: rule 45/120 (zscore20)", "failed": [], "pct": 73.6, "updated": "2026-09-07T04:32:15Z"}

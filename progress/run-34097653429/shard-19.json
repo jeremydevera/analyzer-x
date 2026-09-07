@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 13, "total": 53, "rows": 572296, "note": "CSOPSKHYNIX2L 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 24.5, "updated": "2026-09-07T08:31:03Z"}
+{"shard": 19, "stage": "testing", "done": 15, "total": 53, "rows": 649732, "note": "DOS 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 28.3, "updated": "2026-09-07T08:31:48Z"}

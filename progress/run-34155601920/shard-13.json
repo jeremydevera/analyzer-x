@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 51, "total": 53, "rows": 4037756, "note": "XCN 15m: rule 16/120 (keltner)", "failed": [], "pct": 96.2, "updated": "2026-09-07T22:53:42Z"}
+{"shard": 13, "stage": "testing", "done": 51, "total": 53, "rows": 4042816, "note": "XCN 15m: rule 39/120 (fisher)", "failed": [], "pct": 96.2, "updated": "2026-09-07T22:54:28Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 36, "total": 53, "rows": 1554286, "note": "PLUME 30m: rule 1/120 (mom6)", "failed": [], "pct": 67.9, "updated": "2026-09-07T02:57:10Z"}
+{"shard": 12, "stage": "testing", "done": 36, "total": 53, "rows": 1557806, "note": "PLUME 30m: rule 13/120 (pivot)", "failed": [], "pct": 67.9, "updated": "2026-09-07T02:57:57Z"}

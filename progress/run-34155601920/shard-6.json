@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 49, "total": 53, "rows": 4098786, "note": "USELESS 30m: rule 75/120 (relvolbrk)", "failed": [], "pct": 92.5, "updated": "2026-09-07T23:16:14Z"}
+{"shard": 6, "stage": "testing", "done": 49, "total": 53, "rows": 4108026, "note": "USELESS 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-07T23:17:03Z"}

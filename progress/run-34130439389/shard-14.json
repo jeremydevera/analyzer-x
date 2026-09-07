@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 19, "total": 53, "rows": 766582, "note": "FRAX 30m: rule 27/120 (aroon25)", "failed": [], "pct": 35.8, "updated": "2026-09-07T14:40:17Z"}
+{"shard": 14, "stage": "testing", "done": 20, "total": 53, "rows": 784382, "note": "GIGADEVSTOCK 1h: 825 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-07T14:41:02Z"}

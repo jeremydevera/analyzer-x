@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 34, "total": 53, "rows": 1328044, "note": "OG 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 64.2, "updated": "2026-09-07T09:12:16Z"}
+{"shard": 0, "stage": "testing", "done": 35, "total": 53, "rows": 1342124, "note": "ORCLSTOCK 1h: 8,516 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-07T09:13:04Z"}

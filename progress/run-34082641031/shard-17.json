@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 14, "total": 53, "rows": 419156, "note": "DATA 1d: downloading candles", "failed": [], "pct": 26.4, "updated": "2026-09-07T04:25:46Z"}
+{"shard": 17, "stage": "testing", "done": 15, "total": 53, "rows": 451936, "note": "DOLO 1d: 394 bars, testing 120 rules", "failed": [], "pct": 28.3, "updated": "2026-09-07T04:26:37Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 19, "total": 53, "rows": 814348, "note": "FRMISTOCK 30m: rule 68/120 (dbltop)", "failed": [], "pct": 35.8, "updated": "2026-09-07T05:30:20Z"}
+{"shard": 13, "stage": "testing", "done": 20, "total": 53, "rows": 826018, "note": "GIGGLE 1h: rule 39/120 (fisher)", "failed": [], "pct": 37.7, "updated": "2026-09-07T05:31:05Z"}

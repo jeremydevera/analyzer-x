@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 11, "total": 53, "rows": 471702, "note": "CC 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 20.8, "updated": "2026-09-07T17:27:55Z"}
+{"shard": 10, "stage": "testing", "done": 11, "total": 53, "rows": 484022, "note": "CC 30m: rule 67/120 (pinbar)", "failed": [], "pct": 20.8, "updated": "2026-09-07T17:28:40Z"}

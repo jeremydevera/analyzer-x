@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 47, "total": 53, "rows": 4262232, "note": "TOWNS 15m: rule 22/120 (engulf)", "failed": [], "pct": 88.7, "updated": "2026-09-07T23:05:01Z"}
+{"shard": 4, "stage": "testing", "done": 47, "total": 53, "rows": 4267292, "note": "TOWNS 15m: rule 45/120 (zscore20)", "failed": [], "pct": 88.7, "updated": "2026-09-07T23:05:46Z"}

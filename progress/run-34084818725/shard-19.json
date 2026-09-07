@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 49, "total": 53, "rows": 2192358, "note": "VIRTUAL 30m: rule 91/120 (cf_soup)", "failed": [], "pct": 92.5, "updated": "2026-09-07T06:53:21Z"}
+{"shard": 19, "stage": "testing", "done": 50, "total": 53, "rows": 2200358, "note": "WLD 1h: rule 4/120 (trend50)", "failed": [], "pct": 94.3, "updated": "2026-09-07T06:54:07Z"}

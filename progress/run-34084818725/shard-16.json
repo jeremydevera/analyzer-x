@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 51, "total": 53, "rows": 2258946, "note": "XLI 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-07T06:24:41Z"}
+{"shard": 16, "stage": "testing", "done": 53, "total": 53, "rows": 2269726, "note": "ZRO 1h: rule 43/120 (macddiv)", "failed": [], "pct": 100.0, "updated": "2026-09-07T06:25:26Z"}

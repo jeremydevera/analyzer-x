@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 38, "total": 53, "rows": 3636194, "note": "RDWSTOCK 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 71.7, "updated": "2026-09-07T22:24:46Z"}
+{"shard": 19, "stage": "testing", "done": 38, "total": 53, "rows": 3694958, "note": "RDWSTOCK 1d: 102 bars, testing 120 rules", "failed": [], "pct": 71.7, "updated": "2026-09-07T22:25:31Z"}

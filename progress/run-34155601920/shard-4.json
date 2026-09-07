@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 42, "total": 53, "rows": 4027626, "note": "SKR 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 79.2, "updated": "2026-09-07T23:00:18Z"}
+{"shard": 4, "stage": "testing", "done": 44, "total": 53, "rows": 4074178, "note": "SPY 15m: rule 27/120 (aroon25)", "failed": [], "pct": 83.0, "updated": "2026-09-07T23:01:03Z"}

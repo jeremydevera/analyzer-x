@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 3, "total": 53, "rows": 133656, "note": "AMP 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 5.7, "updated": "2026-09-07T08:02:26Z"}
+{"shard": 19, "stage": "testing", "done": 4, "total": 53, "rows": 138296, "note": "ARCSOL 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 7.5, "updated": "2026-09-07T08:03:12Z"}

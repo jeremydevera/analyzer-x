@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 24, "total": 54, "rows": 910516, "note": "IDOL 30m: rule 46/120 (rsi2)", "failed": [], "pct": 44.4, "updated": "2026-09-07T11:27:32Z"}
+{"shard": 1, "stage": "testing", "done": 25, "total": 54, "rows": 924916, "note": "IO 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 46.3, "updated": "2026-09-07T11:28:26Z"}

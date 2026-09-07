@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 12, "total": 53, "rows": 543696, "note": "COMP 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-07T08:28:47Z"}
+{"shard": 19, "stage": "testing", "done": 12, "total": 53, "rows": 548756, "note": "COMP 30m: rule 11/120 (sr_break)", "failed": [], "pct": 22.6, "updated": "2026-09-07T08:29:32Z"}

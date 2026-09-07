@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 8, "total": 53, "rows": 380830, "note": "BIO 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 15.1, "updated": "2026-09-07T11:14:19Z"}
+{"shard": 10, "stage": "testing", "done": 9, "total": 53, "rows": 387430, "note": "BOME 1h: rule 3/120 (fade15)", "failed": [], "pct": 17.0, "updated": "2026-09-07T11:15:10Z"}

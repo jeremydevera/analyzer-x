@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 43, "total": 53, "rows": 1151720, "note": "SPACE 4h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-07T10:33:44Z"}
+{"shard": 16, "stage": "testing", "done": 44, "total": 53, "rows": 1190880, "note": "STORJ 1d: 394 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-07T10:34:29Z"}

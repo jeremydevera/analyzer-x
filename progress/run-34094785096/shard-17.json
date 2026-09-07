@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 19, "total": 53, "rows": 561136, "note": "FUTUSTOCK 1d: 287 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-07T07:26:16Z"}
+{"shard": 17, "stage": "testing", "done": 21, "total": 53, "rows": 598712, "note": "G 1d: rule 1/120 (mom6)", "failed": [], "pct": 39.6, "updated": "2026-09-07T07:27:02Z"}

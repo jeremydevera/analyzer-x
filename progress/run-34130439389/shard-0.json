@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 15, "total": 54, "rows": 560738, "note": "DBR 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 27.8, "updated": "2026-09-07T14:37:08Z"}
+{"shard": 0, "stage": "testing", "done": 15, "total": 54, "rows": 580578, "note": "DBR 1h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 27.8, "updated": "2026-09-07T14:37:53Z"}

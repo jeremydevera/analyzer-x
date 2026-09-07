@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 1, "total": 53, "rows": 31240, "note": "1INCH 30m: rule 11/120 (sr_break)", "failed": [], "pct": 1.9, "updated": "2026-09-07T04:57:03Z"}
+{"shard": 6, "stage": "testing", "done": 1, "total": 53, "rows": 40480, "note": "1INCH 30m: rule 54/120 (fractal5)", "failed": [], "pct": 1.9, "updated": "2026-09-07T04:57:49Z"}

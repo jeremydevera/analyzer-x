@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 33, "total": 53, "rows": 3069766, "note": "NVTSSTOCK 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 62.3, "updated": "2026-09-07T22:21:39Z"}
+{"shard": 18, "stage": "testing", "done": 34, "total": 53, "rows": 3118360, "note": "OPN 15m: rule 1/120 (mom6)", "failed": [], "pct": 64.2, "updated": "2026-09-07T22:22:36Z"}

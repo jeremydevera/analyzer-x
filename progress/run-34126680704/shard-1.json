@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 6, "total": 54, "rows": 99132, "note": "AUD 4h: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 11.1, "updated": "2026-09-07T13:20:42Z"}
+{"shard": 1, "stage": "testing", "done": 8, "total": 54, "rows": 151668, "note": "BEL 4h: rule 2/120 (mom15)", "failed": [], "pct": 14.8, "updated": "2026-09-07T13:21:28Z"}

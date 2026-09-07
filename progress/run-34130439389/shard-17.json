@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 32, "total": 53, "rows": 1232656, "note": "NICKEL 1h: rule 12/120 (donchian20)", "failed": [], "pct": 60.4, "updated": "2026-09-07T15:08:56Z"}
+{"shard": 17, "stage": "testing", "done": 32, "total": 53, "rows": 1276446, "note": "NICKEL 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 60.4, "updated": "2026-09-07T15:09:41Z"}

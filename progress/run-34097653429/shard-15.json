@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 34, "total": 53, "rows": 1311222, "note": "OPG 30m: rule 51/120 (orb)", "failed": [], "pct": 64.2, "updated": "2026-09-07T08:41:48Z"}
+{"shard": 15, "stage": "testing", "done": 35, "total": 53, "rows": 1333222, "note": "PENDLE 1h: rule 29/120 (hull20)", "failed": [], "pct": 66.0, "updated": "2026-09-07T08:42:33Z"}

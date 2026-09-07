@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 28, "total": 54, "rows": 2434096, "note": "LITESTOCK 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 51.9, "updated": "2026-09-07T21:49:24Z"}
+{"shard": 1, "stage": "testing", "done": 28, "total": 54, "rows": 2459296, "note": "LITESTOCK 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 51.9, "updated": "2026-09-07T21:50:10Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 9, "total": 54, "rows": 346248, "note": "BLKSTOCK 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 16.7, "updated": "2026-09-07T17:26:07Z"}
+{"shard": 0, "stage": "testing", "done": 10, "total": 54, "rows": 350088, "note": "BROCCOLIF3B 1h: rule 9/120 (fib382)", "failed": [], "pct": 18.5, "updated": "2026-09-07T17:26:52Z"}

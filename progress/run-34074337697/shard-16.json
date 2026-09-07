@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 1, "total": 53, "rows": 50280, "note": "ACE 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-07T01:55:25Z"}
+{"shard": 16, "stage": "testing", "done": 2, "total": 53, "rows": 54940, "note": "AIOT 1h: rule 7/120 (fvg)", "failed": [], "pct": 3.8, "updated": "2026-09-07T01:56:10Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 3777844, "note": "SUI 1h: rule 1/120 (mom6)", "failed": [], "pct": 84.9, "updated": "2026-09-07T23:01:47Z"}
+{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 3796764, "note": "SUI 1h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-07T23:02:32Z"}

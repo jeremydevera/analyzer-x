@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 29, "total": 53, "rows": 1063406, "note": "MASK 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 54.7, "updated": "2026-09-07T14:42:19Z"}
+{"shard": 7, "stage": "testing", "done": 29, "total": 53, "rows": 1081446, "note": "MASK 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 54.7, "updated": "2026-09-07T14:43:05Z"}

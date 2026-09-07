@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 24, "total": 53, "rows": 984942, "note": "INX 30m: rule 104/120 (cf_eqhl_l1)", "failed": [], "pct": 45.3, "updated": "2026-09-07T14:44:48Z"}
+{"shard": 14, "stage": "testing", "done": 25, "total": 53, "rows": 995622, "note": "JOE 1h: rule 28/120 (vortex14)", "failed": [], "pct": 47.2, "updated": "2026-09-07T14:45:33Z"}

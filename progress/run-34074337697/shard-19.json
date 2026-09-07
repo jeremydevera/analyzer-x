@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 29, "total": 53, "rows": 1287892, "note": "METIS 1h: rule 4/120 (trend50)", "failed": [], "pct": 54.7, "updated": "2026-09-07T03:10:20Z"}
+{"shard": 19, "stage": "testing", "done": 29, "total": 53, "rows": 1305316, "note": "METIS 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 54.7, "updated": "2026-09-07T03:11:06Z"}

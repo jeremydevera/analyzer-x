@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 24, "total": 53, "rows": 550400, "note": "INTUSTOCK 1d: downloading candles", "failed": [], "pct": 45.3, "updated": "2026-09-07T13:27:49Z"}
+{"shard": 12, "stage": "testing", "done": 27, "total": 53, "rows": 585710, "note": "LDO 1d: 394 bars, testing 120 rules", "failed": [], "pct": 50.9, "updated": "2026-09-07T13:28:36Z"}

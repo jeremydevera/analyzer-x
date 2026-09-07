@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 35, "total": 53, "rows": 1374362, "note": "PENDLE 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 66.0, "updated": "2026-09-07T08:44:49Z"}
+{"shard": 15, "stage": "testing", "done": 36, "total": 53, "rows": 1385802, "note": "POLYX 1h: rule 22/120 (engulf)", "failed": [], "pct": 67.9, "updated": "2026-09-07T08:45:34Z"}

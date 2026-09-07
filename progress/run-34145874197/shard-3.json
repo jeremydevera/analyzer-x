@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 42, "total": 53, "rows": 1671838, "note": "SKL 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 79.2, "updated": "2026-09-07T18:29:30Z"}
+{"shard": 3, "stage": "testing", "done": 44, "total": 53, "rows": 1712658, "note": "SPX 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-07T18:30:26Z"}

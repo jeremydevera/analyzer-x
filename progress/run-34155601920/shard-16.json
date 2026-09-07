@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 41, "total": 53, "rows": 3677662, "note": "SILVER 15m: rule 56/120 (insidebrk)", "failed": [], "pct": 77.4, "updated": "2026-09-07T22:41:48Z"}
+{"shard": 16, "stage": "testing", "done": 41, "total": 53, "rows": 3689182, "note": "SILVER 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 77.4, "updated": "2026-09-07T22:42:34Z"}

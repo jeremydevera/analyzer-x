@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 24, "total": 53, "rows": 929888, "note": "INJ 30m: rule 107/120 (cf_bosfvg_l1)", "failed": [], "pct": 45.3, "updated": "2026-09-07T15:01:11Z"}
+{"shard": 10, "stage": "testing", "done": 25, "total": 53, "rows": 953768, "note": "JDSTOCK 30m: rule 6/120 (sweep30)", "failed": [], "pct": 47.2, "updated": "2026-09-07T15:01:56Z"}

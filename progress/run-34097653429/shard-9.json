@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 31, "total": 53, "rows": 1210920, "note": "MTL 30m: rule 49/120 (vwaprev)", "failed": [], "pct": 58.5, "updated": "2026-09-07T08:42:36Z"}
+{"shard": 9, "stage": "testing", "done": 32, "total": 53, "rows": 1250278, "note": "NES 30m: 3,593 bars, testing 120 rules", "failed": [], "pct": 60.4, "updated": "2026-09-07T08:43:22Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 3, "total": 53, "rows": 74100, "note": "ALPINE 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 5.7, "updated": "2026-09-07T04:21:07Z"}
+{"shard": 11, "stage": "testing", "done": 5, "total": 53, "rows": 118112, "note": "ASTEROID 1d: 143 bars, testing 120 rules", "failed": [], "pct": 9.4, "updated": "2026-09-07T04:21:53Z"}

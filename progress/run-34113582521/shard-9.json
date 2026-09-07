@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 36, "total": 53, "rows": 1366076, "note": "PIXEL 1h: rule 20/120 (stoch14)", "failed": [], "pct": 67.9, "updated": "2026-09-07T12:09:48Z"}
+{"shard": 9, "stage": "testing", "done": 36, "total": 53, "rows": 1386756, "note": "PIXEL 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 67.9, "updated": "2026-09-07T12:10:44Z"}

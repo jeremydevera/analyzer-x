@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 27, "total": 53, "rows": 744612, "note": "LINSTOCK 4h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-07T07:29:24Z"}
+{"shard": 17, "stage": "testing", "done": 28, "total": 53, "rows": 782040, "note": "MAGIC 1d: 394 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-07T07:30:09Z"}

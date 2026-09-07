@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 11, "total": 53, "rows": 447116, "note": "CGPT 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 20.8, "updated": "2026-09-07T05:25:16Z"}
+{"shard": 18, "stage": "testing", "done": 11, "total": 53, "rows": 451736, "note": "CGPT 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 20.8, "updated": "2026-09-07T05:26:01Z"}

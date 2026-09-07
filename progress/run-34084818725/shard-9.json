@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 6, "total": 53, "rows": 235044, "note": "AVNT 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 11.3, "updated": "2026-09-07T05:08:36Z"}
+{"shard": 9, "stage": "testing", "done": 6, "total": 53, "rows": 258584, "note": "AVNT 30m: 17,408 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-07T05:09:32Z"}

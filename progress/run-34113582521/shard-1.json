@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 13, "total": 54, "rows": 462976, "note": "COMP 30m: rule 63/120 (killzone)", "failed": [], "pct": 24.1, "updated": "2026-09-07T11:07:50Z"}
+{"shard": 1, "stage": "testing", "done": 15, "total": 54, "rows": 500336, "note": "DDOGSTOCK 30m: rule 29/120 (hull20)", "failed": [], "pct": 27.8, "updated": "2026-09-07T11:08:35Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 16, "total": 53, "rows": 1421886, "note": "EGLD 15m: rule 25/120 (ichimoku)", "failed": [], "pct": 30.2, "updated": "2026-09-07T20:51:37Z"}
+{"shard": 17, "stage": "testing", "done": 16, "total": 53, "rows": 1427166, "note": "EGLD 15m: rule 50/120 (gapfade)", "failed": [], "pct": 30.2, "updated": "2026-09-07T20:52:23Z"}

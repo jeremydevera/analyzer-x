@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 24, "total": 53, "rows": 2270186, "note": "ILV 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 45.3, "updated": "2026-09-07T21:20:37Z"}
+{"shard": 4, "stage": "testing", "done": 24, "total": 53, "rows": 2272166, "note": "ILV 30m: rule 3/120 (fade15)", "failed": [], "pct": 45.3, "updated": "2026-09-07T21:21:23Z"}

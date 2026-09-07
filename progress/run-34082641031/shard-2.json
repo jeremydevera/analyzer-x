@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 26, "total": 53, "rows": 704348, "note": "KAT 4h: rule 54/120 (fractal5)", "failed": [], "pct": 49.1, "updated": "2026-09-07T04:31:12Z"}
+{"shard": 2, "stage": "testing", "done": 30, "total": 53, "rows": 765624, "note": "ME 4h: rule 1/120 (mom6)", "failed": [], "pct": 56.6, "updated": "2026-09-07T04:31:58Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 27, "total": 53, "rows": 2417848, "note": "LINEA 30m: rule 47/120 (ibs)", "failed": [], "pct": 50.9, "updated": "2026-09-07T21:58:25Z"}
+{"shard": 17, "stage": "testing", "done": 27, "total": 53, "rows": 2432808, "note": "LINEA 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-07T21:59:11Z"}

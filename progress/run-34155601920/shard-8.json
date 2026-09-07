@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 48, "total": 53, "rows": 3899060, "note": "TWT 1d: rule 1/120 (mom6)", "failed": [], "pct": 90.6, "updated": "2026-09-07T22:40:08Z"}
+{"shard": 8, "stage": "testing", "done": 50, "total": 53, "rows": 3977314, "note": "VUG 15m: 3,202 bars, testing 120 rules", "failed": [], "pct": 94.3, "updated": "2026-09-07T22:40:54Z"}

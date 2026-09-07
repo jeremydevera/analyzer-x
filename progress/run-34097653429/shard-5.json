@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 50, "total": 53, "rows": 1984978, "note": "VTHO 1h: rule 9/120 (fib382)", "failed": [], "pct": 94.3, "updated": "2026-09-07T08:59:17Z"}
+{"shard": 5, "stage": "testing", "done": 50, "total": 53, "rows": 2009618, "note": "VTHO 30m: rule 1/120 (mom6)", "failed": [], "pct": 94.3, "updated": "2026-09-07T09:00:04Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 24, "total": 53, "rows": 906980, "note": "INTCSTOCK 30m: rule 35/120 (willr14)", "failed": [], "pct": 45.3, "updated": "2026-09-07T14:37:03Z"}
+{"shard": 11, "stage": "testing", "done": 25, "total": 53, "rows": 923980, "note": "JELLYJELLY 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-07T14:37:50Z"}

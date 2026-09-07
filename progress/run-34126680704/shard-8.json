@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 24, "total": 53, "rows": 569272, "note": "INFQSTOCK 4h: 619 bars, testing 120 rules", "failed": [], "pct": 45.3, "updated": "2026-09-07T13:30:34Z"}
+{"shard": 8, "stage": "testing", "done": 27, "total": 53, "rows": 616998, "note": "LAB 1d: 327 bars, testing 120 rules", "failed": [], "pct": 50.9, "updated": "2026-09-07T13:31:21Z"}

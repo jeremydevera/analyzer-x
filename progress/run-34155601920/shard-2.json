@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 43, "total": 54, "rows": 3314956, "note": "SNX 30m: rule 27/120 (aroon25)", "failed": [], "pct": 79.6, "updated": "2026-09-07T22:55:38Z"}
+{"shard": 2, "stage": "testing", "done": 43, "total": 54, "rows": 3324856, "note": "SNX 30m: rule 73/120 (volspike)", "failed": [], "pct": 79.6, "updated": "2026-09-07T22:56:23Z"}

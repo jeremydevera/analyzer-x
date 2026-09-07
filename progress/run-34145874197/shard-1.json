@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 10, "total": 54, "rows": 408932, "note": "BROCCOLI 30m: rule 55/120 (nhigh50)", "failed": [], "pct": 18.5, "updated": "2026-09-07T17:24:16Z"}
+{"shard": 1, "stage": "testing", "done": 11, "total": 54, "rows": 423012, "note": "CATE 1h: 1,020 bars, testing 120 rules", "failed": [], "pct": 20.4, "updated": "2026-09-07T17:25:03Z"}

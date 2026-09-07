@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 39, "total": 53, "rows": 1583566, "note": "RLS 30m: rule 4/120 (trend50)", "failed": [], "pct": 73.6, "updated": "2026-09-07T00:08:09Z"}
+{"shard": 14, "stage": "testing", "done": 39, "total": 53, "rows": 1596566, "note": "RLS 30m: rule 70/120 (cmf20)", "failed": [], "pct": 73.6, "updated": "2026-09-07T00:08:54Z"}

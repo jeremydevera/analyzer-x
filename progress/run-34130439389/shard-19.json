@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 33, "total": 53, "rows": 1499306, "note": "NXPC 30m: rule 35/120 (willr14)", "failed": [], "pct": 62.3, "updated": "2026-09-07T15:14:06Z"}
+{"shard": 19, "stage": "testing", "done": 33, "total": 53, "rows": 1515586, "note": "NXPC 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 62.3, "updated": "2026-09-07T15:14:52Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 27, "total": 53, "rows": 981410, "note": "KSM 1h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-07T11:44:21Z"}
+{"shard": 5, "stage": "testing", "done": 27, "total": 53, "rows": 984930, "note": "KSM 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 50.9, "updated": "2026-09-07T11:45:06Z"}

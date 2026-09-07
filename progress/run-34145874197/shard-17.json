@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 27, "total": 53, "rows": 1132556, "note": "LINEA 30m: rule 40/120 (crsi)", "failed": [], "pct": 50.9, "updated": "2026-09-07T18:08:24Z"}
+{"shard": 17, "stage": "testing", "done": 27, "total": 53, "rows": 1145756, "note": "LINEA 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-07T18:09:10Z"}

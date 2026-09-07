@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 38, "total": 53, "rows": 1636850, "note": "RBLXSTOCK 1h: rule 4/120 (trend50)", "failed": [], "pct": 71.7, "updated": "2026-09-07T12:09:33Z"}
+{"shard": 14, "stage": "testing", "done": 39, "total": 53, "rows": 1691252, "note": "RKLBSTOCK 30m: rule 3/120 (fade15)", "failed": [], "pct": 73.6, "updated": "2026-09-07T12:10:21Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 52, "total": 53, "rows": 4802424, "note": "YFI 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-07T23:44:14Z"}
+{"shard": 16, "stage": "testing", "done": 52, "total": 53, "rows": 4808584, "note": "YFI 30m: rule 22/120 (engulf)", "failed": [], "pct": 98.1, "updated": "2026-09-07T23:44:59Z"}

@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 46, "total": 54, "rows": 3581208, "note": "TAO 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 85.2, "updated": "2026-09-07T23:08:48Z"}
+{"shard": 2, "stage": "testing", "done": 47, "total": 54, "rows": 3626188, "note": "TOKYOELSTOCK 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 87.0, "updated": "2026-09-07T23:09:33Z"}

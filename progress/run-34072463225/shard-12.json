@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 13, "total": 53, "rows": 273098, "note": "CROSS 4h: rule 101/120 (cf_soup1_l1)", "failed": [], "pct": 24.5, "updated": "2026-09-07T01:20:30Z"}
+{"shard": 12, "stage": "testing", "done": 16, "total": 53, "rows": 337576, "note": "EDGE 4h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 30.2, "updated": "2026-09-07T01:21:15Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 44, "total": 53, "rows": 1606246, "note": "SQD 30m: rule 35/120 (willr14)", "failed": [], "pct": 83.0, "updated": "2026-09-07T15:23:11Z"}
+{"shard": 5, "stage": "testing", "done": 44, "total": 53, "rows": 1615706, "note": "SQD 30m: rule 79/120 (cf_donch)", "failed": [], "pct": 83.0, "updated": "2026-09-07T15:23:57Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 14, "total": 53, "rows": 442370, "note": "CVC 1h: rule 33/120 (heikin)", "failed": [], "pct": 26.4, "updated": "2026-09-07T05:22:58Z"}
+{"shard": 8, "stage": "testing", "done": 14, "total": 53, "rows": 459398, "note": "CVC 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-07T05:23:51Z"}

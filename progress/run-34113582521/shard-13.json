@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 26, "total": 53, "rows": 1008700, "note": "KIOXIASTOCK 30m: rule 3/120 (fade15)", "failed": [], "pct": 49.1, "updated": "2026-09-07T11:17:15Z"}
+{"shard": 13, "stage": "testing", "done": 28, "total": 53, "rows": 1074302, "note": "LUMIA 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-07T11:18:08Z"}

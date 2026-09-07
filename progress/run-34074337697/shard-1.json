@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 22, "total": 53, "rows": 839102, "note": "HANA 30m: rule 82/120 (cf_maobv)", "failed": [], "pct": 41.5, "updated": "2026-09-07T02:24:54Z"}
+{"shard": 1, "stage": "testing", "done": 25, "total": 53, "rows": 868626, "note": "IRENSTOCK 30m: rule 3/120 (fade15)", "failed": [], "pct": 47.2, "updated": "2026-09-07T02:25:40Z"}

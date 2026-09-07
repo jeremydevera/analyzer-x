@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 33, "total": 53, "rows": 1250898, "note": "NOWSTOCK 30m: rule 20/120 (stoch14)", "failed": [], "pct": 62.3, "updated": "2026-09-07T18:14:43Z"}
+{"shard": 8, "stage": "testing", "done": 34, "total": 53, "rows": 1290424, "note": "ONDSSTOCK 30m: 8,943 bars, testing 120 rules", "failed": [], "pct": 64.2, "updated": "2026-09-07T18:15:31Z"}

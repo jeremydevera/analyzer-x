@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 47, "total": 53, "rows": 1906646, "note": "TREE 1h: rule 47/120 (ibs)", "failed": [], "pct": 88.7, "updated": "2026-09-07T18:02:55Z"}
+{"shard": 9, "stage": "testing", "done": 47, "total": 53, "rows": 1925126, "note": "TREE 30m: rule 8/120 (fib618)", "failed": [], "pct": 88.7, "updated": "2026-09-07T18:03:40Z"}

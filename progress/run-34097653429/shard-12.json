@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 15, "total": 53, "rows": 589336, "note": "DKNGSTOCK 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 28.3, "updated": "2026-09-07T08:15:41Z"}
+{"shard": 12, "stage": "testing", "done": 16, "total": 53, "rows": 615820, "note": "EDGE 1h: rule 21/120 (cci20)", "failed": [], "pct": 30.2, "updated": "2026-09-07T08:16:26Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 20, "total": 53, "rows": 1708306, "note": "GLM 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-07T21:12:37Z"}
+{"shard": 17, "stage": "testing", "done": 20, "total": 53, "rows": 1713806, "note": "GLM 30m: rule 19/120 (emacross)", "failed": [], "pct": 37.7, "updated": "2026-09-07T21:13:22Z"}

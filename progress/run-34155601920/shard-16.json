@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 39, "total": 53, "rows": 3452490, "note": "RLS 30m: 1,999 bars, testing 120 rules", "failed": [], "pct": 73.6, "updated": "2026-09-07T22:30:07Z"}
+{"shard": 16, "stage": "testing", "done": 39, "total": 53, "rows": 3484170, "note": "RLS 1h: rule 20/120 (stoch14)", "failed": [], "pct": 73.6, "updated": "2026-09-07T22:30:53Z"}

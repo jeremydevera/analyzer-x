@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 9, "total": 53, "rows": 206288, "note": "BMT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 17.0, "updated": "2026-09-07T16:31:18Z"}
+{"shard": 5, "stage": "testing", "done": 13, "total": 53, "rows": 256602, "note": "COPSTOCK 4h: rule 13/120 (pivot)", "failed": [], "pct": 24.5, "updated": "2026-09-07T16:32:03Z"}

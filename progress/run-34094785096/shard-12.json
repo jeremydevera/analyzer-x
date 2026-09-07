@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 16, "total": 53, "rows": 322744, "note": "EDGE 4h: rule 24/120 (psar)", "failed": [], "pct": 30.2, "updated": "2026-09-07T07:23:13Z"}
+{"shard": 12, "stage": "testing", "done": 17, "total": 53, "rows": 366436, "note": "ETHW 4h: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-07T07:23:59Z"}

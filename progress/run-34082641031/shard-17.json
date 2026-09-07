@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 17, "total": 53, "rows": 503504, "note": "EVAA 4h: rule 16/120 (keltner)", "failed": [], "pct": 32.1, "updated": "2026-09-07T04:27:23Z"}
+{"shard": 17, "stage": "testing", "done": 21, "total": 53, "rows": 574372, "note": "G 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-07T04:28:20Z"}

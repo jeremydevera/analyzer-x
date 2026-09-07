@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 18, "total": 53, "rows": 384962, "note": "FF 4h: rule 3/120 (fade15)", "failed": [], "pct": 34.0, "updated": "2026-09-07T07:25:35Z"}
+{"shard": 11, "stage": "testing", "done": 22, "total": 53, "rows": 430436, "note": "HIVE 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 41.5, "updated": "2026-09-07T07:26:21Z"}

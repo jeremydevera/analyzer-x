@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 48, "total": 53, "rows": 3662886, "note": "UKOIL 15m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 90.6, "updated": "2026-09-07T22:53:34Z"}
+{"shard": 15, "stage": "testing", "done": 48, "total": 53, "rows": 3672346, "note": "UKOIL 30m: rule 22/120 (engulf)", "failed": [], "pct": 90.6, "updated": "2026-09-07T22:54:19Z"}

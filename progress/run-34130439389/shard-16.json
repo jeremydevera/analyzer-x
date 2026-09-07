@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 39, "total": 53, "rows": 1668890, "note": "RLS 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 73.6, "updated": "2026-09-07T15:22:10Z"}
+{"shard": 16, "stage": "testing", "done": 40, "total": 53, "rows": 1677830, "note": "SANTOS 1h: rule 21/120 (cci20)", "failed": [], "pct": 75.5, "updated": "2026-09-07T15:22:56Z"}

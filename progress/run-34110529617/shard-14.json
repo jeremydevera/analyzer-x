@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 39, "total": 53, "rows": 948942, "note": "RKLBSTOCK 4h: rule 71/120 (mfi14)", "failed": [], "pct": 73.6, "updated": "2026-09-07T10:32:48Z"}
+{"shard": 14, "stage": "testing", "done": 45, "total": 53, "rows": 1034334, "note": "SYRUP 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-07T10:33:41Z"}

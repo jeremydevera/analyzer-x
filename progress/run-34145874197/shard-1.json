@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 6, "total": 54, "rows": 208036, "note": "AUD 30m: rule 67/120 (pinbar)", "failed": [], "pct": 11.1, "updated": "2026-09-07T17:11:01Z"}
+{"shard": 1, "stage": "testing", "done": 7, "total": 54, "rows": 219116, "note": "BABASTOCK 1h: rule 3/120 (fade15)", "failed": [], "pct": 13.0, "updated": "2026-09-07T17:11:46Z"}

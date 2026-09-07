@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 52, "total": 53, "rows": 1312280, "note": "YOM 1d: rule 2/120 (mom15)", "failed": [], "pct": 98.1, "updated": "2026-09-07T16:53:38Z"}
+{"shard": 19, "stage": "testing", "done": 53, "total": 53, "rows": 1343660, "note": "ZRO 1d: 394 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-07T16:54:27Z"}

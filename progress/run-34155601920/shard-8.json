@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 52, "total": 53, "rows": 4228880, "note": "XPL 1d: 381 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-07T22:55:17Z"}
+{"shard": 8, "stage": "testing", "done": 53, "total": 53, "rows": 4243928, "note": "ZETA 15m: rule 2/120 (mom15)", "failed": [], "pct": 100.0, "updated": "2026-09-07T22:56:07Z"}

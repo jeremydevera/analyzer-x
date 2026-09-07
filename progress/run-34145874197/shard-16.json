@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 35, "total": 53, "rows": 1547594, "note": "PEAQ 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 66.0, "updated": "2026-09-07T18:17:08Z"}
+{"shard": 16, "stage": "testing", "done": 37, "total": 53, "rows": 1576474, "note": "PUNDIX 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-07T18:18:02Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 45, "total": 54, "rows": 3844724, "note": "STX 15m: rule 2/120 (mom15)", "failed": [], "pct": 83.3, "updated": "2026-09-07T23:02:04Z"}
+{"shard": 1, "stage": "testing", "done": 45, "total": 54, "rows": 3848024, "note": "STX 15m: rule 15/120 (bbbreak)", "failed": [], "pct": 83.3, "updated": "2026-09-07T23:02:50Z"}

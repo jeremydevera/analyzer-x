@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 32, "total": 53, "rows": 863250, "note": "NAVERSTOCK 1d: downloading candles", "failed": [], "pct": 60.4, "updated": "2026-09-07T16:40:43Z"}
+{"shard": 4, "stage": "testing", "done": 33, "total": 53, "rows": 889650, "note": "NMR 1d: 394 bars, testing 120 rules", "failed": [], "pct": 62.3, "updated": "2026-09-07T16:41:29Z"}

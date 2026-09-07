@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 26, "total": 53, "rows": 1777062, "note": "KAVA 30m: rule 21/120 (cci20)", "failed": [], "pct": 49.1, "updated": "2026-09-07T21:10:40Z"}
+{"shard": 5, "stage": "testing", "done": 26, "total": 53, "rows": 1788942, "note": "KAVA 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 49.1, "updated": "2026-09-07T21:11:26Z"}

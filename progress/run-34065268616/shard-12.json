@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 43, "total": 53, "rows": 1864998, "note": "SOXX 30m: rule 13/120 (pivot)", "failed": [], "pct": 81.1, "updated": "2026-09-07T00:05:38Z"}
+{"shard": 12, "stage": "testing", "done": 45, "total": 53, "rows": 1886718, "note": "SYRUP 1h: rule 2/120 (mom15)", "failed": [], "pct": 84.9, "updated": "2026-09-07T00:06:25Z"}

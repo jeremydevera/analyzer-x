@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 14, "total": 53, "rows": 576506, "note": "CTSI 30m: rule 55/120 (nhigh50)", "failed": [], "pct": 26.4, "updated": "2026-09-07T05:22:29Z"}
+{"shard": 6, "stage": "testing", "done": 15, "total": 53, "rows": 591246, "note": "DGAI 30m: rule 1/120 (mom6)", "failed": [], "pct": 28.3, "updated": "2026-09-07T05:23:15Z"}

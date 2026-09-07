@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 6, "total": 53, "rows": 260710, "note": "AZNSTOCK 1h: rule 40/120 (crsi)", "failed": [], "pct": 11.3, "updated": "2026-09-07T17:21:07Z"}
+{"shard": 16, "stage": "testing", "done": 7, "total": 53, "rows": 284088, "note": "BB 1h: rule 3/120 (fade15)", "failed": [], "pct": 13.2, "updated": "2026-09-07T17:21:53Z"}

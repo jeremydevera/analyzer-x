@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 6, "total": 53, "rows": 171818, "note": "AVNT 4h: rule 85/120 (cf_triple)", "failed": [], "pct": 11.3, "updated": "2026-09-07T07:20:39Z"}
+{"shard": 9, "stage": "testing", "done": 8, "total": 53, "rows": 240590, "note": "BILL 4h: rule 72/120 (force13)", "failed": [], "pct": 15.1, "updated": "2026-09-07T07:21:24Z"}

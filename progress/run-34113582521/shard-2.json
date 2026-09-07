@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 52, "total": 54, "rows": 2078576, "note": "XLV 30m: rule 68/120 (dbltop)", "failed": [], "pct": 96.3, "updated": "2026-09-07T12:49:53Z"}
+{"shard": 2, "stage": "testing", "done": 53, "total": 54, "rows": 2093276, "note": "ZBT 1h: rule 29/120 (hull20)", "failed": [], "pct": 98.1, "updated": "2026-09-07T12:50:38Z"}

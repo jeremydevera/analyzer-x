@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 8, "total": 53, "rows": 675606, "note": "BIO 15m: rule 12/120 (donchian20)", "failed": [], "pct": 15.1, "updated": "2026-09-07T20:08:14Z"}
+{"shard": 11, "stage": "testing", "done": 8, "total": 53, "rows": 679346, "note": "BIO 15m: rule 29/120 (hull20)", "failed": [], "pct": 15.1, "updated": "2026-09-07T20:08:59Z"}

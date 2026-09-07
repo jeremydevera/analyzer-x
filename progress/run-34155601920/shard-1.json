@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 30, "total": 54, "rows": 2665980, "note": "METIS 30m: rule 28/120 (vortex14)", "failed": [], "pct": 55.6, "updated": "2026-09-07T22:05:05Z"}
+{"shard": 1, "stage": "testing", "done": 30, "total": 54, "rows": 2676320, "note": "METIS 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 55.6, "updated": "2026-09-07T22:05:50Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 50, "total": 53, "rows": 1389166, "note": "WET 4h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 94.3, "updated": "2026-09-07T01:38:54Z"}
+{"shard": 16, "stage": "testing", "done": 53, "total": 53, "rows": 1424806, "note": "ZRO 4h: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-07T01:39:39Z"}

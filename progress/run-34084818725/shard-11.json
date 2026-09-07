@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 6, "total": 53, "rows": 237364, "note": "AXL 30m: rule 35/120 (willr14)", "failed": [], "pct": 11.3, "updated": "2026-09-07T05:07:57Z"}
+{"shard": 11, "stage": "testing", "done": 6, "total": 53, "rows": 248364, "note": "AXL 30m: rule 86/120 (cf_triple_l1)", "failed": [], "pct": 11.3, "updated": "2026-09-07T05:08:42Z"}

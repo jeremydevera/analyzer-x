@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 43, "total": 53, "rows": 1614464, "note": "SOLV 30m: rule 2/120 (mom15)", "failed": [], "pct": 81.1, "updated": "2026-09-07T09:12:18Z"}
+{"shard": 3, "stage": "testing", "done": 43, "total": 53, "rows": 1621664, "note": "SOLV 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 81.1, "updated": "2026-09-07T09:13:04Z"}

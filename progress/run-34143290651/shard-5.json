@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 13, "total": 53, "rows": 256602, "note": "COPSTOCK 4h: rule 13/120 (pivot)", "failed": [], "pct": 24.5, "updated": "2026-09-07T16:32:03Z"}
+{"shard": 5, "stage": "testing", "done": 14, "total": 53, "rows": 308060, "note": "CTK 4h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-07T16:32:48Z"}

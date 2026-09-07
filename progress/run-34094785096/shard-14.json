@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 26, "total": 53, "rows": 631812, "note": "KLACSTOCK 1d: 81 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-07T07:27:41Z"}
+{"shard": 14, "stage": "testing", "done": 29, "total": 53, "rows": 698066, "note": "MELISTOCK 1d: downloading candles", "failed": [], "pct": 54.7, "updated": "2026-09-07T07:28:27Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 44, "total": 53, "rows": 1841890, "note": "STORJ 1h: rule 3/120 (fade15)", "failed": [], "pct": 83.0, "updated": "2026-09-07T15:30:48Z"}
+{"shard": 16, "stage": "testing", "done": 44, "total": 53, "rows": 1865430, "note": "STORJ 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 83.0, "updated": "2026-09-07T15:31:34Z"}

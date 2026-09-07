@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 36, "total": 53, "rows": 1332478, "note": "PI 1h: rule 1/120 (mom6)", "failed": [], "pct": 67.9, "updated": "2026-09-07T09:15:09Z"}
+{"shard": 8, "stage": "testing", "done": 36, "total": 53, "rows": 1353818, "note": "PI 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 67.9, "updated": "2026-09-07T09:15:55Z"}

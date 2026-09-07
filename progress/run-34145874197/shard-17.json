@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 10, "total": 53, "rows": 454718, "note": "CAKE 30m: rule 98/120 (cf_ttm_l1)", "failed": [], "pct": 18.9, "updated": "2026-09-07T17:29:11Z"}
+{"shard": 17, "stage": "testing", "done": 11, "total": 53, "rows": 474408, "note": "CFG 1h: rule 70/120 (cmf20)", "failed": [], "pct": 20.8, "updated": "2026-09-07T17:29:56Z"}

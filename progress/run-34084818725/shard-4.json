@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 45, "total": 53, "rows": 1724166, "note": "SUPER 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-07T06:22:06Z"}
+{"shard": 4, "stage": "testing", "done": 45, "total": 53, "rows": 1740006, "note": "SUPER 1h: rule 67/120 (pinbar)", "failed": [], "pct": 84.9, "updated": "2026-09-07T06:22:52Z"}

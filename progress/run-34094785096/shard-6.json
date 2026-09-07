@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 41, "total": 53, "rows": 849318, "note": "SHEINSTOCK 1d: downloading candles", "failed": [], "pct": 77.4, "updated": "2026-09-07T07:30:55Z"}
+{"shard": 6, "stage": "testing", "done": 43, "total": 53, "rows": 888962, "note": "SONIC 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-07T07:31:46Z"}

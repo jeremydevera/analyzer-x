@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 43, "total": 53, "rows": 1636750, "note": "SOL 1h: rule 54/120 (fractal5)", "failed": [], "pct": 81.1, "updated": "2026-09-07T06:18:45Z"}
+{"shard": 4, "stage": "testing", "done": 43, "total": 53, "rows": 1651810, "note": "SOL 30m: rule 2/120 (mom15)", "failed": [], "pct": 81.1, "updated": "2026-09-07T06:19:33Z"}

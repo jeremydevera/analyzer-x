@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 42, "total": 53, "rows": 1659518, "note": "SKL 30m: rule 33/120 (heikin)", "failed": [], "pct": 79.2, "updated": "2026-09-07T18:28:44Z"}
+{"shard": 3, "stage": "testing", "done": 42, "total": 53, "rows": 1671838, "note": "SKL 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 79.2, "updated": "2026-09-07T18:29:30Z"}

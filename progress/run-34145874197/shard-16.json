@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 10, "total": 53, "rows": 474020, "note": "CAD 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 18.9, "updated": "2026-09-07T17:30:11Z"}
+{"shard": 16, "stage": "testing", "done": 11, "total": 53, "rows": 478860, "note": "CETUS 1h: rule 4/120 (trend50)", "failed": [], "pct": 20.8, "updated": "2026-09-07T17:30:57Z"}

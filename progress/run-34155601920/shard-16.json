@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 7, "total": 53, "rows": 709520, "note": "BB 4h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-07T20:17:48Z"}
+{"shard": 16, "stage": "testing", "done": 9, "total": 53, "rows": 781134, "note": "BREV 15m: 24,133 bars, testing 120 rules", "failed": [], "pct": 17.0, "updated": "2026-09-07T20:18:44Z"}

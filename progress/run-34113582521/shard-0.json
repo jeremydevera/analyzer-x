@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 24, "total": 54, "rows": 938608, "note": "ICX 1h: rule 33/120 (heikin)", "failed": [], "pct": 44.4, "updated": "2026-09-07T11:48:24Z"}
+{"shard": 0, "stage": "testing", "done": 24, "total": 54, "rows": 955900, "note": "ICX 30m: rule 1/120 (mom6)", "failed": [], "pct": 44.4, "updated": "2026-09-07T11:49:14Z"}

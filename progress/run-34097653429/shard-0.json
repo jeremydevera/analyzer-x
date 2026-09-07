@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 30, "total": 53, "rows": 1169446, "note": "MET 30m: rule 64/120 (hammer)", "failed": [], "pct": 56.6, "updated": "2026-09-07T09:03:38Z"}
+{"shard": 0, "stage": "testing", "done": 32, "total": 53, "rows": 1190082, "note": "NAORIS 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 60.4, "updated": "2026-09-07T09:04:26Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 16, "total": 54, "rows": 1270304, "note": "DOS 30m: rule 5/120 (rsi14)", "failed": [], "pct": 29.6, "updated": "2026-09-07T20:33:11Z"}
+{"shard": 1, "stage": "testing", "done": 17, "total": 54, "rows": 1315680, "note": "ENA 15m: rule 1/120 (mom6)", "failed": [], "pct": 31.5, "updated": "2026-09-07T20:34:03Z"}

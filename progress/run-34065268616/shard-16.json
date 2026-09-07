@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 43, "total": 53, "rows": 1855920, "note": "SPELL 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-07T00:31:21Z"}
+{"shard": 16, "stage": "testing", "done": 43, "total": 53, "rows": 1874840, "note": "SPELL 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-07T00:32:07Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 2, "total": 53, "rows": 82020, "note": "AGT 30m: rule 40/120 (crsi)", "failed": [], "pct": 3.8, "updated": "2026-09-07T01:56:44Z"}
+{"shard": 11, "stage": "testing", "done": 2, "total": 53, "rows": 93060, "note": "AGT 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-07T01:57:31Z"}

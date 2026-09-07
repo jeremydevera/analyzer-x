@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 15, "total": 53, "rows": 603800, "note": "DIA 1h: rule 8/120 (fib618)", "failed": [], "pct": 28.3, "updated": "2026-09-07T11:30:43Z"}
+{"shard": 10, "stage": "testing", "done": 15, "total": 53, "rows": 624700, "note": "DIA 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 28.3, "updated": "2026-09-07T11:31:28Z"}

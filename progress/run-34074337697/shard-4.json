@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 32, "total": 53, "rows": 1262600, "note": "NEAR 30m: rule 54/120 (fractal5)", "failed": [], "pct": 60.4, "updated": "2026-09-07T02:52:20Z"}
+{"shard": 4, "stage": "testing", "done": 32, "total": 53, "rows": 1275800, "note": "NEAR 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 60.4, "updated": "2026-09-07T02:53:05Z"}

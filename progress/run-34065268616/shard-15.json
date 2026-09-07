@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 45, "total": 53, "rows": 1748410, "note": "TAG 30m: rule 33/120 (heikin)", "failed": [], "pct": 84.9, "updated": "2026-09-07T00:10:56Z"}
+{"shard": 15, "stage": "testing", "done": 45, "total": 53, "rows": 1760810, "note": "TAG 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-07T00:11:42Z"}

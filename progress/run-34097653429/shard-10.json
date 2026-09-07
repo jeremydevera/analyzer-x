@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 48, "total": 53, "rows": 1869322, "note": "UAI 30m: rule 30/120 (kama10)", "failed": [], "pct": 90.6, "updated": "2026-09-07T09:21:42Z"}
+{"shard": 10, "stage": "testing", "done": 48, "total": 53, "rows": 1882122, "note": "UAI 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 90.6, "updated": "2026-09-07T09:22:28Z"}

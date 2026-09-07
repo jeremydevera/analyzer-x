@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 32, "total": 53, "rows": 940626, "note": "NIL 4h: rule 75/120 (relvolbrk)", "failed": [], "pct": 60.4, "updated": "2026-09-07T13:36:08Z"}
+{"shard": 19, "stage": "testing", "done": 33, "total": 53, "rows": 980798, "note": "NXPC 4h: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 62.3, "updated": "2026-09-07T13:36:53Z"}

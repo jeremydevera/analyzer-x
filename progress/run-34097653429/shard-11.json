@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 50, "total": 53, "rows": 1923146, "note": "WAXP 1h: rule 24/120 (psar)", "failed": [], "pct": 94.3, "updated": "2026-09-07T09:23:44Z"}
+{"shard": 11, "stage": "testing", "done": 50, "total": 53, "rows": 1941560, "note": "WAXP 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 94.3, "updated": "2026-09-07T09:24:34Z"}

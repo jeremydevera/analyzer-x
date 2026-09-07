@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 24, "total": 53, "rows": 985976, "note": "IONQSTOCK 1h: rule 40/120 (crsi)", "failed": [], "pct": 45.3, "updated": "2026-09-07T11:46:01Z"}
+{"shard": 16, "stage": "testing", "done": 24, "total": 53, "rows": 1019330, "note": "IONQSTOCK 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 45.3, "updated": "2026-09-07T11:46:46Z"}

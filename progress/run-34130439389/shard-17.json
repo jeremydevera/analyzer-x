@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 1, "total": 53, "rows": 0, "note": "ACH 1h: downloading candles", "failed": [], "pct": 1.9, "updated": "2026-09-07T13:59:47Z"}
+{"shard": 17, "stage": "testing", "done": 1, "total": 53, "rows": 11220, "note": "ACH 1h: rule 45/120 (zscore20)", "failed": [], "pct": 1.9, "updated": "2026-09-07T14:00:32Z"}

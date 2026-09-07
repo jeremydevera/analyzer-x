@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 24, "total": 53, "rows": 953012, "note": "IOTX 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 45.3, "updated": "2026-09-07T05:52:56Z"}
+{"shard": 18, "stage": "testing", "done": 25, "total": 53, "rows": 962692, "note": "JUP 1h: rule 20/120 (stoch14)", "failed": [], "pct": 47.2, "updated": "2026-09-07T05:53:41Z"}

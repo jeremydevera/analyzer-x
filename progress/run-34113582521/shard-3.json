@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 11, "total": 53, "rows": 435010, "note": "CATSTOCK 30m: rule 17/120 (atrbreak)", "failed": [], "pct": 20.8, "updated": "2026-09-07T11:12:31Z"}
+{"shard": 3, "stage": "testing", "done": 12, "total": 53, "rows": 469172, "note": "CHIP 30m: rule 1/120 (mom6)", "failed": [], "pct": 22.6, "updated": "2026-09-07T11:13:18Z"}

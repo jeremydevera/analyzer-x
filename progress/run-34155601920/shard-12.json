@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 24, "total": 53, "rows": 1923444, "note": "INTUSTOCK 4h: rule 34/120 (lrslope)", "failed": [], "pct": 45.3, "updated": "2026-09-07T20:48:01Z"}
+{"shard": 12, "stage": "testing", "done": 26, "total": 53, "rows": 1973354, "note": "KIMISTOCK 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 49.1, "updated": "2026-09-07T20:48:46Z"}

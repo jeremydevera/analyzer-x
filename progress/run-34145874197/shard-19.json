@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 51, "total": 53, "rows": 2170114, "note": "XLK 30m: rule 58/120 (bos)", "failed": [], "pct": 96.2, "updated": "2026-09-07T18:59:20Z"}
+{"shard": 19, "stage": "testing", "done": 53, "total": 53, "rows": 2194886, "note": "ZRO 1h: rule 5/120 (rsi14)", "failed": [], "pct": 100.0, "updated": "2026-09-07T19:00:05Z"}

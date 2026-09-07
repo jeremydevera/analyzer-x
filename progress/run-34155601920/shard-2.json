@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 38, "total": 54, "rows": 2943670, "note": "QCOMSTOCK 30m: rule 37/120 (ultosc)", "failed": [], "pct": 70.4, "updated": "2026-09-07T22:30:29Z"}
+{"shard": 2, "stage": "testing", "done": 38, "total": 54, "rows": 2960230, "note": "QCOMSTOCK 1h: rule 4/120 (trend50)", "failed": [], "pct": 70.4, "updated": "2026-09-07T22:31:14Z"}

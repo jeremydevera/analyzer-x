@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 46, "total": 53, "rows": 1879502, "note": "TLM 30m: rule 40/120 (crsi)", "failed": [], "pct": 86.8, "updated": "2026-09-07T15:41:27Z"}
+{"shard": 17, "stage": "testing", "done": 46, "total": 53, "rows": 1892482, "note": "TLM 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 86.8, "updated": "2026-09-07T15:42:14Z"}

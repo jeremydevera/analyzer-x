@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 10, "total": 53, "rows": 441490, "note": "BTR 30m: rule 112/120 (cf_obretest)", "failed": [], "pct": 18.9, "updated": "2026-09-07T02:06:55Z"}
+{"shard": 6, "stage": "testing", "done": 13, "total": 53, "rows": 488286, "note": "COTI 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-07T02:07:44Z"}

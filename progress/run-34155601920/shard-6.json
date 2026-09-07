@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 32, "total": 53, "rows": 2729780, "note": "NEAR 1h: rule 49/120 (vwaprev)", "failed": [], "pct": 60.4, "updated": "2026-09-07T21:54:54Z"}
+{"shard": 6, "stage": "testing", "done": 32, "total": 53, "rows": 2755780, "note": "NEAR 4h: rule 58/120 (bos)", "failed": [], "pct": 60.4, "updated": "2026-09-07T21:55:39Z"}

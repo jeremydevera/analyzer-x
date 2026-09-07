@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 9, "total": 53, "rows": 351124, "note": "BLUR 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 17.0, "updated": "2026-09-07T08:15:51Z"}
+{"shard": 2, "stage": "testing", "done": 10, "total": 53, "rows": 373924, "note": "BSB 1h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 18.9, "updated": "2026-09-07T08:16:36Z"}

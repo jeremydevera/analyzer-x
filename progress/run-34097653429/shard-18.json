@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 19, "total": 53, "rows": 756788, "note": "FWDISTOCK 30m: 2,596 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-07T08:42:06Z"}
+{"shard": 18, "stage": "testing", "done": 20, "total": 53, "rows": 796488, "note": "GMESTOCK 30m: rule 82/120 (cf_maobv)", "failed": [], "pct": 37.7, "updated": "2026-09-07T08:42:51Z"}

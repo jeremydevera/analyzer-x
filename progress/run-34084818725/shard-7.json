@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 2, "total": 53, "rows": 103554, "note": "AERO 30m: rule 106/120 (cf_bosfvg)", "failed": [], "pct": 3.8, "updated": "2026-09-07T05:02:29Z"}
+{"shard": 7, "stage": "testing", "done": 3, "total": 53, "rows": 111694, "note": "ALICE 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 5.7, "updated": "2026-09-07T05:03:14Z"}

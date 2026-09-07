@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 49, "total": 53, "rows": 2204968, "note": "VELVET 30m: rule 53/120 (squeeze)", "failed": [], "pct": 92.5, "updated": "2026-09-07T09:41:02Z"}
+{"shard": 16, "stage": "testing", "done": 49, "total": 53, "rows": 2217028, "note": "VELVET 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 92.5, "updated": "2026-09-07T09:41:47Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 36, "total": 53, "rows": 2967486, "note": "PIXEL 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 67.9, "updated": "2026-09-07T22:57:08Z"}
+{"shard": 9, "stage": "testing", "done": 36, "total": 53, "rows": 2969686, "note": "PIXEL 30m: rule 4/120 (trend50)", "failed": [], "pct": 67.9, "updated": "2026-09-07T22:57:56Z"}

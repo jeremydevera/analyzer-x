@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 49, "total": 53, "rows": 4327372, "note": "VELO 1h: rule 83/120 (cf_maobv_l1)", "failed": [], "pct": 92.5, "updated": "2026-09-07T23:42:20Z"}
+{"shard": 17, "stage": "testing", "done": 49, "total": 53, "rows": 4358272, "note": "VELO 1d: 394 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-07T23:43:07Z"}

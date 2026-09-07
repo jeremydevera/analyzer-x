@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 48, "total": 53, "rows": 1703528, "note": "TUT 1h: rule 112/120 (cf_obretest)", "failed": [], "pct": 90.6, "updated": "2026-09-07T18:27:22Z"}
+{"shard": 5, "stage": "testing", "done": 48, "total": 53, "rows": 1706928, "note": "TUT 30m: rule 3/120 (fade15)", "failed": [], "pct": 90.6, "updated": "2026-09-07T18:28:11Z"}

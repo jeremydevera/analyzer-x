@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 32, "total": 53, "rows": 1179410, "note": "NBISSTOCK 1h: rule 31/120 (trix15)", "failed": [], "pct": 60.4, "updated": "2026-09-07T02:38:01Z"}
+{"shard": 3, "stage": "testing", "done": 32, "total": 53, "rows": 1217930, "note": "NBISSTOCK 30m: rule 94/120 (cf_emarsi)", "failed": [], "pct": 60.4, "updated": "2026-09-07T02:38:46Z"}

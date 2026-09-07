@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 23, "total": 53, "rows": 929180, "note": "HYPER 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-07T11:53:32Z"}
+{"shard": 10, "stage": "testing", "done": 23, "total": 53, "rows": 933140, "note": "HYPER 30m: rule 12/120 (donchian20)", "failed": [], "pct": 43.4, "updated": "2026-09-07T11:54:18Z"}

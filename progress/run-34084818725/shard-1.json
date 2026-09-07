@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 51, "total": 53, "rows": 2055080, "note": "WMTSTOCK 1h: rule 115/120 (cf_diadx)", "failed": [], "pct": 96.2, "updated": "2026-09-07T06:42:22Z"}
+{"shard": 1, "stage": "testing", "done": 51, "total": 53, "rows": 2072880, "note": "WMTSTOCK 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-07T06:43:07Z"}

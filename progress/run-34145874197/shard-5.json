@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 17, "total": 53, "rows": 588590, "note": "ENSO 30m: rule 25/120 (ichimoku)", "failed": [], "pct": 32.1, "updated": "2026-09-07T17:36:18Z"}
+{"shard": 5, "stage": "testing", "done": 17, "total": 53, "rows": 600690, "note": "ENSO 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-07T17:37:03Z"}

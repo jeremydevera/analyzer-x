@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 52, "total": 53, "rows": 2337062, "note": "XNY 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-07T18:51:17Z"}
+{"shard": 4, "stage": "testing", "done": 52, "total": 53, "rows": 2346302, "note": "XNY 1h: rule 36/120 (stochrsi)", "failed": [], "pct": 98.1, "updated": "2026-09-07T18:52:02Z"}

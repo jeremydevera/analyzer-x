@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 11, "total": 53, "rows": 521622, "note": "CAT 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 20.8, "updated": "2026-09-07T14:23:20Z"}
+{"shard": 4, "stage": "testing", "done": 12, "total": 53, "rows": 532622, "note": "CHR 1h: rule 20/120 (stoch14)", "failed": [], "pct": 22.6, "updated": "2026-09-07T14:24:06Z"}

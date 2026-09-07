@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 31, "total": 53, "rows": 1378822, "note": "MXLSTOCK 1h: rule 20/120 (stoch14)", "failed": [], "pct": 58.5, "updated": "2026-09-07T18:21:53Z"}
+{"shard": 19, "stage": "testing", "done": 32, "total": 53, "rows": 1409390, "note": "NIL 1h: rule 1/120 (mom6)", "failed": [], "pct": 60.4, "updated": "2026-09-07T18:22:41Z"}

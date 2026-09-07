@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 47, "total": 53, "rows": 1982084, "note": "TRY 30m: rule 2/120 (mom15)", "failed": [], "pct": 88.7, "updated": "2026-09-07T12:33:48Z"}
+{"shard": 17, "stage": "testing", "done": 47, "total": 53, "rows": 1999184, "note": "TRY 30m: rule 101/120 (cf_soup1_l1)", "failed": [], "pct": 88.7, "updated": "2026-09-07T12:34:33Z"}

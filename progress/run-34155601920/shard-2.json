@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 11, "total": 54, "rows": 639894, "note": "CATI 30m: rule 33/120 (heikin)", "failed": [], "pct": 20.4, "updated": "2026-09-07T20:10:29Z"}
+{"shard": 2, "stage": "testing", "done": 11, "total": 54, "rows": 651994, "note": "CATI 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 20.4, "updated": "2026-09-07T20:11:15Z"}

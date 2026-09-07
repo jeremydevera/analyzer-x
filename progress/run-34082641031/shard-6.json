@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 27, "total": 53, "rows": 525532, "note": "LAB 4h: 1,962 bars, testing 120 rules", "failed": [], "pct": 50.9, "updated": "2026-09-07T04:27:49Z"}
+{"shard": 6, "stage": "testing", "done": 29, "total": 53, "rows": 598866, "note": "MASTOCK 4h: rule 11/120 (sr_break)", "failed": [], "pct": 54.7, "updated": "2026-09-07T04:28:34Z"}

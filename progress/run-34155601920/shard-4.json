@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 47, "total": 53, "rows": 4289952, "note": "TOWNS 30m: rule 23/120 (supertrend)", "failed": [], "pct": 88.7, "updated": "2026-09-07T23:08:56Z"}
+{"shard": 4, "stage": "testing", "done": 47, "total": 53, "rows": 4300072, "note": "TOWNS 30m: rule 70/120 (cmf20)", "failed": [], "pct": 88.7, "updated": "2026-09-07T23:09:41Z"}

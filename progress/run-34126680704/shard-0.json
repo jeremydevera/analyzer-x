@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 28, "total": 54, "rows": 783614, "note": "LISTA 4h: rule 13/120 (pivot)", "failed": [], "pct": 51.9, "updated": "2026-09-07T13:35:04Z"}
+{"shard": 0, "stage": "testing", "done": 29, "total": 54, "rows": 830408, "note": "MAGMA 4h: rule 47/120 (ibs)", "failed": [], "pct": 53.7, "updated": "2026-09-07T13:35:49Z"}

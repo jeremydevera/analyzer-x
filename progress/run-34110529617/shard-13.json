@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 7, "total": 53, "rows": 133956, "note": "BAS 4h: rule 2/120 (mom15)", "failed": [], "pct": 13.2, "updated": "2026-09-07T10:17:50Z"}
+{"shard": 13, "stage": "testing", "done": 10, "total": 53, "rows": 180402, "note": "BXSTOCK 4h: rule 23/120 (supertrend)", "failed": [], "pct": 18.9, "updated": "2026-09-07T10:18:35Z"}

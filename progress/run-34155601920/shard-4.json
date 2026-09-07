@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 39, "total": 53, "rows": 3618484, "note": "RENDER 15m: rule 40/120 (crsi)", "failed": [], "pct": 73.6, "updated": "2026-09-07T22:34:23Z"}
+{"shard": 4, "stage": "testing", "done": 39, "total": 53, "rows": 3625044, "note": "RENDER 15m: rule 82/120 (cf_maobv)", "failed": [], "pct": 73.6, "updated": "2026-09-07T22:35:08Z"}

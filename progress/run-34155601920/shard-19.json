@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 8, "total": 53, "rows": 838104, "note": "BLESS 1h: 8,387 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-07T20:18:38Z"}
+{"shard": 19, "stage": "testing", "done": 8, "total": 53, "rows": 857704, "note": "BLESS 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 15.1, "updated": "2026-09-07T20:19:24Z"}

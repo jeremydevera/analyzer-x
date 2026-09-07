@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 30, "total": 53, "rows": 625000, "note": "MNT 4h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 56.6, "updated": "2026-09-07T07:29:26Z"}
+{"shard": 11, "stage": "testing", "done": 31, "total": 53, "rows": 665546, "note": "MUBARAK 1d: 394 bars, testing 120 rules", "failed": [], "pct": 58.5, "updated": "2026-09-07T07:30:23Z"}

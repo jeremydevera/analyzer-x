@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 36, "total": 53, "rows": 1238438, "note": "PNUT 1h: rule 13/120 (pivot)", "failed": [], "pct": 67.9, "updated": "2026-09-07T11:48:06Z"}
+{"shard": 15, "stage": "testing", "done": 36, "total": 53, "rows": 1261098, "note": "PNUT 1h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 67.9, "updated": "2026-09-07T11:48:52Z"}

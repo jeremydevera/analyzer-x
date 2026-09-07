@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 30, "total": 53, "rows": 2166660, "note": "MONAD 15m: rule 101/120 (cf_soup1_l1)", "failed": [], "pct": 56.6, "updated": "2026-09-07T21:23:13Z"}
+{"shard": 15, "stage": "testing", "done": 30, "total": 53, "rows": 2172160, "note": "MONAD 30m: rule 2/120 (mom15)", "failed": [], "pct": 56.6, "updated": "2026-09-07T21:24:05Z"}

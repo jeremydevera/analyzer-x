@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 37, "total": 53, "rows": 1443528, "note": "PROMPT 30m: rule 53/120 (squeeze)", "failed": [], "pct": 69.8, "updated": "2026-09-07T18:12:17Z"}
+{"shard": 7, "stage": "testing", "done": 37, "total": 53, "rows": 1456728, "note": "PROMPT 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 69.8, "updated": "2026-09-07T18:13:03Z"}

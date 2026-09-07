@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 41, "total": 53, "rows": 3385104, "note": "SEI 1h: rule 73/120 (volspike)", "failed": [], "pct": 77.4, "updated": "2026-09-07T22:35:13Z"}
+{"shard": 3, "stage": "testing", "done": 41, "total": 53, "rows": 3418984, "note": "SEI 4h: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 77.4, "updated": "2026-09-07T22:35:59Z"}

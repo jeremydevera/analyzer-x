@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 4, "total": 54, "rows": 76268, "note": "AMZNSTOCK 4h: downloading candles", "failed": [], "pct": 7.4, "updated": "2026-09-07T16:28:40Z"}
+{"shard": 0, "stage": "testing", "done": 5, "total": 54, "rows": 122244, "note": "ARIA 4h: rule 36/120 (stochrsi)", "failed": [], "pct": 9.3, "updated": "2026-09-07T16:29:25Z"}

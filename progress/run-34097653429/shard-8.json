@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 2, "total": 53, "rows": 85360, "note": "AEVO 30m: rule 12/120 (donchian20)", "failed": [], "pct": 3.8, "updated": "2026-09-07T07:59:42Z"}
+{"shard": 8, "stage": "testing", "done": 2, "total": 53, "rows": 93500, "note": "AEVO 30m: rule 49/120 (vwaprev)", "failed": [], "pct": 3.8, "updated": "2026-09-07T08:00:27Z"}

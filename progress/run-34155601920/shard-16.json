@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 34, "total": 53, "rows": 3019672, "note": "OPENSTOCK 15m: rule 70/120 (cmf20)", "failed": [], "pct": 64.2, "updated": "2026-09-07T22:08:01Z"}
+{"shard": 16, "stage": "testing", "done": 35, "total": 53, "rows": 3067518, "note": "PEAQ 15m: 34,567 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-07T22:08:47Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 23, "total": 53, "rows": 1940390, "note": "IBMSTOCK 15m: rule 30/120 (kama10)", "failed": [], "pct": 43.4, "updated": "2026-09-07T21:27:39Z"}
+{"shard": 17, "stage": "testing", "done": 23, "total": 53, "rows": 1953890, "note": "IBMSTOCK 15m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 43.4, "updated": "2026-09-07T21:28:25Z"}

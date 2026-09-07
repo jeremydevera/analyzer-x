@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 20, "total": 53, "rows": 592828, "note": "GLWSTOCK 4h: rule 38/120 (ao)", "failed": [], "pct": 37.7, "updated": "2026-09-07T13:28:27Z"}
+{"shard": 18, "stage": "testing", "done": 23, "total": 53, "rows": 647260, "note": "ICNT 4h: rule 2/120 (mom15)", "failed": [], "pct": 43.4, "updated": "2026-09-07T13:29:14Z"}

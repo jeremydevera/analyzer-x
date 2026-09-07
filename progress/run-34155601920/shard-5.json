@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 29, "total": 53, "rows": 2083984, "note": "MARSCOIN 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 54.7, "updated": "2026-09-07T21:26:07Z"}
+{"shard": 5, "stage": "testing", "done": 29, "total": 53, "rows": 2141360, "note": "MARSCOIN 1h: rule 67/120 (pinbar)", "failed": [], "pct": 54.7, "updated": "2026-09-07T21:26:52Z"}

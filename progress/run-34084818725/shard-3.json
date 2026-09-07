@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 24, "total": 53, "rows": 885280, "note": "IMX 30m: rule 71/120 (mfi14)", "failed": [], "pct": 45.3, "updated": "2026-09-07T05:42:07Z"}
+{"shard": 3, "stage": "testing", "done": 25, "total": 53, "rows": 913760, "note": "ISRGSTOCK 30m: rule 1/120 (mom6)", "failed": [], "pct": 47.2, "updated": "2026-09-07T05:42:52Z"}

@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 51, "total": 54, "rows": 2038688, "note": "WLFI 30m: rule 63/120 (killzone)", "failed": [], "pct": 94.4, "updated": "2026-09-07T12:49:08Z"}
+{"shard": 2, "stage": "testing", "done": 52, "total": 54, "rows": 2078576, "note": "XLV 30m: rule 68/120 (dbltop)", "failed": [], "pct": 96.3, "updated": "2026-09-07T12:49:53Z"}

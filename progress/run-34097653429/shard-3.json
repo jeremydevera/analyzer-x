@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 16, "total": 53, "rows": 633442, "note": "DRIFT 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 30.2, "updated": "2026-09-07T08:28:54Z"}
+{"shard": 3, "stage": "testing", "done": 17, "total": 53, "rows": 642342, "note": "ENSO 1h: rule 29/120 (hull20)", "failed": [], "pct": 32.1, "updated": "2026-09-07T08:29:39Z"}

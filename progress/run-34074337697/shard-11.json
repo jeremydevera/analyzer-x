@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 47, "total": 53, "rows": 1789412, "note": "TRUMPOFFICIAL 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 88.7, "updated": "2026-09-07T03:17:27Z"}
+{"shard": 11, "stage": "testing", "done": 47, "total": 53, "rows": 1794212, "note": "TRUMPOFFICIAL 30m: rule 18/120 (macd)", "failed": [], "pct": 88.7, "updated": "2026-09-07T03:18:12Z"}

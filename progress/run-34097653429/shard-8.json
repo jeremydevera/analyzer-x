@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 40, "total": 53, "rows": 1548680, "note": "SAFE 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-07T09:24:43Z"}
+{"shard": 8, "stage": "testing", "done": 40, "total": 53, "rows": 1552640, "note": "SAFE 30m: rule 12/120 (donchian20)", "failed": [], "pct": 75.5, "updated": "2026-09-07T09:25:28Z"}

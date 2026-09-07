@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 24, "total": 53, "rows": 646490, "note": "ILV 1d: 394 bars, testing 120 rules", "failed": [], "pct": 45.3, "updated": "2026-09-07T04:30:27Z"}
+{"shard": 2, "stage": "testing", "done": 26, "total": 53, "rows": 704348, "note": "KAT 4h: rule 54/120 (fractal5)", "failed": [], "pct": 49.1, "updated": "2026-09-07T04:31:12Z"}

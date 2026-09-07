@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 6, "total": 54, "rows": 212998, "note": "AUDIO 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 11.1, "updated": "2026-09-07T14:14:26Z"}
+{"shard": 0, "stage": "testing", "done": 6, "total": 54, "rows": 231878, "note": "AUDIO 1h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 11.1, "updated": "2026-09-07T14:15:11Z"}

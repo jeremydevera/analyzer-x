@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 40, "total": 53, "rows": 1150562, "note": "SATS 4h: rule 8/120 (fib618)", "failed": [], "pct": 75.5, "updated": "2026-09-07T04:39:15Z"}
+{"shard": 16, "stage": "testing", "done": 43, "total": 53, "rows": 1234820, "note": "SPELL 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-07T04:40:05Z"}

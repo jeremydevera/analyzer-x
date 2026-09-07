@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 47, "total": 53, "rows": 1989954, "note": "TRUST 30m: rule 21/120 (cci20)", "failed": [], "pct": 88.7, "updated": "2026-09-07T03:17:34Z"}
+{"shard": 12, "stage": "testing", "done": 47, "total": 53, "rows": 2004254, "note": "TRUST 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 88.7, "updated": "2026-09-07T03:18:20Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 12, "total": 54, "rows": 193002, "note": "CHF 4h: 1,998 bars, testing 120 rules", "failed": [], "pct": 22.2, "updated": "2026-09-07T10:19:34Z"}
+{"shard": 1, "stage": "testing", "done": 13, "total": 54, "rows": 250950, "note": "COMP 4h: rule 79/120 (cf_donch)", "failed": [], "pct": 24.1, "updated": "2026-09-07T10:20:19Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 27, "total": 54, "rows": 1041102, "note": "KOMA 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 50.0, "updated": "2026-09-07T18:07:46Z"}
+{"shard": 0, "stage": "testing", "done": 27, "total": 54, "rows": 1053862, "note": "KOMA 1h: rule 53/120 (squeeze)", "failed": [], "pct": 50.0, "updated": "2026-09-07T18:08:31Z"}

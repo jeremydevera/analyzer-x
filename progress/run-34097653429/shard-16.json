@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 48, "total": 53, "rows": 2150588, "note": "UNITREE 30m: rule 3/120 (fade15)", "failed": [], "pct": 90.6, "updated": "2026-09-07T09:37:54Z"}
+{"shard": 16, "stage": "testing", "done": 49, "total": 53, "rows": 2176528, "note": "VELVET 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 92.5, "updated": "2026-09-07T09:38:39Z"}

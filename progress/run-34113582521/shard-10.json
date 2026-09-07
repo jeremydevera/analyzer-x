@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 1, "total": 53, "rows": 23886, "note": "AAOISTOCK 30m: rule 16/120 (keltner)", "failed": [], "pct": 1.9, "updated": "2026-09-07T10:52:17Z"}
+{"shard": 10, "stage": "testing", "done": 2, "total": 53, "rows": 45806, "note": "AGLD 1h: rule 11/120 (sr_break)", "failed": [], "pct": 3.8, "updated": "2026-09-07T10:53:02Z"}

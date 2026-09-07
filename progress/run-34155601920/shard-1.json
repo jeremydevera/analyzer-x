@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 44, "total": 54, "rows": 3785634, "note": "SPOTSTOCK 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 81.5, "updated": "2026-09-07T23:00:25Z"}
+{"shard": 1, "stage": "testing", "done": 44, "total": 54, "rows": 3828654, "note": "SPOTSTOCK 4h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 81.5, "updated": "2026-09-07T23:01:10Z"}

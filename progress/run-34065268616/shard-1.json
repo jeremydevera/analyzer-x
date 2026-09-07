@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 52, "total": 53, "rows": 2105304, "note": "XMR 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 98.1, "updated": "2026-09-07T00:21:52Z"}
+{"shard": 1, "stage": "testing", "done": 53, "total": 53, "rows": 2116964, "note": "ZEC 1h: rule 4/120 (trend50)", "failed": [], "pct": 100.0, "updated": "2026-09-07T00:22:38Z"}

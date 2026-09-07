@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 4, "total": 53, "rows": 159570, "note": "APLDSTOCK 30m: rule 21/120 (cci20)", "failed": [], "pct": 7.5, "updated": "2026-09-07T04:57:51Z"}
+{"shard": 13, "stage": "testing", "done": 5, "total": 53, "rows": 179230, "note": "ASTR 1h: rule 31/120 (trix15)", "failed": [], "pct": 9.4, "updated": "2026-09-07T04:58:36Z"}

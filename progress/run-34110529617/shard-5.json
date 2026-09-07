@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 10, "total": 53, "rows": 256022, "note": "BSV 4h: rule 20/120 (stoch14)", "failed": [], "pct": 18.9, "updated": "2026-09-07T10:20:56Z"}
+{"shard": 5, "stage": "testing", "done": 14, "total": 53, "rows": 318962, "note": "CTK 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-07T10:21:53Z"}

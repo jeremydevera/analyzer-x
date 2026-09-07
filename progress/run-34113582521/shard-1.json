@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 8, "total": 54, "rows": 319984, "note": "BEL 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 14.8, "updated": "2026-09-07T11:03:05Z"}
+{"shard": 1, "stage": "testing", "done": 11, "total": 54, "rows": 366396, "note": "CATE 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 20.4, "updated": "2026-09-07T11:03:50Z"}

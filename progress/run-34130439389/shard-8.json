@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 27, "total": 53, "rows": 971476, "note": "LAB 30m: rule 8/120 (fib618)", "failed": [], "pct": 50.9, "updated": "2026-09-07T14:57:32Z"}
+{"shard": 8, "stage": "testing", "done": 27, "total": 53, "rows": 980676, "note": "LAB 30m: rule 55/120 (nhigh50)", "failed": [], "pct": 50.9, "updated": "2026-09-07T14:58:17Z"}

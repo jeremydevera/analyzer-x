@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 9, "total": 53, "rows": 430330, "note": "BOME 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 17.0, "updated": "2026-09-07T08:19:37Z"}
+{"shard": 10, "stage": "testing", "done": 12, "total": 53, "rows": 472026, "note": "CLO 1h: 7,869 bars, testing 120 rules", "failed": [], "pct": 22.6, "updated": "2026-09-07T08:20:26Z"}

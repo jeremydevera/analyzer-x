@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 1, "total": 53, "rows": 35640, "note": "ACH 30m: rule 32/120 (gmma)", "failed": [], "pct": 1.9, "updated": "2026-09-07T04:57:09Z"}
+{"shard": 17, "stage": "testing", "done": 1, "total": 53, "rows": 49060, "note": "ACH 30m: rule 94/120 (cf_emarsi)", "failed": [], "pct": 1.9, "updated": "2026-09-07T04:57:54Z"}

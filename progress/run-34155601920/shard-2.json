@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 46, "total": 54, "rows": 3521228, "note": "TAO 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 85.2, "updated": "2026-09-07T23:04:10Z"}
+{"shard": 2, "stage": "testing", "done": 46, "total": 54, "rows": 3528248, "note": "TAO 15m: rule 115/120 (cf_diadx)", "failed": [], "pct": 85.2, "updated": "2026-09-07T23:04:55Z"}

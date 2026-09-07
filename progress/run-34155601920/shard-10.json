@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 5, "total": 53, "rows": 482208, "note": "ASR 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 9.4, "updated": "2026-09-07T19:58:03Z"}
+{"shard": 10, "stage": "testing", "done": 5, "total": 53, "rows": 501128, "note": "ASR 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-07T19:58:48Z"}

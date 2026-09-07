@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 36, "total": 53, "rows": 1487122, "note": "PHA 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 67.9, "updated": "2026-09-07T03:01:48Z"}
+{"shard": 2, "stage": "testing", "done": 36, "total": 53, "rows": 1489762, "note": "PHA 30m: rule 2/120 (mom15)", "failed": [], "pct": 67.9, "updated": "2026-09-07T03:02:33Z"}

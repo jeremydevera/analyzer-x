@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 17, "total": 53, "rows": 386788, "note": "ETH 4h: rule 24/120 (psar)", "failed": [], "pct": 32.1, "updated": "2026-09-07T01:23:06Z"}
+{"shard": 13, "stage": "testing", "done": 18, "total": 53, "rows": 423000, "note": "FIDA 4h: rule 16/120 (keltner)", "failed": [], "pct": 34.0, "updated": "2026-09-07T01:23:51Z"}

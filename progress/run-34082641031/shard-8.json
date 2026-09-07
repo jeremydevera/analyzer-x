@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 31, "total": 53, "rows": 826848, "note": "MSTU 1d: downloading candles", "failed": [], "pct": 58.5, "updated": "2026-09-07T04:35:37Z"}
+{"shard": 8, "stage": "testing", "done": 33, "total": 53, "rows": 885724, "note": "NTAPSTOCK 1d: rule 71/120 (mfi14)", "failed": [], "pct": 62.3, "updated": "2026-09-07T04:36:22Z"}

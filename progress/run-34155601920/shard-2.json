@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 39, "total": 54, "rows": 3092344, "note": "RED 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 72.2, "updated": "2026-09-07T22:40:00Z"}
+{"shard": 2, "stage": "testing", "done": 40, "total": 54, "rows": 3135252, "note": "ROLSTOCK 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 74.1, "updated": "2026-09-07T22:40:45Z"}

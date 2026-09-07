@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 46, "total": 53, "rows": 1839718, "note": "TESLA 1h: rule 58/120 (bos)", "failed": [], "pct": 86.8, "updated": "2026-09-07T06:45:10Z"}
+{"shard": 8, "stage": "testing", "done": 46, "total": 53, "rows": 1856538, "note": "TESLA 30m: rule 11/120 (sr_break)", "failed": [], "pct": 86.8, "updated": "2026-09-07T06:45:55Z"}

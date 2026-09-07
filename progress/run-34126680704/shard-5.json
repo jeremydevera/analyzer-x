@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 44, "total": 53, "rows": 1015230, "note": "SQD 1d: 394 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-07T13:35:05Z"}
+{"shard": 5, "stage": "testing", "done": 47, "total": 53, "rows": 1069438, "note": "TOYOTASTOCK 4h: downloading candles", "failed": [], "pct": 88.7, "updated": "2026-09-07T13:35:50Z"}

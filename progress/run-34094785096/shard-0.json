@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 34, "total": 53, "rows": 828196, "note": "OG 4h: rule 22/120 (engulf)", "failed": [], "pct": 64.2, "updated": "2026-09-07T07:34:42Z"}
+{"shard": 0, "stage": "testing", "done": 35, "total": 53, "rows": 884032, "note": "ORCLSTOCK 1d: 355 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-07T07:35:29Z"}

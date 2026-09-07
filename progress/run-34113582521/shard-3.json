@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 26, "total": 53, "rows": 919674, "note": "KAS 1h: rule 109/120 (cf_fundfade)", "failed": [], "pct": 49.1, "updated": "2026-09-07T11:36:34Z"}
+{"shard": 3, "stage": "testing", "done": 26, "total": 53, "rows": 923434, "note": "KAS 30m: rule 4/120 (trend50)", "failed": [], "pct": 49.1, "updated": "2026-09-07T11:37:21Z"}

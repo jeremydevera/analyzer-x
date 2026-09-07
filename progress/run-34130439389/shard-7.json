@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 25, "total": 53, "rows": 861062, "note": "JASMY 30m: rule 34/120 (lrslope)", "failed": [], "pct": 47.2, "updated": "2026-09-07T14:33:05Z"}
+{"shard": 7, "stage": "testing", "done": 25, "total": 53, "rows": 877462, "note": "JASMY 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 47.2, "updated": "2026-09-07T14:33:50Z"}

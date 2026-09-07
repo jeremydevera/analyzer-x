@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 24, "total": 53, "rows": 500018, "note": "IMX 4h: rule 1/120 (mom6)", "failed": [], "pct": 45.3, "updated": "2026-09-07T13:28:01Z"}
+{"shard": 5, "stage": "testing", "done": 26, "total": 53, "rows": 546878, "note": "KAVA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-07T13:28:49Z"}

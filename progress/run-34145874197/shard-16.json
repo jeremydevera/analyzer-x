@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 32, "total": 53, "rows": 1369588, "note": "NGAS 1h: 5,295 bars, testing 120 rules", "failed": [], "pct": 60.4, "updated": "2026-09-07T18:09:25Z"}
+{"shard": 16, "stage": "testing", "done": 32, "total": 53, "rows": 1393348, "note": "NGAS 30m: rule 2/120 (mom15)", "failed": [], "pct": 60.4, "updated": "2026-09-07T18:10:11Z"}

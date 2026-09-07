@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 15, "total": 53, "rows": 681938, "note": "DODO 1h: rule 13/120 (pivot)", "failed": [], "pct": 28.3, "updated": "2026-09-07T14:41:48Z"}
+{"shard": 16, "stage": "testing", "done": 15, "total": 53, "rows": 704818, "note": "DODO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 28.3, "updated": "2026-09-07T14:42:49Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 10, "total": 53, "rows": 466022, "note": "BSV 30m: rule 45/120 (zscore20)", "failed": [], "pct": 18.9, "updated": "2026-09-07T14:25:27Z"}
+{"shard": 6, "stage": "testing", "done": 10, "total": 53, "rows": 480102, "note": "BSV 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 18.9, "updated": "2026-09-07T14:26:13Z"}

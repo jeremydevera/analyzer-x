@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 37, "total": 53, "rows": 1530714, "note": "PUFFER 30m: rule 61/120 (turtle)", "failed": [], "pct": 69.8, "updated": "2026-09-07T15:07:29Z"}
+{"shard": 13, "stage": "testing", "done": 38, "total": 53, "rows": 1540154, "note": "RAY 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 71.7, "updated": "2026-09-07T15:08:17Z"}

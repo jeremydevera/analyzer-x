@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 3, "total": 53, "rows": 81500, "note": "AKE 30m: rule 20/120 (stoch14)", "failed": [], "pct": 5.7, "updated": "2026-09-07T07:59:33Z"}
+{"shard": 2, "stage": "testing", "done": 3, "total": 53, "rows": 91500, "note": "AKE 30m: rule 71/120 (mfi14)", "failed": [], "pct": 5.7, "updated": "2026-09-07T08:00:19Z"}

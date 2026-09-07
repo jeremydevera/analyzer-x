@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 40, "total": 53, "rows": 3587350, "note": "SANTOS 30m: rule 65/120 (doji)", "failed": [], "pct": 75.5, "updated": "2026-09-07T22:37:58Z"}
+{"shard": 16, "stage": "testing", "done": 40, "total": 53, "rows": 3599450, "note": "SANTOS 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-07T22:38:47Z"}

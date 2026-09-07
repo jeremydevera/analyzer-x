@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 38, "total": 53, "rows": 1464540, "note": "RAM 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 71.7, "updated": "2026-09-07T09:19:00Z"}
+{"shard": 8, "stage": "testing", "done": 39, "total": 53, "rows": 1473000, "note": "RIF 1h: rule 21/120 (cci20)", "failed": [], "pct": 73.6, "updated": "2026-09-07T09:19:46Z"}

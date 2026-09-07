@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 33, "total": 53, "rows": 2781750, "note": "NVOSTOCK 15m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 62.3, "updated": "2026-09-07T22:12:36Z"}
+{"shard": 17, "stage": "testing", "done": 33, "total": 53, "rows": 2834010, "note": "NVOSTOCK 1h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 62.3, "updated": "2026-09-07T22:13:21Z"}

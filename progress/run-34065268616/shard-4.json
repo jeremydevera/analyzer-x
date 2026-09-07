@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 46, "total": 53, "rows": 1812800, "note": "TECKSTOCK 30m: rule 3/120 (fade15)", "failed": [], "pct": 86.8, "updated": "2026-09-07T00:28:50Z"}
+{"shard": 4, "stage": "testing", "done": 48, "total": 53, "rows": 1869476, "note": "TWLOSTOCK 1h: rule 15/120 (bbbreak)", "failed": [], "pct": 90.6, "updated": "2026-09-07T00:29:35Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 10, "total": 53, "rows": 439908, "note": "CAD 30m: rule 49/120 (vwaprev)", "failed": [], "pct": 18.9, "updated": "2026-09-07T11:19:19Z"}
+{"shard": 16, "stage": "testing", "done": 11, "total": 53, "rows": 454428, "note": "CETUS 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 20.8, "updated": "2026-09-07T11:20:10Z"}

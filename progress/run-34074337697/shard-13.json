@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 48, "total": 53, "rows": 1840974, "note": "UKOIL 30m: rule 39/120 (fisher)", "failed": [], "pct": 90.6, "updated": "2026-09-07T03:23:47Z"}
+{"shard": 13, "stage": "testing", "done": 50, "total": 53, "rows": 1903054, "note": "WDAYSTOCK 1h: 974 bars, testing 120 rules", "failed": [], "pct": 94.3, "updated": "2026-09-07T03:24:32Z"}

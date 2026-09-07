@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 26, "total": 53, "rows": 968414, "note": "KAITO 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 49.1, "updated": "2026-09-07T08:53:21Z"}
+{"shard": 0, "stage": "testing", "done": 27, "total": 53, "rows": 1022380, "note": "KOSPI 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-07T08:54:06Z"}

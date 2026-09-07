@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 20, "total": 53, "rows": 1590634, "note": "GIGGLE 15m: rule 21/120 (cci20)", "failed": [], "pct": 37.7, "updated": "2026-09-07T20:52:43Z"}
+{"shard": 15, "stage": "testing", "done": 20, "total": 53, "rows": 1595914, "note": "GIGGLE 15m: rule 45/120 (zscore20)", "failed": [], "pct": 37.7, "updated": "2026-09-07T20:53:28Z"}

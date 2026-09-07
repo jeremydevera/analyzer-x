@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 27, "total": 53, "rows": 2160018, "note": "KSTR 15m: rule 1/120 (mom6)", "failed": [], "pct": 50.9, "updated": "2026-09-07T21:23:36Z"}
+{"shard": 6, "stage": "testing", "done": 27, "total": 53, "rows": 2206778, "note": "KSTR 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-07T21:24:21Z"}

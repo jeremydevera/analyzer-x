@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 47, "total": 53, "rows": 2143628, "note": "TOWNS 30m: rule 47/120 (ibs)", "failed": [], "pct": 88.7, "updated": "2026-09-07T18:42:42Z"}
+{"shard": 4, "stage": "testing", "done": 47, "total": 53, "rows": 2156608, "note": "TOWNS 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 88.7, "updated": "2026-09-07T18:43:27Z"}

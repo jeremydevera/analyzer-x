@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 26, "total": 53, "rows": 923434, "note": "KAS 30m: rule 4/120 (trend50)", "failed": [], "pct": 49.1, "updated": "2026-09-07T11:37:21Z"}
+{"shard": 3, "stage": "testing", "done": 26, "total": 53, "rows": 933434, "note": "KAS 30m: rule 55/120 (nhigh50)", "failed": [], "pct": 49.1, "updated": "2026-09-07T11:38:06Z"}

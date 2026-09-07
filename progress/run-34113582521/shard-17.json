@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 25, "total": 53, "rows": 1046026, "note": "JPY 1h: 7,993 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-07T11:46:18Z"}
+{"shard": 17, "stage": "testing", "done": 25, "total": 53, "rows": 1067226, "note": "JPY 30m: rule 38/120 (ao)", "failed": [], "pct": 47.2, "updated": "2026-09-07T11:47:03Z"}

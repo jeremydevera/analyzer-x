@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 37, "total": 53, "rows": 3329872, "note": "PUNDIX 1d: 394 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-07T22:25:16Z"}
+{"shard": 16, "stage": "testing", "done": 38, "total": 53, "rows": 3364616, "note": "RCATSTOCK 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 71.7, "updated": "2026-09-07T22:26:01Z"}

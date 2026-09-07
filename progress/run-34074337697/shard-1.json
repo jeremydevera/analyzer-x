@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 42, "total": 53, "rows": 1630452, "note": "SKL 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 79.2, "updated": "2026-09-07T02:51:04Z"}
+{"shard": 1, "stage": "testing", "done": 42, "total": 53, "rows": 1645412, "note": "SKL 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 79.2, "updated": "2026-09-07T02:51:49Z"}

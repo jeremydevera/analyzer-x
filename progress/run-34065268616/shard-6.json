@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 42, "total": 53, "rows": 1485888, "note": "SKY 1h: rule 3/120 (fade15)", "failed": [], "pct": 79.2, "updated": "2026-09-07T00:03:27Z"}
+{"shard": 6, "stage": "testing", "done": 42, "total": 53, "rows": 1509868, "note": "SKY 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 79.2, "updated": "2026-09-07T00:04:13Z"}

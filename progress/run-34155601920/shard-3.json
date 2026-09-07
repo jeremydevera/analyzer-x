@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 32, "total": 53, "rows": 2520632, "note": "NAS100 15m: 21,263 bars, testing 120 rules", "failed": [], "pct": 60.4, "updated": "2026-09-07T21:49:43Z"}
+{"shard": 3, "stage": "testing", "done": 32, "total": 53, "rows": 2535032, "note": "NAS100 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 60.4, "updated": "2026-09-07T21:50:29Z"}

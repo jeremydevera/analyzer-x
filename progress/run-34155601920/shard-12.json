@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 42, "total": 53, "rows": 3200244, "note": "SLX 15m: rule 29/120 (hull20)", "failed": [], "pct": 79.2, "updated": "2026-09-07T21:54:59Z"}
+{"shard": 12, "stage": "testing", "done": 42, "total": 53, "rows": 3221464, "note": "SLX 30m: rule 20/120 (stoch14)", "failed": [], "pct": 79.2, "updated": "2026-09-07T21:55:44Z"}

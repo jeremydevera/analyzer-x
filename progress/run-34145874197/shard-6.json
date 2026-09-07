@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 4, "total": 53, "rows": 176404, "note": "ANTHROPIC 1h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 7.5, "updated": "2026-09-07T17:10:06Z"}
+{"shard": 6, "stage": "testing", "done": 5, "total": 53, "rows": 204566, "note": "ARWRSTOCK 1h: 1,112 bars, testing 120 rules", "failed": [], "pct": 9.4, "updated": "2026-09-07T17:10:52Z"}

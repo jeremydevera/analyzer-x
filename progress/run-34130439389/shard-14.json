@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 14, "total": 53, "rows": 518512, "note": "CXMTSTOCK 30m: 2,595 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-07T14:27:54Z"}
+{"shard": 14, "stage": "testing", "done": 15, "total": 53, "rows": 582452, "note": "DKNGSTOCK 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 28.3, "updated": "2026-09-07T14:28:39Z"}

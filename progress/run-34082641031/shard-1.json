@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 41, "total": 53, "rows": 980250, "note": "SEI 4h: rule 17/120 (atrbreak)", "failed": [], "pct": 77.4, "updated": "2026-09-07T04:35:54Z"}
+{"shard": 1, "stage": "testing", "done": 42, "total": 53, "rows": 1024778, "note": "SKL 4h: rule 38/120 (ao)", "failed": [], "pct": 79.2, "updated": "2026-09-07T04:36:39Z"}

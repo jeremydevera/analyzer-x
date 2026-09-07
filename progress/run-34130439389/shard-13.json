@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 5, "total": 53, "rows": 199030, "note": "ASTR 30m: rule 1/120 (mom6)", "failed": [], "pct": 9.4, "updated": "2026-09-07T14:04:16Z"}
+{"shard": 13, "stage": "testing", "done": 5, "total": 53, "rows": 204970, "note": "ASTR 30m: rule 24/120 (psar)", "failed": [], "pct": 9.4, "updated": "2026-09-07T14:05:01Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 35, "total": 53, "rows": 1228738, "note": "PDDSTOCK 30m: rule 72/120 (force13)", "failed": [], "pct": 66.0, "updated": "2026-09-07T11:47:21Z"}
+{"shard": 15, "stage": "testing", "done": 36, "total": 53, "rows": 1238438, "note": "PNUT 1h: rule 13/120 (pivot)", "failed": [], "pct": 67.9, "updated": "2026-09-07T11:48:06Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 25, "total": 53, "rows": 2217760, "note": "JPY 1h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 47.2, "updated": "2026-09-07T21:41:50Z"}
+{"shard": 17, "stage": "testing", "done": 26, "total": 53, "rows": 2256412, "note": "KMNO 15m: 34,565 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-07T21:42:50Z"}

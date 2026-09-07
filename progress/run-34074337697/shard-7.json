@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 40, "total": 53, "rows": 1580284, "note": "RVN 1h: rule 1/120 (mom6)", "failed": [], "pct": 75.5, "updated": "2026-09-07T03:01:00Z"}
+{"shard": 7, "stage": "testing", "done": 40, "total": 53, "rows": 1601844, "note": "RVN 1h: rule 97/120 (cf_ttm)", "failed": [], "pct": 75.5, "updated": "2026-09-07T03:01:45Z"}

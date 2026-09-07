@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 18, "total": 53, "rows": 465332, "note": "FIGHT 4h: rule 9/120 (fib382)", "failed": [], "pct": 34.0, "updated": "2026-09-07T07:26:09Z"}
+{"shard": 14, "stage": "testing", "done": 21, "total": 53, "rows": 519166, "note": "GUA 1d: 284 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-07T07:26:56Z"}

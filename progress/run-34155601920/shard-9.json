@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 34, "total": 53, "rows": 2860518, "note": "ONE 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 64.2, "updated": "2026-09-07T22:49:38Z"}
+{"shard": 9, "stage": "testing", "done": 34, "total": 53, "rows": 2869098, "note": "ONE 1h: rule 33/120 (heikin)", "failed": [], "pct": 64.2, "updated": "2026-09-07T22:50:23Z"}

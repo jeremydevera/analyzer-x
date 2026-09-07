@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 38, "total": 53, "rows": 1561960, "note": "Q 30m: rule 29/120 (hull20)", "failed": [], "pct": 71.7, "updated": "2026-09-07T17:53:34Z"}
+{"shard": 9, "stage": "testing", "done": 39, "total": 53, "rows": 1581540, "note": "RGTISTOCK 1h: 1,971 bars, testing 120 rules", "failed": [], "pct": 73.6, "updated": "2026-09-07T17:54:20Z"}

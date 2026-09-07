@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 43, "total": 53, "rows": 1963414, "note": "SOFTBANKSTOCK 30m: rule 3/120 (fade15)", "failed": [], "pct": 81.1, "updated": "2026-09-07T18:38:42Z"}
+{"shard": 4, "stage": "testing", "done": 46, "total": 53, "rows": 2083708, "note": "TBT 30m: 1,929 bars, testing 120 rules", "failed": [], "pct": 86.8, "updated": "2026-09-07T18:39:28Z"}

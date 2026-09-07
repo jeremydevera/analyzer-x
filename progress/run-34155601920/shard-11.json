@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 3, "total": 53, "rows": 265080, "note": "ALPINE 30m: rule 35/120 (willr14)", "failed": [], "pct": 5.7, "updated": "2026-09-07T19:47:21Z"}
+{"shard": 11, "stage": "testing", "done": 3, "total": 53, "rows": 278280, "note": "ALPINE 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 5.7, "updated": "2026-09-07T19:48:06Z"}

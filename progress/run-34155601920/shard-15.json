@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 52, "total": 53, "rows": 4029852, "note": "YB 30m: rule 54/120 (fractal5)", "failed": [], "pct": 98.1, "updated": "2026-09-07T23:10:00Z"}
+{"shard": 15, "stage": "testing", "done": 52, "total": 53, "rows": 4044152, "note": "YB 1h: 7,977 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-07T23:10:47Z"}

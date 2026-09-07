@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 40, "total": 53, "rows": 1571040, "note": "SAHARA 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-07T03:06:18Z"}
+{"shard": 10, "stage": "testing", "done": 40, "total": 53, "rows": 1584900, "note": "SAHARA 1h: rule 58/120 (bos)", "failed": [], "pct": 75.5, "updated": "2026-09-07T03:07:03Z"}

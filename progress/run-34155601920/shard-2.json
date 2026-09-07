@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 4, "total": 54, "rows": 267824, "note": "ANETSTOCK 15m: 7,260 bars, testing 120 rules", "failed": [], "pct": 7.4, "updated": "2026-09-07T19:46:03Z"}
+{"shard": 2, "stage": "testing", "done": 4, "total": 54, "rows": 308972, "note": "ANETSTOCK 1h: rule 28/120 (vortex14)", "failed": [], "pct": 7.4, "updated": "2026-09-07T19:46:48Z"}

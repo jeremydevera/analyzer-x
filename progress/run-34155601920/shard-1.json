@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 52, "total": 54, "rows": 4535446, "note": "XLU 15m: rule 64/120 (hammer)", "failed": [], "pct": 96.3, "updated": "2026-09-07T23:50:11Z"}
+{"shard": 1, "stage": "testing", "done": 53, "total": 54, "rows": 4587950, "note": "ZBCN 15m: 34,574 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-07T23:51:03Z"}

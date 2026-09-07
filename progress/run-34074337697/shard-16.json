@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 49, "total": 53, "rows": 2186290, "note": "VELVET 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 92.5, "updated": "2026-09-07T03:41:47Z"}
+{"shard": 16, "stage": "testing", "done": 50, "total": 53, "rows": 2196496, "note": "WET 1h: rule 21/120 (cci20)", "failed": [], "pct": 94.3, "updated": "2026-09-07T03:42:32Z"}

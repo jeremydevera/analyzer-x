@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 32, "total": 53, "rows": 1125244, "note": "NFLXSTOCK 30m: 4,317 bars, testing 120 rules", "failed": [], "pct": 60.4, "updated": "2026-09-07T14:49:49Z"}
+{"shard": 15, "stage": "testing", "done": 34, "total": 53, "rows": 1161816, "note": "OPENLEDGER 1h: rule 3/120 (fade15)", "failed": [], "pct": 64.2, "updated": "2026-09-07T14:50:39Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 5, "total": 53, "rows": 526824, "note": "ATH 1h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-07T20:07:14Z"}
+{"shard": 16, "stage": "testing", "done": 5, "total": 53, "rows": 553664, "note": "ATH 1d: 394 bars, testing 120 rules", "failed": [], "pct": 9.4, "updated": "2026-09-07T20:08:02Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 32, "total": 53, "rows": 784746, "note": "NGAS 4h: rule 27/120 (aroon25)", "failed": [], "pct": 60.4, "updated": "2026-09-07T07:30:01Z"}
+{"shard": 14, "stage": "testing", "done": 33, "total": 53, "rows": 841858, "note": "NVIDIA 1d: 394 bars, testing 120 rules", "failed": [], "pct": 62.3, "updated": "2026-09-07T07:30:46Z"}

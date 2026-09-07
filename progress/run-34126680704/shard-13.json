@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 5, "total": 53, "rows": 97778, "note": "ASTR 4h: rule 47/120 (ibs)", "failed": [], "pct": 9.4, "updated": "2026-09-07T13:20:39Z"}
+{"shard": 13, "stage": "testing", "done": 7, "total": 53, "rows": 145100, "note": "BAS 4h: rule 51/120 (orb)", "failed": [], "pct": 13.2, "updated": "2026-09-07T13:21:25Z"}

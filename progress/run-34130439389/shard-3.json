@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 46, "total": 53, "rows": 1840970, "note": "TA 30m: rule 33/120 (heikin)", "failed": [], "pct": 86.8, "updated": "2026-09-07T15:41:04Z"}
+{"shard": 3, "stage": "testing", "done": 46, "total": 53, "rows": 1852170, "note": "TA 30m: rule 91/120 (cf_soup)", "failed": [], "pct": 86.8, "updated": "2026-09-07T15:41:50Z"}

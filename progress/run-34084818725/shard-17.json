@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 3, "total": 53, "rows": 133442, "note": "AMGNSTOCK 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 5.7, "updated": "2026-09-07T05:00:58Z"}
+{"shard": 17, "stage": "testing", "done": 4, "total": 53, "rows": 145422, "note": "APT 1h: rule 47/120 (ibs)", "failed": [], "pct": 7.5, "updated": "2026-09-07T05:01:44Z"}

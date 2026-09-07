@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 29, "total": 53, "rows": 606284, "note": "MASK 4h: rule 17/120 (atrbreak)", "failed": [], "pct": 54.7, "updated": "2026-09-07T10:27:29Z"}
+{"shard": 7, "stage": "testing", "done": 33, "total": 53, "rows": 648414, "note": "NOT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 62.3, "updated": "2026-09-07T10:28:17Z"}

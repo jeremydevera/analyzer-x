@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 44, "total": 53, "rows": 1799524, "note": "STO 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-07T12:21:19Z"}
+{"shard": 17, "stage": "testing", "done": 44, "total": 53, "rows": 1812944, "note": "STO 1h: rule 56/120 (insidebrk)", "failed": [], "pct": 83.0, "updated": "2026-09-07T12:22:04Z"}

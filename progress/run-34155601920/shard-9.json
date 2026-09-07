@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 25, "total": 53, "rows": 2014460, "note": "JCT 15m: rule 39/120 (fisher)", "failed": [], "pct": 47.2, "updated": "2026-09-07T21:46:14Z"}
+{"shard": 9, "stage": "testing", "done": 25, "total": 53, "rows": 2021060, "note": "JCT 15m: rule 70/120 (cmf20)", "failed": [], "pct": 47.2, "updated": "2026-09-07T21:47:00Z"}

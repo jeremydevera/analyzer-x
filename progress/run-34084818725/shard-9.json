@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 7, "total": 53, "rows": 283384, "note": "BARD 1h: 8,490 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-07T05:11:48Z"}
+{"shard": 9, "stage": "testing", "done": 7, "total": 53, "rows": 301600, "note": "BARD 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-07T05:12:33Z"}

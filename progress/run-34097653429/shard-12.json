@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 23, "total": 53, "rows": 946864, "note": "IBB 1h: rule 59/120 (choch)", "failed": [], "pct": 43.4, "updated": "2026-09-07T08:30:26Z"}
+{"shard": 12, "stage": "testing", "done": 24, "total": 53, "rows": 984472, "note": "INX 1h: rule 75/120 (relvolbrk)", "failed": [], "pct": 45.3, "updated": "2026-09-07T08:31:12Z"}

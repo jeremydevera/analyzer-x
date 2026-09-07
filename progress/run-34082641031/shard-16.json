@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 34, "total": 53, "rows": 999312, "note": "OPN 4h: 1,247 bars, testing 120 rules", "failed": [], "pct": 64.2, "updated": "2026-09-07T04:36:59Z"}
+{"shard": 16, "stage": "testing", "done": 36, "total": 53, "rows": 1045710, "note": "POL 4h: rule 33/120 (heikin)", "failed": [], "pct": 67.9, "updated": "2026-09-07T04:37:44Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 28, "total": 53, "rows": 784104, "note": "LYN 4h: rule 76/120 (cf_mom)", "failed": [], "pct": 52.8, "updated": "2026-09-07T13:31:05Z"}
+{"shard": 17, "stage": "testing", "done": 34, "total": 53, "rows": 888030, "note": "OPG 1d: 139 bars, testing 120 rules", "failed": [], "pct": 64.2, "updated": "2026-09-07T13:31:54Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 13, "total": 53, "rows": 615442, "note": "COPPER 30m: rule 40/120 (crsi)", "failed": [], "pct": 24.5, "updated": "2026-09-07T14:27:55Z"}
+{"shard": 4, "stage": "testing", "done": 14, "total": 53, "rows": 632242, "note": "CTC 1h: rule 2/120 (mom15)", "failed": [], "pct": 26.4, "updated": "2026-09-07T14:28:40Z"}

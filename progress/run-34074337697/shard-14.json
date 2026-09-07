@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 45, "total": 53, "rows": 1854850, "note": "TAC 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-07T03:20:22Z"}
+{"shard": 14, "stage": "testing", "done": 45, "total": 53, "rows": 1857050, "note": "TAC 30m: rule 4/120 (trend50)", "failed": [], "pct": 84.9, "updated": "2026-09-07T03:21:10Z"}

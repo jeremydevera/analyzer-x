@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 14, "total": 53, "rows": 472258, "note": "CVC 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-07T14:28:24Z"}
+{"shard": 10, "stage": "testing", "done": 14, "total": 53, "rows": 490474, "note": "CVC 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-07T14:29:09Z"}

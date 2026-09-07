@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 24, "total": 53, "rows": 938712, "note": "IOTX 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 45.3, "updated": "2026-09-07T05:52:10Z"}
+{"shard": 18, "stage": "testing", "done": 24, "total": 53, "rows": 953012, "note": "IOTX 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 45.3, "updated": "2026-09-07T05:52:56Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 7, "total": 53, "rows": 289816, "note": "BANK 30m: rule 44/120 (elder)", "failed": [], "pct": 13.2, "updated": "2026-09-07T17:20:49Z"}
+{"shard": 7, "stage": "testing", "done": 7, "total": 53, "rows": 300416, "note": "BANK 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-07T17:21:35Z"}

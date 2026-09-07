@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 26, "total": 53, "rows": 1055902, "note": "KGEN 30m: rule 35/120 (willr14)", "failed": [], "pct": 49.1, "updated": "2026-09-07T17:35:50Z"}
+{"shard": 9, "stage": "testing", "done": 28, "total": 53, "rows": 1094818, "note": "LRC 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-07T17:36:35Z"}

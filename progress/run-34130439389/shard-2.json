@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 29, "total": 54, "rows": 988104, "note": "MANTA 1h: rule 3/120 (fade15)", "failed": [], "pct": 53.7, "updated": "2026-09-07T14:49:52Z"}
+{"shard": 2, "stage": "testing", "done": 29, "total": 54, "rows": 1011072, "note": "MANTA 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 53.7, "updated": "2026-09-07T14:50:45Z"}

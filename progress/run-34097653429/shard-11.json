@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 17, "total": 53, "rows": 583852, "note": "ETHFI 1h: rule 12/120 (donchian20)", "failed": [], "pct": 32.1, "updated": "2026-09-07T08:21:07Z"}
+{"shard": 11, "stage": "testing", "done": 17, "total": 53, "rows": 604532, "note": "ETHFI 1h: rule 109/120 (cf_fundfade)", "failed": [], "pct": 32.1, "updated": "2026-09-07T08:21:52Z"}

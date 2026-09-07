@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 51, "total": 53, "rows": 4134820, "note": "XCN 4h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-07T23:00:33Z"}
+{"shard": 13, "stage": "testing", "done": 52, "total": 53, "rows": 4148378, "note": "XVS 15m: rule 1/120 (mom6)", "failed": [], "pct": 98.1, "updated": "2026-09-07T23:01:22Z"}

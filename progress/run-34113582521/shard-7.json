@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 53, "total": 53, "rows": 2101732, "note": "ZEST 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-07T12:44:24Z"}
+{"shard": 7, "stage": "done", "done": 53, "total": 53, "rows": 2106132, "note": "2,106,132 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "failed": [], "pct": 100.0, "updated": "2026-09-07T12:44:29Z"}

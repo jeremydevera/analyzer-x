@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 48, "total": 53, "rows": 2046172, "note": "UB 30m: rule 1/120 (mom6)", "failed": [], "pct": 90.6, "updated": "2026-09-07T12:25:43Z"}
+{"shard": 14, "stage": "testing", "done": 48, "total": 53, "rows": 2049692, "note": "UB 30m: rule 13/120 (pivot)", "failed": [], "pct": 90.6, "updated": "2026-09-07T12:26:28Z"}

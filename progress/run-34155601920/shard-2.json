@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 5, "total": 54, "rows": 353474, "note": "ARKM 15m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 9.3, "updated": "2026-09-07T19:50:44Z"}
+{"shard": 2, "stage": "testing", "done": 5, "total": 54, "rows": 357254, "note": "ARKM 30m: rule 3/120 (fade15)", "failed": [], "pct": 9.3, "updated": "2026-09-07T19:51:35Z"}

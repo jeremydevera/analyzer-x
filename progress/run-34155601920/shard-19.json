@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 12, "total": 53, "rows": 1264204, "note": "COINBASE 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 22.6, "updated": "2026-09-07T20:40:12Z"}
+{"shard": 19, "stage": "testing", "done": 12, "total": 53, "rows": 1271844, "note": "COINBASE 30m: rule 1/120 (mom6)", "failed": [], "pct": 22.6, "updated": "2026-09-07T20:41:00Z"}

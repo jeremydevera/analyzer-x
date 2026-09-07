@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 4, "total": 53, "rows": 142462, "note": "APEX 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 7.5, "updated": "2026-09-07T07:58:30Z"}
+{"shard": 9, "stage": "testing", "done": 4, "total": 53, "rows": 163648, "note": "APEX 30m: 16,557 bars, testing 120 rules", "failed": [], "pct": 7.5, "updated": "2026-09-07T07:59:17Z"}

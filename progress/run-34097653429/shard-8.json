@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 39, "total": 53, "rows": 1506000, "note": "RIF 30m: rule 47/120 (ibs)", "failed": [], "pct": 73.6, "updated": "2026-09-07T09:22:15Z"}
+{"shard": 8, "stage": "testing", "done": 39, "total": 53, "rows": 1519200, "note": "RIF 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 73.6, "updated": "2026-09-07T09:23:01Z"}

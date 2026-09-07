@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 30, "total": 53, "rows": 1175474, "note": "MMT 30m: 15,133 bars, testing 120 rules", "failed": [], "pct": 56.6, "updated": "2026-09-07T18:05:00Z"}
+{"shard": 11, "stage": "testing", "done": 30, "total": 53, "rows": 1180974, "note": "MMT 30m: rule 19/120 (emacross)", "failed": [], "pct": 56.6, "updated": "2026-09-07T18:05:46Z"}

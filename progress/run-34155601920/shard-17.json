@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 6, "total": 53, "rows": 572710, "note": "AZTEC 1h: rule 16/120 (keltner)", "failed": [], "pct": 11.3, "updated": "2026-09-07T20:02:23Z"}
+{"shard": 17, "stage": "testing", "done": 6, "total": 53, "rows": 623640, "note": "AZTEC 1d: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 11.3, "updated": "2026-09-07T20:03:08Z"}

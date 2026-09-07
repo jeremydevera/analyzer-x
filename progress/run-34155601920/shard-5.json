@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 23, "total": 53, "rows": 1492402, "note": "HPESTOCK 15m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 43.4, "updated": "2026-09-07T20:55:03Z"}
+{"shard": 5, "stage": "testing", "done": 23, "total": 53, "rows": 1528842, "note": "HPESTOCK 1h: rule 37/120 (ultosc)", "failed": [], "pct": 43.4, "updated": "2026-09-07T20:55:48Z"}

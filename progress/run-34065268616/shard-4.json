@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 40, "total": 53, "rows": 1580552, "note": "RSR 30m: rule 1/120 (mom6)", "failed": [], "pct": 75.5, "updated": "2026-09-07T00:17:46Z"}
+{"shard": 4, "stage": "testing", "done": 40, "total": 53, "rows": 1584952, "note": "RSR 30m: rule 17/120 (atrbreak)", "failed": [], "pct": 75.5, "updated": "2026-09-07T00:18:32Z"}

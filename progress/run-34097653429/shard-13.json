@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 30, "total": 53, "rows": 1091810, "note": "MONAD 1h: downloading candles", "failed": [], "pct": 56.6, "updated": "2026-09-07T08:46:07Z"}
+{"shard": 13, "stage": "testing", "done": 30, "total": 53, "rows": 1101908, "note": "MONAD 1h: rule 45/120 (zscore20)", "failed": [], "pct": 56.6, "updated": "2026-09-07T08:46:52Z"}

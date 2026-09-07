@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 44, "total": 53, "rows": 1754148, "note": "STBL 1h: rule 4/120 (trend50)", "failed": [], "pct": 83.0, "updated": "2026-09-07T00:40:09Z"}
+{"shard": 8, "stage": "testing", "done": 44, "total": 53, "rows": 1776588, "note": "STBL 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 83.0, "updated": "2026-09-07T00:40:54Z"}

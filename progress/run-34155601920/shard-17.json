@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 5, "total": 53, "rows": 428282, "note": "ATOM 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 9.4, "updated": "2026-09-07T19:54:36Z"}
+{"shard": 17, "stage": "testing", "done": 5, "total": 53, "rows": 435082, "note": "ATOM 30m: rule 28/120 (vortex14)", "failed": [], "pct": 9.4, "updated": "2026-09-07T19:55:21Z"}

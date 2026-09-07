@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 40, "total": 53, "rows": 999532, "note": "RSR 4h: rule 20/120 (stoch14)", "failed": [], "pct": 75.5, "updated": "2026-09-07T16:44:27Z"}
+{"shard": 6, "stage": "testing", "done": 43, "total": 53, "rows": 1047918, "note": "SOL 4h: rule 1/120 (mom6)", "failed": [], "pct": 81.1, "updated": "2026-09-07T16:45:12Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 1, "total": 53, "rows": 0, "note": "AAPU 1h: downloading candles", "failed": [], "pct": 1.9, "updated": "2026-09-07T07:53:08Z"}
+{"shard": 12, "stage": "testing", "done": 2, "total": 53, "rows": 35514, "note": "AIA 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 3.8, "updated": "2026-09-07T07:53:53Z"}

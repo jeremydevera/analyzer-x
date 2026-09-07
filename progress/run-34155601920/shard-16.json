@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 37, "total": 53, "rows": 3299512, "note": "PUNDIX 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 69.8, "updated": "2026-09-07T22:24:27Z"}
+{"shard": 16, "stage": "testing", "done": 37, "total": 53, "rows": 3329872, "note": "PUNDIX 1d: 394 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-07T22:25:16Z"}

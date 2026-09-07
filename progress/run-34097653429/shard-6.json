@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 19, "total": 53, "rows": 695840, "note": "FLUX 1h: rule 12/120 (donchian20)", "failed": [], "pct": 35.8, "updated": "2026-09-07T08:24:46Z"}
+{"shard": 6, "stage": "testing", "done": 19, "total": 53, "rows": 718940, "note": "FLUX 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-07T08:25:41Z"}

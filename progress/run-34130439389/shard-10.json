@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 19, "total": 53, "rows": 719428, "note": "FOLKS 30m: rule 64/120 (hammer)", "failed": [], "pct": 35.8, "updated": "2026-09-07T14:47:00Z"}
+{"shard": 10, "stage": "testing", "done": 20, "total": 53, "rows": 742288, "note": "GEVSTOCK 1h: rule 69/120 (obv20)", "failed": [], "pct": 37.7, "updated": "2026-09-07T14:47:45Z"}

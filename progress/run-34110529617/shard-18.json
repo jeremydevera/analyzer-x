@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 39, "total": 53, "rows": 1121866, "note": "ROBINHOOD 1d: 394 bars, testing 120 rules", "failed": [], "pct": 73.6, "updated": "2026-09-07T10:35:39Z"}
+{"shard": 18, "stage": "testing", "done": 41, "total": 53, "rows": 1188548, "note": "SITMSTOCK 1d: rule 2/120 (mom15)", "failed": [], "pct": 77.4, "updated": "2026-09-07T10:36:24Z"}

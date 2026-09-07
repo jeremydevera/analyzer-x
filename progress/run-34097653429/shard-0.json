@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 21, "total": 53, "rows": 772324, "note": "GMX 30m: rule 33/120 (heikin)", "failed": [], "pct": 39.6, "updated": "2026-09-07T08:40:43Z"}
+{"shard": 0, "stage": "testing", "done": 21, "total": 53, "rows": 784644, "note": "GMX 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 39.6, "updated": "2026-09-07T08:41:29Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 27, "total": 53, "rows": 1064312, "note": "KUAISHOUSTOCK 30m: rule 16/120 (keltner)", "failed": [], "pct": 50.9, "updated": "2026-09-07T02:42:19Z"}
+{"shard": 5, "stage": "testing", "done": 28, "total": 53, "rows": 1091192, "note": "LQTY 1h: rule 36/120 (stochrsi)", "failed": [], "pct": 52.8, "updated": "2026-09-07T02:43:04Z"}

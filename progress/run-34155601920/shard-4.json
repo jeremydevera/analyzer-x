@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 49, "total": 53, "rows": 4548652, "note": "USARSTOCK 4h: rule 5/120 (rsi14)", "failed": [], "pct": 92.5, "updated": "2026-09-07T23:21:24Z"}
+{"shard": 4, "stage": "testing", "done": 51, "total": 53, "rows": 4613436, "note": "WOO 15m: rule 1/120 (mom6)", "failed": [], "pct": 96.2, "updated": "2026-09-07T23:22:18Z"}

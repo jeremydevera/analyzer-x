@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 39, "total": 54, "rows": 3499654, "note": "RECALL 4h: rule 39/120 (fisher)", "failed": [], "pct": 72.2, "updated": "2026-09-07T22:27:44Z"}
+{"shard": 0, "stage": "testing", "done": 40, "total": 54, "rows": 3526996, "note": "ROBO 15m: rule 3/120 (fade15)", "failed": [], "pct": 74.1, "updated": "2026-09-07T22:28:30Z"}

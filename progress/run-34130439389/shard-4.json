@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 35, "total": 53, "rows": 1558470, "note": "ORDI 30m: rule 48/120 (prank)", "failed": [], "pct": 66.0, "updated": "2026-09-07T15:05:00Z"}
+{"shard": 4, "stage": "testing", "done": 35, "total": 53, "rows": 1572470, "note": "ORDI 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 66.0, "updated": "2026-09-07T15:05:45Z"}

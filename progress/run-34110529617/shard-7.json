@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 8, "total": 53, "rows": 195260, "note": "BIGTIME 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-07T10:20:37Z"}
+{"shard": 7, "stage": "testing", "done": 10, "total": 53, "rows": 235608, "note": "BTR 4h: 2,256 bars, testing 120 rules", "failed": [], "pct": 18.9, "updated": "2026-09-07T10:21:27Z"}

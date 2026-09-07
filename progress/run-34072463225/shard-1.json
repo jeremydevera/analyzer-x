@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 37, "total": 53, "rows": 895950, "note": "POWER 4h: 1,654 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-07T01:30:49Z"}
+{"shard": 1, "stage": "testing", "done": 40, "total": 53, "rows": 942786, "note": "RON 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-07T01:31:36Z"}

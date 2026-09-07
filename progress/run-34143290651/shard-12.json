@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 44, "total": 53, "rows": 981076, "note": "STG 4h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 83.0, "updated": "2026-09-07T16:42:28Z"}
+{"shard": 12, "stage": "testing", "done": 48, "total": 53, "rows": 1018984, "note": "UAI 4h: rule 1/120 (mom6)", "failed": [], "pct": 90.6, "updated": "2026-09-07T16:43:14Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 40, "total": 54, "rows": 1726808, "note": "ROKSTOCK 30m: rule 118/120 (cf_stflip)", "failed": [], "pct": 74.1, "updated": "2026-09-07T15:33:05Z"}
+{"shard": 1, "stage": "testing", "done": 43, "total": 54, "rows": 1811978, "note": "SNXX 1h: rule 13/120 (pivot)", "failed": [], "pct": 79.6, "updated": "2026-09-07T15:33:50Z"}

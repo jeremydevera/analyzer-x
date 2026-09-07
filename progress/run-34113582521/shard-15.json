@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 25, "total": 53, "rows": 922278, "note": "JP225 1h: rule 60/120 (eqraid)", "failed": [], "pct": 47.2, "updated": "2026-09-07T11:34:59Z"}
+{"shard": 15, "stage": "testing", "done": 25, "total": 53, "rows": 953018, "note": "JP225 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 47.2, "updated": "2026-09-07T11:35:44Z"}

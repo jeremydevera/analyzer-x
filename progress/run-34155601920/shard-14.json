@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 21, "total": 53, "rows": 1710304, "note": "GSSTOCK 15m: rule 61/120 (turtle)", "failed": [], "pct": 39.6, "updated": "2026-09-07T20:59:22Z"}
+{"shard": 14, "stage": "testing", "done": 21, "total": 53, "rows": 1723564, "note": "GSSTOCK 30m: rule 9/120 (fib382)", "failed": [], "pct": 39.6, "updated": "2026-09-07T21:00:07Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 27, "total": 53, "rows": 1200906, "note": "LINSTOCK 1h: rule 38/120 (ao)", "failed": [], "pct": 50.9, "updated": "2026-09-07T11:37:12Z"}
+{"shard": 19, "stage": "testing", "done": 28, "total": 53, "rows": 1237666, "note": "MAGIC 1h: rule 12/120 (donchian20)", "failed": [], "pct": 52.8, "updated": "2026-09-07T11:37:57Z"}

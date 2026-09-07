@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 6, "total": 53, "rows": 226372, "note": "AVAAI 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-07T14:08:16Z"}
+{"shard": 4, "stage": "testing", "done": 6, "total": 53, "rows": 236492, "note": "AVAAI 1h: rule 40/120 (crsi)", "failed": [], "pct": 11.3, "updated": "2026-09-07T14:09:01Z"}

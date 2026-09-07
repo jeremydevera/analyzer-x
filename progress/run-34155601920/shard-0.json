@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 52, "total": 54, "rows": 4457132, "note": "XLM 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 96.3, "updated": "2026-09-07T23:02:07Z"}
+{"shard": 0, "stage": "testing", "done": 52, "total": 54, "rows": 4482432, "note": "XLM 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 96.3, "updated": "2026-09-07T23:02:52Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 17, "total": 53, "rows": 1610866, "note": "EUL 1h: rule 86/120 (cf_triple_l1)", "failed": [], "pct": 32.1, "updated": "2026-09-07T21:06:33Z"}
+{"shard": 17, "stage": "testing", "done": 17, "total": 53, "rows": 1644306, "note": "EUL 1d: 367 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-07T21:07:23Z"}

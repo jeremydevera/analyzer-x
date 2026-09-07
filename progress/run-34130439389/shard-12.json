@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 4, "total": 53, "rows": 143142, "note": "API3 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 7.5, "updated": "2026-09-07T14:07:31Z"}
+{"shard": 12, "stage": "testing", "done": 4, "total": 53, "rows": 164922, "note": "API3 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 7.5, "updated": "2026-09-07T14:08:16Z"}

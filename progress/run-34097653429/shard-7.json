@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 17, "total": 53, "rows": 663074, "note": "ERA 30m: rule 57/120 (orderblock)", "failed": [], "pct": 32.1, "updated": "2026-09-07T08:32:59Z"}
+{"shard": 7, "stage": "testing", "done": 18, "total": 53, "rows": 677690, "note": "FASTSTOCK 1h: rule 2/120 (mom15)", "failed": [], "pct": 34.0, "updated": "2026-09-07T08:33:44Z"}

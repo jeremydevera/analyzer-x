@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 49, "total": 53, "rows": 1948594, "note": "USTC 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 92.5, "updated": "2026-09-07T12:42:44Z"}
+{"shard": 9, "stage": "testing", "done": 50, "total": 53, "rows": 1956514, "note": "VVV 1h: rule 2/120 (mom15)", "failed": [], "pct": 94.3, "updated": "2026-09-07T12:43:32Z"}

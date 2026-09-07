@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 40, "total": 53, "rows": 837850, "note": "SAHARA 4h: rule 17/120 (atrbreak)", "failed": [], "pct": 75.5, "updated": "2026-09-07T16:40:58Z"}
+{"shard": 12, "stage": "testing", "done": 42, "total": 53, "rows": 910434, "note": "SLX 4h: rule 75/120 (relvolbrk)", "failed": [], "pct": 79.2, "updated": "2026-09-07T16:41:43Z"}

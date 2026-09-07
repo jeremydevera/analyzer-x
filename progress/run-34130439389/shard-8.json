@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 1, "total": 53, "rows": 0, "note": "4 1h: downloading candles", "failed": [], "pct": 1.9, "updated": "2026-09-07T13:59:43Z"}
+{"shard": 8, "stage": "testing", "done": 1, "total": 53, "rows": 8360, "note": "4 1h: rule 32/120 (gmma)", "failed": [], "pct": 1.9, "updated": "2026-09-07T14:00:29Z"}

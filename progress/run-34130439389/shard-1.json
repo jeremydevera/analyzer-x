@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 5, "total": 54, "rows": 146908, "note": "ARKK 30m: 3,314 bars, testing 120 rules", "failed": [], "pct": 9.3, "updated": "2026-09-07T14:06:00Z"}
+{"shard": 1, "stage": "testing", "done": 6, "total": 54, "rows": 186508, "note": "AUD 1h: rule 79/120 (cf_donch)", "failed": [], "pct": 11.1, "updated": "2026-09-07T14:06:45Z"}

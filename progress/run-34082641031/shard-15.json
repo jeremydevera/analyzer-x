@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 27, "total": 53, "rows": 680048, "note": "LINEA 1d: 371 bars, testing 120 rules", "failed": [], "pct": 50.9, "updated": "2026-09-07T04:29:01Z"}
+{"shard": 15, "stage": "testing", "done": 32, "total": 53, "rows": 735026, "note": "NICKEL 4h: rule 3/120 (fade15)", "failed": [], "pct": 60.4, "updated": "2026-09-07T04:29:47Z"}

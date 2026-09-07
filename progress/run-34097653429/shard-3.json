@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 9, "total": 53, "rows": 371772, "note": "BMNRSTOCK 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 17.0, "updated": "2026-09-07T08:11:57Z"}
+{"shard": 3, "stage": "testing", "done": 11, "total": 53, "rows": 380352, "note": "CAT 1h: rule 6/120 (sweep30)", "failed": [], "pct": 20.8, "updated": "2026-09-07T08:12:42Z"}

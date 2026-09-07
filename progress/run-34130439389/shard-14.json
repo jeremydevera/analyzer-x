@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 36, "total": 53, "rows": 1547440, "note": "PLUME 30m: rule 68/120 (dbltop)", "failed": [], "pct": 67.9, "updated": "2026-09-07T15:10:50Z"}
+{"shard": 14, "stage": "testing", "done": 37, "total": 53, "rows": 1558880, "note": "PUMPBTC 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-07T15:11:42Z"}

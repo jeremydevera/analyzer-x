@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 10, "total": 53, "rows": 298428, "note": "CAP 1d: downloading candles", "failed": [], "pct": 18.9, "updated": "2026-09-07T01:20:04Z"}
+{"shard": 17, "stage": "testing", "done": 12, "total": 53, "rows": 363152, "note": "COINBASE 4h: rule 71/120 (mfi14)", "failed": [], "pct": 22.6, "updated": "2026-09-07T01:20:49Z"}

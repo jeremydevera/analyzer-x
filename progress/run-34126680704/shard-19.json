@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 12, "total": 53, "rows": 438708, "note": "COINBASE 4h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-07T13:27:40Z"}
+{"shard": 19, "stage": "testing", "done": 15, "total": 53, "rows": 504824, "note": "DOLO 4h: rule 1/120 (mom6)", "failed": [], "pct": 28.3, "updated": "2026-09-07T13:28:25Z"}

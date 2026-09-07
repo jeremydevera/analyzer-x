@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 20, "total": 53, "rows": 483924, "note": "GESTOCK 4h: 1,625 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-07T10:24:10Z"}
+{"shard": 9, "stage": "testing", "done": 22, "total": 53, "rows": 559784, "note": "HEMI 4h: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-07T10:24:55Z"}

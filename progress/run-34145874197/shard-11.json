@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 7, "total": 53, "rows": 293254, "note": "BASED 30m: rule 7/120 (fvg)", "failed": [], "pct": 13.2, "updated": "2026-09-07T17:18:41Z"}
+{"shard": 11, "stage": "testing", "done": 8, "total": 53, "rows": 317014, "note": "BIO 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-07T17:19:38Z"}

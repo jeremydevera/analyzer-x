@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 2, "total": 53, "rows": 86120, "note": "AIOT 30m: rule 38/120 (ao)", "failed": [], "pct": 3.8, "updated": "2026-09-07T14:06:54Z"}
+{"shard": 16, "stage": "testing", "done": 2, "total": 53, "rows": 97780, "note": "AIOT 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-07T14:07:40Z"}

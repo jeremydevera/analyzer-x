@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 34, "total": 53, "rows": 1313430, "note": "ONG 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 64.2, "updated": "2026-09-07T06:15:17Z"}
+{"shard": 8, "stage": "testing", "done": 35, "total": 53, "rows": 1334924, "note": "PANWSTOCK 1h: rule 71/120 (mfi14)", "failed": [], "pct": 66.0, "updated": "2026-09-07T06:16:02Z"}

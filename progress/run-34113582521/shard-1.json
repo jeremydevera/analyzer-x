@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 7, "total": 54, "rows": 222184, "note": "BABASTOCK 1h: 8,517 bars, testing 120 rules", "failed": [], "pct": 13.0, "updated": "2026-09-07T10:58:28Z"}
+{"shard": 1, "stage": "testing", "done": 7, "total": 54, "rows": 250884, "note": "BABASTOCK 30m: rule 2/120 (mom15)", "failed": [], "pct": 13.0, "updated": "2026-09-07T10:59:15Z"}

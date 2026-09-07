@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 49, "total": 53, "rows": 1944780, "note": "US 30m: rule 55/120 (nhigh50)", "failed": [], "pct": 92.5, "updated": "2026-09-07T18:47:53Z"}
+{"shard": 11, "stage": "testing", "done": 50, "total": 53, "rows": 1959234, "note": "WAL 1h: rule 1/120 (mom6)", "failed": [], "pct": 94.3, "updated": "2026-09-07T18:48:42Z"}

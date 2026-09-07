@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 14, "total": 53, "rows": 322344, "note": "CSTOCK 4h: rule 64/120 (hammer)", "failed": [], "pct": 26.4, "updated": "2026-09-07T07:24:08Z"}
+{"shard": 1, "stage": "testing", "done": 15, "total": 53, "rows": 364614, "note": "DEEP 1d: 394 bars, testing 120 rules", "failed": [], "pct": 28.3, "updated": "2026-09-07T07:24:59Z"}

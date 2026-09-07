@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 22, "total": 53, "rows": 597936, "note": "HNT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 41.5, "updated": "2026-09-07T07:30:27Z"}
+{"shard": 18, "stage": "testing", "done": 23, "total": 53, "rows": 639362, "note": "ICX 4h: rule 3/120 (fade15)", "failed": [], "pct": 43.4, "updated": "2026-09-07T07:31:13Z"}

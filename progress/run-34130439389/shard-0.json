@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 53, "total": 54, "rows": 2167262, "note": "ZAMA 30m: rule 1/120 (mom6)", "failed": [], "pct": 98.1, "updated": "2026-09-07T16:05:15Z"}
+{"shard": 0, "stage": "testing", "done": 53, "total": 54, "rows": 2175842, "note": "ZAMA 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 98.1, "updated": "2026-09-07T16:06:01Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 40, "total": 53, "rows": 1673956, "note": "SAMSUNGSTOCK 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 75.5, "updated": "2026-09-07T18:18:24Z"}
+{"shard": 14, "stage": "testing", "done": 40, "total": 53, "rows": 1713536, "note": "SAMSUNGSTOCK 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-07T18:19:09Z"}

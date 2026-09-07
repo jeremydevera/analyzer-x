@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 34, "total": 54, "rows": 1490740, "note": "OGN 30m: rule 52/120 (nr7)", "failed": [], "pct": 63.0, "updated": "2026-09-07T15:23:41Z"}
+{"shard": 1, "stage": "testing", "done": 34, "total": 54, "rows": 1505700, "note": "OGN 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 63.0, "updated": "2026-09-07T15:24:27Z"}

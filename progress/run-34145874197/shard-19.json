@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 33, "total": 53, "rows": 1507730, "note": "NXPC 30m: rule 75/120 (relvolbrk)", "failed": [], "pct": 62.3, "updated": "2026-09-07T18:29:43Z"}
+{"shard": 19, "stage": "testing", "done": 34, "total": 53, "rows": 1517410, "note": "OP 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 64.2, "updated": "2026-09-07T18:30:33Z"}

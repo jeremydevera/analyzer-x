@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 38, "total": 53, "rows": 992368, "note": "Q 4h: rule 85/120 (cf_triple)", "failed": [], "pct": 71.7, "updated": "2026-09-07T04:35:27Z"}
+{"shard": 7, "stage": "testing", "done": 40, "total": 53, "rows": 1038370, "note": "RVN 4h: rule 94/120 (cf_emarsi)", "failed": [], "pct": 75.5, "updated": "2026-09-07T04:36:12Z"}

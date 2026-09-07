@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 53, "total": 53, "rows": 4267158, "note": "ZINC 15m: 15,495 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-07T23:08:57Z"}
+{"shard": 13, "stage": "testing", "done": 53, "total": 53, "rows": 4282958, "note": "ZINC 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-07T23:09:43Z"}

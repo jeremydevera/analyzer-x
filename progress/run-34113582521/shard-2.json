@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 40, "total": 54, "rows": 1635266, "note": "ROLSTOCK 1h: 1,079 bars, testing 120 rules", "failed": [], "pct": 74.1, "updated": "2026-09-07T12:32:03Z"}
+{"shard": 2, "stage": "testing", "done": 41, "total": 54, "rows": 1660494, "note": "SCR 1h: rule 7/120 (fvg)", "failed": [], "pct": 75.9, "updated": "2026-09-07T12:32:48Z"}

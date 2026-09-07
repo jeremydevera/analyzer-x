@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 21, "total": 53, "rows": 806920, "note": "GOAT 30m: rule 13/120 (pivot)", "failed": [], "pct": 39.6, "updated": "2026-09-07T14:47:14Z"}
+{"shard": 3, "stage": "testing", "done": 21, "total": 53, "rows": 815940, "note": "GOAT 30m: rule 55/120 (nhigh50)", "failed": [], "pct": 39.6, "updated": "2026-09-07T14:48:00Z"}

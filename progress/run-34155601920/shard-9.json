@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 6, "total": 53, "rows": 531964, "note": "AVNT 1h: rule 20/120 (stoch14)", "failed": [], "pct": 11.3, "updated": "2026-09-07T20:05:15Z"}
+{"shard": 9, "stage": "testing", "done": 6, "total": 53, "rows": 553304, "note": "AVNT 4h: 2,180 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-07T20:06:08Z"}

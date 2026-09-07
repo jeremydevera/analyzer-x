@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 41, "total": 53, "rows": 1574256, "note": "SFP 30m: rule 109/120 (cf_fundfade)", "failed": [], "pct": 77.4, "updated": "2026-09-07T06:10:49Z"}
+{"shard": 3, "stage": "testing", "done": 43, "total": 53, "rows": 1599756, "note": "SOLV 1h: rule 4/120 (trend50)", "failed": [], "pct": 81.1, "updated": "2026-09-07T06:11:35Z"}

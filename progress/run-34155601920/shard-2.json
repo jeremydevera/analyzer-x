@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 53, "total": 54, "rows": 4060620, "note": "ZBT 1h: rule 16/120 (keltner)", "failed": [], "pct": 98.1, "updated": "2026-09-07T23:26:58Z"}
+{"shard": 2, "stage": "testing", "done": 53, "total": 54, "rows": 4082840, "note": "ZBT 4h: 1,953 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-07T23:27:44Z"}

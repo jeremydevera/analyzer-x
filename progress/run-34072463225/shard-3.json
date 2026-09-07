@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 32, "total": 53, "rows": 786606, "note": "NBISSTOCK 4h: rule 46/120 (rsi2)", "failed": [], "pct": 60.4, "updated": "2026-09-07T01:29:53Z"}
+{"shard": 3, "stage": "testing", "done": 36, "total": 53, "rows": 875524, "note": "PIEVERSE 4h: rule 64/120 (hammer)", "failed": [], "pct": 67.9, "updated": "2026-09-07T01:30:38Z"}

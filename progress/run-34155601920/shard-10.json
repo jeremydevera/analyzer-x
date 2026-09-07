@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 6, "total": 53, "rows": 635872, "note": "AWE 4h: rule 41/120 (tsi)", "failed": [], "pct": 11.3, "updated": "2026-09-07T20:07:29Z"}
+{"shard": 10, "stage": "testing", "done": 7, "total": 53, "rows": 681900, "note": "BASECAT 30m: rule 13/120 (pivot)", "failed": [], "pct": 13.2, "updated": "2026-09-07T20:08:14Z"}

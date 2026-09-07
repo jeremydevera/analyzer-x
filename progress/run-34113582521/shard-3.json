@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 52, "total": 53, "rows": 2111322, "note": "XMR 30m: rule 21/120 (cci20)", "failed": [], "pct": 98.1, "updated": "2026-09-07T12:35:56Z"}
+{"shard": 3, "stage": "testing", "done": 52, "total": 53, "rows": 2122982, "note": "XMR 30m: rule 75/120 (relvolbrk)", "failed": [], "pct": 98.1, "updated": "2026-09-07T12:36:42Z"}

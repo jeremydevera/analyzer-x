@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 40, "total": 53, "rows": 1529382, "note": "SAND 30m: rule 45/120 (zscore20)", "failed": [], "pct": 75.5, "updated": "2026-09-07T03:05:45Z"}
+{"shard": 13, "stage": "testing", "done": 40, "total": 53, "rows": 1542802, "note": "SAND 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-07T03:06:30Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 12, "total": 53, "rows": 463590, "note": "CMCSASTOCK 30m: rule 60/120 (eqraid)", "failed": [], "pct": 22.6, "updated": "2026-09-07T14:12:39Z"}
+{"shard": 13, "stage": "testing", "done": 13, "total": 53, "rows": 497190, "note": "CRMSTOCK 30m: rule 2/120 (mom15)", "failed": [], "pct": 24.5, "updated": "2026-09-07T14:13:26Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 51, "total": 54, "rows": 4416302, "note": "WLD 15m: rule 9/120 (fib382)", "failed": [], "pct": 94.4, "updated": "2026-09-07T23:43:14Z"}
+{"shard": 1, "stage": "testing", "done": 51, "total": 54, "rows": 4420802, "note": "WLD 15m: rule 34/120 (lrslope)", "failed": [], "pct": 94.4, "updated": "2026-09-07T23:43:59Z"}

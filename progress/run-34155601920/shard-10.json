@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 48, "total": 53, "rows": 4038452, "note": "TZA 15m: rule 3/120 (fade15)", "failed": [], "pct": 90.6, "updated": "2026-09-07T23:42:37Z"}
+{"shard": 10, "stage": "testing", "done": 49, "total": 53, "rows": 4099732, "note": "USUAL 15m: 34,573 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-07T23:43:40Z"}

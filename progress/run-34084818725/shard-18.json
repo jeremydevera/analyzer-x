@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 7, "total": 53, "rows": 264416, "note": "BDX 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-07T05:12:38Z"}
+{"shard": 18, "stage": "testing", "done": 8, "total": 53, "rows": 270096, "note": "BLESS 1h: rule 16/120 (keltner)", "failed": [], "pct": 15.1, "updated": "2026-09-07T05:13:24Z"}

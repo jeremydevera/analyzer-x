@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 8, "total": 53, "rows": 245344, "note": "BILL 1d: rule 1/120 (mom6)", "failed": [], "pct": 15.1, "updated": "2026-09-07T16:31:01Z"}
+{"shard": 10, "stage": "testing", "done": 10, "total": 53, "rows": 284952, "note": "BTX 4h: rule 36/120 (stochrsi)", "failed": [], "pct": 18.9, "updated": "2026-09-07T16:31:46Z"}

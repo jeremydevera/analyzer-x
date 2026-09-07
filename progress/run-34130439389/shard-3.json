@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 12, "total": 53, "rows": 497746, "note": "CHIP 30m: 6,927 bars, testing 120 rules", "failed": [], "pct": 22.6, "updated": "2026-09-07T14:30:49Z"}
+{"shard": 3, "stage": "testing", "done": 12, "total": 53, "rows": 512746, "note": "CHIP 30m: rule 70/120 (cmf20)", "failed": [], "pct": 22.6, "updated": "2026-09-07T14:31:35Z"}

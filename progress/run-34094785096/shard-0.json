@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 28, "total": 53, "rows": 677036, "note": "LIT 4h: 1,551 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-07T07:31:41Z"}
+{"shard": 0, "stage": "testing", "done": 29, "total": 53, "rows": 719760, "note": "MANTA 4h: rule 16/120 (keltner)", "failed": [], "pct": 54.7, "updated": "2026-09-07T07:32:26Z"}

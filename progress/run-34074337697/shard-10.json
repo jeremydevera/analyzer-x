@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 42, "total": 53, "rows": 1653184, "note": "SLX 1h: 2,509 bars, testing 120 rules", "failed": [], "pct": 79.2, "updated": "2026-09-07T03:11:00Z"}
+{"shard": 10, "stage": "testing", "done": 42, "total": 53, "rows": 1683244, "note": "SLX 30m: rule 54/120 (fractal5)", "failed": [], "pct": 79.2, "updated": "2026-09-07T03:11:45Z"}

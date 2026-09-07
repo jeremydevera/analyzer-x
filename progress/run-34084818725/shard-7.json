@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 22, "total": 53, "rows": 859106, "note": "HEMI 30m: rule 3/120 (fade15)", "failed": [], "pct": 41.5, "updated": "2026-09-07T05:40:07Z"}
+{"shard": 7, "stage": "testing", "done": 22, "total": 53, "rows": 868706, "note": "HEMI 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-07T05:40:52Z"}

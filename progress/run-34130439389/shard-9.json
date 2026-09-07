@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 20, "total": 53, "rows": 784004, "note": "GESTOCK 1h: rule 12/120 (donchian20)", "failed": [], "pct": 37.7, "updated": "2026-09-07T14:35:11Z"}
+{"shard": 9, "stage": "testing", "done": 21, "total": 53, "rows": 817238, "note": "GRAM 1h: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 39.6, "updated": "2026-09-07T14:35:56Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 22, "total": 53, "rows": 886880, "note": "HBAR 30m: rule 48/120 (prank)", "failed": [], "pct": 41.5, "updated": "2026-09-07T08:39:41Z"}
+{"shard": 4, "stage": "testing", "done": 23, "total": 53, "rows": 901080, "note": "HTZSTOCK 1h: 746 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-07T08:40:27Z"}

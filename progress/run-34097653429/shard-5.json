@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 5, "total": 53, "rows": 180666, "note": "ARPA 30m: rule 11/120 (sr_break)", "failed": [], "pct": 9.4, "updated": "2026-09-07T08:00:22Z"}
+{"shard": 5, "stage": "testing", "done": 5, "total": 53, "rows": 200466, "note": "ARPA 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-07T08:01:07Z"}

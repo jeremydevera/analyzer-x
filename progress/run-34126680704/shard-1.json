@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 19, "total": 54, "rows": 436530, "note": "FLOCK 4h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 35.2, "updated": "2026-09-07T13:26:01Z"}
+{"shard": 1, "stage": "testing", "done": 20, "total": 54, "rows": 464866, "note": "F 4h: rule 28/120 (vortex14)", "failed": [], "pct": 37.0, "updated": "2026-09-07T13:26:46Z"}

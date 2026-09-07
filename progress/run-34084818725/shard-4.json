@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 43, "total": 53, "rows": 1660610, "note": "SOL 30m: rule 44/120 (elder)", "failed": [], "pct": 81.1, "updated": "2026-09-07T06:20:18Z"}
+{"shard": 4, "stage": "testing", "done": 43, "total": 53, "rows": 1674010, "note": "SOL 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-07T06:21:03Z"}

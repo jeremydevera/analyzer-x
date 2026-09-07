@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 50, "total": 54, "rows": 2134538, "note": "VIRTUAL 30m: rule 69/120 (obv20)", "failed": [], "pct": 92.6, "updated": "2026-09-07T18:53:21Z"}
+{"shard": 1, "stage": "testing", "done": 51, "total": 54, "rows": 2144738, "note": "WLD 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 94.4, "updated": "2026-09-07T18:54:06Z"}

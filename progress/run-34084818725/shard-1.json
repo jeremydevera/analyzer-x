@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 11, "total": 53, "rows": 445348, "note": "CATI 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 20.8, "updated": "2026-09-07T05:17:29Z"}
+{"shard": 1, "stage": "testing", "done": 12, "total": 53, "rows": 448868, "note": "CHILLGUY 1h: rule 4/120 (trend50)", "failed": [], "pct": 22.6, "updated": "2026-09-07T05:18:16Z"}

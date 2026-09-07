@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 8, "total": 53, "rows": 789992, "note": "BIRB 1d: 222 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-07T20:06:40Z"}
+{"shard": 12, "stage": "testing", "done": 12, "total": 53, "rows": 848842, "note": "CLSKSTOCK 15m: rule 2/120 (mom15)", "failed": [], "pct": 22.6, "updated": "2026-09-07T20:07:25Z"}

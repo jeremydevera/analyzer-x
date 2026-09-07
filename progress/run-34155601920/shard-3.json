@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 52, "total": 53, "rows": 4497130, "note": "XMR 15m: rule 25/120 (ichimoku)", "failed": [], "pct": 98.1, "updated": "2026-09-07T23:39:26Z"}
+{"shard": 3, "stage": "testing", "done": 52, "total": 53, "rows": 4502410, "note": "XMR 15m: rule 49/120 (vwaprev)", "failed": [], "pct": 98.1, "updated": "2026-09-07T23:40:12Z"}

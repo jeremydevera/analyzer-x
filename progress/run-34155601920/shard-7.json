@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 47, "total": 53, "rows": 3638588, "note": "TRADOOR 15m: rule 60/120 (eqraid)", "failed": [], "pct": 88.7, "updated": "2026-09-07T21:42:29Z"}
+{"shard": 7, "stage": "testing", "done": 47, "total": 53, "rows": 3651788, "note": "TRADOOR 30m: 17,683 bars, testing 120 rules", "failed": [], "pct": 88.7, "updated": "2026-09-07T21:43:26Z"}

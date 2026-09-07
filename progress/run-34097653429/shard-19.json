@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 22, "total": 53, "rows": 944824, "note": "HOLO 30m: rule 13/120 (pivot)", "failed": [], "pct": 41.5, "updated": "2026-09-07T08:50:35Z"}
+{"shard": 19, "stage": "testing", "done": 22, "total": 53, "rows": 953844, "note": "HOLO 30m: rule 55/120 (nhigh50)", "failed": [], "pct": 41.5, "updated": "2026-09-07T08:51:20Z"}

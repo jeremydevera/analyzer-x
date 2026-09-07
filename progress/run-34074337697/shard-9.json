@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 2, "total": 53, "rows": 79828, "note": "AGI 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-07T01:54:46Z"}
+{"shard": 9, "stage": "testing", "done": 3, "total": 53, "rows": 97188, "note": "ALLO 1h: rule 69/120 (obv20)", "failed": [], "pct": 5.7, "updated": "2026-09-07T01:55:31Z"}

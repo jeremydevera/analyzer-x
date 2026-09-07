@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 39, "total": 53, "rows": 1662454, "note": "RKLBSTOCK 1h: 3,957 bars, testing 120 rules", "failed": [], "pct": 73.6, "updated": "2026-09-07T03:04:08Z"}
+{"shard": 12, "stage": "testing", "done": 39, "total": 53, "rows": 1691974, "note": "RKLBSTOCK 30m: rule 35/120 (willr14)", "failed": [], "pct": 73.6, "updated": "2026-09-07T03:04:53Z"}

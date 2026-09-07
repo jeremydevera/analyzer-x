@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 32, "total": 53, "rows": 2282484, "note": "NFLXSTOCK 15m: 8,661 bars, testing 120 rules", "failed": [], "pct": 60.4, "updated": "2026-09-07T21:27:55Z"}
+{"shard": 15, "stage": "testing", "done": 32, "total": 53, "rows": 2315444, "note": "NFLXSTOCK 30m: rule 63/120 (killzone)", "failed": [], "pct": 60.4, "updated": "2026-09-07T21:28:40Z"}

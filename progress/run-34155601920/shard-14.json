@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 47, "total": 53, "rows": 3938844, "note": "TRUST 15m: rule 75/120 (relvolbrk)", "failed": [], "pct": 88.7, "updated": "2026-09-07T22:40:25Z"}
+{"shard": 14, "stage": "testing", "done": 47, "total": 53, "rows": 3947644, "note": "TRUST 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 88.7, "updated": "2026-09-07T22:41:12Z"}

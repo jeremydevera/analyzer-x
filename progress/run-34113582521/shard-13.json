@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 18, "total": 53, "rows": 733546, "note": "FF 30m: rule 55/120 (nhigh50)", "failed": [], "pct": 34.0, "updated": "2026-09-07T11:10:18Z"}
+{"shard": 13, "stage": "testing", "done": 21, "total": 53, "rows": 777396, "note": "GRVT 1h: rule 6/120 (sweep30)", "failed": [], "pct": 39.6, "updated": "2026-09-07T11:11:03Z"}

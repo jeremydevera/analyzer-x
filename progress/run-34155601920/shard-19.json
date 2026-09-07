@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 50, "total": 53, "rows": 4412146, "note": "WIF 30m: rule 97/120 (cf_ttm)", "failed": [], "pct": 94.3, "updated": "2026-09-07T22:59:05Z"}
+{"shard": 19, "stage": "testing", "done": 50, "total": 53, "rows": 4422486, "note": "WIF 1h: rule 18/120 (macd)", "failed": [], "pct": 94.3, "updated": "2026-09-07T22:59:51Z"}

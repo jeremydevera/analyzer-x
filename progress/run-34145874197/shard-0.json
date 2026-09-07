@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 5, "total": 54, "rows": 198258, "note": "ARIA 30m: rule 51/120 (orb)", "failed": [], "pct": 9.3, "updated": "2026-09-07T17:15:35Z"}
+{"shard": 0, "stage": "testing", "done": 5, "total": 54, "rows": 211678, "note": "ARIA 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 9.3, "updated": "2026-09-07T17:16:21Z"}

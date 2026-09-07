@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 38, "total": 53, "rows": 1553794, "note": "RAY 1h: rule 57/120 (orderblock)", "failed": [], "pct": 71.7, "updated": "2026-09-07T15:09:03Z"}
+{"shard": 13, "stage": "testing", "done": 38, "total": 53, "rows": 1568534, "note": "RAY 30m: rule 2/120 (mom15)", "failed": [], "pct": 71.7, "updated": "2026-09-07T15:09:57Z"}

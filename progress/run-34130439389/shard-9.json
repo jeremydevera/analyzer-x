@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 22, "total": 53, "rows": 893248, "note": "HEMI 30m: rule 70/120 (cmf20)", "failed": [], "pct": 41.5, "updated": "2026-09-07T14:39:06Z"}
+{"shard": 9, "stage": "testing", "done": 24, "total": 53, "rows": 912358, "note": "INIT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 45.3, "updated": "2026-09-07T14:39:52Z"}

@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 43, "total": 54, "rows": 992410, "note": "SNX 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 79.6, "updated": "2026-09-07T13:37:28Z"}
+{"shard": 2, "stage": "testing", "done": 44, "total": 54, "rows": 1048598, "note": "SPX500 4h: rule 69/120 (obv20)", "failed": [], "pct": 81.5, "updated": "2026-09-07T13:38:13Z"}

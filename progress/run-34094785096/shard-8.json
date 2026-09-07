@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 24, "total": 53, "rows": 622580, "note": "INJ 4h: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 45.3, "updated": "2026-09-07T07:30:42Z"}
+{"shard": 8, "stage": "testing", "done": 27, "total": 53, "rows": 680956, "note": "LAYER 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 50.9, "updated": "2026-09-07T07:31:34Z"}

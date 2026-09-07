@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 37, "total": 53, "rows": 2701754, "note": "PTB 15m: 34,564 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-07T21:21:26Z"}
+{"shard": 12, "stage": "testing", "done": 37, "total": 53, "rows": 2703074, "note": "PTB 15m: rule 2/120 (mom15)", "failed": [], "pct": 69.8, "updated": "2026-09-07T21:22:22Z"}

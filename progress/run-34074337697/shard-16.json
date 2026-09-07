@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 17, "total": 53, "rows": 797380, "note": "EUR 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-07T02:38:33Z"}
+{"shard": 16, "stage": "testing", "done": 18, "total": 53, "rows": 806560, "note": "FILECOIN 1h: rule 30/120 (kama10)", "failed": [], "pct": 34.0, "updated": "2026-09-07T02:39:18Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 39, "total": 53, "rows": 3493386, "note": "ROBINHOOD 15m: rule 56/120 (insidebrk)", "failed": [], "pct": 73.6, "updated": "2026-09-07T22:41:09Z"}
+{"shard": 18, "stage": "testing", "done": 39, "total": 53, "rows": 3501666, "note": "ROBINHOOD 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 73.6, "updated": "2026-09-07T22:41:55Z"}

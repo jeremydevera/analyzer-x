@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 16, "total": 54, "rows": 482598, "note": "DOT 1h: rule 29/120 (hull20)", "failed": [], "pct": 29.6, "updated": "2026-09-07T17:35:15Z"}
+{"shard": 2, "stage": "testing", "done": 16, "total": 54, "rows": 502178, "note": "DOT 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 29.6, "updated": "2026-09-07T17:36:00Z"}

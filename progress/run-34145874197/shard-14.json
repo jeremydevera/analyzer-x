@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 45, "total": 53, "rows": 1861594, "note": "SYRUP 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-07T18:24:34Z"}
+{"shard": 14, "stage": "testing", "done": 46, "total": 53, "rows": 1871054, "note": "THETA 1h: rule 16/120 (keltner)", "failed": [], "pct": 86.8, "updated": "2026-09-07T18:25:20Z"}

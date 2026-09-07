@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 26, "total": 54, "rows": 558394, "note": "KAITO 4h: downloading candles", "failed": [], "pct": 48.1, "updated": "2026-09-07T13:29:40Z"}
+{"shard": 2, "stage": "testing", "done": 26, "total": 54, "rows": 584354, "note": "KAITO 1d: 394 bars, testing 120 rules", "failed": [], "pct": 48.1, "updated": "2026-09-07T13:30:29Z"}

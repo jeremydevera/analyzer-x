@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 21, "total": 53, "rows": 471192, "note": "GRT 4h: rule 16/120 (keltner)", "failed": [], "pct": 39.6, "updated": "2026-09-07T13:27:04Z"}
+{"shard": 12, "stage": "testing", "done": 24, "total": 53, "rows": 550400, "note": "INTUSTOCK 1d: downloading candles", "failed": [], "pct": 45.3, "updated": "2026-09-07T13:27:49Z"}

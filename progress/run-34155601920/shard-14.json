@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 1, "total": 53, "rows": 113104, "note": "AAVE 1d: rule 95/120 (cf_emarsi_l1)", "failed": [], "pct": 1.9, "updated": "2026-09-07T19:35:01Z"}
+{"shard": 14, "stage": "testing", "done": 3, "total": 53, "rows": 120108, "note": "AMATSTOCK 15m: rule 19/120 (emacross)", "failed": [], "pct": 5.7, "updated": "2026-09-07T19:35:47Z"}

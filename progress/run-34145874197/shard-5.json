@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 16, "total": 53, "rows": 543030, "note": "DRIFT 30m: rule 33/120 (heikin)", "failed": [], "pct": 30.2, "updated": "2026-09-07T17:33:07Z"}
+{"shard": 5, "stage": "testing", "done": 16, "total": 53, "rows": 552830, "note": "DRIFT 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 30.2, "updated": "2026-09-07T17:33:53Z"}

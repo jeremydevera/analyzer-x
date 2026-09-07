@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 52, "total": 53, "rows": 2040078, "note": "XPD 30m: rule 72/120 (force13)", "failed": [], "pct": 98.1, "updated": "2026-09-07T00:36:42Z"}
+{"shard": 4, "stage": "testing", "done": 53, "total": 53, "rows": 2073634, "note": "ZEST 30m: 5,303 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-07T00:37:27Z"}

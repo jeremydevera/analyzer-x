@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 37, "total": 53, "rows": 1543542, "note": "PYTH 30m: rule 13/120 (pivot)", "failed": [], "pct": 69.8, "updated": "2026-09-07T00:37:05Z"}
+{"shard": 18, "stage": "testing", "done": 37, "total": 53, "rows": 1551742, "note": "PYTH 30m: rule 55/120 (nhigh50)", "failed": [], "pct": 69.8, "updated": "2026-09-07T00:37:50Z"}

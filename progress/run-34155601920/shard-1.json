@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 10, "total": 54, "rows": 790068, "note": "BROCCOLI 15m: rule 3/120 (fade15)", "failed": [], "pct": 18.5, "updated": "2026-09-07T20:10:03Z"}
+{"shard": 1, "stage": "testing", "done": 10, "total": 54, "rows": 794028, "note": "BROCCOLI 15m: rule 21/120 (cci20)", "failed": [], "pct": 18.5, "updated": "2026-09-07T20:10:53Z"}

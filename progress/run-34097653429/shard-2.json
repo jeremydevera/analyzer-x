@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 33, "total": 53, "rows": 1359014, "note": "NMR 30m: rule 20/120 (stoch14)", "failed": [], "pct": 62.3, "updated": "2026-09-07T08:53:14Z"}
+{"shard": 2, "stage": "testing", "done": 33, "total": 53, "rows": 1371114, "note": "NMR 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 62.3, "updated": "2026-09-07T08:53:59Z"}

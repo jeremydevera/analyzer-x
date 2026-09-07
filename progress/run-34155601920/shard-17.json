@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 41, "total": 53, "rows": 3473488, "note": "SIREN 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 77.4, "updated": "2026-09-07T22:54:50Z"}
+{"shard": 17, "stage": "testing", "done": 41, "total": 53, "rows": 3477928, "note": "SIREN 1h: rule 6/120 (sweep30)", "failed": [], "pct": 77.4, "updated": "2026-09-07T22:55:36Z"}

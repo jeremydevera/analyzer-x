@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 43, "total": 53, "rows": 3657264, "note": "SPCXSTOCK 15m: rule 25/120 (ichimoku)", "failed": [], "pct": 81.1, "updated": "2026-09-07T23:01:07Z"}
+{"shard": 17, "stage": "testing", "done": 43, "total": 53, "rows": 3679604, "note": "SPCXSTOCK 30m: rule 22/120 (engulf)", "failed": [], "pct": 81.1, "updated": "2026-09-07T23:01:52Z"}

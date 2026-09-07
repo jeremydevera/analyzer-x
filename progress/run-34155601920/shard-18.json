@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 17, "total": 53, "rows": 1577368, "note": "EUR 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-07T20:57:34Z"}
+{"shard": 18, "stage": "testing", "done": 17, "total": 53, "rows": 1598248, "note": "EUR 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-07T20:58:19Z"}

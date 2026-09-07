@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 17, "total": 53, "rows": 747906, "note": "EUR 1h: rule 91/120 (cf_soup)", "failed": [], "pct": 32.1, "updated": "2026-09-07T14:42:14Z"}
+{"shard": 18, "stage": "testing", "done": 17, "total": 53, "rows": 760486, "note": "EUR 30m: rule 35/120 (willr14)", "failed": [], "pct": 32.1, "updated": "2026-09-07T14:42:59Z"}

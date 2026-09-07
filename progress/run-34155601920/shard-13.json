@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 5, "total": 53, "rows": 377426, "note": "ASTR 1h: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-07T19:42:00Z"}
+{"shard": 13, "stage": "testing", "done": 5, "total": 53, "rows": 408886, "note": "ASTR 1d: 394 bars, testing 120 rules", "failed": [], "pct": 9.4, "updated": "2026-09-07T19:42:49Z"}

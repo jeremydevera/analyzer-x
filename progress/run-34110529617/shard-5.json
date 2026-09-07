@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 3, "total": 53, "rows": 66352, "note": "ALCH 1d: 394 bars, testing 120 rules", "failed": [], "pct": 5.7, "updated": "2026-09-07T10:17:54Z"}
+{"shard": 5, "stage": "testing", "done": 5, "total": 53, "rows": 119732, "note": "ARPA 1d: rule 45/120 (zscore20)", "failed": [], "pct": 9.4, "updated": "2026-09-07T10:18:39Z"}

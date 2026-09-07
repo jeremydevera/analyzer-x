@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 14, "total": 53, "rows": 243886, "note": "CVX 4h: rule 3/120 (fade15)", "failed": [], "pct": 26.4, "updated": "2026-09-07T16:30:14Z"}
+{"shard": 13, "stage": "testing", "done": 16, "total": 53, "rows": 281198, "note": "EDEN 4h: 2,054 bars, testing 120 rules", "failed": [], "pct": 30.2, "updated": "2026-09-07T16:31:03Z"}

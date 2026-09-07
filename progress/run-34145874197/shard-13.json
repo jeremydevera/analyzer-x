@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 9, "total": 53, "rows": 340466, "note": "BOTSTOCK 30m: 2,701 bars, testing 120 rules", "failed": [], "pct": 17.0, "updated": "2026-09-07T17:11:49Z"}
+{"shard": 13, "stage": "testing", "done": 11, "total": 53, "rows": 427958, "note": "CELHSTOCK 30m: rule 92/120 (cf_soup_l1)", "failed": [], "pct": 20.8, "updated": "2026-09-07T17:12:34Z"}

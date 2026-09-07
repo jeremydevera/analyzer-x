@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 5, "total": 53, "rows": 150228, "note": "ASTSSTOCK 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-07T07:59:22Z"}
+{"shard": 14, "stage": "testing", "done": 6, "total": 53, "rows": 160048, "note": "AXS 1h: rule 19/120 (emacross)", "failed": [], "pct": 11.3, "updated": "2026-09-07T08:00:07Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 10, "total": 54, "rows": 259180, "note": "BROCCOLIF3B 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 18.5, "updated": "2026-09-07T16:32:09Z"}
+{"shard": 0, "stage": "testing", "done": 11, "total": 54, "rows": 300100, "note": "CASHCAT 1d: rule 2/120 (mom15)", "failed": [], "pct": 20.4, "updated": "2026-09-07T16:32:54Z"}

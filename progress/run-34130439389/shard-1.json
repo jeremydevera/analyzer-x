@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 23, "total": 54, "rows": 911998, "note": "HOLO 1h: rule 56/120 (insidebrk)", "failed": [], "pct": 42.6, "updated": "2026-09-07T14:47:07Z"}
+{"shard": 1, "stage": "testing", "done": 23, "total": 54, "rows": 925792, "note": "HOLO 30m: rule 2/120 (mom15)", "failed": [], "pct": 42.6, "updated": "2026-09-07T14:48:03Z"}

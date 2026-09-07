@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 26, "total": 53, "rows": 2122566, "note": "KGEN 15m: rule 21/120 (cci20)", "failed": [], "pct": 49.1, "updated": "2026-09-07T21:54:36Z"}
+{"shard": 9, "stage": "testing", "done": 26, "total": 53, "rows": 2126886, "note": "KGEN 15m: rule 45/120 (zscore20)", "failed": [], "pct": 49.1, "updated": "2026-09-07T21:55:22Z"}

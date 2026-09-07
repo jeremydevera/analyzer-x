@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 23, "total": 53, "rows": 958384, "note": "IBB 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 43.4, "updated": "2026-09-07T11:37:10Z"}
+{"shard": 14, "stage": "testing", "done": 24, "total": 53, "rows": 983980, "note": "INX 30m: 10,545 bars, testing 120 rules", "failed": [], "pct": 45.3, "updated": "2026-09-07T11:38:02Z"}

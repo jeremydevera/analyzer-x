@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 1713980, "note": "SUN 30m: rule 20/120 (stoch14)", "failed": [], "pct": 84.9, "updated": "2026-09-07T00:18:09Z"}
+{"shard": 3, "stage": "testing", "done": 45, "total": 53, "rows": 1728280, "note": "SUN 30m: rule 86/120 (cf_triple_l1)", "failed": [], "pct": 84.9, "updated": "2026-09-07T00:18:54Z"}

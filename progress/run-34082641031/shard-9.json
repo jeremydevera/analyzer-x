@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 27, "total": 53, "rows": 663196, "note": "LA 1d: 394 bars, testing 120 rules", "failed": [], "pct": 50.9, "updated": "2026-09-07T04:30:36Z"}
+{"shard": 9, "stage": "testing", "done": 29, "total": 53, "rows": 720076, "note": "MCDSTOCK 4h: rule 10/120 (sr_bounce)", "failed": [], "pct": 54.7, "updated": "2026-09-07T04:31:21Z"}

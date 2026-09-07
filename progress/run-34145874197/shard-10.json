@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 27, "total": 53, "rows": 1056500, "note": "LAYER 30m: rule 29/120 (hull20)", "failed": [], "pct": 50.9, "updated": "2026-09-07T18:06:16Z"}
+{"shard": 10, "stage": "testing", "done": 27, "total": 53, "rows": 1068500, "note": "LAYER 30m: rule 91/120 (cf_soup)", "failed": [], "pct": 50.9, "updated": "2026-09-07T18:07:01Z"}

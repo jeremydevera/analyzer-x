@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 22, "total": 53, "rows": 851190, "note": "HEMI 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-07T02:26:22Z"}
+{"shard": 7, "stage": "testing", "done": 22, "total": 53, "rows": 857790, "note": "HEMI 30m: rule 3/120 (fade15)", "failed": [], "pct": 41.5, "updated": "2026-09-07T02:27:08Z"}

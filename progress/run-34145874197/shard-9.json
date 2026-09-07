@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 37, "total": 53, "rows": 1490504, "note": "PROVE 1h: rule 64/120 (hammer)", "failed": [], "pct": 69.8, "updated": "2026-09-07T17:50:22Z"}
+{"shard": 9, "stage": "testing", "done": 37, "total": 53, "rows": 1507444, "note": "PROVE 30m: rule 16/120 (keltner)", "failed": [], "pct": 69.8, "updated": "2026-09-07T17:51:07Z"}

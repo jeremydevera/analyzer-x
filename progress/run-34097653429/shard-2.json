@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 28, "total": 53, "rows": 1146656, "note": "LMTSTOCK 1h: rule 2/120 (mom15)", "failed": [], "pct": 52.8, "updated": "2026-09-07T08:46:05Z"}
+{"shard": 2, "stage": "testing", "done": 29, "total": 53, "rows": 1194104, "note": "MARASTOCK 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 54.7, "updated": "2026-09-07T08:46:50Z"}

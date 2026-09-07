@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 48, "total": 54, "rows": 2028946, "note": "TST 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 88.9, "updated": "2026-09-07T15:45:32Z"}
+{"shard": 1, "stage": "testing", "done": 48, "total": 54, "rows": 2036546, "note": "TST 30m: rule 48/120 (prank)", "failed": [], "pct": 88.9, "updated": "2026-09-07T15:46:18Z"}

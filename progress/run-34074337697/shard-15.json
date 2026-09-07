@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 45, "total": 53, "rows": 1758538, "note": "TAG 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-07T03:16:05Z"}
+{"shard": 15, "stage": "testing", "done": 45, "total": 53, "rows": 1761338, "note": "TAG 30m: rule 8/120 (fib618)", "failed": [], "pct": 84.9, "updated": "2026-09-07T03:16:51Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 41, "total": 53, "rows": 1073034, "note": "SHELL 1d: 394 bars, testing 120 rules", "failed": [], "pct": 77.4, "updated": "2026-09-07T01:36:49Z"}
+{"shard": 7, "stage": "testing", "done": 45, "total": 53, "rows": 1113118, "note": "SWARMS 4h: rule 52/120 (nr7)", "failed": [], "pct": 84.9, "updated": "2026-09-07T01:37:34Z"}

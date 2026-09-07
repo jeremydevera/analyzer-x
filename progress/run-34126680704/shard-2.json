@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 4, "total": 54, "rows": 78612, "note": "ANETSTOCK 1d: rule 79/120 (cf_donch)", "failed": [], "pct": 7.4, "updated": "2026-09-07T13:20:46Z"}
+{"shard": 2, "stage": "testing", "done": 6, "total": 54, "rows": 121796, "note": "AURASOL 4h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 11.1, "updated": "2026-09-07T13:21:31Z"}

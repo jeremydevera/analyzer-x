@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 9, "total": 53, "rows": 369190, "note": "BROCCOLIF3B 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 17.0, "updated": "2026-09-07T08:19:24Z"}
+{"shard": 18, "stage": "testing", "done": 9, "total": 53, "rows": 375450, "note": "BROCCOLIF3B 30m: rule 2/120 (mom15)", "failed": [], "pct": 17.0, "updated": "2026-09-07T08:20:14Z"}

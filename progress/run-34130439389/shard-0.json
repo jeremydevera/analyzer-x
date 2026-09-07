@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 53, "total": 54, "rows": 2175842, "note": "ZAMA 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 98.1, "updated": "2026-09-07T16:06:01Z"}
+{"shard": 0, "stage": "testing", "done": 54, "total": 54, "rows": 2193882, "note": "ZRX 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-07T16:06:53Z"}

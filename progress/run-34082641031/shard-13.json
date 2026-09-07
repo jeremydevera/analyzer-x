@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 46, "total": 53, "rows": 1017120, "note": "THE 1d: rule 57/120 (orderblock)", "failed": [], "pct": 86.8, "updated": "2026-09-07T04:35:33Z"}
+{"shard": 13, "stage": "testing", "done": 48, "total": 53, "rows": 1057270, "note": "UKOIL 4h: 1,321 bars, testing 120 rules", "failed": [], "pct": 90.6, "updated": "2026-09-07T04:36:20Z"}

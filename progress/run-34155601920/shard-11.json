@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 9, "total": 53, "rows": 793394, "note": "BOME 15m: 34,560 bars, testing 120 rules", "failed": [], "pct": 17.0, "updated": "2026-09-07T20:16:55Z"}
+{"shard": 11, "stage": "testing", "done": 9, "total": 53, "rows": 794714, "note": "BOME 15m: rule 2/120 (mom15)", "failed": [], "pct": 17.0, "updated": "2026-09-07T20:17:43Z"}

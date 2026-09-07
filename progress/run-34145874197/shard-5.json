@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 37, "total": 53, "rows": 1307308, "note": "PRL 30m: rule 13/120 (pivot)", "failed": [], "pct": 69.8, "updated": "2026-09-07T18:05:25Z"}
+{"shard": 5, "stage": "testing", "done": 38, "total": 53, "rows": 1330848, "note": "QQQSTOCK 1h: rule 1/120 (mom6)", "failed": [], "pct": 71.7, "updated": "2026-09-07T18:06:10Z"}

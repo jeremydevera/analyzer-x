@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 46, "total": 53, "rows": 2026146, "note": "TMF 1h: 952 bars, testing 120 rules", "failed": [], "pct": 86.8, "updated": "2026-09-07T06:18:29Z"}
+{"shard": 16, "stage": "testing", "done": 48, "total": 53, "rows": 2145584, "note": "UNITREE 30m: rule 48/120 (prank)", "failed": [], "pct": 90.6, "updated": "2026-09-07T06:19:14Z"}

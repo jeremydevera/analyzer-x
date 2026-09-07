@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 6, "total": 53, "rows": 256932, "note": "AXL 30m: rule 75/120 (relvolbrk)", "failed": [], "pct": 11.3, "updated": "2026-09-07T17:17:11Z"}
+{"shard": 11, "stage": "testing", "done": 7, "total": 53, "rows": 270000, "note": "BASED 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 13.2, "updated": "2026-09-07T17:17:56Z"}

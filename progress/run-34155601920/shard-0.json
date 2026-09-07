@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 13, "total": 54, "rows": 1062366, "note": "COLLECT 15m: rule 21/120 (cci20)", "failed": [], "pct": 24.1, "updated": "2026-09-07T20:24:17Z"}
+{"shard": 0, "stage": "testing", "done": 13, "total": 54, "rows": 1071166, "note": "COLLECT 15m: rule 62/120 (ote)", "failed": [], "pct": 24.1, "updated": "2026-09-07T20:25:03Z"}

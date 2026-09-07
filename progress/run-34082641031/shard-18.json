@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 24, "total": 53, "rows": 658734, "note": "IOTX 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 45.3, "updated": "2026-09-07T04:31:05Z"}
+{"shard": 18, "stage": "testing", "done": 25, "total": 53, "rows": 703406, "note": "JUP 4h: rule 22/120 (engulf)", "failed": [], "pct": 47.2, "updated": "2026-09-07T04:31:50Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 43, "total": 53, "rows": 1107816, "note": "SONYSTOCK 1d: 77 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-07T16:47:28Z"}
+{"shard": 9, "stage": "testing", "done": 45, "total": 53, "rows": 1131686, "note": "SWARMS 4h: rule 72/120 (force13)", "failed": [], "pct": 84.9, "updated": "2026-09-07T16:48:14Z"}

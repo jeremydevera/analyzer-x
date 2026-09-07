@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 43, "total": 53, "rows": 3300696, "note": "SOMI 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 81.1, "updated": "2026-09-07T21:28:24Z"}
+{"shard": 7, "stage": "testing", "done": 43, "total": 53, "rows": 3318736, "note": "SOMI 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-07T21:29:09Z"}

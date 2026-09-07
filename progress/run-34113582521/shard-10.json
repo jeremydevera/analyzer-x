@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 22, "total": 53, "rows": 901900, "note": "HFT 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-07T11:51:53Z"}
+{"shard": 10, "stage": "testing", "done": 23, "total": 53, "rows": 908940, "note": "HYPER 1h: rule 26/120 (adx14)", "failed": [], "pct": 43.4, "updated": "2026-09-07T11:52:38Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 47, "total": 53, "rows": 1090710, "note": "TRADOOR 4h: rule 36/120 (stochrsi)", "failed": [], "pct": 88.7, "updated": "2026-09-07T04:37:44Z"}
+{"shard": 5, "stage": "testing", "done": 49, "total": 53, "rows": 1126174, "note": "USOIL 4h: rule 13/120 (pivot)", "failed": [], "pct": 92.5, "updated": "2026-09-07T04:38:29Z"}

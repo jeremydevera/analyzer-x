@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 1, "total": 53, "rows": 48500, "note": "AAPLSTOCK 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-07T14:01:18Z"}
+{"shard": 11, "stage": "testing", "done": 2, "total": 53, "rows": 57980, "note": "AGT 1h: rule 18/120 (macd)", "failed": [], "pct": 3.8, "updated": "2026-09-07T14:02:03Z"}

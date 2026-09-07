@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 46, "total": 53, "rows": 1870938, "note": "TESLA 30m: rule 83/120 (cf_maobv_l1)", "failed": [], "pct": 86.8, "updated": "2026-09-07T06:46:40Z"}
+{"shard": 8, "stage": "testing", "done": 48, "total": 53, "rows": 1920358, "note": "TZA 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 90.6, "updated": "2026-09-07T06:47:25Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 5, "total": 53, "rows": 235732, "note": "ARMSTOCK 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-07T08:02:13Z"}
+{"shard": 4, "stage": "testing", "done": 6, "total": 53, "rows": 241332, "note": "AVAAI 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 11.3, "updated": "2026-09-07T08:02:58Z"}

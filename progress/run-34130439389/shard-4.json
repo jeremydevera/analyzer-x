@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 42, "total": 53, "rows": 1917064, "note": "SKR 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 79.2, "updated": "2026-09-07T15:26:41Z"}
+{"shard": 4, "stage": "testing", "done": 42, "total": 53, "rows": 1936424, "note": "SKR 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 79.2, "updated": "2026-09-07T15:27:26Z"}

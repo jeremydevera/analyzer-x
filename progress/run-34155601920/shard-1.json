@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 35, "total": 54, "rows": 3262912, "note": "ORCA 1d: 394 bars, testing 120 rules", "failed": [], "pct": 64.8, "updated": "2026-09-07T22:45:46Z"}
+{"shard": 1, "stage": "testing", "done": 36, "total": 54, "rows": 3278260, "note": "PEPE 15m: rule 3/120 (fade15)", "failed": [], "pct": 66.7, "updated": "2026-09-07T22:46:44Z"}

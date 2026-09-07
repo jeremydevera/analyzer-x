@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 43, "total": 53, "rows": 1562634, "note": "SONIC 1h: rule 24/120 (psar)", "failed": [], "pct": 81.1, "updated": "2026-09-07T18:29:27Z"}
+{"shard": 8, "stage": "testing", "done": 43, "total": 53, "rows": 1583094, "note": "SONIC 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-07T18:30:22Z"}

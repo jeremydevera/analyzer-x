@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 33, "total": 53, "rows": 1379702, "note": "NVIDIA 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 62.3, "updated": "2026-09-07T12:01:45Z"}
+{"shard": 16, "stage": "testing", "done": 33, "total": 53, "rows": 1393742, "note": "NVIDIA 30m: rule 29/120 (hull20)", "failed": [], "pct": 62.3, "updated": "2026-09-07T12:02:31Z"}

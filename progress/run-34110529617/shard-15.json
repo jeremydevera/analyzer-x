@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 23, "total": 53, "rows": 496966, "note": "IBIDENSTOCK 1d: downloading candles", "failed": [], "pct": 43.4, "updated": "2026-09-07T10:23:59Z"}
+{"shard": 15, "stage": "testing", "done": 24, "total": 53, "rows": 520726, "note": "IN 1d: 394 bars, testing 120 rules", "failed": [], "pct": 45.3, "updated": "2026-09-07T10:24:45Z"}

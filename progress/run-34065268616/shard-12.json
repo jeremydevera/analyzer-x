@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 53, "total": 53, "rows": 2310214, "note": "ZKP 1h: rule 83/120 (cf_maobv_l1)", "failed": [], "pct": 100.0, "updated": "2026-09-07T00:32:36Z"}
+{"shard": 12, "stage": "testing", "done": 53, "total": 53, "rows": 2319146, "note": "ZKP 30m: rule 4/120 (trend50)", "failed": [], "pct": 100.0, "updated": "2026-09-07T00:33:21Z"}

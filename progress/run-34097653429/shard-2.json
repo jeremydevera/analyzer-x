@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 42, "total": 53, "rows": 1834024, "note": "SKR 30m: rule 106/120 (cf_bosfvg)", "failed": [], "pct": 79.2, "updated": "2026-09-07T09:20:30Z"}
+{"shard": 2, "stage": "testing", "done": 46, "total": 53, "rows": 1962968, "note": "TBT 30m: 1,910 bars, testing 120 rules", "failed": [], "pct": 86.8, "updated": "2026-09-07T09:21:16Z"}

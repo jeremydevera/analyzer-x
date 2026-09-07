@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 25, "total": 53, "rows": 2160540, "note": "JPY 15m: 29,974 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-07T21:38:35Z"}
+{"shard": 17, "stage": "testing", "done": 25, "total": 53, "rows": 2171600, "note": "JPY 15m: rule 73/120 (volspike)", "failed": [], "pct": 47.2, "updated": "2026-09-07T21:39:20Z"}

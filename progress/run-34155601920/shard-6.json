@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 53, "total": 53, "rows": 4392060, "note": "ZEREBRO 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-07T23:32:41Z"}
+{"shard": 6, "stage": "testing", "done": 53, "total": 53, "rows": 4402554, "note": "ZEREBRO 1h: rule 47/120 (ibs)", "failed": [], "pct": 100.0, "updated": "2026-09-07T23:33:27Z"}

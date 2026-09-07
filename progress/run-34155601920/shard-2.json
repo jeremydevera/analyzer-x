@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 29, "total": 54, "rows": 2170594, "note": "MANTA 1h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 53.7, "updated": "2026-09-07T21:43:50Z"}
+{"shard": 2, "stage": "testing", "done": 29, "total": 54, "rows": 2205640, "note": "MANTA 1d: rule 112/120 (cf_obretest)", "failed": [], "pct": 53.7, "updated": "2026-09-07T21:44:35Z"}

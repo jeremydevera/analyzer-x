@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 22, "total": 53, "rows": 1589918, "note": "HDSTOCK 15m: rule 42/120 (rsidiv)", "failed": [], "pct": 41.5, "updated": "2026-09-07T20:22:18Z"}
+{"shard": 7, "stage": "testing", "done": 23, "total": 53, "rows": 1677238, "note": "HUBSSTOCK 15m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 43.4, "updated": "2026-09-07T20:23:03Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 18, "total": 53, "rows": 798176, "note": "FIGHT 30m: 10,951 bars, testing 120 rules", "failed": [], "pct": 34.0, "updated": "2026-09-07T14:46:39Z"}
+{"shard": 16, "stage": "testing", "done": 18, "total": 53, "rows": 804776, "note": "FIGHT 30m: rule 24/120 (psar)", "failed": [], "pct": 34.0, "updated": "2026-09-07T14:47:24Z"}

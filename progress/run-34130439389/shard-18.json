@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 25, "total": 53, "rows": 1061172, "note": "JST 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-07T14:59:54Z"}
+{"shard": 18, "stage": "testing", "done": 25, "total": 53, "rows": 1068432, "note": "JST 30m: rule 27/120 (aroon25)", "failed": [], "pct": 47.2, "updated": "2026-09-07T15:00:39Z"}

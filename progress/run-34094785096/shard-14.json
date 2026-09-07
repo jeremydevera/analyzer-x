@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 33, "total": 53, "rows": 841858, "note": "NVIDIA 1d: 394 bars, testing 120 rules", "failed": [], "pct": 62.3, "updated": "2026-09-07T07:30:46Z"}
+{"shard": 14, "stage": "testing", "done": 37, "total": 53, "rows": 904616, "note": "PUNDIX 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-07T07:31:38Z"}

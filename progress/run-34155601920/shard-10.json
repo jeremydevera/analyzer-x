@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 46, "total": 53, "rows": 3937292, "note": "TESLA 15m: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 86.8, "updated": "2026-09-07T23:38:40Z"}
+{"shard": 10, "stage": "testing", "done": 46, "total": 53, "rows": 3944492, "note": "TESLA 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 86.8, "updated": "2026-09-07T23:39:32Z"}

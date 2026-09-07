@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 43, "total": 53, "rows": 3311202, "note": "SOXL 15m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-07T21:57:14Z"}
+{"shard": 12, "stage": "testing", "done": 43, "total": 53, "rows": 3364082, "note": "SOXL 1h: rule 101/120 (cf_soup1_l1)", "failed": [], "pct": 81.1, "updated": "2026-09-07T21:57:59Z"}

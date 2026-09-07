@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 43, "total": 53, "rows": 1758224, "note": "SPCXSTOCK 1h: rule 40/120 (crsi)", "failed": [], "pct": 81.1, "updated": "2026-09-07T12:20:25Z"}
+{"shard": 17, "stage": "testing", "done": 44, "total": 53, "rows": 1799524, "note": "STO 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-07T12:21:19Z"}

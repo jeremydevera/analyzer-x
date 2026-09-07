@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 4, "total": 53, "rows": 78736, "note": "APT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 7.5, "updated": "2026-09-07T04:21:01Z"}
+{"shard": 17, "stage": "testing", "done": 5, "total": 53, "rows": 119844, "note": "ATOM 4h: rule 2/120 (mom15)", "failed": [], "pct": 9.4, "updated": "2026-09-07T04:21:47Z"}

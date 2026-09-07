@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 50, "total": 53, "rows": 2186724, "note": "WDCSTOCK 30m: 8,036 bars, testing 120 rules", "failed": [], "pct": 94.3, "updated": "2026-09-07T15:52:45Z"}
+{"shard": 16, "stage": "testing", "done": 51, "total": 53, "rows": 2215272, "note": "XIAOMISTOCK 1h: rule 36/120 (stochrsi)", "failed": [], "pct": 96.2, "updated": "2026-09-07T15:53:30Z"}

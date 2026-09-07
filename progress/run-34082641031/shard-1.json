@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 26, "total": 53, "rows": 603152, "note": "KAS 4h: rule 36/120 (stochrsi)", "failed": [], "pct": 49.1, "updated": "2026-09-07T04:29:51Z"}
+{"shard": 1, "stage": "testing", "done": 28, "total": 53, "rows": 662350, "note": "LLYSTOCK 1d: 287 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-07T04:30:37Z"}

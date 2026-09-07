@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 25, "total": 53, "rows": 2234008, "note": "JST 15m: rule 82/120 (cf_maobv)", "failed": [], "pct": 47.2, "updated": "2026-09-07T21:35:11Z"}
+{"shard": 18, "stage": "testing", "done": 25, "total": 53, "rows": 2242368, "note": "JST 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 47.2, "updated": "2026-09-07T21:35:58Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 17, "total": 54, "rows": 601512, "note": "ENA 30m: rule 63/120 (killzone)", "failed": [], "pct": 31.5, "updated": "2026-09-07T11:11:39Z"}
+{"shard": 1, "stage": "testing", "done": 18, "total": 54, "rows": 639832, "note": "EWT 30m: rule 18/120 (macd)", "failed": [], "pct": 33.3, "updated": "2026-09-07T11:12:24Z"}

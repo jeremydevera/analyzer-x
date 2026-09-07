@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 25, "total": 53, "rows": 1891228, "note": "IRENSTOCK 30m: 8,949 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-07T21:21:45Z"}
+{"shard": 3, "stage": "testing", "done": 25, "total": 53, "rows": 1911228, "note": "IRENSTOCK 30m: rule 95/120 (cf_emarsi_l1)", "failed": [], "pct": 47.2, "updated": "2026-09-07T21:22:30Z"}

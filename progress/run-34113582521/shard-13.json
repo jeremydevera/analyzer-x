@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 16, "total": 53, "rows": 587510, "note": "EDEN 1h: 8,210 bars, testing 120 rules", "failed": [], "pct": 30.2, "updated": "2026-09-07T11:03:54Z"}
+{"shard": 13, "stage": "testing", "done": 16, "total": 53, "rows": 611666, "note": "EDEN 30m: 16,420 bars, testing 120 rules", "failed": [], "pct": 30.2, "updated": "2026-09-07T11:04:42Z"}

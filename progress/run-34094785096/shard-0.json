@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 44, "total": 53, "rows": 1116024, "note": "SPX500 4h: 1,325 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-07T07:39:39Z"}
+{"shard": 0, "stage": "testing", "done": 46, "total": 53, "rows": 1174588, "note": "TAO 4h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 86.8, "updated": "2026-09-07T07:40:24Z"}

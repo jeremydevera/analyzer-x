@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 51, "total": 53, "rows": 2132270, "note": "XAN 30m: rule 95/120 (cf_emarsi_l1)", "failed": [], "pct": 96.2, "updated": "2026-09-07T18:11:17Z"}
+{"shard": 9, "stage": "testing", "done": 52, "total": 53, "rows": 2173650, "note": "XPT 30m: rule 37/120 (ultosc)", "failed": [], "pct": 98.1, "updated": "2026-09-07T18:12:02Z"}

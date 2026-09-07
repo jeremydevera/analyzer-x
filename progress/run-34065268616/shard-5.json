@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 42, "total": 53, "rows": 1710552, "note": "SKYAI 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 79.2, "updated": "2026-09-07T00:16:59Z"}
+{"shard": 5, "stage": "testing", "done": 43, "total": 53, "rows": 1719432, "note": "SOMI 1h: rule 18/120 (macd)", "failed": [], "pct": 81.1, "updated": "2026-09-07T00:17:45Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 37, "total": 53, "rows": 2751434, "note": "PTB 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 69.8, "updated": "2026-09-07T21:28:29Z"}
+{"shard": 12, "stage": "testing", "done": 37, "total": 53, "rows": 2759378, "note": "PTB 1h: rule 22/120 (engulf)", "failed": [], "pct": 69.8, "updated": "2026-09-07T21:29:15Z"}

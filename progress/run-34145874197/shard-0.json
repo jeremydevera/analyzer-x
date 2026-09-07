@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 43, "total": 54, "rows": 1765740, "note": "SNT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 79.6, "updated": "2026-09-07T18:51:05Z"}
+{"shard": 0, "stage": "testing", "done": 43, "total": 54, "rows": 1784440, "note": "SNT 1h: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 79.6, "updated": "2026-09-07T18:51:50Z"}

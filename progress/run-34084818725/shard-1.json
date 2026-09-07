@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 40, "total": 53, "rows": 1510328, "note": "RON 1h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-07T06:09:45Z"}
+{"shard": 1, "stage": "testing", "done": 40, "total": 53, "rows": 1518248, "note": "RON 30m: rule 3/120 (fade15)", "failed": [], "pct": 75.5, "updated": "2026-09-07T06:10:39Z"}

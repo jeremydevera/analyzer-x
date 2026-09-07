@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 27, "total": 54, "rows": 1081362, "note": "KOMA 30m: rule 53/120 (squeeze)", "failed": [], "pct": 50.0, "updated": "2026-09-07T18:10:54Z"}
+{"shard": 0, "stage": "testing", "done": 27, "total": 54, "rows": 1093242, "note": "KOMA 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 50.0, "updated": "2026-09-07T18:11:40Z"}

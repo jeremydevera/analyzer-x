@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 10, "total": 53, "rows": 466252, "note": "BSV 30m: rule 38/120 (ao)", "failed": [], "pct": 18.9, "updated": "2026-09-07T05:21:58Z"}
+{"shard": 4, "stage": "testing", "done": 10, "total": 53, "rows": 479892, "note": "BSV 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 18.9, "updated": "2026-09-07T05:22:44Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 50, "total": 53, "rows": 4314528, "note": "WCT 30m: rule 35/120 (willr14)", "failed": [], "pct": 94.3, "updated": "2026-09-07T23:08:00Z"}
+{"shard": 14, "stage": "testing", "done": 50, "total": 53, "rows": 4327068, "note": "WCT 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 94.3, "updated": "2026-09-07T23:08:45Z"}

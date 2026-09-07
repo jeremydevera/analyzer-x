@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 39, "total": 54, "rows": 3018784, "note": "RED 15m: rule 24/120 (psar)", "failed": [], "pct": 72.2, "updated": "2026-09-07T22:33:51Z"}
+{"shard": 2, "stage": "testing", "done": 39, "total": 54, "rows": 3024384, "note": "RED 15m: rule 53/120 (squeeze)", "failed": [], "pct": 72.2, "updated": "2026-09-07T22:34:36Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 23, "total": 53, "rows": 2005036, "note": "ICNT 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 43.4, "updated": "2026-09-07T21:20:15Z"}
+{"shard": 18, "stage": "testing", "done": 23, "total": 53, "rows": 2012636, "note": "ICNT 30m: rule 48/120 (prank)", "failed": [], "pct": 43.4, "updated": "2026-09-07T21:21:00Z"}

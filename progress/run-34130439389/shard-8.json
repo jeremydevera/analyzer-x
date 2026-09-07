@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 8, "total": 53, "rows": 334324, "note": "BIGTIME 30m: rule 61/120 (turtle)", "failed": [], "pct": 15.1, "updated": "2026-09-07T14:22:15Z"}
+{"shard": 8, "stage": "testing", "done": 10, "total": 53, "rows": 351824, "note": "BTR 1h: 9,028 bars, testing 120 rules", "failed": [], "pct": 18.9, "updated": "2026-09-07T14:23:08Z"}

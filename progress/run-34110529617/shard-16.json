@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 32, "total": 53, "rows": 840546, "note": "NGAS 1d: 220 bars, testing 120 rules", "failed": [], "pct": 60.4, "updated": "2026-09-07T10:29:49Z"}
+{"shard": 16, "stage": "testing", "done": 35, "total": 53, "rows": 908102, "note": "PEAQ 4h: rule 35/120 (willr14)", "failed": [], "pct": 66.0, "updated": "2026-09-07T10:30:34Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 25, "total": 53, "rows": 550520, "note": "JASMY 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-07T04:27:51Z"}
+{"shard": 5, "stage": "testing", "done": 26, "total": 53, "rows": 597204, "note": "KERNEL 4h: rule 21/120 (cci20)", "failed": [], "pct": 49.1, "updated": "2026-09-07T04:28:36Z"}

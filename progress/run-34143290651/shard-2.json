@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 35, "total": 54, "rows": 801990, "note": "ORCLSTOCK 4h: rule 71/120 (mfi14)", "failed": [], "pct": 64.8, "updated": "2026-09-07T16:43:27Z"}
+{"shard": 2, "stage": "testing", "done": 37, "total": 54, "rows": 857202, "note": "PORTAL 4h: rule 20/120 (stoch14)", "failed": [], "pct": 68.5, "updated": "2026-09-07T16:44:12Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 18, "total": 53, "rows": 1488238, "note": "FCXSTOCK 1h: rule 47/120 (ibs)", "failed": [], "pct": 34.0, "updated": "2026-09-07T20:59:28Z"}
+{"shard": 11, "stage": "testing", "done": 20, "total": 53, "rows": 1586594, "note": "GFSSTOCK 1h: rule 98/120 (cf_ttm_l1)", "failed": [], "pct": 37.7, "updated": "2026-09-07T21:00:13Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 23, "total": 53, "rows": 982218, "note": "IBKRSTOCK 1h: 1,665 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-07T14:52:47Z"}
+{"shard": 16, "stage": "testing", "done": 24, "total": 53, "rows": 1024610, "note": "IONQSTOCK 30m: rule 9/120 (fib382)", "failed": [], "pct": 45.3, "updated": "2026-09-07T14:53:32Z"}

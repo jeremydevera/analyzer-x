@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 40, "total": 53, "rows": 929636, "note": "RSR 4h: rule 16/120 (keltner)", "failed": [], "pct": 75.5, "updated": "2026-09-07T10:32:19Z"}
+{"shard": 6, "stage": "testing", "done": 43, "total": 53, "rows": 974326, "note": "SOL 4h: rule 2/120 (mom15)", "failed": [], "pct": 81.1, "updated": "2026-09-07T10:33:06Z"}

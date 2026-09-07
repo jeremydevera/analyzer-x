@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 26, "total": 54, "rows": 1032302, "note": "JUP 30m: rule 75/120 (relvolbrk)", "failed": [], "pct": 48.1, "updated": "2026-09-07T18:06:56Z"}
+{"shard": 0, "stage": "testing", "done": 27, "total": 54, "rows": 1041102, "note": "KOMA 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 50.0, "updated": "2026-09-07T18:07:46Z"}

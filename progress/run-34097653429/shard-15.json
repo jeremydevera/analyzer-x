@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 45, "total": 53, "rows": 1796946, "note": "TAG 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-07T09:04:05Z"}
+{"shard": 15, "stage": "testing", "done": 46, "total": 53, "rows": 1810966, "note": "TLM 1h: rule 56/120 (insidebrk)", "failed": [], "pct": 86.8, "updated": "2026-09-07T09:04:50Z"}

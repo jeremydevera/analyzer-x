@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 48, "total": 53, "rows": 1923052, "note": "TURBO 30m: rule 47/120 (ibs)", "failed": [], "pct": 90.6, "updated": "2026-09-07T09:22:35Z"}
+{"shard": 1, "stage": "testing", "done": 49, "total": 53, "rows": 1938672, "note": "US30 1h: 5,303 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-07T09:23:21Z"}

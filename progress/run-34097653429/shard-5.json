@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 47, "total": 53, "rows": 1907098, "note": "TRADOOR 30m: rule 29/120 (hull20)", "failed": [], "pct": 88.7, "updated": "2026-09-07T08:56:53Z"}
+{"shard": 5, "stage": "testing", "done": 49, "total": 53, "rows": 1926678, "note": "USOIL 1h: 5,285 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-07T08:57:47Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 13, "total": 53, "rows": 583498, "note": "CRV 1h: rule 9/120 (fib382)", "failed": [], "pct": 24.5, "updated": "2026-09-07T14:34:56Z"}
+{"shard": 16, "stage": "testing", "done": 13, "total": 53, "rows": 604618, "note": "CRV 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 24.5, "updated": "2026-09-07T14:35:41Z"}

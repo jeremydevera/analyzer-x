@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 41, "total": 53, "rows": 1646490, "note": "SIREN 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 77.4, "updated": "2026-09-07T18:34:27Z"}
+{"shard": 17, "stage": "testing", "done": 42, "total": 53, "rows": 1661710, "note": "SNDKSTOCK 1h: rule 25/120 (ichimoku)", "failed": [], "pct": 79.2, "updated": "2026-09-07T18:35:13Z"}

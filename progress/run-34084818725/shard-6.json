@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 37, "total": 53, "rows": 1380246, "note": "PROM 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 69.8, "updated": "2026-09-07T06:00:50Z"}
+{"shard": 6, "stage": "testing", "done": 39, "total": 53, "rows": 1415420, "note": "RE 30m: rule 2/120 (mom15)", "failed": [], "pct": 73.6, "updated": "2026-09-07T06:01:35Z"}

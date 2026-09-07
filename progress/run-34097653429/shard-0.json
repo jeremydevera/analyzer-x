@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 32, "total": 53, "rows": 1216922, "note": "NAORIS 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 60.4, "updated": "2026-09-07T09:06:00Z"}
+{"shard": 0, "stage": "testing", "done": 32, "total": 53, "rows": 1218902, "note": "NAORIS 30m: rule 3/120 (fade15)", "failed": [], "pct": 60.4, "updated": "2026-09-07T09:06:50Z"}

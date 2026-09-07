@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 10, "total": 53, "rows": 261102, "note": "BTC 4h: rule 54/120 (fractal5)", "failed": [], "pct": 18.9, "updated": "2026-09-07T01:21:20Z"}
+{"shard": 5, "stage": "testing", "done": 12, "total": 53, "rows": 327876, "note": "CHZ 4h: rule 29/120 (hull20)", "failed": [], "pct": 22.6, "updated": "2026-09-07T01:22:05Z"}

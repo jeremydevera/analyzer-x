@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 32, "total": 53, "rows": 2680548, "note": "NICKEL 15m: downloading candles", "failed": [], "pct": 60.4, "updated": "2026-09-07T22:10:21Z"}
+{"shard": 17, "stage": "testing", "done": 32, "total": 53, "rows": 2696368, "note": "NICKEL 15m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 60.4, "updated": "2026-09-07T22:11:06Z"}

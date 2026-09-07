@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 44, "total": 53, "rows": 1798346, "note": "SSV 30m: rule 20/120 (stoch14)", "failed": [], "pct": 83.0, "updated": "2026-09-07T00:23:11Z"}
+{"shard": 5, "stage": "testing", "done": 44, "total": 53, "rows": 1808246, "note": "SSV 30m: rule 66/120 (soldiers)", "failed": [], "pct": 83.0, "updated": "2026-09-07T00:23:56Z"}

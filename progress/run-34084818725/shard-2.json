@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 53, "total": 53, "rows": 2264134, "note": "ZEN 1h: rule 15/120 (bbbreak)", "failed": [], "pct": 100.0, "updated": "2026-09-07T06:46:31Z"}
+{"shard": 2, "stage": "testing", "done": 53, "total": 53, "rows": 2286794, "note": "ZEN 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-07T06:47:24Z"}

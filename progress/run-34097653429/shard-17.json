@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 37, "total": 53, "rows": 1666574, "note": "PYPLSTOCK 30m: rule 17/120 (atrbreak)", "failed": [], "pct": 69.8, "updated": "2026-09-07T08:56:47Z"}
+{"shard": 17, "stage": "testing", "done": 41, "total": 53, "rows": 1743436, "note": "SKDD 30m: rule 20/120 (stoch14)", "failed": [], "pct": 77.4, "updated": "2026-09-07T08:57:32Z"}

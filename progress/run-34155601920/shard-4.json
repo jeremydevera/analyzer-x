@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 21, "total": 53, "rows": 1958282, "note": "GOOGLSTOCK 15m: rule 73/120 (volspike)", "failed": [], "pct": 39.6, "updated": "2026-09-07T21:04:43Z"}
+{"shard": 4, "stage": "testing", "done": 21, "total": 53, "rows": 1966202, "note": "GOOGLSTOCK 15m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 39.6, "updated": "2026-09-07T21:05:30Z"}

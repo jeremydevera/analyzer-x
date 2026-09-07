@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 38, "total": 53, "rows": 1675690, "note": "QNT 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 71.7, "updated": "2026-09-07T11:59:27Z"}
+{"shard": 4, "stage": "testing", "done": 38, "total": 53, "rows": 1718150, "note": "QNT 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 71.7, "updated": "2026-09-07T12:00:12Z"}

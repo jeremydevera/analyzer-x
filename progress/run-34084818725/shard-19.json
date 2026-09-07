@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 38, "total": 53, "rows": 1713872, "note": "RECRUITSTOCK 30m: downloading candles", "failed": [], "pct": 71.7, "updated": "2026-09-07T06:33:53Z"}
+{"shard": 19, "stage": "testing", "done": 41, "total": 53, "rows": 1807002, "note": "SKHYSTOCK 1h: rule 56/120 (insidebrk)", "failed": [], "pct": 77.4, "updated": "2026-09-07T06:34:38Z"}

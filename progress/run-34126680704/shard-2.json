@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 18, "total": 54, "rows": 370916, "note": "EWY 1d: 175 bars, testing 120 rules", "failed": [], "pct": 33.3, "updated": "2026-09-07T13:26:31Z"}
+{"shard": 2, "stage": "testing", "done": 20, "total": 54, "rows": 421384, "note": "GAIB 4h: 1,753 bars, testing 120 rules", "failed": [], "pct": 37.0, "updated": "2026-09-07T13:27:16Z"}

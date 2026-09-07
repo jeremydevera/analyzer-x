@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 23, "total": 53, "rows": 939098, "note": "HTZSTOCK 1h: rule 54/120 (fractal5)", "failed": [], "pct": 43.4, "updated": "2026-09-07T11:16:12Z"}
+{"shard": 6, "stage": "testing", "done": 27, "total": 53, "rows": 1057500, "note": "KSTR 30m: rule 61/120 (turtle)", "failed": [], "pct": 50.9, "updated": "2026-09-07T11:16:57Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 45, "total": 53, "rows": 1723072, "note": "SUSHI 30m: rule 55/120 (nhigh50)", "failed": [], "pct": 84.9, "updated": "2026-09-07T02:57:25Z"}
+{"shard": 6, "stage": "testing", "done": 46, "total": 53, "rows": 1772324, "note": "TENCENTSTOCK 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 86.8, "updated": "2026-09-07T02:58:10Z"}

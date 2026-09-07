@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 44, "total": 53, "rows": 3422576, "note": "SSV 30m: rule 16/120 (keltner)", "failed": [], "pct": 83.0, "updated": "2026-09-07T21:33:52Z"}
+{"shard": 7, "stage": "testing", "done": 44, "total": 53, "rows": 3441716, "note": "SSV 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 83.0, "updated": "2026-09-07T21:34:37Z"}

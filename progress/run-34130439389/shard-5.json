@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 20, "total": 53, "rows": 699474, "note": "GBP 1h: rule 73/120 (volspike)", "failed": [], "pct": 37.7, "updated": "2026-09-07T14:40:02Z"}
+{"shard": 5, "stage": "testing", "done": 20, "total": 53, "rows": 715754, "note": "GBP 30m: rule 27/120 (aroon25)", "failed": [], "pct": 37.7, "updated": "2026-09-07T14:40:47Z"}

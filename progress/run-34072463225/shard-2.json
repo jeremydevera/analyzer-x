@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 23, "total": 53, "rows": 574892, "note": "HOT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-07T01:24:25Z"}
+{"shard": 2, "stage": "testing", "done": 24, "total": 53, "rows": 621004, "note": "ILV 4h: rule 24/120 (psar)", "failed": [], "pct": 45.3, "updated": "2026-09-07T01:25:10Z"}

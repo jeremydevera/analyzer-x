@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 28, "total": 53, "rows": 1085080, "note": "LTC 1h: rule 101/120 (cf_soup1_l1)", "failed": [], "pct": 52.8, "updated": "2026-09-07T18:00:24Z"}
+{"shard": 11, "stage": "testing", "done": 28, "total": 53, "rows": 1093680, "note": "LTC 30m: rule 20/120 (stoch14)", "failed": [], "pct": 52.8, "updated": "2026-09-07T18:01:10Z"}

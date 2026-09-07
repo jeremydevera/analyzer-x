@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 40, "total": 53, "rows": 928382, "note": "RPL 1d: 394 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-07T10:30:18Z"}
+{"shard": 5, "stage": "testing", "done": 43, "total": 53, "rows": 980830, "note": "SOLV 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-07T10:31:07Z"}

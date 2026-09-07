@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 21, "total": 53, "rows": 783030, "note": "GOAT 30m: rule 75/120 (relvolbrk)", "failed": [], "pct": 39.6, "updated": "2026-09-07T08:30:22Z"}
+{"shard": 1, "stage": "testing", "done": 22, "total": 53, "rows": 793370, "note": "HANA 1h: rule 1/120 (mom6)", "failed": [], "pct": 41.5, "updated": "2026-09-07T08:31:09Z"}

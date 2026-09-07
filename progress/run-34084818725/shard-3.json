@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 53, "total": 53, "rows": 2057812, "note": "ZEREBRO 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-07T06:37:20Z"}
+{"shard": 3, "stage": "done", "done": 53, "total": 53, "rows": 2059792, "note": "2,059,792 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "failed": [], "pct": 100.0, "updated": "2026-09-07T06:37:26Z"}

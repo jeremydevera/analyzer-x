@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 29, "total": 53, "rows": 2186534, "note": "MASK 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 54.7, "updated": "2026-09-07T20:43:53Z"}
+{"shard": 7, "stage": "testing", "done": 30, "total": 53, "rows": 2234834, "note": "MINIMAXSTOCK 15m: rule 35/120 (willr14)", "failed": [], "pct": 56.6, "updated": "2026-09-07T20:44:38Z"}

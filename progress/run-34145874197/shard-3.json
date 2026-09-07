@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 17, "total": 53, "rows": 681680, "note": "ENJ 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-07T17:41:39Z"}
+{"shard": 3, "stage": "testing", "done": 20, "total": 53, "rows": 726404, "note": "GALA 1h: downloading candles", "failed": [], "pct": 37.7, "updated": "2026-09-07T17:42:24Z"}

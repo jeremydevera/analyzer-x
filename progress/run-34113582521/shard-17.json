@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 5, "total": 53, "rows": 192324, "note": "ATOM 1h: rule 23/120 (supertrend)", "failed": [], "pct": 9.4, "updated": "2026-09-07T11:03:11Z"}
+{"shard": 17, "stage": "testing", "done": 5, "total": 53, "rows": 211524, "note": "ATOM 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 9.4, "updated": "2026-09-07T11:03:59Z"}

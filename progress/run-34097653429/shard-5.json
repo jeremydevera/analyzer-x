@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 37, "total": 53, "rows": 1493540, "note": "PROMPT 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-07T08:41:26Z"}
+{"shard": 5, "stage": "testing", "done": 37, "total": 53, "rows": 1502560, "note": "PROMPT 30m: rule 35/120 (willr14)", "failed": [], "pct": 69.8, "updated": "2026-09-07T08:42:12Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 49, "total": 53, "rows": 1948210, "note": "USELESS 30m: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 92.5, "updated": "2026-09-07T00:34:26Z"}
+{"shard": 4, "stage": "testing", "done": 50, "total": 53, "rows": 1981370, "note": "VSTSTOCK 30m: rule 12/120 (donchian20)", "failed": [], "pct": 94.3, "updated": "2026-09-07T00:35:12Z"}

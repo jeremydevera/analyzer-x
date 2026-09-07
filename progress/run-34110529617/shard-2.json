@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 4, "total": 54, "rows": 74062, "note": "ANETSTOCK 1d: downloading candles", "failed": [], "pct": 7.4, "updated": "2026-09-07T10:17:47Z"}
+{"shard": 2, "stage": "testing", "done": 6, "total": 54, "rows": 120900, "note": "AURASOL 4h: 726 bars, testing 120 rules", "failed": [], "pct": 11.1, "updated": "2026-09-07T10:18:33Z"}

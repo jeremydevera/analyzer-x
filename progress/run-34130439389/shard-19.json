@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 50, "total": 53, "rows": 2142996, "note": "WIF 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 94.3, "updated": "2026-09-07T15:38:58Z"}
+{"shard": 19, "stage": "testing", "done": 52, "total": 53, "rows": 2193120, "note": "YOM 1h: 2,261 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-07T15:39:44Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 3, "total": 53, "rows": 108664, "note": "AJGSTOCK 30m: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 5.7, "updated": "2026-09-07T05:01:54Z"}
+{"shard": 0, "stage": "testing", "done": 4, "total": 53, "rows": 131984, "note": "AMZNSTOCK 1h: rule 100/120 (cf_soup1)", "failed": [], "pct": 7.5, "updated": "2026-09-07T05:02:40Z"}

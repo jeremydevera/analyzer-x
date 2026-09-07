@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 32, "total": 53, "rows": 1223138, "note": "NAS100 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 60.4, "updated": "2026-09-07T15:06:43Z"}
+{"shard": 3, "stage": "testing", "done": 34, "total": 53, "rows": 1266846, "note": "OKB 1h: 9,366 bars, testing 120 rules", "failed": [], "pct": 64.2, "updated": "2026-09-07T15:07:33Z"}

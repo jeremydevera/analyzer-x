@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 39, "total": 53, "rows": 1488208, "note": "RIF 1h: rule 21/120 (cci20)", "failed": [], "pct": 73.6, "updated": "2026-09-07T00:20:31Z"}
+{"shard": 8, "stage": "testing", "done": 39, "total": 53, "rows": 1509548, "note": "RIF 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 73.6, "updated": "2026-09-07T00:21:29Z"}

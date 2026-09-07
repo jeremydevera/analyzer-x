@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 14, "total": 53, "rows": 550252, "note": "CVC 1h: rule 3/120 (fade15)", "failed": [], "pct": 26.4, "updated": "2026-09-07T11:26:54Z"}
+{"shard": 10, "stage": "testing", "done": 14, "total": 53, "rows": 571438, "note": "CVC 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-07T11:27:39Z"}

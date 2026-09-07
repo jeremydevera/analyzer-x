@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 9, "total": 53, "rows": 172544, "note": "BP 4h: 1,049 bars, testing 120 rules", "failed": [], "pct": 17.0, "updated": "2026-09-07T04:21:46Z"}
+{"shard": 13, "stage": "testing", "done": 11, "total": 53, "rows": 257544, "note": "CELO 4h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 20.8, "updated": "2026-09-07T04:23:24Z"}

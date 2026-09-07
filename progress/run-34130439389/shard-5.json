@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 45, "total": 53, "rows": 1661246, "note": "SUN 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 84.9, "updated": "2026-09-07T15:27:00Z"}
+{"shard": 5, "stage": "testing", "done": 45, "total": 53, "rows": 1673126, "note": "SUN 30m: rule 91/120 (cf_soup)", "failed": [], "pct": 84.9, "updated": "2026-09-07T15:27:45Z"}

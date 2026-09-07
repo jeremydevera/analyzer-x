@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 9, "total": 53, "rows": 438792, "note": "BOME 30m: rule 70/120 (cmf20)", "failed": [], "pct": 17.0, "updated": "2026-09-07T05:22:15Z"}
+{"shard": 10, "stage": "testing", "done": 11, "total": 53, "rows": 467468, "note": "CDESTOCK 30m: rule 3/120 (fade15)", "failed": [], "pct": 20.8, "updated": "2026-09-07T05:23:00Z"}

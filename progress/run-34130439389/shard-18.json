@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 21, "total": 53, "rows": 924472, "note": "GWEI 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 39.6, "updated": "2026-09-07T14:50:38Z"}
+{"shard": 18, "stage": "testing", "done": 23, "total": 53, "rows": 932576, "note": "ICNT 1h: rule 4/120 (trend50)", "failed": [], "pct": 43.4, "updated": "2026-09-07T14:51:25Z"}

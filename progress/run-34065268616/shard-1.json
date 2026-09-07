@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 48, "total": 53, "rows": 1910452, "note": "TURBO 30m: rule 45/120 (zscore20)", "failed": [], "pct": 90.6, "updated": "2026-09-07T00:15:49Z"}
+{"shard": 1, "stage": "testing", "done": 49, "total": 53, "rows": 1928294, "note": "US30 1h: rule 3/120 (fade15)", "failed": [], "pct": 92.5, "updated": "2026-09-07T00:16:34Z"}

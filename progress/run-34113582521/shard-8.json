@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 52, "total": 53, "rows": 2033166, "note": "XPL 30m: 18,293 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-07T12:19:58Z"}
+{"shard": 8, "stage": "testing", "done": 52, "total": 53, "rows": 2037766, "note": "XPL 30m: rule 17/120 (atrbreak)", "failed": [], "pct": 98.1, "updated": "2026-09-07T12:20:44Z"}

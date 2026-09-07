@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 3, "total": 53, "rows": 245742, "note": "ALGO 1h: rule 9/120 (fib382)", "failed": [], "pct": 5.7, "updated": "2026-09-07T19:42:27Z"}
+{"shard": 6, "stage": "testing", "done": 3, "total": 53, "rows": 269942, "note": "ALGO 1h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 5.7, "updated": "2026-09-07T19:43:13Z"}

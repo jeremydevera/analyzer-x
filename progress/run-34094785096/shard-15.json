@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 41, "total": 53, "rows": 988004, "note": "SIREN 4h: rule 52/120 (nr7)", "failed": [], "pct": 77.4, "updated": "2026-09-07T07:33:55Z"}
+{"shard": 15, "stage": "testing", "done": 43, "total": 53, "rows": 1079584, "note": "SPCXSTOCK 1d: rule 21/120 (cci20)", "failed": [], "pct": 81.1, "updated": "2026-09-07T07:34:40Z"}

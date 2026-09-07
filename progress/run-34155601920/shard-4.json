@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 11, "total": 53, "rows": 1014044, "note": "CAT 30m: rule 57/120 (orderblock)", "failed": [], "pct": 20.8, "updated": "2026-09-07T20:20:59Z"}
+{"shard": 4, "stage": "testing", "done": 11, "total": 53, "rows": 1027904, "note": "CAT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 20.8, "updated": "2026-09-07T20:21:55Z"}

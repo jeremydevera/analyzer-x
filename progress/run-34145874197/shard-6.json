@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 38, "total": 53, "rows": 1548040, "note": "QTUM 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 71.7, "updated": "2026-09-07T18:15:43Z"}
+{"shard": 6, "stage": "testing", "done": 39, "total": 53, "rows": 1554200, "note": "RESOLV 1h: rule 10/120 (sr_bounce)", "failed": [], "pct": 73.6, "updated": "2026-09-07T18:16:28Z"}

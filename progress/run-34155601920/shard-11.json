@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 10, "total": 53, "rows": 914878, "note": "BULLA 15m: 34,560 bars, testing 120 rules", "failed": [], "pct": 18.9, "updated": "2026-09-07T20:26:34Z"}
+{"shard": 11, "stage": "testing", "done": 10, "total": 53, "rows": 916198, "note": "BULLA 15m: rule 2/120 (mom15)", "failed": [], "pct": 18.9, "updated": "2026-09-07T20:27:33Z"}

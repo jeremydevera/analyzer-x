@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 5, "total": 53, "rows": 116468, "note": "ARMSTOCK 4h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-07T04:21:24Z"}
+{"shard": 4, "stage": "testing", "done": 6, "total": 53, "rows": 156392, "note": "AVAAI 1d: 394 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-07T04:22:18Z"}

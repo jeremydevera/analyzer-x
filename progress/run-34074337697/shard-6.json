@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 22, "total": 53, "rows": 802704, "note": "HEI 1h: rule 14/120 (bb20)", "failed": [], "pct": 41.5, "updated": "2026-09-07T02:21:00Z"}
+{"shard": 6, "stage": "testing", "done": 22, "total": 53, "rows": 823304, "note": "HEI 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 41.5, "updated": "2026-09-07T02:21:46Z"}

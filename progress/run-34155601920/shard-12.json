@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 20, "total": 53, "rows": 1584248, "note": "GGLL 15m: rule 68/120 (dbltop)", "failed": [], "pct": 37.7, "updated": "2026-09-07T20:36:27Z"}
+{"shard": 12, "stage": "testing", "done": 21, "total": 53, "rows": 1631858, "note": "GRT 15m: rule 1/120 (mom6)", "failed": [], "pct": 39.6, "updated": "2026-09-07T20:37:21Z"}

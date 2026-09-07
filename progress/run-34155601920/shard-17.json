@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 20, "total": 53, "rows": 1699726, "note": "GLM 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 37.7, "updated": "2026-09-07T21:11:36Z"}
+{"shard": 17, "stage": "testing", "done": 20, "total": 53, "rows": 1708306, "note": "GLM 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-07T21:12:37Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 5, "total": 53, "rows": 336066, "note": "ASTR 30m: rule 28/120 (vortex14)", "failed": [], "pct": 9.4, "updated": "2026-09-07T19:39:42Z"}
+{"shard": 13, "stage": "testing", "done": 5, "total": 53, "rows": 348166, "note": "ASTR 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-07T19:40:27Z"}

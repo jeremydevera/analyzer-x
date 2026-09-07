@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 39, "total": 53, "rows": 2922516, "note": "REZ 15m: 34,563 bars, testing 120 rules", "failed": [], "pct": 73.6, "updated": "2026-09-07T21:11:55Z"}
+{"shard": 7, "stage": "testing", "done": 39, "total": 53, "rows": 2925596, "note": "REZ 15m: rule 8/120 (fib618)", "failed": [], "pct": 73.6, "updated": "2026-09-07T21:12:40Z"}

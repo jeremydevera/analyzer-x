@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 38, "total": 53, "rows": 1534620, "note": "QTUM 30m: rule 46/120 (rsi2)", "failed": [], "pct": 71.7, "updated": "2026-09-07T18:14:56Z"}
+{"shard": 6, "stage": "testing", "done": 38, "total": 53, "rows": 1548040, "note": "QTUM 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 71.7, "updated": "2026-09-07T18:15:43Z"}

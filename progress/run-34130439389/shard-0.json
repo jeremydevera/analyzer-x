@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 49, "total": 54, "rows": 2035404, "note": "UPROBINHOOD 30m: 1,318 bars, testing 120 rules", "failed": [], "pct": 90.7, "updated": "2026-09-07T16:00:36Z"}
+{"shard": 0, "stage": "testing", "done": 52, "total": 54, "rows": 2093026, "note": "XLM 1h: rule 7/120 (fvg)", "failed": [], "pct": 96.3, "updated": "2026-09-07T16:01:21Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 37, "total": 53, "rows": 904616, "note": "PUNDIX 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-07T07:31:38Z"}
+{"shard": 14, "stage": "testing", "done": 39, "total": 53, "rows": 969734, "note": "RLS 4h: 1,679 bars, testing 120 rules", "failed": [], "pct": 73.6, "updated": "2026-09-07T07:32:23Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 37, "total": 53, "rows": 3254852, "note": "PUNDIX 30m: rule 21/120 (cci20)", "failed": [], "pct": 69.8, "updated": "2026-09-07T22:22:07Z"}
+{"shard": 16, "stage": "testing", "done": 37, "total": 53, "rows": 3267172, "note": "PUNDIX 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 69.8, "updated": "2026-09-07T22:22:53Z"}

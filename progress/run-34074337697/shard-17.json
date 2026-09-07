@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 49, "total": 53, "rows": 2060074, "note": "VET 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 92.5, "updated": "2026-09-07T03:35:18Z"}
+{"shard": 17, "stage": "testing", "done": 49, "total": 53, "rows": 2071074, "note": "VET 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 92.5, "updated": "2026-09-07T03:36:04Z"}

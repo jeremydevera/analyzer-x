@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 15, "total": 54, "rows": 500336, "note": "DDOGSTOCK 30m: rule 29/120 (hull20)", "failed": [], "pct": 27.8, "updated": "2026-09-07T11:08:35Z"}
+{"shard": 1, "stage": "testing", "done": 17, "total": 54, "rows": 562832, "note": "ENA 1h: rule 2/120 (mom15)", "failed": [], "pct": 31.5, "updated": "2026-09-07T11:09:23Z"}

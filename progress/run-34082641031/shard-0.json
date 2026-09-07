@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 46, "total": 53, "rows": 1172822, "note": "TAO 4h: rule 59/120 (choch)", "failed": [], "pct": 86.8, "updated": "2026-09-07T04:41:29Z"}
+{"shard": 0, "stage": "testing", "done": 51, "total": 53, "rows": 1241492, "note": "WLFI 4h: 2,279 bars, testing 120 rules", "failed": [], "pct": 96.2, "updated": "2026-09-07T04:42:15Z"}

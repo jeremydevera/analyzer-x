@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 22, "total": 53, "rows": 1803258, "note": "HK0700 15m: rule 2/120 (mom15)", "failed": [], "pct": 41.5, "updated": "2026-09-07T21:01:38Z"}
+{"shard": 14, "stage": "testing", "done": 23, "total": 53, "rows": 1875418, "note": "IBB 15m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 43.4, "updated": "2026-09-07T21:02:24Z"}

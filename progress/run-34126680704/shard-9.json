@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 17, "total": 53, "rows": 433058, "note": "ERA 4h: rule 63/120 (killzone)", "failed": [], "pct": 32.1, "updated": "2026-09-07T13:26:05Z"}
+{"shard": 9, "stage": "testing", "done": 20, "total": 53, "rows": 489994, "note": "GESTOCK 4h: 1,626 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-07T13:26:54Z"}

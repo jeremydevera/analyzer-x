@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 21, "total": 53, "rows": 1884878, "note": "GUN 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-07T21:26:08Z"}
+{"shard": 17, "stage": "testing", "done": 22, "total": 53, "rows": 1930430, "note": "HLSTOCK 30m: rule 47/120 (ibs)", "failed": [], "pct": 41.5, "updated": "2026-09-07T21:26:54Z"}

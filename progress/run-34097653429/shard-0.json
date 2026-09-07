@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 43, "total": 53, "rows": 1657066, "note": "SNX 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-07T09:31:15Z"}
+{"shard": 0, "stage": "testing", "done": 43, "total": 53, "rows": 1667406, "note": "SNX 1h: rule 41/120 (tsi)", "failed": [], "pct": 81.1, "updated": "2026-09-07T09:32:01Z"}

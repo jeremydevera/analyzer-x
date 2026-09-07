@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 44, "total": 53, "rows": 1669570, "note": "STO 1h: rule 22/120 (engulf)", "failed": [], "pct": 83.0, "updated": "2026-09-07T00:05:28Z"}
+{"shard": 15, "stage": "testing", "done": 44, "total": 53, "rows": 1688770, "note": "STO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-07T00:06:18Z"}

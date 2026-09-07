@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 23, "total": 53, "rows": 683634, "note": "ICNT 4h: rule 36/120 (stochrsi)", "failed": [], "pct": 43.4, "updated": "2026-09-07T04:31:25Z"}
+{"shard": 16, "stage": "testing", "done": 24, "total": 53, "rows": 726050, "note": "IOTA 4h: rule 45/120 (zscore20)", "failed": [], "pct": 45.3, "updated": "2026-09-07T04:32:10Z"}

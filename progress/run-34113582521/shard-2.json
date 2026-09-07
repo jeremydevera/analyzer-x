@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 51, "total": 54, "rows": 2023768, "note": "WLFI 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 94.4, "updated": "2026-09-07T12:47:37Z"}
+{"shard": 2, "stage": "testing", "done": 51, "total": 54, "rows": 2028288, "note": "WLFI 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 94.4, "updated": "2026-09-07T12:48:23Z"}

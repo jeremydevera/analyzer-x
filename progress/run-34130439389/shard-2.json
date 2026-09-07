@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 37, "total": 54, "rows": 1337370, "note": "PORTAL 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 68.5, "updated": "2026-09-07T15:05:09Z"}
+{"shard": 2, "stage": "testing", "done": 37, "total": 54, "rows": 1356510, "note": "PORTAL 1h: rule 82/120 (cf_maobv)", "failed": [], "pct": 68.5, "updated": "2026-09-07T15:05:54Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 26, "total": 53, "rows": 736982, "note": "KORU 1d: downloading candles", "failed": [], "pct": 49.1, "updated": "2026-09-07T01:29:29Z"}
+{"shard": 19, "stage": "testing", "done": 29, "total": 53, "rows": 804346, "note": "METIS 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 54.7, "updated": "2026-09-07T01:30:24Z"}

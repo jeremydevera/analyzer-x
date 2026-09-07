@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 11, "total": 53, "rows": 1055486, "note": "CFG 1h: rule 92/120 (cf_soup_l1)", "failed": [], "pct": 20.8, "updated": "2026-09-07T20:31:11Z"}
+{"shard": 17, "stage": "testing", "done": 12, "total": 53, "rows": 1093838, "note": "COFSTOCK 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-07T20:31:56Z"}

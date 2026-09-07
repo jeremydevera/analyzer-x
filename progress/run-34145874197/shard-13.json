@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 42, "total": 53, "rows": 1736886, "note": "SMCISTOCK 30m: rule 35/120 (willr14)", "failed": [], "pct": 79.2, "updated": "2026-09-07T17:59:12Z"}
+{"shard": 13, "stage": "testing", "done": 43, "total": 53, "rows": 1795646, "note": "SOXS 30m: rule 86/120 (cf_triple_l1)", "failed": [], "pct": 81.1, "updated": "2026-09-07T17:59:57Z"}

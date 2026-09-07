@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 43, "total": 53, "rows": 1882200, "note": "SPELL 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-07T15:38:49Z"}
+{"shard": 18, "stage": "testing", "done": 45, "total": 53, "rows": 1934968, "note": "TAIKO 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-07T15:39:43Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 31, "total": 53, "rows": 2416838, "note": "MUBARAK 15m: rule 21/120 (cci20)", "failed": [], "pct": 58.5, "updated": "2026-09-07T21:27:31Z"}
+{"shard": 13, "stage": "testing", "done": 31, "total": 53, "rows": 2421638, "note": "MUBARAK 15m: rule 45/120 (zscore20)", "failed": [], "pct": 58.5, "updated": "2026-09-07T21:28:16Z"}

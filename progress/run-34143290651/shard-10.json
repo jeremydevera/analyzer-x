@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 24, "total": 53, "rows": 653006, "note": "INJ 4h: rule 64/120 (hammer)", "failed": [], "pct": 45.3, "updated": "2026-09-07T16:38:51Z"}
+{"shard": 10, "stage": "testing", "done": 27, "total": 53, "rows": 714902, "note": "LAYER 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 50.9, "updated": "2026-09-07T16:39:42Z"}

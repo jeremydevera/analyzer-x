@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 19, "total": 53, "rows": 742806, "note": "FOGO 1h: rule 55/120 (nhigh50)", "failed": [], "pct": 35.8, "updated": "2026-09-07T14:33:40Z"}
+{"shard": 9, "stage": "testing", "done": 19, "total": 53, "rows": 760604, "note": "FOGO 30m: rule 20/120 (stoch14)", "failed": [], "pct": 35.8, "updated": "2026-09-07T14:34:26Z"}

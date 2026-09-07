@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 52, "total": 53, "rows": 1357948, "note": "XRP 4h: rule 20/120 (stoch14)", "failed": [], "pct": 98.1, "updated": "2026-09-07T04:45:59Z"}
+{"shard": 8, "stage": "testing", "done": 53, "total": 53, "rows": 1405690, "note": "ZIG 4h: rule 88/120 (cf_chan)", "failed": [], "pct": 100.0, "updated": "2026-09-07T04:46:44Z"}

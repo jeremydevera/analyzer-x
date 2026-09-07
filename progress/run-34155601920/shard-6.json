@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 32, "total": 53, "rows": 2687700, "note": "NEAR 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 60.4, "updated": "2026-09-07T21:51:01Z"}
+{"shard": 6, "stage": "testing", "done": 32, "total": 53, "rows": 2693780, "note": "NEAR 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 60.4, "updated": "2026-09-07T21:51:52Z"}

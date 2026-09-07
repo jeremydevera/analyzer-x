@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 36, "total": 53, "rows": 1325020, "note": "PLSTOCK 1h: rule 52/120 (nr7)", "failed": [], "pct": 67.9, "updated": "2026-09-07T11:41:49Z"}
+{"shard": 12, "stage": "testing", "done": 37, "total": 53, "rows": 1347066, "note": "PTB 1h: rule 3/120 (fade15)", "failed": [], "pct": 69.8, "updated": "2026-09-07T11:42:39Z"}

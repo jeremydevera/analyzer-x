@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 8, "total": 53, "rows": 232980, "note": "BLESS 1d: 349 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-07T07:23:15Z"}
+{"shard": 18, "stage": "testing", "done": 9, "total": 53, "rows": 271260, "note": "BROCCOLIF3B 4h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 17.0, "updated": "2026-09-07T07:24:00Z"}

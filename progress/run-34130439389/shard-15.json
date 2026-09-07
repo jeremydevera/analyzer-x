@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 20, "total": 53, "rows": 779536, "note": "GIGGLE 30m: 16,812 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-07T14:35:50Z"}
+{"shard": 15, "stage": "testing", "done": 20, "total": 53, "rows": 783716, "note": "GIGGLE 30m: rule 13/120 (pivot)", "failed": [], "pct": 37.7, "updated": "2026-09-07T14:36:36Z"}

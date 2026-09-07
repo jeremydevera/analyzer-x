@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 31, "total": 53, "rows": 1226290, "note": "MSTRSTOCK 30m: 17,325 bars, testing 120 rules", "failed": [], "pct": 58.5, "updated": "2026-09-07T12:02:03Z"}
+{"shard": 9, "stage": "testing", "done": 31, "total": 53, "rows": 1233690, "note": "MSTRSTOCK 30m: rule 31/120 (trix15)", "failed": [], "pct": 58.5, "updated": "2026-09-07T12:02:49Z"}

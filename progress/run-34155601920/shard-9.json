@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 17, "total": 53, "rows": 1402150, "note": "ERA 30m: rule 68/120 (dbltop)", "failed": [], "pct": 32.1, "updated": "2026-09-07T21:07:14Z"}
+{"shard": 9, "stage": "testing", "done": 17, "total": 53, "rows": 1413590, "note": "ERA 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-07T21:08:07Z"}

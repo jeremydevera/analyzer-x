@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 32, "total": 54, "rows": 954876, "note": "MYX 1d: 394 bars, testing 120 rules", "failed": [], "pct": 59.3, "updated": "2026-09-07T13:38:26Z"}
+{"shard": 0, "stage": "testing", "done": 36, "total": 54, "rows": 1002796, "note": "PEOPLE 4h: rule 25/120 (ichimoku)", "failed": [], "pct": 66.7, "updated": "2026-09-07T13:39:11Z"}

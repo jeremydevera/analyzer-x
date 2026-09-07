@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 40, "total": 53, "rows": 1531362, "note": "SAHARA 30m: rule 64/120 (hammer)", "failed": [], "pct": 75.5, "updated": "2026-09-07T15:07:31Z"}
+{"shard": 12, "stage": "testing", "done": 41, "total": 53, "rows": 1550392, "note": "SHLD 1h: rule 49/120 (vwaprev)", "failed": [], "pct": 77.4, "updated": "2026-09-07T15:08:16Z"}

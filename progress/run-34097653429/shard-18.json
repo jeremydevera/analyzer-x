@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 40, "total": 53, "rows": 1711338, "note": "SBUXSTOCK 1h: rule 22/120 (engulf)", "failed": [], "pct": 75.5, "updated": "2026-09-07T09:42:30Z"}
+{"shard": 18, "stage": "testing", "done": 41, "total": 53, "rows": 1772760, "note": "SKHYNIXSTOCK 30m: 5,244 bars, testing 120 rules", "failed": [], "pct": 77.4, "updated": "2026-09-07T09:43:17Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 44, "total": 53, "rows": 3434246, "note": "STG 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 83.0, "updated": "2026-09-07T22:02:49Z"}
+{"shard": 12, "stage": "testing", "done": 44, "total": 53, "rows": 3449866, "note": "STG 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 83.0, "updated": "2026-09-07T22:03:34Z"}

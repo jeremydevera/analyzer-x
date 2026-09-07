@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 6, "total": 53, "rows": 208448, "note": "AXS 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 11.3, "updated": "2026-09-07T08:03:19Z"}
+{"shard": 14, "stage": "testing", "done": 7, "total": 53, "rows": 220328, "note": "BAT 1h: rule 45/120 (zscore20)", "failed": [], "pct": 13.2, "updated": "2026-09-07T08:04:04Z"}

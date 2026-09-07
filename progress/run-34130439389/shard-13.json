@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 42, "total": 53, "rows": 1727468, "note": "SMCISTOCK 30m: rule 2/120 (mom15)", "failed": [], "pct": 79.2, "updated": "2026-09-07T15:14:31Z"}
+{"shard": 13, "stage": "testing", "done": 42, "total": 53, "rows": 1749468, "note": "SMCISTOCK 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 79.2, "updated": "2026-09-07T15:15:17Z"}

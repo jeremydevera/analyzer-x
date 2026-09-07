@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 53, "total": 53, "rows": 2100726, "note": "ZORA 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-07T09:16:32Z"}
+{"shard": 15, "stage": "testing", "done": 53, "total": 53, "rows": 2120306, "note": "ZORA 1h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-07T09:17:18Z"}

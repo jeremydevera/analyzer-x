@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 2, "total": 53, "rows": 76514, "note": "AIA 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-07T07:56:10Z"}
+{"shard": 12, "stage": "testing", "done": 3, "total": 53, "rows": 84294, "note": "ALT 1h: rule 13/120 (pivot)", "failed": [], "pct": 5.7, "updated": "2026-09-07T07:56:56Z"}

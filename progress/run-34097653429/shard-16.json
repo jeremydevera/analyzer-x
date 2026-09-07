@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 14, "total": 53, "rows": 647060, "note": "DASH 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-07T08:29:03Z"}
+{"shard": 16, "stage": "testing", "done": 15, "total": 53, "rows": 654060, "note": "DOGS 1h: rule 4/120 (trend50)", "failed": [], "pct": 28.3, "updated": "2026-09-07T08:29:49Z"}

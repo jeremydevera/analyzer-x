@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 11, "total": 53, "rows": 310476, "note": "CFX 4h: rule 36/120 (stochrsi)", "failed": [], "pct": 20.8, "updated": "2026-09-07T07:23:09Z"}
+{"shard": 17, "stage": "testing", "done": 13, "total": 53, "rows": 380152, "note": "CSCOSTOCK 4h: 1,720 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-07T07:23:55Z"}

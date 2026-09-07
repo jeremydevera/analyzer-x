@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 53, "total": 54, "rows": 4004960, "note": "ZBT 15m: rule 13/120 (pivot)", "failed": [], "pct": 98.1, "updated": "2026-09-07T23:21:35Z"}
+{"shard": 2, "stage": "testing", "done": 53, "total": 54, "rows": 4009800, "note": "ZBT 15m: rule 35/120 (willr14)", "failed": [], "pct": 98.1, "updated": "2026-09-07T23:22:22Z"}

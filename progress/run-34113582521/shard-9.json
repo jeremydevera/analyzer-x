@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 25, "total": 53, "rows": 933724, "note": "JCT 1h: rule 36/120 (stochrsi)", "failed": [], "pct": 47.2, "updated": "2026-09-07T11:43:53Z"}
+{"shard": 9, "stage": "testing", "done": 25, "total": 53, "rows": 950644, "note": "JCT 30m: rule 2/120 (mom15)", "failed": [], "pct": 47.2, "updated": "2026-09-07T11:44:46Z"}

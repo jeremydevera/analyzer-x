@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 19, "total": 53, "rows": 1559354, "note": "FLUX 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-07T20:53:43Z"}
+{"shard": 8, "stage": "testing", "done": 20, "total": 53, "rows": 1603294, "note": "GEOD 1h: 1,023 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-07T20:54:28Z"}

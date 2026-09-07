@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 30, "total": 53, "rows": 1380716, "note": "MOVR 30m: rule 69/120 (obv20)", "failed": [], "pct": 56.6, "updated": "2026-09-07T00:14:28Z"}
+{"shard": 19, "stage": "testing", "done": 31, "total": 53, "rows": 1391936, "note": "M 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 58.5, "updated": "2026-09-07T00:15:21Z"}

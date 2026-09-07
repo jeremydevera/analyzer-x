@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 41, "total": 53, "rows": 1685498, "note": "SHIB 1h: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 77.4, "updated": "2026-09-07T12:34:12Z"}
+{"shard": 10, "stage": "testing", "done": 41, "total": 53, "rows": 1695878, "note": "SHIB 30m: rule 3/120 (fade15)", "failed": [], "pct": 77.4, "updated": "2026-09-07T12:34:58Z"}

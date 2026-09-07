@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 38, "total": 53, "rows": 3548644, "note": "QNT 1h: rule 12/120 (donchian20)", "failed": [], "pct": 71.7, "updated": "2026-09-07T22:31:11Z"}
+{"shard": 4, "stage": "testing", "done": 38, "total": 53, "rows": 3571964, "note": "QNT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 71.7, "updated": "2026-09-07T22:32:03Z"}

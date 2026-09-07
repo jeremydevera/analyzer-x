@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 6, "total": 53, "rows": 262026, "note": "A 30m: rule 109/120 (cf_fundfade)", "failed": [], "pct": 11.3, "updated": "2026-09-07T11:10:51Z"}
+{"shard": 18, "stage": "testing", "done": 7, "total": 53, "rows": 282590, "note": "BDX 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-07T11:11:36Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 17, "total": 53, "rows": 1342374, "note": "ENJ 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 32.1, "updated": "2026-09-07T20:51:50Z"}
+{"shard": 3, "stage": "testing", "done": 17, "total": 53, "rows": 1350294, "note": "ENJ 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-07T20:52:47Z"}

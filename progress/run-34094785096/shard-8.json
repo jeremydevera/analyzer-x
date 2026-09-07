@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 5, "total": 53, "rows": 104304, "note": "AR 4h: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-07T07:20:39Z"}
+{"shard": 8, "stage": "testing", "done": 6, "total": 53, "rows": 150524, "note": "AVGOSTOCK 1d: rule 7/120 (fvg)", "failed": [], "pct": 11.3, "updated": "2026-09-07T07:21:24Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 18, "total": 53, "rows": 705202, "note": "FHE 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 34.0, "updated": "2026-09-07T14:35:36Z"}
+{"shard": 14, "stage": "testing", "done": 18, "total": 53, "rows": 710086, "note": "FHE 30m: rule 2/120 (mom15)", "failed": [], "pct": 34.0, "updated": "2026-09-07T14:36:28Z"}

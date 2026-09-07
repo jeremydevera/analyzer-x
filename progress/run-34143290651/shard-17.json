@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 21, "total": 53, "rows": 573994, "note": "GUN 1d: 394 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-07T16:37:35Z"}
+{"shard": 17, "stage": "testing", "done": 24, "total": 53, "rows": 640076, "note": "IOST 4h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 45.3, "updated": "2026-09-07T16:38:20Z"}

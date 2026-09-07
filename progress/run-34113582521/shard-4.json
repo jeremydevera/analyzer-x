@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 37, "total": 53, "rows": 1615850, "note": "POWR 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-07T11:56:25Z"}
+{"shard": 4, "stage": "testing", "done": 37, "total": 53, "rows": 1641150, "note": "POWR 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 69.8, "updated": "2026-09-07T11:57:10Z"}

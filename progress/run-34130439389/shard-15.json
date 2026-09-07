@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 25, "total": 53, "rows": 911758, "note": "JP225 1h: 3,294 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-07T14:42:03Z"}
+{"shard": 15, "stage": "testing", "done": 25, "total": 53, "rows": 948198, "note": "JP225 30m: rule 71/120 (mfi14)", "failed": [], "pct": 47.2, "updated": "2026-09-07T14:42:48Z"}

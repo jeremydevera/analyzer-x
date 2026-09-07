@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 31, "total": 53, "rows": 2869054, "note": "MVLL 15m: rule 30/120 (kama10)", "failed": [], "pct": 58.5, "updated": "2026-09-07T22:13:45Z"}
+{"shard": 18, "stage": "testing", "done": 31, "total": 53, "rows": 2906514, "note": "MVLL 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 58.5, "updated": "2026-09-07T22:14:30Z"}

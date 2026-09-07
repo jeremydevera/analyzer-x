@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 19, "total": 54, "rows": 503906, "note": "FLNCSTOCK 4h: rule 42/120 (rsidiv)", "failed": [], "pct": 35.2, "updated": "2026-09-07T13:29:48Z"}
+{"shard": 0, "stage": "testing", "done": 22, "total": 54, "rows": 564168, "note": "HAEDAL 4h: rule 69/120 (obv20)", "failed": [], "pct": 40.7, "updated": "2026-09-07T13:30:33Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 9, "total": 53, "rows": 384654, "note": "BNCSTOCK 30m: rule 26/120 (adx14)", "failed": [], "pct": 17.0, "updated": "2026-09-07T08:09:16Z"}
+{"shard": 6, "stage": "testing", "done": 10, "total": 53, "rows": 407874, "note": "BTR 1h: rule 33/120 (heikin)", "failed": [], "pct": 18.9, "updated": "2026-09-07T08:10:02Z"}

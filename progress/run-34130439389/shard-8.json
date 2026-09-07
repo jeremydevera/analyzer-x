@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 13, "total": 53, "rows": 506178, "note": "COTI 1h: rule 73/120 (volspike)", "failed": [], "pct": 24.5, "updated": "2026-09-07T14:31:35Z"}
+{"shard": 8, "stage": "testing", "done": 13, "total": 53, "rows": 516958, "note": "COTI 30m: rule 2/120 (mom15)", "failed": [], "pct": 24.5, "updated": "2026-09-07T14:32:27Z"}

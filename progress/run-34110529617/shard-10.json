@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 19, "total": 53, "rows": 544768, "note": "FOLKS 4h: rule 51/120 (orb)", "failed": [], "pct": 35.8, "updated": "2026-09-07T10:26:09Z"}
+{"shard": 10, "stage": "testing", "done": 21, "total": 53, "rows": 604776, "note": "GRASS 4h: rule 4/120 (trend50)", "failed": [], "pct": 39.6, "updated": "2026-09-07T10:26:54Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 26, "total": 53, "rows": 2343532, "note": "KMNO 4h: rule 16/120 (keltner)", "failed": [], "pct": 49.1, "updated": "2026-09-07T21:51:53Z"}
+{"shard": 17, "stage": "testing", "done": 27, "total": 53, "rows": 2379348, "note": "LINEA 15m: rule 1/120 (mom6)", "failed": [], "pct": 50.9, "updated": "2026-09-07T21:52:58Z"}

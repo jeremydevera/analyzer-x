@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 31, "total": 54, "rows": 806810, "note": "MOVR 4h: rule 43/120 (macddiv)", "failed": [], "pct": 57.4, "updated": "2026-09-07T16:40:43Z"}
+{"shard": 1, "stage": "testing", "done": 32, "total": 54, "rows": 842054, "note": "M 4h: rule 21/120 (cci20)", "failed": [], "pct": 59.3, "updated": "2026-09-07T16:41:28Z"}

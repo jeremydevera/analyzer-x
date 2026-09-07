@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 36, "total": 53, "rows": 1380198, "note": "PHAROS 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 67.9, "updated": "2026-09-07T08:53:42Z"}
+{"shard": 1, "stage": "testing", "done": 37, "total": 53, "rows": 1398018, "note": "POWER 1h: rule 61/120 (turtle)", "failed": [], "pct": 69.8, "updated": "2026-09-07T08:54:27Z"}

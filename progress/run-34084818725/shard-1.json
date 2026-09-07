@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 12, "total": 53, "rows": 490488, "note": "CHILLGUY 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-07T05:21:19Z"}
+{"shard": 1, "stage": "testing", "done": 14, "total": 53, "rows": 517728, "note": "CSTOCK 30m: 7,237 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-07T05:22:05Z"}

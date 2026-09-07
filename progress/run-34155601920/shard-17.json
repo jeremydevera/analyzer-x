@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 44, "total": 53, "rows": 3823992, "note": "STO 1h: rule 85/120 (cf_triple)", "failed": [], "pct": 83.0, "updated": "2026-09-07T23:09:38Z"}
+{"shard": 17, "stage": "testing", "done": 44, "total": 53, "rows": 3848832, "note": "STO 4h: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 83.0, "updated": "2026-09-07T23:10:23Z"}

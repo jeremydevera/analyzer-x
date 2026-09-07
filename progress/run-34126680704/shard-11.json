@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 6, "total": 53, "rows": 126280, "note": "AXL 4h: rule 1/120 (mom6)", "failed": [], "pct": 11.3, "updated": "2026-09-07T13:21:28Z"}
+{"shard": 11, "stage": "testing", "done": 6, "total": 53, "rows": 152460, "note": "AXL 1d: 394 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-07T13:22:13Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 12, "total": 53, "rows": 283456, "note": "CHZ 4h: rule 76/120 (cf_mom)", "failed": [], "pct": 22.6, "updated": "2026-09-07T10:21:05Z"}
+{"shard": 6, "stage": "testing", "done": 13, "total": 53, "rows": 311096, "note": "CORE 4h: rule 26/120 (adx14)", "failed": [], "pct": 24.5, "updated": "2026-09-07T10:21:50Z"}

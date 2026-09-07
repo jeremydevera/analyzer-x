@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 42, "total": 53, "rows": 1688352, "note": "SLP 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 79.2, "updated": "2026-09-07T15:41:51Z"}
+{"shard": 10, "stage": "testing", "done": 43, "total": 53, "rows": 1702212, "note": "SOONNETWORK 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-07T15:42:51Z"}

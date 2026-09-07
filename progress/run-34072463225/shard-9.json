@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 23, "total": 53, "rows": 544934, "note": "HYPE 1d: 394 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-07T01:25:05Z"}
+{"shard": 9, "stage": "testing", "done": 25, "total": 53, "rows": 600682, "note": "JELLYJELLY 4h: rule 8/120 (fib618)", "failed": [], "pct": 47.2, "updated": "2026-09-07T01:25:50Z"}

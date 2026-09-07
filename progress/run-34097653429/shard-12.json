@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 45, "total": 53, "rows": 1889384, "note": "SYRUP 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 84.9, "updated": "2026-09-07T09:11:40Z"}
+{"shard": 12, "stage": "testing", "done": 45, "total": 53, "rows": 1900824, "note": "SYRUP 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-07T09:12:26Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 9, "total": 53, "rows": 341764, "note": "BNB 1h: rule 29/120 (hull20)", "failed": [], "pct": 17.0, "updated": "2026-09-07T02:11:57Z"}
+{"shard": 5, "stage": "testing", "done": 9, "total": 53, "rows": 361564, "note": "BNB 30m: rule 1/120 (mom6)", "failed": [], "pct": 17.0, "updated": "2026-09-07T02:12:43Z"}

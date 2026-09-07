@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 2, "total": 53, "rows": 88880, "note": "AEVO 30m: rule 28/120 (vortex14)", "failed": [], "pct": 3.8, "updated": "2026-09-07T14:06:48Z"}
+{"shard": 8, "stage": "testing", "done": 2, "total": 53, "rows": 99660, "note": "AEVO 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 3.8, "updated": "2026-09-07T14:07:33Z"}

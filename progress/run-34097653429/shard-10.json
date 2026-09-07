@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 35, "total": 53, "rows": 1372610, "note": "PAXG 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-07T08:55:56Z"}
+{"shard": 10, "stage": "testing", "done": 35, "total": 53, "rows": 1385810, "note": "PAXG 30m: rule 55/120 (nhigh50)", "failed": [], "pct": 66.0, "updated": "2026-09-07T08:56:41Z"}

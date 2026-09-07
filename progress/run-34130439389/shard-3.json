@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 5, "total": 53, "rows": 237336, "note": "ARK 30m: rule 57/120 (orderblock)", "failed": [], "pct": 9.4, "updated": "2026-09-07T14:15:21Z"}
+{"shard": 3, "stage": "testing", "done": 7, "total": 53, "rows": 249936, "note": "BACSTOCK 1h: 5,673 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-07T14:16:09Z"}

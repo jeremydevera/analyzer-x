@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 12, "total": 54, "rows": 292578, "note": "CHF 1d: 394 bars, testing 120 rules", "failed": [], "pct": 22.2, "updated": "2026-09-07T13:23:46Z"}
+{"shard": 1, "stage": "testing", "done": 17, "total": 54, "rows": 353386, "note": "ENA 4h: downloading candles", "failed": [], "pct": 31.5, "updated": "2026-09-07T13:24:31Z"}

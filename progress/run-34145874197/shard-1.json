@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 45, "total": 54, "rows": 1902738, "note": "STX 30m: rule 57/120 (orderblock)", "failed": [], "pct": 83.3, "updated": "2026-09-07T18:39:06Z"}
+{"shard": 1, "stage": "testing", "done": 46, "total": 54, "rows": 1916598, "note": "TAKE 1h: 9,078 bars, testing 120 rules", "failed": [], "pct": 85.2, "updated": "2026-09-07T18:40:00Z"}

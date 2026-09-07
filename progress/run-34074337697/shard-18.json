@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 37, "total": 53, "rows": 1546820, "note": "PYTH 30m: rule 68/120 (dbltop)", "failed": [], "pct": 69.8, "updated": "2026-09-07T03:33:48Z"}
+{"shard": 18, "stage": "testing", "done": 38, "total": 53, "rows": 1557814, "note": "RECALL 1h: rule 1/120 (mom6)", "failed": [], "pct": 71.7, "updated": "2026-09-07T03:34:37Z"}

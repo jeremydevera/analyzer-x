@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 29, "total": 54, "rows": 1223118, "note": "MAGMA 30m: rule 1/120 (mom6)", "failed": [], "pct": 53.7, "updated": "2026-09-07T12:07:58Z"}
+{"shard": 0, "stage": "testing", "done": 29, "total": 54, "rows": 1229058, "note": "MAGMA 30m: rule 24/120 (psar)", "failed": [], "pct": 53.7, "updated": "2026-09-07T12:08:43Z"}

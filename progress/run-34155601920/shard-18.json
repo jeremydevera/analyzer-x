@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 35, "total": 53, "rows": 3238130, "note": "PENGSTOCK 15m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 66.0, "updated": "2026-09-07T22:27:54Z"}
+{"shard": 18, "stage": "testing", "done": 36, "total": 53, "rows": 3280780, "note": "POL 15m: 34,568 bars, testing 120 rules", "failed": [], "pct": 67.9, "updated": "2026-09-07T22:28:41Z"}

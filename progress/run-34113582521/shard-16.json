@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 46, "total": 53, "rows": 1984120, "note": "TIA 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 86.8, "updated": "2026-09-07T12:34:13Z"}
+{"shard": 16, "stage": "testing", "done": 47, "total": 53, "rows": 2004500, "note": "TRX 1h: rule 74/120 (volclimax)", "failed": [], "pct": 88.7, "updated": "2026-09-07T12:34:58Z"}

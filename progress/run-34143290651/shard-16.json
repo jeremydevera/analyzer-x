@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 14, "total": 53, "rows": 418486, "note": "CYS 4h: 1,622 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-07T16:35:44Z"}
+{"shard": 16, "stage": "testing", "done": 15, "total": 53, "rows": 456946, "note": "DODO 4h: rule 20/120 (stoch14)", "failed": [], "pct": 28.3, "updated": "2026-09-07T16:36:29Z"}

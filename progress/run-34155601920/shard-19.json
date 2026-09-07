@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 9, "total": 53, "rows": 990844, "note": "BRL 4h: rule 55/120 (nhigh50)", "failed": [], "pct": 17.0, "updated": "2026-09-07T20:24:07Z"}
+{"shard": 19, "stage": "testing", "done": 10, "total": 53, "rows": 1016172, "note": "CARV 15m: rule 1/120 (mom6)", "failed": [], "pct": 18.9, "updated": "2026-09-07T20:24:58Z"}

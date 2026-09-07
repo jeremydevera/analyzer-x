@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 50, "total": 53, "rows": 1942724, "note": "VUG 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 94.3, "updated": "2026-09-07T03:04:23Z"}
+{"shard": 6, "stage": "testing", "done": 51, "total": 53, "rows": 1969284, "note": "XAI 1h: rule 36/120 (stochrsi)", "failed": [], "pct": 96.2, "updated": "2026-09-07T03:05:08Z"}

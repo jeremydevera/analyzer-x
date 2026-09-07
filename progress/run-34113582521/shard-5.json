@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 5, "total": 53, "rows": 195464, "note": "ARPA 30m: rule 107/120 (cf_bosfvg_l1)", "failed": [], "pct": 9.4, "updated": "2026-09-07T11:04:01Z"}
+{"shard": 5, "stage": "testing", "done": 7, "total": 53, "rows": 230004, "note": "BANANA 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-07T11:04:49Z"}

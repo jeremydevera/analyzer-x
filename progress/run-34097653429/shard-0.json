@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 37, "total": 53, "rows": 1464706, "note": "PORTAL 30m: rule 27/120 (aroon25)", "failed": [], "pct": 69.8, "updated": "2026-09-07T09:19:20Z"}
+{"shard": 0, "stage": "testing", "done": 37, "total": 53, "rows": 1475266, "note": "PORTAL 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 69.8, "updated": "2026-09-07T09:20:06Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 15, "total": 53, "rows": 761442, "note": "DOLO 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 28.3, "updated": "2026-09-07T14:40:44Z"}
+{"shard": 19, "stage": "testing", "done": 16, "total": 53, "rows": 784806, "note": "ELSA 30m: 11,053 bars, testing 120 rules", "failed": [], "pct": 30.2, "updated": "2026-09-07T14:41:36Z"}

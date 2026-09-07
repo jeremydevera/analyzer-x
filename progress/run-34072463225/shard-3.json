@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 20, "total": 53, "rows": 538704, "note": "GBP 4h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 37.7, "updated": "2026-09-07T01:25:57Z"}
+{"shard": 3, "stage": "testing", "done": 24, "total": 53, "rows": 582382, "note": "IMX 4h: rule 2/120 (mom15)", "failed": [], "pct": 45.3, "updated": "2026-09-07T01:26:43Z"}

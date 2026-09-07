@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 17, "total": 53, "rows": 683900, "note": "ENS 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-07T05:32:06Z"}
+{"shard": 4, "stage": "testing", "done": 17, "total": 53, "rows": 697100, "note": "ENS 1h: rule 55/120 (nhigh50)", "failed": [], "pct": 32.1, "updated": "2026-09-07T05:32:52Z"}

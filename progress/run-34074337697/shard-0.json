@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 41, "total": 53, "rows": 1595642, "note": "SCR 1h: rule 1/120 (mom6)", "failed": [], "pct": 77.4, "updated": "2026-09-07T03:25:39Z"}
+{"shard": 0, "stage": "testing", "done": 41, "total": 53, "rows": 1612582, "note": "SCR 1h: rule 75/120 (relvolbrk)", "failed": [], "pct": 77.4, "updated": "2026-09-07T03:26:24Z"}

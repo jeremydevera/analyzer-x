@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 52, "total": 53, "rows": 2340690, "note": "YFI 30m: rule 52/120 (nr7)", "failed": [], "pct": 98.1, "updated": "2026-09-07T18:57:28Z"}
+{"shard": 16, "stage": "testing", "done": 53, "total": 53, "rows": 2355650, "note": "ZKSYNC 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-07T18:58:26Z"}

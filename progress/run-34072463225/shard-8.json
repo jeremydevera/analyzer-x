@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 6, "total": 53, "rows": 151208, "note": "AVGOSTOCK 1d: 361 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-07T01:18:39Z"}
+{"shard": 8, "stage": "testing", "done": 7, "total": 53, "rows": 191644, "note": "BAN 1d: 394 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-07T01:19:28Z"}

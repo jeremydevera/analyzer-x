@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 24, "total": 54, "rows": 2100628, "note": "IDOL 1d: rule 13/120 (pivot)", "failed": [], "pct": 44.4, "updated": "2026-09-07T21:29:30Z"}
+{"shard": 1, "stage": "testing", "done": 25, "total": 54, "rows": 2111288, "note": "IO 15m: rule 2/120 (mom15)", "failed": [], "pct": 46.3, "updated": "2026-09-07T21:30:31Z"}

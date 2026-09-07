@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 11, "total": 53, "rows": 257544, "note": "CELO 4h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 20.8, "updated": "2026-09-07T04:23:24Z"}
+{"shard": 13, "stage": "testing", "done": 14, "total": 53, "rows": 311928, "note": "CYBER 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-07T04:24:18Z"}

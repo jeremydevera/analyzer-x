@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 41, "total": 53, "rows": 1563562, "note": "SFP 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 77.4, "updated": "2026-09-07T02:50:29Z"}
+{"shard": 3, "stage": "testing", "done": 43, "total": 53, "rows": 1593142, "note": "SOLV 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 81.1, "updated": "2026-09-07T02:51:14Z"}

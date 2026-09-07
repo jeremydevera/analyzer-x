@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 22, "total": 53, "rows": 1001286, "note": "HK50 30m: rule 50/120 (gapfade)", "failed": [], "pct": 41.5, "updated": "2026-09-07T17:55:20Z"}
+{"shard": 16, "stage": "testing", "done": 24, "total": 53, "rows": 1039434, "note": "IONQSTOCK 1h: rule 8/120 (fib618)", "failed": [], "pct": 45.3, "updated": "2026-09-07T17:56:05Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 48, "total": 53, "rows": 1099550, "note": "TUT 4h: rule 2/120 (mom15)", "failed": [], "pct": 90.6, "updated": "2026-09-07T10:33:28Z"}
+{"shard": 5, "stage": "testing", "done": 49, "total": 53, "rows": 1159154, "note": "USDC 1d: 394 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-07T10:34:19Z"}

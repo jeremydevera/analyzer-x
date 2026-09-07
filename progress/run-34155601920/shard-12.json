@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 27, "total": 53, "rows": 2045100, "note": "LDO 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-07T20:54:15Z"}
+{"shard": 12, "stage": "testing", "done": 27, "total": 53, "rows": 2056180, "note": "LDO 1h: rule 28/120 (vortex14)", "failed": [], "pct": 50.9, "updated": "2026-09-07T20:55:00Z"}

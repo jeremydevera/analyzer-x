@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 26, "total": 53, "rows": 2480826, "note": "KAT 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 49.1, "updated": "2026-09-07T21:33:14Z"}
+{"shard": 4, "stage": "testing", "done": 26, "total": 53, "rows": 2494226, "note": "KAT 15m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 49.1, "updated": "2026-09-07T21:34:00Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 40, "total": 53, "rows": 1521902, "note": "SAHARA 30m: rule 20/120 (stoch14)", "failed": [], "pct": 75.5, "updated": "2026-09-07T15:06:46Z"}
+{"shard": 12, "stage": "testing", "done": 40, "total": 53, "rows": 1531362, "note": "SAHARA 30m: rule 64/120 (hammer)", "failed": [], "pct": 75.5, "updated": "2026-09-07T15:07:31Z"}

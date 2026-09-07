@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 35, "total": 53, "rows": 1492626, "note": "PAYPSTOCK 1h: rule 67/120 (pinbar)", "failed": [], "pct": 66.0, "updated": "2026-09-07T02:54:02Z"}
+{"shard": 12, "stage": "testing", "done": 35, "total": 53, "rows": 1520386, "note": "PAYPSTOCK 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 66.0, "updated": "2026-09-07T02:54:48Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 14, "total": 53, "rows": 318218, "note": "CYBER 4h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-07T07:22:59Z"}
+{"shard": 13, "stage": "testing", "done": 16, "total": 53, "rows": 358874, "note": "EDU 1d: 394 bars, testing 120 rules", "failed": [], "pct": 30.2, "updated": "2026-09-07T07:23:45Z"}

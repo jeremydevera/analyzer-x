@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 14, "total": 53, "rows": 1414836, "note": "CTC 1d: 394 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-07T20:42:27Z"}
+{"shard": 4, "stage": "testing", "done": 15, "total": 53, "rows": 1444956, "note": "DELLSTOCK 15m: rule 89/120 (cf_chan_l1)", "failed": [], "pct": 28.3, "updated": "2026-09-07T20:43:12Z"}

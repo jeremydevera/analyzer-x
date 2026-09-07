@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 46, "total": 54, "rows": 4036154, "note": "TAKE 1h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 85.2, "updated": "2026-09-07T23:18:30Z"}
+{"shard": 1, "stage": "testing", "done": 46, "total": 54, "rows": 4066646, "note": "TAKE 1d: 378 bars, testing 120 rules", "failed": [], "pct": 85.2, "updated": "2026-09-07T23:19:22Z"}

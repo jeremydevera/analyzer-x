@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 13, "total": 54, "rows": 523578, "note": "COLLECT 30m: rule 24/120 (psar)", "failed": [], "pct": 24.1, "updated": "2026-09-07T17:37:00Z"}
+{"shard": 0, "stage": "testing", "done": 13, "total": 54, "rows": 539198, "note": "COLLECT 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 24.1, "updated": "2026-09-07T17:37:46Z"}

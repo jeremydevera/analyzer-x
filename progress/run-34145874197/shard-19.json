@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 48, "total": 53, "rows": 2027150, "note": "UNI 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 90.6, "updated": "2026-09-07T18:51:32Z"}
+{"shard": 19, "stage": "testing", "done": 49, "total": 53, "rows": 2038410, "note": "VET 1h: rule 27/120 (aroon25)", "failed": [], "pct": 92.5, "updated": "2026-09-07T18:52:18Z"}

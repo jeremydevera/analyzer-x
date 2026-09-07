@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 4, "total": 53, "rows": 166354, "note": "API3 30m: rule 16/120 (keltner)", "failed": [], "pct": 7.5, "updated": "2026-09-07T08:02:40Z"}
+{"shard": 12, "stage": "testing", "done": 4, "total": 53, "rows": 176254, "note": "API3 30m: rule 62/120 (ote)", "failed": [], "pct": 7.5, "updated": "2026-09-07T08:03:25Z"}

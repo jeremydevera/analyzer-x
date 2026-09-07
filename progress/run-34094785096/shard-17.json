@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 15, "total": 53, "rows": 435676, "note": "DOLO 4h: rule 51/120 (orb)", "failed": [], "pct": 28.3, "updated": "2026-09-07T07:24:41Z"}
+{"shard": 17, "stage": "testing", "done": 17, "total": 53, "rows": 496704, "note": "EVAA 4h: 2,033 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-07T07:25:31Z"}

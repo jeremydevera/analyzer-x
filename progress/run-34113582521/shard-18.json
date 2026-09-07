@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 39, "total": 53, "rows": 1740506, "note": "ROBINHOOD 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 73.6, "updated": "2026-09-07T12:26:05Z"}
+{"shard": 18, "stage": "testing", "done": 39, "total": 53, "rows": 1754906, "note": "ROBINHOOD 30m: rule 109/120 (cf_fundfade)", "failed": [], "pct": 73.6, "updated": "2026-09-07T12:26:50Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 31, "total": 53, "rows": 1247490, "note": "MSTRSTOCK 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 58.5, "updated": "2026-09-07T12:03:34Z"}
+{"shard": 9, "stage": "testing", "done": 33, "total": 53, "rows": 1292710, "note": "NPC 1h: 5,885 bars, testing 120 rules", "failed": [], "pct": 62.3, "updated": "2026-09-07T12:04:21Z"}

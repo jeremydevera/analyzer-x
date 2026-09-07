@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 7, "total": 53, "rows": 296060, "note": "BEAMX 1h: rule 4/120 (trend50)", "failed": [], "pct": 13.2, "updated": "2026-09-07T02:14:03Z"}
+{"shard": 19, "stage": "testing", "done": 7, "total": 53, "rows": 314540, "note": "BEAMX 1h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-07T02:14:48Z"}

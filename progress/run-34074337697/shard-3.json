@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 28, "total": 53, "rows": 1042712, "note": "LONGXIA 1h: rule 46/120 (rsi2)", "failed": [], "pct": 52.8, "updated": "2026-09-07T02:34:59Z"}
+{"shard": 3, "stage": "testing", "done": 28, "total": 53, "rows": 1066850, "note": "LONGXIA 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 52.8, "updated": "2026-09-07T02:35:45Z"}

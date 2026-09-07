@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 22, "total": 54, "rows": 862206, "note": "HAEDAL 30m: rule 20/120 (stoch14)", "failed": [], "pct": 40.7, "updated": "2026-09-07T11:42:59Z"}
+{"shard": 0, "stage": "testing", "done": 22, "total": 54, "rows": 871666, "note": "HAEDAL 30m: rule 64/120 (hammer)", "failed": [], "pct": 40.7, "updated": "2026-09-07T11:43:44Z"}

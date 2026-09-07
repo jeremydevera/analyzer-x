@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 51, "total": 53, "rows": 1943558, "note": "XEC 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 96.2, "updated": "2026-09-07T03:26:03Z"}
+{"shard": 13, "stage": "testing", "done": 51, "total": 53, "rows": 1949498, "note": "XEC 30m: rule 21/120 (cci20)", "failed": [], "pct": 96.2, "updated": "2026-09-07T03:26:48Z"}

@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 36, "total": 54, "rows": 816402, "note": "PEPSTOCK 4h: rule 2/120 (mom15)", "failed": [], "pct": 66.7, "updated": "2026-09-07T13:34:16Z"}
+{"shard": 2, "stage": "testing", "done": 37, "total": 54, "rows": 870082, "note": "PORTAL 1d: 394 bars, testing 120 rules", "failed": [], "pct": 68.5, "updated": "2026-09-07T13:35:09Z"}

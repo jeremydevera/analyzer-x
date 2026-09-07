@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 14, "total": 53, "rows": 663718, "note": "CYS 30m: rule 39/120 (fisher)", "failed": [], "pct": 26.4, "updated": "2026-09-07T14:40:17Z"}
+{"shard": 16, "stage": "testing", "done": 14, "total": 53, "rows": 677218, "note": "CYS 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-07T14:41:02Z"}

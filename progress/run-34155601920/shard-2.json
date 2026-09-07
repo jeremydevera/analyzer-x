@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 21, "total": 54, "rows": 1425852, "note": "GMX 15m: rule 79/120 (cf_donch)", "failed": [], "pct": 38.9, "updated": "2026-09-07T20:59:46Z"}
+{"shard": 2, "stage": "testing", "done": 21, "total": 54, "rows": 1434052, "note": "GMX 15m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 38.9, "updated": "2026-09-07T21:00:32Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 40, "total": 53, "rows": 1765678, "note": "SATS 30m: rule 8/120 (fib618)", "failed": [], "pct": 75.5, "updated": "2026-09-07T00:28:14Z"}
+{"shard": 16, "stage": "testing", "done": 40, "total": 53, "rows": 1775038, "note": "SATS 30m: rule 61/120 (turtle)", "failed": [], "pct": 75.5, "updated": "2026-09-07T00:29:00Z"}

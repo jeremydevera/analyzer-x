@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 41, "total": 54, "rows": 3635032, "note": "SBUXSTOCK 15m: rule 12/120 (donchian20)", "failed": [], "pct": 75.9, "updated": "2026-09-07T22:31:35Z"}
+{"shard": 0, "stage": "testing", "done": 42, "total": 54, "rows": 3694110, "note": "SKHYNIXSTOCK 15m: rule 2/120 (mom15)", "failed": [], "pct": 77.8, "updated": "2026-09-07T22:32:21Z"}

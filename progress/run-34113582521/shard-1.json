@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 30, "total": 54, "rows": 1204008, "note": "METIS 1h: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 55.6, "updated": "2026-09-07T11:39:26Z"}
+{"shard": 1, "stage": "testing", "done": 30, "total": 54, "rows": 1208584, "note": "METIS 30m: rule 4/120 (trend50)", "failed": [], "pct": 55.6, "updated": "2026-09-07T11:40:13Z"}

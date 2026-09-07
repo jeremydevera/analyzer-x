@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 52, "total": 53, "rows": 4555826, "note": "YGG 1h: rule 13/120 (pivot)", "failed": [], "pct": 98.1, "updated": "2026-09-07T23:52:33Z"}
+{"shard": 17, "stage": "testing", "done": 52, "total": 53, "rows": 4578486, "note": "YGG 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-07T23:53:32Z"}

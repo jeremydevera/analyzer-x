@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 23, "total": 53, "rows": 883362, "note": "HUMA 30m: rule 37/120 (ultosc)", "failed": [], "pct": 43.4, "updated": "2026-09-07T14:53:43Z"}
+{"shard": 8, "stage": "testing", "done": 23, "total": 53, "rows": 895462, "note": "HUMA 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 43.4, "updated": "2026-09-07T14:54:29Z"}

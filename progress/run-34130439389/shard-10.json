@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 44, "total": 53, "rows": 1793292, "note": "STBL 30m: rule 39/120 (fisher)", "failed": [], "pct": 83.0, "updated": "2026-09-07T15:49:53Z"}
+{"shard": 10, "stage": "testing", "done": 44, "total": 53, "rows": 1806052, "note": "STBL 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 83.0, "updated": "2026-09-07T15:50:39Z"}

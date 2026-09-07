@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 24, "total": 53, "rows": 518788, "note": "INX 4h: rule 21/120 (cci20)", "failed": [], "pct": 45.3, "updated": "2026-09-07T13:27:49Z"}
+{"shard": 14, "stage": "testing", "done": 25, "total": 53, "rows": 573480, "note": "JOE 1d: 394 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-07T13:28:39Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 29, "total": 53, "rows": 1004400, "note": "MCDSTOCK 1h: rule 49/120 (vwaprev)", "failed": [], "pct": 54.7, "updated": "2026-09-07T11:44:16Z"}
+{"shard": 11, "stage": "testing", "done": 29, "total": 53, "rows": 1024340, "note": "MCDSTOCK 30m: rule 27/120 (aroon25)", "failed": [], "pct": 54.7, "updated": "2026-09-07T11:45:01Z"}

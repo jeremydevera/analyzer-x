@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 23, "total": 53, "rows": 793318, "note": "HYPER 1h: rule 6/120 (sweep30)", "failed": [], "pct": 43.4, "updated": "2026-09-07T05:47:52Z"}
+{"shard": 8, "stage": "testing", "done": 23, "total": 53, "rows": 815978, "note": "HYPER 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 43.4, "updated": "2026-09-07T05:48:38Z"}

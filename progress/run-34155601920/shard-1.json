@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 34, "total": 54, "rows": 3036856, "note": "OGN 15m: rule 5/120 (rsi14)", "failed": [], "pct": 63.0, "updated": "2026-09-07T22:29:45Z"}
+{"shard": 1, "stage": "testing", "done": 34, "total": 54, "rows": 3042136, "note": "OGN 15m: rule 29/120 (hull20)", "failed": [], "pct": 63.0, "updated": "2026-09-07T22:30:32Z"}

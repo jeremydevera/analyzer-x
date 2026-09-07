@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 30, "total": 53, "rows": 2179420, "note": "MONAD 30m: rule 33/120 (heikin)", "failed": [], "pct": 56.6, "updated": "2026-09-07T21:24:50Z"}
+{"shard": 15, "stage": "testing", "done": 30, "total": 53, "rows": 2193060, "note": "MONAD 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 56.6, "updated": "2026-09-07T21:25:36Z"}

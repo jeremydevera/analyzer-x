@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 45, "total": 53, "rows": 1142114, "note": "TAKE 4h: rule 3/120 (fade15)", "failed": [], "pct": 84.9, "updated": "2026-09-07T04:39:28Z"}
+{"shard": 19, "stage": "testing", "done": 47, "total": 53, "rows": 1182198, "note": "TST 4h: rule 25/120 (ichimoku)", "failed": [], "pct": 88.7, "updated": "2026-09-07T04:40:13Z"}

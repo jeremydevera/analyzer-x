@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 26, "total": 53, "rows": 929004, "note": "KAS 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-07T17:55:01Z"}
+{"shard": 3, "stage": "testing", "done": 26, "total": 53, "rows": 946164, "note": "KAS 1h: rule 73/120 (volspike)", "failed": [], "pct": 49.1, "updated": "2026-09-07T17:55:46Z"}

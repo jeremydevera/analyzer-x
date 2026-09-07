@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 25, "total": 53, "rows": 1129972, "note": "JTO 30m: rule 1/120 (mom6)", "failed": [], "pct": 47.2, "updated": "2026-09-07T11:35:41Z"}
+{"shard": 19, "stage": "testing", "done": 25, "total": 53, "rows": 1140532, "note": "JTO 30m: rule 45/120 (zscore20)", "failed": [], "pct": 47.2, "updated": "2026-09-07T11:36:27Z"}

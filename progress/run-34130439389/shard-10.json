@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 32, "total": 53, "rows": 1189716, "note": "NEO 1h: rule 21/120 (cci20)", "failed": [], "pct": 60.4, "updated": "2026-09-07T15:14:52Z"}
+{"shard": 10, "stage": "testing", "done": 32, "total": 53, "rows": 1211056, "note": "NEO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 60.4, "updated": "2026-09-07T15:15:40Z"}

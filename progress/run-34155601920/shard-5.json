@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 20, "total": 53, "rows": 1428530, "note": "GBP 1h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 37.7, "updated": "2026-09-07T20:53:33Z"}
+{"shard": 5, "stage": "testing", "done": 20, "total": 53, "rows": 1469186, "note": "GBP 1d: rule 54/120 (fractal5)", "failed": [], "pct": 37.7, "updated": "2026-09-07T20:54:18Z"}

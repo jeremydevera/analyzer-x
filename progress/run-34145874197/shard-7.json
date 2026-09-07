@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 25, "total": 53, "rows": 893500, "note": "JASMY 30m: rule 59/120 (choch)", "failed": [], "pct": 47.2, "updated": "2026-09-07T17:43:10Z"}
+{"shard": 7, "stage": "testing", "done": 26, "total": 53, "rows": 905700, "note": "KERNEL 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-07T17:44:04Z"}

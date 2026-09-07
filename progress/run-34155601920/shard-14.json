@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 34, "total": 53, "rows": 2860770, "note": "OPENAI 30m: 7,044 bars, testing 120 rules", "failed": [], "pct": 64.2, "updated": "2026-09-07T21:51:51Z"}
+{"shard": 14, "stage": "testing", "done": 34, "total": 53, "rows": 2884970, "note": "OPENAI 1h: 3,522 bars, testing 120 rules", "failed": [], "pct": 64.2, "updated": "2026-09-07T21:52:39Z"}

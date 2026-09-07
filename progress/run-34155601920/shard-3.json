@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 42, "total": 53, "rows": 3524892, "note": "SKL 4h: rule 29/120 (hull20)", "failed": [], "pct": 79.2, "updated": "2026-09-07T22:44:36Z"}
+{"shard": 3, "stage": "testing", "done": 43, "total": 53, "rows": 3568184, "note": "SOFISTOCK 15m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-07T22:45:21Z"}

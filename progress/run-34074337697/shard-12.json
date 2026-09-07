@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 43, "total": 53, "rows": 1820574, "note": "SOXX 1h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-07T03:07:08Z"}
+{"shard": 12, "stage": "testing", "done": 45, "total": 53, "rows": 1850534, "note": "SYRUP 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-07T03:08:04Z"}

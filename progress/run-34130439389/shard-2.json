@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 19, "total": 54, "rows": 640910, "note": "FLOKI 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 35.2, "updated": "2026-09-07T14:33:16Z"}
+{"shard": 2, "stage": "testing", "done": 20, "total": 54, "rows": 651738, "note": "GAIB 30m: 14,025 bars, testing 120 rules", "failed": [], "pct": 37.0, "updated": "2026-09-07T14:34:10Z"}

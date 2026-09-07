@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 47, "total": 53, "rows": 1853588, "note": "TOKYOELSTOCK 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 88.7, "updated": "2026-09-07T06:42:43Z"}
+{"shard": 0, "stage": "testing", "done": 49, "total": 53, "rows": 1916574, "note": "URNM 30m: rule 64/120 (hammer)", "failed": [], "pct": 92.5, "updated": "2026-09-07T06:43:28Z"}

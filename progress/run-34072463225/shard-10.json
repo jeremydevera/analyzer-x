@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 4, "total": 53, "rows": 108378, "note": "APE 4h: rule 3/120 (fade15)", "failed": [], "pct": 7.5, "updated": "2026-09-07T01:17:53Z"}
+{"shard": 10, "stage": "testing", "done": 5, "total": 53, "rows": 156602, "note": "ASR 4h: rule 49/120 (vwaprev)", "failed": [], "pct": 9.4, "updated": "2026-09-07T01:18:38Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 36, "total": 53, "rows": 3250148, "note": "PHA 15m: rule 13/120 (pivot)", "failed": [], "pct": 67.9, "updated": "2026-09-07T22:08:34Z"}
+{"shard": 4, "stage": "testing", "done": 36, "total": 53, "rows": 3254548, "note": "PHA 15m: rule 33/120 (heikin)", "failed": [], "pct": 67.9, "updated": "2026-09-07T22:09:20Z"}

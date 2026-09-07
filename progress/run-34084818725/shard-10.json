@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 34, "total": 53, "rows": 1379462, "note": "ONT 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 64.2, "updated": "2026-09-07T06:00:46Z"}
+{"shard": 10, "stage": "testing", "done": 35, "total": 53, "rows": 1394642, "note": "PAXG 1h: rule 55/120 (nhigh50)", "failed": [], "pct": 66.0, "updated": "2026-09-07T06:01:32Z"}

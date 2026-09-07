@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 11, "total": 53, "rows": 338220, "note": "CFX 1d: rule 58/120 (bos)", "failed": [], "pct": 20.8, "updated": "2026-09-07T04:24:59Z"}
+{"shard": 17, "stage": "testing", "done": 14, "total": 53, "rows": 419156, "note": "DATA 1d: downloading candles", "failed": [], "pct": 26.4, "updated": "2026-09-07T04:25:46Z"}

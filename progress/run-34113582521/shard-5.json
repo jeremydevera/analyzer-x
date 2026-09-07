@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 50, "total": 53, "rows": 1866224, "note": "VSTOCK 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 94.3, "updated": "2026-09-07T12:26:25Z"}
+{"shard": 5, "stage": "testing", "done": 51, "total": 53, "rows": 1876380, "note": "WOTAMALAILE 1h: rule 16/120 (keltner)", "failed": [], "pct": 96.2, "updated": "2026-09-07T12:27:11Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 43, "total": 53, "rows": 1795646, "note": "SOXS 30m: rule 86/120 (cf_triple_l1)", "failed": [], "pct": 81.1, "updated": "2026-09-07T17:59:57Z"}
+{"shard": 13, "stage": "testing", "done": 45, "total": 53, "rows": 1812514, "note": "SYN 1h: rule 28/120 (vortex14)", "failed": [], "pct": 84.9, "updated": "2026-09-07T18:00:43Z"}

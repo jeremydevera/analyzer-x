@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 4, "total": 53, "rows": 89496, "note": "ANIME 4h: rule 4/120 (trend50)", "failed": [], "pct": 7.5, "updated": "2026-09-07T04:21:44Z"}
+{"shard": 3, "stage": "testing", "done": 5, "total": 53, "rows": 127292, "note": "ARK 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 9.4, "updated": "2026-09-07T04:22:29Z"}

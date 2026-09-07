@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 37, "total": 53, "rows": 1466496, "note": "PROVE 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-07T00:00:48Z"}
+{"shard": 7, "stage": "testing", "done": 37, "total": 53, "rows": 1488716, "note": "PROVE 1h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 69.8, "updated": "2026-09-07T00:01:34Z"}

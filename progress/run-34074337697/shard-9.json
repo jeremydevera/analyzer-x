@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 9, "total": 53, "rows": 403272, "note": "BOBA 30m: rule 46/120 (rsi2)", "failed": [], "pct": 17.0, "updated": "2026-09-07T02:10:16Z"}
+{"shard": 9, "stage": "testing", "done": 10, "total": 53, "rows": 416232, "note": "BULLA 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 18.9, "updated": "2026-09-07T02:11:05Z"}

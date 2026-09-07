@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 22, "total": 53, "rows": 561952, "note": "HFT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 41.5, "updated": "2026-09-07T04:30:28Z"}
+{"shard": 8, "stage": "testing", "done": 23, "total": 53, "rows": 593152, "note": "HYPER 4h: rule 22/120 (engulf)", "failed": [], "pct": 43.4, "updated": "2026-09-07T04:31:13Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 25, "total": 54, "rows": 2124688, "note": "IO 15m: rule 68/120 (dbltop)", "failed": [], "pct": 46.3, "updated": "2026-09-07T21:32:49Z"}
+{"shard": 1, "stage": "testing", "done": 25, "total": 54, "rows": 2131488, "note": "IO 15m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 46.3, "updated": "2026-09-07T21:33:35Z"}

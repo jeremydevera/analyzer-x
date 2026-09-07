@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 22, "total": 53, "rows": 2158182, "note": "HMSTR 15m: rule 64/120 (hammer)", "failed": [], "pct": 41.5, "updated": "2026-09-07T21:18:15Z"}
+{"shard": 19, "stage": "testing", "done": 22, "total": 53, "rows": 2168182, "note": "HMSTR 15m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-07T21:19:00Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 2, "total": 54, "rows": 130118, "note": "ADBESTOCK 15m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 3.7, "updated": "2026-09-07T19:38:08Z"}
+{"shard": 1, "stage": "testing", "done": 2, "total": 54, "rows": 138638, "note": "ADBESTOCK 30m: rule 27/120 (aroon25)", "failed": [], "pct": 3.7, "updated": "2026-09-07T19:38:53Z"}

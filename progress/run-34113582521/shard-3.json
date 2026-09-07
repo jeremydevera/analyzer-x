@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 10, "total": 53, "rows": 392038, "note": "BSB 1h: rule 115/120 (cf_diadx)", "failed": [], "pct": 18.9, "updated": "2026-09-07T11:11:01Z"}
+{"shard": 3, "stage": "testing", "done": 10, "total": 53, "rows": 400338, "note": "BSB 30m: rule 31/120 (trix15)", "failed": [], "pct": 18.9, "updated": "2026-09-07T11:11:46Z"}

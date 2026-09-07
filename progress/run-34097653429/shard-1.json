@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 14, "total": 53, "rows": 521976, "note": "CSTOCK 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-07T08:17:16Z"}
+{"shard": 1, "stage": "testing", "done": 15, "total": 53, "rows": 531296, "note": "DEEP 1h: rule 29/120 (hull20)", "failed": [], "pct": 28.3, "updated": "2026-09-07T08:18:01Z"}

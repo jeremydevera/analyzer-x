@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 32, "total": 53, "rows": 683522, "note": "NEWT 4h: rule 23/120 (supertrend)", "failed": [], "pct": 60.4, "updated": "2026-09-07T04:32:09Z"}
+{"shard": 11, "stage": "testing", "done": 34, "total": 53, "rows": 726756, "note": "ON 4h: rule 6/120 (sweep30)", "failed": [], "pct": 64.2, "updated": "2026-09-07T04:32:54Z"}

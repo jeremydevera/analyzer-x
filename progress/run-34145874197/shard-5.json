@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 4, "total": 53, "rows": 115020, "note": "ANSEM 1h: 1,714 bars, testing 120 rules", "failed": [], "pct": 7.5, "updated": "2026-09-07T17:11:06Z"}
+{"shard": 5, "stage": "testing", "done": 5, "total": 53, "rows": 138544, "note": "ARPA 1h: rule 4/120 (trend50)", "failed": [], "pct": 9.4, "updated": "2026-09-07T17:11:52Z"}

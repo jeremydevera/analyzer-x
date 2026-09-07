@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 21, "total": 53, "rows": 891120, "note": "GRASS 30m: rule 70/120 (cmf20)", "failed": [], "pct": 39.6, "updated": "2026-09-07T11:50:23Z"}
+{"shard": 10, "stage": "testing", "done": 22, "total": 53, "rows": 901900, "note": "HFT 1h: rule 9/120 (fib382)", "failed": [], "pct": 41.5, "updated": "2026-09-07T11:51:08Z"}

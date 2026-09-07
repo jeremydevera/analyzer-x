@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 38, "total": 53, "rows": 1516512, "note": "Q 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 71.7, "updated": "2026-09-07T12:20:40Z"}
+{"shard": 9, "stage": "testing", "done": 40, "total": 53, "rows": 1547340, "note": "RVN 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-07T12:21:30Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 48, "total": 53, "rows": 1818216, "note": "TUT 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 90.6, "updated": "2026-09-07T06:25:45Z"}
+{"shard": 3, "stage": "testing", "done": 49, "total": 53, "rows": 1841596, "note": "USDC 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 92.5, "updated": "2026-09-07T06:26:31Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 32, "total": 54, "rows": 2845566, "note": "MYX 15m: rule 69/120 (obv20)", "failed": [], "pct": 59.3, "updated": "2026-09-07T21:52:52Z"}
+{"shard": 0, "stage": "testing", "done": 32, "total": 54, "rows": 2853246, "note": "MYX 15m: rule 118/120 (cf_stflip)", "failed": [], "pct": 59.3, "updated": "2026-09-07T21:53:37Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 1, "total": 53, "rows": 38720, "note": "ACH 30m: rule 46/120 (rsi2)", "failed": [], "pct": 1.9, "updated": "2026-09-07T07:55:30Z"}
+{"shard": 17, "stage": "testing", "done": 1, "total": 53, "rows": 51920, "note": "ACH 30m: rule 107/120 (cf_bosfvg_l1)", "failed": [], "pct": 1.9, "updated": "2026-09-07T07:56:15Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 13, "total": 54, "rows": 534824, "note": "COMP 30m: rule 41/120 (tsi)", "failed": [], "pct": 24.1, "updated": "2026-09-07T14:26:52Z"}
+{"shard": 1, "stage": "testing", "done": 13, "total": 54, "rows": 547804, "note": "COMP 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 24.1, "updated": "2026-09-07T14:27:38Z"}

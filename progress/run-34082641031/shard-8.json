@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 24, "total": 53, "rows": 632048, "note": "INJ 4h: rule 17/120 (atrbreak)", "failed": [], "pct": 45.3, "updated": "2026-09-07T04:31:58Z"}
+{"shard": 8, "stage": "testing", "done": 26, "total": 53, "rows": 702004, "note": "KHCSTOCK 1d: 68 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-07T04:32:44Z"}

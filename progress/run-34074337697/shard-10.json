@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 20, "total": 53, "rows": 872850, "note": "GGLL 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 37.7, "updated": "2026-09-07T02:34:39Z"}
+{"shard": 10, "stage": "testing", "done": 21, "total": 53, "rows": 884290, "note": "GRT 1h: rule 46/120 (rsi2)", "failed": [], "pct": 39.6, "updated": "2026-09-07T02:35:24Z"}

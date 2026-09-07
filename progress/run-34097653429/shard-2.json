@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 46, "total": 53, "rows": 1962968, "note": "TBT 30m: 1,910 bars, testing 120 rules", "failed": [], "pct": 86.8, "updated": "2026-09-07T09:21:16Z"}
+{"shard": 2, "stage": "testing", "done": 47, "total": 53, "rows": 1990328, "note": "TOWNS 1h: rule 21/120 (cci20)", "failed": [], "pct": 88.7, "updated": "2026-09-07T09:22:02Z"}

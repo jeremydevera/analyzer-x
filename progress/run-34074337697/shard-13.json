@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 50, "total": 53, "rows": 1903054, "note": "WDAYSTOCK 1h: 974 bars, testing 120 rules", "failed": [], "pct": 94.3, "updated": "2026-09-07T03:24:32Z"}
+{"shard": 13, "stage": "testing", "done": 51, "total": 53, "rows": 1922218, "note": "XEC 1h: rule 21/120 (cci20)", "failed": [], "pct": 96.2, "updated": "2026-09-07T03:25:18Z"}

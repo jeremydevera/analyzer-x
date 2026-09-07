@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 49, "total": 54, "rows": 4264550, "note": "UP 1h: rule 116/120 (cf_diadx_l1)", "failed": [], "pct": 90.7, "updated": "2026-09-07T23:33:01Z"}
+{"shard": 1, "stage": "testing", "done": 50, "total": 54, "rows": 4298574, "note": "VIRTUAL 15m: rule 1/120 (mom6)", "failed": [], "pct": 92.6, "updated": "2026-09-07T23:33:55Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 13, "total": 53, "rows": 322420, "note": "CORE 4h: rule 1/120 (mom6)", "failed": [], "pct": 24.5, "updated": "2026-09-07T04:25:34Z"}
+{"shard": 4, "stage": "testing", "done": 16, "total": 53, "rows": 391522, "note": "DUSK 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 30.2, "updated": "2026-09-07T04:26:25Z"}

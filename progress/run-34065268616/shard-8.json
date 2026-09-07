@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 52, "total": 53, "rows": 2072666, "note": "XRP 30m: rule 65/120 (doji)", "failed": [], "pct": 98.1, "updated": "2026-09-07T00:55:48Z"}
+{"shard": 8, "stage": "testing", "done": 53, "total": 53, "rows": 2083466, "note": "ZIG 1h: 7,443 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-07T00:56:39Z"}

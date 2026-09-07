@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 40, "total": 53, "rows": 1533706, "note": "SAGA 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-07T15:04:34Z"}
+{"shard": 11, "stage": "testing", "done": 40, "total": 53, "rows": 1540746, "note": "SAGA 30m: rule 3/120 (fade15)", "failed": [], "pct": 75.5, "updated": "2026-09-07T15:05:20Z"}

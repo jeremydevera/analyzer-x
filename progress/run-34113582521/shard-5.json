@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 12, "total": 53, "rows": 472052, "note": "CHYMSTOCK 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-07T11:18:48Z"}
+{"shard": 5, "stage": "testing", "done": 13, "total": 53, "rows": 505902, "note": "COPSTOCK 30m: rule 79/120 (cf_donch)", "failed": [], "pct": 24.5, "updated": "2026-09-07T11:19:33Z"}

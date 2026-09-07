@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 7, "total": 53, "rows": 145100, "note": "BAS 4h: rule 51/120 (orb)", "failed": [], "pct": 13.2, "updated": "2026-09-07T13:21:25Z"}
+{"shard": 13, "stage": "testing", "done": 13, "total": 53, "rows": 233984, "note": "CRMSTOCK 1d: 236 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-07T13:22:10Z"}

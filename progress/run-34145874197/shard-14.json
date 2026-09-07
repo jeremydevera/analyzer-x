@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 27, "total": 53, "rows": 1081440, "note": "LGELECTRONICS 1h: 604 bars, testing 120 rules", "failed": [], "pct": 50.9, "updated": "2026-09-07T17:53:33Z"}
+{"shard": 14, "stage": "testing", "done": 28, "total": 53, "rows": 1123944, "note": "LUNANEW 1h: rule 16/120 (keltner)", "failed": [], "pct": 52.8, "updated": "2026-09-07T17:54:19Z"}

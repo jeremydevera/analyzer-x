@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 7, "total": 53, "rows": 692916, "note": "BEAMX 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-07T20:09:07Z"}
+{"shard": 19, "stage": "testing", "done": 7, "total": 53, "rows": 700716, "note": "BEAMX 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-07T20:09:59Z"}

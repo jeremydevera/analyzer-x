@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 10, "total": 53, "rows": 226562, "note": "C98 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 18.9, "updated": "2026-09-07T04:23:36Z"}
+{"shard": 14, "stage": "testing", "done": 11, "total": 53, "rows": 267570, "note": "CELR 4h: rule 2/120 (mom15)", "failed": [], "pct": 20.8, "updated": "2026-09-07T04:24:23Z"}

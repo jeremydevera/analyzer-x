@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 41, "total": 53, "rows": 1508390, "note": "SIREN 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 77.4, "updated": "2026-09-06T23:59:17Z"}
+{"shard": 15, "stage": "testing", "done": 41, "total": 53, "rows": 1520930, "note": "SIREN 1h: rule 52/120 (nr7)", "failed": [], "pct": 77.4, "updated": "2026-09-07T00:00:02Z"}

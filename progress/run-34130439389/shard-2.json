@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 1, "total": 54, "rows": 47740, "note": "1000000MOG 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-07T14:02:48Z"}
+{"shard": 2, "stage": "testing", "done": 3, "total": 54, "rows": 56122, "note": "AKE 1h: rule 3/120 (fade15)", "failed": [], "pct": 5.6, "updated": "2026-09-07T14:03:37Z"}

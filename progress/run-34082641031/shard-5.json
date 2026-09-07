@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 18, "total": 53, "rows": 430666, "note": "FARTCOIN 1d: 394 bars, testing 120 rules", "failed": [], "pct": 34.0, "updated": "2026-09-07T04:26:16Z"}
+{"shard": 5, "stage": "testing", "done": 21, "total": 53, "rows": 489376, "note": "GPS 4h: rule 33/120 (heikin)", "failed": [], "pct": 39.6, "updated": "2026-09-07T04:27:01Z"}

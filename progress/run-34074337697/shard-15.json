@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 44, "total": 53, "rows": 1711298, "note": "STO 30m: rule 17/120 (atrbreak)", "failed": [], "pct": 83.0, "updated": "2026-09-07T03:12:44Z"}
+{"shard": 15, "stage": "testing", "done": 44, "total": 53, "rows": 1721498, "note": "STO 30m: rule 69/120 (obv20)", "failed": [], "pct": 83.0, "updated": "2026-09-07T03:13:29Z"}

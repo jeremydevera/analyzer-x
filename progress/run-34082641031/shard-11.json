@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 44, "total": 53, "rows": 955142, "note": "STONKBROKER 1d: downloading candles", "failed": [], "pct": 83.0, "updated": "2026-09-07T04:35:55Z"}
+{"shard": 11, "stage": "testing", "done": 45, "total": 53, "rows": 979142, "note": "SYN 1d: 394 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-07T04:36:45Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 1, "total": 53, "rows": 24354, "note": "2Z 30m: 16,317 bars, testing 120 rules", "failed": [], "pct": 1.9, "updated": "2026-09-07T10:53:06Z"}
+{"shard": 7, "stage": "testing", "done": 1, "total": 53, "rows": 29634, "note": "2Z 30m: rule 18/120 (macd)", "failed": [], "pct": 1.9, "updated": "2026-09-07T10:53:51Z"}

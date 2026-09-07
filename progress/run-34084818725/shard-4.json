@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 8, "total": 53, "rows": 357452, "note": "BIANRENSHENG 30m: 16,081 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-07T05:14:13Z"}
+{"shard": 4, "stage": "testing", "done": 8, "total": 53, "rows": 363332, "note": "BIANRENSHENG 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 15.1, "updated": "2026-09-07T05:14:58Z"}

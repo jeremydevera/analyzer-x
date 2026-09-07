@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 5, "total": 53, "rows": 237754, "note": "ATH 30m: rule 41/120 (tsi)", "failed": [], "pct": 9.4, "updated": "2026-09-07T05:08:45Z"}
+{"shard": 16, "stage": "testing", "done": 5, "total": 53, "rows": 254914, "note": "ATH 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-07T05:09:30Z"}

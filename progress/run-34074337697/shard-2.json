@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 53, "total": 53, "rows": 2305458, "note": "ZEN 30m: rule 29/120 (hull20)", "failed": [], "pct": 100.0, "updated": "2026-09-07T03:44:51Z"}
+{"shard": 2, "stage": "testing", "done": 53, "total": 53, "rows": 2315578, "note": "ZEN 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 100.0, "updated": "2026-09-07T03:45:37Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 24, "total": 53, "rows": 996988, "note": "INX 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 45.3, "updated": "2026-09-07T08:31:57Z"}
+{"shard": 12, "stage": "testing", "done": 24, "total": 53, "rows": 1015388, "note": "INX 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 45.3, "updated": "2026-09-07T08:32:42Z"}

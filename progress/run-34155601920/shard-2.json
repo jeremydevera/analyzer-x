@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 23, "total": 54, "rows": 1558180, "note": "HOME 15m: rule 2/120 (mom15)", "failed": [], "pct": 42.6, "updated": "2026-09-07T21:06:03Z"}
+{"shard": 2, "stage": "testing", "done": 23, "total": 54, "rows": 1561040, "note": "HOME 15m: rule 13/120 (pivot)", "failed": [], "pct": 42.6, "updated": "2026-09-07T21:06:51Z"}

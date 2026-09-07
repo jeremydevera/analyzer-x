@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 37, "total": 54, "rows": 1528756, "note": "PORTAL 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 68.5, "updated": "2026-09-07T12:25:45Z"}
+{"shard": 2, "stage": "testing", "done": 38, "total": 54, "rows": 1545228, "note": "QCOMSTOCK 1h: rule 40/120 (crsi)", "failed": [], "pct": 70.4, "updated": "2026-09-07T12:26:30Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 40, "total": 53, "rows": 1024860, "note": "RON 1d: rule 59/120 (choch)", "failed": [], "pct": 75.5, "updated": "2026-09-07T13:35:10Z"}
+{"shard": 3, "stage": "testing", "done": 42, "total": 53, "rows": 1067118, "note": "SKL 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 79.2, "updated": "2026-09-07T13:35:56Z"}

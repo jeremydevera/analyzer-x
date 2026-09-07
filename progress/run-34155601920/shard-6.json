@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 43, "total": 53, "rows": 3566062, "note": "SOL 30m: rule 65/120 (doji)", "failed": [], "pct": 81.1, "updated": "2026-09-07T22:50:57Z"}
+{"shard": 6, "stage": "testing", "done": 43, "total": 53, "rows": 3576662, "note": "SOL 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-07T22:51:44Z"}

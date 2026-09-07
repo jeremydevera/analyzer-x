@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 44, "total": 53, "rows": 1715306, "note": "STG 30m: rule 72/120 (force13)", "failed": [], "pct": 83.0, "updated": "2026-09-07T15:14:23Z"}
+{"shard": 12, "stage": "testing", "done": 45, "total": 53, "rows": 1740854, "note": "SYFSTOCK 30m: rule 18/120 (macd)", "failed": [], "pct": 84.9, "updated": "2026-09-07T15:15:08Z"}

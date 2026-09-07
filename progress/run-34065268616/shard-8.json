@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 41, "total": 53, "rows": 1618228, "note": "SHIB 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 77.4, "updated": "2026-09-07T00:29:17Z"}
+{"shard": 8, "stage": "testing", "done": 41, "total": 53, "rows": 1625228, "note": "SHIB 30m: rule 29/120 (hull20)", "failed": [], "pct": 77.4, "updated": "2026-09-07T00:30:03Z"}

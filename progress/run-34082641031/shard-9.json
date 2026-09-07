@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 30, "total": 53, "rows": 778832, "note": "MMT 1d: rule 3/120 (fade15)", "failed": [], "pct": 56.6, "updated": "2026-09-07T04:32:06Z"}
+{"shard": 9, "stage": "testing", "done": 35, "total": 53, "rows": 836362, "note": "PARTI 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-07T04:33:02Z"}

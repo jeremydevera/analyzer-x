@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 51, "total": 53, "rows": 4430900, "note": "XLE 30m: 5,736 bars, testing 120 rules", "failed": [], "pct": 96.2, "updated": "2026-09-07T23:44:38Z"}
+{"shard": 17, "stage": "testing", "done": 51, "total": 53, "rows": 4491776, "note": "XLE 1d: rule 3/120 (fade15)", "failed": [], "pct": 96.2, "updated": "2026-09-07T23:45:23Z"}

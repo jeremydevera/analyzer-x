@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 10, "total": 53, "rows": 418296, "note": "CARV 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 18.9, "updated": "2026-09-07T05:23:44Z"}
+{"shard": 18, "stage": "testing", "done": 11, "total": 53, "rows": 427536, "note": "CGPT 1h: rule 27/120 (aroon25)", "failed": [], "pct": 20.8, "updated": "2026-09-07T05:24:29Z"}

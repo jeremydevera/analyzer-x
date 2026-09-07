@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 42, "total": 53, "rows": 1821248, "note": "SKR 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 79.2, "updated": "2026-09-07T06:28:37Z"}
+{"shard": 2, "stage": "testing", "done": 45, "total": 53, "rows": 1903712, "note": "SUMIELECSTOCK 1h: rule 2/120 (mom15)", "failed": [], "pct": 84.9, "updated": "2026-09-07T06:29:22Z"}

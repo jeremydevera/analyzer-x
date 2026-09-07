@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 7, "total": 53, "rows": 552754, "note": "BDX 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 13.2, "updated": "2026-09-07T20:07:24Z"}
+{"shard": 18, "stage": "testing", "done": 7, "total": 53, "rows": 563578, "note": "BDX 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-07T20:08:09Z"}

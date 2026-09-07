@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 35, "total": 53, "rows": 3041012, "note": "OXYSTOCK 30m: rule 39/120 (fisher)", "failed": [], "pct": 66.0, "updated": "2026-09-07T22:16:07Z"}
+{"shard": 6, "stage": "testing", "done": 35, "total": 53, "rows": 3084916, "note": "OXYSTOCK 1d: 186 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-07T22:16:54Z"}

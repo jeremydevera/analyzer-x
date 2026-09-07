@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 4, "total": 53, "rows": 141434, "note": "ARB 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 7.5, "updated": "2026-09-07T08:04:38Z"}
+{"shard": 18, "stage": "testing", "done": 4, "total": 53, "rows": 151834, "note": "ARB 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 7.5, "updated": "2026-09-07T08:05:24Z"}

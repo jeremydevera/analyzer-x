@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 11, "total": 53, "rows": 757772, "note": "CELHSTOCK 15m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 20.8, "updated": "2026-09-07T19:57:06Z"}
+{"shard": 13, "stage": "testing", "done": 12, "total": 53, "rows": 810990, "note": "CMCSASTOCK 15m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-07T19:57:52Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 14, "total": 53, "rows": 578492, "note": "DBR 30m: rule 119/120 (cf_stflip_l1)", "failed": [], "pct": 26.4, "updated": "2026-09-07T02:34:05Z"}
+{"shard": 18, "stage": "testing", "done": 15, "total": 53, "rows": 584372, "note": "DOOD 1h: rule 20/120 (stoch14)", "failed": [], "pct": 28.3, "updated": "2026-09-07T02:34:50Z"}

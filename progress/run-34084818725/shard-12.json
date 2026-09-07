@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 20, "total": 53, "rows": 846966, "note": "GIGADEVSTOCK 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 37.7, "updated": "2026-09-07T05:17:17Z"}
+{"shard": 12, "stage": "testing", "done": 22, "total": 53, "rows": 925714, "note": "HK0700 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-07T05:18:02Z"}

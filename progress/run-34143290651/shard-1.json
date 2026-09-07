@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 51, "total": 54, "rows": 1238148, "note": "WLD 4h: rule 12/120 (donchian20)", "failed": [], "pct": 94.4, "updated": "2026-09-07T16:47:46Z"}
+{"shard": 1, "stage": "testing", "done": 53, "total": 54, "rows": 1293632, "note": "ZBCN 4h: rule 54/120 (fractal5)", "failed": [], "pct": 98.1, "updated": "2026-09-07T16:48:31Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 53, "total": 53, "rows": 4578946, "note": "ZRO 15m: rule 37/120 (ultosc)", "failed": [], "pct": 100.0, "updated": "2026-09-07T23:04:29Z"}
+{"shard": 19, "stage": "testing", "done": 53, "total": 53, "rows": 4587226, "note": "ZRO 15m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-07T23:05:16Z"}

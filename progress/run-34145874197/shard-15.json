@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 36, "total": 53, "rows": 1288704, "note": "PNUT 30m: rule 40/120 (crsi)", "failed": [], "pct": 67.9, "updated": "2026-09-07T18:03:51Z"}
+{"shard": 15, "stage": "testing", "done": 36, "total": 53, "rows": 1301244, "note": "PNUT 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 67.9, "updated": "2026-09-07T18:04:36Z"}

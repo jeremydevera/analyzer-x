@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 1, "total": 53, "rows": 29876, "note": "1000000BABYDOGE 30m: rule 20/120 (stoch14)", "failed": [], "pct": 1.9, "updated": "2026-09-07T07:55:36Z"}
+{"shard": 1, "stage": "testing", "done": 1, "total": 53, "rows": 42196, "note": "1000000BABYDOGE 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 1.9, "updated": "2026-09-07T07:56:21Z"}

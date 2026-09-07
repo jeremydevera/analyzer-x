@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 46, "total": 53, "rows": 1897438, "note": "TESLA 1h: rule 36/120 (stochrsi)", "failed": [], "pct": 86.8, "updated": "2026-09-07T12:49:14Z"}
+{"shard": 10, "stage": "testing", "done": 46, "total": 53, "rows": 1917498, "note": "TESLA 30m: rule 3/120 (fade15)", "failed": [], "pct": 86.8, "updated": "2026-09-07T12:50:02Z"}

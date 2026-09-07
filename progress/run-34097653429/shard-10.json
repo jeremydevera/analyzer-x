@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 6, "total": 53, "rows": 254426, "note": "AWE 1h: rule 3/120 (fade15)", "failed": [], "pct": 11.3, "updated": "2026-09-07T08:08:01Z"}
+{"shard": 10, "stage": "testing", "done": 6, "total": 53, "rows": 277746, "note": "AWE 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 11.3, "updated": "2026-09-07T08:08:47Z"}

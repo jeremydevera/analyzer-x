@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 32, "total": 53, "rows": 2284306, "note": "NBISSTOCK 30m: rule 63/120 (killzone)", "failed": [], "pct": 60.4, "updated": "2026-09-07T21:32:56Z"}
+{"shard": 5, "stage": "testing", "done": 32, "total": 53, "rows": 2322706, "note": "NBISSTOCK 4h: rule 6/120 (sweep30)", "failed": [], "pct": 60.4, "updated": "2026-09-07T21:33:41Z"}

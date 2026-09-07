@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 29, "total": 53, "rows": 902544, "note": "MERL 1d: 394 bars, testing 120 rules", "failed": [], "pct": 54.7, "updated": "2026-09-07T13:35:22Z"}
+{"shard": 19, "stage": "testing", "done": 32, "total": 53, "rows": 940626, "note": "NIL 4h: rule 75/120 (relvolbrk)", "failed": [], "pct": 60.4, "updated": "2026-09-07T13:36:08Z"}

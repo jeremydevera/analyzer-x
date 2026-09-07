@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 37, "total": 53, "rows": 1100946, "note": "PYTH 1d: 394 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-07T04:38:46Z"}
+{"shard": 18, "stage": "testing", "done": 39, "total": 53, "rows": 1157442, "note": "ROBO 4h: rule 36/120 (stochrsi)", "failed": [], "pct": 73.6, "updated": "2026-09-07T04:39:31Z"}

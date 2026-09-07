@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 52, "total": 54, "rows": 2138328, "note": "XLM 30m: rule 29/120 (hull20)", "failed": [], "pct": 96.3, "updated": "2026-09-07T12:56:13Z"}
+{"shard": 0, "stage": "testing", "done": 52, "total": 54, "rows": 2150328, "note": "XLM 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 96.3, "updated": "2026-09-07T12:56:58Z"}

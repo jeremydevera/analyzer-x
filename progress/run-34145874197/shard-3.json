@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 51, "total": 53, "rows": 2054850, "note": "WMTSTOCK 1h: 6,204 bars, testing 120 rules", "failed": [], "pct": 96.2, "updated": "2026-09-07T18:51:28Z"}
+{"shard": 3, "stage": "testing", "done": 51, "total": 53, "rows": 2085850, "note": "WMTSTOCK 30m: rule 25/120 (ichimoku)", "failed": [], "pct": 96.2, "updated": "2026-09-07T18:52:13Z"}

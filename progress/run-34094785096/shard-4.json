@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 28, "total": 53, "rows": 618650, "note": "LPT 1d: 394 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-07T07:28:15Z"}
+{"shard": 4, "stage": "testing", "done": 31, "total": 53, "rows": 688170, "note": "MSFTSTOCK 4h: rule 30/120 (kama10)", "failed": [], "pct": 58.5, "updated": "2026-09-07T07:29:00Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 34, "total": 53, "rows": 1422188, "note": "OPENAI 30m: 7,037 bars, testing 120 rules", "failed": [], "pct": 64.2, "updated": "2026-09-07T18:06:56Z"}
+{"shard": 14, "stage": "testing", "done": 35, "total": 53, "rows": 1447468, "note": "PAYPSTOCK 1h: rule 2/120 (mom15)", "failed": [], "pct": 66.0, "updated": "2026-09-07T18:07:41Z"}

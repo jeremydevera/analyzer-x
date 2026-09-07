@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 26, "total": 53, "rows": 1743842, "note": "KAVA 15m: 34,563 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-07T21:06:01Z"}
+{"shard": 5, "stage": "testing", "done": 26, "total": 53, "rows": 1745822, "note": "KAVA 15m: rule 3/120 (fade15)", "failed": [], "pct": 49.1, "updated": "2026-09-07T21:06:50Z"}

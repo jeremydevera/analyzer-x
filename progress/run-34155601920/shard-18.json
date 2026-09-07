@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 20, "total": 53, "rows": 1782396, "note": "GLWSTOCK 30m: rule 4/120 (trend50)", "failed": [], "pct": 37.7, "updated": "2026-09-07T21:07:29Z"}
+{"shard": 18, "stage": "testing", "done": 20, "total": 53, "rows": 1828854, "note": "GLWSTOCK 4h: rule 29/120 (hull20)", "failed": [], "pct": 37.7, "updated": "2026-09-07T21:08:14Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 10, "total": 53, "rows": 828252, "note": "BTR 4h: rule 4/120 (trend50)", "failed": [], "pct": 18.9, "updated": "2026-09-07T20:15:17Z"}
+{"shard": 8, "stage": "testing", "done": 11, "total": 53, "rows": 873522, "note": "CCJSTOCK 30m: 3,631 bars, testing 120 rules", "failed": [], "pct": 20.8, "updated": "2026-09-07T20:16:03Z"}

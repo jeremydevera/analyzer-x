@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 23, "total": 53, "rows": 537746, "note": "IBMSTOCK 1d: 220 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-07T04:26:41Z"}
+{"shard": 15, "stage": "testing", "done": 25, "total": 53, "rows": 587092, "note": "JPY 4h: 1,998 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-07T04:27:27Z"}

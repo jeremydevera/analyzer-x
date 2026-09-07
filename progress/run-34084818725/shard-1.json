@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 45, "total": 53, "rows": 1750068, "note": "SUI 1h: rule 25/120 (ichimoku)", "failed": [], "pct": 84.9, "updated": "2026-09-07T06:25:15Z"}
+{"shard": 1, "stage": "testing", "done": 45, "total": 53, "rows": 1769868, "note": "SUI 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-07T06:26:03Z"}

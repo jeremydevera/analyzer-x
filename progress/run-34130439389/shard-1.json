@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 31, "total": 54, "rows": 1324240, "note": "MOVR 1h: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 57.4, "updated": "2026-09-07T15:12:49Z"}
+{"shard": 1, "stage": "testing", "done": 31, "total": 54, "rows": 1331500, "note": "MOVR 30m: rule 2/120 (mom15)", "failed": [], "pct": 57.4, "updated": "2026-09-07T15:13:39Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 24, "total": 53, "rows": 1905068, "note": "INTW 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 45.3, "updated": "2026-09-07T21:03:10Z"}
+{"shard": 13, "stage": "testing", "done": 26, "total": 53, "rows": 1951838, "note": "KIOXIASTOCK 15m: rule 3/120 (fade15)", "failed": [], "pct": 49.1, "updated": "2026-09-07T21:03:56Z"}

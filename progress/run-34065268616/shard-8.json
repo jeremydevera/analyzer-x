@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 46, "total": 53, "rows": 1821988, "note": "TESLA 1h: rule 48/120 (prank)", "failed": [], "pct": 86.8, "updated": "2026-09-07T00:44:01Z"}
+{"shard": 8, "stage": "testing", "done": 46, "total": 53, "rows": 1840008, "note": "TESLA 30m: rule 6/120 (sweep30)", "failed": [], "pct": 86.8, "updated": "2026-09-07T00:44:46Z"}

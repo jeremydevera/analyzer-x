@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 22, "total": 53, "rows": 944844, "note": "HK50 30m: rule 61/120 (turtle)", "failed": [], "pct": 41.5, "updated": "2026-09-07T11:45:16Z"}
+{"shard": 16, "stage": "testing", "done": 24, "total": 53, "rows": 985976, "note": "IONQSTOCK 1h: rule 40/120 (crsi)", "failed": [], "pct": 45.3, "updated": "2026-09-07T11:46:01Z"}

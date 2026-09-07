@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 20, "total": 53, "rows": 1536200, "note": "GALA 15m: rule 76/120 (cf_mom)", "failed": [], "pct": 37.7, "updated": "2026-09-07T21:00:43Z"}
+{"shard": 3, "stage": "testing", "done": 20, "total": 53, "rows": 1542760, "note": "GALA 15m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 37.7, "updated": "2026-09-07T21:01:28Z"}

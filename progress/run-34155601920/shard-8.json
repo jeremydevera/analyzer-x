@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 40, "total": 53, "rows": 2978620, "note": "RUNE 15m: rule 36/120 (stochrsi)", "failed": [], "pct": 75.5, "updated": "2026-09-07T21:53:53Z"}
+{"shard": 8, "stage": "testing", "done": 40, "total": 53, "rows": 2987640, "note": "RUNE 15m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-07T21:54:38Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 2, "total": 53, "rows": 92540, "note": "AGT 30m: rule 60/120 (eqraid)", "failed": [], "pct": 3.8, "updated": "2026-09-07T14:04:19Z"}
+{"shard": 11, "stage": "testing", "done": 3, "total": 53, "rows": 105000, "note": "ALPINE 1h: rule 1/120 (mom6)", "failed": [], "pct": 5.7, "updated": "2026-09-07T14:05:05Z"}

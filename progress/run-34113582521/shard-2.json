@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 10, "total": 54, "rows": 398396, "note": "BR 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 18.5, "updated": "2026-09-07T11:19:54Z"}
+{"shard": 2, "stage": "testing", "done": 11, "total": 54, "rows": 412476, "note": "CATI 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 20.4, "updated": "2026-09-07T11:20:55Z"}

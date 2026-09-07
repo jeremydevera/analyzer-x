@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 53, "total": 53, "rows": 4601526, "note": "ZRO 30m: rule 34/120 (lrslope)", "failed": [], "pct": 100.0, "updated": "2026-09-07T23:06:54Z"}
+{"shard": 19, "stage": "testing", "done": 53, "total": 53, "rows": 4616326, "note": "ZRO 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-07T23:07:40Z"}

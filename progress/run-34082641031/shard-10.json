@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 24, "total": 53, "rows": 655776, "note": "INTUSTOCK 1d: rule 69/120 (obv20)", "failed": [], "pct": 45.3, "updated": "2026-09-07T04:30:22Z"}
+{"shard": 10, "stage": "testing", "done": 29, "total": 53, "rows": 696850, "note": "MEGA 4h: 1,917 bars, testing 120 rules", "failed": [], "pct": 54.7, "updated": "2026-09-07T04:31:27Z"}

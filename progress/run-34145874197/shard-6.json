@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 39, "total": 53, "rows": 1598200, "note": "RESOLV 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 73.6, "updated": "2026-09-07T18:19:41Z"}
+{"shard": 6, "stage": "testing", "done": 40, "total": 53, "rows": 1608100, "note": "RSR 1h: rule 9/120 (fib382)", "failed": [], "pct": 75.5, "updated": "2026-09-07T18:20:26Z"}

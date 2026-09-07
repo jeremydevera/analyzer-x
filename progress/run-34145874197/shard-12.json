@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 5, "total": 53, "rows": 212136, "note": "ASTER 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-07T17:14:18Z"}
+{"shard": 12, "stage": "testing", "done": 5, "total": 53, "rows": 217696, "note": "ASTER 30m: rule 13/120 (pivot)", "failed": [], "pct": 9.4, "updated": "2026-09-07T17:15:05Z"}

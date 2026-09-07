@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 43, "total": 54, "rows": 1628144, "note": "SNX 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 79.6, "updated": "2026-09-07T18:38:40Z"}
+{"shard": 2, "stage": "testing", "done": 44, "total": 54, "rows": 1659564, "note": "SPX500 30m: rule 6/120 (sweep30)", "failed": [], "pct": 81.5, "updated": "2026-09-07T18:39:25Z"}

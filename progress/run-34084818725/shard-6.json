@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 14, "total": 53, "rows": 563306, "note": "CTSI 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-07T05:20:58Z"}
+{"shard": 6, "stage": "testing", "done": 14, "total": 53, "rows": 567926, "note": "CTSI 30m: rule 15/120 (bbbreak)", "failed": [], "pct": 26.4, "updated": "2026-09-07T05:21:44Z"}

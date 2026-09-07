@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 35, "total": 53, "rows": 974978, "note": "PENGU 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-07T01:29:25Z"}
+{"shard": 17, "stage": "testing", "done": 41, "total": 53, "rows": 1044276, "note": "SKDD 1d: downloading candles", "failed": [], "pct": 77.4, "updated": "2026-09-07T01:30:11Z"}

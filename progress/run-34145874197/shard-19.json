@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 23, "total": 53, "rows": 1074010, "note": "ICP 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 43.4, "updated": "2026-09-07T18:07:47Z"}
+{"shard": 19, "stage": "testing", "done": 23, "total": 53, "rows": 1086610, "note": "ICP 30m: rule 101/120 (cf_soup1_l1)", "failed": [], "pct": 43.4, "updated": "2026-09-07T18:08:32Z"}

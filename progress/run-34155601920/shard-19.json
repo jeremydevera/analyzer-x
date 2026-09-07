@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 29, "total": 53, "rows": 2906726, "note": "MERL 1d: 394 bars, testing 120 rules", "failed": [], "pct": 54.7, "updated": "2026-09-07T21:53:00Z"}
+{"shard": 19, "stage": "testing", "done": 31, "total": 53, "rows": 2990218, "note": "MXLSTOCK 30m: rule 116/120 (cf_diadx_l1)", "failed": [], "pct": 58.5, "updated": "2026-09-07T21:53:45Z"}

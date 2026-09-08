@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 17, "total": 53, "rows": 682694, "note": "EUL 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 32.1, "updated": "2026-09-08T02:04:22Z"}
+{"shard": 17, "stage": "testing", "done": 18, "total": 53, "rows": 714018, "note": "FIGSTOCK 1h: rule 69/120 (obv20)", "failed": [], "pct": 34.0, "updated": "2026-09-08T02:05:07Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 48, "total": 54, "rows": 1143312, "note": "TST 4h: rule 51/120 (orb)", "failed": [], "pct": 88.9, "updated": "2026-09-08T03:20:21Z"}
+{"shard": 1, "stage": "testing", "done": 50, "total": 54, "rows": 1200006, "note": "VIRTUAL 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 92.6, "updated": "2026-09-08T03:21:16Z"}

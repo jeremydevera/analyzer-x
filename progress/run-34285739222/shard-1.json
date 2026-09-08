@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 25, "total": 54, "rows": 992500, "note": "INX 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 46.3, "updated": "2026-09-08T23:14:18Z"}
+{"shard": 1, "stage": "testing", "done": 26, "total": 54, "rows": 1019720, "note": "JOE 30m: rule 1/120 (mom6)", "failed": [], "pct": 48.1, "updated": "2026-09-08T23:15:06Z"}

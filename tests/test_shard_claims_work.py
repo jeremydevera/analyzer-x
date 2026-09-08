@@ -113,7 +113,7 @@ def test_two_shards_never_measure_the_same_coin(tmp_path, monkeypatch):
     # interleave the two machines, as the real fleet does
     import itertools
 
-    for stream, bucket in itertools.cycle(zip(streams, (a, b))):
+    for stream, bucket in itertools.cycle(zip(streams, (a, b), strict=True)):
         got = next(stream, None)
         if got is None:
             if all(next(s, None) is None for s in streams):
@@ -172,8 +172,6 @@ def test_without_a_token_the_old_static_slice_still_works(shard, monkeypatch):
 
 # ------------------------------------------------- the claim primitive itself
 def _board(monkeypatch, transport):
-    import sys
-
     monkeypatch.setenv("GITHUB_REPOSITORY", "me/repo")
     monkeypatch.setenv("GITHUB_TOKEN", "t")
     monkeypatch.setenv("GITHUB_RUN_ID", "77")

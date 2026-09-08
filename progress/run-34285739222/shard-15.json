@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 21, "total": 53, "rows": 505928, "note": "GRAM 30m: rule 46/120 (rsi2)", "failed": [], "pct": 39.6, "updated": "2026-09-08T22:47:26Z"}
+{"shard": 15, "stage": "testing", "done": 22, "total": 53, "rows": 535848, "note": "HEMI 4h: rule 63/120 (killzone)", "failed": [], "pct": 41.5, "updated": "2026-09-08T22:48:11Z"}

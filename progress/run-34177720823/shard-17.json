@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 7, "total": 53, "rows": 295628, "note": "BCH 1h: rule 4/120 (trend50)", "failed": [], "pct": 13.2, "updated": "2026-09-08T01:53:36Z"}
+{"shard": 17, "stage": "testing", "done": 8, "total": 53, "rows": 320708, "note": "BLAST 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-08T01:54:22Z"}

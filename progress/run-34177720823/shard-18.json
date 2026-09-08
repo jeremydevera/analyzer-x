@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 18, "total": 53, "rows": 786238, "note": "FILECOIN 1h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 34.0, "updated": "2026-09-08T02:09:06Z"}
+{"shard": 18, "stage": "testing", "done": 21, "total": 53, "rows": 848536, "note": "GWEI 4h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 39.6, "updated": "2026-09-08T02:09:51Z"}

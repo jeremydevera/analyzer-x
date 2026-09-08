@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 27, "total": 54, "rows": 1136466, "note": "KNC 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 50.0, "updated": "2026-09-08T23:21:26Z"}
+{"shard": 5, "stage": "testing", "done": 28, "total": 54, "rows": 1166606, "note": "LINK 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 51.9, "updated": "2026-09-08T23:22:18Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 45, "total": 53, "rows": 1564604, "note": "SYRUP 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-08T02:17:40Z"}
+{"shard": 14, "stage": "testing", "done": 45, "total": 53, "rows": 1593204, "note": "SYRUP 1h: rule 5/120 (rsi14)", "failed": [], "pct": 84.9, "updated": "2026-09-08T02:18:25Z"}

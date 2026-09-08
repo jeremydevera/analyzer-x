@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 20, "total": 53, "rows": 621758, "note": "GILDSTOCK 1h: 998 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-08T03:53:58Z"}
+{"shard": 16, "stage": "testing", "done": 21, "total": 53, "rows": 664942, "note": "GUA 1h: rule 53/120 (squeeze)", "failed": [], "pct": 39.6, "updated": "2026-09-08T03:54:43Z"}

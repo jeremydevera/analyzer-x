@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 52, "total": 54, "rows": 1994784, "note": "XCN 30m: rule 35/120 (willr14)", "failed": [], "pct": 96.3, "updated": "2026-09-08T23:52:36Z"}
+{"shard": 1, "stage": "testing", "done": 52, "total": 54, "rows": 2007764, "note": "XCN 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 96.3, "updated": "2026-09-08T23:53:21Z"}

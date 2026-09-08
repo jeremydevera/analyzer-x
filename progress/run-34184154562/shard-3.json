@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 30, "total": 53, "rows": 865850, "note": "MEW 1h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 56.6, "updated": "2026-09-08T04:05:00Z"}
+{"shard": 3, "stage": "testing", "done": 33, "total": 53, "rows": 929166, "note": "NKESTOCK 1h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 62.3, "updated": "2026-09-08T04:05:45Z"}

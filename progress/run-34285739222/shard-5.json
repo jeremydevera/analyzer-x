@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 22, "total": 54, "rows": 866688, "note": "G 30m: rule 61/120 (turtle)", "failed": [], "pct": 40.7, "updated": "2026-09-08T23:06:29Z"}
+{"shard": 5, "stage": "testing", "done": 23, "total": 54, "rows": 879668, "note": "HMSTR 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 42.6, "updated": "2026-09-08T23:07:23Z"}

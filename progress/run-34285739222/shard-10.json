@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 26, "total": 54, "rows": 982790, "note": "KAS 30m: rule 41/120 (tsi)", "failed": [], "pct": 48.1, "updated": "2026-09-08T23:06:12Z"}
+{"shard": 10, "stage": "testing", "done": 26, "total": 54, "rows": 995990, "note": "KAS 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 48.1, "updated": "2026-09-08T23:06:58Z"}

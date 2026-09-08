@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 9, "total": 53, "rows": 337774, "note": "BRL 1h: rule 74/120 (volclimax)", "failed": [], "pct": 17.0, "updated": "2026-09-08T03:49:16Z"}
+{"shard": 19, "stage": "testing", "done": 10, "total": 53, "rows": 359730, "note": "CARV 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 18.9, "updated": "2026-09-08T03:50:04Z"}

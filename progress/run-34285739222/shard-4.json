@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 42, "total": 54, "rows": 1476754, "note": "SIREN 30m: rule 21/120 (cci20)", "failed": [], "pct": 77.8, "updated": "2026-09-08T23:13:20Z"}
+{"shard": 4, "stage": "testing", "done": 42, "total": 54, "rows": 1490154, "note": "SIREN 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 77.8, "updated": "2026-09-08T23:14:06Z"}

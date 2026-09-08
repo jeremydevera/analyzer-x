@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 37, "total": 53, "rows": 1373130, "note": "PROVE 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 69.8, "updated": "2026-09-08T23:20:49Z"}
+{"shard": 16, "stage": "testing", "done": 38, "total": 53, "rows": 1403292, "note": "Q 30m: 17,840 bars, testing 120 rules", "failed": [], "pct": 71.7, "updated": "2026-09-08T23:21:37Z"}

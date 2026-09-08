@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 8, "total": 53, "rows": 233946, "note": "BIRB 1d: 223 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-08T03:43:25Z"}
+{"shard": 12, "stage": "testing", "done": 11, "total": 53, "rows": 281642, "note": "CDNSSTOCK 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 20.8, "updated": "2026-09-08T03:44:10Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 33, "total": 53, "rows": 929166, "note": "NKESTOCK 1h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 62.3, "updated": "2026-09-08T04:05:45Z"}
+{"shard": 3, "stage": "testing", "done": 34, "total": 53, "rows": 948430, "note": "OKB 1h: rule 33/120 (heikin)", "failed": [], "pct": 64.2, "updated": "2026-09-08T04:06:30Z"}

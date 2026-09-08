@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 41, "total": 53, "rows": 1149938, "note": "SENT 4h: rule 16/120 (keltner)", "failed": [], "pct": 77.4, "updated": "2026-09-08T01:21:31Z"}
+{"shard": 4, "stage": "testing", "done": 45, "total": 53, "rows": 1224078, "note": "SUMIELECSTOCK 1d: downloading candles", "failed": [], "pct": 84.9, "updated": "2026-09-08T01:22:17Z"}

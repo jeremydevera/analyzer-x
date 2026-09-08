@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 28, "total": 53, "rows": 625254, "note": "LONGXIA 4h: rule 22/120 (engulf)", "failed": [], "pct": 52.8, "updated": "2026-09-08T03:12:50Z"}
+{"shard": 5, "stage": "testing", "done": 32, "total": 53, "rows": 711518, "note": "NBISSTOCK 1d: 161 bars, testing 120 rules", "failed": [], "pct": 60.4, "updated": "2026-09-08T03:13:35Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 46, "total": 53, "rows": 1287214, "note": "THETA 1h: rule 33/120 (heikin)", "failed": [], "pct": 86.8, "updated": "2026-09-08T04:13:00Z"}
+{"shard": 14, "stage": "testing", "done": 47, "total": 53, "rows": 1318806, "note": "TRUST 1h: 7,363 bars, testing 120 rules", "failed": [], "pct": 88.7, "updated": "2026-09-08T04:13:55Z"}

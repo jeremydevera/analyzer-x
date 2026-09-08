@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 25, "total": 54, "rows": 849884, "note": "IQVSTOCK 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 46.3, "updated": "2026-09-08T23:04:37Z"}
+{"shard": 9, "stage": "testing", "done": 26, "total": 54, "rows": 876084, "note": "KAITO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 48.1, "updated": "2026-09-08T23:05:29Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 46, "total": 54, "rows": 1100852, "note": "TAKE 4h: rule 16/120 (keltner)", "failed": [], "pct": 85.2, "updated": "2026-09-08T03:19:36Z"}
+{"shard": 1, "stage": "testing", "done": 48, "total": 54, "rows": 1143312, "note": "TST 4h: rule 51/120 (orb)", "failed": [], "pct": 88.9, "updated": "2026-09-08T03:20:21Z"}

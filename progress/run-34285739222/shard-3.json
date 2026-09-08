@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 22, "total": 54, "rows": 912076, "note": "GUN 30m: rule 64/120 (hammer)", "failed": [], "pct": 40.7, "updated": "2026-09-08T22:59:49Z"}
+{"shard": 3, "stage": "testing", "done": 24, "total": 54, "rows": 942016, "note": "IBKRSTOCK 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 44.4, "updated": "2026-09-08T23:00:34Z"}

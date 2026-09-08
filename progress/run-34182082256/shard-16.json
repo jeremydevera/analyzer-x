@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 30, "total": 53, "rows": 746342, "note": "MOODENG 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 56.6, "updated": "2026-09-08T03:12:55Z"}
+{"shard": 16, "stage": "testing", "done": 31, "total": 53, "rows": 797514, "note": "MUSTOCK 4h: rule 45/120 (zscore20)", "failed": [], "pct": 58.5, "updated": "2026-09-08T03:13:40Z"}

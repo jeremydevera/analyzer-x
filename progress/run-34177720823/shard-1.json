@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 48, "total": 54, "rows": 1774754, "note": "TST 1h: rule 109/120 (cf_fundfade)", "failed": [], "pct": 88.9, "updated": "2026-09-08T02:24:23Z"}
+{"shard": 1, "stage": "testing", "done": 50, "total": 54, "rows": 1822310, "note": "VIRTUAL 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 92.6, "updated": "2026-09-08T02:25:15Z"}

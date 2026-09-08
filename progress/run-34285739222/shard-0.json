@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 22, "total": 54, "rows": 892526, "note": "GSSTOCK 30m: 11,314 bars, testing 120 rules", "failed": [], "pct": 40.7, "updated": "2026-09-08T22:57:16Z"}
+{"shard": 0, "stage": "testing", "done": 24, "total": 54, "rows": 931526, "note": "H 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 44.4, "updated": "2026-09-08T22:58:05Z"}

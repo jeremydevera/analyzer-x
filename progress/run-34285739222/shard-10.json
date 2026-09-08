@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 23, "total": 54, "rows": 897550, "note": "HOT 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 42.6, "updated": "2026-09-08T23:02:58Z"}
+{"shard": 10, "stage": "testing", "done": 25, "total": 54, "rows": 927190, "note": "IRENSTOCK 30m: rule 3/120 (fade15)", "failed": [], "pct": 46.3, "updated": "2026-09-08T23:03:45Z"}

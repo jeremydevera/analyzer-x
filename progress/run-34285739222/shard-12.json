@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 17, "total": 53, "rows": 613316, "note": "ENS 30m: rule 106/120 (cf_bosfvg)", "failed": [], "pct": 32.1, "updated": "2026-09-08T22:52:42Z"}
+{"shard": 12, "stage": "testing", "done": 19, "total": 53, "rows": 657056, "note": "FLUID 30m: 16,777 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-08T22:53:35Z"}

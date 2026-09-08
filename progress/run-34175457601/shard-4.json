@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 28, "total": 53, "rows": 785566, "note": "LMTSTOCK 4h: 1,120 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-08T01:15:50Z"}
+{"shard": 4, "stage": "testing", "done": 30, "total": 53, "rows": 846980, "note": "ME 1d: 394 bars, testing 120 rules", "failed": [], "pct": 56.6, "updated": "2026-09-08T01:16:47Z"}

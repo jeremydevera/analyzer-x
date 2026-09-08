@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 38, "total": 53, "rows": 1287278, "note": "QTUM 30m: rule 3/120 (fade15)", "failed": [], "pct": 71.7, "updated": "2026-09-08T23:21:59Z"}
+{"shard": 13, "stage": "testing", "done": 38, "total": 53, "rows": 1296078, "note": "QTUM 30m: rule 43/120 (macddiv)", "failed": [], "pct": 71.7, "updated": "2026-09-08T23:22:44Z"}

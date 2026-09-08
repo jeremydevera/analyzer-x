@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 45, "total": 53, "rows": 1601280, "note": "SUPER 30m: rule 60/120 (eqraid)", "failed": [], "pct": 84.9, "updated": "2026-09-08T23:39:55Z"}
+{"shard": 14, "stage": "testing", "done": 46, "total": 53, "rows": 1614480, "note": "TECKSTOCK 30m: 1,658 bars, testing 120 rules", "failed": [], "pct": 86.8, "updated": "2026-09-08T23:40:40Z"}

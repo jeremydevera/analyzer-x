@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 28, "total": 53, "rows": 995110, "note": "LRC 30m: rule 43/120 (macddiv)", "failed": [], "pct": 52.8, "updated": "2026-09-08T23:05:12Z"}
+{"shard": 16, "stage": "testing", "done": 29, "total": 53, "rows": 1010310, "note": "MAVIA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 54.7, "updated": "2026-09-08T23:06:03Z"}

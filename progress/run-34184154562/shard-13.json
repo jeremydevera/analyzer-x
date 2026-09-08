@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 9, "total": 53, "rows": 213942, "note": "BOTSTOCK 1d: downloading candles", "failed": [], "pct": 17.0, "updated": "2026-09-08T03:41:40Z"}
+{"shard": 13, "stage": "testing", "done": 12, "total": 53, "rows": 306666, "note": "CMCSASTOCK 1h: rule 86/120 (cf_triple_l1)", "failed": [], "pct": 22.6, "updated": "2026-09-08T03:42:25Z"}

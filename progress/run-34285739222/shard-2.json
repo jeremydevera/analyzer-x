@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 52, "total": 54, "rows": 1925648, "note": "XDC 30m: rule 60/120 (eqraid)", "failed": [], "pct": 96.3, "updated": "2026-09-08T23:54:36Z"}
+{"shard": 2, "stage": "testing", "done": 53, "total": 54, "rows": 1949168, "note": "XYZSTOCK 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-08T23:55:21Z"}

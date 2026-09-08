@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 46, "total": 53, "rows": 1780188, "note": "TESLA 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 86.8, "updated": "2026-09-08T02:40:17Z"}
+{"shard": 10, "stage": "testing", "done": 49, "total": 53, "rows": 1823168, "note": "USUAL 4h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 92.5, "updated": "2026-09-08T02:41:02Z"}

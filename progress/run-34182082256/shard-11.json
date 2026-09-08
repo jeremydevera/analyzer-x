@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 2, "total": 53, "rows": 43252, "note": "AGT 4h: rule 13/120 (pivot)", "failed": [], "pct": 3.8, "updated": "2026-09-08T03:03:03Z"}
+{"shard": 11, "stage": "testing", "done": 3, "total": 53, "rows": 80960, "note": "ALPINE 4h: rule 3/120 (fade15)", "failed": [], "pct": 5.7, "updated": "2026-09-08T03:03:49Z"}

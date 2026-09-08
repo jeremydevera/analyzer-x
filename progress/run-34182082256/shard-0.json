@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 11, "total": 54, "rows": 297300, "note": "CASHCAT 1d: downloading candles", "failed": [], "pct": 20.4, "updated": "2026-09-08T03:08:11Z"}
+{"shard": 0, "stage": "testing", "done": 12, "total": 54, "rows": 330630, "note": "CHEEMS 1d: 394 bars, testing 120 rules", "failed": [], "pct": 22.2, "updated": "2026-09-08T03:08:59Z"}

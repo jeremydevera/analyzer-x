@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 7, "total": 54, "rows": 249668, "note": "BABY 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 13.0, "updated": "2026-09-08T22:34:04Z"}
+{"shard": 4, "stage": "testing", "done": 12, "total": 54, "rows": 287608, "note": "CHEEMS 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 22.2, "updated": "2026-09-08T22:34:58Z"}

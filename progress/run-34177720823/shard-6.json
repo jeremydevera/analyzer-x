@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 51, "total": 53, "rows": 1858868, "note": "WPMSTOCK 1h: rule 40/120 (crsi)", "failed": [], "pct": 96.2, "updated": "2026-09-08T02:34:39Z"}
+{"shard": 6, "stage": "testing", "done": 53, "total": 53, "rows": 1909178, "note": "ZEREBRO 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-08T02:35:34Z"}

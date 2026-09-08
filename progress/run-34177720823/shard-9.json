@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 40, "total": 53, "rows": 1522808, "note": "RVN 1h: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-08T02:34:56Z"}
+{"shard": 9, "stage": "testing", "done": 41, "total": 53, "rows": 1551848, "note": "SHELL 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 77.4, "updated": "2026-09-08T02:35:51Z"}

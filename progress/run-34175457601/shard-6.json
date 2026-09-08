@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 43, "total": 53, "rows": 1078432, "note": "SOL 4h: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-08T01:22:42Z"}
+{"shard": 6, "stage": "testing", "done": 45, "total": 53, "rows": 1132024, "note": "SUPER 4h: rule 10/120 (sr_bounce)", "failed": [], "pct": 84.9, "updated": "2026-09-08T01:23:27Z"}

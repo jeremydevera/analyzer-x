@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 4, "total": 53, "rows": 167462, "note": "APT 30m: rule 71/120 (mfi14)", "failed": [], "pct": 7.5, "updated": "2026-09-08T22:31:57Z"}
+{"shard": 19, "stage": "testing", "done": 5, "total": 53, "rows": 197262, "note": "ATOM 4h: rule 100/120 (cf_soup1)", "failed": [], "pct": 9.4, "updated": "2026-09-08T22:32:42Z"}

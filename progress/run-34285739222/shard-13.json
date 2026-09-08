@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 34, "total": 53, "rows": 1210860, "note": "OL 30m: rule 91/120 (cf_soup)", "failed": [], "pct": 64.2, "updated": "2026-09-08T23:19:37Z"}
+{"shard": 13, "stage": "testing", "done": 35, "total": 53, "rows": 1242418, "note": "OXYSTOCK 30m: rule 41/120 (tsi)", "failed": [], "pct": 66.0, "updated": "2026-09-08T23:20:22Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 10, "total": 54, "rows": 434014, "note": "BSB 30m: rule 37/120 (ultosc)", "failed": [], "pct": 18.5, "updated": "2026-09-08T22:44:08Z"}
+{"shard": 6, "stage": "testing", "done": 11, "total": 54, "rows": 465354, "note": "CATSTOCK 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 20.4, "updated": "2026-09-08T22:44:53Z"}

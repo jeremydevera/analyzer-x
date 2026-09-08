@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 17, "total": 53, "rows": 656954, "note": "EUL 4h: rule 20/120 (stoch14)", "failed": [], "pct": 32.1, "updated": "2026-09-08T02:03:37Z"}
+{"shard": 17, "stage": "testing", "done": 17, "total": 53, "rows": 682694, "note": "EUL 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 32.1, "updated": "2026-09-08T02:04:22Z"}

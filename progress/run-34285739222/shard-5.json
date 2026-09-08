@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 45, "total": 54, "rows": 1818922, "note": "STO 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 83.3, "updated": "2026-09-08T23:49:49Z"}
+{"shard": 5, "stage": "testing", "done": 46, "total": 54, "rows": 1829302, "note": "TAG 4h: rule 3/120 (fade15)", "failed": [], "pct": 85.2, "updated": "2026-09-08T23:50:35Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 45, "total": 53, "rows": 1761838, "note": "SWARM 30m: downloading candles", "failed": [], "pct": 84.9, "updated": "2026-09-08T23:23:30Z"}
+{"shard": 18, "stage": "testing", "done": 46, "total": 53, "rows": 1801138, "note": "TESLA 30m: rule 35/120 (willr14)", "failed": [], "pct": 86.8, "updated": "2026-09-08T23:24:15Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 18, "total": 53, "rows": 577450, "note": "FILECOIN 1d: 394 bars, testing 120 rules", "failed": [], "pct": 34.0, "updated": "2026-09-08T03:54:56Z"}
+{"shard": 18, "stage": "testing", "done": 18, "total": 53, "rows": 603366, "note": "FILECOIN 1h: rule 47/120 (ibs)", "failed": [], "pct": 34.0, "updated": "2026-09-08T03:55:41Z"}

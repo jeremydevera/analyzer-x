@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 14, "total": 54, "rows": 559250, "note": "CRO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 25.9, "updated": "2026-09-08T22:46:33Z"}
+{"shard": 0, "stage": "testing", "done": 14, "total": 54, "rows": 568490, "note": "CRO 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 25.9, "updated": "2026-09-08T22:47:19Z"}

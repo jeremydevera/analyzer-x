@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 37, "total": 53, "rows": 1188656, "note": "PRL 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 69.8, "updated": "2026-09-08T02:11:13Z"}
+{"shard": 5, "stage": "testing", "done": 40, "total": 53, "rows": 1239056, "note": "RPL 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-08T02:12:05Z"}

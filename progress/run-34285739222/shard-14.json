@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 2, "total": 53, "rows": 49316, "note": "AIGENSYN 30m: rule 20/120 (stoch14)", "failed": [], "pct": 3.8, "updated": "2026-09-08T22:25:36Z"}
+{"shard": 14, "stage": "testing", "done": 3, "total": 53, "rows": 70876, "note": "ALT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 5.7, "updated": "2026-09-08T22:26:22Z"}

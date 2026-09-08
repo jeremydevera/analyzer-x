@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 26, "total": 54, "rows": 1072006, "note": "JST 30m: rule 52/120 (nr7)", "failed": [], "pct": 48.1, "updated": "2026-09-08T23:18:14Z"}
+{"shard": 5, "stage": "testing", "done": 27, "total": 54, "rows": 1086966, "note": "KNC 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 50.0, "updated": "2026-09-08T23:19:08Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 14, "total": 54, "rows": 614180, "note": "CRV 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 25.9, "updated": "2026-09-08T22:57:24Z"}
+{"shard": 1, "stage": "testing", "done": 15, "total": 54, "rows": 642560, "note": "CYBER 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 27.8, "updated": "2026-09-08T22:58:20Z"}

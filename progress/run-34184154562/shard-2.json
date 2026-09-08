@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 24, "total": 54, "rows": 652172, "note": "ID 1h: rule 45/120 (zscore20)", "failed": [], "pct": 44.4, "updated": "2026-09-08T03:58:41Z"}
+{"shard": 2, "stage": "testing", "done": 26, "total": 54, "rows": 677876, "note": "KAITO 1d: rule 6/120 (sweep30)", "failed": [], "pct": 48.1, "updated": "2026-09-08T03:59:26Z"}

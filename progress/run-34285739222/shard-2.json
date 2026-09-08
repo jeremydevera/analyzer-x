@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 12, "total": 54, "rows": 485244, "note": "CFX 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 22.2, "updated": "2026-09-08T22:51:24Z"}
+{"shard": 2, "stage": "testing", "done": 15, "total": 54, "rows": 512864, "note": "CYS 4h: rule 2/120 (mom15)", "failed": [], "pct": 27.8, "updated": "2026-09-08T22:52:09Z"}

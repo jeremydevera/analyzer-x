@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 38, "total": 54, "rows": 1008540, "note": "QBTSSTOCK 1d: downloading candles", "failed": [], "pct": 70.4, "updated": "2026-09-08T01:25:32Z"}
+{"shard": 1, "stage": "testing", "done": 45, "total": 54, "rows": 1063076, "note": "STX 4h: rule 13/120 (pivot)", "failed": [], "pct": 83.3, "updated": "2026-09-08T01:26:17Z"}

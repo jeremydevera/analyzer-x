@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 51, "total": 54, "rows": 1194372, "note": "WLFI 4h: rule 76/120 (cf_mom)", "failed": [], "pct": 94.4, "updated": "2026-09-08T03:23:39Z"}
+{"shard": 2, "stage": "testing", "done": 53, "total": 54, "rows": 1240132, "note": "ZBT 4h: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 98.1, "updated": "2026-09-08T03:24:24Z"}

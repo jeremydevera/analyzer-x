@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 37, "total": 53, "rows": 825478, "note": "PROM 4h: rule 9/120 (fib382)", "failed": [], "pct": 69.8, "updated": "2026-09-08T01:21:16Z"}
+{"shard": 8, "stage": "testing", "done": 40, "total": 53, "rows": 874652, "note": "RUNE 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-08T01:22:05Z"}

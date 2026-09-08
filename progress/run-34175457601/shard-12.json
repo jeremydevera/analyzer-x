@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 17, "total": 53, "rows": 367728, "note": "ETC 4h: rule 91/120 (cf_soup)", "failed": [], "pct": 32.1, "updated": "2026-09-08T01:09:32Z"}
+{"shard": 12, "stage": "testing", "done": 19, "total": 53, "rows": 424288, "note": "FORM 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-08T01:10:22Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 16, "total": 53, "rows": 661318, "note": "EIGEN 1h: rule 3/120 (fade15)", "failed": [], "pct": 30.2, "updated": "2026-09-08T02:05:20Z"}
+{"shard": 18, "stage": "testing", "done": 16, "total": 53, "rows": 680458, "note": "EIGEN 1h: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 30.2, "updated": "2026-09-08T02:06:05Z"}

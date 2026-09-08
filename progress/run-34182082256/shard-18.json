@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 16, "total": 53, "rows": 499984, "note": "EIGEN 1d: rule 71/120 (mfi14)", "failed": [], "pct": 30.2, "updated": "2026-09-08T03:09:14Z"}
+{"shard": 18, "stage": "testing", "done": 18, "total": 53, "rows": 542408, "note": "FILECOIN 4h: rule 4/120 (trend50)", "failed": [], "pct": 34.0, "updated": "2026-09-08T03:10:00Z"}

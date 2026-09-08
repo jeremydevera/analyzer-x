@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 35, "total": 53, "rows": 1107180, "note": "PENGSTOCK 1d: 69 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-08T04:09:31Z"}
+{"shard": 18, "stage": "testing", "done": 36, "total": 53, "rows": 1147410, "note": "POL 1h: rule 2/120 (mom15)", "failed": [], "pct": 67.9, "updated": "2026-09-08T04:10:19Z"}

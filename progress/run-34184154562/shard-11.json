@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 10, "total": 53, "rows": 319650, "note": "BULLA 1h: rule 3/120 (fade15)", "failed": [], "pct": 18.9, "updated": "2026-09-08T03:47:21Z"}
+{"shard": 11, "stage": "testing", "done": 11, "total": 53, "rows": 354878, "note": "CDESTOCK 1h: rule 67/120 (pinbar)", "failed": [], "pct": 20.8, "updated": "2026-09-08T03:48:06Z"}

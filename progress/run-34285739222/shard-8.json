@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 54, "total": 54, "rows": 1930722, "note": "ZRX 30m: rule 33/120 (heikin)", "failed": [], "pct": 100.0, "updated": "2026-09-08T23:53:34Z"}
+{"shard": 8, "stage": "testing", "done": 54, "total": 54, "rows": 1943042, "note": "ZRX 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-08T23:54:20Z"}

@@ -507,6 +507,29 @@ def index_pair(path: Path, con: sqlite3.Connection | None = None) -> int:
             con.close()
 
 
+def forget_pair(pair: str) -> int:
+    """Drop one pair from the index — its rows and its summary. Returns the
+    rows dropped.
+
+    The store's only DELETE for a person: nothing else here removes a pair,
+    so a rows file deleted from disk lived on in rows.db forever
+    (stale_pairs only walks the files that EXIST). The month-by-month delete
+    on the Candles screen calls this BEFORE it unlinks the pair's files: a
+    death between the two leaves a file with no index entry, which the next
+    sync simply indexes again — the pair comes back, nothing is lost. The
+    other order would leave rows on screen for a pair that no longer exists.
+    The freed pages stay inside rows.db until its next rebuild; SQLite reuses
+    them for the next fill.
+    """
+    def _do():
+        with _open() as con:
+            n = con.execute("DELETE FROM rows WHERE pair = ?", (pair,)).rowcount
+            con.execute("DELETE FROM pairs WHERE pair = ?", (pair,))
+            return int(n or 0)
+
+    return int(_missing_ok(_do, 0) or 0)
+
+
 SETTLE_S = 60.0
 
 

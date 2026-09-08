@@ -16,6 +16,7 @@ import CoinPicker from "@/components/backtest/CoinPicker";
 import JobProgress from "@/components/jobs/JobProgress";
 import DownloadHistory from "@/components/candles/DownloadHistory";
 import StoragePanel from "@/components/backtest/StoragePanel";
+import MonthsPanel from "@/components/candles/MonthsPanel";
 
 const TFS = ["15m", "30m", "1h", "4h", "1d"];
 
@@ -266,6 +267,7 @@ ${(pending?.unfixable ?? 0).toLocaleString()} pair(s) cannot be fixed by any run
             `running` so a finishing job refreshes the list. */}
         <DownloadHistory refreshKey={dl?.running ? 1 : 0} />
       </div>
+      <MonthsPanel />
       <StoragePanel />
     </div>
   );

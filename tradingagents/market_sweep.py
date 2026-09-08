@@ -158,6 +158,57 @@ def save_candles_cache(symbol: str, tf: str, df) -> None:
     os.replace(tmp, final)
 
 
+def trim_candles_cache(symbol: str, tf: str, cut_ms: int) -> dict:
+    """Drop every stored bar OLDER than `cut_ms` from one pair's cache file.
+
+    The month-by-month delete on the Candles screen (operator, 2026-09-09:
+    *"able to delete it so that i can free up space"*). Lives beside
+    save_candles_cache because it rewrites the SAME layout — t/o/h/l/c/v as
+    parallel arrays, epoch ms — and one writer knowing the layout is the whole
+    contract of this section. Same atomic tmp + fsync + replace, for the same
+    reason: start.py kills things with taskkill /T.
+
+    Returns {"bars_before", "bars_after", "bytes_before", "bytes_after",
+    "removed_file"}: a file whose every bar is older than the cut is deleted
+    outright (an empty cache is "no cache" to every reader), and a file with
+    nothing older is left untouched — not rewritten, so its mtime and the
+    candle index stay honest about when it last changed.
+    """
+    import bisect
+
+    f = CANDLES / f"{symbol}-{tf}.json"
+    try:
+        before = f.stat().st_size
+        d = json.loads(f.read_text(encoding="utf-8"))
+    except (OSError, ValueError, UnicodeDecodeError):
+        return {"bars_before": 0, "bars_after": 0, "bytes_before": 0,
+                "bytes_after": 0, "removed_file": False}
+    ts = d.get("t") or []
+    keep_from = bisect.bisect_left(ts, int(cut_ms))
+    if keep_from == 0:
+        return {"bars_before": len(ts), "bars_after": len(ts),
+                "bytes_before": before, "bytes_after": before,
+                "removed_file": False}
+    if keep_from >= len(ts):
+        with contextlib.suppress(OSError):
+            f.unlink()
+        return {"bars_before": len(ts), "bars_after": 0,
+                "bytes_before": before, "bytes_after": 0,
+                "removed_file": True}
+    out = {k: (v[keep_from:] if isinstance(v, list) else v)
+           for k, v in d.items()}
+    text = json.dumps(out, separators=(",", ":"))
+    tmp = f.with_suffix(".json.tmp")
+    with open(tmp, "w", encoding="utf-8") as fh:
+        fh.write(text)
+        fh.flush()
+        os.fsync(fh.fileno())
+    os.replace(tmp, f)
+    return {"bars_before": len(ts), "bars_after": len(ts) - keep_from,
+            "bytes_before": before, "bytes_after": len(text.encode("utf-8")),
+            "removed_file": False}
+
+
 def cached_candles(symbol: str, tf: str):
     """Whatever bars are on disk for this contract, as a DataFrame or None.
 

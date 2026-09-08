@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 44, "total": 53, "rows": 1151210, "note": "STO 4h: rule 33/120 (heikin)", "failed": [], "pct": 83.0, "updated": "2026-09-08T03:21:43Z"}
+{"shard": 17, "stage": "testing", "done": 45, "total": 53, "rows": 1183286, "note": "TAG 4h: rule 2/120 (mom15)", "failed": [], "pct": 84.9, "updated": "2026-09-08T03:22:30Z"}

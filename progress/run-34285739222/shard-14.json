@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 14, "total": 53, "rows": 579582, "note": "CTSI 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-08T22:50:45Z"}
+{"shard": 14, "stage": "testing", "done": 17, "total": 53, "rows": 629182, "note": "EPIC 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-08T22:51:41Z"}

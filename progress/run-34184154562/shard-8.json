@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 13, "total": 53, "rows": 370474, "note": "COTI 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-08T03:48:40Z"}
+{"shard": 8, "stage": "testing", "done": 13, "total": 53, "rows": 394014, "note": "COTI 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 24.5, "updated": "2026-09-08T03:49:25Z"}

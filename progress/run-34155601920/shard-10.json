@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 52, "total": 53, "rows": 4354856, "note": "XRP 15m: rule 1/120 (mom6)", "failed": [], "pct": 98.1, "updated": "2026-09-07T23:59:56Z"}
+{"shard": 10, "stage": "testing", "done": 52, "total": 53, "rows": 4358996, "note": "XRP 15m: rule 20/120 (stoch14)", "failed": [], "pct": 98.1, "updated": "2026-09-08T00:00:42Z"}

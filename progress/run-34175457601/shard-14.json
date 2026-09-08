@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 45, "total": 53, "rows": 1042278, "note": "SYRUP 4h: rule 45/120 (zscore20)", "failed": [], "pct": 84.9, "updated": "2026-09-08T01:23:08Z"}
+{"shard": 14, "stage": "testing", "done": 46, "total": 53, "rows": 1079942, "note": "THETA 4h: rule 36/120 (stochrsi)", "failed": [], "pct": 86.8, "updated": "2026-09-08T01:23:53Z"}

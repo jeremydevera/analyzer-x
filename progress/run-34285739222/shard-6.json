@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 4, "total": 54, "rows": 144840, "note": "ANKR 30m: rule 46/120 (rsi2)", "failed": [], "pct": 7.4, "updated": "2026-09-08T22:32:29Z"}
+{"shard": 6, "stage": "testing", "done": 4, "total": 54, "rows": 158260, "note": "ANKR 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 7.4, "updated": "2026-09-08T22:33:15Z"}

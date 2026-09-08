@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 7, "total": 53, "rows": 228344, "note": "BARD 1h: rule 18/120 (macd)", "failed": [], "pct": 13.2, "updated": "2026-09-08T03:45:29Z"}
+{"shard": 9, "stage": "testing", "done": 9, "total": 53, "rows": 249068, "note": "BNT 1d: rule 4/120 (trend50)", "failed": [], "pct": 17.0, "updated": "2026-09-08T03:46:14Z"}

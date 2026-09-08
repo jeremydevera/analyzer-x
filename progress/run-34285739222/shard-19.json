@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 5, "total": 53, "rows": 222862, "note": "ATOM 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-08T22:34:13Z"}
+{"shard": 19, "stage": "testing", "done": 6, "total": 53, "rows": 252828, "note": "AZTEC 30m: rule 13/120 (pivot)", "failed": [], "pct": 11.3, "updated": "2026-09-08T22:34:59Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 25, "total": 53, "rows": 744796, "note": "IRYS 1d: 287 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-08T03:11:47Z"}
+{"shard": 4, "stage": "testing", "done": 30, "total": 53, "rows": 824630, "note": "ME 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 56.6, "updated": "2026-09-08T03:12:40Z"}

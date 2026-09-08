@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 47, "total": 53, "rows": 1387238, "note": "TOSHI 1h: rule 23/120 (supertrend)", "failed": [], "pct": 88.7, "updated": "2026-09-08T04:20:26Z"}
+{"shard": 3, "stage": "testing", "done": 48, "total": 53, "rows": 1408138, "note": "TURBO 1d: 394 bars, testing 120 rules", "failed": [], "pct": 90.6, "updated": "2026-09-08T04:21:17Z"}

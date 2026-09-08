@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 41, "total": 53, "rows": 1560408, "note": "SHIB 1h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 77.4, "updated": "2026-09-08T02:33:06Z"}
+{"shard": 10, "stage": "testing", "done": 42, "total": 53, "rows": 1593628, "note": "SLP 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 79.2, "updated": "2026-09-08T02:34:04Z"}

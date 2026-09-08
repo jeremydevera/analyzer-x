@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 44, "total": 53, "rows": 1560640, "note": "SQQQ 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 83.0, "updated": "2026-09-08T23:37:19Z"}
+{"shard": 14, "stage": "testing", "done": 45, "total": 53, "rows": 1586980, "note": "SUPER 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 84.9, "updated": "2026-09-08T23:38:24Z"}

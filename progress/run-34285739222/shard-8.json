@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 1, "total": 54, "rows": 0, "note": "4STOCK 4h: downloading candles", "failed": [], "pct": 1.9, "updated": "2026-09-08T22:24:53Z"}
+{"shard": 8, "stage": "testing", "done": 2, "total": 54, "rows": 26400, "note": "AERO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 3.7, "updated": "2026-09-08T22:25:53Z"}

@@ -2533,13 +2533,22 @@ def candles_lost() -> dict:
             "delisted": delisted, "delisted_count": len(delisted)}
 
 
-@app.get("/api/candles/download-history")
 def _lost_kind_on(got: dict, symbol: str, tf: str, texts=None) -> dict:
     """`_stored_now` plus the one word for WHY (see _lost_kind)."""
     got["kind"] = _lost_kind(got, symbol, tf, texts)
     return got
 
 
+# The decorator belongs to `download_history`. This helper was inserted BETWEEN
+# them, so FastAPI registered `_lost_kind_on` as the endpoint and its `got`,
+# `symbol` and `tf` arguments became required query and body fields: every load
+# of the Candles page answered
+#   422 {"loc": ["query", "symbol"], "msg": "Field required"}
+# and the download-history panel showed nothing, while `download_history`
+# itself was left unregistered — a route that existed in the source and not in
+# the app. Found Sep 09, 2026 by reading the browser's failed requests after a
+# restart; nothing else reported it.
+@app.get("/api/candles/download-history")
 def download_history(limit: int = 20) -> dict:
     """Every download this machine has run, newest first, with its outcome.
 

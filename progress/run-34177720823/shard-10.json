@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 42, "total": 53, "rows": 1593628, "note": "SLP 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 79.2, "updated": "2026-09-08T02:34:04Z"}
+{"shard": 10, "stage": "testing", "done": 42, "total": 53, "rows": 1610348, "note": "SLP 1h: rule 71/120 (mfi14)", "failed": [], "pct": 79.2, "updated": "2026-09-08T02:34:49Z"}

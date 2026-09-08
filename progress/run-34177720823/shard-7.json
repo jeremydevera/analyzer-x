@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 4, "total": 53, "rows": 156606, "note": "AONSTOCK 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 7.5, "updated": "2026-09-08T01:52:13Z"}
+{"shard": 7, "stage": "testing", "done": 6, "total": 53, "rows": 189230, "note": "AVA 4h: rule 41/120 (tsi)", "failed": [], "pct": 11.3, "updated": "2026-09-08T01:52:58Z"}

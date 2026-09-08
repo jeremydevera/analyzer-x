@@ -115,11 +115,13 @@ def _keep_the_row_index_current() -> None:
                     _finish_handoff()
                 except Exception as exc:
                     print(f"[handoff] failed: {exc!r}", flush=True)
-                # USE GITHUB WHEN GITHUB IS FREE. Operator, 2026-09-05:
-                # "I WANT TO USE GITHUB WHEN THERE IS FREE" — they had asked
-                # three times, and every time it took me dispatching a run by
-                # hand. It looks on every tick and dispatches only when the
-                # fleet is idle and this machine has a real hole.
+                # LAND FINISHED CLOUD RUNS — it never starts one. The dispatch
+                # half died on 2026-09-09: the operator started localhost and
+                # got a 20-machine backtest they never asked for, because the
+                # 2026-09-05 goal "USE GITHUB WHEN THERE IS FREE" had been
+                # read as a standing rule. Their words: "no no no, i want
+                # option to start the backtest". Buttons dispatch; this
+                # collects, because artifacts delete themselves after 14 days.
                 try:
                     from tradingagents import cloud_autopilot as _ca
 
@@ -329,6 +331,12 @@ def strategies(coin: str | None = None, tf: str | None = None,
     return got
 
 
+# How often the CSV export hands the interpreter lock back. Small enough that
+# the page stays alive during a long download, large enough to cost nothing:
+# at 25 rows a pause of 2 ms is 0.08 s per 1,000 rows.
+_CSV_BREATHE = 25
+
+
 def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                          sort="profit", min_trades=0, min_winrate=0,
                          max_tp=0, sizing=None, row_id=None, group=None,
@@ -348,6 +356,7 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
     import csv
     import io as _io
     import json as _json
+    import time as _time
 
     from tradingagents import rows_index as ri
 
@@ -393,6 +402,17 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                                       separators=(",", ":"))])
             sent += 1
             yield flush()
+            # LET THE REST OF THE APP BREATHE. A windowed download RE-MEASURES
+            # every row from this PC's candles — about 0.09 s of pure Python
+            # each — and that holds the interpreter lock. Measured Sep 09,
+            # 2026 while one such download ran for 78 s: `/api/health` took
+            # 23.8 s and `/api/backtest/logs` TIMED OUT at 47 s, so the page
+            # the operator was looking at filled with errors and read as
+            # "internal server error" while the file itself was fine.
+            # A 2 ms sleep every `_CSV_BREATHE` rows hands the lock over and
+            # costs well under a second on a run this long.
+            if sent % _CSV_BREATHE == 0:
+                _time.sleep(0.002)
         if days and sent >= ri.DAYS_CSV_MAX:
             # a capped file SAYS it is capped, IN the file (kit rule: a capped
             # grid says what it capped)
@@ -731,18 +751,27 @@ def backtest_logs(cloud: bool = True) -> dict:
 def _busy_run_covers(by_tf: dict):
     """(frames the in-progress run measures, pending frames it does NOT).
 
-    Read from `cloud_autopilot`'s own record of what it dispatched, and only
-    when that record names the run GitHub is actually running — a stale entry
-    for a finished run must not be reported as coverage. `(None, {})` means we
-    do not know, which is said out loud rather than guessed.
+    Read from the dispatch's own record, and only when that record names the
+    run GitHub is actually running — a stale entry for a finished run must not
+    be reported as coverage. `(None, {})` means we do not know, which is said
+    out loud rather than guessed.
+
+    Two records are consulted: the autopilot's (historical — it stopped
+    dispatching on 2026-09-09: "no no no, i want option to start the
+    backtest") and `cloud_sweep.remembered()`, which every BUTTON dispatch
+    writes and which carries the run's `timeframes` since the same date.
     """
     from tradingagents import cloud_autopilot as ca, cloud_sweep as cs
 
     try:
         live = cs.working_run() or {}
-        st = ca._read()
-        if not live.get("id") or int(st.get("run") or 0) != int(live["id"]):
+        if not live.get("id"):
             return None, {}
+        st = ca._read()
+        if int(st.get("run") or 0) != int(live["id"]):
+            st = cs.remembered()
+            if int(st.get("id") or 0) != int(live["id"]):
+                return None, {}
         covered = list(st.get("timeframes") or [])
         if not covered:
             return None, {}

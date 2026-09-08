@@ -124,6 +124,13 @@ def dispatch(*, shards: int = 20, coins: int = 0, timeframes: str = "15m,30m",
         if runs and runs[0]["databaseId"] != old:
             r = runs[0]
             return {"id": r["databaseId"], "url": r["url"], "repo": slug,
+                    # what this run MEASURES, kept with the run: since the
+                    # autopilot stopped dispatching (2026-09-09, "no no no, i
+                    # want option to start the backtest"), button dispatches
+                    # are the only kind, and the pending panel's "the busy run
+                    # covers X" note needs the frames from the run's own record
+                    "timeframes": [t.strip() for t in str(timeframes).split(",")
+                                   if t.strip()],
                     "started": time.strftime("%Y-%m-%d %H:%M")}
     raise CloudError("the run did not appear within a minute")
 

@@ -1,23 +1,22 @@
-"""Use GitHub whenever GitHub is free.
+"""LAND finished cloud runs into the store. Nothing is dispatched here.
 
-Operator, 2026-09-05: *"I WANT TO USE GITHUB WHEN THERE IS FREE"*, after
-*"SHOULD I USE GITHUB INSTEAD IF IM SHORT ON MEMORY"* and, before that,
-*"why did you not use github since its free?"*.
+This module used to START backtest sweeps on its own: the operator's
+2026-09-05 goal *"I WANT TO USE GITHUB WHEN THERE IS FREE"* was read as a
+standing rule, so merely starting localhost started the API, the API's
+supervisor ticked, and a 20-machine run was dispatched with nobody asking for
+one — run 34285739222 on Sep 09, 2026 started that way, and the operator's
+correction was immediate:
 
-They had to ask three times, and every time the answer was me dispatching a run
-by hand. GitHub sat idle through a 4,124-pair local run that took most of a day.
-Nothing ever looked, so nothing ever used it.
+    *"no no no, i want option to start the backtest i only said this because
+    i was using my own local back then"*
 
-This looks, on the supervisor's tick. When GitHub is free and this machine has
-pairs it has never measured, it dispatches — and it says out loud what it sent
-and why. It never dispatches nothing, never dispatches while a run of ours is
-already going, and never dispatches the same gap twice in a row.
-
-WHY IT DISPATCHES BY TIMEFRAME: the shard takes a `timeframes` input and slices
-its coins by index inside the run (`.github/scripts/sweep_shard.py`), so a
-timeframe is the only unit that can be aimed at. It picks the timeframes with
-the biggest holes, heaviest first, because 20 runners should get the work that
-hurts.
+Starting a backtest is the operator's BUTTON — RUN ON GITHUB
+(`/api/cloud/dispatch`) or UPDATE ALL BACKTESTS — never a side effect of the
+app coming up. What stays automatic is the half that finishes THEIR runs: when
+a run completes, its rows sit in GitHub artifacts that delete themselves after
+14 days (five runs, ~150M rows, were three days from the bin on Sep 05), so
+this collects every finished, uncollected run into the store on the
+supervisor's tick.
 """
 from __future__ import annotations
 
@@ -26,21 +25,7 @@ import json
 import time
 from pathlib import Path
 
-# Don't dispatch for a handful of pairs: a run costs 20 machines spinning up,
-# checking out and installing before they measure anything, and the local
-# sweep clears a small tail faster than that.
-MIN_MISSING = 25
-
-# Never two dispatches inside this window, even if the count still looks big —
-# a run takes minutes to appear as "in progress", and a tick every 30 s would
-# otherwise fire several before the first one registers.
-COOLDOWN_S = 30 * 60
-
-# The most timeframes one run is given. All five at once measures the whole
-# market on every frame; the point is to fill holes.
-MAX_TFS = 2
-
-# How often GitHub itself may be asked whether it is free. The supervisor ticks
+# How often GitHub itself may be asked what finished. The supervisor ticks
 # every 30 s; asking that often is 2 API calls a minute against the endpoints
 # whose SECONDARY rate limit 403'd this account for hours on Sep 02, 2026.
 CHECK_EVERY_S = 5 * 60
@@ -72,14 +57,16 @@ def missing_by_timeframe() -> dict:
     """Pairs this machine holds candles for but has never measured, per frame.
 
     Two directory listings, names only — never `candle_coverage()`, which opens
-    every candle file and takes minutes on a 5,000-pair store. This runs every
-    supervisor tick.
+    every candle file and takes minutes on a 5,000-pair store. The dispatch
+    half of this module used to aim runs with it; since that was removed
+    (2026-09-09) it is the DIAGNOSTIC the pending routes and tests read — what
+    a button run would still have to cover.
     """
     from tradingagents import backtest_logs as bl, market_sweep as msw
 
     measured = {p.stem for p in msw.STATES.glob("*.json")}
     # DELISTED pairs are not missing: no shard can measure a coin the venue
-    # no longer lists, so counting them would dispatch runs forever for pairs
+    # no longer lists, so counting them would report work forever for pairs
     # nothing can touch (Sep 06, 2026). `fleet_symbols` is the SHARD'S own
     # rule (state == 0), cached 300s; unreadable keeps every pair counted.
     live = bl.fleet_symbols()
@@ -93,30 +80,6 @@ def missing_by_timeframe() -> dict:
                 and (live is None or sym in live)):
             out[tf] = out.get(tf, 0) + 1
     return out
-
-
-def pick(missing: dict, *, busy_local=(), limit: int = MAX_TFS, skip=()) -> list:
-    """Which timeframes to send, biggest hole first.
-
-    A frame the LOCAL job is already working is taken last, not excluded: it is
-    not wrong to measure it (the merge refuses to overwrite a locally-measured
-    pair), but it is the least useful thing a free fleet could be doing.
-
-    `skip` is the frames a previous dispatch did not improve — pairs no fleet
-    can measure, because they have too few bars for their timeframe. Sending
-    them again is 20 machines doing nothing, every 30 minutes, for ever.
-    """
-    from tradingagents import capacity as cap
-
-    rows = [(n, t) for t, n in missing.items()
-            if n >= 1 and t not in set(skip or ())]
-    if not rows:
-        return []
-    busy = set(busy_local or ())
-    rows.sort(key=lambda r: (r[1] in busy,          # local's frames last
-                             -r[0],                  # biggest hole first
-                             -cap.BARS_PER_YEAR.get(r[1], 1)))
-    return [t for _n, t in rows[:limit]]
 
 
 def collect_finished(*, now: float, state: dict) -> dict:
@@ -205,126 +168,25 @@ def collect_finished(*, now: float, state: dict) -> dict:
 
 
 def consider(*, now: float | None = None) -> dict:
-    """Look once. Dispatch if GitHub is free and there is a real hole.
+    """Look once: land any finished run. NEVER start one.
+
+    The dispatch half lived here until 2026-09-09 and fired the moment the API
+    came up — the operator started localhost and got a 20-machine backtest they
+    never asked for (run 34285739222). Their words: *"no no no, i want option
+    to start the backtest"*. The buttons dispatch; this only collects, because
+    a finished run's artifacts delete themselves after 14 days and rows that
+    never land measured nothing.
 
     Returns what it did and WHY, always — a silent no-op is indistinguishable
-    from a broken autopilot, which is the whole reason this exists.
+    from a broken autopilot.
     """
-    from tradingagents import capacity as cap, cloud_sweep as cs, db_jobs as dj
-
     now = time.time() if now is None else now
     state = _read()
-
-    # COLLECT FIRST, BEFORE EVERY OTHER GUARD. Without this the autopilot eats
-    # itself: the cloud finishes, nothing lands the rows, the gap is unchanged,
-    # the "did it improve?" guard calls those pairs unmeasurable and skips the
-    # frame — three dispatches later every frame is dead and it answers
-    # "nothing left to aim at" for good. Five runs had already finished that
-    # way (100 artifacts, ~150M rows, deleting themselves Sep 17-18) because
-    # the workflow prints "collect with: ..." and waits for a person.
-    #
-    # BEFORE the cooldown and before the MIN_MISSING check, both of which are
-    # about DISPATCHING: a store with nothing missing still has rows to land,
-    # and waiting 30 minutes to collect helps nobody.
     col = collect_finished(now=now, state=state)
     if col.get("started"):
         return {"dispatched": False, "collecting": col,
-                "why": (f"collecting run {col['run']} into the store — a gap "
-                        f"cannot shrink until its rows land")}
-
-    last = float(state.get("last_dispatch") or 0)
-    if now - last < COOLDOWN_S:
-        return {"dispatched": False,
-                "why": f"cooling down, {int((COOLDOWN_S - (now - last)) / 60)} "
-                       f"min left since the last dispatch"}
-
-    # CHEAP CHECKS FIRST. `cloud_free()` costs a GitHub Actions API call, and
-    # this runs on a 30-second tick: asking every tick is 2 calls a minute
-    # against the endpoints whose SECONDARY limit 403'd this account for hours
-    # on Sep 02, 2026 and blinded the Cloud panel over a healthy run. The
-    # directory listing below is local and answers in 0.1 s.
-    missing = missing_by_timeframe()
-    total = sum(missing.values())
-    if total < MIN_MISSING:
-        return {"dispatched": False, "missing": missing,
-                "why": f"only {total} pair(s) unmeasured, under the "
-                       f"{MIN_MISSING} it is worth 20 machines for"}
-
-    # A FRAME THAT DID NOT IMPROVE IS NOT SENT AGAIN. Some pairs can never get
-    # a state file — too few bars for their timeframe (backtest_report
-    # .MIN_BARS) — so their gap never reaches zero. Without this the autopilot
-    # would send 20 machines at the same dead work every 30 minutes for ever.
-    #
-    # It skips only THOSE FRAMES, and does not block the autopilot: a gap that
-    # GREW (new candles downloaded) is real new work, and an earlier version
-    # blocked on it too, because "did not shrink" also matches "got bigger".
-    seen = state.get("missing") or {}
-    stuck = [t for t in (state.get("timeframes") or [])
-             if seen.get(t) is not None and missing.get(t, 0) >= seen[t]]
-
-    if now - float(state.get("last_check") or 0) < CHECK_EVERY_S:
-        return {"dispatched": False, "missing": missing,
-                "why": "waiting before asking GitHub again"}
-    state["last_check"] = now
-    _write(state)
-
-    free, why = cap.cloud_free()
-    if not free:
-        return {"dispatched": False, "missing": missing,
-                "why": f"GitHub is not free: {why}"}
-
-    busy_local = []
-    try:
-        st = dj.status("backtest")
-        if st.get("running"):
-            busy_local = list(dj._read(dj.FILES["backtest"]["spec"])
-                              .get("tfs") or [])
-    except Exception:                                          # noqa: BLE001
-        pass
-
-    tfs = pick(missing, busy_local=busy_local, skip=stuck)
-    if not tfs:
-        return {"dispatched": False, "missing": missing, "stuck": stuck,
-                "why": (f"nothing left to aim at — {', '.join(stuck)} did not "
-                        f"improve after run {state.get('run')}, so those pairs "
-                        f"are ones no fleet can measure (too few bars for "
-                        f"their timeframe)" if stuck else "nothing to aim at")}
-
-    try:
-        run = cs.dispatch(shards=cap.CLOUD_RUNNERS, coins=0,
-                          timeframes=",".join(tfs), min_days=0, days=365)
-    except Exception as exc:                                   # noqa: BLE001
-        # NAMED, not swallowed. A dispatch that always fails silently is an
-        # autopilot that looks like it is working.
-        return {"dispatched": False, "missing": missing,
-                "why": f"dispatch refused: {type(exc).__name__}: {exc}"}
-
-    # MERGE, never replace. This wrote a fresh dict and so deleted the whole
-    # collect ledger — `collected`, `collecting`, `collect_tries` — on every
-    # dispatch. With no memory of what had landed, the next tick re-collected
-    # runs it had already collected: measured Sep 06, 2026 from
-    # db_collect.log, 46 completions over 17 distinct runs, one of them FIVE
-    # times, each downloading 30-40 million rows of artifacts to keep zero
-    # pairs. The state file at that moment held only the five dispatch keys
-    # and no `collected` at all, which is what made it visible.
-    _write({**_read(), "last_dispatch": now, "last_check": now,
-            "run": run.get("id"), "timeframes": tfs, "missing": missing})
-    covered = sum(missing.get(t, 0) for t in tfs)
-    line = (f"[cloud-autopilot] GitHub was free — sent {', '.join(tfs)} "
-            f"({covered} unmeasured pair(s) of {total}) to run "
-            f"{run.get('id')}: {run.get('url')}")
-    print(line, flush=True)
-    try:
-        from tradingagents import notifications as _nt
-
-        _nt.record("backtest", "GitHub picked up the slack",
-                   detail=(f"{', '.join(tfs)} — {covered} unmeasured pair(s) "
-                           f"of {total} — run {run.get('id')}"),
-                   ok=True, meta={"run": run.get("id"), "timeframes": tfs})
-    except Exception:                                          # noqa: BLE001
-        pass
-    return {"dispatched": True, "run": run.get("id"), "timeframes": tfs,
-            "missing": missing, "covered": covered, "why": line}
+                "why": f"collecting run {col['run']} into the store"}
+    return {"dispatched": False, "why": col.get("why") or "nothing to collect"}
 
 
 _LAST_SAID = {"why": ""}
@@ -341,8 +203,8 @@ def tick() -> dict:
     """
     got = consider()
     why = str(got.get("why") or "")
-    if why and why != _LAST_SAID["why"] and not got.get("dispatched"):
-        # a dispatch prints its own, fuller line inside consider()
+    if why and why != _LAST_SAID["why"] and not got.get("collecting"):
+        # a starting collect prints its own, fuller line in collect_finished
         print(f"[cloud-autopilot] {why}", flush=True)
     _LAST_SAID["why"] = why
     return got

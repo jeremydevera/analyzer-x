@@ -1713,6 +1713,10 @@ def _run_btupdate(spec: dict) -> None:
                 # path already dispatched before the Sep 05, 2026 move, so it
                 # had been measuring at a stake nobody chose for longer.
                 base=float(spec.get("base") or 5.0))
+            # the run's own record: the pending panel's "the busy run covers
+            # X" note reads it, and since the autopilot stopped dispatching
+            # (2026-09-09) button paths like this are the only writers
+            cs.remember(dispatched)
             print(f"[btupdate] GitHub run {dispatched.get('id')} started for "
                   f"{', '.join(plan['cloud'])}: {dispatched.get('url')}",
                   flush=True)

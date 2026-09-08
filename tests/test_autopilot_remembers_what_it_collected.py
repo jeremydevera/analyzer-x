@@ -36,32 +36,27 @@ def state_file(tmp_path, monkeypatch):
     return p
 
 
-def test_a_dispatch_keeps_the_collect_ledger(state_file, monkeypatch):
-    """The bug, in one assertion."""
+def test_the_tick_keeps_the_collect_ledger(state_file, monkeypatch):
+    """The bug, in one assertion — kept even though the dispatcher that caused
+    it is gone (2026-09-09, "no no no, i want option to start the backtest"):
+    whatever consider() becomes, a tick must never lose the ledger."""
     state_file.write_text(json.dumps({
         "collected": [111, 222], "collecting": 333,
         "collect_tries": {"333": 1}, "last_check": 5.0}), encoding="utf-8")
 
-    from tradingagents import capacity as cap, cloud_sweep as cs
+    from tradingagents import cloud_sweep as cs, db_jobs as dj
 
-    monkeypatch.setattr(ca, "missing_by_timeframe", lambda: {"4h": 400})
-    monkeypatch.setattr(ca, "collect_finished",
-                        lambda **k: {"started": False, "why": "none"})
-    monkeypatch.setattr(cap, "cloud_free", lambda: (True, "free"))
-    monkeypatch.setattr(cs, "dispatch",
-                        lambda **k: {"id": 999, "url": "u", "repo": "r"})
-    monkeypatch.setattr(ca, "pick", lambda *a, **k: ["4h"])
+    monkeypatch.setattr(dj, "status", lambda k: {"running": False})
+    monkeypatch.setattr(cs, "repo_slug", lambda: "me/repo")
+    monkeypatch.setattr(cs, "_runs", lambda slug, limit=10: [])
 
-    got = ca.consider()
-    assert got.get("dispatched") is True, got
+    got = ca.consider(now=1e12)
+    assert got.get("dispatched") is False, got
 
     after = json.loads(state_file.read_text())
-    assert after["collected"] == [111, 222], \
-        "the dispatch deleted the ledger — 46 collects over 17 runs"
+    assert after["collected"] == [111, 222],         "a tick deleted the ledger — 46 collects over 17 runs was this bug"
     assert after["collecting"] == 333
     assert after["collect_tries"] == {"333": 1}
-    # and it still records the dispatch it just made
-    assert after["run"] == 999 and after["timeframes"] == ["4h"]
 
 
 def test_a_collected_run_is_never_collected_twice(state_file, monkeypatch):
@@ -102,14 +97,18 @@ def test_an_uncollected_run_still_starts(state_file, monkeypatch):
     assert started == [{"run": 222}]
 
 
-def test_the_dispatch_write_merges_rather_than_replaces():
+def test_every_state_write_merges_rather_than_replaces():
     """The shape of the fix, so a future edit cannot quietly go back to a
-    fresh dict — which is what cost ~29 redundant multi-gigabyte collects."""
+    fresh dict — which is what cost ~29 redundant multi-gigabyte collects.
+    The dispatch write that did it is GONE; the writers that remain must all
+    pass the state dict they read and mutated, never a fresh literal."""
     import inspect
+    import re
 
-    src = inspect.getsource(ca.consider)
-    i = src.index('"last_dispatch": now')
-    head = src[max(0, i - 200):i]
-    assert "**" in head, \
-        "the dispatch must merge into the existing state, not replace it"
-    assert "_write({\"last_dispatch\"" not in src
+    src = inspect.getsource(ca)
+    assert '"last_dispatch": now' not in src, "the dispatch write grew back"
+    for call in re.findall(r"_write\((.{1,60})", src):
+        arg = call.strip()
+        assert arg.startswith("state") or arg.startswith("d"), (
+            f"_write({arg}...) — a fresh-literal write is how the ledger "
+            f"was wiped on Sep 06, 2026")

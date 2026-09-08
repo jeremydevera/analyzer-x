@@ -1,29 +1,17 @@
-"""GitHub gets used whenever GitHub is free — without being asked.
+"""The cloud autopilot LANDS runs; it never starts one.
 
-Operator, 2026-09-05: *"I WANT TO USE GITHUB WHEN THERE IS FREE"*, after
-*"SHOULD I USE GITHUB INSTEAD IF IM SHORT ON MEMORY"* and, before that,
-*"why did you not use github since its free?"*.
+It used to. The operator's 2026-09-05 goal *"I WANT TO USE GITHUB WHEN THERE IS
+FREE"* was read as a standing rule, so starting localhost started the API, the
+supervisor ticked, and run 34285739222 (20 machines, 4h+30m) was dispatched on
+Sep 09, 2026 with nobody asking. The correction was immediate:
 
-Three asks, and every time the answer was me dispatching a run by hand. GitHub
-sat idle through a 4,124-pair local run that took most of a day, because
-nothing ever looked. Measured on this store when the autopilot was written:
-775 pairs had candles and no measurement (4h 322, 1d 285, 1h 90, 30m 44,
-15m 34) while the fleet was completely idle.
+    *"no no no, i want option to start the backtest i only said this because
+    i was using my own local back then"*
 
-Three bugs the harddev loop found before this was tested, each guarded below:
-
-* ROUND 1a — `consider()` runs on a 30-second supervisor tick and asked GitHub
-  every time. That is 2 API calls a minute against the endpoints whose
-  SECONDARY rate limit 403'd this account for hours on Sep 02, 2026 and
-  blinded the Cloud panel over a healthy run. Cheap local checks come first,
-  and GitHub is asked at most every 5 minutes.
-* ROUND 1b — pairs that can NEVER be measured (too few bars for their
-  timeframe) keep their gap for ever, so the autopilot would send 20 machines
-  at dead work every 30 minutes, indefinitely.
-* ROUND 2 — the first fix for that blocked on "did not shrink", which also
-  matches "GOT BIGGER". A new gap from freshly downloaded candles is real work
-  and was being refused. Only the frames that failed to improve are skipped
-  now, not the whole autopilot.
+So: buttons dispatch (RUN ON GITHUB, UPDATE ALL BACKTESTS); the tick only
+COLLECTS finished runs, because their artifacts delete themselves after 14
+days and rows that never land measured nothing. The first test here is the
+correction itself.
 """
 import time
 
@@ -38,182 +26,45 @@ def _own_state(tmp_path, monkeypatch):
     monkeypatch.setattr(ca, "STATE", tmp_path / "autopilot.json")
 
 
-# ----------------------------------------------------------------- what to send
-def test_the_biggest_hole_goes_first():
-    got = ca.pick({"4h": 322, "1d": 285, "1h": 90, "15m": 34})
-    assert got == ["4h", "1d"]
+# ------------------------------------------------ it NEVER starts a run
+def test_the_tick_never_dispatches_no_matter_how_free_github_is(monkeypatch):
+    """The correction itself. GitHub idle, a 775-pair hole, cooldowns clear —
+    the exact state that used to fire a 20-machine run the moment the API came
+    up — and consider() must still start NOTHING."""
+    from tradingagents import capacity as cap, cloud_sweep as cs
 
-
-def test_a_frame_the_local_job_is_on_is_taken_last():
-    """Not excluded — the merge refuses to overwrite a locally-measured pair —
-    but it is the least useful thing an idle fleet could do."""
-    got = ca.pick({"4h": 322, "1d": 285}, busy_local=["4h"], limit=1)
-    assert got == ["1d"]
-
-
-def test_frames_that_did_not_improve_are_skipped_not_resent():
-    """ROUND 1b. Their pairs have too few bars to measure; sending them again
-    is 20 machines doing nothing."""
-    m = {"4h": 322, "1d": 285, "1h": 90, "15m": 34}
-    assert ca.pick(m, skip=["1d", "4h"]) == ["1h", "15m"]
-
-
-def test_nothing_to_send_is_an_empty_list_not_a_crash():
-    assert ca.pick({}) == []
-    assert ca.pick({"1d": 0}) == []
-    assert ca.pick({"1d": 5}, skip=["1d"]) == []
-
-
-# --------------------------------------------------------------- when to send
-def _wire(monkeypatch, *, missing, free=(True, "free"), running=False,
-          dispatch=None):
-    from tradingagents import capacity as cap, cloud_sweep as cs, db_jobs as dj
-
-    monkeypatch.setattr(ca, "missing_by_timeframe", lambda: dict(missing))
-    # collection runs FIRST now and would otherwise reach GitHub for real
-    monkeypatch.setattr(ca, "collect_finished",
-                        lambda **kw: {"started": False, "why": "stubbed"})
-    monkeypatch.setattr(cap, "cloud_free", lambda: free)
-    monkeypatch.setattr(dj, "status", lambda k: {"running": running})
-    monkeypatch.setattr(dj, "_read", lambda p: {"tfs": ["15m", "30m"]})
-    sent = []
-
-    def _d(**kw):
-        sent.append(kw)
-        if dispatch == "boom":
-            raise RuntimeError("gh refused")
-        return {"id": 999, "url": "http://x"}
-
-    monkeypatch.setattr(cs, "dispatch", _d)
-    return sent
-
-
-def test_it_dispatches_when_github_is_free_and_there_is_a_hole(monkeypatch):
-    sent = _wire(monkeypatch, missing={"4h": 322, "1d": 285})
-    got = ca.consider()
-    assert got["dispatched"] is True
-    assert got["timeframes"] == ["4h", "1d"]
-    assert sent and sent[0]["timeframes"] == "4h,1d"
-    assert got["covered"] == 607
-
-
-def test_a_busy_fleet_is_left_alone(monkeypatch):
-    _wire(monkeypatch, missing={"4h": 322},
-          free=(False, "run 7 is already in progress"))
-    got = ca.consider()
-    assert got["dispatched"] is False
-    assert "run 7" in got["why"]
-
-
-def test_a_handful_of_pairs_is_not_worth_twenty_machines(monkeypatch):
-    sent = _wire(monkeypatch, missing={"1d": 3})
-    got = ca.consider()
-    assert got["dispatched"] is False
-    assert not sent
-    assert "under the" in got["why"]
-
-
-def test_it_will_not_dispatch_twice_inside_the_cooldown(monkeypatch):
-    sent = _wire(monkeypatch, missing={"4h": 322})
-    assert ca.consider()["dispatched"] is True
-    got = ca.consider()
-    assert got["dispatched"] is False
-    assert "cooling down" in got["why"]
-    assert len(sent) == 1, "a 30-second tick must not fire a run per tick"
-
-
-def test_a_refused_dispatch_is_named_never_swallowed(monkeypatch):
-    """An autopilot that fails silently looks exactly like one that works."""
-    _wire(monkeypatch, missing={"4h": 322}, dispatch="boom")
-    got = ca.consider()
-    assert got["dispatched"] is False
-    assert "dispatch refused" in got["why"] and "gh refused" in got["why"]
-
-
-# ------------------------------------------------------- the rate-limit guard
-def test_github_is_not_asked_on_every_tick(monkeypatch):
-    """ROUND 1a. The supervisor ticks every 30 s; the Actions API secondary
-    limit 403'd this account for hours on Sep 02, 2026."""
-    from tradingagents import capacity as cap
-
-    calls = {"n": 0}
-
-    def counted():
-        calls["n"] += 1
-        return False, "busy"
-
-    _wire(monkeypatch, missing={"4h": 322})
-    monkeypatch.setattr(cap, "cloud_free", counted)
-    t = time.time()
-    for i in range(20):                       # ten minutes of 30-second ticks
-        ca.consider(now=t + i * 30)
-    assert calls["n"] <= 3, f"asked GitHub {calls['n']} times in 10 minutes"
-
-
-def test_the_cheap_check_runs_before_the_expensive_one(monkeypatch):
-    """A store with nothing missing must never cost a GitHub call at all."""
-    from tradingagents import capacity as cap
-
-    calls = {"n": 0}
-    _wire(monkeypatch, missing={"1d": 2})
-    monkeypatch.setattr(cap, "cloud_free",
-                        lambda: (calls.__setitem__("n", calls["n"] + 1),
-                                 (True, "free"))[1])
-    ca.consider()
-    assert calls["n"] == 0
-
-
-# --------------------------------------------------- the never-ending dispatch
-def test_a_gap_that_cannot_move_is_not_sent_for_ever(monkeypatch):
-    """ROUND 1b. Pairs below MIN_BARS never get a state file, so their gap
-    never closes — 20 machines every 30 minutes at work that cannot move."""
-    sent = _wire(monkeypatch, missing={"4h": 322, "1d": 285})
-    t = time.time()
-    assert ca.consider(now=t)["dispatched"] is True
-    # same gap, well past the cooldown
-    got = ca.consider(now=t + ca.COOLDOWN_S + 60)
-    assert got["dispatched"] is False, got
-    assert len(sent) == 1
-
-
-def test_a_gap_that_GREW_is_real_new_work(monkeypatch):
-    """ROUND 2. The first fix blocked on "did not shrink", and "got bigger" is
-    not smaller — freshly downloaded candles were being refused."""
-    from tradingagents import capacity as cap, cloud_sweep as cs, db_jobs as dj
-
-    state = {"missing": {"4h": 322, "1d": 285}}
-    monkeypatch.setattr(ca, "missing_by_timeframe", lambda: dict(state["missing"]))
-    monkeypatch.setattr(ca, "collect_finished",
-                        lambda **kw: {"started": False, "why": "stubbed"})
-    monkeypatch.setattr(cap, "cloud_free", lambda: (True, "free"))
-    monkeypatch.setattr(dj, "status", lambda k: {"running": False})
-    monkeypatch.setattr(dj, "_read", lambda p: {"tfs": []})
     sent = []
     monkeypatch.setattr(cs, "dispatch",
-                        lambda **kw: (sent.append(kw),
-                                      {"id": 1, "url": "u"})[1])
-    t = time.time()
-    assert ca.consider(now=t)["dispatched"] is True
-
-    # a candle download adds a brand-new hole on a frame that was clean
-    state["missing"] = {"4h": 322, "1d": 285, "15m": 400}
-    got = ca.consider(now=t + ca.COOLDOWN_S + 60)
-    assert got["dispatched"] is True, got
-    assert "15m" in got["timeframes"], got
-    assert len(sent) == 2
+                        lambda **kw: (sent.append(kw), {"id": 1})[1])
+    monkeypatch.setattr(cap, "cloud_free", lambda: (True, "free"))
+    monkeypatch.setattr(ca, "collect_finished",
+                        lambda **kw: {"started": False, "why": "nothing "
+                                      "finished is uncollected"})
+    got = ca.consider()
+    assert got["dispatched"] is False
+    assert not sent, "starting a backtest is the operator's button, never a tick"
 
 
-def test_an_improved_frame_is_sent_again(monkeypatch):
-    _wire(monkeypatch, missing={"4h": 322, "1d": 285})
-    t = time.time()
-    ca.consider(now=t)
-    from tradingagents import cloud_sweep as cs  # noqa: F401
+def test_the_module_holds_no_dispatch_machinery():
+    """`pick`, MIN_MISSING, the dispatch cooldown — all of it was the engine
+    that started runs by itself. Dead code lies, so it is gone, and this fails
+    if it grows back without the operator asking."""
+    import inspect
 
-    monkeypatch.setattr(ca, "missing_by_timeframe",
-                        lambda: {"4h": 100, "1d": 285})
-    got = ca.consider(now=t + ca.COOLDOWN_S + 60)
-    assert got["dispatched"] is True
-    assert "4h" in got["timeframes"], got
+    src = inspect.getsource(ca)
+    assert "cs.dispatch(" not in src
+    assert not hasattr(ca, "pick")
+    assert not hasattr(ca, "MIN_MISSING")
+    assert "GitHub was free — sent" not in src
+
+
+def test_a_tick_still_collects_what_finished(monkeypatch):
+    """Removing the dispatch half must not take the collect half with it."""
+    monkeypatch.setattr(ca, "collect_finished",
+                        lambda **kw: {"started": True, "run": 7})
+    got = ca.consider()
+    assert got["collecting"]["run"] == 7
+    assert "collecting run 7" in got["why"]
 
 
 # ----------------------------------------------------------------- plumbing
@@ -349,18 +200,16 @@ def test_only_one_collect_runs_at_a_time(monkeypatch):
     assert not started
 
 
-def test_collecting_happens_before_every_dispatch_guard(monkeypatch):
-    """BUG A. It sat after the cooldown and after MIN_MISSING, so a store with
-    nothing missing — or one inside a 30-minute cooldown — never collected,
-    and the gap it was waiting on could never shrink."""
+def test_collecting_ignores_the_old_dispatch_state(monkeypatch):
+    """A state file full of dispatch-era keys (cooldowns, missing maps) must
+    not stop the collector — those guards were about STARTING runs, and
+    starting is gone."""
     monkeypatch.setattr(ca, "collect_finished",
                         lambda **kw: {"started": True, "run": 7})
-    monkeypatch.setattr(ca, "missing_by_timeframe", lambda: {})   # nothing missing
-    ca._write({"last_dispatch": time.time()})                     # in cooldown
+    ca._write({"last_dispatch": time.time(), "missing": {"4h": 99}})
     got = ca.consider()
     assert got["dispatched"] is False
     assert got["collecting"]["run"] == 7, got
-    assert "cannot shrink until its rows land" in got["why"]
 
 
 def test_the_collector_does_not_ask_github_on_every_tick(monkeypatch):

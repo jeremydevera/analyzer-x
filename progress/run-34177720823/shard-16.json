@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 7, "total": 53, "rows": 275964, "note": "BB 4h: rule 12/120 (donchian20)", "failed": [], "pct": 13.2, "updated": "2026-09-08T01:55:30Z"}
+{"shard": 16, "stage": "testing", "done": 7, "total": 53, "rows": 300604, "note": "BB 1h: rule 4/120 (trend50)", "failed": [], "pct": 13.2, "updated": "2026-09-08T01:56:15Z"}

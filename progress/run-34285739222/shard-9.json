@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 35, "total": 54, "rows": 1272404, "note": "ORCLSTOCK 30m: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 64.8, "updated": "2026-09-08T23:25:30Z"}
+{"shard": 9, "stage": "testing", "done": 36, "total": 54, "rows": 1308896, "note": "PEPSTOCK 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 66.7, "updated": "2026-09-08T23:26:15Z"}

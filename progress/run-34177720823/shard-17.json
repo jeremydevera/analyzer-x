@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 48, "total": 53, "rows": 1823422, "note": "UNHSTOCK 4h: 1,725 bars, testing 120 rules", "failed": [], "pct": 90.6, "updated": "2026-09-08T02:32:55Z"}
+{"shard": 17, "stage": "testing", "done": 49, "total": 53, "rows": 1867582, "note": "VELO 4h: rule 26/120 (adx14)", "failed": [], "pct": 92.5, "updated": "2026-09-08T02:33:40Z"}

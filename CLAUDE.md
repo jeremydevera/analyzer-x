@@ -59,6 +59,21 @@ G. **filters for the columns that decide things**: min win rate, min profit tota
    **61** rows with a stop that tight had passed the screen. Publish every row that
    passed (all 3,613 there, logs included, 7.5 MB) or the filter answers about the page
    instead of the measurement.
+
+   **THIS IS NOT ONLY ABOUT ARTIFACTS — it happened again on Sep 09, 2026, in a
+   panel.** FILTER WHERE THE DATA IS, NEVER AFTER A WINDOW HAS BEEN TAKEN. The
+   operator asked why row #YDMRLEZ5 showed one loss that was missing from the demo
+   history. The loss was real — KITE 1h squeeze, `Sep 07, 2026 5:01pm`, SL, -3.19,
+   on the paper book — and `HistoryPanel` fetched the newest **200 ledger rows**, then
+   picked out `enter`/`exit` in the browser. Their ledger was **3,666 rows of which
+   2,868 were `gate_blocked`, 552 `blocked`, 169 `stale_skip` and 12 were trades**;
+   the newest 200 spanned 23 hours and held 2 of the 12, and that exit sat **640 rows
+   from the end**. A filter cannot recover rows that never arrived.
+   The shape to look for, anywhere: **a `.filter(...)` in a component over a list the
+   server already truncated by `limit`, `head`, `tail` or "top N"** — the predicate has
+   to travel to the query. `/api/ledger` takes `actions` now, and returns `matched`
+   beside `total` so "no trades" is distinguishable from "no ledger". Kit item G is the
+   artifact case of this rule; the rule itself is about every screen.
 H. **a stable row ID as the first column** (`#LLZM9D`), HASHED FROM THE COMBINATION
    (`backtest_report.row_code`), never a per-page sequence — a sequence gives the same
    live row a different number on every page, which is how "#05146 / #02054 / not there"
@@ -233,6 +248,18 @@ content had been fixed while the line's own timestamp had not.
 A month LABEL (`Aug 2026`) is a different thing and keeps its own form, and
 PARSING someone else's format (`strptime` on an X/Twitter stamp) is fine — the
 rule is about what this project PRINTS.
+
+**A GUARD IS ONLY AS WIDE AS ITS PATTERN (Sep 09, 2026).** The banned stamp came
+back on every row of the trade-history table — `2026-09-07 17:01`, from a Date
+built out of the seconds with its ISO string sliced — and
+`test_the_browser_uses_one_date_format_everywhere` passed the whole time,
+because it greps for `.toLocale` and nothing else. The rule had never been
+wrong; the check had one spelling of one way to break it. When a MANDATORY rule
+is broken again, fix the code AND widen the guard in the same commit, then
+confirm the widened guard fails on the old file. `test_history_shows_the_trades
+_not_the_refusals.py` now also rejects a `Date` built from seconds, while still
+allowing `toISOString().slice(0, 10)` for a date INPUT's value, which is not a
+printed timestamp.
 
 ## Never put anything below an entry point (MANDATORY — 2026-08-22)
 

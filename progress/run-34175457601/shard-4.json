@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 14, "total": 53, "rows": 414236, "note": "CTC 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-08T01:11:14Z"}
+{"shard": 4, "stage": "testing", "done": 16, "total": 53, "rows": 499588, "note": "DRAM 4h: rule 69/120 (obv20)", "failed": [], "pct": 30.2, "updated": "2026-09-08T01:11:59Z"}

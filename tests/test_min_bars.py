@@ -1,13 +1,19 @@
-"""The bar floor scales with the timeframe — or 1d can never be measured.
+"""The bar floor is gone — a pair is tested with the candles it HAS.
 
-`run_pair` refused any series under 500 bars. A year of 1d is at most ~395
-bars (the window is days+30), and the 60-day sweep the operator started on
-2026-08-25 gave 1d exactly ~90, so every one of the 997 1d pairs was being
-excluded as "only 90 bars" — the fifth mandatory timeframe of the full grid,
-dropped by a constant that was sized for 15m. The floor is now the technical
-minimum per timeframe: enough bars for the longest lookback (trend50) plus a
-half-split, not a statistical judgement — depth is the row's own `days` and
-`bars`, and the reader filters on it in the artifact (CLAUDE.md, rule 20).
+Operator, Sep 09, 2026: *"why are you making bar floor if i told you to test
+4hr then test it the available candles / its like use what's available"*. The
+500-bar floor was the code's judgement, not theirs: it held 622 young pairs
+"pending" for weeks while the button could honestly offer only 25.
+
+TWO bars is the physical minimum — one bar cannot contain a trade. A signal
+whose lookback exceeds the history simply makes no trades (both sweeps skip a
+raising signal per-signal), depth is the row's own `days`/`bars`, and the
+min-trades filter is where trust is decided — by the reader, not by a
+constant in the sweep.
+
+History kept below because it explains the 1d=60 era this replaced: a flat
+500 once made 1d impossible (a 60-day window is ~90 daily bars), so the floor
+became per-timeframe on 2026-08-26 — and per-operator, zero, on 2026-09-09.
 """
 import pandas as pd
 import pytest
@@ -22,22 +28,20 @@ def _frame(n, step_s):
                          "Close": [1.0] * n, "Volume": [1.0] * n})
 
 
-def test_intraday_keeps_its_floor_and_daily_gets_a_reachable_one():
-    assert msw.min_bars("15m") == 500
-    assert msw.min_bars("30m") == 500
-    assert msw.min_bars("1h") == 500
-    assert msw.min_bars("4h") == 500
-    # a 60-day window is ~90 daily bars; a year is ~395. Both must pass.
-    assert msw.min_bars("1d") == 60
-    assert msw.min_bars("1d") <= 90
+def test_the_floor_is_the_physical_minimum_everywhere():
+    for tf in ("15m", "30m", "1h", "4h", "1d"):
+        assert msw.min_bars(tf) == 2, (tf, "use what's available — operator,"
+                                       " Sep 09, 2026")
 
 
-@pytest.mark.parametrize("tf,bars,step,short", [
+@pytest.mark.parametrize("tf,bars,step,skipped", [
     ("1d", 90, 86400, False),     # the 2-month sweep's 1d series: measured
-    ("1d", 40, 86400, True),      # under the floor: named as too short
-    ("15m", 480, 900, True),      # a 5-day-old coin at 15m: still too short
+    ("1d", 40, 86400, False),     # 40 daily bars: MEASURED now (was refused)
+    ("15m", 480, 900, False),     # a 5-day-old coin at 15m: MEASURED now
+    ("4h", 10, 14400, False),     # a days-old listing: measured with what it has
+    ("1h", 1, 3600, True),        # one bar cannot contain a trade
 ])
-def test_run_pair_applies_the_timeframe_floor(monkeypatch, tf, bars, step, short):
+def test_run_pair_uses_whats_available(monkeypatch, tf, bars, step, skipped):
     monkeypatch.setattr(msw, "refresh_candles",
                         lambda symbol, tf, days=365: (_frame(bars, step), bars, "cache"))
     # past the floor run_pair prices the pair, which asks the venue.
@@ -46,9 +50,19 @@ def test_run_pair_applies_the_timeframe_floor(monkeypatch, tf, bars, step, short
 
     monkeypatch.setattr(fx, "funding_history", lambda symbol, **kw: [])
     r = msw.run_pair("APEX_USDT", tf, days=60)
-    if short:
+    if skipped:
         assert r["rows"] == [] and r["why"] == f"only {bars} bars"
     else:
         # past the floor the pair goes on to price its costs; with no venue
         # reachable in a unit test that is where it stops — but NOT at the floor
         assert not r.get("why", "").startswith("only ")
+
+
+def test_the_shard_shares_the_same_floor():
+    """One definition: the cloud shard reads br.min_bars too, so a pair the
+    Mac would measure is never skipped by a runner (and the other way round)."""
+    s = open(".github/scripts/sweep_shard.py", encoding="utf-8").read()
+    assert "br.min_bars(tf)" in s
+    import re
+
+    assert not re.search(r"len\(df\) < \d", s), "no private numeric floor"

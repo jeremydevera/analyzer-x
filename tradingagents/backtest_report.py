@@ -94,15 +94,22 @@ THRESH_SIGNALS = {"mom6", "mom15", "fade15"}
 # year of daily bars is at most ~395 (the window is days+30) and the 60-day
 # sweep of 2026-08-25 gave 1d exactly ~90, so all 997 1d pairs were excluded as
 # "only 90 bars" -- the fifth mandatory timeframe of the full grid, dropped by a
-# constant. The floor is the TECHNICAL minimum per timeframe (the longest
-# lookback, trend50, plus room for a half-split); depth is the row's own
-# `days`/`bars`, and filtering on it is the reader's decision in the artifact.
+# constant.
+#
+# Sep 09, 2026, the operator ended the floor itself: *"i told you to test 4hr
+# then test it the available candles / its like use what's available"*. The
+# old 500-bar floor was the code's judgement, not theirs — it held 622 young
+# pairs "pending" for weeks. TWO bars is the physical minimum (one bar cannot
+# contain a trade); a signal whose lookback exceeds the history simply makes
+# no trades, and both sweeps skip a raising signal per-signal. Depth is the
+# row's own `days`/`bars`, and the min-trades filter is where trust is
+# decided — by the reader, not by a constant in the sweep.
 # One definition, used by the local sweep and the cloud shard alike.
-MIN_BARS = {"15m": 500, "30m": 500, "1h": 500, "4h": 500, "1d": 60}
+MIN_BARS = {"15m": 2, "30m": 2, "1h": 2, "4h": 2, "1d": 2}
 
 
 def min_bars(tf: str) -> int:
-    return MIN_BARS.get(tf, 500)
+    return MIN_BARS.get(tf, 2)
 
 
 TFS: dict[str, tuple[str, int, int]] = {

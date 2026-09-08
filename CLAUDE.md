@@ -158,11 +158,15 @@ the search.
   filtering on it is the reader's decision made in the artifact — never a
   deletion made in the sweep.
 - A failed age check KEEPS the coin.
-- The bar floor is PER TIMEFRAME (`backtest_report.MIN_BARS`, shared by the
-  local sweep and the cloud shard). A flat 500 made 1d impossible: a year of
-  daily bars is ~395 and the 60-day sweep of 2026-08-25 gave ~90, so all 997
-  1d pairs were excluded as "only 90 bars" while the run reported five
-  timeframes. 1d's floor is 60 bars; depth is the row's own `days`/`bars`.
+- **THERE IS NO BAR FLOOR (operator directive, 2026-09-09):** *"i told you to
+  test 4hr then test it the available candles / its like use what's
+  available"*. `backtest_report.MIN_BARS` is 2 on every timeframe — the
+  physical minimum, one bar cannot contain a trade. The 500-bar floor before
+  it held 622 young pairs "pending" for weeks. A signal whose lookback
+  exceeds the history simply makes no trades; depth is the row's own
+  `days`/`bars`, and the min-trades filter is where the reader decides trust.
+  (History: a flat 500 made 1d impossible on 2026-08-25 — all 997 1d pairs
+  excluded as "only 90 bars"; the floor went per-timeframe, then to zero.)
 - The TRADE floor is per timeframe too (`market_sweep.MIN_TRADES_BY_TF`).
   A flat 100 deleted the whole 1d timeframe on 2026-08-26: all 739 1d row
   files were `[]` while the state files held 10,692 measured combinations

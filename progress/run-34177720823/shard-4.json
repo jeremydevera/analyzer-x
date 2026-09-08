@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 39, "total": 53, "rows": 1583888, "note": "RENDER 4h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 73.6, "updated": "2026-09-08T02:26:39Z"}
+{"shard": 4, "stage": "testing", "done": 39, "total": 53, "rows": 1593888, "note": "RENDER 1h: rule 44/120 (elder)", "failed": [], "pct": 73.6, "updated": "2026-09-08T02:27:24Z"}

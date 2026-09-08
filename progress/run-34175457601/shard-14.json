@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 1, "total": 53, "rows": 26180, "note": "AAVE 1d: 394 bars, testing 120 rules", "failed": [], "pct": 1.9, "updated": "2026-09-08T01:06:23Z"}
+{"shard": 14, "stage": "testing", "done": 6, "total": 53, "rows": 105576, "note": "AXS 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-08T01:07:13Z"}

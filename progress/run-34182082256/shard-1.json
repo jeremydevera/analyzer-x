@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 36, "total": 54, "rows": 970898, "note": "PEPE 4h: rule 16/120 (keltner)", "failed": [], "pct": 66.7, "updated": "2026-09-08T03:18:06Z"}
+{"shard": 1, "stage": "testing", "done": 44, "total": 54, "rows": 1048888, "note": "SPOTSTOCK 1d: rule 13/120 (pivot)", "failed": [], "pct": 81.5, "updated": "2026-09-08T03:18:51Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 29, "total": 53, "rows": 908698, "note": "MASK 1h: rule 44/120 (elder)", "failed": [], "pct": 54.7, "updated": "2026-09-08T02:12:21Z"}
+{"shard": 7, "stage": "testing", "done": 31, "total": 53, "rows": 945998, "note": "MSFU 1h: 1,028 bars, testing 120 rules", "failed": [], "pct": 58.5, "updated": "2026-09-08T02:13:06Z"}

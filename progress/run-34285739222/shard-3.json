@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 52, "total": 54, "rows": 1965808, "note": "XEC 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 96.3, "updated": "2026-09-08T23:34:15Z"}
+{"shard": 3, "stage": "testing", "done": 53, "total": 54, "rows": 1991008, "note": "YB 30m: rule 2/120 (mom15)", "failed": [], "pct": 98.1, "updated": "2026-09-08T23:35:07Z"}

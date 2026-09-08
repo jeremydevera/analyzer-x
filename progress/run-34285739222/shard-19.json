@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 50, "total": 53, "rows": 1918598, "note": "WAL 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 94.3, "updated": "2026-09-08T23:34:09Z"}
+{"shard": 19, "stage": "testing", "done": 50, "total": 53, "rows": 1943282, "note": "WAL 30m: rule 2/120 (mom15)", "failed": [], "pct": 94.3, "updated": "2026-09-08T23:34:55Z"}

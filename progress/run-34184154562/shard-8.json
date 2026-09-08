@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 7, "total": 53, "rows": 185714, "note": "BAN 1d: rule 56/120 (insidebrk)", "failed": [], "pct": 13.2, "updated": "2026-09-08T03:43:09Z"}
+{"shard": 8, "stage": "testing", "done": 7, "total": 53, "rows": 201730, "note": "BAN 1h: rule 41/120 (tsi)", "failed": [], "pct": 13.2, "updated": "2026-09-08T03:43:54Z"}

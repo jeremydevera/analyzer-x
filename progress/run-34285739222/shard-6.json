@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 9, "total": 54, "rows": 387020, "note": "BMNRSTOCK 30m: rule 31/120 (trix15)", "failed": [], "pct": 16.7, "updated": "2026-09-08T22:42:35Z"}
+{"shard": 6, "stage": "testing", "done": 10, "total": 54, "rows": 425414, "note": "BSB 30m: 9,049 bars, testing 120 rules", "failed": [], "pct": 18.5, "updated": "2026-09-08T22:43:23Z"}

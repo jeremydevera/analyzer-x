@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 40, "total": 53, "rows": 1050536, "note": "SANTOS 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-08T01:24:11Z"}
+{"shard": 16, "stage": "testing", "done": 41, "total": 53, "rows": 1092556, "note": "SILVER 4h: rule 4/120 (trend50)", "failed": [], "pct": 77.4, "updated": "2026-09-08T01:24:56Z"}

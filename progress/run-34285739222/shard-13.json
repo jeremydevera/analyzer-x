@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 51, "total": 53, "rows": 1770830, "note": "WOTAMALAILE 4h: 1,457 bars, testing 120 rules", "failed": [], "pct": 96.2, "updated": "2026-09-08T23:46:03Z"}
+{"shard": 13, "stage": "testing", "done": 51, "total": 53, "rows": 1793710, "note": "WOTAMALAILE 30m: rule 4/120 (trend50)", "failed": [], "pct": 96.2, "updated": "2026-09-08T23:46:50Z"}

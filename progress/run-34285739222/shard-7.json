@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 31, "total": 54, "rows": 1290456, "note": "MOVE 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 57.4, "updated": "2026-09-08T23:34:11Z"}
+{"shard": 7, "stage": "testing", "done": 32, "total": 54, "rows": 1296876, "note": "MYX 4h: rule 3/120 (fade15)", "failed": [], "pct": 59.3, "updated": "2026-09-08T23:34:58Z"}

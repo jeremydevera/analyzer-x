@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 45, "total": 53, "rows": 1219696, "note": "SUPRA 1h: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-08T04:16:07Z"}
+{"shard": 7, "stage": "testing", "done": 47, "total": 53, "rows": 1267550, "note": "TRADOOR 1h: 8,848 bars, testing 120 rules", "failed": [], "pct": 88.7, "updated": "2026-09-08T04:16:57Z"}

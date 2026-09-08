@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 28, "total": 54, "rows": 1059656, "note": "LLYSTOCK 30m: 13,841 bars, testing 120 rules", "failed": [], "pct": 51.9, "updated": "2026-09-08T23:07:44Z"}
+{"shard": 10, "stage": "testing", "done": 28, "total": 54, "rows": 1077836, "note": "LLYSTOCK 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 51.9, "updated": "2026-09-08T23:08:29Z"}

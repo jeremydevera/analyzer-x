@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 36, "total": 53, "rows": 930188, "note": "PIPEDOG 1d: downloading candles", "failed": [], "pct": 67.9, "updated": "2026-09-08T03:16:27Z"}
+{"shard": 6, "stage": "testing", "done": 39, "total": 53, "rows": 970052, "note": "RESOLV 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 73.6, "updated": "2026-09-08T03:17:17Z"}

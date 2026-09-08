@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 41, "total": 53, "rows": 1092556, "note": "SILVER 4h: rule 4/120 (trend50)", "failed": [], "pct": 77.4, "updated": "2026-09-08T01:24:56Z"}
+{"shard": 16, "stage": "testing", "done": 43, "total": 53, "rows": 1156048, "note": "SPACE 1d: rule 3/120 (fade15)", "failed": [], "pct": 81.1, "updated": "2026-09-08T01:25:41Z"}

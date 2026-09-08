@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 23, "total": 53, "rows": 669930, "note": "IBMSTOCK 1h: rule 54/120 (fractal5)", "failed": [], "pct": 43.4, "updated": "2026-09-08T03:54:42Z"}
+{"shard": 17, "stage": "testing", "done": 24, "total": 53, "rows": 703406, "note": "IOST 1h: rule 32/120 (gmma)", "failed": [], "pct": 45.3, "updated": "2026-09-08T03:55:27Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 48, "total": 54, "rows": 1752672, "note": "TRX 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 88.9, "updated": "2026-09-08T23:24:09Z"}
+{"shard": 4, "stage": "testing", "done": 48, "total": 54, "rows": 1789412, "note": "TRX 30m: rule 42/120 (rsidiv)", "failed": [], "pct": 88.9, "updated": "2026-09-08T23:24:54Z"}

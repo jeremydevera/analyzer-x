@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 10, "total": 53, "rows": 294480, "note": "BTX 1d: 271 bars, testing 120 rules", "failed": [], "pct": 18.9, "updated": "2026-09-08T01:09:38Z"}
+{"shard": 10, "stage": "testing", "done": 14, "total": 53, "rows": 340136, "note": "CVC 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-08T01:10:27Z"}

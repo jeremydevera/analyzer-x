@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 35, "total": 54, "rows": 1386634, "note": "ORDER 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 64.8, "updated": "2026-09-08T23:20:00Z"}
+{"shard": 10, "stage": "testing", "done": 36, "total": 54, "rows": 1418622, "note": "PHAROS 30m: rule 14/120 (bb20)", "failed": [], "pct": 66.7, "updated": "2026-09-08T23:20:45Z"}

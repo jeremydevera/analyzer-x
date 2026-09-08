@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 5, "total": 54, "rows": 181074, "note": "ARIA 1h: rule 20/120 (stoch14)", "failed": [], "pct": 9.3, "updated": "2026-09-08T01:52:11Z"}
+{"shard": 0, "stage": "testing", "done": 6, "total": 54, "rows": 200280, "note": "AUDIO 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 11.1, "updated": "2026-09-08T01:53:03Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 17, "total": 53, "rows": 330360, "note": "ETHFI 4h: rule 1/120 (mom6)", "failed": [], "pct": 32.1, "updated": "2026-09-08T01:10:16Z"}
+{"shard": 13, "stage": "testing", "done": 18, "total": 53, "rows": 369872, "note": "FF 4h: 2,061 bars, testing 120 rules", "failed": [], "pct": 34.0, "updated": "2026-09-08T01:11:01Z"}

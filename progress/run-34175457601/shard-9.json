@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 24, "total": 53, "rows": 619706, "note": "INIT 1d: 394 bars, testing 120 rules", "failed": [], "pct": 45.3, "updated": "2026-09-08T01:16:49Z"}
+{"shard": 9, "stage": "testing", "done": 26, "total": 53, "rows": 665796, "note": "KGEN 4h: 2,013 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-08T01:17:34Z"}

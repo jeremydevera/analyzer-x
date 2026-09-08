@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 42, "total": 53, "rows": 1639866, "note": "SNOWSTOCK 4h: 1,163 bars, testing 120 rules", "failed": [], "pct": 79.2, "updated": "2026-09-08T02:32:12Z"}
+{"shard": 18, "stage": "testing", "done": 43, "total": 53, "rows": 1684408, "note": "SPELL 4h: rule 19/120 (emacross)", "failed": [], "pct": 81.1, "updated": "2026-09-08T02:32:57Z"}

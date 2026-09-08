@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 7, "total": 53, "rows": 266776, "note": "BAND 1h: rule 5/120 (rsi14)", "failed": [], "pct": 13.2, "updated": "2026-09-08T01:53:44Z"}
+{"shard": 6, "stage": "testing", "done": 7, "total": 53, "rows": 290316, "note": "BAND 1h: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-08T01:54:29Z"}

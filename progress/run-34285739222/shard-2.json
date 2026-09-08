@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 15, "total": 54, "rows": 545344, "note": "CYS 30m: rule 53/120 (squeeze)", "failed": [], "pct": 27.8, "updated": "2026-09-08T22:53:46Z"}
+{"shard": 2, "stage": "testing", "done": 16, "total": 54, "rows": 558344, "note": "DODO 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 29.6, "updated": "2026-09-08T22:54:31Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 52, "total": 53, "rows": 1934904, "note": "XYZSTOCK 1h: 856 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-08T02:27:50Z"}
+{"shard": 14, "stage": "testing", "done": 53, "total": 53, "rows": 1982782, "note": "ZKC 1h: rule 3/120 (fade15)", "failed": [], "pct": 100.0, "updated": "2026-09-08T02:28:39Z"}

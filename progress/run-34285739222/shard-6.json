@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 10, "total": 54, "rows": 425414, "note": "BSB 30m: 9,049 bars, testing 120 rules", "failed": [], "pct": 18.5, "updated": "2026-09-08T22:43:23Z"}
+{"shard": 6, "stage": "testing", "done": 10, "total": 54, "rows": 434014, "note": "BSB 30m: rule 37/120 (ultosc)", "failed": [], "pct": 18.5, "updated": "2026-09-08T22:44:08Z"}

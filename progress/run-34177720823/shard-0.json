@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 41, "total": 54, "rows": 1593194, "note": "SBUXSTOCK 1h: rule 2/120 (mom15)", "failed": [], "pct": 75.9, "updated": "2026-09-08T02:37:03Z"}
+{"shard": 0, "stage": "testing", "done": 43, "total": 54, "rows": 1662266, "note": "SNT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 79.6, "updated": "2026-09-08T02:38:09Z"}

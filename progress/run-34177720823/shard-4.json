@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 21, "total": 53, "rows": 863886, "note": "GOOGLSTOCK 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-08T02:07:29Z"}
+{"shard": 4, "stage": "testing", "done": 21, "total": 53, "rows": 905906, "note": "GOOGLSTOCK 1h: rule 64/120 (hammer)", "failed": [], "pct": 39.6, "updated": "2026-09-08T02:08:14Z"}

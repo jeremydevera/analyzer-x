@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 39, "total": 53, "rows": 1249484, "note": "RENDER 1d: rule 49/120 (vwaprev)", "failed": [], "pct": 73.6, "updated": "2026-09-08T04:13:02Z"}
+{"shard": 4, "stage": "testing", "done": 39, "total": 53, "rows": 1263088, "note": "RENDER 1h: rule 31/120 (trix15)", "failed": [], "pct": 73.6, "updated": "2026-09-08T04:13:47Z"}

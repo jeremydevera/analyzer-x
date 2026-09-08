@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 49, "total": 53, "rows": 1232190, "note": "USELESS 4h: rule 51/120 (orb)", "failed": [], "pct": 92.5, "updated": "2026-09-08T03:21:17Z"}
+{"shard": 6, "stage": "testing", "done": 53, "total": 53, "rows": 1296206, "note": "ZEREBRO 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-08T03:22:12Z"}

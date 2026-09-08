@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 19, "total": 53, "rows": 657056, "note": "FLUID 30m: 16,777 bars, testing 120 rules", "failed": [], "pct": 35.8, "updated": "2026-09-08T22:53:35Z"}
+{"shard": 12, "stage": "testing", "done": 19, "total": 53, "rows": 661896, "note": "FLUID 30m: rule 16/120 (keltner)", "failed": [], "pct": 35.8, "updated": "2026-09-08T22:54:21Z"}

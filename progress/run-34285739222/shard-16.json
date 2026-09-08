@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 6, "total": 53, "rows": 191280, "note": "AXS 30m: rule 22/120 (engulf)", "failed": [], "pct": 11.3, "updated": "2026-09-08T22:31:06Z"}
+{"shard": 16, "stage": "testing", "done": 6, "total": 53, "rows": 205360, "note": "AXS 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 11.3, "updated": "2026-09-08T22:31:51Z"}

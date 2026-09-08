@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 25, "total": 54, "rows": 905460, "note": "IOTX 1h: rule 12/120 (donchian20)", "failed": [], "pct": 46.3, "updated": "2026-09-08T02:15:14Z"}
+{"shard": 0, "stage": "testing", "done": 25, "total": 54, "rows": 927900, "note": "IOTX 1h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 46.3, "updated": "2026-09-08T02:15:59Z"}

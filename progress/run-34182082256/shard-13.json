@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 5, "total": 53, "rows": 88208, "note": "ASTR 4h: rule 3/120 (fade15)", "failed": [], "pct": 9.4, "updated": "2026-09-08T03:03:07Z"}
+{"shard": 13, "stage": "testing", "done": 7, "total": 53, "rows": 138610, "note": "BAS 4h: rule 20/120 (stoch14)", "failed": [], "pct": 13.2, "updated": "2026-09-08T03:03:52Z"}

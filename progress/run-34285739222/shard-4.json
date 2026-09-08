@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 50, "total": 54, "rows": 1895892, "note": "VELODROME 30m: rule 40/120 (crsi)", "failed": [], "pct": 92.6, "updated": "2026-09-08T23:29:40Z"}
+{"shard": 4, "stage": "testing", "done": 50, "total": 54, "rows": 1913052, "note": "VELODROME 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 92.6, "updated": "2026-09-08T23:30:26Z"}

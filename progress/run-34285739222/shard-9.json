@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 20, "total": 54, "rows": 669944, "note": "GALA 30m: rule 45/120 (zscore20)", "failed": [], "pct": 37.0, "updated": "2026-09-08T22:54:23Z"}
+{"shard": 9, "stage": "testing", "done": 20, "total": 54, "rows": 682144, "note": "GALA 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 37.0, "updated": "2026-09-08T22:55:08Z"}

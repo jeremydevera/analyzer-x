@@ -24,8 +24,9 @@ def test_the_budget_leaves_two_lanes_free():
 
 def test_every_helper_queues_through_the_budget():
     s = _src()
-    assert s.count("await fetchLaned(`${API_BASE}${path}`") == 3, \
-        "get, post AND postDetail — one bare fetch re-opens the stall"
+    assert s.count("await fetchLaned(`${API_BASE}${path}`") == 4, \
+        "get (first try + its restart retry), post AND postDetail — one " \
+        "bare fetch re-opens the stall"
     assert "fetch(`${API_BASE}" not in s.replace("fetchLaned(`${API_BASE}", ""), \
         "no direct fetch to the API remains"
 

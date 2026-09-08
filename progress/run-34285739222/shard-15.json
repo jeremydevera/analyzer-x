@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 30, "total": 53, "rows": 850606, "note": "MIRA 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 56.6, "updated": "2026-09-08T23:02:19Z"}
+{"shard": 15, "stage": "testing", "done": 31, "total": 53, "rows": 872886, "note": "MSSTOCK 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 58.5, "updated": "2026-09-08T23:03:04Z"}

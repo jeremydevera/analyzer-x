@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 18, "total": 53, "rows": 401488, "note": "FET 4h: rule 39/120 (fisher)", "failed": [], "pct": 34.0, "updated": "2026-09-08T03:08:22Z"}
+{"shard": 12, "stage": "testing", "done": 19, "total": 53, "rows": 440204, "note": "FORM 4h: rule 40/120 (crsi)", "failed": [], "pct": 35.8, "updated": "2026-09-08T03:09:08Z"}

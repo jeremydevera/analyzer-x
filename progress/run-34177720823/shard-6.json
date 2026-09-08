@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 49, "total": 53, "rows": 1819484, "note": "USELESS 1h: rule 37/120 (ultosc)", "failed": [], "pct": 92.5, "updated": "2026-09-08T02:33:54Z"}
+{"shard": 6, "stage": "testing", "done": 51, "total": 53, "rows": 1858868, "note": "WPMSTOCK 1h: rule 40/120 (crsi)", "failed": [], "pct": 96.2, "updated": "2026-09-08T02:34:39Z"}

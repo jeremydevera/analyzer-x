@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 24, "total": 53, "rows": 998256, "note": "INTCSTOCK 4h: rule 35/120 (willr14)", "failed": [], "pct": 45.3, "updated": "2026-09-08T22:55:55Z"}
+{"shard": 18, "stage": "testing", "done": 24, "total": 53, "rows": 1029436, "note": "INTCSTOCK 30m: rule 63/120 (killzone)", "failed": [], "pct": 45.3, "updated": "2026-09-08T22:56:41Z"}

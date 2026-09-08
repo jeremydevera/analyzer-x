@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 7, "total": 53, "rows": 268084, "note": "BAS 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 13.2, "updated": "2026-09-08T01:51:23Z"}
+{"shard": 13, "stage": "testing", "done": 12, "total": 53, "rows": 365932, "note": "CMCSASTOCK 1h: rule 34/120 (lrslope)", "failed": [], "pct": 22.6, "updated": "2026-09-08T01:52:08Z"}

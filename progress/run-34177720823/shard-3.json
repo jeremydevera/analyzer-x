@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 5, "total": 53, "rows": 208172, "note": "ARK 1h: rule 13/120 (pivot)", "failed": [], "pct": 9.4, "updated": "2026-09-08T01:53:02Z"}
+{"shard": 3, "stage": "testing", "done": 7, "total": 53, "rows": 231052, "note": "BACSTOCK 4h: 1,421 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-08T01:53:50Z"}

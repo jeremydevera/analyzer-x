@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 32, "total": 53, "rows": 1104992, "note": "NBISSTOCK 30m: rule 13/120 (pivot)", "failed": [], "pct": 60.4, "updated": "2026-09-08T23:11:44Z"}
+{"shard": 12, "stage": "testing", "done": 33, "total": 53, "rows": 1146692, "note": "NOKSTOCK 30m: rule 3/120 (fade15)", "failed": [], "pct": 62.3, "updated": "2026-09-08T23:12:29Z"}

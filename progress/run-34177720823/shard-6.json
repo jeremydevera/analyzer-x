@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 40, "total": 53, "rows": 1478828, "note": "RSR 4h: rule 33/120 (heikin)", "failed": [], "pct": 75.5, "updated": "2026-09-08T02:26:07Z"}
+{"shard": 6, "stage": "testing", "done": 40, "total": 53, "rows": 1502148, "note": "RSR 1h: rule 24/120 (psar)", "failed": [], "pct": 75.5, "updated": "2026-09-08T02:26:52Z"}

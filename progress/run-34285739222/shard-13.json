@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 48, "total": 53, "rows": 1662210, "note": "TUT 30m: rule 44/120 (elder)", "failed": [], "pct": 90.6, "updated": "2026-09-08T23:42:14Z"}
+{"shard": 13, "stage": "testing", "done": 48, "total": 53, "rows": 1674610, "note": "TUT 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 90.6, "updated": "2026-09-08T23:43:00Z"}

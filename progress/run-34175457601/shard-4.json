@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 12, "total": 53, "rows": 344012, "note": "CHR 4h: rule 32/120 (gmma)", "failed": [], "pct": 22.6, "updated": "2026-09-08T01:10:20Z"}
+{"shard": 4, "stage": "testing", "done": 14, "total": 53, "rows": 414236, "note": "CTC 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 26.4, "updated": "2026-09-08T01:11:14Z"}

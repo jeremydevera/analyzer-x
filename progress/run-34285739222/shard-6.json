@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 24, "total": 54, "rows": 931772, "note": "ICP 30m: rule 52/120 (nr7)", "failed": [], "pct": 44.4, "updated": "2026-09-08T23:05:01Z"}
+{"shard": 6, "stage": "testing", "done": 25, "total": 54, "rows": 946252, "note": "IOTSTOCK 30m: rule 2/120 (mom15)", "failed": [], "pct": 46.3, "updated": "2026-09-08T23:05:46Z"}

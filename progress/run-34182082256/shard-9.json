@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 13, "total": 53, "rows": 382886, "note": "COW 1d: 394 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-08T03:08:52Z"}
+{"shard": 9, "stage": "testing", "done": 16, "total": 53, "rows": 429086, "note": "DYDX 1d: rule 54/120 (fractal5)", "failed": [], "pct": 30.2, "updated": "2026-09-08T03:09:37Z"}

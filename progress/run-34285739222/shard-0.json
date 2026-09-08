@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 43, "total": 54, "rows": 1682666, "note": "SMCISTOCK 30m: rule 1/120 (mom6)", "failed": [], "pct": 79.6, "updated": "2026-09-08T23:22:21Z"}
+{"shard": 0, "stage": "testing", "done": 44, "total": 54, "rows": 1731046, "note": "SOXL 4h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 81.5, "updated": "2026-09-08T23:23:06Z"}

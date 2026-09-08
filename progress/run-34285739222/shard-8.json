@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 3, "total": 54, "rows": 79860, "note": "ALICE 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 5.6, "updated": "2026-09-08T22:29:05Z"}
+{"shard": 8, "stage": "testing", "done": 3, "total": 54, "rows": 83380, "note": "ALICE 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 5.6, "updated": "2026-09-08T22:29:51Z"}

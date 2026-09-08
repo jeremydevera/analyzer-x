@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 47, "total": 53, "rows": 1855902, "note": "TOSHI 30m: rule 118/120 (cf_stflip)", "failed": [], "pct": 88.7, "updated": "2026-09-08T23:48:36Z"}
+{"shard": 11, "stage": "testing", "done": 48, "total": 53, "rows": 1883142, "note": "TURBO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 90.6, "updated": "2026-09-08T23:49:31Z"}

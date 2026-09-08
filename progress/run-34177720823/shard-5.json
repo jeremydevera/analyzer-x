@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 9, "total": 53, "rows": 321798, "note": "BMT 1h: rule 46/120 (rsi2)", "failed": [], "pct": 17.0, "updated": "2026-09-08T01:55:11Z"}
+{"shard": 5, "stage": "testing", "done": 13, "total": 53, "rows": 382666, "note": "COPSTOCK 1h: rule 39/120 (fisher)", "failed": [], "pct": 24.5, "updated": "2026-09-08T01:55:56Z"}

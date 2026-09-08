@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 19, "total": 54, "rows": 429948, "note": "FLOKI 1d: rule 13/120 (pivot)", "failed": [], "pct": 35.2, "updated": "2026-09-08T01:14:29Z"}
+{"shard": 2, "stage": "testing", "done": 21, "total": 54, "rows": 459984, "note": "GMX 4h: rule 13/120 (pivot)", "failed": [], "pct": 38.9, "updated": "2026-09-08T01:15:14Z"}

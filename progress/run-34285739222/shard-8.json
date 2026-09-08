@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 26, "total": 54, "rows": 938118, "note": "KAIA 4h: rule 79/120 (cf_donch)", "failed": [], "pct": 48.1, "updated": "2026-09-08T23:11:47Z"}
+{"shard": 8, "stage": "testing", "done": 26, "total": 54, "rows": 948018, "note": "KAIA 30m: rule 3/120 (fade15)", "failed": [], "pct": 48.1, "updated": "2026-09-08T23:12:35Z"}

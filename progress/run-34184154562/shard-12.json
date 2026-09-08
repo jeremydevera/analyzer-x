@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 35, "total": 53, "rows": 842086, "note": "PAXG 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-08T03:55:06Z"}
+{"shard": 12, "stage": "testing", "done": 37, "total": 53, "rows": 893830, "note": "PTB 1d: 370 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-08T03:55:58Z"}

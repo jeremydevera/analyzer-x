@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 37, "total": 53, "rows": 1070048, "note": "PUMPBTC 1h: rule 49/120 (vwaprev)", "failed": [], "pct": 69.8, "updated": "2026-09-08T04:08:22Z"}
+{"shard": 14, "stage": "testing", "done": 39, "total": 53, "rows": 1116554, "note": "RKLBSTOCK 1h: rule 30/120 (kama10)", "failed": [], "pct": 73.6, "updated": "2026-09-08T04:09:07Z"}

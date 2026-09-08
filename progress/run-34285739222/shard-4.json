@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 1, "total": 54, "rows": 0, "note": "1000BTT 4h: downloading candles", "failed": [], "pct": 1.9, "updated": "2026-09-08T22:24:49Z"}
+{"shard": 4, "stage": "testing", "done": 1, "total": 54, "rows": 32840, "note": "1000BTT 30m: rule 24/120 (psar)", "failed": [], "pct": 1.9, "updated": "2026-09-08T22:25:35Z"}

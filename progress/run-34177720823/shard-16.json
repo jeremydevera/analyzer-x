@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 21, "total": 53, "rows": 841398, "note": "GUA 1h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 39.6, "updated": "2026-09-08T02:09:39Z"}
+{"shard": 16, "stage": "testing", "done": 24, "total": 53, "rows": 915540, "note": "IONQSTOCK 4h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 45.3, "updated": "2026-09-08T02:10:24Z"}

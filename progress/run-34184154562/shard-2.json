@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 46, "total": 54, "rows": 1277640, "note": "TAO 1h: rule 27/120 (aroon25)", "failed": [], "pct": 85.2, "updated": "2026-09-08T04:17:24Z"}
+{"shard": 2, "stage": "testing", "done": 48, "total": 54, "rows": 1329020, "note": "TTWOSTOCK 1h: 1,626 bars, testing 120 rules", "failed": [], "pct": 88.9, "updated": "2026-09-08T04:18:10Z"}

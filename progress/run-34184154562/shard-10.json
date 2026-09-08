@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 42, "total": 53, "rows": 1279266, "note": "SLP 1h: rule 82/120 (cf_maobv)", "failed": [], "pct": 79.2, "updated": "2026-09-08T04:18:49Z"}
+{"shard": 10, "stage": "testing", "done": 43, "total": 53, "rows": 1301530, "note": "SOONNETWORK 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-08T04:19:36Z"}

@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 34, "total": 53, "rows": 1275870, "note": "ONG 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 64.2, "updated": "2026-09-08T02:25:15Z"}
+{"shard": 10, "stage": "testing", "done": 36, "total": 53, "rows": 1316406, "note": "PI 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 67.9, "updated": "2026-09-08T02:26:04Z"}

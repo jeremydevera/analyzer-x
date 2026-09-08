@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 27, "total": 53, "rows": 955130, "note": "LASERTECSTOCK 30m: rule 53/120 (squeeze)", "failed": [], "pct": 50.9, "updated": "2026-09-08T23:03:40Z"}
+{"shard": 16, "stage": "testing", "done": 28, "total": 53, "rows": 985910, "note": "LRC 30m: rule 1/120 (mom6)", "failed": [], "pct": 52.8, "updated": "2026-09-08T23:04:27Z"}

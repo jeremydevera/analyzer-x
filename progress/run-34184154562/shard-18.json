@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 10, "total": 53, "rows": 305390, "note": "CAP 1h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 18.9, "updated": "2026-09-08T03:47:05Z"}
+{"shard": 18, "stage": "testing", "done": 11, "total": 53, "rows": 330734, "note": "CFX 1h: rule 30/120 (kama10)", "failed": [], "pct": 20.8, "updated": "2026-09-08T03:47:50Z"}

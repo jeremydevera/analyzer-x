@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 35, "total": 53, "rows": 1275186, "note": "PAXG 30m: rule 79/120 (cf_donch)", "failed": [], "pct": 66.0, "updated": "2026-09-08T23:08:33Z"}
+{"shard": 19, "stage": "testing", "done": 37, "total": 53, "rows": 1313238, "note": "PTB 4h: 2,223 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-08T23:09:19Z"}

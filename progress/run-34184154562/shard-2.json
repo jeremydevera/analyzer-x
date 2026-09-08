@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 43, "total": 54, "rows": 1192676, "note": "SNX 1h: rule 2/120 (mom15)", "failed": [], "pct": 79.6, "updated": "2026-09-08T04:15:04Z"}
+{"shard": 2, "stage": "testing", "done": 43, "total": 54, "rows": 1214236, "note": "SNX 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 79.6, "updated": "2026-09-08T04:15:49Z"}

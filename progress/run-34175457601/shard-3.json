@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 22, "total": 53, "rows": 563188, "note": "HANA 4h: 2,080 bars, testing 120 rules", "failed": [], "pct": 41.5, "updated": "2026-09-08T01:16:07Z"}
+{"shard": 3, "stage": "testing", "done": 25, "total": 53, "rows": 610488, "note": "IRENSTOCK 4h: rule 28/120 (vortex14)", "failed": [], "pct": 47.2, "updated": "2026-09-08T01:16:52Z"}

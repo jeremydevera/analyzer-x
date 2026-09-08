@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 19, "total": 53, "rows": 728402, "note": "FLUX 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 35.8, "updated": "2026-09-08T22:58:00Z"}
+{"shard": 14, "stage": "testing", "done": 22, "total": 53, "rows": 749262, "note": "HEI 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 41.5, "updated": "2026-09-08T22:58:52Z"}

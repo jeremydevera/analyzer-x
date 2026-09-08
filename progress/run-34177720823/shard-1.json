@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 10, "total": 54, "rows": 370410, "note": "BROCCOLI 1h: rule 13/120 (pivot)", "failed": [], "pct": 18.5, "updated": "2026-09-08T01:53:14Z"}
+{"shard": 1, "stage": "testing", "done": 12, "total": 54, "rows": 401570, "note": "CHF 4h: 1,998 bars, testing 120 rules", "failed": [], "pct": 22.2, "updated": "2026-09-08T01:54:03Z"}

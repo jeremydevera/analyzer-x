@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 45, "total": 53, "rows": 1243654, "note": "SYRUP 1h: rule 18/120 (macd)", "failed": [], "pct": 84.9, "updated": "2026-09-08T04:11:24Z"}
+{"shard": 14, "stage": "testing", "done": 46, "total": 53, "rows": 1265434, "note": "THETA 1d: 394 bars, testing 120 rules", "failed": [], "pct": 86.8, "updated": "2026-09-08T04:12:15Z"}

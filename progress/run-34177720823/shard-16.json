@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 38, "total": 53, "rows": 1419152, "note": "RCATSTOCK 4h: rule 2/120 (mom15)", "failed": [], "pct": 71.7, "updated": "2026-09-08T02:22:39Z"}
+{"shard": 16, "stage": "testing", "done": 39, "total": 53, "rows": 1481632, "note": "RLS 1h: rule 1/120 (mom6)", "failed": [], "pct": 73.6, "updated": "2026-09-08T02:23:25Z"}

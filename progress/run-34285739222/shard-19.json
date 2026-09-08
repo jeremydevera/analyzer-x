@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 34, "total": 53, "rows": 1225246, "note": "ONT 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 64.2, "updated": "2026-09-08T23:07:00Z"}
+{"shard": 19, "stage": "testing", "done": 35, "total": 53, "rows": 1256706, "note": "PAXG 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-08T23:07:48Z"}

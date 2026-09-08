@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 44, "total": 53, "rows": 1701542, "note": "SPX 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 83.0, "updated": "2026-09-08T23:40:05Z"}
+{"shard": 11, "stage": "testing", "done": 45, "total": 53, "rows": 1727442, "note": "SUI 30m: rule 1/120 (mom6)", "failed": [], "pct": 84.9, "updated": "2026-09-08T23:40:51Z"}

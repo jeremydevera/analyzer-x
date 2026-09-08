@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 2, "total": 53, "rows": 58946, "note": "AIN 1h: rule 97/120 (cf_ttm)", "failed": [], "pct": 3.8, "updated": "2026-09-08T03:39:22Z"}
+{"shard": 15, "stage": "testing", "done": 6, "total": 53, "rows": 147426, "note": "AXTISTOCK 1d: 92 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-08T03:40:08Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 39, "total": 53, "rows": 845180, "note": "RLC 4h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 73.6, "updated": "2026-09-08T01:18:55Z"}
+{"shard": 15, "stage": "testing", "done": 40, "total": 53, "rows": 888036, "note": "SAND 1d: 394 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-08T01:19:43Z"}

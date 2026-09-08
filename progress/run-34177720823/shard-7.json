@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 7, "total": 53, "rows": 272610, "note": "BANK 1h: rule 58/120 (bos)", "failed": [], "pct": 13.2, "updated": "2026-09-08T01:56:08Z"}
+{"shard": 7, "stage": "testing", "done": 10, "total": 53, "rows": 313292, "note": "BTC 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 18.9, "updated": "2026-09-08T01:56:58Z"}

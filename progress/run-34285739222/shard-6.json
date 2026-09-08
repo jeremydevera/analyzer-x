@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 12, "total": 54, "rows": 493074, "note": "CHILLGUY 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 22.2, "updated": "2026-09-08T22:45:45Z"}
+{"shard": 6, "stage": "testing", "done": 12, "total": 54, "rows": 496474, "note": "CHILLGUY 30m: rule 11/120 (sr_break)", "failed": [], "pct": 22.2, "updated": "2026-09-08T22:46:31Z"}

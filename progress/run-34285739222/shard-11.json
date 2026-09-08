@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 33, "total": 53, "rows": 1186842, "note": "NMR 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 62.3, "updated": "2026-09-08T23:14:26Z"}
+{"shard": 11, "stage": "testing", "done": 35, "total": 53, "rows": 1213058, "note": "ORDI 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-08T23:15:13Z"}

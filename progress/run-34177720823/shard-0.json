@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 13, "total": 54, "rows": 458218, "note": "COLLECT 4h: 1,516 bars, testing 120 rules", "failed": [], "pct": 24.1, "updated": "2026-09-08T02:02:36Z"}
+{"shard": 0, "stage": "testing", "done": 13, "total": 54, "rows": 488116, "note": "COLLECT 1h: rule 27/120 (aroon25)", "failed": [], "pct": 24.1, "updated": "2026-09-08T02:03:21Z"}

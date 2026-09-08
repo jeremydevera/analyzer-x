@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 17, "total": 53, "rows": 402214, "note": "ETH 4h: rule 3/120 (fade15)", "failed": [], "pct": 32.1, "updated": "2026-09-08T03:08:43Z"}
+{"shard": 15, "stage": "testing", "done": 18, "total": 53, "rows": 440406, "note": "FIDA 4h: rule 4/120 (trend50)", "failed": [], "pct": 34.0, "updated": "2026-09-08T03:09:28Z"}

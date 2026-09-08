@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 35, "total": 54, "rows": 1194908, "note": "OPENLEDGER 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 64.8, "updated": "2026-09-08T23:17:08Z"}
+{"shard": 2, "stage": "testing", "done": 37, "total": 54, "rows": 1228308, "note": "PNUT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 68.5, "updated": "2026-09-08T23:18:03Z"}

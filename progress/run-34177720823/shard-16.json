@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 12, "total": 53, "rows": 532602, "note": "COAI 1h: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 22.6, "updated": "2026-09-08T02:01:46Z"}
+{"shard": 16, "stage": "testing", "done": 13, "total": 53, "rows": 565482, "note": "CRV 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-08T02:02:34Z"}

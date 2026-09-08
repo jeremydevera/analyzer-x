@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 8, "total": 53, "rows": 320708, "note": "BLAST 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-08T01:54:22Z"}
+{"shard": 17, "stage": "testing", "done": 8, "total": 53, "rows": 352168, "note": "BLAST 1h: rule 19/120 (emacross)", "failed": [], "pct": 15.1, "updated": "2026-09-08T01:55:07Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 32, "total": 54, "rows": 1258934, "note": "M 1h: rule 4/120 (trend50)", "failed": [], "pct": 59.3, "updated": "2026-09-08T02:13:32Z"}
+{"shard": 1, "stage": "testing", "done": 34, "total": 54, "rows": 1298694, "note": "OGN 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 63.0, "updated": "2026-09-08T02:14:26Z"}

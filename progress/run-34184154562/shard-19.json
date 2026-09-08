@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 11, "total": 53, "rows": 402806, "note": "CGPT 1h: rule 4/120 (trend50)", "failed": [], "pct": 20.8, "updated": "2026-09-08T03:51:35Z"}
+{"shard": 19, "stage": "testing", "done": 12, "total": 53, "rows": 442098, "note": "COINBASE 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 22.6, "updated": "2026-09-08T03:52:22Z"}

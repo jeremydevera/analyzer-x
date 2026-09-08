@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 20, "total": 54, "rows": 691188, "note": "FTNTSTOCK 30m: rule 57/120 (orderblock)", "failed": [], "pct": 37.0, "updated": "2026-09-08T22:59:55Z"}
+{"shard": 2, "stage": "testing", "done": 22, "total": 54, "rows": 746628, "note": "GUA 30m: 13,710 bars, testing 120 rules", "failed": [], "pct": 40.7, "updated": "2026-09-08T23:00:41Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 31, "total": 53, "rows": 1186770, "note": "MSTRSTOCK 1h: rule 4/120 (trend50)", "failed": [], "pct": 58.5, "updated": "2026-09-08T02:23:22Z"}
+{"shard": 9, "stage": "testing", "done": 32, "total": 53, "rows": 1212070, "note": "NEMSTOCK 1h: 1,870 bars, testing 120 rules", "failed": [], "pct": 60.4, "updated": "2026-09-08T02:24:07Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 15, "total": 54, "rows": 446488, "note": "DASH 30m: rule 14/120 (bb20)", "failed": [], "pct": 27.8, "updated": "2026-09-08T22:40:16Z"}
+{"shard": 4, "stage": "testing", "done": 15, "total": 54, "rows": 460888, "note": "DASH 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 27.8, "updated": "2026-09-08T22:41:02Z"}

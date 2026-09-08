@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 41, "total": 53, "rows": 1427770, "note": "SHARE 30m: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 77.4, "updated": "2026-09-08T23:30:25Z"}
+{"shard": 13, "stage": "testing", "done": 43, "total": 53, "rows": 1459630, "note": "SOLV 4h: rule 36/120 (stochrsi)", "failed": [], "pct": 81.1, "updated": "2026-09-08T23:31:10Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 5, "total": 54, "rows": 121240, "note": "ARX 30m: rule 39/120 (fisher)", "failed": [], "pct": 9.3, "updated": "2026-09-08T22:31:52Z"}
+{"shard": 9, "stage": "testing", "done": 6, "total": 54, "rows": 157980, "note": "AVA 4h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 11.1, "updated": "2026-09-08T22:32:37Z"}

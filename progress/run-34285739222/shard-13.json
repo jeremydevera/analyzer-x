@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 9, "total": 53, "rows": 348992, "note": "BOME 30m: rule 61/120 (turtle)", "failed": [], "pct": 17.0, "updated": "2026-09-08T22:42:28Z"}
+{"shard": 13, "stage": "testing", "done": 11, "total": 53, "rows": 361972, "note": "CC 4h: 1,874 bars, testing 120 rules", "failed": [], "pct": 20.8, "updated": "2026-09-08T22:43:20Z"}

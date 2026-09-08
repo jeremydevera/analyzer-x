@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 26, "total": 53, "rows": 885742, "note": "KERNEL 30m: rule 26/120 (adx14)", "failed": [], "pct": 49.1, "updated": "2026-09-08T23:06:45Z"}
+{"shard": 14, "stage": "testing", "done": 26, "total": 53, "rows": 896522, "note": "KERNEL 30m: rule 76/120 (cf_mom)", "failed": [], "pct": 49.1, "updated": "2026-09-08T23:07:32Z"}

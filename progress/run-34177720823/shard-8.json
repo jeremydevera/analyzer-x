@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 20, "total": 53, "rows": 665294, "note": "GEOD 1h: 1,029 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-08T02:06:21Z"}
+{"shard": 8, "stage": "testing", "done": 22, "total": 53, "rows": 715088, "note": "HEI 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 41.5, "updated": "2026-09-08T02:07:17Z"}

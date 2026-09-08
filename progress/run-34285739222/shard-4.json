@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 16, "total": 54, "rows": 491488, "note": "DOGS 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 29.6, "updated": "2026-09-08T22:41:55Z"}
+{"shard": 4, "stage": "testing", "done": 16, "total": 54, "rows": 499948, "note": "DOGS 30m: rule 41/120 (tsi)", "failed": [], "pct": 29.6, "updated": "2026-09-08T22:42:41Z"}

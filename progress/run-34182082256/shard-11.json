@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 37, "total": 53, "rows": 910380, "note": "PSXSTOCK 1d: downloading candles", "failed": [], "pct": 69.8, "updated": "2026-09-08T03:18:45Z"}
+{"shard": 11, "stage": "testing", "done": 38, "total": 53, "rows": 936120, "note": "RARE 1d: 394 bars, testing 120 rules", "failed": [], "pct": 71.7, "updated": "2026-09-08T03:19:30Z"}

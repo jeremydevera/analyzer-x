@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 49, "total": 53, "rows": 1825124, "note": "VANA 1h: rule 103/120 (cf_eqhl)", "failed": [], "pct": 92.5, "updated": "2026-09-08T02:24:40Z"}
+{"shard": 14, "stage": "testing", "done": 50, "total": 53, "rows": 1855484, "note": "WCT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 94.3, "updated": "2026-09-08T02:25:32Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 35, "total": 54, "rows": 1246244, "note": "ORCLSTOCK 4h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 64.8, "updated": "2026-09-08T23:23:59Z"}
+{"shard": 9, "stage": "testing", "done": 35, "total": 54, "rows": 1256404, "note": "ORCLSTOCK 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 64.8, "updated": "2026-09-08T23:24:45Z"}

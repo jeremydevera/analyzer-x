@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 27, "total": 53, "rows": 896228, "note": "LDO 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 50.9, "updated": "2026-09-08T02:02:26Z"}
+{"shard": 12, "stage": "testing", "done": 27, "total": 53, "rows": 916468, "note": "LDO 1h: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-08T02:03:11Z"}

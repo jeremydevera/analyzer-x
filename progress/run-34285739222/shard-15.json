@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 47, "total": 53, "rows": 1457920, "note": "TRADOOR 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 88.7, "updated": "2026-09-08T23:29:24Z"}
+{"shard": 15, "stage": "testing", "done": 49, "total": 53, "rows": 1500000, "note": "USOIL 30m: 10,648 bars, testing 120 rules", "failed": [], "pct": 92.5, "updated": "2026-09-08T23:30:13Z"}

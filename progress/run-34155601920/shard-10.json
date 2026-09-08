@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 52, "total": 53, "rows": 4388836, "note": "XRP 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 98.1, "updated": "2026-09-08T00:03:50Z"}
+{"shard": 10, "stage": "testing", "done": 52, "total": 53, "rows": 4401436, "note": "XRP 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-08T00:04:39Z"}

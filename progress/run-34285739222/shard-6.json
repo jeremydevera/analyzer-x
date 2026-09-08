@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 29, "total": 54, "rows": 1122136, "note": "MAGIC 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 53.7, "updated": "2026-09-08T23:12:43Z"}
+{"shard": 6, "stage": "testing", "done": 30, "total": 54, "rows": 1144476, "note": "MERL 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 55.6, "updated": "2026-09-08T23:13:38Z"}

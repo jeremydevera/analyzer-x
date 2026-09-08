@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 19, "total": 53, "rows": 661896, "note": "FLUID 30m: rule 16/120 (keltner)", "failed": [], "pct": 35.8, "updated": "2026-09-08T22:54:21Z"}
+{"shard": 12, "stage": "testing", "done": 19, "total": 53, "rows": 673556, "note": "FLUID 30m: rule 70/120 (cmf20)", "failed": [], "pct": 35.8, "updated": "2026-09-08T22:55:06Z"}

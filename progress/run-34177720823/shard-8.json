@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 12, "total": 53, "rows": 430272, "note": "CKB 1h: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-08T01:59:15Z"}
+{"shard": 8, "stage": "testing", "done": 13, "total": 53, "rows": 464652, "note": "COTI 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-08T02:00:09Z"}

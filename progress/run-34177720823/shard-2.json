@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 38, "total": 54, "rows": 1301754, "note": "QCOMSTOCK 1h: rule 19/120 (emacross)", "failed": [], "pct": 70.4, "updated": "2026-09-08T02:28:47Z"}
+{"shard": 2, "stage": "testing", "done": 39, "total": 54, "rows": 1321734, "note": "RED 4h: rule 3/120 (fade15)", "failed": [], "pct": 72.2, "updated": "2026-09-08T02:29:33Z"}

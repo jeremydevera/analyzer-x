@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 7, "total": 53, "rows": 189208, "note": "BASTOCK 4h: rule 49/120 (vwaprev)", "failed": [], "pct": 13.2, "updated": "2026-09-08T03:06:06Z"}
+{"shard": 12, "stage": "testing", "done": 13, "total": 53, "rows": 247044, "note": "CRDOSTOCK 4h: rule 3/120 (fade15)", "failed": [], "pct": 24.5, "updated": "2026-09-08T03:06:52Z"}

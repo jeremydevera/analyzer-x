@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 44, "total": 53, "rows": 1681780, "note": "STABLE 30m: rule 73/120 (volspike)", "failed": [], "pct": 83.0, "updated": "2026-09-08T23:33:19Z"}
+{"shard": 16, "stage": "testing", "done": 45, "total": 53, "rows": 1714120, "note": "SUSHI 4h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 84.9, "updated": "2026-09-08T23:34:04Z"}

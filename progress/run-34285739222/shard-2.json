@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 52, "total": 54, "rows": 1914868, "note": "XDC 30m: rule 10/120 (sr_bounce)", "failed": [], "pct": 96.3, "updated": "2026-09-08T23:53:51Z"}
+{"shard": 2, "stage": "testing", "done": 52, "total": 54, "rows": 1925648, "note": "XDC 30m: rule 60/120 (eqraid)", "failed": [], "pct": 96.3, "updated": "2026-09-08T23:54:36Z"}

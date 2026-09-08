@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 29, "total": 54, "rows": 724630, "note": "MANA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 53.7, "updated": "2026-09-08T03:13:52Z"}
+{"shard": 1, "stage": "testing", "done": 30, "total": 54, "rows": 781698, "note": "METIS 4h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 55.6, "updated": "2026-09-08T03:14:37Z"}

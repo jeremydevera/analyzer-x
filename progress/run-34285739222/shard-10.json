@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 1, "total": 54, "rows": 0, "note": "AALSTOCK 4h: downloading candles", "failed": [], "pct": 1.9, "updated": "2026-09-08T22:24:53Z"}
+{"shard": 10, "stage": "testing", "done": 2, "total": 54, "rows": 31900, "note": "AGI 4h: rule 97/120 (cf_ttm)", "failed": [], "pct": 3.7, "updated": "2026-09-08T22:25:38Z"}

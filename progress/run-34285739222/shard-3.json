@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 12, "total": 54, "rows": 462636, "note": "CGPT 30m: rule 54/120 (fractal5)", "failed": [], "pct": 22.2, "updated": "2026-09-08T22:42:42Z"}
+{"shard": 3, "stage": "testing", "done": 13, "total": 54, "rows": 502896, "note": "COHRSTOCK 30m: 8,098 bars, testing 120 rules", "failed": [], "pct": 24.1, "updated": "2026-09-08T22:43:29Z"}

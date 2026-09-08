@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 9, "total": 53, "rows": 251730, "note": "BNT 1d: rule 49/120 (vwaprev)", "failed": [], "pct": 17.0, "updated": "2026-09-08T01:10:17Z"}
+{"shard": 9, "stage": "testing", "done": 12, "total": 53, "rows": 314052, "note": "CLANKER 4h: rule 3/120 (fade15)", "failed": [], "pct": 22.6, "updated": "2026-09-08T01:11:04Z"}

@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 38, "total": 54, "rows": 1084204, "note": "QCOMSTOCK 1h: rule 61/120 (turtle)", "failed": [], "pct": 70.4, "updated": "2026-09-08T04:11:10Z"}
+{"shard": 2, "stage": "testing", "done": 39, "total": 54, "rows": 1108372, "note": "RED 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 72.2, "updated": "2026-09-08T04:11:58Z"}

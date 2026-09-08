@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 22, "total": 53, "rows": 788262, "note": "HEI 30m: rule 70/120 (cmf20)", "failed": [], "pct": 41.5, "updated": "2026-09-08T23:01:11Z"}
+{"shard": 14, "stage": "testing", "done": 24, "total": 53, "rows": 800462, "note": "INDEX 30m: 2,675 bars, testing 120 rules", "failed": [], "pct": 45.3, "updated": "2026-09-08T23:01:57Z"}

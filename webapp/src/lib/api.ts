@@ -28,8 +28,43 @@ export class ApiError extends Error {
   }
 }
 
+/** THE LANE BUDGET. The browser gives one address six connections, and the
+ * pages and the API share the address (the /api proxy). Measured Sep 09,
+ * 2026: 17 requests in flight on the Backtest screen — the six lanes held by
+ * slow API calls (the 500-row strategies query, GitHub status, the logs
+ * walk) — and a click on Auto Trade could not change the URL for over two
+ * minutes, because the next page's own fetch was queued behind them.
+ *
+ * So the app never uses more than FOUR lanes for data. The queue is ours
+ * instead of the browser's: a fifth call waits here, and the two spare lanes
+ * mean a page switch is always instant. Panels already show their own
+ * "reading…" states while their data queues. */
+const MAX_LANES = 4;
+let lanes = 0;
+const waiting: (() => void)[] = [];
+
+async function takeLane(): Promise<void> {
+  if (lanes < MAX_LANES) { lanes += 1; return; }
+  await new Promise<void>((res) => waiting.push(res));
+  lanes += 1;
+}
+
+function freeLane(): void {
+  lanes -= 1;
+  waiting.shift()?.();
+}
+
+async function fetchLaned(input: string, init?: RequestInit): Promise<Response> {
+  await takeLane();
+  try {
+    return await fetch(input, init);
+  } finally {
+    freeLane();
+  }
+}
+
 async function get<T>(path: string): Promise<T> {
-  const r = await fetch(`${API_BASE}${path}`, { cache: "no-store" });
+  const r = await fetchLaned(`${API_BASE}${path}`, { cache: "no-store" });
   if (!r.ok) {
     let detail = "";
     try {
@@ -44,7 +79,7 @@ async function get<T>(path: string): Promise<T> {
 }
 
 async function post<T>(path: string, body: unknown): Promise<T> {
-  const r = await fetch(`${API_BASE}${path}`, {
+  const r = await fetchLaned(`${API_BASE}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -57,7 +92,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
  *  "a download job is writing this store right now" must reach the screen as
  *  that sentence, not as "HTTP 409" */
 async function postDetail<T>(path: string, body: unknown): Promise<T> {
-  const r = await fetch(`${API_BASE}${path}`, {
+  const r = await fetchLaned(`${API_BASE}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

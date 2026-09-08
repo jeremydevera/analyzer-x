@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 11, "total": 54, "rows": 398918, "note": "CAT 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 20.4, "updated": "2026-09-08T22:47:56Z"}
+{"shard": 7, "stage": "testing", "done": 12, "total": 54, "rows": 429490, "note": "CHIP 30m: rule 34/120 (lrslope)", "failed": [], "pct": 22.2, "updated": "2026-09-08T22:48:41Z"}

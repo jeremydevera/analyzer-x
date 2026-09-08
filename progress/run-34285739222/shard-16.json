@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 51, "total": 53, "rows": 1960540, "note": "XAI 30m: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-08T23:43:23Z"}
+{"shard": 16, "stage": "testing", "done": 52, "total": 53, "rows": 1990700, "note": "XPL 30m: 18,364 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-08T23:44:09Z"}

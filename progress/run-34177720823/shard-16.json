@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 50, "total": 53, "rows": 2012904, "note": "WDCSTOCK 1h: rule 36/120 (stochrsi)", "failed": [], "pct": 94.3, "updated": "2026-09-08T02:38:53Z"}
+{"shard": 16, "stage": "testing", "done": 52, "total": 53, "rows": 2066676, "note": "YFI 4h: rule 76/120 (cf_mom)", "failed": [], "pct": 98.1, "updated": "2026-09-08T02:39:38Z"}

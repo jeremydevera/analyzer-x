@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 36, "total": 53, "rows": 1199946, "note": "PI 4h: rule 100/120 (cf_soup1)", "failed": [], "pct": 67.9, "updated": "2026-09-08T23:11:53Z"}
+{"shard": 17, "stage": "testing", "done": 36, "total": 53, "rows": 1206326, "note": "PI 30m: rule 8/120 (fib618)", "failed": [], "pct": 67.9, "updated": "2026-09-08T23:12:39Z"}

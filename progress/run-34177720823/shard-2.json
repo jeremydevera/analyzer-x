@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 21, "total": 54, "rows": 651224, "note": "GMX 1h: rule 44/120 (elder)", "failed": [], "pct": 38.9, "updated": "2026-09-08T02:08:34Z"}
+{"shard": 2, "stage": "testing", "done": 23, "total": 54, "rows": 669444, "note": "HOME 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 42.6, "updated": "2026-09-08T02:09:20Z"}

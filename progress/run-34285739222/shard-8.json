@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 35, "total": 54, "rows": 1369502, "note": "ORCA 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 64.8, "updated": "2026-09-08T23:34:50Z"}
+{"shard": 8, "stage": "testing", "done": 36, "total": 54, "rows": 1391722, "note": "PEPE 4h: rule 64/120 (hammer)", "failed": [], "pct": 66.7, "updated": "2026-09-08T23:35:35Z"}

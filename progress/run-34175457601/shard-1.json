@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 19, "total": 54, "rows": 440874, "note": "FLOCK 4h: rule 61/120 (turtle)", "failed": [], "pct": 35.2, "updated": "2026-09-08T01:13:38Z"}
+{"shard": 1, "stage": "testing", "done": 20, "total": 54, "rows": 466130, "note": "F 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 37.0, "updated": "2026-09-08T01:14:26Z"}

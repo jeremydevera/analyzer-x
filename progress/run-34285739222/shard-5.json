@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 28, "total": 54, "rows": 1172206, "note": "LINK 30m: rule 22/120 (engulf)", "failed": [], "pct": 51.9, "updated": "2026-09-08T23:23:05Z"}
+{"shard": 5, "stage": "testing", "done": 28, "total": 54, "rows": 1183206, "note": "LINK 30m: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 51.9, "updated": "2026-09-08T23:23:51Z"}

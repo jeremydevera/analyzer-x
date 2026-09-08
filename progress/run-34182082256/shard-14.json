@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 13, "total": 53, "rows": 276866, "note": "CROSS 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 24.5, "updated": "2026-09-08T03:07:16Z"}
+{"shard": 14, "stage": "testing", "done": 15, "total": 53, "rows": 317434, "note": "DKNGSTOCK 4h: downloading candles", "failed": [], "pct": 28.3, "updated": "2026-09-08T03:08:01Z"}

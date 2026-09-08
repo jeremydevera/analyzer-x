@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 49, "total": 53, "rows": 1288752, "note": "USDC 1h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 92.5, "updated": "2026-09-08T04:13:46Z"}
+{"shard": 5, "stage": "testing", "done": 50, "total": 53, "rows": 1325292, "note": "VSTOCK 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 94.3, "updated": "2026-09-08T04:14:32Z"}

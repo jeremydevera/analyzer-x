@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 1, "total": 54, "rows": 46400, "note": "1000BONK 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-08T22:27:12Z"}
+{"shard": 3, "stage": "testing", "done": 3, "total": 54, "rows": 82660, "note": "AKE 30m: 18,404 bars, testing 120 rules", "failed": [], "pct": 5.6, "updated": "2026-09-08T22:28:06Z"}

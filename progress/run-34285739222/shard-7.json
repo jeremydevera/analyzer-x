@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 34, "total": 54, "rows": 1381776, "note": "OFC 30m: 7,323 bars, testing 120 rules", "failed": [], "pct": 63.0, "updated": "2026-09-08T23:38:48Z"}
+{"shard": 7, "stage": "testing", "done": 34, "total": 54, "rows": 1396776, "note": "OFC 30m: rule 70/120 (cmf20)", "failed": [], "pct": 63.0, "updated": "2026-09-08T23:39:33Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 40, "total": 53, "rows": 1625938, "note": "SAGA 30m: rule 40/120 (crsi)", "failed": [], "pct": 75.5, "updated": "2026-09-08T23:17:55Z"}
+{"shard": 18, "stage": "testing", "done": 42, "total": 53, "rows": 1643318, "note": "SLSSTOCK 30m: 3,380 bars, testing 120 rules", "failed": [], "pct": 79.2, "updated": "2026-09-08T23:18:40Z"}

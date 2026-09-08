@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 27, "total": 53, "rows": 821898, "note": "LINEA 1h: rule 16/120 (keltner)", "failed": [], "pct": 50.9, "updated": "2026-09-08T03:58:42Z"}
+{"shard": 17, "stage": "testing", "done": 28, "total": 53, "rows": 857230, "note": "LYN 1h: 8,084 bars, testing 120 rules", "failed": [], "pct": 52.8, "updated": "2026-09-08T03:59:36Z"}

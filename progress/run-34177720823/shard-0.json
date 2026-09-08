@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 16, "total": 54, "rows": 589222, "note": "DOOD 1h: rule 56/120 (insidebrk)", "failed": [], "pct": 29.6, "updated": "2026-09-08T02:07:25Z"}
+{"shard": 0, "stage": "testing", "done": 18, "total": 54, "rows": 622568, "note": "EWJ 1h: 4,192 bars, testing 120 rules", "failed": [], "pct": 33.3, "updated": "2026-09-08T02:08:12Z"}

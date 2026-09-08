@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 3, "total": 53, "rows": 39776, "note": "AMATSTOCK 4h: 1,409 bars, testing 120 rules", "failed": [], "pct": 5.7, "updated": "2026-09-08T03:03:04Z"}
+{"shard": 14, "stage": "testing", "done": 6, "total": 53, "rows": 105496, "note": "AXS 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-08T03:03:55Z"}

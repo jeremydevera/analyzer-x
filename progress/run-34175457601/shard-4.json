@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 37, "total": 53, "rows": 989914, "note": "POWR 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 69.8, "updated": "2026-09-08T01:19:13Z"}
+{"shard": 4, "stage": "testing", "done": 38, "total": 53, "rows": 1046058, "note": "QNT 4h: rule 70/120 (cmf20)", "failed": [], "pct": 71.7, "updated": "2026-09-08T01:19:58Z"}

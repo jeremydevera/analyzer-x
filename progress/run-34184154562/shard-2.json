@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 35, "total": 54, "rows": 953360, "note": "ORCLSTOCK 1d: 356 bars, testing 120 rules", "failed": [], "pct": 64.8, "updated": "2026-09-08T04:07:55Z"}
+{"shard": 2, "stage": "testing", "done": 35, "total": 54, "rows": 987360, "note": "ORCLSTOCK 1h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 64.8, "updated": "2026-09-08T04:08:41Z"}

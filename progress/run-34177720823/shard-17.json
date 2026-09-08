@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 18, "total": 53, "rows": 714018, "note": "FIGSTOCK 1h: rule 69/120 (obv20)", "failed": [], "pct": 34.0, "updated": "2026-09-08T02:05:07Z"}
+{"shard": 17, "stage": "testing", "done": 20, "total": 53, "rows": 746182, "note": "GLM 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-08T02:05:54Z"}

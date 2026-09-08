@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 52, "total": 53, "rows": 1790210, "note": "XPD 30m: rule 24/120 (psar)", "failed": [], "pct": 98.1, "updated": "2026-09-08T23:46:16Z"}
+{"shard": 14, "stage": "testing", "done": 53, "total": 53, "rows": 1807130, "note": "ZEREBRO 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-08T23:47:03Z"}

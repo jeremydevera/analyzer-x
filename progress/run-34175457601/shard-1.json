@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 30, "total": 54, "rows": 789618, "note": "METIS 1d: 394 bars, testing 120 rules", "failed": [], "pct": 55.6, "updated": "2026-09-08T01:21:04Z"}
+{"shard": 1, "stage": "testing", "done": 31, "total": 54, "rows": 827348, "note": "MOVR 1d: 394 bars, testing 120 rules", "failed": [], "pct": 57.4, "updated": "2026-09-08T01:21:58Z"}

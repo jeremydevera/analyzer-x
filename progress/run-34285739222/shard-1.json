@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 6, "total": 54, "rows": 211462, "note": "AUCTION 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 11.1, "updated": "2026-09-08T22:36:43Z"}
+{"shard": 1, "stage": "testing", "done": 6, "total": 54, "rows": 217842, "note": "AUCTION 30m: rule 23/120 (supertrend)", "failed": [], "pct": 11.1, "updated": "2026-09-08T22:37:28Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 35, "total": 53, "rows": 1386948, "note": "ORDI 1h: rule 55/120 (nhigh50)", "failed": [], "pct": 66.0, "updated": "2026-09-08T02:20:31Z"}
+{"shard": 4, "stage": "testing", "done": 36, "total": 53, "rows": 1406528, "note": "PHA 4h: rule 21/120 (cci20)", "failed": [], "pct": 67.9, "updated": "2026-09-08T02:21:16Z"}

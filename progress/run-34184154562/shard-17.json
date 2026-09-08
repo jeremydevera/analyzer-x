@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 26, "total": 53, "rows": 776314, "note": "KMNO 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 49.1, "updated": "2026-09-08T03:57:11Z"}
+{"shard": 17, "stage": "testing", "done": 26, "total": 53, "rows": 797654, "note": "KMNO 1h: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 49.1, "updated": "2026-09-08T03:57:57Z"}

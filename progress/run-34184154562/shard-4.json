@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 1, "total": 53, "rows": 34540, "note": "1000BTT 1h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-08T03:39:20Z"}
+{"shard": 4, "stage": "testing", "done": 4, "total": 53, "rows": 96376, "note": "ANKR 1d: 394 bars, testing 120 rules", "failed": [], "pct": 7.5, "updated": "2026-09-08T03:40:05Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 50, "total": 53, "rows": 1485040, "note": "WIF 1h: rule 13/120 (pivot)", "failed": [], "pct": 94.3, "updated": "2026-09-08T04:18:18Z"}
+{"shard": 19, "stage": "testing", "done": 51, "total": 53, "rows": 1527234, "note": "XLK 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-08T04:19:04Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 25, "total": 53, "rows": 883682, "note": "JELLYJELLY 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 47.2, "updated": "2026-09-08T02:06:51Z"}
+{"shard": 11, "stage": "testing", "done": 25, "total": 53, "rows": 905242, "note": "JELLYJELLY 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 47.2, "updated": "2026-09-08T02:07:37Z"}

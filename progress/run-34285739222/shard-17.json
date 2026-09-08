@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 28, "total": 53, "rows": 876506, "note": "LSK 4h: rule 20/120 (stoch14)", "failed": [], "pct": 52.8, "updated": "2026-09-08T22:59:23Z"}
+{"shard": 17, "stage": "testing", "done": 28, "total": 53, "rows": 898506, "note": "LSK 30m: rule 2/120 (mom15)", "failed": [], "pct": 52.8, "updated": "2026-09-08T23:00:12Z"}

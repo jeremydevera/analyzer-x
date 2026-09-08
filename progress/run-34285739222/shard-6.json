@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 28, "total": 54, "rows": 1064916, "note": "LINSTOCK 30m: rule 80/120 (cf_donch_l1)", "failed": [], "pct": 51.9, "updated": "2026-09-08T23:09:42Z"}
+{"shard": 6, "stage": "testing", "done": 29, "total": 54, "rows": 1095956, "note": "MAGIC 4h: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 53.7, "updated": "2026-09-08T23:10:27Z"}

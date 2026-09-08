@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 32, "total": 53, "rows": 861234, "note": "NEIROCTO 1h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 60.4, "updated": "2026-09-08T04:01:15Z"}
+{"shard": 8, "stage": "testing", "done": 36, "total": 53, "rows": 923470, "note": "PISTACIO 1h: downloading candles", "failed": [], "pct": 67.9, "updated": "2026-09-08T04:02:00Z"}

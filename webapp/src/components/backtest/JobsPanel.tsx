@@ -8,7 +8,7 @@
  * job's progress file on disk, not in this component.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, API_BASE, BacktestPlan, CloudStatus, GridPlan, JobStatus } from "@/lib/api";
+import { api, API_BASE, BacktestPlan, CloudStatus, DelistedReport, fmtBytes, fmtWhenMs, GridPlan, JobStatus, MonthJob } from "@/lib/api";
 import Button from "@/components/ui/button/Button";
 import Badge from "@/components/ui/badge/Badge";
 import JobProgress from "@/components/jobs/JobProgress";
@@ -43,6 +43,31 @@ export default function JobsPanel() {
   const [cap, setCap] = useState<BacktestPlan | null>(null);
   const [err, setErr] = useState("");
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  // DELETE N DELISTED (operator, 2026-09-09): the coins MEXC no longer lists
+  // that still hold candles and backtests on this PC. The count and the
+  // sizes are the API's, never counted here.
+  const [dead, setDead] = useState<{ delisted: DelistedReport; job: MonthJob | null; writer: string } | null>(null);
+  const [armDead, setArmDead] = useState(false);
+  const askDead = useCallback(() => {
+    api.storageDelisted().then(setDead).catch(() => {});
+  }, []);
+  useEffect(() => {
+    askDead();
+    const t = setInterval(askDead, 30_000);
+    return () => clearInterval(t);
+  }, [askDead]);
+  // while the delete runs, follow it every 2 s
+  const deadRunning = !!dead?.job?.running;
+  useEffect(() => {
+    if (!deadRunning) return;
+    const t = setInterval(askDead, 2000);
+    return () => clearInterval(t);
+  }, [deadRunning, askDead]);
+  const deleteDead = () => {
+    setErr(""); setArmDead(false);
+    api.deleteMonths("delisted").then(askDead)
+      .catch((e) => setErr(String(e).replace(/^Error: /, "")));
+  };
 
   const poll = useCallback(() => {
     api.jobStatus("backtest").then(setBt).catch(() => {});
@@ -262,7 +287,50 @@ export default function JobsPanel() {
               </Badge>
             )}
             {upd?.running && <Badge size="sm" color="info">update running</Badge>}
+            {/* DELETE N DELISTED — N is the API's count of stored coins MEXC
+                no longer lists. Disabled with its reason when the venue could
+                not be asked (never guess), when nothing is delisted, or while
+                a job is writing either store. Asks twice, naming the coins
+                and the bytes. */}
+            {dead && (
+              <span title={!dead.delisted.known ? dead.delisted.why
+                : dead.writer ? `a ${dead.writer} job is writing the store — wait for it to finish`
+                : !dead.delisted.coins.length ? "every stored coin is still listed on MEXC"
+                : `remove the candles AND the backtest results of every coin MEXC no longer lists: ${dead.delisted.candle_pairs} candle files and ${dead.delisted.result_pairs} backtest pairs, ${fmtBytes(dead.delisted.bytes)}`}>
+                <Button size="sm" variant="outline" onClick={() => setArmDead(true)}
+                  disabled={!dead.delisted.known || !dead.delisted.coins.length
+                            || !!dead.writer || deadRunning || armDead}>
+                  DELETE {dead.delisted.coins.length} DELISTED
+                </Button>
+              </span>
+            )}
           </div>
+          {armDead && dead && (
+            <p className="mt-2 flex flex-wrap items-center gap-2 text-theme-xs text-warning-700 dark:text-warning-400">
+              <span>
+                delete the candles and backtest results of {dead.delisted.coins.length} delisted coin{dead.delisted.coins.length === 1 ? "" : "s"}
+                {" "}({dead.delisted.coins.slice(0, 8).map((c) => c.coin).join(", ")}
+                {dead.delisted.coins.length > 8 ? ` and ${dead.delisted.coins.length - 8} more` : ""}) —{" "}
+                {fmtBytes(dead.delisted.bytes)}, {dead.delisted.result_rows.toLocaleString()} stored rows? They cannot be traded or re-downloaded.
+              </span>
+              <button onClick={deleteDead} aria-label="yes, delete the delisted coins"
+                className="rounded-lg bg-error-500 px-2.5 py-1 font-semibold text-white">
+                yes, delete
+              </button>
+              <button onClick={() => setArmDead(false)}
+                className="rounded-lg border border-gray-200 px-2.5 py-1 text-gray-600 dark:border-gray-700 dark:text-gray-300">
+                cancel
+              </button>
+            </p>
+          )}
+          {dead?.job && (
+            <p role="status" className={`mt-2 text-theme-xs ${dead.job.running ? "text-brand-600 dark:text-brand-400" : dead.job.error_count ? "text-warning-600 dark:text-warning-400" : "text-success-600 dark:text-success-400"}`}>
+              {dead.job.running
+                ? <>deleting delisted coins — {dead.job.done} of {dead.job.total} · {fmtBytes(dead.job.freed)} freed so far</>
+                : <>deleted {dead.job.label} — {fmtBytes(dead.job.freed)} freed · {dead.job.files_removed.toLocaleString()} files removed · {dead.job.rows_removed.toLocaleString()} rows dropped · {dead.job.finished_at}
+                    {dead.job.error_count ? <> · {dead.job.error_count} error{dead.job.error_count === 1 ? "" : "s"}: {dead.job.errors[0]}</> : null}</>}
+            </p>
+          )}
           {hand?.stalled && (
             <p className="mt-2 text-theme-xs text-error-500">
               {hand.stalled_why}
@@ -310,6 +378,23 @@ export default function JobsPanel() {
                     {done.toLocaleString()}/{total.toLocaleString()} coins ·{" "}
                     {rows.toLocaleString()} rows measured ·{" "}
                     {fin}/{cloud.shards.length} machine(s) finished
+                    {/* WHICH DATES. "i dont see what dates are being tested
+                        like is aug 3 - sept 27 being tested?" (2026-09-09).
+                        DERIVED from the run's own `days` (each shard reports
+                        it): bars from days+30 ago through now — the +30 is
+                        the indicator lookback the local sweep also keeps.
+                        Each tile's note carries its pair's exact span; a
+                        young coin's history is honestly shorter than this. */}
+                    {(() => {
+                      const days = cloud.shards.find((s) => s.days)?.days;
+                      if (!days) return null;
+                      const from = Date.now() - (days + 30) * 86400_000;
+                      return (
+                        <>
+                          {" · "}testing {fmtWhenMs(from)} → today (last {days} days)
+                        </>
+                      );
+                    })()}
                   </span>
                 </>
               );

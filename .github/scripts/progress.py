@@ -183,6 +183,11 @@ class Reporter:
         self._last = now
         payload = {"shard": int(self.shard), "stage": stage, "done": done,
                    "total": total, "rows": rows, "note": note[:120],
+                   # the WINDOW this run was asked for, so the panel can print
+                   # real dates — "i dont see what dates are being tested"
+                   # (2026-09-09). Each tile's note carries its pair's exact
+                   # first→last bar; this is the run-level ask.
+                   "days": int(os.environ.get("DAYS", "365") or 365),
                    "failed": [str(x)[:120] for x in (failed or [])][:200],
                    "pct": round(100 * done / total, 1) if total else 0.0,
                    "updated": time.strftime("%Y-%m-%dT%H:%M:%SZ",

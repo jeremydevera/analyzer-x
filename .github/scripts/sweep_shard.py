@@ -30,6 +30,7 @@ from tradingagents import (
     fast_grid as fg,  # noqa: E402
 )
 from tradingagents.dataflows import mexc_futures as fx  # noqa: E402
+from tradingagents.positions_view import fmt_when  # noqa: E402
 
 SHARD = int(os.environ.get("SHARD", "0"))
 SHARDS = max(1, int(os.environ.get("SHARDS", "1")))
@@ -239,7 +240,16 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
             mo_labels.append(str(v_)[:7])
         mo_idx.append(k_)
     report("testing", i, n, rows=rows_so_far,
-           note=f"{coin} {tf}: {nbars:,} bars, testing {len(br.SIGNALS)} rules")
+           # WITH THE DATES. The tile said "18,959 bars, testing 120 rules"
+           # and the operator could not answer their own question about it:
+           # "i dont see what dates are being tested like is aug 3 - sept 27
+           # being tested?" (2026-09-09). The span is THIS PAIR's real first
+           # and last bar after the window cut — a young coin's span is
+           # honestly shorter — via the one date formatter (CLAUDE.md).
+           note=(f"{coin} {tf}: {nbars:,} bars · "
+                 f"{fmt_when(df['Date'].iloc[0].timestamp())} → "
+                 f"{fmt_when(df['Date'].iloc[-1].timestamp())} · "
+                 f"{len(br.SIGNALS)} rules"))
     for si, sig in enumerate(br.SIGNALS, 1):
         key = f"{sig}_gh_{tf}"
         # EVERY threshold, exactly as market_sweep.run_pair does with

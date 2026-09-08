@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 21, "total": 53, "rows": 391532, "note": "GPS 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-08T01:12:41Z"}
+{"shard": 7, "stage": "testing", "done": 22, "total": 53, "rows": 437078, "note": "HDSTOCK 4h: rule 25/120 (ichimoku)", "failed": [], "pct": 41.5, "updated": "2026-09-08T01:13:26Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 16, "total": 53, "rows": 585530, "note": "DYDX 1h: rule 51/120 (orb)", "failed": [], "pct": 30.2, "updated": "2026-09-08T02:04:30Z"}
+{"shard": 9, "stage": "testing", "done": 17, "total": 53, "rows": 602250, "note": "ERA 4h: rule 4/120 (trend50)", "failed": [], "pct": 32.1, "updated": "2026-09-08T02:05:15Z"}

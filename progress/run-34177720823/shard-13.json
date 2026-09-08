@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 41, "total": 53, "rows": 1428806, "note": "SHOPSTOCK 1h: 5,013 bars, testing 120 rules", "failed": [], "pct": 77.4, "updated": "2026-09-08T02:20:04Z"}
+{"shard": 13, "stage": "testing", "done": 42, "total": 53, "rows": 1475480, "note": "SMCISTOCK 1h: rule 23/120 (supertrend)", "failed": [], "pct": 79.2, "updated": "2026-09-08T02:20:49Z"}

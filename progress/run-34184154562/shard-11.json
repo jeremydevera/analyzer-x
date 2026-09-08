@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 53, "total": 53, "rows": 1547414, "note": "ZIG 1h: rule 78/120 (cf_mom_l2)", "failed": [], "pct": 100.0, "updated": "2026-09-08T04:19:05Z"}
+{"shard": 11, "stage": "done", "done": 53, "total": 53, "rows": 1551518, "note": "1,551,518 rows \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "failed": [], "pct": 100.0, "updated": "2026-09-08T04:19:14Z"}

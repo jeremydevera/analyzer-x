@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 28, "total": 53, "rows": 644612, "note": "LPT 4h: rule 1/120 (mom6)", "failed": [], "pct": 52.8, "updated": "2026-09-08T01:15:45Z"}
+{"shard": 6, "stage": "testing", "done": 30, "total": 53, "rows": 707576, "note": "MINA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 56.6, "updated": "2026-09-08T01:16:34Z"}

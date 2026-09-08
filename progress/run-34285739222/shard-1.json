@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 40, "total": 54, "rows": 1594814, "note": "RKLBSTOCK 30m: rule 30/120 (kama10)", "failed": [], "pct": 74.1, "updated": "2026-09-08T23:38:35Z"}
+{"shard": 1, "stage": "testing", "done": 41, "total": 54, "rows": 1639274, "note": "SAMSUNGSTOCK 30m: rule 3/120 (fade15)", "failed": [], "pct": 75.9, "updated": "2026-09-08T23:39:21Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 45, "total": 54, "rows": 1631060, "note": "STXSTOCK 4h: rule 41/120 (tsi)", "failed": [], "pct": 83.3, "updated": "2026-09-08T23:41:46Z"}
+{"shard": 8, "stage": "testing", "done": 47, "total": 54, "rows": 1669140, "note": "TNSR 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 87.0, "updated": "2026-09-08T23:42:43Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 19, "total": 53, "rows": 440204, "note": "FORM 4h: rule 40/120 (crsi)", "failed": [], "pct": 35.8, "updated": "2026-09-08T03:09:08Z"}
+{"shard": 12, "stage": "testing", "done": 21, "total": 53, "rows": 474788, "note": "GRT 4h: rule 15/120 (bbbreak)", "failed": [], "pct": 39.6, "updated": "2026-09-08T03:09:53Z"}

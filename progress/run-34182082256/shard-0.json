@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 38, "total": 54, "rows": 1079754, "note": "PYTH 4h: rule 32/120 (gmma)", "failed": [], "pct": 70.4, "updated": "2026-09-08T03:22:37Z"}
+{"shard": 0, "stage": "testing", "done": 39, "total": 54, "rows": 1121972, "note": "RECALL 4h: rule 49/120 (vwaprev)", "failed": [], "pct": 72.2, "updated": "2026-09-08T03:23:22Z"}

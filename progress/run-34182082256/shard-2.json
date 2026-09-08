@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 30, "total": 54, "rows": 710854, "note": "MET 4h: rule 76/120 (cf_mom)", "failed": [], "pct": 55.6, "updated": "2026-09-08T03:15:57Z"}
+{"shard": 2, "stage": "testing", "done": 32, "total": 54, "rows": 751160, "note": "NAORIS 4h: rule 110/120 (cf_fundfade_l1)", "failed": [], "pct": 59.3, "updated": "2026-09-08T03:16:42Z"}

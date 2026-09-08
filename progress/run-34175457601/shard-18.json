@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 50, "total": 53, "rows": 1326248, "note": "WET 4h: rule 10/120 (sr_bounce)", "failed": [], "pct": 94.3, "updated": "2026-09-08T01:28:00Z"}
+{"shard": 18, "stage": "testing", "done": 53, "total": 53, "rows": 1364418, "note": "ZORA 4h: rule 24/120 (psar)", "failed": [], "pct": 100.0, "updated": "2026-09-08T01:28:45Z"}

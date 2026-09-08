@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 10, "total": 53, "rows": 429316, "note": "BSV 1h: rule 36/120 (stochrsi)", "failed": [], "pct": 18.9, "updated": "2026-09-08T01:59:03Z"}
+{"shard": 6, "stage": "testing", "done": 11, "total": 53, "rows": 474680, "note": "CBRSSTOCK 1h: rule 17/120 (atrbreak)", "failed": [], "pct": 20.8, "updated": "2026-09-08T01:59:48Z"}

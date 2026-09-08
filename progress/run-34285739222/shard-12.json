@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 9, "total": 53, "rows": 352078, "note": "BOBA 30m: rule 47/120 (ibs)", "failed": [], "pct": 17.0, "updated": "2026-09-08T22:42:35Z"}
+{"shard": 12, "stage": "testing", "done": 9, "total": 53, "rows": 365278, "note": "BOBA 30m: rule 115/120 (cf_diadx)", "failed": [], "pct": 17.0, "updated": "2026-09-08T22:43:20Z"}

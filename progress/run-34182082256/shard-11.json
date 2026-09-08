@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 13, "total": 53, "rows": 363472, "note": "CRCLSTOCK 4h: rule 16/120 (keltner)", "failed": [], "pct": 24.5, "updated": "2026-09-08T03:09:22Z"}
+{"shard": 11, "stage": "testing", "done": 17, "total": 53, "rows": 428912, "note": "ESP 1d: 210 bars, testing 120 rules", "failed": [], "pct": 32.1, "updated": "2026-09-08T03:10:10Z"}

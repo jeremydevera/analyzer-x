@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 40, "total": 53, "rows": 1534212, "note": "SANTOS 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-08T02:24:57Z"}
+{"shard": 16, "stage": "testing", "done": 40, "total": 53, "rows": 1549172, "note": "SANTOS 1h: rule 63/120 (killzone)", "failed": [], "pct": 75.5, "updated": "2026-09-08T02:25:42Z"}

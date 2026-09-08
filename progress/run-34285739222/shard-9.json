@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 51, "total": 54, "rows": 1922156, "note": "WLD 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 94.4, "updated": "2026-09-08T23:58:35Z"}
+{"shard": 9, "stage": "testing", "done": 53, "total": 54, "rows": 1964412, "note": "ZBCN 4h: rule 1/120 (mom6)", "failed": [], "pct": 98.1, "updated": "2026-09-08T23:59:20Z"}

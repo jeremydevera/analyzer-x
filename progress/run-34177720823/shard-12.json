@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 2, "total": 53, "rows": 40212, "note": "AIA 1h: 5,534 bars, testing 120 rules", "failed": [], "pct": 3.8, "updated": "2026-09-08T01:46:50Z"}
+{"shard": 12, "stage": "testing", "done": 3, "total": 53, "rows": 65226, "note": "ALT 4h: rule 1/120 (mom6)", "failed": [], "pct": 5.7, "updated": "2026-09-08T01:47:35Z"}

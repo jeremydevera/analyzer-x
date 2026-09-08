@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 7, "total": 53, "rows": 159936, "note": "BANK 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-08T03:05:34Z"}
+{"shard": 7, "stage": "testing", "done": 9, "total": 53, "rows": 206972, "note": "BNCSTOCK 1d: downloading candles", "failed": [], "pct": 17.0, "updated": "2026-09-08T03:06:20Z"}

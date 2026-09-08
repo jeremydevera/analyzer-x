@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 18, "total": 53, "rows": 560216, "note": "FIDA 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 34.0, "updated": "2026-09-08T03:51:02Z"}
+{"shard": 15, "stage": "testing", "done": 20, "total": 53, "rows": 592878, "note": "GIGGLE 1h: rule 3/120 (fade15)", "failed": [], "pct": 37.7, "updated": "2026-09-08T03:51:49Z"}

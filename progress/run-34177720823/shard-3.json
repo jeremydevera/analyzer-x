@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 20, "total": 53, "rows": 726918, "note": "GALA 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 37.7, "updated": "2026-09-08T02:07:37Z"}
+{"shard": 3, "stage": "testing", "done": 21, "total": 53, "rows": 757898, "note": "GOAT 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-08T02:08:33Z"}

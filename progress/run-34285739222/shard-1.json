@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 37, "total": 54, "rows": 1481008, "note": "PLUME 30m: rule 45/120 (zscore20)", "failed": [], "pct": 68.5, "updated": "2026-09-08T23:33:49Z"}
+{"shard": 1, "stage": "testing", "done": 37, "total": 54, "rows": 1493328, "note": "PLUME 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 68.5, "updated": "2026-09-08T23:34:34Z"}

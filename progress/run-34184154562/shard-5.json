@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 8, "total": 53, "rows": 227782, "note": "BIANRENSHENG 1h: 8,063 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-08T03:45:03Z"}
+{"shard": 5, "stage": "testing", "done": 8, "total": 53, "rows": 246182, "note": "BIANRENSHENG 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 15.1, "updated": "2026-09-08T03:45:48Z"}

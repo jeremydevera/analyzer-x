@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 35, "total": 53, "rows": 1043778, "note": "PENGU 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-08T03:20:36Z"}
+{"shard": 19, "stage": "testing", "done": 38, "total": 53, "rows": 1099574, "note": "RDWSTOCK 4h: rule 67/120 (pinbar)", "failed": [], "pct": 71.7, "updated": "2026-09-08T03:21:21Z"}

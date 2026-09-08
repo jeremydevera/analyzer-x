@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 12, "total": 54, "rows": 425000, "note": "CHZ 30m: rule 36/120 (stochrsi)", "failed": [], "pct": 22.2, "updated": "2026-09-08T22:46:36Z"}
+{"shard": 10, "stage": "testing", "done": 12, "total": 54, "rows": 437320, "note": "CHZ 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 22.2, "updated": "2026-09-08T22:47:21Z"}

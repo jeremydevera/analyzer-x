@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 47, "total": 54, "rows": 1642508, "note": "THETA 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 87.0, "updated": "2026-09-08T23:38:24Z"}
+{"shard": 2, "stage": "testing", "done": 47, "total": 54, "rows": 1646468, "note": "THETA 30m: rule 12/120 (donchian20)", "failed": [], "pct": 87.0, "updated": "2026-09-08T23:39:10Z"}

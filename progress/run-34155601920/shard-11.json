@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 52, "total": 53, "rows": 4412702, "note": "XTZ 15m: rule 94/120 (cf_emarsi)", "failed": [], "pct": 98.1, "updated": "2026-09-08T00:00:26Z"}
+{"shard": 11, "stage": "testing", "done": 52, "total": 53, "rows": 4418422, "note": "XTZ 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-08T00:01:29Z"}

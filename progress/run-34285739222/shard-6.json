@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 39, "total": 54, "rows": 1466004, "note": "RDWSTOCK 4h: rule 46/120 (rsi2)", "failed": [], "pct": 72.2, "updated": "2026-09-08T23:28:31Z"}
+{"shard": 6, "stage": "testing", "done": 43, "total": 54, "rows": 1520516, "note": "SNPSSTOCK 30m: rule 45/120 (zscore20)", "failed": [], "pct": 79.6, "updated": "2026-09-08T23:29:16Z"}

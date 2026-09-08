@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 43, "total": 54, "rows": 1705122, "note": "SNOWSTOCK 30m: rule 4/120 (trend50)", "failed": [], "pct": 79.6, "updated": "2026-09-08T23:46:00Z"}
+{"shard": 5, "stage": "testing", "done": 44, "total": 54, "rows": 1751122, "note": "SPCXSTOCK 30m: 5,311 bars, testing 120 rules", "failed": [], "pct": 81.5, "updated": "2026-09-08T23:46:46Z"}

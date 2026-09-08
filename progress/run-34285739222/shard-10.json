@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 10, "total": 54, "rows": 384340, "note": "BTR 30m: rule 109/120 (cf_fundfade)", "failed": [], "pct": 18.5, "updated": "2026-09-08T22:45:05Z"}
+{"shard": 10, "stage": "testing", "done": 12, "total": 54, "rows": 418280, "note": "CHZ 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 22.2, "updated": "2026-09-08T22:45:51Z"}

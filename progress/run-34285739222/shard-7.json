@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 13, "total": 54, "rows": 488890, "note": "COOKIE 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 24.1, "updated": "2026-09-08T22:51:48Z"}
+{"shard": 7, "stage": "testing", "done": 14, "total": 54, "rows": 509002, "note": "CSPR 4h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 25.9, "updated": "2026-09-08T22:52:33Z"}

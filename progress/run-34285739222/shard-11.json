@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 3, "total": 53, "rows": 142332, "note": "ALL 30m: rule 75/120 (relvolbrk)", "failed": [], "pct": 5.7, "updated": "2026-09-08T22:31:59Z"}
+{"shard": 11, "stage": "testing", "done": 4, "total": 53, "rows": 154014, "note": "APEX 4h: rule 3/120 (fade15)", "failed": [], "pct": 7.5, "updated": "2026-09-08T22:32:45Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 47, "total": 53, "rows": 1115540, "note": "TRUST 4h: rule 8/120 (fib618)", "failed": [], "pct": 88.7, "updated": "2026-09-08T03:20:21Z"}
+{"shard": 14, "stage": "testing", "done": 48, "total": 53, "rows": 1163632, "note": "UB 4h: rule 46/120 (rsi2)", "failed": [], "pct": 90.6, "updated": "2026-09-08T03:21:06Z"}

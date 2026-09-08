@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 31, "total": 53, "rows": 943046, "note": "MUSTOCK 1h: 7,527 bars, testing 120 rules", "failed": [], "pct": 58.5, "updated": "2026-09-08T03:59:15Z"}
+{"shard": 16, "stage": "testing", "done": 32, "total": 53, "rows": 970546, "note": "NGAS 1d: 221 bars, testing 120 rules", "failed": [], "pct": 60.4, "updated": "2026-09-08T04:00:08Z"}

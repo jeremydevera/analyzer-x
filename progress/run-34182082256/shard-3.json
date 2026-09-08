@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 8, "total": 53, "rows": 215004, "note": "BERA 4h: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 15.1, "updated": "2026-09-08T03:06:16Z"}
+{"shard": 3, "stage": "testing", "done": 9, "total": 53, "rows": 253548, "note": "BLUR 4h: rule 76/120 (cf_mom)", "failed": [], "pct": 17.0, "updated": "2026-09-08T03:07:02Z"}

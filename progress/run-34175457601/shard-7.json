@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 28, "total": 53, "rows": 575882, "note": "LQTY 1d: rule 76/120 (cf_mom)", "failed": [], "pct": 52.8, "updated": "2026-09-08T01:15:52Z"}
+{"shard": 7, "stage": "testing", "done": 30, "total": 53, "rows": 619046, "note": "MINIMAXSTOCK 1d: 82 bars, testing 120 rules", "failed": [], "pct": 56.6, "updated": "2026-09-08T01:16:37Z"}

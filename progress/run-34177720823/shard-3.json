@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 42, "total": 53, "rows": 1517406, "note": "SKL 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 79.2, "updated": "2026-09-08T02:27:17Z"}
+{"shard": 3, "stage": "testing", "done": 42, "total": 53, "rows": 1544906, "note": "SKL 1h: rule 3/120 (fade15)", "failed": [], "pct": 79.2, "updated": "2026-09-08T02:28:02Z"}

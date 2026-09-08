@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 11, "total": 54, "rows": 444602, "note": "CAP 30m: rule 2/120 (mom15)", "failed": [], "pct": 20.4, "updated": "2026-09-08T22:49:46Z"}
+{"shard": 1, "stage": "testing", "done": 12, "total": 54, "rows": 491880, "note": "CFG 30m: 9,348 bars, testing 120 rules", "failed": [], "pct": 22.2, "updated": "2026-09-08T22:50:32Z"}

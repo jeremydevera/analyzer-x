@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 43, "total": 53, "rows": 1344082, "note": "SPELL 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 81.1, "updated": "2026-09-08T04:14:53Z"}
+{"shard": 18, "stage": "testing", "done": 43, "total": 53, "rows": 1366742, "note": "SPELL 1h: rule 99/120 (cf_ttm_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-08T04:15:38Z"}

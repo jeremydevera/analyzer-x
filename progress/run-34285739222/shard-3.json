@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 29, "total": 54, "rows": 1096804, "note": "LUNRSTOCK 4h: rule 2/120 (mom15)", "failed": [], "pct": 53.7, "updated": "2026-09-08T23:04:29Z"}
+{"shard": 3, "stage": "testing", "done": 31, "total": 54, "rows": 1151110, "note": "MOODENG 4h: rule 36/120 (stochrsi)", "failed": [], "pct": 57.4, "updated": "2026-09-08T23:05:14Z"}

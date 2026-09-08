@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 11, "total": 53, "rows": 320240, "note": "CELR 1h: rule 3/120 (fade15)", "failed": [], "pct": 20.8, "updated": "2026-09-08T03:44:00Z"}
+{"shard": 15, "stage": "testing", "done": 11, "total": 53, "rows": 342900, "note": "CELR 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 20.8, "updated": "2026-09-08T03:44:46Z"}

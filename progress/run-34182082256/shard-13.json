@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 7, "total": 53, "rows": 138610, "note": "BAS 4h: rule 20/120 (stoch14)", "failed": [], "pct": 13.2, "updated": "2026-09-08T03:03:52Z"}
+{"shard": 13, "stage": "testing", "done": 13, "total": 53, "rows": 233968, "note": "CRMSTOCK 4h: rule 13/120 (pivot)", "failed": [], "pct": 24.5, "updated": "2026-09-08T03:04:37Z"}

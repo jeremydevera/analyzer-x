@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 17, "total": 54, "rows": 548786, "note": "ENA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 31.5, "updated": "2026-09-08T01:56:21Z"}
+{"shard": 1, "stage": "testing", "done": 17, "total": 54, "rows": 578926, "note": "ENA 1h: rule 12/120 (donchian20)", "failed": [], "pct": 31.5, "updated": "2026-09-08T01:57:07Z"}

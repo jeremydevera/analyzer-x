@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 20, "total": 53, "rows": 565958, "note": "GAS 4h: rule 13/120 (pivot)", "failed": [], "pct": 37.7, "updated": "2026-09-08T03:09:25Z"}
+{"shard": 4, "stage": "testing", "done": 23, "total": 53, "rows": 642386, "note": "HOT 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-08T03:10:16Z"}

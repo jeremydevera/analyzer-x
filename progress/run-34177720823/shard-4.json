@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 25, "total": 53, "rows": 1067704, "note": "IRYS 1h: rule 4/120 (trend50)", "failed": [], "pct": 47.2, "updated": "2026-09-08T02:12:44Z"}
+{"shard": 4, "stage": "testing", "done": 26, "total": 53, "rows": 1094896, "note": "KAT 4h: rule 15/120 (bbbreak)", "failed": [], "pct": 49.1, "updated": "2026-09-08T02:13:30Z"}

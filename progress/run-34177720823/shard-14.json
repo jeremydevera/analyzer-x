@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 1, "total": 53, "rows": 28160, "note": "AAVE 1h: rule 3/120 (fade15)", "failed": [], "pct": 1.9, "updated": "2026-09-08T01:46:55Z"}
+{"shard": 14, "stage": "testing", "done": 1, "total": 53, "rows": 53460, "note": "AAVE 1h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-08T01:47:40Z"}

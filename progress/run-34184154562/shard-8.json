@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 5, "total": 53, "rows": 106002, "note": "AR 1d: rule 49/120 (vwaprev)", "failed": [], "pct": 9.4, "updated": "2026-09-08T03:40:52Z"}
+{"shard": 8, "stage": "testing", "done": 5, "total": 53, "rows": 121358, "note": "AR 1h: rule 35/120 (willr14)", "failed": [], "pct": 9.4, "updated": "2026-09-08T03:41:38Z"}

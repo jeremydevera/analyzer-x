@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 29, "total": 54, "rows": 1147940, "note": "LUNANEW 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 53.7, "updated": "2026-09-08T23:20:38Z"}
+{"shard": 1, "stage": "testing", "done": 29, "total": 54, "rows": 1153440, "note": "LUNANEW 30m: rule 19/120 (emacross)", "failed": [], "pct": 53.7, "updated": "2026-09-08T23:21:23Z"}

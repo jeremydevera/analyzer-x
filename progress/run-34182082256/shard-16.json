@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 46, "total": 53, "rows": 1270322, "note": "TIA 4h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 86.8, "updated": "2026-09-08T03:20:01Z"}
+{"shard": 16, "stage": "testing", "done": 48, "total": 53, "rows": 1327230, "note": "UMA 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 90.6, "updated": "2026-09-08T03:20:57Z"}

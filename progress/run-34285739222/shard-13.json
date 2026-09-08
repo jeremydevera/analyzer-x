@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 49, "total": 53, "rows": 1722550, "note": "USDC 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 92.5, "updated": "2026-09-08T23:44:31Z"}
+{"shard": 13, "stage": "testing", "done": 50, "total": 53, "rows": 1754810, "note": "VSTOCK 30m: rule 30/120 (kama10)", "failed": [], "pct": 94.3, "updated": "2026-09-08T23:45:16Z"}

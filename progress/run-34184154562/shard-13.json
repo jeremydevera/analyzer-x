@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 43, "total": 53, "rows": 1206046, "note": "SOXS 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-08T04:02:22Z"}
+{"shard": 13, "stage": "testing", "done": 45, "total": 53, "rows": 1224078, "note": "SYN 1h: rule 4/120 (trend50)", "failed": [], "pct": 84.9, "updated": "2026-09-08T04:03:08Z"}

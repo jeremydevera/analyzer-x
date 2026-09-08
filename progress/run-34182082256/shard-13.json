@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 21, "total": 53, "rows": 434462, "note": "GRVT 1d: downloading candles", "failed": [], "pct": 39.6, "updated": "2026-09-08T03:07:43Z"}
+{"shard": 13, "stage": "testing", "done": 22, "total": 53, "rows": 472126, "note": "HIVE 1d: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 41.5, "updated": "2026-09-08T03:08:28Z"}

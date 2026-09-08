@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 10, "total": 53, "rows": 373948, "note": "CAKE 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 18.9, "updated": "2026-09-08T01:55:55Z"}
+{"shard": 17, "stage": "testing", "done": 10, "total": 53, "rows": 404528, "note": "CAKE 1h: rule 15/120 (bbbreak)", "failed": [], "pct": 18.9, "updated": "2026-09-08T01:56:41Z"}

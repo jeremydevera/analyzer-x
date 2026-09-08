@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 52, "total": 54, "rows": 1406168, "note": "XLM 4h: rule 107/120 (cf_bosfvg_l1)", "failed": [], "pct": 96.3, "updated": "2026-09-08T01:33:51Z"}
+{"shard": 0, "stage": "testing", "done": 54, "total": 54, "rows": 1455250, "note": "ZRX 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-08T01:34:42Z"}

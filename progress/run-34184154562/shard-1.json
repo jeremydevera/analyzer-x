@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 3, "total": 54, "rows": 69606, "note": "AJINOMOTOSTOCK 1h: downloading candles", "failed": [], "pct": 5.6, "updated": "2026-09-08T03:40:07Z"}
+{"shard": 1, "stage": "testing", "done": 6, "total": 54, "rows": 131534, "note": "AUD 1h: 7,994 bars, testing 120 rules", "failed": [], "pct": 11.1, "updated": "2026-09-08T03:40:55Z"}

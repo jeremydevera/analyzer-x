@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 12, "total": 53, "rows": 512832, "note": "CHR 4h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-08T01:59:09Z"}
+{"shard": 4, "stage": "testing", "done": 12, "total": 53, "rows": 522732, "note": "CHR 1h: rule 39/120 (fisher)", "failed": [], "pct": 22.6, "updated": "2026-09-08T01:59:55Z"}

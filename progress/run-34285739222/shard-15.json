@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 31, "total": 53, "rows": 872886, "note": "MSSTOCK 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 58.5, "updated": "2026-09-08T23:03:04Z"}
+{"shard": 15, "stage": "testing", "done": 32, "total": 53, "rows": 903166, "note": "NEIROCTO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 60.4, "updated": "2026-09-08T23:04:00Z"}

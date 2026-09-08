@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 23, "total": 54, "rows": 878288, "note": "HOLO 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 42.6, "updated": "2026-09-08T23:11:18Z"}
+{"shard": 7, "stage": "testing", "done": 24, "total": 54, "rows": 905150, "note": "ICX 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 44.4, "updated": "2026-09-08T23:12:11Z"}

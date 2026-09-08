@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 50, "total": 54, "rows": 1229154, "note": "VIRTUAL 1d: 394 bars, testing 120 rules", "failed": [], "pct": 92.6, "updated": "2026-09-08T01:29:26Z"}
+{"shard": 1, "stage": "testing", "done": 52, "total": 54, "rows": 1282746, "note": "XLU 1d: downloading candles", "failed": [], "pct": 96.3, "updated": "2026-09-08T01:30:12Z"}

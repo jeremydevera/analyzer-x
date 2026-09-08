@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 10, "total": 53, "rows": 335304, "note": "BR 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 18.9, "updated": "2026-09-08T03:50:11Z"}
+{"shard": 3, "stage": "testing", "done": 12, "total": 53, "rows": 387106, "note": "CHIP 1h: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 22.6, "updated": "2026-09-08T03:50:56Z"}

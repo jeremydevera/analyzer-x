@@ -39,10 +39,13 @@ from tradingagents import market_sweep as msw
 MONTH_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
 # the jobs that WRITE each store — a delete never runs beside one of these
 WRITERS = {"candles": ("download",),
-           "results": ("backtest", "collect", "btupdate")}
+           "results": ("backtest", "collect", "btupdate"),
+           # DELISTED removes from BOTH stores, so every writer of either
+           # must be idle
+           "delisted": ("download", "backtest", "collect", "btupdate")}
 
 _lock = threading.Lock()
-_jobs: dict = {"candles": None, "results": None}
+_jobs: dict = {"candles": None, "results": None, "delisted": None}
 
 
 # ---------------------------------------------------------------- months
@@ -254,6 +257,176 @@ def _run_results(job: dict) -> None:
         job["done"] += 1
 
 
+# ---------------------------------------------------------------- delisted
+# Operator, 2026-09-09: *"create a button in backtest 'Delete X Delisted'
+# where x is number of coin delisted. if i click this delete the candle and
+# backtest for the delisted coin"*.
+def _live_symbols():
+    try:
+        from tradingagents import db_jobs as dj
+
+        return dj.live_symbols()
+    except Exception:                                           # noqa: BLE001
+        return None
+
+
+def _empty_coin(coin: str, symbol: str) -> dict:
+    return {"coin": coin, "symbol": symbol, "candle_pairs": 0,
+            "candle_bytes": 0, "result_pairs": 0, "result_rows": 0,
+            "result_bytes": 0}
+
+
+def _pairs_by_coin() -> list[dict]:
+    from tradingagents import rows_index as ri
+
+    def _read():
+        with ri._open(readonly=True) as con:
+            return [dict(r) for r in con.execute(
+                "SELECT pair, coin, tf, n, bytes FROM pairs "
+                "WHERE coin IS NOT NULL ORDER BY pair")]
+
+    return ri._missing_ok(_read, [])
+
+
+def delisted_report(index: dict | None = None, live=None) -> dict:
+    """Every stored coin MEXC no longer lists, with what it costs on disk.
+
+    "Delisted" is decided the way db_jobs.is_delisted decides it: the contract
+    is missing from the live list AND the live list was actually read. A
+    lookup that failed is `known: False` — "I could not look" must never read
+    as "every coin is gone", which would offer to delete the whole store on
+    one bad response. The button then says why and stays disabled.
+
+    A rows pair carries the coin ("AAA"), not the symbol, so it is matched on
+    the coin half of every live symbol — a coin quoted in anything but USDT
+    must not be called delisted for lacking an `_USDT` twin.
+    """
+    live = _live_symbols() if live is None else live
+    if not live:
+        return {"known": False, "coins": [], "candle_pairs": 0,
+                "candle_bytes": 0, "result_pairs": 0, "result_rows": 0,
+                "result_bytes": 0, "bytes": 0,
+                "why": "MEXC's contract list could not be read just now, so "
+                       "nothing can be called delisted — try again in a minute"}
+    live = {str(s) for s in live}
+    live_coins = {s.rsplit("_", 1)[0] for s in live}
+    index = msw.candle_index(scan=False) if index is None else index
+    coins: dict = {}
+    for entry in index.values():
+        sym = str(entry.get("symbol") or "")
+        if not sym or sym in live:
+            continue
+        coin = sym.rsplit("_", 1)[0]
+        if coin in live_coins:
+            continue
+        c = coins.setdefault(coin, _empty_coin(coin, sym))
+        c["candle_pairs"] += 1
+        c["candle_bytes"] += int(entry.get("size") or 0)
+    for r in _pairs_by_coin():
+        coin = str(r["coin"])
+        if coin in live_coins:
+            continue
+        c = coins.setdefault(coin, _empty_coin(coin, f"{coin}_USDT"))
+        c["result_pairs"] += 1
+        c["result_rows"] += int(r["n"] or 0)
+        c["result_bytes"] += int(r["bytes"] or 0)
+    rows = sorted(coins.values(), key=lambda c: c["coin"])
+    out: dict = {"known": True, "coins": rows, "why": ""}
+    for k in ("candle_pairs", "candle_bytes", "result_pairs", "result_rows",
+              "result_bytes"):
+        out[k] = sum(c[k] for c in rows)
+    out["bytes"] = out["candle_bytes"] + out["result_bytes"]
+    return out
+
+
+def _remove_coin(c: dict, job: dict) -> None:
+    """Every file this coin has in either store, and its rows in the index."""
+    from tradingagents import rows_index as ri
+
+    symbol = c["symbol"]
+    # candles: one file per timeframe, plus the parquet mirror
+    for f in sorted(msw.CANDLES.glob(f"{symbol}-*.json")):
+        size = f.stat().st_size
+        f.unlink()
+        job["freed"] += size
+        job["files_removed"] += 1
+    try:
+        from tradingagents import parquet_store as pqs
+        from tradingagents.dataflows.market_db import TIMEFRAMES
+
+        for tf in TIMEFRAMES:
+            p = pqs._candle_path(symbol, tf)
+            if p.exists():
+                size = p.stat().st_size
+                p.unlink()
+                job["freed"] += size
+                job["files_removed"] += 1
+    except Exception as exc:                                    # noqa: BLE001
+        job["errors"].append(f"parquet {symbol}: {type(exc).__name__}: {exc}")
+    # backtest results: index first, files second, index again (see
+    # _run_results for why twice)
+    for r in _pairs_by_coin():
+        if r["coin"] != c["coin"]:
+            continue
+        job["rows_removed"] += ri.forget_pair(r["pair"])
+        gone = msw.discard_pair(r["coin"], r["tf"])
+        job["freed"] += sum(int(g["bytes"]) for g in gone["deleted"])
+        job["files_removed"] += len(gone["deleted"])
+        job["rows_removed"] += ri.forget_pair(r["pair"])
+
+
+def _forget_lost(symbols: set, job: dict) -> None:
+    """Drop the deleted coins from the download job's lost list. Otherwise the
+    Candles screen keeps printing "N delisted — nothing to retry" for coins
+    that are no longer on this PC at all, and RETRY FAILED would attempt them
+    (harddev round 1)."""
+    try:
+        import json
+
+        from tradingagents import db_jobs as dj
+
+        f = dj.FILES["download"]["lost"]
+        if not f.exists():
+            return
+        got = json.loads(f.read_text(encoding="utf-8"))
+        before = list(got.get("pairs") or [])
+        pairs = [p for p in before
+                 if not (len(p) == 2 and str(p[0]) in symbols)]
+        if len(pairs) == len(before):
+            return
+        got["pairs"] = pairs
+        tmp = f.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(got), encoding="utf-8")
+        tmp.replace(f)
+        job["lost_cleared"] = len(before) - len(pairs)
+    except Exception as exc:                                    # noqa: BLE001
+        job["errors"].append(f"lost list: {type(exc).__name__}: {exc}")
+
+
+def _run_delisted(job: dict) -> None:
+    rep = delisted_report()
+    if not rep["known"]:
+        job["errors"].append(rep["why"])
+        return
+    job["total"] = len(rep["coins"])
+    job["coins"] = [c["coin"] for c in rep["coins"]]
+    removed: set = set()
+    for c in rep["coins"]:
+        if job.get("stop"):
+            break
+        try:
+            _remove_coin(c, job)
+            removed.add(c["symbol"])
+        except Exception as exc:                                # noqa: BLE001
+            job["errors"].append(f"{c['coin']}: {type(exc).__name__}: {exc}")
+        job["done"] += 1
+    _forget_lost(removed, job)
+    try:
+        msw.candle_index(scan=True)
+    except Exception as exc:                                    # noqa: BLE001
+        job["errors"].append(f"candle index: {type(exc).__name__}: {exc}")
+
+
 # ---------------------------------------------------------------- the jobs
 def _writer_running(kind: str) -> str:
     """The name of a job writing this store right now, or ""."""
@@ -274,15 +447,27 @@ def start_delete(kind: str, through: str, now: float | None = None) -> dict:
     """Begin deleting `through` and every older month of `kind`. Raises
     ValueError with the reason when it must not — the route answers 409."""
     if kind not in _jobs:
-        raise ValueError(f"unknown store {kind!r}; use candles or results")
-    if not MONTH_RE.match(str(through or "")):
-        raise ValueError(f"{through!r} is not a month like 2025-02")
-    this_month = month_key((now if now is not None else time.time()) * 1000)
-    if through >= this_month:
         raise ValueError(
-            f"{month_label(through)} is the current month — deleting it would "
-            f"remove what the runner and the next backtest need. Pick an older "
-            f"month; everything older than it goes too")
+            f"unknown store {kind!r}; use candles, results or delisted")
+    if kind == "delisted":
+        # not a month: every stored coin the venue no longer lists, and only
+        # when the venue could actually be asked
+        rep = delisted_report()
+        if not rep["known"]:
+            raise ValueError(rep["why"])
+        if not rep["coins"]:
+            raise ValueError("no stored coin is delisted — nothing to delete")
+        through, label = "delisted", f"{len(rep['coins'])} delisted coin(s)"
+    else:
+        if not MONTH_RE.match(str(through or "")):
+            raise ValueError(f"{through!r} is not a month like 2025-02")
+        this_month = month_key((now if now is not None else time.time()) * 1000)
+        if through >= this_month:
+            raise ValueError(
+                f"{month_label(through)} is the current month — deleting it "
+                f"would remove what the runner and the next backtest need. "
+                f"Pick an older month; everything older than it goes too")
+        label = month_label(through)
     busy = _writer_running(kind)
     if busy:
         raise ValueError(
@@ -295,16 +480,19 @@ def start_delete(kind: str, through: str, now: float | None = None) -> dict:
                 f"a delete of {kind} is already running "
                 f"({cur['done']} of {cur['total']} done)")
         job = {"kind": kind, "through": through,
-               "label": month_label(through), "running": True,
+               "label": label, "running": True,
                "started": time.time(), "finished": None,
                "done": 0, "total": 0, "freed": 0, "errors": [],
                "files_removed": 0, "files_trimmed": 0, "bars_removed": 0,
                "rows_removed": 0}
         _jobs[kind] = job
 
+    runner = {"candles": _run_candles, "results": _run_results,
+              "delisted": _run_delisted}[kind]
+
     def _go():
         try:
-            (_run_candles if kind == "candles" else _run_results)(job)
+            runner(job)
         except Exception as exc:                                # noqa: BLE001
             job["errors"].append(f"{type(exc).__name__}: {exc}")
         finally:

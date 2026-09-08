@@ -697,9 +697,22 @@ def storage_months() -> dict:
     return sm.snapshot()
 
 
+@app.get("/api/storage/delisted")
+def storage_delisted() -> dict:
+    """Every stored coin MEXC no longer lists, what it costs on disk, and the
+    delete job's progress — the Backtest screen's DELETE N DELISTED button.
+    `known: False` when the venue could not be asked: the button then says so
+    and stays disabled, never guessing."""
+    from tradingagents import storage_months as sm
+
+    return {"delisted": sm.delisted_report(), "job": sm.progress("delisted"),
+            "writer": sm._writer_running("delisted")}
+
+
 class MonthDelete(BaseModel):
-    kind: str          # "candles" or "results"
-    through: str       # "2025-02" — this month AND every older one
+    kind: str          # "candles", "results" or "delisted"
+    through: str = ""  # "2025-02" — this month AND every older one; unused
+                       # for "delisted"
 
 
 @app.post("/api/storage/months/delete")

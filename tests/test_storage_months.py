@@ -236,6 +236,125 @@ def test_forget_pair_removes_rows_and_the_summary(store):
     assert ri.forget_pair("AAA-1h") == 0            # twice is harmless
 
 
+# ---------------------------------------------------------------- delisted
+# Operator, 2026-09-09: "create a button in backtest 'Delete X Delisted' where
+# x is number of coin delisted. if i click this delete the candle and backtest
+# for the delisted coin"
+
+def _delisted_store(monkeypatch, live):
+    monkeypatch.setattr(sm, "_live_symbols", lambda: live)
+    bars = list(range(_ms(2026, 8, 1), _ms(2026, 8, 3), HOUR))
+    _write_candles("AAA_USDT", "1h", bars)            # listed
+    _write_candles("DEAD_USDT", "1h", bars)           # gone: candles + rows
+    _write_candles("DEAD_USDT", "4h", bars)
+    _measured("AAA", "1h", _ms(2026, 8, 10))
+    _measured("DEAD", "1h", _ms(2026, 8, 10))
+    _measured("GONE", "4h", _ms(2026, 8, 10))         # gone: rows only
+    msw.candle_index(scan=True)
+    ri.sync(now=time.time() + ri.SETTLE_S + 1)
+
+
+def test_delisted_report_names_every_stored_coin_the_venue_dropped(store, monkeypatch):
+    _delisted_store(monkeypatch, {"AAA_USDT", "OTHER_USDT"})
+    rep = sm.delisted_report()
+    assert rep["known"] is True
+    assert [c["coin"] for c in rep["coins"]] == ["DEAD", "GONE"]
+    dead = rep["coins"][0]
+    assert dead["candle_pairs"] == 2 and dead["result_pairs"] == 1
+    assert dead["result_rows"] == 2 and dead["candle_bytes"] > 0
+    assert rep["coins"][1]["candle_pairs"] == 0 and rep["coins"][1]["result_pairs"] == 1
+    assert rep["candle_pairs"] == 2 and rep["result_pairs"] == 2
+    assert rep["bytes"] == rep["candle_bytes"] + rep["result_bytes"] > 0
+
+
+def test_a_coin_quoted_in_something_else_is_not_called_delisted(store, monkeypatch):
+    """rows pairs carry the coin, not the symbol: AAA listed as AAA_USDC must
+    not be deleted for lacking an AAA_USDT twin."""
+    _delisted_store(monkeypatch, {"AAA_USDC", "DEAD_USDT", "GONE_USDT"})
+    assert sm.delisted_report()["coins"] == []
+
+
+def test_an_unreadable_live_list_means_nothing_is_delisted(store, monkeypatch):
+    """'I could not look' must never read as 'every coin is gone'."""
+    _delisted_store(monkeypatch, None)
+    rep = sm.delisted_report()
+    assert rep["known"] is False and rep["coins"] == []
+    assert "could not be read" in rep["why"]
+    with pytest.raises(ValueError, match="could not be read"):
+        sm.start_delete("delisted", "")
+
+
+def test_delete_delisted_removes_candles_and_backtests_for_those_coins_only(store, monkeypatch):
+    _delisted_store(monkeypatch, {"AAA_USDT"})
+    assert ri.query()["total"] == 6
+    sm.start_delete("delisted", "")
+    job = _wait("delisted")
+    assert job["errors"] == []
+    assert job["done"] == job["total"] == 2
+    assert job["coins"] == ["DEAD", "GONE"]
+    assert job["label"] == "2 delisted coin(s)"
+    # DEAD: two candle files, one rows file, one state file; GONE: rows + state
+    assert not (msw.CANDLES / "DEAD_USDT-1h.json").exists()
+    assert not (msw.CANDLES / "DEAD_USDT-4h.json").exists()
+    assert not (msw.ROWDIR / "DEAD-1h.json").exists()
+    assert not (msw.ROWDIR / "GONE-4h.json").exists()
+    assert not (msw.STATES / "GONE-4h.json").exists()
+    assert job["files_removed"] == 2 + 2 + 2
+    assert job["rows_removed"] == 4
+    assert job["freed"] > 0
+    # the listed coin is untouched, on disk and in the index
+    assert (msw.CANDLES / "AAA_USDT-1h.json").exists()
+    assert (msw.ROWDIR / "AAA-1h.json").exists()
+    assert ri.query()["total"] == 2
+    assert {r["coin"] for r in ri.query()["rows"]} == {"AAA"}
+    # and the candle index no longer lists them
+    assert set(msw.candle_index(scan=False)) == {"AAA_USDT-1h"}
+    assert sm.delisted_report()["coins"] == []
+
+
+def test_delete_delisted_clears_those_coins_from_the_download_lost_list(store, monkeypatch, tmp_path):
+    """harddev round 1: lost.json kept naming the deleted pairs, so the
+    Candles screen went on saying 'N delisted — nothing to retry' for coins no
+    longer on this PC, and RETRY FAILED would have attempted them."""
+    from tradingagents import db_jobs as dj
+
+    lost = tmp_path / "db_download.lost.json"
+    lost.write_text(json.dumps({"pairs": [["DEAD_USDT", "1h"], ["AAA_USDT", "4h"],
+                                          ["GONE_USDT", "1h"]],
+                                "written": 1.0}))
+    monkeypatch.setitem(dj.FILES["download"], "lost", lost)
+    _delisted_store(monkeypatch, {"AAA_USDT"})
+    sm.start_delete("delisted", "")
+    job = _wait("delisted")
+    assert job["errors"] == []
+    left = json.loads(lost.read_text())
+    assert left["pairs"] == [["AAA_USDT", "4h"]]
+    assert left["written"] == 1.0                    # nothing else touched
+    assert job["lost_cleared"] == 2
+
+
+def test_delete_delisted_refuses_when_nothing_is_delisted(store, monkeypatch):
+    _delisted_store(monkeypatch, {"AAA_USDT", "DEAD_USDT", "GONE_USDT"})
+    with pytest.raises(ValueError, match="nothing to delete"):
+        sm.start_delete("delisted", "")
+
+
+def test_delisted_waits_for_every_writer_of_either_store():
+    assert set(sm.WRITERS["delisted"]) == {"download", "backtest", "collect", "btupdate"}
+
+
+def test_the_backtest_screen_has_the_button_and_asks_twice():
+    p = open("webapp/src/components/backtest/JobsPanel.tsx", encoding="utf-8").read()
+    assert "DELETE {dead.delisted.coins.length} DELISTED" in p, \
+        "the count on the button is the API's, never counted in the component"
+    assert "yes, delete" in p and "cancel" in p
+    assert "!dead.delisted.known" in p, "an unreadable venue list disables it"
+    a = open("webapp/src/lib/api.ts", encoding="utf-8").read()
+    assert '"/api/storage/delisted"' in a
+    api = open("tradingagents/api.py", encoding="utf-8").read()
+    assert '@app.get("/api/storage/delisted")' in api
+
+
 # ---------------------------------------------------------------- the UI
 def test_the_panel_says_older_months_go_too_and_asks_twice():
     p = open("webapp/src/components/candles/MonthsPanel.tsx", encoding="utf-8").read()

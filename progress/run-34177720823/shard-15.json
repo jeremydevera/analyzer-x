@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 40, "total": 53, "rows": 1352958, "note": "SAND 1h: rule 117/120 (cf_diadx_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-08T02:21:28Z"}
+{"shard": 15, "stage": "testing", "done": 41, "total": 53, "rows": 1379578, "note": "SIGN 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 77.4, "updated": "2026-09-08T02:22:26Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 25, "total": 53, "rows": 693580, "note": "JELLYJELLY 1h: rule 4/120 (trend50)", "failed": [], "pct": 47.2, "updated": "2026-09-08T03:55:43Z"}
+{"shard": 11, "stage": "testing", "done": 27, "total": 53, "rows": 718220, "note": "LA 1d: 394 bars, testing 120 rules", "failed": [], "pct": 50.9, "updated": "2026-09-08T03:56:51Z"}

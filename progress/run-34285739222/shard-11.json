@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 20, "total": 53, "rows": 745432, "note": "GBP 30m: 15,987 bars, testing 120 rules", "failed": [], "pct": 37.7, "updated": "2026-09-08T22:58:45Z"}
+{"shard": 11, "stage": "testing", "done": 20, "total": 53, "rows": 767212, "note": "GBP 30m: rule 98/120 (cf_ttm_l1)", "failed": [], "pct": 37.7, "updated": "2026-09-08T22:59:30Z"}

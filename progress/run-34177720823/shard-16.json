@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 31, "total": 53, "rows": 1171314, "note": "MUSTOCK 1h: rule 48/120 (prank)", "failed": [], "pct": 58.5, "updated": "2026-09-08T02:16:29Z"}
+{"shard": 16, "stage": "testing", "done": 32, "total": 53, "rows": 1206554, "note": "NGAS 4h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 60.4, "updated": "2026-09-08T02:17:14Z"}

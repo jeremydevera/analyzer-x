@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 3, "total": 53, "rows": 119984, "note": "ALPINE 30m: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 5.7, "updated": "2026-09-08T22:30:30Z"}
+{"shard": 13, "stage": "testing", "done": 5, "total": 53, "rows": 141624, "note": "ASTEROID 30m: rule 1/120 (mom6)", "failed": [], "pct": 9.4, "updated": "2026-09-08T22:31:16Z"}

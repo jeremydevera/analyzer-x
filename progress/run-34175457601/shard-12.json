@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 27, "total": 53, "rows": 570378, "note": "LDO 4h: rule 33/120 (heikin)", "failed": [], "pct": 50.9, "updated": "2026-09-08T01:11:53Z"}
+{"shard": 12, "stage": "testing", "done": 29, "total": 53, "rows": 624806, "note": "MEGA 1d: 321 bars, testing 120 rules", "failed": [], "pct": 54.7, "updated": "2026-09-08T01:12:51Z"}

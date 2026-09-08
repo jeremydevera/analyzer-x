@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 49, "total": 53, "rows": 1798996, "note": "USTC 1h: rule 4/120 (trend50)", "failed": [], "pct": 92.5, "updated": "2026-09-08T02:43:24Z"}
+{"shard": 9, "stage": "testing", "done": 49, "total": 53, "rows": 1821436, "note": "USTC 1h: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 92.5, "updated": "2026-09-08T02:44:09Z"}

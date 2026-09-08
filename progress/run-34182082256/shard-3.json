@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 33, "total": 53, "rows": 844988, "note": "NKESTOCK 4h: rule 29/120 (hull20)", "failed": [], "pct": 62.3, "updated": "2026-09-08T03:15:48Z"}
+{"shard": 3, "stage": "testing", "done": 35, "total": 53, "rows": 897544, "note": "ORDER 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-08T03:16:37Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 51, "total": 53, "rows": 1626786, "note": "W 30m: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 96.2, "updated": "2026-09-08T23:37:16Z"}
+{"shard": 15, "stage": "testing", "done": 52, "total": 53, "rows": 1652746, "note": "XPIN 4h: rule 92/120 (cf_soup_l1)", "failed": [], "pct": 98.1, "updated": "2026-09-08T23:38:01Z"}

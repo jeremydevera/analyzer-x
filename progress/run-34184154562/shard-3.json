@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 27, "total": 53, "rows": 750774, "note": "KOSTOCK 1h: rule 90/120 (cf_chan_l2)", "failed": [], "pct": 50.9, "updated": "2026-09-08T04:01:54Z"}
+{"shard": 3, "stage": "testing", "done": 29, "total": 53, "rows": 792722, "note": "MANTRA 1d: 188 bars, testing 120 rules", "failed": [], "pct": 54.7, "updated": "2026-09-08T04:02:42Z"}

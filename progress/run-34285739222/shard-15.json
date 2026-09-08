@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 1, "total": 53, "rows": 45780, "note": "AAVE 30m: rule 93/120 (cf_soup_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-08T22:29:08Z"}
+{"shard": 15, "stage": "testing", "done": 3, "total": 53, "rows": 79088, "note": "ALUMINUM 30m: rule 73/120 (volspike)", "failed": [], "pct": 5.7, "updated": "2026-09-08T22:29:54Z"}

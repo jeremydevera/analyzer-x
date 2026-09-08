@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 14, "total": 53, "rows": 282804, "note": "CUPSEY 30m: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 26.4, "updated": "2026-09-08T22:37:55Z"}
+{"shard": 15, "stage": "testing", "done": 16, "total": 53, "rows": 319844, "note": "DYDX 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 30.2, "updated": "2026-09-08T22:38:49Z"}

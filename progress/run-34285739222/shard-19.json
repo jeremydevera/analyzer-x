@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 49, "total": 53, "rows": 1899018, "note": "US 30m: rule 28/120 (vortex14)", "failed": [], "pct": 92.5, "updated": "2026-09-08T23:33:15Z"}
+{"shard": 19, "stage": "testing", "done": 50, "total": 53, "rows": 1918598, "note": "WAL 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 94.3, "updated": "2026-09-08T23:34:09Z"}

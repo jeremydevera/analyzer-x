@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 9, "total": 54, "rows": 361388, "note": "BLEND 30m: 6,595 bars, testing 120 rules", "failed": [], "pct": 16.7, "updated": "2026-09-08T22:40:13Z"}
+{"shard": 0, "stage": "testing", "done": 10, "total": 54, "rows": 408650, "note": "BRKBSTOCK 30m: rule 20/120 (stoch14)", "failed": [], "pct": 18.5, "updated": "2026-09-08T22:40:58Z"}

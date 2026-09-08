@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 10, "total": 53, "rows": 273824, "note": "CAD 4h: 1,998 bars, testing 120 rules", "failed": [], "pct": 18.9, "updated": "2026-09-08T01:12:05Z"}
+{"shard": 16, "stage": "testing", "done": 11, "total": 53, "rows": 313160, "note": "CETUS 4h: rule 1/120 (mom6)", "failed": [], "pct": 20.8, "updated": "2026-09-08T01:12:51Z"}

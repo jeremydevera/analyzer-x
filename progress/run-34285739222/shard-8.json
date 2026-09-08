@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 52, "total": 54, "rows": 1844338, "note": "XLM 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 96.3, "updated": "2026-09-08T23:49:37Z"}
+{"shard": 8, "stage": "testing", "done": 53, "total": 54, "rows": 1870222, "note": "ZAMA 30m: rule 2/120 (mom15)", "failed": [], "pct": 98.1, "updated": "2026-09-08T23:50:25Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 17, "total": 54, "rows": 488422, "note": "ELSTOCK 1h: downloading candles", "failed": [], "pct": 31.5, "updated": "2026-09-08T03:56:27Z"}
+{"shard": 0, "stage": "testing", "done": 19, "total": 54, "rows": 548566, "note": "FLNCSTOCK 1h: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 35.2, "updated": "2026-09-08T03:57:12Z"}

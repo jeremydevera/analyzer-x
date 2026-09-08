@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 40, "total": 53, "rows": 1258492, "note": "RUNE 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 75.5, "updated": "2026-09-08T02:19:47Z"}
+{"shard": 8, "stage": "testing", "done": 40, "total": 53, "rows": 1291272, "note": "RUNE 1h: rule 24/120 (psar)", "failed": [], "pct": 75.5, "updated": "2026-09-08T02:20:32Z"}

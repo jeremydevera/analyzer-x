@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 39, "total": 53, "rows": 1405372, "note": "RKLBSTOCK 4h: rule 49/120 (vwaprev)", "failed": [], "pct": 73.6, "updated": "2026-09-08T02:16:07Z"}
+{"shard": 14, "stage": "testing", "done": 40, "total": 53, "rows": 1485502, "note": "SAMSUNGSTOCK 1h: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 75.5, "updated": "2026-09-08T02:16:52Z"}

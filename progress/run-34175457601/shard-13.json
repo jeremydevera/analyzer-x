@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 22, "total": 53, "rows": 464386, "note": "HIVE 1d: rule 53/120 (squeeze)", "failed": [], "pct": 41.5, "updated": "2026-09-08T01:12:40Z"}
+{"shard": 13, "stage": "testing", "done": 23, "total": 53, "rows": 496330, "note": "H 1d: 394 bars, testing 120 rules", "failed": [], "pct": 43.4, "updated": "2026-09-08T01:13:33Z"}

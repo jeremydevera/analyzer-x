@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 33, "total": 54, "rows": 1318692, "note": "NEX 30m: rule 8/120 (fib618)", "failed": [], "pct": 61.1, "updated": "2026-09-08T23:29:03Z"}
+{"shard": 1, "stage": "testing", "done": 35, "total": 54, "rows": 1371492, "note": "OPENAI 4h: rule 70/120 (cmf20)", "failed": [], "pct": 64.8, "updated": "2026-09-08T23:29:48Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 19, "total": 53, "rows": 578114, "note": "FLR 1h: rule 63/120 (killzone)", "failed": [], "pct": 35.8, "updated": "2026-09-08T02:01:17Z"}
+{"shard": 5, "stage": "testing", "done": 20, "total": 53, "rows": 620002, "note": "GBP 1h: rule 16/120 (keltner)", "failed": [], "pct": 37.7, "updated": "2026-09-08T02:02:02Z"}

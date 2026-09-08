@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 18, "total": 54, "rows": 750760, "note": "ETHW 30m: rule 108/120 (cf_bosfvg_l2)", "failed": [], "pct": 33.3, "updated": "2026-09-08T22:52:41Z"}
+{"shard": 0, "stage": "testing", "done": 19, "total": 54, "rows": 777336, "note": "FHE 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 35.2, "updated": "2026-09-08T22:53:28Z"}

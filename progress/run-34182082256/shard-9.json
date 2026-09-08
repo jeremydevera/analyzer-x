@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 5, "total": 53, "rows": 136512, "note": "ASMLSTOCK 1d: 288 bars, testing 120 rules", "failed": [], "pct": 9.4, "updated": "2026-09-08T03:04:47Z"}
+{"shard": 9, "stage": "testing", "done": 7, "total": 53, "rows": 187068, "note": "BARD 4h: 2,128 bars, testing 120 rules", "failed": [], "pct": 13.2, "updated": "2026-09-08T03:05:42Z"}

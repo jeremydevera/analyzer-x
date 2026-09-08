@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 26, "total": 54, "rows": 1001292, "note": "JTO 30m: rule 46/120 (rsi2)", "failed": [], "pct": 48.1, "updated": "2026-09-08T23:08:11Z"}
+{"shard": 6, "stage": "testing", "done": 26, "total": 54, "rows": 1012732, "note": "JTO 30m: rule 100/120 (cf_soup1)", "failed": [], "pct": 48.1, "updated": "2026-09-08T23:08:56Z"}

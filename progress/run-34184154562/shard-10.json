@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 44, "total": 53, "rows": 1341746, "note": "STBL 1h: 8,557 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-08T04:21:09Z"}
+{"shard": 10, "stage": "testing", "done": 44, "total": 53, "rows": 1355166, "note": "STBL 1h: rule 56/120 (insidebrk)", "failed": [], "pct": 83.0, "updated": "2026-09-08T04:21:54Z"}

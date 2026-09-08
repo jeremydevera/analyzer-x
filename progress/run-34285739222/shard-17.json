@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 17, "total": 53, "rows": 512478, "note": "ESP 30m: rule 32/120 (gmma)", "failed": [], "pct": 32.1, "updated": "2026-09-08T22:43:49Z"}
+{"shard": 17, "stage": "testing", "done": 18, "total": 53, "rows": 535698, "note": "FCXSTOCK 30m: rule 37/120 (ultosc)", "failed": [], "pct": 34.0, "updated": "2026-09-08T22:44:34Z"}

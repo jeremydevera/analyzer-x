@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 26, "total": 54, "rows": 1011190, "note": "JUP 30m: rule 13/120 (pivot)", "failed": [], "pct": 48.1, "updated": "2026-09-08T23:18:36Z"}
+{"shard": 7, "stage": "testing", "done": 26, "total": 54, "rows": 1019590, "note": "JUP 30m: rule 56/120 (insidebrk)", "failed": [], "pct": 48.1, "updated": "2026-09-08T23:19:21Z"}

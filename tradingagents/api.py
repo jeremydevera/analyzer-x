@@ -666,6 +666,35 @@ def storage_sizes() -> dict:
     return pqs.sizes()
 
 
+@app.get("/api/storage/months")
+def storage_months() -> dict:
+    """Candles per month and backtest results per month measured, with the
+    delete jobs' progress — see storage_months.py for what "month" means in
+    each store. From the candle index and the pairs table: nothing here reads
+    a candle file or a rows file on a polled route."""
+    from tradingagents import storage_months as sm
+
+    return sm.snapshot()
+
+
+class MonthDelete(BaseModel):
+    kind: str          # "candles" or "results"
+    through: str       # "2025-02" — this month AND every older one
+
+
+@app.post("/api/storage/months/delete")
+def storage_months_delete(q: MonthDelete) -> dict:
+    """Start deleting one month and everything older. 409 with the reason
+    when it must not start (current month, a writer job running, a delete
+    already running)."""
+    from tradingagents import storage_months as sm
+
+    try:
+        return sm.start_delete(q.kind, q.through)
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
 # -------------------------------------------------------------------- jobs
 def _check_kind(kind: str) -> None:
     if kind not in JOB_KINDS:
@@ -969,11 +998,34 @@ def job_stop(kind: str) -> dict:
 
 # ----------------------------------------------------------------- history
 @app.get("/api/ledger")
-def ledger(limit: int = 500) -> dict:
+def ledger(limit: int = 500, actions: str | None = None) -> dict:
+    """The trade ledger, newest first.
+
+    `actions` names the rows the caller wants — "enter,exit" for TRADES.
+    Without it a caller asking for the newest 200 rows gets 200 LEDGER rows,
+    and this ledger is almost entirely refusals: measured Sep 09, 2026 on the
+    operator's own file, 3,666 rows of which 2,868 were `gate_blocked` and 552
+    `blocked`, against 6 `enter` and 6 `exit`. The newest 200 spanned 23 hours
+    and held 2 of the 12 trades.
+
+    That is what hid a real demo trade. Row #YDMRLEZ5 (KITE 1h squeeze, SL 3 /
+    TP 3, flat) showed one loss, the runner had taken it on paper at
+    Sep 07, 2026 5:01pm for -3.19, and the history panel could not show it: the
+    exit sat 640 rows from the end and the panel filtered to trades AFTER the
+    server had already thrown them away.
+
+    `total` stays the whole ledger's length — the panel prints it as "N lines
+    on this PC", which is what it is. `matched` is how many rows the filter
+    left, so a caller can tell "no trades" from "no ledger".
+    """
     import tradingagents.auto_trader as at
 
     rows = at.ledger_tail(100000)
-    return {"rows": rows[:max(0, min(limit, 5000))], "total": len(rows)}
+    want = {a.strip() for a in (actions or "").split(",") if a.strip()}
+    kept = [r for r in rows if r.get("action") in want] if want else rows
+    return {"rows": kept[:max(0, min(limit, 5000))],
+            "total": len(rows), "matched": len(kept),
+            "actions": sorted(want)}
 
 
 @app.get("/api/deployments")

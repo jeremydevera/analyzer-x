@@ -1,12 +1,19 @@
 "use client";
 /** Deployment history and the trade ledger — both from this PC's files. */
 import { useEffect, useState } from "react";
-import { api, DeploymentRow, fmtMoney, LedgerRow } from "@/lib/api";
+import { api, DeploymentRow, fmtMoney, fmtWhen, LedgerRow } from "@/lib/api";
 import {
   Table, TableBody, TableCell, TableHeader, TableRow,
 } from "@/components/ui/table";
 
-const ts = (v: number) => new Date(v * 1000).toISOString().slice(0, 16).replace("T", " ");
+// `Aug 03, 2026 8:03pm`, via the project's ONE formatter. This used to build
+// a Date from the seconds and slice its ISO string, which printed
+// `2026-09-07 17:01` — the compact stamp CLAUDE.md bans outright — on every
+// row of the panel the operator reads. The date test only scanned for
+// `.toLocale`, so the hand-rolled version walked straight past it, and a test
+// below now covers that spelling too. (The old expression is described here
+// rather than quoted: the scan greps this file.)
+const ts = (v: number) => fmtWhen(v);
 /** Held time, from the seconds the ledger stores. */
 const held = (s?: number | null) =>
   s == null ? "—" : s >= 86400 ? `${(s / 86400).toFixed(1)}d`
@@ -20,7 +27,13 @@ export default function HistoryPanel() {
 
   useEffect(() => {
     api.deployments().then((d) => setDeps(d.rows)).catch(() => {});
-    api.ledger(200).then((d) => { setLedger(d.rows); setTotal(d.total); }).catch(() => {});
+    // TRADES, asked for by name. The panel used to fetch 200 ledger ROWS and
+    // filter to enter/exit here — but 96% of the newest 200 are refusals, so
+    // it received 2 of the 12 trades that exist and the KITE loss of
+    // Sep 07, 2026 5:01pm (640 rows back) could never appear.
+    api.ledger(200, "enter,exit")
+      .then((d) => { setLedger(d.rows); setTotal(d.total); })
+      .catch(() => {});
   }, []);
 
   const trades = ledger.filter((r) => r.action === "enter" || r.action === "exit");

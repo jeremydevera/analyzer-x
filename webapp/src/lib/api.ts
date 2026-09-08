@@ -53,6 +53,23 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return r.json() as Promise<T>;
 }
 
+/** post, but a refusal's `detail` becomes the error text — a 409 that says
+ *  "a download job is writing this store right now" must reach the screen as
+ *  that sentence, not as "HTTP 409" */
+async function postDetail<T>(path: string, body: unknown): Promise<T> {
+  const r = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) {
+    let detail = "";
+    try { detail = String((await r.json())?.detail ?? ""); } catch { /* no body */ }
+    throw new Error(detail || `${path} → HTTP ${r.status}`);
+  }
+  return r.json() as Promise<T>;
+}
+
 // ---------------------------------------------------------------- types
 export interface StrategyRow {
   /** LAST N MONTHS: what this row did inside the window. Profit and green are
@@ -173,6 +190,44 @@ export interface CoverageRow {
   first: string;
   last: string;
   days: number;
+}
+
+/** one calendar month of a store — candles: bars whose time is in the month;
+ *  results: pairs LAST MEASURED in the month (see storage_months.py) */
+export interface MonthRow {
+  month: string;      // "2025-02"
+  label: string;      // "Feb 2025"
+  pairs: number;
+  bytes: number;
+  bars?: number;      // candles
+  rows?: number;      // results
+  unsized?: number;   // results: pairs indexed before bytes were recorded
+}
+export interface MonthJob {
+  kind: "candles" | "results";
+  through: string;
+  label: string;
+  running: boolean;
+  started_at: string;
+  finished_at: string;
+  done: number;
+  total: number;
+  freed: number;
+  errors: string[];
+  error_count: number;
+  files_removed: number;
+  files_trimmed: number;
+  bars_removed: number;
+  rows_removed: number;
+}
+export interface StorageMonths {
+  candles: { rows: MonthRow[]; estimated: boolean; total_bars: number;
+             total_bytes: number; files: number };
+  results: { rows: MonthRow[]; estimated: boolean; total_rows: number;
+             total_bytes: number };
+  jobs: { candles: MonthJob | null; results: MonthJob | null };
+  writers: { candles: string; results: string };
+  this_month: string;
 }
 
 /** one core's slot in a parallel sweep */
@@ -673,6 +728,12 @@ export const api = {
 
   storageByCoin: () => get<{ rows: CoinStorageRow[] }>("/api/storage/by-coin"),
   coverage: () => get<{ rows: CoverageRow[] }>("/api/storage/coverage"),
+  /** what each month of stored data costs, and the delete jobs' progress */
+  storageMonths: () => get<StorageMonths>("/api/storage/months"),
+  /** delete `through` AND every older month of one store; a refusal comes
+   *  back as HTTP 409 with the reason in `detail` */
+  deleteMonths: (kind: "candles" | "results", through: string) =>
+    postDetail<MonthJob>("/api/storage/months/delete", { kind, through }),
 
   /** Who is free to run a sweep right now — this PC, GitHub, or both, and
    *  which timeframes each would take. Shown on the UPDATE button before it
@@ -700,8 +761,13 @@ export const api = {
   jobStop: (kind: "download" | "backtest" | "btupdate" | "stratbt") =>
     post<{ ok: boolean }>(`/api/jobs/${kind}/stop`, {}),
 
-  ledger: (limit = 500) =>
-    get<{ rows: LedgerRow[]; total: number }>(`/api/ledger?limit=${limit}`),
+  /** The ledger, newest first. `actions` names the rows wanted — "enter,exit"
+   *  for TRADES. Asking for 200 ROWS gets 200 refusals: the file was 3,666
+   *  rows on Sep 09, 2026 with 2,868 `gate_blocked` and 12 trades, so the
+   *  newest 200 held 2 of them and a real demo loss was invisible. */
+  ledger: (limit = 500, actions?: string) =>
+    get<{ rows: LedgerRow[]; total: number; matched?: number }>(
+      `/api/ledger?limit=${limit}${actions ? `&actions=${actions}` : ""}`),
   deployments: () => get<{ rows: DeploymentRow[] }>("/api/deployments"),
   reports: () =>
     get<{ rows: { name: string; bytes: number; mtime: number }[] }>(

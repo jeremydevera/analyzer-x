@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 40, "total": 54, "rows": 1582208, "note": "RON 30m: rule 22/120 (engulf)", "failed": [], "pct": 74.1, "updated": "2026-09-08T23:26:09Z"}
+{"shard": 10, "stage": "testing", "done": 40, "total": 54, "rows": 1594088, "note": "RON 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 74.1, "updated": "2026-09-08T23:26:55Z"}

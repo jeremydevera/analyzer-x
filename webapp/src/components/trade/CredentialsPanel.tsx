@@ -34,6 +34,17 @@ export default function CredentialsPanel() {
 
   const load = () => tradeApi.creds().then((d) => { setSt(d); setErr(""); }).catch((e) => setErr(String(e)));
   useEffect(() => { load(); }, []);
+  // SELF-HEALING: retry every 5s while errored — an API restart's few dark
+  // seconds must not leave "reading…" and a red line until a page reload
+  // (Sep 09, 2026). ONLY while nothing has loaded (`!st`): a failed SAVE
+  // sets the same `err`, and a healing reload 5s later would wipe that
+  // message before the operator reads it.
+  useEffect(() => {
+    if (!err || st) return;
+    const t = setInterval(load, 5_000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [err, st]);
 
   const save = async () => {
     setBusy("save");

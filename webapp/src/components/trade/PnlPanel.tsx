@@ -14,9 +14,22 @@ export default function PnlPanel() {
   const [err, setErr] = useState("");
 
   useEffect(() => {
-    Promise.all([tradeApi.pnlByCoin(dry), tradeApi.pnlDaily(dry)])
-      .then(([c, d]) => { setCoins(c.coins); setDays(d.days); setErr(""); })
-      .catch((e) => setErr(String(e)));
+    let dead = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const load = () => {
+      Promise.all([tradeApi.pnlByCoin(dry), tradeApi.pnlDaily(dry)])
+        .then(([c, d]) => { if (!dead) { setCoins(c.coins); setDays(d.days); setErr(""); } })
+        .catch((e) => {
+          if (dead) return;
+          setErr(String(e));
+  // SELF-HEALING: a fetch that failed (an API restart's few dark seconds)
+  // retries every 5s until it succeeds — a one-shot panel must not wear a
+  // dead moment's error until someone reloads the page (Sep 09, 2026).
+          timer = setTimeout(load, 5_000);
+        });
+    };
+    load();
+    return () => { dead = true; clearTimeout(timer); };
   }, [dry]);
 
   const coinRows = Object.entries(coins).sort((a, b) => b[1].pnl - a[1].pnl);

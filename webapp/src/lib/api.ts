@@ -64,7 +64,17 @@ async function fetchLaned(input: string, init?: RequestInit): Promise<Response> 
 }
 
 async function get<T>(path: string): Promise<T> {
-  const r = await fetchLaned(`${API_BASE}${path}`, { cache: "no-store" });
+  let r = await fetchLaned(`${API_BASE}${path}`, { cache: "no-store" });
+  // ONE second try, only for a GET. When the API restarts (a fix landing),
+  // the proxy answers 500 for the few seconds it is down — on Sep 09, 2026
+  // the operator opened Auto Trade in that window and every panel went red.
+  // 503 is NOT retried: it carries a real sentence ("the index is being
+  // built") the panels are built to show. A POST is never retried — a
+  // second submit is a second order.
+  if (r.status === 500 || r.status === 502 || r.status === 504) {
+    await new Promise((res) => setTimeout(res, 1_500));
+    r = await fetchLaned(`${API_BASE}${path}`, { cache: "no-store" });
+  }
   if (!r.ok) {
     let detail = "";
     try {
@@ -238,8 +248,32 @@ export interface MonthRow {
   rows?: number;      // results
   unsized?: number;   // results: pairs indexed before bytes were recorded
 }
+/** one stored coin the venue no longer lists, and what it costs */
+export interface DelistedCoin {
+  coin: string;
+  symbol: string;
+  candle_pairs: number;
+  candle_bytes: number;
+  result_pairs: number;
+  result_rows: number;
+  result_bytes: number;
+}
+export interface DelistedReport {
+  /** false = MEXC could not be asked; NOTHING is called delisted then */
+  known: boolean;
+  why: string;
+  coins: DelistedCoin[];
+  candle_pairs: number;
+  candle_bytes: number;
+  result_pairs: number;
+  result_rows: number;
+  result_bytes: number;
+  bytes: number;
+}
 export interface MonthJob {
-  kind: "candles" | "results";
+  kind: "candles" | "results" | "delisted";
+  /** delisted only: the coins it removed */
+  coins?: string[];
   through: string;
   label: string;
   running: boolean;
@@ -380,6 +414,9 @@ export interface CloudShard {
   total?: number;
   /** combinations this machine has measured so far */
   rows?: number;
+  /** the history window this run was asked for, in days — the header prints
+   *  it as real dates ("i dont see what dates are being tested", 2026-09-09) */
+  days?: number;
 }
 
 export interface CloudStatus {
@@ -766,9 +803,15 @@ export const api = {
   /** what each month of stored data costs, and the delete jobs' progress */
   storageMonths: () => get<StorageMonths>("/api/storage/months"),
   /** delete `through` AND every older month of one store; a refusal comes
-   *  back as HTTP 409 with the reason in `detail` */
-  deleteMonths: (kind: "candles" | "results", through: string) =>
+   *  back as HTTP 409 with the reason in `detail`. kind "delisted" ignores
+   *  `through` and removes every stored coin MEXC no longer lists */
+  deleteMonths: (kind: "candles" | "results" | "delisted", through = "") =>
     postDetail<MonthJob>("/api/storage/months/delete", { kind, through }),
+  /** the coins MEXC no longer lists that are still on this PC, and the
+   *  delete job's progress — the DELETE N DELISTED button */
+  storageDelisted: () =>
+    get<{ delisted: DelistedReport; job: MonthJob | null; writer: string }>(
+      "/api/storage/delisted"),
 
   /** Who is free to run a sweep right now — this PC, GitHub, or both, and
    *  which timeframes each would take. Shown on the UPDATE button before it

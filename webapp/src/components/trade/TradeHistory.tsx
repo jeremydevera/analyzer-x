@@ -29,7 +29,22 @@ export default function TradeHistory() {
   const [err, setErr] = useState("");
 
   useEffect(() => {
-    tradeApi.history(dry, page, 5).then((r) => { setD(r); setErr(""); }).catch((e) => setErr(String(e)));
+    let dead = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const load = () => {
+      tradeApi.history(dry, page, 5)
+        .then((r) => { if (!dead) { setD(r); setErr(""); } })
+        .catch((e) => {
+          if (dead) return;
+          setErr(String(e));
+  // SELF-HEALING: a fetch that failed (an API restart's few dark seconds)
+  // retries every 5s until it succeeds — a one-shot panel must not wear a
+  // dead moment's error until someone reloads the page (Sep 09, 2026).
+          timer = setTimeout(load, 5_000);
+        });
+    };
+    load();
+    return () => { dead = true; clearTimeout(timer); };
   }, [dry, page]);
 
   useEffect(() => { setPage(1); }, [dry]);

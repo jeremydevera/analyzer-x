@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 21, "total": 53, "rows": 799422, "note": "GUN 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 39.6, "updated": "2026-09-08T02:07:31Z"}
+{"shard": 17, "stage": "testing", "done": 21, "total": 53, "rows": 814382, "note": "GUN 1h: rule 63/120 (killzone)", "failed": [], "pct": 39.6, "updated": "2026-09-08T02:08:16Z"}

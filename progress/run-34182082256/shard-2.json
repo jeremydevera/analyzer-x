@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 32, "total": 54, "rows": 751160, "note": "NAORIS 4h: rule 110/120 (cf_fundfade_l1)", "failed": [], "pct": 59.3, "updated": "2026-09-08T03:16:42Z"}
+{"shard": 2, "stage": "testing", "done": 34, "total": 54, "rows": 789458, "note": "OG 4h: rule 115/120 (cf_diadx)", "failed": [], "pct": 63.0, "updated": "2026-09-08T03:17:27Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 43, "total": 53, "rows": 1515666, "note": "SOPH 1h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 81.1, "updated": "2026-09-08T02:23:17Z"}
+{"shard": 11, "stage": "testing", "done": 44, "total": 53, "rows": 1541846, "note": "STEEM 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 83.0, "updated": "2026-09-08T02:24:03Z"}

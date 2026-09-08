@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 5, "total": 53, "rows": 167300, "note": "ASTER 1h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 9.4, "updated": "2026-09-08T03:42:38Z"}
+{"shard": 12, "stage": "testing", "done": 8, "total": 53, "rows": 233946, "note": "BIRB 1d: 223 bars, testing 120 rules", "failed": [], "pct": 15.1, "updated": "2026-09-08T03:43:25Z"}

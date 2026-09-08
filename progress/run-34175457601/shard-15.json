@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 1, "total": 53, "rows": 0, "note": "ABNBSTOCK 4h: downloading candles", "failed": [], "pct": 1.9, "updated": "2026-09-08T01:05:35Z"}
+{"shard": 15, "stage": "testing", "done": 2, "total": 53, "rows": 32890, "note": "AIN 1d: 394 bars, testing 120 rules", "failed": [], "pct": 3.8, "updated": "2026-09-08T01:06:24Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 1, "total": 53, "rows": 31020, "note": "ACT 1h: rule 76/120 (cf_mom)", "failed": [], "pct": 1.9, "updated": "2026-09-08T03:39:26Z"}
+{"shard": 18, "stage": "testing", "done": 2, "total": 53, "rows": 51700, "note": "AIO 1h: 9,376 bars, testing 120 rules", "failed": [], "pct": 3.8, "updated": "2026-09-08T03:40:15Z"}

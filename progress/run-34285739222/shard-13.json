@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 44, "total": 53, "rows": 1530690, "note": "SQD 30m: rule 1/120 (mom6)", "failed": [], "pct": 83.0, "updated": "2026-09-08T23:35:09Z"}
+{"shard": 13, "stage": "testing", "done": 44, "total": 53, "rows": 1534870, "note": "SQD 30m: rule 16/120 (keltner)", "failed": [], "pct": 83.0, "updated": "2026-09-08T23:35:54Z"}

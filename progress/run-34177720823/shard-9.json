@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 45, "total": 53, "rows": 1627220, "note": "SWARMS 4h: rule 49/120 (vwaprev)", "failed": [], "pct": 84.9, "updated": "2026-09-08T02:38:07Z"}
+{"shard": 9, "stage": "testing", "done": 45, "total": 53, "rows": 1643060, "note": "SWARMS 1h: rule 4/120 (trend50)", "failed": [], "pct": 84.9, "updated": "2026-09-08T02:38:52Z"}

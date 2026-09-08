@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 33, "total": 54, "rows": 1125368, "note": "NFLXSTOCK 30m: rule 102/120 (cf_soup1_l2)", "failed": [], "pct": 61.1, "updated": "2026-09-08T23:14:05Z"}
+{"shard": 2, "stage": "testing", "done": 35, "total": 54, "rows": 1166528, "note": "OPENLEDGER 4h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 64.8, "updated": "2026-09-08T23:14:50Z"}

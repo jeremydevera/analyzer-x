@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 16, "total": 53, "rows": 432290, "note": "EGLD 4h: rule 16/120 (keltner)", "failed": [], "pct": 30.2, "updated": "2026-09-08T01:13:31Z"}
+{"shard": 17, "stage": "testing", "done": 20, "total": 53, "rows": 517562, "note": "GLM 4h: rule 45/120 (zscore20)", "failed": [], "pct": 37.7, "updated": "2026-09-08T01:15:47Z"}

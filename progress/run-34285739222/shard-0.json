@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 51, "total": 54, "rows": 1948304, "note": "WAVES 30m: rule 114/120 (cf_obretest_l2)", "failed": [], "pct": 94.4, "updated": "2026-09-08T23:30:47Z"}
+{"shard": 0, "stage": "testing", "done": 53, "total": 54, "rows": 1997584, "note": "XVG 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 98.1, "updated": "2026-09-08T23:31:35Z"}

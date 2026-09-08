@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 18, "total": 53, "rows": 603366, "note": "FILECOIN 1h: rule 47/120 (ibs)", "failed": [], "pct": 34.0, "updated": "2026-09-08T03:55:41Z"}
+{"shard": 18, "stage": "testing", "done": 20, "total": 53, "rows": 648786, "note": "GLWSTOCK 1h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 37.7, "updated": "2026-09-08T03:56:27Z"}

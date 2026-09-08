@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 16, "total": 54, "rows": 639514, "note": "DOOD 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 29.6, "updated": "2026-09-08T22:54:59Z"}
+{"shard": 6, "stage": "testing", "done": 16, "total": 54, "rows": 643474, "note": "DOOD 30m: rule 12/120 (donchian20)", "failed": [], "pct": 29.6, "updated": "2026-09-08T22:55:44Z"}

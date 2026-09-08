@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 12, "total": 54, "rows": 525810, "note": "CETUS 30m: rule 87/120 (cf_triple_l2)", "failed": [], "pct": 22.2, "updated": "2026-09-08T22:45:47Z"}
+{"shard": 0, "stage": "testing", "done": 14, "total": 54, "rows": 559250, "note": "CRO 30m: 18,959 bars, testing 120 rules", "failed": [], "pct": 25.9, "updated": "2026-09-08T22:46:33Z"}

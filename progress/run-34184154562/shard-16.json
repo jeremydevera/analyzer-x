@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 1, "total": 53, "rows": 15400, "note": "ACE 1h: rule 4/120 (trend50)", "failed": [], "pct": 1.9, "updated": "2026-09-08T03:38:39Z"}
+{"shard": 16, "stage": "testing", "done": 1, "total": 53, "rows": 40480, "note": "ACE 1h: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 1.9, "updated": "2026-09-08T03:39:25Z"}

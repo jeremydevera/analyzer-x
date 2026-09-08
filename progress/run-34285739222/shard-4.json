@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 28, "total": 54, "rows": 1028040, "note": "LINEA 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 51.9, "updated": "2026-09-08T23:00:02Z"}
+{"shard": 4, "stage": "testing", "done": 29, "total": 54, "rows": 1057020, "note": "LYN 30m: rule 1/120 (mom6)", "failed": [], "pct": 53.7, "updated": "2026-09-08T23:00:51Z"}

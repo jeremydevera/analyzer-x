@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 44, "total": 53, "rows": 1742478, "note": "STBL 30m: rule 29/120 (hull20)", "failed": [], "pct": 83.0, "updated": "2026-09-08T23:22:45Z"}
+{"shard": 18, "stage": "testing", "done": 45, "total": 53, "rows": 1761838, "note": "SWARM 30m: downloading candles", "failed": [], "pct": 84.9, "updated": "2026-09-08T23:23:30Z"}

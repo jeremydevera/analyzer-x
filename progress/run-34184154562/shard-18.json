@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 49, "total": 53, "rows": 1527036, "note": "VELVET 1h: rule 35/120 (willr14)", "failed": [], "pct": 92.5, "updated": "2026-09-08T04:18:41Z"}
+{"shard": 18, "stage": "testing", "done": 50, "total": 53, "rows": 1552576, "note": "WET 1h: 6,664 bars, testing 120 rules", "failed": [], "pct": 94.3, "updated": "2026-09-08T04:19:27Z"}

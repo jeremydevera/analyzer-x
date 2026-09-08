@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 52, "total": 53, "rows": 1315780, "note": "XTZ 4h: rule 44/120 (elder)", "failed": [], "pct": 98.1, "updated": "2026-09-08T01:31:29Z"}
+{"shard": 11, "stage": "testing", "done": 53, "total": 53, "rows": 1343720, "note": "ZIG 4h: 1,860 bars, testing 120 rules", "failed": [], "pct": 100.0, "updated": "2026-09-08T01:32:22Z"}

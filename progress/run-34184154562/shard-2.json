@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 5, "total": 54, "rows": 133810, "note": "ARKM 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 9.3, "updated": "2026-09-08T03:41:43Z"}
+{"shard": 2, "stage": "testing", "done": 5, "total": 54, "rows": 151010, "note": "ARKM 1h: rule 81/120 (cf_donch_l2)", "failed": [], "pct": 9.3, "updated": "2026-09-08T03:42:29Z"}

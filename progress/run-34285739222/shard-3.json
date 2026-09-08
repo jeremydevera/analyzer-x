@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 21, "total": 54, "rows": 851356, "note": "GLM 30m: rule 30/120 (kama10)", "failed": [], "pct": 38.9, "updated": "2026-09-08T22:56:41Z"}
+{"shard": 3, "stage": "testing", "done": 21, "total": 54, "rows": 867636, "note": "GLM 30m: rule 105/120 (cf_eqhl_l2)", "failed": [], "pct": 38.9, "updated": "2026-09-08T22:57:27Z"}

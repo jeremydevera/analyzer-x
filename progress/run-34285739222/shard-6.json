@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 43, "total": 54, "rows": 1520516, "note": "SNPSSTOCK 30m: rule 45/120 (zscore20)", "failed": [], "pct": 79.6, "updated": "2026-09-08T23:29:16Z"}
+{"shard": 6, "stage": "testing", "done": 44, "total": 54, "rows": 1561096, "note": "SPELL 30m: rule 1/120 (mom6)", "failed": [], "pct": 81.5, "updated": "2026-09-08T23:30:05Z"}

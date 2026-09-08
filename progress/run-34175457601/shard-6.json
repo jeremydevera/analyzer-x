@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 6, "total": 53, "rows": 108148, "note": "AVAX 4h: 2,369 bars, testing 120 rules", "failed": [], "pct": 11.3, "updated": "2026-09-08T01:07:16Z"}
+{"shard": 6, "stage": "testing", "done": 7, "total": 53, "rows": 149244, "note": "BAND 4h: rule 2/120 (mom15)", "failed": [], "pct": 13.2, "updated": "2026-09-08T01:08:02Z"}

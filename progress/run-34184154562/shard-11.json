@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 46, "total": 53, "rows": 1291674, "note": "TFUEL 1d: 394 bars, testing 120 rules", "failed": [], "pct": 86.8, "updated": "2026-09-08T04:11:43Z"}
+{"shard": 11, "stage": "testing", "done": 47, "total": 53, "rows": 1313676, "note": "TRIA 1h: rule 3/120 (fade15)", "failed": [], "pct": 88.7, "updated": "2026-09-08T04:12:30Z"}

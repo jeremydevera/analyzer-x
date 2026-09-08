@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 48, "total": 53, "rows": 1254648, "note": "TUT 1h: rule 96/120 (cf_emarsi_l2)", "failed": [], "pct": 90.6, "updated": "2026-09-08T04:13:01Z"}
+{"shard": 5, "stage": "testing", "done": 49, "total": 53, "rows": 1288752, "note": "USDC 1h: rule 84/120 (cf_maobv_l2)", "failed": [], "pct": 92.5, "updated": "2026-09-08T04:13:46Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 16, "total": 54, "rows": 466422, "note": "DOOD 1h: rule 16/120 (keltner)", "failed": [], "pct": 29.6, "updated": "2026-09-08T03:55:41Z"}
+{"shard": 0, "stage": "testing", "done": 17, "total": 54, "rows": 488422, "note": "ELSTOCK 1h: downloading candles", "failed": [], "pct": 31.5, "updated": "2026-09-08T03:56:27Z"}

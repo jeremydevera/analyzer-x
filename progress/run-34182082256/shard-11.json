@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 35, "total": 53, "rows": 835408, "note": "PARTI 4h: downloading candles", "failed": [], "pct": 66.0, "updated": "2026-09-08T03:17:13Z"}
+{"shard": 11, "stage": "testing", "done": 35, "total": 53, "rows": 861588, "note": "PARTI 1d: 394 bars, testing 120 rules", "failed": [], "pct": 66.0, "updated": "2026-09-08T03:18:00Z"}

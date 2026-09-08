@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 18, "total": 53, "rows": 556124, "note": "FIGSTOCK 1h: rule 3/120 (fade15)", "failed": [], "pct": 34.0, "updated": "2026-09-08T03:51:37Z"}
+{"shard": 17, "stage": "testing", "done": 20, "total": 53, "rows": 584308, "note": "GLM 1h: rule 8/120 (fib618)", "failed": [], "pct": 37.7, "updated": "2026-09-08T03:52:22Z"}

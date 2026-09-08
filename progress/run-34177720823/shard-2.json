@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 18, "total": 54, "rows": 532256, "note": "EWY 1h: rule 26/120 (adx14)", "failed": [], "pct": 33.3, "updated": "2026-09-08T02:04:40Z"}
+{"shard": 2, "stage": "testing", "done": 19, "total": 54, "rows": 578016, "note": "FLOKI 1h: 9,479 bars, testing 120 rules", "failed": [], "pct": 35.2, "updated": "2026-09-08T02:05:33Z"}

@@ -38,6 +38,9 @@ def shard(tmp_path, monkeypatch):
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     monkeypatch.setattr(mod, "report", lambda *a, **k: None)
+    # These tests guard the retry ORDER, not the cool-down length — without
+    # this each end-of-run retry would really sleep 30 s in the suite.
+    monkeypatch.setattr(mod, "RETRY_COOLDOWN_S", 0.0)
     return mod
 
 
@@ -104,7 +107,12 @@ def test_the_floor_and_the_rows_are_the_shared_rules():
     assert "lines.append(json.dumps(" in src and 'out.write("".join(lines))' in src, \
         "rows are buffered until the pair completes"
     assert "out.write(json.dumps(" not in src
-    assert 'raise PairFailed(' in src and 'except Exception as exc:\n        log(' not in src, \
+    # Scoped to run_pair: the age screen (`old_enough`) is ALLOWED to log an
+    # exception, because it KEEPS the coin when the check fails — the sin this
+    # guards against is a venue failure inside run_pair being logged and the
+    # pair dropped instead of raised for main() to redo.
+    rp = src[src.index("def run_pair("):src.index("\ndef ", src.index("def run_pair("))]
+    assert 'raise PairFailed(' in rp and 'except Exception as exc:\n        log(' not in rp, \
         "a venue failure is raised for main() to redo, not logged and dropped"
 
 

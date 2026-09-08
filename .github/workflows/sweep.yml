@@ -15,7 +15,7 @@ on:
         description: "How many runners to split the work across"
         default: "20"
       coins:
-        description: "Coins per shard (0 = all eligible in that shard)"
+        description: "Max coins one machine may claim (0 = keep claiming until the board is empty)"
         default: "0"
       timeframes:
         description: "Comma-separated, e.g. 15m,30m"

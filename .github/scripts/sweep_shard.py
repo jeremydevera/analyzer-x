@@ -3,8 +3,18 @@
 Public data only — candles, funding, order book, contract detail. No API key is
 read and none is needed, which is why this can run on someone else's machine.
 
-The shard picks its slice of the eligible contracts by index, so N runners cover
-the market without talking to each other.
+WORK IS CLAIMED, NOT SLICED. The shards used to take a fixed slice each
+(`syms[SHARD::SHARDS]`) and exit when it was done; on run 34004227228
+(Sep 06, 2026) four machines sat idle 12-21 minutes while the slowest was at
+30 of 52 coins, because the slices are equal in COUNT but not in WORK — a 15m
+coin with three years of history costs many times a young 4h coin. The
+operator: *"did not i mentioned if the machine is 100% take a new job"*.
+
+Each shard now claims ONE COIN at a time from a shared board on the
+sweep-progress branch (progress.ClaimBoard — an atomic create per coin, so no
+coin can be measured twice) and keeps claiming until the board is empty. The
+run ends when the WORK ends, not when the unluckiest slice does. Without a
+token (local runs, tests) it falls back to the old static slice.
 """
 import json
 import os
@@ -45,9 +55,22 @@ OUT = os.path.join("out", f"rows-{SHARD}.jsonl")
 os.makedirs("out", exist_ok=True)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from progress import Reporter  # noqa: E402
+from progress import ClaimBoard, Reporter  # noqa: E402
 
 report = Reporter()
+board = ClaimBoard()
+
+# Stop CLAIMING here, even though the hard stop is later: the last claimed coin
+# still has to finish and upload before GitHub kills the runner at six hours.
+CLAIM_CUTOFF_S = 4.8 * 3600
+
+# A retried pair is not re-attempted inside this many seconds of its failure.
+# The old design queued every pair up front, so a retry landed minutes later,
+# behind the whole slice; claiming one coin at a time can bring it back around
+# in SECONDS — straight into the same venue blip, burning both redos on one
+# outage. The pair prefers to WAIT BEHIND other work (the queue rotates), and
+# only sleeps when there is nothing else left to do.
+RETRY_COOLDOWN_S = 30.0
 
 
 def log(msg):
@@ -55,46 +78,98 @@ def log(msg):
 
 
 def eligible():
-    """Contracts at least MIN_DAYS old. Every shard screens the same list, in
-    the same order, and then takes its own slice — cheap, and it needs no
-    coordination between runners.
+    """The WHOLE market's contracts, sorted — the same list on every shard.
 
-    MIN_DAYS = 0 means measure everything, and then the screen is skipped
-    entirely: it would fetch a Day1 series per coin (about a thousand requests
-    across twenty shards) only to keep every one of them.
+    No slice here any more: the claim board decides who measures what, one
+    coin at a time. The MIN_DAYS age screen moved to `old_enough`, checked per
+    CLAIMED coin — screening the whole list per shard would be ~1,000 Day1
+    fetches times twenty machines for coins most shards will never touch."""
+    raw = fx._get_public(f"{fx.BASE}/api/v1/contract/detail").get("data") or []
+    syms = sorted(x["symbol"] for x in raw
+                  if str(x.get("symbol", "")).endswith("_USDT")
+                  and int(x.get("state", 1)) == 0)
+    log(f"{len(syms)} contracts on the board")
+    return syms
+
+
+def old_enough(sym):
+    """The MIN_DAYS screen, for ONE claimed coin.
 
     A coin whose age check RAISES is kept, not dropped. It used to be dropped,
     so one timeout deleted a contract from the sweep with nothing but a log
     line to say so — the row's own `days` column is the honest place to report
     a short history, not silent removal from the search."""
-    raw = fx._get_public(f"{fx.BASE}/api/v1/contract/detail").get("data") or []
-    syms = sorted(x["symbol"] for x in raw
-                  if str(x.get("symbol", "")).endswith("_USDT")
-                  and int(x.get("state", 1)) == 0)
-    mine = syms[SHARD::SHARDS]
-    log(f"{len(syms)} contracts, {len(mine)} in this shard")
     if MIN_DAYS <= 0:
-        log(f"MIN_DAYS=0: no age screen, measuring all {len(mine)}")
-        return mine[:PER_SHARD] if PER_SHARD else mine
-    keep, young, unknown = [], 0, 0
-    report("screening", 0, len(mine), note="checking contract ages", force=True)
-    for i, sym in enumerate(mine, 1):
-        try:
-            d = fx.klines(sym, "Day1", 500)
-            if (d["Date"].iloc[-1] - d["Date"].iloc[0]).days >= MIN_DAYS:
-                keep.append(sym)
-            else:
-                young += 1
-        except Exception as exc:
-            log(f"{sym}: age check failed ({str(exc)[:50]}), keeping it anyway")
-            keep.append(sym)
-            unknown += 1
-        report("screening", i, len(mine),
-               note=f"{len(keep)} old enough so far")
-        time.sleep(0.05)
-    log(f"{len(keep)} kept ({unknown} age unknown), "
-        f"{young} dropped as younger than {MIN_DAYS} days")
-    return keep[:PER_SHARD] if PER_SHARD else keep
+        return True
+    try:
+        d = fx.klines(sym, "Day1", 500)
+        return (d["Date"].iloc[-1] - d["Date"].iloc[0]).days >= MIN_DAYS
+    except Exception as exc:
+        log(f"{sym}: age check failed ({str(exc)[:50]}), keeping it anyway")
+        return True
+
+
+def coin_stream(coins, t0):
+    """Yield the coins THIS shard measures: one claim at a time off the board.
+
+    The walk starts at this shard's own region of the sorted list, so at the
+    start the twenty shards claim in twenty different places and almost never
+    race; a shard that finishes its region walks on into the next one — which
+    is exactly the moment the old design went idle.
+
+    Without a token (local runs, tests) it yields the old static slice, and
+    ONLY then: a shard whose board breaks MID-RUN stops rather than guessing,
+    because measuring a coin someone else owns writes the same rows twice and
+    the collector appends duplicates.
+    """
+    if not board.enabled:
+        mine = coins[SHARD::SHARDS]
+        log(f"no claim board (no token) — static slice of {len(mine)}")
+        yield from (mine[:PER_SHARD] if PER_SHARD else mine)
+        return
+    start = (SHARD * len(coins)) // SHARDS
+    order = coins[start:] + coins[:start]
+    # spread the first burst: twenty first-claims in the same second is
+    # twenty commits racing one branch ref
+    time.sleep((SHARD % SHARDS) * 0.7)
+    seen_taken: set = set()
+    claimed = 0
+    dead = 0
+    for sym in order:
+        if PER_SHARD and claimed >= PER_SHARD:
+            log(f"COINS cap reached ({PER_SHARD}) — stopping")
+            return
+        if time.time() - t0 > CLAIM_CUTOFF_S:
+            log("claim cutoff reached — finishing what is queued, "
+                "claiming nothing new so the artifact survives the 6h kill")
+            return
+        if sym in seen_taken:
+            continue
+        # refresh the board over git (free) so a taken coin costs no API call;
+        # the PUT's own 422 is still the real lock for the race window
+        seen_taken |= board.taken()
+        if sym in seen_taken:
+            continue
+        got = board.claim(sym)
+        if got is None:
+            # Unreachable is not the same as contended. One dead answer skips
+            # ONE coin (someone else probably has it anyway); three in a row is
+            # a network that is actually down, and then the shard stops with
+            # what it measured rather than risking a double-measured coin.
+            dead += 1
+            if dead >= 3:
+                log("the claim board is unreachable (3 coins in a row) — "
+                    "stopping with what is measured rather than risking a "
+                    "double-measured coin")
+                return
+            log(f"claim of {sym} got no answer — skipping it, not stopping")
+            continue
+        dead = 0
+        if not got:
+            seen_taken.add(sym)
+            continue
+        claimed += 1
+        yield sym
 
 
 class PairFailed(Exception):
@@ -283,45 +358,80 @@ def main():
     t0 = time.time()
     coins = eligible()
     log(f"window: last {DAYS} days (+30 lookback), floors {br.MIN_BARS}")
-    total, redos, failed = 0, 0, []
-    # a queue, not a nested loop: a pair the venue failed goes to the BACK and
-    # is redone by itself -- the other pairs keep going, the shard never restarts
-    queue = deque((i, sym, tf) for i, sym in enumerate(coins, 1) for tf in TFS)
+    total, redos, young = 0, 0, 0
+    failed: list = []
+    # The queue is PUMPED one claimed coin at a time — the next coin is only
+    # claimed when the queue runs dry, so a shard never sits on coins it is
+    # not measuring. A pair the venue failed still goes to the BACK and is
+    # redone by itself; the other pairs keep going, the shard never restarts.
+    stream = coin_stream(coins, t0)
+    queue = deque()
+    # Failed pairs wait HERE, not in the main queue: a retry runs only when
+    # there is no fresh work left to claim — the same "after the others" the
+    # up-front slice used to give it — so one venue blip is never re-entered
+    # seconds later, burning both redos on the same outage.
+    retries = deque()
     tries: dict = {}
+    failed_at: dict = {}
+    done_pairs = 0
+    claimed = 0
     with open(OUT, "w") as out:
-        while queue:
+        while True:
+            if not queue:
+                sym = next(stream, None)
+                if sym is not None:
+                    if not old_enough(sym):
+                        young += 1
+                        log(f"{sym}: younger than {MIN_DAYS} days, screened out")
+                        continue
+                    claimed += 1
+                    queue.extend((claimed, sym, tf) for tf in TFS)
+                elif retries:
+                    i2, s2, t2 = retries.popleft()
+                    wait = RETRY_COOLDOWN_S - (time.time()
+                                               - failed_at.get((s2, t2), 0.0))
+                    if wait > 0:
+                        time.sleep(wait)
+                    queue.append((i2, s2, t2))
+                else:
+                    break
             i, sym, tf = queue.popleft()
             try:
-                total += run_pair(sym, tf, out, i=i, n=len(coins),
+                total += run_pair(sym, tf, out, i=i, n=claimed,
                                   rows_so_far=total)
+                done_pairs += 1
             except PairFailed as exc:
                 n = tries.get((sym, tf), 0)
                 if n < PAIR_RETRIES:
                     tries[(sym, tf)] = n + 1
+                    failed_at[(sym, tf)] = time.time()
                     redos += 1
                     log(f"{exc} · nothing written, redoing {n + 1}/{PAIR_RETRIES} "
                         f"after the others")
-                    queue.append((i, sym, tf))
+                    retries.append((i, sym, tf))
                     continue
                 failed.append(f"{sym} {tf}: {exc}")
+                done_pairs += 1
                 log(f"{exc} · gave up after {PAIR_RETRIES} redos")
                 # publish it NOW: a runner killed at six hours never reaches
                 # the "done" report, and its named losses would die with it
-                report("testing", i, len(coins), rows=total,
+                report("testing", done_pairs // len(TFS), claimed, rows=total,
                        note=f"{len(failed)} pair(s) lost so far",
                        force=True, failed=failed)
             el = time.time() - t0
             if tf == TFS[-1]:
-                log(f"{i}/{len(coins)} {sym} · {total:,} rows · "
+                log(f"{i}/{claimed} {sym} · {total:,} rows · "
                     f"{el / 60:.0f} min elapsed · "
-                    f"ETA {el / i * (len(coins) - i) / 60:.0f} min")
+                    f"{el / max(1, done_pairs) * len(TFS) / 60:.1f} min/coin")
             # A runner is killed at six hours with no artifact, so stop early
             # and keep what has been measured.
             if el > 5.2 * 3600:
-                log(f"stopping at {i}/{len(coins)} coins to protect the artifact")
+                log(f"stopping at {i}/{claimed} coins to protect the artifact")
                 break
-    report("done", len(coins), len(coins), rows=total,
-           note=f"{total:,} rows · {redos} pair redo(s) · {len(failed)} pair(s) lost",
+    report("done", claimed, claimed, rows=total,
+           note=(f"{total:,} rows · {claimed} coin(s) claimed · {redos} pair "
+                 f"redo(s) · {len(failed)} pair(s) lost"
+                 + (f" · {young} younger than {MIN_DAYS}d" if young else "")),
            force=True, failed=failed)
     log(f"done: {total:,} rows in {(time.time() - t0) / 60:.0f} min · "
         f"{redos} redo(s) · lost: {failed or 'none'}")

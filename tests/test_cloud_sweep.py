@@ -189,21 +189,30 @@ def test_the_age_screen_never_silently_deletes_a_coin():
     """On 2026-08-25 the sweep covered 455 coins, not 993. Two causes, both in
     `eligible()`: the orchestrator let min_days default to 365, and a coin whose
     age check raised was dropped with only a log line. Rule 20 -- a capped grid
-    says what it capped."""
+    says what it capped.
+
+    The screen moved from `eligible()` (whole slice up front) to `old_enough()`
+    (per CLAIMED coin) when work went claim-based on 2026-09-09 — screening the
+    whole list per shard would be ~1,000 Day1 fetches times twenty machines.
+    The three promises are unchanged; only their address moved."""
     src = _shard_src()
-    i = src.index("def eligible(")
+    i = src.index("def old_enough(")
     body = src[i:src.index("\ndef ", i + 10)]
 
     # a failed age check keeps the coin
     exc = body[body.index("except Exception"):]
-    assert "keep.append(sym)" in exc[:400], (
+    assert "return True" in exc[:400], (
         "an age-check failure must keep the coin, not delete it from the sweep")
 
     # min_days = 0 skips the screen instead of fetching a Day1 series per coin
-    assert "if MIN_DAYS <= 0:" in body and "no age screen" in body
+    assert "if MIN_DAYS <= 0:" in body
+    assert body.index("if MIN_DAYS <= 0:") < body.index("fx.klines"), (
+        "the MIN_DAYS=0 short-circuit must come before any fetch")
 
-    # and what WAS dropped is counted out loud
-    assert "young" in body and "dropped as younger than" in body
+    # and what WAS dropped is counted out loud, in the shard's final report
+    main_body = src[src.index("def main("):]
+    assert "young += 1" in main_body
+    assert "younger than {MIN_DAYS}" in main_body
 
 
 def test_the_orchestrator_asks_for_every_contract():

@@ -37,6 +37,119 @@ def _req(method: str, url: str, token: str, body: dict | None = None):
         return json.loads(resp.read() or b"{}")
 
 
+class ClaimBoard:
+    """First shard to create a coin's claim file owns that coin.
+
+    WHY: the shards used to take a fixed slice each (`syms[SHARD::SHARDS]`) and
+    EXIT when it was done. On run 34004227228 (Sep 06, 2026) four machines sat
+    idle 12-21 minutes while the slowest was at 30 of 52 coins — the slices are
+    equal in COUNT but not in WORK, so the run always ends on the unluckiest
+    machine. The operator: *"did not i mentioned if the machine is 100% take a
+    new job"*.
+
+    The primitive is GitHub's contents API: a PUT that sends NO `sha` only
+    CREATES — if the file already exists it answers 422. That makes creating
+    `claims/run-<id>/<coin>.json` an atomic compare-and-swap, so exactly one
+    shard wins each coin and a duplicate measurement (the collector APPENDS a
+    re-seen pair — the operator's "no duplicate") cannot happen.
+
+    Claims are namespaced by run id, so a new run starts with a clean board.
+    Reads go over GIT (`fetch` + `ls-tree`), which spends no API budget — the
+    same lesson as the progress panel, which the secondary rate limit blinded
+    for hours on Sep 02, 2026 when it read through the API.
+    """
+
+    def __init__(self):
+        self.repo = os.environ.get("GITHUB_REPOSITORY", "")
+        self.token = os.environ.get("GITHUB_TOKEN", "")
+        self.run = os.environ.get("GITHUB_RUN_ID", "0")
+        self.shard = int(os.environ.get("SHARD", "0"))
+        self.attempt = int(os.environ.get("GITHUB_RUN_ATTEMPT", "1"))
+        self.dir = f"claims/run-{self.run}"
+        self.enabled = bool(self.repo and self.token)
+
+    def taken(self) -> set:
+        """Coins already claimed, read over git. Best-effort: an empty answer
+        never blocks a claim — the PUT's own 422 is the real lock."""
+        import subprocess
+
+        try:
+            subprocess.run(["git", "fetch", "--quiet", "--depth=1", "origin",
+                            BRANCH], capture_output=True, timeout=60)
+            out = subprocess.run(
+                ["git", "ls-tree", "-r", "--name-only", "FETCH_HEAD",
+                 "--", self.dir], capture_output=True, text=True,
+                timeout=30).stdout
+        except Exception:
+            return set()
+        got = set()
+        for line in out.splitlines():
+            name = line.rsplit("/", 1)[-1]
+            if name.endswith(".json"):
+                got.add(name[:-5])
+        return got
+
+    def claim(self, coin: str):
+        """Try to own `coin`. True = mine. False = someone else's.
+        None = the BOARD is unreachable — the caller must stop claiming, never
+        guess: measuring an unclaimed-looking coin twice writes duplicate rows.
+        """
+        url = (f"{API}/repos/{self.repo}/contents/{self.dir}/{coin}.json")
+        payload = {"shard": self.shard, "attempt": self.attempt,
+                   "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+        body = {"message": f"claim: shard {self.shard} takes {coin}",
+                "content": __import__("base64").b64encode(
+                    json.dumps(payload).encode()).decode(),
+                "branch": BRANCH}
+        # SIX attempts with jitter, because contention is the NORMAL case at
+        # t=0: twenty shards commit their first claim to one branch ref in the
+        # same second, and every collision is a 409. Three tries was enough to
+        # fail a healthy shard out of claiming three seconds into the run.
+        import random
+
+        for attempt in range(6):
+            try:
+                _req("PUT", url, self.token, body)
+                return True
+            except urllib.error.HTTPError as exc:
+                if exc.code in (409,):
+                    # branch head moved under the create — not a lost claim,
+                    # just contention on the ref. Try again.
+                    time.sleep(0.5 + attempt + random.random())
+                    continue
+                if exc.code != 422:
+                    time.sleep(0.5 + attempt + random.random())
+                    continue
+                # 422: the file exists. Usually another shard — but also MY OWN
+                # claim when a create's response was lost on the wire, and my
+                # attempt-1 claim when this job is a RE-RUN of a failed shard
+                # (its coins died with it and nobody else will take them).
+                try:
+                    cur = _req("GET", f"{url}?ref={BRANCH}", self.token)
+                    import base64 as _b64
+
+                    owner = json.loads(_b64.b64decode(
+                        (cur.get("content") or "").encode()))
+                except Exception:
+                    return False
+                if int(owner.get("shard", -1)) != self.shard:
+                    return False
+                if int(owner.get("attempt", 0)) >= self.attempt:
+                    return True                    # my own claim, lost response
+                # my claim from a previous attempt: retake it (CAS on sha)
+                body["sha"] = cur.get("sha")
+                body["message"] = (f"claim: shard {self.shard} retakes {coin} "
+                                   f"(attempt {self.attempt})")
+                try:
+                    _req("PUT", url, self.token, body)
+                    return True
+                except Exception:
+                    return False
+            except Exception:
+                time.sleep(1.0 + attempt)
+        return None
+
+
 class Reporter:
     """Writes this shard's progress, at most once every ``every`` seconds."""
 

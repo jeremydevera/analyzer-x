@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 24, "total": 53, "rows": 556340, "note": "INTUSTOCK 1d: 194 bars, testing 120 rules", "failed": [], "pct": 45.3, "updated": "2026-09-08T03:10:39Z"}
+{"shard": 12, "stage": "testing", "done": 27, "total": 53, "rows": 592838, "note": "LDO 1d: rule 3/120 (fade15)", "failed": [], "pct": 50.9, "updated": "2026-09-08T03:11:24Z"}

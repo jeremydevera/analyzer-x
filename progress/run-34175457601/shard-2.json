@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 32, "total": 54, "rows": 733932, "note": "NAORIS 4h: rule 24/120 (psar)", "failed": [], "pct": 59.3, "updated": "2026-09-08T01:20:34Z"}
+{"shard": 2, "stage": "testing", "done": 34, "total": 54, "rows": 769440, "note": "OG 4h: rule 4/120 (trend50)", "failed": [], "pct": 63.0, "updated": "2026-09-08T01:21:19Z"}

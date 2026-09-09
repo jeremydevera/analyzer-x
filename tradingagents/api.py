@@ -60,7 +60,12 @@ def _finish_handoff() -> None:
         print("[handoff] nothing left unmeasured — no cloud run needed",
               flush=True)
         return
-    run = cs.dispatch(shards=20, coins=len(left), timeframes=",".join(tfs),
+    # BY NAME. This job knows exactly which coins the PC never reached — it is
+    # the whole point of a hand-off — and until Sep 10, 2026 it sent only how
+    # MANY, so the fleet measured the top of its own alphabetical board and the
+    # missed coins stayed missed.
+    run = cs.dispatch(shards=20, coins=0, coin_list=left,
+                      timeframes=",".join(tfs),
                       min_days=0,      # every contract — never the 365 default nobody chose
                       # and the HANDED-OVER job's own stake and window, or the
                       # two halves of one sweep are two different measurements
@@ -661,14 +666,31 @@ def strategies_reindex() -> dict:
 
     st = ri.status()
     behind = int(st.get("behind") or 0)
-    if behind <= 0:
-        return {"started": False, "behind": 0,
+    # THE NUMBER THE BUTTON PRINTS IS THE NUMBER IT WILL WALK. `behind` counts
+    # never-indexed pairs only; `sync()` walks `stale_pairs()`, which also
+    # holds every pair whose file MOVED since it was indexed. On 2026-09-10
+    # that was 806 against 5,276 — the button promised a seventh of its job.
+    todo = int(st.get("stale") or 0) or behind
+    if todo <= 0:
+        return {"started": False, "behind": 0, "todo": 0,
                 "why": "the index is up to date with every measured pair"}
-    if st.get("syncing") or not ri.sync_in_background(force=True):
-        return {"started": False, "behind": behind,
+    if st.get("syncing"):
+        return {"started": False, "behind": behind, "todo": todo,
                 "why": "already indexing — it is working through the backlog"}
-    return {"started": True, "behind": behind,
-            "why": f"indexing {behind:,} measured pair(s) now"}
+    # A DOOR HELD BY SOMETHING ELSE IS NOT A BUTTON THAT WORKED. The catch-up
+    # dies on `database is locked` the moment a cleanup owns the write lock,
+    # and that failure used to be swallowed: "started" with nothing happening.
+    held = st.get("blocked_by")
+    if held:
+        return {"started": False, "behind": behind, "todo": todo,
+                "blocked_by": held,
+                "why": f"the row index is locked by {held} — indexing cannot "
+                       f"start until that finishes or is stopped"}
+    if not ri.sync_in_background(force=True):
+        return {"started": False, "behind": behind, "todo": todo,
+                "why": "already indexing — it is working through the backlog"}
+    return {"started": True, "behind": behind, "todo": todo,
+            "why": f"indexing {todo:,} measured pair(s) now"}
 
 
 # How many rows a request may have restated from rebuilt trades. One: a rebuild
@@ -2181,8 +2203,12 @@ def cloud_dispatch(body: dict) -> dict:
         raise HTTPException(400, why)
     # BACKTEST = from scratch, always: mode "full" is the deliberate reset.
     # UPDATE goes through the btupdate job, which dispatches mode "update".
+    # WHICH coins, by name. `coins` is only the per-machine cap, and sending
+    # it alone is how "BACKTEST with BTC picked" measured 0G, ALPINE, AVAAI…
+    # and never BTC (Sep 10, 2026). An empty list still means the whole market.
     run = cs.dispatch(shards=int(body.get("shards") or 20),
                       coins=int(body.get("coins") or 0),
+                      coin_list=[str(c) for c in (body.get("coin_list") or [])],
                       timeframes=str(body.get("timeframes") or "15m,30m"),
                       min_days=int(body.get("min_days") or 0),
                       days=int(body.get("days") or 365),

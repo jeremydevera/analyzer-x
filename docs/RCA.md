@@ -29,6 +29,96 @@ this repo is also part of the record.
 
 ---
 
+## RCA-2026-09-10-C — the row index went quiet for 13 hours and NOTHING anywhere said why
+
+**SAW** — the operator, `Sep 10, 2026 1:05am`, told the measuring was finished
+while their screen showed the day before's numbers: *"is tehre a bug or what i
+dont understand"*, then *"did you fix the bug"*.
+
+**TIMELINE**
+
+1. `Sep 09  6:22am` — the standalone indexer starts (pid 22424).
+2. `Sep 09 11:55am` — a delisted-coin cleanup starts (pid 12932): remove 32
+   dead coins, **73 pairs**, from `rows.db`. `forget_pairs` takes the write
+   lock in **ONE transaction across every pair** and holds it to the end.
+3. `Sep 10 12:38am` — the last collect finishes. **5,364 pair files** on disk.
+   The measuring is genuinely done.
+4. `Sep 10 12:47am` — REINDEX pressed. It answers
+   **`{"started": true, "behind": 806, "why": "indexing 806 measured pair(s)
+   now"}`** and does **nothing at all**.
+5. `Sep 10 12:50am–1:02am` — measured, repeatedly: `pairs_indexed` frozen at
+   **4,558**, rows at **51,943,352**, across four samples 45 s apart. The
+   write-ahead file grew **+7.3 MB in 60 s** — alive, crawling.
+6. `Sep 10  1:00am` — the indexer used **0.0 s of CPU in 30 s** (258 min of
+   CPU over 18.7 h of wall clock, 61 MB resident). Alive; doing nothing.
+7. `Sep 10  1:03am` — calling `ri.sync(max_pairs=3, force=True)` by hand
+   finally printed the cause: `sqlite3.OperationalError: database is locked`,
+   raised by `ensure()` — the FIRST statement of `sync()`.
+8. Real backlog at that moment: **5,276** pairs (814 never indexed, 4,462
+   whose file had moved) against a 33 GB `rows.db` and a 5.4 GB WAL.
+
+**ROOT CAUSE** — one stall, three faults that each hid it:
+
+* `sync_in_background`'s worker was `except Exception: pass`. The thread died
+  on its first statement and the caller had already returned `started: true`.
+* `POST /api/strategies/reindex` printed `behind` (never-indexed, **806**)
+  as the size of a job that walks `stale_pairs()` (**5,276**) — 6.5x under, so
+  even a working run would have looked finished a sixth of the way in.
+* `spawn_indexer` ran the process with `stdout=DEVNULL, stderr=DEVNULL`. That
+  process is the only thing that prints *"paused: a backtest is running"* and
+  *"indexing N pairs"*. Every line of 18.7 hours went in the bin, and every
+  other job in this project writes `~/.tradingagents/*.log`.
+
+**WHY IT WAS NOT CAUGHT** — the index had tests for what it CONTAINS and how
+FAST it fills (`test_index_catchup`, `test_index_yields_to_the_sweep`,
+`test_rows_index`, 289 passing). None asked what happens when the fill
+**cannot start**. A swallowed exception has no observable behaviour to assert
+unless you decide the failure itself is a product surface — so the guard has to
+be written against the swallow, not the success. Two of the three faults were
+pure reporting, which no correctness test would ever reach.
+
+**COST** — no money. 13 hours of the operator's finished results invisible on
+their own screen, and a diagnosis that took walking the process table and
+sampling CPU per-pid because there was no log to read.
+
+**FIX** — this commit. `_last_error` is kept and served in `status()`;
+`status()` also reports `stale` (the real backlog) and `blocked_by`, a new
+`lock_holder()` that names the cleanup holding the write lock and its phase;
+the route refuses with that reason instead of answering `started`, and prints
+`todo`, not `behind`; `spawn_indexer` writes `~/.tradingagents/rows_index.log`
+with `PYTHONUNBUFFERED=1`.
+
+NOT fixed here, and named so it is not forgotten: `forget_pairs` holds ONE
+transaction across every pair by design, so a 73-pair cleanup freezes the whole
+index for as long as it takes (~14 min/pair on this spinning disk). Chunked
+commits are the real repair; that is a deliberate change, not a 1am one, and
+the caller's "may the files go now" contract has to move with it.
+
+**GUARD** — `tests/test_index_stall_is_visible.py`, 14 tests:
+`test_a_failed_catch_up_is_remembered_not_swallowed` (drives the real thread
+with a real `OperationalError` and asserts it reaches `status()`),
+`test_the_swallow_is_gone_from_the_source`,
+`test_a_success_clears_the_last_failure` (a stale error is its own false
+label), `test_the_button_counts_the_work_it_will_actually_do`,
+`test_the_route_prints_the_bigger_number`,
+`test_the_status_names_what_holds_the_write_lock`,
+`test_a_cleanup_that_is_NOT_in_the_index_phase_does_not_get_blamed` (blaming
+the wrong job sends somebody to stop the wrong process),
+`test_the_button_refuses_instead_of_pretending_when_the_door_is_held`,
+`test_the_indexer_writes_a_log_instead_of_DEVNULL`,
+`test_the_log_is_not_buffered_away`. All three faults were re-introduced and
+the suite went red on each before this was committed.
+
+**A CORRECTION I OWE THE RECORD** — at `1:02am` the operator was told the
+cleanup was "frozen on coin 56 of 73, and its counter has not moved". The
+counter had not moved, but `_drop_pairs`'s `on_pair` only flushes
+`every 5 pairs` (`if job["index_done"] % 5 == 0`), so a still reading
+"55 of 73" is consistent with anything from 55 to 59 and proves nothing about
+a freeze. Rule 23 — read the emitter, not the label — and it was broken while
+writing up a bug about invisible progress.
+
+---
+
 ## RCA-2026-09-10-B — the fleet's rows were unpacked on the C: drive, and every killed collect left 3 GB behind
 
 **SAW** — the operator, `Sep 10, 2026 12:10am`: *"why are you using my c

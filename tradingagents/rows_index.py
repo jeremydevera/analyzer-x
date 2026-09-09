@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import logging
 import os
 import sqlite3
 import subprocess
@@ -243,8 +244,13 @@ def _machine_is_busy() -> bool:
     except Exception:
         return False
 
+logger = logging.getLogger(__name__)
+
 _lock = threading.Lock()
 _syncing = threading.Event()
+# Why the LAST background sync stopped, "" when it succeeded. Read by
+# `status()` so a failure reaches the screen instead of `except Exception: pass`.
+_last_error = ""
 # Keyed by PATH, never a bare bool. A `_done = True` flag once left a second
 # database with no schema at all and broke 14 tests, because the flag said the
 # work was finished for a file it had never touched.
@@ -816,10 +822,21 @@ def sync_in_background(budget_s: float = 0.0, *, force: bool = False) -> bool:
     _syncing.set()
 
     def run() -> None:
+        # A SWALLOWED FAILURE IS A BUTTON THAT LIES (2026-09-10). This was
+        # `except Exception: pass`. On Sep 10 at 12:47am REINDEX answered
+        # "started" and the thread died on its FIRST statement --
+        # `ensure()` raised `database is locked`, because a delisted cleanup
+        # had held the write lock since 11:55am the day before. Nothing on
+        # screen, nothing in a log, and 5,276 measured pairs stayed invisible
+        # while the button looked like it had worked. The error is kept where
+        # `status()` and the panel can read it.
+        global _last_error
         try:
             sync(budget_s=budget_s, force=force)
-        except Exception:
-            pass
+            _last_error = ""
+        except Exception as exc:                               # noqa: BLE001
+            _last_error = f"{type(exc).__name__}: {exc}"
+            logger.warning("index sync failed: %s", _last_error)
         finally:
             _syncing.clear()
 
@@ -2783,9 +2800,38 @@ def status() -> dict:
     pairs, rows, newest = _missing_ok(_read, (0, 0, None))
     busy = _machine_is_busy()
     return {"pairs_indexed": pairs, "pairs_on_disk": on_disk, "rows": rows,
-            "behind": max(0, on_disk - pairs), "syncing": syncing(),
+            # NEVER-INDEXED. A pair here is invisible on screen entirely.
+            "behind": max(0, on_disk - pairs),
+            # WHAT A CATCH-UP ACTUALLY WALKS -- never-indexed PLUS every pair
+            # whose file moved since. `behind` was printed as the size of the
+            # job on 2026-09-10 and undercounted it 806 vs 5,276, so REINDEX
+            # promised a seventh of the work it had started.
+            "stale": len(stale_pairs()), "syncing": syncing(),
+            "last_error": _last_error, "blocked_by": lock_holder(),
             # kept for older readers; both mean "a sweep owns the disk"
             "trickling": busy, "paused": busy, "updated": newest}
+
+
+def lock_holder() -> str:
+    """What is holding the index's WRITE lock, in words, or "".
+
+    The index went silent for 13 hours on 2026-09-10 and nothing anywhere
+    said why: a delisted cleanup takes the lock in ONE transaction across
+    every pair (`forget_pairs`) and holds it until the last one is gone. The
+    indexer sat at 0% CPU behind it and the screen showed stale numbers as if
+    they were current. A reader that cannot say WHO is holding the door is
+    how a stall becomes "the app is broken".
+    """
+    try:
+        from tradingagents import storage_months as sm
+
+        for kind in getattr(sm, "KINDS", ()):
+            job = sm.progress(kind) or {}
+            if job.get("running") and "index" in str(job.get("phase") or ""):
+                return f"{kind} cleanup: {job['phase']}"
+    except Exception:                                          # noqa: BLE001
+        pass
+    return ""
 
 
 
@@ -2795,6 +2841,9 @@ _loop_thread: threading.Thread | None = None
 
 
 PIDFILE = DB_PATH.parent / "rows_index.pid"
+# Beside every other job's log (`db_backtest.log`, `db_collect.log`, ...), not
+# in DEVNULL. See `spawn_indexer` for the 13 hours that bought this line.
+LOGFILE = Path(os.path.expanduser("~/.tradingagents")) / "rows_index.log"
 
 
 def _running_elsewhere() -> bool:
@@ -2824,11 +2873,26 @@ def spawn_indexer() -> int | None:
     if _running_elsewhere():
         return None
     PIDFILE.parent.mkdir(parents=True, exist_ok=True)
-    proc = subprocess.Popen(
-        [sys.executable, "-m", "tradingagents.rows_index"],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        **portable.DETACHED,
-        env={**os.environ, "ROWS_INDEX_CHILD": "1"})
+    # ITS OUTPUT WENT TO DEVNULL, AND THAT COST 13 HOURS (2026-09-10).
+    # This process is the ONLY thing that says "paused: a backtest is
+    # running", "indexing N pairs", or why a fill stopped — and every one of
+    # those lines was thrown away. When the index went silent behind a
+    # delisted cleanup's write lock, the operator's screen quietly served
+    # numbers from the day before and there was no log anywhere to read; it
+    # took walking the process table and sampling CPU to find a 0%-busy
+    # indexer. Every other job in this project writes ~/.tradingagents/*.log.
+    LOGFILE.parent.mkdir(parents=True, exist_ok=True)
+    # The child inherits the OS handle when it is spawned, so closing this
+    # copy on the way out of the `with` does not shut the child's log.
+    with open(LOGFILE, "a", encoding="utf-8", errors="replace") as log:
+        proc = subprocess.Popen(
+            [sys.executable, "-m", "tradingagents.rows_index"],
+            stdout=log, stderr=subprocess.STDOUT,
+            **portable.DETACHED,
+            # unbuffered: a log that only appears when the process exits is
+            # no use for a process that is meant to run for days.
+            env={**os.environ, "ROWS_INDEX_CHILD": "1",
+                 "PYTHONUNBUFFERED": "1"})
     PIDFILE.write_text(str(proc.pid))
     return proc.pid
 

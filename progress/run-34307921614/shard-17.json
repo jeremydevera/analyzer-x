@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 19, "total": 19, "rows": 1509580, "note": "TNSR 1h: rule 114/120 (cf_obretest_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:56:27Z"}
+{"shard": 17, "stage": "testing", "done": 19, "total": 19, "rows": 1534528, "note": "TNSR 1d: 394 bars \u00b7 Aug 11, 2025 12:00am \u2192 Sep 08, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:57:16Z"}

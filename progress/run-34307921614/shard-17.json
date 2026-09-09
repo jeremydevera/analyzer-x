@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 15, "total": 15, "rows": 1083080, "note": "TIA 30m: 18,959 bars \u00b7 Aug 10, 2025 5:00am \u2192 Sep 09, 2026 4:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:34:12Z"}
+{"shard": 17, "stage": "testing", "done": 15, "total": 15, "rows": 1087680, "note": "TIA 30m: rule 17/120 (atrbreak)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:34:58Z"}

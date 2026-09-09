@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 2, "total": 2, "rows": 209484, "note": "UMA 4h: rule 28/120 (vortex14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:52:32Z"}
+{"shard": 18, "stage": "testing", "done": 3, "total": 3, "rows": 244136, "note": "UNHSTOCK 15m: rule 14/120 (bb20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:53:18Z"}

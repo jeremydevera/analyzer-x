@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 19, "total": 19, "rows": 1529262, "note": "RECALL 30m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:50:13Z"}
+{"shard": 14, "stage": "testing", "done": 19, "total": 19, "rows": 1538282, "note": "RECALL 30m: rule 44/120 (elder)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:50:59Z"}

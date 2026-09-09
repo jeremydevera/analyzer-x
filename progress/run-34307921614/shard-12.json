@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 24, "total": 24, "rows": 1931424, "note": "NVTSSTOCK 30m: rule 87/120 (cf_triple_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:51:11Z"}
+{"shard": 12, "stage": "testing", "done": 25, "total": 25, "rows": 1969702, "note": "NXPC 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:52:06Z"}

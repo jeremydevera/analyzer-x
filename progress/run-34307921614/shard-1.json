@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 3, "total": 3, "rows": 290034, "note": "ALUMINUM 1h: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:51:57Z"}
+{"shard": 1, "stage": "testing", "done": 4, "total": 4, "rows": 348998, "note": "AMATSTOCK 15m: rule 24/120 (psar)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:52:42Z"}

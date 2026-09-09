@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 31, "total": 31, "rows": 2894710, "note": "AGI 30m: rule 25/120 (ichimoku)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:29:28Z"}
+{"shard": 0, "stage": "testing", "done": 31, "total": 31, "rows": 2905710, "note": "AGI 30m: rule 81/120 (cf_donch_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:30:14Z"}

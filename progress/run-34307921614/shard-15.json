@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 20, "total": 20, "rows": 1593156, "note": "SIGN 15m: rule 46/120 (rsi2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:05:39Z"}
+{"shard": 15, "stage": "testing", "done": 20, "total": 20, "rows": 1599976, "note": "SIGN 15m: rule 78/120 (cf_mom_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:06:26Z"}

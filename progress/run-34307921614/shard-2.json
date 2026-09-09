@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 3, "total": 3, "rows": 199218, "note": "AVA 15m: rule 9/120 (fib382)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:47:28Z"}
+{"shard": 2, "stage": "testing", "done": 3, "total": 3, "rows": 205418, "note": "AVA 15m: rule 40/120 (crsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:48:14Z"}

@@ -20,6 +20,19 @@ from pydantic import BaseModel
 
 from tradingagents.slow_cache import BackgroundValue
 
+
+def _sweep_days() -> int:
+    """The default measuring window, from ONE place (cloud_sweep.SWEEP_DAYS).
+
+    Seven call sites here each carried `or 365`, so the operator's "past 30
+    days not 1 year" would have had to be typed seven times and would drift on
+    the eighth. Imported lazily to keep the module import graph flat.
+    """
+    from tradingagents import cloud_sweep as _cs
+
+    return int(_cs.SWEEP_DAYS)
+
+
 app = FastAPI(title="TradingAgents API", version="1.0")
 
 
@@ -69,14 +82,14 @@ def _finish_handoff() -> None:
                       min_days=0,      # every contract — never the 365 default nobody chose
                       # and the HANDED-OVER job's own stake and window, or the
                       # two halves of one sweep are two different measurements
-                      days=int(spec.get("days") or 365),
+                      days=int(spec.get("days") or _sweep_days()),
                       base=float(spec.get("base") or 5.0))
     cs.remember(run)
     dj.clear_handoff(kind)              # the cloud has it; the request is served
     named = len(run.get("coins_named") or [])
     print(f"[handoff] {len(left)} coins the Mac never reached -> GitHub run "
           f"{run.get('id')}"
-          + (f", named one by one" if named == len(left) and named else "")
+          + (", named one by one" if named == len(left) and named else "")
           # a list too long for one command line measures the whole board:
           # more work than asked for, and it must not be discovered later
           + (f" — BUT {run.get('coin_list_why')}"
@@ -1105,7 +1118,7 @@ def backtest_pending_resolve() -> dict:
     run = cs.dispatch(shards=cap.CLOUD_RUNNERS, coins=0,
                       timeframes=",".join(frames), min_days=0,
                       # the operator's own window and stake, not a default
-                      days=int(spec.get("days") or 365),
+                      days=int(spec.get("days") or _sweep_days()),
                       base=float(spec.get("base") or 5.0))
     cs.remember(run)
     reach = pend.get("measurable", 0)
@@ -1653,7 +1666,7 @@ def strategy_backtest(body: dict) -> dict:
                    or (settings.get("strategy_margins") or {}).get(key) or 5.0)
     return {"pid": db_jobs.start("stratbt", {
         "key": key, "label": body.get("label") or key, "coins": coins,
-        "base_margin": margin, "days": int(body.get("days") or 365)})}
+        "base_margin": margin, "days": int(body.get("days") or _sweep_days())})}
 
 
 @app.get("/api/trade/settings")
@@ -2228,7 +2241,7 @@ def cloud_dispatch(body: dict) -> dict:
                       coin_list=[str(c) for c in (body.get("coin_list") or [])],
                       timeframes=str(body.get("timeframes") or "15m,30m"),
                       min_days=int(body.get("min_days") or 0),
-                      days=int(body.get("days") or 365),
+                      days=int(body.get("days") or _sweep_days()),
                       base=float(body.get("base") or 5.0),
                       mode="full")
     cs.remember(run)

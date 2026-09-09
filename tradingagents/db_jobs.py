@@ -25,6 +25,19 @@ from pathlib import Path
 
 from tradingagents import capacity as cap, portable
 
+
+def _sweep_days() -> int:
+    """The default measuring window, from ONE place (cloud_sweep.SWEEP_DAYS).
+
+    Seven call sites here each carried `or 365`, so the operator's "past 30
+    days not 1 year" would have had to be typed seven times and would drift on
+    the eighth. Imported lazily to keep the module import graph flat.
+    """
+    from tradingagents import cloud_sweep as _cs
+
+    return int(_cs.SWEEP_DAYS)
+
+
 STATE_DIR = Path(os.path.expanduser("~/.tradingagents"))
 
 FILES = {
@@ -1787,7 +1800,7 @@ def _run_btupdate(spec: dict) -> None:
                 # updated the whole market instead.
                 coin_list=list(spec.get("coins") or []),
                 timeframes=",".join(plan["cloud"]),
-                min_days=0, days=int(spec.get("days") or 365),
+                min_days=0, days=int(spec.get("days") or _sweep_days()),
                 # the spec's OWN stake, not the shard's hardcoded $5. This
                 # path already dispatched before the Sep 05, 2026 move, so it
                 # had been measuring at a stake nobody chose for longer.
@@ -1838,7 +1851,7 @@ def _run_btupdate(spec: dict) -> None:
     # point the store has.
     _run_backtest({**spec, "coins": coins, "tfs": plan["local"],
                    "base": float(spec.get("base") or 5.0),
-                   "days": int(spec.get("days") or 365),
+                   "days": int(spec.get("days") or _sweep_days()),
                    "fresh": False},
                   files_key="btupdate", kind="btupdate")
 
@@ -1913,7 +1926,7 @@ def _run_stratbt(spec: dict) -> None:
         got = sr.build(key, label=spec.get("label") or key,
                        coins=spec["coins"],
                        base_margin=float(spec.get("base_margin") or 5.0),
-                       days=int(spec.get("days") or 365), progress=prog)
+                       days=int(spec.get("days") or _sweep_days()), progress=prog)
         _write(f["progress"], {"running": False, "key": key, "done": 100,
                                "total": 100, "report": got["name"],
                                "report_url": got["url"], "rows": got["rows"],

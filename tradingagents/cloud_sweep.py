@@ -123,8 +123,18 @@ def symbols_of(coin_list) -> list:
     return sorted(out)
 
 
+# THE WINDOW A SWEEP MEASURES WHEN NOBODY SAYS. Operator, Sep 10, 2026:
+# *"i only need past 30 days not 1 year because thats too much"* — a full-year
+# sweep of the whole market on 15m/30m sat at 0.9% across 20 machines after an
+# hour (an implied 4.7 days) against the 2.0 h and 4.3 h their earlier runs
+# took. Every caller may still pass any window; this is what a caller that
+# says nothing gets, and it is the operator's explicit choice, not a silent cap
+# (see "Never cap the grid with a default nobody chose" in CLAUDE.md).
+SWEEP_DAYS = 30
+
+
 def dispatch(*, shards: int = 20, coins: int = 0, timeframes: str = "15m,30m",
-             min_days: int = 0, days: int = 365, base: float = 5.0,
+             min_days: int = 0, days: int = SWEEP_DAYS, base: float = 5.0,
              mode: str = "full", state_runs=(), live: bool = True,
              coin_list=()) -> dict:
     """Start a run and return its id and url. `days` is the history window the

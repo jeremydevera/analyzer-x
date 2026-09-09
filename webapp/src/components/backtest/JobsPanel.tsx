@@ -42,7 +42,14 @@ const inputCls =
 export default function JobsPanel() {
   const [coins, setCoins] = useState<string[]>([]);
   const [tfs, setTfs] = useState<string[]>(["15m", "30m", "1h", "4h"]);
-  const [win, setWin] = useState("Previous 1 year");
+  // PAST 30 DAYS, not a year. Operator, Sep 10, 2026: *"i only need past 30
+  // days not 1 year because thats too much"*, after a full-year sweep
+  // (Aug 10, 2025 -> Sep 09, 2026, 15m/30m, whole market) sat at 0.9% across
+  // 20 machines after an hour — an implied 4.7 DAYS, against the 2.0 h and
+  // 4.3 h their earlier sweeps took. The dropdown still offers every window;
+  // this is only what it opens on, and it is the operator's own choice rather
+  // than a cap nobody picked.
+  const [win, setWin] = useState("Previous month");
   const [bt, setBt] = useState<JobStatus | null>(null);
   const [upd, setUpd] = useState<JobStatus | null>(null);
   const [hand, setHand] = useState<Awaited<ReturnType<typeof api.jobHandoffState>> | null>(null);

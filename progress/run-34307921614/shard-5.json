@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 14, "total": 14, "rows": 1012096, "note": "CXMTSTOCK 15m: rule 34/120 (lrslope)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:26:08Z"}
+{"shard": 5, "stage": "testing", "done": 14, "total": 14, "rows": 1079764, "note": "CXMTSTOCK 1d: 56 bars \u00b7 Jul 15, 2026 12:00am \u2192 Sep 08, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:26:57Z"}

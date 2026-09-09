@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 28, "total": 28, "rows": 2457490, "note": "MSTRSTOCK 15m: rule 34/120 (lrslope)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:56:17Z"}
+{"shard": 11, "stage": "testing", "done": 28, "total": 28, "rows": 2465050, "note": "MSTRSTOCK 15m: rule 76/120 (cf_mom)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:57:02Z"}

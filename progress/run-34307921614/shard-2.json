@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 11, "total": 11, "rows": 1063900, "note": "AXTISTOCK 15m: rule 46/120 (rsi2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:29:06Z"}
+{"shard": 2, "stage": "testing", "done": 11, "total": 11, "rows": 1107226, "note": "AXTISTOCK 1h: rule 78/120 (cf_mom_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:29:51Z"}

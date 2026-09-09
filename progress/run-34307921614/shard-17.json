@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 34, "total": 34, "rows": 2762700, "note": "TRUTH 30m: rule 21/120 (cci20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:12:42Z"}
+{"shard": 17, "stage": "testing", "done": 34, "total": 34, "rows": 2774580, "note": "TRUTH 30m: rule 76/120 (cf_mom)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:13:29Z"}

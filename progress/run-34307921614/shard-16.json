@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 32, "total": 32, "rows": 2927266, "note": "STRK 30m: rule 63/120 (killzone)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:30:31Z"}
+{"shard": 16, "stage": "testing", "done": 32, "total": 32, "rows": 2939806, "note": "STRK 1h: 9,479 bars \u00b7 Aug 10, 2025 7:00am \u2192 Sep 09, 2026 5:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:31:23Z"}

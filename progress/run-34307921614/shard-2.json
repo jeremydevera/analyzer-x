@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 3, "total": 3, "rows": 277098, "note": "AVA 4h: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:52:47Z"}
+{"shard": 2, "stage": "testing", "done": 4, "total": 4, "rows": 315830, "note": "AVGOSTOCK 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:53:36Z"}

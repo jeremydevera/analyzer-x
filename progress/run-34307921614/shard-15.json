@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 43, "total": 43, "rows": 3734814, "note": "SNOWSTOCK 1h: rule 111/120 (cf_fundfade_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:31:19Z"}
+{"shard": 15, "stage": "testing", "done": 44, "total": 44, "rows": 3803704, "note": "SNPSSTOCK 1h: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:32:04Z"}

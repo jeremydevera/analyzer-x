@@ -261,6 +261,43 @@ _not_the_refusals.py` now also rejects a `Date` built from seconds, while still
 allowing `toISOString().slice(0, 10)` for a date INPUT's value, which is not a
 printed timestamp.
 
+## The live door is write-only, signed, and never the trading API (MANDATORY — 2026-09-09)
+
+The operator: *"why not immediately put the results in my pc"*, then *"i want
+it open then, i want you to post the result immediately to my pc"*. GitHub's
+machines now post each finished coin straight here (`tradingagents/live_ingest`),
+and results appear in the store seconds after they are measured instead of an
+hour after the run ends (run 34307921614 finished 7:32am and was still
+importing at 10:42pm).
+
+Anything that opens this PC to the internet obeys all five, always:
+
+* **Never the API on 8787.** It can place real orders. The door is its own
+  process on `127.0.0.1:8788` serving exactly `POST /rows` and `GET /up`;
+  every other path is 404, including the ones a scanner tries first.
+* **Outbound only.** A Cloudflare tunnel this PC dials out to — no router
+  port, no firewall hole, and killing the process closes it. The address is
+  new every run and the door shuts itself after `IDLE_STOP_S`.
+* **Signed, never carrying the secret.** HMAC-SHA256 over path+body with the
+  32 bytes in `~/.tradingagents/ingest_token`, given to GitHub as the
+  repository secret `INGEST_TOKEN` (masked in logs). A tunnel hostname is
+  temporary and can be reassigned; a raw token would teach the next holder
+  something reusable, a signature teaches nothing.
+* **The fast path is never the record.** The artifact is still written for
+  every pair, BEFORE the post and whatever the post does, and the autopilot
+  still collects the finished run. A pair that landed live is refused there by
+  the one store rule (`cloud_sweep.land_rows`: equal is not newer), so nothing
+  is written twice and a sleeping PC loses only immediacy.
+* **Prove the address before handing it out**, and treat a local DNS failure
+  as this machine's problem, not a shut door: the operator's ISP resolver
+  answers "Non-existent domain" for a fresh `*.trycloudflare.com` name that
+  1.1.1.1 resolves at once, so `reachable()` falls back to DNS-over-HTTPS. A
+  refused connection or a wrong answer is still a shut door.
+
+`tests/test_live_results.py` drives the real socket with real gzip and the real
+signature check; `ensure()` refuses to open anything while `PYTEST_CURRENT_TEST`
+is set, so no test run can put an address on the internet.
+
 ## Never put anything below an entry point (MANDATORY — 2026-08-22)
 
 `if __name__ == "__main__":` is the LAST thing in a module. Always.

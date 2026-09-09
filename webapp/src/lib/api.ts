@@ -484,6 +484,10 @@ export interface CloudStatus {
     url?: string;
     pairs?: number;
     rows?: number;
+    /** coins that arrived and were ALREADY up to date (no new candle since
+     *  their last test). Not a failure — without it the screen would read
+     *  "0 pairs written" for a door that worked. */
+    stale?: number;
     /** seconds; the last time a pair landed here */
     at?: number | null;
     /** the last pair that landed, e.g. "0G 1h" */

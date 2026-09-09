@@ -493,14 +493,26 @@ export default function JobsPanel() {
                 </p>
               ) : null;
             }
+            const landed = live.pairs ?? 0;
+            // arrived and ALREADY UP TO DATE is a success, not a loss: on run
+            // 34370227474 both coins posted and both were refused because no
+            // new candle had printed since the run five minutes before, and
+            // the line read "0 pairs written" as if the door were broken
+            const same = live.stale ?? 0;
             return (
               <p className="mt-1 text-theme-xs text-success-600 dark:text-success-500">
                 results are landing here as each coin finishes —{" "}
-                <b>{(live.pairs ?? 0).toLocaleString()} pair
-                  {(live.pairs ?? 0) === 1 ? "" : "s"}</b>{" "}
-                ({(live.rows ?? 0).toLocaleString()} rows) written to this PC so far
-                {live.last ? ` · last: ${live.last}` : ""}
-                {live.at ? ` at ${fmtWhen(live.at)}` : ""}
+                {!live.at ? (
+                  <>nothing has arrived yet</>
+                ) : (
+                  <>
+                    <b>{landed.toLocaleString()} coin{landed === 1 ? "" : "s"}</b>{" "}
+                    ({(live.rows ?? 0).toLocaleString()} rows) written to this PC
+                    {same ? ` · ${same.toLocaleString()} arrived already up to date (no new candle since its last test)` : ""}
+                    {live.last ? ` · last: ${live.last}` : ""}
+                    {` at ${fmtWhen(live.at)}`}
+                  </>
+                )}
                 {missed ? ` · ${missed.toLocaleString()} could not be posted and ride the run's files instead` : ""}
               </p>
             );

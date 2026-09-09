@@ -412,6 +412,11 @@ def test_the_panel_prints_what_THIS_PC_received():
     block = p[i - 1500:i + 900]
     assert "cloud.live" in block
     assert "live.pairs" in block and "live.rows" in block
+    # a coin that arrived ALREADY UP TO DATE is a success, and saying only
+    # "0 written" made a working door read as broken (run 34370227474)
+    assert "live.stale" in block and "already up to date" in block
+    assert "nothing has arrived yet" in block, \
+        "before the first coin, say that — not '0 written'"
     assert "s.posted" not in p[i:i + 900], \
         "the machines' own count must not be printed as what landed"
     assert "post_failed" in block, "a post that never arrived is named, not hidden"

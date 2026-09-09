@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 12, "total": 12, "rows": 997988, "note": "HIVE 4h: rule 13/120 (pivot)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:32:48Z"}
+{"shard": 8, "stage": "testing", "done": 13, "total": 13, "rows": 1049796, "note": "HK0700 15m: rule 90/120 (cf_chan_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:33:34Z"}

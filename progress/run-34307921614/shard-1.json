@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 43, "total": 43, "rows": 3827692, "note": "ASTR 1h: rule 59/120 (choch)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:50:49Z"}
+{"shard": 1, "stage": "testing", "done": 44, "total": 44, "rows": 3880404, "note": "ASTSSTOCK 15m: 14,098 bars \u00b7 Apr 15, 2026 9:15am \u2192 Sep 09, 2026 5:30am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:51:36Z"}

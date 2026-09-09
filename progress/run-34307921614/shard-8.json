@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 31, "total": 31, "rows": 2479252, "note": "HYPE 1d: 394 bars \u00b7 Aug 11, 2025 12:00am \u2192 Sep 08, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:50:01Z"}
+{"shard": 8, "stage": "testing", "done": 32, "total": 32, "rows": 2511028, "note": "HYUNDAISTOCK 15m: rule 96/120 (cf_emarsi_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:50:46Z"}

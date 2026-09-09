@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 47, "total": 47, "rows": 4246908, "note": "WLD 15m: rule 7/120 (fvg)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:19:30Z"}
+{"shard": 18, "stage": "testing", "done": 47, "total": 47, "rows": 4251588, "note": "WLD 15m: rule 33/120 (heikin)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:20:16Z"}

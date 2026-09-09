@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 14, "total": 14, "rows": 1175926, "note": "SHELL 1h: rule 4/120 (trend50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:48:37Z"}
+{"shard": 15, "stage": "testing", "done": 14, "total": 14, "rows": 1197266, "note": "SHELL 1h: rule 105/120 (cf_eqhl_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:49:23Z"}

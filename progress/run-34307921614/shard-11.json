@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 32, "total": 32, "rows": 2887226, "note": "MUBARAK 1h: rule 80/120 (cf_donch_l1)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:18:23Z"}
+{"shard": 11, "stage": "testing", "done": 32, "total": 32, "rows": 2911580, "note": "MUBARAK 4h: rule 81/120 (cf_donch_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:19:08Z"}

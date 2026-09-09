@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 14, "total": 14, "rows": 1177286, "note": "BOME 15m: rule 33/120 (heikin)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:48:27Z"}
+{"shard": 3, "stage": "testing", "done": 14, "total": 14, "rows": 1182346, "note": "BOME 15m: rule 57/120 (orderblock)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:49:12Z"}

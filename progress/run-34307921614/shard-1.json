@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 61, "total": 61, "rows": 5297394, "note": "BIGTIME 15m: rule 30/120 (kama10)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:47:46Z"}
+{"shard": 1, "stage": "testing", "done": 61, "total": 61, "rows": 5307734, "note": "BIGTIME 15m: rule 78/120 (cf_mom_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:48:32Z"}

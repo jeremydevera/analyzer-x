@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 26, "total": 26, "rows": 2162522, "note": "REZ 30m: rule 12/120 (donchian20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:26:14Z"}
+{"shard": 14, "stage": "testing", "done": 26, "total": 26, "rows": 2170662, "note": "REZ 30m: rule 49/120 (vwaprev)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:26:59Z"}

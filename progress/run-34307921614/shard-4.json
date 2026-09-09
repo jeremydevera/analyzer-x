@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 6, "total": 6, "rows": 359600, "note": "CELR 1h: rule 39/120 (fisher)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:56:57Z"}
+{"shard": 4, "stage": "testing", "done": 6, "total": 6, "rows": 380500, "note": "CELR 4h: rule 13/120 (pivot)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:57:42Z"}

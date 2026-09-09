@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 20, "total": 20, "rows": 1954246, "note": "SSV 15m: rule 4/120 (trend50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:21:16Z"}
+{"shard": 16, "stage": "testing", "done": 20, "total": 20, "rows": 1958206, "note": "SSV 15m: rule 22/120 (engulf)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:22:03Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 40, "total": 40, "rows": 3172252, "note": "GPS 4h: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:16:07Z"}
+{"shard": 7, "stage": "testing", "done": 41, "total": 41, "rows": 3225256, "note": "GRABSTOCK 30m: 2,959 bars \u00b7 Jul 09, 2026 1:30pm \u2192 Sep 09, 2026 4:30am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:16:52Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 34, "total": 34, "rows": 3162086, "note": "KERNEL 15m: rule 81/120 (cf_donch_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:34:11Z"}
+{"shard": 9, "stage": "testing", "done": 34, "total": 34, "rows": 3170546, "note": "KERNEL 30m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:34:58Z"}

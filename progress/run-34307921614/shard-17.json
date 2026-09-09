@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 19, "total": 19, "rows": 1534528, "note": "TNSR 1d: 394 bars \u00b7 Aug 11, 2025 12:00am \u2192 Sep 08, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:57:16Z"}
+{"shard": 17, "stage": "testing", "done": 21, "total": 21, "rows": 1572696, "note": "TOKYOELSTOCK 30m: 3,601 bars \u00b7 Jun 26, 2026 4:00am \u2192 Sep 09, 2026 4:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:58:02Z"}

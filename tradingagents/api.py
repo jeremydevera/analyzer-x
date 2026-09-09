@@ -445,6 +445,13 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
               "row_id": row_id, "days": days, "sort": sort, "desc": desc}
     _watch = _sl.Watch(_asked)
     _csv_t0 = _time.time()
+    # A DOWNLOAD IN FLIGHT MUST BE VISIBLE. The completion line below is
+    # written when the stream ENDS, so on Sep 09, 2026 the operator pressed
+    # download, watched the browser sit at "0 B", asked why, and the log had
+    # nothing to show — the request was running and no line existed yet. Now
+    # the start is a line of its own, so "started and never finished" reads
+    # differently from "never pressed".
+    _sl.record("csv START", _asked, {"streaming": True}, 0.0)
     try:
         for r in ri.iter_rows(coin=coin, tf=tf, signal=signal,
                               profitable=profitable, sort=sort,

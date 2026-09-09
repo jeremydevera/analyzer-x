@@ -144,6 +144,79 @@ several rounds of "why is it still 5,095".
 `tests/test_resolve_pending_backtest.py` (15) and
 `tests/test_resolve_pending_button.py` (13).
 
+## RCA-2026-09-09-N — the CSV download sat at "0 B" and wrote nothing, because its query had to sort 566,990 rows before the first one
+
+**SAW** — *"so why does it not download? its still downloading 0B meaning it
+does not write"*. Filter: `min win % 85 AND last 30 days`, no coin, by profit.
+
+**TIMELINE**
+
+1. `Sep 09, 2026 ~1:30pm` — pressed download. The request was real and in
+   flight: `.run/api.log` has `GET /api/strategies.csv?sort=profit&
+   min_winrate=85&days=30&desc=true 200 OK` (uvicorn logs a StreamingResponse
+   at its START).
+2. Measured on that exact URL: `0.33s` status 200, `content-length=None`,
+   chunked; `0.33s` **first byte** — the header row; then **no first data row
+   after 600 s**, when the probe gave up. The browser had a header and nothing
+   else, so it showed 0 B. The operator was exactly right.
+3. The press log could not answer the question either: it only wrote a line
+   when the stream **ended**, so a download in flight was invisible.
+
+**ROOT CAUSE** — the export's index choice. `export_plan` seeks the win-rate
+index whenever the matches fit under the PAGE's cap (`_winrate_seek_cap()` =
+**12,000,000** once `rows_wr4` exists), and 566,990 matched. But that seek
+returns rows in **win-rate** order, and the request asked for **profit** order,
+so SQLite must read and sort **every match** before emitting row 1 — and a
+download has no `LIMIT` to bound that sort. The page never suffers it because
+its sort stops at one screenful. Three plans, measured on this store
+(51,943,352 rows, mechanical disk):
+
+| plan | query plan | first row |
+|---|---|---|
+| `INDEXED BY rows_wr4` (what it did) | SEARCH + **USE TEMP B-TREE FOR ORDER BY** | **none after 600 s** |
+| no index named | SCAN using `rows_profit` | 108.55 s (that index has no `winrate`, so every candidate is a random row read) |
+| `INDEXED BY rows_pr2` | SCAN in profit order, `winrate` tested **inside** the index | **5.54 s** (25 rows in 7.57 s) |
+
+Two amplifiers behind it: the windowed batch was **250 rows** re-measured
+*whole* before any were yielded (up to 250 different candle files off a
+mechanical disk), and `_DIRS_CACHE` held 24 entries and called `.clear()` when
+full, so one batch wiped every cached signal repeatedly.
+
+**WHY IT WAS NOT CAUGHT** — this is the third face of the same thing. RCA-A
+proved the export SENDS the window; the Sep 03 rule proved the export makes the
+same index choice as the page. Nobody asked **how long until the first byte**.
+`test_the_download_is_checked_without_being_RUN_first` even asserts the route
+must not pull a row before streaming — so by design no test ever waits for one.
+And the press log, one hour old, still only recorded completions.
+
+**COST** — none in money. Every windowed download with a broad win-rate floor
+was unusable, and the browser gave no clue which.
+
+**FIX** — this commit.
+
+* `rows_index.EXPORT_SEEK_MAX = 20,000` — a download narrows the seek cap, but
+  **only when the seek's own order is not the asked order** (`key != "winrate"`);
+  ordering BY win rate still seeks, because there the seek needs no sort at all.
+* `rows_index.WINDOW_CSV_STEP = 25` — the windowed export yields in the size
+  the page has proven answerable (`api.DAYS_ROW_MAX` 50, `WINDOW_GROUP_MAX` 25),
+  so bytes flow continuously instead of after 250 re-measurements.
+* `_DIRS_CACHE` evicts the oldest ONE entry instead of clearing itself.
+* `screen_log` writes a **`csv START`** line, so a download in flight is
+  visible and "started and never finished" reads differently from "never
+  pressed".
+
+Measured end to end after, same filter: **first row 2.2 s** (was never), 25
+rows 2.8 s, 100 rows 9.1 s, 500 rows 133 s — growing the whole time.
+
+**GUARD** — `tests/test_windowed_download_streams.py` (10): a download never
+picks a plan that must sort every match, ordering by win rate keeps the seek, a
+selective floor still seeks (the Sep 03 rule holds), the windowed step is no
+bigger than the page's proven slice, an unwindowed export still uses big
+batches, the cache evicts one and keeps the newest, and the `csv START` line is
+written before the first row.
+
+---
+
 ## RCA-2026-09-09-K — the Stored-strategies panel re-ran the operator's filter 8 times a minute, forever, with nobody touching it
 
 **SAW** — nothing. That is the point. Found by the press log the operator had

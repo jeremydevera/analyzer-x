@@ -1661,7 +1661,12 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
                 dirs = at._dirs_for_backtest(key, hi, lo, cl, opens=op,
                                              volume=vol, ts=ts, funding=fund)
                 if len(_DIRS_CACHE) >= _DIRS_CACHE_MAX:
-                    _DIRS_CACHE.clear()
+                    # EVICT ONE, not all. `clear()` threw away every cached
+                    # signal the moment the 24th arrived, so a windowed export
+                    # spanning hundreds of pairs wiped the cache over and over
+                    # and recomputed pairs it had already done. Dicts keep
+                    # insertion order, so this drops the oldest.
+                    _DIRS_CACHE.pop(next(iter(_DIRS_CACHE)), None)
                 _DIRS_CACHE[ck] = dirs
             # one slice per distinct measurement end in this group (usually one)
             frames = {}

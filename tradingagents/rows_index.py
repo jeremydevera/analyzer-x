@@ -1389,6 +1389,17 @@ DAYS_CSV_MAX = 2_000
 # the app keeps answering while a download runs. 2 ms against ~90 ms of work is
 # 2% of the download and the difference between a live page and a dead one.
 EXPORT_BREATHE_S = 0.002
+# How many win-rate matches a DOWNLOAD will seek before it prefers the wide
+# profit index instead. The page's cap (`_winrate_seek_cap`, up to 12,000,000)
+# is for a LIMITed query whose sort stops at one screenful; an export has no
+# LIMIT, so a seek in the wrong order must sort EVERY match before its first
+# byte. See `export_plan` for the three measured plans behind this number.
+EXPORT_SEEK_MAX = 20_000
+# How many rows a WINDOWED export re-measures before it yields any of them.
+# This number IS the wait before the browser writes its first row, because a
+# batch is measured whole (see `iter_rows`). The page proves 50 rows / 25 groups
+# is answerable in seconds; 250 was not answerable at all.
+WINDOW_CSV_STEP = 25
 
 
 def window_floors(rows: list, *, min_winrate: float = 0, min_trades: int = 0,
@@ -2508,6 +2519,32 @@ def export_plan(coin=None, signal=None, sort="profit", row_id=None,
     seeks = False
     if float(min_winrate or 0) > 0 and not coin and _winrate_index():
         cap = _winrate_seek_cap()
+        if key != "winrate":
+            # A DOWNLOAD HAS NO LIMIT, SO ITS SORT HAS NO BOUND. The win-rate
+            # seek hands back rows in WIN-RATE order; ordering them by anything
+            # else means SQLite must read and sort EVERY match before it can
+            # emit row 1. The page's cap is right for the page — its sort stops
+            # at one screenful — but a stream has to produce a first byte.
+            #
+            # Measured Sep 09, 2026 on the operator's own download
+            # (min_winrate=85, no coin, ordered by profit; 566,990 matches,
+            # 51,943,352 rows, mechanical disk):
+            #
+            #   INDEXED BY rows_wr4   SEARCH + USE TEMP B-TREE FOR ORDER BY
+            #                         -> NO first row after 600 s; the browser
+            #                            sat at "0 B" and wrote nothing
+            #   (no index named)      SCAN rows USING INDEX rows_profit
+            #                         -> first row 108.55 s (rows_profit does
+            #                            not carry winrate, so every candidate
+            #                            is a random row read)
+            #   INDEXED BY rows_pr2   SCAN in profit order, winrate tested
+            #                         INSIDE the index
+            #                         -> first row 5.54 s, 25 rows 7.57 s
+            #
+            # Past this many matches the seek loses to rows_pr2, so let the
+            # wide profit index win (see `iter_rows`, which asks for it exactly
+            # when `seeks` is False).
+            cap = min(cap, EXPORT_SEEK_MAX)
         n = _winrate_matches(min_winrate, min_trades, cap=cap)
         seeks = n is not None and n <= cap
     return key, order, seeks, signal_seeks, group_idx
@@ -2548,7 +2585,17 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
     # "last 30 days" — the label-does-not-match-the-data failure this repo
     # keeps paying for (operator, 2026-09-03).
     win_days = max(0, int(days or 0))
-    step = min(250, max(100, int(batch))) if win_days else max(100, int(batch))
+    # A WINDOWED batch is re-measured BEFORE any of it is yielded, so the batch
+    # size IS the time to the download's first row. It was 250, and on the
+    # operator's own filter (`min_winrate=85&days=30`, no coin) that meant 250
+    # different coin/tf/signal groups — a candle file off a mechanical disk and
+    # a full signal computation each — before one byte of data left. Measured
+    # Sep 09, 2026: header at 0.33 s, and NO first data row after 600 s. The
+    # browser sat at "0 B" and the operator was right that nothing was being
+    # written. The page never hit this because it re-measures at most 50 rows
+    # and 25 groups (api.DAYS_ROW_MAX, market_sweep.WINDOW_GROUP_MAX). So the
+    # export now streams in the same size the page proves is answerable.
+    step = WINDOW_CSV_STEP if win_days else max(100, int(batch))
     # A WINDOWED export re-measures every row it writes: ~0.09 s a row on this
     # store, so all 58,212 matches of one real filter would be 87 minutes. The
     # cap is stated in the file's last line and in its name (see

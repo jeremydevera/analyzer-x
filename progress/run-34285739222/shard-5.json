@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 50, "total": 54, "rows": 2047562, "note": "VELO 30m: rule 77/120 (cf_mom_l1)", "failed": [], "pct": 92.6, "updated": "2026-09-09T00:01:39Z"}
+{"shard": 5, "stage": "testing", "done": 52, "total": 54, "rows": 2068462, "note": "XLE 4h: 724 bars, testing 120 rules", "failed": [], "pct": 96.3, "updated": "2026-09-09T00:02:24Z"}

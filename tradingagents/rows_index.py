@@ -741,7 +741,7 @@ def sync(paths: Iterable[Path] | None = None, *, budget_s: float = 0.0,
         print(f"[rows-index] sync: {len(todo)} to do, opening writer"
               f"{' (BULK)' if bulk else ''}", flush=True)
     with _open() as con:
-        # NOTHING IS DROPPED HERE, however big the fill.
+        # THE KEPT FOUR ARE NEVER DROPPED, however big the fill.
         #
         # It used to drop rows_profit/rows_coin/rows_winrate past BIG_FILL to
         # reload faster and rebuild them at the end. On 2026-08-27 at 12:48am
@@ -749,9 +749,28 @@ def sync(paths: Iterable[Path] | None = None, *, budget_s: float = 0.0,
         # profit needs its index (rows_profit); it is being built" for the
         # ~25 minutes the three rebuilds took, and the operator asked "why does
         # it not show anything". A slower fill is a cost the operator never
-        # sees; a blank Stored strategies is the product not working. A
-        # rebuild-from-the-pair-files is a deliberate offline operation and can
-        # drop indexes itself.
+        # sees; a blank Stored strategies is the product not working.
+        #
+        # THE ON-DEMAND ONES ARE A DIFFERENT MATTER, and not dropping them was
+        # a hole, not a decision. The note at the end of this function says the
+        # design out loud — "a fill pays for every index it carries: 1.5
+        # pairs/min with six against 75 with none" — and `_after_fill_indexes`
+        # rebuilds them afterwards in detached children. But nothing ever
+        # dropped them, so once they existed every fill carried them forever.
+        # Measured on the operator's store Sep 10, 2026: `ensure()` creates
+        # FOUR indexes and the file held **fourteen** — rows_wr2/3/4, rows_pr2,
+        # rows_id, rows_signal and four rows_cf_* built on demand for the
+        # filters and never removed. The indexer had 806 pairs waiting and was
+        # moving about one pair every fourteen minutes: over a week for a
+        # backlog the bulk path does in minutes, while 250 MB of scattered
+        # index writes went to a mechanical disk every forty seconds.
+        # The kept four keep the screen answering; a filter whose index is
+        # briefly gone already answers "it is being built" (SortNotReady),
+        # which the panel renders as a wait.
+        if bulk:
+            for name in _drop_on_demand_indexes(con):
+                print(f"[rows-index] dropped {name} for a {len(todo)}-pair "
+                      f"fill; it rebuilds when the fill ends", flush=True)
         if DEBUG:
             print("[rows-index] writer open", flush=True)
         for f in todo:
@@ -798,6 +817,49 @@ def sync(paths: Iterable[Path] | None = None, *, budget_s: float = 0.0,
         _after_fill_indexes()
     return {"pairs": done, "rows": rows, "left": queued - done,
             "seconds": round(time.time() - started, 2)}
+
+
+def _kept_index_names() -> set:
+    """The four `ensure()` creates. Everything else on the table was built on
+    demand and may be dropped for a bulk fill."""
+    return {d.split("EXISTS ")[1].split(" ON")[0] for d in KEEP_INDEXES}
+
+
+def on_demand_indexes(con) -> list:
+    """Index names present on `rows` that are NOT one of the kept four.
+
+    Read from sqlite_master, not from a list in this module: an index built by
+    an older version, or one added for a filter next month, still costs the
+    fill exactly the same and must still be dropped for it.
+    """
+    keep = _kept_index_names()
+    have = [r[0] for r in con.execute(
+        "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='rows'"
+        " AND name NOT LIKE 'sqlite_%'")]
+    return sorted(n for n in have if n not in keep)
+
+
+def _drop_on_demand_indexes(con) -> list:
+    """Drop them for the duration of a bulk fill. Returns what went.
+
+    Safe to interrupt: every one of these is rebuilt on demand
+    (`build_sort_index` / `build_missing_indexes`, both detached), and a read
+    that needs a missing one answers `SortNotReady` — the wait the panel
+    already knows how to show. Nothing here can drop a kept index, so the
+    default screen keeps its order.
+    """
+    gone = []
+    for name in on_demand_indexes(con):
+        try:
+            con.execute(f"DROP INDEX IF EXISTS {name}")
+            gone.append(name)
+        except sqlite3.Error as exc:
+            # a drop that fails is not a fill that fails — say it and carry on
+            print(f"[rows-index] could not drop {name}: {exc!r}", flush=True)
+    if gone:
+        con.commit()
+        forget_indexes()
+    return gone
 
 
 def _after_fill_indexes() -> list:

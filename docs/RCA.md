@@ -29,6 +29,94 @@ this repo is also part of the record.
 
 ---
 
+## RCA-2026-09-10-E — the catch-up was paying for FOURTEEN indexes it was designed to rebuild afterwards
+
+**SAW** — the operator, `Sep 10, 2026`: *"is the backtest done"*, then *"so the
+measure is still in progress?"*. Measuring WAS done — cloud run
+`34373004043` completed/success, 1 pending pair. The index had **806** pairs to
+go (really **5,276**) and was moving roughly one pair every fourteen minutes:
+over a week for a backlog the bulk path does in minutes.
+
+RCA-C, the same night, made that stall VISIBLE and named the chunked-commit
+repair it left undone. This entry is the reason the fill is slow in the first
+place — RCA-C treats "~14 min/pair on this spinning disk" as a property of the
+disk. It is not. It is write amplification nobody chose.
+
+**TIMELINE**
+
+1. `sync()`'s own closing note states the design out loud: *"a fill pays for
+   every index it carries: **1.5 pairs/min with six against 75 with none**"* —
+   fifty times — and `_after_fill_indexes()` rebuilds the on-demand ones
+   afterwards, in detached children. A bulk fill is **supposed** to run on the
+   kept four.
+2. Nothing ever dropped the others. `KEEP_INDEXES` is the four `ensure()`
+   creates; `FILTER_INDEXES` is an empty dict; the on-demand ones are created
+   by `build_sort_index` / `build_missing_indexes` and **never removed**.
+3. Measured on the operator's store, `Sep 10, 2026`:
+
+       ensure() creates                    4  indexes
+       sqlite_master on `rows` held       14
+       built on demand, never dropped     10
+         rows_wr2  rows_wr3  rows_wr4  rows_pr2  rows_id  rows_signal
+         rows_cf_dd  rows_cf_profit  rows_cf_trades  rows_cf_winrate
+
+   Every inserted row maintained fourteen index entries across a 33 GB file on
+   a mechanical disk. Sampled per-pid: **250.5 MB of scattered I/O in 40 s**
+   with `pairs_indexed` standing still.
+4. Each of those ten arrived with a filter fix — `rows_wr2` → `rows_wr3` →
+   `rows_wr4` as new boxes landed beside the win-rate floor, `rows_pr2` for
+   profit order, the four `rows_cf_*` for the confluence columns. Each was
+   correct on its own. The cost landed on a job nobody was watching.
+
+**ROOT CAUSE** — half a design. The fill was built to run lean and rebuild the
+extras afterwards; the "drop them first" half was never written. So the first
+time a filter built an index, every future fill inherited it, permanently.
+
+**WHY IT WAS NOT CAUGHT** — the index suites (289 passing across
+`test_index_catchup`, `test_index_yields_to_the_sweep`, `test_rows_index`,
+`test_index_ensure_cheap`) assert what the index CONTAINS and that `ensure()`
+stays cheap. None asserts what the fill CARRIES. A test that counts indexes on
+disk against `KEEP_INDEXES` would have gone red the day `rows_wr2` was created
+— and nothing about the filters' own tests could ever have noticed, because the
+filters were right.
+
+**COST** — none in money. The operator's finished measurements sat invisible
+for days: Stored strategies showed 4,558 of 5,364 pairs, and a filter or a
+download could not see the other 806.
+
+**FIX** — this commit. `sync()` drops the on-demand indexes for a bulk fill
+(`len(todo) > BIG_FILL`, 500 pairs) and the existing `_after_fill_indexes()`
+rebuilds them detached, which is what it was always for. Three things make it
+safe:
+
+* `_drop_on_demand_indexes` reads `sqlite_master` and can only drop what is
+  **not** in `KEEP_INDEXES` — so `rows_profit`, `rows_coin`, `rows_winrate` and
+  `rows_pair` always survive. Dropping `rows_profit` on `2026-08-27 12:48am`
+  blanked the default screen for ~25 minutes (*"why does it not show
+  anything"*); that is why the four are ring-fenced rather than trusted to a
+  list.
+* a read needing a dropped index already answers `SortNotReady` — the "it is
+  being built" wait the panel renders — instead of a blank page.
+* a `DROP` that fails is logged and skipped; the fill is not failed for it.
+
+Read from `sqlite_master`, not a constant, so a filter index invented next
+month is dropped by a fill that has never heard of it.
+
+**GUARD** — `tests/test_bulk_fill_drops_only_the_on_demand_indexes.py` (8):
+the kept four are exactly `ensure()`'s, the list comes from `sqlite_master` (a
+`rows_future_filter` invented in the test is found), a bulk fill drops ten and
+keeps four, **no kept index can ever be dropped**, the drop sits under
+`if bulk` so an ordinary click pays nothing, every dropped index has DDL to
+rebuild it, the rebuild still fires on `if done:`, and a refused DROP does not
+fail the fill.
+
+**STILL NOT FIXED, and it is the other half** — `forget_pairs` holds ONE
+transaction across every pair, so a 73-pair cleanup freezes the whole index
+until it finishes. RCA-C named it; it is still true. Chunked commits are the
+repair, and the caller's "may the files go now" contract has to move with them.
+
+---
+
 ## RCA-2026-09-10-D — you picked BTC and GitHub measured 0G, ALPINE, AVAAI…
 
 **SAW** — the operator, reading the live-results explanation: *"so when i

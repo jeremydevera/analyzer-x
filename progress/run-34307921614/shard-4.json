@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 5, "total": 5, "rows": 188918, "note": "CELO 15m: rule 4/120 (trend50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:42:40Z"}
+{"shard": 4, "stage": "testing", "done": 5, "total": 5, "rows": 193778, "note": "CELO 15m: rule 31/120 (trix15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:43:25Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 31, "total": 31, "rows": 2749240, "note": "MTSISTOCK 15m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:09:24Z"}
+{"shard": 11, "stage": "testing", "done": 32, "total": 32, "rows": 2818716, "note": "MUBARAK 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:10:27Z"}

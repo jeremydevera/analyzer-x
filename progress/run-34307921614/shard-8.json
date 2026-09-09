@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 33, "total": 33, "rows": 2599702, "note": "H 15m: rule 19/120 (emacross)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:54:18Z"}
+{"shard": 8, "stage": "testing", "done": 33, "total": 33, "rows": 2603442, "note": "H 15m: rule 36/120 (stochrsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:55:07Z"}

@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 13, "total": 13, "rows": 1223704, "note": "SPORTFUN 30m: 11,357 bars \u00b7 Jan 15, 2026 2:00pm \u2192 Sep 09, 2026 4:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:47:55Z"}
+{"shard": 16, "stage": "testing", "done": 13, "total": 13, "rows": 1229864, "note": "SPORTFUN 30m: rule 22/120 (engulf)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:48:41Z"}

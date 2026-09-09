@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 40, "total": 40, "rows": 3482156, "note": "FHE 15m: rule 90/120 (cf_chan_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:11:10Z"}
+{"shard": 6, "stage": "testing", "done": 40, "total": 40, "rows": 3489416, "note": "FHE 30m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:12:01Z"}

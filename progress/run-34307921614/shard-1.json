@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 36, "total": 36, "rows": 3152454, "note": "ARWRSTOCK 15m: 4,591 bars \u00b7 Jul 23, 2026 9:30am \u2192 Sep 09, 2026 5:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:25:56Z"}
+{"shard": 1, "stage": "testing", "done": 37, "total": 37, "rows": 3195914, "note": "ARX 15m: rule 46/120 (rsi2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:26:42Z"}

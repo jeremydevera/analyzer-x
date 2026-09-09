@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 41, "total": 41, "rows": 3443722, "note": "CAKE 30m: rule 21/120 (cci20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:04:09Z"}
+{"shard": 3, "stage": "testing", "done": 41, "total": 41, "rows": 3454942, "note": "CAKE 30m: rule 73/120 (volspike)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:04:54Z"}

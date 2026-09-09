@@ -67,10 +67,19 @@ def test_the_label_still_says_the_match_count_without_a_window(panel):
     assert "download all (${total.toLocaleString()}" in around
 
 
-def test_no_literal_cap_is_typed_into_the_panel(panel):
-    """2000 in the component and DAYS_CSV_MAX in the store is two truths."""
-    assert str(ri.DAYS_CSV_MAX) not in panel, \
-        f"{ri.DAYS_CSV_MAX} is hard-coded in the panel; read days_csv_max instead"
+def test_no_literal_cap_is_typed_into_the_download_button(panel):
+    """2000 in the component and DAYS_CSV_MAX in the store is two truths.
+
+    Scoped to the BUTTON. The first version grepped the whole file for "2000"
+    and went red on `setInterval(tick, pairJob?.running ? 2000 : 15000)` — a
+    poll interval that has nothing to do with the cap. A guard that is too wide
+    fails on innocent code and gets deleted, which leaves the rule unguarded.
+    """
+    i = panel.index("<a className={`${pageBtn} ml-1 inline-flex items-center`}")
+    button = panel[i:panel.index("</a>", i)]
+    assert str(ri.DAYS_CSV_MAX) not in button, \
+        f"{ri.DAYS_CSV_MAX} is hard-coded in the button; read days_csv_max"
+    assert "csvMax" in button, "it must read the server's cap"
 
 
 def test_the_cap_is_refreshed_on_every_answer(panel):

@@ -67,9 +67,21 @@ def test_every_entry_names_a_commit_and_a_guard():
     for head, body in _entries():
         fix = body[body.index("**FIX**"):body.index("**GUARD**")]
         # an entry that travels WITH its fix cannot know its own hash yet;
-        # "this commit" is exact, because `git log -- docs/RCA.md` finds it
-        assert re.search(r"\b[0-9a-f]{7,40}\b", fix) or "this commit" in fix, \
-            f"{head}: FIX must name the commit (or say 'this commit')"
+        # "this commit" is exact, because `git log -- docs/RCA.md` finds it.
+        # And a fix can legitimately be UNCOMMITTED — on Sep 09, 2026 three
+        # files were being edited by a concurrent session, so committing them
+        # would have shipped a feature this session did not write. That is a
+        # real state and must be sayable, but LOUDLY and with a reason, never
+        # by leaving the field vague.
+        pending = "NOT YET COMMITTED" in fix
+        assert re.search(r"\b[0-9a-f]{7,40}\b", fix) or "this commit" in fix \
+            or pending, \
+            f"{head}: FIX must name the commit, say 'this commit', or say " \
+            f"'NOT YET COMMITTED' with the reason"
+        if pending:
+            why = fix.split("NOT YET COMMITTED", 1)[1]
+            assert len(why.strip(" —:\n")) > 30, \
+                f"{head}: 'NOT YET COMMITTED' needs the reason beside it"
         guard = body[body.index("**GUARD**"):]
         assert "test_" in guard, \
             f"{head}: GUARD must name the test that fails if it comes back"

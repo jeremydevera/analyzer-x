@@ -62,13 +62,21 @@ is the same shape as RCA-G: each half right, the disagreement invisible.
 
 **COST** — none in money. A button offering 480x the rows it can deliver.
 
-**FIX** — the label names the server's own cap when a days window is on
-(`days_csv_max` in the payload, never a literal in the component):
-`download the window's top 2,000 CSV`. Verified in the browser after a
-rebuild. The hover text now also says it takes MINUTES and that the browser
-may show 0 bytes at first — see the note below, which is why that matters.
-The months path is untouched: `iter_rows` only re-measures for `days`, so a
-months export really can deliver `total`.
+**FIX** — **NOT YET COMMITTED**: the three files it touches (`api.py`,
+`api.ts`, `StrategiesPanel.tsx`) are being edited by a concurrent session right
+now — their row-level UPDATE / `pairbt` feature — so committing them would ship
+a feature this session did not write or verify. The change is live in the
+running build and verified in the browser, and the diff is kept at
+`scratchpad/label-fix.patch`; it lands with whichever commit next carries those
+files. The guard below is committed with this entry, so the rule is enforced
+either way.
+
+What it does: the label names the server's own cap when a days window is on
+(`days_csv_max` in the payload, never a literal in the component) —
+`download the window's top 2,000 CSV`. The hover text now also says it takes
+MINUTES and that the browser may show 0 bytes at first, which is why that
+matters (see below). The months path is untouched: `iter_rows` only re-measures
+for `days`, so a months export really can deliver `total`.
 
 **GUARD** — `tests/test_download_button_names_what_it_delivers.py` (7): the
 server sends the cap it enforces, the label names it when a window is on and

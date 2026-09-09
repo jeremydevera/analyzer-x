@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 28, "total": 28, "rows": 2363396, "note": "SKL 30m: rule 96/120 (cf_emarsi_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:38:39Z"}
+{"shard": 15, "stage": "testing", "done": 28, "total": 28, "rows": 2371976, "note": "SKL 1h: rule 9/120 (fib382)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:39:24Z"}

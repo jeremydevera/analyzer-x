@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 50, "total": 50, "rows": 4470704, "note": "FLUTSTOCK 30m: rule 90/120 (cf_chan_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:57:13Z"}
+{"shard": 6, "stage": "testing", "done": 51, "total": 51, "rows": 4516874, "note": "NES 15m: rule 41/120 (tsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:57:58Z"}

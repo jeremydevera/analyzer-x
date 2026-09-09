@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 23, "total": 23, "rows": 2236588, "note": "ADBESTOCK 30m: rule 21/120 (cci20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:59:55Z"}
+{"shard": 0, "stage": "testing", "done": 23, "total": 23, "rows": 2252788, "note": "ADBESTOCK 30m: rule 111/120 (cf_fundfade_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:00:42Z"}

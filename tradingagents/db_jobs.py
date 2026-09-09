@@ -2015,6 +2015,7 @@ def _run_pairbt(spec: dict) -> None:
     sym = str(spec["coin"])
     sym = sym if sym.endswith("_USDT") else f"{sym}_USDT"
     coin, tf = sym.replace("_USDT", ""), str(spec["tf"])
+    signal = str(spec.get("signal") or "").strip()
     base = float(spec.get("base") or 5.0)
     days = int(spec.get("days") or 365)
     before = msw.pair_watermark(coin, tf)
@@ -2023,17 +2024,23 @@ def _run_pairbt(spec: dict) -> None:
         _write(f["progress"], {"coin": coin, "tf": tf, "pair": f"{coin} {tf}",
                                "before_ms": before, **kw})
 
-    _pub(running=True, now=f"{coin} {tf}: measuring", rows=0)
+    what = f"{coin} {tf}" + (f" · {signal}" if signal else " · every signal")
+    _pub(running=True, now=f"{what}: measuring", rows=0, signal=signal)
     try:
-        # merge=True IS LOAD-BEARING. It defaults to FALSE, which makes
-        # `run_pair` REPLACE the pair's row file with only what this run
-        # produced — and a combination that takes no trade writes no row. On
-        # 2026-09-09 the first version of this button cut STBL 4h from 120
-        # signals to 37, deleting 83 including the operator's own row
-        # #SW8Q96E6 (macddiv). market_sweep says it outright: "with
-        # save_pair_rows would delete every combination not yet reached".
+        # THIS ROW'S OWN SIGNAL, and nothing else. Operator, 2026-09-09:
+        # *"its simple just update the backtest for that certain strategy i
+        # dont understand what's hard on that"*. They were right — the first
+        # version re-measured all 120 signals for the pair, which is both slow
+        # and how it managed to delete the other 83 (merge defaults to False,
+        # and `save_pair_rows` then replaces the file: "would delete every
+        # combination not yet reached"). One signal plus merge=True cannot
+        # touch another row.
+        #
+        # `signals=None` means the whole registry, which is the OLD behaviour
+        # and is kept only for a caller that has no signal to name.
         res = msw.run_pair(sym, tf, base_margin=base, days=days,
-                           thresholds=3, fresh=False, merge=True)
+                           thresholds=3, fresh=False, merge=True,
+                           signals=([signal] if signal else None))
     except Exception as exc:                                   # noqa: BLE001
         note = f"{type(exc).__name__}: {exc}"
         print(f"[pairbt] {coin} {tf} FAILED: {note}", flush=True)
@@ -2066,7 +2073,7 @@ def _run_pairbt(spec: dict) -> None:
         except Exception as exc:                               # noqa: BLE001
             index_error = f"{type(exc).__name__}: {exc}"
             _pub(running=True, rows=n_rows,
-                 now=f"{coin} {tf}: index busy, retrying "
+                 now=f"{what}: index busy, retrying "
                      f"({attempt + 1}/3)")
             time.sleep(20)
     if index_error:
@@ -2088,7 +2095,7 @@ def _run_pairbt(spec: dict) -> None:
         _pl.clear("backtest", [(sym, tf)])
     except Exception:                                          # noqa: BLE001
         pass
-    note = (f"{coin} {tf}: {n_rows:,} row(s), {indexed:,} indexed"
+    note = (f"{what}: {n_rows:,} row(s), {indexed:,} indexed"
             + ((" · measured, waiting on the index — the row updates when the "
                 "catch-up runs" if queued else
                 f" · measured, but NOT indexed: {index_error}")

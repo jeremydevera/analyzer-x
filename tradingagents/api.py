@@ -884,12 +884,17 @@ def strategy_row_update(row_id: str) -> dict:
         # and on a DIFFERENT pair they still both rewrite the row index.
         raise HTTPException(409, f"already re-measuring "
                                  f"{st.get('pair') or 'a pair'} — wait for it")
-    pid = dj.start("pairbt", {"coin": coin, "tf": tf,
+    # THIS ROW'S SIGNAL, so the run touches this strategy and no other.
+    # Operator: "its simple just update the backtest for that certain
+    # strategy" — the first version measured all 120 signals for the pair.
+    sig = row.get("signal") or ""
+    pid = dj.start("pairbt", {"coin": coin, "tf": tf, "signal": sig,
                               "base": float(row.get("base") or 5.0),
                               "days": 365})
     return {"started": True, "pid": pid, "row": rid,
-            "coin": coin, "tf": tf,
-            "why": f"re-measuring {coin} {tf} from its last measured bar"}
+            "coin": coin, "tf": tf, "signal": sig,
+            "why": f"re-measuring {coin} {tf} {sig} from its last "
+                   f"measured bar to now"}
 
 
 @app.get("/api/backtest/capacity")
@@ -2122,6 +2127,24 @@ def _read_cloud_status() -> dict:
             out["shards"] = cs.live_progress(int(run["id"]))
         except Exception:
             out["shards"] = []
+    # IS THE DOOR OPEN, and what has actually come through it — counted by THIS
+    # PC, never by the machines' own claim (operator, Sep 09, 2026: "i want you
+    # to post the result immediately to my pc"). The tally belongs to the run
+    # on screen or it is not shown: a previous run's count under this run's
+    # name is the label-must-match-data failure this repo keeps paying for.
+    try:
+        from tradingagents import live_ingest as li
+
+        got = li.status()
+        prog = got.get("progress") or {}
+        rid = str((run or {}).get("id") or "")
+        out["live"] = {"open": bool(got.get("open")), "url": got.get("url") or "",
+                       **({"pairs": int(prog.get("pairs") or 0),
+                           "rows": int(prog.get("rows") or 0),
+                           "at": prog.get("at"), "last": prog.get("last")}
+                          if rid and str(prog.get("run") or "") == rid else {})}
+    except Exception:                                          # noqa: BLE001
+        out["live"] = {"open": False}
     return out
 
 

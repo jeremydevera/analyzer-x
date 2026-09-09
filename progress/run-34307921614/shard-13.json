@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 33, "total": 33, "rows": 2997834, "note": "POPMARTSTOCK 15m: rule 44/120 (elder)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:39:59Z"}
+{"shard": 13, "stage": "testing", "done": 34, "total": 34, "rows": 3068324, "note": "PORTAL 15m: 34,601 bars \u00b7 Sep 13, 2025 8:15pm \u2192 Sep 09, 2026 6:15am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:41:03Z"}

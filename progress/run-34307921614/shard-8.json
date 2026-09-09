@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 32, "total": 32, "rows": 2511028, "note": "HYUNDAISTOCK 15m: rule 96/120 (cf_emarsi_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:50:46Z"}
+{"shard": 8, "stage": "testing", "done": 32, "total": 32, "rows": 2553216, "note": "HYUNDAISTOCK 1h: rule 61/120 (turtle)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:51:31Z"}

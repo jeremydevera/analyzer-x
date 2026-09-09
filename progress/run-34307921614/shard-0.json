@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 8, "total": 8, "rows": 874780, "note": "2Z 1h: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:49:04Z"}
+{"shard": 0, "stage": "testing", "done": 8, "total": 8, "rows": 894580, "note": "2Z 1h: rule 99/120 (cf_ttm_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:49:49Z"}

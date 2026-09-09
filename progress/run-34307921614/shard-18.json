@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 47, "total": 47, "rows": 4318268, "note": "WLD 1h: rule 117/120 (cf_diadx_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:25:46Z"}
+{"shard": 18, "stage": "done", "done": 47, "total": 47, "rows": 4358000, "note": "4,358,000 rows \u00b7 47 coin(s) claimed \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:26:25Z"}

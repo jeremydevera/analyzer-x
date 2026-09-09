@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 23, "total": 23, "rows": 2006940, "note": "CLO 1h: rule 56/120 (insidebrk)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:38:06Z"}
+{"shard": 4, "stage": "testing", "done": 23, "total": 23, "rows": 2040600, "note": "CLO 4h: rule 108/120 (cf_bosfvg_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:38:51Z"}

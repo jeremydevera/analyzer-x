@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 23, "total": 23, "rows": 2052888, "note": "PLAY 4h: rule 22/120 (engulf)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:46:11Z"}
+{"shard": 13, "stage": "testing", "done": 24, "total": 24, "rows": 2094296, "note": "PLSTOCK 15m: rule 87/120 (cf_triple_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:46:56Z"}

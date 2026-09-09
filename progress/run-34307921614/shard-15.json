@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 14, "total": 14, "rows": 1168446, "note": "SHELL 30m: rule 96/120 (cf_emarsi_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:47:52Z"}
+{"shard": 15, "stage": "testing", "done": 14, "total": 14, "rows": 1175926, "note": "SHELL 1h: rule 4/120 (trend50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:48:37Z"}

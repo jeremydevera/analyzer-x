@@ -9,7 +9,7 @@ here** — this file exists because the operator won't remember them all
 
 | skill | what it does |
 |---|---|
-| `short-and-plain` | Every answer short and in basic words. A fact = 1 sentence. |
+| `short-and-plain` | Every answer short, in basic words, and **always with a real example** from your own data. A fact = 1 sentence. |
 | `bug-scenario` | A bug is always shown as a step-by-step story with real times and dollars, never just code talk. |
 | `say-done` | Speaks one sentence out loud when a task finishes. Edit its voice in `.claude/skills/say-done/config.json`. |
 | `three-gates` | Before any answer or "done": is it measured, is it real, was it tested. |

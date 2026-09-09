@@ -387,8 +387,8 @@ A bug that never fired is labelled "NEVER HAPPENED YET" before its hypothetical
 timeline. Applies to "what are the bugs", "is there a bug", reporting one found in
 passing, and explaining any fix.
 
-ALWAYS ON — `short-and-plain`. STRICT. Every reply is SHORT **and** in BEGINNER
-language, both at once — one skill, because three separate ones (the deleted
+ALWAYS ON — `short-and-plain`. STRICT. Every reply is SHORT, in BEGINNER
+language, **and carries a real example** — all three at once — one skill, because three separate ones (the deleted
 short-answers, one-word and plain-words) each got followed alone: jargon, or
 plain but four paragraphs long. Operator, 2026-09-05: *"COMBINE THEM IN ONE
 CREATE NEW SKILL AND REMOVE THE EIXSTING 3"*.
@@ -403,6 +403,14 @@ idea per sentence; yes/no answers start with yes or no. Words a 12-year-old
 knows — *"STOP USING LONG WORDS AND DEEP WORDS FROM NOW ON I WANT BASIC WORDS,
 ENABLE THIS FOR ALL SESSION"*. It took five repeats of one question ("why did
 demo win and live lose") before the answer was small enough to use.
+**ALWAYS AN EXAMPLE (2026-09-09):** *"can you answer short but clearly always
+give me examples so i can easily undestand, i want this enabled always"*. Every
+answer carries one CONCRETE example with their own numbers — a row id, a coin, a
+dollar figure, a timestamp — never "Coin A" or "some strategy". It is not extra
+length: the example REPLACES the explanation. `window_last` was answered as
+*"#G4TLD68H GPNSTOCK 15m: candles to Sep 09, 2026 8:15am, backtest stops Sep 05,
+2026 3:15am"* instead of a paragraph about measurement coverage — shorter AND
+clearer. If a real one cannot be measured, label it "made-up numbers".
 Compress structure, never comprehension. Verify as rigorously as ever — then
 report only the answer.
 

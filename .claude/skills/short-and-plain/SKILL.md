@@ -1,6 +1,6 @@
 ---
 name: short-and-plain
-description: ALWAYS ON, STRICT. Every reply is SHORT and in BEGINNER language, both at once. Hard caps by question type — a fact is one sentence, "why" is three, "explain" is six. Jargon is defined in six words or fewer the first time it appears. The operator has asked six times and been ignored; violating this fails the reply no matter how correct the content is. Replaces the deleted short-answers, one-word and plain-words skills.
+description: ALWAYS ON, STRICT. Every reply is SHORT, in BEGINNER language, and carries a CONCRETE EXAMPLE with the operator's own numbers — all three at once. Hard caps by question type — a fact is one sentence, "why" is three, "explain" is six. Jargon is defined in six words or fewer the first time it appears. The operator has asked six times and been ignored; violating this fails the reply no matter how correct the content is. Replaces the deleted short-answers, one-word and plain-words skills.
 ---
 
 # Short and Plain
@@ -23,7 +23,8 @@ with a paragraph explaining how it combined with the other two. Splitting one
 rule across three files is how each got followed alone: short but jargon-filled,
 or plain but four paragraphs long.
 
-**One rule: SHORT AND PLAIN, both, always. Neither at the other's expense.**
+**One rule: SHORT, PLAIN, and ALWAYS WITH AN EXAMPLE — all three, always,
+none at another's expense.**
 
 ---
 
@@ -57,7 +58,48 @@ Q: are there 2 strategies for PI?
 A: No — one. mom15_4h_w.
 ```
 
-## 2. PLAIN — beginner language, every time
+## 2. ALWAYS AN EXAMPLE — show it, do not describe it
+
+The operator, 2026-09-09: *"can you answer short but clearly always give me
+examples so i can easily undestand, i want this enabled always"*.
+
+**Every answer carries at least one concrete example.** Not "for instance, a
+strategy might…" — a real one, with their own numbers.
+
+This is not extra length. **The example REPLACES the explanation.** If you can
+show it, do not also describe it — that is where the words come from.
+
+| Rule | |
+|---|---|
+| **Real data first** | their row ids, coins, dollars, timestamps. Measure it |
+| **Never a placeholder** | no "Coin A", "foo", "100 units", "some strategy" |
+| **Say so if invented** | *"made-up numbers:"* — never let a hypothetical read as their history |
+| **Yes/no still leads** | the word first, then the example |
+| **One example, not three** | the clearest one. Three examples is padding |
+
+What it looks like:
+
+```
+Q: does window_last mean the last trade?
+A: No — it is the last candle tested.
+   #G4TLD68H (GPNSTOCK 15m): candles run to Sep 09, 2026 8:15am, but its
+   backtest stops at Sep 05, 2026 3:15am. Four days downloaded and never
+   tested. A trade could have been days earlier.
+```
+
+```
+Q: what does 20x leverage mean?
+A: $10 of yours controls $200 of coin.
+   A 1% price move = $2, not $0.10. A 5% move against you wipes the $10.
+```
+
+Bad — describes instead of showing, and is longer for it:
+
+> The `window_last` field represents the terminal timestamp of the
+> re-measurement interval rather than a trade execution event, which means it
+> reflects measurement coverage rather than trading activity.
+
+## 3. PLAIN — beginner language, every time
 
 The operator is new to crypto trading. They are not slow — they are new, and
 the difference decides the tone.
@@ -82,9 +124,9 @@ the difference decides the tone.
 10. **A wrong answer in simple words is still wrong.** Simplifying never softens
     a loss, hides a bug, or rounds a risk down.
 
-## 3. How the two fit together
+## 4. How the three fit together
 
-They are not in tension, and neither is an excuse for breaking the other.
+They are not in tension, and none is an excuse for breaking the others.
 
 * A **fact** gets one sentence — in plain words. Not one sentence of jargon.
 * An **explanation** gets up to six sentences — in plain words. Not six
@@ -93,7 +135,8 @@ They are not in tension, and neither is an excuse for breaking the other.
   to save a line breaks rule 1; spending three paragraphs on it breaks the cap.
   Six words, inline, and move on.
 
-Short answer, plain words. Not short words, long answer.
+Short answer, plain words, one real example. Not short words and a long
+answer, and never a rule quoted where a number would have shown it.
 
 ---
 
@@ -223,5 +266,6 @@ Write:
 
 ## Combines with
 
-`bug-scenario` — the timeline IS the answer, so these caps apply to the prose
-around it, not to the timeline's steps; the steps still use plain words.
+`bug-scenario` — the timeline IS the answer AND it is the example, so these
+caps apply to the prose around it, not to the timeline's steps; the steps
+still use plain words and real numbers.

@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 39, "total": 39, "rows": 3815126, "note": "BILL 15m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:52:20Z"}
+{"shard": 2, "stage": "testing", "done": 39, "total": 39, "rows": 3830326, "note": "BILL 15m: rule 96/120 (cf_emarsi_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:53:05Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 15, "total": 15, "rows": 1366632, "note": "XMR 30m: rule 45/120 (zscore20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:18:23Z"}
+{"shard": 19, "stage": "testing", "done": 15, "total": 15, "rows": 1384232, "note": "XMR 1h: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:19:08Z"}

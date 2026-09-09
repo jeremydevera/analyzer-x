@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 55, "total": 55, "rows": 4751474, "note": "BDX 15m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:27:59Z"}
+{"shard": 1, "stage": "testing", "done": 55, "total": 55, "rows": 4755394, "note": "BDX 30m: rule 21/120 (cci20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:28:44Z"}

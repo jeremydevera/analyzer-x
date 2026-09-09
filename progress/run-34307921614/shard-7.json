@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 5, "total": 5, "rows": 371370, "note": "FORM 15m: rule 16/120 (keltner)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:54:48Z"}
+{"shard": 7, "stage": "testing", "done": 5, "total": 5, "rows": 379510, "note": "FORM 15m: rule 54/120 (fractal5)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:55:33Z"}

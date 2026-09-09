@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 3, "total": 3, "rows": 145718, "note": "LAYER 15m: rule 56/120 (insidebrk)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:50:14Z"}
+{"shard": 10, "stage": "testing", "done": 3, "total": 3, "rows": 153078, "note": "LAYER 15m: rule 102/120 (cf_soup1_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:50:59Z"}

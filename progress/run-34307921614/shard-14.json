@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 3, "total": 3, "rows": 232328, "note": "QNT 1h: rule 21/120 (cci20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:51:50Z"}
+{"shard": 14, "stage": "testing", "done": 3, "total": 3, "rows": 254328, "note": "QNT 4h: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:52:36Z"}

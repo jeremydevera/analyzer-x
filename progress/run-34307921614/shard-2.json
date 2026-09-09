@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 1, "total": 1, "rows": 0, "note": "AVAVSTOCK 15m: downloading candles", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:39:31Z"}
+{"shard": 2, "stage": "testing", "done": 1, "total": 1, "rows": 50204, "note": "AVAVSTOCK 1h: rule 67/120 (pinbar)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:40:16Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 32, "total": 32, "rows": 2852356, "note": "MUBARAK 30m: rule 36/120 (stochrsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:16:02Z"}
+{"shard": 11, "stage": "testing", "done": 32, "total": 32, "rows": 2863796, "note": "MUBARAK 30m: rule 90/120 (cf_chan_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:16:48Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 41, "total": 41, "rows": 3624936, "note": "NAORIS 15m: rule 56/120 (insidebrk)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:53:12Z"}
+{"shard": 11, "stage": "testing", "done": 41, "total": 41, "rows": 3631016, "note": "NAORIS 15m: rule 94/120 (cf_emarsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:53:57Z"}

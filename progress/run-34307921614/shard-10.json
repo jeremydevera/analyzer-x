@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 11, "total": 11, "rows": 937356, "note": "LINK 15m: rule 35/120 (willr14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:33:59Z"}
+{"shard": 10, "stage": "testing", "done": 11, "total": 11, "rows": 945456, "note": "LINK 15m: rule 81/120 (cf_donch_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:34:46Z"}

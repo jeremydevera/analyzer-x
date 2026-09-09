@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 2, "total": 2, "rows": 122100, "note": "SAPIEN 15m: 34,590 bars \u00b7 Sep 13, 2025 8:15pm \u2192 Sep 09, 2026 3:30am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:48:36Z"}
+{"shard": 15, "stage": "testing", "done": 2, "total": 2, "rows": 123900, "note": "SAPIEN 15m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:49:35Z"}

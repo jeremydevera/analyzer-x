@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 29, "total": 29, "rows": 2621018, "note": "AERO 15m: 34,599 bars \u00b7 Sep 13, 2025 8:15pm \u2192 Sep 09, 2026 5:45am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:06:11Z"}
+{"shard": 0, "stage": "testing", "done": 29, "total": 29, "rows": 2622998, "note": "AERO 15m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:07:14Z"}

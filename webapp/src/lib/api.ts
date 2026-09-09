@@ -419,10 +419,17 @@ export interface CloudShard {
   stage?: string;
   pct?: number;
   note?: string;
-  /** coins this machine has finished, and how many it was given — the run's
-   *  own percentage is the sum of these, never a figure the panel keeps */
+  /** OLDER readers' fields: the coin this machine is ON (1-based) over the
+   *  coins it has claimed so far. The one-at-a-time claim board keeps those
+   *  equal, so a bar drawn from them read 100% from the first second
+   *  (RCA-2026-09-09-S). Kept for runs measured before Sep 09, 2026. */
   done?: number;
   total?: number;
+  /** coins this machine has FINISHED, and the coins the whole run holds (the
+   *  same number on every machine): the run's progress is
+   *  sum(finished) / board. Absent on older runs — the panel falls back. */
+  finished?: number;
+  board?: number;
   /** combinations this machine has measured so far */
   rows?: number;
   /** the history window this run was asked for, in days — the header prints
@@ -435,6 +442,12 @@ export interface CloudShard {
    *  the machine is done: a span belongs to a pair being tested. Absent on
    *  runs measured before 2026-09-09. */
   span?: string;
+  /** the span's two bars as milliseconds, printed by the BROWSER's clock
+   *  (fmtWhenMs) so the tile and the store's "last bar" name one bar the same
+   *  way; `span` is the runner's clock (UTC) and read "12:00pm → 1:00pm" while
+   *  the same bars were 8:00pm → 9:00pm on this PC (Sep 09, 2026). Absent on
+   *  older runs — the panel falls back to `span`. */
+  span_ms?: [number, number];
   /** "full" = every pair from scratch (BACKTEST); "update" = each pair with
    *  a saved position continued over its new bars only (UPDATE). Absent on
    *  runs before 2026-09-09. */

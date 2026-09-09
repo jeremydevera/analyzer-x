@@ -239,6 +239,15 @@ def _bump(name: str) -> None:
     setattr(report, name, int(getattr(report, name, 0) or 0) + 1)
 
 
+def _span(a_ms, b_ms):
+    """The dates a tile shows, both ways: the runner's own text (its clock is
+    UTC) for the log and older readers, and the milliseconds the browser
+    formats with fmtWhenMs — so the tile and the store's "last bar" beside it
+    name one bar the same way (RCA-2026-09-09-S)."""
+    a, b = int(a_ms), int(b_ms)
+    return f"{fmt_when(a / 1000)} → {fmt_when(b / 1000)}", [a, b]
+
+
 def fetch_prior_states() -> dict:
     """Download the `state-*` artifacts of every run named in STATE_RUNS and
     index them by pair. Oldest run first, so the newest run wins a pair.
@@ -404,8 +413,8 @@ def continue_pair(sym, tf, prior: dict, out, *, i=0, n=0, rows_so_far=0):
                     last_ms=last_ms, first_ms=prior.get("__first_ms__") or last_ms,
                     bars=prior.get("__bars__") or 0, fee=fee)
         _bump("continued")
-        report("testing", i, n, rows=rows_so_far,
-               span=f"{fmt_when(last_ms / 1000)} → {fmt_when(last_ms / 1000)}",
+        span, span_ms = _span(last_ms, last_ms)
+        report("testing", i, n, rows=rows_so_far, span=span, span_ms=span_ms,
                note=f"{coin} {tf}: no new bars since the last test")
         return 0
     if off < CONTEXT_BARS and len(df) < need - 10:
@@ -423,8 +432,8 @@ def continue_pair(sym, tf, prior: dict, out, *, i=0, n=0, rows_so_far=0):
     first_ms = int(prior.get("__first_ms__") or last_ms)
     bars_total = int(prior.get("__bars__") or 0) + new_bars
     days = int((frame["Date"].iloc[-1].timestamp() * 1000 - first_ms) // 86_400_000)
-    span = f"{fmt_when(last_ms / 1000)} → {fmt_when(ts[-1] / 1000)}"
-    report("testing", i, n, rows=rows_so_far, span=span,
+    span, span_ms = _span(last_ms, ts[-1])
+    report("testing", i, n, rows=rows_so_far, span=span, span_ms=span_ms,
            note=f"{coin} {tf}: {new_bars:,} new bars · {len(br.SIGNALS)} rules")
     new_states = {k: v for k, v in prior.items() if not str(k).startswith("__")}
     kept = 0
@@ -481,7 +490,7 @@ def continue_pair(sym, tf, prior: dict, out, *, i=0, n=0, rows_so_far=0):
                         liq_known=liq is not None, h1=h1, h2=h2)) + "\n")
                     kept += 1
             at.STRATEGY_SPECS.pop(key, None)
-        report("testing", i, n, rows=rows_so_far + kept, span=span,
+        report("testing", i, n, rows=rows_so_far + kept, span=span, span_ms=span_ms,
                note=f"{coin} {tf}: rule {si}/{len(br.SIGNALS)} ({sig}) · continuing")
     lines.append(json.dumps({"coin": coin, "tf": tf, "pair_done": True,
                              "last_ms": int(ts[-1]), "rows": kept,
@@ -602,9 +611,9 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
     # DATES ONLY. Operator, 2026-09-09: "you only need to show what date are
     # you testing like july 18 to sept 9 ... that way i know why its taking so
     # long". The bar count rides in the note; the span answers one question.
-    span = (f"{fmt_when(df['Date'].iloc[0].timestamp())} → "
-            f"{fmt_when(df['Date'].iloc[-1].timestamp())}")
-    report("testing", i, n, rows=rows_so_far, span=span,
+    span, span_ms = _span(df["Date"].iloc[0].timestamp() * 1000,
+                          df["Date"].iloc[-1].timestamp() * 1000)
+    report("testing", i, n, rows=rows_so_far, span=span, span_ms=span_ms,
            note=f"{coin} {tf}: {nbars:,} bars · {len(br.SIGNALS)} rules")
     for si, sig in enumerate(br.SIGNALS, 1):
         key = f"{sig}_gh_{tf}"
@@ -710,7 +719,7 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
                         "gate": "warn" if rt / tp >= .2 else "ok"}) + "\n")
                     kept += 1
         at.STRATEGY_SPECS.pop(key, None)
-        report("testing", i, n, rows=rows_so_far + kept, span=span,
+        report("testing", i, n, rows=rows_so_far + kept, span=span, span_ms=span_ms,
                note=f"{coin} {tf}: rule {si}/{len(br.SIGNALS)} ({sig})")
     # ONE MARKER PER MEASURED PAIR, rows or no rows. A thin coin whose every
     # combination fell under the trade floor wrote NOTHING, so the collect
@@ -740,6 +749,12 @@ def main():
     log(f"mode: {MODE}" + (f" · saved positions from run(s) "
                            f"{', '.join(STATE_RUNS)}" if STATE_RUNS else ""))
     PRIOR.update(fetch_prior_states())
+    # The coins this RUN holds — the same number on every machine — so the
+    # panel's "X/Y coins" is coins finished over the run. It used to be the
+    # coin a machine is ON over the coins it has claimed, and the one-at-a-time
+    # claim board keeps those equal: 100% from the first second
+    # (RCA-2026-09-09-S).
+    report.board = min(len(coins), PER_SHARD * SHARDS) if PER_SHARD else len(coins)
     total, redos, young = 0, 0, 0
     failed: list = []
     # The queue is PUMPED one claimed coin at a time — the next coin is only
@@ -782,6 +797,7 @@ def main():
                 total += run_pair(sym, tf, out, i=i, n=claimed,
                                   rows_so_far=total)
                 done_pairs += 1
+                report.finished = done_pairs // len(TFS)
             except PairFailed as exc:
                 n = tries.get((sym, tf), 0)
                 if n < PAIR_RETRIES:
@@ -794,6 +810,7 @@ def main():
                     continue
                 failed.append(f"{sym} {tf}: {exc}")
                 done_pairs += 1
+                report.finished = done_pairs // len(TFS)
                 log(f"{exc} · gave up after {PAIR_RETRIES} redos")
                 # publish it NOW: a runner killed at six hours never reaches
                 # the "done" report, and its named losses would die with it

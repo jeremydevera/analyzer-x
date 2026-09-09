@@ -85,20 +85,23 @@ def test_the_per_rule_report_carries_the_dates(shard_src):
 def test_the_span_is_built_from_the_pairs_own_first_and_last_bar(shard_src):
     """Not the run's window: a young coin's history is honestly shorter, and
     the tile must say what THIS pair was tested over."""
-    i = shard_src.index("span = (")
+    i = shard_src.index("span, span_ms = _span(df[")
     body = shard_src[i:i + 200]
-    assert "df['Date'].iloc[0]" in body and "df['Date'].iloc[-1]" in body
-    assert "fmt_when(" in body, "the one date formatter (CLAUDE.md), never strftime"
+    assert 'df["Date"].iloc[0]' in body and 'df["Date"].iloc[-1]' in body
+    helper = shard_src[shard_src.index("def _span("):][:600]
+    assert "fmt_when(" in helper, "the one date formatter (CLAUDE.md), never strftime"
+    assert "[a, b]" in helper, "and the same bars as milliseconds for the browser's clock"
 
 
 def test_the_span_is_dates_only(shard_src):
     """Operator, 2026-09-09: "you only need to show what date are you testing
     like july 18 to sept 9". The bar count moved into the note; the span
     answers exactly one question."""
-    i = shard_src.index("span = (")
+    i = shard_src.index("span, span_ms = _span(df[")
     body = shard_src[i:shard_src.index("report(", i)]
     assert "nbars" not in body, "the span carries dates, nothing else"
-    assert "→" in body
+    helper = shard_src[shard_src.index("def _span("):][:600]
+    assert "→" in helper
     first_note = shard_src[shard_src.index("report(", i):][:300]
     assert "nbars" in first_note, "the bar count now rides in the note"
 
@@ -180,9 +183,12 @@ def test_the_tile_renders_the_span_on_its_own_line():
     body = PANEL.read_text(encoding="utf-8")
     assert "{sh.span && (" in body, "the tile must render the span"
     i = body.index("{sh.span && (")
-    block = body[i:i + 400]
-    assert "{sh.span}" in block
-    assert "title={sh.span}" in block, "hover shows it in full when truncated"
+    block = body[i:i + 700]
+    # the BROWSER's clock, from the bars' milliseconds; the runner's own string
+    # (UTC) only for runs measured before span_ms existed (RCA-2026-09-09-S)
+    assert "fmtWhenMs(sh.span_ms[0])" in block and "fmtWhenMs(sh.span_ms[1])" in block
+    assert ": sh.span" in block, "older runs still show their string"
+    assert "title={label}" in block, "hover shows it in full when truncated"
     # its OWN line: the note's <p> closes before the span's opens
     assert body.index("{sh.stage ?? \"waiting\"}") < i
     assert "</p>" in body[body.index("{sh.stage ?? \"waiting\"}"):i]
@@ -206,13 +212,14 @@ def test_the_payload_a_shard_writes_round_trips_to_the_panels_shape():
     i = src.index("payload = {")
     payload = src[i:src.index("}", src.index('"updated"'))]
     for key in ("shard", "stage", "done", "total", "rows", "note", "span",
-                "days", "failed", "pct", "updated"):
+                "span_ms", "finished", "board", "days", "failed", "pct",
+                "updated"):
         assert f'"{key}"' in payload, f"{key} missing from the payload"
     types = API_TS.read_text(encoding="utf-8")
     i2 = types.index("export interface CloudShard")
     shape = types[i2:types.index("}", i2)]
     for key in ("shard", "stage", "pct", "note", "done", "total", "rows",
-                "days", "span"):
+                "days", "span", "span_ms", "finished", "board"):
         assert key in shape, f"CloudShard is missing {key}"
 
 
@@ -234,3 +241,75 @@ def test_json_dumps_of_a_span_survives_the_base64_write():
     back = json.loads(base64.b64decode(
         base64.b64encode(json.dumps(payload).encode())).decode())
     assert back["span"] == payload["span"]
+
+
+# ------------------------------------------- RCA-2026-09-09-S: the 100% bar
+# Run 34360893326, Sep 09, 2026 10:03pm: the header read "100.0% 1/1 coins ·
+# 0 rows measured · 0/1 machine(s) finished" and the tile "machine 0 100%"
+# while the note said "testing · 0G 1h: continuing from …". `done` was the
+# coin the machine is ON and `total` the coins it had claimed — the
+# one-at-a-time claim board keeps those equal. And the tile's dates were the
+# runner's clock (UTC): "12:00pm → 1:00pm" for bars the store on the same PC
+# called 8:00pm → 9:00pm.
+def _reporter(monkeypatch):
+    import importlib.util
+
+    monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
+    monkeypatch.setenv("GITHUB_TOKEN", "t")
+    monkeypatch.setenv("GITHUB_RUN_ID", "1")
+    monkeypatch.setenv("SHARD", "0")
+    spec = importlib.util.spec_from_file_location("progress_pct_test", PROGRESS)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    sent = []
+    monkeypatch.setattr(mod, "_req", lambda method, url, token, body=None:
+                        sent.append((method, body)) or {"content": {"sha": "x"}})
+    return mod.Reporter(every=0), sent
+
+
+def _payload(sent):
+    import base64
+
+    return json.loads(base64.b64decode(sent[-1][1]["content"]).decode())
+
+
+def test_the_bar_is_not_100_while_the_first_coin_is_still_being_tested(monkeypatch):
+    rep, sent = _reporter(monkeypatch)
+    rep.board = 2                      # the run holds two coins
+    rep.finished = 0                   # none finished yet
+    rep("testing", 1, 1, rows=0, note="0G 1h: rule 40/120", span="a → b",
+        span_ms=(1788955200000, 1788958800000))
+    p = _payload(sent)
+    assert p["done"] == p["total"] == 1, "the old fields still say what they said"
+    assert p["pct"] == 0.0, "but the bar no longer reads 100% from the first second"
+    assert p["finished"] == 0 and p["board"] == 2
+    assert p["span_ms"] == [1788955200000, 1788958800000]
+    rep.finished = 1
+    rep("testing", 2, 2, force=True)
+    assert _payload(sent)["pct"] == 50.0
+    # no span → no milliseconds either, never a stale pair's dates
+    assert _payload(sent)["span_ms"] is None
+
+
+def test_the_shard_counts_finished_coins_and_the_runs_board():
+    src = SHARD.read_text(encoding="utf-8")
+    main = src[src.index("def main("):]
+    assert "report.board = " in main
+    assert main.count("report.finished = done_pairs // len(TFS)") == 2, (
+        "after a finished pair AND after a pair given up on")
+    # every date span rides as milliseconds too, and none is built by hand
+    assert 'span=f"' not in src and 'span = (f"' not in src and 'span = f"' not in src
+    assert src.count("span_ms=span_ms") == 5, "each of the five span reports"
+
+
+def test_the_panel_draws_the_run_from_finished_over_board():
+    body = PANEL.read_text(encoding="utf-8")
+    assert body.count("runProgress(cloud.shards)") == 2, "the header AND the run bar"
+    fn = body[body.index("function runProgress("):]
+    fn = fn[:fn.index("\n}")]
+    assert "s.finished ?? s.done ?? 0" in fn, "older shard files fall back"
+    assert "Math.max(a, s.board ?? 0)" in fn, "the board is one number, never a sum"
+    # a machine's tile counts what it finished; its 100% bar is gone
+    tile = body[body.index("machine {sh.shard}"):][:600]
+    assert "coin(s) done" in tile
+    assert "width: `${sh.pct" not in body

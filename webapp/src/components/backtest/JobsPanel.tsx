@@ -8,12 +8,26 @@
  * job's progress file on disk, not in this component.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, API_BASE, BacktestPlan, CloudStatus, DelistedReport, fmtBytes, fmtWhenMs, GridPlan, JobStatus, MonthJob } from "@/lib/api";
+import { api, API_BASE, BacktestPlan, CloudShard, CloudStatus, DelistedReport, fmtBytes, fmtWhenMs, GridPlan, JobStatus, MonthJob } from "@/lib/api";
 import Button from "@/components/ui/button/Button";
 import Badge from "@/components/ui/badge/Badge";
 import JobProgress from "@/components/jobs/JobProgress";
 import StaleCode from "@/components/jobs/StaleCode";
 import CoinPicker from "./CoinPicker";
+
+/** How far the RUN is: coins FINISHED across every machine, over the coins
+ *  the run holds (`board`, the same number on every machine). It used to be
+ *  each machine's `done`/`total` added up — the coin a machine is ON over the
+ *  coins it has claimed — which the one-at-a-time claim board keeps equal, so
+ *  the bar read 100.0% from the first second of every run (RCA-2026-09-09-S:
+ *  "100.0% 1/1 coins · 0 rows measured · 0/1 machine(s) finished"). Shard
+ *  files from before Sep 09, 2026 have no `finished`/`board` and fall back. */
+function runProgress(shards: CloudShard[]): { done: number; total: number } {
+  const done = shards.reduce((a, s) => a + (s.finished ?? s.done ?? 0), 0);
+  const board = shards.reduce((a, s) => Math.max(a, s.board ?? 0), 0);
+  const total = board || shards.reduce((a, s) => a + (s.total ?? 0), 0);
+  return { done, total };
+}
 
 const TFS = ["15m", "30m", "1h", "4h", "1d"];
 const WINDOWS: Record<string, number> = {
@@ -369,8 +383,7 @@ export default function JobsPanel() {
               {cloud.conclusion ?? "running"}
             </Badge>
             {(() => {
-              const done = cloud.shards.reduce((a, s) => a + (s.done ?? 0), 0);
-              const total = cloud.shards.reduce((a, s) => a + (s.total ?? 0), 0);
+              const { done, total } = runProgress(cloud.shards);
               const rows = cloud.shards.reduce((a, s) => a + (s.rows ?? 0), 0);
               const fin = cloud.shards.filter((s) => s.stage === "done").length;
               return (
@@ -465,8 +478,7 @@ export default function JobsPanel() {
           {/* one bar for the RUN, so the answer to "how far along?" is not
               twenty tiles added up by eye */}
           {(() => {
-            const done = cloud.shards.reduce((a, s) => a + (s.done ?? 0), 0);
-            const total = cloud.shards.reduce((a, s) => a + (s.total ?? 0), 0);
+            const { done, total } = runProgress(cloud.shards);
             const pct = total ? (100 * done) / total : 0;
             return (
               <div className="mt-2 h-2 rounded-full bg-gray-200 dark:bg-gray-800">
@@ -492,11 +504,13 @@ export default function JobsPanel() {
           <div className="mt-2 grid gap-1 sm:grid-cols-2 lg:grid-cols-4">
             {cloud.shards.map((sh) => (
               <div key={sh.shard} className="rounded-lg bg-gray-50 px-2 py-1.5 dark:bg-white/[0.03]">
+                {/* A machine has no share of its own to fill: the claim board
+                    hands it one coin at a time, so its `pct` was 100 while it
+                    worked. Count what it has FINISHED instead; the run's one bar
+                    above answers "how far along". */}
                 <div className="flex justify-between text-theme-xs text-gray-600 dark:text-gray-300">
-                  <span>machine {sh.shard}</span><span>{sh.pct ?? 0}%</span>
-                </div>
-                <div className="mt-1 h-1.5 rounded-full bg-gray-200 dark:bg-gray-800">
-                  <div className="h-1.5 rounded-full bg-brand-500" style={{ width: `${sh.pct ?? 0}%` }} />
+                  <span>machine {sh.shard}</span>
+                  <span>{sh.finished != null ? `${sh.finished.toLocaleString()} coin(s) done` : `${sh.pct ?? 0}%`}</span>
                 </div>
                 <p className="mt-0.5 truncate text-theme-xs text-gray-500 dark:text-gray-400">
                   {sh.stage ?? "waiting"}{sh.note ? ` · ${sh.note}` : ""}
@@ -506,12 +520,18 @@ export default function JobsPanel() {
                     in the instant after loading a pair showed any — 3 of 20 on
                     run 34307921614, and the operator asked twice. A second
                     line also means the truncate above can never eat them. */}
-                {sh.span && (
-                  <p className="truncate text-theme-xs text-gray-400 dark:text-gray-500"
-                     title={sh.span}>
-                    {sh.span}
-                  </p>
-                )}
+                {sh.span && (() => {
+                  // the browser's clock, from the bars' milliseconds — the
+                  // runner's own string (UTC) only for runs before span_ms
+                  const label = sh.span_ms
+                    ? `${fmtWhenMs(sh.span_ms[0])} → ${fmtWhenMs(sh.span_ms[1])}`
+                    : sh.span;
+                  return (
+                    <p className="truncate text-theme-xs text-gray-400 dark:text-gray-500" title={label}>
+                      {label}
+                    </p>
+                  );
+                })()}
               </div>
             ))}
           </div>

@@ -29,6 +29,69 @@ this repo is also part of the record.
 
 ---
 
+## RCA-2026-09-09-S — the run bar read 100% from the first second, and a tile's dates were on a different clock from the store's
+
+**SAW** — the Backtest screen during proof run 34360893326, photographed by the
+press-and-watch script:
+
+    10:03pm  GitHub run #34360893326  100.0%  1/1 coins · 0 rows measured · 0/1 machine(s) finished
+             machine 0  100%   testing · 0G 1h: continuing from Sep 09, 2026 1…
+    10:04pm  GitHub run #34360893326  100.0%  2/2 coins · 36,388 rows measured · 0/1 machine(s) finished
+             machine 0  100%   testing · 1000000BABYDOGE 1h: rule 40/120 …
+                               Sep 09, 2026 12:00pm → Sep 09, 2026 1:00pm
+
+Nothing was finished at either moment. And the Stored strategies list on the
+same PC named the same two bars `Sep 09, 2026 8:00pm → 9:00pm`. The operator's
+question all day: *"currently i can only see machine loading and im not sure …
+that way i know why its taking so long"*.
+
+**TIMELINE**
+
+1. `Sep 09, 2026` (earlier that day) — work moved to a claim board: a machine
+   claims ONE coin at a time (`coin_stream`), and `run_pair` reports
+   `report("testing", i, n)` with `i` = the coin it is on and `n` = the coins
+   it has claimed so far. Those are equal on every report, so `pct = 100·i/n`
+   is 100 from the first coin, on every machine, for the whole run; the panel
+   summed `done`/`total` across machines and drew 100% too. Before the board,
+   `n` was a machine's fixed slice and the bar meant something.
+2. `10:03pm` and `10:04pm` — the two screenshots above, 0 machines finished.
+3. The tile's dates came from `fmt_when` on the runner, whose clock is UTC:
+   `12:00pm → 1:00pm`. The store on this PC (UTC+8) shows `8:00pm → 9:00pm`
+   for the same bars. One bar, two names.
+
+**ROOT CAUSE** — a counter renamed by its readers. `done`/`total` were
+documented in `api.ts` as *"coins this machine has finished, and how many it
+was given"*; they were the coin being tested and the coins claimed so far. And
+a date string formatted where the data was, not where it is read.
+
+**WHY IT WAS NOT CAUGHT** —
+`test_the_payload_a_shard_writes_round_trips_to_the_panels_shape` asserted the
+payload HAS `pct`, `done`, `total`; nothing asserted `pct` is below 100 while a
+coin is still being tested, and nothing compared the panel's dates with the
+store's for the same bar. Presence was checked; agreement was not
+(`label-must-match-data`). The claim-board change did not re-read who consumed
+`n`.
+
+**COST** — none in money. A progress bar that could not answer "how far along",
+on the day the operator asked exactly that.
+
+**FIX** — this commit. The shard publishes `finished` (coins this machine has
+completed) and `board` (coins the run holds, the same number on every machine);
+the panel draws sum(finished) / board for the run and prints "N coin(s) done"
+on each tile instead of a percentage a machine cannot have. Every span rides as
+`span_ms` too and the browser prints it with `fmtWhenMs` — the same clock as
+every other date on the page; `span` (UTC text) stays for the runner log and
+older runs. Older shard files have neither field and fall back.
+
+**GUARD** —
+`tests/test_shard_reports_its_dates.py::test_the_bar_is_not_100_while_the_first_coin_is_still_being_tested`
+(payload `pct` 0.0 with `done == total == 1`; 50.0 after one of two coins),
+`test_the_shard_counts_finished_coins_and_the_runs_board`,
+`test_the_panel_draws_the_run_from_finished_over_board`, and the span test now
+requires `fmtWhenMs(sh.span_ms[…])`.
+
+---
+
 ## RCA-2026-09-09-R — the position a continuation saved had no boundary flag, so the NEXT update would have taken trades the full run never took
 
 **SAW** — found by reading what run 34360893326 (the second proof of UPDATE)

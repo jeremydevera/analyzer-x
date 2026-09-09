@@ -171,10 +171,18 @@ class Reporter:
         self.mode = (os.environ.get("MODE") or "full").strip().lower()
         self.continued = 0
         self.fresh = 0
+        # Coins this machine has FINISHED, and the coins the whole run holds:
+        # the run's percentage is sum(finished) / board. `done`/`total` in the
+        # payload are the older fields — the coin being tested over the coins
+        # claimed so far — which the one-at-a-time claim board keeps EQUAL, so
+        # the bar read 100% from the first second (RCA-2026-09-09-S).
+        self.finished = 0
+        self.board = 0
 
     def __call__(self, stage: str, done: int, total: int, rows: int = 0,
                  note: str = "", force: bool = False,
-                 failed: list | None = None, span: str = "") -> None:
+                 failed: list | None = None, span: str = "",
+                 span_ms=None) -> None:
         """stage is 'screening' or 'testing' — what the machine is doing now.
 
         `failed` NAMES the pairs this shard lost. It used to be a count inside
@@ -202,6 +210,15 @@ class Reporter:
                    # overwritten by the note, and the caller carries it
                    # through every report for that pair.
                    "span": span[:120],
+                   # the same two bars as MILLISECONDS: the browser prints them
+                   # with its own clock (fmtWhenMs) beside every other date on
+                   # the page. The string above is the runner's clock — UTC —
+                   # so a tile said "12:00pm → 1:00pm" while the store's last
+                   # bar on the same PC read 8:00pm → 9:00pm (Sep 09, 2026).
+                   "span_ms": ([int(span_ms[0]), int(span_ms[1])]
+                               if span_ms else None),
+                   "finished": int(self.finished),
+                   "board": int(self.board),
                    "mode": self.mode,
                    "continued": int(self.continued),
                    "fresh": int(self.fresh),
@@ -211,7 +228,11 @@ class Reporter:
                    # first→last bar; this is the run-level ask.
                    "days": int(os.environ.get("DAYS", "365") or 365),
                    "failed": [str(x)[:120] for x in (failed or [])][:200],
-                   "pct": round(100 * done / total, 1) if total else 0.0,
+                   # this machine's share of the RUN, finished over the board;
+                   # the old ratio only when the shard set no board
+                   "pct": (round(100 * self.finished / self.board, 1)
+                           if self.board else
+                           (round(100 * done / total, 1) if total else 0.0)),
                    "updated": time.strftime("%Y-%m-%dT%H:%M:%SZ",
                                             time.gmtime())}
         body = {

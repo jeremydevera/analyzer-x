@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 36, "total": 36, "rows": 3418846, "note": "ZEC 15m: rule 76/120 (cf_mom)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:42:06Z"}
+{"shard": 19, "stage": "testing", "done": 36, "total": 36, "rows": 3427366, "note": "ZEC 30m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:42:52Z"}

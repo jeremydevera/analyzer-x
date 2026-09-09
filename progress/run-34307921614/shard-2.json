@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 5, "total": 5, "rows": 486826, "note": "AVNT 1h: rule 36/120 (stochrsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:03:35Z"}
+{"shard": 2, "stage": "testing", "done": 5, "total": 5, "rows": 514046, "note": "AVNT 4h: rule 41/120 (tsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:04:20Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 33, "total": 33, "rows": 2784542, "note": "RKLBSTOCK 15m: rule 108/120 (cf_bosfvg_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:55:17Z"}
+{"shard": 14, "stage": "testing", "done": 33, "total": 33, "rows": 2804942, "note": "RKLBSTOCK 30m: rule 99/120 (cf_ttm_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:56:02Z"}

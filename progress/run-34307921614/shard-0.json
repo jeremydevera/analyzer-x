@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 30, "total": 30, "rows": 2743426, "note": "AEVO 15m: 34,600 bars \u00b7 Sep 13, 2025 8:15pm \u2192 Sep 09, 2026 6:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:15:53Z"}
+{"shard": 0, "stage": "testing", "done": 30, "total": 30, "rows": 2745226, "note": "AEVO 15m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:16:48Z"}

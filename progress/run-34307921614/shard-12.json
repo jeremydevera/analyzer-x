@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 36, "total": 36, "rows": 3106260, "note": "ONG 15m: rule 5/120 (rsi14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:59:24Z"}
+{"shard": 12, "stage": "testing", "done": 36, "total": 36, "rows": 3111320, "note": "ONG 15m: rule 28/120 (vortex14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:00:11Z"}

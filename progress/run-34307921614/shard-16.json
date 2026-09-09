@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 20, "total": 20, "rows": 2031180, "note": "SSV 4h: 2,369 bars \u00b7 Aug 10, 2025 8:00am \u2192 Sep 09, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:28:18Z"}
+{"shard": 16, "stage": "testing", "done": 21, "total": 21, "rows": 2065258, "note": "STABLE 15m: 29,435 bars \u00b7 Nov 06, 2025 2:30pm \u2192 Sep 09, 2026 5:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:29:05Z"}

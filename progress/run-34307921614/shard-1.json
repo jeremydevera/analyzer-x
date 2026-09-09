@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 22, "total": 22, "rows": 1765128, "note": "API3 15m: rule 68/120 (dbltop)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:32:22Z"}
+{"shard": 1, "stage": "testing", "done": 22, "total": 22, "rows": 1775528, "note": "API3 30m: 18,959 bars \u00b7 Aug 10, 2025 5:00am \u2192 Sep 09, 2026 4:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:33:18Z"}

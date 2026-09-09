@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 8, "total": 8, "rows": 690840, "note": "MITO 30m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:29:03Z"}
+{"shard": 11, "stage": "testing", "done": 8, "total": 8, "rows": 706020, "note": "MITO 30m: rule 73/120 (volspike)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:30:34Z"}

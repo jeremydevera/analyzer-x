@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 30, "total": 30, "rows": 2385364, "note": "DIA 4h: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:19:51Z"}
+{"shard": 5, "stage": "testing", "done": 31, "total": 31, "rows": 2444272, "note": "DISCOSTOCK 30m: rule 93/120 (cf_soup_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:20:36Z"}

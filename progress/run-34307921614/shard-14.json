@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 34, "total": 34, "rows": 2860838, "note": "RLC 15m: rule 4/120 (trend50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:57:45Z"}
+{"shard": 14, "stage": "testing", "done": 34, "total": 34, "rows": 2866038, "note": "RLC 15m: rule 30/120 (kama10)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:58:30Z"}

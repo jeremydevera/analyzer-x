@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 47, "total": 47, "rows": 4124704, "note": "FLOCK 30m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:40:11Z"}
+{"shard": 6, "stage": "testing", "done": 47, "total": 47, "rows": 4133504, "note": "FLOCK 30m: rule 40/120 (crsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:40:57Z"}

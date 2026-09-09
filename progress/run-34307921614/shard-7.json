@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 63, "total": 63, "rows": 5301080, "note": "INIT 15m: rule 120/120 (cf_stflip_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:32:39Z"}
+{"shard": 7, "stage": "testing", "done": 63, "total": 63, "rows": 5305260, "note": "INIT 30m: rule 13/120 (pivot)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:33:25Z"}

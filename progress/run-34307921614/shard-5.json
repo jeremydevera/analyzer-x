@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 53, "total": 53, "rows": 4330746, "note": "EDEN 30m: rule 20/120 (stoch14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:42:52Z"}
+{"shard": 5, "stage": "testing", "done": 53, "total": 53, "rows": 4344606, "note": "EDEN 30m: rule 84/120 (cf_maobv_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:43:37Z"}

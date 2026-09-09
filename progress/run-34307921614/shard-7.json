@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 77, "total": 77, "rows": 6540952, "note": "PROVE 15m: rule 49/120 (vwaprev)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:05:38Z"}
+{"shard": 7, "stage": "testing", "done": 77, "total": 77, "rows": 6553712, "note": "PROVE 15m: rule 108/120 (cf_bosfvg_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:06:24Z"}

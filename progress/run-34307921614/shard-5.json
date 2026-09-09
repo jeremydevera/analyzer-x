@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 42, "total": 42, "rows": 3487322, "note": "DOT 15m: rule 102/120 (cf_soup1_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:02:37Z"}
+{"shard": 5, "stage": "testing", "done": 42, "total": 42, "rows": 3492362, "note": "DOT 30m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:03:26Z"}

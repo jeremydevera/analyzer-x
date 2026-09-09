@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 14, "total": 14, "rows": 1285806, "note": "USO 15m: rule 58/120 (bos)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:35:35Z"}
+{"shard": 18, "stage": "testing", "done": 15, "total": 15, "rows": 1360398, "note": "USTC 15m: 34,593 bars \u00b7 Sep 13, 2025 8:15pm \u2192 Sep 09, 2026 4:15am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:36:29Z"}

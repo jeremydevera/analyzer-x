@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 8, "total": 8, "rows": 822602, "note": "AXONSTOCK 1h: rule 87/120 (cf_triple_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:20:23Z"}
+{"shard": 2, "stage": "testing", "done": 9, "total": 9, "rows": 890652, "note": "AXPSTOCK 1h: 1,889 bars \u00b7 Jun 22, 2026 11:00am \u2192 Sep 09, 2026 3:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:21:10Z"}

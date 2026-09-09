@@ -416,6 +416,50 @@ def current() -> dict:
         return {}
 
 
+def _doh(host: str) -> str:
+    """The address of `host`, asked of Cloudflare's resolver over HTTPS.
+
+    Measured on this PC, Sep 09, 2026 11:15pm: the router's resolver
+    (globebroadband.net) answers "Non-existent domain" for a fresh
+    *.trycloudflare.com name that 1.1.1.1 resolves in milliseconds. GitHub's
+    machines resolve it fine — this is only so the door can be PROVEN from
+    here before its address is handed to twenty of them.
+    """
+    req = urllib.request.Request(
+        f"https://cloudflare-dns.com/dns-query?name={host}&type=A",
+        headers={"Accept": "application/dns-json"})
+    with urllib.request.urlopen(req, timeout=15) as r:
+        for a in (json.loads(r.read().decode()).get("Answer") or []):
+            if a.get("type") == 1 and a.get("data"):
+                return str(a["data"])
+    return ""
+
+
+def _up_over_doh(url: str, timeout: float) -> tuple:
+    """GET /up at an address this machine's resolver will not look up: resolve
+    it elsewhere, then speak TLS to that address under the real hostname (the
+    certificate and Cloudflare's routing both key on the name, not the IP)."""
+    import http.client
+    import socket
+    import ssl
+
+    host = url.split("//", 1)[-1].split("/", 1)[0]
+    ip = _doh(host)
+    if not ip:
+        return 0, "the name does not resolve anywhere"
+    sock = socket.create_connection((ip, 443), timeout=timeout)
+    ssock = ssl.create_default_context().wrap_socket(sock, server_hostname=host)
+    conn = http.client.HTTPConnection(host, timeout=timeout)
+    conn.sock = ssock
+    try:
+        conn.request("GET", "/up", headers={"Host": host,
+                                            "X-Ingest-Sig": sign(token(), "/up")})
+        r = conn.getresponse()
+        return r.status, r.read().decode() or "{}"
+    finally:
+        conn.close()
+
+
 def reachable(url: str, timeout: float = 20.0) -> str:
     """Ask the public URL, from here, whether the door answers. Hand a URL to
     twenty machines only after it has been proven end to end."""
@@ -424,14 +468,23 @@ def reachable(url: str, timeout: float = 20.0) -> str:
         headers={"X-Ingest-Sig": sign(token(), "/up")})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
-            if r.status != 200:
-                return f"the url answered {r.status}"
-            body = json.loads(r.read().decode() or "{}")
-            return "" if body.get("ok") else "the url answered something else"
+            status, body = r.status, r.read().decode() or "{}"
     except urllib.error.HTTPError as exc:
         return f"the url answered {exc.code}"
     except Exception as exc:                                    # noqa: BLE001
-        return f"{type(exc).__name__}: {str(exc)[:80]}"
+        # a name this machine's own resolver refuses is not a shut door
+        if "getaddrinfo" not in str(exc) and "Name or service" not in str(exc):
+            return f"{type(exc).__name__}: {str(exc)[:80]}"
+        try:
+            status, body = _up_over_doh(url, timeout)
+        except Exception as exc2:                               # noqa: BLE001
+            return f"{type(exc2).__name__}: {str(exc2)[:80]}"
+    if status != 200:
+        return f"the url answered {status} {str(body)[:60]}"
+    try:
+        return "" if json.loads(body).get("ok") else "the url answered something else"
+    except ValueError:
+        return "the url answered something that is not ours"
 
 
 def sync_secret(slug: str = "") -> str:

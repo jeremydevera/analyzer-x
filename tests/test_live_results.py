@@ -185,6 +185,35 @@ def test_a_body_that_is_not_ours_is_refused_without_a_stack_trace(door, store):
     assert exc.value.code == 413
 
 
+def test_a_name_this_router_will_not_look_up_is_not_a_shut_door(store, monkeypatch):
+    """Measured on this PC, Sep 09, 2026 11:15pm: the tunnel registered fine
+    and the router's resolver (globebroadband.net) still answered "Non-existent
+    domain" for the new *.trycloudflare.com name, which 1.1.1.1 resolved in
+    milliseconds. GitHub's machines resolve it fine, so refusing to open the
+    door over that would be this PC's DNS deciding the feature is off."""
+    li.token()
+    tried = []
+
+    def no_dns(req, timeout=0):
+        raise urllib.error.URLError("[Errno 11001] getaddrinfo failed")
+
+    monkeypatch.setattr(li.urllib.request, "urlopen", no_dns)
+    monkeypatch.setattr(li, "_up_over_doh",
+                        lambda url, t: tried.append(url) or (200, '{"ok": true}'))
+    assert li.reachable("https://abc.trycloudflare.com") == ""
+    assert tried == ["https://abc.trycloudflare.com"]
+
+    # any OTHER failure is still a failure — a shut door must never read as open
+    def refused(req, timeout=0):
+        raise ConnectionRefusedError("no listener")
+
+    monkeypatch.setattr(li.urllib.request, "urlopen", refused)
+    assert "ConnectionRefusedError" in li.reachable("https://abc.trycloudflare.com")
+    monkeypatch.setattr(li.urllib.request, "urlopen", no_dns)
+    monkeypatch.setattr(li, "_up_over_doh", lambda url, t: (404, "nope"))
+    assert "404" in li.reachable("https://abc.trycloudflare.com")
+
+
 def test_the_door_is_never_opened_by_a_test_run(monkeypatch):
     """`ensure()` starts a process and an address on the internet. A suite that
     reaches a dispatch by accident must not do that on someone's laptop."""

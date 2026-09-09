@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 10, "total": 10, "rows": 798098, "note": "RARE 30m: rule 106/120 (cf_bosfvg)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:21:31Z"}
+{"shard": 14, "stage": "testing", "done": 10, "total": 10, "rows": 806898, "note": "RARE 1h: rule 20/120 (stoch14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:22:17Z"}

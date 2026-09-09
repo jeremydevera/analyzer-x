@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 35, "total": 35, "rows": 3208026, "note": "SUE 15m: 290 bars \u00b7 Sep 06, 2026 6:00am \u2192 Sep 09, 2026 6:15am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:44:39Z"}
+{"shard": 16, "stage": "testing", "done": 36, "total": 36, "rows": 3211302, "note": "SUI 15m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:45:37Z"}

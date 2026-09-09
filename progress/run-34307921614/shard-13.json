@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 22, "total": 22, "rows": 1881128, "note": "PI 30m: rule 21/120 (cci20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:33:31Z"}
+{"shard": 13, "stage": "testing", "done": 22, "total": 22, "rows": 1893448, "note": "PI 30m: rule 78/120 (cf_mom_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:34:16Z"}

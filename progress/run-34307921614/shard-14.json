@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 12, "total": 12, "rows": 1032856, "note": "RAY 1h: rule 47/120 (ibs)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:37:12Z"}
+{"shard": 14, "stage": "testing", "done": 12, "total": 12, "rows": 1059476, "note": "RAY 4h: rule 45/120 (zscore20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:37:57Z"}

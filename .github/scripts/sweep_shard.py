@@ -16,8 +16,10 @@ coin can be measured twice) and keeps claiming until the board is empty. The
 run ends when the WORK ends, not when the unluckiest slice does. Without a
 token (local runs, tests) it falls back to the old static slice.
 """
+import glob
 import json
 import os
+import subprocess
 import sys
 import time
 
@@ -28,8 +30,10 @@ import tradingagents.auto_trader as at  # noqa: E402
 from tradingagents import (
     backtest_report as br,  # noqa: E402
     fast_grid as fg,  # noqa: E402
+    resume_state as rs,  # noqa: E402
 )
 from tradingagents.dataflows import mexc_futures as fx  # noqa: E402
+from tradingagents.market_sweep import CONTEXT_BARS, combo_key  # noqa: E402
 from tradingagents.positions_view import fmt_when  # noqa: E402
 
 SHARD = int(os.environ.get("SHARD", "0"))
@@ -51,9 +55,25 @@ PAIR_RETRIES = 2
 # stake nobody chose. Same default as before when the input is absent.
 BASE_MARGIN = float(os.environ.get("BASE_MARGIN") or 5.0)
 GATE_BLOCK = 0.50
+# UPDATE OR FULL. Operator, 2026-09-09: "if the last backtest was sep1 and i
+# click update it should run on github to update the gap which is sept 2
+# onwards". "update" continues every pair that has a SAVED POSITION from an
+# earlier run over its new bars only; a pair without one is measured in full
+# (and says so). "full" measures the whole window from scratch — the BACKTEST
+# button — and both modes save every pair's position for the next run.
+MODE = (os.environ.get("MODE") or "full").strip().lower()
+# The runs whose `state-*` artifacts hold the latest saved positions, oldest
+# first (the newest wins a pair). Set by the dispatch from this PC's record.
+STATE_RUNS = [x.strip() for x in os.environ.get("STATE_RUNS", "").split(",")
+              if x.strip()]
+# market_sweep's fingerprint for a state measured with every threshold; a
+# saved position with another fingerprint is measured in full, never continued
+VERSION = f"signals{len(br.SIGNALS)}-th3"
 
 OUT = os.path.join("out", f"rows-{SHARD}.jsonl")
+STATE_OUT = os.path.join("out", "state")
 os.makedirs("out", exist_ok=True)
+os.makedirs(STATE_OUT, exist_ok=True)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from progress import ClaimBoard, Reporter  # noqa: E402
@@ -186,11 +206,285 @@ def window(df):
     return df[df["Date"] >= cut].reset_index(drop=True)
 
 
+# ------------------------------------------------------------ saved positions
+PRIOR: dict = {}          # "COIN-tf" -> path of its saved position, if any
+
+
+def _bump(name: str) -> None:
+    """report.continued / report.fresh — tolerant of a test's stand-in
+    reporter that has no counters."""
+    setattr(report, name, int(getattr(report, name, 0) or 0) + 1)
+
+
+def fetch_prior_states() -> dict:
+    """Download the `state-*` artifacts of every run named in STATE_RUNS and
+    index them by pair. Oldest run first, so the newest run wins a pair.
+
+    A run that cannot be downloaded (expired artifact, no permission, a
+    network blip) costs nothing but a full measure for the pairs it held —
+    named in the log, never a dead shard. Needs `actions: read` on the
+    workflow token, which sweep.yml grants."""
+    if MODE != "update" or not STATE_RUNS:
+        return {}
+    repo = os.environ.get("GITHUB_REPOSITORY", "")
+    index: dict = {}
+    for run_id in STATE_RUNS:
+        dest = os.path.join("state_in", run_id)
+        os.makedirs(dest, exist_ok=True)
+        cmd = ["gh", "run", "download", str(run_id), "-p", "state-*", "-D", dest]
+        if repo:
+            cmd += ["--repo", repo]
+        try:
+            got = subprocess.run(cmd, capture_output=True, text=True,
+                                 timeout=1800)                        # noqa: S603
+        except Exception as exc:                                    # noqa: BLE001
+            log(f"saved positions from run {run_id}: could not download "
+                f"({type(exc).__name__}: {str(exc)[:80]}) — its pairs are "
+                f"measured in full")
+            continue
+        if got.returncode != 0:
+            log(f"saved positions from run {run_id}: gh run download failed "
+                f"({(got.stderr or '').strip()[:120]}) — its pairs are "
+                f"measured in full")
+            continue
+        n = 0
+        for path in glob.glob(os.path.join(dest, "**", "*.json.gz"),
+                              recursive=True):
+            index[os.path.basename(path)[:-len(".json.gz")]] = path
+            n += 1
+        log(f"saved positions from run {run_id}: {n} pair(s)")
+    log(f"{len(index)} pair(s) have a saved position to continue from")
+    return index
+
+
+def state_usable(prior: dict) -> str:
+    """"" when this saved position can be continued, else why not — the same
+    rules market_sweep.run_pair applies to a PC state: a registry that grew a
+    signal the state never measured, or another fingerprint, means a full
+    measure, never a continuation that silently lacks rules."""
+    if not prior or not int(prior.get("__last_ms__") or 0):
+        return "no watermark"
+    if prior.get("__version__") != VERSION:
+        return f"fingerprint {prior.get('__version__')!r} is not {VERSION!r}"
+    missing = set(br.SIGNALS) - set(prior.get("__signals__") or [])
+    if missing:
+        return f"{len(missing)} signal(s) it never measured ({sorted(missing)[0]}…)"
+    return ""
+
+
+def write_state(coin, tf, states: dict, *, last_ms, first_ms, bars, fee) -> None:
+    """One gzip'd JSON per pair, the PC's own layout plus meta (see
+    resume_state). Written when the pair COMPLETES, beside its rows."""
+    states = dict(states)
+    states.update({"__last_ms__": int(last_ms), "__first_ms__": int(first_ms),
+                   "__bars__": int(bars), "__signals__": sorted(br.SIGNALS),
+                   "__version__": VERSION, "__fee__": float(fee)})
+    path = os.path.join(STATE_OUT, f"{coin}-{tf}.json.gz")
+    tmp = path + ".tmp"
+    with open(tmp, "wb") as fh:
+        fh.write(rs.pack(states))
+    os.replace(tmp, path)
+
+
+def _row(coin, tf, sig, thp, sl, tp, sz, r, *, days, bars, last_ms, fee, rt,
+         liq_known, h1, h2) -> dict:
+    """The row both paths write — ONE shape, whichever engine measured it. The
+    full path hands fast_grid's report, the continuation the engine's; the
+    keys and rounding are identical so the store never learns two dialects."""
+    m = r["monthly"]
+    return {"coin": coin, "tf": tf, "signal": sig, "th": thp,
+            "sl": round(sl * 100, 3), "tp": round(tp * 100, 3),
+            "rr": round(tp / sl, 2), "sizing": sz, "lev": at.LEVERAGE,
+            "base": BASE_MARGIN, "notional": BASE_MARGIN * at.LEVERAGE,
+            "trades": r["trades"], "wins": r["wins"], "losses": r["losses"],
+            "winrate": (round(100 * r["wins"] / r["trades"], 2)
+                        if r["trades"] else 0.0),
+            "profit": round(r["profit"], 2),
+            "funding": round(r["funding_total"], 2),
+            "h1": round(h1, 2), "h2": round(h2, 2),
+            "green": r["months_green"], "months": r["months_total"],
+            "worst": round(r["worst_trade"], 2), "dd": round(r["max_dd"], 2),
+            "streak": round(r["worst_streak"], 2),
+            "streak_len": r["worst_streak_len"],
+            "liqs": r["liqs"], "stop_reachable": liq_known,
+            "days": days, "last_ms": int(last_ms), "bars": bars,
+            "monthly": {k: round(v, 2) for k, v in m.items()},
+            "cost_of_tp": round(rt / tp * 100, 1), "rt": round(rt * 100, 4),
+            "gate": "warn" if rt / tp >= .2 else "ok",
+            # the fee this pair was charged, as the PC's rows carry it
+            "fee": round(fee, 8)}
+
+
+def continue_pair(sym, tf, prior: dict, out, *, i=0, n=0, rows_so_far=0):
+    """UPDATE: walk only the bars newer than the saved position's watermark
+    (plus the lookback the rules need) and continue every combination from
+    where it stopped — the same engine call market_sweep makes on this PC.
+
+    Nothing is written for a pair with no new bar (not even a done marker: the
+    collector would take an empty marker as "measured, zero rows" and wipe the
+    stored rows). Its saved position is re-emitted unchanged so the chain of
+    runs keeps it. Returns the rows kept, like run_pair."""
+    iv, bs, cap = br.TFS[tf]
+    coin = sym.replace("_USDT", "")
+    last_ms = int(prior["__last_ms__"])
+    report("testing", i, n, rows=rows_so_far, span="",
+           note=f"{coin} {tf}: continuing from {fmt_when(last_ms / 1000)} · "
+                f"downloading new candles")
+    # how many bars to ask for: the gap plus the lookback, never the cap —
+    # a week of 15m is ~700 bars, not 35,000
+    bar_ms = bs * 1000
+    est_new = int((time.time() * 1000 - last_ms) // bar_ms) + 2
+    need = est_new + CONTEXT_BARS + 50
+    if need > cap:
+        log(f"{coin} {tf}: the saved position is {est_new:,} bars old, more "
+            f"than the {cap:,}-bar window — measured in full instead")
+        return None                          # caller falls back to the full path
+    try:
+        fee = at.taker_fee(sym, fx=fx)
+        liq = fx.liquidation_move_pct(sym, at.LEVERAGE)
+        fund = fx.funding_history(sym)
+        book = fx.book_cost(sym, BASE_MARGIN * at.LEVERAGE)
+        rt = br.round_trip_cost(fee, book)
+        df = at._closed_bars(fx.klines(sym, iv, min(cap, need)), bs)
+    except Exception as exc:
+        raise PairFailed(f"{sym} {tf}: {str(exc)[:60]}") from exc
+    frame, off, new_bars = rs.gap_frame(df, last_ms, CONTEXT_BARS)
+    if frame is None or new_bars <= 0:
+        log(f"{coin} {tf}: no new bars since {fmt_when(last_ms / 1000)} — "
+            f"position kept, nothing written")
+        write_state(coin, tf, {k: v for k, v in prior.items()
+                               if not str(k).startswith("__")},
+                    last_ms=last_ms, first_ms=prior.get("__first_ms__") or last_ms,
+                    bars=prior.get("__bars__") or 0, fee=fee)
+        _bump("continued")
+        report("testing", i, n, rows=rows_so_far,
+               span=f"{fmt_when(last_ms / 1000)} → {fmt_when(last_ms / 1000)}",
+               note=f"{coin} {tf}: no new bars since the last test")
+        return 0
+    if off < CONTEXT_BARS and len(df) < need - 10:
+        # the venue served fewer bars than asked and the lookback is short:
+        # the rules would see less history than a full run did
+        log(f"{coin} {tf}: only {off} bars of lookback before the new ones "
+            f"(wanted {CONTEXT_BARS}) — measured in full instead")
+        return None
+    hi = [float(x) for x in frame["High"]]
+    lo = [float(x) for x in frame["Low"]]
+    cl = [float(x) for x in frame["Close"]]
+    op = [float(x) for x in frame["Open"]]
+    vol = [float(x) for x in frame["Volume"]] if "Volume" in frame.columns else None
+    ts = list(frame["Date"].to_numpy().astype("datetime64[ms]").astype("int64"))
+    first_ms = int(prior.get("__first_ms__") or last_ms)
+    bars_total = int(prior.get("__bars__") or 0) + new_bars
+    days = int((frame["Date"].iloc[-1].timestamp() * 1000 - first_ms) // 86_400_000)
+    span = f"{fmt_when(last_ms / 1000)} → {fmt_when(ts[-1] / 1000)}"
+    report("testing", i, n, rows=rows_so_far, span=span,
+           note=f"{coin} {tf}: {new_bars:,} new bars · {len(br.SIGNALS)} rules")
+    new_states = {k: v for k, v in prior.items() if not str(k).startswith("__")}
+    kept = 0
+    no_state = 0
+    lines = []
+    for si, sig in enumerate(br.SIGNALS, 1):
+        key = f"{sig}_gh_{tf}"
+        ths = br.THRESHOLDS[tf] if sig in br.THRESH_SIGNALS else [None]
+        for th in ths:
+            at.STRATEGY_SPECS[key] = {"interval": iv, "bar_seconds": bs, "tp": .02,
+                                      "sl": .01,
+                                      "threshold": .003 if th is None else th}
+            try:
+                dk = "rsi14_1h" if sig == "rsi14" else key
+                dirs = at._dirs_for_backtest(dk, hi, lo, cl, opens=op, volume=vol,
+                                             funding=fund, ts=ts)
+            except Exception:
+                at.STRATEGY_SPECS.pop(key, None)
+                continue
+            thp = 0.0 if th is None else round(th * 100, 3)
+            for (sl, tp) in br.pairs_for(tf):
+                if liq is not None and sl * 100 >= liq:
+                    continue
+                if rt / tp >= GATE_BLOCK:
+                    continue
+                for sz in br.SIZINGS:
+                    ck = combo_key(sig, thp, sl * 100, tp * 100, sz)
+                    prev = new_states.get(ck)
+                    if prev is None:
+                        # never measured before (a barrier the gate let
+                        # through only now, a new pair in the grid): it has no
+                        # position to continue and no history to measure over
+                        # this short frame — counted, and measured on the
+                        # next full run
+                        no_state += 1
+                        continue
+                    try:
+                        r, st = rs.continue_combo(
+                            key, frame, BASE_MARGIN, fee=fee, sizing=sz,
+                            dirs=dirs, tp=tp, sl=sl, liq=liq, funding=fund,
+                            prev=prev, start_at=off)
+                    except Exception:
+                        continue
+                    new_states[ck] = st
+                    if not r["trades"]:
+                        continue          # no trade at all is not a row
+                    m = r["monthly"]
+                    mk = sorted(m)
+                    h1 = sum(m[k2] for k2 in mk[:max(1, len(mk) // 2)])
+                    h2 = sum(m[k2] for k2 in mk[max(1, len(mk) // 2):])
+                    lines.append(json.dumps(_row(
+                        coin, tf, sig, thp, sl, tp, sz, r, days=days,
+                        bars=bars_total, last_ms=ts[-1], fee=fee, rt=rt,
+                        liq_known=liq is not None, h1=h1, h2=h2)) + "\n")
+                    kept += 1
+            at.STRATEGY_SPECS.pop(key, None)
+        report("testing", i, n, rows=rows_so_far + kept, span=span,
+               note=f"{coin} {tf}: rule {si}/{len(br.SIGNALS)} ({sig}) · continuing")
+    lines.append(json.dumps({"coin": coin, "tf": tf, "pair_done": True,
+                             "last_ms": int(ts[-1]), "rows": kept,
+                             "bars": bars_total, "continued": True,
+                             "gap_from_ms": last_ms}) + "\n")
+    out.write("".join(lines))
+    out.flush()
+    write_state(coin, tf, new_states, last_ms=ts[-1], first_ms=first_ms,
+                bars=bars_total, fee=fee)
+    _bump("continued")
+    if no_state:
+        log(f"{coin} {tf}: {no_state} combination(s) had no saved position and "
+            f"were skipped — a full run measures them")
+    return kept
+
+
 def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
     """Measure one pair. Rows are BUFFERED and written only when the pair
     completes, so a pair that raises leaves nothing behind to mix with its
-    redo. A venue failure raises PairFailed for main() to requeue."""
+    redo. A venue failure raises PairFailed for main() to requeue.
+
+    In UPDATE mode a pair with a usable saved position is CONTINUED over its
+    new bars only (continue_pair); anything else is measured in full, and
+    every pair leaves a saved position behind for the next run."""
     iv, bs, cap = br.TFS[tf]
+    coin = sym.replace("_USDT", "")
+    if MODE == "update":
+        path = PRIOR.get(f"{coin}-{tf}")
+        prior = None
+        if path:
+            try:
+                with open(path, "rb") as fh:
+                    prior = rs.unpack(fh.read())
+            except Exception as exc:                            # noqa: BLE001
+                log(f"{coin} {tf}: saved position unreadable "
+                    f"({type(exc).__name__}) — measured in full")
+        if prior is not None:
+            why = state_usable(prior)
+            if why:
+                log(f"{coin} {tf}: saved position not continued — {why}; "
+                    f"measured in full")
+            else:
+                got = continue_pair(sym, tf, prior, out, i=i, n=n,
+                                    rows_so_far=rows_so_far)
+                if got is not None:
+                    return got
+        else:
+            log(f"{coin} {tf}: no saved position — first time on GitHub, "
+                f"measured in full")
+    _bump("fresh")
     # span="" CLEARS it, deliberately: the dates are not known until this
     # pair's candles are loaded, and carrying the PREVIOUS pair's span here
     # would print one pair's name beside another pair's dates
@@ -226,6 +520,7 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
     half = nbars // 2
     kept = 0
     lines = []                  # written only when the pair completes
+    pair_states: dict = {}      # combo key -> saved position (write_state)
     # Once per frame, for fast_grid: funding as cumulative-rate arrays and
     # each bar's month as an index, so no trade ever formats a timestamp.
     f_ms, f_rate = [], []
@@ -302,11 +597,20 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
                         half=half, base=BASE_MARGIN, lev=at.LEVERAGE,
                         fee=fee + 0.0003, ladder=at.ladder_margin,
                         mo_idx=mo_idx, mo_labels=mo_labels,
-                        f_ms=f_ms, f_cum=f_cum, bar_ms=ts)
+                        f_ms=f_ms, f_cum=f_cum, bar_ms=ts, with_trades=True)
                 except Exception:
                     continue
                 for sz in ("flat", "martingale"):
                     r = six[sz]["full"]
+                    # THE SAVED POSITION, from the same walk: what the next
+                    # UPDATE continues from (fast_grid.end_state, parity-pinned
+                    # against the engine's own resume state)
+                    pair_states[combo_key(sig, thp, sl * 100, tp * 100, sz)] = \
+                        fg.end_state(six["trades"], base=BASE_MARGIN,
+                                     lev=at.LEVERAGE, fee=fee + 0.0003,
+                                     sizing=sz, ladder=at.ladder_margin,
+                                     mo_idx=mo_idx, mo_labels=mo_labels,
+                                     opens=op, bar_ms=ts, last_ms=int(ts[-1]))
                     # EVERY row, winners and losers alike. This used to drop
                     # `profit <= 0 or trades < 100`, so a merged pair held only
                     # its profitable slice: "how many combinations were tested"
@@ -373,6 +677,10 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
                              "rows": kept, "bars": nbars}) + "\n")
     out.write("".join(lines))
     out.flush()
+    # and the position to continue from next time, beside the rows
+    if len(ts):
+        write_state(coin, tf, pair_states, last_ms=int(ts[-1]),
+                    first_ms=int(ts[0]), bars=nbars, fee=fee)
     return kept
 
 
@@ -382,6 +690,9 @@ def main():
     t0 = time.time()
     coins = eligible()
     log(f"window: last {DAYS} days (+30 lookback), floors {br.MIN_BARS}")
+    log(f"mode: {MODE}" + (f" · saved positions from run(s) "
+                           f"{', '.join(STATE_RUNS)}" if STATE_RUNS else ""))
+    PRIOR.update(fetch_prior_states())
     total, redos, young = 0, 0, 0
     failed: list = []
     # The queue is PUMPED one claimed coin at a time — the next coin is only

@@ -73,10 +73,13 @@ def test_the_per_rule_report_carries_the_dates(shard_src):
                 if any(isinstance(k.value, ast.JoinedStr)
                        and "rule " in ast.unparse(k.value)
                        for k in c.keywords if k.arg == "note")]
-    assert len(per_rule) == 1, "expected exactly one per-rule report"
-    span = next(k for k in per_rule[0].keywords if k.arg == "span")
-    assert ast.unparse(span.value) == "span", \
-        "the per-rule report must send the pair's span, not a literal"
+    # two since the UPDATE path landed: the full measure and the continuation
+    # each report per rule, and each must send the pair's real span
+    assert len(per_rule) >= 1, "expected a per-rule report"
+    for call in per_rule:
+        span = next(k for k in call.keywords if k.arg == "span")
+        assert ast.unparse(span.value) == "span", \
+            f"line {call.lineno}: the per-rule report must send the pair's span, not a literal"
 
 
 def test_the_span_is_built_from_the_pairs_own_first_and_last_bar(shard_src):
@@ -107,34 +110,37 @@ def test_the_header_says_which_dates_the_whole_run_tests_on_its_own_line():
     word "Testing"."""
     body = PANEL.read_text(encoding="utf-8")
     i = body.index("Testing {fmtWhenMs(from)} → {fmtWhenMs(Date.now())}")
-    block = body[i - 400:i + 900]
+    # the whole header block: from where `days` is read to the dates line
+    start = body.rindex("const days = cloud.shards.find((s) => s.days)?.days", 0, i)
+    block = body[start:i + 900]
     assert "font-semibold" in block, "the dates are the prominent part"
     assert "text-theme-sm" in block, "not the grey xs text it hid in before"
     # derived from the run's own `days`, never a literal date
-    assert "cloud.shards.find((s) => s.days)?.days" in block
     assert "(days + 30) * 86400_000" in block, "days+30: the shard's own cut"
     # and the old buried form is gone
     assert "testing {fmtWhenMs(from)} → today (last {days} days)" not in body
 
 
 def test_the_header_tells_the_truth_about_update_on_the_cloud():
-    """The operator expected UPDATE to test "july 18 to sept 9". On GitHub it
-    cannot: the shard has no watermark, so BACKTEST and UPDATE both measure
-    the whole window. The sentence says so, because that is WHY it is slow.
-    If the shard ever learns to continue from a pair's last test, this test
-    fails on purpose — the sentence must change with it."""
+    """This test used to pin the OPPOSITE sentence — "BACKTEST and UPDATE
+    both re-measure every bar" — and promised to fail the day the cloud
+    learned to continue from a pair's last test. That day was 2026-09-09
+    (sweep_shard.continue_pair). Now it pins the new truth: a FULL run says
+    "from scratch" and that positions are saved; an UPDATE run says it tests
+    only the new candles and counts continued vs measured-in-full."""
     body = PANEL.read_text(encoding="utf-8")
-    assert "from scratch" in body and "cannot continue" in body
-    assert "BACKTEST and" in body and "UPDATE both re-measure" in body
+    assert "from scratch (BACKTEST)" in body
+    assert "the next UPDATE tests only the new" in body
+    assert 'cloud.shards.some((s) => s.mode === "update")' in body
+    assert "UPDATE — testing only the new candles since each coin" in body
+    # the old lie must not come back in either branch
+    assert "UPDATE both re-measure" not in body
+    assert "cannot continue from a coin" not in body
     shard = SHARD.read_text(encoding="utf-8")
-    # the ONLY cut the shard makes is the run's window: `window(df)` takes
-    # nothing but the frame and cuts at DAYS+30. A `since`/watermark argument
-    # here would mean the cloud learned to continue from a pair's last test —
-    # and then the header's sentence would be a lie until it is rewritten.
-    assert "def window(df):" in shard, "window() grew an argument — is the cloud incremental now?"
+    assert "def continue_pair(" in shard, "the cloud continues a pair now"
+    # a FULL measure still cuts at the run's window, exactly as before
+    assert "def window(df):" in shard
     assert "pd.Timedelta(days=DAYS + 30)" in shard
-    cloud = Path("tradingagents/cloud_sweep.py").read_text(encoding="utf-8")
-    assert "fresh full-history measurement" in cloud
 
 
 def test_the_span_is_blank_when_no_pair_is_being_measured(shard_src):

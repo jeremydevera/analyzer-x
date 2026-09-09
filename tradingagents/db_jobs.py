@@ -1757,6 +1757,17 @@ def _run_btupdate(spec: dict) -> None:
         from tradingagents import cloud_sweep as cs
 
         try:
+            # UPDATE MEANS UPDATE. Operator, 2026-09-09: "if the last backtest
+            # was sep1 and i click update it should run on github to update
+            # the gap which is sept 2 onwards". mode="update" makes each
+            # machine continue every pair from its saved position over the new
+            # bars only; `state_runs` names the runs holding those positions.
+            # A pair with none is measured in full, once, and says so.
+            state_runs = cs.state_runs_for(plan["cloud"])
+            held = (", ".join(state_runs) if state_runs
+                    else "none yet — every pair measured in full this once")
+            print(f"[btupdate] continuing from saved positions in run(s) {held}",
+                  flush=True)
             dispatched = cs.dispatch(
                 shards=cap.CLOUD_RUNNERS, coins=0,
                 timeframes=",".join(plan["cloud"]),
@@ -1764,7 +1775,8 @@ def _run_btupdate(spec: dict) -> None:
                 # the spec's OWN stake, not the shard's hardcoded $5. This
                 # path already dispatched before the Sep 05, 2026 move, so it
                 # had been measuring at a stake nobody chose for longer.
-                base=float(spec.get("base") or 5.0))
+                base=float(spec.get("base") or 5.0),
+                mode="update", state_runs=state_runs)
             # the run's own record: the pending panel's "the busy run covers
             # X" note reads it, and since the autopilot stopped dispatching
             # (2026-09-09) button paths like this are the only writers

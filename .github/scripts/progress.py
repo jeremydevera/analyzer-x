@@ -163,6 +163,14 @@ class Reporter:
         self._sha = None
         self.path = f"progress/run-{self.run}/shard-{self.shard}.json"
         self.enabled = bool(self.repo and self.token)
+        # UPDATE vs FULL, and how many pairs went each way — the header prints
+        # "continuing N coins from their last test · M measured in full" from
+        # these, and the tile says which its pair is (operator, 2026-09-09:
+        # "the last backtest was sep1 ... update the gap which is sept 2
+        # onwards"). Counters the shard advances; every report carries them.
+        self.mode = (os.environ.get("MODE") or "full").strip().lower()
+        self.continued = 0
+        self.fresh = 0
 
     def __call__(self, stage: str, done: int, total: int, rows: int = 0,
                  note: str = "", force: bool = False,
@@ -194,6 +202,9 @@ class Reporter:
                    # overwritten by the note, and the caller carries it
                    # through every report for that pair.
                    "span": span[:120],
+                   "mode": self.mode,
+                   "continued": int(self.continued),
+                   "fresh": int(self.fresh),
                    # the WINDOW this run was asked for, so the panel can print
                    # real dates — "i dont see what dates are being tested"
                    # (2026-09-09). Each tile's note carries its pair's exact

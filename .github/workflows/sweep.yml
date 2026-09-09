@@ -29,9 +29,16 @@ on:
       base:
         description: "Base margin $ per trade — every dollar figure is measured at this stake"
         default: "5"
+      mode:
+        description: "full = every pair from scratch (BACKTEST); update = continue each pair with a saved position over its new bars only (UPDATE)"
+        default: "full"
+      state_runs:
+        description: "Comma-separated run ids whose state-* artifacts hold the latest saved positions (update mode); empty = none"
+        default: ""
 
 permissions:
   contents: write        # shards write their progress to the sweep-progress branch
+  actions: read          # an UPDATE downloads earlier runs' state-* artifacts
 
 jobs:
   plan:
@@ -80,6 +87,8 @@ jobs:
           MIN_DAYS: ${{ github.event.inputs.min_days }}
           DAYS: ${{ github.event.inputs.days }}
           BASE_MARGIN: ${{ github.event.inputs.base }}
+          MODE: ${{ github.event.inputs.mode }}
+          STATE_RUNS: ${{ github.event.inputs.state_runs }}
         run: python .github/scripts/sweep_shard.py
 
       - uses: actions/upload-artifact@v4
@@ -88,6 +97,16 @@ jobs:
           path: out/rows-*.jsonl
           if-no-files-found: warn
           retention-days: 14
+
+      # THE SAVED POSITIONS — one gzip'd file per pair this machine measured,
+      # what the next UPDATE continues from. Kept longer than the rows: an
+      # update a month later must still find them (cloud_sweep.STATE_RUN_MAX_AGE_S).
+      - uses: actions/upload-artifact@v4
+        with:
+          name: state-${{ matrix.shard }}
+          path: out/state/*.json.gz
+          if-no-files-found: warn
+          retention-days: 90
 
   merge:
     needs: sweep

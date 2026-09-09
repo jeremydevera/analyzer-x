@@ -148,10 +148,17 @@ def test_the_cloud_watermark_is_milliseconds_and_json_safe():
     import json
 
     src = _shard_src()
-    i = src.index('"last_ms"')
-    line = src[i:i + 120]
-    assert "int(ts[-1])" in line, "it must be a plain int for json.dumps"
-    assert "* 1000" not in line, "ts is already milliseconds"
+    # the rows and the markers write the frame's last bar as a PLAIN int — in
+    # the full path directly, in the continuation through _row(last_ms=ts[-1])
+    assert '"last_ms": int(ts[-1])' in src, "it must be a plain int for json.dumps"
+    assert "last_ms=ts[-1]" in src
+    at = 0
+    while True:
+        i = src.find('"last_ms"', at)
+        if i < 0:
+            break
+        assert "* 1000" not in src[i:i + 120], "ts is already milliseconds"
+        at = i + 1
 
     # and the value must land in a sane decade
     now_ms = int(dt.datetime.now().timestamp() * 1000)

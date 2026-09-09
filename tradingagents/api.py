@@ -2092,12 +2092,15 @@ def cloud_dispatch(body: dict) -> dict:
     ok, why = cs.available()
     if not ok:
         raise HTTPException(400, why)
+    # BACKTEST = from scratch, always: mode "full" is the deliberate reset.
+    # UPDATE goes through the btupdate job, which dispatches mode "update".
     run = cs.dispatch(shards=int(body.get("shards") or 20),
                       coins=int(body.get("coins") or 0),
                       timeframes=str(body.get("timeframes") or "15m,30m"),
                       min_days=int(body.get("min_days") or 0),
                       days=int(body.get("days") or 365),
-                      base=float(body.get("base") or 5.0))
+                      base=float(body.get("base") or 5.0),
+                      mode="full")
     cs.remember(run)
     return run
 

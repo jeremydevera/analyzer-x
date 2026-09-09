@@ -29,6 +29,76 @@ this repo is also part of the record.
 
 ---
 
+## RCA-2026-09-09-P — UPDATE on GitHub re-measured the whole year, and the collector then threw 99% of it away
+
+**SAW** — *"if the last backtest was sep1 and i click update it should run on
+github to update the gap which is sept 2 onwards simple as that"* — after three
+asks about which dates a run was testing, and the header finally admitting
+"the whole 365-day window, from scratch".
+
+**TIMELINE**
+
+1. `Sep 05, 2026` — measuring moved to GitHub ("no option 'this mac'"). The
+   cloud shard measures with `fast_grid` (two walks, no notion of a saved
+   position); the "continue over new bars only" logic lived only in the PC
+   path that was switched off. From here UPDATE and BACKTEST were the same
+   job on the cloud: `db_jobs._run_btupdate` dispatched `days=365`, the
+   shard cut every pair at `DAYS+30`.
+2. The collector kept the pre-Sep-05 rule "never overwrite a pair the Mac
+   finished" (`pair_watermark > 0 → refused`). The collect log for the eight
+   runs to `Sep 09`: **0, 1, 17, 4, 0, 0, 0, 9 pairs kept** against
+   **1,550–4,549 "skipped, already measured here"** per run. Run 34285739222
+   alone: 40,148,482 rows measured by twenty machines, 9 pairs landed.
+3. The Stored strategies therefore still held **August's** measurements —
+   4,226 of 4,540 pairs — while UPDATE ran for hours several times a day.
+4. Measured `Sep 09`: a saved position is 9–14 MB per pair on the PC (25 GB
+   for 3,597 pairs), so shipping the PC's state to twenty machines every run
+   was never an option; 1,008 pairs had no position anywhere.
+
+**ROOT CAUSE** — two. The cloud had no memory between runs, so "update" could
+only mean "start over"; and a store rule written for a PC-first world froze
+the store the day the PC stopped measuring.
+
+**WHY IT WAS NOT CAUGHT** — no test drove UPDATE end to end on the cloud path
+and read what landed; the collector's tests asserted the old rule faithfully
+(`test_a_locally_measured_pair_is_never_overwritten`) and passed while the
+store stood still. The collect log said "skipped, already measured here" on
+every run and nobody read it as a fault.
+
+**COST** — none in money. Every UPDATE since Sep 05: hours of twenty machines,
+almost nothing kept; a week of stale strategies under a fresh-looking screen.
+
+**FIX** — this commit.
+* `fast_grid.end_state` derives the engine's own resume state from the fast
+  walk's trade list (open trade carried, not counted; streak carried; unrounded
+  sums) — parity-pinned against `backtest_strategy(resume={})["state"]`.
+* Every run saves each pair's position as a `state-<shard>` artifact (90
+  days). `sweep_shard.continue_pair` (mode `update`) downloads the positions
+  named in `state_runs`, fetches only the gap plus 300 bars of lookback, and
+  continues every combination with `resume_state.continue_combo` — the same
+  engine call the PC makes. Pinned equal to a single full run, streak included
+  (`tests/test_cloud_continue.py`).
+* harddev found the BOUNDARY BAR: a signal on the last tested bar enters on
+  the first new bar and the engine's resume skipped it (65 trades against 66).
+  `continue_combo` starts one bar early unless a trade exited on that bar or
+  is still open across it. The PC's own update has the same gap (not fixed
+  here; named).
+* The collector keeps the NEWER measurement (`is_fresher`) and refuses only a
+  stale or equal one; it records which run holds the latest positions per
+  timeframe (`record_state_run`), and `_run_btupdate` dispatches
+  `mode=update` with them. BACKTEST dispatches `mode=full`.
+* The header tells UPDATE from FULL and counts continued vs measured-in-full;
+  a continued tile reads "last test → now".
+
+**GUARD** — `tests/test_fast_grid.py` (+31: end_state == engine state),
+`tests/test_cloud_continue.py` (46: continued == full, boundary trade carried,
+pack/unpack), `tests/test_cloud_update_mode.py` (19: shard, workflow,
+dispatch, collector rule, state-run record, header), and the rewritten
+`tests/test_cloud_collect.py` rules (fresher replaces, stale refused, marker
+replaces only when fresher).
+
+---
+
 ## RCA-2026-09-09-O — the download button promised 566,990 rows and the file held 1,184
 
 **SAW** — found by pressing it. Operator: *"press and watch download csv in

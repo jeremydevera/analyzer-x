@@ -129,16 +129,47 @@ def test_it_never_holds_more_than_one_pair(monkeypatch, store):
     assert max(high) == 1, "one pair per write, never an accumulated list"
 
 
-def test_a_locally_measured_pair_is_never_overwritten(monkeypatch, store):
+def test_a_fresher_measurement_replaces_the_stored_pair(monkeypatch, store):
+    """THE RULE CHANGED on 2026-09-09. This test used to be "a locally
+    measured pair is never overwritten": any pair with a watermark was
+    refused. Right while this PC measured and the cloud filled gaps; a
+    store-freezer once the cloud became the only measurer (Sep 05) — the
+    collect log for the eight runs to Sep 09 kept 0, 1, 17, 4, 0, 0, 0 and 9
+    pairs against 1,550–4,549 "skipped, already measured here" each, and the
+    Stored strategies stayed August's. Now the NEWER measurement wins."""
     from tradingagents import market_sweep as msw
     msw.save_pair_rows("APEX", "1h", [{"coin": "APEX", "mine": True}])
     msw.save_states("APEX", "1h", {"__last_ms__": 999})
-    _download(monkeypatch, {"rows-0": [_row("APEX", "1h", "mom6"),
+    _download(monkeypatch, {"rows-0": [_row("APEX", "1h", "mom6", last_ms=1000),
+                                       _row("PI", "1h", "mom6")]})
+    r = cs.collect_into_store(1)
+    assert r["skipped"] == 0 and r["pairs"] == 2
+    assert [x["signal"] for x in msw.pair_rows("APEX", "1h")] == ["mom6"]
+    assert msw.pair_watermark("APEX", "1h") == 1000
+
+
+def test_a_stale_measurement_never_overwrites_a_fresher_stored_pair(monkeypatch, store):
+    """The one refusal left: a run whose rows end no later than what is
+    stored — a stale run landing after a fresher one, or the same run
+    collected twice — leaves the store alone and is NAMED in skipped."""
+    from tradingagents import market_sweep as msw
+    msw.save_pair_rows("APEX", "1h", [{"coin": "APEX", "mine": True}])
+    msw.save_states("APEX", "1h", {"__last_ms__": 1500})
+    _download(monkeypatch, {"rows-0": [_row("APEX", "1h", "mom6", last_ms=1000),
                                        _row("PI", "1h", "mom6")]})
     r = cs.collect_into_store(1)
     assert r["skipped"] == 1 and r["skipped_pairs"] == ["APEX 1h"]
     assert msw.pair_rows("APEX", "1h") == [{"coin": "APEX", "mine": True}]
+    assert msw.pair_watermark("APEX", "1h") == 1500
     assert r["pairs"] == 1
+    assert "no newer" in r["why_skipped"]
+    # equal is not newer either: the same run collected twice changes nothing
+    # — APEX (1000 against 1000) AND PI, which the first collect just stored
+    # at 1000, are both refused and both named
+    msw.save_states("APEX", "1h", {"__last_ms__": 1000})
+    r = cs.collect_into_store(1)
+    assert r["skipped"] == 2 and sorted(r["skipped_pairs"]) == ["APEX 1h", "PI 1h"]
+    assert r["pairs"] == 0
 
 
 def test_a_refused_pair_seen_twice_is_still_not_overwritten(monkeypatch, store):
@@ -146,7 +177,7 @@ def test_a_refused_pair_seen_twice_is_still_not_overwritten(monkeypatch, store):
     sighting took the append branch and clobbered the local rows."""
     from tradingagents import market_sweep as msw
     msw.save_pair_rows("APEX", "1h", [{"mine": True}])
-    msw.save_states("APEX", "1h", {"__last_ms__": 999})
+    msw.save_states("APEX", "1h", {"__last_ms__": 1500})     # fresher than 1000
     _download(monkeypatch, {"rows-0": [_row("APEX", "1h", "a"),
                                        _row("PI", "1h", "x"),
                                        _row("APEX", "1h", "b")]})
@@ -297,24 +328,40 @@ def test_a_marker_beside_rows_changes_nothing_but_the_watermark(monkeypatch,
         "the marker's last_ms counts with the rows'"
 
 
-def test_a_marker_never_overwrites_a_locally_measured_pair(monkeypatch, store):
+def test_a_marker_replaces_the_stored_pair_only_when_fresher(monkeypatch, store):
+    """A zero-row marker from a FRESHER measurement means the pair really has
+    no row above the trade floor now — it replaces, like any newer result
+    (the rule of 2026-09-09). A stale marker is refused and the store stays."""
     from tradingagents import market_sweep as msw
     msw.save_pair_rows("APEX", "1h", [{"coin": "APEX", "tf": "1h"}])
     msw.save_states("APEX", "1h", {"__last_ms__": 5000})
-    _download(monkeypatch, {"rows-0": [_mark("APEX", "1h", last_ms=9000)]})
+    _download(monkeypatch, {"rows-0": [_mark("APEX", "1h", last_ms=4000)]})
     r = cs.collect_into_store(1)
     assert r["pairs"] == 0 and r["skipped"] == 1
-    assert msw.pair_watermark("APEX", "1h") == 5000, "the Mac's stays"
+    assert msw.pair_watermark("APEX", "1h") == 5000, "the fresher one stays"
+    assert msw.pair_rows("APEX", "1h") == [{"coin": "APEX", "tf": "1h"}]
+    _download(monkeypatch, {"rows-0": [_mark("APEX", "1h", last_ms=9000)]})
+    r = cs.collect_into_store(1)
+    assert r["pairs"] == 1 and r["skipped"] == 0
+    assert msw.pair_watermark("APEX", "1h") == 9000
+    assert msw.pair_rows("APEX", "1h") == []
 
 
 def test_the_shard_writes_one_marker_per_measured_pair():
     s = open(".github/scripts/sweep_shard.py", encoding="utf-8").read()
-    assert '"pair_done": True' in s
-    i = s.index('"pair_done": True')
-    assert s.index("if len(df) < br.min_bars(tf):") < i, \
+    # the FULL path (run_pair) — continue_pair, defined above it, writes its
+    # own marker (with `continued: True`) and is pinned in
+    # test_cloud_update_mode; both ride in the same write as their rows
+    body = s[s.index("\ndef run_pair("):]
+    assert '"pair_done": True' in body
+    i = body.index('"pair_done": True')
+    assert body.index("if len(df) < br.min_bars(tf):") < i, \
         "an under-floor pair returns BEFORE the marker — too_short pairs must stay pending"
-    assert s.index('lines.append(json.dumps({"coin": coin, "tf": tf, "pair_done"') \
-        < s.index('out.write("".join(lines))'), "the marker rides in the same write"
+    assert body.index('lines.append(json.dumps({"coin": coin, "tf": tf, "pair_done"') \
+        < body.index('out.write("".join(lines))'), "the marker rides in the same write"
+    cont = s[s.index("\ndef continue_pair("):s.index("\ndef run_pair(")]
+    assert '"continued": True' in cont and '"gap_from_ms": last_ms' in cont
+    assert cont.index('"pair_done": True') < cont.index('out.write("".join(lines))')
 
 
 def test_every_ci_script_actually_compiles():

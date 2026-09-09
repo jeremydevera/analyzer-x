@@ -102,12 +102,19 @@ def available() -> tuple[bool, str]:
 
 
 def dispatch(*, shards: int = 20, coins: int = 0, timeframes: str = "15m,30m",
-             min_days: int = 0, days: int = 365, base: float = 5.0) -> dict:
+             min_days: int = 0, days: int = 365, base: float = 5.0,
+             mode: str = "full", state_runs=()) -> dict:
     """Start a run and return its id and url. `days` is the history window the
-    shards measure -- the same number the Backtest screen sends the local job."""
+    shards measure -- the same number the Backtest screen sends the local job.
+
+    `mode` is "full" (BACKTEST: every pair from scratch) or "update" (UPDATE:
+    every pair with a saved position continues over its new bars only — see
+    sweep_shard.continue_pair). `state_runs` names the earlier runs whose
+    `state-*` artifacts hold the latest saved positions (state_runs_for)."""
     ok, slug = available()
     if not ok:
         raise CloudError(slug)
+    mode = "update" if str(mode).lower() == "update" else "full"
     before = _runs(slug, limit=1)
     _gh("workflow", "run", WORKFLOW, "--repo", slug,
         "-f", f"shards={shards}", "-f", f"coins={coins}",
@@ -115,7 +122,9 @@ def dispatch(*, shards: int = 20, coins: int = 0, timeframes: str = "15m,30m",
         # the operator's STAKE. The shard hardcoded 5.0 while the local job
         # took it from the Backtest screen, so after the move to GitHub every
         # dollar figure would have been measured at a stake nobody chose.
-        "-f", f"days={days}", "-f", f"base={base}")
+        "-f", f"days={days}", "-f", f"base={base}",
+        "-f", f"mode={mode}",
+        "-f", f"state_runs={','.join(str(x) for x in (state_runs or ()))}")
     # `gh workflow run` prints no id, so wait for a run newer than the last one
     old = before[0]["databaseId"] if before else 0
     for _ in range(30):
@@ -124,6 +133,7 @@ def dispatch(*, shards: int = 20, coins: int = 0, timeframes: str = "15m,30m",
         if runs and runs[0]["databaseId"] != old:
             r = runs[0]
             return {"id": r["databaseId"], "url": r["url"], "repo": slug,
+                    "mode": mode,
                     # what this run MEASURES, kept with the run: since the
                     # autopilot stopped dispatching (2026-09-09, "no no no, i
                     # want option to start the backtest"), button dispatches
@@ -415,11 +425,11 @@ def collect_into_store(run_id: int, slug: str | None = None, *,
         if not buf and marks:
             if key in refused or key in written:
                 return
-            if msw.pair_watermark(coin, tf) > 0:
+            last_ms = max(int(m.get("last_ms") or 0) for m in marks)
+            if not _fresher(coin, tf, last_ms):
                 refused.add(key)
                 skipped.append(f"{coin} {tf}")
                 return
-            last_ms = max(int(m.get("last_ms") or 0) for m in marks)
             # an EMPTY rows file, exactly what a local sweep leaves when the
             # trade floor drops everything (the 1d incident, 2026-08-26) —
             # the state file beside it is what says "measured"
@@ -438,11 +448,18 @@ def collect_into_store(run_id: int, slug: str | None = None, *,
         # the append branch below and overwrite the very rows being protected.
         if key in refused:
             return
-        # NEVER overwrite a pair the Mac finished: its watermark promises every
-        # bar up to X was tested for every combination, and replacing the rows
-        # under that promise makes the next local update extend a measurement
-        # it did not make.
-        if key not in written and msw.pair_watermark(coin, tf) > 0:
+        # THE NEWER MEASUREMENT WINS. This used to refuse any pair with a
+        # watermark ("never overwrite a pair the Mac finished") — right while
+        # this PC measured and the cloud filled gaps, and a store-freezer once
+        # the cloud became the only measurer (Sep 05, 2026): the collect log
+        # for the eight runs up to Sep 09 reads 0, 1, 17, 4, 0, 0, 0 and 9
+        # pairs kept against 1,550–4,549 "skipped, already measured here"
+        # per run — 40,148,482 rows measured by twenty machines and thrown
+        # away, the Stored strategies still August's. Only a measurement no
+        # newer than the stored one is refused now (a stale run landing after
+        # a fresher one). The continued run's rows carry their real end bar.
+        last_ms = max(int(r.get("last_ms") or 0) for r in buf + marks)
+        if key not in written and not _fresher(coin, tf, last_ms):
             refused.add(key)                   # do not re-check it per line
             skipped.append(f"{coin} {tf}")
             return
@@ -451,7 +468,6 @@ def collect_into_store(run_id: int, slug: str | None = None, *,
         else:
             kept += 1
         msw.save_pair_rows(coin, tf, buf)
-        last_ms = max(int(r.get("last_ms") or 0) for r in buf + marks)
         if last_ms:
             # __last_ms__ LAST. `pair_watermark` reads the final 256 bytes and
             # its regex anchors the key to the closing brace, so writing it
@@ -464,6 +480,11 @@ def collect_into_store(run_id: int, slug: str | None = None, *,
         coins.add(coin)
 
     refused: set = set()
+    tfs_seen: set = set()
+
+    def _fresher(coin, tf, last_ms) -> bool:
+        return is_fresher(coin, tf, last_ms)
+
     for n, name in enumerate(names, 1):
         with tempfile.TemporaryDirectory() as tmp:
             try:
@@ -491,6 +512,7 @@ def collect_into_store(run_id: int, slug: str | None = None, *,
                         if not r.get("pair_done"):
                             rows_seen += 1
                         k = (r["coin"], r["tf"])
+                        tfs_seen.add(str(r["tf"]))
                         if k != key:
                             flush(key, buf)
                             key, buf = k, []
@@ -501,6 +523,14 @@ def collect_into_store(run_id: int, slug: str | None = None, *,
     if bad:
         logger.warning("cloud sweep: skipped %d unparseable line(s); "
                        "%d rows kept", bad, rows_seen)
+    # WHERE THE SAVED POSITIONS NOW LIVE. A run that shipped `state-*`
+    # artifacts is the one the next UPDATE continues from, per timeframe.
+    # Never allowed to raise: the rows are already written.
+    try:
+        if has_state_artifacts(run_id, slug):
+            record_state_run(run_id, sorted(tfs_seen))
+    except Exception as exc:                                   # noqa: BLE001
+        logger.warning("cloud sweep: state-run record failed: %r", exc)
     # OFF THE PENDING BOOKS. Operator, 2026-09-09: pending is what BROKE, so a
     # pair the fleet measured and this just landed is no longer a problem —
     # whichever run originally failed it. Never allowed to raise: the rows are
@@ -514,8 +544,71 @@ def collect_into_store(run_id: int, slug: str | None = None, *,
     return {"pairs": kept, "rows": rows_seen, "coins": len(coins),
             "artifacts": len(names), "skipped": len(skipped),
             "skipped_pairs": skipped[:20], "unparseable": bad,
-            "why_skipped": ("already measured locally — a cloud row would land "
-                            "behind the Mac's own watermark" if skipped else "")}
+            "why_skipped": ("no newer than the measurement already stored "
+                            "(a stale run landing after a fresher one)"
+                            if skipped else "")}
+
+
+def is_fresher(coin: str, tf: str, last_ms: int) -> bool:
+    """Is a measurement ending at `last_ms` newer than what the store holds
+    for this pair? The one rule the collector applies (see collect_into_store).
+    A pair the store has never measured (watermark 0) is always fresher."""
+    from tradingagents import market_sweep as msw
+
+    return int(last_ms or 0) > int(msw.pair_watermark(coin, tf) or 0)
+
+
+# Which run holds the latest SAVED POSITIONS per timeframe — what an UPDATE
+# hands the machines so they continue from it (sweep_shard.fetch_prior_states).
+STATE_RUNS_FILE = Path(os.path.expanduser(
+    "~/.tradingagents/backtest/cloud_state_runs.json"))
+# artifacts are kept 90 days (sweep.yml); a record older than this is not
+# offered, and the header then says the run measured in full
+STATE_RUN_MAX_AGE_S = 85 * 86400
+
+
+def has_state_artifacts(run_id: int, slug: str | None = None) -> bool:
+    slug = slug or repo_slug()
+    raw = json.loads(_gh("api", f"repos/{slug}/actions/runs/{run_id}"
+                                "/artifacts?per_page=100"))
+    return any(str(a.get("name", "")).startswith("state-")
+               and not a.get("expired") for a in (raw.get("artifacts") or []))
+
+
+def record_state_run(run_id: int, tfs, now: float | None = None) -> dict:
+    """`run_id` now holds the newest saved positions for `tfs`."""
+    rec = state_runs()
+    at = float(now if now is not None else time.time())
+    for tf in tfs:
+        rec[str(tf)] = {"run": int(run_id), "at": at}
+    STATE_RUNS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    tmp = STATE_RUNS_FILE.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(rec))
+    tmp.replace(STATE_RUNS_FILE)
+    return rec
+
+
+def state_runs() -> dict:
+    try:
+        return json.loads(STATE_RUNS_FILE.read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def state_runs_for(tfs, now: float | None = None) -> list:
+    """The run ids whose saved positions cover `tfs`, oldest first (the
+    shard lets the newest win a pair), skipping records older than the
+    artifact retention — those artifacts are gone, and a full measure with an
+    honest header beats a download that fails on twenty machines."""
+    at = float(now if now is not None else time.time())
+    rec = state_runs()
+    picked: dict = {}
+    for tf in tfs:
+        e = rec.get(str(tf))
+        if not e or at - float(e.get("at") or 0) > STATE_RUN_MAX_AGE_S:
+            continue
+        picked[int(e["run"])] = float(e.get("at") or 0)
+    return [str(r) for r, _ in sorted(picked.items(), key=lambda kv: kv[1])]
 
 
 RUNFILE = Path(os.path.expanduser("~/.tradingagents/backtest/cloud_run.json"))

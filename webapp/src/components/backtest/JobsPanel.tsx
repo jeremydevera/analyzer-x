@@ -427,14 +427,37 @@ export default function JobsPanel() {
             const days = cloud.shards.find((s) => s.days)?.days;
             if (!days) return null;
             const from = Date.now() - (days + 30) * 86400_000;
+            // UPDATE vs FULL, from the machines' own reports. Operator,
+            // 2026-09-09: "if the last backtest was sep1 and i click update it
+            // should run on github to update the gap which is sept 2 onwards".
+            // An update continues each coin from its saved position, so the
+            // range differs per coin and lives on the tile; the header counts
+            // how many were continued and how many had to be measured in full.
+            const update = cloud.shards.some((s) => s.mode === "update");
+            const continued = cloud.shards.reduce((a, s) => a + (s.continued ?? 0), 0);
+            const fresh = cloud.shards.reduce((a, s) => a + (s.fresh ?? 0), 0);
+            if (update) {
+              return (
+                <p className="mt-2 text-theme-sm text-gray-800 dark:text-white/90">
+                  <span className="font-semibold">
+                    UPDATE — testing only the new candles since each coin&apos;s last test
+                  </span>
+                  <span className="text-theme-xs text-gray-500 dark:text-gray-400">
+                    {" "}— {continued.toLocaleString()} pair{continued === 1 ? "" : "s"} continued from a saved
+                    position · {fresh.toLocaleString()} measured in full (no saved position yet — first time on
+                    GitHub, or one older than 90 days). Each machine&apos;s tile shows its coin&apos;s own dates:
+                    a continued coin reads &quot;last test → now&quot;.
+                  </span>
+                </p>
+              );
+            }
             return (
               <p className="mt-2 text-theme-sm text-gray-800 dark:text-white/90">
                 <span className="font-semibold">Testing {fmtWhenMs(from)} → {fmtWhenMs(Date.now())}</span>
                 <span className="text-theme-xs text-gray-500 dark:text-gray-400">
-                  {" "}— the whole {days}-day window plus 30 days of warm-up, from scratch.
-                  A GitHub run cannot continue from a coin&apos;s last test, so BACKTEST and
-                  UPDATE both re-measure every bar in this range; that is why a run takes hours.
-                  Each machine&apos;s tile shows its own coin&apos;s exact dates.
+                  {" "}— the whole {days}-day window plus 30 days of warm-up, from scratch (BACKTEST).
+                  Every coin&apos;s position at its last bar is saved, so the next UPDATE tests only the new
+                  candles. Each machine&apos;s tile shows its own coin&apos;s exact dates.
                 </span>
               </p>
             );

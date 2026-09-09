@@ -426,6 +426,14 @@ export interface CloudShard {
    *  the machine is done: a span belongs to a pair being tested. Absent on
    *  runs measured before 2026-09-09. */
   span?: string;
+  /** "full" = every pair from scratch (BACKTEST); "update" = each pair with
+   *  a saved position continued over its new bars only (UPDATE). Absent on
+   *  runs before 2026-09-09. */
+  mode?: "full" | "update";
+  /** UPDATE: pairs this machine continued from a saved position, and pairs
+   *  it had to measure in full (no saved position yet) */
+  continued?: number;
+  fresh?: number;
 }
 
 export interface CloudStatus {

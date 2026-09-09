@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 43, "total": 43, "rows": 3624202, "note": "MERL 1d: 394 bars \u00b7 Aug 11, 2025 12:00am \u2192 Sep 08, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:54:15Z"}
+{"shard": 8, "stage": "testing", "done": 45, "total": 45, "rows": 3680852, "note": "NEIROCTO 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:55:12Z"}

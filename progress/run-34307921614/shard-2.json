@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 32, "total": 32, "rows": 3220774, "note": "BB 15m: rule 96/120 (cf_emarsi_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:19:16Z"}
+{"shard": 2, "stage": "testing", "done": 32, "total": 32, "rows": 3226234, "note": "BB 30m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:20:05Z"}

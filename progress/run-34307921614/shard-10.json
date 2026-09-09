@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 44, "total": 44, "rows": 4338332, "note": "UBERSTOCK 15m: rule 99/120 (cf_ttm_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:22:21Z"}
+{"shard": 10, "stage": "testing", "done": 44, "total": 44, "rows": 4354312, "note": "UBERSTOCK 30m: rule 55/120 (nhigh50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:23:06Z"}

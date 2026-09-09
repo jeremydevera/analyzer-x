@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 9, "total": 9, "rows": 738248, "note": "SPACE 15m: rule 10/120 (sr_bounce)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:20:58Z"}
+{"shard": 16, "stage": "testing", "done": 9, "total": 9, "rows": 743968, "note": "SPACE 15m: rule 36/120 (stochrsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:21:44Z"}

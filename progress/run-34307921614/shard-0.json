@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 16, "total": 16, "rows": 1488504, "note": "AAVE 15m: rule 41/120 (tsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:11:02Z"}
+{"shard": 0, "stage": "testing", "done": 16, "total": 16, "rows": 1495524, "note": "AAVE 15m: rule 81/120 (cf_donch_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:11:49Z"}

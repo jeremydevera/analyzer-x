@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 60, "total": 60, "rows": 4992650, "note": "PTB 1d: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:12:36Z"}
+{"shard": 5, "stage": "testing", "done": 61, "total": 61, "rows": 5019740, "note": "SAMSUNGSTOCK 15m: rule 85/120 (cf_triple)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:13:21Z"}

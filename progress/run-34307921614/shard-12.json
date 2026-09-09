@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 40, "total": 40, "rows": 3552728, "note": "OPENAI 15m: rule 105/120 (cf_eqhl_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:25:27Z"}
+{"shard": 12, "stage": "testing", "done": 40, "total": 40, "rows": 3575848, "note": "OPENAI 30m: rule 102/120 (cf_soup1_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:26:12Z"}

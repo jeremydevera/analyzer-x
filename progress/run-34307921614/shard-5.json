@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 18, "total": 18, "rows": 1442800, "note": "DASH 15m: rule 117/120 (cf_diadx_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:49:47Z"}
+{"shard": 5, "stage": "testing", "done": 18, "total": 18, "rows": 1447140, "note": "DASH 30m: rule 13/120 (pivot)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:50:33Z"}

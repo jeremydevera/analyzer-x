@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 8, "total": 8, "rows": 562326, "note": "PEAQ 30m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:07:27Z"}
+{"shard": 13, "stage": "testing", "done": 8, "total": 8, "rows": 566926, "note": "PEAQ 30m: rule 23/120 (supertrend)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:08:12Z"}

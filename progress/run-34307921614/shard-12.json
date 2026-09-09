@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 2, "total": 2, "rows": 185968, "note": "NGAS 1d: 222 bars \u00b7 Jan 30, 2026 12:00am \u2192 Sep 08, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:45:15Z"}
+{"shard": 12, "stage": "testing", "done": 3, "total": 3, "rows": 213280, "note": "NICKEL 15m: rule 80/120 (cf_donch_l1)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:46:00Z"}

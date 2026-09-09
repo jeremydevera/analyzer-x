@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 39, "total": 39, "rows": 3408632, "note": "FF 1h: rule 62/120 (ote)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:06:25Z"}
+{"shard": 6, "stage": "testing", "done": 39, "total": 39, "rows": 3447352, "note": "FF 1d: 345 bars \u00b7 Sep 29, 2025 12:00am \u2192 Sep 08, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:07:14Z"}

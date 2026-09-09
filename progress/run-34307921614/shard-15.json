@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 22, "total": 22, "rows": 1859428, "note": "SIREN 30m: rule 102/120 (cf_soup1_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:23:45Z"}
+{"shard": 15, "stage": "testing", "done": 22, "total": 22, "rows": 1864348, "note": "SIREN 1h: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:24:32Z"}

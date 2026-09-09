@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 61, "total": 61, "rows": 5371754, "note": "BIGTIME 4h: 2,369 bars \u00b7 Aug 10, 2025 8:00am \u2192 Sep 09, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:51:40Z"}
+{"shard": 1, "stage": "testing", "done": 62, "total": 62, "rows": 5412102, "note": "BIO 15m: 34,602 bars \u00b7 Sep 13, 2025 8:15pm \u2192 Sep 09, 2026 6:30am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:52:33Z"}

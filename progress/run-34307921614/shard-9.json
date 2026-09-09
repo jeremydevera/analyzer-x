@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 70, "total": 70, "rows": 6385570, "note": "SAHARA 15m: rule 22/120 (engulf)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:12:48Z"}
+{"shard": 9, "stage": "testing", "done": 70, "total": 70, "rows": 6396570, "note": "SAHARA 15m: rule 78/120 (cf_mom_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:13:34Z"}

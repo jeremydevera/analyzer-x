@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 46, "total": 46, "rows": 3840366, "note": "DUSK 1h: rule 102/120 (cf_soup1_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:19:53Z"}
+{"shard": 5, "stage": "testing", "done": 46, "total": 46, "rows": 3870506, "note": "DUSK 1d: 394 bars \u00b7 Aug 11, 2025 12:00am \u2192 Sep 08, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:20:42Z"}

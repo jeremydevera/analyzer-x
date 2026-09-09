@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 29, "total": 29, "rows": 2477918, "note": "RIF 1h: rule 13/120 (pivot)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:41:41Z"}
+{"shard": 14, "stage": "testing", "done": 29, "total": 29, "rows": 2500358, "note": "RIF 1h: rule 117/120 (cf_diadx_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:42:26Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 22, "total": 22, "rows": 2141568, "note": "XRP 30m: rule 76/120 (cf_mom)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:47:25Z"}
+{"shard": 19, "stage": "testing", "done": 22, "total": 22, "rows": 2164688, "note": "XRP 1h: rule 61/120 (turtle)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:48:10Z"}

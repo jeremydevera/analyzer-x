@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 26, "total": 26, "rows": 2543860, "note": "STONKBROKER 1h: rule 78/120 (cf_mom_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:04:36Z"}
+{"shard": 16, "stage": "testing", "done": 29, "total": 29, "rows": 2554864, "note": "STORJ 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:05:31Z"}

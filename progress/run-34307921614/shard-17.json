@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 28, "total": 28, "rows": 2285138, "note": "TREE 30m: rule 20/120 (stoch14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:40:55Z"}
+{"shard": 17, "stage": "testing", "done": 28, "total": 28, "rows": 2292838, "note": "TREE 30m: rule 56/120 (insidebrk)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:41:40Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 33, "total": 33, "rows": 2830804, "note": "SKY 15m: rule 91/120 (cf_soup)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:01:23Z"}
+{"shard": 15, "stage": "testing", "done": 33, "total": 33, "rows": 2837184, "note": "SKY 30m: 18,487 bars \u00b7 Aug 20, 2025 2:30am \u2192 Sep 09, 2026 5:30am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:02:08Z"}

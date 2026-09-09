@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 33, "total": 33, "rows": 2937692, "note": "VTHO 15m: 34,599 bars \u00b7 Sep 13, 2025 8:15pm \u2192 Sep 09, 2026 5:45am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:02:19Z"}
+{"shard": 18, "stage": "testing", "done": 33, "total": 33, "rows": 2939672, "note": "VTHO 15m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:03:11Z"}

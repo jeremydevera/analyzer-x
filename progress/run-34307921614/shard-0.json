@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 24, "total": 24, "rows": 2321536, "note": "ADMSTOCK 30m: rule 54/120 (fractal5)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:02:12Z"}
+{"shard": 0, "stage": "testing", "done": 25, "total": 25, "rows": 2372816, "note": "ADVANTESTSTOCK 30m: rule 39/120 (fisher)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:02:57Z"}

@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 17, "total": 17, "rows": 1588134, "note": "LMTSTOCK 30m: rule 15/120 (bbbreak)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:02:47Z"}
+{"shard": 10, "stage": "testing", "done": 17, "total": 17, "rows": 1628634, "note": "LMTSTOCK 4h: 1,127 bars \u00b7 Mar 05, 2026 8:00am \u2192 Sep 09, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:03:33Z"}

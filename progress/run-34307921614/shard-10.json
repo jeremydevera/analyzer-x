@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 1, "total": 1, "rows": 71300, "note": "LAB 4h: 1,973 bars \u00b7 Oct 15, 2025 4:00am \u2192 Sep 08, 2026 8:00pm \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:47:05Z"}
+{"shard": 10, "stage": "testing", "done": 2, "total": 2, "rows": 113184, "note": "LASERTECSTOCK 30m: rule 62/120 (ote)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:47:50Z"}

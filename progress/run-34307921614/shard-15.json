@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 7, "total": 7, "rows": 538594, "note": "SCR 1h: rule 56/120 (insidebrk)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:14:14Z"}
+{"shard": 15, "stage": "testing", "done": 7, "total": 7, "rows": 554654, "note": "SCR 4h: rule 4/120 (trend50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:14:59Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 47, "total": 47, "rows": 4179136, "note": "WMTSTOCK 15m: rule 8/120 (fib618)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:22:48Z"}
+{"shard": 4, "stage": "testing", "done": 47, "total": 47, "rows": 4191296, "note": "WMTSTOCK 15m: rule 84/120 (cf_maobv_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:23:34Z"}

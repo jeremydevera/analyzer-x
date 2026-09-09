@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 16, "total": 16, "rows": 1529058, "note": "USUAL 30m: rule 96/120 (cf_emarsi_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:52:16Z"}
+{"shard": 18, "stage": "testing", "done": 16, "total": 16, "rows": 1536538, "note": "USUAL 1h: rule 4/120 (trend50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:53:02Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 10, "total": 10, "rows": 878196, "note": "IRENSTOCK 15m: rule 101/120 (cf_soup1_l1)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:13:16Z"}
+{"shard": 9, "stage": "testing", "done": 10, "total": 10, "rows": 907496, "note": "IRENSTOCK 1h: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:14:02Z"}

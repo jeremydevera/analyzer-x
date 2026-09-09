@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 15, "total": 15, "rows": 1242182, "note": "SHIB 15m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:51:04Z"}
+{"shard": 15, "stage": "testing", "done": 15, "total": 15, "rows": 1247582, "note": "SHIB 15m: rule 33/120 (heikin)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:51:50Z"}

@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 29, "total": 29, "rows": 2910652, "note": "LUNRSTOCK 1h: rule 120/120 (cf_stflip_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:13:58Z"}
+{"shard": 10, "stage": "testing", "done": 30, "total": 30, "rows": 2934570, "note": "LYN 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:14:44Z"}

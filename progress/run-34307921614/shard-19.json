@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 2, "total": 2, "rows": 134156, "note": "XAUT 15m: rule 56/120 (insidebrk)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:46:47Z"}
+{"shard": 19, "stage": "testing", "done": 2, "total": 2, "rows": 148016, "note": "XAUT 30m: 18,959 bars \u00b7 Aug 10, 2025 4:00am \u2192 Sep 09, 2026 3:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:47:43Z"}

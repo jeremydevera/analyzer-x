@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 8, "total": 8, "rows": 690550, "note": "HEMI 30m: rule 56/120 (insidebrk)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:17:17Z"}
+{"shard": 8, "stage": "testing", "done": 8, "total": 8, "rows": 704190, "note": "HEMI 1h: 9,024 bars \u00b7 Aug 29, 2025 4:00am \u2192 Sep 09, 2026 3:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:18:09Z"}

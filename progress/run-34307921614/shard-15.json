@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 10, "total": 10, "rows": 844516, "note": "SFP 30m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:34:32Z"}
+{"shard": 15, "stage": "testing", "done": 10, "total": 10, "rows": 851336, "note": "SFP 30m: rule 28/120 (vortex14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:35:17Z"}

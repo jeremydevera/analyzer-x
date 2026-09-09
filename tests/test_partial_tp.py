@@ -28,7 +28,17 @@ COIN = "GPNSTOCK_USDT"
 
 
 def _bars(n=300, px=100.0):
-    t0 = pd.Timestamp.utcnow().tz_localize(None).floor("h") - pd.Timedelta(hours=n)
+    """Hourly candles whose LAST bar closed one minute ago.
+
+    Not `floor("h")`: that leaves the newest bar closed anywhere from 0 to 59
+    minutes back, and the runner refuses a signal older than half its bar
+    (MAX_SIGNAL_AGE_FRACTION — 30 min on 1h). So these tests passed when run
+    at :10 and failed at :46, which is a clock deciding whether a coin rule
+    is correct. The last bar now closes 60 s before the test runs, always.
+    """
+    last_open = (pd.Timestamp.utcnow().tz_localize(None)
+                 - pd.Timedelta(hours=1) - pd.Timedelta(minutes=1))
+    t0 = last_open - pd.Timedelta(hours=n - 1)
     return pd.DataFrame([
         {"Date": t0 + pd.Timedelta(hours=i), "Open": px, "High": px,
          "Low": px, "Close": px, "Volume": 1000.0} for i in range(n)])

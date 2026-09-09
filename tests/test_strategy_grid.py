@@ -267,36 +267,61 @@ def test_the_august_prove_row_is_the_one_the_operator_asked_for():
     assert "fade15_1h_pv2" in at.STRATEGY_ORDER
 
 
-def test_no_coin_has_two_LIVE_strategies_at_once():
-    """The real invariant, replacing an assertion that the new PROVE tile ships
-    unarmed — the operator armed it themselves at 22:46 on 2026-08-19 and moved
-    mom6_1h_pv to paper, which is the correct swap. What must never happen is
-    TWO live strategies on one coin: MEXC nets them into a single position, so
-    the second entry resizes the first and either stop closes part of a trade it
-    does not own. Until sliced brackets ship, one live row per coin."""
+def test_the_live_config_cannot_lose_more_than_the_account_cap():
+    """The old rule here was "one live row per coin, until sliced brackets
+    ship". They shipped on Sep 09, 2026 (partial TP/SL), so several live rows
+    on one coin is now the operator's own design — PSXSTOCK carries four.
+
+    What replaces it is the number that actually matters: if every slice a
+    coin can hold were stopped out at once, would the day's loss still fit
+    inside the account loss cap? Measured on the operator's own config,
+    Sep 10, 2026: NGAS -0.60, PDDSTOCK -0.50, PSXSTOCK -0.88, STBL -1.60 =
+    -3.58 against a $5 cap. The cap counts CLOSED trades, so open slices can
+    run past it before it trips — which is exactly why this is checked here,
+    against the config, rather than trusted to the breaker.
+    """
     import collections
     import json
     import pathlib
 
     import pytest
 
-    # This asserts on the OPERATOR'S live configuration, which exists only on
-    # their machine. A CI runner has no ~/.tradingagents, so the test raised
-    # FileNotFoundError there and the whole suite went red on every push for a
-    # file it can never have. Skip where there is nothing to check; the
-    # invariant still runs where it matters, which is the machine that trades.
+    # The OPERATOR'S live configuration exists only on their machine; a CI
+    # runner has no ~/.tradingagents and would go red for a file it can never
+    # have. The check runs where it matters: the machine that trades.
     cfg = pathlib.Path.home() / ".tradingagents" / "auto_trade.json"
     if not cfg.exists():
         pytest.skip("no live auto_trade.json on this machine")
     saved = json.loads(cfg.read_text())
+    limit = float(saved.get("loss_limit") or 0)
+    if not limit:
+        pytest.skip("no account loss cap set — nothing to measure against")
+
     live = collections.defaultdict(list)
     for key in saved.get("strategies", []):
         if "real" not in ((saved.get("strategy_books") or {}).get(key) or []):
             continue
         for coin in at.coins_for(key, saved):
             live[coin].append(key)
-    clashes = {c: ks for c, ks in live.items() if len(ks) > 1}
-    assert not clashes, f"coins with two LIVE strategies: {clashes}"
+    if not live:
+        pytest.skip("no live strategies armed")
+
+    # how many of a coin's rows can hold at ONE time — one, unless the
+    # operator switched partial TP/SL on for the live book
+    cap = at.max_slices(saved) if at.partial_on(saved, False) else 1
+    worst = {}
+    for coin, keys in live.items():
+        holding = sorted(keys)[:cap]
+        worst[coin] = sum(
+            at.margin_for(k, saved) * at.LEVERAGE
+            * ((at.STRATEGY_SPECS.get(k) or {}).get("sl") or 0)
+            for k in holding)
+    total = sum(worst.values())
+    assert total <= limit, (
+        f"every live slice stopping out at once loses ${total:.2f}, over the "
+        f"${limit:.2f} account cap: "
+        + ", ".join(f"{c.replace('_USDT', '')} ${w:.2f}"
+                    for c, w in sorted(worst.items(), key=lambda x: -x[1])))
 
 
 def test_the_new_tile_is_offered_in_the_ui():

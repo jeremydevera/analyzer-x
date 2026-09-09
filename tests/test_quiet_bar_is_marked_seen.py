@@ -21,7 +21,12 @@ def _slot(state, symbol="FLAT_USDT"):
 
 def _bars(n=300, px=100.0):
     """Flat candles — no momentum, so no signal on any bar."""
-    t0 = pd.Timestamp.utcnow().tz_localize(None).floor("h") - pd.Timedelta(hours=n)
+    # the last bar closes 60 s ago, never "somewhere in this hour": with
+    # floor("h") the newest candle is 0-59 min old and the runner refuses a
+    # signal past half its bar, so these tests passed at :10 and failed at
+    # :46 (found in test_partial_tp, Sep 10, 2026)
+    t0 = (pd.Timestamp.utcnow().tz_localize(None)
+          - pd.Timedelta(hours=n) - pd.Timedelta(minutes=1))
     return pd.DataFrame([
         {"Date": t0 + pd.Timedelta(hours=i), "Open": px, "High": px,
          "Low": px, "Close": px} for i in range(n)])

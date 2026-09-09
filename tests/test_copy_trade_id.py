@@ -28,21 +28,41 @@ def test_the_api_sends_the_trades_own_id():
     assert "trade_id?: string;" in t[i:i + 900]
 
 
-def test_both_ids_are_copyable_and_say_which_is_which():
+def test_both_ids_use_the_ONE_copy_control():
+    """Operator, Sep 10, 2026: *"i still cannot copy the id ... y5ubbfpb"*.
+    The grid had a copy control with an ICON (so the id looks copyable) and a
+    hidden-textarea fallback; the positions table had a hand-rolled button
+    with neither. One component now, so the next table cannot be born
+    broken."""
     p = open(PANEL, encoding="utf-8").read()
-    assert 'copy(r.id, `strategy ${r.id}`)' in p
-    assert 'copy(r.trade_id as string, `trade ${r.trade_id}`)' in p
-    # the labels a reader sees, so two ids on one row are never confused
-    assert "copy the STRATEGY id" in p
-    assert "copy THIS TRADE's id" in p
+    assert 'import CopyableId from "./CopyableId";' in p
+    assert "<CopyableId id={r.id} />" in p
+    assert 'prefix="trade "' in p and "value={r.trade_id}" in p
+    assert "navigator.clipboard" not in p, "no second hand-rolled copy path"
+    g = open("webapp/src/components/trade/StrategiesGrid.tsx",
+             encoding="utf-8").read()
+    assert 'import CopyableId from "./CopyableId";' in g
+    assert "function CopyableId" not in g, "one definition, not two"
 
 
-def test_a_copy_says_it_copied():
-    """A click with no answer reads as a dead button, and a clipboard write
-    can fail silently (permissions, an insecure origin)."""
-    p = open(PANEL, encoding="utf-8").read()
-    assert "setCopied(" in p and "copied {copied}" in p
-    assert "could not copy" in p, "a failed copy must say so, never nothing"
+def test_the_copy_control_works_without_the_async_clipboard():
+    """A browser that refuses navigator.clipboard (an iframe, an insecure
+    origin, a permission policy) still copies through a hidden textarea —
+    proven on screen with navigator.clipboard deleted: status read "copied"."""
+    c = open("webapp/src/components/trade/CopyableId.tsx", encoding="utf-8").read()
+    assert "document.execCommand" in c and "createElement(\"textarea\")" in c
+    assert "could not copy — select it and press Ctrl+C" in c,         "a failed copy must say what to do instead"
+    # an icon is what makes the id LOOK copyable — the first complaint
+    assert "<svg" in c and 'aria-label={`copy ${prefix}${id}`}' in c
+
+
+def test_the_label_names_what_the_reader_sees():
+    """The trade button reads "trade FWQRY6Q4" while only the id lands on the
+    clipboard; the label must follow the SCREEN, or a screen reader and the
+    screen disagree about one button."""
+    c = open("webapp/src/components/trade/CopyableId.tsx", encoding="utf-8").read()
+    assert "copy ${prefix}${id} to the clipboard" in c
+    assert "value ?? `${prefix}${id}`" in c, "the CLIPBOARD may still differ"
 
 
 def test_the_closed_trade_carries_the_same_copyable_id():

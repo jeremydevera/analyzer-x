@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 23, "total": 23, "rows": 2250426, "note": "STBL 1h: rule 59/120 (choch)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:45:33Z"}
+{"shard": 16, "stage": "testing", "done": 23, "total": 23, "rows": 2275726, "note": "STBL 4h: rule 53/120 (squeeze)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:46:18Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 15, "total": 15, "rows": 1295086, "note": "ERA 30m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:43:52Z"}
+{"shard": 6, "stage": "testing", "done": 15, "total": 15, "rows": 1303666, "note": "ERA 30m: rule 36/120 (stochrsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:44:37Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 36, "total": 36, "rows": 3477382, "note": "AIO 30m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:10:06Z"}
+{"shard": 0, "stage": "testing", "done": 36, "total": 36, "rows": 3481122, "note": "AIO 30m: rule 14/120 (bb20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:10:52Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 2, "total": 2, "rows": 138890, "note": "HANA 1h: 8,344 bars \u00b7 Sep 26, 2025 11:00am \u2192 Sep 09, 2026 2:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:51:55Z"}
+{"shard": 8, "stage": "testing", "done": 2, "total": 2, "rows": 154070, "note": "HANA 1h: rule 64/120 (hammer)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:52:40Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 48, "total": 48, "rows": 4054004, "note": "TXNSTOCK 15m: rule 111/120 (cf_fundfade_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:17:27Z"}
+{"shard": 17, "stage": "testing", "done": 49, "total": 49, "rows": 4092214, "note": "TZA 15m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:18:12Z"}

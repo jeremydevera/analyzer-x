@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 14, "total": 14, "rows": 1367110, "note": "A 1h: rule 120/120 (cf_stflip_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:40:54Z"}
+{"shard": 2, "stage": "testing", "done": 15, "total": 15, "rows": 1407150, "note": "B2 15m: downloading candles", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:41:47Z"}

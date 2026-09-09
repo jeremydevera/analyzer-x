@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 37, "total": 37, "rows": 3333234, "note": "SUMIELECSTOCK 30m: rule 76/120 (cf_mom)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:52:36Z"}
+{"shard": 16, "stage": "testing", "done": 38, "total": 38, "rows": 3365950, "note": "SUN 15m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:53:25Z"}

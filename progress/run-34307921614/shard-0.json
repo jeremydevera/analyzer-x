@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 6, "total": 6, "rows": 607942, "note": "1000RATS 30m: rule 16/120 (keltner)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:30:09Z"}
+{"shard": 0, "stage": "testing", "done": 6, "total": 6, "rows": 614762, "note": "1000RATS 30m: rule 47/120 (ibs)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:30:55Z"}

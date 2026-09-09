@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 58, "total": 58, "rows": 5238104, "note": "MANTA 4h: 2,369 bars \u00b7 Aug 10, 2025 8:00am \u2192 Sep 09, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:34:09Z"}
+{"shard": 9, "stage": "testing", "done": 59, "total": 59, "rows": 5284400, "note": "MARSTOCK 30m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:34:54Z"}

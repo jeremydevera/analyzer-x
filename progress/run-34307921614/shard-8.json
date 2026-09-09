@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 20, "total": 20, "rows": 1648864, "note": "HOLO 30m: rule 106/120 (cf_bosfvg)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:00:35Z"}
+{"shard": 8, "stage": "testing", "done": 20, "total": 20, "rows": 1657686, "note": "HOLO 1h: rule 23/120 (supertrend)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:01:20Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 33, "total": 33, "rows": 3105018, "note": "AGT 15m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:42:41Z"}
+{"shard": 0, "stage": "testing", "done": 33, "total": 33, "rows": 3108758, "note": "AGT 15m: rule 20/120 (stoch14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:43:27Z"}

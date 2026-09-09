@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 6, "total": 6, "rows": 591302, "note": "1000RATS 15m: rule 61/120 (turtle)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:27:40Z"}
+{"shard": 0, "stage": "testing", "done": 6, "total": 6, "rows": 598902, "note": "1000RATS 15m: rule 99/120 (cf_ttm_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:28:27Z"}

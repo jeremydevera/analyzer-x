@@ -526,6 +526,19 @@ Every label must be DERIVED from the data it describes — never a literal. Veri
 must assert the label AGREES with its source, and that itemised rows SUM to the total
 shown. Presence is not correctness.
 
+ALWAYS ON — `workflow-map`. When the operator asks how something WORKS — "give
+me the workflow", "the flow", "what happens when i press this", "walk me
+through it" — the answer is the BOXED ARROW DIAGRAM in
+`.claude/skills/workflow-map/`, never a paragraph and never a bullet list.
+Numbered stages in boxes, one arrow down the column, a branch box at every
+decision, a loop in a double box, real names and numbers inside the boxes
+(`port 8788`, `27,500 rows`), a mandatory "IF ANYTHING FAILS" block at the
+bottom, and ONE line of plain words under the diagram. Asked for on
+2026-09-10 after the same answer was given twice as prose and once as a list:
+*"i want workflow style ... moving forward when i ask you a workflow i want
+this format"*. A single fact is still one sentence — `short-and-plain` rules
+everything.
+
 ALWAYS ON — `rca-log`. STRICT. **A bug fix is not finished until `docs/RCA.md`
 has its entry, in the SAME commit as the fix.** No entry, no commit. The
 operator, 2026-09-09: *"list this in rca to prevent this from happening in the

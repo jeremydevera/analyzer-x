@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 22, "total": 22, "rows": 1744584, "note": "BRL 30m: 18,959 bars \u00b7 Aug 10, 2025 5:30am \u2192 Sep 09, 2026 4:30am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:16:35Z"}
+{"shard": 3, "stage": "testing", "done": 22, "total": 22, "rows": 1762184, "note": "BRL 30m: rule 75/120 (relvolbrk)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:17:20Z"}

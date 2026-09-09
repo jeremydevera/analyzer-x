@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 1, "total": 1, "rows": 19960, "note": "NFLXSTOCK 30m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:40:11Z"}
+{"shard": 12, "stage": "testing", "done": 2, "total": 2, "rows": 94888, "note": "NGAS 15m: 21,311 bars \u00b7 Jan 30, 2026 3:45am \u2192 Sep 09, 2026 3:15am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:41:15Z"}

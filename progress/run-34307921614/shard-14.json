@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 48, "total": 48, "rows": 4154614, "note": "RVN 15m: rule 111/120 (cf_fundfade_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:14:05Z"}
+{"shard": 14, "stage": "testing", "done": 48, "total": 48, "rows": 4158574, "note": "RVN 30m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:14:57Z"}

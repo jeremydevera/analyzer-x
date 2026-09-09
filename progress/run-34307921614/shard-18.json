@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 25, "total": 25, "rows": 2304210, "note": "VET 15m: rule 93/120 (cf_soup_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:40:13Z"}
+{"shard": 18, "stage": "testing", "done": 25, "total": 25, "rows": 2310810, "note": "VET 30m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:41:00Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 20, "total": 20, "rows": 1723454, "note": "CKB 15m: rule 111/120 (cf_fundfade_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:16:50Z"}
+{"shard": 4, "stage": "testing", "done": 20, "total": 20, "rows": 1727234, "note": "CKB 30m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:17:36Z"}

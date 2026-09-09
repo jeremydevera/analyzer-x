@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 43, "total": 43, "rows": 3605736, "note": "ROSE 30m: rule 4/120 (trend50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:40:08Z"}
+{"shard": 14, "stage": "testing", "done": 43, "total": 43, "rows": 3614976, "note": "ROSE 30m: rule 46/120 (rsi2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:40:54Z"}

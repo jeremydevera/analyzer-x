@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 23, "total": 23, "rows": 2220368, "note": "ADBESTOCK 15m: rule 49/120 (vwaprev)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:58:22Z"}
+{"shard": 0, "stage": "testing", "done": 23, "total": 23, "rows": 2228848, "note": "ADBESTOCK 15m: rule 102/120 (cf_soup1_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:59:10Z"}

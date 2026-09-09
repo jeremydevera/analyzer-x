@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 29, "total": 29, "rows": 2892160, "note": "YGG 15m: rule 70/120 (cmf20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:19:15Z"}
+{"shard": 19, "stage": "testing", "done": 29, "total": 29, "rows": 2903160, "note": "YGG 30m: 18,959 bars \u00b7 Aug 10, 2025 5:30am \u2192 Sep 09, 2026 4:30am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:20:08Z"}

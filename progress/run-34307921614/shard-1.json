@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 26, "total": 26, "rows": 2024488, "note": "APR 15m: rule 16/120 (keltner)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:39:45Z"}
+{"shard": 1, "stage": "testing", "done": 26, "total": 26, "rows": 2033488, "note": "APR 15m: rule 62/120 (ote)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:40:31Z"}

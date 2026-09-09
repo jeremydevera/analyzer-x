@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 63, "total": 63, "rows": 5615744, "note": "MELANIA 15m: rule 35/120 (willr14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:45:14Z"}
+{"shard": 9, "stage": "testing", "done": 63, "total": 63, "rows": 5627144, "note": "MELANIA 15m: rule 93/120 (cf_soup_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:45:59Z"}

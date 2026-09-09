@@ -1557,7 +1557,7 @@ class WindowTooWide(ValueError):
 
 
 def window_rows(rows: list, days: int, base_margin: float = 5.0,
-                group_max: int = 0) -> dict:
+                group_max: int = 0, breathe: float = 0.0) -> dict:
     """Re-measure each row over the LAST `days` DAYS of its stored candles.
 
     Returns ``{"rows": [...], "first": str, "last": str, "groups": n}`` and
@@ -1585,6 +1585,15 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
     * all three costs, from the file the sweep wrote (`load_costs`): the taker
       fee it was charged, the liquidation distance, and every real funding
       settlement.
+
+    `breathe` is seconds of sleep after each measured row, and it exists for
+    ONE caller: the CSV export, which re-measures thousands of rows in one
+    request. Each row is ~0.09 s of pure Python holding the interpreter lock,
+    and a batch of 250 holds it for ~22 s straight — measured Sep 09, 2026,
+    `/api/health` took 18.3 s and the page around the download filled with
+    errors. A 2 ms sleep hands the lock over ~45 times a second and costs 2%.
+    The PAGE passes nothing: it re-measures ten rows inside a browser's 30-second
+    limit and must not be slowed by a millisecond it did not ask for.
     """
     import tradingagents.auto_trader as at
     from tradingagents import backtest_report as br
@@ -1717,6 +1726,8 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
                     # inventing a second one
                     "w_first_ms": int(ms[start]), "w_last_ms": int(ms[stop - 1]),
                     "restated": True})
+                if breathe:
+                    time.sleep(breathe)       # let the rest of the app answer
             at.STRATEGY_SPECS.pop(key, None)
         except Exception as exc:                               # noqa: BLE001
             print(f"[window] {coin} {tf} {sig}: {type(exc).__name__}: "

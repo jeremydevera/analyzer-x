@@ -215,28 +215,90 @@ def _job_errors(kind: str) -> list:
     return out
 
 
+# How long the cloud half of the LOGS payload is reused. It shells out to `gh`
+# and to `git fetch`, and the panel polls every 30 s.
+CLOUD_CACHE_S = 60.0
+_CLOUD: dict = {"at": 0.0, "payload": None}
+
+
 def _cloud_errors(limit: int = 200) -> tuple[list, dict]:
     """What the GitHub shards lost, read from the progress branch (no API).
 
     Returns the rows and a small status block, so an unreadable branch is
     reported as unreadable rather than as "no errors" — the panel must never
     show a green count it did not earn.
+
+    CACHED, because this is not a cheap read: `_runs` is a `gh` shell-out and
+    `live_progress` is a `git fetch` plus a `git show` per shard. Measured
+    Sep 09, 2026 on the operator's machine, `/api/backtest/logs` took **82.3 s**
+    with the cloud half and **0.21 s** without it, while the LOGS panel polls
+    it every 30 s — so a request was always in flight, and under any extra load
+    (a CSV export, say) it timed out and the page showed an error on a store
+    that was perfectly healthy. Shard progress moves on the order of minutes;
+    a minute-old answer is honest and a 30-second one is not worth 82 seconds.
     """
+    import time as _t
+
+
+    now = _t.time()
+    fresh = _CLOUD["payload"] is not None and now - _CLOUD["at"] < CLOUD_CACHE_S
+    if not fresh:
+        _refresh_cloud_in_background()
+    if _CLOUD["payload"] is not None:
+        rows, status = _CLOUD["payload"]
+        return rows[:limit], status
+    # NOTHING READ YET. Answer at once and say so, rather than holding the
+    # request: this call is `gh run list` plus a `git fetch`, and the panel
+    # polls every 30 s.
+    return [], {"ok": True, "why": "reading GitHub in the background",
+                "reading": True}
+
+
+def _refresh_cloud_in_background() -> None:
+    """Take the slow read off the request. One at a time.
+
+    The LOGS panel polls `/api/backtest/logs` every 30 seconds and the cloud
+    half of it took 82.3 s on the operator's machine (0.21 s without) — so a
+    request was permanently in flight and any extra load tipped it into a
+    timeout, which the page showed as an error on a healthy store. Nothing
+    here can block a response: the worst case is that the panel reports the
+    previous answer, or says it is still reading.
+    """
+    import threading
+
+    if _CLOUD.get("busy"):
+        return
+    _CLOUD["busy"] = True
+
+    def _work():
+        try:
+            _read_cloud_errors()
+        except Exception as exc:                               # noqa: BLE001
+            _cloud_cached([], {"ok": False,
+                               "why": f"{type(exc).__name__}: {exc}"}, 1)
+        finally:
+            _CLOUD["busy"] = False
+
+    threading.Thread(target=_work, name="cloud-errors", daemon=True).start()
+
+
+def _read_cloud_errors(limit: int = 200) -> tuple[list, dict]:
+    """The actual read. Called only from the background thread."""
     from tradingagents import cloud_sweep as cs
 
     try:
         slug = cs.repo_slug()
         runs = cs._runs(slug, limit=1)
     except Exception as exc:                                   # noqa: BLE001
-        return [], {"ok": False, "why": f"{type(exc).__name__}: {exc}"}
+        return _cloud_cached([], {"ok": False, "why": f"{type(exc).__name__}: {exc}"}, limit)
     if not runs:
-        return [], {"ok": True, "why": "no run yet", "run": None}
+        return _cloud_cached([], {"ok": True, "why": "no run yet", "run": None}, limit)
     run = runs[0]
     try:
         shards = cs.live_progress(run["databaseId"], slug)
     except Exception as exc:                                   # noqa: BLE001
-        return [], {"ok": False, "why": f"{type(exc).__name__}: {exc}",
-                    "run": run["databaseId"]}
+        return _cloud_cached([], {"ok": False, "why": f"{type(exc).__name__}: {exc}",
+                                  "run": run["databaseId"]}, limit)
     out = []
     for sh in shards:
         for line in (sh.get("failed") or []):
@@ -244,13 +306,26 @@ def _cloud_errors(limit: int = 200) -> tuple[list, dict]:
             out.append({"where": f"GitHub shard {sh.get('shard')}",
                         "job": "cloud", "when": sh.get("updated", ""),
                         "pair": sym.strip(), "text": text.strip() or str(line)})
-    return out[:limit], {
+    return _cloud_cached(out, {
         "ok": True, "run": run["databaseId"], "url": run.get("url"),
         "status": run.get("status"), "shards": len(shards),
         # a shard that has not reported cannot be read for failures; saying so
         # keeps "0 errors" honest
         "silent": max(0, 20 - len(shards)),
-    }
+    }, limit)
+
+
+def _cloud_cached(rows: list, status: dict, limit: int) -> tuple[list, dict]:
+    """Remember this answer for `CLOUD_CACHE_S`, then return it.
+
+    Failures are cached too, on purpose: a `gh` that is timing out will time
+    out again a second later, and paying 80 seconds to rediscover that on
+    every 30-second poll is what took the panel down.
+    """
+    import time as _t
+
+    _CLOUD.update(at=_t.time(), payload=(rows, status))
+    return rows[:limit], status
 
 
 def logs(include_cloud: bool = True) -> dict:

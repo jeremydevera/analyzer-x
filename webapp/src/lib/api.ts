@@ -668,6 +668,15 @@ export const api = {
     if (q.sizing) p.set("sizing", q.sizing);
     if (q.group) p.set("group", q.group);
     if (q.rowId) p.set("row_id", q.rowId);
+    // THE WINDOW. Declared above and passed by the panel since 2026-09-03,
+    // but never written here — so on Sep 09, 2026 a table reading "last 30
+    // days, 2,001 rows" downloaded 42,420 rows of whole history, 17.3 MB
+    // instead of 876 KB, under a filename that still said `last30d`. The
+    // window is what makes the file's profit, wins and losses the window's
+    // own; without it every number in the file answers a different question
+    // than the screen it came from (kit item G).
+    if (q.months) p.set("months", String(q.months));
+    else if (q.days) p.set("days", String(q.days));
     if (q.desc !== undefined) p.set("desc", String(q.desc));
     return `${API_BASE}/api/strategies.csv?${p.toString()}`;
   },
@@ -747,8 +756,6 @@ export const api = {
     if (q.sizing) p.set("sizing", q.sizing);
     if (q.group) p.set("group", q.group);
     if (q.rowId) p.set("row_id", q.rowId);
-    if (q.months) p.set("months", String(q.months));
-    if (q.days) p.set("days", String(q.days));
     if (q.desc !== undefined) p.set("desc", String(q.desc));
     if (q.tf) p.set("tf", q.tf);
     if (q.signal) p.set("signal", q.signal);

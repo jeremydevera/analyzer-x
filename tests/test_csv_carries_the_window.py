@@ -106,6 +106,15 @@ def test_the_export_makes_the_SAME_index_choice_as_the_page():
     assert "not wide_profit_ready" in page or "wide_profit_ready" in page
 
 
+def _builder(name: str) -> str:
+    """The BODY of one URL builder in api.ts, so an assertion cannot be
+    satisfied by a line in a different function."""
+    src = open("webapp/src/lib/api.ts", encoding="utf-8").read()
+    i = src.index(f"  {name}: (q: {{")
+    j = src.index("\n  },", i)
+    return src[i:j]
+
+
 def test_the_download_link_carries_the_window_too():
     """A file that does not match the table it came from is the failure this
     panel keeps paying for, and the href is where that starts."""
@@ -115,8 +124,39 @@ def test_the_download_link_carries_the_window_too():
     href = panel[i:panel.index("})}", i)]
     assert "months: applied.months" in href
     assert "days: applied.months ? undefined : (applied.days || undefined)" in href
-    client = open("webapp/src/lib/api.ts", encoding="utf-8").read()
-    assert client.count('p.set("days"') == 2, "the table AND the download"
+    # ...and the BUILDER writes it. This is the half that was missing.
+    body = _builder("strategiesCsvUrl")
+    assert 'p.set("days"' in body and 'p.set("months"' in body
+
+
+def test_a_filter_the_builder_DECLARES_reaches_the_query_string():
+    """Sep 09, 2026: *"why is this having internal server error once i open the
+    csv file"*, with sizing=flat, win % >= 90, TP > SL and last 30 days set.
+
+    `strategiesCsvUrl` DECLARED `days` and `months`, the panel PASSED them, and
+    the builder never wrote either one to the URLSearchParams. So the file was
+    the whole history: **42,420 rows / 17,289,982 bytes**, where the table said
+    2,001 rows and the windowed file is 876,283 bytes — 21x the rows, under a
+    filename that still read `last30d`.
+
+    The 2026-09-03 test above was meant to catch exactly this and did not,
+    because it asserted `api.ts` contained TWO `p.set("days"` lines. It did —
+    both inside `strategies`, which had the block twice — while the download
+    builder had none. A count is not a location. Every declared field is now
+    checked INSIDE the function that declares it.
+    """
+    import re
+
+    body = _builder("strategiesCsvUrl")
+    head = body[:body.index("=> {")]
+    declared = set(re.findall(r"^\s{4}([a-zA-Z]+)\??:", head, re.M))
+    declared |= set(re.findall(r"[;{]\s*([a-zA-Z]+)\??:", head))
+    declared -= {"boolean", "number", "string"}
+    used = set(re.findall(r"q\.([A-Za-z]+)", body))
+    missing = sorted(declared - used)
+    assert not missing, (
+        f"strategiesCsvUrl declares {missing} and never writes "
+        f"them — the file would answer a different question than the table")
 
 
 def test_the_download_is_checked_without_being_RUN_first():

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 35, "total": 35, "rows": 3046554, "note": "SLP 30m: rule 102/120 (cf_soup1_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:13:51Z"}
+{"shard": 15, "stage": "testing", "done": 35, "total": 35, "rows": 3056454, "note": "SLP 1h: rule 21/120 (cci20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:14:36Z"}

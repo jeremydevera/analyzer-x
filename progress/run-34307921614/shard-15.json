@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 7, "total": 7, "rows": 499654, "note": "SCR 30m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:11:02Z"}
+{"shard": 15, "stage": "testing", "done": 7, "total": 7, "rows": 506254, "note": "SCR 30m: rule 33/120 (heikin)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:11:47Z"}

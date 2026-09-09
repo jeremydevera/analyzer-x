@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 35, "total": 35, "rows": 3065558, "note": "MUSTOCK 30m: rule 112/120 (cf_obretest)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:24:27Z"}
+{"shard": 11, "stage": "testing", "done": 35, "total": 35, "rows": 3087398, "note": "MUSTOCK 1h: rule 86/120 (cf_triple_l1)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:25:12Z"}

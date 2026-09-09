@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 5, "total": 5, "rows": 437102, "note": "NIL 15m: rule 76/120 (cf_mom)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:58:04Z"}
+{"shard": 12, "stage": "testing", "done": 5, "total": 5, "rows": 444802, "note": "NIL 15m: rule 112/120 (cf_obretest)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:58:50Z"}

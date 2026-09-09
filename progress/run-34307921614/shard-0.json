@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 22, "total": 22, "rows": 2120876, "note": "ADA 15m: rule 93/120 (cf_soup_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:52:57Z"}
+{"shard": 0, "stage": "testing", "done": 22, "total": 22, "rows": 2126236, "note": "ADA 30m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:53:50Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 49, "total": 54, "rows": 2005642, "note": "UNHSTOCK 30m: rule 120/120 (cf_stflip_l2)", "failed": [], "pct": 90.7, "updated": "2026-09-08T23:59:14Z"}
+{"shard": 5, "stage": "testing", "done": 50, "total": 54, "rows": 2031762, "note": "VELO 30m: rule 1/120 (mom6)", "failed": [], "pct": 92.6, "updated": "2026-09-09T00:00:05Z"}

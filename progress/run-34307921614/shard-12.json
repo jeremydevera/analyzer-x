@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 34, "total": 34, "rows": 2897844, "note": "ONDSSTOCK 15m: rule 36/120 (stochrsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:47:09Z"}
+{"shard": 12, "stage": "testing", "done": 34, "total": 34, "rows": 2910804, "note": "ONDSSTOCK 30m: 9,014 bars \u00b7 Mar 05, 2026 10:30am \u2192 Sep 09, 2026 5:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:47:56Z"}

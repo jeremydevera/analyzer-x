@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 26, "total": 26, "rows": 2133100, "note": "BR 15m: rule 10/120 (sr_bounce)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:41:39Z"}
+{"shard": 3, "stage": "testing", "done": 26, "total": 26, "rows": 2137060, "note": "BR 15m: rule 28/120 (vortex14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:42:26Z"}

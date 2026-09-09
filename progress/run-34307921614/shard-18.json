@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 39, "total": 39, "rows": 3539860, "note": "WAXP 1h: 9,479 bars \u00b7 Aug 10, 2025 7:00am \u2192 Sep 09, 2026 5:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:44:30Z"}
+{"shard": 18, "stage": "testing", "done": 39, "total": 39, "rows": 3558670, "note": "WAXP 1h: rule 91/120 (cf_soup)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:45:15Z"}

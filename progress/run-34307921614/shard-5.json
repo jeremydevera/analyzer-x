@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 49, "total": 49, "rows": 3998582, "note": "DYDX 1h: rule 20/120 (stoch14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:27:38Z"}
+{"shard": 5, "stage": "testing", "done": 49, "total": 49, "rows": 4021682, "note": "DYDX 4h: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:28:24Z"}

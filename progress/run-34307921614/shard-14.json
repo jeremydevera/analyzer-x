@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 4, "total": 4, "rows": 305308, "note": "QQQSTOCK 15m: rule 72/120 (force13)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:54:06Z"}
+{"shard": 14, "stage": "testing", "done": 4, "total": 4, "rows": 312988, "note": "QQQSTOCK 30m: 15,101 bars \u00b7 Oct 29, 2025 1:00pm \u2192 Sep 09, 2026 3:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:54:55Z"}

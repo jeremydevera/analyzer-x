@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 10, "total": 10, "rows": 859768, "note": "SPCXSTOCK 15m: rule 25/120 (ichimoku)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:26:26Z"}
+{"shard": 16, "stage": "testing", "done": 10, "total": 10, "rows": 881108, "note": "SPCXSTOCK 30m: rule 17/120 (atrbreak)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:27:11Z"}

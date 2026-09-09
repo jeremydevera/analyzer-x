@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 9, "total": 9, "rows": 754812, "note": "ENJ 30m: rule 47/120 (ibs)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:16:24Z"}
+{"shard": 6, "stage": "testing", "done": 9, "total": 9, "rows": 770432, "note": "ENJ 1h: 9,479 bars \u00b7 Aug 10, 2025 5:00am \u2192 Sep 09, 2026 3:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:17:11Z"}

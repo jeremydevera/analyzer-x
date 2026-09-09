@@ -29,6 +29,65 @@ this repo is also part of the record.
 
 ---
 
+## RCA-2026-09-10-A — the row UPDATE button deleted rows, then silently binned the one it measured
+
+**SAW** — the operator, on #SW8Q96E6 (STBL 4h, macddiv, tp2.5/sl2.5, flat):
+first *"was there 15 days silent days? is this accurate"*, then *"its simple
+just update the backtest for that certain strategy i dont understand what's
+hard on that"*, then *"can you do multiple scenarios testing just to make sure
+its working properly"*. Each question found a different bug in the button
+shipped hours earlier (RCA-2026-09-09-Q).
+
+**TIMELINE**
+
+1. `Sep 09  9:14pm` — UPDATE pressed on STBL 4h. Measurement lands (watermark
+   Aug 28 → Sep 09 4:00pm, 8,774 rows).
+2. `Sep 09  ~9:50pm` — the pair file holds **37 signals**. It held **67**.
+   `macddiv` — the operator's own row — is among the 30 deleted.
+3. `Sep 09 later` — with merge fixed, a re-measure writes **0** macddiv rows,
+   while `trades_for` on the same combination rebuilds **20 trades, 19 wins,
+   +$42.19**. The button reports success and changes nothing.
+4. `Sep 10` — eight live scenarios pass; the row reads 20/19/1/+$42.19 in the
+   store.
+
+**ROOT CAUSE** — three, in one function:
+
+* `market_sweep.run_pair(..., merge=False)` is the DEFAULT and the argument
+  was never passed. merge=False writes with `save_pair_rows`, which REPLACES
+  the file: any combination producing no row this run is deleted, and a
+  combination that takes no trade produces no row. The module says it at the
+  definition — *"with save_pair_rows would delete every combination not yet
+  reached"*.
+* The button re-measured ALL 120 signals for the pair, which made that
+  deletion large and the run slow, when the operator had asked for one row.
+* `run_pair` sizes the trade floor as `min_trades(tf, days=days)` from the
+  `days` ARGUMENT. The button asked for 365 on a pair holding 103 days of
+  candles: 4h demands **40** trades at 365 days and **11** at 103. A row with
+  20 genuine trades was counted "thin" and dropped — measured perfectly, then
+  binned, with the job reporting success.
+
+**FIX** (this commit) — `signals=[the row's own signal]`, `merge=True`, and
+`days` taken from the pair's real candle span (route sends `days: 0` to mean
+"ask the store"). Verified live: *"signals lost: NONE"*, and the row now holds
+20 trades / 19 wins / +$42.19.
+
+**WHY IT WAS NOT CAUGHT** — 14 tests passed over this button while all three
+bugs were live. Every one of them stubbed `run_pair`, so they asserted what
+the button ASKED FOR and never what the store ended up holding. A default
+argument that destroys data, and a floor computed from a caller's parameter,
+are both invisible to a mock. Only pressing it against the real store showed
+them — which is exactly what the operator's three questions did, in sequence.
+
+**COST** — 30 signals' rows on STBL 4h, gone. They came from a GitHub
+measurement and a local run does not reproduce them; the pair needs a fleet
+re-measure to be whole. No money, no live trading affected.
+
+**GUARD** — `tests/test_row_update_button.py` (17), and each new test states
+its own premise so it cannot rot: one asserts `run_pair`'s `merge` default is
+still False, another that the trade floor still varies with `days`. Plus eight
+live scenarios (another pair, double press, a signal that yields nothing, a
+coin with no candles, both symbol forms) run against the real store.
+
 ## RCA-2026-09-09-S — the run bar read 100% from the first second, and a tile's dates were on a different clock from the store's
 
 **SAW** — the Backtest screen during proof run 34360893326, photographed by the

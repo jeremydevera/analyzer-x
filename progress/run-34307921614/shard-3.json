@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 43, "total": 43, "rows": 3609408, "note": "CAT 15m: rule 78/120 (cf_mom_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:12:13Z"}
+{"shard": 3, "stage": "testing", "done": 43, "total": 43, "rows": 3617768, "note": "CAT 15m: rule 117/120 (cf_diadx_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:12:58Z"}

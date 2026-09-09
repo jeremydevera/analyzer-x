@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 51, "total": 54, "rows": 2072342, "note": "WIF 30m: rule 79/120 (cf_donch)", "failed": [], "pct": 94.4, "updated": "2026-09-09T00:12:54Z"}
+{"shard": 7, "stage": "testing", "done": 52, "total": 54, "rows": 2112594, "note": "XLK 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 96.3, "updated": "2026-09-09T00:13:39Z"}

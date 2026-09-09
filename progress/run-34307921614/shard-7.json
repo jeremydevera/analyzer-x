@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 81, "total": 81, "rows": 6942052, "note": "WLFI 15m: rule 4/120 (trend50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:22:59Z"}
+{"shard": 7, "stage": "testing", "done": 81, "total": 81, "rows": 6951052, "note": "WLFI 15m: rule 55/120 (nhigh50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:23:45Z"}

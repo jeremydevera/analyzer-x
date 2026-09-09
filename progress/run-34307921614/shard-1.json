@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 1, "total": 1, "rows": 92400, "note": "ALPINE 4h: rule 41/120 (tsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:44:50Z"}
+{"shard": 1, "stage": "testing", "done": 2, "total": 2, "rows": 122568, "note": "ALT 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:45:43Z"}

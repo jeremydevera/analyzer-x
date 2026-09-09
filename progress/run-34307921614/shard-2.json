@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 17, "total": 17, "rows": 1638666, "note": "BABASTOCK 15m: rule 20/120 (stoch14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:56:46Z"}
+{"shard": 2, "stage": "testing", "done": 17, "total": 17, "rows": 1648906, "note": "BABASTOCK 15m: rule 84/120 (cf_maobv_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:57:32Z"}

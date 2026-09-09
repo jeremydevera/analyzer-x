@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 38, "total": 38, "rows": 3784978, "note": "ALICE 4h: rule 108/120 (cf_bosfvg_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:32:20Z"}
+{"shard": 0, "stage": "done", "done": 38, "total": 38, "rows": 3800906, "note": "3,800,906 rows \u00b7 38 coin(s) claimed \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:32:33Z"}

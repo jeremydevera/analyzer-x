@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 56, "total": 56, "rows": 4988746, "note": "SAGA 1h: 9,479 bars \u00b7 Aug 10, 2025 8:00am \u2192 Sep 09, 2026 6:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:17:14Z"}
+{"shard": 6, "stage": "testing", "done": 56, "total": 56, "rows": 5009866, "note": "SAGA 1h: rule 91/120 (cf_soup)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:18:00Z"}

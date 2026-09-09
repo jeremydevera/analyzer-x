@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 15, "total": 15, "rows": 1327828, "note": "ANSEM 4h: rule 24/120 (psar)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:18:19Z"}
+{"shard": 1, "stage": "testing", "done": 16, "total": 16, "rows": 1358908, "note": "ANTHROPIC 15m: rule 107/120 (cf_bosfvg_l1)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:19:04Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 30, "total": 30, "rows": 2285656, "note": "HYPER 30m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:37:28Z"}
+{"shard": 8, "stage": "testing", "done": 30, "total": 30, "rows": 2290936, "note": "HYPER 30m: rule 21/120 (cci20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:38:13Z"}

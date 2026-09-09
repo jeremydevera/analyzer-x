@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 65, "total": 65, "rows": 5864844, "note": "NBISSTOCK 30m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:53:40Z"}
+{"shard": 9, "stage": "testing", "done": 65, "total": 65, "rows": 5916764, "note": "NBISSTOCK 4h: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:54:25Z"}

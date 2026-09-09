@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 12, "total": 12, "rows": 1125680, "note": "MNT 1d: 394 bars \u00b7 Aug 11, 2025 12:00am \u2192 Sep 08, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:48:34Z"}
+{"shard": 11, "stage": "testing", "done": 13, "total": 13, "rows": 1139924, "note": "MOCA 15m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:49:30Z"}

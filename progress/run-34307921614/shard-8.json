@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 47, "total": 47, "rows": 3976650, "note": "PUFFER 4h: rule 114/120 (cf_obretest_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:13:24Z"}
+{"shard": 8, "stage": "testing", "done": 48, "total": 48, "rows": 3992238, "note": "SUSHI 15m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:14:23Z"}

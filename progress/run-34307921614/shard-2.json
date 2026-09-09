@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 30, "total": 30, "rows": 3008582, "note": "BAT 15m: rule 39/120 (fisher)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:09:57Z"}
+{"shard": 2, "stage": "testing", "done": 30, "total": 30, "rows": 3017162, "note": "BAT 15m: rule 79/120 (cf_donch)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:10:43Z"}

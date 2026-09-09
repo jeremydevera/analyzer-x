@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 33, "total": 33, "rows": 3086448, "note": "FARTCOIN 4h: 2,369 bars \u00b7 Aug 10, 2025 8:00am \u2192 Sep 09, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:54:02Z"}
+{"shard": 6, "stage": "testing", "done": 35, "total": 35, "rows": 3167432, "note": "FASTSTOCK 15m: rule 105/120 (cf_eqhl_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:54:47Z"}

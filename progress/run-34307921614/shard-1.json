@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 62, "total": 62, "rows": 5433662, "note": "BIO 15m: rule 93/120 (cf_soup_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:54:49Z"}
+{"shard": 1, "stage": "testing", "done": 62, "total": 62, "rows": 5440262, "note": "BIO 30m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:55:36Z"}

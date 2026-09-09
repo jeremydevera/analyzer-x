@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 62, "total": 62, "rows": 5852052, "note": "AKE 1h: rule 113/120 (cf_obretest_l1)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:17:47Z"}
+{"shard": 19, "stage": "testing", "done": 63, "total": 63, "rows": 5890958, "note": "ALABSTOCK 15m: rule 20/120 (stoch14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:18:32Z"}

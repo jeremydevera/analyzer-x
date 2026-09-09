@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 71, "total": 71, "rows": 6519110, "note": "TAG 15m: rule 106/120 (cf_bosfvg)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:19:52Z"}
+{"shard": 9, "stage": "testing", "done": 71, "total": 71, "rows": 6523430, "note": "TAG 30m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:20:38Z"}

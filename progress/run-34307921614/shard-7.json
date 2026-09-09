@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 59, "total": 59, "rows": 5004660, "note": "ILV 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:22:32Z"}
+{"shard": 7, "stage": "testing", "done": 59, "total": 59, "rows": 5010060, "note": "ILV 15m: rule 24/120 (psar)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:23:17Z"}

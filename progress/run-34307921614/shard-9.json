@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 62, "total": 62, "rows": 5603474, "note": "MEITUANSTOCK 1d: 29 bars \u00b7 Aug 11, 2026 12:00am \u2192 Sep 08, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:43:38Z"}
+{"shard": 9, "stage": "testing", "done": 63, "total": 63, "rows": 5608744, "note": "MELANIA 15m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:44:28Z"}

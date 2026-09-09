@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 40, "total": 40, "rows": 3327826, "note": "CAD 30m: rule 36/120 (stochrsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:56:58Z"}
+{"shard": 3, "stage": "testing", "done": 40, "total": 40, "rows": 3345206, "note": "CAD 1h: 7,993 bars \u00b7 Oct 10, 2025 11:00pm \u2192 Sep 09, 2026 5:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:57:53Z"}

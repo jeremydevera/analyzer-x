@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 13, "total": 13, "rows": 1248422, "note": "AAPLSTOCK 15m: rule 24/120 (psar)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:03:59Z"}
+{"shard": 0, "stage": "testing", "done": 13, "total": 13, "rows": 1258142, "note": "AAPLSTOCK 15m: rule 78/120 (cf_mom_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:04:44Z"}

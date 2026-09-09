@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 25, "total": 25, "rows": 2046342, "note": "RESOLV 30m: rule 13/120 (pivot)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:17:13Z"}
+{"shard": 14, "stage": "testing", "done": 25, "total": 25, "rows": 2055142, "note": "RESOLV 30m: rule 58/120 (bos)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:17:59Z"}

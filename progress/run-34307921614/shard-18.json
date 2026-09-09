@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 2, "total": 2, "rows": 152504, "note": "UMA 30m: rule 18/120 (macd)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:49:28Z"}
+{"shard": 18, "stage": "testing", "done": 2, "total": 2, "rows": 163064, "note": "UMA 30m: rule 67/120 (pinbar)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:50:13Z"}

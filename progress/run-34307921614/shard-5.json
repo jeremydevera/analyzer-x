@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 23, "total": 23, "rows": 1821938, "note": "DEEP 15m: rule 93/120 (cf_soup_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:04:30Z"}
+{"shard": 5, "stage": "testing", "done": 23, "total": 23, "rows": 1827458, "note": "DEEP 30m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:05:17Z"}

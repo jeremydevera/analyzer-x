@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 44, "total": 44, "rows": 3748736, "note": "RPL 30m: rule 105/120 (cf_eqhl_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:50:22Z"}
+{"shard": 14, "stage": "testing", "done": 44, "total": 44, "rows": 3757316, "note": "RPL 1h: rule 18/120 (macd)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:51:07Z"}

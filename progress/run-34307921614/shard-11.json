@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 25, "total": 25, "rows": 2232274, "note": "MSFTSTOCK 15m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:49:21Z"}
+{"shard": 11, "stage": "testing", "done": 25, "total": 25, "rows": 2240194, "note": "MSFTSTOCK 15m: rule 47/120 (ibs)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:50:07Z"}

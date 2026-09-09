@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 21, "total": 21, "rows": 2081770, "note": "BANANA 15m: rule 107/120 (cf_bosfvg_l1)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:20:23Z"}
+{"shard": 2, "stage": "testing", "done": 21, "total": 21, "rows": 2085950, "note": "BANANA 30m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:21:09Z"}

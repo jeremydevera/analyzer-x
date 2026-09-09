@@ -858,6 +858,120 @@ def sync(paths: Iterable[Path] | None = None, *, budget_s: float = 0.0,
             "seconds": round(time.time() - started, 2)}
 
 
+def bloat() -> dict:
+    """How much of rows.db is holes, without touching it.
+
+    Free pages are space SQLite owns and will reuse, so the file never shrinks
+    on its own. Every insert lands in one of them, scattered, which is why the
+    catch-up seeks instead of streams.
+    """
+    def _read():
+        with _open(readonly=True) as con:
+            pc = int(con.execute("PRAGMA page_count").fetchone()[0])
+            fl = int(con.execute("PRAGMA freelist_count").fetchone()[0])
+            ps = int(con.execute("PRAGMA page_size").fetchone()[0])
+        return {"pages": pc, "free": fl, "page_size": ps,
+                "free_bytes": fl * ps,
+                "pct": round(100.0 * fl / pc, 1) if pc else 0.0,
+                "bytes": DB_PATH.stat().st_size if DB_PATH.exists() else 0}
+    return _missing_ok(_read, {"pages": 0, "free": 0, "pct": 0.0,
+                               "free_bytes": 0, "bytes": 0})
+
+
+# Past this share of free pages a rebuild is worth its wall clock. Measured on
+# the operator's store Sep 10, 2026: 46.8% free (3,961,902 of 8,469,643 pages,
+# 16.23 GB of a 34.7 GB file) and the catch-up managed 0.86 pairs/min against
+# the 75/min a lean fill is supposed to do.
+BLOAT_PCT = 25.0
+
+
+def compact(*, dest: Path | None = None, keep_backup: bool = True) -> dict:
+    """Rebuild rows.db into a FRESH file and swap it in. Returns what happened.
+
+    CLAUDE.md has carried the technique since 2026-08-26 and nothing
+    implemented it: *"Do NOT repair a bloated file in place: this one carried
+    727,146 free pages (2.8 GB) and a single DROP INDEX rows_profit had not
+    finished in fourteen minutes. Loading a FRESH file sequentially and
+    swapping it in is faster and leaves a compact database."* By Sep 10, 2026
+    the store held **3,961,902** free pages — 5.4x that — and 46.8% of the
+    34.7 GB file was holes.
+
+    SQLite's own `VACUUM INTO` writes a new, defragmented copy while the
+    original stays readable, so the screen keeps working for the whole rebuild.
+    Nothing is swapped until the copy has been opened, integrity-checked and
+    found to hold the same number of rows and pairs — this is the operator's
+    only copy of 51,943,352 measured rows, and a compaction that loses them is
+    infinitely worse than a slow one.
+
+    Refuses while another process is writing: a copy taken mid-transaction
+    would be a copy of a half-finished fill.
+    """
+    import shutil
+    import time as _t
+
+    if not DB_PATH.exists():
+        return {"compacted": False, "why": "no rows.db yet"}
+    held = write_available()
+    if held:
+        return {"compacted": False, "why": held}
+    before = bloat()
+    dest = Path(dest) if dest else DB_PATH.with_suffix(".compact.db")
+    with contextlib.suppress(FileNotFoundError):
+        dest.unlink()
+    t0 = _t.time()
+    try:
+        with _open(readonly=True) as con:
+            want_rows = int(con.execute("SELECT count(*) FROM rows").fetchone()[0])
+            want_pairs = int(con.execute("SELECT count(*) FROM pairs").fetchone()[0])
+            con.execute("VACUUM INTO ?", (str(dest),))
+    except sqlite3.Error as exc:
+        with contextlib.suppress(FileNotFoundError):
+            dest.unlink()
+        return {"compacted": False, "why": f"{type(exc).__name__}: {exc}"}
+    # VERIFY THE COPY BEFORE TRUSTING IT. A shorter file is not a smaller one.
+    try:
+        chk = sqlite3.connect(f"file:{dest}?mode=ro", uri=True, timeout=60.0)
+        try:
+            got_rows = int(chk.execute("SELECT count(*) FROM rows").fetchone()[0])
+            got_pairs = int(chk.execute("SELECT count(*) FROM pairs").fetchone()[0])
+            quick = chk.execute("PRAGMA quick_check").fetchone()[0]
+        finally:
+            chk.close()
+    except sqlite3.Error as exc:
+        dest.unlink(missing_ok=True)
+        return {"compacted": False, "why": f"the copy would not open: {exc}"}
+    if quick != "ok" or got_rows != want_rows or got_pairs != want_pairs:
+        dest.unlink(missing_ok=True)
+        return {"compacted": False,
+                "why": (f"the copy did not match: quick_check={quick}, "
+                        f"rows {got_rows} vs {want_rows}, "
+                        f"pairs {got_pairs} vs {want_pairs}")}
+    # SWAP. The old file is kept beside it unless the caller says otherwise —
+    # 24.8 GB of rows.prev.db / rows.old.db was already sitting there on
+    # Sep 10, 2026, so a caller that does not want another copy can say so.
+    backup = DB_PATH.with_suffix(".before-compact.db")
+    with _lock:
+        _ready.discard(str(DB_PATH))
+        forget_indexes()
+        with contextlib.suppress(FileNotFoundError):
+            backup.unlink()
+        for tail in ("-wal", "-shm"):
+            with contextlib.suppress(FileNotFoundError):
+                Path(str(DB_PATH) + tail).unlink()
+        shutil.move(str(DB_PATH), str(backup))
+        shutil.move(str(dest), str(DB_PATH))
+        if not keep_backup:
+            with contextlib.suppress(FileNotFoundError):
+                backup.unlink()
+    after = bloat()
+    return {"compacted": True, "seconds": round(_t.time() - t0, 1),
+            "rows": want_rows, "pairs": want_pairs,
+            "before_bytes": before.get("bytes"), "after_bytes": after.get("bytes"),
+            "freed_bytes": (before.get("bytes") or 0) - (after.get("bytes") or 0),
+            "before_pct_free": before.get("pct"), "after_pct_free": after.get("pct"),
+            "backup": str(backup) if keep_backup else ""}
+
+
 def _kept_index_names() -> set:
     """The four `ensure()` creates. Everything else on the table was built on
     demand and may be dropped for a bulk fill."""

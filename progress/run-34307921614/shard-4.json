@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 46, "total": 46, "rows": 4081988, "note": "CROSS 15m: rule 120/120 (cf_stflip_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:17:24Z"}
+{"shard": 4, "stage": "testing", "done": 46, "total": 46, "rows": 4083968, "note": "CROSS 30m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:18:14Z"}

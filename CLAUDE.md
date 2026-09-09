@@ -402,6 +402,53 @@ search matched it;
 unpack is removed, a live one is kept, and a folder that is not ours is never
 touched. Full account: `docs/RCA.md` RCA-2026-09-10-B.
 
+## A job that cannot start must SAY SO (MANDATORY — 2026-09-10)
+
+The operator, `Sep 10, 2026 1:05am`, told the measuring was finished while
+their screen still showed the day before's numbers: *"is tehre a bug or what i
+dont understand"*.
+
+It was finished — 5,364 pair files on disk, last collect `12:38am`. None of it
+was visible, because a delisted cleanup had held `rows.db`'s write lock since
+`Sep 09 11:55am` and the indexer sat behind it at **0.0 s of CPU per 30 s**.
+Nothing on the machine said any of that. Three faults, each one a rule:
+
+* **NEVER `except Exception: pass` on a worker thread.** REINDEX answered
+  `{"started": true}` and the thread died on its FIRST statement, `ensure()`
+  raising `database is locked`. A caller that has already returned "started"
+  cannot learn the truth later unless the failure is KEPT somewhere a reader
+  reaches — `_last_error`, served in `status()`. A swallowed failure is a
+  button that lies, and it lied for 13 hours.
+* **The number a button prints is the number of work it will DO.** The route
+  printed `behind` (never-indexed, **806**) for a job that walks
+  `stale_pairs()` (**5,276**) — 6.5x under. Even a working run would have
+  looked finished a sixth of the way in. This is `label-must-match-data`
+  applied to job SIZE, which is the reading nobody makes on their own.
+* **A long-running process writes a LOG.** `spawn_indexer` ran with
+  `stdout=DEVNULL, stderr=DEVNULL`. That process is the only thing that prints
+  *"paused: a backtest is running"* and *"indexing N pairs"*; 18.7 hours of it
+  went in the bin, while every other job here writes `~/.tradingagents/*.log`.
+  Diagnosis took walking the process table and sampling CPU per-pid. Add
+  `PYTHONUNBUFFERED=1`: a log that appears only at exit is no use for a
+  process meant to run for days.
+* **And a blocked resource NAMES ITS HOLDER.** `rows_index.lock_holder()`
+  reports the cleanup and its phase, so the answer is *"the row index is
+  locked by delisted cleanup: removing from the row index: 55 of 73 pairs"* —
+  not a stalled screen the operator has to interpret.
+
+**WHY IT WAS NOT CAUGHT** — 289 index tests, every one about what the index
+CONTAINS or how fast it fills. None asked what happens when the fill **cannot
+start**. A swallowed exception has no observable behaviour to assert unless you
+decide the failure itself is a product surface, so the guard must be written
+against the SWALLOW, not the success (`tests/test_index_stall_is_visible.py`,
+14 tests; all three faults were re-introduced and each went red first).
+
+**Still open, so it is not forgotten:** `rows_index.forget_pairs` holds ONE
+transaction across every pair by design, so a 73-pair cleanup freezes the whole
+index for as long as it takes (~14 min/pair on this spinning disk). Chunked
+commits are the real repair, and `_drop_pairs`'s "may the files go now"
+contract has to move with them. Full account: `docs/RCA.md` RCA-2026-09-10-C.
+
 ## The row index is a BULK LOAD, not a trickle (MANDATORY — 2026-08-26)
 
 The operator: *"why is my stored strategy few? ... where are those?"* and then

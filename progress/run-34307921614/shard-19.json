@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 57, "total": 57, "rows": 5457638, "note": "AIN 30m: rule 120/120 (cf_stflip_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:59:34Z"}
+{"shard": 19, "stage": "testing", "done": 57, "total": 57, "rows": 5474358, "note": "AIN 1h: rule 71/120 (mfi14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:00:19Z"}

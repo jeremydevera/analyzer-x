@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 19, "total": 19, "rows": 1489946, "note": "APEX 15m: rule 62/120 (ote)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:22:11Z"}
+{"shard": 1, "stage": "testing", "done": 19, "total": 19, "rows": 1499226, "note": "APEX 30m: 16,646 bars \u00b7 Sep 27, 2025 9:00am \u2192 Sep 09, 2026 3:30am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:23:00Z"}

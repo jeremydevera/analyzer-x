@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 28, "total": 28, "rows": 2315794, "note": "COAI 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:42:01Z"}
+{"shard": 4, "stage": "testing", "done": 28, "total": 28, "rows": 2317234, "note": "COAI 15m: rule 5/120 (rsi14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:42:47Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 63, "total": 63, "rows": 5258020, "note": "W 30m: 18,959 bars \u00b7 Aug 10, 2025 7:30am \u2192 Sep 09, 2026 6:30am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:27:08Z"}
+{"shard": 5, "stage": "testing", "done": 63, "total": 63, "rows": 5263740, "note": "W 30m: rule 20/120 (stoch14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:27:54Z"}

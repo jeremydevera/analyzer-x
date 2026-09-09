@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 61, "total": 61, "rows": 5329954, "note": "BIGTIME 30m: rule 54/120 (fractal5)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:50:07Z"}
+{"shard": 1, "stage": "testing", "done": 61, "total": 61, "rows": 5345794, "note": "BIGTIME 1h: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:50:54Z"}

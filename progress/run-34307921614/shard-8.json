@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 2, "total": 2, "rows": 115570, "note": "HANA 30m: rule 12/120 (donchian20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:50:17Z"}
+{"shard": 8, "stage": "testing", "done": 2, "total": 2, "rows": 125250, "note": "HANA 30m: rule 57/120 (orderblock)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:51:02Z"}

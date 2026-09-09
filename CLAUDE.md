@@ -350,6 +350,58 @@ has an entry point.
 17. **Orphan sweep every cycle** — any exchange position the book is not tracking gets adopted
     and bracketed. A position must never be open without a stop for longer than one cycle.
 
+## Big files go where the STORE is, never the system drive (MANDATORY — 2026-09-10)
+
+The operator, `Sep 10, 2026 12:10am`: *"why are you using my c drive?"*. Their
+store is on `G:` on purpose. `C:` had **6 GB free of 118 GB**.
+
+`cloud_sweep.fetch()` and `collect_into_store()` called
+`tempfile.TemporaryDirectory()` with no `dir=`. That is `%TEMP%` —
+`AppData\Local\Temp`, the SYSTEM drive — while `market_sweep.HOME` is
+`~/.tradingagents`, a junction onto `G:`. Every result file the fleet produced
+was downloaded and unzipped onto `C:` before being streamed to `G:`.
+
+**The rule, in three parts:**
+
+* **Anything that can exceed ~100 MB is written under `market_sweep.HOME`,**
+  not `%TEMP%`, not `/tmp`, not the repo. Use `cloud_sweep._scratch()` or the
+  same pattern: `Path(msw.HOME) / "tmp"`, created on demand, falling back to
+  the system default WITH A WARNING if that drive cannot be used. The operator
+  chose which drive holds this data; a library does not get to overrule it.
+* **"Temporary" is a promise the code has to keep.** `TemporaryDirectory` only
+  cleans up if the process reaches the end of the `with`. A KILLED job never
+  does — and `start.py` kills the job tree with `taskkill /T` on every restart,
+  so each hard stop leaked a whole 3.3 GB shard, permanently. Anything writing
+  large scratch must SWEEP ITS OWN LEFTOVERS on the way in, by age, in its own
+  directory only (`SCRATCH_TTL_S`, 6 hours — a download times out at 30
+  minutes). Never sweep `%TEMP%` itself from library code; it is not ours.
+* **Measure the SIZE before calling something temporary.** One shard is
+  `rows-5.jsonl` at **3.33 GB**. Twenty is ~60 GB, more than `C:` had free at
+  any point that day. The word "temp" hid a number nobody had looked at.
+
+What it actually cost: no money, the machine. Windows on 6 GB of 118 GB stalls
+its page file, and that same session had already traced the backtest's slowness
+to page-file thrashing. Found on disk at 12:10am: two orphan folders holding the
+SAME `rows-5.jsonl` (3.33 GB each, from collects that were killed) plus the live
+`rows-18.jsonl` (2.73 GB) = 9.39 GB, and **147** leaked `tmp*` folders going
+back to `Sep 03`. Deleting the two dead ones took `C:` from 6.4 GB to 13 GB free.
+
+**WHY IT WAS NOT CAUGHT** — every test about the store checked its CONTENT:
+rows, watermarks, cloud/local parity, ownership marks. Not one asked WHERE the
+bytes land on the way in. When you add a path, assert its DRIVE, not just that
+the data arrives.
+
+`tests/test_cloud_sweep.py`:
+`test_no_artifact_is_unpacked_on_the_system_drive` walks the AST for every
+`TemporaryDirectory` call and demands `dir=_scratch()` — reading the CALLS, not
+the prose, because the docstring quotes the broken form and a plain string
+search matched it;
+`test_the_scratch_sits_on_the_stores_own_drive`;
+`test_a_store_drive_that_cannot_be_used_falls_back`;
+`test_a_killed_collect_does_not_leak_a_shard_forever` proves a six-hour-old
+unpack is removed, a live one is kept, and a folder that is not ours is never
+touched. Full account: `docs/RCA.md` RCA-2026-09-10-B.
+
 ## The row index is a BULK LOAD, not a trickle (MANDATORY — 2026-08-26)
 
 The operator: *"why is my stored strategy few? ... where are those?"* and then

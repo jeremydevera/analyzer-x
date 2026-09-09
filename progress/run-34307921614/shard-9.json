@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 30, "total": 30, "rows": 2787652, "note": "KAS 30m: rule 102/120 (cf_soup1_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:23:03Z"}
+{"shard": 9, "stage": "testing", "done": 30, "total": 30, "rows": 2803832, "note": "KAS 1h: rule 54/120 (fractal5)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:23:49Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 69, "total": 69, "rows": 6306494, "note": "PUMPBTC 30m: rule 68/120 (dbltop)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:09:41Z"}
+{"shard": 9, "stage": "testing", "done": 69, "total": 69, "rows": 6320914, "note": "PUMPBTC 1h: rule 10/120 (sr_bounce)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:10:26Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 38, "total": 38, "rows": 3569148, "note": "TAC 30m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:21:37Z"}
+{"shard": 13, "stage": "testing", "done": 38, "total": 38, "rows": 3573328, "note": "TAC 30m: rule 16/120 (keltner)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:22:23Z"}

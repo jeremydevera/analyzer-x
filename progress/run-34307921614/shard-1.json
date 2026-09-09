@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 57, "total": 57, "rows": 4965952, "note": "BEL 1h: rule 10/120 (sr_bounce)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:39:39Z"}
+{"shard": 1, "stage": "testing", "done": 57, "total": 57, "rows": 5009952, "note": "BEL 4h: rule 90/120 (cf_chan_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:40:24Z"}

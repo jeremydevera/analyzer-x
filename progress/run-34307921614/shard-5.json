@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 4, "total": 4, "rows": 315946, "note": "CTK 30m: rule 73/120 (volspike)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:57:51Z"}
+{"shard": 5, "stage": "testing", "done": 4, "total": 4, "rows": 327386, "note": "CTK 1h: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:58:37Z"}

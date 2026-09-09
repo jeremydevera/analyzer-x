@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 69, "total": 69, "rows": 6265434, "note": "PUMPBTC 15m: 34,603 bars \u00b7 Sep 13, 2025 8:15pm \u2192 Sep 09, 2026 6:45am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:05:54Z"}
+{"shard": 9, "stage": "testing", "done": 69, "total": 69, "rows": 6268834, "note": "PUMPBTC 15m: rule 11/120 (sr_break)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:06:39Z"}

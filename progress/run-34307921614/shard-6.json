@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 33, "total": 33, "rows": 3034808, "note": "FARTCOIN 30m: 18,959 bars \u00b7 Aug 10, 2025 6:00am \u2192 Sep 09, 2026 5:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:50:59Z"}
+{"shard": 6, "stage": "testing", "done": 33, "total": 33, "rows": 3040208, "note": "FARTCOIN 30m: rule 21/120 (cci20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:51:44Z"}

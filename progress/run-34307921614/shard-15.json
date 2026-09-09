@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 22, "total": 22, "rows": 1899548, "note": "SIREN 4h: rule 36/120 (stochrsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:26:02Z"}
+{"shard": 15, "stage": "testing", "done": 23, "total": 23, "rows": 1937408, "note": "SITMSTOCK 15m: rule 99/120 (cf_ttm_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:26:47Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 49, "total": 49, "rows": 4415500, "note": "KOSPI 30m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:09:55Z"}
+{"shard": 9, "stage": "testing", "done": 50, "total": 50, "rows": 4526822, "note": "KOSTOCK 1d: 85 bars \u00b7 Jun 16, 2026 12:00am \u2192 Sep 08, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:10:42Z"}

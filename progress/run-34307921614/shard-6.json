@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 25, "total": 25, "rows": 2366776, "note": "EVAA 15m: rule 20/120 (stoch14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:35:33Z"}
+{"shard": 6, "stage": "testing", "done": 25, "total": 25, "rows": 2373256, "note": "EVAA 15m: rule 57/120 (orderblock)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:36:18Z"}

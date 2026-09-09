@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 37, "total": 37, "rows": 3226066, "note": "SLX 1h: rule 81/120 (cf_donch_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:19:13Z"}
+{"shard": 15, "stage": "testing", "done": 38, "total": 38, "rows": 3265516, "note": "SMCISTOCK 15m: rule 13/120 (pivot)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:19:58Z"}

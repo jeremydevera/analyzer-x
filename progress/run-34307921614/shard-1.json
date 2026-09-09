@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 69, "total": 69, "rows": 5963624, "note": "CATI 15m: rule 108/120 (cf_bosfvg_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:09:19Z"}
+{"shard": 1, "stage": "testing", "done": 69, "total": 69, "rows": 5968464, "note": "CATI 30m: rule 4/120 (trend50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:10:05Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 4, "total": 4, "rows": 315618, "note": "NIGHT 15m: rule 64/120 (hammer)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:49:56Z"}
+{"shard": 12, "stage": "testing", "done": 4, "total": 4, "rows": 326178, "note": "NIGHT 15m: rule 112/120 (cf_obretest)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:50:41Z"}

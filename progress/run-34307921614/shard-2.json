@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 2, "total": 2, "rows": 118022, "note": "AVAX 30m: rule 60/120 (eqraid)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:44:09Z"}
+{"shard": 2, "stage": "testing", "done": 2, "total": 2, "rows": 131142, "note": "AVAX 1h: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:44:54Z"}

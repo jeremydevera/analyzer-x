@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 55, "total": 55, "rows": 4888840, "note": "QBTSSTOCK 30m: rule 82/120 (cf_maobv)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:11:03Z"}
+{"shard": 6, "stage": "testing", "done": 56, "total": 56, "rows": 4937046, "note": "SAGA 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:11:53Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 45, "total": 45, "rows": 3610688, "note": "GRT 15m: rule 40/120 (crsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:31:52Z"}
+{"shard": 7, "stage": "testing", "done": 45, "total": 45, "rows": 3621468, "note": "GRT 15m: rule 90/120 (cf_chan_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:32:38Z"}

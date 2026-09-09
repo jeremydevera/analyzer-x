@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 5, "total": 5, "rows": 193778, "note": "CELO 15m: rule 31/120 (trix15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:43:25Z"}
+{"shard": 4, "stage": "testing", "done": 5, "total": 5, "rows": 200078, "note": "CELO 15m: rule 67/120 (pinbar)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:44:11Z"}

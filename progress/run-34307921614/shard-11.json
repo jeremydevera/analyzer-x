@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 26, "total": 26, "rows": 2349362, "note": "MSFU 15m: rule 90/120 (cf_chan_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:53:53Z"}
+{"shard": 11, "stage": "testing", "done": 27, "total": 27, "rows": 2411882, "note": "MSSTOCK 30m: rule 120/120 (cf_stflip_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:54:38Z"}

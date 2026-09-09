@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 28, "total": 28, "rows": 2531384, "note": "KAIA 15m: rule 100/120 (cf_soup1)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:10:41Z"}
+{"shard": 9, "stage": "testing", "done": 28, "total": 28, "rows": 2537984, "note": "KAIA 30m: rule 4/120 (trend50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:11:27Z"}

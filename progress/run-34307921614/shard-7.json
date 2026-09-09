@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 43, "total": 43, "rows": 3433368, "note": "GRASS 30m: rule 120/120 (cf_stflip_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:23:10Z"}
+{"shard": 7, "stage": "testing", "done": 43, "total": 43, "rows": 3445248, "note": "GRASS 1h: rule 48/120 (prank)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:23:55Z"}

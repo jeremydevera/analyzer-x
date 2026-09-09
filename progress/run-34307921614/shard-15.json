@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 52, "total": 52, "rows": 4438524, "note": "SOL 30m: rule 33/120 (heikin)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:04:41Z"}
+{"shard": 15, "stage": "testing", "done": 52, "total": 52, "rows": 4450924, "note": "SOL 30m: rule 97/120 (cf_ttm)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:05:26Z"}

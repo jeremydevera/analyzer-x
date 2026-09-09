@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 3, "total": 3, "rows": 232584, "note": "SOONNETWORK 30m: rule 16/120 (keltner)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:00:44Z"}
+{"shard": 16, "stage": "testing", "done": 3, "total": 3, "rows": 240944, "note": "SOONNETWORK 30m: rule 55/120 (nhigh50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:01:30Z"}

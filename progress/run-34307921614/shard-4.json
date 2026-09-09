@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 7, "total": 7, "rows": 445540, "note": "CETUS 30m: rule 13/120 (pivot)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:03:16Z"}
+{"shard": 4, "stage": "testing", "done": 7, "total": 7, "rows": 454560, "note": "CETUS 30m: rule 55/120 (nhigh50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:04:02Z"}

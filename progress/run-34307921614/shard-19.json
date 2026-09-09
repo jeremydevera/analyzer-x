@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 7, "total": 7, "rows": 725802, "note": "XEC 1h: 9,479 bars \u00b7 Aug 10, 2025 5:00am \u2192 Sep 09, 2026 3:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:05:59Z"}
+{"shard": 19, "stage": "testing", "done": 7, "total": 7, "rows": 755062, "note": "XEC 4h: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:06:45Z"}

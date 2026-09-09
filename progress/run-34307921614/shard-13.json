@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 6, "total": 6, "rows": 424946, "note": "PAYPSTOCK 1h: 4,069 bars \u00b7 Mar 23, 2026 3:00pm \u2192 Sep 09, 2026 3:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:00:15Z"}
+{"shard": 13, "stage": "testing", "done": 7, "total": 7, "rows": 477526, "note": "PDDSTOCK 15m: downloading candles", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:01:09Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 1, "total": 1, "rows": 0, "note": "PANASONICSTOCK 15m: downloading candles", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:39:25Z"}
+{"shard": 13, "stage": "testing", "done": 2, "total": 2, "rows": 54940, "note": "PANWSTOCK 15m: rule 19/120 (emacross)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:40:10Z"}

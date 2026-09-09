@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 22, "total": 22, "rows": 1924248, "note": "PI 1h: rule 96/120 (cf_emarsi_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:35:47Z"}
+{"shard": 13, "stage": "testing", "done": 22, "total": 22, "rows": 1954608, "note": "PI 1d: 394 bars \u00b7 Aug 11, 2025 12:00am \u2192 Sep 08, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:36:40Z"}

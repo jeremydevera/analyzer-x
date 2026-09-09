@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 14, "total": 14, "rows": 1189490, "note": "ANKR 15m: rule 17/120 (atrbreak)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:13:42Z"}
+{"shard": 1, "stage": "testing", "done": 14, "total": 14, "rows": 1199610, "note": "ANKR 15m: rule 64/120 (hammer)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:14:28Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 52, "total": 52, "rows": 4484144, "note": "SOL 4h: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:06:57Z"}
+{"shard": 15, "stage": "testing", "done": 53, "total": 53, "rows": 4521632, "note": "SOMI 15m: 34,603 bars \u00b7 Sep 13, 2025 8:15pm \u2192 Sep 09, 2026 6:45am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:07:45Z"}

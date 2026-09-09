@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 21, "total": 21, "rows": 1732540, "note": "PIXEL 15m: rule 21/120 (cci20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:20:56Z"}
+{"shard": 13, "stage": "testing", "done": 21, "total": 21, "rows": 1737380, "note": "PIXEL 15m: rule 43/120 (macddiv)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:21:41Z"}

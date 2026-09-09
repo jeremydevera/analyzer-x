@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 13, "total": 13, "rows": 1064786, "note": "ANIME 15m: 34,591 bars \u00b7 Sep 13, 2025 8:15pm \u2192 Sep 09, 2026 3:45am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:07:25Z"}
+{"shard": 1, "stage": "testing", "done": 13, "total": 13, "rows": 1069986, "note": "ANIME 15m: rule 20/120 (stoch14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:08:11Z"}

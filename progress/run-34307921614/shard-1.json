@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 43, "total": 43, "rows": 3805912, "note": "ASTR 30m: rule 85/120 (cf_triple)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:50:04Z"}
+{"shard": 1, "stage": "testing", "done": 43, "total": 43, "rows": 3827692, "note": "ASTR 1h: rule 59/120 (choch)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:50:49Z"}

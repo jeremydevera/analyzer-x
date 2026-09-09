@@ -96,7 +96,7 @@ function MonthTable(p: {
       {job && (
         <p role="status" className={`px-5 pt-2 text-theme-xs ${job.running ? "text-brand-600 dark:text-brand-400" : job.error_count ? "text-warning-600 dark:text-warning-400" : "text-success-600 dark:text-success-400"}`}>
           {job.running
-            ? <>deleting {job.label} and older — {job.done.toLocaleString()} of {job.total.toLocaleString()} {kind === "candles" ? "files" : "pairs"} · {fmtBytes(job.freed)} freed so far</>
+            ? <>deleting {job.label} and older — {job.phase ? `${job.phase} · ` : ""}{job.done.toLocaleString()} of {job.total.toLocaleString()} {kind === "candles" ? "files" : "pairs"} · {job.rows_removed ? `${job.rows_removed.toLocaleString()} rows out of the index · ` : ""}{fmtBytes(job.freed)} freed so far</>
             : <>deleted {job.label} and older — {fmtBytes(job.freed)} freed
                 {kind === "candles"
                   ? <> · {job.bars_removed.toLocaleString()} bars removed · {job.files_trimmed.toLocaleString()} files trimmed · {job.files_removed.toLocaleString()} files removed</>

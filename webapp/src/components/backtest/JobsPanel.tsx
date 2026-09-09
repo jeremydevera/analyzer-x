@@ -326,7 +326,7 @@ export default function JobsPanel() {
           {dead?.job && (
             <p role="status" className={`mt-2 text-theme-xs ${dead.job.running ? "text-brand-600 dark:text-brand-400" : dead.job.error_count ? "text-warning-600 dark:text-warning-400" : "text-success-600 dark:text-success-400"}`}>
               {dead.job.running
-                ? <>deleting delisted coins — {dead.job.done} of {dead.job.total} · {fmtBytes(dead.job.freed)} freed so far</>
+                ? <>deleting delisted coins — {dead.job.phase ? `${dead.job.phase} · ` : ""}{dead.job.done} of {dead.job.total} coins · {dead.job.rows_removed ? `${dead.job.rows_removed.toLocaleString()} rows out of the index · ` : ""}{fmtBytes(dead.job.freed)} freed so far</>
                 : <>deleted {dead.job.label} — {fmtBytes(dead.job.freed)} freed · {dead.job.files_removed.toLocaleString()} files removed · {dead.job.rows_removed.toLocaleString()} rows dropped · {dead.job.finished_at}
                     {dead.job.error_count ? <> · {dead.job.error_count} error{dead.job.error_count === 1 ? "" : "s"}: {dead.job.errors[0]}</> : null}</>}
             </p>

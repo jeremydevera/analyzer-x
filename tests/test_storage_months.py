@@ -39,7 +39,16 @@ def store(tmp_path, monkeypatch):
         (tmp_path / d).mkdir()
     # no writer job is running, whatever this PC is doing
     monkeypatch.setattr(sm, "_writer_running", lambda kind: "")
-    sm._jobs.update({"candles": None, "results": None})
+    # the worker runs in-process here (a thread standing in for the detached
+    # child); the spawn plumbing has its own test below
+    import threading
+
+    def fake_spawn(kind, through):
+        threading.Thread(target=sm.run_delete, args=(kind, through),
+                         daemon=True).start()
+        return os.getpid()
+    monkeypatch.setattr(sm, "_spawn_real", sm._spawn, raising=False)
+    monkeypatch.setattr(sm, "_spawn", fake_spawn)
     return tmp_path
 
 
@@ -232,9 +241,24 @@ def _hold_write_lock():
     IMMEDIATE transaction on the same file."""
     import sqlite3
 
-    con = sqlite3.connect(str(ri.DB_PATH), timeout=0.1)
+    con = sqlite3.connect(str(ri.DB_PATH), timeout=0.1, check_same_thread=False)
     con.execute("BEGIN IMMEDIATE")
     return con
+
+
+def test_forget_pairs_waits_for_the_lock_then_takes_it(store):
+    """the standalone indexer commits between pairs; the batched delete waits
+    for that gap and then holds the lock for every pair"""
+    import threading
+
+    _measured("AAA", "1h", _ms(2025, 2, 10))
+    ri.sync(now=time.time() + ri.SETTLE_S + 1)
+    holder = _hold_write_lock()
+    threading.Timer(0.5, lambda: (holder.rollback(), holder.close())).start()
+    t = time.time()
+    assert ri.forget_pairs(["AAA-1h"], busy_ms=5000) == 2
+    assert time.time() - t >= 0.4                    # it waited for the gap
+    assert ri.query()["total"] == 0
 
 
 def test_forget_pair_raises_behind_another_writer_instead_of_saying_zero(store, monkeypatch):
@@ -267,22 +291,84 @@ def _short_timeout(real_connect, monkeypatch):
     return connect
 
 
-def test_a_failed_index_delete_keeps_the_pairs_files(store, monkeypatch):
+def test_a_failed_index_delete_keeps_every_file(store, monkeypatch):
     """index first, files second — and no files at all when the first step
     fails, or the next screen shows rows for a pair the disk no longer has."""
     _measured("AAA", "1h", _ms(2025, 2, 10))
+    _measured("BBB", "1h", _ms(2025, 2, 12))
     ri.sync(now=time.time() + ri.SETTLE_S + 1)
 
-    def refuse(pair):
+    def refuse(pairs, on_pair=None, busy_ms=0):
         raise RuntimeError("database is locked")
-    monkeypatch.setattr(ri, "forget_pair", refuse)
-    job = {"errors": [], "freed": 0, "files_removed": 0, "rows_removed": 0}
-    sm._remove_pair("AAA-1h", "AAA", "1h", job)
-    assert (msw.ROWDIR / "AAA-1h.json").exists()
-    assert (msw.STATES / "AAA-1h.json").exists()
+    monkeypatch.setattr(ri, "forget_pairs", refuse)
+    sm.start_delete("results", "2025-02", now=_ms(2025, 9, 9) / 1000)
+    job = _wait("results")
+    for c in ("AAA", "BBB"):
+        assert (msw.ROWDIR / f"{c}-1h.json").exists()
+        assert (msw.STATES / f"{c}-1h.json").exists()
     assert job["files_removed"] == 0 and job["freed"] == 0
-    assert job["errors"] == ["AAA-1h: index still holds it (RuntimeError: "
-                             "database is locked) — files kept"]
+    assert job["rows_removed"] == 0
+    assert job["errors"] == ["the row index still holds every pair "
+                             "(RuntimeError: database is locked) — no file "
+                             "was deleted; press again when the index is free"]
+    assert ri.query()["total"] == 4                  # and the index is intact
+
+
+def test_the_index_pairs_go_in_one_transaction(store):
+    """one lock, held until every pair is gone — never a gap the indexer can
+    take between pairs (the 2026-09-09 press got one pair per gap)"""
+    _measured("AAA", "1h", _ms(2025, 2, 10))
+    _measured("BBB", "1h", _ms(2025, 2, 12))
+    ri.sync(now=time.time() + ri.SETTLE_S + 1)
+    seen = []
+    n = ri.forget_pairs(["AAA-1h", "BBB-1h", "NOPE-1h"],
+                        on_pair=lambda p, k: seen.append((p, k)))
+    assert n == 4 and seen == [("AAA-1h", 2), ("BBB-1h", 2), ("NOPE-1h", 0)]
+    assert ri.query()["total"] == 0 and ri.pair_storage() == []
+
+
+def test_the_worker_is_a_detached_process_and_a_dead_one_says_so(store, monkeypatch):
+    """The first DELETE 29 DELISTED ran as a thread in the API and died when
+    another session restarted the API at 8:03am (2026-09-09), 2 coins in.
+    The worker is its own process now; a record whose pid is gone reads as
+    not running, with the reason, never as RUNNING for ever."""
+    import subprocess
+
+    calls = []
+
+    class P:
+        pid = 424242
+    monkeypatch.setattr(sm.subprocess, "Popen", lambda cmd, **kw: (calls.append((cmd, kw)), P())[1])
+    monkeypatch.setattr(sm, "_spawn", sm._spawn_real)              # the real one
+    _measured("AAA", "1h", _ms(2025, 2, 10))
+    ri.sync(now=time.time() + ri.SETTLE_S + 1)
+    got = sm.start_delete("results", "2025-02", now=_ms(2025, 9, 9) / 1000)
+    # the stub also catches the indexer's own detached builds — pick ours
+    cmd, kw = next((c, k) for c, k in calls if "tradingagents.storage_months" in c)
+    assert cmd[1:] == ["-m", "tradingagents.storage_months", "--run", "results", "2025-02"]
+    assert kw["env"]["TA_ROWS_DB"] == str(ri.DB_PATH)
+    assert kw["env"]["TRADINGAGENTS_SWEEP_HOME"] == str(msw.HOME)
+    assert kw["env"]["TRADINGAGENTS_CANDLES"] == str(msw.CANDLES)
+    if os.name == "nt":
+        assert kw["creationflags"] == 0x00000008 | 0x00000200
+    else:
+        assert kw["start_new_session"] is True
+    # the child records its own pid; until then the record is "starting"
+    assert got["running"] is True and got["pid"] == 0
+    # a child that never wrote its pid within a minute is a dead job
+    rec = sm._load("results")
+    rec["started"] -= 120
+    sm._save(rec)
+    assert sm.progress("results")["running"] is False
+    assert "died before finishing" in sm.progress("results")["errors"][-1]
+    # and so is one whose recorded pid is gone
+    rec["pid"] = 424242
+    sm._save(rec)
+    assert sm.progress("results")["running"] is False
+    assert sm.job_path("results").exists()
+    assert (msw.HOME / "delete_results.log").exists()
+    # the module refuses to be anything but the worker from the command line
+    assert sm.main(["--build", "x"]) == 2
 
 
 def test_a_results_or_delisted_delete_refuses_while_another_process_writes_the_index(store, monkeypatch):

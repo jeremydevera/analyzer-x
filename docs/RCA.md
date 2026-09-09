@@ -74,6 +74,51 @@ callers apply it, the CSV writes the count, the caption names it.
 
 ---
 
+## RCA-2026-09-09-G — the delete ran as a thread inside the API, so an API restart killed it; and one pair per lock gap
+
+**SAW** — the job's progress line vanished mid-run ("none"); on the re-press
+the button was refused with "the row index is being written by another
+process" a moment after a probe had found the lock free.
+
+**TIMELINE**
+
+1. `Sep 09, 2026 7:55am` — first press; the delete ran in a thread of the
+   API process.
+2. `8:03am` — another session restarted the API. The thread died at coin
+   **2 of 29**; the record went with the process.
+3. `8:36am–11:31am` — the standalone indexer (`python -m
+   tradingagents.rows_index`, pid 22424) committed **15 pairs in 3.5 hours**
+   (4,541 → 4,556 indexed), holding the write lock ~95% of the time. The
+   re-press probed the lock, found a gap, and by its first `forget_pair` the
+   indexer had the lock again: **409**, nothing done.
+
+**ROOT CAUSE** — two design choices. (1) Hours-long store work inside a
+process that is restarted many times a day. (2) Taking the lock per pair,
+which can only ever win one pair per gap against a writer that holds it 14
+minutes at a time.
+
+**WHY IT WAS NOT CAUGHT** — no test restarted the host process or held the
+lock from a second connection during a run. The index builds had already
+learned both lessons (detached child, one statement) and the delete did not
+copy them.
+
+**COST** — none in money. Four presses over four hours removed 24 files.
+
+**FIX** — this commit. `storage_months` runs every delete as a DETACHED
+process (`--run <kind> <through>`, same flags as the index builds) with a
+progress file beside the store; `progress()` reads the file and a dead pid
+reads as "died before finishing — press again", never RUNNING.
+`rows_index.forget_pairs` removes every pair in ONE transaction, waiting up
+to 30 minutes for the lock and holding it until done; if it fails, nothing
+is deleted and no file goes.
+
+**GUARD** — `tests/test_storage_months.py::test_the_worker_is_a_detached_process_and_a_dead_one_says_so`,
+`::test_the_index_pairs_go_in_one_transaction`,
+`::test_forget_pairs_waits_for_the_lock_then_takes_it`,
+`::test_a_failed_index_delete_keeps_every_file`.
+
+---
+
 ## RCA-2026-09-09-F — DELETE 29 DELISTED counted candle files the first press had already removed
 
 **SAW** — after the interrupted press below, the button still read

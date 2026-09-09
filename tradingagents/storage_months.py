@@ -21,22 +21,33 @@ Two stores, two different meanings of "a month":
   measured in that month or earlier: its rows in rows.db first, then its rows
   file and resume state. Those pairs can be measured again.
 
-Both deletes run in a background THREAD with a progress record this module
-owns, because trimming 5,243 files is minutes and the UI proxy gives up at
-30 s. A delete REFUSES to start while a job that writes the same store is
-running (a download rewrites candle files; backtest/collect/btupdate rewrite
-rows files) — the loser of that race would silently lose bars or rows.
+A third kind, DELISTED, removes every stored coin MEXC no longer lists from
+BOTH stores (operator, 2026-09-09: *"create a button in backtest 'Delete X
+Delisted'... delete the candle and backtest for the delisted coin"*).
+
+Every delete runs as a DETACHED PROCESS with a progress file this module owns
+(`delete_<kind>.json` beside the store), the way index builds do. It ran as a
+thread inside the API until 2026-09-09 8:03am, when another session restarted
+the API and the first DELETE 29 DELISTED died at coin 2 of 29 — and the
+store's index work is hours on this disk, while the API restarts many times a
+day. A delete REFUSES to start while a job that writes the same store is
+running, and while another process holds the row index's write lock.
 """
 from __future__ import annotations
 
 import calendar
+import json
+import os
 import re
-import threading
+import subprocess
+import sys
 import time
+from pathlib import Path
 
-from tradingagents import market_sweep as msw
+from tradingagents import market_sweep as msw, portable
 
 MONTH_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
+KINDS = ("candles", "results", "delisted")
 # the jobs that WRITE each store — a delete never runs beside one of these
 WRITERS = {"candles": ("download",),
            "results": ("backtest", "collect", "btupdate"),
@@ -48,9 +59,10 @@ WRITERS = {"candles": ("download",),
            # touched a delisted coin. The rows writers stay: a cloud shard can
            # still hand collect a delisted coin's rows.
            "delisted": ("backtest", "collect", "btupdate")}
-
-_lock = threading.Lock()
-_jobs: dict = {"candles": None, "results": None, "delisted": None}
+# how long the detached job will wait for the row index's write lock. Nobody
+# waits on it (it is detached, with its own progress line), and the standalone
+# indexer holds the lock ~14 min per pair on this disk.
+LOCK_WAIT_MS = 1_800_000
 
 
 # ---------------------------------------------------------------- months
@@ -139,13 +151,13 @@ def candle_months(index: dict | None = None) -> dict:
             "files": len(index)}
 
 
-def _run_candles(job: dict) -> None:
+def _run_candles(job: dict, flush) -> None:
     cut = month_start_ms(next_month(job["through"]))
+    job["phase"] = "trimming candle files"
     files = sorted(msw.CANDLES.glob("*.json"))
     job["total"] = len(files)
+    flush()
     for f in files:
-        if job.get("stop"):
-            break
         sym, _, tf = f.stem.rpartition("-")
         try:
             got = msw.trim_candles_cache(sym, tf, cut)
@@ -159,8 +171,16 @@ def _run_candles(job: dict) -> None:
         except Exception as exc:                                # noqa: BLE001
             job["errors"].append(f"{f.stem}: {type(exc).__name__}: {exc}")
         job["done"] += 1
+        if job["done"] % 25 == 0:
+            flush()
+    _refresh_candle_index(job, flush)
+
+
+def _refresh_candle_index(job: dict, flush) -> None:
     # the candle index keys on (mtime, size), so only the rewritten files
     # are re-read here — and the storage screen then says what is left
+    job["phase"] = "refreshing the candle index"
+    flush()
     try:
         msw.candle_index(scan=True)
     except Exception as exc:                                    # noqa: BLE001
@@ -237,27 +257,80 @@ def _pairs_through(through: str) -> list[dict]:
     return ri._missing_ok(_read, [])
 
 
-def _run_results(job: dict) -> None:
+def _drop_pairs(pairs: list[dict], job: dict, flush) -> bool:
+    """Phase one of a results/delisted delete: EVERY pair out of the index in
+    one transaction, then their files, then the index again.
+
+    Index first, files second, index AGAIN. The API's sync timer takes a file
+    it has no summary for as NEW, so a tick between the first two steps
+    re-indexes a pair just before its file goes — rows on screen for a pair
+    that no longer exists (harddev round 1). And NEVER the disk without the
+    index: on 2026-09-09 the index delete failed quietly behind another
+    writer's lock and the files went anyway. If the transaction does not go
+    through, nothing is deleted and the errors say why; the pairs are still
+    in the pairs table, so the next press finds them again. Returns whether
+    the files may go."""
     from tradingagents import rows_index as ri
 
+    if not pairs:
+        return True
+    names = [p["pair"] for p in pairs]
+    job["phase"] = (f"waiting for the row index's write lock, then removing "
+                    f"{len(names)} pair(s) from it")
+    flush()
+
+    def on_pair(pair, n):
+        job["rows_removed"] += n
+        job["index_done"] += 1
+        if job["index_done"] % 5 == 0:
+            job["phase"] = f"removing from the row index: {job['index_done']} of {len(names)} pairs"
+            flush()
+
+    try:
+        ri.forget_pairs(names, on_pair=on_pair, busy_ms=LOCK_WAIT_MS)
+    except Exception as exc:                                    # noqa: BLE001
+        job["rows_removed"] = 0
+        job["index_done"] = 0
+        job["errors"].append(f"the row index still holds every pair "
+                             f"({type(exc).__name__}: {exc}) — no file was "
+                             f"deleted; press again when the index is free")
+        return False
+    return True
+
+
+def _drop_pair_files(pairs: list[dict], job: dict, flush, per_pair_done=True) -> None:
+    from tradingagents import rows_index as ri
+
+    job["phase"] = "deleting rows files and resume states"
+    flush()
+    for p in pairs:
+        try:
+            gone = msw.discard_pair(p["coin"], p["tf"])
+            job["freed"] += sum(int(g["bytes"]) for g in gone["deleted"])
+            job["files_removed"] += len(gone["deleted"])
+        except Exception as exc:                                # noqa: BLE001
+            job["errors"].append(f"{p['pair']}: {type(exc).__name__}: {exc}")
+        if per_pair_done:
+            job["done"] += 1
+            if job["done"] % 10 == 0:
+                flush()
+    # the index AGAIN, for the sync-tick race — cheap when there is nothing
+    try:
+        job["rows_removed"] += ri.forget_pairs([p["pair"] for p in pairs],
+                                               busy_ms=LOCK_WAIT_MS)
+    except Exception as exc:                                    # noqa: BLE001
+        job["errors"].append(f"re-check of the index failed "
+                             f"({type(exc).__name__}: {exc})")
+
+
+def _run_results(job: dict, flush) -> None:
     pairs = _pairs_through(job["through"])
     job["total"] = len(pairs)
-    for p in pairs:
-        if job.get("stop"):
-            break
-        # index FIRST, files second, index AGAIN: the API's sync timer takes
-        # a file it has no summary for as NEW, so a tick between the first
-        # two steps re-indexes the pair just before its file goes — rows on
-        # screen for a pair that no longer exists (harddev round 1). And a
-        # failed index delete keeps the files (see _remove_pair).
-        _remove_pair(p["pair"], p["coin"], p["tf"], job)
-        job["done"] += 1
+    if _drop_pairs(pairs, job, flush):
+        _drop_pair_files(pairs, job, flush)
 
 
 # ---------------------------------------------------------------- delisted
-# Operator, 2026-09-09: *"create a button in backtest 'Delete X Delisted'
-# where x is number of coin delisted. if i click this delete the candle and
-# backtest for the delisted coin"*.
 def _live_symbols():
     try:
         from tradingagents import db_jobs as dj
@@ -342,12 +415,9 @@ def delisted_report(index: dict | None = None, live=None) -> dict:
     return out
 
 
-def _remove_coin(c: dict, job: dict) -> None:
-    """Every file this coin has in either store, and its rows in the index."""
-    from tradingagents import rows_index as ri
-
+def _remove_coin_candles(c: dict, job: dict) -> None:
+    """Every candle file this coin has, plus the parquet mirror."""
     symbol = c["symbol"]
-    # candles: one file per timeframe, plus the parquet mirror
     for f in sorted(msw.CANDLES.glob(f"{symbol}-*.json")):
         size = f.stat().st_size
         f.unlink()
@@ -366,37 +436,6 @@ def _remove_coin(c: dict, job: dict) -> None:
                 job["files_removed"] += 1
     except Exception as exc:                                    # noqa: BLE001
         job["errors"].append(f"parquet {symbol}: {type(exc).__name__}: {exc}")
-    # backtest results: index first, files second, index again (see
-    # _run_results for why twice)
-    for r in _pairs_by_coin():
-        if r["coin"] != c["coin"]:
-            continue
-        _remove_pair(r["pair"], r["coin"], r["tf"], job)
-
-
-def _remove_pair(pair: str, coin: str, tf: str, job: dict) -> None:
-    """One backtest pair out of both the index and the disk — and NEVER the
-    disk without the index. On 2026-09-09 the index delete failed quietly
-    behind another writer's lock and the files went anyway, which left rows
-    on screen for pairs that no longer existed. A pair whose index delete
-    raises is named in the errors and its files are KEPT; the next press
-    finds it again (it is still in the pairs table) and finishes it."""
-    from tradingagents import rows_index as ri
-
-    try:
-        job["rows_removed"] += ri.forget_pair(pair)
-    except Exception as exc:                                    # noqa: BLE001
-        job["errors"].append(f"{pair}: index still holds it "
-                             f"({type(exc).__name__}: {exc}) — files kept")
-        return
-    gone = msw.discard_pair(coin, tf)
-    job["freed"] += sum(int(g["bytes"]) for g in gone["deleted"])
-    job["files_removed"] += len(gone["deleted"])
-    try:
-        job["rows_removed"] += ri.forget_pair(pair)
-    except Exception as exc:                                    # noqa: BLE001
-        job["errors"].append(f"{pair}: re-check of the index failed "
-                             f"({type(exc).__name__}: {exc})")
 
 
 def _forget_lost(symbols: set, job: dict) -> None:
@@ -405,8 +444,6 @@ def _forget_lost(symbols: set, job: dict) -> None:
     that are no longer on this PC at all, and RETRY FAILED would attempt them
     (harddev round 1)."""
     try:
-        import json
-
         from tradingagents import db_jobs as dj
 
         f = dj.FILES["download"]["lost"]
@@ -427,31 +464,78 @@ def _forget_lost(symbols: set, job: dict) -> None:
         job["errors"].append(f"lost list: {type(exc).__name__}: {exc}")
 
 
-def _run_delisted(job: dict) -> None:
+def _run_delisted(job: dict, flush) -> None:
     rep = delisted_report()
     if not rep["known"]:
         job["errors"].append(rep["why"])
         return
-    job["total"] = len(rep["coins"])
-    job["coins"] = [c["coin"] for c in rep["coins"]]
-    removed: set = set()
-    for c in rep["coins"]:
-        if job.get("stop"):
-            break
+    coins = rep["coins"]
+    job["total"] = len(coins)
+    job["coins"] = [c["coin"] for c in coins]
+    dead = {c["coin"] for c in coins}
+    pairs = [p for p in _pairs_by_coin() if p["coin"] in dead]
+    if not _drop_pairs(pairs, job, flush):
+        return
+    job["phase"] = "deleting candle files, rows files and resume states"
+    flush()
+    for c in coins:
         try:
-            _remove_coin(c, job)
-            removed.add(c["symbol"])
+            _remove_coin_candles(c, job)
         except Exception as exc:                                # noqa: BLE001
             job["errors"].append(f"{c['coin']}: {type(exc).__name__}: {exc}")
         job["done"] += 1
-    _forget_lost(removed, job)
-    try:
-        msw.candle_index(scan=True)
-    except Exception as exc:                                    # noqa: BLE001
-        job["errors"].append(f"candle index: {type(exc).__name__}: {exc}")
+        if job["done"] % 5 == 0:
+            flush()
+    _drop_pair_files(pairs, job, flush, per_pair_done=False)
+    _forget_lost({c["symbol"] for c in coins}, job)
+    _refresh_candle_index(job, flush)
 
 
 # ---------------------------------------------------------------- the jobs
+def job_path(kind: str) -> Path:
+    """The progress file — beside the store, so it belongs to the store
+    (TRADINGAGENTS_SWEEP_HOME moves it with everything else)."""
+    return msw.HOME / f"delete_{kind}.json"
+
+
+def _load(kind: str) -> dict:
+    try:
+        return json.loads(job_path(kind).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def _save(job: dict) -> None:
+    """Atomic, and safe with TWO writers: the parent writes the record it
+    starts, the child rewrites it as it works, and every poll opens it to
+    read. A shared `.tmp` name made the two writers collide (Windows: Access
+    is denied on the replace), and Windows also refuses a replace while a
+    reader holds the target open, so the replace is retried briefly."""
+    import threading
+
+    p = job_path(job["kind"])
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_name(f"{p.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+    tmp.write_text(json.dumps(job), encoding="utf-8")
+    for attempt in range(20):
+        try:
+            os.replace(tmp, p)
+            return
+        except PermissionError:
+            if attempt == 19:
+                raise
+            time.sleep(0.05)
+
+
+def _new_job(kind: str, through: str, label: str) -> dict:
+    return {"kind": kind, "through": through, "label": label,
+            "running": True, "pid": 0, "phase": "starting",
+            "started": time.time(), "finished": None,
+            "done": 0, "total": 0, "index_done": 0, "freed": 0, "errors": [],
+            "files_removed": 0, "files_trimmed": 0, "bars_removed": 0,
+            "rows_removed": 0}
+
+
 def _writer_running(kind: str) -> str:
     """The name of a job writing this store right now, or ""."""
     try:
@@ -467,10 +551,36 @@ def _writer_running(kind: str) -> str:
     return ""
 
 
+def _spawn(kind: str, through: str) -> int:
+    """Start the detached worker. Returns its pid. Same flags as the index
+    builds: DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP on Windows, so
+    start.py's taskkill /T on the API cannot reach it."""
+    from tradingagents import rows_index as ri
+
+    cmd = [sys.executable, "-m", "tradingagents.storage_months", "--run",
+           kind, through]
+    env = dict(os.environ, TA_ROWS_DB=str(ri.DB_PATH),
+               TRADINGAGENTS_SWEEP_HOME=str(msw.HOME),
+               TRADINGAGENTS_CANDLES=str(msw.CANDLES))
+    logf = open(msw.HOME / f"delete_{kind}.log", "a")            # noqa: SIM115
+    kwargs: dict = {"env": env, "stdout": logf, "stderr": logf,
+                    "stdin": subprocess.DEVNULL,
+                    "cwd": str(Path(__file__).resolve().parent.parent)}
+    if os.name == "nt":
+        kwargs["creationflags"] = 0x00000008 | 0x00000200
+    else:
+        kwargs["start_new_session"] = True
+    try:
+        return subprocess.Popen(cmd, **kwargs).pid              # noqa: S603
+    finally:
+        logf.close()                     # the child holds its own handle
+
+
 def start_delete(kind: str, through: str, now: float | None = None) -> dict:
-    """Begin deleting `through` and every older month of `kind`. Raises
-    ValueError with the reason when it must not — the route answers 409."""
-    if kind not in _jobs:
+    """Begin deleting `through` and every older month of `kind` (or every
+    delisted coin). Raises ValueError with the reason when it must not — the
+    route answers 409."""
+    if kind not in KINDS:
         raise ValueError(
             f"unknown store {kind!r}; use candles, results or delisted")
     if kind == "delisted":
@@ -507,55 +617,101 @@ def start_delete(kind: str, through: str, now: float | None = None) -> dict:
         why = ri.write_available()
         if why:
             raise ValueError(why)
-    with _lock:
-        cur = _jobs.get(kind)
-        if cur and cur.get("running"):
-            raise ValueError(
-                f"a delete of {kind} is already running "
-                f"({cur['done']} of {cur['total']} done)")
-        job = {"kind": kind, "through": through,
-               "label": label, "running": True,
-               "started": time.time(), "finished": None,
-               "done": 0, "total": 0, "freed": 0, "errors": [],
-               "files_removed": 0, "files_trimmed": 0, "bars_removed": 0,
-               "rows_removed": 0}
-        _jobs[kind] = job
-
-    runner = {"candles": _run_candles, "results": _run_results,
-              "delisted": _run_delisted}[kind]
-
-    def _go():
-        try:
-            runner(job)
-        except Exception as exc:                                # noqa: BLE001
-            job["errors"].append(f"{type(exc).__name__}: {exc}")
-        finally:
-            job["running"] = False
-            job["finished"] = time.time()
-
-    threading.Thread(target=_go, name=f"delete-{kind}", daemon=True).start()
+    cur = progress(kind)
+    if cur and cur.get("running"):
+        raise ValueError(
+            f"a delete of {kind} is already running "
+            f"({cur['done']} of {cur['total']} done)")
+    # ONE write from here, before the spawn. The child records its own pid
+    # the moment it starts; a second write from the parent after the spawn
+    # could land AFTER a fast child had already finished and bury its result
+    # under "running, 0 of 0".
+    job = _new_job(kind, through, label)
+    _save(job)
+    _spawn(kind, through)
     return progress(kind)
 
 
+def run_delete(kind: str, through: str) -> dict:
+    """The worker body — what the detached child runs, and what a test calls
+    directly. Reads the record start_delete wrote (or makes one), runs the
+    kind's steps, flushes progress as it goes, marks it finished."""
+    job = _load(kind)
+    if not job or not job.get("running"):
+        job = _new_job(kind, through, month_label(through)
+                       if MONTH_RE.match(through or "") else through)
+    job["pid"] = os.getpid()
+    job.setdefault("index_done", 0)
+    _save(job)
+
+    def flush():
+        _save(job)
+
+    runner = {"candles": _run_candles, "results": _run_results,
+              "delisted": _run_delisted}[kind]
+    try:
+        runner(job, flush)
+    except Exception as exc:                                    # noqa: BLE001
+        job["errors"].append(f"{type(exc).__name__}: {exc}")
+    finally:
+        job["running"] = False
+        job["finished"] = time.time()
+        job["phase"] = "finished"
+        _save(job)
+    return job
+
+
 def progress(kind: str) -> dict | None:
-    """The job's record for the screen, dates in the operator's format."""
+    """The job's record for the screen, dates in the operator's format. A
+    record that says running while its process is dead says so instead —
+    a stale JSON from a killed job must never read as RUNNING."""
     from tradingagents.positions_view import fmt_when
 
-    job = _jobs.get(kind)
+    job = _load(kind)
     if not job:
         return None
     out = dict(job)
+    # pid 0 = the child has not written its record yet. It gets a minute to
+    # start; after that a record with no live process is a dead job.
+    pid = int(out.get("pid") or 0)
+    young = time.time() - float(out.get("started") or 0) < 60
+    dead = (pid and not portable.pid_alive(pid)) or (not pid and not young)
+    if out.get("running") and dead:
+        out["running"] = False
+        out["errors"] = list(out.get("errors") or []) + [
+            "the delete process died before finishing — press again to "
+            "continue; nothing half-done is left behind"]
     out["started_at"] = fmt_when(job["started"])
-    out["finished_at"] = fmt_when(job["finished"]) if job["finished"] else ""
-    out["errors"] = list(job["errors"])[:20]
-    out["error_count"] = len(job["errors"])
-    out.pop("stop", None)
+    out["finished_at"] = fmt_when(job["finished"]) if job.get("finished") else ""
+    out["error_count"] = len(out.get("errors") or [])
+    out["errors"] = list(out.get("errors") or [])[:20]
     return out
 
 
 def snapshot() -> dict:
     """Everything the panel shows in one call."""
     return {"candles": candle_months(), "results": results_months(),
-            "jobs": {k: progress(k) for k in _jobs},
-            "writers": {k: _writer_running(k) for k in _jobs},
+            "jobs": {k: progress(k) for k in KINDS},
+            "writers": {k: _writer_running(k) for k in KINDS},
             "this_month": month_key(time.time() * 1000)}
+
+
+def main(argv: list | None = None) -> int:
+    """`python -m tradingagents.storage_months --run <kind> <through>` — the
+    detached worker. Nothing else; the API is the only thing that starts one.
+    """
+    args = list(sys.argv[1:] if argv is None else argv)
+    if len(args) != 3 or args[0] != "--run" or args[1] not in KINDS:
+        print("usage: -m tradingagents.storage_months --run "
+              "<candles|results|delisted> <through>", flush=True)
+        return 2
+    job = run_delete(args[1], args[2])
+    print(f"[delete] {args[1]} {args[2]}: {job['rows_removed']} rows, "
+          f"{job['files_removed']} files, {job['freed']} bytes, "
+          f"{len(job['errors'])} error(s)", flush=True)
+    return 0 if not job["errors"] else 1
+
+
+# The entry point is LAST, deliberately (see market_sweep.py's note).
+if __name__ == "__main__":
+    raise SystemExit(main())

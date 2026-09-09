@@ -274,6 +274,8 @@ export interface MonthJob {
   kind: "candles" | "results" | "delisted";
   /** delisted only: the coins it removed */
   coins?: string[];
+  /** what the detached worker is doing right now, in words */
+  phase?: string;
   through: string;
   label: string;
   running: boolean;

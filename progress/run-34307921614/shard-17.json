@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 19, "total": 19, "rows": 1461576, "note": "TNSR 30m: rule 7/120 (fvg)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:53:25Z"}
+{"shard": 17, "stage": "testing", "done": 19, "total": 19, "rows": 1470376, "note": "TNSR 30m: rule 47/120 (ibs)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:54:11Z"}

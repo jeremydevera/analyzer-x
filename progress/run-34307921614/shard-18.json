@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 11, "total": 11, "rows": 951746, "note": "USDC 15m: rule 57/120 (orderblock)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:16:09Z"}
+{"shard": 18, "stage": "testing", "done": 11, "total": 11, "rows": 959006, "note": "USDC 15m: rule 99/120 (cf_ttm_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:16:54Z"}

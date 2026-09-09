@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 29, "total": 29, "rows": 2451958, "note": "RIF 30m: rule 20/120 (stoch14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:39:24Z"}
+{"shard": 14, "stage": "testing", "done": 29, "total": 29, "rows": 2459878, "note": "RIF 30m: rule 57/120 (orderblock)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:40:09Z"}

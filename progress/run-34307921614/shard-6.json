@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 49, "total": 49, "rows": 4365076, "note": "FLOW 30m: rule 20/120 (stoch14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:54:12Z"}
+{"shard": 6, "stage": "testing", "done": 49, "total": 49, "rows": 4380256, "note": "FLOW 30m: rule 90/120 (cf_chan_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:54:57Z"}

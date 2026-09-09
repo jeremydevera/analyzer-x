@@ -86,6 +86,15 @@ def test_every_entry_carries_measured_numbers():
         assert len(digits) >= 8, f"{head}: the timeline carries no real numbers"
 
 
+def test_every_entry_has_its_own_id():
+    """Two sessions fixing two bugs in the same hour both took `G` (Sep 09,
+    2026). An id that names two entries names neither."""
+    ids = [re.match(r"(RCA-\d{4}-\d{2}-\d{2}-[A-Z]+)", h).group(1)
+           for h, _ in _entries()]
+    dupes = sorted({i for i in ids if ids.count(i) > 1})
+    assert not dupes, f"the same id on two entries: {dupes} — take the next letter"
+
+
 def test_the_headings_are_dated_and_ordered_newest_first():
     dates = [re.match(r"RCA-(\d{4}-\d{2}-\d{2})-", h).group(1)
              for h, _ in _entries()]

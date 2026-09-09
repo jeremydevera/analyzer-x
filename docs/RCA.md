@@ -5,6 +5,9 @@ the future / all fixes should be listed in a file so you will remember what
 where the fixes"*.
 
 **One entry per bug that got fixed. Newest first. Never delete an entry.**
+Ids are `RCA-<date>-<letter>`, the next free letter for that day — read the
+file first, because two sessions took `G` within an hour of each other on
+Sep 09, 2026, and `tests/test_rca_log.py` now refuses a repeated id.
 The `rca-log` skill (`.claude/skills/rca-log/`) is ALWAYS ON and writes the
 entry in the same commit as the fix. `tests/test_rca_log.py` holds the shape.
 
@@ -74,7 +77,7 @@ callers apply it, the CSV writes the count, the caption names it.
 
 ---
 
-## RCA-2026-09-09-G — the delete ran as a thread inside the API, so an API restart killed it; and one pair per lock gap
+## RCA-2026-09-09-H — the delete ran as a thread inside the API, so an API restart killed it; and one pair per lock gap
 
 **SAW** — the job's progress line vanished mid-run ("none"); on the re-press
 the button was refused with "the row index is being written by another

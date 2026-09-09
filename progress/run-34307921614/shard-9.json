@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 61, "total": 61, "rows": 5460202, "note": "MAVIA 30m: rule 84/120 (cf_maobv_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:41:16Z"}
+{"shard": 9, "stage": "testing", "done": 61, "total": 61, "rows": 5469222, "note": "MAVIA 1h: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:42:03Z"}

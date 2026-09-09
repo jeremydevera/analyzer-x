@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 8, "total": 8, "rows": 644926, "note": "NIULAI 15m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:05:53Z"}
+{"shard": 12, "stage": "testing", "done": 9, "total": 9, "rows": 734102, "note": "NKESTOCK 15m: downloading candles", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:06:41Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 53, "total": 53, "rows": 4685882, "note": "KSTR 15m: 6,605 bars \u00b7 Jul 02, 2026 11:00am \u2192 Sep 09, 2026 6:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:16:14Z"}
+{"shard": 9, "stage": "testing", "done": 54, "total": 54, "rows": 4796034, "note": "KUAISHOUSTOCK 30m: rule 55/120 (nhigh50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:16:59Z"}

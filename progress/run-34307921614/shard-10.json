@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 16, "total": 16, "rows": 1499818, "note": "LLYSTOCK 30m: rule 87/120 (cf_triple_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:00:31Z"}
+{"shard": 10, "stage": "testing", "done": 16, "total": 16, "rows": 1530198, "note": "LLYSTOCK 1h: rule 120/120 (cf_stflip_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:01:16Z"}

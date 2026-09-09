@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 19, "total": 19, "rows": 1776344, "note": "UVXY 1h: rule 79/120 (cf_donch)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:03:09Z"}
+{"shard": 18, "stage": "testing", "done": 20, "total": 20, "rows": 1809382, "note": "VANA 15m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:04:08Z"}

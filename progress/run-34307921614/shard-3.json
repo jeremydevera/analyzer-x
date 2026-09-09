@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 39, "total": 39, "rows": 3234418, "note": "C98 1h: rule 22/120 (engulf)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:52:54Z"}
+{"shard": 3, "stage": "testing", "done": 39, "total": 39, "rows": 3255098, "note": "C98 4h: 2,369 bars \u00b7 Aug 10, 2025 8:00am \u2192 Sep 09, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:53:49Z"}

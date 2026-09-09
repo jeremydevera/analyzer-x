@@ -29,6 +29,76 @@ this repo is also part of the record.
 
 ---
 
+## RCA-2026-09-09-O — the download button promised 566,990 rows and the file held 1,184
+
+**SAW** — found by pressing it. Operator: *"press and watch download csv in
+backtest now"*. With `min win % 85 AND last 30 days` applied, the button read
+**"download all (566,990) CSV"**.
+
+**TIMELINE**
+
+1. `Sep 09, 2026 3:02:56pm` — pressed the real link in the browser. The table
+   showed 19 rows; the button offered 566,990.
+2. `3:14:09pm` — it landed. From the press log:
+
+       csv | asked: min_winrate=85.0 AND days=30 AND sort=profit AND desc=True
+           | got: rows=1184 · window_hidden=816 | took 671.09s
+
+   **1,184 rows**, not 566,990: the export re-measures at most
+   `DAYS_CSV_MAX = 2,000` rows and then drops the ones the window's own figures
+   fail — 816 of them here.
+3. 566,990 is the count that clears 85% over each row's **whole history** —
+   what SQL matched before the window re-measured anything.
+
+**ROOT CAUSE** — the label was `total.toLocaleString()`, the SQL match count,
+regardless of whether a window was on. A true number under a promise the file
+cannot keep (`label-must-match-data`: a label must be DERIVED from the data it
+describes).
+
+**WHY IT WAS NOT CAUGHT** — every test of this download asserted what the file
+CONTAINS (the window, the columns, the cap note). None compared the file with
+what the BUTTON SAID it would contain. The two were never read together, which
+is the same shape as RCA-G: each half right, the disagreement invisible.
+
+**COST** — none in money. A button offering 480x the rows it can deliver.
+
+**FIX** — the label names the server's own cap when a days window is on
+(`days_csv_max` in the payload, never a literal in the component):
+`download the window's top 2,000 CSV`. Verified in the browser after a
+rebuild. The hover text now also says it takes MINUTES and that the browser
+may show 0 bytes at first — see the note below, which is why that matters.
+The months path is untouched: `iter_rows` only re-measures for `days`, so a
+months export really can deliver `total`.
+
+**GUARD** — `tests/test_download_button_names_what_it_delivers.py` (7): the
+server sends the cap it enforces, the label names it when a window is on and
+names `total` when one is not, no literal cap is typed into the panel, the cap
+is refreshed on every answer, the tooltip carries the measured 671s and the
+0-bytes warning, and if `months` ever starts re-measuring the label must name
+its cap too. All seven proven red against the previous panel.
+
+**STILL NOT RIGHT, MEASURED AND NOT FIXED** — the download takes 11 minutes and
+looks dead for the first four. From the same press, watching the browser's own
+file on disk:
+
+| time | browser file |
+|---|---|
+| 3:02:56pm pressed | — |
+| 3:03 → 3:07:04 | **0 bytes** |
+| 3:07:31 | 243,140 |
+| 3:14:09 done | 668,984 |
+
+The server was streaming the whole time (the worker held 369.6s of CPU); Chrome
+only commits a download to disk in ~240 KB blocks. So the *server* stall of
+RCA-N is fixed and the *experience* is not: 0 bytes for four minutes is
+indistinguishable from broken. The only real cure is to stop re-measuring at
+download time — store the window figures in the sweep (the first item under
+"What would actually end it" below) — or to make the windowed export a
+background job that writes the file and hands over a finished one. Neither is
+done; the button now warns instead of pretending.
+
+---
+
 ## RCA-2026-09-09-M — the run's date range was on screen and still nobody could tell whether UPDATE re-tests the whole year
 
 **SAW** — *"the purpose of dates is so i know between what time are you

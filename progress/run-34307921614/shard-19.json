@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 9, "total": 9, "rows": 906244, "note": "XLE 1h: rule 15/120 (bbbreak)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:08:15Z"}
+{"shard": 19, "stage": "testing", "done": 11, "total": 11, "rows": 1002152, "note": "XLK 30m: 4,029 bars \u00b7 Jun 17, 2026 5:30am \u2192 Sep 09, 2026 3:30am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:09:01Z"}

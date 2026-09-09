@@ -257,10 +257,13 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
     # machines had dates and 17 did not, and the operator asked again ("so why
     # does it not show what dates its testing like machine 7"). `span` is its
     # own field now and rides every report until the next pair replaces it.
-    span = (f"{nbars:,} bars · {fmt_when(df['Date'].iloc[0].timestamp())} → "
+    # DATES ONLY. Operator, 2026-09-09: "you only need to show what date are
+    # you testing like july 18 to sept 9 ... that way i know why its taking so
+    # long". The bar count rides in the note; the span answers one question.
+    span = (f"{fmt_when(df['Date'].iloc[0].timestamp())} → "
             f"{fmt_when(df['Date'].iloc[-1].timestamp())}")
     report("testing", i, n, rows=rows_so_far, span=span,
-           note=f"{coin} {tf}: {len(br.SIGNALS)} rules")
+           note=f"{coin} {tf}: {nbars:,} bars · {len(br.SIGNALS)} rules")
     for si, sig in enumerate(br.SIGNALS, 1):
         key = f"{sig}_gh_{tf}"
         # EVERY threshold, exactly as market_sweep.run_pair does with

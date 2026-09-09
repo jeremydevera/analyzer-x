@@ -83,10 +83,58 @@ def test_the_span_is_built_from_the_pairs_own_first_and_last_bar(shard_src):
     """Not the run's window: a young coin's history is honestly shorter, and
     the tile must say what THIS pair was tested over."""
     i = shard_src.index("span = (")
-    body = shard_src[i:i + 260]
+    body = shard_src[i:i + 200]
     assert "df['Date'].iloc[0]" in body and "df['Date'].iloc[-1]" in body
     assert "fmt_when(" in body, "the one date formatter (CLAUDE.md), never strftime"
-    assert "nbars" in body, "the bar count belongs with the dates"
+
+
+def test_the_span_is_dates_only(shard_src):
+    """Operator, 2026-09-09: "you only need to show what date are you testing
+    like july 18 to sept 9". The bar count moved into the note; the span
+    answers exactly one question."""
+    i = shard_src.index("span = (")
+    body = shard_src[i:shard_src.index("report(", i)]
+    assert "nbars" not in body, "the span carries dates, nothing else"
+    assert "→" in body
+    first_note = shard_src[shard_src.index("report(", i):][:300]
+    assert "nbars" in first_note, "the bar count now rides in the note"
+
+
+# ---------------------------------------------------------- the run header
+def test_the_header_says_which_dates_the_whole_run_tests_on_its_own_line():
+    """It WAS on screen — as the tail of a grey one-liner — and the operator
+    said "i can only see machine loading". Its own line, full size, first
+    word "Testing"."""
+    body = PANEL.read_text(encoding="utf-8")
+    i = body.index("Testing {fmtWhenMs(from)} → {fmtWhenMs(Date.now())}")
+    block = body[i - 400:i + 900]
+    assert "font-semibold" in block, "the dates are the prominent part"
+    assert "text-theme-sm" in block, "not the grey xs text it hid in before"
+    # derived from the run's own `days`, never a literal date
+    assert "cloud.shards.find((s) => s.days)?.days" in block
+    assert "(days + 30) * 86400_000" in block, "days+30: the shard's own cut"
+    # and the old buried form is gone
+    assert "testing {fmtWhenMs(from)} → today (last {days} days)" not in body
+
+
+def test_the_header_tells_the_truth_about_update_on_the_cloud():
+    """The operator expected UPDATE to test "july 18 to sept 9". On GitHub it
+    cannot: the shard has no watermark, so BACKTEST and UPDATE both measure
+    the whole window. The sentence says so, because that is WHY it is slow.
+    If the shard ever learns to continue from a pair's last test, this test
+    fails on purpose — the sentence must change with it."""
+    body = PANEL.read_text(encoding="utf-8")
+    assert "from scratch" in body and "cannot continue" in body
+    assert "BACKTEST and" in body and "UPDATE both re-measure" in body
+    shard = SHARD.read_text(encoding="utf-8")
+    # the ONLY cut the shard makes is the run's window: `window(df)` takes
+    # nothing but the frame and cuts at DAYS+30. A `since`/watermark argument
+    # here would mean the cloud learned to continue from a pair's last test —
+    # and then the header's sentence would be a lie until it is rewritten.
+    assert "def window(df):" in shard, "window() grew an argument — is the cloud incremental now?"
+    assert "pd.Timedelta(days=DAYS + 30)" in shard
+    cloud = Path("tradingagents/cloud_sweep.py").read_text(encoding="utf-8")
+    assert "fresh full-history measurement" in cloud
 
 
 def test_the_span_is_blank_when_no_pair_is_being_measured(shard_src):

@@ -382,23 +382,6 @@ export default function JobsPanel() {
                     {done.toLocaleString()}/{total.toLocaleString()} coins ·{" "}
                     {rows.toLocaleString()} rows measured ·{" "}
                     {fin}/{cloud.shards.length} machine(s) finished
-                    {/* WHICH DATES. "i dont see what dates are being tested
-                        like is aug 3 - sept 27 being tested?" (2026-09-09).
-                        DERIVED from the run's own `days` (each shard reports
-                        it): bars from days+30 ago through now — the +30 is
-                        the indicator lookback the local sweep also keeps.
-                        Each tile's note carries its pair's exact span; a
-                        young coin's history is honestly shorter than this. */}
-                    {(() => {
-                      const days = cloud.shards.find((s) => s.days)?.days;
-                      if (!days) return null;
-                      const from = Date.now() - (days + 30) * 86400_000;
-                      return (
-                        <>
-                          {" · "}testing {fmtWhenMs(from)} → today (last {days} days)
-                        </>
-                      );
-                    })()}
                   </span>
                 </>
               );
@@ -422,6 +405,40 @@ export default function JobsPanel() {
               </Button>
             </div>
           </div>
+          {/* WHICH DATES THIS RUN TESTS — its own line, in full, because the
+              question it answers is "why is this taking so long". Operator,
+              2026-09-09, twice: "i dont see what dates are being tested like
+              is aug 3 - sept 27", then "the purpose of dates is so i know
+              between what time are you testing ... the last test for bitcoin
+              was july 18 then i click update backtest ... maybe they are
+              testing jan 2025 to sept 2026, that way i know why its taking so
+              long". It WAS on screen — as the tail of the grey line above,
+              which nobody read.
+              DERIVED from the run's own `days` (every shard reports it):
+              the shard cuts each pair at days+30 ago (sweep_shard.window),
+              the +30 being the indicator warm-up the local sweep also keeps.
+              And the sentence says the part the operator could not know: a
+              GitHub run measures the WHOLE window from scratch, for BACKTEST
+              and for UPDATE alike — the shard has no way to continue from a
+              pair's last test (cloud_sweep: "Cloud rows are a fresh
+              full-history measurement"). A young coin's own span is shorter;
+              its tile says so. */}
+          {(() => {
+            const days = cloud.shards.find((s) => s.days)?.days;
+            if (!days) return null;
+            const from = Date.now() - (days + 30) * 86400_000;
+            return (
+              <p className="mt-2 text-theme-sm text-gray-800 dark:text-white/90">
+                <span className="font-semibold">Testing {fmtWhenMs(from)} → {fmtWhenMs(Date.now())}</span>
+                <span className="text-theme-xs text-gray-500 dark:text-gray-400">
+                  {" "}— the whole {days}-day window plus 30 days of warm-up, from scratch.
+                  A GitHub run cannot continue from a coin&apos;s last test, so BACKTEST and
+                  UPDATE both re-measure every bar in this range; that is why a run takes hours.
+                  Each machine&apos;s tile shows its own coin&apos;s exact dates.
+                </span>
+              </p>
+            );
+          })()}
           {/* one bar for the RUN, so the answer to "how far along?" is not
               twenty tiles added up by eye */}
           {(() => {

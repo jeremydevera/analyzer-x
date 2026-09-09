@@ -29,6 +29,55 @@ this repo is also part of the record.
 
 ---
 
+## RCA-2026-09-09-M — the run's date range was on screen and still nobody could tell whether UPDATE re-tests the whole year
+
+**SAW** — *"the purpose of dates is so i know between what time are you
+testing for example the last test for bitcoin was july 18 then i click update
+backtest ... currently i can only see machine loading and im not sure maybe
+they are testing jan 2025 to sept 2026, that way i know why its taking so
+long"*. Third ask on the same subject in one day (after RCA-J).
+
+**TIMELINE**
+
+1. `Sep 09, 2026 05a092c775b` — the run's range was added as the TAIL of the
+   grey one-line summary: `… 11/20 machine(s) finished · testing Aug 10, 2025
+   8:00am → today (last 365 days)`. Small, grey, last.
+2. `947c39fd140` — each tile got its own span, but written as `2,369 bars ·
+   Aug 10, 2025 8:00am → Sep 09, 2026 12:00am` — the bar count first.
+3. `1:15pm` — the operator, looking at run `34307921614` (dispatched from
+   UPDATE, `days=365`), could not tell whether it was testing "Jul 18 → Sep 9"
+   or the whole year. It WAS the whole year: the cloud shard has no watermark
+   and `window(df)` cuts every pair at `DAYS + 30` (`sweep_shard.py:185`);
+   `_run_btupdate` dispatches with `days=365` (`db_jobs.py:1763`);
+   `cloud_sweep.py:599` says it in words: *"Cloud rows are a fresh
+   full-history measurement"*. Nothing on screen said so.
+
+**ROOT CAUSE** — the fact was present and unreadable: buried at the end of a
+grey line, and without the one sentence that made it matter (GitHub cannot
+continue from a coin's last test, so UPDATE re-measures everything — which is
+WHY it takes hours).
+
+**WHY IT WAS NOT CAUGHT** — the guard from RCA-J checked that the span exists,
+not that a reader would find it or understand it. Presence is not
+communication (label-must-match-data, last line).
+
+**COST** — none in money. Three asks, one day, one fact.
+
+**FIX** — this commit. The run's range is its own full-size line — `Testing
+Aug 10, 2025 8:00am → Sep 09, 2026 1:15pm — the whole 365-day window plus 30
+days of warm-up, from scratch. A GitHub run cannot continue from a coin's
+last test, so BACKTEST and UPDATE both re-measure every bar in this range;
+that is why a run takes hours.` The tile span is dates only; the bar count
+moved into the note.
+
+**GUARD** — `tests/test_shard_reports_its_dates.py` (+3): the header line is
+full-size, derived from `days`, and the buried form is gone; the span is
+dates only; and `window(df)` still takes nothing but the frame — if the cloud
+ever learns to continue from a pair's last test, that assertion fails on
+purpose so the sentence is rewritten with it.
+
+---
+
 ## RCA-2026-09-09-L — "pending" counted the clock and the never-done, so neither number could ever reach zero
 
 **SAW** — the operator, after a week of chasing counts that came back on their

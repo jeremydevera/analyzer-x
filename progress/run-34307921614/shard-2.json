@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 24, "total": 24, "rows": 2455786, "note": "BAN 30m: rule 76/120 (cf_mom)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:44:09Z"}
+{"shard": 2, "stage": "testing", "done": 24, "total": 24, "rows": 2466566, "note": "BAN 1h: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:44:57Z"}

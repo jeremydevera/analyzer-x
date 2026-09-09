@@ -23,9 +23,28 @@ def _p(name: str) -> str:
 
 def test_the_screen_watches_all_seven_by_name():
     s = _p("AutoTradeScreen")
-    assert "<LoadingCard />" in s
+    assert "<LoadingOverlay waitlist={waitlist} />" in s
     for n in NAMES:
         assert f'"{n}"' in s, n
+
+
+def test_the_screen_is_blurred_until_fully_loaded():
+    """Operator, Sep 09, 2026: 'make the screen blurred until its fully
+    loaded meaning only show the loading icon then the sentence loading
+    candles or loading this etc'. Verified on screen with every API call
+    held 4s: blur(8px) with all 7 names from the FIRST frame (358ms),
+    filter none once the last name lands (17.7s under throttle)."""
+    s = _p("AutoTradeScreen")
+    assert "blur-sm" in s and "pointer-events-none select-none" in s
+    # first paint blurs too: the server frame has an empty watchlist, and
+    # without `started` the screen flashed sharp for ~1s (measured 396ms)
+    assert "const blurred = !started" in s
+    # frosted glass never becomes a lock: a name late past LATE_MS drops it
+    assert "waitedMs <= LATE_MS" in s
+    # the overlay wrapper is click-through once the blur drops
+    o = _p("LoadingCard")
+    assert "pointer-events-none absolute inset-0" in o
+    assert "pointer-events-auto" in o
 
 
 def test_every_panel_reports_when_its_data_lands():

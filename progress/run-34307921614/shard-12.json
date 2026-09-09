@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 32, "total": 32, "rows": 2668620, "note": "OL 15m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:30:54Z"}
+{"shard": 12, "stage": "testing", "done": 32, "total": 32, "rows": 2672040, "note": "OL 15m: rule 22/120 (engulf)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:31:43Z"}

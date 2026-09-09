@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 9, "total": 9, "rows": 769750, "note": "HFT 4h: 2,369 bars \u00b7 Aug 10, 2025 8:00am \u2192 Sep 09, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:22:01Z"}
+{"shard": 8, "stage": "testing", "done": 10, "total": 10, "rows": 782190, "note": "HIMSSTOCK 15m: rule 37/120 (ultosc)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:22:47Z"}

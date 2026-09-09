@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 32, "total": 32, "rows": 2700580, "note": "SKYAI 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:48:59Z"}
+{"shard": 15, "stage": "testing", "done": 32, "total": 32, "rows": 2701700, "note": "SKYAI 15m: rule 4/120 (trend50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:49:47Z"}

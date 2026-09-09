@@ -425,8 +425,12 @@ def test_delete_delisted_refuses_when_nothing_is_delisted(store, monkeypatch):
         sm.start_delete("delisted", "")
 
 
-def test_delisted_waits_for_every_writer_of_either_store():
-    assert set(sm.WRITERS["delisted"]) == {"download", "backtest", "collect", "btupdate"}
+def test_delisted_waits_for_the_rows_writers_but_not_for_a_download():
+    """a download skips delisted symbols by the same is_delisted test, so it
+    never writes a file this delete removes; the rows writers can (a cloud
+    shard may still hand collect a delisted coin's rows)"""
+    assert set(sm.WRITERS["delisted"]) == {"backtest", "collect", "btupdate"}
+    assert "download" in sm.WRITERS["candles"]
 
 
 def test_the_backtest_screen_has_the_button_and_asks_twice():

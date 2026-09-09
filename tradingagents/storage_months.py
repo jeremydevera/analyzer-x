@@ -40,9 +40,14 @@ MONTH_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
 # the jobs that WRITE each store — a delete never runs beside one of these
 WRITERS = {"candles": ("download",),
            "results": ("backtest", "collect", "btupdate"),
-           # DELISTED removes from BOTH stores, so every writer of either
-           # must be idle
-           "delisted": ("download", "backtest", "collect", "btupdate")}
+           # DELISTED touches only coins the venue no longer lists — and a
+           # download SKIPS exactly those, by the same is_delisted test
+           # ("BULLCOIN_USDT 1h is DELISTED on MEXC — skipped"), so the two
+           # never write the same file. Waiting for it cost the press of
+           # 2026-09-09 an hour behind an update pass that would never have
+           # touched a delisted coin. The rows writers stay: a cloud shard can
+           # still hand collect a delisted coin's rows.
+           "delisted": ("backtest", "collect", "btupdate")}
 
 _lock = threading.Lock()
 _jobs: dict = {"candles": None, "results": None, "delisted": None}

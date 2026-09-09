@@ -274,6 +274,7 @@ def strategies(coin: str | None = None, tf: str | None = None,
     """
     from tradingagents import rows_index as ri
 
+    _t0 = _time.time()
     # no sync kick here: a timer thread keeps the index current (see the
     # startup hook), so a page open does not decide whether data appears.
     try:
@@ -342,7 +343,36 @@ def strategies(coin: str | None = None, tf: str | None = None,
             rows, min_winrate=min_winrate, min_trades=min_trades,
             profitable=profitable)
     got["index"] = ri.status()             # so the UI can say "still indexing"
+    # THE PRESS, AND WHETHER THE ANSWER AGREES WITH IT. The operator asked for
+    # this after the 89.47% row: every filter fix had been verified by reading
+    # the code around one filter, and the bug lived only in the finished table.
+    # `disagreements` re-tests each row that is about to be sent against each
+    # filter that was on, using the figure the COLUMN prints — so a chip that
+    # disagrees with its own table writes a MISMATCH line the moment it happens.
+    _screen_note("apply", locals(), got, _time.time() - _t0)
     return got
+
+
+def _screen_note(event: str, args: dict, got: dict, took: float) -> None:
+    """One line in `screen_log` for a press. Never raises."""
+    try:
+        from tradingagents import screen_log as sl
+
+        asked = {k: args.get(k) for k in (
+            "coin", "tf", "signal", "profitable", "min_trades", "min_winrate",
+            "max_tp", "max_sl", "min_tp", "min_sl", "tp_over_sl", "asset",
+            "sizing", "group", "row_id", "months", "days", "sort", "desc")}
+        rows = got.get("rows") or []
+        summary = {
+            "rows": len(rows), "total": got.get("total"),
+            "capped": got.get("total_capped") or None,
+            "window_hidden": got.get("window_hidden") or None,
+            "window": " -> ".join(got.get("days_window") or []) or None,
+        }
+        sl.record(event, asked, summary, took,
+                  notes=sl.disagreements(rows, asked))
+    except Exception:                                          # noqa: BLE001
+        pass
 
 
 # How often the CSV export hands the interpreter lock back. Small enough that
@@ -402,6 +432,19 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
     # more than a short file that does not.
     sent = 0
     stats: dict = {}
+    # THE PRESS, IN WRITING. The operator asked for a log of every Apply and
+    # every download so the status can be read back (Sep 09, 2026). `Watch`
+    # tests each row as it streams — the file must not hold them — so a
+    # download that carries rows its own filename denies says so in the log.
+    from tradingagents import screen_log as _sl
+    _asked = {"coin": coin, "tf": tf, "signal": signal,
+              "profitable": profitable, "min_trades": min_trades,
+              "min_winrate": min_winrate, "max_tp": max_tp, "max_sl": max_sl,
+              "min_tp": min_tp, "min_sl": min_sl, "tp_over_sl": tp_over_sl,
+              "asset": asset, "sizing": sizing, "group": group,
+              "row_id": row_id, "days": days, "sort": sort, "desc": desc}
+    _watch = _sl.Watch(_asked)
+    _csv_t0 = _time.time()
     try:
         for r in ri.iter_rows(coin=coin, tf=tf, signal=signal,
                               profitable=profitable, sort=sort,
@@ -413,6 +456,7 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                               tp_over_sl=tp_over_sl, asset=asset,
                               stats=stats):
             score, why = ri.balanced_score(r)
+            _watch.see(r)
             w.writerow([r.get(c) for c in cols] + [score, why]
                        + [_json.dumps(r.get("monthly") or {},
                                       separators=(",", ":"))])
@@ -451,7 +495,16 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
         w.writerow([f"EXPORT INCOMPLETE after {sent} rows: "
                     f"{type(exc).__name__}: {exc}"])
         yield flush()
+        _sl.record("csv FAILED", _asked,
+                   {"rows": sent, "why": f"{type(exc).__name__}: {exc}"},
+                   _time.time() - _csv_t0, notes=_watch.notes())
         raise
+    else:
+        _sl.record("csv", _asked,
+                   {"rows": sent,
+                    "window_hidden": stats.get("window_hidden") or None,
+                    "capped": (days and sent >= ri.DAYS_CSV_MAX) or None},
+                   _time.time() - _csv_t0, notes=_watch.notes())
 
 
 def strategies_csv_name(coin=None, tf=None, signal=None, min_trades=0,
@@ -550,6 +603,27 @@ def strategies_csv(coin: str | None = None, tf: str | None = None,
                             days=0 if months else days, desc=desc),
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+@app.get("/api/screen/log")
+def screen_log(n: int = 200, mismatch_only: bool = False) -> dict:
+    """What was pressed, what came back, and every filter the answer broke.
+
+    Operator, Sep 09, 2026: *"whenever i clicked apply filter and click
+    download csv you should be getting the logs of it so you can see the
+    status"*. Asked right after the reason the 89.47% row survived: every fix
+    was verified by reading the code around ONE filter, and the bug existed
+    only in the finished table. `mismatch_only=true` is the line that matters —
+    a chip disagreeing with its own column, written by the code that served it.
+    """
+    from tradingagents import screen_log as sl
+
+    lines = sl.mismatches(max(1, min(n, 4000))) if mismatch_only \
+        else sl.tail(max(1, min(n, 4000)))
+    all_lines = sl.tail(4000)
+    return {"lines": lines, "total": len(all_lines),
+            "mismatches": len([ln for ln in all_lines if "MISMATCH" in ln]),
+            "path": str(sl.LOG_PATH)}
 
 
 @app.post("/api/strategies/reindex")
@@ -1365,7 +1439,7 @@ def trade_strategies(catalog: bool = False) -> dict:
             # existing the moment the slots split, and every demo row would
             # have shown rung 0 for ever.
             "streak": (streak := max(
-                (int((runstate.get(at.state_key(c, not _is_real, key)) or {})
+                (int(at.slot_of(runstate, c, not _is_real, key)
                      .get("step", 0) or 0)
                  for c in (coins.get(key) or [])), default=0)),
             "streak_book": ("real" if _is_real else "paper"),

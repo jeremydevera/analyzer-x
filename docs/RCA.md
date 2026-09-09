@@ -29,6 +29,54 @@ this repo is also part of the record.
 
 ---
 
+## RCA-2026-09-09-K — the Stored-strategies panel re-ran the operator's filter 8 times a minute, forever, with nobody touching it
+
+**SAW** — nothing. That is the point. Found by the press log the operator had
+asked for **ten minutes earlier** (*"whenever i clicked apply filter and click
+download csv you should be getting the logs of it so you can see the status"*),
+by reading `~/.tradingagents/screen.log` after pressing Apply once.
+
+**TIMELINE**
+
+1. `Sep 09, 2026 12:54pm–1:00pm` — Apply pressed **once** with the four chips.
+   The log holds **39 identical `apply` lines** in those six minutes, each
+   `rows=9 · window_hidden=16 · took ~3.4s`.
+2. Isolated it: page open and idle 60 s → **8 new lines**. Page closed 45 s →
+   **0**. So the browser, not a job.
+3. Each of those re-measured 25 rows from this PC's candles, on the machine
+   that is measuring the market, and held one of the app's **four** browser
+   lanes while it ran — the same lanes whose exhaustion made the table wait
+   five minutes in RCA-I.
+
+**ROOT CAUSE** — the catch-up refresh keyed on the response object:
+
+    }, [idx, load]);      // idx = d.index, a NEW OBJECT every answer
+
+`setIdx(d.index)` runs on every response, so `idx` changed identity every time,
+the effect re-fired, its 5-second timeout re-armed, and the request went again.
+The early return (`behind === 0`) could never stop it, because on a store being
+swept the index is never caught up — 4,557 of 4,605 pairs at the time. **An
+object from a response is not a dependency, it is a metronome.**
+
+**WHY IT WAS NOT CAUGHT** — it produces no error, no wrong number and nothing
+on screen; only a log of presses makes it visible, and there was none until
+this morning. Nothing in the suite reads a dependency array.
+
+**COST** — none in money. 3.4 s of candle re-measurement every ~8 seconds for
+as long as the panel was open, and one browser lane permanently gone.
+
+**FIX** — this commit. `catchingUp` is a **boolean**, so its identity is
+stable; the refresh is a `setInterval` at **60 s**, not a re-armed 5-second
+timeout. The one-shot 503 retry beside it was already correct (keyed on a
+string) and is untouched.
+
+**GUARD** — `tests/test_panel_does_not_refetch_forever.py` (5): the refresh
+keys on the boolean, **no effect anywhere may depend on `idx`** (proven red
+against the old file — it finds `}, [idx, load]`), the interval is ≥ 30 s, a
+background load still shows no spinner, and the 503 retry stays a one-shot.
+
+---
+
 ## RCA-2026-09-09-J — 17 of 20 machine tiles never showed which dates they were testing
 
 **SAW** — *"so why does it not show what dates its testing like machine 7

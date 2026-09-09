@@ -381,11 +381,22 @@ export default function StrategiesPanel() {
     const t = setTimeout(() => { if (!inFlight.current) load(true); }, 15000);
     return () => clearTimeout(t);
   }, [waiting, load]);
+  // WHILE THE INDEX IS CATCHING UP, ask again — on a TIMER, not on the answer.
+  // This was `[idx, load]` with a 5-second timeout, and `idx` is a FRESH OBJECT
+  // in every response (`setIdx(d.index)`), so each answer re-armed the timer
+  // and the panel re-requested forever. Found Sep 09, 2026 by the press log the
+  // operator asked for, within ten minutes of it existing: **8 requests a
+  // minute with nobody touching the page**, 3.4 s each, every one re-measuring
+  // 25 rows from this PC's candles — and it never stopped, because `behind` on
+  // a store that is being swept is never 0. It also held one of the app's four
+  // browser lanes permanently (see RCA-I). Keyed on a BOOLEAN, so the identity
+  // is stable, and slow enough to cost nothing.
+  const catchingUp = !!idx && (idx.syncing || idx.behind > 0);
   useEffect(() => {
-    if (!idx || (!idx.syncing && idx.behind === 0)) return;
-    const t = setTimeout(() => { if (!inFlight.current) load(true); }, 5000);
-    return () => clearTimeout(t);
-  }, [idx, load]);
+    if (!catchingUp) return;
+    const t = setInterval(() => { if (!inFlight.current) load(true); }, 60_000);
+    return () => clearInterval(t);
+  }, [catchingUp, load]);
 
   const shown = rows.concat(extra);
   // An id names ONE row and the reason to look it up is its trade log, so a

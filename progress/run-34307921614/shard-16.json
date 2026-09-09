@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 5, "total": 5, "rows": 448736, "note": "SOXL 15m: rule 22/120 (engulf)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:14:45Z"}
+{"shard": 16, "stage": "testing", "done": 5, "total": 5, "rows": 471396, "note": "SOXL 30m: rule 20/120 (stoch14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:15:30Z"}

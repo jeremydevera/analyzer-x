@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 1, "total": 1, "rows": 71500, "note": "SONIC 1h: rule 70/120 (cmf20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:52:00Z"}
+{"shard": 16, "stage": "testing", "done": 1, "total": 1, "rows": 87780, "note": "SONIC 4h: rule 20/120 (stoch14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:52:45Z"}

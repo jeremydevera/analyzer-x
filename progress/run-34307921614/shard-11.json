@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 47, "total": 47, "rows": 4137836, "note": "UAI 15m: 29,457 bars \u00b7 Nov 06, 2025 11:00am \u2192 Sep 09, 2026 7:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:20:38Z"}
+{"shard": 11, "stage": "testing", "done": 47, "total": 47, "rows": 4139276, "note": "UAI 15m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:21:32Z"}

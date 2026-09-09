@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 2, "total": 2, "rows": 104514, "note": "QNTSTOCK 15m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:43:57Z"}
+{"shard": 14, "stage": "testing", "done": 2, "total": 2, "rows": 123674, "note": "QNTSTOCK 30m: rule 76/120 (cf_mom)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:44:42Z"}

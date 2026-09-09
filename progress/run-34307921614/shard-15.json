@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 35, "total": 35, "rows": 3025214, "note": "SLP 30m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:12:20Z"}
+{"shard": 15, "stage": "testing", "done": 35, "total": 35, "rows": 3033574, "note": "SLP 30m: rule 41/120 (tsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:13:05Z"}

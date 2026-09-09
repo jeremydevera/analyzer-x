@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 23, "total": 23, "rows": 1854738, "note": "DEEP 1h: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:07:33Z"}
+{"shard": 5, "stage": "testing", "done": 23, "total": 23, "rows": 1876078, "note": "DEEP 1h: rule 96/120 (cf_emarsi_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:08:18Z"}

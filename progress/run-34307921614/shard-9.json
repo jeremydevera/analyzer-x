@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 16, "total": 16, "rows": 1399526, "note": "JCT 30m: rule 53/120 (squeeze)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:28:40Z"}
+{"shard": 9, "stage": "testing", "done": 16, "total": 16, "rows": 1416682, "note": "JCT 1h: rule 16/120 (keltner)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:29:25Z"}

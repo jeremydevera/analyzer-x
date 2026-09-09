@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 58, "total": 58, "rows": 5047968, "note": "BESTOCK 15m: rule 105/120 (cf_eqhl_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:41:09Z"}
+{"shard": 1, "stage": "testing", "done": 59, "total": 59, "rows": 5125828, "note": "BIANRENSHENG 15m: 32,359 bars \u00b7 Oct 07, 2025 4:45am \u2192 Sep 09, 2026 6:15am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:42:06Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 9, "total": 9, "rows": 779428, "note": "AMP 30m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:00:24Z"}
+{"shard": 1, "stage": "testing", "done": 9, "total": 9, "rows": 796988, "note": "AMP 1h: rule 33/120 (heikin)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:01:54Z"}

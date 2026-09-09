@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 81, "total": 81, "rows": 7033532, "note": "WLFI 4h: rule 82/120 (cf_maobv)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:26:54Z"}
+{"shard": 7, "stage": "done", "done": 81, "total": 81, "rows": 7053772, "note": "7,053,772 rows \u00b7 81 coin(s) claimed \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:27:07Z"}

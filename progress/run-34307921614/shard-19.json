@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 19, "total": 19, "rows": 1845020, "note": "XPIN 4h: 2,226 bars \u00b7 Sep 03, 2025 4:00am \u2192 Sep 09, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:36:21Z"}
+{"shard": 19, "stage": "testing", "done": 20, "total": 20, "rows": 1885028, "note": "XPL 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:37:15Z"}

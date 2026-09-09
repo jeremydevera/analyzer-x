@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 23, "total": 23, "rows": 1837952, "note": "NVOSTOCK 15m: rule 67/120 (pinbar)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:49:41Z"}
+{"shard": 12, "stage": "testing", "done": 23, "total": 23, "rows": 1884160, "note": "NVOSTOCK 1h: rule 90/120 (cf_chan_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:50:26Z"}

@@ -319,6 +319,15 @@ export interface WorkerSlot {
 
 export interface JobStatus {
   running: boolean;
+  /** `pairbt` only — the ONE pair a row's UPDATE button is re-measuring, and
+   *  what came of it. `index_error` is separate from `error` on purpose: a
+   *  pair can measure perfectly and fail to reindex, which leaves a current
+   *  row file behind a stale screen (2026-09-09). */
+  pair?: string;
+  indexed?: number;
+  index_error?: string;
+  before_ms?: number;
+  after_ms?: number;
   /** how many cores the sweep may use RIGHT NOW — re-asked after every
    *  completed pair, so it rises when memory frees up and falls when it does
    *  not. It used to be the reading taken at startup, which pinned a 28-hour
@@ -798,6 +807,11 @@ export const api = {
       /** the DAYS window the server measured, in real dates, and how many
        *  coin/timeframe/signal groups it had to re-walk to answer */
       days?: number; days_window?: string[]; days_groups?: number;
+      /** the most rows a WINDOWED download can hold (rows_index.DAYS_CSV_MAX).
+       *  The download re-measures that many and then drops the ones the
+       *  window's own figures fail, so it can never deliver `total` — the
+       *  button must name this, not the match count. */
+      days_csv_max?: number;
       /** rows the window re-measured and then CUT because the window's own
        *  win %, trades or profit missed a floor the whole history had passed.
        *  Sep 09, 2026: "Winrate 90% or better" over rows printing 89.47. */
@@ -817,6 +831,15 @@ export const api = {
       sizings?: string[] }>(
       "/api/strategies/facets",
     ),
+
+  /** Re-measure THIS ROW's pair now — the row's own UPDATE button. It
+   *  measures the PAIR (coin + timeframe), because the store keeps one
+   *  watermark per pair; bringing one row forward alone would leave the
+   *  pair's other rows behind a watermark that claims otherwise. */
+  strategyRowUpdate: (rowId: string) =>
+    postDetail<{ started: boolean; pid: number; row: string; coin: string;
+                 tf: string; why: string }>(
+      `/api/strategies/${encodeURIComponent(rowId)}/update`, {}),
 
   trades: (row: StrategyRow, baseMargin = 5.0) =>
     post<TradesResult>("/api/strategies/trades", {
@@ -854,9 +877,9 @@ export const api = {
    *  from this PC and from the GitHub shards. */
   backtestLogs: () => get<BacktestLogs>("/api/backtest/logs"),
 
-  jobStatus: (kind: "download" | "backtest" | "btupdate" | "stratbt") =>
+  jobStatus: (kind: "download" | "backtest" | "btupdate" | "stratbt" | "pairbt" | "collect") =>
     get<JobStatus>(`/api/jobs/${kind}`),
-  jobStart: (kind: "download" | "backtest" | "btupdate" | "stratbt", spec: unknown) =>
+  jobStart: (kind: "download" | "backtest" | "btupdate" | "stratbt" | "pairbt" | "collect", spec: unknown) =>
     post<{ pid: number }>(`/api/jobs/${kind}/start`, spec),
   /** Finish the pairs in flight, then hand this sweep to GitHub Actions.
    *  Not a stop: every measured pair stays, and the cloud is dispatched for
@@ -868,7 +891,7 @@ export const api = {
           handed_off: boolean; running: boolean;
           stalled: boolean; stalled_why: string }>(`/api/jobs/${kind}/handoff`),
 
-  jobStop: (kind: "download" | "backtest" | "btupdate" | "stratbt") =>
+  jobStop: (kind: "download" | "backtest" | "btupdate" | "stratbt" | "pairbt" | "collect") =>
     post<{ ok: boolean }>(`/api/jobs/${kind}/stop`, {}),
 
   /** The ledger, newest first. `actions` names the rows wanted — "enter,exit"

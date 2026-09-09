@@ -44,6 +44,15 @@ FILES = {
     # one deployed strategy, replayed over a year — the Auto Trade "1 YEAR"
     # button. Detached because the grid takes minutes and a request must not
     # hold it open.
+    # ONE PAIR, re-measured on demand. The UPDATE button on a row's own trade
+    # log: operator, 2026-09-09, looking at "#SW8Q96E6 ... last backtest
+    # Aug 24, 2026 4:00pm" — *"can i have a button 'update' to force update
+    # the backtest"*. Detached because a 15m pair with 35,000 bars is a minute
+    # of work over 120 rules, far too long to hold a request open.
+    "pairbt": {"progress": STATE_DIR / "db_pairbt.json",
+               "spec": STATE_DIR / "db_pairbt.spec.json",
+               "pid": STATE_DIR / "db_pairbt.pid",
+               "stop": STATE_DIR / "db_pairbt.STOP"},
     "stratbt": {"progress": STATE_DIR / "db_stratbt.json",
                 "spec": STATE_DIR / "db_stratbt.spec.json",
                 "pid": STATE_DIR / "db_stratbt.pid",
@@ -1984,6 +1993,119 @@ def _run_collect(spec: dict) -> None:
         pass
 
 
+def _run_pairbt(spec: dict) -> None:
+    """Re-measure ONE pair, resuming from its own watermark.
+
+    Operator, 2026-09-09, on a row whose last backtest read Aug 24, 2026
+    4:00pm: *"can i have a button 'update' to force update the backtest"*.
+
+    WHY IT RUNS HERE AND NOT ON THE FLEET: measuring moved to GitHub for the
+    MARKET GRID (`LOCAL_SWEEP_KINDS`), and starting twenty machines to bring
+    one pair forward would take longer to spin up than the work itself. This
+    walks only the bars printed since the pair's watermark — the same thing
+    UPDATE ALL BACKTESTS does, for one pair.
+
+    The pair is REINDEXED afterwards. Without that the row file is current and
+    the Stored-strategies row still shows the old numbers, which is the shape
+    of bug this repo keeps paying for: correct data behind a stale screen.
+    """
+    from tradingagents import market_sweep as msw, rows_index as ri
+    from tradingagents.positions_view import fmt_when
+    f = FILES["pairbt"]
+    sym = str(spec["coin"])
+    sym = sym if sym.endswith("_USDT") else f"{sym}_USDT"
+    coin, tf = sym.replace("_USDT", ""), str(spec["tf"])
+    base = float(spec.get("base") or 5.0)
+    days = int(spec.get("days") or 365)
+    before = msw.pair_watermark(coin, tf)
+
+    def _pub(**kw) -> None:
+        _write(f["progress"], {"coin": coin, "tf": tf, "pair": f"{coin} {tf}",
+                               "before_ms": before, **kw})
+
+    _pub(running=True, now=f"{coin} {tf}: measuring", rows=0)
+    try:
+        res = msw.run_pair(sym, tf, base_margin=base, days=days,
+                           thresholds=3, fresh=False)
+    except Exception as exc:                                   # noqa: BLE001
+        note = f"{type(exc).__name__}: {exc}"
+        print(f"[pairbt] {coin} {tf} FAILED: {note}", flush=True)
+        # ON THE PENDING BOOKS: a forced update that failed IS a backtest that
+        # had a problem (2026-09-09), so RESOLVE PENDING can retry it.
+        try:
+            from tradingagents import pending_ledger as _pl
+
+            _pl.record("backtest", [(sym, tf, note)], run="pairbt")
+        except Exception:                                      # noqa: BLE001
+            pass
+        _pub(running=False, error=note, finished=int(time.time()), note=note)
+        return
+    n_rows = len(res.get("rows") or []) if isinstance(res, dict) else 0
+    _pub(running=True, now=f"{coin} {tf}: indexing {n_rows:,} row(s)",
+         rows=n_rows)
+    # INDEX IT, and keep trying. `_connect` already waits 60 s for the write
+    # lock, but a full index rebuild holds it far longer than that (rows_winrate
+    # alone takes 912 s): pressed for real on STBL 4h on 2026-09-09, the
+    # measurement landed — watermark Aug 28 → Sep 09 4:00pm, 8,774 rows — and
+    # the reindex died on "database is locked" while the other session
+    # rebuilt, which would have left the row on screen showing August's
+    # numbers under a job that said it finished.
+    indexed, index_error, queued = 0, "", False
+    for attempt in range(3):
+        try:
+            indexed = ri.index_pair(msw.ROWDIR / f"{coin}-{tf}.json")
+            index_error = ""
+            break
+        except Exception as exc:                               # noqa: BLE001
+            index_error = f"{type(exc).__name__}: {exc}"
+            _pub(running=True, rows=n_rows,
+                 now=f"{coin} {tf}: index busy, retrying "
+                     f"({attempt + 1}/3)")
+            time.sleep(20)
+    if index_error:
+        # Not a lost measurement: a pair file whose mtime moved is picked up by
+        # `rows_index.stale_pairs`, so the row refreshes when the index frees.
+        # Say THAT, rather than "FAILED", which reads as work to redo.
+        try:
+            queued = any(getattr(p, "stem", "") == f"{coin}-{tf}"
+                         for p in ri.stale_pairs())
+        except Exception:                                      # noqa: BLE001
+            queued = False
+        print(f"[pairbt] {coin} {tf}: measured, not yet indexed "
+              f"({index_error})" + (" — queued for the index catch-up"
+                                    if queued else ""), flush=True)
+    after = msw.pair_watermark(coin, tf)
+    try:
+        from tradingagents import pending_ledger as _pl
+
+        _pl.clear("backtest", [(sym, tf)])
+    except Exception:                                          # noqa: BLE001
+        pass
+    note = (f"{coin} {tf}: {n_rows:,} row(s), {indexed:,} indexed"
+            + ((" · measured, waiting on the index — the row updates when the "
+                "catch-up runs" if queued else
+                f" · measured, but NOT indexed: {index_error}")
+               if index_error else "")
+            + (" · no new bars — it was already current"
+               if after and after == before else ""))
+    print(f"[pairbt] {note}", flush=True)
+    _pub(running=False, rows=n_rows, indexed=indexed, after_ms=after,
+         index_error=index_error, index_queued=queued,
+         # WHAT MOVED, in the operator's own date format — the whole point of
+         # the button is that "last backtest Aug 24" becomes today
+         measured_through=fmt_when(after / 1000) if after else "",
+         finished=int(time.time()), note=note)
+    try:
+        from tradingagents import notifications as _nt
+
+        _nt.record("backtest", f"Re-measured {coin} {tf}", detail=note,
+                   ok=not index_error,
+                   meta={"coin": coin, "tf": tf, "rows": n_rows,
+                         "indexed": indexed})
+    except Exception:                                          # noqa: BLE001
+        pass
+
+
 def main(argv: list[str]) -> int:
     kind = argv[0]
     spec = _read(FILES[kind]["spec"])
@@ -1997,6 +2119,8 @@ def main(argv: list[str]) -> int:
         _run_btupdate(spec)
     elif kind == "collect":
         _run_collect(spec)
+    elif kind == "pairbt":
+        _run_pairbt(spec)
     else:
         print(f"unknown job: {kind}", file=sys.stderr)
         return 2

@@ -226,6 +226,62 @@ purpose so the sentence is rewritten with it.
 
 ---
 
+## RCA-2026-09-09-Q — a row could be 73 bars stale with no way to move it, and the new button's job could not be watched
+
+**SAW** — the operator, having searched #SW8Q96E6 and opened it: *"currently
+the last backtest was Aug 24, 2026 4:00pm / can i have a button 'update' to
+force update the backtest"*.
+
+**TIMELINE**
+
+1. `Sep 09, 2026` — #SW8Q96E6 is STBL 4h. Measured: its watermark stood at
+   `Aug 28, 2026 12:00am` while the store held candles to `Sep 09, 2026
+   4:00am` — **73 four-hour bars** measured by nobody, with no button on the
+   screen that could move one pair.
+2. The new `pairbt` job is pressed for real. The measurement lands: watermark
+   `Aug 28` → `Sep 09 4:00pm`, **8,774 rows**. The REINDEX dies:
+   `OperationalError: database is locked`.
+3. Pressed through the API end to end. The route answers `started: true` —
+   and `/api/jobs/pairbt` answers **`unknown job kind: pairbt`**.
+
+**ROOT CAUSE** — three, each only visible by running it:
+
+* No per-pair measure existed at all. The market grid moved to GitHub, and
+  nothing was left that could bring ONE pair forward.
+* `rows_index._connect` waits 60 s for the write lock, but a full index
+  rebuild holds it far longer (`rows_winrate` alone takes 912 s), so a
+  concurrent rebuild left the row file current and the SCREEN on August's
+  numbers under a job that said it had finished.
+* `api.JOB_KINDS` was a hand-written tuple of four. The job started and the
+  panel could never follow it — a button that works and cannot be watched.
+
+**FIX** (this commit) — `db_jobs._run_pairbt` measures the PAIR (one row file
+and one watermark per coin+timeframe; moving one row alone would leave the
+pair's others behind a watermark that claims otherwise), resuming from the
+watermark with `thresholds=3` to match `grid_from_store` — a mismatched K
+makes the two paths reset each other's store. The index is retried three
+times, and when it still cannot be written the job checks
+`rows_index.stale_pairs` and says *"waiting on the index — the row updates
+when the catch-up runs"* rather than "FAILED", because the pair really is
+queued. A failed measure goes on the pending ledger, so RESOLVE PENDING can
+retry it. `JOB_KINDS` is now derived from `db_jobs.FILES`.
+
+**WHY IT WAS NOT CAUGHT** — the first two could not be caught by any test that
+did not RUN the thing: the lock needs a concurrent rebuild, and the stale
+watermark needs the real store. The third is worse — it was a hand-maintained
+list duplicating `FILES`, the classic two-places-for-one-fact, and every
+existing job kind was in it so nothing looked wrong. Only pressing the button
+end to end through HTTP showed it.
+
+**COST** — none in money. One row sat 73 bars stale, and any future job kind
+would have been unwatchable the same way.
+
+**GUARD** — `tests/test_row_update_button.py` (14), including
+`test_every_job_kind_can_be_watched` (derives the set from FILES),
+`test_a_locked_index_says_WAITING_not_FAILED`, and
+`test_the_threshold_count_matches_the_sweep`, which fails if the sweep's K
+moves away from this button's.
+
 ## RCA-2026-09-09-L — "pending" counted the clock and the never-done, so neither number could ever reach zero
 
 **SAW** — the operator, after a week of chasing counts that came back on their

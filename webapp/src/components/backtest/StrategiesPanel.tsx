@@ -6,7 +6,7 @@
  * (the label-must-match-data rule, ported).
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, ApiError, fmtMoney, fmtWhenMs, STRATEGY_SORTS, StrategyRow,
+import { api, ApiError, fmtMoney, fmtWhenMs, JobStatus, STRATEGY_SORTS, StrategyRow,
   TradesResult, type IndexStatus, type StrategySort } from "@/lib/api";
 import { pageWindow } from "@/lib/pager";
 import Badge from "@/components/ui/badge/Badge";
@@ -196,6 +196,9 @@ export default function StrategiesPanel() {
   // missed a floor the whole history had cleared — named in the caption, never
   // hidden silently (rule 20). Sep 09, 2026: "Winrate 90% or better" over 89.47.
   const [winHidden, setWinHidden] = useState(0);
+  // the ceiling a WINDOWED download really has, from the server — never a
+  // literal here, which is how a cap drifts away from the code that enforces it
+  const [csvMax, setCsvMax] = useState(0);
   // the window the SERVER used, in real month keys — never the box's number
   const [window_, setWindow] = useState<string[]>([]);
   // the floors the SERVER actually applied. On a 503 the request moves and the
@@ -291,6 +294,50 @@ export default function StrategiesPanel() {
   const [capped, setCapped] = useState(false);
   const [open, setOpen] = useState<StrategyRow | null>(null);
   const [trades, setTrades] = useState<TradesResult | null>(null);
+  // THE ROW'S OWN UPDATE (2026-09-09). `pairJob` is the detached job's own
+  // progress — never a literal, so "UPDATING…" cannot outlive the work.
+  const [pairJob, setPairJob] = useState<JobStatus | null>(null);
+  const [updating, setUpdating] = useState(false);
+  const [updateErr, setUpdateErr] = useState("");
+
+  /** Force this row's pair forward. Detached, so the request returns at once
+   *  and the button follows the JOB — a spinner that outlives the work is how
+   *  "is it still going?" starts. */
+  const updateRow = useCallback(async (rowId: string) => {
+    setUpdateErr(""); setUpdating(true);
+    try {
+      await api.strategyRowUpdate(rowId);
+      setPairJob(await api.jobStatus("pairbt"));
+    } catch (e) {
+      setUpdateErr(String(e).replace(/^Error: /, ""));
+    } finally {
+      setUpdating(false);
+    }
+  }, []);
+
+  // follow it while it runs, then refresh the row so the new numbers show —
+  // a current row file behind a stale screen is the bug this panel keeps
+  // paying for
+  useEffect(() => {
+    if (!open?.id) { setPairJob(null); return; }
+    let live = true;
+    const tick = async () => {
+      try {
+        const st = await api.jobStatus("pairbt");
+        if (!live) return;
+        const wasRunning = pairJob?.running;
+        setPairJob(st);
+        if (wasRunning && !st.running) {
+          load(true);                       // the row's own numbers
+          if (open) api.trades(open).then(setTrades).catch(() => {});
+        }
+      } catch { /* the badge simply does not move */ }
+    };
+    tick();
+    const t = setInterval(tick, pairJob?.running ? 2000 : 15000);
+    return () => { live = false; clearInterval(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open?.id, pairJob?.running]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [idx, setIdx] = useState<IndexStatus | null>(null);
@@ -344,6 +391,7 @@ export default function StrategiesPanel() {
         setWindow(d.window ?? []);   // the window's real months, from the payload
         setDayWin(d.days_window ?? []);   // and its real DATES when days is on
         setWinHidden(d.window_hidden ?? 0);
+        setCsvMax(d.days_csv_max ?? 0);
         setFailedAfter(0);
       })
       .catch((e) => {
@@ -1484,6 +1532,20 @@ export default function StrategiesPanel() {
           </button>
           {/* the only honest "all": a file, streamed, with every column */}
           <a className={`${pageBtn} ml-1 inline-flex items-center`}
+             /* AND SAY HOW LONG IT TAKES. A windowed download re-measures
+                every row it writes from this PC's candles, and the browser
+                shows 0 bytes until it has buffered ~240 KB. Measured on the
+                operator's own press (win % 85, last 30 days): 671 s, and the
+                file sat at 0 for the first four minutes — which is
+                indistinguishable from broken unless the button says so. */
+             title={servedFilters.days > 0 && !servedFilters.months && csvMax
+               ? `Re-measures up to ${csvMax.toLocaleString()} rows over the `
+                 + `last ${servedFilters.days} days from this PC's candles, then `
+                 + `keeps only the ones that still clear the filters in that `
+                 + `window. That takes MINUTES (671s for 1,184 rows on `
+                 + `Sep 09, 2026) and your browser may show 0 bytes for the `
+                 + `first few minutes — it is still downloading.`
+               : `Every matching row, streamed to a file — no page limit.`}
              /* the APPLIED set, not the boxes: the link's own label is the
                 applied count ("download all (5,000+) CSV"), so a draft-based
                 href would hand over a different slice than it names */
@@ -1509,7 +1571,17 @@ export default function StrategiesPanel() {
                months: applied.months || undefined,
                days: applied.months ? undefined : (applied.days || undefined),
                rowId: applied.rowId || undefined, desc })}>
-            download all ({total.toLocaleString()}{capped ? "+" : ""}) CSV
+            {/* WHAT THE FILE WILL ACTUALLY HOLD. With a days window on, the
+                download re-measures at most `days_csv_max` rows from the
+                candles and then drops the ones the window's own figures fail,
+                so it can never hand over `total`. Measured Sep 09, 2026 on the
+                operator's own press: this said "download all (566,990) CSV"
+                and the file held 1,184 rows — 2,000 re-measured, 816 cut by
+                the window floor — after 671 s. A count nobody can deliver is
+                a false label on a true number (label-must-match-data). */}
+            {servedFilters.days > 0 && !servedFilters.months && csvMax
+              ? `download the window's top ${csvMax.toLocaleString()} CSV`
+              : `download all (${total.toLocaleString()}${capped ? "+" : ""}) CSV`}
           </a>
         </div>
       </div>
@@ -1599,6 +1671,40 @@ export default function StrategiesPanel() {
                   predates that stamp, this line says the window came from the
                   pair's watermark instead, which is why a trade or two can
                   differ. */}
+              {/* FORCE IT FORWARD. Operator, 2026-09-09, on a row whose last
+                  backtest read Aug 24, 2026 4:00pm: "can i have a button
+                  'update' to force update the backtest". It re-measures the
+                  PAIR from its own watermark — only the bars printed since —
+                  and reindexes it, because a current row file behind a stale
+                  screen is the bug shape this panel keeps paying for. */}
+              {open?.id && (
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <button type="button"
+                          disabled={!!pairJob?.running || updating}
+                          onClick={() => updateRow(open.id)}
+                          className="h-8 rounded-lg border border-brand-300 px-3 text-theme-xs font-medium text-brand-700 hover:bg-brand-50 disabled:opacity-40 dark:border-brand-500/40 dark:text-brand-300 dark:hover:bg-brand-500/10">
+                    {pairJob?.running ? "UPDATING…" : "UPDATE THIS BACKTEST"}
+                  </button>
+                  {/* what it is doing, from the JOB, never a literal */}
+                  {pairJob?.running ? (
+                    <span className="text-theme-xs text-gray-500 dark:text-gray-400">
+                      {pairJob.now ?? `${pairJob.pair ?? ""} measuring`}
+                    </span>
+                  ) : pairJob?.note ? (
+                    <span className={`text-theme-xs ${pairJob.error || pairJob.index_error
+                      ? "text-error-500" : "text-success-600 dark:text-success-400"}`}>
+                      {pairJob.error ?? pairJob.note}
+                    </span>
+                  ) : (
+                    <span className="text-theme-xs text-gray-400 dark:text-gray-500">
+                      measures this pair from its last measured bar to now
+                    </span>
+                  )}
+                  {updateErr && (
+                    <span className="text-theme-xs text-error-500">{updateErr}</span>
+                  )}
+                </div>
+              )}
               {trades.first && (
                 <p className="mt-1 text-theme-xs text-gray-400 dark:text-gray-500">
                   Rebuilt from {trades.source ?? "stored candles"} — {trades.bars?.toLocaleString()} bars,{" "}

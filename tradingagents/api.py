@@ -227,7 +227,13 @@ def row_id_for(key: str, coin: str | None, settings: dict) -> str:
         return ""
 
 
-JOB_KINDS = ("download", "backtest", "btupdate", "stratbt")
+# Every kind `db_jobs.FILES` can run. A kind missing here is a job that
+# STARTS and cannot be watched: `/api/jobs/pairbt` answered "unknown job kind"
+# while the job it names was running, so the row's UPDATE button could never
+# follow its own work (2026-09-09). Derived from FILES so the next kind cannot
+# be forgotten.
+JOB_KINDS = tuple(sorted(__import__("tradingagents.db_jobs",
+                                    fromlist=["FILES"]).FILES))
 
 # A pair takes minutes; twelve is well past any of them, so a hand-off still
 # unserved by then is not slow, it is stuck.
@@ -306,6 +312,14 @@ def strategies(coin: str | None = None, tf: str | None = None,
             got["rows"], min_winrate=min_winrate, min_trades=min_trades,
             profitable=profitable)
     got["restate_max"] = RESTATE_MAX
+    # HOW MANY ROWS A WINDOWED DOWNLOAD CAN ACTUALLY HOLD, so the button can
+    # say it instead of promising `total`. With `days` on, the export
+    # re-measures at most this many rows from the candles and then drops the
+    # ones the window's own figures fail — measured Sep 09, 2026 on the
+    # operator's own press: the button read "download all (566,990) CSV" and
+    # the file held **1,184** rows (2,000 re-measured, 816 cut by the window
+    # floor). A count nobody can deliver is a false label on a true number.
+    got["days_csv_max"] = ri.DAYS_CSV_MAX
     # LAST N DAYS. Operator, 2026-09-02: "can you add days textbox isntead of
     # using past 1 month only / if months is 0 then follow the days" -- so
     # MONTHS WINS when both are set, and the days window is a re-measurement
@@ -836,6 +850,46 @@ def storage_months_delete(q: MonthDelete) -> dict:
 def _check_kind(kind: str) -> None:
     if kind not in JOB_KINDS:
         raise HTTPException(404, f"unknown job kind: {kind}")
+
+
+@app.post("/api/strategies/{row_id}/update")
+def strategy_row_update(row_id: str) -> dict:
+    """Re-measure THIS ROW's pair, now. The row's own UPDATE button.
+
+    Operator, 2026-09-09, on #SW8Q96E6 whose last backtest read Aug 24, 2026
+    4:00pm: *"can i have a button 'update' to force update the backtest"*.
+
+    It measures the PAIR (coin + timeframe), not the single combination: the
+    store keeps one file per pair and one watermark per pair, so bringing one
+    row forward without the rest would leave the pair's other rows measured
+    through an older bar than its own watermark claims. Detached, resuming
+    from the watermark, so only the bars printed since are walked.
+    """
+    from tradingagents import db_jobs as dj, rows_index as ri
+
+    rid = ri.clean_row_id(row_id)
+    if not rid:
+        raise HTTPException(422, "that is not a row id")
+    got = ri.query(row_id=rid, limit=1)
+    rows = (got.get("rows") if isinstance(got, dict) else got) or []
+    if not rows:
+        raise HTTPException(404, f"no stored row #{rid}")
+    row = rows[0]
+    coin, tf = row.get("coin"), row.get("tf")
+    if not coin or not tf:
+        raise HTTPException(500, f"row #{rid} does not name its pair")
+    st = dj.status("pairbt")
+    if st.get("running"):
+        # ONE at a time: two runs on the same pair fight over its pair lock,
+        # and on a DIFFERENT pair they still both rewrite the row index.
+        raise HTTPException(409, f"already re-measuring "
+                                 f"{st.get('pair') or 'a pair'} — wait for it")
+    pid = dj.start("pairbt", {"coin": coin, "tf": tf,
+                              "base": float(row.get("base") or 5.0),
+                              "days": 365})
+    return {"started": True, "pid": pid, "row": rid,
+            "coin": coin, "tf": tf,
+            "why": f"re-measuring {coin} {tf} from its last measured bar"}
 
 
 @app.get("/api/backtest/capacity")

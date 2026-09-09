@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 23, "total": 23, "rows": 1890866, "note": "HOT 1h: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:18:44Z"}
+{"shard": 8, "stage": "testing", "done": 23, "total": 23, "rows": 1910446, "note": "HOT 1h: rule 87/120 (cf_triple_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:19:30Z"}

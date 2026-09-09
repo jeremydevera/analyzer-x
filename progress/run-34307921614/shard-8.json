@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 6, "total": 6, "rows": 459182, "note": "HDSTOCK 15m: rule 79/120 (cf_donch)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:02:01Z"}
+{"shard": 8, "stage": "testing", "done": 6, "total": 6, "rows": 494350, "note": "HDSTOCK 1h: rule 10/120 (sr_bounce)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:02:46Z"}

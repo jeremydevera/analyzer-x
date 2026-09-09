@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 12, "total": 12, "rows": 1079180, "note": "SPK 15m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:36:05Z"}
+{"shard": 16, "stage": "testing", "done": 12, "total": 12, "rows": 1082040, "note": "SPK 15m: rule 13/120 (pivot)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:36:54Z"}

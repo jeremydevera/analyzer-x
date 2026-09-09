@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 29, "total": 29, "rows": 2802686, "note": "EWZ 15m: rule 102/120 (cf_soup1_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:46:16Z"}
+{"shard": 6, "stage": "testing", "done": 30, "total": 30, "rows": 2895696, "note": "EXPESTOCK 30m: rule 71/120 (mfi14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:47:01Z"}

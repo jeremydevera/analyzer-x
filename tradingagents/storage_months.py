@@ -304,12 +304,18 @@ def delisted_report(index: dict | None = None, live=None) -> dict:
     live_coins = {s.rsplit("_", 1)[0] for s in live}
     index = msw.candle_index(scan=False) if index is None else index
     coins: dict = {}
-    for entry in index.values():
+    for key, entry in index.items():
         sym = str(entry.get("symbol") or "")
         if not sym or sym in live:
             continue
         coin = sym.rsplit("_", 1)[0]
         if coin in live_coins:
+            continue
+        # the index is a cache: after the interrupted press of 2026-09-09 it
+        # still listed 24 files the press had already removed, so the button
+        # said "97 candle files" over 73. A stat per DELISTED entry (dozens,
+        # never thousands) keeps the count honest until the next rescan.
+        if not (msw.CANDLES / f"{key}.json").exists():
             continue
         c = coins.setdefault(coin, _empty_coin(coin, sym))
         c["candle_pairs"] += 1

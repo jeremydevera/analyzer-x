@@ -341,6 +341,18 @@ def test_delisted_report_names_every_stored_coin_the_venue_dropped(store, monkey
     assert rep["bytes"] == rep["candle_bytes"] + rep["result_bytes"] > 0
 
 
+def test_the_report_does_not_count_candle_files_that_are_already_gone(store, monkeypatch):
+    """the candle index is a cache: an interrupted press left it listing 24
+    files it had removed, and the button said 97 over 73 (2026-09-09)"""
+    _delisted_store(monkeypatch, {"AAA_USDT"})
+    (msw.CANDLES / "DEAD_USDT-4h.json").unlink()      # gone, index not rescanned
+    assert "DEAD_USDT-4h" in msw.candle_index(scan=False)
+    rep = sm.delisted_report()
+    dead = next(c for c in rep["coins"] if c["coin"] == "DEAD")
+    assert dead["candle_pairs"] == 1
+    assert rep["candle_pairs"] == 1
+
+
 def test_a_coin_quoted_in_something_else_is_not_called_delisted(store, monkeypatch):
     """rows pairs carry the coin, not the symbol: AAA listed as AAA_USDC must
     not be deleted for lacking an AAA_USDT twin."""

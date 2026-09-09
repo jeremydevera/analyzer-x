@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 51, "total": 51, "rows": 4519682, "note": "SYN 15m: rule 63/120 (killzone)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:18:15Z"}
+{"shard": 12, "stage": "testing", "done": 51, "total": 51, "rows": 4528802, "note": "SYN 30m: 18,959 bars \u00b7 Aug 10, 2025 7:30am \u2192 Sep 09, 2026 6:30am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:19:51Z"}

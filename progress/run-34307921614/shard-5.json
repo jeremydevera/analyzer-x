@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 3, "total": 3, "rows": 194366, "note": "CTC 30m: rule 53/120 (squeeze)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:50:42Z"}
+{"shard": 5, "stage": "testing", "done": 3, "total": 3, "rows": 207566, "note": "CTC 1h: 9,479 bars \u00b7 Aug 10, 2025 4:00am \u2192 Sep 09, 2026 2:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:51:28Z"}

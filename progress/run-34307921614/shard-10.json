@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 9, "total": 9, "rows": 738340, "note": "LIGHT 30m: rule 78/120 (cf_mom_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:22:01Z"}
+{"shard": 10, "stage": "testing", "done": 9, "total": 9, "rows": 748540, "note": "LIGHT 1h: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:22:46Z"}

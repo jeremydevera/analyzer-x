@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 48, "total": 48, "rows": 4192894, "note": "RVN 1h: rule 35/120 (willr14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:17:15Z"}
+{"shard": 14, "stage": "testing", "done": 48, "total": 48, "rows": 4210934, "note": "RVN 4h: 2,369 bars \u00b7 Aug 10, 2025 8:00am \u2192 Sep 09, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:18:03Z"}

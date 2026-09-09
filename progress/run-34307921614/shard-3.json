@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 13, "total": 13, "rows": 1059254, "note": "BOBA 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:38:22Z"}
+{"shard": 3, "stage": "testing", "done": 13, "total": 13, "rows": 1061654, "note": "BOBA 15m: rule 9/120 (fib382)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:39:07Z"}

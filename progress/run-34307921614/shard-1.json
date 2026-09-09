@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 26, "total": 26, "rows": 2033488, "note": "APR 15m: rule 62/120 (ote)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:40:31Z"}
+{"shard": 1, "stage": "testing", "done": 26, "total": 26, "rows": 2045088, "note": "APR 30m: 15,397 bars \u00b7 Oct 23, 2025 10:00am \u2192 Sep 09, 2026 4:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:41:18Z"}

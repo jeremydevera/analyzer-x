@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 25, "total": 25, "rows": 2452994, "note": "STG 30m: rule 22/120 (engulf)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:00:48Z"}
+{"shard": 16, "stage": "testing", "done": 25, "total": 25, "rows": 2463334, "note": "STG 30m: rule 70/120 (cmf20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:01:33Z"}

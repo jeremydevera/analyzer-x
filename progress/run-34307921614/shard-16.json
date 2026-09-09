@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 20, "total": 20, "rows": 1989446, "note": "SSV 30m: rule 39/120 (fisher)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:25:56Z"}
+{"shard": 16, "stage": "testing", "done": 20, "total": 20, "rows": 2002206, "note": "SSV 30m: rule 99/120 (cf_ttm_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:26:42Z"}

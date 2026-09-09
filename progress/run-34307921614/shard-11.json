@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 13, "total": 13, "rows": 1173064, "note": "MOCA 30m: rule 76/120 (cf_mom)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:53:21Z"}
+{"shard": 11, "stage": "testing", "done": 13, "total": 13, "rows": 1182184, "note": "MOCA 1h: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:54:08Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 6, "total": 6, "rows": 562346, "note": "XDC 15m: rule 17/120 (atrbreak)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:58:07Z"}
+{"shard": 19, "stage": "testing", "done": 6, "total": 6, "rows": 574346, "note": "XDC 15m: rule 78/120 (cf_mom_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:58:53Z"}

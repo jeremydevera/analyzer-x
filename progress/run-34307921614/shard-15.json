@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 28, "total": 28, "rows": 2319616, "note": "SKL 15m: rule 21/120 (cci20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:33:58Z"}
+{"shard": 15, "stage": "testing", "done": 28, "total": 28, "rows": 2324676, "note": "SKL 15m: rule 44/120 (elder)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:34:43Z"}

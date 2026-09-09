@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 28, "total": 28, "rows": 2699302, "note": "EWY 30m: rule 4/120 (trend50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:44:46Z"}
+{"shard": 6, "stage": "testing", "done": 28, "total": 28, "rows": 2730022, "note": "EWY 1h: rule 30/120 (kama10)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:45:31Z"}

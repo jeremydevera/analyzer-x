@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 37, "total": 37, "rows": 3684146, "note": "METIS 30m: 18,959 bars \u00b7 Aug 10, 2025 7:00am \u2192 Sep 09, 2026 6:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:54:21Z"}
+{"shard": 10, "stage": "testing", "done": 37, "total": 37, "rows": 3687666, "note": "METIS 30m: rule 10/120 (sr_bounce)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:55:06Z"}

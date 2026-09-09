@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 12, "total": 12, "rows": 912848, "note": "HIVE 15m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:25:57Z"}
+{"shard": 8, "stage": "testing", "done": 12, "total": 12, "rows": 916808, "note": "HIVE 15m: rule 18/120 (macd)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:26:43Z"}

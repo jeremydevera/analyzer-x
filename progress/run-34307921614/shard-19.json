@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 57, "total": 57, "rows": 5404398, "note": "AIN 15m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:55:33Z"}
+{"shard": 19, "stage": "testing", "done": 57, "total": 57, "rows": 5409018, "note": "AIN 15m: rule 21/120 (cci20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:56:19Z"}

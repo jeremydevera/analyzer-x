@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 23, "total": 23, "rows": 1837406, "note": "HOT 15m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:13:21Z"}
+{"shard": 8, "stage": "testing", "done": 23, "total": 23, "rows": 1841806, "note": "HOT 15m: rule 23/120 (supertrend)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:14:06Z"}

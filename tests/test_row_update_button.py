@@ -254,3 +254,28 @@ def test_it_MERGES_and_never_replaces_the_pair_file(monkeypatch):
     dj._run_pairbt({"coin": "STBL", "tf": "4h"})
     assert seen["merge"] is True, \
         "a re-measure must ADD to the pair, never replace it"
+
+
+def test_the_trade_floor_uses_the_PAIRS_span_not_a_flat_year(monkeypatch):
+    """THE ROW-DROPPED-SILENTLY BUG (2026-09-09). `run_pair` uses `days` for
+    the trade floor: 4h demands 40 trades at 365 days and 11 at 103. The
+    button asked for 365 on a pair holding 103 days of candles, so #SW8Q96E6 —
+    20 real trades, 19 wins, +$42.19 — was measured perfectly and then thrown
+    away as "thin". The button looked like it did nothing."""
+    from tradingagents import market_sweep as msw
+
+    assert msw.min_trades("4h", 365) > msw.min_trades("4h", 103), \
+        "if the floor stops depending on days, this test's reason is gone"
+
+    seen, _ = _wire(monkeypatch)
+    monkeypatch.setattr(msw, "candle_index", lambda scan=False: {
+        "STBL_USDT-4h": {"first_ms": 1_780_000_000_000,
+                         "last_ms": 1_780_000_000_000 + 103 * 86_400_000}})
+    dj._run_pairbt({"coin": "STBL", "tf": "4h", "signal": "macddiv", "days": 0})
+    assert seen["days"] == 103, f"asked for {seen['days']} days, not the pair's 103"
+
+
+def test_the_route_lets_the_job_decide_the_span():
+    src = inspect.getsource(
+        __import__("tradingagents.api", fromlist=["x"]).strategy_row_update)
+    assert '"days": 0' in src, "a flat 365 is what dropped the row"

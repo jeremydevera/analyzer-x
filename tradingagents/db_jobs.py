@@ -2025,7 +2025,18 @@ def _run_pairbt(spec: dict) -> None:
     coin, tf = sym.replace("_USDT", ""), str(spec["tf"])
     signal = str(spec.get("signal") or "").strip()
     base = float(spec.get("base") or 5.0)
-    days = int(spec.get("days") or 365)
+    # THE PAIR'S REAL SPAN, not a flat year. `run_pair` uses `days` for the
+    # TRADE FLOOR (`min_trades(tf, days=days)`), so asking for 365 on a pair
+    # that only holds 103 days of candles demands a YEAR's worth of evidence:
+    # 4h needs 40 trades at 365 days and 11 at 103. #SW8Q96E6 has 20 real
+    # trades (19 wins, +$42.19) and was silently dropped as "thin" — measured
+    # perfectly and then thrown away, which is why the button appeared to do
+    # nothing (2026-09-09).
+    days = int(spec.get("days") or 0)
+    if not days:
+        c = (msw.candle_index(scan=False) or {}).get(f"{sym}-{tf}") or {}
+        span = (int(c.get("last_ms") or 0) - int(c.get("first_ms") or 0)) / 86_400_000
+        days = max(1, int(span)) or 365
     before = msw.pair_watermark(coin, tf)
 
     def _pub(**kw) -> None:

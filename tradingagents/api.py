@@ -890,7 +890,10 @@ def strategy_row_update(row_id: str) -> dict:
     sig = row.get("signal") or ""
     pid = dj.start("pairbt", {"coin": coin, "tf": tf, "signal": sig,
                               "base": float(row.get("base") or 5.0),
-                              "days": 365})
+                              # 0 = let the job use the PAIR'S OWN span; a
+                              # flat 365 made the trade floor demand a year's
+                              # evidence from 103 days of candles
+                              "days": 0})
     return {"started": True, "pid": pid, "row": rid,
             "coin": coin, "tf": tf, "signal": sig,
             "why": f"re-measuring {coin} {tf} {sig} from its last "
@@ -2141,6 +2144,13 @@ def _read_cloud_status() -> dict:
         out["live"] = {"open": bool(got.get("open")), "url": got.get("url") or "",
                        **({"pairs": int(prog.get("pairs") or 0),
                            "rows": int(prog.get("rows") or 0),
+                           # coins that ARRIVED and were already up to date —
+                           # without this the screen reads "0 pairs written"
+                           # for a door that worked perfectly (run
+                           # 34370227474, Sep 09, 2026 11:28pm: both coins
+                           # posted, both refused, nothing new had printed
+                           # since the run five minutes earlier)
+                           "stale": int(prog.get("stale") or 0),
                            "at": prog.get("at"), "last": prog.get("last")}
                           if rid and str(prog.get("run") or "") == rid else {})}
     except Exception:                                          # noqa: BLE001

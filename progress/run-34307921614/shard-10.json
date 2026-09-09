@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 35, "total": 35, "rows": 3502406, "note": "MASK 1h: rule 41/120 (tsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:41:10Z"}
+{"shard": 10, "stage": "testing", "done": 35, "total": 35, "rows": 3527046, "note": "MASK 4h: rule 30/120 (kama10)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:41:55Z"}

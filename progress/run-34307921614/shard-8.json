@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 21, "total": 21, "rows": 1756862, "note": "HOME 30m: rule 79/120 (cf_donch)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:09:20Z"}
+{"shard": 8, "stage": "testing", "done": 21, "total": 21, "rows": 1767202, "note": "HOME 1h: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:10:10Z"}

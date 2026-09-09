@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 42, "total": 42, "rows": 3468062, "note": "DOT 15m: 34,599 bars \u00b7 Sep 13, 2025 8:15pm \u2192 Sep 09, 2026 5:45am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:00:20Z"}
+{"shard": 5, "stage": "testing", "done": 42, "total": 42, "rows": 3471842, "note": "DOT 15m: rule 15/120 (bbbreak)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:01:06Z"}

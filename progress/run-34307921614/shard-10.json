@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 11, "total": 11, "rows": 945456, "note": "LINK 15m: rule 81/120 (cf_donch_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:34:46Z"}
+{"shard": 10, "stage": "testing", "done": 11, "total": 11, "rows": 952476, "note": "LINK 30m: 18,959 bars \u00b7 Aug 10, 2025 5:00am \u2192 Sep 09, 2026 4:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:35:34Z"}

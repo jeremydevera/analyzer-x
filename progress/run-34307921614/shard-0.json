@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 36, "total": 36, "rows": 3509150, "note": "AIO 1h: rule 20/120 (stoch14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:13:09Z"}
+{"shard": 0, "stage": "testing", "done": 36, "total": 36, "rows": 3528356, "note": "AIO 4h: 2,351 bars \u00b7 Aug 13, 2025 8:00am \u2192 Sep 09, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:14:01Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 42, "total": 42, "rows": 3544822, "note": "CATSTOCK 30m: rule 43/120 (macddiv)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:07:59Z"}
+{"shard": 3, "stage": "testing", "done": 43, "total": 43, "rows": 3591808, "note": "CAT 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:09:01Z"}

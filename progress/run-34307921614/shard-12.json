@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 38, "total": 38, "rows": 3337442, "note": "ONT 30m: rule 15/120 (bbbreak)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:12:49Z"}
+{"shard": 12, "stage": "testing", "done": 38, "total": 38, "rows": 3347122, "note": "ONT 30m: rule 60/120 (eqraid)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:13:35Z"}

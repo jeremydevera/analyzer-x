@@ -11,6 +11,8 @@
  * exchange, anything else means real money is open with no protection.
  */
 import { useEffect, useState } from "react";
+import { markReady } from "@/lib/loading";
+import PanelStatus from "./PanelStatus";
 import { fmtMoney, PositionRow, PositionsPayload, tradeApi } from "@/lib/api";
 import Badge from "@/components/ui/badge/Badge";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
@@ -51,7 +53,7 @@ export default function PositionsPanel({ onChanged }: { onChanged?: () => void }
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState("");
 
-  const load = () => tradeApi.positions().then((d) => { setData(d); setErr(""); }).catch((e) => setErr(String(e)));
+  const load = () => tradeApi.positions().then((d) => { setData(d); setErr(""); markReady("positions"); }).catch((e) => setErr(String(e)));
   useEffect(() => {
     load();
     const t = setInterval(load, 15000);
@@ -179,7 +181,7 @@ export default function PositionsPanel({ onChanged }: { onChanged?: () => void }
           {data.unprotected.join(", ")} {data.unprotected.length === 1 ? "has" : "have"} NO STOP resting at the exchange — real money is open unprotected.
         </p>
       )}
-      {err && <p className="px-5 pt-2 text-theme-sm text-error-500">{err}</p>}
+      <PanelStatus err={err} loaded={data !== null} />
       <div className="flex flex-col gap-4 p-4">
         <Book label="REAL — MONEY AT RISK" tone="real" book="REAL" rows={real}
           empty="none — no real money at risk" />

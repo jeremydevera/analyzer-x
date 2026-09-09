@@ -3,6 +3,8 @@
  * the arm/disarm + coin/margin editor. Saving POSTs the full settings file
  * and the API records every change to the local deploy history. */
 import { useCallback, useEffect, useState } from "react";
+import { markReady } from "@/lib/loading";
+import PanelStatus from "./PanelStatus";
 import { api, fmtMoney, JobStatus, tradeApi, StrategyDeployRow } from "@/lib/api";
 import Badge from "@/components/ui/badge/Badge";
 import Button from "@/components/ui/button/Button";
@@ -115,6 +117,7 @@ export default function StrategiesGrid() {
         setRows(st.rows); setSizing(st.sizing); setConflicts(st.conflicts);
         setCounts(st); setSettings(se.settings); setDirty(false);
         setAcctCap(st.account_loss_cap); setCapHit(st.account_cap_hit); setFlat(st.flat); setLocks(st.locks);
+        markReady("strategies");
       })
       .catch((e) => setErr(String(e))), [catalog]);
   useEffect(() => { load(); }, [load]);
@@ -244,7 +247,7 @@ export default function StrategiesGrid() {
           <Button size="sm" disabled={!dirty || busy} onClick={save}>SAVE CONFIG</Button>
         </div>
       </div>
-      {err && <p className="px-5 pt-2 text-theme-sm text-error-500">{err}</p>}
+      <PanelStatus err={err} loaded={settings !== null} />
       {capHit && (
         <p className="mx-5 mt-2 rounded-lg bg-error-50 px-3 py-2 text-theme-sm font-medium text-error-600 dark:bg-error-500/10">
           {/* It used to say "the runner has halted entries" — the cap wrote

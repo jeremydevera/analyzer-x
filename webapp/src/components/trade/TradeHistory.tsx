@@ -6,6 +6,8 @@
  * whole book, so page 3's "running $" is the real one, not the page's.
  */
 import { useEffect, useState } from "react";
+import { markReady } from "@/lib/loading";
+import PanelStatus from "./PanelStatus";
 import { fmtMoney, HistoryPayload, tradeApi } from "@/lib/api";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -33,7 +35,7 @@ export default function TradeHistory() {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const load = () => {
       tradeApi.history(dry, page, 5)
-        .then((r) => { if (!dead) { setD(r); setErr(""); } })
+        .then((r) => { if (!dead) { setD(r); setErr(""); markReady("trade history"); } })
         .catch((e) => {
           if (dead) return;
           setErr(String(e));
@@ -72,7 +74,7 @@ export default function TradeHistory() {
           ))}
         </div>
       </div>
-      {err && <p className="px-5 pt-2 text-theme-sm text-error-500">{err}</p>}
+      <PanelStatus err={err} loaded={d !== null} />
 
       <div className="w-full">
         <Table fixed>

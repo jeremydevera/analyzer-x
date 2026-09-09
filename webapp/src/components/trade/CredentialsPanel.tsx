@@ -7,6 +7,8 @@
  * whether a position can be protected (rule 14).
  */
 import { useEffect, useState } from "react";
+import { markReady } from "@/lib/loading";
+import PanelStatus from "./PanelStatus";
 import { CredStatus, Preflight, tradeApi } from "@/lib/api";
 import Badge from "@/components/ui/badge/Badge";
 import Button from "@/components/ui/button/Button";
@@ -32,7 +34,7 @@ export default function CredentialsPanel() {
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
 
-  const load = () => tradeApi.creds().then((d) => { setSt(d); setErr(""); }).catch((e) => setErr(String(e)));
+  const load = () => tradeApi.creds().then((d) => { setSt(d); setErr(""); markReady("MEXC keys"); }).catch((e) => setErr(String(e)));
   useEffect(() => { load(); }, []);
   // SELF-HEALING: retry every 5s while errored — an API restart's few dark
   // seconds must not leave "reading…" and a red line until a page reload
@@ -92,7 +94,7 @@ export default function CredentialsPanel() {
             : <span className="text-error-500">— readable by others, fix with chmod 600</span>}
         </p>
       )}
-      {err && <p className="mt-2 text-theme-sm text-error-500">{err}</p>}
+      <PanelStatus err={err} loaded={st !== null} className="mt-2 text-theme-sm text-error-500"/>
 
       <div className="mt-3 flex flex-wrap items-end gap-2">
         <label className="flex flex-col text-theme-xs text-gray-500 dark:text-gray-400">API key

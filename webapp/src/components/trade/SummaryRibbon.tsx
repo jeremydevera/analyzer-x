@@ -1,7 +1,8 @@
 "use client";
 /** The system ribbon: process, wallet, today, all-time — polled every 10s
  * from /api/trade/summary, the same numbers the runner acts on. */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { LATE_MS, markReady } from "@/lib/loading";
 import { fmtMoney, tradeApi, TradeSummary } from "@/lib/api";
 import Badge from "@/components/ui/badge/Badge";
 import Button from "@/components/ui/button/Button";
@@ -22,6 +23,7 @@ function Tile({ label, value, sub, tone }: { label: string; value: string; sub: 
 
 export default function SummaryRibbon({ onChanged }: { onChanged?: () => void }) {
   const [s, setS] = useState<TradeSummary | null>(null);
+  const mountedAt = useRef(Date.now());
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [armed, setArmed] = useState(false);
@@ -29,7 +31,7 @@ export default function SummaryRibbon({ onChanged }: { onChanged?: () => void })
   const [sup, setSup] = useState<Awaited<ReturnType<typeof tradeApi.supervisor>> | null>(null);
 
   const load = () =>
-    tradeApi.summary().then((d) => { setS(d); setErr(""); }).catch((e) => setErr(String(e)));
+    tradeApi.summary().then((d) => { setS(d); setErr(""); markReady("summary"); }).catch((e) => setErr(String(e)));
 
   const loadSup = () => tradeApi.supervisor().then(setSup).catch(() => {});
 
@@ -75,8 +77,16 @@ export default function SummaryRibbon({ onChanged }: { onChanged?: () => void })
     } catch (e) { setErr(String(e)); } finally { setBusy(false); }
   };
 
+  // NEVER LOADED: the LoadingCard above is already naming "summary" with the
+  // spinner, so a second box here would say the same thing twice — red only
+  // when the failure PERSISTS past LATE_MS, or arrives after data was shown
+  if (!s) {
+    if (err && Date.now() - mountedAt.current >= LATE_MS) {
+      return <div className="rounded-2xl border border-error-300 bg-error-50 p-4 text-sm text-error-600 dark:border-error-500/30 dark:bg-error-500/10">Trade summary unreachable: {err}</div>;
+    }
+    return null;
+  }
   if (err) return <div className="rounded-2xl border border-error-300 bg-error-50 p-4 text-sm text-error-600 dark:border-error-500/30 dark:bg-error-500/10">Trade summary unreachable: {err}</div>;
-  if (!s) return <div className="rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-500 dark:border-white/[0.05] dark:bg-white/[0.03]">loading the terminal…</div>;
 
   const tone = (v: number) => (v > 0 ? "up" : v < 0 ? "down" : "flat");
   return (

@@ -1,7 +1,9 @@
 "use client";
 /** Per-coin and per-day realized PnL. Every total here is summed from the
  * rows shown beside it, so the caption cannot disagree with the table. */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { markReady } from "@/lib/loading";
+import PanelStatus from "./PanelStatus";
 import { DayStat, fmtMoney, tradeApi } from "@/lib/api";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -12,13 +14,16 @@ export default function PnlPanel() {
   const [days, setDays] = useState<Record<string, DayStat>>({});
   const [dry, setDry] = useState(false);
   const [err, setErr] = useState("");
+  // an empty profit book is real data — "has it EVER loaded" is its own flag,
+  // because days starts as {} and `!== null` would call it loaded at birth
+  const got = useRef(false);
 
   useEffect(() => {
     let dead = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const load = () => {
       Promise.all([tradeApi.pnlByCoin(dry), tradeApi.pnlDaily(dry)])
-        .then(([c, d]) => { if (!dead) { setCoins(c.coins); setDays(d.days); setErr(""); } })
+        .then(([c, d]) => { if (!dead) { setCoins(c.coins); setDays(d.days); setErr(""); got.current = true; markReady("profit"); } })
         .catch((e) => {
           if (dead) return;
           setErr(String(e));
@@ -55,7 +60,7 @@ export default function PnlPanel() {
             paper book
           </label>
         </div>
-        {err && <p className="px-5 pt-2 text-theme-sm text-error-500">{err}</p>}
+        <PanelStatus err={err} loaded={got.current} />
         <div className="max-h-72 w-full overflow-y-auto p-2">
           <Table fixed>
             <TableHeader className="sticky top-0 bg-white dark:bg-gray-900">

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 35, "total": 35, "rows": 3059922, "note": "ARPA 30m: rule 4/120 (trend50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:23:40Z"}
+{"shard": 1, "stage": "testing", "done": 35, "total": 35, "rows": 3077962, "note": "ARPA 30m: rule 87/120 (cf_triple_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:24:26Z"}

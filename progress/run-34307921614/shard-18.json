@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 45, "total": 45, "rows": 4097974, "note": "WIF 30m: rule 78/120 (cf_mom_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:14:51Z"}
+{"shard": 18, "stage": "testing", "done": 45, "total": 45, "rows": 4108534, "note": "WIF 1h: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:15:41Z"}

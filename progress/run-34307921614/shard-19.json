@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 44, "total": 44, "rows": 4322726, "note": "ZIL 1d: 394 bars \u00b7 Aug 11, 2025 12:00am \u2192 Sep 08, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:14:05Z"}
+{"shard": 19, "stage": "testing", "done": 45, "total": 45, "rows": 4360394, "note": "ZINC 30m: rule 9/120 (fib382)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:14:50Z"}

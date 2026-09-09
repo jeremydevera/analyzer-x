@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 3, "total": 3, "rows": 258544, "note": "XAU 15m: rule 70/120 (cmf20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:50:07Z"}
+{"shard": 19, "stage": "testing", "done": 3, "total": 3, "rows": 352264, "note": "XAU 1d: rule 49/120 (vwaprev)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:50:52Z"}

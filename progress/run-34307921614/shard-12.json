@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 32, "total": 32, "rows": 2684640, "note": "OL 15m: rule 93/120 (cf_soup_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:33:16Z"}
+{"shard": 12, "stage": "testing", "done": 32, "total": 32, "rows": 2689500, "note": "OL 30m: 18,959 bars \u00b7 Aug 10, 2025 6:00am \u2192 Sep 09, 2026 5:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:34:01Z"}

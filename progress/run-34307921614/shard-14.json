@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 49, "total": 49, "rows": 4294534, "note": "TAIKO 30m: rule 72/120 (force13)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:24:26Z"}
+{"shard": 14, "stage": "testing", "done": 49, "total": 49, "rows": 4305094, "note": "TAIKO 1h: 9,479 bars \u00b7 Aug 10, 2025 8:00am \u2192 Sep 09, 2026 6:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:25:13Z"}

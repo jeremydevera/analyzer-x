@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 12, "total": 12, "rows": 978638, "note": "PEOPLE 15m: rule 81/120 (cf_donch_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:33:43Z"}
+{"shard": 13, "stage": "testing", "done": 12, "total": 12, "rows": 987218, "note": "PEOPLE 15m: rule 120/120 (cf_stflip_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:34:29Z"}

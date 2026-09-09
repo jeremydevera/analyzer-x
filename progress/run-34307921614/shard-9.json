@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 1, "total": 1, "rows": 80362, "note": "INX 4h: rule 41/120 (tsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:42:25Z"}
+{"shard": 9, "stage": "testing", "done": 2, "total": 2, "rows": 106554, "note": "IN 15m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:43:15Z"}

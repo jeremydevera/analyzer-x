@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 29, "total": 29, "rows": 2431198, "note": "BSV 1h: 9,479 bars \u00b7 Aug 10, 2025 7:00am \u2192 Sep 09, 2026 5:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:00:30Z"}
+{"shard": 3, "stage": "testing", "done": 29, "total": 29, "rows": 2449458, "note": "BSV 1h: rule 78/120 (cf_mom_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:01:15Z"}

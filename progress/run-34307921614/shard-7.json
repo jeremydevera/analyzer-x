@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 28, "total": 28, "rows": 2127412, "note": "GIGGLE 1d: 352 bars \u00b7 Sep 22, 2025 12:00am \u2192 Sep 08, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:41:37Z"}
+{"shard": 7, "stage": "testing", "done": 30, "total": 30, "rows": 2203952, "note": "GLM 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:42:30Z"}

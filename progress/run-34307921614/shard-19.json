@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 9, "total": 9, "rows": 860304, "note": "XLE 15m: downloading candles", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:07:30Z"}
+{"shard": 19, "stage": "testing", "done": 9, "total": 9, "rows": 906244, "note": "XLE 1h: rule 15/120 (bbbreak)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:08:15Z"}

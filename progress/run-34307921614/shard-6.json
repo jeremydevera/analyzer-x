@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 4, "total": 4, "rows": 270612, "note": "EIGEN 30m: 18,959 bars \u00b7 Aug 10, 2025 4:00am \u2192 Sep 09, 2026 3:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:56:41Z"}
+{"shard": 6, "stage": "testing", "done": 4, "total": 4, "rows": 276332, "note": "EIGEN 30m: rule 20/120 (stoch14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:57:26Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 8, "total": 8, "rows": 605326, "note": "PEAQ 1h: rule 93/120 (cf_soup_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:10:28Z"}
+{"shard": 13, "stage": "testing", "done": 9, "total": 9, "rows": 647990, "note": "PENDLE 15m: downloading candles", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:11:15Z"}

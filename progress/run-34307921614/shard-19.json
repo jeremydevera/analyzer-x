@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 40, "total": 40, "rows": 3954592, "note": "ZETA 4h: rule 76/120 (cf_mom)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:03:09Z"}
+{"shard": 19, "stage": "testing", "done": 41, "total": 41, "rows": 3993776, "note": "ZHIPUSTOCK 30m: 3,796 bars \u00b7 Jun 22, 2026 4:00am \u2192 Sep 09, 2026 5:30am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:03:56Z"}

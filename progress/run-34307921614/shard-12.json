@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 22, "total": 22, "rows": 1717488, "note": "NVIDIA 15m: rule 34/120 (lrslope)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:45:05Z"}
+{"shard": 12, "stage": "testing", "done": 22, "total": 22, "rows": 1726128, "note": "NVIDIA 15m: rule 82/120 (cf_maobv)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:45:51Z"}

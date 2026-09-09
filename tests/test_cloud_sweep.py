@@ -253,11 +253,11 @@ def test_no_artifact_is_unpacked_on_the_system_drive():
 
 
 def test_the_scratch_sits_on_the_stores_own_drive(tmp_path, monkeypatch):
-    from tradingagents import cloud_sweep as cs, market_sweep as msw
-
     import os
     import pathlib
     import tempfile
+
+    from tradingagents import cloud_sweep as cs, market_sweep as msw
 
     monkeypatch.setattr(msw, "HOME", tmp_path)
     got = cs._scratch()

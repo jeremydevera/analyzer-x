@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 2, "total": 2, "rows": 174416, "note": "XAUT 30m: rule 117/120 (cf_diadx_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:48:28Z"}
+{"shard": 19, "stage": "testing", "done": 2, "total": 2, "rows": 201916, "note": "XAUT 4h: 2,369 bars \u00b7 Aug 10, 2025 4:00am \u2192 Sep 08, 2026 8:00pm \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:49:22Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 11, "total": 11, "rows": 931516, "note": "CHEEMS 30m: rule 111/120 (cf_fundfade_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:36:37Z"}
+{"shard": 4, "stage": "testing", "done": 11, "total": 11, "rows": 940096, "note": "CHEEMS 1h: rule 24/120 (psar)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:37:22Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 42, "total": 42, "rows": 3656204, "note": "ASTER 15m: rule 54/120 (fractal5)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:43:06Z"}
+{"shard": 1, "stage": "testing", "done": 42, "total": 42, "rows": 3667904, "note": "ASTER 30m: 17,044 bars \u00b7 Sep 19, 2025 3:30am \u2192 Sep 09, 2026 5:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:44:00Z"}

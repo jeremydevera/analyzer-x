@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 40, "total": 40, "rows": 3339874, "note": "TST 30m: 18,959 bars \u00b7 Aug 10, 2025 7:00am \u2192 Sep 09, 2026 6:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:35:31Z"}
+{"shard": 17, "stage": "testing", "done": 40, "total": 40, "rows": 3342074, "note": "TST 30m: rule 4/120 (trend50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:36:16Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 19, "total": 19, "rows": 1769568, "note": "ETHFI 30m: rule 55/120 (nhigh50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:08:12Z"}
+{"shard": 6, "stage": "testing", "done": 19, "total": 19, "rows": 1783648, "note": "ETHFI 1h: 9,479 bars \u00b7 Aug 10, 2025 6:00am \u2192 Sep 09, 2026 4:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:09:05Z"}

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 4, "total": 4, "rows": 284342, "note": "BLUAI 15m: rule 54/120 (fractal5)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:55:12Z"}
+{"shard": 3, "stage": "testing", "done": 4, "total": 4, "rows": 292262, "note": "BLUAI 15m: rule 90/120 (cf_chan_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:55:58Z"}

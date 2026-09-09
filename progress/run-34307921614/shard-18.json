@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 5, "total": 5, "rows": 499502, "note": "UNI 4h: rule 4/120 (trend50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:04:45Z"}
+{"shard": 18, "stage": "testing", "done": 7, "total": 7, "rows": 550500, "note": "UP 15m: downloading candles", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:05:31Z"}

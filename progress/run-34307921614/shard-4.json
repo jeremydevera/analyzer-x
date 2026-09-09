@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 32, "total": 32, "rows": 2680598, "note": "COLLECT 30m: rule 45/120 (zscore20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:04:09Z"}
+{"shard": 4, "stage": "testing", "done": 32, "total": 32, "rows": 2694598, "note": "COLLECT 1h: 6,092 bars \u00b7 Dec 29, 2025 10:00am \u2192 Sep 09, 2026 5:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:04:56Z"}

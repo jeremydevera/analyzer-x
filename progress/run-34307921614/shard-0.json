@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 20, "total": 20, "rows": 1961204, "note": "ACT 4h: rule 13/120 (pivot)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:43:34Z"}
+{"shard": 0, "stage": "testing", "done": 21, "total": 21, "rows": 1996404, "note": "ACU 15m: 22,254 bars \u00b7 Jan 20, 2026 10:00am \u2192 Sep 09, 2026 5:15am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:44:21Z"}

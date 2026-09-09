@@ -19,6 +19,7 @@ token (local runs, tests) it falls back to the old static slice.
 import glob
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -208,6 +209,28 @@ def window(df):
 
 # ------------------------------------------------------------ saved positions
 PRIOR: dict = {}          # "COIN-tf" -> path of its saved position, if any
+STATE_IN_MIN_FREE_GB = 2.0   # kept for the shard's own rows and states
+
+
+def _free_gb(path: str = ".") -> float:
+    try:
+        return shutil.disk_usage(path).free / 1e9
+    except Exception:                                            # noqa: BLE001
+        return float("inf")
+
+
+def _state_artifact_bytes(run_id: str, repo: str):
+    """What a run's `state-*` artifacts weigh, from the API; None when unknown.
+    The download extracts to about the same size (the members are .json.gz)."""
+    cmd = ["gh", "api", f"repos/{repo}/actions/runs/{run_id}/artifacts?per_page=100"]
+    try:
+        got = subprocess.run(cmd, capture_output=True, text=True, timeout=120)  # noqa: S603
+        arts = json.loads(got.stdout or "{}").get("artifacts") or []
+        return sum(int(a.get("size_in_bytes") or 0) for a in arts
+                   if str(a.get("name") or "").startswith("state-")
+                   and not a.get("expired"))
+    except Exception:                                            # noqa: BLE001
+        return None
 
 
 def _bump(name: str) -> None:
@@ -223,12 +246,26 @@ def fetch_prior_states() -> dict:
     A run that cannot be downloaded (expired artifact, no permission, a
     network blip) costs nothing but a full measure for the pairs it held —
     named in the log, never a dead shard. Needs `actions: read` on the
-    workflow token, which sweep.yml grants."""
+    workflow token, which sweep.yml grants.
+
+    Every machine downloads EVERY machine's positions — it cannot know which
+    coins it will claim. A whole-market run saves ~2.2 MB per pair, so 5,347
+    pairs are ~12 GB on each runner's disk (~21 GB free on ubuntu-latest,
+    measured Sep 09, 2026). A run that will not fit is skipped up front, and a
+    download that fails half-way is removed, so the shard's own rows and
+    states never hit a full disk."""
     if MODE != "update" or not STATE_RUNS:
         return {}
     repo = os.environ.get("GITHUB_REPOSITORY", "")
     index: dict = {}
     for run_id in STATE_RUNS:
+        free = _free_gb()
+        size = _state_artifact_bytes(run_id, repo) if repo else None
+        if size is not None and size / 1e9 > free - STATE_IN_MIN_FREE_GB:
+            log(f"saved positions from run {run_id}: {size / 1e9:.1f} GB of "
+                f"artifacts against {free:.1f} GB of disk free — not downloaded; "
+                f"its pairs are measured in full")
+            continue
         dest = os.path.join("state_in", run_id)
         os.makedirs(dest, exist_ok=True)
         cmd = ["gh", "run", "download", str(run_id), "-p", "state-*", "-D", dest]
@@ -238,21 +275,25 @@ def fetch_prior_states() -> dict:
             got = subprocess.run(cmd, capture_output=True, text=True,
                                  timeout=1800)                        # noqa: S603
         except Exception as exc:                                    # noqa: BLE001
+            shutil.rmtree(dest, ignore_errors=True)
             log(f"saved positions from run {run_id}: could not download "
                 f"({type(exc).__name__}: {str(exc)[:80]}) — its pairs are "
                 f"measured in full")
             continue
         if got.returncode != 0:
+            shutil.rmtree(dest, ignore_errors=True)   # a half-download must not eat the disk
             log(f"saved positions from run {run_id}: gh run download failed "
                 f"({(got.stderr or '').strip()[:120]}) — its pairs are "
                 f"measured in full")
             continue
-        n = 0
+        n, on_disk = 0, 0
         for path in glob.glob(os.path.join(dest, "**", "*.json.gz"),
                               recursive=True):
             index[os.path.basename(path)[:-len(".json.gz")]] = path
             n += 1
-        log(f"saved positions from run {run_id}: {n} pair(s)")
+            on_disk += os.path.getsize(path)
+        log(f"saved positions from run {run_id}: {n} pair(s) · "
+            f"{on_disk / 1e6:,.0f} MB on disk · {_free_gb():.1f} GB free")
     log(f"{len(index)} pair(s) have a saved position to continue from")
     return index
 

@@ -117,6 +117,8 @@ def test_fetch_prior_states_downloads_state_artifacts_oldest_first(shard, monkey
         stderr = ""
 
     def fake_run(cmd, **kw):
+        if cmd[:3] != ["gh", "run", "download"]:
+            return R()                # the size look-up: no stdout → unknown size
         calls.append(cmd)
         run_id = cmd[3]
         d = tmp_path / "state_in" / run_id / "state-0"
@@ -142,6 +144,55 @@ def test_fetch_prior_states_survives_a_failed_download(shard, monkeypatch):
         stderr = "HTTP 404: not found"
     monkeypatch.setattr(shard.subprocess, "run", lambda cmd, **kw: R())
     assert shard.fetch_prior_states() == {}     # every pair measured in full
+
+
+def test_fetch_prior_states_refuses_positions_the_disk_cannot_hold(shard, monkeypatch):
+    """Whole-market arithmetic (harddev, after the 2-coin proof of Sep 09,
+    2026): ~2.2 MB of saved position per pair × 5,347 pairs is ~12 GB, and
+    EVERY machine downloads all of it because it cannot know which coins it
+    will claim. A runner that cannot hold it measures in full — it must not
+    die of a full disk half-way through the download, or later, writing its
+    own rows."""
+    logs = []
+    monkeypatch.setattr(shard, "log", lambda m: logs.append(m))
+    monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
+    monkeypatch.setattr(shard, "_free_gb", lambda path=".": 9.0)
+    monkeypatch.setattr(shard, "_state_artifact_bytes", lambda run_id, repo: 12_000_000_000)
+    monkeypatch.setattr(shard.subprocess, "run",
+                        lambda *a, **k: pytest.fail("must not download what will not fit"))
+    assert shard.fetch_prior_states() == {}
+    assert sum(1 for m in logs if "12.0 GB" in m and "9.0 GB" in m
+               and "measured in full" in m) == 2, logs      # one line per run
+
+    # 12 GB against 21 GB free (the runner measured Sep 09, 2026) DOES fit
+    monkeypatch.setattr(shard, "_free_gb", lambda path=".": 21.0)
+    fits = []
+    monkeypatch.setattr(shard.subprocess, "run", lambda cmd, **k: fits.append(cmd) or
+                        type("R", (), {"returncode": 1, "stderr": ""})())
+    shard.fetch_prior_states()
+    assert [c[3] for c in fits] == ["111", "222"]
+
+
+def test_a_failed_state_download_leaves_nothing_on_disk(shard, monkeypatch, tmp_path):
+    """`gh run download` extracts as it goes; a run that dies half-way (a
+    full disk, a cut connection) leaves files that would otherwise sit on the
+    runner for the whole shard — and, unindexed, buy nothing."""
+    monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
+    monkeypatch.setattr(shard, "_state_artifact_bytes", lambda run_id, repo: None)
+
+    class R:
+        returncode = 1
+        stderr = "HTTP 500"
+
+    def fake_run(cmd, **kw):
+        d = tmp_path / "state_in" / cmd[3] / "state-0"
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "AAA-15m.json.gz").write_bytes(b"half")
+        return R()
+    monkeypatch.setattr(shard.subprocess, "run", fake_run)
+    assert shard.fetch_prior_states() == {}
+    assert not (tmp_path / "state_in" / "111").exists()
+    assert not (tmp_path / "state_in" / "222").exists()
 
 
 def test_the_row_shape_is_one_shape(shard):

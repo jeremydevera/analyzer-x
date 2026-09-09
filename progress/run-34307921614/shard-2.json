@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 20, "total": 20, "rows": 1938982, "note": "BANANAS31 15m: downloading candles", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:09:12Z"}
+{"shard": 2, "stage": "testing", "done": 20, "total": 20, "rows": 1940182, "note": "BANANAS31 15m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:10:06Z"}

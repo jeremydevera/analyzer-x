@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 30, "total": 30, "rows": 2744292, "note": "KAS 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:20:02Z"}
+{"shard": 9, "stage": "testing", "done": 30, "total": 30, "rows": 2750952, "note": "KAS 15m: rule 34/120 (lrslope)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:20:47Z"}

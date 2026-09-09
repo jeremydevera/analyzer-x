@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 43, "total": 43, "rows": 3588136, "note": "ROSE 15m: rule 42/120 (rsidiv)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:37:48Z"}
+{"shard": 14, "stage": "testing", "done": 43, "total": 43, "rows": 3595136, "note": "ROSE 15m: rule 78/120 (cf_mom_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:38:35Z"}

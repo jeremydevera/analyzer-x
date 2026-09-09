@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 34, "total": 34, "rows": 3145238, "note": "STX 1h: rule 16/120 (keltner)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:43:08Z"}
+{"shard": 16, "stage": "testing", "done": 34, "total": 34, "rows": 3167678, "note": "STX 1h: rule 120/120 (cf_stflip_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:43:53Z"}

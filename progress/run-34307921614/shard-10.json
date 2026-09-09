@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 32, "total": 32, "rows": 3235844, "note": "MANTRA 4h: 1,133 bars \u00b7 Mar 04, 2026 8:00am \u2192 Sep 09, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:32:33Z"}
+{"shard": 10, "stage": "testing", "done": 33, "total": 33, "rows": 3282444, "note": "MARASTOCK 30m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:33:19Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 7, "total": 7, "rows": 485344, "note": "TENCENTSTOCK 30m: rule 59/120 (choch)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:02:29Z"}
+{"shard": 17, "stage": "testing", "done": 8, "total": 8, "rows": 549914, "note": "TERSTOCK 15m: rule 115/120 (cf_diadx)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:03:14Z"}

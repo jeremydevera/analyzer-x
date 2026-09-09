@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 3, "total": 3, "rows": 285794, "note": "1000000MOG 1h: 9,479 bars \u00b7 Aug 10, 2025 5:00am \u2192 Sep 09, 2026 3:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:07:52Z"}
+{"shard": 0, "stage": "testing", "done": 3, "total": 3, "rows": 300194, "note": "1000000MOG 1h: rule 67/120 (pinbar)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:08:37Z"}

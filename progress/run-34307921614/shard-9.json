@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 56, "total": 56, "rows": 4946450, "note": "MAGIC 30m: rule 14/120 (bb20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:20:47Z"}
+{"shard": 9, "stage": "testing", "done": 56, "total": 56, "rows": 4966250, "note": "MAGIC 30m: rule 105/120 (cf_eqhl_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:21:32Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 37, "total": 37, "rows": 3532174, "note": "ZEN 15m: rule 56/120 (insidebrk)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:47:34Z"}
+{"shard": 19, "stage": "testing", "done": 37, "total": 37, "rows": 3546254, "note": "ZEN 15m: rule 120/120 (cf_stflip_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:48:20Z"}

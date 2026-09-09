@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 34, "total": 34, "rows": 3486602, "note": "BEAT 1h: 7,485 bars \u00b7 Nov 01, 2025 9:00am \u2192 Sep 09, 2026 5:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:35:47Z"}
+{"shard": 2, "stage": "testing", "done": 34, "total": 34, "rows": 3506402, "note": "BEAT 1h: rule 97/120 (cf_ttm)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:36:32Z"}

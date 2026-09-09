@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 1, "total": 1, "rows": 1320, "note": "SONIC 15m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:44:54Z"}
+{"shard": 16, "stage": "testing", "done": 1, "total": 1, "rows": 4180, "note": "SONIC 15m: rule 13/120 (pivot)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:45:39Z"}

@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 3, "total": 3, "rows": 213280, "note": "NICKEL 15m: rule 80/120 (cf_donch_l1)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:46:00Z"}
+{"shard": 12, "stage": "testing", "done": 3, "total": 3, "rows": 236540, "note": "NICKEL 30m: rule 78/120 (cf_mom_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:46:45Z"}

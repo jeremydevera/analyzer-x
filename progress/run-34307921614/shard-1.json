@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 73, "total": 73, "rows": 6329848, "note": "XAI 15m: rule 20/120 (stoch14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:24:20Z"}
+{"shard": 1, "stage": "testing", "done": 73, "total": 73, "rows": 6339928, "note": "XAI 15m: rule 77/120 (cf_mom_l1)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:25:05Z"}

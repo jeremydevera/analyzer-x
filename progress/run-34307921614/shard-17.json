@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 13, "total": 13, "rows": 856148, "note": "THETA 30m: rule 33/120 (heikin)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:18:01Z"}
+{"shard": 17, "stage": "testing", "done": 13, "total": 13, "rows": 867808, "note": "THETA 30m: rule 87/120 (cf_triple_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:18:46Z"}

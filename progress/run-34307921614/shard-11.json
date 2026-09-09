@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 2, "total": 2, "rows": 169950, "note": "MEW 1h: rule 4/120 (trend50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:55:27Z"}
+{"shard": 11, "stage": "testing", "done": 2, "total": 2, "rows": 187770, "note": "MEW 1h: rule 86/120 (cf_triple_l1)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:56:12Z"}

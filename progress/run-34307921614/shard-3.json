@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 8, "total": 8, "rows": 612298, "note": "BMT 15m: rule 24/120 (psar)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:14:52Z"}
+{"shard": 3, "stage": "testing", "done": 8, "total": 8, "rows": 617358, "note": "BMT 15m: rule 47/120 (ibs)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:15:38Z"}

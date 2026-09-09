@@ -501,6 +501,16 @@ def collect_into_store(run_id: int, slug: str | None = None, *,
     if bad:
         logger.warning("cloud sweep: skipped %d unparseable line(s); "
                        "%d rows kept", bad, rows_seen)
+    # OFF THE PENDING BOOKS. Operator, 2026-09-09: pending is what BROKE, so a
+    # pair the fleet measured and this just landed is no longer a problem —
+    # whichever run originally failed it. Never allowed to raise: the rows are
+    # already written and a bookkeeping slip must not look like a failed merge.
+    try:
+        from tradingagents import pending_ledger as _pl
+
+        _pl.clear("backtest", sorted(written))
+    except Exception as exc:                                   # noqa: BLE001
+        logger.warning("cloud sweep: pending ledger clear failed: %r", exc)
     return {"pairs": kept, "rows": rows_seen, "coins": len(coins),
             "artifacts": len(names), "skipped": len(skipped),
             "skipped_pairs": skipped[:20], "unparseable": bad,

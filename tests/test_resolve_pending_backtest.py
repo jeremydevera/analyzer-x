@@ -1,28 +1,34 @@
-"""RESOLVE PENDING on the Backtest screen — measure what was never measured.
+"""RESOLVE PENDING on the Backtest screen — retry what BROKE.
 
 Operator, Sep 05, 2026: *"can you create a buitton called 'Resolve Pending'
 when i click this i want you to resolve all pending, currently there is 681
-pending"*.
+pending"* — and then, redefining it on 2026-09-09:
 
-PENDING here is not the Candles screen's pending (that button already exists
-and is about candle files). It is a pair this PC holds candles for and has
-NEVER measured — no state file. 681 of them when the operator asked, over
-4h: 318, 1d: 211, 1h: 84, 30m: 36, 15m: 32.
+    *"pending only means these are the backtest that had problem during the
+     update backtest or backtest button, resolve mean you will restart or
+     resume where it crash"*
 
-WHY IT DISPATCHES TIMEFRAMES AND NOT A PAIR LIST. The sweep workflow slices
-its coins by index inside each shard (`syms[SHARD::SHARDS]`), so a run cannot
-be aimed at an arbitrary list. It CAN be aimed at timeframes, and the pendings
-are exactly a set of those. The fleet then re-measures pairs this machine has
-already done, which costs GitHub time and costs the store nothing:
-`collect_into_store` refuses to overwrite a pair whose local watermark is
-above zero. And a collected pair DOES get a state file (`save_states` with
-`__cloud__`), which is what makes it stop being pending — without that this
-button could never move the number it is named after.
+So PENDING is no longer "never measured". A pair nobody has swept yet is not a
+problem — 117 of those existed with nothing wrong — and a count that includes
+them can never reach zero. Pending is now the FAILURE LEDGER
+(`pending_ledger`, kind "backtest"): a run tried this pair and it failed, and
+it stays on the books until it actually measures. Never-measured pairs are
+still reported, as `never_measured`, and BACKTEST / UPDATE ALL BACKTESTS are
+the buttons for them.
 
-WHAT THE HARDDEV LOOP FOUND. 24 of the 681 are on 6 contracts MEXC no longer
-lists (ASP, BULLCOIN, CZ, DRV, MEZO, ST). A shard builds its coin list from
-the LIVE contract detail, so no fleet can ever reach them. Unsaid, this button
-would stall the count at 24 and read as broken; it reports the split instead.
+WHY IT DISPATCHES TIMEFRAMES AND NOT A PAIR LIST. The sweep workflow claims
+coins from a shared board inside each run, so a run cannot be aimed at an
+arbitrary list. It CAN be aimed at timeframes, and the failures are a set of
+those. The fleet then re-measures pairs this machine has already done, which
+costs GitHub time and costs the store nothing: `collect_into_store` refuses to
+overwrite a pair whose local watermark is above zero. And a collected pair
+DOES get a state file (`save_states` with `__cloud__`), which is what takes it
+off the books.
+
+WHAT THE HARDDEV LOOP FOUND, kept because the refusals are still live: 24 of
+the original 681 sat on 6 contracts MEXC no longer lists (ASP, BULLCOIN, CZ,
+DRV, MEZO, ST), a busy run's coverage was reported as covering pendings it did
+not reach, and a venue that would not answer must not stall the button.
 """
 from __future__ import annotations
 
@@ -44,8 +50,25 @@ PENDING = {"count": 681, "stored": 5192, "measured": 4511,
            "delisted": 0, "delisted_coins": []}
 
 
+@pytest.fixture(autouse=True)
+def _own_ledger(tmp_path, monkeypatch):
+    """Never touch the operator's real failure ledger."""
+    from tradingagents import pending_ledger as pl
+
+    monkeypatch.setattr(pl, "STATE_DIR", tmp_path)
+    return pl
+
+
+def _broke(pl, by_tf):
+    """Seed the failure ledger — the new source of PENDING."""
+    pl.record("backtest", [(f"C{i}{tf}_USDT", tf, "worker: boom")
+                           for tf, n in by_tf.items() for i in range(n)])
+
+
 @pytest.fixture()
-def client(monkeypatch):
+def client(monkeypatch, _own_ledger):
+    # the failures the button now acts on, in the frames the operator had
+    _broke(_own_ledger, _BY_TF)
     monkeypatch.setattr(bl, "pending", lambda force=False: dict(PENDING))
     monkeypatch.setattr(bl, "pending_pairs", lambda: [("AAA_USDT", "4h")])
     monkeypatch.setattr(cs, "available", lambda: (True, "me/repo"))
@@ -74,11 +97,11 @@ def test_it_dispatches_the_frames_the_pendings_are_in(client, monkeypatch):
     assert "681" in got["why"], got["why"]
 
 
-def test_only_the_frames_that_actually_have_pendings_are_sent(client, monkeypatch):
-    """Sending a frame with nothing pending is twenty runners doing nothing."""
-    monkeypatch.setattr(bl, "pending", lambda force=False: {
-        **PENDING, "count": 318, "by_timeframe": {"4h": 318},
-        "measurable": 318, "measurable_by_timeframe": {"4h": 318}})
+def test_only_the_frames_that_actually_have_pendings_are_sent(client, monkeypatch,
+                                                              _own_ledger):
+    """Sending a frame with nothing FAILED is twenty runners doing nothing."""
+    _own_ledger._write("backtest", {})            # clear the fixture's seed
+    _broke(_own_ledger, {"4h": 318})
     sent: dict = {}
     monkeypatch.setattr(cs, "dispatch", _dispatch_spy(sent))
     client.post("/api/backtest/pending/resolve")
@@ -95,15 +118,18 @@ def test_the_count_is_re_read_not_cached(client, monkeypatch):
     assert asked == [True], "the pending count must be forced, not reused"
 
 
-def test_nothing_pending_dispatches_nothing(client, monkeypatch):
-    monkeypatch.setattr(bl, "pending", lambda force=False: {
-        **PENDING, "count": 0, "by_timeframe": {},
-        "measurable": 0, "measurable_by_timeframe": {}})
+def test_nothing_failed_dispatches_nothing(client, monkeypatch, _own_ledger):
+    """The redefinition, in one test: a store where nothing BROKE has nothing
+    to resolve, even with 681 pairs nobody has ever swept."""
+    _own_ledger._write("backtest", {})            # no failures on the books
     called: list = []
     monkeypatch.setattr(cs, "dispatch", lambda **k: called.append(k))
     got = client.post("/api/backtest/pending/resolve").json()
     assert got["dispatched"] is False and not called
-    assert "nothing is pending" in got["why"]
+    assert "no backtest has failed" in got["why"]
+    # and the never-measured pairs are still SAID, just not called pending
+    assert got["never_measured"] == 681
+    assert "never been measured" in got["why"]
 
 
 # ------------------------------------------- what the fleet cannot reach
@@ -120,19 +146,6 @@ def test_delisted_pairs_are_named_not_silently_left_behind(client, monkeypatch):
     assert "CZ" in got["why"] and "delisted" in got["why"]
     assert got["measurable"] == 679, "and the number it CAN do is said too"
 
-
-def test_all_delisted_means_no_pointless_dispatch(client, monkeypatch):
-    monkeypatch.setattr(bl, "pending", lambda force=False: {
-        **PENDING, "count": 2, "by_timeframe": {"1d": 2},
-        "measurable": 0, "measurable_by_timeframe": {},
-        "too_short": 0, "too_short_by_timeframe": {},
-        "delisted": 2, "delisted_coins": ["CZ", "MEZO"]})
-    called: list = []
-    monkeypatch.setattr(cs, "dispatch", lambda **k: called.append(k))
-    got = client.post("/api/backtest/pending/resolve").json()
-    assert got["dispatched"] is False and not called, \
-        "twenty runners must not be started for work none of them can do"
-    assert "no longer lists" in got["why"]
 
 
 def test_a_venue_that_will_not_answer_still_dispatches(client, monkeypatch):
@@ -247,41 +260,54 @@ SHORT = {**PENDING, "count": 653, "measurable": 8,
          "delisted": 24, "delisted_coins": ["ASP", "BULLCOIN", "CZ"]}
 
 
-def test_only_frames_with_MEASURABLE_pendings_are_sent(client, monkeypatch):
-    """653 pending was 8 measurable. Sending all five frames would put twenty
-    runners on an hour of work to move the count by 8."""
+
+
+
+
+# --------------------------------------------------------------------------
+# The never-measured SPLIT is still computed and still shown — it just no
+# longer decides the dispatch. These guarded it when `pending` meant "never
+# measured"; the knowledge is live (LogsPanel reads it), so they stay, aimed
+# at the field that carries it now.
+# --------------------------------------------------------------------------
+def test_the_never_measured_split_is_still_reported(client, monkeypatch,
+                                                    _own_ledger):
+    """653 pending was 8 measurable, 645 under their timeframe's bar floor.
+    That split still has to reach the screen — a young contract no sweep can
+    make a row from must never read as work waiting to be done."""
+    _own_ledger._write("backtest", {})
     monkeypatch.setattr(bl, "pending", lambda force=False: dict(SHORT))
+    got = client.post("/api/backtest/pending/resolve").json()
+    assert got["dispatched"] is False
+    assert got["never_measured"] == SHORT["count"]
+    assert got["too_short"] == SHORT["too_short"]
+
+
+def test_delisted_coins_are_still_named(client, monkeypatch, _own_ledger):
+    """24 of the operator's 681 were on contracts MEXC no longer lists. A
+    fleet builds its coin list from the live venue, so it can never reach
+    them — unsaid, they read as work that is simply not getting done."""
+    _own_ledger._write("backtest", {})
+    monkeypatch.setattr(bl, "pending", lambda force=False: {
+        **PENDING, "count": 2, "delisted": 2, "delisted_coins": ["CZ", "MEZO"]})
+    got = client.post("/api/backtest/pending/resolve").json()
+    assert got["unreachable"] == 2
+    assert got["unreachable_coins"] == ["CZ", "MEZO"]
+
+
+def test_a_failure_is_pending_even_when_the_pair_was_measured_before(
+        client, monkeypatch, _own_ledger):
+    """The heart of the redefinition. A pair with a state file is NOT
+    never-measured, so the old count could not see it fail. Under "pending =
+    what broke" it is pending, and RESOLVE aims at its frame."""
+    _own_ledger._write("backtest", {})
+    monkeypatch.setattr(bl, "pending", lambda force=False: {
+        **PENDING, "count": 0, "by_timeframe": {},
+        "measurable": 0, "measurable_by_timeframe": {}})
+    _own_ledger.record("backtest", [("ALREADY_USDT", "1h", "worker: MemoryError")])
     sent: dict = {}
     monkeypatch.setattr(cs, "dispatch", _dispatch_spy(sent))
     got = client.post("/api/backtest/pending/resolve").json()
-    assert set(sent["timeframes"].split(",")) == {"15m", "30m"}, sent
-    assert got["measurable"] == 8
-    assert "8 of 653" in got["why"], got["why"]
-    assert "645 under their bar floor" in got["why"]
-
-
-def test_nothing_measurable_dispatches_nothing_and_says_why(client, monkeypatch):
-    """A store whose every pending pair is a young contract. The button must
-    not start a run, and must not read as broken either."""
-    monkeypatch.setattr(bl, "pending", lambda force=False: {
-        **SHORT, "measurable": 0, "measurable_by_timeframe": {}})
-    called: list = []
-    monkeypatch.setattr(cs, "dispatch", lambda **k: called.append(k))
-    got = client.post("/api/backtest/pending/resolve").json()
-    assert got["dispatched"] is False and not called
-    assert "bar floor" in got["why"] and "645" in got["why"]
-    assert "4h: 313" in got["why"], "the frames are named, never just counted"
-    assert "no longer lists" in got["why"] and "ASP" in got["why"]
-
-
-def test_the_split_comes_from_pending_not_a_second_source(client, monkeypatch):
-    """One payload decides the badge, the button and the dispatch. The route
-    used to re-derive the delisted set with its own venue call."""
-    import inspect
-
-    from tradingagents import api as api_mod
-
-    src = inspect.getsource(api_mod.backtest_pending_resolve)
-    assert "measurable_by_timeframe" in src
-    assert "contract/detail" not in src, \
-        "the delisted set is pending()'s job, not a second venue call here"
+    assert got["dispatched"] is True, got
+    assert sent["timeframes"] == "1h"
+    assert got["pending"] == 1

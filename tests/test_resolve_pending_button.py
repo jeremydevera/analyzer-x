@@ -72,7 +72,9 @@ def test_the_job_accepts_the_mode():
 
     src = inspect.getsource(dj._run_download)
     assert 'mode == "resolve"' in src
-    assert "resolve_pairs(" in src
+    # since 2026-09-09 the mode fetches the PENDING LEDGER — "resolve mean you
+    # will restart or resume where it crash" — not a whole-store walk
+    assert '_pl.pending("candles")' in src
 
 
 # ------------------------------------------------------------------ the count
@@ -166,38 +168,47 @@ def test_the_queue_is_exactly_what_the_button_counted(monkeypatch):
     assert len(pairs) == work["count"], (len(pairs), work)
 
 
-def test_the_queue_and_the_count_are_both_published(monkeypatch):
-    """They are DIFFERENT numbers and the screen shows both.
 
-    Measured on the operator's store, Sep 04, 2026: 5,077 pending, 5,173 pairs
-    touched. The 96 extra are pairs on contracts MEXC dropped that are also
-    behind — they get one confirming attempt, because the contract list is
-    filtered by apiAllowed and by quote and a stale answer must not delete work
-    from the queue (CLAUDE.md). A 97th delisted pair is current, so it is not
-    queued at all. Neither number may stand in for the other.
-    """
+
+
+# --------------------------------------------------------------------------
+# PENDING = WHAT BROKE (2026-09-09). "pending only means these are the candles
+# that had problem during the update candles or download candle, resolve mean
+# you will restart or resume where it crash."
+# --------------------------------------------------------------------------
+def test_resolve_fetches_only_what_failed(monkeypatch, tmp_path):
+    """It used to queue 5,192 pairs on a store where nothing had failed — a
+    whole-market update wearing the word "resolve"."""
+    from tradingagents import pending_ledger as pl
+
+    monkeypatch.setattr(pl, "STATE_DIR", tmp_path)
+    pl.record("candles", [("AAA_USDT", "15m", "IncompleteRead"),
+                          ("BBB_USDT", "1h", "timeout")])
+    got = [(r["symbol"], r["timeframe"]) for r in pl.pending("candles")]
+    assert sorted(got) == [("AAA_USDT", "15m"), ("BBB_USDT", "1h")]
+
+
+def test_a_pair_that_succeeds_comes_off_the_books(monkeypatch, tmp_path):
+    """RESUME means the problem is GONE when it is fixed — by any run, not
+    only by the retry that was aimed at it."""
+    from tradingagents import pending_ledger as pl
+
+    monkeypatch.setattr(pl, "STATE_DIR", tmp_path)
+    pl.record("candles", [("AAA_USDT", "15m", "IncompleteRead")])
+    assert pl.count("candles") == 1
+    pl.clear("candles", [("AAA_USDT", "15m")])
+    assert pl.count("candles") == 0
+
+
+def test_the_queue_is_the_ledger(monkeypatch, tmp_path):
+    """`queue` on the badge is what RESOLVE would fetch. It used to be derived
+    from a whole-store walk and disagreed with the button's own count."""
+    from tradingagents import db_jobs as dj, pending_ledger as pl
+
+    monkeypatch.setattr(pl, "STATE_DIR", tmp_path)
     monkeypatch.setattr(dj, "_pending_sources", lambda: {
-        "behind": 5022, "missing": 45, "lost": 10,
-        "delisted": 97, "empty": 0, "indexing": False})
-    monkeypatch.setattr(dj, "resolve_pairs",
-                        lambda lost: ([("X", "1h")] * 5173, [], 45, []))
-    monkeypatch.setattr(dj, "_read", lambda p: {"pairs": []})
+        "behind": 5000, "missing": 3, "lost": 0, "delisted": 0, "empty": 0})
+    pl.record("candles", [("AAA_USDT", "15m", "boom")])
     got = dj.pending_work()
-    assert got["count"] == 5077 and got["queue"] == 5173
-
-    s = _r(SCREEN)
-    assert "pending?.queue" in s, "the dialog must show what will be touched"
-    assert "attempted once to confirm" in s
-
-
-def test_the_queue_falls_back_rather_than_raising(monkeypatch):
-    """A count that raises is a screen with no button at all."""
-    def boom(lost):
-        raise RuntimeError("index gone")
-
-    monkeypatch.setattr(dj, "_pending_sources", lambda: {
-        "behind": 3, "missing": 0, "lost": 0, "delisted": 0, "empty": 0})
-    monkeypatch.setattr(dj, "resolve_pairs", boom)
-    monkeypatch.setattr(dj, "_read", lambda p: {"pairs": []})
-    got = dj.pending_work()
-    assert got["count"] == 3 and got["queue"] == 3
+    assert got["queue"] == 1, "the queue is the failure ledger"
+    assert got["count"] == 5003, "the old arithmetic stays under its own name"

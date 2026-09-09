@@ -931,13 +931,15 @@ def pending_work() -> dict:
     """
     src = _pending_sources()
     count = int(src["behind"]) + int(src["missing"]) + int(src["lost"])
+    # What RESOLVE would actually fetch: the pending LEDGER, since 2026-09-09
+    # ("resolve mean you will restart or resume where it crash"). It is no
+    # longer derived from `resolve_pairs`, which walked the whole store.
     try:
-        rows = _read(FILES["download"]["lost"]).get("pairs") or []
-        queue = len(resolve_pairs([[r.get("symbol"), r.get("timeframe")]
-                                   if isinstance(r, dict) else r
-                                   for r in rows])[0])
+        from tradingagents import pending_ledger as _pl
+
+        queue = _pl.count("candles")
     except Exception:                                          # noqa: BLE001
-        queue = count
+        queue = 0
     return {**src, "count": count, "queue": queue,
             "unfixable": int(src["delisted"]) + int(src["empty"]),
             "checked": int(time.time())}
@@ -981,10 +983,31 @@ def _run_download(spec: dict) -> None:
         # file for ever and the button would keep offering it.
         delisted = []
     elif mode == "resolve":
-        # The RESOLVE PENDING button: every fixable pending at once, with the
-        # known failures at the front (see resolve_pairs).
-        pairs, likely_gone, n_missing, lost_before = resolve_pairs(
-            _read(f["lost"]).get("pairs") or [])
+        # RESOLVE = RESUME WHERE IT CRASHED. Operator, 2026-09-09: "pending
+        # only means these are the candles that had problem during the update
+        # candles or download candle, resolve mean you will restart or resume
+        # where it crash". So this fetches EXACTLY the pairs on the pending
+        # ledger — the ones that failed — and nothing else. It used to queue
+        # every stale and never-stored pair too: 5,192 pairs on a store where
+        # nothing had failed, which is a whole-market update wearing the word
+        # "resolve".
+        # GUARDED. An unreadable ledger must mean "nothing to resolve", not a
+        # dead download job: this read is the FIRST thing the mode does, so an
+        # exception here kills the run before it fetches a single pair.
+        try:
+            from tradingagents import pending_ledger as _pl
+
+            broke = [(r["symbol"], r["timeframe"]) for r in _pl.pending("candles")]
+        except Exception as exc:                               # noqa: BLE001
+            print(f"[download] could not read the pending ledger: "
+                  f"{type(exc).__name__}: {exc} — resolving nothing rather "
+                  f"than guessing at the whole store", flush=True)
+            broke = []
+        likely_gone = [f"{c} {tf}" for c, tf in broke if is_delisted(c)]
+        pairs, n_missing, lost_before = broke, 0, broke
+        print(f"[download] RESOLVE: {len(pairs)} pair(s) that failed a "
+              f"previous run" + (" — nothing is pending, nothing to do"
+                                 if not pairs else ""), flush=True)
         if likely_gone:
             print(f"[download] {len(likely_gone)} pair(s) the venue no longer "
                   f"lists will be attempted once and then named as delisted: "
@@ -1004,6 +1027,9 @@ def _run_download(spec: dict) -> None:
     stored, stopped, done, retries = 0, False, 0, 0
     failed: list[str] = []                 # "COIN tf: why" — one per pair given up on
     failed_pairs: list[list[str]] = []
+    # pairs this run FETCHED cleanly — they come off the pending ledger even
+    # if an unrelated run put them there (2026-09-09)
+    ok_pairs: list[tuple[str, str]] = []
     tries: dict[tuple[str, str], int] = {}
     queue = deque(pairs)
     while queue:
@@ -1032,6 +1058,11 @@ def _run_download(spec: dict) -> None:
             df, added, _src = msw.refresh_candles(c, tf, days=365)
             pqs.save_candles(c, tf, df)          # the parquet copy, atomically
             stored += int(added)
+            # OFF THE BOOKS. Operator, 2026-09-09: "pending only means these
+            # are the candles that had problem during the update candles or
+            # download candle". A pair that just fetched cleanly is not a
+            # problem any more, whichever run fixed it.
+            ok_pairs.append((c, tf))
         except Exception as exc:
             why = str(exc)[:80]
             if is_transient(exc) and n < PAIR_RETRIES:
@@ -1138,6 +1169,27 @@ def _run_download(spec: dict) -> None:
         print(f"[download] could not refresh the candle index: "
               f"{type(exc).__name__}: {exc} — the pending count will lag "
               f"until something else rebuilds it", flush=True)
+
+    # THE PENDING LEDGER — what BROKE, kept until it is fixed. Operator,
+    # 2026-09-09: "pending only means these are the candles that had problem
+    # during the update candles or download candle, resolve mean you will
+    # restart or resume where it crash". Successes are cleared FIRST so a
+    # pair that failed and then succeeded inside one run (a redo that worked)
+    # does not end the run on the books.
+    try:
+        from tradingagents import pending_ledger as _pl
+
+        _pl.clear("candles", ok_pairs)
+        _pl.record("candles",
+                   [(c, tf, next((x.split(": ", 1)[-1] for x in failed
+                                  if x.startswith(f"{c} {tf}:")), "failed"))
+                    for c, tf in failed_pairs],
+                   run=str(spec.get("mode") or "download"))
+    except Exception as exc:                                   # noqa: BLE001
+        # NAMED: a ledger that silently stops recording turns the pending
+        # count into a permanent zero, which reads as "nothing is wrong".
+        print(f"[download] could not update the pending ledger: "
+              f"{type(exc).__name__}: {exc}", flush=True)
 
     # what this run could not get, for the next update to ask for again;
     # a clean run empties it

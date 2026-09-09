@@ -29,6 +29,72 @@ this repo is also part of the record.
 
 ---
 
+## RCA-2026-09-09-L — "pending" counted the clock and the never-done, so neither number could ever reach zero
+
+**SAW** — the operator, after a week of chasing counts that came back on their
+own: *"pending only means these are the candles that had problem during the
+update candles or download candle, resolve mean you will restart or resume
+where it crash / same as on backtest"*. Before that, on the same day:
+*"does the resolve pending 117 shows if the bar is not updated?"* — no, it did
+not, and finding that out took reading the emitter.
+
+**TIMELINE**
+
+1. `Sep 06, 10:55pm` — the candle count is driven to **0** after three
+   RESOLVE presses (5,152 + 1,722 + 252 pairs, 161,373 bars, zero errors).
+2. `Sep 06, 9:33am` — it reads **5,095** again. Nothing failed. "Behind" is
+   measured against the CLOCK, so a 15m pair is behind fifteen minutes after
+   any run; 5,095 of ~5,190 stored pairs qualified, a median 12.6h old.
+3. `Sep 09` — the BACKTEST count reads **117**: pairs with no measurement
+   file, whether a run had ever tried them or not. A pair measured last week
+   with 500 new bars since is invisible to it — it has a file.
+4. Both numbers were therefore un-zeroable by design, and RESOLVE acted on
+   them: the candles button queued **5,192 pairs on a store where nothing had
+   failed** — a whole-market update wearing the word "resolve".
+
+**ROOT CAUSE** — "pending" was defined as *not finished* rather than *broken*,
+and the real failures had nowhere durable to live. `db_download.lost.json` is
+rewritten at the end of EVERY download ("a clean run empties it"), so a
+whole-market run's losses vanished the moment somebody fetched one coin, and a
+shard's named losses reached the LOGS panel only — no button would ever retry
+them.
+
+**FIX** (this commit) — `tradingagents/pending_ledger.py`: a durable per-kind ledger of pairs
+that a run TRIED and FAILED, cleared when the pair actually succeeds (by any
+run — the download, the local sweep, or `collect_into_store` landing fleet
+rows). Both RESOLVE buttons now act on exactly that. Everything else is still
+reported, under its own name: `behind` (freshness, the candle autopilot's job),
+`never_measured`, `too_short`, `unfixable`.
+
+**WHY IT WAS NOT CAUGHT** — they could not: every test asserted the
+OLD definition faithfully, and 17 of them failed the moment the meaning
+changed. This was a specification defect, not a coding one. The tests were
+rewritten to the new meaning rather than deleted, because they carry incident
+knowledge (the busy-run refusal that lied, the pointless all-delisted
+dispatch) that is still live.
+
+**FOUR BUGS THE HARDDEV LOOP FOUND IN THE FIX ITSELF**
+
+1. The sweep records `CETUS_USDT` while `collect_into_store` clears `CETUS` —
+   nothing would ever come off the books, so every landed pair would stay
+   pending for ever. Normalised inside the ledger, not at each call site.
+2. The resolve route answered `pending: 0` while dispatching twenty machines
+   for one failed pair: the success response still carried the never-measured
+   tally (label-must-match-data).
+3. The ledger READ that builds the RESOLVE queue was unguarded — an unreadable
+   file would have killed the whole download job before it fetched a pair.
+4. The guard test that should have caught (3) only inspected the FIRST
+   `pending_ledger` use in each function; it now checks every one, and was
+   proved to bite by removing the guard and watching it fail.
+
+**COST** — none in money. In time: three RESOLVE presses over 42 minutes on
+Sep 06 fetched 6,115 pairs to move a number that was never a problem list, and
+several rounds of "why is it still 5,095".
+
+**GUARD** — `tests/test_pending_ledger.py` (17), plus the rewritten
+`tests/test_resolve_pending_backtest.py` (15) and
+`tests/test_resolve_pending_button.py` (13).
+
 ## RCA-2026-09-09-K — the Stored-strategies panel re-ran the operator's filter 8 times a minute, forever, with nobody touching it
 
 **SAW** — nothing. That is the point. Found by the press log the operator had

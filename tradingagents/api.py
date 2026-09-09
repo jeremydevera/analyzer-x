@@ -852,10 +852,22 @@ def backtest_logs(cloud: bool = True) -> dict:
 
     Operator, 2026-09-03: "create a seperate section called logs just like in
     candles module si i can see what is pending on my side and what are errors".
-    """
-    from tradingagents import backtest_logs as bl
 
-    return bl.logs(include_cloud=cloud)
+    PENDING = pairs a backtest TRIED and FAILED (2026-09-09: "pending only
+    means these are the backtest that had problem during the update backtest
+    or backtest button"). Pairs simply never swept — 117 of them, whether any
+    run ever reached them or not — are still reported, under
+    `never_measured`, because they are worth seeing; they are just not a
+    problem, and a count including them cannot reach zero.
+    """
+    from tradingagents import backtest_logs as bl, pending_ledger as pl
+
+    got = bl.logs(include_cloud=cloud)
+    broke = pl.summary("backtest")
+    never = got.get("pending") or {}
+    return {**got, "pending": {**never, "count": broke["count"],
+                               "failed_pairs": broke["pairs"],
+                               "never_measured": int(never.get("count") or 0)}}
 
 
 def _busy_run_covers(by_tf: dict):
@@ -925,31 +937,33 @@ def backtest_pending_resolve() -> dict:
     # delisted. Promising 653 would send twenty runners for an hour to measure
     # 8 pairs and leave the number at 645 for ever — a button that reads as
     # broken because it was asked to do the impossible.
-    frames = [t for t in ("15m", "30m", "1h", "4h", "1d")
-              if pend.get("measurable_by_timeframe", {}).get(t)]
+    # PENDING = WHAT BROKE (2026-09-09: "pending only means these are the
+    # backtest that had problem during the update backtest or backtest button,
+    # resolve mean you will restart or resume where it crash"). So the frames
+    # come from the FAILED pairs on the ledger, not from pairs nobody ever
+    # swept. When nothing has failed, this button has nothing to do — and
+    # saying so is the honest answer, not dispatching twenty machines at the
+    # whole market.
+    from tradingagents import pending_ledger as pl
+
+    broke = pl.pending("backtest")
+    broke_by_tf: dict = {}
+    for r in broke:
+        broke_by_tf[r.get("timeframe")] = broke_by_tf.get(r.get("timeframe"), 0) + 1
+    frames = [t for t in ("15m", "30m", "1h", "4h", "1d") if broke_by_tf.get(t)]
     short, dead = pend.get("too_short", 0), pend.get("delisted", 0)
     dead_coins = pend.get("delisted_coins") or []
     if not frames:
-        blocked = []
-        if short:
-            worst = ", ".join(
-                f"{t}: {n}" for t, n in
-                sorted((pend.get("too_short_by_timeframe") or {}).items(),
-                       key=lambda kv: -kv[1]))
-            blocked.append(f"{short:,} under their timeframe's bar floor "
-                           f"({worst}) — young contracts, and no sweep makes "
-                           f"a row from a history that short")
-        if dead:
-            blocked.append(f"{dead} on contracts MEXC no longer lists "
-                           f"({', '.join(dead_coins)})")
-        return {"dispatched": False, "pending": pend["count"],
-                "measurable": 0, "too_short": short,
-                "unreachable": dead, "unreachable_coins": dead_coins,
-                "timeframes": [],
-                "why": ("nothing is pending — every pair with candles on this "
-                        "PC has been measured" if not pend["count"] else
-                        "nothing left that a sweep can measure: "
-                        + "; ".join(blocked))}
+        return {"dispatched": False, "pending": len(broke),
+                "failed_pairs": [f"{r['symbol']} {r['timeframe']}" for r in broke],
+                "never_measured": pend.get("count", 0),
+                "too_short": short, "unreachable": dead,
+                "unreachable_coins": dead_coins, "timeframes": [],
+                "why": ("nothing is pending — no backtest has failed. "
+                        + (f"{pend.get('count', 0)} pair(s) have never been "
+                           f"measured, which is not a failure: press BACKTEST "
+                           f"or UPDATE ALL BACKTESTS for those."
+                           if pend.get("count") else ""))}
     ok, why = cs.available()
     if not ok:
         raise HTTPException(400, f"GitHub cannot take it: {why}")
@@ -993,14 +1007,18 @@ def backtest_pending_resolve() -> dict:
     if dead:
         rest.append(f"{dead} delisted ({', '.join(dead_coins)})")
     note = f" · the other {'; '.join(rest)}" if rest else ""
-    return {"dispatched": True, "run": run, "pending": pend["count"],
+    # `pending` is the FAILURE count this button acted on (2026-09-09) — it
+    # reported `pend["count"]`, the never-measured tally, so a dispatch for one
+    # failed pair answered "pending: 0" while starting twenty machines.
+    return {"dispatched": True, "run": run, "pending": len(broke),
+            "failed_pairs": [f"{r['symbol']} {r['timeframe']}" for r in broke],
+            "never_measured": pend.get("count", 0),
             "measurable": reach, "reachable": reach,
             "too_short": short, "unreachable": dead,
             "unreachable_coins": dead_coins,
-            "timeframes": frames, "by_timeframe": pend["by_timeframe"],
-            "why": f"{reach:,} of {pend['count']:,} pending pair(s) can be "
-                   f"measured — sent over {', '.join(frames)}, GitHub run "
-                   f"{run.get('id')}{note}"}
+            "timeframes": frames, "by_timeframe": broke_by_tf,
+            "why": f"{len(broke):,} failed pair(s) — retrying over "
+                   f"{', '.join(frames)}, GitHub run {run.get('id')}{note}"}
 
 
 @app.get("/api/jobs")
@@ -2378,21 +2396,32 @@ def system_staleness() -> dict:
 
 @app.get("/api/candles/pending")
 def candles_pending() -> dict:
-    """How many things in the candle store a RESOLVE would fix — one number.
+    """PENDING = pairs a download or update TRIED and FAILED. Nothing else.
 
-    Operator, Sep 04, 2026: *"RESOLVE THE PENDINGS IN CANDLE STORE, CRATE A
-    BUTTON FIRST CALLED 'RESOLVE PENDING'"*. The button's count and the Pending
-    tab's count come from HERE, so they cannot disagree: the arithmetic used to
-    live in the component while the button read a different field entirely.
+    Operator, 2026-09-09: *"pending only means these are the candles that had
+    problem during the update candles or download candle, resolve mean you
+    will restart or resume where it crash"*.
 
-    Pairs on delisted contracts and pairs the venue serves no candles for are
-    reported as `unfixable` and never added to `count` — a button offering them
-    cannot succeed, and a count including them can never reach zero.
+    `count` used to be behind + missing + lost, and "behind" is the CLOCK: a
+    15m pair is behind fifteen minutes after any run, so the number went 0 at
+    10:55pm to 5,095 by 9:33am with nothing failing. A freshness reading is
+    not a problem list and could never reach zero.
+
+    Everything else is still REPORTED, just not as pending: `behind` (how
+    stale, the candle autopilot's job), `missing` (never stored), and
+    `unfixable` (delisted, or the venue serves no candles). Each is its own
+    field so nothing is hidden — only the MEANING of `count` changed.
     """
-    from tradingagents import db_jobs, positions_view as pv
+    from tradingagents import db_jobs, pending_ledger as pl, positions_view as pv
 
     got = db_jobs.pending_work()
-    return {**got, "checked": pv.fmt_when(got.get("checked"))}
+    broke = pl.summary("candles")
+    return {**got,
+            # the new meaning, and the old arithmetic kept under its own name
+            # so a reader can see both
+            "count": broke["count"], "failed_pairs": broke["pairs"],
+            "count_stale_or_missing": int(got.get("count") or 0),
+            "checked": pv.fmt_when(got.get("checked"))}
 
 
 @app.get("/api/candles/gaps")

@@ -300,12 +300,29 @@ def _read_cloud_errors(limit: int = 200) -> tuple[list, dict]:
         return _cloud_cached([], {"ok": False, "why": f"{type(exc).__name__}: {exc}",
                                   "run": run["databaseId"]}, limit)
     out = []
+    on_books = []
     for sh in shards:
         for line in (sh.get("failed") or []):
             sym, _, text = str(line).partition(":")
+            pair = sym.strip()
             out.append({"where": f"GitHub shard {sh.get('shard')}",
                         "job": "cloud", "when": sh.get("updated", ""),
-                        "pair": sym.strip(), "text": text.strip() or str(line)})
+                        "pair": pair, "text": text.strip() or str(line)})
+            # A FLEET LOSS IS A PENDING TOO (2026-09-09: "pending only means
+            # these are the backtest that had problem"). The shard names its
+            # lost pairs as "SYM tf: why"; they went to the LOGS panel only,
+            # so a pair the cloud gave up on was invisible to RESOLVE and no
+            # button would ever retry it.
+            bits = pair.split()
+            if len(bits) == 2:
+                on_books.append((bits[0], bits[1], (text.strip() or "")[:160]))
+    if on_books:
+        try:
+            from tradingagents import pending_ledger as _pl
+
+            _pl.record("backtest", on_books, run=str(run["databaseId"]))
+        except Exception as exc:                               # noqa: BLE001
+            print(f"[logs] pending ledger record failed: {exc!r}", flush=True)
     return _cloud_cached(out, {
         "ok": True, "run": run["databaseId"], "url": run.get("url"),
         "status": run.get("status"), "shards": len(shards),

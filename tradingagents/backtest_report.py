@@ -1242,6 +1242,21 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
                 # queue exactly as they used to push back into the pool.
                 nonlocal_done = {"n": done}
 
+                def _ledger(op, items):
+                    """Pending = what broke (2026-09-09). Never allowed to
+                    raise into the sweep: a bookkeeping failure must not lose
+                    a measurement that already succeeded."""
+                    try:
+                        from tradingagents import pending_ledger as _pl
+
+                        if op == "clear":
+                            _pl.clear("backtest", items)
+                        else:
+                            _pl.record("backtest", items, run="backtest")
+                    except Exception as exc:                   # noqa: BLE001
+                        print(f"[backtest] pending ledger {op} failed: "
+                              f"{type(exc).__name__}: {exc}", flush=True)
+
                 def _on_done(sym, tf, res):
                     _seen.add((sym, tf))
                     nonlocal_done["n"] = len(_seen)
@@ -1249,6 +1264,9 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
                     _say2(f"{show} {tf}: done "
                           f"({nonlocal_done['n']}/{total})", nonlocal_done["n"])
                     measured.append((sym, tf, _slim_pair(res)))
+                    # OFF THE PENDING BOOKS. Operator, 2026-09-09: pending is
+                    # what BROKE, and this pair just measured cleanly.
+                    _ledger("clear", [(sym, tf)])
 
                 def _on_failed(sym, tf, exc, n, gave_up):
                     # Operator, 2026-08-25: "if a coin fails, delete the
@@ -1265,6 +1283,10 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
                                      "why": f"worker: {str(exc)[:60]}"})
                     _seen.add((sym, tf))
                     nonlocal_done["n"] = len(_seen)
+                    # ON THE BOOKS, and it stays there until this pair
+                    # actually measures — the job's own `failed` list holds
+                    # only the LAST run and a later sweep erased it.
+                    _ledger("record", [(sym, tf, f"worker: {str(exc)[:60]}")])
                     _say2(f"{show} {tf}: gave up after {msw.PAIR_RETRIES} "
                           f"retries ({nonlocal_done['n']}/{total})",
                           nonlocal_done["n"])

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 15, "total": 15, "rows": 1277926, "note": "ERA 15m: rule 44/120 (elder)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:42:19Z"}
+{"shard": 6, "stage": "testing", "done": 15, "total": 15, "rows": 1287826, "note": "ERA 15m: rule 90/120 (cf_chan_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:43:05Z"}

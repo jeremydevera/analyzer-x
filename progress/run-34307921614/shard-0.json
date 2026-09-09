@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 35, "total": 35, "rows": 3359410, "note": "AIOT 30m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:00:14Z"}
+{"shard": 0, "stage": "testing", "done": 35, "total": 35, "rows": 3362930, "note": "AIOT 30m: rule 13/120 (pivot)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:01:00Z"}

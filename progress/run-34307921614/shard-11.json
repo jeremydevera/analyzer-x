@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 12, "total": 12, "rows": 1030640, "note": "MNT 15m: rule 40/120 (crsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:43:13Z"}
+{"shard": 11, "stage": "testing", "done": 12, "total": 12, "rows": 1038040, "note": "MNT 15m: rule 78/120 (cf_mom_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:43:58Z"}

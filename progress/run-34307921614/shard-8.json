@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 49, "total": 49, "rows": 4112310, "note": "UB 15m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:23:16Z"}
+{"shard": 8, "stage": "testing", "done": 49, "total": 49, "rows": 4116050, "note": "UB 15m: rule 20/120 (stoch14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:24:05Z"}

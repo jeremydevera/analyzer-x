@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 11, "total": 11, "rows": 975374, "note": "NOKSTOCK 30m: rule 27/120 (aroon25)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:17:36Z"}
+{"shard": 12, "stage": "testing", "done": 12, "total": 12, "rows": 1039814, "note": "NOM 15m: 32,920 bars \u00b7 Oct 01, 2025 6:15am \u2192 Sep 09, 2026 4:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:18:31Z"}

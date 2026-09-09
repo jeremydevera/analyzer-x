@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 30, "total": 30, "rows": 2803832, "note": "KAS 1h: rule 54/120 (fractal5)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:23:49Z"}
+{"shard": 9, "stage": "testing", "done": 30, "total": 30, "rows": 2842992, "note": "KAS 1d: 394 bars \u00b7 Aug 11, 2025 12:00am \u2192 Sep 08, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:24:41Z"}

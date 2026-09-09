@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 21, "total": 21, "rows": 1763828, "note": "DDOGSTOCK 1h: rule 111/120 (cf_fundfade_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:01:23Z"}
+{"shard": 5, "stage": "testing", "done": 23, "total": 23, "rows": 1804838, "note": "DEEP 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:02:11Z"}

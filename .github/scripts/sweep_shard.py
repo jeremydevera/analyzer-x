@@ -71,6 +71,19 @@ STATE_RUNS = [x.strip() for x in os.environ.get("STATE_RUNS", "").split(",")
 # saved position with another fingerprint is measured in full, never continued
 VERSION = f"signals{len(br.SIGNALS)}-th3"
 
+# WHERE TO POST EACH FINISHED PAIR, right now. The operator, Sep 09, 2026:
+# "why not immediately put the results in my pc" — a finished pair used to sit
+# in an artifact until the whole machine stopped, and run 34307921614's rows
+# were still landing fifteen hours after it finished. The url is a one-run
+# Cloudflare address their PC opened before the dispatch; the token is a
+# repository secret (masked in the log). Empty = artifacts only, exactly as
+# before. The artifact is written EITHER WAY: the post is speed, never the
+# record.
+INGEST_URL = (os.environ.get("INGEST_URL") or "").strip().rstrip("/")
+INGEST_TOKEN = (os.environ.get("INGEST_TOKEN") or "").strip()
+INGEST_TRIES = 2
+INGEST_TIMEOUT_S = 90
+
 OUT = os.path.join("out", f"rows-{SHARD}.jsonl")
 STATE_OUT = os.path.join("out", "state")
 os.makedirs("out", exist_ok=True)
@@ -97,6 +110,65 @@ RETRY_COOLDOWN_S = 30.0
 
 def log(msg):
     print(f"[shard {SHARD}] {msg}", flush=True)
+
+
+def post_pair(coin, tf, lines) -> bool:
+    """Send one finished pair's lines to the operator's PC. Best effort.
+
+    Never raises and never stops the sweep: a PC that is asleep, a tunnel that
+    dropped or a slow post costs immediacy only, because these very lines are
+    also in this machine's artifact. Called AFTER the artifact write, so the
+    record exists before the copy leaves.
+    """
+    if not (INGEST_URL and INGEST_TOKEN and lines):
+        return False
+    import gzip
+    import hashlib
+    import hmac
+    import urllib.error
+    import urllib.request
+
+    body = gzip.compress("".join(lines).encode("utf-8"))
+    # SIGNED, not carried: the secret itself never goes on the wire, so a post
+    # that reached the wrong host (a recycled tunnel hostname) teaches it
+    # nothing it can reuse. The path is signed with the body — the receiver
+    # computes the same thing (live_ingest.sign).
+    sig = hmac.new(INGEST_TOKEN.encode(), b"/rows" + body,
+                   hashlib.sha256).hexdigest()
+    req = urllib.request.Request(
+        f"{INGEST_URL}/rows", data=body, method="POST",
+        # NOT Content-Encoding: a proxy may unzip that on the way and the
+        # receiver would get bytes it cannot read. This is a gzip PAYLOAD.
+        headers={"Content-Type": "application/octet-stream",
+                 "X-Ingest-Sig": sig,
+                 "X-Run-Id": os.environ.get("GITHUB_RUN_ID", "")})
+    for attempt in range(1, INGEST_TRIES + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=INGEST_TIMEOUT_S) as r:
+                if r.status == 200:
+                    _bump("posted")
+                    return True
+                why = f"HTTP {r.status}"
+        except urllib.error.HTTPError as exc:
+            why = f"HTTP {exc.code}"
+            if exc.code in (401, 404, 413):
+                # the door is shut, the wrong shape, or the body too big:
+                # trying again cannot help, and 5,000 more posts would only
+                # slow the sweep down
+                globals()["INGEST_URL"] = ""
+                log(f"live posting OFF for this machine ({why}) — every row "
+                    f"still goes to the artifact")
+                _bump("post_failed")
+                return False
+        except Exception as exc:                                # noqa: BLE001
+            why = f"{type(exc).__name__}: {str(exc)[:60]}"
+        if attempt >= INGEST_TRIES:
+            log(f"{coin} {tf}: could not post to the PC ({why}) — it is in "
+                f"the artifact, the collect will land it")
+            _bump("post_failed")
+            return False
+        time.sleep(2.0 * attempt)
+    return False
 
 
 def eligible():
@@ -498,6 +570,7 @@ def continue_pair(sym, tf, prior: dict, out, *, i=0, n=0, rows_so_far=0):
                              "gap_from_ms": last_ms}) + "\n")
     out.write("".join(lines))
     out.flush()
+    post_pair(coin, tf, lines)
     write_state(coin, tf, new_states, last_ms=ts[-1], first_ms=first_ms,
                 bars=bars_total, fee=fee)
     _bump("continued")
@@ -733,6 +806,7 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
                              "rows": kept, "bars": nbars}) + "\n")
     out.write("".join(lines))
     out.flush()
+    post_pair(coin, tf, lines)
     # and the position to continue from next time, beside the rows
     if len(ts):
         write_state(coin, tf, pair_states, last_ms=int(ts[-1]),

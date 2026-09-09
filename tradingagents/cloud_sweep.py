@@ -103,7 +103,7 @@ def available() -> tuple[bool, str]:
 
 def dispatch(*, shards: int = 20, coins: int = 0, timeframes: str = "15m,30m",
              min_days: int = 0, days: int = 365, base: float = 5.0,
-             mode: str = "full", state_runs=()) -> dict:
+             mode: str = "full", state_runs=(), live: bool = True) -> dict:
     """Start a run and return its id and url. `days` is the history window the
     shards measure -- the same number the Backtest screen sends the local job.
 
@@ -115,8 +115,32 @@ def dispatch(*, shards: int = 20, coins: int = 0, timeframes: str = "15m,30m",
     if not ok:
         raise CloudError(slug)
     mode = "update" if str(mode).lower() == "update" else "full"
+    # THE LIVE DOOR (operator, Sep 09, 2026: "i want you to post the result
+    # immediately to my pc"). Opened here, before the machines start, and its
+    # public url handed to them — a machine posts each pair the moment it
+    # finishes instead of leaving everything in an artifact for an hour. Never
+    # fatal: without it the run is exactly what it was, artifacts and all.
+    ingest_url, ingest_why = "", ""
+    if live:
+        try:
+            from tradingagents import live_ingest as li
+
+            got = li.ensure()
+            ingest_url, ingest_why = got.get("url") or "", got.get("why") or ""
+            if ingest_url:
+                # the machines read the secret from the repository; a token
+                # this PC rotated and never pushed is 401 on every post
+                ingest_why = li.sync_secret(slug)
+                if ingest_why:
+                    ingest_url = ""
+        except Exception as exc:                                # noqa: BLE001
+            ingest_why = f"{type(exc).__name__}: {str(exc)[:120]}"
+        if ingest_why:
+            logger.warning("cloud sweep: no live posting this run (%s) — the "
+                           "rows still ride the artifacts", ingest_why)
     before = _runs(slug, limit=1)
     _gh("workflow", "run", WORKFLOW, "--repo", slug,
+        "-f", f"ingest_url={ingest_url}",
         "-f", f"shards={shards}", "-f", f"coins={coins}",
         "-f", f"timeframes={timeframes}", "-f", f"min_days={min_days}",
         # the operator's STAKE. The shard hardcoded 5.0 while the local job
@@ -134,6 +158,9 @@ def dispatch(*, shards: int = 20, coins: int = 0, timeframes: str = "15m,30m",
             r = runs[0]
             return {"id": r["databaseId"], "url": r["url"], "repo": slug,
                     "mode": mode,
+                    # whether the machines are posting straight here, and why
+                    # not when they are not — never a silent downgrade
+                    "live": bool(ingest_url), "live_why": ingest_why,
                     # what this run MEASURES, kept with the run: since the
                     # autopilot stopped dispatching (2026-09-09, "no no no, i
                     # want option to start the backtest"), button dispatches
@@ -396,8 +423,6 @@ def collect_into_store(run_id: int, slug: str | None = None, *,
     appended to rather than replacing what is already there -- but it is why
     peak memory is one pair rather than one shard.
     """
-    from tradingagents import market_sweep as msw
-
     slug = slug or repo_slug()
     names = artifact_names(run_id, slug)
     if not names:
@@ -422,31 +447,23 @@ def collect_into_store(run_id: int, slug: str | None = None, *,
         # counted as never measured both times.
         marks = [r for r in buf if r.get("pair_done")]
         buf = [r for r in buf if not r.get("pair_done")]
+        # A pair refused once stays refused. It has to be its OWN set: marking
+        # it in `written` would make the second sighting of the same pair take
+        # the append branch below and overwrite the very rows being protected.
+        if key in refused:
+            return
         if not buf and marks:
-            if key in refused or key in written:
+            if key in written:
                 return
-            last_ms = max(int(m.get("last_ms") or 0) for m in marks)
-            if not _fresher(coin, tf, last_ms):
+            if land_rows(coin, tf, [], marks=marks) == "stale":
                 refused.add(key)
                 skipped.append(f"{coin} {tf}")
                 return
-            # an EMPTY rows file, exactly what a local sweep leaves when the
-            # trade floor drops everything (the 1d incident, 2026-08-26) —
-            # the state file beside it is what says "measured"
-            msw.save_pair_rows(coin, tf, [])
-            if last_ms:
-                msw.save_states(coin, tf, {"__cloud__": True,
-                                           "__last_ms__": last_ms})
             kept += 1
             written.add(key)
             coins.add(coin)
             return
         if not buf:
-            return
-        # A pair refused once stays refused. It has to be its OWN set: marking
-        # it in `written` would make the second sighting of the same pair take
-        # the append branch below and overwrite the very rows being protected.
-        if key in refused:
             return
         # THE NEWER MEASUREMENT WINS. This used to refuse any pair with a
         # watermark ("never overwrite a pair the Mac finished") — right while
@@ -458,32 +475,20 @@ def collect_into_store(run_id: int, slug: str | None = None, *,
         # away, the Stored strategies still August's. Only a measurement no
         # newer than the stored one is refused now (a stale run landing after
         # a fresher one). The continued run's rows carry their real end bar.
-        last_ms = max(int(r.get("last_ms") or 0) for r in buf + marks)
-        if key not in written and not _fresher(coin, tf, last_ms):
+        # (its history is in `land_rows`, which now holds the rule for both the
+        # collector and the live door)
+        if land_rows(coin, tf, buf, marks=marks,
+                     append=key in written) == "stale":
             refused.add(key)                   # do not re-check it per line
             skipped.append(f"{coin} {tf}")
             return
-        if key in written:                     # a pair split across the file
-            buf = msw.pair_rows(coin, tf) + buf
-        else:
+        if key not in written:
             kept += 1
-        msw.save_pair_rows(coin, tf, buf)
-        if last_ms:
-            # __last_ms__ LAST. `pair_watermark` reads the final 256 bytes and
-            # its regex anchors the key to the closing brace, so writing it
-            # first made every cloud-merged pair read as watermark 0 -- that is
-            # "never measured", which undercounts the progress bar and invites
-            # a re-sweep of work already done.
-            msw.save_states(coin, tf, {"__cloud__": True,
-                                       "__last_ms__": last_ms})
         written.add(key)
         coins.add(coin)
 
     refused: set = set()
     tfs_seen: set = set()
-
-    def _fresher(coin, tf, last_ms) -> bool:
-        return is_fresher(coin, tf, last_ms)
 
     for n, name in enumerate(names, 1):
         with tempfile.TemporaryDirectory() as tmp:
@@ -547,6 +552,43 @@ def collect_into_store(run_id: int, slug: str | None = None, *,
             "why_skipped": ("no newer than the measurement already stored "
                             "(a stale run landing after a fresher one)"
                             if skipped else "")}
+
+
+def land_rows(coin: str, tf: str, rows: list, *, marks=(), append: bool = False) -> str:
+    """Write ONE pair's measurement into the store. Returns "kept", "empty"
+    (a measured pair whose every combination fell under the trade floor) or
+    "stale" (no newer than what is already stored).
+
+    THE ONE PLACE that rule lives. Two paths write cloud measurements now — the
+    collector reading a finished run's artifacts, and the live door taking a
+    pair the moment a machine finishes it (`live_ingest`) — and a store rule
+    with two implementations is how this repo lost a week of measurements
+    (RCA-2026-09-09-P: the collector kept a rule the shard had outgrown).
+    """
+    from tradingagents import market_sweep as msw
+
+    marks = list(marks or [])
+    rows = list(rows or [])
+    if not rows and not marks:
+        return "stale"
+    last_ms = max([int(r.get("last_ms") or 0) for r in rows + marks] or [0])
+    # A pair already written by THIS pass is appended to, not re-judged: the
+    # rows of one pair can be split across a shard file.
+    if not append and not is_fresher(coin, tf, last_ms):
+        return "stale"
+    if append:
+        rows = msw.pair_rows(coin, tf) + rows
+    # an EMPTY rows file is what a local sweep leaves when the trade floor
+    # drops everything (the 1d incident, 2026-08-26) — the state file beside
+    # it is what says "measured"
+    msw.save_pair_rows(coin, tf, rows)
+    if last_ms:
+        # __last_ms__ LAST. `pair_watermark` reads the final 256 bytes and its
+        # regex anchors the key to the closing brace, so writing it first made
+        # every cloud-merged pair read as watermark 0 — "never measured", which
+        # undercounts the progress bar and invites a re-sweep of done work.
+        msw.save_states(coin, tf, {"__cloud__": True, "__last_ms__": last_ms})
+    return "kept" if rows else "empty"
 
 
 def is_fresher(coin: str, tf: str, last_ms: int) -> bool:

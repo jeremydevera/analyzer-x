@@ -178,6 +178,12 @@ class Reporter:
         # the bar read 100% from the first second (RCA-2026-09-09-S).
         self.finished = 0
         self.board = 0
+        # pairs this machine POSTED straight to the operator's PC, and pairs a
+        # post could not reach it with. The PC counts what it actually received
+        # (live_ingest.progress) — these two say what the MACHINE tried, so a
+        # gap between them names a broken tunnel instead of hiding it.
+        self.posted = 0
+        self.post_failed = 0
 
     def __call__(self, stage: str, done: int, total: int, rows: int = 0,
                  note: str = "", force: bool = False,
@@ -222,6 +228,8 @@ class Reporter:
                    "mode": self.mode,
                    "continued": int(self.continued),
                    "fresh": int(self.fresh),
+                   "posted": int(self.posted),
+                   "post_failed": int(self.post_failed),
                    # the WINDOW this run was asked for, so the panel can print
                    # real dates — "i dont see what dates are being tested"
                    # (2026-09-09). Each tile's note carries its pair's exact

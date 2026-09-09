@@ -306,11 +306,49 @@ def test_the_newer_measurement_wins_and_a_stale_one_is_refused(store):
     assert cs.is_fresher("NEW", "1h", 1) is True        # never measured
     src = (REPO / "tradingagents" / "cloud_sweep.py").read_text(encoding="utf-8")
     i = src.index("def collect_into_store(")
-    body = src[i:src.index("\ndef is_fresher(", i)]
-    assert body.count("not _fresher(coin, tf, last_ms)") == 2, \
+    body = src[i:src.index("\ndef land_rows(", i)]
+    assert body.count("land_rows(") == 2, \
         "both the marker-only and the rows branch must ask the one rule"
+    assert "is_fresher(" not in body and "pair_watermark(" not in body, \
+        "the collector must not carry a freshness rule of its own"
     assert "pair_watermark(coin, tf) > 0" not in body, \
         "the store-freezing refusal is back"
+
+
+def test_one_rule_writes_a_pair_whoever_brought_it(store):
+    """`land_rows` is that rule, and BOTH ways in use it — the collector
+    reading a finished run's artifacts, and the live door taking a pair the
+    moment a machine finishes it. Two implementations of one store rule is
+    RCA-2026-09-09-P (the collector kept a rule the shard had outgrown, and
+    threw away 40,148,482 measured rows)."""
+    row = {"coin": "AAA", "tf": "1h", "signal": "mom6", "last_ms": 1_000}
+    assert cs.land_rows("AAA", "1h", [row]) == "kept"
+    assert msw.pair_watermark("AAA", "1h") == 1_000
+
+    assert cs.land_rows("AAA", "1h", [dict(row, last_ms=999)]) == "stale", \
+        "an older run cannot win"
+    assert cs.land_rows("AAA", "1h", [dict(row, last_ms=1_000)]) == "stale", \
+        "equal is not newer"
+    assert len(msw.pair_rows("AAA", "1h")) == 1
+    assert msw.pair_rows("AAA", "1h")[0]["last_ms"] == 1_000
+
+    assert cs.land_rows("AAA", "1h", [dict(row, last_ms=2_000)]) == "kept"
+    assert msw.pair_watermark("AAA", "1h") == 2_000
+
+    # a pair split across a shard file is APPENDED to, never re-judged
+    assert cs.land_rows("AAA", "1h", [dict(row, last_ms=2_000)],
+                        append=True) == "kept"
+    assert len(msw.pair_rows("AAA", "1h")) == 2
+
+    # a measured pair with no row that cleared the trade floor: an EMPTY rows
+    # file plus a watermark, or the pair reads as never measured
+    assert cs.land_rows("BBB", "1h", [], marks=[
+        {"coin": "BBB", "tf": "1h", "pair_done": True, "last_ms": 5_000}]) == "empty"
+    assert msw.pair_rows("BBB", "1h") == []
+    assert msw.pair_watermark("BBB", "1h") == 5_000
+    assert cs.land_rows("BBB", "1h", [], marks=[
+        {"coin": "BBB", "tf": "1h", "pair_done": True, "last_ms": 4_999}]) == "stale"
+    assert cs.land_rows("CCC", "1h", []) == "stale", "nothing to write is not a write"
 
 
 def test_state_runs_are_recorded_per_timeframe_and_expire(store):

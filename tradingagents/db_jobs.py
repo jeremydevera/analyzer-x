@@ -1974,11 +1974,19 @@ def _run_collect(spec: dict) -> None:
         except Exception:                                      # noqa: BLE001
             pass
         return
+    # "SKIPPED" IS NOT A LOSS, and since Sep 09, 2026 it is usually a success:
+    # a machine now posts each pair to this PC the moment it finishes
+    # (live_ingest), so by the time the artifact is collected most pairs are
+    # already here with the very same last bar — refused because equal is not
+    # newer. Saying only "skipped" would read as thousands of pairs thrown
+    # away, which is exactly what this log said while the store really was
+    # frozen (RCA-2026-09-09-P), so the sentence has to tell those apart.
     note = (f"run {run_id}: {got.get('rows', 0):,} row(s) over "
             f"{got.get('pairs', 0):,} pair(s) from {got.get('artifacts', 0)} "
             f"shard file(s)"
-            + (f" · {got.get('skipped', 0)} pair(s) skipped, already measured "
-               f"here" if got.get("skipped") else ""))
+            + (f" · {got.get('skipped', 0)} pair(s) already here and no older "
+               f"(landed live while the run was going, or measured newer since)"
+               if got.get("skipped") else ""))
     print(f"[collect] {note}", flush=True)
     _write(f["progress"], {"running": False, "run": run_id,
                            "finished": int(time.time()), "note": note,

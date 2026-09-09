@@ -35,6 +35,9 @@ on:
       state_runs:
         description: "Comma-separated run ids whose state-* artifacts hold the latest saved positions (update mode); empty = none"
         default: ""
+      ingest_url:
+        description: "Post each finished pair straight to this URL (the operator's PC, through a Cloudflare tunnel); empty = artifacts only"
+        default: ""
 
 permissions:
   contents: write        # shards write their progress to the sweep-progress branch
@@ -89,6 +92,13 @@ jobs:
           BASE_MARGIN: ${{ github.event.inputs.base }}
           MODE: ${{ github.event.inputs.mode }}
           STATE_RUNS: ${{ github.event.inputs.state_runs }}
+          # LIVE POSTING. The url is a one-run Cloudflare address the operator's
+          # PC opened seconds before this run started; the token is a repository
+          # secret, so it is masked in every log. A machine posts each pair the
+          # moment it finishes AND still writes it to the artifact below — the
+          # post is speed, the artifact is the guarantee.
+          INGEST_URL: ${{ github.event.inputs.ingest_url }}
+          INGEST_TOKEN: ${{ secrets.INGEST_TOKEN }}
         run: python .github/scripts/sweep_shard.py
 
       - uses: actions/upload-artifact@v4

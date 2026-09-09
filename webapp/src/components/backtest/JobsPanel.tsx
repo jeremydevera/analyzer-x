@@ -8,7 +8,7 @@
  * job's progress file on disk, not in this component.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, API_BASE, BacktestPlan, CloudShard, CloudStatus, DelistedReport, fmtBytes, fmtWhenMs, GridPlan, JobStatus, MonthJob } from "@/lib/api";
+import { api, API_BASE, BacktestPlan, CloudShard, CloudStatus, DelistedReport, fmtBytes, fmtWhen, fmtWhenMs, GridPlan, JobStatus, MonthJob } from "@/lib/api";
 import Button from "@/components/ui/button/Button";
 import Badge from "@/components/ui/badge/Badge";
 import JobProgress from "@/components/jobs/JobProgress";
@@ -472,6 +472,36 @@ export default function JobsPanel() {
                   Every coin&apos;s position at its last bar is saved, so the next UPDATE tests only the new
                   candles. Each machine&apos;s tile shows its own coin&apos;s exact dates.
                 </span>
+              </p>
+            );
+          })()}
+          {/* RESULTS ARRIVING NOW. Operator, 2026-09-09: "why not immediately
+              put the results in my pc ... i want you to post the result
+              immediately to my pc". Every count here is what THIS PC wrote,
+              read from its own receiver — never the machines' claim, and never
+              shown for a run other than the one on screen. */}
+          {(() => {
+            const live = cloud.live;
+            if (!live) return null;
+            const tried = cloud.shards.reduce((a, s) => a + (s.posted ?? 0), 0);
+            const missed = cloud.shards.reduce((a, s) => a + (s.post_failed ?? 0), 0);
+            if (!live.open) {
+              return tried || missed ? (
+                <p className="mt-1 text-theme-xs text-warning-600 dark:text-warning-400">
+                  results are NOT arriving live — this PC&apos;s receiver is closed;
+                  every row is still in the run&apos;s files and lands when it finishes
+                </p>
+              ) : null;
+            }
+            return (
+              <p className="mt-1 text-theme-xs text-success-600 dark:text-success-500">
+                results are landing here as each coin finishes —{" "}
+                <b>{(live.pairs ?? 0).toLocaleString()} pair
+                  {(live.pairs ?? 0) === 1 ? "" : "s"}</b>{" "}
+                ({(live.rows ?? 0).toLocaleString()} rows) written to this PC so far
+                {live.last ? ` · last: ${live.last}` : ""}
+                {live.at ? ` at ${fmtWhen(live.at)}` : ""}
+                {missed ? ` · ${missed.toLocaleString()} could not be posted and ride the run's files instead` : ""}
               </p>
             );
           })()}

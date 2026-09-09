@@ -442,6 +442,11 @@ export interface CloudShard {
    *  the machine is done: a span belongs to a pair being tested. Absent on
    *  runs measured before 2026-09-09. */
   span?: string;
+  /** pairs this machine posted straight to the operator's PC, and pairs a
+   *  post could not reach it with. What the MACHINE tried; the PC's own tally
+   *  is CloudStatus.live, and a gap between them names a broken tunnel. */
+  posted?: number;
+  post_failed?: number;
   /** the span's two bars as milliseconds, printed by the BROWSER's clock
    *  (fmtWhenMs) so the tile and the store's "last bar" name one bar the same
    *  way; `span` is the runner's clock (UTC) and read "12:00pm → 1:00pm" while
@@ -469,6 +474,21 @@ export interface CloudStatus {
   shards: CloudShard[];
   conclusion?: string | null;
   done?: number;
+  /** THE LIVE DOOR: whether the machines can post finished pairs straight to
+   *  this PC, and what has already come through it FOR THE RUN ON SCREEN —
+   *  counted by this PC as it writes them, never taken from the machines'
+   *  own claim. `pairs`/`rows` are absent when the tally belongs to an
+   *  earlier run. */
+  live?: {
+    open: boolean;
+    url?: string;
+    pairs?: number;
+    rows?: number;
+    /** seconds; the last time a pair landed here */
+    at?: number | null;
+    /** the last pair that landed, e.g. "0G 1h" */
+    last?: string;
+  };
 }
 
 export interface SysLoad {

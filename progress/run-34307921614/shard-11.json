@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 38, "total": 38, "rows": 3335242, "note": "MXLSTOCK 30m: rule 48/120 (prank)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:28:59Z"}
+{"shard": 11, "stage": "testing", "done": 39, "total": 39, "rows": 3382656, "note": "MYX 15m: 34,600 bars \u00b7 Sep 13, 2025 8:15pm \u2192 Sep 09, 2026 6:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:29:48Z"}

@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 20, "total": 20, "rows": 1940920, "note": "ETHW 4h: rule 56/120 (insidebrk)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:16:50Z"}
+{"shard": 6, "stage": "testing", "done": 21, "total": 21, "rows": 1968860, "note": "ETH 15m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:17:39Z"}

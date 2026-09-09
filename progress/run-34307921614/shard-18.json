@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 13, "total": 13, "rows": 1236894, "note": "USOIL 1h: rule 111/120 (cf_fundfade_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:34:50Z"}
+{"shard": 18, "stage": "testing", "done": 14, "total": 14, "rows": 1285806, "note": "USO 15m: rule 58/120 (bos)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:35:35Z"}

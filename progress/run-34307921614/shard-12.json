@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 49, "total": 49, "rows": 4284256, "note": "PRL 15m: rule 24/120 (psar)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:03:56Z"}
+{"shard": 12, "stage": "testing", "done": 49, "total": 49, "rows": 4296056, "note": "PRL 15m: rule 84/120 (cf_maobv_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:04:42Z"}

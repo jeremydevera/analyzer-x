@@ -110,10 +110,46 @@ keeps four, **no kept index can ever be dropped**, the drop sits under
 rebuild it, the rebuild still fires on `if done:`, and a refused DROP does not
 fail the fill.
 
-**STILL NOT FIXED, and it is the other half** — `forget_pairs` holds ONE
-transaction across every pair, so a 73-pair cleanup freezes the whole index
-until it finishes. RCA-C named it; it is still true. Chunked commits are the
-repair, and the caller's "may the files go now" contract has to move with them.
+**MEASURED AFTER THE FIX, AND IT IS NOT ENOUGH** — the catch-up ran with the
+ten dropped and only the protected four left, and the log confirms it:
+
+    [rows-index] dropped rows_wr4 for a 5276-pair fill; it rebuilds when the
+    fill ends
+
+Pairs then moved — 4,558 → 4,571 — so the fill is committing per pair, not in
+one transaction as first reported. But the rate is **~1 pair per 175 s
+(0.34 pairs/min)**, not the 75/min the note promises with no indexes. At that
+rate the remaining 793 pairs are **~39 hours**.
+
+The reason is the file itself, measured `Sep 10, 2026`:
+
+    rows.db      34.7 GB
+    pages        8,469,643 total
+    free pages   3,961,902  = 46.8% of the file = 16.23 GB of holes
+
+Every insert scatters into a file that is nearly half empty space, so the disk
+seeks instead of streaming. CLAUDE.md already carries the remedy — *"Do NOT
+repair a bloated file in place ... Loading a FRESH file sequentially and
+swapping it in is faster and leaves a compact database"* — written when the
+store held **727,146** free pages (2.8 GB). It now holds **5.4x that**. And
+there is **no compaction path in the code at all**: `checkpoint_if_bloated`
+folds the write-ahead log back in and touches free pages not at all; there is
+no `VACUUM`, no rebuild, no swap anywhere in `rows_index.py`.
+
+So dropping the ten indexes was a real and necessary reduction in write
+amplification, and the dominant cost is now bloat that nothing can reclaim.
+
+**STILL NOT FIXED, named so neither is forgotten**
+
+1. **No way to compact the store.** 16.23 GB of the 34.7 GB file is holes, and
+   the documented fix (rebuild sequentially into a fresh file, swap on success)
+   exists only as a sentence in CLAUDE.md. It must write a NEW file and swap
+   only after it verifies, because this is the operator's only copy of
+   51,943,352 measured rows.
+2. **`forget_pairs` holds ONE transaction across every pair**, so a 73-pair
+   cleanup freezes the whole index until it finishes. RCA-C named it; still
+   true. Chunked commits are the repair, and the caller's "may the files go
+   now" contract has to move with them.
 
 ---
 

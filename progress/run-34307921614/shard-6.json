@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 12, "total": 12, "rows": 1071522, "note": "ENS 30m: rule 114/120 (cf_obretest_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:30:34Z"}
+{"shard": 6, "stage": "testing", "done": 12, "total": 12, "rows": 1086042, "note": "ENS 1h: rule 55/120 (nhigh50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:31:20Z"}

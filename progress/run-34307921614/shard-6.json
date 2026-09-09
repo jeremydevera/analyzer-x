@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 21, "total": 21, "rows": 1985800, "note": "ETH 15m: rule 78/120 (cf_mom_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:19:09Z"}
+{"shard": 6, "stage": "testing", "done": 21, "total": 21, "rows": 1995260, "note": "ETH 30m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:19:58Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 1, "total": 1, "rows": 35900, "note": "TAO 30m: rule 62/120 (ote)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:49:10Z"}
+{"shard": 17, "stage": "testing", "done": 1, "total": 1, "rows": 47500, "note": "TAO 1h: 9,479 bars \u00b7 Aug 10, 2025 4:00am \u2192 Sep 09, 2026 2:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:50:03Z"}

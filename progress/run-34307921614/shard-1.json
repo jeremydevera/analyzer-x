@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 70, "total": 70, "rows": 6138964, "note": "CC 1h: rule 105/120 (cf_eqhl_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:16:58Z"}
+{"shard": 1, "stage": "testing", "done": 71, "total": 71, "rows": 6181380, "note": "CRV 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:17:53Z"}

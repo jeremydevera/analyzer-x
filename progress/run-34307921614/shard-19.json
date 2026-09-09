@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 7, "total": 7, "rows": 683802, "note": "XEC 15m: rule 33/120 (heikin)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:03:34Z"}
+{"shard": 19, "stage": "testing", "done": 7, "total": 7, "rows": 696202, "note": "XEC 15m: rule 96/120 (cf_emarsi_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:04:19Z"}

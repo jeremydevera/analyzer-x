@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 25, "total": 25, "rows": 1957946, "note": "APPSTOCK 30m: 4,994 bars \u00b7 May 28, 2026 3:30am \u2192 Sep 09, 2026 4:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:38:05Z"}
+{"shard": 1, "stage": "testing", "done": 26, "total": 26, "rows": 2020688, "note": "APR 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:39:00Z"}

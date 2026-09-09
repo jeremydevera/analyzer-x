@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 24, "total": 24, "rows": 2336948, "note": "LTC 15m: rule 39/120 (fisher)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:44:04Z"}
+{"shard": 10, "stage": "testing", "done": 24, "total": 24, "rows": 2345408, "note": "LTC 15m: rule 87/120 (cf_triple_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:44:49Z"}

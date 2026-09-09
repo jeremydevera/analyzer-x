@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 66, "total": 66, "rows": 5757704, "note": "BLAST 1h: rule 105/120 (cf_eqhl_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:04:27Z"}
+{"shard": 1, "stage": "testing", "done": 67, "total": 67, "rows": 5802424, "note": "CASHCAT 15m: rule 4/120 (trend50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:05:12Z"}

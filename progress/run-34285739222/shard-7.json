@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 52, "total": 54, "rows": 2112594, "note": "XLK 30m: rule 111/120 (cf_fundfade_l2)", "failed": [], "pct": 96.3, "updated": "2026-09-09T00:13:39Z"}
+{"shard": 7, "stage": "testing", "done": 54, "total": 54, "rows": 2135434, "note": "ZRO 4h: rule 47/120 (ibs)", "failed": [], "pct": 100.0, "updated": "2026-09-09T00:14:25Z"}

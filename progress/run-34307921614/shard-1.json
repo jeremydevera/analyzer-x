@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 66, "total": 66, "rows": 5711944, "note": "BLAST 30m: rule 20/120 (stoch14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:02:56Z"}
+{"shard": 1, "stage": "testing", "done": 66, "total": 66, "rows": 5731084, "note": "BLAST 30m: rule 108/120 (cf_bosfvg_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:03:41Z"}

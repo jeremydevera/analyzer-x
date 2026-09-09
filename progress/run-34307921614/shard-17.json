@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 27, "total": 27, "rows": 2168962, "note": "TRB 30m: rule 24/120 (psar)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:32:17Z"}
+{"shard": 17, "stage": "testing", "done": 27, "total": 27, "rows": 2180622, "note": "TRB 30m: rule 78/120 (cf_mom_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:33:02Z"}

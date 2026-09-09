@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 30, "total": 30, "rows": 2476972, "note": "TRIA 1d: 218 bars \u00b7 Feb 03, 2026 12:00am \u2192 Sep 08, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:51:17Z"}
+{"shard": 17, "stage": "testing", "done": 31, "total": 31, "rows": 2490112, "note": "TROLLSOL 30m: rule 90/120 (cf_chan_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:52:02Z"}

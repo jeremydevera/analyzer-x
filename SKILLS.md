@@ -17,6 +17,7 @@ here** — this file exists because the operator won't remember them all
 | `verify-ui-change` | Any change to how the app looks gets checked with a real browser screenshot before saying done. |
 | `harddev` | Every code change: build → loop "is there a potential bug?" until none → only then test. Made 2026-09-05. |
 | `blast-radius` | After any code change: check what else that change touches. |
+| `rca-log` | Every bug that gets fixed is written into `docs/RCA.md` in the same commit — what you saw, the timeline, the cause, **why the test missed it**, the cost, and the test that now stops it. Made 2026-09-09. |
 | `press-and-watch` | Any of the long jobs — DOWNLOAD CANDLES, UPDATE CANDLES, RESOLVE PENDING, BACKTEST, UPDATE ALL BACKTEST — is watched to the END, not for ten seconds. Guess what will break first, press it the way the button does, fix with `harddev`, press again. Made 2026-09-05.  Use '/goal' dont stop until all is pending is resolved loop until you resolve all, if you have question then ask your self what is best approach that wont cause any bug then report me what changed.
 
 

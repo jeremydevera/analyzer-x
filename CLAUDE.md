@@ -429,6 +429,23 @@ Every label must be DERIVED from the data it describes — never a literal. Veri
 must assert the label AGREES with its source, and that itemised rows SUM to the total
 shown. Presence is not correctness.
 
+ALWAYS ON — `rca-log`. STRICT. **A bug fix is not finished until `docs/RCA.md`
+has its entry, in the SAME commit as the fix.** No entry, no commit. The
+operator, 2026-09-09: *"list this in rca to prevent this from happening in the
+future / all fixes should be listed in a file so you will remember what where
+the fixes / create a skill that is enabled always whenever a bug is fixed"*.
+Seven fields, all of them: what they SAW, the numbered TIMELINE with measured
+numbers (before AND after), the ROOT CAUSE line, **WHY IT WAS NOT CAUGHT**, the
+COST in dollars or "none", the FIX commit, and the GUARD test.
+The fourth field is the whole point. On 2026-09-09 four bugs were fixed and in
+**two** of them a test written for exactly that fault was passing at the time:
+one counted `p.set("days"` across a whole file while the function that mattered
+had zero, and one grepped for `.toLocale` while a `Date` was being sliced by
+hand. Three permanent rules in this file were bought by that field — *filter
+where the data is*, *a guard is only as wide as its pattern*, and *a count is
+not a location*. Fires on a real defect only, never on a feature, refactor or
+rename. `tests/test_rca_log.py` holds the shape and the registration.
+
 ## Test the path the RUNNER takes, in the state it will run in (MANDATORY — 2026-09-05)
 
 The operator: *"It means you are not reviewing your code changes and testing

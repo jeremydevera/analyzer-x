@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 27, "total": 27, "rows": 2411020, "note": "PNUT 15m: rule 105/120 (cf_eqhl_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:07:32Z"}
+{"shard": 13, "stage": "testing", "done": 27, "total": 27, "rows": 2415640, "note": "PNUT 30m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:08:25Z"}

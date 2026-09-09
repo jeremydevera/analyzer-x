@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 5, "total": 5, "rows": 375376, "note": "MINA 15m: rule 73/120 (volspike)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:10:57Z"}
+{"shard": 11, "stage": "testing", "done": 5, "total": 5, "rows": 383076, "note": "MINA 15m: rule 108/120 (cf_bosfvg_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:11:42Z"}

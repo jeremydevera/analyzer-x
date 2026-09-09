@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 56, "total": 56, "rows": 4927090, "note": "MAGIC 15m: rule 52/120 (nr7)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:19:16Z"}
+{"shard": 9, "stage": "testing", "done": 56, "total": 56, "rows": 4941390, "note": "MAGIC 15m: rule 117/120 (cf_diadx_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:20:01Z"}

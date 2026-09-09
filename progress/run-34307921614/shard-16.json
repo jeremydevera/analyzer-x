@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 22, "total": 22, "rows": 2184286, "note": "STAR 30m: rule 84/120 (cf_maobv_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:36:51Z"}
+{"shard": 16, "stage": "testing", "done": 23, "total": 23, "rows": 2184886, "note": "STBL 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:37:47Z"}

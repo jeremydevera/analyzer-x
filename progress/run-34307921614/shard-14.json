@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 34, "total": 34, "rows": 2858838, "note": "RLC 15m: 34,598 bars \u00b7 Sep 13, 2025 8:15pm \u2192 Sep 09, 2026 5:30am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:56:57Z"}
+{"shard": 14, "stage": "testing", "done": 34, "total": 34, "rows": 2860838, "note": "RLC 15m: rule 4/120 (trend50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:57:45Z"}

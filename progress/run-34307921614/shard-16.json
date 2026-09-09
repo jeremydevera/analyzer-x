@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 15, "total": 15, "rows": 1422362, "note": "SPX500 15m: rule 48/120 (prank)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:54:46Z"}
+{"shard": 16, "stage": "testing", "done": 15, "total": 15, "rows": 1434962, "note": "SPX500 30m: 10,693 bars \u00b7 Jan 29, 2026 10:00am \u2192 Sep 09, 2026 4:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:55:34Z"}

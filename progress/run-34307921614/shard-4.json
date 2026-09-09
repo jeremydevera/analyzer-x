@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 9, "total": 9, "rows": 746136, "note": "CFX 1d: 394 bars \u00b7 Aug 11, 2025 12:00am \u2192 Sep 08, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:19:43Z"}
+{"shard": 4, "stage": "testing", "done": 10, "total": 10, "rows": 760260, "note": "CGPT 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:20:43Z"}

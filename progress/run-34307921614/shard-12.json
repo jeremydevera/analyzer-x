@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 47, "total": 47, "rows": 4155942, "note": "ORCA 15m: rule 10/120 (sr_bounce)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:55:06Z"}
+{"shard": 12, "stage": "testing", "done": 47, "total": 47, "rows": 4160942, "note": "ORCA 15m: rule 35/120 (willr14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:55:53Z"}

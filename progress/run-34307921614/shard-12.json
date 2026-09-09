@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 51, "total": 51, "rows": 4528802, "note": "SYN 30m: 18,959 bars \u00b7 Aug 10, 2025 7:30am \u2192 Sep 09, 2026 6:30am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:19:51Z"}
+{"shard": 12, "stage": "testing", "done": 51, "total": 51, "rows": 4533482, "note": "SYN 30m: rule 20/120 (stoch14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:20:38Z"}

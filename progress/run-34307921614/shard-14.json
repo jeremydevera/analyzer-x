@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 49, "total": 49, "rows": 4356794, "note": "TAIKO 4h: rule 114/120 (cf_obretest_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:26:43Z"}
+{"shard": 14, "stage": "done", "done": 49, "total": 49, "rows": 4371358, "note": "4,371,358 rows \u00b7 49 coin(s) claimed \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:26:59Z"}

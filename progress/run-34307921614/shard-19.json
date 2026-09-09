@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 55, "total": 55, "rows": 5296198, "note": "AIA 15m: rule 35/120 (willr14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:51:27Z"}
+{"shard": 19, "stage": "testing", "done": 55, "total": 55, "rows": 5311138, "note": "AIA 30m: 11,127 bars \u00b7 Jan 20, 2026 11:00am \u2192 Sep 09, 2026 6:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:52:20Z"}

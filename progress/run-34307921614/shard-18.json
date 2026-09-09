@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 17, "total": 17, "rows": 1612138, "note": "US 15m: rule 52/120 (nr7)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:57:03Z"}
+{"shard": 18, "stage": "testing", "done": 17, "total": 17, "rows": 1620778, "note": "US 15m: rule 100/120 (cf_soup1)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:57:49Z"}

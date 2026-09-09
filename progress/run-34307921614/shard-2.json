@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 22, "total": 22, "rows": 2276390, "note": "BAND 4h: rule 76/120 (cf_mom)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:31:17Z"}
+{"shard": 2, "stage": "testing", "done": 23, "total": 23, "rows": 2299150, "note": "BANK 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:32:07Z"}

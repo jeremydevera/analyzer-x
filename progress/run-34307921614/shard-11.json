@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 2, "total": 2, "rows": 115170, "note": "MEW 15m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:49:14Z"}
+{"shard": 11, "stage": "testing", "done": 2, "total": 2, "rows": 119130, "note": "MEW 15m: rule 21/120 (cci20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:50:00Z"}

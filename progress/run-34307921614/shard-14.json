@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 11, "total": 11, "rows": 876614, "note": "RAVE 15m: rule 45/120 (zscore20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:25:26Z"}
+{"shard": 14, "stage": "testing", "done": 11, "total": 11, "rows": 885094, "note": "RAVE 15m: rule 99/120 (cf_ttm_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:26:13Z"}

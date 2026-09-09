@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 54, "total": 54, "rows": 4760096, "note": "PROMPT 15m: rule 111/120 (cf_fundfade_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:06:24Z"}
+{"shard": 6, "stage": "testing", "done": 54, "total": 54, "rows": 4763876, "note": "PROMPT 30m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:07:12Z"}

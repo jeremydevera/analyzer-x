@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 27, "total": 27, "rows": 2454024, "note": "JUP 1h: rule 36/120 (stochrsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:07:22Z"}
+{"shard": 9, "stage": "testing", "done": 27, "total": 27, "rows": 2494424, "note": "JUP 1d: 394 bars \u00b7 Aug 11, 2025 12:00am \u2192 Sep 08, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:08:20Z"}

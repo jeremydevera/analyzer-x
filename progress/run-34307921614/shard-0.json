@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 8, "total": 8, "rows": 894580, "note": "2Z 1h: rule 99/120 (cf_ttm_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:49:49Z"}
+{"shard": 0, "stage": "testing", "done": 9, "total": 9, "rows": 934158, "note": "4STOCK 30m: 46 bars \u00b7 Sep 08, 2026 5:30am \u2192 Sep 09, 2026 4:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:50:34Z"}

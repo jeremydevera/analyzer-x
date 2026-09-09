@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 31, "total": 31, "rows": 2570406, "note": "COINBASE 30m: rule 90/120 (cf_chan_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:57:38Z"}
+{"shard": 4, "stage": "testing", "done": 31, "total": 31, "rows": 2584766, "note": "COINBASE 1h: rule 32/120 (gmma)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:58:24Z"}

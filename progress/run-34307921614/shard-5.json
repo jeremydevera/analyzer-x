@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 42, "total": 42, "rows": 3471842, "note": "DOT 15m: rule 15/120 (bbbreak)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:01:06Z"}
+{"shard": 5, "stage": "testing", "done": 42, "total": 42, "rows": 3478682, "note": "DOT 15m: rule 54/120 (fractal5)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:01:52Z"}

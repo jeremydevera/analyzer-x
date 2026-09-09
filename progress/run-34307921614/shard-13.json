@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 4, "total": 4, "rows": 298730, "note": "PAXG 30m: rule 56/120 (insidebrk)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:55:33Z"}
+{"shard": 13, "stage": "testing", "done": 4, "total": 4, "rows": 312370, "note": "PAXG 30m: rule 120/120 (cf_stflip_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:56:19Z"}

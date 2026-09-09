@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 10, "total": 10, "rows": 794210, "note": "HIMSSTOCK 30m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:23:34Z"}
+{"shard": 8, "stage": "testing", "done": 10, "total": 10, "rows": 817250, "note": "HIMSSTOCK 1h: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:24:19Z"}

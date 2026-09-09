@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 23, "total": 23, "rows": 2109342, "note": "VELO 30m: rule 38/120 (ao)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:25:19Z"}
+{"shard": 18, "stage": "testing", "done": 23, "total": 23, "rows": 2120682, "note": "VELO 30m: rule 102/120 (cf_soup1_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:26:04Z"}

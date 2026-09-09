@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 49, "total": 49, "rows": 4124410, "note": "UB 15m: rule 59/120 (choch)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:25:35Z"}
+{"shard": 8, "stage": "testing", "done": 49, "total": 49, "rows": 4131010, "note": "UB 15m: rule 90/120 (cf_chan_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:26:21Z"}

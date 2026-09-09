@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 48, "total": 48, "rows": 4320580, "note": "KORU 15m: rule 76/120 (cf_mom)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:09:10Z"}
+{"shard": 9, "stage": "testing", "done": 49, "total": 49, "rows": 4415500, "note": "KOSPI 30m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:09:55Z"}

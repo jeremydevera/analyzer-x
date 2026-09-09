@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 51, "total": 51, "rows": 5024544, "note": "ZRO 30m: rule 13/120 (pivot)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:42:02Z"}
+{"shard": 19, "stage": "testing", "done": 51, "total": 51, "rows": 5047324, "note": "ZRO 1h: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:43:36Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 62, "total": 62, "rows": 5155104, "note": "SWARMS 30m: rule 78/120 (cf_mom_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:20:37Z"}
+{"shard": 5, "stage": "testing", "done": 62, "total": 62, "rows": 5165004, "note": "SWARMS 1h: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:21:25Z"}

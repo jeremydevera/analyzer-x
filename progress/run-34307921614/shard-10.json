@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 46, "total": 46, "rows": 4555456, "note": "ALL 4h: 2,369 bars \u00b7 Aug 10, 2025 8:00am \u2192 Sep 09, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:30:51Z"}
+{"shard": 10, "stage": "done", "done": 46, "total": 46, "rows": 4595144, "note": "4,595,144 rows \u00b7 46 coin(s) claimed \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:31:16Z"}

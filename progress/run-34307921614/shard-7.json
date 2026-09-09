@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 76, "total": 76, "rows": 6425368, "note": "NEWT 15m: rule 78/120 (cf_mom_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:00:03Z"}
+{"shard": 7, "stage": "testing", "done": 76, "total": 76, "rows": 6433768, "note": "NEWT 30m: 18,959 bars \u00b7 Aug 10, 2025 7:30am \u2192 Sep 09, 2026 6:30am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:00:49Z"}

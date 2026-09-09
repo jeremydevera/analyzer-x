@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 30, "total": 30, "rows": 2562978, "note": "OKLOSTOCK 30m: rule 79/120 (cf_donch)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:29:03Z"}
+{"shard": 12, "stage": "testing", "done": 32, "total": 32, "rows": 2667000, "note": "OL 15m: 34,597 bars \u00b7 Sep 13, 2025 8:15pm \u2192 Sep 09, 2026 5:15am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:30:02Z"}

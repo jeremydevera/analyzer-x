@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 2, "total": 2, "rows": 114888, "note": "NGAS 30m: 10,656 bars \u00b7 Jan 30, 2026 3:30am \u2192 Sep 09, 2026 3:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:42:57Z"}
+{"shard": 12, "stage": "testing", "done": 2, "total": 2, "rows": 135948, "note": "NGAS 30m: rule 111/120 (cf_fundfade_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:43:43Z"}

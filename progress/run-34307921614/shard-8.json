@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 11, "total": 11, "rows": 889498, "note": "HITACHISTOCK 1h: rule 17/120 (atrbreak)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:25:04Z"}
+{"shard": 8, "stage": "testing", "done": 12, "total": 12, "rows": 912848, "note": "HIVE 15m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:25:57Z"}

@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 5, "total": 5, "rows": 495782, "note": "1000BTT 30m: rule 33/120 (heikin)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:21:58Z"}
+{"shard": 0, "stage": "testing", "done": 5, "total": 5, "rows": 510382, "note": "1000BTT 30m: rule 108/120 (cf_bosfvg_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:22:43Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 42, "total": 42, "rows": 3807064, "note": "ORDER 4h: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:08:09Z"}
+{"shard": 11, "stage": "testing", "done": 43, "total": 43, "rows": 3869500, "note": "PURRSTOCK 30m: rule 23/120 (supertrend)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:08:54Z"}

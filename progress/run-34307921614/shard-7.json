@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 43, "total": 43, "rows": 3387168, "note": "GRASS 15m: rule 33/120 (heikin)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:20:08Z"}
+{"shard": 7, "stage": "testing", "done": 43, "total": 43, "rows": 3396848, "note": "GRASS 15m: rule 78/120 (cf_mom_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:20:54Z"}

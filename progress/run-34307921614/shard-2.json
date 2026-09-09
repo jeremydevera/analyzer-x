@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 25, "total": 25, "rows": 2609178, "note": "BARD 4h: 2,135 bars \u00b7 Sep 18, 2025 8:00am \u2192 Sep 09, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:52:41Z"}
+{"shard": 2, "stage": "testing", "done": 26, "total": 26, "rows": 2667844, "note": "BASECAT 1h: rule 39/120 (fisher)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:53:26Z"}

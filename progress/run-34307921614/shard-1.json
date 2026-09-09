@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 1, "total": 1, "rows": 20900, "note": "ALPINE 15m: rule 90/120 (cf_chan_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:41:49Z"}
+{"shard": 1, "stage": "testing", "done": 1, "total": 1, "rows": 28820, "note": "ALPINE 30m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:42:35Z"}

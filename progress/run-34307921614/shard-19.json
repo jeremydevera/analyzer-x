@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 64, "total": 64, "rows": 6003886, "note": "ALCH 30m: rule 44/120 (elder)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:22:43Z"}
+{"shard": 19, "stage": "testing", "done": 64, "total": 64, "rows": 6018686, "note": "ALCH 1h: 9,479 bars \u00b7 Aug 10, 2025 8:00am \u2192 Sep 09, 2026 6:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:23:29Z"}

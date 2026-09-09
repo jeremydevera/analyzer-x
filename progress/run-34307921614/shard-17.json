@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 15, "total": 15, "rows": 1087680, "note": "TIA 30m: rule 17/120 (atrbreak)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:34:58Z"}
+{"shard": 17, "stage": "testing", "done": 15, "total": 15, "rows": 1098080, "note": "TIA 30m: rule 70/120 (cmf20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:35:43Z"}

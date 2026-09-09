@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 45, "total": 45, "rows": 3668108, "note": "GRT 1h: rule 53/120 (squeeze)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:34:55Z"}
+{"shard": 7, "stage": "testing", "done": 46, "total": 46, "rows": 3721964, "note": "GRVT 15m: downloading candles", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:35:40Z"}

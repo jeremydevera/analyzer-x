@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 22, "total": 22, "rows": 2167016, "note": "LRC 4h: 2,369 bars \u00b7 Aug 10, 2025 8:00am \u2192 Sep 09, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:33:32Z"}
+{"shard": 10, "stage": "testing", "done": 23, "total": 23, "rows": 2207012, "note": "LSK 15m: 34,597 bars \u00b7 Sep 13, 2025 8:15pm \u2192 Sep 09, 2026 5:15am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:34:34Z"}

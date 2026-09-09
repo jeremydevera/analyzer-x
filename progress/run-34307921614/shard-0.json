@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 16, "total": 16, "rows": 1577044, "note": "AAVE 4h: rule 99/120 (cf_ttm_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:16:21Z"}
+{"shard": 0, "stage": "testing", "done": 17, "total": 17, "rows": 1613912, "note": "ABNBSTOCK 1h: rule 38/120 (ao)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:17:06Z"}

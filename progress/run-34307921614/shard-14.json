@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 29, "total": 29, "rows": 2420938, "note": "RIF 15m: rule 4/120 (trend50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:34:48Z"}
+{"shard": 14, "stage": "testing", "done": 29, "total": 29, "rows": 2428198, "note": "RIF 15m: rule 37/120 (ultosc)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:36:19Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 2, "total": 2, "rows": 194160, "note": "TA 4h: rule 29/120 (hull20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:59:28Z"}
+{"shard": 17, "stage": "testing", "done": 3, "total": 3, "rows": 260672, "note": "TBT 1h: 998 bars \u00b7 Jul 29, 2026 2:00pm \u2192 Sep 09, 2026 3:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:00:13Z"}

@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 26, "total": 26, "rows": 2523232, "note": "LUMIA 15m: rule 25/120 (ichimoku)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:51:15Z"}
+{"shard": 10, "stage": "testing", "done": 26, "total": 26, "rows": 2528512, "note": "LUMIA 15m: rule 49/120 (vwaprev)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:52:01Z"}

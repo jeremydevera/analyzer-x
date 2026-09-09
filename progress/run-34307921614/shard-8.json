@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 43, "total": 43, "rows": 3561062, "note": "MERL 15m: rule 21/120 (cci20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:49:12Z"}
+{"shard": 8, "stage": "testing", "done": 43, "total": 43, "rows": 3566662, "note": "MERL 15m: rule 78/120 (cf_mom_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:49:58Z"}

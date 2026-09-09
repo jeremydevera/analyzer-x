@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 16, "total": 16, "rows": 1435336, "note": "PHA 4h: 2,369 bars \u00b7 Aug 10, 2025 8:00am \u2192 Sep 09, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:59:56Z"}
+{"shard": 13, "stage": "testing", "done": 17, "total": 17, "rows": 1475508, "note": "PIEVERSE 15m: 28,680 bars \u00b7 Nov 14, 2025 11:00am \u2192 Sep 09, 2026 4:45am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:00:46Z"}

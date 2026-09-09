@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 40, "total": 40, "rows": 3453958, "note": "COTI 15m: rule 76/120 (cf_mom)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:45:59Z"}
+{"shard": 4, "stage": "testing", "done": 40, "total": 40, "rows": 3461658, "note": "COTI 15m: rule 111/120 (cf_fundfade_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:46:46Z"}

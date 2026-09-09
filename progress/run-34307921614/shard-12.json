@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 41, "total": 41, "rows": 3646518, "note": "OPENLEDGER 15m: rule 80/120 (cf_donch_l1)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:30:28Z"}
+{"shard": 12, "stage": "testing", "done": 41, "total": 41, "rows": 3654518, "note": "OPENLEDGER 15m: rule 120/120 (cf_stflip_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:31:14Z"}

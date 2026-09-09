@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 35, "total": 35, "rows": 3314738, "note": "KEYENCESTOCK 1d: rule 49/120 (vwaprev)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:38:08Z"}
+{"shard": 9, "stage": "testing", "done": 36, "total": 36, "rows": 3316978, "note": "KGEN 15m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:39:03Z"}

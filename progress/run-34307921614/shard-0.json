@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 6, "total": 6, "rows": 634562, "note": "1000RATS 1h: rule 13/120 (pivot)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:32:27Z"}
+{"shard": 0, "stage": "testing", "done": 6, "total": 6, "rows": 655462, "note": "1000RATS 1h: rule 112/120 (cf_obretest)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:33:12Z"}

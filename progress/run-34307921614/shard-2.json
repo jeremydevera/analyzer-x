@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 37, "total": 37, "rows": 3673766, "note": "BICO 15m: rule 38/120 (ao)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:46:58Z"}
+{"shard": 2, "stage": "testing", "done": 37, "total": 37, "rows": 3681926, "note": "BICO 15m: rule 90/120 (cf_chan_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:47:43Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 14, "total": 14, "rows": 1232970, "note": "JASMY 15m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:21:00Z"}
+{"shard": 9, "stage": "testing", "done": 14, "total": 14, "rows": 1241290, "note": "JASMY 15m: rule 56/120 (insidebrk)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:21:45Z"}

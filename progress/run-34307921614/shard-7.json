@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 78, "total": 78, "rows": 6675224, "note": "PYTH 30m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:12:37Z"}
+{"shard": 7, "stage": "testing", "done": 78, "total": 78, "rows": 6690224, "note": "PYTH 30m: rule 76/120 (cf_mom)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:13:22Z"}

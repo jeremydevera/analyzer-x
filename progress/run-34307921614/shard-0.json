@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 3, "total": 3, "rows": 300194, "note": "1000000MOG 1h: rule 67/120 (pinbar)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:08:37Z"}
+{"shard": 0, "stage": "testing", "done": 3, "total": 3, "rows": 318194, "note": "1000000MOG 4h: rule 33/120 (heikin)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:09:22Z"}

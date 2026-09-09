@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 67, "total": 67, "rows": 5862324, "note": "CASHCAT 4h: 376 bars \u00b7 Jul 08, 2026 12:00pm \u2192 Sep 09, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:05:58Z"}
+{"shard": 1, "stage": "testing", "done": 69, "total": 69, "rows": 5938764, "note": "CATI 15m: 34,603 bars \u00b7 Sep 13, 2025 8:15pm \u2192 Sep 09, 2026 6:45am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:07:01Z"}

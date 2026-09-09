@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 43, "total": 43, "rows": 3755722, "note": "CRCLSTOCK 15m: rule 61/120 (turtle)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:03:16Z"}
+{"shard": 4, "stage": "testing", "done": 43, "total": 43, "rows": 3762742, "note": "CRCLSTOCK 15m: rule 100/120 (cf_soup1)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:04:02Z"}

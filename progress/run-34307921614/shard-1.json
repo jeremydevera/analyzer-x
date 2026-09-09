@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 27, "total": 27, "rows": 2133032, "note": "APT 15m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:44:27Z"}
+{"shard": 1, "stage": "testing", "done": 27, "total": 27, "rows": 2141832, "note": "APT 15m: rule 59/120 (choch)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:45:12Z"}

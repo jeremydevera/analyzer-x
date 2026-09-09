@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 27, "total": 27, "rows": 2252634, "note": "RE 15m: 8,043 bars \u00b7 Jun 17, 2026 10:45am \u2192 Sep 09, 2026 5:15am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:30:10Z"}
+{"shard": 14, "stage": "testing", "done": 27, "total": 27, "rows": 2266394, "note": "RE 15m: rule 81/120 (cf_donch_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:30:55Z"}

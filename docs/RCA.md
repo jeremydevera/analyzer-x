@@ -454,3 +454,79 @@ needs to be written differently:
 3. **Test the layer the operator actually touches.** The API was right and the
    component still showed the wrong thing; the route was right and the decorator
    published a helper. Drive the entry point, in the state it will run in.
+4. **A polled route must never do the slow thing inside the request.** Two
+   routes took the page down the same way one day apart (A and I): a panel
+   polls every few seconds, the route shells out to `gh`/`git` for 82 s and
+   216 s. `tradingagents/slow_cache.BackgroundValue` exists so the third one
+   does not have to rediscover it. Before adding a poll, ask what the route
+   costs COLD.
+
+---
+
+# The Stored-strategies filters: why 31 fixes in 14 days
+
+Operator, Sep 09, 2026: *"give me the root cause because this has been an
+issue for 1month already / you cant make the filters right what is the root
+cause"*. Fair question, and the answer is not "each of those was a separate
+mistake". Measured:
+
+| week | `fix(strategies|filters|csv|balanced)` commits |
+|---|---|
+| Aug 19 → Aug 26 | 0 (the panel had no filters yet) |
+| Aug 26 → Sep 02 | **17** |
+| Sep 02 → Sep 09 | **14** |
+
+31 fixes against 19 features. Two root causes account for 18 of the 31, and
+they are both structural — not carelessness in any one commit.
+
+## Cause 1 — every filter COMBINATION needs its own hand-built index (14 of 31)
+
+The store is **51,943,352 rows** of SQLite on a mechanical disk. A combination
+with no index carrying it must read candidate rows off the platter to test the
+rest, and the 20-second budget refuses it: the operator sees HTTP 500, or a
+503 that repeats forever, or an empty table.
+
+So each combination only works if somebody hand-wrote an index for it. There
+are **FOUR** indexes for the single win-% box, each added after a new box was
+placed beside it:
+
+| index | columns added | measured before it existed |
+|---|---|---|
+| `rows_winrate` | winrate, trades, id | — |
+| `rows_wr2` | + profit DESC | ranking by profit beside the floor |
+| `rows_wr3` | + sizing | **3,071.7 s** → 0.34 s (win % 80 + flat + 100 trades) |
+| `rows_wr4` | + tf, signal, tp, sl, coin | **358.2 s** (win % 90 + TP≥SL + crypto) |
+
+`rows_wr4` is the endless 503 the operator read as *"the crypto filter is not
+working"*: 102,026 rows cleared the floor, 2 passed the rest, and proving that
+cost 358.2 s of random reads while the panel retried every 15 s.
+
+**16 filter parameters. 10 indexes. ~45 minutes to build each one.** A new
+filter box therefore breaks combinations that worked yesterday, and there is
+no warning — the box is added, tested alone, and the breakage only appears
+when the operator puts it next to another box.
+
+## Cause 2 — the store keeps one set of numbers, the screen prints another (4 of 31)
+
+The `rows` table has **33 columns and ZERO window columns**. Every "last 30
+days" figure is computed from the candles when Apply is pressed, at ~0.09 s a
+row. So:
+
+* a window filter can NEVER run in SQL — RCA-G is exactly this, the floor
+  tested the stored number while the column printed the computed one;
+* the window can only cover what one request can re-measure: **50 rows** on
+  the page (`api.DAYS_ROW_MAX`), **2,000** in the download
+  (`rows_index.DAYS_CSV_MAX`), out of 51.9 million.
+
+## What would actually end it
+
+1. **Store the window figures.** The sweep writes each row's 30/90/365-day
+   trades, wins, losses, win % and profit as columns. "Last 30 days" becomes an
+   ordinary indexed filter: no re-measure, no 50-row cap, no two sets of
+   numbers to keep in agreement. This removes Cause 2 outright and is the only
+   one of the three that changes what the operator can ask for.
+2. **One covering index per SORT order, not per combination.** `rows_wr4` is
+   already that shape for the win-% order; `rows_pr2` is a partial one for
+   profit. Finish it and stop hand-picking, or every future box repeats this.
+3. **Test filter PAIRS.** Every fix above was verified with its own filter on.
+   Nothing drives two boxes together, and two boxes together is what breaks.

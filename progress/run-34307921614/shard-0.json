@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 25, "total": 25, "rows": 2372816, "note": "ADVANTESTSTOCK 30m: rule 39/120 (fisher)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:02:57Z"}
+{"shard": 0, "stage": "testing", "done": 26, "total": 26, "rows": 2430580, "note": "AEHRSTOCK 15m: rule 108/120 (cf_bosfvg_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:03:42Z"}

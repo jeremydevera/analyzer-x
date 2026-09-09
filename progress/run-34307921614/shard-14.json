@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 29, "total": 29, "rows": 2500358, "note": "RIF 1h: rule 117/120 (cf_diadx_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:42:26Z"}
+{"shard": 14, "stage": "testing", "done": 29, "total": 29, "rows": 2527418, "note": "RIF 1d: 394 bars \u00b7 Aug 11, 2025 12:00am \u2192 Sep 08, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:43:17Z"}

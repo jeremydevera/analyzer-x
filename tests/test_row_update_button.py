@@ -235,3 +235,22 @@ def test_every_job_kind_can_be_watched():
 
     missing = set(dj.FILES) - set(api_mod.JOB_KINDS)
     assert not missing, f"cannot be watched: {sorted(missing)}"
+
+
+def test_it_MERGES_and_never_replaces_the_pair_file(monkeypatch):
+    """THE DATA-LOSS BUG (2026-09-09). `run_pair`'s `merge` defaults to FALSE,
+    which REPLACES the pair's row file with only what this run produced — and
+    a combination that takes no trade writes no row. The first version of this
+    button cut STBL 4h from 120 signals to 37, deleting 83 of them including
+    the operator's own #SW8Q96E6 (macddiv). market_sweep says it in words:
+    "with save_pair_rows would delete every combination not yet reached"."""
+    import inspect
+
+    from tradingagents import market_sweep as msw
+
+    assert inspect.signature(msw.run_pair).parameters["merge"].default is False, \
+        "if this default ever flips, the comment below stops being the reason"
+    seen, _ = _wire(monkeypatch)
+    dj._run_pairbt({"coin": "STBL", "tf": "4h"})
+    assert seen["merge"] is True, \
+        "a re-measure must ADD to the pair, never replace it"

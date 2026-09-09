@@ -2025,8 +2025,15 @@ def _run_pairbt(spec: dict) -> None:
 
     _pub(running=True, now=f"{coin} {tf}: measuring", rows=0)
     try:
+        # merge=True IS LOAD-BEARING. It defaults to FALSE, which makes
+        # `run_pair` REPLACE the pair's row file with only what this run
+        # produced — and a combination that takes no trade writes no row. On
+        # 2026-09-09 the first version of this button cut STBL 4h from 120
+        # signals to 37, deleting 83 including the operator's own row
+        # #SW8Q96E6 (macddiv). market_sweep says it outright: "with
+        # save_pair_rows would delete every combination not yet reached".
         res = msw.run_pair(sym, tf, base_margin=base, days=days,
-                           thresholds=3, fresh=False)
+                           thresholds=3, fresh=False, merge=True)
     except Exception as exc:                                   # noqa: BLE001
         note = f"{type(exc).__name__}: {exc}"
         print(f"[pairbt] {coin} {tf} FAILED: {note}", flush=True)

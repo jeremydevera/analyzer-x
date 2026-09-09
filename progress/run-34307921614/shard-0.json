@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 5, "total": 5, "rows": 510382, "note": "1000BTT 30m: rule 108/120 (cf_bosfvg_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:22:43Z"}
+{"shard": 0, "stage": "testing", "done": 5, "total": 5, "rows": 529062, "note": "1000BTT 1h: rule 69/120 (obv20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:23:29Z"}

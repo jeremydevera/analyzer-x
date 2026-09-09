@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 3, "total": 3, "rows": 147192, "note": "EGLD 15m: rule 108/120 (cf_bosfvg_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:49:35Z"}
+{"shard": 6, "stage": "testing", "done": 3, "total": 3, "rows": 153572, "note": "EGLD 30m: rule 11/120 (sr_break)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:50:20Z"}

@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 27, "total": 27, "rows": 2163592, "note": "APT 30m: rule 55/120 (nhigh50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:46:45Z"}
+{"shard": 1, "stage": "testing", "done": 27, "total": 27, "rows": 2181232, "note": "APT 1h: rule 16/120 (keltner)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:47:31Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 12, "total": 12, "rows": 868924, "note": "FUTUSTOCK 15m: 27,702 bars \u00b7 Nov 24, 2025 2:30pm \u2192 Sep 09, 2026 3:45am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:05:24Z"}
+{"shard": 7, "stage": "testing", "done": 12, "total": 12, "rows": 884044, "note": "FUTUSTOCK 15m: rule 102/120 (cf_soup1_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:06:10Z"}

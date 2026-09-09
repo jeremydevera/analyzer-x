@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 36, "total": 36, "rows": 3550042, "note": "BERA 15m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:38:16Z"}
+{"shard": 2, "stage": "testing", "done": 36, "total": 36, "rows": 3554042, "note": "BERA 15m: rule 20/120 (stoch14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:39:01Z"}

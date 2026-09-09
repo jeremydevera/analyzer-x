@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 4, "total": 4, "rows": 271362, "note": "BLUAI 15m: 30,979 bars \u00b7 Oct 21, 2025 11:00am \u2192 Sep 09, 2026 3:30am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:52:07Z"}
+{"shard": 3, "stage": "testing", "done": 4, "total": 4, "rows": 272682, "note": "BLUAI 15m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:52:56Z"}

@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 31, "total": 31, "rows": 2344284, "note": "GLWSTOCK 30m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:47:59Z"}
+{"shard": 7, "stage": "testing", "done": 32, "total": 32, "rows": 2445458, "note": "GLXYSTOCK 1h: rule 78/120 (cf_mom_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:48:44Z"}

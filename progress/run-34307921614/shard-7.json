@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 14, "total": 14, "rows": 997380, "note": "F 30m: rule 4/120 (trend50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:10:45Z"}
+{"shard": 7, "stage": "testing", "done": 14, "total": 14, "rows": 1015420, "note": "F 30m: rule 87/120 (cf_triple_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:11:31Z"}

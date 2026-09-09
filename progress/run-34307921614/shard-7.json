@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 47, "total": 47, "rows": 3899956, "note": "GSSTOCK 4h: rule 84/120 (cf_maobv_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:38:03Z"}
+{"shard": 7, "stage": "testing", "done": 49, "total": 49, "rows": 3977746, "note": "GUA 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:38:53Z"}

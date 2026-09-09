@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 72, "total": 72, "rows": 6631702, "note": "ALGO 15m: rule 99/120 (cf_ttm_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:25:18Z"}
+{"shard": 9, "stage": "testing", "done": 72, "total": 72, "rows": 6639682, "note": "ALGO 30m: rule 15/120 (bbbreak)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:26:03Z"}

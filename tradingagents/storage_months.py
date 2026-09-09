@@ -240,20 +240,12 @@ def _run_results(job: dict) -> None:
     for p in pairs:
         if job.get("stop"):
             break
-        try:
-            # index FIRST, files second — see rows_index.forget_pair
-            job["rows_removed"] += ri.forget_pair(p["pair"])
-            gone = msw.discard_pair(p["coin"], p["tf"])
-            job["freed"] += sum(int(g["bytes"]) for g in gone["deleted"])
-            job["files_removed"] += len(gone["deleted"])
-            # and the index AGAIN: the API's sync timer runs every few
-            # seconds and takes a file it has no summary for as NEW, so a
-            # tick between the two lines above re-indexes the pair just
-            # before its file goes — rows on screen for a pair that no
-            # longer exists (harddev round 1). Cheap when there is nothing.
-            job["rows_removed"] += ri.forget_pair(p["pair"])
-        except Exception as exc:                                # noqa: BLE001
-            job["errors"].append(f"{p['pair']}: {type(exc).__name__}: {exc}")
+        # index FIRST, files second, index AGAIN: the API's sync timer takes
+        # a file it has no summary for as NEW, so a tick between the first
+        # two steps re-indexes the pair just before its file goes — rows on
+        # screen for a pair that no longer exists (harddev round 1). And a
+        # failed index delete keeps the files (see _remove_pair).
+        _remove_pair(p["pair"], p["coin"], p["tf"], job)
         job["done"] += 1
 
 
@@ -368,11 +360,32 @@ def _remove_coin(c: dict, job: dict) -> None:
     for r in _pairs_by_coin():
         if r["coin"] != c["coin"]:
             continue
-        job["rows_removed"] += ri.forget_pair(r["pair"])
-        gone = msw.discard_pair(r["coin"], r["tf"])
-        job["freed"] += sum(int(g["bytes"]) for g in gone["deleted"])
-        job["files_removed"] += len(gone["deleted"])
-        job["rows_removed"] += ri.forget_pair(r["pair"])
+        _remove_pair(r["pair"], r["coin"], r["tf"], job)
+
+
+def _remove_pair(pair: str, coin: str, tf: str, job: dict) -> None:
+    """One backtest pair out of both the index and the disk — and NEVER the
+    disk without the index. On 2026-09-09 the index delete failed quietly
+    behind another writer's lock and the files went anyway, which left rows
+    on screen for pairs that no longer existed. A pair whose index delete
+    raises is named in the errors and its files are KEPT; the next press
+    finds it again (it is still in the pairs table) and finishes it."""
+    from tradingagents import rows_index as ri
+
+    try:
+        job["rows_removed"] += ri.forget_pair(pair)
+    except Exception as exc:                                    # noqa: BLE001
+        job["errors"].append(f"{pair}: index still holds it "
+                             f"({type(exc).__name__}: {exc}) — files kept")
+        return
+    gone = msw.discard_pair(coin, tf)
+    job["freed"] += sum(int(g["bytes"]) for g in gone["deleted"])
+    job["files_removed"] += len(gone["deleted"])
+    try:
+        job["rows_removed"] += ri.forget_pair(pair)
+    except Exception as exc:                                    # noqa: BLE001
+        job["errors"].append(f"{pair}: re-check of the index failed "
+                             f"({type(exc).__name__}: {exc})")
 
 
 def _forget_lost(symbols: set, job: dict) -> None:
@@ -473,6 +486,16 @@ def start_delete(kind: str, through: str, now: float | None = None) -> dict:
         raise ValueError(
             f"a {busy} job is writing this store right now; wait for it to "
             f"finish, or stop it, then delete")
+    if kind in ("results", "delisted"):
+        # the standalone indexer and a detached index build are writers too,
+        # and no job file names them: probe the lock itself (2026-09-09 —
+        # 29 coins, 7 minutes, 2 done, every index delete timed out behind
+        # `python -m tradingagents.rows_index`)
+        from tradingagents import rows_index as ri
+
+        why = ri.write_available()
+        if why:
+            raise ValueError(why)
     with _lock:
         cur = _jobs.get(kind)
         if cur and cur.get("running"):

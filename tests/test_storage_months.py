@@ -227,6 +227,80 @@ def test_a_sync_tick_between_the_index_delete_and_the_unlink_leaves_no_orphan(
     assert ri.pair_storage() == []
 
 
+def _hold_write_lock():
+    """Another process's write, as the standalone indexer does it: an open
+    IMMEDIATE transaction on the same file."""
+    import sqlite3
+
+    con = sqlite3.connect(str(ri.DB_PATH), timeout=0.1)
+    con.execute("BEGIN IMMEDIATE")
+    return con
+
+
+def test_forget_pair_raises_behind_another_writer_instead_of_saying_zero(store, monkeypatch):
+    """Pressed for real on 2026-09-09: the standalone indexer held the lock,
+    every forget_pair waited 60 s and returned 0 as if it had worked, and the
+    files were deleted underneath 341,884 rows still on screen."""
+    import sqlite3
+
+    _measured("AAA", "1h", _ms(2025, 2, 10))
+    ri.sync(now=time.time() + ri.SETTLE_S + 1)
+    holder = _hold_write_lock()
+    try:
+        monkeypatch.setattr(ri, "_connect",
+                            _short_timeout(ri._connect, monkeypatch))
+        with pytest.raises(sqlite3.OperationalError, match="locked"):
+            ri.forget_pair("AAA-1h")
+        assert ri.write_available(timeout_ms=100).startswith("the row index")
+    finally:
+        holder.rollback(); holder.close()
+    assert ri.write_available() == ""
+    assert ri.query()["total"] == 2                  # nothing was lost
+
+
+def _short_timeout(real_connect, monkeypatch):
+    """the test cannot wait the production 60 s busy_timeout"""
+    def connect(*a, **k):
+        con = real_connect(*a, **k)
+        con.execute("PRAGMA busy_timeout=100")
+        return con
+    return connect
+
+
+def test_a_failed_index_delete_keeps_the_pairs_files(store, monkeypatch):
+    """index first, files second — and no files at all when the first step
+    fails, or the next screen shows rows for a pair the disk no longer has."""
+    _measured("AAA", "1h", _ms(2025, 2, 10))
+    ri.sync(now=time.time() + ri.SETTLE_S + 1)
+
+    def refuse(pair):
+        raise RuntimeError("database is locked")
+    monkeypatch.setattr(ri, "forget_pair", refuse)
+    job = {"errors": [], "freed": 0, "files_removed": 0, "rows_removed": 0}
+    sm._remove_pair("AAA-1h", "AAA", "1h", job)
+    assert (msw.ROWDIR / "AAA-1h.json").exists()
+    assert (msw.STATES / "AAA-1h.json").exists()
+    assert job["files_removed"] == 0 and job["freed"] == 0
+    assert job["errors"] == ["AAA-1h: index still holds it (RuntimeError: "
+                             "database is locked) — files kept"]
+
+
+def test_a_results_or_delisted_delete_refuses_while_another_process_writes_the_index(store, monkeypatch):
+    _measured("AAA", "1h", _ms(2025, 2, 10))
+    ri.sync(now=time.time() + ri.SETTLE_S + 1)
+    monkeypatch.setattr(ri, "write_available",
+                        lambda timeout_ms=2000: "the row index (rows.db) is being written by another process right now")
+    with pytest.raises(ValueError, match="being written by another process"):
+        sm.start_delete("results", "2025-02", now=_ms(2025, 9, 9) / 1000)
+    monkeypatch.setattr(sm, "_live_symbols", lambda: {"OTHER_USDT"})
+    with pytest.raises(ValueError, match="being written by another process"):
+        sm.start_delete("delisted", "")
+    # candles do not touch rows.db, so they are not held up by it
+    (msw.CANDLES / "AAA_USDT-1h.json").write_text(json.dumps({"t": [_ms(2025, 1, 5)], "o": [1], "h": [1], "l": [1], "c": [1], "v": None}))
+    sm.start_delete("candles", "2025-02", now=_ms(2025, 9, 9) / 1000)
+    _wait("candles")
+
+
 def test_forget_pair_removes_rows_and_the_summary(store):
     _measured("AAA", "1h", _ms(2025, 2, 10))
     ri.sync(now=time.time() + ri.SETTLE_S + 1)

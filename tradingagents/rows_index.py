@@ -521,13 +521,48 @@ def forget_pair(pair: str) -> int:
     The freed pages stay inside rows.db until its next rebuild; SQLite reuses
     them for the next fill.
     """
-    def _do():
+    # NOT _missing_ok. Pressed for real on 2026-09-09 while the standalone
+    # indexer held the write lock: every call waited its 60 s busy_timeout,
+    # `database is locked` was swallowed as "0 rows", the caller read that as
+    # success and deleted the pair's FILES — leaving 341,884 rows on screen
+    # for coins that were no longer on the disk, the exact orphan the
+    # index-first order exists to prevent. A lock is a failure and says so;
+    # only a missing schema is "nothing to forget".
+    try:
         with _open() as con:
             n = con.execute("DELETE FROM rows WHERE pair = ?", (pair,)).rowcount
             con.execute("DELETE FROM pairs WHERE pair = ?", (pair,))
             return int(n or 0)
+    except sqlite3.OperationalError as exc:
+        if "no such table" in str(exc).lower():
+            return 0
+        raise
 
-    return int(_missing_ok(_do, 0) or 0)
+
+def write_available(timeout_ms: int = 2000) -> str:
+    """"" when this process could take rows.db's write lock right now, else
+    the reason it could not (another process is writing).
+
+    The month/delisted deletes ask this BEFORE starting: a delete that waits
+    60 s per pair behind a bulk index pass, then fails, is the 29-coin job of
+    2026-09-09 that removed 2 coins in 7 minutes. Refusing fast with the
+    reason is the same contract every other refusal here keeps.
+    """
+    try:
+        con = _connect()
+        try:
+            con.execute(f"PRAGMA busy_timeout={int(timeout_ms)}")
+            con.execute("BEGIN IMMEDIATE")
+            con.execute("ROLLBACK")
+            return ""
+        finally:
+            con.close()
+    except sqlite3.OperationalError as exc:
+        if "locked" in str(exc).lower() or "busy" in str(exc).lower():
+            return ("the row index (rows.db) is being written by another "
+                    "process right now — an indexer pass or an index build; "
+                    "try again when it is done")
+        return f"the row index could not be opened for writing: {exc}"
 
 
 SETTLE_S = 60.0
@@ -1307,6 +1342,10 @@ UNINDEXED_LIMIT = 200_000
 COUNT_CAP = 5_000
 # how many rows a WINDOWED csv re-measures before it stops and says so
 DAYS_CSV_MAX = 2_000
+# Seconds the WINDOWED export sleeps after each re-measured row, so the rest of
+# the app keeps answering while a download runs. 2 ms against ~90 ms of work is
+# 2% of the download and the difference between a live page and a dead one.
+EXPORT_BREATHE_S = 0.002
 # Past this offset a page is fetched in TWO steps — see `_page_rows`. The
 # operator's own click: page 50,000 of Stored strategies, offset 24,999,500.
 #
@@ -2470,8 +2509,14 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
                 # can never span more pairs than it has rows, so this never
                 # raises mid-stream — a stream that raises is a truncated file
                 # that looks complete.
+                # BREATHE between rows. This is a download, not a page: a
+                # 250-row batch is ~22 s of pure Python holding the
+                # interpreter lock, and everything else the operator's screen
+                # asks for waits behind it (`/api/health` 18.3 s, Sep 09,
+                # 2026). The page's own window call passes nothing.
                 _msw.window_rows(batch_rows, win_days,
-                                 group_max=len(batch_rows) + 1)
+                                 group_max=len(batch_rows) + 1,
+                                 breathe=EXPORT_BREATHE_S)
                 for d in batch_rows:
                     if not d.get("restated"):
                         continue

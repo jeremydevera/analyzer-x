@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 32, "total": 32, "rows": 2664398, "note": "COLLECT 15m: rule 90/120 (cf_chan_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:02:31Z"}
+{"shard": 4, "stage": "testing", "done": 32, "total": 32, "rows": 2671598, "note": "COLLECT 30m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:03:23Z"}

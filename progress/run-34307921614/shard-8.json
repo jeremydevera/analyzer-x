@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 28, "total": 28, "rows": 2191088, "note": "HUMA 4h: rule 82/120 (cf_maobv)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:32:07Z"}
+{"shard": 8, "stage": "testing", "done": 29, "total": 29, "rows": 2229092, "note": "HUTSTOCK 30m: rule 102/120 (cf_soup1_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:32:52Z"}

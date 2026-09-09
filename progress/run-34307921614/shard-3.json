@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 14, "total": 14, "rows": 1182346, "note": "BOME 15m: rule 57/120 (orderblock)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:49:12Z"}
+{"shard": 3, "stage": "testing", "done": 14, "total": 14, "rows": 1189606, "note": "BOME 15m: rule 90/120 (cf_chan_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:49:58Z"}

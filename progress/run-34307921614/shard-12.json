@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 27, "total": 27, "rows": 2189976, "note": "OGN 15m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:04:39Z"}
+{"shard": 12, "stage": "testing", "done": 27, "total": 27, "rows": 2193276, "note": "OGN 15m: rule 15/120 (bbbreak)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:05:24Z"}

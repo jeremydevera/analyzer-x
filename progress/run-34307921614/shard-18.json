@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 47, "total": 47, "rows": 4276868, "note": "WLD 30m: rule 43/120 (macddiv)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:23:29Z"}
+{"shard": 18, "stage": "testing", "done": 47, "total": 47, "rows": 4286868, "note": "WLD 30m: rule 95/120 (cf_emarsi_l1)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:24:14Z"}

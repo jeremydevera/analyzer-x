@@ -222,6 +222,92 @@ def test_the_age_screen_never_silently_deletes_a_coin():
     assert "younger than {MIN_DAYS}" in main_body
 
 
+# ------------------------------------------------ where the download lands
+def test_no_artifact_is_unpacked_on_the_system_drive():
+    """THE C: DRIVE BUG (2026-09-10). The operator: "why are you using my c
+    drive?".
+
+    The store is on G: through a junction, so nothing about the fleet's rows
+    was ever meant to touch C:. But a collect DOWNLOADS AND UNZIPS every
+    shard's artifact before streaming it in, and a bare
+    `tempfile.TemporaryDirectory()` unpacks into %TEMP% — AppData, on the
+    system drive. Three of those folders held 9.4 GB while C: had 6 GB free of
+    118 GB. Twenty shards of a big run would have filled it.
+    """
+    import ast
+    import inspect
+
+    from tradingagents import cloud_sweep as cs
+
+    # read the CALLS, not the prose — the docstring quotes the broken form
+    calls = [n for n in ast.walk(ast.parse(inspect.getsource(cs)))
+             if isinstance(n, ast.Call)
+             and ast.unparse(n.func).endswith("TemporaryDirectory")]
+    assert len(calls) == 2, (
+        f"expected fetch() and collect_into_store(); found {len(calls)}")
+    for c in calls:
+        where = {k.arg: ast.unparse(k.value) for k in c.keywords}.get("dir")
+        assert where == "_scratch()", (
+            f"line {c.lineno}: a bare TemporaryDirectory unpacks a GitHub "
+            f"artifact into %TEMP% — the SYSTEM drive")
+
+
+def test_the_scratch_sits_on_the_stores_own_drive(tmp_path, monkeypatch):
+    from tradingagents import cloud_sweep as cs, market_sweep as msw
+
+    import os
+    import pathlib
+    import tempfile
+
+    monkeypatch.setattr(msw, "HOME", tmp_path)
+    got = cs._scratch()
+    assert got is not None
+    assert os.path.commonpath([got, str(tmp_path)]) == str(tmp_path), \
+        "the unpack must land inside the store, whatever drive that is"
+
+    # and on THIS operator's real layout that is not the system drive: HOME is
+    # ~/.tradingagents, a junction onto G:, while %TEMP% is AppData on C:
+    real = pathlib.Path(os.path.expanduser("~/.tradingagents")).resolve()
+    sys_tmp = pathlib.Path(tempfile.gettempdir()).resolve()
+    assert sys_tmp != real and sys_tmp not in real.parents, \
+        f"the store itself sits under the system temp ({sys_tmp})"
+
+
+def test_a_store_drive_that_cannot_be_used_falls_back(monkeypatch):
+    """A machine laid out differently must still collect, not crash."""
+    from tradingagents import cloud_sweep as cs, market_sweep as msw
+
+    monkeypatch.setattr(msw, "HOME", "/does/not/exist\0bad")
+    assert cs._scratch() is None, "None means TemporaryDirectory's own default"
+
+
+def test_a_killed_collect_does_not_leak_a_shard_forever(tmp_path, monkeypatch):
+    """`TemporaryDirectory` cleans up on exit; a KILLED collect never gets
+    there, and `start.py` kills the job tree on every restart. That is how
+    three unpacked shards piled up on C: at once."""
+    import os
+    import time
+
+    from tradingagents import cloud_sweep as cs, market_sweep as msw
+
+    monkeypatch.setattr(msw, "HOME", tmp_path)
+    scratch = tmp_path / "tmp"
+    scratch.mkdir()
+    leaked, live, theirs = (scratch / "tmpOLD", scratch / "tmpNEW",
+                            scratch / "not-ours")
+    for d in (leaked, live, theirs):
+        d.mkdir()
+        (d / "rows.jsonl").write_text("x")
+    old = time.time() - cs.SCRATCH_TTL_S - 60
+    for d in (leaked, theirs):
+        os.utime(d, (old, old))
+
+    cs._scratch()
+    assert not leaked.exists(), "a six-hour-old unpack is not live work"
+    assert live.exists(), "a download in flight must survive"
+    assert theirs.exists(), "only sweep our own tmp* folders"
+
+
 def test_the_orchestrator_asks_for_every_contract():
     """`dispatch` defaults min_days to 365. The orchestrator never passed it,
     so 538 contracts younger than a year were never measured and the panel

@@ -29,6 +29,71 @@ this repo is also part of the record.
 
 ---
 
+## RCA-2026-09-10-B — the fleet's rows were unpacked on the C: drive, and every killed collect left 3 GB behind
+
+**SAW** — the operator, `Sep 10, 2026 12:10am`: *"why are you using my c
+drive?"*. Their store is on G: on purpose. C: had **6 GB free of 118 GB**.
+
+**TIMELINE**
+
+1. `Sep 09  9:48pm` — a collect starts (pid 22408) for run 34307921614:
+   20 shards of GitHub artifacts to stream into the store.
+2. `Sep 09 11:23pm` — TWO folders appear in `%TEMP%`, `tmpsmhtelf3` and
+   `tmpcvnyccor`, **3.33 GB each**, each holding the same file: `rows-5.jsonl`.
+   Both are orphans of collects that were killed. Neither is ever read again.
+3. `Sep 10 12:14am` — a third, `tmpw3zb_lwl`, 2.73 GB, `rows-18.jsonl`. That
+   one is live: the collect is on shard 18 of 20.
+4. `Sep 10 12:10am` — **9.39 GB** of unpacked shards sitting on the system
+   drive, which has 6 GB left. The operator asks the question above.
+5. Counted the same minute: **147** leaked `tmp*` folders in `%TEMP%`, the
+   oldest from `Sep 03`.
+6. `Sep 10 12:22am` — the two dead unpacks deleted after checking no process
+   held them open. C: **6.4 GB → 13 GB free**.
+
+**ROOT CAUSE** — `cloud_sweep.fetch()` and `cloud_sweep.collect_into_store()`
+both called `tempfile.TemporaryDirectory()` with no `dir=`. That is `%TEMP%` —
+`AppData\Local\Temp`, on the SYSTEM drive — while `market_sweep.HOME` is
+`~/.tradingagents`, a junction onto `G:`. Every byte the fleet produced was
+written to C: first and only then streamed to G:.
+
+Two things made it bite instead of being harmless:
+
+* **A shard is not a temp file.** `rows-5.jsonl` is 3.33 GB. Twenty of them is
+  ~60 GB, more than C: had free at any point today.
+* **`TemporaryDirectory` only cleans if the process reaches the end of the
+  `with`.** A KILLED collect never does — and `start.py` kills the job tree
+  with `taskkill /T` on every restart (see the operator memory note). So each
+  hard stop leaks a whole shard, permanently. That is where all three came
+  from, and where the 147 came from.
+
+**WHY IT WAS NOT CAUGHT** — every test about the store checks its CONTENT:
+rows, watermarks, cloud/local parity, ownership marks. Not one asked WHERE the
+bytes land on the way in. And the word "temporary" carries an assumption that
+was false twice over here: not small, and not self-cleaning.
+
+**COST** — no money. The risk was the machine: Windows on 6 GB of 118 GB
+stalls its page file, and this same session had already traced the backtest's
+slowness to page-file thrashing. A bigger run would have filled C: outright.
+
+**FIX** — this commit. `cloud_sweep._scratch()`: unpack inside the store's own tree
+(`HOME/tmp`), falling back to the system default with a warning if that drive
+cannot be used, and sweep our own `tmp*` leftovers older than
+`SCRATCH_TTL_S` (6 hours — a download times out at 30 minutes) on the way in.
+The 147 already on C: were a one-time manual reclaim, not code: `%TEMP%` is
+not ours to sweep from a library.
+
+**GUARD** — `tests/test_cloud_sweep.py`:
+`test_no_artifact_is_unpacked_on_the_system_drive` walks the AST for every
+`TemporaryDirectory` call and demands `dir=_scratch()` (reading the calls, not
+the prose — the docstring quotes the broken form);
+`test_the_scratch_sits_on_the_stores_own_drive`;
+`test_a_store_drive_that_cannot_be_used_falls_back`;
+`test_a_killed_collect_does_not_leak_a_shard_forever` proves a six-hour-old
+unpack is removed, a live one is kept, and a folder that is not ours is never
+touched.
+
+---
+
 ## RCA-2026-09-10-A — the row UPDATE button deleted rows, then silently binned the one it measured
 
 **SAW** — the operator, on #SW8Q96E6 (STBL 4h, macddiv, tp2.5/sl2.5, flat):

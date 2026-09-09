@@ -358,7 +358,7 @@ def live_progress(run_id: int, slug: str | None = None) -> list:
 def fetch(run_id: int, slug: str | None = None) -> list:
     """Download the finished artifact and return its rows."""
     slug = slug or repo_slug()
-    with tempfile.TemporaryDirectory() as tmp:
+    with tempfile.TemporaryDirectory(dir=_scratch()) as tmp:
         _gh("run", "download", str(run_id), "--repo", slug, "-n", ARTIFACT,
             "-D", tmp, timeout=900)
         rows, bad = [], 0
@@ -406,6 +406,54 @@ def artifact_names(run_id: int, slug: str | None = None) -> list[str]:
                     key=lambda n: int(n.split("-", 1)[1])
                     if n.split("-", 1)[1].isdigit() else 0)
     return shards or [n for n in live if n == ARTIFACT]
+
+
+SCRATCH_TTL_S = 6 * 3600
+
+
+def _scratch() -> str | None:
+    """Where an artifact download is unpacked — BESIDE THE STORE, not on C:.
+
+    `tempfile.TemporaryDirectory()` unpacks into %TEMP%, which on Windows is
+    the operator's own AppData temp folder — the SYSTEM drive. The store lives
+    on G: through a junction, so the operator reasonably believed the fleet's
+    rows never touched C:. They did: a collect downloads and unzips EVERY
+    shard's artifact before streaming it into the store, and on 2026-09-10
+    three of those folders held 9.4 GB between them while C: sat at 6 GB free
+    of 118 GB. The operator asked "why are you using my c drive?". Twenty
+    shards of a big run would have filled it and taken Windows down with it.
+
+    Leftovers are swept here too. `TemporaryDirectory` cleans up on exit, but
+    a collect that is KILLED never gets there — and `start.py` kills the job
+    tree on every restart, so each hard stop leaks a whole shard's unpack.
+    That is how three of them piled up. Only our own `tmp*` folders, only ones
+    older than `SCRATCH_TTL_S` (a download times out at 30 minutes, so six
+    hours cannot be live work).
+
+    Falls back to the system default when the store's drive cannot be used, so
+    a machine with a different layout still works.
+    """
+    from tradingagents import market_sweep as msw
+
+    try:
+        d = pathlib.Path(msw.HOME) / "tmp"
+        d.mkdir(parents=True, exist_ok=True)
+    except Exception as exc:                                   # noqa: BLE001
+        logger.warning("scratch beside the store unusable (%s) — "
+                       "artifact downloads fall back to the system temp", exc)
+        return None
+
+    cutoff = time.time() - SCRATCH_TTL_S
+    for old in d.glob("tmp*"):
+        try:
+            if old.is_dir() and old.stat().st_mtime < cutoff:
+                import shutil
+
+                shutil.rmtree(old, ignore_errors=True)
+                logger.info("swept leaked artifact scratch %s", old.name)
+        except Exception:                                      # noqa: BLE001
+            pass
+    return str(d)
 
 
 def collect_into_store(run_id: int, slug: str | None = None, *,
@@ -491,7 +539,7 @@ def collect_into_store(run_id: int, slug: str | None = None, *,
     tfs_seen: set = set()
 
     for n, name in enumerate(names, 1):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=_scratch()) as tmp:
             try:
                 _gh("run", "download", str(run_id), "--repo", slug,
                     "-n", name, "-D", tmp, timeout=1800)

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 14, "total": 14, "rows": 1276726, "note": "BOME 1d: 394 bars \u00b7 Aug 11, 2025 12:00am \u2192 Sep 08, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:55:31Z"}
+{"shard": 3, "stage": "testing", "done": 16, "total": 16, "rows": 1343526, "note": "BOTSTOCK 30m: 2,772 bars \u00b7 Jul 13, 2026 10:30am \u2192 Sep 09, 2026 4:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:56:16Z"}

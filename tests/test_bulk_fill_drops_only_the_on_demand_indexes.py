@@ -99,13 +99,21 @@ def test_it_can_never_drop_an_index_the_screen_orders_by(con):
         assert kept in _names(con), f"{kept} was dropped — that blanks the page"
 
 
-def test_dropping_is_only_for_a_bulk_fill():
-    """A normal click must not drop anything — it indexes a handful of pairs
-    and would pay the rebuild for nothing."""
+def test_dropping_is_opt_in_and_off_by_default():
+    """It shipped as automatic-on-bulk and took the operator's filters down
+    within minutes (Sep 10, 2026): three of the ten are rows_wr2/wr3/wr4,
+    which is what a win-% floor uses, and the rebuild queue runs ONE index at
+    a time (~42 min for rows_wr3 alone) so the outage outlasts the fill.
+    A slow fill is invisible; a filter that cannot answer is not."""
+    import inspect as _i
+
+    assert _i.signature(ri.sync).parameters["drop_indexes"].default is False, \
+        "a catch-up must never take a filter away unless it was asked to"
     src = inspect.getsource(ri.sync)
     i = src.index("_drop_on_demand_indexes(")
-    assert "if bulk:" in src[max(0, i - 200):i], \
-        "the drop must sit under `if bulk`, not on every pass"
+    guard = src[max(0, i - 260):i]
+    assert "if bulk and drop_indexes:" in guard, \
+        "the drop needs BOTH a bulk fill and an explicit ask"
     assert ri.BIG_FILL >= 100, ri.BIG_FILL
 
 

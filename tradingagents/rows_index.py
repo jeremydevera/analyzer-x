@@ -649,11 +649,37 @@ def _missing_ok(fn, default):
     that here turned "this filter needs longer than 20s" into "0 rows, total
     0" -- an empty screen presented as an answer, which is worse than the
     30-second HTTP 500 the budget exists to replace.
+
+    SO IS A MISSING INDEX, and that took the same shape twice. The guard above
+    matched the word "interrupt" and nothing else, so `no such index:
+    rows_wr4` still became the default -- and for `_winrate_matches` the
+    default is **0**, which reads as "no row clears this floor". Measured on
+    the operator's store Sep 10, 2026, minutes after a bulk fill dropped the
+    on-demand indexes in ANOTHER process: their own filter
+    (`min_winrate=85 AND days=30`) answered **HTTP 200, rows=0, total=0** while
+    `ri.query()` in a fresh process refused correctly with "the wide win-rate
+    index is still being built". The API had named an index its cache still
+    believed in.
+    A missing INDEX is a stale cache, so the cache is dropped and the error
+    re-raised: the caller then refuses honestly (SortNotReady, which the panel
+    shows as a wait) or, on its next attempt, picks a plan that exists.
+
+    A LOCK still returns the default, and deliberately: `has_index` must answer
+    from its cache while the indexer writes, or a coin filter is refused with
+    every index sitting right there (2026-08-26, 503 in 0.02 s) -- see
+    `test_a_locked_read_does_not_look_like_a_missing_index`. A lock is
+    transient and makes the planner CAUTIOUS; a missing index makes it WRONG.
+    Only the second is a lie, so only the second raises. The first version of
+    this fix re-raised everything and broke that test at once.
     """
     try:
         return fn()
     except sqlite3.Error as exc:
-        if "interrupt" in str(exc).lower():
+        why = str(exc).lower()
+        if "interrupt" in why:
+            raise
+        if "no such index" in why:
+            forget_indexes()      # so the next plan is chosen from reality
             raise
         return default
 
@@ -709,7 +735,7 @@ def stale_pairs(now: float | None = None) -> list:
 
 def sync(paths: Iterable[Path] | None = None, *, budget_s: float = 0.0,
          now: float | None = None, max_pairs: int = 0,
-         force: bool = False) -> dict:
+         force: bool = False, drop_indexes: bool = False) -> dict:
     """Index every changed pair. `budget_s` stops early so a caller on a timer
     never runs long; the rest is picked up next time. `now` moves the settle
     window, which is how a test says "pretend a minute has passed".
@@ -767,7 +793,20 @@ def sync(paths: Iterable[Path] | None = None, *, budget_s: float = 0.0,
         # The kept four keep the screen answering; a filter whose index is
         # briefly gone already answers "it is being built" (SortNotReady),
         # which the panel renders as a wait.
-        if bulk:
+        # OPT-IN ONLY, and the reason is measured. Dropping them makes the
+        # fill faster and takes the operator's FILTERS down with it: three of
+        # the ten are rows_wr2/wr3/wr4, which is exactly what a win-% floor
+        # uses. Sep 10, 2026, minutes after this first shipped, their own
+        # filter (`min_winrate=85 AND days=30`) stopped answering — and the
+        # rebuild queue runs ONE index at a time, ~42 min for rows_wr3 alone,
+        # so the outage outlasts the fill it was speeding up. A slow fill is
+        # invisible; a filter that cannot answer is the product not working
+        # (the same judgement that protects the kept four, 2026-08-27).
+        #
+        # The real bottleneck is not the indexes anyway: 46.8% of the 34.7 GB
+        # file is free pages, so every insert seeks instead of streams.
+        # Compaction fixes that WITHOUT taking a filter away — see RCA-E.
+        if bulk and drop_indexes:
             for name in _drop_on_demand_indexes(con):
                 print(f"[rows-index] dropped {name} for a {len(todo)}-pair "
                       f"fill; it rebuilds when the fill ends", flush=True)

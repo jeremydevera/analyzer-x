@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 81, "total": 81, "rows": 6991732, "note": "WLFI 1h: rule 13/120 (pivot)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:26:09Z"}
+{"shard": 7, "stage": "testing", "done": 81, "total": 81, "rows": 7033532, "note": "WLFI 4h: rule 82/120 (cf_maobv)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:26:54Z"}

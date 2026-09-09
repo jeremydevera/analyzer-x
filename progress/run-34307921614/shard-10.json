@@ -1,1 +1,1 @@
-{"shard": 10, "stage": "testing", "done": 28, "total": 28, "rows": 2775628, "note": "LUNC 15m: rule 96/120 (cf_emarsi_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:08:37Z"}
+{"shard": 10, "stage": "testing", "done": 28, "total": 28, "rows": 2780668, "note": "LUNC 30m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:09:26Z"}

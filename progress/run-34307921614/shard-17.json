@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 23, "total": 23, "rows": 1774210, "note": "TOWNS 30m: rule 5/120 (rsi14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:12:20Z"}
+{"shard": 17, "stage": "testing", "done": 23, "total": 23, "rows": 1781690, "note": "TOWNS 30m: rule 39/120 (fisher)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:13:06Z"}

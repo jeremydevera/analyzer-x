@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 57, "total": 57, "rows": 4892628, "note": "ID 1h: rule 40/120 (crsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:20:54Z"}
+{"shard": 7, "stage": "testing", "done": 57, "total": 57, "rows": 4935748, "note": "ID 1d: 394 bars \u00b7 Aug 11, 2025 12:00am \u2192 Sep 08, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:21:43Z"}

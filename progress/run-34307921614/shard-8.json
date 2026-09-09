@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 34, "total": 34, "rows": 2731846, "note": "IBB 30m: 2,050 bars \u00b7 Jul 28, 2026 1:00pm \u2192 Sep 09, 2026 5:30am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:02:57Z"}
+{"shard": 8, "stage": "testing", "done": 36, "total": 36, "rows": 2848308, "note": "IBKRSTOCK 15m: rule 84/120 (cf_maobv_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:03:42Z"}

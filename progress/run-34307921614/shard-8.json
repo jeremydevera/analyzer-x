@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 38, "total": 38, "rows": 2996512, "note": "ICP 15m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:08:18Z"}
+{"shard": 8, "stage": "testing", "done": 38, "total": 38, "rows": 3000112, "note": "ICP 15m: rule 20/120 (stoch14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:09:03Z"}

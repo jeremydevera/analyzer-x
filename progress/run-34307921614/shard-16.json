@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 3, "total": 3, "rows": 216304, "note": "SOONNETWORK 15m: rule 68/120 (dbltop)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:58:19Z"}
+{"shard": 16, "stage": "testing", "done": 3, "total": 3, "rows": 223344, "note": "SOONNETWORK 15m: rule 100/120 (cf_soup1)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:59:06Z"}

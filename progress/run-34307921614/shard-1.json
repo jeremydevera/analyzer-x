@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 47, "total": 47, "rows": 4146076, "note": "ATOM 15m: rule 47/120 (ibs)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:00:30Z"}
+{"shard": 1, "stage": "testing", "done": 47, "total": 47, "rows": 4157596, "note": "ATOM 30m: 18,959 bars \u00b7 Aug 10, 2025 6:30am \u2192 Sep 09, 2026 5:30am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:01:23Z"}

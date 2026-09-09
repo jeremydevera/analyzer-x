@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 17, "total": 17, "rows": 1579648, "note": "CHZ 4h: rule 86/120 (cf_triple_l1)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:11:30Z"}
+{"shard": 4, "stage": "testing", "done": 18, "total": 18, "rows": 1610288, "note": "CIENSTOCK 15m: rule 81/120 (cf_donch_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:12:15Z"}

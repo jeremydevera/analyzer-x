@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 29, "total": 29, "rows": 2958160, "note": "YGG 4h: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:23:09Z"}
+{"shard": 19, "stage": "testing", "done": 30, "total": 30, "rows": 3007688, "note": "YMTCSTOCK 30m: rule 27/120 (aroon25)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:23:54Z"}

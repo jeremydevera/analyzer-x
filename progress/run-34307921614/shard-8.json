@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 2, "total": 2, "rows": 103690, "note": "HANA 15m: rule 84/120 (cf_maobv_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:48:35Z"}
+{"shard": 8, "stage": "testing", "done": 2, "total": 2, "rows": 111610, "note": "HANA 30m: 16,689 bars \u00b7 Sep 26, 2025 11:00am \u2192 Sep 09, 2026 3:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:49:31Z"}

@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 24, "total": 24, "rows": 2393136, "note": "XVG 1h: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:00:35Z"}
+{"shard": 19, "stage": "testing", "done": 24, "total": 24, "rows": 2427676, "note": "XVG 4h: rule 36/120 (stochrsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:01:20Z"}

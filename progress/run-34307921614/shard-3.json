@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 40, "total": 40, "rows": 3316786, "note": "CAD 15m: rule 108/120 (cf_bosfvg_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:56:12Z"}
+{"shard": 3, "stage": "testing", "done": 40, "total": 40, "rows": 3327826, "note": "CAD 30m: rule 36/120 (stochrsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:56:58Z"}

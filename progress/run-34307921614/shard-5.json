@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 63, "total": 63, "rows": 5263740, "note": "W 30m: rule 20/120 (stoch14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:27:54Z"}
+{"shard": 5, "stage": "testing", "done": 63, "total": 63, "rows": 5275840, "note": "W 30m: rule 76/120 (cf_mom)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:28:40Z"}

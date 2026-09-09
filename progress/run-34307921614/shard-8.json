@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 5, "total": 5, "rows": 348998, "note": "HBAR 15m: rule 105/120 (cf_eqhl_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:57:24Z"}
+{"shard": 8, "stage": "testing", "done": 5, "total": 5, "rows": 353698, "note": "HBAR 30m: rule 4/120 (trend50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:58:11Z"}

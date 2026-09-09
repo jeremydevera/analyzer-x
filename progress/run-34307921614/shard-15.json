@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 35, "total": 35, "rows": 3056454, "note": "SLP 1h: rule 21/120 (cci20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:14:36Z"}
+{"shard": 15, "stage": "testing", "done": 35, "total": 35, "rows": 3077794, "note": "SLP 4h: 2,369 bars \u00b7 Aug 10, 2025 8:00am \u2192 Sep 09, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:15:26Z"}

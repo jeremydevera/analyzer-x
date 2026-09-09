@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 19, "total": 19, "rows": 1511082, "note": "RECALL 15m: rule 29/120 (hull20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:47:50Z"}
+{"shard": 14, "stage": "testing", "done": 19, "total": 19, "rows": 1517202, "note": "RECALL 15m: rule 64/120 (hammer)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:48:35Z"}

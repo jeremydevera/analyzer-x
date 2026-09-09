@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 8, "total": 8, "rows": 650844, "note": "FRMISTOCK 15m: rule 78/120 (cf_mom_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:03:51Z"}
+{"shard": 7, "stage": "testing", "done": 9, "total": 9, "rows": 760844, "note": "FTNTSTOCK 4h: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:04:36Z"}

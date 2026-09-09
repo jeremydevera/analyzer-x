@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 5, "total": 5, "rows": 526862, "note": "NIL 1d: 394 bars \u00b7 Aug 11, 2025 12:00am \u2192 Sep 08, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:04:22Z"}
+{"shard": 12, "stage": "testing", "done": 7, "total": 7, "rows": 589898, "note": "NIOSTOCK 15m: rule 119/120 (cf_stflip_l1)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:05:07Z"}

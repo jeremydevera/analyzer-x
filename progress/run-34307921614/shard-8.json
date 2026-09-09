@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 49, "total": 49, "rows": 4148170, "note": "UB 30m: rule 42/120 (rsidiv)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:28:39Z"}
+{"shard": 8, "stage": "testing", "done": 49, "total": 49, "rows": 4160710, "note": "UB 30m: rule 100/120 (cf_soup1)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:29:25Z"}

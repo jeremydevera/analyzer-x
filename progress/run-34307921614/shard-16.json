@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 18, "total": 18, "rows": 1754246, "note": "SQD 15m: rule 57/120 (orderblock)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:11:53Z"}
+{"shard": 16, "stage": "testing", "done": 18, "total": 18, "rows": 1761046, "note": "SQD 15m: rule 91/120 (cf_soup)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:12:39Z"}

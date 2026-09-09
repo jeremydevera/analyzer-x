@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 6, "total": 6, "rows": 498532, "note": "MINIMAXSTOCK 15m: rule 95/120 (cf_emarsi_l1)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:17:10Z"}
+{"shard": 11, "stage": "testing", "done": 6, "total": 6, "rows": 541688, "note": "MINIMAXSTOCK 1h: rule 67/120 (pinbar)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:17:55Z"}

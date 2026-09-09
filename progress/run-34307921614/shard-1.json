@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 29, "total": 29, "rows": 2361764, "note": "ARCSOL 15m: rule 16/120 (keltner)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:54:32Z"}
+{"shard": 1, "stage": "testing", "done": 29, "total": 29, "rows": 2369564, "note": "ARCSOL 15m: rule 56/120 (insidebrk)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:55:18Z"}

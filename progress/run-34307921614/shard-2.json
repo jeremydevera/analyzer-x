@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 30, "total": 30, "rows": 3047962, "note": "BAT 30m: rule 95/120 (cf_emarsi_l1)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:13:00Z"}
+{"shard": 2, "stage": "testing", "done": 30, "total": 30, "rows": 3062262, "note": "BAT 1h: rule 34/120 (lrslope)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:13:46Z"}

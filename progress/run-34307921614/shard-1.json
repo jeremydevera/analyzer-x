@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 64, "total": 64, "rows": 5546272, "note": "BITO 15m: 4,032 bars \u00b7 Jul 29, 2026 6:45am \u2192 Sep 09, 2026 6:30am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:58:57Z"}
+{"shard": 1, "stage": "testing", "done": 66, "total": 66, "rows": 5678724, "note": "BLAST 15m: 34,602 bars \u00b7 Sep 13, 2025 8:15pm \u2192 Sep 09, 2026 6:30am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:59:52Z"}

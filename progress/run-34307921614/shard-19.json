@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 22, "total": 22, "rows": 2113308, "note": "XRP 15m: rule 52/120 (nr7)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:45:48Z"}
+{"shard": 19, "stage": "testing", "done": 22, "total": 22, "rows": 2125368, "note": "XRP 30m: 18,959 bars \u00b7 Aug 10, 2025 5:00am \u2192 Sep 09, 2026 4:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:46:39Z"}

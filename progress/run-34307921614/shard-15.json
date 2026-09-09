@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 14, "total": 14, "rows": 1132586, "note": "SHELL 15m: rule 58/120 (bos)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:44:02Z"}
+{"shard": 15, "stage": "testing", "done": 14, "total": 14, "rows": 1139846, "note": "SHELL 15m: rule 91/120 (cf_soup)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:44:47Z"}

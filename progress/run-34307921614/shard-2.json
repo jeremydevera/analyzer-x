@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 10, "total": 10, "rows": 946884, "note": "AXS 15m: rule 47/120 (ibs)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:23:42Z"}
+{"shard": 2, "stage": "testing", "done": 10, "total": 10, "rows": 956784, "note": "AXS 15m: rule 93/120 (cf_soup_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:24:28Z"}

@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 40, "total": 40, "rows": 3492458, "note": "COTI 1h: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:50:00Z"}
+{"shard": 4, "stage": "testing", "done": 40, "total": 40, "rows": 3509398, "note": "COTI 1h: rule 78/120 (cf_mom_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:50:45Z"}

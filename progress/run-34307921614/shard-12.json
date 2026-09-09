@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 52, "total": 52, "rows": 4613434, "note": "ALLO 15m: 28,977 bars \u00b7 Nov 11, 2025 11:00am \u2192 Sep 09, 2026 7:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:24:29Z"}
+{"shard": 12, "stage": "testing", "done": 52, "total": 52, "rows": 4615054, "note": "ALLO 15m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:25:19Z"}

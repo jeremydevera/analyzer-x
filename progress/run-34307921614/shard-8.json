@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 47, "total": 47, "rows": 3899070, "note": "PUFFER 15m: rule 120/120 (cf_stflip_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:08:49Z"}
+{"shard": 8, "stage": "testing", "done": 47, "total": 47, "rows": 3901070, "note": "PUFFER 30m: rule 4/120 (trend50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:09:37Z"}

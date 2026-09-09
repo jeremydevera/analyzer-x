@@ -179,12 +179,14 @@ def test_a_corrupt_state_file_is_not_fatal():
 
 
 # ------------------------------------------------------------- plumbing
-def test_the_supervisor_calls_it():
+def test_the_supervisor_does_NOT_top_up():
+    """Operator, 2026-09-09, on seeing "downloading 39%" they had not
+    started: *"i dont want it, it will only update when i click update candle
+    button"*. The module stays (a person can still call it); nothing in the
+    API's supervisor tick may start a download."""
     src = open("tradingagents/api.py", encoding="utf-8").read()
-    assert "candle_autopilot" in src and "_cda.tick()" in src
-    i = src.index("_cda.tick()")
-    assert "except Exception" in src[i:i + 300], \
-        "a failure here must not take the supervisor down"
+    assert "_cda.tick()" not in src
+    assert "import candle_autopilot" not in src
 
 
 def test_no_ops_are_logged_when_the_reason_changes(monkeypatch, capsys):
@@ -200,9 +202,10 @@ def test_no_ops_are_logged_when_the_reason_changes(monkeypatch, capsys):
 
 # ------------------------------------------------- round 4: the grey buttons
 def test_the_screen_says_why_the_buttons_are_grey():
-    """A top-up now starts by itself, so these grey out at a moment the
-    operator did not cause."""
+    """One download job at a time — and since 2026-09-09 only a button
+    starts one, so the screen must not claim candles top up by themselves."""
     body = open("webapp/src/components/candles/DownloadScreen.tsx",
                    encoding="utf-8").read()
-    assert "the buttons wait while a" in body
-    assert "top up on their own once the store is 3h behind" in body
+    assert "the buttons wait while the" in body
+    assert "you started is running" in body
+    assert "top up on their own" not in body

@@ -128,16 +128,14 @@ def _keep_the_row_index_current() -> None:
                     _ca.tick()
                 except Exception as exc:                       # noqa: BLE001
                     print(f"[cloud-autopilot] failed: {exc!r}", flush=True)
-                # KEEP THE CANDLES FRESH. The store goes stale on its own —
-                # 0 pending at 10:55pm, 5,095 by 9:33am — because "behind" is
-                # measured against the clock and nothing ever topped it up
-                # without a person pressing UPDATE CANDLES (2026-09-06).
-                try:
-                    from tradingagents import candle_autopilot as _cda
-
-                    _cda.tick()
-                except Exception as exc:                       # noqa: BLE001
-                    print(f"[candle-autopilot] failed: {exc!r}", flush=True)
+                # NO AUTOMATIC CANDLE TOP-UP. candle_autopilot.tick() ran here
+                # from 2026-09-06 to 2026-09-09 and started an UPDATE by itself
+                # whenever the store was 3h stale. The operator saw
+                # "downloading 39%" they had not asked for and said: *"i dont
+                # want it, it will only update when i click update candle
+                # button"*. Candles now change only from the Candles screen's
+                # own buttons; "pending" climbing overnight is the store going
+                # stale, not a fault (test_the_supervisor_does_NOT_top_up).
                 for kind in ("backtest", "download", "btupdate"):
                     try:
                         got = _dj.resume_if_died(kind)

@@ -183,15 +183,14 @@ ${(pending?.unfixable ?? 0).toLocaleString()} pair(s) cannot be fixed by any run
                whole run (2026-09-05) — every mode the job can be in needs one. */
             : dl.mode === "resolve" ? "resolving pending"
             : "downloading"}</Badge>}
-          {/* WHY the buttons are grey. A top-up now starts BY ITSELF when the
-              store goes 3h stale (candle_autopilot), so from 2026-09-06 these
-              can be disabled at a moment the operator did not cause — and a
-              button that greys out for no stated reason reads as broken. */}
+          {/* WHY the buttons are grey: one download job at a time. Nothing
+              starts one but these buttons — the automatic top-up of
+              2026-09-06 was removed on 2026-09-09 at the operator's word
+              ("it will only update when i click update candle button"). */}
           {dl?.running
             ? <span className="text-theme-xs text-gray-500 dark:text-gray-400">
-                the buttons wait while a {dl.mode === "update" ? "top-up"
-                  : dl.mode === "resolve" ? "resolve" : "download"} is running
-                — candles top up on their own once the store is 3h behind
+                the buttons wait while the {dl.mode === "update" ? "update"
+                  : dl.mode === "resolve" ? "resolve" : "download"} you started is running
               </span>
             : !coins.length && <span className="text-theme-xs text-gray-500 dark:text-gray-400">DOWNLOAD needs a coin; UPDATE tops up everything already stored</span>}
         </div>

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 15, "total": 15, "rows": 1226694, "note": "HK50 15m: rule 102/120 (cf_soup1_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:35:50Z"}
+{"shard": 8, "stage": "testing", "done": 15, "total": 15, "rows": 1250494, "note": "HK50 30m: rule 102/120 (cf_soup1_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:36:35Z"}

@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 45, "total": 45, "rows": 3840700, "note": "RSR 15m: rule 107/120 (cf_bosfvg_l1)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:56:38Z"}
+{"shard": 14, "stage": "testing", "done": 45, "total": 45, "rows": 3845280, "note": "RSR 30m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:57:32Z"}

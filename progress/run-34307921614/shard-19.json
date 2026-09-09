@@ -1,1 +1,1 @@
-{"shard": 19, "stage": "testing", "done": 34, "total": 34, "rows": 3303638, "note": "ZBT 30m: 15,685 bars \u00b7 Oct 17, 2025 11:00am \u2192 Sep 09, 2026 5:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:37:25Z"}
+{"shard": 19, "stage": "testing", "done": 34, "total": 34, "rows": 3314638, "note": "ZBT 30m: rule 44/120 (elder)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:38:11Z"}

@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 40, "total": 40, "rows": 3307792, "note": "DOOD 30m: rule 112/120 (cf_obretest)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:57:13Z"}
+{"shard": 5, "stage": "testing", "done": 40, "total": 40, "rows": 3317032, "note": "DOOD 1h: rule 28/120 (vortex14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:57:58Z"}

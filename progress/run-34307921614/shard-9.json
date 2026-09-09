@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 52, "total": 52, "rows": 4611522, "note": "KSM 30m: rule 85/120 (cf_triple)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:14:43Z"}
+{"shard": 9, "stage": "testing", "done": 52, "total": 52, "rows": 4633522, "note": "KSM 1h: rule 61/120 (turtle)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:15:28Z"}

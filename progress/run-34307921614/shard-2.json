@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 5, "total": 5, "rows": 459386, "note": "AVNT 30m: rule 27/120 (aroon25)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:02:04Z"}
+{"shard": 2, "stage": "testing", "done": 5, "total": 5, "rows": 474786, "note": "AVNT 30m: rule 106/120 (cf_bosfvg)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:02:50Z"}

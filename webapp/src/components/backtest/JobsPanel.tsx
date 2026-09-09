@@ -30,9 +30,17 @@ function runProgress(shards: CloudShard[]): { done: number; total: number } {
 }
 
 const TFS = ["15m", "30m", "1h", "4h", "1d"];
+// NO 1-YEAR WINDOW. Operator, Sep 10, 2026: *"Also remove the previous 1 year
+// i wont be using that, it should always default to past 30 days"*, after a
+// full-year sweep of the whole market on 15m/30m sat at 0.9% across twenty
+// machines an hour in — an implied 4.7 days, against the 2.0 h and 4.3 h their
+// earlier runs took. The option is gone rather than merely un-defaulted,
+// because a dropdown that still offers it will be picked by accident once.
+// The capability is untouched: `cloud_sweep.dispatch(days=...)` and the local
+// job still take any window a caller passes.
 const WINDOWS: Record<string, number> = {
   "Previous month": 30, "Previous 2 months": 60, "Previous 3 months": 90,
-  "Previous 6 months": 180, "Previous 1 year": 365,
+  "Previous 6 months": 180,
 };
 const inputCls =
   "h-10 w-full rounded-lg border border-gray-300 bg-transparent px-3 " +

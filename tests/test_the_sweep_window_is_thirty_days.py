@@ -51,12 +51,32 @@ def test_the_screen_opens_on_the_past_month():
         "this is what dispatched the 4.7-day sweep"
 
 
-def test_the_dropdown_still_offers_every_window():
-    """A default is not a cap. Depth stays the reader's decision."""
+def test_the_year_window_is_gone_from_the_dropdown():
+    """Operator, Sep 10, 2026: *"Also remove the previous 1 year i wont be
+    using that"*. Removed rather than merely un-defaulted — an option that is
+    still offered gets picked by accident once, and once is 4.7 days."""
+    panel = PANEL.read_text(encoding="utf-8")
+    assert '"Previous 1 year"' not in panel
+    assert "365" not in panel.split("const WINDOWS")[1].split("}")[0]
+
+
+def test_the_shorter_windows_are_all_still_offered():
+    """Depth stays the reader's decision inside what they kept."""
     panel = PANEL.read_text(encoding="utf-8")
     for label in ("Previous month", "Previous 2 months", "Previous 3 months",
-                  "Previous 6 months", "Previous 1 year"):
+                  "Previous 6 months"):
         assert f'"{label}"' in panel, label
+
+
+def test_the_capability_is_untouched_only_the_menu_shrank():
+    """`dispatch` must still accept any window a caller passes — the removal
+    is a menu decision, not a new cap in the engine."""
+    import inspect as _i
+
+    sig = _i.signature(cs.dispatch)
+    assert "days" in sig.parameters
+    assert sig.parameters["days"].annotation in (int, "int")
+    assert cs.dispatch.__doc__ and "window" in cs.dispatch.__doc__.lower()
 
 
 def test_no_server_fallback_still_says_a_year():

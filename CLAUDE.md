@@ -501,9 +501,15 @@ measuring 2,367 pairs perfectly — hours of correct work, no report.
   bell read "Backtest FAILED" with nothing after it and the progress file said
   `failed: ` — the cause had to be read out of a stack trace.
 
-Any strategy analysis and the app's `1 YEAR` backtest button MUST run the same grid from
+Any strategy analysis and the app's BACKTEST button MUST run the same grid from
 `tradingagents.backtest_report` — never widen it locally for an artifact. They diverged
 once and the operator could not find a single recommended row inside their own app.
+(This said `1 YEAR` button until 2026-09-10, when the operator had that window
+removed: *"Also remove the previous 1 year i wont be using that, it should
+always default to past 30 days"*. The window is now 30 days by default
+— `cloud_sweep.SWEEP_DAYS` — and the dropdown offers 30/60/90/180. The rule was
+never about the window; it is about the analysis and the button running the
+same grid, whatever window is asked for.)
 
 Before recommending or re-checking ANY strategy for a coin, run the `still-working`
 skill: a configuration must be profitable in EVERY nested window (1 month, 3 months,

@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 35, "total": 35, "rows": 2958678, "note": "BULLA 4h: rule 105/120 (cf_eqhl_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:33:40Z"}
+{"shard": 3, "stage": "testing", "done": 37, "total": 37, "rows": 2984906, "note": "BXSTOCK 15m: rule 70/120 (cmf20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:34:25Z"}

@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 17, "total": 17, "rows": 1497780, "note": "MORPHO 15m: rule 45/120 (zscore20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:16:29Z"}
+{"shard": 11, "stage": "testing", "done": 17, "total": 17, "rows": 1504600, "note": "MORPHO 15m: rule 77/120 (cf_mom_l1)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:17:16Z"}

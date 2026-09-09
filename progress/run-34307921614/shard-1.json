@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 60, "total": 60, "rows": 5240084, "note": "BIDUSTOCK 30m: rule 81/120 (cf_donch_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:46:05Z"}
+{"shard": 1, "stage": "testing", "done": 61, "total": 61, "rows": 5290794, "note": "BIGTIME 15m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:47:00Z"}

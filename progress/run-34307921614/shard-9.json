@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 44, "total": 44, "rows": 3953688, "note": "KMNO 4h: 2,369 bars \u00b7 Aug 10, 2025 8:00am \u2192 Sep 09, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:57:15Z"}
+{"shard": 9, "stage": "testing", "done": 45, "total": 45, "rows": 3994284, "note": "KNC 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:58:06Z"}

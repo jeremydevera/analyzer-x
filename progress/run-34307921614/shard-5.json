@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 56, "total": 56, "rows": 4524458, "note": "FLR 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:50:00Z"}
+{"shard": 5, "stage": "testing", "done": 56, "total": 56, "rows": 4527658, "note": "FLR 15m: rule 13/120 (pivot)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:50:46Z"}

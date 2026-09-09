@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 10, "total": 10, "rows": 733778, "note": "TFUEL 15m: 34,591 bars \u00b7 Sep 13, 2025 8:15pm \u2192 Sep 09, 2026 3:45am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:09:25Z"}
+{"shard": 17, "stage": "testing", "done": 10, "total": 10, "rows": 733778, "note": "TFUEL 15m: rule 117/120 (cf_diadx_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:10:11Z"}

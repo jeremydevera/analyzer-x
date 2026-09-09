@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 10, "total": 10, "rows": 842268, "note": "AMZNSTOCK 15m: rule 39/120 (fisher)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:03:36Z"}
+{"shard": 1, "stage": "testing", "done": 10, "total": 10, "rows": 856848, "note": "AMZNSTOCK 15m: rule 120/120 (cf_stflip_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:04:22Z"}

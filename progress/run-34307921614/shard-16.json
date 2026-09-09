@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 7, "total": 7, "rows": 695286, "note": "SOXX 1h: rule 82/120 (cf_maobv)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:19:17Z"}
+{"shard": 16, "stage": "testing", "done": 9, "total": 9, "rows": 735388, "note": "SPACE 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:20:12Z"}

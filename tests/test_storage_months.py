@@ -371,20 +371,25 @@ def test_the_worker_is_a_detached_process_and_a_dead_one_says_so(store, monkeypa
     assert sm.main(["--build", "x"]) == 2
 
 
-def test_a_results_or_delisted_delete_refuses_while_another_process_writes_the_index(store, monkeypatch):
+def test_a_results_delete_waits_for_another_writer_and_says_so(store, monkeypatch):
+    """The indexer holds the row index's write lock ~95% of the time on the
+    operator's disk. A delete that REFUSED while it was held (11:31am,
+    2026-09-09) almost never got to run; the detached worker waits for the
+    lock instead, and its phase line says what it is waiting for."""
     _measured("AAA", "1h", _ms(2025, 2, 10))
     ri.sync(now=time.time() + ri.SETTLE_S + 1)
-    monkeypatch.setattr(ri, "write_available",
-                        lambda timeout_ms=2000: "the row index (rows.db) is being written by another process right now")
-    with pytest.raises(ValueError, match="being written by another process"):
-        sm.start_delete("results", "2025-02", now=_ms(2025, 9, 9) / 1000)
-    monkeypatch.setattr(sm, "_live_symbols", lambda: {"OTHER_USDT"})
-    with pytest.raises(ValueError, match="being written by another process"):
-        sm.start_delete("delisted", "")
-    # candles do not touch rows.db, so they are not held up by it
-    (msw.CANDLES / "AAA_USDT-1h.json").write_text(json.dumps({"t": [_ms(2025, 1, 5)], "o": [1], "h": [1], "l": [1], "c": [1], "v": None}))
-    sm.start_delete("candles", "2025-02", now=_ms(2025, 9, 9) / 1000)
-    _wait("candles")
+    monkeypatch.setattr(sm, "LOCK_WAIT_MS", 5000)
+    holder = _hold_write_lock()
+    sm.start_delete("results", "2025-02", now=_ms(2025, 9, 9) / 1000)
+    time.sleep(0.3)
+    got = sm.progress("results")
+    assert got["running"] is True
+    assert "write lock" in got["phase"], got["phase"]
+    assert (msw.ROWDIR / "AAA-1h.json").exists()   # nothing touched while waiting
+    holder.rollback(); holder.close()
+    job = _wait("results")
+    assert job["errors"] == [] and job["rows_removed"] == 2
+    assert not (msw.ROWDIR / "AAA-1h.json").exists()
 
 
 def test_forget_pair_removes_rows_and_the_summary(store):

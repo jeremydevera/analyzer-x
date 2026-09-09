@@ -607,16 +607,11 @@ def start_delete(kind: str, through: str, now: float | None = None) -> dict:
         raise ValueError(
             f"a {busy} job is writing this store right now; wait for it to "
             f"finish, or stop it, then delete")
-    if kind in ("results", "delisted"):
-        # the standalone indexer and a detached index build are writers too,
-        # and no job file names them: probe the lock itself (2026-09-09 —
-        # 29 coins, 7 minutes, 2 done, every index delete timed out behind
-        # `python -m tradingagents.rows_index`)
-        from tradingagents import rows_index as ri
-
-        why = ri.write_available()
-        if why:
-            raise ValueError(why)
+    # No lock probe here any more. The standalone indexer holds the row
+    # index's write lock ~95% of the time on this disk, so refusing while it
+    # is held (the 11:31am 409 of 2026-09-09) meant the button almost never
+    # worked; the detached worker waits for the lock itself (forget_pairs,
+    # LOCK_WAIT_MS) and its phase line says so while it waits.
     cur = progress(kind)
     if cur and cur.get("running"):
         raise ValueError(

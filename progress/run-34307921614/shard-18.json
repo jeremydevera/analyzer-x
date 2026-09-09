@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 1, "total": 1, "rows": 11220, "note": "UKOIL 15m: rule 45/120 (zscore20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:40:59Z"}
+{"shard": 18, "stage": "testing", "done": 1, "total": 1, "rows": 23100, "note": "UKOIL 15m: rule 99/120 (cf_ttm_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:41:45Z"}

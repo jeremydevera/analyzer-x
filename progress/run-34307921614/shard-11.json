@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 14, "total": 14, "rows": 1315736, "note": "MONAD 1h: rule 85/120 (cf_triple)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:03:53Z"}
+{"shard": 11, "stage": "testing", "done": 14, "total": 14, "rows": 1356458, "note": "MONAD 1d: rule 101/120 (cf_soup1_l1)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:04:38Z"}

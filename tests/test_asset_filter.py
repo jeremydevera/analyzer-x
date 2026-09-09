@@ -110,10 +110,26 @@ def test_the_csv_walks_the_same_filter(store):
 # ------------------------------------------------------------------- the API
 
 def test_the_route_and_the_csv_carry_asset():
+    """Both the page and the download must hand `asset` to the store.
+
+    This asserted the literal `"tp_over_sl=tp_over_sl, asset=asset):"` — which
+    pins `asset` as the LAST argument of the call. On Sep 09, 2026 a `stats=`
+    argument was added after it (the press log) and this test failed while the
+    filter was still passed correctly. A guard must test the fact, not the
+    order of the arguments around it: read the CALL, in the function that makes
+    it.
+    """
+    import inspect
+
+    from tradingagents import api
+
     a = open("tradingagents/api.py", encoding="utf-8").read()
     assert a.count("asset: str | None = None") == 2, "rows route AND csv route"
-    assert "tp_over_sl=tp_over_sl, asset=asset or None)" in a
-    assert "tp_over_sl=tp_over_sl, asset=asset):" in a
+    for fn in (api.strategies, api.strategies_csv_lines):
+        src = inspect.getsource(fn)
+        i = src.index("ri.query(" if fn is api.strategies else "ri.iter_rows(")
+        call = src[i:src.index(")", src.index("asset=", i))]
+        assert "asset=asset" in call, f"{fn.__name__} drops the asset filter"
     assert 'str(asset or ""),' in a, "the download's filename names the filter"
 
 

@@ -63,6 +63,13 @@ GATE_BLOCK = 0.50
 # (and says so). "full" measures the whole window from scratch — the BACKTEST
 # button — and both modes save every pair's position for the next run.
 MODE = (os.environ.get("MODE") or "full").strip().lower()
+# WHICH COINS this run was asked for, by name. Empty = the whole market, which
+# is what every dispatch meant by accident until Sep 10, 2026: only the COUNT
+# travelled, so picking BTC on the Backtest screen sent "1 coin" and the twenty
+# machines claimed the first coin at each of their own starting points —
+# 0G, ALPINE, AVAAI… — while BTC sat unmeasured at position 190 of 1,065.
+COIN_LIST = [c.strip().upper() for c in os.environ.get("COIN_LIST", "").split(",")
+             if c.strip()]
 # The runs whose `state-*` artifacts hold the latest saved positions, oldest
 # first (the newest wins a pair). Set by the dispatch from this PC's record.
 STATE_RUNS = [x.strip() for x in os.environ.get("STATE_RUNS", "").split(",")
@@ -182,6 +189,23 @@ def eligible():
     syms = sorted(x["symbol"] for x in raw
                   if str(x.get("symbol", "")).endswith("_USDT")
                   and int(x.get("state", 1)) == 0)
+    if COIN_LIST:
+        # THE COINS THE OPERATOR PICKED. The board is exactly these, so a
+        # one-coin ask measures that one coin and nothing else.
+        want = [c if c.endswith("_USDT") else f"{c}_USDT" for c in COIN_LIST]
+        live = set(syms)
+        board = sorted({s for s in want if s in live})
+        missing = sorted({s for s in want if s not in live})
+        if missing:
+            # NAMED, never counted away (rule 20): a coin the operator asked
+            # for and did not get has to be readable in the run's own log
+            shown = ", ".join(m.replace("_USDT", "") for m in missing[:10])
+            log(f"asked for {len(missing)} coin(s) the venue is not trading "
+                f"right now — not measured: {shown}"
+                + (f" … and {len(missing) - 10} more" if len(missing) > 10 else ""))
+        log(f"{len(board)} coin(s) named by the dispatch — measuring exactly "
+            f"those, not the whole market")
+        return board
     log(f"{len(syms)} contracts on the board")
     return syms
 
@@ -322,7 +346,12 @@ def _span(a_ms, b_ms):
 
 def fetch_prior_states() -> dict:
     """Download the `state-*` artifacts of every run named in STATE_RUNS and
-    index them by pair. Oldest run first, so the newest run wins a pair.
+    index them by pair. NEWEST RUN FIRST, and the first run that has a pair
+    keeps it — so the newest position wins, and a runner that runs out of disk
+    loses the OLDEST runs rather than the freshest. (Before Sep 10, 2026 this
+    walked oldest-first and let later runs overwrite; a named one-coin run then
+    made the list longer than one, and oldest-first would have spent the disk
+    on stale positions.)
 
     A run that cannot be downloaded (expired artifact, no permission, a
     network blip) costs nothing but a full measure for the pairs it held —
@@ -367,14 +396,19 @@ def fetch_prior_states() -> dict:
                 f"({(got.stderr or '').strip()[:120]}) — its pairs are "
                 f"measured in full")
             continue
-        n, on_disk = 0, 0
+        n, on_disk, older = 0, 0, 0
         for path in glob.glob(os.path.join(dest, "**", "*.json.gz"),
                               recursive=True):
-            index[os.path.basename(path)[:-len(".json.gz")]] = path
+            pair = os.path.basename(path)[:-len(".json.gz")]
+            if pair in index:
+                older += 1          # a newer run already has this pair
+                continue
+            index[pair] = path
             n += 1
             on_disk += os.path.getsize(path)
         log(f"saved positions from run {run_id}: {n} pair(s) · "
-            f"{on_disk / 1e6:,.0f} MB on disk · {_free_gb():.1f} GB free")
+            f"{on_disk / 1e6:,.0f} MB on disk · {_free_gb():.1f} GB free"
+            + (f" · {older} pair(s) a newer run already had" if older else ""))
     log(f"{len(index)} pair(s) have a saved position to continue from")
     return index
 

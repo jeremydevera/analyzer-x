@@ -23,8 +23,17 @@ def _panel() -> str:
 def test_the_run_has_one_percentage_summed_from_the_machines():
     p = _panel()
     assert "((100 * done) / total).toFixed(1)" in p, "the run's own figure"
-    assert p.count('cloud.shards.reduce((a, s) => a + (s.done ?? 0), 0)') >= 2
-    assert 'cloud.shards.reduce((a, s) => a + (s.total ?? 0), 0)' in p
+    # DERIVED IN ONE PLACE. It was two copies of
+    # `cloud.shards.reduce((a, s) => a + (s.done ?? 0), 0)` until Sep 09, 2026,
+    # when those fields turned out to be the coin a machine is ON over the
+    # coins it had claimed — equal on every report, so the bar read 100.0%
+    # from the first second (RCA-2026-09-09-S). One helper now, used by the
+    # header and the bar, and still nothing the component keeps of its own.
+    assert p.count("runProgress(cloud.shards)") >= 2
+    fn = p[p.index("function runProgress("):]
+    fn = fn[:fn.index("\n}")]
+    assert "s.finished ?? s.done ?? 0" in fn, "coins FINISHED, older runs fall back"
+    assert "Math.max(a, s.board ?? 0)" in fn, "the run's coins, not a sum of slices"
     # and the numbers behind it, so the percentage can be checked
     assert "coins ·" in p and "rows measured ·" in p
     assert 'machine(s) finished' in p

@@ -375,9 +375,14 @@ def run(coins, tfs, *, prefer_cloud: bool = True) -> None:
                     run_ = None
             if run_ is None:
                 try:
-                    n_coins = len({c for c, _ in left})
+                    # BY NAME, not by count: `left` is the pairs this machine
+                    # has not measured, and sending only how many made the
+                    # fleet claim the top of its own alphabetical board
+                    # instead (Sep 10, 2026).
+                    names = sorted({c for c, _ in left})
+                    n_coins = len(names)
                     run_ = cs.dispatch(shards=CLOUD_SHARDS,
-                                       coins=n_coins,
+                                       coins=0, coin_list=names,
                                        timeframes=",".join(tfs),
                                        min_days=MIN_DAYS)
                     cs.remember(run_)

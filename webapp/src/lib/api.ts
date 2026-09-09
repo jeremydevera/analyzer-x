@@ -677,8 +677,14 @@ export const api = {
            why: string; run?: { id?: number; url?: string } }>(
       "/api/backtest/pending/resolve", {}),
   cloudStatus: () => get<CloudStatus>("/api/cloud/status"),
-  cloudDispatch: (spec: { shards?: number; coins?: number; timeframes?: string; days?: number; base?: number }) =>
-    post<{ id?: number; url?: string }>("/api/cloud/dispatch", spec),
+  /** `coin_list` is WHICH coins to measure, by name — `coins` is only the most
+   *  coins one machine may claim. Sending the count alone is how BACKTEST with
+   *  BTC picked measured 0G, ALPINE, AVAAI… and never BTC (Sep 10, 2026).
+   *  An empty `coin_list` means the whole market. */
+  cloudDispatch: (spec: { shards?: number; coins?: number; coin_list?: string[];
+                          timeframes?: string; days?: number; base?: number }) =>
+    post<{ id?: number; url?: string; coins_named?: string[]; coin_list_why?: string }>(
+      "/api/cloud/dispatch", spec),
   cloudCancel: (run_id: number) => post<{ cancelled: number }>("/api/cloud/cancel", { run_id }),
   cloudMerge: (run_id: number) => post<{ fetched: number } & Record<string, unknown>>("/api/cloud/merge", { run_id }),
   cloudForget: () => post<{ forgotten: boolean }>("/api/cloud/forget", {}),

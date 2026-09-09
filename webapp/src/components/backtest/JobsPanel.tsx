@@ -118,7 +118,21 @@ export default function JobsPanel() {
       // the same window as the local job, or the two stores are not one measurement
       // `base` travels with the run: every dollar figure the fleet measures is
       // at the stake typed above. The shard used to hardcode $5 (Sep 05, 2026).
-      await api.cloudDispatch({ shards: 20, coins: coins.length, timeframes: tfs.join(","), days: WINDOWS[win], base });
+      // THE COINS THEMSELVES, not how many of them. `coins` was the count and
+      // the count alone until Sep 10, 2026: picking BTC sent "1 coin" and the
+      // fleet measured 0G, ALPINE, AVAAI… — the top of its own alphabetical
+      // board — while BTC (position 190 of 1,065) was never touched. An empty
+      // pick still means the whole market, which is what it always meant.
+      const run = await api.cloudDispatch({ shards: 20, coins: 0, coin_list: coins, timeframes: tfs.join(","), days: WINDOWS[win], base });
+      // SAY WHAT WAS SENT, from the answer itself — never from what this
+      // screen believes it asked for. The whole bug was a screen sure it had
+      // sent BTC while the fleet measured something else.
+      const named = run.coins_named ?? [];
+      setErr(run.coin_list_why
+        ? `GitHub is measuring the WHOLE market — ${run.coin_list_why}`
+        : named.length
+          ? `GitHub is measuring ${named.length === 1 ? "" : `${named.length} coins: `}${named.map((s) => s.replace("_USDT", "")).join(", ")} — nothing else`
+          : "GitHub is measuring every coin on the board");
       api.cloudStatus().then(setCloud).catch(() => {});
     } catch (e) { setErr(String(e)); }
   };

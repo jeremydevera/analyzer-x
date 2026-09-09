@@ -29,6 +29,96 @@ this repo is also part of the record.
 
 ---
 
+## RCA-2026-09-10-D — you picked BTC and GitHub measured 0G, ALPINE, AVAAI…
+
+**SAW** — the operator, reading the live-results explanation: *"so when i
+backtest btc it runs backtets on github then store the result direclty on my
+machine right?"* Storing, yes. Measuring BTC, no. Then, on being shown why:
+*"fix this use harddev can you please review your code first because it seems
+you just code without considering impacts like this one"*.
+
+**TIMELINE**
+
+1. `Sep 05, 2026` — BACKTEST stopped running on this PC and started dispatching
+   GitHub ("no option 'this mac'"). The Backtest screen kept its coin picker
+   and sent `coins: coins.length` — **how many were picked, never which**.
+2. `Sep 09, 2026` — work went claim-based (RCA of "why is it idle"): the shard
+   reads `COINS` as "the most coins ONE machine may claim" and the twenty
+   machines help themselves from a sorted board of **1,065 contracts**, each
+   starting in its own region so they never collide.
+3. `Sep 09, 2026 11:52pm` — measured, by pressing the real route with 2 coins
+   asked for: the fleet measured **0G_USDT** and **1000000BABYDOGE_USDT** —
+   the top of the board. Nobody picked those; they are simply first
+   alphabetically. Every "proof" run of that evening was the same two coins.
+4. `Sep 10, 2026` — computed from the live board for the operator's own case:
+   pick **BTC**, press BACKTEST, 20 machines start at #1, #54, #107 … #1012 and
+   claim **0G, ALPINE, AVAAI, BLAST, CC, CSOPSKHYNIX2L, EDGE, FLUX, HANA,
+   IONQSTOCK, LASERTECSTOCK, MET, NGAS, PANASONICSTOCK, QCOMSTOCK, SANTOS,
+   SONYSTOCK, TAO, UKOIL, XAN**. BTC_USDT is at **#190** and is measured by
+   nobody.
+5. The review that followed found **four** dispatch paths with the same hole,
+   not one: the BACKTEST button, UPDATE BACKTEST (`db_jobs._run_btupdate`, which
+   sent no coins at all, so picking BTC updated the whole market), the HAND-OFF
+   (`api._finish_handoff`, which computes the exact coins this PC never reached
+   and then sent only `len(left)`), and `sweep_orchestrator`.
+
+**ROOT CAUSE** — a field that means one thing to the sender and another to the
+receiver. `coins` is a per-machine CAP in the shard, and the screen filled it
+with the SIZE of the pick. Nothing carried the names, so the fleet had nothing
+to obey.
+
+**WHY IT WAS NOT CAUGHT** — every cloud test asserted the ARGUMENTS a dispatch
+sends (`min_days=`, `base=`, `days=`, `mode=`) and none asserted the WORK it
+produces. `test_every_dispatch_path_asks_for_every_contract` even walks all the
+dispatch paths — checking they pass `min_days` — and a whole-market run measures
+every coin either way, so the picker was never the thing under test. The bug
+only shows when the ask is SMALLER than the market, which no test and no
+proof run had ever been.
+
+**COST** — none in money, and no wrong data: every coin measured was measured
+correctly. What was lost is every small run since Sep 05 — including this
+session's own "proof" runs, which measured 0G and BABYDOGE while I believed I
+had chosen them — and any hand-off, which measured the top of the board instead
+of the coins this PC had missed.
+
+**FIX** — this commit. `cloud_sweep.dispatch(coin_list=…)` sends the NAMES
+(`symbols_of`: BTC → BTC_USDT, one conversion), trims the fleet to the list so
+nineteen machines do not start for one coin, and drops the per-machine cap; the
+workflow carries `coin_list` (its tenth and last allowed input) and the shard's
+`eligible()` makes the board exactly those coins, NAMING any the venue is not
+trading. All four paths send it; `POST /api/backtest/pending/resolve` keeps the
+whole board and says in place that this is deliberate. The screen prints back
+what GitHub was actually asked for, from the dispatch's own answer.
+
+Two consequences the harddev loop caught before shipping, both bigger than the
+fix itself:
+* a named run would have become the ONLY source of saved positions for its
+  timeframe (`record_state_run` kept one run per frame), so a two-coin run
+  would have thrown away the fleet's memory and the next UPDATE would measure
+  1,063 coins from scratch — RCA-2026-09-09-P again. Three runs are kept per
+  timeframe now, newest first, and the shard takes each pair from the first run
+  that has it (so a runner short of disk loses the OLDEST positions, not the
+  freshest).
+* "GitHub is busy — that run covers 1h, which is every pending frame" would be
+  true of the frame and false of the work. A run that named its coins now
+  covers no frame.
+
+**GUARD** — `tests/test_picked_coins_travel.py` (15): the name travels, the
+fleet is trimmed, `coins` goes to 0, an empty pick still means the whole market,
+names are normalised once, too many names falls back AND says so, the shard's
+board is exactly the named coins, a named coin the venue will not trade is
+NAMED, every one of the four paths sends the list while resolve-pending
+deliberately does not, the workflow stays inside GitHub's ten-input limit, and
+the screen sends names and reports what came back. Plus
+`test_state_runs_are_recorded_per_timeframe_and_expire` (three per frame,
+newest first, old one-dict records still read) and
+`test_the_handoff_waits_for_the_local_job_to_stand_down` (the names, not the
+count). `test_cloud_percentage` and `test_backtest_dispatches_mode_full` were
+red before this and are fixed here: both pinned a fixed slice of source that a
+comment moved.
+
+---
+
 ## RCA-2026-09-10-C — the row index went quiet for 13 hours and NOTHING anywhere said why
 
 **SAW** — the operator, `Sep 10, 2026 1:05am`, told the measuring was finished

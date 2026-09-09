@@ -1779,6 +1779,13 @@ def _run_btupdate(spec: dict) -> None:
                   flush=True)
             dispatched = cs.dispatch(
                 shards=cap.CLOUD_RUNNERS, coins=0,
+                # THE COINS THE OPERATOR PICKED, by name. Only when they named
+                # some: an empty pick means "every pair in the store", which
+                # is the whole board and needs no list (and would not fit on
+                # one command line anyway). Until Sep 10, 2026 nothing but the
+                # timeframes travelled, so UPDATE BACKTEST with BTC selected
+                # updated the whole market instead.
+                coin_list=list(spec.get("coins") or []),
                 timeframes=",".join(plan["cloud"]),
                 min_days=0, days=int(spec.get("days") or 365),
                 # the spec's OWN stake, not the shard's hardcoded $5. This

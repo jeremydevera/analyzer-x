@@ -38,6 +38,14 @@ on:
       ingest_url:
         description: "Post each finished pair straight to this URL (the operator's PC, through a Cloudflare tunnel); empty = artifacts only"
         default: ""
+      # WHICH coins, not how many. `coins` above is the per-machine cap and was
+      # the ONLY thing the Backtest screen sent until Sep 10, 2026 — so picking
+      # BTC measured whatever sat at the top of the shard's own alphabetical
+      # board. NOTE: workflow_dispatch allows at most 10 inputs and this is the
+      # tenth; anything further has to replace one, not be added.
+      coin_list:
+        description: "Comma-separated symbols to measure (BTC_USDT,ETH_USDT); empty = the whole market"
+        default: ""
 
 permissions:
   contents: write        # shards write their progress to the sweep-progress branch
@@ -91,6 +99,7 @@ jobs:
           DAYS: ${{ github.event.inputs.days }}
           BASE_MARGIN: ${{ github.event.inputs.base }}
           MODE: ${{ github.event.inputs.mode }}
+          COIN_LIST: ${{ github.event.inputs.coin_list }}
           STATE_RUNS: ${{ github.event.inputs.state_runs }}
           # LIVE POSTING. The url is a one-run Cloudflare address the operator's
           # PC opened seconds before this run started; the token is a repository

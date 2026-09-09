@@ -101,20 +101,68 @@ def available() -> tuple[bool, str]:
     return True, slug
 
 
+# How long the named-coin list may be on one `gh` command line. Windows caps a
+# command line at 32,767 characters and `gh` has its own ideas; 8,000 is ~600
+# coins, far from both. A longer ask means "most of the market" and falls back
+# to the whole board, out loud (rule 20).
+MAX_COIN_LIST_CHARS = 8000
+
+
+def symbols_of(coin_list) -> list:
+    """The venue's own names for what the operator picked: BTC -> BTC_USDT.
+
+    The Backtest screen holds bare coin names, the store keys on them, and the
+    shard's board holds SYMBOLS. One conversion, here, so a picked coin cannot
+    miss its contract by a suffix."""
+    out = set()
+    for c in coin_list or ():
+        c = str(c).strip().upper()
+        if not c:
+            continue
+        out.add(c if c.endswith("_USDT") else f"{c}_USDT")
+    return sorted(out)
+
+
 def dispatch(*, shards: int = 20, coins: int = 0, timeframes: str = "15m,30m",
              min_days: int = 0, days: int = 365, base: float = 5.0,
-             mode: str = "full", state_runs=(), live: bool = True) -> dict:
+             mode: str = "full", state_runs=(), live: bool = True,
+             coin_list=()) -> dict:
     """Start a run and return its id and url. `days` is the history window the
     shards measure -- the same number the Backtest screen sends the local job.
 
     `mode` is "full" (BACKTEST: every pair from scratch) or "update" (UPDATE:
     every pair with a saved position continues over its new bars only — see
     sweep_shard.continue_pair). `state_runs` names the earlier runs whose
-    `state-*` artifacts hold the latest saved positions (state_runs_for)."""
+    `state-*` artifacts hold the latest saved positions (state_runs_for).
+
+    `coin_list` is WHICH COINS to measure, by name. Empty means the whole
+    market, which is what every caller used to mean by accident: before
+    Sep 10, 2026 only the COUNT travelled (`coins`), so picking BTC and
+    pressing BACKTEST measured the first coins on the shard's own alphabetical
+    board — 0G, ALPINE, AVAAI… — and never BTC, which sits at position 190 of
+    1,065. `coins` keeps its real meaning: the most coins ONE machine may
+    claim, a cap for small runs. A named list is its own limit, so the cap
+    goes to 0 and the fleet is trimmed to the list.
+    """
     ok, slug = available()
     if not ok:
         raise CloudError(slug)
     mode = "update" if str(mode).lower() == "update" else "full"
+    named = symbols_of(coin_list)
+    coin_arg, coin_why = "", ""
+    if named:
+        joined = ",".join(named)
+        if len(joined) > MAX_COIN_LIST_CHARS:
+            coin_why = (f"{len(named)} coins is too many to name on one "
+                        f"command line — measuring the whole board instead")
+            logger.warning("cloud sweep: %s", coin_why)
+        else:
+            coin_arg = joined
+            # no machine sits on an empty board, and none races another for
+            # the only coin: twenty machines for a one-coin list is nineteen
+            # runners starting up to find nothing to claim
+            shards = max(1, min(int(shards), len(named)))
+            coins = 0          # the list is the limit; the per-machine cap is not
     # THE LIVE DOOR (operator, Sep 09, 2026: "i want you to post the result
     # immediately to my pc"). Opened here, before the machines start, and its
     # public url handed to them — a machine posts each pair the moment it
@@ -148,6 +196,7 @@ def dispatch(*, shards: int = 20, coins: int = 0, timeframes: str = "15m,30m",
         # dollar figure would have been measured at a stake nobody chose.
         "-f", f"days={days}", "-f", f"base={base}",
         "-f", f"mode={mode}",
+        "-f", f"coin_list={coin_arg}",
         "-f", f"state_runs={','.join(str(x) for x in (state_runs or ()))}")
     # `gh workflow run` prints no id, so wait for a run newer than the last one
     old = before[0]["databaseId"] if before else 0
@@ -161,6 +210,12 @@ def dispatch(*, shards: int = 20, coins: int = 0, timeframes: str = "15m,30m",
                     # whether the machines are posting straight here, and why
                     # not when they are not — never a silent downgrade
                     "live": bool(ingest_url), "live_why": ingest_why,
+                    # WHICH COINS were asked for by name (empty = the whole
+                    # market), and why a named list could not be sent. A run
+                    # that quietly measured something else is the bug this
+                    # field exists to make impossible to miss.
+                    "coins_named": named if coin_arg else [],
+                    "coin_list_why": coin_why,
                     # what this run MEASURES, kept with the run: since the
                     # autopilot stopped dispatching (2026-09-09, "no no no, i
                     # want option to start the backtest"), button dispatches
@@ -665,12 +720,26 @@ def has_state_artifacts(run_id: int, slug: str | None = None) -> bool:
                and not a.get("expired") for a in (raw.get("artifacts") or []))
 
 
+# How many runs' saved positions may be handed to one UPDATE, per timeframe.
+# It used to be ONE — the newest — which was right while every run measured the
+# whole market. From Sep 10, 2026 a run can be asked for two coins by name, and
+# one of those would have become the only source of positions for its
+# timeframe: the next UPDATE would find a position for BTC and measure the
+# other 1,063 coins from scratch, the RCA-2026-09-09-P shape all over again.
+# A few are kept, newest first, and the shard lets the newest win a pair.
+STATE_RUNS_PER_TF = 3
+
+
 def record_state_run(run_id: int, tfs, now: float | None = None) -> dict:
-    """`run_id` now holds the newest saved positions for `tfs`."""
+    """`run_id` now holds the newest saved positions for `tfs` — in FRONT of
+    the runs already recorded, which still hold the coins it did not touch."""
     rec = state_runs()
     at = float(now if now is not None else time.time())
     for tf in tfs:
-        rec[str(tf)] = {"run": int(run_id), "at": at}
+        kept = [e for e in _entries(rec.get(str(tf)))
+                if int(e.get("run") or 0) != int(run_id)]
+        rec[str(tf)] = ([{"run": int(run_id), "at": at}]
+                        + kept)[:STATE_RUNS_PER_TF]
     STATE_RUNS_FILE.parent.mkdir(parents=True, exist_ok=True)
     tmp = STATE_RUNS_FILE.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(rec))
@@ -685,20 +754,36 @@ def state_runs() -> dict:
         return {}
 
 
+def _entries(val) -> list:
+    """A timeframe's recorded runs, newest first. Records written before
+    Sep 10, 2026 hold ONE dict instead of a list — read both, or the first
+    UPDATE after this change would find no saved positions at all and measure
+    the whole market from scratch."""
+    if isinstance(val, dict):
+        return [val]
+    return [e for e in (val or []) if isinstance(e, dict)]
+
+
 def state_runs_for(tfs, now: float | None = None) -> list:
-    """The run ids whose saved positions cover `tfs`, oldest first (the
-    shard lets the newest win a pair), skipping records older than the
-    artifact retention — those artifacts are gone, and a full measure with an
-    honest header beats a download that fails on twenty machines."""
+    """The run ids whose saved positions cover `tfs`, NEWEST FIRST — the order
+    IS the priority: the shard takes each pair from the first run that has it,
+    and stops downloading when the runner's disk is full. Newest-last would
+    have spent that disk on stale positions and skipped the fresh ones.
+
+    Records older than the artifact retention are left out: those artifacts are
+    gone, and a full measure with an honest header beats a download that fails
+    on twenty machines."""
     at = float(now if now is not None else time.time())
     rec = state_runs()
     picked: dict = {}
     for tf in tfs:
-        e = rec.get(str(tf))
-        if not e or at - float(e.get("at") or 0) > STATE_RUN_MAX_AGE_S:
-            continue
-        picked[int(e["run"])] = float(e.get("at") or 0)
-    return [str(r) for r, _ in sorted(picked.items(), key=lambda kv: kv[1])]
+        for e in _entries(rec.get(str(tf))):
+            when = float(e.get("at") or 0)
+            if at - when > STATE_RUN_MAX_AGE_S:
+                continue
+            picked[int(e["run"])] = max(when, picked.get(int(e["run"]), 0.0))
+    return [str(r) for r, _ in sorted(picked.items(), key=lambda kv: kv[1],
+                                      reverse=True)]
 
 
 RUNFILE = Path(os.path.expanduser("~/.tradingagents/backtest/cloud_run.json"))

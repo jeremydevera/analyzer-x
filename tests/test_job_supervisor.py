@@ -289,7 +289,12 @@ def test_the_handoff_waits_for_the_local_job_to_stand_down(monkeypatch):
 
     monkeypatch.setattr(dj, "status", lambda kind: {"running": False})
     api._finish_handoff()
-    assert sent and sent[0]["coins"] == 2
+    # THE COINS THEMSELVES. `coins` was the count and the count alone until
+    # Sep 10, 2026, so the fleet claimed the top of its own alphabetical board
+    # and the coins this PC actually missed stayed missed — the exact opposite
+    # of what a hand-off is for.
+    assert sent and sent[0]["coin_list"] == ["A_USDT", "B_USDT"]
+    assert sent[0]["coins"] == 0, "the per-machine cap is not the ask"
     assert not dj.handoff_requested("backtest"), "served requests are cleared"
 
 

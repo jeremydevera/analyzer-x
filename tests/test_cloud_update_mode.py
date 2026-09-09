@@ -16,6 +16,7 @@ Four parts, each pinned here:
   a watermark, and records which run holds the latest positions
 """
 import importlib.util
+import inspect
 import json
 import pathlib
 
@@ -123,7 +124,14 @@ def test_a_saved_position_without_the_boundary_flag_is_measured_in_full(shard):
     assert shard.state_usable(prior) == ""
 
 
-def test_fetch_prior_states_downloads_state_artifacts_oldest_first(shard, monkeypatch, tmp_path):
+def test_fetch_prior_states_takes_the_runs_newest_first(shard, monkeypatch, tmp_path):
+    """NEWEST first, and the first run that has a pair keeps it.
+
+    It walked oldest-first and let later runs overwrite, which was the same
+    answer while the list was always one run long. From Sep 10, 2026 a run can
+    be asked for two coins by name, so several runs hold positions at once —
+    and a runner that runs out of disk must lose the OLDEST of them, not the
+    freshest (`fetch_prior_states` stops downloading, in order)."""
     calls = []
 
     class R:
@@ -143,13 +151,16 @@ def test_fetch_prior_states_downloads_state_artifacts_oldest_first(shard, monkey
         return R()
     monkeypatch.setattr(shard.subprocess, "run", fake_run)
     monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
+    # STATE_RUNS arrives newest first (cloud_sweep.state_runs_for)
+    monkeypatch.setattr(shard, "STATE_RUNS", ["222", "111"])
     got = shard.fetch_prior_states()
-    assert [c[3] for c in calls] == ["111", "222"], "oldest first, newest wins"
+    assert [c[3] for c in calls] == ["222", "111"], "in the order it was given"
     for c in calls:
         assert c[:3] == ["gh", "run", "download"] and "-p" in c and "state-*" in c
         assert "--repo" in c
     assert set(got) == {"AAA-15m", "BBB-15m"}
     assert "222" in got["AAA-15m"], "the newest run's file wins the pair"
+    assert "111" not in got["AAA-15m"]
 
 
 def test_fetch_prior_states_survives_a_failed_download(shard, monkeypatch):
@@ -261,9 +272,11 @@ def test_update_dispatches_mode_update_with_the_state_runs(monkeypatch):
 
 
 def test_backtest_dispatches_mode_full():
-    src = (REPO / "tradingagents" / "api.py").read_text(encoding="utf-8")
-    i = src.index('@app.post("/api/cloud/dispatch")')
-    body = src[i:i + 1200]
+    # the whole ROUTE, not a fixed slice of characters: at 1,200 bytes this
+    # went red the moment a comment was added above the call (Sep 10, 2026)
+    from tradingagents import api
+
+    body = inspect.getsource(api.cloud_dispatch)
     assert 'mode="full"' in body
 
 
@@ -356,16 +369,31 @@ def test_state_runs_are_recorded_per_timeframe_and_expire(store):
     day = 86400
     cs.record_state_run(501, ["15m", "30m"], now=now)
     cs.record_state_run(502, ["1h"], now=now + 2 * day)
-    assert cs.state_runs_for(["15m", "1h"], now=now + 3 * day) == ["501", "502"]
+    # NEWEST FIRST: the order is the priority the shard downloads in
+    assert cs.state_runs_for(["15m", "1h"], now=now + 3 * day) == ["502", "501"]
     assert cs.state_runs_for(["30m"], now=now + 3 * day) == ["501"]
     assert cs.state_runs_for(["4h"], now=now + 3 * day) == []
     # the artifacts live 90 days; a record older than 85 is not offered —
     # 501 is 86 days old here, 502 only 84
     assert cs.state_runs_for(["15m"], now=now + 86 * day) == []
     assert cs.state_runs_for(["1h"], now=now + 86 * day) == ["502"]
-    # newest run wins a timeframe
+    # A NEWER RUN DOES NOT ERASE THE OLDER ONE. Before Sep 10, 2026 it did,
+    # which was harmless while every run measured the whole market — and
+    # ruinous the moment a run could be two coins by name: the next UPDATE
+    # would have found BTC's saved position and measured the other 1,063
+    # coins from scratch (the RCA-2026-09-09-P shape).
     cs.record_state_run(503, ["15m"], now=now + 4 * day)
-    assert cs.state_runs_for(["15m", "30m"], now=now + 5 * day) == ["501", "503"]
+    assert cs.state_runs_for(["15m"], now=now + 5 * day) == ["503", "501"]
+    assert cs.state_runs_for(["15m", "30m"], now=now + 5 * day) == ["503", "501"]
+    # …but not for ever: three per timeframe, newest first
+    for n, extra in enumerate((504, 505, 506), start=5):
+        cs.record_state_run(extra, ["15m"], now=now + n * day)
+    assert cs.state_runs_for(["15m"], now=now + 10 * day) == ["506", "505", "504"]
+    # a record written by the old code (one dict, not a list) is still read
+    cs.STATE_RUNS_FILE.write_text(json.dumps({"4h": {"run": 601, "at": now}}))
+    assert cs.state_runs_for(["4h"], now=now + day) == ["601"]
+    cs.record_state_run(602, ["4h"], now=now + 2 * day)
+    assert cs.state_runs_for(["4h"], now=now + 3 * day) == ["602", "601"]
 
 
 def test_collect_records_the_run_that_shipped_positions():

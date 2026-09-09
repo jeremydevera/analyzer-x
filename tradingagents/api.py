@@ -73,8 +73,14 @@ def _finish_handoff() -> None:
                       base=float(spec.get("base") or 5.0))
     cs.remember(run)
     dj.clear_handoff(kind)              # the cloud has it; the request is served
+    named = len(run.get("coins_named") or [])
     print(f"[handoff] {len(left)} coins the Mac never reached -> GitHub run "
-          f"{run.get('id')}", flush=True)
+          f"{run.get('id')}"
+          + (f", named one by one" if named == len(left) and named else "")
+          # a list too long for one command line measures the whole board:
+          # more work than asked for, and it must not be discovered later
+          + (f" — BUT {run.get('coin_list_why')}"
+             if run.get("coin_list_why") else ""), flush=True)
     try:
         from tradingagents import notifications as nt
 
@@ -985,6 +991,13 @@ def _busy_run_covers(by_tf: dict):
             st = cs.remembered()
             if int(st.get("id") or 0) != int(live["id"]):
                 return None, {}
+        # A RUN ASKED FOR NAMED COINS COVERS NO FRAME. Since Sep 10, 2026 a
+        # dispatch can name its coins, so "that run covers 1h" would be true
+        # of the timeframe and false of the work: a two-coin run leaves every
+        # other pending 1h pair exactly as pending as it was
+        # (label-must-match-data). Unknown is the honest answer.
+        if list(st.get("coins_named") or []):
+            return None, {}
         covered = list(st.get("timeframes") or [])
         if not covered:
             return None, {}
@@ -1085,6 +1098,10 @@ def backtest_pending_resolve() -> dict:
                      f"pending frame — nothing is left for a second run.")
         raise HTTPException(409, f"GitHub is busy — {cwhy}. {extra}")
     spec = dj._read(dj.FILES["backtest"]["spec"]) or {}
+    # NO coin_list ON PURPOSE: "resolve the pending" means every pending pair
+    # in the store on these frames — the whole board IS the ask here, not the
+    # dropped pick that the other four dispatch paths had (fixed Sep 10, 2026;
+    # this one was read with them and left alone deliberately).
     run = cs.dispatch(shards=cap.CLOUD_RUNNERS, coins=0,
                       timeframes=",".join(frames), min_days=0,
                       # the operator's own window and stake, not a default

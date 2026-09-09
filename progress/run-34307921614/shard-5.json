@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 13, "total": 13, "rows": 933024, "note": "CVX 30m: rule 82/120 (cf_maobv)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:23:45Z"}
+{"shard": 5, "stage": "testing", "done": 13, "total": 13, "rows": 943584, "note": "CVX 1h: rule 4/120 (trend50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:24:30Z"}

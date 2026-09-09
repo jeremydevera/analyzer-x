@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 11, "total": 11, "rows": 905996, "note": "CHEEMS 30m: 18,959 bars \u00b7 Aug 10, 2025 5:00am \u2192 Sep 09, 2026 4:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:34:19Z"}
+{"shard": 4, "stage": "testing", "done": 11, "total": 11, "rows": 909956, "note": "CHEEMS 30m: rule 12/120 (donchian20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:35:05Z"}

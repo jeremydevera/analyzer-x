@@ -1,1 +1,1 @@
-{"shard": 2, "stage": "testing", "done": 6, "total": 6, "rows": 546022, "note": "AWE 15m: rule 13/120 (pivot)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:05:56Z"}
+{"shard": 2, "stage": "testing", "done": 6, "total": 6, "rows": 551082, "note": "AWE 15m: rule 36/120 (stochrsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:06:42Z"}

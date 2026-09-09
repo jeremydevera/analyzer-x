@@ -461,6 +461,17 @@ export default function JobsPanel() {
                 <p className="mt-0.5 truncate text-theme-xs text-gray-500 dark:text-gray-400">
                   {sh.stage ?? "waiting"}{sh.note ? ` · ${sh.note}` : ""}
                 </p>
+                {/* THE DATES, ON THEIR OWN LINE. They rode inside `note` and
+                    the per-rule note overwrote them, so only a machine caught
+                    in the instant after loading a pair showed any — 3 of 20 on
+                    run 34307921614, and the operator asked twice. A second
+                    line also means the truncate above can never eat them. */}
+                {sh.span && (
+                  <p className="truncate text-theme-xs text-gray-400 dark:text-gray-500"
+                     title={sh.span}>
+                    {sh.span}
+                  </p>
+                )}
               </div>
             ))}
           </div>

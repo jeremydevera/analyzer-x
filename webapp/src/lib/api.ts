@@ -419,6 +419,13 @@ export interface CloudShard {
   /** the history window this run was asked for, in days — the header prints
    *  it as real dates ("i dont see what dates are being tested", 2026-09-09) */
   days?: number;
+  /** THE PAIR'S OWN DATES: "18,959 bars · Aug 10, 2025 5:00am → Sep 09, 2026
+   *  4:00am". Its own field because it used to live inside `note`, where the
+   *  per-rule note overwrote it 120 times a pair — 17 of 20 machines showed
+   *  no dates at all. Empty while a pair's candles are downloading and once
+   *  the machine is done: a span belongs to a pair being tested. Absent on
+   *  runs measured before 2026-09-09. */
+  span?: string;
 }
 
 export interface CloudStatus {

@@ -166,7 +166,7 @@ class Reporter:
 
     def __call__(self, stage: str, done: int, total: int, rows: int = 0,
                  note: str = "", force: bool = False,
-                 failed: list | None = None) -> None:
+                 failed: list | None = None, span: str = "") -> None:
         """stage is 'screening' or 'testing' — what the machine is doing now.
 
         `failed` NAMES the pairs this shard lost. It used to be a count inside
@@ -183,6 +183,17 @@ class Reporter:
         self._last = now
         payload = {"shard": int(self.shard), "stage": stage, "done": done,
                    "total": total, "rows": rows, "note": note[:120],
+                   # WHICH DATES this machine is testing, as ITS OWN FIELD.
+                   # It was inside `note` and the per-rule note overwrote it
+                   # 120 times a pair, so a tile showed the dates only if its
+                   # 45-second tick happened to land in the instant between
+                   # loading a pair's candles and finishing its first rule —
+                   # 19 of 20 machines never showed them (operator,
+                   # 2026-09-09: "so why does it not show what dates its
+                   # testing like machine 7"). A separate field cannot be
+                   # overwritten by the note, and the caller carries it
+                   # through every report for that pair.
+                   "span": span[:120],
                    # the WINDOW this run was asked for, so the panel can print
                    # real dates — "i dont see what dates are being tested"
                    # (2026-09-09). Each tile's note carries its pair's exact

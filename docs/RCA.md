@@ -29,6 +29,52 @@ this repo is also part of the record.
 
 ---
 
+## RCA-2026-09-09-J — 17 of 20 machine tiles never showed which dates they were testing
+
+**SAW** — *"so why does it not show what dates its testing like machine 7
+Aug 11, 2025 12:00am → Sep 08, 20"*. Machine 7's tile had a date span;
+machine 18's said only `testing · USTC 4h: rule 39/120 (fisher)`.
+
+**TIMELINE**
+
+1. `Sep 09, 2026` earlier — the operator asked *"i dont see what dates are
+   being tested like is aug 3 - sept 27 being tested?"*. Commit `05a092c775b`
+   put the span **inside the note**, written once per pair, right after that
+   pair's candles load.
+2. The per-rule report five lines below overwrites that note **120 times per
+   pair** (`{coin} {tf}: rule {si}/120 ({sig})`), and `Reporter` publishes at
+   most once every **45 seconds**.
+3. So a tile showed dates only if its 45-second tick landed in the instant
+   between those two lines. Measured on run `34307921614` at `12:46pm`:
+   **3 of 20 machines had dates, 17 did not** — machine 18 among them, while
+   it was demonstrably working (USTC 1h rule 1 → USTC 4h rule 39 and +36,520
+   rows in 45 s).
+
+**ROOT CAUSE** — one field carrying two facts. The span and the rule counter
+shared `note`, so the frequent writer erased the rare one.
+
+**WHY IT WAS NOT CAUGHT** — `05a092c775b` changed three files and added
+**zero tests**. Nothing asserted that the fact survives the next report, which
+is the only thing that mattered. Same shape as pattern 3 below: the layer the
+operator reads was never the thing under test.
+
+**COST** — none in money. The operator could not tell a working machine from a
+stuck one, twice.
+
+**FIX** — this commit. `span` is its own key in the shard payload and rides
+**every** report while a pair is measured; it is explicitly cleared (`span=""`)
+on "downloading candles", on "N pair(s) lost so far" and on "done", so a tile
+never prints one pair's name beside another pair's dates. The tile renders it
+on its own line, so the note's `truncate` cannot eat it.
+
+**GUARD** — `tests/test_shard_reports_its_dates.py` (11): every `report(...)`
+in the shard passes a span (AST-checked, so a new call site cannot forget),
+the per-rule one passes the pair's real span, the three non-pair reports clear
+it, no note contains `→` any more, the tile renders it on its own line, and an
+old run with no `span` key renders nothing.
+
+---
+
 ## RCA-2026-09-09-I — the filtered table waited five minutes behind four `/api/cloud/status` calls that never came back
 
 **SAW** — Apply pressed with the four chips; the button read **"searching
@@ -530,3 +576,19 @@ row. So:
    profit. Finish it and stop hand-picking, or every future box repeats this.
 3. **Test filter PAIRS.** Every fix above was verified with its own filter on.
    Nothing drives two boxes together, and two boxes together is what breaks.
+4. **DONE — log the press and check the answer against it.** Operator, the same
+   day: *"whenever i clicked apply filter and click download csv you should be
+   getting the logs of it so you can see the status"*, asked one message after
+   the reason the bug survived — *"you were reading the screen; I was reading
+   the code"*. `tradingagents/screen_log.py` writes one line per Apply and per
+   download, and re-tests every row it is about to send against every filter
+   that was on, **using the figure the column prints**. On the Sep 09 filter
+   that line reads:
+
+       MISMATCH win % >= 90: 7 of 9 rows on screen break it —
+           #CGXLRJML 89.47, #DYKSLWB8 89.47, #DX7HAULZ 80.0, ... (+2 more)
+
+   Read it with `GET /api/screen/log?mismatch_only=true`. It is the operator's
+   glance, written by the code that served the table, on every press — which is
+   the only check in this file that does not depend on somebody thinking to
+   look.

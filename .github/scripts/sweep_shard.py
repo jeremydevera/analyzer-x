@@ -191,7 +191,11 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
     completes, so a pair that raises leaves nothing behind to mix with its
     redo. A venue failure raises PairFailed for main() to requeue."""
     iv, bs, cap = br.TFS[tf]
-    report("testing", i, n, rows=rows_so_far,
+    # span="" CLEARS it, deliberately: the dates are not known until this
+    # pair's candles are loaded, and carrying the PREVIOUS pair's span here
+    # would print one pair's name beside another pair's dates
+    # (label-must-match-data). Blank for a few seconds is the honest state.
+    report("testing", i, n, rows=rows_so_far, span="",
            note=f"{sym.replace('_USDT', '')} {tf}: downloading candles")
     try:
         fee = at.taker_fee(sym, fx=fx)
@@ -239,17 +243,24 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
             k_ = mo_seen[v_] = len(mo_labels)
             mo_labels.append(str(v_)[:7])
         mo_idx.append(k_)
-    report("testing", i, n, rows=rows_so_far,
-           # WITH THE DATES. The tile said "18,959 bars, testing 120 rules"
-           # and the operator could not answer their own question about it:
-           # "i dont see what dates are being tested like is aug 3 - sept 27
-           # being tested?" (2026-09-09). The span is THIS PAIR's real first
-           # and last bar after the window cut — a young coin's span is
-           # honestly shorter — via the one date formatter (CLAUDE.md).
-           note=(f"{coin} {tf}: {nbars:,} bars · "
-                 f"{fmt_when(df['Date'].iloc[0].timestamp())} → "
-                 f"{fmt_when(df['Date'].iloc[-1].timestamp())} · "
-                 f"{len(br.SIGNALS)} rules"))
+    # WITH THE DATES, ON EVERY REPORT FOR THIS PAIR. The tile said "18,959
+    # bars, testing 120 rules" and the operator could not answer their own
+    # question about it: "i dont see what dates are being tested like is aug 3
+    # - sept 27 being tested?" (2026-09-09). The span is THIS PAIR's real
+    # first and last bar after the window cut — a young coin's span is
+    # honestly shorter — via the one date formatter (CLAUDE.md).
+    #
+    # It lived INSIDE the note, written once, and the per-rule note below
+    # overwrote it 120 times a pair. The reporter publishes at most once every
+    # 45 seconds, so a tile showed dates only if its tick landed in the
+    # instant between these two lines: measured on run 34307921614, 3 of 20
+    # machines had dates and 17 did not, and the operator asked again ("so why
+    # does it not show what dates its testing like machine 7"). `span` is its
+    # own field now and rides every report until the next pair replaces it.
+    span = (f"{nbars:,} bars · {fmt_when(df['Date'].iloc[0].timestamp())} → "
+            f"{fmt_when(df['Date'].iloc[-1].timestamp())}")
+    report("testing", i, n, rows=rows_so_far, span=span,
+           note=f"{coin} {tf}: {len(br.SIGNALS)} rules")
     for si, sig in enumerate(br.SIGNALS, 1):
         key = f"{sig}_gh_{tf}"
         # EVERY threshold, exactly as market_sweep.run_pair does with
@@ -345,7 +356,7 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
                         "gate": "warn" if rt / tp >= .2 else "ok"}) + "\n")
                     kept += 1
         at.STRATEGY_SPECS.pop(key, None)
-        report("testing", i, n, rows=rows_so_far + kept,
+        report("testing", i, n, rows=rows_so_far + kept, span=span,
                note=f"{coin} {tf}: rule {si}/{len(br.SIGNALS)} ({sig})")
     # ONE MARKER PER MEASURED PAIR, rows or no rows. A thin coin whose every
     # combination fell under the trade floor wrote NOTHING, so the collect
@@ -426,7 +437,7 @@ def main():
                 # publish it NOW: a runner killed at six hours never reaches
                 # the "done" report, and its named losses would die with it
                 report("testing", done_pairs // len(TFS), claimed, rows=total,
-                       note=f"{len(failed)} pair(s) lost so far",
+                       note=f"{len(failed)} pair(s) lost so far", span="",
                        force=True, failed=failed)
             el = time.time() - t0
             if tf == TFS[-1]:
@@ -438,7 +449,9 @@ def main():
             if el > 5.2 * 3600:
                 log(f"stopping at {i}/{claimed} coins to protect the artifact")
                 break
-    report("done", claimed, claimed, rows=total,
+    # span="" again: a finished machine is not testing a span any more, and
+    # leaving the last pair's dates under "done" would read as still running
+    report("done", claimed, claimed, rows=total, span="",
            note=(f"{total:,} rows · {claimed} coin(s) claimed · {redos} pair "
                  f"redo(s) · {len(failed)} pair(s) lost"
                  + (f" · {young} younger than {MIN_DAYS}d" if young else "")),

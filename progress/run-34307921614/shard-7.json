@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 43, "total": 43, "rows": 3396848, "note": "GRASS 15m: rule 78/120 (cf_mom_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:20:54Z"}
+{"shard": 7, "stage": "testing", "done": 43, "total": 43, "rows": 3406088, "note": "GRASS 30m: 18,959 bars \u00b7 Aug 10, 2025 5:30am \u2192 Sep 09, 2026 4:30am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:21:39Z"}

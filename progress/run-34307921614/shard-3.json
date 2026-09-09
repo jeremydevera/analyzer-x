@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 9, "total": 9, "rows": 756794, "note": "BNB 30m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:25:53Z"}
+{"shard": 3, "stage": "testing", "done": 9, "total": 9, "rows": 766914, "note": "BNB 30m: rule 46/120 (rsi2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:26:39Z"}

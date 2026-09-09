@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 5, "total": 5, "rows": 416516, "note": "MINA 1h: rule 9/120 (fib382)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:14:52Z"}
+{"shard": 11, "stage": "testing", "done": 5, "total": 5, "rows": 431476, "note": "MINA 1h: rule 78/120 (cf_mom_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:15:37Z"}

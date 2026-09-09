@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 19, "total": 19, "rows": 1454678, "note": "GDX 15m: rule 45/120 (zscore20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:28:34Z"}
+{"shard": 7, "stage": "testing", "done": 20, "total": 20, "rows": 1535338, "note": "GENIUS 15m: rule 4/120 (trend50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:29:20Z"}

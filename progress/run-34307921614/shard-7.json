@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 56, "total": 56, "rows": 4761392, "note": "ICX 30m: rule 84/120 (cf_maobv_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:14:48Z"}
+{"shard": 7, "stage": "testing", "done": 56, "total": 56, "rows": 4781264, "note": "ICX 1h: rule 59/120 (choch)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:15:33Z"}

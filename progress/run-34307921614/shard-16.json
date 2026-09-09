@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 32, "total": 32, "rows": 2892286, "note": "STRK 15m: rule 28/120 (vortex14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:25:56Z"}
+{"shard": 16, "stage": "testing", "done": 32, "total": 32, "rows": 2896466, "note": "STRK 15m: rule 47/120 (ibs)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:26:42Z"}

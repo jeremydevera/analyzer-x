@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 2, "total": 2, "rows": 130160, "note": "FOGO 15m: rule 45/120 (zscore20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:46:17Z"}
+{"shard": 7, "stage": "testing", "done": 2, "total": 2, "rows": 146440, "note": "FOGO 30m: 11,593 bars \u00b7 Jan 10, 2026 3:00pm \u2192 Sep 09, 2026 3:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:47:02Z"}

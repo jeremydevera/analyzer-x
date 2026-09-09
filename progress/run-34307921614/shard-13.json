@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 23, "total": 23, "rows": 1996288, "note": "PLAY 30m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:42:23Z"}
+{"shard": 13, "stage": "testing", "done": 23, "total": 23, "rows": 2001088, "note": "PLAY 30m: rule 24/120 (psar)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:43:08Z"}

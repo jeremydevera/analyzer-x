@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 39, "total": 39, "rows": 3194378, "note": "C98 15m: rule 87/120 (cf_triple_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:49:06Z"}
+{"shard": 3, "stage": "testing", "done": 39, "total": 39, "rows": 3200978, "note": "C98 30m: 18,959 bars \u00b7 Aug 10, 2025 7:00am \u2192 Sep 09, 2026 6:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:49:52Z"}

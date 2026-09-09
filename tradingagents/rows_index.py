@@ -539,6 +539,49 @@ def forget_pair(pair: str) -> int:
         raise
 
 
+def forget_pairs(pairs, on_pair=None, busy_ms: int = 1_800_000) -> int:
+    """Drop MANY pairs from the index in ONE transaction — the lock is taken
+    once and held until every pair is gone. Returns the rows dropped; raises
+    (and rolls back, dropping nothing) when the lock never came or a delete
+    failed.
+
+    One-at-a-time was measured on 2026-09-09: the standalone indexer holds the
+    write lock ~95% of the time (one pair's INSERT every ~14 min on this
+    disk), so a per-pair delete caught a gap for the first pair and then
+    waited 60 s and failed on the next. `busy_ms` is generous because nobody
+    is waiting on the caller — it is a detached job with its own progress —
+    and the indexer's own busy_timeout simply retries next cycle.
+
+    `on_pair(pair, rows)` is called after each pair's DELETE so a progress
+    record can advance while the transaction is still open. The cache is
+    raised to 1 GB: every row leaves 14 indexes, and the pages it touches are
+    scattered across a 33 GB file.
+    """
+    pairs = list(pairs)
+    if not pairs:
+        return 0
+    con = _connect()
+    try:
+        con.execute(f"PRAGMA busy_timeout={int(busy_ms)}")
+        con.execute("PRAGMA cache_size=-1000000")
+        con.execute("BEGIN IMMEDIATE")
+        total = 0
+        for pair in pairs:
+            n = con.execute("DELETE FROM rows WHERE pair = ?", (pair,)).rowcount
+            con.execute("DELETE FROM pairs WHERE pair = ?", (pair,))
+            total += int(n or 0)
+            if on_pair:
+                on_pair(pair, int(n or 0))
+        con.execute("COMMIT")
+        return total
+    except Exception:
+        with contextlib.suppress(sqlite3.Error):
+            con.execute("ROLLBACK")
+        raise
+    finally:
+        con.close()
+
+
 def write_available(timeout_ms: int = 2000) -> str:
     """"" when this process could take rows.db's write lock right now, else
     the reason it could not (another process is writing).
@@ -1346,6 +1389,45 @@ DAYS_CSV_MAX = 2_000
 # the app keeps answering while a download runs. 2 ms against ~90 ms of work is
 # 2% of the download and the difference between a live page and a dead one.
 EXPORT_BREATHE_S = 0.002
+
+
+def window_floors(rows: list, *, min_winrate: float = 0, min_trades: int = 0,
+                  profitable: bool = False) -> tuple[list, int]:
+    """Apply the floors AGAIN, to the WINDOW's own figures.
+
+    The SQL floors run on each row's WHOLE-HISTORY numbers — that is the only
+    thing the index holds. A `days`/`months` window then RE-MEASURES the row
+    and the page prints the window's own win rate, trades and profit. Nobody
+    checked those against the floors, so on Sep 09, 2026 the chips read
+    "Winrate 90% or better" over rows printing 89.47, 86.36, 80.00 and 75.00:
+    every one of them was >= 90 over its whole history and under 90 in the
+    last 30 days. A filter takes the unit its column PRINTS — and the column
+    printed the window (kit item G).
+
+    Returns the rows that pass and HOW MANY were hidden, because a row cut
+    here is a row the caption must count out loud (rule 20). Rows the window
+    could not restate (no candles on this PC) are kept — they still show their
+    whole-history figures and the page marks them as unrestated.
+    """
+    kept, hidden = [], 0
+    floor = float(min_winrate or 0)
+    need = int(min_trades or 0)
+    for r in rows:
+        if not r.get("restated"):
+            kept.append(r)
+            continue
+        ok = True
+        if floor > 0 and float(r.get("w_winrate") or 0) < floor:
+            ok = False
+        if need > 0 and int(r.get("w_trades") or 0) < need:
+            ok = False
+        if profitable and float(r.get("w_profit") or 0) <= 0:
+            ok = False
+        if ok:
+            kept.append(r)
+        else:
+            hidden += 1
+    return kept, hidden
 # Past this offset a page is fetched in TWO steps — see `_page_rows`. The
 # operator's own click: page 50,000 of Stored strategies, offset 24,999,500.
 #
@@ -2435,8 +2517,13 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
               sort="profit", min_trades=0, min_winrate=0, max_tp=0,
               sizing=None, row_id=None, group=None, max_sl=0, days=0,
               desc=None, batch=5_000, min_tp=0, min_sl=0,
-              tp_over_sl=False, asset=None):
+              tp_over_sl=False, asset=None, stats=None):
     """Every matching row, in the asked order, a batch at a time.
+
+    `stats`, when given, is a dict this generator fills as it goes —
+    `window_hidden` counts rows the days window re-measured and then cut
+    because the window's own figures missed a floor — so the caller can write
+    that number into the file's last line (rule 20: a cut is counted out loud).
 
     No limit and no list: 21,858,026 rows will not fit in a browser table or in
     this process's memory, and the operator asked to see ALL of them ("i can
@@ -2533,6 +2620,13 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
                     d["window_first"] = d.get("w_first")
                     d["window_last"] = d.get("w_last")
                     d["window_days"] = d.get("w_days")
+                # the floors AGAIN, on the window's figures — the SQL floors
+                # saw whole-history numbers, and the file prints the window's
+                batch_rows, hidden = window_floors(
+                    batch_rows, min_winrate=min_winrate,
+                    min_trades=min_trades, profitable=profitable)
+                if stats is not None:
+                    stats["window_hidden"] = stats.get("window_hidden", 0) + hidden
             yield from batch_rows
 
 

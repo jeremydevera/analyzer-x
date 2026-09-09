@@ -192,6 +192,10 @@ export default function StrategiesPanel() {
   const [days, setDays] = useState(0);
   // the window the SERVER measured, in real dates, and how it was reached
   const [dayWin, setDayWin] = useState<string[]>([]);
+  // rows the window re-measured and then CUT because the window's own figures
+  // missed a floor the whole history had cleared — named in the caption, never
+  // hidden silently (rule 20). Sep 09, 2026: "Winrate 90% or better" over 89.47.
+  const [winHidden, setWinHidden] = useState(0);
   // the window the SERVER used, in real month keys — never the box's number
   const [window_, setWindow] = useState<string[]>([]);
   // the floors the SERVER actually applied. On a 503 the request moves and the
@@ -339,6 +343,7 @@ export default function StrategiesPanel() {
         setServedFilters(applied);   // these rows came from THIS set
         setWindow(d.window ?? []);   // the window's real months, from the payload
         setDayWin(d.days_window ?? []);   // and its real DATES when days is on
+        setWinHidden(d.window_hidden ?? 0);
         setFailedAfter(0);
       })
       .catch((e) => {
@@ -776,6 +781,20 @@ export default function StrategiesPanel() {
                 + ` backtest ends (this page spans ${dayWin[0]} to ${dayWin[1]});`
                 + ` month columns are hidden because a day cannot restate a month`
               : ""}
+            {/* The floors were checked TWICE — once by the store on each
+                row's whole history, then again on the window's own figures,
+                because the column prints the window. A row that passed the
+                first and failed the second is not on screen, and this says
+                how many, so the chip and the column can never disagree
+                again without the caption owning it. */}
+            {winHidden > 0 ? (
+              <span className="text-warning-600 dark:text-warning-400">
+                {" · "}{winHidden.toLocaleString()} row{winHidden === 1 ? "" : "s"} on
+                this page passed the floors over their whole history but not
+                inside the window — hidden, so every row shown clears the
+                floors in the window itself
+              </span>
+            ) : null}
             {window_.length
               ? ` · window ${monthLabel(window_[window_.length - 1])}–${monthLabel(window_[0])}`
               : ""}

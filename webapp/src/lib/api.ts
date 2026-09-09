@@ -777,6 +777,10 @@ export const api = {
       /** the DAYS window the server measured, in real dates, and how many
        *  coin/timeframe/signal groups it had to re-walk to answer */
       days?: number; days_window?: string[]; days_groups?: number;
+      /** rows the window re-measured and then CUT because the window's own
+       *  win %, trades or profit missed a floor the whole history had passed.
+       *  Sep 09, 2026: "Winrate 90% or better" over rows printing 89.47. */
+      window_hidden?: number;
       /** a filtered count stops at COUNT_CAP: print "N+" */
       total_capped?: boolean }>(
       `/api/strategies?${p.toString()}`,

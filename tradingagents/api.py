@@ -293,9 +293,15 @@ def strategies(coin: str | None = None, tf: str | None = None,
         # what IS allowed rather than making the caller guess
         raise HTTPException(400, str(exc)) from exc
     # the window's trades/W/L/win % where they can be EXACT (see restate_window)
+    got["window_hidden"] = 0
     if months and got.get("window") and len(got.get("rows") or []) <= RESTATE_MAX:
         for r in got["rows"]:
             r.update(restate_window(r, got["window"]))
+        # THE FLOORS AGAIN, ON THE WINDOW. The SQL floors ran on whole-history
+        # figures; the page prints the window's. See rows_index.window_floors.
+        got["rows"], got["window_hidden"] = ri.window_floors(
+            got["rows"], min_winrate=min_winrate, min_trades=min_trades,
+            profitable=profitable)
     got["restate_max"] = RESTATE_MAX
     # LAST N DAYS. Operator, 2026-09-02: "can you add days textbox isntead of
     # using past 1 month only / if months is 0 then follow the days" -- so
@@ -325,6 +331,14 @@ def strategies(coin: str | None = None, tf: str | None = None,
         got["days"] = int(days)
         got["days_window"] = [win["first"], win["last"]]
         got["days_groups"] = win["groups"]
+        # THE FLOORS AGAIN, ON THE WINDOW. Sep 09, 2026: "Winrate 90% or
+        # better" chip over rows printing 89.47 / 86.36 / 80.00 / 75.00 — each
+        # was >= 90 over its whole history (what SQL checked) and under 90 in
+        # the last 30 days (what the column printed). The cut is COUNTED, and
+        # the page says it: a row hidden silently is rule 20 broken.
+        got["rows"], got["window_hidden"] = ri.window_floors(
+            rows, min_winrate=min_winrate, min_trades=min_trades,
+            profitable=profitable)
     got["index"] = ri.status()             # so the UI can say "still indexing"
     return got
 
@@ -385,6 +399,7 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
     # file itself and in the log. A short file that says it is short is worth
     # more than a short file that does not.
     sent = 0
+    stats: dict = {}
     try:
         for r in ri.iter_rows(coin=coin, tf=tf, signal=signal,
                               profitable=profitable, sort=sort,
@@ -393,7 +408,8 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                               group=group, max_sl=max_sl, days=days,
                               desc=desc, batch=batch,
                               min_tp=min_tp, min_sl=min_sl,
-                              tp_over_sl=tp_over_sl, asset=asset):
+                              tp_over_sl=tp_over_sl, asset=asset,
+                              stats=stats):
             score, why = ri.balanced_score(r)
             w.writerow([r.get(c) for c in cols] + [score, why]
                        + [_json.dumps(r.get("monthly") or {},
@@ -419,6 +435,13 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                         f"window is a re-measurement (~0.09 s a row), so it "
                         f"stops there. Narrow the filter, or download without "
                         f"the window for every matching row's whole history."])
+            yield flush()
+        if stats.get("window_hidden"):
+            # a cut row is counted out loud, IN the file (rule 20)
+            w.writerow([f"WINDOW FLOOR: {stats['window_hidden']} row(s) passed "
+                        f"the floors over their whole history but not inside "
+                        f"the last {int(days)} days, and were left out — the "
+                        f"rows above are the ones the window itself clears."])
             yield flush()
     except Exception as exc:                                   # noqa: BLE001
         print(f"[strategies.csv] export stopped after {sent:,} rows: "

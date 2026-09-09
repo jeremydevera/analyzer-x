@@ -66,8 +66,10 @@ def test_every_entry_says_why_the_test_did_not_catch_it():
 def test_every_entry_names_a_commit_and_a_guard():
     for head, body in _entries():
         fix = body[body.index("**FIX**"):body.index("**GUARD**")]
-        assert re.search(r"\b[0-9a-f]{7,40}\b", fix), \
-            f"{head}: FIX must name the commit, so the change can be read"
+        # an entry that travels WITH its fix cannot know its own hash yet;
+        # "this commit" is exact, because `git log -- docs/RCA.md` finds it
+        assert re.search(r"\b[0-9a-f]{7,40}\b", fix) or "this commit" in fix, \
+            f"{head}: FIX must name the commit (or say 'this commit')"
         guard = body[body.index("**GUARD**"):]
         assert "test_" in guard, \
             f"{head}: GUARD must name the test that fails if it comes back"

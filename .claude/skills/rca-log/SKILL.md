@@ -49,7 +49,8 @@ narrow and why. THIS IS THE FIELD THAT PREVENTS THE REPEAT.
 
 **COST** — dollars lost, dollars risked, or "none" — say which.
 
-**FIX** — the commit hash.
+**FIX** — the commit hash, or the words `this commit` when the entry travels
+with the fix (it must — and `git log -- docs/RCA.md` finds it).
 
 **GUARD** — the test that now fails if it comes back.
 ```

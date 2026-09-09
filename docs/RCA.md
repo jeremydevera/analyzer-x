@@ -26,6 +26,54 @@ this repo is also part of the record.
 
 ---
 
+## RCA-2026-09-09-G — "Winrate 90% or better" over a column reading 89.47, 86.36, 80.00, 75.00
+
+**SAW** — *"so why are you showing below 90% winrate when the filter is: Past
+30 days AND flat sizing only AND Winrate 90% or better AND TP at least as wide
+as SL"*, with a screenshot. Also `TypeError: Failed to fetch` in red above the
+table — that one was the API being restarted underneath the page at `8:05am`
+by another session, not this fault.
+
+**TIMELINE**
+
+1. `Sep 09, 2026` — four chips applied. The store's SQL floor `min_winrate=90`
+   ran on each row's **whole-history** win rate, the only one the index holds.
+   Every row on the page cleared it.
+2. The 30-day window then re-measured each row from the candles and the page
+   printed the window's own figures. #CGXLRJML GPNSTOCK 30m stoch14: **57
+   trades, 51 W / 6 L, 89.47%** over `Aug 14, 2026 9:30pm → Sep 05, 2026
+   3:00am`. #7ZZE2ANU ZRO 4h gmma: **4 trades, 3 W / 1 L, 75.00%**.
+3. Nine rows on screen; **7** printed a win rate under 90 beside a chip
+   saying "90% or better". Nothing compared the window's figure with the floor.
+
+**ROOT CAUSE** — the floors were applied once, in SQL, to the whole-history
+figures, and the window re-measure that overwrote the printed figures never
+re-checked them. `api.strategies` and `rows_index.iter_rows` both had the gap.
+
+**WHY IT WAS NOT CAUGHT** — `tests/test_days_window.py` proved the window
+re-measures and the page prints the window's figures; the floor tests proved
+SQL applies the floor. Each layer was right alone. No test set a floor AND a
+window together and read the column. Same shape as RCA-D: the layer the
+operator touches — chip beside column — was never the thing under test.
+
+**COST** — none in money. A page that said 90% and showed 75%.
+
+**FIX** — this commit. `rows_index.window_floors` re-applies win %, trades and
+profit floors to the window's own figures, on the page (days AND months) and in
+the CSV. Cut rows are **counted**: `window_hidden` in the payload, a warning
+sentence in the caption, and a `WINDOW FLOOR:` last line in the file. Rows the
+window could not restate are kept and marked, as before. What is NOT searched,
+said plainly: a row under 90 over its whole history but over 90 inside the
+window is never fetched — the window re-measures a page chosen on whole-history
+figures, and re-measuring all 51,786,620 rows is ~54 days of CPU.
+
+**GUARD** — `tests/test_window_floors_apply_to_the_window.py` (8): the
+screenshot's nine win rates lose exactly seven, the floor is inclusive at 90.00,
+trades and profit floors follow the window, an unrestated row is kept, both
+callers apply it, the CSV writes the count, the caption names it.
+
+---
+
 ## RCA-2026-09-09-F — DELETE 29 DELISTED counted candle files the first press had already removed
 
 **SAW** — after the interrupted press below, the button still read

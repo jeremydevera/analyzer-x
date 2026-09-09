@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 18, "total": 18, "rows": 1643356, "note": "ACE 15m: rule 18/120 (macd)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:18:50Z"}
+{"shard": 0, "stage": "testing", "done": 18, "total": 18, "rows": 1648216, "note": "ACE 15m: rule 45/120 (zscore20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:19:36Z"}

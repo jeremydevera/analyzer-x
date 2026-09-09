@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 16, "total": 16, "rows": 1365606, "note": "JCT 15m: 29,065 bars \u00b7 Nov 10, 2025 10:00am \u2192 Sep 09, 2026 4:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:25:38Z"}
+{"shard": 9, "stage": "testing", "done": 16, "total": 16, "rows": 1369386, "note": "JCT 15m: rule 15/120 (bbbreak)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:26:23Z"}

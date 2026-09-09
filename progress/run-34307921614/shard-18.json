@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 44, "total": 44, "rows": 3938122, "note": "WET 15m: 26,762 bars \u00b7 Dec 04, 2025 12:30pm \u2192 Sep 09, 2026 6:45am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:00:30Z"}
+{"shard": 18, "stage": "testing", "done": 44, "total": 44, "rows": 3940102, "note": "WET 15m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:01:22Z"}

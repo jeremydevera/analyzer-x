@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 62, "total": 62, "rows": 5216924, "note": "SWARMS 1d: 394 bars \u00b7 Aug 11, 2025 12:00am \u2192 Sep 08, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:23:05Z"}
+{"shard": 5, "stage": "testing", "done": 63, "total": 63, "rows": 5231840, "note": "W 15m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:24:00Z"}

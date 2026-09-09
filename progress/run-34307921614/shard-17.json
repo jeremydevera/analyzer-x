@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 47, "total": 47, "rows": 3942188, "note": "TWT 15m: rule 48/120 (prank)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:11:13Z"}
+{"shard": 17, "stage": "testing", "done": 47, "total": 47, "rows": 3950108, "note": "TWT 15m: rule 85/120 (cf_triple)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:11:58Z"}

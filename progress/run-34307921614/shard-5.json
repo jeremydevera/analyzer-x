@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 16, "total": 16, "rows": 1214728, "note": "CYS 15m: rule 72/120 (force13)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:35:45Z"}
+{"shard": 5, "stage": "testing", "done": 16, "total": 16, "rows": 1222848, "note": "CYS 30m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:36:35Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 8, "total": 8, "rows": 618470, "note": "SEI 30m: rule 5/120 (rsi14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:19:35Z"}
+{"shard": 15, "stage": "testing", "done": 8, "total": 8, "rows": 628070, "note": "SEI 30m: rule 54/120 (fractal5)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:20:21Z"}

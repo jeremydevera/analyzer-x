@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 39, "total": 39, "rows": 3357878, "note": "COSTSTOCK 30m: rule 59/120 (choch)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:41:05Z"}
+{"shard": 4, "stage": "testing", "done": 39, "total": 39, "rows": 3389938, "note": "COSTSTOCK 1h: rule 87/120 (cf_triple_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:41:50Z"}

@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 17, "total": 17, "rows": 1475508, "note": "PIEVERSE 15m: 28,680 bars \u00b7 Nov 14, 2025 11:00am \u2192 Sep 09, 2026 4:45am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:00:46Z"}
+{"shard": 13, "stage": "testing", "done": 17, "total": 17, "rows": 1476828, "note": "PIEVERSE 15m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:01:37Z"}

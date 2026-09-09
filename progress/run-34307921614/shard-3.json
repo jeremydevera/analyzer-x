@@ -1,1 +1,1 @@
-{"shard": 3, "stage": "testing", "done": 5, "total": 5, "rows": 386004, "note": "BLUECHIP 15m: downloading candles", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:00:43Z"}
+{"shard": 3, "stage": "testing", "done": 6, "total": 6, "rows": 394030, "note": "BLUR 15m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:01:43Z"}

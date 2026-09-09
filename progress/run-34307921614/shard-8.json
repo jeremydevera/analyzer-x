@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 40, "total": 40, "rows": 3216842, "note": "IMX 15m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:24:49Z"}
+{"shard": 8, "stage": "testing", "done": 40, "total": 40, "rows": 3220042, "note": "IMX 15m: rule 16/120 (keltner)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:25:37Z"}

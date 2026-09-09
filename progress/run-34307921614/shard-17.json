@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 16, "total": 16, "rows": 1264464, "note": "TLM 4h: rule 41/120 (tsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:46:40Z"}
+{"shard": 17, "stage": "testing", "done": 17, "total": 17, "rows": 1328360, "note": "TMF 30m: rule 93/120 (cf_soup_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:47:26Z"}

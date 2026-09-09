@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 41, "total": 41, "rows": 3585790, "note": "COW 30m: rule 13/120 (pivot)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:57:08Z"}
+{"shard": 4, "stage": "testing", "done": 41, "total": 41, "rows": 3594370, "note": "COW 30m: rule 53/120 (squeeze)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:57:53Z"}

@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 47, "total": 47, "rows": 4030322, "note": "SNX 15m: rule 21/120 (cci20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:43:07Z"}
+{"shard": 15, "stage": "testing", "done": 47, "total": 47, "rows": 4035382, "note": "SNX 15m: rule 44/120 (elder)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:43:52Z"}

@@ -1,1 +1,1 @@
-{"shard": 8, "stage": "testing", "done": 37, "total": 37, "rows": 2914540, "note": "IBMSTOCK 30m: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:05:59Z"}
+{"shard": 8, "stage": "testing", "done": 37, "total": 37, "rows": 2938540, "note": "IBMSTOCK 1h: 5,327 bars \u00b7 Jan 30, 2026 7:00am \u2192 Sep 09, 2026 5:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:06:46Z"}

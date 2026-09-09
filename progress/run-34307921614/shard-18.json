@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 12, "total": 12, "rows": 1051282, "note": "USELESS 15m: rule 20/120 (stoch14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:22:23Z"}
+{"shard": 18, "stage": "testing", "done": 12, "total": 12, "rows": 1055282, "note": "USELESS 15m: rule 40/120 (crsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:23:09Z"}

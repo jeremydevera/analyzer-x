@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 44, "total": 44, "rows": 3994310, "note": "WET 1h: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:06:03Z"}
+{"shard": 18, "stage": "testing", "done": 44, "total": 44, "rows": 4016882, "note": "WET 1h: rule 117/120 (cf_diadx_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:06:48Z"}

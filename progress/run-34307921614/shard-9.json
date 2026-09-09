@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 41, "total": 41, "rows": 3639370, "note": "KITE 15m: rule 62/120 (ote)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:47:29Z"}
+{"shard": 9, "stage": "testing", "done": 41, "total": 41, "rows": 3651910, "note": "KITE 30m: 15,109 bars \u00b7 Oct 29, 2025 11:00am \u2192 Sep 09, 2026 5:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:48:18Z"}

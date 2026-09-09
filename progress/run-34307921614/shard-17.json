@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 6, "total": 6, "rows": 411176, "note": "TEMSTOCK 30m: rule 114/120 (cf_obretest_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:01:44Z"}
+{"shard": 17, "stage": "testing", "done": 7, "total": 7, "rows": 485344, "note": "TENCENTSTOCK 30m: rule 59/120 (choch)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:02:29Z"}

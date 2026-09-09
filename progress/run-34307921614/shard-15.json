@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 1, "total": 1, "rows": 82280, "note": "SANTOS 4h: 2,369 bars \u00b7 Aug 10, 2025 4:00am \u2192 Sep 08, 2026 8:00pm \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:47:37Z"}
+{"shard": 15, "stage": "testing", "done": 2, "total": 2, "rows": 122100, "note": "SAPIEN 15m: 34,590 bars \u00b7 Sep 13, 2025 8:15pm \u2192 Sep 09, 2026 3:30am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:48:36Z"}

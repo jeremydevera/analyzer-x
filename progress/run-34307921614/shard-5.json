@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 57, "total": 57, "rows": 4707024, "note": "FLUID 1h: rule 84/120 (cf_maobv_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:01:36Z"}
+{"shard": 5, "stage": "testing", "done": 57, "total": 57, "rows": 4747152, "note": "FLUID 1d: rule 43/120 (macddiv)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:02:21Z"}

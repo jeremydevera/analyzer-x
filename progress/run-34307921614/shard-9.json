@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 5, "total": 5, "rows": 441344, "note": "IOTA 15m: rule 14/120 (bb20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:56:28Z"}
+{"shard": 9, "stage": "testing", "done": 5, "total": 5, "rows": 448604, "note": "IOTA 15m: rule 47/120 (ibs)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:57:13Z"}

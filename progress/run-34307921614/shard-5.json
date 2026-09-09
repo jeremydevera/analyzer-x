@@ -1,1 +1,1 @@
-{"shard": 5, "stage": "testing", "done": 7, "total": 7, "rows": 533154, "note": "CTSHSTOCK 4h: 246 bars \u00b7 Jul 30, 2026 4:00am \u2192 Sep 09, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:02:37Z"}
+{"shard": 5, "stage": "testing", "done": 8, "total": 8, "rows": 550600, "note": "CTSI 15m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:03:34Z"}

@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 27, "total": 27, "rows": 2439624, "note": "JUP 30m: rule 90/120 (cf_chan_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:06:36Z"}
+{"shard": 9, "stage": "testing", "done": 27, "total": 27, "rows": 2454024, "note": "JUP 1h: rule 36/120 (stochrsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:07:22Z"}

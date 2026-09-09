@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 7, "total": 7, "rows": 533760, "note": "ENA 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:05:20Z"}
+{"shard": 6, "stage": "testing", "done": 7, "total": 7, "rows": 537540, "note": "ENA 15m: rule 18/120 (macd)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:06:06Z"}

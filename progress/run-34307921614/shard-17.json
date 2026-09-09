@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 26, "total": 26, "rows": 2018258, "note": "TRADOOR 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:18:46Z"}
+{"shard": 17, "stage": "testing", "done": 26, "total": 26, "rows": 2019518, "note": "TRADOOR 15m: rule 4/120 (trend50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:19:33Z"}

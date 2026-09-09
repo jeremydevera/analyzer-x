@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 40, "total": 40, "rows": 3575848, "note": "OPENAI 30m: rule 102/120 (cf_soup1_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:26:12Z"}
+{"shard": 12, "stage": "testing", "done": 41, "total": 41, "rows": 3629518, "note": "OPENLEDGER 15m: 34,600 bars \u00b7 Sep 13, 2025 8:15pm \u2192 Sep 09, 2026 6:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:27:10Z"}

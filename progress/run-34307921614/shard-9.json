@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 36, "total": 36, "rows": 3364158, "note": "KGEN 30m: rule 105/120 (cf_eqhl_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:42:04Z"}
+{"shard": 9, "stage": "testing", "done": 36, "total": 36, "rows": 3387654, "note": "KGEN 1h: rule 100/120 (cf_soup1)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:42:49Z"}

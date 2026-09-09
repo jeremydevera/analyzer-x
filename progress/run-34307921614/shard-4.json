@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 2, "total": 2, "rows": 66764, "note": "CDNSSTOCK 15m: rule 33/120 (heikin)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:40:12Z"}
+{"shard": 4, "stage": "testing", "done": 4, "total": 4, "rows": 133246, "note": "CELHSTOCK 15m: downloading candles", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:41:00Z"}

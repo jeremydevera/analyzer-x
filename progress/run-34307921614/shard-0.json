@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 2, "total": 2, "rows": 122276, "note": "1000000BABYDOGE 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:52:49Z"}
+{"shard": 0, "stage": "testing", "done": 2, "total": 2, "rows": 124256, "note": "1000000BABYDOGE 15m: rule 6/120 (sweep30)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:53:36Z"}

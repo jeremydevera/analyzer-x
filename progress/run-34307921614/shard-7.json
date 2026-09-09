@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 64, "total": 64, "rows": 5422598, "note": "INTCSTOCK 30m: rule 56/120 (insidebrk)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:38:07Z"}
+{"shard": 7, "stage": "testing", "done": 64, "total": 64, "rows": 5458498, "note": "INTCSTOCK 1h: rule 99/120 (cf_ttm_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:38:52Z"}

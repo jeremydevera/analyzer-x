@@ -1,1 +1,1 @@
-{"shard": 11, "stage": "testing", "done": 2, "total": 2, "rows": 150370, "note": "MEW 30m: rule 39/120 (fisher)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:53:55Z"}
+{"shard": 11, "stage": "testing", "done": 2, "total": 2, "rows": 162470, "note": "MEW 30m: rule 96/120 (cf_emarsi_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:54:41Z"}

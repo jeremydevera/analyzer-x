@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 11, "total": 11, "rows": 1029856, "note": "SPELL 1h: rule 80/120 (cf_donch_l1)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:34:17Z"}
+{"shard": 16, "stage": "testing", "done": 11, "total": 11, "rows": 1064396, "note": "SPELL 1d: 394 bars \u00b7 Aug 11, 2025 12:00am \u2192 Sep 08, 2026 12:00am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:35:04Z"}

@@ -1,1 +1,1 @@
-{"shard": 17, "stage": "testing", "done": 2, "total": 2, "rows": 122820, "note": "TA 15m: rule 44/120 (elder)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:53:59Z"}
+{"shard": 17, "stage": "testing", "done": 2, "total": 2, "rows": 129540, "note": "TA 15m: rule 87/120 (cf_triple_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:54:46Z"}

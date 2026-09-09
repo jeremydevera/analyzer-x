@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 9, "total": 9, "rows": 839556, "note": "US30 1d: rule 13/120 (pivot)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:13:05Z"}
+{"shard": 18, "stage": "testing", "done": 10, "total": 10, "rows": 859576, "note": "USARSTOCK 15m: rule 71/120 (mfi14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:13:50Z"}

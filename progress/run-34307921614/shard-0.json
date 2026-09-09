@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 38, "total": 38, "rows": 3707758, "note": "ALICE 30m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:28:30Z"}
+{"shard": 0, "stage": "testing", "done": 38, "total": 38, "rows": 3713038, "note": "ALICE 30m: rule 21/120 (cci20)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:29:17Z"}

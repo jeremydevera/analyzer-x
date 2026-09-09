@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 43, "total": 43, "rows": 3838358, "note": "OPG 15m: rule 80/120 (cf_donch_l1)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:38:06Z"}
+{"shard": 12, "stage": "testing", "done": 43, "total": 43, "rows": 3851878, "note": "OPG 30m: rule 20/120 (stoch14)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:38:51Z"}

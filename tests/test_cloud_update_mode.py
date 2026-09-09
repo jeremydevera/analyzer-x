@@ -109,6 +109,20 @@ def test_a_saved_position_is_refused_when_the_rules_grew(shard):
     assert shard.state_usable({}) == "no watermark"
 
 
+def test_a_saved_position_without_the_boundary_flag_is_measured_in_full(shard):
+    """RCA-2026-09-09-R. The states run 34360893326 saved (the first ever
+    written by a continuation) carry no `exit_at_last`; continuing from one
+    would start a bar early on every combination whose last trade closed on
+    that bar. One writer per file, so one combination speaks for all."""
+    prior = {"__last_ms__": 5, "__version__": shard.VERSION,
+             "__signals__": sorted(shard.br.SIGNALS),
+             "mom6|0.2|0.3|0.4|flat": {"trades": 4001, "open": None, "step": 0}}
+    why = shard.state_usable(prior)
+    assert "exit_at_last" in why and "boundary" in why, why
+    prior["mom6|0.2|0.3|0.4|flat"]["exit_at_last"] = False
+    assert shard.state_usable(prior) == ""
+
+
 def test_fetch_prior_states_downloads_state_artifacts_oldest_first(shard, monkeypatch, tmp_path):
     calls = []
 

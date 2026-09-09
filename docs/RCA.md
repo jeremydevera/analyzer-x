@@ -29,6 +29,67 @@ this repo is also part of the record.
 
 ---
 
+## RCA-2026-09-09-R — the position a continuation saved had no boundary flag, so the NEXT update would have taken trades the full run never took
+
+**SAW** — found by reading what run 34360893326 (the second proof of UPDATE)
+re-saved: `0G-1h.json.gz`, 27,720 combinations, `KeyError: 'exit_at_last'`
+on the first of them. Every one of that run's **52,668** saved positions lacks
+the flag. **NEVER HAPPENED YET** on a screen — the run after it had not been
+pressed. Times below are this PC's (UTC+8); the shard logs print UTC.
+
+**TIMELINE**
+
+1. `Sep 09, 2026 9:33pm` — proof FULL run 34357754670 saved 0G-1h and
+   1000000BABYDOGE-1h with `fast_grid.end_state`: every combination carries
+   `exit_at_last` (True when its last trade closed on the last tested bar,
+   `Sep 09, 2026 8:00pm`).
+2. `10:01pm` — proof UPDATE run 34360893326 continued both over the one new
+   bar (`8:00pm → 9:00pm`). `resume_state.continue_combo` built the new
+   position as the engine's `state` plus the streak; the engine has no notion
+   of the flag, so it was dropped. BABYDOGE `mom6 th 0.2 tp 0.4 sl 0.3 flat`:
+   4,319 → 4,320 trades, −$823.93 → −$823.63; 5,740 of 0G's 27,720
+   combinations ended the bar with an open trade. Collected `10:05pm`: 51,436
+   rows, 2 pairs, state run → 34360893326.
+3. What the NEXT update would have done, for every combination without an
+   open trade: `prev.get("exit_at_last")` is None → start one bar early → the
+   engine evaluates the signal on the `9:00pm` bar. A full run never does:
+   after an exit on bar j it searches from j+1. So each combination whose
+   last trade closed on that bar with a signal on it would have entered a
+   trade on the next bar that the whole-history measurement does not
+   contain. How many: not readable from the saved state — the flag was the
+   only record, which is the point.
+
+**ROOT CAUSE** — `continue_combo` returned `dict(r["state"])` plus the
+streak; the flag lived only in `fast_grid.end_state`, the full path. Two
+writers of one file shape, one missing a field the reader depends on.
+
+**WHY IT WAS NOT CAUGHT** —
+`test_the_gap_continued_from_the_saved_position_equals_one_full_run` pins ONE
+continuation against a full run. The flag is consumed at the START of the next
+continuation, so a state written by a continuation was never READ by anything
+in a test, and the proof runs had the same shape (full → update). The second
+update was the first reader, and it had not run. A field that only a later run
+reads needs a test that runs later.
+
+**COST** — none. Two proof pairs on GitHub; nothing on screen.
+
+**FIX** — this commit. `continue_combo` sets `exit_at_last` from the engine's
+own log (`auto_trader.backtest_strategy` log rows now carry `exit_bar`, the
+name the slices rows already used); `sweep_shard.state_usable` refuses a
+position saved without the flag ("measured in full"), so the two positions run
+34360893326 saved are re-measured, never continued.
+
+**GUARD** —
+`tests/test_cloud_continue.py::test_two_continuations_in_a_row_equal_one_full_run`
+chains full → continue → continue with the middle boundary on a bar where a
+trade closed AND a signal sits, equal to one full run — and proves the flag is
+load-bearing by dropping it and watching the phantom trade appear;
+`test_the_continued_position_carries_the_boundary_flag` (present, and agreeing
+with the engine's log);
+`tests/test_cloud_update_mode.py::test_a_saved_position_without_the_boundary_flag_is_measured_in_full`.
+
+---
+
 ## RCA-2026-09-09-P — UPDATE on GitHub re-measured the whole year, and the collector then threw 99% of it away
 
 **SAW** — *"if the last backtest was sep1 and i click update it should run on
@@ -96,6 +157,31 @@ pack/unpack), `tests/test_cloud_update_mode.py` (19: shard, workflow,
 dispatch, collector rule, state-run record, header), and the rewritten
 `tests/test_cloud_collect.py` rules (fresher replaces, stale refused, marker
 replaces only when fresher).
+
+**PROVED** — `Sep 09, 2026`, on GitHub, 1 machine, 2 coins, 1h (times are
+this PC's, UTC+8):
+* FULL run 34357754670 (`9:33pm`, 4 min): 51,436 rows; both positions saved
+  (`state-0`, 4,482,779 bytes — 0G-1h 27,720 combinations, 1000000BABYDOGE-1h
+  24,948), last tested bar `Sep 09, 2026 8:00pm`; collected 2 pairs, 0
+  skipped; state run recorded.
+* UPDATE run 34358770484 (`9:42pm`): "saved positions from run 34357754670:
+  2 pair(s)" then "no new bars since … 8:00pm — position kept, nothing
+  written"; payload `mode=update, continued=2, fresh=0`; positions re-saved;
+  the panel header read UPDATE with the continued count.
+* UPDATE run 34360893326 (`10:01pm`, after the 9:00pm bar closed): both
+  continued over ONE new bar — the tile read `Sep 09, 2026 8:00pm → Sep 09,
+  2026 9:00pm` (screenshot taken while it ran); 51,436 rows; collected: 2
+  pairs replaced as fresher, 0 skipped; `state_runs()` → 34360893326.
+  BABYDOGE `mom6 th 0.2 tp 0.4 sl 0.3 flat`: 4,319 → 4,320 trades, 1,291 →
+  1,292 wins, −$823.93 → −$823.63, bars 9,479 → 9,480; 0G's mom6 rows
+  unchanged in trades, bars 8,565 → 8,566. The runner had 92.2 GB of disk
+  free after the 4 MB download (the whole-market projection is ~12 GB).
+* Measured cost of a continuation: **1.1 min per coin** for a one-bar gap,
+  against **0.4 min per coin** for the full fast walk of the whole year on
+  1h — the engine is called once per combination (27,720 calls), so UPDATE is
+  now CORRECT and honest about its dates but not yet FASTER than starting
+  over on 1h. Named here, not fixed here.
+* Reading the re-saved positions found RCA-R (no boundary flag).
 
 ---
 

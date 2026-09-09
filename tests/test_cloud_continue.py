@@ -164,3 +164,100 @@ def test_fold_streak_continues_a_run_across_the_boundary():
     got = rs.fold_streak(prev, [-2.0, -1.0, 4.0, -0.5])
     assert got["worst_streak"] == -6.0 and got["worst_streak_len"] == 4
     assert got["streak_sum"] == -0.5 and got["streak_len"] == 1
+
+
+# ------------------------------------------------ the SECOND continuation
+# RCA-2026-09-09-R. `exit_at_last` is what the next continuation reads to
+# place the boundary bar. fast_grid.end_state wrote it; continue_combo copied
+# the engine's state, which has no such thing — so the first state a
+# continuation ever saved (run 34360893326, Sep 09, 2026: 52,668
+# combinations) carried none, and the run after it would have started one bar
+# early on every combination whose last trade closed on that bar.
+def _full_log(df, dirs, *, tp, sl, sizing, liq, fund):
+    _spec(tp, sl)
+    try:
+        return at.backtest_strategy(KEY, df, 5.0, fee=0.0004, sizing=sizing,
+                                    dirs=dirs, tp=tp, sl=sl, liq_move_pct=liq,
+                                    funding=fund, keep_log=True, resume={})
+    finally:
+        at.STRATEGY_SPECS.pop(KEY, None)
+
+
+def _continue_from(df, dirs, prev, upto, *, tp, sl, sizing, liq, fund):
+    """Continue `prev` over df[:upto] — the shard's own steps: gap_frame, the
+    rules computed over the frame it hands the engine, continue_combo."""
+    part = df.iloc[:upto].reset_index(drop=True)
+    frame, start_at, new_bars = rs.gap_frame(part, prev["last_ms"], LOOKBACK)
+    first_new = len(part) - new_bars
+    d = dirs[first_new - start_at:upto]
+    _spec(tp, sl)
+    try:
+        return rs.continue_combo(KEY, frame, 5.0, fee=0.0004, sizing=sizing,
+                                 dirs=d, tp=tp, sl=sl, liq=liq, funding=fund,
+                                 prev=prev, start_at=start_at)
+    finally:
+        at.STRATEGY_SPECS.pop(KEY, None)
+
+
+def test_the_continued_position_carries_the_boundary_flag():
+    """Present on every continued state, and agreeing with the engine's own
+    log of the same bars: did a trade close ON the frame's last bar."""
+    df = _frame()
+    dirs = _dirs(len(df))
+    fund = _funding(len(df))
+    last = len(df) - 1
+    for sl, tp in BARRIERS:
+        for sizing in ("flat", "martingale"):
+            full = _full_log(df, dirs, tp=tp, sl=sl, sizing=sizing, liq=4.5, fund=fund)
+            want = any(row["why"] != "END" and row["exit_bar"] == last
+                       for row in full["log"])
+            for k in (300, 601, 850):
+                _got, new_state = _continued(df, dirs, k, tp=tp, sl=sl,
+                                             sizing=sizing, liq=4.5, fund=fund)
+                assert "exit_at_last" in new_state, (tp, sl, sizing, k)
+                assert new_state["exit_at_last"] is want, (tp, sl, sizing, k)
+
+
+def test_two_continuations_in_a_row_equal_one_full_run():
+    """Full run → saved position → continued → continued AGAIN equals one full
+    run, with the middle boundary placed ON a bar where a trade closed and a
+    signal sits. The full run skips that signal (it searches from exit+1), so
+    a continuation that has forgotten the flag takes a trade the full run
+    never took — shown here by dropping the flag and watching it diverge."""
+    df = _frame()
+    dirs = _dirs(len(df))
+    fund = _funding(len(df))
+    k1, cases = 300, 0
+    for sl, tp in BARRIERS:
+        for sizing in ("flat", "martingale"):
+            want = _full_log(df, dirs, tp=tp, sl=sl, sizing=sizing, liq=4.5, fund=fund)
+            exits = {row["exit_bar"] for row in want["log"] if row["why"] != "END"}
+            k2 = next((k for k in range(k1 + 40, len(df) - 40)
+                       if (k - 1) in exits and dirs[k - 1] != 0), None)
+            if k2 is None:
+                continue
+            cases += 1
+            prev = _state_through(df, dirs, k1, tp=tp, sl=sl, sizing=sizing,
+                                  liq=4.5, fund=fund)
+            _r2, mid = _continue_from(df, dirs, prev, k2, tp=tp, sl=sl,
+                                      sizing=sizing, liq=4.5, fund=fund)
+            assert mid["exit_at_last"] is True, (tp, sl, sizing, k2)
+            got, end = _continue_from(df, dirs, mid, len(df), tp=tp, sl=sl,
+                                      sizing=sizing, liq=4.5, fund=fund)
+            for key in KEYS:
+                if key == "worst_streak":
+                    assert got[key] == pytest.approx(want[key], abs=0.03), (
+                        key, got[key], want[key], tp, sl, sizing, k2)
+                else:
+                    assert got[key] == want[key], (key, got[key], want[key],
+                                                   tp, sl, sizing, k2)
+            assert end["trades"] == want["state"]["trades"]
+            assert (end["open"] is None) == (want["state"]["open"] is None)
+            # the flag is load-bearing: without it, a phantom trade
+            flagless = {k: v for k, v in mid.items() if k != "exit_at_last"}
+            bad, bad_end = _continue_from(df, dirs, flagless, len(df), tp=tp,
+                                          sl=sl, sizing=sizing, liq=4.5, fund=fund)
+            assert ((bad["trades"], bad["profit"], bad_end["open"] is None)
+                    != (want["trades"], want["profit"], want["state"]["open"] is None)), (
+                tp, sl, sizing, k2, "dropping the flag changed nothing — the case is not exercised")
+    assert cases >= 1, "the fixture never closed a trade on a signal bar"

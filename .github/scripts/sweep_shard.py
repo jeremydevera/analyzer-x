@@ -310,6 +310,12 @@ def state_usable(prior: dict) -> str:
     missing = set(br.SIGNALS) - set(prior.get("__signals__") or [])
     if missing:
         return f"{len(missing)} signal(s) it never measured ({sorted(missing)[0]}…)"
+    # one writer per file, so one combination speaks for all of them
+    combo = next((v for k, v in prior.items() if not str(k).startswith("__")), None)
+    if isinstance(combo, dict) and "exit_at_last" not in combo:
+        # saved by a continuation before Sep 09, 2026 (run 34360893326): without
+        # the flag the boundary bar cannot be placed, so a full measure it is
+        return "saved without the boundary flag (exit_at_last)"
     return ""
 
 

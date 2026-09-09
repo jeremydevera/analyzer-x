@@ -106,13 +106,24 @@ def continue_combo(key: str, frame, base: float, *, fee: float, sizing: str,
                              dirs=dirs, tp=tp, sl=sl, liq_move_pct=liq,
                              funding=funding, keep_log=True,
                              resume=prev, start_at=start)
-    streak = fold_streak(prev, (row["pnl $"] for row in r.get("log") or []))
+    log = r.get("log") or []
+    streak = fold_streak(prev, (row["pnl $"] for row in log))
     r = dict(r)
     r["worst_streak"] = round(streak["worst_streak"], 2)
     r["worst_streak_len"] = streak["worst_streak_len"]
     r.pop("log", None)
     new_state = dict(r["state"])
     new_state.update(streak)
+    # The flag the NEXT continuation reads (above). The engine's state does
+    # not know it — only fast_grid.end_state wrote it — so the first
+    # continued state ever saved (run 34360893326, Sep 09, 2026: 52,668
+    # combinations) had none, and the run after it would have started one
+    # bar early on every combination whose last trade closed on that bar.
+    # An "END" row is the trade still open, carried in state["open"].
+    last = len(frame) - 1
+    new_state["exit_at_last"] = any(
+        row.get("why") != "END" and int(row.get("exit_bar", -1)) == last
+        for row in log)
     return r, new_state
 
 

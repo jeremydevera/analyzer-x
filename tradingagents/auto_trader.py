@@ -2160,6 +2160,11 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
             i = j + 1             # entry price on every following bar
             continue
         log.append({"entry time": stamp(i + 1), "exit time": stamp(j),
+                    # the bar it closed on, as an index: a continuation
+                    # (resume_state.continue_combo) has to know whether a
+                    # trade exited ON the frame's last bar — the slices rows
+                    # above already carry it under the same name
+                    "exit_bar": int(j),
                     # HOW LONG IT WAS HELD, in the same words the live
                     # Positions table uses (operator, Sep 05, 2026: "can you
                     # show how many hours/days the trade was hold just like

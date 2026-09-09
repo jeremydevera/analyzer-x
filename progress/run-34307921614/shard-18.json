@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 11, "total": 11, "rows": 984086, "note": "USDC 30m: rule 102/120 (cf_soup1_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:18:25Z"}
+{"shard": 18, "stage": "testing", "done": 11, "total": 11, "rows": 1005646, "note": "USDC 1h: rule 90/120 (cf_chan_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:19:10Z"}

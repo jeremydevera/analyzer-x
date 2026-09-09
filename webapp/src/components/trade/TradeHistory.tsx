@@ -88,7 +88,16 @@ export default function TradeHistory() {
           <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
             {(d?.rows ?? []).map((r, i) => (
               <TableRow key={`${r.ts}-${i}`}>
-                <TableCell className="whitespace-nowrap px-2 py-1.5 font-mono text-theme-xs text-gray-800 dark:text-white/90">{r.id ?? "—"}</TableCell>
+                <TableCell className="whitespace-nowrap px-2 py-1.5 font-mono text-theme-xs text-gray-800 dark:text-white/90">
+                  {/* the SAME id the open position carries, so a trade can be
+                      followed from open to closed by one string (operator,
+                      Sep 10, 2026) */}
+                  {r.id ? (
+                    <button title="copy this trade's id"
+                      onClick={() => { navigator.clipboard?.writeText(String(r.id)); }}
+                      className="font-mono hover:underline">{r.id}</button>
+                  ) : "—"}
+                </TableCell>
                 <TableCell className="whitespace-nowrap px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.opened ?? "—"}</TableCell>
                 <TableCell className="whitespace-nowrap px-3 py-2 text-theme-xs text-gray-500 dark:text-gray-400">{r.when}</TableCell>
                 <TableCell className="whitespace-nowrap px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.held ?? "—"}</TableCell>

@@ -178,6 +178,13 @@ def build_rows(*, state: dict, exchange_positions: list, stats: dict,
             # not the other, and two tables naming one row differently is the
             # whole reason the id is derived rather than typed
             "label": _label(pos.get("strategy") or r["strategy"], settings),
+            # THIS TRADE's own id, not the strategy's — the one the Trade
+            # History prints in its `id` column once the trade closes, and
+            # the one the ledger rows carry (operator, Sep 10, 2026: "i want
+            # ability to copy id of the open trades in demo or live"). An
+            # older position that predates trade ids has none, and the cell
+            # says so rather than showing a blank that reads as a bug.
+            "trade_id": pos.get("trade_id") or "",
             "opened": fmt_when(when) if when else "—",
             "held": fmt_age(now - when) if when else "—",
             "opened_ts": when,

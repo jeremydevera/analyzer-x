@@ -51,6 +51,7 @@ const Barrier = ({ v, win }: { v: { pct: number; usd: number } | null; win: bool
 export default function PositionsPanel({ onChanged }: { onChanged?: () => void }) {
   const [data, setData] = useState<PositionsPayload | null>(null);
   const [err, setErr] = useState("");
+  const [copied, setCopied] = useState("");
   const [busy, setBusy] = useState("");
 
   const load = () => tradeApi.positions().then((d) => { setData(d); setErr(""); markReady("positions"); }).catch((e) => setErr(String(e)));
@@ -73,6 +74,18 @@ export default function PositionsPanel({ onChanged }: { onChanged?: () => void }
     } catch (e) { setErr(String(e)); } finally { setBusy(""); }
   };
 
+  /** copy, and SAY it copied — a click with no answer reads as a dead
+   *  button, and clipboard writes fail silently in some browsers. */
+  const copy = async (text: string, what: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(what);
+      setTimeout(() => setCopied(""), 1500);
+    } catch {
+      setCopied(`could not copy — ${text}`);
+    }
+  };
+
   const row = (r: PositionRow, book: "REAL" | "paper") => (
     <TableRow key={`${book}-${r.symbol}`}>
       <TableCell className="px-2 py-1.5 text-theme-xs">
@@ -81,10 +94,22 @@ export default function PositionsPanel({ onChanged }: { onChanged?: () => void }
             here?" is answerable from this row alone — and it is the id to
             paste into a report's find-by-ID box */}
         {r.id ? (
-          <button onClick={() => navigator.clipboard?.writeText(r.id)}
-            title="copy this id"
+          <button onClick={() => copy(r.id, `strategy ${r.id}`)}
+            title="copy the STRATEGY id — the row in Stored strategies this trade came from"
             className="block font-mono text-[10px] font-semibold leading-tight text-brand-500 hover:underline">
             #{r.id}
+          </button>
+        ) : null}
+        {/* THIS TRADE's own id (operator, Sep 10, 2026: "i want ability to
+            copy id of the open trades in demo or live"). Two different ids
+            live on one row — the strategy above, the trade here — so each
+            says WHICH it copies rather than leaving the reader to guess,
+            and the trade one is the id Trade History shows when it closes. */}
+        {r.trade_id ? (
+          <button onClick={() => copy(r.trade_id as string, `trade ${r.trade_id}`)}
+            title="copy THIS TRADE's id — the same id Trade History shows once it closes"
+            className="block font-mono text-[10px] leading-tight text-gray-500 hover:underline dark:text-gray-400">
+            trade {r.trade_id}
           </button>
         ) : null}
         {r.label ? (
@@ -182,6 +207,11 @@ export default function PositionsPanel({ onChanged }: { onChanged?: () => void }
         </p>
       )}
       <PanelStatus err={err} loaded={data !== null} />
+      {copied && (
+        <p className="px-5 pt-2 text-theme-xs text-success-600 dark:text-success-400">
+          copied {copied}
+        </p>
+      )}
       <div className="flex flex-col gap-4 p-4">
         <Book label="REAL — MONEY AT RISK" tone="real" book="REAL" rows={real}
           empty="none — no real money at risk" />

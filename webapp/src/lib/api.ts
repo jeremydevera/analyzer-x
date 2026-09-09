@@ -1118,6 +1118,10 @@ export interface BarrierValue { pct: number; usd: number }
 
 export interface PositionRow {
   id: string;
+  /** THIS TRADE's own id — the one Trade History prints once it closes, and
+   *  the one every ledger row for this trade carries. Blank on a position
+   *  opened before trade ids existed. */
+  trade_id?: string;
   symbol: string;
   coin: string;
   state: string;

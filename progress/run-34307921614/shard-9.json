@@ -1,1 +1,1 @@
-{"shard": 9, "stage": "testing", "done": 71, "total": 71, "rows": 6532630, "note": "TAG 30m: rule 49/120 (vwaprev)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:21:23Z"}
+{"shard": 9, "stage": "testing", "done": 71, "total": 71, "rows": 6547950, "note": "TAG 1h: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:22:11Z"}

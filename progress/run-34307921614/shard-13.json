@@ -1,1 +1,1 @@
-{"shard": 13, "stage": "testing", "done": 38, "total": 38, "rows": 3627844, "note": "TAC 4h: rule 33/120 (heikin)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:25:34Z"}
+{"shard": 13, "stage": "done", "done": 38, "total": 38, "rows": 3655630, "note": "3,655,630 rows \u00b7 38 coin(s) claimed \u00b7 0 pair redo(s) \u00b7 0 pair(s) lost", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:25:58Z"}

@@ -1,1 +1,1 @@
-{"shard": 18, "stage": "testing", "done": 12, "total": 12, "rows": 1123660, "note": "USELESS 4h: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:30:07Z"}
+{"shard": 18, "stage": "testing", "done": 13, "total": 13, "rows": 1157034, "note": "USOIL 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:30:59Z"}

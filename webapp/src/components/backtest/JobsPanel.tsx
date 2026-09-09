@@ -191,7 +191,11 @@ export default function JobsPanel() {
             <span className="text-theme-xs text-gray-500 dark:text-gray-400">
               {cloud?.available
                 ? `${cap?.runners ? `${cap.runners} runners` : "GitHub's runners"} measure the grid; every row comes back into the store on this PC`
-                : `GitHub is not available — ${cloud?.why ?? "checking…"}. Nothing will run until it is; this PC no longer measures.`}
+                : cloud?.reading || !cloud
+                  // the first read of GitHub is still running in the API's
+                  // background — "not available" here would be a false label
+                  ? "checking GitHub…"
+                  : `GitHub is not available — ${cloud.why}. Nothing will run until it is; this PC no longer measures.`}
             </span>
           </div>
         </div>

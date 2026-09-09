@@ -29,6 +29,52 @@ this repo is also part of the record.
 
 ---
 
+## RCA-2026-09-09-I — the filtered table waited five minutes behind four `/api/cloud/status` calls that never came back
+
+**SAW** — Apply pressed with the four chips; the button read **"searching
+306s"** and the table never changed. No error anywhere. Found while proving
+RCA-G in the browser.
+
+**TIMELINE**
+
+1. `Sep 09, 2026 11:56am` — Playwright's network list: `/api/cloud/status`
+   requests **95, 104, 112, 119** in flight with no answer; every other call
+   200.
+2. Measured straight at the API: `GET /api/cloud/status` **200 in 216.3 s**.
+   The panel asks every **4 s**.
+3. `webapp/src/lib/api.ts` had gained `MAX_LANES = 4` that morning (so a page
+   switch stays instant). Four hung status calls held all four lanes; the
+   filtered `/api/strategies` request never left the browser. `/api/health`
+   direct: 0.4 s. The API was healthy; the page was dead.
+
+**ROOT CAUSE** — `cloud_status` ran `cs.available()`, `cs.status(run)` and
+`cs.live_progress(run)` — `gh` plus `git fetch` plus a `git show` per shard —
+inside the request, on every 4-second poll. The comment above it said CACHED;
+only `working_run` was.
+
+**WHY IT WAS NOT CAUGHT** — RCA-A fixed the identical fault in
+`/api/backtest/logs` five hours earlier and the fix stayed local to that
+module. No test bounds a polled route's wall-clock, and nothing says which
+routes shell out. The same shape, in a second route, the same day.
+
+**COST** — none in money. Every filter on the page unusable while GitHub was
+slow; the operator's proof of RCA-G could not be taken for 20 minutes.
+
+**FIX** — this commit. `tradingagents/slow_cache.BackgroundValue`: one
+background thread reads, the request answers with the last value or says
+"reading GitHub in the background", a failure is a value too. `cloud_status`
+uses it (`CLOUD_STATUS_TTL = 30 s`); the panel prints "checking GitHub…" for
+that first answer instead of "GitHub is not available", which would be a false
+label. Measured after: first call **<0.5 s**, then the cached answer.
+
+**GUARD** — `tests/test_cloud_status_never_waits_on_github.py` (9): the first
+call answers at once, one read at a time however often the panel polls, a
+failure is cached, a stale value is served while the refresh runs, the route
+holds no slow call, the pending answer keeps the panel's shape, the panel does
+not call a first read "not available".
+
+---
+
 ## RCA-2026-09-09-G — "Winrate 90% or better" over a column reading 89.47, 86.36, 80.00, 75.00
 
 **SAW** — *"so why are you showing below 90% winrate when the filter is: Past

@@ -424,6 +424,10 @@ export interface CloudShard {
 export interface CloudStatus {
   available: boolean;
   why: string;
+  /** true before the FIRST background read of GitHub has landed — the API
+   *  answers at once rather than holding the request (216 s on Sep 09, 2026,
+   *  four of them holding every browser lane); not the same as "not available" */
+  reading?: boolean;
   run: { id?: number; url?: string } | null;
   shards: CloudShard[];
   conclusion?: string | null;

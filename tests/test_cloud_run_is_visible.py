@@ -31,6 +31,12 @@ def client(monkeypatch):
     monkeypatch.setattr(cs, "status", lambda rid, slug=None: {"running": 20})
     monkeypatch.setattr(cs, "live_progress", lambda rid: [{"shard": 0}])
     api_mod._WORKING_RUN.update({"at": 0.0, "run": None})     # no stale cache
+    # These tests are about WHAT the read decides (live run beats remembered,
+    # the fallback, a broken gh). The route itself answers from a background
+    # value since Sep 09, 2026 (216 s reads held every browser lane — RCA-I),
+    # so here the read runs in the request, synchronously, to be inspected.
+    monkeypatch.setattr(api_mod._CLOUD_STATUS, "get",
+                        lambda pending=None: api_mod._read_cloud_status())
     return TestClient(api_mod.app)
 
 

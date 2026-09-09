@@ -202,6 +202,10 @@ def test_cloud_status_says_why_when_github_is_unusable(client, monkeypatch):
     from tradingagents import cloud_sweep as cs
     monkeypatch.setattr(cs, "available", lambda: (False, "gh CLI not signed in"))
     monkeypatch.setattr(cs, "remembered", lambda: {})
+    # the route answers from a background value (RCA-I); run the read here
+    import tradingagents.api as api_mod
+    monkeypatch.setattr(api_mod._CLOUD_STATUS, "get",
+                        lambda pending=None: api_mod._read_cloud_status())
     got = client.get("/api/cloud/status").json()
     assert got["available"] is False and "gh CLI" in got["why"]
     assert got["shards"] == []
@@ -226,6 +230,9 @@ def test_cloud_status_reports_each_machine_not_just_a_count(client,
     monkeypatch.setattr(cs, "live_progress", lambda rid, slug=None: [
         {"shard": 1, "stage": "backtesting", "pct": 40, "note": "BTC 15m"},
         {"shard": 2, "stage": "downloading", "pct": 10, "note": "ETH 30m"}])
+    import tradingagents.api as api_mod
+    monkeypatch.setattr(api_mod._CLOUD_STATUS, "get",
+                        lambda pending=None: api_mod._read_cloud_status())
     got = client.get("/api/cloud/status").json()
     assert len(got["shards"]) == 2
     assert got["shards"][0]["stage"] == "backtesting"

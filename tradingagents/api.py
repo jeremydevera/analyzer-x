@@ -18,6 +18,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from tradingagents.slow_cache import BackgroundValue
+
 app = FastAPI(title="TradingAgents API", version="1.0")
 
 
@@ -1920,7 +1922,23 @@ def _working_run_cached() -> dict | None:
 def cloud_status() -> dict:
     """Whether GitHub Actions can be used, and what the remembered run is
     doing — per machine, not just "20 running", which told the operator
-    nothing (2026-08-20)."""
+    nothing (2026-08-20).
+
+    ANSWERS AT ONCE, from the last background read. Measured Sep 09, 2026:
+    the read below took **216.3 s** (`gh` for the live run, a status call, then
+    `git fetch` plus a `git show` per shard), the panel asks every 4 s, and
+    four of those sat in flight holding every browser lane — so the operator's
+    filtered table request never left the browser ("searching 306s") while the
+    API was perfectly healthy. Same disease as `/api/backtest/logs` the same
+    morning (RCA-A); same cure: the request never waits for GitHub.
+    """
+    return _CLOUD_STATUS.get(pending={
+        "available": False, "why": "reading GitHub in the background",
+        "reading": True, "run": None, "shards": []})
+
+
+def _read_cloud_status() -> dict:
+    """The slow read. Runs in `_CLOUD_STATUS`'s background thread only."""
     from tradingagents import cloud_sweep as cs
 
     ok, why = cs.available()
@@ -1952,6 +1970,18 @@ def cloud_status() -> dict:
         except Exception:
             out["shards"] = []
     return out
+
+
+# How long a cloud-status answer is reused before the background thread reads
+# again. Shard progress moves on the order of minutes; the panel polls every
+# 4 s; the read itself was 216 s on Sep 09, 2026.
+CLOUD_STATUS_TTL = 30.0
+_CLOUD_STATUS = BackgroundValue(
+    "cloud-status", _read_cloud_status, ttl=CLOUD_STATUS_TTL,
+    # a failed read is an answer too — and it keeps the panel's shape
+    on_error=lambda exc: {"available": False,
+                          "why": f"{type(exc).__name__}: {exc}",
+                          "run": None, "shards": []})
 
 
 @app.post("/api/cloud/dispatch")

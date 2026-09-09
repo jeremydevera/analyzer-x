@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 2, "total": 2, "rows": 123660, "note": "SONYSTOCK 15m: rule 7/120 (fvg)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:53:30Z"}
+{"shard": 16, "stage": "testing", "done": 2, "total": 2, "rows": 175980, "note": "SONYSTOCK 4h: 471 bars \u00b7 Jun 22, 2026 12:00pm \u2192 Sep 08, 2026 8:00pm \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:54:16Z"}

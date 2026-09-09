@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 7, "total": 7, "rows": 702102, "note": "1INCH 15m: rule 17/120 (atrbreak)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:35:42Z"}
+{"shard": 0, "stage": "testing", "done": 7, "total": 7, "rows": 706282, "note": "1INCH 15m: rule 36/120 (stochrsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T04:36:28Z"}

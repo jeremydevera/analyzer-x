@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 53, "total": 53, "rows": 4526232, "note": "SOMI 15m: rule 17/120 (atrbreak)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:09:28Z"}
+{"shard": 15, "stage": "testing", "done": 53, "total": 53, "rows": 4530832, "note": "SOMI 15m: rule 40/120 (crsi)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:10:15Z"}

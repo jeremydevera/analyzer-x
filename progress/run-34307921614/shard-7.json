@@ -1,1 +1,1 @@
-{"shard": 7, "stage": "testing", "done": 64, "total": 64, "rows": 5458498, "note": "INTCSTOCK 1h: rule 99/120 (cf_ttm_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:38:52Z"}
+{"shard": 7, "stage": "testing", "done": 65, "total": 65, "rows": 5508802, "note": "INTUSTOCK 15m: rule 102/120 (cf_soup1_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:39:38Z"}

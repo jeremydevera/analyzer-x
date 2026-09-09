@@ -1,1 +1,1 @@
-{"shard": 4, "stage": "testing", "done": 4, "total": 4, "rows": 133246, "note": "CELHSTOCK 15m: downloading candles", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:41:00Z"}
+{"shard": 4, "stage": "testing", "done": 5, "total": 5, "rows": 187118, "note": "CELO 15m: 34,589 bars \u00b7 Sep 13, 2025 8:15pm \u2192 Sep 09, 2026 3:15am \u00b7 120 rules", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T03:41:51Z"}

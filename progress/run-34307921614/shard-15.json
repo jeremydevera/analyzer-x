@@ -1,1 +1,1 @@
-{"shard": 15, "stage": "testing", "done": 47, "total": 47, "rows": 4132974, "note": "SNX 1d: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:50:08Z"}
+{"shard": 15, "stage": "testing", "done": 49, "total": 49, "rows": 4177166, "note": "SOFISTOCK 30m: rule 68/120 (dbltop)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:50:53Z"}

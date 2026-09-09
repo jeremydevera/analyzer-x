@@ -1,1 +1,1 @@
-{"shard": 6, "stage": "testing", "done": 56, "total": 56, "rows": 4960246, "note": "SAGA 15m: rule 115/120 (cf_diadx)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:14:54Z"}
+{"shard": 6, "stage": "testing", "done": 56, "total": 56, "rows": 4963226, "note": "SAGA 30m: rule 3/120 (fade15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:15:41Z"}

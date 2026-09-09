@@ -1,1 +1,1 @@
-{"shard": 12, "stage": "testing", "done": 52, "total": 52, "rows": 4661854, "note": "ALLO 1h: rule 2/120 (mom15)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:29:55Z"}
+{"shard": 12, "stage": "testing", "done": 52, "total": 52, "rows": 4685614, "note": "ALLO 1h: rule 111/120 (cf_fundfade_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:30:40Z"}

@@ -640,3 +640,62 @@ row. So:
    glance, written by the code that served the table, on every press — which is
    the only check in this file that does not depend on somebody thinking to
    look.
+
+---
+
+## Sep 09, 2026 — four bugs the partial TP/SL build hit before it shipped
+
+**What the operator asked for:** *"do a switch 'Enable Partial TP/SL for DEMO'
+and 'Enable Partial TP/SL for Live' / if this is turned on then do the partial
+trading / take note the win/L should still go in a specific trade so i can
+still see which trade strategy id thas high winrate"*.
+
+None of these four reached the operator: the harddev loop caught them between
+the build and the push. They are logged because each is a shape this repo has
+paid for before, and the next feature will meet them again.
+
+1. **The base slot would have entered twice.** With partial ON the real book
+   gains a slot per strategy (`SYM#live#KEY`), and the base slot (`SYM`) was
+   still running its own entry loop — which sees EVERY armed strategy. One
+   signal on strategy A would have opened a position in the base slot AND in
+   A's slice: one signal, two positions, twice the money.
+   *Fix:* the base slot manages what it already holds and never enters
+   (`entries=False`). *Guard:*
+   `test_the_base_slot_never_opens_a_trade_while_partial_is_on`.
+
+2. **A phantom exit from a payload with no `holdVol`.** The new per-slice exit
+   compares VOLUME instead of existence, and `_symbol_vol` summed a missing
+   `holdVol` as 0 — so a position the venue reported but could not size read
+   as closed, and the book flushed while the money was still on the table.
+   That is the BDX loop. Caught by an EXISTING test
+   (`test_book_is_never_flushed_while_the_exchange_says_open`), which is the
+   argument for keeping old tests honest rather than updating them to pass.
+   *Fix:* unknown volume returns None and is never zero; the base slot keeps
+   the existence rule untouched. *Guard:*
+   `test_an_unreadable_volume_never_books_an_exit`.
+
+3. **A panic close would have left every slice as a phantom.** `report["closed"]`
+   holds SYMBOLS; a slice slot is `SYM#live#KEY`. The membership test compared
+   the two, so after a panic that really had closed the position, every slice
+   stayed in the book logged as "NOT confirmed closed" — and the exit row would
+   have carried the slot key in its `symbol` column.
+   *Fix:* compare and record `coin_of_slot(key)`. *Guard:*
+   `test_a_panic_close_clears_the_slices_it_closed`.
+
+4. **Every real row's ladder rung would have read 0.** `state_key(sym, False,
+   key)` used to IGNORE the strategy and answer the base slot; api.py reads a
+   real row's rung with exactly that call. Giving the argument meaning silently
+   repointed it at a slice that does not exist while partial is off — the same
+   shape as the paper-slot regression already recorded in api.py's own comment.
+   *Fix:* `at.slot_of(state, coin, dry, key)` answers whichever slot exists,
+   and refuses to hand back another strategy's rung. *Guard:*
+   `test_the_ladder_rung_reads_the_slot_that_exists`.
+
+**Why the tests did not catch them first:** three of the four are in code the
+change did not touch — a caller one level up (api.py), a sibling safety path
+(panic_stop), and an existing test's fake payload. Only the loop's "grep every
+caller of what changed" round finds those; a new feature's own tests never
+will.
+
+**Cost:** zero — live partial defaults OFF and no real strategy is armed.
+**Commit:** the partial TP/SL feature commit of Sep 09, 2026.

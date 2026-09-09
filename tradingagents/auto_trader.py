@@ -2385,13 +2385,19 @@ def panic_stop(*, fx=None, close_positions: bool = True) -> dict:
         pos = st.get("position")
         if not pos:
             continue
-        if key in failed_syms or key not in report["closed"]:
+        # BY COIN, not by slot key. `report["closed"]` holds SYMBOLS (the
+        # sweep closes what the venue reports), and a slice slot is
+        # `SYM#live#KEY` — comparing the two meant every slice read as "not
+        # confirmed closed" and stayed in the book as a phantom after a panic
+        # that really had closed it (Sep 09, 2026).
+        coin = coin_of_slot(key)
+        if coin in failed_syms or coin not in report["closed"]:
             logger.error("PANIC: %s was NOT confirmed closed — keeping it in "
                          "the book so it stays tracked and retried.", key)
             continue
         realised = None
         try:
-            for h in fx.position_history(key, 10):
+            for h in fx.position_history(coin, 10):
                 if int(h.get("positionId") or 0) == int(
                         pos.get("position_id") or -1):
                     realised = float(h.get("realised") or 0.0)
@@ -2402,7 +2408,7 @@ def panic_stop(*, fx=None, close_positions: bool = True) -> dict:
         # filters on action == "exit", so a panic_stop-only row was invisible
         # to all of them and a real loss read as a $0.00 day.
         _pop = pos.get("opened_at") or pos.get("entry_ts")
-        append_ledger({"symbol": key, "action": "exit", "why": "PANIC_CLOSE",
+        append_ledger({"symbol": coin, "action": "exit", "why": "PANIC_CLOSE",
                        "strategy": pos.get("strategy"),
                        # side/entry belong on the EXIT row too: the trade
                        # history reads exit rows only, so without them the
@@ -2591,7 +2597,8 @@ def state_key(symbol: str, dry: bool, strategy: str | None = None) -> str:
     scanning old state gets, and what `paper_slots` migrates from.
     """
     if not dry:
-        return symbol
+        # a REAL slice is per strategy too, when partial TP/SL is on
+        return f"{symbol}#live#{strategy}" if strategy else symbol
     return f"{symbol}#paper#{strategy}" if strategy else f"{symbol}#paper"
 
 
@@ -2600,15 +2607,56 @@ def is_paper_slot(key: str) -> bool:
     return "#paper" in str(key)
 
 
+def is_slice_slot(key: str) -> bool:
+    """A REAL per-strategy slice: `SYM#live#KEY` (partial TP/SL, 2026-09-09).
+
+    The base real slot is the bare `SYM` — one netted position, one strategy,
+    the rule before partial mode. A slice slot is one strategy's share of the
+    same netted position, and it is REAL money like the base slot.
+    """
+    return "#live#" in str(key)
+
+
+def partial_on(settings: dict, dry: bool) -> bool:
+    """Is partial TP/SL enabled for this book?
+
+    Demo defaults ON — that IS the demo book's behaviour today, one slot per
+    strategy. Live defaults OFF: more slices is more money at risk on one
+    coin, and money is never opted in by a default.
+    """
+    key = "partial_tp_demo" if dry else "partial_tp_live"
+    val = (settings or {}).get(key)
+    return bool(dry) if val is None else bool(val)
+
+
+def max_slices(settings: dict) -> int:
+    """How many strategies may hold one coin at once, per book.
+
+    Four, unless the operator says otherwise. Twenty slices of $5 on GPNSTOCK
+    is $100 of margin behind ONE liquidation price while their account cap is
+    $5 — the cap is what keeps "more strategies" from meaning "more account".
+    """
+    raw = (settings or {}).get("partial_max_slices")
+    if raw is None or raw == "":
+        return 4
+    try:
+        # 0 means "no extra slices", i.e. one position — NOT "use the
+        # default", which is what `raw or 4` quietly did
+        return max(1, int(raw))
+    except (TypeError, ValueError):
+        return 4
+
+
 def coin_of_slot(key: str) -> str:
     """The contract a slot belongs to, whatever shape the key is."""
     return str(key).split("#", 1)[0]
 
 
 def strategy_of_slot(key: str) -> str | None:
-    """The strategy a per-strategy paper slot belongs to, else None."""
+    """The strategy a per-strategy slot belongs to (paper OR live), else
+    None — a bare `SYM` base slot names its owner in the position itself."""
     bits = str(key).split("#")
-    return bits[2] if len(bits) >= 3 and bits[1] == "paper" else None
+    return bits[2] if len(bits) >= 3 and bits[1] in ("paper", "live") else None
 
 
 def book_slots(state: dict, symbol: str, dry: bool) -> list[str]:
@@ -2628,7 +2676,12 @@ def book_slots(state: dict, symbol: str, dry: bool) -> list[str]:
     same reason `process_symbol` visits it.
     """
     if not dry:
-        return [state_key(symbol, False)]
+        # the base slot AND every real slice of this coin — a slice holds real
+        # money, and a slot left out of this list is a position that lives one
+        # cycle in RAM and is gone (the Sep 04, 2026 phantom)
+        return ([state_key(symbol, False)]
+                + [k for k in state
+                   if is_slice_slot(k) and coin_of_slot(k) == symbol])
     return [k for k in state
             if is_paper_slot(k) and coin_of_slot(k) == symbol]
 
@@ -3006,16 +3059,53 @@ def _force_close(symbol: str, pos: dict, *, fx) -> bool:
     return True
 
 
-def _rest_bracket(symbol: str, pos: dict, *, fx) -> bool:
+def _symbol_vol(symbol: str, *, fx) -> int | None:
+    """Contracts open on this contract right now, or None when unreadable.
+
+    None is never zero: "I could not ask" must not read as "the position is
+    gone", which would book an exit for a trade that is still running
+    (rule 14, and the same rule as an unreadable order book).
+    """
+    try:
+        rows = [p for p in fx.open_positions(symbol)
+                if p.get("symbol") == symbol]
+    except Exception:                                          # noqa: BLE001
+        return None
+    total = 0
+    for r in rows:
+        try:
+            v = int(r.get("holdVol") or 0)
+        except (TypeError, ValueError):
+            v = 0
+        if v <= 0:
+            # A position the venue REPORTS but whose size cannot be read is
+            # unknown, never zero. Summing it as 0 made an open trade look
+            # closed, and a phantom exit flushes the book while the money is
+            # still on the table — the BDX loop, caught by
+            # test_book_is_never_flushed_while_the_exchange_says_open.
+            return None
+        total += v
+    return total
+
+
+def _rest_bracket(symbol: str, pos: dict, *, fx, partial: bool = False) -> bool:
     """Rest the TP/SL on MEXC for a tracked position. Marks pos["bracket"].
 
     Failure is logged CRITICAL and left retryable — the position stays
     tracked and the next cycle tries again, instead of orphaning it.
     """
     try:
+        # A SLICE's stop covers its OWN contracts, not the whole netted
+        # position: volType=PARTIAL. With volType=POSITION every slice's stop
+        # would close every other slice too, so the first barrier to fire
+        # would end all twenty trades at one strategy's target.
         fx.place_position_stop(symbol, pos.get("position_id", 0), pos["vol"],
                                stop_loss_price=pos["sl"],
-                               take_profit_price=pos["tp"], dry_run=False)
+                               take_profit_price=pos["tp"],
+                               vol_type=(getattr(fx, "VOL_PARTIAL", 1)
+                                         if partial else
+                                         getattr(fx, "VOL_POSITION", 2)),
+                               dry_run=False)
         # A 200 OK is NOT protection. mexc_futures documents that two of three
         # historical TP/SL records finished errorCode 8912 / vol 0 — accepted
         # by the API, inert on the book. Read it back before believing it.
@@ -3081,9 +3171,34 @@ def process_symbol(symbol: str, settings: dict, state: dict, *, fx,
     are still visited, or an open demo position would be orphaned.
     """
     if not dry:
-        return _process_slot(symbol, settings, state, fx=fx, dry=False,
-                             tripped=tripped, only=None,
-                             slot_key=state_key(symbol, False))
+        if not partial_on(settings, False):
+            return _process_slot(symbol, settings, state, fx=fx, dry=False,
+                                 tripped=tripped, only=None,
+                                 slot_key=state_key(symbol, False))
+        # PARTIAL TP/SL: one slot per strategy, exactly like the paper book.
+        # The base slot is visited FIRST and with `only=None`, so a position
+        # opened before partial mode was switched on keeps being managed by
+        # the same code that opened it.
+        _process_slot(symbol, settings, state, fx=fx, dry=False,
+                      tripped=tripped, only=None,
+                      slot_key=state_key(symbol, False), entries=False)
+        _books = settings.get("strategy_books") or {}
+        armed = [k for k in STRATEGY_ORDER
+                 if k in settings.get("strategies", [])
+                 and symbol in coins_for(k, settings)
+                 and (k not in _books or False in books_for(k, settings))]
+        owners = list(armed)
+        for k in state:
+            if not is_slice_slot(k) or coin_of_slot(k) != symbol:
+                continue
+            owner = strategy_of_slot(k)
+            if owner and owner not in owners and (state.get(k) or {}).get("position"):
+                owners.append(owner)      # a disarmed slice still needs its exit
+        for key in owners:
+            _process_slot(symbol, settings, state, fx=fx, dry=False,
+                          tripped=tripped, only=key,
+                          slot_key=state_key(symbol, False, key))
+        return
     migrate_paper_slots(state)
     _books = settings.get("strategy_books") or {}
     armed = [k for k in STRATEGY_ORDER
@@ -3106,7 +3221,7 @@ def process_symbol(symbol: str, settings: dict, state: dict, *, fx,
 
 def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                   dry: bool, tripped: frozenset, only: str | None,
-                  slot_key: str) -> None:
+                  slot_key: str, entries: bool = True) -> None:
     """One book slot's cycle. `only` narrows it to a single strategy (paper);
     None means every strategy armed on this coin in this book (real)."""
     # NOTE: tripped strategies are excluded from ENTRIES only, further down —
@@ -3188,7 +3303,8 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
     # afterwards, and vice versa. The checkbox governs NEW entries only.
     pos_dry = bool(pos.get("dry", dry)) if pos else dry
     if pos and not pos_dry and not pos.get("bracket", True):
-        _rest_bracket(symbol, pos, fx=fx)   # retry a rejected TP/SL
+        _rest_bracket(symbol, pos, fx=fx,
+                      partial=is_slice_slot(slot_key))   # retry a rejected TP/SL
     if pos:
         seconds_of = {s["interval"]: s["bar_seconds"]
                       for s in STRATEGY_SPECS.values()}
@@ -3241,8 +3357,24 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                                else "TP" if px <= pos["tp"] else None)
         live_gone = False
         if not pos_dry:
-            live_gone = not any(
-                p.get("symbol") == symbol for p in fx.open_positions(symbol))
+            # A SLICE is gone when ITS contracts are gone, not when the whole
+            # netted position is: slice A's take-profit firing leaves B, C and
+            # D open on the same symbol. So compare VOLUME with what this book
+            # believes it holds, and only fall back to "no position at all"
+            # for the base slot.
+            if is_slice_slot(slot_key):
+                _live_vol = _symbol_vol(symbol, fx=fx)
+                _tracked = sum(int((pz.get("vol") or 0))
+                               for _k, pz in open_slices(state, symbol, False))
+                live_gone = (_live_vol is not None
+                             and _live_vol <= _tracked - int(pos.get("vol") or 0))
+            else:
+                # the BASE slot's rule is unchanged: does the venue report a
+                # position on this contract at all. Volume never enters into
+                # it, so a payload without holdVol cannot invent an exit.
+                live_gone = not any(
+                    p.get("symbol") == symbol
+                    for p in fx.open_positions(symbol))
         if outcome and not pos_dry and not live_gone:
             # THE EXCHANGE IS THE SOURCE OF TRUTH. A barrier cross on our
             # candles means nothing while MEXC still reports the position
@@ -3274,8 +3406,18 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
             # here with a live position the venue still reports open, do not
             # book an exit — re-check next cycle instead of inventing one.
             try:
-                still = any(p.get("symbol") == symbol
-                            for p in fx.open_positions(symbol))
+                if is_slice_slot(slot_key):
+                    # this SLICE is closed when the symbol's volume has fallen
+                    # by its contracts — the other slices are still open and
+                    # must not make this one read as unconfirmed
+                    _tracked = sum(int((pz.get("vol") or 0))
+                                   for _k, pz in open_slices(state, symbol, False))
+                    _now_vol = _symbol_vol(symbol, fx=fx)
+                    still = (_now_vol is None
+                             or _now_vol > _tracked - int(pos.get("vol") or 0))
+                else:
+                    still = any(p.get("symbol") == symbol
+                                for p in fx.open_positions(symbol))
             except Exception:
                 still = True                      # cannot verify → assume open
             if still:
@@ -3424,6 +3566,14 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                 pass
 
     # ---- entries: each strategy acts once per closed candle of its own TF
+    if not entries:
+        # MANAGE ONLY. With partial TP/SL on, the base slot exists to finish
+        # whatever it was already holding when the switch was flipped; every
+        # NEW trade belongs to its strategy's own slice slot. Without this the
+        # base call (which sees every armed strategy) would open a position
+        # for strategy A, and A's own slice call would then open a second one
+        # on the same signal — the same coin entered twice by one strategy.
+        return
     if st.get("position") or halted():
         # ONE OPEN POSITION PER COIN, and the operator asked to SEE it: with 20
         # strategies armed on GPNSTOCK, a silent early return looks exactly
@@ -3543,6 +3693,44 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
             # its checks when it had examined every one and found no trade.
             st["last_ts"][spec["interval"]] = last_ts
             continue
+        # ---------------------------------------------- IS THE COIN FREE?
+        # Asked of the COIN, not of this slot. Both books, both modes:
+        #   partial OFF -> one position per coin (the operator's rule of
+        #                  Sep 04, 2026, now applied to demo too so demo
+        #                  predicts live)
+        #   partial ON  -> up to max_slices() slices, SAME DIRECTION only.
+        # Netting is why the direction matters: a long slice and a short
+        # slice on one contract are not two trades, they cancel into one
+        # smaller trade nobody backtested.
+        _mine = state_key(symbol, dry, key)
+        _held = [(k, pz) for k, pz in open_slices(state, symbol, dry)
+                 if k != _mine]
+        if _held:
+            _cap = max_slices(settings) if partial_on(settings, dry) else 1
+            _why = None
+            if len(_held) + 1 > _cap:
+                _why = (f"one open position per coin"
+                        if _cap == 1 else
+                        f"{_cap} slice(s) per coin is the cap")
+            elif any(int(pz.get("side") or 0) != side for _k, pz in _held):
+                _why = ("the open slice(s) point the other way — netting "
+                        "would cancel them, not add a trade")
+            if _why:
+                # the bar IS marked seen: this refusal is deterministic for
+                # this candle, and re-reading it every cycle is what turned a
+                # gated coin into an hourly `stale_skip` flood (Sep 05, 2026)
+                st["last_ts"][spec["interval"]] = last_ts
+                _holders = sorted({str(pz.get("strategy") or "?")
+                                   for _k, pz in _held})
+                if _say_once(f"slice-{symbol}-{key}", 3600):
+                    logger.info(
+                        "%s: %s not accepted — %s (held by %s)",
+                        symbol.replace("_USDT", ""), key, _why,
+                        ", ".join(_holders))
+                append_ledger({"symbol": symbol, "action": "coin_busy",
+                               "strategy": key, "why": _why,
+                               "holders": _holders, "dry_run": dry})
+                continue
         # The mark is TENTATIVE from here on. A signal fired, so the candle must
         # not be re-evaluated once the order is away — but if the attempt dies on
         # a venue read, the trade never happened and the signal has to survive to
@@ -3733,7 +3921,8 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                        "leverage": LEVERAGE, "step": st["step"],
                        "dry_run": dry})
         if not dry:
-            _rest_bracket(symbol, st["position"], fx=fx)
+            _rest_bracket(symbol, st["position"], fx=fx,
+                          partial=is_slice_slot(slot_key))
         # The bell. Wrapped because this is the live money path: a feed write
         # failing must never be able to interrupt an order or a bracket.
         try:
@@ -3752,6 +3941,43 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
         except Exception:
             pass
         return
+
+
+def slot_of(state: dict, symbol: str, dry: bool, strategy: str) -> dict:
+    """The slot one STRATEGY uses on one coin, whichever shape it has.
+
+    Paper is always per strategy. Real is per strategy only while partial
+    TP/SL is on, and the base slot otherwise — so a reader that wants "this
+    strategy's rung on this coin" must not hardcode either. Returns {} when
+    nothing is there, never None, because every caller reads a field off it.
+    """
+    per = (state or {}).get(state_key(symbol, dry, strategy))
+    if isinstance(per, dict) and (per.get("position") or per.get("step")):
+        return per
+    if not dry:
+        base = (state or {}).get(state_key(symbol, False))
+        if isinstance(base, dict):
+            # the base slot answers only for ITS OWN strategy: a rung another
+            # strategy laddered up is not this row's rung
+            pos = base.get("position") or {}
+            if not pos or pos.get("strategy") == strategy:
+                return base
+    return per if isinstance(per, dict) else {}
+
+
+def open_slices(state: dict, symbol: str, dry: bool) -> list[tuple[str, dict]]:
+    """Every OPEN position this coin holds in this book, as (slot key, pos).
+
+    One list, both books, both modes — the entry rule reads this instead of
+    its own slot, because the question "is this coin taken" is about the COIN
+    and the slot is only where one strategy's share is written down.
+    """
+    out = []
+    for k in book_slots(state, symbol, dry):
+        pos = (state.get(k) or {}).get("position")
+        if pos:
+            out.append((k, pos))
+    return out
 
 
 def _busy_refusal(symbol: str, st: dict, strategies, frames,
@@ -3810,6 +4036,14 @@ def adopt_orphans(settings: dict, state: dict, *, fx, dry: bool) -> None:
                                    "position": None})
             held = st.get("position")
             if held and not held.get("dry"):
+                continue
+            # A SLICE-TRACKED coin is not an orphan. With partial TP/SL the
+            # base slot is empty while `SYM#live#KEY` slots hold the netted
+            # position between them; adopting it here would track the same
+            # contracts twice and bracket them a second time.
+            if any(k for k in state
+                   if is_slice_slot(k) and coin_of_slot(k) == symbol
+                   and (state.get(k) or {}).get("position")):
                 continue
             if held and held.get("dry"):
                 # A paper trade parked in the live slot would block rescue on

@@ -99,6 +99,13 @@ export default function StrategiesGrid() {
   const [sizing, setSizing] = useState("");
   const [counts, setCounts] = useState({ real_count: 0, paper_count: 0, idle_count: 0, deployed_count: 0, catalog_count: 0 });
   const [acctCap, setAcctCap] = useState(0);
+  // PARTIAL TP/SL (operator, Sep 09, 2026): several strategies share one
+  // coin, each holding its own slice of the netted position with its own
+  // TP/SL resting at MEXC. Demo defaults ON — that is what demo already
+  // does; live defaults OFF, because more slices is more money on one coin.
+  const [pDemo, setPDemo] = useState(true);
+  const [pLive, setPLive] = useState(false);
+  const [pMax, setPMax] = useState(4);
   const [flat, setFlat] = useState(false);
   const [locks, setLocks] = useState<Record<string, { coin: string; held_by: string }>>({});
   const [capHit, setCapHit] = useState(false);
@@ -116,6 +123,9 @@ export default function StrategiesGrid() {
       .then(([st, se]) => {
         setRows(st.rows); setSizing(st.sizing); setConflicts(st.conflicts);
         setCounts(st); setSettings(se.settings); setDirty(false);
+        setPDemo((se.settings.partial_tp_demo ?? true) as boolean);
+        setPLive((se.settings.partial_tp_live ?? false) as boolean);
+        setPMax(Number(se.settings.partial_max_slices ?? 4));
         setAcctCap(st.account_loss_cap); setCapHit(st.account_cap_hit); setFlat(st.flat); setLocks(st.locks);
         markReady("strategies");
       })
@@ -224,6 +234,36 @@ export default function StrategiesGrid() {
             <input type="checkbox" checked={catalog} onChange={(e) => setCatalog(e.target.checked)} className="h-4 w-4 accent-brand-500" />
             show all {counts.catalog_count} to arm a new one
           </label>
+          {/* PARTIAL TP/SL. Each switch says what it does to ITS OWN book and
+              nothing about the other — and the live one says the money out
+              loud, because turning it on multiplies what one coin can risk. */}
+          <label className="flex items-center gap-2 text-theme-xs text-gray-600 dark:text-gray-300"
+                 title="Several demo strategies hold the same coin at once, each with its own entry, TP and SL. Off = one demo position per coin, which is what live does with its own switch off.">
+            <input type="checkbox" checked={pDemo} className="h-4 w-4 accent-brand-500"
+              onChange={(e) => { const v = e.target.checked; setPDemo(v); mut((x) => { x.partial_tp_demo = v; }); }} />
+            Enable Partial TP/SL for DEMO
+          </label>
+          <label className="flex items-center gap-2 text-theme-xs text-gray-600 dark:text-gray-300"
+                 title="REAL MONEY: several strategies hold one coin at the same time, each owning a slice of one netted position with its own TP/SL resting at MEXC. Each slice stakes its own margin, so N slices risk N times as much on that coin.">
+            <input type="checkbox" checked={pLive} className="h-4 w-4 accent-brand-500"
+              onChange={(e) => { const v = e.target.checked; setPLive(v); mut((x) => { x.partial_tp_live = v; }); }} />
+            Enable Partial TP/SL for Live
+          </label>
+          <label className="flex flex-col text-theme-xs text-gray-500 dark:text-gray-400"
+                 title="How many strategies may hold one coin at once, per book. Each slice stakes its own margin.">
+            max slices per coin
+            <input type="number" step="1" min={1} value={pMax}
+              onChange={(e) => { const v = Math.max(1, Number(e.target.value) || 1); setPMax(v); mut((x) => { x.partial_max_slices = v; }); }}
+              className="h-9 w-24 rounded-lg border border-gray-200 bg-transparent px-2 text-theme-sm text-gray-700 dark:border-gray-700 dark:text-gray-300" />
+          </label>
+          {(pDemo || pLive) && (
+            <span className="text-theme-xs text-gray-500 dark:text-gray-400">
+              {/* label-must-match-data: the number is the one the runner will
+                  use, and the money is derived from the operator's own stake */}
+              up to {pMax} strateg{pMax === 1 ? "y" : "ies"} per coin
+              {pLive ? ` · live risks up to ${pMax}x one stake on a coin` : ""}
+            </span>
+          )}
           {note && !dirty && <span className="text-theme-xs text-success-600">{note}</span>}
           {dirty && <span className="text-theme-xs text-warning-600">unsaved changes</span>}
           {/* "CREATE A BUTTON TO RESET WIN RATE OF ALL" (operator,

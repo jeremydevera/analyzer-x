@@ -379,5 +379,9 @@ def test_the_runner_holds_a_coin_with_the_position_not_a_lock():
     src = inspect.getsource(at._process_slot)
     assert "_live_locks" not in src, "the arming lock is gone from the runner"
     assert "ONE OPEN POSITION PER COIN" in src, "the rule is written down"
-    assert at.state_key("PROVE_USDT", False, "a") == "PROVE_USDT"
-    assert at.state_key("PROVE_USDT", False, "b") == "PROVE_USDT",         "one real slot per coin is what enforces it"
+    # Sep 09, 2026: with PARTIAL TP/SL off (the default) the real book is
+    # still one slot per coin; naming a strategy asks for that strategy's
+    # SLICE, which only exists while the switch is on.
+    assert at.state_key("PROVE_USDT", False) == "PROVE_USDT"
+    assert at.partial_on({}, False) is False
+    assert at.state_key("PROVE_USDT", False, "b") == "PROVE_USDT#live#b",         "a named strategy asks for its slice; the base slot is the unnamed one"

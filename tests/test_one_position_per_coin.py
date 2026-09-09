@@ -83,12 +83,19 @@ def test_arming_many_live_rows_on_one_coin_is_allowed_now():
     assert at.timeframe_locks() == {}
 
 
-def test_the_real_book_still_holds_ONE_slot_per_coin():
-    """Which is what makes the position rule work at all: one state, one
-    position, whoever opened it."""
-    assert at.state_key(COIN, False, A) == COIN
-    assert at.state_key(COIN, False, B) == COIN
-    assert at.state_key(COIN, False, C) == COIN
+def test_the_real_book_holds_ONE_slot_per_coin_unless_partial_is_on():
+    """One state, one position, whoever opened it — that is what makes this
+    rule work, and it is still the shape with partial TP/SL OFF (the default).
+
+    Sep 09, 2026 added slices: with partial ON a strategy gets `SYM#live#KEY`,
+    the real mirror of the paper book, so several strategies can hold their
+    own share of one netted position. `state_key` with no strategy is still
+    the bare symbol, and that is what every non-partial path passes.
+    """
+    assert at.state_key(COIN, False) == COIN
+    assert at.partial_on({}, False) is False, "live partial is opt-in"
+    assert at.state_key(COIN, False, A) == f"{COIN}#live#{A}"
+    assert len({at.state_key(COIN, False, k) for k in (A, B, C)}) == 3
 
 
 def test_demo_is_still_one_slot_per_strategy():

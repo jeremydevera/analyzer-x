@@ -1,1 +1,1 @@
-{"shard": 14, "stage": "testing", "done": 21, "total": 21, "rows": 1747462, "note": "RED 4h: rule 10/120 (sr_bounce)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:02:09Z"}
+{"shard": 14, "stage": "testing", "done": 22, "total": 22, "rows": 1787330, "note": "REGNSTOCK 15m: rule 22/120 (engulf)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:02:54Z"}

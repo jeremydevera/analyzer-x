@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 19, "total": 19, "rows": 1753656, "note": "ACH 15m: rule 1/120 (mom6)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:26:18Z"}
+{"shard": 0, "stage": "testing", "done": 19, "total": 19, "rows": 1755196, "note": "ACH 15m: rule 4/120 (trend50)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:27:07Z"}

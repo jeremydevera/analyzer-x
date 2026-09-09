@@ -1,1 +1,1 @@
-{"shard": 0, "stage": "testing", "done": 38, "total": 38, "rows": 3752418, "note": "ALICE 1h: rule 76/120 (cf_mom)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:31:34Z"}
+{"shard": 0, "stage": "testing", "done": 38, "total": 38, "rows": 3784978, "note": "ALICE 4h: rule 108/120 (cf_bosfvg_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T07:32:20Z"}

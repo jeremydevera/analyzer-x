@@ -1,1 +1,1 @@
-{"shard": 16, "stage": "testing", "done": 36, "total": 36, "rows": 3221202, "note": "SUI 15m: rule 59/120 (choch)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:47:09Z"}
+{"shard": 16, "stage": "testing", "done": 36, "total": 36, "rows": 3228402, "note": "SUI 15m: rule 99/120 (cf_ttm_l2)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T06:47:55Z"}

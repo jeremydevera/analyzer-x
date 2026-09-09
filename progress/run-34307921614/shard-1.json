@@ -1,1 +1,1 @@
-{"shard": 1, "stage": "testing", "done": 42, "total": 42, "rows": 3704184, "note": "ASTER 1h: rule 48/120 (prank)", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:45:30Z"}
+{"shard": 1, "stage": "testing", "done": 43, "total": 43, "rows": 3758612, "note": "ASTR 15m: downloading candles", "days": 365, "failed": [], "pct": 100.0, "updated": "2026-09-09T05:46:15Z"}

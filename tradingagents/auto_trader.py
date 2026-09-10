@@ -2495,7 +2495,14 @@ def panic_stop(*, fx=None, close_positions: bool = True) -> dict:
                        # history reads exit rows only, so without them the
                        # LONG/SHORT column was empty for every closed trade.
                        # Same reasoning for the id and the opening time.
-                       "trade_id": trade_id_of(symbol, pos), "entry_ts": pos.get("entry_ts"), "opened_at": _pop,
+                       # `coin`, not `symbol`: this loop walks SLOTS and the
+                       # contract is derived from the key. `symbol` is not
+                       # bound here at all, so panic_stop raised NameError
+                       # while clearing a position it had just closed —
+                       # caught by test_panic_books_the_loss_where_the_limits
+                       # _can_see_it on Sep 11, 2026.
+                       "trade_id": trade_id_of(coin, pos),
+                       "entry_ts": pos.get("entry_ts"), "opened_at": _pop,
                        "held_s": (int(time.time()) - int(_pop)) if _pop
                                  else None,
                        "side": "LONG" if pos.get("side", 0) > 0 else "SHORT",
@@ -4211,7 +4218,11 @@ def reconcile_unconfigured(settings: dict, state: dict, *, fx) -> None:
                 logger.info("cleared a stranded PAPER position on %s "
                             "(coin no longer configured).", sym)
             continue
-        symbol = key
+        # THE CONTRACT, not the slot key. Real slices are `SYM#live#KEY`
+        # (partial TP/SL, Sep 09, 2026), and `symbol = key` would have asked
+        # the venue about "GPNSTOCK_USDT#live#stoch14_30m_sl2tp2" and written
+        # that string into the ledger's symbol column.
+        symbol = coin_of_slot(key)
         pos = st.get("position")
         if not pos or symbol in configured or pos.get("dry"):
             continue

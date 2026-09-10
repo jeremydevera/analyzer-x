@@ -394,3 +394,27 @@ def test_a_panic_close_clears_the_slices_it_closed(led, monkeypatch):
     assert len(ex) == 2
     assert {r["symbol"] for r in ex} == {COIN}, "the COIN, never the slot key"
     assert {r["strategy"] for r in ex} == {A, B}, "each slice books its own"
+
+
+def test_the_reconcile_sweep_asks_about_the_CONTRACT_not_the_slot(led,
+                                                                  monkeypatch):
+    """`symbol = key` was right while every real slot WAS a symbol. With
+    slices it would have asked the venue about
+    "GPNSTOCK_USDT#live#stoch14_30m_sl2tp2" and written that into the
+    ledger's symbol column."""
+    asked = []
+
+    class Seen(FX):
+        def open_positions(self, symbol=None):
+            asked.append(symbol)
+            return []
+
+    fx = Seen(vol=0)
+    state = {f"{COIN}#live#{A}": {"position": _pos(A), "last_ts": {},
+                                  "step": 0}}
+    at.reconcile_unconfigured({"strategies": []}, state, fx=fx)
+    assert asked and all(a == COIN for a in asked), \
+        f"the venue was asked about {asked}"
+    ex = [r for r in _rows(led) if r.get("why") == "RECONCILED"]
+    assert ex and ex[0]["symbol"] == COIN
+    assert ex[0]["strategy"] == A, "the slice's own strategy books the exit"

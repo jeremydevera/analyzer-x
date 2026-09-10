@@ -2962,3 +2962,47 @@ will.
 
 **Cost:** zero — live partial defaults OFF and no real strategy is armed.
 **Commit:** the partial TP/SL feature commit of Sep 09, 2026.
+
+---
+
+## Sep 11, 2026 — panic_stop crashed on a name that was never there
+
+**CEO summary**
+- The emergency STOP button would have failed part-way: it closes your trades
+  at the exchange, then crashes before writing them down.
+- Your money was never in danger — the trades still close. The crash happens
+  after that, while recording them, so the app would have shown positions that
+  no longer exist.
+- It never fired for real. A test caught it the day it landed.
+
+**DEV summary**
+- `auto_trader.py:2498` (panic_stop's clear loop) used `symbol`, which is not
+  bound in that scope — the loop walks SLOTS (`for key, st in state.items()`)
+  and the contract is `coin_of_slot(key)`. `NameError` after the venue-side
+  close, before `st["position"] = None`.
+- Introduced by `2f0e741da3a` ("the ledger never recorded the entry BAR"),
+  which added `trade_id_of(symbol, pos)` at three sites; two had `symbol` in
+  scope, this one did not.
+- Guard: `tests/test_auto_trader.py::test_panic_books_the_loss_where_the_
+  limits_can_see_it`, which already existed and went red on the next full run.
+
+**Timeline**
+1. Sep 10 — commit `2f0e741da3a` lands and is pushed.
+2. Sep 11 — a full-suite run (the operator typed "test") fails on
+   `test_panic_books_the_loss_where_the_limits_can_see_it` with
+   `NameError: name 'symbol' is not defined`.
+3. Fixed the same hour: `trade_id_of(coin, pos)`.
+
+**Why the test did not catch it first:** it did — nobody ran it. The commit
+shipped without the suite. That is the whole lesson: this repo's tests are
+only worth the run.
+
+**Cost:** zero. Live was armed but no panic was pressed.
+
+**Found beside it, and mine:** `reconcile_unconfigured` bound `symbol = key`,
+which was correct while every real slot WAS a symbol. Partial TP/SL (Sep 09)
+made real slots `SYM#live#KEY`, so the sweep would have asked MEXC about
+"GPNSTOCK_USDT#live#stoch14_30m_sl2tp2" and written that string into the
+ledger's symbol column. Fixed to `coin_of_slot(key)`; guard:
+`tests/test_partial_tp.py::test_the_reconcile_sweep_asks_about_the_CONTRACT_
+not_the_slot`.

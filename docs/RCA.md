@@ -185,15 +185,41 @@ that named the wrong cause.
 **FIX** — this commit. `index_pair(..., fresh=False)`; `rebuild()` passes
 `fresh=True` and earns it: on a clean start the table is empty, and on a resume
 `_resumable` runs `DELETE FROM rows WHERE pair NOT IN (SELECT pair FROM
-pairs)` once (one 40-second scan) so any pair the loop will load is provably
-absent. `fresh` is opt-in and every other caller still deletes first.
+pairs)` once (one scan, plan verified: `SCAN rows` + `USING INDEX
+sqlite_autoindex_pairs_1 FOR IN-OPERATOR`) so any pair the loop will load is
+provably absent. `fresh` is opt-in and every other caller still deletes first.
+
+**MEASURED AFTER** — `Sep 10, 2026 3:2xpm`, resumed from the same 450 pairs on
+the same file and the same disk:
+
+| | before | after |
+|---|---|---|
+| pairs/min | **0.25** (one per 305 s) | **62.3** |
+| pairs done | 450 of 5,367 | 613 of 5,367 in the first 157 s |
+| rows | 8,385,108 | 11,337,264 |
+| ETA for the rest | ~54 h and rising | **1.27 h** |
+
+249x, and faster than the original run's best minute (40.15 on an EMPTY table),
+because now there is no scan at all rather than a cheap one.
+
+**A SECOND FAULT IN THIS FIX, found the same hour and fixed here too:** the
+reconciling scan publishes nothing while it runs. It held 100% of a core for
+minutes while `rows_rebuild.json` still carried the DEAD run's pid and
+`pairs_done`, so a reader — me, twice — saw a rebuild that had "resumed" and
+then done nothing, and reached for the process table again. That is exactly the
+silence RCA-G is about, in a fix written to end it. `rebuild()` now publishes
+`phase: "checking the partial file"` BEFORE the check, and the rate clock
+starts after it, so a check that files no pairs cannot report a pairs/min it
+never had.
 
 **GUARD** — in `tests/test_rebuild_from_the_pair_files.py`:
 `test_the_load_does_not_delete_per_pair`,
 `test_fresh_skips_the_delete_and_the_default_still_deletes`,
 `test_a_resume_earns_fresh_with_one_scan_not_thousands`,
-`test_the_scan_is_named_in_the_source_so_it_is_not_re_added`. The speed itself
-is the next run's measurement, and its rate is in `rows_rebuild.json`.
+`test_the_scan_is_named_in_the_source_so_it_is_not_re_added`,
+`test_the_resume_check_says_it_is_running_before_it_runs` (drives the real
+`_resumable` and reads the progress file from inside it) and
+`test_the_rate_excludes_the_time_spent_checking`. 29 tests in that file.
 
 ---
 

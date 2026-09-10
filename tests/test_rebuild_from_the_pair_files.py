@@ -30,7 +30,9 @@ from __future__ import annotations
 
 import inspect
 import json
+import os
 import sqlite3
+import time
 
 import pytest
 
@@ -461,3 +463,43 @@ def test_the_scan_is_named_in_the_source_so_it_is_not_re_added(store):
     assert "SCAN rows" in inspect.getsource(ri.index_pair)
     assert "39.9" in inspect.getsource(ri.index_pair), \
         "the measured cost must stay next to the reason"
+
+
+def test_the_resume_check_says_it_is_running_before_it_runs(store, monkeypatch):
+    """RCA-G was seven hours of not knowing. The resume check is one
+    `SCAN rows` — measured at 100% of a core for MINUTES on the 2.94 GB
+    partial — and while it ran, the progress file still carried the PREVIOUS
+    run's numbers. A reader saw a rebuild that had resumed and then done
+    nothing. A phase nobody can see is a phase that gets called a stall."""
+    _partial([msw.ROWDIR / "BTC-15m.json"])
+    seen = []
+    real = ri._resumable
+
+    def watched(dest, stems):
+        seen.append(ri.rebuild_progress())      # what a reader sees mid-check
+        return real(dest, stems)
+
+    monkeypatch.setattr(ri, "_resumable", watched)
+    ri.rebuild()
+    assert seen and seen[0].get("phase") == "checking the partial file", \
+        f"the check must publish before it starts, got {seen}"
+    assert seen[0].get("pid") == os.getpid()
+
+
+def test_the_rate_excludes_the_time_spent_checking(store, monkeypatch):
+    """The check can take minutes and does not file a single pair. Counting it
+    in pairs/min would make every resume report a rate it never had."""
+    real = ri._resumable
+
+    def slow(dest, stems):
+        time.sleep(0.4)
+        return real(dest, stems)
+
+    _partial([msw.ROWDIR / "BTC-15m.json"])
+    monkeypatch.setattr(ri, "_resumable", slow)
+    got = ri.rebuild()
+    assert got["rebuilt"] is True
+    src = inspect.getsource(ri.rebuild)
+    i = src.index("_resumable(dest")
+    j = src.index("started = _t.time()", i)
+    assert j > i, "the clock for the RATE must restart after the check"

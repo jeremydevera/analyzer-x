@@ -1165,23 +1165,9 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
         return {"rebuilt": False, "why": "no pair files to index"}
     dest = Path(dest) if dest else DB_PATH.with_suffix(".rebuild.db")
 
-    # RESUME, or start clean and say why. A kill leaves the partial file with
-    # no exception to clean it up, and on this store that file was 33 minutes
-    # of work.
     already, seeded_rows, fresh_because = set(), 0, ""
-    if resume and dest.exists() and dest.stat().st_size > 0:
-        got = _resumable(dest, {f.stem for f in files})
-        if isinstance(got, tuple):
-            already, seeded_rows = got
-        else:
-            fresh_because = got
-    if not already:
-        for tail in ("", "-wal", "-shm", "-journal"):
-            with contextlib.suppress(FileNotFoundError):
-                Path(str(dest) + tail).unlink()
-
     started = _t.time()
-    done, rows = len(already), seeded_rows
+    done = rows = 0
 
     def _say(phase: str) -> None:
         # after EVERY pair: RCA-G was seven hours of not knowing
@@ -1199,6 +1185,30 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
                 "resumed": len(already),
                 "restarted_because": fresh_because,
             }), encoding="utf-8")
+
+    # RESUME, or start clean and say why. A kill leaves the partial file with
+    # no exception to clean it up, and on this store that file was 33 minutes
+    # of work.
+    #
+    # SAY SO FIRST. `_resumable` runs one `SCAN rows` to earn `fresh=True`
+    # (see there), and on the 2.94 GB partial that scan ran at 100% of a core
+    # for MINUTES while the progress file still carried the previous run's
+    # numbers — a reader watching it saw a rebuild that had "resumed" and then
+    # done nothing, which is precisely the silence RCA-G was about. A phase
+    # nobody can see is a phase that gets called a stall.
+    if resume and dest.exists() and dest.stat().st_size > 0:
+        _say("checking the partial file")
+        got = _resumable(dest, {f.stem for f in files})
+        if isinstance(got, tuple):
+            already, seeded_rows = got
+        else:
+            fresh_because = got
+    if not already:
+        for tail in ("", "-wal", "-shm", "-journal"):
+            with contextlib.suppress(FileNotFoundError):
+                Path(str(dest) + tail).unlink()
+    done, rows = len(already), seeded_rows
+    started = _t.time()          # the RATE is the load's, not the check's
 
     con = sqlite3.connect(dest, timeout=60.0)
     try:

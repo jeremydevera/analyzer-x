@@ -1806,10 +1806,73 @@ def in_group(signal: str, group: str | None) -> bool:
     return (not is_preset) if GROUPS[group].get("negate") else is_preset
 
 
+def stamp_measured(con, rows: list) -> list:
+    """Put `measured_ms` and `measured_run_ms` on every row, from `pairs`.
+
+    Operator, Sep 10, 2026: *"when i do backtest make sure to show the last
+    backtest"*. The date is not in `rows` — it is one row per coin+timeframe in
+    `pairs`, so this is a single lookup keyed on that table's primary key, for
+    the handful of pairs a page touches.
+
+    * `measured_ms` — the last CANDLE the backtest tested (`pairs.last_ms`).
+      This is the one that decides whether a "last 30 days" window is real:
+      on Sep 10, 2026 `SCRT-1d` read Aug 25 while `BICO-15m` read Sep 10, so a
+      30-day window on the first ended sixteen days ago.
+    * `measured_run_ms` — when that coin's results were last WRITTEN
+      (`pairs.rows_mtime`). A coin can be re-run and still measure through the
+      same candle, so the two answer different questions and both are kept.
+
+    A pair with no summary row leaves both None — never 0, which would print as
+    `Jan 01, 1970` and read as data (RCA-2026-09-10-F: a default that reads as
+    data is a lie).
+    """
+    want = sorted({r.get("_pair") for r in rows if r.get("_pair")})
+    seen: dict = {}
+
+    def _read(c) -> None:
+        for i in range(0, len(want), 400):      # SQLite's parameter ceiling
+            chunk = want[i:i + 400]
+            marks = ",".join("?" * len(chunk))
+            for got in c.execute(
+                    f"SELECT pair, last_ms, rows_mtime FROM pairs "
+                    f"WHERE pair IN ({marks})", chunk):
+                seen[got[0]] = (got[1], got[2])
+
+    # `con=None` because the PAGE builds its dicts after its connection has
+    # closed, while the export still holds one. A read that cannot be made
+    # leaves the dates UNKNOWN (None), which the screen prints as a dash —
+    # never a zero, which would print `Jan 01, 1970` and read as a real date.
+    if want:
+        try:
+            if con is not None:
+                _read(con)
+            else:
+                with _open(readonly=True) as c:
+                    _read(c)
+        except sqlite3.Error:
+            seen = {}
+    for r in rows:
+        last_ms, mtime = seen.get(r.pop("_pair", None), (None, None))
+        r["measured_ms"] = int(last_ms) if last_ms else None
+        r["measured_run_ms"] = int(mtime * 1000) if mtime else None
+    return rows
+
+
+def measured_cut_ms(days) -> int:
+    """The epoch-ms floor for "measured within the last N days", or 0 for off.
+
+    ONE implementation, called by the query, the CSV export and the API, because
+    two copies of a date rule in this repo have drifted apart before (the whole
+    `fmt_when` rule exists for that reason).
+    """
+    d = max(0, int(days or 0))
+    return int((time.time() - d * 86400) * 1000) if d else 0
+
+
 def _where(coin=None, tf=None, signal=None, profitable=False,
            min_trades=0, min_winrate=0, max_tp=0, sizing=None, row_id=None,
            group=None, max_sl=0, min_tp=0, min_sl=0, tp_over_sl=False,
-           asset=None,
+           asset=None, measured_since_ms=0,
            *, order_owns_index=False, order_key=None,
            winrate_seeks=False, signal_seeks=False) -> tuple:
     """The WHERE clause and its arguments.
@@ -1874,6 +1937,30 @@ def _where(coin=None, tf=None, signal=None, profitable=False,
         # this term to the partial index (GROUP_INDEXES). There is no index on
         # `signal` itself, so the missing "+" gives nothing away.
         sql.append(GROUP_TERMS[group])
+    # HOW FRESH THE MEASUREMENT IS — operator, Sep 10, 2026: *"my goal is to
+    # filter on when was the last backtest for each strategy, because even i
+    # filter last 30 days some of them was last backtested 3 weeks ago which is
+    # obsolete"*. They are right, and it is measurable: on their own store
+    # `SCRT-1d` was measured through `Aug 25, 2026 8:00am` while `BICO-15m`
+    # reached `Sep 10, 2026 9:45am` — sixteen days apart, in the same table.
+    # A "last 30 days" window on the stale one ends sixteen days ago, because
+    # the window can only use candles that were fetched when that coin was last
+    # backtested.
+    #
+    # The date lives in `pairs`, one row per coin+timeframe, NOT in `rows`. So
+    # the filter is a subquery over that small table rather than a pass over
+    # the page after it is fetched: FILTER WHERE THE DATA IS (CLAUDE.md), and
+    # the page is the top N by profit, so cutting it afterwards would answer
+    # about the page instead of the store. `pairs` is ~5,400 rows with `pair`
+    # as its primary key, so the subquery is an index probe.
+    if measured_since_ms and int(measured_since_ms) > 0:
+        # It steps aside exactly like `tf` and `sizing`: `pair IN (...)` could
+        # otherwise tempt the planner onto rows_pair and sort the matches in a
+        # temp b-tree, which is the `USE TEMP B-TREE FOR ORDER BY` this module
+        # has already paid for twice.
+        sql.append(f"{step_aside}pair IN "
+                   f"(SELECT pair FROM pairs WHERE last_ms >= ?)")
+        args.append(int(measured_since_ms))
     if profitable:
         sql.append("profit > 0")
     # A COUNT, in the unit the trades column prints (CLAUDE.md rule G).
@@ -2173,7 +2260,7 @@ QUERY_BUDGET_S = 20.0
 MAX_LIMIT = 5_000
 
 
-def _pairs_total(coin=None, tf=None) -> int:
+def _pairs_total(coin=None, tf=None, measured_since_ms=0) -> int:
     """Exact row count for a coin and/or timeframe filter, from the pair
     summaries — no row scan at all.
 
@@ -2186,9 +2273,17 @@ def _pairs_total(coin=None, tf=None) -> int:
     its own `n`, so the two filters that name a pair are a sum over ~4,200
     tiny rows: exact, and instant.
 
-    Only coin/tf. A signal, a profit floor or a trade floor cuts INSIDE a
-    pair and the summaries know nothing about it — those still get the
-    capped count.
+    Only coin/tf — and the MEASURED-SINCE floor, which lives in this very
+    table (`last_ms`), so it stays exact and instant here. It has to be
+    applied: on Sep 10, 2026 a `measured within 3 days` filter over EPIK-30m
+    (last measured 15.8 days earlier) showed **0 rows beside a count of
+    1,580**, because the count took this path and the filter was not on it.
+    A count that disagrees with the rows under it is the
+    `label-must-match-data` failure, and the operator has been shown it
+    before.
+
+    A signal, a profit floor or a trade floor cuts INSIDE a pair and the
+    summaries know nothing about those — they still get the capped count.
     """
     sql = "SELECT COALESCE(SUM(n),0) FROM pairs"
     where, args = [], []
@@ -2196,6 +2291,9 @@ def _pairs_total(coin=None, tf=None) -> int:
         if val:
             where.append(f"{col} = ?")
             args.append(val)
+    if measured_since_ms and int(measured_since_ms) > 0:
+        where.append("last_ms >= ?")
+        args.append(int(measured_since_ms))
     if where:
         sql += " WHERE " + " AND ".join(where)
 
@@ -2736,7 +2834,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
           limit=500, offset=0, sort="profit", min_trades=0,
           min_winrate=0, max_tp=0, sizing=None, row_id=None, group=None,
           max_sl=0, months=0, desc=None, min_tp=0, min_sl=0,
-          tp_over_sl=False, asset=None) -> dict:
+          tp_over_sl=False, asset=None, measured_days=0) -> dict:
     """Rows sorted by `sort` (SORTS), profit first by default.
 
     STRICTLY READ-ONLY. It creates nothing and it indexes nothing.
@@ -2845,9 +2943,11 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             profit_wide = True
         elif _rows_estimate() > UNINDEXED_LIMIT:
             _build_index("rows_pr2")
+    since_ms = measured_cut_ms(measured_days)
     where, args = _where(coin, tf, signal, profitable, min_trades, min_winrate,
                          max_tp, sizing, row_id, group, max_sl, min_tp, min_sl,
-                         tp_over_sl, asset, signal_seeks=signal_seeks)
+                         tp_over_sl, asset, since_ms,
+                         signal_seeks=signal_seeks)
     # the row select streams its own ORDER BY index; the count rides the
     # trades index instead (see _where). The ORDER matters to the WHERE too:
     # a win-rate floor drives rows_winrate when the screen is ranked by win %
@@ -2855,7 +2955,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     row_where, row_args = _where(coin, tf, signal, profitable, min_trades,
                                  min_winrate, max_tp, sizing, row_id, group,
                                  max_sl, min_tp, min_sl, tp_over_sl,
-                                 asset,
+                                 asset, since_ms,
                                  order_owns_index=True, order_key=key,
                                  winrate_seeks=winrate_seeks,
                                  signal_seeks=signal_seeks)
@@ -2962,7 +3062,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
                 # bounded count then rides it and never touches the table.
                 total = -1
             elif where and from_pairs:
-                total = _pairs_total(coin, tf)
+                total = _pairs_total(coin, tf, since_ms)
                 # EXACT, so zero means zero: skip the row query. Without this
                 # a timeframe with no measured rows (1d, whose row files were
                 # all `[]` until the trade floor was fixed) made SQLite walk
@@ -3033,12 +3133,17 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     for r in got:
         # r.keys(), NOT `in r`: a sqlite3.Row iterates its VALUES
         d = {k: r[k] for k in r.keys() if k != "pair"}   # noqa: SIM118
+        d["_pair"] = r["pair"]      # dropped by stamp_measured
         d["stop_reachable"] = bool(d.get("stop_reachable"))
         try:
             d["monthly"] = json.loads(d.get("monthly") or "{}")
         except ValueError:
             d["monthly"] = {}
         out.append(d)
+    # WHEN EACH ROW WAS LAST BACKTESTED, off the pair summaries — one lookup
+    # for the page, so the column is DERIVED from the same table the filter
+    # reads instead of a second source that can disagree with it.
+    stamp_measured(None, out)
     # LAST N MONTHS. Anchored on the newest month the ROWS themselves carry,
     # never on today: a store whose last sweep ended in July must not report an
     # empty August as "the last month" (kit item G — print the window's REAL
@@ -3193,7 +3298,7 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
               sort="profit", min_trades=0, min_winrate=0, max_tp=0,
               sizing=None, row_id=None, group=None, max_sl=0, days=0,
               desc=None, batch=5_000, min_tp=0, min_sl=0,
-              tp_over_sl=False, asset=None, stats=None):
+              tp_over_sl=False, asset=None, stats=None, measured_days=0):
     """Every matching row, in the asked order, a batch at a time.
 
     `stats`, when given, is a dict this generator fills as it goes —
@@ -3215,6 +3320,7 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
     where, args = _where(coin, tf, signal, profitable, min_trades,
                          min_winrate, max_tp, sizing, row_id, group, max_sl,
                          min_tp, min_sl, tp_over_sl, asset,
+                         measured_cut_ms(measured_days),
                          order_owns_index=True, order_key=key,
                          winrate_seeks=seeks, signal_seeks=signal_seeks)
     # LAST N DAYS. The export RE-MEASURES what it exports, batch by batch, so
@@ -3264,6 +3370,7 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
             batch_rows = []
             for r in got:
                 d = {k: r[k] for k in r.keys() if k != "pair"}   # noqa: SIM118
+                d["_pair"] = r["pair"]      # dropped by stamp_measured
                 d["stop_reachable"] = bool(d.get("stop_reachable"))
                 try:
                     d["monthly"] = json.loads(d.get("monthly") or "{}")
@@ -3313,6 +3420,9 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
                     min_trades=min_trades, profitable=profitable)
                 if stats is not None:
                     stats["window_hidden"] = stats.get("window_hidden", 0) + hidden
+            # the same stamp the page gets (kit item F: the CSV and the screen
+            # never show different fields for the same row)
+            stamp_measured(con, batch_rows)
             yield from batch_rows
 
 

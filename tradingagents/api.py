@@ -394,7 +394,9 @@ def strategies(coin: str | None = None, tf: str | None = None,
         got["rows"], got["window_hidden"] = ri.window_floors(
             rows, min_winrate=min_winrate, min_trades=min_trades,
             profitable=profitable)
-    got["index"] = ri.status()             # so the UI can say "still indexing"
+    # NOT ri.status() — 267.55 s measured on this store, on a POLLED route
+    # (see INDEX_STATUS_TTL)
+    got["index"] = index_status()          # so the UI can say "still indexing"
     # THE PRESS, AND WHETHER THE ANSWER AGREES WITH IT. The operator asked for
     # this after the 89.47% row: every filter fix had been verified by reading
     # the code around one filter, and the bug lived only in the finished table.
@@ -2244,6 +2246,41 @@ def _read_cloud_status() -> dict:
 # again. Shard progress moves on the order of minutes; the panel polls every
 # 4 s; the read itself was 216 s on Sep 09, 2026.
 CLOUD_STATUS_TTL = 30.0
+# HOW LONG `rows_index.status()` REALLY TAKES, measured Sep 10, 2026 on the
+# rebuilt 41.94 GB store: **267.55 s**. It walks `stale_pairs()`, which stats
+# every one of 5,367 pair files AND their state files, so on a cold cache it is
+# minutes — and `/api/strategies` called it INSIDE the request, on a route the
+# panel polls. Pattern 4 in docs/RCA.md exists for this exact shape ("a polled
+# route must never do the slow thing inside the request"), written after two
+# routes took the page down the same way one day apart. This is the third.
+#
+# 20 s of staleness on "how far behind is the index" costs nothing: the number
+# moves a pair at a time over hours.
+INDEX_STATUS_TTL = 20.0
+_INDEX_STATUS = BackgroundValue(
+    "index-status",
+    lambda: __import__("tradingagents.rows_index",
+                       fromlist=["x"]).status(),
+    ttl=INDEX_STATUS_TTL,
+    # a failed read keeps the shape the panel reads, and says why — never a
+    # zero, which would claim an empty store (RCA-2026-09-10-F)
+    on_error=lambda exc: {"pairs_indexed": None, "rows": None, "behind": None,
+                          "stale": None,
+                          "unreadable": f"{type(exc).__name__}: {exc}"})
+
+
+def index_status(pending: dict | None = None) -> dict:
+    """`rows_index.status()`, from the background reader.
+
+    `pending` is what a caller gets while the first read is still running —
+    the panel needs the KEYS to exist, and `None` for a count reads as
+    "not known yet" rather than as zero.
+    """
+    return _INDEX_STATUS.get(pending=pending or {
+        "pairs_indexed": None, "pairs_on_disk": None, "behind": None,
+        "stale": None, "rows": None, "reading": True})
+
+
 _CLOUD_STATUS = BackgroundValue(
     "cloud-status", _read_cloud_status, ttl=CLOUD_STATUS_TTL,
     # a failed read is an answer too — and it keeps the panel's shape
@@ -3098,8 +3135,10 @@ def backtest_storage() -> dict:
         "total_rows": sum(r["rows"] for r in rows),
         "total_bytes": total_b,
         "incomplete": sum(1 for r in rows if r["incomplete"]),
-        # the screen must be able to say this list is still filling in
-        "index": ri.status(),
+        # the screen must be able to say this list is still filling in.
+        # Background-read: this route is polled too, and status() is minutes
+        # cold on the rebuilt store.
+        "index": index_status(),
         "newest_measured": (pv.fmt_when(newest / 1000) if newest else None),
     }
 

@@ -172,6 +172,105 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-10-L — the Stored-strategies route spent 267 seconds counting files, on a screen that polls it
+
+**CEO**
+
+* Right after the rebuild finished, your strategies screen took over four
+  minutes to answer — while the search underneath it was answering in **one
+  second**. Nothing was broken; the screen was waiting on the wrong thing.
+* Every time the screen asked for rows, it also asked "how far behind is the
+  index?", and answering that means checking all 5,367 coin files on disk. On
+  the rebuilt 42 GB store that check takes **267 seconds**.
+* That answer is now read in the background and reused for 20 seconds, so the
+  table comes back at the speed of the search. The one place it is still
+  measured live is the REINDEX button, because a button must print the real
+  amount of work it is about to do.
+
+**DEV**
+
+* `api.strategies` called `ri.status()` inline; `status()` walks
+  `stale_pairs()`, which `stat()`s every pair file AND its state file. Measured
+  on the rebuilt store, same process, same minute:
+  `ri.query(limit=500)` **1.11 s**, the same with the new freshness filter
+  **2.25 s**, `stamp_measured(500)` **0.035 s**, `ri.status()` **267.55 s**.
+  Two probes of `/api/strategies` timed out at 240 s while the store answered
+  in under a second.
+* Broken invariant: **a polled route must never do the slow thing inside the
+  request** — already pattern 4 in this file, already given a tool
+  (`slow_cache.BackgroundValue`, built that same morning for
+  `/api/backtest/logs` at 82.3 s and `/api/cloud/status` at 216.3 s). This is
+  the THIRD route, so the pattern is now: when a route gains a call, ask what
+  that call costs COLD before shipping it.
+* Guard: `tests/test_the_strategies_route_never_waits_on_status.py` (7) —
+  `test_a_slow_status_does_not_slow_the_table` drives the real route with a
+  5-second `status()` and requires an answer in under 2 s;
+  `test_the_route_does_not_call_status_inline` and
+  `test_the_storage_route_does_not_either` read the AST's CALLS, not the
+  source text (the first version went red on the comment explaining the fix);
+  `test_the_first_answer_says_UNKNOWN_not_zero`;
+  `test_a_failing_status_is_reported_not_swallowed`;
+  `test_the_reindex_button_still_reads_it_LIVE`.
+
+**SAW** — the operator was not shown this one: it appeared while verifying the
+new "last backtest" column minutes after the rebuild swapped in, and both
+probes of the route timed out.
+
+**TIMELINE**
+
+1. `Sep 10, 2026 7:08pm` — the rebuild swaps in: 41.94 GB, 96,313,064 rows,
+   5,367 pairs.
+2. `7:12pm` — the app is started on that store. `/api/strategies?limit=3`
+   answers in **43.5 s**; `/api/backtest/storage` in 17.7 s. Slow, and put
+   down at the time to the on-demand index build sharing the disk.
+3. `9:41pm` — verifying the new column: `/api/strategies?limit=3&coin=EPIK`
+   **times out at 240 s**, then `/api/backtest/storage` times out at 60 s.
+4. `9:43pm` — measured in-process, nothing else running: the query is
+   **1.11 s** and `status()` is **267.55 s**. That is the whole gap.
+5. Same hour — `index_status()` added, backed by `BackgroundValue` with a 20 s
+   TTL, and both polled routes moved onto it.
+
+**ROOT CAUSE** — `status()` is O(pairs) in `stat()` calls (5,367 pair files
+plus 5,367 state files) and grew with the store, while the route that needs it
+is polled every few seconds. The route's own work — the query — was never the
+problem.
+
+**WHY IT WAS NOT CAUGHT** — `status()` has ALWAYS been on this route; what
+changed is the store. At 973 pairs it was milliseconds, and nothing anywhere
+asserts what a route costs. Every test of `/api/strategies` runs against a
+sandbox holding two or three pairs, where the difference between 1 ms and 267 s
+does not exist — the same blindness that hid RCA-J (a resume check measured on
+a 3-pair store) and RCA-K (a per-pair scan that is free on 3 pairs) earlier the
+same day. The lesson those three share is now explicit: **a cost that only
+appears at scale needs a test that FAKES the scale** — which is what driving
+the real route with a deliberately slow dependency does.
+
+**COST** — no money and no wrong numbers. Two and a half hours where the
+operator's main screen would have been unusable had they opened it, on the
+evening the rebuild finally made every coin searchable.
+
+**FIX** — this commit. `api.index_status()` over
+`slow_cache.BackgroundValue("index-status", ..., ttl=INDEX_STATUS_TTL=20.0)`,
+used by `/api/strategies` and `/api/backtest/storage`; a pending read answers
+with `None` counts and `reading: true` rather than zeros, and a failed read
+reports `unreadable`. `POST /api/strategies/reindex` still calls `ri.status()`
+directly, because the number on a button is the number of work it will do
+(RCA-2026-09-10-C).
+
+**GUARD** — `tests/test_the_strategies_route_never_waits_on_status.py`:
+`test_a_slow_status_does_not_slow_the_table`,
+`test_the_route_does_not_call_status_inline`,
+`test_the_storage_route_does_not_either`,
+`test_the_first_answer_says_UNKNOWN_not_zero`,
+`test_a_failing_status_is_reported_not_swallowed`,
+`test_the_reindex_button_still_reads_it_LIVE`,
+`test_the_ttl_is_short_enough_to_be_useful`. Still open, and stated:
+**`status()` itself is untouched** — it is still 267 s cold, so anything that
+calls it synchronously will still be slow. Chunking `stale_pairs()` or caching
+the pair-file mtimes is the real repair.
+
+---
+
 ## RCA-2026-09-10-K — the rebuild deleted each pair before inserting it, with no index to delete by: 54 hours of full table scans
 
 **CEO**

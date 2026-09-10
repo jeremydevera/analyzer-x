@@ -120,6 +120,15 @@ export default function StrategiesPanel() {
   // ranking by win % on the real store put "100.00% over 1 trade" first,
   // so picking win % asks for a denominator (editable, and said out loud)
   const [minTrades, setMinTrades] = useState(0);
+  // HOW FRESH THE BACKTEST IS, in days. Operator, Sep 10, 2026: *"my goal is
+  // to filter on when was the last backtest for each strategy, because even i
+  // filter last 30 days some of them was last backtested 3 weeks ago which is
+  // obsolete"*. Measured on their store that minute: EPIK-30m last measured
+  // `Aug 26, 2026 3:30am` against BICO-15m's `Sep 10, 2026 9:45am` — 15.8 days
+  // apart, so a "last 30 days" window on the stale one ENDS 15.8 days ago,
+  // because the window can only use candles fetched when that coin was last
+  // backtested.
+  const [measuredDays, setMeasuredDays] = useState(0);
   // "add a textbox winrate, if i put 50 then show me coins with winrate equal
   // or greater than 50" (operator, 2026-08-27). It takes the unit the win %
   // column PRINTS — 50 means 50.00% or better, inclusive (CLAUDE.md rule G) —
@@ -246,7 +255,7 @@ export default function StrategiesPanel() {
     minTrades: 0, minWinrate: 0, maxTp: 0, maxSl: 0, sizing: "", rowId: "",
     group: "",
     minTp: 0, minSl: 0, tpOverSl: false, asset: "",
-    months: 0, days: 0,
+    months: 0, days: 0, measuredDays: 0,
   });
   // The filter set the ROWS ON SCREEN came from — set only when a request
   // SUCCEEDS. `applied` is what was asked for, and the two differ every time a
@@ -262,7 +271,7 @@ export default function StrategiesPanel() {
     minTrades: 0, minWinrate: 0, maxTp: 0, maxSl: 0, sizing: "", rowId: "",
     group: "",
     minTp: 0, minSl: 0, tpOverSl: false, asset: "",
-    months: 0, days: 0,
+    months: 0, days: 0, measuredDays: 0,
   });
   // how long the request that FAILED had been running, so the message can say
   // "did not answer in 34s" instead of a bare HTTP 500
@@ -372,6 +381,7 @@ export default function StrategiesPanel() {
                      rowId: applied.rowId || undefined,
                      months: applied.months || undefined,
         days: applied.months ? undefined : (applied.days || undefined),
+                     measuredDays: applied.measuredDays || undefined,
                      group: (applied.group || undefined) as "preset" | "classic" | undefined,
                      desc, limit: askPage, offset: (page - 1) * askPage })
       .then((d) => {
@@ -470,7 +480,7 @@ export default function StrategiesPanel() {
   const draft = { coin, tf, signal, profitable, minTrades, minWinrate,
                   maxTp: off(maxTp), maxSl: off(maxSl),
                   minTp: off(minTp), minSl: off(minSl), tpOverSl, asset,
-                  sizing, group, months, days,
+                  sizing, group, months, days, measuredDays,
                   // trim FIRST: " #6yaczsxx " pasted from chat kept its hash
                   // when the # was stripped before the spaces, and a real id
                   // then read as "not in the store"
@@ -493,7 +503,7 @@ export default function StrategiesPanel() {
     coin: "", tf: "", signal: "", profitable: false,
     minTrades: 0, minWinrate: 0, maxTp: 0, maxSl: 0, sizing: "", rowId: "",
     group: "", minTp: 0, minSl: 0, tpOverSl: false, asset: "",
-    months: 0, days: 0,
+    months: 0, days: 0, measuredDays: 0,
   };
   const setBox: Record<keyof typeof NO_FILTERS, (v: never) => void> = {
     coin: setCoin, tf: setTf, signal: setSignal, group: setGroup,
@@ -501,6 +511,7 @@ export default function StrategiesPanel() {
     maxTp: setMaxTp, maxSl: setMaxSl, minTp: setMinTp, minSl: setMinSl,
     tpOverSl: setTpOverSl, asset: setAsset, profitable: setProfitable,
     months: setMonths, days: setDays, rowId: setRowId,
+    measuredDays: setMeasuredDays,
   } as Record<keyof typeof NO_FILTERS, (v: never) => void>;
   // a RANGE is one chip, so its × clears both ends — leaving the floor
   // behind after removing "TP 0.5-2.5%" would keep filtering under a line
@@ -545,6 +556,13 @@ export default function StrategiesPanel() {
                  text: `Past ${f.months} month${f.months > 1 ? "s" : ""}` });
     } else if (f.days > 0) {
       out.push({ k: "days", text: `Past ${f.days} days` });
+    }
+    // "or newer", because it is inclusive and because the operator's question
+    // was about the OTHER end: a row measured 3 weeks ago is the one to cut.
+    if (f.measuredDays > 0) {
+      out.push({ k: "measuredDays",
+                 text: `Backtested within ${f.measuredDays} day`
+                       + `${f.measuredDays > 1 ? "s" : ""}` });
     }
     if (f.asset === "crypto") {
       out.push({ k: "asset", text: "Crypto coins only" });
@@ -648,6 +666,9 @@ export default function StrategiesPanel() {
       : f.days > 0 ? `last ${f.days} day${f.days > 1 ? "s" : ""} of each row's own`
         + " measurement"
       : "all history",
+    f.measuredDays > 0
+      ? `backtested within ${f.measuredDays} day${f.measuredDays > 1 ? "s" : ""}`
+      : "any backtest age",
   ].join(" AND "));
   // The REQUEST in words — what the spinner is waiting for, not what is on
   // screen (the caption already says that). The SAME sentence the filter line
@@ -1168,6 +1189,24 @@ export default function StrategiesPanel() {
                        disabled={months > 0}
                        className={numIn} />
               </Field>
+              {/* HOW FRESH THE BACKTEST IS. A different question from the
+                  window beside it, and the reason the operator asked: a
+                  "last 30 days" window on a coin last backtested three weeks
+                  ago ends three weeks ago, because the window can only use
+                  candles that were fetched then. Measured Sep 10, 2026:
+                  EPIK-30m `Aug 26, 2026 3:30am` against BICO-15m's
+                  `Sep 10, 2026 9:45am`. */}
+              <Field label="backtested within"
+                     hint="days since this coin was last measured">
+                <input type="number" min={0} max={365} step={1}
+                       value={measuredDays || ""}
+                       placeholder="any"
+                       onChange={(e) => setMeasuredDays(
+                         Math.min(365, Math.max(0, Number(e.target.value) || 0)))}
+                       onKeyDown={onFilterKey}
+                       aria-label="Backtested within N days"
+                       className={numIn} />
+              </Field>
             </FilterSection>
             {/* "#6YACZSXX" — the code the first column prints. Typed with or
                 without the #, any case; it overrides the rest. */}
@@ -1323,6 +1362,7 @@ export default function StrategiesPanel() {
                 ...(servedFilters.days > 0 && !servedFilters.months
                   ? ["window"] : [winHead("green", servedFilters.months)]),
                 "dip $",
+                "last backtest",
                 winHead("balanced", servedFilters.months),
                 ...monthCols.map(monthLabel)].map((h) => (
                 <TableCell key={h} isHeader
@@ -1447,6 +1487,22 @@ export default function StrategiesPanel() {
                     ? (r.w_dd?.toFixed(2) ?? "—")
                     : (r.dd?.toFixed(2) ?? "—")}
                 </TableCell>
+                {/* WHEN THIS ROW WAS LAST BACKTESTED — `pairs.last_ms`, the
+                    last candle the backtest tested. It is what decides whether
+                    a "last N days" window is real: measured Sep 10, 2026,
+                    EPIK-30m read `Aug 26, 2026 3:30am` while BICO-15m read
+                    `Sep 10, 2026 9:45am`, so a 30-day window on the first
+                    ended 15.8 days ago. Undefined is UNKNOWN and prints a
+                    dash — never a zero, which would read `Jan 01, 1970`. */}
+                <TableCell className={`px-3 py-2 text-theme-sm ${
+                  r.measured_ms && Date.now() - r.measured_ms > 7 * 864e5
+                    ? "text-warning-600 dark:text-warning-400"
+                    : "text-gray-500 dark:text-gray-400"}`}
+                           title={r.measured_run_ms
+                             ? `results last written ${fmtWhenMs(r.measured_run_ms)}`
+                             : "this coin has no measurement on record"}>
+                  {r.measured_ms ? fmtWhenMs(r.measured_ms) : "—"}
+                </TableCell>
                 {/* BALANCED, 1-10 over win rate AND profit. The tooltip is the
                     working — "sometimes it has high winrate but since tp is low
                     and sl is high, its still not profitable" is a number the
@@ -1570,6 +1626,10 @@ export default function StrategiesPanel() {
                // under a filter that says "last 30 days" (operator, 2026-09-03)
                months: applied.months || undefined,
                days: applied.months ? undefined : (applied.days || undefined),
+               // and the FRESHNESS filter, for the same reason: a file that
+               // held rows the table had already cut as stale would answer a
+               // different question than the screen it came from
+               measuredDays: applied.measuredDays || undefined,
                rowId: applied.rowId || undefined, desc })}>
             {/* WHAT THE FILE WILL ACTUALLY HOLD. With a days window on, the
                 download re-measures at most `days_csv_max` rows from the

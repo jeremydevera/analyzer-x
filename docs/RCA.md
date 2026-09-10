@@ -44,16 +44,16 @@ The operator, mid-session: *"I dont even know what you are doing"* and *"We did
 the github backtest already right? Now what are you doing?"*. Fair. This is the
 whole picture without engineering language.
 
-**The measuring is done. The filing is not.**
+**The measuring was done. The filing now is too, as of `7:08pm`.**
 
 There are three steps between pressing UPDATE ALL BACKTESTS and seeing results
-on screen. Only the third has been failing.
+on screen. Only the third had been failing.
 
 | step | who does it | state |
 |---|---|---|
 | 1. Measure on GitHub's 20 machines | the button, via `_run_btupdate` | **works by itself** |
 | 2. Bring the results back to the PC | `cloud_autopilot` collects them | **works by itself** |
-| 3. File them into the searchable list | a background indexer | **this is what keeps breaking** |
+| 3. File them into the searchable list | a background indexer | **was the broken one — 100% as of Sep 10, 2026 7:08pm** |
 
 Steps 1 and 2 have never needed a person. The store grew from 51,943,352 to
 **52,348,156 rows** during this session with nobody touching it — that is
@@ -64,11 +64,45 @@ proof they run on their own. Everything done by hand this session was step 3.
 `rows.db`, the index the Stored strategies screen reads. Until then the result
 exists on disk and no filter can find it.
 
-**Where it stands, `3:55pm`:** the searchable list is being **rebuilt from
-scratch**, and it is running: **1,780 of 5,367 coins, 31,689,094 rows, 72.0
-coins a minute, under an hour left**. When it finishes, the answer is **100%**,
-not 86% — the rebuild indexes every pair file on disk, not the 4,612 that
-happened to be in the old one.
+**WHERE IT STANDS, `Sep 10, 2026 7:08pm` — DONE.** The searchable list was
+rebuilt from scratch and swapped in. Measured, not estimated:
+
+| | before | after |
+|---|---|---|
+| coins searchable | 4,612 of 5,365 (**86%**) | **5,367 of 5,367 (100%)** |
+| rows | 52,348,156 | **96,313,064** |
+| file | 34.69 GB, 38.8% holes | **41.94 GB, packed** |
+| filing speed | 0.25–0.86 coins/min | **70.3 coins/min** |
+| `behind` | 753 coins | **0** |
+
+The run, phase by phase, on a mechanical G: — these are the numbers
+`CLAUDE.md`'s bulk-load rule now carries:
+
+| phase | measured |
+|---|---|
+| load 5,367 pair files (no indexes) | 68 min, **70.3 pairs/min** |
+| `rows_pair` (96M **text** keys) | **48 min** |
+| `rows_profit` | **14 min** |
+| `rows_coin` + `rows_winrate` | ~27 min together |
+| pre-swap check over 41.94 GB | **95 min** (estimate had been 170) |
+| whole run | **252 min**, 2:56pm → 7:08pm |
+
+The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
+347.4 GB is free on that drive.
+
+**What still needs to happen by itself**
+
+* **The wide filter indexes are building now** (`rows_pr2`, then `rows_wr4`,
+  detached). Until they finish, a win-% filter over the WHOLE store answers
+  *"a win % floor of 90 over the store needs more than 20s ... the wide
+  win-rate index is still being built"* — a refusal with a reason, which is
+  RCA-F's fix doing its job. A coin filter already answers in **0.60 s**
+  (BTC: 120,604 rows) and the first page in **0.04 s**.
+* **84 coins are stale** — their pair files gained rows during the four hours
+  the rebuild ran. The indexer picks those up on its own; `behind` is 0, so
+  nothing is missing, they are just not the newest.
+* The app was started on this code at 7:12pm and answers: `/api/strategies`
+  200, `/api/backtest/storage` 200.
 
 **Why step 3 kept breaking — SEVEN separate faults, all found today**
 

@@ -20,10 +20,18 @@ def test_code_is_stable_and_derived_not_sequential():
     # every field is part of the identity
     assert a != at.trade_code("PROVE_USDT", "trend50_30m_pi", 1787207404, 1, False)
     assert a != at.trade_code("PI_USDT", "mom6_1h_pv", 1787207404, 1, False)
-    assert a != at.trade_code("PI_USDT", "trend50_30m_pi", 1787207999, 1, False)
     assert a != at.trade_code("PI_USDT", "trend50_30m_pi", 1787207404, -1, False)
-    # the paper book is a DIFFERENT trade from the live one, same candle
-    assert a != at.trade_code("PI_USDT", "trend50_30m_pi", 1787207404, 1, True)
+    # …and the ENTRY BAR, not the second inside it. The two books are entered
+    # in the same cycle but not the same instant, and until Sep 10, 2026 a
+    # second's difference gave one signal two names.
+    assert a != at.trade_code("PI_USDT", "trend50_30m_pi",
+                              1787207404 + 1800, 1, False), "another bar"
+    assert a == at.trade_code("PI_USDT", "trend50_30m_pi",
+                              1787207404 + 3, 1, False), "same bar, same trade"
+    # THE PAPER BOOK IS THE SAME TRADE. Operator, Sep 10, 2026: *"the trade id
+    # in demo and live should be the same so i know it has equivalent trade
+    # when i find it"* — one signal acted on twice, one name.
+    assert a == at.trade_code("PI_USDT", "trend50_30m_pi", 1787207404, 1, True)
 
 
 def _write(tmp_path, rows):

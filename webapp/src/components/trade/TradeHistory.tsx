@@ -7,6 +7,7 @@
  */
 import { useEffect, useState } from "react";
 import { markReady } from "@/lib/loading";
+import { useLiveRefresh } from "@/lib/live";
 import PanelStatus from "./PanelStatus";
 import { fmtMoney, HistoryPayload, tradeApi } from "@/lib/api";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
@@ -30,24 +31,18 @@ export default function TradeHistory() {
   const [d, setD] = useState<HistoryPayload | null>(null);
   const [err, setErr] = useState("");
 
-  useEffect(() => {
-    let dead = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const load = () => {
-      tradeApi.history(dry, page, 5)
-        .then((r) => { if (!dead) { setD(r); setErr(""); markReady("trade history"); } })
-        .catch((e) => {
-          if (dead) return;
-          setErr(String(e));
-  // SELF-HEALING: a fetch that failed (an API restart's few dark seconds)
-  // retries every 5s until it succeeds — a one-shot panel must not wear a
-  // dead moment's error until someone reloads the page (Sep 09, 2026).
-          timer = setTimeout(load, 5_000);
-        });
-    };
-    load();
-    return () => { dead = true; clearTimeout(timer); };
-  }, [dry, page]);
+  // EVERY 5 SECONDS, and the instant the tab is looked at again. It used to
+  // load ONCE and re-fetch only after a failure, so a trade that closed while
+  // the page was open never appeared here — the operator's live PSXSTOCK stop
+  // at Sep 10, 2026 8:04pm was in the ledger and not on this table until a
+  // reload: *"i want the ui realtime ... currently i need to refresh it"*.
+  // The old self-healing retry is kept by the same loop: a failed fetch is
+  // simply the next tick's job (an API restart's few dark seconds, Sep 09).
+  useLiveRefresh(() => {
+    tradeApi.history(dry, page, 5)
+      .then((r) => { setD(r); setErr(""); markReady("trade history"); })
+      .catch((e) => setErr(String(e)));
+  }, 5_000, [dry, page]);
 
   useEffect(() => { setPage(1); }, [dry]);
 

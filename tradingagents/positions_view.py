@@ -112,8 +112,20 @@ def barrier_value(entry, barrier, notional: float, fee: float, *,
     return {"pct": round(pct, 2), "usd": round(usd, 2)}
 
 
+def _trade_id_of(sym: str, pos: dict) -> str:
+    """This trade's id, computed from its own facts (auto_trader owns the
+    rule). Lazily imported for the same reason as `_label`: auto_trader
+    imports this module."""
+    try:
+        from tradingagents import auto_trader as at
+
+        return at.trade_id_of(sym, pos) or ""
+    except Exception:                                          # noqa: BLE001
+        return str(pos.get("trade_id") or "")
+
+
 def _label(key: str, settings: dict | None) -> str:
-    """The row's human name. Imported lazily: auto_trader imports this module."""
+    """The row's human name. Imported lazily: auto_trader imports this module."""  # noqa: D401
     if not key:
         return ""
     try:
@@ -184,7 +196,10 @@ def build_rows(*, state: dict, exchange_positions: list, stats: dict,
             # ability to copy id of the open trades in demo or live"). An
             # older position that predates trade ids has none, and the cell
             # says so rather than showing a blank that reads as a bug.
-            "trade_id": pos.get("trade_id") or "",
+            # COMPUTED, never the stored value: a demo trade and its live twin
+            # share one id (Sep 10, 2026), and a position opened before that
+            # rule would otherwise keep two names until it closed
+            "trade_id": _trade_id_of(sym, pos),
             "opened": fmt_when(when) if when else "—",
             "held": fmt_age(now - when) if when else "—",
             "opened_ts": when,

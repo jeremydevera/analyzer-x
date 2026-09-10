@@ -22,7 +22,13 @@ def test_the_api_sends_the_trades_own_id():
     from tradingagents import positions_view as pv
 
     src = inspect.getsource(pv)
-    assert '"trade_id": pos.get("trade_id") or ""' in src
+    # COMPUTED from the trade's own facts, not read back from the book: since
+    # Sep 10, 2026 a demo trade and its live twin share one id, and a position
+    # opened before that rule would otherwise keep its old name until it
+    # closed — the pair the operator was trying to match was an OPEN one.
+    assert '"trade_id": _trade_id_of(sym, pos)' in src
+    assert '"trade_id": pos.get("trade_id") or ""' not in src
+    assert "at.trade_id_of(sym, pos)" in src, "auto_trader owns the rule"
     t = open("webapp/src/lib/api.ts", encoding="utf-8").read()
     i = t.index("export interface PositionRow")
     assert "trade_id?: string;" in t[i:i + 900]

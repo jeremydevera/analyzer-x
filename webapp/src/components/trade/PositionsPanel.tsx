@@ -12,6 +12,7 @@
  */
 import { useEffect, useState } from "react";
 import { markReady } from "@/lib/loading";
+import { useLiveRefresh } from "@/lib/live";
 import PanelStatus from "./PanelStatus";
 import CopyableId from "./CopyableId";
 import { fmtMoney, PositionRow, PositionsPayload, tradeApi } from "@/lib/api";
@@ -55,11 +56,11 @@ export default function PositionsPanel({ onChanged }: { onChanged?: () => void }
   const [busy, setBusy] = useState("");
 
   const load = () => tradeApi.positions().then((d) => { setData(d); setErr(""); markReady("positions"); }).catch((e) => setErr(String(e)));
-  useEffect(() => {
-    load();
-    const t = setInterval(load, 15000);
-    return () => clearInterval(t);
-  }, []);
+  // its own cadence (an open position's unrealized moves with the price), and
+  // an IMMEDIATE read when the tab comes back — a hidden tab's timers are
+  // throttled to about one a minute by the browser, so coming back to this
+  // screen used to mean looking at minute-old positions
+  useLiveRefresh(load, 15_000);
 
   const closeOne = async (r: PositionRow) => {
     const worth = r.unrealized == null ? "" :

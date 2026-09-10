@@ -3,6 +3,7 @@
  * rows shown beside it, so the caption cannot disagree with the table. */
 import { useEffect, useRef, useState } from "react";
 import { markReady } from "@/lib/loading";
+import { useLiveRefresh } from "@/lib/live";
 import PanelStatus from "./PanelStatus";
 import { DayStat, fmtMoney, tradeApi } from "@/lib/api";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
@@ -18,24 +19,19 @@ export default function PnlPanel() {
   // because days starts as {} and `!== null` would call it loaded at birth
   const got = useRef(false);
 
-  useEffect(() => {
-    let dead = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const load = () => {
-      Promise.all([tradeApi.pnlByCoin(dry), tradeApi.pnlDaily(dry)])
-        .then(([c, d]) => { if (!dead) { setCoins(c.coins); setDays(d.days); setErr(""); got.current = true; markReady("profit"); } })
-        .catch((e) => {
-          if (dead) return;
-          setErr(String(e));
-  // SELF-HEALING: a fetch that failed (an API restart's few dark seconds)
-  // retries every 5s until it succeeds — a one-shot panel must not wear a
-  // dead moment's error until someone reloads the page (Sep 09, 2026).
-          timer = setTimeout(load, 5_000);
-        });
-    };
-    load();
-    return () => { dead = true; clearTimeout(timer); };
-  }, [dry]);
+  // EVERY 5 SECONDS, and again the moment the tab is looked at. This loaded
+  // ONCE and re-fetched only after a failure, so today's profit stopped
+  // moving the second the page finished loading (operator, Sep 10, 2026:
+  // *"i want the ui realtime"*). A failed fetch is now just the next tick's
+  // job, which keeps the self-healing the retry gave (Sep 09, 2026).
+  useLiveRefresh(() => {
+    Promise.all([tradeApi.pnlByCoin(dry), tradeApi.pnlDaily(dry)])
+      .then(([c, d]) => {
+        setCoins(c.coins); setDays(d.days); setErr("");
+        got.current = true; markReady("profit");
+      })
+      .catch((e) => setErr(String(e)));
+  }, 5_000, [dry]);
 
   const coinRows = Object.entries(coins).sort((a, b) => b[1].pnl - a[1].pnl);
   const dayRows = Object.entries(days).sort((a, b) => (a[0] < b[0] ? 1 : -1)).slice(0, 30);

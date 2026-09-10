@@ -1137,21 +1137,43 @@ def append_ledger(entry: dict) -> None:
 # opened ... you will add this in the database").
 #
 # The id is HASHED from the facts that cannot change once the trade opens:
-# contract, strategy, the entry candle's timestamp, side and which book it is
-# on. Not a counter — a counter renumbers the same trade whenever the file is
+# contract, strategy, the entry candle's timestamp and side. NOT which book it
+# is on — a demo trade and its live twin are one signal acted on twice and
+# carry ONE id (operator, Sep 10, 2026: "the trade id in demo and live should
+# be the same so i know it has equivalent trade when i find it").
+# Not a counter — a counter renumbers the same trade whenever the file is
 # rewritten or a row is dropped, which is the "#05146 / #02054" confusion the
 # backtest row codes already had to fix. Hashing also means the BACKFILL of
 # old rows computes exactly the id the live path would have written.
 _TRADE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"      # no 0/O/1/I
 
 
-def trade_code(symbol: str, strategy: str, entry_ts, side, dry: bool) -> str:
-    """A stable 8-character id for one trade, e.g. ``K4M7QP2X``."""
+def trade_code(symbol: str, strategy: str, entry_ts, side, dry: bool = False) -> str:
+    """A stable 8-character id for one trade, e.g. ``K4M7QP2X``.
+
+    THE SAME TRADE HAS THE SAME ID ON BOTH BOOKS. Operator, Sep 10, 2026:
+    *"the trade id in demo and live should be the same so i know it has
+    equivalent trade when i find it"*. `dry` is still accepted (every caller
+    passes it) and deliberately IGNORED: a demo trade and its live twin are
+    one signal acted on twice, and giving them different names made the pair
+    unfindable — which is the whole reason to run both books.
+
+    The entry time is floored to the strategy's OWN BAR before hashing. The
+    two books are entered in the same cycle but not the same instant (a second
+    or two apart, sometimes across a wall-clock second), and a raw timestamp
+    would give the twins different ids for a difference that means nothing.
+    The bar is what they truly share: one signal, one candle, one trade.
+    A trade whose entry falls either side of a bar boundary is the one case
+    this cannot pair, and it is rare by construction — entries happen just
+    after a bar closes, not at the edge of the next one.
+    """
     import hashlib
 
-    seed = "|".join([str(symbol), str(strategy or ""), str(int(entry_ts or 0)),
-                     "L" if (side or 0) > 0 else "S",
-                     "paper" if dry else "live"])
+    spec = STRATEGY_SPECS.get(strategy or "") or {}
+    bar = max(1, int(spec.get("bar_seconds") or 60))
+    slot = int(entry_ts or 0) // bar * bar
+    seed = "|".join([str(symbol), str(strategy or ""), str(slot),
+                     "L" if (side or 0) > 0 else "S"])
     n = int.from_bytes(hashlib.blake2s(seed.encode(), digest_size=5).digest(),
                        "big")
     out = ""
@@ -1161,13 +1183,20 @@ def trade_code(symbol: str, strategy: str, entry_ts, side, dry: bool) -> str:
     return out
 
 
-def backfill_ledger_ids(path=None, *, dry_run: bool = False) -> dict:
+def backfill_ledger_ids(path=None, *, dry_run: bool = False,
+                        restamp: bool = False) -> dict:
     """Give every past enter/exit row a trade id and an opened timestamp.
 
     Pairs each exit with its own entry FIFO within (symbol, strategy, book),
     which is exactly how the runner holds one position per slot, so the
     pairing is not a guess. Rows already carrying an id are left untouched,
     so this is safe to run twice.
+
+    `restamp=True` RECOMPUTES every id instead of keeping what is there. It is
+    for the day the rule itself changed: on Sep 10, 2026 the book left the
+    hash, so a demo trade and its live twin share one id — and history written
+    before that still held two different names for one signal. The pairing
+    above is unchanged; only the name is rewritten, from the same facts.
 
     Rewrites the file under the same lock the writers use, through a temp file
     and a rename, keeping a timestamped ``.bak`` — a half-written ledger would
@@ -1193,7 +1222,7 @@ def backfill_ledger_ids(path=None, *, dry_run: bool = False) -> dict:
             continue
         slot = (r.get("symbol"), r.get("strategy"), bool(r.get("dry_run")))
         if act == "enter":
-            if not r.get("trade_id"):
+            if restamp or not r.get("trade_id"):
                 r["trade_id"] = trade_code(
                     r.get("symbol"), r.get("strategy"),
                     r.get("entry_ts") or r.get("ts"),
@@ -1206,13 +1235,13 @@ def backfill_ledger_ids(path=None, *, dry_run: bool = False) -> dict:
             q = open_by.get(slot) or []
             src = q.pop(0) if q else None
             if src is not None:
-                if not r.get("trade_id"):
+                if restamp or not r.get("trade_id"):
                     r["trade_id"] = src["trade_id"]
                     n_exit += 1
                 r.setdefault("opened_at", src.get("opened_at"))
                 if r.get("held_s") is None and r.get("ts") and src.get("ts"):
                     r["held_s"] = int(r["ts"]) - int(src["ts"])
-            elif not r.get("trade_id"):
+            elif restamp or not r.get("trade_id"):
                 # An exit with no surviving entry row (the ledger predates the
                 # entry, or it was a reconciliation). Give it an id of its own
                 # rather than leaving a blank cell nobody can quote.
@@ -1248,6 +1277,53 @@ def backfill_ledger_ids(path=None, *, dry_run: bool = False) -> dict:
             portable.unlock(lock)
     return {"rows": len(rows), "entered": n_enter, "exited": n_exit,
             "written": True, "backup": str(bak)}
+
+
+def trade_id_of(symbol, pos: dict) -> str:
+    """The id of the trade in `pos` — COMPUTED, not remembered.
+
+    It is a pure function of the facts fixed at entry (contract, strategy,
+    entry bar, side), so nothing has to be rewritten when the rule changes and
+    a position opened under the old rule pairs with its twin at once. The
+    stored value is used only when a fact is missing (a very old position).
+    """
+    got = trade_code(symbol, pos.get("strategy"), pos.get("entry_ts"),
+                     pos.get("side"))
+    return got if pos.get("entry_ts") else (pos.get("trade_id") or got)
+
+
+def restamp_open_trade_ids() -> dict:
+    """Give every OPEN position the id today's rule would mint.
+
+    History can be re-stamped in one pass (`backfill_ledger_ids(restamp=True)`),
+    but a trade that is still open carries its id in the shared book and would
+    keep its old name until it closes — and the pair the operator is watching
+    right now is exactly an open one. Measured Sep 10, 2026 8:15pm: the live
+    PSXSTOCK short was `ZFGQ2QUZ` and its demo twin `H3J9B9NN` — one signal,
+    one bar, one side, two names.
+
+    Written through `save_state(state, keys=...)`, so a slot the runner
+    changed while this ran keeps THEIR version rather than being clobbered
+    (the 2026-08-18 phantom-position rule).
+    """
+    state = load_state()
+    changed, same = [], 0
+    for slot, v in list(state.items()):
+        if slot == "_rev" or not isinstance(v, dict):
+            continue
+        pos = v.get("position")
+        if not isinstance(pos, dict):
+            continue
+        want = trade_code(str(slot).split("#", 1)[0], pos.get("strategy"),
+                          pos.get("entry_ts"), pos.get("side"))
+        if pos.get("trade_id") == want:
+            same += 1
+            continue
+        changed.append({"slot": slot, "was": pos.get("trade_id"), "now": want})
+        pos["trade_id"] = want
+    if changed:
+        save_state(state, keys=[c["slot"] for c in changed])
+    return {"changed": changed, "unchanged": same}
 
 
 def log_tail(n: int = 200) -> list[str]:
@@ -2419,7 +2495,7 @@ def panic_stop(*, fx=None, close_positions: bool = True) -> dict:
                        # history reads exit rows only, so without them the
                        # LONG/SHORT column was empty for every closed trade.
                        # Same reasoning for the id and the opening time.
-                       "trade_id": pos.get("trade_id"), "opened_at": _pop,
+                       "trade_id": trade_id_of(symbol, pos), "opened_at": _pop,
                        "held_s": (int(time.time()) - int(_pop)) if _pop
                                  else None,
                        "side": "LONG" if pos.get("side", 0) > 0 else "SHORT",
@@ -3537,9 +3613,11 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                            "strategy": pos.get("strategy"),
                            # id and opening time travel WITH the position, so
                            # a closed trade keeps the identity it opened with
-                           "trade_id": pos.get("trade_id") or trade_code(
-                               symbol, pos.get("strategy"),
-                               pos.get("entry_ts"), pos.get("side"), pos_dry),
+                           # COMPUTED from the trade's own facts, so the exit
+                           # row carries the same name the screen shows —
+                           # including a position opened before the rule
+                           # changed on Sep 10, 2026
+                           "trade_id": trade_id_of(symbol, pos),
                            "opened_at": _op,
                            "held_s": (int(time.time()) - int(_op)) if _op
                                      else None,
@@ -4159,7 +4237,7 @@ def reconcile_unconfigured(settings: dict, state: dict, *, fx) -> None:
         _rop = pos.get("opened_at") or pos.get("entry_ts")
         append_ledger({"symbol": symbol, "action": "exit", "why": "RECONCILED",
                        "strategy": pos.get("strategy"),
-                       "trade_id": pos.get("trade_id"), "opened_at": _rop,
+                       "trade_id": trade_id_of(symbol, pos), "opened_at": _rop,
                        "held_s": (int(time.time()) - int(_rop)) if _rop
                                  else None,
                        "side": "LONG" if pos.get("side", 0) > 0 else "SHORT",

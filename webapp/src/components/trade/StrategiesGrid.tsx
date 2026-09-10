@@ -4,6 +4,7 @@
  * and the API records every change to the local deploy history. */
 import { useCallback, useEffect, useState } from "react";
 import { markReady } from "@/lib/loading";
+import { useLiveRefresh } from "@/lib/live";
 import PanelStatus from "./PanelStatus";
 import CopyableId from "./CopyableId";
 import { api, fmtMoney, JobStatus, tradeApi, StrategyDeployRow } from "@/lib/api";
@@ -50,15 +51,18 @@ export default function StrategiesGrid() {
         markReady("strategies");
       })
       .catch((e) => setErr(String(e))), [catalog]);
-  useEffect(() => { load(); }, [load]);
+  // EVERY 5 SECONDS, and again the moment the tab is looked at. This ran
+  // ONCE — the 4-second timer below polls the BACKTEST JOB, not these rows —
+  // so LIVE $ and LIVE W/L were frozen at whatever they were when the page
+  // opened. The operator's PSXSTOCK stop closed at Sep 10, 2026 8:04pm for
+  // −$0.25 and the row went on showing the record from before it until a
+  // reload: *"i want the ui realtime when i lose it should show the winrate
+  // lose or what ever currently i need to refresh it"*.
+  useLiveRefresh(load, 5_000, [load]);
 
   // the "1 YEAR" grid runs detached, so it survives leaving this page
-  useEffect(() => {
-    const poll = () => api.jobStatus("stratbt").then(setBt).catch(() => {});
-    poll();
-    const t = setInterval(poll, 4000);
-    return () => clearInterval(t);
-  }, []);
+  useLiveRefresh(() => { api.jobStatus("stratbt").then(setBt).catch(() => {}); },
+                 4_000);
 
   // The "1 YEAR" button that called `tradeApi.backtestStrategy` lived in the
   // `backtest` column, which the operator had removed on 2026-08-27. It was

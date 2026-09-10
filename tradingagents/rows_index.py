@@ -1049,6 +1049,13 @@ def compact(*, dest: Path | None = None, keep_backup: bool = True) -> dict:
 
 
 REBUILD_PROGRESS = Path.home() / ".tradingagents" / "rows_rebuild.json"
+# How often the pre-swap verify refreshes that file while SQLite walks the
+# whole database. Every VERIFY_TICK_OPS VM steps SQLite calls back; the file is
+# rewritten at most every VERIFY_TICK_S seconds, so the cost is one small write
+# a few times a minute and the benefit is that "verifying" is never mistaken
+# for "stopped" (RCA-G, RCA-J).
+VERIFY_TICK_OPS = 200_000
+VERIFY_TICK_S = 5.0
 
 
 def _resumable(dest: Path, stems: set) -> tuple | str:
@@ -1241,10 +1248,38 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
         for ddl in KEEP_INDEXES:
             con.execute(ddl)
         con.commit()
+        # THE VERIFY IS THE LAST PLACE THIS CAN GO QUIET, so it does not.
+        #
+        # Three statements over the whole file: two full scans and a
+        # `quick_check` that walks every page. On this store that is 32 GB —
+        # about 5 minutes at the 106 MB/s the disk measured sequentially, and
+        # RCA-J measured the same check at 1 MB/s through a small cache, which
+        # would be hours. Either way SQLite reports nothing while it runs, and
+        # a rebuild that says "verifying" for an hour with no other sign of
+        # life is RCA-G exactly. `set_progress_handler` fires every
+        # VERIFY_TICK_OPS VM steps, so the seconds keep climbing in
+        # `rows_rebuild.json` and a reader can see the difference between slow
+        # and stopped. The counts come FIRST: they are sequential and cheap,
+        # so a mismatch never pays for the page walk.
         _say("verifying")
-        got_rows = int(con.execute("SELECT count(*) FROM rows").fetchone()[0])
-        got_pairs = int(con.execute("SELECT count(*) FROM pairs").fetchone()[0])
-        quick = con.execute("PRAGMA quick_check").fetchone()[0]
+        last = [0.0]
+
+        def _tick():
+            now = _t.time()
+            if now - last[0] >= VERIFY_TICK_S:
+                last[0] = now
+                _say("verifying")
+            return 0          # non-zero would ABORT the statement
+
+        con.set_progress_handler(_tick, VERIFY_TICK_OPS)
+        try:
+            got_rows = int(con.execute(
+                "SELECT count(*) FROM rows").fetchone()[0])
+            got_pairs = int(con.execute(
+                "SELECT count(*) FROM pairs").fetchone()[0])
+            quick = con.execute("PRAGMA quick_check").fetchone()[0]
+        finally:
+            con.set_progress_handler(None, 0)
     except Exception as exc:                                    # noqa: BLE001
         with contextlib.suppress(Exception):
             con.close()

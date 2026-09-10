@@ -503,3 +503,63 @@ def test_the_rate_excludes_the_time_spent_checking(store, monkeypatch):
     i = src.index("_resumable(dest")
     j = src.index("started = _t.time()", i)
     assert j > i, "the clock for the RATE must restart after the check"
+
+
+def test_the_verify_keeps_publishing_while_it_walks_the_whole_file(store, monkeypatch):
+    """The verify is three statements over the WHOLE database: two full scans
+    and a `quick_check` that touches every page. On the operator's 32 GB store
+    that is ~5 minutes at the 106 MB/s this disk measured sequentially — and
+    RCA-J measured the same check at **1 MB/s** through a small cache, which is
+    hours. SQLite reports nothing while it runs.
+
+    So the real `set_progress_handler` callback is captured here and driven,
+    proving it refreshes `rows_rebuild.json` rather than merely being
+    installed — and that it returns 0, because a non-zero return ABORTS the
+    statement it is watching.
+    """
+    seen = []
+
+    class Spy:
+        """`sqlite3.Connection` is an immutable type, so the handler is caught
+        by wrapping the connection instead of patching the class."""
+
+        def __init__(self, con):
+            object.__setattr__(self, "_con", con)
+
+        def __getattr__(self, name):
+            return getattr(object.__getattribute__(self, "_con"), name)
+
+        def __setattr__(self, name, value):
+            setattr(object.__getattribute__(self, "_con"), name, value)
+
+        def set_progress_handler(self, fn, n):
+            seen.append((fn, n))
+            return object.__getattribute__(self, "_con") \
+                .set_progress_handler(fn, n)
+
+    real_connect = sqlite3.connect
+    monkeypatch.setattr(ri.sqlite3, "connect",
+                        lambda *a, **k: Spy(real_connect(*a, **k)))
+    monkeypatch.setattr(ri, "VERIFY_TICK_S", 0.0)      # tick on every call
+    got = ri.rebuild()
+    assert got["rebuilt"] is True, got
+
+    installed = [(fn, n) for fn, n in seen if fn is not None]
+    assert installed, "the verify must install a progress handler"
+    fn, n = installed[0]
+    assert n == ri.VERIFY_TICK_OPS and n > 0
+    assert seen[-1][0] is None, "and it must be removed afterwards"
+
+    # drive the captured closure: it has to WRITE, and it has to return 0
+    ri.REBUILD_PROGRESS.unlink()
+    assert fn() == 0, "a non-zero return would abort the verify it watches"
+    p = ri.rebuild_progress()
+    assert p.get("phase") == "verifying", p
+    assert p.get("pairs_done") == 3, "with the real counts, not zeros"
+
+
+def test_the_counts_run_before_the_page_walk(store):
+    """A mismatch must never pay for `quick_check`: the two counts are
+    sequential and cheap, the page walk is neither."""
+    src = inspect.getsource(ri.rebuild)
+    assert src.index("count(*) FROM rows") < src.index("PRAGMA quick_check")

@@ -634,3 +634,47 @@ def test_each_index_build_names_itself_while_it_runs(store, monkeypatch):
             f"index {i} did not name itself: {phase!r}"
     # the name in the phase is the index actually being built
     assert any("rows_pair" in (p or "") for p in seen), seen
+
+
+def test_the_verify_publishes_a_clock_estimate_because_no_percent_exists(store):
+    """The operator asked "Percent" twice on Sep 10, 2026 while the rebuild sat
+    in its final check. There is no percentage to give — SQLite reports nothing
+    at all during `quick_check` — so the honest answer was "none exists", twice.
+
+    A clock estimate is worth having; a clock estimate CALLED progress is the
+    `label-must-match-data` failure this repo has paid for most. Hence the
+    field name, and hence this test: the number is published, only while
+    verifying, under a name that says ESTIMATE.
+    """
+    ri.rebuild()
+    src = inspect.getsource(ri.rebuild)
+    assert "verify_estimate_s" in src
+    for lie in ("verify_progress", "verify_percent", "percent_done"):
+        assert lie not in src, f"{lie} would present an estimate as measurement"
+
+    # it is derived from the FILE and the MEASURED rate, not a constant guess
+    say = src[src.index("verify_estimate_s"):src.index("}), encoding")]
+    assert "stat().st_size" in say and "VERIFY_MB_PER_S" in say
+    assert ri.VERIFY_MB_PER_S > 0
+
+    # and it is absent for every phase that HAS real progress to report
+    p = ri.rebuild_progress()
+    assert p.get("phase") == "done"
+    assert p.get("verify_estimate_s") is None, \
+        "a finished rebuild must not still advertise a wait"
+
+
+def test_the_estimate_matches_the_file_it_is_about():
+    """An estimate that ignores its own subject is a literal, and a literal
+    label is what `label-must-match-data` forbids. So: it scales with the file,
+    and on the operator's real one it lands on the number that was measured.
+
+    (A rebuild is not driven here on purpose — the fixture's store is a few
+    hundred KB, where every duration rounds to zero and proves nothing. The
+    first version of this test asserted `> 0` against that and failed.)
+    """
+    est = lambda n: round(n / (ri.VERIFY_MB_PER_S * 1e6))       # noqa: E731
+    assert est(42e9) > est(21e9) > est(1e9) > 0, "it must scale with the file"
+    # 41.94 GB at the measured 4.1 MB/s = 2.84 h, which is what it took
+    hours = est(41.94e9) / 3600
+    assert 2.5 < hours < 3.2, f"{hours:.2f} h — the measurement moved"

@@ -1056,6 +1056,14 @@ REBUILD_PROGRESS = Path.home() / ".tradingagents" / "rows_rebuild.json"
 # for "stopped" (RCA-G, RCA-J).
 VERIFY_TICK_OPS = 200_000
 VERIFY_TICK_S = 5.0
+# How fast the pre-swap verify actually reads, MEASURED on the operator's
+# mechanical G: on Sep 10, 2026: 339 reads/sec of ~12 KB = **4.1 MB/s** over a
+# 41.94 GB file, while a plain sequential read of the same disk in the same
+# minute measured 106 MB/s. SQLite reports NOTHING while `quick_check` runs, so
+# there is no percentage to be had — the operator asked for one twice and the
+# honest answer was "none exists". This turns that into "32 min of about 170",
+# which is a CLOCK ESTIMATE and is published under a name that says so.
+VERIFY_MB_PER_S = 4.1
 
 
 def _resumable(dest: Path, stems: set) -> tuple | str:
@@ -1191,6 +1199,13 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
                 "pairs_per_min": round((done - len(already)) / mins, 2),
                 "resumed": len(already),
                 "restarted_because": fresh_because,
+                # A CLOCK ESTIMATE, never a measurement — the name says so
+                # because `label-must-match-data` is the rule this would
+                # break first. Only while verifying, where no progress of any
+                # kind exists to report.
+                "verify_estimate_s": (
+                    round(dest.stat().st_size / (VERIFY_MB_PER_S * 1e6))
+                    if phase == "verifying" and dest.exists() else None),
             }), encoding="utf-8")
 
     # RESUME, or start clean and say why. A kill leaves the partial file with

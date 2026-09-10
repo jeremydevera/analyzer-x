@@ -2495,7 +2495,7 @@ def panic_stop(*, fx=None, close_positions: bool = True) -> dict:
                        # history reads exit rows only, so without them the
                        # LONG/SHORT column was empty for every closed trade.
                        # Same reasoning for the id and the opening time.
-                       "trade_id": trade_id_of(symbol, pos), "opened_at": _pop,
+                       "trade_id": trade_id_of(symbol, pos), "entry_ts": pos.get("entry_ts"), "opened_at": _pop,
                        "held_s": (int(time.time()) - int(_pop)) if _pop
                                  else None,
                        "side": "LONG" if pos.get("side", 0) > 0 else "SHORT",
@@ -3618,6 +3618,7 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                            # including a position opened before the rule
                            # changed on Sep 10, 2026
                            "trade_id": trade_id_of(symbol, pos),
+                           "entry_ts": pos.get("entry_ts"),
                            "opened_at": _op,
                            "held_s": (int(time.time()) - int(_op)) if _op
                                      else None,
@@ -3978,7 +3979,8 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
         _opened_at = int(time.time())
         # The trade's identity, minted ONCE here and carried to its exit row,
         # so the history table can name a trade and say when it opened.
-        _tid = trade_code(symbol, key, last_ts, side, bool(dry))
+        _entry_bar = int(last_ts)
+        _tid = trade_code(symbol, key, _entry_bar, side, bool(dry))
         st["position"] = {"side": side, "vol": vol, "entry": entry,
                           "tp": tp_px, "sl": sl_px, "margin": margin,
                           # what getting in and out of THIS contract costs,
@@ -3997,6 +3999,13 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
         # the ledger read `forced_close 8:45` then `enter 8:45` — the story
         # backwards, because the bracket (and its failure handling) ran first
         append_ledger({"symbol": symbol, "action": "enter", "strategy": key,
+                       # THE ENTRY BAR, recorded. The id is hashed from it, and
+                       # without it in the row the ledger could not reproduce
+                       # its own ids: a re-stamp fell back to the wall clock
+                       # (8:30:14pm) while the position held the bar (8:15pm),
+                       # so the id on screen could not be found in the history
+                       # (Sep 10, 2026).
+                       "entry_ts": _entry_bar,
                        "trade_id": _tid, "opened_at": _opened_at,
                        "side": "LONG" if side > 0 else "SHORT", "vol": vol,
                        "entry": entry, "tp": round(tp_px, 6),
@@ -4237,7 +4246,7 @@ def reconcile_unconfigured(settings: dict, state: dict, *, fx) -> None:
         _rop = pos.get("opened_at") or pos.get("entry_ts")
         append_ledger({"symbol": symbol, "action": "exit", "why": "RECONCILED",
                        "strategy": pos.get("strategy"),
-                       "trade_id": trade_id_of(symbol, pos), "opened_at": _rop,
+                       "trade_id": trade_id_of(symbol, pos), "entry_ts": pos.get("entry_ts"), "opened_at": _rop,
                        "held_s": (int(time.time()) - int(_rop)) if _rop
                                  else None,
                        "side": "LONG" if pos.get("side", 0) > 0 else "SHORT",

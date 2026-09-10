@@ -76,3 +76,29 @@ def test_the_closed_trade_carries_the_same_copyable_id():
     h = open(HIST, encoding="utf-8").read()
     assert "copy this trade's id" in h
     assert "writeText(String(r.id))" in h
+
+
+def test_the_history_names_the_strategy_id_too():
+    """Operator, Sep 10, 2026: *"in trade history expose the strategy id as
+    well"*. A closed trade could be named (`id`) but not traced back to the
+    row that took it — the #code the strategies grid and the positions table
+    both print. One combination, one name, on every screen: the same
+    `row_id_for`, never a second hash."""
+    import inspect
+
+    from tradingagents import api
+
+    src = inspect.getsource(api.trade_history)
+    assert '"strategy_id": _strategy_id(' in src
+    assert "row_id_for(key, symbol, _settings)" in src, \
+        "the SAME id function the other two tables use"
+    assert "at.load_settings()" in src.split("for e in ex:")[0], \
+        "read once, not per row — this loop walks the whole book"
+
+    t = open("webapp/src/lib/api.ts", encoding="utf-8").read()
+    i = t.index("export interface HistoryRow")
+    assert "strategy_id?: string;" in t[i:i + 900]
+    h = open("webapp/src/components/trade/TradeHistory.tsx", encoding="utf-8").read()
+    assert "<CopyableId id={r.strategy_id} />" in h, "the ONE copy control"
+    assert 'import CopyableId from "./CopyableId";' in h
+    assert "{r.strategy_id ?" in h, "a key the runner does not know prints nothing"

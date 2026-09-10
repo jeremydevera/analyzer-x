@@ -135,6 +135,14 @@ export interface StrategyRow {
    *  ends where its measurement ends, not where the candle file does */
   w_first_ms?: number;
   w_last_ms?: number;
+  /** WHEN THIS ROW WAS LAST BACKTESTED — from the pair summary, so every row
+   *  of the same coin+timeframe shares it.
+   *  `measured_ms` is the last CANDLE the backtest tested (what decides
+   *  whether a "last 30 days" window is real); `measured_run_ms` is when that
+   *  coin's results were last written. Undefined means UNKNOWN, and the screen
+   *  prints a dash — never a zero, which would read as `Jan 01, 1970`. */
+  measured_ms?: number;
+  measured_run_ms?: number;
   w_streak?: number;
   w_streak_len?: number;
   w_dd?: number;
@@ -720,6 +728,14 @@ export const api = {
     /** the DAYS window, so the file holds the same measurement the table
      *  showed rather than every row's whole history */
     days?: number; months?: number;
+    /** HOW FRESH THE MEASUREMENT IS, in days. Operator, Sep 10, 2026: *"my
+     *  goal is to filter on when was the last backtest for each strategy,
+     *  because even i filter last 30 days some of them was last backtested 3
+     *  weeks ago which is obsolete"*. Measured on their store that minute:
+     *  EPIK-30m last measured `Aug 26, 2026 3:30am`, BICO-15m `Sep 10, 2026
+     *  9:45am` — 15.8 days apart, so a 30-day window on the first ENDS 15.8
+     *  days ago. 7 keeps only coins backtested within the last week. */
+    measuredDays?: number;
     sizing?: string; rowId?: string; desc?: boolean;
     /** the download has to carry the same group as the table it came from */
     group?: "preset" | "classic";
@@ -750,6 +766,9 @@ export const api = {
     // than the screen it came from (kit item G).
     if (q.months) p.set("months", String(q.months));
     else if (q.days) p.set("days", String(q.days));
+    // the FRESHNESS filter travels too, or the file holds stale rows the
+    // table had already cut — the same way the window was dropped on Sep 09
+    if (q.measuredDays) p.set("measured_days", String(q.measuredDays));
     if (q.desc !== undefined) p.set("desc", String(q.desc));
     return `${API_BASE}/api/strategies.csv?${p.toString()}`;
   },
@@ -795,6 +814,14 @@ export const api = {
     /** "flat" or "martingale" — the ladder is a sizing CHOICE, not a
      *  measurement (rule 19), so it has to be possible to see one alone */
     sizing?: string;
+    /** HOW FRESH THE MEASUREMENT IS, in days. Operator, Sep 10, 2026: *"my
+     *  goal is to filter on when was the last backtest for each strategy,
+     *  because even i filter last 30 days some of them was last backtested 3
+     *  weeks ago which is obsolete"*. Measured on their store that minute:
+     *  EPIK-30m last measured `Aug 26, 2026 3:30am`, BICO-15m `Sep 10, 2026
+     *  9:45am` — 15.8 days apart, so a 30-day window on the first ENDS 15.8
+     *  days ago. 7 keeps only coins backtested within the last week. */
+    measuredDays?: number;
     /** ONE row by the code in its first column (#6YACZSXX). It overrides every
      *  other filter — kit item H, and how a row is quoted without ambiguity */
     rowId?: string;
@@ -826,6 +853,7 @@ export const api = {
     if (q.asset) p.set("asset", q.asset);
     if (q.months) p.set("months", String(q.months));
     if (q.days) p.set("days", String(q.days));
+    if (q.measuredDays) p.set("measured_days", String(q.measuredDays));
     if (q.sizing) p.set("sizing", q.sizing);
     if (q.group) p.set("group", q.group);
     if (q.rowId) p.set("row_id", q.rowId);
@@ -1172,6 +1200,11 @@ export interface HistoryRow {
   /** Stable 8-char trade id, its opening time and how long it was held —
    *  stored on the ledger row itself, not derived for display. */
   id?: string; opened?: string; held?: string;
+  /** the STRATEGY's own id for this coin (`#PNK3G9KZ`), the same one the
+   *  strategies grid and the positions table print — so a closed trade can
+   *  be traced back to the row that took it, and pasted into a report's
+   *  find-by-ID box. Empty for a key the runner does not know. */
+  strategy_id?: string;
 }
 
 export interface MonthRow {

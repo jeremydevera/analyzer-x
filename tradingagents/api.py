@@ -293,6 +293,14 @@ def strategies(coin: str | None = None, tf: str | None = None,
                sizing: str | None = None, row_id: str | None = None,
                group: str | None = None,
                months: int = 0, days: int = 0,
+               # HOW FRESH THE MEASUREMENT IS. Operator, Sep 10, 2026: *"my
+               # goal is to filter on when was the last backtest for each
+               # strategy, because even i filter last 30 days some of them was
+               # last backtested 3 weeks ago which is obsolete"*. Measured on
+               # their store the same minute: EPIK-30m last measured Aug 26,
+               # BICO-15m Sep 10 — 15.8 days apart, so a 30-day window on the
+               # first ends 15.8 days ago.
+               measured_days: int = 0,
                desc: bool | None = None) -> dict:
     """Every stored strategy, filtered. Rows carry their stable id.
 
@@ -315,7 +323,8 @@ def strategies(coin: str | None = None, tf: str | None = None,
                        max_tp=max_tp, sizing=sizing, row_id=row_id,
                        group=group, max_sl=max_sl, months=months, desc=desc,
                        min_tp=min_tp, min_sl=min_sl,
-                       tp_over_sl=tp_over_sl, asset=asset or None)
+                       tp_over_sl=tp_over_sl, asset=asset or None,
+                       measured_days=measured_days)
     except ri.SortNotReady as exc:
         # 503: the request is fine, the store is not ready for it yet.
         # The screen shows this sentence rather than hanging on a sort
@@ -352,6 +361,11 @@ def strategies(coin: str | None = None, tf: str | None = None,
     # the request says why, rather than a table where some rows are the window
     # and others are their whole history.
     got["days"] = 0
+    # ECHOED, not assumed: the panel sets its "served filters" from what came
+    # BACK, because `applied` and `served` differ every time a request fails
+    # and the old rows stay on screen under the new filter's label
+    # (label-must-match-data, paid for on 2026-08-27).
+    got["measured_days"] = int(measured_days or 0)
     if days and not months:
         from tradingagents import market_sweep as msw
 
@@ -399,7 +413,8 @@ def _screen_note(event: str, args: dict, got: dict, took: float) -> None:
         asked = {k: args.get(k) for k in (
             "coin", "tf", "signal", "profitable", "min_trades", "min_winrate",
             "max_tp", "max_sl", "min_tp", "min_sl", "tp_over_sl", "asset",
-            "sizing", "group", "row_id", "months", "days", "sort", "desc")}
+            "sizing", "group", "row_id", "months", "days", "measured_days",
+            "sort", "desc")}
         rows = got.get("rows") or []
         summary = {
             "rows": len(rows), "total": got.get("total"),
@@ -424,7 +439,7 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                          max_tp=0, sizing=None, row_id=None, group=None,
                          max_sl=0, days=0,
                          desc=None, batch=5_000, min_tp=0, min_sl=0,
-                         tp_over_sl=False, asset=None):
+                         tp_over_sl=False, asset=None, measured_days=0):
     """The CSV, one chunk at a time — a module-level generator on purpose.
 
     Inside the route it was only reachable through StreamingResponse's ASYNC
@@ -440,13 +455,18 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
     import json as _json
     import time as _time
 
-    from tradingagents import rows_index as ri
+    from tradingagents import positions_view as pv, rows_index as ri
 
     # kit item F: every row carries every column, the file included. `balanced`
     # is derived, so it is appended rather than living in ri.COLS (the table's
     # own shape) — and `iter_rows` does not compute it, so the CSV rates each
     # row here with the same function the grid used.
     cols = list(ri.COLS)
+    # WHEN THE ROW WAS LAST BACKTESTED, on every row, always — not only when
+    # the freshness filter is on. A file read a week later has to be able to
+    # answer "was this stale when it was exported?" (operator, Sep 10, 2026:
+    # *"when i do backtest make sure to show the last backtest"*).
+    cols += ["measured_through", "last_backtest_run"]
     if days:
         # the window travels with the rows, so the file can be read a week
         # later without guessing which days it covered
@@ -499,8 +519,16 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                               desc=desc, batch=batch,
                               min_tp=min_tp, min_sl=min_sl,
                               tp_over_sl=tp_over_sl, asset=asset,
+                              measured_days=measured_days,
                               stats=stats):
             score, why = ri.balanced_score(r)
+            # THE PROJECT'S ONE DATE FORMAT (`Aug 03, 2026 8:03pm`), never a
+            # raw epoch and never `strftime` — CLAUDE.md's date rule, which
+            # has been broken by hand-rolled copies four times.
+            r["measured_through"] = (pv.fmt_when(r["measured_ms"] / 1000)
+                                     if r.get("measured_ms") else None)
+            r["last_backtest_run"] = (pv.fmt_when(r["measured_run_ms"] / 1000)
+                                      if r.get("measured_run_ms") else None)
             _watch.see(r)
             w.writerow([r.get(c) for c in cols] + [score, why]
                        + [_json.dumps(r.get("monthly") or {},
@@ -603,6 +631,7 @@ def strategies_csv(coin: str | None = None, tf: str | None = None,
                    asset: str | None = None,
                    sizing: str | None = None, row_id: str | None = None,
                    group: str | None = None, months: int = 0, days: int = 0,
+                   measured_days: int = 0,
                    desc: bool | None = None):
     """EVERY matching row as CSV — no limit, streamed.
 
@@ -645,7 +674,8 @@ def strategies_csv(coin: str | None = None, tf: str | None = None,
                             group=group, max_sl=max_sl,
                             min_tp=min_tp, min_sl=min_sl,
                             tp_over_sl=tp_over_sl, asset=asset,
-                            days=0 if months else days, desc=desc),
+                            days=0 if months else days,
+                            measured_days=measured_days, desc=desc),
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
@@ -2425,6 +2455,24 @@ def trade_history(dry: bool = False, per_page: int = 5, page: int = 1) -> dict:
         if not prior:
             return "—"
         return str(prior[-1].get("side") or "—")
+    # THE STRATEGY'S OWN ID, beside the trade's (operator, Sep 10, 2026:
+    # "in trade history expose the strategy id as well"). The same
+    # `row_id_for` the strategies grid and the positions table use, so one
+    # combination has one name on every screen — and it is the id to paste
+    # into a report's find-by-ID box. Settings are read ONCE: this loop runs
+    # over the whole book.
+    _settings = at.load_settings()
+    _sid: dict = {}
+
+    def _strategy_id(key: str, symbol: str) -> str:
+        k = (key, symbol)
+        if k not in _sid:
+            try:
+                _sid[k] = row_id_for(key, symbol, _settings)
+            except Exception:                                  # noqa: BLE001
+                _sid[k] = ""
+        return _sid[k]
+
     run, rows, months = 0.0, [], {}
     for e in ex:
         p = round(float(e.get("pnl_est") or 0), 2)
@@ -2444,6 +2492,11 @@ def trade_history(dry: bool = False, per_page: int = 5, page: int = 1) -> dict:
             "coin": str(e.get("symbol", "?")).replace("_USDT", ""),
             "side": _side_for(e),
             "strategy": e.get("strategy") or "—",
+            # blank when the key is not one the runner knows (an adopted
+            # exchange position): a real-looking id that matches no
+            # combination is worse than no id
+            "strategy_id": _strategy_id(str(e.get("strategy") or ""),
+                                        str(e.get("symbol") or "")),
             "why": e.get("why") or "—",
             "profit": p, "running": run})
         key = dt.datetime.fromtimestamp(float(e.get("ts") or 0)).strftime("%Y-%m")

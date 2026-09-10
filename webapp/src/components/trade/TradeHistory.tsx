@@ -8,6 +8,7 @@
 import { useEffect, useState } from "react";
 import { markReady } from "@/lib/loading";
 import { useLiveRefresh } from "@/lib/live";
+import CopyableId from "./CopyableId";
 import PanelStatus from "./PanelStatus";
 import { fmtMoney, HistoryPayload, tradeApi } from "@/lib/api";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
@@ -98,7 +99,15 @@ export default function TradeHistory() {
                 <TableCell className="whitespace-nowrap px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.held ?? "—"}</TableCell>
                 <TableCell className="px-2 py-1.5 text-theme-xs font-medium text-gray-800 dark:text-white/90">{r.coin}</TableCell>
                 <TableCell className={`px-2 py-1.5 text-theme-xs ${r.side === "LONG" ? "text-success-600" : "text-error-500"}`}>{r.side}</TableCell>
-                <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.strategy}</TableCell>
+                {/* the strategy AND its own id (operator, Sep 10, 2026: "in
+                    trade history expose the strategy id as well") — the same
+                    #code the strategies grid and the positions table print,
+                    through the same copy control, so a closed trade can be
+                    traced to the row that took it */}
+                <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">
+                  {r.strategy_id ? <CopyableId id={r.strategy_id} /> : null}
+                  <span className="block leading-tight">{r.strategy}</span>
+                </TableCell>
                 <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.why}</TableCell>
                 <TableCell className={`px-2 py-1.5 text-theme-xs font-semibold ${r.profit >= 0 ? "text-success-600" : "text-error-500"}`}>{fmtMoney(r.profit)}</TableCell>
                 <TableCell className={`px-2 py-1.5 text-theme-xs ${r.running >= 0 ? "text-success-600" : "text-error-500"}`}>{fmtMoney(r.running)}</TableCell>

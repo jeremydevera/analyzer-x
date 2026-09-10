@@ -744,3 +744,14 @@ for _n in _NAMES:
     CONF_SIGNALS[f"cf_{_n}"] = _gated(_n, 0)
     CONF_SIGNALS[f"cf_{_n}_l1"] = _gated(_n, 1)
     CONF_SIGNALS[f"cf_{_n}_l2"] = _gated(_n, 2)
+
+# THE NON-LINEAR COMBINATIONS (`cx_*`, Sep 11, 2026). Cascades, votes and
+# vetoes built FROM the setups above — see tradingagents/signals_cascade.py
+# for what each one is and why those members. They register into the same
+# dict on purpose: the grid and the runner both walk CONF_SIGNALS, so a rule
+# added here is measurable and tradeable without touching either dispatcher.
+# The pieces are handed over rather than imported back, so there is no cycle.
+from tradingagents.signals_cascade import build_cascades  # noqa: E402
+
+CONF_SIGNALS.update(build_cascades(_SETUPS, _bundle, _level1, _level2_hits,
+                                   _ok, _zeros))

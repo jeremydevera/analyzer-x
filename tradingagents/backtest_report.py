@@ -85,6 +85,13 @@ SIGNALS = [
     "cf_obretest", "cf_obretest_l1", "cf_obretest_l2",
     "cf_diadx", "cf_diadx_l1", "cf_diadx_l2",
     "cf_stflip", "cf_stflip_l1", "cf_stflip_l2",
+    # THE NON-LINEAR COMBINATIONS (operator, Sep 11, 2026: "make sure the
+    # formula for the strategy is not linear ... if confluence 1 is met then
+    # open else if confluence 2 is met open as well"). Priority cascades,
+    # votes and vetoes built from the setups above —
+    # tradingagents/signals_cascade.py says what each one is.
+    "cx_first", "cx_firstr", "cx_any2", "cx_maj3", "cx_esc",
+    "cx_veto", "cx_lvl", "cx_4h", "cx_fast", "cx_both",
 ]
 THRESH_SIGNALS = {"mom6", "mom15", "fade15"}
 

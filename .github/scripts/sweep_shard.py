@@ -763,7 +763,12 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
                         f_ms=f_ms, f_cum=f_cum, bar_ms=ts, with_trades=True)
                 except Exception:
                     continue
-                for sz in ("flat", "martingale"):
+                # the SIZINGS REGISTRY, never a literal. Operator, Sep 11, 2026:
+                # "i only want flat so you will need to delete marigingalte for
+                # my backtest as well" — and a hardcoded pair here would keep
+                # twenty machines measuring the ladder for weeks after the grid
+                # stopped asking for it (CLAUDE.md rules 18-19).
+                for sz in br.SIZINGS:
                     r = six[sz]["full"]
                     # THE SAVED POSITION, from the same walk: what the next
                     # UPDATE continues from (fast_grid.end_state, parity-pinned

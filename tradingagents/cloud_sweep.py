@@ -682,6 +682,23 @@ def land_rows(coin: str, tf: str, rows: list, *, marks=(), append: bool = False)
 
     marks = list(marks or [])
     rows = list(rows or [])
+    # ONLY THE SIZINGS THE GRID STILL ASKS FOR. Operator, Sep 11, 2026: *"i
+    # only want flat so you will need to delete marigingalte for my backtest as
+    # well"*. The door is the right place for this: a run dispatched BEFORE
+    # `SIZINGS` was cut to ("flat",) is still out there measuring the ladder,
+    # and with the merge rule above a landed martingale row would live in the
+    # pair file for ever. Filtering here means the purge stays purged whatever
+    # the fleet sends.
+    from tradingagents import backtest_report as br
+
+    keep = set(br.SIZINGS)
+    dropped = [r for r in rows if str(r.get("sizing") or "") not in keep]
+    if dropped:
+        rows = [r for r in rows if str(r.get("sizing") or "") in keep]
+        logger.info("%s %s: dropped %d row(s) at sizings the grid no longer "
+                    "measures (%s)", coin, tf, len(dropped),
+                    ", ".join(sorted({str(r.get("sizing"))
+                                      for r in dropped})))
     if not rows and not marks:
         return "stale"
     last_ms = max([int(r.get("last_ms") or 0) for r in rows + marks] or [0])

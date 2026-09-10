@@ -99,6 +99,12 @@ def _fast(df, dirs, *, tp, sl, liq, fund):
         liq=None if liq is None else abs(liq) / 100.0, half=len(df) // 2,
         base=5.0, lev=at.LEVERAGE, fee=0.0004 + 0.0003,
         ladder=at.ladder_margin, mo_idx=mo_idx, mo_labels=order,
+        # BOTH sizings, explicitly. The grid measures flat only since Sep 11,
+        # 2026 (the operator cut the ladder), but this file's whole job is
+        # proving `combo_six` reproduces `backtest_strategy` trade for trade —
+        # and the ladder maths is the harder half of that proof. Asking for it
+        # here keeps the proof; `br.SIZINGS` decides what is MEASURED.
+        sizings=("flat", "martingale"),
         f_ms=f_ms, f_cum=f_cum, bar_ms=ms)
 
 
@@ -209,6 +215,7 @@ def _fast_state(df, dirs, *, tp, sl, sizing, liq, fund):
         liq=None if liq is None else abs(liq) / 100.0, half=len(df) // 2,
         base=5.0, lev=at.LEVERAGE, fee=0.0004 + 0.0003,
         ladder=at.ladder_margin, mo_idx=mo_idx, mo_labels=order,
+        sizings=("flat", "martingale"),   # see above: the parity proof needs both
         f_ms=f_ms, f_cum=f_cum, bar_ms=ms, with_trades=True)
     return fg.end_state(six["trades"], base=5.0, lev=at.LEVERAGE,
                         fee=0.0004 + 0.0003, sizing=sizing,

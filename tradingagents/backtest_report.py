@@ -135,21 +135,34 @@ def _grid(sls, tps):
     return sorted((sl, tp) for sl in sls for tp in tps)
 
 
-# The two ways a position is sized, and the only two values the `sizing`
-# column ever holds. Named here because the operator asked to FILTER by it
-# ("i want filter to see flat / martingale", 2026-08-27) and a dropdown built
-# from a literal in the browser is a label that can drift from the data.
-# Rule 19: flat is always tested — the ladder is a sizing choice, not a
-# measurement.
-SIZINGS: tuple[str, ...] = ("flat", "martingale")
+# HOW A POSITION IS SIZED. **FLAT ONLY**, on the operator's instruction,
+# Sep 11, 2026: *"can you delete the maritingale strategy moving forward i
+# waill not use it any more i only want flat so you will need to delete
+# marigingalte for my backtest as well"*.
+#
+# This replaces the Aug 19, 2026 directive that every strategy request tests
+# BOTH sizings (CLAUDE.md rules 18-19, updated in the same commit). The reason
+# the ladder was ever in the grid is the reason it is now out: rule 19's own
+# audit showed the "13/13 green months" behind six live strategies was produced
+# by the ladder, not by the signal (flat: 7/12-11/12). A sizing choice that
+# flatters every signal it touches is not a measurement, and the operator has
+# stopped using it.
+#
+# Two consequences, both wanted:
+# * every sweep measures HALF as many combinations, so a market-wide run costs
+#   half the machine time it did;
+# * the `sizing` filter offers what the grid produces, so the dropdown cannot
+#   offer a value nothing is measured at.
+#
+# The runner's ladder code is untouched: none of the operator's 35 deployed
+# strategies uses it (all 35 read `flat`), and removing a live execution path
+# is a separate change from removing a measurement dimension.
+#
+# It was DEFINED TWICE in this file, eight lines apart, the second shadowing
+# the first — two copies of one rule, which is the shape this repo has paid for
+# repeatedly. One definition now.
+SIZINGS: tuple[str, ...] = ("flat",)
 
-# The two ways a position is sized, and the only two values the `sizing`
-# column ever holds. Named here because the operator asked to FILTER by it
-# ("i want filter to see flat / martingale", 2026-08-27) and a dropdown built
-# from a literal in the browser is a label that can drift from the data.
-# Rule 19: flat is always tested — the ladder is a sizing choice, not a
-# measurement.
-SIZINGS: tuple[str, ...] = ("flat", "martingale")
 
 BARRIERS: dict[str, list[tuple[float, float]]] = {
     "15m": _grid([.001, .002, .003, .004, .005, .006, .008, .010, .012, .015],

@@ -1066,7 +1066,14 @@ export default function StrategiesPanel() {
                 <select className={sel} value={sizing}
                         onChange={(e) => setSizing(e.target.value)}
                         aria-label="Sizing">
-                  <option value="">flat and martingale</option>
+                  {/* the OPTIONS come from the store (facets.sizings), so
+                      this default cannot promise a sizing the grid no longer
+                      measures. It read "flat and martingale" until Sep 11,
+                      2026, when the operator cut the ladder from the grid:
+                      "i only want flat". Old martingale rows survive until
+                      they are purged, so the label says ANY rather than
+                      naming either one. */}
+                  <option value="">any sizing</option>
                   {(facets.sizings ?? []).map((z) => (
                     <option key={z} value={z}>{z} only</option>
                   ))}

@@ -253,6 +253,7 @@ def end_state(trades: list[tuple], *, base: float, lev: int, fee: float,
 
 
 def combo_six(dirs_idx, dirs, opens, high, low, close, *, tp, sl, liq,
+              sizings=None,
               half, base, lev, fee, ladder, mo_idx, mo_labels,
               f_ms=None, f_cum=None, bar_ms=None,
               with_trades: bool = False) -> dict:
@@ -286,7 +287,15 @@ def combo_six(dirs_idx, dirs, opens, high, low, close, *, tp, sl, liq,
     h2 = walk(dirs_idx, dirs, opens, high, low, close,
               tp=tp, sl=sl, liq=liq, start=half, **kw)
     out = {}
-    for sz in ("flat", "martingale"):
+    from tradingagents import backtest_report as br
+
+    # WHICHEVER SIZINGS THE CALLER ASKED FOR, defaulting to the grid's own
+    # registry — which the operator cut to ("flat",) on Sep 11, 2026, halving
+    # this function's work. `sizings=` exists so the engine-parity tests can
+    # still prove the ladder maths matches `backtest_strategy`: the capability
+    # is correct and proven, it is simply not in the grid any more, and
+    # deleting a proven path is a different decision from not measuring it.
+    for sz in (sizings or br.SIZINGS):
         d = {"base": base, "lev": lev, "fee": fee, "sizing": sz, "ladder": ladder,
                  "mo_idx": mo_idx, "mo_labels": mo_labels}
         out[sz] = {"full": derive(full, **d), "h1": derive(h1, **d),

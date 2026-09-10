@@ -720,10 +720,24 @@ rate-limit it (`_say_once`) and count it somewhere the operator reads.
     All coins × timeframes **15m, 30m, 1h, 4h, 1d** × **every signal in
     `backtest_report.SIGNALS`** (75 as of 2026-08-19 — read the registry, never hardcode
     the count; it grows via the research rule in the analyze skills) × **≥3 TP/SL pairs per
-    timeframe** × **both sizings (flat AND martingale)**. One combination = coin +
-    timeframe + signal + TP + SL + sizing, and every one of those six fields varies.
-19. **Flat sizing is always tested.** The martingale ladder is a sizing choice, not a
-    measurement: an audit proved the "13/13 green months" behind six live strategies was
-    produced by the ladder, not the signal (flat: 7/12–11/12).
+    timeframe** × **FLAT SIZING ONLY**. One combination = coin + timeframe +
+    signal + TP + SL + sizing, and every one of those six fields varies.
+19. **FLAT ONLY — the martingale ladder is out of the grid (operator, 2026-09-11):**
+    *"can you delete the maritingale strategy moving forward i waill not use it any
+    more i only want flat so you will need to delete marigingalte for my backtest as
+    well"*. This REPLACES the 2026-08-19 directive to test both sizings, and the
+    reason the ladder was ever measured is the reason it is now gone: an audit proved
+    the "13/13 green months" behind six live strategies was produced by the ladder,
+    not the signal (flat: 7/12–11/12). A sizing choice that flatters every signal it
+    touches is not a measurement.
+    `backtest_report.SIZINGS` is `("flat",)` — ONE definition (it was declared twice
+    in that file, eight lines apart, the second shadowing the first). Every sweep
+    therefore measures half as many combinations as it used to, and the `sizing`
+    filter offers only what the grid produces.
+    The RUNNER's ladder code is untouched: all 35 of the operator's deployed
+    strategies read `flat`, and removing a live execution path is a different change
+    from removing a measurement dimension. Existing martingale rows are purged from
+    the store separately — with the merge rule of RCA-2026-09-11-B in place, a sweep
+    that stops producing them no longer removes them by itself.
 20. **Never drop a dimension silently.** Pre-filter coins by the liquidity gate per
     timeframe and state how many were excluded and why. A capped grid says what it capped.

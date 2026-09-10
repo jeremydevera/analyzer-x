@@ -1325,10 +1325,25 @@ export default function StrategiesPanel() {
           showing an empty table the reader has to explain to themselves */}
       {!err && !waiting && !shown.length && !!servedFilters.rowId && !missed && (
         <p className="px-5 pt-2 text-theme-sm text-warning-600 dark:text-warning-400">
-          no row <b>#{servedFilters.rowId}</b> in the store. The id is hashed
-          from the combination, so it changes if the row was re-measured with
-          different barriers — check it against the first column of the table
-          or the artifact you copied it from.
+          {/* THIS MESSAGE USED TO GUESS. It asserted "it changes if the row
+              was re-measured with different barriers" — a cause nobody had
+              checked, presented as a fact, with nothing to do about it.
+              Operator, Sep 10, 2026: *"why is #PNK3G9KZ not searchable ... im
+              getting tired of these errors"*. For that id the real answer was
+              that NO combination in the current grid mints it at all —
+              148,773,240 checked — so "check it against the table" was advice
+              that could never work. It now says only what is known, and names
+              the one command that finds out the rest. */}
+          no row <b>#{servedFilters.rowId}</b> in the store. An id names one
+          exact combination — coin, timeframe, signal, TP, SL and sizing — so
+          it exists only while that row does.{" "}
+          <code className="rounded bg-gray-100 px-1 dark:bg-white/[0.06]">
+            python -m tradingagents.rows_index resolve {servedFilters.rowId}
+          </code>{" "}
+          says which it is: a typo, a real combination whose row is gone (it
+          names the coin, so you can re-measure that pair), or an id from an
+          older grid that nothing can find. Meanwhile, filter by the coin and
+          timeframe you copied it from.
         </p>
       )}
       {!err && !waiting && !shown.length && !servedFilters.rowId && chips.length > 0 && (

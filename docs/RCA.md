@@ -172,6 +172,112 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-10-M — "no row #PNK3G9KZ in the store" told the operator a cause nobody had checked
+
+**CEO**
+
+* You searched an id, got told it was probably "re-measured with different
+  barriers", and were told to check it against the table — advice that could
+  never have worked for that id. You said you were tired of these errors, and
+  the message was the error.
+* Measured afterwards: **none** of the **152,315,460** strategy combinations
+  your grid can currently produce make that id, on any of your 5,367
+  coin+timeframes. So it did not come from this grid at all, and no amount of
+  looking at the table would have found it.
+* There is now a command that answers the question properly, and the message
+  points at it: it says whether the id is a typo, a real strategy whose row is
+  gone (naming the coin so you can re-measure it), or an id nothing here can
+  produce — with the number of combinations it checked.
+
+**DEV**
+
+* `StrategiesPanel.tsx`'s id-miss branch printed *"The id is hashed from the
+  combination, so it changes if the row was re-measured with different
+  barriers — check it against the first column of the table"*. Two faults: the
+  CAUSE was asserted without any check (for `PNK3G9KZ` it was false), and the
+  ACTION was impossible. Established by measurement:
+  `SELECT ... WHERE id = 'PNK3G9KZ'` → 0 rows with `rows_id` present, then
+  152,315,460 grid candidates hashed → 0 matches in 166 s.
+* Broken invariant: **an error message states what is KNOWN and names an
+  action that can work.** A guessed cause in a fixed string is
+  `label-must-match-data` with no data at all behind it.
+* Guard: `tests/test_an_unknown_row_id_is_explained.py` (8) —
+  `test_the_message_no_longer_asserts_a_cause_it_did_not_check` rejects the old
+  sentence and requires the command; `test_a_combination_whose_row_is_GONE_is_still_named`;
+  `test_an_id_no_grid_can_mint_says_exactly_that`;
+  `test_a_typo_is_told_apart_from_a_miss` (and that a typo does not burn 166 s);
+  `test_a_pasted_id_resolves_like_a_typed_one`;
+  `test_it_is_never_called_from_a_request` (AST-walks `api` — 166 s on a polled
+  route would be RCA-L again).
+
+**SAW** — the operator, quoting their own screen: *"why is #PNK3G9KZ not
+searchable it says no row #PNK3G9KZ in the store. The id is hashed from the
+combination, so it changes if the row was re-measured with different barriers
+— check it against the first column of the table or the artifact you copied it
+from. / im getting tired of these errors"*.
+
+**TIMELINE**
+
+1. `Sep 10, 2026 ~10:00pm` — the find-by-id box returns nothing for
+   `#PNK3G9KZ` and prints the guessed cause.
+2. `10:02pm` — measured: `clean_row_id` returns `PNK3G9KZ` unchanged (8 chars,
+   valid alphabet), `rows_id` EXISTS on the rebuilt store, and a direct
+   `WHERE id = ?` finds **0 rows**. So the lookup is healthy and the row is
+   genuinely absent.
+3. `10:05pm` — two scans started (57 GB of pair files; the pre-rebuild index
+   copies). Both saturated the disk and slowed every other command — the
+   RCA-I mistake, made again by me — and were killed.
+4. `10:20pm` — changed approach: the id is not opaque. `row_code` is
+   `blake2s(coin|tf|signal|th|sl|tp|sizing, 5 bytes)` in base32, so the 8
+   characters ARE that 40-bit number and the grid can be enumerated against it
+   at 1.0M/s.
+5. `10:28pm` — first pass: 148,773,240 candidates, 0 matches.
+6. `10:41pm` — **the first test written against the new resolver went RED**: a
+   real `mom6` row at threshold `0.000` was not found, because the search tried
+   only each timeframe's threshold grid. That made the 10:28pm answer
+   incomplete. Fixed, re-run: **152,315,460 candidates, 0 matches, 166 s.**
+
+**ROOT CAUSE** — a fixed error string that named a cause. The row id genuinely
+carries no back-pointer, so the panel could not know why a miss happened — and
+instead of saying so, it guessed, in a sentence the operator then read as fact
+and acted on.
+
+**WHY IT WAS NOT CAUGHT** — nothing tests the TEXT of a refusal. Every guard on
+this panel asserts that a filter cuts the right rows or that a label matches a
+figure; a message with no number in it matched no rule. And the guessed cause
+was plausible — ids DO change when barriers change — which is exactly why it
+survived: a wrong explanation that sounds right is invisible until someone
+measures it. The 10:41pm red test is the shape that catches this class: build
+the tool that can check the claim, then test the tool against a real row.
+
+**COST** — no money. The operator's time, twice: once following advice that
+could not work, once telling me they were tired of it. And ~20 minutes of my
+own disk contention (step 3) making the machine slower for them while I looked.
+
+**FIX** — this commit. `rows_index.resolve_row_code(code)` returns
+`well_formed` / `in_store` / `combination` / `searched`;
+`python -m tradingagents.rows_index resolve <id>` prints the answer in the
+operator's terms and exits 0 when it can name the row, 1 when it cannot, 2 on
+misuse; it is documented as NEVER callable from a request. The panel's message
+states only what is known and names that command.
+
+**GUARD** — `tests/test_an_unknown_row_id_is_explained.py`:
+`test_the_message_no_longer_asserts_a_cause_it_did_not_check`,
+`test_a_combination_whose_row_is_GONE_is_still_named`,
+`test_an_id_no_grid_can_mint_says_exactly_that`,
+`test_a_typo_is_told_apart_from_a_miss`,
+`test_a_pasted_id_resolves_like_a_typed_one`,
+`test_a_row_that_IS_there_is_reported_as_there`,
+`test_the_cli_answers_all_three_cases`,
+`test_it_is_never_called_from_a_request`. Stated plainly: **the resolver only
+knows the CURRENT grid.** An id from an older barrier set, a
+renamed signal or a coin no longer in the store still resolves to "nothing here
+mints it" — which is the true answer, but not a satisfying one. A retired-id
+ledger (recording what an id WAS when a re-index removes it) is the real
+repair, and it is not built.
+
+---
+
 ## RCA-2026-09-10-L — the Stored-strategies route spent 267 seconds counting files, on a screen that polls it
 
 **CEO**

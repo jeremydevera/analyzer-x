@@ -25,6 +25,7 @@ here can lose a measurement.
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import json
 import logging
 import os
@@ -1730,6 +1731,119 @@ def clean_row_id(row_id) -> str:
     nothing — a pasted id looked like an id that is not in the store.
     """
     return str(row_id or "").strip().lstrip("#").strip().upper()
+
+
+# ---------------------------------------------------------------- what IS #X?
+# Operator, Sep 10, 2026, after a find-by-id came back empty: *"why is
+# #PNK3G9KZ not searchable it says no row #PNK3G9KZ in the store ... im getting
+# tired of these errors"*. The message they got asserted a CAUSE it had never
+# checked ("it changes if the row was re-measured"), which is a guess wearing a
+# fact's clothes, and it gave them nothing to do.
+#
+# The id is not opaque. `backtest_report.row_code` is
+# `blake2s(coin|tf|signal|th|sl|tp|sizing, 5 bytes)` rendered as 8 base32
+# characters, so the characters ARE that 40-bit number and the number can be
+# compared against the digest directly — no base32 per candidate. The grid is
+# bounded (the pairs the store holds x 120 signals x that timeframe's barriers
+# x 2 sizings x the threshold grid for the three signals that take one), so the
+# question "which combination is this?" is answerable by enumeration.
+#
+# MEASURED on the operator's store: 148,773,240 combinations at 1.0M/s =
+# **144 seconds**, and for #PNK3G9KZ the answer was ZERO matches — that id
+# cannot be minted by the current grid for any coin in the store, so it came
+# from an older barrier set, a coin no longer measured, or a renamed signal.
+# Knowing that is the difference between "look again" and "stop looking".
+RESOLVE_RATE = 1_000_000          # combinations a second, measured
+# Named here so the CLI's "8 characters from N letters and digits" cannot drift
+# from the alphabet row_code actually uses.
+_CODE_ALPHABET_HINT = __import__(
+    "tradingagents.backtest_report", fromlist=["x"])._CODE_ALPHABET
+
+
+def resolve_row_code(code: str, *, pairs=None) -> dict:
+    """Which combination mints this row id, by enumerating the grid.
+
+    **NEVER CALL THIS FROM A REQUEST.** It is ~144 s of CPU on this store — a
+    polled route doing that is pattern 4 in docs/RCA.md, three times paid for.
+    It is a CLI answer (`python -m tradingagents.rows_index resolve <code>`)
+    and a background job, nothing else.
+
+    Returns the shape the screen needs to say something true:
+
+    * `well_formed` — 8 characters, all in the code alphabet. False means a
+      typo or a mangled paste, which is the one case the reader can fix.
+    * `in_store` — the row is indexed right now, so the id is simply findable.
+    * `combination` — coin/tf/signal/th/sl/tp/sizing when the grid can mint it,
+      else None. Not None with `in_store` False means the row was measured
+      away: the combination is real, its row is gone.
+    * `searched` — how many combinations were tried, so the answer can say
+      "148,773,240 and none of them" instead of "no".
+    """
+    from tradingagents import backtest_report as br
+
+    want = clean_row_id(code)
+    alpha = br._CODE_ALPHABET
+    out = {"code": want, "well_formed": False, "in_store": False,
+           "combination": None, "searched": 0}
+    if len(want) != 8 or any(c not in alpha for c in want):
+        return out
+    out["well_formed"] = True
+
+    target = 0
+    for ch in want:
+        target = target * 32 + alpha.index(ch)
+
+    def _seen():
+        with _open(readonly=True) as con:
+            return bool(con.execute(
+                "SELECT 1 FROM rows WHERE id = ? LIMIT 1", (want,)).fetchone())
+    out["in_store"] = bool(_missing_ok(_seen, False))
+
+    if pairs is None:
+        def _pairs():
+            with _open(readonly=True) as con:
+                return [(r[0], r[1]) for r in con.execute(
+                    "SELECT coin, tf FROM pairs "
+                    "WHERE coin IS NOT NULL AND tf IS NOT NULL")]
+        pairs = list(_missing_ok(_pairs, []))
+
+    thresh = set(getattr(br, "THRESH_SIGNALS", ()) or ())
+    ths_by_tf = dict(getattr(br, "THRESHOLDS", {}) or {})
+    suffix: dict = {}
+    for tf, barriers in br.BARRIERS.items():
+        rows = []
+        for signal in br.SIGNALS:
+            # 0.0 BELONGS IN THE GRID FOR A THRESHOLD SIGNAL TOO. This
+            # module's own comment says it: *"a signal with no threshold has
+            # been stored as 0.0 by one sweep and 0.3 by another"*. The first
+            # version of this search tried only the timeframe's grid, so it
+            # could not find `mom6` rows measured at 0.000 — and the very
+            # first test written against it (a real `mom6` row at th 0.0)
+            # went red. Three signals x one extra value is 3.5M more
+            # combinations out of 148M: nothing, against an answer that would
+            # otherwise be confidently wrong.
+            ths = ((0.0, *(ths_by_tf.get(tf) or ()))
+                   if signal in thresh else (0.0,))
+            for th in ths:
+                for sl, tp in barriers:
+                    for sizing in br.SIZINGS:
+                        rows.append((f"|{tf}|{signal}|{float(th):.3f}|"
+                                     f"{float(sl):.3f}|{float(tp):.3f}|"
+                                     f"{sizing}",
+                                     signal, th, sl, tp, sizing))
+        suffix[tf] = rows
+
+    blake, frm = hashlib.blake2s, int.from_bytes
+    for coin, tf in pairs:
+        for suf, signal, th, sl, tp, sizing in suffix.get(tf) or ():
+            out["searched"] += 1
+            if frm(blake((coin + suf).encode(), digest_size=5).digest(),
+                   "big") == target:
+                out["combination"] = {
+                    "coin": coin, "tf": tf, "signal": signal, "th": th,
+                    "sl": sl, "tp": tp, "sizing": sizing}
+                return out
+    return out
 
 
 # The operator's two groups (2026-08-27): "i want to group this new backtests to
@@ -3754,6 +3868,43 @@ def main(argv: list | None = None) -> int:
         with contextlib.suppress(OSError, AttributeError):
             os.nice(10)          # a build must never outrank a click
         return 0 if build_index_now(args[1]) else 1
+
+    # `resolve <code>` answers "what IS this row id?" — ~144 s of CPU, which is
+    # why it lives on the command line and not on a route (see
+    # resolve_row_code). The operator's own case, Sep 10, 2026:
+    #     python -m tradingagents.rows_index resolve PNK3G9KZ
+    #     PNK3G9KZ: well-formed, NOT in the store, and no combination in the
+    #     current grid mints it (148,773,240 searched)
+    if args and args[0] == "resolve":
+        if len(args) < 2:
+            print("usage: -m tradingagents.rows_index resolve <row id>",
+                  flush=True)
+            return 2
+        import time as _rt
+        t0 = _rt.time()
+        got = resolve_row_code(args[1])
+        if not got["well_formed"]:
+            print(f"{got['code']}: NOT a row code — a row id is 8 characters "
+                  f"from {len(_CODE_ALPHABET_HINT)} letters and digits, so "
+                  f"this is a typo or a mangled paste", flush=True)
+            return 1
+        if got["in_store"]:
+            print(f"#{got['code']}: IN the store — searchable now", flush=True)
+            return 0
+        c = got["combination"]
+        if c:
+            print(f"#{got['code']} names {c['coin']} {c['tf']} {c['signal']} "
+                  f"TP {c['tp'] * 100:.3g}% SL {c['sl'] * 100:.3g}% "
+                  f"{c['sizing']} — a real combination whose row is NOT in the "
+                  f"store, so press UPDATE on that pair to measure it back",
+                  flush=True)
+            return 0
+        print(f"#{got['code']}: well-formed, NOT in the store, and NO "
+              f"combination in the current grid mints it "
+              f"({got['searched']:,} searched in {_rt.time() - t0:.0f}s) — it "
+              f"came from an older barrier set, a coin no longer measured, or "
+              f"a signal since renamed. Nothing to search for.", flush=True)
+        return 1
 
     with contextlib.suppress(OSError, AttributeError):
         os.nice(5)

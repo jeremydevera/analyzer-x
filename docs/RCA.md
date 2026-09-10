@@ -29,6 +29,187 @@ this repo is also part of the record.
 
 ---
 
+# WHERE THE BACKTEST STANDS — Sep 10, 2026, in plain words
+
+The operator, mid-session: *"I dont even know what you are doing"* and *"We did
+the github backtest already right? Now what are you doing?"*. Fair. This is the
+whole picture without engineering language.
+
+**The measuring is done. The filing is not.**
+
+There are three steps between pressing UPDATE ALL BACKTESTS and seeing results
+on screen. Only the third has been failing.
+
+| step | who does it | state |
+|---|---|---|
+| 1. Measure on GitHub's 20 machines | the button, via `_run_btupdate` | **works by itself** |
+| 2. Bring the results back to the PC | `cloud_autopilot` collects them | **works by itself** |
+| 3. File them into the searchable list | a background indexer | **this is what keeps breaking** |
+
+Steps 1 and 2 have never needed a person. The store grew from 51,943,352 to
+**52,348,156 rows** during this session with nobody touching it — that is
+proof they run on their own. Everything done by hand this session was step 3.
+
+**What "filing" means.** A result is measured into a per-pair file
+(`BTC-15m.json`). It is not searchable until its rows are copied into
+`rows.db`, the index the Stored strategies screen reads. Until then the result
+exists on disk and no filter can find it.
+
+**Where it stands:** **4,612 of 5,365 coins searchable (86%)**. 753 coins are
+measured and not yet findable.
+
+**Why step 3 keeps breaking — four separate faults, all found today**
+
+1. It went silent for 13 hours behind a database lock and nothing anywhere said
+   why (**RCA-C**). Fixed: the error is kept and shown, the indexer writes a
+   log, the button refuses instead of pretending.
+2. It was doing 3.5x the work it was designed for — 14 indexes maintained per
+   row where the design assumed 4 (**RCA-E**). Fixed, but see 3.
+3. The fix for 2 dropped the indexes the operator's own win-% filter needs, so
+   their filter stopped working (**RCA-F**). Fixed: the drop is opt-in and off
+   by default, and a missing index can no longer read as "nothing matches".
+4. Filing is *still* slow — about one coin every 70 seconds — because 38.8% of
+   the 32 GB index file is holes, so every write hunts for a gap instead of
+   streaming (**RCA-E**, second half). The repair is compaction, which was
+   built this session and **has not worked yet** (**RCA-G**).
+
+**What is fixed and pushed**
+
+* the 13-hour silence, with the log and the honest refusal (`4300962c80f`)
+* the 14-vs-4 index write amplification (`aeb6357ebe4`)
+* a missing index reading as "nothing matches" (`ac62504a8cb`)
+* the sweep window: 30 days by default and the 1-year option removed, after a
+  full-year sweep of the whole market was heading for 4.7 days
+  (`4f18962a5b5`, `dc1a41c26d9`) — that run was cancelled
+* compaction built, with verify-before-swap (`7f9a2773650`)
+
+**What is NOT fixed, stated plainly**
+
+* **filing is still slow.** ~15 hours for the remaining 753 coins.
+* **compaction does not work yet.** It reached 90% of the copy and stopped
+  (RCA-G). Nothing was lost — it never swaps until the copy verifies.
+* **`forget_pairs` still holds one transaction across every pair**, so a
+  delisted-coin cleanup freezes filing until it ends (named in RCA-C, still
+  true).
+* **24.8 GB of dead files** (`rows.prev.db`, `rows.old.db`) are read by nothing
+  and could be deleted.
+
+---
+
+## RCA-2026-09-10-G — the compaction reached 90% and stopped, and it is still not working
+
+**SAW** — nothing on screen. The operator asked *"What is estimated time to
+finish this"*, was told **~14 minutes**, and the answer was wrong by hours.
+
+**TIMELINE**
+
+1. `Sep 10, 2026 05:31:49` — `compact()` started on the real store: 34.69 GB,
+   38.8% free pages, 13.47 GB of holes.
+2. First **30 minutes**: the copy reached **14.73 GB** at ~0.47 GB/min. On that
+   rate the operator was told ~14 minutes remained.
+3. Next **6.4 hours**: the copy reached only **19.16 GB** — 4.4 GB, about
+   **0.011 GB/min**, forty times slower.
+4. `~12:30` — measured over 90 s: **0 MB** of file growth and **0 MB** of disk
+   I/O. Stopping the competing indexer (pid 14316, which had burned 62 min of
+   CPU and 311 GB of I/O against the same spindle) changed nothing: still 0 and
+   0 over the next 90 s.
+5. Stopped it. The incomplete copy and its journal were deleted; `rows.db`
+   remained **32.31 GB**, untouched, and the app kept working throughout.
+
+**ROOT CAUSE** — **not established.** What is known: `VACUUM INTO` holds a read
+snapshot for its whole run, another writer was hammering the same mechanical
+disk for most of it, and the write rate collapsed by 40x rather than stopping
+cleanly. What is not known: whether it was starved by that writer, blocked on
+the 2.64 GB write-ahead log, or stuck inside SQLite. `py-spy` could not attach
+to the process ("Failed to find python version"), so the one tool that would
+have said where it sat was unavailable.
+
+**WHY IT WAS NOT CAUGHT** — the ten tests
+(`tests/test_compact_rebuilds_into_a_fresh_file.py`) all run on a small
+temporary database where `VACUUM INTO` finishes in milliseconds. They prove the
+SAFETY — every row and pair survives, a mismatched copy is thrown away with the
+original intact — and say nothing about whether it completes on a 34 GB file
+with a writer beside it. A green suite here means "it will not lose your data",
+not "it will finish".
+
+**COST** — none in money and no data. 7 hours of wall clock, and an ETA given
+to the operator that was wrong by two orders of magnitude.
+
+**FIX** — **NOT FIXED.** The code is committed (`7f9a2773650`) and the safety
+properties hold, but the operation does not complete on this store. Before it
+is trusted again it needs: nothing else writing for its whole duration, the WAL
+checkpointed first so the snapshot is small, and a progress signal so a stall
+is visible in minutes rather than hours. It must never again be started and
+left, which is what turned this into a seven-hour unknown.
+
+**GUARD** — the existing ten tests keep the safety guarantees.
+`test_a_copy_that_does_not_match_is_thrown_away_not_swapped` is the one that
+mattered here: the run was abandoned and the operator's 52,348,156 rows were
+never at risk. No test yet asserts that it completes, because no test can
+honestly do that off a real 34 GB file.
+
+---
+
+## RCA-2026-09-10-F — the win % filter answered "nothing matches" when its index was missing
+
+**SAW** — *"There is nothing wrong with the filter, we are fixing the backtest
+I want rootcause as why did you revert the filter now!"*. They were right.
+Nothing was reverted, and nothing was wrong with the filter — the catch-up had
+broken it.
+
+**TIMELINE**
+
+1. `Sep 10, 2026` — RCA-E's fix drops the ten on-demand indexes so a bulk fill
+   can write fast. Three of them — `rows_wr2/wr3/wr4` — are exactly what a
+   win-% floor uses.
+2. `4:25am` — from the operator's own press log:
+
+       apply | asked: min_winrate=85.0 AND days=30 AND sort=profit AND desc=True
+             | got: rows=0 · total=0 | took 18.42s
+
+   **Zero rows, HTTP 200.** The same filter had matched **566,990** rows half
+   an hour earlier.
+3. `ri.query()` in a FRESH process refused correctly the whole time — *"a win %
+   floor of 85 over the store needs more than 20s ... The wide win-rate index
+   that makes this instant is still being built"*. Only the API's process lied.
+
+**ROOT CAUSE** — two together. The API's `has_index` cache still believed in an
+index another process had dropped, so it named `rows_wr4` and SQLite answered
+`no such index`. `_missing_ok(fn, default)` then returned the default — and for
+`_winrate_matches` the default is **0**, i.e. "no row clears this floor". "I
+could not check" became "nothing matches", and the whole query answered empty.
+
+**WHY IT WAS NOT CAUGHT** — `_missing_ok`'s own docstring already described
+this exact failure for a different trigger: *"swallowing that here turned 'this
+filter needs longer than 20s' into '0 rows, total 0' — an empty screen
+presented as an answer"*. The guard matched the word `interrupt` and nothing
+else. Second time, same failure, one word away. **A guard is only as wide as
+its pattern** — the third time that rule has been paid for.
+
+**COST** — none in money. The operator's main filter returned an empty table
+while their data was intact, and they were told the catch-up was helping.
+
+**FIX** — `ac62504a8cb`. `_missing_ok` forgets the index cache and re-raises on
+`no such index`, so the caller either refuses honestly (`SortNotReady`, the
+wait the panel renders) or retries with a plan that exists. And the cause is
+gone at the source: `sync(drop_indexes=...)` defaults to **False**, so a
+catch-up never takes a filter away unless it is asked to.
+
+NARROWED after the first attempt re-raised every SQLite error and instantly
+broke `test_a_locked_read_does_not_look_like_a_missing_index` — which exists
+because `has_index` answering False under a lock refused a coin filter with
+every index present (2026-08-26, 503 in 0.02 s). A lock is transient and makes
+the planner CAUTIOUS; a missing index makes it WRONG. Only the second is a lie,
+so only the second raises.
+
+**GUARD** — `tests/test_a_missing_index_never_reads_as_zero.py` (7): a missing
+index re-raises and drops the stale cache, an interrupted read still re-raises,
+a missing TABLE and a LOCK both still earn the empty default, and the win-rate
+count is pinned as the call site that made it dangerous. Plus
+`test_dropping_is_opt_in_and_off_by_default`.
+
+---
+
 ## RCA-2026-09-10-E — the catch-up was paying for FOURTEEN indexes it was designed to rebuild afterwards
 
 **SAW** — the operator, `Sep 10, 2026`: *"is the backtest done"*, then *"so the

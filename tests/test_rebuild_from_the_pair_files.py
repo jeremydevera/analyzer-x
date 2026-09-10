@@ -153,3 +153,184 @@ def test_the_old_file_is_kept_by_default_and_skippable(store):
     assert got["backup"], "the previous file must survive by default"
     got2 = ri.rebuild(keep_backup=False)
     assert got2["backup"] == ""
+
+
+# ------------------------------------------------------------------ resuming
+# Sep 10, 2026 1:48pm. A rebuild had been running 39 minutes and was stopped
+# on purpose: it had fallen from 40.15 pairs/min to **0.25** — one pair every
+# 305 seconds — because a `db_jobs collect` was 17 shards into 20, rewriting
+# the same pair files on the same mechanical disk. Measured while both ran:
+# `Memory\Pages/sec` 2,534, disk queue 5.0, and NEITHER process showing a byte
+# of file I/O, because the traffic was page faults and seeks.
+#
+# Stopping was right. Losing the work was not: the partial file held **450
+# pairs, 8,385,108 rows, 2.74 GB**. So a rebuild now resumes, and it refuses
+# to start while another job is writing the files it reads.
+def _partial(files):
+    """A half-finished rebuild file, exactly as a KILLED run leaves one — no
+    exception ran, so nothing cleaned up."""
+    dest = ri.DB_PATH.with_suffix(".rebuild.db")
+    con = sqlite3.connect(dest)
+    try:
+        con.executescript(ri._SCHEMA)
+        con.execute("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)")
+        con.execute("INSERT OR REPLACE INTO meta (k,v) VALUES ('schema',?)",
+                    (str(ri.SCHEMA_VERSION),))
+        for f in files:
+            ri.index_pair(f, con)
+        con.commit()
+    finally:
+        con.close()
+    return dest
+
+
+def _watch(monkeypatch, seen):
+    real = ri.index_pair
+
+    def spy(f, con=None):
+        seen.append(f.stem)
+        return real(f, con)
+
+    monkeypatch.setattr(ri, "index_pair", spy)
+
+
+def test_a_killed_rebuild_resumes_instead_of_starting_over(store, monkeypatch):
+    """33 minutes of work is not a rounding error."""
+    _partial([msw.ROWDIR / "BTC-15m.json", msw.ROWDIR / "BTC-1h.json"])
+    seen: list = []
+    _watch(monkeypatch, seen)
+    got = ri.rebuild()
+    assert got["rebuilt"] is True, got
+    assert seen == ["ETH-15m"], \
+        f"only the pair that was missing may be re-read, got {seen}"
+    # and the finished file is still WHOLE
+    assert got["pairs"] == 3 and got["rows"] == 75, got
+    with ri._open(readonly=True) as con:
+        assert int(con.execute("SELECT count(*) FROM rows").fetchone()[0]) == 75
+        assert int(con.execute("SELECT count(*) FROM pairs").fetchone()[0]) == 3
+
+
+def test_the_resume_is_reported_so_a_reader_is_not_misled(store):
+    _partial([msw.ROWDIR / "BTC-15m.json"])
+    ri.rebuild()
+    p = ri.rebuild_progress()
+    assert p.get("resumed") == 1, p
+    assert p.get("pairs_done") == 3 and p.get("pairs_total") == 3
+
+
+def test_the_rate_it_reports_is_this_runs_work_only(store):
+    """A resume of 450 pairs would otherwise print 450 pairs/min in its first
+    minute and decay from there — a number that describes nothing."""
+    _partial([msw.ROWDIR / "BTC-15m.json", msw.ROWDIR / "BTC-1h.json"])
+    ri.rebuild()
+    src = inspect.getsource(ri.rebuild)
+    assert "(done - len(already))" in src, \
+        "the rate must exclude the pairs this run did not do"
+    assert ri.rebuild_progress().get("pairs_per_min") is not None
+
+
+def test_a_partial_file_that_does_not_check_out_is_started_over(store):
+    """`journal_mode=OFF` is the price of the speed: a kill mid-commit can
+    tear pages. A file that cannot be verified is deleted, never resumed."""
+    dest = ri.DB_PATH.with_suffix(".rebuild.db")
+    dest.write_bytes(b"SQLite format 3\x00" + b"\x99" * 4096)
+    got = ri.rebuild()
+    assert got["rebuilt"] is True, got
+    assert got["pairs"] == 3 and got["rows"] == 75, "a full rebuild ran"
+    assert ri.rebuild_progress().get("restarted_because"), \
+        "and it must SAY why it started over"
+
+
+def test_a_partial_file_from_another_schema_is_started_over(store):
+    dest = _partial([msw.ROWDIR / "BTC-15m.json"])
+    con = sqlite3.connect(dest)
+    con.execute("INSERT OR REPLACE INTO meta (k,v) VALUES ('schema','1')")
+    con.commit()
+    con.close()
+    got = ri.rebuild()
+    assert got["rebuilt"] is True and got["pairs"] == 3, got
+    assert "schema" in (ri.rebuild_progress().get("restarted_because") or "")
+
+
+def test_a_pair_whose_file_was_deleted_is_dropped_not_left_to_fail(store):
+    """Otherwise its rows survive in the new file, the final count disagrees
+    with the load, and a two-hour rebuild is thrown away at the last step."""
+    _partial([msw.ROWDIR / "BTC-15m.json", msw.ROWDIR / "BTC-1h.json"])
+    (msw.ROWDIR / "BTC-1h.json").unlink()
+    got = ri.rebuild()
+    assert got["rebuilt"] is True, got
+    assert got["pairs"] == 2 and got["rows"] == 55, got
+    with ri._open(readonly=True) as con:
+        assert int(con.execute(
+            "SELECT count(*) FROM rows WHERE pair='BTC-1h'").fetchone()[0]) == 0
+
+
+def test_resume_can_be_turned_off(store, monkeypatch):
+    _partial([msw.ROWDIR / "BTC-15m.json"])
+    seen: list = []
+    _watch(monkeypatch, seen)
+    got = ri.rebuild(resume=False)
+    assert got["rebuilt"] is True and got["pairs"] == 3
+    assert sorted(seen) == ["BTC-15m", "BTC-1h", "ETH-15m"], \
+        "resume=False re-reads everything"
+
+
+# ------------------------------------------- it must not fight another job
+def test_it_waits_for_a_job_that_is_writing_the_same_pair_files(store, monkeypatch):
+    """`write_available()` said FREE at 12:56pm while a collect was 14 shards
+    into 20: that job holds rows.db's write lock only at the very end. A lock
+    answers "may I write?"; a multi-hour bulk pass has to ask "am I the only
+    one working?".
+    """
+    from tradingagents import db_jobs as dj
+    monkeypatch.setattr(dj, "status",
+                        lambda kind: {"running": True, "done": 17, "total": 20}
+                        if kind == "collect" else {})
+    got = ri.rebuild()
+    assert got["rebuilt"] is False, got
+    assert "collect" in got["why"] and "17 of 20" in got["why"], got["why"]
+    assert not ri.DB_PATH.with_suffix(".rebuild.db").exists(), \
+        "a refusal must not leave a file behind"
+
+
+def test_a_running_job_can_be_overridden_on_purpose(store, monkeypatch):
+    """The operator may know something the job file does not. It is opt-IN,
+    never the default — RCA-F was a speed-up that defaulted to on."""
+    from tradingagents import db_jobs as dj
+    monkeypatch.setattr(dj, "status",
+                        lambda kind: {"running": True} if kind == "backtest"
+                        else {})
+    assert ri.rebuild()["rebuilt"] is False
+    assert ri.rebuild(force=True)["rebuilt"] is True
+
+
+def test_a_job_state_that_cannot_be_read_does_not_block_the_rebuild(store, monkeypatch):
+    """A refusal has to be evidence, not an accident: an unreadable job file
+    is not proof that a job is running."""
+    from tradingagents import db_jobs as dj
+
+    def boom(kind):
+        raise OSError("gone")
+
+    monkeypatch.setattr(dj, "status", boom)
+    assert ri.jobs_writing() == ""
+    assert ri.rebuild()["rebuilt"] is True
+
+
+def test_index_pair_reports_what_LANDED_not_what_it_read(store):
+    """A row with no coin is skipped by the insert. Returning the file's
+    length counted it anyway, and rebuild() compares its running total against
+    `SELECT count(*)` before it dares swap: one coinless row in 5,366 files
+    would have thrown away a two-hour rebuild.
+    """
+    f = msw.ROWDIR / "ZZZ-1h.json"
+    f.write_text(json.dumps([
+        {"id": "a", "coin": "ZZZ", "tf": "1h", "signal": "rsi14",
+         "sizing": "flat", "trades": 5, "winrate": 80.0, "profit": 1.0},
+        {"id": "b", "tf": "1h", "signal": "rsi14"},        # no coin: skipped
+    ]), encoding="utf-8")
+    ri.ensure()
+    assert ri.index_pair(f) == 1, "one row landed, not two"
+    got = ri.rebuild()
+    assert got["rebuilt"] is True, got
+    assert got["rows"] == 76, got

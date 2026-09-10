@@ -507,7 +507,13 @@ def index_pair(path: Path, con: sqlite3.Connection | None = None) -> int:
         if DEBUG:
             print(f"[rows-index]      delete {t1-t0:.2f}s  build {t2-t1:.2f}s  "
                   f"insert {t3-t2:.2f}s  commit {_t()-t3:.2f}s", flush=True)
-        return len(rows)
+        # WHAT LANDED, not what was read. `vals` skips a row with no coin, so
+        # returning len(rows) reported rows the table does not hold — and
+        # rebuild() compares its running total against `SELECT count(*)`
+        # before it dares swap the file in, so one coinless row anywhere in
+        # 5,366 files would have thrown away a two-hour rebuild with the
+        # message "rows 52,348,155 vs 52,348,156".
+        return len(vals)
     finally:
         if own:
             con.close()
@@ -612,6 +618,49 @@ def write_available(timeout_ms: int = 2000) -> str:
                     "process right now — an indexer pass or an index build; "
                     "try again when it is done")
         return f"the row index could not be opened for writing: {exc}"
+
+
+# which jobs write the PAIR FILES this index reads, and what to say about each
+_PAIR_WRITERS = {
+    "collect": "is unpacking the fleet's rows into the pair files this rebuild "
+               "reads",
+    "backtest": "is measuring into the pair files this rebuild reads",
+    "btupdate": "is measuring into the pair files this rebuild reads",
+    "download": "is writing candles to the same disk",
+}
+
+
+def jobs_writing() -> str:
+    """"" when no background job is writing what this index reads, else the
+    reason — a job kind and how far along it is.
+
+    **`write_available()` does not cover this, and that cost six hours.**
+    Sep 10, 2026 12:56pm: a `rebuild()` was started as soon as
+    `write_available()` came back free. It was free — a `db_jobs collect`
+    holds rows.db's write lock only at the very end, and that collect was 14
+    shards into 20, rewriting the very pair files the rebuild was reading, on
+    the same mechanical disk. Measured: the rebuild fell from **40.15
+    pairs/min** in its first minute to **0.25** (one pair per 305 s) while
+    `Memory\\Pages/sec` sat at 2,534 and NEITHER process showed a byte of file
+    I/O, because the traffic was page faults and disk seeks, not reads. Two
+    jobs sharing one spindle is not two jobs going half speed.
+
+    A lock answers "may I write?". This answers "am I the only one working?",
+    which is the question a multi-hour bulk pass has to ask.
+    """
+    from tradingagents import db_jobs as dj  # local: db_jobs imports this
+    for kind, what in _PAIR_WRITERS.items():
+        try:
+            st = dj.status(kind) or {}
+        except Exception:                                       # noqa: BLE001
+            continue                     # a job whose state cannot be read
+        if not st.get("running"):
+            continue
+        done, total = st.get("done"), st.get("total")
+        far = f" ({done} of {total})" if total else ""
+        return (f"a {kind} job{far} {what} — two jobs on one disk is not two "
+                f"jobs at half speed; wait for it, or pass force=True")
+    return ""
 
 
 SETTLE_S = 60.0
@@ -975,7 +1024,57 @@ def compact(*, dest: Path | None = None, keep_backup: bool = True) -> dict:
 REBUILD_PROGRESS = Path.home() / ".tradingagents" / "rows_rebuild.json"
 
 
-def rebuild(*, dest: Path | None = None, keep_backup: bool = True) -> dict:
+def _resumable(dest: Path, stems: set) -> tuple | str:
+    """`(pairs already loaded, rows already in the file)` for a partial
+    rebuild, or the reason it cannot be trusted.
+
+    Why this exists: a `rebuild()` that is KILLED leaves its half-written file
+    behind — no exception runs, so nothing cleans up. On Sep 10, 2026 that file
+    held **450 pairs and 8,385,108 rows, 2.74 GB, 33 minutes of work**, and
+    starting over would have thrown all of it away. Resuming is safe for one
+    specific reason: `index_pair` writes the pair's SUMMARY ROW LAST and
+    commits per pair, so a pair present in `pairs` has every one of its rows
+    in `rows`. That is the invariant this function rests on; if it ever stops
+    being true, this must go.
+
+    Two things it refuses on:
+
+    * `quick_check` not "ok" — the load runs with `journal_mode=OFF`, which is
+      the price of the speed, and means a kill during a commit can leave torn
+      pages. A file that cannot be checked is deleted, not resumed.
+    * a schema that is not this version — the columns would not line up.
+
+    A pair in the file whose JSON has since been DELETED is dropped here, not
+    left to fail the final count.
+    """
+    con = sqlite3.connect(dest, timeout=30.0)
+    try:
+        quick = con.execute("PRAGMA quick_check").fetchone()[0]
+        if quick != "ok":
+            return f"quick_check said {quick!r}"
+        got = con.execute("SELECT v FROM meta WHERE k='schema'").fetchone()
+        if not got or str(got[0]) != str(SCHEMA_VERSION):
+            have = got[0] if got else "none"
+            return f"schema {have} in the partial file, {SCHEMA_VERSION} now"
+        pairs = {r[0] for r in con.execute("SELECT pair FROM pairs")}
+        gone = pairs - stems
+        if gone:
+            marks = ",".join("?" * len(gone))
+            con.execute(f"DELETE FROM rows WHERE pair IN ({marks})", tuple(gone))
+            con.execute(f"DELETE FROM pairs WHERE pair IN ({marks})", tuple(gone))
+            con.commit()
+            pairs -= gone
+        rows = int(con.execute("SELECT count(*) FROM rows").fetchone()[0])
+        return pairs, rows
+    except sqlite3.Error as exc:
+        return f"{type(exc).__name__}: {exc}"
+    finally:
+        with contextlib.suppress(Exception):
+            con.close()
+
+
+def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
+            resume: bool = True, force: bool = False) -> dict:
     """Re-index EVERY pair file into a fresh rows.db, then swap it in.
 
     This is the technique CLAUDE.md has prescribed since 2026-08-26 —
@@ -1007,28 +1106,49 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True) -> dict:
     held = write_available()
     if held:
         return {"rebuilt": False, "why": held}
+    busy = jobs_writing()
+    if busy and not force:
+        return {"rebuilt": False, "why": busy}
     if not msw.ROWDIR.exists():
         return {"rebuilt": False, "why": "no pair files to index"}
     files = sorted(msw.ROWDIR.glob("*.json"))
     if not files:
         return {"rebuilt": False, "why": "no pair files to index"}
     dest = Path(dest) if dest else DB_PATH.with_suffix(".rebuild.db")
-    for tail in ("", "-wal", "-shm", "-journal"):
-        with contextlib.suppress(FileNotFoundError):
-            Path(str(dest) + tail).unlink()
+
+    # RESUME, or start clean and say why. A kill leaves the partial file with
+    # no exception to clean it up, and on this store that file was 33 minutes
+    # of work.
+    already, seeded_rows, fresh_because = set(), 0, ""
+    if resume and dest.exists() and dest.stat().st_size > 0:
+        got = _resumable(dest, {f.stem for f in files})
+        if isinstance(got, tuple):
+            already, seeded_rows = got
+        else:
+            fresh_because = got
+    if not already:
+        for tail in ("", "-wal", "-shm", "-journal"):
+            with contextlib.suppress(FileNotFoundError):
+                Path(str(dest) + tail).unlink()
 
     started = _t.time()
-    done = rows = 0
+    done, rows = len(already), seeded_rows
 
     def _say(phase: str) -> None:
         # after EVERY pair: RCA-G was seven hours of not knowing
         with contextlib.suppress(OSError, TypeError, ValueError):
             REBUILD_PROGRESS.parent.mkdir(parents=True, exist_ok=True)
+            mins = max(1e-9, (_t.time() - started) / 60)
             REBUILD_PROGRESS.write_text(json.dumps({
                 "phase": phase, "pairs_done": done, "pairs_total": len(files),
                 "rows": rows, "seconds": round(_t.time() - started, 1),
                 "pid": os.getpid(),
-                "pairs_per_min": round(done / max(1e-9, (_t.time() - started) / 60), 2),
+                # THIS RUN's rate. Counting the resumed pairs in it would have
+                # read 450 pairs/min in the first minute after a resume and
+                # then decayed — a number that describes nothing.
+                "pairs_per_min": round((done - len(already)) / mins, 2),
+                "resumed": len(already),
+                "restarted_because": fresh_because,
             }), encoding="utf-8")
 
     con = sqlite3.connect(dest, timeout=60.0)
@@ -1046,6 +1166,8 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True) -> dict:
                     (str(SCHEMA_VERSION),))
         _say("loading")
         for f in files:
+            if f.stem in already:
+                continue          # its summary row is present, so it is whole
             rows += index_pair(f, con)
             done += 1
             if done % 25 == 0:

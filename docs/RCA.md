@@ -105,6 +105,111 @@ measured and not yet findable.
 
 ---
 
+## RCA-2026-09-10-I — the rebuild fell from 40 pairs/min to 0.25, because it was racing the collect for one disk
+
+**CEO**
+
+* The repair job that makes your results searchable was running at 40 coins a
+  minute at 12:56pm and **one coin every five minutes** by 1:45pm. At that
+  speed it would have taken about two weeks instead of two hours.
+* It was started while the job that brings your GitHub results home was still
+  running. Both were reading and writing the same disk, and on a spinning disk
+  two jobs at once is far worse than one after the other.
+* Three things now: the repair refuses to start while that other job is
+  running and says so; if it is stopped it picks up where it left off instead
+  of starting from zero; and stopping it this time cost nothing.
+
+**DEV**
+
+* `rows_index.rebuild()` was gated on `write_available()` only, which asks
+  *"can I take rows.db's write lock?"*. A `db_jobs collect` takes that lock
+  only at the very end, so at `12:56pm` it answered FREE while the collect was
+  **14 of 20 shards** into rewriting the pair JSONs that `rebuild()` reads.
+  Measured at `1:45pm` with both running: `Memory\Pages/sec` **2,534**,
+  `PhysicalDisk(_Total)\Current Disk Queue Length` **5.0**, and **0 MB of
+  file I/O in 120 s from either process** — the traffic was page faults and
+  seeks, which is why neither showed up in `ReadTransferCount`. Rate over the
+  run: 40.15 → 24.0 → 16.3 → 13.78 pairs/min average, with the instantaneous
+  rate at **one pair per 305 s**. Pair #448 was `ARWRSTOCK-15m.json` at
+  **0.0 MB**, so file size explains none of it.
+* Broken invariant: **a lock answers "may I write?"; a multi-hour bulk pass has
+  to ask "am I the only one working?"** — and separately, **work that took
+  33 minutes must not be thrown away by stopping the job that did it.**
+* Guard: `tests/test_rebuild_from_the_pair_files.py` (20, was 9) —
+  `test_it_waits_for_a_job_that_is_writing_the_same_pair_files` (refuses with
+  the kind AND its progress, leaves no file behind),
+  `test_a_running_job_can_be_overridden_on_purpose` (`force=True` is opt-in,
+  after RCA-F),
+  `test_a_job_state_that_cannot_be_read_does_not_block_the_rebuild`,
+  `test_a_killed_rebuild_resumes_instead_of_starting_over` (asserts ONLY the
+  missing pair is re-read),
+  `test_a_partial_file_that_does_not_check_out_is_started_over`,
+  `test_a_pair_whose_file_was_deleted_is_dropped_not_left_to_fail`,
+  `test_the_rate_it_reports_is_this_runs_work_only`, and
+  `test_index_pair_reports_what_LANDED_not_what_it_read`.
+
+**SAW** — the operator saw the filing percentage barely move. Asked for a
+status, the honest answer had gone from "ETA ~2h15m" to "about 5 hours" to,
+measured properly, thirteen days.
+
+**TIMELINE**
+
+1. `Sep 10, 2026 12:37pm` — a wrapper polls `write_available()` waiting for
+   the collect to release the store. It returns free.
+2. `Sep 10, 2026 12:56pm` — `rebuild()` starts (pid 9816). First minute:
+   **40.15 pairs/min**, 22 pairs, 489,322 rows. The collect (pid 27204/10540,
+   started `10:48am`) is still running — shard 14 of 20.
+3. `1:24pm` — 296 pairs, 5,662,888 rows, **24.0** pairs/min average.
+4. `1:36pm` — 447 pairs, 8,357,108 rows, **16.3**.
+5. `1:41pm` — measured over 45 s: **0.0 MB read, 0.0 MB write, 1.6 s CPU**.
+   Progress had not moved for the whole window. Not a stall — pair #448
+   landed at `1:46pm`, **305 seconds** for one pair.
+6. `1:47pm` — machine measured: `Pages/sec` 2,534, disk queue 5.0, free RAM
+   **3.2 GB of 16.0 GB**, no single runaway process (VS Code 2.31 GB across 17,
+   Chrome 2.00 GB across 23, six `claude` sessions 1.72 GB, node 1.64 GB).
+   The collect: **17 of 20** shards, still writing.
+7. `1:48pm` — stopped the rebuild on purpose at **450 pairs / 8,385,108 rows
+   / 2.74 GB**, so the collect gets the disk to itself. The partial file was
+   KEPT.
+8. Same hour — resume implemented so those 450 pairs are not lost, plus the
+   refusal that would have prevented the whole episode.
+
+**ROOT CAUSE** — the wrong question in the gate. `write_available()` proves
+nothing about a job that writes the pair FILES and touches `rows.db` only at
+the end, and `rebuild()`'s whole input is those files. Underneath it, an
+assumption that two I/O-bound jobs on one mechanical disk each run at half
+speed; measured, they ran at **1/160th**.
+
+**WHY IT WAS NOT CAUGHT** — `test_it_refuses_while_another_process_is_writing`
+existed and passed: it stubs `write_available` and asserts the refusal. The
+guard tested the CHECK, never the question the check was supposed to answer.
+That is pattern 3 (*test the layer the operator actually touches*) at the
+process level: the only state that could have shown this is "two jobs at once
+on the real store", which no test can hold, so the gate had to be widened by
+reasoning about what `rebuild()` actually consumes. Recorded as measured, and
+the causal chain (paging + seeks) is stated as MEASURED CORRELATION, not as a
+proven mechanism — RCA-G is the entry that came from over-claiming here.
+
+**COST** — no money, no data lost, nothing wrong on screen. 52 minutes of
+rebuild wall-clock at a degraded rate, and the operator's filing stayed at 86%
+for another hour. The 450 pairs were preserved.
+
+**FIX** — this commit. `rows_index.jobs_writing()` (a running `collect`,
+`backtest`, `btupdate` or `download` blocks a rebuild and names itself and its
+progress; `force=True` overrides on purpose; an unreadable job state never
+blocks), `_resumable()` + `rebuild(resume=True)` (resume rests on
+`index_pair` writing the pair's summary row LAST and committing per pair, so a
+pair in `pairs` is whole; refuses to resume a file that fails `quick_check` or
+carries another `SCHEMA_VERSION`, and drops a pair whose JSON has since been
+deleted), and `index_pair` returning what LANDED rather than what it read.
+
+**GUARD** — `tests/test_rebuild_from_the_pair_files.py`, 20 tests, listed in
+the DEV block above. Stated plainly: **no test proves the speed** — that needs
+two real jobs and a real 32 GB store. The next run is the measurement, and its
+rate is in the progress file.
+
+---
+
 ## RCA-2026-09-10-H — two guards were RED on `main` for half a day, and both broke on a legitimate edit
 
 **CEO**

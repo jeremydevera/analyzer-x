@@ -83,5 +83,12 @@ def test_the_states_that_start_empty_carry_their_own_loaded_flag():
 def test_the_grid_reports_from_its_loader_not_the_save_button():
     s = _p("StrategiesGrid")
     i = s.index('markReady("strategies")')
-    assert "setSettings(se.settings)" in s[max(0, i - 300):i], \
+    # STRUCTURE, not distance. The first version measured 300 characters
+    # backwards and broke the moment three lines landed between the fetch
+    # and the mark (the partial TP/SL switches, Sep 09, 2026). What must
+    # hold is that the mark sits in the LOADER: after the settings arrive,
+    # and before `save` is even defined.
+    assert s.index("setSettings(se.settings)") < i, \
+        "the mark must follow the data it claims has arrived"
+    assert i < s.index("const save = async"), \
         "the first data landing marks ready — not SAVE CONFIG's success"

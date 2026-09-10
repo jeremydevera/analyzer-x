@@ -49,9 +49,14 @@ def test_two_demo_strategies_get_two_slots():
 
 
 def test_the_real_book_is_still_one_slot_per_coin():
-    """The exchange nets; a second real slot would be a fiction."""
-    assert at.state_key(COIN, False, A) == COIN
-    assert at.state_key(COIN, False, B) == COIN
+    """The exchange nets; a second real slot would be a fiction — while
+    PARTIAL TP/SL is off, which is the default. With it on (Sep 09, 2026) a
+    strategy gets `SYM#live#KEY`, its own SLICE of the one netted position,
+    and the netting fiction is avoided by volType=PARTIAL stops instead."""
+    assert at.partial_on({}, False) is False
+    assert at.state_key(COIN, False) == COIN
+    assert at.state_key(COIN, False, A) == f"{COIN}#live#{A}"
+    assert at.state_key(COIN, False, B) == f"{COIN}#live#{B}"
     assert at.state_key(COIN, False) == COIN
 
 
@@ -172,8 +177,10 @@ def test_a_demo_row_shares_its_rung_with_nobody():
     from tradingagents import api
 
     src = inspect.getsource(api.trade_strategies)
-    assert "at.state_key(c, not _is_real, key)" in src, \
-        "the rung must be read from the per-strategy slot"
+    assert "at.slot_of(runstate, c, not _is_real, key)" in src, \
+        ("the rung must be read from the slot that EXISTS — the per-strategy "
+         "one on paper and on a live slice, the base slot otherwise "
+         "(auto_trader.slot_of, Sep 09, 2026)")
     i = src.index('"streak_shared_with"')
     tail = src[i:i + 400]
     assert "_is_real and other != key" in tail, \

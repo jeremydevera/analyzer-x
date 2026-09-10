@@ -62,10 +62,17 @@ def test_meta_round_trips(nt):
     assert nt.recent()[0]["meta"]["bars"] == 2892
 
 
-def test_record_NEVER_raises_even_on_an_unusable_store(nt, monkeypatch):
+def test_record_NEVER_raises_even_on_an_unusable_store(nt, monkeypatch, tmp_path):
     """It is called from the live trading loop. A feed write failing must not
     be able to interrupt an order, a bracket, or an exit."""
-    monkeypatch.setattr(nt, "DB_PATH", nt.Path("/nonexistent-dir/x/y.db"))
+    # A path that CANNOT be created on either OS: a child of a regular FILE.
+    # "/nonexistent-dir/x/y.db" is unwritable on Unix but resolves onto the
+    # current drive under Windows, where the parent is simply made — so the
+    # write SUCCEEDED and this test failed for the one reason that is not a
+    # bug (Sep 11, 2026; same fix as test_parallel_sweep's WORKERS path).
+    blocker = tmp_path / "not-a-dir"
+    blocker.write_text("")
+    monkeypatch.setattr(nt, "DB_PATH", nt.Path(blocker) / "x" / "y.db")
     assert nt.record("trade_open", "LONG PI") == 0        # reports failure
     assert nt.recent() == [] and nt.unread_count() == 0   # and stays quiet
 

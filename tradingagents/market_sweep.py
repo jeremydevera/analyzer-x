@@ -92,6 +92,63 @@ GATE_BLOCK = 0.50         # cost >= half the target: the trade cannot win
 CONTEXT_BARS = 300        # lookback a signal needs before the first new bar
 
 
+def deployed_combos() -> set:
+    """Every combination the operator has DEPLOYED, as
+    `(coin, tf, signal, sl%, tp%)`.
+
+    **A DEPLOYED COMBINATION IS NEVER SKIPPED.** Sep 10-11, 2026: the operator
+    searched `#PNK3G9KZ`, one of their own 35 deployed strategies, and the
+    store had no row for it. Measured: **28 of the 35 had none**, and two pair
+    files (`GPNSTOCK-15m`, `GPNSTOCK-30m`) were completely EMPTY.
+
+    Nothing had been deleted. `GATE_BLOCK` skips a barrier whose round-trip
+    cost is half its take-profit or more (rule 11: near 50% is fatal, over
+    100% impossible) — and `rt` is read from the LIVE ORDER BOOK at the instant
+    the sweep runs. Those pair files were written `Sep 10 11:33am-1:17pm`
+    Manila, which is `11:33pm-1:17am` New York: the US market was SHUT, and a
+    tokenized stock's spread blows out when its underlying is closed. Measured
+    on PSXSTOCK: **1.287%** recorded in the rows, **0.263%** with the market
+    open — so `TP 1.2%` read as "cost is 107% of the target, cannot win" at
+    2am and "22%, comfortable" at midday. The grid's CONTENTS depended on the
+    clock.
+
+    The gate itself is right — a target smaller than its cost cannot win. What
+    is wrong is applying it to a strategy the operator is ALREADY RUNNING and
+    then leaving no trace: the row simply is not there, the find box says "no
+    row", and the deployed strategy has no measurement at all. CLAUDE.md rule
+    21 says the deployed row is screened FIRST; it cannot be screened if it was
+    never measured.
+
+    So a deployed combination is always measured, and its row carries its real
+    `gate`/`cost_of_tp` so the screen can say "deployed, and its cost is 107%
+    of its target" instead of showing nothing.
+    """
+    import tradingagents.auto_trader as at  # local: it imports us back
+
+    out: set = set()
+    try:
+        st = at.load_settings()
+    except Exception:                                           # noqa: BLE001
+        return out
+    coins_by = st.get("strategy_coins") or {}
+    for key in (st.get("strategies") or []):
+        spec = at.STRATEGY_SPECS.get(key) or {}
+        if not spec:
+            continue
+        bits = str(key).split("_")
+        if len(bits) < 2:
+            continue
+        signal, tf = bits[0], bits[1]
+        try:
+            slp = round(float(spec.get("sl") or 0) * 100, 6)
+            tpp = round(float(spec.get("tp") or 0) * 100, 6)
+        except (TypeError, ValueError):
+            continue
+        for sym in (coins_by.get(key) or st.get("coins") or []):
+            out.add((str(sym).replace("_USDT", ""), tf, signal, slp, tpp))
+    return out
+
+
 def fmt_stamp(ts: float | None = None) -> str:
     """The operator's one date format (2026-08-21): Aug 26, 2026 4:00PM.
 
@@ -759,6 +816,9 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
     # keep what the click will need, so opening a row later is a pure read
     save_costs(symbol, fee=fee, liq=liq, funding=fund)
     thin = 0               # rows the trade floor dropped, for the report
+    gated = 0              # barriers the cost gate skipped, ditto (rule 20)
+    # what the operator is RUNNING, so the gate can never hide it from them
+    deployed = deployed_combos()
     states = {} if (fresh and not merge) else load_states(coin, tf)
     # what this pass is measuring, and what the pair had measured before it
     sig_set = set(signals or br.SIGNALS)
@@ -876,7 +936,17 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                                                   br.SIZINGS):
                 if liq is not None and sl * 100 >= liq:
                     continue
-                if rt is not None and rt / tp >= GATE_BLOCK:
+                # THE COST GATE, WITH ONE EXEMPTION: a combination the
+                # operator is already running is ALWAYS measured. See
+                # deployed_combos() — 28 of their 35 deployed strategies had
+                # no row at all because this gate read a stock token's spread
+                # while the US market was shut. The gate stays for everything
+                # else; a row it skips is now COUNTED (rule 20) instead of
+                # vanishing.
+                if (rt is not None and rt / tp >= GATE_BLOCK
+                        and (coin, tf, sig, round(sl * 100, 6),
+                             round(tp * 100, 6)) not in deployed):
+                    gated += 1
                     continue
                 ck = combo_key(sig, thp, sl * 100, tp * 100, sz)
                 prev = states.get(ck) if incremental else None

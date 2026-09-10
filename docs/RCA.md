@@ -172,6 +172,137 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-11-A — 28 of the operator's 35 DEPLOYED strategies had no backtest row, because a spread read at 1am judged them unwinnable
+
+**CEO**
+
+* You searched one of your own live strategies, #PNK3G9KZ, and the backtest
+  had nothing for it. You said this means strategies are being deleted rather
+  than updated. Measured: **28 of your 35 deployed strategies had no row**, and
+  two coins' result files (GPNSTOCK 15m and 30m) were completely **empty**.
+* Nothing was deleted. The measurement REFUSES to test a take-profit that the
+  trading costs eat more than half of — which is right, a target smaller than
+  its cost cannot win. But it reads that cost from the order book **at the
+  moment it runs**, and your tokenized stocks were measured between
+  **11:33am and 1:17pm** — which is the middle of the night in New York, when
+  those markets are shut and their spreads blow out five to ten times.
+* Same coin, same strategy: at 1am the cost read **1.287%** against your 1.2%
+  target and was thrown away as impossible; with the market open it reads
+  **0.263%**, which is 22% of the target and perfectly fine. The grid's
+  contents depended on the clock.
+* Fixed: a strategy you have DEPLOYED is now always measured, whatever the
+  spread says, and every skipped combination is counted instead of silently
+  vanishing.
+
+**DEV**
+
+* `market_sweep.run_pair` → `if rt is not None and rt / tp >= GATE_BLOCK:
+  continue` (`GATE_BLOCK = 0.50`), where `rt = br.round_trip_cost(fee,
+  fx.book_cost(symbol, base_margin * at.LEVERAGE))` — a LIVE book read, once,
+  at sweep time. Recorded in the rows themselves: `PSXSTOCK rt=1.287%`,
+  `CHYMSTOCK rt=2.4347%`, `DVNSTOCK rt=1.007%`, `STBL rt=0.1087%`. The TP
+  values each pair kept are exactly those above `rt / 0.5`:
+  CHYMSTOCK kept 5/6/8% (floor 4.87%), DVNSTOCK kept 2.5/3% (floor 2.01%),
+  STBL kept all eleven (floor 0.22%). `pairs.rows_mtime` dates those files to
+  `Sep 10, 2026 11:33am-1:17pm` (+08:00) = `11:33pm-1:17am` America/New_York.
+  Re-measured live at `Sep 11 12:15am` (+08:00), US market open:
+  `PSXSTOCK rt=0.263%`, `GPNSTOCK rt=0.296%`.
+* Broken invariant: **a strategy the operator is RUNNING is always measured** —
+  CLAUDE.md rule 21 screens the deployed row FIRST, and it cannot be screened
+  if it was never measured. Second: **a measurement whose CONTENT depends on
+  the wall clock has to say so** — an excluded combination must be counted
+  (rule 20), not left as an absence.
+* Guard: `tests/test_a_deployed_row_is_always_measured.py` (6) —
+  `test_the_deployed_combination_is_never_skipped` walks the AST of the gate's
+  own branch and requires the `not in deployed` term;
+  `test_the_gate_still_skips_an_undeployed_combination` keeps rule 11 intact;
+  `test_the_deployed_set_is_read_from_the_operators_own_settings` pins the
+  PERCENT unit and the bare-coin form;
+  `test_a_settings_file_that_cannot_be_read_exempts_nothing`;
+  `test_a_strategy_with_no_spec_is_skipped_not_guessed`;
+  `test_the_counters_reach_the_caller`.
+
+**SAW** — the operator: *"why is #PNK3G9KZ not searchable it says no row
+#PNK3G9KZ in the store"*, then *"so what is PNK3G9KZ in the deployed
+strategies? this only means you are deleting existing strategies and you are
+not updating them"*, then *"im getting tired of these errors"*.
+
+**TIMELINE**
+
+1. `Sep 10, 2026 11:33am-1:17pm` (+08:00) — the fleet's results for the
+   tokenized stocks are written. US market closed; spreads 5-10x normal.
+2. `~10:00pm` — the operator searches `#PNK3G9KZ`. No row.
+3. `10:02pm` — measured: the id is well-formed, `rows_id` exists, and a direct
+   `WHERE id = ?` returns 0 rows. The lookup is healthy.
+4. `11:20pm` — 152,315,460 grid combinations hashed against the id: no match.
+   **That search was in the wrong UNIT** (fractions, while the store hashes
+   percents), so its verdict was worthless — see step 6.
+5. `11:52pm` — the operator says it is a DEPLOYED strategy. Hashing the 35
+   deployed combinations finds it at once:
+   **#PNK3G9KZ = PSXSTOCK 15m willr14 TP 1.2% SL 1.0% flat**, and **28 of 35
+   deployed rows are missing**.
+6. `11:58pm` — the unit bug proven: `row_code` over `#SW8Q96E6`'s own stored
+   fields reproduces its id only with `sl=2.5` / `tp=2.5`, not `0.025`.
+7. `Sep 11 12:05am` — the kept-TP pattern matches `rt / GATE_BLOCK` on every
+   affected pair. Root cause established.
+8. `12:15am` — the same books read live: 0.263% and 0.296%. The gate that
+   refused these rows at 1am passes them at midday.
+9. `12:20am` — `pairbt` re-measured PSXSTOCK 15m willr14: **160 rows**,
+   including the operator's own. Reported "0 indexed — waiting on the index":
+   the write lock is held by the on-demand index builds, so the row is measured
+   and not yet filed.
+
+**ROOT CAUSE** — `GATE_BLOCK` applied to a DEPLOYED combination, using a
+single instant's order-book spread. The gate is correct in principle (rule 11)
+and wrong in two ways here: it may not silently exclude a strategy the operator
+is already running, and a cost sampled once at 1am is not the cost that
+strategy trades at.
+
+**WHY IT WAS NOT CAUGHT** — the gate has no test at all: it is four tokens
+inside a triple-nested loop, and every test of `run_pair` asserts what lands in
+the file, never what was skipped on the way. A skip left no trace anywhere —
+no counter, no log line, no column — so its only symptom was a row that did not
+exist, which reads as "not measured yet" instead of "refused". And the deployed
+set was never cross-checked against the store: 28 missing rows for LIVE
+strategies had been true for weeks with nothing looking.
+
+**COST** — no money directly, but the exposure is the point: 28 live
+strategies, 20 of them on GPNSTOCK, were running with **no backtest evidence at
+all**, and `still-working` cannot screen a row that does not exist. Plus the
+operator's time across three sessions asking why their own rows were missing,
+and two wrong answers from me (the unit bug, and "the cost eats 107% of the
+target" — true of a 1am spread, not of the market they trade in).
+
+**FIX** — this commit. `market_sweep.deployed_combos()` reads the operator's
+own settings (bare coin, PERCENT barriers) and `run_pair` never applies
+`GATE_BLOCK` to a member of that set; skipped barriers are counted in `gated`.
+The row keeps its real `rt`/`cost_of_tp`/`gate`, so a deployed strategy whose
+cost genuinely eats its target now SHOWS that instead of vanishing.
+
+**GUARD** — `tests/test_a_deployed_row_is_always_measured.py`:
+`test_the_deployed_combination_is_never_skipped`,
+`test_the_gate_still_skips_an_undeployed_combination`,
+`test_the_deployed_set_is_read_from_the_operators_own_settings`,
+`test_a_settings_file_that_cannot_be_read_exempts_nothing`,
+`test_a_strategy_with_no_spec_is_skipped_not_guessed`,
+`test_the_counters_reach_the_caller`.
+
+**Still open, and named rather than left implied:**
+
+* **26 of the 28 are still unmeasured.** Only PSXSTOCK 15m willr14 has been
+  re-run. The other pairs — GPNSTOCK 15m/30m (20 rows, empty files),
+  CHYMSTOCK 1h, DVNSTOCK 15m, PSXSTOCK 15m stoch14 — need the same treatment,
+  and the fleet will do it on the next sweep now that the exemption exists.
+* **`gated` is counted but not yet reported** to the screen or the progress
+  file; it stops at the pair's own result dict.
+* **The cost is still a single sample.** A median over a window, or a
+  market-hours reading for stock tokens, is the real repair; the exemption
+  only stops the operator's own strategies from disappearing.
+* **Nothing alarms on "a deployed strategy has no row".** That check is three
+  lines against the store and would have caught this weeks ago.
+
+---
+
 ## RCA-2026-09-10-M — "no row #PNK3G9KZ in the store" told the operator a cause nobody had checked
 
 **CEO**

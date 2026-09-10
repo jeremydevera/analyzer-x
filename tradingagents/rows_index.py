@@ -1244,10 +1244,42 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
                 con.commit()
             _say("loading")
         con.commit()
-        _say("indexing")
-        for ddl in KEEP_INDEXES:
-            con.execute(ddl)
-        con.commit()
+
+        # A LONG PHASE NAMES ITSELF AND KEEPS TICKING.
+        #
+        # `phase` is a one-item list so the ticker below can read whichever
+        # phase is current without being rebuilt per statement.
+        phase = ["indexing"]
+        last = [0.0]
+
+        def _tick():
+            now = _t.time()
+            if now - last[0] >= VERIFY_TICK_S:
+                last[0] = now
+                _say(phase[0])
+            return 0          # non-zero would ABORT the statement
+
+        # BUILDING THE INDEXES IS THE LONGEST PHASE and it published ONE line.
+        #
+        # Measured in CLAUDE.md on a 31,159,970-row store, one index at a
+        # time: `rows_coin` **16.7 min**, `rows_winrate` 4.4, and the others
+        # 3-4 each. This rebuild finished with **95,083,138 rows** — three
+        # times that — so the four kept indexes are an hour or more, during
+        # which `_say("indexing")` had already been called once and nothing
+        # would move again until they were all done. Same silence as RCA-G,
+        # third time in one afternoon. Now each index names itself
+        # ("indexing 3 of 4: rows_coin") and the seconds keep climbing.
+        con.set_progress_handler(_tick, VERIFY_TICK_OPS)
+        try:
+            for i, ddl in enumerate(KEEP_INDEXES, 1):
+                name = (ddl.split("EXISTS ")[1].split(" ON")[0]
+                        if "EXISTS " in ddl else f"#{i}")
+                phase[0] = f"indexing {i} of {len(KEEP_INDEXES)}: {name}"
+                _say(phase[0])
+                con.execute(ddl)
+                con.commit()
+        finally:
+            con.set_progress_handler(None, 0)
         # THE VERIFY IS THE LAST PLACE THIS CAN GO QUIET, so it does not.
         #
         # Three statements over the whole file: two full scans and a
@@ -1261,16 +1293,8 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
         # `rows_rebuild.json` and a reader can see the difference between slow
         # and stopped. The counts come FIRST: they are sequential and cheap,
         # so a mismatch never pays for the page walk.
-        _say("verifying")
-        last = [0.0]
-
-        def _tick():
-            now = _t.time()
-            if now - last[0] >= VERIFY_TICK_S:
-                last[0] = now
-                _say("verifying")
-            return 0          # non-zero would ABORT the statement
-
+        phase[0] = "verifying"
+        _say(phase[0])
         con.set_progress_handler(_tick, VERIFY_TICK_OPS)
         try:
             got_rows = int(con.execute(

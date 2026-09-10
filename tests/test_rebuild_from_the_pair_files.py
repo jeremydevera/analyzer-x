@@ -95,12 +95,37 @@ def test_the_kept_indexes_exist_afterwards(store):
         assert kept in have, f"{kept} missing — the screen loses its order"
 
 
-def test_indexes_are_created_AFTER_the_load_not_during(store):
-    """That is the whole speed argument: 1.5 pairs/min with them, 75 without."""
-    src = inspect.getsource(ri.rebuild)
-    load = src.index("rows += index_pair(")
-    build = src.index("for ddl in KEEP_INDEXES:")
-    assert load < build, "indexes must be built over data already written"
+def test_indexes_are_created_AFTER_the_load_not_during(store, monkeypatch):
+    """That is the whole speed argument: 1.5 pairs/min with them, 75 without.
+
+    This guard used to be `src.index("for ddl in KEEP_INDEXES:")` and went RED
+    the moment that loop gained an `enumerate` for its progress line — pinned
+    to the spelling, not the behaviour (pattern 5 in the repeating list). So it
+    now LOOKS at the file while it is being loaded: nothing the screen orders
+    by may exist on `rows` until the rows are in.
+    """
+    during = []
+    real = ri.index_pair
+
+    def watch(f, con=None, **kw):
+        if con is not None:
+            during.append({r[0] for r in con.execute(
+                "SELECT name FROM sqlite_master WHERE type='index'"
+                " AND tbl_name='rows' AND name NOT LIKE 'sqlite_%'")})
+        return real(f, con, **kw)
+
+    monkeypatch.setattr(ri, "index_pair", watch)
+    got = ri.rebuild()
+    assert got["rebuilt"] is True, got
+    assert during, "the loop never ran"
+    for have in during:
+        assert have == set(), f"an index was live during the load: {have}"
+    # and they exist once it is over
+    with ri._open(readonly=True) as con:
+        after = {r[0] for r in con.execute(
+            "SELECT name FROM sqlite_master WHERE type='index'"
+            " AND tbl_name='rows' AND name NOT LIKE 'sqlite_%'")}
+    assert ri._kept_index_names() <= after
 
 
 def test_progress_is_written_after_every_pair(store):
@@ -563,3 +588,49 @@ def test_the_counts_run_before_the_page_walk(store):
     sequential and cheap, the page walk is neither."""
     src = inspect.getsource(ri.rebuild)
     assert src.index("count(*) FROM rows") < src.index("PRAGMA quick_check")
+
+
+def test_each_index_build_names_itself_while_it_runs(store, monkeypatch):
+    """The LONGEST phase used to publish one line and then go quiet.
+
+    CLAUDE.md's own measurement, one index at a time on a 31,159,970-row
+    store: `rows_coin` **16.7 min**, `rows_winrate` 4.4, the others 3-4 each.
+    The rebuild this was written for finished with **95,083,138 rows** — three
+    times that — so four indexes is an hour or more with `_say("indexing")`
+    already spent. Third helping of the same silence in one afternoon
+    (RCA-G, RCA-J, RCA-K).
+    """
+    seen = []
+
+    class Spy:
+        """Captures what the progress file SAYS at the moment each index
+        starts — `sqlite3.Connection` is immutable, so the connection is
+        wrapped rather than the class patched."""
+
+        def __init__(self, con):
+            object.__setattr__(self, "_con", con)
+
+        def __getattr__(self, name):
+            return getattr(object.__getattribute__(self, "_con"), name)
+
+        def __setattr__(self, name, value):
+            setattr(object.__getattribute__(self, "_con"), name, value)
+
+        def execute(self, sql, *a):
+            con = object.__getattribute__(self, "_con")
+            if isinstance(sql, str) and "CREATE INDEX" in sql.upper():
+                seen.append(ri.rebuild_progress().get("phase"))
+            return con.execute(sql, *a)
+
+    real_connect = sqlite3.connect
+    monkeypatch.setattr(ri.sqlite3, "connect",
+                        lambda *a, **k: Spy(real_connect(*a, **k)))
+    got = ri.rebuild()
+    assert got["rebuilt"] is True, got
+    assert len(seen) == len(ri.KEEP_INDEXES), \
+        f"expected one phase per kept index, got {seen}"
+    for i, phase in enumerate(seen, 1):
+        assert phase and phase.startswith(f"indexing {i} of {len(seen)}: "), \
+            f"index {i} did not name itself: {phase!r}"
+    # the name in the phase is the index actually being built
+    assert any("rows_pair" in (p or "") for p in seen), seen

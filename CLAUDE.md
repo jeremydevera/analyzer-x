@@ -477,6 +477,38 @@ disk), and every number here was paid for in wall-clock:
 * `POST /api/strategies/reindex` is the operator's way to force it, and the
   panel shows "index the missing N pair(s) now" beside the count.
 
+**MEASURED AT 96,313,064 ROWS (Sep 10, 2026) — a full `rows_index.rebuild()`
+of the whole store, so the next session scales from real numbers instead of the
+31M-row ones above.** Whole run 2:52pm → ~8:30pm on a mechanical G:.
+
+| phase | measured |
+|---|---|
+| load 5,367 pair files, no indexes | **69.9 min, 70.3 pairs/min** |
+| `rows_pair` (96M **text** keys) | **48 min** |
+| `rows_profit` | **14 min** |
+| `rows_coin` + `rows_winrate` | **~27 min** together |
+| all four indexes | **~89 min** |
+| pre-swap verify (2 counts + `quick_check` over 41.94 GB) | **~3 h** |
+| file | 41.94 GB holding 96.3M rows, against 34.69 GB holding 52.3M |
+
+Three things that table is worth knowing for:
+
+* **The text index is the expensive one.** `rows_pair` cost 3.4x `rows_profit`
+  on the same table — 96 million text keys to sort against numbers. Budget for
+  it, and never assume four indexes cost 4x one.
+* **`index_pair`'s delete-first is a FULL TABLE SCAN without `rows_pair`,** and
+  a rebuild has no indexes while loading. Measured 39.9 s per pair at 2.94 GB,
+  quadratic as the file grows: 54 hours across the store, and it is why filing
+  looked like it decayed from 40 pairs/min to 0.25. `index_pair(..., fresh=True)`
+  skips it for a caller that has PROVED the pair is absent (docs/RCA.md
+  RCA-2026-09-10-K).
+* **The pre-swap verify is the longest phase and it is disk-bound**, measured
+  at **339 reads/sec of ~12 KB = 4.1 MB/s** while a plain sequential read of
+  the same disk measured **106 MB/s**. It is kept anyway — it is the only thing
+  between a bad file and the operator's one index — but every long phase
+  publishes to `rows_rebuild.json` while it runs, because three separate
+  phases went silent in one afternoon and each one got called a stall.
+
 ## The fold streams; the page is capped and says so (MANDATORY — 2026-08-26)
 
 A market-wide sweep cannot be summarised in RAM. Measured on this PC's own

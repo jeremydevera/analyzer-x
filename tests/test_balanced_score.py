@@ -149,13 +149,22 @@ def test_every_row_has_a_score_and_a_why(store):
 
 def test_the_csv_carries_the_column_too(store):
     """Kit item F: every row carries every column, the download included."""
+    # PARSED AS CSV, not split on commas. The file now carries
+    # `measured_through` — a date in this project's one format,
+    # "Sep 10, 2026 1:22am", which contains a comma and is correctly QUOTED by
+    # the writer. Splitting on "," walked the columns out of step and this test
+    # failed with `could not convert string to float: ' 2026 1:22am"'`
+    # (Sep 11, 2026): the file was right and the reader was naive.
+    import csv
+    import io
+
     from tradingagents import api
 
     body = "".join(api.strategies_csv_lines())
-    head = body.split("\n")[0].split(",")
+    rows = list(csv.reader(io.StringIO(body)))
+    head = rows[0]
     assert "balanced" in head and "balanced_why" in head, head
-    row = body.split("\n")[1]
-    assert float(row.split(",")[head.index("balanced")]) >= 1.0, row[:120]
+    assert float(rows[1][head.index("balanced")]) >= 1.0, rows[1][:8]
 
 
 def test_the_panel_prints_it_and_says_what_it_means():

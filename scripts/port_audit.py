@@ -66,7 +66,13 @@ CHECKS = {
   "Backtest": {
     "coins picker": ["<CoinPicker"],
     "timeframes": ["TFS ="],
-    "dates / window": ["Previous 1 year"],
+    # The window picker still exists; its LONGEST option does not. Operator,
+    # Sep 10, 2026: *"Also remove the previous 1 year i wont be using that, it
+    # should always default to past 30 days"*. This audit pinned the option
+    # rather than the control, so removing it on request read as "a control was
+    # lost in the port". Pinned on the picker's own map now, which every option
+    # lives in.
+    "dates / window": ["WINDOWS: Record<string, number>", "Previous month"],
     "base margin $": ["Base margin $"],
     "BACKTEST": [">BACKTEST<", "BACKTEST\n"],
     "UPDATE BACKTEST": ["UPDATE BACKTEST"],

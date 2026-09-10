@@ -56,15 +56,32 @@ ROWS = [
 ]
 
 
+# The coin whose pair was measured LONG AGO, so `measured_days` has something
+# to cut. Sep 11, 2026: the operator's own PSXSTOCK-15m was last measured while
+# the US market was shut, which is how a stale measurement hides under a fresh
+# window (RCA-2026-09-11-A).
+STALE = {"PSXSTOCK"}
+STALE_DAYS = 20
+
+
 @pytest.fixture
 def store(tmp_path, monkeypatch):
-    rows_dir = tmp_path / "rows"
+    rows_dir, states = tmp_path / "rows", tmp_path / "states"
     rows_dir.mkdir()
+    states.mkdir()
     monkeypatch.setattr(msw, "ROWDIR", rows_dir)
+    monkeypatch.setattr(msw, "STATES", states)
     monkeypatch.setattr(ri, "DB_PATH", tmp_path / "rows.db")
+    import time
+
+    now_ms = int(time.time() * 1000)
     for r in ROWS:
         (rows_dir / f"{r['coin']}-{r['tf']}.json").write_text(json.dumps([r]))
-    import time
+        # the pair's WATERMARK is what `measured_days` filters on, and it lives
+        # in the state file beside the rows
+        when = now_ms - (STALE_DAYS * 86_400_000 if r["coin"] in STALE else 0)
+        (states / f"{r['coin']}-{r['tf']}.json").write_text(
+            json.dumps({"__last_ms__": when}))
 
     ri.sync(now=time.time() + ri.SETTLE_S + 1)
     return None
@@ -90,6 +107,9 @@ SPEC = {
     "tp_over_sl": (True, lambda r, v: r["tp"] >= r["sl"]),
     "asset": ("crypto", lambda r, v: r["coin"].endswith("STOCK")
               if v == "stocks" else not r["coin"].endswith("STOCK")),
+    # "backtested within N days" — it cuts on the PAIR's watermark, not on
+    # anything in the row, which is why the fixture writes state files
+    "measured_days": (7, lambda r, v: r["coin"] not in STALE),
 }
 
 # query() parameters that are NOT row filters: paging, ordering, the months/

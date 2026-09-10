@@ -247,8 +247,18 @@ def _never_touch_the_live_book(tmp_path, monkeypatch):
         from tradingagents import rows_index as _ri
 
         monkeypatch.setattr(_ri, "DB_PATH", sandbox / "rows.db")
-        if hasattr(_ri, "PIDFILE"):
-            monkeypatch.setattr(_ri, "PIDFILE", sandbox / "rows_index.pid")
+        # every path constant this module has, not just the database. LOGFILE
+        # and REBUILD_PROGRESS were added on Sep 10, 2026 (the indexer's log
+        # from RCA-2026-09-10-C and the rebuild's progress file) and neither
+        # was sandboxed, so a test run wrote into the operator's real
+        # ~/.tradingagents — which is exactly what
+        # test_the_sandbox_covers_every_path_constant_it_can_find exists to
+        # refuse. It found them; this is the fix.
+        for _name, _leaf in (("PIDFILE", "rows_index.pid"),
+                             ("LOGFILE", "rows_index.log"),
+                             ("REBUILD_PROGRESS", "rows_rebuild.json")):
+            if hasattr(_ri, _name):
+                monkeypatch.setattr(_ri, _name, sandbox / _leaf)
     except Exception:
         pass
     try:

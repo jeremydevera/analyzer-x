@@ -172,6 +172,93 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-11-B — a newer run REPLACED each pair's rows, so 1,261,358 measured rows were deleted and 100 pairs emptied
+
+**CEO**
+
+* You asked whether backtests from previous days were lost. They were: **1,261,358 measured
+  results across 267 coins**, and **100 of those coins were wiped completely** — GPNSTOCK
+  15m went from 18,880 results to zero, SUPRA 15m from 21,780 to zero.
+* Nothing was wrong with the lost results. A later run measured FEWER results for
+  those coins, because the backtest skips targets that trading costs eat half of — and
+  those coins were expensive at the moment it ran. The save then wrote the smaller
+  set OVER the bigger one, because it judged "newer" by the clock and never looked at
+  what it was about to overwrite.
+* An update can now only ADD to a coin's results or replace a result it re-measured.
+  It can never leave a coin with less than it found. And all 1.26 million rows are
+  still in the backup copy from 1:09pm, so they are recoverable.
+
+**DEV**
+
+* `cloud_sweep.land_rows` called `msw.save_pair_rows(coin, tf, rows)` — a REPLACE —
+  gated only by `is_fresher()`, which compares `__last_ms__` watermarks: when a run
+  ENDED, nothing about what it holds. So a shard that returned 0 rows with a newer
+  watermark emptied the pair. Measured across the operator's own index copies
+  (`rows.before-rebuild.db` at `Sep 10 1:09pm` versus now): 4,214 pairs gained
+  39,370,830 rows, 267 lost 1,261,358, 100 emptied. The cause of the smaller runs is
+  RCA-2026-09-11-A's gate: `UTILITY-1h` records `rt=3.5866%`, so of the 1h grid's
+  eleven targets only 8.0% cleared `rt/0.5` — and the surviving TP set matches
+  `rt / GATE_BLOCK` on every affected pair.
+* Broken invariant: **newer is not emptier.** A write that can shrink what it is
+  updating is a delete, whatever it is called — and freshness by timestamp cannot
+  authorise it.
+* Guard: `tests/test_a_newer_run_can_never_empty_a_pair.py` (6) —
+  `test_a_newer_but_emptier_run_keeps_every_stored_row`,
+  `test_a_newer_smaller_run_keeps_what_it_did_not_measure` (the re-measured
+  combination wins, the untouched ones stay),
+  `test_the_shrink_is_impossible_by_construction` (AST-checks that
+  `save_pair_rows` is not called at all, then drives three landings and asserts the
+  file never shrinks), `test_a_FIRST_measurement_may_still_write_nothing` (the 1d
+  incident's empty file stays legal), `test_the_watermark_still_decides_whether_to_land_at_all`,
+  `test_it_is_the_ONE_place_the_rule_lives`.
+
+**SAW** — the operator: *"so you mean there are backtest from my previous days that
+was lost?"*, then *"why were they deleted"*, then *"so you mean whenver i update
+backtest they get deelted?"*.
+
+**TIMELINE**
+
+1. `Sep 10, 2026 ~1:09pm` — the index holds 4,612 pairs, including GPNSTOCK-15m with
+   **18,880** rows and GPNSTOCK-30m with **20,880**.
+2. `11:33am-1:17pm` — the collect lands the fleet's results for the expensive coins.
+   Each pair's file is REPLACED by what that run measured; for GPNSTOCK that was
+   nothing, because every barrier failed the cost gate at 1am New York.
+3. `Sep 11 12:40am` — measured by diffing the two index copies: 267 pairs lost rows,
+   100 emptied, 1,261,358 rows gone. 176 of the losers are tokenized stocks, **91 are
+   crypto** — thin books (SUPRA, ASP, AURASOL, UTILITY), not market hours.
+4. `12:55am` — `merge_pair_rows` found to have existed all along, used by the LOCAL
+   sweep, with a docstring warning that `save_pair_rows` "would delete every
+   combination not yet reached". The cloud path used the destructive one.
+
+**ROOT CAUSE** — two writers for one rule. `run_pair` merges by combination;
+`land_rows` replaced. Whichever path last touched a pair decided whether its earlier
+measurements survived.
+
+**WHY IT WAS NOT CAUGHT** — every test of `land_rows` asserts what it writes for a
+pair the store has never seen, so REPLACE and MERGE are indistinguishable in all of
+them. Not one seeds a pair with rows first. The loss also has no symptom at the
+moment it happens: the watermark advances, the collect reports "kept", and the pair
+simply has fewer rows than yesterday — which reads as "not measured yet".
+
+**COST** — 1,261,358 measured rows, of which the operator noticed the ones under
+their own deployed strategies. No money, and recoverable: `rows.before-rebuild.db`
+still holds every one of them, which is the copy previously described in this file
+as "dead files ... read by nothing and could be deleted".
+
+**FIX** — this commit. `land_rows` calls `merge_pair_rows`, so what a run measured
+wins and what it did not measure is kept; an empty landing on a pair that already has
+rows now changes nothing, while a first measurement may still store the empty file the
+1d incident requires. `append` becomes redundant (the merge dedupes by combination)
+and is left accepted so callers need not change.
+
+**GUARD** — `tests/test_a_newer_run_can_never_empty_a_pair.py`, six tests named in
+the DEV block. Still open: **the 1,261,358 rows are not yet restored** — the fix stops
+the next loss, it does not undo this one; and `market_sweep.run_pair(merge=False)`
+remains the DEFAULT, so a local caller that forgets the argument still replaces
+(RCA-2026-09-10-A bought that lesson for the row UPDATE button and the default stayed).
+
+---
+
 ## RCA-2026-09-11-A — 28 of the operator's 35 DEPLOYED strategies had no backtest row, because a spread read at 1am judged them unwinnable
 
 **CEO**

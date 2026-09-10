@@ -689,12 +689,30 @@ def land_rows(coin: str, tf: str, rows: list, *, marks=(), append: bool = False)
     # rows of one pair can be split across a shard file.
     if not append and not is_fresher(coin, tf, last_ms):
         return "stale"
-    if append:
-        rows = msw.pair_rows(coin, tf) + rows
-    # an EMPTY rows file is what a local sweep leaves when the trade floor
-    # drops everything (the 1d incident, 2026-08-26) — the state file beside
-    # it is what says "measured"
-    msw.save_pair_rows(coin, tf, rows)
+    # MERGE, NEVER REPLACE. `save_pair_rows` was here, and it is the reason
+    # 1,261,358 measured rows across 267 pairs disappeared on Sep 10, 2026 —
+    # 100 of those pairs emptied outright (GPNSTOCK-15m 18,880 -> 0,
+    # SUPRA-15m 21,780 -> 0). Nothing was wrong with those measurements: a
+    # later shard produced FEWER rows for the pair, because its cost gate
+    # skipped almost every barrier while the coin's spread was wide (a stock
+    # token outside US market hours, or a thin alt whose book is always wide —
+    # UTILITY-1h costs 3.5866% round-trip, so only its 8% target cleared), and
+    # this line then wrote that smaller set OVER the full one.
+    #
+    # `is_fresher` compares WATERMARKS, which say when a run ended and nothing
+    # about what it holds. So freshness alone must never authorise a shrink.
+    # `merge_pair_rows` — the writer the LOCAL sweep has always used, whose own
+    # docstring warns that save_pair_rows "would delete every combination not
+    # yet reached" — keys on the combination: what this run measured wins,
+    # what it did not measure is kept.
+    #
+    # `append` is now redundant (the merge dedupes by combination) and is kept
+    # only so callers do not have to change; an empty `rows` on a pair that has
+    # none still leaves the empty file a first measurement is entitled to
+    # write, with the state file beside it saying "measured" (the 1d incident,
+    # 2026-08-26).
+    if rows or not msw.pair_rows(coin, tf):
+        msw.merge_pair_rows(coin, tf, rows)
     if last_ms:
         # __last_ms__ LAST. `pair_watermark` reads the final 256 bytes and its
         # regex anchors the key to the closing brace, so writing it first made

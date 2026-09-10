@@ -107,13 +107,33 @@ def test_the_window_ends_where_the_ROW_was_measured(offline):
     backtested over. Their words: *"i filtered to 1 day and it shows AG8FFTN3
     even it does not have trade for sept"*. With the end taken from the row, the
     same request is Aug 24 20:15 -> Aug 25 20:15, 48 trades, -$44.58.
+
+    ALSO, SINCE Sep 11, 2026: the window STARTS at today minus N days, on the
+    operator's instruction (*"when i filter past 30 days it should be date now
+    -30 days ... why are you using sept 9?"*). The end still stops at the row's
+    own measurement — that is this test's original lesson and it stands — so a
+    row measured five days ago has NOTHING inside a two-day window, and the
+    honest answer is to leave it alone rather than quietly widen the window to
+    reach its data. That skip is COUNTED, which is the part that stops it
+    reading as "no trades".
     """
     df = offline
     ms = df["Date"].to_numpy().astype("datetime64[ms]").astype("int64")
     # the row stops 5 days before the candles do
     end = int(ms[-1]) - 5 * msw.MS_PER_DAY
     row = dict(_row(), last_ms=end)
-    got = msw.window_rows([row], 2)
+
+    # a TWO-day window ends before this row's data begins: nothing to restate
+    stale = msw.window_rows([dict(row)], 2)
+    assert stale["rows"][0].get("restated") is not True, \
+        "a row with nothing in the window must keep its whole-history figures"
+    assert stale["skipped"]["outside_window"] == 1, stale["skipped"]
+    assert stale["rows"][0].get("w_trades") is None, \
+        "and it must not carry window figures from a window it is not in"
+
+    # a window wide enough to reach it DOES restate it, and still stops at the
+    # row's own measurement — never at the last candle on disk
+    got = msw.window_rows([row], 30)
     r = got["rows"][0]
     # compare the EPOCHS: `w_first`/`w_last` are formatted in the project's one
     # date format now (Sep 08, 2026 2:06am), which does not sort as a string
@@ -121,9 +141,12 @@ def test_the_window_ends_where_the_ROW_was_measured(offline):
     assert r["w_last_ms"] <= end,         f"the window ran past the row's own measurement: {r['w_last']}"
     assert r["w_first_ms"] < r["w_last_ms"]
     assert ", 20" in r["w_last"] and ("am" in r["w_last"] or "pm" in r["w_last"]),         f"the operator's date format, not a compact stamp: {r['w_last']}"
-    assert 1.5 <= r["w_days"] <= 2.1, r["w_days"]
+    # SHORTER than the 30 asked for, and that is the point: the window starts
+    # at today minus 30 and stops at this row's own end, five days back.
+    assert 20.0 <= r["w_days"] < 30.1, r["w_days"]
+    assert r["w_days"] < 30.0, "a row measured 5 days ago cannot own 30 days"
     # and a row WITHOUT its own stamp falls back to the pair's watermark
-    plain = msw.window_rows([_row()], 2)["rows"][0]
+    plain = msw.window_rows([_row()], 30)["rows"][0]
     assert plain["w_last_ms"] >= r["w_last_ms"],         "the fallback must not be earlier than a row that names its end"
 
 

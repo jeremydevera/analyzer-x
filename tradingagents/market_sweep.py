@@ -88,6 +88,18 @@ def min_trades(tf: str, days: int | float | None = None) -> int:
     scaled = round(floor * float(days) / DAYS_PER_YEAR)
     return max(MIN_TRADES_ABS, min(floor, scaled))
 
+# HOW FAR BEFORE A WINDOW THE REPLAY STARTS, so a trade already open when the
+# window begins is not lost. Operator, Sep 11, 2026: *"if i filter last 30 days
+# and bitcoin has open: aug 1 closed aug 12 what will happen"* — and until this
+# constant existed the answer was "it disappears", because the window replay
+# started FLAT on its first bar.
+#
+# MEASURED on the operator's own rows before choosing 7: the longest hold on
+# AMP 15m ibs across 4,295 trades is **2.2 days** (99th percentile 0.5), STBL
+# 4h macddiv 0.5, KITE 1h squeeze 0.9. Seven days is three times the worst of
+# those and costs ~23% more bars on a 30-day window. A trade held longer than
+# this is still missed, which is a stated limit rather than a silent one.
+WINDOW_LEAD_DAYS = 7
 GATE_BLOCK = 0.50         # cost >= half the target: the trade cannot win
 CONTEXT_BARS = 300        # lookback a signal needs before the first new bar
 
@@ -1672,8 +1684,14 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
 
     n = max(0, int(days or 0))
     if not n or not rows:
+        # THE SAME SHAPE as the full return. Found by the harddev loop, round
+        # 6, by its own test: this early path omitted `skipped` and
+        # `straddled`, so a caller reading `win["skipped"]` worked on every
+        # request with a window and raised KeyError on the one without.
         return {"rows": rows, "first": "", "last": "",
-                "first_ms": 0, "last_ms": 0, "groups": 0}
+                "first_ms": 0, "last_ms": 0, "groups": 0,
+                "skipped": {"no_candles": 0, "outside_window": 0, "failed": 0},
+                "straddled": 0}
     cap = int(group_max or WINDOW_GROUP_MAX)
     groups: dict = {}
     for r in rows:
@@ -1690,11 +1708,23 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
     # ("Aug 03, 2026" < "Jul 26, 2026"), so the string form is built once, at
     # the end, by the project's one formatter
     first_ms = last_ms = 0
+    # WHY A ROW WAS NOT RESTATED. Found by the harddev loop, round 2: three
+    # different situations all left a row untouched and indistinguishable —
+    # no candles on disk for the pair (`cached_candles('EPIK_USDT','30m')`
+    # returns None on this store), nothing inside the window at all (a row
+    # last measured before it began), or the replay raising. The row then
+    # showed its WHOLE-HISTORY figures under a table that said "last 30 days",
+    # which is the label-does-not-match-its-data failure this repo keeps
+    # paying for. Counted and returned, so the caller can say so out loud
+    # (rule 20).
+    skipped = {"no_candles": 0, "outside_window": 0, "failed": 0}
+    straddled = 0
     for (coin, tf, sig, th), grp in groups.items():
         sym = f"{coin}_USDT"
         try:
             full = cached_candles(sym, tf)
             if full is None or len(full) < 60:
+                skipped["no_candles"] += len(grp)
                 continue
             ms = full["Date"].to_numpy().astype("datetime64[ms]").astype("int64")
             # where the MEASUREMENT ends, not where the candle file does
@@ -1740,17 +1770,75 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
                 _DIRS_CACHE[ck] = dirs
             # one slice per distinct measurement end in this group (usually one)
             frames = {}
+            # TODAY'S MIDNIGHT, not this instant. Found by the harddev loop,
+            # round 4: with the start at `time.time() - 30 days` the same row
+            # answered 394 trades (1 straddler) and then 393 (0) twenty minutes
+            # later, because a trade near the edge falls out of the window as
+            # the clock moves — and the panel polls this route every few
+            # seconds, so the count would flicker while nothing changed.
+            # Snapping the start to local midnight keeps "past 30 days" stable
+            # for the whole day, and still includes today's bars up to the
+            # row's own measurement end.
+            _t = time.localtime()
+            now_ms = int((time.time()
+                          - _t.tm_hour * 3600 - _t.tm_min * 60 - _t.tm_sec)
+                         * 1000)
             for end in ends:
-                keep = [i for i, v in enumerate(ms) if int(v) <= end]
+                # ...AND NEVER PAST NOW. Found by the harddev loop, round 3:
+                # the start comes from today while the end comes from the row,
+                # so a bar timestamped in the FUTURE stretched the window past
+                # the N days asked for — a 10-day window measured 12.0 days on
+                # the offline fixture. "Past 30 days" cannot include the
+                # future, and a future bar is either clock skew or a fixture.
+                keep = [i for i, v in enumerate(ms)
+                        if int(v) <= min(end, now_ms)]
                 if len(keep) < 5:
                     continue
                 stop = len(keep)
-                lo = int(ms[stop - 1]) - n * MS_PER_DAY
-                start = next((i for i in range(stop) if int(ms[i]) >= lo), 0)
-                if stop - start < 5:
+                # THE WINDOW STARTS AT TODAY MINUS N DAYS. Operator, Sep 11,
+                # 2026: *"when i filter past 30 days it should be date now -30
+                # days ... why are you using sept 9?"*. It used to run back N
+                # days from the ROW'S last measured bar, so a row measured
+                # through Sep 09 answered "past 30 days" with Aug 10 -> Sep 09
+                # — a real 30 days, but not the last 30.
+                #
+                # The END still stops at the row's own measurement, and that is
+                # NOT an oversight: anchoring the end on today would replay
+                # candles the row was never backtested over, which is the fault
+                # the operator caught on Sep 09 ("why do i have sept 2 result
+                # when im not yet downloading candle and doing update
+                # backtest"). So a row measured through Sep 09, asked for the
+                # last 30 days on Sep 11, answers over Aug 12 -> Sep 09 and
+                # says `w_days` 28.0 — SHORT, and visibly so, with the "last
+                # backtest" column beside it saying why.
+                lo = now_ms - n * MS_PER_DAY
+                # NO DEFAULT OF ZERO. Found by the harddev loop, round 1:
+                # `next(..., 0)` used to be safe because `lo` was derived from
+                # this row's own last bar, so some bar always cleared it. Now
+                # that `lo` is today minus N days, a row last measured MORE
+                # than N days ago has no bar at all inside the window — and a
+                # default of 0 made `start` the first bar of the file, so the
+                # row would report its ENTIRE HISTORY as "the last 30 days".
+                # On this store that is not hypothetical: 267 pairs were last
+                # measured before Sep 10 and `SCRT-1d` reads Aug 25.
+                #
+                # A row with nothing in the window is left ALONE — unrestated,
+                # so `restated` stays false and the screen keeps showing its
+                # whole-history figures with the "last backtest" column saying
+                # why, instead of a window that quietly means something else.
+                start = next((i for i in range(stop) if int(ms[i]) >= lo), -1)
+                if start < 0 or stop - start < 5:
+                    skipped["outside_window"] += sum(
+                        1 for r in grp
+                        if (int(r.get("last_ms") or 0) or wm or int(ms[-1])) == end)
                     continue
-                fr = full.iloc[start:stop].reset_index(drop=True)
-                frames[end] = (fr, dirs[start:stop], start, stop)
+                # ...and the replay begins EARLIER than that, so a position
+                # already open on the window's first bar is carried in instead
+                # of vanishing (WINDOW_LEAD_DAYS).
+                lead_lo = lo - WINDOW_LEAD_DAYS * MS_PER_DAY
+                lead = next((i for i in range(stop) if int(ms[i]) >= lead_lo), 0)
+                fr = full.iloc[lead:stop].reset_index(drop=True)
+                frames[end] = (fr, dirs[lead:stop], start, stop, lead)
                 f0ms, l0ms = int(ms[start]), int(ms[stop - 1])
                 first_ms = f0ms if not first_ms else min(first_ms, f0ms)
                 last_ms = l0ms if not last_ms else max(last_ms, l0ms)
@@ -1758,7 +1846,7 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
                 end = int(r.get("last_ms") or 0) or wm or int(ms[-1])
                 if end not in frames:
                     continue
-                frame, win_dirs, start, stop = frames[end]
+                frame, win_dirs, start, stop, lead = frames[end]
                 # the project's ONE date format, never a hand-rolled slice
                 # of a Timestamp: `2026-07-26 20:00` reached the operator's
                 # screen on 2026-09-03 (CLAUDE.md bans compact stamps)
@@ -1772,12 +1860,43 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
                     fee=row_fee, sizing=r["sizing"], dirs=win_dirs,
                     tp=float(r["tp"]) / 100.0, sl=float(r["sl"]) / 100.0,
                     liq_move_pct=liq, funding=fund, keep_log=True)
-                log = res.get("log") or []
+                # A TRADE BELONGS TO THE WINDOW IF IT CLOSED IN IT, even if
+                # it opened before. Operator, Sep 11, 2026, with the case that
+                # names the rule: *"open: aug 1 closed aug 12 what will
+                # happen"*. It used to be dropped — the replay started flat on
+                # the window's first bar, so a position opened before it never
+                # existed. Now the replay starts WINDOW_LEAD_DAYS earlier and
+                # the lead-in's own trades are cut here instead.
+                #
+                # `exit_bar` indexes the replayed frame, which begins at
+                # `lead`, so the absolute bar is `lead + exit_bar`. `held_s`
+                # gives the entry without parsing a printed date.
+                lo_ms = int(ms[start])
+                log = []
+                straddle = 0
+                for t in (res.get("log") or []):
+                    bar = lead + int(t.get("exit_bar") or 0)
+                    x_ms = int(ms[min(bar, len(ms) - 1)])
+                    if x_ms < lo_ms:
+                        continue                  # the lead-in's own trade
+                    log.append(t)
+                    if x_ms - int(float(t.get("held_s") or 0) * 1000) < lo_ms:
+                        straddle += 1
                 wins = sum(1 for t in log if t["WIN/LOSE"] == "WIN")
                 run, runlen = 0.0, 0
                 worst, worst_len = 0.0, 0
+                # profit and the dip are RECOMPUTED from the kept trades:
+                # `res["profit"]` and `res["max_dd"]` cover the replayed frame,
+                # lead-in included, and would credit this window with trades
+                # that closed before it began.
+                profit = 0.0
+                peak = 0.0
+                dip = 0.0
                 for t in log:
                     pnl = float(t["pnl $"])
+                    profit += pnl
+                    peak = max(peak, profit)
+                    dip = max(dip, peak - profit)
                     if pnl < 0:
                         run += pnl
                         runlen += 1
@@ -1785,14 +1904,20 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
                             worst, worst_len = run, runlen
                     else:
                         run, runlen = 0.0, 0
+                n_tr = len(log)
                 r.update({
-                    "w_trades": res["trades"], "w_wins": wins,
-                    "w_losses": res["trades"] - wins,
-                    "w_winrate": round(100.0 * wins / max(1, res["trades"]), 2),
-                    "w_profit": round(res["profit"], 2),
-                    "w_dd": round(res.get("max_dd") or 0, 2),
+                    "w_trades": n_tr, "w_wins": wins,
+                    "w_losses": n_tr - wins,
+                    "w_winrate": round(100.0 * wins / max(1, n_tr), 2),
+                    "w_profit": round(profit, 2),
+                    "w_dd": round(dip, 2),
                     "w_streak": round(worst, 2), "w_streak_len": worst_len,
-                    "w_funding": round(res.get("funding_total") or 0, 2),
+                    "w_funding": round(sum(float(t.get("funding $") or 0)
+                                           for t in log), 2),
+                    # HOW MANY of them opened before the window — so a figure
+                    # leaning on a long trade says so instead of looking like
+                    # 30 days of work
+                    "w_straddle": straddle,
                     "w_days": round((int(ms[stop - 1]) - int(ms[start]))
                                     / MS_PER_DAY, 1),
                     "w_first": f0, "w_last": l0,
@@ -1801,17 +1926,23 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
                     # inventing a second one
                     "w_first_ms": int(ms[start]), "w_last_ms": int(ms[stop - 1]),
                     "restated": True})
+                straddled += straddle
                 if breathe:
                     time.sleep(breathe)       # let the rest of the app answer
             at.STRATEGY_SPECS.pop(key, None)
         except Exception as exc:                               # noqa: BLE001
+            skipped["failed"] += len(grp)
             print(f"[window] {coin} {tf} {sig}: {type(exc).__name__}: "
                   f"{str(exc)[:70]}", flush=True)
     return {"rows": rows,
             "first": fmt_when(first_ms / 1000) if first_ms else "",
             "last": fmt_when(last_ms / 1000) if last_ms else "",
             "first_ms": first_ms, "last_ms": last_ms,
-            "groups": len(groups)}
+            "groups": len(groups),
+            # how many rows kept their whole-history figures, and why
+            "skipped": skipped,
+            # how many counted trades opened before the window began
+            "straddled": straddled}
 
 
 def storage_by_coin() -> list:

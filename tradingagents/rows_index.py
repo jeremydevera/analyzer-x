@@ -3527,6 +3527,9 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
                     d["window_first"] = d.get("w_first")
                     d["window_last"] = d.get("w_last")
                     d["window_days"] = d.get("w_days")
+                    # how many of THIS row's trades opened before the
+                    # window (operator, Sep 11, 2026)
+                    d["window_straddled"] = d.get("w_straddle")
                 # the floors AGAIN, on the window's figures — the SQL floors
                 # saw whole-history numbers, and the file prints the window's
                 batch_rows, hidden = window_floors(

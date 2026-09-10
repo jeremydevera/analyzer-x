@@ -61,7 +61,9 @@ def test_the_windowed_export_writes_the_windows_figures():
         assert f'd["{extra}"]' in body, extra
     # and the header carries them, or three columns arrive unnamed
     csv_src = inspect.getsource(api.strategies_csv_lines)
-    assert 'cols += ["window_first", "window_last", "window_days"]' in csv_src
+    for _c in ("window_first", "window_last", "window_days",
+              "window_straddled"):
+        assert f'"{_c}"' in csv_src, _c
 
 
 def test_the_windowed_export_is_capped_and_says_so_in_the_file():

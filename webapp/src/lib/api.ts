@@ -135,6 +135,10 @@ export interface StrategyRow {
    *  ends where its measurement ends, not where the candle file does */
   w_first_ms?: number;
   w_last_ms?: number;
+  /** how many of this row's counted trades opened BEFORE the window and closed
+   *  inside it (operator, Sep 11, 2026: "open: aug 1 closed aug 12 what will
+   *  happen" — they used to be dropped) */
+  w_straddle?: number;
   /** WHEN THIS ROW WAS LAST BACKTESTED — from the pair summary, so every row
    *  of the same coin+timeframe shares it.
    *  `measured_ms` is the last CANDLE the backtest tested (what decides
@@ -887,6 +891,13 @@ export const api = {
        *  win %, trades or profit missed a floor the whole history had passed.
        *  Sep 09, 2026: "Winrate 90% or better" over rows printing 89.47. */
       window_hidden?: number;
+  /** trades counted in the window that opened before it began */
+  window_straddled?: number;
+  /** why rows kept their whole-history figures: no candles, outside the
+   *  window, or the re-measure raised */
+  window_skipped?: {
+    no_candles?: number; outside_window?: number; failed?: number;
+  };
       /** a filtered count stops at COUNT_CAP: print "N+" */
       total_capped?: boolean }>(
       `/api/strategies?${p.toString()}`,

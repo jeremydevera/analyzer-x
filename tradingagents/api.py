@@ -386,6 +386,13 @@ def strategies(coin: str | None = None, tf: str | None = None,
         got["days"] = int(days)
         got["days_window"] = [win["first"], win["last"]]
         got["days_groups"] = win["groups"]
+        # WHY SOME ROWS KEPT THEIR WHOLE-HISTORY FIGURES, and how many counted
+        # trades opened before the window began. Both are rule 20 (whatever was
+        # excluded is counted out loud): without them a row that could not be
+        # re-measured is indistinguishable from one that traded nothing, and a
+        # window leaning on one long trade looks like 30 days of work.
+        got["window_skipped"] = win.get("skipped") or {}
+        got["window_straddled"] = int(win.get("straddled") or 0)
         # THE FLOORS AGAIN, ON THE WINDOW. Sep 09, 2026: "Winrate 90% or
         # better" chip over rows printing 89.47 / 86.36 / 80.00 / 75.00 — each
         # was >= 90 over its whole history (what SQL checked) and under 90 in
@@ -472,7 +479,10 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
     if days:
         # the window travels with the rows, so the file can be read a week
         # later without guessing which days it covered
-        cols += ["window_first", "window_last", "window_days"]
+        # kit item F: the file carries what the table shows, and the
+        # table now says how many trades opened before the window
+        cols += ["window_first", "window_last", "window_days",
+                 "window_straddled"]
     buf = _io.StringIO()
     w = csv.writer(buf, lineterminator="\n")
 

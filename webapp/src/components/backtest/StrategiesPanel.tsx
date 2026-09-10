@@ -205,6 +205,10 @@ export default function StrategiesPanel() {
   // missed a floor the whole history had cleared — named in the caption, never
   // hidden silently (rule 20). Sep 09, 2026: "Winrate 90% or better" over 89.47.
   const [winHidden, setWinHidden] = useState(0);
+  // how many counted trades opened before the window began, and why any row
+  // kept its whole-history figures — both straight from the payload
+  const [straddled, setStraddled] = useState(0);
+  const [skipNote, setSkipNote] = useState("");
   // the ceiling a WINDOWED download really has, from the server — never a
   // literal here, which is how a cap drifts away from the code that enforces it
   const [csvMax, setCsvMax] = useState(0);
@@ -401,6 +405,19 @@ export default function StrategiesPanel() {
         setWindow(d.window ?? []);   // the window's real months, from the payload
         setDayWin(d.days_window ?? []);   // and its real DATES when days is on
         setWinHidden(d.window_hidden ?? 0);
+        setStraddled(d.window_straddled ?? 0);
+        {
+          const sk = d.window_skipped ?? {};
+          const bits: string[] = [];
+          if (sk.no_candles) bits.push(`${sk.no_candles} with no candles stored`);
+          if (sk.outside_window) {
+            bits.push(`${sk.outside_window} last backtested before this window`);
+          }
+          if (sk.failed) bits.push(`${sk.failed} the re-measure could not read`);
+          setSkipNote(bits.length
+            ? `${bits.join(", ")} — those rows still show their whole history`
+            : "");
+        }
         setCsvMax(d.days_csv_max ?? 0);
         setFailedAfter(0);
       })
@@ -856,11 +873,37 @@ export default function StrategiesPanel() {
                 one each, each with its own X. One of them was also WRONG:
                 `TP 4% or tighter` for a FLOOR that keeps 4% and WIDER. */}
             {dayWin.length === 2 && dayWin[0] && servedFilters.days > 0
-              ? ` · each row re-measured over ITS OWN last ${servedFilters.days}`
-                + ` day${servedFilters.days > 1 ? "s" : ""}, ending where that row's`
-                + ` backtest ends (this page spans ${dayWin[0]} to ${dayWin[1]});`
+              ? ` · re-measured over the last ${servedFilters.days}`
+                + ` day${servedFilters.days > 1 ? "s" : ""} from today`
+                + ` (${dayWin[0]} to ${dayWin[1]}), each row stopping where its`
+                + ` own backtest ends — so a row measured earlier covers fewer`
+                + ` days, and the "last backtest" column says when;`
                 + ` month columns are hidden because a day cannot restate a month`
               : ""}
+            {/* A TRADE BELONGS TO THE WINDOW IF IT CLOSED IN IT, even if it
+                opened before — the operator's own case, Sep 11, 2026:
+                "open: aug 1 closed aug 12 what will happen". It used to be
+                dropped. Counting it is what they asked for; SAYING SO is what
+                stops a figure leaning on one long trade from reading as 30
+                days of work. On #L2N75DSW: 412 trades before this rule, 396
+                after, 1 of them opened earlier. */}
+            {straddled > 0 ? (
+              <span className="text-gray-500 dark:text-gray-400">
+                {" · "}{straddled.toLocaleString()} trade
+                {straddled === 1 ? "" : "s"} counted here opened before the
+                window and closed inside it
+              </span>
+            ) : null}
+            {/* A row that could not be re-measured keeps its WHOLE-HISTORY
+                figures, and there are three ways that happens: no candles on
+                disk for the pair, nothing inside the window at all, or the
+                replay raised. Silence made all three look like "no trades"
+                (rule 20). */}
+            {skipNote ? (
+              <span className="text-warning-600 dark:text-warning-400">
+                {" · "}{skipNote}
+              </span>
+            ) : null}
             {/* The floors were checked TWICE — once by the store on each
                 row's whole history, then again on the window's own figures,
                 because the column prints the window. A row that passed the

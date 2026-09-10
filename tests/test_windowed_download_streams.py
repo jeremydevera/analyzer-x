@@ -144,5 +144,7 @@ def test_the_export_still_carries_the_window_and_its_cap():
     """The fixes above must not undo what the window download already owed."""
     src = inspect.getsource(api.strategies_csv_lines)
     assert "WINDOW CAPPED" in src and "WINDOW FLOOR:" in src
-    assert 'cols += ["window_first", "window_last", "window_days"]' in src
+    for _c in ("window_first", "window_last", "window_days",
+               "window_straddled"):
+        assert f'"{_c}"' in src, _c
     assert ri.DAYS_CSV_MAX >= 500

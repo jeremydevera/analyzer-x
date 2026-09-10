@@ -972,6 +972,154 @@ def compact(*, dest: Path | None = None, keep_backup: bool = True) -> dict:
             "backup": str(backup) if keep_backup else ""}
 
 
+REBUILD_PROGRESS = Path.home() / ".tradingagents" / "rows_rebuild.json"
+
+
+def rebuild(*, dest: Path | None = None, keep_backup: bool = True) -> dict:
+    """Re-index EVERY pair file into a fresh rows.db, then swap it in.
+
+    This is the technique CLAUDE.md has prescribed since 2026-08-26 —
+    *"Loading a FRESH file sequentially and swapping it in is faster and leaves
+    a compact database"* — and it is not what `compact()` does. `compact()`
+    copies the existing file with `VACUUM INTO`, so it inherits whatever is in
+    it and it stalled at 90% on this store (RCA-G). This starts from the pair
+    JSON files, which `_connect` already names as the source of truth: *"every
+    row here is derived from a JSON file that is still the source of truth, so
+    a torn write costs a re-index, never a measurement."*
+
+    It fixes both problems at once, which is why it is worth the wall clock:
+
+    * the new file is written sequentially with NO indexes, so there is no
+      random I/O into 3.3 million free pages — the measured difference is
+      1.5 pairs/min against 75 (CLAUDE.md), and the catch-up on the live store
+      was managing 0.86;
+    * it indexes all 5,365 pairs, not the 4,612 that happened to be in the old
+      file, so the answer is 100% rather than 86%.
+
+    Safety is the same contract as `compact()`: a NEW file, verified before
+    anything is swapped, and the original left alone on any failure. Progress
+    is written to `REBUILD_PROGRESS` after every pair so a stall is visible in
+    minutes instead of the seven hours RCA-G cost.
+    """
+    import shutil
+    import time as _t
+
+    held = write_available()
+    if held:
+        return {"rebuilt": False, "why": held}
+    if not msw.ROWDIR.exists():
+        return {"rebuilt": False, "why": "no pair files to index"}
+    files = sorted(msw.ROWDIR.glob("*.json"))
+    if not files:
+        return {"rebuilt": False, "why": "no pair files to index"}
+    dest = Path(dest) if dest else DB_PATH.with_suffix(".rebuild.db")
+    for tail in ("", "-wal", "-shm", "-journal"):
+        with contextlib.suppress(FileNotFoundError):
+            Path(str(dest) + tail).unlink()
+
+    started = _t.time()
+    done = rows = 0
+
+    def _say(phase: str) -> None:
+        # after EVERY pair: RCA-G was seven hours of not knowing
+        with contextlib.suppress(OSError, TypeError, ValueError):
+            REBUILD_PROGRESS.parent.mkdir(parents=True, exist_ok=True)
+            REBUILD_PROGRESS.write_text(json.dumps({
+                "phase": phase, "pairs_done": done, "pairs_total": len(files),
+                "rows": rows, "seconds": round(_t.time() - started, 1),
+                "pid": os.getpid(),
+                "pairs_per_min": round(done / max(1e-9, (_t.time() - started) / 60), 2),
+            }), encoding="utf-8")
+
+    con = sqlite3.connect(dest, timeout=60.0)
+    try:
+        con.row_factory = sqlite3.Row
+        # NO INDEXES WHILE LOADING. They are created at the end, over data that
+        # is already there, which is one sequential pass each instead of a
+        # random write per row per index.
+        con.executescript("PRAGMA journal_mode=OFF;")
+        con.execute("PRAGMA synchronous=OFF")
+        con.execute("PRAGMA cache_size=-500000")
+        con.executescript(_SCHEMA)
+        con.execute("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)")
+        con.execute("INSERT OR REPLACE INTO meta (k,v) VALUES ('schema',?)",
+                    (str(SCHEMA_VERSION),))
+        _say("loading")
+        for f in files:
+            rows += index_pair(f, con)
+            done += 1
+            if done % 25 == 0:
+                con.commit()
+            _say("loading")
+        con.commit()
+        _say("indexing")
+        for ddl in KEEP_INDEXES:
+            con.execute(ddl)
+        con.commit()
+        _say("verifying")
+        got_rows = int(con.execute("SELECT count(*) FROM rows").fetchone()[0])
+        got_pairs = int(con.execute("SELECT count(*) FROM pairs").fetchone()[0])
+        quick = con.execute("PRAGMA quick_check").fetchone()[0]
+    except Exception as exc:                                    # noqa: BLE001
+        with contextlib.suppress(Exception):
+            con.close()
+        for tail in ("", "-wal", "-shm", "-journal"):
+            with contextlib.suppress(FileNotFoundError):
+                Path(str(dest) + tail).unlink()
+        _say(f"failed: {type(exc).__name__}: {exc}")
+        return {"rebuilt": False, "why": f"{type(exc).__name__}: {exc}",
+                "pairs_done": done}
+    finally:
+        with contextlib.suppress(Exception):
+            con.close()
+
+    # VERIFY BEFORE SWAPPING. A file that opens is not a file that is right.
+    if quick != "ok" or got_pairs != done or got_rows != rows:
+        for tail in ("", "-wal", "-shm", "-journal"):
+            with contextlib.suppress(FileNotFoundError):
+                Path(str(dest) + tail).unlink()
+        why = (f"the rebuild did not match: quick_check={quick}, "
+               f"pairs {got_pairs} vs {done}, rows {got_rows} vs {rows}")
+        _say(f"failed: {why}")
+        return {"rebuilt": False, "why": why}
+
+    before = DB_PATH.stat().st_size if DB_PATH.exists() else 0
+    backup = DB_PATH.with_suffix(".before-rebuild.db")
+    with _lock:
+        _ready.discard(str(DB_PATH))
+        forget_indexes()
+        with contextlib.suppress(FileNotFoundError):
+            backup.unlink()
+        for tail in ("-wal", "-shm"):
+            with contextlib.suppress(FileNotFoundError):
+                Path(str(DB_PATH) + tail).unlink()
+        if DB_PATH.exists():
+            shutil.move(str(DB_PATH), str(backup))
+        shutil.move(str(dest), str(DB_PATH))
+        if not keep_backup:
+            with contextlib.suppress(FileNotFoundError):
+                backup.unlink()
+    _say("done")
+    after = DB_PATH.stat().st_size
+    took = _t.time() - started
+    return {"rebuilt": True, "pairs": done, "rows": rows,
+            "seconds": round(took, 1),
+            "pairs_per_min": round(done / max(1e-9, took / 60), 2),
+            "before_bytes": before, "after_bytes": after,
+            "freed_bytes": before - after,
+            "backup": str(backup) if keep_backup else ""}
+
+
+def rebuild_progress() -> dict:
+    """What `rebuild()` is doing, for a caller in another process."""
+    def _read():
+        return json.loads(REBUILD_PROGRESS.read_text(encoding="utf-8"))
+    try:
+        return _read()
+    except (OSError, ValueError):
+        return {}
+
+
 def _kept_index_names() -> set:
     """The four `ensure()` creates. Everything else on the table was built on
     demand and may be dropped for a bulk fill."""
@@ -3012,16 +3160,41 @@ def status() -> dict:
                             "FROM pairs").fetchone()
             return r[0], r[1], r[2]
 
-    pairs, rows, newest = _missing_ok(_read, (0, 0, None))
+    # UNREADABLE IS NOT EMPTY. This was `_missing_ok(_read, (0, 0, None))`, so
+    # a read that lost to the write lock reported **0 pairs and 0 rows** — and
+    # `behind` is `on_disk - pairs`, which turned that into "every pair is
+    # missing". Seen Sep 10, 2026 while a `db_jobs collect` held the lock: a
+    # 34.69 GB store with 52,348,156 rows printed
+    # `indexed 0 of 5365 | rows 0`. The panel would have said the store was
+    # empty. Same family as RCA-F: a default that reads as data is a lie, and
+    # this one is the loudest possible version of it.
+    # A store that has never been built IS empty and must say 0 — that is what
+    # `no such table` means. Anything else (a lock, above all) means the answer
+    # is UNKNOWN, and `unreadable` carries the reason so a caller can print
+    # "reading…" rather than a zero it did not earn.
+    unreadable = ""
+    try:
+        pairs, rows, newest = _read()
+    except sqlite3.Error as exc:
+        if "no such table" in str(exc).lower():
+            pairs, rows, newest = 0, 0, None
+        else:
+            pairs = rows = newest = None
+            unreadable = write_available() or f"{type(exc).__name__}: {exc}"
     busy = _machine_is_busy()
     return {"pairs_indexed": pairs, "pairs_on_disk": on_disk, "rows": rows,
+            # "" unless the numbers above could not be read at all
+            "unreadable": unreadable,
             # NEVER-INDEXED. A pair here is invisible on screen entirely.
-            "behind": max(0, on_disk - pairs),
+            # None, not on_disk, when the count could not be read: "every pair
+            # is missing" is the wrong story to tell about a locked file.
+            "behind": None if pairs is None else max(0, on_disk - pairs),
             # WHAT A CATCH-UP ACTUALLY WALKS -- never-indexed PLUS every pair
             # whose file moved since. `behind` was printed as the size of the
             # job on 2026-09-10 and undercounted it 806 vs 5,276, so REINDEX
             # promised a seventh of the work it had started.
-            "stale": len(stale_pairs()), "syncing": syncing(),
+            "stale": None if pairs is None else len(stale_pairs()),
+            "syncing": syncing(),
             "last_error": _last_error, "blocked_by": lock_holder(),
             # kept for older readers; both mean "a sweep owns the disk"
             "trickling": busy, "paused": busy, "updated": newest}

@@ -95,3 +95,52 @@ def test_the_winrate_count_is_the_one_that_made_it_dangerous():
     src = inspect.getsource(ri._winrate_matches)
     assert "_missing_ok" in src, \
         "if this stops using _missing_ok, this test must follow it"
+
+
+# --------------------------------------------- status() had the same disease
+def test_status_says_UNKNOWN_not_zero_when_it_cannot_read(monkeypatch):
+    """Seen Sep 10, 2026 while a `db_jobs collect` held the write lock: a
+    34.69 GB store holding 52,348,156 rows reported
+
+        indexed 0 of 5365 | rows 0
+
+    because the count went through `_missing_ok(_read, (0, 0, None))`. And
+    `behind` is `on_disk - pairs`, so a zero there does not merely under-report
+    — it claims EVERY pair is missing. The loudest possible version of a
+    default that reads as data.
+    """
+    def locked():
+        raise sqlite3.OperationalError("database is locked")
+
+    monkeypatch.setattr(ri, "_machine_is_busy", lambda: False)
+    monkeypatch.setattr(ri, "stale_pairs", lambda *a, **k: [])
+    monkeypatch.setattr(ri, "syncing", lambda: False)
+    monkeypatch.setattr(ri, "lock_holder", lambda: "")
+    monkeypatch.setattr(ri, "write_available", lambda *a, **k: "a collect is writing")
+    import sqlite3 as _s
+    monkeypatch.setattr(ri, "_open",
+                        lambda *a, **k: (_ for _ in ()).throw(
+                            _s.OperationalError("database is locked")))
+    st = ri.status()
+    assert st["pairs_indexed"] is None, "0 would mean the store is empty"
+    assert st["rows"] is None
+    assert st["behind"] is None, "0 pairs indexed would claim every pair is missing"
+    assert st["unreadable"], "and it must say WHY it could not answer"
+    assert "collect" in st["unreadable"]
+
+
+def test_a_store_that_was_never_built_still_answers_zero(monkeypatch):
+    """`no such table` genuinely means empty — that distinction is the whole
+    point, and the first version of this fix lost it."""
+    import sqlite3 as _s
+
+    monkeypatch.setattr(ri, "_machine_is_busy", lambda: False)
+    monkeypatch.setattr(ri, "stale_pairs", lambda *a, **k: [])
+    monkeypatch.setattr(ri, "syncing", lambda: False)
+    monkeypatch.setattr(ri, "lock_holder", lambda: "")
+    monkeypatch.setattr(ri, "_open",
+                        lambda *a, **k: (_ for _ in ()).throw(
+                            _s.OperationalError("no such table: pairs")))
+    st = ri.status()
+    assert st["pairs_indexed"] == 0 and st["rows"] == 0
+    assert st["unreadable"] == ""

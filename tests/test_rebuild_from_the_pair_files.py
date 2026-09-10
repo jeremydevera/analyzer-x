@@ -187,9 +187,9 @@ def _partial(files):
 def _watch(monkeypatch, seen):
     real = ri.index_pair
 
-    def spy(f, con=None):
+    def spy(f, con=None, **kw):
         seen.append(f.stem)
-        return real(f, con)
+        return real(f, con, **kw)
 
     monkeypatch.setattr(ri, "index_pair", spy)
 
@@ -391,3 +391,73 @@ def test_a_resume_seeds_the_row_count_from_the_summaries(store):
     assert pairs == {"BTC-15m", "BTC-1h"}
     assert rows == 50, f"30 + 20 rows, got {rows}"
     assert ri.rebuild()["rows"] == 75
+
+
+# --------------------------------------------- the delete that cost 54 hours
+def test_the_load_does_not_delete_per_pair(store):
+    """MEASURED, Sep 10, 2026, on the real 2.94 GB partial:
+
+        EXPLAIN QUERY PLAN SELECT count(*) FROM rows WHERE pair = 'NOPE-1h'
+        -> SCAN rows
+        -> 39.9 seconds
+
+    `index_pair` deletes the pair's rows before inserting them, and
+    delete-by-pair needs `rows_pair` — the one index CLAUDE.md says a bulk
+    fill may never drop. `rebuild()` builds with NO indexes, so every pair
+    paid a full scan of a table that grows with every pair: 4,917 pairs left
+    x 39.9 s = **54 hours**, rising. That is why the first run did 40.15
+    pairs/min on an empty table and 0.25 by pair 448.
+    """
+    ri.rebuild()
+    src = inspect.getsource(ri.rebuild)
+    assert "index_pair(f, con, fresh=True)" in src, \
+        "the rebuild's loop must not delete per pair — it has no rows_pair"
+
+
+def test_fresh_skips_the_delete_and_the_default_still_deletes(store):
+    """`fresh` is opt-IN. Every other caller (`sync`, the row UPDATE button,
+    the trickle) re-indexes a pair that IS already there, and for them the
+    delete is the whole point — RCA-2026-09-10-A was a lost delete."""
+    ri.ensure()
+    f = msw.ROWDIR / "BTC-15m.json"
+    with ri._open() as con:
+        ri.index_pair(f, con)
+        ri.index_pair(f, con)                    # default: replaces
+        n = int(con.execute("SELECT count(*) FROM rows "
+                            "WHERE pair='BTC-15m'").fetchone()[0])
+    assert n == 30, f"the default must still delete first, got {n}"
+    with ri._open() as con:
+        ri.index_pair(f, con, fresh=True)        # promised it was absent
+        n = int(con.execute("SELECT count(*) FROM rows "
+                            "WHERE pair='BTC-15m'").fetchone()[0])
+    assert n == 60, "fresh=True skips the delete, which is why it must be earned"
+
+
+def test_a_resume_earns_fresh_with_one_scan_not_thousands(store):
+    """The proof `fresh=True` rests on: rows whose pair has no summary row
+    cannot survive the resume. One `SCAN rows`, once — against one per pair."""
+    dest = _partial([msw.ROWDIR / "BTC-15m.json"])
+    con = sqlite3.connect(dest)
+    # exactly what a kill mid-transaction can leave: rows with no summary
+    con.execute("INSERT INTO rows (coin,tf,signal,pair) VALUES "
+                "('ETH','15m','rsi14','ETH-15m')")
+    con.commit()
+    con.close()
+    got = ri._resumable(dest, {f.stem for f in msw.ROWDIR.glob("*.json")})
+    assert isinstance(got, tuple), got
+    con = sqlite3.connect(dest)
+    left = int(con.execute("SELECT count(*) FROM rows "
+                           "WHERE pair='ETH-15m'").fetchone()[0])
+    con.close()
+    assert left == 0, "a torn pair's rows must be gone before the loop trusts it"
+    out = ri.rebuild()
+    assert out["rebuilt"] is True and out["rows"] == 75, out
+
+
+def test_the_scan_is_named_in_the_source_so_it_is_not_re_added(store):
+    """This is the second time a check that scans the big table has been put
+    in this path in one afternoon (RCA-J was the first). The measurement lives
+    beside the code."""
+    assert "SCAN rows" in inspect.getsource(ri.index_pair)
+    assert "39.9" in inspect.getsource(ri.index_pair), \
+        "the measured cost must stay next to the reason"

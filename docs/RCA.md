@@ -105,6 +105,98 @@ measured and not yet findable.
 
 ---
 
+## RCA-2026-09-10-K — the rebuild deleted each pair before inserting it, with no index to delete by: 54 hours of full table scans
+
+**CEO**
+
+* The real reason the repair job kept getting slower, and it was not the other
+  job I blamed in RCA-I. Every coin it filed made a search through the ENTIRE
+  file first — and the file grows with every coin, so each one was slower than
+  the last.
+* Measured: **39.9 seconds of pointless searching per coin** at the point it
+  had reached. For the 4,917 coins left that is **54 hours**, and rising.
+* It no longer searches at all when it already knows the coin is not in the
+  file. It proves that once, in 40 seconds, instead of 4,917 times.
+* What I told you before — "two jobs fighting over one disk" — was a real
+  effect but the wrong cause. Corrected in the entry below.
+
+**DEV**
+
+* `rows_index.index_pair` opens with `DELETE FROM rows WHERE pair = ?`.
+  Delete-by-pair needs `rows_pair`, which CLAUDE.md has named since 2026-08-26
+  as the one index a bulk fill may never drop — and `rebuild()` builds its
+  file with NO indexes at all. Measured on the live 2.94 GB partial:
+  `EXPLAIN QUERY PLAN SELECT count(*) FROM rows WHERE pair='NOPE-1h'` →
+  **`SCAN rows`**, **39.9 s**, returning 0 rows. Per pair, against a table
+  that grows per pair: O(n²). It is exactly why the run measured **40.15
+  pairs/min in its first minute** (empty table, nothing to scan) and **0.25 by
+  pair 448** (2.7 GB to scan).
+* Broken invariant: **a delete needs the index it deletes by, or it is a full
+  scan** — and a bulk load that writes each key exactly once must not delete
+  at all. The delete-first exists for RE-indexing (RCA-2026-09-10-A was a lost
+  delete); a fresh file is not re-indexing.
+* Guard: `tests/test_rebuild_from_the_pair_files.py` (27) —
+  `test_the_load_does_not_delete_per_pair` (pins `index_pair(f, con,
+  fresh=True)` in the loop and carries the measured plan in its docstring),
+  `test_fresh_skips_the_delete_and_the_default_still_deletes` (the default
+  still replaces — every other caller re-indexes a pair that IS there),
+  `test_a_resume_earns_fresh_with_one_scan_not_thousands` (inserts rows with
+  no summary, exactly what a kill can leave, and proves the resume removes
+  them), and `test_the_scan_is_named_in_the_source_so_it_is_not_re_added`.
+
+**SAW** — the operator asked for status twice while the number did not move.
+The honest answer had drifted from "ETA ~2h15m" to "about 5 hours" to
+"thirteen days" without the work changing at all.
+
+**TIMELINE**
+
+1. `Sep 10, 2026 12:56pm` — rebuild starts on an EMPTY file: **40.15
+   pairs/min**. Nothing to scan.
+2. `1:36pm` — 447 pairs, 2.7 GB written, average down to **16.3**.
+3. `1:46pm` — pair #448 takes **305 s**. Its file is `ARWRSTOCK-15m.json` at
+   **0.0 MB**: the work was not the data.
+4. `2:11pm` — resumed after the collect finished, on a disk with no
+   competition. Still `WaitReason PageIn`, still 0 file I/O, **still stuck on
+   one pair after 26 minutes**. That killed the contention theory: the collect
+   was gone and nothing improved.
+5. `2:55pm` — measured it directly on the partial file, in an idle process:
+   `SCAN rows`, **39.9 s** for a pair that is not there. 4,917 x 39.9 s =
+   **54.4 hours**.
+6. Same hour — `fresh=True` for a caller that has proved the pair is absent,
+   plus ONE reconciling scan on resume to earn that proof.
+
+**ROOT CAUSE** — `index_pair`'s delete-first, running without `rows_pair`,
+inside a loop over 5,367 pairs. Quadratic by construction.
+
+**WHY IT WAS NOT CAUGHT** — every rebuild test runs on a **3-pair store**,
+where a full scan of `rows` is three files' worth of rows and finishes in
+microseconds. The tests proved the rebuild was CORRECT and could not see that
+it was quadratic; the same blindness as RCA-J one hour earlier, which is why
+both guards now carry the measured number in the test itself. And the
+knowledge already existed in this repo, in prose: CLAUDE.md's own bulk-load
+rule says `rows_pair` may not be dropped BECAUSE delete-by-pair needs it. The
+rebuild dropped every index and then kept the delete — a rule known, written
+down, and not applied to the new code path.
+
+**COST** — no money, no data lost. About three hours of wall-clock across two
+attempts, the operator's filing stuck at 86%, and two status answers from me
+that named the wrong cause.
+
+**FIX** — this commit. `index_pair(..., fresh=False)`; `rebuild()` passes
+`fresh=True` and earns it: on a clean start the table is empty, and on a resume
+`_resumable` runs `DELETE FROM rows WHERE pair NOT IN (SELECT pair FROM
+pairs)` once (one 40-second scan) so any pair the loop will load is provably
+absent. `fresh` is opt-in and every other caller still deletes first.
+
+**GUARD** — in `tests/test_rebuild_from_the_pair_files.py`:
+`test_the_load_does_not_delete_per_pair`,
+`test_fresh_skips_the_delete_and_the_default_still_deletes`,
+`test_a_resume_earns_fresh_with_one_scan_not_thousands`,
+`test_the_scan_is_named_in_the_source_so_it_is_not_re_added`. The speed itself
+is the next run's measurement, and its rate is in `rows_rebuild.json`.
+
+---
+
 ## RCA-2026-09-10-J — the safety check I added an hour earlier cost 45 minutes to save 30, and the row count on screen counted rows the index does not hold
 
 **CEO**
@@ -207,7 +299,7 @@ this file.
 
 ---
 
-## RCA-2026-09-10-I — the rebuild fell from 40 pairs/min to 0.25, because it was racing the collect for one disk
+## RCA-2026-09-10-I — the rebuild fell from 40 pairs/min to 0.25 while a collect wrote the same files (the CAUSE is corrected by RCA-K; the gate here is still right)
 
 **CEO**
 
@@ -276,7 +368,17 @@ measured properly, thirteen days.
 8. Same hour — resume implemented so those 450 pairs are not lost, plus the
    refusal that would have prevented the whole episode.
 
-**ROOT CAUSE** — the wrong question in the gate. `write_available()` proves
+**ROOT CAUSE** — **CORRECTED, see RCA-2026-09-10-K.** The mechanism was
+`index_pair`'s per-pair `DELETE FROM rows WHERE pair = ?` running with no
+`rows_pair` index: a full `SCAN rows` per pair, 39.9 s measured at 2.94 GB,
+against a table that grows per pair. The collect made the disk slower and the
+gate below is still the right fix, but the decay from 40.15 to 0.25 pairs/min
+happened for that reason and would have happened on an idle machine — proved
+at `2:11pm`, when the resumed run stuck on ONE pair for 26 minutes with the
+collect finished and the disk to itself. What follows was written before that
+was known, and is kept as it was written.
+
+**ROOT CAUSE (as first recorded)** — the wrong question in the gate. `write_available()` proves
 nothing about a job that writes the pair FILES and touches `rows.db` only at
 the end, and `rebuild()`'s whole input is those files. Underneath it, an
 assumption that two I/O-bound jobs on one mechanical disk each run at half

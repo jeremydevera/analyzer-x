@@ -432,8 +432,27 @@ def _values(r: dict, pair: str) -> tuple:
     return tuple(out)
 
 
-def index_pair(path: Path, con: sqlite3.Connection | None = None) -> int:
-    """(Re)index one pair file. Returns how many rows landed."""
+def index_pair(path: Path, con: sqlite3.Connection | None = None, *,
+               fresh: bool = False) -> int:
+    """(Re)index one pair file. Returns how many rows landed.
+
+    `fresh=True` skips the delete-first, and it is ONLY for a caller that has
+    proved the pair cannot be in the table yet. **It is worth 54 hours.**
+
+    Delete-by-pair needs the `rows_pair` index — CLAUDE.md has said since
+    2026-08-26 that `rows_pair` is the one index a bulk fill may not drop,
+    "delete-by-pair needs it". `rebuild()` builds its file with NO indexes at
+    all, so the delete has none, and `EXPLAIN QUERY PLAN` says exactly what
+    that costs:
+
+        SCAN rows      -- measured 39.9 s on the 2.94 GB partial, Sep 10, 2026
+
+    A full scan of the whole table, per pair, of a table that grows with every
+    pair: 4,917 pairs left x 39.9 s is **54 hours**, and rising. It is why the
+    first rebuild ran 40.15 pairs/min in its first minute (empty table, nothing
+    to scan) and 0.25 by pair 448 (2.7 GB to scan). Nothing to do with the
+    contention in RCA-I; that made it worse and was never the mechanism.
+    """
     own = con is None
     con = con or _connect()   # caller-owned when passed
     try:
@@ -446,7 +465,8 @@ def index_pair(path: Path, con: sqlite3.Connection | None = None) -> int:
         ph = "(" + ",".join("?" * (len(COLS) + 2)) + ")"
         _t = time.time
         t0 = _t()
-        con.execute("DELETE FROM rows WHERE pair = ?", (pair,))
+        if not fresh:
+            con.execute("DELETE FROM rows WHERE pair = ?", (pair,))
         t1 = _t()
         vals = [_values(r, pair) for r in rows if r.get("coin")]
         t2 = _t()
@@ -1081,6 +1101,16 @@ def _resumable(dest: Path, stems: set) -> tuple | str:
             con.commit()
             for pair in gone:
                 have.pop(pair, None)
+        # ONE scan, once, to earn `fresh=True` for every pair after it.
+        #
+        # `index_pair` writes the summary LAST inside a single transaction, so
+        # a pair in `pairs` is whole — but `journal_mode=OFF` means a kill can
+        # leave torn pages, and rows without a summary is the shape that would
+        # produce. Removing them here (one `SCAN rows`, measured 39.9 s on
+        # 2.94 GB) is what makes it PROVABLE that a pair the loop is about to
+        # load is absent, which is what lets the loop skip 4,917 more scans.
+        con.execute("DELETE FROM rows WHERE pair NOT IN (SELECT pair FROM pairs)")
+        con.commit()
         # `n` is what LANDED for that pair, so this sums to `count(*) FROM
         # rows` without scanning 2.7 GB to find out — the same identity
         # `_rows_estimate()` and the page's total already rely on.
@@ -1187,7 +1217,11 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
         for f in files:
             if f.stem in already:
                 continue          # its summary row is present, so it is whole
-            rows += index_pair(f, con)
+            # fresh=True: this file's pair is NOT in the table. On a clean
+            # start the table is empty; on a resume `_resumable` removed every
+            # row that has no summary and every pair that HAS one is skipped
+            # above. That proof is worth 54 hours — see index_pair.
+            rows += index_pair(f, con, fresh=True)
             done += 1
             if done % 25 == 0:
                 con.commit()

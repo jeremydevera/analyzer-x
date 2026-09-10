@@ -57,7 +57,12 @@ _RUN_LOCK = None
 
 BAR_SECONDS = 4 * 3600       # the default (coarsest) strategy timeframe
 LEVERAGE = 20
-LADDER = (1, 1, 2, 2, 4, 4, 8)   # DEEP ladder as multiples of base margin
+# The martingale ladder, as multiples of base margin — BACKTEST ENGINE ONLY
+# since Sep 11, 2026 ("just flat only ... do not double the margin for all
+# martingale"). backtest_strategy(sizing="martingale") still measures it so the
+# stored rows keep their meaning; the runner's stake is `staked_margin`, which
+# never reads it.
+LADDER = (1, 1, 2, 2, 4, 4, 8)
 POLL_SECONDS = 300           # heartbeat between candle closes
 ENTRY_LAG_SECONDS = 3        # wake this soon after a candle boundary
 # How often to tick-check simulated positions. This was 5 seconds, which
@@ -1020,37 +1025,45 @@ def coins_for(key: str, settings: dict) -> list[str]:
 
 
 def sizing_for(settings: dict, key: str | None = None) -> str:
-    """"flat" or "martingale", PER STRATEGY, falling back to the global choice.
+    """FLAT. Always. For every strategy, whatever the settings file says.
 
-    Defaults to martingale so an existing config keeps behaving exactly as it
-    did before this setting existed.
+    Operator, Sep 11, 2026: *"From now on you will not double anything in
+    martingale, just flat only, update your code to not double the margin for
+    all martingale. No need to update the backtests since what matters to me
+    is winrate not the profit."*
 
-    Flat is how a signal is MEASURED; the ladder is a sizing choice made
-    afterwards, with its own funding requirement. An audit showed six live
-    strategies whose "13/13 green months" was produced by the ladder rather
-    than the signal, so the runner has to be able to actually RUN the flat
-    version that the backtest scores.
+    So the RUNNER stakes each strategy's base margin on every trade. The
+    `sizing` and `strategy_sizing` entries in the settings file are left on
+    disk and no longer read for the stake; the two arguments stay so the many
+    callers that ask "how is this row sized?" keep working and now get the one
+    true answer. The BACKTEST engine is untouched: `backtest_strategy` still
+    measures both sizings (`ladder_margin`, `LADDER`) — a martingale row's win
+    rate is the same trades and the same wins as its flat twin, only the
+    profit column differs, and the operator judges by win rate.
 
-    PER STRATEGY because sizing is not one decision for the whole account. On
-    2026-08-24 NOM/mom6 measured +$114.57 flat and +$113.26 laddered over the
-    same year — the same money — but its worst losing run was −$41.00 flat and
-    −$188.60 laddered, against a $210.68 wallet. Flat was obviously right for
-    that row and obviously wrong to force on the others, and with only a global
-    switch the operator's choice could not be expressed at all.
+    Two consequences, both deliberate: a deployed row's id is now its FLAT
+    twin's id (sizing is part of a row's identity, and flat is what runs), and
+    the losing-run rung is still counted for the screen but never staked.
+
+    History, kept because it explains the shape: the ladder was the default
+    from the start; on 2026-08-20 the widget went (sizing was "not a
+    control") and on 2026-08-24 it became per-strategy after NOM/mom6 measured
+    +$114.57 flat against +$113.26 laddered with a worst run of −$41.00
+    against −$188.60 on a $210.68 wallet.
     """
-    if key:
-        per = (settings.get("strategy_sizing") or {}).get(key)
-        if per:
-            return "flat" if str(per).lower() == "flat" else "martingale"
-    v = str(settings.get("sizing") or "martingale").lower()
-    return "flat" if v == "flat" else "martingale"
+    return "flat"
 
 
 def staked_margin(key: str, settings: dict, step: int) -> float:
-    """The margin for the next trade, honouring the sizing setting."""
-    base = margin_for(key, settings)
-    return (base if sizing_for(settings, key) == "flat"
-            else ladder_margin(base, step))
+    """The margin for the next trade: the base margin, every time.
+
+    `step` — the current losing run — is accepted so the one call site keeps
+    counting the run for the screen, and IGNORED: since Sep 11, 2026 the ladder
+    exists only inside the backtest engine (`ladder_margin`, `LADDER`), never
+    in an order. This does not consult `sizing_for` on purpose, so no later
+    change to how a row is LABELLED can put a multiplier back on real money.
+    """
+    return margin_for(key, settings)
 
 
 def margin_for(key: str, settings: dict) -> float:

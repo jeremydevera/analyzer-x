@@ -663,22 +663,24 @@ def test_sizing_is_per_strategy_not_one_switch_for_the_account(client, monkeypat
     }))
     saved = json.loads(at.SETTINGS_PATH.read_text())
 
-    assert at.sizing_for(saved) == "martingale", "the account default is unchanged"
-    assert at.sizing_for(saved, "mom6_1h_pv") == "martingale"
+    # FLAT FOR EVERYONE since Sep 11, 2026 ("just flat only"): the settings
+    # still say martingale for mom6, and the runner stakes base regardless
+    assert at.sizing_for(saved) == "flat"
+    assert at.sizing_for(saved, "mom6_1h_pv") == "flat"
     assert at.sizing_for(saved, "fvg_1h_w") == "flat"
 
-    # the STAKE follows it: at rung 3 the ladder doubles, flat does not
+    # the STAKE follows: at rung 3 nothing doubles, on either row
     assert at.staked_margin("fvg_1h_w", saved, 3) == 5.0
-    assert at.staked_margin("mom6_1h_pv", saved, 3) > 5.0
+    assert at.staked_margin("mom6_1h_pv", saved, 3) == 5.0
 
-    # and the grid draws each row's own ladder, or it shows the operator a
-    # ladder for a row that will never take one
+    # and the grid draws what will actually be staked — one rung, base margin,
+    # never a ladder for a row that will never take one
     body = client.get("/api/trade/strategies").json()
     by = {r["key"]: r for r in body["rows"]}
     assert by["fvg_1h_w"]["sizing"] == "flat"
     assert by["fvg_1h_w"]["ladder"] == [5.0], by["fvg_1h_w"]["ladder"]
-    assert by["mom6_1h_pv"]["sizing"] == "martingale"
-    assert len(by["mom6_1h_pv"]["ladder"]) > 1
+    assert by["mom6_1h_pv"]["sizing"] == "flat"
+    assert by["mom6_1h_pv"]["ladder"] == [5.0], by["mom6_1h_pv"]["ladder"]
 
 
 def test_a_row_id_is_hashed_with_that_rows_own_sizing(client):
@@ -702,9 +704,13 @@ def test_a_row_id_is_hashed_with_that_rows_own_sizing(client):
     want = br.row_code("NOM", "4h", "mom6", 0.8, 4.0, 5.0, "flat")
     assert row_id_for("mom6_4h_nom", "NOM_USDT", saved) == want == "F2S7J87Z"
 
-    # and the account default alone would give a different, wrong id
+    # the martingale twin has a different id — and since Sep 11, 2026 the
+    # runner stakes flat for EVERY row, so a row deployed from a martingale
+    # line carries its flat twin's id: the id names what actually runs
     other = br.row_code("NOM", "4h", "mom6", 0.8, 4.0, 5.0, "martingale")
     assert other != want
+    saved["strategy_sizing"] = {"mom6_4h_nom": "martingale"}
+    assert row_id_for("mom6_4h_nom", "NOM_USDT", saved) == want
 
 
 def test_a_strategy_can_carry_a_human_label(client):

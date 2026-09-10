@@ -739,5 +739,19 @@ rate-limit it (`_say_once`) and count it somewhere the operator reads.
     `market_sweep.run_pair`, two of which carried `("flat", "martingale")`
     inline. So changing this dimension is now one line, and the fleet can never
     measure a sizing this PC is not asking for.
+    **THE RUNNER STAKES FLAT — ALWAYS (operator directive, 2026-09-11, that
+    evening):** *"From now on you will not double anything in martingale, just
+    flat only, update your code to not double the margin for all martingale. No
+    need to update the backtests since what matters to me is winrate not the
+    profit."* The two halves fit: the BACKTEST measures both sizings (above),
+    the RUNNER stakes the base margin on every trade. `auto_trader.staked_margin`
+    returns the base on every rung and must never route through `sizing_for`
+    or `LADDER`; `sizing_for` answers "flat" for every row, so every label
+    derived from it (the grid's sizing, the next stake, a deployed row's id —
+    now its FLAT twin's) tells the truth. The ladder `(1,1,2,2,4,4,8)` lives
+    only in `backtest_strategy(sizing="martingale")`: a stored martingale row
+    is the same trades and the same wins as its flat twin, different profit.
+    `tests/test_runner_stakes_flat.py` holds all three halves; do not "fix" a
+    martingale setting back into a real stake.
 20. **Never drop a dimension silently.** Pre-filter coins by the liquidity gate per
     timeframe and state how many were excluded and why. A capped grid says what it capped.

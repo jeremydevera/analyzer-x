@@ -965,21 +965,26 @@ def test_precomputed_dirs_match_recomputed(sandbox):
 
 
 def test_flat_sizing_never_ladders(sandbox):
-    """Flat is how a signal is measured; the runner must be able to run it.
-    With sizing=flat every trade stakes the base margin no matter how many
-    losses precede it. Martingale stays the default so an existing config is
-    unchanged by this setting existing."""
+    """THE RUNNER STAKES FLAT. Every strategy, every trade, whatever the
+    settings file says. Operator, Sep 11, 2026: "From now on you will not
+    double anything in martingale, just flat only". The ladder survives only
+    inside the backtest engine (the next test), where a martingale row is
+    still measured — same trades, same wins, different profit column."""
     s_flat = {"strategies": ["mom6"], "coins": ["BTC_USDT"], "margin": 5.0,
               "sizing": "flat"}
-    s_mart = {"strategies": ["mom6"], "coins": ["BTC_USDT"], "margin": 5.0}
+    s_mart = {"strategies": ["mom6"], "coins": ["BTC_USDT"], "margin": 5.0,
+              "sizing": "martingale", "strategy_sizing": {"mom6": "martingale"}}
     assert at.sizing_for(s_flat) == "flat"
-    assert at.sizing_for(s_mart) == "martingale", "default must not change"
-    assert at.sizing_for({"sizing": "MARTINGALE"}) == "martingale"
+    assert at.sizing_for(s_mart) == "flat", "a martingale setting no longer ladders"
+    assert at.sizing_for(s_mart, "mom6") == "flat"
+    assert at.sizing_for({"sizing": "MARTINGALE"}) == "flat"
     for step in range(0, 8):
         assert at.staked_margin("mom6", s_flat, step) == 5.0, \
             "flat must ignore the ladder step entirely"
-    assert at.staked_margin("mom6", s_mart, 0) == 5.0
-    assert at.staked_margin("mom6", s_mart, 6) == 5.0 * at.LADDER[6]
+        assert at.staked_margin("mom6", s_mart, step) == 5.0, \
+            "and so must a row that was DEPLOYED as martingale"
+    # the ladder itself is still there for the engine
+    assert at.ladder_margin(5.0, 6) == 5.0 * at.LADDER[6] == 40.0
     # and end to end: a flat book sizes the order off the base margin
     fx = FakeFx(_bars([100.0] * 60 + [102.0]))
     # the rung lives in the STRATEGY's own paper slot now, so seed it there

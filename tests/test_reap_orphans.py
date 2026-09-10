@@ -1,3 +1,5 @@
+import pytest
+import sys
 """The reaper must never be able to signal a live process.
 
 On 2026-08-25 the Mac carried 139 pool workers from sweeps up to three days old,
@@ -72,6 +74,8 @@ def test_a_dry_run_signals_nothing(monkeypatch):
     assert r["found"] == 1 and sent == []
 
 
+@pytest.mark.skipif(sys.platform == "win32",
+                    reason="POSIX-only: this asserts Unix process behaviour (fork, SIGKILL, signal-by-pid, process groups) that Windows has no equivalent for. It runs on the Mac and in CI; on this PC it was permanent red, and a suite that is always red is one nobody reads — which is how a REAL panic_stop crash sat unnoticed on Sep 11, 2026.")
 def test_term_first_then_kill_only_the_survivors(monkeypatch):
     import signal
     sent = []

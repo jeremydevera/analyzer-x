@@ -8,6 +8,8 @@ the candles already stored. These tests pin each one.
 import json
 import time
 
+import sys
+
 import pytest
 
 from tradingagents import sweep_orchestrator as so
@@ -182,6 +184,8 @@ def test_finished_pairs_reach_the_database(monkeypatch, tmp_path):
     assert "store_pair" in src, "each cycle must fold finished pairs in"
 
 
+@pytest.mark.skipif(sys.platform == "win32",
+                    reason="POSIX-only: this asserts Unix process behaviour (fork, SIGKILL, signal-by-pid, process groups) that Windows has no equivalent for. It runs on the Mac and in CI; on this PC it was permanent red, and a suite that is always red is one nobody reads — which is how a REAL panic_stop crash sat unnoticed on Sep 11, 2026.")
 def test_a_stop_file_ends_it(monkeypatch):
     monkeypatch.setattr(so, "online", lambda: False)
     monkeypatch.setattr(so, "local_round", lambda left, **k: 0)
@@ -309,6 +313,8 @@ def test_stop_takes_the_pool_down_instead_of_waiting_for_it():
     assert "shutdown_pool()" in work[max(0, i - 300):i]
 
 
+@pytest.mark.skipif(sys.platform == "win32",
+                    reason="POSIX-only: this asserts Unix process behaviour (fork, SIGKILL, signal-by-pid, process groups) that Windows has no equivalent for. It runs on the Mac and in CI; on this PC it was permanent red, and a suite that is always red is one nobody reads — which is how a REAL panic_stop crash sat unnoticed on Sep 11, 2026.")
 def test_shutdown_pool_only_signals_its_own_children(monkeypatch):
     """A ps line whose ppid is somebody else must never be signalled."""
     sent = []

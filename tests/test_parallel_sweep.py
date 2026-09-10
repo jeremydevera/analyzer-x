@@ -10,7 +10,10 @@ sweep used one of eight cores.
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
+
+import pytest
 
 from tradingagents import market_sweep as msw
 
@@ -52,7 +55,14 @@ def test_worker_clear_empties_the_slots(tmp_path, monkeypatch):
 def test_worker_write_never_raises(tmp_path, monkeypatch):
     """It is telemetry inside a measuring loop: it must not be able to kill a
     sweep that is otherwise fine."""
-    monkeypatch.setattr(msw, "WORKERS", msw.Path("/nonexistent/x/y"))
+    # A path that CANNOT be created on either OS: a child of a regular file.
+    # "/nonexistent/x/y" is unwritable on Unix but resolves to a path on the
+    # current drive under Windows, where `mkdir(parents=True)` simply makes
+    # it — so the write succeeded, the row was readable, and this test failed
+    # for the one reason that is not a bug (Sep 11, 2026).
+    blocker = tmp_path / "not-a-dir"
+    blocker.write_text("")
+    monkeypatch.setattr(msw, "WORKERS", blocker / "x" / "y")
     msw.worker_write(0, pair="PI 1h", pct=1)      # must not raise
     assert msw.worker_read() == []
 
@@ -209,6 +219,8 @@ def test_fraction_only_phases_do_not_round_to_zero():
 def test_a_backtest_started_without_a_field_says_which_one():
     """`failed: 'coins'` is a KeyError repr on screen. The operator is new to
     this: name the missing thing in words."""
+    import sys
+
     import pytest
 
     from tradingagents import db_jobs as dj
@@ -331,6 +343,8 @@ def test_tests_can_never_write_a_live_job_file():
                 f"{kind}.{role} points at live state: {path}")
 
 
+@pytest.mark.skipif(sys.platform == "win32",
+                    reason="POSIX-only: this asserts Unix process behaviour (fork, SIGKILL, signal-by-pid, process groups) that Windows has no equivalent for. It runs on the Mac and in CI; on this PC it was permanent red, and a suite that is always red is one nobody reads — which is how a REAL panic_stop crash sat unnoticed on Sep 11, 2026.")
 def test_sweep_workers_run_at_low_priority():
     """A three-day background sweep must not outrank a click. Measured: CPU was
     fine (0.26s for a 3M-op loop) but /api/jobs/backtest, which reads one small

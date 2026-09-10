@@ -35,10 +35,23 @@ def test_a_post_is_never_retried():
 
 
 def test_the_one_shot_panels_heal_themselves():
-    for name in ("TradeHistory", "PnlPanel", "CredentialsPanel"):
+    """The PROPERTY, not one spelling of it: a panel that fetched once wore
+    an API restart's dark seconds until the page was reloaded. Two shapes
+    satisfy that now — the shared `useLiveRefresh` poll (which simply tries
+    again on its next tick) and CredentialsPanel's own while-errored retry,
+    which stays separate because a failed SAVE sets the same `err` and must
+    not be wiped by a healing reload.
+
+    Asserting the words "SELF-HEALING" broke the day TradeHistory was rewritten
+    around useLiveRefresh — the behaviour was intact and better, and the test
+    was checking my prose (Sep 11, 2026)."""
+    for name in ("TradeHistory", "PnlPanel"):
         p = _p(name)
-        assert "SELF-HEALING" in p, name
-        assert "5_000" in p, name
+        assert "useLiveRefresh(" in p, f"{name} fetches once and never again"
+        assert "5_000" in p, f"{name} must retry within seconds, not minutes"
+    creds = _p("CredentialsPanel")
+    assert "setInterval(load, 5_000)" in creds
+    assert "SELF-HEALING" in creds
 
 
 def test_a_healing_reload_cannot_wipe_a_save_error():

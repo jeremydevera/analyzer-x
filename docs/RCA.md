@@ -64,10 +64,13 @@ proof they run on their own. Everything done by hand this session was step 3.
 `rows.db`, the index the Stored strategies screen reads. Until then the result
 exists on disk and no filter can find it.
 
-**Where it stands:** **4,612 of 5,365 coins searchable (86%)**. 753 coins are
-measured and not yet findable.
+**Where it stands, `3:55pm`:** the searchable list is being **rebuilt from
+scratch**, and it is running: **1,780 of 5,367 coins, 31,689,094 rows, 72.0
+coins a minute, under an hour left**. When it finishes, the answer is **100%**,
+not 86% — the rebuild indexes every pair file on disk, not the 4,612 that
+happened to be in the old one.
 
-**Why step 3 keeps breaking — four separate faults, all found today**
+**Why step 3 kept breaking — SEVEN separate faults, all found today**
 
 1. It went silent for 13 hours behind a database lock and nothing anywhere said
    why (**RCA-C**). Fixed: the error is kept and shown, the indexer writes a
@@ -77,10 +80,25 @@ measured and not yet findable.
 3. The fix for 2 dropped the indexes the operator's own win-% filter needs, so
    their filter stopped working (**RCA-F**). Fixed: the drop is opt-in and off
    by default, and a missing index can no longer read as "nothing matches".
-4. Filing is *still* slow — about one coin every 70 seconds — because 38.8% of
-   the 32 GB index file is holes, so every write hunts for a gap instead of
-   streaming (**RCA-E**, second half). The repair is compaction, which was
-   built this session and **has not worked yet** (**RCA-G**).
+4. Compaction — the first attempt at the repair — reached 90% of its copy and
+   stopped, and no root cause was ever established (**RCA-G**). Abandoned in
+   favour of the rebuild. Nothing was lost: it never swaps until the copy
+   verifies.
+5. **The rebuild searched the whole file before filing each coin** — 39.9
+   seconds per coin, measured, for rows that were not there, because the delete
+   it does first has no index to delete by (**RCA-K**). That is the real reason
+   filing kept getting slower, and it is what "one coin every 70 seconds" and
+   "one coin every 305 seconds" both were. **Fixed: 0.25 → 72.0 coins a
+   minute.**
+6. The rebuild also raced the collect for one disk, because its gate asked "can
+   I write?" instead of "am I the only one working?" (**RCA-I**). Fixed: it
+   waits, and names the job it is waiting for. A real effect, but not the cause
+   of the slowness — that was 5.
+7. Two of my own repairs then went quiet or overpriced: a resume check that
+   would have taken **9 hours** on the finished file to save 30 minutes
+   (**RCA-J**), and phases that ran for minutes while the progress file still
+   showed the previous run's numbers (**RCA-J**, **RCA-K**). Both fixed: the
+   check reads a 450-row summary, and every long phase publishes while it runs.
 
 **What is fixed and pushed**
 
@@ -90,18 +108,33 @@ measured and not yet findable.
 * the sweep window: 30 days by default and the 1-year option removed, after a
   full-year sweep of the whole market was heading for 4.7 days
   (`4f18962a5b5`, `dc1a41c26d9`) — that run was cancelled
-* compaction built, with verify-before-swap (`7f9a2773650`)
+* compaction built, with verify-before-swap (`7f9a2773650`) — and it does not
+  work; the rebuild replaced it (`84664a06c44`)
+* the rebuild waits for a writing job, and resumes instead of starting over
+  (`24207ed4569`)
+* the resume check reads the summaries, not the whole file (`b3d307d5ce6`)
+* **no per-pair scan: 0.25 → 62.3 then 72.0 coins a minute** (`052d4462358`,
+  `6e3e112f4d5`)
+* the pre-swap check publishes while it walks 32 GB (`4095c13354c`)
 
 **What is NOT fixed, stated plainly**
 
-* **filing is still slow.** ~15 hours for the remaining 753 coins.
-* **compaction does not work yet.** It reached 90% of the copy and stopped
-  (RCA-G). Nothing was lost — it never swaps until the copy verifies.
+* **the rebuild has not finished yet.** It is at 33% and moving; the last step
+  is a check of the whole 32 GB file before it replaces the live one, and
+  **nothing has measured that check at this size** — 5 minutes at the
+  106 MB/s this disk does sequentially, hours if it reads the way RCA-J
+  measured. It now publishes every 5 seconds, so it can be told apart from a
+  stall.
 * **`forget_pairs` still holds one transaction across every pair**, so a
   delisted-coin cleanup freezes filing until it ends (named in RCA-C, still
   true).
 * **24.8 GB of dead files** (`rows.prev.db`, `rows.old.db`) are read by nothing
-  and could be deleted.
+  and could be deleted — plus a fresh 32 GB `rows.before-rebuild.db` when the
+  swap happens. G: has 355.7 GB free, so this is tidying, not urgent, and it is
+  the operator's data to keep or drop.
+* **the app is still serving code from before today's fixes.** Restarting it
+  runs `taskkill /T`, which would kill the rebuild, so it waits until the
+  rebuild is done.
 
 ---
 

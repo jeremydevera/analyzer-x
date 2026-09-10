@@ -125,21 +125,14 @@ def test_an_unknown_sizing_matches_nothing_rather_than_everything(store):
 def test_the_two_values_come_from_the_grid_that_measured_the_rows(store):
     from tradingagents import backtest_report as br
 
-    # FLAT ONLY since Sep 11, 2026 — operator: *"i only want flat so you will
-    # need to delete marigingalte for my backtest as well"*. This test used to
-    # pin ("flat", "martingale") as the grid's answer, so it is the guard that
-    # would have quietly re-authorised the ladder; it pins the registry itself
-    # now, and `test_the_grid_is_flat_only.py` holds the directive.
-    assert br.SIZINGS == ("flat",), br.SIZINGS
-    # The dropdown follows the GRID, which is what the constant's own comment
-    # promises ("a dropdown built from a literal in the browser is a label that
-    # can drift from the data"), so it now offers flat alone.
-    assert ri.facets()["sizings"] == list(br.SIZINGS) == ["flat"]
-    # KNOWN TRANSIENT, stated rather than hidden: the store still holds
-    # 48,157,842 martingale rows measured before the change — exactly half of
-    # it — and until they are purged the dropdown cannot name them. That is the
-    # right way round for an operator who asked for the ladder to be gone; the
-    # wrong way round would be a dropdown offering a sizing nothing measures.
+    # BOTH AGAIN, Sep 11, 2026. Cut to ("flat",) that morning on *"i only want
+    # flat"* and restored hours later on *"i want the martingale back to
+    # backtest results and include the filter martingale again in filter"* —
+    # see test_both_sizings_come_from_one_registry.py for the round trip. This
+    # assertion is deliberately on the REGISTRY, because it is the guard that
+    # notices when the grid and the dropdown disagree.
+    assert br.SIZINGS == ("flat", "martingale"), br.SIZINGS
+    assert ri.facets()["sizings"] == ["flat", "martingale"]
     # and the sweep builds its combinations from that same tuple, so the
     # dropdown cannot drift from what was measured
     src = open("tradingagents/market_sweep.py", encoding="utf-8").read()

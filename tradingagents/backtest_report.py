@@ -161,7 +161,17 @@ def _grid(sls, tps):
 # It was DEFINED TWICE in this file, eight lines apart, the second shadowing
 # the first — two copies of one rule, which is the shape this repo has paid for
 # repeatedly. One definition now.
-SIZINGS: tuple[str, ...] = ("flat",)
+# RESTORED, Sep 11, 2026: *"i want the martingale back to backtest results and
+# include the filter martingale again in filter"*. It was cut to ("flat",)
+# hours earlier on *"i only want flat"*; the operator changed their mind before
+# the purge finished. Both sizings are measured and filterable again.
+#
+# Keep it ONE definition and keep every path reading it — that part of the
+# flat-only change stays, and is why restoring the ladder is a single line
+# instead of four (`fast_grid.combo_six`, `.github/scripts/sweep_shard.py` and
+# `market_sweep.run_pair` all take their sizings from here now, where two of
+# them used to carry `("flat", "martingale")` inline).
+SIZINGS: tuple[str, ...] = ("flat", "martingale")
 
 
 BARRIERS: dict[str, list[tuple[float, float]]] = {

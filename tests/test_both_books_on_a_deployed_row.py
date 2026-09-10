@@ -202,20 +202,35 @@ def test_every_row_id_has_a_copy_button_that_reports_what_happened():
     The id was already copy-on-click and invisibly so: no icon, and the write
     was `navigator.clipboard?.writeText(...)` — an optional chain, so in a
     context without the async clipboard the click did nothing AND said nothing.
+
+    This guard NAMED THE FILE the component happened to live in, and went red
+    on `main` when `32b68feeeb4` lifted `CopyableId` into its own module —
+    which was the right move (the positions table had a hand-rolled copy button
+    with neither icon nor fallback, and the operator said *"i still cannot copy
+    the id ... y5ubbfpb"*). The behaviour it protects never regressed; the
+    address did. So it now checks the COMPONENT wherever it is declared, and
+    checks each table USES it — a `.tsx` grep for a function body cannot
+    survive an extraction, and should not have to.
     """
-    src = (open("webapp/src/components/trade/StrategiesGrid.tsx",
+    one = (open("webapp/src/components/trade/CopyableId.tsx",
                 encoding="utf-8").read())
-    assert "function CopyableId(" in src
-    assert "<CopyableId id={r.id} />" in src
+    assert "export default function CopyableId(" in one
     # an icon, not just an underline
-    assert "<rect x=\"9\" y=\"9\"" in src, "the copy glyph"
+    assert "<rect x=\"9\" y=\"9\"" in one, "the copy glyph"
     # it says what happened, both ways
-    assert '"ok" | "fail"' in src
-    assert ">copied<" in src.replace("\n", "").replace(" ", "") or "copied" in src
-    assert "could not copy" in src, "a silent failure is the bug being fixed"
+    assert '"" | "ok" | "fail"' in one
+    assert "copied" in one
+    assert "could not copy" in one, "a silent failure is the bug being fixed"
     # and it does not depend on the async clipboard alone
-    assert "document.execCommand(\"copy\")" in src
-    assert "navigator.clipboard?.writeText(r.id" not in src, \
-        "the optional-chain-and-hope version is gone"
+    assert "document.execCommand(\"copy\")" in one
     # what gets copied is what the operator sees; every find box strips the #
-    assert "const text = `#${id}`" in src
+    assert "`${prefix}${id}`" in one and 'prefix = "#"' in one
+
+    # every table that shows an id uses THAT component — no second copy button
+    for path in ("webapp/src/components/trade/StrategiesGrid.tsx",
+                 "webapp/src/components/trade/PositionsPanel.tsx"):
+        src = open(path, encoding="utf-8").read()
+        assert "<CopyableId " in src, f"{path} shows an id without it"
+        assert 'from "./CopyableId"' in src, f"{path} must import the one"
+        assert "navigator.clipboard" not in src, \
+            f"{path} has its own clipboard call again — that is the bug"

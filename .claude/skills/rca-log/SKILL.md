@@ -1,6 +1,6 @@
 ---
 name: rca-log
-description: ALWAYS ON, STRICT. Whenever a bug is fixed in this repo, append an entry to docs/RCA.md in the SAME commit as the fix - what the operator saw, the numbered timeline with real numbers, the root cause, WHY THE TEST DID NOT CATCH IT, the cost, the commit and the guard. Never fix a bug without logging it. The operator asked for this explicitly and it is not optional.
+description: ALWAYS ON, STRICT. Whenever a bug is fixed in this repo, append an entry to docs/RCA.md in the SAME commit as the fix - opening with a CEO summary (3 plain bullets, no jargon) and a DEV summary (3 precise bullets, file:line and test names) - what the operator saw, the numbered timeline with real numbers, the root cause, WHY THE TEST DID NOT CATCH IT, the cost, the commit and the guard. Never fix a bug without logging it. The operator asked for this explicitly and it is not optional.
 ---
 
 # RCA log
@@ -33,7 +33,39 @@ comment, or a test-only change.
 Newest first, at the top of the log, under a heading
 `## RCA-YYYY-MM-DD-<letter> — <the fault in the operator's terms>`.
 
-Seven fields, all of them:
+**Two summaries first, then the seven fields.** Operator, Sep 10, 2026: *"add
+this ceo style findings in documentation so it wont happen again also add
+technical/dev documentation as well / also update rca-log skill to inclde CEO
+summary, developer summary whenever i tell you to do rca documentation"*.
+
+They asked because the entries were unreadable to them — engineer prose about
+`_missing_ok` defaults and index write amplification, when what they needed was
+"your filter said zero because it could not check, and it now says so". Both
+readers are real and neither is served by the other's version.
+
+```
+**CEO** — 3 bullets, no code, no file names, no jargon.
+  * what YOU saw or lost (money, time, a wrong number on screen)
+  * why it happened, in one plain sentence
+  * what stops it happening again
+
+**DEV** — 3 bullets, precise, for whoever touches this next.
+  * the failing call path: file:line -> function -> the wrong value
+  * the invariant that was broken, named as a rule
+  * the guard, by test name, and what it asserts
+```
+
+Rules for the two:
+
+* **CEO says money, minutes and screens.** Never a function name. "Your win %
+  filter showed nothing for 40 minutes" — not "`_winrate_matches` returned 0".
+* **DEV says exact locations.** `rows_index.py:1955` beats "the count helper".
+* **Neither replaces the TIMELINE.** They are the way in; the timeline is the
+  evidence.
+* If the CEO bullet cannot be written without a technical term, the term is
+  the problem — describe the effect instead.
+
+Then the seven fields, all of them:
 
 ```
 **SAW** — what was on their screen, in their own words where you have them.

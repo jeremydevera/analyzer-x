@@ -158,3 +158,131 @@ def test_the_repeating_patterns_list_is_there_to_read_before_testing():
                     "A guard is only as wide as its pattern",
                     "Test the layer the operator actually touches"):
         assert pattern in body, pattern
+
+
+# ------------------------------------- two summaries, for the two real readers
+# Operator, Sep 10, 2026: *"add this ceo style findings in documentation so it
+# wont happen again also add technical/dev documentation as well / also update
+# rca-log skill to inclde CEO summary, developer summary whenever i tell you to
+# do rca documentation"*.
+#
+# They asked because the entries had stopped being readable BY THEM. RCA-F's
+# root cause is "`_missing_ok` returned its default of 0 and the planner read it
+# as a match count" — true, and useless to the person whose filter went blank.
+# What they needed was "your filter said zero because it could not check".
+#
+# Entries from this date carry both. The ~20 older ones keep the seven fields
+# alone and are deliberately NOT backfilled: a summary written months later from
+# the entry itself adds no evidence, and rewriting the record to satisfy a new
+# test is how a log stops being a record.
+SUMMARIES_FROM = "2026-09-10"
+
+
+def _dated_entries():
+    for head, body in _entries():
+        day = re.match(r"RCA-(\d{4}-\d{2}-\d{2})-", head).group(1)
+        yield day, head, body
+
+
+def _bullets(block: str) -> list[str]:
+    return [ln for ln in block.splitlines() if ln.startswith("* ")]
+
+
+def _summary(body: str, name: str) -> str:
+    """The block from `**NAME**` to whatever heading comes next."""
+    i = body.index(f"**{name}**") + len(f"**{name}**")
+    rest = body[i:]
+    ends = [rest.index(f"**{n}**") for n in ("CEO", "DEV") + FIELDS
+            if f"**{n}**" in rest]
+    return rest[:min(ends)] if ends else rest
+
+
+@pytest.mark.parametrize("name", ["CEO", "DEV"])
+def test_todays_entries_open_with_both_summaries(name):
+    for day, head, body in _dated_entries():
+        if day < SUMMARIES_FROM:
+            continue
+        assert f"**{name}**" in body, f"{head} is missing the {name} summary"
+
+
+def test_the_summaries_come_before_the_evidence():
+    """They are the way IN. A plain-words summary underneath a timeline of
+    process ids has already lost the reader it was written for."""
+    for day, head, body in _dated_entries():
+        if day < SUMMARIES_FROM:
+            continue
+        assert body.index("**CEO**") < body.index("**DEV**") < body.index("**SAW**"), \
+            f"{head}: order is CEO, then DEV, then the seven fields"
+
+
+def test_the_ceo_summary_carries_no_code():
+    """`_missing_ok`, `rows_wr4` and `file.py:1955` are all true and none of
+    them belong here. If a bullet cannot be written without one, the term IS
+    the problem — say what the effect was instead."""
+    for day, head, body in _dated_entries():
+        if day < SUMMARIES_FROM:
+            continue
+        ceo = _summary(body, "CEO")
+        assert "`" not in ceo, \
+            f"{head}: the CEO summary names code — {ceo[ceo.index('`'):][:60]!r}"
+        assert ".py" not in ceo, f"{head}: the CEO summary names a file"
+
+
+def test_the_dev_summary_names_a_location_and_its_guard():
+    """The opposite failure: 'the count helper returned the wrong thing' sends
+    the next session hunting. `rows_index.py:1955` does not."""
+    for day, head, body in _dated_entries():
+        if day < SUMMARIES_FROM:
+            continue
+        dev = _summary(body, "DEV")
+        assert "`" in dev, f"{head}: the DEV summary names nothing precisely"
+        assert "test_" in dev, \
+            f"{head}: the DEV summary must name the guard, or say plainly " \
+            f"that there is none and why"
+        assert "invariant" in dev.lower(), \
+            f"{head}: the DEV summary must name the RULE that broke, not " \
+            f"only the line — a rule is what transfers to the next bug"
+
+
+@pytest.mark.parametrize("name", ["CEO", "DEV"])
+def test_each_summary_is_three_bullets(name):
+    """Three, because the value is that they are read at all. The seven fields
+    below are where length is allowed."""
+    for day, head, body in _dated_entries():
+        if day < SUMMARIES_FROM:
+            continue
+        got = _bullets(_summary(body, name))
+        assert 3 <= len(got) <= 4, \
+            f"{head}: {name} has {len(got)} bullets; the operator asked for 3"
+
+
+def test_neither_summary_replaces_the_timeline():
+    """A summary is not evidence. Both were added ON TOP of the seven fields,
+    and an entry that answers only in summaries has lost the receipts."""
+    for day, head, body in _dated_entries():
+        if day < SUMMARIES_FROM:
+            continue
+        for field in FIELDS:
+            assert f"**{field}**" in body, \
+                f"{head}: {field} went missing when the summaries arrived"
+
+
+def test_the_log_and_the_skill_both_document_the_two_summaries():
+    """A shape enforced by a test and written nowhere a human reads is a trap.
+    The skill is what a fresh session follows; the log's header is what a
+    reader of the log sees."""
+    log = RCA.read_text(encoding="utf-8")
+    # the header ends at the first horizontal RULE, not at the first `---`:
+    # `|---|---|` inside the field table is three dashes too.
+    head = log[:log.index("\n---\n")]
+    assert "**CEO**" in head and "**DEV**" in head, \
+        "docs/RCA.md must describe both summaries in its own field table"
+    assert SUMMARIES_FROM.replace("2026-09-10", "Sep 10, 2026") in head, \
+        "the header must say from WHEN both are required"
+
+    skill = SKILL.read_text(encoding="utf-8")
+    front = skill.split("---")[1]
+    assert "CEO" in front and "DEV" in front, \
+        "the frontmatter description is all that loads until the skill opens"
+    for line in ("**CEO**", "**DEV**", "no jargon", "test name"):
+        assert line in skill, f"the skill must spell out {line!r}"

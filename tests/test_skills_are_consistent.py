@@ -116,11 +116,26 @@ def test_the_merge_kept_the_operators_own_phrases():
 
 def test_it_says_both_halves_apply_at_once():
     """The whole reason for merging: each skill alone got followed alone —
-    short but jargon-filled, or plain but four paragraphs long."""
+    short but jargon-filled, or plain but four paragraphs long.
+
+    It became THREE halves on Sep 09, 2026 — *"can you answer short but clearly
+    always give me examples so i can easily undestand"* — and this test went
+    RED on `main` for eleven hours, because `fda4439544b` rewrote the one-rule
+    line ("SHORT AND PLAIN, both") without running the guard that pins it.
+    So the assertion now names the parts INDIVIDUALLY plus the "all at once"
+    clause: adding a fourth part cannot silently delete the third, and the
+    phrase can be reworded without the guard going red for nothing.
+    """
     body = _text(MERGED)
-    assert "SHORT AND PLAIN, both" in body
+    for part in ("SHORT", "PLAIN", "EXAMPLE"):
+        assert part in body, f"the one rule must still name {part}"
+    assert "all three, always" in body, \
+        "and must still say they apply AT ONCE, not one at a time"
     assert "Compress **structure**, never **comprehension**" in body
-    assert "Short answer, plain words. Not short words, long answer." in body
+    # the closing line, in whatever wording: SHORT answer + PLAIN words, and
+    # not the inversion the operator kept receiving (short WORDS, long answer)
+    assert "Short answer, plain words" in body
+    assert "short words" in body and "long" in body
 
 
 def test_every_skill_has_a_row_in_skills_md():

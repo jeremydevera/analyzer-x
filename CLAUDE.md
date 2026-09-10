@@ -597,7 +597,15 @@ has its entry, in the SAME commit as the fix.** No entry, no commit. The
 operator, 2026-09-09: *"list this in rca to prevent this from happening in the
 future / all fixes should be listed in a file so you will remember what where
 the fixes / create a skill that is enabled always whenever a bug is fixed"*.
-Seven fields, all of them: what they SAW, the numbered TIMELINE with measured
+**Two summaries first** (2026-09-10: *"add this ceo style findings in
+documentation so it wont happen again also add technical/dev documentation as
+well"*): a **CEO** block — 3 bullets, no code, no file names, what they saw or
+lost, why in one plain sentence, what stops it now — then a **DEV** block — 3
+bullets, the failing call path as `file.py:line`, the invariant that broke named
+as a rule, and the guard by test name. They asked because the entries had become
+unreadable to them: `_missing_ok` returning its default is true and useless to
+the person whose filter went blank. Neither summary replaces the fields below.
+Then seven fields, all of them: what they SAW, the numbered TIMELINE with measured
 numbers (before AND after), the ROOT CAUSE line, **WHY IT WAS NOT CAUGHT**, the
 COST in dollars or "none", the FIX commit, and the GUARD test.
 The fourth field is the whole point. On 2026-09-09 four bugs were fixed and in

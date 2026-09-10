@@ -11,10 +11,19 @@ Sep 09, 2026, and `tests/test_rca_log.py` now refuses a repeated id.
 The `rca-log` skill (`.claude/skills/rca-log/`) is ALWAYS ON and writes the
 entry in the same commit as the fix. `tests/test_rca_log.py` holds the shape.
 
-Every entry answers the same seven questions:
+**Two summaries first, then the seven questions** — operator, Sep 10, 2026:
+*"add this ceo style findings in documentation so it wont happen again also add
+technical/dev documentation as well"*. They asked because the entries had become
+unreadable to them: engineer prose about swallowed defaults and index write
+amplification, when what they needed was *"your filter said zero because it
+could not check, and it now says so"*. Both readers are real, and neither is
+served by the other's version. Entries dated **on or after Sep 10, 2026** carry
+both; the older ones keep the seven fields alone and are not being rewritten.
 
 | field | why it is there |
 |---|---|
+| **CEO** | 3 bullets, no code and no file names: what you saw or lost, why in one plain sentence, what stops it now |
+| **DEV** | 3 bullets, exact: the failing call path (`file:line` → function → the wrong value), the invariant that broke named as a rule, the guard by test name |
 | **SAW** | what was on the operator's screen, in their words where possible |
 | **TIMELINE** | numbered, real timestamps and real numbers (`bug-scenario`) |
 | **ROOT CAUSE** | the line that was wrong, not the symptom |
@@ -96,7 +105,124 @@ measured and not yet findable.
 
 ---
 
+## RCA-2026-09-10-H — two guards were RED on `main` for half a day, and both broke on a legitimate edit
+
+**CEO**
+
+* Two of the automatic checks that are supposed to catch mistakes were
+  themselves broken for about half a day, and nothing told either of us. Your
+  app was fine the whole time - the copy button copied, the answer rules held.
+* Neither check was testing what it was written to test. Both were pinned to
+  WHERE something lived, so tidying up the code broke the check while changing
+  nothing you would ever see.
+* Both now check the behaviour instead of the address, and the file that lists
+  the repeating mistakes has this shape added to it.
+
+**DEV**
+
+* `test_it_says_both_halves_apply_at_once` asserted the literal string
+  `"SHORT AND PLAIN, both"`; `fda4439544b` (`Sep 09 11:12pm`) rewrote that line
+  to name three parts, per the operator's own ask. RED for **14 h 24 min**.
+  `test_every_row_id_has_a_copy_button_that_reports_what_happened` asserted
+  `"function CopyableId(" in StrategiesGrid.tsx`; `32b68feeeb4`
+  (`Sep 10 12:46am`) lifted the component into
+  `webapp/src/components/trade/CopyableId.tsx` so the positions table could
+  stop hand-rolling its own. RED for **12 h 50 min**.
+* Broken invariant: **a guard asserts WHAT, never WHERE.** A guard pinned to an
+  address goes red on a refactor that changed nothing, and green on a
+  regression that moved - it is wrong in both directions, and the false red is
+  what teaches a reader to ignore it.
+* Guard: both widened in this commit -
+  `test_it_says_both_halves_apply_at_once` names SHORT, PLAIN and EXAMPLE
+  individually plus the "all three, always" clause, so a fourth part cannot
+  delete the third; the copy guard now reads `CopyableId.tsx` for the
+  behaviour (icon, `"" | "ok" | "fail"`, `copied`, `could not copy`,
+  `document.execCommand("copy")`, `${prefix}${id}`) and then asserts BOTH
+  `StrategiesGrid.tsx` and `PositionsPanel.tsx` import and use it and contain
+  no `navigator.clipboard` of their own - which is a wider promise than the
+  original made.
+
+**SAW** — nothing, and that is the point. Found while running
+`tests/test_skills_are_consistent.py` before committing an unrelated docs
+change; the operator was never shown a wrong number by either fault.
+
+**TIMELINE**
+
+1. `Sep 09, 2026 11:12pm` — `fda4439544b` lands: the `short-and-plain` rule
+   becomes SHORT + PLAIN + EXAMPLE, three places updated (skill, `CLAUDE.md`,
+   `SKILLS.md`). Its own test file was not run.
+2. `Sep 10, 2026 12:46am` — `32b68feeeb4` lands: `CopyableId` extracted so
+   `PositionsPanel` stops hand-rolling a copy button, after
+   *"i still cannot copy the id ... y5ubbfpb"*. Its own test file was not run.
+3. `Sep 10, 2026 1:23pm` — `pytest tests/test_skills_are_consistent.py`:
+   **1 failed, 31 passed**, on the string `SHORT AND PLAIN, both`.
+4. `Sep 10, 2026 1:26pm` — the full suite, stopping at the first failure,
+   finds the second: `assert 'function CopyableId(' in src`.
+5. `Sep 10, 2026 1:33pm` — both widened, `40 passed` across the three
+   affected files. The whole suite then ran: **3,801 passed, 15 failed, 1
+   error**, and every one of those 16 is pre-existing on this Windows box in a
+   file this change does not touch (POSIX file modes, `SIGTERM`, console
+   encoding, and the known `test_the_real_book_is_still_one_slot_per_coin`).
+   Named here rather than left to read as green.
+
+**ROOT CAUSE** — both guards asserted the ADDRESS of a behaviour: one an exact
+sentence in a skill, the other a function body inside the component file that
+happened to hold it. Neither commit changed behaviour; both changed an address.
+This is the sibling of pattern 1 (*a count is not a location*) with the sign
+flipped - there the location was too wide to catch a real fault, here it was so
+narrow that a correct edit broke it.
+
+**WHY IT WAS NOT CAUGHT** — nothing ran either test, because neither commit
+felt like code: one edited a skill's prose and one moved a React component.
+This repo already paid for that once - `e853001f5e5` pushed two red tests
+because `pytest | tail -6 && git commit` returns `tail`'s exit code, fixed in
+`83fee333983`. The lesson taken then was about the PIPE. The lesson missing was
+the simpler one: **a commit that touches a file some test reads must run that
+test**, and `grep -rl <file> tests/` finds them in one second.
+
+**COST** — no money, no wrong data, nothing on the operator's screen. The cost
+was to the suite's meaning: for 12 of those hours a session running the tests
+saw failures it had not caused and could not distinguish from its own.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_skills_are_consistent.py::test_it_says_both_halves_apply_at_once`
+(names SHORT, PLAIN and EXAMPLE individually plus `all three, always`) and
+`tests/test_both_books_on_a_deployed_row.py::test_every_row_id_has_a_copy_button_that_reports_what_happened`
+(reads `CopyableId.tsx` for the behaviour, then demands both tables import it
+and hold no `navigator.clipboard` of their own). Plus pattern 5 in *Patterns
+that keep repeating*. Stated plainly: **nothing here checks that the suite was
+actually run** before a commit, so that part remains a habit, not a guard.
+
+---
+
 ## RCA-2026-09-10-G — the compaction reached 90% and stopped, and it is still not working
+
+**CEO**
+
+* Seven hours of a background clean-up that never finished, and an estimate I
+  gave you ("about 14 minutes") that was wrong by hours. Nothing was lost and
+  your app kept working the whole time.
+* It copies a 35 GB file while another job writes to the same disk; it slowed
+  down forty times over and then stopped, and I could not find out why.
+* It is written down as NOT WORKING instead of quietly shelved. A full rebuild
+  of the file from your per-coin results - a different route to the same
+  result - is what ran instead, and that one moves.
+
+**DEV**
+
+* `rows_index.compact()` -> `VACUUM INTO` on a 34.69 GB source: 14.73 GB copied
+  in 30 min (0.47 GB/min), then 4.4 GB in 6.4 h (0.011 GB/min), then **0 bytes**
+  of file growth AND 0 bytes of process I/O over 90 s. Unchanged after stopping
+  the competing writer (pid 14316, 62 min CPU, 311 GB I/O). `py-spy` could not
+  attach ("Failed to find python version"), so no stack was ever obtained.
+* Broken invariant: **a long-running job must publish progress often enough
+  that a stall is visible in minutes.** `compact()` published none - which is
+  why the only estimate available was an extrapolation of its first 30 minutes.
+* Guard: `tests/test_compact_rebuilds_into_a_fresh_file.py` (10) holds the
+  SAFETY properties, and `test_a_copy_that_does_not_match_is_thrown_away_not_swapped`
+  is why abandoning the run cost nothing. **No test asserts that it finishes** -
+  none can, off a real 34 GB file. Stated, not hidden.
 
 **SAW** — nothing on screen. The operator asked *"What is estimated time to
 finish this"*, was told **~14 minutes**, and the answer was wrong by hours.
@@ -151,6 +277,31 @@ honestly do that off a real 34 GB file.
 ---
 
 ## RCA-2026-09-10-F — the win % filter answered "nothing matches" when its index was missing
+
+**CEO**
+
+* Your win % filter showed an empty table for about 40 minutes. Nothing was
+  wrong with the filter and nothing was wrong with your data - 566,990 results
+  had matched the same filter half an hour earlier.
+* My own speed-up had removed the sorted lists that filter needs, and instead
+  of saying "I cannot check right now" the screen said "nothing found".
+* The speed-up is off unless someone asks for it, and a missing list can never
+  again be reported as a zero.
+
+**DEV**
+
+* `api.strategies` -> `rows_index.query` -> `_winrate_matches` ->
+  `_missing_ok(_read, 0)` at `rows_index.py:1955`. A stale `has_index` cache
+  named `rows_wr4` after ANOTHER process dropped it; SQLite raised `no such
+  index`; the wrapper returned its default of **0**, which the planner read as
+  "no row clears this floor". Result: HTTP 200, `rows=0 total=0`, 18.42 s.
+* Broken invariant: **a default that reads as data is a lie.** The absence of an
+  answer must never be encoded as a valid answer.
+* Guard: `tests/test_a_missing_index_never_reads_as_zero.py` (9) - re-raises on
+  `no such index` and drops the cache, keeps the default for `no such table`
+  and for a LOCK (`test_a_LOCK_still_earns_the_default_and_that_is_deliberate`,
+  which protects `test_a_locked_read_does_not_look_like_a_missing_index`), plus
+  `test_status_says_UNKNOWN_not_zero_when_it_cannot_read`.
 
 **SAW** — *"There is nothing wrong with the filter, we are fixing the backtest
 I want rootcause as why did you revert the filter now!"*. They were right.
@@ -211,6 +362,33 @@ count is pinned as the call site that made it dangerous. Plus
 ---
 
 ## RCA-2026-09-10-E — the catch-up was paying for FOURTEEN indexes it was designed to rebuild afterwards
+
+**CEO**
+
+* 753 of your 5,365 coins had finished results that no filter and no download
+  could find, and filing them was crawling at about one coin every 70 seconds -
+  over a week of waiting.
+* Every result has to be added to sorted lists so filters stay fast. Your store
+  had built up 14 of those lists where the design assumed 4, so filing did 3.5x
+  the work it was meant to.
+* The extra lists are now set aside during a big catch-up. The deeper cause -
+  a third of the file being empty holes - is what the entry above is about, and
+  what rebuilding the file from your per-coin results fixes.
+
+**DEV**
+
+* `rows_index.sync()` -> `index_pair()` per pair with all 14 indexes live.
+  `KEEP_INDEXES` is 4; `sqlite_master` held 14 (`rows_wr2/3/4`, `rows_pr2`,
+  `rows_id`, `rows_signal`, 4x `rows_cf_*`) - every extra one built on demand by
+  filter work and never dropped. Measured 250.5 MB of scattered I/O per 40 s
+  with `pairs_indexed` static, against 38.8% free pages (13.47 GB of holes).
+* Broken invariant: **a bulk fill must not carry indexes it is designed to
+  rebuild afterwards.** `_after_fill_indexes()` existed for exactly that; the
+  matching drop did not.
+* Guard: `tests/test_bulk_fill_drops_only_the_on_demand_indexes.py` (8) - the
+  drop list comes from `sqlite_master`, never a constant; no `KEEP_INDEXES`
+  member can be dropped; and `test_dropping_is_opt_in_and_off_by_default` pins
+  it off after RCA-F.
 
 **SAW** — the operator, `Sep 10, 2026`: *"is the backtest done"*, then *"so the
 measure is still in progress?"*. Measuring WAS done — cloud run
@@ -336,6 +514,32 @@ amplification, and the dominant cost is now bloat that nothing can reclaim.
 
 ## RCA-2026-09-10-D — you picked BTC and GitHub measured 0G, ALPINE, AVAAI…
 
+**CEO**
+
+* You picked BTC, pressed BACKTEST, and GitHub measured 0G, ALPINE, AVAAI and
+  seventeen other coins you never asked for. BTC was measured by nobody.
+* The screen sent how MANY coins you picked, never WHICH ones, so the 20
+  machines helped themselves from the top of an alphabetical list.
+* The names travel with the job now, and the screen prints back what GitHub was
+  actually asked to measure.
+
+**DEV**
+
+* The Backtest screen sent `coins: coins.length`; the shard reads `COINS` as a
+  per-machine claim CAP, so 20 workers started at board positions #1, #54, #107
+  ... #1012 of 1,065 contracts. `BTC_USDT` is #190 and was claimed by no one.
+  Four paths had the same hole: the button, `db_jobs._run_btupdate` (sent no
+  coins at all), `api._finish_handoff` (sent `len(left)`), `sweep_orchestrator`.
+* Broken invariant: **a field must mean the same thing to the sender and the
+  receiver** - a COUNT written into a CAP is not a selection.
+* Guard: `tests/test_picked_coins_travel.py` (15) - the names travel, the fleet
+  is trimmed, `coins` goes to 0, an empty pick still means the whole market, a
+  named coin the venue will not trade is NAMED, all four paths send the list
+  while resolve-pending deliberately does not. Plus
+  `test_state_runs_are_recorded_per_timeframe_and_expire` (3 per frame, newest
+  first) - a named run would otherwise have become the only saved positions for
+  its timeframe.
+
 **SAW** — the operator, reading the live-results explanation: *"so when i
 backtest btc it runs backtets on github then store the result direclty on my
 machine right?"* Storing, yes. Measuring BTC, no. Then, on being shown why:
@@ -425,6 +629,29 @@ comment moved.
 ---
 
 ## RCA-2026-09-10-C — the row index went quiet for 13 hours and NOTHING anywhere said why
+
+**CEO**
+
+* Your finished results stayed invisible for 13 hours and nothing anywhere said
+  why - the screen simply showed the day before's numbers.
+* The filing job hit a locked file, the error was thrown away in silence, its
+  log was being sent to nowhere, and the button said "started" when nothing had.
+* The error is kept and shown now, the job writes a real log, and the button
+  refuses with the reason instead of pretending.
+
+**DEV**
+
+* `sync_in_background`'s worker was `except Exception: pass`; the thread died on
+  `ensure()`'s first statement (`database is locked`) after the caller had
+  already returned `started: true`. `spawn_indexer` ran with
+  `stdout=DEVNULL, stderr=DEVNULL`. And `POST /api/strategies/reindex` printed
+  `behind` (806) for a job that walks `stale_pairs()` (5,276) - 6.5x under.
+* Broken invariant: **a job that cannot start must say so** - and a count on a
+  button must be the count of the work that button will actually do.
+* Guard: `tests/test_index_stall_is_visible.py` (14), including
+  `test_a_failed_catch_up_is_remembered_not_swallowed` (drives the real thread
+  with a real `OperationalError`) and
+  `test_the_indexer_writes_a_log_instead_of_DEVNULL`.
 
 **SAW** — the operator, `Sep 10, 2026 1:05am`, told the measuring was finished
 while their screen showed the day before's numbers: *"is tehre a bug or what i
@@ -516,6 +743,34 @@ writing up a bug about invisible progress.
 
 ## RCA-2026-09-10-B — the fleet's rows were unpacked on the C: drive, and every killed collect left 3 GB behind
 
+**CEO**
+
+* Results coming back from GitHub were unpacked onto your C: drive - 9.39 GB of
+  them, on a drive with 6 GB left - and 147 leftover folders had piled up since
+  Sep 03.
+* Each unpack asked Windows for "a temporary folder" and got the system drive,
+  and a job that was stopped never cleaned its own folder up.
+* Unpacking happens on G: beside your store now, and leftovers older than six
+  hours are swept on the way in.
+
+**DEV**
+
+* `cloud_sweep.fetch()` and `collect_into_store()` both called
+  `tempfile.TemporaryDirectory()` with no `dir=`, so shards (`rows-5.jsonl`,
+  3.33 GB each) landed in `%TEMP%` on C: while `market_sweep.HOME` is a junction
+  onto G:. `TemporaryDirectory` only cleans on a normal exit from its `with`,
+  and `start.py` kills the job tree with `taskkill /T` - so every hard stop
+  leaked a whole shard, permanently.
+* Broken invariant: **scratch space belongs on the same volume as the data it is
+  for**, and a killed job must not leak for ever. "Temporary" carried two false
+  assumptions here: not small, and not self-cleaning.
+* Guard: `tests/test_cloud_sweep.py` -
+  `test_no_artifact_is_unpacked_on_the_system_drive` walks the AST for every
+  `TemporaryDirectory` call and demands `dir=_scratch()` (reading the calls, not
+  the prose), plus `test_the_scratch_sits_on_the_stores_own_drive`,
+  `test_a_store_drive_that_cannot_be_used_falls_back` and
+  `test_a_killed_collect_does_not_leak_a_shard_forever`.
+
 **SAW** — the operator, `Sep 10, 2026 12:10am`: *"why are you using my c
 drive?"*. Their store is on G: on purpose. C: had **6 GB free of 118 GB**.
 
@@ -580,6 +835,33 @@ touched.
 ---
 
 ## RCA-2026-09-10-A — the row UPDATE button deleted rows, then silently binned the one it measured
+
+**CEO**
+
+* You pressed UPDATE on one strategy (#SW8Q96E6, STBL 4h). It deleted 30 of the
+  67 strategies stored for that coin - including the one you were looking at -
+  then measured your row correctly and binned the result, reporting success.
+* Three things at once: it replaced the coin's whole file instead of adding to
+  it, re-measured all 120 strategies instead of the one you asked for, and
+  judged your 20 trades "too thin" using a whole year's yardstick on a coin with
+  103 days of history.
+* Fixed: it measures only your row, adds instead of replacing, and uses the
+  coin's real history length. Your row now reads 20 trades, 19 wins, +$42.19.
+
+**DEV**
+
+* `market_sweep.run_pair(..., merge=False)` is the DEFAULT and was never passed,
+  so `save_pair_rows` REPLACED the pair file and dropped every combination that
+  produced no row this run. The same call sizes the trade floor from the `days`
+  ARGUMENT: the route sent 365 against 103 days of candles, so the 4h floor was
+  **40** instead of **11** and a genuine 20-trade row was discarded as thin.
+* Broken invariant: **an update adds; only a delete deletes** - and a floor is
+  computed from the DATA's own depth, never from a caller's parameter.
+* Guard: `tests/test_row_update_button.py` (17), each test stating its own
+  premise so it cannot rot - one asserts `run_pair`'s `merge` default is still
+  False, another that the floor still varies with `days` - plus eight live
+  scenarios against the real store. The 14 tests that passed while all three
+  bugs were live had all stubbed `run_pair`.
 
 **SAW** — the operator, on #SW8Q96E6 (STBL 4h, macddiv, tp2.5/sl2.5, flat):
 first *"was there 15 days silent days? is this accurate"*, then *"its simple
@@ -1704,6 +1986,12 @@ needs to be written differently:
    216 s. `tradingagents/slow_cache.BackgroundValue` exists so the third one
    does not have to rediscover it. Before adding a poll, ask what the route
    costs COLD.
+5. **A guard asserts WHAT, never WHERE.** `"SHORT AND PLAIN, both" in body` and
+   `"function CopyableId(" in StrategiesGrid.tsx` both went red on an edit that
+   changed no behaviour at all (H) — an address-pinned check is wrong in both
+   directions: false red on a refactor, false green when the thing moves. Name
+   the parts, read the file that declares the behaviour, and assert every caller
+   uses it. This is pattern 1 with the sign flipped.
 
 ---
 

@@ -105,6 +105,108 @@ measured and not yet findable.
 
 ---
 
+## RCA-2026-09-10-J — the safety check I added an hour earlier cost 45 minutes to save 30, and the row count on screen counted rows the index does not hold
+
+**CEO**
+
+* The resume I built at 2pm sat for 22 minutes doing nothing visible before it
+  had even started work. On the finished file the same check would have taken
+  about nine hours — to decide whether to save thirty minutes.
+* It was checking the half-built file page by page in the slowest possible
+  order. The disk is fine: measured 106 MB a second while that check was
+  crawling at 1 MB a second.
+* It now reads only the small summary table, in under a second. The full check
+  still runs at the end, before anything replaces your live file — that one is
+  fast because it reuses the memory the load already had.
+* Separately, and found the same minute: the row count on your Stored
+  strategies screen was counting rows the index does not actually hold.
+
+**DEV**
+
+* `rows_index._resumable()` ran `PRAGMA quick_check` on the 2.74 GB partial
+  through a plain `sqlite3.connect` — default page cache **2 MB** — so the
+  b-tree walk reached the mechanical G: as random 4 KB reads: **1.0 MB/s**
+  measured (`Get-Counter '\Process(python#3)\IO Read Bytes/sec'`), thread
+  `WaitReason = PageIn`, 6.4 s of CPU in 22 minutes, while a 319 MB sequential
+  read of `rows.db` in the same minute measured **106.3 MB/s**. Extrapolated
+  to the finished 32 GB file: **~9 hours**. The same call also did
+  `SELECT count(*) FROM rows` — another full scan of the big table.
+* Broken invariant: **a safety check must cost less than the work it
+  protects** — one that does not gets skipped by whoever is in a hurry, which
+  is worse than not having it. And **`SUM(n) FROM pairs` is the row count this
+  app prints, so `n` must be rows the index HOLDS**, never rows read from the
+  file: `index_pair` stored `len(rows)` while inserting `len(vals)`, which
+  skips any row without a coin.
+* Guard: `tests/test_rebuild_from_the_pair_files.py` (23) —
+  `test_the_resume_check_never_scans_the_big_table` (asserts no `quick_check`
+  and no `count(*) FROM rows` in the resume path, AND that `rebuild()` still
+  has its pre-swap `quick_check`),
+  `test_the_row_count_a_pair_reports_is_what_the_index_HOLDS` (`n` equals
+  `count(*)` for that pair, and `_rows_estimate()` equals `status()["rows"]`),
+  `test_a_resume_seeds_the_row_count_from_the_summaries` (the seed must be
+  EXACT or the pre-swap compare throws the run away).
+
+**SAW** — the operator asked for status. The rebuild had "resumed" 22 minutes
+earlier and every number on the progress file was still the one from before it
+was stopped.
+
+**TIMELINE**
+
+1. `Sep 10, 2026 2:11pm` — the wrapper reports the collect finished and calls
+   `rebuild()`. It prints `resuming from: {'pairs_done': 450, 'rows':
+   8385108}`.
+2. `2:37pm` — 26 minutes later: `rows.rebuild.db` untouched since `1:48:40pm`,
+   the progress file still carrying the dead run's pid, the process at **0.1
+   min of CPU** and 40 MB of RAM.
+3. `2:38pm` — the one thread: `ThreadState Wait`, **`WaitReason PageIn`**.
+   `PhysicalDisk(1 g:)` queue 2.0, `Pages/sec` 225.6. Per-process I/O:
+   **1.0 MB/s then 0.58 MB/s** — it was working, at a hundredth of the disk's
+   speed.
+4. `2:39pm` — measured the disk itself: 319 MB read sequentially from
+   `rows.db` in 3.0 s = **106.3 MB/s**. The disk was never the problem.
+5. `2:40pm` — stopped it. 2.74 GB partial kept, untouched.
+6. Same hour — `_resumable` rewritten to read `meta` and `SELECT pair, n FROM
+   pairs` only: **450 rows of summary instead of 2.74 GB of pages**.
+
+**ROOT CAUSE** — two, both a number that was not what it claimed:
+
+* the resume verified the WHOLE FILE to decide whether to trust a 450-row
+  summary table, on a connection with a 2 MB cache. The check's cost scales
+  with the file; the work it saves does not.
+* `pairs.n` was `len(rows)` (read from the JSON) while the insert wrote
+  `len(vals)` (rows with a coin). `_rows_estimate()` and `query()`'s total are
+  both `SUM(n)`, so the store's printed row count included rows no filter
+  could ever return.
+
+**WHY IT WAS NOT CAUGHT** — the resume tests all ran against a **3-pair
+store**, where `quick_check` is instant and every path looks free. A cost that
+only appears at 2.74 GB is invisible to a correctness test, and I shipped it 40
+minutes earlier having run exactly those tests. This is pattern 3 (*test the
+layer the operator actually touches*) in its measurement form: the tests proved
+the resume was RIGHT and said nothing about whether it was USABLE. The `n`
+half was never caught because no test compared `SUM(n)` against
+`count(*) FROM rows` — the two numbers the app treats as interchangeable.
+
+**COST** — no money and no data lost. 26 minutes of wall-clock, and the
+operator got a status answer of "still 450 pairs" when the run had been going
+half an hour. Had it not been measured, the pre-swap check on the finished file
+would have added ~9 hours of apparent stall — RCA-G a second time, same shape,
+built by the same hand.
+
+**FIX** — this commit. `_resumable()` reads the summary table only, and its
+docstring carries the two measured rates so the next person does not re-add the
+check; `index_pair` stores `n = len(vals)`. The pre-swap verify is unchanged
+and still runs `quick_check` — on the LOADING connection, which holds a 500 MB
+cache over pages it has just written.
+
+**GUARD** — the three tests named in the DEV block, in
+`tests/test_rebuild_from_the_pair_files.py` (23 tests). Stated plainly: **no
+test measures the pre-swap check on a 32 GB file** — that is the next run's
+measurement, and if it turns out slow it is RCA-G's lesson again and belongs in
+this file.
+
+---
+
 ## RCA-2026-09-10-I — the rebuild fell from 40 pairs/min to 0.25, because it was racing the collect for one disk
 
 **CEO**

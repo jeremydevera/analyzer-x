@@ -334,3 +334,60 @@ def test_index_pair_reports_what_LANDED_not_what_it_read(store):
     got = ri.rebuild()
     assert got["rebuilt"] is True, got
     assert got["rows"] == 76, got
+
+
+def test_the_resume_check_never_scans_the_big_table(store):
+    """Measured on the real 2.74 GB partial: `PRAGMA quick_check` on a fresh
+    connection ran at **1 MB/s and would have taken 45 minutes**, while a
+    plain sequential read of the same disk measured **106 MB/s** in the same
+    minute — a fresh `sqlite3.connect` gets a 2 MB page cache and walks the
+    b-tree, so a mechanical disk serves it as random 4 KB reads. On the
+    finished 32 GB file that is ~9 hours to decide whether to save 30 minutes.
+
+    So the resume reads the SUMMARY table only. What guards the file is the
+    verify before the swap, on the loading connection with its 500 MB cache.
+    """
+    src = inspect.getsource(ri._resumable)
+    assert "quick_check" not in src.split('"""')[2], \
+        "the resume path must not run quick_check — it costs more than it saves"
+    assert "count(*) FROM rows" not in src, \
+        "and it must not count the big table either; SUM(n) is the same number"
+    # the guard that DOES protect the swap is still there
+    assert "quick_check" in inspect.getsource(ri.rebuild)
+
+
+def test_the_row_count_a_pair_reports_is_what_the_index_HOLDS(store):
+    """`SUM(n) FROM pairs` is what the screen prints as the store's row count
+    (`_rows_estimate`) and what a coin filter counts with — so a row the
+    insert skipped must not be in `n`, or the operator is told they can find a
+    row that is not there."""
+    f = msw.ROWDIR / "NOCOIN-1h.json"
+    f.write_text(json.dumps([
+        {"id": "a", "coin": "NOCOIN", "tf": "1h", "signal": "rsi14",
+         "sizing": "flat", "trades": 5, "winrate": 80.0, "profit": 1.0},
+        {"id": "b", "tf": "1h", "signal": "rsi14"},        # no coin: skipped
+    ]), encoding="utf-8")
+    ri.ensure()
+    ri.index_pair(f)
+    with ri._open(readonly=True) as con:
+        n = int(con.execute(
+            "SELECT n FROM pairs WHERE pair='NOCOIN-1h'").fetchone()[0])
+        real = int(con.execute(
+            "SELECT count(*) FROM rows WHERE pair='NOCOIN-1h'").fetchone()[0])
+    assert n == real == 1, f"n={n} but the index holds {real}"
+    assert ri._rows_estimate() == int(
+        ri.status().get("rows") or 0), "the two must agree"
+
+
+def test_a_resume_seeds_the_row_count_from_the_summaries(store):
+    """The seeded total has to be EXACT: `rebuild()` compares it against
+    `SELECT count(*)` before it dares swap, so a seed that is off by one row
+    throws away the whole run at the last step."""
+    _partial([msw.ROWDIR / "BTC-15m.json", msw.ROWDIR / "BTC-1h.json"])
+    got = ri._resumable(ri.DB_PATH.with_suffix(".rebuild.db"),
+                        {f.stem for f in msw.ROWDIR.glob("*.json")})
+    assert isinstance(got, tuple), got
+    pairs, rows = got
+    assert pairs == {"BTC-15m", "BTC-1h"}
+    assert rows == 50, f"30 + 20 rows, got {rows}"
+    assert ri.rebuild()["rows"] == 75

@@ -497,7 +497,14 @@ def index_pair(path: Path, con: sqlite3.Connection | None = None) -> int:
                     "(pair,mtime,size,n,at,coin,tf,signals,combos,version,"
                     " last_ms,rows_mtime,bytes) "
                     "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                    (pair, st.st_mtime, st.st_size, len(rows), time.time(),
+                    # `n` = rows THIS INDEX HOLDS for the pair, not rows read
+                    # from the file. `SUM(n) FROM pairs` is what the screen
+                    # prints as the store's row count and what a coin/tf
+                    # filter counts with (`_rows_estimate`, `query`), so a
+                    # coinless row — skipped by the insert above — was being
+                    # counted on the operator's screen as a row they could
+                    # find. label-must-match-data, at the source.
+                    (pair, st.st_mtime, st.st_size, len(vals), time.time(),
                      coin, tf,
                      "\n".join(sorted({r.get("signal") for r in rows
                                         if r.get("signal")})),
@@ -1037,35 +1044,47 @@ def _resumable(dest: Path, stems: set) -> tuple | str:
     in `rows`. That is the invariant this function rests on; if it ever stops
     being true, this must go.
 
-    Two things it refuses on:
+    **EVERY READ HERE IS OFF THE SMALL TABLE, ON PURPOSE.** The first version
+    of this function opened the partial file and ran `PRAGMA quick_check`
+    before trusting it. Measured on the real 2.74 GB partial: **1 MB/s, 45
+    minutes**, while a plain sequential read of the same disk measured
+    **106 MB/s** in the same minute — because a fresh `sqlite3.connect` gets a
+    2 MB page cache and walks the b-tree, so a mechanical disk serves it as
+    random 4 KB reads. On the finished 32 GB file that check would have been
+    ~9 hours: a safety check that costs more than the work it protects gets
+    skipped by whoever is in a hurry, which makes it worse than no check.
 
-    * `quick_check` not "ok" — the load runs with `journal_mode=OFF`, which is
-      the price of the speed, and means a kill during a commit can leave torn
-      pages. A file that cannot be checked is deleted, not resumed.
-    * a schema that is not this version — the columns would not line up.
+    What guards the file instead is the verify `rebuild()` already does before
+    it swaps anything — on the LOADING connection, which holds a 500 MB cache
+    over pages it has just written. Nothing is swapped until that passes, so
+    the worst a bad resume can cost is one wasted run, and it costs it at the
+    same place it would have anyway.
 
-    A pair in the file whose JSON has since been DELETED is dropped here, not
-    left to fail the final count.
+    It refuses on a schema that is not this version (the columns would not line
+    up), and on any error reading the two summary tables. A pair in the file
+    whose JSON has since been DELETED is dropped here, not left to fail the
+    final count.
     """
     con = sqlite3.connect(dest, timeout=30.0)
     try:
-        quick = con.execute("PRAGMA quick_check").fetchone()[0]
-        if quick != "ok":
-            return f"quick_check said {quick!r}"
         got = con.execute("SELECT v FROM meta WHERE k='schema'").fetchone()
         if not got or str(got[0]) != str(SCHEMA_VERSION):
             have = got[0] if got else "none"
             return f"schema {have} in the partial file, {SCHEMA_VERSION} now"
-        pairs = {r[0] for r in con.execute("SELECT pair FROM pairs")}
-        gone = pairs - stems
+        have = {r[0]: int(r[1] or 0) for r in
+                con.execute("SELECT pair, n FROM pairs")}
+        gone = set(have) - stems
         if gone:
             marks = ",".join("?" * len(gone))
             con.execute(f"DELETE FROM rows WHERE pair IN ({marks})", tuple(gone))
             con.execute(f"DELETE FROM pairs WHERE pair IN ({marks})", tuple(gone))
             con.commit()
-            pairs -= gone
-        rows = int(con.execute("SELECT count(*) FROM rows").fetchone()[0])
-        return pairs, rows
+            for pair in gone:
+                have.pop(pair, None)
+        # `n` is what LANDED for that pair, so this sums to `count(*) FROM
+        # rows` without scanning 2.7 GB to find out — the same identity
+        # `_rows_estimate()` and the page's total already rely on.
+        return set(have), sum(have.values())
     except sqlite3.Error as exc:
         return f"{type(exc).__name__}: {exc}"
     finally:

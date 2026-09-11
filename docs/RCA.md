@@ -172,6 +172,88 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-12-B — the runner's pid was reused by NVIDIA Overlay, so START would have done nothing and STOP would have killed it
+
+**CEO**
+
+* You said "go start" and the Trade tab would have told you the runner was
+  already running — it was not. The number this project had written down for
+  "my runner" had, after the Windows Update restart, been handed by Windows
+  to a graphics process. Pressing stop would have shut that down instead.
+* Why: the project identified its own runner by a process number, and process
+  numbers get reused after a reboot.
+* What stops it now: the runner already had a real badge nobody was checking —
+  a file lock it holds for as long as it lives. The number alone is no longer
+  accepted as proof. Caught before pressing start, so nothing was lost.
+
+**DEV**
+
+* `auto_trader.py:4489` `runner_pid()` returned the recorded pid whenever
+  `portable.pid_alive(pid)` was true. After the `Sep 11, 2026 9:35pm` reboot
+  the file held **9364**, which `Get-Process` resolved to **NVIDIA Overlay**.
+  `start_runner():4499` short-circuits on `existing` and returns it without
+  spawning; `stop_runner():4524` calls `os.kill(pid, SIGTERM)` on it.
+* Invariant broken: **liveness is not identity.** `main():4606` already takes
+  an exclusive lock on `auto_trade.lock` and holds it for the life of the
+  process, and nothing else in the project opens that file — so lock-held is
+  the identity, and `runner_pid()` now requires BOTH it and a live pid.
+  Verified across processes and, because per-handle lock semantics are easy
+  to assume wrongly, measured inside one process too.
+* Guard: `tests/test_a_recycled_pid_is_not_the_runner.py` — 10 tests, with a
+  real child process holding a real lock. Red on the old behaviour, 5 of 10.
+
+**SAW** — nothing yet; the operator typed *"go start"* and the pre-flight check
+of `press-and-watch` read the pid file before pressing. **NEVER HAPPENED YET**
+as a symptom, but the condition was live on the machine at the time of writing.
+
+**TIMELINE**
+
+1. `Sep 09, 2026 6:23am` — the runner started and wrote **9364** into
+   `auto_trade.pid`.
+2. `Sep 11, 2026 9:35:46pm` — TrustedInstaller restarted the PC for
+   KB5124008 and KB5126052 (System event **1074**). The runner died. Its pid
+   file, lock file and WANT flag all survived, all still dated **Sep 9**.
+3. `Sep 11, 2026 9:36:08pm` — the machine came back up and reissued pids from
+   the start.
+4. `Sep 12, 2026` — `Get-Process -Id 9364` answers **NVIDIA Overlay**.
+   `portable.pid_alive(9364)` is therefore **True**.
+5. What would have happened on the next press: `start_runner()` returns
+   **9364** and spawns **nothing** — the tab says started, the runner stays
+   down, and the operator finds out hours later from an empty scan log. A
+   later `stop_runner()` sends **SIGTERM to NVIDIA Overlay**.
+6. After the fix, on the same machine with the same stale files:
+   `run_lock_held()` is **False**, `runner_pid()` is **None**, and
+   `start_runner()` spawns for real.
+
+**ROOT CAUSE** — `return pid if portable.pid_alive(pid) else None`. A pid that
+exists is not a pid that is yours. The project had an unambiguous identity
+available (the run lock) and was not consulting it.
+
+**WHY IT WAS NOT CAUGHT** — every test of this path invented a pid and then
+told `pid_alive` to agree with it (`test_supervisor.py` monkeypatches
+`pid_alive` to `int(pid) == 4242`, after a 2026-09-04 fix for the same test
+being decided by whether 4242 happened to exist). A fake that answers "yes,
+that is a live process" is asserting the very premise under test, so no test
+here could distinguish OUR live process from ANY live process. The lock — the
+one thing that tells them apart — appeared in no test of `runner_pid` at all.
+**When a test has to fake the fact the code is checking, the code is checking
+the wrong fact.** The new guard holds a REAL lock in a REAL child process, and
+`test_supervisor` now makes its fake runner hold one too.
+
+**COST** — none. Found by the `press-and-watch` PREDICT step before the button
+was pressed. The exposure was a runner that would have silently failed to
+start, with two real positions (NGAS, PDDSTOCK) open at MEXC — protected by
+their resting brackets, but unattended for as long as the lie held.
+
+**FIX** — this commit. `auto_trader.run_lock_held()`, required by
+`runner_pid()` alongside `pid_alive`.
+
+**GUARD** — `tests/test_a_recycled_pid_is_not_the_runner.py`, verified red on
+the pre-fix behaviour (5 of 10, including both the silent-start and the
+kill-a-stranger cases).
+
+---
+
 ## RCA-2026-09-12-A — the demo book booked wins on price that printed before the trade existed
 
 **CEO**

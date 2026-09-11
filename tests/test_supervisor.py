@@ -56,7 +56,17 @@ def test_starting_records_the_intent_and_stopping_clears_it(monkeypatch):
     # number: whether it happens to exist decided this test until 2026-09-04,
     # when it did not and the assert failed on a machine with nothing wrong
     monkeypatch.setattr(at.portable, "pid_alive", lambda pid: int(pid) == 4242)
-    at.stop_runner()
+    # ...and since Sep 12, 2026 a live pid is not enough either: a runner is
+    # the process HOLDING THE RUN LOCK, because a recycled pid was about to
+    # get NVIDIA Overlay killed (RCA-2026-09-12-B). So this fake runner has
+    # to hold the lock, exactly like the real one does for its whole life.
+    lock = open(at.LOCK_PATH, "w")                     # noqa: SIM115
+    at.portable.lock_exclusive(lock, blocking=False)
+    try:
+        at.stop_runner()
+    finally:
+        at.portable.unlock(lock)
+        lock.close()
     assert at.wants_runner() is False, "a deliberate stop must not be undone"
     assert killed and killed[0][0] == 4242
 

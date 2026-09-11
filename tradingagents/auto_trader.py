@@ -4486,12 +4486,49 @@ def wants_runner() -> bool:
     return WANT_PATH.exists()
 
 
+def run_lock_held() -> bool:
+    """True when SOMETHING holds the runner's exclusive run lock.
+
+    `main` takes this lock for the life of the process and nothing else in
+    the project opens it, so holding it is the runner's only real IDENTITY.
+    A pid is not one: the operating system reuses pids, and after the
+    Windows Update reboot on `Sep 11, 2026 9:35pm` the pid this project had
+    recorded (**9364**) came back up as **NVIDIA Overlay**. See
+    RCA-2026-09-12-B for what that would have done.
+
+    Never opens with "w" — that truncates a file another process may be
+    holding a byte-range lock on.
+    """
+    try:
+        fh = open(LOCK_PATH, "a+", encoding="utf-8")   # noqa: SIM115
+    except OSError:
+        return False                       # no lock file, so nobody holds it
+    try:
+        portable.lock_exclusive(fh, blocking=False)
+    except OSError:
+        return True                        # somebody else is holding it
+    else:
+        portable.unlock(fh)
+        return False
+    finally:
+        fh.close()
+
+
 def runner_pid() -> int | None:
+    """The RUNNER's pid, or None. Both halves have to agree.
+
+    A live pid proves a process exists, not that it is ours. The run lock
+    proves a runner exists, and the pid file says which one. Requiring both
+    is what stops `start_runner` from reporting a stranger's pid as success
+    and `stop_runner` from sending SIGTERM to it.
+    """
     try:
         pid = int(PID_PATH.read_text(encoding="utf-8").strip())
     except (OSError, ValueError):
         return None
-    return pid if portable.pid_alive(pid) else None
+    if not portable.pid_alive(pid):
+        return None
+    return pid if run_lock_held() else None
 
 
 def start_runner() -> int:

@@ -613,10 +613,19 @@ def start(kind: str, spec: dict) -> int:
     # NOT a context manager: this handle is the detached child's stdout and
     # must outlive this function. Closing it would send the job SIGPIPE.
     logf = open(STATE_DIR / f"db_{kind}.log", "a")   # noqa: SIM115
+    # PYTHONUNBUFFERED. Python block-buffers stdout when it is a FILE, so even
+    # `print(..., flush=True)` lines are only as live as the calls that reach
+    # them — and everything BEFORE the first print is invisible. On Sep 12,
+    # 2026 the whole of UPDATE's 9m39s opening phase left `db_btupdate.log`
+    # untouched (mtime Sep 6) and all five of its lines appeared at once when
+    # the process exited, so the only way to see what it was doing was py-spy
+    # on the pid. `rows_index.spawn_indexer` already sets this and has a test
+    # for it (RCA-2026-09-10-C); the four buttons did not.
+    env = {**os.environ, "PYTHONUNBUFFERED": "1"}
     proc = subprocess.Popen(
         [sys.executable, "-m", "tradingagents.db_jobs", kind],
         cwd=str(Path(__file__).resolve().parent.parent),
-        stdout=logf, stderr=logf, **portable.DETACHED)
+        env=env, stdout=logf, stderr=logf, **portable.DETACHED)
     f["pid"].write_text(str(proc.pid))
     # `mode` from the very first tick. Without it the seconds between START
     # and the first measured pair published no mode at all, so the badge fell
@@ -1718,11 +1727,35 @@ def stored_symbols() -> list:
     derives the coin by stripping `_USDT`. Handing it the bare coin makes every
     pair raise `no Min15 candles for CETUS`, which is exactly what happened on
     2026-09-03 when the spec was built by hand.
+
+    NOT `candle_coverage()`. That opens and JSON-parses EVERY candle file to
+    build first/last/bars strings this function then throws away, keeping one
+    field: the name, which the FILENAME already carries. Measured Sep 12,
+    2026 on the operator's store — 5,235 files, 1.77 GB on a mechanical G: —
+    UPDATE ALL BACKTESTS sat on "starting" for **9 minutes 39 seconds** doing
+    exactly that before it dispatched anything (py-spy: `stored_symbols ->
+    candle_coverage -> read_text`). Two other callers already carry a comment
+    warning never to use it here (`cloud_autopilot.missing_by_timeframe`,
+    `db_jobs._pending_sources`); this was the third and it had not got the
+    message.
+
+    `candle_index()` answers the same question incrementally: a pair whose
+    file has not been rewritten since the last call is taken from the cache
+    by mtime+size and never re-read. It is also where `bars` lives, which is
+    the one thing a filename cannot tell you — a pair file holding zero bars
+    must NOT be handed to `run_pair`, or every combination raises and the
+    coin is counted as failed.
     """
     from tradingagents import market_sweep as msw
 
-    return sorted({c["symbol"] for c in msw.candle_coverage()
-                   if c.get("symbol")})
+    out = set()
+    for key, got in (msw.candle_index() or {}).items():
+        if not (got or {}).get("bars"):
+            continue                      # a file with no candles is not a pair
+        sym, _, tf = str(key).rpartition("-")
+        if sym and tf:
+            out.add(sym)
+    return sorted(out)
 
 
 def _run_btupdate(spec: dict) -> None:
@@ -1747,9 +1780,20 @@ def _run_btupdate(spec: dict) -> None:
     """
     coins = list(spec.get("coins") or [])
     if not coins:
+        # SAY WHAT IT IS DOING BEFORE IT DOES IT. This phase published
+        # nothing, so the panel read "starting" for 9 minutes 39 seconds on
+        # Sep 12, 2026 while `stored_symbols` walked the candle store — the
+        # shape CLAUDE.md already bans twice over ("a job that cannot start
+        # must SAY SO", "every long phase publishes to its progress file").
+        # Silence and a stall are the same picture from the outside.
+        _write(FILES["btupdate"]["progress"],
+               {"running": True, "started": int(time.time()), "done": 0,
+                "total": 0, "now": "reading the candle store"})
+        t_list = time.time()
         coins = stored_symbols()
         print(f"[btupdate] no coins named — continuing every pair in the "
-              f"store: {len(coins):,} contract(s)", flush=True)
+              f"store: {len(coins):,} contract(s) "
+              f"(listed in {time.time() - t_list:.1f}s)", flush=True)
     tfs = list(spec.get("tfs") or list(cap.ALL_TFS))
 
     # WHERE does it run? Both, when both are free. Operator, 2026-09-03: "i want

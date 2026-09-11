@@ -172,6 +172,104 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-12-F — UPDATE ALL BACKTESTS sat on "starting" for 9 minutes 39 seconds with an empty log, reading 1.77 GB to learn 1,054 names
+
+**CEO**
+
+* You pressed UPDATE ALL BACKTESTS at 1:55am. The screen said "starting" and
+  nothing else until 2:05am — nearly ten minutes where the only honest
+  reading was "this has hung". It had not; it was busy, and it finished and
+  dispatched correctly.
+* Why, two things at once. It was opening all 5,235 candle files — 1.77 GB
+  off the slow drive — just to collect the 1,054 coin names, which are
+  already written on the files' own labels. And its diary was being held in
+  memory instead of written down, so there was nothing to read while it ran.
+* What stops it now: it reads the labels from a list it keeps up to date, so
+  the same step takes under a second when nothing has changed, and it writes
+  a line saying "reading the candle store" before it starts and how long it
+  took when it ends. All four long-running buttons now write their diary as
+  they go.
+
+**DEV**
+
+* Three call sites, one symptom. `db_jobs.py:1722` (`stored_symbols`) called
+  `market_sweep.candle_coverage`, which JSON-parses every file in `CANDLES`
+  to build `first`/`last`/`bars` strings of which this caller keeps one —
+  `symbol`, derivable from `f.stem` (py-spy on the live pid: `read_text ->
+  candle_coverage -> stored_symbols -> _run_btupdate`). `db_jobs.py:616`
+  (`start`) launched the detached child with no `env`, so Python
+  block-buffered its stdout into `db_{kind}.log`. And `_run_btupdate`
+  published nothing before the call, leaving `start()`'s `"now": "starting"`
+  on screen for the whole phase.
+* Invariants broken, all three already rules here: **a long phase publishes
+  while it runs**; **a long-running process writes a log** (RCA-2026-09-10-C,
+  which fixed exactly this for `rows_index.spawn_indexer` and nothing else);
+  and **read the cheap thing** — two other callers already carry a comment
+  forbidding `candle_coverage` for this purpose.
+* Guard: `tests/test_update_says_what_it_is_doing.py` — 12 tests, AST-based
+  so the module's own docstrings quoting the banned call cannot satisfy them.
+
+**SAW** — *"can you click update backtest to update my backtests then look
+for errors if there are errors report it to me"*, and then nine minutes of a
+screen that read `{"running":true,"done":0,"total":0,"now":"starting"}`.
+
+**TIMELINE**
+
+1. `Sep 12, 2026 1:55:31am` — `POST /api/jobs/btupdate/start` returned pid
+   16368. Progress: `now: "starting"`, `done 0`, `total 0`.
+2. `1:57am` through `2:05am` — polled every 20 s. The payload never changed.
+   `db_btupdate.log` still had mtime `Sep 06, 2026 9:42am` and held one line,
+   from six days earlier.
+3. `2:00am` — py-spy on the worker (pid 6492, 9.2 s CPU, 46 MB RSS) put it in
+   `pathlib.read_text` under `candle_coverage`. Not stalled: disk-bound.
+4. Measured the same store from a second process: **5,235 candle files,
+   1.77 GB**, listed by name in **13.0 s**.
+5. `2:05:15am` — the job finished the phase and dispatched. All five log
+   lines appeared **at once**, and the answer was **1,054 contracts**. Total
+   silent time **9 minutes 39 seconds**, of a 9m44s job.
+6. AFTER the fix, same store, same answer of **1,054 contracts**:
+   **86.8 s cold** (the index cache stale, and a collect rewriting files
+   underneath it) and **0.4 s warm**, against **579 s**.
+
+**ROOT CAUSE** — the symbol list was built by parsing every candle file, and
+the phase that did it published nothing and logged nothing.
+
+**WHY IT WAS NOT CAUGHT** — `candle_coverage`'s cost was already known: two
+callers carry comments saying never to use it ("opens every candle file and
+takes minutes on a 5,147-pair store"), and `backtest_logs.py` repeats the
+warning in its module docstring. The knowledge existed as PROSE next to three
+call sites and as a rule in nobody's test. No guard asked "which functions
+call this", so the third caller was written and shipped. **A warning in a
+comment is a note; only a test is a rule.** The new guard reads the AST of
+`stored_symbols` and refuses the call by name — deliberately not a string
+search, because this repo has now twice had a grep-based guard satisfied by
+the docstring that quotes the broken form (RCA-2026-09-10-B, and
+RCA-2026-09-12-E the same night).
+
+Separately: 289 index tests exist about what the index CONTAINS and how fast
+it fills, and the buffered-log fault was found and fixed for the indexer on
+Sep 10 — `test_the_log_is_not_buffered_away` has guarded `spawn_indexer`
+since. It was never generalised to `db_jobs.start`, which launches all four
+of the operator's long-running buttons. A fix applied to one caller of a
+pattern is half a fix; the CONCEPT has to be grepped (CLAUDE.md, 2026-09-05).
+
+**COST** — no money, no lost work: the job was correct and the run it
+dispatched (34631292767, 1,054 coins, 15m/30m/1h/4h) is measuring normally.
+The cost was ten minutes of a screen that could not be distinguished from a
+hang, on a button whose whole history is jobs that looked fine and were not —
+and the real risk that the next reader kills a healthy job.
+
+**FIX** — this commit. `stored_symbols` reads `market_sweep.candle_index()`
+(incremental, cached by mtime+size) and keeps a pair only when it has bars;
+`_run_btupdate` publishes `"reading the candle store"` before the call and
+logs the duration after it; `db_jobs.start` passes
+`PYTHONUNBUFFERED=1` to every detached job.
+
+**GUARD** — `tests/test_update_says_what_it_is_doing.py`. Verified RED on the
+pre-fix file — 4 of its 12 tests fail there — and green after.
+
+---
+
 ## RCA-2026-09-12-E — the Storage screen printed the banned date format for weeks, and the guard against it wanted a `%Y` that was never there
 
 **CEO**

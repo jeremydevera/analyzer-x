@@ -143,7 +143,17 @@ def test_the_header_tells_the_truth_about_update_on_the_cloud():
     assert "def continue_pair(" in shard, "the cloud continues a pair now"
     # a FULL measure still cuts at the run's window, exactly as before
     assert "def window(df):" in shard
-    assert "pd.Timedelta(days=DAYS + 30)" in shard
+    assert "pd.Timedelta(days=DAYS)" in shard
+    # THE LEAD-IN IS COUNTED IN BARS, NOT CALENDAR DAYS (Sep 11, 2026). This
+    # line pinned `pd.Timedelta(days=DAYS + 30)` — a flat 30-day run-up that
+    # scaled with nothing: 2,880 spare bars at 15m and, at 4h, only 180 where
+    # a confluence rule needs 200. The rules were blind over the start of
+    # their own window and every cloud win rate was overstated (commit
+    # 686cfed89dd). A lookback is counted in bars, so the warm-up is too, and
+    # the guard must not drag the calendar version back.
+    assert "WARMUP_BARS" in shard
+    assert "warm = min(WARMUP_BARS, len(df) - len(measured))" in shard
+    assert "days=DAYS + 30" not in shard, "the calendar lead-in must not return"
 
 
 def test_the_span_is_blank_when_no_pair_is_being_measured(shard_src):

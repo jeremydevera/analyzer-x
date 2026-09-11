@@ -7,8 +7,10 @@ backtests before this should be all grouped to 'Classic'".
 Two groups, decided by the signal's own name, so no column has to be added and
 35.8 million indexed rows do not need rewriting:
 
-  Preset Confluence -- the 30 rules in tradingagents/signals_conf.py, every one
-                       named `cf_...` (ten setups x three levels)
+  Preset Confluence -- everything tradingagents/signals_conf.py registers:
+                       the setups at three levels each (`cf_...`, fifteen
+                       setups since Aug 28) AND the cascades built out of
+                       them (`cx_...`, ten of them since Sep 11, 2026)
   Classic           -- the 75 that existed before them
 
 The group is named in the caption too: a table filtered to one group while the
@@ -24,15 +26,46 @@ from tradingagents.signals_conf import CONF_SIGNALS
 
 
 def test_the_two_groups_partition_the_signal_library():
-    """Every signal belongs to exactly one group -- no gaps, no overlap."""
-    preset = [s for s in br.SIGNALS if s.startswith("cf_")]
-    classic = [s for s in br.SIGNALS if not s.startswith("cf_")]
-    # 15 setups x 3 levels: the 1-hour ten, plus the five that only the
-    # 4-hour ranking had (built 2026-08-28)
-    assert len(preset) == 45 == len(CONF_SIGNALS)
-    assert len(classic) == 75
+    """Every signal belongs to exactly one group -- no gaps, no overlap.
+
+    THE LINE THAT DECIDES IS `ri.in_group`, not a prefix spelled again here.
+    On Sep 11, 2026 ten `cx_*` cascades were registered into CONF_SIGNALS and
+    the group was still `startswith("cf_")`, so all ten answered the CLASSIC
+    filter — the group that means "the signals that existed before the
+    confluence library". `#WYQMPU8A` (KAVA 4h, cx_veto) would have come back
+    under a label that says it is not a confluence rule.
+    """
+    preset = [s for s in br.SIGNALS if ri.in_group(s, "preset")]
+    classic = [s for s in br.SIGNALS if ri.in_group(s, "classic")]
+    # the confluence library IS the preset group -- both the three-level
+    # setups (cf_) and the cascades built from them (cx_)
+    assert set(preset) == set(CONF_SIGNALS), (
+        sorted(set(preset) ^ set(CONF_SIGNALS)))
+    # a partition: no gaps, no overlap, and the classic side is the 75
+    # single-idea signals that predate the library
+    assert set(preset) & set(classic) == set()
     assert len(preset) + len(classic) == len(br.SIGNALS)
-    assert set(preset) == set(CONF_SIGNALS)
+    assert len(classic) == 75
+    assert not [s for s in classic if s.startswith(ri.PRESET_PREFIXES)]
+
+
+def test_the_sql_and_the_python_agree_on_every_signal():
+    """`in_group` answers in Python; `GROUP_TERMS` answers in SQLite. The page
+    counts with one and renders with the other, so a signal the two disagree
+    about is a row that is counted and never shown (or shown and never
+    counted). Checked over the REAL registry, every name, both groups."""
+    import sqlite3
+
+    con = sqlite3.connect(":memory:")
+    con.execute("CREATE TABLE rows (signal TEXT)")
+    con.executemany("INSERT INTO rows (signal) VALUES (?)",
+                    [(s,) for s in br.SIGNALS])
+    for group, terms in ri.GROUP_TERMS.items():
+        sql = {r[0] for r in con.execute(
+            f"SELECT signal FROM rows WHERE {terms}")}
+        py = {s for s in br.SIGNALS if ri.in_group(s, group)}
+        assert sql == py, f"{group}: {sorted(sql ^ py)}"
+    con.close()
 
 
 def test_the_group_names_are_the_operators_words():
@@ -44,6 +77,13 @@ def test_the_group_names_are_the_operators_words():
 @pytest.mark.parametrize("group,terms,sample_in,sample_out", [
     ("preset", "signal >= 'cf_' AND signal < 'cf`'", "cf_ttm_l2", "trend50"),
     ("classic", "(signal < 'cf_' OR signal >= 'cf`')", "trend50", "cf_ttm_l2"),
+    # the CASCADES belong to preset too, and they are the case that was
+    # wrong: 'x' sorts after 'f', so a single cf_ range dropped all ten into
+    # Classic. `terms` is a substring check, which the cf_ rows above pass
+    # either way -- these two rows are the ones that can only pass when the
+    # second range is really there.
+    ("preset", "signal >= 'cx_' AND signal < 'cx`'", "cx_veto", "trend50"),
+    ("classic", "(signal < 'cx_' OR signal >= 'cx`')", "trend50", "cx_veto"),
 ])
 def test_the_where_clause_selects_the_group(group, terms, sample_in, sample_out):
     r"""A RANGE on the signal name, not a LIKE.
@@ -66,7 +106,7 @@ def test_the_preset_group_has_a_partial_index_for_every_order():
     from tradingagents import rows_index as r
     for sort in r.SORTS:
         name = r.group_index("preset", sort)
-        assert name == f"rows_cf_{sort}", sort
+        assert name == f"rows_conf_{sort}", sort
         ddl = r.INDEX_DDL[name]
         assert ddl.startswith(f"CREATE INDEX IF NOT EXISTS {name} ON rows (")
         assert f"WHERE {r.PRESET_TERMS}" in ddl,             "the index's WHERE must be the query's own terms, word for word, "             "or SQLite will not match them"
@@ -94,9 +134,9 @@ def test_a_group_without_its_index_is_refused_with_the_reason(monkeypatch):
     with pytest.raises(r.SortNotReady) as exc:
         r.query(group="preset", sort="profit")
     said = str(exc.value)
-    assert "Preset Confluence" in said and "rows_cf_profit" in said
+    assert "Preset Confluence" in said and "rows_conf_profit" in said
     assert "coin" in said, "and it must say what IS answerable now"
-    assert built == ["rows_cf_profit"], built
+    assert built == ["rows_conf_profit"], built
 
 
 def test_the_csv_carries_the_group_too():

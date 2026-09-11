@@ -62,7 +62,20 @@ def test_the_real_book_is_still_one_slot_per_coin():
 
 def test_one_strategys_losing_run_no_longer_raises_the_others_stake():
     """The measured failure: $20.00 instead of $5.00 on a strategy that had
-    never lost."""
+    never lost — one shared `step` counter drove both slots' stake.
+
+    THE LOSING RUN IS STILL COUNTED PER SLOT, and that is what this test is
+    about: A sits at step 4, B at step 0, and neither can move the other.
+    What CHANGED on Sep 11, 2026 is what a step is worth in an order —
+    nothing. The operator: *"From now on you will not double anything in
+    martingale, just flat only, update your code to not double the margin for
+    all martingale"*. So the old `20.0` here is no longer the right answer and
+    is not restored: `staked_margin` returns the base on every rung
+    (`tests/test_runner_stakes_flat.py` holds that rule itself). A ladder
+    multiplier reappearing in a real stake must fail this test too, which is
+    why the assertion is `== base`, not `== staked_margin(B, ...)` — two
+    slots that BOTH doubled would agree with each other and say nothing.
+    """
     s = _settings()
     state = {at.state_key(COIN, True, A): {"step": 4, "position": None,
                                            "last_ts": {}},
@@ -70,9 +83,12 @@ def test_one_strategys_losing_run_no_longer_raises_the_others_stake():
                                            "last_ts": {}}}
     step_a = state[at.state_key(COIN, True, A)]["step"]
     step_b = state[at.state_key(COIN, True, B)]["step"]
-    assert step_a == 4 and step_b == 0
-    assert at.staked_margin(A, s, step_a) == pytest.approx(20.0)
-    assert at.staked_margin(B, s, step_b) == pytest.approx(5.0), \
+    assert step_a == 4 and step_b == 0, "the runs are counted per slot"
+    base = at.margin_for(A, s)
+    assert base == pytest.approx(5.0), "the fixture's base margin"
+    assert at.staked_margin(A, s, step_a) == pytest.approx(base), \
+        "A is four losses deep and still stakes the base — flat, since Sep 11"
+    assert at.staked_margin(B, s, step_b) == pytest.approx(base), \
         "B never lost; its stake must be the base"
 
 

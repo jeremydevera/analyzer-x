@@ -152,8 +152,21 @@ def test_the_indexer_writes_a_log_instead_of_DEVNULL():
         "the indexer's own account of itself was being thrown away"
     assert "stdout=log" in src and "stderr=subprocess.STDOUT" in src
     assert "LOGFILE" in src
-    assert ri.LOGFILE.name == "rows_index.log"
-    assert ri.LOGFILE.parent.name == ".tradingagents", \
+    # WHERE IT DEFAULTS TO, read from the module's own source — not from
+    # `ri.LOGFILE` at runtime. conftest sandboxes that constant into tmp_path
+    # on purpose (so a test run can never write into the operator's real
+    # ~/.tradingagents), which made the runtime spelling permanently
+    # `tradingagents_state` and this assertion permanently red on main. A
+    # guard that the test harness itself makes impossible proves nothing and
+    # hides the six other failures beside it.
+    import pathlib
+    import re
+
+    mod = pathlib.Path(ri.__file__).read_text(encoding="utf-8")
+    line = re.search(r"^LOGFILE\s*=.*$", mod, re.M)
+    assert line, "rows_index no longer declares LOGFILE"
+    assert "rows_index.log" in line.group(0)
+    assert ".tradingagents" in line.group(0), \
         "beside db_backtest.log and db_collect.log, where the others are"
 
 

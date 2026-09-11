@@ -321,19 +321,19 @@ def test_a_fill_starts_the_indexes_it_did_not_build(monkeypatch, tmp_path):
 
     A backtest inserts rows; it does not create an index that does not exist.
     `ensure()` builds KEEP_INDEXES only (all of them there cost 13 minutes of
-    every API start), so rows_wr2 / rows_pr2 / rows_id / rows_cf_* exist only
+    every API start), so rows_wr2 / rows_pr2 / rows_id / rows_conf_* exist only
     because somebody asked — and a SCHEMA_VERSION bump wipes them with the
     tables. Preset Confluence was an empty table for an hour because of it.
     """
     monkeypatch.setattr(ri, "DB_PATH", tmp_path / "rows.db")
     monkeypatch.setattr(ri, "has_index",
-                        lambda n: n not in ("rows_pr2", "rows_cf_dd"))
+                        lambda n: n not in ("rows_pr2", "rows_conf_dd"))
     started = []
     monkeypatch.setattr(ri, "_build_index", lambda n: started.append(n) or True)
 
-    assert sorted(ri.missing_indexes()) == ["rows_cf_dd", "rows_pr2"]
-    assert sorted(ri.build_missing_indexes()) == ["rows_cf_dd", "rows_pr2"]
-    assert sorted(started) == ["rows_cf_dd", "rows_pr2"]
+    assert sorted(ri.missing_indexes()) == ["rows_conf_dd", "rows_pr2"]
+    assert sorted(ri.build_missing_indexes()) == ["rows_conf_dd", "rows_pr2"]
+    assert sorted(started) == ["rows_conf_dd", "rows_pr2"]
 
     # and a build that cannot start must never fail the fill that called it
     monkeypatch.setattr(ri, "build_missing_indexes",

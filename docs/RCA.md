@@ -172,6 +172,195 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-12-E — the Storage screen printed the banned date format for weeks, and the guard against it wanted a `%Y` that was never there
+
+**CEO**
+
+* Your Candles/Storage table printed dates like Sep 3, 2026 3:07PM. Your
+  rule, asked for three times, is Sep 03, 2026 3:07pm — the day must be two
+  digits and the am/pm must be small letters. Two of the six parts were wrong
+  on every row of that table.
+* Why: that one screen built the date itself, letter by letter, instead of
+  calling the single date function the whole project is supposed to use.
+* What stops it now: that screen calls the shared function, so it cannot
+  drift again — and the automatic check that was supposed to catch this has
+  been widened and proved to go red on the old file before the fix was kept.
+
+**DEV**
+
+* `market_sweep.py:1456` (`candle_coverage`) produced `first`/`last` with
+  `f"{_d0:%b} {_d0.day}, {_d0.year}"` and `f"{_h1}:{_d1:%M}{_d1:%p}"`.
+  `.day` is unpadded and `%p` is uppercase with no lowercase strftime code to
+  swap in. `/api/storage/coverage` (`api.py:876`) serves those strings
+  verbatim and `StoragePanel.tsx:259-260` renders them raw, so the defect
+  reached the screen unmodified.
+* Invariant broken: **there are exactly two date implementations and you must
+  call one of them** (CLAUDE.md, Date format). The block even carried a
+  comment quoting the WRONG form — `"Operator's one date format
+  (2026-08-21): Aug 26, 2026 4:00PM"` — so the rule had been copied down
+  incorrectly and then obeyed.
+* Guard: `tests/test_webapp.py::test_no_module_formats_a_timestamp_by_hand`,
+  widened to also reject a `%b` beside a hand-built `.day}`/`.year}` and any
+  production of `%p`.
+
+**SAW** — not reported by the operator; found on Sep 12, 2026 while reading
+`candle_coverage` for an unrelated reason (it is what makes UPDATE ALL
+BACKTESTS sit silent for its first ten minutes).
+
+**TIMELINE**
+
+1. `Sep 12, 2026 2:02am` — running the exact expression from
+   `candle_coverage` against `Sep 03, 2026 3:07pm` printed
+   **`Sep 3, 2026 3:07PM`**, beside `positions_view.fmt_when`'s
+   **`Sep 03, 2026 3:07pm`**. Day unpadded, meridiem uppercase.
+2. The same expression on a two-digit day, `Sep 12, 2026 1:55am`, printed
+   **`Sep 12, 2026 1:55AM`** — so the day fault hides on 21 days of each
+   month and the `AM`/`PM` fault is on every row, always.
+3. `Sep 12, 2026 2:31am` — with the fix stashed, the widened guard named
+   **three** offending lines (`market_sweep.py:1469`, `:1470`, `:1471`); with
+   the fix restored it passed.
+
+**ROOT CAUSE** — a third hand-rolled copy of the date rule, written with
+datetime ATTRIBUTES (`.day`, `.year`) rather than strftime codes, which is
+both wrong and invisible to the check that looks for codes.
+
+**WHY IT WAS NOT CAUGHT** — `test_no_module_formats_a_timestamp_by_hand` asks
+for `%b` AND `%Y` AND a clock code **on one line**. This code never writes
+`%Y` at all — it writes `{_d0.year}` — and it splits the stamp across two
+lines, so neither line could match. This is the third time in four days that a
+MANDATORY rule was broken while its guard passed (`.toLocale` on Sep 09, the
+`p.set("days"` count on Sep 09), and it is the same shape every time: **the
+guard pinned one SPELLING of the mistake, not the mistake.** The widened
+version now also rejects the attribute spelling and any `%p` at all, on the
+principle that there is no lowercase strftime meridiem — producing one means
+re-implementing the rule.
+
+**COST** — no money and no wrong decision: the field is a coverage label, not
+an input to anything. The cost is the rule itself. It has been asked for four
+times, and a screen that disobeys it teaches the next reader that the format
+is approximate.
+
+**FIX** — this commit. `candle_coverage` calls
+`positions_view.fmt_when(ts/1000)` for both `first` and `last`.
+
+**GUARD** — `tests/test_webapp.py::test_no_module_formats_a_timestamp_by_hand`,
+widened in the same commit and **verified red on the pre-fix file** (three
+named offenders) and green after.
+
+---
+
+## RCA-2026-09-12-D — ten new cascade strategies answered the "Classic" filter, and none of them could be found at all
+
+**CEO**
+
+* Ten new strategy rules (the cascade family) were measured across your
+  whole market —
+  **6.8 million rows** of results sitting on your G: drive. Searching for any
+  of them in Stored strategies returned **nothing**, and even once found they
+  would have appeared under the heading **"Classic"**, which means "the old
+  signals from before confluence" — the opposite of what they are.
+* Why, two separate things: the search index had not been refreshed since
+  they were measured (**5,194 of 5,392 coins stale**), and the code decided
+  which heading a rule belongs to by the first letters of its name, and the
+  new family did not match, so it fell out of its own group.
+* What stops it now: the grouping reads one shared list of name prefixes that
+  both the database and the app use, and a test compares those two answers
+  over every rule in the library, so they can never disagree again. The index
+  refresh is the remaining step and is being run once the measuring in flight
+  finishes.
+
+**DEV**
+
+* `rows_index.py:1868` defined the group as a single half-open range on the
+  signal name, from `cf_` up to the byte after `_`, with `in_group` spelling
+  `startswith("cf_")` separately. `signals_conf.py:755` registers
+  `build_cascades(...)` into the SAME `CONF_SIGNALS` dict, and `'x' > 'f'`,
+  so all ten `cx_*` rules matched `CLASSIC_TERMS`.
+* Invariant broken: **a label must be derived from the data it describes**
+  (`label-must-match-data`). "Classic" is defined as *not* the confluence
+  library; it was implemented as *not this one prefix*. The two stopped being
+  the same thing the moment a second family was registered.
+* Guard: `tests/test_strategy_group_filter.py` —
+  `test_the_two_groups_partition_the_signal_library` now asserts
+  `set(preset) == set(CONF_SIGNALS)` through `ri.in_group` rather than
+  re-spelling a prefix, and `test_the_sql_and_the_python_agree_on_every_signal`
+  runs `GROUP_TERMS` against a real SQLite table of the whole registry and
+  diffs it with `in_group`.
+
+**SAW** — *"did you add it in backtest stored strategies"*, then *"/goal i
+want it in my backtest store, whenever i ask you to create a new strategy i
+want you to store it in my backtest strategies"*.
+
+**TIMELINE**
+
+1. `Sep 11, 2026` — ten cascade rules were written, registered in
+   `backtest_report.SIGNALS` (the grid went **120 -> 130** signals,
+   `CONF_SIGNALS` **45 -> 55**) and swept over 1,047 coins on four
+   timeframes.
+2. The Stored-strategies dropdown listed all ten. That list is built from the
+   CODE registry, so the feature looked finished.
+3. `Sep 12, 2026 2:20am` — measured on the operator's store: 22 of 25
+   randomly sampled pair files hold cascade rows; **33,822 of 503,840**
+   sampled rows are `cx_*` (6.7%).
+4. Same minute, through the real API: `/api/strategies?signal=cx_veto` ->
+   **0 rows**; `cx_maj3` -> **0 rows**; `cx_any2` -> **0 rows**.
+5. `rows_index.status()`: `rows=96,307,386`, `pairs_indexed=5,388`,
+   `behind=`**4**, `stale=`**5,194**. The REINDEX button prints `behind`, so
+   it would have offered a 4-pair job for a 5,194-pair walk — the same
+   6.5x under-count as RCA-2026-09-10-C.
+6. Independently of the index: with 130 signals in the registry,
+   `in_group(s, "classic")` returned **True** for all ten `cx_*` names, so
+   the Classic filter (85 signals by its own count) was answering with
+   cascade rules and Preset Confluence was short by ten.
+7. The store carries **no** `rows_cf_*` partial index yet, so widening the
+   predicate cost nothing here — but the DDL is
+   `CREATE INDEX IF NOT EXISTS`, which on a machine that DID have one would
+   have silently kept the old `cf_`-only index and served it to the new
+   two-range query. The indexes are renamed `rows_conf_*` for that reason and
+   the old names are dropped by `ensure()`.
+
+**ROOT CAUSE** — the group was keyed on ONE name prefix while its meaning was
+"everything the confluence library registers". Adding a second family to that
+library changed the data and not the rule.
+
+**WHY IT WAS NOT CAUGHT** — the guard that should have caught it,
+`test_the_two_groups_partition_the_signal_library`, asserted
+`len(preset) == 45 == len(CONF_SIGNALS)` — and it DID go red. But it went red
+as a *count* (`45 != 55`), which reads exactly like a stale number after a
+feature lands, and it sat on `main` beside six other red tests from three
+unrelated causes (a hardcoded 120, a superseded window expression, a stake
+assertion the flat-only rule had retired, and one guard the test sandbox
+makes structurally impossible to pass). **A count is not a location**: nothing
+in that failure said "the new rules are in the wrong group", so it was read as
+a number to bump. Every count in those tests is now derived from the registry,
+and the partition is asserted as a SET through the function that decides it.
+The impossible guard — `ri.LOGFILE.parent.name == ".tradingagents"`, checked
+at runtime while conftest deliberately redirects it into `tmp_path` — is fixed
+to read the module's declared default, because a permanently-red test is a
+place other failures hide.
+
+**COST** — no money. The cost was the whole feature: 6,845,648 measured rows
+the operator could not reach, and a heading that would have told them ten
+confluence rules were not confluence rules.
+
+**FIX** — this commit. `rows_index.PRESET_PREFIXES = ("cf_", "cx_")` is the
+one definition; `PRESET_TERMS`/`CLASSIC_TERMS` are built from it as a union of
+ranges (still ranges, so a partial index can still be matched), `in_group`
+reads the same tuple, and `GROUP_INDEXES` is renamed `rows_conf_*` with
+`ensure()` dropping the retired `rows_cf_*` names. Getting the ROWS visible is
+the separate, remaining step: a reindex of the stale pairs, run once the
+collect of run 34612655037 and the sweep 34631292767 are finished — indexing
+a moving target was measured climbing 5,179 -> 5,194 during the check itself.
+
+**GUARD** — `tests/test_strategy_group_filter.py` (18 tests), in particular
+`test_the_sql_and_the_python_agree_on_every_signal`, which walks the real
+`br.SIGNALS` through both implementations; plus the two `cx_` rows added to
+`test_the_where_clause_selects_the_group`, which are the only ones that fail
+when the second range is missing (the `cf_` rows pass either way, because the
+assertion is a substring check).
+
+---
+
 ## RCA-2026-09-12-B — the runner's pid was reused by NVIDIA Overlay, so START would have done nothing and STOP would have killed it
 
 **CEO**

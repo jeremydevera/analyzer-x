@@ -79,13 +79,27 @@ def bars():
 
 def test_all_forty_five_are_registered_and_in_the_grid():
     """Fifteen setups x three levels. It was thirty until 2026-08-27, when the
-    five setups from the ledger's 4-HOUR ranking were finally built."""
-    assert len(CONF_SIGNALS) == 45
+    five setups from the ledger's 4-HOUR ranking were finally built.
+
+    THE COUNT IS DERIVED, NOT TYPED (Sep 12, 2026). `len(CONF_SIGNALS) == 45`
+    stood here until the ten `cx_*` cascades were registered into the same
+    dict on Sep 11 — CONF_SIGNALS became 55 and this went red on `main` for a
+    change that was entirely correct. CLAUDE.md rule 18 already says to read
+    the signal registry and never hardcode its size; a test is not exempt from
+    that. What is actually being guarded is the SHAPE: every setup exists at
+    exactly three levels, and every rule the confluence library registers can
+    be picked by the grid. Both survive the next family being added.
+    """
     assert len(SETUPS) == 15
-    for n in SETUPS:
-        for key in (f"cf_{n}", f"cf_{n}_l1", f"cf_{n}_l2"):
-            assert key in CONF_SIGNALS
-            assert key in br.SIGNALS, f"{key} is not in the grid registry"
+    levels = {f"cf_{n}{lv}" for n in SETUPS for lv in ("", "_l1", "_l2")}
+    assert len(levels) == 45, "fifteen setups at three levels each"
+    for key in sorted(levels):
+        assert key in CONF_SIGNALS
+        assert key in br.SIGNALS, f"{key} is not in the grid registry"
+    # nothing the library registers may be missing from the grid — this is
+    # what would have caught `cx_*` had it been the other way round
+    missing = sorted(set(CONF_SIGNALS) - set(br.SIGNALS))
+    assert missing == [], f"registered but unmeasurable: {missing}"
     assert len(br.SIGNALS) == len(set(br.SIGNALS))
 
 
@@ -218,8 +232,14 @@ def test_every_rule_actually_fires_on_a_market(bars):
     #   cf_eqhl_l1      0.2  on 1h  (twin highs swept, then a gap)
     #   cf_obretest_l1  0.6  on 1h, 0.1 on 4h
     #   cf_stflip_l1    1.1  on 1h, 0.3 on 4h
+    #   cx_maj3         three of five setups agreeing on ONE bar. Measured
+    #                   Sep 12, 2026 over 9 stored 1h contracts of 2,450 bars
+    #                   each: JASMY 3, CTR 11, RED 9, VET 3, BASED 7,
+    #                   USOIL 4, LAYER 8, IOTA 4, GEVSTOCK 4 — 53 in all, so
+    #                   roughly one per 415 bars. The 900-bar series here is a
+    #                   three-state sawtooth; it never lines five rules up.
     exempt = ("cf_chan", "cf_chan_l1", "cf_eqhl_l1", "cf_obretest_l1",
-              "cf_stflip_l1")
+              "cf_stflip_l1", "cx_maj3")
     left = [k for k in dead if not k.endswith("_l2") and k not in exempt]
     assert left == [], f"never fires: {left}"
 

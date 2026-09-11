@@ -927,7 +927,8 @@ def test_no_module_formats_a_timestamp_by_hand():
     for f in pathlib.Path("tradingagents").rglob("*.py"):
         if f.name == "positions_view.py":
             continue                    # the one place it is allowed
-        for i, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
+        lines = f.read_text(encoding="utf-8").splitlines()
+        for i, line in enumerate(lines, 1):
             # PARSING someone else's format (strptime) is fine — Twitter
             # sends what it sends. Only PRODUCING a stamp is the rule.
             # And a MONTH label ("Aug 2026") is not a timestamp: no clock
@@ -936,8 +937,35 @@ def test_no_module_formats_a_timestamp_by_hand():
                 continue
             if "%b" in line and "%Y" in line and ("%M" in line or "%H" in line):
                 offenders.append(f"{f}:{i}")
+    # A GUARD IS ONLY AS WIDE AS ITS PATTERN (Sep 12, 2026). The rule above
+    # wants `%b` and `%Y` and a clock part ON ONE LINE. `market_sweep
+    # .candle_coverage` broke it and passed for weeks, because it spelled the
+    # date with ATTRIBUTES instead of codes and spread it over two lines:
+    #
+    #     "first": f"{_d0:%b} {_d0.day}, {_d0.year}",
+    #     "last": (f"{_d1:%b} {_d1.day}, {_d1.year} "
+    #              f"{_h1}:{_d1:%M}{_d1:%p}"),
+    #
+    # `%Y` never appears, so neither line matched — and the Storage screen
+    # printed `Sep 3, 2026 3:07PM`: unpadded day, uppercase PM, two of the
+    # six parts wrong. So the check is repeated over the WHOLE FILE with the
+    # attribute spellings counted as their codes.
+    for f in pathlib.Path("tradingagents").rglob("*.py"):
+        if f.name == "positions_view.py":
+            continue
+        src = f.read_text(encoding="utf-8")
+        for i, line in enumerate(src.splitlines(), 1):
+            if "strptime" in line:
+                continue
+            # a month code beside a hand-built day or year, in one f-string
+            if "%b" in line and (".day}" in line or ".year}" in line):
+                offenders.append(f"{f}:{i} (a date spelled with attributes)")
+            # `%p` is uppercase AM/PM and there is no lowercase strftime code:
+            # producing one at all means the rule is being re-implemented
+            if "%p}" in line or '"%p"' in line or "'%p'" in line:
+                offenders.append(f"{f}:{i} (%p is uppercase; the rule is not)")
     assert not offenders, ("hand-rolled date formats:\n  "
-                           + "\n  ".join(offenders))
+                           + "\n  ".join(sorted(set(offenders))))
 
 
 def test_log_lines_carry_the_operator_date_format_too():

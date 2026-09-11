@@ -86,7 +86,14 @@ def test_the_five_are_registered_at_three_levels_each():
         for key in (f"cf_{name}", f"cf_{name}_l1", f"cf_{name}_l2"):
             assert key in CONF_SIGNALS, f"{key} is not a rule"
             assert key in br.SIGNALS, f"{key} is not in the grid registry"
-    assert len(br.SIGNALS) == 120, "105 signals + the 4-hour five at 3 levels"
+    # NO TYPED TOTAL. This said `== 120` ("105 signals + the 4-hour five at 3
+    # levels") and went red on Sep 11, 2026 when ten `cx_*` cascades were
+    # registered and the grid became 130 — a correct change failing a guard
+    # that had hardcoded the registry's size against CLAUDE.md rule 18. This
+    # test is about THE FIVE 4-hour setups, so that is all it asserts, plus
+    # the two properties a registry must always have.
+    assert len(br.SIGNALS) == len(set(br.SIGNALS)), "no signal twice"
+    assert len(br.SIGNALS) >= 3 * len(FOUR_HOUR)
 
 
 def _uptrend(n=900, pull=60, up=0.004, dn=0.004):

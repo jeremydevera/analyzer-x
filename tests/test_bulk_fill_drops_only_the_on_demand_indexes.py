@@ -20,7 +20,7 @@ operator's store that day:
     the file held            14
     built on demand, never dropped:
         rows_wr2 rows_wr3 rows_wr4 rows_pr2 rows_id rows_signal
-        rows_cf_dd rows_cf_profit rows_cf_trades rows_cf_winrate
+        rows_conf_dd rows_conf_profit rows_conf_trades rows_conf_winrate
 
 Ten extra indexes to maintain per inserted row, on a 33 GB file on a mechanical
 disk — 250 MB of scattered I/O every forty seconds while `pairs_indexed` stood
@@ -57,10 +57,10 @@ def con():
                        ("rows_pr2", "profit DESC, sizing, tp, winrate, trades, id"),
                        ("rows_id", "id"),
                        ("rows_signal", "signal, profit DESC"),
-                       ("rows_cf_dd", "dd"),
-                       ("rows_cf_profit", "profit"),
-                       ("rows_cf_trades", "trades"),
-                       ("rows_cf_winrate", "winrate")):
+                       ("rows_conf_dd", "dd"),
+                       ("rows_conf_profit", "profit"),
+                       ("rows_conf_trades", "trades"),
+                       ("rows_conf_winrate", "winrate")):
         c.execute(f"CREATE INDEX {name} ON rows ({cols})")
     return c
 

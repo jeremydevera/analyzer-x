@@ -367,6 +367,14 @@ def ensure() -> None:
         # built on demand instead — see build_sort_index / SortNotReady.
         for ddl in KEEP_INDEXES:
             con.execute(ddl)
+        # A partial index whose PREDICATE has been superseded is dropped by
+        # name here (see GROUP_INDEXES_RETIRED). Leaving it costs space for
+        # rows no query will ask it for, and a later `CREATE ... IF NOT
+        # EXISTS` under the old name would quietly inherit the old WHERE.
+        # DROP of a non-existent index is a no-op, so this is free on a store
+        # that never had one.
+        for dead in GROUP_INDEXES_RETIRED:
+            con.execute(f"DROP INDEX IF EXISTS {dead}")
         con.execute("INSERT OR REPLACE INTO meta (k,v) VALUES ('schema',?)",
                     (str(SCHEMA_VERSION),))
         # a database built before the facet columns existed keeps its rows --
@@ -1231,6 +1239,8 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
             with contextlib.suppress(FileNotFoundError):
                 Path(str(dest) + tail).unlink()
     done, rows = len(already), seeded_rows
+    skipped: list = []           # files that could not be READ — named, never
+                                 # counted, and published with the progress
     started = _t.time()          # the RATE is the load's, not the check's
 
     con = sqlite3.connect(dest, timeout=60.0)
@@ -1359,6 +1369,13 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
         if not keep_backup:
             with contextlib.suppress(FileNotFoundError):
                 backup.unlink()
+    # THE SWAP JUST DESTROYED THE ON-DEMAND INDEXES. The new file carries
+    # KEEP_INDEXES only, so every feature behind the others — the win-rate
+    # floors, the #id lookup, the signal filter — answers 503 until somebody
+    # builds them, and on this store they are hours each and had already been
+    # paid for. Every other fill path queues them; rebuild() never did, which
+    # is the kind of gap a function with no production caller keeps.
+    queued = _after_fill_indexes()
     _say("done")
     after = DB_PATH.stat().st_size
     took = _t.time() - started
@@ -1367,6 +1384,10 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
             "pairs_per_min": round(done / max(1e-9, took / 60), 2),
             "before_bytes": before, "after_bytes": after,
             "freed_bytes": before - after,
+            # NAMED, never silently dropped (rule 20): a file the loader could
+            # not read is a pair the panel will not show, and the operator is
+            # the one who has to know which.
+            "skipped": skipped, "indexes_queued": queued,
             "backup": str(backup) if keep_backup else ""}
 
 
@@ -1865,9 +1886,27 @@ GROUPS = {
 # decides at PREPARE time whether a query implies a partial index's WHERE, and
 # a parameter it cannot see yet defeats that. They are constants from this
 # module, never operator input.
-PRESET_LO, PRESET_HI = "cf_", "cf`"
-PRESET_TERMS = f"signal >= '{PRESET_LO}' AND signal < '{PRESET_HI}'"
-CLASSIC_TERMS = f"(signal < '{PRESET_LO}' OR signal >= '{PRESET_HI}')"
+#
+# TWO RANGES, NOT ONE (Sep 12, 2026). The ten `cx_*` cascades registered on
+# Sep 11 are confluence rules — `signals_cascade.build_cascades` builds them
+# out of the same setups and registers them into the same `CONF_SIGNALS` dict,
+# and the runner and the grid both walk that dict. But the group was decided
+# by the single prefix `cf_`, and 'x' sorts after 'f', so every one of them
+# fell out of "Preset Confluence" and into "Classic" — the group whose whole
+# meaning is "the 75 signals that existed BEFORE the confluence library".
+# A filter named Classic that answers with `cx_veto` is a false label, which
+# is the failure this repo keeps paying for.
+#
+# So preset is now the UNION of two prefix ranges. `in_group` and
+# `PRESET_PREFIXES` are the one definition both the SQL and the Python read,
+# so a third family added later is one tuple entry, not four edits.
+PRESET_PREFIXES = ("cf_", "cx_")
+PRESET_LO, PRESET_HI = "cf_", "cf`"        # kept: the first range, by name
+_RANGES = [(p, p[:-1] + chr(ord(p[-1]) + 1)) for p in PRESET_PREFIXES]
+PRESET_TERMS = "(" + " OR ".join(
+    f"(signal >= '{lo}' AND signal < '{hi}')" for lo, hi in _RANGES) + ")"
+CLASSIC_TERMS = "(" + " AND ".join(
+    f"(signal < '{lo}' OR signal >= '{hi}')" for lo, hi in _RANGES) + ")"
 GROUP_TERMS = {"preset": PRESET_TERMS, "classic": CLASSIC_TERMS}
 
 # ONE PARTIAL INDEX PER (GROUP, ORDER) -- and only for `preset`.
@@ -1891,11 +1930,24 @@ GROUP_SORT_COLS = {
     "trades": "trades DESC, profit DESC, id",
     "dd": "dd ASC, profit DESC, id",
 }
+#
+# THE NAME CARRIES THE PREDICATE'S VERSION (`conf`, Sep 12, 2026). These were
+# `rows_cf_profit` and friends, built `WHERE signal >= 'cf_' AND signal <
+# 'cf\`'`. When preset grew to two ranges, `CREATE INDEX IF NOT EXISTS
+# rows_cf_profit` would have found that name already taken and done NOTHING —
+# leaving an index that covers only the `cf_` half while the planner happily
+# used it for a query that now means both halves. Every `cx_*` row would have
+# been missing from "Preset Confluence" ranked by profit, silently and
+# quickly, which is worse than the slow honest scan. A predicate change gets
+# a new name, always.
 GROUP_INDEXES = {
-    ("preset", k): (f"CREATE INDEX IF NOT EXISTS rows_cf_{k} ON rows ({cols}) "
-                    f"WHERE {PRESET_TERMS}")
+    ("preset", k): (f"CREATE INDEX IF NOT EXISTS rows_conf_{k} ON rows "
+                    f"({cols}) WHERE {PRESET_TERMS}")
     for k, cols in GROUP_SORT_COLS.items()
 }
+# the superseded ones, dropped on sight so the file does not carry a stale
+# partial index of the same rows for ever
+GROUP_INDEXES_RETIRED = tuple(f"rows_cf_{k}" for k in GROUP_SORT_COLS)
 
 
 # _build_index() looks its DDL up here, so a partial index is built and
@@ -1916,7 +1968,7 @@ def in_group(signal: str, group: str | None) -> bool:
     if group not in GROUPS:
         raise ValueError(f"unknown group {group!r}; use one of "
                          f"{', '.join(sorted(GROUPS))}")
-    is_preset = str(signal or "").startswith("cf_")
+    is_preset = str(signal or "").startswith(PRESET_PREFIXES)
     return (not is_preset) if GROUPS[group].get("negate") else is_preset
 
 
@@ -3861,8 +3913,20 @@ def main(argv: list | None = None) -> int:
     `--build` is what a detached child runs (see _build_index): it must not
     start the keep-up loop, or every refused query would leave another indexer
     running beside the real one.
+
+    `--rebuild` loads a FRESH file from the pair files and swaps it in. It is
+    here so a six-hour job can be spawned detached with a log instead of held
+    open in somebody's shell — CLAUDE.md's own rule, bought on Sep 10, 2026
+    when `spawn_indexer` ran with stdout=DEVNULL and 18.7 hours of the only
+    process that could explain a stall went in the bin. Run it with `-u`.
     """
     args = list(sys.argv[1:] if argv is None else argv)
+    if args and args[0] == "--rebuild":
+        with contextlib.suppress(OSError, AttributeError):
+            os.nice(10)          # six hours of load must not outrank a click
+        got = rebuild(resume="--fresh" not in args)
+        print(f"[rows-index] rebuild: {got}", flush=True)
+        return 0 if got.get("rebuilt") else 1
     if args and args[0] == "--build":
         if len(args) < 2:
             print("usage: -m tradingagents.rows_index --build <index>",

@@ -1458,17 +1458,20 @@ def candle_coverage() -> list:
             if not ts:
                 continue
             sym, tf = f.stem.rsplit("-", 1)
-            import datetime as _dt
+            # THE ONE FORMATTER (fixed Sep 12, 2026). This block built the
+            # stamp by hand and got two of the six parts wrong on the Storage
+            # screen: `{_d.day}` is UNPADDED, so Sep 3 printed `Sep 3, 2026`
+            # where the rule says `Sep 03`; and `%p` is UPPERCASE, so it
+            # printed `3:07PM` where the rule says `3:07pm`. The comment above
+            # it even quoted the wrong form ("Aug 26, 2026 4:00PM") as if it
+            # were the rule. CLAUDE.md: there are exactly two implementations
+            # and you must call one of them.
+            from tradingagents.positions_view import fmt_when
 
-            # Operator's one date format (2026-08-21): Aug 26, 2026 4:00PM.
-            _d0 = _dt.datetime.fromtimestamp(ts[0] / 1000)
-            _d1 = _dt.datetime.fromtimestamp(ts[-1] / 1000)
-            _h1 = _d1.hour % 12 or 12
             out.append({
                 "symbol": sym, "timeframe": tf, "bars": len(ts),
-                "first": f"{_d0:%b} {_d0.day}, {_d0.year}",
-                "last": (f"{_d1:%b} {_d1.day}, {_d1.year} "
-                         f"{_h1}:{_d1:%M}{_d1:%p}"),
+                "first": fmt_when(ts[0] / 1000),
+                "last": fmt_when(ts[-1] / 1000),
                 # the raw epoch too: callers that need to MEASURE the gap must
                 # not re-parse the display string (the gaps route did, and the
                 # parse failed on every one of 4,899 rows in silence)

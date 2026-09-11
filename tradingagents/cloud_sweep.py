@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import pathlib
+import signal
 import subprocess
 import tempfile
 import time
@@ -326,17 +327,104 @@ FETCH_FAIL_S = 60.0
 _FETCH_FAILED_AT = [0.0]
 
 
+#
+# GIT MUST NEVER WAIT FOR A HUMAN, AND A TIMEOUT MUST NEVER BLOCK FOREVER
+# (Sep 12, 2026). `subprocess.run(..., timeout=)` is not the guarantee it
+# reads as. On TimeoutExpired it kills the direct child and then calls
+# `communicate()` AGAIN with no timeout to drain the pipes — and a git fetch
+# spawns `git-remote-https`, which inherits those pipe handles and outlives
+# the kill. The drain then blocks for ever.
+#
+# That is exactly where the API was found at `Sep 12, 2026 2:44am`, seventeen
+# minutes after it started, with py-spy showing:
+#
+#     Thread 18736 (idle): "cloud-status"
+#         join (threading.py:1095)
+#         _communicate (subprocess.py:1663)
+#         run (subprocess.py:565)          <- the post-timeout drain
+#         _git (cloud_sweep.py:333)
+#         live_progress (cloud_sweep.py:398)
+#
+# `BackgroundValue` holds `_busy` until its reader returns, so one wedged
+# fetch means the cloud panel reads "reading GitHub in the background" until
+# the API is restarted — while run 34631292767 measured normally on 20
+# machines. Two changes, and the first is the one that matters:
+#
+#  * git can no longer ASK anything. No stdin, `GIT_TERMINAL_PROMPT=0`, and
+#    the askpass helpers pointed at `echo` so a credential prompt fails
+#    instantly instead of waiting on a console that does not exist. An API
+#    started from a service or a detached shell has no terminal, and a
+#    manager that pops a window has nobody to answer it.
+#  * the timeout path kills the whole TREE and every drain after it is
+#    BOUNDED. Worst case this returns; it never joins for ever.
+_GIT_NO_PROMPT = {
+    "GIT_TERMINAL_PROMPT": "0",     # never ask for a username/password
+    "GIT_ASKPASS": "echo",          # ... nor through an askpass helper
+    "SSH_ASKPASS": "echo",
+    "GCM_INTERACTIVE": "never",     # ... nor Git Credential Manager's window
+    "GIT_OPTIONAL_LOCKS": "0",      # a concurrent git must not make us wait
+}
+
+
+def _git_kill_tree(proc) -> None:
+    """Kill the git process and anything it spawned, best effort and FAST.
+
+    The GRANDCHILD is the one that matters: `git fetch` runs
+    `git-remote-https`, which holds the same stdout/stderr handles, so
+    killing only the parent leaves the pipes open and the drain blocked.
+
+    `taskkill /T /F` because it is ONE cheap call. The first version asked
+    `portable.child_pids`, which shells out to PowerShell — measured at
+    **20 seconds of the 32** this path took in
+    `test_a_timeout_raises_instead_of_blocking`. A cleanup that is slower
+    than the thing it is cleaning up after is its own kind of hang, and this
+    runs on the thread a blind panel is waiting on. `start.py` already kills
+    job trees this way.
+    """
+    from tradingagents import portable
+
+    if portable.WINDOWS:
+        with contextlib.suppress(Exception):
+            subprocess.run(["taskkill", "/T", "/F", "/PID", str(proc.pid)],
+                           capture_output=True, timeout=10)
+    else:
+        with contextlib.suppress(Exception):
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+    with contextlib.suppress(Exception):
+        proc.kill()
+
+
 def _git(*args, timeout: int = 120) -> str:
-    """Run git in the repository, quietly. Raises CloudError on failure."""
+    """Run git in the repository, quietly. Raises CloudError on failure.
+
+    Never blocks longer than `timeout` plus a bounded drain, whatever git or
+    its helpers do — see the note above this function.
+    """
     root = pathlib.Path(__file__).resolve().parent.parent
     try:
-        p = subprocess.run(("git", *args), cwd=str(root), capture_output=True,
-                           text=True, timeout=timeout)
+        proc = subprocess.Popen(                               # noqa: S603
+            ("git", *args), cwd=str(root),
+            env={**os.environ, **_GIT_NO_PROMPT},
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     except Exception as exc:                                   # noqa: BLE001
         raise CloudError(f"git {args[0]}: {type(exc).__name__}: {exc}") from exc
-    if p.returncode:
-        raise CloudError(f"git {args[0]}: {(p.stderr or '').strip()[:160]}")
-    return p.stdout
+    try:
+        out, err = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        _git_kill_tree(proc)
+        # BOUNDED. Never a bare communicate() here: that is the call that
+        # blocks for ever when a helper still holds the pipe.
+        with contextlib.suppress(subprocess.TimeoutExpired):
+            proc.communicate(timeout=10)
+        raise CloudError(
+            f"git {args[0]}: no answer in {timeout}s — killed") from None
+    except Exception as exc:                                   # noqa: BLE001
+        _git_kill_tree(proc)
+        raise CloudError(f"git {args[0]}: {type(exc).__name__}: {exc}") from exc
+    if proc.returncode:
+        raise CloudError(f"git {args[0]}: {(err or '').strip()[:160]}")
+    return out
 
 
 def _fetch_progress() -> None:

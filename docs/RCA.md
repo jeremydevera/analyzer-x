@@ -172,6 +172,123 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-12-I — one hung `git fetch` blanked the cloud panel until the API was restarted, because a subprocess timeout is not a guarantee
+
+**CEO**
+
+* While your 1,054-coin update ran on 20 machines, the panel that shows it
+  said "reading GitHub in the background" and nothing else — for seventeen
+  minutes, and it would have said that until the app was restarted. The run
+  was completely healthy the whole time: 291 coins done, 24 million rows, no
+  failures.
+* Why: the app asks git for the machines' progress. One of those git commands
+  got stuck waiting, and the safety timer that was supposed to cut it off had
+  a hole — after the timer fired, the app sat waiting for the stuck command's
+  leftovers instead. Nothing could ask again after that.
+* What stops it now: git is never allowed to stop and ask a question (there
+  is nobody at the keyboard to answer it), the safety timer now kills the
+  whole thing and gives up after ten more seconds no matter what, and the
+  screen keeps showing the last known progress instead of going blank.
+
+**DEV**
+
+* `cloud_sweep._git` used `subprocess.run(..., timeout=)`. Its TimeoutExpired
+  path kills the DIRECT child and then calls `communicate()` with NO timeout
+  to drain the pipes; `git fetch` spawns `git-remote-https`, which inherits
+  those handles and outlives the kill, so the drain blocks for ever. py-spy
+  on pid 14732: `_git -> run (subprocess.py:565) -> communicate ->
+  _communicate -> join`, under thread `cloud-status`, in
+  `_read_cloud_status -> slow_cache._work`. `BackgroundValue` holds `_busy`
+  until the reader returns, so `get()` could never start another read.
+* Invariant broken: **a bounded call must be bounded on every path**, and the
+  library call that looks like the bound is not one. Underneath it, a cache
+  whose refresh flag is only cleared on the success path is a latch, and one
+  wedged read closes it permanently.
+* Guard: `tests/test_a_hung_git_cannot_blind_the_cloud_panel.py` — 7 tests,
+  including one that drives a real 60-second child through `_git` with a
+  2-second timeout and asserts it returns in under 20.
+
+**SAW** — found while watching run 34631292767 for the operator after they
+asked to press UPDATE and be told about any errors. `/api/cloud/status`
+answered `{"available":false,"why":"reading GitHub in the
+background","reading":true,"run":null,"shards":[]}` on every poll.
+
+**TIMELINE**
+
+1. `Sep 12, 2026 2:08am` and `2:13am` — the endpoint answered normally: 4,
+   then 7 shards reporting, 289,466 then 673,616 rows. Nothing was wrong.
+2. `2:27am` — the API was restarted (another session's commits), so the
+   cached value was discarded and a fresh read began.
+3. `2:42am` — every poll returned the PENDING payload. The run itself,
+   checked straight against GitHub with `gh run view`, was
+   `in_progress` with 20 shards healthy.
+4. `2:44am` — py-spy on the listening process (pid 14732, found by port, not
+   by `api.pid`, which was stale) put the `cloud-status` thread in the
+   post-timeout drain. It had been there 17 minutes.
+5. Measured the same read from a SECOND process, where it was not wedged:
+   **31.9 s**, against `CLOUD_STATUS_TTL` of **30.0 s**. A second run of the
+   fetch alone took **33.4 s**. The value was stale the instant it landed, so
+   the background thread ran back to back for the length of the sweep,
+   git-fetching the branch the 20 shards were pushing to.
+6. `2:52am` — the API restarted on the fixed code.
+7. `2:55am` — the panel answered in full: run **34631292767**, 20 shards,
+   **291 of 1,068 coins (27.2%)**, **24,029,290 rows**, **1,196 pairs posted
+   live**, **0 failed**. All of that had been true and invisible.
+
+**ROOT CAUSE** — `subprocess.run`'s timeout kills the child and then drains
+its pipes with no timeout; a surviving grandchild holds those pipes open, so
+the "timed out" call never returns.
+
+**WHY IT WAS NOT CAUGHT** — `tests/test_cloud_status_never_waits_on_github.py`
+exists and passes. It guards the REQUEST — that the route answers from the
+background value and never blocks — which is the fault of Sep 09 (RCA-A/I).
+Nothing asked what happens when the BACKGROUND READ itself never finishes,
+because a reader that hangs has no observable behaviour to assert unless you
+decide the hang is a product surface. Same blind spot as RCA-2026-09-10-C,
+where 289 index tests all covered what the index contains and none covered
+the fill failing to start. **A cache makes a slow read safe; it does nothing
+about a read that never returns, and the second failure looks exactly like
+the first from the outside — which is why the panel's message was reassuring
+prose rather than a duration.** The new guard drives a real child that
+ignores its deadline.
+
+Two smaller things this exposed, both fixed here: a TTL shorter than the read
+it drives means the value is never fresh and the thread never rests (30 s
+against a 31.9 s read); and `api.pid` named a process that was not the API —
+the listening pid had to be found through the port, the same recycled-pid
+shape as RCA-2026-09-12-B the same night.
+
+**COST** — no money and no lost measurement: the run was correct throughout
+and its rows landed live (1,196 pairs by 2:55am). The cost was the only
+window onto a multi-hour job the operator had just started and explicitly
+asked to be watched.
+
+**FIX** — this commit. `cloud_sweep._git` runs git through `Popen` with
+`stdin=DEVNULL` and `_GIT_NO_PROMPT` (`GIT_TERMINAL_PROMPT=0`,
+`GIT_ASKPASS=echo`, `SSH_ASKPASS=echo`, `GCM_INTERACTIVE=never`,
+`GIT_OPTIONAL_LOCKS=0`), and on timeout calls `_git_kill_tree` — `taskkill
+/T /F` on Windows, `killpg` elsewhere — then drains with a BOUNDED
+`communicate(timeout=10)` and raises. `api.CLOUD_STATUS_TTL` 30 -> 90, above
+the measured read. `slow_cache.BackgroundValue._work` clears `_busy` in a
+`finally`, so a reader that raises a `BaseException` (or an `on_error` that
+raises) can no longer latch the cache shut for the life of the process.
+
+`_git_kill_tree` uses `taskkill` rather than `portable.child_pids`: the first
+version asked PowerShell for the process table and measured **20 seconds of
+the 32** the timeout path took, on the very thread a blank panel is waiting
+on. A cleanup slower than the hang it cleans up after is its own hang.
+
+**GUARD** — `tests/test_a_hung_git_cannot_blind_the_cloud_panel.py`, 7 tests:
+git is launched with no stdin and every prompt door shut; the environment is
+proved to reach the child by asking git itself; a real `sleep 60` child
+driven through a 2-second timeout raises in under 20 s; the post-kill drain
+carries its own timeout; the kill takes the tree (asserted against the AST,
+because the docstring names `child_pids` to explain why it is NOT used); the
+TTL is longer than the read; and a slow refresh still serves the last good
+answer instead of `pending`.
+
+---
+
 ## RCA-2026-09-12-H — the REINDEX button offered a 4-pair job for a 5,206-pair walk, because the fix for that had stopped at the API
 
 **CEO**

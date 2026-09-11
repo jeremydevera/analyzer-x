@@ -24,6 +24,7 @@ every poll is what starves the app.
 """
 from __future__ import annotations
 
+import contextlib
 import threading
 import time
 from collections.abc import Callable
@@ -65,14 +66,40 @@ class BackgroundValue:
         return pending
 
     def _work(self) -> None:
+        """`_busy` is released in a FINALLY, always.
+
+        `get()` refuses to start a second read while `_busy` is set, which is
+        what stops a slow reader being asked twenty times a minute. The cost
+        of that is a LATCH: anything which leaves this method without clearing
+        the flag means no further read is ever attempted for the life of the
+        process, and the caller keeps whatever it last had -- or `pending` for
+        ever if it never had anything.
+
+        `except Exception` does not cover `BaseException`, so a
+        `KeyboardInterrupt` or `SystemExit` raised inside a reader, or an
+        `on_error` that itself raises, used to latch it shut. That is the same
+        shape as the wedge found on Sep 12, 2026, where the reader simply
+        never returned -- `git fetch`'s post-timeout drain blocking in
+        `communicate()` -- and the cloud panel read "reading GitHub in the
+        background" for the 17 minutes until the API was restarted. That one
+        is fixed at its source (`cloud_sweep._git` is bounded now); this makes
+        the latch itself survivable instead of trusting every future reader.
+        """
+        got, have = None, False
         try:
-            value = self.reader()
+            got, have = self.reader(), True
         except Exception as exc:                                # noqa: BLE001
-            value = self.on_error(exc)
-        with self._lock:
-            self._value, self._have, self._at = value, True, time.time()
-            self._busy = False
-            self.reads += 1
+            with contextlib.suppress(Exception):
+                got, have = self.on_error(exc), True
+        finally:
+            with self._lock:
+                if have:
+                    self._value, self._have = got, True
+                    self.reads += 1
+                # the CLOCK moves either way, so a reader that blew up is not
+                # re-run on the very next poll; and the flag always clears
+                self._at = time.time()
+                self._busy = False
 
     # ------------------------------------------------------------- control
     def wait(self, timeout: float = 30.0) -> bool:

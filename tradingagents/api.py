@@ -2255,7 +2255,18 @@ def _read_cloud_status() -> dict:
 # How long a cloud-status answer is reused before the background thread reads
 # again. Shard progress moves on the order of minutes; the panel polls every
 # 4 s; the read itself was 216 s on Sep 09, 2026.
-CLOUD_STATUS_TTL = 30.0
+#
+# 30 -> 90 (Sep 12, 2026). The read is a `git fetch` of the progress branch
+# plus a `git show` per shard, and with all 20 shards reporting it measured
+# **31.9 s** end to end (the fetch alone 33.4 s on a second run). A TTL
+# SHORTER THAN THE READ means the value is stale the instant it lands, so the
+# background thread runs back to back for the whole sweep — one git fetch
+# every half minute, for hours, against the same branch the shards are
+# pushing to. `BackgroundValue` still serves the last answer while it works,
+# so the only thing a longer TTL costs is up to 90 s of age on a number that
+# moves in minutes; `PROGRESS_CACHE_S` (15 s) already bounds it below.
+# Measure the read before choosing the interval that drives it.
+CLOUD_STATUS_TTL = 90.0
 # HOW LONG `rows_index.status()` REALLY TAKES, measured Sep 10, 2026 on the
 # rebuilt 41.94 GB store: **267.55 s**. It walks `stale_pairs()`, which stats
 # every one of 5,367 pair files AND their state files, so on a cold cache it is

@@ -129,22 +129,29 @@ def test_it_never_holds_more_than_one_pair(monkeypatch, store):
     assert max(high) == 1, "one pair per write, never an accumulated list"
 
 
-def test_a_fresher_measurement_replaces_the_stored_pair(monkeypatch, store):
-    """THE RULE CHANGED on 2026-09-09. This test used to be "a locally
-    measured pair is never overwritten": any pair with a watermark was
-    refused. Right while this PC measured and the cloud filled gaps; a
-    store-freezer once the cloud became the only measurer (Sep 05) — the
-    collect log for the eight runs to Sep 09 kept 0, 1, 17, 4, 0, 0, 0 and 9
-    pairs against 1,550–4,549 "skipped, already measured here" each, and the
-    Stored strategies stayed August's. Now the NEWER measurement wins."""
+def test_a_fresher_measurement_lands_over_the_stored_pair(monkeypatch, store):
+    """THE RULE CHANGED TWICE. Until 2026-09-09 any pair with a watermark was
+    refused ("never overwrite a pair the Mac finished") — a store-freezer once
+    the cloud became the only measurer: eight runs kept 0, 1, 17, 4, 0, 0, 0
+    and 9 pairs against 1,550–4,549 "skipped, already measured here" each.
+    Then the newer run REPLACED the pair — and on Sep 10, 2026 that deleted
+    1,261,358 rows and emptied 100 pairs (RCA-2026-09-11-B). Now the newer
+    run lands BY COMBINATION: what it re-measured wins, what it did not
+    measure stays, and the watermark moves forward."""
     from tradingagents import market_sweep as msw
-    msw.save_pair_rows("APEX", "1h", [{"coin": "APEX", "mine": True}])
+    old_mom6 = dict(_row("APEX", "1h", "mom6", last_ms=500), profit=-1.0)
+    old_rsi = dict(_row("APEX", "1h", "rsi14", last_ms=500), profit=2.0)
+    msw.save_pair_rows("APEX", "1h", [old_mom6, old_rsi])
     msw.save_states("APEX", "1h", {"__last_ms__": 999})
-    _download(monkeypatch, {"rows-0": [_row("APEX", "1h", "mom6", last_ms=1000),
-                                       _row("PI", "1h", "mom6")]})
+    _download(monkeypatch, {"rows-0": [
+        dict(_row("APEX", "1h", "mom6", last_ms=1000), profit=+3.0),
+        _row("PI", "1h", "mom6")]})
     r = cs.collect_into_store(1)
     assert r["skipped"] == 0 and r["pairs"] == 2
-    assert [x["signal"] for x in msw.pair_rows("APEX", "1h")] == ["mom6"]
+    got = {x["signal"]: x for x in msw.pair_rows("APEX", "1h")}
+    assert got["mom6"]["profit"] == 3.0 and got["mom6"]["last_ms"] == 1000, \
+        "the re-measured combination is the newer run's"
+    assert got["rsi14"] == old_rsi, "the one it did not measure is untouched"
     assert msw.pair_watermark("APEX", "1h") == 1000
 
 
@@ -328,10 +335,13 @@ def test_a_marker_beside_rows_changes_nothing_but_the_watermark(monkeypatch,
         "the marker's last_ms counts with the rows'"
 
 
-def test_a_marker_replaces_the_stored_pair_only_when_fresher(monkeypatch, store):
-    """A zero-row marker from a FRESHER measurement means the pair really has
-    no row above the trade floor now — it replaces, like any newer result
-    (the rule of 2026-09-09). A stale marker is refused and the store stays."""
+def test_a_marker_advances_the_watermark_but_never_empties_the_pair(monkeypatch, store):
+    """A stale marker is refused and the store stays. A FRESHER zero-row
+    marker used to REPLACE the pair with nothing (the rule of 2026-09-09) —
+    and that is exactly how 100 pairs were emptied on Sep 10, 2026
+    (RCA-2026-09-11-B: a run whose cost gate skipped every barrier wrote its
+    empty result over 18,880 good rows). Newer is not emptier: the marker
+    advances the watermark, the rows already there stay."""
     from tradingagents import market_sweep as msw
     msw.save_pair_rows("APEX", "1h", [{"coin": "APEX", "tf": "1h"}])
     msw.save_states("APEX", "1h", {"__last_ms__": 5000})
@@ -344,7 +354,8 @@ def test_a_marker_replaces_the_stored_pair_only_when_fresher(monkeypatch, store)
     r = cs.collect_into_store(1)
     assert r["pairs"] == 1 and r["skipped"] == 0
     assert msw.pair_watermark("APEX", "1h") == 9000
-    assert msw.pair_rows("APEX", "1h") == []
+    assert msw.pair_rows("APEX", "1h") == [{"coin": "APEX", "tf": "1h"}], \
+        "a newer run can never leave a pair with fewer rows than it found"
 
 
 def test_the_shard_writes_one_marker_per_measured_pair():
@@ -355,7 +366,9 @@ def test_the_shard_writes_one_marker_per_measured_pair():
     body = s[s.index("\ndef run_pair("):]
     assert '"pair_done": True' in body
     i = body.index('"pair_done": True')
-    assert body.index("if len(df) < br.min_bars(tf):") < i, \
+    # the floor is applied to the bars AFTER the warm-up since 686cfed89dd
+    # (the rules were blind over the start of their own window)
+    assert body.index("if len(df) - warm < br.min_bars(tf):") < i, \
         "an under-floor pair returns BEFORE the marker — too_short pairs must stay pending"
     assert body.index('lines.append(json.dumps({"coin": coin, "tf": tf, "pair_done"') \
         < body.index('out.write("".join(lines))'), "the marker rides in the same write"

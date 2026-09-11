@@ -348,10 +348,19 @@ def test_one_rule_writes_a_pair_whoever_brought_it(store):
     assert cs.land_rows("AAA", "1h", [dict(row, last_ms=2_000)]) == "kept"
     assert msw.pair_watermark("AAA", "1h") == 2_000
 
-    # a pair split across a shard file is APPENDED to, never re-judged
+    # a pair split across a shard file is not re-judged — and since
+    # RCA-2026-09-11-B it is MERGED BY COMBINATION, never appended or replaced:
+    # the same combination again is ONE row (re-measured wins), a new
+    # combination is added, and nothing already there is ever dropped. The
+    # replace that stood here deleted 1,261,358 rows and emptied 100 pairs.
     assert cs.land_rows("AAA", "1h", [dict(row, last_ms=2_000)],
                         append=True) == "kept"
-    assert len(msw.pair_rows("AAA", "1h")) == 2
+    assert len(msw.pair_rows("AAA", "1h")) == 1, "same combination: one row"
+    assert cs.land_rows("AAA", "1h", [dict(row, signal="rsi14", last_ms=2_000)],
+                        append=True) == "kept"
+    assert len(msw.pair_rows("AAA", "1h")) == 2, "a new combination is added"
+    assert cs.land_rows("AAA", "1h", [dict(row, last_ms=3_000)]) == "kept"
+    assert len(msw.pair_rows("AAA", "1h")) == 2, "a newer run never shrinks a pair"
 
     # a measured pair with no row that cleared the trade floor: an EMPTY rows
     # file plus a watermark, or the pair reads as never measured

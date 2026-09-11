@@ -172,6 +172,91 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-12-H — the REINDEX button offered a 4-pair job for a 5,206-pair walk, because the fix for that had stopped at the API
+
+**CEO**
+
+* The button under Stored strategies said "index the missing 4 pair(s) now".
+  The job behind it had 5,206 coins to work through — more than a thousand
+  times what the button promised. Press it and it would have looked stuck
+  forever, or finished-in-a-second and wrong.
+* Why: there are two counts. One is "coins never indexed" (4). The other is
+  "coins whose results have changed since they were indexed" (5,206), and
+  that is the one the job actually walks. The button was printing the first.
+* What stops it now: the button reads the same number the job sizes itself
+  with, and a test checks the button, not only the code behind it. This is
+  the same mistake as Sep 10 — it was fixed then in the part the screen does
+  not show.
+
+**DEV**
+
+* `api.strategies_reindex` has computed `todo = stale or behind` since
+  RCA-2026-09-10-C and is guarded by
+  `test_the_route_prints_the_bigger_number`. `StrategiesPanel.tsx:935`
+  rendered `idx.behind.toLocaleString()`, and `IndexStatus` in
+  `webapp/src/lib/api.ts` did not even declare `stale`, so the browser could
+  not have printed it. Measured on the operator's store, Sep 12, 2026
+  2:35am: `behind: 4`, `stale: 5,206`, `pairs_indexed: 5,388`,
+  `rows: 96,307,386`.
+* Invariant broken: **the number a button prints is the number of work it
+  will DO** — and, underneath it, a guard is only as wide as its pattern.
+  The Sep 10 guard asserted on `inspect.getsource(api.strategies_reindex)`
+  and never opened the component, so the half of the fix the operator can
+  see was never covered.
+* Guard: `tests/test_index_stall_is_visible.py::
+  test_the_BUTTON_prints_the_bigger_number_too`, which reads the panel and
+  the client type, and pins `catchingUp` to `behind` on purpose.
+
+**SAW** — found on Sep 12, 2026 while establishing why ten new cascade rules
+returned 0 rows (RCA-2026-09-12-D). The operator would have met it at the
+moment they tried to fix that themselves.
+
+**TIMELINE**
+
+1. `Sep 10, 2026` — RCA-2026-09-10-C fixed the route: a button that printed
+   806 for a job walking 5,276 pairs. `test_the_route_prints_the_bigger_
+   number` was written against `api.strategies_reindex`.
+2. `Sep 11, 2026` — ten `cx_*` cascade rules were measured across the market.
+   6,845,648 rows landed in the pair FILES; the index was not refreshed.
+3. `Sep 12, 2026 2:20am` — `signal=cx_veto` -> **0 rows** through the real
+   API. `rows_index.status()`: `behind: 4`, `stale: 5,194`.
+4. `2:35am` — the same read, fifteen minutes later: `stale: 5,206`. It climbs
+   while a collect lands rows, which is why the catch-up must wait for quiet.
+5. The panel's button read **"index the missing 4 pair(s) now"** throughout.
+   The route, if pressed, would have started a 5,206-pair job — correct work
+   under a label off by a factor of 1,301.
+6. `2:45am` — with the panel change stashed, the new guard fails; with it,
+   it passes.
+
+**ROOT CAUSE** — the label was rendered from `behind` while the job is sized
+from `stale or behind`, and the client type did not carry `stale` at all.
+
+**WHY IT WAS NOT CAUGHT** — the guard written for this exact fault on Sep 10
+reads the Python route's source and stops there. The failing surface is a
+React component; nothing in the test suite connected the two. **When a fix
+has an API half and a screen half, the guard must assert both halves or it
+certifies the half nobody looks at.** This is the third variant of "a guard
+is only as wide as its pattern" in four days (the `.toLocale` grep on Sep 09,
+the `%Y` grep on Sep 12), and the first where the pattern was right and the
+FILE was wrong.
+
+**COST** — no money. The cost was the operator's only lever for making 6.8
+million measured rows searchable, labelled as a job not worth pressing.
+
+**FIX** — this commit. `const indexTodo = Number(idx?.stale ?? 0) ||
+Number(idx?.behind ?? 0)` in `StrategiesPanel.tsx`, the button labelled from
+it ("index the 5,206 pair(s) that moved since they were indexed"), and
+`stale?: number | null` added to `IndexStatus`. `catchingUp` deliberately
+keeps `behind`: `stale` stays ~5,200 for the length of a sweep and would arm
+the 60 s background refresh permanently, which is the regression the comment
+above it records.
+
+**GUARD** — `tests/test_index_stall_is_visible.py::
+test_the_BUTTON_prints_the_bigger_number_too`. Verified RED with the panel
+change stashed and green with it.
+
+---
+
 ## RCA-2026-09-12-G — "no stored strategy passes" was a claim about 893,508 rows, made after checking 25
 
 **CEO**

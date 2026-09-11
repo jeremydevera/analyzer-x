@@ -98,6 +98,45 @@ def test_the_route_prints_the_bigger_number():
     assert 'st.get("stale")' in src
 
 
+def test_the_BUTTON_prints_the_bigger_number_too():
+    """The guard above stopped at the API and the fix stopped there with it.
+
+    The route has sized itself as `stale or behind` since Sep 10, 2026 — and
+    the button the operator actually presses went on printing `behind`.
+    Measured on their store on Sep 12, 2026: `behind: 4`, `stale: 5,206`, so
+    it read **"index the missing 4 pair(s) now"** over a 5,206-pair walk. The
+    ten `cx_*` cascade rules that could not be found at all (RCA-2026-09-12-D)
+    are inside those 5,206.
+
+    A guard is only as wide as its pattern, and this one's pattern was one
+    layer deep.
+    """
+    import pathlib
+
+    panel = pathlib.Path(
+        "webapp/src/components/backtest/StrategiesPanel.tsx"
+    ).read_text(encoding="utf-8")
+    # the one expression, and it is the route's own
+    assert ("const indexTodo = Number(idx?.stale ?? 0) "
+            "|| Number(idx?.behind ?? 0);") in panel
+    # the label is DERIVED from it, and `behind` is not what is rendered
+    button = panel[panel.index("onClick={catchUp}"):][:700]
+    assert "indexTodo.toLocaleString()" in button, button[:300]
+    assert "idx.behind.toLocaleString()" not in button, \
+        "the button is labelled with the never-indexed count again"
+    # and the client type has to carry it, or the panel reads undefined
+    client = pathlib.Path("webapp/src/lib/api.ts").read_text(encoding="utf-8")
+    assert "stale?: number | null;" in client
+
+    # THE POLLING LOOP KEEPS `behind` ON PURPOSE. `stale` on a store being
+    # swept is ~5,200 for the length of the sweep, so keying the 60 s
+    # background refresh on it would arm it permanently — the regression the
+    # comment above `catchingUp` was written for (8 requests a minute, 3.4 s
+    # each, holding one of the browser's four lanes).
+    assert ("const catchingUp = !!idx && (idx.syncing || idx.behind > 0);"
+            in panel), "the refresh must keep asking 'are rows still arriving'"
+
+
 # ----------------------------------------------- 3. who is holding the door
 def test_the_status_names_what_holds_the_write_lock(monkeypatch):
     """A reader that cannot say WHO is holding the door is how a stall becomes

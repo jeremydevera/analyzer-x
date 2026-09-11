@@ -466,6 +466,16 @@ export default function StrategiesPanel() {
   // a store that is being swept is never 0. It also held one of the app's four
   // browser lanes permanently (see RCA-I). Keyed on a BOOLEAN, so the identity
   // is stable, and slow enough to cost nothing.
+  // `stale or behind`, the SAME expression /api/strategies/reindex sizes its
+  // job with, so the button's LABEL and the run are one number.
+  //
+  // Deliberately NOT used for `catchingUp` below. That one drives a 60 s
+  // background refresh, and `stale` on a store being swept is ~5,200 for as
+  // long as the sweep lasts, which would arm the refresh permanently — the
+  // regression the comment under it was written for. The refresh keys on
+  // "are rows still arriving" (`behind`/`syncing`); the button answers "how
+  // much work is queued". Two different questions, two different numbers.
+  const indexTodo = Number(idx?.stale ?? 0) || Number(idx?.behind ?? 0);
   const catchingUp = !!idx && (idx.syncing || idx.behind > 0);
   useEffect(() => {
     if (!catchingUp) return;
@@ -932,10 +942,21 @@ export default function StrategiesPanel() {
             </p>
           )}
         </div>
-        {idx && idx.behind > 0 ? (
+        {/* THE NUMBER ON THE BUTTON IS THE NUMBER OF WORK IT WILL DO.
+            This printed `behind` — pairs NEVER indexed — for a job that
+            walks `stale_pairs()`, every pair whose file has moved since it
+            was indexed. Measured Sep 12, 2026 on the operator's own store:
+            `behind: 4`, `stale: 5,206`. The button offered a 4-pair job for
+            a 5,206-pair walk, so even a perfectly working run would have
+            looked finished a thousandth of the way in — and the ten new
+            cascade rules it makes searchable are in those 5,206.
+            `/api/strategies/reindex` has sized itself as `stale or behind`
+            since RCA-2026-09-10-C; this is the same expression, so the
+            label and the job cannot disagree. */}
+        {idx && indexTodo > 0 ? (
           <button onClick={catchUp} disabled={!!reindexing}
             className="h-10 rounded-lg border border-warning-500 px-3 text-theme-sm font-medium text-warning-600 hover:bg-warning-50 disabled:opacity-50 dark:text-warning-400">
-            {reindexing || `index the missing ${idx.behind.toLocaleString()} pair(s) now`}
+            {reindexing || `index the ${indexTodo.toLocaleString()} pair(s) that moved since they were indexed`}
           </button>
         ) : null}
       </div>

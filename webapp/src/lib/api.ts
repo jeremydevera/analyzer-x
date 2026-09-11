@@ -1507,7 +1507,15 @@ export type IndexStatus = {
   pairs_indexed: number;
   pairs_on_disk: number;
   rows: number;
-  behind: number;        // pairs measured but not yet queryable
+  behind: number;        // pairs NEVER indexed
+  /** pairs the catch-up will actually WALK — every pair whose file has moved
+   *  since it was indexed, not just the ones never seen. On Sep 12, 2026 the
+   *  store read `behind: 4` and `stale: 5,206`, so a button labelled from
+   *  `behind` offered a 4-pair job for a 5,206-pair walk. `/api/strategies
+   *  /reindex` has taken `stale or behind` as its size since 2026-09-10
+   *  (RCA-2026-09-10-C); this is the same number, so the label agrees with
+   *  the job. Optional: a status read that is still loading has neither. */
+  stale?: number | null;
   syncing: boolean;
   updated: number | null;
 };

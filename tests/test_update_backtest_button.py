@@ -59,15 +59,37 @@ def test_an_empty_coin_list_means_every_pair_in_the_store():
 
 
 def test_stored_symbols_are_symbols_not_bare_coins(monkeypatch):
-    """`run_pair` derives the coin by stripping `_USDT`; a bare name raises."""
+    """`run_pair` derives the coin by stripping `_USDT`; a bare name raises.
+
+    The SOURCE moved on Sep 12, 2026: this patched `candle_coverage`, which
+    opened and parsed all 5,235 candle files (1.77 GB) to return names the
+    filenames already carry, and made UPDATE sit silent for 9m39s before it
+    dispatched anything (RCA-2026-09-12-F). `candle_index` answers the same
+    question incrementally. The assertion is unchanged, because the RULE is
+    unchanged — symbols, deduped, sorted.
+    """
     import tradingagents.market_sweep as msw
 
-    monkeypatch.setattr(msw, "candle_coverage",
-                        lambda *a, **k: [{"symbol": "CETUS_USDT"},
-                                         {"symbol": "BTC_USDT"},
-                                         {"symbol": "BTC_USDT"}])
+    monkeypatch.setattr(msw, "candle_index", lambda *a, **k: {
+        "CETUS_USDT-15m": {"bars": 900},
+        "BTC_USDT-1h": {"bars": 900},
+        "BTC_USDT-4h": {"bars": 900},      # one coin, two frames, one name
+    })
     got = dj.stored_symbols()
     assert got == ["BTC_USDT", "CETUS_USDT"], got
+
+
+def test_stored_symbols_skips_a_pair_that_has_no_candles(monkeypatch):
+    """`candle_coverage` skipped these (`if not ts: continue`) and the
+    replacement must too: a zero-bar file handed to `run_pair` raises on every
+    combination and the coin is counted FAILED."""
+    import tradingagents.market_sweep as msw
+
+    monkeypatch.setattr(msw, "candle_index", lambda *a, **k: {
+        "GOOD_USDT-1h": {"bars": 500},
+        "EMPTY_USDT-1h": {"bars": 0},
+    })
+    assert dj.stored_symbols() == ["GOOD_USDT"]
 
 
 def test_the_button_is_clickable_without_picking_a_single_coin():

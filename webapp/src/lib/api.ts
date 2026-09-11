@@ -1511,10 +1511,13 @@ export type IndexStatus = {
   /** pairs the catch-up will actually WALK — every pair whose file has moved
    *  since it was indexed, not just the ones never seen. On Sep 12, 2026 the
    *  store read `behind: 4` and `stale: 5,206`, so a button labelled from
-   *  `behind` offered a 4-pair job for a 5,206-pair walk. `/api/strategies
-   *  /reindex` has taken `stale or behind` as its size since 2026-09-10
+   *  `behind` offered a 4-pair job for a 5,206-pair walk. The reindex route
+   *  has taken `stale or behind` as its size since 2026-09-10
    *  (RCA-2026-09-10-C); this is the same number, so the label agrees with
-   *  the job. Optional: a status read that is still loading has neither. */
+   *  the job. Optional: a status read that is still loading has neither.
+   *  (Do not write the route's path here across two lines —
+   *  `test_every_client_path_is_served` scans this file for paths and a
+   *  wrapped one parses as a route the app does not serve.) */
   stale?: number | null;
   syncing: boolean;
   updated: number | null;

@@ -19,7 +19,6 @@ import json
 import logging
 import os
 import pathlib
-import signal
 import subprocess
 import tempfile
 import time
@@ -383,13 +382,8 @@ def _git_kill_tree(proc) -> None:
     """
     from tradingagents import portable
 
-    if portable.WINDOWS:
-        with contextlib.suppress(Exception):
-            subprocess.run(["taskkill", "/T", "/F", "/PID", str(proc.pid)],
-                           capture_output=True, timeout=10)
-    else:
-        with contextlib.suppress(Exception):
-            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+    with contextlib.suppress(Exception):
+        portable.kill_tree(proc.pid, timeout=10)
     with contextlib.suppress(Exception):
         proc.kill()
 

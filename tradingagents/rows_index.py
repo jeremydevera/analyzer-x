@@ -371,10 +371,24 @@ def ensure() -> None:
         # name here (see GROUP_INDEXES_RETIRED). Leaving it costs space for
         # rows no query will ask it for, and a later `CREATE ... IF NOT
         # EXISTS` under the old name would quietly inherit the old WHERE.
-        # DROP of a non-existent index is a no-op, so this is free on a store
-        # that never had one.
-        for dead in GROUP_INDEXES_RETIRED:
-            con.execute(f"DROP INDEX IF EXISTS {dead}")
+        #
+        # ASKED FIRST, dropped only if present. `DROP INDEX IF EXISTS` is a
+        # no-op on a store that never had one, but it is still a statement —
+        # and `test_a_bulk_fill_drops_and_rebuilds_its_indexes_exactly_once`
+        # counts the DROPs a fill issues, because dropping an index the fill
+        # then has to rebuild is the 50x slowdown this module exists to avoid.
+        # Four unconditional no-ops read as four dropped indexes to anything
+        # watching, including a person reading the log. One indexed lookup
+        # against sqlite_master is cheaper than being misread.
+        holes = ",".join("?" * len(GROUP_INDEXES_RETIRED))
+        dead = [r[0] for r in con.execute(
+            f"SELECT name FROM sqlite_master WHERE type='index' "
+            f"AND name IN ({holes})", GROUP_INDEXES_RETIRED)]
+        for name in dead:
+            print(f"[rows-index] dropping {name}: its WHERE was replaced when "
+                  f"the preset group grew to {', '.join(PRESET_PREFIXES)}",
+                  flush=True)
+            con.execute(f"DROP INDEX IF EXISTS {name}")
         con.execute("INSERT OR REPLACE INTO meta (k,v) VALUES ('schema',?)",
                     (str(SCHEMA_VERSION),))
         # a database built before the facet columns existed keeps its rows --

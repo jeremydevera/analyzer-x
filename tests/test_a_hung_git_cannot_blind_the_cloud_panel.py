@@ -111,19 +111,27 @@ def test_the_kill_takes_the_grandchild_too():
     """`git fetch` runs `git-remote-https`, which holds the same stdout and
     stderr handles. Killing only the parent leaves the pipes open, which is
     precisely why the drain never finished."""
+    from tradingagents import portable
+
     src = inspect.getsource(cs._git_kill_tree)
+    assert "portable.kill_tree(proc.pid, timeout=10)" in src, \
+        "the tree, and bounded"
+    assert "proc.kill()" in src
     # /T is the whole point: it takes the tree, not just the pid. And it is
     # ONE call -- asking portable.child_pids instead costs a PowerShell start,
     # measured at 20 s of the 32 s this path first took, on the very thread a
-    # blank panel is waiting on.
-    assert '"/T"' in src and '"/F"' in src, "taskkill must take the TREE"
-    assert "timeout=10" in src, "even the kill is bounded"
-    assert "killpg" in src, "and the same idea off Windows"
-    assert "proc.kill()" in src
-    # THE CODE, NOT THE PROSE. The docstring above names `portable.child_pids`
-    # to say why it is NOT used, and a plain `in src` check is satisfied by
-    # that sentence -- the trap this repo has now fallen into four times.
-    body = ast.parse(inspect.getsource(cs._git_kill_tree)).body[0]
+    # blank panel is waiting on. The unix-only calls live in portable.py
+    # because test_no_module_outside_portable_names_a_unix_only_api refuses
+    # `os.killpg` and `signal.SIGKILL` anywhere else.
+    kill = inspect.getsource(portable.kill_tree)
+    assert '"/T"' in kill and '"/F"' in kill, "taskkill must take the TREE"
+    assert "timeout=timeout" in kill, "even the kill is bounded"
+    assert "killpg" in kill, "and the same idea off Windows"
+    src = kill
+    # THE CODE, NOT THE PROSE. The docstring names `child_pids` to say why it
+    # is NOT used, and a plain `in src` check is satisfied by that sentence --
+    # the trap this repo has now fallen into four times.
+    body = ast.parse(src).body[0]
     body.body = [n for n in body.body
                  if not (isinstance(n, ast.Expr)
                          and isinstance(n.value, ast.Constant))]

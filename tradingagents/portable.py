@@ -123,6 +123,35 @@ def kill_hard(pid: int) -> None:
     os.kill(pid, signal.SIGTERM if WINDOWS else signal.SIGKILL)
 
 
+def kill_tree(pid: int, *, timeout: int = 10) -> None:
+    """Kill a process AND everything it spawned, best effort, quickly.
+
+    The grandchild is usually the point. `git fetch` runs `git-remote-https`,
+    which inherits the parent's stdout/stderr handles — kill only the parent
+    and the pipes stay open, so a `communicate()` draining them never
+    returns. That is exactly how the cloud panel went blind for 17 minutes on
+    Sep 12, 2026 (docs/RCA.md RCA-2026-09-12-I).
+
+    ONE cheap call on each platform. The first version of this asked
+    `child_pids`, which shells out to PowerShell on Windows and measured
+    **20 seconds** — on the very thread a blocked reader is holding. A
+    cleanup slower than the hang it cleans up after is its own hang.
+
+    `taskkill /T /F` on Windows; the process GROUP elsewhere, which is why
+    this lives here: `os.killpg`, `os.getpgid` and `signal.SIGKILL` do not
+    exist on Windows and `test_no_module_outside_portable_names_a_unix_only_
+    api` refuses them anywhere but this file.
+    """
+    pid = int(pid)
+    if WINDOWS:
+        with contextlib.suppress(Exception):
+            subprocess.run(["taskkill", "/T", "/F", "/PID", str(pid)],
+                           capture_output=True, timeout=timeout)
+        return
+    with contextlib.suppress(Exception):
+        os.killpg(os.getpgid(pid), signal.SIGKILL)
+
+
 def child_pids(parent: int) -> list[int]:
     """Direct children of `parent`, by asking the OS's process table."""
     if WINDOWS:

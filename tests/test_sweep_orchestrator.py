@@ -6,9 +6,8 @@ the candles already stored. These tests pin each one.
 """
 
 import json
-import time
-
 import sys
+import time
 
 import pytest
 

@@ -90,7 +90,7 @@ def test_the_first_confluence_that_fires_wins_and_the_rest_are_not_asked():
 def test_the_priority_ORDER_changes_the_trade():
     """The same four setups, asked in the other order, take the other side —
     which is why both orders are measured and neither is assumed."""
-    says = dict(soup1=[1], mom=[0], soup=[0], donch=[-1])
+    says = {"soup1": [1], "mom": [0], "soup": [0], "donch": [-1]}
     assert _run("cx_first", **says) == [1]
     assert _run("cx_firstr", **says) == [-1]
 
@@ -109,7 +109,7 @@ def test_a_tie_is_not_a_majority():
 
 
 def test_three_of_five_is_stricter_than_two_of_four():
-    two = dict(soup1=[1], mom=[1], soup=[0], donch=[0], ttm=[0])
+    two = {"soup1": [1], "mom": [1], "soup": [0], "donch": [0], "ttm": [0]}
     assert _run("cx_any2", **two) == [1]
     assert _run("cx_maj3", **two) == [0], "two votes must not clear a 3-of-5"
     assert _run("cx_maj3", soup1=[1], mom=[1], soup=[1], donch=[0],
@@ -128,7 +128,7 @@ def test_the_escalator_asks_for_less_agreement_WITH_the_trend():
     """Two votes behind the 200-bar trend, three in front of it. Same bar,
     same setups, different answer — the non-linear part."""
     global _LEVEL1
-    says = dict(soup1=[1], mom=[1], soup=[0], donch=[0], ttm=[0])
+    says = {"soup1": [1], "mom": [1], "soup": [0], "donch": [0], "ttm": [0]}
     _LEVEL1 = [1]
     assert _run("cx_esc", **says) == [1], "with the trend, two is enough"
     _LEVEL1 = [-1]

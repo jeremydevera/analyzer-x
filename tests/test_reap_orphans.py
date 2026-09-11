@@ -1,5 +1,7 @@
-import pytest
 import sys
+
+import pytest
+
 """The reaper must never be able to signal a live process.
 
 On 2026-08-25 the Mac carried 139 pool workers from sweeps up to three days old,

@@ -127,30 +127,30 @@ def build_cascades(setups, bundle, level1, level2_hits, ok, zeros):
 
     # 1 — the operator's shape, exactly: first of four that fires.
     rules["cx_first"] = _make(
-        lambda b, d, o, h, l, c, v, t: [_first(d, LEAD, i) for i in range(len(c))],
+        lambda b, d, o, hh, lw, c, v, t: [_first(d, LEAD, i) for i in range(len(c))],
         "soup1, else mom, else soup, else donch — first one to fire wins")
 
     # 2 — the same four, asked in the opposite order. Which setup gets the
     #     first look changes the trades, and only measuring says which order
     #     suits a given coin.
     rules["cx_firstr"] = _make(
-        lambda b, d, o, h, l, c, v, t: [_first(d, LEAD[::-1], i) for i in range(len(c))],
+        lambda b, d, o, hh, lw, c, v, t: [_first(d, LEAD[::-1], i) for i in range(len(c))],
         "donch, else soup, else mom, else soup1 — the reverse priority")
 
     # 3 — nobody trades alone: two of four must agree on the same side.
     rules["cx_any2"] = _make(
-        lambda b, d, o, h, l, c, v, t: [_vote(d, LEAD, i, 2) for i in range(len(c))],
+        lambda b, d, o, hh, lw, c, v, t: [_vote(d, LEAD, i, 2) for i in range(len(c))],
         "two of (soup1, mom, soup, donch) agreeing on one side")
 
     # 4 — three of five. Rarer, and it should show up as a higher win rate.
     rules["cx_maj3"] = _make(
-        lambda b, d, o, h, l, c, v, t: [_vote(d, VOTERS5, i, 3) for i in range(len(c))],
+        lambda b, d, o, hh, lw, c, v, t: [_vote(d, VOTERS5, i, 3) for i in range(len(c))],
         "three of (soup1, mom, soup, donch, ttm) agreeing")
 
     # 5 — THE ESCALATOR. How much agreement is needed depends on the gate:
     #     behind the 200-bar trend two votes are enough, in front of it three.
-    def _esc(b, d, o, h, l, c, v, t):
-        l1 = level1(o, h, l, c, b)
+    def _esc(b, d, o, hh, lw, c, v, t):
+        l1 = level1(o, hh, lw, c, b)
         out = []
         for i in range(len(c)):
             two = _vote(d, VOTERS5, i, 2)
@@ -166,7 +166,7 @@ def build_cascades(setups, bundle, level1, level2_hits, ok, zeros):
         _esc, "two votes WITH the 200-bar trend, three votes without it")
 
     # 6 — the VETO: soup1 opens the trade unless mom points the other way.
-    def _veto(b, d, o, h, l, c, v, t):
+    def _veto(b, d, o, hh, lw, c, v, t):
         out = []
         for i in range(len(c)):
             s, m = d["soup1"][i], d["mom"][i]
@@ -176,9 +176,9 @@ def build_cascades(setups, bundle, level1, level2_hits, ok, zeros):
         _veto, "soup1, unless mom disagrees — a conflict cancels the trade")
 
     # 7 — LEVEL ESCALATOR on one setup: take the strictest version that fires.
-    def _lvl(b, d, o, h, l, c, v, t):
-        l1 = level1(o, h, l, c, b)
-        hits = level2_hits(o, h, l, c, v, t, b) if t else [0] * len(c)
+    def _lvl(b, d, o, hh, lw, c, v, t):
+        l1 = level1(o, hh, lw, c, b)
+        hits = level2_hits(o, hh, lw, c, v, t, b) if t else [0] * len(c)
         out = []
         for i in range(len(c)):
             s = d["soup1"][i]
@@ -198,19 +198,19 @@ def build_cascades(setups, bundle, level1, level2_hits, ok, zeros):
 
     # 8 — the FOUR-HOUR ranking's own cascade.
     rules["cx_4h"] = _make(
-        lambda b, d, o, h, l, c, v, t: [_first(d, FOURHOUR, i) for i in range(len(c))],
+        lambda b, d, o, hh, lw, c, v, t: [_first(d, FOURHOUR, i) for i in range(len(c))],
         "bosfvg, else obretest, else stflip, else diadx (the 4h research list)",
         needs_funding=False)
 
     # 9 — for the FAST frames: mean-reversion first, then the squeeze.
     rules["cx_fast"] = _make(
-        lambda b, d, o, h, l, c, v, t: [_first(d, FAST, i) for i in range(len(c))],
+        lambda b, d, o, hh, lw, c, v, t: [_first(d, FAST, i) for i in range(len(c))],
         "soup, else ttm, else soup1 — mean-revert first, for 15m and 30m")
 
     # 10 — the CONTROL, and the only linear one: both must agree. It is here
     #      so the operator can see in the same table what demanding agreement
     #      from everybody costs in trades.
-    def _both(b, d, o, h, l, c, v, t):
+    def _both(b, d, o, hh, lw, c, v, t):
         return [d["soup1"][i] if d["soup1"][i] and d["soup1"][i] == d["mom"][i]
                 else 0 for i in range(len(c))]
     rules["cx_both"] = _make(

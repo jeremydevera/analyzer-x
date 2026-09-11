@@ -219,7 +219,6 @@ def test_fraction_only_phases_do_not_round_to_zero():
 def test_a_backtest_started_without_a_field_says_which_one():
     """`failed: 'coins'` is a KeyError repr on screen. The operator is new to
     this: name the missing thing in words."""
-    import sys
 
     import pytest
 

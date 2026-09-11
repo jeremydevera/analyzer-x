@@ -172,6 +172,121 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-12-J — 211 GB of abandoned git transfers on the store's own drive, built up over six days and still growing
+
+**CEO**
+
+* Your G: drive had lost **211 GB** to junk files nobody had looked at. They
+  had been piling up since Sep 06 and a new one arrived while I was reading
+  the folder. After clearing them the drive went from **314.7 GB free to
+  538.3 GB free**, and the repository folder from **219 GB to 11 GB**.
+* Why: the app asks GitHub for the machines' live progress by downloading a
+  branch. That branch had grown to **250,966 saved states** because twenty
+  machines write one every few seconds — so the download got slower every
+  day, and every download that ran out of time left its half-finished file
+  behind. Nothing ever removed them, and the fuller the folder got the slower
+  the next download was, which made it fail more often.
+* What stops it now: the app downloads only the latest state instead of the
+  whole six-day history, and it clears any half-finished download older than
+  an hour before it starts. Your own work history is untouched — the
+  repository still goes all the way back to its first day.
+
+**DEV**
+
+* `cloud_sweep._fetch_progress` ran a full `git fetch` of `sweep-progress`
+  (250,966 commits) on a 180 s timeout, while its only reader,
+  `live_progress`, does `git show <ref>:progress/run-<id>/shard-<n>.json` —
+  the TIP, never the history. Each timeout left a partial
+  `.git/objects/pack/tmp_pack_*`, which git's own `count-objects -vH` reports
+  as "garbage found"; 6,876 of them held 211.05 GB against 6.97 GB of real
+  packs.
+* Invariant broken: **"temporary" is a promise the code has to keep**
+  (CLAUDE.md, "Big files go where the STORE is"), and **measure the SIZE
+  before calling something temporary**. Both rules were written on
+  2026-09-10 for `%TEMP%` scratch and never applied to the transfers this
+  repo's own git makes on the same drive.
+* Guard: `tests/test_the_progress_branch_does_not_eat_the_disk.py` — 8 tests;
+  the "only the tip is read" argument is asserted, not assumed, so a future
+  history walk fails here rather than silently breaking on a shallow clone.
+
+**SAW** — not reported: found at `Sep 12, 2026 3:41am` while establishing why
+the cloud panel's per-machine detail would not arrive for run 34631292767,
+which was measuring perfectly.
+
+**TIMELINE**
+
+1. `Sep 12, 2026 3:24am` — the panel showed `available: true` with the right
+   run and `shards: []`. The run itself was healthy: 20 shards, in progress.
+2. `3:30am` — `_fetch_progress` timed out at **180.6 s** and was killed (the
+   bounded timeout from RCA-2026-09-12-I, working). `live_progress` then
+   answered **20 shards in 114.4 s** off the ref an earlier fetch had left,
+   so the data was reachable and the fetch in front of it was not.
+3. `3:35am` — `git count-objects -vH` printed `warning: garbage found:
+   .git/objects/pack/tmp_pack_...`, repeatedly.
+4. `3:41am` — counted: **6,876 `tmp_pack_*` files, 211.05 GB**, against
+   **59 real `.pack` files, 6.97 GB**. Oldest `Sep 06, 2026 12:41pm`, newest
+   `Sep 12, 2026 3:41am` — arriving as it was being measured. `.git` totalled
+   **219.03 GB**; G: had **314.7 GB free of 909.5**.
+5. `origin/sweep-progress`: **250,966 commits**.
+6. `3:50am` — deleted every `tmp_pack_*` older than two hours (the fetch
+   timeout is 180 s, so nothing live is close): **6,862 files, 208.36 GB**.
+   13 recent ones were deliberately kept.
+7. `3:55am` — `.git` **11.04 GB**, G: free **538.3 GB**. Main's history
+   intact: 695 commits, still reaching the original root `c2fa046a9bc1`
+   ("TradingAgents-AI"); `.git/shallow` holds four entries, all on the
+   progress branch.
+8. With `--depth=1`, three consecutive fetches measured **69.3 s** (the first
+   also establishes the boundary), **42.8 s**, **19.3 s** — against a 180 s
+   timeout it had been exceeding.
+
+**ROOT CAUSE** — an append-only progress branch was fetched in full on every
+poll although only its tip is read, and every fetch that timed out left a
+partial pack that nothing ever removed.
+
+**WHY IT WAS NOT CAUGHT** — the disk rule in CLAUDE.md was bought on
+2026-09-10 by 147 leaked `tmp*` folders in `%TEMP%`, and the guards written
+for it ask where a `TemporaryDirectory` is created. Not one asks about the
+bytes a SUBPROCESS writes on our behalf, in our own `.git`, on the store's
+drive. **We audited the temporary files we create and ignored the ones we
+cause.** The second half of the rule was skipped too — "measure the SIZE
+before calling something temporary": nobody had ever counted the progress
+branch, and 250,966 commits is not a number anyone would have guessed from
+"a small JSON file per machine".
+
+It was also invisible from the symptom: a slow fetch looks like a slow
+network, and the feedback loop hid its own cause — each timeout made `.git`
+bigger, which made the next fetch slower, which made another timeout more
+likely. The thing that finally pointed at it was git's own
+`count-objects -vH`, which had been saying "garbage found" all along to
+nobody.
+
+**COST** — no money, no lost measurement, no trade affected. **211 GB of the
+operator's 909 GB store drive for six days** — the same drive the candle and
+row stores live on, and the drive they moved everything to specifically to
+keep big files off C:. Plus the cloud panel's per-machine detail, which was
+the visible symptom.
+
+**FIX** — this commit. `_PROGRESS_FETCH = ("--depth=1", "--no-tags",
+"--force", "origin")`, used by both the fetch and its retry-after-lock-race;
+and `_sweep_dead_packs()`, which runs before each fetch (at most once every
+ten minutes) and unlinks `.git/objects/pack/tmp_pack_*` older than
+`DEAD_PACK_S` (3600 s), in this repository's pack directory only, logging
+what it freed. A file another git process holds open is skipped, not raised.
+The 208.36 GB already on disk was deleted by hand at 3:50am.
+
+**GUARD** — `tests/test_the_progress_branch_does_not_eat_the_disk.py`, 8
+tests: the fetch is shallow in BOTH places; only the tip is read (asserted
+against the AST of `live_progress`); an hour-old partial pack is removed
+while a live one and every real `.pack`/`.idx` survive; the sweep is rate
+limited; it touches nothing but our own prefix in our own directory; an
+open handle is not an error; the sweep runs BEFORE the fetch that might
+leak; and it prints what it freed. Every "this call is not made" assertion
+runs against code with docstrings and comments stripped, because the
+explanation names the call it forbids — the trap this repo has now paid for
+five times.
+
+---
+
 ## RCA-2026-09-12-I — one hung `git fetch` blanked the cloud panel until the API was restarted, because a subprocess timeout is not a guarantee
 
 **CEO**

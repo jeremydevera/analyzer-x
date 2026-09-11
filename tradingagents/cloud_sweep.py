@@ -421,6 +421,75 @@ def _git(*args, timeout: int = 120) -> str:
     return out
 
 
+# HOW THE PROGRESS BRANCH IS TAKEN (Sep 12, 2026). `--depth=1`, and it is not
+# an optimisation — it is the difference between a fetch and a disaster.
+#
+# Twenty machines commit a small JSON file every few seconds for the length of
+# every run, so `origin/sweep-progress` had **250,966 commits** by Sep 12.
+# Only the TIP has ever been read: `live_progress` does `git show
+# <ref>:progress/run-<id>/shard-<n>.json`. The whole history was being carried
+# for nothing, the fetch had grown past its 180 s timeout, and every fetch
+# that timed out left its partial pack behind as `.git/objects/pack/tmp_pack_*`
+# — git's own `count-objects` calls them "garbage found".
+#
+# Measured that morning on the operator's G: drive:
+#
+#     tmp_pack files : 6,876       211.05 GB
+#     real .pack     :    59         6.97 GB
+#     oldest         : Sep 06, 2026 12:41pm
+#     newest         : Sep 12, 2026 3:41am   (still arriving)
+#
+# 211 GB of abandoned transfer on the drive the STORE lives on, built up over
+# six days, and a feedback loop: the bigger `.git` grew the slower the fetch
+# got, and the slower it got the more often it was killed. Same rule as
+# RCA-2026-09-10-B — **"temporary" is a promise the code has to keep** — and
+# the same cause, a killed process that never reaches its own cleanup.
+#
+# `--no-tags` because the progress branch needs none, and a shallow fetch of
+# ONE ref leaves the repo's own history untouched.
+_PROGRESS_FETCH = ("--depth=1", "--no-tags", "--force", "origin")
+
+# a partial pack older than this was left by a fetch that is long dead: the
+# fetch timeout is 180 s, so nothing live is an hour old
+DEAD_PACK_S = 3600.0
+_SWEPT_AT = [0.0]
+
+
+def _sweep_dead_packs() -> None:
+    """Delete partial packs left behind by fetches that were killed.
+
+    OURS TO CLEAN, and only ours: `.git/objects/pack/tmp_pack_*` in this
+    repository, older than an hour. Never `%TEMP%`, never a pack git is
+    writing now — the newest 13 were minutes old when this was found and are
+    exactly what must not be touched.
+
+    Best effort and silent: a file another git process has open cannot be
+    removed on Windows, and that is not a failure worth raising into a
+    progress read.
+    """
+    now = time.time()
+    if now - _SWEPT_AT[0] < 600:
+        return                       # at most once every ten minutes
+    _SWEPT_AT[0] = now
+    packs = pathlib.Path(__file__).resolve().parent.parent / ".git" / "objects" / "pack"
+    freed = gone = 0
+    with contextlib.suppress(OSError):
+        for f in packs.glob("tmp_pack_*"):
+            try:
+                st = f.stat()
+                if now - st.st_mtime < DEAD_PACK_S:
+                    continue
+                size = st.st_size
+                f.unlink()
+            except OSError:
+                continue             # in use, or already gone
+            freed += size
+            gone += 1
+    if gone:
+        logger.warning("cloud sweep: removed %d abandoned git pack(s), %.2f GB",
+                       gone, freed / 1e9)
+
+
 def _fetch_progress() -> None:
     """Fetch the progress branch, surviving a LOCK RACE on its tracking ref.
 
@@ -440,9 +509,10 @@ def _fetch_progress() -> None:
     the fetch retried once. Any other failure is raised as before.
     """
     ref = f"refs/remotes/origin/{PROGRESS_BRANCH}"
+    _sweep_dead_packs()
     try:
-        _git("fetch", "--quiet", "origin", f"{PROGRESS_BRANCH}:{ref}",
-             "--force", timeout=180)
+        _git("fetch", "--quiet", *_PROGRESS_FETCH, f"{PROGRESS_BRANCH}:{ref}",
+             timeout=180)
         return
     except CloudError as exc:
         if "cannot lock ref" not in str(exc):
@@ -450,8 +520,8 @@ def _fetch_progress() -> None:
     # drop the wedged tracking ref and take the branch again from scratch
     with contextlib.suppress(CloudError):
         _git("update-ref", "-d", ref, timeout=30)
-    _git("fetch", "--quiet", "origin", f"{PROGRESS_BRANCH}:{ref}",
-         "--force", timeout=180)
+    _git("fetch", "--quiet", *_PROGRESS_FETCH, f"{PROGRESS_BRANCH}:{ref}",
+         timeout=180)
 
 
 def live_progress(run_id: int, slug: str | None = None) -> list:

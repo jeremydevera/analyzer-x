@@ -3006,3 +3006,57 @@ made real slots `SYM#live#KEY`, so the sweep would have asked MEXC about
 ledger's symbol column. Fixed to `coin_of_slot(key)`; guard:
 `tests/test_partial_tp.py::test_the_reconcile_sweep_asks_about_the_CONTRACT_
 not_the_slot`.
+
+---
+
+## Sep 11, 2026 — every cloud win rate was overstated: the rules were blind over the start of their own window
+
+**CEO summary**
+- Every backtest measured on GitHub reported a better win rate than the same
+  strategy really had. Not a rounding difference: some strategies shown as
+  profitable actually lose money.
+- The reason: a strategy needs ~200 candles of history before its averages
+  work. The cloud gave it the window and nothing before it, so at the start of
+  every window the strategy could not tell what to do — and the trades it
+  missed there were disproportionately losers.
+- No money was lost. Nothing was deployed from those numbers and no report was
+  published; the check that caught it was replaying a row on this PC and
+  comparing.
+
+**DEV summary**
+- `.github/scripts/sweep_shard.py::window()` cut to `DAYS + 30` CALENDAR days
+  and `run_pair` traded from bar 0. 30 days is 2,880 spare bars at 15m and
+  **180** at 4h — under the 200 every `signals_conf` rule reads through its
+  SMA200 — so the rule abstained across the first 200 bars of the measurement.
+- Fixed: `window()` returns `(df, warm)` keeping `WARMUP_BARS = 300` (>=
+  `market_sweep.CONTEXT_BARS`) in front of the measured span; `dirs_idx` drops
+  any signal with `k2 < warm`; `days`, `bars` and the h1/h2 split describe the
+  measured region only.
+- Guards: `tests/test_shard_warmup.py` (6 tests) and the rewritten
+  `test_sweep_shard_retry.py::test_the_window_keeps_warm_up_in_FRONT_of_what_it_measures`.
+
+**Timeline, with real numbers**
+1. **11:00am** — the 30-day, 4-timeframe, all-coin sweep (run 34539164594)
+   finishes: 88,285,468 rows, 4,002 coin+timeframe pairs, 1,078 rows at a 90%+
+   win rate.
+2. **11:58am** — the top row, PUNDIX 1h `cx_veto`, claims **17 wins, 0 losses,
+   100%, +$66.32**. Rebuilding its trade log from the same 1,439 candles gives
+   **15 wins, 2 losses, 88.2%, +$48.07**.
+3. The two missing trades are **Jul 11 6:00pm SHORT −$4.11** and **Jul 13
+   9:00pm LONG −$4.15** — the first two days of the window.
+4. Twelve rows replayed across four cascades and three timeframes: **12 of 12
+   disagreed**, and four flipped from profit to loss (MMT 1h: +$8.04 published,
+   **−$3.83** replayed; CRCLSTOCK 1h: +$2.68 -> −$2.57).
+5. Cause isolated by running the cloud's own engine locally: `fast_grid` on the
+   cut agrees with the row (10/10/$24.00 for MAV 4h), so the engines are fine —
+   the INPUT was short. Signals inside one 30-day window, same coin, same rule:
+   **MAV 4h 0 cold -> 11 warm**, PUNDIX 1h 47 -> 39 (different signals, not
+   merely fewer), BAND 30m 49 -> 59.
+
+**Why the tests did not catch it:** `test_fast_grid.py` pins the engine against
+itself (74 tests, all passing here) and `test_sweep_shard_retry.py` pinned the
+window as `DAYS + 30` — it asserted the bug. Nothing compared a cloud row
+against a local replay of the same row, which is the only check that could see
+this. That comparison is now the first thing done with a finished sweep.
+
+**Cost:** zero in money; one 88M-row sweep discarded and re-run.

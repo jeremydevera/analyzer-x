@@ -294,13 +294,31 @@ class PairFailed(Exception):
     """The venue failed this pair part-way. Nothing of it was written."""
 
 
+# A rule may read up to 200 bars back (every confluence setup does, through
+# its 200-bar average). Hand it fewer and it abstains -- silently, at the
+# START of the window, where the abstention looks like "no trade" instead of
+# "cannot tell". market_sweep uses the same number for the same reason.
+WARMUP_BARS = 300
+
+
 def window(df):
-    """The cut market_sweep.refresh_candles makes -- everything newer than
-    DAYS+30 days ago -- so a cloud pair and a local pair see the same bars."""
+    """`(df, warm)` -- the measured window with WARMUP_BARS of history in
+    front of it, and how many leading bars are warm-up only.
+
+    Sep 11, 2026: this used to cut to DAYS+30 CALENDAR days and trade the
+    whole cut from bar zero. At 4h, 30 days is 180 bars -- fewer than the 200
+    a confluence rule needs -- so the rule was blind over the first 200 bars
+    of its own window and 40% of MAV's signals never existed. The 30 days
+    also scaled with nothing: it was 2,880 spare bars at 15m and not enough
+    at 4h. BARS are what a lookback is counted in, so bars are what is kept.
+    """
     import pandas as pd
 
-    cut = pd.Timestamp.utcnow().tz_localize(None) - pd.Timedelta(days=DAYS + 30)
-    return df[df["Date"] >= cut].reset_index(drop=True)
+    cut = pd.Timestamp.now("UTC").tz_localize(None) - pd.Timedelta(days=DAYS)
+    measured = df[df["Date"] >= cut]
+    warm = min(WARMUP_BARS, len(df) - len(measured))
+    start = len(df) - len(measured) - warm
+    return df.iloc[start:].reset_index(drop=True), warm
 
 
 # ------------------------------------------------------------ saved positions
@@ -665,22 +683,26 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
         df = at._closed_bars(fx.klines(sym, iv, cap), bs)
     except Exception as exc:
         raise PairFailed(f"{sym} {tf}: {str(exc)[:60]}") from exc
-    df = window(df)
+    df, warm = window(df)
     # the shared floor (backtest_report.MIN_BARS), never a private 2000: that
     # rejected 1h at 60 days and 1d always, while the local sweep measured them
-    if len(df) < br.min_bars(tf):
-        log(f"{sym} {tf}: only {len(df)} bars, skipped")
+    if len(df) - warm < br.min_bars(tf):
+        log(f"{sym} {tf}: only {len(df) - warm} measurable bars, skipped")
         return 0
     coin = sym.replace("_USDT", "")
-    days = int((df["Date"].iloc[-1] - df["Date"].iloc[0]).days)
+    # the MEASURED span, never the warm-up's. A row that says 59 days while
+    # 33 of them were only feeding averages is a label over the wrong number.
+    days = int((df["Date"].iloc[-1] - df["Date"].iloc[warm]).days)
     hi = [float(x) for x in df["High"]]
     lo = [float(x) for x in df["Low"]]
     cl = [float(x) for x in df["Close"]]
     op = [float(x) for x in df["Open"]]
     vol = [float(x) for x in df["Volume"]] if "Volume" in df.columns else None
     ts = list(df["Date"].to_numpy().astype("datetime64[ms]").astype("int64"))
-    nbars = len(df)
-    half = nbars // 2
+    # `bars` and the half-split describe the MEASURED region: the warm-up
+    # bars are history the rule was allowed to read, not bars it traded.
+    nbars = len(df) - warm
+    half = warm + (nbars // 2)
     kept = 0
     lines = []                  # written only when the pair completes
     pair_states: dict = {}      # combo key -> saved position (write_state)
@@ -747,7 +769,10 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
             # and the halves derive from the full walk, so six engine runs
             # collapse into two walks — parity-pinned in tests/test_fast_grid.py.
             # ~3x more market per 6-hour runner.
-            dirs_idx = [k2 for k2, v2 in enumerate(dirs) if v2]
+            # NO TRADING INSIDE THE WARM-UP. Those bars exist so the
+            # averages are defined by the time the window starts; a signal
+            # there would be measured on an indicator that is still filling.
+            dirs_idx = [k2 for k2, v2 in enumerate(dirs) if v2 and k2 >= warm]
             for (sl, tp) in br.pairs_for(tf):
                 if liq is not None and sl * 100 >= liq:
                     continue

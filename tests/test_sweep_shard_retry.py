@@ -90,14 +90,38 @@ def test_pair_retries_match_the_local_sweep(shard):
     assert shard.PAIR_RETRIES == msw.PAIR_RETRIES
 
 
-def test_the_window_is_the_local_sweeps_cut(shard):
-    """DAYS=60 keeps what refresh_candles keeps: bars newer than 90 days ago."""
-    now = pd.Timestamp.utcnow().tz_localize(None)
-    df = pd.DataFrame({"Date": [now - pd.Timedelta(days=d) for d in (100, 91, 89, 10)],
-                       "Close": [1.0, 2.0, 3.0, 4.0]})
-    got = shard.window(df)
-    assert list(got["Close"]) == [3.0, 4.0]
+def test_the_window_keeps_warm_up_in_FRONT_of_what_it_measures(shard):
+    """DAYS is the window MEASURED; WARMUP_BARS of history ride in front of
+    it so a 200-bar average is already defined at the first traded bar.
+
+    This used to keep DAYS+30 CALENDAR days and trade the lot from bar zero.
+    At 4h that spare 30 days is 180 bars — fewer than the 200 a confluence
+    rule reads — so the rule was blind over the start of its own window and
+    MAV 4h produced 0 signals where 11 existed (Sep 11, 2026).
+    """
+    now = pd.Timestamp.now("UTC").tz_localize(None)
+    # 5 bars older than the window, 3 inside it
+    df = pd.DataFrame({
+        "Date": [now - pd.Timedelta(days=d)
+                 for d in (200, 150, 120, 100, 80, 40, 20, 1)],
+        "Close": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]})
+    got, warm = shard.window(df)
     assert shard.DAYS == 60
+    # everything is kept (warm-up is capped by what exists), and `warm` says
+    # how many of the leading bars are history rather than measurement
+    assert list(got["Close"]) == [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]
+    assert warm == 5, "the five bars older than 60 days are warm-up"
+    assert list(got["Close"])[warm:] == [6.0, 7.0, 8.0]
+
+
+def test_the_warm_up_is_capped_by_the_history_that_exists(shard):
+    """A young contract has no 300 bars to spare; it warms with what it has
+    rather than refusing to be measured."""
+    now = pd.Timestamp.now("UTC").tz_localize(None)
+    df = pd.DataFrame({"Date": [now - pd.Timedelta(days=d) for d in (5, 3, 1)],
+                       "Close": [1.0, 2.0, 3.0]})
+    got, warm = shard.window(df)
+    assert warm == 0 and len(got) == 3
 
 
 def test_the_floor_and_the_rows_are_the_shared_rules():

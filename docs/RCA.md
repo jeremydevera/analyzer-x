@@ -172,6 +172,108 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-12-G — "no stored strategy passes" was a claim about 893,508 rows, made after checking 25
+
+**CEO**
+
+* Your filter — Past 30 days, Winrate 85% or better, TP at least as wide as SL
+  — said **no stored strategy passes**. That was not true. Real strategies
+  passed it; the screen just never looked at them.
+* Why: 893,508 of your saved strategies clear the win-rate and TP/SL parts. But
+  "past 30 days" has to re-run each one against your stored candles, which is
+  slow, so the page only ever fetches **25** — the 25 with the biggest lifetime
+  profit. All 25 missed inside the window, and the page reported that as a fact
+  about all 893,508. It checked **0.003%** of them.
+* What stops it now: the sentence says what it actually did — how many matched,
+  how many it could check, and how to see the rest. It can no longer speak for
+  rows it never fetched. Checking by hand found 30 passing on one coin alone.
+
+**DEV**
+
+* `StrategiesPanel.tsx:1394` printed one unconditional sentence whenever
+  `shown.length === 0 && chips.length > 0`. With a days window the panel caps
+  the request at `DAYS_PAGE = 25` (`StrategiesPanel.tsx:489`, API refuses more
+  than `api.py:766 DAYS_ROW_MAX = 50`), SQL orders by WHOLE-HISTORY profit, and
+  `api.py:399 -> rows_index.window_floors` cuts every row missing the floor on
+  the window's own `w_winrate`. Empty page, non-empty store, one sentence for
+  both.
+* Invariant broken: **a page may report only what it examined** — kit item G's
+  *"filter where the data is, never after a window has been taken"*, in its
+  label form. `total` (the pre-window SQL count) was already in the payload and
+  on screen eight lines above; the empty-state sentence simply did not read it.
+* Guard: `tests/test_empty_page_is_not_an_empty_store.py`, 8 tests. Restoring
+  the old unconditional sentence turns 5 of them red.
+
+**SAW** — the operator, `Sep 12, 2026`, three filter chips on screen:
+
+> *"no stored strategy passes Past 30 days with Winrate 85% or better with TP
+> at least as wide as SL — lower the floor to see what is close."*
+
+then *"is this accurate?"*, then *"does my filter really shows 0 resullt?"*.
+
+**TIMELINE**
+
+1. The index holds **96,307,386** rows over **5,388** pairs, 4 pairs behind.
+2. `winrate >= 85` matches **1,961,285** rows (111 s). Adding `tp >= sl`:
+   **893,508** (42 s). Both floors run in SQL, on whole-history figures.
+3. The panel, with a days window on, asks for **25** rows
+   (`DAYS_PAGE = 25`) sorted by whole-history profit.
+4. `window_floors` re-measures those 25 over the last 30 days and cuts every
+   one whose **window** win rate is under 85. All 25 go.
+5. The page prints *"no stored strategy passes …"* — 25 examined, 893,508
+   spoken for, **0.003%**.
+6. Re-measuring rows the page never asked for, stopping at the first coin with
+   matches: **30 rows pass all three filters**, e.g. **0G 15m
+   `cf_obretest_l1` TP 2.5% / SL 1.2% flat — 2 trades, 2 wins, 0 losses,
+   100% win rate, +$4.79** over the window. There are 4,168 pairs with candles
+   inside the last three days.
+
+**ROOT CAUSE** — the empty-state sentence was written for one case (nothing
+matched) and rendered in two (nothing matched; nothing SURVIVED a window
+applied to a 25-row slice). It is the label half of kit item G: the rows
+behaved exactly as designed, and the words around them claimed a search that
+never happened.
+
+**WHY IT WAS NOT CAUGHT** — 289 tests read this panel, including
+`test_window_floors_apply_to_the_window.py` and `test_days_window.py`, and
+every one of them asserts on the ROWS. None asserts on the sentence shown when
+there are no rows. An empty state has no rows to check, so a suite built around
+row correctness has no natural place to stand — the assertion has to be made
+against the WORDS, deliberately. The count that falsifies the sentence
+(`total`) was already rendered eight lines above it.
+
+**COST** — no money. The operator was told their filter had no answers when it
+had 893,508 candidates and at least 30 passing rows, and was being steered to
+widen a filter that was working.
+
+**FIX** — this commit. The empty state now branches: when a window actually cut
+rows (`winHidden > 0`) it names the match count, the number really checked, and
+how to see the rest; when the page ran past the last row it says so; otherwise
+it keeps the original sentence. Found by the `harddev` loop, in order —
+(1) a capped `total` printed as exact, (2) a page past the end blamed on the
+window, (3) `min(askPage, total)` was an estimate where `winHidden` is the
+exact number re-measured, (4) the MONTHS window has the same shape and the
+first fix covered only days, (5) `restateMax` — an identifier I invented, which
+would have thrown at render, (6) coin/tf/signal/profitable are already chips
+and were being appended AGAIN, so with the profit filter on it read "passes
+Made money … and profit above zero".
+
+**GUARD** — `tests/test_empty_page_is_not_an_empty_store.py`:
+`test_the_empty_message_never_speaks_for_rows_it_did_not_check`,
+`test_it_names_how_many_matched_and_how_many_were_actually_checked`,
+`test_the_window_is_only_blamed_when_it_actually_cut_something`,
+`test_a_capped_total_is_never_printed_as_exact`,
+`test_the_MONTHS_window_gets_the_same_answer_as_days`,
+`test_the_filter_set_is_named_once`,
+`test_the_caps_that_make_this_possible_are_still_what_the_message_says` (pins
+`DAYS_ROW_MAX`, `RESTATE_MAX` and `DAYS_PAGE` so the arithmetic cannot drift
+from the words), and `test_the_window_really_can_hide_passing_rows` — whose
+first draft asserted on `winrate` and passed both rows through, because
+`window_floors` judges only `restated` rows and reads `w_winrate`. Rule 23 in
+miniature, inside the test for a labelling bug.
+
+---
+
 ## RCA-2026-09-12-F — UPDATE ALL BACKTESTS sat on "starting" for 9 minutes 39 seconds with an empty log, reading 1.77 GB to learn 1,054 names
 
 **CEO**

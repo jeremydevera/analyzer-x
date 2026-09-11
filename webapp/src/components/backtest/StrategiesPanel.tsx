@@ -1389,16 +1389,66 @@ export default function StrategiesPanel() {
           timeframe you copied it from.
         </p>
       )}
+      {/* AN EMPTY PAGE IS NOT AN EMPTY STORE (Sep 12, 2026). This read "no
+          stored strategy passes <every chip>" on a filter where **893,508**
+          rows passed the non-window floors: a days window re-measures each
+          row from this PC's candles, so the request fetches at most
+          `askPage` (25) of them, sorted by WHOLE-HISTORY profit, and
+          `window_floors` cuts the ones that miss inside the window. All 25
+          missed, and the page reported that as a fact about the store. A
+          re-measure of rows the page never asked for found 30 passing on 0G
+          15m alone (`cf_obretest_l1` tp2.5/sl1.2 flat: 2 trades, 2W/0L,
+          100%, +$4.79). So the sentence names WHAT WAS CHECKED. */}
       {!err && !waiting && !shown.length && !servedFilters.rowId && chips.length > 0 && (
         <p className="px-5 pt-2 text-theme-sm text-warning-600 dark:text-warning-400">
-          no stored strategy passes{" "}
-          <b>
-            {/* the SERVED chips, so this sentence names the filter the
-                store actually ran rather than the boxes on screen */}
-            {chips.map((c) => c.text).join(" with ")}
-          </b>
-          {[coin, tf, signal].filter(Boolean).length ? ` and ${[coin, tf, signal].filter(Boolean).join(" · ")}` : ""}
-          {profitable ? " and profit above zero" : ""} — lower the floor to see what is close.
+          {/* THE FILTER SET IS NAMED ONCE. `chips` already holds coin, tf,
+              signal and "Made money" (k: coin/tf/signal/profitable), and this
+              sentence used to append all four AGAIN in different words — with
+              the profit filter on it read "passes Made money ... and profit
+              above zero", one filter printed twice. label-must-match-data:
+              the sentence must describe the filter set, not a second guess
+              at it. */}
+          {/* GATED ON winHidden, not on `days` alone. "The window cut them" is
+              only true when the window ACTUALLY cut something; with a capped
+              count the page can be sent past the end (line ~756), which also
+              empties the table with total > 0, and blaming the window there
+              would be a second false label. winHidden is also the EXACT number
+              re-measured — rows fetched, all of them cut — where
+              min(askPage, total) is only an estimate of it. */}
+          {(servedFilters.days > 0 || servedFilters.months > 0) && total > 0 && winHidden > 0 ? (
+            <>
+              <b>{total.toLocaleString()}{capped ? "+" : ""}</b> stored{" "}
+              {total === 1 && !capped ? "strategy passes" : "strategies pass"}{" "}
+              <b>{chips.filter((c) => c.k !== "days" && c.k !== "months")
+                    .map((c) => c.text).join(" with ")}</b>
+. A{" "}
+              <b>past {servedFilters.months > 0
+                    ? `${servedFilters.months} month${servedFilters.months === 1 ? "" : "s"}`
+                    : `${servedFilters.days} days`}</b>{" "}
+              window re-measures each row from this PC&apos;s candles, so this request
+              could only check <b>{winHidden.toLocaleString()}</b> of them — the ones
+              with the biggest whole-history profit — and every one fell short inside
+              that window. Name a coin or timeframe to check a different set, or
+              remove the {servedFilters.months > 0 ? "months" : "days"} filter to
+              see all {total.toLocaleString()}{capped ? "+" : ""}.
+            </>
+          ) : total > 0 && page > 1 ? (
+            <>
+              nothing on <b>page {page.toLocaleString()}</b>. {total.toLocaleString()}
+              {capped ? "+" : ""} rows match{capped ? ", but a capped count lets the"
+                + " page run past the last one" : ""} — go back to page 1.
+            </>
+          ) : (
+            <>
+              no stored strategy passes{" "}
+              <b>
+                {/* the SERVED chips, so this sentence names the filter the
+                    store actually ran rather than the boxes on screen */}
+                {chips.map((c) => c.text).join(" with ")}
+              </b>
+ — lower the floor to see what is close.
+            </>
+          )}
         </p>
       )}
       {/* taller than 480px: with 5,000 rows on screen the old box showed

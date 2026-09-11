@@ -74,6 +74,31 @@ G. **filters for the columns that decide things**: min win rate, min profit tota
    to travel to the query. `/api/ledger` takes `actions` now, and returns `matched`
    beside `total` so "no trades" is distinguishable from "no ledger". Kit item G is the
    artifact case of this rule; the rule itself is about every screen.
+
+   **AND AN EMPTY PAGE MAY NEVER SPEAK FOR THE STORE (Sep 12, 2026).** The
+   same rule, in its LABEL half. With three filters on, Stored strategies
+   said *"no stored strategy passes Past 30 days with Winrate 85% or better
+   with TP at least as wide as SL"*. **893,508** rows cleared the two SQL
+   floors; a days window re-measures each row from this PC's candles, so the
+   panel fetches `DAYS_PAGE = 25` of them (the API refuses past
+   `DAYS_ROW_MAX = 50`, and a MONTHS window restates `RESTATE_MAX = 1`),
+   ordered by WHOLE-HISTORY profit, and `window_floors` cut all 25 on the
+   window's own win rate. The page reported that as a fact about the store.
+   It had checked **0.003%** of it, and a re-measure of rows it never asked
+   for found 30 passing on 0G 15m alone (`cf_obretest_l1` tp2.5/sl1.2 flat:
+   2 trades, 2W/0L, 100%, +$4.79).
+   **So: an empty result names what was EXAMINED, never what exists.** How
+   many matched the floors that could be answered in the query, how many were
+   actually re-measured, and the way to see the rest. `total` was already in
+   the payload and printed eight lines above — the empty state simply did not
+   read it. The same sentence must also never name a filter twice (coin, tf,
+   signal and "Made money" are already chips) and never print a capped
+   `total` as exact.
+   **WHY NO TEST HELD IT:** all 289 tests over that panel assert on ROWS, and
+   an empty state has none — so a row-shaped suite has nowhere to stand. When
+   a screen can render with zero rows, the assertion goes against the WORDS,
+   deliberately (`tests/test_empty_page_is_not_an_empty_store.py`; full
+   account `docs/RCA.md` RCA-2026-09-12-G).
 H. **a stable row ID as the first column** (`#LLZM9D`), HASHED FROM THE COMBINATION
    (`backtest_report.row_code`), never a per-page sequence — a sequence gives the same
    live row a different number on every page, which is how "#05146 / #02054 / not there"

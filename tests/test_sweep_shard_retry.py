@@ -145,7 +145,10 @@ def test_the_workflow_carries_the_window_to_the_shard():
     assert "      days:\n" in wf
     assert "DAYS: ${{ github.event.inputs.days }}" in wf
     src = _src()
-    assert 'os.environ.get("DAYS", "365")' in src
+    # the fallback is the PC's own 30-day default, never a year (Sep 10, 2026:
+    # "i only need past 30 days not 1 year") — the dispatch always sends it
+    assert 'os.environ.get("DAYS", "30")' in src
+    assert 'os.environ.get("DAYS", "365")' not in src
 
 
 def test_the_daily_floor_is_reachable_for_a_year_and_for_two_months():

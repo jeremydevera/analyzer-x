@@ -24,8 +24,11 @@ on:
         description: "Minimum contract age in days (0 = every contract; depth is each row's own days column)"
         default: "0"
       days:
-        description: "History window in days (the Backtest screen's Previous N months; 60 = 2 months)"
-        default: "365"
+        # 30, the same as cloud_sweep.SWEEP_DAYS. Operator, Sep 10, 2026: "i only
+        # need past 30 days not 1 year because thats too much" — a default is a
+        # window nobody chose, and 365 here was the last place still saying it.
+        description: "History window in days (the Backtest screen's Previous N months; 30 = past month)"
+        default: "30"
       base:
         description: "Base margin $ per trade — every dollar figure is measured at this stake"
         default: "5"

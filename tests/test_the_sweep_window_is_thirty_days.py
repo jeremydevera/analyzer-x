@@ -60,6 +60,22 @@ def test_the_year_window_is_gone_from_the_dropdown():
     assert "365" not in panel.split("const WINDOWS")[1].split("}")[0]
 
 
+def test_the_last_two_year_defaults_are_gone_too():
+    """The Backtest card on Sep 11, 2026 still read "the whole 365-day window"
+    — describing a proof run dispatched with days=365 — and the operator asked
+    again why the year was "still there". The screen was already right; two
+    DEFAULTS were not: the workflow input (`default: "365"`, what a manual
+    GitHub dispatch gets) and the shard's own fallback. A default is a window
+    nobody chose; both now say what the PC says."""
+    yml = Path(".github/workflows/sweep.yml").read_text(encoding="utf-8")
+    block = yml.split("      days:")[1].split("      base:")[0]
+    assert f'default: "{cs.SWEEP_DAYS}"' in block, block
+    assert '"365"' not in block
+    shard = Path(".github/scripts/sweep_shard.py").read_text(encoding="utf-8")
+    assert f'os.environ.get("DAYS", "{cs.SWEEP_DAYS}")' in shard
+    assert 'os.environ.get("DAYS", "365")' not in shard
+
+
 def test_the_shorter_windows_are_all_still_offered():
     """Depth stays the reader's decision inside what they kept."""
     panel = PANEL.read_text(encoding="utf-8")

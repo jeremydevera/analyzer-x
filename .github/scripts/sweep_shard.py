@@ -43,8 +43,10 @@ PER_SHARD = int(os.environ.get("COINS", "0"))
 TFS = [t.strip() for t in os.environ.get("TFS", "15m,30m").split(",") if t.strip()]
 MIN_DAYS = int(os.environ.get("MIN_DAYS", "0"))
 # The history window, in days -- the same knob the Backtest screen sends the
-# local job ("Previous 2 months" = 60). Default a year, as before.
-DAYS = int(os.environ.get("DAYS", "365"))
+# local job ("Previous 2 months" = 60). The dispatch always sends it; the
+# fallback is the PC's own default (cloud_sweep.SWEEP_DAYS = 30), never a year
+# — operator, Sep 10, 2026: "i only need past 30 days not 1 year".
+DAYS = int(os.environ.get("DAYS", "30"))
 # How many times ONE pair is redone before the shard gives up on it. The
 # local sweep's rule (market_sweep.PAIR_RETRIES), and the operator's words on
 # 2026-08-25: "if the backtest failed for certain coin make sure to stop the

@@ -1422,6 +1422,12 @@ export default function StrategiesPanel() {
           100%, +$4.79). So the sentence names WHAT WAS CHECKED. */}
       {!err && !waiting && !shown.length && !servedFilters.rowId && chips.length > 0 && (
         <p className="px-5 pt-2 text-theme-sm text-warning-600 dark:text-warning-400">
+          {/* THE WAY OUT MUST ACTUALLY WORK. This said "a coin or timeframe"
+              until a 400-row sample raised `market_sweep.WindowTooWide`: a
+              timeframe alone still spans 1,000+ coins, so the request is
+              refused for exactly the same reason. The engine's own guard says
+              "Name a COIN or a SIGNAL" — advice that does not work is a false
+              label like any other. */}
           {/* THE FILTER SET IS NAMED ONCE. `chips` already holds coin, tf,
               signal and "Made money" (k: coin/tf/signal/profitable), and this
               sentence used to append all four AGAIN in different words — with
@@ -1449,7 +1455,7 @@ export default function StrategiesPanel() {
               window re-measures each row from this PC&apos;s candles, so this request
               could only check <b>{winHidden.toLocaleString()}</b> of them — the ones
               with the biggest whole-history profit — and every one fell short inside
-              that window. Name a coin or timeframe to check a different set, or
+              that window. Name a coin or a signal to check a different set, or
               remove the {servedFilters.months > 0 ? "months" : "days"} filter to
               see all {total.toLocaleString()}{capped ? "+" : ""}.
             </>

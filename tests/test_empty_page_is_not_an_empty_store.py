@@ -133,3 +133,21 @@ def test_the_window_really_can_hide_passing_rows():
     assert kept[1]["restated"] is False, (
         "a row the window could not re-measure is kept, not counted against "
         "the operator")
+
+
+def test_the_way_out_it_offers_is_one_that_actually_works(body):
+    """A 400-row sample of the 893,508 raised `WindowTooWide`: 394 distinct
+    coin/timeframe/signal combinations against a 25-per-request ceiling. A
+    TIMEFRAME alone still spans 1,000+ coins, so it is refused the same way.
+    The message must offer what the engine's own guard offers."""
+    import inspect
+
+    from tradingagents import market_sweep as msw
+
+    guard = inspect.getsource(msw.window_rows)
+    assert "Name a COIN or a SIGNAL" in guard, (
+        "the guard's advice moved — this message has to move with it")
+    assert "Name a coin or a signal" in body
+    assert "Name a coin or timeframe" not in body, (
+        "a timeframe alone does not narrow the window enough to be allowed")
+

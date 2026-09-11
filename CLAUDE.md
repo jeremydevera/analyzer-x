@@ -680,6 +680,47 @@ identical refusals, and no alarm anywhere says *"the runner is up and has taken
 no action"*. A refusal repeated every cycle is a silence, not a message —
 rate-limit it (`_say_once`) and count it somewhere the operator reads.
 
+## A fill may only see price the order was exposed to (MANDATORY — 2026-09-12)
+
+The operator: *"how come trade id 7WZMH7EN lose in live and in demo its still
+100% winrate?"*. Because the demo trade won on prices from **59 minutes before
+it opened**. Same coin, same rule, same entry of 33.02 — live lost 0.53, demo
+booked +0.41 sixty-nine seconds after opening, off a 34.02 print from 9:10pm
+when the order went out at 10:00:11pm.
+
+**TWO CLOCKS LIVE IN A POSITION AND THEY ARE NOT INTERCHANGEABLE.**
+`entry_ts` is the SIGNAL CANDLE's open. `opened_at` is when the order actually
+existed. On a 1h strategy they are an hour apart, on 4h four hours. Exposure
+begins at `opened_at` and at nothing else.
+
+* **Every barrier walk goes through `auto_trader._bars_exposed_to`.** One
+  expression, one place: a bar counts when it was still running as the order
+  went out, or started after — `t + bar_seconds > opened_at`. That is the
+  backtest's own convention (`fast_grid.walk` enters at `opens[i+1]` and tests
+  bar `i+1`), so the demo book and the grid answer the same question, and
+  neither can reach back into a bar that had already closed.
+* **The finer the replay, the worse a coarse floor is.** The bug was harmless
+  on the strategy's own timeframe and catastrophic on the one-minute fallback:
+  same floor, sixty times the resolution, so it replayed 60 (or 240) real
+  minutes. When you make a check finer, re-derive its window — do not inherit
+  it.
+* **A demo fill is not free.** It cost 8 of 39 closed demo trades, +12.81 USDT
+  of PnL that never happened and 8 points of win rate, on the number the
+  operator picks deployments by.
+
+**WHY IT SURVIVED — and the rule that buys:** two tests drove this exact path
+and neither could see it, because both fixtures had **a candle clock and a
+position clock that disagreed**. One built its wick bar ending at `now` while
+the position's `opened_at` was `now`; the other used `_bars()`, whose candles
+sit **400 bars (66 days)** before the wall clock the position is stamped with.
+A floor expressed in the wrong clock looks identical to a correct one when
+nothing in the fixture shares a clock. **A test of anything time-dependent
+must place its candles and its position on ONE timeline, the one a running
+runner sees** — and say so in the fixture, because the next person will
+otherwise "simplify" it back. Full account: `docs/RCA.md` RCA-2026-09-12-A;
+guard: `tests/test_demo_cannot_fill_before_it_opened.py`, verified red on the
+pre-fix file.
+
 ## Read the emitter, not the label (MANDATORY — 2026-08-18)
 
 23. **Before explaining ANY log line, ledger action, counter or status string,

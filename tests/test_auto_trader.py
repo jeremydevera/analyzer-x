@@ -798,6 +798,14 @@ def test_paper_bracket_catches_an_intrabar_wick(sandbox):
     pos = st["position"]
     assert pos and pos["side"] == 1
 
+    # This position opened TEN MINUTES AGO. Saying so matters: the bars below
+    # end at `now`, and a bracket can only be filled by price that printed
+    # after it was placed. Until Sep 12, 2026 this fixture left `opened_at` at
+    # the current second while the wick bar ENDED on that same second, so it
+    # asserted a fill on a bar that closed before the order existed — the very
+    # thing RCA-2026-09-12-A is about, which is why this test could never have
+    # caught it (tests/test_demo_cannot_fill_before_it_opened.py).
+    pos["opened_at"] = int(time.time()) - 600
     # A 1-minute bar that WICKS through the take-profit and closes back below.
     n, now = 5, int(time.time())
     mins = _pd.DataFrame({
@@ -1104,6 +1112,14 @@ def test_book_is_never_flushed_while_the_exchange_says_open(sandbox):
     at.process_symbol("BTC_USDT", settings, state, fx=fx, dry=False)
     pos = state["BTC_USDT"]["position"]
     assert pos["bracket"] is True                 # verified at entry
+    # The runner enters the moment the signal bar closes, so the order goes
+    # out at `_T0 + 61 bars` — which is where the crash bar below starts.
+    # `process_symbol` stamps `opened_at` with the WALL CLOCK, and `_bars()`
+    # builds candles 400 bars in the past, so without this the position claims
+    # to have opened 56 days after the last candle. The barrier walk is keyed
+    # on when the order went out (RCA-2026-09-12-A), and no runner ever sees
+    # a book and a candle feed that far apart.
+    pos["opened_at"] = _T0 + 61 * at.BAR_SECONDS
     # Exchange still holds it; our candles cross the stop; closes all fail.
     fx.open_positions = lambda sym=None: [{"symbol": "BTC_USDT"}]
     def refuse(*a, **k):

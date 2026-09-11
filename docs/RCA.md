@@ -172,6 +172,114 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-12-A — the demo book booked wins on price that printed before the trade existed
+
+**CEO**
+
+* Your demo results were flattering themselves. A demo trade could "win"
+  seconds after opening by looking at prices from up to four hours earlier —
+  prices it was never in the market for. On CHYMSTOCK the demo showed a 100%
+  win rate on a strategy whose one real trade lost money.
+* Why: when a trade opens, the runner wrote down the *candle's* start time
+  instead of the clock time the order went out, and the demo book used that
+  to decide "has my target been hit yet".
+* What stops it now: the demo can only look at price from the moment the
+  order existed, which is the same rule the backtest uses. The 8 affected
+  trades have been re-scored from the real candles, so the demo win rate now
+  reads 56% instead of 64% and matches the live book trade for trade. Real
+  money was never at risk — a live order rests at MEXC and can only fill
+  forward.
+
+**DEV**
+
+* `auto_trader.py:3414` (`_process_slot`) filtered the barrier walk with
+  `if t > pos["entry_ts"]`, and `pos["entry_ts"]` is `last_ts` — the SIGNAL
+  CANDLE's open (`auto_trader.py:4052`), not `opened_at`. The one-minute
+  fallback at `auto_trader.py:3431` reused the same floor at 60-second
+  resolution, so it replayed `bar_seconds` of pre-entry history: 3,600 s on a
+  1h strategy, 14,400 s on 4h.
+* Invariant broken: **a fill may only be decided by price the order was
+  exposed to.** Two clocks were being mixed — bar time and wall-clock time —
+  and the field name said neither. The rule is now one helper,
+  `_bars_exposed_to`: a bar counts when `t + bar_seconds > opened_at`, which
+  is the backtest's own convention (`fast_grid.walk` enters at `opens[i+1]`
+  and tests bar `i+1`), so the demo book and the grid answer the same
+  question.
+* Guard: `tests/test_demo_cannot_fill_before_it_opened.py` — 8 tests, driving
+  `process_symbol`, with an AST check that every `_dry_fill` call takes its
+  bars from `_bars_exposed_to` rather than a comprehension built on the spot.
+
+**SAW** — *"how come trade id 7WZMH7EN lose in live and in demo its still 100%
+winrate?"*, then *"so you mean the demo trade is not correct?"*
+
+**TIMELINE**
+
+1. `Sep 10, 2026 10:00pm` — the 9:00pm hourly bar closed and `bb20_1h_sl25tp25`
+   fired on CHYMSTOCK. Both books opened LONG at **33.02**, target **33.8455**,
+   stop **32.1945**. Live `7WZMH7EN` at 10:00:08pm, demo `ZXS6ETX5` three
+   seconds later. Both stored `entry_ts` = **1789045200** (9:00pm) while
+   `opened_at` was **1789048811** — a gap of **3,611 seconds**.
+2. `Sep 10, 2026 10:01pm` — the demo booked **TP +0.41** after **69 seconds**.
+   CHYMSTOCK's high that minute was **33.02**; the next four minutes printed
+   32.85, 32.80, 32.79.
+3. The bars that filled it were **9:01pm-9:29pm**, 29 one-minute bars with
+   highs of **33.88 to 34.02** — 31 to 59 minutes BEFORE the order existed.
+4. `Sep 11, 2026 9:00am` — the live twin's barrier was really crossed and the
+   runner closed it at market: **SL, exit 32.19, -0.53**.
+5. Measured across the whole demo book: **8 of 39** closed demo trades were
+   decided by pre-entry price. Worst case was `macddiv_4h`, which replayed
+   **240 minutes**: three STBL trades booked **+2.76, +2.76, +2.26** at
+   `Sep 09, 2026 8:01pm`, 67 seconds after opening, when the real outcome was
+   the **stop at 10:04pm**.
+6. It cut both ways — `VYSZ6TLS` (KITE 1h squeeze, `Sep 07, 2026 5:01pm`)
+   booked **SL -3.19** off the 4:00pm-5:00pm hour when the real outcome was
+   **TP at Sep 08, 2026 6:40am**. That is the same row the operator queried in
+   RCA-2026-09-09-B.
+7. AFTER the re-score, from MEXC's own one-minute candles walked forward from
+   `opened_at`: demo overall **25W/14L (64%) -> 22W/17L (56%)**; invented PnL
+   **+12.81** removed; `bb20_1h_sl25tp25` demo **100% (2/2) -> 50% (1W/1L)**
+   against live **0% (0W/1L)**; `ZXS6ETX5` now reads **SL -0.59** beside its
+   live twin's **SL -0.53**.
+
+**ROOT CAUSE** — `if t > pos["entry_ts"]` used the signal candle's open as the
+floor of a barrier walk. `entry_ts` is bar time; exposure starts at
+`opened_at`, wall-clock time. A one-minute walk against a one-hour floor
+replays the hour before the trade.
+
+**WHY IT WAS NOT CAUGHT** — two tests covered this exact code path and both
+were structurally incapable of seeing it, for the same reason.
+`test_paper_bracket_catches_an_intrabar_wick` built its wick bar ending at
+`now` while `process_symbol` stamped `opened_at` = `now`, so it *asserted* a
+fill on a bar that closed as the order was placed.
+`test_book_is_never_flushed_while_the_exchange_says_open` put its candles
+**400 bars (66 days)** before the position's own `opened_at`, via the shared
+`_bars()` helper and `_T0`. In both, the fixture's candle clock and the
+position's wall clock were disconnected — which is precisely the confusion the
+bug is made of, so a floor expressed in the wrong clock looked identical to a
+correct one. **A fixture whose candles and whose position disagree about what
+time it is cannot test anything that depends on time.** Both fixtures are now
+pinned to the clock a runner actually sees, and each carries a comment saying
+why.
+
+**COST** — no money: the live book never used this path, its brackets rest at
+MEXC, and the two positions open during the incident were untouched. The cost
+was trust and, nearly, a decision — the demo book overstated itself by
+**+12.81 USDT** and **8 percentage points** of win rate, and the operator
+judges which strategies to deploy by exactly that number.
+
+**FIX** — this commit. `_order_live_from` and `_bars_exposed_to` in
+`tradingagents/auto_trader.py`, used by both walks; the 8 ledger exit rows
+re-scored in place, each keeping its original values under `was` and marked
+`corrected: RCA-2026-09-12-A`, with the untouched ledger kept as
+`auto_trade_ledger.jsonl.bak-rca20260912a-1789150338`.
+
+**GUARD** — `tests/test_demo_cannot_fill_before_it_opened.py`. Verified RED on
+the pre-fix file (7 of its 8 tests fail there) and green after. The AST check
+means a third barrier walk cannot reintroduce the floor by writing a new
+comprehension.
+
+---
+
 ## RCA-2026-09-11-B — a newer run REPLACED each pair's rows, so 1,261,358 measured rows were deleted and 100 pairs emptied
 
 **CEO**

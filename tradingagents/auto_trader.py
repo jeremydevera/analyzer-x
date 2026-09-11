@@ -3076,6 +3076,47 @@ def _exchange_exit_label(pos: dict, close_px: float) -> str:
     return "MANUAL/EXCHANGE"
 
 
+def _order_live_from(pos: dict) -> int:
+    """The instant this trade's order actually existed, as epoch seconds.
+
+    `entry_ts` is the SIGNAL CANDLE's start — on a 4h strategy that is up to
+    four hours before the order went out, and on 1h up to one hour. Keying a
+    barrier walk on it replays price the trade was never exposed to, which is
+    how the demo book booked wins that never happened (RCA-2026-09-12-A).
+    `opened_at` is the wall clock at entry. Positions written before that
+    field existed fall back to the candle, and a position carrying NEITHER
+    returns 0, which `_bars_exposed_to` reads as "walk nothing" — no barrier
+    beats an invented one.
+    """
+    return int(pos.get("opened_at") or pos.get("entry_ts") or 0)
+
+
+def _bars_exposed_to(df, since: int, bar_seconds: int) -> tuple[list, list]:
+    """(highs, lows) of the bars this trade could really have filled on.
+
+    A bar counts when it was STILL RUNNING at `since`, or started after it:
+    ``t + bar_seconds > since``. That is exactly the backtest's convention —
+    enter at a bar's open, test that same bar's range — so the demo book and
+    the grid answer the same question. What it can never do is reach back
+    into a bar that had already CLOSED before the order existed.
+
+    `since <= 0` means the position cannot say when it opened; walk nothing
+    and let the live-price check decide.
+    """
+    hi: list[float] = []
+    lo: list[float] = []
+    if since <= 0:
+        return hi, lo
+    step = int(bar_seconds or 0)
+    for h, low_, t in zip(df["High"], df["Low"],
+                          (int(d.timestamp()) for d in df["Date"]),
+                          strict=False):
+        if int(t) + step > since:
+            hi.append(float(h))
+            lo.append(float(low_))
+    return hi, lo
+
+
 def _dry_fill(pos: dict, high: list, low: list) -> str | None:
     """Walk bars since entry; SL first when both barriers sit in one bar —
     the same worst-case rule the backtest used."""
@@ -3409,12 +3450,13 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
     if pos:
         seconds_of = {s["interval"]: s["bar_seconds"]
                       for s in STRATEGY_SPECS.values()}
-        df = frames[min(frames, key=lambda k: seconds_of[k])]
-        bars_since = [(float(h), float(lo)) for h, lo, t in zip(
-            df["High"], df["Low"], (int(d.timestamp()) for d in df["Date"]), strict=False)
-            if t > pos["entry_ts"]]
-        outcome = _dry_fill(pos, [h for h, _ in bars_since],
-                            [lo for _, lo in bars_since])
+        _iv = min(frames, key=lambda k: seconds_of[k])
+        df = frames[_iv]
+        # The floor is WHEN THE ORDER WENT OUT, never the signal candle's
+        # start — see `_order_live_from`.
+        _since = _order_live_from(pos)
+        _hi, _lo = _bars_exposed_to(df, _since, seconds_of[_iv])
+        outcome = _dry_fill(pos, _hi, _lo)
         if not outcome and pos_dry:
             # A real bracket rests AT THE EXCHANGE and fills the instant any
             # trade prints through the barrier — on a wick, intrabar, at 3am.
@@ -3426,12 +3468,11 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
             # One-minute RANGES close that gap to ~1 minute.
             try:
                 fine = _closed_bars(fx.klines(symbol, "Min1", 300), 60)
-                wick = [(float(h), float(lo)) for h, lo, t in zip(
-                    fine["High"], fine["Low"],
-                    (int(d.timestamp()) for d in fine["Date"]), strict=False)
-                    if t > pos["entry_ts"]]
-                outcome = _dry_fill(pos, [h for h, _ in wick],
-                                    [lo for _, lo in wick])
+                # THIS is where the reach-back did its damage: one-minute
+                # resolution against a floor expressed in STRATEGY-BAR time
+                # replayed the whole hour (or four) before the order existed.
+                _hi, _lo = _bars_exposed_to(fine, _since, 60)
+                outcome = _dry_fill(pos, _hi, _lo)
             except Exception as exc:
                 logger.warning("%s: could not read 1-minute ranges for the "
                                "paper bracket (%s) — falling back to the "

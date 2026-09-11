@@ -3439,3 +3439,57 @@ against a local replay of the same row, which is the only check that could see
 this. That comparison is now the first thing done with a finished sweep.
 
 **Cost:** zero in money; one 88M-row sweep discarded and re-run.
+
+---
+
+## Sep 12, 2026 — the only path fast enough to fill the index would have thrown itself away
+
+**CEO summary**
+- You asked for 6.8 million newly measured strategies to show up in Stored
+  strategies. The only way fast enough takes about 6 hours — and it had three
+  faults that would each have spent the 6 hours and then deleted the result.
+- None of them had ever been hit, because that path had never been used in
+  earnest. All three are fixed and tested before the run, not after.
+- Nothing was lost and nothing was at risk. The strategies were on disk the
+  whole time; they were simply not visible yet.
+
+**DEV summary**
+- `rows_index.rebuild()` had no production caller. `rows_index.py:1267` did
+  `done += 1` unconditionally after `index_pair()`, which returns 0 from its
+  `except (OSError, ValueError)` WITHOUT filing the pair's summary row — so
+  the final gate at `:1345` compared `got_pairs != done`, unlinked the new
+  file and returned `{"rebuilt": False, "why": "pairs N vs N+1"}`. A re-run
+  meets the same file: unbreakable.
+- `rebuild()` never called `_after_fill_indexes()`, so the swap dropped the
+  five on-demand indexes the store had already paid hours for, plus the
+  `rows_signal` build in flight — the one `signal=cx_veto` needs.
+- `main()` accepted `--build` and `resolve` only, so a six-hour job could not
+  be spawned detached with a log (the Sep 10 rule).
+- Guards: `tests/test_rebuild_guards.py` — 4 tests, and guard 1 was proved by
+  reintroducing the bug and watching it go red (`pairs 3 vs 4`).
+
+**Timeline**
+1. **02:0x** — `signal=cx_veto` returns 0 rows and `#WYQMPU8A` returns 0 rows,
+   while 6,845,648 cascade rows sit in the pair files. `rows_index.status()`:
+   96,307,386 rows, 5,388 pairs indexed, **5,179 stale**.
+2. Indexing one pair by hand raises `database is locked`; the indexer's own
+   log ends **Sep 11, 4:25am** with 15 consecutive
+   `sync failed: OperationalError('database is locked')`. The keep-up indexer
+   has been dead for ~22 hours behind an index build holding the write lock.
+3. Five parallel readers measure the alternatives. Incremental sync at the
+   rate measured on THIS store (175 s/pair) over 5,179 stale pairs = **252
+   hours**; the kindest figure in the repo (1.5 pairs/min) still gives 57.5 h.
+   A full rebuild, scaled from the Sep 10 run: 78 min load + 95 min indexes +
+   183 min verify = **~6 hours**. Rebuild wins by 10x–43x.
+4. Reading `rebuild()` for the first time as a production path turns up the
+   three faults above. Probed on a fixture: one unreadable file →
+   `{'rebuilt': False, 'why': 'pairs 3 vs 4'}`.
+
+**Why it was not caught:** `rebuild()` is exercised only by tests that feed it
+clean fixtures, and nothing had ever called it for real — so its failure modes
+lived entirely in the gap between "the function works" and "the function
+survives a store that is being written to while it reads". The pair files were
+being rewritten at ~1,800/hour by a live collect during this very check.
+
+**Cost:** none in money or data. The six hours had not been spent yet, which
+is the whole point of reading the path before running it.

@@ -1264,8 +1264,31 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
             # start the table is empty; on a resume `_resumable` removed every
             # row that has no summary and every pair that HAS one is skipped
             # above. That proof is worth 54 hours — see index_pair.
-            rows += index_pair(f, con, fresh=True)
-            done += 1
+            got = index_pair(f, con, fresh=True)
+            if got:
+                rows += got
+                done += 1
+            else:
+                # ZERO ROWS IS TWO DIFFERENT THINGS, and counting them the
+                # same throws away the whole run at the last gate. An EMPTY
+                # pair file (`[]` — the trade floor kept nothing) files its
+                # summary and must count. A file that could not be READ
+                # returns 0 from index_pair's `except (OSError, ValueError)`
+                # having filed NOTHING; counting it makes the final check
+                # read "pairs 5391 vs 5392", delete the partial, and the
+                # re-run meet the same file. Six hours for one bad byte, and
+                # a collect rewrites ~1,800 of these files an hour while the
+                # loader reads them. The `pairs` table is asked which
+                # happened — a primary-key lookup, and only this rare branch
+                # ever pays for it.
+                filed = con.execute(
+                    "SELECT 1 FROM pairs WHERE pair = ?", (f.stem,)).fetchone()
+                if filed:
+                    done += 1
+                else:
+                    skipped.append(f.name)
+                    print(f"[rows-index] rebuild: could not read {f.name} — "
+                          f"skipped, and NOT counted", flush=True)
             if done % 25 == 0:
                 con.commit()
             _say("loading")

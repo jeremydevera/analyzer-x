@@ -984,6 +984,71 @@ def bloat() -> dict:
 BLOAT_PCT = 25.0
 
 
+def swap_in(dest: Path, backup: Path, *, keep_backup: bool = True) -> None:
+    """Put `dest` in `DB_PATH`'s place, retiring the current file to `backup`.
+
+    ONE definition, because `compact()` and `rebuild()` each had their own
+    copy of these six lines and both copies were wrong the same two ways.
+    Call it under `_lock`, after `_ready.discard` and `forget_indexes()`.
+
+    * **The step that can fail comes FIRST.** The old order deleted the
+      previous backup, then deleted the live file's `-wal`, and only then
+      tried the move — so the two irreversible steps ran before the one that
+      raises. On Windows `shutil.move` raises PermissionError for as long as
+      any other process holds rows.db open, and the API on 8787 holds it all
+      day; the caller was then left with no backup, no WAL, and its original
+      file still in place.
+    * **The WAL travels with the file it belongs to.** Deleting `rows.db-wal`
+      throws away every transaction a reader had committed but not
+      checkpointed, and the retired copy is supposed to be the fallback.
+      It moves to `<backup>-wal` instead — which also clears the name, and
+      that matters: a stale `rows.db-wal` beside a DIFFERENT rows.db is
+      corruption, not clutter.
+
+    Raises whatever the filesystem raises. The caller reports it; this
+    function does not decide what a failure means.
+    """
+    import shutil
+
+    for tail in ("", "-wal", "-shm", "-journal"):
+        with contextlib.suppress(FileNotFoundError):
+            Path(str(backup) + tail).unlink()
+    if DB_PATH.exists():
+        shutil.move(str(DB_PATH), str(backup))          # <- the failure point
+    for tail in ("-wal", "-shm", "-journal"):
+        with contextlib.suppress(FileNotFoundError):
+            shutil.move(str(DB_PATH) + tail, str(backup) + tail)
+    shutil.move(str(dest), str(DB_PATH))
+    for tail in ("-wal", "-shm", "-journal"):
+        with contextlib.suppress(FileNotFoundError):
+            shutil.move(str(dest) + tail, str(DB_PATH) + tail)
+    if not keep_backup:
+        # SUPPRESS EVERYTHING HERE, not just FileNotFoundError. The new index
+        # is already in place by this line; throwing the old copy away is
+        # housekeeping. A PermissionError escaping from here would report a
+        # swap that SUCCEEDED as failed.
+        for tail in ("", "-wal", "-shm", "-journal"):
+            with contextlib.suppress(OSError):
+                Path(str(backup) + tail).unlink()
+
+
+def put_back(backup: Path) -> None:
+    """Undo a half-finished `swap_in`: the retired file returns to DB_PATH.
+
+    With the WAL it arrived with. A database whose `-wal` is still wearing
+    the backup's name has lost every transaction in it.
+    """
+    import shutil
+
+    if DB_PATH.exists() or not backup.exists():
+        return
+    with contextlib.suppress(Exception):
+        shutil.move(str(backup), str(DB_PATH))
+        for tail in ("-wal", "-shm", "-journal"):
+            with contextlib.suppress(FileNotFoundError):
+                shutil.move(str(backup) + tail, str(DB_PATH) + tail)
+
+
 def compact(*, dest: Path | None = None, keep_backup: bool = True) -> dict:
     """Rebuild rows.db into a FRESH file and swap it in. Returns what happened.
 
@@ -1005,7 +1070,6 @@ def compact(*, dest: Path | None = None, keep_backup: bool = True) -> dict:
     Refuses while another process is writing: a copy taken mid-transaction
     would be a copy of a half-finished fill.
     """
-    import shutil
     import time as _t
 
     if not DB_PATH.exists():
@@ -1052,16 +1116,16 @@ def compact(*, dest: Path | None = None, keep_backup: bool = True) -> dict:
     with _lock:
         _ready.discard(str(DB_PATH))
         forget_indexes()
-        with contextlib.suppress(FileNotFoundError):
-            backup.unlink()
-        for tail in ("-wal", "-shm"):
-            with contextlib.suppress(FileNotFoundError):
-                Path(str(DB_PATH) + tail).unlink()
-        shutil.move(str(DB_PATH), str(backup))
-        shutil.move(str(dest), str(DB_PATH))
-        if not keep_backup:
-            with contextlib.suppress(FileNotFoundError):
-                backup.unlink()
+        try:
+            swap_in(dest, backup, keep_backup=keep_backup)
+        except Exception as exc:                            # noqa: BLE001
+            put_back(backup)
+            return {"compacted": False,
+                    "why": (f"the swap could not take place: "
+                            f"{type(exc).__name__}: {exc} — the compacted "
+                            f"copy is finished and verified at {dest}"),
+                    "compact_file": str(dest),
+                    "holder": lock_holder() or ""}
     after = bloat()
     return {"compacted": True, "seconds": round(_t.time() - t0, 1),
             "rows": want_rows, "pairs": want_pairs,
@@ -1187,7 +1251,6 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
     is written to `REBUILD_PROGRESS` after every pair so a stall is visible in
     minutes instead of the seven hours RCA-G cost.
     """
-    import shutil
     import time as _t
 
     held = write_available()
@@ -1392,20 +1455,44 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
 
     before = DB_PATH.stat().st_size if DB_PATH.exists() else 0
     backup = DB_PATH.with_suffix(".before-rebuild.db")
+    # THE SWAP IS THE ONE STEP THAT CAN FAIL WITHOUT SAYING SO.
+    #
+    # Everything above reports into `rows_rebuild.json` from inside a
+    # try/except. The swap sat OUTSIDE it, and on Windows `shutil.move` and
+    # `unlink` raise PermissionError for as long as any other process holds
+    # rows.db open — the API on 8787 holds it all day. That raise escapes
+    # `rebuild()` entirely, so the progress file keeps reading "verifying"
+    # and a six-hour rebuild looks like a stall. Same shape as RCA-C: a job
+    # that cannot finish has to SAY SO.
+    #
+    # The ORDER is the other half. It used to delete the previous backup,
+    # then delete the LIVE file's `-wal`, and only then try the move. So the
+    # step that fails came last, after two that cannot be undone — and
+    # deleting `rows.db-wal` out from under a process still reading rows.db
+    # throws away whatever it had committed but not checkpointed. Now the
+    # move that can fail comes FIRST, and the WAL travels WITH the file it
+    # belongs to instead of being destroyed: the retired index stays a
+    # readable fallback, and the name is still clear for the new file
+    # (a stale `rows.db-wal` beside a different rows.db is corruption).
     with _lock:
         _ready.discard(str(DB_PATH))
         forget_indexes()
-        with contextlib.suppress(FileNotFoundError):
-            backup.unlink()
-        for tail in ("-wal", "-shm"):
-            with contextlib.suppress(FileNotFoundError):
-                Path(str(DB_PATH) + tail).unlink()
-        if DB_PATH.exists():
-            shutil.move(str(DB_PATH), str(backup))
-        shutil.move(str(dest), str(DB_PATH))
-        if not keep_backup:
-            with contextlib.suppress(FileNotFoundError):
-                backup.unlink()
+        try:
+            swap_in(dest, backup, keep_backup=keep_backup)
+        except Exception as exc:                            # noqa: BLE001
+            # Put the live index back if the move got that far, so the
+            # operator's panel is never left with no file at all.
+            put_back(backup)
+            why = (f"the swap could not take place: "
+                   f"{type(exc).__name__}: {exc} — the rebuilt index is "
+                   f"finished and verified at {dest}; close whatever holds "
+                   f"{DB_PATH.name} open and swap it in")
+            _say(f"failed: {why}")
+            print(f"[rows-index] rebuild: {why}", flush=True)
+            return {"rebuilt": False, "why": why, "pairs": done,
+                    "rows": rows, "skipped": skipped,
+                    "rebuild_file": str(dest),
+                    "holder": lock_holder() or ""}
     # THE SWAP JUST DESTROYED THE ON-DEMAND INDEXES. The new file carries
     # KEEP_INDEXES only, so every feature behind the others — the win-rate
     # floors, the #id lookup, the signal filter — answers 503 until somebody

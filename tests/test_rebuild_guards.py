@@ -8,6 +8,7 @@ measured 175 s/pair × 5,179 stale pairs = 252 h for the incremental sync).
 Three gaps, each of which spends the six hours and then discards the result.
 """
 import json
+from pathlib import Path
 
 import pytest
 
@@ -100,3 +101,118 @@ def test_a_six_hour_job_can_be_spawned_with_a_log():
     src = inspect.getsource(ri.main)
     assert '"--rebuild"' in src
     assert "rebuild(resume=" in src, "and it must be resumable by default"
+
+
+def _held(monkeypatch, target):
+    """Make `shutil.move` refuse to move `target`, the way Windows does while
+    another process has the file open."""
+    import shutil
+
+    real = shutil.move
+
+    def fake(src, dst, *a, **k):
+        if str(src) == str(target):
+            raise PermissionError(
+                32, "The process cannot access the file because it is being "
+                    "used by another process")
+        return real(src, dst, *a, **k)
+
+    monkeypatch.setattr(shutil, "move", fake)
+
+
+def test_a_held_index_file_makes_the_swap_SAY_FAILED_not_raise(
+        store, monkeypatch):
+    """THE FAILURE THIS WAS WRITTEN FOR. Every phase of `rebuild()` reports
+    into rows_rebuild.json from inside a try/except — and the swap sat
+    OUTSIDE it. On Windows `shutil.move` raises PermissionError for as long
+    as another process holds rows.db open, and the API on 8787 holds it all
+    day, so a six-hour rebuild would end with the progress file still reading
+    "verifying" and a traceback nobody was watching for."""
+    (store / "AAA-1h.json").write_text(json.dumps([_row("AAA")]),
+                                       encoding="utf-8")
+    assert ri.rebuild(resume=False)["rebuilt"] is True
+    (store / "BBB-1h.json").write_text(json.dumps([_row("BBB")]),
+                                       encoding="utf-8")
+
+    _held(monkeypatch, ri.DB_PATH)
+    got = ri.rebuild(resume=False)
+
+    assert got["rebuilt"] is False
+    assert "swap could not take place" in got["why"]
+    assert "PermissionError" in got["why"], "name what actually happened"
+    assert ri.rebuild_progress()["phase"].startswith("failed:"), \
+        "the progress file is the only thing a watcher reads"
+    # six hours of work is not thrown away: the finished file is NAMED
+    assert Path(got["rebuild_file"]).exists()
+
+
+def test_a_failed_swap_leaves_the_live_index_exactly_where_it_was(
+        store, monkeypatch):
+    """The old order deleted the previous backup and the LIVE file's `-wal`
+    BEFORE the move that can fail. A refused swap therefore destroyed two
+    things and changed nothing else."""
+    (store / "AAA-1h.json").write_text(json.dumps([_row("AAA")]),
+                                       encoding="utf-8")
+    assert ri.rebuild(resume=False)["rebuilt"] is True
+    ri.query(coin="AAA")                       # the API's grip on the file
+    before = ri.DB_PATH.read_bytes()
+
+    (store / "BBB-1h.json").write_text(json.dumps([_row("BBB")]),
+                                       encoding="utf-8")
+    _held(monkeypatch, ri.DB_PATH)
+    assert ri.rebuild(resume=False)["rebuilt"] is False
+
+    assert ri.DB_PATH.exists(), "the operator's index must still be there"
+    assert ri.DB_PATH.read_bytes() == before, "and untouched"
+    assert ri.query(coin="AAA")["total"] == 1, "and still answering"
+
+
+def test_the_retired_index_keeps_the_wal_it_arrived_with(store):
+    """`rows.db-wal` was DELETED on the way past — throwing away whatever a
+    reader had committed but not checkpointed, from the very file that is
+    supposed to be the fallback. It travels to the backup instead, which
+    also clears the name: a stale `rows.db-wal` beside a DIFFERENT rows.db
+    is corruption, not clutter.
+
+    Driven through `swap_in` with plain bytes on purpose. SQLite deletes its
+    own `-wal` when the last connection closes, so a WAL planted around a
+    real `rebuild()` is gone before the swap ever reaches it — the first
+    version of this test failed for that reason and proved nothing about the
+    code under it."""
+    ri.DB_PATH.write_bytes(b"the live index")
+    Path(str(ri.DB_PATH) + "-wal").write_bytes(b"committed-not-checkpointed")
+    dest = ri.DB_PATH.with_suffix(".rebuild.db")
+    dest.write_bytes(b"the new index")
+    backup = ri.DB_PATH.with_suffix(".before-rebuild.db")
+
+    ri.swap_in(dest, backup, keep_backup=True)
+
+    assert ri.DB_PATH.read_bytes() == b"the new index"
+    assert backup.read_bytes() == b"the live index", "retired, not deleted"
+    assert Path(str(backup) + "-wal").read_bytes() == \
+        b"committed-not-checkpointed", "the WAL follows its own database"
+    assert not Path(str(ri.DB_PATH) + "-wal").exists(), \
+        "a stale WAL beside a DIFFERENT database is corruption"
+
+
+def test_both_swaps_are_the_same_one(store):
+    """`compact()` and `rebuild()` each carried their own copy of these six
+    lines and BOTH copies were wrong the same two ways. CLAUDE.md, bought on
+    Sep 04: when changing a rule, grep for the CONCEPT and list every place
+    it lives — `timeframe_conflicts` was the third guard nobody found, and it
+    froze all trading for nine hours."""
+    import inspect
+
+    for fn in (ri.compact, ri.rebuild):
+        src = inspect.getsource(fn)
+        # CODE lines only. The first version of this check read the comments
+        # too and failed on the paragraph that EXPLAINS the old bug — the
+        # same shape as the `.toLocale` grep that passed while a Date was
+        # being sliced by hand.
+        code = "\n".join(ln for ln in src.splitlines()
+                         if not ln.strip().startswith("#"))
+        assert "swap_in(" in code, f"{fn.__name__} must use the one swap"
+        assert "shutil.move(" not in code, \
+            f"{fn.__name__} grew its own copy of the swap again"
+        assert "put_back(" in code, \
+            f"{fn.__name__} must roll back a half-finished swap"

@@ -135,9 +135,30 @@ def test_progress_is_written_after_every_pair(store):
     assert p.get("phase") == "done"
     assert p.get("pairs_done") == 3 and p.get("pairs_total") == 3
     assert "pairs_per_min" in p
-    src = inspect.getsource(ri.rebuild)
-    i = src.index("done += 1")
-    assert '_say("loading")' in src[i:i + 200], \
+    # STRUCTURE, not a character window. This asked whether `_say("loading")`
+    # appeared within 200 characters of `done += 1`, and a comment added to
+    # the loop on Sep 12 pushed it to 400 — the call was still in exactly the
+    # right place and the guard went red anyway. A distance in a source file
+    # is not a fact about the code; "is this call inside that loop" is, so
+    # ask the AST.
+    import ast
+    import textwrap
+
+    tree = ast.parse(textwrap.dedent(inspect.getsource(ri.rebuild)))
+
+    def says_loading(node):
+        return any(
+            isinstance(n, ast.Call) and getattr(n.func, "id", "") == "_say"
+            and n.args and getattr(n.args[0], "value", None) == "loading"
+            for n in ast.walk(node))
+
+    loops = [n for n in ast.walk(tree)
+             if isinstance(n, ast.For)
+             and any(isinstance(s, ast.AugAssign)
+                     and getattr(s.target, "id", "") == "done"
+                     for s in ast.walk(n))]
+    assert loops, "the per-pair loop moved — find it before trusting this"
+    assert any(says_loading(n) for n in loops), \
         "the progress write must sit inside the per-pair loop"
 
 

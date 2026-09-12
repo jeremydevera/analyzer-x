@@ -172,6 +172,131 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-12-K — the last 8 seconds of a 6-hour rebuild could throw all of it away and still read "verifying"
+
+**NEVER HAPPENED YET.** Found at `Sep 12, 2026 9:35am` while the rebuild it
+would have destroyed was still running (pid 12576, verify phase, due to reach
+the swap around `11:00am`). The timeline below is what WOULD have happened,
+and the three measured facts under it are real.
+
+**CEO**
+
+* Nothing was lost. I found this while waiting for your rebuild to finish —
+  the very last step, moving the new index into place, was the one step that
+  could fail **without telling anyone**. Your screen would have said
+  "verifying" forever, and the six hours would have looked like a stall.
+* Why: the app itself keeps the old index file open all day, and Windows
+  refuses to move a file another program is holding. That refusal was
+  happening in the one part of the job that had no one listening for it.
+* What stops it now: the move is watched like every other step, so a refusal
+  is reported in plain words — *"close whatever holds rows.db open"* — and it
+  names the finished file so the work is never thrown away. It also does the
+  risky part FIRST: it used to delete your backup and your unsaved changes
+  before attempting the move that fails, so a refusal destroyed two things
+  and achieved nothing.
+
+**DEV**
+
+* `rows_index.py:1479` — `shutil.move(str(DB_PATH), str(backup))` sat AFTER
+  `rebuild()`'s `try/except`, so `PermissionError(32)` propagated out of the
+  function. `_say("failed: …")` is only reachable from inside that block, so
+  `rows_rebuild.json` keeps its last value — `{"phase": "verifying"}` — and
+  `main()` prints a traceback to a log nobody is tailing. `compact()` carried
+  the identical six lines with the identical hole.
+* Invariants broken: **"a job that cannot start must SAY SO"** (CLAUDE.md,
+  RCA-2026-09-10-C) — a swallowed failure is a button that lies, and an
+  ESCAPED one is the same lie; and **"when changing a rule, grep for the
+  CONCEPT"** (CLAUDE.md, Sep 04) — two copies of the swap, both wrong the
+  same two ways.
+* Guard: `tests/test_rebuild_guards.py` — `test_a_held_index_file_makes_the
+  _swap_SAY_FAILED_not_raise`, `test_a_failed_swap_leaves_the_live_index
+  _exactly_where_it_was`, `test_the_retired_index_keeps_the_wal_it_arrived
+  _with`, `test_both_swaps_are_the_same_one`. All four go red against the
+  old swap; proved by reintroducing it.
+
+**SAW** — nothing, and that is the defect. The operator's Stored strategies
+panel would still have been empty and `rows_rebuild.json` would still have
+read `{"phase": "verifying", "rows": 112364317}`.
+
+**TIMELINE** — what would have happened
+
+1. `Sep 12, 2026 5:50am` — `python -m tradingagents.rows_index --rebuild`
+   starts as pid 12576.
+2. `7:11am` — load finishes: **5,392 pairs, 112,364,317 rows in 5,503 s**
+   (65.97 pairs/min).
+3. `7:11am → 8:33am` — the four kept indexes, **82 minutes**.
+4. `8:33am` — verify begins, estimate **8,394 s**.
+5. `~11:00am` — verify passes. `rebuild()` reaches
+   `shutil.move(rows.db → rows.before-rebuild.db)`. **The API (pid 20320,
+   `uvicorn tradingagents.api:app --port 8787`) has had `rows.db` open since
+   it started.** Windows raises `PermissionError(32)`.
+6. The raise escapes `rebuild()`. Before it: `backup.unlink()` had already
+   deleted the previous 34.69 GB backup, and `Path(rows.db-wal).unlink()`
+   had already tried to delete the live file's write-ahead log.
+7. `rows_rebuild.json` still reads `"phase": "verifying"`. The watcher waits.
+   `rows.rebuild.db` — **34.41 GB, verified, complete** — sits on disk with
+   nothing pointing at it.
+
+**Three measured facts, today, not hypothetical:** the rebuild is pid 12576
+in the verify phase; the API holds `rows.db` as pid 20320 under launcher
+14940; and `rows.db` is **65.15 GB** against the finished `rows.rebuild.db`
+at **34.41 GB**.
+
+**ROOT CAUSE** — the swap ran outside the try/except that reports every other
+phase, and its steps were ordered so that the one that can fail came last,
+after two that cannot be undone.
+
+**WHY IT WAS NOT CAUGHT** — `rebuild()` had **no production caller** until
+today (it is named in `tests/test_rebuild_from_the_pair_files.py` eight times
+and nowhere else), and every one of those tests runs in a `tmp_path` where
+**nothing else has the file open**. A failure mode that only exists when a
+second process is holding the file cannot appear in a suite where there is no
+second process. The three guards written on Sep 12 morning
+(`test_rebuild_guards.py`) asked what happens when a pair file cannot be
+READ — the loading phase — and stopped at the gate before the swap, because
+that is where the previous six hours had been lost.
+
+This is the same lesson as **"test the path the RUNNER takes, in the state it
+will run in"** (CLAUDE.md, Sep 05): the eleven passing tests there drove
+`process_symbol` while the runner entered at `run_cycle`, and the
+verification ran paper-only while the guard was live-only. Here the state
+that was never reproduced is *"another process has this file open"* — which
+on this machine is the normal state, every hour of every day.
+
+**COST** — none. Found before it fired, with the job it would have hit still
+running. Had it fired: 5 h 10 min of rebuild wall-clock, plus however long
+the "verifying" line went unquestioned.
+
+**FIX** — this commit. `rows_index.swap_in(dest, backup, keep_backup=)` is
+now the ONE definition of the swap and both `compact()` and `rebuild()` call
+it inside a `try/except` that writes `failed: …` to the progress file, prints
+it, and returns `{"rebuilt": False, "why": …, "rebuild_file": <the finished
+file>, "holder": lock_holder()}`. Order reversed: the move that can fail runs
+FIRST, before the previous backup is cleared of anything irreversible. The
+live `-wal` is **moved to the backup** rather than deleted, so the retired
+index stays a consistent fallback and the name is still freed (a stale
+`rows.db-wal` beside a different `rows.db` is corruption, not clutter).
+`put_back()` restores the retired file — with its WAL — if the move got half
+way. The `keep_backup=False` cleanup suppresses `OSError`, not just
+`FileNotFoundError`: it runs after the new file is already in place, so a
+refusal there would have reported a swap that SUCCEEDED as failed.
+
+For the run that is in flight, a guard process
+(`scratchpad/swap_guard.py`) stops the API at `seconds >= 16000` — about 35
+minutes before the verify is due to end — and restarts it the moment the
+phase reads `done`, because pid 12576 loaded the OLD module and no edit made
+today can reach it.
+
+**GUARD** — `tests/test_rebuild_guards.py`, 4 new tests (8 in the file). A
+held file must make the swap SAY FAILED rather than raise, and the progress
+file must carry it; a failed swap must leave `rows.db` byte-identical and
+still answering `query()`; the retired index must keep its WAL and the new
+one must not inherit it; and both swaps must be the same function — that last
+one greps CODE lines only, because the first version of it failed on the
+comment that EXPLAINS the old bug.
+
+---
+
 ## RCA-2026-09-12-J — 211 GB of abandoned git transfers on the store's own drive, built up over six days and still growing
 
 **CEO**

@@ -234,6 +234,80 @@ def test_every_new_field_is_actually_served(field):
 # rather than the name.
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# 5. the pause rule knew ONE job out of six
+#
+# `_machine_is_busy` asked `db_jobs.status("backtest")` and nothing else, while
+# `db_jobs.FILES` holds six kinds. Sep 13, 2026 5:10pm: a COLLECT was landing
+# shard 6 of 20 (1,949 pairs, 34,198,454 rows) and the trickle indexer ran
+# beside it at full tilt on the same mechanical disk -- 20+ minutes inside one
+# `DELETE FROM rows WHERE pair = ?` (py-spy, three samples at rows_index.py:492),
+# zero pairs committed, WAL climbing 200 MB -> 486 MB. `sync`'s own docstring
+# measures what that costs: a trickle held a sweep to 36 pairs/hour against 220
+# with the indexer stopped.
+# ---------------------------------------------------------------------------
+
+def _only_running(monkeypatch, kind):
+    from tradingagents import db_jobs as dj
+
+    monkeypatch.setattr(
+        dj, "status",
+        lambda k, *a, **kw: {"running": k == kind, "now": f"{k} says so"})
+
+
+@pytest.mark.parametrize("kind", ["download", "backtest", "collect",
+                                  "stratbt", "pairbt", "btupdate"])
+def test_the_indexer_stands_down_for_EVERY_heavy_job(monkeypatch, kind):
+    """Not just the one it happened to be written for."""
+    from tradingagents import db_jobs as dj
+
+    assert kind in dj.FILES, f"{kind} is no longer a job kind — update this"
+    _only_running(monkeypatch, kind)
+    assert ri.busy_job() == kind
+    assert ri._machine_is_busy() is True
+
+
+def test_nothing_running_means_the_indexer_works(monkeypatch):
+    _only_running(monkeypatch, "__nothing__")
+    assert ri.busy_job() == ""
+    assert ri._machine_is_busy() is False
+
+
+def test_a_job_that_cannot_be_read_does_not_pause_the_indexer(monkeypatch):
+    """The fix must not become the silence it prevents. If `status()` raises
+    for one kind, that kind is skipped -- it must not read as 'busy forever',
+    which would stop the index dead with a reason nobody could find."""
+    from tradingagents import db_jobs as dj
+
+    def boom(k, *a, **kw):
+        raise RuntimeError("the progress file is a directory")
+
+    monkeypatch.setattr(dj, "status", boom)
+    assert ri.busy_job() == ""
+    assert ri._machine_is_busy() is False
+
+
+def test_the_pause_NAMES_the_job_that_is_actually_running():
+    """label-must-match-data. It printed "a backtest is running" whatever was
+    really running, so it would have sent a reader to the wrong screen."""
+    src = inspect.getsource(ri.keep_up) if hasattr(ri, "keep_up") else ""
+    if not src:
+        import pathlib
+        src = pathlib.Path(ri.__file__).read_text(encoding="utf-8")
+    assert '"[rows-index] paused: a backtest is running ' not in src, \
+        "the job name must be derived, never a literal"
+    assert 'paused: a {job} is running' in src
+
+
+def test_status_says_WHO_paused_it(monkeypatch):
+    """"paused: true" with no name is the stalled screen RCA-2026-09-10-C was
+    written about."""
+    _only_running(monkeypatch, "collect")
+    st = ri.status()
+    assert st["paused"] is True
+    assert st["paused_by"] == "collect"
+
+
 def _fake_popen(monkeypatch, box):
     """Catch the Popen the spawner makes, without starting anything."""
     class P:

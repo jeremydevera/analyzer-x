@@ -236,14 +236,45 @@ TRICKLE_PAIRS = 1          # only an explicit force= caller trickles now
 _said_paused = [False]     # so the pause is logged once, not every 10 s
 
 
-def _machine_is_busy() -> bool:
-    """Is a backtest sweep running right now?"""
+def busy_job() -> str:
+    """Which heavy job is using the store right now, or "".
+
+    THE RULE IS "DO NOT FIGHT THE MACHINE'S BIG JOB", AND IT KNEW ONE JOB.
+    This asked `db_jobs.status("backtest")` and nothing else, while
+    `db_jobs.FILES` holds six kinds. Measured `Sep 13, 2026 5:10pm`: a COLLECT
+    was landing shard 6 of 20 (1,949 pairs, 34,198,454 rows) and the trickle
+    indexer ran beside it at full tilt on the same mechanical disk — 20+
+    minutes inside ONE `DELETE FROM rows WHERE pair = ?` (py-spy, three
+    samples, rows_index.py:492), zero pairs committed, and the write-ahead
+    log climbing 200 MB → 486 MB.
+
+    The cost of getting this wrong is measured in `sync`'s own docstring:
+    trickling one pair every 10 s held a sweep to **36 pairs/hour**, and
+    killing the indexer took the same eleven workers to **220**. Six times,
+    to make no progress.
+
+    Returns the NAME so the pause can say which job — "paused: a collect is
+    running" is a fact a reader can act on; "a backtest is running" while a
+    collect runs is a false label (`label-must-match-data`).
+    """
     try:
         from tradingagents import db_jobs as dj
 
-        return bool(dj.status("backtest").get("running"))
-    except Exception:
-        return False
+        for kind in dj.FILES:
+            # status() resolves a stale pid, so a job whose process died
+            # cannot pause the indexer forever — the failure mode that would
+            # turn this fix into the very silence it prevents.
+            with contextlib.suppress(Exception):
+                if dj.status(kind).get("running"):
+                    return str(kind)
+    except Exception:                                          # noqa: BLE001
+        return ""
+    return ""
+
+
+def _machine_is_busy() -> bool:
+    """Is any heavy store job running right now? See `busy_job`."""
+    return bool(busy_job())
 
 logger = logging.getLogger(__name__)
 
@@ -3948,7 +3979,11 @@ def status() -> dict:
         else:
             pairs = rows = newest = None
             unreadable = write_available() or f"{type(exc).__name__}: {exc}"
+    # GATE on _machine_is_busy, NAME with busy_job. Six tests across two
+    # files patch the gate, and it is the older, wider seam; making status()
+    # ask busy_job() directly meant a patched gate no longer reached it.
     busy = _machine_is_busy()
+    job = busy_job() if busy else ""
     return {"pairs_indexed": pairs, "pairs_on_disk": on_disk, "rows": rows,
             # "" unless the numbers above could not be read at all
             "unreadable": unreadable,
@@ -3964,7 +3999,10 @@ def status() -> dict:
             "syncing": syncing(),
             "last_error": _last_error, "blocked_by": lock_holder(),
             # kept for older readers; both mean "a sweep owns the disk"
-            "trickling": busy, "paused": busy, "updated": newest}
+            "trickling": busy, "paused": busy,
+            # WHICH job, not just that one exists. "paused" with no
+            # name is the stalled screen RCA-2026-09-10-C was about.
+            "paused_by": job, "updated": newest}
 
 
 def lock_holder() -> str:
@@ -4066,10 +4104,16 @@ def start_keeping_up(every_s: float = 10.0, budget_s: float = 60.0) -> bool:
             first = False
             try:
                 if _machine_is_busy():
+                    job = busy_job() or "job"
                     # stand down entirely: on a slow disk the indexer and the
                     # sweep fight over the same platter and the sweep loses 6x
+                    #
+                    # NAME THE JOB. This said "a backtest" whatever was
+                    # actually running, so on Sep 13, 2026 it would have
+                    # reported a backtest while a COLLECT held the disk --
+                    # a reader sent to look at the wrong screen.
                     if not _said_paused[0]:
-                        print(f"[rows-index] paused: a backtest is running "
+                        print(f"[rows-index] paused: a {job} is running "
                               f"({len(stale_pairs())} pairs waiting; they are "
                               f"indexed in one bulk pass when it ends)",
                               flush=True)

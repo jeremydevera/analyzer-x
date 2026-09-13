@@ -172,6 +172,108 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-13-E — the indexer stood down for a backtest and had never heard of the other five jobs
+
+**CEO**
+
+* While your results were downloading this afternoon, the indexer was fighting
+  the download for the same disk instead of waiting its turn. In twenty
+  minutes it finished nothing at all — not one coin — and it made the
+  download slower the whole time.
+* Why: the indexer is supposed to stand aside whenever a big job is using the
+  store. It only knew how to check for ONE kind of big job, and six kinds
+  exist. A download of results was not on its list, so it never stood aside.
+* What stops it now: it checks every kind, and when it stands aside it says
+  which job it is waiting for. Measured cost of getting this wrong, from this
+  project's own earlier notes: a big job ran at 36 coins an hour with the
+  indexer fighting it and 220 an hour with it stopped — six times faster.
+
+**DEV**
+
+* `rows_index._machine_is_busy` read `db_jobs.status("backtest")` only, while
+  `db_jobs.FILES` holds six kinds (download, backtest, pairbt, stratbt,
+  collect, btupdate). With a collect running, it returned False and the
+  trickle loop ran at full tilt.
+* Invariant broken: the rule is "do not fight the machine's big job", stated
+  in `sync`'s own docstring with the 36-vs-220 pairs/hour measurement behind
+  it. The implementation encoded one instance of the rule, not the rule.
+  Second break, same entry: the pause line printed the literal *"a backtest
+  is running"* whatever was actually running (`label-must-match-data`).
+* Guard: `tests/test_index_stall_is_visible.py` —
+  `test_the_indexer_stands_down_for_EVERY_heavy_job` (parametrised over all
+  six kinds), `test_a_job_that_cannot_be_read_does_not_pause_the_indexer`,
+  `test_the_pause_NAMES_the_job_that_is_actually_running`,
+  `test_status_says_WHO_paused_it`. Seven go red against the one-job rule.
+
+**SAW** — nothing on screen; found while proving whether the indexer had
+really recovered from RCA-2026-09-13-D.
+
+**TIMELINE**
+
+1. `Sep 13, 2026 4:04pm` — a collect starts (run 34739539427), 20 shards.
+2. `4:30pm` — the indexer is restarted after the WAL repair (pid 12216).
+   `_machine_is_busy()` returns False: `db_jobs.status("backtest")` says
+   `running: false`, and nothing asks about the collect.
+3. `4:35pm – 4:55pm` — measured: sustained **5,487 disk writes per 30
+   seconds**, 105,453 writes total, WAL **200 MB → 486 MB**, and
+   `MAX(at) FROM pairs` frozen at `Sep 12, 2026 7:09am` for the whole twenty
+   minutes. **Zero pairs committed.**
+4. `4:57pm` — py-spy, three samples 40 s apart, all identical:
+   `index_pair (rows_index.py:492)` ← `sync (rows_index.py:917)`. Line 492 is
+   `DELETE FROM rows WHERE pair = ?` — one pair's ~20,000 rows against SEVEN
+   indexes on a 42 GB file, ~140,000 scattered index-entry deletions on a
+   mechanical disk.
+5. `5:10pm` — the collect had reached shard 6 of 20, **1,949 pairs,
+   34,198,454 rows**, with the indexer competing throughout.
+6. `5:12pm` — the indexer is stopped by hand so the collect gets the disk.
+   Killing it mid-DELETE rolls the transaction back and costs nothing: the
+   pair files are the source of truth.
+
+**ROOT CAUSE** — a rule about "any heavy job" was implemented as a check for
+one named job, and the six job kinds were never enumerated at the one place
+that had to know them.
+
+**WHY IT WAS NOT CAUGHT** — the 14 tests in
+`tests/test_index_stall_is_visible.py` were bought by RCA-2026-09-10-C and
+every one of them asks whether a failure is VISIBLE: is the error kept, does
+the button print the real size, is the holder named. Not one asks whether the
+indexer stands down when it should. The pause is the opposite shape from the
+rest of that file — it is correct behaviour, so there is no failure to make
+visible, and a suite built around "make the failure reachable" has nowhere to
+put it.
+
+It also cannot be seen from the symptom. A paused indexer and a starved
+indexer look identical from outside: no pairs land. The difference is only
+legible in disk I/O against a stack sample, which is why py-spy settled it in
+one command after twenty minutes of inference.
+
+**COST** — no money, no lost measurement, no trade. Roughly one hour of a
+20-shard collect run slower than it needed to be, and 20 minutes of index work
+thrown away on rollback. The measured ratio elsewhere in this project for the
+same fight is 6x.
+
+**FIX** — this commit. `rows_index.busy_job()` walks every kind in
+`db_jobs.FILES` and returns the NAME of the first one running, `""` when none
+is; `_machine_is_busy()` is now `bool(busy_job())`. Each `status()` call is
+individually suppressed, so one unreadable progress file cannot read as "busy
+forever" and stop the index dead — the fix must not become the silence it
+prevents. The loop's pause line and `status()["paused_by"]` both carry the
+real job name.
+
+**GUARD** — `tests/test_index_stall_is_visible.py`:
+`test_the_indexer_stands_down_for_EVERY_heavy_job` (parametrised over all six
+kinds, and asserting each is still a real key in `db_jobs.FILES`, so adding a
+seventh without teaching this rule fails here),
+`test_nothing_running_means_the_indexer_works`,
+`test_a_job_that_cannot_be_read_does_not_pause_the_indexer`,
+`test_the_pause_NAMES_the_job_that_is_actually_running` and
+`test_status_says_WHO_paused_it`. Seven assertions go red against the
+one-job rule, and no existing test needed changing: `_machine_is_busy()`
+stays the GATE that six tests across two files patch, and `busy_job()` only
+supplies the name.
+
+---
+
 ## RCA-2026-09-13-D — the rebuild handed over an index the indexer could never open for writing
 
 **CEO**

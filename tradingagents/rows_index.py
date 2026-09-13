@@ -984,6 +984,41 @@ def bloat() -> dict:
 BLOAT_PCT = 25.0
 
 
+def make_wal(path: Path) -> str:
+    """Put a FRESH index file into WAL before it becomes the live one.
+
+    THE FILE THAT TAKES `rows.db`'s NAME MUST ALREADY BE IN WAL, and this is
+    the last moment anything can guarantee it, because the file is still
+    private here — nobody else has it open.
+
+    `journal_mode` is stored in the file header, and `_connect` says so:
+    *"journal_mode is PERSISTENT -- setting it per connection needs a brief
+    exclusive lock, which any live reader blocks. Set once, in ensure()."*
+    Both makers of a fresh file break that assumption:
+
+    * `rebuild()` loads with `journal_mode=OFF` (there is no crash to protect
+      against — a torn write costs a re-index, never a measurement), and OFF
+      is not persistable, so the file reopens in `delete`;
+    * `compact()` uses `VACUUM INTO`, whose output carries the DEFAULT mode,
+      which is also `delete`.
+
+    Swap either in and `ensure()` is left trying to flip a file the API polls
+    every second. That needs an EXCLUSIVE lock, a reader is always there, and
+    it raises `database is locked` on its FIRST statement — forever, on every
+    spawn. Measured Sep 13, 2026: five such crashes, the indexer dead since
+    the Sep 12 10:38am swap, and a collect landing new pairs that nothing
+    would ever index.
+
+    Returns the mode the file ends up in, for the caller to report.
+    """
+    con = sqlite3.connect(str(path), timeout=60.0)
+    try:
+        got = con.execute("PRAGMA journal_mode=WAL").fetchone()
+        return str(got[0]) if got else ""
+    finally:
+        con.close()
+
+
 def swap_in(dest: Path, backup: Path, *, keep_backup: bool = True) -> None:
     """Put `dest` in `DB_PATH`'s place, retiring the current file to `backup`.
 
@@ -1113,6 +1148,20 @@ def compact(*, dest: Path | None = None, keep_backup: bool = True) -> dict:
     # 24.8 GB of rows.prev.db / rows.old.db was already sitting there on
     # Sep 10, 2026, so a caller that does not want another copy can say so.
     backup = DB_PATH.with_suffix(".before-compact.db")
+    # WAL BEFORE THE NAME. The last moment this file is private (see
+    # make_wal): once it is rows.db the API is on it and the flip can never
+    # get its exclusive lock again.
+    #
+    # If it CANNOT be set, swap anyway and say so. A delete-mode index still
+    # answers every read; only the indexer cannot start, which is a thing to
+    # repair, not a reason to throw away five hours. And an exception here
+    # would escape exactly like the swap used to (RCA-2026-09-12-K).
+    try:
+        mode = make_wal(dest)
+    except Exception as exc:                                    # noqa: BLE001
+        mode = f"NOT SET: {type(exc).__name__}: {exc}"
+        print(f"[rows-index] could not put the new index in WAL: {mode}",
+              flush=True)
     with _lock:
         _ready.discard(str(DB_PATH))
         forget_indexes()
@@ -1127,7 +1176,8 @@ def compact(*, dest: Path | None = None, keep_backup: bool = True) -> dict:
                     "compact_file": str(dest),
                     "holder": lock_holder() or ""}
     after = bloat()
-    return {"compacted": True, "seconds": round(_t.time() - t0, 1),
+    return {"compacted": True, "journal_mode": mode,
+            "seconds": round(_t.time() - t0, 1),
             "rows": want_rows, "pairs": want_pairs,
             "before_bytes": before.get("bytes"), "after_bytes": after.get("bytes"),
             "freed_bytes": (before.get("bytes") or 0) - (after.get("bytes") or 0),
@@ -1474,6 +1524,20 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
     # belongs to instead of being destroyed: the retired index stays a
     # readable fallback, and the name is still clear for the new file
     # (a stale `rows.db-wal` beside a different rows.db is corruption).
+    # WAL BEFORE THE NAME. The last moment this file is private (see
+    # make_wal): once it is rows.db the API is on it and the flip can never
+    # get its exclusive lock again.
+    #
+    # If it CANNOT be set, swap anyway and say so. A delete-mode index still
+    # answers every read; only the indexer cannot start, which is a thing to
+    # repair, not a reason to throw away five hours. And an exception here
+    # would escape exactly like the swap used to (RCA-2026-09-12-K).
+    try:
+        mode = make_wal(dest)
+    except Exception as exc:                                    # noqa: BLE001
+        mode = f"NOT SET: {type(exc).__name__}: {exc}"
+        print(f"[rows-index] could not put the new index in WAL: {mode}",
+              flush=True)
     with _lock:
         _ready.discard(str(DB_PATH))
         forget_indexes()
@@ -1504,6 +1568,7 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
     after = DB_PATH.stat().st_size
     took = _t.time() - started
     return {"rebuilt": True, "pairs": done, "rows": rows,
+            "journal_mode": mode,
             "seconds": round(took, 1),
             "pairs_per_min": round(done / max(1e-9, took / 60), 2),
             "before_bytes": before, "after_bytes": after,

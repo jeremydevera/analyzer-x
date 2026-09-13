@@ -195,6 +195,66 @@ def test_the_retired_index_keeps_the_wal_it_arrived_with(store):
         "a stale WAL beside a DIFFERENT database is corruption"
 
 
+def test_the_swapped_in_index_is_already_in_WAL(store):
+    """THE FAULT THIS WAS WRITTEN FOR, found Sep 13, 2026 4:06pm.
+
+    `_connect` states the rule: *"journal_mode is PERSISTENT -- setting it per
+    connection needs a brief exclusive lock, which any live reader blocks. Set
+    once, in ensure()."* `rebuild()` loads with `journal_mode=OFF`, which is
+    not persistable, so the file it swapped in reopened in `delete`. From then
+    on `ensure()` had to flip a 41 GB file that the API polls every second —
+    an EXCLUSIVE lock it can never get — and the indexer died on its FIRST
+    statement, `database is locked`, on every single spawn for 29 hours while
+    a collect landed pairs that nothing would index."""
+    (store / "AAA-1h.json").write_text(json.dumps([_row("AAA")]),
+                                       encoding="utf-8")
+    got = ri.rebuild(resume=False, keep_backup=False)
+
+    assert got["rebuilt"] is True, got.get("why")
+    assert got["journal_mode"] == "wal", \
+        "the mode must be REPORTED, not assumed"
+    import sqlite3
+    con = sqlite3.connect(f"file:{ri.DB_PATH}?mode=ro", uri=True)
+    try:
+        assert con.execute("PRAGMA journal_mode").fetchone()[0] == "wal", \
+            "the live index is not in WAL, so the indexer cannot start"
+    finally:
+        con.close()
+
+
+def test_a_compacted_index_is_in_WAL_too(store):
+    """`VACUUM INTO` writes the DEFAULT journal mode, which is `delete`. Same
+    landmine, different maker — grep the CONCEPT, not the name."""
+    (store / "AAA-1h.json").write_text(json.dumps([_row("AAA")]),
+                                       encoding="utf-8")
+    ri.rebuild(resume=False, keep_backup=False)
+
+    got = ri.compact(keep_backup=False)
+
+    assert got.get("compacted") is True, got.get("why")
+    assert got["journal_mode"] == "wal"
+
+
+def test_a_file_that_refuses_WAL_is_still_swapped_in_and_named(
+        store, monkeypatch):
+    """A delete-mode index still answers every read; only the indexer cannot
+    start. That is a thing to repair, not a reason to throw away five hours —
+    and an exception here would escape `rebuild()` exactly like the swap used
+    to (RCA-2026-09-12-K)."""
+    (store / "AAA-1h.json").write_text(json.dumps([_row("AAA")]),
+                                       encoding="utf-8")
+
+    def refuse(path):
+        raise OSError(5, "the drive went away")
+
+    monkeypatch.setattr(ri, "make_wal", refuse)
+    got = ri.rebuild(resume=False, keep_backup=False)
+
+    assert got["rebuilt"] is True, "five hours must not be thrown away"
+    assert got["journal_mode"].startswith("NOT SET: OSError"), \
+        "and the operator must be told the indexer will not start"
+
+
 def test_both_swaps_are_the_same_one(store):
     """`compact()` and `rebuild()` each carried their own copy of these six
     lines and BOTH copies were wrong the same two ways. CLAUDE.md, bought on

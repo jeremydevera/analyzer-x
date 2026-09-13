@@ -172,6 +172,120 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-13-D — the rebuild handed over an index the indexer could never open for writing
+
+**CEO**
+
+* Your indexer — the thing that makes newly measured coins show up in Stored
+  strategies — had been dead since yesterday morning. It crashed on its very
+  first instruction, every single time it started, five times over 29 hours.
+  A fresh download of results started at 4:04pm today and none of it would
+  ever have appeared on your screen.
+* Why: when I rebuilt your index yesterday I built the new file in a fast
+  mode that skips crash protection, and I handed it over still in that mode.
+  From then on the indexer had to switch the 41 GB file over before it could
+  do anything — and switching needs the file entirely to itself for a moment,
+  which it can never have, because your app reads it every second.
+* What stops it now: the new file is switched over at the last moment it is
+  still private, before it takes over as the live one — and if that ever
+  fails, the rebuild still finishes and says so out loud instead of leaving
+  you a file nothing can write to. Your live file was switched over at 4:30pm
+  today and the indexer is filing again.
+
+**DEV**
+
+* `rows_index.rebuild()` loads with `PRAGMA journal_mode=OFF`
+  (`rows_index.py:1329`) and swapped the file in as-is. `OFF` is not
+  persistable, so the live `rows.db` reopened in `delete` —
+  `journal_mode` is stored in the file header, which `_connect` states at
+  `rows_index.py:289`: *"setting it per connection needs a brief exclusive
+  lock, which any live reader blocks. Set once, in ensure()."* `ensure()`
+  then raised `OperationalError: database is locked` at
+  `rows_index.py:340` on `PRAGMA journal_mode=WAL`, on every spawn.
+  `compact()` carried the same latent fault — `VACUUM INTO` writes the
+  DEFAULT mode, also `delete`.
+* Invariant broken: **a fresh file that takes the live name must arrive in
+  the state the live name requires.** The rule existed and was written down
+  three lines above the code that depends on it; the rebuild simply was not
+  read as a maker of that file.
+* Guard: `tests/test_rebuild_guards.py` —
+  `test_the_swapped_in_index_is_already_in_WAL`,
+  `test_a_compacted_index_is_in_WAL_too`,
+  `test_a_file_that_refuses_WAL_is_still_swapped_in_and_named`.
+
+**SAW** — the operator, `Sep 13, 2026 4:03pm`: *"STATUS"*. Nothing on their
+screen showed this; Stored strategies answered every query correctly off the
+5,392 pairs already filed, and would have gone on doing so while every new
+coin silently failed to appear.
+
+**TIMELINE**
+
+1. `Sep 12, 2026 10:38am` — the rebuild swaps in a fresh 34.41 GB `rows.db`,
+   verified, 5,392 pairs / 112,364,317 rows. Built with `journal_mode=OFF`.
+2. `10:38am – 11:03am` — the queued `rows_wr2` build runs and succeeds (it
+   opens its own connection and does not need the flip). The file reaches
+   44.35 GB. **This is the last write the index ever receives.**
+3. Every indexer spawn from here raises `database is locked` at
+   `rows_index.py:340` within seconds. Five tracebacks land in
+   `rows_index.log`, the last at `Sep 13, 2026 4:05pm`.
+4. `Sep 13, 2026 4:04pm` — a cloud collect starts (run 34739539427) and
+   begins landing new pair files: by 4:40pm, **635 pairs / 11,129,408 rows**
+   over 2 of 20 shards. Every one of those pairs is stale and unindexable.
+5. `4:06pm` — measured: `PRAGMA journal_mode` on the live file reads
+   `delete`. Pidfile named pid 11124, which was not running.
+6. `4:30pm` — the API is stopped for 3 seconds, `make_wal()` flips the file
+   (`delete` → `wal`), the API is restarted (pid 19668, up in 2s).
+7. `4:31pm` — `ensure()` no longer fails at line 340. It now fails at line
+   392 on an ordinary INSERT, which is a DIFFERENT and healthy thing: the
+   indexer has the write lock. Measured on the worker (pid 12216):
+   **6,719 reads and 5,082 writes in 25 seconds**. It is filing again.
+
+**ROOT CAUSE** — `rebuild()` and `compact()` each produce the file that
+becomes `rows.db`, and neither put it into the journal mode that every writer
+afterwards assumes, while the only code that would fix it can only run at a
+moment when it is guaranteed to fail.
+
+**WHY IT WAS NOT CAUGHT** — three reasons, and the third is the general one:
+
+* **The failure was in a process nobody watches.** The indexer writes to
+  `rows_index.log` (RCA-2026-09-10-C bought that), but nothing READS it. Five
+  identical tracebacks sat there for 29 hours. A log is necessary and is not
+  sufficient; something has to notice.
+* **Every test of `rebuild()` runs in a `tmp_path` with no second process**,
+  so the exclusive flip always succeeds there and the swapped-in file's mode
+  is never asserted. Exactly the gap RCA-2026-09-12-K named yesterday for the
+  swap itself, one layer along: the tests measure what the rebuild CONTAINS,
+  never what state it LEAVES the file in.
+* **`rebuild()` was written as a filler of a table, not as a maker of a
+  file.** Its verify asks about rows, pairs and `quick_check` — everything
+  about the CONTENT. The file's own properties (journal mode, page size,
+  which indexes survive) were nobody's job, which is also how the on-demand
+  indexes came to be destroyed silently by the same function last week.
+
+**COST** — none yet, and only because it was caught while the collect was on
+its second shard of twenty. Had it run to the end, ~5,000 pairs of freshly
+measured results would have been invisible in Stored strategies with the panel
+reporting no error at all.
+
+**FIX** — this commit. `rows_index.make_wal(path)` is the one definition, and
+both `rebuild()` and `compact()` call it on `dest` immediately before
+`swap_in()` — the last moment the file is private and the flip is guaranteed
+to get its exclusive lock. The result is returned as `journal_mode` in both
+functions' dicts so it is reported, never assumed. A failure to set it does
+NOT fail the swap: a `delete`-mode index still answers every read, only the
+indexer cannot start, and that is a thing to repair rather than a reason to
+discard five hours — it is caught, recorded as `NOT SET: <type>: <msg>`, and
+printed. The operator's live file was flipped by hand at `Sep 13, 2026
+4:30pm`.
+
+**GUARD** — `tests/test_rebuild_guards.py`, 3 new tests (11 in the file): a
+rebuilt index is in WAL and says so; a compacted one is too (`VACUUM INTO` is
+the other maker, found by grepping the concept); and a file that refuses WAL
+is still swapped in, with the failure named in the return. The first two go
+red against the old code.
+
+---
+
 ## RCA-2026-09-13-C — a failed index build threw away the one line that said why, and retried forever
 
 **NEVER HAPPENED YET** as far as anything can tell — and that is the defect:

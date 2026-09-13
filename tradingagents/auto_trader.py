@@ -3506,7 +3506,7 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
             # for the base slot.
             if is_slice_slot(slot_key):
                 _live_vol = _symbol_vol(symbol, fx=fx)
-                _tracked = sum(int((pz.get("vol") or 0))
+                _tracked = sum(int(pz.get("vol") or 0)
                                for _k, pz in open_slices(state, symbol, False))
                 live_gone = (_live_vol is not None
                              and _live_vol <= _tracked - int(pos.get("vol") or 0))
@@ -3552,7 +3552,7 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                     # this SLICE is closed when the symbol's volume has fallen
                     # by its contracts — the other slices are still open and
                     # must not make this one read as unconfirmed
-                    _tracked = sum(int((pz.get("vol") or 0))
+                    _tracked = sum(int(pz.get("vol") or 0)
                                    for _k, pz in open_slices(state, symbol, False))
                     _now_vol = _symbol_vol(symbol, fx=fx)
                     still = (_now_vol is None
@@ -3854,7 +3854,7 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
             _cap = max_slices(settings) if partial_on(settings, dry) else 1
             _why = None
             if len(_held) + 1 > _cap:
-                _why = (f"one open position per coin"
+                _why = ("one open position per coin"
                         if _cap == 1 else
                         f"{_cap} slice(s) per coin is the cap")
             elif any(int(pz.get("side") or 0) != side for _k, pz in _held):
@@ -4418,12 +4418,35 @@ def run_cycle(*, fx=None) -> None:
             slots = book_slots(state, symbol, dry)
             # the union across slots: on paper each strategy watches its own
             # bars, and one line per coin must not claim only one of them
+            # ...but only for timeframes something on this book is actually
+            # WATCHING. A slot's `last_ts` outlives the strategy that wrote
+            # it: when partial TP/SL moved the real book onto per-strategy
+            # slots on `Sep 05, 2026`, the BASE slot stopped being visited for
+            # entries and its stamps froze there. The union then printed
+            # `Min15@Sep 05, 2026 9:00am` beside a live `Min30@Sep 13`, so a
+            # coin whose candles were perfectly current read as a dead feed —
+            # a week-old fossil wearing the label "last bars"
+            # (RCA-2026-09-13-A, label-must-match-data).
+            _books_map = settings.get("strategy_books") or {}
+            _watched = {STRATEGY_SPECS[k]["interval"]
+                        for k in settings.get("strategies", [])
+                        if k in STRATEGY_SPECS
+                        and symbol in coins_for(k, settings)
+                        and (k not in _books_map
+                             or dry in books_for(k, settings))}
             seen: dict = {}
             for _k in slots:
                 _ls = (state.get(_k) or {}).get("last_ts") or {}
                 if not isinstance(_ls, dict):  # pre-multi-TF state files
                     _ls = {"Hour4": _ls}
+                # an OPEN position still speaks, even if its strategy was
+                # disarmed while it was holding — that bar is live news
+                _p = (state.get(_k) or {}).get("position") or {}
+                _ps = STRATEGY_SPECS.get(_p.get("strategy") or "")
+                _ok = set(_watched) | ({_ps["interval"]} if _ps else set())
                 for _tf, _ts in _ls.items():
+                    if _tf not in _ok:
+                        continue
                     if _ts and _ts > seen.get(_tf, 0):
                         seen[_tf] = _ts
             def _bar_stamp(ts: float) -> str:
@@ -4437,8 +4460,14 @@ def run_cycle(*, fx=None) -> None:
                 return fmt_when(ts)
 
             bars_txt = " ".join(
-                f"{tf}@{_bar_stamp(ts)}"
-                for tf, ts in sorted(seen.items())) or "none yet"
+                f"{tf}@{_bar_stamp(ts)}" for tf, ts in sorted(seen.items()))
+            if not bars_txt:
+                # every coin is scanned on BOTH books, so a coin armed only on
+                # paper reaches this line on the real one. Say which it is:
+                # "none yet" claims a feed that has not delivered, and that is
+                # a different thing from nothing being armed here.
+                bars_txt = ("nothing armed on this book" if not _watched
+                            else "none yet")
             # Every OPEN slot, named. This line read the legacy paper key too,
             # so the Runner feed printed "flat" for a coin holding two demo
             # positions — a false label beside a true one (2026-09-04).

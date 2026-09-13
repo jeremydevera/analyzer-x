@@ -172,6 +172,88 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-13-A — the Runner feed showed an eight-day-old bar for coins whose candles were current
+
+**CEO**
+
+* The feed said four of your coins had last seen a candle on Sep 05 while
+  the runner had been up 38 hours and their data was completely up to date. It
+  reads as a dead price feed, and that is exactly how it was read.
+* Why: the line adds up every slot's record of "last candle I looked at", and
+  a slot keeps that record after the strategy that wrote it is gone. Those
+  four numbers were left behind by a change on Sep 05 and never moved again.
+* What stops it now: only a timeframe something is actually watching on that
+  book can speak for the coin, and a book with nothing armed says so in words
+  instead of showing a date. No trade, position or exit was ever decided by
+  this value — it was a caption, and the caption was wrong.
+
+**DEV**
+
+* `auto_trader.py:4421` built `seen` as a union of `state[slot]["last_ts"]`
+  over `book_slots(state, symbol, dry)`, unfiltered. Every write to `last_ts`
+  lives in the entry loop (`:3812`, `:3839`, `:3867`, `:3886`, `:3950`,
+  `:4001`), and since partial TP/SL the real BASE slot is visited with
+  `entries=False` (`:3319`), so its stamps froze the day the switch was made.
+* Invariant broken: **a label must be derived from the data it describes.**
+  `last_bars` claimed to describe this coin's feed and actually described the
+  union of some dead slots' memories. The line now filters to intervals armed
+  for this coin on THIS book, plus the interval of any open position whose
+  strategy was disarmed while holding.
+* Guard: `tests/test_the_scan_line_names_only_live_bars.py` — 6 tests driving
+  `run_cycle` with the operator's own slot shapes. Red on the pre-fix file for
+  both incident cases.
+
+**SAW** — `Sep 13, 2026 4:01pm`, four lines in the Runner feed:
+`scan GPNSTOCK_USDT[real] ... last_bars=Min15@Sep 05, 2026 9:00am
+Min30@Sep 13, 2026 3:30pm` and `scan KITE_USDT[real] ...
+last_bars=Min60@Sep 05, 2026 8:00am`, with ROLSTOCK and DVNSTOCK the same.
+
+**TIMELINE**
+
+1. `Sep 05, 2026` — partial TP/SL moved the real book onto per-strategy slots
+   (`SYM#live#KEY`). The base slot `SYM` kept being visited so a position
+   opened before the switch stays managed, but with `entries=False`.
+2. Its `last_ts` stopped advancing that day: GPNSTOCK froze at
+   **Min15@9:00am**, KITE and ROLSTOCK at **Min60@8:00am**, DVNSTOCK at
+   **Min15@9:00am**.
+3. `Sep 13, 2026 4:01pm` — 38 hours into a healthy runner (pid **19428**, lock
+   held), the feed still printed those four dates. Measured at the same
+   moment, the live per-strategy slots read **Min30@Sep 13, 2026 3:30pm** —
+   the same coin, the same process, eight days apart on one line.
+4. On KITE, ROLSTOCK and DVNSTOCK the base slot is the ONLY real slot and
+   nothing is armed on the real book at all, so the fossil WAS the whole line:
+   `0 of 1 slot(s) open` where the 1 is a leftover.
+5. After the fix, the same state prints `last_bars=Min30@Sep 13, 2026 3:30pm`
+   for GPNSTOCK and `last_bars=nothing armed on this book` for the other
+   three.
+
+**ROOT CAUSE** — an unfiltered union: `for _tf, _ts in _ls.items()` over every
+slot the coin has ever had on this book. A slot's memory outlives its
+strategy, so the union mixed live readings with fossils and printed them in
+one sentence with no way to tell which was which.
+
+**WHY IT WAS NOT CAUGHT** — no test anywhere asserts on this line; a grep for
+`last_bars` across `tests/` returns nothing. It is a log line, and log lines
+are treated as commentary rather than as product — but this one is the answer
+to *"why has this coin not traded"*, which is the question the feed exists to
+answer. **A line the operator reads to make a decision is a product surface
+and needs a test, even when it changes nothing.** The same blind spot that
+CLAUDE.md already records for the runner's own timestamps ("LOG LINES COUNT")
+applies to their CONTENT, not only their format.
+
+**COST** — none in money and none in behaviour: this value never reached an
+order, a barrier or a book. It cost an investigation, and it would have cost
+more the next time a feed really did go stale, because the feed had been
+crying wolf on four coins for eight days.
+
+**FIX** — this commit. `auto_trader.run_cycle` filters the union to watched
+intervals and distinguishes "nothing armed on this book" from "none yet".
+
+**GUARD** — `tests/test_the_scan_line_names_only_live_bars.py`, verified red
+on the pre-fix file (2 of 6, both incident cases).
+
+---
+
 ## RCA-2026-09-12-K — the last 8 seconds of a 6-hour rebuild could throw all of it away and still read "verifying"
 
 **NEVER HAPPENED YET.** Found at `Sep 12, 2026 9:35am` while the rebuild it

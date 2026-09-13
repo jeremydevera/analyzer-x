@@ -219,3 +219,98 @@ def test_the_log_is_not_buffered_away():
 @pytest.mark.parametrize("field", ["stale", "last_error", "blocked_by"])
 def test_every_new_field_is_actually_served(field):
     assert field in ri.status()
+
+
+# ---------------------------------------------------------------------------
+# The SAME fault, in the sibling function the 2026-09-10 fix never reached.
+#
+# `spawn_indexer` was given a log that day. `_spawn_build` — which starts the
+# 45-minute index builds behind the win-rate floors, the #id lookup and the
+# signal filter — kept `stdout=DEVNULL`. `build_index_now` already prints the
+# one line a reader needs ("could not build rows_signal after 2731s:
+# OperationalError: database is locked") and it went straight in the bin, while
+# the panel said "being built in the background" and the lock released in
+# `finally` so it retried forever. Found Sep 13, 2026 by grepping the CONCEPT
+# rather than the name.
+# ---------------------------------------------------------------------------
+
+def _fake_popen(monkeypatch, box):
+    """Catch the Popen the spawner makes, without starting anything."""
+    class P:
+        pid = 4242
+
+    def fake(cmd, **kw):
+        box.append(kw)
+        return P()
+
+    monkeypatch.setattr(ri.subprocess, "Popen", fake)
+
+
+def test_a_detached_index_build_writes_a_log_instead_of_DEVNULL(
+        monkeypatch, tmp_path):
+    box: list = []
+    _fake_popen(monkeypatch, box)
+    monkeypatch.setattr(ri, "LOGFILE", tmp_path / "rows_index.log")
+    ri._BUILDING.discard("rows_signal")
+
+    assert ri._build_index("rows_signal") is True
+    kw = box[0]
+    assert kw["stdout"] is not ri.subprocess.DEVNULL, \
+        "45 minutes of work, and its own account of itself thrown away"
+    assert hasattr(kw["stdout"], "write"), "stdout must be a real file"
+    assert kw["stderr"] == ri.subprocess.STDOUT
+    assert kw["env"]["PYTHONUNBUFFERED"] == "1", \
+        "a log that appears only at exit is no use for a 45-minute job"
+
+
+def test_a_build_whose_LOG_cannot_open_still_builds(monkeypatch, tmp_path):
+    """A log is worth less than the build. The first version of this fix let
+    the open() failure reach the spawner's `except`, so an index that used to
+    build would never build again — to gain a log nobody could read."""
+    box: list = []
+    _fake_popen(monkeypatch, box)
+    monkeypatch.setattr(ri, "LOGFILE", tmp_path / "nope" / "rows_index.log")
+
+    def no_open(*a, **k):
+        raise PermissionError(13, "held by another process")
+
+    monkeypatch.setattr("builtins.open", no_open)
+    ri._BUILDING.discard("rows_signal")
+
+    assert ri._build_index("rows_signal") is True, "the build must still start"
+    assert box, "Popen was never reached"
+    assert box[0]["stdout"] is ri.subprocess.DEVNULL
+
+
+def test_a_blind_build_does_not_claim_a_log_that_is_not_there(
+        monkeypatch, tmp_path, capsys):
+    """label-must-match-data: the line a reader follows must be derived from
+    what happened, never a literal. "logging to ..." beside no log sends
+    somebody to an empty path."""
+    box: list = []
+    _fake_popen(monkeypatch, box)
+    monkeypatch.setattr(ri, "LOGFILE", tmp_path / "rows_index.log")
+
+    def no_open(*a, **k):
+        raise OSError(5, "the drive is not there")
+
+    monkeypatch.setattr("builtins.open", no_open)
+    ri._BUILDING.discard("rows_signal")
+    ri._build_index("rows_signal")
+
+    said = capsys.readouterr().out
+    assert "NO LOG" in said, said
+    assert "logging to" not in said, "it promised a log it does not have"
+
+
+def test_the_parent_does_not_leak_the_log_handle(monkeypatch, tmp_path):
+    """One handle per build, in the API process, which runs for weeks."""
+    box: list = []
+    _fake_popen(monkeypatch, box)
+    monkeypatch.setattr(ri, "LOGFILE", tmp_path / "rows_index.log")
+    ri._BUILDING.discard("rows_signal")
+
+    ri._build_index("rows_signal")
+
+    assert box[0]["stdout"].closed, \
+        "the parent's copy must be closed; the child holds its own"

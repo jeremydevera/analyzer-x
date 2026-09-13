@@ -172,6 +172,189 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-13-C — a failed index build threw away the one line that said why, and retried forever
+
+**NEVER HAPPENED YET** as far as anything can tell — and that is the defect:
+if it HAD happened there would be no record. Found Sep 13, 2026 4:20pm while
+checking whether the app had the same flaw that took the API down in
+RCA-2026-09-13-B.
+
+**CEO**
+
+* Your Stored strategies screen sometimes says *"this filter needs an index;
+  it is being built in the background"*. That build takes about 45 minutes. If
+  it ever failed, the reason went straight in the bin — and the app would
+  start it again, and again, while the screen kept saying the same hopeful
+  sentence forever.
+* Why: the code that builds the index already writes a clear sentence when it
+  fails. The code that STARTS it was throwing that sentence away instead of
+  saving it to a file.
+* What stops it now: those builds now write their reason into the same log
+  the rest of the app uses, as it happens rather than at the end. If that
+  log cannot be written at all, the build still goes ahead and says so out
+  loud — a missing note must never cost you the index itself.
+
+**DEV**
+
+* `rows_index.py:2889` — `_spawn_build` passed `stdout=subprocess.DEVNULL,
+  stderr=subprocess.DEVNULL`, so `build_index_now`'s own
+  `print(f"[rows-index] could not build {name} after {n}s: …")`
+  (`rows_index.py:2835`) had nowhere to land. `build_index_now` releases
+  `_build_lock(name)` in its `finally`, so the next asker re-spawns: a
+  deterministic failure loops with zero evidence.
+* Invariant broken: **"a long-running process writes a LOG"** (CLAUDE.md, "A
+  job that cannot start must SAY SO", RCA-2026-09-10-C). That fix landed in
+  `spawn_indexer` and never reached this sibling.
+* Guard: `tests/test_index_stall_is_visible.py` —
+  `test_a_detached_index_build_writes_a_log_instead_of_DEVNULL`,
+  `test_a_build_whose_LOG_cannot_open_still_builds`,
+  `test_a_blind_build_does_not_claim_a_log_that_is_not_there`,
+  `test_the_parent_does_not_leak_the_log_handle`. Three of the four go red
+  against the old spawner; the fourth guards the fix's own failure mode.
+
+**SAW** — nothing, which is the whole entry. On `Sep 12, 2026` five index
+builds ran after the rebuild swap and all five succeeded (`rows_wr2` at
+10:38am, the `#id` lookup answering by 11:08am, the signal filter by 11:13am),
+so no failure was there to be lost. Nothing anywhere would have shown one.
+
+**TIMELINE** — what would have happened
+
+1. A build starts: `[rows-index] building rows_signal in pid 16148
+   (detached)` — the only line, written by the PARENT.
+2. 45 minutes later the child hits `database is locked` (the exact error that
+   held this index for 13 hours on `Sep 10, 2026`). `build_index_now` prints
+   `could not build rows_signal after 2731s: OperationalError: database is
+   locked` — into `DEVNULL`.
+3. `finally` unlinks the build lock. The panel still answers *"needs its index
+   (rows_signal); it is being built in the background — try again shortly"*.
+4. The next request re-spawns it. Go to 1. Nothing on disk ever changes.
+
+**ROOT CAUSE** — the spawner discarded the child's stdout and stderr, which is
+where the only explanation of a failed build is written.
+
+**WHY IT WAS NOT CAUGHT** — `tests/test_index_stall_is_visible.py` was written
+for exactly this fault and asserts it against **`spawn_indexer` by name**
+(`test_the_indexer_writes_a_log_instead_of_DEVNULL`,
+`test_the_log_is_not_buffered_away`, both reading
+`inspect.getsource(ri.spawn_indexer)`). `_build_index` starts a different
+long-lived child in the same module and no test named it. This is **"when
+changing a rule, grep for the CONCEPT"** (CLAUDE.md, Sep 04) in its
+test-shaped form: a guard pinned to one function's NAME does not defend a
+rule. The new tests drive the spawner and read the Popen kwargs, so any third
+spawner added later is covered by the same argument rather than a new grep.
+
+**COST** — none. No build is known to have failed.
+
+**FIX** — this commit. `_build_index` opens `LOGFILE` in append mode and
+passes it as `stdout` with `stderr=subprocess.STDOUT`, and adds
+`PYTHONUNBUFFERED=1` to the child env. The log is opened in its OWN
+`try/except OSError` with `subprocess.DEVNULL` as the fallback, because the
+first draft let an unopenable log reach the spawner's `except` — which would
+have meant an index that used to build never building again, to gain a log
+nobody could read. The "building …" line names the log only when there IS one
+and prints `NO LOG` otherwise (`label-must-match-data`), and the parent closes
+its own copy of the handle in a `finally` so the API process does not leak one
+per build over weeks of uptime.
+
+**GUARD** — the four tests named in DEV, plus `tests/test_detached_spawns.py`
+from RCA-2026-09-13-B, which covers the same function's creation flags.
+
+---
+
+## RCA-2026-09-13-B — the app was dead for 28 hours and the only thing that would have noticed was me
+
+**CEO**
+
+* Your app's back end was down from Sep 12, 2026 11:44am to Sep 13, 2026
+  4:05pm — **28 hours 18 minutes**. Every screen that reads data would have
+  been blank or spinning.
+* Why: I restarted it after the index rebuild, but I started it the wrong way —
+  hooked to my own session instead of standing on its own. When my session's
+  processes were cleaned up, your app was cleaned up with them. Then I read my
+  own "API back up" message as proof and never checked again.
+* What stops it now: a test that checks every place this project starts a
+  long-running program and fails if it is not properly cut loose. **Your
+  trading was never affected** — the runner kept going the whole time and took
+  7 entries and 2 exits while the screen was dark.
+
+**DEV**
+
+* The swap guard (`scratchpad/swap_guard.py`, and the older
+  `scratchpad/restart_api.py`) used
+  `creationflags=CREATE_NEW_PROCESS_GROUP` only. That flag separates a child
+  from the parent's Ctrl-C; it does **not** detach it. `start.py:139` uses
+  `CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS`, which is the only form that
+  survives the parent's tree being reaped.
+* Invariant broken: **"the exchange is the source of truth, never the local
+  book"** (CLAUDE.md rule 14) applied to my own reporting — *"the request was
+  sent" is not "it is in place"*. `start_api()` polled `/api/health` once at
+  t+18s and I reported success from that single sample, for a process whose
+  whole failure mode is dying later.
+* Guard: `tests/test_detached_spawns.py` — walks the AST of `start.py` and
+  every module under `tradingagents/`, folds each creation-flag expression to
+  a number, and fails any long-lived spawn missing either flag.
+
+**SAW** — the operator, `Sep 13, 2026 4:03pm`: *"WHY DID YOU NOT RESTART"*.
+
+**TIMELINE**
+
+1. `Sep 12, 2026 10:21am` — the swap guard stops the API on purpose, so the
+   6-hour rebuild can move `rows.db` (Windows refuses to move a held file).
+2. `10:38am` — the swap lands. The guard restarts the API as **pid 16988** and
+   confirms `/api/health` answers. I report "API back up".
+3. `11:13am – 11:44am` — the API serves normally; I use it for the cascade
+   counts. Last line in `api.log`: `GET /api/health HTTP/1.1 200 OK`.
+4. `11:44am` — the API stops. **No traceback, no shutdown line, nothing.** Its
+   parent shell was reaped and it went with it.
+5. `Sep 13, 2026 4:02pm` — `curl /api/health` returns **000** (no connection).
+   No `uvicorn` process on the machine. Down **28 h 18 min**.
+6. `4:05pm` — restarted via `start.spawn` as **pid 18256**, up in 18 seconds.
+7. Same minute, measured: the runner was never affected — pids 9004/19428
+   alive since `Sep 12, 2026 2:27am`, **911 ledger rows** since 11:44am
+   (896 `gate_blocked`, 7 `enter`, 2 `exit`, 5 `error`, 1 `coin_busy`).
+   Example trade: `#ML5W2LSD` KITE_USDT SHORT, `squeeze_1h_sl3tp3`, entry
+   0.1063, TP 0.103111, SL 0.109489, $1 margin, 20x, opened
+   `Sep 12, 2026 4:00pm`, closed `Sep 13, 2026 1:54pm`.
+
+**ROOT CAUSE** — a helper script started a long-lived service with one of the
+two Windows flags that detach a process, so the service was a child of a shell
+that did not last.
+
+**WHY IT WAS NOT CAUGHT** — three layers, and the third is the one worth
+keeping:
+
+* **Nothing on this machine watches the API.** Every job here has a progress
+  file, a log and a bell. The thing all of them are *displayed in* has none.
+* **The spawn sites were unfindable by name.** Grepping
+  `DETACHED_PROCESS` returns `rows_index.py:2895` and
+  `storage_months.py:556` — both **comments**; those two files spell the
+  actual flags `0x00000008 | 0x00000200`. So a name search finds prose and
+  misses code, and a hex search misses `start.py` and `live_ingest`, which use
+  the names. Same shape as the `.toLocale` grep of Sep 09. The new guard folds
+  the expression to a NUMBER and accepts either spelling.
+* **I verified at t+18s a failure whose whole nature is arriving later.** One
+  health check right after start proves the port opened, nothing more. The
+  honest check for "did it survive" happens after the thing that kills it —
+  which for a process attached to my shell means after my shell is gone.
+
+**COST** — no money, no lost data, no missed trade, no measurement lost. The
+operator's screen, for 28 h 18 min, plus their time asking why.
+
+**FIX** — this commit adds the guard. The API itself was restarted at
+`Sep 13, 2026 4:05pm` with `start.spawn` (pid 18256), which is the launcher
+that sets both flags. The scratchpad helpers that caused it are throwaway and
+are not in the repository; the rule they broke now has a test in it.
+
+**GUARD** — `tests/test_detached_spawns.py`, 5 tests: the probe must find at
+least four real spawn sites before any of its verdicts count (a probe that
+finds zero has verified nothing), and each site must set BOTH flags. Proved
+red by dropping `DETACHED_PROCESS` from `rows_index.py:2907`. It deliberately
+skips blocking `subprocess.run` calls — the first version failed
+`portable.py:199`, a `wmic` call that uses `CREATE_NO_WINDOW` to hide a
+console window and returns in milliseconds.
+
+---
+
 ## RCA-2026-09-13-A — the Runner feed showed an eight-day-old bar for coins whose candles were current
 
 **CEO**

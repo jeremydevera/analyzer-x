@@ -2883,12 +2883,22 @@ def _build_index(name) -> bool:
         return False
     _BUILDING.add(name)                 # only stops THIS process re-asking
     cmd = [sys.executable, "-m", "tradingagents.rows_index", "--build", name]
-    # the child must open the SAME database this process is using
+    # the child must open the SAME database this process is using.
+    #
+    # PYTHONUNBUFFERED, and a LOG rather than DEVNULL. `build_index_now`
+    # already prints exactly the line a reader needs — "could not build
+    # rows_signal after 2731s: OperationalError: database is locked" — and
+    # this spawner threw it away. The lock file is released in that
+    # function's `finally`, so a build that fails every time retries
+    # forever while the panel keeps saying "being built in the background",
+    # with nothing on disk to say why. That is RCA-2026-09-10-C's third
+    # fault ("a long-running process writes a LOG"), which was fixed in
+    # `spawn_indexer` and never reached this sibling — 45 minutes of work
+    # per index, silent.
     child_env = dict(os.environ, TA_INDEX_BUILD=name,
-                     TA_ROWS_DB=str(DB_PATH))
+                     TA_ROWS_DB=str(DB_PATH),
+                     PYTHONUNBUFFERED="1")
     kwargs: dict = {"env": child_env,
-                    "stdout": subprocess.DEVNULL,
-                    "stderr": subprocess.DEVNULL,
                     "stdin": subprocess.DEVNULL,
                     "cwd": str(Path(__file__).resolve().parent.parent)}
     if os.name == "nt":
@@ -2897,20 +2907,50 @@ def _build_index(name) -> bool:
         kwargs["creationflags"] = 0x00000008 | 0x00000200
     else:
         kwargs["start_new_session"] = True
+    # A LOG IS WORTH LESS THAN THE BUILD. Opening it can fail — the directory
+    # is missing, the file is held, the drive is not there — and if that
+    # failure reached the `except` below, an index that used to build would
+    # now never build at all, to gain a log nobody could read. So the log is
+    # attempted separately and DEVNULL is the fallback, with a line saying
+    # the build is running blind.
+    sink, opened = subprocess.DEVNULL, None
     try:
-        proc = subprocess.Popen(cmd, **kwargs)                # noqa: S603
+        LOGFILE.parent.mkdir(parents=True, exist_ok=True)
+        opened = open(LOGFILE, "a", encoding="utf-8",         # noqa: SIM115
+                      errors="replace")
+        sink = opened
+    except OSError as exc:
+        print(f"[rows-index] {name}: no log ({type(exc).__name__}: {exc}) — "
+              f"building anyway, blind", flush=True)
+    try:
+        # The child keeps its OWN handle on the log, so closing this copy
+        # below does not shut the build's log — the same shape
+        # `spawn_indexer` uses.
+        proc = subprocess.Popen(                              # noqa: S603
+            cmd, stdout=sink, stderr=subprocess.STDOUT, **kwargs)
         # the lock goes down HERE, with the child's pid in it, so a second
         # asker in another process cannot spawn a twin before the child starts
         with contextlib.suppress(OSError):
             _build_lock(name).write_text(str(proc.pid), encoding="utf-8")
-        print(f"[rows-index] building {name} in pid {proc.pid} (detached)",
-              flush=True)
+        # the LABEL is derived from what actually happened, never a literal:
+        # a build running blind must not claim a log a reader would then go
+        # looking for.
+        where = f"logging to {LOGFILE}" if opened is not None else "NO LOG"
+        print(f"[rows-index] building {name} in pid {proc.pid} "
+              f"(detached), {where}", flush=True)
         return True
     except Exception as exc:                                      # noqa: BLE001
         _BUILDING.discard(name)
         print(f"[rows-index] could not start a build for {name}: "
               f"{type(exc).__name__}: {exc}", flush=True)
         return False
+    finally:
+        # the PARENT's copy of the handle. The child holds its own, so this
+        # does not shut the build's log — but leaving it open leaks one
+        # handle per build in the API process, which runs for weeks.
+        if opened is not None:
+            with contextlib.suppress(OSError):
+                opened.close()
 
 
 def _winrate_seek_cap() -> int:

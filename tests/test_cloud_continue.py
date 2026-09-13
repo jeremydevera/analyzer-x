@@ -10,8 +10,8 @@ streak, which the engine's own resume forgets.
 """
 import pytest
 
-from tradingagents import auto_trader as at, fast_grid as fg, resume_state as rs
 from tests.test_fast_grid import BARRIERS, _dirs, _frame, _funding
+from tradingagents import auto_trader as at, fast_grid as fg, resume_state as rs
 
 KEY = "mom6_continue_test"
 LOOKBACK = 60

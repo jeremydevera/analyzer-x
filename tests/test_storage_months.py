@@ -332,7 +332,6 @@ def test_the_worker_is_a_detached_process_and_a_dead_one_says_so(store, monkeypa
     another session restarted the API at 8:03am (2026-09-09), 2 coins in.
     The worker is its own process now; a record whose pid is gone reads as
     not running, with the reason, never as RUNNING for ever."""
-    import subprocess
 
     calls = []
 

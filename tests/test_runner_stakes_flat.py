@@ -19,8 +19,6 @@ Three things have to hold at once, and each is pinned here:
 """
 import inspect
 
-import pytest
-
 from tradingagents import auto_trader as at, backtest_report as br
 
 SETTINGS = {

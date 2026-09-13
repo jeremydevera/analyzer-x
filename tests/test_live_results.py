@@ -280,7 +280,7 @@ def test_the_artifact_is_written_before_the_post_and_whatever_the_post_does():
     other way round, a machine killed mid-post would lose the pair — and a PC
     that is asleep would lose the run."""
     src = SHARD.read_text(encoding="utf-8")
-    calls = [i for i in _finds(src, "\n    post_pair(coin, tf, lines)")]
+    calls = list(_finds(src, "\n    post_pair(coin, tf, lines)"))
     assert len(calls) == 2, "both the full path and the continuation post their pair"
     for i in calls:
         before = src[:i]

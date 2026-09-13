@@ -82,7 +82,6 @@ def test_update_mode_continues_from_the_saved_position():
     assert "no_state += 1" in body
     # the dispatch: run_pair goes to continue_pair when a usable position exists
     j = src.index("def run_pair(")
-    rp = src[j:src.index("\n    iv, bs, cap = br.TFS[tf]", j)]
     assert 'if MODE == "update":' in src[j:j + 2500]
     assert "state_usable(prior)" in src[j:j + 2500]
     assert "continue_pair(sym, tf, prior, out" in src[j:j + 2500]
@@ -145,7 +144,7 @@ def test_fetch_prior_states_takes_the_runs_newest_first(shard, monkeypatch, tmp_
         run_id = cmd[3]
         d = tmp_path / "state_in" / run_id / "state-0"
         d.mkdir(parents=True, exist_ok=True)
-        (d / f"AAA-15m.json.gz").write_bytes(b"x")          # both runs have AAA
+        (d / "AAA-15m.json.gz").write_bytes(b"x")          # both runs have AAA
         if run_id == "222":
             (d / "BBB-15m.json.gz").write_bytes(b"y")
         return R()

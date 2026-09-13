@@ -28,8 +28,7 @@ import time
 
 import pytest
 
-from tradingagents import backtest_report as br, market_sweep as msw, \
-    rows_index as ri
+from tradingagents import backtest_report as br, market_sweep as msw, rows_index as ri
 
 
 @pytest.fixture()
@@ -50,7 +49,7 @@ def store(tmp_path, monkeypatch):
          "th": 0.0, "sl": sl, "tp": tp, "sizing": "flat",
          "trades": 40, "wins": 30, "losses": 10, "winrate": 75.0,
          "profit": 12.0, "monthly": {}}]), encoding="utf-8")
-    (states / f"AAA-1h.json").write_text(
+    (states / "AAA-1h.json").write_text(
         json.dumps({"__last_ms__": int(time.time() * 1000)}), encoding="utf-8")
     ri.ensure()
     ri.sync()
@@ -110,6 +109,7 @@ def test_it_is_never_called_from_a_request(store):
     import ast
     import inspect
     import textwrap
+
     from tradingagents import api
 
     tree = ast.parse(textwrap.dedent(inspect.getsource(api)))

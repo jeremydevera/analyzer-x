@@ -283,16 +283,42 @@ def test_every_barrier_walk_gets_its_bars_from_the_one_helper():
         "this is the expression that invented 8 demo trades"
 
     tree = ast.parse(body)
+
+    def _floored(call) -> bool:
+        """A source that has already applied the order-time floor."""
+        if getattr(call.func, "id", "") == "_bars_exposed_to":
+            return True
+        # the live tick feed applies the same floor itself, strictly after
+        # (`live_price.PriceFeed.ticks_since`), so it is an equal source
+        return getattr(call.func, "attr", "") == "ticks_since"
+
     exposed: set[str] = set()
-    for node in ast.walk(tree):
-        if (isinstance(node, ast.Assign)
-                and isinstance(node.value, ast.Call)
-                and getattr(node.value.func, "id", "") == "_bars_exposed_to"):
+    for _round in range(3):                 # follow one hop of derivation
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Assign):
+                continue
+            v = node.value
+            ok = (isinstance(v, ast.Call) and _floored(v))
+            if not ok and isinstance(v, ast.ListComp):
+                # `_t_hi = [p for _t, p in rows]` where rows came from a
+                # floored source
+                ok = any(isinstance(g.iter, ast.Name) and g.iter.id in exposed
+                         for g in v.generators)
+            if not ok:
+                continue
             for tgt in node.targets:
                 for name in ast.walk(tgt):
                     if isinstance(name, ast.Name):
                         exposed.add(name.id)
-    assert exposed, "nothing sources its bars from the helper any more"
+    assert exposed, "nothing sources its bars from a floored helper any more"
+
+    # and the tick reader must still be handed the ORDER's own floor
+    for node in ast.walk(tree):
+        if (isinstance(node, ast.Call)
+                and getattr(node.func, "attr", "") == "ticks_since"
+                and node.args):
+            assert isinstance(node.args[-1], ast.Name),                 f"line {node.lineno}: ticks_since needs the order-time floor"
+            assert node.args[-1].id == "_since",                 f"line {node.lineno}: the floor must be `_since`, the order time"
 
     calls = [n for n in ast.walk(tree)
              if isinstance(n, ast.Call)

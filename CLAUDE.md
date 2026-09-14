@@ -778,6 +778,34 @@ begins at `opened_at` and at nothing else.
   of PnL that never happened and 8 points of win rate, on the number the
   operator picks deployments by.
 
+**AND THE DEMO NOW FILLS ON A PRINT, NOT A POLL (2026-09-14).** Operator:
+*"is it possible to make demo realtime? like watch the realtime price of the
+coin"*. `live_price.PriceFeed` subscribes to MEXC's public futures stream
+(`wss://contract.mexc.com/edge`, `push.deal` + `push.ticker`) and records every
+tick; the demo exit walks those ticks between the closed one-minute bars and
+the last-price fallback. Four rules hold it in place, and each is a test in
+`tests/test_demo_exits_on_the_live_tick.py`:
+
+* **It is a RECORDER.** Every barrier rule stays in `_dry_fill`, shared with
+  the backtest and both books. A feed that decides outcomes is a second
+  implementation of the thing this repo has paid for five times.
+* **`ticks_since` is a TAIL, not a transcript** — `KEEP_S` of history, and a
+  reconnect loses the gap. Use it to find a barrier that WAS crossed; NEVER to
+  conclude one was missed. Every failure (stale, disconnected, no ticks,
+  raising) falls back to the old path, so it can only make the demo more right.
+* **It never touches the live book.** A real exit is the exchange's bracket
+  (rule 14).
+* **A timestamp we cannot believe is DROPPED, never relabelled `now`.** The
+  first draft stamped implausible ticks with the current time, which would
+  have relabelled a pre-order print into the window after it — this same
+  incident, rebuilt out of ticks — and made a tick older than `KEEP_S`
+  immortal. Found by the harddev loop before it shipped.
+
+Polling harder is NOT an alternative and must not be proposed again: a
+5-second poll on `Aug 19, 2026` produced 77 scans in one minute, 166
+`code=510` refusals, 668 exit checks that could not read a price at all, and a
+106 MB log.
+
 **WHY IT SURVIVED — and the rule that buys:** two tests drove this exact path
 and neither could see it, because both fixtures had **a candle clock and a
 position clock that disagreed**. One built its wick bar ending at `now` while

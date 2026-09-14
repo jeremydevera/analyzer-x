@@ -36,7 +36,7 @@ from pathlib import Path
 
 import pandas as _pd
 
-from tradingagents import portable
+from tradingagents import live_price, portable
 
 logger = logging.getLogger(__name__)
 
@@ -3076,6 +3076,26 @@ def _exchange_exit_label(pos: dict, close_px: float) -> str:
     return "MANUAL/EXCHANGE"
 
 
+def _pv_fmt(ts) -> str:
+    """The project's one date format — `positions_view.fmt_when`, imported
+    late because that module imports this one."""
+    from tradingagents.positions_view import fmt_when
+
+    return fmt_when(ts)
+
+
+def _first_cross_ts(pos: dict, rows) -> float:
+    """The venue timestamp of the FIRST tick in `rows` that breached either
+    barrier — what a resting order at MEXC would have filled on."""
+    for t, p in rows:
+        if pos["side"] > 0:
+            if p <= pos["sl"] or p >= pos["tp"]:
+                return t
+        elif p >= pos["sl"] or p <= pos["tp"]:
+            return t
+    return rows[-1][0] if rows else 0.0
+
+
 def _order_live_from(pos: dict) -> int:
     """The instant this trade's order actually existed, as epoch seconds.
 
@@ -3477,6 +3497,27 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                 logger.warning("%s: could not read 1-minute ranges for the "
                                "paper bracket (%s) — falling back to the "
                                "last-price check.", symbol, exc)
+        if not outcome and pos_dry:
+            # EVERY TICK SINCE THE LAST CLOSED MINUTE. A real bracket rests at
+            # MEXC and fills on any print through the barrier; one-minute bars
+            # close that gap to a minute and this closes it to a tick. The
+            # feed is a tail and may be stale or empty, which is why it sits
+            # BETWEEN the closed bars (older ground, authoritative) and the
+            # last-price check (the fallback that always answers).
+            try:
+                rows = live_price.FEED.ticks_since(symbol, _since)
+            except Exception as exc:                           # noqa: BLE001
+                logger.debug("%s: live price feed unavailable (%s)", symbol, exc)
+                rows = None
+            if rows:
+                _t_hi = [p for _t, p in rows]
+                outcome = _dry_fill(pos, _t_hi, _t_hi)
+                if outcome:
+                    logger.info(
+                        "%s %s: %s crossed on the live feed at %s — %d tick(s) "
+                        "since the last closed minute", symbol,
+                        pos.get("strategy"), outcome,
+                        _pv_fmt(_first_cross_ts(pos, rows)), len(rows))
         if not outcome and pos_dry:
             # Real-time exit for simulated positions: closed bars lag, so
             # also test the live tick against the bracket. SL checked first,
@@ -4507,6 +4548,29 @@ def run_cycle(*, fx=None) -> None:
             # come after `process_symbol` to see a slot the pass created.
             touched.extend(book_slots(state, symbol, dry))
     save_state(state, keys=touched)
+    _feed_follow(state)
+
+
+def _feed_follow(state: dict) -> None:
+    """Point the live price feed at the coins holding a DEMO position.
+
+    Run at the END of the cycle so a position opened this pass is listened to
+    at once. Only demo coins: a live exit is the exchange's own bracket, and
+    subscribing to all 993 contracts to serve a handful of simulated trades is
+    traffic nobody asked for.
+
+    Total by construction — a feed that cannot start must never stop a cycle
+    that is managing real money.
+    """
+    try:
+        coins = {coin_of_slot(k) for k, v in state.items()
+                 if is_paper_slot(k) and isinstance(v, dict)
+                 and (v.get("position") or {}).get("dry")}
+        live_price.FEED.track(coins)
+        if coins:
+            live_price.FEED.start()
+    except Exception as exc:                                    # noqa: BLE001
+        logger.debug("live price feed not following: %s", exc)
 
 
 # --------------------------------------------------------- process control

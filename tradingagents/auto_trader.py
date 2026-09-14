@@ -4563,11 +4563,46 @@ def _feed_follow(state: dict) -> None:
     that is managing real money.
     """
     try:
-        coins = {coin_of_slot(k) for k, v in state.items()
-                 if is_paper_slot(k) and isinstance(v, dict)
-                 and (v.get("position") or {}).get("dry")}
+        settings = load_settings()
+        demo_slots = {k: v.get("position") for k, v in state.items()
+                      if is_paper_slot(k) and isinstance(v, dict)
+                      and (v.get("position") or {}).get("dry")}
+        coins = {coin_of_slot(k) for k in demo_slots}
         live_price.FEED.track(coins)
-        if coins:
+
+        # WAIT ON THE CANDLE, DO NOT POLL FOR IT. Every armed strategy's own
+        # timeframe, on every coin it trades: MEXC pushes the new bar the
+        # instant the old one closes, which is the entry trigger. The signal
+        # still reads the CLOSED bar — the change is what wakes the runner,
+        # not what it decides on.
+        pairs = set()
+        for key in settings.get("strategies", []):
+            spec = STRATEGY_SPECS.get(key)
+            if not spec:
+                continue
+            for coin in coins_for(key, settings):
+                pairs.add((coin, spec["interval"]))
+        live_price.FEED.track_klines(pairs)
+
+        # Every open DEMO position's barriers, so a print that crosses one
+        # wakes the cycle at once instead of waiting for the next look.
+        for slot, pos in demo_slots.items():
+            live_price.FEED.arm(slot, coin_of_slot(slot), int(pos["side"]),
+                                float(pos["tp"]), float(pos["sl"]),
+                                _order_live_from(pos))
+        live_price.FEED.keep_only(demo_slots)
+
+        # The private stream tells the runner about a LIVE fill when MEXC
+        # fills it. Read-only; no order is ever sent over the socket.
+        if False in active_modes(settings):
+            with contextlib.suppress(Exception):
+                from tradingagents.dataflows import mexc_futures as _fx
+
+                k, s = _fx.credentials()
+                if k and s:
+                    live_price.FEED.use_credentials(k, s)
+
+        if pairs or coins:
             live_price.FEED.start()
     except Exception as exc:                                    # noqa: BLE001
         logger.debug("live price feed not following: %s", exc)
@@ -4658,6 +4693,110 @@ def stop_runner() -> bool:
     os.kill(pid, signal.SIGTERM)
     PID_PATH.unlink(missing_ok=True)
     return True
+
+
+# Never run two cycles closer together than this, whatever wakes them. The
+# cycle makes REST calls; a burst of ticks that each triggered one would
+# rebuild the Aug 19, 2026 rate-limit failure (77 scans in a minute, 166
+# `code=510` refusals) with a websocket instead of a timer.
+MIN_CYCLE_GAP_S = 2.0
+_LAST_CYCLE_AT = [0.0]
+
+
+def _log_what_woke_us() -> None:
+    """Say WHY the cycle is running, in the Runner feed.
+
+    Without this the operator cannot tell a push-driven cycle from a timed
+    one, and "it is realtime now" would be a claim with nothing behind it
+    (label-must-match-data). Draining also keeps the feed's own sets honest —
+    an undrained set would have made `status()` report bars that closed hours
+    ago as if they had just arrived.
+    """
+    try:
+        bars = live_price.FEED.drain_closed_bars()
+        hits = live_price.FEED.drain_hits()
+        personal = live_price.FEED.drain_personal()
+    except Exception:                                          # noqa: BLE001
+        return
+    parts = []
+    if bars:
+        parts.append("candle closed: " + ", ".join(
+            f"{s} {i}" for s, i in sorted(bars)))
+    if hits:
+        parts.append("barrier crossed: " + ", ".join(
+            f"{k} {why} at {_pv_fmt(ts)}" for k, (why, ts) in sorted(hits.items())))
+    if personal:
+        kinds = sorted({str(e.get("channel", "")).rsplit(".", 1)[-1]
+                        for e in personal})
+        parts.append(f"MEXC pushed {len(personal)} account event(s): "
+                     + ", ".join(kinds))
+    if parts:
+        logger.info("woken by the live feed — %s", " · ".join(parts))
+
+
+# Cycles woken by the feed in the last minute. A websocket cannot be rate
+# limited, but the CYCLE it wakes makes REST calls, and `Aug 19, 2026` is what
+# too many of those looks like: 77 scans in one minute, 166 `code=510`
+# refusals, 668 exit checks that could not read a price. MIN_CYCLE_GAP_S caps
+# the rate; this says so out loud if anything ever pushes against the cap.
+_WAKES: list = []
+WAKE_WARN_PER_MIN = 20
+
+
+def _note_wake() -> None:
+    now = time.time()
+    _WAKES.append(now)
+    while _WAKES and _WAKES[0] < now - 60:
+        _WAKES.pop(0)
+    if len(_WAKES) >= WAKE_WARN_PER_MIN and _say_once("wake-storm", 300):
+        logger.warning(
+            "the live feed woke the runner %d times in the last minute — "
+            "at the %.0fs floor that is close to the REST rate limit. "
+            "Something is pushing far more than a candle close or a barrier "
+            "crossing; check `live_price.FEED.status()`.",
+            len(_WAKES), MIN_CYCLE_GAP_S)
+
+
+def _wait_for_something(timeout: float, stopping=None) -> str:
+    """Block until the venue says something worth a cycle, or `timeout`.
+
+    Operator, `Sep 14, 2026`: *"there should be no refresh from now on"*. The
+    runner used to sleep on a clock and then go looking. Now the feed wakes
+    it: a closed candle (an entry may be due), a print through an armed demo
+    barrier (an exit is due), or a live position changing at MEXC.
+
+    The timeout is kept as a BACKSTOP, not a schedule. A feed that is down,
+    logged out, or simply quiet on an illiquid contract must never be able to
+    stop the runner trading — so the old boundary wake still fires, and every
+    decision is still made from the exchange's own data when it does.
+    """
+    gap = MIN_CYCLE_GAP_S - (time.time() - _LAST_CYCLE_AT[0])
+    if gap > 0:
+        time.sleep(min(gap, MIN_CYCLE_GAP_S))
+    # `Event.wait`, not a sleep loop: the thread is released the INSTANT the
+    # feed sets it. Polling every 250ms would have put a quarter second back
+    # into the very latency this change is about — found by the harddev loop.
+    # A feed double without a `wake` (or none at all) degrades to the old
+    # timed sleep rather than raising into the runner's loop.
+    wake = getattr(getattr(live_price, "FEED", None), "wake", None)
+    why = "timer"
+    waited = 0.0
+    step = 0.25
+    target = max(0.0, float(timeout))
+    while waited < target and not (stopping or {}).get("flag"):
+        slice_s = min(step, target - waited)
+        if wake is not None:
+            if wake.wait(slice_s):
+                wake.clear()
+                why = "feed"
+                break
+        else:
+            time.sleep(slice_s)
+        waited += slice_s
+    _LAST_CYCLE_AT[0] = time.time()
+    if why == "feed":
+        _note_wake()
+    return why
 
 
 def next_sleep_seconds(now: float | None = None) -> float:
@@ -4796,11 +4935,9 @@ def run_forever() -> None:
                     logger.critical(
                         "LOSS CAP DISARM FAILED (%s) - live may still be "
                         "armed past the cap. Retrying every cycle.", exc)
-            slept = 0.0
-            target = next_sleep_seconds()
-            while slept < target and not _stopping["flag"]:
-                time.sleep(min(1.0, target - slept))
-                slept += 1.0
+            _why = _wait_for_something(next_sleep_seconds(), _stopping)
+            if _why == "feed":
+                _log_what_woke_us()
     finally:
         if runner_pid() == os.getpid():
             PID_PATH.unlink(missing_ok=True)

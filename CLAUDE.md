@@ -750,6 +750,46 @@ identical refusals, and no alarm anywhere says *"the runner is up and has taken
 no action"*. A refusal repeated every cycle is a silence, not a message —
 rate-limit it (`_say_once`) and count it somewhere the operator reads.
 
+## The runner waits for the venue, it does not poll a clock (MANDATORY — 2026-09-14)
+
+The operator: *"there should be no refresh from now on i want demo and live to
+be realtime meaning the formular to open a trade and close a trade should be
+realtime websocket"*.
+
+`main()` used to sleep `next_sleep_seconds()` and then go looking. Now one
+socket to `wss://contract.mexc.com/edge` wakes it, and three pushes are worth a
+cycle — each verified against the real venue before it was relied on:
+
+| push | means | measured |
+|---|---|---|
+| `push.kline` | a bar closed, an entry may be due | 14 pushes / 72s, 2 coins |
+| `push.deal` / `push.ticker` | a print crossed a demo barrier | 12-13 ticks / coin / 30s |
+| `push.personal.*` | a LIVE position changed at MEXC | `rs.login: success` |
+
+**Four things that must not be "simplified" later:**
+
+* **AN ENTRY STILL READS A CLOSED CANDLE.** The push is the TRIGGER; the
+  signal is the same bar the backtest measured. Evaluating a half-formed
+  candle on every tick would make the runner trade a strategy no grid in this
+  repo has ever tested, and nothing on any screen would say so.
+* **The timer is still there as a BACKSTOP, never a schedule.** A feed that is
+  down, logged out, or quiet on an illiquid contract must never be able to
+  stop the runner trading. `_wait_for_something` degrades to a plain sleep if
+  `FEED.wake` is missing entirely.
+* **`MIN_CYCLE_GAP_S` is not optional.** A websocket cannot be rate limited;
+  the CYCLE it wakes makes REST calls. Without the floor a burst of pushes
+  rebuilds `Aug 19, 2026` — 77 scans in one minute, 166 `code=510` refusals,
+  668 exit checks that could not read a price — with a socket in place of a
+  timer. `_note_wake` warns if anything ever pushes against the cap.
+* **The feed's barrier check is a TRIGGER, not a decision.** `_dry_fill` over
+  the real tick history is still the only thing that books a fill, so a
+  trigger that is slightly wrong costs one extra cycle and never a wrong
+  trade. The private stream is read-only: no order is ever sent over it, and
+  it is signed with `mexc_futures.sign`, never a second copy of the scheme.
+
+Guards: `tests/test_the_runner_waits_on_the_venue.py` (25) and
+`tests/test_demo_exits_on_the_live_tick.py` (19).
+
 ## A fill may only see price the order was exposed to (MANDATORY — 2026-09-12)
 
 The operator: *"how come trade id 7WZMH7EN lose in live and in demo its still

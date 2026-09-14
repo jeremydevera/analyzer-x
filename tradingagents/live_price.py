@@ -95,6 +95,26 @@ class PriceFeed:
         self._connects = 0
         self._msgs = 0
         self._last_error = ""
+        # EVENT-DRIVEN RUNNER. The cycle waits on this instead of a timer;
+        # anything that could change a decision sets it. The runner clears
+        # it, never the feed (operator, Sep 14, 2026: "there should be no
+        # refresh from now on").
+        self.wake = threading.Event()
+        # (symbol, interval) -> the OPEN time of the newest bar seen. MEXC
+        # pushes a forming bar repeatedly and `t` is its open, so `t` moving
+        # on is the only signal that the PREVIOUS bar is final.
+        self._kline_at: dict[tuple, int] = {}
+        self._want_klines: set[tuple] = set()
+        self._subbed_klines: set[tuple] = set()
+        self._closed_bars: set[tuple] = set()
+        # slot_key -> the barriers to watch, so a tick can say "cycle NOW".
+        # A TRIGGER ONLY: `auto_trader._dry_fill` still decides the outcome.
+        self._barriers: dict[str, dict] = {}
+        self._hits: dict[str, tuple] = {}
+        # private stream: the runner learns a LIVE fill when it happens
+        self._creds: tuple | None = None
+        self._logged_in = False
+        self._personal: list = []
 
     # ------------------------------------------------------------- control
     def start(self) -> bool:
@@ -131,6 +151,85 @@ class PriceFeed:
         if loop and wake:
             with _quiet():
                 loop.call_soon_threadsafe(wake.set)
+
+    def track_klines(self, pairs) -> None:
+        """The (symbol, interval) bars worth waiting on — every armed
+        strategy's own timeframe. A closed bar here wakes the cycle, which is
+        what replaces waking on a clock."""
+        want = {(str(s), str(i)) for s, i in pairs if s and i}
+        with self._lock:
+            if want == self._want_klines:
+                return
+            self._want_klines = want
+        self._nudge()
+
+    def arm(self, slot_key: str, symbol: str, side: int, tp: float,
+            sl: float, since_ts: float) -> None:
+        """Watch a DEMO position's barriers on every tick.
+
+        This is a TRIGGER, not a decision. When a tick crosses, the feed sets
+        `wake` and the cycle runs `_dry_fill` over the real tick history,
+        which is the single place a fill is ever decided. A trigger that is
+        slightly wrong therefore costs one extra cycle, never a wrong book.
+        """
+        row = {"symbol": str(symbol), "side": int(side), "tp": float(tp),
+               "sl": float(sl), "since": float(since_ts)}
+        with self._lock:
+            was = self._barriers.get(str(slot_key))
+            self._barriers[str(slot_key)] = row
+            # A recorded hit means "already told the runner about this one",
+            # which is what stops one crossing waking every cycle for ever.
+            # But if the BARRIERS themselves changed, the old hit is about a
+            # trade that no longer exists and would silence the new one.
+            if was is not None and was != row:
+                self._hits.pop(str(slot_key), None)
+
+    def keep_only(self, slot_keys) -> None:
+        """Forget every armed barrier that is not in `slot_keys` — a closed
+        position must not keep waking the runner."""
+        keep = {str(k) for k in slot_keys}
+        with self._lock:
+            for k in [k for k in self._barriers if k not in keep]:
+                self._barriers.pop(k, None)
+                self._hits.pop(k, None)
+
+    def use_credentials(self, api_key: str, api_secret: str) -> None:
+        """Log in to the PRIVATE stream, so a live fill at MEXC reaches the
+        runner when it happens instead of on the next look. Read-only: no
+        order is ever placed over this socket."""
+        creds = (str(api_key), str(api_secret)) if api_key and api_secret else None
+        with self._lock:
+            if creds == self._creds:
+                return
+            self._creds = creds
+            self._logged_in = False
+        self._nudge()
+
+    def _nudge(self) -> None:
+        loop, w = self._loop, self._wake
+        if loop and w:
+            with _quiet():
+                loop.call_soon_threadsafe(w.set)
+
+    # -------------------------------------------------------------- drains
+    def drain_closed_bars(self) -> set:
+        """(symbol, interval) pairs whose bar closed since the last drain."""
+        with self._lock:
+            out, self._closed_bars = self._closed_bars, set()
+        return out
+
+    def drain_hits(self) -> dict:
+        """slot_key -> (why, ts) for barriers a tick crossed. Trigger only."""
+        with self._lock:
+            out, self._hits = self._hits, {}
+        return out
+
+    def drain_personal(self) -> list:
+        """Private-stream events since the last drain (live fills, position
+        and order changes, liquidation risk)."""
+        with self._lock:
+            out, self._personal = self._personal, []
+        return out
 
     # -------------------------------------------------------------- readers
     def ticks_since(self, symbol: str, since_ts: float):
@@ -197,6 +296,10 @@ class PriceFeed:
             subbed = sorted(self._subscribed)
         age = time.time() - self._last_msg_at if self._last_msg_at else None
         return {"connected": self._connected, "stale": self.stale(),
+                "logged_in": self._logged_in,
+                "klines": sorted(f"{s}/{i}" for s, i in self._want_klines),
+                "armed": sorted(self._barriers),
+                "pending_hits": sorted(self._hits),
                 "tracking": want, "subscribed": subbed, "ticks": counts,
                 "messages": self._msgs, "connects": self._connects,
                 "seconds_since_message": None if age is None else round(age, 1),
@@ -230,6 +333,7 @@ class PriceFeed:
             floor = now - KEEP_S
             while q and q[0][0] < floor:
                 q.popleft()
+        self._check_barriers(symbol, float(price), ts)
 
     def _run(self) -> None:
         try:
@@ -274,6 +378,8 @@ class PriceFeed:
     async def _sync_subs(self, ws) -> None:
         with self._lock:
             want, have = set(self._want), set(self._subscribed)
+            kwant, khave = set(self._want_klines), set(self._subbed_klines)
+            creds, logged = self._creds, self._logged_in
         for sym in sorted(want - have):
             for method in ("sub.ticker", "sub.deal"):
                 await ws.send(json.dumps({"method": method,
@@ -283,8 +389,29 @@ class PriceFeed:
                 with _quiet():
                     await ws.send(json.dumps({"method": method,
                                               "param": {"symbol": sym}}))
+        for sym, iv in sorted(kwant - khave):
+            await ws.send(json.dumps({"method": "sub.kline",
+                                      "param": {"symbol": sym,
+                                                "interval": iv}}))
+        for sym, iv in sorted(khave - kwant):
+            with _quiet():
+                await ws.send(json.dumps({"method": "unsub.kline",
+                                          "param": {"symbol": sym,
+                                                    "interval": iv}}))
+        if creds and not logged:
+            # The private stream carries LIVE fills. Signed exactly like a
+            # REST call (key + timestamp + empty parameter string) with the
+            # project's one signer, so there is no second copy of the scheme
+            # to drift from it. A login failure leaves the PUBLIC feed whole.
+            from tradingagents.dataflows.mexc_futures import sign
+
+            ts = str(int(time.time() * 1000))
+            await ws.send(json.dumps({"method": "login", "param": {
+                "apiKey": creds[0], "reqTime": ts,
+                "signature": sign(creds[0], creds[1], ts)}}))
         with self._lock:
             self._subscribed = want
+            self._subbed_klines = kwant
 
     async def _pump(self, ws) -> None:
         await self._sync_subs(ws)
@@ -319,6 +446,76 @@ class PriceFeed:
                     self._record(sym, _num(r.get("p")), r.get("t"))
         elif ch == "push.ticker" and sym and isinstance(data, dict):
             self._record(sym, _num(data.get("lastPrice")), m.get("ts"))
+        elif ch == "push.kline" and sym and isinstance(data, dict):
+            self._on_kline(sym, data)
+        elif ch == "rs.login":
+            ok = data == "success"
+            self._logged_in = bool(ok)
+            if ok:
+                logger.info("live feed logged in - MEXC will push this "
+                            "account's fills as they happen")
+            else:
+                self._last_error = f"login refused: {data}"
+                logger.warning("live feed login refused (%s) - live fills "
+                               "still arrive on the next cycle", data)
+        elif isinstance(ch, str) and ch.startswith("push.personal."):
+            with self._lock:
+                self._personal.append({"channel": ch, "data": data,
+                                       "at": time.time()})
+                if len(self._personal) > 500:
+                    del self._personal[:-500]
+            # a real position changing at the venue is always worth a cycle
+            if ch in ("push.personal.position", "push.personal.order"):
+                self.wake.set()
+
+    def _on_kline(self, symbol: str, d: dict) -> None:
+        """A bar is CLOSED when its successor appears.
+
+        MEXC pushes the forming bar over and over with `t` fixed at its OPEN
+        time, so there is no "final" flag to read: `t` moving on is the
+        event. The FIRST push for a pair only establishes the baseline - it
+        says nothing about the bar before it, which this process never saw
+        forming, and treating it as a close would fire an entry check on a
+        candle the runner had already acted on.
+        """
+        iv = str(d.get("interval") or "")
+        t = d.get("t")
+        if not iv or t is None:
+            return
+        try:
+            t = int(t)
+        except (TypeError, ValueError):
+            return
+        key = (symbol, iv)
+        with self._lock:
+            prev = self._kline_at.get(key)
+            self._kline_at[key] = t
+            fresh_bar = prev is not None and t > prev
+            if fresh_bar:
+                self._closed_bars.add(key)
+        if fresh_bar:
+            self.wake.set()
+
+    def _check_barriers(self, symbol: str, price: float, ts: float) -> None:
+        """Trigger only - see `arm`."""
+        fired = False
+        with self._lock:
+            for slot, br in self._barriers.items():
+                if br["symbol"] != symbol or slot in self._hits:
+                    continue
+                if ts <= br["since"]:
+                    continue        # never a print from before the order
+                if br["side"] > 0:
+                    why = ("SL" if price <= br["sl"]
+                           else "TP" if price >= br["tp"] else None)
+                else:
+                    why = ("SL" if price >= br["sl"]
+                           else "TP" if price <= br["tp"] else None)
+                if why:
+                    self._hits[slot] = (why, ts)
+                    fired = True
+        if fired:
+            self.wake.set()
 
 
 def _num(v):

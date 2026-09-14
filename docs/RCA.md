@@ -172,6 +172,114 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-14-A — the LIVE toggle undid itself five seconds after it was clicked, and looked armed the whole time
+
+**CEO**
+
+* You clicked LIVE on a strategy and it switched itself back a few seconds
+  later, before you could reach SAVE. Reaching the save button was a race
+  against a hidden five-second timer.
+* Why: that screen re-reads your saved settings every five seconds so your
+  win/loss figures stay current. It was re-reading the toggles too, so it
+  wrote the saved setting back over the click you had just made — and it also
+  cleared the little "unsaved changes" note, so nothing told you the click
+  had been thrown away.
+* What stops it now: the refresh keeps updating the numbers that move, and
+  never touches a switch you have changed but not saved. The note beside it
+  now says in plain words that nothing is live until you press SAVE, and
+  there is a DISCARD button if you change your mind. Nothing was ever armed
+  by the click itself — no real order can be placed until the file is saved.
+
+**DEV**
+
+* `StrategiesGrid.tsx:42` — `load()` ran `setRows(st.rows)`,
+  `setSettings(se.settings)` and `setDirty(false)` unconditionally, and
+  `useLiveRefresh(load, 5_000)` at line 61 calls it every five seconds (and
+  again on `window.focus`). `toggleBook -> mut` only ever writes local state,
+  so the draft lived entirely in the component the poll was overwriting.
+* Invariant broken: **a refresh owns the values that MOVE; the operator owns
+  the fields they can type in.** The poll was added on Sep 10, 2026 for live
+  W/L and took the whole payload with it, edit buffer included.
+* Guard: `tests/test_an_unsaved_toggle_survives_the_refresh.py` — 9 tests,
+  including one that pins `setDirty(false)` out of `load`'s body and one that
+  proves `toggleBook` names no network call at all.
+
+**SAW** — *"WHEN I CLICK LIVE TOGGLE OFF IT GOES BACK ON WHY?"*, then, after
+a first answer that blamed the save step: *"MY ISSUE IS WHEN I CLICK LIVE
+BUTTON IT GOES ON IMMEDIATELY BEFORE CLICKING SAVE BUTTON"*.
+
+**TIMELINE**
+
+Driven in a real browser against the running app at `Sep 14, 2026 5:27am`,
+clicking the first LIVE pill on the trade grid:
+
+1. `t = 7 ms` — `aria-checked` **true**. The pill goes red instantly.
+2. `t = 1,003 ms` — still true.
+3. `t = 3,016 ms` — still true.
+4. `t = 6,015 ms` — **false**. The draft is gone, and so is the
+   "unsaved changes" note.
+5. Non-GET requests over that whole window: **0**. Nothing had been armed and
+   nothing had been saved — the click simply evaporated.
+6. 23 GET requests landed in the same window: the 5 s poll plus the other
+   panels on the page.
+
+The first diagnosis was WRONG and is recorded here because it cost the
+operator a round trip: it said the toggle "never saved", which is true but is
+not what they were asking. They were describing step 1 — a switch that looks
+armed the moment it is touched — and step 4, which made it snap back before
+SAVE was reachable. **They had to repeat themselves in capitals to get past
+an answer that was technically correct and about the wrong thing.**
+
+AFTER the fix, same browser, same page, rebuilt and restarted:
+
+7. on at **11 ms**, still on at **6 s**, **12 s** and **18 s**.
+8. **27 polls** landed in 11 seconds while the draft stood — the live numbers
+   never stopped updating.
+9. DISCARD returned it to off and cleared the banner.
+10. Non-GET requests throughout: **0**.
+
+**ROOT CAUSE** — a five-second poll called `setSettings` / `setRows` /
+`setDirty(false)` unconditionally, so it overwrote an unsaved edit with the
+copy on disk.
+
+**WHY IT WAS NOT CAUGHT** — the poll was added on Sep 10, 2026 to answer
+*"i want the ui realtime when i lose it should show the winrate lose"*, and
+it was verified by watching a number CHANGE. Nobody typed into the page while
+it ran. **A test for "does this update by itself" and a test for "does this
+keep what I typed" look identical until someone types.** There is no test
+anywhere in this repo that edits a control and then waits — every UI guard
+here reads the source or asserts one render.
+
+The second reason is the one worth keeping: the first answer to the operator
+was assembled from the CODE PATH and their settings file, and it was
+self-consistent and wrong about what they were seeing. The screen was never
+driven until they insisted. **Reproduce the click before explaining the
+click** — three of the four facts in the timeline above (7 ms, 6,015 ms,
+0 writes) could not have come from reading the source.
+
+**COST** — no money and no wrong order: the click never reached the server,
+`toggleBook` has no network call, and the runner only reads the saved file.
+The cost was the operator's control over their own real-money switches — they
+could not reliably arm or disarm a strategy — and two rounds of being told
+something they had not asked.
+
+**FIX** — this commit. `load()` reads a `dirtyRef` and, while a draft is
+pending, keeps `books`, `coins` and `base_margin` from the rows already on
+screen and leaves `settings` alone; it no longer calls `setDirty(false)` at
+all. Everything that moves — counts, locks, the account cap, conflicts, every
+non-editable column — is still taken fresh on every poll. `save()` clears the
+flag on success and deliberately KEEPS the draft when the live-lock guard
+refuses with a 409. The banner now reads *"unsaved — the runner is still on
+the saved config"* and carries a DISCARD button, since the poll no longer
+drops a draft by accident.
+
+**GUARD** — `tests/test_an_unsaved_toggle_survives_the_refresh.py`, 9 tests.
+Verified RED on the pre-fix file (6 of the 9 fail there) and green after;
+`tsc --noEmit` clean, `next build` clean, and the web UI restarted afterwards
+so the running server is not serving chunks that no longer exist.
+
+---
+
 ## RCA-2026-09-13-E — the indexer stood down for a backtest and had never heard of the other five jobs
 
 **CEO**

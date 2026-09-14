@@ -2,7 +2,7 @@
 /** Every strategy the runner knows: deployment state, lifetime record, and
  * the arm/disarm + coin/margin editor. Saving POSTs the full settings file
  * and the API records every change to the local deploy history. */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { markReady } from "@/lib/loading";
 import { useLiveRefresh } from "@/lib/live";
 import PanelStatus from "./PanelStatus";
@@ -39,14 +39,44 @@ export default function StrategiesGrid() {
   const [note, setNote] = useState("");
   const [bt, setBt] = useState<JobStatus | null>(null);
 
+  // A REFRESH MUST NEVER EAT AN UNSAVED EDIT (Sep 14, 2026).
+  //
+  // Measured on the operator's own screen: clicking LIVE turned the pill on in
+  // **7 ms**, it was still on at 3,016 ms, and at **6,015 ms** it was off
+  // again — the 5 s poll below had overwritten the draft with what is on disk.
+  // Zero non-GET requests went out in that window, so nothing had been armed
+  // and nothing had been saved; the click was simply thrown away, and
+  // `setDirty(false)` erased the "unsaved changes" warning with it. Pressing
+  // SAVE CONFIG was a race against a timer nobody could see.
+  //   *"WHEN I CLICK LIVE TOGGLE OFF IT GOES BACK ON WHY?"*
+  //
+  // A ref, not the `dirty` state: this callback is the poll's dependency, so
+  // reading `dirty` here would rebuild it on every edit and restart the timer.
+  const dirtyRef = useRef(false);
   const load = useCallback(() =>
     Promise.all([tradeApi.strategies(catalog), tradeApi.settingsGet()])
       .then(([st, se]) => {
-        setRows(st.rows); setSizing(st.sizing); setConflicts(st.conflicts);
-        setCounts(st); setSettings(se.settings); setDirty(false);
-        setPDemo((se.settings.partial_tp_demo ?? true) as boolean);
-        setPLive((se.settings.partial_tp_live ?? false) as boolean);
-        setPMax(Number(se.settings.partial_max_slices ?? 4));
+        const pending = dirtyRef.current;
+        // The MOVING numbers always land — live $ , W/L, the ladder rung, open
+        // positions. That is what this poll exists for (Sep 10, 2026: *"i want
+        // the ui realtime when i lose it should show the winrate lose"*), and
+        // none of it is something the operator can type over.
+        // The EDITABLE fields are kept while a draft is pending.
+        setRows((prev) => st.rows.map((row) => {
+          if (!pending) return row;
+          const mine = prev.find((p) => p.key === row.key);
+          return mine
+            ? { ...row, books: mine.books, coins: mine.coins,
+                base_margin: mine.base_margin }
+            : row;
+        }));
+        setSizing(st.sizing); setConflicts(st.conflicts); setCounts(st);
+        if (!pending) {
+          setSettings(se.settings);
+          setPDemo((se.settings.partial_tp_demo ?? true) as boolean);
+          setPLive((se.settings.partial_tp_live ?? false) as boolean);
+          setPMax(Number(se.settings.partial_max_slices ?? 4));
+        }
         setAcctCap(st.account_loss_cap); setCapHit(st.account_cap_hit); setFlat(st.flat); setLocks(st.locks);
         markReady("strategies");
       })
@@ -76,6 +106,7 @@ export default function StrategiesGrid() {
     fn(next);
     setSettings(next);
     setDirty(true);
+    dirtyRef.current = true;      // the poll reads this, not the state
     // reflect immediately in the grid
     setRows((rs) => rs.map((r) => ({
       ...r,
@@ -108,10 +139,16 @@ export default function StrategiesGrid() {
       const got = await tradeApi.settingsSave(settings);
       setNote(`Saved — ${got.changes_recorded} change${got.changes_recorded === 1 ? "" : "s"} recorded to deploy history.`);
       setErr("");
+      // the draft IS the config now, so the poll may have the screen back
+      dirtyRef.current = false; setDirty(false);
       await load();
     } catch (e) {
       // a 409 is the live-lock guard refusing to net two strategies into one
-      // MEXC position — the config on disk is unchanged
+      // MEXC position — the config on disk is unchanged. The draft is KEPT
+      // (dirtyRef stays true): the operator has to be able to see what they
+      // asked for in order to change it, and a refused save that also wiped
+      // the edit would be the same disappearing click this component was just
+      // fixed for.
       setErr(`NOT saved — ${String(e)}`);
       await load();
     } finally { setBusy(false); }
@@ -189,7 +226,22 @@ export default function StrategiesGrid() {
             </span>
           )}
           {note && !dirty && <span className="text-theme-xs text-success-600">{note}</span>}
-          {dirty && <span className="text-theme-xs text-warning-600">unsaved changes</span>}
+          {/* NOT SAVED YET, and it says which way round that is. The pill goes
+              red the instant it is clicked, which read as "this is armed now"
+              — it is not: nothing leaves the browser until SAVE CONFIG, and
+              the runner only ever reads the file on disk. Since the 5 s poll
+              no longer throws a draft away, DISCARD is how one is dropped. */}
+          {dirty && (
+            <span className="inline-flex items-center gap-2">
+              <span className="text-theme-xs text-warning-600">
+                unsaved — the runner is still on the saved config
+              </span>
+              <button onClick={() => { dirtyRef.current = false; setDirty(false); setNote(""); load(); }}
+                className="rounded-md border border-gray-300 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-white/[0.05]">
+                discard
+              </button>
+            </span>
+          )}
           {/* "CREATE A BUTTON TO RESET WIN RATE OF ALL" (operator,
               2026-09-05). Archives the trade rows, never deletes them; the
               confirm says the two side effects out loud before anything

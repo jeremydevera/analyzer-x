@@ -451,10 +451,27 @@ export default function StrategiesPanel() {
   // an ORDER change is instant, so it resets the page here; a FILTER change
   // resets it in `apply`, where the request is actually sent
   useEffect(() => { setPage(1); setExtra([]); }, [sort, desc, perPage]);
+  // IT RETRIES BY ITSELF — now that it really does. This was a setTimeout,
+  // which fires ONCE. When the retry was refused again the 503 handler set
+  // `waiting` to the SAME sentence, so the dependency did not change, the
+  // effect never re-armed, and the screen sat on "the store has not answered
+  // this filter yet ... it retries by itself" for as long as it was left.
+  //
+  // Measured Sep 15, 2026 on the operator's own filter (win % >= 100, TP >=
+  // SL, last 30 days): refused while `rows_wr4` was missing, then **7.5 s**
+  // the moment that index finished building — an answer that was ready and
+  // unreachable without a manual reload. Their words: *"its still loading
+  // till now"*, then *"so i need to refersh it to finish? why"*.
+  //
+  // An INTERVAL keeps asking until the refusal clears; the success path sets
+  // `waiting` to "" which tears it down. `background` so a retry never puts
+  // the table back into its loading state under the operator, and the
+  // `inFlight` guard so a slow answer cannot stack — four of these once held
+  // every browser lane (RCA-2026-09-09-I).
   useEffect(() => {
     if (!waiting) return;
-    const t = setTimeout(() => { if (!inFlight.current) load(true); }, 15000);
-    return () => clearTimeout(t);
+    const t = setInterval(() => { if (!inFlight.current) load(true); }, 15000);
+    return () => clearInterval(t);
   }, [waiting, load]);
   // WHILE THE INDEX IS CATCHING UP, ask again — on a TIMER, not on the answer.
   // This was `[idx, load]` with a 5-second timeout, and `idx` is a FRESH OBJECT

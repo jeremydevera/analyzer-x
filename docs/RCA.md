@@ -172,6 +172,92 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-15-A — "it retries by itself" retried exactly once, so a filter that was ready sat unanswered until the page was reloaded
+
+**CEO**
+
+* You set a filter, the screen said it was busy and would keep trying on its
+  own, and it never came back — you had to reload the page by hand. The
+  answer had actually been ready for a while.
+* Why: it did try again, once, fifteen seconds later. When that second try
+  was refused too, the screen showed the same message as before — and because
+  the message had not changed, the part of the page that schedules a retry
+  never noticed anything had happened, so it never tried a third time.
+* What stops it now: it keeps asking every fifteen seconds until the answer
+  arrives, and stops the moment it does. Your filter now answers in 7.5
+  seconds.
+
+**DEV**
+
+* `StrategiesPanel.tsx` retried a 503 with `setTimeout(..., 15000)` in an
+  effect keyed `[waiting, load]`. The 503 handler sets `waiting` to
+  `e.detail`, which for a repeat refusal is the SAME STRING — so the
+  dependency was unchanged by value, the effect never re-ran, and the single
+  timeout was the whole retry.
+* Invariant broken: `label-must-match-data`, applied to a PROMISE rather than
+  a number. The caption said "it retries by itself"; the component retried
+  once. A one-shot retry is the hard version of this to spot, because it
+  works exactly once and therefore looks implemented.
+* Guard: `tests/test_a_refused_filter_retries_itself.py` — 6 tests; the first
+  one pins the caption's wording, so if the promise is ever removed the file
+  is revisited rather than quietly passing.
+
+**SAW** — *"im using this filter is this expected to be so slow"*, then
+*"its still loading till now"*, then *"so i need to refersh it to finish?
+why"*.
+
+**TIMELINE**
+
+1. `Sep 15, 2026` — the operator filters Stored strategies on win % >= 100,
+   TP >= SL, last 30 days.
+2. The store refuses with 503: `rows_wr4` — the widest win-rate index — did
+   not exist, because the full rebuild that finished that morning writes a
+   file with the kept four indexes only and the on-demand ones are built when
+   something asks for them.
+3. The panel shows the store's own sentence, ending *"it retries by itself"*,
+   and re-asks once at +15 s. Refused again; `waiting` set to the identical
+   string; effect not re-armed. No further attempt is ever made.
+4. `rows_wr4` finishes building in the background. Measured straight after:
+   the same filter answers in **7.5 s**, twice in a row, returning **6 rows**
+   of a capped **5,000**.
+5. The screen kept saying "the store has not answered this filter yet" the
+   whole time, with the previous answer underneath it.
+
+**ROOT CAUSE** — a retry scheduled by `setTimeout` inside an effect whose
+only trigger was a state value that a repeat failure sets to the same string.
+
+**WHY IT WAS NOT CAUGHT** — the first diagnosis in this session was that
+NOTHING retried, and a duplicate interval was very nearly committed on top of
+the existing timeout. Reading `grep -n "waiting"` showed the retry effect and
+it looked correct; what it did not show is that `setTimeout` fires once and
+that the re-arm depends on a string CHANGING. **An effect that re-runs on a
+value is only a loop if the value differs each time** — and the 503 detail is
+deliberately stable, because it is a sentence for a human to read.
+
+The wider reason: this repo's UI guards read the source for a call and assert
+it is present. `setTimeout` and `setInterval` both read as "there is a retry".
+Nothing drove the component through two consecutive refusals, which is the
+only thing that separates them.
+
+**COST** — no money, nothing measured wrongly: the rows were correct and the
+answer existed. The cost was the operator being unable to use a filter they
+had asked for specifically, and being told by their own screen that waiting
+would fix it.
+
+**FIX** — this commit. The effect uses `setInterval(..., 15000)` with
+`clearInterval` on teardown, still keyed `[waiting, load]` and still guarded
+by `inFlight` so a slow answer cannot stack (four stacked requests once held
+every browser lane, RCA-2026-09-09-I). It re-asks with `load(true)` —
+background — so a retry never throws the table back into its loading state
+under the operator, and the success path's `setWaiting("")` tears the timer
+down.
+
+**GUARD** — `tests/test_a_refused_filter_retries_itself.py`. Verified RED on
+the pre-fix file and green after; `tsc --noEmit` and `next build` clean, and
+the web UI restarted so the running server is not serving old chunks.
+
+---
+
 ## RCA-2026-09-14-B — the indexer died on a locked database, nothing restarted it, and the screen said it was catching up
 
 **CEO**

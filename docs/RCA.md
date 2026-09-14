@@ -172,6 +172,113 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-15-B — a download that stops at 2,000 rows asked SQLite for 3,268,883
+
+**CEO**
+
+* You set three filters, pressed download, and watched nothing happen for
+  twenty minutes. Nothing was broken and nothing was lost — the file simply
+  could not start, because the database was being asked to line up three and
+  a quarter million rows before handing over the first one.
+* Why: the download already knew it would stop after two thousand rows, but
+  it never told the database that. So the database prepared everything
+  instead of just the top two thousand.
+* What stops it now: the limit is part of the question. Same filters, same
+  data, same rows in the file — the first line now arrives in a tenth of a
+  second instead of never. It was first measured on Sep 09 and answered with
+  a warning tooltip rather than a fix; that is the part that should not have
+  happened.
+
+**DEV**
+
+* `rows_index.py:3804` `win_left = DAYS_CSV_MAX if win_days else -1` caps a
+  windowed export at 2,000 rows in a PYTHON countdown; the query built at
+  `rows_index.py:3808` carried no `LIMIT`. With `min_winrate` filtering and
+  `sort=profit` ordering, the plan is
+  `SEARCH rows USING COVERING INDEX rows_wr4 (winrate>?)` +
+  `USE TEMP B-TREE FOR ORDER BY` — an unbounded sort of every match.
+* Invariant broken: **a cap that exists must travel to the query.** This is
+  CLAUDE.md's *filter where the data is* in its LIMIT half: a predicate the
+  server applies after the fact cannot save the work the database already
+  did. `export_plan` also shrank its seek cap to `EXPORT_SEEK_MAX` on the
+  premise that "an export has no LIMIT" — true for a plain download, false
+  for a windowed one, so a bounded export was pushed onto a plan that needs
+  `rows_pr2`.
+* Guard: `tests/test_a_windowed_download_tells_sql_where_to_stop.py` — 6
+  tests pinning that the SQL ceiling is computed from the same constant that
+  stops the loop, that an unwindowed export still streams everything, and
+  that the plan guards still refuse what they always refused.
+
+**SAW** — *"i click download button but ive been waiting 20 mins now"*. Filter
+icon, min win % 95, "TP is equal to or greater than SL", last 30 days, apply,
+download. The browser showed 0 bytes throughout; nothing reached the Downloads
+folder, not even a partial file.
+
+**TIMELINE**
+
+1. `Sep 15, 2026 3:47am` — first press. `screen.log` records `csv START` and
+   no finish line.
+2. `Sep 15, 2026 4:00am` — pressed again 13 minutes later. Also `csv START`
+   only. Two exports then competed for the same interpreter lock.
+3. The API process burned **1,389 CPU-seconds** and returned to idle
+   (0.3 s per 6 s sample) with nothing delivered. A `StreamingResponse` logs
+   `200 OK` when it BEGINS, so the access log said success for both.
+4. Measured on the store as it stands — **113,439,286 rows, 5,402 pairs,
+   48.01 GB, mechanical disk**:
+   `winrate >= 95` matches **5,513,709** rows (counted in 32 s);
+   `winrate >= 95 AND tp >= sl` matches **3,268,883** (1 s over the covering
+   index).
+5. The same query with no ordering: **0.3 s for 5 rows**. With
+   `ORDER BY profit DESC` and no limit: **no first row after 500 s**.
+6. `INDEXED BY rows_profit` (the fallback plan) — **5 rows in 7.7 s, 50 rows
+   in 11.9 s, 500 rows never finished**, because `rows_profit` does not carry
+   `winrate` so every candidate is a random row read. The plan that WOULD
+   carry it, `rows_pr2`, does not exist on this database
+   (`has_index("rows_pr2") -> False`).
+7. The same query, same index, same plan, with `LIMIT 2000`: **2,000 rows in
+   2.3 s**.
+8. AFTER the fix, through the real export generator:
+   **first byte 0.1 s**, then the re-measure proceeds at its own pace
+   (1,094 lines in 181 s and still going, which is the candle work the
+   tooltip already described).
+
+**ROOT CAUSE** — `iter_rows` capped a windowed export in Python and asked
+SQLite for an unbounded stream, so the sort had no bound. One clause.
+
+**WHY IT WAS NOT CAUGHT** — it WAS caught, on `Sep 09, 2026`, on one of the
+operator's own presses: the measurement is still in the code
+(`671 s`, `1,184 rows`, "the file sat at 0 for the first four minutes — which
+is indistinguishable from broken unless the button says so"). The response was
+a hover tooltip, a `DAYS_CSV_MAX` cap and a note in the file. Every one of
+those describes the symptom; none removes it, and a tooltip is invisible once
+the button has been clicked. **Measuring a slow path and labelling it is not
+fixing it — if the number is bad enough to warn about, it is the bug.** Six
+days later the operator waited twenty minutes on the same press. No test
+covered the export's query PLAN, only its output shape, so nothing went red
+when the store grew from 52 million rows to 113 million and the unbounded sort
+went from slow to impossible.
+
+**COST** — no money, no data. Roughly 35 minutes of the operator's time across
+two presses, six days of a filter combination being unusable, and the trust
+cost of a button that looks broken.
+
+**FIX** — this commit. `iter_rows` computes `_sql_limit` from `DAYS_CSV_MAX`
+and appends it to the query; `export_plan` takes `limit` and keeps the
+win-rate seek when the export is bounded. Output is unchanged: the loop
+consumed exactly `DAYS_CSV_MAX` rows in `ORDER BY profit DESC, id ASC` before
+and consumes exactly those rows now — a total order, so the same 2,000.
+
+**STILL OPEN** — `rows_pr2` (the wide profit index, `WIDE_PROFIT` in
+`rows_index`) is defined but absent from this database, so an UNWINDOWED
+download with a win-rate floor still falls back to random row reads. Building
+it is a long write against a 48.01 GB file and the indexer is currently
+catching up on 5,335 stale pairs, so it is named here rather than started
+quietly.
+
+**GUARD** — `tests/test_a_windowed_download_tells_sql_where_to_stop.py`.
+
+---
+
 ## RCA-2026-09-15-A — "it retries by itself" retried exactly once, so a filter that was ready sat unanswered until the page was reloaded
 
 **CEO**

@@ -3653,7 +3653,8 @@ def query(coin=None, tf=None, signal=None, profitable=False,
 
 
 def export_plan(coin=None, signal=None, sort="profit", row_id=None,
-                group=None, min_winrate=0, min_trades=0, desc=None):
+                group=None, min_winrate=0, min_trades=0, desc=None,
+                limit=0):
     """Everything that can REFUSE an export, and the index choices it makes —
     WITHOUT running the query.
 
@@ -3719,7 +3720,7 @@ def export_plan(coin=None, signal=None, sort="profit", row_id=None,
     seeks = False
     if float(min_winrate or 0) > 0 and not coin and _winrate_index():
         cap = _winrate_seek_cap()
-        if key != "winrate":
+        if key != "winrate" and not limit:
             # A DOWNLOAD HAS NO LIMIT, SO ITS SORT HAS NO BOUND. The win-rate
             # seek hands back rows in WIN-RATE order; ordering them by anything
             # else means SQLite must read and sort EVERY match before it can
@@ -3744,6 +3745,18 @@ def export_plan(coin=None, signal=None, sort="profit", row_id=None,
             # Past this many matches the seek loses to rows_pr2, so let the
             # wide profit index win (see `iter_rows`, which asks for it exactly
             # when `seeks` is False).
+            # ...UNLESS THIS EXPORT HAS A CEILING. A windowed download
+            # re-measures at most `DAYS_CSV_MAX` rows, so its sort is bounded
+            # and SQLite keeps only that many as it scans — the whole reason
+            # the page's cap is larger. Measured `Sep 15, 2026` on the
+            # operator's own filter (win rate >= 95, TP >= SL, last 30 days;
+            # 3,268,883 matches, 113,439,286 rows, 48.01 GB, mechanical disk):
+            #
+            #   no LIMIT, INDEXED BY rows_wr4 -> no first row after 500 s
+            #   LIMIT 2000, same index, same plan -> 2,000 rows in 2.3 s
+            #
+            # Same query, same index, same `USE TEMP B-TREE FOR ORDER BY`.
+            # The only difference is that SQLite was told where to stop.
             cap = min(cap, EXPORT_SEEK_MAX)
         n = _winrate_matches(min_winrate, min_trades, cap=cap)
         seeks = n is not None and n <= cap
@@ -3770,9 +3783,18 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
     Yields dicts shaped exactly like `query()["rows"]`, so the CSV and the
     screen can never show different fields for the same row (kit item F).
     """
+    # A WINDOWED export stops after `DAYS_CSV_MAX` rows (`win_left` below),
+    # and that ceiling has to reach the QUERY. Until Sep 15, 2026 it lived
+    # only in a Python countdown, so SQLite was asked for an unbounded stream
+    # and had to sort every match before it could yield the first row: the
+    # operator waited more than twenty minutes on a download whose real work
+    # is 2.3 seconds of query. The docstring's "an export has no LIMIT" was
+    # true for a plain export and false for this one.
+    _sql_limit = DAYS_CSV_MAX if (days and int(days) > 0) else 0
     key, order, seeks, signal_seeks, group_idx = export_plan(
         coin=coin, signal=signal, sort=sort, row_id=row_id, group=group,
-        min_winrate=min_winrate, min_trades=min_trades, desc=desc)
+        min_winrate=min_winrate, min_trades=min_trades, desc=desc,
+        limit=_sql_limit)
     where, args = _where(coin, tf, signal, profitable, min_trades,
                          min_winrate, max_tp, sizing, row_id, group, max_sl,
                          min_tp, min_sl, tp_over_sl, asset,
@@ -3818,7 +3840,12 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
             # it; the wide profit index is for the case with no floor.
             f"{_indexed_by(coin, seeks, (not seeks and not row_id and key == 'profit' and not coin and _wide_profit_helps(sizing=sizing, max_tp=max_tp, min_winrate=min_winrate, min_trades=min_trades, max_sl=max_sl, min_tp=min_tp, min_sl=min_sl, tp_over_sl=tp_over_sl, profitable=profitable)), row_id, group_idx, signal_seeks)}"
             f"{where} "
-            f"ORDER BY {order}, id ASC", args)
+            f"ORDER BY {order}, id ASC"
+            # the ceiling, in the QUERY. Never on an unwindowed export: that
+            # one really does stream every matching row, which is what the
+            # operator asked for ("i can still only see like about 100 rows
+            # give me all").
+            + (f" LIMIT {int(_sql_limit)}" if _sql_limit else ""), args)
         while True:
             got = cur.fetchmany(step)
             if not got:

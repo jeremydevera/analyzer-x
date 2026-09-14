@@ -57,6 +57,7 @@ import logging
 import os
 import threading
 import time
+from pathlib import Path
 
 logger = logging.getLogger("tradingagents.live_price")
 
@@ -75,6 +76,13 @@ MAX_TICKS = 20_000
 STALE_S = 90.0
 # Reconnect backoff, seconds: never hammer the venue after a drop.
 BACKOFF_S = (1.0, 2.0, 5.0, 10.0, 30.0)
+# The feed publishes what it is seeing so the SCREEN can show the runner's own
+# socket rather than a second opinion. Operator, `Sep 15, 2026`: *"how will
+# you prove its using websocket? can you show realtime price for each coin in
+# positions"*. Written from the feed thread, not the cycle, because the cycle
+# is now event-driven and can be minutes apart.
+STATUS_PATH = Path(os.path.expanduser("~/.tradingagents/live_price.json"))
+STATUS_EVERY_S = 2.0
 
 
 class PriceFeed:
@@ -369,6 +377,7 @@ class PriceFeed:
                 self._last_error = f"{type(exc).__name__}: {exc}"
                 logger.info("live price feed reconnecting: %s", exc)
             self._connected = False
+            self.publish()          # a dropped socket must SAY it dropped
             if self._stop.is_set():
                 return
             delay = BACKOFF_S[min(attempt, len(BACKOFF_S) - 1)]
@@ -416,7 +425,11 @@ class PriceFeed:
     async def _pump(self, ws) -> None:
         await self._sync_subs(ws)
         last_ping = time.time()
+        last_pub = 0.0
         while not self._stop.is_set():
+            if time.time() - last_pub > STATUS_EVERY_S:
+                self.publish()
+                last_pub = time.time()
             if self._wake is not None and self._wake.is_set():
                 self._wake.clear()
                 await self._sync_subs(ws)
@@ -516,6 +529,36 @@ class PriceFeed:
                     fired = True
         if fired:
             self.wake.set()
+
+
+    def publish(self) -> None:
+        """Write what this socket is seeing, for the API and the screen.
+
+        Atomic replace, never a partial file: a reader that catches a
+        half-written status would show a blank price beside a live position,
+        which is worse than showing none. Total — a status file that cannot
+        be written must never disturb the feed.
+        """
+        try:
+            with self._lock:
+                last = {s: {"price": q[-1][1], "at": q[-1][0], "ticks": len(q)}
+                        for s, q in self._ticks.items() if q}
+                want = sorted(self._want)
+                kl = sorted(f"{s}/{i}" for s, i in self._want_klines)
+                armed = sorted(self._barriers)
+            body = {"connected": self._connected, "stale": self.stale(),
+                    "logged_in": self._logged_in, "tracking": want,
+                    "klines": kl, "armed": armed, "last": last,
+                    "messages": self._msgs, "connects": self._connects,
+                    "last_message_at": self._last_msg_at,
+                    "url": self.url, "written_at": time.time(),
+                    "last_error": self._last_error}
+            STATUS_PATH.parent.mkdir(parents=True, exist_ok=True)
+            tmp = STATUS_PATH.with_suffix(".tmp")
+            tmp.write_text(json.dumps(body), encoding="utf-8")
+            os.replace(tmp, STATUS_PATH)
+        except Exception as exc:                                # noqa: BLE001
+            logger.debug("could not publish feed status: %s", exc)
 
 
 def _num(v):

@@ -4567,7 +4567,17 @@ def _feed_follow(state: dict) -> None:
         demo_slots = {k: v.get("position") for k, v in state.items()
                       if is_paper_slot(k) and isinstance(v, dict)
                       and (v.get("position") or {}).get("dry")}
+        # LISTEN TO EVERY COIN THAT HOLDS A POSITION, on either book. Only
+        # the demo book's barriers are ARMED below — a live exit is the
+        # exchange's bracket and always will be — but the operator watches
+        # both books on one screen and asked to see the price for each
+        # (`Sep 15, 2026`: "can you show realtime price for each coin in
+        # positions"). Public market data on a coin already holding real
+        # money costs nothing and hides nothing.
         coins = {coin_of_slot(k) for k in demo_slots}
+        coins |= {coin_of_slot(k) for k, v in state.items()
+                  if isinstance(v, dict) and v.get("position")}
+        coins.discard("")
         live_price.FEED.track(coins)
 
         # WAIT ON THE CANDLE, DO NOT POLL FOR IT. Every armed strategy's own

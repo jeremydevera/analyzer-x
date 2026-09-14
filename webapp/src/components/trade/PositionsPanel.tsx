@@ -13,6 +13,7 @@
 import { useEffect, useState } from "react";
 import { markReady } from "@/lib/loading";
 import { useLiveRefresh } from "@/lib/live";
+import type { FeedStatus } from "@/lib/api";
 import PanelStatus from "./PanelStatus";
 import CopyableId from "./CopyableId";
 import { fmtMoney, PositionRow, PositionsPayload, tradeApi } from "@/lib/api";
@@ -20,11 +21,57 @@ import Badge from "@/components/ui/badge/Badge";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 
 const HEADS: [string, string][] = [
-  ["contract", "13%"], ["unreal $", "6%"], ["to TP", "8%"], ["TP % ($)", "9%"],
-  ["SL % ($)", "9%"], ["W", "3%"], ["L", "3%"], ["trd", "4%"], ["side", "6%"],
-  ["opened", "10%"], ["held", "6%"], ["entry", "8%"], ["margin", "6%"],
-  ["bracket", "9%"],
+  ["contract", "12%"], ["unreal $", "6%"], ["to TP", "8%"], ["TP % ($)", "8%"],
+  ["SL % ($)", "8%"], ["W", "3%"], ["L", "3%"], ["trd", "3%"], ["side", "6%"],
+  ["opened", "8%"], ["held", "5%"], ["entry", "8%"], ["live", "8%"],
+  ["margin", "6%"], ["bracket", "8%"],
 ];
+
+/** The last price MEXC PUSHED to the runner for this contract.
+ *
+ *  Age is printed beside it on purpose. A number with no age cannot be told
+ *  apart from a number that stopped arriving, and "realtime" is exactly the
+ *  claim a reader needs to be able to check (label-must-match-data). Over
+ *  ten seconds old stops being green.
+ */
+function Live({ sym, feed }: { sym: string; feed: FeedStatus | null }) {
+  const row = feed?.prices?.find((p) => p.symbol === sym);
+  if (!feed?.connected || !row || row.price == null) {
+    return <span className="text-gray-400" title={
+      feed?.why ?? (feed?.connected ? "no tick for this contract yet"
+                                    : "the runner's websocket is not connected")
+    }>—</span>;
+  }
+  const fresh = row.age < 10;
+  return (
+    <span title={`pushed by MEXC ${row.age.toFixed(1)}s ago · ${row.ticks ?? 0} ticks held`}>
+      <span className={fresh ? "font-medium text-gray-800 dark:text-white/90"
+                             : "text-gray-400"}>{row.price}</span>
+      <span className={`ml-1 text-[10px] ${fresh ? "text-success-600" : "text-warning-500"}`}>
+        {row.age < 1 ? "now" : `${Math.round(row.age)}s`}
+      </span>
+    </span>
+  );
+}
+
+/** Proof, not decoration: the socket the runner is actually holding. */
+function FeedBadge({ feed }: { feed: FeedStatus | null }) {
+  if (!feed) return null;
+  const on = feed.connected;
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+      on ? "bg-success-50 text-success-600 dark:bg-success-500/10"
+         : "bg-warning-50 text-warning-600 dark:bg-warning-500/10"}`}
+      title={on
+        ? `${feed.url} · ${feed.messages ?? 0} messages · ${feed.connects ?? 1} connection(s) · `
+          + `${(feed.tracking ?? []).length} contract(s) · ${(feed.klines ?? []).length} candle stream(s)`
+          + (feed.logged_in ? " · signed in for live fills" : "")
+        : (feed.why ?? feed.last_error ?? "not connected")}>
+      <span className={`h-1.5 w-1.5 rounded-full ${on ? "bg-success-500" : "bg-warning-500"}`} />
+      {on ? `websocket live · ${feed.messages ?? 0} pushes` : "websocket down"}
+    </span>
+  );
+}
 
 function Progress({ r }: { r: PositionRow }) {
   if (r.progress_pct == null) return <span className="text-gray-400">—</span>;
@@ -55,7 +102,16 @@ export default function PositionsPanel({ onChanged }: { onChanged?: () => void }
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState("");
 
+  const [feed, setFeed] = useState<FeedStatus | null>(null);
+
   const load = () => tradeApi.positions().then((d) => { setData(d); setErr(""); markReady("positions"); }).catch((e) => setErr(String(e)));
+  // The PRICE has its own cadence, because it has its own source: MEXC pushes
+  // it to the runner's websocket and the runner publishes what it saw. This
+  // reads that file — it is not a second connection to the venue, and it is
+  // not polling MEXC. Loopback to our own API, so the only cost is a file
+  // read, and a price that stops moving is a socket that stopped.
+  const loadFeed = () => tradeApi.feed().then(setFeed).catch(() => setFeed(null));
+  useLiveRefresh(loadFeed, 1_000);
   // its own cadence (an open position's unrealized moves with the price), and
   // an IMMEDIATE read when the tab comes back — a hidden tab's timers are
   // throttled to about one a minute by the browser, so coming back to this
@@ -120,6 +176,7 @@ export default function PositionsPanel({ onChanged }: { onChanged?: () => void }
       </TableCell>
       <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.held}</TableCell>
       <TableCell className="px-2 py-1.5 text-theme-xs text-gray-700 dark:text-gray-300">{r.entry ?? "—"}</TableCell>
+      <TableCell className="px-2 py-1.5 text-theme-xs"><Live sym={r.symbol} feed={feed} /></TableCell>
       <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.margin ?? "—"}</TableCell>
       <TableCell className="px-2 py-1.5">
         <div className="flex min-w-0 flex-wrap items-center gap-1">
@@ -176,7 +233,9 @@ export default function PositionsPanel({ onChanged }: { onChanged?: () => void }
   return (
     <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="px-5 pt-4">
-        <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Positions</h3>
+        <h3 className="flex items-center gap-2 text-base font-semibold text-gray-800 dark:text-white/90">
+          Positions <FeedBadge feed={feed} />
+        </h3>
         <p className="text-theme-xs text-gray-500 dark:text-gray-400">
           {real.length} real · {paper.length} paper · {data?.leverage ?? 20}x isolated ·
           dollar figures are net of the round-trip fee

@@ -294,10 +294,15 @@ def test_the_live_book_never_exits_on_the_feed(sandbox, monkeypatch):
         "the exchange is the source of truth for a live position"
 
 
-def test_only_coins_holding_a_demo_position_are_listened_to(sandbox, monkeypatch):
-    """Subscribing to all 993 contracts to serve a handful of demo trades is
-    traffic nobody asked for — and a live-only coin is none of the feed's
-    business."""
+def test_only_coins_holding_a_POSITION_are_listened_to(sandbox, monkeypatch):
+    """Subscribing to all 993 contracts to serve a handful of open trades is
+    traffic nobody asked for. A coin with nothing open is not followed.
+
+    (A coin holding a LIVE position IS followed, since Sep 15, 2026, so the
+    operator can see its price — see
+    `test_a_live_only_coin_is_watched_for_its_PRICE_but_never_armed`. What
+    stays demo-only is the ARMING.)
+    """
     tracked: list = []
 
     class Spy:
@@ -314,9 +319,9 @@ def test_only_coins_holding_a_demo_position_are_listened_to(sandbox, monkeypatch
     at._feed_follow({
         at.state_key(COIN, True, KEY): {"position": _pos()},
         at.state_key("KITE_USDT", True, KEY): {"position": None},
-        "PSXSTOCK_USDT": {"position": _pos(dry=False)},
+        "ROLSTOCK_USDT": {"position": None},
     })
-    assert tracked == [{COIN}]
+    assert tracked == [{COIN}],         "a coin with nothing open must not be subscribed to"
 
 
 def test_following_the_book_never_breaks_the_cycle(sandbox, monkeypatch):

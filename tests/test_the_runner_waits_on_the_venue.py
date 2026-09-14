@@ -357,3 +357,53 @@ def test_a_feed_with_no_wake_degrades_to_the_timer(monkeypatch):
     monkeypatch.setattr(lp, "FEED", Useless())
     monkeypatch.setattr(at, "_LAST_CYCLE_AT", [0.0])
     assert at._wait_for_something(0.3) == "timer"
+
+
+def test_a_live_only_coin_is_watched_for_its_PRICE_but_never_armed(monkeypatch, tmp_path):
+    """Operator, `Sep 15, 2026`: *"can you show realtime price for each coin
+    in positions"* — and STBL, held on the real book, showed a dash.
+
+    Both halves matter. The feed follows any coin holding a position so the
+    screen can show its price, and it ARMS only the demo book, because a live
+    exit is the exchange's resting bracket and nothing here may pre-empt it
+    (CLAUDE.md rule 14).
+    """
+    seen: dict = {"armed": []}
+
+    class Spy:
+        def track(self, coins):
+            seen["coins"] = set(coins)
+
+        def track_klines(self, pairs):
+            pass
+
+        def arm(self, slot, sym, side, tp, sl, since):
+            seen["armed"].append(sym)
+
+        def keep_only(self, keys):
+            seen["kept"] = set(keys)
+
+        def use_credentials(self, k, s):
+            pass
+
+        def start(self):
+            return False
+
+    monkeypatch.setattr(lp, "FEED", Spy())
+    monkeypatch.setattr(at, "SETTINGS_PATH", tmp_path / "s.json")
+    at.SETTINGS_PATH.write_text(
+        '{"strategies": [], "coins": [], "margin": 1.0}', encoding="utf-8")
+
+    def _pos(dry):
+        return {"side": 1, "entry": 3.0, "tp": 3.1, "sl": 2.9, "dry": dry,
+                "strategy": KEY, "entry_ts": 1, "opened_at": 1_789_000_000}
+
+    at._feed_follow({
+        SLOT: {"position": _pos(True)},                  # demo
+        "STBL_USDT": {"position": _pos(False)},          # live, real money
+    })
+    assert seen["coins"] == {COIN, "STBL_USDT"}, \
+        "a live-only coin must still have a price on screen"
+    assert seen["armed"] == [COIN], \
+        "the exchange's bracket owns a live exit — never this"
+    assert seen["kept"] == {SLOT}

@@ -1819,6 +1819,47 @@ def runner_stop() -> dict:
     return {"stopped": at.stop_runner()}
 
 
+@app.get("/api/trade/feed")
+def trade_feed() -> dict:
+    """What the RUNNER's websocket is seeing, straight from its own socket.
+
+    The runner holds the feed in its own process, so it publishes to
+    `live_price.json` from the feed thread every couple of seconds and this
+    reads that. The screen therefore shows the connection being proven, not a
+    second one opened to agree with it.
+
+    `age` is how old the file is: a feed that stopped writing must read as
+    stopped, never as the last price it happened to see (label-must-match-data).
+    """
+    import json as _json
+
+    from tradingagents import live_price as _lp
+
+    try:
+        raw = _json.loads(_lp.STATUS_PATH.read_text(encoding="utf-8"))
+    except Exception:                                          # noqa: BLE001
+        return {"running": False, "connected": False,
+                "why": "the runner has not published a feed status — it is "
+                       "either not running or has no coin to listen to"}
+    now = _time.time()
+    age = now - float(raw.get("written_at") or 0)
+    rows = []
+    for sym, d in sorted((raw.get("last") or {}).items()):
+        rows.append({"symbol": sym, "price": d.get("price"),
+                     "at": d.get("at"), "ticks": d.get("ticks"),
+                     "age": round(now - float(d.get("at") or 0), 2)})
+    # the file can outlive the process that wrote it
+    fresh = age < 30
+    return {"running": fresh, "connected": bool(raw.get("connected")) and fresh,
+            "logged_in": bool(raw.get("logged_in")),
+            "stale": bool(raw.get("stale")) or not fresh,
+            "url": raw.get("url"), "messages": raw.get("messages"),
+            "connects": raw.get("connects"), "tracking": raw.get("tracking"),
+            "klines": raw.get("klines"), "armed": raw.get("armed"),
+            "last_error": raw.get("last_error"),
+            "status_age": round(age, 2), "prices": rows}
+
+
 @app.get("/api/trade/pnl/daily")
 def trade_pnl_daily(dry: bool = False) -> dict:
     """Realized PnL per calendar day — the calendar view's data."""

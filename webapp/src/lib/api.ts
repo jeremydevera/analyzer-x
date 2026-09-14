@@ -1229,6 +1229,33 @@ export interface HistoryPayload {
   totals: { trades: number; wins: number; losses: number; profit: number };
 }
 
+/** What the RUNNER's own websocket is seeing. Read from the status the feed
+ *  thread publishes, so the screen shows the socket being proven rather than
+ *  a second one opened to agree with it. */
+export interface FeedPrice {
+  symbol: string;
+  price: number | null;
+  at: number | null;
+  ticks: number | null;
+  age: number;
+}
+export interface FeedStatus {
+  running: boolean;
+  connected: boolean;
+  logged_in?: boolean;
+  stale?: boolean;
+  url?: string;
+  messages?: number;
+  connects?: number;
+  tracking?: string[];
+  klines?: string[];
+  armed?: string[];
+  last_error?: string;
+  status_age?: number;
+  prices?: FeedPrice[];
+  why?: string;
+}
+
 export const tradeApi = {
   equity: (dry = false) =>
     get<{ points: { ts: number; equity: number; coin: string }[]; last: number; trades: number }>(
@@ -1236,6 +1263,9 @@ export const tradeApi = {
   history: (dry: boolean, page = 1, per_page = 5) =>
     get<HistoryPayload>(`/api/trade/history?dry=${dry}&page=${page}&per_page=${per_page}`),
   positions: () => get<PositionsPayload>("/api/trade/positions"),
+  /** the runner's live websocket: connection state and the last price
+   *  pushed for every coin it is listening to */
+  feed: () => get<FeedStatus>("/api/trade/feed"),
   /** the RESET W/L button: archives the trade rows, never deletes them.
    *  Resetting the real book also resets today's loss-cap counter. */
   /** the RESET CAP button: the loss cap counts from zero again; nothing is

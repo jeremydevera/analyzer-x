@@ -1519,6 +1519,16 @@ export type IndexStatus = {
    *  `test_every_client_path_is_served` scans this file for paths and a
    *  wrapped one parses as a route the app does not serve.) */
   stale?: number | null;
+  /** is a process actually working the backlog off? A backlog with no worker
+   *  is a different sentence from one being worked, and until Sep 14, 2026
+   *  the screen could not tell them apart: the indexer died at
+   *  `Sep 13, 2026 4:05pm` on `database is locked`, nothing restarted it, and
+   *  `stale` climbed to 5,344 overnight under a button and no explanation. */
+  indexer_running?: boolean;
+  /** WHICH job owns the disk while the indexer stands down, in words
+   *  ("collect", "backtest"). "paused" with no name is the stalled screen
+   *  RCA-2026-09-10-C was about. */
+  paused_by?: string;
   syncing: boolean;
   updated: number | null;
 };

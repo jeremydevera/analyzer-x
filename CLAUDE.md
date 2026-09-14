@@ -474,6 +474,51 @@ index for as long as it takes (~14 min/pair on this spinning disk). Chunked
 commits are the real repair, and `_drop_pairs`'s "may the files go now"
 contract has to move with them. Full account: `docs/RCA.md` RCA-2026-09-10-C.
 
+## THE UI IS THE SOURCE OF TRUTH, SO IT IS KEPT CURRENT (MANDATORY — 2026-09-14)
+
+The operator: *"take note the ui is always the source of truth so it needs to
+be updated always"*, after asking three times why a button offered to index
+**5,344** pairs and being told twice that it "catches up on its own".
+
+It did not. The indexer had died at `Sep 13, 2026 4:05pm` on `database is
+locked` — `main()` called `ensure()` bare, so a lock a neighbour held for a
+few seconds ended the process — and NOTHING restarted it. The machine had no
+indexer for a day while two sweeps landed. `EMBER-15m` held 8,400 measured
+rows on disk and **0** in the index: searching that coin returned nothing at
+all. Full account: docs/RCA.md RCA-2026-09-14-B.
+
+The screen is what the operator trades from. Three rules, and they apply to
+every feed behind every screen, not only this one:
+
+* **A process that keeps a screen current MAY NOT EXIT because a resource was
+  busy.** Wait and retry, name who holds it (`lock_holder()`), and thin the
+  log after a few attempts. A lock is normal here: the store is written by
+  the collect, the live door, a delisted cleanup and the rebuild.
+* **SOMETHING MUST NOTICE WHEN IT DIES.** The API supervisor's 30 s tick
+  restarts the runner and the jobs; it now restarts the indexer too. And the
+  "is one already running" test must be a FACT, not a pid — pids are recycled
+  (RCA-2026-09-12-B), and under a supervisor a recycled pid is not a
+  curiosity, it is a permanent no-op. The identity is an exclusive run lock
+  (`rows_index.take_run_lock`), the pid file only says which process holds it.
+* **THE SCREEN SAYS WHICH STATE IT IS IN.** A backlog being worked and a
+  backlog with no worker looked identical, so "catching up on its own in the
+  background" was printable while nothing was. `status()` carries
+  `indexer_running` (and `None` while unknown — "not known yet" is not
+  "dead"), and the panel prints one of three sentences: catching up, paused
+  while <job> has the disk, or **"nothing is filling this — the indexer is
+  not running"**.
+
+A corollary that cost a day on its own: **a successful start must log
+something.** A silent success meant the newest line in `rows_index.log` was
+the previous day's traceback whether the process was healthy or had been dead
+for 24 hours. It prints `up (pid N): X indexed of Y, Z to re-file` now.
+
+`tests/test_the_indexer_is_never_allowed_to_stay_dead.py` holds all of it
+(17 tests). Note what those guards did NOT cover before:
+`test_index_stall_is_visible.py` has fifteen tests about a STALLED fill and
+none about the process being ABSENT — "stalled" and "gone" produce the same
+screen, and only one of them had ever been imagined.
+
 ## The row index is a BULK LOAD, not a trickle (MANDATORY — 2026-08-26)
 
 The operator: *"why is my stored strategy few? ... where are those?"* and then

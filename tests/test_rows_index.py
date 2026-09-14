@@ -610,16 +610,34 @@ def test_the_api_does_not_index_in_its_own_process(monkeypatch, tmp_path):
 
 
 def test_only_one_indexer_process_at_a_time(tmp_path, monkeypatch):
-    """Two indexers would fight for SQLite's single write lock."""
+    """Two indexers would fight for SQLite's single write lock.
+
+    A PID IS NO LONGER ENOUGH (Sep 14, 2026). This asserted that a live pid in
+    the pid file WAS an indexer, which is the rule that made the supervisor
+    impossible: pids are recycled — after a reboot the runner's recorded pid
+    came back as NVIDIA Overlay (RCA-2026-09-12-B) — and a supervisor asking
+    every 30 s would have read "still running" for ever and never refilled the
+    index. Both halves are required now: the run LOCK is the identity, the pid
+    file says which process holds it.
+    """
     import os
 
     monkeypatch.setattr(ri, "PIDFILE", tmp_path / "rows_index.pid")
+    monkeypatch.setattr(ri, "RUNLOCK", tmp_path / "rows_index.run.lock")
     (tmp_path / "rows_index.pid").write_text(str(os.getpid()))
-    assert ri._running_elsewhere() is True
-    assert ri.spawn_indexer() is None, "it spawned a second indexer"
-    # a dead pid is not a running indexer
-    (tmp_path / "rows_index.pid").write_text("999999")
-    assert ri._running_elsewhere() is False
+    # a live pid with NOBODY holding the lock is a stranger, not an indexer
+    assert ri._running_elsewhere() is False, "a recycled pid is not an indexer"
+
+    assert ri.take_run_lock() is True
+    try:
+        assert ri._running_elsewhere() is True
+        assert ri.spawn_indexer() is None, "it spawned a second indexer"
+        # a dead pid is not a running indexer, lock or no lock
+        (tmp_path / "rows_index.pid").write_text("999999")
+        assert ri._running_elsewhere() is False
+    finally:
+        ri.release_run_lock()
+    assert ri.run_lock_held() is False
 
 
 def test_the_storage_screen_reads_no_files_at_all(store, monkeypatch, tmp_path):

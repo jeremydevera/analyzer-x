@@ -172,6 +172,138 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-14-B — the indexer died on a locked database, nothing restarted it, and the screen said it was catching up
+
+**CEO**
+
+* Your Stored strategies list stopped taking in new results on Sep 13 at
+  4:05pm and nobody noticed for a day. The button offering to catch up 5,344
+  coins was not a normal after-a-sweep message — it was the only thing left
+  doing that job, because the program that does it automatically had died.
+* Why: that program starts by claiming the results database. A collect was
+  writing to it at that moment, so the claim failed — and instead of waiting
+  a few seconds and trying again, it shut down. Nothing ever checked on it
+  afterwards, so the machine simply had no indexer from then on.
+* What stops it now, three things: it waits for a busy database instead of
+  quitting; something checks every 30 seconds that it is alive and starts it
+  again if not; and the screen now says which of the two situations you are
+  in — "catching up on its own" or "nothing is filling this". I was wrong
+  twice telling you it catches up by itself, and the screen now cannot say
+  that unless it is true.
+
+**DEV**
+
+* `rows_index.main` called `ensure()` bare. `ensure()`'s first statement is
+  `con.executescript("PRAGMA journal_mode=WAL;")`, which needs a brief
+  exclusive lock, so `sqlite3.OperationalError: database is locked` raised
+  out of `__main__` and ended the process. `spawn_indexer` is called once,
+  from the API's `startup` event, and the supervisor thread beside it
+  resumed `backtest`/`download`/`btupdate` and the runner — never the
+  indexer.
+* Invariants broken: **a daemon whose job is keeping a screen current may not
+  exit because a neighbour held a lock**, and the label rule one layer up —
+  every field in `status()` described the BACKLOG and none said whether a
+  worker existed to clear it, so "catching up on its own" was printable while
+  nothing was.
+* Guard: `tests/test_the_indexer_is_never_allowed_to_stay_dead.py` — 17
+  tests, four sections, including a real second process proving the run lock
+  excludes one.
+
+**SAW** — *"WHY DO I HAVE THIS BUTTON HERE / WHAT DOES THIS MEAN IM ONLY
+ASKING"*, then, after two answers that said it would catch up by itself:
+*"what do you mean newest numbers? so you mean its not updated?"* and
+*"what's the reason why you decide it should not be updated"*.
+
+**TIMELINE**
+
+1. `Sep 13, 2026 4:05pm` — `rows_index.log` ends. Its last lines are
+   `[rows-index] sync failed: OperationalError('database is locked')`
+   repeated, then the traceback out of `main -> ensure -> executescript`.
+   No indexer process on the machine after this.
+2. Overnight two sweeps landed (runs 34677707977 and 34739539427) and their
+   collects rewrote thousands of pair files. Nothing filed them.
+3. `Sep 14, 2026 4:02pm` — `status()`: `rows 112,364,317`,
+   `pairs_indexed 5,392`, `pairs_on_disk 5,401`, **`stale 5,344`**,
+   `syncing False`. The button read "index the 5,344 pair(s) that moved".
+4. Measured what that meant on two real pairs: `RCATSTOCK-15m` held
+   **21,600** rows in its file against **18,900** indexed — 2,700 measured
+   strategies unsearchable. `EMBER-15m` held **8,400** on disk and **0** in
+   the index, written `Sep 14, 2026 12:06am`: the coin was missing from the
+   screen entirely. Of 12 sampled stale pairs, 9 matched and 3 were short.
+5. `3:13pm` — started an indexer by hand. It filed `CME-1d` at `3:13:36pm`
+   and `EMBER-15m` at `3:21:49pm`: **one pair in 8 minutes**, and `stale`
+   did not move for six minutes of watching.
+6. `3:30pm` — py-spy on the process found the reason, and it was not the
+   indexer: a **full rebuild** was running (`rows_index --rebuild --fresh`,
+   pid 8624) at `loading 710 of 5,401 pairs, 70.89 pairs/min`. A rebuild
+   loads a fresh copy of the whole store and swaps it in, so it owns the
+   disk — and `busy_job()`, which walks `db_jobs.FILES`, has never heard of
+   it. The indexer that is supposed to stand down for a big job was instead
+   fighting one, on a mechanical disk, writing rows into a file about to be
+   replaced. It is also the most likely author of the lock that killed it on
+   the 13th.
+7. AFTER the fix, on the live machine: the API's supervisor restarted the
+   indexer by itself; `/api/strategies` reports `stale 5342`,
+   **`indexer_running True`**, **`paused_by "rebuild (loading)"`**; and the
+   panel reads *"index the 5,342 pair(s) that moved since they were
+   indexed · catching up on its own · paused while rebuild (loading) has the
+   disk"*.
+
+**ROOT CAUSE** — `main()` let a transient `database is locked` terminate the
+process, and nothing in the system was responsible for noticing an indexer
+had stopped existing.
+
+**WHY IT WAS NOT CAUGHT** — RCA-2026-09-10-C is the same organ: it fixed a
+swallowed exception, an undercounted button and a DEVNULL'd log so that an
+indexer that could not START would say so. Every one of those assumes there
+IS an indexer. `tests/test_index_stall_is_visible.py` has 15 tests about a
+stalled fill and not one about the process being absent — **"stalled" and
+"gone" produce the same screen, and only one of them had ever been
+imagined.**
+
+Two narrower reasons it survived a day. The supervisor thread that resumes
+crashed jobs was written for `db_jobs` kinds and the indexer is not one, so a
+concept-level grep ("what else must never stay dead?") had never been run
+over it. And the log could not distinguish the two states either: a
+successful start printed NOTHING, so the newest line in `rows_index.log` was
+the previous day's traceback whether the indexer was healthy or had been dead
+for 24 hours. It prints `up (pid N): X indexed of Y, Z to re-file` now.
+
+The loop also found a bug in the fix itself, which is the reason for the
+loop: `_running_elsewhere()` tested only `pid_alive`, and a supervisor asking
+every 30 s turns a recycled pid from a curiosity into a permanent no-op — the
+NVIDIA Overlay shape of RCA-2026-09-12-B, one file along. The identity is a
+run lock now, proved across a real second process.
+
+**COST** — no money, nothing lost, every measurement safe on disk the whole
+time: the pair files are the source of truth and they were complete. The cost
+was a day of a search screen quietly answering with yesterday's data, two
+wrong reassurances from me that it would fix itself, and the operator having
+to ask three times.
+
+**FIX** — this commit.
+`rows_index._ensure_or_wait()` retries a busy database for as long as the
+process lives (`ENSURE_RETRY_S`, 15 s), naming the holder via `lock_holder()`
+and thinning the log after three attempts; `main()` calls it instead of
+`ensure()`. `take_run_lock()`/`run_lock_held()`/`RUNLOCK` give the indexer a
+real identity, and `_running_elsewhere()` requires the lock AND a live pid.
+The API supervisor calls `spawn_indexer()` on its 30 s tick beside the runner
+and the jobs. `busy_job()` now sees a live rebuild (pid alive AND a progress
+file younger than `REBUILD_STALE_S`, so a dead one cannot pause the indexer
+for ever) and names its phase. `status()` carries `indexer_running`, the
+API's pending shape carries it as `None` — "not known yet" is not "dead" —
+and `StrategiesPanel` prints one of three sentences beside the button.
+
+**GUARD** — `tests/test_the_indexer_is_never_allowed_to_stay_dead.py`, 17
+tests. Verified RED on the pre-fix files (13 of 13 then; 17 of 17 with the
+rebuild section) and green after. `tests/test_rows_index.py::
+test_only_one_indexer_process_at_a_time` was updated: it asserted that a live
+pid IS an indexer, which is the rule that made the supervisor impossible.
+`conftest` sandboxes `RUNLOCK`, caught by this repo's own
+`test_the_sandbox_covers_every_path_constant_it_can_find` during the loop.
+
+---
+
 ## RCA-2026-09-14-A — the LIVE toggle undid itself five seconds after it was clicked, and looked armed the whole time
 
 **CEO**

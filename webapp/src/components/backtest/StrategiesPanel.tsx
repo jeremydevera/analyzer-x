@@ -954,10 +954,26 @@ export default function StrategiesPanel() {
             since RCA-2026-09-10-C; this is the same expression, so the
             label and the job cannot disagree. */}
         {idx && indexTodo > 0 ? (
-          <button onClick={catchUp} disabled={!!reindexing}
-            className="h-10 rounded-lg border border-warning-500 px-3 text-theme-sm font-medium text-warning-600 hover:bg-warning-50 disabled:opacity-50 dark:text-warning-400">
-            {reindexing || `index the ${indexTodo.toLocaleString()} pair(s) that moved since they were indexed`}
-          </button>
+          <div className="flex flex-col items-end gap-1">
+            <button onClick={catchUp} disabled={!!reindexing}
+              className="h-10 rounded-lg border border-warning-500 px-3 text-theme-sm font-medium text-warning-600 hover:bg-warning-50 disabled:opacity-50 dark:text-warning-400">
+              {reindexing || `index the ${indexTodo.toLocaleString()} pair(s) that moved since they were indexed`}
+            </button>
+            {/* IS ANYTHING WORKING IT OFF? A backlog being worked and a
+                backlog with no worker looked identical here, and on
+                Sep 13, 2026 4:05pm the difference was the whole story: the
+                indexer had died and this button was the only way left, while
+                the operator was told it "catches up on its own". Now the
+                screen says which of the two it is. */}
+            <span className={`text-theme-xs ${idx.indexer_running === false
+              ? "text-error-600 dark:text-error-400" : "text-gray-500 dark:text-gray-400"}`}>
+              {idx.indexer_running === false
+                ? "nothing is filling this — the indexer is not running; press the button"
+                : idx.paused_by
+                  ? `catching up on its own · paused while ${idx.paused_by} has the disk`
+                  : "catching up on its own in the background"}
+            </span>
+          </div>
         ) : null}
       </div>
       {/* FILTERS live in a MODAL, one field per line. On the panel: the

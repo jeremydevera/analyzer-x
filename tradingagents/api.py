@@ -171,6 +171,32 @@ def _keep_the_row_index_current() -> None:
                                   flush=True)
                     except Exception:
                         pass
+                # AND THE INDEXER — the process that keeps the SCREEN true.
+                #
+                # It was spawned once, at API startup, and nothing ever looked
+                # again. On Sep 13, 2026 4:05pm it died on `database is
+                # locked` (a collect held the write lock) and stayed dead:
+                # `rows_index.log` ended on a traceback, no process was
+                # running, and Stored strategies went on answering from
+                # whatever had last been filed while the REINDEX button
+                # offered to catch up **5,344** pairs. The operator asked
+                # *"what's the reason why you decide it should not be
+                # updated"* — nobody decided; the thing that does it was gone.
+                #
+                # THE UI IS THE SOURCE OF TRUTH FOR WHAT THEY CAN SEE, so the
+                # process that feeds it is supervised exactly like the runner
+                # and the jobs above. `spawn_indexer` no-ops while one is
+                # alive, so this cannot double it.
+                try:
+                    from tradingagents import rows_index as _ri
+
+                    pid = _ri.spawn_indexer()
+                    if pid:
+                        print(f"[supervisor] the row indexer was down — "
+                              f"restarted (pid {pid})", flush=True)
+                except Exception as exc:                       # noqa: BLE001
+                    print(f"[supervisor] could not restart the indexer: "
+                          f"{exc!r}", flush=True)
                 # AND THE RUNNER, on the machines launchd cannot watch.
                 # Operator, 2026-09-04: *"IF I RUN IT RUN IT / I DONT WANT ANY
                 # INCONVENIENCE"*. `supervisor.py` is a macOS LaunchAgent, so
@@ -2299,7 +2325,12 @@ def index_status(pending: dict | None = None) -> dict:
     """
     return _INDEX_STATUS.get(pending=pending or {
         "pairs_indexed": None, "pairs_on_disk": None, "behind": None,
-        "stale": None, "rows": None, "reading": True})
+        "stale": None, "rows": None, "reading": True,
+        # None, never False: "not known yet" and "no indexer is running" are
+        # different sentences and the screen prints a different one for each.
+        # Leaving the key out made a missing value read as "catching up on
+        # its own", which is the reassurance that was wrong for a day.
+        "indexer_running": None, "paused_by": ""})
 
 
 _CLOUD_STATUS = BackgroundValue(

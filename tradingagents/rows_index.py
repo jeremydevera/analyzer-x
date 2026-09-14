@@ -257,6 +257,31 @@ def busy_job() -> str:
     running" is a fact a reader can act on; "a backtest is running" while a
     collect runs is a false label (`label-must-match-data`).
     """
+    # A REBUILD IS A WRITER TOO, and it is not a db_job — `db_jobs.FILES` has
+    # never heard of it, so this returned "" while `rows_index --rebuild
+    # --fresh` was loading the entire store beside the trickle.
+    #
+    # Measured `Sep 14, 2026 3:30pm`: a rebuild at `loading 710 of 5,401
+    # pairs, 70.89 pairs/min` while an indexer this module had just restarted
+    # ran against the same file on the same mechanical disk. A rebuild loads a
+    # FRESH copy and SWAPS it in at the end, so every row the trickle writes
+    # meanwhile is written into a file that is about to be thrown away, and
+    # both fight one platter to do it. It is also the likeliest author of the
+    # `database is locked` that killed the indexer at `Sep 13, 2026 4:05pm`.
+    #
+    # TWO FACTS, never one, for the same reason the run lock exists: a pid
+    # alone can be recycled (RCA-2026-09-12-B), and a stale progress file
+    # would then pause the indexer for ever — which is precisely the silence
+    # this whole change is undoing. The pid must be alive AND the file must be
+    # FRESH, which a live rebuild guarantees because every long phase
+    # republishes while it runs.
+    with contextlib.suppress(Exception):
+        got = rebuild_progress()
+        pid = int(got.get("pid") or 0)
+        fresh = (time.time() - REBUILD_PROGRESS.stat().st_mtime) < REBUILD_STALE_S
+        if pid and fresh and portable.pid_alive(pid):
+            phase = str(got.get("phase") or "").strip()
+            return f"rebuild ({phase})" if phase else "rebuild"
     try:
         from tradingagents import db_jobs as dj
 
@@ -1217,6 +1242,11 @@ def compact(*, dest: Path | None = None, keep_backup: bool = True) -> dict:
 
 
 REBUILD_PROGRESS = Path.home() / ".tradingagents" / "rows_rebuild.json"
+# How old the rebuild's progress file may be before it stops counting as a
+# live rebuild. A running one republishes constantly (every long phase does),
+# so anything older than this is a rebuild that died without tidying up — and
+# a dead writer must never pause the indexer for ever.
+REBUILD_STALE_S = 600.0
 # How often the pre-swap verify refreshes that file while SQLite walks the
 # whole database. Every VERIFY_TICK_OPS VM steps SQLite calls back; the file is
 # rewritten at most every VERIFY_TICK_S seconds, so the cost is one small write
@@ -3997,6 +4027,16 @@ def status() -> dict:
             # promised a seventh of the work it had started.
             "stale": None if pairs is None else len(stale_pairs()),
             "syncing": syncing(),
+            # IS ANYTHING ACTUALLY FILLING THIS? Every other field here
+            # describes the backlog; none of them said whether a process
+            # exists to work it off. On Sep 13, 2026 4:05pm the indexer died
+            # on `database is locked` and nothing restarted it, so `stale`
+            # climbed to 5,344 overnight while the screen offered a catch-up
+            # button and said nothing else — and the operator was told twice
+            # that it "catches up on its own in the background". It did not.
+            # A backlog with no worker is a different sentence from a backlog
+            # being worked, and the screen has to be able to say which.
+            "indexer_running": _running_elsewhere(),
             "last_error": _last_error, "blocked_by": lock_holder(),
             # kept for older readers; both mean "a sweep owns the disk"
             "trickling": busy, "paused": busy,
@@ -4039,12 +4079,91 @@ PIDFILE = DB_PATH.parent / "rows_index.pid"
 LOGFILE = Path(os.path.expanduser("~/.tradingagents")) / "rows_index.log"
 
 
+RUNLOCK = PIDFILE.parent / "rows_index.run.lock"
+_RUN_LOCK = None            # held open for the life of an indexer process
+
+
+def run_lock_held() -> bool:
+    """True when SOMETHING holds the indexer's exclusive run lock.
+
+    `main` takes this for the life of the process and nothing else in the
+    project opens it, so holding it is the indexer's only real IDENTITY.
+
+    A PID IS NOT ONE. The operating system reuses pids — after the Windows
+    Update reboot on `Sep 11, 2026 9:35pm` the pid this project had recorded
+    for the RUNNER (9364) came back as NVIDIA Overlay (RCA-2026-09-12-B).
+    Until Sep 14, 2026 this module made exactly that mistake, and it became
+    load-bearing the moment the supervisor started asking every 30 s whether
+    the indexer needs restarting: a recycled pid would answer "still running"
+    for ever and the index would never be filled again — the silent version
+    of the bug this whole change exists to end.
+
+    Never opens with "w": that truncates a file another process may be
+    holding a byte-range lock on.
+    """
+    try:
+        fh = open(RUNLOCK, "a+", encoding="utf-8")     # noqa: SIM115
+    except OSError:
+        return False                       # no lock file, so nobody holds it
+    try:
+        portable.lock_exclusive(fh, blocking=False)
+    except OSError:
+        return True                        # somebody else is holding it
+    else:
+        portable.unlock(fh)
+        return False
+    finally:
+        fh.close()
+
+
+def take_run_lock() -> bool:
+    """Claim the indexer identity for this process, or say it is taken.
+
+    Held open deliberately: closing the handle releases the lock, which is
+    the only thing keeping a second indexer off the same database.
+    """
+    global _RUN_LOCK
+    RUNLOCK.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        fh = open(RUNLOCK, "a+", encoding="utf-8")     # noqa: SIM115
+        portable.lock_exclusive(fh, blocking=False)
+    except OSError:
+        with contextlib.suppress(Exception):
+            fh.close()
+        return False
+    _RUN_LOCK = fh
+    return True
+
+
+def release_run_lock() -> None:
+    """Give the identity up. For tests and a clean shutdown only — a running
+    indexer holds this for its whole life ON PURPOSE."""
+    global _RUN_LOCK
+    fh, _RUN_LOCK = _RUN_LOCK, None
+    if fh is None:
+        return
+    with contextlib.suppress(Exception):
+        portable.unlock(fh)
+    with contextlib.suppress(Exception):
+        fh.close()
+
+
 def _running_elsewhere() -> bool:
-    """Is an indexer process already alive?"""
+    """Is an indexer process already alive? BOTH halves have to agree.
+
+    The lock proves an indexer exists; the pid file says which one. Requiring
+    both is what stops `spawn_indexer` from reading a stranger's recycled pid
+    as "already running" — see `run_lock_held`.
+    """
+    if not run_lock_held():
+        return False
     try:
         pid = int(PIDFILE.read_text().strip())
     except (OSError, ValueError):
-        return False
+        # the lock is held but we cannot say by whom. Something IS running;
+        # spawning a second one would put two writers on the store, which is
+        # worse than waiting for the next 30 s tick.
+        return True
     return portable.pid_alive(pid)
 
 
@@ -4088,6 +4207,70 @@ def spawn_indexer() -> int | None:
                  "PYTHONUNBUFFERED": "1"})
     PIDFILE.write_text(str(proc.pid))
     return proc.pid
+
+
+# HOW LONG TO WAIT BEFORE ASKING FOR THE DATABASE AGAIN.
+#
+# THE INDEXER MAY NOT DIE (Sep 14, 2026). `main()` called `ensure()` bare, so
+# a `database is locked` on the very first statement — `PRAGMA
+# journal_mode=WAL`, which wants a brief exclusive lock and cannot have one
+# while a collect is writing — raised straight out of `__main__` and KILLED
+# the process. Nothing respawns it (the API spawns it once, at startup), so
+# the machine simply stopped having an indexer, and the operator's Stored
+# strategies went on serving whatever had last been filed.
+#
+# What that looked like on their screen: `rows_index.log` ending at
+# `Sep 13, 2026 4:05pm` with the same traceback over and over, no indexer
+# process at all, and a REINDEX button offering to file **5,344** pairs that
+# grew all night — while they were told, twice, that it "catches up on its
+# own in the background".
+#
+# A lock is NORMAL here and always has been: this store is written by the
+# collect, the sweep's live door, a delisted cleanup and the rebuild.
+# `_connect` already sets `busy_timeout=60000` for exactly that reason. The
+# one thing a daemon whose entire job is keeping a screen current must never
+# do is exit because a neighbour held a lock for a minute.
+ENSURE_RETRY_S = 15.0
+
+
+def _ensure_or_wait(*, attempts: int = 0, sleep_s: float | None = None) -> int:
+    """`ensure()`, waiting out a busy database instead of dying on it.
+
+    Returns how many retries it took (0 = first go). `attempts` caps the
+    tries for tests; 0 means keep trying for as long as this process lives,
+    which is the right answer for a daemon — a database that is locked now is
+    usually unlocked in a minute, and the alternative is no indexer at all.
+
+    Every wait NAMES THE HOLDER (`lock_holder()`), because "database is
+    locked" alone sent a reader to the process table for 13 hours once
+    (RCA-2026-09-10-C).
+    """
+    wait = ENSURE_RETRY_S if sleep_s is None else float(sleep_s)
+    tries = 0
+    while True:
+        try:
+            ensure()
+        except sqlite3.OperationalError as exc:
+            tries += 1
+            if attempts and tries >= attempts:
+                raise
+            # loud for the first few, then thinned: this can run for hours
+            # behind a long cleanup and a line every 15 s would bury the log
+            if tries <= 3 or tries % 20 == 0:
+                who = ""
+                with contextlib.suppress(Exception):
+                    who = lock_holder() or ""
+                print(f"[rows-index] the index is busy ({exc}); "
+                      f"{'held by ' + who + '; ' if who else ''}"
+                      f"waiting {wait:.0f}s and trying again "
+                      f"(attempt {tries})", flush=True)
+            if _loop_stop.wait(wait):
+                raise                     # a real stop was asked for
+        else:
+            if tries:
+                print(f"[rows-index] the index opened after {tries} "
+                      f"retr{'y' if tries == 1 else 'ies'}", flush=True)
+            return tries
 
 
 def start_keeping_up(every_s: float = 10.0, budget_s: float = 60.0) -> bool:
@@ -4248,7 +4431,29 @@ def main(argv: list | None = None) -> int:
 
     with contextlib.suppress(OSError, AttributeError):
         os.nice(5)
-    ensure()
+    # THE IDENTITY, taken before any work. Two indexers on one SQLite file is
+    # a lock storm that makes both slower than one, and the supervisor asks
+    # every 30 s now — so the answer to "is one already running" has to be a
+    # fact, not a pid. The loser exits quietly: it is not an error for the
+    # supervisor to have raced a healthy indexer.
+    # a FRESH process starts from a clear stop flag: nothing has asked this
+    # one to stand down yet, and inheriting a set flag would make the retry
+    # below give up on its first wait
+    _loop_stop.clear()
+    if not take_run_lock():
+        print("[rows-index] another indexer holds the run lock — exiting",
+              flush=True)
+        return 0
+    _ensure_or_wait()
+    # SAY THAT IT LIVES. A start that succeeds first time printed NOTHING, so
+    # the only lines this log ever carried were failures — on Sep 14, 2026 a
+    # healthy indexer and a dead one looked identical in it (the newest entry
+    # was the previous day's traceback either way). A reader has to be able to
+    # tell "it is running" from "it died and nobody noticed".
+    st = status()
+    print(f"[rows-index] up (pid {os.getpid()}): {st.get('pairs_indexed')} "
+          f"pair(s) indexed of {st.get('pairs_on_disk')} on disk, "
+          f"{st.get('stale')} to re-file", flush=True)
     start_keeping_up()
     try:
         while True:

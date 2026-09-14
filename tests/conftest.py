@@ -256,6 +256,12 @@ def _never_touch_the_live_book(tmp_path, monkeypatch):
         # refuse. It found them; this is the fix.
         for _name, _leaf in (("PIDFILE", "rows_index.pid"),
                              ("LOGFILE", "rows_index.log"),
+                             # the indexer's IDENTITY lock (Sep 14, 2026). A
+                             # test that took it would hold the real one, so
+                             # the running indexer's supervisor would read
+                             # "already running" and never restart it — the
+                             # exact silence this lock was added to end.
+                             ("RUNLOCK", "rows_index.run.lock"),
                              ("REBUILD_PROGRESS", "rows_rebuild.json")):
             if hasattr(_ri, _name):
                 monkeypatch.setattr(_ri, _name, sandbox / _leaf)

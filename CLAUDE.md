@@ -631,8 +631,16 @@ A bug that never fired is labelled "NEVER HAPPENED YET" before its hypothetical
 timeline. Applies to "what are the bugs", "is there a bug", reporting one found in
 passing, and explaining any fix.
 
-ALWAYS ON — `short-and-plain`. STRICT. Every reply is SHORT, in BEGINNER
-language, **and carries a real example** — all three at once — one skill, because three separate ones (the deleted
+ALWAYS ON — `short-and-plain`. STRICT. **ONE SENTENCE, every answer.**
+Operator, 2026-09-15, after a six-paragraph reply written while this rule was
+loaded: *"why are you explaining on paragraph again? this is strcit moving
+forward, i want 1 sentence / this is the last time i will say it"*. The old
+per-question caps (a fact 1, "why" 3, "explain" 6) are GONE — six sentences is
+a paragraph, and a cap that varies is a cap that gets argued with. One
+sentence, in BEGINNER language, carrying their own numbers. Longer needs an
+explicit ask ("give me the detail", "list them"); a follow-up question is
+another one-sentence answer, not an invitation to expand. Every reply is
+SHORT, in BEGINNER language, **and carries a real example** — all three at once — one skill, because three separate ones (the deleted
 short-answers, one-word and plain-words) each got followed alone: jargon, or
 plain but four paragraphs long. Operator, 2026-09-05: *"COMBINE THEM IN ONE
 CREATE NEW SKILL AND REMOVE THE EIXSTING 3"*.

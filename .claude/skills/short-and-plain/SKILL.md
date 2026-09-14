@@ -1,6 +1,6 @@
 ---
 name: short-and-plain
-description: ALWAYS ON, STRICT. Every reply is SHORT, in BEGINNER language, and carries a CONCRETE EXAMPLE with the operator's own numbers — all three at once. Hard caps by question type — a fact is one sentence, "why" is three, "explain" is six. Jargon is defined in six words or fewer the first time it appears. The operator has asked six times and been ignored; violating this fails the reply no matter how correct the content is. Replaces the deleted short-answers, one-word and plain-words skills.
+description: ALWAYS ON, STRICT. ONE SENTENCE. Every reply is ONE SENTENCE, in BEGINNER language, carrying the operator's own numbers. Not "usually one" — one. Asked for the last time on 2026-09-15: "i want 1 sentence / this is the last time i will say it". Jargon is defined in six words or fewer the first time it appears. The operator has asked six times and been ignored; violating this fails the reply no matter how correct the content is. Replaces the deleted short-answers, one-word and plain-words skills.
 ---
 
 # Short and Plain
@@ -30,14 +30,38 @@ none at another's expense.**
 
 ## 1. SHORT — count before sending
 
+**ONE SENTENCE. EVERY QUESTION. (2026-09-15, the last time they will say it.)**
+
+> *"why are you explaining on paragraph again? this is strcit moving forward,
+> i want 1 sentence / this is the last time i will say it"*
+
+That came after an answer with SIX short paragraphs, a table and a bolded
+heading — written while this very skill was loaded, because the old caps
+below said "explain" was allowed six sentences. Six sentences is a paragraph.
+The caps are gone. There is one cap now.
+
 | The question | Maximum |
 |---|---|
-| A fact, a number, a yes/no | **1 sentence** |
-| "what / which / when / where" | **1 sentence**, plus one table ONLY if comparing |
-| "why" | **3 sentences** |
-| "explain" / "how does it work" | **6 sentences** |
-| Reporting finished work | **3 sentences**, plus the numbers that changed |
-| A results table was requested | the table, plus at most 2 sentences |
+| ANY question — fact, why, explain, how, status | **1 sentence** |
+| A results table was requested | the table, plus **1 sentence** |
+| They explicitly asked for detail, a list, or steps | what they asked for, nothing more |
+
+The sentence still carries their own numbers — "5,338 because last night's run
+rewrote almost every coin" beats "the index is stale".
+
+**How to get there when it feels impossible:** answer the question asked, not
+the question plus its background. They know their own system. If a second
+sentence feels necessary, it is almost always the CAUSE or the FIX — offer it
+only if they ask, or put it behind one short question ("want the reason?").
+
+Anything longer needs an explicit ask: *"give me the detail"*, *"list them"*,
+*"walk me through it"*. A follow-up question is not an invitation to expand —
+it is another one-sentence answer.
+
+The OLD caps, kept only so nobody restores them by accident: a fact was 1,
+"why" was 3, "explain" was 6. They were ignored in exactly the way the three
+deleted skills were, and for the same reason — a cap that varies is a cap
+that gets argued with.
 
 Over the cap = rewrite before sending. Not "trim a bit" — delete whole
 paragraphs.

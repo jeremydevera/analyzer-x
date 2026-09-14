@@ -435,11 +435,25 @@ export default function JobsPanel() {
                   CANCEL RUN
                 </Button>
               )}
-              {cloud.conclusion === "success" && (
+              {/* A COLLECTED RUN HAS NOTHING TO MERGE. Operator, Sep 15,
+                  2026: "why am i seeing merge into this pc button again ...
+                  we agreed that when we do backtest it should immediately
+                  update the backtest table". It already had: run
+                  34631292767 landed 85,352,010 rows LIVE while it ran and
+                  was collected three days before that button was still
+                  being offered. Pressing it downloads twenty shard files to
+                  write nothing. */}
+              {cloud.conclusion === "success" && !cloud.collected && (
                 <Button size="sm"
                   onClick={() => api.cloudMerge(cloud.run!.id!).then((r) => setErr(`merged ${r.fetched} rows into this PC`))}>
                   MERGE INTO THIS PC
                 </Button>
+              )}
+              {cloud.conclusion === "success" && cloud.collected && (
+                <span className="self-center rounded-full bg-success-50 px-2 py-0.5 text-[10px] font-medium text-success-600 dark:bg-success-500/10"
+                  title="every row of this run is in this PC's store — the live door wrote them as the run measured them, and the collect confirmed it">
+                  already in this PC
+                </span>
               )}
               <Button size="sm" variant="outline"
                 onClick={() => api.cloudForget().then(() => setCloud({ ...cloud, run: null, shards: [] }))}>
@@ -515,6 +529,13 @@ export default function JobsPanel() {
             const tried = cloud.shards.reduce((a, s) => a + (s.posted ?? 0), 0);
             const missed = cloud.shards.reduce((a, s) => a + (s.post_failed ?? 0), 0);
             if (!live.open) {
+              // ONLY A RUNNING RUN CAN BE MISSING LIVE RESULTS. The door
+              // shuts itself a few hours after the last post, so on a
+              // FINISHED run a closed receiver is the normal end state, not
+              // a fault — and "lands when it finishes" is about a run that
+              // has not finished. This sentence sat under a three-day-old
+              // completed run and read as a broken door (Sep 15, 2026).
+              if (cloud.conclusion) return null;
               return tried || missed ? (
                 <p className="mt-1 text-theme-xs text-warning-600 dark:text-warning-400">
                   results are NOT arriving live — this PC&apos;s receiver is closed;

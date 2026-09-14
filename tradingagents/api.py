@@ -2287,6 +2287,21 @@ def _read_cloud_status() -> dict:
             out.update(cs.status(int(run["id"])))
         except Exception as exc:                               # noqa: BLE001
             out["why"] = f"{type(exc).__name__}: {exc}"
+        # IS IT ALREADY IN THE STORE? A finished run stays on screen as its
+        # own summary, and until Sep 15, 2026 it kept offering MERGE INTO
+        # THIS PC whatever had already happened to it. Run 34631292767
+        # finished `Sep 12, 2026 2:05am`, landed 85,352,010 rows over 4,266
+        # pairs LIVE while it ran, was collected, and was superseded by five
+        # newer collected runs — and the card still asked the operator to
+        # merge it. Pressing that downloads twenty shard files to write
+        # nothing (label-must-match-data).
+        try:
+            from tradingagents import cloud_autopilot as _ap
+
+            out["collected"] = int(run["id"]) in set(
+                _ap._read().get("collected") or [])
+        except Exception:                                      # noqa: BLE001
+            out["collected"] = False
         try:
             out["shards"] = cs.live_progress(int(run["id"]))
         except Exception:

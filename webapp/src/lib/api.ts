@@ -476,6 +476,9 @@ export interface CloudShard {
 }
 
 export interface CloudStatus {
+  /** the run on screen is already in this PC's store, so there is
+   *  nothing left to merge */
+  collected?: boolean;
   available: boolean;
   why: string;
   /** true before the FIRST background read of GitHub has landed — the API

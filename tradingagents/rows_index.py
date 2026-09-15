@@ -2902,6 +2902,37 @@ def build_running(name: str | None = None) -> str:
     return ""
 
 
+def index_wait_reason(name: str, what: str) -> str:
+    """Why this is refused, and WHO the reader is actually waiting for.
+
+    *"it is being built in the background — try again shortly"* was true about
+    the CHILD and false about the WAIT. Measured `Sep 15, 2026 9:23pm` on the
+    operator's own search for row `#46SGBAHD`: the build child (pid 2124,
+    started 9:11pm) had burned **1 second of CPU in 12 minutes**, because a
+    cloud collect was 4 shards into a 20-shard run (17,329,312 rows) and
+    SQLite takes one writer. "Shortly" was hours, and the screen just spun.
+
+    CLAUDE.md already required this — *"a blocked resource NAMES ITS
+    HOLDER"*, bought by RCA-2026-09-10-C — and `lock_holder()` was written
+    for it. This refusal path never called it.
+    """
+    holder = ""
+    try:
+        holder = lock_holder() or (busy_job() if _machine_is_busy() else "")
+    except Exception:                                          # noqa: BLE001
+        holder = ""
+    if holder:
+        return (f"{what} needs the {name} index, and that build is QUEUED "
+                f"behind {holder}, which is writing the store — SQLite takes "
+                f"one writer, so nothing is being built until it finishes. "
+                f"Nothing is lost; this answers as soon as that job is done.")
+    if build_running(name):
+        return (f"{what} needs the {name} index; it is being built NOW — "
+                f"minutes to hours on a store this size. Nothing is lost.")
+    return (f"{what} needs the {name} index; the build has just started — "
+            f"try again shortly.")
+
+
 def missing_indexes() -> list:
     """Every index in INDEX_DDL that the database does not have.
 
@@ -3380,10 +3411,8 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     # it behind the answer — the same contract as a missing sort index.
     if row_id and has_index("rows_id") is not True and _rows_estimate() > UNINDEXED_LIMIT:
         _build_index("rows_id")
-        raise SortNotReady(
-            f"finding row #{clean_row_id(row_id)} needs the id "
-            f"index (rows_id); it is being built in the background — try "
-            f"again shortly")
+        raise SortNotReady(index_wait_reason(
+            "rows_id", f"finding row #{clean_row_id(row_id)}"))
     profit_wide = False
     # `winrate_seeks` outranks it (and _indexed_by checks it first): once the
     # floor is selective enough to seek, walking the profit order is the plan
@@ -3700,10 +3729,9 @@ def export_plan(coin=None, signal=None, sort="profit", row_id=None,
     if group_idx and has_index(group_idx) is not True:
         if _rows_estimate() > UNINDEXED_LIMIT:
             _build_index(group_idx)
-            raise SortNotReady(
-                f"{GROUPS[group]['label']} ranked by {key} needs its own index "
-                f"({group_idx}); it is being built in the background — try "
-                f"again shortly")
+            raise SortNotReady(index_wait_reason(
+                group_idx,
+                f"{GROUPS[group]['label']} ranked by {key}"))
         group_idx = ""
     need = SORT_INDEX.get(key)
     if (need and _rows_estimate() > UNINDEXED_LIMIT

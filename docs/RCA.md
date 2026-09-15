@@ -172,6 +172,91 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-15-E — "try again shortly" was hours: the id-index build was queued behind a collect and nothing said so
+
+**CEO**
+
+* You searched a row by its id and the screen kept loading. It was not stuck
+  and nothing was lost — the search needs a lookup table the database does not
+  have yet, and building it has to wait for the cloud results currently being
+  written in.
+* Why: the message said the table was "being built, try again shortly". A
+  build had indeed been started, but it could not do any work, because only
+  one thing can write to the store at a time and an import had it. Nobody
+  checked that before promising "shortly".
+* What stops it now: the refusal names what it is waiting for and how long
+  that really means — *"queued behind collect, which is writing the store"* —
+  so a wait you can plan around looks different from something broken.
+
+**DEV**
+
+* `rows_index.py:3385` raised `SortNotReady("... it is being built in the
+  background — try again shortly")` after `_build_index("rows_id")`, without
+  consulting `lock_holder()` or `busy_job()`. `build_running()` reports a name
+  from a LOCK FILE's mtime, so a build blocked on the write lock and a build
+  doing work are indistinguishable, and the message was written from the
+  wrong one. Same sentence at `:3705` for the group index.
+* Invariant broken: **a blocked resource NAMES ITS HOLDER** — already
+  MANDATORY in CLAUDE.md, bought by RCA-2026-09-10-C, which is the reason
+  `lock_holder()` exists. This path was written after that rule and never
+  called it.
+* Guard: `tests/test_a_blocked_build_says_who_is_holding_it.py` (7 tests),
+  including one that fails if the old sentence returns to either refusal.
+
+**SAW** — *"when i search 46SGBAHD in filter its taking too long is tihs
+expected"*, then *"its still loading i clicked filter then id; 46SGBAHD then
+click apply filter"*.
+
+**TIMELINE**
+
+1. `9:11pm` — the API refuses the search, starts a build child, and writes
+   `.build-rows_id.pid`.
+2. `9:23pm` — twelve minutes later, that child (**pid 2124**) has used
+   **1 second of CPU**. It is alive and doing nothing.
+3. The reason, from the store's own status: `paused_by: "collect"`. A cloud
+   collect is **4 of 20 shards** in, **17,329,312 rows** written so far.
+   SQLite takes one writer, so `CREATE INDEX` queues behind it.
+4. The index really is missing — `has_index("rows_id")` is **False** — and
+   without it this search is a covering scan of **113,439,286** rows,
+   measured at **49.8 s** for this id (it is `FASTSTOCK 1h`).
+5. AFTER: the same request answers
+   *"finding row #46SGBAHD needs the rows_id index, and that build is QUEUED
+   behind collect, which is writing the store — SQLite takes one writer, so
+   nothing is being built until it finishes. Nothing is lost; this answers as
+   soon as that job is done."*
+
+**ROOT CAUSE** — the refusal described the CHILD ("a build exists") and the
+reader needed the WAIT ("and it cannot start"). Those are different facts and
+only one of them was checked.
+
+**WHY IT WAS NOT CAUGHT** — the tests over this path assert that a 503 is
+raised and that a build is started, which was all true here. Nothing asserted
+on the SENTENCE, and the sentence was the whole product: a wait with a named
+cause is information, the same wait called "shortly" is a broken screen.
+**When a refusal is the deliverable, the assertion goes against its words** —
+the same lesson as RCA-2026-09-12-G, where 289 row-shaped tests could not see
+an empty state's text. It is now the second time a screen said "it catches up
+in the background" while nothing was catching up (RCA-2026-09-14-B was the
+first), so this is a pattern, not an incident.
+
+**COST** — none in money. Roughly 15 minutes of the operator's time and a
+second report of the same shape of lie.
+
+**FIX** — this commit. `rows_index.index_wait_reason(name, what)` reads
+`lock_holder()` then `busy_job()`, distinguishes queued / building now / just
+started, and is total (a failed status read still returns a sentence rather
+than turning a 503 into a 500). Both refusal sites call it.
+
+**STILL OPEN, named not hidden:** `rows_id` is an on-demand index by design —
+a bulk fill drops everything except `rows_pair` — so find-by-ID will need it
+rebuilt after every large sweep. Whether it should be a KEEP index is a real
+trade (a text index over 113M rows cost 48 minutes for `rows_pair`) and is
+the operator's call, not one to make quietly.
+
+**GUARD** — `tests/test_a_blocked_build_says_who_is_holding_it.py`.
+
+---
+
 ## RCA-2026-09-15-D — UPDATE CANDLES sat on "starting" for four minutes, because the fix for that was applied to one caller and not its sibling
 
 **CEO**

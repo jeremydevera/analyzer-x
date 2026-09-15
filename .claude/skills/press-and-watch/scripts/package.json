@@ -1,0 +1,7 @@
+{
+  "name": "press-and-watch-scripts",
+  "private": true,
+  "type": "module",
+  "description": "Browser watchdog for the press-and-watch skill. playwright-core only: Chrome is already on this machine, so no browser download.",
+  "dependencies": { "playwright-core": "^1.47.0" }
+}

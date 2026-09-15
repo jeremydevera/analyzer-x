@@ -1,6 +1,6 @@
 ---
 name: press-and-watch
-description: Use whenever the operator asks to press one of the four long-running buttons — UPDATE CANDLES, DOWNLOAD CANDLES, BACKTEST, UPDATE ALL BACKTEST (and RESOLVE PENDING) — or asks to run the job behind one. Press it, predict what will break BEFORE it does, watch it for real until it finishes or fails, fix what breaks with the harddev loop, push, and press it again. Never report a button as working from its first ten seconds.
+description: Use whenever the operator asks to press one of the four long-running buttons — UPDATE CANDLES, DOWNLOAD CANDLES, BACKTEST, UPDATE ALL BACKTEST (and RESOLVE PENDING) — or asks to run the job behind one. ALSO use for WATCH MODE: when the operator asks to watch the UI in a browser for UI or backend errors, run scripts/watch_ui.mjs, then RCA and fix what it finds. Press it, predict what will break BEFORE it does, watch it for real until it finishes or fails, fix what breaks with the harddev loop, push, and press it again. Never report a button as working from its first ten seconds.
 ---
 
 # Press and Watch
@@ -156,6 +156,95 @@ count went UP).
   answers 200 with all its chunks present before saying the change is live.
 * **Say what you left broken.** If something is another session's, or cannot be
   fixed from here, name it rather than letting it read as clean.
+
+## WATCH MODE — the screen, like a person, on a loop (2026-09-15)
+
+The operator: *"my goal is to watch the ui in browser and act like a human
+looking for ui errors and backend errors once there are errors i need you to
+collect those errors and do rca and document error then plan a solution and
+deploy a fix"*.
+
+Same loop as a button press, different trigger: instead of one job, the thing
+being watched is **every screen**, and the thing that starts a cycle is a
+finding rather than a click.
+
+### How it runs
+
+```bash
+node .claude/skills/press-and-watch/scripts/watch_ui.mjs      --pages backtest,trade,candles,analysis,models,new-crypto      --settle 12000 --out findings.json
+```
+
+Exit **1** means it found something; **0** means the walk was clean. On a
+`/loop`, that exit code is the whole trigger — quiet ticks cost nothing and say
+nothing.
+
+**It launches the Chrome already on this machine through `playwright-core`,
+NOT the Playwright MCP server.** Two reasons, both measured here: the MCP
+server times out connecting on this box (`CONNECT_TIMEOUT` after 30 s), and it
+holds a single `mcp-chrome-*` profile that an orphaned browser locks with
+"Browser is already in use" — a watchdog that needs a human to kill a Chrome
+is not a watchdog. `scripts/package.json` pins `playwright-core` only, so
+nothing downloads a browser.
+
+### What counts as a finding
+
+Only what a person would call wrong, because a watchdog that cries every tick
+gets muted and then it is worth nothing:
+
+| kind | what it means |
+|---|---|
+| `page-error` | an uncaught exception in the page |
+| `console-error` | a console error, deduped across pages |
+| `request-failed` / `http-4xx` / `http-5xx` | a call the screen made and did not get |
+| `app-crash` | Next's "Application error: a client-side exception" screen |
+| `blank-page` | rendered under 40 characters — the page is there and empty |
+| `navigation-failed` | it would not load at all |
+| `backend-error` | a traceback or `ERROR:`/`CRITICAL` written to `~/.tradingagents/*.log` **while the walk was running** |
+
+Two deliberate choices, and do not "simplify" either:
+
+* **The backend logs are read from the byte offset they held BEFORE the walk.**
+  `api.log` is 25 MB of history; reporting last week's traceback as something
+  this tick found is a false label, and the operator would stop reading the
+  report by the third one.
+* **The same error on six pages is ONE finding with six pages**, not six
+  findings. A list nobody can read is the same as no list.
+
+### Then the loop you already have
+
+A finding is a bug report, so it enters the chain this repo already runs:
+
+1. **REPRODUCE** — open that one page yourself and confirm it. A console error
+   that fires once on a cold cache is not the same defect as one that fires
+   every load.
+2. **READ THE EMITTER** (CLAUDE.md rule 23) — open the code that wrote the
+   line before explaining it. `http-503` from `/api/strategies` is a *missing
+   sort index being built*, not an outage, and those want different fixes.
+3. **`harddev`** — dev, then hunt "is there a potential bug?" in rounds until
+   the answer is no, then test.
+4. **`rca-log`** — `docs/RCA.md` entry in the SAME commit, CEO summary then DEV
+   summary then the seven fields, and the fourth field (**why no test caught
+   it**) is the one that stops the repeat.
+5. **PUSH**, then **WALK AGAIN** and confirm the finding is gone. A fix is
+   proven by the watchdog going quiet, never by a passing test.
+
+### What this mode must never do
+
+* **Never click a button that spends money or starts a long job.** Watch mode
+  READS. It walks pages, it does not press BACKTEST, and it never touches
+  anything on the Trade screen that could arm a strategy or place an order.
+* **Never call the walk clean because the loop ran.** `walked` carries each
+  page's character count for exactly this: `backtest(125049)` is a page that
+  rendered, `backtest(0)` is one that did not, and both used to print the same
+  "0 findings".
+* **Never rebuild the UI under a running `next start`** — see the rule above;
+  restart the UI after every build, or the next walk reports an app-crash you
+  caused.
+
+Measured on the first real run, Sep 15, 2026: `backtest` rendered 125,049
+characters and `trade` 50,631, with **0 findings**. Pointed at a page that does
+not exist it returned exit 1 with `http-404` and the matching `console-error` —
+so the collector is known to bite, not assumed to.
 
 ## The four buttons, and what each really does
 

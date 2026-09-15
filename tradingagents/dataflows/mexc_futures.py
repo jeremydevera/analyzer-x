@@ -111,6 +111,12 @@ class MexcFuturesError(RuntimeError):
     """A futures request could not be made or was rejected by the exchange."""
 
 
+class MexcFuturesThrottled(MexcFuturesError):
+    """The venue refused because we asked too often — retryable, unlike a
+    rejection on the merits. MEXC sends this as HTTP 200 with `code: 510` in
+    the BODY, so it never reaches the HTTP-status retry list."""
+
+
 class MexcFuturesAuthFailed(MexcFuturesError):
     """The key, the secret, the clock or the source IP is wrong.
 
@@ -307,6 +313,22 @@ _PUBLIC_BACKOFF = (1.0, 2.0)                  # seconds before attempt 2, 3, ...
 # _PUBLIC_RETRY_BUDGET_S + _TIMEOUT + backoff (~53 s), not 3 x _TIMEOUT per coin.
 _PUBLIC_RETRY_BUDGET_S = 30.0
 _RETRY_STATUSES = frozenset({429, 500, 502, 503, 504})
+# A RATE LIMIT ARRIVES AS HTTP 200 (Sep 16, 2026). MEXC answers a throttled
+# keyless call with a 200 whose BODY says
+#   {"success": false, "code": 510, "message": "Requests are too frequent"}
+# The wire succeeded, so `_RETRY_STATUSES` never saw it and every caller read
+# `payload.get("data") or {}` as an empty answer: the runner printed
+# `no Min60 candles for TRGPSTOCK_USDT` and that strategy did nothing, while
+# the store held 492 bars for the very same pair.
+#
+# Found the hour the operator's 127 strategies were armed: 9 coins became 26,
+# the first cycle after a restart has an empty `_BAR_CACHE` so it asks for all
+# of them at once, and 5 coins came back throttled. Same family as the
+# 2026-08-19 burst (166 `code=510` refusals), and rule 16 already names 510 —
+# but only on the SIGNED path, which is the one that reads the body code.
+#
+# A business code is an ANSWER and is not retried, exactly as a 4xx is not.
+_RETRY_BODY_CODES = frozenset({510, 1002, 1004})
 _retry_sleep = time.sleep
 _clock = time.monotonic
 
@@ -333,7 +355,14 @@ def _get_public(url: str):
         try:
             with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
                 raw = resp.read()
-            break
+            # A THROTTLE HIDES INSIDE A 200. Parse here, so "too frequent" is
+            # retried on the same budget as a cut connection instead of being
+            # handed back as an empty answer.
+            got = _body(raw, url)
+            if not isinstance(got, MexcFuturesThrottled):
+                return got
+            if _no_more_tries(attempt, t0):
+                raise got
         except urllib.error.HTTPError as exc:
             body = exc.read().decode("utf-8", "replace")
             if exc.code == 403 and ("Access Denied" in body or "<HTML" in body.upper()):
@@ -345,10 +374,23 @@ def _get_public(url: str):
                 raise MexcFuturesError(
                     f"transport failure: {exc} after {attempt} attempts") from exc
         _retry_sleep(_PUBLIC_BACKOFF[min(attempt - 1, len(_PUBLIC_BACKOFF) - 1)])
+    raise MexcFuturesError(f"no answer from {url} after {_PUBLIC_RETRIES} tries")
+
+
+def _body(raw, url: str):
+    """The parsed body — or a `MexcFuturesThrottled` INSTANCE (not raised) when
+    the venue refused for asking too often, so the caller can retry it."""
     try:
-        return json.loads(raw)
+        payload = json.loads(raw)
     except json.JSONDecodeError as exc:
         raise MexcFuturesError(f"malformed response from {url}") from exc
+    if isinstance(payload, dict) and payload.get("success") is False:
+        code = payload.get("code")
+        msg = payload.get("message") or payload.get("msg") or "rejected"
+        if code in _RETRY_BODY_CODES:
+            return MexcFuturesThrottled(f"code {code}: {msg}")
+        raise MexcFuturesError(f"code {code}: {msg}")
+    return payload
 
 
 def assets() -> dict:

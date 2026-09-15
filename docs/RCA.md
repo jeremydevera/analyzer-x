@@ -172,6 +172,103 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-16-A — MEXC says "too frequent" in a 200, so five coins were told they had no candles at all
+
+**CEO**
+
+* Minutes after your 127 strategies went live, five of your coins did nothing
+  and the log said they had no price history: CTSHSTOCK, DXCMSTOCK, SYFSTOCK,
+  CHYMSTOCK and TRGPSTOCK. They all had history — between 492 and 3,302 bars
+  each, sitting on your drive.
+* Why: MEXC refused those requests because we asked for too many at once, and
+  it says so in a way that looks like a normal successful reply. Our code only
+  noticed refusals that arrive as an obvious error, so it read "we refused
+  you" as "there is no data", and the strategies stood down.
+* What stops it now: a "too frequent" refusal is recognised and simply asked
+  again a moment later, the same way a dropped connection already was. If it
+  still will not answer, it says so as a refusal instead of pretending the
+  coin has no history.
+
+**DEV**
+
+* `mexc_futures._get_public` retried on the HTTP STATUS only
+  (`_RETRY_STATUSES` = 429, 500, 502, 503, 504). MEXC throttles a keyless call
+  with **HTTP 200** and `{"success": false, "code": 510, "message":
+  "Requests are too frequent"}`, so the wire looked perfect, the body was
+  handed back, and every caller's `payload.get("data") or {}` turned the
+  refusal into an empty answer — `klines()` then returned an empty frame and
+  `auto_trader` logged `no Min60 candles for TRGPSTOCK_USDT`.
+* Invariant broken: **read the emitter, not the label** (rule 23) and rule 16,
+  which already names 510 — but only for `_request`, the SIGNED path, which
+  reads `payload.get("code")`. The keyless path never looked at the body at
+  all. A refusal that is indistinguishable from an empty answer is the
+  `label-must-match-data` failure one layer below the screen.
+* Guard: `tests/test_a_throttle_is_not_an_empty_answer.py` — 8 tests driving
+  `_get_public` against a real 200-with-510 body.
+
+**SAW** — not reported by the operator; found while watching the runner after
+arming their 127 strategies. `auto_trade.log`:
+
+    Sep 16, 2026 1:45am WARNING auto-trader cycle failed for TRGPSTOCK_USDT:
+                        no Min60 candles for TRGPSTOCK_USDT
+    Sep 16, 2026 1:45am WARNING ... (code=510 msg='Requests are too
+                        frequent, please try again later')
+
+**TIMELINE**
+
+1. `Sep 16, 2026 1:40am` — 127 strategies armed across **26 coins**, up from
+   the 9 the runner had been scanning. The runner is restarted to load the new
+   specs, so `_BAR_CACHE` is empty and the first cycle asks the venue for
+   every coin and timeframe at once.
+2. `1:45am` — five pairs come back throttled. The runner reports them as
+   having no candles and their strategies take no action.
+3. Checked against the store the same minute — every one of them was present:
+   `CTSHSTOCK_USDT-30m` **1,954 bars**, `DXCMSTOCK_USDT-30m` **1,708**,
+   `SYFSTOCK_USDT-30m` **3,302**, `CHYMSTOCK_USDT-1h` **658**,
+   `TRGPSTOCK_USDT-1h` **492**. The UPDATE CANDLES run that finished at
+   `6:27:52pm` the previous evening had gap-filled 5,278 pairs with 0 errors.
+4. `grep code=510` over the same window: the refusal was in the log, beside
+   the warning that blamed the candles.
+5. AFTER the fix, driven against a real 200-carrying-510 body: the call is
+   retried on the same budget as a cut connection and the second answer is
+   served; a throttle that never clears raises `MexcFuturesThrottled` instead
+   of returning; a genuine rejection (code 1001, "contract not exist") is
+   still answered in **one** call and never retried.
+
+**ROOT CAUSE** — the keyless HTTP helper decided retryability from the status
+line, and this venue puts its rate limit in the body with a 200.
+
+**WHY IT WAS NOT CAUGHT** — `tests/test_public_get_retry.py` exists and passes.
+It was written for the 2026-08-25 `IncompleteRead`, so every case in it is a
+BROKEN WIRE: a cut connection, a timeout, a 5xx, a 429. The success path is
+asserted only as "returns the parsed body". **A test suite shaped around one
+failure mode proves nothing about a failure that arrives looking like
+success** — and this one had to, because MEXC's own signed path already reads
+`payload.get("code")` for exactly this reason, twenty lines away in the same
+file. The knowledge was in the module and not in the function.
+
+It also needed 26 coins to show itself. At 9 coins the burst stayed under the
+limit, so the bug was reachable for weeks and never reached.
+
+**COST** — no money and no wrong trade: the five strategies did nothing, which
+is the safe direction. The cost was five of the operator's coins silently not
+trading in the first cycles after their deploy, under a message that blamed
+their own candle store — and they would have gone looking there.
+
+**FIX** — this commit. `_RETRY_BODY_CODES = {510, 1002, 1004}` and a new
+`MexcFuturesThrottled(MexcFuturesError)`; `_get_public` parses the body on the
+success path through `_body()` and, when the code is a throttle, retries it on
+the existing `_PUBLIC_RETRIES` / `_PUBLIC_RETRY_BUDGET_S` budget, raising if it
+never clears. A business code still raises immediately and is never retried.
+`MexcFuturesThrottled` subclasses `MexcFuturesError`, so every `except
+MexcFuturesError` already written keeps catching it.
+
+**GUARD** — `tests/test_a_throttle_is_not_an_empty_answer.py`, 8 tests,
+verified RED on the pre-fix file (6 of 8 fail) and green after;
+`tests/test_public_get_retry.py` still passes beside it.
+
+---
+
 ## RCA-2026-09-15-E — "try again shortly" was hours: the id-index build was queued behind a collect and nothing said so
 
 **CEO**

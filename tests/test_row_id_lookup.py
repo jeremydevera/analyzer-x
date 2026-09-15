@@ -126,7 +126,15 @@ def test_a_big_store_refuses_until_the_id_index_exists(monkeypatch, tmp_path):
     with pytest.raises(ri.SortNotReady) as exc:
         ri.query(row_id="#6yaczsxx")
     assert "6YACZSXX" in str(exc.value), "name the id it could not look up"
-    assert "rows_id" in str(exc.value) and "being built" in str(exc.value)
+    # The refusal NAMES THE WAIT since Sep 15, 2026: "being built in the
+    # background — try again shortly" was true about the child and false
+    # about the wait, and the operator watched it spin for 12 minutes while
+    # a collect held the store (RCA-2026-09-15-E). One of three sentences
+    # now, and every one of them still names the index.
+    msg = str(exc.value)
+    assert "rows_id" in msg
+    assert any(s in msg for s in ("QUEUED behind", "being built NOW",
+                                  "build has just started")), msg
     assert started == ["rows_id"]
 
 

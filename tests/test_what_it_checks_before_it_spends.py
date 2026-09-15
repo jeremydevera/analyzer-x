@@ -356,3 +356,20 @@ def test_an_order_the_venue_shrinks_is_counted_not_just_logged():
     assert '"action": "size_capped"' in src
     for field in ("wanted_vol", "venue_max_vol", "sent_margin"):
         assert field in src, field
+
+
+def test_a_fifteen_minute_trade_does_not_print_as_a_zero_hour_hold():
+    """`f"{hold_s / 3600:.0f}h"` rendered 900 seconds as "a 0h hold", which
+    beside a funding figure reads as no hold at all (label-must-match-data).
+    Caught on the operator's own gate line, `Sep 15, 2026 9:45am`."""
+    assert at._hold_label(900) == "15m"
+    assert at._hold_label(1800) == "30m"
+    assert at._hold_label(3600) == "1h"
+    assert at._hold_label(14400) == "4h"
+    assert "0h" not in at._hold_label(900)
+
+
+def test_the_gate_line_names_the_hold_it_charged_for():
+    got = at.edge_check("willr14_15m_sl12tp12", "X_USDT", 5.0,
+                        fx=FX(rate=0.002, cycle_h=1), side=1)
+    assert "15m hold" in got["reason"], got["reason"]

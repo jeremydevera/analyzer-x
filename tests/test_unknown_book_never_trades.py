@@ -63,7 +63,7 @@ def test_an_unknown_is_never_cached(monkeypatch):
     at._GATE_CACHE.clear()
     calls = {"n": 0}
 
-    def _flaky(key, symbol, margin, *, fx=None):
+    def _flaky(key, symbol, margin, *, fx=None, side=0):
         calls["n"] += 1
         return {"verdict": "unknown", "reason": "510 rate limit"}
 
@@ -72,7 +72,7 @@ def test_an_unknown_is_never_cached(monkeypatch):
         at._edge_gate_cached("k", "PSXSTOCK_USDT", 5.0, fx=None)
     assert calls["n"] == 3, \
         f"the book was re-read {calls['n']} time(s) in 3 cycles, not 3"
-    assert ("k", "PSXSTOCK_USDT") not in at._GATE_CACHE
+    assert ("k", "PSXSTOCK_USDT", 0) not in at._GATE_CACHE
 
 
 def test_a_real_verdict_is_still_cached(monkeypatch):
@@ -81,7 +81,7 @@ def test_a_real_verdict_is_still_cached(monkeypatch):
     at._GATE_CACHE.clear()
     calls = {"n": 0}
 
-    def _ok(key, symbol, margin, *, fx=None):
+    def _ok(key, symbol, margin, *, fx=None, side=0):
         calls["n"] += 1
         return {"verdict": "block", "reason": "162% of the target"}
 
@@ -89,22 +89,22 @@ def test_a_real_verdict_is_still_cached(monkeypatch):
     for _ in range(3):
         at._edge_gate_cached("k", "PSXSTOCK_USDT", 5.0, fx=None)
     assert calls["n"] == 1, "a readable book must be cached, not re-walked"
-    assert at._GATE_CACHE[("k", "PSXSTOCK_USDT")][1]["verdict"] == "block"
+    assert at._GATE_CACHE[("k", "PSXSTOCK_USDT", 0)][1]["verdict"] == "block"
 
 
 def test_the_cache_still_expires(monkeypatch):
     at._GATE_CACHE.clear()
     calls = {"n": 0}
 
-    def _ok(key, symbol, margin, *, fx=None):
+    def _ok(key, symbol, margin, *, fx=None, side=0):
         calls["n"] += 1
         return {"verdict": "ok"}
 
     monkeypatch.setattr(at, "edge_check", _ok)
     at._edge_gate_cached("k", "S_USDT", 5.0, fx=None)
     # age the entry past the TTL
-    ts, res = at._GATE_CACHE[("k", "S_USDT")]
-    at._GATE_CACHE[("k", "S_USDT")] = (ts - at._GATE_TTL - 1, res)
+    ts, res = at._GATE_CACHE[("k", "S_USDT", 0)]
+    at._GATE_CACHE[("k", "S_USDT", 0)] = (ts - at._GATE_TTL - 1, res)
     at._edge_gate_cached("k", "S_USDT", 5.0, fx=None)
     assert calls["n"] == 2, "a stale reading must be re-taken"
 

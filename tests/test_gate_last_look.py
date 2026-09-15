@@ -105,7 +105,7 @@ def test_the_last_look_measures_once_and_both_books_share_it(monkeypatch):
     assert first is second, "the demo book must get the SAME verdict"
     assert calls == [("k1", 1)], "measured once per cycle, for the side asked"
     # and the screen cache learns it, so the next cycle blocks early
-    assert at._GATE_CACHE[("k1", "X_USDT")][1] is first
+    assert at._GATE_CACHE[("k1", "X_USDT", 1)][1] is first
     # ...and the OTHER direction is a different question, not a cache hit
     at._entry_gate("k1", "X_USDT", 5.0, fx=object(), side=-1)
     assert calls == [("k1", 1), ("k1", -1)],         "a short pays funding a long receives; one verdict cannot serve both"
@@ -150,7 +150,7 @@ def test_an_unknown_last_look_is_not_written_into_the_screen_cache(monkeypatch):
     monkeypatch.setattr(at, "edge_check", fake_edge)
     got = at._entry_gate("k2", "X_USDT", 5.0, fx=object())
     assert got["verdict"] == "unknown"
-    assert ("k2", "X_USDT") not in at._GATE_CACHE, \
+    assert ("k2", "X_USDT", 0) not in at._GATE_CACHE, \
         "an unknown is not a measurement"
     assert at._CYCLE_GATES[("k2", "X_USDT", 0)] is got, \
         "but THIS cycle's two books still share it"

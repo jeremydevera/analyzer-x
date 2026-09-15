@@ -1613,6 +1613,19 @@ def funding_read(symbol: str, *, fx=None) -> dict:
     return out
 
 
+def _hold_label(seconds: float) -> str:
+    """"15m" / "1h" / "4h" — never "0h".
+
+    `f"{hold_s / 3600:.0f}h"` printed a 15-minute trade as "a 0h hold", which
+    reads as no hold at all beside a funding figure (label-must-match-data).
+    """
+    s = max(0.0, float(seconds or 0))
+    if s < 3600:
+        return f"{max(1, round(s / 60))}m"
+    hours = s / 3600
+    return f"{hours:.0f}h" if abs(hours - round(hours)) < 0.05 else f"{hours:.1f}h"
+
+
 def funding_cost(symbol: str, side: int, hold_s: float, *, fx=None) -> dict:
     """What HOLDING this trade is expected to cost, as a fraction of notional.
 
@@ -1845,12 +1858,12 @@ def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None,
                 f"round-trip cost {round_trip:.3%} vs take-profit {tp:.2%} "
                 f"= {ratio:.0%} of the target"
                 + (f" (includes {fund['cost']:.3%} funding for a "
-                   f"{hold_s / 3600:.0f}h hold at {fund['per_day']:.3%} a day)"
+                   f"{_hold_label(hold_s)} hold at {fund['per_day']:.3%} a day)"
                    if fund["known"] and fund["cost"] else "")
                 + (f" · funding alone costs {fund['per_day']:.3%} a DAY "
                    f"against a {tp:.2%} target — a trade that does not "
                    f"resolve quickly cannot win" if funding_eats else "")
-                + (f" · this trade is expected to hold {hold_s / 3600:.0f}h, "
+                + (f" · this trade is expected to hold {_hold_label(hold_s)}, "
                    f"long enough to pay funding, and this contract's funding "
                    f"cannot be measured ({fund['why']})" if funding_blind else "")
                 + (f" · the gap between buy and sell ({m['spread']:.3%}) is "
@@ -1889,8 +1902,13 @@ def _entry_gate(key: str, symbol: str, margin: float, *, fx,
     # depth call (KITE/STBL/ROLSTOCK, 2026-09-05 3:52pm burst). Within THIS
     # cycle both books still share the unknown via _CYCLE_GATES, which is the
     # consistency that matters.
+    # ...and the SIDE belongs in that key too. `_edge_gate_cached` (the
+    # 5-minute screen) asks side-agnostically; an entry asks about the
+    # direction it is taking, and funding is paid by one side and received by
+    # the other. Filing a long's verdict where the screen looks for a general
+    # one would answer a question nobody asked (label-must-match-data).
     if not _unknown_gate(r):
-        _GATE_CACHE[(key, symbol)] = (time.time(), r)
+        _GATE_CACHE[(key, symbol, int(side))] = (time.time(), r)
     return r
 
 
@@ -1920,18 +1938,19 @@ def gate_refuses(gate: dict) -> bool:
     return str((gate or {}).get("verdict")) not in ("ok", "warn")
 
 
-def _edge_gate_cached(key: str, symbol: str, margin: float, *, fx) -> dict:
-    hit = _GATE_CACHE.get((key, symbol))
+def _edge_gate_cached(key: str, symbol: str, margin: float, *, fx,
+                      side: int = 0) -> dict:
+    hit = _GATE_CACHE.get((key, symbol, int(side)))
     now = time.time()
     if hit and now - hit[0] < _GATE_TTL:
         return hit[1]
-    r = edge_check(key, symbol, margin, fx=fx)
+    r = edge_check(key, symbol, margin, fx=fx, side=side)
     # An UNKNOWN is not a measurement and must not be remembered as one. Cached
     # for the 300 s TTL, a single failed read opened a five-minute window in
     # which every signal on that pair traded ungated. Not cached, the next
     # cycle walks the book again — a transient rate limit costs one cycle.
     if not _unknown_gate(r):
-        _GATE_CACHE[(key, symbol)] = (now, r)
+        _GATE_CACHE[(key, symbol, int(side))] = (now, r)
     return r
 
 

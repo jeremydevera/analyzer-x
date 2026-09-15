@@ -172,6 +172,91 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-15-C — the live gate charged two of the three costs, so a contract could eat its own target in funding and still read "ok"
+
+**CEO**
+
+* Before opening a trade the system checked what it costs to get in and out.
+  It never checked what it costs to HOLD. On a contract whose funding is
+  expensive, the venue can take the whole profit target back in settlements
+  while every check on screen says the trade is affordable.
+* Why: the backtests were fixed in August to charge all three costs. The live
+  check was never given the third one.
+* What stops it now: holding is charged like the other two, from the venue's
+  own published rate, and a contract whose funding alone eats half the target
+  in a day is refused outright. Three more checks went in beside it — what
+  the account can afford, what the fill actually cost, and a real count of
+  orders the venue shrinks.
+
+**DEV**
+
+* `auto_trader.py:1574` computed `round_trip = 2 * (slippage + taker_fee)`
+  and nothing else; `edge_check` had no funding term at all, while
+  `backtest_strategy` has charged `funding_history` per settlement since
+  2026-08-19. Same decision, two answers.
+* Invariant broken: **every cost the backtest charges, the gate charges.** A
+  live guard that models fewer costs than the measurement it is guarding will
+  approve trades the measurement would have rejected. Funding now enters
+  through `funding_cost()` off `mexc_futures.funding_now()` — one call, the
+  forward rate, cached 6h.
+* Guard: `tests/test_what_it_checks_before_it_spends.py`, 28 tests.
+
+**SAW** — no incident yet. The operator asked for the review: *"think that you
+will use this for traiding high money, you will need a guard to check if fees
+are too high etc"*. **NEVER HAPPENED YET** at their size; at 5 USDT a trade
+the omission is invisible.
+
+**TIMELINE** (what the gate would have done, on the operator's own contracts,
+measured `Sep 15, 2026`)
+
+1. `PSXSTOCK_USDT` — the long pays **0.0423% a day**, cycle 8h. On
+   `willr14_15m_sl12tp12` (target 1.20%) the old gate charged 0 for holding.
+2. `STBL_USDT` — the long pays **0.0300% a day**, cycle 4h, on `macddiv_4h`
+   trades that hold hours by design.
+3. `NGAS_USDT` — the long RECEIVES **0.1464% a day**, cycle 1h. The new rule
+   charges that side nothing rather than crediting it: a receipt depends on
+   the rate holding for the whole trade, the spread is paid the instant the
+   order lands, and a guard may not net an uncertain gain against a certain
+   loss.
+4. The account, same morning: **153.61 USDT equity**. One position per coin
+   was the only cap, so with 35 strategies armed nothing bounded total
+   exposure but how many signals happened to fire, and no code read the
+   wallet before sending an order.
+5. AFTER: holding is inside `round_trip`; funding at or above
+   **50% of the target per day** is a block on its own; an unreadable rate on
+   a hold of an hour or more is a block, because MEXC's shortest cycle is
+   **1 hour** (NGAS) and an uncounted cost on money is a refusal.
+
+**ROOT CAUSE** — `edge_check` modelled entry and exit and omitted the holding
+cost the backtests had been charging for four weeks.
+
+**WHY IT WAS NOT CAUGHT** — every test of the gate asserts on the SPREAD: the
+BDX incident was a spread, the PSXSTOCK 5003 losses were a spread, and the
+suite grew around that shape. Funding has no test because it had no code, and
+a missing term produces no failing assertion anywhere — it just makes the
+number smaller. **A guard that models fewer costs than the measurement it
+guards has a hole the size of the difference, and only a test that compares
+the two lists can see it.**
+
+**COST** — none realised. The exposure was that any funding-expensive
+contract could pass the gate, and that grows directly with the stake.
+
+**FIX** — this commit. `funding_now` (one call, 0.18 s, against 13.5 s and 46
+pages for `funding_summary`), `funding_cost`, and the two funding blocks in
+`edge_check`, which now also sizes the book read at the notional actually
+traded rather than at a martingale rung that has not existed since Sep 11.
+Beside it: `capital_check` (the wallet, an exposure ceiling, and margin
+committed earlier in the same cycle), `slippage_paid` with a `fill_slippage`
+ledger row and a loud line when the fill is worse than modelled, and a
+`size_capped` row when the venue shrinks an order.
+
+**GUARD** — `tests/test_what_it_checks_before_it_spends.py`. Two of its tests
+found bugs in this work before it shipped: the unknown-funding block was DEAD
+CODE at an 8-hour threshold (no strategy holds that long), and the capital
+ceiling could be spent five times over by five signals on one bar close.
+
+---
+
 ## RCA-2026-09-15-B — a download that stops at 2,000 rows asked SQLite for 3,268,883
 
 **CEO**

@@ -77,9 +77,11 @@ def test_a_second_pass_writes_nothing(tmp_path, monkeypatch):
 def test_the_runner_does_not_exit_and_does_not_halt_the_demo():
     src = inspect.getsource(at.run_forever)
     i = src.index("loss_limit_hit()")
-    # up to the sleep that follows the branch — the guard added on 2026-09-05
-    # made the branch longer than a fixed window
-    branch = src[i:src.index("slept = 0.0", i)]
+    # up to the WAIT that follows the branch — the guard added on 2026-09-05
+    # made the branch longer than a fixed window, and on Sep 14, 2026 the
+    # runner stopped sleeping on a clock at all: `_wait_for_something` blocks
+    # on the venue's own pushes instead, so that call is the new end marker.
+    branch = src[i:src.index("_wait_for_something(", i)]
     assert "disarm_live(" in branch
     assert "KILL_PATH" not in branch, (
         "the kill file gates BOTH books — it stopped the demo too")

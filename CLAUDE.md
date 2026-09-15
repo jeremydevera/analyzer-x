@@ -363,6 +363,62 @@ has an entry point.
     8,000 bars (83 days) when 34,636 were available, which silently made its results
     meaningless.
 
+## Every cost the BACKTEST charges, the GATE charges (MANDATORY — 2026-09-15)
+
+The operator, asking for a review before trading size: *"you will need a guard
+to check if fees are too high etc ... the system should do criterias before
+opening a trade"*.
+
+`backtest_strategy` has charged all three costs since 2026-08-19 — entry, exit
+and FUNDING. `edge_check` charged two. A live guard that models fewer costs
+than the measurement it is guarding approves trades the measurement would have
+rejected, and the hole is exactly the size of the difference.
+
+**The criteria a live entry now clears, in order, each one refusing out loud
+and into the ledger:**
+
+| check | refuses when | ledger |
+|---|---|---|
+| stale signal | the candle is too old to be the trade that was measured | `stale_skip` |
+| chase guard | price has already moved away from the signal | `chase_skip` |
+| one per coin / timeframe | the book already holds this contract | `coin_busy`, `blocked` |
+| cost gate | spread + fee + **funding** against the target, or a stop inside the gap, or a book that cannot fill the size | `gate_blocked` |
+| capital gate | the wallet cannot fund it, or total margin would pass the ceiling | `capital_blocked` |
+| size cap | the venue will not take the whole order in one piece | `size_capped` |
+| fill audit | (after the fill) it landed worse than the book said | `fill_slippage` |
+
+* **Funding is read forward, in ONE call.** `mexc_futures.funding_now` is
+  0.18 s; `funding_summary` walks the whole history and measured 13.5 s and 46
+  pages for NGAS. Cached 6 hours, because a burst of signals on one bar close
+  must not become a burst of venue calls.
+* **A CREDIT NEVER PAYS FOR A SPREAD.** Where the position would RECEIVE
+  funding the charge is zero, never negative. The receipt depends on the rate
+  holding for the whole trade; the spread is paid the instant the order lands.
+  A guard may not net an uncertain gain against a certain loss.
+* **Unknown is not ok when it is money** (rule 12's shape, again). An
+  unreadable wallet refuses. An unreadable funding rate refuses any hold of an
+  hour or more, because MEXC's shortest cycle is 1 hour (NGAS; BTC and
+  PSXSTOCK are 8, STBL 4) and when the read failed we do not know which this
+  contract is.
+* **The gate measures the size that will ACTUALLY trade** — `margin *
+  LEVERAGE`, not the martingale rung, which has not existed since the runner
+  went flat on 2026-09-11. A verdict measured at a size that cannot happen is
+  a false label.
+* **Margin committed EARLIER IN THE SAME CYCLE counts.** Five signals on one
+  bar close each read the same pre-trade wallet, so a ceiling that allows one
+  position let five through. The venue's `positionMargin` lags the fill and
+  cannot close this; `_CYCLE_COMMITTED` does, and `run_cycle` wipes it.
+
+**WHY IT SURVIVED:** every test of the gate asserts on the SPREAD — BDX was a
+spread, the PSXSTOCK 5003 losses were a spread, and the suite grew around that
+shape. Funding had no test because it had no code, and a missing cost term
+produces no failing assertion anywhere; it just makes the number smaller.
+**When a guard and a measurement model the same thing, test the LISTS against
+each other, not each guard against its own last incident.** Full account:
+`docs/RCA.md` RCA-2026-09-15-C; guard:
+`tests/test_what_it_checks_before_it_spends.py` (28 tests, two of which found
+bugs in this work before it shipped).
+
 ## Live-trading rules (same incident)
 
 14. **The exchange is the source of truth, never the local book.** Verify a stop actually rests

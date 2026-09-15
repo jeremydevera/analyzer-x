@@ -120,6 +120,30 @@ class FakeFx:
     def open_positions(self, symbol=None):
         return []
 
+    # A FUNDED ACCOUNT. Since Sep 15, 2026 a LIVE entry also asks what the
+    # wallet can afford (`capital_check`), and an unreadable wallet refuses —
+    # which is the right answer for money and the wrong fixture for a test
+    # that means to exercise a live entry. 1,000 USDT with nothing committed
+    # is well clear of every margin these tests use.
+    equity = 1_000.0
+    committed = 0.0
+
+    # A READABLE FUNDING RATE. A live entry charges the third cost since
+    # Sep 15, 2026, and a hold that can span a settlement with funding it
+    # cannot read is refused — right for money, wrong for a fixture whose
+    # point is the entry. Zero here means "measured, and it is zero".
+    funding_rate = 0.0
+
+    def funding_now(self, symbol):
+        return {"symbol": symbol, "rate": self.funding_rate, "cycle_h": 8,
+                "next_settle_ms": 0, "per_day": self.funding_rate * 3}
+
+    def assets(self):
+        return {"USDT": {"currency": "USDT", "equity": self.equity,
+                         "availableOpen": self.equity - self.committed,
+                         "availableBalance": self.equity - self.committed,
+                         "positionMargin": self.committed}}
+
     def last_price(self, symbol):
         return float(self.df["Close"].iloc[-1])
 

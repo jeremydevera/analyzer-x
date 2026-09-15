@@ -81,6 +81,24 @@ class FX:
     def position_history(self, symbol=None, **kw):
         return []
 
+    # Since Sep 15, 2026 a live entry also charges FUNDING and reads the
+    # WALLET. Both refuse when they cannot be read — right for money, wrong
+    # for a fixture whose subject is slices. Measured-and-zero funding, and
+    # an account with room, leave the slice rules the only variable.
+    funding_rate = 0.0
+    equity = 1_000.0
+    committed = 0.0
+
+    def funding_now(self, symbol):
+        return {"symbol": symbol, "rate": self.funding_rate, "cycle_h": 8,
+                "next_settle_ms": 0, "per_day": self.funding_rate * 3}
+
+    def assets(self):
+        return {"USDT": {"currency": "USDT", "equity": self.equity,
+                         "availableOpen": self.equity - self.committed,
+                         "availableBalance": self.equity - self.committed,
+                         "positionMargin": self.committed}}
+
     def contract_spec(self, symbol):
         return {"priceScale": 4, "contractSize": 1, "volUnit": 1,
                 "minVol": 1, "maxVol": 25000, "maintenanceMarginRate": 0.005,

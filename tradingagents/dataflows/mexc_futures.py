@@ -1309,6 +1309,35 @@ def funding_history(symbol: str, max_pages: int = 200) -> list:
     return out
 
 
+def funding_now(symbol: str) -> dict:
+    """This contract's CURRENT funding rate, in ONE call. Keyless.
+
+    `funding_summary` walks the whole published history — measured 13.5 s and
+    46 pages for NGAS_USDT (4,549 settlements) — which is right for a backtest
+    and far too slow for a gate that runs at a signal. This is the forward
+    figure the next settlement will actually charge, in 0.18 s.
+
+    `collectCycle` is HOURS, verified `Sep 15, 2026` against four contracts:
+    BTC 8 (next settle 403 min away), STBL 4 (163 min), NGAS 1 (43 min),
+    PSXSTOCK 8 (403 min).
+
+    Sign is MEXC's: a POSITIVE rate means longs pay shorts.
+
+    Returns ``{"rate": float, "cycle_h": int, "next_settle_ms": int,
+    "per_day": float}`` where ``per_day`` is the rate a LONG pays over 24
+    hours at the current cycle (negative means the long receives).
+    """
+    d = (_get_public(f"{BASE}/api/v1/contract/funding_rate/{symbol}")
+         or {}).get("data") or {}
+    rate = float(d.get("fundingRate") or 0.0)
+    cycle = int(d.get("collectCycle") or 8)
+    if cycle <= 0:
+        cycle = 8
+    return {"symbol": symbol, "rate": rate, "cycle_h": cycle,
+            "next_settle_ms": int(d.get("nextSettleTime") or 0),
+            "per_day": rate * (24.0 / cycle)}
+
+
 def funding_summary(symbol: str) -> dict:
     """Headline funding numbers for a contract, from the long side."""
     hist = funding_history(symbol)

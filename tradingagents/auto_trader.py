@@ -1550,12 +1550,230 @@ def tradable_price(symbol: str, side: int, *, fx=None) -> float:
     return px
 
 
-def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None) -> dict:
+# HOLDING IS THE THIRD COST (CLAUDE.md rule 9). The live gate charged getting
+# IN and getting OUT and ignored the funding a perpetual pays while it is
+# held — the same omission the backtests were fixed for on 2026-08-19, when
+# it measured -4.7% on PROVE and -0.8% on APEX. A gate that leaves it out
+# tells the operator a strategy is affordable when the venue will take the
+# target back in settlements.
+#
+# Read from MEXC's PUBLISHED settlements (`funding_summary`), never a guess:
+# `long_daily` is the long's own cash flow as a fraction of notional per day,
+# derived from the real settlement sum over the real span, so a contract that
+# changed cycle mid-life is still right.
+FUNDING_TTL_S = 6 * 3600
+# What a trade is assumed to hold for, in its own bars. One bar is the low
+# end and it is deliberate: 57% of 1h trades exit inside their entry bar
+# (`backtest_strategy._held`), so one bar under-states rather than invents.
+# The DAILY test below is what catches a contract whose funding is ruinous
+# however long the trade lasts, and it needs no hold estimate at all.
+FUNDING_HOLD_BARS = 1
+# Past this hold, funding that cannot be measured is a cost nobody counted,
+# and an uncounted cost on money is a refusal (rule 12's shape: unknown is
+# never ok). ONE HOUR, because that is the SHORTEST cycle MEXC actually runs
+# — NGAS_USDT settles hourly, BTC and PSXSTOCK every 8, STBL every 4
+# (measured Sep 15, 2026) — and when the read failed we do not know which
+# this contract is. Assuming the shortest is the conservative reading.
+# It was 8h for an afternoon, which made it DEAD CODE: no strategy in this
+# repo holds 8 hours, the longest bar being 4h, so the guard could never
+# fire (caught by its own test).
+FUNDING_UNKNOWN_HOLD_S = 3600
+_FUNDING_CACHE: dict = {}
+
+
+def funding_read(symbol: str, *, fx=None) -> dict:
+    """The LONG's funding as a fraction of notional per DAY, measured.
+
+    Positive means the long RECEIVES. `daily` is None when the venue cannot
+    be read — never 0.0, because "free" and "unknown" must not read the same.
+    Cached for `FUNDING_TTL_S` so a burst of signals at one bar close cannot
+    turn into a burst of venue calls (`code 510` is one rate limit away).
+    """
+    if fx is None:
+        from tradingagents.dataflows import mexc_futures as fx  # noqa: PLC0415
+    now = time.time()
+    hit = _FUNDING_CACHE.get(symbol)
+    if hit and now - hit[0] < FUNDING_TTL_S:
+        return hit[1]
+    out = {"daily": None, "cycle_h": None, "why": "not measured"}
+    try:
+        # ONE call, not the whole history. `funding_summary` pages the venue
+        # 46 times for NGAS (13.5 s measured); this is 0.18 s and it is the
+        # forward number — what the NEXT settlement will charge — which is
+        # the question a pre-trade guard is actually asking.
+        s = fx.funding_now(symbol)
+        # `per_day` is what a LONG PAYS; `daily` here is the long's own cash
+        # flow, so it is the negative of that. One sign convention, converted
+        # once, at the boundary.
+        out = {"daily": -float(s.get("per_day") or 0.0),
+               "cycle_h": int(s.get("cycle_h") or 8), "why": ""}
+    except Exception as exc:                                    # noqa: BLE001
+        out["why"] = f"{type(exc).__name__}: {exc}"
+    _FUNDING_CACHE[symbol] = (now, out)
+    return out
+
+
+def funding_cost(symbol: str, side: int, hold_s: float, *, fx=None) -> dict:
+    """What HOLDING this trade is expected to cost, as a fraction of notional.
+
+    `side` 0 means the direction is not known yet (the screening pass), and
+    the answer is then the WORSE of the two — whichever way the signal fires,
+    one side pays.
+
+    A CREDIT NEVER PAYS FOR A SPREAD. Where the position would RECEIVE
+    funding the cost is 0, never negative: the receipt depends on the rate
+    staying where it is for the whole hold, while the spread is paid the
+    instant the order lands. A guard may not net an uncertain gain against a
+    certain loss.
+    """
+    r = funding_read(symbol, fx=fx)
+    daily = r.get("daily")
+    if daily is None:
+        return {"known": False, "cost": 0.0, "per_day": 0.0,
+                "cycle_h": r.get("cycle_h"), "why": r.get("why") or "unknown"}
+    per_day = -daily if side > 0 else daily if side < 0 else abs(daily)
+    per_day = max(0.0, per_day)
+    return {"known": True, "cost": per_day * (max(0.0, hold_s) / 86400.0),
+            "per_day": per_day, "cycle_h": r.get("cycle_h"), "why": ""}
+
+
+# WHAT THE ACCOUNT CAN AFFORD, not just what the strategy wants.
+#
+# Every guard before this one asks about ONE trade: is its spread survivable,
+# is its stop reachable, is its candle fresh. Nothing asked what the ACCOUNT
+# was already carrying. With 35 strategies armed across a dozen coins there is
+# one position per coin and no ceiling above that, so the only thing bounding
+# total exposure was how many signals happened to fire — and nothing at all
+# read the wallet before sending an order. At $5 a trade that is invisible.
+# At size it is the whole risk.
+#
+# Read from the VENUE, never from our own book: `availableOpen` is what MEXC
+# will actually let this account open, and it already knows about margin held
+# by positions this process did not place.
+CAPITAL_TTL_S = 20          # a burst of signals at one bar close is ONE read
+# Margin this cycle has ALREADY sent to the venue but which the wallet has not
+# caught up with. Without it, five signals firing on one bar close each read
+# the same pre-trade balance and each concludes there is room — so a ceiling
+# that allows one position lets five through. The venue's own `positionMargin`
+# cannot close this hole: it lags the fill, and a 0-second cache would only
+# turn one stale read into five. Found by the harddev loop before it shipped.
+_CYCLE_COMMITTED: dict = {"usdt": 0.0}
+# Share of equity this runner may hold as position margin, all coins together.
+# 0.5 of a 153.61 USDT account is 15 concurrent 5 USDT positions at 20x; the
+# operator has held 6. It binds long before a wallet does, which is the point.
+MAX_EXPOSURE_FRACTION = 0.5
+_CAPITAL_CACHE: dict = {}
+
+
+def account_capital(*, fx=None) -> dict:
+    """Equity, margin already committed, and what the venue will let us open.
+
+    `None` values mean UNREADABLE, never zero — a wallet that cannot be read
+    must not look like an empty one, and must not look like a full one either.
+    """
+    if fx is None:
+        from tradingagents.dataflows import mexc_futures as fx  # noqa: PLC0415
+    now = time.time()
+    hit = _CAPITAL_CACHE.get("usdt")
+    if hit and now - hit[0] < CAPITAL_TTL_S:
+        return hit[1]
+    out = {"equity": None, "available_open": None, "position_margin": None,
+           "why": "not read"}
+    try:
+        u = (fx.assets() or {}).get("USDT") or {}
+        def _f(name):
+            v = u.get(name)
+            return None if v is None else float(v)
+        out = {"equity": _f("equity"),
+               # availableOpen is MEXC's own answer to "how much can you open
+               # with"; availableBalance is the fallback on an older payload
+               "available_open": (_f("availableOpen")
+                                  if u.get("availableOpen") is not None
+                                  else _f("availableBalance")),
+               "position_margin": _f("positionMargin"), "why": ""}
+    except Exception as exc:                                    # noqa: BLE001
+        out["why"] = f"{type(exc).__name__}: {exc}"
+    _CAPITAL_CACHE["usdt"] = (now, out)
+    return out
+
+
+def capital_check(margin: float, *, fx=None, settings: dict | None = None) -> dict:
+    """Can the ACCOUNT take one more position of this size, right now?
+
+    LIVE ONLY. The demo book is a strategy simulator, not a wallet simulator:
+    making a simulated trade depend on the operator's real balance would ask a
+    different question than "does this strategy work". Where the two books
+    diverge for this reason, that is a configuration fact, not a fault.
+
+    verdict: "ok" | "block" | "unknown"
+    """
+    settings = load_settings() if settings is None else settings
+    want = float(margin or 0)
+    cap = account_capital(fx=fx)
+    frac = float(settings.get("max_exposure_fraction")
+                 or MAX_EXPOSURE_FRACTION)
+    eq, avail, held = cap["equity"], cap["available_open"], cap["position_margin"]
+    if eq is None or avail is None:
+        # UNREADABLE IS NOT OK WHEN IT IS MONEY (rule 12's shape). A wallet we
+        # cannot read is the one case where trading on is the reckless choice.
+        return {"verdict": "unknown", "want": want, **cap,
+                "reason": f"the futures wallet could not be read ({cap['why']}"
+                          f") — refusing to add a position on an account whose "
+                          f"balance is unknown"}
+    ceiling = eq * frac
+    held = 0.0 if held is None else held
+    held += float(_CYCLE_COMMITTED.get("usdt") or 0.0)
+    avail -= float(_CYCLE_COMMITTED.get("usdt") or 0.0)
+    if want > avail:
+        return {"verdict": "block", "want": want, "ceiling": ceiling, **cap,
+                "reason": f"this trade needs {want:.2f} USDT of margin and the "
+                          f"venue says only {avail:.2f} is free to open"}
+    if held + want > ceiling:
+        return {"verdict": "block", "want": want, "ceiling": ceiling, **cap,
+                "reason": f"position margin would reach {held + want:.2f} USDT "
+                          f"against a ceiling of {ceiling:.2f} "
+                          f"({frac:.0%} of {eq:.2f} equity) — this runner will "
+                          f"not put more than that at risk at once"}
+    return {"verdict": "ok", "want": want, "ceiling": ceiling, **cap,
+            "reason": f"{held + want:.2f} of {ceiling:.2f} USDT ceiling"}
+
+
+# HOW BAD THE FILL WAS, measured against what the gate modelled.
+#
+# The gate estimates slippage from the book and the runner then brackets off
+# the REAL fill, which is right — but nothing ever compared the two. If the
+# book moves between the look and the fill, the trade pays more than the gate
+# said was survivable and no number anywhere records it. At $5 that is cents;
+# at size it is the dominant cost and the first thing that would tell the
+# operator the model is wrong.
+SLIPPAGE_ALERT_FRACTION = 2.0   # paid this many times the modelled slippage
+
+
+def slippage_paid(expected: float, filled: float, side: int) -> float:
+    """Fraction of notional lost to the fill landing worse than expected.
+
+    Positive is ALWAYS a cost, whichever way the trade went: a long that
+    filled above the price it sized from paid; a short that filled below it
+    paid. A better fill returns a negative number, which is real and is not
+    an error.
+    """
+    if not expected or expected <= 0 or not filled or filled <= 0:
+        return 0.0
+    return (filled / expected - 1.0) * (1 if side > 0 else -1)
+
+
+def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None,
+               side: int = 0) -> dict:
     """Can this strategy's edge survive this contract's real trading cost?
 
-    Measures the live order book at the size the strategy would actually
-    trade (its deepest ladder rung, which is where thin books hurt most) and
-    compares the round-trip cost to the take-profit being aimed at.
+    ALL THREE COSTS, the way the backtests charge them (rule 9): the spread
+    and fee getting IN, the same getting OUT, and the FUNDING paid while the
+    position is held. Measured from the live order book at the size the
+    strategy would actually trade and from MEXC's published settlements —
+    never a guess for either.
+
+    `side` lets the entry path ask about the direction it is about to take;
+    the screening pass leaves it 0 and gets the worse of the two.
 
     verdict: "ok" | "warn" | "block" | "unknown"
     """
@@ -1564,14 +1782,27 @@ def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None) -> dict:
     spec = STRATEGY_SPECS.get(key)
     if spec is None:
         return {"verdict": "unknown", "reason": f"unknown strategy {key}"}
-    deepest = margin * LADDER[-1] * LEVERAGE
+    # THE SIZE THIS TRADE WILL ACTUALLY BE. This measured
+    # `margin * LADDER[-1] * LEVERAGE` — the deepest martingale rung — which
+    # was right while the runner laddered and has been wrong since Sep 11,
+    # 2026, when `staked_margin` began returning the base stake on every rung
+    # ("just flat only ... do not double the margin"). It read the book eight
+    # times deeper than any order goes, so the refusal reason described a
+    # trade that cannot happen (label-must-match-data) and the verdict was
+    # stricter than the truth. The thresholds, not an invented headroom, are
+    # what carry the safety margin — and `fill_slippage` now measures whether
+    # the book really behaved as this said it would.
+    deepest = margin * LEVERAGE
     try:
         m = fx.book_cost(symbol, deepest)
     except Exception as exc:
         return {"verdict": "unknown", "reason": str(exc), "symbol": symbol,
                 "strategy": key}
     tp = spec["tp"]
-    round_trip = 2 * (m["slippage"] + taker_fee(symbol, fx=fx))
+    hold_s = float(spec.get("bar_seconds") or 0) * FUNDING_HOLD_BARS
+    fund = funding_cost(symbol, side, hold_s, fx=fx)
+    round_trip = (2 * (m["slippage"] + taker_fee(symbol, fx=fx))
+                  + fund["cost"])
     ratio = round_trip / tp if tp else float("inf")
     verdict = ("block" if ratio >= COST_RATIO_BLOCK
                else "warn" if ratio >= COST_RATIO_WARN else "ok")
@@ -1586,19 +1817,48 @@ def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None) -> dict:
     stop_dead = bool(sl and m["spread"] >= sl)
     if stop_dead:
         verdict = "block"
+    # FUNDING THAT EATS THE TARGET IN A DAY makes the trade unwinnable the
+    # moment it fails to resolve quickly, whatever the hold estimate says —
+    # so this test needs no hold estimate at all. It is the guard that would
+    # have caught a contract whose settlements, not whose spread, are the
+    # thing that takes the money.
+    funding_eats = bool(fund["known"] and tp
+                        and fund["per_day"] >= COST_RATIO_BLOCK * tp)
+    if funding_eats:
+        verdict = "block"
+    # ...and a hold long enough to span a settlement, on a contract whose
+    # funding cannot be measured, is a cost nobody has counted. Unknown is
+    # not ok when it is money (rule 12).
+    funding_blind = bool(not fund["known"]
+                         and hold_s >= FUNDING_UNKNOWN_HOLD_S)
+    if funding_blind:
+        verdict = "block"
     return {"verdict": verdict, "strategy": key, "symbol": symbol,
             "tp": tp, "spread": m["spread"], "slippage": m["slippage"],
             "round_trip_cost": round_trip, "cost_ratio": ratio,
             "notional_tested": deepest, "book_exhausted": m["book_exhausted"],
+            "side_tested": int(side),
+            "funding_known": fund["known"], "funding_cost": fund["cost"],
+            "funding_per_day": fund["per_day"],
+            "funding_hold_s": hold_s, "funding_cycle_h": fund["cycle_h"],
             "reason": (
                 f"round-trip cost {round_trip:.3%} vs take-profit {tp:.2%} "
                 f"= {ratio:.0%} of the target"
+                + (f" (includes {fund['cost']:.3%} funding for a "
+                   f"{hold_s / 3600:.0f}h hold at {fund['per_day']:.3%} a day)"
+                   if fund["known"] and fund["cost"] else "")
+                + (f" · funding alone costs {fund['per_day']:.3%} a DAY "
+                   f"against a {tp:.2%} target — a trade that does not "
+                   f"resolve quickly cannot win" if funding_eats else "")
+                + (f" · this trade is expected to hold {hold_s / 3600:.0f}h, "
+                   f"long enough to pay funding, and this contract's funding "
+                   f"cannot be measured ({fund['why']})" if funding_blind else "")
                 + (f" · the gap between buy and sell ({m['spread']:.3%}) is "
                    f"wider than the {sl:.2%} stop — a stop inside the gap is "
                    f"already passed when it is placed"
                    if stop_dead else "")
-                + (" · book cannot even fill the deepest ladder rung"
-                   if m["book_exhausted"] else ""))}
+                + (f" · the book cannot even fill {deepest:.0f} USDT of "
+                   f"notional" if m["book_exhausted"] else ""))}
 
 
 # the FRESH verdicts of this cycle, one per (key, symbol), shared by both
@@ -1606,7 +1866,8 @@ def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None) -> dict:
 _CYCLE_GATES: dict = {}
 
 
-def _entry_gate(key: str, symbol: str, margin: float, *, fx) -> dict:
+def _entry_gate(key: str, symbol: str, margin: float, *, fx,
+                side: int = 0) -> dict:
     """The gate, measured FRESH at the moment a signal fires.
 
     The screening cache (below) is 5 minutes old by design — it runs for every
@@ -1615,11 +1876,13 @@ def _entry_gate(key: str, symbol: str, margin: float, *, fx) -> dict:
     2026-09-05. A signal is rare, so one fresh read here is cheap, and the
     verdict is stored for the cycle so the paper book shares the SAME one.
     """
-    hit = _CYCLE_GATES.get((key, symbol))
+    # the SIDE is part of the question: funding is paid by one direction and
+    # received by the other, so a long's verdict is not a short's.
+    hit = _CYCLE_GATES.get((key, symbol, int(side)))
     if hit is not None:
         return hit
-    r = edge_check(key, symbol, margin, fx=fx)
-    _CYCLE_GATES[(key, symbol)] = r
+    r = edge_check(key, symbol, margin, fx=fx, side=side)
+    _CYCLE_GATES[(key, symbol, int(side))] = r
     # the screen may as well learn what we just paid to measure — but an
     # UNKNOWN is not a measurement: written into the 5-minute cache it made
     # the screen refuse a healthy coin for 5 minutes after one throttled
@@ -3967,7 +4230,8 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
         # sample up to 5 minutes old; this one is measured now, and "unknown"
         # refuses too — a book you cannot read is not an ok (rule 12). Both
         # books share the verdict, so demo cannot trade what live refused.
-        gate = _entry_gate(key, symbol, margin_for(key, settings), fx=fx)
+        gate = _entry_gate(key, symbol, margin_for(key, settings), fx=fx,
+                           side=side)
         if gate["verdict"] not in ("ok", "warn"):
             # the bar is NOT marked seen: the real book shares one slot per
             # coin, so consuming it here would eat this bar for every other
@@ -3983,6 +4247,30 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                            "why": gate.get("reason") or gate["verdict"],
                            "dry_run": dry})
             continue
+        # CAN THE ACCOUNT AFFORD IT? Every gate above asks about this one
+        # trade. None of them read the wallet, and nothing capped how many
+        # coins could be carrying a position at once — so total exposure was
+        # bounded only by how many signals happened to fire. Live only: the
+        # demo book simulates the STRATEGY, not the balance.
+        if not dry:
+            _cap = capital_check(margin_for(key, settings), fx=fx,
+                                 settings=settings)
+            if _cap["verdict"] != "ok":
+                if _say_once(f"capital-{symbol}-{key}", _GATE_LOG_EVERY):
+                    logger.error("CAPITAL GATE: refusing %s on %s — %s",
+                                 key, symbol, _cap["reason"])
+                append_ledger({"symbol": symbol, "action": "capital_blocked",
+                               "strategy": key, "why": _cap["reason"],
+                               "verdict": _cap["verdict"],
+                               "equity": _cap.get("equity"),
+                               "position_margin": _cap.get("position_margin"),
+                               "ceiling": _cap.get("ceiling"),
+                               "dry_run": False})
+                # the bar is NOT marked seen, for the same reason the cost
+                # gate does not mark it: one coin's refusal must not eat the
+                # candle for every other strategy on this timeframe
+                continue
+
         try:
             vol = fx.contracts_for(symbol, notional, price=entry)
         except Exception as exc:
@@ -4002,9 +4290,11 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                            "why": f"{notional:.2f} USDT notional is below one "
                                   f"contract", "strategy": key, "dry_run": dry})
             return
-        # A deep ladder rung can exceed the venue's per-order volume cap —
-        # MEXC answers code 2051 and the trade never happens. Cap and say so:
-        # a smaller trade beats a rejected one.
+        # A trade can exceed the venue's per-order volume cap — MEXC answers
+        # code 2051 and the trade never happens. Cap and say so: a smaller
+        # trade beats a rejected one. (It said "a deep ladder rung" until
+        # Sep 15, 2026; the ladder has been backtest-only since Sep 11, and
+        # at size it is the ORDER, not a rung, that outgrows the cap.)
         try:
             max_vol = int(float(fx.contract_spec(symbol).get("maxVol") or 0))
         except Exception:
@@ -4021,6 +4311,18 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                 "margin %.2f → %.2f.",
                 symbol, vol, max_vol, notional, notional * scale,
                 margin, margin * scale)
+            # AND COUNTED, not just logged. At 5 USDT this never fires; at
+            # size it fires on every thin contract, and a position smaller
+            # than the strategy sized is a fact the operator has to be able
+            # to find later rather than grep for in a log.
+            append_ledger({"symbol": symbol, "action": "size_capped",
+                           "strategy": key, "wanted_vol": int(vol),
+                           "venue_max_vol": int(max_vol),
+                           "wanted_notional": round(notional, 2),
+                           "sent_notional": round(notional * scale, 2),
+                           "wanted_margin": round(margin, 4),
+                           "sent_margin": round(margin * scale, 4),
+                           "dry_run": dry})
             vol = max_vol
             notional *= scale
             margin *= scale
@@ -4032,6 +4334,12 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
             "LONG" if side > 0 else "SHORT", key, vol, notional, margin,
             st["step"] + 1, entry, tp_px, sl_px,
             "dry run" if dry else "LIVE ORDER")
+        if not dry:
+            # counted BEFORE the venue is asked, so a second signal in this
+            # same cycle cannot spend the same balance twice. A refused order
+            # gives it back below.
+            _CYCLE_COMMITTED["usdt"] = (
+                float(_CYCLE_COMMITTED.get("usdt") or 0.0) + float(margin))
         try:
             fx.submit(symbol, order_side, vol, leverage=LEVERAGE, dry_run=dry)
         except Exception as exc:
@@ -4039,6 +4347,13 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
             # bracket: the candle goes back. This is the last point where a
             # retry is safe — past here the position exists, and re-reading
             # the same signal would open a second one.
+            if not dry:
+                # ...and the margin it never spent goes back too, or the
+                # ceiling shrinks for every other signal on this bar over a
+                # trade that does not exist.
+                _CYCLE_COMMITTED["usdt"] = max(
+                    0.0, float(_CYCLE_COMMITTED.get("usdt") or 0.0)
+                    - float(margin))
             st["last_ts"][spec["interval"]] = _prev_seen
             logger.error(
                 "ORDER REFUSED %s %s: %s — nothing opened, the %s candle is "
@@ -4058,6 +4373,8 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
             # returned a stale opposite-side position while the 1m strategy
             # was churning, which bracketed the wrong trade and orphaned the
             # right one.
+            # what we SIZED from, kept so the fill can be judged against it
+            _sized_at = float(entry or 0)
             want_type = 1 if side > 0 else 2
             for _ in range(10):
                 cands = [p for p in fx.open_positions(symbol)
@@ -4067,6 +4384,30 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                                  key=lambda p: p.get("updateTime") or 0)
                     position_id = int(newest.get("positionId") or 0)
                     entry = float(newest.get("holdAvgPrice") or entry)
+                    # WHAT THE FILL ACTUALLY COST, against what the gate said
+                    # it would. The bracket already moves to the real fill
+                    # (right), but nothing compared the two, so a book that
+                    # moved between the look and the order was invisible —
+                    # and at size that is the dominant cost.
+                    _slip = slippage_paid(_sized_at, entry, side)
+                    _modelled = float(gate.get("slippage") or 0.0)
+                    _bad = bool(_modelled > 0
+                                and _slip > _modelled * SLIPPAGE_ALERT_FRACTION)
+                    if _slip > 0 or _bad:
+                        append_ledger({
+                            "symbol": symbol, "action": "fill_slippage",
+                            "strategy": key, "sized_at": _sized_at,
+                            "filled_at": entry, "paid": round(_slip, 6),
+                            "modelled": round(_modelled, 6),
+                            "worse_than_modelled": _bad, "dry_run": False})
+                    if _bad:
+                        logger.error(
+                            "FILL WORSE THAN THE GATE MODELLED: %s %s sized at "
+                            "%.6g, filled at %.6g — paid %.3f%% where the book "
+                            "said %.3f%%. The stop and target move to the real "
+                            "fill, but this trade started %.3f%% behind.",
+                            key, symbol, _sized_at, entry, _slip * 100,
+                            _modelled * 100, _slip * 100)
                     tp_px, sl_px = _bracket(side, entry, spec["tp"], spec["sl"])
                     break
                 time.sleep(1)
@@ -4382,6 +4723,11 @@ def run_cycle(*, fx=None) -> None:
     # leave last cycle's numbers behind
     _CYCLE_PRICES.clear()
     _CYCLE_GATES.clear()
+    # ...and what the LAST cycle committed. By now the venue's own
+    # `positionMargin` has caught up with those fills, so carrying the figure
+    # forward would count the same margin twice and shrink the ceiling on
+    # every cycle until nothing could trade.
+    _CYCLE_COMMITTED["usdt"] = 0.0
     if fx is None:
         from tradingagents.dataflows import mexc_futures as fx  # noqa: PLC0415
     settings = load_settings()

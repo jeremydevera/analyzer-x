@@ -45,6 +45,16 @@ class FX:
     def contract_spec(self, symbol):
         return {"contractSize": 1, "takerFeeRate": self.fee}
 
+    # FUNDING is the third cost the gate charges since Sep 15, 2026, and a
+    # hold that can span a settlement with funding it cannot READ is refused.
+    # Right for money; wrong for a fixture about the spread. Zero here means
+    # "measured, and it is zero", which leaves the spread the only variable.
+    rate = 0.0
+
+    def funding_now(self, symbol):
+        return {"symbol": symbol, "rate": self.rate, "cycle_h": 8,
+                "next_settle_ms": 0, "per_day": self.rate * 3}
+
 
 @pytest.fixture(autouse=True)
 def _fresh():
@@ -82,21 +92,27 @@ def test_the_exact_trade_that_lost_5_36_is_refused_now():
 def test_the_last_look_measures_once_and_both_books_share_it(monkeypatch):
     calls = []
 
-    def fake_edge(key, symbol, margin, *, fx=None):
-        calls.append(key)
+    # `side` since Sep 15, 2026: funding is PAID by one direction and
+    # RECEIVED by the other, so a long's verdict is not a short's and the
+    # gate has to be asked about the one it is going to take.
+    def fake_edge(key, symbol, margin, *, fx=None, side=0):
+        calls.append((key, side))
         return {"verdict": "block", "reason": "x"}
 
     monkeypatch.setattr(at, "edge_check", fake_edge)
-    first = at._entry_gate("k1", "X_USDT", 5.0, fx=object())
-    second = at._entry_gate("k1", "X_USDT", 5.0, fx=object())
+    first = at._entry_gate("k1", "X_USDT", 5.0, fx=object(), side=1)
+    second = at._entry_gate("k1", "X_USDT", 5.0, fx=object(), side=1)
     assert first is second, "the demo book must get the SAME verdict"
-    assert calls == ["k1"], "measured once per cycle"
+    assert calls == [("k1", 1)], "measured once per cycle, for the side asked"
     # and the screen cache learns it, so the next cycle blocks early
     assert at._GATE_CACHE[("k1", "X_USDT")][1] is first
+    # ...and the OTHER direction is a different question, not a cache hit
+    at._entry_gate("k1", "X_USDT", 5.0, fx=object(), side=-1)
+    assert calls == [("k1", 1), ("k1", -1)],         "a short pays funding a long receives; one verdict cannot serve both"
 
 
 def test_the_cycle_wipes_the_verdicts_with_the_prices(monkeypatch):
-    at._CYCLE_GATES[("k", "X_USDT")] = {"verdict": "ok"}
+    at._CYCLE_GATES[("k", "X_USDT", 0)] = {"verdict": "ok"}
     monkeypatch.setattr(at, "load_settings", lambda: {})
     at.run_cycle(fx=object())
     assert at._CYCLE_GATES == {}
@@ -127,7 +143,7 @@ def test_an_unknown_last_look_is_not_written_into_the_screen_cache(monkeypatch):
     the whole window. Within one cycle both books still share the unknown."""
     calls = []
 
-    def fake_edge(key, symbol, margin, *, fx=None):
+    def fake_edge(key, symbol, margin, *, fx=None, side=0):
         calls.append(key)
         return {"verdict": "unknown", "reason": "no order book for X"}
 
@@ -136,7 +152,7 @@ def test_an_unknown_last_look_is_not_written_into_the_screen_cache(monkeypatch):
     assert got["verdict"] == "unknown"
     assert ("k2", "X_USDT") not in at._GATE_CACHE, \
         "an unknown is not a measurement"
-    assert at._CYCLE_GATES[("k2", "X_USDT")] is got, \
+    assert at._CYCLE_GATES[("k2", "X_USDT", 0)] is got, \
         "but THIS cycle's two books still share it"
 
 

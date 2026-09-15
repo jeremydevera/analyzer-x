@@ -802,6 +802,411 @@ STRATEGY_ORDER = ("mom15_4h", "mom15_4h_b", "fvg_4h", "fvg_4h_b",
                   "rsidiv_15m_sl04tp04",
                   )
 
+# ---------------------------------------------------------------------------
+# THE OPERATOR'S 127 (Sep 16, 2026). They pasted 280 stored row ids and said
+# *"remove the curent live strategies totally then replace with these"*.
+#
+# 280 -> 140: the 280 were 140 flat rows and their 140 martingale twins. The
+# runner has staked FLAT on every trade since Sep 11, so a twin places the
+# IDENTICAL trade; they chose the flat half.
+# 140 -> 127: thirteen carried a 4.00% stop. At 20x MEXC liquidates
+# 1/20 - 0.005 = 4.50% against the trade, so a 4.00% stop sits past
+# STOP_LIQ_CEILING and the venue takes the WHOLE margin before it fires —
+# an outcome no backtest row has measured. Dropped on their instruction:
+# XPIN/SQD/STG/OL/EGLD 1h, CTC/heikin 4h and the rest.
+#
+# GENERATED FROM THE MEASURED ROWS, never typed. tp and sl are the row's own
+# percents over 100; interval and bar_seconds come from its timeframe;
+# `threshold` is carried wherever the row has one (mom6, mom15 and fade15
+# read it straight out of the spec and raise without it). Every key was
+# checked against `signal_for`'s own dispatch order before it was written —
+# a key matching no rule falls through to `return 0` and trades never, which
+# is what a deployed fib618 would have done on 2026-08-19.
+_OPERATORS_127 = {
+    "bb20_15m_sl15tp06": {"interval": "Min15", "bar_seconds": 900, "tp": 0.006, "sl": 0.015},
+    "bb20_1h_sl25tp15": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.015, "sl": 0.025},
+    "bb20_1h_sl3tp15": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.015, "sl": 0.03},
+    "bb20_30m_sl15tp08": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.008, "sl": 0.015},
+    "bb20_30m_sl15tp1": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.01, "sl": 0.015},
+    "bb20_30m_sl2tp08": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.008, "sl": 0.02},
+    "bb20_30m_sl2tp1": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.01, "sl": 0.02},
+    "bb20_30m_sl2tp12": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.012, "sl": 0.02},
+    "bb20_30m_sl2tp15": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.015, "sl": 0.02},
+    "cci20_1h_sl25tp06": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.006, "sl": 0.025},
+    "cci20_1h_sl25tp1": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.01, "sl": 0.025},
+    "cci20_1h_sl3tp06": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.006, "sl": 0.03},
+    "cci20_1h_sl3tp1": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.01, "sl": 0.03},
+    "cf_soup1_1h_sl25tp1": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.01, "sl": 0.025},
+    "cf_soup1_1h_sl3tp1": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.01, "sl": 0.03},
+    "cx_veto_1h_sl3tp1": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.01, "sl": 0.03},
+    "fade15_1h_sl3tp06": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.006, "sl": 0.03, "threshold": 0.5},
+    "fade15_4h_sl3tp1": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.01, "sl": 0.03, "threshold": 0.4},
+    "ibs_15m_sl15tp04": {"interval": "Min15", "bar_seconds": 900, "tp": 0.004, "sl": 0.015},
+    "ibs_1h_sl25tp06": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.006, "sl": 0.025},
+    "ibs_1h_sl3tp06": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.006, "sl": 0.03},
+    "ibs_1h_sl3tp1": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.01, "sl": 0.03},
+    "ibs_30m_sl2tp05": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.005, "sl": 0.02},
+    "ibs_4h_sl3tp2": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.02, "sl": 0.03},
+    "keltner_15m_sl15tp12": {"interval": "Min15", "bar_seconds": 900, "tp": 0.012, "sl": 0.015},
+    "keltner_30m_sl2tp15": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.015, "sl": 0.02},
+    "keltner_30m_sl2tp25": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.025, "sl": 0.02},
+    "killzone_4h_sl3tp15": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.015, "sl": 0.03},
+    "macddiv_30m_sl2tp12": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.012, "sl": 0.02},
+    "macddiv_30m_sl2tp15": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.015, "sl": 0.02},
+    "ote_1h_sl3tp1": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.01, "sl": 0.03},
+    "prank_15m_sl15tp04": {"interval": "Min15", "bar_seconds": 900, "tp": 0.004, "sl": 0.015},
+    "prank_1h_sl15tp1": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.01, "sl": 0.015},
+    "prank_1h_sl25tp1": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.01, "sl": 0.025},
+    "prank_1h_sl2tp1": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.01, "sl": 0.02},
+    "prank_1h_sl3tp1": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.01, "sl": 0.03},
+    "prank_1h_sl3tp15": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.015, "sl": 0.03},
+    "prank_30m_sl15tp05": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.005, "sl": 0.015},
+    "prank_30m_sl2tp05": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.005, "sl": 0.02},
+    "prank_30m_sl2tp08": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.008, "sl": 0.02},
+    "prank_30m_sl2tp1": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.01, "sl": 0.02},
+    "prank_30m_sl2tp12": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.012, "sl": 0.02},
+    "stoch14_15m_sl12tp04": {"interval": "Min15", "bar_seconds": 900, "tp": 0.004, "sl": 0.012},
+    "stoch14_15m_sl15tp04": {"interval": "Min15", "bar_seconds": 900, "tp": 0.004, "sl": 0.015},
+    "stoch14_1h_sl25tp06": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.006, "sl": 0.025},
+    "stoch14_1h_sl25tp1": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.01, "sl": 0.025},
+    "stoch14_1h_sl2tp06": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.006, "sl": 0.02},
+    "stoch14_1h_sl3tp06": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.006, "sl": 0.03},
+    "stoch14_1h_sl3tp1": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.01, "sl": 0.03},
+    "stoch14_1h_sl3tp15": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.015, "sl": 0.03},
+    "stoch14_30m_sl12tp05": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.005, "sl": 0.012},
+    "stoch14_30m_sl15tp05": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.005, "sl": 0.015},
+    "stoch14_30m_sl2tp05": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.005, "sl": 0.02},
+    "stoch14_4h_sl3tp25": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.025, "sl": 0.03},
+    "vwaprev_1h_sl25tp15": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.015, "sl": 0.025},
+    "vwaprev_1h_sl3tp15": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.015, "sl": 0.03},
+    "vwaprev_30m_sl15tp08": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.008, "sl": 0.015},
+    "vwaprev_30m_sl15tp1": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.01, "sl": 0.015},
+    "vwaprev_30m_sl2tp08": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.008, "sl": 0.02},
+    "vwaprev_30m_sl2tp1": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.01, "sl": 0.02},
+    "vwaprev_30m_sl2tp12": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.012, "sl": 0.02},
+    "willr14_15m_sl12tp04": {"interval": "Min15", "bar_seconds": 900, "tp": 0.004, "sl": 0.012},
+    "willr14_15m_sl15tp04": {"interval": "Min15", "bar_seconds": 900, "tp": 0.004, "sl": 0.015},
+    "willr14_1h_sl25tp06": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.006, "sl": 0.025},
+    "willr14_1h_sl25tp1": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.01, "sl": 0.025},
+    "willr14_1h_sl2tp06": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.006, "sl": 0.02},
+    "willr14_1h_sl3tp06": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.006, "sl": 0.03},
+    "willr14_1h_sl3tp1": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.01, "sl": 0.03},
+    "willr14_1h_sl3tp15": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.015, "sl": 0.03},
+    "willr14_30m_sl12tp05": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.005, "sl": 0.012},
+    "willr14_30m_sl15tp05": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.005, "sl": 0.015},
+    "willr14_30m_sl2tp05": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.005, "sl": 0.02},
+    "willr14_4h_sl3tp25": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.025, "sl": 0.03},
+    "zscore20_15m_sl15tp06": {"interval": "Min15", "bar_seconds": 900, "tp": 0.006, "sl": 0.015},
+    "zscore20_1h_sl25tp15": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.015, "sl": 0.025},
+    "zscore20_1h_sl3tp15": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.015, "sl": 0.03},
+    "zscore20_30m_sl15tp08": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.008, "sl": 0.015},
+    "zscore20_30m_sl15tp1": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.01, "sl": 0.015},
+    "zscore20_30m_sl2tp08": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.008, "sl": 0.02},
+    "zscore20_30m_sl2tp1": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.01, "sl": 0.02},
+    "zscore20_30m_sl2tp12": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.012, "sl": 0.02},
+    "zscore20_30m_sl2tp15": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.015, "sl": 0.02},
+}
+STRATEGY_SPECS.update(_OPERATORS_127)
+# `run_cycle` walks STRATEGY_ORDER, not STRATEGY_SPECS, so a key added to the
+# specs alone is armed in the settings and never runs (CLAUDE.md rule 21).
+STRATEGY_ORDER = STRATEGY_ORDER + tuple(_OPERATORS_127)
+
+# THE PROOF FOR EVERY INVERTED BRACKET. 81 of these 83 keys risk more than
+# they aim to win, which this project refuses unless the MEASURED win rate
+# beats the break-even its own average win and average loss imply. Each
+# tuple is (break-even %, measured win %, avg win $, avg loss $, row id);
+# the cost inside the two averages is solved out of that row's own profit
+# (profit = wins*avg_win - losses*avg_loss), so nothing here is an estimate.
+INVERTED_BRACKETS.update({
+    "bb20_15m_sl15tp06": {
+        "FASTSTOCK": (81.89, 97.54, 0.38, 1.72, "SEZFUBCU"),
+    },
+    "bb20_1h_sl25tp15": {
+        "FASTSTOCK": (67.94, 100.0, 1.282, 2.718, "YEK6F63W"),
+    },
+    "bb20_1h_sl3tp15": {
+        "FASTSTOCK": (71.51, 100.0, 1.282, 3.218, "KB9ZD6HQ"),
+        "GPNSTOCK": (71.62, 100.0, 1.277, 3.223, "VTZCZBCQ"),
+        "TRGPSTOCK": (71.55, 100.0, 1.28, 3.22, "YTK6N9PG"),
+    },
+    "bb20_30m_sl15tp08": {
+        "FASTSTOCK": (74.75, 97.37, 0.581, 1.719, "A69M5W3S"),
+    },
+    "bb20_30m_sl15tp1": {
+        "FASTSTOCK": (68.76, 97.26, 0.781, 1.719, "HH8GZXGG"),
+    },
+    "bb20_30m_sl2tp08": {
+        "FASTSTOCK": (79.26, 100.0, 0.581, 2.219, "MAQ5N4P3"),
+    },
+    "bb20_30m_sl2tp1": {
+        "FASTSTOCK": (73.97, 100.0, 0.781, 2.219, "UR3GKYLA"),
+    },
+    "bb20_30m_sl2tp12": {
+        "FASTSTOCK": (69.32, 96.83, 0.982, 2.218, "QAMBVGFQ"),
+    },
+    "bb20_30m_sl2tp15": {
+        "FASTSTOCK": (63.37, 94.74, 1.282, 2.218, "2EDTNRBW"),
+    },
+    "cci20_1h_sl25tp06": {
+        "FASTSTOCK": (87.75, 99.1, 0.38, 2.72, "MJ3ZU4QW"),
+    },
+    "cci20_1h_sl25tp1": {
+        "FASTSTOCK": (77.78, 96.63, 0.778, 2.722, "BFV9NLRN"),
+    },
+    "cci20_1h_sl3tp06": {
+        "FASTSTOCK": (89.45, 100.0, 0.38, 3.22, "Z8RU2QNB"),
+    },
+    "cci20_1h_sl3tp1": {
+        "FASTSTOCK": (80.56, 98.84, 0.778, 3.222, "4UK558HF"),
+    },
+    "cf_soup1_1h_sl25tp1": {
+        "FASTSTOCK": (77.71, 97.73, 0.78, 2.72, "KDY5M3LQ"),
+    },
+    "cf_soup1_1h_sl3tp1": {
+        "FASTSTOCK": (80.5, 100.0, 0.78, 3.22, "46SGBAHD"),
+    },
+    "cx_veto_1h_sl3tp1": {
+        "FASTSTOCK": (80.5, 100.0, 0.78, 3.22, "HQH72A8L"),
+    },
+    "fade15_1h_sl3tp06": {
+        "FASTSTOCK": (89.42, 97.53, 0.381, 3.219, "APTLTY7H"),
+    },
+    "fade15_4h_sl3tp1": {
+        "APOSTOCK": (80.52, 96.0, 0.779, 3.221, "4YD69LDF"),
+    },
+    "ibs_15m_sl15tp04": {
+        "ROLSTOCK": (89.89, 96.77, 0.192, 1.708, "UEASF43N"),
+    },
+    "ibs_1h_sl25tp06": {
+        "FASTSTOCK": (87.74, 97.66, 0.38, 2.72, "G66R2X9B"),
+    },
+    "ibs_1h_sl3tp06": {
+        "FASTSTOCK": (89.43, 100.0, 0.38, 3.22, "A7CVHW4B"),
+    },
+    "ibs_1h_sl3tp1": {
+        "FASTSTOCK": (80.58, 100.0, 0.777, 3.223, "7A8HGD6V"),
+    },
+    "ibs_30m_sl2tp05": {
+        "CTSHSTOCK": (88.77, 95.17, 0.281, 2.219, "276XZ57V"),
+        "FASTSTOCK": (88.83, 96.99, 0.279, 2.221, "AW3247JE"),
+    },
+    "ibs_4h_sl3tp2": {
+        "GPNSTOCK": (64.25, 96.3, 1.787, 3.213, "TSV7DW9F"),
+    },
+    "keltner_15m_sl15tp12": {
+        "FASTSTOCK": (63.63, 97.14, 0.982, 1.718, "UYNB744K"),
+    },
+    "keltner_30m_sl2tp15": {
+        "GPNSTOCK": (63.42, 100.0, 1.28, 2.22, "5CKFR86N"),
+    },
+    "killzone_4h_sl3tp15": {
+        "CTC": (69.03, 96.0, 1.394, 3.106, "D39U7M4V"),
+    },
+    "macddiv_30m_sl2tp12": {
+        "FASTSTOCK": (69.49, 100.0, 0.976, 2.224, "Z6U8MB4N"),
+    },
+    "macddiv_30m_sl2tp15": {
+        "FASTSTOCK": (63.58, 96.97, 1.275, 2.225, "T2W5QUR9"),
+        "KKRSTOCK": (63.32, 100.0, 1.284, 2.216, "QQP978KE"),
+    },
+    "ote_1h_sl3tp1": {
+        "XPIN": (77.52, 96.0, 0.899, 3.101, "LG9NSU4B"),
+    },
+    "prank_15m_sl15tp04": {
+        "FASTSTOCK": (90.53, 96.93, 0.18, 1.72, "L5LUR5TG"),
+    },
+    "prank_1h_sl15tp1": {
+        "KKRSTOCK": (68.8, 96.08, 0.78, 1.72, "2VC9XXJ3"),
+    },
+    "prank_1h_sl25tp1": {
+        "APOSTOCK": (77.62, 97.87, 0.783, 2.717, "UBABAZM8"),
+        "FASTSTOCK": (77.65, 98.48, 0.782, 2.718, "PNR2C69B"),
+        "GPNSTOCK": (77.76, 96.23, 0.778, 2.722, "9UE2PRKD"),
+        "KKRSTOCK": (77.71, 96.08, 0.78, 2.72, "GA34WDQP"),
+    },
+    "prank_1h_sl2tp1": {
+        "FLUTSTOCK": (73.92, 93.22, 0.782, 2.218, "8CL6RX6Z"),
+        "KKRSTOCK": (74.0, 96.08, 0.78, 2.22, "EMRT87B7"),
+    },
+    "prank_1h_sl3tp1": {
+        "APOSTOCK": (80.42, 97.92, 0.783, 3.217, "E2UKABEF"),
+        "FASTSTOCK": (80.44, 100.0, 0.782, 3.218, "CCVJBLM3"),
+        "GPNSTOCK": (80.53, 98.08, 0.779, 3.221, "GSFZ5PJ7"),
+        "KKRSTOCK": (80.49, 97.92, 0.78, 3.22, "JKNQSDD9"),
+    },
+    "prank_1h_sl3tp15": {
+        "GPNSTOCK": (71.62, 97.83, 1.277, 3.223, "W9CSZJPB"),
+        "KKRSTOCK": (71.6, 96.97, 1.278, 3.222, "4NK4CLAJ"),
+    },
+    "prank_30m_sl15tp05": {
+        "FASTSTOCK": (85.98, 96.99, 0.28, 1.72, "7RLAU9VW"),
+    },
+    "prank_30m_sl2tp05": {
+        "FASTSTOCK": (88.79, 98.78, 0.28, 2.22, "3UDUPS2S"),
+    },
+    "prank_30m_sl2tp08": {
+        "FASTSTOCK": (79.22, 97.67, 0.582, 2.218, "4GHJ3SU6"),
+    },
+    "prank_30m_sl2tp1": {
+        "FASTSTOCK": (74.04, 97.54, 0.779, 2.221, "N6YCCRK9"),
+    },
+    "prank_30m_sl2tp12": {
+        "FASTSTOCK": (69.49, 97.35, 0.976, 2.224, "5D67UYWZ"),
+    },
+    "stoch14_15m_sl12tp04": {
+        "ROLSTOCK": (88.35, 96.35, 0.186, 1.414, "SWCBER7Q"),
+    },
+    "stoch14_15m_sl15tp04": {
+        "CTSHSTOCK": (90.5, 95.69, 0.18, 1.72, "6FVEV44J"),
+        "FASTSTOCK": (90.52, 96.04, 0.18, 1.72, "U7HMQSF5"),
+        "ROLSTOCK": (90.06, 98.25, 0.189, 1.711, "HT98HRM2"),
+        "VUG": (90.32, 96.52, 0.184, 1.716, "CBRR8SF4"),
+    },
+    "stoch14_1h_sl25tp06": {
+        "APOSTOCK": (87.74, 96.61, 0.38, 2.72, "SAUNQL2D"),
+        "GPNSTOCK": (87.77, 96.43, 0.379, 2.721, "MUV9ZKUE"),
+        "ROLSTOCK": (86.27, 96.36, 0.426, 2.674, "VB7EYK2E"),
+    },
+    "stoch14_1h_sl25tp1": {
+        "FASTSTOCK": (77.88, 95.83, 0.774, 2.726, "HUQEE6K7"),
+    },
+    "stoch14_1h_sl2tp06": {
+        "GPNSTOCK": (85.41, 96.49, 0.379, 2.221, "Z8FD8EUY"),
+        "ROLSTOCK": (83.84, 95.45, 0.42, 2.18, "MMGM2Z7X"),
+    },
+    "stoch14_1h_sl3tp06": {
+        "APOSTOCK": (89.43, 96.55, 0.38, 3.22, "D22RL9NL"),
+        "GPNSTOCK": (89.47, 99.09, 0.379, 3.221, "88SRVG2E"),
+        "ROLSTOCK": (88.08, 96.36, 0.429, 3.171, "GGN5WTKJ"),
+    },
+    "stoch14_1h_sl3tp1": {
+        "FASTSTOCK": (80.65, 97.18, 0.774, 3.226, "TZG9RXTM"),
+        "GPNSTOCK": (80.55, 96.77, 0.778, 3.222, "NVKE28WG"),
+    },
+    "stoch14_1h_sl3tp15": {
+        "TRGPSTOCK": (71.39, 100.0, 1.287, 3.213, "X3UXDSAS"),
+    },
+    "stoch14_30m_sl12tp05": {
+        "VUG": (83.16, 95.21, 0.286, 1.414, "YJCU8TYB"),
+    },
+    "stoch14_30m_sl15tp05": {
+        "DXCMSTOCK": (85.71, 96.0, 0.286, 1.714, "W73SVDTB"),
+        "VUG": (85.6, 96.79, 0.288, 1.712, "HS5N3U37"),
+    },
+    "stoch14_30m_sl2tp05": {
+        "DVNSTOCK": (88.88, 97.62, 0.278, 2.222, "ZSMP3CF4"),
+        "DXCMSTOCK": (88.47, 96.85, 0.288, 2.212, "7CP8RSWQ"),
+        "FASTSTOCK": (88.75, 97.76, 0.281, 2.219, "JXRSKJSW"),
+        "KKRSTOCK": (88.77, 96.41, 0.281, 2.219, "9FTN66Y4"),
+        "ROLSTOCK": (87.78, 97.4, 0.306, 2.194, "2NYXSXTR"),
+        "VUG": (88.3, 96.82, 0.293, 2.207, "XH2KSFXG"),
+    },
+    "stoch14_4h_sl3tp25": {
+        "APOSTOCK": (58.4, 91.3, 2.288, 3.212, "3JTYL74Q"),
+    },
+    "vwaprev_1h_sl25tp15": {
+        "CHYMSTOCK": (68.08, 96.77, 1.277, 2.723, "R234K2SZ"),
+    },
+    "vwaprev_1h_sl3tp15": {
+        "CHYMSTOCK": (71.63, 96.77, 1.277, 3.223, "JJ5KJ5VS"),
+    },
+    "vwaprev_30m_sl15tp08": {
+        "FASTSTOCK": (74.78, 98.51, 0.58, 1.72, "SDZHEN77"),
+    },
+    "vwaprev_30m_sl15tp1": {
+        "FASTSTOCK": (68.76, 96.77, 0.781, 1.719, "8K47KSPY"),
+    },
+    "vwaprev_30m_sl2tp08": {
+        "FASTSTOCK": (79.26, 100.0, 0.581, 2.219, "QV9ZA3CB"),
+        "SYFSTOCK": (79.29, 95.1, 0.58, 2.22, "ZYHDNRR8"),
+    },
+    "vwaprev_30m_sl2tp1": {
+        "FASTSTOCK": (73.95, 100.0, 0.781, 2.219, "FA5D7HFH"),
+    },
+    "vwaprev_30m_sl2tp12": {
+        "FASTSTOCK": (69.32, 96.61, 0.982, 2.218, "2CSFMLDE"),
+    },
+    "willr14_15m_sl12tp04": {
+        "ROLSTOCK": (88.35, 96.35, 0.186, 1.414, "U6RFLRJL"),
+    },
+    "willr14_15m_sl15tp04": {
+        "CTSHSTOCK": (90.5, 95.69, 0.18, 1.72, "9N3LHCDT"),
+        "FASTSTOCK": (90.52, 96.04, 0.18, 1.72, "2UCWR3TF"),
+        "ROLSTOCK": (90.06, 98.25, 0.189, 1.711, "QTLBL6U9"),
+        "VUG": (90.32, 96.52, 0.184, 1.716, "EYTGXVDD"),
+    },
+    "willr14_1h_sl25tp06": {
+        "APOSTOCK": (87.74, 96.61, 0.38, 2.72, "KLUJU44A"),
+        "GPNSTOCK": (87.77, 96.43, 0.379, 2.721, "85KWFY82"),
+        "ROLSTOCK": (86.27, 96.36, 0.426, 2.674, "PX8NN5WJ"),
+    },
+    "willr14_1h_sl25tp1": {
+        "FASTSTOCK": (77.88, 95.83, 0.774, 2.726, "PX7YPRD6"),
+    },
+    "willr14_1h_sl2tp06": {
+        "GPNSTOCK": (85.41, 96.49, 0.379, 2.221, "B6SQA34C"),
+        "ROLSTOCK": (83.84, 95.45, 0.42, 2.18, "Z5BFKE2Z"),
+    },
+    "willr14_1h_sl3tp06": {
+        "APOSTOCK": (89.43, 96.55, 0.38, 3.22, "UNAWUSGH"),
+        "GPNSTOCK": (89.47, 99.09, 0.379, 3.221, "XK33B6WR"),
+        "ROLSTOCK": (88.08, 96.36, 0.429, 3.171, "E869ML9V"),
+    },
+    "willr14_1h_sl3tp1": {
+        "FASTSTOCK": (80.65, 97.18, 0.774, 3.226, "ZWCXBVBP"),
+        "GPNSTOCK": (80.55, 96.77, 0.778, 3.222, "QRBXJZR7"),
+    },
+    "willr14_1h_sl3tp15": {
+        "TRGPSTOCK": (71.39, 100.0, 1.287, 3.213, "ALA6RM82"),
+    },
+    "willr14_30m_sl12tp05": {
+        "VUG": (83.16, 95.21, 0.286, 1.414, "MCHB2RFB"),
+    },
+    "willr14_30m_sl15tp05": {
+        "DXCMSTOCK": (85.71, 96.0, 0.286, 1.714, "RJ5DADQF"),
+        "VUG": (85.6, 96.79, 0.288, 1.712, "H2RRJ52R"),
+    },
+    "willr14_30m_sl2tp05": {
+        "DVNSTOCK": (88.88, 97.62, 0.278, 2.222, "DM84QDSZ"),
+        "DXCMSTOCK": (88.47, 96.85, 0.288, 2.212, "F6N35BXB"),
+        "FASTSTOCK": (88.75, 97.76, 0.281, 2.219, "7BSMBRFA"),
+        "KKRSTOCK": (88.77, 96.41, 0.281, 2.219, "DGCSMB9N"),
+        "ROLSTOCK": (87.78, 97.4, 0.306, 2.194, "MU2AU5P6"),
+        "VUG": (88.3, 96.82, 0.293, 2.207, "GXTHE8EJ"),
+    },
+    "willr14_4h_sl3tp25": {
+        "APOSTOCK": (58.4, 91.3, 2.288, 3.212, "TQTE7QPD"),
+    },
+    "zscore20_15m_sl15tp06": {
+        "FASTSTOCK": (81.89, 97.46, 0.38, 1.72, "XMFD2AAE"),
+    },
+    "zscore20_1h_sl25tp15": {
+        "FASTSTOCK": (67.94, 100.0, 1.282, 2.718, "KT5749KB"),
+    },
+    "zscore20_1h_sl3tp15": {
+        "FASTSTOCK": (71.5, 100.0, 1.282, 3.218, "3ZCA5GUX"),
+        "GPNSTOCK": (71.65, 100.0, 1.276, 3.224, "ADRTE238"),
+    },
+    "zscore20_30m_sl15tp08": {
+        "FASTSTOCK": (74.75, 97.26, 0.581, 1.719, "ZU3P3MJQ"),
+    },
+    "zscore20_30m_sl15tp1": {
+        "FASTSTOCK": (68.76, 97.22, 0.781, 1.719, "WF8X2QBX"),
+    },
+    "zscore20_30m_sl2tp08": {
+        "FASTSTOCK": (79.26, 100.0, 0.581, 2.219, "DKZW8YRH"),
+    },
+    "zscore20_30m_sl2tp1": {
+        "FASTSTOCK": (73.97, 100.0, 0.781, 2.219, "TPDLGVEE"),
+    },
+    "zscore20_30m_sl2tp12": {
+        "FASTSTOCK": (69.32, 96.77, 0.982, 2.218, "ZLBTV4G5"),
+    },
+    "zscore20_30m_sl2tp15": {
+        "FASTSTOCK": (63.37, 94.55, 1.282, 2.218, "6PMJMN7M"),
+    },
+})
+
 
 # ------------------------------------------------------------------ signals
 # Each takes plain OHLC lists of CLOSED bars and answers the direction the

@@ -5247,6 +5247,23 @@ def _say_once(tag: str, every_s: float) -> bool:
     return True
 
 
+def _has_real_position(state: dict) -> bool:
+    """Does the book hold ANY position that is real money?
+
+    `dry` is a property of the POSITION, fixed at entry, so this is the one
+    honest test of "is there money on the exchange we are responsible for" —
+    it does not consult settings, which is exactly what went wrong: the
+    settings said demo, the money said otherwise.
+    """
+    for v in (state or {}).values():
+        if not isinstance(v, dict):
+            continue
+        pos = v.get("position")
+        if pos and not pos.get("dry"):
+            return True
+    return False
+
+
 def run_cycle(*, fx=None) -> None:
     # a fresh cycle reads fresh prices and fresh gate verdicts — FIRST,
     # before any early return, so a cycle that does nothing still cannot
@@ -5319,7 +5336,52 @@ def run_cycle(*, fx=None) -> None:
         for c in coins_for(key, settings):
             if c not in symbols:
                 symbols.append(c)
+    # AND EVERY CONTRACT THE BOOK STILL HOLDS REAL MONEY ON, whether or not a
+    # strategy still names it. Deleting a strategy — or removing a coin from
+    # one — must not be able to hide an open position from the cycle that
+    # books its exit. The slot key is `SYMBOL#book#strategy`, so the symbol is
+    # read off the key rather than the position, which carries no symbol.
+    for slot, v in (state or {}).items():
+        if not isinstance(v, dict):
+            continue
+        pos = v.get("position")
+        if pos and not pos.get("dry"):
+            sym = str(slot).split("#", 1)[0]
+            if sym and sym not in symbols:
+                symbols.append(sym)
     modes = active_modes(settings)
+    # A REAL POSITION IS NEVER LEFT UNWATCHED (Sep 16, 2026).
+    #
+    # `active_modes` answers "which books do the ARMED strategies want", so
+    # the moment every strategy is set to demo it returns [True] and this loop
+    # stops visiting the live book at all. The slot-level rescue that exists
+    # for exactly this ("no strategy armed in this book but a position is
+    # open — tracking its EXIT only") lives inside `process_symbol`, and
+    # `process_symbol` was never called for the live book, so it could not
+    # run.
+    #
+    # What that cost, measured: the operator switched all 85 strategies to
+    # demo at `Sep 16, 2026 2:08am`. The last live scan of CTC was `2:14am`.
+    # MEXC's own bracket closed that position at **2:37am** for a realised
+    # **+1.4398** (position 1498235091, exit 0.10003) and the book never
+    # learned: 35 minutes later it still listed
+    # `CTC_USDT#live#killzone_4h_sl3tp15` as open, the ledger held ZERO live
+    # exit rows for trade CTTKPGQE, and the operator's own screen still
+    # showed the trade running. Their words: *"when it close in mexc i does
+    # not reflect in ui"*.
+    #
+    # This is rule 14 (the exchange is the source of truth) and rule 17 (a
+    # position must never be open without management for longer than one
+    # cycle) — and it is the SAME incident as 2026-08-17, when moving XAUT to
+    # demo-only left an open real short unmanaged and a phantom position on
+    # screen for over a day. That was fixed one layer too low: inside
+    # `process_symbol`, which this loop had already decided not to call.
+    #
+    # ENTRIES ARE NOT AFFECTED. `process_symbol`'s book filter still governs
+    # them and the rescued strategy is added to `tripped`, so the live book is
+    # walked for EXITS only while nothing is armed live.
+    if False not in modes and _has_real_position(state):
+        modes = [*modes, False]
     # Only the slots this cycle visited get written back. Anything else on
     # disk belongs to another writer — the app's CLOSE button — and is left
     # exactly as found.

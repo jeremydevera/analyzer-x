@@ -172,6 +172,109 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-16-B — switching to demo-only stopped the runner watching the live book, so three closed trades never reached the screen
+
+**CEO**
+
+* You turned every strategy to demo. An hour later MEXC closed one of your
+  real trades at a profit and your screen went on showing it open — the money
+  was in your wallet and nowhere in your history.
+* Why: the runner decides which books to look at from what your strategies are
+  set to. With everything on demo it stopped looking at the real book at all,
+  including the trades that were still open in it.
+* What stops it now: as long as the book holds ONE real position, the runner
+  looks at the real side every cycle whatever the settings say — for exits
+  only, it can never open a new real trade while you are on demo. Your CTC
+  trade is now in your live history at **+$1.44**, and two DVNSTOCK trades
+  that were stale for the same reason came back at **+$0.64** each.
+
+**DEV**
+
+* `auto_trader.run_cycle` walks `active_modes(settings)`, which answers
+  *which books do the ARMED strategies want*. All-demo returns `[True]`, so
+  `process_symbol` was never called with `dry=False` and the slot-level
+  rescue written for exactly this — *"no strategy armed in this book but a
+  position is open — tracking its EXIT only"*, `_process_slot` — could not
+  run. `live_gone` (`fx.open_positions`) is inside that same call.
+* Invariant broken: rule 14 (the exchange is the source of truth) and rule 17
+  (a position is never open without management for longer than one cycle).
+  The 2026-08-17 XAUT incident is the SAME bug and its fix was placed one
+  layer too low — inside the function the caller had already decided not to
+  call.
+* Guard: `tests/test_a_real_position_is_never_unwatched.py` — 7 tests, and
+  `_has_real_position` reads the POSITION's own `dry`, never the settings.
+
+**SAW** — *"FOR DEMO CTTKPGQE I'VE ALREADY TP IT WHY IS IT NOT IN LIVE TRADE
+HISTORY? IT SHOULD BE REALTIME"*, then *"BUT ITS STILL NOT CORRECT"*, then
+*"I MEAN IN THE UI WHEN IT CLOSE IN MEXC I DOES NOT REFLECT IN UI"*.
+
+**TIMELINE**
+
+1. `Sep 16, 2026 1:43am` — LIVE CTC short opens, entry **0.10166**, target
+   0.10014, MEXC position **1498235091**. A demo twin opens 16 seconds later
+   at 0.10168 with target 0.100155 — and the SAME `trade_id` CTTKPGQE, which
+   is what made the operator read them as one trade.
+2. `2:08am` — all 85 strategies set to `["paper"]` on their instruction.
+3. `2:14am` — the last `scan CTC_USDT[real]` line in `auto_trade.log`. From
+   here the live book is never visited again.
+4. `2:37am` — MEXC's own bracket closes the position: exit **0.10003**,
+   realised **+1.4398**.
+5. `2:38am` — the DEMO twin books its own TP, **+1.07**, and appears in demo
+   history. That is the row the operator could see, and it is why the two
+   numbers differ: the demo target was the easier one.
+6. `3:13am` — measured against the venue with the operator's own keys: MEXC
+   reports **4** open positions and CTC is not among them, while the book
+   still lists `CTC_USDT#live#killzone_4h_sl3tp15` as open and the ledger
+   holds **0** live exit rows for CTTKPGQE. 35 minutes unrecorded.
+7. `3:19am` — AFTER the fix, the first cycle reconciled it and two more:
+   CTC **TP 0.10003 +1.44** (matching MEXC's realised 1.4398), DVNSTOCK
+   willr14 **+0.64**, DVNSTOCK stoch14 **+0.64**. All three now in
+   `/api/trade/history?dry=false`.
+
+**ROOT CAUSE** — the cycle chose its books from what the SETTINGS arm, not
+from what the BOOK holds, so a demo-only settings file hid every open real
+position from the code that books its exit.
+
+**WHY IT WAS NOT CAUGHT** — there IS a test for this, and a comment in the
+code describing this exact incident from 2026-08-17 ("Moving XAUT to
+demo-only left an open real short unmanaged … a phantom position for over a
+day"). Both sit at the SLOT level, and the slot level was never reached.
+**When a fix is written inside a function, ask what decides whether that
+function is called at all** — every assertion about `_process_slot`'s rescue
+passed throughout, because the rescue is correct. The caller was not.
+
+That is the same shape as the 2026-09-04 nine-hour freeze, whose rule this
+file already carries: *the tests drove `process_symbol`; the runner enters
+through `run_cycle`*. The new guard asserts on `run_cycle`'s own source for
+that reason.
+
+**COST** — no money lost, and nothing was at risk: MEXC closed the trade
+correctly and better than the demo (+1.4398 against the demo's +1.07). The
+cost was the record and the trust in it — three closed trades worth **+$2.72**
+absent from the operator's history, a position shown open that was not, and a
+coin the book believed busy would have refused new entries on.
+
+**FIX** — this commit. `run_cycle` adds the live book to `modes` whenever
+`_has_real_position(state)` — the position's own `dry` flag, fixed at entry,
+never the settings — and `symbols` now also includes every contract holding a
+real position, so deleting a strategy cannot hide the position it left
+behind. Entries are untouched: `_process_slot` still filters them by book and
+adds the rescued strategy to `tripped`, so the live pass is exits only (the
+2026-08-18 XAUT re-entry is what that protects).
+
+**GUARD** — `tests/test_a_real_position_is_never_unwatched.py`, 7 tests,
+verified RED on the pre-fix file (5 of 7 fail) and green after; 109 tests in
+`test_auto_trader.py` pass beside it. Proven in the field: the first cycle
+after the restart booked all three stale exits.
+
+**STILL OPEN** — the live and demo books share one `trade_id`
+(`trade_code(symbol, key, entry_bar, side, dry)` produced CTTKPGQE for both),
+so one id names two trades with different entries and different outcomes.
+That is what made this look like a display fault rather than a missing exit,
+and it is not fixed here.
+
+---
+
 ## RCA-2026-09-16-A — MEXC says "too frequent" in a 200, so five coins were told they had no candles at all
 
 **CEO**

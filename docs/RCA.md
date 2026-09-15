@@ -172,6 +172,98 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-15-D — UPDATE CANDLES sat on "starting" for four minutes, because the fix for that was applied to one caller and not its sibling
+
+**CEO**
+
+* You press UPDATE CANDLES and the screen says "starting" for about four
+  minutes before anything moves. Nothing is wrong — it is reading all 5,235
+  candle files, 1.77 GB, just to learn the names and dates it already has
+  written down elsewhere.
+* Why: this is the same fault fixed on Sep 12 for the UPDATE BACKTEST button.
+  That fix was applied to the one place that had the problem, and the
+  identical line behind UPDATE CANDLES was never looked for.
+* What stops it now: it reads the small index instead, which skips any file
+  that has not changed. The Storage screen had the same slow read inside the
+  page request, so that is now done in the background too, and it says
+  "reading the candle files…" instead of showing a false "0 bars · 0 pairs"
+  while it works.
+
+**DEV**
+
+* `db_jobs.update_pairs` (`db_jobs.py:759`) called `msw.candle_coverage()`,
+  which opens and JSON-parses every file in `CANDLES` to build display
+  strings, and kept three fields from each: `symbol`, `timeframe`, `last_ms`.
+  py-spy on the live worker (pid 1448):
+  `read_text -> candle_coverage -> update_pairs -> _run_download`.
+  `api.storage_coverage` called the same function INSIDE the request handler.
+* Invariant broken: **when a rule changes, grep the CONCEPT, not the caller**
+  (CLAUDE.md, 2026-09-05) — and, for the route, *a request never waits for the
+  disk*, the rule `/api/cloud/status` (216 s) and `/api/strategies` (267 s)
+  were both fixed under.
+* Guard: `tests/test_update_says_what_it_is_doing.py` — three new tests, one
+  of which walks the AST of every module and allows `candle_coverage` exactly
+  one caller, by line number.
+
+**SAW** — found by the press-and-watch loop, not reported: UPDATE CANDLES was
+pressed at `Sep 15, 2026 5:55pm` and `/api/jobs/download` answered
+`{"running":true,"done":0,"total":0,"now":"starting"}` on every poll for the
+next four minutes.
+
+**TIMELINE**
+
+1. `5:55:28pm` — pressed; pid 7304 (the previous download was 20780, so this
+   really started a new job).
+2. `5:55:28pm` to `5:58:28pm` — ten polls, twenty seconds apart, every one
+   `done 0, total 0, now "starting"`. `db_download.log` untouched since
+   `Sep 09`.
+3. py-spy on the worker put it in `pathlib.read_text` under
+   `candle_coverage`, called from `update_pairs`. Not stalled — reading
+   **5,235 files, 1.77 GB** off a mechanical G:.
+4. `6:01:31pm` — the walk finished and the job moved: **244 of 5,278** pairs,
+   8,110 bars, 0 errors, and from there a steady **~235 pairs/min**.
+5. The same expensive call sits in `/api/storage/coverage`, which the Storage
+   screen requests on mount — minutes of a held browser lane for a table of
+   coin names and dates.
+
+**ROOT CAUSE** — two callers wanted names and timestamps and asked a function
+that reads every byte of the candle store to produce display strings.
+
+**WHY IT WAS NOT CAUGHT** — because it WAS caught, three days earlier, in the
+sibling. RCA-2026-09-14-F fixed exactly this in `stored_symbols` (579 s ->
+0.4 s warm) and the guard written with it asserted on `stored_symbols` alone.
+Two other callers in this repo already carried comments saying never to use
+`candle_coverage` for this — `cloud_autopilot.missing_by_timeframe` and
+`_pending_sources` — so the knowledge existed as PROSE beside four call sites
+and as a test over one. **A guard that names the function it protects cannot
+protect the function nobody has written yet.** The new test inverts it: it
+walks the AST of every module in `tradingagents/` and allows `candle_coverage`
+exactly ONE caller, so the next sibling fails at the point it is added rather
+than the next time somebody presses a button and waits.
+
+**COST** — no money and no lost data: the job was correct, and once past the
+walk it ran clean at 235 pairs/min. The cost was four minutes of a button that
+looks hung every time it is pressed, on a screen whose whole job is to say
+what is happening — and an unknown number of Storage page loads that blocked
+for minutes.
+
+**FIX** — this commit. `update_pairs` reads `msw.candle_index()`
+(incremental: a file whose mtime and size have not moved is taken from cache),
+skipping any pair with no bars exactly as `candle_coverage` did, so an empty
+candle file still falls into `missing` and is re-downloaded.
+`/api/storage/coverage` answers from a `BackgroundValue` (`COVERAGE_TTL`,
+600 s) and carries `reading`, and `StoragePanel` prints "reading the candle
+files…" instead of `0 bars · 0 coin/timeframe pairs` while that first read is
+in flight.
+
+**GUARD** — `tests/test_update_says_what_it_is_doing.py`:
+`test_no_job_walks_the_candle_store_to_learn_names_or_times` (AST, one allowed
+caller), `test_the_storage_screen_never_waits_for_the_disk`,
+`test_reading_and_empty_are_different_sentences`. All three verified RED on
+the pre-fix files and green after.
+
+---
+
 ## RCA-2026-09-15-C — the live gate charged two of the three costs, so a contract could eat its own target in funding and still read "ok"
 
 **CEO**

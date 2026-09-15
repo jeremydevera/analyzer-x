@@ -939,7 +939,11 @@ export const api = {
     }),
 
   storageByCoin: () => get<{ rows: CoinStorageRow[] }>("/api/storage/by-coin"),
-  coverage: () => get<{ rows: CoverageRow[] }>("/api/storage/coverage"),
+  /** `reading` is true while the background read is still walking the
+   *  candle files — an EMPTY list then means "not known yet", never
+   *  "no candles". The two must never print the same sentence. */
+  coverage: () => get<{ rows: CoverageRow[]; reading?: boolean }>(
+    "/api/storage/coverage"),
   /** what each month of stored data costs, and the delete jobs' progress */
   storageMonths: () => get<StorageMonths>("/api/storage/months"),
   /** delete `through` AND every older month of one store; a refusal comes

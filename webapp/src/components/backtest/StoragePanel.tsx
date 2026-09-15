@@ -45,6 +45,10 @@ interface Grouped {
 export default function StoragePanel() {
   const [rows, setRows] = useState<CoinStorageRow[]>([]);
   const [coverage, setCoverage] = useState<CoverageRow[]>([]);
+  // "still reading" is not "no candles" (label-must-match-data). The
+  // coverage read walks 1.77 GB of candle files, so it now answers from
+  // a background value and the FIRST answer is empty-with-reading.
+  const [covReading, setCovReading] = useState(true);
   const [err, setErr] = useState("");
   const [pick, setPick] = useState("");
   const [tab, setTab] = useState("ALL");
@@ -52,7 +56,7 @@ export default function StoragePanel() {
 
   useEffect(() => {
     api.storageByCoin().then((d) => setRows(d.rows)).catch((e) => setErr(String(e)));
-    api.coverage().then((d) => setCoverage(d.rows)).catch(() => {});
+    api.coverage().then((d) => { setCoverage(d.rows); setCovReading(!!d.reading); }).catch(() => {});
   }, []);
 
   useEffect(() => { setPage(1); setPick(""); }, [tab]);
@@ -237,8 +241,10 @@ export default function StoragePanel() {
         <div className="flex flex-wrap items-baseline justify-between gap-3 px-5 pt-4">
           <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Candles on this PC</h3>
           <span className="text-theme-xs text-gray-500 dark:text-gray-400">
-            {coverage.reduce((a, c) => a + c.bars, 0).toLocaleString()} bars ·{" "}
-            {coverage.length} coin/timeframe pairs
+            {covReading && !coverage.length
+              ? "reading the candle files…"
+              : <>{coverage.reduce((a, c) => a + c.bars, 0).toLocaleString()} bars ·{" "}
+                  {coverage.length} coin/timeframe pairs</>}
           </span>
         </div>
         <div className="w-full p-2">

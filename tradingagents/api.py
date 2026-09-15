@@ -899,11 +899,35 @@ def storage_by_coin() -> dict:
     return {"rows": rows}
 
 
-@app.get("/api/storage/coverage")
-def storage_coverage() -> dict:
+def _read_coverage() -> dict:
+    """The slow read. Runs in `_COVERAGE`'s background thread only."""
     from tradingagents import market_sweep as msw
 
-    return {"rows": msw.candle_coverage()}
+    return {"rows": msw.candle_coverage(), "reading": False}
+
+
+# A REQUEST NEVER WAITS FOR THE DISK (Sep 15, 2026). `candle_coverage()` opens
+# and JSON-parses every candle file — 5,235 files, 1.77 GB on the operator's
+# mechanical G: — and this route called it INSIDE the handler, so opening the
+# Storage screen held a browser lane for minutes. It is the same disease as
+# `/api/cloud/status` (216 s, RCA-2026-09-09-I) and `/api/strategies`
+# (267 s), and the same cure, which this file already imports.
+#
+# The TTL is long because the answer is: coverage moves only when a download
+# runs, and the read itself is the expensive thing being spaced out.
+COVERAGE_TTL = 600.0
+_COVERAGE = BackgroundValue(
+    "storage-coverage", _read_coverage, ttl=COVERAGE_TTL,
+    on_error=lambda exc: {"rows": [], "reading": False,
+                          "why": f"{type(exc).__name__}: {exc}"})
+
+
+@app.get("/api/storage/coverage")
+def storage_coverage() -> dict:
+    # `reading: True` and an EMPTY list are different things and the screen
+    # must be able to tell them apart — "no candles" is a fact about the
+    # store, "still reading" is a fact about this request.
+    return _COVERAGE.get(pending={"rows": [], "reading": True})
 
 
 @app.get("/api/storage/sizes")

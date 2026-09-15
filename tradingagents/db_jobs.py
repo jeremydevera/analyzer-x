@@ -756,12 +756,34 @@ def update_pairs(lost: list | None = None) -> tuple:
     live = live_symbols()
     now = time.time()
     have, ordered = set(), []
-    for c in msw.candle_coverage():
-        sym, tf = c.get("symbol"), c.get("timeframe")
+    # `candle_index`, NOT `candle_coverage` — THE SAME FIX AS `stored_symbols`,
+    # two days later, in the sibling nobody grepped for (RCA-2026-09-14-F).
+    #
+    # `candle_coverage()` opens and JSON-parses EVERY candle file to build
+    # display strings, of which this loop keeps three fields: symbol, timeframe
+    # and `last_ms`. `candle_index()` carries all three and is incremental — a
+    # file whose mtime and size have not moved is taken from the cache and
+    # never re-read.
+    #
+    # Measured on the operator's store while UPDATE CANDLES was running:
+    # 5,235 files, 1.77 GB on a mechanical G:, and the button sat on
+    # "starting" for over three minutes with py-spy inside
+    # `read_text -> candle_coverage -> update_pairs`. `stored_symbols` was
+    # given exactly this fix on Sep 12 (579 s -> 0.4 s warm) and this caller
+    # was not, because the search was for the CALLER and not for the CONCEPT
+    # — the mistake CLAUDE.md's "grep for the CONCEPT" rule was written about.
+    #
+    # A pair with NO BARS is skipped, exactly as `candle_coverage` skipped it
+    # (`if not ts: continue`): it then falls into `missing` below and is
+    # re-downloaded, which is what an empty candle file deserves.
+    for key, got in (msw.candle_index() or {}).items():
+        if not (got or {}).get("bars"):
+            continue
+        sym, _, tf = str(key).rpartition("-")
         if not sym or not tf:
             continue
         have.add((sym, tf))
-        behind = now - float(c.get("last_ms") or 0) / 1000.0
+        behind = now - float(got.get("last_ms") or 0) / 1000.0
         ordered.append((behind, sym, tf))
     # most behind first, then alphabetical — `sort(reverse=True)` would also
     # reverse the tie-break, so two pairs the same distance behind came back in

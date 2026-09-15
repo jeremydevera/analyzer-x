@@ -163,3 +163,79 @@ def test_every_button_gets_it(kind):
     that single path."""
     assert kind in dj.FILES
     assert dj.FILES[kind]["progress"].name == f"db_{kind}.json"
+
+
+# ------------------------------- 4. the CONCEPT, not one caller (Sep 15, 2026)
+def test_no_job_walks_the_candle_store_to_learn_names_or_times():
+    """The fix above was applied to `stored_symbols` on Sep 12 and to nothing
+    else, so `update_pairs` — behind UPDATE CANDLES — kept the slow path and
+    the button sat on "starting" for over three minutes with py-spy inside
+    `read_text -> candle_coverage -> update_pairs`.
+
+    CLAUDE.md already says to grep the CONCEPT rather than the caller when a
+    rule changes; this is that grep, written down so it runs every time.
+    `candle_coverage` opens and JSON-parses every candle file (5,235 files,
+    1.77 GB here) to build DISPLAY strings. Exactly one caller legitimately
+    wants those strings — the Storage screen's coverage table — and it reads
+    them on a background thread. Everything else wants names, bars or
+    `last_ms`, all of which `candle_index()` carries incrementally.
+    """
+    import ast
+    import pathlib
+
+    offenders = []
+    for f in pathlib.Path("tradingagents").rglob("*.py"):
+        if f.name == "market_sweep.py":
+            continue                       # where it is defined
+        tree = ast.parse(f.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            fn = node.func
+            name = fn.attr if isinstance(fn, ast.Attribute) else getattr(fn, "id", "")
+            if name == "candle_coverage":
+                offenders.append(f"{f.name}:{node.lineno}")
+    # the ONE allowed caller: the background reader behind /api/storage/coverage
+    assert offenders == ["api.py:" + str(_coverage_line())], offenders
+
+
+def _coverage_line() -> int:
+    import inspect
+
+    from tradingagents import api
+
+    src, start = inspect.getsourcelines(api._read_coverage)
+    for i, line in enumerate(src):
+        if "candle_coverage()" in line:
+            return start + i
+    raise AssertionError("_read_coverage no longer calls candle_coverage")
+
+
+def test_the_storage_screen_never_waits_for_the_disk():
+    """A request never waits for a 1.77 GB walk — the same rule `/api/cloud
+    /status` (216 s) and `/api/strategies` (267 s) were fixed under."""
+    import inspect
+
+    from tradingagents import api
+
+    src = inspect.getsource(api.storage_coverage)
+    assert "_COVERAGE.get(" in src, "the route reads the disk in the handler"
+    assert "candle_coverage" not in src
+    assert '"reading": True' in src, (
+        "an empty list while reading must not read as an empty store")
+    assert api.COVERAGE_TTL >= 60.0
+
+
+def test_reading_and_empty_are_different_sentences():
+    """label-must-match-data: "0 bars · 0 pairs" is a claim about the store,
+    and the first answer is always empty because the read is backgrounded."""
+    import pathlib
+
+    panel = pathlib.Path(
+        "webapp/src/components/backtest/StoragePanel.tsx"
+    ).read_text(encoding="utf-8")
+    assert "reading the candle files…" in panel
+    assert "covReading && !coverage.length" in panel, (
+        "it must only say `reading` while it has nothing, not for ever")
+    client = pathlib.Path("webapp/src/lib/api.ts").read_text(encoding="utf-8")
+    assert "reading?: boolean" in client

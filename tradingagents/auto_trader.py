@@ -1613,6 +1613,83 @@ def funding_read(symbol: str, *, fx=None) -> dict:
     return out
 
 
+# A STOP BEYOND LIQUIDATION IS NOT A STOP.
+#
+# At 20x the venue closes a position about 1/20 of the way against it, less
+# the maintenance margin it keeps: MEXC publishes `maintenanceMarginRate`
+# 0.005 for these contracts, so the real distance is 1/20 - 0.005 = 4.50%.
+# Measured against the venue's own figure on the operator's live PDDSTOCK
+# position (`Sep 15, 2026`): entry 78.92, MEXC's liquidatePrice 75.30 —
+# **4.59%** away. The arithmetic and the venue agree.
+#
+# Twenty strategies in the registry carry a 4% stop. At 20x that leaves 0.5%
+# of room, which entry and exit fees plus a few hours of funding can eat — so
+# the venue liquidates the position (losing the WHOLE margin) before the stop
+# it was given can fire (losing 4%). None of them is armed today; this is what
+# stops the next deploy of one.
+STOP_LIQ_CEILING = 0.8      # a stop may sit at most this far toward liquidation
+
+
+def liquidation_distance(symbol: str, *, fx=None,
+                         leverage: int = LEVERAGE) -> float | None:
+    """How far price moves against a position before the VENUE closes it.
+
+    A fraction of entry. `None` when the contract's maintenance rate cannot
+    be read — unknown is not zero, and a caller must fall back rather than
+    assume the position is safe.
+    """
+    if fx is None:
+        from tradingagents.dataflows import mexc_futures as fx  # noqa: PLC0415
+    try:
+        mmr = float((fx.contract_spec(symbol) or {}).get(
+            "maintenanceMarginRate") or 0.0)
+    except Exception:                                           # noqa: BLE001
+        return None
+    if mmr <= 0 or leverage <= 0:
+        return None
+    return max(0.0, (1.0 / leverage) - mmr)
+
+
+def liquidation_warning(symbol: str, pos: dict, venue: dict) -> dict | None:
+    """Is this OPEN position going to be liquidated before its stop fires?
+
+    The pre-trade guard (`liquidation_distance`) keeps a new trade clear of
+    the wall. This is the other half: a position already open drifts TOWARD
+    the wall as fees and funding eat its margin, and the venue moves
+    `liquidatePrice` as it does. MEXC pushes that figure on
+    `push.personal.liquidate.risk` every few seconds, and until Sep 15, 2026
+    it was recorded and read by nothing.
+
+    Returns None when everything is fine or nothing can be measured — a
+    missing `liquidatePrice` is not a safe position, it is an unmeasured one,
+    and the caller says so rather than this inventing a verdict.
+    """
+    try:
+        liq = float(venue.get("liquidatePrice") or 0)
+        sl = float(pos.get("sl") or 0)
+        entry = float(pos.get("entry") or venue.get("holdAvgPrice") or 0)
+        side = int(pos.get("side") or 0)
+    except (TypeError, ValueError):
+        return None
+    if not liq or not sl or not entry or not side:
+        return None
+    # A LONG is liquidated BELOW and stopped BELOW: the stop must be the
+    # nearer of the two. A short is the mirror.
+    beyond = (sl <= liq) if side > 0 else (sl >= liq)
+    if not beyond:
+        return None
+    room = abs(entry - liq) / entry
+    stop_at = abs(entry - sl) / entry
+    return {"symbol": symbol, "strategy": pos.get("strategy"),
+            "trade_id": pos.get("trade_id"), "entry": entry,
+            "stop": sl, "liquidation": liq,
+            "stop_pct": round(stop_at, 5), "liquidation_pct": round(room, 5),
+            "why": (f"the stop at {sl:.6g} is PAST the venue's liquidation "
+                    f"price {liq:.6g} — MEXC would close this position and "
+                    f"take the whole margin ({room:.2%} from entry) before "
+                    f"the {stop_at:.2%} stop could fire")}
+
+
 def _hold_label(seconds: float) -> str:
     """"15m" / "1h" / "4h" — never "0h".
 
@@ -1846,11 +1923,19 @@ def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None,
                          and hold_s >= FUNDING_UNKNOWN_HOLD_S)
     if funding_blind:
         verdict = "block"
+    # ...and a stop the venue would liquidate THROUGH is not a stop. Losing
+    # the whole margin is a different trade from losing the stop, and no row
+    # in any backtest measured that one.
+    liq = liquidation_distance(symbol, fx=fx)
+    stop_past_liq = bool(sl and liq and sl >= liq * STOP_LIQ_CEILING)
+    if stop_past_liq:
+        verdict = "block"
     return {"verdict": verdict, "strategy": key, "symbol": symbol,
             "tp": tp, "spread": m["spread"], "slippage": m["slippage"],
             "round_trip_cost": round_trip, "cost_ratio": ratio,
             "notional_tested": deepest, "book_exhausted": m["book_exhausted"],
             "side_tested": int(side),
+            "liquidation_distance": liq,
             "funding_known": fund["known"], "funding_cost": fund["cost"],
             "funding_per_day": fund["per_day"],
             "funding_hold_s": hold_s, "funding_cycle_h": fund["cycle_h"],
@@ -1866,6 +1951,10 @@ def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None,
                 + (f" · this trade is expected to hold {_hold_label(hold_s)}, "
                    f"long enough to pay funding, and this contract's funding "
                    f"cannot be measured ({fund['why']})" if funding_blind else "")
+                + (f" · the {sl:.2%} stop sits {sl / liq:.0%} of the way to "
+                   f"liquidation ({liq:.2%} at {LEVERAGE}x) — the venue would "
+                   f"close this position and take the WHOLE margin before the "
+                   f"stop could fire" if stop_past_liq else "")
                 + (f" · the gap between buy and sell ({m['spread']:.3%}) is "
                    f"wider than the {sl:.2%} stop — a stop inside the gap is "
                    f"already passed when it is placed"
@@ -3837,9 +3926,26 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                 # the BASE slot's rule is unchanged: does the venue report a
                 # position on this contract at all. Volume never enters into
                 # it, so a payload without holdVol cannot invent an exit.
+                _open = fx.open_positions(symbol)
                 live_gone = not any(
-                    p.get("symbol") == symbol
-                    for p in fx.open_positions(symbol))
+                    p.get("symbol") == symbol for p in _open)
+                # WHILE WE HAVE THE VENUE'S OWN PAYLOAD IN HAND. No extra
+                # call: `liquidatePrice` moves as fees and funding eat the
+                # margin, so a stop that was clear of the wall at entry can
+                # end up behind it. Once an hour per position, never per
+                # cycle — a repeated alarm is a silence.
+                for _p in _open:
+                    if _p.get("symbol") != symbol:
+                        continue
+                    _warn = liquidation_warning(symbol, pos, _p)
+                    if not _warn:
+                        continue
+                    if _say_once(f"liq-{symbol}-{pos.get('strategy')}", 3600):
+                        logger.critical(
+                            "LIQUIDATION BEFORE STOP: %s %s — %s", symbol,
+                            pos.get("strategy"), _warn["why"])
+                        append_ledger({**_warn, "action": "liquidation_risk",
+                                       "dry_run": False})
         if outcome and not pos_dry and not live_gone:
             # THE EXCHANGE IS THE SOURCE OF TRUTH. A barrier cross on our
             # candles means nothing while MEXC still reports the position

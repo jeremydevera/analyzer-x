@@ -404,6 +404,17 @@ and into the ledger:**
   LEVERAGE`, not the martingale rung, which has not existed since the runner
   went flat on 2026-09-11. A verdict measured at a size that cannot happen is
   a false label.
+* **A STOP BEYOND LIQUIDATION IS NOT A STOP.** At 20x the venue closes a
+  position `1/20 - maintenanceMarginRate` against it — MEXC publishes 0.005
+  for these contracts, so **4.50%**, and its own `liquidatePrice` on the
+  operator's live PDDSTOCK read **4.59%** from entry. Twenty registry
+  strategies carry a **4%** stop: 0.5% of room, which entry and exit fees plus
+  a few hours of funding can eat, so the venue takes the WHOLE margin before
+  the stop fires — an outcome no backtest row has ever measured.
+  `STOP_LIQ_CEILING` refuses a stop past 80% of that distance before entry,
+  and `liquidation_warning` calls out an OPEN position whose stop has drifted
+  behind the wall, off the payload `live_gone` already fetched. The widest
+  ARMED stop is 3.00% (67% of the way), so nothing trading today is touched.
 * **Margin committed EARLIER IN THE SAME CYCLE counts.** Five signals on one
   bar close each read the same pre-trade wallet, so a ceiling that allows one
   position let five through. The venue's `positionMargin` lags the fill and

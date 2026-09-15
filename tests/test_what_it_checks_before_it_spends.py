@@ -373,3 +373,109 @@ def test_the_gate_line_names_the_hold_it_charged_for():
     got = at.edge_check("willr14_15m_sl12tp12", "X_USDT", 5.0,
                         fx=FX(rate=0.002, cycle_h=1), side=1)
     assert "15m hold" in got["reason"], got["reason"]
+
+
+# ------------------------------------------------------ the liquidation wall
+class FXLiq(FX):
+    """A contract that publishes MEXC's real maintenance rate."""
+
+    mmr = 0.005
+
+    def contract_spec(self, symbol):
+        return {"contractSize": 1, "takerFeeRate": self.fee,
+                "maintenanceMarginRate": self.mmr}
+
+
+def test_the_liquidation_distance_matches_the_venues_own_number():
+    """MEXC's liquidatePrice for the operator's live PDDSTOCK position on
+    `Sep 15, 2026`: entry 78.92, liq 75.30 — 4.59% away. The arithmetic,
+    1/20 - 0.005, gives 4.50%; the rest is fees already accrued."""
+    got = at.liquidation_distance("PDDSTOCK_USDT", fx=FXLiq(), leverage=20)
+    assert got == pytest.approx(0.045)
+    assert abs(got - (78.92 - 75.30) / 78.92) < 0.002
+
+
+def test_a_stop_the_venue_would_liquidate_through_is_refused():
+    """Twenty registry strategies carry a 4% stop. At 20x that leaves 0.5% of
+    room, and losing the WHOLE margin is a different trade from losing 4% —
+    one no backtest row ever measured."""
+    wide = [k for k, s in at.STRATEGY_SPECS.items() if s.get("sl") == 0.04]
+    assert wide, "no 4% stop in the registry to test with"
+    got = at.edge_check(wide[0], "X_USDT", 5.0, fx=FXLiq(), side=1)
+    assert got["verdict"] == "block"
+    assert "of the way to liquidation" in got["reason"], got["reason"]
+    assert "WHOLE margin" in got["reason"]
+
+
+def test_the_stops_the_operator_actually_runs_are_clear_of_it():
+    """The widest ARMED stop is 3.00% — 67% of the way. This guard must not
+    stop today's trading to protect a future deploy."""
+    for key in ("ultosc_1h_sl3tp3", "squeeze_1h_sl3tp3", "bb20_1h_sl25tp25"):
+        got = at.edge_check(key, "X_USDT", 5.0, fx=FXLiq(), side=1)
+        assert got["verdict"] in ("ok", "warn"), (key, got["reason"])
+
+
+def test_an_unreadable_maintenance_rate_does_not_invent_safety():
+    class NoRate(FX):
+        def contract_spec(self, symbol):
+            return {"contractSize": 1, "takerFeeRate": self.fee}
+
+    assert at.liquidation_distance("X_USDT", fx=NoRate()) is None
+    # ...and the gate falls back rather than blocking everything
+    got = at.edge_check("ultosc_1h_sl3tp3", "X_USDT", 5.0, fx=NoRate(), side=1)
+    assert got["verdict"] in ("ok", "warn")
+
+
+# --------------------------------------- the wall moves while you hold
+def _venue(liq, entry=100.0):
+    return {"symbol": "X_USDT", "holdAvgPrice": entry, "liquidatePrice": liq}
+
+
+def test_a_long_whose_stop_slipped_past_liquidation_is_called_out():
+    """`liquidatePrice` MOVES: fees and funding eat the margin, so a stop that
+    cleared the wall at entry can end up behind it. MEXC pushes the figure
+    every few seconds and until Sep 15, 2026 nothing read it."""
+    pos = {"side": 1, "entry": 100.0, "sl": 95.0, "strategy": "k"}
+    got = at.liquidation_warning("X_USDT", pos, _venue(96.0))
+    assert got and "PAST the venue's liquidation price" in got["why"]
+    assert "whole margin" in got["why"]
+
+
+def test_a_long_with_the_stop_nearer_than_the_wall_is_fine():
+    pos = {"side": 1, "entry": 100.0, "sl": 97.0, "strategy": "k"}
+    assert at.liquidation_warning("X_USDT", pos, _venue(96.0)) is None
+
+
+def test_a_short_is_read_the_other_way_up_here_too():
+    pos = {"side": -1, "entry": 100.0, "sl": 105.0, "strategy": "k"}
+    assert at.liquidation_warning("X_USDT", pos, _venue(104.0)) is not None
+    pos["sl"] = 103.0
+    assert at.liquidation_warning("X_USDT", pos, _venue(104.0)) is None
+
+
+def test_a_missing_liquidation_price_is_not_a_safe_position():
+    """Unmeasured is not fine — it answers None and the caller says so,
+    rather than this inventing a verdict."""
+    pos = {"side": 1, "entry": 100.0, "sl": 95.0, "strategy": "k"}
+    for bad in ({}, {"liquidatePrice": 0}, {"liquidatePrice": None}):
+        assert at.liquidation_warning("X_USDT", pos, bad) is None
+
+
+def test_the_warning_is_rate_limited_and_ledgered():
+    import inspect
+
+    src = inspect.getsource(at._process_slot)
+    assert '"action": "liquidation_risk"' in src
+    assert "_say_once(f\"liq-" in src, "a repeated alarm is a silence"
+    assert "LIQUIDATION BEFORE STOP" in src
+
+
+def test_the_watch_costs_no_extra_venue_call():
+    """It reads the payload `live_gone` already fetched."""
+    import inspect
+
+    src = inspect.getsource(at._process_slot)
+    i = src.index("_open = fx.open_positions(symbol)")
+    j = src.index("liquidation_warning", i)
+    assert "fx.open_positions" not in src[i + 10:j], \
+        "the venue must not be asked twice for the same list"

@@ -250,6 +250,17 @@ committed earlier in the same cycle), `slippage_paid` with a `fill_slippage`
 ledger row and a loud line when the fill is worse than modelled, and a
 `size_capped` row when the venue shrinks an order.
 
+**ALSO IN THIS ROUND (the loop kept going):** a stop the VENUE would
+liquidate through. At 20x the wall is `1/20 - 0.005 = 4.50%` and MEXC's own
+`liquidatePrice` on the operator's live PDDSTOCK read **4.59%** from entry —
+the arithmetic and the venue agree. Twenty registry strategies carry a **4%**
+stop, leaving 0.5% of room for fees and funding to eat, after which the venue
+takes the whole margin instead of the 4% the backtest measured. `edge_check`
+refuses a stop past 80% of that distance, and `liquidation_warning` calls out
+an already-open position whose stop has drifted behind the wall, using the
+payload the exit check already fetched rather than a second venue call. The
+widest ARMED stop is 3.00%, so nothing trading today is affected.
+
 **GUARD** — `tests/test_what_it_checks_before_it_spends.py`. Two of its tests
 found bugs in this work before it shipped: the unknown-funding block was DEAD
 CODE at an 8-hour threshold (no strategy holds that long), and the capital

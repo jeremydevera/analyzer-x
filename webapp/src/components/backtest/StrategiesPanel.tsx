@@ -1524,6 +1524,11 @@ export default function StrategiesPanel() {
               {["id", "coin", "tf", "signal", "th%", "SL%", "TP%", "sizing", "lev", "margin $",
                 winHead("PROFIT $", servedFilters.months),
                 winHead("win %", servedFilters.months),
+                // BESIDE THE WIN RATE it qualifies — operator, Sep 15, 2026.
+                // It sat last, several columns from the number it exists to
+                // put in context ("high winrate but tp is low and sl is high,
+                // its still not profitable").
+                winHead("balanced", servedFilters.months),
                 winHead("trades", servedFilters.months),
                 winHead("W", servedFilters.months),
                 winHead("L", servedFilters.months),
@@ -1531,7 +1536,6 @@ export default function StrategiesPanel() {
                   ? ["window"] : [winHead("green", servedFilters.months)]),
                 "dip $",
                 "last backtest",
-                winHead("balanced", servedFilters.months),
                 ...monthCols.map(monthLabel)].map((h) => (
                 <TableCell key={h} isHeader
                   onClick={() => {
@@ -1623,6 +1627,24 @@ export default function StrategiesPanel() {
                            title={stale(r) ? STALE_WHY : undefined}>
                   {win(r).winrate?.toFixed(2)}
                 </TableCell>
+                {/* BALANCED, 1-10 over win rate AND profit. The tooltip is the
+                    working — "sometimes it has high winrate but since tp is low
+                    and sl is high, its still not profitable" is a number the
+                    operator has to be able to audit. Dimmed with the window on
+                    and the row not restated, because then the score mixes the
+                    window's profit with the row's whole-history win rate. */}
+                <TableCell className={`px-3 py-2 text-theme-sm font-semibold ${
+                    stale(r) || mixedScore(r) ? "italic text-gray-400 dark:text-gray-500"
+                    : (r.balanced ?? 0) >= 8 ? "text-success-600"
+                    : (r.balanced ?? 0) >= 5 ? "text-warning-600 dark:text-warning-400"
+                    : "text-error-500"}`}
+                  title={stale(r)
+                    ? `${r.balanced_why ?? ""} — ${STALE_WHY}`
+                    : mixedScore(r)
+                      ? `${r.balanced_why ?? ""} — ${SCORE_WHY}`
+                      : (r.balanced_why ?? "")}>
+                  {r.balanced === undefined ? "—" : r.balanced.toFixed(1)}/10
+                </TableCell>
                 <TableCell className={`px-3 py-2 text-theme-sm ${stale(r) ? "italic text-gray-400 dark:text-gray-500" : "text-gray-500 dark:text-gray-400"}`}
                            title={stale(r) ? STALE_WHY : undefined}>
                   {win(r).trades}
@@ -1670,24 +1692,6 @@ export default function StrategiesPanel() {
                              ? `results last written ${fmtWhenMs(r.measured_run_ms)}`
                              : "this coin has no measurement on record"}>
                   {r.measured_ms ? fmtWhenMs(r.measured_ms) : "—"}
-                </TableCell>
-                {/* BALANCED, 1-10 over win rate AND profit. The tooltip is the
-                    working — "sometimes it has high winrate but since tp is low
-                    and sl is high, its still not profitable" is a number the
-                    operator has to be able to audit. Dimmed with the window on
-                    and the row not restated, because then the score mixes the
-                    window's profit with the row's whole-history win rate. */}
-                <TableCell className={`px-3 py-2 text-theme-sm font-semibold ${
-                    stale(r) || mixedScore(r) ? "italic text-gray-400 dark:text-gray-500"
-                    : (r.balanced ?? 0) >= 8 ? "text-success-600"
-                    : (r.balanced ?? 0) >= 5 ? "text-warning-600 dark:text-warning-400"
-                    : "text-error-500"}`}
-                  title={stale(r)
-                    ? `${r.balanced_why ?? ""} — ${STALE_WHY}`
-                    : mixedScore(r)
-                      ? `${r.balanced_why ?? ""} — ${SCORE_WHY}`
-                      : (r.balanced_why ?? "")}>
-                  {r.balanced === undefined ? "—" : r.balanced.toFixed(1)}/10
                 </TableCell>
                 {/* one column per month, the row's own profit in it. A month
                     the row never traded is an em dash — that is missing DATA,

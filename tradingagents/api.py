@@ -518,7 +518,15 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
         buf.truncate(0)
         return out
 
-    w.writerow(cols + ["balanced", "balanced_why", "monthly_json"])
+    # BALANCED SITS BESIDE WIN %, in the file as on the screen. Operator,
+    # `Sep 15, 2026`: *"i want the balanced beside the winrate in table and
+    # when downloading"*. It was last in both, which put the score that rates
+    # win rate AND profit together several columns away from the win rate it
+    # is there to qualify.
+    _bal_at = (cols.index("winrate") + 1) if "winrate" in cols else len(cols)
+    head = list(cols)
+    head[_bal_at:_bal_at] = ["balanced", "balanced_why"]
+    w.writerow(head + ["monthly_json"])
     yield flush()
     # A StreamingResponse has already sent 200 by the time a row fails, so an
     # exception here cannot become an error page — it just ENDS the download.
@@ -568,9 +576,10 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
             r["last_backtest_run"] = (pv.fmt_when(r["measured_run_ms"] / 1000)
                                       if r.get("measured_run_ms") else None)
             _watch.see(r)
-            w.writerow([r.get(c) for c in cols] + [score, why]
-                       + [_json.dumps(r.get("monthly") or {},
-                                      separators=(",", ":"))])
+            _row = [r.get(c) for c in cols]
+            _row[_bal_at:_bal_at] = [score, why]
+            w.writerow(_row + [_json.dumps(r.get("monthly") or {},
+                                           separators=(",", ":"))])
             sent += 1
             yield flush()
             # LET THE REST OF THE APP BREATHE. A windowed download RE-MEASURES

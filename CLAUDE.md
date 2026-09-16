@@ -698,7 +698,21 @@ A bug that never fired is labelled "NEVER HAPPENED YET" before its hypothetical
 timeline. Applies to "what are the bugs", "is there a bug", reporting one found in
 passing, and explaining any fix.
 
-ALWAYS ON — `short-and-plain`. STRICT. **ONE SENTENCE, every answer.**
+ALWAYS ON — `short-and-plain`. STRICT. **ONE SENTENCE, EVERY ANSWER, IN
+WORDS A NON-PROGRAMMER READS ONCE AND UNDERSTANDS.**
+Operator, 2026-09-17: *"explain always in non tech this is last warning i
+want this to be active skill always"* — said after four correct answers
+about one trade that were unreadable (*"the demo half of MTX4FSGN"*, *"no
+forced-close row anywhere in the ledger"*, *"ΔE 8.3 for a deutan reader"*).
+A reply FAILS on jargon even when every number in it is right. The test
+before sending: could someone who has never opened a code editor, and does
+not trade, read this sentence once and know what happened? Section 4 of the
+skill lists the exact words to stop using and what to say instead — `ledger`
+is *your trade record*, `the book` is *the real-money account* or *the
+practice account*, `TP`/`SL` are the *"close it, I won"* and *"close it, I
+was wrong"* prices, `armed` is *switched on*. Numbers the operator sees on
+their own screen stay exactly as they are — `#XH2KSFXG`, `VUG`, `87.455`,
+`1:38pm`. Swapping the word is never softening the fact.
 Operator, 2026-09-15, after a six-paragraph reply written while this rule was
 loaded: *"why are you explaining on paragraph again? this is strcit moving
 forward, i want 1 sentence / this is the last time i will say it"*. The old

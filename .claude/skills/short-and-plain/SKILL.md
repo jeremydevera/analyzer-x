@@ -1,6 +1,6 @@
 ---
 name: short-and-plain
-description: ALWAYS ON, STRICT. ONE SENTENCE. Every reply is ONE SENTENCE, in BEGINNER language, carrying the operator's own numbers. Not "usually one" — one. Asked for the last time on 2026-09-15: "i want 1 sentence / this is the last time i will say it". Jargon is defined in six words or fewer the first time it appears. The operator has asked six times and been ignored; violating this fails the reply no matter how correct the content is. Replaces the deleted short-answers, one-word and plain-words skills.
+description: ALWAYS ON, STRICT. ONE SENTENCE, IN NON-TECHNICAL WORDS. Every reply is ONE SENTENCE a person who has never written code can read, carrying the operator's own numbers. FINAL WARNING given 2026-09-17: "explain always in non tech this is last warning i want this to be active skill always". A reply full of jargon FAILS even if every number in it is right. Section 4 lists the exact words to stop using and what to say instead. Not "usually one" — one. Asked for the last time on 2026-09-15: "i want 1 sentence / this is the last time i will say it". Jargon is defined in six words or fewer the first time it appears. The operator has asked six times and been ignored; violating this fails the reply no matter how correct the content is. Replaces the deleted short-answers, one-word and plain-words skills.
 ---
 
 # Short and Plain
@@ -148,13 +148,67 @@ the difference decides the tone.
 10. **A wrong answer in simple words is still wrong.** Simplifying never softens
     a loss, hides a bug, or rounds a risk down.
 
-## 4. How the three fit together
+## 4. THE WORDS TO STOP USING — final warning, 2026-09-17
+
+> *"explain always in non tech this is last warning i want this to be active
+> skill always"*
+
+That came after four answers in a row about one trade. Every number in them was
+right and every one of them was unreadable. What was actually sent:
+
+> *"the demo half of MTX4FSGN stayed open and reached that target at 7:04pm"*
+> *"no panic or forced-close row anywhere in the ledger"*
+> *"#039855 against #f04438 measures ΔE 8.3 for a deutan reader"*
+> *"the four counters count ROWS by their own books"*
+
+**The test before sending: could someone who has never opened a code editor,
+and who does not trade, read this sentence once and know what happened?** If a
+word in it only makes sense to a programmer or to a trader, it is the wrong
+word — swap it, do not define it and carry on.
+
+| Stop saying | Say this |
+|---|---|
+| the ledger | your trade record / the list of every trade |
+| the live book / the paper book | the real-money account / the practice account |
+| demo, paper, dry run | practice trades, no real money |
+| TP / take-profit | the "close it, I won" price |
+| SL / stop-loss | the "close it, I was wrong" price |
+| bracket | the two automatic exit orders sitting at the exchange |
+| entry / exit | the price you got in at / the price you got out at |
+| under water | losing / down on the trade |
+| row id / strategy id | the strategy's code, like #XH2KSFXG |
+| trade id | the trade's code |
+| the key / per-key / grouped by key | the strategy's name, without the coin |
+| per-id, per-contract, per-coin | one line for each coin |
+| the record reconciles | the numbers add up |
+| a row in the ledger | a line in your trade record |
+| the API / the route / the endpoint | the app |
+| the grid / the panel / the cell | the table on your screen / the box |
+| armed / disarmed | switched on / switched off |
+| ΔE, deutan, CVD | colour-blind people can still tell them apart |
+| the emitter / the call path / file.py:120 | (never say these to the operator at all) |
+| realized PnL | the money actually won or lost, after closing |
+| intrabar | during the candle, before it finished |
+| slot, state key, book slot | which coin, on which account |
+
+Two rules that go with the table:
+
+* **A code word may still appear if it is something they SEE on their screen**
+  — `#XH2KSFXG`, `VUG`, `87.455`, `1:38pm`. Those are theirs. It is the words
+  that only exist inside the program that are banned.
+* **Swapping is not softening.** "The exchange closed it at 86.89, below the
+  87.02 you got in at, so it lost $0.84" is plain AND exact. Plain words never
+  round a loss down, hide a problem, or make a guess sound certain.
+
+---
+
+## 5. How the three fit together
 
 They are not in tension, and none is an excuse for breaking the others.
 
 * A **fact** gets one sentence — in plain words. Not one sentence of jargon.
-* An **explanation** gets up to six sentences — in plain words. Not six
-  sentences of jargon, and not sixteen sentences of plain ones.
+* An **explanation** gets ONE sentence too — in plain words. Not one
+  sentence of jargon, and not six plain ones.
 * Compress **structure**, never **comprehension**. Cutting a term's definition
   to save a line breaks rule 1; spending three paragraphs on it breaks the cap.
   Six words, inline, and move on.

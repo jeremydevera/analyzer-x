@@ -85,11 +85,49 @@ def test_the_route_needs_confirm_and_maps_the_refusal():
     assert "HTTPException(409" in src, "a busy runner is a 409, not a crash"
 
 
-def test_the_button_says_the_side_effects_before_anything_happens():
+def test_there_is_one_reset_button_per_book():
+    """Operator, `Sep 17, 2026`: *"i want option to reset w/l for deom and
+    live"*. One button wiped both records together; the demo record is a
+    measurement you may want to start again, the live record is what really
+    happened to your money."""
     p = open("webapp/src/components/trade/StrategiesGrid.tsx",
              encoding="utf-8").read()
-    assert "RESET W/L" in p
+    assert 'RESET {word} W/L' in p
+    assert '[["paper", "DEMO"], ["real", "LIVE"]]' in p
+    assert "recordReset([book])" in p, "one book per press, never both"
+    assert "RESET W/L<" not in p, "the old both-books button is still there"
+
+
+def test_each_button_says_ITS_OWN_side_effects_before_anything_happens():
+    """The two confirms must DIFFER, because the side effects do: only a demo
+    reset clears open demo positions, and only a live reset moves today's
+    loss-cap counter. One shared wording would be false on one of the two
+    buttons (label-must-match-data)."""
+    p = open("webapp/src/components/trade/StrategiesGrid.tsx",
+             encoding="utf-8").read()
     assert "window.confirm" in p, "irreversible-looking actions confirm first"
-    assert "archived to a backup file, not deleted" in p
+    assert "archived to a backup file, not deleted" in p, "true of both"
+    # the DEMO half
+    assert "open demo positions are cleared" in p
+    assert "LIVE record and open real positions are untouched" in p
+    # the LIVE half
     assert "loss-cap counter resets too" in p
     assert "real positions are untouched" in p
+    assert "DEMO record is untouched" in p
+    # and the branch that keeps them apart
+    assert 'book === "paper"' in p, (
+        "both buttons share one wording again — the confirm has to branch on "
+        "which book is being reset")
+
+
+def test_a_live_reset_leaves_the_demo_record_alone(tmp_path, monkeypatch):
+    """The other direction of `test_paper_only_leaves_the_real_record_alone`,
+    which is the half the new LIVE button uses."""
+    _seed(tmp_path, monkeypatch)
+    got = at.reset_record(["real"])
+    left = [json.loads(x) for x in
+            at.LEDGER_PATH.read_text(encoding="utf-8").splitlines() if x]
+    trades = [r for r in left if r.get("action") in ("enter", "exit")]
+    assert trades, "the demo trades were removed by a LIVE reset"
+    assert all(r.get("dry_run") for r in trades),         "a real trade row survived a real reset"
+    assert got["removed"] > 0

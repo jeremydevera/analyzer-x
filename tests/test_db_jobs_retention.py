@@ -5,6 +5,20 @@ from the database on the promise that the full grid is already on disk.
 """
 from tradingagents import db_jobs
 
+def _as_index(rows):
+    """A `candle_coverage`-shaped list as a `candle_index` mapping.
+
+    `update_pairs` reads `candle_index()` since Sep 15, 2026: same symbol,
+    timeframe and `last_ms`, but incremental, where `candle_coverage` opened
+    and parsed all 1.77 GB of candle files to build display strings
+    (RCA-2026-09-15-D). `bars` is what separates a real pair from an empty
+    file, so every stub row gets one.
+    """
+    return {f"{r['symbol']}-{r['timeframe']}":
+            {"bars": r.get("bars", 900), "last_ms": r.get("last_ms", 0)}
+            for r in rows}
+
+
 
 def _payload():
     return {"rows": [{"coin": "APEX", "tf": "1h", "signal": "mom6", "th": 0.0,
@@ -141,9 +155,9 @@ def test_update_mode_tops_up_what_is_already_stored(monkeypatch, tmp_path):
     frame = pd.DataFrame({"Date": pd.to_datetime([1_787_000_000], unit="s"),
                           "Open": [1.0], "High": [1.0], "Low": [1.0],
                           "Close": [1.0], "Volume": [1.0]})
-    monkeypatch.setattr(msw, "candle_coverage", lambda: [
+    monkeypatch.setattr(msw, "candle_index", lambda *a, **k: _as_index([
         {"symbol": "APEX_USDT", "timeframe": "1h"},
-        {"symbol": "XAUT_USDT", "timeframe": "15m"}])
+        {"symbol": "XAUT_USDT", "timeframe": "15m"}]))
     monkeypatch.setattr(msw, "refresh_candles",
                         lambda c, tf, days=365: (seen.append((c, tf))
                                                  or (frame, 7, "delta")))

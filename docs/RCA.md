@@ -172,6 +172,112 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-16-C — five of the operator's row ids collapsed into one switch, and four trades in five were labelled with a coin they were not trading
+
+**CEO**
+
+* You deployed 280 ids. On the trade screen five of them showed as ONE line,
+  under a single id, DM84QDSZ, and one switch moved all five together.
+  Four of those five were labelled with the wrong coin.
+* Why: a strategy is named by its signal, timeframe and targets, and the COIN
+  is not part of that name. So five of your ids, which differ only by coin,
+  became one strategy holding five contracts — and the screen printed the id
+  of whichever coin happened to be first.
+* What stops it now: the screen shows one line per id, each with its own id,
+  and each can be switched to live or demo on its own without moving the
+  other four. A written rule now says an id is the coin plus the
+  six other fields, always.
+
+**DEV**
+
+* `api.trade_strategies` built one row per STRATEGY KEY and hashed its id
+  with `row_id_for(key, coins[key][0], settings)` — the first contract of
+  however many the key held. `strategy_books` was keyed by strategy only, so
+  one entry armed every contract at once.
+* Invariant broken: `label-must-match-data`, and CLAUDE.md rule 22 (name the
+  exact row back before writing) — an id that names the wrong contract cannot
+  be pasted back into a report's find-by-ID box, which is the whole purpose
+  of a stable id (kit item H).
+* Guard: `tests/test_one_id_is_one_switch.py` — 10 tests, driving
+  `api.trade_strategies` with the operator's own shape (one strategy, several
+  contracts).
+
+**SAW** — *"WHY IS #DM84QDSZ IN LIVE TRADE HAVE DIFFERENT COINS?"*, then
+*"FIX IT I DEPLOY SAID DEPLOY AND ID BUT IT HAS DIFFERNT COINS THEN DEPLOY
+THE ID, DONT GROUP THEM AS ONE, CREAET A SKILL FIRST"*.
+
+**TIMELINE**
+
+1. `Sep 16, 2026` — 280 ids deployed. They became **83 strategy keys**,
+   because a key is `signal_timeframe_slXtpY`.
+2. `willr14_30m_sl2tp05` ended up armed on five contracts at once. Their own
+   ids, measured from the store:
+
+   | coin | its real id |
+   |---|---|
+   | DVNSTOCK | **#DM84QDSZ** |
+   | FASTSTOCK | #7BSMBRFA |
+   | KKRSTOCK | #DGCSMB9N |
+   | ROLSTOCK | #MU2AU5P6 |
+   | VUG | #GXTHE8EJ |
+
+3. `#DM84QDSZ` is DVNSTOCK 30m willr14, SL 2.00% / TP 0.50%, flat — **168
+   trades, 97.62%, +$36.72**. The grid printed it on all five, so four labels
+   in five named a contract that row was not trading.
+4. The TRADE HISTORY was already right — it passes each trade's own symbol to
+   `row_id_for` — which is why the fault only showed on the strategies grid,
+   and why it read as "the same id on different coins".
+5. AFTER: the grid returns **120 rows for 85 strategies** — one per deployed
+   id — `willr14_30m_sl2tp05` shows as five separate lines with the five ids
+   above, and **0** rows carry an id that is not their own coin's.
+6. Arming proved on the live settings: with `willr14_30m_sl2tp05|VUG_USDT`
+   set to live, `books_for` answers `[False, True]` for VUG and `[True]` for
+   the other four.
+
+**ROOT CAUSE** — the deployment unit was the strategy key, which does not
+carry the coin, while the operator's unit is the row id, which does.
+
+**WHY IT WAS NOT CAUGHT** — every existing test of that grid asserts on a
+strategy with ONE coin, so the id and the coin agreed by accident. The repo
+had the right rule written down in two places already (the `row_code` hash
+takes seven fields; kit item H says the id is hashed from the combination)
+and no test ever put a second contract on one key. **A guard built on the
+simplest fixture cannot see a bug that needs two of something** — and the
+operator's own deploy was the first time five appeared.
+
+The `blast-radius` half is worth keeping too: making the switch per contract
+changed the SHAPE of `strategy_books`, and six readers did `books.get(key)`.
+The harddev loop found `active_modes` first — it answered `[True]` with one
+id armed live, so the live book would never have run and that row would have
+sat armed on screen taking no trade. `book_names` / `book_names_any` now
+carry the both-shapes rule in one place.
+
+**COST** — no money and no wrong order: the ids were labels, and the trades
+themselves were placed by the strategy on the right contract. The cost was
+the operator's ability to tell which row made the money, and a switch that
+moved five deployments when they meant one.
+
+**FIX** — this commit. `auto_trader.book_slot(key, coin)` (`strategy|COIN`),
+`books_for(key, settings, coin)` consulting the contract entry before the
+bare key, and `book_names` / `book_names_any` for the readers. Every caller
+that knows the contract passes it — `_process_slot`'s entry filter, the live
+and paper armed lists, the scan line's watched timeframes,
+`timeframe_locks`, `deploy_preset._claims`, `db_jobs`'s deployed-coin list —
+and `active_modes` unions across contracts. `api.trade_strategies` emits one
+row per contract with its own id, its own books and only its own open
+positions; a key with no contracts still emits exactly one row, so the
+catalog listing is unchanged. The operator's live config was migrated: 85
+per-strategy switches became **120 per-id switches**.
+
+**GUARD** — `tests/test_one_id_is_one_switch.py`, 10 tests, verified RED on
+the pre-fix files (9 of 10 fail) and green after. 136 tests across
+`test_auto_trader.py`, `test_deploy_preset.py`, `test_runner_stakes_flat.py`
+and `test_a_real_position_is_never_unwatched.py` pass beside it.
+`.claude/skills/deploy-by-id/SKILL.md` is the written rule, registered in
+`SKILLS.md`.
+
+---
+
 ## RCA-2026-09-16-B — switching to demo-only stopped the runner watching the live book, so three closed trades never reached the screen
 
 **CEO**

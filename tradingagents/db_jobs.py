@@ -1333,10 +1333,11 @@ def _armed_symbols() -> list:
         from tradingagents import auto_trader as at
 
         cfg = at.load_settings()
-        books = cfg.get("strategy_books") or {}
         coins = cfg.get("strategy_coins") or {}
-        return sorted({c for k, cs in coins.items()
-                       for c in (cs or []) if books.get(k)})
+        # `strategy|COIN` or the bare key — a row armed per contract must
+        # still count as deployed (deploy-by-id, Sep 16, 2026).
+        return sorted({c for k, cs in coins.items() for c in (cs or [])
+                       if at.book_names(cfg, k, c)})
     except Exception:
         return []
 

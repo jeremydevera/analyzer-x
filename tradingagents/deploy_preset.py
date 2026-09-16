@@ -67,13 +67,17 @@ def _claims(settings: dict) -> dict:
     so applying a preset twice refused four of its own strategies against the
     demo rows it had just written.
     """
+    from tradingagents import auto_trader as at
+
     out: dict = {}
-    books = settings.get("strategy_books") or {}
     coins = settings.get("strategy_coins") or {}
     for key, got in coins.items():
-        if "real" not in (books.get(key) or []):
-            continue
         for coin in got or []:
+            # PER CONTRACT (Sep 16, 2026): `strategy|COIN` first, the bare key
+            # as the fallback. A key armed live on one coin must not be read
+            # as claiming the other four.
+            if "real" not in at.book_names(settings, key, str(coin)):
+                continue
             out.setdefault(str(coin), key)
     return out
 

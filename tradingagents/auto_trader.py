@@ -3604,8 +3604,62 @@ def _env_dry() -> bool:
     return os.getenv("AUTO_TRADE_DRY", "").strip().lower() in ("yes", "true", "1")
 
 
-def books_for(key: str, settings: dict | None = None) -> list[bool]:
-    """Which books THIS strategy trades, as ``dry`` flags.
+def book_slot(key: str, coin: str | None) -> str:
+    """The settings key for ONE deployed row: `strategy|COIN`.
+
+    A row id is coin + timeframe + signal + threshold + SL + TP + sizing, but
+    a STRATEGY key carries only the middle five — so one key can be armed on
+    many contracts and the operator's ids collapse into it. `willr14_30m_
+    sl2tp05` held DVNSTOCK, FASTSTOCK, KKRSTOCK, ROLSTOCK and VUG at once,
+    which is five of their ids under one switch. Their words, Sep 16, 2026:
+    *"I DEPLOY SAID DEPLOY AND ID ... DONT GROUP THEM AS ONE"*.
+
+    See .claude/skills/deploy-by-id.
+    """
+    return key if not coin else f"{key}|{coin}"
+
+
+def _armed_here(key: str, coin: str | None, books: dict) -> bool:
+    """Does the settings file say anything about this row's books at all?
+
+    The three call sites read `k not in _books` to mean "no per-strategy
+    assignment, fall back to the globals". With per-contract entries that
+    question is about the ROW, so it must look for `strategy|COIN` too —
+    otherwise a key armed only per-coin reads as unassigned and takes the
+    global switches instead of the operator's own choice.
+    """
+    return book_slot(key, coin) in books or key in books
+
+
+def book_names(settings: dict, key: str, coin: str | None = None) -> list:
+    """The raw ["real", "paper"] entry for one deployed row, or [].
+
+    `strategy_books` holds BOTH shapes since Sep 16, 2026 — the bare key for
+    a strategy armed as a whole, and `strategy|COIN` for one deployed id —
+    so every reader that used to do `books.get(key)` must come through here
+    or it reads None for a row that is armed per contract.
+    """
+    b = settings.get("strategy_books") or {}
+    got = b.get(book_slot(key, coin)) if coin else None
+    return list(got if got is not None else (b.get(key) or []))
+
+
+def book_names_any(settings: dict, key: str) -> set:
+    """Every book this strategy trades on ANY of its contracts.
+
+    For the questions that are about the STRATEGY rather than one row — "does
+    this key touch real money at all" — where looking at the bare key alone
+    would answer "no" for a key armed only per coin.
+    """
+    out = set(book_names(settings, key))
+    for c in coins_for(key, settings) or []:
+        out |= set(book_names(settings, key, c))
+    return out
+
+
+def books_for(key: str, settings: dict | None = None,
+              coin: str | None = None) -> list[bool]:
+    """Which books THIS strategy trades on THIS contract, as ``dry`` flags.
 
     ``settings["strategy_books"]`` maps a strategy key to any of "real" and
     "paper", so one strategy can be papered while another trades real money.
@@ -3613,12 +3667,21 @@ def books_for(key: str, settings: dict | None = None) -> list[bool]:
     existing settings file has no map, and it must keep behaving exactly as
     it did rather than silently trading nothing (or everything, live).
 
+    PER CONTRACT FIRST (Sep 16, 2026). `strategy|COIN` is consulted before
+    the bare key, so one deployed ROW can be armed or disarmed without moving
+    the other four that happen to share its strategy. A settings file with no
+    per-coin entries behaves exactly as before — this only ever narrows, and
+    only when an entry was written on purpose.
+
     AUTO_TRADE_DRY keeps its long-standing meaning: it ADDS the paper book,
     it does not take the live one away.
     """
     if settings is None:
         settings = load_settings()
-    per = (settings.get("strategy_books") or {}).get(key)
+    _books = settings.get("strategy_books") or {}
+    per = _books.get(book_slot(key, coin))
+    if per is None:
+        per = _books.get(key)
     if per is None:
         books = []
         if settings.get("enabled"):
@@ -3651,7 +3714,15 @@ def active_modes(settings: dict | None = None) -> list[bool]:
         return modes
     modes = []
     for key in settings.get("strategies", []):
-        for dry in books_for(key, settings):
+        # EVERY CONTRACT THIS STRATEGY IS DEPLOYED ON, not the bare key.
+        # Since Sep 16, 2026 a row can be armed per coin (`strategy|COIN`),
+        # so asking `books_for(key)` alone answers about a switch that may no
+        # longer exist: one id armed LIVE out of five read as paper-only here
+        # and the live book would never have been run for it — the strategy
+        # would sit armed on screen and take no trade. `coins_for` is the
+        # same list the cycle walks.
+        for _coin in (coins_for(key, settings) or [None]):
+          for dry in books_for(key, settings, _coin):
             if dry not in modes:
                 modes.append(dry)
     return sorted(modes)
@@ -4124,7 +4195,8 @@ def process_symbol(symbol: str, settings: dict, state: dict, *, fx,
         armed = [k for k in STRATEGY_ORDER
                  if k in settings.get("strategies", [])
                  and symbol in coins_for(k, settings)
-                 and (k not in _books or False in books_for(k, settings))]
+                 and (not _armed_here(k, symbol, _books)
+                      or False in books_for(k, settings, symbol))]
         owners = list(armed)
         for k in state:
             if not is_slice_slot(k) or coin_of_slot(k) != symbol:
@@ -4142,7 +4214,8 @@ def process_symbol(symbol: str, settings: dict, state: dict, *, fx,
     armed = [k for k in STRATEGY_ORDER
              if k in settings.get("strategies", [])
              and symbol in coins_for(k, settings)
-             and (k not in _books or True in books_for(k, settings))]
+             and (not _armed_here(k, symbol, _books)
+                  or True in books_for(k, settings, symbol))]
     # every strategy that either is armed here or already owns a paper slot
     owners = list(armed)
     for k in state:
@@ -4173,7 +4246,8 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
     strategies = [k for k in STRATEGY_ORDER
                   if k in settings.get("strategies", [])
                   and symbol in coins_for(k, settings)
-                  and (k not in _books or dry in books_for(k, settings))
+                  and (not _armed_here(k, symbol, _books)
+                       or dry in books_for(k, settings, symbol))
                   and (only is None or k == only)]
     # …but the book filter governs ENTRIES ONLY. A position already open in
     # THIS book still holds real money and still needs its exit tracked, even
@@ -5411,8 +5485,8 @@ def run_cycle(*, fx=None) -> None:
                         for k in settings.get("strategies", [])
                         if k in STRATEGY_SPECS
                         and symbol in coins_for(k, settings)
-                        and (k not in _books_map
-                             or dry in books_for(k, settings))}
+                        and (not _armed_here(k, symbol, _books_map)
+                             or dry in books_for(k, settings, symbol))}
             seen: dict = {}
             for _k in slots:
                 _ls = (state.get(_k) or {}).get("last_ts") or {}
@@ -5964,12 +6038,14 @@ def _unused_timeframe_locks(settings: dict | None = None) -> dict:
     """The old body, kept for the record. Nothing calls it."""
     if settings is None:
         settings = load_settings()
-    books = settings.get("strategy_books") or {}
     coins = settings.get("strategy_coins") or {}
 
     claim: dict[str, str] = {}            # coin -> the key holding it live
     for key in STRATEGY_ORDER:
-        if "real" not in (books.get(key) or []):
+        # PER CONTRACT. A key armed live on ONE of its coins claims only that
+        # coin; asking the bare key would claim all of them (or none, when
+        # the key itself carries no entry).
+        if "real" not in book_names_any(settings, key):
             continue                      # demo claims nothing and locks nobody
         mine = coins.get(key) or []
         if any(c in claim for c in mine):

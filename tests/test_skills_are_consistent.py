@@ -87,10 +87,25 @@ def test_claude_md_carries_the_merged_rule_once():
         assert f"ALWAYS ON — `{name}`" not in body
 
 
-def test_the_merge_kept_the_caps_from_short_answers():
+def test_the_cap_is_one_sentence_for_every_question():
+    """The per-question caps (a fact 1, "why" 3, "explain" 6) are GONE.
+
+    Operator, Sep 15, 2026, after a six-paragraph reply written while this
+    very skill was loaded: *"why are you explaining on paragraph again? this
+    is strcit moving forward, i want 1 sentence / this is the last time i
+    will say it"*. Six sentences is a paragraph, and a cap that varies by
+    question type is a cap that gets argued with — which is exactly how the
+    three deleted skills were each followed alone.
+    """
     body = _text(MERGED)
-    for cap in ("**1 sentence**", "**3 sentences**", "**6 sentences**"):
-        assert cap in body, cap
+    assert "**1 sentence**" in body
+    assert "ONE SENTENCE" in body
+    # the old ladder may survive only as the footnote that records it
+    i = body.find("kept only so nobody restores them")
+    for cap in ("**3 sentences**", "**6 sentences**"):
+        j = body.find(cap)
+        assert j == -1 or (i != -1 and j > i), (
+            f"{cap} is still a live cap, not a footnote")
     assert "delete whole" in body and "paragraphs" in body
 
 

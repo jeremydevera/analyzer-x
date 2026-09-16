@@ -80,10 +80,22 @@ def test_a_background_load_still_never_shows_a_spinner(src):
     assert "if (!background) setLoading(true);" in src[i:i + 400]
 
 
-def test_the_one_shot_retry_after_a_503_is_still_there(src):
-    """The other timer is a single retry on the store's own "index is being
-    built" answer — that one is correct and keyed on a STRING."""
+def test_the_503_retry_keeps_asking_until_the_store_answers(src):
+    """This pinned `setTimeout` and was named "the ONE SHOT retry ... is still
+    there" — it was pinning the bug. A setTimeout fires once, and when the
+    single retry was refused again the 503 handler set `waiting` to the SAME
+    sentence, so the dependency never changed and the effect never re-armed.
+    The operator's filter then sat on "the store has not answered this filter
+    yet ... it retries by itself" until they reloaded the page, while the
+    answer had been ready for minutes (RCA-2026-09-15-A: 7.5 s once
+    `rows_wr4` existed).
+
+    It is still keyed on the STRING, and still guarded by `inFlight`, so a
+    slow answer cannot stack — that half was always right."""
     i = src.index("if (!waiting) return;")
-    body = src[i:i + 260]
-    assert "setTimeout" in body, "a 503 retry is one shot, not an interval"
+    body = src[i:i + 320]
+    assert "setInterval" in body, "a one-shot retry cannot honour the caption"
+    assert "setTimeout" not in body
+    assert "clearInterval" in body, "the timer has to be torn down"
+    assert "if (!inFlight.current) load(true);" in body
     assert "[waiting, load]" in body

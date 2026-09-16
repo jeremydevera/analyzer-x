@@ -109,7 +109,9 @@ def test_the_live_pass_is_exits_only():
     orders on a strategy the operator set to demo — which is what happened to
     XAUT on 2026-08-18."""
     src = inspect.getsource(at._process_slot)
-    assert "dry in books_for(k, settings)" in src, "the entry filter is gone"
+    assert "dry in books_for(k, settings, symbol)" in src, (
+        "the entry filter is gone - it must still decide per BOOK, and "
+        "now per CONTRACT too (deploy-by-id)")
     i = src.index("no strategy armed in this book but a position is open")
     before = src[max(0, i - 900):i]
     assert "tripped = frozenset(tripped) | {_rescue}" in before, \

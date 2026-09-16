@@ -27,6 +27,20 @@ The screenshot behind that sentence, and what each line was hiding:
 """
 import time
 
+def _as_index(rows):
+    """A `candle_coverage`-shaped list as a `candle_index` mapping.
+
+    `update_pairs` reads `candle_index()` since Sep 15, 2026: same symbol,
+    timeframe and `last_ms`, but incremental, where `candle_coverage` opened
+    and parsed all 1.77 GB of candle files to build display strings
+    (RCA-2026-09-15-D). `bars` is what separates a real pair from an empty
+    file, so every stub row gets one.
+    """
+    return {f"{r['symbol']}-{r['timeframe']}":
+            {"bars": r.get("bars", 900), "last_ms": r.get("last_ms", 0)}
+            for r in rows}
+
+
 import pytest
 
 from tradingagents import db_jobs as dj
@@ -75,7 +89,7 @@ def test_an_update_fetches_the_store_the_gaps_and_the_lost(monkeypatch):
     monkeypatch.setattr(dj, "update_pairs", dj.update_pairs)   # keep the real one
     import tradingagents.market_sweep as msw
 
-    monkeypatch.setattr(msw, "candle_coverage", lambda *a, **k: cov)
+    monkeypatch.setattr(msw, "candle_index", lambda *a, **k: _as_index(cov))
 
     pairs, delisted, n_missing, lost_added = dj.update_pairs(
         [["LOST_USDT", "4h"]])
@@ -118,11 +132,11 @@ def test_the_store_is_walked_most_behind_first(monkeypatch):
     monkeypatch.setattr(dj, "live_symbols", lambda *a, **k: None)
     import tradingagents.market_sweep as msw
 
-    monkeypatch.setattr(msw, "candle_coverage", lambda *a, **k: [
+    monkeypatch.setattr(msw, "candle_index", lambda *a, **k: _as_index([
         {"symbol": "FRESH_USDT", "timeframe": "15m", "last_ms": now * 1000},
         {"symbol": "OLD_USDT", "timeframe": "15m", "last_ms": (now - 180000) * 1000},
         {"symbol": "MID_USDT", "timeframe": "15m", "last_ms": (now - 7200) * 1000},
-    ])
+    ]))
     pairs, _delisted, _n, _lost = dj.update_pairs([])
     assert [p[0] for p in pairs] == ["OLD_USDT", "MID_USDT", "FRESH_USDT"], pairs
 

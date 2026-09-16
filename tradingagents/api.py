@@ -1650,14 +1650,30 @@ def trade_strategies(catalog: bool = False) -> dict:
                 continue
             coin = bkey.split("#", 1)[0]
             (open_paper_on if pos.get("dry") else open_real_on).append(coin)
-        # The row's STABLE ID, hashed from the combination by the same
-        # backtest_report.row_code every report uses — so the id the operator
-        # reads here is the id they can paste into a report's find-by-ID box.
-        # Contracts are fixed per strategy, so the first coin identifies it;
-        # with no coin there is no combination to hash and the id is blank.
-        _rid = row_id_for(key, (coins.get(key) or [None])[0], settings)
         flat = at.sizing_for(settings, key) == "flat"    # THIS row's sizing
-        rows.append({
+        # ONE ROW PER COIN — never one row for five (Sep 16, 2026).
+        #
+        # A strategy KEY is `signal_timeframe_slXtpY`; the COIN is not in it,
+        # so `willr14_30m_sl2tp05` ended up armed on DVNSTOCK, FASTSTOCK,
+        # KKRSTOCK, ROLSTOCK and VUG at once. This built ONE row for all five
+        # and hashed its id from `coins[key][0]`, so every one of them was
+        # labelled **#DM84QDSZ** — which is DVNSTOCK 30m willr14 2.00/0.50
+        # flat, 168 trades, 97.62%, +$36.72. Four labels in five named a
+        # contract the row was not trading. The operator, who deploys by id:
+        # *"WHY IS #DM84QDSZ IN LIVE TRADE HAVE DIFFERENT COINS?"* and *"DONT
+        # GROUP THEM AS ONE"*.
+        #
+        # A row id is coin + timeframe + signal + threshold + SL + TP +
+        # sizing — all seven, hashed by `backtest_report.row_code`. Drop the
+        # coin and it is a different measurement wearing the same name. So
+        # the grid emits one row per contract, each carrying ITS OWN id, and
+        # a key with no coins still emits exactly one row (id blank, nothing
+        # to hash) so a catalog listing is unchanged.
+        # See .claude/skills/deploy-by-id.
+        for _coin in (coins.get(key) or [None]):
+          _rid = row_id_for(key, _coin, settings)
+          _row_coins = [] if _coin is None else [_coin]
+          rows.append({
             "key": key,
             "id": _rid,
             # the human name, for the operator. Empty for rows that have none,
@@ -1666,8 +1682,10 @@ def trade_strategies(catalog: bool = False) -> dict:
             "interval": spec.get("interval"),
             "tp": spec.get("tp"), "sl": spec.get("sl"),
             "threshold": spec.get("threshold"),
-            "books": books.get(key) or [],
-            "coins": coins.get(key) or [],
+            # THIS CONTRACT'S switch, not the strategy's. A key armed live
+            # on one coin must not paint the other four red (deploy-by-id).
+            "books": at.book_names(settings, key, _coin),
+            "coins": _row_coins,
             "base_margin": margins.get(key),
             "loss_cap": limits.get(key),
             # The LADDER RUNG. On the REAL book it belongs to the COIN, not
@@ -1681,7 +1699,7 @@ def trade_strategies(catalog: bool = False) -> dict:
             "streak": (streak := max(
                 (int(at.slot_of(runstate, c, not _is_real, key)
                      .get("step", 0) or 0)
-                 for c in (coins.get(key) or [])), default=0)),
+                 for c in _row_coins), default=0)),
             "streak_book": ("real" if _is_real else "paper"),
             # Only a REAL rung can be shared, and only by another real row on
             # the same coin. A demo row shares nothing now, so this list is
@@ -1690,7 +1708,7 @@ def trade_strategies(catalog: bool = False) -> dict:
                 other for other in at.STRATEGY_ORDER
                 if _is_real and other != key
                 and "real" in (books.get(other) or [])
-                and set(coins.get(other) or []) & set(coins.get(key) or [])),
+                and set(coins.get(other) or []) & set(_row_coins)),
             # PER ROW. A row that runs flat must not be drawn with a ladder:
             # the ladder column is what the operator reads before deploying.
             "sizing": at.sizing_for(settings, key),
@@ -1714,12 +1732,19 @@ def trade_strategies(catalog: bool = False) -> dict:
             # must never be blended into one "record" the operator judges it
             # by — `strategy_stats(dry=...)` keeps them apart at the source.
             "real": _book_record(stats_real, today_real, key,
-                                 "real" in (books.get(key) or [])),
+                                 "real" in at.book_names(settings, key, _coin)),
             "paper": _book_record(stats_paper, today_paper, key,
-                                  "paper" in (books.get(key) or [])),
-            "open_on": open_real_on,
-            "open_on_paper": open_paper_on,
-        })
+                                  "paper" in at.book_names(settings, key, _coin)),
+            # only THIS contract's open positions — the row is one coin now.
+            # A row with NO configured coin still reports everything it holds:
+            # the position is the only evidence there is, and filtering it
+            # against an empty list would hide an open trade from the one
+            # column that exists to show it.
+            "open_on": ([c for c in open_real_on if c in _row_coins]
+                        if _row_coins else open_real_on),
+            "open_on_paper": ([c for c in open_paper_on if c in _row_coins]
+                              if _row_coins else open_paper_on),
+          })
     return {
         "rows": rows,
         "sizing": at.sizing_for(settings),
@@ -2074,13 +2099,18 @@ def backtest_deployed(coins: str = "", tfs: str = "") -> dict:
     from tradingagents import strategy_report as sr
 
     settings = at.load_settings()
-    books = settings.get("strategy_books") or {}
     scoins = settings.get("strategy_coins") or {}
     sizing = at.sizing_for(settings)
     want_c = {c for c in coins.split(",") if c}
     want_t = {t for t in tfs.split(",") if t}
     out = []
-    for key, bk in books.items():
+    # ONE ENTRY PER DEPLOYED ROW. `strategy_books` holds both the bare key and
+    # `strategy|COIN` since Sep 16, 2026, so iterating it raw would hand
+    # `willr14_30m_sl2tp05|VUG_USDT` to STRATEGY_SPECS as if it were a
+    # strategy name and silently drop the row. Walk the STRATEGIES instead and
+    # ask `book_names` per contract.
+    for key in at.STRATEGY_ORDER:
+        bk = sorted(at.book_names_any(settings, key))
         if not bk:
             continue
         spec = at.STRATEGY_SPECS.get(key) or {}

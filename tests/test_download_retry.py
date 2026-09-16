@@ -20,6 +20,20 @@ could never be fetched again by clicking anything.
 import http.client
 import json
 
+def _as_index(rows):
+    """A `candle_coverage`-shaped list as a `candle_index` mapping.
+
+    `update_pairs` reads `candle_index()` since Sep 15, 2026: same symbol,
+    timeframe and `last_ms`, but incremental, where `candle_coverage` opened
+    and parsed all 1.77 GB of candle files to build display strings
+    (RCA-2026-09-15-D). `bars` is what separates a real pair from an empty
+    file, so every stub row gets one.
+    """
+    return {f"{r['symbol']}-{r['timeframe']}":
+            {"bars": r.get("bars", 900), "last_ms": r.get("last_ms", 0)}
+            for r in rows}
+
+
 import pytest
 
 from tradingagents import db_jobs
@@ -55,7 +69,7 @@ def job(monkeypatch, tmp_path):
         return _frame(3), 3, "fetch"
 
     monkeypatch.setattr(msw, "refresh_candles", refresh)
-    monkeypatch.setattr(msw, "candle_coverage", lambda: [])
+    monkeypatch.setattr(msw, "candle_index", lambda *a, **k: {})
     monkeypatch.setattr(pqs, "save_candles", lambda c, tf, df: saved.append((c, tf)))
     monkeypatch.setattr(nt, "record",
                         lambda kind, title, **kw: bell.append((title, kw)) or 1)
@@ -175,8 +189,8 @@ def test_update_mode_fetches_the_pairs_the_last_download_lost(job, monkeypatch, 
     # LISTS that the store has never seen, so the contract list is pinned out of
     # the way here — that half is covered in test_candle_update_reliability.py.
     monkeypatch.setattr(db_jobs, "live_symbols", lambda *a, **k: None)
-    monkeypatch.setattr(msw, "candle_coverage", lambda: [
-        {"symbol": "APEX_USDT", "timeframe": "1h"}])
+    monkeypatch.setattr(msw, "candle_index", lambda *a, **k: _as_index([
+        {"symbol": "APEX_USDT", "timeframe": "1h"}]))
     (tmp_path / "lost.json").write_text(json.dumps({
         "pairs": [["CHILLGUY_USDT", "15m"], ["APEX_USDT", "1h"]]}))
     # what start() leaves on disk the moment the job is launched: a stub
@@ -257,8 +271,8 @@ def test_retry_mode_downloads_exactly_the_lost_pairs_and_nothing_else(job, monke
     themselves. Not the store walk of UPDATE, not a re-download."""
     from tradingagents import market_sweep as msw
 
-    monkeypatch.setattr(msw, "candle_coverage", lambda: [
-        {"symbol": "APEX_USDT", "timeframe": "1h"}])
+    monkeypatch.setattr(msw, "candle_index", lambda *a, **k: _as_index([
+        {"symbol": "APEX_USDT", "timeframe": "1h"}]))
     (tmp_path / "lost.json").write_text(json.dumps({
         "pairs": [["CHILLGUY_USDT", "15m"], ["NAORIS_USDT", "30m"],
                   ["CHILLGUY_USDT", "15m"]]}))            # a duplicate is one pair

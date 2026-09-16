@@ -770,10 +770,18 @@ Every label must be DERIVED from the data it describes — never a literal. Veri
 must assert the label AGREES with its source, and that itemised rows SUM to the total
 shown. Presence is not correctness.
 
-ALWAYS ON — `workflow-map`. When the operator asks how something WORKS — "give
-me the workflow", "the flow", "what happens when i press this", "walk me
-through it" — the answer is the BOXED ARROW DIAGRAM in
-`.claude/skills/workflow-map/`, never a paragraph and never a bullet list.
+ALWAYS ON — `workflow-map`. **EVERY EXPLANATION is the BOXED ARROW DIAGRAM**
+in `.claude/skills/workflow-map/`, never a paragraph and never a bullet list —
+how something WORKS, **why something HAPPENED**, and any **comparison of two
+things that ended differently**. Widened 2026-09-17: they asked *"so why did
+demo win if live lose?"* four times, got four correct plain sentences, and only
+the diagram landed — *"this is what i want when you explain, update the skill i
+mentioned to you to create using this workflow format"*. A sentence makes them
+hold six facts and work out the order themselves; the diagram holds the order
+for them. When an explanation needs more than one sentence it needs a DIAGRAM,
+not a longer sentence. Comparisons use the COMPARISON shape: one column, both
+sides named inside the shared boxes, one box titled `HERE THEY SPLIT`, and
+`IF IT HAD GONE DIFFERENTLY` at the bottom.
 Numbered stages in boxes, one arrow down the column, a branch box at every
 decision, a loop in a double box, real names and numbers inside the boxes
 (`port 8788`, `27,500 rows`), a mandatory "IF ANYTHING FAILS" block at the

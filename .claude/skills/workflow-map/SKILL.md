@@ -1,6 +1,6 @@
 ---
 name: workflow-map
-description: ALWAYS ON when the operator asks how something WORKS, asks for "the workflow", "the flow", "the steps", or how a feature/job/button runs end to end. Answer with the boxed arrow diagram in this skill - numbered stages in boxes, arrows between them, a branch box for every decision, a failure block at the bottom - then one short line under it. Never a paragraph of prose, never a bullet list, never mermaid.
+description: ALWAYS ON for EVERY EXPLANATION, not only "give me the workflow". Asked for again 2026-09-17 after a boxed diagram finally landed where four plain sentences had not: "this is what i want when you explain, update the skill". Fires on how something works, on WHY something happened, and on any comparison of two things that turned out differently. Answer with the boxed arrow diagram in this skill - numbered stages in boxes, arrows between them, a branch box for every decision, a failure block at the bottom - then one short line under it. Never a paragraph of prose, never a bullet list, never mermaid.
 ---
 
 # workflow-map — how a thing works is a DIAGRAM, not a paragraph
@@ -18,10 +18,26 @@ Any of these, no need to be asked twice:
 * "give me the workflow", "what's the flow", "how does it work"
 * "explain how X runs", "what happens when i press X"
 * "walk me through it", "the steps"
+* **"why did X happen"** — a cause is an order of events
+* **"why did A win and B lose"** — any comparison of two things that started
+  the same and ended differently
+* **"explain again"** — if they had to ask twice, sentences are not working;
+  draw it
 * any answer where the point is the ORDER things happen in
 
 It does NOT fire for a single fact ("is there a new trade") or a number.
 Those stay one sentence — `short-and-plain` still rules everything.
+
+**Why it was widened (2026-09-17).** They asked the same question four times
+— *"so why did demo win if live lose?"* — and got four correct plain-English
+sentences. None landed. The fifth answer was the boxed diagram below and the
+reply was: *"this is what i want when you explain, update the skill i
+mentioned to you to create using this workflow format"*.
+
+A sentence makes the reader hold six facts in their head at once and work out
+the order themselves. A diagram holds the order for them. **When an
+explanation needs more than one sentence, it needs a diagram — not a longer
+sentence, and never a paragraph.**
 
 ## The format — copy this shape exactly
 
@@ -93,6 +109,31 @@ Those stay one sentence — `short-and-plain` still rules everything.
    "mailbox", not "ingest endpoint"; "password", not "HMAC secret".
 10. **No mermaid, no image, no artifact** unless they ask for one. This is
     text in the terminal, and it must survive being copied into a note.
+
+## The COMPARISON shape — two things that ended differently
+
+The commonest explanation in this project: same coin, same strategy, same
+minute, one won and one lost. Do NOT draw two diagrams side by side — a
+terminal is 80 characters wide. Draw ONE column, and put the split in its own
+box:
+
+1. Stages 1-3 are what BOTH did, with both named on their own line inside the
+   box (`REAL MONEY  ──►  bought VUG at 87.02` / `PRACTICE    ──►  bought VUG
+   at 87.02`). Seeing them identical is half the answer.
+2. **One box titled `HERE THEY SPLIT`**, with the moment and the price in its
+   heading, and one branch per side. This box is the answer; everything above
+   it exists to make it land.
+3. The stages after the split follow only the side that kept going.
+4. The last box is **WHAT YOUR SCREEN SHOWS** — the actual line they are
+   looking at, so they can match the story to the screen that confused them.
+5. The failure block becomes **`IF IT HAD GONE DIFFERENTLY`**: one line per
+   alternative ending, each saying what both sides would have done. This is
+   what proves the two are not broken — they follow the same rule.
+
+Worked example, `Sep 16, 2026`, and the one that earned this skill its rewrite:
+both copies of `#XH2KSFXG` bought VUG at 87.02 at 1:43am; the real one was
+sold at MEXC at 86.89 at 1:38pm for −$0.84; the practice one was not reachable
+by anyone, kept waiting, and sold itself at 87.455 at 7:04pm for +$0.17.
 
 ## Before drawing
 

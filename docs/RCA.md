@@ -172,6 +172,121 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-16-D — the demo W/L cell printed one strategy's record on every coin it was armed on, and the caption above it said 85 rows were switched off while 120 were running
+
+**CEO**
+
+* The demo win/loss column added up to **69 wins and 3 losses**. Your ledger
+  held **30 wins and 6 losses**. And the line above the grid read *"0 trading
+  REAL money · 0 paper only · 85 deployed but switched off"* while 120 rows
+  were armed and trading demo.
+* Why: a strategy can be armed on several coins, and the record was counted by
+  STRATEGY instead of by the row you deployed. So one strategy armed on five
+  coins added its five coins' wins together and printed that same total on all
+  five rows — five rows of one trade each read as five rows of five.
+* What stops it now: every row counts only its own coin's trades, and the rows
+  on screen add up exactly to the ledger. Checked after the fix: the grid shows
+  30W/3L, the three rows you no longer deploy hold the other 4W/3L, and
+  together they are the ledger's 34W/6L to the trade.
+
+**DEV**
+
+* `auto_trader.strategy_stats:3155` grouped exit rows by `e["strategy"]` alone,
+  and `api.trade_strategies:1643` read `stats.get(key)` — the bare strategy
+  key. The same bare key was used for `_is_real`, `today`, and the
+  `real_count`/`paper_count`/`idle_count` counters at `api.py:1799`, all of
+  which stopped resolving once arming moved to `book_slot(key, coin)` on
+  Sep 16, 2026 (RCA-2026-09-16-C).
+* Invariant broken: `label-must-match-data`, in its SUM form — the itemised
+  rows must add to the total shown — and `deploy-by-id`: a row id is coin +
+  timeframe + signal + threshold + SL + TP + sizing, so anything keyed to a row
+  is keyed to its coin.
+* Guard: `tests/test_the_record_belongs_to_one_id.py` — 11 tests, verified RED
+  on the pre-fix files (8 of 9 failed before the caption tests were added).
+
+**SAW** — while choosing how the demo cell should be drawn: *"in demo win/l
+what if i make it mini pie graph then indicate the win and lose count"*, then
+*"use Badge on a soft disc"*. The drawing was the ask; the number underneath it
+was wrong, and the caption above it was wrong too.
+
+**TIMELINE**
+
+1. `Sep 16, 2026` (RCA-2026-09-16-C) — arming moved from `strategy_books[key]`
+   to `strategy_books["key|COIN"]`, so 85 per-strategy switches became **120
+   per-id switches**. Everything keyed on the bare key silently stopped
+   matching.
+2. The grid's record did not move with it. `stoch14_30m_sl2tp05` is armed on
+   five contracts, and all five printed **5W 0L +$0.80** — one strategy's
+   total, five times.
+3. The counters above the grid did the same thing in the other direction:
+   `books.get(key)` was empty for every migrated strategy, so the caption read
+   **"0 trading REAL money · 0 paper only · 85 deployed but switched off"** over
+   120 armed rows.
+4. Measured against the ledger at the time: the grid summed to **69W / 3L**;
+   counting the same demo exits by `(strategy, coin)` gave **30W / 6L** over 36
+   closed trades across 26 rows.
+5. AFTER, measured on the running API: the five `stoch14_30m_sl2tp05` rows read
+   **#ZSMP3CF4 DVNSTOCK 2W 0L +$0.32**, **#JXRSKJSW FASTSTOCK 1W 0L +$0.16**,
+   **#9FTN66Y4 KKRSTOCK 1W 0L +$0.15**, **#2NYXSXTR ROLSTOCK 0W 0L $0.00**,
+   **#XH2KSFXG VUG 1W 0L +$0.17**.
+6. And the whole grid reconciles: **0** rows disagree with the ledger; grid
+   30W/3L plus the 4W/3L on three `(strategy, coin)` pairs no longer deployed
+   equals the ledger's **34W / 6L over 40 demo exits**. The caption now reads
+   **"0 trading REAL money · 120 paper only"**.
+7. The cell itself was redrawn as the operator picked it from twenty drawings:
+   a donut on a soft disc, the win rate in the hole, `2W` / `1L` beside it.
+
+**ROOT CAUSE** — the unit of deployment became the row id (strategy + coin),
+and the record, the book flag, today's PnL and the four counters were all still
+keyed by the strategy alone.
+
+**WHY IT WAS NOT CAUGHT** — RCA-2026-09-16-C changed the KEY SHAPE and its
+guard, `test_one_id_is_one_switch.py`, asserted on ids, books and switches. It
+never asserted on a NUMBER. A key-shape change breaks every reader of that key
+at once, and the ones that read it through `.get()` fail SILENTLY — `books.get(key)`
+returning `[]` looks exactly like "not armed", and `stats.get(key)` returning the
+strategy total looks exactly like a record. **When a key changes shape, grep for
+every `.get(` on that key and list them before editing** — the same lesson
+CLAUDE.md already carries as *"when changing a rule, grep for the CONCEPT"*,
+here applied to a dictionary key rather than a guard.
+
+The second half is the assertion to add, not the grep: **a grid that itemises
+must be tested against the SUM of its source.** Every W/L test in this repo
+checked one row's numbers against one fixture. Not one added the rows up and
+compared them to the ledger they came from, which is the only check that could
+see 69 where there were 36.
+
+**COST** — no money and no wrong order. Nothing armed live (`real_count` 0, no
+open real positions) and the runner's own loss caps read
+`pnl_today_by_strategy` per STRATEGY, which is deliberately unchanged. The cost
+was the operator's ability to tell which deployed id is actually working: a row
+with one trade and a row with five were shown as identical, and that column is
+what they pick deployments by.
+
+**FIX** — this commit. `auto_trader.strategy_stats(dry, by_coin=True)` and
+`pnl_today_by_strategy(now, dry, by_coin=True)` key by `book_slot(strategy,
+symbol)`; both default to OFF so `tripped_strategies` keeps its per-strategy
+loss cap. `api._slot_stats` / `_slot_today` read one contract's slot, and sum
+across contracts only for a row with no coin (the catalog listing).
+`trade_strategies` computes `_is_real` per contract inside the coin loop, and
+the four counters count ROWS by their own `books`. The cell is
+`webapp/src/components/trade/WinBadge.tsx`: a donut on a soft disc with the win
+rate in the hole and the counts written out beside it — never colour alone,
+because `#039855` against `#f04438` measures ΔE 8.3 for a deutan reader, which
+clears the floor but only just.
+
+**GUARD** — `tests/test_the_record_belongs_to_one_id.py`, 11 tests, verified
+RED on the pre-fix files and green after; 225 tests across
+`test_api_trade.py`, `test_both_books_on_a_deployed_row.py`,
+`test_one_id_is_one_switch.py`, `test_auto_trader.py`, `test_deploy_preset.py`,
+`test_runner_stakes_flat.py`, `test_a_real_position_is_never_unwatched.py` and
+`test_feedcheck.py` pass beside it. Verified on the running app: the API
+restarted onto the fix, the UI rebuilt and restarted, and the badge rendered
+and read back from the DOM (`2 won, 1 lost, 67% win rate`) with no console
+errors in either theme.
+
+---
+
 ## RCA-2026-09-16-C — five of the operator's row ids collapsed into one switch, and four trades in five were labelled with a coin they were not trading
 
 **CEO**

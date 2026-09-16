@@ -18,7 +18,7 @@ def client(monkeypatch, tmp_path):
     monkeypatch.setattr(at, "runner_pid", lambda: None)
     monkeypatch.setattr(at, "coin_stats", lambda dry=None: {
         "APEX_USDT": {"pnl": 12.5, "trades": 10, "wins": 6, "losses": 4}})
-    monkeypatch.setattr(at, "strategy_stats", lambda dry=None: {})
+    monkeypatch.setattr(at, "strategy_stats", lambda dry=None, by_coin=False: {})
     monkeypatch.setattr(at, "pnl_today", lambda dry=None: {
         "total": 1.0, "wins": 1, "losses": 0, "trades": 1})
     monkeypatch.setattr(at, "load_state", lambda: {
@@ -236,8 +236,8 @@ def test_per_strategy_cap_and_trip_state_reach_the_screen(client, monkeypatch):
         "strategy_loss_limits": {"sweep30_1h_w": 20.0},
         "loss_limit": 50.0}))
     monkeypatch.setattr(at, "pnl_today_by_strategy",
-                        lambda dry=None: {"sweep30_1h_w": -25.0,
-                                          "fvg_1h_w": -1.0})
+                        lambda dry=None, by_coin=False: {
+                            "sweep30_1h_w": -25.0, "fvg_1h_w": -1.0})
     monkeypatch.setattr(at, "loss_limit_hit", lambda s=None: False)
     got = client.get("/api/trade/strategies").json()
     hot = next(r for r in got["rows"] if r["key"] == "sweep30_1h_w")
@@ -252,7 +252,7 @@ def test_per_strategy_cap_and_trip_state_reach_the_screen(client, monkeypatch):
 def test_the_account_breaker_reports_when_it_has_fired(client, monkeypatch):
     at.SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
     at.SETTINGS_PATH.write_text(json.dumps({"loss_limit": 10.0}))
-    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None: {})
+    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None, by_coin=False: {})
     monkeypatch.setattr(at, "loss_limit_hit", lambda s=None: True)
     got = client.get("/api/trade/strategies").json()
     assert got["account_cap_hit"] is True
@@ -407,7 +407,7 @@ def test_the_ladder_is_reported_in_dollars_with_the_current_rung(client,
     monkeypatch.setattr(at, "sizing_for", lambda s, key=None: "martingale")
     monkeypatch.setattr(at, "load_state", lambda: {
         "APEX_USDT": {"step": 3}})          # three losses deep
-    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None: {})
+    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None, by_coin=False: {})
     r = next(x for x in client.get("/api/trade/strategies").json()["rows"]
              if x["key"] == "sweep30_1h_w")
     assert r["streak"] == 3
@@ -424,7 +424,7 @@ def test_flat_sizing_has_one_rung_and_a_constant_stake(client, monkeypatch):
         "strategy_margins": {"fvg_1h_w": 8.0}}))
     monkeypatch.setattr(at, "sizing_for", lambda s, key=None: "flat")
     monkeypatch.setattr(at, "load_state", lambda: {})
-    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None: {})
+    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None, by_coin=False: {})
     got = client.get("/api/trade/strategies").json()
     r = next(x for x in got["rows"] if x["key"] == "fvg_1h_w")
     assert got["flat"] is True
@@ -446,7 +446,7 @@ def test_the_streak_is_read_from_the_book_the_row_trades(client, monkeypatch):
     monkeypatch.setattr(at, "load_state", lambda: {
         "PROVE_USDT": {"step": 6},            # the LIVE book, not this row's
         at.state_key("PROVE_USDT", True, "mom6_1h_pv"): {"step": 1}})
-    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None: {})
+    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None, by_coin=False: {})
     r = next(x for x in client.get("/api/trade/strategies").json()["rows"]
              if x["key"] == "mom6_1h_pv")
     assert r["streak"] == 1, "a paper row must read the paper ladder"
@@ -483,7 +483,7 @@ def test_many_live_strategies_on_one_coin_are_allowed_now(client, monkeypatch):
         "strategy_books": {"trend50_30m_pi": ["real"], "mom15_4h_w": ["real"]},
         "strategy_coins": {"trend50_30m_pi": ["PI_USDT"],
                            "mom15_4h_w": ["PI_USDT"]}}))
-    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None: {})
+    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None, by_coin=False: {})
     got = client.get("/api/trade/strategies").json()
     assert got["locks"] == {}
     for key in ("trend50_30m_pi", "mom15_4h_w"):
@@ -497,7 +497,7 @@ def test_paper_is_never_locked(client, monkeypatch):
         "strategy_books": {"trend50_30m_pi": ["paper"], "mom15_4h_w": ["paper"]},
         "strategy_coins": {"trend50_30m_pi": ["PI_USDT"],
                            "mom15_4h_w": ["PI_USDT"]}}))
-    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None: {})
+    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None, by_coin=False: {})
     assert client.get("/api/trade/strategies").json()["locks"] == {}
 
 
@@ -555,7 +555,7 @@ def test_a_position_carries_the_same_id_the_strategy_grid_shows(client,
                                    "opened_at": 1_787_000_000,
                                    "bracket": True}}})
     monkeypatch.setattr(at, "taker_fee", lambda s, **kw: 0.0004)
-    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None: {})
+    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None, by_coin=False: {})
     from tradingagents.dataflows import mexc_futures as fx
     monkeypatch.setattr(fx, "open_positions", lambda symbol=None: [])
     monkeypatch.setattr(fx, "contract_spec", lambda s: {"contractSize": 1.0})
@@ -608,12 +608,13 @@ def test_the_rung_names_its_book_and_who_shares_it(client, monkeypatch):
         at.state_key("XAUT_USDT", True, "mom6_1h_gx"): {"step": 2},
         "XAUT_USDT": {"step": 9}})
     monkeypatch.setattr(at, "strategy_stats",
-                        lambda dry=None: ({"mom6_1h_pv": {"wins": 3, "losses": 1,
-                                                          "trades": 4, "pnl": 20.35}}
-                                          if not dry else
-                                          {"mom6_1h_gx": {"wins": 7, "losses": 0,
-                                                           "trades": 7, "pnl": 9.0}}))
-    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None: {})
+                        lambda dry=None, by_coin=False: (
+                            {"mom6_1h_pv|PROVE_USDT": {"wins": 3, "losses": 1,
+                                                       "trades": 4, "pnl": 20.35}}
+                            if not dry else
+                            {"mom6_1h_gx|XAUT_USDT": {"wins": 7, "losses": 0,
+                                                      "trades": 7, "pnl": 9.0}}))
+    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None, by_coin=False: {})
     rows = {r["key"]: r for r in client.get("/api/trade/strategies").json()["rows"]}
 
     mom = rows["mom6_1h_pv"]
@@ -638,8 +639,8 @@ def test_a_lone_strategy_on_a_coin_owns_its_rung(client, monkeypatch):
         "strategy_books": {"sweep30_1h_w": ["real"]},
         "strategy_coins": {"sweep30_1h_w": ["APEX_USDT"]}}))
     monkeypatch.setattr(at, "load_state", lambda: {"APEX_USDT": {"step": 3}})
-    monkeypatch.setattr(at, "strategy_stats", lambda dry=None: {})
-    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None: {})
+    monkeypatch.setattr(at, "strategy_stats", lambda dry=None, by_coin=False: {})
+    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None, by_coin=False: {})
     r = next(x for x in client.get("/api/trade/strategies").json()["rows"]
              if x["key"] == "sweep30_1h_w")
     assert r["streak"] == 3 and r["streak_shared_with"] == []

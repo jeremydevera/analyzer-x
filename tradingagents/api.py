@@ -1588,15 +1588,53 @@ def trade_panic(body: dict) -> dict:
     return at.panic_stop(close_positions=bool(body.get("close_positions", True)))
 
 
-def _book_record(stats: dict, today: dict, key: str, armed: bool) -> dict:
-    """One book's realized record for one strategy, as the screen shows it."""
-    got = stats.get(key) or {}
+def _slot_stats(stats: dict, key: str, coin: str | None) -> dict:
+    """The record for ONE deployed row — this strategy on THIS contract.
+
+    `stats` is keyed by `book_slot(strategy, symbol)`. A row with a coin reads
+    its own slot and nobody else's; a row with NO coin (the catalog listing,
+    and only that) sums every contract the key has traded, because that is the
+    honest answer to "what has this strategy ever done" when no contract has
+    been chosen yet.
+
+    Grouping by strategy alone is what made the demo cell read **69W / 3L**
+    while the ledger held **30W / 6L** across 26 deployed ids
+    (`.claude/skills/deploy-by-id`).
+    """
+    if coin:
+        return dict(stats.get(f"{key}|{coin}") or {})
+    out = {"pnl": 0.0, "wins": 0, "losses": 0, "trades": 0}
+    for slot, got in stats.items():
+        if slot != key and not slot.startswith(f"{key}|"):
+            continue
+        out["pnl"] += float(got.get("pnl") or 0.0)
+        out["wins"] += int(got.get("wins") or 0)
+        out["losses"] += int(got.get("losses") or 0)
+        out["trades"] += int(got.get("trades") or 0)
+    out["pnl"] = round(out["pnl"], 2)
+    n = out["wins"] + out["losses"]
+    out["winrate"] = round(100 * out["wins"] / n, 1) if n else 0.0
+    return out
+
+
+def _slot_today(today: dict, key: str, coin: str | None) -> float:
+    """Today's realized PnL for ONE deployed row, same keying as above."""
+    if coin:
+        return round(float(today.get(f"{key}|{coin}") or 0.0), 2)
+    return round(sum(float(v or 0.0) for slot, v in today.items()
+                     if slot == key or slot.startswith(f"{key}|")), 2)
+
+
+def _book_record(stats: dict, today: dict, key: str, armed: bool,
+                 coin: str | None = None) -> dict:
+    """One book's realized record for one DEPLOYED ROW, as the screen shows it."""
+    got = _slot_stats(stats, key, coin)
     return {"pnl": round(float(got.get("pnl") or 0.0), 2),
             "trades": int(got.get("trades") or 0),
             "wins": int(got.get("wins") or 0),
             "losses": int(got.get("losses") or 0),
             "winrate": got.get("winrate"),
-            "today": round(float(today.get(key) or 0.0), 2),
+            "today": _slot_today(today, key, coin),
             "armed": bool(armed)}
 
 
@@ -1616,8 +1654,12 @@ def trade_strategies(catalog: bool = False) -> dict:
     books = settings.get("strategy_books") or {}
     coins = settings.get("strategy_coins") or {}
     margins = settings.get("strategy_margins") or {}
-    stats_real = at.strategy_stats(dry=False)
-    stats_paper = at.strategy_stats(dry=True)
+    # BY CONTRACT, because this grid is one row per deployed id. Keyed by
+    # strategy alone, `willr14_30m_sl2tp05`'s record was printed identically
+    # on all five of its coins and the demo cell totalled 69W/3L against a
+    # ledger holding 30W/6L (`.claude/skills/deploy-by-id`).
+    stats_real = at.strategy_stats(dry=False, by_coin=True)
+    stats_paper = at.strategy_stats(dry=True, by_coin=True)
     state = at.load_state()
     limits = settings.get("strategy_loss_limits") or {}
     sizing_now = at.sizing_for(settings)          # the account-wide default
@@ -1627,8 +1669,8 @@ def trade_strategies(catalog: bool = False) -> dict:
     # PER BOOK. This was `dry=False` for every row, so a demo-only row printed
     # the real book's today — always 0.00 for a strategy that has never traded
     # real money, whatever its demo did (label-must-match-data).
-    today_real = at.pnl_today_by_strategy(dry=False)
-    today_paper = at.pnl_today_by_strategy(dry=True)
+    today_real = at.pnl_today_by_strategy(dry=False, by_coin=True)
+    today_paper = at.pnl_today_by_strategy(dry=True, by_coin=True)
     deployed = [k for k in at.STRATEGY_ORDER
                 if (books.get(k) or coins.get(k))]
     keys = at.STRATEGY_ORDER if catalog else deployed
@@ -1636,11 +1678,6 @@ def trade_strategies(catalog: bool = False) -> dict:
     for key in keys:
         spec = at.STRATEGY_SPECS.get(key) or {}
         base_m = float(margins.get(key) or 5.0)
-        # the row's OWN book decides which ladder and which record to read: a
-        # paper-only row was showing the live book's wins and losses
-        _is_real = "real" in (books.get(key) or [])
-        _bk_suffix = "" if _is_real else "#paper"
-        st_row = ((stats_real if _is_real else stats_paper).get(key) or {})
         # book keys are "SYMBOL" (real) and "SYMBOL#paper" (simulated), so the
         # coin name is what precedes '#' and the book is which side it came from
         open_real_on, open_paper_on = [], []
@@ -1673,6 +1710,13 @@ def trade_strategies(catalog: bool = False) -> dict:
         for _coin in (coins.get(key) or [None]):
           _rid = row_id_for(key, _coin, settings)
           _row_coins = [] if _coin is None else [_coin]
+          # THIS CONTRACT decides which ladder and which record the row reads.
+          # It was `"real" in books.get(key)` — the bare key — so after the
+          # switch went per contract a coin armed demo could still be drawn
+          # with the live book's ladder and the live book's record.
+          _is_real = "real" in at.book_names(settings, key, _coin)
+          st_row = _slot_stats(stats_real if _is_real else stats_paper,
+                               key, _coin)
           rows.append({
             "key": key,
             "id": _rid,
@@ -1720,9 +1764,9 @@ def trade_strategies(catalog: bool = False) -> dict:
             "notional": round(base_m * at.LEVERAGE, 2),
             "tripped": key in tripped,
             "live_locked": locks.get(key),
-            # the row's OWN book, unchanged for every existing reader
-            "today": round(float((today_real if _is_real else today_paper)
-                                 .get(key) or 0.0), 2),
+            # the row's OWN book and OWN contract
+            "today": _slot_today(today_real if _is_real else today_paper,
+                                 key, _coin),
             "pnl": round(float(st_row.get("pnl") or 0.0), 2),
             "trades": int(st_row.get("trades") or 0),
             "wins": int(st_row.get("wins") or 0),
@@ -1732,9 +1776,11 @@ def trade_strategies(catalog: bool = False) -> dict:
             # must never be blended into one "record" the operator judges it
             # by — `strategy_stats(dry=...)` keeps them apart at the source.
             "real": _book_record(stats_real, today_real, key,
-                                 "real" in at.book_names(settings, key, _coin)),
+                                 "real" in at.book_names(settings, key, _coin),
+                                 _coin),
             "paper": _book_record(stats_paper, today_paper, key,
-                                  "paper" in at.book_names(settings, key, _coin)),
+                                  "paper" in at.book_names(settings, key, _coin),
+                                  _coin),
             # only THIS contract's open positions — the row is one coin now.
             # A row with NO configured coin still reports everything it holds:
             # the position is the only evidence there is, and filtering it
@@ -1749,12 +1795,20 @@ def trade_strategies(catalog: bool = False) -> dict:
         "rows": rows,
         "sizing": at.sizing_for(settings),
         "conflicts": at.timeframe_conflicts(settings),
-        # counted here so the screen's caption cannot invent its own number
-        "real_count": sum(1 for k in deployed if "real" in (books.get(k) or [])),
-        "paper_count": sum(1 for k in deployed
-                           if (books.get(k) or []) and "real" not in books[k]),
-        "idle_count": sum(1 for k in deployed if not (books.get(k) or [])),
-        "deployed_count": len(deployed),
+        # Counted here so the screen's caption cannot invent its own number —
+        # and counted off the ROWS, because a row is one deployed id now.
+        # These read `books.get(key)`, the bare strategy key, which stopped
+        # holding the switch when arming went per contract. On the operator's
+        # own config that printed *"0 trading REAL money · 0 paper only · 85
+        # deployed but switched off"* over 120 rows every one of which was
+        # armed demo (label-must-match-data, `.claude/skills/deploy-by-id`).
+        "real_count": sum(1 for r in rows if "real" in (r["books"] or [])),
+        "paper_count": sum(1 for r in rows if (r["books"] or [])
+                           and "real" not in r["books"]),
+        "idle_count": sum(1 for r in rows
+                          if (r["coins"] or []) and not (r["books"] or [])),
+        "deployed_count": sum(1 for r in rows
+                              if (r["books"] or []) or (r["coins"] or [])),
         "catalog_count": len(at.STRATEGY_ORDER),
         "showing_catalog": catalog,
         # the account-wide breaker, and whether it has already fired today

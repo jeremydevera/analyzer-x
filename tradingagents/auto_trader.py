@@ -3138,13 +3138,23 @@ def coin_stats(dry: bool | None = None) -> dict:
     return out
 
 
-def strategy_stats(dry: bool | None = None) -> dict:
+def strategy_stats(dry: bool | None = None, by_coin: bool = False) -> dict:
     """Lifetime realized results per strategy, from the ledger's exit rows.
 
     ``dry`` selects the book — real and paper must never be blended into one
     "record" the operator judges a strategy by. Reads the WHOLE ledger: a
     fixed tail blanked the record out once skip/error rows piled up.
     Older exit rows carried no strategy name; those land under "(unknown)".
+
+    ``by_coin`` keys by `book_slot(strategy, symbol)` instead of by strategy,
+    because the operator deploys by ROW ID and a row id carries its coin
+    (`.claude/skills/deploy-by-id`). Grouping the record by strategy alone
+    printed one strategy's total on every contract it was armed on: the demo
+    grid said **69W / 3L** while the ledger held **30W / 6L** across 26
+    deployed ids, the difference being `willr14_30m_sl2tp05`'s five coins
+    each showing all five coins' wins. The default stays per strategy — the
+    loss limit in `tripped_strategies` is a per-strategy rule and must not
+    move with this.
     """
     out: dict[str, dict] = {}
     for e in ledger_since(0):
@@ -3153,6 +3163,8 @@ def strategy_stats(dry: bool | None = None) -> dict:
         if dry is not None and bool(e.get("dry_run")) is not dry:
             continue
         key = e.get("strategy") or "(unknown)"
+        if by_coin:
+            key = book_slot(key, e.get("symbol"))
         s = out.setdefault(key, {"pnl": 0.0, "wins": 0, "losses": 0})
         p = float(e.get("pnl_est") or 0.0)
         s["pnl"] += p
@@ -3169,11 +3181,18 @@ def strategy_stats(dry: bool | None = None) -> dict:
 
 
 def pnl_today_by_strategy(now: float | None = None,
-                          dry: bool | None = None) -> dict:
+                          dry: bool | None = None,
+                          by_coin: bool = False) -> dict:
     """Realized PnL since local midnight, grouped by strategy.
 
     ``dry`` selects the book. Paper losses must never pause real trading,
     and real losses must never be masked by a winning demo.
+
+    ``by_coin`` groups by `book_slot(strategy, symbol)` for the grid, which
+    shows one row per deployed id. It must stay OFF by default:
+    `tripped_strategies` reads this to decide a strategy's daily loss cap,
+    and splitting that per coin would quietly raise the cap by the number of
+    contracts the strategy is armed on.
     """
     now = time.time() if now is None else now
     lt = time.localtime(now)
@@ -3186,6 +3205,8 @@ def pnl_today_by_strategy(now: float | None = None,
         if dry is not None and bool(e.get("dry_run")) is not dry:
             continue
         key = e.get("strategy") or "(unknown)"
+        if by_coin:
+            key = book_slot(key, e.get("symbol"))
         out[key] = round(out.get(key, 0.0) + float(e.get("pnl_est") or 0.0), 2)
     return out
 

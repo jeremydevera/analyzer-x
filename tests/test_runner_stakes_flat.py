@@ -119,8 +119,8 @@ def test_the_grid_is_told_flat_and_a_one_rung_ladder(monkeypatch):
 
     monkeypatch.setattr(at, "load_settings", lambda: dict(SETTINGS))
     monkeypatch.setattr(at, "load_state", lambda: {"_rev": {}})
-    monkeypatch.setattr(at, "strategy_stats", lambda dry=None: {})
-    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None: {})
+    monkeypatch.setattr(at, "strategy_stats", lambda dry=None, by_coin=False: {})
+    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None, by_coin=False: {})
     monkeypatch.setattr(at, "tripped_strategies", lambda s: set())
     monkeypatch.setattr(at, "timeframe_locks", lambda s: {})
     body = TestClient(api.app).get("/api/trade/strategies").json()

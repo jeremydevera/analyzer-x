@@ -508,7 +508,17 @@ export default function StrategiesGrid() {
                         : `not armed on the ${book} book`}
                       className={`px-2 py-1.5 text-theme-xs whitespace-nowrap${dim}`}>
                       {n === 0 ? <span className="text-gray-400">—</span> : (
-                        <span className="flex items-center gap-1.5">
+                        // THREE THINGS, TWO DIFFERENT GAPS (operator,
+                        // `Sep 17, 2026`: "can you fix this column its
+                        // jumbled / can you make spacing between profit and
+                        // the winrate"). The donut and its `1W`/`0L` counts
+                        // are ONE object — the counts exist because a full
+                        // green ring cannot say whether it is 1 trade or 20 —
+                        // so they keep the tight gap INSIDE WinBadge. The
+                        // money is a separate fact and takes a wider one, or
+                        // all three read as one run of characters, which is
+                        // what "jumbled" was.
+                        <span className="flex items-center gap-3">
                           <WinBadge wins={w} losses={l} />
                           {/* the dollars the donut beside it was made of */}
                           <span className={`font-semibold tabular-nums ${

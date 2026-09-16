@@ -1,6 +1,6 @@
 ---
 name: workflow-map
-description: ALWAYS ON for EVERY EXPLANATION, not only "give me the workflow". Asked for again 2026-09-17 after a boxed diagram finally landed where four plain sentences had not: "this is what i want when you explain, update the skill". Fires on how something works, on WHY something happened, and on any comparison of two things that turned out differently. Answer with the boxed arrow diagram in this skill - numbered stages in boxes, arrows between them, a branch box for every decision, a failure block at the bottom - then one short line under it. Never a paragraph of prose, never a bullet list, never mermaid.
+description: ALWAYS ON for EVERY EXPLANATION, not only "give me the workflow". Asked for again 2026-09-17 after a boxed diagram finally landed where four plain sentences had not: "this is what i want when you explain, update the skill". Fires on how something works, on WHY something happened, and on any comparison of two things that turned out differently. A "why" answer OPENS with one line starting BECAUSE, numbering the possible causes when it is not certain, and only then draws the diagram. Answer with the boxed arrow diagram in this skill - numbered stages in boxes, arrows between them, a branch box for every decision, a failure block at the bottom - then one short line under it. Never a paragraph of prose, never a bullet list, never mermaid.
 ---
 
 # workflow-map — how a thing works is a DIAGRAM, not a paragraph
@@ -109,6 +109,50 @@ sentence, and never a paragraph.**
    "mailbox", not "ingest endpoint"; "password", not "HMAC secret".
 10. **No mermaid, no image, no artifact** unless they ask for one. This is
     text in the terminal, and it must survive being copied into a note.
+
+## THE CAUSE GOES FIRST — one line, above the diagram
+
+Operator, `Sep 17, 2026`, after five answers about one trade:
+
+> *"why did you not explain that? you could have said, because 1. possibly it
+> was closed in mexc"*
+
+They were right and it is the worst kind of wrong: **the cause was known the
+whole time and was drawn INSIDE box 4 of the diagram.** The trade record said
+`MANUAL/EXCHANGE`, six real trades ended in the same minute, and the app had
+no record of closing any of them. That is "somebody closed it at MEXC", and it
+should have been the FIRST LINE of the FIRST answer. Instead five answers
+explained the machinery around it.
+
+**So, for any "why did X happen":**
+
+```
+BECAUSE — somebody closed it at MEXC, not the strategy.
+  1. most likely — you pressed close in the MEXC app
+  2. also possible — MEXC closed it itself
+
+<then the diagram>
+```
+
+1. **One line, starting `BECAUSE`, before anything else.** Plain words, no
+   numbers needed yet. If they read only that line they must already have the
+   answer.
+2. **If the cause is not certain, NUMBER the possibilities**, most likely
+   first, and say which is which. They asked for this shape in their own
+   words: *"1. possibly it was closed in mexc"*. Never present a guess as a
+   fact and never hide behind the machinery instead of naming it.
+3. **The diagram explains the cause; it does not hold it.** A fact buried in
+   box 4 has not been said. If the answer can be found only by reading every
+   box, the cause line is missing.
+4. **Mechanism is never a substitute for cause.** "The feed only checks two
+   prices" is HOW it kept waiting. "Somebody closed the real one at MEXC" is
+   WHY they differ. They asked why.
+
+The tell that this rule was broken: the operator asks the same question a
+third time. Nobody asks three times about an answer that opened with its own
+cause.
+
+---
 
 ## The COMPARISON shape — two things that ended differently
 

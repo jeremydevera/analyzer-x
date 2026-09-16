@@ -782,6 +782,15 @@ for them. When an explanation needs more than one sentence it needs a DIAGRAM,
 not a longer sentence. Comparisons use the COMPARISON shape: one column, both
 sides named inside the shared boxes, one box titled `HERE THEY SPLIT`, and
 `IF IT HAD GONE DIFFERENTLY` at the bottom.
+**AND THE CAUSE GOES FIRST** — a "why" answer opens with one line starting
+`BECAUSE`, above the diagram, numbering the possible causes when it is not
+certain. Operator, 2026-09-17, after five answers about one trade: *"why did
+you not explain that? you could have said, because 1. possibly it was closed
+in mexc"*. The cause was known the whole time and was drawn INSIDE box 4 —
+the trade record said `MANUAL/EXCHANGE`, six real trades ended in the same
+minute, and the app had no record of closing any of them. A fact buried in a
+box has not been said. Mechanism is never a substitute for cause, and the tell
+that this was broken is them asking the same question a third time.
 Numbered stages in boxes, one arrow down the column, a branch box at every
 decision, a loop in a double box, real names and numbers inside the boxes
 (`port 8788`, `27,500 rows`), a mandatory "IF ANYTHING FAILS" block at the

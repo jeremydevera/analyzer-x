@@ -1672,7 +1672,15 @@ def trade_strategies(catalog: bool = False) -> dict:
     # READ ONCE, not per row: the deploy log is 1,104 lines and this route is
     # polled every 5 seconds by the grid.
     from tradingagents import local_history as _lh
-    _armed_since = _lh.armed_since()
+    # THE DEPLOY LOG FIRST, THE SETTINGS BACKUPS AS THE FALLBACK. The log
+    # only sees a row that went through SAVE, and 113 of the operator's 120
+    # rows were deployed by writing the settings file directly (their 280
+    # pasted ids, Sep 16, 2026), so the column was blank on 113 rows:
+    # *"fill up the deployed date column now i want the value when i did
+    # added this strategy"*. `deployed_at()` falls back to the first saved
+    # copy of the settings that holds the pair, and returns the copy BEFORE
+    # it as well — a window, never a bare upper bound dressed as a fact.
+    _armed_since = _lh.deployed_at()
     today_real = at.pnl_today_by_strategy(dry=False, by_coin=True)
     today_paper = at.pnl_today_by_strategy(dry=True, by_coin=True)
     deployed = [k for k in at.STRATEGY_ORDER
@@ -1766,7 +1774,12 @@ def trade_strategies(catalog: bool = False) -> dict:
             # written by the SAVE path, so a pair configured another way has
             # no date, and inventing one would be a false label. Measured
             # Sep 17, 2026: 7 of the 120 rows on screen are in the log.
-            "deployed_at": _armed_since.get(f"{key}|{_coin}"),
+            "deployed_at": (_dep := _armed_since.get(f"{key}|{_coin}") or {})
+                           .get("at"),
+            # set only when the date came from a settings backup: it is the
+            # OTHER end of the window, so the screen can say "about" and
+            # name both ends instead of printing a bound as a fact.
+            "deployed_at_from": _dep.get("from"),
             # PER ROW. A row that runs flat must not be drawn with a ladder:
             # the ladder column is what the operator reads before deploying.
             "sizing": at.sizing_for(settings, key),

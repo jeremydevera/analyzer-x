@@ -159,3 +159,99 @@ def deploy_diff(old: dict, new: dict) -> list[dict]:
                                          "base_margin": om}),
             })
     return out
+
+
+SETTINGS_SNAPSHOTS = Path(os.path.expanduser("~/.tradingagents"))
+_SNAP_CACHE: dict = {"stamp": None, "value": {}}
+
+
+def _snapshots() -> list[tuple[int, Path]]:
+    """Every saved copy of the settings file, oldest first, with its time.
+
+    `auto_trade.json.before-percoin-1789542032` carries the moment it was
+    taken in its own name; anything without one falls back to the file's
+    modified time. The LIVE file counts as the newest snapshot, so a pair
+    added since the last backup is still datable.
+    """
+    out: list[tuple[int, Path]] = []
+    for f in SETTINGS_SNAPSHOTS.glob("auto_trade.json*"):
+        if f.suffix in (".lock", ".WANT") or f.name.endswith(".pid"):
+            continue
+        stamp = 0
+        tail = f.name.rsplit("-", 1)[-1]
+        if tail.isdigit() and len(tail) >= 9:
+            stamp = int(tail)
+        if not stamp:
+            try:
+                stamp = int(f.stat().st_mtime)
+            except OSError:
+                continue
+        out.append((stamp, f))
+    out.sort()
+    return out
+
+
+def first_seen_in_settings() -> dict:
+    """`{"strategy_key|SYMBOL": (seen_at, searched_from)}` from the settings
+    backups — the fallback for a row the deploy log never saw.
+
+    The operator, `Sep 17, 2026`: *"fill up the deployed date column now i
+    want the value when i did added this strategy"*. The column was blank on
+    **113 of 120 rows**, because `deployments.jsonl` is written by the SAVE
+    path and those 113 were deployed by writing the settings file directly —
+    the 280 ids they pasted on `Sep 16, 2026`. A log that never saw an event
+    cannot date it.
+
+    Their own backups can. Walking them oldest first, the FIRST copy that
+    contains a pair puts an upper bound on when it was added, and the copy
+    before it puts a lower bound. Measured on this machine: the pair count
+    goes 35 (`Sep 16, 1:42am`) → 133 (`1:54am`), so those pairs were added
+    inside a twelve-minute window and `1:54am` is the honest answer with
+    `1:42am` as the other end.
+
+    Both numbers are returned so the screen can say which it is. **Never
+    return the upper bound alone** — printing a bound as if it were a fact is
+    exactly the false label this project keeps paying for.
+
+    Cached on the snapshot list and their sizes, because the grid polls every
+    five seconds and this opens every backup.
+    """
+    snaps = _snapshots()
+    try:
+        stamp = tuple((t, f.name, f.stat().st_size) for t, f in snaps)
+    except OSError:
+        stamp = tuple((t, f.name) for t, f in snaps)
+    if _SNAP_CACHE["stamp"] == stamp:
+        return dict(_SNAP_CACHE["value"])
+    seen: dict = {}
+    prev = 0
+    for when, path in snaps:
+        try:
+            cfg = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        for key, coins in (cfg.get("strategy_coins") or {}).items():
+            for coin in (coins or []):
+                seen.setdefault(f"{key}|{coin}", (when, prev))
+        prev = when
+    _SNAP_CACHE["stamp"] = stamp
+    _SNAP_CACHE["value"] = dict(seen)
+    return seen
+
+
+def deployed_at() -> dict:
+    """`{"strategy_key|SYMBOL": {"at": secs, "from": secs|None}}` — when each
+    deployed row was added, for the grid's DEPLOYED column.
+
+    The deploy log WINS wherever it has an answer: it recorded a real event at
+    a real second, so `"from"` is None and the screen prints the date plainly.
+    Everything else falls back to the settings backups, where `"at"` is the
+    first copy holding that pair and `"from"` is the copy before it — a
+    window, and the screen has to say so.
+    """
+    out: dict = {}
+    for pair, (at_, from_) in first_seen_in_settings().items():
+        out[pair] = {"at": int(at_), "from": int(from_) or None}
+    for pair, at_ in armed_since().items():
+        out[pair] = {"at": int(at_), "from": None}
+    return out

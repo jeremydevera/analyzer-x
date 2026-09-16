@@ -1114,6 +1114,9 @@ export interface StrategyDeployRow {
   /** unix seconds the CURRENT arming began, from the deploy log,
    *  keyed by strategy AND coin. null when the log has no record. */
   deployed_at?: number | null;
+  /** the other end of the window when the date was read back from a saved
+   *  settings file rather than logged; null/absent means it is exact */
+  deployed_at_from?: number | null;
   next_stake?: number;
   notional?: number;
   tripped?: boolean;

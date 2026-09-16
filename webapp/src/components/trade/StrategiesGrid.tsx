@@ -486,18 +486,35 @@ export default function StrategiesGrid() {
                     className="w-full min-w-0 rounded-lg border border-gray-200 bg-transparent px-1 py-1 text-[11px] text-gray-700 dark:border-gray-700 dark:text-gray-300" />
                 </TableCell>
                 <TableCell className="px-2 py-1.5 text-theme-xs whitespace-nowrap"
-                  title={r.deployed_at
-                    ? `armed on ${fmtWhen(r.deployed_at)} and not disarmed since`
-                    : "no deploy record for this strategy on this coin — the "
-                      + "log is written when config is SAVED, so a row set up "
-                      + "another way has no date"}>
-                  {/* WHEN THIS ROW WAS ARMED, from the deploy log, keyed by
-                      strategy AND coin. A dash is "not recorded", never
-                      "never deployed" — and it is the honest answer for 113
-                      of the operator's 120 rows today. */}
-                  {r.deployed_at
-                    ? <span className="text-gray-700 dark:text-gray-300">{fmtWhen(r.deployed_at)}</span>
-                    : <span className="text-gray-400">—</span>}
+                  title={!r.deployed_at
+                    ? "no record of when this strategy was added to this coin"
+                    : r.deployed_at_from
+                      ? `added between ${fmtWhen(r.deployed_at_from)} and `
+                        + `${fmtWhen(r.deployed_at)} — read back from your saved `
+                        + "settings, because this one was deployed without "
+                        + "pressing SAVE, so nothing logged the exact second"
+                      : `switched on ${fmtWhen(r.deployed_at)} and not switched `
+                        + "off since"}>
+                  {/* WHEN THIS ROW WAS ADDED, keyed by strategy AND coin.
+                      Two sources and the screen says which:
+                        · the deploy log — a real event at a real second
+                        · a saved settings file — the first copy holding this
+                          pair, so the true moment is somewhere between that
+                          copy and the one before it
+                      "about" is not decoration. 113 of the 120 rows can only
+                      be dated the second way (Sep 16, 2026, between 1:42am
+                      and 1:54am), and printing one end of a window as if it
+                      were the answer is the false label this project keeps
+                      paying for. */}
+                  {!r.deployed_at
+                    ? <span className="text-gray-400">—</span>
+                    : r.deployed_at_from
+                      ? <span className="text-gray-500 dark:text-gray-400">
+                          about {fmtWhen(r.deployed_at)}
+                        </span>
+                      : <span className="text-gray-700 dark:text-gray-300">
+                          {fmtWhen(r.deployed_at)}
+                        </span>}
                 </TableCell>
                 <TableCell className="px-2 py-1.5 text-theme-xs font-semibold text-warning-600">{r.next_stake ?? "—"}</TableCell>
                 <TableCell className="px-2 py-1.5">

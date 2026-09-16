@@ -348,21 +348,28 @@ export default function StrategiesGrid() {
                   — "DEMO $" once broke as "DEM O $"). The 3 points came
                   from `strategy`, `TP/SL %` and `ladder $`, none of which
                   wrap at these lengths. */}
-              {([["strategy", "13%"], ["tf", "3%"], ["TP/SL %", "5%"],
-                 ["books", "10%"], ["coins · live price", "11%"], ["margin $", "5%"],
+              {([["strategy", "15%"], ["tf", "3%"], ["TP/SL %", "6%"],
+                 ["books", "11%"], ["coins · live price", "13%"], ["margin $", "5%"],
                  // `rung` is gone (2026-08-27, operator): the ladder column
                  // already boxes the rung the next stake stands on, and the
                  // live-locked note above the table names it too.
-                 [`ladder $ · ${flat ? "flat" : "DEEP"}`, "7%"],
-                 ["next $", "4%"], ["loss cap $", "5%"], ["today $", "5%"],
+                 [`ladder $ · ${flat ? "flat" : "DEEP"}`, "10%"],
+                 ["next $", "4%"], ["loss cap $", "5%"], ["today $", "6%"],
                  // BOTH books, and the money apart from the record. A row
                  // ticked LIVE used to show only its live figures, so there
                  // was nowhere to see what its demo had done; then both were
                  // crammed into one cell each and read as neither
                  // ("its confusing / separate the profit for demo and live",
                  // 2026-08-27). A money column reads down the page.
-                 ["LIVE $", "8%"], ["LIVE W/L", "8%"],
-                 ["DEMO $", "8%"], ["DEMO W/L", "8%"]] as [string, string][])
+                 // ONE CELL PER BOOK — the money sits beside the record
+                 // (operator, `Sep 16, 2026`: "can you put the profit beside
+                 // the win and lose number instead of creating demo$ and
+                 // live$"). The two books stay APART, which is the 2026-08-27
+                 // rule ("its confusing / separate the profit for demo and
+                 // live"); what merged is the $ and the W/L of the SAME book,
+                 // which always described one thing. The 16 points that frees
+                 // go back to the columns that were squeezed for them.
+                 ["LIVE W/L · $", "11%"], ["DEMO W/L · $", "11%"]] as [string, string][])
                 .map(([h, w]) => (
                 <TableCell key={h} isHeader style={{ width: w }}
                   className="px-2 py-1.5 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400">{h}</TableCell>
@@ -478,37 +485,40 @@ export default function StrategiesGrid() {
                 <TableCell className={`px-2 py-1.5 text-theme-xs ${(r.today ?? 0) >= 0 ? "text-success-600" : "text-error-500"}`}>
                   {fmtMoney(r.today)}{r.tripped && <span className="ml-1 font-semibold text-error-500">PAUSED</span>}
                 </TableCell>
-                {/* TWO cells per book: the money, then the record. A book
-                    with nothing on it prints an em dash — "0/0" is a claim
-                    about trades that were never attempted, and it was the
-                    noise that made this table unreadable. */}
-                {([["real", r.real], ["paper", r.paper]] as const).flatMap(([which, b]) => {
+                {/* ONE cell per book: the record, then the money it made,
+                    reading left to right in the order the header names them.
+                    A book with nothing on it prints an em dash — "0/0 $0.00"
+                    is a claim about trades that were never attempted, and it
+                    was the noise that made this table unreadable. */}
+                {([["real", r.real], ["paper", r.paper]] as const).map(([which, b]) => {
                   const armed = b?.armed ?? (which === "real"
                     ? r.books.includes("real") : r.books.includes("paper"));
                   const pnl = b?.pnl ?? 0, w = b?.wins ?? 0, l = b?.losses ?? 0;
                   const n = w + l;
                   const dim = armed ? "" : " opacity-45";
                   const book = which === "real" ? "live" : "demo";
-                  return [
-                    <TableCell key={`${which}-pnl`}
-                      title={armed
-                        ? `realized on the ${book} book, all time`
-                        : `not armed on the ${book} book`}
-                      className={`px-2 py-1.5 text-theme-xs font-semibold${dim} ${
-                        n === 0 ? "text-gray-400"
-                        : pnl >= 0 ? "text-success-600" : "text-error-500"}`}>
-                      {n === 0 ? "—" : fmtMoney(pnl)}
-                    </TableCell>,
+                  return (
                     <TableCell key={`${which}-wl`}
                       title={armed
-                        ? `${w} won, ${l} lost of ${n} closed on the ${book} `
-                          + `book${n ? ` — ${Math.round((100 * w) / n)}% win rate` : ""}`
+                        ? (n
+                          ? `${w} won, ${l} lost of ${n} closed on the ${book} `
+                            + `book — ${Math.round((100 * w) / n)}% win rate, `
+                            + `${fmtMoney(pnl)} realized all time`
+                          : `nothing closed yet on the ${book} book`)
                         : `not armed on the ${book} book`}
                       className={`px-2 py-1.5 text-theme-xs whitespace-nowrap${dim}`}>
-                      {n === 0 ? <span className="text-gray-400">—</span>
-                        : <WinBadge wins={w} losses={l} />}
-                    </TableCell>,
-                  ];
+                      {n === 0 ? <span className="text-gray-400">—</span> : (
+                        <span className="flex items-center gap-1.5">
+                          <WinBadge wins={w} losses={l} />
+                          {/* the dollars the donut beside it was made of */}
+                          <span className={`font-semibold tabular-nums ${
+                            pnl >= 0 ? "text-success-600" : "text-error-500"}`}>
+                            {fmtMoney(pnl)}
+                          </span>
+                        </span>
+                      )}
+                    </TableCell>
+                  );
                 })}
               </TableRow>
             ))}

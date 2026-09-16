@@ -147,16 +147,27 @@ def test_the_screen_names_which_book_each_column_is():
     operator reads a demo profit as real money."""
     src = (open("webapp/src/components/trade/StrategiesGrid.tsx",
                 encoding="utf-8").read())
-    # FOUR columns: the money apart from the record, per book. Joined into
-    # one cell each they read as neither ("its confusing / separate the profit
-    # for demo and live", 2026-08-27).
-    for head in ("LIVE $", "LIVE W/L", "DEMO $", "DEMO W/L"):
+    # ONE column per book, naming BOTH things it holds (operator,
+    # `Sep 16, 2026`: "can you put the profit beside the win and lose number
+    # instead of creating demo$ and live$").
+    #
+    # What the 2026-08-27 rule actually bought is still here and must stay:
+    # the two BOOKS are never blended, so a demo profit can never be read as
+    # real money. `["PROFIT $"...]` was the unlabelled column that broke it,
+    # and it is still banned below. Merging a book's own $ with its own W/L
+    # is a different thing — they always described one book.
+    for head in ("LIVE W/L · $", "DEMO W/L · $"):
         assert f'["{head}", ' in src, head
     assert '["PROFIT $", "6%"]' not in src, "the unlabelled column is gone"
     assert '["LIVE $ · W/L"' not in src, "the joined column is gone"
     assert '[["real", r.real], ["paper", r.paper]]' in src
+    # and the money is inside the same cell as the record, not a column away
+    cell = src[src.index('[["real", r.real], ["paper", r.paper]]'):]
+    cell = cell[:cell.index("</TableRow>")]
+    assert cell.count("<TableCell") == 1,         "one cell per book — the money sits beside the W/L, not in its own column"
+    assert "<WinBadge" in cell and "fmtMoney(pnl)" in cell
     # a book with nothing on it prints an em dash, not a 0/0 it never tried
-    assert 'n === 0 ? "—"' in src
+    assert "n === 0 ? <span className=\"text-gray-400\">—</span>" in src
     assert "opacity-45" in src and "not armed on the" in src
 
 
@@ -166,8 +177,9 @@ def test_the_column_widths_sum_to_one_hundred():
     "DEM O $". The next column added here must take its share from somewhere
     rather than from everybody.
 
-    Fourteen columns since the operator removed `rung` and `backtest`
-    (2026-08-27)."""
+    Twelve columns: `rung` and `backtest` went on the operator's word
+    (2026-08-27), and the two money columns merged into their own book's
+    record on `Sep 16, 2026`."""
     import re
 
     src = (open("webapp/src/components/trade/StrategiesGrid.tsx",
@@ -175,7 +187,7 @@ def test_the_column_widths_sum_to_one_hundred():
     block = src[src.index('[["strategy", '):]
     block = block[:block.index("as [string, string][]")]
     pcts = [int(x) for x in re.findall(r'"(\d+)%"', block)]
-    assert len(pcts) == 14, pcts
+    assert len(pcts) == 12, pcts
     assert sum(pcts) == 100, f"{sum(pcts)}%: {pcts}"
 
 

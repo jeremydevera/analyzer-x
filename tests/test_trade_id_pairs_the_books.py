@@ -171,7 +171,7 @@ def test_restamping_twice_changes_nothing(tmp_path, monkeypatch):
 # ------------------------------------------------------------- the screen
 def test_the_panels_that_show_money_refresh_themselves():
     """Each of these showed a number that MOVES and did not move it."""
-    for name, why in (("StrategiesGrid.tsx", "LIVE $ and LIVE W/L"),
+    for name, why in (("StrategiesGrid.tsx", "the LIVE and DEMO W/L · $ cells"),
                       ("TradeHistory.tsx", "a trade that just closed"),
                       ("PnlPanel.tsx", "today's profit"),
                       ("PositionsPanel.tsx", "an open position's unrealized")):

@@ -9,7 +9,7 @@ import PanelStatus from "./PanelStatus";
 import CopyableId from "./CopyableId";
 import WinBadge from "./WinBadge";
 import { Live, FeedBadge } from "./LivePrice";
-import { api, fmtMoney, JobStatus, tradeApi, StrategyDeployRow } from "@/lib/api";
+import { api, fmtMoney, fmtWhen, JobStatus, tradeApi, StrategyDeployRow } from "@/lib/api";
 import type { FeedStatus } from "@/lib/api";
 import Badge from "@/components/ui/badge/Badge";
 import Button from "@/components/ui/button/Button";
@@ -259,22 +259,42 @@ export default function StrategiesGrid() {
           )}
           {/* "CREATE A BUTTON TO RESET WIN RATE OF ALL" (operator,
               2026-09-05). Archives the trade rows, never deletes them; the
-              confirm says the two side effects out loud before anything
-              happens. */}
-          <Button size="sm" variant="outline" disabled={busy}
-            onClick={async () => {
-              if (!window.confirm(
-                ["Reset the WIN/LOSS record of every strategy, demo AND live?", "",
-                 "- the old trades are archived to a backup file, not deleted",
-                 "- open demo positions are cleared; real positions are untouched",
-                 "- today's loss-cap counter resets too (it reads the same rows)",
-                ].join(String.fromCharCode(10)))) return;
-              try {
-                const got = await tradeApi.recordReset(["paper", "real"]);
-                setNote(`record reset: ${got.removed} trades archived to ${got.backup}`);
-                load();
-              } catch (e) { setErr(String(e)); }
-            }}>RESET W/L</Button>
+              confirm says the side effects out loud before anything happens.
+
+              ONE BUTTON PER BOOK since 2026-09-17 — *"i want option to reset
+              w/l for deom and live"*. The single button wiped both records
+              together, and the two are not interchangeable: the demo record
+              is a measurement you may want to start again, the live record is
+              what really happened to your money. The API has taken a `books`
+              list since the day it was written, so this is the screen catching
+              up with it.
+
+              The two confirms are DIFFERENT on purpose, because the side
+              effects are: only a demo reset clears open demo positions, and
+              only a live reset moves today's loss-cap counter (it counts the
+              same real exit rows). A shared wording would be false on one of
+              the two buttons — label-must-match-data. */}
+          {([["paper", "DEMO"], ["real", "LIVE"]] as const).map(([book, word]) => (
+            <Button key={book} size="sm" variant="outline" disabled={busy}
+              onClick={async () => {
+                if (!window.confirm(
+                  [`Reset the ${word} win/loss record of every strategy?`, "",
+                   "- the old trades are archived to a backup file, not deleted",
+                   ...(book === "paper"
+                     ? ["- open demo positions are cleared",
+                        "- your LIVE record and open real positions are untouched"]
+                     : ["- open real positions are untouched — that money stays on MEXC",
+                        "- today's loss-cap counter resets too (it counts the same rows)",
+                        "- your DEMO record is untouched"]),
+                  ].join(String.fromCharCode(10)))) return;
+                try {
+                  const got = await tradeApi.recordReset([book]);
+                  setNote(`${word.toLowerCase()} record reset: `
+                    + `${got.removed} trades archived to ${got.backup}`);
+                  load();
+                } catch (e) { setErr(String(e)); }
+              }}>RESET {word} W/L</Button>
+          ))}
           <Button size="sm" disabled={!dirty || busy} onClick={save}>SAVE CONFIG</Button>
         </div>
       </div>
@@ -353,7 +373,13 @@ export default function StrategiesGrid() {
                  // `rung` is gone (2026-08-27, operator): the ladder column
                  // already boxes the rung the next stake stands on, and the
                  // live-locked note above the table names it too.
-                 [`ladder $ · ${flat ? "flat" : "DEEP"}`, "10%"],
+                 // WAS `ladder $ · flat` (operator, Sep 17, 2026: "i dont
+                 // need ladder $ · flat column, instead put when was this
+                 // strategies deployed"). The ladder has not been a real
+                 // stake since Sep 11 — `staked_margin` returns the base on
+                 // every rung — so the column was drawing a thing the runner
+                 // cannot do.
+                 ["deployed", "10%"],
                  ["next $", "4%"], ["loss cap $", "5%"], ["today $", "6%"],
                  // BOTH books, and the money apart from the record. A row
                  // ticked LIVE used to show only its live figures, so there
@@ -459,19 +485,19 @@ export default function StrategiesGrid() {
                     onBlur={(e) => setMargin(r.key, e.target.value)}
                     className="w-full min-w-0 rounded-lg border border-gray-200 bg-transparent px-1 py-1 text-[11px] text-gray-700 dark:border-gray-700 dark:text-gray-300" />
                 </TableCell>
-                <TableCell className="px-2 py-1.5">
-                  {/* the whole ladder in dollars, with the rung it stands on boxed —
-                      so "next $" is never a number to work out */}
-                  <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-[10px] leading-tight">
-                    {(r.ladder ?? []).map((amt, i) => (
-                      <span key={i} className={i === (r.ladder_rung ?? 0) && !flat
-                        ? "rounded bg-warning-400 px-1 font-bold text-gray-900"
-                        : "px-0.5 text-gray-400"}>
-                        {amt}
-                      </span>
-                    ))}
-                    {flat && <span className="ml-1 text-gray-400">every trade</span>}
-                  </div>
+                <TableCell className="px-2 py-1.5 text-theme-xs whitespace-nowrap"
+                  title={r.deployed_at
+                    ? `armed on ${fmtWhen(r.deployed_at)} and not disarmed since`
+                    : "no deploy record for this strategy on this coin — the "
+                      + "log is written when config is SAVED, so a row set up "
+                      + "another way has no date"}>
+                  {/* WHEN THIS ROW WAS ARMED, from the deploy log, keyed by
+                      strategy AND coin. A dash is "not recorded", never
+                      "never deployed" — and it is the honest answer for 113
+                      of the operator's 120 rows today. */}
+                  {r.deployed_at
+                    ? <span className="text-gray-700 dark:text-gray-300">{fmtWhen(r.deployed_at)}</span>
+                    : <span className="text-gray-400">—</span>}
                 </TableCell>
                 <TableCell className="px-2 py-1.5 text-theme-xs font-semibold text-warning-600">{r.next_stake ?? "—"}</TableCell>
                 <TableCell className="px-2 py-1.5">

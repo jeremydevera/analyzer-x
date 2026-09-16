@@ -72,6 +72,45 @@ def deployments(symbol: str | None = None, limit: int = 200) -> list[dict]:
     return out[:limit]
 
 
+def armed_since() -> dict:
+    """`{"strategy_key|SYMBOL": unix_seconds}` — when the CURRENT arming began.
+
+    The operator, `Sep 17, 2026`: *"i dont need ladder $ · flat column, instead
+    put when was this strategies deployed"*.
+
+    KEYED BY STRATEGY AND COIN, because that is what a row IS: the grid shows
+    120 rows over 85 strategies, one per contract, and `macddiv_4h_sl25tp3` on
+    STBL was armed on a different day from the same rule on another coin. A
+    per-strategy answer would print one date on rows that started on two.
+
+    NOT simply the newest `deployed` row. A pair can be deployed, disarmed and
+    deployed again, and the honest answer to "when was this deployed" is when
+    the run it is in NOW began — so a row armed since Sep 10 must not read
+    Sep 16 because somebody edited its margin that day.
+
+    So: walk the log OLDEST first. A `deployed` starts the clock only if it is
+    not already running (`setdefault`). A `disarmed` stops it, because the next
+    `deployed` is a new run. A `changed` is ignored on purpose — editing a
+    margin does not redeploy anything, and counting it would show "deployed 2
+    minutes ago" on a strategy that has been running for a week.
+
+    A pair the log has never seen is absent, and the screen prints a dash
+    rather than inventing a date.
+    """
+    since: dict = {}
+    for row in reversed(deployments(limit=1_000_000)):     # oldest first
+        key, sym, action = (row.get("strategy_key"), row.get("symbol"),
+                            row.get("action"))
+        if not key or not sym:
+            continue
+        pair = f"{key}|{sym}"
+        if action == "disarmed":
+            since.pop(pair, None)
+        elif action == "deployed" and int(row.get("changed_at") or 0) > 0:
+            since.setdefault(pair, int(row["changed_at"]))
+    return since
+
+
 # ---------------------------------------------------------------- deploy diff
 _TF_NAME = {"Min1": "1m", "Min15": "15m", "Min30": "30m", "Min60": "1h",
             "Hour4": "4h", "Day1": "1d"}

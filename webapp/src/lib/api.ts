@@ -1111,6 +1111,9 @@ export interface StrategyDeployRow {
   streak_shared_with?: string[];
   ladder?: number[];
   ladder_rung?: number;
+  /** unix seconds the CURRENT arming began, from the deploy log,
+   *  keyed by strategy AND coin. null when the log has no record. */
+  deployed_at?: number | null;
   next_stake?: number;
   notional?: number;
   tripped?: boolean;

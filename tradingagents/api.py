@@ -1669,6 +1669,10 @@ def trade_strategies(catalog: bool = False) -> dict:
     # PER BOOK. This was `dry=False` for every row, so a demo-only row printed
     # the real book's today — always 0.00 for a strategy that has never traded
     # real money, whatever its demo did (label-must-match-data).
+    # READ ONCE, not per row: the deploy log is 1,104 lines and this route is
+    # polled every 5 seconds by the grid.
+    from tradingagents import local_history as _lh
+    _armed_since = _lh.armed_since()
     today_real = at.pnl_today_by_strategy(dry=False, by_coin=True)
     today_paper = at.pnl_today_by_strategy(dry=True, by_coin=True)
     deployed = [k for k in at.STRATEGY_ORDER
@@ -1753,6 +1757,16 @@ def trade_strategies(catalog: bool = False) -> dict:
                 if _is_real and other != key
                 and "real" in (books.get(other) or [])
                 and set(coins.get(other) or []) & set(_row_coins)),
+            # WHEN THIS ROW WAS DEPLOYED (operator, Sep 17, 2026: "i dont
+            # need ladder $ · flat column, instead put when was this
+            # strategies deployed"). Keyed by strategy AND coin, because a row
+            # IS a strategy on a contract — the same rule on two coins was
+            # armed on two different days. None means the deploy log has no
+            # record of this pair and the screen prints a dash: the log is
+            # written by the SAVE path, so a pair configured another way has
+            # no date, and inventing one would be a false label. Measured
+            # Sep 17, 2026: 7 of the 120 rows on screen are in the log.
+            "deployed_at": _armed_since.get(f"{key}|{_coin}"),
             # PER ROW. A row that runs flat must not be drawn with a ladder:
             # the ladder column is what the operator reads before deploying.
             "sizing": at.sizing_for(settings, key),

@@ -21,7 +21,9 @@ added inside a twelve-minute window.
 
 **A WINDOW IS NOT A FACT.** The upper bound alone would print `Sep 16, 2026
 1:54am` on 113 rows as if somebody had recorded it. Both ends travel to the
-screen, which prints "about" and names both in its tooltip — the same rule
+screen. The face of the cell prints the date alone, in one ink for every row
+(the operator had the word "about" removed, then the lighter ink: *"the first
+7 is bolded"*), so the TOOLTIP names both ends — the same rule
 that CLAUDE.md calls label-must-match-data, and the same shape as "an empty
 page may never speak for the store".
 """
@@ -129,9 +131,10 @@ def test_every_deployed_pair_gets_an_answer(home):
 # --------------------------------------------------- 3. the screen says which
 def test_a_window_is_still_marked_as_one_after_about_was_removed():
     """The cell used to print `about Sep 16, 2026 1:54am`. The operator had
-    that word removed on `Sep 17, 2026` (*"remove the about"*), so the face of
-    the cell is now just the date — which means the TOOLTIP is the only place
-    left that says a window is a window, and it is not optional."""
+    that word removed on `Sep 17, 2026` (*"remove the about"*) and then the
+    lighter ink too (*"the first 7 is bolded"*), so every date is drawn the
+    same — which leaves the TOOLTIP as the only place that says a window is a
+    window, and it is not optional."""
     p = open("webapp/src/components/trade/StrategiesGrid.tsx",
              encoding="utf-8").read()
     assert "r.deployed_at_from" in p, "the screen cannot tell the two apart"
@@ -140,9 +143,9 @@ def test_a_window_is_still_marked_as_one_after_about_was_removed():
         "the tooltip must name BOTH ends of the window"
     assert "pressing SAVE" in p, \
         "the tooltip must say WHY the date is a window, not just that it is"
-    assert "text-gray-500 dark:text-gray-400" in p, (
-        "the muted ink is the only thing left on the cell's face separating a "
-        "second somebody recorded from one worked out afterwards")
+    assert "text-gray-500 dark:text-gray-400" not in p.split("deployed_at")[1][:900], (
+        "the two kinds of date are drawn in different ink again — the operator "
+        "read that as the first 7 being bolded and asked for it gone")
     assert "fmtWhen" in p and "toLocale" not in p, "CLAUDE.md date format"
 
 

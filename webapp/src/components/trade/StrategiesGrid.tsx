@@ -501,23 +501,25 @@ export default function StrategiesGrid() {
                         · a saved settings file — the first copy holding this
                           pair, so the true moment is somewhere between that
                           copy and the one before it
-                      The word "about" was in front of the second kind until
-                      the operator had it removed on Sep 17, 2026 ("remove the
-                      about"). The honesty lives in the TOOLTIP now, which
+                      EVERY DATE IS DRAWN THE SAME. The second kind used to
+                      carry the word "about" and then, when that went, lighter
+                      ink — and the operator saw the 7 exact rows standing out
+                      from the other 113 and asked about it twice ("remove the
+                      about", then "the first 7 is bolded"). Their screen, and
+                      they were right that it read as emphasis rather than as
+                      a caveat.
+
+                      So the whole difference now lives in the TOOLTIP, which
                       names both ends of the window and says where the date
-                      came from — 113 of the 120 rows can only be dated that
-                      way (Sep 16, 2026, between 1:42am and 1:54am). Keep the
-                      muted ink: it is the only thing left on the face of the
-                      cell that separates a witnessed second from a window. */}
-                  {!r.deployed_at
-                    ? <span className="text-gray-400">—</span>
-                    : r.deployed_at_from
-                      ? <span className="text-gray-500 dark:text-gray-400">
-                          {fmtWhen(r.deployed_at)}
-                        </span>
-                      : <span className="text-gray-700 dark:text-gray-300">
-                          {fmtWhen(r.deployed_at)}
-                        </span>}
+                      came from. It is NOT decoration and must not be dropped:
+                      113 of the 120 rows can only be dated to somewhere
+                      between Sep 16, 2026 1:42am and 1:54am, and the tooltip
+                      is the only place that says so. */}
+                  {r.deployed_at
+                    ? <span className="text-gray-700 dark:text-gray-300">
+                        {fmtWhen(r.deployed_at)}
+                      </span>
+                    : <span className="text-gray-400">—</span>}
                 </TableCell>
                 <TableCell className="px-2 py-1.5 text-theme-xs font-semibold text-warning-600">{r.next_stake ?? "—"}</TableCell>
                 <TableCell className="px-2 py-1.5">
@@ -578,6 +580,65 @@ export default function StrategiesGrid() {
                 })}
               </TableRow>
             ))}
+            {/* THE TOTAL (operator, Sep 17, 2026: "create total row at the
+                last row of the Strategies you have deployed table / total the
+                profit for demo and live").
+
+                IT SUMS EXACTLY THE CELLS ABOVE IT, and nothing else. A book
+                with no closed trades prints an em dash in its row — so it
+                contributes nothing here either, and the count beside the
+                money says how many rows DID. That is the whole rule this
+                repo keeps paying for: a total whose parts do not visibly add
+                up to it is a false label, and "TOTAL PROFIT" over 400 of 694
+                trades is already in CLAUDE.md as one of the five.
+
+                The two books stay APART (2026-08-27: "its confusing /
+                separate the profit for demo and live"). There is deliberately
+                no grand total of the two — practice money and real money do
+                not add. */}
+            {rows.length > 0 && (() => {
+              const tot = (pick: (r: StrategyDeployRow) => { pnl?: number; wins?: number; losses?: number } | undefined) =>
+                rows.reduce((acc, r) => {
+                  const b = pick(r);
+                  const n = (b?.wins ?? 0) + (b?.losses ?? 0);
+                  return n > 0
+                    ? { sum: acc.sum + (b?.pnl ?? 0), rows: acc.rows + 1,
+                        wins: acc.wins + (b?.wins ?? 0), losses: acc.losses + (b?.losses ?? 0) }
+                    : acc;
+                }, { sum: 0, rows: 0, wins: 0, losses: 0 });
+              const live = tot((r) => r.real), demo = tot((r) => r.paper);
+              const cell = (t: typeof live, book: string) => (
+                <TableCell
+                  title={t.rows
+                    ? `${fmtMoney(t.sum)} — every closed ${book} trade across the `
+                      + `${t.rows} row${t.rows === 1 ? "" : "s"} above that have one `
+                      + `(${t.wins} won, ${t.losses} lost)`
+                    : `nothing has closed on the ${book} side yet`}
+                  className="px-2 py-2 text-theme-xs whitespace-nowrap">
+                  {t.rows === 0 ? <span className="text-gray-400">—</span> : (
+                    <span className="flex items-baseline gap-2">
+                      <span className={`text-sm font-bold tabular-nums ${
+                        t.sum >= 0 ? "text-success-600" : "text-error-500"}`}>
+                        {fmtMoney(t.sum)}
+                      </span>
+                      <span className="text-[10px] text-gray-400 tabular-nums">
+                        {t.rows} row{t.rows === 1 ? "" : "s"}
+                      </span>
+                    </span>
+                  )}
+                </TableCell>
+              );
+              return (
+                <TableRow className="border-t-2 border-gray-300 bg-gray-50 dark:border-gray-600 dark:bg-white/[0.03]">
+                  <TableCell colSpan={10}
+                    className="px-2 py-2 text-end text-theme-xs font-semibold text-gray-600 dark:text-gray-300">
+                    TOTAL — every closed trade so far
+                  </TableCell>
+                  {cell(live, "real-money")}
+                  {cell(demo, "practice")}
+                </TableRow>
+              );
+            })()}
           </TableBody>
         </Table>
       </div>

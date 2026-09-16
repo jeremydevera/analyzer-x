@@ -747,6 +747,37 @@ clearer. If a real one cannot be measured, label it "made-up numbers".
 Compress structure, never comprehension. Verify as rigorously as ever — then
 report only the answer.
 
+**AND WHEN ONE SENTENCE IS NOT ENOUGH, DRAW IT — same skill, part two.**
+`workflow-map` was deleted on 2026-09-17 and folded in here: *"i want it all in
+short and plain instead"*, the same instruction that combined three skills on
+2026-09-05. A rule split across two files gets followed in one of them.
+
+A FACT, a NUMBER or a yes/no stays ONE SENTENCE. An EXPLANATION is the **BOXED
+ARROW DIAGRAM** — how something WORKS, **why something HAPPENED**, any
+**comparison of two things that ended differently**, and any *"explain again"*,
+because being asked twice means sentences are not working. Never a paragraph,
+never a bullet list, never mermaid. They asked *"so why did demo win if live
+lose?"* four times, got four correct plain sentences, and only the diagram
+landed: *"this is what i want when you explain"*. A sentence makes them hold
+six facts and work out the order themselves; the diagram holds the order for
+them.
+
+**THE CAUSE GOES FIRST** — a "why" answer opens with one line starting
+`BECAUSE`, above the diagram, numbering the possible causes when it is not
+certain (*"because 1. possibly it was closed in mexc"*, their own words). On
+2026-09-17 the cause was known from the first answer and was drawn INSIDE box
+4: the trade record said `MANUAL/EXCHANGE`, six real trades ended in the same
+minute, and the app had no record of closing any of them. **A fact buried in a
+box has not been said.** Mechanism is never a substitute for cause, and the
+tell that this was broken is them asking the same question a third time.
+
+The shape: numbered stages in boxes, one arrow down the column, a branch box at
+every decision, a loop in a double box, real names and numbers inside the boxes
+(`port 8788`, `27,500 rows`), a mandatory "IF ANYTHING FAILS" block at the
+bottom, and ONE line of plain words under the diagram. Comparisons use the
+COMPARISON shape: one column, both sides named inside the shared boxes, one box
+titled `HERE THEY SPLIT`, and `IF IT HAD GONE DIFFERENTLY` at the bottom.
+
 ALWAYS ON — `say-done`. After finishing ANY task the operator asked for — code
 changed, sweep finished, artifact published, bug fixed — speak one calm sentence
 out loud (under ~12 words, no "sir" — removed 2026-08-20). One utterance per
@@ -769,36 +800,6 @@ because the NUMBER gets verified, and the number is never the bug. Five UI failu
 Every label must be DERIVED from the data it describes — never a literal. Verification
 must assert the label AGREES with its source, and that itemised rows SUM to the total
 shown. Presence is not correctness.
-
-ALWAYS ON — `workflow-map`. **EVERY EXPLANATION is the BOXED ARROW DIAGRAM**
-in `.claude/skills/workflow-map/`, never a paragraph and never a bullet list —
-how something WORKS, **why something HAPPENED**, and any **comparison of two
-things that ended differently**. Widened 2026-09-17: they asked *"so why did
-demo win if live lose?"* four times, got four correct plain sentences, and only
-the diagram landed — *"this is what i want when you explain, update the skill i
-mentioned to you to create using this workflow format"*. A sentence makes them
-hold six facts and work out the order themselves; the diagram holds the order
-for them. When an explanation needs more than one sentence it needs a DIAGRAM,
-not a longer sentence. Comparisons use the COMPARISON shape: one column, both
-sides named inside the shared boxes, one box titled `HERE THEY SPLIT`, and
-`IF IT HAD GONE DIFFERENTLY` at the bottom.
-**AND THE CAUSE GOES FIRST** — a "why" answer opens with one line starting
-`BECAUSE`, above the diagram, numbering the possible causes when it is not
-certain. Operator, 2026-09-17, after five answers about one trade: *"why did
-you not explain that? you could have said, because 1. possibly it was closed
-in mexc"*. The cause was known the whole time and was drawn INSIDE box 4 —
-the trade record said `MANUAL/EXCHANGE`, six real trades ended in the same
-minute, and the app had no record of closing any of them. A fact buried in a
-box has not been said. Mechanism is never a substitute for cause, and the tell
-that this was broken is them asking the same question a third time.
-Numbered stages in boxes, one arrow down the column, a branch box at every
-decision, a loop in a double box, real names and numbers inside the boxes
-(`port 8788`, `27,500 rows`), a mandatory "IF ANYTHING FAILS" block at the
-bottom, and ONE line of plain words under the diagram. Asked for on
-2026-09-10 after the same answer was given twice as prose and once as a list:
-*"i want workflow style ... moving forward when i ask you a workflow i want
-this format"*. A single fact is still one sentence — `short-and-plain` rules
-everything.
 
 ALWAYS ON — `rca-log`. STRICT. **A bug fix is not finished until `docs/RCA.md`
 has its entry, in the SAME commit as the fix.** No entry, no commit. The

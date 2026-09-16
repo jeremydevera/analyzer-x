@@ -9,7 +9,7 @@ here** — this file exists because the operator won't remember them all
 
 | skill | what it does |
 |---|---|
-| `short-and-plain` | Every answer short, in basic words, and **always with a real example** from your own data. A fact = 1 sentence. |
+| `short-and-plain` | **The only rule for how to answer.** A fact or a number is **ONE SENTENCE** in non-technical words — no `ledger`, no `TP`, no file names. An **explanation** (how it works, why it happened, two things that ended differently) is the **boxed arrow diagram**, opening with one line starting `BECAUSE`. Absorbed `workflow-map` on 2026-09-17: *"i want it all in short and plain instead"*. |
 | `bug-scenario` | A bug is always shown as a step-by-step story with real times and dollars, never just code talk. |
 | `say-done` | Speaks one sentence out loud when a task finishes. Edit its voice in `.claude/skills/say-done/config.json`. |
 | `three-gates` | Before any answer or "done": is it measured, is it real, was it tested. |
@@ -20,7 +20,6 @@ here** — this file exists because the operator won't remember them all
 | `deploy-by-id` | A row id is `coin + timeframe + signal + threshold + SL + TP + sizing` — **all seven**. Deploying N ids deploys N rows, every id printed beside a trade is built from THAT trade's coin, and a refusal is named with its id. Made 2026-09-16, after five of the operator's ids collapsed into one strategy key and four trades in five were labelled `#DM84QDSZ`, which is DVNSTOCK's row. |
 | `store-strategy` | Any new strategy is only finished when **you can find it in Stored strategies by its #id** — measuring writes files, the panel reads the index, and nothing joins the two by itself. Made 2026-09-12, after 6,845,648 new rows were measured and the panel showed none of them. |
 | `rca-log` | Every bug that gets fixed is written into `docs/RCA.md` in the same commit — what you saw, the timeline, the cause, **why the test missed it**, the cost, and the test that now stops it. Made 2026-09-09. |
-| `workflow-map` | Ask "how does it work" or "give me the workflow" and the answer is the **boxed arrow diagram** — numbered stages, a branch box at every decision, a loop in a double box, and a "if anything fails" block at the bottom. One line of plain words under it, never a paragraph above it. Made 2026-09-10. |
 | `press-and-watch` | Any of the long jobs — DOWNLOAD CANDLES, UPDATE CANDLES, RESOLVE PENDING, BACKTEST, UPDATE ALL BACKTEST — is watched to the END, not for ten seconds. **WATCH MODE (2026-09-15)** walks every screen in a real Chrome (`scripts/watch_ui.mjs`, playwright-core direct, never the MCP server) and collects console errors, failed calls, crash screens and backend tracebacks written during the walk — exit 1 means it found something, and each finding goes through harddev → rca-log → push → walk again. Guess what will break first, press it the way the button does, fix with `harddev`, press again. Made 2026-09-05.  Use '/goal' dont stop until all is pending is resolved loop until you resolve all, if you have question then ask your self what is best approach that wont cause any bug then report me what changed.
 
 

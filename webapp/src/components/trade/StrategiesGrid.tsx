@@ -501,16 +501,19 @@ export default function StrategiesGrid() {
                         · a saved settings file — the first copy holding this
                           pair, so the true moment is somewhere between that
                           copy and the one before it
-                      "about" is not decoration. 113 of the 120 rows can only
-                      be dated the second way (Sep 16, 2026, between 1:42am
-                      and 1:54am), and printing one end of a window as if it
-                      were the answer is the false label this project keeps
-                      paying for. */}
+                      The word "about" was in front of the second kind until
+                      the operator had it removed on Sep 17, 2026 ("remove the
+                      about"). The honesty lives in the TOOLTIP now, which
+                      names both ends of the window and says where the date
+                      came from — 113 of the 120 rows can only be dated that
+                      way (Sep 16, 2026, between 1:42am and 1:54am). Keep the
+                      muted ink: it is the only thing left on the face of the
+                      cell that separates a witnessed second from a window. */}
                   {!r.deployed_at
                     ? <span className="text-gray-400">—</span>
                     : r.deployed_at_from
                       ? <span className="text-gray-500 dark:text-gray-400">
-                          about {fmtWhen(r.deployed_at)}
+                          {fmtWhen(r.deployed_at)}
                         </span>
                       : <span className="text-gray-700 dark:text-gray-300">
                           {fmtWhen(r.deployed_at)}

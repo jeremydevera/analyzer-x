@@ -127,15 +127,22 @@ def test_every_deployed_pair_gets_an_answer(home):
 
 
 # --------------------------------------------------- 3. the screen says which
-def test_the_column_prints_about_when_it_is_a_window():
+def test_a_window_is_still_marked_as_one_after_about_was_removed():
+    """The cell used to print `about Sep 16, 2026 1:54am`. The operator had
+    that word removed on `Sep 17, 2026` (*"remove the about"*), so the face of
+    the cell is now just the date — which means the TOOLTIP is the only place
+    left that says a window is a window, and it is not optional."""
     p = open("webapp/src/components/trade/StrategiesGrid.tsx",
              encoding="utf-8").read()
     assert "r.deployed_at_from" in p, "the screen cannot tell the two apart"
-    assert "about {fmtWhen(r.deployed_at)}" in p, (
-        "a window is being printed as a plain date — that is a bound wearing "
-        "a fact's clothes")
+    assert "about {fmtWhen(r.deployed_at)}" not in p, "the word came back"
     assert "added between ${fmtWhen(r.deployed_at_from)} and " in p, \
-        "the tooltip must name BOTH ends"
+        "the tooltip must name BOTH ends of the window"
+    assert "pressing SAVE" in p, \
+        "the tooltip must say WHY the date is a window, not just that it is"
+    assert "text-gray-500 dark:text-gray-400" in p, (
+        "the muted ink is the only thing left on the cell's face separating a "
+        "second somebody recorded from one worked out afterwards")
     assert "fmtWhen" in p and "toLocale" not in p, "CLAUDE.md date format"
 
 

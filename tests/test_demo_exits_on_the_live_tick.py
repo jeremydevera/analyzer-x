@@ -294,34 +294,90 @@ def test_the_live_book_never_exits_on_the_feed(sandbox, monkeypatch):
         "the exchange is the source of truth for a live position"
 
 
-def test_only_coins_holding_a_POSITION_are_listened_to(sandbox, monkeypatch):
-    """Subscribing to all 993 contracts to serve a handful of open trades is
-    traffic nobody asked for. A coin with nothing open is not followed.
+class _TrackSpy:
+    """Every call `_feed_follow` makes into the feed, recorded."""
+
+    def __init__(self):
+        self.tracked: list = []
+        self.klines: list = []
+
+    def track(self, coins):
+        self.tracked.append(set(coins))
+
+    def track_klines(self, pairs):
+        self.klines.append(set(pairs))
+
+    def arm(self, *a, **k):
+        pass
+
+    def keep_only(self, *a, **k):
+        pass
+
+    def start(self):
+        return False
+
+    def ticks_since(self, *a, **k):
+        return None
+
+
+def test_a_coin_that_is_neither_open_nor_armed_is_not_listened_to(
+        sandbox, monkeypatch):
+    """Subscribing to all 993 contracts to serve a handful of rows is traffic
+    nobody asked for. Open OR armed is the whole list — nothing else.
 
     (A coin holding a LIVE position IS followed, since Sep 15, 2026, so the
     operator can see its price — see
     `test_a_live_only_coin_is_watched_for_its_PRICE_but_never_armed`. What
     stays demo-only is the ARMING.)
     """
-    tracked: list = []
-
-    class Spy:
-        def track(self, coins):
-            tracked.append(set(coins))
-
-        def start(self):
-            return False
-
-        def ticks_since(self, *a, **k):
-            return None
-
-    monkeypatch.setattr(lp, "FEED", Spy())
+    spy = _TrackSpy()
+    monkeypatch.setattr(lp, "FEED", spy)
     at._feed_follow({
         at.state_key(COIN, True, KEY): {"position": _pos()},
         at.state_key("KITE_USDT", True, KEY): {"position": None},
         "ROLSTOCK_USDT": {"position": None},
     })
-    assert tracked == [{COIN}],         "a coin with nothing open must not be subscribed to"
+    assert spy.tracked == [{COIN}],         "a coin that is neither open nor armed must not be subscribed to"
+
+
+def test_an_ARMED_coin_shows_a_price_before_it_ever_trades(
+        sandbox, monkeypatch):
+    """`Sep 16, 2026` — *"show me proof, show the live price in each row"*.
+
+    11 of the operator's 13 armed contracts held no position, so the
+    strategies table printed an em dash for every one of them and the claim
+    "the runner waits on the websocket" could not be checked from the screen.
+    An armed coin is followed for its PRICE from the moment it is armed.
+    """
+    spy = _TrackSpy()
+    monkeypatch.setattr(lp, "FEED", spy)
+    settings = at.load_settings()
+    settings["strategies"] = [KEY]
+    settings["strategy_coins"] = {KEY: ["ARKM_USDT"]}
+    at.save_settings(settings)
+
+    at._feed_follow({})
+    assert spy.tracked == [{"ARKM_USDT"}],         "an armed coin must be followed before it holds anything"
+    assert spy.klines and ("ARKM_USDT", at.STRATEGY_SPECS[KEY]["interval"])         in spy.klines[0], "and its bars are still waited on"
+
+
+def test_a_broken_candle_subscription_does_not_cost_the_prices(
+        sandbox, monkeypatch):
+    """Found by the harddev loop, `Sep 16, 2026`, in this change itself.
+
+    Both calls sit under one `except`, so the first draft — which claimed
+    candles before prices — lost every price on the screen whenever
+    `track_klines` raised. The screen-facing call goes FIRST.
+    """
+    spy = _TrackSpy()
+
+    def boom(_pairs):
+        raise RuntimeError("no network")
+
+    spy.track_klines = boom
+    monkeypatch.setattr(lp, "FEED", spy)
+    at._feed_follow({at.state_key(COIN, True, KEY): {"position": _pos()}})
+    assert spy.tracked == [{COIN}],         "a failed candle subscription must not take the prices with it"
 
 
 def test_following_the_book_never_breaks_the_cycle(sandbox, monkeypatch):

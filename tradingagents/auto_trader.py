@@ -5590,7 +5590,6 @@ def _feed_follow(state: dict) -> None:
         coins |= {coin_of_slot(k) for k, v in state.items()
                   if isinstance(v, dict) and v.get("position")}
         coins.discard("")
-        live_price.FEED.track(coins)
 
         # WAIT ON THE CANDLE, DO NOT POLL FOR IT. Every armed strategy's own
         # timeframe, on every coin it trades: MEXC pushes the new bar the
@@ -5604,6 +5603,32 @@ def _feed_follow(state: dict) -> None:
                 continue
             for coin in coins_for(key, settings):
                 pairs.add((coin, spec["interval"]))
+
+        # AND THE LAST PRICE OF EVERY ARMED COIN, holding a position or not.
+        # The operator asked to SEE the socket working on the strategies
+        # table (`Sep 16, 2026`: "show me proof, show the live price in each
+        # row"), and a row that is armed but flat had no price at all —
+        # `track` only followed coins with an open position, so 11 of the 13
+        # armed contracts printed an em dash and the claim "it waits on the
+        # websocket" could not be checked from the screen.
+        #
+        # This is the SAME set the kline subscription below already covers
+        # (13 coins / 22 bar streams here), so it is bounded by what is
+        # armed, never by the 993 contracts MEXC lists. Public market data on
+        # a coin this PC is already waiting for costs nothing and decides
+        # nothing: entries still read the CLOSED bar, only a DEMO position's
+        # barriers are armed, and a plain tick does not wake a cycle —
+        # `live_price` sets `wake` for a fired barrier, a closed bar or a
+        # personal push, never for a print (checked in the loop; otherwise
+        # 13 coins of ticks would have become a cycle per tick).
+        #
+        # PRICES ARE CLAIMED BEFORE CANDLES, and that order is load-bearing:
+        # the harddev loop had this pair the other way round and a feed whose
+        # `track_klines` raised lost its prices too, because both sit under
+        # one `except`. The cheaper, screen-facing call goes first.
+        coins |= {c for c, _iv in pairs}
+        coins.discard("")
+        live_price.FEED.track(coins)
         live_price.FEED.track_klines(pairs)
 
         # Every open DEMO position's barriers, so a print that crosses one

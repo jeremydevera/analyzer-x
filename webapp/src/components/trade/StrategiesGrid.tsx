@@ -7,7 +7,10 @@ import { markReady } from "@/lib/loading";
 import { useLiveRefresh } from "@/lib/live";
 import PanelStatus from "./PanelStatus";
 import CopyableId from "./CopyableId";
+import WinBadge from "./WinBadge";
+import { Live, FeedBadge } from "./LivePrice";
 import { api, fmtMoney, JobStatus, tradeApi, StrategyDeployRow } from "@/lib/api";
+import type { FeedStatus } from "@/lib/api";
 import Badge from "@/components/ui/badge/Badge";
 import Button from "@/components/ui/button/Button";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
@@ -38,6 +41,13 @@ export default function StrategiesGrid() {
   const [err, setErr] = useState("");
   const [note, setNote] = useState("");
   const [bt, setBt] = useState<JobStatus | null>(null);
+  // THE SOCKET, ON THIS TABLE. The operator asked for proof that an armed
+  // strategy is driven by the websocket and not a timer (`Sep 16, 2026`:
+  // "show me proof, show the live price in each row"), so every coin in
+  // every row prints the last price MEXC PUSHED and how old it is. One
+  // second, like the positions table — a price that refreshes every five
+  // seconds cannot demonstrate a realtime feed.
+  const [feed, setFeed] = useState<FeedStatus | null>(null);
 
   // A REFRESH MUST NEVER EAT AN UNSAVED EDIT (Sep 14, 2026).
   //
@@ -89,6 +99,9 @@ export default function StrategiesGrid() {
   // reload: *"i want the ui realtime when i lose it should show the winrate
   // lose or what ever currently i need to refresh it"*.
   useLiveRefresh(load, 5_000, [load]);
+
+  useLiveRefresh(() => tradeApi.feed().then(setFeed).catch(() => setFeed(null)),
+                 1_000);
 
   // the "1 YEAR" grid runs detached, so it survives leaving this page
   useLiveRefresh(() => { api.jobStatus("stratbt").then(setBt).catch(() => {}); },
@@ -158,8 +171,10 @@ export default function StrategiesGrid() {
     <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="flex flex-wrap items-center gap-3 px-5 pt-4">
         <div>
-          <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">
+          <h3 className="flex flex-wrap items-center gap-2 text-base font-semibold text-gray-800 dark:text-white/90">
             {catalog ? "Strategies · every configurable one" : "Strategies you have deployed"}
+            {/* the socket these rows wait on, named beside the rows */}
+            <FeedBadge feed={feed} />
           </h3>
           <p className="text-theme-xs text-gray-500 dark:text-gray-400">
             <span className="font-semibold text-error-500">{counts.real_count} trading REAL money</span>
@@ -327,12 +342,18 @@ export default function StrategiesGrid() {
                   book columns went in, and a table-fixed layout answers that
                   by squeezing every column: "LIVE W/L" wrapped onto three
                   lines and "DEMO $" broke as "DEM O $". */}
-              {([["strategy", "14%"], ["tf", "3%"], ["TP/SL %", "6%"],
-                 ["books", "10%"], ["coins", "8%"], ["margin $", "5%"],
+              {/* `coins` carries the LIVE PRICE under each contract now, so
+                  it needs the room; the widths still SUM TO 100 (a
+                  table-fixed layout squeezes every column when they do not
+                  — "DEMO $" once broke as "DEM O $"). The 3 points came
+                  from `strategy`, `TP/SL %` and `ladder $`, none of which
+                  wrap at these lengths. */}
+              {([["strategy", "13%"], ["tf", "3%"], ["TP/SL %", "5%"],
+                 ["books", "10%"], ["coins · live price", "11%"], ["margin $", "5%"],
                  // `rung` is gone (2026-08-27, operator): the ladder column
                  // already boxes the rung the next stake stands on, and the
                  // live-locked note above the table names it too.
-                 [`ladder $ · ${flat ? "flat" : "DEEP"}`, "8%"],
+                 [`ladder $ · ${flat ? "flat" : "DEEP"}`, "7%"],
                  ["next $", "4%"], ["loss cap $", "5%"], ["today $", "5%"],
                  // BOTH books, and the money apart from the record. A row
                  // ticked LIVE used to show only its live figures, so there
@@ -410,7 +431,21 @@ export default function StrategiesGrid() {
                       preference — #3M3CRXP8 IS trend50/30m/2.5/2.0 on PI, and
                       the same signal on another coin is an untested
                       combination (CLAUDE.md rule 21) */}
-                  {r.coins.map((c) => c.replace("_USDT", "")).join(", ") || "—"}
+                  {/* ONE LINE PER CONTRACT, each with the last price MEXC
+                      pushed to the runner and its age. This is the proof that
+                      the strategy is waiting on the socket: XPIN_USDT reads
+                      0.000826 · now while the runner holds one connection to
+                      contract.mexc.com. An em dash means no tick for that
+                      contract yet, never a stale number pretending to be
+                      fresh (label-must-match-data). */}
+                  {r.coins.length === 0 ? "—" : r.coins.map((c) => (
+                    <span key={c} className="block leading-tight">
+                      {c.replace("_USDT", "")}{" "}
+                      <span className="text-[10px] font-normal">
+                        <Live sym={c} feed={feed} />
+                      </span>
+                    </span>
+                  ))}
                 </TableCell>
                 <TableCell className="px-2 py-1.5">
                   <input type="number" step="0.5" defaultValue={r.base_margin ?? ""}
@@ -466,19 +501,12 @@ export default function StrategiesGrid() {
                     </TableCell>,
                     <TableCell key={`${which}-wl`}
                       title={armed
-                        ? `${w} won, ${l} lost on the ${book} book`
+                        ? `${w} won, ${l} lost of ${n} closed on the ${book} `
+                          + `book${n ? ` — ${Math.round((100 * w) / n)}% win rate` : ""}`
                         : `not armed on the ${book} book`}
                       className={`px-2 py-1.5 text-theme-xs whitespace-nowrap${dim}`}>
-                      {n === 0 ? <span className="text-gray-400">—</span> : (
-                        <>
-                          <span className="text-success-600">{w}</span>
-                          <span className="text-gray-400">/</span>
-                          <span className="text-error-500">{l}</span>
-                          <span className="ml-1 text-gray-400">
-                            {Math.round((100 * w) / n)}%
-                          </span>
-                        </>
-                      )}
+                      {n === 0 ? <span className="text-gray-400">—</span>
+                        : <WinBadge wins={w} losses={l} />}
                     </TableCell>,
                   ];
                 })}

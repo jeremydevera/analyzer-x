@@ -417,7 +417,9 @@ export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
               </button>
             </p>
           )}
-          {dead?.job && (
+          {/* the delisted cleanup is a v1-store job; its last line has no
+              place on Backtest v2 (it printed there once, Sep 17, 2026) */}
+          {store === "v1" && dead?.job && (
             <p role="status" className={`mt-2 text-theme-xs ${dead.job.running ? "text-brand-600 dark:text-brand-400" : dead.job.error_count ? "text-warning-600 dark:text-warning-400" : "text-success-600 dark:text-success-400"}`}>
               {dead.job.running
                 ? <>deleting delisted coins — {dead.job.phase ? `${dead.job.phase} · ` : ""}{dead.job.done} of {dead.job.total} coins · {dead.job.rows_removed ? `${dead.job.rows_removed.toLocaleString()} rows out of the index · ` : ""}{fmtBytes(dead.job.freed)} freed so far</>

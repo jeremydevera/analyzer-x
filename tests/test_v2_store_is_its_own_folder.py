@@ -220,6 +220,18 @@ def test_the_index_answers_from_the_store_it_is_handed(tmp_path, monkeypatch):
     assert ri.status(db_path=v2)["rows"] == 1
     assert ri.pair_storage(db_path=v2)[0]["n"] == 1
     assert "XPIN" in ri.facets(db_path=v2)["coins"]
+    # THE V2 COUNTS COME FROM THE V2 FOLDER. `status()` read `stale_pairs`
+    # off the v1 pair dir, so Backtest v2 offered to "index the 5,428 pair(s)
+    # that moved" over a five-pair store (Sep 17, 2026). Two pair files beside
+    # v2's rows.db, one of them never indexed: on disk 2, stale 1.
+    rows_dir = v2.parent / "rows"
+    rows_dir.mkdir()
+    (rows_dir / "XPIN-1h.json").write_text("[]", encoding="utf-8")
+    (rows_dir / "ARKM-1h.json").write_text("[]", encoding="utf-8")
+    st = ri.status(db_path=v2)
+    assert st["pairs_on_disk"] == 2
+    assert st["stale"] >= 1, "the never-indexed ARKM file is stale; v1's 5,428 are not ours"
+    assert st["stale"] <= 2
 
 
 def test_candle_index_reads_the_root_it_is_handed(tmp_path):

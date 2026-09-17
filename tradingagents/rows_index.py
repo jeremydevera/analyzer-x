@@ -839,7 +839,15 @@ def stale_watermark(pair: str) -> bool:
     if not coin:
         return False
     try:
-        live = msw.pair_watermark(coin, tf)
+        if _DB_OVERRIDE.get():
+            # the state file BESIDE the database being read (Backtest v2's
+            # state/ sits beside its rows.db); v1's watermark for the same
+            # coin+frame is a different measurement and would read as stale
+            sf = _db().parent / "state" / f"{coin}-{tf}.json"
+            live = int((json.loads(sf.read_text(encoding="utf-8"))
+                        .get("__last_ms__") or 0)) if sf.exists() else 0
+        else:
+            live = msw.pair_watermark(coin, tf)
     except Exception:
         return False
     if not live:
@@ -910,7 +918,11 @@ def stale_pairs(now: float | None = None) -> list:
     has never been indexed is taken immediately — waiting a minute to show a
     brand-new coin is a different, worse bug.
     """
-    if not msw.ROWDIR.exists():
+    # the pair files BESIDE the database being read: Backtest v2's rows/ sits
+    # beside v2's rows.db. Without this the v2 screen printed "index the 5,428
+    # pair(s) that moved" — v1's count — over a five-pair store (Sep 17, 2026)
+    rows_dir = (_db().parent / "rows") if _DB_OVERRIDE.get() else msw.ROWDIR
+    if not rows_dir.exists():
         return []
     now = time.time() if now is None else now
     def _known():
@@ -920,7 +932,7 @@ def stale_pairs(now: float | None = None) -> list:
 
     known = _missing_ok(_known, {})
     new, changed = [], []
-    for f in sorted(msw.ROWDIR.glob("*.json")):
+    for f in sorted(rows_dir.glob("*.json")):
         try:
             st = f.stat()
         except OSError:

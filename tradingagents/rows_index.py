@@ -3879,6 +3879,30 @@ def export_plan(coin=None, signal=None, sort="profit", row_id=None,
     return key, order, seeks, signal_seeks, group_idx
 
 
+def iter_rows_in(*, db_path, **kw):
+    """`iter_rows(**kw)` over another store, each `next()` scoped to `db_path`.
+
+    A generator drained by Starlette's threadpool runs every `next()` in
+    whatever thread the pool hands it. A ContextVar `with` cannot span a
+    yield across threads (the token cannot be reset from another context),
+    so the override is set and reset around EACH step, in the thread that
+    takes it — the planner's `has_index` calls inside the first step read the
+    store they were asked about, and the cursor reads run under the same.
+    `iter_rows` itself is untouched, so everything that reads its source or
+    stands in for it keeps working.
+    """
+    gen = iter_rows(db_path=db_path, **kw)
+    while True:
+        tok = _DB_OVERRIDE.set(str(db_path))
+        try:
+            item = next(gen)
+        except StopIteration:
+            return
+        finally:
+            _DB_OVERRIDE.reset(tok)
+        yield item
+
+
 def iter_rows(coin=None, tf=None, signal=None, profitable=False,
               sort="profit", min_trades=0, min_winrate=0, max_tp=0,
               sizing=None, row_id=None, group=None, max_sl=0, days=0,
@@ -3906,6 +3930,22 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
     Yields dicts shaped exactly like `query()["rows"]`, so the CSV and the
     screen can never show different fields for the same row (kit item F).
     """
+    # ANOTHER STORE (Backtest v2): hand the whole walk to the stepping wrapper,
+    # which sets the ContextVar around EACH `next()` in the thread that takes
+    # it. Once the override is in place this same function is re-entered and
+    # runs its body under it — no recursion, because the check below is then
+    # false. A caller in the default store never enters this branch.
+    if db_path and _DB_OVERRIDE.get() != str(db_path):
+        yield from iter_rows_in(db_path=db_path, coin=coin, tf=tf,
+                                signal=signal, profitable=profitable,
+                                sort=sort, min_trades=min_trades,
+                                min_winrate=min_winrate, max_tp=max_tp,
+                                sizing=sizing, row_id=row_id, group=group,
+                                max_sl=max_sl, days=days, desc=desc,
+                                batch=batch, min_tp=min_tp, min_sl=min_sl,
+                                tp_over_sl=tp_over_sl, asset=asset,
+                                stats=stats, measured_days=measured_days)
+        return
     # A WINDOWED export stops after `DAYS_CSV_MAX` rows (`win_left` below),
     # and that ceiling has to reach the QUERY. Until Sep 15, 2026 it lived
     # only in a Python countdown, so SQLite was asked for an unbounded stream

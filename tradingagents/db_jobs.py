@@ -941,7 +941,8 @@ def resolve_pairs(lost: list | None = None) -> tuple:
     return pairs, likely_gone, len(missing), lost_added
 
 
-def _pending_sources() -> dict:
+def _pending_sources(files_key: str = "download", root=None,
+                     tfs: tuple = ("15m", "30m", "1h", "4h", "1d")) -> dict:
     """The five raw counts behind "pending". Split out so the arithmetic above
     it can be tested without a store.
 
@@ -955,7 +956,10 @@ def _pending_sources() -> dict:
 
     live = live_symbols()
     now = time.time()
-    index = msw.candle_index(scan=False) or {}
+    # `root`/`files_key`/`tfs` are Backtest v2's candle dir, lost file and
+    # single frame; the defaults are the store the operator always had
+    index = (msw.candle_index(scan=False) if root is None
+             else msw.candle_index(scan=False, root=root)) or {}
     have, behind, delisted = set(), 0, 0
     # HOW FAR behind, not just how many. "5,095 pending" reads as 5,095
     # problems; it means "your candles are 11 hours old", which is a different
@@ -980,9 +984,9 @@ def _pending_sources() -> dict:
     missing = 0
     if live is not None:
         missing = sum(1 for sym in sorted(live)
-                      for tf in ("15m", "30m", "1h", "4h", "1d")
+                      for tf in tfs
                       if (sym, tf) not in have)
-    rows = _read(FILES["download"]["lost"]).get("pairs") or []
+    rows = _read(FILES[files_key]["lost"]).get("pairs") or []
     lost = empty = 0
     for r in rows:
         kind = r.get("kind") if isinstance(r, dict) else None
@@ -995,7 +999,8 @@ def _pending_sources() -> dict:
     # resolve run that was working perfectly appeared to make things worse.
     age = 0
     with _contextlib.suppress(OSError):
-        age = max(0, int(time.time() - msw.INDEX_PATH.stat().st_mtime))
+        _ip = (Path(root).parent / "candle_index.json") if root else msw.INDEX_PATH
+        age = max(0, int(time.time() - _ip.stat().st_mtime))
     gaps.sort()
     return {"behind": behind, "missing": missing, "lost": lost,
             "delisted": delisted, "empty": empty,
@@ -1008,7 +1013,8 @@ def _pending_sources() -> dict:
             "indexing": not index}
 
 
-def pending_work() -> dict:
+def pending_work(files_key: str = "download", root=None,
+                 tfs: tuple = ("15m", "30m", "1h", "4h", "1d")) -> dict:
     """How many things a RESOLVE would fix, and how many pairs it would touch.
 
     ONE DEFINITION. The button's number and the Pending tab's number come from
@@ -1027,7 +1033,7 @@ def pending_work() -> dict:
     second time here: on this store the two arithmetics disagreed by 96 and the
     button promised 5,067 while queueing 5,163.
     """
-    src = _pending_sources()
+    src = _pending_sources(files_key, root, tfs)
     count = int(src["behind"]) + int(src["missing"]) + int(src["lost"])
     # What RESOLVE would actually fetch: the pending LEDGER, since 2026-09-09
     # ("resolve mean you will restart or resume where it crash"). It is no
@@ -1035,12 +1041,17 @@ def pending_work() -> dict:
     try:
         from tradingagents import pending_ledger as _pl
 
-        queue = _pl.count("candles")
+        queue = _pl.count("candles_v2" if files_key.endswith("_v2") else "candles")
     except Exception:                                          # noqa: BLE001
         queue = 0
     return {**src, "count": count, "queue": queue,
             "unfixable": int(src["delisted"]) + int(src["empty"]),
             "checked": int(time.time())}
+
+
+def _ledger_kind(kind: str) -> str:
+    """The pending ledger a download job writes: v2 failures are v2's."""
+    return "candles_v2" if str(kind).endswith("_v2") else "candles"
 
 
 def _download_tfs(spec: dict, kind: str = "download") -> list[str]:
@@ -1104,7 +1115,8 @@ def _run_download(spec: dict, kind: str = "download") -> None:
         try:
             from tradingagents import pending_ledger as _pl
 
-            broke = [(r["symbol"], r["timeframe"]) for r in _pl.pending("candles")]
+            broke = [(r["symbol"], r["timeframe"])
+                     for r in _pl.pending(_ledger_kind(kind))]
         except Exception as exc:                               # noqa: BLE001
             print(f"[download] could not read the pending ledger: "
                   f"{type(exc).__name__}: {exc} — resolving nothing rather "
@@ -1286,8 +1298,8 @@ def _run_download(spec: dict, kind: str = "download") -> None:
     try:
         from tradingagents import pending_ledger as _pl
 
-        _pl.clear("candles", ok_pairs)
-        _pl.record("candles",
+        _pl.clear(_ledger_kind(kind), ok_pairs)
+        _pl.record(_ledger_kind(kind),
                    [(c, tf, next((x.split(": ", 1)[-1] for x in failed
                                   if x.startswith(f"{c} {tf}:")), "failed"))
                     for c, tf in failed_pairs],

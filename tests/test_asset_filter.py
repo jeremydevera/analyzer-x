@@ -124,7 +124,10 @@ def test_the_route_and_the_csv_carry_asset():
     from tradingagents import api
 
     a = open("tradingagents/api.py", encoding="utf-8").read()
-    assert a.count("asset: str | None = None") == 2, "rows route AND csv route"
+    # rows route AND csv route — for v1 AND for Backtest v2 (Sep 17, 2026),
+    # which doubled both routes under /api/v2 with the same parameters
+    assert a.count("asset: str | None = None") == 4, \
+        "rows route AND csv route, v1 and v2"
     for fn in (api.strategies, api.strategies_csv_lines):
         src = inspect.getsource(fn)
         i = src.index("ri.query(" if fn is api.strategies else "ri.iter_rows(")

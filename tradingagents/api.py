@@ -13,11 +13,13 @@ from __future__ import annotations
 
 import re
 import time as _time
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from tradingagents import stores as _stores
 from tradingagents.slow_cache import BackgroundValue
 
 
@@ -478,7 +480,8 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                          max_tp=0, sizing=None, row_id=None, group=None,
                          max_sl=0, days=0,
                          desc=None, batch=5_000, min_tp=0, min_sl=0,
-                         tp_over_sl=False, asset=None, measured_days=0):
+                         tp_over_sl=False, asset=None, measured_days=0,
+                         db_path=None):
     """The CSV, one chunk at a time — a module-level generator on purpose.
 
     Inside the route it was only reachable through StreamingResponse's ASYNC
@@ -570,6 +573,8 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                               min_tp=min_tp, min_sl=min_sl,
                               tp_over_sl=tp_over_sl, asset=asset,
                               measured_days=measured_days,
+                              # Backtest v2's rows.db when the v2 CSV asks
+                              db_path=db_path,
                               stats=stats):
             score, why = ri.balanced_score(r)
             # THE PROJECT'S ONE DATE FORMAT (`Aug 03, 2026 8:03pm`), never a
@@ -2857,7 +2862,7 @@ def trade_equity(dry: bool = False) -> dict:
 _GAP_CACHE: dict = {"at": 0.0, "payload": None, "building": False}
 
 
-def _warm_gap_index() -> None:
+def _warm_gap_index(store=None, cache=None) -> None:
     """Build the candle index off the request thread.
 
     A first build opens every stored pair (69s at 4,899 pairs) and would hold
@@ -2868,16 +2873,21 @@ def _warm_gap_index() -> None:
 
     from tradingagents import market_sweep as msw
 
-    if _GAP_CACHE["building"]:
+    cache = _GAP_CACHE if cache is None else cache
+    root = None if (store is None or store.name == "v1") else store.candles
+    if cache["building"]:
         return
-    _GAP_CACHE["building"] = True
+    cache["building"] = True
 
     def run() -> None:
         try:
-            msw.candle_index()
+            if root is None:
+                msw.candle_index()
+            else:
+                msw.candle_index(root=root)
         finally:
-            _GAP_CACHE["building"] = False
-            _GAP_CACHE["at"] = 0.0          # let the next call read it
+            cache["building"] = False
+            cache["at"] = 0.0          # let the next call read it
 
     threading.Thread(target=run, daemon=True).start()
 
@@ -2896,8 +2906,7 @@ def system_staleness() -> dict:
     return staleness.report()
 
 
-@app.get("/api/candles/pending")
-def candles_pending() -> dict:
+def _candles_pending_for(store) -> dict:
     """PENDING = pairs a download or update TRIED and FAILED. Nothing else.
 
     Operator, 2026-09-09: *"pending only means these are the candles that had
@@ -2916,8 +2925,11 @@ def candles_pending() -> dict:
     """
     from tradingagents import db_jobs, pending_ledger as pl, positions_view as pv
 
-    got = db_jobs.pending_work()
-    broke = pl.summary("candles")
+    v1 = store.name == "v1"
+    got = db_jobs.pending_work(files_key=store.download_kind,
+                               root=(None if v1 else store.candles),
+                               tfs=tuple(store.tfs))
+    broke = pl.summary("candles" if v1 else "candles_v2")
     return {**got,
             # the new meaning, and the old arithmetic kept under its own name
             # so a reader can see both
@@ -2926,8 +2938,17 @@ def candles_pending() -> dict:
             "checked": pv.fmt_when(got.get("checked"))}
 
 
-@app.get("/api/candles/gaps")
-def candle_gaps() -> dict:
+@app.get("/api/candles/pending")
+def candles_pending() -> dict:
+    return _candles_pending_for(_stores.V1)
+
+
+@app.get("/api/v2/candles/pending")
+def candles_pending_v2() -> dict:
+    return _candles_pending_for(_stores.V2)
+
+
+def _candle_gaps_for(store, cache) -> dict:
     """How far behind every stored pair is, so UPDATE can say what it fills.
 
     Nothing is fetched here — it reads the store's own last bar. A pair is
@@ -2940,12 +2961,15 @@ def candle_gaps() -> dict:
     # the scan opens one file per stored pair (4,899 today), so a repeat call
     # inside 30s gets the same answer rather than the same work
     now = time.time()
-    if _GAP_CACHE["payload"] and now - _GAP_CACHE["at"] < 30:
-        return _GAP_CACHE["payload"]
+    if cache["payload"] and now - cache["at"] < 30:
+        return cache["payload"]
     # never scan on a request thread: with a download running the files change
     # constantly, so even an incremental scan can outlast the proxy's timeout
-    _warm_gap_index()
-    index = msw.candle_index(scan=False)
+    _warm_gap_index(store, cache)
+    # `root` only for another store: tests stand in for `candle_index` with
+    # fakes that take `scan` alone, and v1 must call it exactly as it always has
+    index = (msw.candle_index(scan=False) if store.name == "v1"
+             else msw.candle_index(scan=False, root=store.candles))
     if not index:
         return {"rows": [], "pairs": 0, "behind": 0, "worst": None,
                 "indexing": True}
@@ -2980,14 +3004,167 @@ def candle_gaps() -> dict:
                "delisted": [{"symbol": r["symbol"], "timeframe": r["timeframe"],
                              "hours_behind": r["hours_behind"]} for r in dead],
                "delisted_count": len(dead)}
-    _GAP_CACHE.update({"at": now, "payload": payload})
+    cache.update({"at": now, "payload": payload})
     return payload
+
+
+_GAP_CACHE_V2: dict = {"at": 0.0, "payload": None, "building": False}
+
+
+@app.get("/api/candles/gaps")
+def candle_gaps() -> dict:
+    return _candle_gaps_for(_stores.V1, _GAP_CACHE)
+
+
+@app.get("/api/v2/candles/gaps")
+def candle_gaps_v2() -> dict:
+    """The same answer for Backtest v2's 1-minute store."""
+    return _candle_gaps_for(_stores.V2, _GAP_CACHE_V2)
 
 
 # ------------------------------------------------------------- notifications
 # One bell for "did the thing I clicked actually work". A click that reports
 # nothing is indistinguishable from a click that failed silently — which is
 # exactly how a 0-byte backtest report went unnoticed on 2026-08-20.
+
+# ================================================================ Backtest v2
+# Sep 17, 2026. The SAME handlers, pointed at ~/.tradingagents/v2 through
+# `stores.V2`: rows.db via `rows_index.using_db`, candles via `root=`, the job
+# files via the v2 kinds. An empty v2 store is a SENTENCE (CLAUDE.md, Sep 12,
+# 2026: an empty page names what it examined), never a 500.
+_V2_EMPTY_WHY = ("no v2 store yet — download 1m candles on Candles v2 first, "
+                 "then press BACKTEST on Backtest v2")
+_V2_NO_WINDOW = ("a days/months window is not on Backtest v2 yet — the window "
+                 "re-measure reads the v1 candle store, and restating "
+                 "minute-exact rows from hour bars would be a false label")
+
+
+def _v2_rows_db():
+    """Backtest v2's rows.db, or None while there is no such file."""
+    p = Path(_stores.V2.rows_db)
+    return p if p.exists() else None
+
+
+@app.get("/api/v2/strategies")
+def strategies_v2(coin: str | None = None, tf: str | None = None,
+                  signal: str | None = None, profitable: bool = False,
+                  limit: int = 500, offset: int = 0,
+                  sort: str = "profit", min_trades: int = 0,
+                  min_winrate: float = 0.0, max_tp: float = 0.0,
+                  max_sl: float = 0.0,
+                  min_tp: float = 0.0, min_sl: float = 0.0,
+                  tp_over_sl: bool = False,
+                  asset: str | None = None,
+                  sizing: str | None = None, row_id: str | None = None,
+                  group: str | None = None,
+                  months: int = 0, days: int = 0,
+                  measured_days: int = 0,
+                  desc: bool | None = None) -> dict:
+    """`/api/strategies` over Backtest v2's rows. Every row carries `unclear`
+    (trades whose exit minute touched both prices) and `res="1m"`; ids never
+    collide with v1's (`backtest_report.row_code(res=)`)."""
+    from tradingagents import rows_index as ri
+
+    db = _v2_rows_db()
+    if db is None:
+        return {"rows": [], "total": 0, "store": "v2", "why": _V2_EMPTY_WHY,
+                "index": {"rows": 0, "pairs_indexed": 0, "pairs_on_disk": 0,
+                          "indexer_running": None}}
+    if months or days:
+        raise HTTPException(400, _V2_NO_WINDOW)
+    with ri.using_db(db):
+        got = strategies(coin=coin, tf=tf, signal=signal, profitable=profitable,
+                         limit=limit, offset=offset, sort=sort,
+                         min_trades=min_trades, min_winrate=min_winrate,
+                         max_tp=max_tp, max_sl=max_sl, min_tp=min_tp,
+                         min_sl=min_sl, tp_over_sl=tp_over_sl, asset=asset,
+                         sizing=sizing, row_id=row_id, group=group,
+                         months=0, days=0, measured_days=measured_days,
+                         desc=desc)
+    got["store"] = "v2"
+    # the v2 index's own state, not v1's cached one (label-must-match-data)
+    got["index"] = ri.status(db_path=db)
+    return got
+
+
+@app.get("/api/v2/strategies.csv")
+def strategies_csv_v2(coin: str | None = None, tf: str | None = None,
+                      signal: str | None = None, profitable: bool = False,
+                      sort: str = "profit", min_trades: int = 0,
+                      min_winrate: float = 0.0, max_tp: float = 0.0,
+                      max_sl: float = 0.0,
+                      min_tp: float = 0.0, min_sl: float = 0.0,
+                      tp_over_sl: bool = False,
+                      asset: str | None = None,
+                      sizing: str | None = None, row_id: str | None = None,
+                      group: str | None = None, months: int = 0, days: int = 0,
+                      measured_days: int = 0,
+                      desc: bool | None = None):
+    """Every matching v2 row as CSV, streamed — `unclear` and `res` included."""
+    from fastapi.responses import StreamingResponse
+
+    from tradingagents import rows_index as ri
+
+    db = _v2_rows_db()
+    if db is None:
+        raise HTTPException(404, _V2_EMPTY_WHY)
+    if months or days:
+        raise HTTPException(400, _V2_NO_WINDOW)
+    try:
+        ri.export_plan(coin=coin, signal=signal, sort=sort, row_id=row_id,
+                       group=group, min_winrate=min_winrate,
+                       min_trades=min_trades, desc=desc, db_path=db)
+    except ri.SortNotReady as exc:
+        raise HTTPException(503, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    name = "v2-" + strategies_csv_name(coin, tf, signal, min_trades, sort,
+                                       min_winrate=min_winrate, max_tp=max_tp,
+                                       sizing=sizing, group=group,
+                                       max_sl=max_sl, min_tp=min_tp,
+                                       min_sl=min_sl, tp_over_sl=tp_over_sl,
+                                       asset=asset, days=0)
+    return StreamingResponse(
+        strategies_csv_lines(coin=coin, tf=tf, signal=signal,
+                            profitable=profitable, sort=sort,
+                            min_trades=min_trades, min_winrate=min_winrate,
+                            max_tp=max_tp, sizing=sizing, row_id=row_id,
+                            group=group, max_sl=max_sl,
+                            min_tp=min_tp, min_sl=min_sl,
+                            tp_over_sl=tp_over_sl, asset=asset,
+                            days=0, measured_days=measured_days, desc=desc,
+                            db_path=db),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+@app.get("/api/v2/strategies/facets")
+def strategy_facets_v2() -> dict:
+    from tradingagents import rows_index as ri
+
+    db = _v2_rows_db()
+    if db is None:
+        return {"coins": [], "tfs": [], "signals": [], "tps": [], "sls": [],
+                "sizings": [], "store": "v2", "why": _V2_EMPTY_WHY}
+    return {**ri.facets(db_path=db), "store": "v2"}
+
+
+@app.get("/api/v2/backtest/storage")
+def backtest_storage_v2() -> dict:
+    from tradingagents import rows_index as ri
+
+    db = _v2_rows_db()
+    if db is None:
+        return {"rows": [], "pairs": 0, "coins": 0, "total_rows": 0,
+                "total_bytes": 0, "incomplete": 0, "index": {},
+                "newest_measured": None, "store": "v2", "why": _V2_EMPTY_WHY}
+    with ri.using_db(db):
+        d = backtest_storage()
+    d["index"] = ri.status(db_path=db)
+    d["store"] = "v2"
+    return d
+
+
 @app.get("/api/notifications")
 def notifications_list(limit: int = 30, kind: str | None = None,
                        unread: bool = False) -> dict:
@@ -3073,7 +3250,8 @@ def _lost_kind(got: dict, symbol: str, tf: str, texts=None) -> str:
     return "retry"
 
 
-def _stored_now(symbol: str, tf: str, since: float, live=None) -> dict:
+def _stored_now(symbol: str, tf: str, since: float, live=None,
+                parquet_root=None) -> dict:
     """Is the pair in the store, fetched SINCE `since` — from its file, never a
     flag.
 
@@ -3094,7 +3272,14 @@ def _stored_now(symbol: str, tf: str, since: float, live=None) -> dict:
     """
     from tradingagents import db_jobs as dj, parquet_store as pqs, positions_view as pv
 
-    path = pqs._candle_path(symbol, tf)
+    # `parquet_root` is another store's parquet folder (Backtest v2's
+    # ~/.tradingagents/parquet-v2); None is the store the operator always had
+    if parquet_root:
+        from tradingagents.dataflows.market_db import tf_label as _tfl
+
+        path = Path(parquet_root) / "candles" / f"{symbol}-{_tfl(tf)}.parquet"
+    else:
+        path = pqs._candle_path(symbol, tf)
     out = {"symbol": symbol, "timeframe": tf, "recovered": False,
            "bars": None, "when": "", "exists": False,
            "delisted": dj.is_delisted(symbol, live)}
@@ -3114,9 +3299,10 @@ def _stored_now(symbol: str, tf: str, since: float, live=None) -> dict:
 
 _TFS = ("15m", "30m", "1h", "4h", "1d")
 _COMPLETENESS_CACHE: dict = {"at": 0.0, "payload": None}
+_COMPLETENESS_CACHE_V2: dict = {"at": 0.0, "payload": None}
 
 
-def _store_completeness() -> dict:
+def _store_completeness(store=None) -> dict:
     """Every contract MEXC lists x the five timeframes, against the store's
     own files. "Is the candles complete now?" answered by counting, not by
     the absence of a red row. Cached 5 minutes (30 s after a failure): the
@@ -3129,7 +3315,12 @@ def _store_completeness() -> dict:
     from tradingagents.dataflows import mexc_futures as fx
 
     now = _t.time()
-    c = _COMPLETENESS_CACHE
+    # WHICH STORE: v1 counts the five frames against ~/.tradingagents/parquet;
+    # Backtest v2 counts 1m alone against its own parquet-v2 folder
+    v1 = store is None or store.name == "v1"
+    c = _COMPLETENESS_CACHE if v1 else _COMPLETENESS_CACHE_V2
+    tfs = _TFS if v1 else tuple(store.tfs)
+    cdir = pqs.CANDLES if v1 else (Path(store.parquet) / "candles")
     if c["payload"] is not None and now - c["at"] < 300:
         return c["payload"]
     try:
@@ -3140,14 +3331,17 @@ def _store_completeness() -> dict:
                    "missing": [], "complete": None}
         c.update(at=now - 270, payload=payload)
         return payload
-    have = ({p.stem for p in pqs.CANDLES.glob("*.parquet")}
-            if pqs.CANDLES.exists() else set())
-    wanted = [(sym, tf) for sym in contracts for tf in _TFS]
+    have = ({p.stem for p in cdir.glob("*.parquet")}
+            if cdir.exists() else set())
+    wanted = [(sym, tf) for sym in contracts for tf in tfs]
     missing = [{"symbol": sym, "timeframe": tf}
                for sym, tf in wanted if f"{sym}-{tf}" not in have]
     payload = {"ok": True, "why": "", "contracts": len(contracts),
                "wanted": len(wanted), "stored": len(wanted) - len(missing),
-               "missing": missing, "complete": not missing}
+               "missing": missing, "complete": not missing,
+               # the frames this count is OF, so "x 5 timeframes" is never
+               # printed over a one-frame store (label-must-match-data)
+               "timeframes": list(tfs)}
     c.update(at=now, payload=payload)
     return payload
 
@@ -3200,6 +3394,12 @@ def _download_resolution(row: dict) -> tuple[bool | None, str]:
     return True, "resolved — every pair that run lost is back in the store"
 
 
+@app.get("/api/v2/candles/completeness")
+def candles_completeness_v2() -> dict:
+    """MEXC's contracts x ONE frame (1m) against Backtest v2's own parquet."""
+    return _store_completeness(_stores.V2)
+
+
 @app.get("/api/candles/completeness")
 def candles_completeness() -> dict:
     """Contracts on MEXC x five timeframes vs the store — the whole answer to
@@ -3207,8 +3407,7 @@ def candles_completeness() -> dict:
     return _store_completeness()
 
 
-@app.get("/api/candles/lost")
-def candles_lost() -> dict:
+def _candles_lost_for(store) -> dict:
     """The pairs the last download gave up on — what RETRY FAILED will fetch.
 
     Read from the job's own lost file, so the button's count IS the retry's
@@ -3221,7 +3420,7 @@ def candles_lost() -> dict:
     """
     from tradingagents import db_jobs, notifications as nt, positions_view as pv
 
-    got = db_jobs._read(db_jobs.FILES["download"]["lost"])
+    got = db_jobs._read(db_jobs.FILES[store.download_kind]["lost"])
     all_pairs = [(p[0], p[1]) for p in (got.get("pairs") or []) if len(p) == 2]
     # Which of the lost pairs the venue no longer lists — NAMED, still offered.
     # One retry attempts them, the download loop classifies them on the venue's
@@ -3241,7 +3440,7 @@ def candles_lost() -> dict:
     # own docstring was written about. Older than the run = still lost.
     _texts: list = []
     _since = 0.0
-    for _row in nt.recent(limit=20, kind="download"):
+    for _row in nt.recent(limit=20, kind=store.download_kind):
         _meta = _row.get("meta") or {}
         if _row.get("ok") or _meta.get("stopped"):
             continue
@@ -3253,11 +3452,12 @@ def candles_lost() -> dict:
         # NOT `got`: that name already holds the lost FILE in this function,
         # and shadowing it blanked the "written" stamp the panel prints
         # ("lost by the last download (Sep 02, 2026 4:10pm)").
-        state = _stored_now(s_, t_, since=_since, live=live)
+        state = _stored_now(s_, t_, since=_since, live=live,
+                            parquet_root=(None if store.name == "v1" else store.parquet))
         pairs.append({"symbol": s_, "timeframe": t_,
                       "kind": _lost_kind(state, s_, t_, _texts)})
     recovered, failed_when, unnamed = [], "", 0
-    for row in nt.recent(limit=20, kind="download"):
+    for row in nt.recent(limit=20, kind=store.download_kind):
         meta = row.get("meta") or {}
         if row.get("ok") or meta.get("stopped"):
             continue
@@ -3271,7 +3471,9 @@ def candles_lost() -> dict:
         # failed on Aug 28 at 2:43am.
         recovered = [{"symbol": r["symbol"], "timeframe": r["timeframe"],
                       "bars": r["bars"], "when": r["when"]}
-                     for r in (_stored_now(sym, tf, since=when)
+                     for r in (_stored_now(sym, tf, since=when,
+                                           parquet_root=(None if store.name == "v1"
+                                                         else store.parquet))
                                for sym, tf in named)
                      if r["recovered"] and not r["delisted"]]
         break
@@ -3281,6 +3483,16 @@ def candles_lost() -> dict:
             "unnamed": unnamed,
             # named so the screen can say "2 delisted — nothing to retry"
             "delisted": delisted, "delisted_count": len(delisted)}
+
+
+@app.get("/api/candles/lost")
+def candles_lost() -> dict:
+    return _candles_lost_for(_stores.V1)
+
+
+@app.get("/api/v2/candles/lost")
+def candles_lost_v2() -> dict:
+    return _candles_lost_for(_stores.V2)
 
 
 def _lost_kind_on(got: dict, symbol: str, tf: str, texts=None) -> dict:
@@ -3298,8 +3510,7 @@ def _lost_kind_on(got: dict, symbol: str, tf: str, texts=None) -> dict:
 # itself was left unregistered — a route that existed in the source and not in
 # the app. Found Sep 09, 2026 by reading the browser's failed requests after a
 # restart; nothing else reported it.
-@app.get("/api/candles/download-history")
-def download_history(limit: int = 20) -> dict:
+def _download_history_for(store, limit: int = 20) -> dict:
     """Every download this machine has run, newest first, with its outcome.
 
     The operator asked to see whether a DOWNLOAD succeeded. The job's progress
@@ -3307,7 +3518,7 @@ def download_history(limit: int = 20) -> dict:
     """
     from tradingagents import notifications as nt, positions_view as pv
 
-    rows = nt.recent(limit=limit, kind="download")
+    rows = nt.recent(limit=limit, kind=store.download_kind)
     out = []
     for r in rows:
         m = r.get("meta") or {}
@@ -3328,7 +3539,9 @@ def download_history(limit: int = 20) -> dict:
             # panel drew both in red and a row could read
             # "FAILED - RESOLVED" beside "4 pairs still lost".
             "lost": [_lost_kind_on(_stored_now(sym, tf,
-                                               since=float(r.get("ts") or 0)),
+                                               since=float(r.get("ts") or 0),
+                                               parquet_root=(None if store.name == "v1"
+                                                             else store.parquet)),
                                    sym, tf, m.get("failed"))
                      for sym, tf in named],
             "unnamed": unnamed,
@@ -3336,6 +3549,16 @@ def download_history(limit: int = 20) -> dict:
         out[-1]["resolved"], out[-1]["resolved_why"] = _download_resolution(r)
     ok = sum(1 for r in out if r["ok"])
     return {"rows": out, "total": len(out), "ok": ok, "failed": len(out) - ok}
+
+
+@app.get("/api/candles/download-history")
+def download_history(limit: int = 20) -> dict:
+    return _download_history_for(_stores.V1, limit)
+
+
+@app.get("/api/v2/candles/download-history")
+def download_history_v2(limit: int = 20) -> dict:
+    return _download_history_for(_stores.V2, limit)
 
 
 # ------------------------------------------------------------ backtest store

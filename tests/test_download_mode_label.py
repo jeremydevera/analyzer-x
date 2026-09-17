@@ -20,7 +20,9 @@ SCREEN = "webapp/src/components/candles/DownloadScreen.tsx"
 
 def test_every_live_progress_tick_carries_the_mode():
     src = inspect.getsource(dj._run_download)
-    ticks = list(re.finditer(r'_write\(f\["progress"\], \{"running": True',
+    # `_write_progress` since RCA-2026-09-18-B: a live tick is the forgiving
+    # writer; the pattern takes either spelling so a rename cannot blind it
+    ticks = list(re.finditer(r'_write(?:_progress)?\(f\["progress"\], \{"running": True',
                                     src))
     assert ticks, "the live tick moved"
     for m in ticks:

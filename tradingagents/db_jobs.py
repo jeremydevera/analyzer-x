@@ -54,6 +54,19 @@ FILES = {
                  "pid": STATE_DIR / "db_backtest.pid",
                  "stop": STATE_DIR / "db_backtest.STOP",
                  "handoff": STATE_DIR / "db_backtest.HANDOFF"},
+    # BACKTEST v2 (Sep 17, 2026): the same two jobs, in ~/.tradingagents/v2.
+    # Own progress/spec/pid/stop/log files so the two versions can be watched
+    # apart; `start()` gives them the v2 environment (stores.V2.env_for()).
+    "download_v2": {"progress": STATE_DIR / "db_download_v2.json",
+                    "spec": STATE_DIR / "db_download_v2.spec.json",
+                    "lost": STATE_DIR / "db_download_v2.lost.json",
+                    "pid": STATE_DIR / "db_download_v2.pid",
+                    "stop": STATE_DIR / "db_download_v2.STOP"},
+    "backtest_v2": {"progress": STATE_DIR / "db_backtest_v2.json",
+                    "spec": STATE_DIR / "db_backtest_v2.spec.json",
+                    "pid": STATE_DIR / "db_backtest_v2.pid",
+                    "stop": STATE_DIR / "db_backtest_v2.STOP",
+                    "handoff": STATE_DIR / "db_backtest_v2.HANDOFF"},
     # one deployed strategy, replayed over a year — the Auto Trade "1 YEAR"
     # button. Detached because the grid takes minutes and a request must not
     # hold it open.
@@ -591,6 +604,21 @@ class LocalSweepsOff(RuntimeError):
 LOCAL_SWEEP_KINDS = ("backtest",)
 
 
+class JobBusy(RuntimeError):
+    """Another job holds the disk. Named so the API can answer 409 with it."""
+
+
+# The jobs that read or write the candle and row stores. A v2 job beside a v1
+# job is two jobs on ONE mechanical spindle — measured Sep 10, 2026 as a
+# rebuild falling from 40.15 pairs/min to 0.25 while a collect rewrote the
+# files it read (RCA-2026-09-10). A v2 kind therefore refuses while ANY of
+# these runs, and a v1 kind refuses while a v2 kind runs. v1 kinds among
+# themselves keep exactly the freedom they had (UPDATE CANDLES beside a
+# collect is a daily habit here).
+_DISK_JOBS = ("download", "backtest", "btupdate", "collect",
+              "download_v2", "backtest_v2")
+
+
 def start(kind: str, spec: dict) -> int:
     """Write the job's spec and launch it detached. Refuses to double-start."""
     if kind in LOCAL_SWEEP_KINDS and not cap.LOCAL_SWEEPS:
@@ -607,6 +635,14 @@ def start(kind: str, spec: dict) -> int:
     st = status(kind)
     if st.get("running"):
         return st.get("pid") or 0
+    # ONE DISK, across both versions (see _DISK_JOBS). Refuse with the HOLDER
+    # named, so the screen says "backtest_v2 is running", never a stall.
+    others = (_DISK_JOBS if kind.endswith("_v2")
+              else tuple(k for k in _DISK_JOBS if k.endswith("_v2")))
+    for other in others:
+        if other != kind and status(other).get("running"):
+            raise JobBusy(f"{other} is running — one job at a time, across "
+                          f"both versions; stop it or wait for it to finish")
     f = FILES[kind]
     f["stop"].unlink(missing_ok=True)
     _write(f["spec"], spec)
@@ -621,7 +657,13 @@ def start(kind: str, spec: dict) -> int:
     # the process exited, so the only way to see what it was doing was py-spy
     # on the pid. `rows_index.spawn_indexer` already sets this and has a test
     # for it (RCA-2026-09-10-C); the four buttons did not.
-    env = {**os.environ, "PYTHONUNBUFFERED": "1"}
+    from tradingagents import stores as _stores
+
+    # A v2 kind works in the v2 folder — the roots travel as environment,
+    # which every module already reads at import. A v1 kind gets nothing
+    # extra, so it cannot inherit a v2 root from this process by accident.
+    env = {**os.environ, "PYTHONUNBUFFERED": "1",
+           **(_stores.for_kind(kind).env_for() if kind.endswith("_v2") else {})}
     proc = subprocess.Popen(
         [sys.executable, "-m", "tradingagents.db_jobs", kind],
         cwd=str(Path(__file__).resolve().parent.parent),
@@ -730,7 +772,8 @@ def is_delisted(symbol: str, live=None) -> bool:
     return str(symbol) not in live
 
 
-def update_pairs(lost: list | None = None) -> tuple:
+def update_pairs(lost: list | None = None,
+                 tfs: tuple = ("15m", "30m", "1h", "4h", "1d")) -> tuple:
     """What an UPDATE must fetch, in the order that survives being stopped.
 
     Three sources, and the store alone is none of them:
@@ -794,7 +837,9 @@ def update_pairs(lost: list | None = None) -> tuple:
     missing = []
     if live is not None:
         for sym in sorted(live):
-            for tf in ("15m", "30m", "1h", "4h", "1d"):
+            # `tfs`, not the five: a v2 update asks the venue's list for 1m
+            # alone (Backtest v2, Sep 17, 2026)
+            for tf in tfs:
                 if (sym, tf) not in have:
                     missing.append((sym, tf))
     # the store's gaps go FIRST: a pair with no file at all is worse than a
@@ -998,7 +1043,16 @@ def pending_work() -> dict:
             "checked": int(time.time())}
 
 
-def _run_download(spec: dict) -> None:
+def _download_tfs(spec: dict, kind: str = "download") -> list[str]:
+    """Which frames a download may fetch. v1: the five. v2: 1m and nothing
+    else — a 15m pair in the v2 folder would be a bar the v2 measure never
+    reads, and a 1m pair in v1 would be a sixth frame every v1 list denies."""
+    want = [str(t) for t in (spec.get("tfs") or [])]
+    ok = ("1m",) if kind.endswith("_v2") else ("15m", "30m", "1h", "4h", "1d")
+    return [t for t in want if t in ok]
+
+
+def _run_download(spec: dict, kind: str = "download") -> None:
     """DOWNLOAD/UPDATE fill the operator's OWN MACHINE — the store every
     backtest reads. Pure local: no database is touched.
 
@@ -1013,7 +1067,7 @@ def _run_download(spec: dict) -> None:
 
     from tradingagents import market_sweep as msw, parquet_store as pqs
     from tradingagents.positions_view import fmt_when
-    f = FILES["download"]
+    f = FILES[kind]
     mode = spec.get("mode") or "download"
     lost_before: list[tuple[str, str]] = []
     # every branch sets these; declared here so a reordered branch cannot
@@ -1067,15 +1121,15 @@ def _run_download(spec: dict) -> None:
                   f"{', '.join(likely_gone)}", flush=True)
     elif mode == "update" and not spec.get("coins"):
         pairs, likely_gone, n_missing, lost_before = update_pairs(
-            _read(f["lost"]).get("pairs") or [])
+            _read(f["lost"]).get("pairs") or [],
+            tfs=("1m",) if kind.endswith("_v2") else ("15m", "30m", "1h", "4h", "1d"))
         if likely_gone:
             print(f"[download] {len(likely_gone)} pair(s) the venue no longer "
                   f"lists will be attempted once and then named as delisted: "
                   f"{', '.join(likely_gone)}", flush=True)
     else:
         coins = spec["coins"]
-        tfs = [t for t in spec["tfs"]
-               if t in ("15m", "30m", "1h", "4h", "1d")]
+        tfs = _download_tfs(spec, kind)
         pairs = [(c, tf) for c in coins for tf in tfs]
     stored, stopped, done, retries = 0, False, 0, 0
     failed: list[str] = []                 # "COIN tf: why" — one per pair given up on
@@ -1086,7 +1140,7 @@ def _run_download(spec: dict) -> None:
     tries: dict[tuple[str, str], int] = {}
     queue = deque(pairs)
     while queue:
-        if _stopping("download"):
+        if _stopping(kind):
             stopped = True
             break
         c, tf = queue.popleft()
@@ -1169,7 +1223,7 @@ def _run_download(spec: dict) -> None:
         names = " · ".join(failed[:_BELL_NAMES])
         more = len(failed) - _BELL_NAMES
         _nt.record(
-            "download",
+            kind,
             ("Download stopped" if stopped else
              "Download finished" if _ok else "Download finished with errors"),
             detail=(f"{stored:,} bars over {len(pairs)} pair(s)"
@@ -2235,6 +2289,10 @@ def main(argv: list[str]) -> int:
         _run_download(spec)
     elif kind == "backtest":
         _run_backtest(spec)
+    elif kind == "download_v2":
+        _run_download(spec, kind="download_v2")
+    elif kind == "backtest_v2":
+        _run_backtest(spec, files_key="backtest_v2", kind="backtest_v2")
     elif kind == "btupdate":
         _run_btupdate(spec)
     elif kind == "collect":

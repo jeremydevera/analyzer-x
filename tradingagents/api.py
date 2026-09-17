@@ -162,7 +162,11 @@ def _keep_the_row_index_current() -> None:
                 # button"*. Candles now change only from the Candles screen's
                 # own buttons; "pending" climbing overnight is the store going
                 # stale, not a fault (test_the_supervisor_does_NOT_top_up).
-                for kind in ("backtest", "download", "btupdate"):
+                # the v2 jobs (Backtest v2, Sep 17, 2026) are supervised
+                # exactly like the v1 ones — a crashed 1m download must not
+                # stay dead any more than a crashed 15m one
+                for kind in ("backtest", "download", "btupdate",
+                             "download_v2", "backtest_v2"):
                     try:
                         got = _dj.resume_if_died(kind)
                         if got.get("resumed"):
@@ -1302,6 +1306,9 @@ def job_start(kind: str, spec: dict) -> dict:
     except db_jobs.LocalSweepsOff as exc:
         # 409, not 500: nothing is broken — this machine no longer measures.
         # A 500 would read as a crash and send the operator to the logs.
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except db_jobs.JobBusy as exc:
+        # 409 again: another job holds the disk; the message names it
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 

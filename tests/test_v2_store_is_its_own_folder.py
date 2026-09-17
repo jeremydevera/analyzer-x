@@ -78,3 +78,105 @@ def test_fine_tf_is_empty_unless_the_environment_says_so(monkeypatch, tmp_path):
         monkeypatch.delenv("TRADINGAGENTS_CANDLES")
         importlib.reload(msw)
     assert msw.FINE_TF == ""
+
+
+# -------------------------------------------------------------------- stores
+def test_the_two_stores_never_share_a_path():
+    from tradingagents import stores
+
+    a, b = stores.V1, stores.V2
+    for f in ("home", "candles", "rows_db", "parquet"):
+        assert getattr(a, f) != getattr(b, f), f
+    assert str(b.home).replace("\\", "/").endswith("/.tradingagents/v2")
+    assert b.fine_tf == "1m" and a.fine_tf == ""
+    assert b.tfs == ("1m",) and a.tfs == ("15m", "30m", "1h", "4h", "1d")
+    assert stores.by_name("v2") is b and stores.by_name("v1") is a
+    assert stores.for_kind("download_v2") is b and stores.for_kind("download") is a
+    with pytest.raises(KeyError):
+        stores.by_name("v3")
+    env = b.env_for()
+    assert env["TRADINGAGENTS_FINE_TF"] == "1m"
+    assert env["TA_ROWS_DB"] == str(b.rows_db)
+    assert env["TRADINGAGENTS_PARQUET"] == str(b.parquet)
+
+
+# ---------------------------------------------------------------------- jobs
+def _sandbox_jobs(monkeypatch, tmp_path):
+    from tradingagents import db_jobs as dj
+
+    monkeypatch.setattr(dj, "STATE_DIR", tmp_path)
+    for k in ("download", "download_v2", "backtest", "backtest_v2"):
+        for name, p in list(dj.FILES[k].items()):
+            monkeypatch.setitem(dj.FILES[k], name, tmp_path / p.name)
+    return dj
+
+
+def test_a_v2_job_is_spawned_into_the_v2_folder_and_a_v1_job_is_not(monkeypatch, tmp_path):
+    from tradingagents import stores
+
+    dj = _sandbox_jobs(monkeypatch, tmp_path)
+    seen: dict = {}
+
+    class _P:
+        pid = 4242
+
+    def fake_popen(args, **kw):
+        seen["env"] = dict(kw.get("env") or {})
+        seen["args"] = list(args)
+        return _P()
+
+    monkeypatch.setattr(dj.subprocess, "Popen", fake_popen)
+    monkeypatch.setattr(dj, "status", lambda kind: {"running": False})
+    monkeypatch.delenv("TRADINGAGENTS_FINE_TF", raising=False)
+    monkeypatch.delenv("TA_ROWS_DB", raising=False)
+
+    dj.start("download_v2", {"coins": ["XPIN_USDT"], "tfs": ["1m"]})
+    want = stores.V2.env_for()
+    for k, v in want.items():
+        assert seen["env"].get(k) == v, k
+    assert seen["args"][-1] == "download_v2"
+
+    dj.start("download", {"coins": ["XPIN_USDT"], "tfs": ["15m"]})
+    assert "TRADINGAGENTS_FINE_TF" not in seen["env"], "a v1 job must not inherit a v2 root"
+    assert "TA_ROWS_DB" not in seen["env"]
+
+
+def test_a_v2_job_waits_for_a_v1_job_and_the_other_way_round(monkeypatch, tmp_path):
+    dj = _sandbox_jobs(monkeypatch, tmp_path)
+    monkeypatch.setattr(dj, "status", lambda kind: {"running": kind == "download"})
+    with pytest.raises(dj.JobBusy, match="download is running"):
+        dj.start("download_v2", {"coins": [], "tfs": ["1m"]})
+    monkeypatch.setattr(dj, "status", lambda kind: {"running": kind == "backtest_v2"})
+    with pytest.raises(dj.JobBusy, match="backtest_v2 is running"):
+        dj.start("download", {"coins": [], "tfs": ["15m"]})
+
+
+def test_update_pairs_for_v2_only_ever_asks_for_1m(monkeypatch):
+    from tradingagents import db_jobs as dj, market_sweep as msw
+
+    monkeypatch.setattr(dj, "live_symbols", lambda *a, **k: ["XPIN_USDT", "ARKM_USDT"])
+    monkeypatch.setattr(msw, "candle_index", lambda *a, **k: {
+        "XPIN_USDT-1m": {"bars": 100, "last_ms": 1_789_516_800_000}})
+    pairs, gone, n_missing, lost_added = dj.update_pairs([], tfs=("1m",))
+    assert ("ARKM_USDT", "1m") in pairs and ("XPIN_USDT", "1m") in pairs
+    assert all(tf == "1m" for _, tf in pairs)
+
+
+def test_the_download_job_accepts_1m_only_for_the_v2_kind():
+    from tradingagents import db_jobs as dj
+
+    assert dj._download_tfs({"tfs": ["1m", "15m"]}, kind="download_v2") == ["1m"]
+    assert dj._download_tfs({"tfs": ["1m", "15m"]}, kind="download") == ["15m"]
+
+
+def test_parquet_root_follows_the_environment(monkeypatch, tmp_path):
+    from tradingagents import parquet_store as pqs
+
+    monkeypatch.setenv("TRADINGAGENTS_PARQUET", str(tmp_path / "parquet-v2"))
+    m2 = importlib.reload(pqs)
+    try:
+        assert str(m2.ROOT) == str(tmp_path / "parquet-v2")
+        assert str(m2.CANDLES) == str(tmp_path / "parquet-v2" / "candles")
+    finally:
+        monkeypatch.delenv("TRADINGAGENTS_PARQUET")
+        importlib.reload(pqs)

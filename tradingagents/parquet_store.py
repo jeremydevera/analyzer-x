@@ -23,7 +23,12 @@ import json
 import os
 from pathlib import Path
 
-ROOT = Path(os.path.expanduser("~/.tradingagents/parquet"))
+ROOT = Path(os.path.expanduser(
+    # Backtest v2 (Sep 17, 2026) keeps its parquet copies beside its own
+    # store: the v2 download job runs with TRADINGAGENTS_PARQUET set to
+    # ~/.tradingagents/parquet-v2 (see tradingagents/stores.py). Unset means
+    # the store the operator has always had.
+    os.environ.get("TRADINGAGENTS_PARQUET") or "~/.tradingagents/parquet"))
 CANDLES = ROOT / "candles"
 GRIDS = ROOT / "grids"
 _COMPRESSION = "zstd"

@@ -294,7 +294,9 @@ def shutdown_pool(grace: float = 4.0) -> int:
     for pid in kids:
         # probe first, so a pid that already went is never re-aimed at. On
         # Windows os.kill IS the kill — portable.pid_alive never signals.
-        with contextlib.suppress(ProcessLookupError, PermissionError):
+        # OSError for the same reason as above: a child can exit between the
+        # probe and the kill, and Windows answers that with WinError 87.
+        with contextlib.suppress(ProcessLookupError, PermissionError, OSError):
             if portable.pid_alive(pid):
                 portable.kill_hard(pid)
     return len(kids)

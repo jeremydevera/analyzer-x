@@ -172,6 +172,78 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-17-E — UPDATE CANDLES on Candles v2 said "nothing is downloaded again", then downloaded the whole market
+
+**CEO**
+
+* Pressing UPDATE CANDLES on the Candles v2 screen asked *"Update 5 stored
+  pair(s)? Only the bars printed since each pair's last stored bar are
+  fetched — nothing is downloaded again"*, and then started a run over
+  **1,003** coins, each fetching 30 days of one-minute candles — about four
+  hours of downloading behind a sentence about five coins.
+* Why: an update has always also fetched every coin the venue lists that the
+  store has never had. On the old screen that is a handful, so the sentence
+  was near enough; the new store held five coins, so "the rest" was the whole
+  market and the sentence was false.
+* What stops it now: the box names both halves — the stored pairs it tops up
+  AND the count of never-stored pairs it fetches in full — from the same
+  numbers the screen already shows two lines lower.
+
+**DEV**
+
+* `webapp/src/components/candles/DownloadScreen.tsx` `update()`: the confirm
+  was a literal string. `db_jobs._run_download(mode="update")` queues
+  `pending_work(...)` = behind + missing; `/api/v2/candles/pending` answered
+  `"missing": 998, "count_stale_or_missing": 1003` and the job's own progress
+  file said `"total": 1003`.
+* Invariant broken: **the number a button prints is the number of work it
+  will DO** (label-must-match-data; RCA-2026-09-10-C's second fault, where a
+  route printed `behind` for a job that walks `stale_pairs`).
+* Guard: `tests/test_the_update_confirm_names_the_whole_queue.py` — the
+  confirm reads `pending?.missing`, says "fetched in full", carries no typed
+  duration, and the field it reads is one the route's type declares.
+
+**SAW** — `Sep 17, 2026 10:17pm`, Candles v2, UPDATE CANDLES: the confirm
+above; then `~/.tradingagents/db_download_v2.json` reading `{"running": true,
+"done": 87, "total": 1003, "mode": "update"}` at `10:40pm`.
+
+**TIMELINE**
+
+1. `Sep 17, 2026 7:39pm` — the first Candles v2 download stored five coins'
+   one-minute history (ARKM, GLM and XPIN among them); the v2 store held 5
+   pairs, MEXC listed 1,003 contracts.
+2. `10:17pm` — UPDATE CANDLES pressed on Candles v2. Confirm: *"Update 5
+   stored pair(s)? … nothing is downloaded again."* The job queued 1,003
+   pairs: 5 behind by 3 hours, 998 never stored.
+3. `10:47pm` — 113 pairs done, 4,829,131 bars stored, 0 errors: about 3.8
+   pairs a minute, so ~4.4 hours for the whole queue, not "nothing".
+4. Fixed: the confirm prints `PLUS 998 pair(s) MEXC lists that this store does
+   not have yet — those are fetched in full (30 days of 1-minute candles
+   each).` The first draft typed "about 1.5 hours" into that sentence and was
+   cut by the harddev loop — the measured rate says 4.4, and a duration nobody
+   measured is the same defect again.
+
+**ROOT CAUSE** — a literal label over a queue whose size the route already
+knew.
+
+**WHY IT WAS NOT CAUGHT** — every test on this screen asserts that the
+button EXISTS and which job MODE it sends
+(`test_the_button_exists_and_says_what_it_will_do`); none compares the words
+in the confirm with the queue the job builds. An empty-of-rows screen can only
+be guarded against its WORDS (RCA-2026-09-12-G), and nobody had written that
+guard for this box.
+
+**COST** — none in money. About four hours of the store's disk, which the
+operator wanted anyway (the v2 store needs the whole market) but had not been
+told.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_update_confirm_names_the_whole_queue.py`
+(3 tests).
+
+---
+
 ## RCA-2026-09-17-C — the sweep orchestrator's shutdown could crash on Windows
 
 **CEO**
@@ -190,18 +262,43 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
   `suppress(ProcessLookupError, PermissionError)`; on Windows `os.kill` is
   `TerminateProcess` and a dead/unopenable pid raises `OSError(87)`.
 * Invariant: **a best-effort shutdown never raises on a pid it cannot reach.**
+  The second kill site in the same function (`pid_alive` → `kill_hard`, line
+  297) carried the same two-error list and a child can exit between the probe
+  and the kill; it takes `OSError` too (found by the harddev loop while the
+  RCA was being written).
 * Guard: `tests/test_sweep_orchestrator.py::test_progress_is_published_every_tick`
   — permanently red on this PC until this fix, which is how it was found.
 
-**SAW** — `OSError: [WinError 87] The parameter is incorrect` from the
-orchestrator test on `Sep 17, 2026`, one of four reds sitting in the suite.
+**SAW** — `OSError: [WinError 87] The parameter is incorrect` from
+`tests/test_sweep_orchestrator.py` on `Sep 17, 2026`, one of four reds
+sitting in the suite (with `test_days_window`, `test_live_results` and
+`test_compact_rebuilds_into_a_fresh_file`).
 
-**TIMELINE** — 1. the test drove `run()` to completion; 2. `_stop_children`
-enumerated a child that had exited; 3. `os.kill` raised WinError 87 past the
-two suppressed types. **ROOT CAUSE** — a Unix error list on a Windows call.
+**TIMELINE**
+
+1. `Sep 17, 2026`, afternoon — the whole replay/window/deploy set is run to
+   baseline the v2 work: 378 pass, 4 files red, this one with WinError 87.
+2. The test drives `run()` to completion; `_stop_children` lists 1 child pid
+   that has already exited.
+3. `os.kill(pid, SIGTERM)` on Windows is `TerminateProcess`; it raises
+   `OSError(87)`, which is neither of the 2 suppressed types, and the test
+   dies in the shutdown instead of asserting on the progress file.
+4. Same evening — both kill sites suppress `OSError`; the file is green
+   (6 passed).
+
+**ROOT CAUSE** — a Unix error list on a Windows call.
+
 **WHY IT WAS NOT CAUGHT** — the test WAS red, in a suite with three other
-long-standing reds ("a suite that is always red is one nobody reads").
-**COST** — none in money. **FIX** — this commit. **GUARD** — as above.
+long-standing reds: a suite that is always red is one nobody reads, and each
+red had been assumed to be "the other session's". Baselining the suite before
+new work is what surfaced all four.
+
+**COST** — none in money.
+
+**FIX** — this commit (`56ed9d67a59b`; the second kill site in the commit
+that carries this text).
+
+**GUARD** — `tests/test_sweep_orchestrator.py::test_progress_is_published_every_tick`.
 
 ---
 
@@ -214,7 +311,7 @@ long-standing reds ("a suite that is always red is one nobody reads").
 * Why: that one line sliced the raw timestamp instead of going through the
   project's single date formatter, and the guard test only looks for two
   spellings of the mistake.
-* What stops it now: it prints `Aug 20, 2026 4:00pm to Sep 17, 2026 10:00am`
+* What stops it now: it prints "Aug 20, 2026 4:00pm to Sep 17, 2026 10:00am"
   through the one formatter, and a test holds it.
 
 **DEV**
@@ -227,12 +324,39 @@ long-standing reds ("a suite that is always red is one nobody reads").
 * Guard: `tests/test_v2_reads_from_its_own_store.py::test_the_v2_trade_log_replays_from_the_minutes`
   asserts `first == fmt_when(...)`.
 
-**SAW** — the Backtest v2 trade log's source line, `Sep 17, 2026 8:50pm`, in
-the Playwright check of the new route. **TIMELINE** — 1. `trades_for` has
-printed the sliced form since the trade log existed; 2. seen on the v2 log;
-3. fixed. **ROOT CAUSE** — a third spelling of one mistake. **WHY IT WAS NOT
-CAUGHT** — the guard is only as wide as its pattern (RCA-2026-09-09-C, again).
-**COST** — none. **FIX** — this commit. **GUARD** — as above.
+**SAW** — the Backtest v2 trade log's source line under `#U9YP5N7L` (XPIN
+1h), `Sep 17, 2026 8:50pm`, in the Playwright check of the new
+`/api/v2/strategies/trades` route: *"667 bars, 2026-08-20 16:00 to
+2026-09-17 10:00"*.
+
+**TIMELINE**
+
+1. `Aug 21, 2026` — the date rule was written after three asks; the trade
+   log's source line already printed `str(ts)[:16]` and no guard reads that
+   spelling.
+2. `Sep 17, 2026 8:50pm` — the v2 trade log is opened in the browser for the
+   first time (585 exit stamps, 42 of them off the hour) and the source line
+   under it reads `2026-08-20 16:00`.
+3. Same evening — `first`/`last` go through `fmt_stamp`, and the new v2 test
+   compares them with `fmt_when` instead of the old sliced string; two
+   older trade-log tests that compared the sliced form are moved to
+   `fmt_when` as well.
+
+**ROOT CAUSE** — a third spelling of one mistake: a Timestamp's `str()`
+sliced to 16 characters is the banned stamp, and the guard greps for
+`strftime` and `toLocale` only.
+
+**WHY IT WAS NOT CAUGHT** — the guard is only as wide as its pattern
+(RCA-2026-09-09-C, again): `test_no_module_formats_a_timestamp_by_hand`
+looks for two spellings of the mistake, and a sliced `str(Timestamp)` is a
+third. Widening that grep to `str(...)[:16]` / `[:19]` slices is the
+follow-up; this entry's guard asserts on the VALUE instead.
+
+**COST** — none.
+
+**FIX** — this commit (`56ed9d67a59b`).
+
+**GUARD** — `tests/test_v2_reads_from_its_own_store.py::test_the_v2_trade_log_replays_from_the_minutes`.
 
 ---
 
@@ -336,10 +460,21 @@ history from the front).
 * Guard: `test_the_v2_download_has_its_own_pending_ledger` in
   `tests/test_a_short_kline_cache_is_backfilled.py`.
 
-**SAW** — `db_download_v2.log`, last line, `Sep 17, 2026 7:39pm`.
+**SAW** — `~/.tradingagents/db_download_v2.log`, last line, `Sep 17, 2026
+7:39pm`: *"[download] could not update the pending ledger: ValueError:
+unknown pending kind: 'candles_v2'"*.
 
-**TIMELINE** — 1. `7:39pm` the v2 download finished five pairs; 2. its ledger
-write raised on the unknown kind and was logged; 3. registered in this commit.
+**TIMELINE**
+
+1. `Sep 17, 2026 7:39pm` — the first Candles v2 download finished 5 pairs
+   (about 40,000 one-minute bars each, 0 errors) and refreshed the candle
+   index in 0 s.
+2. Its last step, writing the run's pending list, called the ledger with the
+   kind `candles_v2`; the ledger knew 2 kinds (`candles`, `backtest`) and
+   raised; the job logged the line and exited 0.
+3. `7:49pm` — `candles_v2` registered as the third kind; the re-run of the
+   same 5 pairs wrote its ledger and the log gained no new error line (the
+   file holds 3 lines in total, the error being line 2).
 
 **ROOT CAUSE** — a new kind added on the writer's side and not on the ledger's.
 
@@ -349,7 +484,12 @@ source, never that the ledger accepts it.
 
 **COST** — none; no pair failed in the run that revealed it.
 
-**FIX** — this commit. **GUARD** — as above.
+**FIX** — `41066585dcc6` (the kind registered); the guard below arrived with
+the commit that carries this text, because the first version of this entry
+pointed at a source grep — exactly the gap its own fourth field names.
+
+**GUARD** — `tests/test_pending_ledger.py::test_every_download_kinds_ledger_is_a_ledger_the_ledger_knows`
+drives `record`/`pending`/`clear` with the kind each download job really uses.
 
 ---
 

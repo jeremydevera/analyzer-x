@@ -205,3 +205,20 @@ def test_no_writer_can_take_the_job_down():
         for i in uses:
             assert "except Exception" in src[i:i + 1200], \
                 f"{fn.__name__} has an unguarded ledger use"
+
+
+# ------------------------------------------------ every job's kind is a kind
+def test_every_download_kinds_ledger_is_a_ledger_the_ledger_knows():
+    """RCA-2026-09-17-B: the v2 download wrote its pending list under
+    `candles_v2` and the ledger raised `unknown pending kind` — the tests had
+    asserted the NAME in the job's source, never that the ledger ACCEPTS it.
+    So: drive the ledger with the kind each download job really uses."""
+    from tradingagents import db_jobs as dj
+
+    for job in ("download", "download_v2"):
+        kind = dj._ledger_kind(job)
+        assert kind in pl.KINDS, f"{job} writes {kind!r}, which the ledger does not know"
+        pl.record(kind, [("AAA_USDT", "1m" if job.endswith("_v2") else "15m", "boom")])
+        assert [p["symbol"] for p in pl.pending(kind)] == ["AAA_USDT"]
+        pl.clear(kind, [("AAA_USDT", "1m" if job.endswith("_v2") else "15m")])
+        assert pl.pending(kind) == []

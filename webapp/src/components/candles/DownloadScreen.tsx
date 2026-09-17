@@ -74,7 +74,17 @@ export default function DownloadScreen({ store = "v1" }: { store?: StoreName }) 
    * updated on 21 August fetches exactly the bars between. */
   const update = async () => {
     setErr("");
-    if (!confirm(`Update ${gaps?.pairs ?? 0} stored pair(s)?\n\nOnly the bars printed since each pair's last stored bar are fetched — nothing is downloaded again.`)) return;
+    // THE WHOLE QUEUE, NAMED. An update fetches the bars since each stored
+    // pair's last one AND the pairs the venue lists that the store has never
+    // had — on Candles v2 the first UPDATE therefore fetched 1,003 coins'
+    // 1-minute history (Sep 17, 2026) behind a sentence that said "nothing is
+    // downloaded again". The count comes from the pending route, per store.
+    const missing = pending?.missing ?? 0;
+    if (!confirm(`Update ${gaps?.pairs ?? 0} stored pair(s)?\n\nOnly the bars printed since each pair's last stored bar are fetched — nothing is downloaded again.`
+      + (missing
+        ? `\n\nPLUS ${missing.toLocaleString()} pair(s) MEXC lists that this store does not have yet — those are fetched in full${
+            store === "v2" ? " (30 days of 1-minute candles each)" : ""}.`
+        : ""))) return;
     try { await api.jobStart("download", { mode: "update" }); poll(); }
     catch (e) { setErr(String(e)); }
   };

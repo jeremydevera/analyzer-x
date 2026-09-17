@@ -1014,10 +1014,25 @@ Four rules, each with a test:
   explicitly (`iter_rows_in`); a ContextVar token cannot be reset from
   another context.
 
-**What the first cut does NOT do, on purpose:** measure v2 on GitHub (the
-cloud has no 1m store); deploy straight from a v2 id; a days/months window
-on v2 (the re-measure reads the v1 candle store — refused with why); the
-trade-by-trade log for a v2 row (held back rather than shown from v1).
+**What v2 does NOT do, on purpose:** measure on GitHub — the cloud has no
+1m store, so UPDATE on Backtest v2 (`btupdate_v2`) always runs on this PC;
+and a days/months window on the v2 CSV (refused with why — the JSON window
+below is the one that re-measures).
+
+**Added the same evening, each reading the v2 store and never v1's:** the
+days/months window on Backtest v2 (`api._STORE` ContextVar →
+`restate_window(store=)` → `msw.window_rows(store=)`: bars rebuilt from the
+1m candles, exits by the minute); the trade-by-trade log (`POST
+/api/v2/strategies/trades` → `msw.trades_for(store=)`, the exit stamp is the
+minute, the source line says "stored 1-minute candles, exits settled by the
+minute"); UPDATE ALL BACKTESTS on v2 (`btupdate_v2`, one-disk rule, its own
+log and progress files); and deploy from a v2 id (`deploy_preset` writes
+`settings["strategy_res"][book_slot]`, `api.row_id_for` passes `res=` so a
+row armed from Backtest v2 prints its v2 id, never its v1 twin). Every path
+reader in `market_sweep` takes a root (`cached_candles`, `pair_rows`,
+`load_states`, `load_costs`, `save_costs`); None is the v1 path byte for
+byte, and `_DIRS_CACHE` is keyed by store because v1 and v2 bars of one coin
+are different frames with one name.
 
 **What pressing the buttons found before the operator did** (docs/RCA.md
 RCA-2026-09-17-A/B): `fx.klines` grows a cached history at the TAIL only, so

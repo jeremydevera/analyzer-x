@@ -184,10 +184,22 @@ update_pairs` take an optional `root`; default unchanged.
   `~/.tradingagents/v2/rows.db` (29 MB); `#LG9NSU4B`'s v2 twin is `#U9YP5N7L`
   and its Sep 16 stop reads `7:28am`.
 
+* Later the same evening (commit `56ed9d67a59b`): the days/months window on
+  Backtest v2 re-measures from the 1m store (`api._STORE` ContextVar →
+  `restate_window(store=)` → `window_rows(store=)`); the trade-by-trade log
+  for a v2 row (`POST /api/v2/strategies/trades` → `trades_for(store=)`,
+  Playwright: 585 exit stamps, 42 off the hour); UPDATE ALL BACKTESTS on v2
+  (`btupdate_v2`, always on this PC); deploy from a v2 id (`deploy_preset`
+  writes `strategy_res`, `row_id_for` prints the v2 id). The v2 CSV still
+  refuses a window, with why.
+* UPDATE CANDLES on Candles v2 names the never-stored pairs it will fetch in
+  full (RCA-2026-09-17-E) — the first press queued 1,003 pairs behind a
+  sentence about 5.
+
 ## Out of this cut
 
-Cloud measuring for v2; deploying straight from a v2 id (the runner's
-deploy-by-id lookup reads only v1 today) — both follow once the tabs work.
+Cloud measuring for v2 — the fleet has no 1m store, so every v2 measure runs
+on this PC.
 
 ## Tests (guards, all new)
 

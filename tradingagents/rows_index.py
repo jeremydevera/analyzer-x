@@ -320,8 +320,46 @@ _last_error = ""
 _ready: set = set()
 
 
+import contextvars as _contextvars
+
+# WHICH DATABASE THIS CALL READS. Backtest v2 (Sep 17, 2026) has its own
+# rows.db under ~/.tradingagents/v2, and the one API process serves both
+# versions — so a module global can never be flipped per request. A
+# ContextVar is per thread and per request: `using_db(path)` sets it for the
+# duration of one call in the thread that made it, and every `_connect()`
+# underneath reads it. Unset means DB_PATH, exactly as before.
+_DB_OVERRIDE: "_contextvars.ContextVar[str | None]" = _contextvars.ContextVar(
+    "rows_index_db", default=None)
+
+
+def _db() -> Path:
+    """The database the current call reads: the `using_db` override, else
+    DB_PATH."""
+    p = _DB_OVERRIDE.get()
+    return Path(p) if p else DB_PATH
+
+
+@contextlib.contextmanager
+def using_db(db_path):
+    """Read `db_path` for the calls inside this block, in THIS thread.
+
+    Set and reset in the same thread on purpose: a ContextVar token cannot be
+    reset from another context, which is why a generator drained by another
+    thread (`iter_rows`) takes `db_path` explicitly instead.
+    """
+    if not db_path:
+        yield
+        return
+    tok = _DB_OVERRIDE.set(str(db_path))
+    try:
+        yield
+    finally:
+        _DB_OVERRIDE.reset(tok)
+
+
 def _connect(readonly: bool = False,
-             same_thread: bool = True) -> sqlite3.Connection:
+             same_thread: bool = True,
+             db_path=None) -> sqlite3.Connection:
     """`synchronous=OFF` is deliberate: every row here is derived from a JSON
     file that is still the source of truth, so a torn write costs a re-index,
     never a measurement. Paid for by inserts that no longer fsync.
@@ -336,12 +374,14 @@ def _connect(readonly: bool = False,
     # looked complete (operator, 2026-08-27: "i want thefilterd result to be
     # downloaded only" — the filters were right, the file was cut short).
     # Only ever passed by a serial consumer: one thread at a time, in order.
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    if readonly and DB_PATH.exists():
-        con = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True, timeout=60.0,
+    # `db_path` wins, then the `using_db` override, then DB_PATH
+    p = Path(db_path) if db_path else _db()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    if readonly and p.exists():
+        con = sqlite3.connect(f"file:{p}?mode=ro", uri=True, timeout=60.0,
                               check_same_thread=same_thread)
     else:
-        con = sqlite3.connect(DB_PATH, timeout=60.0,
+        con = sqlite3.connect(p, timeout=60.0,
                               check_same_thread=same_thread)
     con.row_factory = sqlite3.Row
     # busy_timeout, not "database is locked": the indexer holds the write lock
@@ -360,7 +400,7 @@ def _connect(readonly: bool = False,
 
 
 @contextlib.contextmanager
-def _open(readonly: bool = False, same_thread: bool = True):
+def _open(readonly: bool = False, same_thread: bool = True, db_path=None):
     """`with sqlite3.connect(...)` COMMITS but does NOT CLOSE. Every poll of
     /api/strategies therefore leaked an open reader, and because each writer
     connection re-issued `PRAGMA journal_mode=WAL` -- which needs a brief
@@ -368,7 +408,11 @@ def _open(readonly: bool = False, same_thread: bool = True):
     `syncing: True` with the pair count frozen at 5 for four minutes, while the
     same code in a lone process did a pair every 0.7s.
     """
-    con = _connect(readonly, same_thread)
+    # `db_path` only when given: tests stand in for `_connect` with fakes that
+    # take the two positional arguments it always had, and a keyword they
+    # never heard of would fail every one of them for a v1 call
+    con = (_connect(readonly, same_thread, db_path=db_path) if db_path
+           else _connect(readonly, same_thread))
     try:
         yield con
         if not readonly:
@@ -2840,7 +2884,9 @@ def has_index(name: str):
     coin guard refused a filter in 0.02 s with rows_coin sitting right there
     (2026-08-26). A caller must not treat "I could not look" as "it is gone".
     """
-    key = (str(DB_PATH), name)
+    # keyed by the database actually being read: the v2 store has its own
+    # set of indexes and must not inherit v1's answer
+    key = (str(_db()), name)
     if key in _INDEX_SEEN:
         return _INDEX_SEEN[key]
 
@@ -3277,8 +3323,15 @@ def _indexed_by(coin, winrate_seeks=False, profit_wide=False,
 
 def query_sql(coin=None, tf=None, signal=None, profitable=False,
               sort="profit", min_trades=0, min_winrate=0, max_tp=0,
-              sizing=None, row_id=None, desc=None) -> str:
+              sizing=None, row_id=None, desc=None, db_path=None) -> str:
     """The row SELECT this query would run — for tests and for EXPLAIN."""
+    if db_path:
+        with using_db(db_path):
+            return query_sql(coin=coin, tf=tf, signal=signal,
+                             profitable=profitable, sort=sort,
+                             min_trades=min_trades, min_winrate=min_winrate,
+                             max_tp=max_tp, sizing=sizing, row_id=row_id,
+                             desc=desc)
     key = str(sort or "profit")
     if key not in SORTS:
         raise ValueError(f"unknown sort {key!r}; use one of {sorted(SORTS)}")
@@ -3337,8 +3390,12 @@ def query(coin=None, tf=None, signal=None, profitable=False,
           limit=500, offset=0, sort="profit", min_trades=0,
           min_winrate=0, max_tp=0, sizing=None, row_id=None, group=None,
           max_sl=0, months=0, desc=None, min_tp=0, min_sl=0,
-          tp_over_sl=False, asset=None, measured_days=0) -> dict:
+          tp_over_sl=False, asset=None, measured_days=0,
+          db_path=None) -> dict:
     """Rows sorted by `sort` (SORTS), profit first by default.
+
+    `db_path` reads another store (Backtest v2's rows.db) for this one call;
+    None is DB_PATH, unchanged.
 
     STRICTLY READ-ONLY. It creates nothing and it indexes nothing.
 
@@ -3349,6 +3406,15 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     index catches up on its own timer (`start_keeping_up`), and `status()`
     reports how far behind it is so the screen can say so.
     """
+    if db_path:
+        with using_db(db_path):
+            return query(coin=coin, tf=tf, signal=signal, profitable=profitable,
+                         limit=limit, offset=offset, sort=sort,
+                         min_trades=min_trades, min_winrate=min_winrate,
+                         max_tp=max_tp, sizing=sizing, row_id=row_id,
+                         group=group, max_sl=max_sl, months=months, desc=desc,
+                         min_tp=min_tp, min_sl=min_sl, tp_over_sl=tp_over_sl,
+                         asset=asset, measured_days=measured_days)
     lim = max(0, min(int(limit), MAX_LIMIT))
     key = str(sort or "profit")
     if key not in SORTS:
@@ -3699,7 +3765,13 @@ def query(coin=None, tf=None, signal=None, profitable=False,
 
 def export_plan(coin=None, signal=None, sort="profit", row_id=None,
                 group=None, min_winrate=0, min_trades=0, desc=None,
-                limit=0):
+                limit=0, db_path=None):
+    if db_path:
+        with using_db(db_path):
+            return export_plan(coin=coin, signal=signal, sort=sort,
+                               row_id=row_id, group=group,
+                               min_winrate=min_winrate, min_trades=min_trades,
+                               desc=desc, limit=limit)
     """Everything that can REFUSE an export, and the index choices it makes —
     WITHOUT running the query.
 
@@ -3811,8 +3883,15 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
               sort="profit", min_trades=0, min_winrate=0, max_tp=0,
               sizing=None, row_id=None, group=None, max_sl=0, days=0,
               desc=None, batch=5_000, min_tp=0, min_sl=0,
-              tp_over_sl=False, asset=None, stats=None, measured_days=0):
+              tp_over_sl=False, asset=None, stats=None, measured_days=0,
+              db_path=None):
     """Every matching row, in the asked order, a batch at a time.
+
+    `db_path` is EXPLICIT here, not `using_db`: this generator is drained by
+    Starlette's threadpool, and a ContextVar set in the route's thread is not
+    visible in the thread that calls `next()`. The caller primes the first
+    row inside `using_db(...)` so the plan (has_index and friends) is made
+    against the same store; after that only the open cursor is read.
 
     `stats`, when given, is a dict this generator fills as it goes —
     `window_hidden` counts rows the days window re-measured and then cut
@@ -3870,7 +3949,7 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
     win_left = DAYS_CSV_MAX if win_days else -1
     # same_thread=False: this generator is drained by Starlette's threadpool
     # (see _connect). Nothing else touches this connection.
-    with _open(readonly=True, same_thread=False) as con:
+    with _open(readonly=True, same_thread=False, db_path=db_path) as con:
         cur = con.execute(
             f"SELECT * FROM rows"
             # THE SAME CHOICE THE PAGE MAKES. This used to hand
@@ -4006,9 +4085,13 @@ def stop_losses(tfs) -> list:
     return sorted(out)
 
 
-def facets() -> dict:
+def facets(db_path=None) -> dict:
     """Filter dropdowns, read from the per-pair summary — 85 short rows rather
     than three DISTINCT scans over every measurement."""
+    if db_path:
+        with using_db(db_path):
+            return facets()
+
     def _read():
         coins, tfs, signals = set(), set(), set()
         with _open(readonly=True) as con:
@@ -4032,10 +4115,14 @@ def facets() -> dict:
                                "sizings": list(_sizings())})
 
 
-def pair_storage() -> list:
+def pair_storage(db_path=None) -> list:
     """One row per measured pair, for the storage screen — from the index, so
     it costs one small query instead of parsing every row file and every state
     file (2 GB) on a route the page polls."""
+    if db_path:
+        with using_db(db_path):
+            return pair_storage()
+
     def _read():
         with _open(readonly=True) as con:
             return [dict(r) for r in con.execute(
@@ -4046,10 +4133,16 @@ def pair_storage() -> list:
     return _missing_ok(_read, [])
 
 
-def status() -> dict:
+def status(db_path=None) -> dict:
     """What the index holds vs what is on disk — so the UI can say "indexing"
     instead of quietly showing a partial list as if it were everything."""
-    on_disk = len(list(msw.ROWDIR.glob("*.json"))) if msw.ROWDIR.exists() else 0
+    if db_path:
+        with using_db(db_path):
+            return status()
+    # the pair files beside the database being read: v2's rows/ sits beside
+    # v2's rows.db, exactly as v1's does
+    rows_dir = (_db().parent / "rows") if _DB_OVERRIDE.get() else msw.ROWDIR
+    on_disk = len(list(rows_dir.glob("*.json"))) if rows_dir.exists() else 0
 
     def _read():
         with _open(readonly=True) as con:

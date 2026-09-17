@@ -169,6 +169,73 @@ def test_the_download_job_accepts_1m_only_for_the_v2_kind():
     assert dj._download_tfs({"tfs": ["1m", "15m"]}, kind="download") == ["15m"]
 
 
+# ------------------------------------------------------- reading a v2 store
+def _seed(db: Path, rows: list[dict]) -> None:
+    """A rows.db with the current schema, holding `rows` — built the way the
+    indexer builds one, through the module's own SCHEMA, COLS and _values."""
+    db.parent.mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(db)
+    con.executescript(ri._SCHEMA)
+    con.execute("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)")
+    con.execute("INSERT OR REPLACE INTO meta VALUES ('schema', ?)",
+                (str(ri.SCHEMA_VERSION),))
+    ph = "(" + ",".join("?" * (len(ri.COLS) + 2)) + ")"
+    con.executemany(
+        f"INSERT INTO rows ({','.join(ri.COLS)},monthly,pair) VALUES {ph}",
+        [ri._values(r, f"{r['coin']}-{r['tf']}") for r in rows])
+    con.execute("INSERT OR REPLACE INTO pairs (pair, mtime, size, n, at, coin, tf) "
+                "VALUES (?,?,?,?,?,?,?)",
+                (f"{rows[0]['coin']}-{rows[0]['tf']}", 1.0, 1, len(rows), 1.0,
+                 rows[0]["coin"], rows[0]["tf"]))
+    for ddl in ri.KEEP_INDEXES:
+        con.execute(ddl)
+    con.commit()
+    con.close()
+
+
+def _row(coin, profit, **kw):
+    base = {"coin": coin, "tf": "1h", "signal": "ote", "th": 0.0, "sl": 3.0,
+            "tp": 1.0, "rr": 0.33, "sizing": "flat", "lev": 20, "base": 5.0,
+            "notional": 100.0, "trades": 10, "wins": 8, "losses": 2,
+            "winrate": 80.0, "profit": profit, "funding": 0.0, "h1": 1.0,
+            "h2": 1.0, "green": 1, "months": 1, "worst": -1.0, "dd": 1.0,
+            "liqs": 0, "stop_reachable": True, "days": 30, "bars": 720,
+            "cost_of_tp": 10.0, "rt": 0.1, "gate": "ok",
+            "monthly": {"2026-09": profit}}
+    base.update(kw)
+    return base
+
+
+def test_the_index_answers_from_the_store_it_is_handed(tmp_path, monkeypatch):
+    v1, v2 = tmp_path / "v1" / "rows.db", tmp_path / "v2" / "rows.db"
+    _seed(v1, [_row("XPIN", 10.0)])
+    _seed(v2, [_row("XPIN", 99.0, unclear=2, res="1m")])
+    monkeypatch.setattr(ri, "DB_PATH", v1)
+    a = ri.query(coin="XPIN")
+    b = ri.query(coin="XPIN", db_path=v2)
+    assert a["rows"][0]["profit"] == 10.0 and a["rows"][0].get("unclear") is None
+    assert b["rows"][0]["profit"] == 99.0 and b["rows"][0]["unclear"] == 2
+    assert b["rows"][0]["res"] == "1m"
+    assert b["rows"][0]["id"] != a["rows"][0]["id"], "v2 ids differ from v1 ids"
+    assert ri.status(db_path=v2)["rows"] == 1
+    assert ri.pair_storage(db_path=v2)[0]["n"] == 1
+    assert "XPIN" in ri.facets(db_path=v2)["coins"]
+
+
+def test_candle_index_reads_the_root_it_is_handed(tmp_path):
+    from tradingagents import market_sweep as msw
+
+    root = tmp_path / "v2" / "candles"
+    root.mkdir(parents=True)
+    (root / "XPIN_USDT-1m.json").write_text(json.dumps(
+        {"t": [1_789_516_800_000, 1_789_516_860_000], "o": [1, 1], "h": [1, 1],
+         "l": [1, 1], "c": [1, 1], "v": [1, 1]}))
+    got = msw.candle_index(root=root)
+    assert set(got) == {"XPIN_USDT-1m"} and got["XPIN_USDT-1m"]["bars"] == 2
+    assert (root.parent / "candle_index.json").exists(), \
+        "its own index file, beside its own candles"
+
+
 def test_parquet_root_follows_the_environment(monkeypatch, tmp_path):
     from tradingagents import parquet_store as pqs
 

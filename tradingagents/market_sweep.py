@@ -2108,7 +2108,8 @@ def storage_by_coin() -> list:
 INDEX_PATH = HOME / "candle_index.json"
 
 
-def candle_index(rebuild: bool = False, scan: bool = True) -> dict:
+def candle_index(rebuild: bool = False, scan: bool = True,
+                 root=None) -> dict:
     """{"SYMBOL-tf": {bars, first_ms, last_ms}} for every stored pair.
 
     Incremental: a pair whose file has not been rewritten since the last call
@@ -2122,8 +2123,15 @@ def candle_index(rebuild: bool = False, scan: bool = True) -> dict:
     import json as _json
 
     _paths()
+    # `root` is another store's candle dir (Backtest v2's ~/.tradingagents/
+    # v2/candles): its index file sits beside it, never in v1's HOME. None
+    # is the store the operator has always had.
+    cdir = Path(root) if root else CANDLES
+    ipath = (cdir.parent / "candle_index.json") if root else INDEX_PATH
+    if root:
+        cdir.mkdir(parents=True, exist_ok=True)
     try:
-        cache = _json.loads(INDEX_PATH.read_text(encoding="utf-8"))
+        cache = _json.loads(ipath.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         cache = {}
     if not scan:
@@ -2131,7 +2139,7 @@ def candle_index(rebuild: bool = False, scan: bool = True) -> dict:
     if rebuild:
         cache = {}
     out, dirty = {}, False
-    for f in sorted(CANDLES.glob("*.json")):
+    for f in sorted(cdir.glob("*.json")):
         key = f.stem
         try:
             stat = f.stat()
@@ -2156,9 +2164,9 @@ def candle_index(rebuild: bool = False, scan: bool = True) -> dict:
         dirty = True
     if dirty or len(out) != len(cache):
         try:
-            tmp = INDEX_PATH.with_suffix(".tmp")
+            tmp = ipath.with_suffix(".tmp")
             tmp.write_text(_json.dumps(out), encoding="utf-8")
-            tmp.replace(INDEX_PATH)
+            tmp.replace(ipath)
         except OSError:
             pass
     else:
@@ -2171,7 +2179,7 @@ def candle_index(rebuild: bool = False, scan: bool = True) -> dict:
         # are the candle files' own, so touching this one changes nothing it
         # relies on.
         with contextlib.suppress(OSError):
-            INDEX_PATH.touch()
+            ipath.touch()
     return out
 
 

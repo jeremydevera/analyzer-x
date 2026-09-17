@@ -115,7 +115,10 @@ SPEC = {
 # query() parameters that are NOT row filters: paging, ordering, the months/
 # days windows (they restate figures, they do not cut rows) and the id lookup
 # (it OVERRIDES the filters — pinned separately below).
-NOT_FILTERS = {"limit", "offset", "sort", "months", "days", "desc", "row_id"}
+NOT_FILTERS = {"limit", "offset", "sort", "months", "days", "desc", "row_id",
+               # WHICH STORE is read (Backtest v2's rows.db), not which rows —
+               # every filter above cuts the same way in either store
+               "db_path"}
 
 
 def _expect(active) -> set:

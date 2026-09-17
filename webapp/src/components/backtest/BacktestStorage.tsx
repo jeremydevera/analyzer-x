@@ -7,7 +7,8 @@
  * one of the two hides that.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BtStorage, backtestApi, fmtBytes } from "@/lib/api";
+import { BtStorage, fmtBytes, storeApi, StoreName } from "@/lib/api";
+import StoreBadge from "@/components/StoreBadge";
 import { pageWindow } from "@/lib/pager";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -15,14 +16,16 @@ const HEADS = ["coin", "tf", "rows", "combos", "size", "measured through", "last
 
 const PER_PAGE = 25;
 
-export default function BacktestStorage() {
+export default function BacktestStorage({ store = "v1" }: { store?: StoreName }) {
+  // Backtest v2's own rows.db when asked; v1's otherwise (Sep 17, 2026)
+  const S = useMemo(() => storeApi(store), [store]);
   const [d, setD] = useState<BtStorage | null>(null);
   // 4,233 pairs in one table is a page nobody scrolls (asked 2026-08-26)
   const [page, setPage] = useState(1);
   const [q, setQ] = useState("");
   const load = useCallback(() => {
-    backtestApi.storage().then(setD).catch(() => {});
-  }, []);
+    S.storage().then(setD).catch(() => {});
+  }, [S]);
   useEffect(() => { load(); const t = setInterval(load, 30_000); return () => clearInterval(t); }, [load]);
 
   const shown = useMemo(() => {
@@ -41,8 +44,8 @@ export default function BacktestStorage() {
   return (
     <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="px-5 pt-4">
-        <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">
-          Backtest store
+        <h3 className="flex flex-wrap items-center gap-2 text-base font-semibold text-gray-800 dark:text-white/90">
+          Backtest store <StoreBadge store={store} />
         </h3>
         <p className="text-theme-xs text-gray-500 dark:text-gray-400">
           {d.total_rows.toLocaleString()} measured rows over {d.pairs} pair

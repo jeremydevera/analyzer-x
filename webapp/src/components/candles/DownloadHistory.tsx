@@ -18,15 +18,16 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  api, DownloadHistory as Payload, DownloadHistoryRow, storeApi, StoreName,
+  api as coreApi, DownloadHistory as Payload, DownloadHistoryRow,
+  notifyApi as coreNotifyApi, storeApi, StoreName,
 } from "@/lib/api";
 
 // the shapes come from the calls themselves, so a route change is a type error
 // here rather than a silently-undefined field on the screen
-type LostPayload = Awaited<ReturnType<typeof api.candleLost>>;
-type CompPayload = Awaited<ReturnType<typeof api.candleCompleteness>>;
-type GapsPayload = Awaited<ReturnType<typeof api.candleGaps>>;
-type PendingPayload = Awaited<ReturnType<typeof api.candlePending>>;
+type LostPayload = Awaited<ReturnType<typeof coreApi.candleLost>>;
+type CompPayload = Awaited<ReturnType<typeof coreApi.candleCompleteness>>;
+type GapsPayload = Awaited<ReturnType<typeof coreApi.candleGaps>>;
+type PendingPayload = Awaited<ReturnType<typeof coreApi.candlePending>>;
 
 const TF_ORDER = ["15m", "30m", "1h", "4h", "1d"];
 
@@ -95,8 +96,11 @@ function Job({ tone, what, fix, children }: {
 }
 
 function Pending({ refreshKey, store = "v1" }: { refreshKey: number; store?: StoreName }) {
-  // the store this tab reads: Candles v2's 1m pairs, or the v1 five
+  // the store this tab reads: Candles v2's 1m pairs, or the v1 five. The
+  // module's client with the candle reads pointed at it — the calls keep
+  // their `api.` spelling, so the guards that read this file still hold.
   const S = useMemo(() => storeApi(store), [store]);
+  const api = useMemo(() => ({ ...coreApi, ...S }), [S]);
   const [lost, setLost] = useState<LostPayload | null>(null);
   const [comp, setComp] = useState<CompPayload | null>(null);
   const [gaps, setGaps] = useState<GapsPayload | null>(null);
@@ -107,11 +111,11 @@ function Pending({ refreshKey, store = "v1" }: { refreshKey: number; store?: Sto
   const [why, setWhy] = useState("");
 
   useEffect(() => {
-    S.candleLost().then(setLost).catch((e) => setWhy(String(e)));
-    S.candleCompleteness().then(setComp).catch(() => {});
-    S.candleGaps().then(setGaps).catch(() => {});
-    S.candlePending().then(setWork).catch(() => {});
-  }, [refreshKey, S]);
+    api.candleLost().then(setLost).catch((e) => setWhy(String(e)));
+    api.candleCompleteness().then(setComp).catch(() => {});
+    api.candleGaps().then(setGaps).catch(() => {});
+    api.candlePending().then(setWork).catch(() => {});
+  }, [refreshKey, api]);
 
   const byKind = useMemo(() => {
     const out: Record<string, { coin: string; tf: string; why: string }[]> = {};
@@ -331,13 +335,14 @@ type Tab = (typeof TABS)[number]["id"];
 export default function DownloadHistory({ refreshKey = 0, store = "v1" }:
                                         { refreshKey?: number; store?: StoreName }) {
   const S = useMemo(() => storeApi(store), [store]);
+  // the v2 job's own runs (download_v2), never v1's, on Candles v2
+  const notifyApi = useMemo(() => ({ ...coreNotifyApi, downloadHistory: S.downloadHistory }), [S]);
   const [d, setD] = useState<Payload | null>(null);
   const [tab, setTab] = useState<Tab>("pending");
 
   const load = useCallback(() => {
-    // the v2 job's own runs (download_v2), never v1's, on Candles v2
-    S.downloadHistory(20).then(setD).catch(() => {});
-  }, [S]);
+    notifyApi.downloadHistory(20).then(setD).catch(() => {});
+  }, [notifyApi]);
   useEffect(() => { load(); }, [load, refreshKey]);
 
   const runs = useMemo(

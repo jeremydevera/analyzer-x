@@ -5,8 +5,9 @@
  * shows, and a drift beyond 2% against the stored row is SAID, not hidden
  * (the label-must-match-data rule, ported).
  */
-import { useCallback, useEffect, useRef, useState } from "react";
-import { api, ApiError, fmtMoney, fmtWhenMs, JobStatus, STRATEGY_SORTS, StrategyRow,
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import StoreBadge from "@/components/StoreBadge";
+import { api as coreApi, ApiError, fmtMoney, fmtWhenMs, JobStatus, STRATEGY_SORTS, StrategyRow, storeApi, StoreName,
   TradesResult, type IndexStatus, type StrategySort } from "@/lib/api";
 import { pageWindow } from "@/lib/pager";
 import Badge from "@/components/ui/badge/Badge";
@@ -110,7 +111,22 @@ const HEAD_SORT: Record<string, StrategySort | undefined> =
   Object.fromEntries(Object.entries(STRATEGY_SORTS)
     .map(([k, label]) => [label, k as StrategySort]));
 
-export default function StrategiesPanel() {
+/** `store="v2"` is Backtest v2 (Sep 17, 2026): the same table over the v2
+ *  rows — every call through storeApi("v2"), an `unclear` column beside L,
+ *  the empty-store sentence from the route, and the row UPDATE / trade log
+ *  (which still read the v1 store) held back until they take a store. */
+export default function StrategiesPanel({ store = "v1" }: { store?: StoreName }) {
+  const S = useMemo(() => storeApi(store), [store]);
+  // THE CLIENT THIS PANEL CALLS: the module's, with the three store-scoped
+  // reads (rows, CSV, facets) pointed at this store. Every call below keeps
+  // its `api.` spelling, so the guards that read this file still hold.
+  const api = useMemo(() => ({
+    ...coreApi, strategies: S.strategies, strategiesCsvUrl: S.strategiesCsvUrl,
+    facets: S.facets,
+  }), [S]);
+  // the route's own reason for an empty v2 store ("download 1m candles on
+  // Candles v2 first") — printed above the table when there is nothing on it
+  const [storeWhy, setStoreWhy] = useState("");
   const [facets, setFacets] = useState<{ coins: string[]; tfs: string[]; signals: string[]; tps?: number[]; sls?: number[]; sizings?: string[] }>({ coins: [], tfs: [], signals: [], tps: [], sls: [], sizings: [] });
   const [coin, setCoin] = useState("");
   const [tf, setTf] = useState("");
@@ -342,7 +358,7 @@ export default function StrategiesPanel() {
         setPairJob(st);
         if (wasRunning && !st.running) {
           load(true);                       // the row's own numbers
-          if (open) api.trades(open).then(setTrades).catch(() => {});
+          if (open && store === "v1") api.trades(open).then(setTrades).catch(() => {});
         }
       } catch { /* the badge simply does not move */ }
     };
@@ -357,7 +373,7 @@ export default function StrategiesPanel() {
 
   useEffect(() => {
     api.facets().then(setFacets).catch((e) => setErr(String(e)));
-  }, []);
+  }, [api]);
 
   // The widest TP this store can hold, from the measuring grid for the
   // timeframes it actually has (facets.tps) — NOT a round number picked here.
@@ -391,6 +407,7 @@ export default function StrategiesPanel() {
       .then((d) => {
         if (mine !== reqRef.current) return;   // a newer request owns the screen
         setRows(d.rows); setTotal(d.total); setCapped(!!d.total_capped);
+        setStoreWhy(d.why ?? "");
         setIdx(d.index ?? null); setErr(""); setWaiting("");
         // what the rows are really in, straight from the payload
         setServedSort((d.sort as StrategySort) ?? sort);
@@ -786,6 +803,11 @@ export default function StrategiesPanel() {
 
   /** the coins missing from the list are measured, just not indexed yet */
   const catchUp = async () => {
+    if (store === "v2") {
+      // v2 rows are filed into v2's rows.db by the backtest job itself
+      setReindexing("v2 rows are filed by the backtest job itself — nothing to index by hand");
+      return;
+    }
     setReindexing("asking…");
     try {
       const d = await api.strategiesReindex();
@@ -817,7 +839,12 @@ export default function StrategiesPanel() {
     setTrades(null);
     setBusy(true);
     try {
-      setTrades(await api.trades(r));
+      // the trade-by-trade route still replays from the v1 store; a v2 row's
+      // exits are settled on 1-minute candles, so it is held back rather than
+      // shown wrong (label-must-match-data)
+      setTrades(store === "v2"
+        ? { log: [], why: "the trade-by-trade log for a v2 row comes next — its exits are settled on 1-minute candles and the log route still reads the v1 store" }
+        : await api.trades(r));
     } catch (e) {
       setTrades({ log: [], why: String(e) });
     } finally {
@@ -851,7 +878,9 @@ export default function StrategiesPanel() {
       <div className="flex flex-wrap items-end gap-3 px-5 pt-4">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Stored strategies</h3>
+            <h3 className="flex flex-wrap items-center gap-2 text-base font-semibold text-gray-800 dark:text-white/90">
+              Stored strategies <StoreBadge store={store} />
+            </h3>
             {/* The operator's own sentence: "i thought its not working, its
                 just loading". A spinner, WHAT it is waiting for, and how long
                 it has been waiting. `role=status` so it is announced too. */}
@@ -1453,7 +1482,16 @@ export default function StrategiesPanel() {
           re-measure of rows the page never asked for found 30 passing on 0G
           15m alone (`cf_obretest_l1` tp2.5/sl1.2 flat: 2 trades, 2W/0L,
           100%, +$4.79). So the sentence names WHAT WAS CHECKED. */}
-      {!err && !waiting && !shown.length && !servedFilters.rowId && chips.length > 0 && (
+      {/* AN EMPTY STORE NAMES WHAT TO DO (Backtest v2, Sep 17, 2026): the
+          route's own sentence, printed whether or not a filter is on, because
+          with no chips the block below stays silent and a blank table under
+          "0 stored strategies" says nothing about why */}
+      {!err && !waiting && !shown.length && storeWhy && (
+        <p className="px-5 pt-2 text-theme-sm text-warning-600 dark:text-warning-400">
+          {storeWhy}
+        </p>
+      )}
+      {!err && !waiting && !shown.length && !servedFilters.rowId && chips.length > 0 && !storeWhy && (
         <p className="px-5 pt-2 text-theme-sm text-warning-600 dark:text-warning-400">
           {/* THE WAY OUT MUST ACTUALLY WORK. This said "a coin or timeframe"
               until a 400-row sample raised `market_sweep.WindowTooWide`: a
@@ -1532,6 +1570,8 @@ export default function StrategiesPanel() {
                 winHead("trades", servedFilters.months),
                 winHead("W", servedFilters.months),
                 winHead("L", servedFilters.months),
+                // v2 only: trades whose exit minute touched both prices
+                ...(store === "v2" ? ["unclear"] : []),
                 ...(servedFilters.days > 0 && !servedFilters.months
                   ? ["window"] : [winHead("green", servedFilters.months)]),
                 "dip $",
@@ -1657,6 +1697,12 @@ export default function StrategiesPanel() {
                            title={stale(r) ? STALE_WHY : undefined}>
                   {win(r).losses}
                 </TableCell>
+                {store === "v2" && (
+                  <TableCell className="px-3 py-2 text-theme-sm text-warning-600 dark:text-warning-400"
+                             title="trades where one MINUTE touched both the win and the lose price — booked as a loss by rule, so they are still a guess">
+                    {r.unclear ?? "—"}
+                  </TableCell>
+                )}
                 <TableCell className="px-3 py-2 text-theme-sm text-gray-500 dark:text-gray-400"
                            title={servedFilters.days > 0 && !servedFilters.months
                              ? "the days this row was re-measured over — it ends where the row's own backtest ends, not where the candles do"
@@ -1909,7 +1955,7 @@ export default function StrategiesPanel() {
                   PAIR from its own watermark — only the bars printed since —
                   and reindexes it, because a current row file behind a stale
                   screen is the bug shape this panel keeps paying for. */}
-              {open?.id && (
+              {store === "v1" && open?.id && (
                 <div className="mt-2 flex flex-wrap items-center gap-3">
                   <button type="button"
                           disabled={!!pairJob?.running || updating}

@@ -74,7 +74,11 @@ def test_the_job_accepts_the_mode():
     assert 'mode == "resolve"' in src
     # since 2026-09-09 the mode fetches the PENDING LEDGER — "resolve mean you
     # will restart or resume where it crash" — not a whole-store walk
-    assert '_pl.pending("candles")' in src
+    # the ledger KIND follows the job: "candles" for v1, "candles_v2" for the
+    # Backtest v2 download (Sep 17, 2026) — one function, two stores
+    assert "_pl.pending(_ledger_kind(kind))" in src
+    assert dj._ledger_kind("download") == "candles"
+    assert dj._ledger_kind("download_v2") == "candles_v2"
 
 
 # ------------------------------------------------------------------ the count

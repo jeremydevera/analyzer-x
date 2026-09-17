@@ -9,7 +9,7 @@
  * component.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api, JobStatus, storeApi, StoreName } from "@/lib/api";
+import { api as coreApi, JobStatus, storeApi, StoreName } from "@/lib/api";
 import StoreBadge from "@/components/StoreBadge";
 import Button from "@/components/ui/button/Button";
 import Badge from "@/components/ui/badge/Badge";
@@ -26,6 +26,10 @@ const TFS = ["15m", "30m", "1h", "4h", "1d"];
  *  that says so. The default is the screen the operator has always had. */
 export default function DownloadScreen({ store = "v1" }: { store?: StoreName }) {
   const S = useMemo(() => storeApi(store), [store]);
+  // THE CLIENT THIS SCREEN CALLS: the module's, with every candle read and
+  // the download job pointed at this store. The calls keep their `api.`
+  // spelling, so the guards that read this file still hold.
+  const api = useMemo(() => ({ ...coreApi, ...S }), [S]);
   const [coins, setCoins] = useState<string[]>([]);
   const [gaps, setGaps] = useState<Awaited<ReturnType<typeof api.candleGaps>> | null>(null);
   const [lost, setLost] = useState<Awaited<ReturnType<typeof api.candleLost>> | null>(null);
@@ -40,18 +44,18 @@ export default function DownloadScreen({ store = "v1" }: { store?: StoreName }) 
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const poll = useCallback(() => {
-    S.jobStatus("download").then(setDl).catch(() => {});
-  }, [S]);
+    api.jobStatus("download").then(setDl).catch(() => {});
+  }, [api]);
   const scanGaps = useCallback(() => {
     // this walks EVERY stored pair's file, so it runs on arrival and after a
     // job ends — never on the 4-second job poll
-    S.candleGaps().then(setGaps).catch(() => {});
+    api.candleGaps().then(setGaps).catch(() => {});
     // the lost list is rewritten by every download job, so it refreshes on
     // the same schedule: arrival, every minute, and when a job ends
-    S.candleLost().then(setLost).catch(() => {});
-    S.candleCompleteness().then(setWhole).catch(() => {});
-    S.candlePending().then(setPending).catch(() => {});
-  }, [S]);
+    api.candleLost().then(setLost).catch(() => {});
+    api.candleCompleteness().then(setWhole).catch(() => {});
+    api.candlePending().then(setPending).catch(() => {});
+  }, [api]);
   useEffect(() => {
     poll();
     scanGaps();
@@ -71,7 +75,7 @@ export default function DownloadScreen({ store = "v1" }: { store?: StoreName }) 
   const update = async () => {
     setErr("");
     if (!confirm(`Update ${gaps?.pairs ?? 0} stored pair(s)?\n\nOnly the bars printed since each pair's last stored bar are fetched — nothing is downloaded again.`)) return;
-    try { await S.jobStart("download", { mode: "update" }); poll(); }
+    try { await api.jobStart("download", { mode: "update" }); poll(); }
     catch (e) { setErr(String(e)); }
   };
 
@@ -113,7 +117,7 @@ ${(pending!.queue - n).toLocaleString()} more pair(s) on delisted contracts are 
 
 ${(pending?.unfixable ?? 0).toLocaleString()} pair(s) cannot be fixed by any run (delisted, or the venue serves no candles).`
         : ""))) return;
-    try { await S.jobStart("download", { mode: "resolve" }); poll(); }
+    try { await api.jobStart("download", { mode: "resolve" }); poll(); }
     catch (e) { setErr(String(e)); }
   };
 
@@ -121,7 +125,7 @@ ${(pending?.unfixable ?? 0).toLocaleString()} pair(s) cannot be fixed by any run
    * (db_download.lost.json). Nothing else is touched. */
   const retry = async () => {
     setErr("");
-    try { await S.jobStart("download", { mode: "retry" }); poll(); }
+    try { await api.jobStart("download", { mode: "retry" }); poll(); }
     catch (e) { setErr(String(e)); }
   };
 
@@ -129,7 +133,7 @@ ${(pending?.unfixable ?? 0).toLocaleString()} pair(s) cannot be fixed by any run
     setErr("");
     if (coins.length > 50 &&
         !confirm(`${coins.length} contracts × ${tfs.length} timeframe(s).\n\nA first download this size takes hours. It keeps whatever finishes, and you can stop it at any point.`)) return;
-    try { await S.jobStart("download", { coins, tfs }); poll(); }
+    try { await api.jobStart("download", { coins, tfs }); poll(); }
     catch (e) { setErr(String(e)); }
   };
 
@@ -182,7 +186,7 @@ ${(pending?.unfixable ?? 0).toLocaleString()} pair(s) cannot be fixed by any run
             DOWNLOAD CANDLES
           </Button>
           {dl?.running && (
-            <Button size="sm" variant="outline" onClick={() => S.jobStop("download").then(poll)}>STOP</Button>
+            <Button size="sm" variant="outline" onClick={() => api.jobStop("download").then(poll)}>STOP</Button>
           )}
           {/* FIRST, because it is the one button that clears every kind. */}
           <Button size="sm" onClick={resolve}

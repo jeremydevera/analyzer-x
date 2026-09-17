@@ -7,10 +7,11 @@
  * Progress polls every 4s and survives reloads because the truth lives in the
  * job's progress file on disk, not in this component.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
-import { api, API_BASE, BacktestPlan, CloudShard, CloudStatus, DelistedReport, fmtBytes, fmtWhen, fmtWhenMs, GridPlan, JobStatus, MonthJob } from "@/lib/api";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { api, API_BASE, BacktestPlan, CloudShard, CloudStatus, DelistedReport, fmtBytes, fmtWhen, fmtWhenMs, GridPlan, JobStatus, MonthJob, storeApi, StoreName } from "@/lib/api";
 import Button from "@/components/ui/button/Button";
 import Badge from "@/components/ui/badge/Badge";
+import StoreBadge from "@/components/StoreBadge";
 import JobProgress from "@/components/jobs/JobProgress";
 import StaleCode from "@/components/jobs/StaleCode";
 import CoinPicker from "./CoinPicker";
@@ -47,7 +48,13 @@ const inputCls =
   "text-theme-sm text-gray-700 focus:outline-hidden focus:ring-2 " +
   "focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300";
 
-export default function JobsPanel() {
+/** `store="v2"` is Backtest v2 (Sep 17, 2026): BACKTEST measures on THIS PC
+ *  from the 1-minute store (the cloud has no 1m candles), so the GitHub
+ *  blocks, UPDATE ALL and the hand-over are not shown; the same grid, the
+ *  same window, the v2 job kind. The default is the screen the operator has
+ *  always had. */
+export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
+  const S = useMemo(() => storeApi(store), [store]);
   const [coins, setCoins] = useState<string[]>([]);
   const [tfs, setTfs] = useState<string[]>(["15m", "30m", "1h", "4h"]);
   // PAST 30 DAYS, not a year. Operator, Sep 10, 2026: *"i only need past 30
@@ -99,11 +106,12 @@ export default function JobsPanel() {
   };
 
   const poll = useCallback(() => {
-    api.jobStatus("backtest").then(setBt).catch(() => {});
+    S.jobStatus("backtest").then(setBt).catch(() => {});
+    if (store !== "v1") return;             // v2 has no update job, no cloud, no hand-over
     api.jobStatus("btupdate").then(setUpd).catch(() => {});
     api.cloudStatus().then(setCloud).catch(() => {});
     api.jobHandoffState("backtest").then(setHand).catch(() => {});
-  }, []);
+  }, [S, store]);
 
   // the capacity check costs a GitHub run listing, so it is slower than the
   // 4-second job poll and gets its own interval
@@ -163,13 +171,15 @@ export default function JobsPanel() {
   const start = async (kind: "backtest" | "btupdate") => {
     setErr("");
     try {
-      await api.jobStart(kind, {
+      const spec = {
           coins, tfs, days: WINDOWS[win], base,
           label: "react", deployed,
           // BACKTEST = from scratch, UPDATE = fill the gap. Sent explicitly so
           // the button and the run agree without relying on a server default.
           fresh: kind === "backtest",
-        });
+        };
+      // BACKTEST goes to this store's job (backtest_v2 on Backtest v2)
+      await (kind === "backtest" ? S.jobStart("backtest", spec) : api.jobStart(kind, spec));
       poll();
     } catch (e) {
       setErr(String(e));
@@ -178,11 +188,19 @@ export default function JobsPanel() {
 
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 dark:border-white/[0.05] dark:bg-white/[0.03]">
-      <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Backtest</h3>
+      <h3 className="flex flex-wrap items-center gap-2 text-base font-semibold text-gray-800 dark:text-white/90">
+        Backtest <StoreBadge store={store} />
+      </h3>
       <p className="mb-4 text-theme-xs text-gray-500 dark:text-gray-400">
-        Every signal × barrier pair × both sizings, over the candles already stored on this PC.
-        Runs detached — leaving this screen does not stop it. Candles are downloaded on the{" "}
-        <a href="/candles" className="text-brand-500 hover:underline">Candles</a> screen.
+        {store === "v2"
+          ? <>Every signal × barrier pair × both sizings, deciding on the same 15m/30m/1h/4h/1d candles —
+              rebuilt from the 1-minute ones — with every win/lose exit settled minute by minute.
+              Measured on this PC (the 1-minute candles live here). Runs detached — leaving this screen
+              does not stop it. The 1-minute candles are downloaded on the{" "}
+              <a href="/candles-v2" className="text-brand-500 hover:underline">Candles v2</a> screen.</>
+          : <>Every signal × barrier pair × both sizings, over the candles already stored on this PC.
+              Runs detached — leaving this screen does not stop it. Candles are downloaded on the{" "}
+              <a href="/candles" className="text-brand-500 hover:underline">Candles</a> screen.</>}
       </p>
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="sm:col-span-1">
@@ -225,6 +243,21 @@ export default function JobsPanel() {
             of the sentence is said out loud rather than left to be discovered.
             Every word below is DERIVED from /api/cloud/status — a hardcoded
             "running on GitHub" would be a caption, not a report. */}
+        {store === "v2" ? (
+          // v2 MEASURES HERE: the 1-minute candles exist only on this PC, and
+          // the fleet has no 1m store. Said out loud where v1 says "GitHub".
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-theme-xs text-gray-500 dark:text-gray-400">Runs on</label>
+            <div className="flex flex-wrap items-center gap-2 pt-1.5">
+              <span className="rounded-full bg-brand-500 px-3 py-1 text-theme-xs font-medium text-white">
+                this PC
+              </span>
+              <span className="text-theme-xs text-gray-500 dark:text-gray-400">
+                the 1-minute candles live here, so v2 is measured here — one pair per core, the v1 store untouched
+              </span>
+            </div>
+          </div>
+        ) : (
         <div className="sm:col-span-2">
           <label className="mb-1 block text-theme-xs text-gray-500 dark:text-gray-400">Runs on</label>
           <div className="flex flex-wrap items-center gap-2 pt-1.5">
@@ -242,6 +275,7 @@ export default function JobsPanel() {
             </span>
           </div>
         </div>
+        )}
       </div>
 
       {plan && (
@@ -264,17 +298,28 @@ export default function JobsPanel() {
             {/* BACKTEST now dispatches the fleet instead of this PC. The
                 button keeps its name because it is the same job — from
                 scratch, same grid — only measured somewhere else. */}
+                {store === "v2" ? (
+                  <span title="FROM SCRATCH on this PC — every combination replays from its first candle, with exits settled minute by minute on the 1-minute candles from Candles v2.">
+                    <Button size="sm" onClick={() => start("backtest")}
+                      disabled={!coins.length || !tfs.length || !!bt?.running}>
+                      BACKTEST
+                    </Button>
+                  </span>
+                ) : (
                 <span title="FROM SCRATCH on GitHub Actions — every combination replays from its first candle. Slower; use UPDATE ALL BACKTESTS to only add new candles.">
                   <Button size="sm" onClick={startCloud}
                     disabled={!coins.length || !tfs.length || !cloud?.available}>
                     BACKTEST
                   </Button>
                 </span>
+                )}
                 {/* No coin picked means EVERY pair this machine has candles
                     for — the same meaning UPDATE has on the Candles screen.
                     It used to be disabled without a selection, and the job
                     behind it turned an empty list into zero pairs and reported
                     "0/0" (2026-09-03). */}
+                {/* v2 has no update job yet: BACKTEST is the whole story there */}
+                {store === "v1" && (
                 <span title={coins.length
                   ? "CONTINUE the stored backtests for the picked coins over new candles only — never from scratch."
                   : "CONTINUE every stored backtest over new candles only — every pair this machine has candles for, never from scratch."}>
@@ -283,12 +328,13 @@ export default function JobsPanel() {
                     {coins.length ? "UPDATE BACKTEST" : "UPDATE ALL BACKTESTS"}
                   </Button>
                 </span>
+                )}
                 {/* WHERE it will run, before it is clicked. GitHub sat idle
                     through a 4,124-pair run that took most of a day because
                     nothing ever looked (operator, 2026-09-03: "why did you not
                     use github since its free?"). Every word here is DERIVED
                     from /api/backtest/capacity. */}
-                {cap && (
+                {store === "v1" && cap && (
                   <span className="text-theme-xs text-gray-500 dark:text-gray-400">
                     {cap.cloud.length
                       ? <>UPDATE sends all of it to <b className="text-brand-600 dark:text-brand-400">GitHub</b> ({cap.cloud.join(", ")}) on {cap.runners} runners</>
@@ -296,7 +342,7 @@ export default function JobsPanel() {
                   </span>
                 )}
             {bt?.running && (
-              <Button size="sm" variant="outline" onClick={() => api.jobStop("backtest").then(poll)}>STOP</Button>
+              <Button size="sm" variant="outline" onClick={() => S.jobStop("backtest").then(poll)}>STOP</Button>
             )}
             {/* Hand over WITHOUT losing anything: the local job finishes the
                 pairs it is measuring, then the cloud takes the coins the Mac
@@ -305,7 +351,7 @@ export default function JobsPanel() {
                 GitHub was unreachable, so the control simply vanished and the
                 operator had no way to tell whether it had worked, broken, or
                 never existed. A button that cannot act says why. */}
-            {bt?.running && !hand?.requested && (
+            {store === "v1" && bt?.running && !hand?.requested && (
               <span title={hand?.available
                 ? "Finish the pairs being measured right now, then dispatch GitHub Actions for the coins this PC has not reached. Nothing already measured is re-run or overwritten."
                 : `Cannot hand over yet: ${hand?.why?.split("\n")[0] ?? "checking GitHub…"}`}>
@@ -315,12 +361,12 @@ export default function JobsPanel() {
                 </Button>
               </span>
             )}
-            {hand?.requested && !hand?.stalled && (
+            {store === "v1" && hand?.requested && !hand?.stalled && (
               <Badge size="sm" color="warning">
                 finishing the current pairs, then handing over
               </Badge>
             )}
-            {hand?.stalled && (
+            {store === "v1" && hand?.stalled && (
               <Badge size="sm" color="error">hand-off is stuck</Badge>
             )}
             {upd?.running && (
@@ -339,7 +385,8 @@ export default function JobsPanel() {
                 not be asked (never guess), when nothing is delisted, or while
                 a job is writing either store. Asks twice, naming the coins
                 and the bytes. */}
-            {dead && (
+            {/* v1 only: it deletes from the v1 candle and row stores */}
+            {store === "v1" && dead && (
               <span title={!dead.delisted.known ? dead.delisted.why
                 : dead.writer ? `a ${dead.writer} job is writing the store — wait for it to finish`
                 : !dead.delisted.coins.length ? "every stored coin is still listed on MEXC"
@@ -352,7 +399,7 @@ export default function JobsPanel() {
               </span>
             )}
           </div>
-          {armDead && dead && (
+          {store === "v1" && armDead && dead && (
             <p className="mt-2 flex flex-wrap items-center gap-2 text-theme-xs text-warning-700 dark:text-warning-400">
               <span>
                 delete the candles and backtest results of {dead.delisted.coins.length} delisted coin{dead.delisted.coins.length === 1 ? "" : "s"}
@@ -378,12 +425,12 @@ export default function JobsPanel() {
                     {dead.job.error_count ? <> · {dead.job.error_count} error{dead.job.error_count === 1 ? "" : "s"}: {dead.job.errors[0]}</> : null}</>}
             </p>
           )}
-          {hand?.stalled && (
+          {store === "v1" && hand?.stalled && (
             <p className="mt-2 text-theme-xs text-error-500">
               {hand.stalled_why}
             </p>
           )}
-          {bt?.running && hand && !hand.available && (
+          {store === "v1" && bt?.running && hand && !hand.available && (
             <p className="mt-2 text-theme-xs text-warning-600">
               SWITCH TO GITHUB ACTIONS is disabled: {hand.why.split("\n")[0]}
               {hand.why.includes("gh auth refresh")
@@ -402,7 +449,7 @@ export default function JobsPanel() {
         </div>
       </div>
 
-      {cloud?.run?.id && (
+      {store === "v1" && cloud?.run?.id && (
         <div className="mt-4 rounded-xl border border-gray-200 p-3 dark:border-white/[0.08]">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-theme-sm font-medium text-gray-800 dark:text-white/90">

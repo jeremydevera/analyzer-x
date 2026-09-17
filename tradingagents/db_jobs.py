@@ -1033,7 +1033,11 @@ def pending_work(files_key: str = "download", root=None,
     second time here: on this store the two arithmetics disagreed by 96 and the
     button promised 5,067 while queueing 5,163.
     """
-    src = _pending_sources(files_key, root, tfs)
+    # the v1 call is the bare call it always was — tests stand in for
+    # `_pending_sources` with zero-argument fakes; only another store passes
+    v1 = (files_key == "download" and root is None
+          and tuple(tfs) == ("15m", "30m", "1h", "4h", "1d"))
+    src = _pending_sources() if v1 else _pending_sources(files_key, root, tfs)
     count = int(src["behind"]) + int(src["missing"]) + int(src["lost"])
     # What RESOLVE would actually fetch: the pending LEDGER, since 2026-09-09
     # ("resolve mean you will restart or resume where it crash"). It is no

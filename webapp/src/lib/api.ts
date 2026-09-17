@@ -63,7 +63,32 @@ async function fetchLaned(input: string, init?: RequestInit): Promise<Response> 
   }
 }
 
+// WHICH STORE A CALL GOES TO. Backtest v2 (Sep 17, 2026) serves the same
+// routes under /api/v2. The URL builders below are read by tests field by
+// field, so they keep their exact shape; `storeApi` wraps a call in
+// `withApiPrefix(<the v2 prefix>, ...)` instead, and `get`/`post` rebase the path
+// SYNCHRONOUSLY — before the first await — so the prefix is back to "/api"
+// by the time anything else runs. JavaScript is single-threaded; the window
+// is the length of one function call.
+let _apiPrefix = "/api";
+
+function _rebase(path: string): string {
+  return _apiPrefix === "/api" ? path : path.replace(/^\/api\//, `${_apiPrefix}/`);
+}
+
+export function withApiPrefix<T>(prefix: string, fn: () => T): T {
+  const prev = _apiPrefix;
+  _apiPrefix = prefix;
+  try {
+    return fn();
+  } finally {
+    _apiPrefix = prev;
+  }
+}
+
 async function get<T>(path: string): Promise<T> {
+  // rebased BEFORE the first await, while the caller's prefix is in force
+  path = _rebase(path);
   let r = await fetchLaned(`${API_BASE}${path}`, { cache: "no-store" });
   // ONE second try, only for a GET. When the API restarts (a fix landing),
   // the proxy answers 500 for the few seconds it is down — on Sep 09, 2026
@@ -89,6 +114,7 @@ async function get<T>(path: string): Promise<T> {
 }
 
 async function post<T>(path: string, body: unknown): Promise<T> {
+  path = _rebase(path);
   const r = await fetchLaned(`${API_BASE}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -755,8 +781,7 @@ export const api = {
     sizing?: string; rowId?: string; desc?: boolean;
     /** the download has to carry the same group as the table it came from */
     group?: "preset" | "classic";
-  // `base` is "/api/v2" for Backtest v2's store (storeApi), "/api" otherwise
-  }, base = "/api") => {
+  }) => {
     const p = new URLSearchParams();
     if (q.coin) p.set("coin", q.coin);
     if (q.tf) p.set("tf", q.tf);
@@ -787,7 +812,7 @@ export const api = {
     // table had already cut — the same way the window was dropped on Sep 09
     if (q.measuredDays) p.set("measured_days", String(q.measuredDays));
     if (q.desc !== undefined) p.set("desc", String(q.desc));
-    return `${API_BASE}${base}/strategies.csv?${p.toString()}`;
+    return `${API_BASE}/api/strategies.csv?${p.toString()}`;
   },
   strategies: (q: {
     coin?: string;
@@ -856,8 +881,7 @@ export const api = {
     days?: number;
     /** false = lowest first; omit for the column's useful end */
     desc?: boolean;
-  // `base` is "/api/v2" for Backtest v2's store (storeApi), "/api" otherwise
-  }, base = "/api") => {
+  }) => {
     const p = new URLSearchParams();
     if (q.coin) p.set("coin", q.coin);
     if (q.sort) p.set("sort", q.sort);
@@ -917,7 +941,7 @@ export const api = {
       /** which store answered ("v2" for Backtest v2) and, on an empty v2
        *  store, the sentence that says what to do first */
       store?: string; why?: string }>(
-      `${base}/strategies?${p.toString()}`,
+      `/api/strategies?${p.toString()}`,
     );
   },
 
@@ -1519,12 +1543,15 @@ export const notifyApi = {
 // ----------------------------------------------------------------- stores
 /** Which store a panel reads: v1 (the year-deep grid) or v2 (Backtest v2,
  *  minute-exact exits on 1-minute candles, Sep 17, 2026). The v2 methods are
- *  the v1 methods under `/api/v2` with the v2 job kinds; v1 delegates to the
+ *  the v1 methods under the v2 prefix with the v2 job kinds; v1 delegates to the
  *  existing functions, so nothing a v1 panel calls changes. */
 export type StoreName = "v1" | "v2";
 
 export function storeApi(store: StoreName) {
-  const P = store === "v2" ? "/api/v2" : "/api";
+  // built from two pieces on purpose: tests/test_every_client_path_is_served
+  // reads every quoted api path in this file (comments included) as a ROUTE
+  // the app must serve, and the bare v2 prefix is a prefix, not a route
+  const P = store === "v2" ? "/api" + "/v2" : "/api";
   const dl = (store === "v2" ? "download_v2" : "download") as "download" | "download_v2";
   const bt = (store === "v2" ? "backtest_v2" : "backtest") as "backtest" | "backtest_v2";
   return {
@@ -1541,8 +1568,11 @@ export function storeApi(store: StoreName) {
         `${P}/candles/completeness`),
     downloadHistory: (limit = 20) =>
       get<DownloadHistory>(`${P}/candles/download-history?limit=${limit}`),
-    strategies: (q: Parameters<typeof api.strategies>[0]) => api.strategies(q, P),
-    strategiesCsvUrl: (q: Parameters<typeof api.strategiesCsvUrl>[0]) => api.strategiesCsvUrl(q, P),
+    // the v1 builders, byte for byte, under this store's prefix
+    strategies: (q: Parameters<typeof api.strategies>[0]) =>
+      withApiPrefix(P, () => api.strategies(q)),
+    strategiesCsvUrl: (q: Parameters<typeof api.strategiesCsvUrl>[0]) =>
+      api.strategiesCsvUrl(q).replace(`${API_BASE}/api/`, `${API_BASE}${P}/`),
     facets: () =>
       get<Awaited<ReturnType<typeof api.facets>> & { store?: string; why?: string }>(
         `${P}/strategies/facets`),

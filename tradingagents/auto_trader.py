@@ -2602,7 +2602,8 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                       resume: dict | None = None,
                       start_at: int = 0,
                       slices: list | None = None,
-                      sig_idx=None) -> dict:
+                      sig_idx=None,
+                      fine: tuple | None = None) -> dict:
     """Run one strategy's exact live rules over a candle history.
 
     Same engine as the 13-month studies: signal at bar close, enter next bar
@@ -2639,6 +2640,19 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
     * **One exit row.** The trade books a single net PnL, so the ladder rung,
       the daily loss limit and the W/L columns keep meaning what they say.
       Per-slice detail goes in the log under "slices".
+
+    ``fine`` is ``(t_ms, high, low)`` -- one-minute bars, sorted, as int64/
+    float64 arrays -- and it is Backtest v2's whole difference from v1. When
+    it is given, an exit bar is not settled by the rule "SL before TP inside
+    one bar": the minutes inside that bar are walked in ORDER and the first
+    price touched wins. Both touched in the SAME minute is still booked SL
+    (the worst case is the only honest one at the finest resolution the venue
+    sells) and counted in ``unclear``. A bar with no minutes under it, or
+    whose minutes touch neither price, falls back to the bar rule. The exit
+    time is the MINUTE, and funding is charged to that minute. #LG9NSU4B
+    stopped out at Sep 16, 2026 7:28am in the practice account and the hour
+    walk said 7:00am -- this is the fix. ``None`` is byte-identical to before
+    (tests/test_minute_exact_exits.py).
     """
     if slices is not None:
         if not slices:
@@ -2656,6 +2670,11 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
             # still live and how much each has left. Refusing beats a number
             # nobody can reproduce.
             raise ValueError("slices with resume= is not supported yet")
+    if slices is not None and fine is not None:
+        # Each slice would need its own minute walk and the shared liquidation
+        # would have to be checked per minute across all of them. Refusing
+        # beats a number half of which is minute-exact.
+        raise ValueError("slices with fine= is not supported yet")
     spec = STRATEGY_SPECS[key]
     # Barriers may be overridden to sweep TP/SL without touching the live
     # spec. Assigning into STRATEGY_SPECS would edit what the UI renders and
@@ -2694,6 +2713,17 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
     _f_cum = [0.0]
     for _r in _f_rate:
         _f_cum.append(_f_cum[-1] + _r)
+    # v2: the minutes. `np.searchsorted` on the sorted minute clock finds a
+    # bar's slice in O(log n); the walk reads one slice per exit bar, never
+    # the whole array.
+    _fine_t = _fine_h = _fine_l = None
+    if fine is not None:
+        import numpy as _np
+
+        _fine_t = _np.asarray(fine[0], dtype="int64")
+        _fine_h = _np.asarray(fine[1], dtype="float64")
+        _fine_l = _np.asarray(fine[2], dtype="float64")
+    n_unclear = 0
     # Bar timestamps in EPOCH MILLISECONDS, converted through datetime64[ms]
     # rather than by dividing a raw int64. MEXC's frames come back as
     # datetime64[s], so `astype("int64") // 1_000_000` read 1,754 instead of
@@ -2701,6 +2731,10 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
     # and PROVE's year came out at -$2,230 instead of +$153.
     _bar_ms = (df["Date"].to_numpy().astype("datetime64[ms]")
                .astype("int64")) if _f_ms else None
+    # every bar's open in epoch ms -- the minute walk needs it even when no
+    # funding history was passed (`_bar_ms` is None then, on purpose)
+    _bar_ms_all = (df["Date"].to_numpy().astype("datetime64[ms]")
+                   .astype("int64")) if fine is not None else None
     high = [float(x) for x in df["High"]]
     low = [float(x) for x in df["Low"]]
     close = [float(x) for x in df["Close"]]
@@ -2746,6 +2780,50 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
         if sec and sec % 3600 == 0:
             return f"{sec // 3600}h"
         return f"{max(1, sec // 60)}m"
+
+    def _settle_fine(j: int, s: int, tp_px: float, sl_px: float,
+                     liq_px: float | None):
+        """Walk the minutes inside bar `j`, in order.
+
+        Returns ``(why, minute_ms, unclear)`` -- ``why`` is "TP"/"SL"/"LIQ",
+        or "NONE" when the minutes touched nothing although the bar's own
+        high/low says it did (a rebuilt bar and its minutes cannot disagree,
+        so the caller keeps the bar rule) -- or ``None`` when the bar has no
+        minutes under it at all.
+        """
+        if _fine_t is None or _bar_ms_all is None:
+            return None
+        import numpy as _np
+
+        lo_ms = int(_bar_ms_all[j])
+        a = int(_np.searchsorted(_fine_t, lo_ms, side="left"))
+        b = int(_np.searchsorted(_fine_t, lo_ms + _bar_s * 1000, side="left"))
+        if b <= a:
+            return None
+        hh, ll, tt = _fine_h[a:b], _fine_l[a:b], _fine_t[a:b]
+        if s == 1:
+            hit_tp = hh >= tp_px
+            hit_sl = ll <= sl_px
+            hit_liq = ((ll <= liq_px) if liq_px is not None
+                       else _np.zeros(len(hh), dtype=bool))
+        else:
+            hit_tp = ll <= tp_px
+            hit_sl = hh >= sl_px
+            hit_liq = ((hh >= liq_px) if liq_px is not None
+                       else _np.zeros(len(hh), dtype=bool))
+        first = _np.flatnonzero(hit_tp | hit_sl | hit_liq)
+        if not len(first):
+            return ("NONE", None, 0)
+        k = int(first[0])
+        # liquidation first only when it is nearer than the stop -- the same
+        # precedence the bar rule uses
+        if hit_liq[k] and (liq is None or liq <= sl or not hit_sl[k]):
+            return ("LIQ", int(tt[k]), 0)
+        if hit_sl[k] and hit_tp[k]:
+            return ("SL", int(tt[k]), 1)      # same minute: worst case, counted
+        if hit_sl[k]:
+            return ("SL", int(tt[k]), 0)
+        return ("TP", int(tt[k]), 0)
 
     def _held(a: int, b: int) -> str:
         """"3d 4h" / "5h 12m" / "42m" — `positions_view.fmt_age`, the same
@@ -2825,6 +2903,7 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
         monthly.update({k2: float(v2)
                         for k2, v2 in (resume.get("monthly") or {}).items()})
         n_liq = int(resume.get("liqs", 0))
+        n_unclear = int(resume.get("unclear", 0))
         fund_total = float(resume.get("funding_total", 0.0))
         _open = resume.get("open") or None
     log: list[dict] = []
@@ -2952,10 +3031,27 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
         else:
             _skip_single = False
         out, j, why = (out, j, why) if _skip_single else (None, _entry_bar, None)
+        _exit_min = None
         while j < n and not _skip_single:
             hit_liq = liq_px is not None and (
                 low[j] <= liq_px if s == 1 else high[j] >= liq_px)
             hit_sl = (low[j] <= sl_px if s == 1 else high[j] >= sl_px)
+            hit_tp = (high[j] >= tp_px if s == 1 else low[j] <= tp_px)
+            if not (hit_liq or hit_sl or hit_tp):
+                j += 1
+                continue
+            # v2: the bar touched something -- let the MINUTES say what came
+            # first. `None` means this bar has no minutes under it (the 1m
+            # store is younger than the hour store) and "NONE" means the
+            # minutes disagree with their own bar; both fall through to the
+            # bar rule below, exactly as v1.
+            got = (_settle_fine(j, s, tp_px, sl_px, liq_px)
+                   if _fine_t is not None else None)
+            if got is not None and got[0] != "NONE":
+                why, _exit_min, _unc = got
+                n_unclear += _unc
+                out = -liq if why == "LIQ" else (-sl if why == "SL" else tp)
+                break
             # Worst case inside one bar: liquidation is checked FIRST, and it
             # only wins when it is nearer than the stop.
             if hit_liq and (liq is None or liq <= sl or not hit_sl):
@@ -2964,10 +3060,8 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
             if hit_sl:
                 out, why = -sl, "SL"
                 break
-            if (high[j] >= tp_px if s == 1 else low[j] <= tp_px):
-                out, why = tp, "TP"
-                break
-            j += 1
+            out, why = tp, "TP"
+            break
         if out is None and not _skip_single:
             if resume is not None or _open is not None:
                 # Hand it to the next refresh instead of pretending it closed.
@@ -2995,7 +3089,10 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                      and _open.get("entry_ms") is not None
                      else int(_bar_ms[_entry_bar]))
             _a = _bis.bisect_right(_f_ms, _from)
-            _b = _bis.bisect_right(_f_ms, int(_bar_ms[j]))
+            # to the MINUTE when the minutes settled it: a stop at :28 does
+            # not pay a settlement at :30
+            _to = int(_exit_min) if _exit_min is not None else int(_bar_ms[j])
+            _b = _bis.bisect_right(_f_ms, _to)
             fund = -s * (_f_cum[_b] - _f_cum[_a]) * notional
             pnl += fund
         if why == "LIQ" and not _skip_single:
@@ -3024,7 +3121,11 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
             _open = None          # or a carried trade re-enters at its old
             i = j + 1             # entry price on every following bar
             continue
-        log.append({"entry time": stamp(i + 1), "exit time": stamp(j),
+        log.append({"entry time": stamp(i + 1),
+                    # the MINUTE when the minutes settled it (v2), else the bar
+                    "exit time": (_pv.fmt_when(_exit_min / 1000)
+                                  if _exit_min is not None else stamp(j)),
+                    "exit_minute_ms": _exit_min,
                     # the bar it closed on, as an index: a continuation
                     # (resume_state.continue_combo) has to know whether a
                     # trade exited ON the frame's last bar — the slices rows
@@ -3059,11 +3160,13 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
               "worst": worst_trade, "equity": equity, "peak": peak,
               "max_dd": max_dd, "step": step, "monthly": dict(monthly),
               "liqs": n_liq, "funding_total": fund_total, "open": _open,
+              "unclear": n_unclear,
               "last_ms": (int(_bar_ms[-1]) if _bar_ms is not None and n
                           else (int(df["Date"].to_numpy()
                                     .astype("datetime64[ms]")
                                     .astype("int64")[-1]) if n else 0))}
     return {"liqs": n_liq, "funding_total": round(fund_total, 4),
+            "unclear": n_unclear,
             "worst_streak": round(worst_run, 2),
             "worst_streak_len": worst_run_len,
             "state": _state,

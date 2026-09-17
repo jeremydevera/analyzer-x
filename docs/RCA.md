@@ -172,6 +172,90 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-18-A — the row you pressed UPDATE on was filed 5,095th of 5,272
+
+**CEO**
+
+* You pressed UPDATE on #LG9NSU4B and it worked — but your screen kept showing
+  the old numbers, so it looked like it had not.
+* The new numbers WERE saved to your disk at 3:01am. The app files them into
+  its search list afterwards, and your coin went to the back of a queue of
+  5,272 — position **5,095**. It would have been days.
+* What stops it now: a coin you press UPDATE on goes to the FRONT of that
+  queue instead of the back. XPIN moved from 5,095th to 1st the moment it
+  was asked for.
+
+**DEV**
+
+* `rows_index.stale_pairs()` returned never-indexed-then-changed, both
+  alphabetical, with no notion of a hand-requested pair. `db_jobs._run_pairbt`
+  retries `index_pair` three times, 20 s apart, and every attempt lost the
+  write lock to the indexer's bulk transaction.
+* Invariant: **THE UI IS THE SOURCE OF TRUTH, SO IT IS KEPT CURRENT**
+  (CLAUDE.md). A measurement the operator watched succeed, which cannot reach
+  the screen for days, has not updated anything they can see.
+* Guard: `tests/test_the_operators_own_ask_is_filed_first.py`, 9 tests;
+  removing the jump turns the one that drives the real `stale_pairs()` red.
+
+**SAW** — the operator, `Sep 18, 2026`, after the UPDATE job finished cleanly:
+*"is download done now / contunue"* — with the row still reading its old
+figures.
+
+**TIMELINE**
+
+1. `Sep 18  12:25am` — the blocking candle download finishes, 1,003 of 1,003.
+2. `Sep 18  ~3:00am` — the pairbt job runs and MEASURES correctly: XPIN 1h
+   `ote`, **175 trades, 136 won, 39 lost, −$5.73 over 117 days**, written to
+   `XPIN-1h.json` at `3:01am`.
+3. It then tries to file the rows three times, 20 s apart —
+   `index busy, retrying (1/3) … (2/3) … (3/3)` — and gives up, reporting
+   honestly: *"220 row(s), 0 indexed · measured, waiting on the index"*.
+   No "died" note this time.
+4. The screen still shows the OLD row: **50 trades, +$36.97 over 29 days**.
+5. `Sep 18  3:05am` — measured why retrying cannot work: six independent
+   attempts to take the write lock, 10-second wait each, **0 of 6 got in**.
+   The indexer holds it in one long bulk transaction over the backlog.
+6. Measured the queue: XPIN 1h at position **5,095 of 5,272**.
+7. After the fix: position **1 of 5,272**.
+
+**ROOT CAUSE** — nothing in the filing order knew the difference between a
+pair the nightly sweep happened to rewrite and a pair a person pressed a
+button for and is watching.
+
+**WHY IT WAS NOT CAUGHT** — every test of this button asks whether the
+MEASUREMENT landed, and it always did. The button's own suite
+(`test_row_update_button.py`, 17 tests) even has
+`test_a_locked_index_says_WAITING_not_FAILED`, which pins the honest wording
+for exactly this case — so the failure mode was known, named, and considered
+handled by wording it politely. **A truthful message about an unbounded wait
+is still an unbounded wait**; "queued" needed a number beside it, and once it
+had one (5,095) the wording stopped being the answer.
+
+**COST** — no money. One strategy's real result — a LOSS of $5.73 where the
+screen promised a $36.97 profit — was invisible, on the number the operator
+picks deployments by.
+
+**FIX** — this commit. `rows_index.ask_first(pair)` keeps a small capped list
+(`ASKED_MAX = 200`) and `stale_pairs()` returns those first; entries drop
+themselves as soon as the pair is no longer stale, so nothing can stay pinned
+to the front. `db_jobs._run_pairbt` calls it on the filing-failed branch only.
+Every failure path is swallowed — a queue hint must never fail a good
+measurement.
+
+**GUARD** — `tests/test_the_operators_own_ask_is_filed_first.py`:
+`test_stale_pairs_puts_the_asked_pair_first` builds 301 real pair files, drives
+the REAL `stale_pairs()`, and asserts XPIN starts buried past position 250 and
+ends first with nothing lost or duplicated;
+`test_an_asked_pair_that_is_no_longer_stale_leaves_the_list`;
+`test_the_list_is_capped`; `test_a_missing_or_broken_file_is_an_empty_list`;
+`test_an_unwritable_file_never_breaks_the_caller`;
+`test_the_job_asks_when_it_cannot_file` (and only on the failure branch).
+The first draft of the ordering test re-implemented the ordering inline and
+asserted on its own copy — proving the test could add, not that the code
+could; it drives the real function now.
+
+---
+
 ## RCA-2026-09-17-F — UPDATE THIS BACKTEST answered "Internal Server Error" whenever any other job was running
 
 **CEO**

@@ -907,6 +907,53 @@ def _missing_ok(fn, default):
         return default
 
 
+# PAIRS THE OPERATOR ASKED FOR BY HAND, filed before the bulk backlog.
+ASKED_FIRST = Path.home() / ".tradingagents" / "rows_index_asked.json"
+ASKED_MAX = 200          # a queue-jump list longer than this is a backlog
+
+
+def ask_first(pair: str) -> list:
+    """Put `pair` ("XPIN-1h") at the FRONT of the filing queue. Returns the list.
+
+    Operator, `Sep 18, 2026`: pressing UPDATE on #LG9NSU4B measured XPIN 1h
+    correctly — 175 trades, -$5.73 over 117 days, written to disk at 3:01am —
+    and the screen went on showing the old 50 trades / +$36.97, because the
+    pair landed **5,095th in a 5,272-pair filing queue**.
+
+    Retrying the write lock cannot fix that and was already tried: the job
+    attempts it three times and the indexer holds the lock in one long bulk
+    transaction. Measured at 3:05am, six attempts in a row with a 10-second
+    wait each: **0 of 6 got in**. So the answer is not to fight for the lock,
+    it is to be next in line when the holder lets go.
+
+    The list is small, capped, and self-clearing: `stale_pairs` drops an entry
+    as soon as that pair is no longer stale, so a filed pair leaves by itself
+    and a crash cannot leave a pair pinned to the front for ever.
+    """
+    pair = str(pair or "").strip()
+    if not pair:
+        return _asked()
+    keep = [pair] + [p for p in _asked() if p != pair]
+    _write_asked(keep[:ASKED_MAX])
+    return keep[:ASKED_MAX]
+
+
+def _asked() -> list:
+    try:
+        got = json.loads(ASKED_FIRST.read_text(encoding="utf-8"))
+        return [str(x) for x in got][:ASKED_MAX] if isinstance(got, list) else []
+    except Exception:                                          # noqa: BLE001
+        return []
+
+
+def _write_asked(pairs: list) -> None:
+    try:
+        ASKED_FIRST.parent.mkdir(parents=True, exist_ok=True)
+        ASKED_FIRST.write_text(json.dumps(list(pairs)), encoding="utf-8")
+    except Exception:                                          # noqa: BLE001
+        pass                    # a queue hint is never worth failing a job for
+
+
 def stale_pairs(now: float | None = None) -> list:
     """Pair files whose (mtime, size) differs from what is indexed.
 
@@ -951,6 +998,21 @@ def stale_pairs(now: float | None = None) -> list:
         if now - st.st_mtime < SETTLE_S:
             continue                       # still being written; catch it later
         changed.append(f)
+    # THE OPERATOR'S OWN ASK GOES FIRST OF ALL. They pressed UPDATE on one
+    # row and waited; a pair that arrives 5,095th in a 5,272-long queue has
+    # not been updated in any sense they can see (`ask_first`). Entries that
+    # are no longer stale are dropped here, so the list empties itself.
+    asked = _asked()
+    if asked:
+        byname = {f.stem: f for f in new + changed}
+        still = [a for a in asked if a in byname]
+        if still != asked:          # only on a CHANGE — this path is polled
+            _write_asked(still)
+        if still:
+            seen = set(still)
+            return ([byname[a] for a in still]
+                    + [f for f in new + changed if f.stem not in seen])
+
     # NEVER-INDEXED FIRST. Both lists are alphabetical and the sweep works
     # alphabetically, so a single list let 85 already-known pairs (which the
     # sweep keeps rewriting at every checkpoint) consume the whole budget

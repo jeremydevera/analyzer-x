@@ -2315,6 +2315,16 @@ def _run_pairbt(spec: dict) -> None:
         # Not a lost measurement: a pair file whose mtime moved is picked up by
         # `rows_index.stale_pairs`, so the row refreshes when the index frees.
         # Say THAT, rather than "FAILED", which reads as work to redo.
+        # AND JUMP THE QUEUE. Being "queued" is not the same as being seen:
+        # measured Sep 18, 2026, XPIN 1h landed **5,095th of 5,272** waiting
+        # pairs, so the operator who pressed UPDATE and watched it succeed
+        # would have gone on reading the old numbers for days. Retrying the
+        # lock harder does not help — six attempts at 10 s each got in 0 times
+        # while the indexer held one long bulk transaction — so the pair asks
+        # to be NEXT instead of fighting to be now (`rows_index.ask_first`).
+        # a queue hint never fails a good measurement
+        with contextlib.suppress(Exception):
+            ri.ask_first(f"{coin}-{tf}")
         try:
             queued = any(getattr(p, "stem", "") == f"{coin}-{tf}"
                          for p in ri.stale_pairs())

@@ -1004,9 +1004,9 @@ export const api = {
    *  from this PC and from the GitHub shards. */
   backtestLogs: () => get<BacktestLogs>("/api/backtest/logs"),
 
-  jobStatus: (kind: "download" | "backtest" | "btupdate" | "stratbt" | "pairbt" | "collect" | "download_v2" | "backtest_v2") =>
+  jobStatus: (kind: "download" | "backtest" | "btupdate" | "stratbt" | "pairbt" | "collect" | "download_v2" | "backtest_v2" | "btupdate_v2") =>
     get<JobStatus>(`/api/jobs/${kind}`),
-  jobStart: (kind: "download" | "backtest" | "btupdate" | "stratbt" | "pairbt" | "collect" | "download_v2" | "backtest_v2", spec: unknown) =>
+  jobStart: (kind: "download" | "backtest" | "btupdate" | "stratbt" | "pairbt" | "collect" | "download_v2" | "backtest_v2" | "btupdate_v2", spec: unknown) =>
     post<{ pid: number }>(`/api/jobs/${kind}/start`, spec),
   /** Finish the pairs in flight, then hand this sweep to GitHub Actions.
    *  Not a stop: every measured pair stays, and the cloud is dispatched for
@@ -1018,7 +1018,7 @@ export const api = {
           handed_off: boolean; running: boolean;
           stalled: boolean; stalled_why: string }>(`/api/jobs/${kind}/handoff`),
 
-  jobStop: (kind: "download" | "backtest" | "btupdate" | "stratbt" | "pairbt" | "collect" | "download_v2" | "backtest_v2") =>
+  jobStop: (kind: "download" | "backtest" | "btupdate" | "stratbt" | "pairbt" | "collect" | "download_v2" | "backtest_v2" | "btupdate_v2") =>
     post<{ ok: boolean }>(`/api/jobs/${kind}/stop`, {}),
 
   /** The ledger, newest first. `actions` names the rows wanted — "enter,exit"
@@ -1267,6 +1267,10 @@ export interface HistoryRow {
    *  be traced back to the row that took it, and pasted into a report's
    *  find-by-ID box. Empty for a key the runner does not know. */
   strategy_id?: string;
+  /** "live" or "demo". Both books stamp a trade with the SAME id, so a row
+   *  that does not say which book it is on turns two trades into one — which
+   *  is how #MTX4FSGN read as a single trade for a whole evening. */
+  book?: string;
 }
 
 export interface MonthRow {
@@ -1278,6 +1282,13 @@ export interface HistoryPayload {
   rows: HistoryRow[]; total: number; page: number; pages: number;
   per_page: number; months: MonthRow[];
   totals: { trades: number; wins: number; losses: number; profit: number };
+  /** the id that was searched for, cleaned up (no #, upper case) */
+  q?: string;
+  /** how many closed trades were looked at — so an empty answer can name
+   *  what it checked instead of speaking for the whole store */
+  examined?: number;
+  /** which books this answer covers: both while searching */
+  books?: string[];
 }
 
 /** What the RUNNER's own websocket is seeing. Read from the status the feed
@@ -1311,8 +1322,13 @@ export const tradeApi = {
   equity: (dry = false) =>
     get<{ points: { ts: number; equity: number; coin: string }[]; last: number; trades: number }>(
       `/api/trade/equity?dry=${dry}`),
-  history: (dry: boolean, page = 1, per_page = 5) =>
-    get<HistoryPayload>(`/api/trade/history?dry=${dry}&page=${page}&per_page=${per_page}`),
+  /** `q` searches BOTH books by trade id or strategy id and ignores `dry`:
+   *  both books stamp a trade with the same id, so a search that honoured
+   *  the tab would show one of the two and look like the other never
+   *  happened. Sent to the server, never filtered in the browser. */
+  history: (dry: boolean, page = 1, per_page = 5, q = "") =>
+    get<HistoryPayload>(`/api/trade/history?dry=${dry}&page=${page}`
+      + `&per_page=${per_page}&q=${encodeURIComponent(q)}`),
   positions: () => get<PositionsPayload>("/api/trade/positions"),
   /** the runner's live websocket: connection state and the last price
    *  pushed for every coin it is listening to */
@@ -1554,10 +1570,14 @@ export function storeApi(store: StoreName) {
   const P = store === "v2" ? "/api" + "/v2" : "/api";
   const dl = (store === "v2" ? "download_v2" : "download") as "download" | "download_v2";
   const bt = (store === "v2" ? "backtest_v2" : "backtest") as "backtest" | "backtest_v2";
+  const up = (store === "v2" ? "btupdate_v2" : "btupdate") as "btupdate" | "btupdate_v2";
+  const kindOf = (k: "download" | "backtest" | "update") =>
+    k === "download" ? dl : k === "backtest" ? bt : up;
   return {
     store,
     downloadKind: dl,
     backtestKind: bt,
+    updateKind: up,
     /** the frames THIS store downloads — v2 is 1m and nothing else */
     tfs: store === "v2" ? ["1m"] : ["15m", "30m", "1h", "4h", "1d"],
     candlePending: () => get<CandlePending>(`${P}/candles/pending`),
@@ -1577,10 +1597,14 @@ export function storeApi(store: StoreName) {
       get<Awaited<ReturnType<typeof api.facets>> & { store?: string; why?: string }>(
         `${P}/strategies/facets`),
     storage: () => get<BtStorage & { store?: string; why?: string }>(`${P}/backtest/storage`),
-    jobStatus: (kind: "download" | "backtest") => api.jobStatus(kind === "download" ? dl : bt),
-    jobStart: (kind: "download" | "backtest", spec: unknown) =>
-      api.jobStart(kind === "download" ? dl : bt, spec),
-    jobStop: (kind: "download" | "backtest") => api.jobStop(kind === "download" ? dl : bt),
+    /** the trade-by-trade log of one row, replayed from THIS store — on v2
+     *  from the 1-minute candles with exits settled by the minute */
+    trades: (row: StrategyRow, baseMargin = 5.0) =>
+      withApiPrefix(P, () => api.trades(row, baseMargin)),
+    jobStatus: (kind: "download" | "backtest" | "update") => api.jobStatus(kindOf(kind)),
+    jobStart: (kind: "download" | "backtest" | "update", spec: unknown) =>
+      api.jobStart(kindOf(kind), spec),
+    jobStop: (kind: "download" | "backtest" | "update") => api.jobStop(kindOf(kind)),
   };
 }
 

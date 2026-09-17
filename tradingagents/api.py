@@ -168,7 +168,7 @@ def _keep_the_row_index_current() -> None:
                 # exactly like the v1 ones — a crashed 1m download must not
                 # stay dead any more than a crashed 15m one
                 for kind in ("backtest", "download", "btupdate",
-                             "download_v2", "backtest_v2"):
+                             "download_v2", "backtest_v2", "btupdate_v2"):
                     try:
                         got = _dj.resume_if_died(kind)
                         if got.get("resumed"):
@@ -264,6 +264,12 @@ def row_id_for(key: str, coin: str | None, settings: dict) -> str:
     if not coin or key not in at.STRATEGY_SPECS:
         return ""
     spec = at.STRATEGY_SPECS[key]
+    # A ROW DEPLOYED FROM BACKTEST v2 KEEPS ITS v2 ID (Sep 17, 2026). The
+    # runner trades the same coin/frame/signal/barriers either way; the id
+    # names which MEASUREMENT the operator chose, and `strategy_res` (written
+    # by deploy_preset from a preset row's `res`) remembers it per coin.
+    res = ((settings.get("strategy_res") or {})
+           .get(at.book_slot(key, coin)) or None)
     try:
         return br.row_code(
             coin.replace("_USDT", ""),
@@ -278,7 +284,8 @@ def row_id_for(key: str, coin: str | None, settings: dict) -> str:
             # printed #L4TCWCZY in the app and #F2S7J87Z on the board it came
             # from, which is the "same row, a different number on every page"
             # problem the stable id exists to end.
-            at.sizing_for(settings, key))
+            at.sizing_for(settings, key),
+            res=res)
     except Exception:                                          # noqa: BLE001
         return ""
 
@@ -410,9 +417,12 @@ def strategies(coin: str | None = None, tf: str | None = None,
                      f"Set the page to {DAYS_ROW_MAX} rows or fewer (and it is "
                      f"faster still with a coin named).")
         try:
+            _st = _store_now()
             win = msw.window_rows(rows, int(days),
                                   base_margin=float(rows[0].get("base") or 5.0)
-                                  if rows else 5.0)
+                                  if rows else 5.0,
+                                  # v2 rows re-measure from the 1-minute store
+                                  store=None if _st.name == "v1" else _st)
         except msw.WindowTooWide as exc:
             raise HTTPException(503, str(exc)) from exc
         got["days"] = int(days)
@@ -810,7 +820,24 @@ RESTATE_MAX = 1
 DAYS_ROW_MAX = 50
 
 
-def restate_window(row: dict, window: list) -> dict:
+import contextvars as _contextvars
+
+# WHICH STORE THE STRATEGIES HANDLER RESTATES FROM. `strategies()` is one
+# function serving v1 and, under `strategies_v2`, Backtest v2; the re-measure
+# helpers it calls (`restate_window`, `market_sweep.window_rows`) read candle
+# and state files, and FastAPI would turn an extra parameter into a query
+# field. A ContextVar set by the v2 route for the length of the call is how
+# they learn the store — the same shape as `rows_index.using_db`.
+_STORE: "_contextvars.ContextVar" = _contextvars.ContextVar("api_store", default=None)
+
+
+def _store_now():
+    """The store the current request restates from: V2 under strategies_v2,
+    V1 otherwise."""
+    return _STORE.get() or _stores.V1
+
+
+def restate_window(row: dict, window: list, store=None) -> dict:
     """`w_trades`, `w_wins`, `w_losses`, `w_winrate` and the log's own window
     profit, counted from this row's trades rebuilt from the candles.
 
@@ -823,12 +850,15 @@ def restate_window(row: dict, window: list) -> dict:
 
     if not window:
         return {}
+    store = store or _store_now()
     try:
         got = msw.trades_for(row["coin"], row["tf"], signal=row["signal"],
                              th=float(row.get("th") or 0.0),
                              sl=float(row["sl"]), tp=float(row["tp"]),
                              sizing=row["sizing"],
-                             base_margin=float(row.get("base") or 5.0))
+                             base_margin=float(row.get("base") or 5.0),
+                             # v2 rows are replayed from the 1-minute store
+                             store=None if store.name == "v1" else store)
     except Exception as exc:                                   # noqa: BLE001
         print(f"[strategies] could not restate {row.get('id')}: "
               f"{type(exc).__name__}: {exc}", flush=True)
@@ -2715,23 +2745,46 @@ def _fmt_held(secs) -> str:
 
 
 @app.get("/api/trade/history")
-def trade_history(dry: bool = False, per_page: int = 5, page: int = 1) -> dict:
+def trade_history(dry: bool = False, per_page: int = 5, page: int = 1,
+                  q: str = "") -> dict:
     """Every CLOSED trade on one book, newest first, with its running total —
     plus a per-month summary the page cannot give.
 
     Paginated because a wall of 200 rows hides a trade as effectively as a net
     figure does. The running total is computed oldest-first over the WHOLE
     book, so page 3's 'running $' is the real running total, not the page's.
+
+    `q` SEARCHES BOTH BOOKS AT ONCE and ignores `dry`. Operator,
+    `Sep 17, 2026`: *"in trade history, put a id search there, when i search
+    LG9NSU4B for example it should show trade id LG9NSU4B for both live and
+    demo trade"*. Both books stamp a trade with the SAME id, so a search that
+    honoured the live/demo tab would show one of the two and look like the
+    other did not happen — which is exactly the confusion that cost five
+    answers about `MTX4FSGN` the day before.
+
+    It matches the TRADE id or the STRATEGY id, with or without the leading
+    `#`, either case. And it matches HERE, over every exit row on the ledger —
+    never in the browser over a page the server already cut, which is the
+    filter-where-the-data-is rule in CLAUDE.md, bought by a KITE loss that sat
+    640 rows past the window a panel had fetched.
+
+    While searching, `months` and `totals` describe the MATCHED rows, because
+    a whole-book summary printed beside two matches is a false label. `total`
+    is the number of matches and `examined` is how many closed trades were
+    looked at, so an empty answer names what it checked instead of speaking
+    for the store.
     """
     import datetime as dt
 
     import tradingagents.auto_trader as at
     from tradingagents import positions_view as pv
 
+    _q = (q or "").strip().lstrip("#").upper()
+    # a search spans BOTH books; without one the tab still rules
+    _books = (False, True) if _q else (dry,)
     _all = at.ledger_tail(100000)
-    ex = [e for e in _all
-          if e.get("action") == "exit" and bool(e.get("dry_run")) is dry]
-    ex.sort(key=lambda x: float(x.get("ts") or 0))
+    _exits = [e for e in _all if e.get("action") == "exit"]
+    _examined = len(_exits)
 
     # Exit rows written before 2026-08-21 carry no side, so the LONG/SHORT
     # column printed "-" for every closed trade. Pair each exit with the most
@@ -2774,38 +2827,62 @@ def trade_history(dry: bool = False, per_page: int = 5, page: int = 1) -> dict:
                 _sid[k] = ""
         return _sid[k]
 
-    run, rows, months = 0.0, [], {}
-    for e in ex:
-        p = round(float(e.get("pnl_est") or 0), 2)
-        run = round(run + p, 2)
-        # The trade's own id and opening time, stored on the ledger row since
-        # 2026-08-22 (auto_trader.trade_code + backfill_ledger_ids). "—" only
-        # for the handful of old exits whose entry predates the ledger: an
-        # invented timestamp would be worse than an honest dash.
-        _op = e.get("opened_at")
-        _hs = e.get("held_s")
-        rows.append({
-            "ts": float(e.get("ts") or 0),
-            "id": e.get("trade_id") or "—",
-            "opened": pv.fmt_when(float(_op)) if _op else "—",
-            "held": _fmt_held(_hs),
-            "when": pv.fmt_when(float(e.get("ts") or 0)),
-            "coin": str(e.get("symbol", "?")).replace("_USDT", ""),
-            "side": _side_for(e),
-            "strategy": e.get("strategy") or "—",
-            # blank when the key is not one the runner knows (an adopted
-            # exchange position): a real-looking id that matches no
-            # combination is worse than no id
-            "strategy_id": _strategy_id(str(e.get("strategy") or ""),
-                                        str(e.get("symbol") or "")),
-            "why": e.get("why") or "—",
-            "profit": p, "running": run})
-        key = dt.datetime.fromtimestamp(float(e.get("ts") or 0)).strftime("%Y-%m")
-        m = months.setdefault(key, {"key": key, "trades": 0, "wins": 0,
-                                    "losses": 0, "profit": 0.0})
-        m["trades"] += 1
-        m["wins" if p > 0 else "losses"] += 1
-        m["profit"] = round(m["profit"] + p, 2)
+    rows, months = [], {}
+    # PER BOOK, because the running total belongs to its own book: a live
+    # exit must never advance the practice book's running total.
+    for _dry in _books:
+      run = 0.0
+      ex = sorted((e for e in _exits if bool(e.get("dry_run")) is _dry),
+                  key=lambda x: float(x.get("ts") or 0))
+      for e in ex:
+          p = round(float(e.get("pnl_est") or 0), 2)
+          run = round(run + p, 2)
+          # The trade's own id and opening time, stored on the ledger row since
+          # 2026-08-22 (auto_trader.trade_code + backfill_ledger_ids). "—" only
+          # for the handful of old exits whose entry predates the ledger: an
+          # invented timestamp would be worse than an honest dash.
+          _op = e.get("opened_at")
+          _hs = e.get("held_s")
+          rows.append({
+              "ts": float(e.get("ts") or 0),
+              "id": e.get("trade_id") or "—",
+              "opened": pv.fmt_when(float(_op)) if _op else "—",
+              "held": _fmt_held(_hs),
+              "when": pv.fmt_when(float(e.get("ts") or 0)),
+              "coin": str(e.get("symbol", "?")).replace("_USDT", ""),
+              "side": _side_for(e),
+              "strategy": e.get("strategy") or "—",
+              # blank when the key is not one the runner knows (an adopted
+              # exchange position): a real-looking id that matches no
+              # combination is worse than no id
+              "strategy_id": _strategy_id(str(e.get("strategy") or ""),
+                                          str(e.get("symbol") or "")),
+              "why": e.get("why") or "—",
+              "profit": p, "running": run,
+            # WHICH BOOK. Both stamp the same trade id, so a row that
+            # does not say which one it is turns two trades into one —
+            # #MTX4FSGN read as a single trade for a whole evening.
+            "book": "demo" if _dry else "live"})
+          key = dt.datetime.fromtimestamp(float(e.get("ts") or 0)).strftime("%Y-%m")
+          m = months.setdefault(key, {"key": key, "trades": 0, "wins": 0,
+                                      "losses": 0, "profit": 0.0})
+          m["trades"] += 1
+          m["wins" if p > 0 else "losses"] += 1
+          m["profit"] = round(m["profit"] + p, 2)
+    if _q:
+        rows = [r for r in rows
+                if _q in str(r.get("id") or "").upper()
+                or _q in str(r.get("strategy_id") or "").upper()]
+        # the summary describes what is SHOWN, never the whole book
+        months = {}
+        for r in rows:
+            k = dt.datetime.fromtimestamp(r["ts"]).strftime("%Y-%m")
+            m = months.setdefault(k, {"key": k, "trades": 0, "wins": 0,
+                                      "losses": 0, "profit": 0.0})
+            m["trades"] += 1
+            m["wins" if r["profit"] > 0 else "losses"] += 1
+            m["profit"] = round(m["profit"] + r["profit"], 2)
+    rows.sort(key=lambda r: r["ts"])
     rows.reverse()                                   # newest first
     per = max(1, min(per_page, 100))
     pages = max(1, -(-len(rows) // per))
@@ -2817,6 +2894,10 @@ def trade_history(dry: bool = False, per_page: int = 5, page: int = 1) -> dict:
     return {
         "rows": rows[(page - 1) * per:page * per],
         "total": len(rows), "page": page, "pages": pages, "per_page": per,
+        # what was SEARCHED, so an empty answer names what it looked at
+        # rather than speaking for the store (CLAUDE.md, Sep 12 2026)
+        "q": _q, "examined": _examined,
+        "books": ["live", "demo"] if _q else (["demo"] if dry else ["live"]),
         "months": mrows,
         "totals": {"trades": sum(m["trades"] for m in mrows),
                    "wins": sum(m["wins"] for m in mrows),
@@ -3070,17 +3151,22 @@ def strategies_v2(coin: str | None = None, tf: str | None = None,
         return {"rows": [], "total": 0, "store": "v2", "why": _V2_EMPTY_WHY,
                 "index": {"rows": 0, "pairs_indexed": 0, "pairs_on_disk": 0,
                           "indexer_running": None}}
-    if months or days:
-        raise HTTPException(400, _V2_NO_WINDOW)
-    with ri.using_db(db):
-        got = strategies(coin=coin, tf=tf, signal=signal, profitable=profitable,
-                         limit=limit, offset=offset, sort=sort,
-                         min_trades=min_trades, min_winrate=min_winrate,
-                         max_tp=max_tp, max_sl=max_sl, min_tp=min_tp,
-                         min_sl=min_sl, tp_over_sl=tp_over_sl, asset=asset,
-                         sizing=sizing, row_id=row_id, group=group,
-                         months=0, days=0, measured_days=measured_days,
-                         desc=desc)
+    # the same handler, reading v2's rows.db AND restating (days / months
+    # windows, RESTATE_MAX row logs) from v2's 1-minute store with
+    # minute-exact exits — `_STORE` is how the shared helpers learn which
+    tok = _STORE.set(_stores.V2)
+    try:
+        with ri.using_db(db):
+            got = strategies(coin=coin, tf=tf, signal=signal,
+                             profitable=profitable, limit=limit, offset=offset,
+                             sort=sort, min_trades=min_trades,
+                             min_winrate=min_winrate, max_tp=max_tp,
+                             max_sl=max_sl, min_tp=min_tp, min_sl=min_sl,
+                             tp_over_sl=tp_over_sl, asset=asset, sizing=sizing,
+                             row_id=row_id, group=group, months=months,
+                             days=days, measured_days=measured_days, desc=desc)
+    finally:
+        _STORE.reset(tok)
     got["store"] = "v2"
     # the v2 index's own state, not v1's cached one (label-must-match-data)
     got["index"] = ri.status(db_path=db)
@@ -3109,6 +3195,9 @@ def strategies_csv_v2(coin: str | None = None, tf: str | None = None,
     if db is None:
         raise HTTPException(404, _V2_EMPTY_WHY)
     if months or days:
+        # the CSV re-measures each row inside its own generator thread, where
+        # the request's store is not visible; the windowed v2 file comes with
+        # the per-row replay that runs there
         raise HTTPException(400, _V2_NO_WINDOW)
     try:
         ri.export_plan(coin=coin, signal=signal, sort=sort, row_id=row_id,
@@ -3136,6 +3225,20 @@ def strategies_csv_v2(coin: str | None = None, tf: str | None = None,
                             db_path=db),
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+@app.post("/api/v2/strategies/trades")
+def strategy_trades_v2(q: TradesQuery) -> dict:
+    """Every trade one v2 row made, replayed from the 1-minute store with
+    exits settled minute by minute — so `#U9YP5N7L`'s Sep 16 stop reads
+    `7:28am`, the minute the practice account saw, not the hour."""
+    from tradingagents import market_sweep as msw
+
+    if not _stores.V2.candles.exists():
+        return {"log": [], "why": _V2_EMPTY_WHY}
+    return msw.trades_for(q.coin, q.tf, signal=q.signal, th=q.th, sl=q.sl,
+                          tp=q.tp, sizing=q.sizing, base_margin=q.base_margin,
+                          store=_stores.V2)
 
 
 @app.get("/api/v2/strategies/facets")

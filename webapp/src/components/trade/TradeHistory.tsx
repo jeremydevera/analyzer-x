@@ -17,6 +17,10 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components
 // trade and see when it started (2026-08-22).
 const HEADS = ["id", "opened", "closed", "held", "coin", "side", "strategy",
                "closed by", "PROFIT $", "running $"];
+// While a search is on, rows from BOTH books sit in one table, so the table
+// has to say which is which. Without it the same id appears twice and reads
+// as a duplicate rather than as the two copies of one trade.
+const HEADS_SEARCH = ["book", ...HEADS];
 
 function pageNumbers(page: number, pages: number): number[] {
   const span = 7;
@@ -31,6 +35,17 @@ export default function TradeHistory() {
   const [page, setPage] = useState(1);
   const [d, setD] = useState<HistoryPayload | null>(null);
   const [err, setErr] = useState("");
+  // FIND A TRADE BY ID, ACROSS BOTH BOOKS. Operator, Sep 17, 2026: "in trade
+  // history, put a id search there, when i search LG9NSU4B for example it
+  // should show trade id LG9NSU4B for both live and demo trade".
+  //
+  // `q` goes to the SERVER. It must never become a .filter() over `d.rows`
+  // here: the server sends five rows a page, so a browser-side filter would
+  // search the PAGE instead of the book — the exact shape that hid a KITE
+  // loss 640 rows past the window a panel had fetched (CLAUDE.md, filter
+  // where the data is).
+  const [q, setQ] = useState("");
+  const searching = q.trim().length > 0;
 
   // EVERY 5 SECONDS, and the instant the tab is looked at again. It used to
   // load ONCE and re-fetch only after a failure, so a trade that closed while
@@ -40,12 +55,12 @@ export default function TradeHistory() {
   // The old self-healing retry is kept by the same loop: a failed fetch is
   // simply the next tick's job (an API restart's few dark seconds, Sep 09).
   useLiveRefresh(() => {
-    tradeApi.history(dry, page, 5)
+    tradeApi.history(dry, page, 5, q.trim())
       .then((r) => { setD(r); setErr(""); markReady("trade history"); })
       .catch((e) => setErr(String(e)));
-  }, 5_000, [dry, page]);
+  }, 5_000, [dry, page, q]);
 
-  useEffect(() => { setPage(1); }, [dry]);
+  useEffect(() => { setPage(1); }, [dry, q]);
 
   const t = d?.totals;
   return (
@@ -54,20 +69,43 @@ export default function TradeHistory() {
         <div>
           <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Trade history</h3>
           <p className="text-theme-xs text-gray-500 dark:text-gray-400">
-            every closed trade{d ? ` · ${d.total} on this book` : ""}
+            {searching
+              ? (d
+                  ? `${d.total} trade${d.total === 1 ? "" : "s"} matching `
+                    + `${d.q ?? q} on BOTH books, of ${d.examined ?? 0} closed`
+                  : "searching both books")
+              : `every closed trade${d ? ` · ${d.total} on this book` : ""}`}
             {t && t.trades ? ` · ${t.wins}W / ${t.losses}L · ${fmtMoney(t.profit)} total` : ""}
           </p>
         </div>
-        <div className="ml-auto flex gap-1 rounded-lg bg-gray-100 p-1 dark:bg-white/[0.06]">
-          {([[false, "LIVE — real money"], [true, "DEMO — simulated"]] as const).map(([v, lab]) => (
-            <button key={String(v)} onClick={() => setDry(v)}
-              className={`rounded-md px-3 py-1 text-theme-xs font-medium transition ${dry === v
-                ? (v ? "bg-white text-gray-800 shadow-theme-xs dark:bg-gray-800 dark:text-white/90"
-                     : "bg-error-500 text-white")
-                : "text-gray-500 dark:text-gray-400"}`}>
-              {lab}
-            </button>
-          ))}
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {/* Type a trade id or a strategy id — with or without the #, either
+              case. A search covers BOTH books, so the live/demo tabs go quiet
+              while one is running rather than pretending to still apply. */}
+          <div className="relative">
+            <input value={q} onChange={(e) => setQ(e.target.value)}
+              id="trade-history-search"
+              placeholder="find by id, e.g. LG9NSU4B"
+              className="h-8 w-56 rounded-lg border border-gray-200 bg-transparent px-2 pr-7 font-mono text-theme-xs text-gray-700 placeholder:font-sans placeholder:text-gray-400 dark:border-gray-700 dark:text-gray-300" />
+            {searching && (
+              <button type="button" onClick={() => setQ("")} title="clear the search"
+                className="absolute right-1 top-1 h-6 w-6 rounded text-theme-xs text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+                ×
+              </button>
+            )}
+          </div>
+          <div className={`flex gap-1 rounded-lg bg-gray-100 p-1 dark:bg-white/[0.06] ${searching ? "opacity-40" : ""}`}>
+            {([[false, "LIVE — real money"], [true, "DEMO — simulated"]] as const).map(([v, lab]) => (
+              <button key={String(v)} onClick={() => setDry(v)} disabled={searching}
+                title={searching ? "a search covers both books" : undefined}
+                className={`rounded-md px-3 py-1 text-theme-xs font-medium transition ${dry === v && !searching
+                  ? (v ? "bg-white text-gray-800 shadow-theme-xs dark:bg-gray-800 dark:text-white/90"
+                       : "bg-error-500 text-white")
+                  : "text-gray-500 dark:text-gray-400"}`}>
+                {lab}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
       <PanelStatus err={err} loaded={d !== null} />
@@ -76,7 +114,7 @@ export default function TradeHistory() {
         <Table fixed>
           <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
             <TableRow>
-              {HEADS.map((h) => (
+              {(searching ? HEADS_SEARCH : HEADS).map((h) => (
                 <TableCell key={h} isHeader className="px-2 py-1.5 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400">{h}</TableCell>
               ))}
             </TableRow>
@@ -84,6 +122,15 @@ export default function TradeHistory() {
           <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
             {(d?.rows ?? []).map((r, i) => (
               <TableRow key={`${r.ts}-${i}`}>
+                {searching && (
+                  <TableCell className="whitespace-nowrap px-2 py-1.5 text-theme-xs">
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${r.book === "demo"
+                      ? "bg-gray-100 text-gray-600 dark:bg-white/[0.08] dark:text-gray-300"
+                      : "bg-error-50 text-error-600 dark:bg-error-500/15 dark:text-error-400"}`}>
+                      {r.book === "demo" ? "demo" : "live"}
+                    </span>
+                  </TableCell>
+                )}
                 <TableCell className="whitespace-nowrap px-2 py-1.5 font-mono text-theme-xs text-gray-800 dark:text-white/90">
                   {/* the SAME id the open position carries, so a trade can be
                       followed from open to closed by one string (operator,
@@ -115,7 +162,15 @@ export default function TradeHistory() {
             ))}
             {d && !d.rows.length && (
               <TableRow><TableCell className="px-3 py-4 text-theme-sm text-gray-500 dark:text-gray-400">
-                No closed trades on the {dry ? "demo" : "live"} book yet.
+                {/* AN EMPTY ANSWER NAMES WHAT IT CHECKED. "nothing found" over
+                    a store nobody counted is the failure CLAUDE.md records for
+                    Sep 12, 2026, where a panel spoke for 893,508 rows after
+                    examining 25. */}
+                {searching
+                  ? `No trade or strategy id matching ${d.q ?? q} in the `
+                    + `${d.examined ?? 0} closed trades on either book — `
+                    + "ids are 8 characters, and the # is optional."
+                  : `No closed trades on the ${dry ? "demo" : "live"} book yet.`}
               </TableCell></TableRow>
             )}
           </TableBody>

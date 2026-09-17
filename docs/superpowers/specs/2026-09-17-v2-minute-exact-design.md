@@ -157,6 +157,33 @@ update_pairs` take an optional `root`; default unchanged.
 * disk: ~2.5 GB of 1m candles (×3 copies incl. kline_cache and parquet) on G:,
   538 GB free
 
+## What shipped (Sep 17, 2026) — where it differs from the design above
+
+* `fast_grid.walk(fine=)` was NOT built: v2 rows come from `market_sweep.run_pair`
+  → `backtest_strategy`, the only path a v2 measure takes. The click-path grid
+  (`fast_grid`) stays v1-only.
+* `unclear`/`res` live in ONE schema: `rows_index.COLS` gained them and
+  `ensure()` adds them to an existing table with `ALTER TABLE ADD COLUMN`
+  (metadata only, no pass over the 41.94 GB v1 file). A v1 row has NULL there.
+* The API reads v2 through `rows_index.using_db(path)` — a ContextVar set and
+  reset in the request thread — with `db_path=` on the readers; the CSV
+  generator, drained by Starlette's threadpool, goes through `iter_rows_in`,
+  which scopes the override around EACH `next()`. `market_sweep.candle_index`
+  takes `root=`; `db_jobs.pending_work` takes the store's lost file, candle dir
+  and frames; the v2 download writes the `candles_v2` pending ledger.
+* The web client reaches `/api/v2` through `withApiPrefix`, which rebases the
+  path inside `get`/`post` before the first await — the URL builders the tests
+  read field by field are byte-identical to v1's.
+* A v2 job refuses to start while ANY disk job runs, and a v1 job while a v2
+  one runs (`db_jobs.JobBusy`, 409); v1 kinds among themselves are unchanged.
+* The v2 sweep files its own rows at the end (`rows_index.sync(force=True)`)
+  — nothing else watches the v2 folder — and writes `archive-v2.html`.
+* Found by pressing the buttons: `fx.klines_backfill` fills a cached history
+  from the FRONT when a frame is shorter than its cap (RCA-2026-09-17-A).
+* First real run: five coins on 1h, 30 days → 82,758 rows filed into
+  `~/.tradingagents/v2/rows.db` (29 MB); `#LG9NSU4B`'s v2 twin is `#U9YP5N7L`
+  and its Sep 16 stop reads `7:28am`.
+
 ## Out of this cut
 
 Cloud measuring for v2; deploying straight from a v2 id (the runner's

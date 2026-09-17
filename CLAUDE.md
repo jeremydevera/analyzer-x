@@ -966,6 +966,66 @@ otherwise "simplify" it back. Full account: `docs/RCA.md` RCA-2026-09-12-A;
 guard: `tests/test_demo_cannot_fill_before_it_opened.py`, verified red on the
 pre-fix file.
 
+## Backtest v2 is the v1 engine in its own folder (MANDATORY — 2026-09-17)
+
+The operator: *"lets do a v2 of candles tab, when i download candles ... it
+should default to 1min ... then same for backtest, lets create backtest v2,
+it should analyze the 1min candles ... do not replace the existing backtests
+strategies ... we will use 1min candle so its more accurate"*. Asked which
+accuracy they meant, they chose: **the same signals on the same timeframes,
+with every exit settled minute by minute.** New 1-minute strategies were
+offered and declined.
+
+Why: `#LG9NSU4B` (XPIN 1h ote, TP 1% / SL 3%) stopped out in the practice
+account at `Sep 16, 2026 7:28am` and the stored backtest said `7:00am`; an
+hour candle cannot say which of two prices it touched first, so the engine
+books the loss by rule. Measured on the operator's five running rows before
+building anything: 2 of 208 exit bars held both prices; 86 of 4,000 hour
+bars were wide enough to. Under v2 the same row reads `7:28am`.
+
+Four rules, each with a test:
+
+* **v2 never measures ON 1-minute bars.** `market_sweep.bars_from_1m`
+  rebuilds the five frames from the minutes — proved on XPIN, **666 of 666**
+  hours identical to MEXC's own Min60 on open/high/low/close — so a v2 row is
+  the v1 signal with a finer exit, nothing else. A frame with a missing
+  minute is REFUSED and named, never rebuilt over a hole
+  (`tests/test_bars_from_minutes.py`).
+* **`backtest_strategy(fine=None)` is byte-identical to before.** `fine` is
+  the minutes; when given, the first price touched inside the exit bar wins,
+  both in one minute is still SL and counted in the row's `unclear`, a bar
+  with no minutes falls back to the bar rule, funding is charged to the exit
+  minute (`tests/test_minute_exact_exits.py`, 200-hour parity).
+* **`"1m"` is a DOWNLOAD frame only.** It lives in `backtest_report.TFS` so
+  the v2 download can page Min1 (44,000 bars = 30.6 days, the most MEXC
+  sells at once) and NOWHERE else: not `capacity.ALL_TFS`, not the barrier
+  grid, not any five-frame tuple. `pairs_for("1m")` refuses by name and
+  `cloud_sweep.grid_frames` drops it before a shard sees it.
+* **The two stores never touch.** `tradingagents/stores.py` names both;
+  `download_v2`/`backtest_v2` are the v1 jobs launched with
+  `stores.V2.env_for()` into `~/.tradingagents/v2` (sweep home, candle cache,
+  `rows.db`, `parquet-v2`, `FINE_TF`), a v2 row's id carries `res="1m"` so it
+  can never equal a v1 id (`#LG9NSU4B` is a fixed point in the tests), the
+  v1 file is never rewritten (`unclear`/`res` are ADD COLUMN, metadata only),
+  a v2 kind refuses to start while any disk job runs, and the API serves
+  `/api/v2/...` through `rows_index.using_db` — a ContextVar, because one
+  process serves both and a module global cannot be flipped per request.
+  A generator drained by another thread (`iter_rows`) takes `db_path`
+  explicitly (`iter_rows_in`); a ContextVar token cannot be reset from
+  another context.
+
+**What the first cut does NOT do, on purpose:** measure v2 on GitHub (the
+cloud has no 1m store); deploy straight from a v2 id; a days/months window
+on v2 (the re-measure reads the v1 candle store — refused with why); the
+trade-by-trade log for a v2 row (held back rather than shown from v1).
+
+**What pressing the buttons found before the operator did** (docs/RCA.md
+RCA-2026-09-17-A/B): `fx.klines` grows a cached history at the TAIL only, so
+ARKM/GLM downloaded 2.4 days of minutes against MEXC's 30 — `klines_backfill`
+now fills the front whenever a frame is shorter than its cap; the pending
+ledger did not know `candles_v2`; nothing indexed the v2 folder, so the v2 job
+files its own rows; a v2 report defaulted to v1's file name.
+
 ## Read the emitter, not the label (MANDATORY — 2026-08-18)
 
 23. **Before explaining ANY log line, ledger action, counter or status string,

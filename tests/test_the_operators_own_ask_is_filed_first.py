@@ -114,13 +114,39 @@ def test_stale_pairs_puts_the_asked_pair_first(tmp_path, monkeypatch):
     assert sorted(after) == sorted(before),         "the jump may not lose or duplicate a single pair"
 
 
-def test_an_asked_pair_that_is_no_longer_stale_leaves_the_list():
-    """It filed — so it must not sit pinned to the front for ever, and a
-    crash between the ask and the filing cannot strand it."""
-    ri.ask_first("XPIN-1h")
-    byname = {}                         # nothing is stale any more
-    still = [a for a in ri._asked() if a in byname]
-    assert still == []
+def test_a_reader_may_reorder_the_queue_but_never_empty_it(tmp_path,
+                                                          monkeypatch):
+    """MY OWN BUG, Sep 18, 2026. The first version dropped every asked pair
+    its own scan could not see and wrote that back — and `stale_pairs()` runs
+    in three processes (the polled API status, the job, the indexer), so ONE
+    unlucky scan wiped the operator's request for everybody. Measured: the
+    list went from ["STBL-4h", "XPIN-1h"] to [] by itself and XPIN fell back
+    to position 5,094 of 5,271."""
+    from tradingagents import market_sweep as msw
+
+    rowdir = tmp_path / "rows"
+    rowdir.mkdir()
+    (rowdir / "AAA-1h.json").write_text("[]", encoding="utf-8")
+    monkeypatch.setattr(msw, "ROWDIR", rowdir)
+    monkeypatch.setattr(ri, "_missing_ok", lambda fn, default: default)
+    monkeypatch.setattr(ri, "stale_watermark", lambda stem: False)
+
+    ri.ask_first("XPIN-1h")            # not among the stale files above
+    ri.stale_pairs()
+    assert ri._asked() == ["XPIN-1h"],         "a scan that cannot see the pair must NOT delete the request"
+
+
+def test_only_a_real_filing_clears_the_request(tmp_path, monkeypatch):
+    """`index_pair` is the one place that knows the rows actually landed."""
+    import inspect
+
+    src = inspect.getsource(ri.index_pair)
+    assert "_write_asked(" in src,         "index_pair must drop its own entry once the rows are committed"
+    i = src.index("_write_asked(")
+    assert "con.commit()" in src[:i],         "it must clear the request AFTER the commit, not before"
+
+    # and stale_pairs must no longer be doing it
+    assert "_write_asked(" not in inspect.getsource(ri.stale_pairs),         "a reader is writing the shared list again"
 
 
 def test_the_job_asks_when_it_cannot_file():

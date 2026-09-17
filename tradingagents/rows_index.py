@@ -679,6 +679,14 @@ def index_pair(path: Path, con: sqlite3.Connection | None = None, *,
         # before it dares swap the file in, so one coinless row anywhere in
         # 5,366 files would have thrown away a two-hour rebuild with the
         # message "rows 52,348,155 vs 52,348,156".
+        # AND IT LEAVES THE QUEUE-JUMP LIST HERE, where "filed" is a fact.
+        # `stale_pairs()` used to drop it, but that runs in three processes
+        # and one unlucky scan wiped the operator's request for all of them.
+        # This is the only place that knows the rows actually landed.
+        with contextlib.suppress(Exception):
+            asked = _asked()
+            if pair in asked:
+                _write_asked([a for a in asked if a != pair])
         return len(vals)
     finally:
         if own:
@@ -1009,12 +1017,23 @@ def stale_pairs(now: float | None = None) -> list:
     # row and waited; a pair that arrives 5,095th in a 5,272-long queue has
     # not been updated in any sense they can see (`ask_first`). Entries that
     # are no longer stale are dropped here, so the list empties itself.
+    # A READER MAY REORDER THE QUEUE; IT MAY NOT EMPTY IT.
+    #
+    # The first version dropped every asked pair its OWN scan could not see
+    # and wrote that back. `stale_pairs()` is called by the API's polled
+    # `status()`, by the job, and by the indexer — so ONE caller scanning at
+    # an unlucky moment (a pair inside its 60 s settle window, a row file
+    # mid-write, an unreadable index making `known` empty) wiped the
+    # operator's request for everybody. Measured Sep 18, 2026: the list went
+    # from ["STBL-4h", "XPIN-1h"] to [] on its own, and XPIN dropped straight
+    # back to position 5,094 of 5,271.
+    #
+    # So this function only READS the list. An entry leaves when the pair is
+    # actually filed, which `index_pair` knows and a scanner does not.
     asked = _asked()
     if asked:
         byname = {f.stem: f for f in new + changed}
         still = [a for a in asked if a in byname]
-        if still != asked:          # only on a CHANGE — this path is polled
-            _write_asked(still)
         if still:
             seen = set(still)
             return ([byname[a] for a in still]

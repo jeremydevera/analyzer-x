@@ -680,7 +680,17 @@ def disk_holder(kind: str) -> str:
     One rule for `start()` (refuse, naming the holder) and `resume_if_died`
     (wait, without spending a retry): a v2 kind yields to ANY disk job, a v1
     kind yields to the v2 ones, and v1 kinds among themselves are as before.
+
+    IT IS A RULE ABOUT SWEEPS. `_DISK_JOBS` is the market-wide list, and
+    `pairbt` / `stratbt` are deliberately not in it: one coin, one timeframe,
+    minutes, pressed by a person who is watching. They were refused anyway —
+    the loop below never asked whether `kind` was a sweep — so UPDATE THIS
+    BACKTEST answered `409 btupdate_v2 is running` for the whole 21 hours of a
+    Backtest v2 run (found by clicking the real button in Chrome,
+    `Sep 18, 2026 5:35am`; docs/RCA.md RCA-2026-09-18-L).
     """
+    if kind not in _DISK_JOBS:
+        return ""
     others = (_DISK_JOBS if kind.endswith("_v2")
               else tuple(k for k in _DISK_JOBS if k.endswith("_v2")))
     for other in others:

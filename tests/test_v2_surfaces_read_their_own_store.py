@@ -258,3 +258,24 @@ def test_the_backlog_waits_for_the_other_store_but_a_pressed_row_does_not(monkey
              / "webapp/src/components/backtest/StrategiesPanel.tsx").read_text(encoding="utf-8")
     assert "idx.deferring_to" in panel
     assert "a row you press UPDATE on is filed at once" in panel
+
+
+def test_a_one_pair_remeasure_is_never_refused_for_a_sweep(monkeypatch):
+    """RCA-2026-09-18-L: clicking UPDATE THIS BACKTEST in Chrome answered
+    `409 btupdate_v2 is running — one job at a time` for the whole 21 hours of
+    a Backtest v2 run. The one-disk rule is about SWEEPS; `pairbt`/`stratbt`
+    are one pair, minutes, pressed by a person who is watching."""
+    from tradingagents import db_jobs as dj
+
+    monkeypatch.setattr(dj, "status",
+                        lambda kind: {"running": kind == "btupdate_v2", "pid": 7})
+    for small in ("pairbt", "stratbt"):
+        assert small not in dj._DISK_JOBS, small
+        assert dj.disk_holder(small) == "", small
+    # the sweeps still yield, in both directions
+    assert dj.disk_holder("backtest") == "btupdate_v2"
+    assert dj.disk_holder("download") == "btupdate_v2"
+    monkeypatch.setattr(dj, "status",
+                        lambda kind: {"running": kind == "collect", "pid": 7})
+    assert dj.disk_holder("backtest_v2") == "collect"
+    assert dj.disk_holder("pairbt") == "", "still not a sweep"

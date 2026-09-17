@@ -172,6 +172,78 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-18-L — UPDATE THIS BACKTEST answered "one job at a time" for every hour Backtest v2 was measuring
+
+**CEO**
+
+* Clicking UPDATE THIS BACKTEST on a stored row did nothing but flash an
+  error while Backtest v2 was measuring: the app answered "btupdate_v2 is
+  running — one job at a time, across both versions". For a 21-hour run that
+  is 21 hours in which no row could be brought up to date.
+* Why: there is a rule that stops two whole-market jobs fighting over the one
+  hard disk. A single row's update is not a whole-market job — it is one coin
+  on one timeframe, a few minutes — but the rule was checking the OTHER job
+  without ever asking whether the thing being started was a big job at all.
+* What stops it now: the rule applies only to the market-wide jobs it was
+  written for. A one-row update starts whatever else is running, and a real
+  click in Chrome proves it.
+
+**DEV**
+
+* `db_jobs.disk_holder:684` (extracted from `start()`, where the check has
+  lived since `65d13cb9f5c8`) looped the `_DISK_JOBS` list for every caller;
+  `pairbt` and `stratbt` are deliberately absent from that tuple, and the
+  loop never tested `kind` for membership, so `start("pairbt", ...)` raised
+  `JobBusy` and `api.strategy_row_update` turned it into `409`.
+* Invariant broken: **a rule about sweeps applies to sweeps** — the small
+  operator-pressed jobs are excluded from `_DISK_JOBS` on purpose and must be
+  excluded from everything keyed on it.
+* Guard: `tests/test_v2_surfaces_read_their_own_store.py::test_a_one_pair_remeasure_is_never_refused_for_a_sweep`
+  (both small kinds start beside a running v2 sweep; both sweeps still yield,
+  in both directions).
+
+**SAW** — `Sep 18, 2026 5:35am`, a real Chrome click driven by Playwright on
+`http://localhost:8503/backtest`: `POST /api/strategies/VT6WUJXY/update` →
+**409**, body `{"detail": "btupdate_v2 is running — one job at a time, across
+both versions; stop it or wait for it to finish"}`, and the page printing
+that sentence under the button.
+
+**TIMELINE**
+
+1. `Sep 17, 2026 6:30pm` — `JobBusy` and the cross-version check land with
+   the v2 store; `pairbt`/`stratbt` are left out of `_DISK_JOBS` but not out
+   of the check.
+2. `Sep 18, 2026 3:05am` — the operator's UPDATE on #LG9NSU4B measured 220
+   rows (it started BEFORE `btupdate_v2`), and its filing was then blocked
+   by the indexer pause (RCA-2026-09-18-K).
+3. `3:40am` — `btupdate_v2` starts. From this minute every UPDATE THIS
+   BACKTEST press is a 409.
+4. `5:35am` — the button is clicked in a real browser for the first time
+   instead of being reasoned about: 409, with the sentence above.
+5. `5:45am` — `disk_holder` returns "" for any kind outside `_DISK_JOBS`;
+   the same click is a 200 that starts a `pairbt` job.
+
+**ROOT CAUSE** — a rule keyed on a list, applied to callers that are not in
+the list.
+
+**WHY IT WAS NOT CAUGHT** — `test_a_v2_job_waits_for_a_v1_job_and_the_other_way_round`
+drives `start()` with the SWEEP kinds only, and every check of this button so
+far went through the API function or the route, where the refusal is a
+correct-looking 409 with a true-sounding sentence. The operator asked the
+question that found it — *"did you verify using playwright?"* — and the
+answer was no. A button is verified by clicking it (press-and-watch), in the
+state the machine is actually in.
+
+**COST** — none in money; two and a half hours in which no stored row could
+be re-measured from the screen.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_v2_surfaces_read_their_own_store.py::test_a_one_pair_remeasure_is_never_refused_for_a_sweep`,
+plus the Chrome click re-run after the fix.
+
+---
+
 ## RCA-2026-09-18-K — Backtest v2's 21-hour run froze the OLD screen's index, so UPDATE on #LG9NSU4B measured 220 rows nobody could see
 
 **CEO**

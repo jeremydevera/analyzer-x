@@ -176,7 +176,7 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 **CEO**
 
-* You searched `#LG9NSU4B` on the old Backtest screen, pressed UPDATE THIS
+* You searched #LG9NSU4B on the old Backtest screen, pressed UPDATE THIS
   BACKTEST, and the new numbers never appeared. The measuring worked — 220
   rows for XPIN 1h — but the step that copies them into the searchable table
   was switched off, and would have stayed off for the ~21 hours Backtest v2

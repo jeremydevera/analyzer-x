@@ -64,11 +64,17 @@ if DEBUG:      # kill -USR1 <pid> dumps every thread's stack, live
 COLS = ("id", "coin", "tf", "signal", "th", "sl", "tp", "rr", "sizing", "lev",
         "base", "notional", "trades", "wins", "losses", "winrate", "profit",
         "funding", "h1", "h2", "green", "months", "worst", "dd", "liqs",
-        "stop_reachable", "days", "bars", "cost_of_tp", "rt", "gate")
+        "stop_reachable", "days", "bars", "cost_of_tp", "rt", "gate",
+        # Backtest v2 (Sep 17, 2026): trades whose exit minute touched both
+        # prices and were booked SL by rule, and the resolution the exits were
+        # settled at ("1m"). NULL on every v1 row — the v1 file is never
+        # rewritten for this; ensure() ALTERs the two columns on, which is
+        # metadata only in SQLite (no pass over the 41.94 GB file).
+        "unclear", "res")
 _NUMERIC = {"th", "sl", "tp", "rr", "base", "notional", "winrate", "profit",
             "funding", "h1", "h2", "worst", "dd", "cost_of_tp", "rt"}
 _INTEGER = {"lev", "trades", "wins", "losses", "green", "months", "liqs",
-            "days", "bars", "stop_reachable"}
+            "days", "bars", "stop_reachable", "unclear"}
 
 _SCHEMA = f"""
 CREATE TABLE IF NOT EXISTS rows (
@@ -457,6 +463,13 @@ def ensure() -> None:
                          ("bytes", "INTEGER")):
             if col not in have:
                 con.execute(f"ALTER TABLE pairs ADD COLUMN {col} {typ}")
+        # THE SAME FOR `rows` (Backtest v2, Sep 17, 2026): a store built
+        # before v2 keeps its 113,495,608 rows; `unclear` and `res` are added
+        # as NULL. ADD COLUMN does not rewrite the file.
+        have_rows = {r[1] for r in con.execute("PRAGMA table_info(rows)")}
+        for col, typ in (("unclear", "INTEGER"), ("res", "TEXT")):
+            if col not in have_rows:
+                con.execute(f"ALTER TABLE rows ADD COLUMN {col} {typ}")
         # COIN AND TF COME FROM THE PAIR KEY, NOT FROM THE ROWS TABLE.
         #
         # This used to read them back out of `rows` with correlated subqueries.
@@ -494,7 +507,10 @@ def _row_id(r: dict) -> str:
     if got:
         return str(got)
     return br.row_code(r["coin"], r["tf"], r["signal"], r.get("th") or 0.0,
-                       r["sl"], r["tp"], r["sizing"])
+                       r["sl"], r["tp"], r["sizing"],
+                       # a v2 row carries `res="1m"`; a v1 row has no key, so
+                       # its id is exactly what it always was
+                       res=r.get("res"))
 
 
 def _values(r: dict, pair: str) -> tuple:

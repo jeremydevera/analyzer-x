@@ -260,7 +260,8 @@ def slices_for(plan: str | None, sl: float, tp: float) -> list | None:
 
 
 def row_code(coin: str, tf: str, signal: str, th: float, sl: float,
-             tp: float, sizing: str, plan: str | None = None) -> str:
+             tp: float, sizing: str, plan: str | None = None,
+             res: str | None = None) -> str:
     """A stable ID for one combination, identical on every page and every run.
 
     Sequential numbering was per-page: the same live APEX row was #05146 in one
@@ -283,6 +284,14 @@ def row_code(coin: str, tf: str, signal: str, th: float, sl: float,
     # before slices existed still hashes to itself.
     if plan:
         seed += "|" + str(plan)
+    # THE RESOLUTION IS PART OF THE COMBINATION (Backtest v2, Sep 17, 2026).
+    # A v2 row is the same coin/frame/signal/barriers measured with exits
+    # settled on 1-minute bars, and it must never share an id with the v1
+    # row — the operator pastes ids between tabs. Appended ONLY when given,
+    # so every id minted before v2 still hashes to itself (#LG9NSU4B is a
+    # fixed point in tests/test_v2_store_is_its_own_folder.py).
+    if res:
+        seed += "|res=" + str(res)
     n = int.from_bytes(hashlib.blake2s(seed.encode(), digest_size=5).digest(),
                        "big")
     # 8 characters, spending the digest's full 40 bits. Six characters kept

@@ -48,6 +48,14 @@ HOME = Path(os.path.expanduser(
 CANDLES = Path(os.path.expanduser(
     os.environ.get("TRADINGAGENTS_CANDLES")
     or "~/.tradingagents/backtest/candles"))
+# BACKTEST v2 (Sep 17, 2026). When this names a frame ("1m"), `run_pair` does
+# not fetch the pair's own candles: it rebuilds the frame's bars from the
+# 1-minute cache under CANDLES (`bars_from_1m`) and hands the minutes to the
+# engine (`backtest_strategy(fine=...)`) so every exit is settled minute by
+# minute. Set ONLY by the v2 job kinds (`db_jobs.start` → `stores.V2.
+# env_for()`), beside TRADINGAGENTS_SWEEP_HOME / TRADINGAGENTS_CANDLES
+# pointing at ~/.tradingagents/v2. Empty here means v1, byte for byte.
+FINE_TF = os.environ.get("TRADINGAGENTS_FINE_TF", "").strip()
 STATES = HOME / "state"
 ROWS = HOME / "rows.jsonl"
 MANIFEST = HOME / "manifest.json"
@@ -872,7 +880,30 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
 
     coin = symbol.replace("_USDT", "")
     iv, bs, cap = br.TFS[tf]
-    df, added, source = refresh_candles(symbol, tf, days=days)
+    fine = None
+    if FINE_TF:
+        # v2: the bars come from the minutes, and so does the exit.
+        m1 = cached_candles(symbol, FINE_TF)
+        if m1 is None or len(m1) < MINUTES_PER_BAR[tf] * 2:
+            return {"coin": coin, "tf": tf, "rows": [], "added": 0,
+                    "source": FINE_TF,
+                    "why": (f"no {FINE_TF} candles for {symbol} — download "
+                            f"them on Candles v2 first")}
+        try:
+            df = bars_from_1m(m1, tf)
+        except ValueError as exc:
+            # NAMED, never measured wrong (rule 20): a hole in the minutes
+            # would build a bar the venue never printed
+            return {"coin": coin, "tf": tf, "rows": [], "added": 0,
+                    "source": FINE_TF, "why": f"{symbol}: {exc}"[:120]}
+        import numpy as _np
+
+        fine = (m1["Date"].to_numpy().astype("datetime64[ms]").astype("int64"),
+                _np.asarray(m1["High"], dtype="float64"),
+                _np.asarray(m1["Low"], dtype="float64"))
+        added, source = 0, FINE_TF
+    else:
+        df, added, source = refresh_candles(symbol, tf, days=days)
     # per timeframe, never a flat 500: that made 1d impossible (br.MIN_BARS)
     if len(df) < br.min_bars(tf):
         return {"coin": coin, "tf": tf, "rows": [], "added": added,
@@ -1033,7 +1064,10 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                     r = at.backtest_strategy(
                         key, frame, base_margin, fee=fee, sizing=sz, dirs=dirs,
                         tp=tp, sl=sl, liq_move_pct=liq, funding=fund,
-                        keep_log=False, resume=prev or {}, start_at=off)
+                        keep_log=False, resume=prev or {}, start_at=off,
+                        # v2: the minutes; None on v1 (`_settle_fine` indexes
+                        # them by time, so a sliced `frame` is fine)
+                        fine=fine)
                 except Exception:
                     continue
                 states[ck] = r["state"]
@@ -1110,6 +1144,12 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                     "streak": round(r["worst_streak"], 2),
                     "streak_len": r["worst_streak_len"],
                     "dd": round(r["max_dd"], 2), "liqs": r["liqs"],
+                    # v2: how many of this row's trades were still a guess
+                    # (both prices in one minute) and the resolution the
+                    # exits were settled at. Absent on a v1 row, so a v1 row
+                    # file is byte-identical to before.
+                    **({"unclear": int(r.get("unclear", 0)), "res": FINE_TF}
+                       if FINE_TF else {}),
                     "stop_reachable": True, "days": days_have,
                     "bars": len(df),
                     # WHERE THE WINDOW ENDED. The pair has one watermark and it

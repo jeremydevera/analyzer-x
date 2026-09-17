@@ -172,6 +172,70 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-18-M — the UPDATE button on your XPIN row said "UPDATING… AMP 15m" about a row you never pressed
+
+**CEO**
+
+* Under #LG9NSU4B (XPIN 1h) the button read UPDATING… with "AMP 15m · ibs:
+  index busy, retrying (2/3)" beside it. Nothing about AMP belongs on that
+  row; the XPIN numbers on the same screen had already been brought up to
+  date (175 trades, −5.68 USDT).
+* Why: only one row can be re-measured at a time for the whole app, and the
+  button showed THAT job whatever row it belonged to — so a job on another
+  coin made your row look like it was working.
+* What stops it now: the button compares the job's coin and timeframe with
+  the row's own. Another row's job reads "AMP 15m is being re-measured first
+  — one row at a time", and only this row's job can print UPDATING… or its
+  result here.
+
+**DEV**
+
+* `StrategiesPanel.tsx:1987` — `pairJob?.running ? "UPDATING…"` and the two
+  spans beside it read the single `/api/jobs/pairbt` payload with no
+  comparison; `pairJob.pair` ("AMP 15m") was already in it. `jobIsThisRow`
+  compares it with `${open.coin} ${open.tf}`.
+* Invariant broken: **a label is derived from the data it describes**
+  (label-must-match-data) — the presence of a job is not the fact "this row
+  is updating".
+* Guard: `tests/test_the_row_update_button_speaks_for_its_own_row.py`
+  (3 tests over the button's words).
+
+**SAW** — the operator's screenshot, `Sep 18, 2026 6:20am`: the XPIN 1h trade
+log ("Log sum −5.68 USDT over 175 trades — losers cost −122.52, wins earned
++116.84"), and under it `UPDATING…   AMP 15m · ibs: index busy, retrying
+(2/3)`.
+
+**TIMELINE**
+
+1. `Sep 18, 2026 6:13am` — a Playwright check of the UPDATE button (asked
+   for: *"did you verify using playwright?"*) clicked it on the first row on
+   screen, #VT6WUJXY (AMP 15m ibs), and the job started: `{"started": true,
+   "pid": 15460}`.
+2. `6:14am` — that job measured 60 rows and could not file them: an index
+   build held the write lock, so it printed "index busy, retrying (2/3)"
+   and left the pair queued.
+3. `6:20am` — the operator opened #LG9NSU4B, whose own numbers had just
+   been refreshed, and the button under it reported the AMP job.
+4. `6:35am` — the button reads the job's pair; another pair's job is named
+   as another pair's job.
+
+**ROOT CAUSE** — one global job, shown on every row.
+
+**WHY IT WAS NOT CAUGHT** — every test of this button drives ONE row and one
+job, so the job always belonged to the row on screen; a second row was never
+opened while a job ran. And the check that made it visible was run by me:
+a browser test that clicks "the first row" leaves its job on the operator's
+screen, which is its own lesson — a verification must not look like their
+own work.
+
+**COST** — none in money; a wrong sentence on the row they were reading.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_row_update_button_speaks_for_its_own_row.py`.
+
+---
+
 ## RCA-2026-09-18-L — UPDATE THIS BACKTEST answered "one job at a time" for every hour Backtest v2 was measuring
 
 **CEO**

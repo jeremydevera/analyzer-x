@@ -326,6 +326,11 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
   // THE ROW'S OWN UPDATE (2026-09-09). `pairJob` is the detached job's own
   // progress — never a literal, so "UPDATING…" cannot outlive the work.
   const [pairJob, setPairJob] = useState<JobStatus | null>(null);
+  // …AND ONLY WHEN IT IS THIS ROW'S PAIR. There is one `pairbt` job for the
+  // whole app, so a job on AMP 15m made the button on an XPIN 1h row read
+  // "UPDATING…" (Sep 18, 2026). The job names its pair; compare it.
+  const jobIsThisRow = !!pairJob?.pair && !!open
+    && pairJob.pair === `${open.coin} ${open.tf}`;
   const [updating, setUpdating] = useState(false);
   const [updateErr, setUpdateErr] = useState("");
 
@@ -1984,14 +1989,23 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
                           disabled={!!pairJob?.running || updating}
                           onClick={() => updateRow(open.id)}
                           className="h-8 rounded-lg border border-brand-300 px-3 text-theme-xs font-medium text-brand-700 hover:bg-brand-50 disabled:opacity-40 dark:border-brand-500/40 dark:text-brand-300 dark:hover:bg-brand-500/10">
-                    {pairJob?.running ? "UPDATING…" : "UPDATE THIS BACKTEST"}
+                    {pairJob?.running && jobIsThisRow ? "UPDATING…" : "UPDATE THIS BACKTEST"}
                   </button>
-                  {/* what it is doing, from the JOB, never a literal */}
-                  {pairJob?.running ? (
+                  {/* what it is doing, from the JOB, never a literal — AND
+                      only when the job is THIS ROW'S PAIR. One `pairbt` job
+                      runs at a time for the whole app, so XPIN 1h printed
+                      "UPDATING… AMP 15m · ibs: index busy, retrying (2/3)"
+                      about a pair nobody had pressed here (the operator's
+                      screenshot, Sep 18, 2026; RCA-2026-09-18-M). */}
+                  {pairJob?.running && !jobIsThisRow ? (
+                    <span className="text-theme-xs text-gray-500 dark:text-gray-400">
+                      {`${pairJob.pair} is being re-measured first — one row at a time`}
+                    </span>
+                  ) : pairJob?.running ? (
                     <span className="text-theme-xs text-gray-500 dark:text-gray-400">
                       {pairJob.now ?? `${pairJob.pair ?? ""} measuring`}
                     </span>
-                  ) : pairJob?.note ? (
+                  ) : pairJob?.note && jobIsThisRow ? (
                     <span className={`text-theme-xs ${pairJob.error || pairJob.index_error
                       ? "text-error-500" : "text-success-600 dark:text-success-400"}`}>
                       {pairJob.error ?? pairJob.note}

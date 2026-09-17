@@ -133,6 +133,19 @@ def symbols_of(coin_list) -> list:
 SWEEP_DAYS = 30
 
 
+def grid_frames(timeframes: str) -> str:
+    """The comma list with every frame that has NO barrier grid removed.
+
+    "1h,1m,4h" -> "1h,4h". `backtest_report.BARRIERS` is the list of frames
+    the fleet can measure; `TFS` is wider by the v2 download frame.
+    """
+    from tradingagents import backtest_report as br
+
+    keep = [t.strip() for t in str(timeframes or "").split(",")
+            if t.strip() in br.BARRIERS]
+    return ",".join(keep)
+
+
 def dispatch(*, shards: int = 20, coins: int = 0, timeframes: str = "15m,30m",
              min_days: int = 0, days: int = SWEEP_DAYS, base: float = 5.0,
              mode: str = "full", state_runs=(), live: bool = True,
@@ -157,6 +170,16 @@ def dispatch(*, shards: int = 20, coins: int = 0, timeframes: str = "15m,30m",
     ok, slug = available()
     if not ok:
         raise CloudError(slug)
+    # ONLY FRAMES WITH A GRID leave this machine. The shard reads TFS from its
+    # environment unchecked; since Backtest v2 (Sep 17, 2026) `br.TFS` also
+    # names "1m", a download frame with no barrier grid, and a shard handed it
+    # would fetch 30 days of minutes on twenty machines and die at
+    # THRESHOLDS["1m"]. Filtered here, where the string is still ours.
+    timeframes = grid_frames(timeframes)
+    if not timeframes:
+        raise CloudError("no timeframe with a barrier grid was asked for — "
+                         "1m is a download frame only (Backtest v2 rebuilds "
+                         "15m/30m/1h/4h/1d from it on this PC)")
     mode = "update" if str(mode).lower() == "update" else "full"
     named = symbols_of(coin_list)
     coin_arg, coin_why = "", ""

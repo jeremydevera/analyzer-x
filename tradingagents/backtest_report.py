@@ -125,6 +125,16 @@ TFS: dict[str, tuple[str, int, int]] = {
     "1h": ("Min60", 3600, 10000),
     "4h": ("Hour4", 14400, 14000),
     "1d": ("Day1", 86400, 2400),
+    # THE v2 DOWNLOAD FRAME, and nothing else. `1m` is here so
+    # `market_sweep.refresh_candles(symbol, "1m")` can page MEXC's Min1 stream
+    # (44,000 bars = 30.6 days, the most the venue sells at once — measured
+    # Sep 17, 2026 on BTC/ETH/VUG). It is deliberately ABSENT from
+    # `capacity.ALL_TFS`, `BARRIERS`, `THRESHOLDS` and `MIN_BARS`: no v1 job,
+    # cloud shard or completeness count may ever see a 1m pair. Backtest v2
+    # never measures ON 1m bars — it rebuilds 15m/30m/1h/4h/1d bars from them
+    # (`market_sweep.bars_from_1m`) and settles exits minute by minute.
+    # tests/test_bars_from_minutes.py holds the boundary.
+    "1m": ("Min1", 60, 44000),
 }
 
 # THE GRID IS SHARED. This is the same barrier set the `analyze1hr4hr` skill
@@ -303,6 +313,13 @@ def pairs_for(tf: str, deployed: Sequence[dict] = ()) -> list:
     Rule 21: the page must contain the exact combination that is running, and a
     live 0.80/2.40 pair is not in any grid of round numbers.
     """
+    if tf not in BARRIERS:
+        # NAMED, not a KeyError three frames deep. Since Backtest v2 (Sep 17,
+        # 2026) `TFS` also holds "1m", a DOWNLOAD frame with no grid: v2
+        # rebuilds the five measured frames from it and never measures ON it.
+        raise ValueError(
+            f"{tf!r} has no barrier grid — 1m is a download frame only; "
+            f"Backtest v2 rebuilds {', '.join(BARRIERS)} bars from it")
     extra = {(round(float(d.get("sl", 0)) / 100, 6),
               round(float(d.get("tp", 0)) / 100, 6))
              for d in deployed if d.get("tf") == tf}
@@ -365,7 +382,9 @@ def run_grid(coins: Sequence[str], tfs: Sequence[str], *,
     extra_th: dict[tuple, set] = {}
     for d in deployed:
         tf = d.get("tf")
-        if tf not in TFS:
+        # BARRIERS, not TFS: a frame with no grid cannot take a deployed pair
+        # (TFS also names the v2 download frame "1m" since Sep 17, 2026)
+        if tf not in BARRIERS:
             continue
         if d.get("signal") in THRESH_SIGNALS and d.get("th"):
             extra_th.setdefault((tf, d["signal"]), set()).add(

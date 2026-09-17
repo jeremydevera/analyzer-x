@@ -334,6 +334,73 @@ def cached_candles(symbol: str, tf: str):
     return df
 
 
+# Minutes in one bar of each frame Backtest v2 rebuilds. Not `br.TFS`: that
+# table also holds "1m" itself, and a frame rebuilt from 1m must be one of the
+# five the signals were measured on.
+MINUTES_PER_BAR = {"15m": 15, "30m": 30, "1h": 60, "4h": 240, "1d": 1440}
+
+
+def bars_from_1m(df_1m, tf: str):
+    """Rebuild `tf` bars from one-minute candles — MEXC's own bars, exactly.
+
+    Sixty one-minute candles ARE the hour candle: measured Sep 17, 2026 on
+    XPIN_USDT, 666 of 666 hours identical to MEXC's Min60 on open/high/low/
+    close (volume within 0.1% on 665). That equality is what lets Backtest v2
+    run the v1 signals unchanged and differ from v1 ONLY in how an exit is
+    settled.
+
+    Rules, each one a test in tests/test_bars_from_minutes.py:
+    * bars sit on UTC boundaries and are stamped at their OPEN, like MEXC;
+    * only a COMPLETE bar is kept (60 minutes for 1h, 240 for 4h ...): the
+      partial first bar and the forming last bar are dropped, the way v1's
+      `_closed_bars` drops the forming candle;
+    * a minute MISSING inside the window raises. A bar built over a hole
+      would carry a high/low the venue never printed, and a refused pair is
+      named in the progress file (rule 20) — a wrong bar is measured wrong
+      for ever.
+    """
+    import numpy as np
+    import pandas as pd
+
+    per = MINUTES_PER_BAR.get(tf)
+    if per is None:
+        raise ValueError(f"bars_from_1m: {tf!r} is not a frame v2 rebuilds "
+                         f"({', '.join(MINUTES_PER_BAR)})")
+    cols = ["Date", "Open", "High", "Low", "Close", "Volume"]
+    if df_1m is None or len(df_1m) == 0:
+        return pd.DataFrame(columns=cols)
+    d = df_1m.sort_values("Date").reset_index(drop=True)
+    ts = d["Date"].to_numpy().astype("datetime64[ms]").astype("int64")
+    gaps = (ts[1:] - ts[:-1]) != 60_000
+    if gaps.any():
+        k = int(np.flatnonzero(gaps)[0])
+        missing = int((ts[k + 1] - ts[k]) // 60_000) - 1
+        raise ValueError(
+            f"1m frame has {missing} missing minute(s) between "
+            f"{pd.Timestamp(ts[k], unit='ms')} and "
+            f"{pd.Timestamp(ts[k + 1], unit='ms')}")
+    bar_ms = per * 60_000
+    bucket = (ts // bar_ms) * bar_ms
+    d = d.assign(_b=bucket)
+    counts = d.groupby("_b")["Close"].count()
+    # a bucket with fewer than `per` minutes is the partial first bar or the
+    # forming last one; either way it is not a bar the venue has closed
+    full = counts[counts == per].index
+    if not len(full):
+        return pd.DataFrame(columns=cols)
+    g = d[d["_b"].isin(full)].groupby("_b", sort=True)
+    out = pd.DataFrame({
+        "Date": pd.to_datetime(g["_b"].first().to_numpy(), unit="ms"),
+        "Open": g["Open"].first().to_numpy(),
+        "High": g["High"].max().to_numpy(),
+        "Low": g["Low"].min().to_numpy(),
+        "Close": g["Close"].last().to_numpy(),
+        "Volume": (g["Volume"].sum().to_numpy() if "Volume" in d.columns
+                   else np.zeros(len(full))),
+    }).reset_index(drop=True)
+    return out
+
+
 def refresh_candles(symbol: str, tf: str, *, days: int = 365):
     """Bring the cache up to date and report what was actually fetched.
 

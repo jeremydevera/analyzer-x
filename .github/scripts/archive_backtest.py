@@ -21,8 +21,11 @@ from tradingagents.dataflows import market_db as mdb  # noqa: E402
 def main() -> int:
     coins = [c.strip() for c in (os.environ.get("COINS") or "").split(",")
              if c.strip()]
+    # `br.BARRIERS`, not `br.TFS`: since Backtest v2 (Sep 17, 2026) TFS also
+    # names "1m", which is a DOWNLOAD frame with no barrier grid — a shard
+    # asked for it would die at pairs_for("1m") after fetching its candles.
     tfs = [t.strip() for t in (os.environ.get("TFS") or "1h").split(",")
-           if t.strip() in br.TFS]
+           if t.strip() in br.BARRIERS]
     days = int(os.environ.get("DAYS") or 365)
     base = float(os.environ.get("BASE") or 5.0)
     if not coins or not tfs:

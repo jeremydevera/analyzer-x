@@ -1773,7 +1773,9 @@ def _run_backtest_inner(spec: dict, files_key: str = "backtest",
     # to die here — hours of work discarded at the last step because one key
     # was missing, reported to the operator only as `failed: 'report_name'`.
     # A report always has somewhere to go; the name is a convenience.
-    name = spec.get("report_name") or spec.get("name") or "archive.html"
+    name = (spec.get("report_name") or spec.get("name")
+            # a v2 run writes its own report file, never over v1's
+            or ("archive-v2.html" if kind.endswith("_v2") else "archive.html"))
     if not str(name).endswith(".html"):
         name = f"{name}.html"
     REPORT_DIR.mkdir(parents=True, exist_ok=True)

@@ -8,8 +8,9 @@
  * it, because the truth lives in the job's progress file, not in this
  * component.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
-import { api, JobStatus } from "@/lib/api";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { api, JobStatus, storeApi, StoreName } from "@/lib/api";
+import StoreBadge from "@/components/StoreBadge";
 import Button from "@/components/ui/button/Button";
 import Badge from "@/components/ui/badge/Badge";
 import CoinPicker from "@/components/backtest/CoinPicker";
@@ -20,7 +21,11 @@ import MonthsPanel from "@/components/candles/MonthsPanel";
 
 const TFS = ["15m", "30m", "1h", "4h", "1d"];
 
-export default function DownloadScreen() {
+/** `store="v2"` is Candles v2 (Sep 17, 2026): the same screen over the
+ *  1-minute store — one frame, the v2 job kinds, the v2 routes — with a badge
+ *  that says so. The default is the screen the operator has always had. */
+export default function DownloadScreen({ store = "v1" }: { store?: StoreName }) {
+  const S = useMemo(() => storeApi(store), [store]);
   const [coins, setCoins] = useState<string[]>([]);
   const [gaps, setGaps] = useState<Awaited<ReturnType<typeof api.candleGaps>> | null>(null);
   const [lost, setLost] = useState<Awaited<ReturnType<typeof api.candleLost>> | null>(null);
@@ -28,24 +33,25 @@ export default function DownloadScreen() {
   // ONE definition of pending, from the route — never counted in this
   // component, which is how the button and the Pending tab came to disagree.
   const [pending, setPending] = useState<Awaited<ReturnType<typeof api.candlePending>> | null>(null);
-  const [tfs, setTfs] = useState<string[]>(["15m", "30m", "1h", "4h"]);
+  // v2 downloads 1m and nothing else — the finest candle MEXC sells
+  const [tfs, setTfs] = useState<string[]>(store === "v2" ? ["1m"] : ["15m", "30m", "1h", "4h"]);
   const [dl, setDl] = useState<JobStatus | null>(null);
   const [err, setErr] = useState("");
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const poll = useCallback(() => {
-    api.jobStatus("download").then(setDl).catch(() => {});
-  }, []);
+    S.jobStatus("download").then(setDl).catch(() => {});
+  }, [S]);
   const scanGaps = useCallback(() => {
     // this walks EVERY stored pair's file, so it runs on arrival and after a
     // job ends — never on the 4-second job poll
-    api.candleGaps().then(setGaps).catch(() => {});
+    S.candleGaps().then(setGaps).catch(() => {});
     // the lost list is rewritten by every download job, so it refreshes on
     // the same schedule: arrival, every minute, and when a job ends
-    api.candleLost().then(setLost).catch(() => {});
-    api.candleCompleteness().then(setWhole).catch(() => {});
-    api.candlePending().then(setPending).catch(() => {});
-  }, []);
+    S.candleLost().then(setLost).catch(() => {});
+    S.candleCompleteness().then(setWhole).catch(() => {});
+    S.candlePending().then(setPending).catch(() => {});
+  }, [S]);
   useEffect(() => {
     poll();
     scanGaps();
@@ -65,7 +71,7 @@ export default function DownloadScreen() {
   const update = async () => {
     setErr("");
     if (!confirm(`Update ${gaps?.pairs ?? 0} stored pair(s)?\n\nOnly the bars printed since each pair's last stored bar are fetched — nothing is downloaded again.`)) return;
-    try { await api.jobStart("download", { mode: "update" }); poll(); }
+    try { await S.jobStart("download", { mode: "update" }); poll(); }
     catch (e) { setErr(String(e)); }
   };
 
@@ -107,7 +113,7 @@ ${(pending!.queue - n).toLocaleString()} more pair(s) on delisted contracts are 
 
 ${(pending?.unfixable ?? 0).toLocaleString()} pair(s) cannot be fixed by any run (delisted, or the venue serves no candles).`
         : ""))) return;
-    try { await api.jobStart("download", { mode: "resolve" }); poll(); }
+    try { await S.jobStart("download", { mode: "resolve" }); poll(); }
     catch (e) { setErr(String(e)); }
   };
 
@@ -115,7 +121,7 @@ ${(pending?.unfixable ?? 0).toLocaleString()} pair(s) cannot be fixed by any run
    * (db_download.lost.json). Nothing else is touched. */
   const retry = async () => {
     setErr("");
-    try { await api.jobStart("download", { mode: "retry" }); poll(); }
+    try { await S.jobStart("download", { mode: "retry" }); poll(); }
     catch (e) { setErr(String(e)); }
   };
 
@@ -123,17 +129,23 @@ ${(pending?.unfixable ?? 0).toLocaleString()} pair(s) cannot be fixed by any run
     setErr("");
     if (coins.length > 50 &&
         !confirm(`${coins.length} contracts × ${tfs.length} timeframe(s).\n\nA first download this size takes hours. It keeps whatever finishes, and you can stop it at any point.`)) return;
-    try { await api.jobStart("download", { coins, tfs }); poll(); }
+    try { await S.jobStart("download", { coins, tfs }); poll(); }
     catch (e) { setErr(String(e)); }
   };
 
   return (
     <div className="flex flex-col gap-5">
       <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-white/[0.05] dark:bg-white/[0.03]">
-        <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Download candles</h3>
+        <h3 className="flex flex-wrap items-center gap-2 text-base font-semibold text-gray-800 dark:text-white/90">
+          Download candles <StoreBadge store={store} />
+        </h3>
         <p className="mb-4 text-theme-xs text-gray-500 dark:text-gray-400">
-          Fills this PC&apos;s store — the candles every backtest reads. Runs detached: leaving this
-          screen or closing the browser does not stop it. After the first fill, only new bars are fetched.
+          {store === "v2"
+            ? <>Fills the v2 store — the 1-minute candles Backtest v2 reads. MEXC sells 30 days of them at a time
+                (about 44,000 per coin); every UPDATE adds the minutes since, so the history keeps growing.
+                Runs detached: leaving this screen or closing the browser does not stop it.</>
+            : <>Fills this PC&apos;s store — the candles every backtest reads. Runs detached: leaving this
+                screen or closing the browser does not stop it. After the first fill, only new bars are fetched.</>}
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
@@ -142,16 +154,26 @@ ${(pending?.unfixable ?? 0).toLocaleString()} pair(s) cannot be fixed by any run
           </div>
           <div>
             <label className="mb-1 block text-theme-xs text-gray-500 dark:text-gray-400">Timeframes</label>
-            <div className="flex flex-wrap gap-2 pt-1.5">
-              {TFS.map((t) => (
-                <button key={t}
-                  onClick={() => setTfs((cur) => cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t])}
-                  className={`rounded-full px-3 py-1 text-theme-xs font-medium ${tfs.includes(t)
-                    ? "bg-brand-500 text-white" : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"}`}>
-                  {t}
-                </button>
-              ))}
-            </div>
+            {store === "v2" ? (
+              // ONE frame, not a choice: the v2 job refuses anything but 1m
+              // (db_jobs._download_tfs), so offering the five would be a
+              // picker whose picks do nothing
+              <p className="pt-1.5 text-theme-xs text-gray-600 dark:text-gray-300">
+                <span className="rounded-full bg-brand-500 px-3 py-1 font-medium text-white">1m</span>
+                <span className="ml-2">1-minute candles only — the finest MEXC sells</span>
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2 pt-1.5">
+                {TFS.map((t) => (
+                  <button key={t}
+                    onClick={() => setTfs((cur) => cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t])}
+                    className={`rounded-full px-3 py-1 text-theme-xs font-medium ${tfs.includes(t)
+                      ? "bg-brand-500 text-white" : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"}`}>
+                    {t}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
         {err && <p className="mt-2 text-theme-sm text-error-500">{err}</p>}
@@ -160,7 +182,7 @@ ${(pending?.unfixable ?? 0).toLocaleString()} pair(s) cannot be fixed by any run
             DOWNLOAD CANDLES
           </Button>
           {dl?.running && (
-            <Button size="sm" variant="outline" onClick={() => api.jobStop("download").then(poll)}>STOP</Button>
+            <Button size="sm" variant="outline" onClick={() => S.jobStop("download").then(poll)}>STOP</Button>
           )}
           {/* FIRST, because it is the one button that clears every kind. */}
           <Button size="sm" onClick={resolve}
@@ -234,7 +256,11 @@ ${(pending?.unfixable ?? 0).toLocaleString()} pair(s) cannot be fixed by any run
             {!whole.ok
               ? `store completeness unknown — ${whole.why}`
               : whole.complete
-                ? `store complete: ${(whole.stored ?? 0).toLocaleString()} of ${(whole.wanted ?? 0).toLocaleString()} pairs (${whole.contracts} contracts × 5 timeframes)`
+                // the frame count is the ROUTE'S, never a literal 5: Candles v2
+                // counts one frame (label-must-match-data)
+                ? `store complete: ${(whole.stored ?? 0).toLocaleString()} of ${(whole.wanted ?? 0).toLocaleString()} pairs (${whole.contracts} contracts × ${
+                    (whole.timeframes?.length ?? 5) === 1 ? `1 timeframe (${whole.timeframes![0]})`
+                    : `${whole.timeframes?.length ?? 5} timeframes`})`
                 : `store missing ${whole.missing.length.toLocaleString()} of ${(whole.wanted ?? 0).toLocaleString()} pairs: ${
                     whole.missing.slice(0, 8).map((m) => `${m.symbol.replace("_USDT", "")} ${m.timeframe}`).join(" · ")}${
                     whole.missing.length > 8 ? ` · and ${whole.missing.length - 8} more` : ""}`}
@@ -264,10 +290,13 @@ ${(pending?.unfixable ?? 0).toLocaleString()} pair(s) cannot be fixed by any run
         {/* did it work? the progress file only holds the LAST run, so the
             outcome of every run comes from the event store. Keyed on
             `running` so a finishing job refreshes the list. */}
-        <DownloadHistory refreshKey={dl?.running ? 1 : 0} />
+        <DownloadHistory refreshKey={dl?.running ? 1 : 0} store={store} />
       </div>
-      <MonthsPanel />
-      <StoragePanel />
+      {/* the month-delete and the parquet sizes read the v1 store; v2 gets
+          them once they take a store (the gaps line above already says how
+          many 1m pairs v2 holds) */}
+      {store === "v1" && <MonthsPanel />}
+      {store === "v1" && <StoragePanel />}
     </div>
   );
 }

@@ -683,6 +683,9 @@ export const api = {
     ok: boolean; why: string; contracts: number | null; wanted: number | null;
     stored: number | null; missing: { symbol: string; timeframe: string }[];
     complete: boolean | null;
+    /** the frames the count is OF — five on v1, ["1m"] on Candles v2 — so
+     *  the screen never prints "x 5 timeframes" over a one-frame store */
+    timeframes?: string[];
   }>("/api/candles/completeness"),
   plan: (coins: string[], tfs: string[]) =>
     get<GridPlan>(`/api/backtest/plan?coins=${coins.join(",")}&tfs=${tfs.join(",")}`),

@@ -18,7 +18,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  api, DownloadHistory as Payload, DownloadHistoryRow, notifyApi,
+  api, DownloadHistory as Payload, DownloadHistoryRow, storeApi, StoreName,
 } from "@/lib/api";
 
 // the shapes come from the calls themselves, so a route change is a type error
@@ -94,7 +94,9 @@ function Job({ tone, what, fix, children }: {
   );
 }
 
-function Pending({ refreshKey }: { refreshKey: number }) {
+function Pending({ refreshKey, store = "v1" }: { refreshKey: number; store?: StoreName }) {
+  // the store this tab reads: Candles v2's 1m pairs, or the v1 five
+  const S = useMemo(() => storeApi(store), [store]);
   const [lost, setLost] = useState<LostPayload | null>(null);
   const [comp, setComp] = useState<CompPayload | null>(null);
   const [gaps, setGaps] = useState<GapsPayload | null>(null);
@@ -105,11 +107,11 @@ function Pending({ refreshKey }: { refreshKey: number }) {
   const [why, setWhy] = useState("");
 
   useEffect(() => {
-    api.candleLost().then(setLost).catch((e) => setWhy(String(e)));
-    api.candleCompleteness().then(setComp).catch(() => {});
-    api.candleGaps().then(setGaps).catch(() => {});
-    api.candlePending().then(setWork).catch(() => {});
-  }, [refreshKey]);
+    S.candleLost().then(setLost).catch((e) => setWhy(String(e)));
+    S.candleCompleteness().then(setComp).catch(() => {});
+    S.candleGaps().then(setGaps).catch(() => {});
+    S.candlePending().then(setWork).catch(() => {});
+  }, [refreshKey, S]);
 
   const byKind = useMemo(() => {
     const out: Record<string, { coin: string; tf: string; why: string }[]> = {};
@@ -326,13 +328,16 @@ const TABS = [
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
 
-export default function DownloadHistory({ refreshKey = 0 }: { refreshKey?: number }) {
+export default function DownloadHistory({ refreshKey = 0, store = "v1" }:
+                                        { refreshKey?: number; store?: StoreName }) {
+  const S = useMemo(() => storeApi(store), [store]);
   const [d, setD] = useState<Payload | null>(null);
   const [tab, setTab] = useState<Tab>("pending");
 
   const load = useCallback(() => {
-    notifyApi.downloadHistory(20).then(setD).catch(() => {});
-  }, []);
+    // the v2 job's own runs (download_v2), never v1's, on Candles v2
+    S.downloadHistory(20).then(setD).catch(() => {});
+  }, [S]);
   useEffect(() => { load(); }, [load, refreshKey]);
 
   const runs = useMemo(
@@ -364,7 +369,7 @@ export default function DownloadHistory({ refreshKey = 0 }: { refreshKey?: numbe
       </div>
 
       {tab === "pending" ? (
-        <Pending refreshKey={refreshKey} />
+        <Pending refreshKey={refreshKey} store={store} />
       ) : runs.length ? (
         <>
           {/* a past run is history, not a job — say so once, here */}

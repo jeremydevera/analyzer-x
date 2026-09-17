@@ -47,6 +47,20 @@ const navItems: NavItem[] = [
     name: "Candles",
     path: "/candles",
   },
+  // Backtest v2 (Sep 17, 2026): a 1-minute candle store and a grid whose
+  // exits are settled minute by minute, beside the v1 pair — never in place
+  // of it. Same icons on purpose: they are the same screens, over another
+  // store, and the badge on each page says which.
+  {
+    icon: <DownloadIcon />,
+    name: "Candles v2",
+    path: "/candles-v2",
+  },
+  {
+    icon: <TableIcon />,
+    name: "Backtest v2",
+    path: "/backtest-v2",
+  },
   {
     icon: <ShootingStarIcon />,
     name: "New Crypto",

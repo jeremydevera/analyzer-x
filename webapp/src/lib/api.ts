@@ -117,6 +117,12 @@ async function postDetail<T>(path: string, body: unknown): Promise<T> {
 
 // ---------------------------------------------------------------- types
 export interface StrategyRow {
+  /** Backtest v2 only: trades whose exit MINUTE touched both the win and the
+   *  lose price and were booked as a loss by rule — the count of trades that
+   *  are still a guess. Absent on a v1 row. */
+  unclear?: number | null;
+  /** the resolution the exits were settled at ("1m" on a v2 row) */
+  res?: string | null;
   /** LAST N MONTHS: what this row did inside the window. Profit and green are
    *  exact (the sweep stores profit per month); there is deliberately no
    *  w_trades or w_winrate, because the sweep does not keep those per month. */
@@ -746,7 +752,8 @@ export const api = {
     sizing?: string; rowId?: string; desc?: boolean;
     /** the download has to carry the same group as the table it came from */
     group?: "preset" | "classic";
-  }) => {
+  // `base` is "/api/v2" for Backtest v2's store (storeApi), "/api" otherwise
+  }, base = "/api") => {
     const p = new URLSearchParams();
     if (q.coin) p.set("coin", q.coin);
     if (q.tf) p.set("tf", q.tf);
@@ -777,7 +784,7 @@ export const api = {
     // table had already cut — the same way the window was dropped on Sep 09
     if (q.measuredDays) p.set("measured_days", String(q.measuredDays));
     if (q.desc !== undefined) p.set("desc", String(q.desc));
-    return `${API_BASE}/api/strategies.csv?${p.toString()}`;
+    return `${API_BASE}${base}/strategies.csv?${p.toString()}`;
   },
   strategies: (q: {
     coin?: string;
@@ -846,7 +853,8 @@ export const api = {
     days?: number;
     /** false = lowest first; omit for the column's useful end */
     desc?: boolean;
-  }) => {
+  // `base` is "/api/v2" for Backtest v2's store (storeApi), "/api" otherwise
+  }, base = "/api") => {
     const p = new URLSearchParams();
     if (q.coin) p.set("coin", q.coin);
     if (q.sort) p.set("sort", q.sort);
@@ -902,8 +910,11 @@ export const api = {
     no_candles?: number; outside_window?: number; failed?: number;
   };
       /** a filtered count stops at COUNT_CAP: print "N+" */
-      total_capped?: boolean }>(
-      `/api/strategies?${p.toString()}`,
+      total_capped?: boolean;
+      /** which store answered ("v2" for Backtest v2) and, on an empty v2
+       *  store, the sentence that says what to do first */
+      store?: string; why?: string }>(
+      `${base}/strategies?${p.toString()}`,
     );
   },
 
@@ -966,9 +977,9 @@ export const api = {
    *  from this PC and from the GitHub shards. */
   backtestLogs: () => get<BacktestLogs>("/api/backtest/logs"),
 
-  jobStatus: (kind: "download" | "backtest" | "btupdate" | "stratbt" | "pairbt" | "collect") =>
+  jobStatus: (kind: "download" | "backtest" | "btupdate" | "stratbt" | "pairbt" | "collect" | "download_v2" | "backtest_v2") =>
     get<JobStatus>(`/api/jobs/${kind}`),
-  jobStart: (kind: "download" | "backtest" | "btupdate" | "stratbt" | "pairbt" | "collect", spec: unknown) =>
+  jobStart: (kind: "download" | "backtest" | "btupdate" | "stratbt" | "pairbt" | "collect" | "download_v2" | "backtest_v2", spec: unknown) =>
     post<{ pid: number }>(`/api/jobs/${kind}/start`, spec),
   /** Finish the pairs in flight, then hand this sweep to GitHub Actions.
    *  Not a stop: every measured pair stays, and the cloud is dispatched for
@@ -980,7 +991,7 @@ export const api = {
           handed_off: boolean; running: boolean;
           stalled: boolean; stalled_why: string }>(`/api/jobs/${kind}/handoff`),
 
-  jobStop: (kind: "download" | "backtest" | "btupdate" | "stratbt" | "pairbt" | "collect") =>
+  jobStop: (kind: "download" | "backtest" | "btupdate" | "stratbt" | "pairbt" | "collect" | "download_v2" | "backtest_v2") =>
     post<{ ok: boolean }>(`/api/jobs/${kind}/stop`, {}),
 
   /** The ledger, newest first. `actions` names the rows wanted — "enter,exit"
@@ -1501,6 +1512,44 @@ export const notifyApi = {
   downloadHistory: (limit = 20) =>
     get<DownloadHistory>(`/api/candles/download-history?limit=${limit}`),
 };
+
+// ----------------------------------------------------------------- stores
+/** Which store a panel reads: v1 (the year-deep grid) or v2 (Backtest v2,
+ *  minute-exact exits on 1-minute candles, Sep 17, 2026). The v2 methods are
+ *  the v1 methods under `/api/v2` with the v2 job kinds; v1 delegates to the
+ *  existing functions, so nothing a v1 panel calls changes. */
+export type StoreName = "v1" | "v2";
+
+export function storeApi(store: StoreName) {
+  const P = store === "v2" ? "/api/v2" : "/api";
+  const dl = (store === "v2" ? "download_v2" : "download") as "download" | "download_v2";
+  const bt = (store === "v2" ? "backtest_v2" : "backtest") as "backtest" | "backtest_v2";
+  return {
+    store,
+    downloadKind: dl,
+    backtestKind: bt,
+    /** the frames THIS store downloads — v2 is 1m and nothing else */
+    tfs: store === "v2" ? ["1m"] : ["15m", "30m", "1h", "4h", "1d"],
+    candlePending: () => get<CandlePending>(`${P}/candles/pending`),
+    candleGaps: () => get<Awaited<ReturnType<typeof api.candleGaps>>>(`${P}/candles/gaps`),
+    candleLost: () => get<Awaited<ReturnType<typeof api.candleLost>>>(`${P}/candles/lost`),
+    candleCompleteness: () =>
+      get<Awaited<ReturnType<typeof api.candleCompleteness>> & { timeframes?: string[] }>(
+        `${P}/candles/completeness`),
+    downloadHistory: (limit = 20) =>
+      get<DownloadHistory>(`${P}/candles/download-history?limit=${limit}`),
+    strategies: (q: Parameters<typeof api.strategies>[0]) => api.strategies(q, P),
+    strategiesCsvUrl: (q: Parameters<typeof api.strategiesCsvUrl>[0]) => api.strategiesCsvUrl(q, P),
+    facets: () =>
+      get<Awaited<ReturnType<typeof api.facets>> & { store?: string; why?: string }>(
+        `${P}/strategies/facets`),
+    storage: () => get<BtStorage & { store?: string; why?: string }>(`${P}/backtest/storage`),
+    jobStatus: (kind: "download" | "backtest") => api.jobStatus(kind === "download" ? dl : bt),
+    jobStart: (kind: "download" | "backtest", spec: unknown) =>
+      api.jobStart(kind === "download" ? dl : bt, spec),
+    jobStop: (kind: "download" | "backtest") => api.jobStop(kind === "download" ? dl : bt),
+  };
+}
 
 // ------------------------------------------------------------- running jobs
 export interface RunningJob {

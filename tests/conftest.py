@@ -262,6 +262,12 @@ def _never_touch_the_live_book(tmp_path, monkeypatch):
                              # "already running" and never restart it — the
                              # exact silence this lock was added to end.
                              ("RUNLOCK", "rows_index.run.lock"),
+                             # the QUEUE-JUMP list (Sep 18, 2026). A test run
+                             # at 4:38am emptied the operator's real one while
+                             # XPIN-1h was still waiting in it — the row they
+                             # had pressed UPDATE on lost its place in the
+                             # queue to a fixture (RCA-2026-09-18-K).
+                             ("ASKED_FIRST", "rows_index_asked.json"),
                              ("REBUILD_PROGRESS", "rows_rebuild.json")):
             if hasattr(_ri, _name):
                 monkeypatch.setattr(_ri, _name, sandbox / _leaf)

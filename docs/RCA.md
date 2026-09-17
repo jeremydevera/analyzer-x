@@ -186,10 +186,14 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
   joined that list — even though Backtest v2 writes only its own folder and
   never touches the old store's files. You were right: they are separate.
 * What stops it now: the copier only stands aside for jobs that write the
-  store IT is filling. Backtest v2 measuring no longer freezes the old
-  screen, and the old screen's jobs no longer freeze Backtest v2. (The
-  six-hour full rebuild still yields to both — that one really is about the
-  disk.)
+  store IT is filling. While the other one is measuring it still shares the
+  disk politely — it copies the rows you pressed UPDATE on straight away and
+  leaves the 5,270-pair backlog until that job ends — so neither screen
+  freezes and neither run is starved. (The six-hour full rebuild still
+  yields to both; that one really is about the disk.)
+* One more thing the same hunt found: a test run at 4:38am emptied the real
+  queue-jump list, so XPIN 1h lost the place the UPDATE press had given it.
+  That file is now inside the test sandbox, with the pending list.
 
 **DEV**
 
@@ -203,7 +207,12 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 * Invariant broken: **a store's index yields to the jobs that write THAT
   store** — plus CLAUDE.md's *THE UI IS THE SOURCE OF TRUTH, SO IT IS KEPT
   CURRENT*: a 21-hour pause is the RCA-2026-09-14-B silence with a different
-  cause.
+  cause. `other_store_job()` is the second half: the other version's job
+  shares the platter, so the loop files only `_asked()` pairs while it runs
+  and `status()` carries `deferring_to` for the panel's third sentence.
+  `ASKED_FIRST` (added Sep 18) was outside the conftest sandbox and
+  `test_the_sandbox_covers_every_path_constant_it_can_find` was RED for it
+  at the time, in a suite with two other long-standing Windows reds.
 * Guard: `tests/test_v2_surfaces_read_their_own_store.py::test_a_v2_job_does_not_pause_the_v1_index`
   (v2 job → v1 keeps filing; v1 job → v2 keeps filing; each still yields to
   its own) and `::test_the_rebuild_still_yields_to_both_because_it_is_the_disk`.
@@ -227,8 +236,16 @@ index"}`.
 4. From that minute the v1 indexer prints *"paused: a btupdate_v2 is
    running (5,270 pairs waiting)"* every cycle — including XPIN 1h, the one
    the operator pressed.
-5. `4:50am` — `busy_job()` reads the store it is filling: with
+5. `4:38am` — a local test run rewrites the real `rows_index_asked.json`
+   to `[]`: XPIN 1h loses its queue-jump place too.
+6. `4:50am` — `busy_job()` reads the store it is filling: with
    `btupdate_v2` running, v1 answers `""` and v2 answers `"btupdate_v2"`.
+7. `5:05am` — round 4 of the harddev loop: filing the whole 5,270-pair
+   backlog beside the v2 sweep would starve it (measured 36 pairs/hour
+   against 220 when a trickle fought a sweep), so while the other store's
+   job runs only `_asked()` pairs are filed — seconds of work — and the
+   backlog waits. The v2 sweep's rate across the change: 2.99 → 3.11
+   pairs/min.
 
 **ROOT CAUSE** — a pause meant for "do not fight the big job on this store"
 was applied to a job on the OTHER store, because the list it reads is every
@@ -248,7 +265,10 @@ for the 1 h 45 min between the press and this fix, and would not have for
 
 **FIX** — this commit.
 
-**GUARD** — `tests/test_v2_surfaces_read_their_own_store.py::test_a_v2_job_does_not_pause_the_v1_index`.
+**GUARD** — `tests/test_v2_surfaces_read_their_own_store.py::test_a_v2_job_does_not_pause_the_v1_index`,
+`::test_the_backlog_waits_for_the_other_store_but_a_pressed_row_does_not`, and
+`tests/test_tests_cannot_write_the_real_home.py::test_the_sandbox_covers_every_path_constant_it_can_find`
+(now watching `rows_index.ASKED_FIRST` and `pending_ledger.STATE_DIR`).
 
 ---
 

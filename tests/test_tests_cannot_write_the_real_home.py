@@ -35,9 +35,14 @@ GUARDED = [
                                     "WORKERS", "INDEX_PATH", "HANDOFF_PATH",
                                     "MANIFEST", "PIDFILE", "PROGRESS", "ROWS")),
     ("tradingagents.parquet_store", ("ROOT", "CANDLES", "GRIDS")),
-    ("tradingagents.rows_index", ("DB_PATH", "PIDFILE")),
+    ("tradingagents.rows_index", ("DB_PATH", "PIDFILE", "ASKED_FIRST")),
     ("tradingagents.auto_trader", ("STATE_DIR", "LOCK_PATH",
                                    "WANT_PATH")),
+    # the PENDING LEDGER: every download test wrote its fixture pairs into
+    # the operator's real pending list, and the number on the Candles
+    # screen's RESOLVE button was 11 fixtures (RCA-2026-09-18-C). This entry
+    # is what makes the sweep below look inside the module at all.
+    ("tradingagents.pending_ledger", ("STATE_DIR",)),
 ]
 
 

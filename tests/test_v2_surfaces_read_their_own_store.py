@@ -231,3 +231,30 @@ def test_the_rebuild_still_yields_to_both_because_it_is_the_disk():
     for kind in ("collect", "backtest", "download", "btupdate",
                  "download_v2", "backtest_v2", "btupdate_v2"):
         assert kind in ri._PAIR_WRITERS, kind
+
+
+def test_the_backlog_waits_for_the_other_store_but_a_pressed_row_does_not(monkeypatch):
+    """RCA-2026-09-18-K, round 4: not pausing at all would have put a bulk
+    re-file of 5,270 v1 pairs on the same platter as a 4,012-pair v2 sweep.
+    The rows a PERSON pressed UPDATE on are filed at once; the rest waits."""
+    from tradingagents import db_jobs as dj
+
+    monkeypatch.setattr(dj, "status",
+                        lambda kind: {"running": kind == "btupdate_v2", "pid": 7})
+    monkeypatch.setattr(ri, "rebuild_progress", lambda: {})
+    assert ri.busy_job() == "", "not a pause"
+    assert ri.other_store_job() == "btupdate_v2", "but the disk is shared"
+    assert ri.status()["deferring_to"] == "btupdate_v2"
+
+    loop = inspect.getsource(ri.start_keeping_up)
+    i = loop.index("other_store_job()")
+    j = loop.index("sync(", i)
+    block = loop[i:j]
+    assert "_asked()" in block, "only the pressed pairs go in while it runs"
+    assert "someone pressed UPDATE on" in block, "and the log says so"
+    assert "sync(todo" in loop[j - 6:j + 20], "the filtered list is what is filed"
+
+    panel = (Path(__file__).resolve().parents[1]
+             / "webapp/src/components/backtest/StrategiesPanel.tsx").read_text(encoding="utf-8")
+    assert "idx.deferring_to" in panel
+    assert "a row you press UPDATE on is filed at once" in panel

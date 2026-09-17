@@ -1024,7 +1024,14 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
                 ? "nothing is filling this — the indexer is not running; press the button"
                 : idx.paused_by
                   ? `catching up on its own · paused while ${idx.paused_by} has the disk`
-                  : "catching up on its own in the background"}
+                  /* THE OTHER STORE has the disk (Backtest v2's job, or this
+                     one's while you are on v2). Not a pause: a row you press
+                     UPDATE on is filed within seconds, only the backlog
+                     waits — RCA-2026-09-18-K, where a 21-hour v2 run froze
+                     this whole list. */
+                  : idx.deferring_to
+                    ? `catching up · the backlog waits while ${idx.deferring_to} has the disk, but a row you press UPDATE on is filed at once`
+                    : "catching up on its own in the background"}
             </span>
           </div>
         ) : null}

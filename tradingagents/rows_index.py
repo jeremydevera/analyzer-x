@@ -240,6 +240,7 @@ BULK_PAIRS = 8
 # measured), so the backlog shrinks without competing for the machine.
 TRICKLE_PAIRS = 1          # only an explicit force= caller trickles now
 _said_paused = [False]     # so the pause is logged once, not every 10 s
+_said_deferred = [False]   # and the same for the other store's disk turn
 
 
 def busy_job() -> str:
@@ -333,8 +334,37 @@ def _store_is_v2() -> bool:
 
 
 def _machine_is_busy() -> bool:
-    """Is any heavy store job running right now? See `busy_job`."""
+    """Is any heavy job on THIS store running right now? See `busy_job`."""
     return bool(busy_job())
+
+
+def other_store_job() -> str:
+    """The OTHER version's running job, or "" — it has the same disk.
+
+    `busy_job` is about this store's files, and a job on the other store
+    cannot corrupt or lock them. It can still take the platter: a v2 sweep
+    measuring 4,012 pairs and a bulk re-file of 5,270 v1 pairs on one
+    mechanical G: would halve both (measured on a v1 sweep beside the
+    trickle: 36 pairs/hour against 220).
+
+    So the index does not stand down for it — it DEFERS: the pairs a person
+    pressed UPDATE on (`ask_first`) are filed at once, seconds of work, and
+    the rest of the backlog waits for the disk. A frozen screen and a starved
+    sweep are both failures; this is neither.
+    """
+    try:
+        from tradingagents import db_jobs as dj
+
+        mine_v2 = _store_is_v2()
+        for kind in dj.FILES:
+            if str(kind).endswith("_v2") == mine_v2:
+                continue
+            with contextlib.suppress(Exception):
+                if dj.status(kind).get("running"):
+                    return str(kind)
+    except Exception:                                          # noqa: BLE001
+        return ""
+    return ""
 
 logger = logging.getLogger(__name__)
 
@@ -4366,6 +4396,9 @@ def status(db_path=None) -> dict:
             # promised a seventh of the work it had started.
             "stale": None if pairs is None else len(stale_pairs()),
             "syncing": False if _DB_OVERRIDE.get() else syncing(),
+            # THE OTHER STORE'S job, which shares this machine's one disk.
+            # Not a pause: the backlog waits, a pressed row does not.
+            "deferring_to": "" if _DB_OVERRIDE.get() else other_store_job(),
             # IS ANYTHING ACTUALLY FILLING THIS? Every other field here
             # describes the backlog; none of them said whether a process
             # exists to work it off. On Sep 13, 2026 4:05pm the indexer died
@@ -4652,10 +4685,26 @@ def start_keeping_up(every_s: float = 10.0, budget_s: float = 60.0) -> bool:
                     continue
                 _said_paused[0] = False
                 todo = stale_pairs()
+                # THE OTHER STORE HAS THE DISK. Not our files, so nothing is
+                # unsafe — but a bulk pass would starve its sweep, so only
+                # what a PERSON pressed goes in now (RCA-2026-09-18-K).
+                shared = other_store_job()
+                if shared and todo:
+                    asked = set(_asked())
+                    todo = [p for p in todo
+                            if str(getattr(p, "stem", p)) in asked]
+                    if not _said_deferred[0]:
+                        print(f"[rows-index] {shared} has the disk: filing "
+                              f"only the pair(s) someone pressed UPDATE on; "
+                              f"the rest of the backlog waits for it to "
+                              f"finish", flush=True)
+                        _said_deferred[0] = True
+                elif not shared:
+                    _said_deferred[0] = False
                 if todo:
                     _syncing.set()         # so status() reports the timer too
                     try:
-                        got = sync(budget_s=budget_s)
+                        got = sync(todo, budget_s=budget_s)
                     finally:
                         _syncing.clear()
                     checkpoint_if_bloated()

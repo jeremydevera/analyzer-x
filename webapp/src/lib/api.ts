@@ -1677,6 +1677,9 @@ export type IndexStatus = {
   /** "job" on Backtest v2: its rows are filed by the backtest job when it
    *  finishes — there is no indexer process to be "catching up" */
   filed_by?: "job" | "indexer";
+  /** the OTHER store's running job, which shares this machine's one disk:
+   *  the backlog waits for it, a row you press UPDATE on does not */
+  deferring_to?: string;
   /** WHICH job owns the disk while the indexer stands down, in words
    *  ("collect", "backtest"). "paused" with no name is the stalled screen
    *  RCA-2026-09-10-C was about. */

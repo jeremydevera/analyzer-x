@@ -141,7 +141,9 @@ def test_it_verifies_rows_pairs_and_integrity_before_swapping():
     src = inspect.getsource(ri.compact)
     assert "quick_check" in src
     assert "got_rows != want_rows" in src and "got_pairs != want_pairs" in src
-    i = src.index("shutil.move")
+    # the swap is `swap_in(dest, backup, ...)` since RCA-2026-09-12-K — the
+    # same contract, one function; `shutil.move` was its earlier spelling
+    i = src.index("swap_in(")
     assert src.index("quick_check") < i, "verify BEFORE the swap, never after"
 
 

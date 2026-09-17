@@ -282,7 +282,12 @@ def shutdown_pool(grace: float = 4.0) -> int:
     mine = os.getpid()
     kids = portable.child_pids(mine)
     for pid in kids:
-        with contextlib.suppress(ProcessLookupError, PermissionError):
+        # OSError too: on Windows `os.kill` is TerminateProcess, and a child
+        # that has already gone (or a pid Windows will not open) answers
+        # WinError 87 "the parameter is incorrect" — not ProcessLookupError.
+        # This is a best-effort shutdown; a pid we cannot signal is not ours
+        # to crash over.
+        with contextlib.suppress(ProcessLookupError, PermissionError, OSError):
             os.kill(pid, signal.SIGTERM)
     if kids:
         time.sleep(grace)

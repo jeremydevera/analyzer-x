@@ -107,8 +107,8 @@ export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
 
   const poll = useCallback(() => {
     S.jobStatus("backtest").then(setBt).catch(() => {});
-    if (store !== "v1") return;             // v2 has no update job, no cloud, no hand-over
-    api.jobStatus("btupdate").then(setUpd).catch(() => {});
+    S.jobStatus("update").then(setUpd).catch(() => {});     // btupdate_v2 on v2
+    if (store !== "v1") return;             // v2 has no cloud and no hand-over
     api.cloudStatus().then(setCloud).catch(() => {});
     api.jobHandoffState("backtest").then(setHand).catch(() => {});
   }, [S, store]);
@@ -178,8 +178,9 @@ export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
           // the button and the run agree without relying on a server default.
           fresh: kind === "backtest",
         };
-      // BACKTEST goes to this store's job (backtest_v2 on Backtest v2)
-      await (kind === "backtest" ? S.jobStart("backtest", spec) : api.jobStart(kind, spec));
+      // BACKTEST and UPDATE go to this store's jobs (backtest_v2 / btupdate_v2
+      // on Backtest v2)
+      await S.jobStart(kind === "backtest" ? "backtest" : "update", spec);
       poll();
     } catch (e) {
       setErr(String(e));
@@ -318,17 +319,14 @@ export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
                     It used to be disabled without a selection, and the job
                     behind it turned an empty list into zero pairs and reported
                     "0/0" (2026-09-03). */}
-                {/* v2 has no update job yet: BACKTEST is the whole story there */}
-                {store === "v1" && (
                 <span title={coins.length
-                  ? "CONTINUE the stored backtests for the picked coins over new candles only — never from scratch."
-                  : "CONTINUE every stored backtest over new candles only — every pair this machine has candles for, never from scratch."}>
+                  ? `CONTINUE the stored backtests for the picked coins over new candles only — never from scratch.${store === "v2" ? " Press UPDATE CANDLES on Candles v2 first, so there are new minutes to continue over." : ""}`
+                  : `CONTINUE every stored backtest over new candles only — every pair this machine has candles for, never from scratch.${store === "v2" ? " Press UPDATE CANDLES on Candles v2 first, so there are new minutes to continue over." : ""}`}>
                   <Button size="sm" variant="outline" onClick={() => start("btupdate")}
                     disabled={!tfs.length || !!upd?.running || !!bt?.running}>
                     {coins.length ? "UPDATE BACKTEST" : "UPDATE ALL BACKTESTS"}
                   </Button>
                 </span>
-                )}
                 {/* WHERE it will run, before it is clicked. GitHub sat idle
                     through a 4,124-pair run that took most of a day because
                     nothing ever looked (operator, 2026-09-03: "why did you not
@@ -370,7 +368,7 @@ export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
               <Badge size="sm" color="error">hand-off is stuck</Badge>
             )}
             {upd?.running && (
-              <Button size="sm" variant="outline" onClick={() => api.jobStop("btupdate").then(poll)}>STOP UPDATE</Button>
+              <Button size="sm" variant="outline" onClick={() => S.jobStop("update").then(poll)}>STOP UPDATE</Button>
             )}
             {bt?.running && (
               <Badge size="sm" color="info">

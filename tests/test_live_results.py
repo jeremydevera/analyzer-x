@@ -409,7 +409,12 @@ def test_the_panel_prints_what_THIS_PC_received():
     receiver's own tally, not the machines' claim of what they sent."""
     p = PANEL.read_text(encoding="utf-8")
     i = p.index("results are landing here")
-    block = p[i - 1500:i + 900]
+    # the block STARTS where the receiver's tally is read (`const live =
+    # cloud.live`) and runs to the sentence that prints it. A fixed 1,500
+    # bytes back was a count, not a location: the comments between the two
+    # grew past it and this went red while the panel was right.
+    j = p.rindex("const live = cloud.live", 0, i)
+    block = p[j:i + 900]
     assert "cloud.live" in block
     assert "live.pairs" in block and "live.rows" in block
     # a coin that arrived ALREADY UP TO DATE is a success, and saying only

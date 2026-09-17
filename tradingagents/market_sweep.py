@@ -286,7 +286,7 @@ def trim_candles_cache(symbol: str, tf: str, cut_ms: int) -> dict:
             "removed_file": False}
 
 
-def cached_candles(symbol: str, tf: str):
+def cached_candles(symbol: str, tf: str, candles_dir=None):
     """Whatever bars are on disk for this contract, as a DataFrame or None.
 
     Volume comes from the cache when it is there, and otherwise from the
@@ -297,7 +297,9 @@ def cached_candles(symbol: str, tf: str):
     """
     import pandas as pd
 
-    f = CANDLES / f"{symbol}-{tf}.json"
+    # `candles_dir` is another store's candle cache (Backtest v2's 1m
+    # folder); None is this process's own CANDLES
+    f = (Path(candles_dir) if candles_dir else CANDLES) / f"{symbol}-{tf}.json"
     if not f.exists():
         return None
     try:
@@ -499,12 +501,14 @@ def _pair_lock(coin: str, tf: str):
         f.close()
 
 
-def _state_file(coin: str, tf: str) -> Path:
-    return STATES / f"{coin}-{tf}.json"
+def _state_file(coin: str, tf: str, root=None) -> Path:
+    # `root` is another store's HOME (Backtest v2's ~/.tradingagents/v2);
+    # None is this process's own STATES
+    return (Path(root) / "state" if root else STATES) / f"{coin}-{tf}.json"
 
 
-def load_states(coin: str, tf: str) -> dict:
-    f = _state_file(coin, tf)
+def load_states(coin: str, tf: str, root=None) -> dict:
+    f = _state_file(coin, tf, root)
     try:
         return json.loads(f.read_text())
     except (OSError, ValueError):
@@ -746,12 +750,14 @@ ROWDIR = HOME / "rows"
 COSTS = HOME / "costs"
 
 
-def save_costs(symbol: str, *, fee: float, liq, funding: list) -> None:
+def save_costs(symbol: str, *, fee: float, liq, funding: list,
+               root=None) -> None:
     """Keep what the replay of this contract needs. Never raises: telemetry
     for a click, not part of the measurement."""
+    cdir = (Path(root) / "costs") if root else COSTS
     try:
-        COSTS.mkdir(parents=True, exist_ok=True)
-        tmp = COSTS / f"{symbol}.tmp"
+        cdir.mkdir(parents=True, exist_ok=True)
+        tmp = cdir / f"{symbol}.tmp"
         tmp.write_text(json.dumps({
             "symbol": symbol, "fee": fee, "liq": liq,
             "at": time.time(),
@@ -760,15 +766,16 @@ def save_costs(symbol: str, *, fee: float, liq, funding: list) -> None:
                         for f in (funding or [])
                         if f and f.get("settle_ms") is not None],
         }, separators=(",", ":")))
-        tmp.replace(COSTS / f"{symbol}.json")
+        tmp.replace(cdir / f"{symbol}.json")
     except (OSError, TypeError, ValueError):
         pass
 
 
-def load_costs(symbol: str) -> dict | None:
+def load_costs(symbol: str, root=None) -> dict | None:
     """The saved fee/liquidation/funding for one contract, or None."""
+    cdir = (Path(root) / "costs") if root else COSTS
     try:
-        got = json.loads((COSTS / f"{symbol}.json").read_text())
+        got = json.loads((cdir / f"{symbol}.json").read_text())
     except (OSError, ValueError):
         return None
     if not isinstance(got, dict) or "fee" not in got:
@@ -776,9 +783,10 @@ def load_costs(symbol: str) -> dict | None:
     return got
 
 
-def pair_rows(coin: str, tf: str) -> list:
+def pair_rows(coin: str, tf: str, root=None) -> list:
+    rdir = (Path(root) / "rows") if root else ROWDIR
     try:
-        return json.loads((ROWDIR / f"{coin}-{tf}.json").read_text())
+        return json.loads((rdir / f"{coin}-{tf}.json").read_text())
     except (OSError, ValueError):
         return []
 
@@ -1612,7 +1620,7 @@ def candle_coverage() -> list:
 
 def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
                tp: float, sizing: str, base_margin: float = 5.0,
-               days: int = 365) -> dict:
+               days: int = 365, store=None) -> dict:
     """Every trade one stored strategy made, rebuilt from the local candles.
 
     The store keeps ONE row per strategy (trades, wins, profit…); the trades
@@ -1634,14 +1642,37 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
     # had just downloaded through Sep 02. The operator's rule, Sep 02, 2026:
     # "when i click a row it should only read the backtest results it should
     # never update backtest because it will load slowly".
-    df = cached_candles(symbol, tf)
+    # ANOTHER STORE (Backtest v2): its rows, states and costs live under
+    # `store.home`, its candles are 1-minute and the frame is rebuilt from
+    # them, and the replay hands the minutes to the engine so every exit is
+    # settled the way the stored row was (minute-exact). None is this
+    # process's own store, byte for byte the old path.
+    root = str(store.home) if store is not None else None
+    fine = None
+    if store is not None and getattr(store, "fine_tf", ""):
+        m1 = cached_candles(symbol, store.fine_tf, candles_dir=store.candles)
+        if m1 is None or not len(m1):
+            return {"log": [], "why": f"no {store.fine_tf} candles stored for "
+                                      f"{coin} — download them on Candles v2 first"}
+        # the 60-BAR floor below is the frame's, the same one v1 applies
+        try:
+            df = bars_from_1m(m1, tf)
+        except ValueError as exc:
+            return {"log": [], "why": f"{coin}: {exc}"[:160]}
+        import numpy as _np
+
+        fine = (m1["Date"].to_numpy().astype("datetime64[ms]").astype("int64"),
+                _np.asarray(m1["High"], dtype="float64"),
+                _np.asarray(m1["Low"], dtype="float64"))
+    else:
+        df = cached_candles(symbol, tf)
     if df is None or len(df) < 60:
         return {"log": [], "why": f"no candles stored for {coin} {tf} — "
                                   f"download candles first"}
     # ...and cut to the window the ROW was measured over: the pair's own
     # watermark (the last bar the sweep saw) and the row's own bar count.
     want_bars, row_end = 0, 0
-    for r in pair_rows(coin, tf):
+    for r in pair_rows(coin, tf, root):
         # a row with a missing field must not turn a click into a 500
         try:
             same = (r.get("signal") == signal
@@ -1658,7 +1689,7 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
     # The ROW's own last bar when it has one, the pair's watermark otherwise.
     # Rows measured before `last_ms` existed fall back and can be a trade or
     # two out; the answer says which basis it used so a caller can say so.
-    wm = row_end or int(load_states(coin, tf).get("__last_ms__") or 0)
+    wm = row_end or int(load_states(coin, tf, root).get("__last_ms__") or 0)
     if wm:
         # A MASK, not a prefix slice, so the cut holds even if a cache ever
         # comes back out of order -- and the conversion goes through
@@ -1685,7 +1716,7 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
     # has no cache of its own. A pair measured before the file existed pays for
     # them once, here, and every click after that is a read.
     row_fee = 0.0
-    for r in pair_rows(coin, tf):
+    for r in pair_rows(coin, tf, root):
         try:
             if (r.get("signal") == signal
                     and abs(float(r.get("th") or 0) - float(th or 0)) < 1e-9
@@ -1696,7 +1727,7 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
                 break
         except (KeyError, TypeError, ValueError):
             continue
-    costs = load_costs(symbol)
+    costs = load_costs(symbol, root)
     if costs is None:
         fee = at.taker_fee(symbol, fx=fx)
         try:
@@ -1706,7 +1737,7 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
         # same rule as run_pair: an unreadable funding history is an error,
         # never silently zero funding (2026-08-26)
         fund = fx.funding_history(symbol)
-        save_costs(symbol, fee=fee, liq=liq, funding=fund)
+        save_costs(symbol, fee=fee, liq=liq, funding=fund, root=root)
     else:
         fee, liq, fund = costs["fee"], costs.get("liq"), costs.get("funding") or []
     # the ROW's own fee wins: the venue's fee today is not the fee this row was
@@ -1732,7 +1763,7 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
         r = at.backtest_strategy(key, df, base_margin, fee=fee, sizing=sizing,
                                  dirs=dirs, tp=float(tp) / 100,
                                  sl=float(sl) / 100, liq_move_pct=liq,
-                                 funding=fund, keep_log=True)
+                                 funding=fund, keep_log=True, fine=fine)
     finally:
         at.STRATEGY_SPECS.pop(key, None)
     return {"log": r["log"], "trades": r["trades"], "wins": r["wins"],
@@ -1740,11 +1771,16 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
             "max_dd": r["max_dd"],
             "winrate": round(100 * r["wins"] / max(r["trades"], 1), 2),
             # what was READ, so the panel can say it and a mismatch is visible
-            "source": "stored candles",
+            "source": ("stored 1-minute candles, exits settled by the minute"
+                       if fine is not None else "stored candles"),
             "window_from": "row" if row_end else "pair watermark",
             "fee": fee, "fee_from": "row" if row_fee > 0 else "the venue today",
-            "bars": len(df), "first": str(df["Date"].iloc[0])[:16],
-            "last": str(df["Date"].iloc[-1])[:16],
+            # THE ONE DATE FORMAT (CLAUDE.md): this printed `2026-08-20 16:00`
+            # — the banned compact stamp — in every trade log's source line
+            # until Sep 17, 2026, because it sliced the Timestamp's str
+            "bars": len(df),
+            "first": fmt_stamp(df["Date"].iloc[0].timestamp()),
+            "last": fmt_stamp(df["Date"].iloc[-1].timestamp()),
             "costs": "cached" if costs is not None else "fetched once"}
 
 
@@ -1769,7 +1805,8 @@ class WindowTooWide(ValueError):
 
 
 def window_rows(rows: list, days: int, base_margin: float = 5.0,
-                group_max: int = 0, breathe: float = 0.0) -> dict:
+                group_max: int = 0, breathe: float = 0.0,
+                store=None) -> dict:
     """Re-measure each row over the LAST `days` DAYS of its stored candles.
 
     Returns ``{"rows": [...], "first": str, "last": str, "groups": n}`` and
@@ -1823,6 +1860,11 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
                 "skipped": {"no_candles": 0, "outside_window": 0, "failed": 0},
                 "straddled": 0}
     cap = int(group_max or WINDOW_GROUP_MAX)
+    # ANOTHER STORE (Backtest v2): see trades_for — rows/states/costs under
+    # `store.home`, bars rebuilt from its 1-minute candles, exits settled by
+    # the minute. None is this process's own store.
+    root = str(store.home) if store is not None else None
+    v2 = store is not None and bool(getattr(store, "fine_tf", ""))
     groups: dict = {}
     for r in rows:
         key = (r["coin"], r["tf"], r["signal"], round(float(r.get("th") or 0), 4))
@@ -1852,13 +1894,26 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
     for (coin, tf, sig, th), grp in groups.items():
         sym = f"{coin}_USDT"
         try:
-            full = cached_candles(sym, tf)
+            fine = None
+            if v2:
+                m1 = cached_candles(sym, store.fine_tf, candles_dir=store.candles)
+                if m1 is None or not len(m1):
+                    skipped["no_candles"] += len(grp)
+                    continue
+                full = bars_from_1m(m1, tf)          # the 60-bar floor below is the frame's
+                import numpy as _np
+
+                fine = (m1["Date"].to_numpy().astype("datetime64[ms]").astype("int64"),
+                        _np.asarray(m1["High"], dtype="float64"),
+                        _np.asarray(m1["Low"], dtype="float64"))
+            else:
+                full = cached_candles(sym, tf)
             if full is None or len(full) < 60:
                 skipped["no_candles"] += len(grp)
                 continue
             ms = full["Date"].to_numpy().astype("datetime64[ms]").astype("int64")
             # where the MEASUREMENT ends, not where the candle file does
-            wm = int(load_states(coin, tf).get("__last_ms__") or 0)
+            wm = int(load_states(coin, tf, root).get("__last_ms__") or 0)
             ends = {int(r.get("last_ms") or 0) or wm or int(ms[-1]) for r in grp}
             op = [float(x) for x in full["Open"]]
             hi = [float(x) for x in full["High"]]
@@ -1872,7 +1927,7 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
             at.STRATEGY_SPECS[key] = {"interval": iv, "bar_seconds": bs,
                                       "tp": .02, "sl": .01,
                                       "threshold": (th / 100.0) if th else .003}
-            costs = load_costs(sym)
+            costs = load_costs(sym, root)
             if costs is None:
                 fee = at.taker_fee(sym, fx=fx)
                 try:
@@ -1880,12 +1935,15 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
                 except Exception:                              # noqa: BLE001
                     liq = None
                 fund = fx.funding_history(sym)
-                save_costs(sym, fee=fee, liq=liq, funding=fund)
+                save_costs(sym, fee=fee, liq=liq, funding=fund, root=root)
             else:
                 fee = costs["fee"]
                 liq = costs.get("liq")
                 fund = costs.get("funding") or []
-            ck = (coin, tf, sig, th, int(ms[-1]), len(ms))
+            # the store is part of the key: v1 and v2 bars for one coin are
+            # different frames of the same name
+            ck = (coin, tf, sig, th, int(ms[-1]), len(ms),
+                  store.name if store is not None else "")
             dirs = _DIRS_CACHE.get(ck)
             if dirs is None:
                 dirs = at._dirs_for_backtest(key, hi, lo, cl, opens=op,
@@ -1989,7 +2047,8 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
                     key, frame, float(r.get("base") or base_margin),
                     fee=row_fee, sizing=r["sizing"], dirs=win_dirs,
                     tp=float(r["tp"]) / 100.0, sl=float(r["sl"]) / 100.0,
-                    liq_move_pct=liq, funding=fund, keep_log=True)
+                    liq_move_pct=liq, funding=fund, keep_log=True,
+                    fine=fine)
                 # A TRADE BELONGS TO THE WINDOW IF IT CLOSED IN IT, even if
                 # it opened before. Operator, Sep 11, 2026, with the case that
                 # names the rule: *"open: aug 1 closed aug 12 what will

@@ -67,6 +67,13 @@ FILES = {
                     "pid": STATE_DIR / "db_backtest_v2.pid",
                     "stop": STATE_DIR / "db_backtest_v2.STOP",
                     "handoff": STATE_DIR / "db_backtest_v2.HANDOFF"},
+    # UPDATE on Backtest v2: continue every v2 pair over the minutes added
+    # since — the same body as btupdate, always on this PC
+    "btupdate_v2": {"progress": STATE_DIR / "db_btupdate_v2.json",
+                    "spec": STATE_DIR / "db_btupdate_v2.spec.json",
+                    "pid": STATE_DIR / "db_btupdate_v2.pid",
+                    "stop": STATE_DIR / "db_btupdate_v2.STOP",
+                    "handoff": STATE_DIR / "db_btupdate_v2.HANDOFF"},
     # one deployed strategy, replayed over a year — the Auto Trade "1 YEAR"
     # button. Detached because the grid takes minutes and a request must not
     # hold it open.
@@ -616,7 +623,7 @@ class JobBusy(RuntimeError):
 # themselves keep exactly the freedom they had (UPDATE CANDLES beside a
 # collect is a daily habit here).
 _DISK_JOBS = ("download", "backtest", "btupdate", "collect",
-              "download_v2", "backtest_v2")
+              "download_v2", "backtest_v2", "btupdate_v2")
 
 
 def start(kind: str, spec: dict) -> int:
@@ -2015,6 +2022,36 @@ def _run_btupdate(spec: dict) -> None:
                   files_key="btupdate", kind="btupdate")
 
 
+def _run_btupdate_v2(spec: dict) -> None:
+    """UPDATE on Backtest v2: CONTINUE every v2 pair over the minutes added
+    since its last run — never from scratch, always on this PC.
+
+    The v1 update asks `capacity.plan` who measures what and hands frames to
+    GitHub; the fleet has no 1-minute store, so v2 has nothing to split. This
+    process runs with the v2 environment (stores.V2.env_for()): `stored_symbols`
+    lists the coins with 1m candles, `run_pair` rebuilds each frame's bars
+    from them and picks up every combination's saved position and running
+    totals (`fresh: False`). Press UPDATE CANDLES on Candles v2 first, or
+    there are no new minutes to continue over — the run then says "no new
+    bars" per pair rather than measuring anything twice.
+    """
+    coins = list(spec.get("coins") or [])
+    if not coins:
+        _write(FILES["btupdate_v2"]["progress"],
+               {"running": True, "started": int(time.time()), "done": 0,
+                "total": 0, "now": "reading the 1-minute candle store"})
+        coins = stored_symbols()
+        print(f"[btupdate_v2] no coins named — continuing every v2 pair: "
+              f"{len(coins):,} contract(s)", flush=True)
+    tfs = [t for t in (spec.get("tfs") or list(cap.ALL_TFS))
+           if t in ("15m", "30m", "1h", "4h", "1d")]
+    _run_backtest({**spec, "coins": coins, "tfs": tfs,
+                   "base": float(spec.get("base") or 5.0),
+                   "days": int(spec.get("days") or _sweep_days()),
+                   "fresh": False},
+                  files_key="btupdate_v2", kind="btupdate_v2")
+
+
 def _write_run_plan(plan: dict, dispatched: dict, coins, tfs) -> None:
     """Record who took what, so the LOGS panel can say it after the fact."""
     with contextlib.suppress(Exception):                       # noqa: BLE001
@@ -2331,6 +2368,8 @@ def main(argv: list[str]) -> int:
         _run_download(spec, kind="download_v2")
     elif kind == "backtest_v2":
         _run_backtest(spec, files_key="backtest_v2", kind="backtest_v2")
+    elif kind == "btupdate_v2":
+        _run_btupdate_v2(spec)
     elif kind == "btupdate":
         _run_btupdate(spec)
     elif kind == "collect":

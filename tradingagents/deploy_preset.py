@@ -114,6 +114,12 @@ def plan(preset: dict, settings: dict) -> dict:
             shared.append({"key": key, "with": "; ".join(clash)})
         if keep:
             arm[key] = {"coins": keep,
+                        # WHICH MEASUREMENT the row came from: "1m" for a
+                        # Backtest v2 id (Sep 17, 2026), "" for v1. Kept per
+                        # coin in settings["strategy_res"], read by
+                        # api.row_id_for so the screen prints the id that was
+                        # deployed, never its twin from the other store.
+                        "res": str(one.get("res") or preset.get("res") or ""),
                         "margin": float(one.get("margin")
                                         or preset.get("base_margin") or 5.0),
                         "sizing": str(one.get("sizing")
@@ -152,13 +158,25 @@ def merged(preset: dict, settings: dict) -> dict:
             if out.get(field):
                 out[field] = {k: v for k, v in out[field].items()
                               if k in got["arm"]}
+        out["strategy_res"] = _res_map(got)
         return _tail(preset, out)
     out["strategies"] = sorted(set(out.get("strategies") or [])
                                | set(got["arm"]))
     for field, pick in fields:
         out[field] = {**(out.get(field) or {}),
                       **{k: pick(v) for k, v in got["arm"].items()}}
+    out["strategy_res"] = {**(out.get("strategy_res") or {}), **_res_map(got)}
     return _tail(preset, out)
+
+
+def _res_map(got: dict) -> dict:
+    """`{book_slot(key, coin): res}` for every armed coin that came from a
+    store other than v1 — the per-coin memory `api.row_id_for` reads."""
+    from tradingagents import auto_trader as at
+
+    return {at.book_slot(k, c): v["res"]
+            for k, v in got["arm"].items() if v.get("res")
+            for c in v["coins"]}
 
 
 def _tail(preset: dict, out: dict) -> dict:

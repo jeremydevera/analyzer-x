@@ -118,7 +118,9 @@ def test_a_download_never_picks_a_plan_that_must_sort_every_match():
     """
     assert ri.EXPORT_SEEK_MAX <= 100_000, ri.EXPORT_SEEK_MAX
     src = inspect.getsource(ri.export_plan)
-    assert 'if key != "winrate":' in src, \
+    # `and not limit` joined it on Sep 15, 2026 (a WINDOWED export carries its
+    # own LIMIT to SQL and needs no small cap); the seek's-order rule stands
+    assert 'if key != "winrate" and not limit:' in src, \
         "the small cap applies only when the seek's order needs a re-sort"
     assert "cap = min(cap, EXPORT_SEEK_MAX)" in src
 

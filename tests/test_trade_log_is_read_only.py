@@ -32,6 +32,7 @@ import pytest
 import tradingagents.auto_trader as at
 from tradingagents import market_sweep as msw
 from tradingagents.dataflows import mexc_futures as fx
+from tradingagents.positions_view import fmt_when   # the ONE date format the log prints
 
 BAR_MS = 3_600_000
 
@@ -150,7 +151,7 @@ def test_the_rows_own_window_beats_a_pair_watermark_that_moved_on(store,
                          sizing="flat")
     assert got["window_from"] == "row", got["window_from"]
     assert got["bars"] == 300
-    assert got["last"] == str(df["Date"].iloc[499])[:16],         "the row's own end bar must win over the pair's watermark"
+    assert got["last"] == fmt_when(df["Date"].iloc[499].timestamp()),         "the row's own end bar must win over the pair's watermark"
 
 
 def test_the_row_is_replayed_with_the_fee_it_was_charged(store, monkeypatch):
@@ -197,7 +198,7 @@ def test_it_stops_at_the_watermark_even_without_a_row(store, monkeypatch):
     got = msw.trades_for("TEST", "1h", signal="mom6", th=0.1, sl=1.0, tp=2.0,
                          sizing="flat")
     assert got["bars"] == 500
-    assert got["last"] == str(df["Date"].iloc[499])[:16]
+    assert got["last"] == fmt_when(df["Date"].iloc[499].timestamp())
     for t in got["log"]:
         assert t["exit time"] <= got["last"] or True   # times are formatted
     assert got["trades"] >= 1
@@ -222,7 +223,9 @@ def test_the_costs_are_cached_by_the_sweep_not_refetched_by_the_click():
     run = inspect.getsource(msw.run_pair)
     assert "save_costs(symbol, fee=fee, liq=liq, funding=fund)" in run
     log = inspect.getsource(msw.trades_for)
-    assert "load_costs(symbol)" in log
+    # `root` joined it on Sep 17, 2026: the log reads the costs of the store it
+    # is replaying (Backtest v2's beside v2's rows); it still never refetches
+    assert "load_costs(symbol, root)" in log
     # and no candle fetch on this path, comments aside
     code = "\n".join(l for l in log.splitlines()
                      if not l.strip().startswith("#"))

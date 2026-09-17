@@ -118,7 +118,9 @@ def test_the_tab_exists_and_is_wired():
     assert "Back Test" not in app.PAGES
     assert hasattr(app, "render_backtest2_tab")
     assert not hasattr(app, "render_backtest_tab")
-    src = open("app.py").read()
+    # utf-8 on purpose: app.py holds em dashes and arrows, and Windows' default
+    # cp1252 read died on byte 0x90 — a red that was never about the tab
+    src = open("app.py", encoding="utf-8").read()
     assert 'page == "Backtest 2"' in src
     assert 'page == "Back Test"' not in src
 

@@ -32,7 +32,17 @@ from tradingagents.dataflows import mexc_futures as fx
 BAR_MS = 3_600_000
 
 
-def _frame(n=900, seed=4, start_ms=1_786_000_000_000):
+def _frame(n=900, seed=4, start_ms=None):
+    # The frame ENDS AT THE CURRENT HOUR. It used to start at a fixed
+    # Aug 06, 2026 and run 900 hours to Sep 12, so a "last 10 days" window
+    # measured on Sep 17 held 6.1 days of it — the test aged into a red that
+    # was never about the window. A window test's candles must reach the
+    # clock the window is measured against.
+    if start_ms is None:
+        import time as _time
+
+        now_h = int(_time.time() // 3600) * 3600 * 1000
+        start_ms = now_h - (n - 1) * BAR_MS
     rows = []
     px, trend = 100.0, 1
     for i in range(n):

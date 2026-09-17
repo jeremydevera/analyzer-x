@@ -172,6 +172,70 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-17-C — the sweep orchestrator's shutdown could crash on Windows
+
+**CEO**
+
+* When the sweep coordinator finished and cleaned up its helper processes,
+  Windows sometimes answered "the parameter is incorrect" for a helper that
+  had already gone, and the clean-up itself crashed instead of finishing.
+* Why: the code expected the two errors a Unix machine gives for a vanished
+  process and Windows gives a third.
+* What stops it now: every "could not signal it" answer is treated as "it is
+  already gone", which is what it means at shutdown.
+
+**DEV**
+
+* `sweep_orchestrator._stop_children:285` — `os.kill(pid, SIGTERM)` under
+  `suppress(ProcessLookupError, PermissionError)`; on Windows `os.kill` is
+  `TerminateProcess` and a dead/unopenable pid raises `OSError(87)`.
+* Invariant: **a best-effort shutdown never raises on a pid it cannot reach.**
+* Guard: `tests/test_sweep_orchestrator.py::test_progress_is_published_every_tick`
+  — permanently red on this PC until this fix, which is how it was found.
+
+**SAW** — `OSError: [WinError 87] The parameter is incorrect` from the
+orchestrator test on `Sep 17, 2026`, one of four reds sitting in the suite.
+
+**TIMELINE** — 1. the test drove `run()` to completion; 2. `_stop_children`
+enumerated a child that had exited; 3. `os.kill` raised WinError 87 past the
+two suppressed types. **ROOT CAUSE** — a Unix error list on a Windows call.
+**WHY IT WAS NOT CAUGHT** — the test WAS red, in a suite with three other
+long-standing reds ("a suite that is always red is one nobody reads").
+**COST** — none in money. **FIX** — this commit. **GUARD** — as above.
+
+---
+
+## RCA-2026-09-17-D — every trade log's source line printed the banned date stamp
+
+**CEO**
+
+* Under a row's trade-by-trade log the line *"667 bars, 2026-08-20 16:00 to
+  2026-09-17 10:00"* used the date form you banned on Aug 21 (three asks).
+* Why: that one line sliced the raw timestamp instead of going through the
+  project's single date formatter, and the guard test only looks for two
+  spellings of the mistake.
+* What stops it now: it prints `Aug 20, 2026 4:00pm to Sep 17, 2026 10:00am`
+  through the one formatter, and a test holds it.
+
+**DEV**
+
+* `market_sweep.trades_for` returned `"first": str(df["Date"].iloc[0])[:16]`;
+  `test_no_module_formats_a_timestamp_by_hand` greps `strftime`/`toLocale`,
+  and a sliced `str(Timestamp)` is neither (the shape of RCA-2026-09-09-C).
+* Invariant: **every date the project prints goes through
+  `positions_view.fmt_when`** (CLAUDE.md, "Date format").
+* Guard: `tests/test_v2_reads_from_its_own_store.py::test_the_v2_trade_log_replays_from_the_minutes`
+  asserts `first == fmt_when(...)`.
+
+**SAW** — the Backtest v2 trade log's source line, `Sep 17, 2026 8:50pm`, in
+the Playwright check of the new route. **TIMELINE** — 1. `trades_for` has
+printed the sliced form since the trade log existed; 2. seen on the v2 log;
+3. fixed. **ROOT CAUSE** — a third spelling of one mistake. **WHY IT WAS NOT
+CAUGHT** — the guard is only as wide as its pattern (RCA-2026-09-09-C, again).
+**COST** — none. **FIX** — this commit. **GUARD** — as above.
+
+---
+
 ## RCA-2026-09-17-A — the Candles v2 download stored 2.4 days of 1-minute candles for two coins while MEXC serves 30
 
 **CEO**

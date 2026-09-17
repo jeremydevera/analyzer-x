@@ -122,7 +122,7 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
   // its `api.` spelling, so the guards that read this file still hold.
   const api = useMemo(() => ({
     ...coreApi, strategies: S.strategies, strategiesCsvUrl: S.strategiesCsvUrl,
-    facets: S.facets,
+    facets: S.facets, trades: S.trades,
   }), [S]);
   // the route's own reason for an empty v2 store ("download 1m candles on
   // Candles v2 first") — printed above the table when there is nothing on it
@@ -358,7 +358,7 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
         setPairJob(st);
         if (wasRunning && !st.running) {
           load(true);                       // the row's own numbers
-          if (open && store === "v1") api.trades(open).then(setTrades).catch(() => {});
+          if (open) api.trades(open).then(setTrades).catch(() => {});
         }
       } catch { /* the badge simply does not move */ }
     };
@@ -839,12 +839,9 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
     setTrades(null);
     setBusy(true);
     try {
-      // the trade-by-trade route still replays from the v1 store; a v2 row's
-      // exits are settled on 1-minute candles, so it is held back rather than
-      // shown wrong (label-must-match-data)
-      setTrades(store === "v2"
-        ? { log: [], why: "the trade-by-trade log for a v2 row comes next — its exits are settled on 1-minute candles and the log route still reads the v1 store" }
-        : await api.trades(r));
+      // on v2 this is /api/v2/strategies/trades: the row replayed from the
+      // 1-minute store with every exit settled by the minute
+      setTrades(await api.trades(r));
     } catch (e) {
       setTrades({ log: [], why: String(e) });
     } finally {

@@ -54,6 +54,15 @@ def _client_paths() -> set[str]:
         raw = re.split(r"[?$]", raw)[0].rstrip("/")  # drop the query
         if raw.startswith("/api/"):
             out.add(raw)
+    # AND THE STORE CLIENT'S PATHS. `storeApi` builds `${P}/candles/pending`
+    # with `P = "/api" + "/v2"`, so none of Backtest v2's ten routes started
+    # with a literal `/api/` and none was in this set (Sep 18, 2026 review):
+    # a renamed v2 route would have passed the guard written for exactly that.
+    for m in re.finditer(r'`\$\{P\}(/[^"`]*)', text):
+        raw = "/api/v2" + m.group(1)
+        raw = re.sub(r"\$\{[^}]*\}", "{x}", raw)
+        raw = re.split(r"[?$]", raw)[0].rstrip("/")
+        out.add(raw)
     return out
 
 

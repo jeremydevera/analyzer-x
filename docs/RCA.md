@@ -256,6 +256,532 @@ could; it drives the real function now.
 
 ---
 
+## RCA-2026-09-18-B — the v1 backtest died at 96% because the screen's progress file was busy for a fifth of a second
+
+**CEO**
+
+* At 7:31pm on Sep 17 the market-wide backtest stopped at 3,948 of 4,124
+  coins, and the Backtest screen has said "process died before finishing"
+  since. Every finished coin was kept; the last 176 were never measured.
+* Why: after each coin the job rewrites the small file the screen reads. On
+  Windows that rewrite is refused while anything else has the file open, and
+  the job gave up after a fifth of a second and treated a refused screen
+  update as a fatal error.
+* What stops it now: the rewrite keeps trying for three seconds, and even
+  past that a failed screen update is printed once a minute and the
+  measuring goes on — the screen may lag, the run may not die.
+
+**DEV**
+
+* `db_jobs._write:132` — 40 attempts x 5 ms, then `raise` out of
+  `_run_backtest_inner` → `prog` → `_publish` (`grid_from_store:1063
+  _say → progress`); the per-pair callback carried the exception to the
+  job's top level. The traceback in `db_backtest.log` reads `PermissionError:
+  [WinError 5] Access is denied: 'db_backtest.json.20768.4772.tmp' ->
+  'db_backtest.json'`.
+* Invariant broken: **telemetry never ends a run** — the progress file is
+  read by the screen and resumed from by nothing; a write the OS refuses is
+  a sentence in the log, not a crash.
+* Guard: `tests/test_a_progress_write_never_ends_a_run.py` —
+  `test_the_replace_outlasts_a_reader_that_holds_the_file` (46 refusals,
+  then it lands), `test_a_refused_progress_write_is_swallowed_and_said_once`,
+  `test_every_mid_run_progress_write_is_forgiving` (all 7 `running: True`
+  writes go through `_write_progress`; terminal writes stay loud).
+
+**SAW** — `Sep 18, 2026 3:05am`, `~/.tradingagents/db_backtest.json` last
+written `Sep 17, 2026 7:31pm` reading `running: true, done: 3948, total:
+4124, pct: 95.73`; `db_jobs.status("backtest")` resolving it to *"process
+died before finishing"* (pid 22540 gone); the traceback above in
+`db_backtest.log`.
+
+**TIMELINE**
+
+1. `Sep 17, 2026 7:31pm` — pair 3,948 of 4,124 finishes; `prog` publishes;
+   `tmp.replace(db_backtest.json)` is refused 40 times in 0.2 s (the API's
+   poll or the antivirus held the file); the 41st raises.
+2. The exception leaves `grid_from_store` through `_say`; the pool's
+   in-flight pairs finish and are checkpointed; the job exits with the
+   progress file still saying `running: true`.
+3. `7:50pm` — the runner and API restart (a start.py restart); the
+   supervisor's `resume_if_died("backtest")` answers *"measuring moved to
+   GitHub Actions — a crashed local sweep is not restarted here"*
+   (`capacity.LOCAL_SWEEPS` is False on this PC), so the run stays dead.
+4. `Sep 18, 2026 3:05am` — found while checking which jobs held the disk
+   before pressing UPDATE on Backtest v2. `_write` waits up to 3.0 s with a
+   growing pause; the 7 mid-run progress writes go through
+   `_write_progress`, which swallows and prints once a minute.
+
+**ROOT CAUSE** — a 0.2 s budget for a Windows rename that a reader can hold
+longer than that, raised out of a callback that had no business being fatal.
+
+**WHY IT WAS NOT CAUGHT** — the Aug 25 fix for the same rename
+(`f7e756acde7a`) added the retry and a test that the retry exists; nothing
+asked what happens when the retry is NOT enough, because "40 tries" read as
+"always enough". A budget is a number, and a number needs its failure path
+tested, not its happy path.
+
+**COST** — none in money; 176 coins of a v1 sweep unmeasured until it is
+re-run.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_a_progress_write_never_ends_a_run.py` (9 tests).
+
+---
+
+## RCA-2026-09-18-C — every row on the v1 Candles screen's pending list was a test fixture
+
+**CEO**
+
+* The Candles screen's RESOLVE PENDING count came from a list of 11 "coins
+  the last download lost" — C0 to C7, FLAKY, NAORIS and MEZO — and none of
+  them was a real download. They were written by the automated tests, some
+  since Sep 09, and re-written every time the tests ran.
+* Why: the tests that exercise the download run the real download code,
+  which records lost coins in a file, and that file's folder was the real
+  one, not a test folder.
+* What stops it now: every test gets its own folder for that file, a test
+  proves it, and the 11 fixture rows were removed from the real list.
+
+**DEV**
+
+* `pending_ledger.STATE_DIR = Path.home() / ".tradingagents"` was never
+  sandboxed: `tests/conftest.py` swaps `db_jobs.STATE_DIR`/`FILES` but not the
+  ledger's folder, so `tests/test_download_retry.py` → `_run_download` →
+  `_pl.record("candles", ...)` (`db_jobs.py:1313`) wrote fixtures into
+  `~/.tradingagents/pending_candles.json`.
+* Invariant broken: **a test writes only under its own tmp_path** — the
+  sandbox fixture must cover every module that writes to the home folder.
+* Guard: `tests/test_tests_never_write_the_operators_ledger.py` (no fixture
+  of its own; proves the sandbox is what a test sees) and the conftest
+  sandbox itself.
+
+**SAW** — `Sep 18, 2026 3:10am`, `GET /api/candles/pending` counting 11;
+`pending_ledger.pending("candles")`: MEZO_USDT 15m (32 fails), C0_USDT to
+C7_USDT 1h (19 fails each), FLAKY_USDT 15m (12 fails, `timed out`),
+NAORIS_USDT 30m (1 fail) — every `why` the CLAUDE.md quote
+`IncompleteRead(183452 bytes read)` or the fixture's `timed out`.
+
+**TIMELINE**
+
+1. `Sep 09, 2026 1:40pm` — the first fixture rows land (C0–C7, MEZO) as the
+   download-retry tests run.
+2. `Sep 17, 2026 7:48pm` and `10:40pm` — this session's test runs re-write
+   them (`last` stamps on all 11 rows).
+3. `Sep 18, 2026 3:12am` — `pending_ledger.clear("candles", <all 11>)` →
+   0 rows; the conftest sandbox points `pending_ledger.STATE_DIR` at the
+   test's folder from now on.
+
+**ROOT CAUSE** — one module writing to the home folder was left out of the
+test sandbox.
+
+**WHY IT WAS NOT CAUGHT** — the ledger's own tests set `STATE_DIR` to
+`tmp_path` and so never saw the real file; the download tests asserted on
+what the download DID, not on where the ledger wrote. Found by a reviewer
+reading the live file, not by any test.
+
+**COST** — none in money; a false "11 pending" on the Candles screen for
+nine days.
+
+**FIX** — this commit (sandbox + data fix).
+
+**GUARD** — `tests/test_tests_never_write_the_operators_ledger.py::test_the_ledger_a_test_sees_is_not_the_operators`.
+
+---
+
+## RCA-2026-09-18-D — the Backtest v2 report printed every row under its v1 twin's id
+
+**CEO**
+
+* The report file a Backtest v2 run writes named each of its 82,758 rows by
+  the code of the OLD measurement of the same combination — so a code copied
+  from that report finds nothing on the Backtest v2 screen, and finds the
+  hour-bar row on the old screen.
+* Why: the report re-stamps each row's code from its coin, timeframe, rule,
+  target, stop and sizing, and the piece that says "measured to the minute"
+  was left out of that stamp.
+* What stops it now: the stamp includes it, on both places the report
+  mints codes, and a test reads both.
+
+**DEV**
+
+* `backtest_report.grid_from_store:1529` and `run_grid:659` —
+  `r["id"] = row_code(coin, tf, signal, th, sl, tp, sizing)` without
+  `res=r.get("res")`, while `rows_index._row_id` passes it. The same dict
+  `{XPIN, 1h, ote, 0, 3, 1, flat, res="1m"}` minted `LG9NSU4B` in the report
+  and `U9YP5N7L` in the v2 table.
+* Invariant broken: **one row, one id, on every page** (kit item H) and
+  the v2 rule *a v2 row's id can never equal a v1 id*.
+* Guard: `tests/test_v2_surfaces_read_their_own_store.py::test_both_report_minters_carry_res`
+  and `::test_a_v2_row_and_its_v1_twin_never_share_an_id`.
+
+**SAW** — `static/bt/archive-v2.html` written `Sep 17, 2026 7:57pm` by the
+5-coin v2 backtest: 82,758 rows, ids equal to the v1 store's.
+
+**TIMELINE**
+
+1. `Sep 17, 2026 6:30pm` — `row_code(res=)` added and threaded through
+   `rows_index._row_id`; the two report minters were not on the grep because
+   they call `row_code` positionally.
+2. `7:57pm` — the first v2 report is written with v1 ids on all 82,758 rows.
+3. `Sep 18, 2026 3:00am` — found by the review's isolation reader with a
+   two-line probe; both minters pass `res`.
+
+**ROOT CAUSE** — a new id component added to one of three minters.
+
+**WHY IT WAS NOT CAUGHT** — `test_a_v2_id_never_equals_the_v1_id` drives
+`row_code` directly; no test opened the report the job writes and compared
+an id in it with the table's. A rule about "every page" needs a test per
+page.
+
+**COST** — none.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_v2_surfaces_read_their_own_store.py::test_both_report_minters_carry_res`.
+
+---
+
+## RCA-2026-09-18-E — Backtest v2's screen read the OLD store's index process as its own
+
+**CEO**
+
+* Several small readings on the Backtest v2 screen were about the old
+  store, not the new one: whether "something is filling the table", which
+  computer cores were working, and — had the new store grown past 200,000
+  rows — a sort that needed a new index would have been built on the OLD
+  store's file and the new screen would have said "being built" for ever.
+* Why: the new store is served by the same app as the old one, and a few
+  places read a fixed "the database" setting instead of "the database this
+  request is about".
+* What stops it now: every one of those places reads the store being
+  served; the v2 screen says plainly that its rows are filed by the backtest
+  job when it finishes; and a test holds each place.
+
+**DEV**
+
+* `rows_index._build_lock:2950`, `build_running:2963`, `_build_index:3096`,
+  the spawn at `:3130` (`TA_ROWS_DB=str(DB_PATH)`) — module global under
+  `using_db(v2)`; `status():4255` returned `_running_elsewhere()`,
+  `syncing()`, `_last_error`, `lock_holder()` (v1 process state) for v2;
+  `stale_watermark:847` parsed a ~9 MB state file whole (0.2 s a pair);
+  `api.job_status:1338` `msw.worker_read()` (v1's folder);
+  `_PAIR_WRITERS:790` lacked the v2 kinds; `api.strategies` wrote the
+  screen log with no store.
+* Invariant broken: **a request for store X reads store X** — every path
+  under `using_db` resolves through `_db()`, never `DB_PATH`.
+* Guard: `tests/test_v2_surfaces_read_their_own_store.py` —
+  `test_the_build_lock_and_the_spawned_child_target_the_store_being_read`,
+  `test_build_running_looks_beside_the_store_being_read`,
+  `test_v2_status_does_not_borrow_v1s_indexer`,
+  `test_stale_watermark_under_the_override_reads_the_tail_not_the_whole_file`,
+  `test_worker_read_takes_another_stores_folder`,
+  `test_the_rebuild_gate_knows_the_v2_kinds`;
+  `tests/test_v2_jobs_have_no_cloud.py::test_a_v2_jobs_workers_come_from_the_v2_folder`.
+
+**SAW** — `Sep 17, 2026 10:47pm`, `GET /api/v2/strategies` → `index:
+{pairs_indexed: 5, pairs_on_disk: 5, indexer_running: true, paused_by:
+"download_v2"}` — `true` is v1's run lock; nothing indexes v2.
+
+**TIMELINE**
+
+1. `Sep 17, 2026 8:00pm` — `using_db` lands with `_db()` on the readers
+   (`_connect`, `has_index`, `stale_pairs`, `status` counts).
+2. `10:47pm` — the review's live probe shows v1's `indexer_running` on the
+   v2 payload; the index-build spawn, the lock and the workers list are
+   found on `DB_PATH`/`WORKERS` by reading; v2 holds 82,758 rows, under the
+   200,000 gate, so the wrong-store build NEVER HAPPENED YET.
+3. `Sep 18, 2026 3:30am` — every listed spot reads the store being served;
+   `status()` under the override answers `indexer_running: None`,
+   `filed_by: "job"`; the panel prints "the v2 backtest files its rows when
+   it finishes"; the watermark reads the file's tail through
+   `pair_watermark(root=)`; `/api/v2/strategies` takes its index block from
+   a 20 s background reader like v1.
+
+**ROOT CAUSE** — a per-request store override added on the read paths while
+the write/spawn paths and the process-liveness fields kept the module
+global.
+
+**WHY IT WAS NOT CAUGHT** — `tests/test_v2_store_is_its_own_folder.py`
+asserts on the ENV a v2 JOB is spawned with, not on what the API PROCESS
+(which has no env) does under the override; and a status payload's
+liveness flags were asserted by no test on either store.
+
+**COST** — none.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_v2_surfaces_read_their_own_store.py` (12 tests).
+
+---
+
+## RCA-2026-09-18-F — every one-minute download paged 4,000 bars it had fetched seconds earlier
+
+**CEO**
+
+* Each of the 1,003 one-minute downloads on Sep 17 asked the exchange for
+  two extra pages — about 2,006 requests over the evening — re-fetching
+  bars it had just received and thrown away.
+* Why: the app keeps a copy of each coin's candles on disk, trimmed to
+  40,000 bars, and the one-minute frame asks for 44,000; so the copy could
+  never satisfy the ask and the "fill the front" step always ran.
+* What stops it now: the copy keeps 44,000 bars, at least as many as the
+  largest ask, and a test compares the two numbers.
+
+**DEV**
+
+* `mexc_futures._KLINE_DISK_MAX = 40_000:1057` trimmed the cache
+  (`_kline_disk_save:1131`) below `backtest_report.TFS["1m"][2] = 44_000`;
+  `market_sweep.refresh_candles:463` saw `len(df) < cap` (43,999 after
+  `_closed_bars`) and `klines_backfill` paged 2 x 2,000 bars every time.
+* Invariant broken: **a cache holds at least what is asked of it** (the
+  shape of RCA-2026-09-17-A, from the other side).
+* Guard: `tests/test_v2_surfaces_read_their_own_store.py::test_the_kline_disk_cache_holds_a_full_1m_frame`.
+
+**SAW** — `~/.tradingagents/kline_cache/CCJSTOCK_USDT_Min1.json.gz` at
+40,000 bars after a 44,000-bar fetch, `Sep 17, 2026 10:50pm`, and two
+backfill pages in the download log for the same pair.
+
+**TIMELINE**
+
+1. `Sep 17, 2026 7:49pm` — `klines_backfill` lands (RCA-2026-09-17-A) and
+   runs whenever a frame is shorter than its cap.
+2. `10:17pm`–`Sep 18, 2026 3:00am` — the 1,003-pair download: 22 pages for
+   44,000 bars, trimmed to 40,000 on disk, 43,999 after the forming bar is
+   dropped, 2 more pages per pair.
+3. `Sep 18, 2026 3:30am` — the cap is 44,000.
+
+**ROOT CAUSE** — two constants for one size, in two modules.
+
+**WHY IT WAS NOT CAUGHT** — the backfill test fixes the cache at 40,000
+bars deliberately (`T0 - 40_000 * 60`) and asserts that the front is
+filled; a wasted request produces correct data and no failing assertion.
+
+**COST** — none in money; ~2,006 avoidable venue requests.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_v2_surfaces_read_their_own_store.py::test_the_kline_disk_cache_holds_a_full_1m_frame`.
+
+---
+
+## RCA-2026-09-18-G — a job rule added on one side and not the other: the resume counted refusals, the hand-off accepted v2
+
+**CEO**
+
+* NEVER HAPPENED YET. Two doors the one-job-at-a-time rule forgot: a job
+  that crashed while another job held the disk would have used up all 20 of
+  its restart attempts in ten minutes without ever starting, ringing
+  "restarted after a crash" each time; and the "hand the rest to GitHub"
+  button's back door accepted a Backtest v2 job and would have stopped it
+  under a sentence about a cloud that has no one-minute candles.
+* Why: the rule was written into the start button and not into the two
+  other places that start or stop a job.
+* What stops it now: the resume waits (and says so) without spending an
+  attempt; a hand-off request for a v2 job is refused with the reason; both
+  are tested.
+
+**DEV**
+
+* `db_jobs.resume_if_died:540` `_set_retries(kind, n + 1)` and the bell
+  BEFORE `start()` (`:549`), which raises `JobBusy` (`:651`); the supervisor
+  tick (`api.py:178`) swallows it every 30 s → 20 x 30 s = 10 minutes.
+  `api.job_handoff:1362` accepted `backtest_v2`; `_finish_handoff:54` is
+  hard-wired to `"backtest"`.
+* Invariant broken: **a refusal is not an attempt**, and **a request the
+  system cannot serve is refused, never accepted and dropped**.
+* Guard: `tests/test_a_progress_write_never_ends_a_run.py::test_a_resume_waits_for_the_disk_without_spending_a_retry`,
+  `::test_disk_holder_names_who_keeps_a_kind_off_the_disk`;
+  `tests/test_v2_jobs_have_no_cloud.py::test_a_v2_handoff_is_refused_with_the_reason`,
+  `::test_the_v2_handoff_state_says_no_cloud_is_available`.
+
+**SAW** — nothing on a screen; `db_retries.json` read `{download: 0,
+download_v2: 0, backtest_v2: 0}` on `Sep 18, 2026 3:05am`. Found by two
+reviewers reading `start()` beside `resume_if_died()`.
+
+**TIMELINE** (made-up numbers on the real mechanism)
+
+1. A v1 download is killed mid-run by a start.py restart at 10:16pm; at
+   10:17pm UPDATE CANDLES on Candles v2 starts the 1-minute download.
+2. Ticks at 10:17:30, 10:18:00 … 10:27:00 — 20 `resume_if_died("download")`
+   calls, each `_set_retries` +1 and a bell, each `start()` → `JobBusy`.
+3. 3:00am — the disk is free; `resume_if_died` answers "gave up after 20
+   retries"; the v1 download stays dead with `running: true` in its file.
+
+**ROOT CAUSE** — one rule, three doors, one guarded.
+
+**WHY IT WAS NOT CAUGHT** — `test_a_v2_job_waits_for_a_v1_job_and_the_other_way_round`
+drives `start()`; nothing drove `resume_if_died` with the other version's
+job running, and the hand-off route's tests never asked it about a v2 kind.
+(CLAUDE.md, Sep 05: *grep for the CONCEPT — every guard keyed on the same
+subject.*)
+
+**COST** — none.
+
+**FIX** — this commit (`disk_holder()` is the one
+rule both doors read).
+
+**GUARD** — `tests/test_a_progress_write_never_ends_a_run.py::test_a_resume_waits_for_the_disk_without_spending_a_retry` and `tests/test_v2_jobs_have_no_cloud.py::test_a_v2_handoff_is_refused_with_the_reason`.
+
+---
+
+## RCA-2026-09-18-H — a coin re-deployed from the old screen kept printing its Backtest v2 code
+
+**CEO**
+
+* NEVER HAPPENED YET. Deploy a coin from Backtest v2, then later deploy the
+  same coin and rule from the old Backtest screen: the app would have gone
+  on printing the Backtest v2 code for it everywhere — the code of a
+  measurement the operator had just decided against.
+* Why: the deploy remembered "this coin came from v2" and only ever ADDED
+  to that memory; a deploy from the old screen wrote nothing, so the old
+  memory stayed.
+* What stops it now: a deploy from the old screen erases that memory for
+  the coins it arms (other coins keep theirs), and the preview printed
+  before any deploy says "Backtest v2 · minute-exact" on the rows that are.
+
+**DEV**
+
+* `deploy_preset.merged:168` merge mode `{**old, **_res_map(got)}`;
+  `_res_map` emits nothing for a row without `res`, so a slot's `"1m"`
+  survived a v1 re-arm and `api.row_id_for` kept hashing with it.
+  `describe:203` printed no store.
+* Invariant broken: **the printed id is the row that was deployed** (rule
+  22, and the id rule of the v2 work).
+* Guard: `tests/test_v2_surfaces_read_their_own_store.py::test_a_v1_redeploy_over_a_v2_slot_forgets_the_v2_id`,
+  `::test_the_read_back_names_the_store`.
+
+**SAW** — nothing on a screen (`strategy_res` landed Sep 17 and no coin has
+been deployed from v2 yet); found by the review's deploy reader with a
+two-call probe: after a v2 deploy `{"ote_1h_sl3tp1|XPIN_USDT": "1m"}`,
+after a v1 re-deploy still `"1m"`, `row_id_for` → `U9YP5N7L`.
+
+**TIMELINE** (made-up numbers on the real mechanism)
+
+1. Day 1 — XPIN 1h ote TP 1% / SL 3% deployed from Backtest v2 as
+   `#U9YP5N7L`.
+2. Day 3 — the same rule and coin deployed from the old screen as
+   `#LG9NSU4B`, merge mode; the screen keeps printing `#U9YP5N7L`.
+3. `Sep 18, 2026 3:30am` — the merge forgets `strategy_res` for every slot
+   the preset arms, then applies the preset's own; `describe` names the
+   store.
+
+**ROOT CAUSE** — a memory with an add path and no clear path.
+
+**WHY IT WAS NOT CAUGHT** — `test_a_preset_row_from_v2_writes_strategy_res`
+tests the write; nothing tested the deploy AFTER it.
+
+**COST** — none.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_v2_surfaces_read_their_own_store.py::test_a_v1_redeploy_over_a_v2_slot_forgets_the_v2_id`.
+
+---
+
+## RCA-2026-09-18-I — a Backtest v2 trade said it closed at 1:28am and was held "less than an hour"
+
+**CEO**
+
+* On every Backtest v2 trade log row the "held" column was still measured
+  in whole candles while the "closed at" column beside it was measured to
+  the minute: a trade that opened at 1:00am and closed at 1:28am printed
+  "held <1h", and one closing at 11:28am after a 9:00am entry printed "2h
+  0m".
+* Why: the column that says how long a trade lasted was never taught about
+  the minutes; only the closing time was.
+* What stops it now: when the minutes settled the exit, "held" is the
+  minutes too — "28m" — through the same formatter the live Positions
+  table uses.
+
+**DEV**
+
+* `auto_trader.backtest_strategy:3141` — `"held": _held(i + 1, j)` bar to
+  bar, beside `"exit time": fmt_when(_exit_min / 1000)`. Now
+  `_held_fine(i + 1, _exit_min)` / `_held_s_fine` when `_exit_min` is set.
+* Invariant broken: **two columns on one row read one clock**
+  (label-must-match-data).
+* Guard: `tests/test_v2_surfaces_read_their_own_store.py::test_held_follows_the_exit_minute_not_the_bar`.
+
+**SAW** — the Backtest v2 trade log for `#U9YP5N7L` (XPIN 1h) on `Sep 17,
+2026 8:50pm`: 585 rows, 42 exits off the hour, every `held` a whole number
+of hours or `<1h`.
+
+**TIMELINE**
+
+1. `Sep 17, 2026 6:45pm` — `fine=` lands; `exit time` and
+   `exit_minute_ms` read the minute; `held`/`held_s` untouched.
+2. `8:50pm` — the log is opened in the browser with both columns on every
+   row.
+3. `Sep 18, 2026 3:30am` — fixed; the fixture with a stop at minute 28
+   prints `held 28m`, `held_s 1680`.
+
+**ROOT CAUSE** — a finer clock added to one of two columns that share it.
+
+**WHY IT WAS NOT CAUGHT** — the minute-exact tests assert `exit time` and
+`exit_minute_ms`; none asserted `held`.
+
+**COST** — none.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_v2_surfaces_read_their_own_store.py::test_held_follows_the_exit_minute_not_the_bar`.
+
+---
+
+## RCA-2026-09-18-J — Backtest v2 offered a CSV download that answered "not on Backtest v2 yet", for a reason that was no longer true
+
+**CEO**
+
+* With a "last 30 days" window on, the Backtest v2 screen offered
+  "download the window's CSV"; clicking it gave an error saying the window
+  reads the old store — which had stopped being true hours earlier when
+  the window itself was fixed to read the one-minute store.
+* Why: the table's window was fixed and the file's window was left refused
+  with the old sentence.
+* What stops it now: a days window exports from the one-minute store like
+  the table; a months window (which the file cannot yet do) shows a plain
+  sentence instead of a link, and the app's refusal says the true reason.
+
+**DEV**
+
+* `api.strategies_csv_v2:3214` raised 400 `_V2_NO_WINDOW` for `months or
+  days` with a reason describing the pre-56ed9d67 code; `StrategiesPanel`
+  rendered the link regardless of store. `strategies_csv_lines` and
+  `rows_index.iter_rows` now take `store=` and pass it to
+  `window_rows(store=)`; months is refused with the true sentence and the
+  panel shows it instead of a link.
+* Invariant broken: **a link promises what the route delivers**
+  (label-must-match-data), and **a refusal states the true reason**.
+* Guard: `tests/test_v2_routes.py::test_the_v2_csv_takes_a_days_window_and_names_the_months_gap`.
+
+**SAW** — `/api/v2/strategies.csv?days=30` → `{"detail": "a days/months
+window is not on Backtest v2 yet — the window re-measure reads the v1 candle
+store…"}` on `Sep 17, 2026 10:50pm`, 35 minutes after the JSON window began
+reading the v2 store.
+
+**TIMELINE**
+
+1. `Sep 17, 2026 10:15pm` — `restate_window(store=)` lands; the v2 table
+   restates 30-day windows from the 1-minute store.
+2. `10:50pm` — the review's live probe: the CSV route still refuses with
+   the old reason; the panel still offers the link.
+3. `Sep 18, 2026 3:30am` — days exports; months is a sentence.
+
+**ROOT CAUSE** — a feature fixed on one of its two surfaces.
+
+**WHY IT WAS NOT CAUGHT** — `test_v2_routes.py` asserted the CSV refuses a
+window, so the test was green when the refusal became a lie: a test that
+pins a limitation must also pin its REASON.
+
+**COST** — none.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_v2_routes.py::test_the_v2_csv_takes_a_days_window_and_names_the_months_gap`.
+
+---
+
 ## RCA-2026-09-17-F — UPDATE THIS BACKTEST answered "Internal Server Error" whenever any other job was running
 
 **CEO**

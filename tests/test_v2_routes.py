@@ -115,3 +115,26 @@ def test_the_v2_job_kinds_are_known_to_the_jobs_routes(client):
     c, _ = client
     assert c.get("/api/jobs/download_v2").status_code == 200
     assert c.get("/api/jobs/backtest_v2").status_code == 200
+
+
+def test_the_v2_csv_takes_a_days_window_and_names_the_months_gap(client):
+    """RCA-2026-09-18-J: the panel offered "download the window's CSV" on
+    Backtest v2 and the route answered 400 with a reason that had stopped
+    being true. A DAYS window now exports (re-measured from the v2 store's
+    1-minute candles inside the generator); a MONTHS window is refused with
+    the true sentence, and the panel shows that sentence instead of a link."""
+    c, v2 = client
+    _seed(v2.rows_db, [_row("XPIN", 99.0, unclear=3, res="1m")])
+    r = c.get("/api/v2/strategies.csv?coin=XPIN&days=30")
+    assert r.status_code == 200, r.text[:200]
+    assert "days" in r.headers.get("content-disposition", "").lower() or \
+        r.headers.get("content-disposition"), "a file, named for its window"
+    r = c.get("/api/v2/strategies.csv?coin=XPIN&months=1")
+    assert r.status_code == 400
+    why = r.json()["detail"]
+    assert "MONTHS window" in why and "DAYS window" in why, why
+    assert "v1 candle store" not in why, "the old, false reason is gone"
+    panel = (Path(__file__).resolve().parents[1]
+             / "webapp/src/components/backtest/StrategiesPanel.tsx").read_text(encoding="utf-8")
+    assert 'store === "v2" && servedFilters.months' in panel
+    assert "a months window has no CSV on Backtest v2 yet" in panel

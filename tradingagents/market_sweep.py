@@ -523,7 +523,7 @@ def save_states(coin: str, tf: str, states: dict) -> None:
         tmp.replace(_state_file(coin, tf))
 
 
-def pair_watermark(coin: str, tf: str) -> int:
+def pair_watermark(coin: str, tf: str, root=None) -> int:
     """The last candle a pair was measured through, or 0 if it never finished.
 
     Reads the TAIL of the state file, not the whole thing. `save_states` writes
@@ -531,9 +531,9 @@ def pair_watermark(coin: str, tf: str) -> int:
     25 GB of JSON, which is how a "how complete is the sweep?" check timed out
     at five minutes on 2026-08-23. Falls back to a full parse if the tail does
     not look the way it should, so a format change degrades to slow rather
-    than to wrong.
+    than to wrong. `root` reads another store's state (Backtest v2).
     """
-    f = _state_file(coin, tf)
+    f = _state_file(coin, tf, root)
     try:
         size = f.stat().st_size
         with f.open("rb") as fh:
@@ -614,7 +614,8 @@ def worker_write(slot: int | None = None, **fields) -> None:
 WORKER_STALE_SECONDS = 30
 
 
-def worker_read(stale_seconds: float = WORKER_STALE_SECONDS) -> list:
+def worker_read(stale_seconds: float = WORKER_STALE_SECONDS,
+                workers_dir=None) -> list:
     """Every LIVING worker's last published state.
 
     A file whose process is gone, or that has not been written for
@@ -624,7 +625,10 @@ def worker_read(stale_seconds: float = WORKER_STALE_SECONDS) -> list:
     """
     out, now = [], time.time()
     try:
-        files = sorted(WORKERS.glob("w*.json"))
+        # `workers_dir`: another store's slots (the API reads Backtest v2's
+        # job from ~/.tradingagents/v2/workers; its own WORKERS is v1's)
+        files = sorted((Path(workers_dir) if workers_dir else WORKERS)
+                       .glob("w*.json"))
     except Exception:
         return []
     for f in files:

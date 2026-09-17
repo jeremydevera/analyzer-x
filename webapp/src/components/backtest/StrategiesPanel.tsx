@@ -996,7 +996,17 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
             `/api/strategies/reindex` has sized itself as `stale or behind`
             since RCA-2026-09-10-C; this is the same expression, so the
             label and the job cannot disagree. */}
-        {idx && indexTodo > 0 ? (
+        {/* BACKTEST v2 HAS NO INDEXER. Its job files its own rows when it
+            finishes, so "catching up on its own in the background" — the
+            sentence below, derived from v1's indexer process — was false on
+            this screen (Sep 18, 2026 review). The store says who files it. */}
+        {idx && indexTodo > 0 && (store === "v2" || idx.filed_by === "job") ? (
+          <span className="text-theme-xs text-warning-600 dark:text-warning-400 text-right">
+            {`${indexTodo.toLocaleString()} pair(s) measured but not in this table yet — `
+              + `the v2 backtest files its rows when it finishes; if it was stopped, `
+              + `press BACKTEST or UPDATE ALL BACKTESTS again`}
+          </span>
+        ) : idx && indexTodo > 0 ? (
           <div className="flex flex-col items-end gap-1">
             <button onClick={catchUp} disabled={!!reindexing}
               className="h-10 rounded-lg border border-warning-500 px-3 text-theme-sm font-medium text-warning-600 hover:bg-warning-50 disabled:opacity-50 dark:text-warning-400">
@@ -1801,7 +1811,15 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
                   className={`${pageBtn} ml-1`}>
             {loadingMore ? "loading…" : `+${perPage.toLocaleString()} more`}
           </button>
-          {/* the only honest "all": a file, streamed, with every column */}
+          {/* the only honest "all": a file, streamed, with every column.
+              On Backtest v2 a MONTHS window has no file yet (the route says
+              so with 400) — offering the link was a promise the download
+              broke (Sep 18, 2026 review); a DAYS window exports fine. */}
+          {store === "v2" && servedFilters.months ? (
+            <span className="ml-1 text-theme-xs text-gray-500 dark:text-gray-400">
+              a months window has no CSV on Backtest v2 yet — use a days window for the file
+            </span>
+          ) : (
           <a className={`${pageBtn} ml-1 inline-flex items-center`}
              /* AND SAY HOW LONG IT TAKES. A windowed download re-measures
                 every row it writes from this PC's candles, and the browser
@@ -1858,6 +1876,7 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
               ? `download the window's top ${csvMax.toLocaleString()} CSV`
               : `download all (${total.toLocaleString()}${capped ? "+" : ""}) CSV`}
           </a>
+          )}
         </div>
       </div>
 

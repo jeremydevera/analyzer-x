@@ -793,6 +793,12 @@ _PAIR_WRITERS = {
     "backtest": "is measuring into the pair files this rebuild reads",
     "btupdate": "is measuring into the pair files this rebuild reads",
     "download": "is writing candles to the same disk",
+    # Backtest v2's jobs never touch v1's pair files, but they share the one
+    # mechanical disk this gate exists for (RCA-2026-09-10: two jobs on one
+    # spindle took the rebuild from 40 pairs/min to 0.25)
+    "download_v2": "is writing 1-minute candles to the same disk",
+    "backtest_v2": "is measuring Backtest v2 pairs on the same disk",
+    "btupdate_v2": "is measuring Backtest v2 pairs on the same disk",
 }
 
 
@@ -843,9 +849,10 @@ def stale_watermark(pair: str) -> bool:
             # the state file BESIDE the database being read (Backtest v2's
             # state/ sits beside its rows.db); v1's watermark for the same
             # coin+frame is a different measurement and would read as stale
-            sf = _db().parent / "state" / f"{coin}-{tf}.json"
-            live = int((json.loads(sf.read_text(encoding="utf-8"))
-                        .get("__last_ms__") or 0)) if sf.exists() else 0
+            # the TAIL of the file, like v1: a v2 state file is ~9 MB and
+            # this runs once per pair on a polled route — parsing it whole
+            # measured 0.2 s a pair, 800 s for a 4,000-pair store
+            live = msw.pair_watermark(coin, tf, root=_db().parent)
         else:
             live = msw.pair_watermark(coin, tf)
     except Exception:
@@ -3009,7 +3016,10 @@ def _build_lock(name: str) -> Path:
     (2026-08-27). A file is the only thing the API, the indexer and a detached
     child all share.
     """
-    return DB_PATH.parent / f".build-{name}.pid"
+    # beside the database BEING READ: under `using_db(v2)` a v2 request's
+    # build must lock, spawn and be remembered against v2's file, or the
+    # child builds v1's index and v2 answers 503 for ever (Sep 18, 2026)
+    return _db().parent / f".build-{name}.pid"
 
 
 def build_running(name: str | None = None) -> str:
@@ -3022,7 +3032,7 @@ def build_running(name: str | None = None) -> str:
     """
     try:
         locks = ([_build_lock(name)] if name
-                 else list(DB_PATH.parent.glob(".build-*.pid")))
+                 else list(_db().parent.glob(".build-*.pid")))
     except OSError:
         return ""
     for lock in locks:
@@ -3155,7 +3165,7 @@ def _build_index(name) -> bool:
     # process's memory of it and look at the database again.
     if name in _BUILDING and not _build_lock(name).exists():
         _BUILDING.discard(name)
-        _INDEX_SEEN.pop((str(DB_PATH), name), None)
+        _INDEX_SEEN.pop((str(_db()), name), None)
     if name in _BUILDING:
         return False
     if has_index(name) is True:
@@ -3189,7 +3199,7 @@ def _build_index(name) -> bool:
     # `spawn_indexer` and never reached this sibling — 45 minutes of work
     # per index, silent.
     child_env = dict(os.environ, TA_INDEX_BUILD=name,
-                     TA_ROWS_DB=str(DB_PATH),
+                     TA_ROWS_DB=str(_db()),
                      PYTHONUNBUFFERED="1")
     kwargs: dict = {"env": child_env,
                     "stdin": subprocess.DEVNULL,
@@ -3982,7 +3992,7 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
               sizing=None, row_id=None, group=None, max_sl=0, days=0,
               desc=None, batch=5_000, min_tp=0, min_sl=0,
               tp_over_sl=False, asset=None, stats=None, measured_days=0,
-              db_path=None):
+              db_path=None, store=None):
     """Every matching row, in the asked order, a batch at a time.
 
     `db_path` is EXPLICIT here, not `using_db`: this generator is drained by
@@ -4116,7 +4126,10 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
                 # 2026). The page's own window call passes nothing.
                 _msw.window_rows(batch_rows, win_days,
                                  group_max=len(batch_rows) + 1,
-                                 breathe=EXPORT_BREATHE_S)
+                                 breathe=EXPORT_BREATHE_S,
+                                 # Backtest v2's CSV: bars from the 1m store,
+                                 # exits by the minute — never v1's candles
+                                 store=store)
                 for d in batch_rows:
                     if not d.get("restated"):
                         continue
@@ -4304,7 +4317,7 @@ def status(db_path=None) -> dict:
             # job on 2026-09-10 and undercounted it 806 vs 5,276, so REINDEX
             # promised a seventh of the work it had started.
             "stale": None if pairs is None else len(stale_pairs()),
-            "syncing": syncing(),
+            "syncing": False if _DB_OVERRIDE.get() else syncing(),
             # IS ANYTHING ACTUALLY FILLING THIS? Every other field here
             # describes the backlog; none of them said whether a process
             # exists to work it off. On Sep 13, 2026 4:05pm the indexer died
@@ -4314,8 +4327,17 @@ def status(db_path=None) -> dict:
             # that it "catches up on its own in the background". It did not.
             # A backlog with no worker is a different sentence from a backlog
             # being worked, and the screen has to be able to say which.
-            "indexer_running": _running_elsewhere(),
-            "last_error": _last_error, "blocked_by": lock_holder(),
+            # BACKTEST v2 HAS NO INDEXER. Its job files its own rows when it
+            # finishes (db_jobs._run_backtest_inner); v1's run lock, pid file,
+            # last error and lock holder describe v1's process, and printing
+            # them under a v2 backlog said "catching up on its own" about a
+            # store nothing was filling (Sep 18, 2026 review; the sentence
+            # RCA-2026-09-14-B was written about). None = no such process.
+            "indexer_running": (None if _DB_OVERRIDE.get()
+                                else _running_elsewhere()),
+            "filed_by": "job" if _DB_OVERRIDE.get() else "indexer",
+            "last_error": "" if _DB_OVERRIDE.get() else _last_error,
+            "blocked_by": "" if _DB_OVERRIDE.get() else lock_holder(),
             # kept for older readers; both mean "a sweep owns the disk"
             "trickling": busy, "paused": busy,
             # WHICH job, not just that one exists. "paused" with no

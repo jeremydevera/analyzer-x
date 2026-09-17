@@ -196,10 +196,25 @@ update_pairs` take an optional `root`; default unchanged.
   full (RCA-2026-09-17-E) — the first press queued 1,003 pairs behind a
   sentence about 5.
 
+* Sep 18, 2026 — a seven-lens adversarial review of the whole change set
+  (36 raw findings, 27 after dedup) fixed nine things before the market-wide
+  v2 run (docs/RCA.md RCA-2026-09-18-B..J): the report's v1 ids on v2 rows;
+  the index build, status liveness, worker list, rebuild gate and watermark
+  read that still pointed at v1 under `using_db`; a progress-file rename
+  that could (and did) kill a run; the resume counting `JobBusy` as a
+  retry; the hand-off route accepting v2; `strategy_res` never cleared;
+  `held` bar-based beside a minute-exact exit; the v2 CSV's false refusal;
+  the kline disk cache below the 1m ask; and 11 test fixtures in the
+  operator's real pending list. The verify stage of that review could not
+  run (the subagent spend limit was reached); every finding was verified by
+  hand against the code before it was fixed. The 1m store itself was
+  scanned: 1,003 coins, 42,475,435 bars, **0** missing minutes.
+
 ## Out of this cut
 
 Cloud measuring for v2 — the fleet has no 1m store, so every v2 measure runs
-on this PC.
+on this PC. Healing a 1-minute hole in the middle of a stored frame (today
+the frame is refused and named; none exists in the store).
 
 ## Tests (guards, all new)
 

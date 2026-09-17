@@ -165,8 +165,21 @@ def merged(preset: dict, settings: dict) -> dict:
     for field, pick in fields:
         out[field] = {**(out.get(field) or {}),
                       **{k: pick(v) for k, v in got["arm"].items()}}
-    out["strategy_res"] = {**(out.get("strategy_res") or {}), **_res_map(got)}
+    # A slot re-armed WITHOUT `res` (a v1 row) forgets any v2 memory it held:
+    # merge mode used to keep the old "1m", so a coin re-deployed from v1 went
+    # on printing its v2 id (Sep 18, 2026 review, never fired).
+    armed = _armed_slots(got)
+    out["strategy_res"] = {**{k: v for k, v in (out.get("strategy_res") or {}).items()
+                              if k not in armed},
+                           **_res_map(got)}
     return _tail(preset, out)
+
+
+def _armed_slots(got: dict) -> set:
+    """Every `book_slot(key, coin)` this preset arms, with or without `res`."""
+    from tradingagents import auto_trader as at
+
+    return {at.book_slot(k, c) for k, v in got["arm"].items() for c in v["coins"]}
 
 
 def _res_map(got: dict) -> dict:
@@ -206,7 +219,11 @@ def describe(preset: dict, settings: dict) -> str:
         lines.append(
             f"  {key:<24} {', '.join(c.replace('_USDT', '') for c in v['coins'])}"
             f"  ${v['margin']:g} {v['sizing']} {'/'.join(v['book'])}"
-            + (f"  [{' '.join('#' + str(r) for r in ids)}]" if ids else ""))
+            + (f"  [{' '.join('#' + str(r) for r in ids)}]" if ids else "")
+            # WHICH STORE the row came from — the read-back is where rule 22
+            # ("name the exact row back") happens, and a v2 row is a
+            # different measurement from its v1 twin
+            + ("  Backtest v2 · minute-exact" if v.get("res") else ""))
     for bad in got["refused"]:
         lines.append(f"  REFUSED {bad['key']}: {bad['why']}")
     for both in got.get("shared") or []:

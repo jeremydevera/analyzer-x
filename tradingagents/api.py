@@ -452,7 +452,10 @@ def strategies(coin: str | None = None, tf: str | None = None,
     # `disagreements` re-tests each row that is about to be sent against each
     # filter that was on, using the figure the COLUMN prints — so a chip that
     # disagrees with its own table writes a MISMATCH line the moment it happens.
-    _screen_note("apply", locals(), got, _time.time() - _t0)
+    # WITH THE STORE: a v2 press and a v1 press with the same filters were
+    # indistinguishable lines in the screen log (Sep 18, 2026 review)
+    _screen_note("apply", {**locals(), "store": _store_now().name}, got,
+                 _time.time() - _t0)
     return got
 
 
@@ -491,7 +494,7 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                          max_sl=0, days=0,
                          desc=None, batch=5_000, min_tp=0, min_sl=0,
                          tp_over_sl=False, asset=None, measured_days=0,
-                         db_path=None):
+                         db_path=None, store=None):
     """The CSV, one chunk at a time — a module-level generator on purpose.
 
     Inside the route it was only reachable through StreamingResponse's ASYNC
@@ -583,8 +586,9 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                               min_tp=min_tp, min_sl=min_sl,
                               tp_over_sl=tp_over_sl, asset=asset,
                               measured_days=measured_days,
-                              # Backtest v2's rows.db when the v2 CSV asks
-                              db_path=db_path,
+                              # Backtest v2's rows.db when the v2 CSV asks,
+                              # and its store for the window's re-measure
+                              db_path=db_path, store=store,
                               stats=stats):
             score, why = ri.balanced_score(r)
             # THE PROJECT'S ONE DATE FORMAT (`Aug 03, 2026 8:03pm`), never a
@@ -1335,7 +1339,12 @@ def job_status(kind: str) -> dict:
     # last line, which read as an idle core. This read drops anything whose
     # process is gone or that stopped being written.
     if got.get("running") and got.get("workers") is not None:
-        got["workers"] = msw.worker_read()
+        # the STORE's slots: a v2 job publishes into ~/.tradingagents/v2/
+        # workers, and this process's own WORKERS folder is v1's — the v2
+        # screen showed v1's cores (Sep 18, 2026 review)
+        _st = _stores.for_kind(kind) if kind.endswith("_v2") else None
+        got["workers"] = msw.worker_read(
+            workers_dir=(_st.home / "workers") if _st else None)
     return got
 
 
@@ -1370,6 +1379,11 @@ def job_handoff(kind: str) -> dict:
     _check_kind(kind)
     from tradingagents import cloud_sweep as cs, db_jobs
 
+    if kind.endswith("_v2"):
+        # the generic route accepted this and stopped the v2 job under
+        # "handed over to GitHub Actions" while nothing could take it
+        # (Sep 18, 2026 review, never fired)
+        raise HTTPException(400, _V2_NO_CLOUD)
     ok, why = cs.available()
     if not ok:
         raise HTTPException(400, f"GitHub Actions is not usable: {why}")
@@ -1388,7 +1402,8 @@ def job_handoff_state(kind: str) -> dict:
     _check_kind(kind)
     from tradingagents import cloud_sweep as cs, db_jobs
 
-    ok, why = cs.available()
+    ok, why = ((False, _V2_NO_CLOUD) if kind.endswith("_v2")
+               else cs.available())
     st = db_jobs.status(kind)
     # A request the running job CANNOT serve must say so, not sit on
     # "finishing the current pairs" forever. It hung for 19 minutes on
@@ -2592,6 +2607,27 @@ def index_status(pending: dict | None = None) -> dict:
         "indexer_running": None, "paused_by": ""})
 
 
+# BACKTEST v2's status, cached the same way and for the same reason: the v2
+# routes called `ri.status(db_path=...)` inline on a polled route, and its
+# per-pair watermark read grows with the store (Sep 18, 2026 review).
+_INDEX_STATUS_V2 = BackgroundValue(
+    "index-status-v2",
+    lambda: __import__("tradingagents.rows_index",
+                       fromlist=["x"]).status(db_path=_stores.V2.rows_db),
+    ttl=INDEX_STATUS_TTL,
+    on_error=lambda exc: {"pairs_indexed": None, "rows": None, "behind": None,
+                          "stale": None, "filed_by": "job",
+                          "unreadable": f"{type(exc).__name__}: {exc}"})
+
+
+def index_status_v2() -> dict:
+    """`rows_index.status()` over the v2 store, from the background reader."""
+    return _INDEX_STATUS_V2.get(pending={
+        "pairs_indexed": None, "pairs_on_disk": None, "behind": None,
+        "stale": None, "rows": None, "reading": True,
+        "indexer_running": None, "paused_by": "", "filed_by": "job"})
+
+
 _CLOUD_STATUS = BackgroundValue(
     "cloud-status", _read_cloud_status, ttl=CLOUD_STATUS_TTL,
     # a failed read is an answer too — and it keeps the panel's shape
@@ -3132,9 +3168,11 @@ def candle_gaps_v2() -> dict:
 # 2026: an empty page names what it examined), never a 500.
 _V2_EMPTY_WHY = ("no v2 store yet — download 1m candles on Candles v2 first, "
                  "then press BACKTEST on Backtest v2")
-_V2_NO_WINDOW = ("a days/months window is not on Backtest v2 yet — the window "
-                 "re-measure reads the v1 candle store, and restating "
-                 "minute-exact rows from hour bars would be a false label")
+_V2_NO_WINDOW = ("a MONTHS window has no CSV on Backtest v2 yet — the table "
+                 "above is the window's own; export with a DAYS window "
+                 "instead, which re-measures each row from the 1-minute store")
+_V2_NO_CLOUD = ("Backtest v2 runs only on this PC — GitHub's machines have no "
+                "1-minute store, so there is nothing to hand the rest to")
 
 
 def _v2_rows_db():
@@ -3186,7 +3224,7 @@ def strategies_v2(coin: str | None = None, tf: str | None = None,
         _STORE.reset(tok)
     got["store"] = "v2"
     # the v2 index's own state, not v1's cached one (label-must-match-data)
-    got["index"] = ri.status(db_path=db)
+    got["index"] = index_status_v2()
     return got
 
 
@@ -3211,10 +3249,7 @@ def strategies_csv_v2(coin: str | None = None, tf: str | None = None,
     db = _v2_rows_db()
     if db is None:
         raise HTTPException(404, _V2_EMPTY_WHY)
-    if months or days:
-        # the CSV re-measures each row inside its own generator thread, where
-        # the request's store is not visible; the windowed v2 file comes with
-        # the per-row replay that runs there
+    if months:
         raise HTTPException(400, _V2_NO_WINDOW)
     try:
         ri.export_plan(coin=coin, signal=signal, sort=sort, row_id=row_id,
@@ -3229,7 +3264,7 @@ def strategies_csv_v2(coin: str | None = None, tf: str | None = None,
                                        sizing=sizing, group=group,
                                        max_sl=max_sl, min_tp=min_tp,
                                        min_sl=min_sl, tp_over_sl=tp_over_sl,
-                                       asset=asset, days=0)
+                                       asset=asset, days=days)
     return StreamingResponse(
         strategies_csv_lines(coin=coin, tf=tf, signal=signal,
                             profitable=profitable, sort=sort,
@@ -3238,8 +3273,13 @@ def strategies_csv_v2(coin: str | None = None, tf: str | None = None,
                             group=group, max_sl=max_sl,
                             min_tp=min_tp, min_sl=min_sl,
                             tp_over_sl=tp_over_sl, asset=asset,
-                            days=0, measured_days=measured_days, desc=desc,
-                            db_path=db),
+                            # the window re-measures from the v2 store's own
+                            # 1-minute candles, exits settled by the minute:
+                            # `store` travels with the generator because the
+                            # request's ContextVar is not visible in the
+                            # thread that drains it
+                            days=days, measured_days=measured_days, desc=desc,
+                            db_path=db, store=_stores.V2),
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
@@ -3280,7 +3320,7 @@ def backtest_storage_v2() -> dict:
                 "newest_measured": None, "store": "v2", "why": _V2_EMPTY_WHY}
     with ri.using_db(db):
         d = backtest_storage()
-    d["index"] = ri.status(db_path=db)
+    d["index"] = index_status_v2()
     d["store"] = "v2"
     return d
 

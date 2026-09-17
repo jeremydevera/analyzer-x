@@ -1673,7 +1673,10 @@ export type IndexStatus = {
    *  the screen could not tell them apart: the indexer died at
    *  `Sep 13, 2026 4:05pm` on `database is locked`, nothing restarted it, and
    *  `stale` climbed to 5,344 overnight under a button and no explanation. */
-  indexer_running?: boolean;
+  indexer_running?: boolean | null;
+  /** "job" on Backtest v2: its rows are filed by the backtest job when it
+   *  finishes — there is no indexer process to be "catching up" */
+  filed_by?: "job" | "indexer";
   /** WHICH job owns the disk while the indexer stands down, in words
    *  ("collect", "backtest"). "paused" with no name is the stalled screen
    *  RCA-2026-09-10-C was about. */

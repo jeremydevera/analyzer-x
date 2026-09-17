@@ -1054,7 +1054,11 @@ def _klines_page(symbol: str, interval: str, limit: int, end: int):
 # kept on disk and only the tail is refetched. JSON+gzip of plain columns —
 # no parquet dependency — capped so a file never grows past ~40k bars.
 
-_KLINE_DISK_MAX = 40_000
+# at least the largest frame a download asks for (backtest_report.TFS["1m"]
+# = 44,000 bars). At 40,000 the cache could never satisfy the 1m ask, so every
+# one of the 1,003 one-minute downloads on Sep 17, 2026 paged 4,000 bars it
+# had fetched seconds earlier (RCA-2026-09-18-F)
+_KLINE_DISK_MAX = 44_000
 
 
 def _kline_disk_path(symbol: str, interval: str) -> _pathlib.Path:

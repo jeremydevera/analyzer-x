@@ -1034,6 +1034,38 @@ reader in `market_sweep` takes a root (`cached_candles`, `pair_rows`,
 byte, and `_DIRS_CACHE` is keyed by store because v1 and v2 bars of one coin
 are different frames with one name.
 
+**What a seven-lens review of the change set found (Sep 18, 2026;
+docs/RCA.md RCA-2026-09-18-B..J), and the rule each one bought:**
+
+* **A request for store X reads store X, on the WRITE and SPAWN paths too.**
+  `using_db` had been threaded through the readers; the on-demand index
+  build still locked, spawned and was remembered against `DB_PATH` (v1), so
+  a v2 store past 200,000 rows would have answered 503 for ever; `status()`
+  returned v1's indexer liveness for v2; the API's worker list for a v2 job
+  came from v1's folder; the report minted v2 rows under v1 ids. Every path
+  under the override resolves through `_db()`; a v2 status says `filed_by:
+  "job"`, `indexer_running: None`, and the panel prints that the v2 job
+  files its own rows — never "catching up on its own".
+* **Telemetry never ends a run.** The v1 backtest died at 3,948 of 4,124
+  pairs on `Sep 17, 2026 7:31pm` because a Windows rename of
+  `db_backtest.json` was refused for longer than 40 x 5 ms. `_write` waits
+  3 s; every mid-run progress write goes through `_write_progress`, which
+  prints once a minute and never raises; terminal writes stay loud.
+* **One rule, every door.** The one-disk rule lived in `start()`;
+  `resume_if_died` counted a `JobBusy` refusal as a retry (20 in ten
+  minutes) and `/api/jobs/{kind}/handoff` accepted a v2 kind the cloud
+  cannot take. `disk_holder()` is the one rule both read.
+* **A test writes only under its own tmp_path.** The operator's real
+  pending list held 11 rows and all 11 were test fixtures
+  (`pending_ledger.STATE_DIR` was outside the sandbox).
+* **Two columns on one row read one clock.** `held` stayed bar-based beside
+  a minute-exact `exit time`.
+* **A memory with an add path needs a clear path.** `strategy_res` kept a
+  v2 id through a v1 re-deploy.
+* **A test that pins a limitation pins its REASON.** The v2 CSV refused a
+  window with a sentence that stopped being true when the table's window
+  was fixed.
+
 **What pressing the buttons found before the operator did** (docs/RCA.md
 RCA-2026-09-17-A/B): `fx.klines` grows a cached history at the TAIL only, so
 ARKM/GLM downloaded 2.4 days of minutes against MEXC's 30 — `klines_backfill`

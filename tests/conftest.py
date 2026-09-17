@@ -315,6 +315,17 @@ def _never_touch_the_live_book(tmp_path, monkeypatch):
             for kind, roles in _dj.FILES.items()})
     except Exception:
         pass
+    try:
+        # THE PENDING LEDGER TOO. Every test that drove `_run_download` wrote
+        # its fixture pairs into the operator's REAL ~/.tradingagents/
+        # pending_candles.json — C0_USDT..C7_USDT, FLAKY_USDT, NAORIS_USDT,
+        # MEZO_USDT: all 11 rows of the live v1 Pending list on Sep 18, 2026
+        # were test fixtures (RCA-2026-09-18-C)
+        from tradingagents import pending_ledger as _pl
+
+        monkeypatch.setattr(_pl, "STATE_DIR", sandbox, raising=False)
+    except Exception:
+        pass
 
 
 @pytest.fixture(autouse=True)

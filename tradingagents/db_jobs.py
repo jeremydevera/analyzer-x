@@ -122,23 +122,61 @@ def _write(path: Path, payload: dict) -> None:
     removed, so on 2026-08-25 the collision raised PermissionError inside the
     per-pair callback and the job's `done` froze at 64 of 4,985 while its
     workers ran on for twenty minutes (6,419 errors in a 6 s reproduction).
-    The replace itself is retried briefly: a reader holding the destination
-    open is a few milliseconds of PermissionError on Windows, not a failure."""
+    The replace itself is retried: a reader holding the destination open is
+    a few milliseconds of PermissionError on Windows, not a failure — but not
+    always milliseconds. 40 x 5 ms (0.2 s) was the budget until Sep 17, 2026
+    7:31pm, when the v1 backtest died at 3,948 of 4,124 pairs because a
+    reader (the API's poll, or the antivirus) held `db_backtest.json` longer
+    than that and the 41st attempt raised out of the per-pair callback
+    (docs/RCA.md RCA-2026-09-18-B). The budget is `WRITE_REPLACE_BUDGET_S`
+    now, with a growing pause, and PROGRESS writes go through
+    `_write_progress`, which never lets a lost heartbeat end a run."""
     import threading as _th
 
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f"{path.name}.{os.getpid()}.{_th.get_ident()}.tmp")
     tmp.write_text(json.dumps(payload), encoding="utf-8")
-    for attempt in range(40):
+    deadline = time.monotonic() + WRITE_REPLACE_BUDGET_S
+    pause = 0.005
+    while True:
         try:
             tmp.replace(path)
             return
         except PermissionError:
-            if attempt == 39:
+            if time.monotonic() >= deadline:
                 with contextlib.suppress(OSError):
                     tmp.unlink()
                 raise
-            time.sleep(0.005)
+            time.sleep(pause)
+            pause = min(pause * 1.5, 0.1)
+
+
+# how long `_write` keeps trying to swap the finished file into place on
+# Windows before giving up (RCA-2026-09-18-B: 0.2 s killed a 96%-done run)
+WRITE_REPLACE_BUDGET_S = 3.0
+_PROGRESS_WARNED: dict = {}
+
+
+def _write_progress(path: Path, payload: dict) -> bool:
+    """A PROGRESS write that can fail without ending the job.
+
+    The progress file is telemetry: the screen reads it, nothing resumes from
+    it (the checkpoint is the pair's own state file). So a write the OS
+    refuses — Windows `PermissionError` past the budget, a full disk — is
+    printed once a minute and swallowed, and the run goes on. Terminal writes
+    (`running: False`, specs, ledgers) keep using `_write` and stay loud.
+    """
+    try:
+        _write(path, payload)
+        return True
+    except OSError as exc:
+        now = time.time()
+        if now - _PROGRESS_WARNED.get(str(path), 0.0) >= 60.0:
+            _PROGRESS_WARNED[str(path)] = now
+            print(f"[jobs] could not write {path.name} "
+                  f"({type(exc).__name__}: {exc}) — the run continues; the "
+                  f"screen may lag until the next write lands", flush=True)
+        return False
 
 
 def _read(path: Path) -> dict:
@@ -537,6 +575,16 @@ def resume_if_died(kind: str) -> dict:
     # A RESUMED run continues; it never starts over. The operator's split is
     # BACKTEST=scratch / UPDATE=gap-fill, and a crash is not a click on either.
     spec = {**spec, "fresh": False}
+    holder = disk_holder(kind)
+    if holder:
+        # WAIT, do not count. `start()` would refuse with JobBusy; counting
+        # that refusal as an attempt (and ringing "restarted after a crash")
+        # would burn all MAX_RETRIES in ten minutes of supervisor ticks and
+        # abandon the job for good once the disk was free (Sep 18, 2026
+        # review, never fired).
+        return {"resumed": False,
+                "why": f"waiting: {holder} is running — one job at a time, "
+                       f"across both versions"}
     _set_retries(kind, n + 1)
     try:
         from tradingagents import notifications as _nt
@@ -626,6 +674,21 @@ _DISK_JOBS = ("download", "backtest", "btupdate", "collect",
               "download_v2", "backtest_v2", "btupdate_v2")
 
 
+def disk_holder(kind: str) -> str:
+    """The running job that keeps `kind` off the disk, or "".
+
+    One rule for `start()` (refuse, naming the holder) and `resume_if_died`
+    (wait, without spending a retry): a v2 kind yields to ANY disk job, a v1
+    kind yields to the v2 ones, and v1 kinds among themselves are as before.
+    """
+    others = (_DISK_JOBS if kind.endswith("_v2")
+              else tuple(k for k in _DISK_JOBS if k.endswith("_v2")))
+    for other in others:
+        if other != kind and status(other).get("running"):
+            return other
+    return ""
+
+
 def start(kind: str, spec: dict) -> int:
     """Write the job's spec and launch it detached. Refuses to double-start."""
     if kind in LOCAL_SWEEP_KINDS and not cap.LOCAL_SWEEPS:
@@ -644,12 +707,10 @@ def start(kind: str, spec: dict) -> int:
         return st.get("pid") or 0
     # ONE DISK, across both versions (see _DISK_JOBS). Refuse with the HOLDER
     # named, so the screen says "backtest_v2 is running", never a stall.
-    others = (_DISK_JOBS if kind.endswith("_v2")
-              else tuple(k for k in _DISK_JOBS if k.endswith("_v2")))
-    for other in others:
-        if other != kind and status(other).get("running"):
-            raise JobBusy(f"{other} is running — one job at a time, across "
-                          f"both versions; stop it or wait for it to finish")
+    holder = disk_holder(kind)
+    if holder:
+        raise JobBusy(f"{holder} is running — one job at a time, across "
+                      f"both versions; stop it or wait for it to finish")
     f = FILES[kind]
     f["stop"].unlink(missing_ok=True)
     _write(f["spec"], spec)
@@ -679,7 +740,7 @@ def start(kind: str, spec: dict) -> int:
     # `mode` from the very first tick. Without it the seconds between START
     # and the first measured pair published no mode at all, so the badge fell
     # through to "downloading" at the start of every RESOLVE and UPDATE.
-    _write(f["progress"], {"running": True, "started": int(time.time()),
+    _write_progress(f["progress"], {"running": True, "started": int(time.time()),
                            "done": 0, "total": 0, "now": "starting",
                            **({"mode": spec["mode"]} if spec.get("mode") else {})})
     return proc.pid
@@ -1176,7 +1237,7 @@ def _run_download(spec: dict, kind: str = "download") -> None:
         # to "downloading" — so a RESOLVE run wore a DOWNLOAD label for its
         # whole hour (2026-09-05). A correct value under a false caption is
         # the failure label-must-match-data exists to catch.
-        _write(f["progress"], {"running": True, "done": done, "total": len(pairs),
+        _write_progress(f["progress"], {"running": True, "done": done, "total": len(pairs),
                                "mode": mode,
                                "now": f"{c} {tf}"
                                       + (f" (redo {n}/{PAIR_RETRIES})" if n else ""),
@@ -1283,7 +1344,7 @@ def _run_download(spec: dict, kind: str = "download") -> None:
         # SAY SO. The refresh re-reads every rewritten file and took a minute
         # on this store; without this the screen sits on the last pair's name
         # with `running: true` and looks hung at the finish line.
-        _write(f["progress"], {"running": True, "done": done,
+        _write_progress(f["progress"], {"running": True, "done": done,
                                "total": len(pairs), "mode": mode,
                                "bars_stored": stored, "errors": len(failed),
                                "retries": retries,
@@ -1617,7 +1678,7 @@ def _run_backtest_inner(spec: dict, files_key: str = "backtest",
     fresh = bool(spec.get("fresh", True))
 
     def _publish() -> None:
-        _write(f["progress"], {"running": True,
+        _write_progress(f["progress"], {"running": True,
                                "done": last["done"],
                                "total": last["total"], "now": last["msg"],
                                "pct": last.get("pct"),
@@ -1806,6 +1867,15 @@ def _run_backtest_inner(spec: dict, files_key: str = "backtest",
         try:
             from tradingagents import rows_index as _ri
 
+            # SAY WHAT IS HAPPENING. The heartbeat is stopped by now, so
+            # without this line the screen sits on "done (N/N) · 100%" for
+            # the whole filing — minutes for five pairs, hours for the market
+            # (Sep 18, 2026 review). The counts stay; only the sentence moves.
+            _n_files = len(list(Path(_msw.ROWDIR).glob("*.json")))
+            _write_progress(f["progress"], {
+                **_read(f["progress"]), "running": True,
+                "now": f"filing {_n_files:,} pair file(s) into the v2 table — "
+                       f"the screen fills when this finishes"})
             _filed = _ri.sync(force=True)
             print(f"[backtest_v2] filed {int(_filed.get('pairs') or 0)} pair(s), "
                   f"{int(_filed.get('rows') or 0):,} rows into {_ri.DB_PATH}",
@@ -2114,7 +2184,7 @@ def _run_stratbt(spec: dict) -> None:
         # `pct` carries the exact figure: `done` is a whole number, so a bar
         # asked to show two decimals had nothing finer to print.
         frac = max(0.0, min(1.0, frac))
-        _write(f["progress"], {"running": True, "key": key, "now": msg,
+        _write_progress(f["progress"], {"running": True, "key": key, "now": msg,
                                "done": int(frac * 100), "total": 100,
                                "pct": round(frac * 100, 2)})
 
@@ -2153,7 +2223,7 @@ def _run_collect(spec: dict) -> None:
     from tradingagents import cloud_sweep as cs
     f = FILES["collect"]
     run_id = int(spec["run"])
-    _write(f["progress"], {"running": True, "run": run_id, "done": 0,
+    _write_progress(f["progress"], {"running": True, "run": run_id, "done": 0,
                            "total": 0, "now": "starting"})
 
     def prog(name="", done=0, total=0, pairs=0, rows=0, *_extra) -> None:
@@ -2167,7 +2237,7 @@ def _run_collect(spec: dict) -> None:
         be right here. `*_extra` so a sixth argument added later cannot repeat
         this.
         """
-        _write(f["progress"], {"running": True, "run": run_id,
+        _write_progress(f["progress"], {"running": True, "run": run_id,
                                "done": int(done or 0), "total": int(total or 0),
                                "pairs": int(pairs or 0), "rows": int(rows or 0),
                                "now": f"{name} — {int(rows or 0):,} row(s) "

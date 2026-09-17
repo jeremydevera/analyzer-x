@@ -258,7 +258,9 @@ def test_a_v2_backtest_files_its_own_rows():
 
     src = inspect.getsource(dj._run_backtest_inner)
     i = src.index('if kind.endswith("_v2"):')
-    block = src[i:i + 1200]
+    # 2,400 not 1,200: the filing now announces itself on the screen first
+    # (RCA-2026-09-18, the frozen-at-100% finding), which sits inside this block
+    block = src[i:i + 2400]
     assert "_ri.sync(force=True)" in block, \
         "the v2 job indexes its rows itself, and forces past its own 'sweep running'"
     assert "rows not indexed" in block, "a failed filing is NAMED in the run's record"

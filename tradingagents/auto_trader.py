@@ -2840,6 +2840,21 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
             return f"<{_bar_label(_bar_s)}"
         return _pv.fmt_age(secs)
 
+    def _held_s_fine(a: int, exit_ms) -> int:
+        """Seconds from the entry bar's open to the EXIT MINUTE (v2)."""
+        try:
+            return max(0, int(exit_ms / 1000
+                              - _pd.Timestamp(_dates[a]).timestamp()))
+        except Exception:                                      # noqa: BLE001
+            return 0
+
+    def _held_fine(a: int, exit_ms) -> str:
+        """`held` when the minutes settled the exit: the same formatter, over
+        the minute instead of the bar, so a row that says 9:00am -> 11:28am
+        reads "2h 28m", never "2h 0m" (label-must-match-data)."""
+        secs = _held_s_fine(a, exit_ms)
+        return "<1m" if secs < 60 else _pv.fmt_age(secs)
+
     def stamp(k: int) -> str:
         v = _stamp_cache.get(k)
         if v is None:
@@ -3138,7 +3153,10 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                     # backtested trade and an open one cannot describe the
                     # same duration differently — this repo has paid five
                     # times for two implementations of one format.
-                    "held": _held(i + 1, j), "held_s": _held_s(i + 1, j),
+                    "held": (_held_fine(i + 1, _exit_min)
+                             if _exit_min is not None else _held(i + 1, j)),
+                    "held_s": (_held_s_fine(i + 1, _exit_min)
+                               if _exit_min is not None else _held_s(i + 1, j)),
                     "side": "LONG" if s > 0 else "SHORT", "step": step + 1,
                     "margin $": margin, "leverage": f"{lev}x",
                     "notional $": round(notional, 2),

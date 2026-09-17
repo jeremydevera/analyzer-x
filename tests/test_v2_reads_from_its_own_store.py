@@ -26,17 +26,21 @@ def _minutes(n_hours, both_at_hour=1, tp_first=True):
     for h in range(n_hours):
         for k in range(60):
             hi = lo = 100.0
+            # ONE branch per order. The first draft read `(k == 30) == tp_first`
+            # for the stop, which with tp_first=False marked 59 of 60 minutes
+            # as a stop touch (Sep 18, 2026 review) — and nothing ran that
+            # branch. Now both orders are exact and both are exercised.
             if h == both_at_hour:
-                if (k == 5) == tp_first:
-                    hi = 101.5
-                if (k == 30) == tp_first:
-                    lo = 96.5
-                if k == 5 and not tp_first:
-                    lo = 96.5
-                    hi = 100.0
-                if k == 30 and not tp_first:
-                    hi = 101.5
-                    lo = 100.0
+                if tp_first:
+                    if k == 5:
+                        hi = 101.5          # target first ...
+                    if k == 30:
+                        lo = 96.5           # ... stop later
+                else:
+                    if k == 5:
+                        lo = 96.5           # stop first ...
+                    if k == 30:
+                        hi = 101.5          # ... target later
             rows.append((H0 + (h * 60 + k) * 60_000, 100.0, hi, lo, 100.0, 7.0))
     df = pd.DataFrame(rows, columns=["t", "Open", "High", "Low", "Close", "Volume"])
     df["Date"] = pd.to_datetime(df["t"], unit="ms")

@@ -657,7 +657,8 @@ def run_grid(coins: Sequence[str], tfs: Sequence[str], *,
     # its code across pages, sorts, filters and future runs.
     for r in rows:
         r["id"] = row_code(r["coin"], r["tf"], r["signal"], r["th"], r["sl"],
-                           r["tp"], r["sizing"], r.get("plan"))
+                           r["tp"], r["sizing"], r.get("plan"),
+                           res=r.get("res"))
     seen = {}
     for r in rows:                       # a collision would make two rows share
         seen.setdefault(r["id"], []).append(r)   # a name; say so rather than hide it
@@ -1526,8 +1527,11 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
         if "mon" not in r:
             r["mon"] = [(r.get("monthly") or {}).get(m) for m in months]
         r.pop("monthly", None)
+        # `res` too: a v2 row (res="1m") is a different measurement from its
+        # v1 twin and carries a different id everywhere else — the report
+        # printed all 82,758 v2 rows under their v1 ids (RCA-2026-09-18-D)
         r["id"] = row_code(r["coin"], r["tf"], r["signal"], r.get("th", 0),
-                           r["sl"], r["tp"], r["sizing"])
+                           r["sl"], r["tp"], r["sizing"], res=r.get("res"))
         r.setdefault("tpd", round(r["trades"] / max(r.get("days", 1), 1), 2))
         r.setdefault("stop_reachable", True)
         r.setdefault("gate", "ok")

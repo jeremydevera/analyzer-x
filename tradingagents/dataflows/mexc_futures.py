@@ -1063,6 +1063,47 @@ def _kline_disk_path(symbol: str, interval: str) -> _pathlib.Path:
     return KLINE_DISK_DIR / f"{safe}.json.gz"
 
 
+def klines_backfill(symbol: str, interval: str, want: int):
+    """Extend the DISK-CACHED history BACKWARDS until it holds `want` bars or
+    the venue has no older ones, and return the whole frame.
+
+    `klines()` treats a cached frame as complete and fetches only the tail.
+    A cache seeded by a small call therefore never grows at the FRONT: on
+    Sep 17, 2026 the Candles v2 download stored **3,505** one-minute bars
+    (2.4 days) for ARKM_USDT and GLM_USDT while MEXC serves **30 days**
+    (~44,000) — asked directly, the venue answered 2,000 bars for a page 25
+    days back. A download that trusts a short cache measures a short story.
+
+    Pages backwards from the cached oldest bar, one `_KLINE_PAGE` at a time,
+    stopping at `want` or at the first empty page (no older candles). Wire
+    failures inside `_klines_page` retry there; an exception here propagates
+    to the caller, which names the pair and redoes it by itself.
+    """
+    import pandas as pd
+
+    have = _kline_disk_load(symbol, interval)
+    if have is None or not len(have):
+        # nothing cached: klines() pages a cold cache backwards already
+        return klines(symbol, interval, want)
+    frames = [have]
+    oldest = int(have["Date"].iloc[0].timestamp())
+    while sum(len(f) for f in frames) < want:
+        part = _klines_page(symbol, interval, _KLINE_PAGE, oldest - 1)
+        if part is None or part.empty:
+            break                       # the venue has nothing older
+        frames.append(part)
+        first = int(part["Date"].iloc[0].timestamp())
+        if first >= oldest:
+            break                       # no progress: stop rather than loop
+        oldest = first
+    out = (pd.concat(frames, ignore_index=True)
+             .sort_values("Date").drop_duplicates(subset="Date", keep="last")
+             .reset_index(drop=True))
+    _kline_disk_save(symbol, interval, out)
+    _kline_db_store(symbol, interval, out)
+    return out.tail(want).reset_index(drop=True) if len(out) > want else out
+
+
 def _kline_disk_load(symbol: str, interval: str):
     import pandas as pd
 

@@ -1786,6 +1786,26 @@ def _run_backtest_inner(spec: dict, files_key: str = "backtest",
                                 label=spec.get("label") or "archive")
     except Exception as exc:                 # never claim a save that failed
         save_err = str(exc)[:160]
+    if kind.endswith("_v2"):
+        # v2 ROWS ARE FILED BY THIS JOB. The API's indexer thread watches the
+        # v1 pair folder and nothing watches ~/.tradingagents/v2, so a v2 run
+        # that ended here left Backtest v2's table empty after a clean sweep
+        # (found in the press-and-watch PREDICT, Sep 17, 2026). `force`: the
+        # sync stands down while a sweep runs, and the sweep it would see is
+        # this job. rows.db and the pair folder are v2's here — both come
+        # from this process's environment (stores.V2.env_for()).
+        try:
+            from tradingagents import rows_index as _ri
+
+            _filed = _ri.sync(force=True)
+            print(f"[backtest_v2] filed {int(_filed.get('pairs') or 0)} pair(s), "
+                  f"{int(_filed.get('rows') or 0):,} rows into {_ri.DB_PATH}",
+                  flush=True)
+        except Exception as exc:                                   # noqa: BLE001
+            save_err = (save_err + " · " if save_err else "") + \
+                f"rows not indexed: {type(exc).__name__}: {exc}"[:160]
+            print(f"[backtest_v2] could not index the rows: "
+                  f"{type(exc).__name__}: {exc}", flush=True)
     try:
         from tradingagents import notifications as _nt
 

@@ -34,8 +34,10 @@ from pathlib import Path
 STATE_DIR = Path.home() / ".tradingagents"
 
 # One file per kind. "candles" is filled by the download job, "backtest" by
-# the sweep (local) and by the cloud shards' own named losses.
-KINDS = ("candles", "backtest")
+# the sweep (local) and by the cloud shards' own named losses. "candles_v2"
+# is Backtest v2's 1-minute download (Sep 17, 2026): its failures are its
+# own, so a lost 1m pair never counts as v1 pending and the reverse.
+KINDS = ("candles", "backtest", "candles_v2")
 
 # A failure is kept even after many retries — it is the operator's to see. But
 # the REASON is kept short: this file is read on every panel poll.

@@ -146,11 +146,14 @@ def test_the_download_records_failures_and_clears_successes():
     from tradingagents import db_jobs as dj
 
     src = inspect.getsource(dj._run_download)
-    assert '_pl.clear("candles", ok_pairs)' in src
-    assert '_pl.record("candles"' in src
+    # the ledger KIND follows the job since Backtest v2 (Sep 17, 2026):
+    # "candles" for the v1 download, "candles_v2" for the 1-minute one
+    assert "_pl.clear(_ledger_kind(kind), ok_pairs)" in src
+    assert "_pl.record(_ledger_kind(kind)" in src
+    assert dj._ledger_kind("download") == "candles"
     # cleared FIRST, so a pair that failed then succeeded inside one run (a
     # redo that worked) does not end the run on the books
-    assert src.index('_pl.clear("candles"') < src.index('_pl.record("candles"')
+    assert src.index("_pl.clear(_ledger_kind(kind)") < src.index("_pl.record(_ledger_kind(kind)")
 
 
 def test_the_sweep_records_failures_and_clears_successes():

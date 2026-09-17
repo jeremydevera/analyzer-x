@@ -450,6 +450,26 @@ def refresh_candles(symbol: str, tf: str, *, days: int = 365):
               .sort_values("Date").reset_index(drop=True))
         added = len(df) - len(have)
         source = "delta"
+    # A SHORT HISTORY IS FILLED FROM THE FRONT. `fx.klines` treats whatever is
+    # on disk as complete and only fetches the tail, so a cache seeded by a
+    # small call stays small for ever: the Candles v2 download stored 3,505
+    # one-minute bars (2.4 days) for ARKM_USDT against the 30 days MEXC serves
+    # (Sep 17, 2026). Fewer bars than the frame's cap means "ask the venue for
+    # older ones"; it stops at the first empty page, so a young contract costs
+    # one extra request per download and nothing more. Never on the runner's
+    # path — this function is the downloads' and the sweep's.
+    if len(df) < cap:
+        try:
+            older = at._closed_bars(fx.klines_backfill(symbol, iv, cap), bs)
+            if older is not None and len(older) > len(df):
+                added += len(older) - len(df)
+                df = older
+        except Exception as exc:                                   # noqa: BLE001
+            # a backfill that fails leaves what was fetched; the pair is not
+            # lost, it is merely as short as it was
+            print(f"[candles] {symbol} {tf}: could not fill the history "
+                  f"backwards ({type(exc).__name__}: {str(exc)[:60]}) — kept "
+                  f"the {len(df)} bars fetched", flush=True)
     cut = pd.Timestamp.utcnow().tz_localize(None) - pd.Timedelta(days=days + 30)
     df = df[df["Date"] >= cut].reset_index(drop=True)
     save_candles_cache(symbol, tf, df)

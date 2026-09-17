@@ -236,6 +236,22 @@ def test_candle_index_reads_the_root_it_is_handed(tmp_path):
         "its own index file, beside its own candles"
 
 
+def test_a_v2_backtest_files_its_own_rows():
+    """Nothing watches ~/.tradingagents/v2: the API's indexer thread reads the
+    v1 pair folder. A v2 sweep that did not index its rows left Backtest v2's
+    table empty after a clean run (press-and-watch PREDICT, Sep 17, 2026)."""
+    import inspect
+
+    from tradingagents import db_jobs as dj
+
+    src = inspect.getsource(dj._run_backtest_inner)
+    i = src.index('if kind.endswith("_v2"):')
+    block = src[i:i + 1200]
+    assert "_ri.sync(force=True)" in block, \
+        "the v2 job indexes its rows itself, and forces past its own 'sweep running'"
+    assert "rows not indexed" in block, "a failed filing is NAMED in the run's record"
+
+
 def test_parquet_root_follows_the_environment(monkeypatch, tmp_path):
     from tradingagents import parquet_store as pqs
 

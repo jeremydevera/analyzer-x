@@ -172,6 +172,123 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-17-A — the Candles v2 download stored 2.4 days of 1-minute candles for two coins while MEXC serves 30
+
+**CEO**
+
+* The very first Candles v2 download (five coins) came back "downloaded 5
+  pair(s), 0 errors" — and two of the five, ARKM and GLM, held **3,505**
+  one-minute candles (2.4 days) where the other three held about 40,000 (28
+  days). Nothing on the screen said so; the run looked clean.
+* Why: the app keeps a copy of every candle it has ever fetched and, when
+  asked again, only fetches what is NEWER than that copy. ARKM's copy had been
+  started by a small look-up earlier that day, so every later fetch just added
+  the newest minutes to a history that was never going to grow at the front.
+* What stops it now: when a download comes back with fewer candles than the
+  timeframe should have, it asks the venue for OLDER ones, page by page, until
+  it has the full history or the venue has no more. Re-run after the fix, ARKM
+  and GLM hold the same ~40,000 minutes as the others.
+
+**DEV**
+
+* `mexc_futures.klines:1160-1190` — a disk-cached frame is treated as
+  complete: `fetch_from = last_s - 2 * per` pages the TAIL only; the front is
+  never revisited. `market_sweep.refresh_candles:359-377` inherits that, and
+  the v2 download (`db_jobs._run_download` → `refresh_candles(symbol, "1m")`)
+  stored whatever came back. Found in the press-and-watch WATCH step by
+  listing the files: 163 KB against 2.1 MB.
+* Invariant broken: **a cache is complete only if it holds what was ASKED**
+  — the same shape as the 8,000-bar 15m sweep in CLAUDE.md rule 13 ("never
+  cap a fetch below what the venue serves"), this time from a cache rather
+  than a limit.
+* Guard: `tests/test_a_short_kline_cache_is_backfilled.py` — `klines_backfill`
+  pages backwards until the venue answers an empty page and stops at `want`;
+  `refresh_candles` asks for it whenever `len(df) < cap` and not when the
+  frame is full.
+
+**SAW** — `Sep 17, 2026 7:39pm`, `~/.tradingagents/v2/candles`: `ARKM_USDT-1m.json`
+163,751 bytes and `GLM_USDT-1m.json` 177,348 bytes beside three files of ~2.1
+MB; the progress file read `"errors": 0, "note": "downloaded 5 pair(s)"`.
+
+**TIMELINE**
+
+1. `Sep 17, 2026` afternoon — measuring how much accuracy 1-minute candles
+   would buy, `fx.klines("ARKM_USDT", "Min1", 44000)` was called while the
+   disk cache for that pair held a small frame from an earlier page fetch;
+   the call extended its tail and saved **3,356** bars.
+2. Same day, asked directly (`_klines_page(..., end=now-25d)`), MEXC answered
+   **2,000** bars for ARKM 25 days back — the venue had the history the cache
+   did not.
+3. `7:39pm` — the Candles v2 download ran `refresh_candles("ARKM_USDT",
+   "1m")`: `cached_candles` (the v2 sweep cache) was empty, so it called
+   `fx.klines(..., 44000)`, which served the 3,356-bar disk cache plus the
+   newest tail: **3,505** bars, stored as the pair's whole history.
+4. After the fix: `klines_backfill` paged backwards from the cached oldest
+   bar and the pair holds the venue's full 1-minute history.
+
+**ROOT CAUSE** — a cache that grows only at the tail, read by a fetch that
+takes its length as the venue's.
+
+**WHY IT WAS NOT CAUGHT** — every candle test checks the TAIL (a delta fetch,
+a forming bar, a corrupt file) or a COLD fetch (paging a full history); none
+seeds a SHORT warm cache and asks whether the front is ever filled. The
+download's own report counted pairs and errors, not bars against the cap.
+
+**COST** — none in money; two pairs of one test download. A Backtest v2 row on
+either coin would have been measured on 2.4 days and labelled by its `days`
+field, so the label would have been true and the history a fraction of what
+was available.
+
+**FIX** — this commit (`klines_backfill`, `refresh_candles` fills a short
+history from the front).
+
+**GUARD** — `tests/test_a_short_kline_cache_is_backfilled.py` (4 tests).
+
+---
+
+## RCA-2026-09-17-B — the Candles v2 download could not write its own pending list
+
+**CEO**
+
+* The same first Candles v2 download ended with a line in its log: *"could
+  not update the pending ledger: ValueError: unknown pending kind:
+  'candles_v2'"*. Had a pair failed, RESOLVE PENDING on Candles v2 would have
+  had nothing to resolve and the failure would have been invisible.
+* Why: the list of "things that failed and need a retry" is kept in one file
+  per kind, and the file names were a fixed list of two. The v2 download was
+  given its own name so its failures never mix with v1's — and the list did
+  not know the name.
+* What stops it now: the name is registered, and a test asks for it.
+
+**DEV**
+
+* `pending_ledger.KINDS = ("candles", "backtest")` while `db_jobs._ledger_kind`
+  returned `"candles_v2"` for the v2 job; `_run_download` caught the
+  `ValueError` and printed it, so the run finished "clean" with its ledger
+  unwritten.
+* Invariant broken: **a job that cannot record its own failures reports a
+  success it cannot vouch for** (CLAUDE.md, "a job that cannot start must SAY
+  SO", in its ledger form).
+* Guard: `test_the_v2_download_has_its_own_pending_ledger` in
+  `tests/test_a_short_kline_cache_is_backfilled.py`.
+
+**SAW** — `db_download_v2.log`, last line, `Sep 17, 2026 7:39pm`.
+
+**TIMELINE** — 1. `7:39pm` the v2 download finished five pairs; 2. its ledger
+write raised on the unknown kind and was logged; 3. registered in this commit.
+
+**ROOT CAUSE** — a new kind added on the writer's side and not on the ledger's.
+
+**WHY IT WAS NOT CAUGHT** — the ledger's tests drive `record`/`clear` with the
+two known kinds; the v2 job tests asserted the kind's NAME in the job's
+source, never that the ledger accepts it.
+
+**COST** — none; no pair failed in the run that revealed it.
+
+**FIX** — this commit. **GUARD** — as above.
+
+---
+
 ## RCA-2026-09-16-D — the demo W/L cell printed one strategy's record on every coin it was armed on, and the caption above it said 85 rows were switched off while 120 were running
 
 **CEO**

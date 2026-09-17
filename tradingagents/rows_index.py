@@ -288,10 +288,25 @@ def busy_job() -> str:
         if pid and fresh and portable.pid_alive(pid):
             phase = str(got.get("phase") or "").strip()
             return f"rebuild ({phase})" if phase else "rebuild"
+    #
+    # THE OTHER VERSION'S JOBS ARE NOT THIS STORE'S (Sep 18, 2026). Backtest
+    # v2's jobs write ~/.tradingagents/v2 — its own pair files, its own
+    # rows.db, its own candles — and never a byte of v1's. When the three v2
+    # kinds joined `db_jobs.FILES` they inherited this pause anyway, so a
+    # 21-hour `btupdate_v2` froze the V1 index for 21 hours: the operator
+    # pressed UPDATE on `#LG9NSU4B` at `3:05am`, the 220 rows were measured,
+    # and nothing could file them, on a screen whose whole rule is that it is
+    # kept current. The two stores are separate, so the pause is separate.
+    # (The REBUILD gate keeps both — `_PAIR_WRITERS` — because a rebuild is
+    # six hours of sequential IO on the one platter, which is a different
+    # question from a one-pair trickle.)
     try:
         from tradingagents import db_jobs as dj
 
+        mine_v2 = _store_is_v2()
         for kind in dj.FILES:
+            if str(kind).endswith("_v2") != mine_v2:
+                continue
             # status() resolves a stale pid, so a job whose process died
             # cannot pause the indexer forever — the failure mode that would
             # turn this fix into the very silence it prevents.
@@ -301,6 +316,20 @@ def busy_job() -> str:
     except Exception:                                          # noqa: BLE001
         return ""
     return ""
+
+
+def _store_is_v2() -> bool:
+    """Is the database this call reads Backtest v2's?
+
+    Read from `_db()`, so it answers for the store being served — the API
+    serves both through `using_db`, and the indexer process serves v1.
+    """
+    try:
+        from tradingagents import stores
+
+        return Path(_db()).parent == Path(stores.V2.home)
+    except Exception:                                          # noqa: BLE001
+        return False
 
 
 def _machine_is_busy() -> bool:

@@ -198,3 +198,36 @@ def test_held_follows_the_exit_minute_not_the_bar():
     # without the minutes the bar rule is untouched: an upper bound
     b = _run(BOTH, DIRS)
     assert b["log"][0]["held"] == "<1h" and b["log"][0]["held_s"] == 0
+
+
+# ------------------------------------- the two stores do not pause each other
+def test_a_v2_job_does_not_pause_the_v1_index(monkeypatch, tmp_path):
+    """RCA-2026-09-18-K: a 21-hour `btupdate_v2` froze the V1 index, so the
+    220 rows the operator's UPDATE on #LG9NSU4B measured at 3:05am could not
+    be filed. A v2 job writes ~/.tradingagents/v2 and never a byte of v1's."""
+    from tradingagents import db_jobs as dj, stores
+
+    running = {"btupdate_v2"}
+    monkeypatch.setattr(dj, "status",
+                        lambda kind: {"running": kind in running, "pid": 7})
+    monkeypatch.setattr(ri, "rebuild_progress", lambda: {})
+    assert ri.busy_job() == "", "v1 keeps indexing while Backtest v2 measures"
+    assert ri._machine_is_busy() is False
+
+    v2db = stores.V2.rows_db
+    with ri.using_db(v2db):
+        assert ri.busy_job() == "btupdate_v2", "v2's own job still pauses v2"
+
+    running.clear()
+    running.add("collect")
+    assert ri.busy_job() == "collect", "a v1 job still pauses v1"
+    with ri.using_db(v2db):
+        assert ri.busy_job() == "", "and v1's jobs do not pause v2"
+
+
+def test_the_rebuild_still_yields_to_both_because_it_is_the_disk():
+    """A six-hour rebuild is sequential IO on the one platter — a different
+    question from a one-pair trickle, so its gate keeps every kind."""
+    for kind in ("collect", "backtest", "download", "btupdate",
+                 "download_v2", "backtest_v2", "btupdate_v2"):
+        assert kind in ri._PAIR_WRITERS, kind

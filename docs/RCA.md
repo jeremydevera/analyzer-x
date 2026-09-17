@@ -172,6 +172,86 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-18-K — Backtest v2's 21-hour run froze the OLD screen's index, so UPDATE on #LG9NSU4B measured 220 rows nobody could see
+
+**CEO**
+
+* You searched `#LG9NSU4B` on the old Backtest screen, pressed UPDATE THIS
+  BACKTEST, and the new numbers never appeared. The measuring worked — 220
+  rows for XPIN 1h — but the step that copies them into the searchable table
+  was switched off, and would have stayed off for the ~21 hours Backtest v2
+  needs to finish.
+* Why: the copier stands aside whenever a big job is running, so the two do
+  not fight over the one hard disk. When Backtest v2's jobs were added they
+  joined that list — even though Backtest v2 writes only its own folder and
+  never touches the old store's files. You were right: they are separate.
+* What stops it now: the copier only stands aside for jobs that write the
+  store IT is filling. Backtest v2 measuring no longer freezes the old
+  screen, and the old screen's jobs no longer freeze Backtest v2. (The
+  six-hour full rebuild still yields to both — that one really is about the
+  disk.)
+
+**DEV**
+
+* `rows_index.busy_job:294` looped `for kind in db_jobs.FILES` and returned
+  the first running kind; `FILES` gained `download_v2`/`backtest_v2`/
+  `btupdate_v2` on Sep 17. `_machine_is_busy()` gates `sync`
+  (`:1069`), `sync_in_background` (`:1874`) and the indexer loop (`:4608`),
+  so `btupdate_v2` paused all three. `pairbt` had already failed its own
+  three filing attempts with `OperationalError: database is locked` and left
+  `index_queued: true` for a catch-up that could not run.
+* Invariant broken: **a store's index yields to the jobs that write THAT
+  store** — plus CLAUDE.md's *THE UI IS THE SOURCE OF TRUTH, SO IT IS KEPT
+  CURRENT*: a 21-hour pause is the RCA-2026-09-14-B silence with a different
+  cause.
+* Guard: `tests/test_v2_surfaces_read_their_own_store.py::test_a_v2_job_does_not_pause_the_v1_index`
+  (v2 job → v1 keeps filing; v1 job → v2 keeps filing; each still yields to
+  its own) and `::test_the_rebuild_still_yields_to_both_because_it_is_the_disk`.
+
+**SAW** — `Sep 18, 2026 4:45am`, `GET /api/strategies`: `"stale": 5270,
+"paused": true, "paused_by": "btupdate_v2", "indexer_running": true`; and
+`GET /api/jobs/pairbt`: `{"pair": "XPIN 1h", "rows": 220, "indexed": 0,
+"index_error": "OperationalError: database is locked", "index_queued": true,
+"note": "XPIN 1h · ote: 220 row(s), 0 indexed · measured, waiting on the
+index"}`.
+
+**TIMELINE**
+
+1. `Sep 17, 2026 6:30pm` — `download_v2`, `backtest_v2` and `btupdate_v2`
+   join `db_jobs.FILES`; nothing asks whether they write v1's files.
+2. `Sep 18, 2026 3:05:52am` — UPDATE THIS BACKTEST on `#LG9NSU4B`: `pairbt`
+   measures XPIN 1h ote, 220 rows, and its 3 filing attempts (20 s apart)
+   all raise `database is locked`; the pair is queued for the catch-up.
+3. `3:40:11am` — `btupdate_v2` starts: 4,012 pairs, ~21 hours at the
+   measured 2.99 pairs/min.
+4. From that minute the v1 indexer prints *"paused: a btupdate_v2 is
+   running (5,270 pairs waiting)"* every cycle — including XPIN 1h, the one
+   the operator pressed.
+5. `4:50am` — `busy_job()` reads the store it is filling: with
+   `btupdate_v2` running, v1 answers `""` and v2 answers `"btupdate_v2"`.
+
+**ROOT CAUSE** — a pause meant for "do not fight the big job on this store"
+was applied to a job on the OTHER store, because the list it reads is every
+job kind rather than every job that writes these files.
+
+**WHY IT WAS NOT CAUGHT** — `test_the_indexer_is_never_allowed_to_stay_dead`
+and `test_index_stall_is_visible` (31 tests between them) assert that the
+indexer PAUSES for a running job and says which — never that it must NOT
+pause for a job it shares nothing with. The v2 work added three kinds to a
+list five guards read and I checked the three guards about correctness, not
+the two about yielding. The review's own ops reader raised this as finding
+32 and I fixed its rebuild-gate half and left this half.
+
+**COST** — none in money; the old screen could not show a re-measured row
+for the 1 h 45 min between the press and this fix, and would not have for
+~21 h.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_v2_surfaces_read_their_own_store.py::test_a_v2_job_does_not_pause_the_v1_index`.
+
+---
+
 ## RCA-2026-09-18-A — the row you pressed UPDATE on was filed 5,095th of 5,272
 
 **CEO**

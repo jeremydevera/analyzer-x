@@ -202,7 +202,12 @@ def test_the_panel_prints_the_difference():
     # `=== false`, so "unknown" (null, the first read) is NOT reported as dead
     assert "idx.indexer_running === false" in panel
     client = pathlib.Path("webapp/src/lib/api.ts").read_text(encoding="utf-8")
-    assert "indexer_running?: boolean;" in client
+    # `| null` since Backtest v2 (RCA-2026-09-18-E): "no indexer exists for
+    # this store" is a third state, and the panel must still be able to tell
+    # it from "not known yet" and from "dead". Optional AND nullable, so a
+    # rename or a widening to `unknown` still goes red here.
+    assert "indexer_running?: boolean | null;" in client
+    assert 'filed_by?: "job" | "indexer";' in client
 
 
 # ---------------------------------- 4. it stands down for a REBUILD as well

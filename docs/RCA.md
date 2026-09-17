@@ -172,6 +172,96 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-17-F — UPDATE THIS BACKTEST answered "Internal Server Error" whenever any other job was running
+
+**CEO**
+
+* You pressed UPDATE on strategy #LG9NSU4B and got **"Internal Server Error"**.
+  Nothing was broken — a candle download was running, and this app only lets
+  one job touch the store at a time.
+* The app knew that and had the sentence ready: *"download_v2 is running —
+  wait for it to finish"*. The button threw it away and showed a blank crash
+  instead, so the one thing you needed to read never reached you.
+* What stops it now: the button says which job is in the way, the same as the
+  other job buttons already did. Pressed again for real, it answers
+  *"download_v2 is running"* instead of a crash.
+
+**DEV**
+
+* `db_jobs.start` raises `JobBusy` when another kind holds the store
+  (`db_jobs.py:651`). `api.py:1072 strategy_row_update` and `api.py:1916
+  strategy_backtest` both called it bare, so the exception escaped FastAPI as
+  a 500 — and it never reached `api.log` either, so there was no traceback to
+  find. `POST /api/jobs/{kind}` (`api.py:1345`) has caught it and answered
+  409 since it was written; two of the three call sites never learned.
+* Invariant broken: **a job that cannot start must SAY SO** (CLAUDE.md,
+  RCA-2026-09-10-C). A refusal is not a crash, and a 500 sends the operator
+  to logs that do not have it.
+* Guard: `tests/test_a_busy_machine_is_not_a_crash.py`, 6 tests. Reverting the
+  fix turns 3 of them red.
+
+**SAW** — the operator, `Sep 17, 2026`, on #LG9NSU4B (XPIN 1h, `ote`,
+TP 1.0% / SL 3.0%, flat):
+
+> *"when i click update this backtest for #LG9NSU4B im getting process died
+> before finishing and the last closed trade was Aug 27, 2026 4:00pm"*
+
+and, pressed for real: `HTTP 500, Internal Server Error`.
+
+**TIMELINE**
+
+1. `Sep 17, 2026 10:05pm` — an earlier press DID work: 220 rows measured and
+   written to `XPIN-1h.json`. Its index step then failed on `database is
+   locked` and the job was killed before clearing its own flag — which is why
+   the screen read *"process died before finishing"*. That note was true.
+2. A `download_v2` job then started (1-minute candles, 1,003 coins).
+3. `Sep 17` — pressing UPDATE again returns **HTTP 500** with an empty body.
+   The POST does not appear in `api.log` at all.
+4. Calling `api.strategy_row_update("LG9NSU4B")` by hand names it at once:
+   `tradingagents.db_jobs.JobBusy: download_v2 is running — one job at a
+   time, across both versions; stop it or wait for it to finish`.
+5. Three `start(` call sites in the API; **one** caught it.
+6. After the fix, pressed again through the real route while the same
+   download ran (244 of 1,003 coins, 24.3%, 10,342,038 bars stored):
+   **HTTP 409**, `{"detail": "download_v2 is running — one job at a time..."}`.
+
+**ROOT CAUSE** — `api.py:1072` and `api.py:1916` called `db_jobs.start()`
+outside any `try`. The refusal was designed, the message was written, and two
+buttons dropped it on the floor.
+
+**WHY IT WAS NOT CAUGHT** — `tests/test_row_update_button.py` has seventeen
+tests for this button, including `test_the_route_resolves_a_row_id_to_its_pair`
+which asserts the 409 for *"already re-measuring"*. That is the SAME STATUS for
+a DIFFERENT refusal — the button's own kind being busy — so the suite looked
+like it covered "busy" and covered only half of it. **A route that can refuse
+for two reasons needs a test per reason**; one passing 409 says nothing about
+the other path. Nothing anywhere drove the route with a foreign job running.
+
+**COST** — no money. One strategy could not be re-measured, and the operator
+was sent looking for a crash that never happened.
+
+**FIX** — this commit. Both routes catch `(JobBusy, LocalSweepsOff)` and raise
+409 with the exception's own text. The browser already surfaces it:
+`postDetail` parses `detail` into `ApiError.message` and `StrategiesPanel`
+prints it in `updateErr`.
+
+**GUARD** — `tests/test_a_busy_machine_is_not_a_crash.py`:
+`test_the_row_update_button_says_what_is_busy` drives the real route with a
+refusing `start`; `test_every_button_that_starts_a_job_catches_the_refusal`
+walks each route's AST for an `except` naming `JobBusy`;
+`test_no_route_starts_a_job_without_catching_it` does it over the WHOLE file so
+a fourth button cannot reintroduce it; `test_the_exceptions_it_catches_actually
+_exist` (an `except` naming a missing class crashes worse than the bug);
+`test_a_free_machine_still_starts`.
+
+**A GUARD THAT PASSED ON THE BROKEN FILE, CAUGHT IN THE HARDDEV LOOP** — the
+first draft of the two AST tests grepped the source for the string `"JobBusy"`.
+Both PASSED against the un-fixed code, because the comment explaining the fix
+contains that word. A guard satisfied by a comment is satisfied by nothing;
+they read `ast.Try` handlers now, and the revert turns 3 tests red instead of 1.
+
+---
+
 ## RCA-2026-09-17-E — UPDATE CANDLES on Candles v2 said "nothing is downloaded again", then downloaded the whole market
 
 **CEO**

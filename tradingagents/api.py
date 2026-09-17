@@ -1069,12 +1069,23 @@ def strategy_row_update(row_id: str) -> dict:
     # Operator: "its simple just update the backtest for that certain
     # strategy" — the first version measured all 120 signals for the pair.
     sig = row.get("signal") or ""
-    pid = dj.start("pairbt", {"coin": coin, "tf": tf, "signal": sig,
-                              "base": float(row.get("base") or 5.0),
-                              # 0 = let the job use the PAIR'S OWN span; a
-                              # flat 365 made the trade floor demand a year's
-                              # evidence from 103 days of candles
-                              "days": 0})
+    # A BUSY MACHINE IS A 409, NOT A 500 (operator, Sep 17, 2026: pressing
+    # UPDATE on #LG9NSU4B answered "Internal Server Error"). `dj.start`
+    # refuses while ANY other job holds the disk — one job at a time, across
+    # both versions — by raising JobBusy, and nothing here caught it. So the
+    # one thing the operator needed to read, "a candle download is running",
+    # came back as a blank crash with no traceback in api.log either. The
+    # generic /api/jobs/{kind} route has answered 409 for this since it was
+    # written; this button and the per-strategy backtest never learned.
+    try:
+        pid = dj.start("pairbt", {"coin": coin, "tf": tf, "signal": sig,
+                                  "base": float(row.get("base") or 5.0),
+                                  # 0 = let the job use the PAIR'S OWN span; a
+                                  # flat 365 made the trade floor demand a
+                                  # year's evidence from 103 days of candles
+                                  "days": 0})
+    except (dj.JobBusy, dj.LocalSweepsOff) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return {"started": True, "pid": pid, "row": rid,
             "coin": coin, "tf": tf, "signal": sig,
             "why": f"re-measuring {coin} {tf} {sig} from its last "
@@ -1913,9 +1924,15 @@ def strategy_backtest(body: dict) -> dict:
         raise HTTPException(400, "this strategy has no contract selected")
     margin = float(body.get("base_margin")
                    or (settings.get("strategy_margins") or {}).get(key) or 5.0)
-    return {"pid": db_jobs.start("stratbt", {
-        "key": key, "label": body.get("label") or key, "coins": coins,
-        "base_margin": margin, "days": int(body.get("days") or _sweep_days())})}
+    # Same 409, same reason as the row UPDATE button: another job holding the
+    # disk is something to wait for, not a crash to report.
+    try:
+        return {"pid": db_jobs.start("stratbt", {
+            "key": key, "label": body.get("label") or key, "coins": coins,
+            "base_margin": margin,
+            "days": int(body.get("days") or _sweep_days())})}
+    except (db_jobs.JobBusy, db_jobs.LocalSweepsOff) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @app.get("/api/trade/settings")

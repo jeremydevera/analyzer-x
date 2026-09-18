@@ -463,9 +463,26 @@ def refresh_candles(symbol: str, tf: str, *, days: int = 365):
     if len(df) < cap:
         try:
             older = at._closed_bars(fx.klines_backfill(symbol, iv, cap), bs)
-            if older is not None and len(older) > len(df):
-                added += len(older) - len(df)
-                df = older
+            if older is not None and len(older):
+                # MERGE, NEVER REPLACE. `klines_backfill` returns the DISK
+                # cache grown at the FRONT, and that cache can END EARLIER
+                # than the delta just fetched — so `df = older` threw the new
+                # tail away whenever the backfilled frame was merely LONGER.
+                # Measured Sep 18, 2026 on XPIN_USDT 1h: 522 fresh bars (to
+                # Sep 18 07:00) replaced by an 8,602-bar frame ending
+                # Aug 27 13:00, three weeks earlier — the operator's own
+                # #LG9NSU4B then re-measured to Aug 27 and their trade log
+                # stopped there, twice (docs/RCA.md RCA-2026-09-18-N).
+                # Longer is not fresher; keep both ends.
+                before_n, before_last = len(df), df["Date"].iloc[-1]
+                df = (pd.concat([df, older])
+                      .drop_duplicates(subset="Date", keep="last")
+                      .sort_values("Date").reset_index(drop=True))
+                added += max(0, len(df) - before_n)
+                if df["Date"].iloc[-1] < before_last:       # cannot happen now
+                    raise AssertionError(
+                        f"{symbol} {tf}: the backfill lost the tail "
+                        f"({before_last} -> {df['Date'].iloc[-1]})")
         except Exception as exc:                                   # noqa: BLE001
             # a backfill that fails leaves what was fetched; the pair is not
             # lost, it is merely as short as it was

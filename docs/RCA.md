@@ -172,6 +172,74 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-18-N — the candle fill ran BACKWARDS over its own new bars, so XPIN's hourly history stopped three weeks ago
+
+**CEO**
+
+* You pressed UPDATE on #LG9NSU4B twice and the trade log still ended
+  Aug 27, 2026 4:00pm — three weeks before today. The press worked both
+  times; the candles it had to work with stopped on Aug 27.
+* Why: yesterday's fix that fills a short history BACKWARDS took whichever
+  copy of the candles was LONGER. For XPIN's hourly candles the longer copy
+  was an old one that stopped on Aug 27, so it replaced the 522 fresh hours
+  that had just been downloaded — every time, so the coin could never catch
+  up.
+* What stops it now: the two copies are merged instead of one replacing the
+  other, so the oldest bar and the newest bar both survive. XPIN's hourly
+  candles now run to Sep 18, 2026 7:00am and the row can be measured to
+  today.
+
+**DEV**
+
+* `market_sweep.refresh_candles:466` — `if older is not None and len(older) >
+  len(df): df = older`, where `older` is `fx.klines_backfill(...)`, i.e. the
+  DISK kline cache grown at the FRONT. That cache is a different frame from
+  the delta `fx.klines` just fetched and can end earlier; length was the only
+  test. It is a `concat` + `drop_duplicates(subset="Date", keep="last")` now,
+  with an assertion that the last bar can never move backwards.
+* Invariant broken: **a repair may not undo the work it was run after** —
+  and, in the store's terms, a pair's newest bar only ever moves forward.
+* Guard: `tests/test_a_backfill_never_loses_the_new_tail.py` (3 tests: a
+  longer-but-older backfill keeps both ends, the file on disk ends where the
+  venue ends, and a backfill that raises still keeps the new tail).
+
+**SAW** — `Sep 18, 2026 4:07pm`. `refresh_candles("XPIN_USDT", "1h")`:
+`before: 2,813 bars, last 2026-08-27 13:00` → `after: 8,602 bars, last
+2026-08-27 13:00` while `_klines_page("XPIN_USDT", "Min60", 2000, now)`
+answered `2,000 bars, 2026-06-27 01:00 .. 2026-09-18 08:00`. The same coin's
+other frames were current: 15m to Sep 15 5:45pm, 30m to Sep 15, 4h to Sep 15,
+1d to Sep 14 — only 1h was stuck.
+
+**TIMELINE**
+
+1. `Sep 17, 2026 7:49pm` — `klines_backfill` ships (RCA-2026-09-17-A) with
+   `df = older` whenever the backfilled frame is longer.
+2. `Sep 18, 2026 3:01am` — the operator's UPDATE re-measures XPIN 1h over
+   candles ending Aug 27: 220 rows, 175 trades, last trade Aug 27 4:00pm.
+3. `4:00pm` — they press again and send the screenshot: still Aug 27.
+4. `4:07pm` — reproduced in one call (above); the venue is proved to serve
+   the missing hours.
+5. `4:12pm` — merge instead of replace; `refresh_candles` reports `522`
+   added and the store holds **9,124 bars to Sep 18, 2026 7:00am**.
+
+**ROOT CAUSE** — "longer" used as a proxy for "more complete".
+
+**WHY IT WAS NOT CAUGHT** — `tests/test_a_short_kline_cache_is_backfilled.py`
+proves the FRONT is filled and that a full frame is left alone; both fixtures
+have a backfill that ends at the same bar as the cache, so no test could tell
+"longer" from "fresher". A repair's test must include the case where the
+repair is WORSE than what it replaces.
+
+**COST** — none in money. Three weeks of hourly candles missing for XPIN, two
+presses of a button that could not have worked, and a row that read 175
+trades over 117 days when it should read to today.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_a_backfill_never_loses_the_new_tail.py`.
+
+---
+
 ## RCA-2026-09-18-M — the UPDATE button on your XPIN row said "UPDATING… AMP 15m" about a row you never pressed
 
 **CEO**

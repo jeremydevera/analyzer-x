@@ -1459,16 +1459,56 @@ def sizing_for(settings: dict, key: str | None = None) -> str:
     return "flat"
 
 
-def staked_margin(key: str, settings: dict, step: int) -> float:
-    """The margin for the next trade: the base margin, every time.
+def martingale_on(settings: dict, dry: bool) -> bool:
+    """Is Martingale mode switched on for THIS book?
 
-    `step` — the current losing run — is accepted so the one call site keeps
-    counting the run for the screen, and IGNORED: since Sep 11, 2026 the ladder
-    exists only inside the backtest engine (`ladder_margin`, `LADDER`), never
-    in an order. This does not consult `sizing_for` on purpose, so no later
-    change to how a row is LABELLED can put a multiplier back on real money.
+    Two switches, never one: `martingale_demo` and `martingale_live`. The
+    operator asked for both on `Sep 17, 2026` — *"create a checkbox in auto
+    trade 'Martingale mode' ... i want check for live and demo"* — and they
+    have to be separate, because trying it on the practice book is exactly how
+    you find out what it does to the real one without paying for the lesson.
+
+    BOTH DEFAULT OFF. Between Sep 11 and Sep 17, 2026 the runner could not
+    double a stake at all; a setting missing from an older config must not
+    turn doubling on by itself.
     """
-    return margin_for(key, settings)
+    return bool((settings or {}).get(
+        "martingale_demo" if dry else "martingale_live", False))
+
+
+def staked_margin(key: str, settings: dict, step: int,
+                  dry: bool = False) -> float:
+    """The margin for the next trade.
+
+    OFF (the default): the base margin, every time.
+
+    ON: **the base doubled once for every loss in a row, back to base on a
+    win** — the operator's own words, `Sep 17, 2026`: *"if the past trade
+    lose, double the margin, if it won then return to original set margin"*.
+    `step` is that losing run, already counted per slot at the exit (reset to
+    0 on a win, +1 on a loss), so at a $5 base the stake goes
+    5 → 10 → 20 → 40 → 80 and back to 5 the moment one wins.
+
+    NOT `LADDER` (1,1,2,2,4,4,8). That is the backtest's ladder and it doubles
+    every SECOND loss; this is what they described, and mixing the two would
+    make the screen's "next $" disagree with the order.
+
+    IT STILL DOES NOT CONSULT `sizing_for`. The checkbox is the only thing
+    that can put a multiplier on an order — never a row's LABEL, which is how
+    a config taken from a flat-only survivor list was deployed with the ladder
+    on 2026-08-17: flat it was +$141, laddered it was −$21 with a $339
+    drawdown on a $65 account.
+
+    NOTHING IS CAPPED HERE, deliberately. The capital gate refuses a stake the
+    wallet cannot fund and says so in the ledger (`capital_blocked`), which is
+    a real measured refusal rather than a ceiling nobody chose. At their
+    Sep 17, 2026 wallet of 151.84 USDT and a $5 base, the fifth loss in a row
+    asks for $80 and the sixth for $160 — more than the account holds.
+    """
+    base = margin_for(key, settings)
+    if not martingale_on(settings, dry):
+        return base
+    return round(base * (2 ** max(0, int(step or 0))), 8)
 
 
 def margin_for(key: str, settings: dict) -> float:
@@ -4934,7 +4974,9 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
         # was thrown away, and the candle was already ticked off as considered.
         _prev_seen = st["last_ts"].get(spec["interval"], 0)
         st["last_ts"][spec["interval"]] = last_ts
-        margin = staked_margin(key, settings, st["step"])
+        # PER BOOK: Martingale mode is two switches, and the practice
+        # book may be doubling while real money is flat.
+        margin = staked_margin(key, settings, st["step"], dry)
         notional = margin * LEVERAGE
         entry = close[-1]
         # The backtest enters at the next bar's open. Live, that is only true

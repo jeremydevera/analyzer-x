@@ -30,6 +30,16 @@ export default function StrategiesGrid() {
   const [pDemo, setPDemo] = useState(true);
   const [pLive, setPLive] = useState(false);
   const [pMax, setPMax] = useState(4);
+  // MARTINGALE MODE, one switch per book. Operator, Sep 17, 2026: "create a
+  // checkbox in auto trade 'Martingale mode' meaning if the past trade lose,
+  // double the margin, if it won then return to original set margin ... i
+  // want check for live and demo".
+  //
+  // BOTH DEFAULT OFF. Since Sep 11, 2026 the runner could not double a stake
+  // at all ("just flat only"), and a config written before today has neither
+  // key — an absent setting must never switch doubling on by itself.
+  const [mDemo, setMDemo] = useState(false);
+  const [mLive, setMLive] = useState(false);
   const [flat, setFlat] = useState(false);
   const [locks, setLocks] = useState<Record<string, { coin: string; held_by: string }>>({});
   const [capHit, setCapHit] = useState(false);
@@ -86,6 +96,8 @@ export default function StrategiesGrid() {
           setPDemo((se.settings.partial_tp_demo ?? true) as boolean);
           setPLive((se.settings.partial_tp_live ?? false) as boolean);
           setPMax(Number(se.settings.partial_max_slices ?? 4));
+          setMDemo((se.settings.martingale_demo ?? false) as boolean);
+          setMLive((se.settings.martingale_live ?? false) as boolean);
         }
         setAcctCap(st.account_loss_cap); setCapHit(st.account_cap_hit); setFlat(st.flat); setLocks(st.locks);
         markReady("strategies");
@@ -224,6 +236,36 @@ export default function StrategiesGrid() {
             <input type="checkbox" checked={pLive} className="h-4 w-4 accent-brand-500"
               onChange={(e) => { const v = e.target.checked; setPLive(v); mut((x) => { x.partial_tp_live = v; }); }} />
             Enable Partial TP/SL for Live
+          </label>
+          {/* MARTINGALE MODE. Two switches, and the LIVE one spells out the
+              money, because doubling after a loss is the single fastest way
+              this account can empty: at a $5 base the fifth loss in a row
+              asks for $80 and the sixth for $160, against a wallet of
+              151.84 USDT. The row's LABEL still cannot do this — only this
+              checkbox can — which is what stopped a flat-tested config being
+              deployed with a ladder on 2026-08-17 (flat +$141, laddered
+              -$21 with a $339 drawdown on a $65 account). */}
+          <label className="flex items-center gap-2 text-theme-xs text-gray-600 dark:text-gray-300"
+                 title="DEMO only, no real money: after a losing trade the next one stakes double, after a win it goes back to the margin you set. A run of 4 losses on a $5 base stakes $5, $10, $20, $40.">
+            <input type="checkbox" checked={mDemo} className="h-4 w-4 accent-brand-500"
+              onChange={(e) => { const v = e.target.checked; setMDemo(v); mut((x) => { x.martingale_demo = v; }); }} />
+            Martingale mode for DEMO
+          </label>
+          <label className={`flex items-center gap-2 text-theme-xs ${mLive ? "font-semibold text-error-600 dark:text-error-400" : "text-gray-600 dark:text-gray-300"}`}
+                 title="REAL MONEY: after a losing trade the next one stakes DOUBLE, after a win it goes back to the margin you set. On a $5 base a run of losses stakes $5, $10, $20, $40, $80, $160 — the fifth and sixth are more than this wallet holds, and the trade is refused rather than sized down.">
+            <input type="checkbox" checked={mLive} className="h-4 w-4 accent-error-500"
+              onChange={(e) => {
+                const v = e.target.checked;
+                if (v && !window.confirm(
+                  ["Turn Martingale mode ON for REAL MONEY?", "",
+                   "After every losing trade the next one stakes DOUBLE.",
+                   "On a $5 margin a losing run stakes $5, $10, $20, $40, $80, $160.",
+                   "A win puts it back to $5.", "",
+                   "This is the fastest way the account can empty.",
+                  ].join(String.fromCharCode(10)))) return;
+                setMLive(v); mut((x) => { x.martingale_live = v; });
+              }} />
+            Martingale mode for LIVE
           </label>
           <label className="flex flex-col text-theme-xs text-gray-500 dark:text-gray-400"
                  title="How many strategies may hold one coin at once, per book. Each slice stakes its own margin.">

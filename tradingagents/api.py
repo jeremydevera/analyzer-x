@@ -1851,11 +1851,19 @@ def trade_strategies(catalog: bool = False) -> dict:
             # PER ROW. A row that runs flat must not be drawn with a ladder:
             # the ladder column is what the operator reads before deploying.
             "sizing": at.sizing_for(settings, key),
-            "ladder": ([base_m] if flat
-                       else [round(base_m * m, 2) for m in at.LADDER]),
-            "ladder_rung": (0 if flat else min(streak, len(at.LADDER) - 1)),
-            "next_stake": (base_m if flat
-                           else round(base_m * at.LADDER[min(streak, len(at.LADDER) - 1)], 2)),
+            # WHAT THE NEXT ORDER WILL ACTUALLY STAKE — asked of the same
+            # function the runner calls, for THIS row's book, so the column
+            # and the order can never disagree. With Martingale mode off it
+            # is the base margin on every rung; with it on for this book the
+            # base doubles once per loss in a row and drops back on a win
+            # (operator, Sep 17, 2026).
+            "martingale": at.martingale_on(settings, not _is_real),
+            "ladder": ([base_m] if not at.martingale_on(settings, not _is_real)
+                       else [round(base_m * (2 ** n), 2) for n in range(7)]),
+            "ladder_rung": (streak if at.martingale_on(settings, not _is_real)
+                            else 0),
+            "next_stake": round(
+                at.staked_margin(key, settings, streak, not _is_real), 2),
             "notional": round(base_m * at.LEVERAGE, 2),
             "tripped": key in tripped,
             "live_locked": locks.get(key),

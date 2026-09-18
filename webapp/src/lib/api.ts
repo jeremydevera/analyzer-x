@@ -1151,6 +1151,9 @@ export interface StrategyDeployRow {
   ladder_rung?: number;
   /** unix seconds the CURRENT arming began, from the deploy log,
    *  keyed by strategy AND coin. null when the log has no record. */
+  /** true when Martingale mode is on for THIS row's book, so the screen
+   *  can say that the next stake doubles rather than just printing it */
+  martingale?: boolean;
   deployed_at?: number | null;
   /** the other end of the window when the date was read back from a saved
    *  settings file rather than logged; null/absent means it is exact */

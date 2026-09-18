@@ -398,23 +398,51 @@ def test_a_contract_list_failure_says_why_instead_of_being_empty(client,
 
 def test_the_ladder_is_reported_in_dollars_with_the_current_rung(client,
                                                                  monkeypatch):
+    """THE CHECKBOX draws the ladder, not the row's label (Sep 17, 2026).
+
+    This test used to force `sizing_for` to say "martingale" and expect a
+    ladder — which is the 2026-08-17 fault written down as an assertion: a
+    config taken from a flat-only survivor list was deployed with the ladder
+    on, +$141 became -$21 with a $339 drawdown on a $65 account. Only
+    `martingale_live` / `martingale_demo` can size an order now.
+    """
     at.SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
     at.SETTINGS_PATH.write_text(json.dumps({
         "strategy_books": {"sweep30_1h_w": ["real"]},
         "strategy_coins": {"sweep30_1h_w": ["APEX_USDT"]},
         "strategy_margins": {"sweep30_1h_w": 5.0},
-        "sizing": "martingale"}))
-    monkeypatch.setattr(at, "sizing_for", lambda s, key=None: "martingale")
+        "martingale_live": True}))
     monkeypatch.setattr(at, "load_state", lambda: {
         "APEX_USDT": {"step": 3}})          # three losses deep
-    monkeypatch.setattr(at, "pnl_today_by_strategy", lambda dry=None, by_coin=False: {})
+    monkeypatch.setattr(at, "pnl_today_by_strategy",
+                        lambda now=None, dry=None, by_coin=False: {})
     r = next(x for x in client.get("/api/trade/strategies").json()["rows"]
              if x["key"] == "sweep30_1h_w")
     assert r["streak"] == 3
-    assert r["ladder"] == [round(5.0 * m, 2) for m in at.LADDER]
+    assert r["martingale"] is True
+    assert r["ladder"][:4] == [5.0, 10.0, 20.0, 40.0], "one doubling per loss"
     assert r["ladder_rung"] == 3
-    assert r["next_stake"] == round(5.0 * at.LADDER[3], 2)
+    assert r["next_stake"] == 40.0
     assert r["notional"] == round(5.0 * at.LEVERAGE, 2)
+
+
+def test_a_row_LABELLED_martingale_still_draws_no_ladder(client, monkeypatch):
+    """The other half, and the one that costs money when it goes wrong."""
+    at.SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    at.SETTINGS_PATH.write_text(json.dumps({
+        "strategy_books": {"sweep30_1h_w": ["real"]},
+        "strategy_coins": {"sweep30_1h_w": ["APEX_USDT"]},
+        "strategy_margins": {"sweep30_1h_w": 5.0},
+        "sizing": "martingale",
+        "strategy_sizing": {"sweep30_1h_w": "martingale"}}))
+    monkeypatch.setattr(at, "load_state", lambda: {"APEX_USDT": {"step": 3}})
+    monkeypatch.setattr(at, "pnl_today_by_strategy",
+                        lambda now=None, dry=None, by_coin=False: {})
+    r = next(x for x in client.get("/api/trade/strategies").json()["rows"]
+             if x["key"] == "sweep30_1h_w")
+    assert r["martingale"] is False
+    assert r["ladder"] == [5.0] and r["ladder_rung"] == 0
+    assert r["next_stake"] == 5.0, "a LABEL sized a real order"
 
 
 def test_flat_sizing_has_one_rung_and_a_constant_stake(client, monkeypatch):

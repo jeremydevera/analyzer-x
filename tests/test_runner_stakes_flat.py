@@ -1,4 +1,22 @@
-"""The runner never doubles a stake. The backtests still measure the ladder.
+"""The runner stakes FLAT unless the operator ticks Martingale mode.
+
+SUPERSEDED IN PART ON Sep 17, 2026. They asked for the doubling back, as a
+checkbox per book: *"create a checkbox in auto trade 'Martingale mode' meaning
+if the past trade lose, double the margin, if it won then return to original
+set margin ... i want check for live and demo"*. So the flat rule below is now
+the rule for the SWITCH OFF, which is the default and the state of every
+config written before that day — and `tests/test_martingale_mode.py` holds the
+switch-on half.
+
+What did NOT change, and is still pinned here: a row's LABEL can never put a
+multiplier on an order. Only the checkbox can. That is the property that
+stopped a flat-tested config being deployed with the ladder on 2026-08-17
+(flat +$141, laddered -$21 with a $339 drawdown on a $65 account), and it
+survives this reversal untouched.
+
+The original note follows.
+
+The runner never doubles a stake. The backtests still measure the ladder.
 
 Operator, Sep 11, 2026, after asking what the ladder does ("once i loss will
 it double the margin?" — every second loss: 1,1,2,2,4,4,8 × base):
@@ -35,20 +53,41 @@ SETTINGS = {
 
 # ------------------------------------------------------------- the stake
 def test_the_stake_is_the_base_margin_on_every_rung():
-    """The operator's own PSXSTOCK row ($1 base) and a $5 row: rung 0 to rung
-    8, the stake never moves. Before this, rung 6 staked 8× ($8 and $40)."""
+    """WITH MARTINGALE MODE OFF — the default, and what SETTINGS above is.
+    The operator's own PSXSTOCK row ($1 base) and a $5 row: rung 0 to rung 8,
+    the stake never moves. Before Sep 11, 2026, rung 6 staked 8x ($8 and $40).
+
+    Note both books: a config with neither switch in it must be flat on the
+    real book AND the practice one."""
+    assert "martingale_live" not in SETTINGS and "martingale_demo" not in SETTINGS
     for step in range(0, 9):
-        assert at.staked_margin("willr14_15m_sl1tp12", SETTINGS, step) == 1.0
-        assert at.staked_margin("mom6_1h_pv", SETTINGS, step) == 5.0
+        for dry in (False, True):
+            assert at.staked_margin("willr14_15m_sl1tp12", SETTINGS, step, dry) == 1.0
+            assert at.staked_margin("mom6_1h_pv", SETTINGS, step, dry) == 5.0
+
+
+def test_an_older_config_cannot_switch_doubling_on_by_itself():
+    """Every settings file written between Sep 11 and Sep 17, 2026 has neither
+    key. A missing setting is OFF, never "whatever the row was labelled"."""
+    for cfg in ({}, {"sizing": "martingale"},
+                {"strategy_sizing": {"mom6_1h_pv": "martingale"}}):
+        assert at.martingale_on(cfg, True) is False
+        assert at.martingale_on(cfg, False) is False
+        assert at.staked_margin("mom6_1h_pv", cfg, 6, False) == at.margin_for(
+            "mom6_1h_pv", cfg)
 
 
 def test_the_stake_does_not_even_ask_how_the_row_is_labelled():
-    """`staked_margin` must not route through `sizing_for`: a later change to
-    how a row is LABELLED must not be able to put a multiplier on real money."""
+    """STILL TRUE after Martingale mode came back. `staked_margin` must not
+    route through `sizing_for`: a change to how a row is LABELLED must never
+    be able to put a multiplier on real money. Only the CHECKBOX can, and it
+    is read by name."""
     src = inspect.getsource(at.staked_margin)
     body = src.split('"""')[-1]            # the CODE, not the docstring that names them
     assert "sizing_for(" not in body and "ladder_margin(" not in body and "LADDER[" not in body
-    assert "return margin_for(key, settings)" in body
+    assert "martingale_on(settings, dry)" in body, \
+        "the checkbox is the only switch, so it has to be the one consulted"
+    assert "margin_for(key, settings)" in body
 
 
 def test_sizing_for_says_flat_for_every_input():
@@ -64,7 +103,9 @@ def test_the_runner_takes_its_margin_from_staked_margin_only():
     calls = [ln for ln in src.splitlines()
              if "staked_margin(" in ln and "def staked_margin" not in ln]
     assert len(calls) == 1, calls
-    assert 'margin = staked_margin(key, settings, st["step"])' in calls[0]
+    assert 'staked_margin(key, settings, st["step"], dry)' in calls[0], (
+        "the call site must pass the BOOK: Martingale mode is two switches "
+        "and the practice book may be doubling while real money is flat")
     # and nothing else in the runner's entry path reaches for the ladder: the
     # only ladder_margin call left is the backtest engine's
     engine = [ln for ln in src.splitlines()

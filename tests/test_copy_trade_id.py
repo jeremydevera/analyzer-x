@@ -59,16 +59,33 @@ def test_the_copy_control_works_without_the_async_clipboard():
     assert "document.execCommand" in c and "createElement(\"textarea\")" in c
     assert "could not copy — select it and press Ctrl+C" in c,         "a failed copy must say what to do instead"
     # an icon is what makes the id LOOK copyable — the first complaint
-    assert "<svg" in c and 'aria-label={`copy ${prefix}${id}`}' in c
+    assert "<svg" in c and 'aria-label={`copy ${value ?? id}`}' in c
 
 
-def test_the_label_names_what_the_reader_sees():
-    """The trade button reads "trade FWQRY6Q4" while only the id lands on the
-    clipboard; the label must follow the SCREEN, or a screen reader and the
-    screen disagree about one button."""
+def test_the_clipboard_gets_the_BARE_id_without_the_hash():
+    """Operator, `Sep 18, 2026`: *"when i copy id dont include #"*.
+
+    The `#` is decoration on the screen and was never part of the id —
+    `backtest_report.row_code` returns eight characters and nothing else — so
+    pasting into a find-by-ID box, a search or a message meant deleting a
+    character every single time.
+    """
     c = open("webapp/src/components/trade/CopyableId.tsx", encoding="utf-8").read()
-    assert "copy ${prefix}${id} to the clipboard" in c
-    assert "value ?? `${prefix}${id}`" in c, "the CLIPBOARD may still differ"
+    assert "const text = value ?? id;" in c, \
+        "the # is being copied with the id again"
+    assert "value ?? `${prefix}${id}`" not in c
+    # the SCREEN still shows it — only the clipboard changed
+    assert "{prefix}{id}" in c, "the # must still be visible to read"
+
+
+def test_the_label_names_what_ACTUALLY_lands_on_the_clipboard():
+    """label-must-match-data, on a tooltip. It said "copy #XH2KSFXG to the
+    clipboard" while copying `XH2KSFXG`; a button that names something it
+    does not do is the fault this project keeps paying for."""
+    c = open("webapp/src/components/trade/CopyableId.tsx", encoding="utf-8").read()
+    assert "copy ${value ?? id} to the clipboard" in c
+    assert "copy ${prefix}${id} to the clipboard" not in c, \
+        "the tooltip still promises the # it no longer copies"
 
 
 def test_the_closed_trade_carries_the_same_copyable_id():

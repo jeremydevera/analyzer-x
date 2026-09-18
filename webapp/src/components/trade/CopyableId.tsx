@@ -8,8 +8,14 @@
  *  positions table had a hand-rolled button with neither. One component now,
  *  so the next table cannot be born broken.
  *
- *  `prefix` is what the reader sees before the id ("trade "), and `value`
- *  overrides what lands on the clipboard when they differ.
+ *  `prefix` is what the reader sees before the id — "#" or "trade ". It is
+ *  DECORATION: what lands on the clipboard is the bare id. Operator,
+ *  `Sep 18, 2026`: *"when i copy id dont include #"*. Pasting `#XH2KSFXG`
+ *  into the find-by-ID box, a search, or a message to me means deleting a
+ *  character first, every time, and the `#` was never part of the id —
+ *  `backtest_report.row_code` returns eight characters and nothing else.
+ *
+ *  `value` still overrides, for a label whose text is not the id at all.
  */
 import { useState } from "react";
 
@@ -20,7 +26,7 @@ export default function CopyableId(
   const [state, setState] = useState<"" | "ok" | "fail">("");
 
   const copy = async () => {
-    const text = value ?? `${prefix}${id}`;
+    const text = value ?? id;          // the id, never the # in front of it
     let ok = false;
     try {
       if (navigator.clipboard?.writeText) {
@@ -48,12 +54,12 @@ export default function CopyableId(
 
   return (
     <span className="flex items-center gap-1">
-      <button onClick={copy} title={`copy ${prefix}${id} to the clipboard`}
+      <button onClick={copy} title={`copy ${value ?? id} to the clipboard`}
         className={`font-mono text-[11px] hover:underline ${dim ? "text-gray-500 dark:text-gray-400" : "font-semibold text-brand-500"}`}>
         {prefix}{id}
       </button>
-      <button onClick={copy} aria-label={`copy ${prefix}${id}`}
-        title={`copy ${prefix}${id} to the clipboard`}
+      <button onClick={copy} aria-label={`copy ${value ?? id}`}
+        title={`copy ${value ?? id} to the clipboard`}
         className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-brand-500 dark:hover:bg-white/10">
         {state === "ok" ? (
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none"

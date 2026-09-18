@@ -202,7 +202,11 @@ def test_the_removed_columns_stay_removed():
     assert '["backtest", ' not in src
     assert "runBacktest" not in src, "the button's handler went with it"
     # what must NOT have gone
-    assert "ladder_rung" in src, "the ladder still boxes the current rung"
+    # The ladder column BECAME the deployed date on Sep 17, 2026 ("i dont need
+    # ladder $ · flat column, instead put when was this strategies deployed"),
+    # so this guard was naming a column the operator had removed — red since
+    # that commit, and a suite that is always red is one nobody reads.
+    assert "deployed_at" in src, "the deployed date replaced the ladder box"
     assert 'api.jobStatus("stratbt")' in src, "the progress banner stays"
     assert "OPEN THE" in src, "and its link to the finished grid"
 
@@ -236,7 +240,11 @@ def test_every_row_id_has_a_copy_button_that_reports_what_happened():
     # and it does not depend on the async clipboard alone
     assert "document.execCommand(\"copy\")" in one
     # what gets copied is what the operator sees; every find box strips the #
-    assert "`${prefix}${id}`" in one and 'prefix = "#"' in one
+    # The `#` is SHOWN, never copied — operator, Sep 18, 2026: "when i copy
+    # id dont include #". So the screen still renders `{prefix}{id}` while
+    # the clipboard gets the bare id.
+    assert "{prefix}{id}" in one and 'prefix = "#"' in one
+    assert "const text = value ?? id;" in one, "the # is being copied again"
 
     # every table that shows an id uses THAT component — no second copy button
     for path in ("webapp/src/components/trade/StrategiesGrid.tsx",

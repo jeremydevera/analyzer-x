@@ -220,8 +220,10 @@ def test_the_button_is_on_the_row_and_reads_from_the_job():
                 encoding="utf-8").read()
     assert "UPDATE THIS BACKTEST" in body
     assert "api.strategyRowUpdate" in body
-    # the label comes from the JOB, so "UPDATING…" cannot outlive the work
-    assert 'pairJob?.running ? "UPDATING…"' in body
+    # the label comes from the JOB, so "UPDATING…" cannot outlive the work —
+    # and since RCA-2026-09-18-M only when the job is THIS row's pair, so a
+    # job on AMP 15m can never print "UPDATING…" on an XPIN 1h row
+    assert 'pairJob?.running && jobIsThisRow ? "UPDATING…"' in body
     # and an index that could not be written must reach the screen
     assert "pairJob.index_error" in body
 

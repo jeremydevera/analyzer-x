@@ -2380,6 +2380,32 @@ def _run_pairbt(spec: dict) -> None:
     # rebuilt, which would have left the row on screen showing August's
     # numbers under a job that said it finished.
     indexed, index_error, queued = 0, "", False
+    # SAY HOW LONG IT HAS BEEN. The write is ONE `DELETE` plus one
+    # `executemany` inside SQLite, so there is no percentage to report — and
+    # for an hour the screen said only "indexing 220 row(s)", which reads as
+    # stuck (operator, Sep 18, 2026: "i dont know how many percentage
+    # complete is it, where can i see the status?"). Measured on XPIN 1h that
+    # evening: 59.7 minutes for 29,040 rows while Backtest v2 had the disk,
+    # and 0.2 s of CPU per 10 s — it is the disk, not a hang. A heartbeat
+    # publishes the elapsed minutes and what is normal, which is the honest
+    # version of a progress bar for a step that cannot count itself.
+    _ix_stop = _threading.Event()
+    _ix_t0 = time.time()
+
+    def _ix_beat() -> None:
+        while not _ix_stop.wait(3.0):
+            mins = (time.time() - _ix_t0) / 60
+            with _contextlib.suppress(Exception):
+                _pub(running=True, rows=n_rows, index_seconds=int(time.time() - _ix_t0),
+                     now=f"{what}: writing {n_rows:,} row(s) into the table — "
+                         f"{mins:.0f} min so far"
+                         + (" (a busy disk makes this an hour; the measuring "
+                            "is already done and nothing is lost)"
+                            if mins >= 5 else ""))
+
+    _ix_beat_t = _threading.Thread(target=_ix_beat, name="pairbt-index-beat",
+                                   daemon=True)
+    _ix_beat_t.start()
     for attempt in range(3):
         try:
             indexed = ri.index_pair(msw.ROWDIR / f"{coin}-{tf}.json")
@@ -2391,6 +2417,8 @@ def _run_pairbt(spec: dict) -> None:
                  now=f"{what}: index busy, retrying "
                      f"({attempt + 1}/3)")
             time.sleep(20)
+    _ix_stop.set()
+    _ix_beat_t.join(timeout=2.0)
     if index_error:
         # Not a lost measurement: a pair file whose mtime moved is picked up by
         # `rows_index.stale_pairs`, so the row refreshes when the index frees.

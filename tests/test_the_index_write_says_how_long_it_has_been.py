@@ -93,8 +93,8 @@ def test_the_line_carries_the_minutes_left(monkeypatch, tmp_path):
     monkeypatch.setattr(dj, "_write_progress", lambda path, payload: published.append(payload))
     monkeypatch.setattr(dj, "FILES", {**dj.FILES, "pairbt": {
         k: tmp_path / f"pairbt.{k}" for k in dj.FILES["pairbt"]}})
-    monkeypatch.setattr(dj, "_pair_rows_in_index", lambda pair: 29_040)
-    monkeypatch.setattr(dj, "_index_rate", lambda: 8.1)
+    monkeypatch.setattr(dj, "_pair_rows_in_index", lambda *a, **k: 29_040)
+    monkeypatch.setattr(dj, "_index_rate", lambda *a, **k: 8.1)
 
     from tradingagents import market_sweep as msw, rows_index as ri
     monkeypatch.setattr(msw, "candle_index", lambda scan=False, **k: {})
@@ -112,3 +112,33 @@ def test_the_line_carries_the_minutes_left(monkeypatch, tmp_path):
     assert "29,040 row(s)" in said["now"], said["now"]
     assert "min left" in said["now"], said["now"]
     assert said.get("index_eta_s") and said["index_eta_s"] > 3000, said
+
+
+# ------------------------------------------------------------ and ON SCREEN
+def test_the_panel_draws_the_bar_and_names_it_an_estimate():
+    """Operator: "i want you to show in ui". The bar is TIME (minutes gone vs
+    the estimate), because the write cannot count its own rows — so it says
+    "estimate" where it is one, and says which step is running."""
+    from pathlib import Path
+
+    panel = (Path(__file__).resolve().parents[1]
+             / "webapp/src/components/backtest/StrategiesPanel.tsx").read_text(encoding="utf-8")
+    i = panel.index("HOW FAR ALONG, AND HOW LONG LEFT")
+    block = panel[i:i + 2400]
+    assert "pairJob.index_seconds" in block and "pairJob.index_eta_s" in block
+    assert "min so far" in block and "min left" in block
+    assert "estimate from this PC's last write" in block, "never presented as exact"
+    assert "jobIsThisRow" in block, "another row's job may not draw this row's bar"
+    assert "the measuring is already done" in block, "says WHICH step is slow"
+    # the width is bounded: a slow write must not render 100% and sit there
+    assert "Math.min(99" in block
+
+
+def test_the_client_type_carries_the_three_fields():
+    from pathlib import Path
+
+    api_ts = (Path(__file__).resolve().parents[1]
+              / "webapp/src/lib/api.ts").read_text(encoding="utf-8")
+    for field in ("index_seconds?: number;", "index_rows?: number;",
+                  "index_eta_s?: number | null;"):
+        assert field in api_ts, field

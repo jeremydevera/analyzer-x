@@ -370,6 +370,14 @@ export interface JobStatus {
   pair?: string;
   indexed?: number;
   index_error?: string;
+  /** THE SLOW HALF, measured. Writing a pair back into the 63 GB table is one
+   *  SQLite DELETE + INSERT with no percentage to report, so the job publishes
+   *  how long it has been going (`index_seconds`), how many rows it is
+   *  replacing (`index_rows` — 29,040 for XPIN 1h against 220 newly measured)
+   *  and the estimate from this PC's own last write (`index_eta_s`). */
+  index_seconds?: number;
+  index_rows?: number;
+  index_eta_s?: number | null;
   before_ms?: number;
   after_ms?: number;
   /** how many cores the sweep may use RIGHT NOW — re-asked after every
@@ -959,10 +967,10 @@ export const api = {
    *  measures the PAIR (coin + timeframe), because the store keeps one
    *  watermark per pair; bringing one row forward alone would leave the
    *  pair's other rows behind a watermark that claims otherwise. */
-  strategyRowUpdate: (rowId: string) =>
+  strategyRowUpdate: (rowId: string, store: "v1" | "v2" = "v1") =>
     postDetail<{ started: boolean; pid: number; row: string; coin: string;
-                 tf: string; why: string }>(
-      `/api/strategies/${encodeURIComponent(rowId)}/update`, {}),
+                 tf: string; why: string; store: string; kind: string }>(
+      `/api/strategies/${encodeURIComponent(rowId)}/update?store=${store}`, {}),
 
   trades: (row: StrategyRow, baseMargin = 5.0) =>
     post<TradesResult>("/api/strategies/trades", {
@@ -1004,9 +1012,9 @@ export const api = {
    *  from this PC and from the GitHub shards. */
   backtestLogs: () => get<BacktestLogs>("/api/backtest/logs"),
 
-  jobStatus: (kind: "download" | "backtest" | "btupdate" | "stratbt" | "pairbt" | "collect" | "download_v2" | "backtest_v2" | "btupdate_v2") =>
+  jobStatus: (kind: "download" | "backtest" | "btupdate" | "stratbt" | "pairbt" | "pairbt_v2" | "collect" | "download_v2" | "backtest_v2" | "btupdate_v2") =>
     get<JobStatus>(`/api/jobs/${kind}`),
-  jobStart: (kind: "download" | "backtest" | "btupdate" | "stratbt" | "pairbt" | "collect" | "download_v2" | "backtest_v2" | "btupdate_v2", spec: unknown) =>
+  jobStart: (kind: "download" | "backtest" | "btupdate" | "stratbt" | "pairbt" | "pairbt_v2" | "collect" | "download_v2" | "backtest_v2" | "btupdate_v2", spec: unknown) =>
     post<{ pid: number }>(`/api/jobs/${kind}/start`, spec),
   /** Finish the pairs in flight, then hand this sweep to GitHub Actions.
    *  Not a stop: every measured pair stays, and the cloud is dispatched for
@@ -1018,7 +1026,7 @@ export const api = {
           handed_off: boolean; running: boolean;
           stalled: boolean; stalled_why: string }>(`/api/jobs/${kind}/handoff`),
 
-  jobStop: (kind: "download" | "backtest" | "btupdate" | "stratbt" | "pairbt" | "collect" | "download_v2" | "backtest_v2" | "btupdate_v2") =>
+  jobStop: (kind: "download" | "backtest" | "btupdate" | "stratbt" | "pairbt" | "pairbt_v2" | "collect" | "download_v2" | "backtest_v2" | "btupdate_v2") =>
     post<{ ok: boolean }>(`/api/jobs/${kind}/stop`, {}),
 
   /** The ledger, newest first. `actions` names the rows wanted — "enter,exit"

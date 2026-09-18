@@ -115,6 +115,12 @@ const HEAD_SORT: Record<string, StrategySort | undefined> =
  *  rows — every call through storeApi("v2"), an `unclear` column beside L,
  *  the empty-store sentence from the route, and the row UPDATE / trade log
  *  (which still read the v1 store) held back until they take a store. */
+// The row UPDATE button drives a DIFFERENT job per store: `pairbt` in v1,
+// `pairbt_v2` in Backtest v2, each with its own progress file. One shared
+// kind would make a v2 press report the v1 job's line, which is the shape
+// of RCA-2026-09-18-E (v2's screen reading v1's indexer as its own).
+const PAIR_JOB = (store: string) => (store === "v2" ? "pairbt_v2" : "pairbt");
+
 export default function StrategiesPanel({ store = "v1" }: { store?: StoreName }) {
   const S = useMemo(() => storeApi(store), [store]);
   // THE CLIENT THIS PANEL CALLS: the module's, with the three store-scoped
@@ -340,8 +346,8 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
   const updateRow = useCallback(async (rowId: string) => {
     setUpdateErr(""); setUpdating(true);
     try {
-      await api.strategyRowUpdate(rowId);
-      setPairJob(await api.jobStatus("pairbt"));
+      await api.strategyRowUpdate(rowId, store === "v2" ? "v2" : "v1");
+      setPairJob(await api.jobStatus(PAIR_JOB(store)));
     } catch (e) {
       setUpdateErr(String(e).replace(/^Error: /, ""));
     } finally {
@@ -357,7 +363,7 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
     let live = true;
     const tick = async () => {
       try {
-        const st = await api.jobStatus("pairbt");
+        const st = await api.jobStatus(PAIR_JOB(store));
         if (!live) return;
         const wasRunning = pairJob?.running;
         setPairJob(st);
@@ -1983,7 +1989,7 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
                   PAIR from its own watermark — only the bars printed since —
                   and reindexes it, because a current row file behind a stale
                   screen is the bug shape this panel keeps paying for. */}
-              {store === "v1" && open?.id && (
+              {open?.id && (
                 <div className="mt-2 flex flex-wrap items-center gap-3">
                   <button type="button"
                           disabled={!!pairJob?.running || updating}
@@ -2018,6 +2024,36 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
                   {updateErr && (
                     <span className="text-theme-xs text-error-500">{updateErr}</span>
                   )}
+                </div>
+              )}
+              {/* HOW FAR ALONG, AND HOW LONG LEFT. Operator, Sep 18, 2026,
+                  after an hour of one unchanging line: "i dont know how many
+                  percentage complete is it" and "can you atlest give me ETA".
+                  The write is one SQLite DELETE + INSERT and cannot count
+                  itself, so the bar is TIME: minutes gone against the estimate
+                  from this PC's own last write (8.1 rows/s measured tonight,
+                  29,040 rows = 60 min while Backtest v2 had the disk). It is
+                  labelled an estimate because that is what it is. */}
+              {store === "v1" && pairJob?.running && jobIsThisRow
+                && (pairJob.index_seconds ?? 0) > 0 && (
+                <div className="mt-2 max-w-md">
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800">
+                    <div className="h-full rounded-full bg-brand-500 transition-all duration-1000"
+                         style={{ width: `${Math.min(99, Math.round(
+                           100 * (pairJob.index_seconds ?? 0)
+                           / Math.max(1, (pairJob.index_seconds ?? 0)
+                                         + (pairJob.index_eta_s ?? 0))))}%` }} />
+                  </div>
+                  <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
+                    {`writing ${(pairJob.index_rows ?? pairJob.rows ?? 0).toLocaleString()} row(s) into the table · `}
+                    {`${Math.round((pairJob.index_seconds ?? 0) / 60)} min so far`}
+                    {pairJob.index_eta_s
+                      ? ` · about ${Math.max(1, Math.round(pairJob.index_eta_s / 60))} min left (estimate from this PC's last write)`
+                      : " · no estimate yet — this is the first write since the app started"}
+                  </p>
+                  <p className="mt-0.5 text-theme-xs text-gray-400 dark:text-gray-500">
+                    the measuring is already done; this step copies the rows into the searchable table
+                  </p>
                 </div>
               )}
               {trades.first && (

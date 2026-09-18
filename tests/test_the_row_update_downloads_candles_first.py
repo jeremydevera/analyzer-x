@@ -89,12 +89,19 @@ def test_the_job_the_button_starts_goes_through_run_pair(monkeypatch, tmp_path):
         "a second measuring path would skip the candle refresh"
 
 
-def test_run_pair_refreshes_on_the_v1_path_only_once():
-    """One fetch per pair, on the way in — not per signal or per barrier."""
+def test_run_pair_refreshes_once_per_path_and_before_it_measures():
+    """One fetch per pair on the way in — never per signal or per barrier.
+
+    TWO calls, not one: the v2 branch fetches the 1-minute candles it rebuilds
+    its bars from, the v1 branch fetches the frame itself. Both sit before the
+    venue reads and the engine.
+    """
     import inspect
 
     src = inspect.getsource(msw.run_pair)
-    assert src.count("refresh_candles(") == 1, src.count("refresh_candles(")
-    i = src.index("refresh_candles(")
-    j = src.index("funding_history(")
-    assert i < j, "the candles are fetched before the venue reads that follow"
+    calls = [ln.strip() for ln in src.splitlines() if "refresh_candles(" in ln]
+    assert len(calls) == 2, calls
+    assert any("FINE_TF" in c for c in calls), "the v2 path fetches its minutes"
+    assert any(", tf, days=days)" in c for c in calls), "the v1 path fetches its frame"
+    assert src.index("refresh_candles(") < src.index("funding_history("), \
+        "the candles are fetched before the venue reads that follow"

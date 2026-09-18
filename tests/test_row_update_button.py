@@ -60,8 +60,11 @@ def _wire(monkeypatch, *, rows=3, boom=None, index=7, index_boom=None):
     monkeypatch.setattr(msw, "ROWDIR", tmpdir_of(msw))
     tries = {"n": 0}
 
-    def _index(path, con=None):
+    def _index(path, con=None, **kw):
+        # `signals=` since RCA-2026-09-19-A: the button re-files ONLY the rule
+        # it measured, so the fake must accept what the real call passes
         tries["n"] += 1
+        seen["index_signals"] = kw.get("signals")
         if index_boom:
             raise index_boom
         return index
@@ -119,6 +122,16 @@ def test_it_reindexes_the_pair_so_the_row_actually_changes(monkeypatch):
     got = _progress()
     assert got["indexed"] == 42
     assert not got.get("index_error")
+
+
+def test_it_refiles_only_the_rule_it_measured(monkeypatch):
+    """One rule's rows back into the table, not the coin's whole block —
+    48 minutes against 0.4 on FASTSTOCK 15m (RCA-2026-09-19-A)."""
+    seen, _ = _wire(monkeypatch)
+    dj._run_pairbt({"coin": "STBL", "tf": "4h", "signal": "ote"})
+    assert seen["index_signals"] == ["ote"]
+    dj._run_pairbt({"coin": "STBL", "tf": "4h"})
+    assert seen["index_signals"] is None, "no signal named: the whole pair"
 
 
 def test_a_locked_index_is_retried(monkeypatch):

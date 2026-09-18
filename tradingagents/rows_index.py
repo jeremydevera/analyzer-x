@@ -631,8 +631,17 @@ def _values(r: dict, pair: str) -> tuple:
 
 
 def index_pair(path: Path, con: sqlite3.Connection | None = None, *,
-               fresh: bool = False) -> int:
+               fresh: bool = False, signals=None) -> int:
     """(Re)index one pair file. Returns how many rows landed.
+
+    `signals` re-files ONLY those rules of the pair and leaves the rest of the
+    table alone. A row's UPDATE button measures one rule — 180 rows of
+    FASTSTOCK 15m's 23,580 — and re-filing the whole coin cost 48 minutes of
+    the operator's evening for 0.4 minutes of work (Sep 19, 2026;
+    docs/RCA.md RCA-2026-09-19-A). The delete is by `pair AND signal`, so a
+    combination that the new measure DROPPED (below the trade floor) leaves
+    the table too, and `pairs.n` is re-counted from the table rather than
+    assumed — the two ways this could silently lie.
 
     `fresh=True` skips the delete-first, and it is ONLY for a caller that has
     proved the pair cannot be in the table yet. **It is worth 54 hours.**
@@ -663,10 +672,19 @@ def index_pair(path: Path, con: sqlite3.Connection | None = None, *,
         ph = "(" + ",".join("?" * (len(COLS) + 2)) + ")"
         _t = time.time
         t0 = _t()
-        if not fresh:
+        want = {str(s) for s in signals} if signals else None
+        if want:
+            # ONLY THESE RULES. `rows_pair` finds the pair; the filter picks
+            # its rules out. Never `fresh` with `signals`: the point is to
+            # replace what is there for those rules, including combinations
+            # the new measure no longer produces.
+            con.executemany("DELETE FROM rows WHERE pair = ? AND signal = ?",
+                            [(pair, s) for s in sorted(want)])
+        elif not fresh:
             con.execute("DELETE FROM rows WHERE pair = ?", (pair,))
         t1 = _t()
-        vals = [_values(r, pair) for r in rows if r.get("coin")]
+        vals = [_values(r, pair) for r in rows if r.get("coin")
+                and (want is None or str(r.get("signal")) in want)]
         t2 = _t()
         con.executemany(
             f"INSERT INTO rows ({','.join(COLS)},monthly,pair) VALUES {ph}",
@@ -722,8 +740,17 @@ def index_pair(path: Path, con: sqlite3.Connection | None = None, *,
                     # coinless row — skipped by the insert above — was being
                     # counted on the operator's screen as a row they could
                     # find. label-must-match-data, at the source.
-                    (pair, st.st_mtime, st.st_size, len(vals), time.time(),
+                    (pair, st.st_mtime, st.st_size,
+                     # THE TABLE'S OWN COUNT when only some rules were
+                     # written: `len(vals)` is 180 of the coin's 23,580, and
+                     # `SUM(n) FROM pairs` is the row count every screen
+                     # prints (label-must-match-data, at the source).
+                     (con.execute("SELECT COUNT(*) FROM rows WHERE pair = ?",
+                                  (pair,)).fetchone()[0] if want
+                      else len(vals)),
+                     time.time(),
                      coin, tf,
+                     # every rule the FILE holds, whichever were written
                      "\n".join(sorted({r.get("signal") for r in rows
                                         if r.get("signal")})),
                      combos, version, last_ms, st.st_mtime,

@@ -105,13 +105,41 @@ def test_the_line_carries_the_minutes_left(monkeypatch, tmp_path):
     monkeypatch.setattr(ri, "ask_first", lambda p: [p])
     monkeypatch.setattr(ri, "stale_pairs", lambda: [])
 
-    dj._run_pairbt({"coin": "XPIN", "tf": "1h", "signal": "ote", "base": 5.0, "days": 30})
+    # NO SIGNAL NAMED: the whole pair is re-filed, so the ETA is its 29,040
+    # rows. (With a signal it is the measured rows — the test below.)
+    dj._run_pairbt({"coin": "XPIN", "tf": "1h", "base": 5.0, "days": 30})
     beats = [p for p in published if "writing" in str(p.get("now") or "")]
     assert beats, published
     said = beats[-1]
     assert "29,040 row(s)" in said["now"], said["now"]
     assert "min left" in said["now"], said["now"]
     assert said.get("index_eta_s") and said["index_eta_s"] > 3000, said
+
+
+def test_one_rules_write_is_estimated_at_its_own_size(monkeypatch, tmp_path):
+    """RCA-2026-09-19-A: a rule's re-file writes its own rows, so the ETA
+    must not quote the coin's whole block."""
+    published: list = []
+    monkeypatch.setattr(dj, "_write", lambda path, payload: published.append(payload))
+    monkeypatch.setattr(dj, "_write_progress", lambda path, payload: published.append(payload))
+    monkeypatch.setattr(dj, "FILES", {**dj.FILES, "pairbt": {
+        k: tmp_path / f"pairbt.{k}" for k in dj.FILES["pairbt"]}})
+    monkeypatch.setattr(dj, "_pair_rows_in_index", lambda *a, **k: 29_040)
+    monkeypatch.setattr(dj, "_index_rate", lambda *a, **k: 8.1)
+
+    from tradingagents import market_sweep as msw, rows_index as ri
+    monkeypatch.setattr(msw, "candle_index", lambda scan=False, **k: {})
+    monkeypatch.setattr(msw, "pair_watermark", lambda c, t, root=None: 0)
+    monkeypatch.setattr(msw, "run_pair", lambda *a, **k: {"rows": [{"coin": "XPIN"}] * 180})
+    monkeypatch.setattr(msw, "ROWDIR", tmp_path)
+    monkeypatch.setattr(ri, "index_pair", lambda path, *a, **k: time.sleep(4.0) or 180)
+    monkeypatch.setattr(ri, "ask_first", lambda p: [p])
+    monkeypatch.setattr(ri, "stale_pairs", lambda: [])
+
+    dj._run_pairbt({"coin": "XPIN", "tf": "1h", "signal": "ote", "base": 5.0, "days": 30})
+    beats = [p for p in published if "writing" in str(p.get("now") or "")]
+    assert beats and "180 row(s)" in beats[-1]["now"], beats[-1]["now"]
+    assert "29,040" not in beats[-1]["now"]
 
 
 # ------------------------------------------------------------ and ON SCREEN

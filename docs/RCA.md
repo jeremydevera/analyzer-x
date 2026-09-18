@@ -172,6 +172,72 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-19-A — updating ONE strategy rewrote all 23,580 of that coin's rows, so a 25-second job took 48 minutes
+
+**CEO**
+
+* Pressing UPDATE THIS BACKTEST on #L5LUR5TG (FASTSTOCK, 15-minute, "prank"
+  rule) took 48 minutes. Downloading that coin's new candles took about two
+  seconds and re-testing the rule about twenty; the other 47 minutes were
+  spent putting the answer away.
+* Why: the searchable table keeps a coin's whole 15-minute block together —
+  125 rules, **23,580 strategies** — and the code threw all of it away and
+  wrote it back, although only the 180 rows of the one rule had changed.
+* What stops it now: it writes back only the rule it measured. The same
+  press writes 180 rows instead of 23,580 — about 130 times less work — and
+  the screen's estimate counts the smaller job.
+
+**DEV**
+
+* `rows_index.index_pair` was `DELETE FROM rows WHERE pair = ?` plus a
+  re-insert of the whole file (11.5 MB, 23,580 rows), each row re-filed in 8
+  sort indexes: ~190,000 random writes at the 8.1 rows/s this spinning disk
+  manages while `btupdate_v2` runs. `_run_pairbt` already passes ONE signal
+  to `msw.run_pair`; it now passes the same `signals=` to `index_pair`,
+  whose delete becomes `pair AND signal` and whose `pairs.n` is re-counted
+  with `SELECT COUNT(*)` instead of `len(vals)`.
+* Invariant broken: **write what changed** — and the two ways a partial write
+  could lie are held by tests: a combination the new measure no longer
+  produces must leave the table (the delete is by rule, not by id), and
+  `SUM(n) FROM pairs` — the row count every screen prints — must still equal
+  what the table holds.
+* Guard: `tests/test_one_rule_is_written_back_not_the_whole_coin.py` (5) and
+  `tests/test_row_update_button.py::test_it_refiles_only_the_rule_it_measured`.
+
+**SAW** — `Sep 19, 2026 12:10am`, the row's own line:
+`FASTSTOCK 15m · prank: writing 23,580 row(s) into the table — 2 min so far,
+about 47 min left`, with `index_rows: 23580` in `/api/jobs/pairbt` while the
+measure had produced 180.
+
+**TIMELINE**
+
+1. `Sep 18, 2026 11:22pm` — the operator presses UPDATE on #L5LUR5TG.
+2. Seconds later the candles are current and the `prank` rule is measured:
+   **180 rows**.
+3. `index_pair` deletes the coin's 23,580 rows and re-inserts them; the
+   estimate says 47 minutes and the button is disabled for all of it.
+4. `Sep 19, 2026 12:30am` — `signals=` lands: the delete is by rule, 180 rows
+   are written, and the ETA quotes 180.
+
+**ROOT CAUSE** — the pair file was treated as the unit of writing because it
+is the unit of storage.
+
+**WHY IT WAS NOT CAUGHT** — every test of this path asserts that the row's
+numbers CHANGE after the press, which a whole-coin rewrite satisfies
+perfectly; none measured what the write cost. A correct answer that takes 130
+times longer than it needs to has no failing assertion anywhere — it only
+shows up as an operator asking why their one row takes an hour.
+
+**COST** — none in money; about 45 minutes per press, and the single
+re-measure slot held for that long, which is why a second row could not be
+updated.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_one_rule_is_written_back_not_the_whole_coin.py`.
+
+---
+
 ## RCA-2026-09-18-N — the candle fill ran BACKWARDS over its own new bars, so XPIN's hourly history stopped three weeks ago
 
 **CEO**

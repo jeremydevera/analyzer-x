@@ -2470,7 +2470,10 @@ def _run_pairbt(spec: dict, kind: str = "pairbt") -> None:
     # not the handful just measured: XPIN 1h is 220 new rows and 29,040 to
     # replace. `_index_rate()` is rows per second from the last completed
     # write; 29,040 / 8.1 = 60 minutes, which is what it took (Sep 18, 2026).
-    _ix_total = _pair_rows_in_index(f"{coin}-{tf}") or n_rows
+    # WHAT THIS WRITE WILL ACTUALLY TOUCH: the measured rows when one rule
+    # is being re-filed, the coin's whole block when every rule is.
+    _ix_total = (n_rows if signal
+                 else (_pair_rows_in_index(f"{coin}-{tf}") or n_rows))
     _ix_rate = _index_rate(kind)
 
     def _ix_beat() -> None:
@@ -2494,7 +2497,11 @@ def _run_pairbt(spec: dict, kind: str = "pairbt") -> None:
     _ix_beat_t.start()
     for attempt in range(3):
         try:
-            indexed = ri.index_pair(msw.ROWDIR / f"{coin}-{tf}.json")
+            # ONLY THE RULE THAT WAS MEASURED. `run_pair` was given one
+            # signal, so one signal is what the table needs back — 180 rows
+            # instead of the coin's 23,580 (RCA-2026-09-19-A).
+            indexed = ri.index_pair(msw.ROWDIR / f"{coin}-{tf}.json",
+                                    signals=([signal] if signal else None))
             index_error = ""
             break
         except Exception as exc:                               # noqa: BLE001

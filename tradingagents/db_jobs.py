@@ -86,6 +86,16 @@ FILES = {
                "spec": STATE_DIR / "db_pairbt.spec.json",
                "pid": STATE_DIR / "db_pairbt.pid",
                "stop": STATE_DIR / "db_pairbt.STOP"},
+    # THE SAME JOB IN BACKTEST v2'S STORE. `start()` hands any *_v2 kind
+    # `stores.V2.env_for()`, so one function serves both: TRADINGAGENTS_FINE_TF
+    # makes `run_pair` rebuild the frame from 1-minute bars, and TA_ROWS_DB
+    # points the reindex at v2's own table. Separate files from `pairbt` on
+    # purpose — a v2 press must never overwrite the v1 job's progress, which
+    # is how a screen ends up reporting another store's work.
+    "pairbt_v2": {"progress": STATE_DIR / "db_pairbt_v2.json",
+                  "spec": STATE_DIR / "db_pairbt_v2.spec.json",
+                  "pid": STATE_DIR / "db_pairbt_v2.pid",
+                  "stop": STATE_DIR / "db_pairbt_v2.STOP"},
     "stratbt": {"progress": STATE_DIR / "db_stratbt.json",
                 "spec": STATE_DIR / "db_stratbt.spec.json",
                 "pid": STATE_DIR / "db_stratbt.pid",
@@ -2302,7 +2312,16 @@ def _run_collect(spec: dict) -> None:
 # same write took 60 minutes with Backtest v2 on the disk and would take
 # minutes on an idle SSD (operator, Sep 18, 2026: "can you atlest give me ETA
 # when will it be done").
+# PER STORE. v1's index is 41.94 GB and v2's is its own size on the same
+# disk, so one shared rate file would quote v1's speed on a v2 press and the
+# other way round — the same shape as RCA-2026-09-18-E, where v2's screen read
+# v1's indexer as its own. The ETA is an estimate, but it must be an estimate
+# of the right thing.
 INDEX_RATE_FILE = STATE_DIR / "db_pairbt.rate.json"
+
+
+def _rate_file(kind: str = "pairbt"):
+    return STATE_DIR / f"db_{kind}.rate.json"
 INDEX_RATE_FALLBACK = 8.1          # rows/s, measured on XPIN 1h, busy disk
 
 
@@ -2319,11 +2338,11 @@ def _pair_rows_in_index(pair: str) -> int:
         return 0
 
 
-def _index_rate() -> float:
+def _index_rate(kind: str = "pairbt") -> float:
     """Rows per second from the last completed write, else the measured
     fallback. Never zero, so the ETA can always be printed."""
     try:
-        got = _read(INDEX_RATE_FILE)
+        got = _read(_rate_file(kind))
         rows, secs = float(got.get("rows") or 0), float(got.get("seconds") or 0)
         if rows > 0 and secs > 0:
             return rows / secs
@@ -2332,16 +2351,17 @@ def _index_rate() -> float:
     return INDEX_RATE_FALLBACK
 
 
-def _remember_index_rate(rows: int, seconds: float) -> None:
+def _remember_index_rate(rows: int, seconds: float,
+                         kind: str = "pairbt") -> None:
     """Keep the last write's speed, so the next ETA is this machine's own."""
     if rows > 0 and seconds > 1:
         with _contextlib.suppress(Exception):
-            _write(INDEX_RATE_FILE, {"rows": int(rows),
+            _write(_rate_file(kind), {"rows": int(rows),
                                      "seconds": round(float(seconds), 1),
                                      "at": int(time.time())})
 
 
-def _run_pairbt(spec: dict) -> None:
+def _run_pairbt(spec: dict, kind: str = "pairbt") -> None:
     """Re-measure ONE pair, resuming from its own watermark.
 
     Operator, 2026-09-09, on a row whose last backtest read Aug 24, 2026
@@ -2359,7 +2379,7 @@ def _run_pairbt(spec: dict) -> None:
     """
     from tradingagents import market_sweep as msw, rows_index as ri
     from tradingagents.positions_view import fmt_when
-    f = FILES["pairbt"]
+    f = FILES[kind]
     sym = str(spec["coin"])
     sym = sym if sym.endswith("_USDT") else f"{sym}_USDT"
     coin, tf = sym.replace("_USDT", ""), str(spec["tf"])
@@ -2374,7 +2394,17 @@ def _run_pairbt(spec: dict) -> None:
     # nothing (2026-09-09).
     days = int(spec.get("days") or 0)
     if not days:
-        c = (msw.candle_index(scan=False) or {}).get(f"{sym}-{tf}") or {}
+        # THE FRAME THIS STORE ACTUALLY KEEPS ON DISK. v1 stores `SYM-15m`;
+        # Backtest v2 stores ONLY `SYM-1m` and rebuilds the frame from it, so
+        # looking up `SYM-15m` there always missed and every v2 press fell
+        # through to `days = 1`. It happened to be harmless — the floor
+        # bottoms out at 10 trades for any window of 30 days or less, and v2
+        # only ever holds the 30 days of minutes MEXC serves — but it was
+        # right by accident, and the next change to the floor curve or to the
+        # `days + 30` trim inside `refresh_candles` would have made it wrong
+        # silently. Ask for the file that exists.
+        _frame = msw.FINE_TF or tf
+        c = (msw.candle_index(scan=False) or {}).get(f"{sym}-{_frame}") or {}
         span = (int(c.get("last_ms") or 0) - int(c.get("first_ms") or 0)) / 86_400_000
         days = max(1, int(span)) or 365
     before = msw.pair_watermark(coin, tf)
@@ -2402,13 +2432,13 @@ def _run_pairbt(spec: dict) -> None:
                            signals=([signal] if signal else None))
     except Exception as exc:                                   # noqa: BLE001
         note = f"{type(exc).__name__}: {exc}"
-        print(f"[pairbt] {coin} {tf} FAILED: {note}", flush=True)
+        print(f"[{kind}] {coin} {tf} FAILED: {note}", flush=True)
         # ON THE PENDING BOOKS: a forced update that failed IS a backtest that
         # had a problem (2026-09-09), so RESOLVE PENDING can retry it.
         try:
             from tradingagents import pending_ledger as _pl
 
-            _pl.record("backtest", [(sym, tf, note)], run="pairbt")
+            _pl.record("backtest", [(sym, tf, note)], run=kind)
         except Exception:                                      # noqa: BLE001
             pass
         _pub(running=False, error=note, finished=int(time.time()), note=note)
@@ -2441,7 +2471,7 @@ def _run_pairbt(spec: dict) -> None:
     # replace. `_index_rate()` is rows per second from the last completed
     # write; 29,040 / 8.1 = 60 minutes, which is what it took (Sep 18, 2026).
     _ix_total = _pair_rows_in_index(f"{coin}-{tf}") or n_rows
-    _ix_rate = _index_rate()
+    _ix_rate = _index_rate(kind)
 
     def _ix_beat() -> None:
         while not _ix_stop.wait(3.0):
@@ -2476,7 +2506,7 @@ def _run_pairbt(spec: dict) -> None:
     _ix_stop.set()
     _ix_beat_t.join(timeout=2.0)
     if not index_error:
-        _remember_index_rate(_ix_total, time.time() - _ix_t0)
+        _remember_index_rate(_ix_total, time.time() - _ix_t0, kind)
     if index_error:
         # Not a lost measurement: a pair file whose mtime moved is picked up by
         # `rows_index.stale_pairs`, so the row refreshes when the index frees.
@@ -2496,7 +2526,7 @@ def _run_pairbt(spec: dict) -> None:
                          for p in ri.stale_pairs())
         except Exception:                                      # noqa: BLE001
             queued = False
-        print(f"[pairbt] {coin} {tf}: measured, not yet indexed "
+        print(f"[{kind}] {coin} {tf}: measured, not yet indexed "
               f"({index_error})" + (" — queued for the index catch-up"
                                     if queued else ""), flush=True)
     after = msw.pair_watermark(coin, tf)
@@ -2513,7 +2543,7 @@ def _run_pairbt(spec: dict) -> None:
                if index_error else "")
             + (" · no new bars — it was already current"
                if after and after == before else ""))
-    print(f"[pairbt] {note}", flush=True)
+    print(f"[{kind}] {note}", flush=True)
     _pub(running=False, rows=n_rows, indexed=indexed, after_ms=after,
          index_error=index_error, index_queued=queued,
          # WHAT MOVED, in the operator's own date format — the whole point of
@@ -2550,8 +2580,8 @@ def main(argv: list[str]) -> int:
         _run_btupdate(spec)
     elif kind == "collect":
         _run_collect(spec)
-    elif kind == "pairbt":
-        _run_pairbt(spec)
+    elif kind in ("pairbt", "pairbt_v2"):
+        _run_pairbt(spec, kind)
     else:
         print(f"unknown job: {kind}", file=sys.stderr)
         return 2

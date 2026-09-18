@@ -2034,7 +2034,11 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
                   from this PC's own last write (8.1 rows/s measured tonight,
                   29,040 rows = 60 min while Backtest v2 had the disk). It is
                   labelled an estimate because that is what it is. */}
-              {store === "v1" && pairJob?.running && jobIsThisRow
+              {/* BOTH STORES. This was v1-only because only v1 had the
+                  button; Backtest v2 has it from Sep 18, 2026 and its
+                  index write is the slower of the two, so the store that
+                  needs the ETA most was the one hiding it. */}
+              {pairJob?.running && jobIsThisRow
                 && (pairJob.index_seconds ?? 0) > 0 && (
                 <div className="mt-2 max-w-md">
                   {/* NO BAR WITHOUT AN ESTIMATE. With `index_eta_s` missing the

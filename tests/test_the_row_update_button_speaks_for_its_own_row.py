@@ -15,7 +15,10 @@ PANEL = (Path(__file__).resolve().parents[1]
 
 
 def _button_block() -> str:
-    i = PANEL.index('{store === "v1" && open?.id && (')
+    # The block stopped being v1-only on Sep 18, 2026 — Backtest v2 has the
+    # same button now, driving `pairbt_v2`. The anchor is the row id, which is
+    # what actually gates it.
+    i = PANEL.index("{open?.id && (")
     return PANEL[i:i + 2600]
 
 

@@ -1038,8 +1038,18 @@ def _check_kind(kind: str) -> None:
 
 
 @app.post("/api/strategies/{row_id}/update")
-def strategy_row_update(row_id: str) -> dict:
+def strategy_row_update(row_id: str, store: str = "v1") -> dict:
     """Re-measure THIS ROW's pair, now. The row's own UPDATE button.
+
+    `store=v2` runs it in Backtest v2: the row is looked up in v2's own index
+    and the job is `pairbt_v2`, which `db_jobs.start` launches with
+    `stores.V2.env_for()` — so the frame is rebuilt from 1-minute bars and the
+    reindex writes v2's table. The operator, `Sep 18, 2026`: *"can we join
+    candle v2 and backtest v2? instead of me manually downloading the candles
+    in candles v2, when i click update this backtest, it should automatically
+    download the candles"*. The download half lives in `market_sweep.run_pair`,
+    which now fetches the minutes it needs instead of refusing with "download
+    them on Candles v2 first"; this half is what gives v2 a button at all.
 
     Operator, 2026-09-09, on #SW8Q96E6 whose last backtest read Aug 24, 2026
     4:00pm: *"can i have a button 'update' to force update the backtest"*.
@@ -1050,20 +1060,31 @@ def strategy_row_update(row_id: str) -> dict:
     through an older bar than its own watermark claims. Detached, resuming
     from the watermark, so only the bars printed since are walked.
     """
+    import contextlib as _ctx
+
     from tradingagents import db_jobs as dj, rows_index as ri
 
     rid = ri.clean_row_id(row_id)
     if not rid:
         raise HTTPException(422, "that is not a row id")
-    got = ri.query(row_id=rid, limit=1)
-    rows = (got.get("rows") if isinstance(got, dict) else got) or []
+    _v2 = str(store).lower() == "v2"
+    kind = "pairbt_v2" if _v2 else "pairbt"
+    # v2 ids never collide with v1's (`row_code(res=)`), but the ROW only
+    # exists in its own table — looking a v2 id up in v1's index answers 404
+    # and the button would read as "this row is gone".
+    _db = _v2_rows_db() if _v2 else None
+    if _v2 and _db is None:
+        raise HTTPException(404, "Backtest v2 has no rows yet")
+    with (ri.using_db(_db) if _v2 else _ctx.nullcontext()):
+        got = ri.query(row_id=rid, limit=1)
+        rows = (got.get("rows") if isinstance(got, dict) else got) or []
     if not rows:
-        raise HTTPException(404, f"no stored row #{rid}")
+        raise HTTPException(404, f"no stored row #{rid} in {store}")
     row = rows[0]
     coin, tf = row.get("coin"), row.get("tf")
     if not coin or not tf:
         raise HTTPException(500, f"row #{rid} does not name its pair")
-    st = dj.status("pairbt")
+    st = dj.status(kind)
     if st.get("running"):
         # ONE at a time: two runs on the same pair fight over its pair lock,
         # and on a DIFFERENT pair they still both rewrite the row index.
@@ -1082,7 +1103,7 @@ def strategy_row_update(row_id: str) -> dict:
     # generic /api/jobs/{kind} route has answered 409 for this since it was
     # written; this button and the per-strategy backtest never learned.
     try:
-        pid = dj.start("pairbt", {"coin": coin, "tf": tf, "signal": sig,
+        pid = dj.start(kind, {"coin": coin, "tf": tf, "signal": sig,
                                   "base": float(row.get("base") or 5.0),
                                   # 0 = let the job use the PAIR'S OWN span; a
                                   # flat 365 made the trade floor demand a
@@ -1090,10 +1111,14 @@ def strategy_row_update(row_id: str) -> dict:
                                   "days": 0})
     except (dj.JobBusy, dj.LocalSweepsOff) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    return {"started": True, "pid": pid, "row": rid,
+    return {"started": True, "pid": pid, "row": rid, "store": store,
+            "kind": kind,
             "coin": coin, "tf": tf, "signal": sig,
-            "why": f"re-measuring {coin} {tf} {sig} from its last "
-                   f"measured bar to now"}
+            # SAY THE DOWNLOAD OUT LOUD. It is the half the operator asked
+            # for, and a job that fetches candles for a minute before it
+            # measures reads as a stall if nothing said it would.
+            "why": f"downloading {coin}'s newest candles, then re-measuring "
+                   f"{tf} {sig} from its last measured bar to now"}
 
 
 @app.get("/api/backtest/capacity")

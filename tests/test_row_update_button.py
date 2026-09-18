@@ -197,8 +197,20 @@ def test_no_new_bars_says_so(monkeypatch):
 
 def test_the_job_is_routed():
     src = inspect.getsource(dj.main)
-    assert 'elif kind == "pairbt":' in src
-    assert "pairbt" in dj.FILES
+    # BOTH STORES, one function. Backtest v2 got the same button on
+    # Sep 18, 2026, as `pairbt_v2` — the same `_run_pairbt` launched with
+    # `stores.V2.env_for()`, so the frame is rebuilt from 1-minute bars and
+    # the reindex writes v2's own table.
+    assert 'elif kind in ("pairbt", "pairbt_v2"):' in src
+    assert "_run_pairbt(spec, kind)" in src, \
+        "the job must know WHICH store it is in, or it writes v1's files"
+    assert "pairbt" in dj.FILES and "pairbt_v2" in dj.FILES
+    assert dj.FILES["pairbt"]["progress"] != dj.FILES["pairbt_v2"]["progress"], (
+        "the two stores share a progress file, so a v2 press would report the "
+        "v1 job's line — the shape of RCA-2026-09-18-E")
+    assert "pairbt_v2" not in dj._DISK_JOBS, (
+        "a one-pair press must not be refused while a sweep holds the "
+        "disk — RCA-2026-09-18-L, for 21 hours")
     assert "pairbt" not in dj.LOCAL_SWEEP_KINDS, \
         "one pair is not the market grid; the fleet switch must not block it"
 
@@ -208,9 +220,11 @@ def test_the_route_resolves_a_row_id_to_its_pair():
     src = inspect.getsource(
         __import__("tradingagents.api", fromlist=["x"]).strategy_row_update)
     assert "ri.clean_row_id" in src
-    assert 'dj.start("pairbt"' in src
+    assert "dj.start(kind," in src, \
+        "the route must start the job for the store it was asked about"
+    assert 'kind = "pairbt_v2" if _v2 else "pairbt"' in src
     # one at a time — two runs rewrite the same row index
-    assert 'dj.status("pairbt")' in src and "409" in src
+    assert "dj.status(kind)" in src and "409" in src
     # and an id nobody has is a 404, not a silent no-op
     assert "404" in src
 

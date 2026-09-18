@@ -932,12 +932,35 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
     fine = None
     if FINE_TF:
         # v2: the bars come from the minutes, and so does the exit.
-        m1 = cached_candles(symbol, FINE_TF)
+        #
+        # IT FETCHES THEM ITSELF (Sep 18, 2026). This read the cache and
+        # refused with "download them on Candles v2 first", so measuring one
+        # row meant leaving the screen, downloading a pair by hand, and coming
+        # back. The operator: *"instead of me manually downloading the candles
+        # in candles v2, when i click update this backtest, it should
+        # automatically download the candles"*.
+        #
+        # This is what v1 has always done — the `else` branch below is
+        # `refresh_candles` — so the two versions now differ only in WHICH
+        # frame they fetch, not in whether they fetch at all. A first pass
+        # pulls the venue's whole 1-minute history (MEXC serves 30 days of
+        # minutes, ~43,200 bars, a hard ceiling); afterwards only the tail
+        # since the last cached minute.
+        try:
+            m1, added, _src = refresh_candles(symbol, FINE_TF, days=days)
+        except Exception as exc:                               # noqa: BLE001
+            # NAMED, and left for the pool to retry (PAIR_RETRIES) — never a
+            # silent empty result that reads as "this pair has no edge".
+            return {"coin": coin, "tf": tf, "rows": [], "added": 0,
+                    "source": FINE_TF,
+                    "why": f"{symbol} {FINE_TF} download: {str(exc)[:80]}"}
         if m1 is None or len(m1) < MINUTES_PER_BAR[tf] * 2:
             return {"coin": coin, "tf": tf, "rows": [], "added": 0,
                     "source": FINE_TF,
-                    "why": (f"no {FINE_TF} candles for {symbol} — download "
-                            f"them on Candles v2 first")}
+                    "why": (f"{symbol}: the venue served "
+                            f"{0 if m1 is None else len(m1)} {FINE_TF} bars, "
+                            f"and {tf} needs at least "
+                            f"{MINUTES_PER_BAR[tf] * 2}")}
         try:
             df = bars_from_1m(m1, tf)
         except ValueError as exc:
@@ -950,7 +973,10 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
         fine = (m1["Date"].to_numpy().astype("datetime64[ms]").astype("int64"),
                 _np.asarray(m1["High"], dtype="float64"),
                 _np.asarray(m1["Low"], dtype="float64"))
-        added, source = 0, FINE_TF
+        # `added` is the MINUTES this pass fetched, so the job's progress line
+        # can say the download happened. It was hard-coded to 0, which was
+        # true when nothing was ever fetched here and is a false label now.
+        source = FINE_TF
     else:
         df, added, source = refresh_candles(symbol, tf, days=days)
     # per timeframe, never a flat 500: that made 1d impossible (br.MIN_BARS)

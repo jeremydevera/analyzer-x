@@ -353,6 +353,19 @@ has an entry point.
 11. **State the cost/target ratio next to any strategy recommendation.** Round-trip cost vs
     take-profit. Under 20% is comfortable, near 50% is fatal, above 100% is arithmetically
     impossible. BDX_USDT ran at 734% and could not win a single trade.
+    **AND STATE THE BREAK-EVEN WIN RATE, never 50% (2026-09-19).** The operator:
+    *"when i lose a trade even in with same tp and sl why losing is much heavier
+    i mean when i win for 5 margin i only win +0.98 but when i lose its -1.5
+    something"*. Because the cost is charged whether you win or lose: it is
+    SUBTRACTED from a win and ADDED to a loss. Measured on their own ledger, $5
+    at 20x so $100 of coin, the cost is **$0.33-$0.45 every trade** — KKRSTOCK
+    moved +1.00% and paid **+$0.55** of the $1.00 it was worth. So an equal
+    1.2%/1.2% pair is +$0.98 against -$1.62, and
+    `break-even = loss / (win + loss) = 1.62 / 2.60 = **62.3%**`. A row winning
+    50% on equal barriers is not flat, it loses ~$0.32 a trade. Quote that
+    number beside any equal-barrier recommendation; a win rate is meaningless
+    without it. Full working, with their trades:
+    `docs/WHY-LOSING-IS-HEAVIER-THAN-WINNING.md`.
 12. **Never enable a strategy on a coin without `auto_trader.edge_check()`.** `block` means no
     orders, in the UI and in the runner. `unknown` (book unreadable) is never treated as ok.
 13. **Data honesty:** state the real history depth, and MEASURE it rather than assuming.

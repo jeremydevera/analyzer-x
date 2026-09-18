@@ -56,9 +56,8 @@ def test_a_long_write_explains_itself_rather_than_looking_stuck():
 
     src = inspect.getsource(dj._run_pairbt)
     assert "min so far" in src
-    assert "the measuring is already done and nothing is lost" in src.replace("\n", " ").replace("  ", " ") \
-        or "nothing is lost" in src
-    assert "mins >= 5" in src, "the explanation waits until it IS long"
+    assert "nothing is lost" in src
+    assert "el >= 300" in src, "the explanation waits until it IS long (5 minutes)"
 
 
 def test_the_heartbeat_always_stops(monkeypatch):
@@ -70,3 +69,46 @@ def test_the_heartbeat_always_stops(monkeypatch):
     j = src.index("if index_error:")
     assert i < j, "the beat is stopped before the terminal writes"
     assert "_ix_beat_t.join(" in src
+
+
+# ------------------------------------------------------------------- the ETA
+def test_the_eta_counts_the_rows_already_in_the_index_not_the_new_ones(monkeypatch, tmp_path):
+    """Operator: "can you atlest give me ETA when will it be done". The cost
+    is the rows the write REPLACES — XPIN 1h is 220 new rows against 29,040
+    already stored — divided by this machine's own last measured speed."""
+    monkeypatch.setattr(dj, "INDEX_RATE_FILE", tmp_path / "rate.json")
+    assert dj._index_rate() == dj.INDEX_RATE_FALLBACK, "a first run still has an ETA"
+
+    dj._remember_index_rate(29_040, 3_581.0)
+    assert round(dj._index_rate(), 1) == 8.1, dj._index_rate()
+    # a write that failed or was instant never poisons the rate
+    dj._remember_index_rate(0, 900.0)
+    dj._remember_index_rate(29_040, 0.5)
+    assert round(dj._index_rate(), 1) == 8.1
+
+
+def test_the_line_carries_the_minutes_left(monkeypatch, tmp_path):
+    published: list = []
+    monkeypatch.setattr(dj, "_write", lambda path, payload: published.append(payload))
+    monkeypatch.setattr(dj, "_write_progress", lambda path, payload: published.append(payload))
+    monkeypatch.setattr(dj, "FILES", {**dj.FILES, "pairbt": {
+        k: tmp_path / f"pairbt.{k}" for k in dj.FILES["pairbt"]}})
+    monkeypatch.setattr(dj, "_pair_rows_in_index", lambda pair: 29_040)
+    monkeypatch.setattr(dj, "_index_rate", lambda: 8.1)
+
+    from tradingagents import market_sweep as msw, rows_index as ri
+    monkeypatch.setattr(msw, "candle_index", lambda scan=False, **k: {})
+    monkeypatch.setattr(msw, "pair_watermark", lambda c, t, root=None: 0)
+    monkeypatch.setattr(msw, "run_pair", lambda *a, **k: {"rows": [{"coin": "XPIN"}] * 220})
+    monkeypatch.setattr(msw, "ROWDIR", tmp_path)
+    monkeypatch.setattr(ri, "index_pair", lambda path, *a, **k: time.sleep(4.0) or 29_040)
+    monkeypatch.setattr(ri, "ask_first", lambda p: [p])
+    monkeypatch.setattr(ri, "stale_pairs", lambda: [])
+
+    dj._run_pairbt({"coin": "XPIN", "tf": "1h", "signal": "ote", "base": 5.0, "days": 30})
+    beats = [p for p in published if "writing" in str(p.get("now") or "")]
+    assert beats, published
+    said = beats[-1]
+    assert "29,040 row(s)" in said["now"], said["now"]
+    assert "min left" in said["now"], said["now"]
+    assert said.get("index_eta_s") and said["index_eta_s"] > 3000, said

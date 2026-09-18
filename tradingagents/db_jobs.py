@@ -2297,6 +2297,50 @@ def _run_collect(spec: dict) -> None:
         pass
 
 
+# THE ETA'S TWO INGREDIENTS. A write's cost is the rows already in the index
+# for that pair, and this machine's own measured speed — never a constant: the
+# same write took 60 minutes with Backtest v2 on the disk and would take
+# minutes on an idle SSD (operator, Sep 18, 2026: "can you atlest give me ETA
+# when will it be done").
+INDEX_RATE_FILE = STATE_DIR / "db_pairbt.rate.json"
+INDEX_RATE_FALLBACK = 8.1          # rows/s, measured on XPIN 1h, busy disk
+
+
+def _pair_rows_in_index(pair: str) -> int:
+    """How many rows the index already holds for this pair, or 0."""
+    try:
+        from tradingagents import rows_index as ri
+
+        with ri._open(readonly=True) as con:                   # noqa: SLF001
+            row = con.execute("SELECT n FROM pairs WHERE pair = ?",
+                              (pair,)).fetchone()
+        return int((row or [0])[0] or 0)
+    except Exception:                                          # noqa: BLE001
+        return 0
+
+
+def _index_rate() -> float:
+    """Rows per second from the last completed write, else the measured
+    fallback. Never zero, so the ETA can always be printed."""
+    try:
+        got = _read(INDEX_RATE_FILE)
+        rows, secs = float(got.get("rows") or 0), float(got.get("seconds") or 0)
+        if rows > 0 and secs > 0:
+            return rows / secs
+    except Exception:                                          # noqa: BLE001
+        pass
+    return INDEX_RATE_FALLBACK
+
+
+def _remember_index_rate(rows: int, seconds: float) -> None:
+    """Keep the last write's speed, so the next ETA is this machine's own."""
+    if rows > 0 and seconds > 1:
+        with _contextlib.suppress(Exception):
+            _write(INDEX_RATE_FILE, {"rows": int(rows),
+                                     "seconds": round(float(seconds), 1),
+                                     "at": int(time.time())})
+
+
 def _run_pairbt(spec: dict) -> None:
     """Re-measure ONE pair, resuming from its own watermark.
 
@@ -2391,17 +2435,29 @@ def _run_pairbt(spec: dict) -> None:
     # version of a progress bar for a step that cannot count itself.
     _ix_stop = _threading.Event()
     _ix_t0 = time.time()
+    # AND AN ETA, from this machine's own last write. The cost is the rows
+    # ALREADY in the index for this pair (they are deleted and written back),
+    # not the handful just measured: XPIN 1h is 220 new rows and 29,040 to
+    # replace. `_index_rate()` is rows per second from the last completed
+    # write; 29,040 / 8.1 = 60 minutes, which is what it took (Sep 18, 2026).
+    _ix_total = _pair_rows_in_index(f"{coin}-{tf}") or n_rows
+    _ix_rate = _index_rate()
 
     def _ix_beat() -> None:
         while not _ix_stop.wait(3.0):
-            mins = (time.time() - _ix_t0) / 60
+            el = time.time() - _ix_t0
+            left = (_ix_total / _ix_rate - el) if _ix_rate else 0.0
+            eta = (f", about {left / 60:.0f} min left" if left > 60 else
+                   ", nearly done" if _ix_rate else "")
             with _contextlib.suppress(Exception):
-                _pub(running=True, rows=n_rows, index_seconds=int(time.time() - _ix_t0),
-                     now=f"{what}: writing {n_rows:,} row(s) into the table — "
-                         f"{mins:.0f} min so far"
-                         + (" (a busy disk makes this an hour; the measuring "
-                            "is already done and nothing is lost)"
-                            if mins >= 5 else ""))
+                _pub(running=True, rows=n_rows, index_seconds=int(el),
+                     index_rows=_ix_total,
+                     index_eta_s=int(left) if _ix_rate and left > 0 else None,
+                     now=f"{what}: writing {_ix_total:,} row(s) into the table"
+                         f" — {el / 60:.0f} min so far{eta}"
+                         + (" (it is the disk, not a hang; the measuring is "
+                            "done and nothing is lost)"
+                            if el >= 300 else ""))
 
     _ix_beat_t = _threading.Thread(target=_ix_beat, name="pairbt-index-beat",
                                    daemon=True)
@@ -2419,6 +2475,8 @@ def _run_pairbt(spec: dict) -> None:
             time.sleep(20)
     _ix_stop.set()
     _ix_beat_t.join(timeout=2.0)
+    if not index_error:
+        _remember_index_rate(_ix_total, time.time() - _ix_t0)
     if index_error:
         # Not a lost measurement: a pair file whose mtime moved is picked up by
         # `rows_index.stale_pairs`, so the row refreshes when the index frees.

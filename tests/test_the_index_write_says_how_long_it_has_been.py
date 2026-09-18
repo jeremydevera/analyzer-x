@@ -124,7 +124,7 @@ def test_the_panel_draws_the_bar_and_names_it_an_estimate():
     panel = (Path(__file__).resolve().parents[1]
              / "webapp/src/components/backtest/StrategiesPanel.tsx").read_text(encoding="utf-8")
     i = panel.index("HOW FAR ALONG, AND HOW LONG LEFT")
-    block = panel[i:i + 2400]
+    block = panel[i:i + 3200]
     assert "pairJob.index_seconds" in block and "pairJob.index_eta_s" in block
     assert "min so far" in block and "min left" in block
     assert "estimate from this PC's last write" in block, "never presented as exact"
@@ -142,3 +142,17 @@ def test_the_client_type_carries_the_three_fields():
     for field in ("index_seconds?: number;", "index_rows?: number;",
                   "index_eta_s?: number | null;"):
         assert field in api_ts, field
+
+
+def test_no_bar_is_drawn_without_an_estimate():
+    """Without `index_eta_s` the width would be elapsed/elapsed = 100% — a
+    full bar over a write with 50 minutes to go. The words stay; the bar
+    waits for a number it can honestly draw."""
+    from pathlib import Path
+
+    panel = (Path(__file__).resolve().parents[1]
+             / "webapp/src/components/backtest/StrategiesPanel.tsx").read_text(encoding="utf-8")
+    i = panel.index("NO BAR WITHOUT AN ESTIMATE")
+    block = panel[i:i + 900]
+    assert "pairJob.index_eta_s ? (" in block, block[:300]
+    assert "no estimate yet" in panel[i:i + 2400]

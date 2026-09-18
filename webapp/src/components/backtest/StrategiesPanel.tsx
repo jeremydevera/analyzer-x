@@ -2037,13 +2037,20 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
               {store === "v1" && pairJob?.running && jobIsThisRow
                 && (pairJob.index_seconds ?? 0) > 0 && (
                 <div className="mt-2 max-w-md">
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800">
-                    <div className="h-full rounded-full bg-brand-500 transition-all duration-1000"
-                         style={{ width: `${Math.min(99, Math.round(
-                           100 * (pairJob.index_seconds ?? 0)
-                           / Math.max(1, (pairJob.index_seconds ?? 0)
-                                         + (pairJob.index_eta_s ?? 0))))}%` }} />
-                  </div>
+                  {/* NO BAR WITHOUT AN ESTIMATE. With `index_eta_s` missing the
+                      width would be elapsed/elapsed = 100% — a full bar over a
+                      write with 50 minutes to go, which is the exact lie this
+                      block exists to end. A job started before this shipped has
+                      no estimate, and says so in words instead. */}
+                  {pairJob.index_eta_s ? (
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800">
+                      <div className="h-full rounded-full bg-brand-500 transition-all duration-1000"
+                           style={{ width: `${Math.min(99, Math.round(
+                             100 * (pairJob.index_seconds ?? 0)
+                             / Math.max(1, (pairJob.index_seconds ?? 0)
+                                           + pairJob.index_eta_s)))}%` }} />
+                    </div>
+                  ) : null}
                   <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
                     {`writing ${(pairJob.index_rows ?? pairJob.rows ?? 0).toLocaleString()} row(s) into the table · `}
                     {`${Math.round((pairJob.index_seconds ?? 0) / 60)} min so far`}

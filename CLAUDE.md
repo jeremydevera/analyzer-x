@@ -844,6 +844,11 @@ Never prune it. When it gets long, add a dated index at the top pointing at the
 asks that became rules and leave every word in place: deleting an ask deletes
 the evidence a rule was bought with.
 
+`tests/test_the_operators_asks_are_recorded.py` holds it: the hook is wired in
+`.claude/settings.json`, the log is in the REPO, one prompt makes one entry,
+the editor's own `<ide_opened_file>` wrapper never lands in it, and the hook
+exits 0 on anything it is handed — a hook that fails blocks their message.
+
 Two things it learned in its first ten minutes, both already fixed: the first
 draft piped the payload through `jq`, which this machine does not have, so it
 would have silently recorded nothing for ever — **pipe-test a hook's raw
@@ -876,25 +881,6 @@ hand. Three permanent rules in this file were bought by that field — *filter
 where the data is*, *a guard is only as wide as its pattern*, and *a count is
 not a location*. Fires on a real defect only, never on a feature, refactor or
 rename. `tests/test_rca_log.py` holds the shape and the registration.
-
-ALWAYS ON — `remember-my-asks`. **Their own words are the record, and they
-are in `docs/OPERATOR-ASKS.md`.** The operator, `Sep 21, 2026`: *"create a
-skill to record my prompt in claude so that you will remember all my prompt
-even when im in other machine"*, then *"activate OPERATOR-ASKS always from
-now on"*. Every prompt is appended verbatim by
-`.claude/hooks/record_ask.py` on `UserPromptSubmit` — a HOOK, not a habit,
-because the harness runs it whether or not the model remembers to, and it
-writes into the REPO so `git pull` carries the history to another machine
-(the memory folder does not travel).
-**READ IT** before assuming what they want: when picking up work you did not
-start, when two rules seem to conflict, when they say *"i already told you"*,
-and whenever the answer depends on what they actually asked rather than on
-what got built. **Quote them, never summarise them** — this file exists
-because a summary of an ask is how the ask gets quietly replaced: "i want 1
-sentence" became "keep it short", and "explain always in non tech" became
-four correct unreadable answers. `tests/test_the_operators_asks_are_recorded.py`
-holds the hook's registration, the log's existence and the one-prompt-one-entry
-rule.
 
 ## Test the path the RUNNER takes, in the state it will run in (MANDATORY — 2026-09-05)
 

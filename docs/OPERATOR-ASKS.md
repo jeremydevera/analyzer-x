@@ -17,6 +17,12 @@ words are the record; a summary of them is not.
 
 ### Sep 21, 2026 9:17pm
 
-> <ide_opened_file>The user opened the file g:\analyzer-x\docs\OPERATOR-ASKS.md in the IDE. This may or may not be related to the current task.</ide_opened_file>
 > update it, before doing a dev always read this md so you will know my history
+
+### Sep 21, 2026 9:19pm
+
+> can i use multiple github account for faster backtest
+### Sep 21, 2026 9:21pm
+
+> can i generate api in github ebcause im planning to use multiple github accts
 

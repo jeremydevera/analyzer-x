@@ -272,6 +272,32 @@ def test_the_v2_update_docstring_does_not_still_say_this_PC():
     assert "GITHUB" in doc.upper()
 
 
+def test_the_live_door_serves_ONE_store_and_says_which():
+    """FOUND BY RUNNING IT. Run 35607986601 (Sep 21, 2026) measured BTC 1h on
+    the fleet perfectly — 25,960 rows in 1 minute — and every live post came
+    back HTTP 500, because the open door was a v1 door and `land_rows`
+    refused rows carrying res="1m". Nothing was lost (the shard falls back to
+    the artifact, which is the design), but the whole run posted nothing.
+
+    A door writes through `market_sweep`'s roots, which come from its process
+    environment, so it can only ever serve one store — and it must SAY which,
+    or `ensure()` cannot tell a useful door from a useless one."""
+    from tradingagents import cloud_sweep as cs, live_ingest as li
+
+    assert "res" in inspect.signature(li.ensure).parameters
+    src = _code_only(inspect.getsource(li.ensure))
+    assert 'cur.get("res")' in src, "it must compare the OPEN door's store"
+    assert "stop()" in src, "and replace a door for the other store"
+    assert "_stores.V2.env_for()" in src, \
+        "a v2 door is the same server in v2's environment"
+    # the serving process publishes the store it actually runs in, never a
+    # value the caller asserted
+    serve = _code_only(inspect.getsource(li))
+    assert '"res": _msw.FINE_TF' in serve
+    # and the dispatch asks for the right one
+    assert "li.ensure(res=res)" in _code_only(inspect.getsource(cs.dispatch))
+
+
 def test_the_run_record_remembers_which_store_its_rows_belong_to():
     """The collect happens in another process, later. Without this the store
     cannot be worked out at all."""

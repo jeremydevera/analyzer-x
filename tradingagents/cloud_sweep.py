@@ -206,7 +206,12 @@ def dispatch(*, shards: int = 20, coins: int = 0, timeframes: str = "15m,30m",
         try:
             from tradingagents import live_ingest as li
 
-            got = li.ensure()
+            # THE DOOR SERVES ONE STORE, so it has to be the one this run's
+            # rows belong to. A v1 door handed to a v2 run refuses every post
+            # for the whole run (`land_rows` guards the store) — measured on
+            # run 35607986601, Sep 21, 2026, which fell back to the artifact
+            # and lost only immediacy, exactly as designed.
+            got = li.ensure(res=res)
             ingest_url, ingest_why = got.get("url") or "", got.get("why") or ""
             if ingest_url:
                 # the machines read the secret from the repository; a token

@@ -356,8 +356,17 @@ def serve() -> int:
         log(f"no tunnel: {exc}")
         httpd.server_close()
         return 4
+    # WHICH STORE THIS DOOR WRITES INTO. A door serves exactly one — its own
+    # environment decides (`market_sweep.FINE_TF`: "" for v1, "1m" for
+    # Backtest v2) — and `cloud_sweep.land_rows` refuses a row measured for
+    # the other one. Without this field `ensure()` would hand a v1 door's
+    # address to a v2 run and every post would be refused all run long, which
+    # is exactly what happened on run 35607986601 (Sep 21, 2026).
+    from tradingagents import market_sweep as _msw
+
     URL_FILE.write_text(json.dumps({"url": url, "pid": os.getpid(),
                                     "tunnel_pid": proc.pid, "at": time.time(),
+                                    "res": _msw.FINE_TF,
                                     "port": PORT}))
     _LAST_OK[0] = time.time()
     log(f"listening on 127.0.0.1:{PORT} · public url {url}")
@@ -517,22 +526,38 @@ def sync_secret(slug: str = "") -> str:
     return ""
 
 
-def ensure(*, wait_s: float = 90.0) -> dict:
-    """Make sure the door is open, and return its public url.
+def ensure(*, wait_s: float = 90.0, res: str = "") -> dict:
+    """Make sure a door for store `res` is open, and return its public url.
 
     Never raises: a dispatch must go ahead without live posting rather than
     fail, because the artifact path still carries every row.
+
+    `res` names the store the incoming rows belong to — "" for v1, "1m" for
+    Backtest v2. A door serves exactly ONE store, because it writes through
+    `market_sweep`'s roots and those come from the process environment. An
+    open door for the OTHER store is therefore useless to this run and is
+    replaced: reusing it would mean every post refused for the whole run
+    (`land_rows` guards the store), which is what run 35607986601 did on
+    Sep 21, 2026 before this existed.
     """
     # NEVER during a test run. These open a real address on the internet and
     # spawn two processes; a suite that imported the dispatch by accident would
     # do both, on somebody's laptop, with no way to tell it happened.
     if os.environ.get("PYTEST_CURRENT_TEST"):
         return {"url": "", "why": "not opened during tests", "started": False}
+    want = (res or "").strip().lower()
     cur = current()
     if cur.get("url") and _alive(int(cur.get("pid") or 0)):
-        why = reachable(cur["url"])
-        if not why:
-            return {"url": cur["url"], "why": "", "started": False}
+        if str(cur.get("res") or "") != want:
+            # a door for the other store: stop it, then open ours
+            log(f"the open door serves res={str(cur.get('res') or '')!r} and "
+                f"this run needs res={want!r} — replacing it")
+            stop()
+            cur = {}
+        else:
+            why = reachable(cur["url"])
+            if not why:
+                return {"url": cur["url"], "why": "", "started": False}
         log(f"the open door did not answer ({why}) — starting a new one")
         stop()
     if not cloudflared():
@@ -547,10 +572,19 @@ def ensure(*, wait_s: float = 90.0) -> dict:
         kwargs["creationflags"] = (subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
                                    | subprocess.DETACHED_PROCESS)       # type: ignore[attr-defined]
     fh = SERVE_LOG.open("a", encoding="utf-8")
+    # THE CHILD'S STORE. A v2 door is the same server in v2's environment —
+    # the pattern `collect_v2` and `backtest_v2` already use — so
+    # `market_sweep`'s roots point at ~/.tradingagents/v2 and `land_rows`
+    # writes there without knowing a second store exists.
+    child_env = dict(os.environ)
+    if want:
+        from tradingagents import stores as _stores
+
+        child_env.update(_stores.V2.env_for())
     subprocess.Popen([sys.executable, "-m", "tradingagents.live_ingest", "serve"],  # noqa: S603
                      stdout=fh, stderr=subprocess.STDOUT,
                      stdin=subprocess.DEVNULL, cwd=str(Path(__file__).parent.parent),
-                     **kwargs)
+                     env=child_env, **kwargs)
     end = time.time() + wait_s
     while time.time() < end:
         time.sleep(1.0)

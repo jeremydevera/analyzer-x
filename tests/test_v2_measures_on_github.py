@@ -233,6 +233,45 @@ def test_the_dispatch_sends_res_to_the_fleet():
         "that slot belongs to res now"
 
 
+def test_UPDATE_on_v2_dispatches_the_fleet_instead_of_measuring_here():
+    """v1's UPDATE goes to GitHub; v2's measured locally because the fleet had
+    no minutes. It does now, so both buttons behave the same — "what ever
+    existing on v1 i want on v2"."""
+    from tradingagents import db_jobs as dj
+
+    src = _code_only(inspect.getsource(dj._run_btupdate_v2))
+    assert 'mode="update"' in src, "UPDATE must continue, never re-measure"
+    assert 'res="1m"' in src, "and it must be a v2 run"
+    assert "cs.dispatch(" in src
+    assert "cs.remember(dispatched)" in src, \
+        "or the collect cannot know which store the rows belong to"
+    assert "_run_backtest(" not in src, "it must not measure on this PC"
+
+
+def test_the_v2_update_keeps_its_own_plan_and_progress_files():
+    """Two versions writing one file is how a screen reports the other
+    store's run."""
+    from tradingagents import db_jobs as dj
+
+    for fn in (dj._write_run_plan, dj._finish_btupdate_cloud_only):
+        assert "kind" in inspect.signature(fn).parameters, fn.__name__
+    src = _code_only(inspect.getsource(dj._write_run_plan))
+    assert 'f"db_{kind}.plan.json"' in src, \
+        "the plan file is named after the job, not hardcoded to v1's"
+    assert 'FILES[kind]' in _code_only(
+        inspect.getsource(dj._finish_btupdate_cloud_only))
+
+
+def test_the_v2_update_docstring_does_not_still_say_this_PC():
+    """label-must-match-data reaches the prose a reader trusts: the function
+    said "always on this PC" for the whole of the change that moved it."""
+    from tradingagents import db_jobs as dj
+
+    doc = dj._run_btupdate_v2.__doc__ or ""
+    assert "always on this PC" not in doc
+    assert "GITHUB" in doc.upper()
+
+
 def test_the_run_record_remembers_which_store_its_rows_belong_to():
     """The collect happens in another process, later. Without this the store
     cannot be worked out at all."""

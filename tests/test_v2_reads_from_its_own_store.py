@@ -149,13 +149,20 @@ def test_a_preset_row_from_v2_writes_strategy_res():
     assert out1["strategy_res"] == {}
 
 
-def test_the_v2_update_job_runs_here_and_continues():
+def test_the_v2_update_job_dispatches_the_fleet_and_continues():
+    """It ran HERE until Sep 21, 2026, because the fleet had no 1-minute
+    candles; it downloads its own now, so v2's UPDATE goes to GitHub exactly
+    as v1's does. What has not changed, and is the real point of this test:
+    UPDATE CONTINUES each pair from its saved position and never re-measures
+    from scratch, and it is its own job kind writing its own files."""
     from tradingagents import db_jobs as dj
 
     src = inspect.getsource(dj._run_btupdate_v2)
-    assert 'files_key="btupdate_v2", kind="btupdate_v2"' in src
-    assert '"fresh": False' in src, "UPDATE continues, never from scratch"
-    assert "cap.plan" not in src, "the fleet has no 1-minute store — nothing to split"
+    assert 'mode="update"' in src, "UPDATE continues, never from scratch"
+    assert 'res="1m"' in src, "and it is a v2 run"
+    assert "cs.dispatch(" in src and "_run_backtest(" not in src
+    assert "cap.plan" not in src, \
+        "v2 keeps NO frames, so there is nothing to split and no plan to make"
     assert "btupdate_v2" in dj.FILES and "btupdate_v2" in dj._DISK_JOBS
     assert dj.main.__code__.co_consts and "btupdate_v2" in inspect.getsource(dj.main)
 

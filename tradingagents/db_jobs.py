@@ -2127,16 +2127,22 @@ def _run_btupdate(spec: dict) -> None:
 
 def _run_btupdate_v2(spec: dict) -> None:
     """UPDATE on Backtest v2: CONTINUE every v2 pair over the minutes added
-    since its last run — never from scratch, always on this PC.
+    since its last run — never from scratch, ON GITHUB.
 
-    The v1 update asks `capacity.plan` who measures what and hands frames to
-    GitHub; the fleet has no 1-minute store, so v2 has nothing to split. This
-    process runs with the v2 environment (stores.V2.env_for()): `stored_symbols`
-    lists the coins with 1m candles, `run_pair` rebuilds each frame's bars
-    from them and picks up every combination's saved position and running
-    totals (`fresh: False`). Press UPDATE CANDLES on Candles v2 first, or
-    there are no new minutes to continue over — the run then says "no new
-    bars" per pair rather than measuring anything twice.
+    It measured on this PC until `Sep 21, 2026`, because the fleet had no
+    1-minute candles. It downloads its own now (`sweep_shard.RES`), so this
+    job dispatches exactly as v1's UPDATE does — mode "update", every pair
+    continuing from its saved position over the new bars only.
+
+    SIMPLER than v1's on purpose: v1 asks `capacity.plan` which frames this PC
+    keeps and which go to the fleet. v2 keeps none, so there is nothing to
+    split and no plan to make. `res="1m"` is the whole difference between the
+    two runs — each runner rebuilds 15m/30m/1h/4h/1d from the minutes it
+    fetched, and every exit is settled minute by minute.
+
+    The rows come back through `collect_v2`, which runs with
+    `stores.V2.env_for()` so they land in ~/.tradingagents/v2. Nothing is
+    written to the v1 store at any point.
     """
     coins = list(spec.get("coins") or [])
     if not coins:
@@ -2148,24 +2154,65 @@ def _run_btupdate_v2(spec: dict) -> None:
               f"{len(coins):,} contract(s)", flush=True)
     tfs = [t for t in (spec.get("tfs") or list(cap.ALL_TFS))
            if t in ("15m", "30m", "1h", "4h", "1d")]
-    _run_backtest({**spec, "coins": coins, "tfs": tfs,
-                   "base": float(spec.get("base") or 5.0),
-                   "days": int(spec.get("days") or _sweep_days()),
-                   "fresh": False},
-                  files_key="btupdate_v2", kind="btupdate_v2")
+    # TO THE FLEET, exactly as v1's UPDATE goes. Operator, Sep 21, 2026:
+    # *"what ever existing on v1 i want on v2 the only difference is v2 will
+    # be using 1min candles that's the only difference i want"*.
+    #
+    # SIMPLER than v1's, on purpose: v1 asks `capacity.plan` who takes which
+    # frames because this PC still measures some of them. v2 takes none —
+    # there is nothing to split, so there is no plan to make. `res="1m"` is
+    # the whole difference: each runner downloads its own minutes and rebuilds
+    # 15m/30m/1h/4h/1d from them (sweep_shard.RES).
+    from tradingagents import cloud_sweep as cs
+
+    plan = {"local": [], "cloud": list(tfs),
+            "why": "Backtest v2 measures on GitHub; this PC takes none of it"}
+    dispatched: dict = {}
+    ok, why = cs.available()
+    if not ok:
+        plan = {"local": [], "cloud": [],
+                "why": f"GitHub is not usable: {why}"}
+    else:
+        try:
+            # UPDATE MEANS UPDATE: every pair continues from its saved
+            # position over the new minutes only. `state_runs` names the runs
+            # holding those positions; a pair with none is measured in full,
+            # once, and says so.
+            state_runs = cs.state_runs_for(tfs)
+            dispatched = cs.dispatch(
+                shards=cap.CLOUD_RUNNERS, coins=0,
+                coin_list=list(spec.get("coins") or []),
+                timeframes=",".join(tfs),
+                min_days=0, days=int(spec.get("days") or _sweep_days()),
+                base=float(spec.get("base") or 5.0),
+                mode="update", state_runs=state_runs, res="1m")
+            cs.remember(dispatched)      # so the collect knows it is a v2 run
+        except Exception as exc:                               # noqa: BLE001
+            plan = {"local": [], "cloud": [],
+                    "why": f"the dispatch failed: {type(exc).__name__}: "
+                           f"{str(exc)[:100]}"}
+    _write_run_plan(plan, dispatched, coins, tfs, kind="btupdate_v2")
+    _finish_btupdate_cloud_only(plan, dispatched, coins, kind="btupdate_v2")
 
 
-def _write_run_plan(plan: dict, dispatched: dict, coins, tfs) -> None:
-    """Record who took what, so the LOGS panel can say it after the fact."""
+def _write_run_plan(plan: dict, dispatched: dict, coins, tfs,
+                    kind: str = "btupdate") -> None:
+    """Record who took what, so the LOGS panel can say it after the fact.
+
+    `kind` because Backtest v2 has its own UPDATE job (Sep 21, 2026) and its
+    plan must not overwrite v1's — two versions writing one file is how a
+    screen ends up reporting the other store's run.
+    """
     with contextlib.suppress(Exception):                       # noqa: BLE001
-        _write(STATE_DIR / "db_btupdate.plan.json", {
+        _write(STATE_DIR / f"db_{kind}.plan.json", {
             "when": int(time.time()), "why": plan.get("why", ""),
             "local": plan.get("local", []), "cloud": plan.get("cloud", []),
             "cloud_run": dispatched.get("id"), "cloud_url": dispatched.get("url"),
             "coins": len(coins), "timeframes": list(tfs)})
 
 
-def _finish_btupdate_cloud_only(plan, dispatched, coins) -> None:
+def _finish_btupdate_cloud_only(plan, dispatched, coins,
+                                kind: str = "btupdate") -> None:
     """Nothing left for this machine — close the local job honestly.
 
     TWO ways to get here, and they must not read the same. Everything went to
@@ -2174,7 +2221,7 @@ def _finish_btupdate_cloud_only(plan, dispatched, coins) -> None:
     true sentence about a run that does not exist — the label-must-match-data
     failure this repo keeps paying for.
     """
-    f = FILES["btupdate"]
+    f = FILES[kind]
     nothing = not plan.get("cloud")
     note = (
         (f"NOTHING was measured — {plan.get('why') or 'GitHub took none of it'}"
@@ -2197,7 +2244,7 @@ def _finish_btupdate_cloud_only(plan, dispatched, coins) -> None:
     try:
         from tradingagents import notifications as _nt
 
-        _nt.record("btupdate",
+        _nt.record(kind,
                    "Backtest update measured NOTHING" if nothing
                    else "Backtest update handed to GitHub",
                    detail=note, ok=not nothing,

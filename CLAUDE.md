@@ -1070,10 +1070,51 @@ Four rules, each with a test:
   explicitly (`iter_rows_in`); a ContextVar token cannot be reset from
   another context.
 
-**What v2 does NOT do, on purpose:** measure on GitHub — the cloud has no
-1m store, so UPDATE on Backtest v2 (`btupdate_v2`) always runs on this PC;
-and a days/months window on the v2 CSV (refused with why — the JSON window
-below is the one that re-measures).
+**V2 MEASURES ON GITHUB (2026-09-21) — this rule used to say the opposite.**
+The operator, on being told v2 ran here: *"who said to run on pc? i've
+alrewady documented that it should be using github why are you not using
+github?"*, then *"i want backtest to run on github, what ever existing on v1
+i want on v2 the only difference is v2 will be using 1min candles that's the
+only difference i want"*. Nobody had overruled them — the Sep 17 spec filed
+cloud measuring under "Out of this cut" because the fleet had no 1-minute
+candles, and **they were never asked**. The one question put to them that day
+was what "more accurate" meant.
+
+* **`res` is a RESOLUTION, never a timeframe.** A v2 run measures the same
+  15m/30m/1h/4h/1d as v1 and rebuilds each of them from 1-minute candles the
+  runner downloads itself (`sweep_shard.RES` → `market_sweep.bars_from_1m`).
+  `1m` still never enters the grid, `pairs_for`, or `capacity.ALL_TFS`.
+* **The shard uses `backtest_strategy(fine=)`, not `fast_grid`.** The fused
+  walk has no minute-exact settlement and teaching it one would be a SECOND
+  implementation of the exit rules. Six engine runs instead of two walks, paid
+  for by v2's ~30-day window against v1's year — ~12x fewer bars per pair.
+  Measured on ARKM 1h mom6 th0.2 sl0.3 tp0.4 flat, the same 771 rebuilt bars
+  and the same 359 trades: **113W/246L −$78.83 by the bar rule against
+  158W/201L −$47.33 minute-exact**. 45 trades flip; the minutes are not
+  decoration.
+* **`res` took `min_days`'s workflow slot.** `workflow_dispatch` allows
+  exactly TEN inputs and the file was at ten. `min_days` had been 0 from every
+  caller since Sep 10 and the shard short-circuits its whole age screen on
+  `MIN_DAYS <= 0`, so nothing depended on it — and now no age cap can reach a
+  runner at all. **Anything further must replace an input, not be added.**
+* **A row may only land in the store it was measured for.**
+  `cloud_sweep.land_rows` refuses any row or `pair_done` marker whose `res`
+  disagrees with `market_sweep.FINE_TF`, naming both. A v2 row in the v1 store
+  is a 30-day row inside a year-deep ranking with no column that says so.
+  `collect_v2` is its own job kind with ONE body — a kind ending in `_v2` is
+  spawned with `stores.V2.env_for()`, so the roots follow and `land_rows`
+  writes to v2 without knowing a second store exists. `cloud_sweep.run_res(id)`
+  says which store a finished run's rows belong to, because the collect happens
+  hours later in another process and GitHub does not carry the dispatch inputs
+  anywhere `gh run list` can see.
+* Guards: `tests/test_v2_measures_on_github.py` (17).
+
+**What v2 STILL does not do:** a mid-run HAND-OFF (`_finish_handoff` is
+hard-wired to the v1 kind and reads v1's store for the coins this PC never
+reached, so pressing it would stop the v2 job and dispatch nothing — it
+refuses, naming BACKTEST as the button that works); and a days/months window
+on the v2 CSV (refused with why — the JSON window below is the one that
+re-measures).
 
 **Added the same evening, each reading the v2 store and never v1's:** the
 days/months window on Backtest v2 (`api._STORE` ContextVar →

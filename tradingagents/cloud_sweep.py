@@ -1060,11 +1060,57 @@ def working_run(slug: str | None = None) -> dict | None:
     return None
 
 
+RESFILE = RUNFILE.parent / "cloud_run_res.json"
+# How many run ids the map keeps. The autopilot walks the ten most recent runs;
+# sixty is weeks of history for a few hundred bytes, and it is trimmed oldest
+# first so the file cannot grow without end.
+RES_MAP_KEEP = 60
+
+
 def remember(run: dict) -> None:
     """Persist the run being watched, so it survives a browser reload, a tab
     switch, or the app restarting. Session state does not."""
     RUNFILE.parent.mkdir(parents=True, exist_ok=True)
     RUNFILE.write_text(json.dumps(run))
+    # WHICH STORE THIS RUN'S ROWS BELONG TO, by run id, kept beside it.
+    #
+    # `RUNFILE` holds only the LATEST run, and the collect walks the ten most
+    # recent — so by the time a v2 run is collected the record of what it was
+    # has usually been overwritten by the next dispatch. GitHub does not carry
+    # the dispatch inputs anywhere `gh run list` can see them either.
+    #
+    # Without this the autopilot would start a v1 `collect` for a v2 run;
+    # `land_rows` refuses those rows (which is the safety net working), but
+    # the run would then never land at all.
+    rid = run.get("id")
+    if rid is None:
+        return
+    with contextlib.suppress(OSError, ValueError, TypeError):
+        try:
+            m = json.loads(RESFILE.read_text())
+        except (OSError, ValueError):
+            m = {}
+        if not isinstance(m, dict):
+            m = {}
+        m[str(rid)] = str(run.get("res") or "")
+        for k in sorted(m, key=lambda x: int(x) if str(x).isdigit() else 0
+                        )[:-RES_MAP_KEEP]:
+            m.pop(k, None)
+        RESFILE.write_text(json.dumps(m))
+
+
+def run_res(run_id) -> str:
+    """The resolution a run was dispatched at — "" for v1, "1m" for v2.
+
+    An unknown run answers "" (v1), which is what every run before Sep 21,
+    2026 was. A wrong guess cannot corrupt a store: `land_rows` refuses rows
+    whose `res` disagrees with the store it is writing into.
+    """
+    try:
+        m = json.loads(RESFILE.read_text())
+        return str(m.get(str(run_id)) or "")
+    except (OSError, ValueError, AttributeError):
+        return ""
 
 
 def remembered() -> dict:

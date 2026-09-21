@@ -739,8 +739,12 @@ export const api = {
    *  coins one machine may claim. Sending the count alone is how BACKTEST with
    *  BTC picked measured 0G, ALPINE, AVAAI… and never BTC (Sep 10, 2026).
    *  An empty `coin_list` means the whole market. */
+  // `res`: "" is v1 (each frame's own candles); "1m" is Backtest v2 — the SAME
+  // frames, rebuilt from 1-minute candles, every exit settled minute by minute.
+  // A resolution, never a timeframe.
   cloudDispatch: (spec: { shards?: number; coins?: number; coin_list?: string[];
-                          timeframes?: string; days?: number; base?: number }) =>
+                          timeframes?: string; days?: number; base?: number;
+                          res?: string }) =>
     post<{ id?: number; url?: string; coins_named?: string[]; coin_list_why?: string }>(
       "/api/cloud/dispatch", spec),
   cloudCancel: (run_id: number) => post<{ cancelled: number }>("/api/cloud/cancel", { run_id }),

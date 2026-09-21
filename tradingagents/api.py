@@ -3211,8 +3211,21 @@ _V2_EMPTY_WHY = ("no v2 store yet — download 1m candles on Candles v2 first, "
 _V2_NO_WINDOW = ("a MONTHS window has no CSV on Backtest v2 yet — the table "
                  "above is the window's own; export with a DAYS window "
                  "instead, which re-measures each row from the 1-minute store")
-_V2_NO_CLOUD = ("Backtest v2 runs only on this PC — GitHub's machines have no "
-                "1-minute store, so there is nothing to hand the rest to")
+# THE REASON CHANGED ON Sep 21, 2026, so the sentence had to.
+#
+# It used to say the fleet has no 1-minute store. That stopped being true when
+# Backtest v2 went to GitHub (`RES=1m`: each runner downloads its own minutes
+# and rebuilds the frames). What is still missing is only the HAND-OFF half —
+# `_finish_handoff` is hard-wired to the v1 job and reads v1's store to work
+# out which coins were never reached — so pressing this would stop the v2 job
+# and dispatch nothing.
+#
+# A refusal that gives a reason which is no longer true is worse than no
+# reason: it sends the reader to fix the wrong thing. BACKTEST on Backtest v2
+# dispatches the fleet directly and is the button to use.
+_V2_NO_CLOUD = ("Backtest v2 measures on GitHub, but a mid-run HAND-OFF is "
+                "still v1-only — press BACKTEST on Backtest v2 to dispatch "
+                "the fleet directly instead")
 
 
 def _v2_rows_db():

@@ -95,8 +95,10 @@ def collect_finished(*, now: float, state: dict) -> dict:
     from tradingagents import cloud_sweep as cs, db_jobs as dj
 
     try:
-        if dj.status("collect").get("running"):
-            return {"started": False, "why": "a collect is already running"}
+        for k in ("collect", "collect_v2"):
+            if dj.status(k).get("running"):
+                return {"started": False,
+                        "why": f"a {k} is already running"}
     except Exception:                                          # noqa: BLE001
         pass
 
@@ -112,8 +114,15 @@ def collect_finished(*, now: float, state: dict) -> dict:
     pending = state.get("collecting")
     if pending is not None:
         st = {}
-        with contextlib.suppress(Exception):                   # noqa: BLE001
-            st = dj._read(dj.FILES["collect"]["progress"])
+        # EITHER KIND. A v2 run is collected by `collect_v2` and writes its own
+        # progress file; reading only v1's would leave `collecting` set for
+        # ever, and the autopilot would never start another collect at all.
+        for _k in ("collect", "collect_v2"):
+            with contextlib.suppress(Exception):               # noqa: BLE001
+                got = dj._read(dj.FILES[_k]["progress"])
+                if got.get("run") == pending:
+                    st = got
+                    break
         if st.get("run") == pending and not st.get("running"):
             state["collecting"] = None
             if st.get("error"):
@@ -146,7 +155,12 @@ def collect_finished(*, now: float, state: dict) -> dict:
                 # walked for it on every tick for ever
                 done.add(rid)
                 continue
-            pid = dj.start("collect", {"run": rid})
+            # WHICH STORE this run's rows belong to. A Backtest v2 run is
+            # collected by `collect_v2`, which is spawned with
+            # `stores.V2.env_for()` so `land_rows` writes into
+            # ~/.tradingagents/v2 without knowing a second store exists.
+            kind = "collect_v2" if cs.run_res(rid) == "1m" else "collect"
+            pid = dj.start(kind, {"run": rid})
         except Exception as exc:                               # noqa: BLE001
             return {"started": False, "why": f"could not start: {exc}"}
         # NOT marked collected yet — only when the job SAYS it finished. A

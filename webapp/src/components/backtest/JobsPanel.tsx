@@ -146,7 +146,11 @@ export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
       // fleet measured 0G, ALPINE, AVAAI… — the top of its own alphabetical
       // board — while BTC (position 190 of 1,065) was never touched. An empty
       // pick still means the whole market, which is what it always meant.
-      const run = await api.cloudDispatch({ shards: 20, coins: 0, coin_list: coins, timeframes: tfs.join(","), days: WINDOWS[win], base });
+      // `res` is what makes this a Backtest v2 run: the fleet rebuilds every
+      // frame from 1-minute candles and settles each exit minute by minute.
+      // Operator, Sep 21, 2026: "i want backtest to run on github ... the
+      // only difference is v2 will be using 1min candles".
+      const run = await api.cloudDispatch({ shards: 20, coins: 0, coin_list: coins, timeframes: tfs.join(","), days: WINDOWS[win], base, res: store === "v2" ? "1m" : "" });
       // SAY WHAT WAS SENT, from the answer itself — never from what this
       // screen believes it asked for. The whole bug was a screen sure it had
       // sent BTC while the fleet measured something else.
@@ -196,8 +200,8 @@ export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
         {store === "v2"
           ? <>Every signal × barrier pair × both sizings, deciding on the same 15m/30m/1h/4h/1d candles —
               rebuilt from the 1-minute ones — with every win/lose exit settled minute by minute.
-              Measured on this PC (the 1-minute candles live here). Runs detached — leaving this screen
-              does not stop it. The 1-minute candles are downloaded on the{" "}
+              Measured on GitHub Actions, which downloads the 1-minute candles it needs. Runs detached —
+              leaving this screen does not stop it. The 1-minute candles are downloaded on the{" "}
               <a href="/candles-v2" className="text-brand-500 hover:underline">Candles v2</a> screen.</>
           : <>Every signal × barrier pair × both sizings, over the candles already stored on this PC.
               Runs detached — leaving this screen does not stop it. Candles are downloaded on the{" "}
@@ -244,21 +248,11 @@ export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
             of the sentence is said out loud rather than left to be discovered.
             Every word below is DERIVED from /api/cloud/status — a hardcoded
             "running on GitHub" would be a caption, not a report. */}
-        {store === "v2" ? (
-          // v2 MEASURES HERE: the 1-minute candles exist only on this PC, and
-          // the fleet has no 1m store. Said out loud where v1 says "GitHub".
-          <div className="sm:col-span-2">
-            <label className="mb-1 block text-theme-xs text-gray-500 dark:text-gray-400">Runs on</label>
-            <div className="flex flex-wrap items-center gap-2 pt-1.5">
-              <span className="rounded-full bg-brand-500 px-3 py-1 text-theme-xs font-medium text-white">
-                this PC
-              </span>
-              <span className="text-theme-xs text-gray-500 dark:text-gray-400">
-                the 1-minute candles live here, so v2 is measured here — one pair per core, the v1 store untouched
-              </span>
-            </div>
-          </div>
-        ) : (
+        {/* ONE branch, both versions (Sep 21, 2026). v2 said "this PC" here
+            because the fleet had no 1-minute candles; it downloads its own now
+            (`RES=1m` -> `bars_from_1m` on the runner), so v2 runs where v1
+            runs. Operator: "what ever existing on v1 i want on v2 the only
+            difference is v2 will be using 1min candles". */}
         <div className="sm:col-span-2">
           <label className="mb-1 block text-theme-xs text-gray-500 dark:text-gray-400">Runs on</label>
           <div className="flex flex-wrap items-center gap-2 pt-1.5">
@@ -267,7 +261,7 @@ export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
             </span>
             <span className="text-theme-xs text-gray-500 dark:text-gray-400">
               {cloud?.available
-                ? `${cap?.runners ? `${cap.runners} runners` : "GitHub's runners"} measure the grid; every row comes back into the store on this PC`
+                ? `${cap?.runners ? `${cap.runners} runners` : "GitHub's runners"} measure the grid${store === "v2" ? ", each rebuilding the frames from 1-minute candles it downloads itself" : ""}; every row comes back into the ${store === "v2" ? "v2 " : ""}store on this PC`
                 : cloud?.reading || !cloud
                   // the first read of GitHub is still running in the API's
                   // background — "not available" here would be a false label
@@ -276,7 +270,6 @@ export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
             </span>
           </div>
         </div>
-        )}
       </div>
 
       {plan && (
@@ -299,21 +292,18 @@ export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
             {/* BACKTEST now dispatches the fleet instead of this PC. The
                 button keeps its name because it is the same job — from
                 scratch, same grid — only measured somewhere else. */}
-                {store === "v2" ? (
-                  <span title="FROM SCRATCH on this PC — every combination replays from its first candle, with exits settled minute by minute on the 1-minute candles from Candles v2.">
-                    <Button size="sm" onClick={() => start("backtest")}
-                      disabled={!coins.length || !tfs.length || !!bt?.running}>
-                      BACKTEST
-                    </Button>
-                  </span>
-                ) : (
-                <span title="FROM SCRATCH on GitHub Actions — every combination replays from its first candle. Slower; use UPDATE ALL BACKTESTS to only add new candles.">
+                {/* ONE button, both versions (Sep 21, 2026): v2 dispatches
+                    the fleet exactly as v1 does, with `res: "1m"` so each
+                    runner rebuilds the frames from 1-minute candles it
+                    downloads itself. */}
+                <span title={store === "v2"
+                  ? "FROM SCRATCH on GitHub Actions — every combination replays from its first candle, with exits settled minute by minute on 1-minute candles each runner downloads."
+                  : "FROM SCRATCH on GitHub Actions — every combination replays from its first candle. Slower; use UPDATE ALL BACKTESTS to only add new candles."}>
                   <Button size="sm" onClick={startCloud}
                     disabled={!coins.length || !tfs.length || !cloud?.available}>
                     BACKTEST
                   </Button>
                 </span>
-                )}
                 {/* No coin picked means EVERY pair this machine has candles
                     for — the same meaning UPDATE has on the Candles screen.
                     It used to be disabled without a selection, and the job

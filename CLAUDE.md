@@ -814,6 +814,44 @@ Every label must be DERIVED from the data it describes — never a literal. Veri
 must assert the label AGREES with its source, and that itemised rows SUM to the total
 shown. Presence is not correctness.
 
+ALWAYS ON — `remember-my-asks`. **The operator's own words are recorded and
+you read them.** Asked for `Sep 21, 2026`: *"create a skill to record my prompt
+in claude so that you will remember all my prompt even when im in other
+machine"*, then *"activate OPERATOR-ASKS always from now on"*.
+
+`.claude/hooks/record_ask.py` appends EVERY prompt verbatim to
+`docs/OPERATOR-ASKS.md` on `UserPromptSubmit` (wired in
+`.claude/settings.json`). Two choices carry the whole thing: a **HOOK**, not a
+skill, because a skill relies on this model remembering and the harness does
+not; and in the **REPO**, not `~/.claude/projects/.../memory/`, because that
+folder is one machine and the ask was explicitly about another one — the log
+travels with `git pull`.
+
+**READ IT BEFORE YOU WRITE ANY CODE.** Operator, `Sep 21, 2026`: *"before
+doing a dev always read this md so you will know my history"*. Not "when
+something is unclear" — BEFORE the first edit of any change, every time, the
+way `CLAUDE.md` itself is read. A fix that contradicts something they asked
+for last week is a fix that gets reverted, and this file is the only place
+their own words are kept in order.
+
+Also read it when two rules seem to conflict (their words decide, and the newer
+ask wins), when they say *"i already told you"*, and whenever the answer turns
+on what they ASKED for rather than what got built. **Quote it; never paraphrase
+it** — every rule in this file was bought because a summary of an ask and the
+ask itself turned out to be different things.
+
+Never prune it. When it gets long, add a dated index at the top pointing at the
+asks that became rules and leave every word in place: deleting an ask deletes
+the evidence a rule was bought with.
+
+Two things it learned in its first ten minutes, both already fixed: the first
+draft piped the payload through `jq`, which this machine does not have, so it
+would have silently recorded nothing for ever — **pipe-test a hook's raw
+command before wiring it, never after**; and the first real prompt landed
+**three times in one minute**, so an entry identical to the last one is now
+dropped. Every failure path exits 0 — a recorder that can block a prompt is
+worse than no recorder.
+
 ALWAYS ON — `rca-log`. STRICT. **A bug fix is not finished until `docs/RCA.md`
 has its entry, in the SAME commit as the fix.** No entry, no commit. The
 operator, 2026-09-09: *"list this in rca to prevent this from happening in the
@@ -838,6 +876,25 @@ hand. Three permanent rules in this file were bought by that field — *filter
 where the data is*, *a guard is only as wide as its pattern*, and *a count is
 not a location*. Fires on a real defect only, never on a feature, refactor or
 rename. `tests/test_rca_log.py` holds the shape and the registration.
+
+ALWAYS ON — `remember-my-asks`. **Their own words are the record, and they
+are in `docs/OPERATOR-ASKS.md`.** The operator, `Sep 21, 2026`: *"create a
+skill to record my prompt in claude so that you will remember all my prompt
+even when im in other machine"*, then *"activate OPERATOR-ASKS always from
+now on"*. Every prompt is appended verbatim by
+`.claude/hooks/record_ask.py` on `UserPromptSubmit` — a HOOK, not a habit,
+because the harness runs it whether or not the model remembers to, and it
+writes into the REPO so `git pull` carries the history to another machine
+(the memory folder does not travel).
+**READ IT** before assuming what they want: when picking up work you did not
+start, when two rules seem to conflict, when they say *"i already told you"*,
+and whenever the answer depends on what they actually asked rather than on
+what got built. **Quote them, never summarise them** — this file exists
+because a summary of an ask is how the ask gets quietly replaced: "i want 1
+sentence" became "keep it short", and "explain always in non tech" became
+four correct unreadable answers. `tests/test_the_operators_asks_are_recorded.py`
+holds the hook's registration, the log's existence and the one-prompt-one-entry
+rule.
 
 ## Test the path the RUNNER takes, in the state it will run in (MANDATORY — 2026-09-05)
 

@@ -1,6 +1,6 @@
 ---
 name: remember-my-asks
-description: ALWAYS ON. The operator's own prompts are recorded verbatim in docs/OPERATOR-ASKS.md by a UserPromptSubmit hook, so they survive a new session AND a different machine. Read that file before assuming what they want — when picking up work you did not start, when a rule seems to conflict, when they say "i already told you", or when the answer depends on what they actually asked rather than what got built. Never summarise it in place of quoting it.
+description: ALWAYS ON. READ docs/OPERATOR-ASKS.md BEFORE WRITING ANY CODE — the operator's own words, recorded verbatim by a UserPromptSubmit hook, in the repo so they survive a new session AND a different machine. Their instruction: "before doing a dev always read this md so you will know my history". Also read it when two rules conflict, when they say "i already told you", or when the answer turns on what they ASKED for rather than what got built. Quote it; never paraphrase it.
 ---
 
 # Remember my asks
@@ -28,7 +28,15 @@ Two choices in that sentence are the whole design:
 
 ## What this skill is for
 
-The hook writes it. This skill is the instruction to **READ** it:
+The hook writes it. This skill is the instruction to **READ** it.
+
+**BEFORE ANY DEV WORK — every time, before the first edit.** Operator,
+`Sep 21, 2026`: *"before doing a dev always read this md so you will know my
+history"*. Not "when something is unclear": a change that contradicts an ask
+from last week is a change that gets reverted, and this is the only place their
+own words sit in order.
+
+And also:
 
 * before picking up work you did not start;
 * when two rules seem to conflict — their words decide, and the newer ask wins;

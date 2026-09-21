@@ -149,7 +149,7 @@ def grid_frames(timeframes: str) -> str:
 def dispatch(*, shards: int = 20, coins: int = 0, timeframes: str = "15m,30m",
              min_days: int = 0, days: int = SWEEP_DAYS, base: float = 5.0,
              mode: str = "full", state_runs=(), live: bool = True,
-             coin_list=()) -> dict:
+             coin_list=(), res: str = "") -> dict:
     """Start a run and return its id and url. `days` is the history window the
     shards measure -- the same number the Backtest screen sends the local job.
 
@@ -223,7 +223,17 @@ def dispatch(*, shards: int = 20, coins: int = 0, timeframes: str = "15m,30m",
     _gh("workflow", "run", WORKFLOW, "--repo", slug,
         "-f", f"ingest_url={ingest_url}",
         "-f", f"shards={shards}", "-f", f"coins={coins}",
-        "-f", f"timeframes={timeframes}", "-f", f"min_days={min_days}",
+        "-f", f"timeframes={timeframes}",
+        # BACKTEST v2 ON THE FLEET (Sep 21, 2026). `res` REPLACED `min_days`
+        # in the workflow: workflow_dispatch allows exactly ten inputs, the
+        # file was at ten, and `min_days` had been 0 from every caller since
+        # Sep 10, 2026 while the shard short-circuits its whole age screen on
+        # `MIN_DAYS <= 0`. `min_days` stays in this signature because the API
+        # still accepts it and `market_sweep` still honours it LOCALLY.
+        #
+        # It is a RESOLUTION, not a timeframe: "1m" means rebuild 15m/30m/1h/
+        # 4h/1d from one-minute candles and settle each exit minute by minute.
+        "-f", f"res={res}",
         # the operator's STAKE. The shard hardcoded 5.0 while the local job
         # took it from the Backtest screen, so after the move to GitHub every
         # dollar figure would have been measured at a stake nobody chose.
@@ -256,6 +266,13 @@ def dispatch(*, shards: int = 20, coins: int = 0, timeframes: str = "15m,30m",
                     # covers X" note needs the frames from the run's own record
                     "timeframes": [t.strip() for t in str(timeframes).split(",")
                                    if t.strip()],
+                    # WHICH STORE THIS RUN'S ROWS BELONG TO. "" is v1; "1m" is
+                    # Backtest v2, whose rows must land in ~/.tradingagents/v2
+                    # and nowhere else. Kept WITH the run because the collect
+                    # happens minutes to hours later, in another process, and
+                    # a v2 row landed in the v1 store is a 30-day row inside a
+                    # year-deep ranking with no column saying so.
+                    "res": str(res or ""),
                     "started": time.strftime("%Y-%m-%d %H:%M")}
     raise CloudError("the run did not appear within a minute")
 
@@ -857,6 +874,28 @@ def land_rows(coin: str, tf: str, rows: list, *, marks=(), append: bool = False)
 
     marks = list(marks or [])
     rows = list(rows or [])
+    # A ROW MAY ONLY LAND IN THE STORE IT WAS MEASURED FOR (Sep 21, 2026).
+    #
+    # Since Backtest v2 went to the fleet, two kinds of row arrive here: a v1
+    # row (no `res`) and a v2 row (`res="1m"`, ~30 days deep, exits settled
+    # minute by minute). This process is pointed at exactly one store by its
+    # environment — `market_sweep.FINE_TF` is "" for v1 and "1m" for v2 — and
+    # the two must never cross: a v2 row in the v1 store is a 30-day row
+    # inside a year-deep ranking with no column that says so, and a v1 row in
+    # the v2 store silently un-does the minute-exact exits the whole version
+    # exists for.
+    #
+    # The ROW decides, not the caller. Routing happens minutes to hours after
+    # the dispatch, in another process, across a run list nobody re-reads —
+    # so the check belongs where the bytes are written, which is here.
+    wrong = sorted({str(r.get("res") or "") for r in rows + marks
+                    if str(r.get("res") or "") != msw.FINE_TF})
+    if wrong:
+        raise ValueError(
+            f"{coin} {tf}: these rows were measured at res="
+            f"{wrong[0]!r} and this store takes res={msw.FINE_TF!r} — "
+            f"collect a v2 run with the `collect_v2` job (it runs with "
+            f"stores.V2.env_for()), and a v1 run with `collect`")
     last_ms = max([int(r.get("last_ms") or 0) for r in rows + marks] or [0])
     # A pair already written by THIS pass is appended to, not re-judged: the
     # rows of one pair can be split across a shard file.

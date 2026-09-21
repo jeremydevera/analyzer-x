@@ -31,6 +31,7 @@ import tradingagents.auto_trader as at  # noqa: E402
 from tradingagents import (
     backtest_report as br,  # noqa: E402
     fast_grid as fg,  # noqa: E402
+    market_sweep as msw,  # noqa: E402
     resume_state as rs,  # noqa: E402
 )
 from tradingagents.dataflows import mexc_futures as fx  # noqa: E402
@@ -42,6 +43,18 @@ SHARDS = max(1, int(os.environ.get("SHARDS", "1")))
 PER_SHARD = int(os.environ.get("COINS", "0"))
 TFS = [t.strip() for t in os.environ.get("TFS", "15m,30m").split(",") if t.strip()]
 MIN_DAYS = int(os.environ.get("MIN_DAYS", "0"))
+# BACKTEST v2 ON THE FLEET. Operator, Sep 21, 2026: *"i want backtest to run
+# on github, what ever existing on v1 i want on v2 the only difference is v2
+# will be using 1min candles that's the only difference i want"*.
+#
+# "" is v1: each frame's own candles, an exit settled on the bar that held
+# both prices by rule (SL first). "1m" is v2: the SAME frames — 15m, 30m, 1h,
+# 4h, 1d — rebuilt from one-minute candles, with every exit settled minute by
+# minute. It is a RESOLUTION, not a timeframe: `1m` never enters the grid,
+# never reaches `pairs_for`, and a shard never measures "the 1m timeframe".
+RES = (os.environ.get("RES") or "").strip().lower()
+if RES and RES not in br.TFS:
+    raise SystemExit(f"RES={RES!r} is not a known download frame")
 # The history window, in days -- the same knob the Backtest screen sends the
 # local job ("Previous 2 months" = 60). The dispatch always sends it; the
 # fallback is the PC's own default (cloud_sweep.SWEEP_DAYS = 30), never a year
@@ -621,6 +634,11 @@ def continue_pair(sym, tf, prior: dict, out, *, i=0, n=0, rows_so_far=0):
     lines.append(json.dumps({"coin": coin, "tf": tf, "pair_done": True,
                              "last_ms": int(ts[-1]), "rows": kept,
                              "bars": bars_total, "continued": True,
+                             # THE MARKER BELONGS TO THE SAME STORE AS THE
+                             # ROWS: `cloud_sweep.land_rows` refuses anything
+                             # whose `res` disagrees with the store it writes
+                             # into, and a marker goes through that same door.
+                             **({"res": RES} if RES else {}),
                              "gap_from_ms": last_ms}) + "\n")
     out.write("".join(lines))
     out.flush()
@@ -682,7 +700,28 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
         # ONE definition, shared with the local sweep — see
         # backtest_report.round_trip_cost for why spread/2 must not be added.
         rt = br.round_trip_cost(fee, book)
-        df = at._closed_bars(fx.klines(sym, iv, cap), bs)
+        fine = None
+        if RES:
+            # v2: ONE download of minutes, and every frame is rebuilt from it.
+            # `bars_from_1m` is the same function the local v2 sweep uses and
+            # it REFUSES a frame with a missing minute rather than building a
+            # bar the venue never printed (rule 20) — so a hole is a named
+            # failure here, never a quiet wrong number.
+            iv1, bs1, cap1 = br.TFS[RES]
+            m1 = at._closed_bars(fx.klines(sym, iv1, cap1), bs1)
+            df = msw.bars_from_1m(m1, tf)
+            import numpy as _np
+            fine = (m1["Date"].to_numpy().astype("datetime64[ms]")
+                    .astype("int64"),
+                    _np.asarray(m1["High"], dtype="float64"),
+                    _np.asarray(m1["Low"], dtype="float64"))
+        else:
+            df = at._closed_bars(fx.klines(sym, iv, cap), bs)
+    except ValueError as exc:
+        # a hole in the minutes: NAMED and skipped, not retried for ever —
+        # a redo fetches the same gap and meets the same refusal
+        log(f"{sym} {tf}: {str(exc)[:90]} — skipped")
+        return 0
     except Exception as exc:
         raise PairFailed(f"{sym} {tf}: {str(exc)[:60]}") from exc
     df, warm = window(df)
@@ -780,32 +819,70 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
                     continue
                 if rt / tp >= GATE_BLOCK:
                     continue
-                try:
-                    six = fg.combo_six(
-                        dirs_idx, dirs, op, hi, lo, cl, tp=tp, sl=sl,
-                        liq=None if liq is None else abs(liq) / 100.0,
-                        half=half, base=BASE_MARGIN, lev=at.LEVERAGE,
-                        fee=fee + 0.0003, ladder=at.ladder_margin,
-                        mo_idx=mo_idx, mo_labels=mo_labels,
-                        f_ms=f_ms, f_cum=f_cum, bar_ms=ts, with_trades=True)
-                except Exception:
-                    continue
+                # WHICH ENGINE, and why there are two.
+                #
+                # v1 uses the fused walk: sizing never moves an exit, so six
+                # engine runs collapse into two walks (parity-pinned against
+                # the engine in tests/test_fast_grid.py).
+                #
+                # v2 CANNOT use it — `fast_grid` has no minute-exact
+                # settlement and teaching it one would be a SECOND
+                # implementation of the exit rules, which is the drift this
+                # repo has paid for five times. So v2 calls the same
+                # `backtest_strategy(fine=)` the local v2 sweep calls, which
+                # is the only thing that makes a fleet-measured v2 row and a
+                # PC-measured v2 row the same number. It costs six runs
+                # instead of two; v2's window is ~30 days against v1's year,
+                # so a pair is ~12x fewer bars and the trade is comfortable.
+                six = None
+                if not RES:
+                    try:
+                        six = fg.combo_six(
+                            dirs_idx, dirs, op, hi, lo, cl, tp=tp, sl=sl,
+                            liq=None if liq is None else abs(liq) / 100.0,
+                            half=half, base=BASE_MARGIN, lev=at.LEVERAGE,
+                            fee=fee + 0.0003, ladder=at.ladder_margin,
+                            mo_idx=mo_idx, mo_labels=mo_labels,
+                            f_ms=f_ms, f_cum=f_cum, bar_ms=ts,
+                            with_trades=True)
+                    except Exception:
+                        continue
                 # the SIZINGS REGISTRY, never a literal. Operator, Sep 11, 2026:
                 # "i only want flat so you will need to delete marigingalte for
                 # my backtest as well" — and a hardcoded pair here would keep
                 # twenty machines measuring the ladder for weeks after the grid
                 # stopped asking for it (CLAUDE.md rules 18-19).
                 for sz in br.SIZINGS:
-                    r = six[sz]["full"]
-                    # THE SAVED POSITION, from the same walk: what the next
-                    # UPDATE continues from (fast_grid.end_state, parity-pinned
-                    # against the engine's own resume state)
-                    pair_states[combo_key(sig, thp, sl * 100, tp * 100, sz)] = \
-                        fg.end_state(six["trades"], base=BASE_MARGIN,
-                                     lev=at.LEVERAGE, fee=fee + 0.0003,
-                                     sizing=sz, ladder=at.ladder_margin,
-                                     mo_idx=mo_idx, mo_labels=mo_labels,
-                                     opens=op, bar_ms=ts, last_ms=int(ts[-1]))
+                    if six is not None:
+                        r = six[sz]["full"]
+                        # THE SAVED POSITION, from the same walk: what the next
+                        # UPDATE continues from (fast_grid.end_state,
+                        # parity-pinned against the engine's own resume state)
+                        pair_states[combo_key(sig, thp, sl * 100,
+                                              tp * 100, sz)] = \
+                            fg.end_state(six["trades"], base=BASE_MARGIN,
+                                         lev=at.LEVERAGE, fee=fee + 0.0003,
+                                         sizing=sz, ladder=at.ladder_margin,
+                                         mo_idx=mo_idx, mo_labels=mo_labels,
+                                         opens=op, bar_ms=ts,
+                                         last_ms=int(ts[-1]))
+                    else:
+                        # v2: the engine itself, minute-exact. `start_at=warm`
+                        # is the same floor `dirs_idx` gives the fused walk —
+                        # no trade inside the warm-up, where the indicators
+                        # are still filling.
+                        try:
+                            r = at.backtest_strategy(
+                                key, df, BASE_MARGIN, fee=fee, sizing=sz,
+                                dirs=dirs, tp=tp, sl=sl, liq_move_pct=liq,
+                                funding=fund, keep_log=False, start_at=warm,
+                                fine=fine)
+                        except Exception:
+                            continue
+                        # the engine's OWN resume state, which is what
+                        # fg.end_state is parity-pinned against
+                        pair_states[combo_key(sig, thp, sl * 100,
+                                              tp * 100, sz)] = r.get("state")
                     # EVERY row, winners and losers alike. This used to drop
                     # `profit <= 0 or trades < 100`, so a merged pair held only
                     # its profitable slice: "how many combinations were tested"
@@ -816,9 +893,19 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
                     # are not the same measurement.
                     if not r["trades"]:
                         continue          # no trade at all is not a row
-                    a = six[sz]["h1"]
-                    b = six[sz]["h2"]
                     m = r["monthly"]
+                    if six is not None:
+                        h1v = six[sz]["h1"]["profit"]
+                        h2v = six[sz]["h2"]["profit"]
+                    else:
+                        # v2 splits by MONTH, exactly as market_sweep does for
+                        # the rows this one has to sit beside in the store —
+                        # the fused walk's bar-index half is not available and
+                        # must not be approximated into a different number.
+                        mk = sorted(m)
+                        cut = max(1, len(mk) // 2)
+                        h1v = sum(m[k2] for k2 in mk[:cut])
+                        h2v = sum(m[k2] for k2 in mk[cut:])
                     lines.append(json.dumps({
                         "coin": coin, "tf": tf, "signal": sig, "th": thp,
                         "sl": round(sl * 100, 3), "tp": round(tp * 100, 3),
@@ -829,7 +916,7 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
                                     if r["trades"] else 0.0),
                         "profit": round(r["profit"], 2),
                         "funding": round(r["funding_total"], 2),
-                        "h1": round(a["profit"], 2), "h2": round(b["profit"], 2),
+                        "h1": round(h1v, 2), "h2": round(h2v, 2),
                         "green": r["months_green"], "months": r["months_total"],
                         "worst": round(r["worst_trade"], 2), "dd": round(r["max_dd"], 2),
                         # a cloud row and a local row sit side by side in the
@@ -839,6 +926,13 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
                         # honest when liquidation could not be read: unreachable
                         # stops are only screened out when liq is known
                         "liqs": r["liqs"], "stop_reachable": liq is not None,
+                        # v2 ONLY: how many of this row's trades were still a
+                        # guess (both prices inside one minute) and the
+                        # resolution the exits were settled at. `res` is what
+                        # makes the id a v2 id (backtest_report.row_code), so
+                        # a fleet v2 row can never collide with a v1 row.
+                        **({"unclear": int(r.get("unclear", 0)), "res": RES}
+                           if RES else {}),
                         "days": days,
                         # the last bar this pair was measured through, so the
                         # merge can record freshness instead of guessing
@@ -869,6 +963,8 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
     # last_ms so the pair gets a real watermark.
     lines.append(json.dumps({"coin": coin, "tf": tf, "pair_done": True,
                              "last_ms": int(ts[-1]) if len(ts) else 0,
+                             # same store rule as the rows beside it
+                             **({"res": RES} if RES else {}),
                              "rows": kept, "bars": nbars}) + "\n")
     out.write("".join(lines))
     out.flush()

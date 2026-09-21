@@ -108,6 +108,19 @@ FILES = {
                 "spec": STATE_DIR / "db_collect.spec.json",
                 "pid": STATE_DIR / "db_collect.pid",
                 "stop": STATE_DIR / "db_collect.STOP"},
+    # BACKTEST v2 ON THE FLEET (Sep 21, 2026). The SAME collect body: a kind
+    # ending in `_v2` is spawned with `stores.V2.env_for()` (see `start`), so
+    # `market_sweep`'s roots already point at ~/.tradingagents/v2 and
+    # `land_rows` writes there without knowing a second store exists.
+    #
+    # It has to be its own kind rather than a flag, because a v2 row landed in
+    # the v1 store is a 30-day row sitting inside a year-deep ranking with no
+    # column that says so — and the collect runs minutes to hours after the
+    # dispatch, in another process, so the store cannot be inferred later.
+    "collect_v2": {"progress": STATE_DIR / "db_collect_v2.json",
+                   "spec": STATE_DIR / "db_collect_v2.spec.json",
+                   "pid": STATE_DIR / "db_collect_v2.pid",
+                   "stop": STATE_DIR / "db_collect_v2.STOP"},
     "btupdate": {"progress": STATE_DIR / "db_btupdate.json",
                  "spec": STATE_DIR / "db_btupdate.spec.json",
                  "pid": STATE_DIR / "db_btupdate.pid",
@@ -681,7 +694,7 @@ class JobBusy(RuntimeError):
 # themselves keep exactly the freedom they had (UPDATE CANDLES beside a
 # collect is a daily habit here).
 _DISK_JOBS = ("download", "backtest", "btupdate", "collect",
-              "download_v2", "backtest_v2", "btupdate_v2")
+              "download_v2", "backtest_v2", "btupdate_v2", "collect_v2")
 
 
 def disk_holder(kind: str) -> str:
@@ -2585,7 +2598,8 @@ def main(argv: list[str]) -> int:
         _run_btupdate_v2(spec)
     elif kind == "btupdate":
         _run_btupdate(spec)
-    elif kind == "collect":
+    elif kind in ("collect", "collect_v2"):
+        # one body; the v2 environment is what sends its rows to the v2 store
         _run_collect(spec)
     elif kind in ("pairbt", "pairbt_v2"):
         _run_pairbt(spec, kind)

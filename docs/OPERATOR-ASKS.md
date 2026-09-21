@@ -36,3 +36,18 @@ words are the record; a summary of them is not.
 
 > do it your slef
 
+
+### Sep 21, 2026 9:24pm
+
+> i want to use my colleague's github for github action how can i do it
+
+
+### Sep 21, 2026 9:26pm
+
+> that's okay we are cowork and partner for this project
+
+
+### Sep 21, 2026 9:27pm
+
+> launch the browser so i can authenticate
+

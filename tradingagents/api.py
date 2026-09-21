@@ -2690,6 +2690,13 @@ def cloud_dispatch(body: dict) -> dict:
                       min_days=int(body.get("min_days") or 0),
                       days=int(body.get("days") or _sweep_days()),
                       base=float(body.get("base") or 5.0),
+                      # BACKTEST v2 ON THE FLEET. Operator, Sep 21, 2026:
+                      # *"i want backtest to run on github ... the only
+                      # difference is v2 will be using 1min candles"*. "1m"
+                      # tells the shard to rebuild every frame from minutes
+                      # and settle each exit minute by minute; "" is v1,
+                      # byte-identical to before.
+                      res=str(body.get("res") or ""),
                       mode="full")
     cs.remember(run)
     return run

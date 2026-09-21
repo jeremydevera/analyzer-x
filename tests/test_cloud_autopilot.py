@@ -237,7 +237,12 @@ def test_the_collect_job_exists_and_is_routed():
     assert "collect" in dj.FILES
     assert hasattr(dj, "_run_collect")
     src = open("tradingagents/db_jobs.py", encoding="utf-8").read()
-    assert 'elif kind == "collect":' in src
+    # BOTH kinds, ONE body (Sep 21, 2026). Backtest v2 measures on the fleet
+    # now, and its rows must land in ~/.tradingagents/v2 — which happens by
+    # itself, because a kind ending in `_v2` is spawned with
+    # `stores.V2.env_for()` and `market_sweep`'s roots follow.
+    assert 'elif kind in ("collect", "collect_v2"):' in src
+    assert "collect_v2" in dj.FILES
 
 
 def test_a_collect_that_died_half_way_is_retried(monkeypatch):

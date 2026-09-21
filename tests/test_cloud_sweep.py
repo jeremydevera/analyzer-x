@@ -336,9 +336,19 @@ def test_every_dispatch_path_asks_for_every_contract():
     from tradingagents import api, cloud_sweep as cs
 
     assert inspect.signature(cs.dispatch).parameters["min_days"].default == 0
-    assert 'default: "0"' in pathlib.Path(".github/workflows/sweep.yml").read_text(
-    ).split("min_days:")[1].split("\n\n")[0]
+    # THE WORKFLOW NO LONGER CARRIES IT AT ALL (Sep 21, 2026), which is
+    # stronger than carrying a 0: `res` took the slot when Backtest v2 went to
+    # the fleet (workflow_dispatch allows exactly ten inputs), so no age cap
+    # can reach a runner from anywhere. The shard's own fallback is still "0"
+    # and still short-circuits the whole screen, which is what this test has
+    # always really been about.
+    flow = pathlib.Path(".github/workflows/sweep.yml").read_text()
+    assert "\n      min_days:" not in flow, \
+        "if the input comes back it must default to 0 and be asserted here"
+    assert "MIN_DAYS: ${{ github.event.inputs.min_days }}" not in flow
     assert 'os.environ.get("MIN_DAYS", "0")' in _shard_src()
+    assert "if MIN_DAYS <= 0:" in _shard_src(), \
+        "with nothing sending it, the screen must pass every contract"
     for fn in (api._finish_handoff, api.cloud_dispatch):
         assert "min_days=" in inspect.getsource(fn), (
             f"{fn.__name__} must pass min_days explicitly -- a default is a "

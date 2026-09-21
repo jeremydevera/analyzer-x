@@ -89,13 +89,29 @@ def available() -> tuple[bool, str]:
     except CloudError as exc:
         return False, str(exc)
     try:
-        wf = json.loads(_gh("workflow", "list", "--repo", slug, "--json",
-                            "name,state"))
+        raw = _gh("workflow", "list", "--repo", slug, "--json", "name,state")
     except CloudError as exc:
         msg = str(exc)
         if "auth" in msg.lower() or "login" in msg.lower():
             msg += " — run `gh auth refresh -h github.com`"
         return False, msg
+    # A FORK ANSWERS NOTHING AT ALL, and `json.loads("")` is a traceback where
+    # a sentence belongs. Sep 21, 2026: the operator pointed this checkout at
+    # `jeremydvera/analyzer-x` (a fork, so its 20 machines run the sweeps) and
+    # pressing anything raised `JSONDecodeError: Expecting value` — GitHub
+    # registers NO workflows on a fork until a person opens its Actions tab
+    # and presses "I understand my workflows, go ahead and enable them", and
+    # there is no API for that click. A job that cannot start must say so
+    # (CLAUDE.md), and say the thing that fixes it.
+    try:
+        wf = json.loads(raw) if raw.strip() else []
+    except ValueError:
+        wf = []
+    if not wf:
+        return False, (f"{slug} lists no workflows — if it is a FORK, open "
+                       f"https://github.com/{slug}/actions once and press "
+                       f"'I understand my workflows, go ahead and enable "
+                       f"them'; GitHub has no API for that click")
     if not any(w["name"] == WORKFLOW for w in wf):
         return False, f"{slug} has no '{WORKFLOW}' workflow"
     return True, slug

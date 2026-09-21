@@ -22,7 +22,17 @@ words are the record; a summary of them is not.
 ### Sep 21, 2026 9:19pm
 
 > can i use multiple github account for faster backtest
+
 ### Sep 21, 2026 9:21pm
 
 > can i generate api in github ebcause im planning to use multiple github accts
+
+### Sep 21, 2026 9:22pm
+
+> how much is github team
+
+
+### Sep 21, 2026 9:23pm
+
+> do it your slef
 

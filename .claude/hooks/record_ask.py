@@ -29,8 +29,42 @@ second ask and must be kept. Do not add a second dedupe.
 import json
 import os
 import pathlib
+import re
 import sys
 import time
+
+# The editor and the harness wrap a prompt in tags of their own, and those are
+# not the operator's words. Written WITHOUT a backreference on purpose: the
+# first version used one, a shell heredoc ate the escape, and the pattern
+# shipped as `</>` — which matches nothing, silently, exactly the swallowed
+# failure this hook's own docstring warns about.
+# EVERY WRAPPER THE HARNESS PUTS AROUND A PROMPT. Not just the editor's:
+# on Sep 21, 2026 a whole `<task-notification>` block — a BACKGROUND JOB
+# finishing — was written into this file as if the operator had typed it,
+# `<task-id>`, `<output-file>` and all. This log is evidence of what they
+# asked for; a machine event filed as an ask is a lie in the record.
+_TAGS = (r"ide_[a-z_]+|system-reminder|task-notification|task-id"
+         r"|tool-use-id|output-file|status|summary|task-type"
+         r"|command-name|command-message|command-args"
+         r"|local-command-stdout|local-command-caveat")
+_CHROME = re.compile(rf"<(?:{_TAGS})>.*?</(?:{_TAGS})>", re.S | re.I)
+# An opener or closer with no partner — a truncated wrapper — takes its own
+# line, so half a tag cannot be mistaken for something they typed.
+_CHROME_OPEN = re.compile(rf"^\s*</?(?:{_TAGS})>.*$", re.M | re.I)
+
+
+def _ends_blank(log) -> bool:
+    """Does the log already end with a blank line? Unreadable counts as yes —
+    an extra newline is harmless, a lost entry is not."""
+    try:
+        size = log.stat().st_size
+        if not size:
+            return True
+        with log.open("rb") as fh:
+            fh.seek(max(0, size - 4))
+            return fh.read().endswith(b"\n\n")
+    except Exception:                                          # noqa: BLE001
+        return True
 
 
 def main() -> int:
@@ -45,9 +79,8 @@ def main() -> int:
     # Sep 21, 2026 9:17pm one landed in the record above the operator's real
     # sentence — so the file said they had "asked" something the editor said.
     # This log is their WORDS; anything the harness added is not.
-    import re as _re
-    prompt = _re.sub(r"<(ide_[a-z_]+|system-reminder)>.*?</>", "",
-                     prompt, flags=_re.S).strip()
+    prompt = _CHROME.sub("", prompt).strip()
+    prompt = _CHROME_OPEN.sub("", prompt).strip()
     if not prompt:
         return 0
     # A bare slash-command is the harness's, not a thought worth keeping.
@@ -105,6 +138,13 @@ def main() -> int:
                     "`git pull` — the memory folder does not travel.\n\n"
                     "**Read this before assuming what they want.** Their exact\n"
                     "words are the record; a summary of them is not.\n\n---\n\n")
+            # A BLANK LINE FIRST IF THE FILE DOES NOT END IN ONE. Appending
+            # `### ...` straight after a quote line glues the heading to the
+            # previous ask and markdown stops seeing a heading at all —
+            # which happened at Sep 21, 2026 9:21pm after the file was
+            # hand-edited and left without its trailing blank line.
+            if not new and not _ends_blank(log):
+                fh.write("\n")
             fh.write(f"### {when}\n\n{body}\n\n")
     except Exception:
         return 0

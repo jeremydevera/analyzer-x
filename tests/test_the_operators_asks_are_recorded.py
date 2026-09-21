@@ -146,3 +146,61 @@ def test_the_stripper_holds_no_control_bytes():
     src = HOOK.read_text(encoding="utf-8")
     bad = [f"{c!r} at {src.index(c)}" for c in map(chr, range(1, 9)) if c in src]
     assert not bad, bad
+
+
+# ----------------------------------------------------------------------------
+# Added Sep 21, 2026, after the log recorded two things the operator never
+# typed and lost a heading to a hand edit.
+
+NOTE = ("<task-notification>\n<task-id>bcdf85bmr</task-id>\n"
+        "<tool-use-id>toolu_01Pyog</tool-use-id>\n"
+        "<status>completed</status>\n"
+        "<summary>Background command \"Measure the v2 store\" completed</summary>\n"
+        "</task-notification>")
+
+
+def test_a_background_job_finishing_is_not_an_ask(tmp_path):
+    """It was filed as one. On Sep 21, 2026 a whole `<task-notification>`
+    block landed in the log — `<task-id>`, `<output-file>` and all — as though
+    the operator had typed it. This file is the evidence a rule was bought
+    with; a machine event in it is a lie in the record."""
+    _run(NOTE, tmp_path)
+    log = tmp_path / "docs/OPERATOR-ASKS.md"
+    assert not log.exists() or "task-id" not in log.read_text(encoding="utf-8")
+
+
+def test_a_real_ask_arriving_WITH_a_notification_is_still_kept(tmp_path):
+    """The stripping must take the wrapper and nothing else — losing the ask
+    would be worse than recording the noise."""
+    _run(NOTE + "\nnow deploy it", tmp_path)
+    got = (tmp_path / "docs/OPERATOR-ASKS.md").read_text(encoding="utf-8")
+    assert "> now deploy it" in got
+    assert "task-notification" not in got and "toolu_" not in got
+
+
+def test_every_heading_keeps_a_blank_line_above_it(tmp_path):
+    """A heading glued to the previous quote stops being a heading at all.
+    It happened at `Sep 21, 2026 9:21pm`: the file had been hand-edited and
+    left without its trailing blank line, so the next ask appended straight
+    onto the last one."""
+    log = tmp_path / "docs/OPERATOR-ASKS.md"
+    _run("first ask", tmp_path)
+    # the exact shape a hand edit leaves behind
+    log.write_text(log.read_text(encoding="utf-8").rstrip("\n") + "\n",
+                   encoding="utf-8")
+    _run("second ask", tmp_path)
+    got = log.read_text(encoding="utf-8")
+    assert "> first ask" in got and "> second ask" in got
+    for line in got.splitlines():
+        pass
+    assert "\n\n### " in got
+    assert "ask\n### " not in got, "a heading was glued to the ask above it"
+
+
+def test_the_operators_own_words_survive_all_of_it(tmp_path):
+    """The whole point, in one test: their sentence, unchanged, quoted."""
+    real = "update it, before doing a dev always read this md so you will know my history"
+    _run(f"<ide_opened_file>The user opened X</ide_opened_file>\n{real}", tmp_path)
+    got = (tmp_path / "docs/OPERATOR-ASKS.md").read_text(encoding="utf-8")
+    assert f"> {real}" in got
+    assert "ide_opened_file" not in got

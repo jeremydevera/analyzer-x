@@ -511,18 +511,32 @@ def sync_secret(slug: str = "") -> str:
 
     tok = token()
     want = hashlib.sha256(tok.encode()).hexdigest()[:16]
-    seen = HOME / "ingest_secret.sha"
+    # PER ACCOUNT. One fingerprint file for every repo meant that pushing the
+    # secret to the first account told this code the SECOND one had it too —
+    # so its machines would post with no secret, get 401, and fall back to
+    # artifacts without a word. Found by the harddev loop the hour a press
+    # started dispatching to two accounts (Sep 21, 2026, "i want 40").
+    where = slug or cs.repo_slug()
+    safe = "".join(c if c.isalnum() else "_" for c in where)
+    seen = HOME / f"ingest_secret.{safe}.sha"
+    legacy = HOME / "ingest_secret.sha"
     with contextlib.suppress(OSError):
         if seen.read_text().strip() == want:
             return ""
+    # a fingerprint written before this change belongs to the repo the single
+    # -account world pushed to, and only to that one
+    with contextlib.suppress(OSError):
+        if where == cs.repo_slug() and legacy.read_text().strip() == want:
+            seen.write_text(want)
+            return ""
     try:
-        cs._gh("secret", "set", "INGEST_TOKEN", "--repo", slug or cs.repo_slug(),
+        cs._gh("secret", "set", "INGEST_TOKEN", "--repo", where,
                "--body", tok)
     except Exception as exc:                                    # noqa: BLE001
         return f"could not give GitHub the secret: {str(exc)[:120]}"
     with contextlib.suppress(OSError):
         seen.write_text(want)
-    log("GitHub now has the door's secret (repository secret INGEST_TOKEN)")
+    log(f"{where} now has the door's secret (repository secret INGEST_TOKEN)")
     return ""
 
 

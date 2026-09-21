@@ -51,3 +51,43 @@ words are the record; a summary of them is not.
 
 > launch the browser so i can authenticate
 
+
+### Sep 21, 2026 10:01pm
+
+> i authenticated now did you start to use the other github for github actions
+
+
+### Sep 21, 2026 10:02pm
+
+> is there a bug in my v2 backtest
+
+
+### Sep 21, 2026 10:02pm
+
+> do it yourself
+
+
+### Sep 21, 2026 10:40pm
+
+> tell me what exactly to do
+
+
+### Sep 21, 2026 10:45pm
+
+> what to click here
+
+
+### Sep 21, 2026 10:46pm
+
+> done i clicked I understand my workflows, go ahead and enable them
+
+
+### Sep 21, 2026 10:51pm
+
+> if i run update backtest will it run 40 machines now
+
+
+### Sep 21, 2026 10:52pm
+
+> i want 40
+

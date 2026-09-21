@@ -139,18 +139,43 @@ def collect_finished(*, now: float, state: dict) -> dict:
             state["collected"] = sorted(done)
             _write(state)
 
+    # EVERY ACCOUNT, not just this checkout's first remote. Since
+    # Sep 21, 2026 one press can dispatch to the operator's account and their
+    # partner's fork at once ("i want 40"), and a run collected from the
+    # wrong repo is a 404 — or worse, somebody else's run id that happens to
+    # exist. Each run is carried with the account that produced it.
+    runs, seen_fleets = [], []
     try:
-        runs = cs._runs(cs.repo_slug(), limit=10)
+        seen_fleets = cs.fleets()
     except Exception as exc:                                   # noqa: BLE001
-        return {"started": False, "why": f"cannot list runs: {exc}"}
+        return {"started": False, "why": f"cannot read the remotes: {exc}"}
+    # ONE ACCOUNT PER LOOK, IN TURN. Asking every fleet each time would
+    # multiply the calls to the endpoint whose secondary limit 403'd this
+    # account for hours (RCA-2026-09-02) — by the number of accounts, which
+    # is the number the operator is trying to grow. A run takes twenty
+    # minutes and the look is throttled anyway, so turns cost nothing.
+    turn = int(state.get("fleet_turn") or 0)
+    slug = seen_fleets[turn % len(seen_fleets)] if seen_fleets else ""
+    state["fleet_turn"] = (turn + 1) % max(1, len(seen_fleets))
+    _write(state)
+    if slug:
+        try:
+            runs = [{**r, "repo": slug} for r in cs._runs(slug, limit=10)]
+        except Exception as exc:                               # noqa: BLE001
+            # one account being unreachable must never stop the other's rows
+            # from landing; it is named, not swallowed, and the next look
+            # takes the other account's turn
+            return {"started": False,
+                    "why": f"cannot list {slug}'s runs: {exc}"}
     for r in runs:
         rid = r.get("databaseId")
+        slug = r.get("repo")
         if rid in done or r.get("status") != "completed":
             continue
         if r.get("conclusion") not in ("success", "failure"):
             continue           # cancelled/skipped produced nothing to collect
         try:
-            if not cs.artifact_names(rid):
+            if not cs.artifact_names(rid, slug):
                 # expired or never uploaded: remember it so the list is not
                 # walked for it on every tick for ever
                 done.add(rid)
@@ -160,7 +185,9 @@ def collect_finished(*, now: float, state: dict) -> dict:
             # `stores.V2.env_for()` so `land_rows` writes into
             # ~/.tradingagents/v2 without knowing a second store exists.
             kind = "collect_v2" if cs.run_res(rid) == "1m" else "collect"
-            pid = dj.start(kind, {"run": rid})
+            # WHICH ACCOUNT the artifacts are on, or the collect job asks the
+            # wrong GitHub and lands nothing
+            pid = dj.start(kind, {"run": rid, "repo": slug})
         except Exception as exc:                               # noqa: BLE001
             return {"started": False, "why": f"could not start: {exc}"}
         # NOT marked collected yet — only when the job SAYS it finished. A
@@ -172,9 +199,9 @@ def collect_finished(*, now: float, state: dict) -> dict:
         state["collect_tries"] = tries
         state["collecting"] = rid
         _write(state)
-        print(f"[cloud-autopilot] collecting run {rid} into the store "
-              f"(pid {pid})", flush=True)
-        return {"started": True, "run": rid, "pid": pid}
+        print(f"[cloud-autopilot] collecting run {rid} from {slug} into "
+              f"the store (pid {pid})", flush=True)
+        return {"started": True, "run": rid, "repo": slug, "pid": pid}
     if done != set(state.get("collected") or []):
         state["collected"] = sorted(done)
         _write(state)

@@ -2557,6 +2557,29 @@ def _read_cloud_status() -> dict:
             out["shards"] = cs.live_progress(int(run["id"]))
         except Exception:
             out["shards"] = []
+        # THE OTHER ACCOUNTS' RUNS. Since Sep 21, 2026 one press can dispatch
+        # to the operator's account and their partner's fork at once ("i want
+        # 40"), and a tile that shows one of them says 20 machines about 40 —
+        # the label-must-match-data failure this repo keeps paying for. Each
+        # sibling costs ONE cached `gh` call in this background reader.
+        sib = []
+        for other in (run.get("runs") or []):
+            rid2, slug2 = other.get("id"), other.get("repo") or ""
+            if not rid2 or int(rid2) == int(run["id"]):
+                continue
+            row = {"id": int(rid2), "repo": slug2,
+                   "url": other.get("url") or "",
+                   "coins": int(other.get("coins") or 0)}
+            try:
+                st2 = cs.status(int(rid2), slug2 or None)
+                row.update({k: st2.get(k) for k in
+                            ("running", "done", "total", "conclusion")})
+            except Exception as exc:                           # noqa: BLE001
+                row["why"] = f"{type(exc).__name__}: {str(exc)[:80]}"
+            sib.append(row)
+        if sib:
+            out["siblings"] = sib
+            out["accounts"] = 1 + len(sib)
     # IS THE DOOR OPEN, and what has actually come through it — counted by THIS
     # PC, never by the machines' own claim (operator, Sep 09, 2026: "i want you
     # to post the result immediately to my pc"). The tally belongs to the run

@@ -2059,7 +2059,16 @@ def _run_btupdate(spec: dict) -> None:
                     else "none yet — every pair measured in full this once")
             print(f"[btupdate] continuing from saved positions in run(s) {held}",
                   flush=True)
-            dispatched = cs.dispatch(
+            # EVERY ACCOUNT AT ONCE. Operator, Sep 21, 2026: "i want 40". One
+            # free account runs ~20 machines, so a single run was the ceiling;
+            # with their partner's fork as a second remote the board is dealt
+            # between the accounts, 20 machines each, no coin measured twice.
+            # Naming the coins is what makes the split possible at all, so an
+            # UPDATE that was not given a pick sends the store's own list.
+            _picked = [str(c) for c in (spec.get("coins") or [])]
+            _coins_for_cloud = _picked or [s.replace("_USDT", "")
+                                           for s in stored_symbols()]
+            dispatched = cs.dispatch_across(
                 shards=cap.CLOUD_RUNNERS, coins=0,
                 # THE COINS THE OPERATOR PICKED, by name. Only when they named
                 # some: an empty pick means "every pair in the store", which
@@ -2067,21 +2076,28 @@ def _run_btupdate(spec: dict) -> None:
                 # one command line anyway). Until Sep 10, 2026 nothing but the
                 # timeframes travelled, so UPDATE BACKTEST with BTC selected
                 # updated the whole market instead.
-                coin_list=list(spec.get("coins") or []),
+                coin_list=_coins_for_cloud,
                 timeframes=",".join(plan["cloud"]),
                 min_days=0, days=int(spec.get("days") or _sweep_days()),
                 # the spec's OWN stake, not the shard's hardcoded $5. This
                 # path already dispatched before the Sep 05, 2026 move, so it
                 # had been measuring at a stake nobody chose for longer.
                 base=float(spec.get("base") or 5.0),
-                mode="update", state_runs=state_runs)
+                mode="update")
+            _fleet_runs = dispatched.get("runs") or []
+            # ONE of them is "the" run for the panel that still reads a single
+            # id; the record keeps them all, so the collect chases every one.
+            dispatched = {**(_fleet_runs[0] if _fleet_runs else {}),
+                          "runs": _fleet_runs, "why": dispatched.get("why")}
             # the run's own record: the pending panel's "the busy run covers
             # X" note reads it, and since the autopilot stopped dispatching
             # (2026-09-09) button paths like this are the only writers
             cs.remember(dispatched)
-            print(f"[btupdate] GitHub run {dispatched.get('id')} started for "
-                  f"{', '.join(plan['cloud'])}: {dispatched.get('url')}",
-                  flush=True)
+            print(f"[btupdate] {dispatched.get('why')}", flush=True)
+            for _r in _fleet_runs:
+                print(f"[btupdate]   {_r.get('repo')}: run {_r.get('id')} "
+                      f"over {_r.get('coins', 0):,} coin(s) — {_r.get('url')}",
+                      flush=True)
         except Exception as exc:                               # noqa: BLE001
             # A cloud that will not start is NOT a reason to measure nothing —
             # while this PC was still in the rota it took the frames back, and
@@ -2324,7 +2340,10 @@ def _run_collect(spec: dict) -> None:
                                       f"over {int(pairs or 0):,} pair(s)"})
 
     try:
-        got = cs.collect_into_store(run_id, on_progress=prog)
+        # the ACCOUNT the run belongs to (the autopilot passes it since
+        # Sep 21, 2026); absent = this checkout's usual repo, as before
+        got = cs.collect_into_store(run_id, spec.get("repo") or None,
+                                    on_progress=prog)
     except Exception as exc:                                   # noqa: BLE001
         # NAMED, with its type: str(MemoryError()) is empty and once put
         # "Backtest FAILED" on screen with nothing after it.

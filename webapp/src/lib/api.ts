@@ -529,6 +529,15 @@ export interface CloudStatus {
   shards: CloudShard[];
   conclusion?: string | null;
   done?: number;
+  /** THE OTHER ACCOUNTS' RUNS from the same press. Since Sep 21, 2026 one
+   *  press deals the board between every GitHub account this checkout has a
+   *  remote for — the operator's and their partner's fork — so 20 machines
+   *  became 40 and a tile naming one run would count half of them. */
+  siblings?: { id: number; repo: string; url?: string; coins?: number;
+               running?: number; done?: number; total?: number;
+               conclusion?: string | null; why?: string }[];
+  /** how many GitHub accounts this press is using (1 = as it always was) */
+  accounts?: number;
   /** THE LIVE DOOR: whether the machines can post finished pairs straight to
    *  this PC, and what has already come through it FOR THE RUN ON SCREEN —
    *  counted by this PC as it writes them, never taken from the machines'

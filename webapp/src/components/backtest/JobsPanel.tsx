@@ -444,7 +444,20 @@ export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-theme-sm font-medium text-gray-800 dark:text-white/90">
               GitHub run #{cloud.run.id}
+              {cloud.siblings?.length
+                ? ` + ${cloud.siblings.map((s) => `#${s.id}`).join(" + ")}`
+                : ""}
             </span>
+            {/* TWO ACCOUNTS, TWICE THE MACHINES (Sep 21, 2026, "i want 40").
+                A press can now deal the board between the operator's account
+                and their partner's fork; a tile naming one run counts 20
+                machines while 40 are working, which is the label-must-match
+                -data failure this panel keeps paying for. */}
+            {cloud.accounts && cloud.accounts > 1 ? (
+              <Badge size="sm" color="light">
+                {`${cloud.accounts} accounts`}
+              </Badge>
+            ) : null}
             <Badge size="sm" color={cloud.conclusion ? "success" : "info"}>
               {cloud.conclusion ?? "running"}
             </Badge>

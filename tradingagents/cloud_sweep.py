@@ -71,6 +71,65 @@ def repo_slug(cwd: str | None = None) -> str:
     return best
 
 
+def fleets(cwd: str | None = None) -> list:
+    """Every GitHub account this checkout can send a sweep to, in order.
+
+    Operator, `Sep 21, 2026`: *"i want 40"*. One account runs 20 machines at
+    a time on the free plan, and a press used one account, so 20 was the
+    ceiling however much work there was. A partner's fork
+    (`jeremydvera/analyzer-x`) is a second 20.
+
+    The list is the checkout's own GitHub remotes — `origin` LAST, because
+    `repo_slug()` has always preferred a remote the operator added by hand and
+    the single-run paths must keep choosing the same one they chose
+    yesterday. Deduped, so two remotes on one repo are one fleet.
+    """
+    try:
+        out = subprocess.run(["git", "remote", "-v"], capture_output=True,
+                             text=True, cwd=cwd, timeout=20).stdout
+    except Exception as exc:
+        raise CloudError(f"cannot read git remotes: {exc}") from exc
+    mine, origin = [], []
+    for line in out.splitlines():
+        if "github.com" not in line or "(push)" not in line:
+            continue
+        name, url = line.split()[0], line.split()[1]
+        slug = url.split("github.com")[-1].lstrip(":/").removesuffix(".git")
+        (origin if name == "origin" else mine).append(slug)
+    seen, out_list = set(), []
+    for slug in mine + origin:
+        if slug not in seen:
+            seen.add(slug)
+            out_list.append(slug)
+    return out_list
+
+
+def usable_fleets(cwd: str | None = None) -> tuple[list, list]:
+    """`(ready, refused)` — the fleets that can run the workflow right now,
+    and one sentence each for those that cannot.
+
+    A fork whose Actions tab has never been opened lists NO workflows and
+    cannot run anything (Sep 21, 2026); sending half the market there would
+    measure half of it. So the split only ever uses fleets that answer.
+    """
+    ready, refused = [], []
+    for slug in fleets(cwd):
+        try:
+            raw = _gh("workflow", "list", "--repo", slug, "--json",
+                      "name,state")
+            wf = json.loads(raw) if raw.strip() else []
+        except (CloudError, ValueError) as exc:
+            refused.append(f"{slug}: {str(exc)[:80]}")
+            continue
+        if any(w.get("name") == WORKFLOW for w in wf):
+            ready.append(slug)
+        else:
+            refused.append(f"{slug}: no '{WORKFLOW}' workflow"
+                           + (" — open its Actions tab once and enable them"
+                              if not wf else ""))
+    return ready, refused
+
+
 def available() -> tuple[bool, str]:
     """Can we dispatch right now? Returns (ok, why-not).
 
@@ -165,7 +224,7 @@ def grid_frames(timeframes: str) -> str:
 def dispatch(*, shards: int = 20, coins: int = 0, timeframes: str = "15m,30m",
              min_days: int = 0, days: int = SWEEP_DAYS, base: float = 5.0,
              mode: str = "full", state_runs=(), live: bool = True,
-             coin_list=(), res: str = "") -> dict:
+             coin_list=(), res: str = "", slug: str = "") -> dict:
     """Start a run and return its id and url. `days` is the history window the
     shards measure -- the same number the Backtest screen sends the local job.
 
@@ -183,7 +242,12 @@ def dispatch(*, shards: int = 20, coins: int = 0, timeframes: str = "15m,30m",
     claim, a cap for small runs. A named list is its own limit, so the cap
     goes to 0 and the fleet is trimmed to the list.
     """
-    ok, slug = available()
+    # `slug=` names the fleet — `dispatch_across` passes one per account.
+    # Without it: the one repo `available()` picks, exactly as before.
+    if slug:
+        ok, slug = True, slug
+    else:
+        ok, slug = available()
     if not ok:
         raise CloudError(slug)
     # ONLY FRAMES WITH A GRID leave this machine. The shard reads TFS from its
@@ -296,6 +360,104 @@ def dispatch(*, shards: int = 20, coins: int = 0, timeframes: str = "15m,30m",
                     "res": str(res or ""),
                     "started": time.strftime("%Y-%m-%d %H:%M")}
     raise CloudError("the run did not appear within a minute")
+
+
+def split_coins(coin_list, parts: int) -> list:
+    """`coin_list` dealt into `parts` piles, one coin at a time.
+
+    ROUND ROBIN, not first-half/second-half: the board is alphabetical and its
+    weight is not spread evenly along it — the stock tickers cluster, and so
+    do the young contracts with barely any candles — so cutting it in two can
+    hand one account twice the work. Dealing alternately gives both piles the
+    same mix, which is what makes 40 machines finish in half the time instead
+    of one account idling while the other grinds.
+    """
+    piles: list = [[] for _ in range(max(1, int(parts)))]
+    for i, coin in enumerate(coin_list):
+        piles[i % len(piles)].append(coin)
+    return [p for p in piles if p]
+
+
+def sync_fleet(slug: str, source: str = "") -> str:
+    """Bring `slug` up to `source`'s code. Returns "" or why it could not.
+
+    A fork runs ITS OWN copy of the workflow and the shard, and `git push` to
+    it is refused from this checkout (git authenticates as the account that
+    owns `origin`), so it drifts. Two accounts measuring one board with two
+    versions of the engine is the kind of difference no column anywhere would
+    show — so each fleet is synced before it is dispatched to, through the
+    API (`gh repo sync`), which uses the CLI's own credentials.
+
+    The account that owns `origin` needs no sync: it IS the source.
+    """
+    src = source or origin_fleet()
+    if not slug or slug == src or not src:
+        return ""
+    try:
+        _gh("repo", "sync", slug, "--source", src)
+    except CloudError as exc:
+        return f"{slug} could not be synced to {src}: {str(exc)[:120]}"
+    return ""
+
+
+def dispatch_across(*, coin_list, shards: int = 20, timeframes: str = "15m,30m",
+                    mode: str = "full", fleet_list=None, **kw) -> dict:
+    """One press, EVERY account: each fleet measures its own share.
+
+    Operator, `Sep 21, 2026`: *"i want 40"*. A free GitHub account runs about
+    20 machines at once, so one run was the ceiling however big the board was.
+    With their partner's fork added as a second remote, this deals the coins
+    between the accounts and dispatches one run to each — 20 machines apiece,
+    no coin measured twice, every row landing in the one store here.
+
+    Returns `{"runs": [...], "fleets": [...], "refused": [...], "why": str}`;
+    each run carries its own `repo` and `coins` count. With one fleet it is
+    the old behaviour exactly: one run, one list.
+
+    IT WILL NOT SPLIT A BOARD IT CANNOT NAME. An empty `coin_list` means
+    "every pair in the store", which each machine works out for itself — two
+    runs given the same empty list would measure the SAME coins twice and call
+    it forty machines (rule 20: never let a run claim work it did not do). An
+    unnamed board therefore dispatches ONE run, and says so.
+    """
+    ready, refused = (list(fleet_list), []) if fleet_list else usable_fleets()
+    if not ready:
+        raise CloudError("no GitHub account can run the workflow: "
+                         + ("; ".join(refused) or "no GitHub remote found"))
+    named = [str(c) for c in (coin_list or [])]
+    tfs = [t.strip() for t in str(timeframes or "").split(",") if t.strip()]
+
+    def _one(slug: str, coins: list) -> dict:
+        # THE SAME CODE ON BOTH ACCOUNTS, or the two halves are not
+        # comparable. A sync that fails is named in the run's record rather
+        # than silently measuring with last week's engine.
+        drift = sync_fleet(slug)
+        extra = dict(kw)
+        if mode == "update":
+            # each account continues from ITS OWN saved positions
+            extra["state_runs"] = state_runs_for(tfs, slug=slug)
+        got = dispatch(coin_list=coins, shards=shards, timeframes=timeframes,
+                       mode=mode, slug=slug, **extra)
+        out = {**got, "repo": slug, "coins": len(coins)}
+        if drift:
+            out["stale"] = drift
+            logger.warning("cloud sweep: %s", drift)
+        return out
+
+    if len(ready) < 2 or not named:
+        why = (f"one account ({ready[0]}), {shards} machines" if len(ready) < 2
+               else f"one account ({ready[0]}): an unnamed board cannot be "
+                    f"split — each machine works the coin list out for itself, "
+                    f"so two runs would measure the same coins twice")
+        return {"runs": [_one(ready[0], named)], "fleets": ready,
+                "refused": refused, "why": why}
+
+    piles = split_coins(named, len(ready))
+    runs = [_one(slug, pile) for slug, pile in zip(ready, piles)]
+    return {"runs": runs, "fleets": ready, "refused": refused,
+            "why": (f"{len(runs)} accounts x {shards} machines = "
+                    f"{len(runs) * shards}; {len(named):,} coins dealt "
+                    + " / ".join(str(len(p)) for p in piles))}
 
 
 def _runs(slug: str, limit: int = 5) -> list:
@@ -859,7 +1021,11 @@ def collect_into_store(run_id: int, slug: str | None = None, *,
     # Never allowed to raise: the rows are already written.
     try:
         if has_state_artifacts(run_id, slug):
-            record_state_run(run_id, sorted(tfs_seen))
+            # UNDER THE ACCOUNT IT CAME FROM. A run id means nothing in
+            # another repo, so the next UPDATE must hand each fleet its own
+            # ids (Sep 21, 2026, when a press started dispatching to two).
+            record_state_run(run_id, sorted(tfs_seen),
+                             slug=slug or repo_slug())
     except Exception as exc:                                   # noqa: BLE001
         logger.warning("cloud sweep: state-run record failed: %r", exc)
     # OFF THE PENDING BOOKS. Operator, 2026-09-09: pending is what BROKE, so a
@@ -991,15 +1157,23 @@ def has_state_artifacts(run_id: int, slug: str | None = None) -> bool:
 STATE_RUNS_PER_TF = 3
 
 
-def record_state_run(run_id: int, tfs, now: float | None = None) -> dict:
+def record_state_run(run_id: int, tfs, now: float | None = None,
+                     slug: str = "") -> dict:
     """`run_id` now holds the newest saved positions for `tfs` — in FRONT of
-    the runs already recorded, which still hold the coins it did not touch."""
+    the runs already recorded, which still hold the coins it did not touch.
+
+    `slug` is WHOSE run it is. A run id only means something inside the repo
+    that produced it, and since Sep 21, 2026 a press can dispatch to two
+    accounts at once (the operator's and their partner's); handing account B
+    account A's ids would make every pair download nothing and measure in
+    full."""
     rec = state_runs()
     at = float(now if now is not None else time.time())
     for tf in tfs:
         kept = [e for e in _entries(rec.get(str(tf)))
                 if int(e.get("run") or 0) != int(run_id)]
-        rec[str(tf)] = ([{"run": int(run_id), "at": at}]
+        rec[str(tf)] = ([{"run": int(run_id), "at": at,
+                          "repo": slug or repo_slug()}]
                         + kept)[:STATE_RUNS_PER_TF]
     STATE_RUNS_FILE.parent.mkdir(parents=True, exist_ok=True)
     tmp = STATE_RUNS_FILE.with_suffix(".json.tmp")
@@ -1025,7 +1199,15 @@ def _entries(val) -> list:
     return [e for e in (val or []) if isinstance(e, dict)]
 
 
-def state_runs_for(tfs, now: float | None = None) -> list:
+def origin_fleet() -> str:
+    """The slug of the `origin` remote — where every run before Sep 21, 2026
+    was dispatched, which is how a record with no `repo` is read."""
+    for slug in reversed(fleets()):
+        return slug
+    return ""
+
+
+def state_runs_for(tfs, now: float | None = None, slug: str = "") -> list:
     """The run ids whose saved positions cover `tfs`, NEWEST FIRST — the order
     IS the priority: the shard takes each pair from the first run that has it,
     and stops downloading when the runner's disk is full. Newest-last would
@@ -1037,11 +1219,20 @@ def state_runs_for(tfs, now: float | None = None) -> list:
     at = float(now if now is not None else time.time())
     rec = state_runs()
     picked: dict = {}
+    # WHOSE positions. With one account this is every record, as before. With
+    # two, a fleet is offered its own runs and — for records written before
+    # the repo was stored — `origin`'s, because that is where they all went.
+    mine = str(slug or "")
+    legacy_owner = origin_fleet() if mine else ""
     for tf in tfs:
         for e in _entries(rec.get(str(tf))):
             when = float(e.get("at") or 0)
             if at - when > STATE_RUN_MAX_AGE_S:
                 continue
+            if mine:
+                owner = str(e.get("repo") or legacy_owner)
+                if owner != mine:
+                    continue
             picked[int(e["run"])] = max(when, picked.get(int(e["run"]), 0.0))
     return [str(r) for r, _ in sorted(picked.items(), key=lambda kv: kv[1],
                                       reverse=True)]

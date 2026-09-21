@@ -152,7 +152,11 @@ def test_a_finished_run_is_collected_into_the_store(monkeypatch):
                                    "conclusion": "success"}])
     got = ca.collect_finished(now=time.time(), state={})
     assert got["started"] is True and got["run"] == 7
-    assert started == [("collect", {"run": 7})]
+    # the ACCOUNT travels with the run since Sep 21, 2026: a run id means
+    # nothing in another repo, and a press can now dispatch to two
+    assert [k for k, _ in started] == ["collect"]
+    assert started[0][1]["run"] == 7
+    assert started[0][1].get("repo"), "the collect must be told where to fetch"
 
 
 def test_a_run_is_only_collected_once(monkeypatch):

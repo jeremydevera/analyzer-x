@@ -2564,7 +2564,8 @@ def _read_cloud_status() -> dict:
         except Exception:                                      # noqa: BLE001
             out["collected"] = False
         try:
-            out["shards"] = cs.live_progress(int(run["id"]))
+            out["shards"] = cs.live_progress(int(run["id"]),
+                                             run.get("repo") or None)
         except Exception:
             out["shards"] = []
         # THE OTHER ACCOUNTS' RUNS. Since Sep 21, 2026 one press can dispatch
@@ -2583,13 +2584,31 @@ def _read_cloud_status() -> dict:
             try:
                 st2 = cs.status(int(rid2), slug2 or None)
                 row.update({k: st2.get(k) for k in
-                            ("running", "done", "total", "conclusion")})
+                            ("running", "queued", "done", "total",
+                             "conclusion")})
             except Exception as exc:                           # noqa: BLE001
                 row["why"] = f"{type(exc).__name__}: {str(exc)[:80]}"
             sib.append(row)
         if sib:
             out["siblings"] = sib
             out["accounts"] = 1 + len(sib)
+            # EVERY ACCOUNT'S MACHINES ON THE TILE. Each run publishes its
+            # progress to its OWN account's `sweep-progress` branch, so a
+            # 40-machine press showed at most the lead run's 20 — and, while
+            # the lead run was the one still queued, none at all. Measured
+            # Sep 22, 2026 11:16pm: 15 machines reporting on the fork and 20
+            # on the operator's account, and the panel drew zero.
+            for row in sib:
+                try:
+                    out["shards"] += cs.live_progress(int(row["id"]),
+                                                      row.get("repo") or None)
+                except Exception as exc:                       # noqa: BLE001
+                    row["progress_why"] = f"{type(exc).__name__}: {str(exc)[:80]}"
+            # the totals the tile prints come from the same list it draws
+            out["running"] = int(out.get("running") or 0) + sum(
+                int(r.get("running") or 0) for r in sib)
+            out["queued"] = int(out.get("queued") or 0) + sum(
+                int(r.get("queued") or 0) for r in sib)
     # IS THE DOOR OPEN, and what has actually come through it — counted by THIS
     # PC, never by the machines' own claim (operator, Sep 09, 2026: "i want you
     # to post the result immediately to my pc"). The tally belongs to the run

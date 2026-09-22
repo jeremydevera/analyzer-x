@@ -645,13 +645,20 @@ export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
           )}
           <div className="mt-2 grid gap-1 sm:grid-cols-2 lg:grid-cols-4">
             {cloud.shards.map((sh) => (
-              <div key={sh.shard} className="rounded-lg bg-gray-50 px-2 py-1.5 dark:bg-white/[0.03]">
+              /* KEYED BY ACCOUNT AND NUMBER. Both runs of a 40-machine press
+                 number their machines 0..19, so keying on the number alone
+                 drew 20 tiles for 40 machines and React re-used the wrong
+                 one's state. */
+              <div key={`${sh.repo ?? ""}#${sh.shard}`} className="rounded-lg bg-gray-50 px-2 py-1.5 dark:bg-white/[0.03]">
                 {/* A machine has no share of its own to fill: the claim board
                     hands it one coin at a time, so its `pct` was 100 while it
                     worked. Count what it has FINISHED instead; the run's one bar
                     above answers "how far along". */}
                 <div className="flex justify-between text-theme-xs text-gray-600 dark:text-gray-300">
-                  <span>machine {sh.shard}</span>
+                  {/* the ACCOUNT, when there is more than one — "machine 3"
+                      is two different machines on a 40-machine press */}
+                  <span>machine {sh.shard}{sh.repo && (cloud.accounts ?? 1) > 1
+                    ? ` · ${sh.repo.split("/")[0]}` : ""}</span>
                   <span>{sh.finished != null ? `${sh.finished.toLocaleString()} coin(s) done` : `${sh.pct ?? 0}%`}</span>
                 </div>
                 <p className="mt-0.5 truncate text-theme-xs text-gray-500 dark:text-gray-400">

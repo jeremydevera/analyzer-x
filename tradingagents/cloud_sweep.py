@@ -741,7 +741,62 @@ def _sweep_dead_packs() -> None:
                        gone, freed / 1e9)
 
 
-def _fetch_progress() -> None:
+def remote_for(slug: str | None = None) -> str:
+    """The git remote name that points at `slug` — "origin" when unknown.
+
+    The progress branch is read over git, so a repo this checkout has no
+    remote for cannot be read at all. Sep 22, 2026: the partner's 10 machines
+    published to `jeremydvera/analyzer-x`'s own `sweep-progress` branch and
+    this PC fetched `origin/sweep-progress` alone, so the panel said "no
+    machine has reported" through a healthy 40-machine run.
+    """
+    if not slug:
+        return "origin"
+    want = str(slug).strip().lower().removesuffix(".git")
+    try:
+        out = subprocess.run(["git", "remote", "-v"], capture_output=True,
+                             text=True, cwd=str(pathlib.Path(__file__).resolve().parent.parent),
+                             timeout=20).stdout
+    except Exception:                                          # noqa: BLE001
+        return "origin"
+    for line in out.splitlines():
+        if "github.com" not in line or "(fetch)" not in line:
+            continue
+        name, url = line.split()[0], line.split()[1]
+        got = url.split("github.com")[-1].lstrip(":/").removesuffix(".git")
+        if got.lower() == want:
+            return name
+    return "origin"
+
+
+# A fetch this reader killed is long dead after this many seconds; a live
+# fetch's lock is seconds old, never minutes. The fetch timeout is 180 s.
+DEAD_LOCK_S = 600.0
+
+
+def _clear_dead_lock(force: bool = False) -> None:
+    """Remove `.git/shallow.lock` left by a fetch that was killed.
+
+    OURS TO CLEAN, and only when it cannot belong to a live fetch: older than
+    `DEAD_LOCK_S`, or `force` after git itself has just refused over it. Never
+    any other lock file, and never silently — a lock this old is a fault that
+    has been blinding a screen, so it is logged.
+    """
+    lock = pathlib.Path(__file__).resolve().parent.parent / ".git" / "shallow.lock"
+    try:
+        age = time.time() - lock.stat().st_mtime
+    except OSError:
+        return
+    if not force and age < DEAD_LOCK_S:
+        return
+    with contextlib.suppress(OSError):
+        lock.unlink()
+        logger.warning("cloud sweep: removed a %.0f-minute-old shallow.lock "
+                       "left by a killed fetch — progress reads were blocked "
+                       "by it", age / 60)
+
+
+def _fetch_progress(remote: str = "origin") -> None:
     """Fetch the progress branch, surviving a LOCK RACE on its tracking ref.
 
     `--force` overrides a non-fast-forward; it does NOT help when another git
@@ -759,19 +814,30 @@ def _fetch_progress() -> None:
     the branch is re-fetched whole — so on that error the ref is dropped and
     the fetch retried once. Any other failure is raised as before.
     """
-    ref = f"refs/remotes/origin/{PROGRESS_BRANCH}"
+    remote = remote or "origin"
+    ref = f"refs/remotes/{remote}/{PROGRESS_BRANCH}"
+    fetch_args = (*_PROGRESS_FETCH[:-1], remote)
     _sweep_dead_packs()
+    _clear_dead_lock()
     try:
-        _git("fetch", "--quiet", *_PROGRESS_FETCH, f"{PROGRESS_BRANCH}:{ref}",
+        _git("fetch", "--quiet", *fetch_args, f"{PROGRESS_BRANCH}:{ref}",
              timeout=180)
         return
     except CloudError as exc:
-        if "cannot lock ref" not in str(exc):
+        # A KILLED FETCH LEAVES ITS OWN LOCK. `--depth=1` writes
+        # `.git/shallow`, so every fetch takes `.git/shallow.lock` — and a
+        # fetch this reader times out and KILLS never removes it. Measured
+        # Sep 22, 2026 11:14pm: that file was dated `Sep 14, 2026 4:51pm`,
+        # so every progress read for EIGHT DAYS answered "Another git process
+        # seems to be running" and the panel said no machine had reported,
+        # through every run in between.
+        if "cannot lock ref" not in str(exc) and ".lock" not in str(exc):
             raise
+        _clear_dead_lock(force=True)
     # drop the wedged tracking ref and take the branch again from scratch
     with contextlib.suppress(CloudError):
         _git("update-ref", "-d", ref, timeout=30)
-    _git("fetch", "--quiet", *_PROGRESS_FETCH, f"{PROGRESS_BRANCH}:{ref}",
+    _git("fetch", "--quiet", *fetch_args, f"{PROGRESS_BRANCH}:{ref}",
          timeout=180)
 
 
@@ -792,34 +858,45 @@ def live_progress(run_id: int, slug: str | None = None) -> list:
     import time as _t
 
     now = _t.time()
+    # THE ACCOUNT THAT RAN IT. A run on the partner's fork publishes to the
+    # fork's own `sweep-progress`; reading origin's answers an empty list for
+    # a run that is measuring perfectly.
+    remote = remote_for(slug)
+    key = (run_id, remote)
     c = _PROGRESS_CACHE
-    if c["run"] == run_id and now - c["at"] < PROGRESS_CACHE_S:
+    if c["run"] == key and now - c["at"] < PROGRESS_CACHE_S:
         return c["rows"]
 
     if now - _FETCH_FAILED_AT[0] > FETCH_FAIL_S:
         try:
-            _fetch_progress()
+            _fetch_progress(remote)
         except CloudError as exc:
             _FETCH_FAILED_AT[0] = now
             print(f"[cloud] could not fetch {PROGRESS_BRANCH}: {exc}",
                   flush=True)
 
     path = f"progress/run-{run_id}/"
+    branch = f"{remote}/{PROGRESS_BRANCH}"
     try:
-        names = [n for n in _git("ls-tree", "--name-only",
-                                 f"origin/{PROGRESS_BRANCH}", path,
+        names = [n for n in _git("ls-tree", "--name-only", branch, path,
                                  timeout=60).split() if n.endswith(".json")]
     except CloudError:
-        return c["rows"] if c["run"] == run_id else []
+        return c["rows"] if c["run"] == key else []
     out = []
     for n in names:
         try:
-            out.append(json.loads(_git("show", f"origin/{PROGRESS_BRANCH}:{n}",
-                                       timeout=60)))
+            got = json.loads(_git("show", f"{branch}:{n}", timeout=60))
         except Exception:                                      # noqa: BLE001
             continue
+        # WHICH ACCOUNT this machine belongs to, so 40 tiles from two runs
+        # are 40 tiles and not 20 overwriting 20 — both runs number their
+        # machines 0..19.
+        if isinstance(got, dict):
+            got.setdefault("repo", slug or "")
+            got.setdefault("run", run_id)
+        out.append(got)
     out.sort(key=lambda d: d.get("shard", 0))
-    c.update(at=now, run=run_id, rows=out)
+    c.update(at=now, run=key, rows=out)
     return out
 
 

@@ -340,6 +340,85 @@ no fixture made one call behave differently from another.
 
 ---
 
+## RCA-2026-09-22-E — the machine tiles had shown nothing for EIGHT DAYS, and a 40-machine press could only ever have shown 20
+
+**CEO**
+
+* You asked why there was no loading on screen while 30 machines were
+  measuring Backtest v2. The tiles were blind: they had shown nothing since
+  Sep 14, 2026 4:51pm — eight days, every run.
+* Why: the app reads each machine's progress out of the repo over git, and a
+  progress read that was cut short on Sep 14 left a lock file behind. Every
+  read since answered "another git process is running" and gave up. On top of
+  that, the reader only ever looked in YOUR copy of the repo, so your
+  partner's machines could never appear, and the tile followed their run,
+  which was still queued.
+* What stops it now: a lock left by a dead read is cleared and the read is
+  retried; each account's machines are read from that account's own copy and
+  shown together with the account's name on the tile. Right now that is 35
+  machines reporting — 20 of yours and 15 of the partner's.
+
+**DEV**
+
+* `cloud_sweep._fetch_progress` used `--depth=1`, which takes
+  `.git/shallow.lock`; this reader kills a fetch at 180 s and the kill never
+  removed it. `_clear_dead_lock()` now runs before every progress fetch
+  (older than `DEAD_LOCK_S = 600 s`) and after any git refusal naming a
+  `.lock`, then retries — the same shape as the `cannot lock ref` repair
+  beside it.
+* `cloud_sweep.live_progress(run_id, slug)` ignored `slug` and read
+  `origin/sweep-progress`; it now resolves the fleet's remote
+  (`remote_for(slug)`), reads THAT branch, caches per `(run, remote)` and
+  tags each machine with `repo`/`run`, while `api._read_cloud_status` appends
+  every sibling's machines and counts, and `JobsPanel` keys a tile by
+  `repo#shard` (both runs number machines 0..19).
+* Invariant broken: **THE UI IS THE SOURCE OF TRUTH** — and its corollary
+  from Sep 10, *a blocked resource names its holder*: git named the holder in
+  a string nobody read, once per poll, for eight days.
+* Guard: `tests/test_the_panel_sees_every_accounts_machines.py` (4).
+
+**SAW** — the panel: *"no machine has reported through GitHub's API yet"*
+with 30 machines working; `.git/shallow.lock` dated `Sep 14, 2026 4:51pm`
+(the same bytes as `.git/shallow`, 6,888 of them); and
+`cs.live_progress(35740445165, "jeremydvera/analyzer-x")` returning `[]`.
+
+**TIMELINE**
+
+1. `Sep 14, 2026 4:51pm` — a progress fetch is killed at its 180 s timeout
+   and leaves `.git/shallow.lock`.
+2. `Sep 14 → Sep 22` — every progress read fails with `fatal: Unable to
+   create '…/.git/shallow.lock': File exists`, caught and printed as one
+   line into the API log. The panel's empty state reads "no machine has
+   reported", which is also what a GitHub rate-limit looks like, so it never
+   read as a fault.
+3. `Sep 22, 2026 10:27pm` — Backtest v2 across two accounts, 40 machines.
+4. `11:14pm` — the operator asks why nothing is loading. The lock is found
+   and removed by hand; a hand fetch of the partner's branch takes **80 s**
+   and then `live_progress` returns **15** machines for the fork and **20**
+   for the operator's account, 6,146,000+ rows measured between them.
+5. `11:30pm` — both faults fixed, 45 tests over the cloud suites green.
+
+**ROOT CAUSE** — a lock file from a killed fetch that nothing cleaned, and a
+progress reader that knew only one account.
+
+**WHY IT WAS NOT CAUGHT** — `test_cloud_sweep.py` covers `_fetch_progress`'s
+`cannot lock ref` race, which is the OTHER lock git takes; nothing covered
+the one `--depth=1` adds, because no test ever kills a fetch. And every
+progress test drives one run on one remote — the multi-account press was
+added on Sep 21 and its 15 tests are about SPLITTING coins, not about
+reading back. **When a feature grows a second target, re-read every path that
+reported on the first one.**
+
+**COST** — none in rows or money; eight days of a screen that could not tell
+a healthy run from a dead one, and one press the operator could not watch.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_panel_sees_every_accounts_machines.py::test_a_killed_fetchs_lock_is_cleared_and_a_live_one_is_not`
+and `::test_the_tile_gets_every_accounts_machines`.
+
+---
+
 ## RCA-2026-09-22-D — UPDATE THIS BACKTEST answered "Internal Server Error" on Backtest v2 while the table was getting its id list
 
 **CEO**

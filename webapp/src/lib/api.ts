@@ -468,6 +468,11 @@ export interface GridPlan {
 
 export interface CloudShard {
   shard: number;
+  /** WHICH ACCOUNT ran this machine, and which run it belongs to. One press
+   *  starts one run per account ("i want 40") and both number their machines
+   *  0..19, so the number alone is not a name. */
+  repo?: string;
+  run?: number;
   stage?: string;
   pct?: number;
   note?: string;

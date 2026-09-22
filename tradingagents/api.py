@@ -2705,9 +2705,22 @@ def cloud_dispatch(body: dict) -> dict:
     # WHICH coins, by name. `coins` is only the per-machine cap, and sending
     # it alone is how "BACKTEST with BTC picked" measured 0G, ALPINE, AVAAI…
     # and never BTC (Sep 10, 2026). An empty list still means the whole market.
-    run = cs.dispatch(shards=int(body.get("shards") or 20),
+    # EVERY ACCOUNT. Operator, Sep 21, 2026: "i want 40" — one free account
+    # runs ~20 machines, and this press used one. `dispatch_across` deals the
+    # coins between the accounts this checkout has remotes for; with one
+    # remote it is the single run it always was. An EMPTY pick means the whole
+    # market, which cannot be split unless it is named, so the store's own
+    # coin list is sent (the same list the machines would have worked out).
+    _picked = [str(c) for c in (body.get("coin_list") or [])]
+    if not _picked:
+        from tradingagents import db_jobs as _dj
+
+        _res = str(body.get("res") or "")
+        _picked = [s.replace("_USDT", "") for s in
+                   _dj.stored_symbols(store="v2" if _res == "1m" else "v1")]
+    got = cs.dispatch_across(shards=int(body.get("shards") or 20),
                       coins=int(body.get("coins") or 0),
-                      coin_list=[str(c) for c in (body.get("coin_list") or [])],
+                      coin_list=_picked,
                       timeframes=str(body.get("timeframes") or "15m,30m"),
                       min_days=int(body.get("min_days") or 0),
                       days=int(body.get("days") or _sweep_days()),
@@ -2720,6 +2733,10 @@ def cloud_dispatch(body: dict) -> dict:
                       # byte-identical to before.
                       res=str(body.get("res") or ""),
                       mode="full")
+    runs = got.get("runs") or []
+    # the panel still reads ONE run id; the record keeps them all so the
+    # collect chases every account's artifacts
+    run = {**(runs[0] if runs else {}), "runs": runs, "why": got.get("why")}
     cs.remember(run)
     return run
 

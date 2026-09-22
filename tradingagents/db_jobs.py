@@ -1945,7 +1945,7 @@ def _run_backtest_inner(spec: dict, files_key: str = "backtest",
                            "report": name, "finished": int(time.time())})
 
 
-def stored_symbols() -> list:
+def stored_symbols(store: str = "v1") -> list:
     """Every contract this machine has candles for, as SYMBOLS.
 
     `run_pair` takes `CETUS_USDT` — it passes the name straight to `klines` and
@@ -1971,10 +1971,15 @@ def stored_symbols() -> list:
     must NOT be handed to `run_pair`, or every combination raises and the
     coin is counted as failed.
     """
-    from tradingagents import market_sweep as msw
+    from tradingagents import market_sweep as msw, stores as _st
 
+    # `store="v2"` reads Backtest v2's own candle folder — the 1-minute one.
+    # Its index lives beside it, so the v1 answer is untouched (Sep 21, 2026,
+    # when a cloud press started naming the board so it could be split).
+    root = str(_st.by_name(store).candles) if store != "v1" else None
+    idx = (msw.candle_index(root=root) if root else msw.candle_index()) or {}
     out = set()
-    for key, got in (msw.candle_index() or {}).items():
+    for key, got in idx.items():
         if not (got or {}).get("bars"):
             continue                      # a file with no candles is not a pair
         sym, _, tf = str(key).rpartition("-")
@@ -2194,15 +2199,24 @@ def _run_btupdate_v2(spec: dict) -> None:
             # position over the new minutes only. `state_runs` names the runs
             # holding those positions; a pair with none is measured in full,
             # once, and says so.
-            state_runs = cs.state_runs_for(tfs)
-            dispatched = cs.dispatch(
+            # EVERY ACCOUNT, same as v1's UPDATE ("i want 40"). The v2
+            # store's own coin list is what makes the split possible when the
+            # operator picked nothing.
+            _picked = [str(c) for c in (spec.get("coins") or [])]
+            _coins_for_cloud = _picked or [s.replace("_USDT", "") for s in
+                                           stored_symbols(store="v2")]
+            dispatched = cs.dispatch_across(
                 shards=cap.CLOUD_RUNNERS, coins=0,
-                coin_list=list(spec.get("coins") or []),
+                coin_list=_coins_for_cloud,
                 timeframes=",".join(tfs),
                 min_days=0, days=int(spec.get("days") or _sweep_days()),
                 base=float(spec.get("base") or 5.0),
-                mode="update", state_runs=state_runs, res="1m")
+                mode="update", res="1m")
+            _fleet_runs = dispatched.get("runs") or []
+            dispatched = {**(_fleet_runs[0] if _fleet_runs else {}),
+                          "runs": _fleet_runs, "why": dispatched.get("why")}
             cs.remember(dispatched)      # so the collect knows it is a v2 run
+            print(f"[btupdate_v2] {dispatched.get('why')}", flush=True)
         except Exception as exc:                               # noqa: BLE001
             plan = {"local": [], "cloud": [],
                     "why": f"the dispatch failed: {type(exc).__name__}: "

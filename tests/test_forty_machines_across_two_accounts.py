@@ -240,3 +240,48 @@ def test_the_screen_counts_every_accounts_machines(monkeypatch):
     api_ts = (Path(__file__).resolve().parents[1]
               / "webapp/src/lib/api.ts").read_text(encoding="utf-8")
     assert "siblings?:" in api_ts and "accounts?: number;" in api_ts
+
+
+# --------------------------------------------- every press, not just UPDATE
+def test_every_cloud_press_goes_through_the_splitter():
+    """Operator: "does backltest use 40 machines now" — UPDATE did and the
+    BACKTEST button did not. Each press that sends work to GitHub names its
+    board (so it CAN be split) and dispatches across every account."""
+    import inspect
+
+    from tradingagents import api as api_mod, db_jobs as dj
+
+    for fn, what in ((api_mod.cloud_dispatch, "the BACKTEST button"),
+                     (dj._run_btupdate, "UPDATE ALL BACKTESTS"),
+                     (dj._run_btupdate_v2, "UPDATE on Backtest v2")):
+        src = inspect.getsource(fn)
+        assert "dispatch_across(" in src, what
+        assert "stored_symbols(" in src, f"{what} must NAME the board"
+
+
+def test_the_v2_press_names_the_v2_store():
+    """A v2 run measured against v1's coin list would ask for coins whose
+    1-minute candles this PC does not have."""
+    import inspect
+
+    from tradingagents import api as api_mod, db_jobs as dj
+
+    assert 'stored_symbols(store="v2")' in inspect.getsource(dj._run_btupdate_v2)
+    src = inspect.getsource(api_mod.cloud_dispatch)
+    assert 'store="v2" if _res == "1m" else "v1"' in src
+
+
+def test_the_coin_list_can_be_read_for_either_store(monkeypatch):
+    from tradingagents import db_jobs as dj, market_sweep as msw, stores
+
+    seen = {}
+
+    def fake_index(root=None, **kw):
+        seen["root"] = root
+        return {"AAA_USDT-1m": {"bars": 10}, "BBB_USDT-1m": {"bars": 0}}
+
+    monkeypatch.setattr(msw, "candle_index", fake_index)
+    assert dj.stored_symbols(store="v2") == ["AAA_USDT"], "a file with no bars is not a pair"
+    assert seen["root"] == str(stores.V2.candles)
+    dj.stored_symbols()
+    assert seen["root"] is None, "v1 reads this process's own folder"

@@ -91,3 +91,8 @@ words are the record; a summary of them is not.
 
 > i want 40
 
+
+### Sep 22, 2026 6:00pm
+
+> does backltest use 40 machines now
+

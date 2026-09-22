@@ -255,7 +255,10 @@ def test_UPDATE_on_v2_dispatches_the_fleet_instead_of_measuring_here():
     src = _code_only(inspect.getsource(dj._run_btupdate_v2))
     assert 'mode="update"' in src, "UPDATE must continue, never re-measure"
     assert 'res="1m"' in src, "and it must be a v2 run"
-    assert "cs.dispatch(" in src
+    # `dispatch_across` since Sep 21, 2026 ("i want 40"): the same dispatch,
+    # dealt between every GitHub account this checkout has a remote for. With
+    # one account it is the single run it always was.
+    assert "cs.dispatch_across(" in src
     assert "cs.remember(dispatched)" in src, \
         "or the collect cannot know which store the rows belong to"
     assert "_run_backtest(" not in src, "it must not measure on this PC"

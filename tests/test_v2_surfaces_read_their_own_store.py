@@ -19,7 +19,6 @@ from __future__ import annotations
 import inspect
 import json
 import os
-import sqlite3
 import time
 from pathlib import Path
 
@@ -113,7 +112,7 @@ def test_the_rebuild_gate_knows_the_v2_kinds():
 def test_pair_watermark_reads_another_roots_tail(tmp_path):
     root = tmp_path / "v2"
     (root / "state").mkdir(parents=True)
-    big = {"combo_%d" % i: {"pnl": i} for i in range(2000)}
+    big = {f"combo_{i}": {"pnl": i} for i in range(2000)}
     big["__last_ms__"] = 1_789_516_800_000
     (root / "state" / "XPIN-1h.json").write_text(json.dumps(big), encoding="utf-8")
     assert msw.pair_watermark("XPIN", "1h", root=root) == 1_789_516_800_000
@@ -147,7 +146,7 @@ def test_worker_read_takes_another_stores_folder(tmp_path):
 def test_the_kline_disk_cache_holds_a_full_1m_frame():
     from tradingagents.dataflows import mexc_futures as fx
 
-    assert fx._KLINE_DISK_MAX >= br.TFS["1m"][2], \
+    assert br.TFS["1m"][2] <= fx._KLINE_DISK_MAX, \
         "a cache smaller than the ask re-pages the same bars on every download"
 
 
@@ -180,8 +179,24 @@ def test_the_read_back_names_the_store():
 
 
 # ------------------------------------------------ held follows the exit minute
-from tests.test_minute_exact_exits import (  # noqa: E402  (fixture + helpers)
-    BOTH, DIRS, H0 as _H0, _fine, _flat_minutes, _minutes, _run, _spec)  # noqa: F401
+from tests.test_minute_exact_exits import (  # noqa: E402,F401  (fixture + helpers)
+    BOTH,
+    DIRS,
+    H0 as _H0,
+    _fine,
+    _flat_minutes,
+    _minutes,
+    _run,
+    # `_spec` IS USED — by pytest, not by this module. It is a FIXTURE, so it
+    # has to be in this namespace for the tests below to receive it, and it
+    # never appears in the source. It was deleted on Sep 22, 2026 when a
+    # blanket per-line suppression sat on a one-line import and `ruff --fix`
+    # split that line: the directive stayed with the FIRST name and every
+    # other name lost its cover. It is on the parenthesis now, where it
+    # covers them all. (Written without the literal directive text, because
+    # ruff reads a comment that contains one AS one.)
+    _spec,
+)
 
 
 def test_held_follows_the_exit_minute_not_the_bar():

@@ -7,9 +7,7 @@ dependent).
 """
 import inspect
 import json
-from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import pytest
 
@@ -170,8 +168,8 @@ def test_the_v2_update_job_dispatches_the_fleet_and_continues():
 def test_the_v2_trades_route_and_window_answer(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
 
-    from tradingagents import api as api_mod, rows_index as ri
     from tests.test_v2_store_is_its_own_folder import _row, _seed
+    from tradingagents import api as api_mod, rows_index as ri
 
     v2 = stores.Store(name="v2", home=tmp_path / "v2", candles=tmp_path / "v2" / "candles",
                       rows_db=tmp_path / "v2" / "rows.db", parquet=tmp_path / "parquet-v2",

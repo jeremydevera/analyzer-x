@@ -31,8 +31,7 @@ import inspect
 
 import pytest
 
-from tradingagents import auto_trader as at
-from tradingagents import api
+from tradingagents import api, auto_trader as at
 
 KEY = "macddiv_4h_sl25tp3"
 BASE = {"strategy_margins": {KEY: 5.0}, "margin": 5.0}

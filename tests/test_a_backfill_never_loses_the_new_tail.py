@@ -16,7 +16,6 @@ import pytest
 from tradingagents import market_sweep as msw
 from tradingagents.dataflows import mexc_futures as fx
 
-
 H = 3_600_000
 
 

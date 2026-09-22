@@ -41,7 +41,7 @@ def store(tmp_path, monkeypatch):
     return tmp_path
 
 
-def _write_file(store, rows) -> "object":
+def _write_file(store, rows) -> object:
     f = store / "rows" / "FASTSTOCK-15m.json"
     f.write_text(json.dumps(rows), encoding="utf-8")
     return f

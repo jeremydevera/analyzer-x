@@ -453,7 +453,7 @@ def dispatch_across(*, coin_list, shards: int = 20, timeframes: str = "15m,30m",
                 "refused": refused, "why": why}
 
     piles = split_coins(named, len(ready))
-    runs = [_one(slug, pile) for slug, pile in zip(ready, piles)]
+    runs = [_one(slug, pile) for slug, pile in zip(ready, piles, strict=False)]
     return {"runs": runs, "fleets": ready, "refused": refused,
             "why": (f"{len(runs)} accounts x {shards} machines = "
                     f"{len(runs) * shards}; {len(named):,} coins dealt "

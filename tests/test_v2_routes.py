@@ -3,14 +3,13 @@
 One handler per screen, parameterised by `stores.Store`; the v1 route passes
 V1 and must answer exactly what it always did.
 """
-import json
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
-from tradingagents import api as api_mod, rows_index as ri, stores
 from tests.test_v2_store_is_its_own_folder import _row, _seed
+from tradingagents import api as api_mod, rows_index as ri, stores
 
 
 @pytest.fixture

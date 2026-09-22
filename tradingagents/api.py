@@ -824,7 +824,7 @@ RESTATE_MAX = 1
 DAYS_ROW_MAX = 50
 
 
-import contextvars as _contextvars
+import contextvars as _contextvars  # noqa: E402  (placed here with the ContextVar it defines)
 
 # WHICH STORE THE STRATEGIES HANDLER RESTATES FROM. `strategies()` is one
 # function serving v1 and, under `strategies_v2`, Backtest v2; the re-measure
@@ -832,7 +832,7 @@ import contextvars as _contextvars
 # and state files, and FastAPI would turn an extra parameter into a query
 # field. A ContextVar set by the v2 route for the length of the call is how
 # they learn the store — the same shape as `rows_index.using_db`.
-_STORE: "_contextvars.ContextVar" = _contextvars.ContextVar("api_store", default=None)
+_STORE: _contextvars.ContextVar = _contextvars.ContextVar("api_store", default=None)
 
 
 def _store_now():
@@ -1792,7 +1792,6 @@ def trade_strategies(catalog: bool = False) -> dict:
                 continue
             coin = bkey.split("#", 1)[0]
             (open_paper_on if pos.get("dry") else open_real_on).append(coin)
-        flat = at.sizing_for(settings, key) == "flat"    # THIS row's sizing
         # ONE ROW PER COIN — never one row for five (Sep 16, 2026).
         #
         # A strategy KEY is `signal_timeframe_slXtpY`; the COIN is not in it,

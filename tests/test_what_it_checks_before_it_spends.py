@@ -33,8 +33,6 @@ and the account: 153.61 USDT equity.
 """
 from __future__ import annotations
 
-import json
-
 import pytest
 
 from tradingagents import auto_trader as at

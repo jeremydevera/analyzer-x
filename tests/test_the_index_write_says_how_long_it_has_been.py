@@ -12,8 +12,6 @@ from __future__ import annotations
 
 import time
 
-import pytest
-
 from tradingagents import db_jobs as dj
 
 

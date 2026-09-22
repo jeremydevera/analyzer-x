@@ -29,8 +29,7 @@ import inspect
 import pandas as pd
 import pytest
 
-from tradingagents import db_jobs as dj
-from tradingagents import market_sweep as msw
+from tradingagents import db_jobs as dj, market_sweep as msw
 
 M = 60_000
 T0 = 1_756_857_600_000

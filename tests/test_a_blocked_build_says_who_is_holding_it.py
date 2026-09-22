@@ -32,8 +32,6 @@ from __future__ import annotations
 
 import inspect
 
-import pytest
-
 from tradingagents import rows_index as ri
 
 

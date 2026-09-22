@@ -27,6 +27,7 @@ The screenshot behind that sentence, and what each line was hiding:
 """
 import time
 
+
 def _as_index(rows):
     """A `candle_coverage`-shaped list as a `candle_index` mapping.
 

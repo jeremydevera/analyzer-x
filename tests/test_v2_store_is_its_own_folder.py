@@ -6,7 +6,6 @@ ids between tabs; #05146/#02054 was one row with two names).
 """
 import importlib
 import json
-import os
 import sqlite3
 from pathlib import Path
 

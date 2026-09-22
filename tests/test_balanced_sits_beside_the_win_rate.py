@@ -31,9 +31,7 @@ def _heads(body: str) -> list:
     out = []
     for part in chr(10).join(lines).split(","):
         part = part.strip()
-        if part.startswith('winHead("') or part.startswith('[winHead("'):
-            out.append(part.split('"')[1])
-        elif part.startswith('"') or part.startswith('{["'):
+        if part.startswith('winHead("') or part.startswith('[winHead("') or part.startswith('"') or part.startswith('{["'):
             out.append(part.split('"')[1])
     return out
 

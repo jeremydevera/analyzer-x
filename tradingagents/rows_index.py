@@ -379,7 +379,7 @@ _last_error = ""
 _ready: set = set()
 
 
-import contextvars as _contextvars
+import contextvars as _contextvars  # noqa: E402  (placed here with the ContextVar it defines)
 
 # WHICH DATABASE THIS CALL READS. Backtest v2 (Sep 17, 2026) has its own
 # rows.db under ~/.tradingagents/v2, and the one API process serves both
@@ -387,7 +387,7 @@ import contextvars as _contextvars
 # ContextVar is per thread and per request: `using_db(path)` sets it for the
 # duration of one call in the thread that made it, and every `_connect()`
 # underneath reads it. Unset means DB_PATH, exactly as before.
-_DB_OVERRIDE: "_contextvars.ContextVar[str | None]" = _contextvars.ContextVar(
+_DB_OVERRIDE: _contextvars.ContextVar[str | None] = _contextvars.ContextVar(
     "rows_index_db", default=None)
 
 

@@ -38,9 +38,8 @@ timer.
 """
 from __future__ import annotations
 
+import json
 import time
-
-import pytest
 
 from tradingagents import auto_trader as at, live_price as lp
 
@@ -164,7 +163,7 @@ def test_a_stale_hit_cannot_silence_a_NEW_trade_on_the_same_slot():
 def test_re_arming_the_SAME_trade_keeps_its_hit():
     """`_feed_follow` re-arms every cycle; that must not undo the mute."""
     f = _feed()
-    args = dict(tp=3.10, sl=2.90, since_ts=time.time() - 60)
+    args = {"tp": 3.10, "sl": 2.90, "since_ts": time.time() - 60}
     f.arm(SLOT, COIN, 1, **args)
     _deal(f, 3.11)
     f.arm(SLOT, COIN, 1, **args)
@@ -305,9 +304,9 @@ def test_the_runner_asks_for_every_armed_timeframe(monkeypatch, tmp_path):
     monkeypatch.setattr(lp, "FEED", Spy())
     monkeypatch.setattr(at, "SETTINGS_PATH", tmp_path / "s.json")
     at.SETTINGS_PATH.write_text(
-        '{"strategies": ["%s"], "coins": ["%s"], "margin": 1.0,'
-        ' "strategy_books": {"%s": ["paper"]},'
-        ' "strategy_coins": {"%s": ["%s"]}}' % (KEY, COIN, KEY, KEY, COIN),
+        json.dumps({"strategies": [KEY], "coins": [COIN], "margin": 1.0,
+                    "strategy_books": {KEY: ["paper"]},
+                    "strategy_coins": {KEY: [COIN]}}),
         encoding="utf-8")
     pos = {"side": 1, "entry": 3.0, "tp": 3.1, "sl": 2.9, "dry": True,
            "strategy": KEY, "entry_ts": 1, "opened_at": 1_789_000_000}

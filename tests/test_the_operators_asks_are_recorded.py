@@ -191,7 +191,7 @@ def test_every_heading_keeps_a_blank_line_above_it(tmp_path):
     _run("second ask", tmp_path)
     got = log.read_text(encoding="utf-8")
     assert "> first ask" in got and "> second ask" in got
-    for line in got.splitlines():
+    for _line in got.splitlines():
         pass
     assert "\n\n### " in got
     assert "ask\n### " not in got, "a heading was glued to the ask above it"

@@ -32,7 +32,7 @@ import pytest
 import tradingagents.auto_trader as at
 from tradingagents import market_sweep as msw
 from tradingagents.dataflows import mexc_futures as fx
-from tradingagents.positions_view import fmt_when   # the ONE date format the log prints
+from tradingagents.positions_view import fmt_when  # the ONE date format the log prints
 
 BAR_MS = 3_600_000
 

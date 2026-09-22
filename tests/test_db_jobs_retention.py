@@ -5,6 +5,7 @@ from the database on the promise that the full grid is already on disk.
 """
 from tradingagents import db_jobs
 
+
 def _as_index(rows):
     """A `candle_coverage`-shaped list as a `candle_index` mapping.
 

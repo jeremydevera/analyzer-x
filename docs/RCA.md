@@ -270,6 +270,76 @@ into the test so the next reader meets the number, not the symptom.
 
 ---
 
+## RCA-2026-09-22-B — one account refusing threw away the other account's run, twice, and left 1,062 coins measuring for nobody
+
+**CEO**
+
+* Pressing BACKTEST on GitHub answered "Internal Server Error" — twice — and
+  each time, before the error, a run had ALREADY started on your partner's
+  machines. Two runs of 531 coins each were measuring with nothing on this PC
+  recording them, so their results would never have been collected.
+* Why: the press sends half the board to each account. The partner's account
+  did not yet have permission to start runs on YOUR repository, so the second
+  half failed — and the code treated one account's refusal as the whole press
+  failing, after the first account was already working.
+* What stops it now: an account that refuses is named, with how many coins it
+  did not take, and the run that DID start is kept and recorded. Only if every
+  account refuses is the press an error. (The permission itself is fixed too —
+  the partner's account now has write access to your repository.)
+
+**DEV**
+
+* `cloud_sweep.dispatch_across` built its runs with a list comprehension, so
+  the first `CloudError` from `dispatch()` propagated out of the whole call —
+  past the runs already started, past `cs.remember()`, and out of
+  `POST /api/cloud/dispatch` as a 500. The loop collects failures now:
+  successes are returned, failures go in `refused` with their reason,
+  `unmeasured` carries the coin count, and only an empty `runs` raises.
+* Invariant broken: **work that has started is recorded** — and rule 20, a
+  run that measured half a board says which half it missed.
+* Guard: `tests/test_forty_machines_across_two_accounts.py::test_a_refusing_account_does_not_throw_away_the_run_that_started`
+  and `::test_every_account_refusing_is_still_an_error`.
+
+**SAW** — `Sep 22, 2026 7:43pm` and `7:44pm`: `http 500` from
+`/api/cloud/dispatch`, `.run/api.log` ending
+`CloudError: could not create workflow dispatch event: HTTP 403: Must have
+admin rights to Repository`, and `gh run list --repo jeremydvera/analyzer-x`
+holding **three** queued "Market sweep" runs — two of them orphans from those
+presses, 1,062 coins between them.
+
+**TIMELINE**
+
+1. `Sep 21, 2026 10:51pm` — the operator asks for 40 machines; the fork is
+   added as a second fleet and `dispatch_across` ships.
+2. `Sep 22, 2026 7:43pm` — BACKTEST pressed. The fork accepts (20 machines
+   start on 531 coins); the operator's own repo refuses `jeremydvera` with
+   403; the press answers 500 and records nothing.
+3. `7:44pm` — pressed again, same thing: a second orphan run.
+4. `7:45pm` — `jeremydvera` invited to the operator's repo with write access
+   and the invitation accepted from here; the press then answered 200 with
+   both runs (`35723247890` on the fork, `35723261621` on the operator's).
+5. `7:51pm` — the two orphans cancelled by hand; at `7:55pm` the real pair
+   was measuring with 20 machines on one account and 6 on the other (its CI
+   run held the rest of that account's capacity).
+
+**ROOT CAUSE** — a multi-target dispatch written as one expression, so the
+first failure discarded every success beside it.
+
+**WHY IT WAS NOT CAUGHT** — the 15 tests written with the feature drove the
+splitter with a dispatch that always succeeded; the one failure case they
+covered was `usable_fleets()` returning nothing, which fails BEFORE anything
+starts. A partial failure only exists when one call has already worked, and
+no fixture made one call behave differently from another.
+
+**COST** — none in money (public repos, free machines); two orphan runs of
+531 coins each, cancelled before they finished, and ten minutes.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_forty_machines_across_two_accounts.py::test_a_refusing_account_does_not_throw_away_the_run_that_started`.
+
+---
+
 ## RCA-2026-09-19-A — updating ONE strategy rewrote all 23,580 of that coin's rows, so a 25-second job took 48 minutes
 
 **CEO**

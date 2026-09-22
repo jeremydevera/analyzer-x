@@ -56,7 +56,7 @@ def test_two_accounts_each_get_half_the_board(sent):
     assert [len(c["coins"]) for c in sent] == [5, 5]
     assert set(sent[0]["coins"]) & set(sent[1]["coins"]) == set(), \
         "no coin is measured by both accounts"
-    assert "2 accounts x 20 machines = 40" in got["why"], got["why"]
+    assert "2 account(s) x 20 machines = 40" in got["why"], got["why"]
 
 
 def test_one_account_is_exactly_what_it_always_was(sent):
@@ -285,3 +285,37 @@ def test_the_coin_list_can_be_read_for_either_store(monkeypatch):
     assert seen["root"] == str(stores.V2.candles)
     dj.stored_symbols()
     assert seen["root"] is None, "v1 reads this process's own folder"
+
+
+# ------------------------------------------- one account refusing, the other not
+def test_a_refusing_account_does_not_throw_away_the_run_that_started(monkeypatch):
+    """RCA-2026-09-22-B: the second dispatch raised 403 after the first had
+    started 20 machines — the press answered 500, nothing was recorded, and
+    531 coins were measured by a run nobody would collect."""
+    started: list = []
+
+    def fake(*, coin_list=(), shards=20, slug="", **kw):
+        if slug == "mine/analyzer-x":
+            raise cs.CloudError("HTTP 403: Must have admin rights to Repository")
+        started.append(slug)
+        return {"id": 1, "url": "https://x/1"}
+
+    monkeypatch.setattr(cs, "dispatch", fake)
+    got = cs.dispatch_across(coin_list=[f"C{i}" for i in range(10)], shards=20,
+                             fleet_list=TWO, timeframes="15m")
+    assert [r["repo"] for r in got["runs"]] == ["partner/analyzer-x"]
+    assert started == ["partner/analyzer-x"], "the run that worked is kept"
+    assert got["unmeasured"] == 5, got
+    assert "REFUSED" in got["why"] and "403" in got["why"]
+    assert "5 coin(s) went unmeasured" in got["why"], got["why"]
+
+
+def test_every_account_refusing_is_still_an_error(monkeypatch):
+    def boom(**kw):
+        raise cs.CloudError("HTTP 403")
+
+    monkeypatch.setattr(cs, "dispatch", boom)
+    with pytest.raises(cs.CloudError) as err:
+        cs.dispatch_across(coin_list=["A", "B"], shards=20, fleet_list=TWO,
+                           timeframes="15m")
+    assert "403" in str(err.value)

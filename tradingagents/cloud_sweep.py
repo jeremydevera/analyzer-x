@@ -453,11 +453,39 @@ def dispatch_across(*, coin_list, shards: int = 20, timeframes: str = "15m,30m",
                 "refused": refused, "why": why}
 
     piles = split_coins(named, len(ready))
-    runs = [_one(slug, pile) for slug, pile in zip(ready, piles, strict=False)]
-    return {"runs": runs, "fleets": ready, "refused": refused,
-            "why": (f"{len(runs)} accounts x {shards} machines = "
-                    f"{len(runs) * shards}; {len(named):,} coins dealt "
-                    + " / ".join(str(len(p)) for p in piles))}
+    # ONE ACCOUNT REFUSING MUST NOT THROW AWAY THE OTHER'S RUN. Measured
+    # Sep 22, 2026 7:43pm: `jeremydvera` had no write access to the
+    # operator's repo yet, so the second dispatch raised 403 AFTER the first
+    # had started 20 machines — the press answered 500, the record was never
+    # written, and the started run measured 531 coins nobody would ever
+    # collect (docs/RCA.md RCA-2026-09-22-B). Twice, before it was noticed.
+    runs, lost = [], []
+    for slug, pile in zip(ready, piles, strict=False):
+        try:
+            runs.append(_one(slug, pile))
+        except Exception as exc:                               # noqa: BLE001
+            lost.append({"repo": slug, "coins": len(pile),
+                         "why": f"{type(exc).__name__}: {str(exc)[:160]}"})
+            logger.warning("cloud sweep: %s refused the dispatch (%s) — its "
+                           "%d coin(s) are NOT being measured", slug, exc,
+                           len(pile))
+    if not runs:
+        raise CloudError("; ".join(f"{d['repo']}: {d['why']}" for d in lost)
+                         or "no account accepted the dispatch")
+    missed = sum(int(d["coins"]) for d in lost)
+    why = (f"{len(runs)} account(s) x {shards} machines = "
+           f"{len(runs) * shards}; {len(named):,} coins dealt "
+           + " / ".join(str(len(p)) for p in piles))
+    if lost:
+        # NAMED, never a quiet success: half a board measured is not a sweep,
+        # and the count is what the operator acts on (rule 20).
+        why += ("; " + ", ".join(f"{d['repo']} REFUSED ({d['why']})"
+                                 for d in lost)
+                + f" — {missed:,} coin(s) went unmeasured, press again when "
+                  f"that account can run")
+    return {"runs": runs, "fleets": ready, "refused": refused + [
+        f"{d['repo']}: {d['why']}" for d in lost], "unmeasured": missed,
+            "why": why}
 
 
 def _runs(slug: str, limit: int = 5) -> list:

@@ -81,24 +81,58 @@ def test_the_position_carries_what_the_round_trip_costs():
 
 
 def test_a_paper_exit_pays_that_cost_not_a_flat_guess():
+    """The exit path charges a paper fill through ONE helper, and the helper
+    reads the position's own round trip, falling back to fee-once plus the
+    flat paper slippage for a position from before it was carried."""
     src = inspect.getsource(at._process_slot)
-    i = src.index("if pos_dry:")
-    frag = src[i:i + 900]
-    assert 'pos.get("rt_cost")' in frag
-    assert "2 * PAPER_SLIPPAGE" in frag, "kept as the fallback for old rows"
+    assert "paper_round_trip(pos, symbol, fx=fx) if pos_dry" in src
+    helper = inspect.getsource(at.paper_round_trip)
+    assert 'pos.get("rt_cost")' in helper
+    assert "2 * PAPER_SLIPPAGE" in helper, "kept as the fallback for old rows"
 
 
 @pytest.mark.parametrize("rt,expected", [
     # PSXSTOCK: round trip 2%, TP 1.2% -> a paper "win" is a LOSS, exactly as
     # the live book found out three times
-    (0.02, -0.96),
+    (0.02, -0.80),
     # KITE: round trip 0.10%, TP 3% -> a win is still a win
-    (0.001, 2.74),
+    (0.001, 2.90),
 ])
 def test_the_paper_pnl_now_matches_what_live_would_keep(rt, expected):
-    """The arithmetic the exit path runs: (move - cost) * margin * leverage."""
+    """The arithmetic the exit path runs: (move - cost) * margin * leverage,
+    with `cost` from the function the exit path CALLS — not a copy of it.
+
+    Until Sep 23, 2026 this test re-typed the formula as `fee + rt` and so
+    asserted the demo's double fee as correct (the gate's `rt_cost` already
+    holds `2 * taker_fee`). Measured on the operator's 166 demo trades the
+    doubling was $25.92 of a -$52.76 book (docs/RCA.md RCA-2026-09-23-E)."""
     margin, lev = 5.0, at.LEVERAGE
     move = 0.012 if rt > 0.01 else 0.03          # the TP it "hit"
-    fee = 2 * at.FEE_FALLBACK
-    pnl = (move - (fee + rt)) * margin * lev
+    cost = at.paper_round_trip({"rt_cost": rt}, "X_USDT", fx=None)
+    assert cost == rt, "the gate's round trip already holds the fee"
+    pnl = (move - cost) * margin * lev
     assert round(pnl, 2) == pytest.approx(expected, abs=0.05), pnl
+
+
+def test_the_paper_book_never_pays_the_fee_twice():
+    """The demo's charge and the gate's round trip model the SAME trade, so
+    they are tested against each other, not each against its own incident:
+    the paper charge IS the gate's number when the gate measured one, and
+    fee-once-plus-flat-slippage when it did not (a position from before
+    Sep 05, 2026, when `rt_cost` was first carried)."""
+    class Fx:
+        def contract_spec(self, symbol):
+            return {"takerFeeRate": 0}
+    fx = Fx()
+    gate_rt = 2 * (0.0005 + at.taker_fee("X_USDT", fx=fx)) + 0.0001
+    assert at.paper_round_trip({"rt_cost": gate_rt}, "X_USDT", fx=fx) == gate_rt
+    old = at.paper_round_trip({}, "X_USDT", fx=fx)
+    assert old == pytest.approx(2 * at.FEE_FALLBACK + 2 * at.PAPER_SLIPPAGE)
+    # and the exit path reads that function, not its own arithmetic
+    import inspect
+    src = inspect.getsource(at.run_cycle) if hasattr(at, "run_cycle") else ""
+    whole = inspect.getsource(at)
+    i = whole.index("cost = (paper_round_trip(pos, symbol, fx=fx) if pos_dry")
+    frag = whole[i:i + 200]
+    assert "pnl = (move - cost) * pos[\"margin\"] * LEVERAGE" in frag
+    assert "taker_fee" not in frag, "no second fee term beside the round trip"

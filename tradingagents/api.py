@@ -3446,6 +3446,47 @@ def strategy_trades_v2(q: TradesQuery) -> dict:
                           store=_stores.V2)
 
 
+_PORTFOLIO_CACHE: dict = {}
+PORTFOLIO_TTL_S = 120
+
+
+@app.get("/api/v2/portfolio")
+def portfolio_forecast_v2(book: str = "demo", fresh: int = 0) -> dict:
+    """What the ACCOUNT would do with every deployed row running together —
+    the runner's own gates, the venue's own book readings, minute-exact exits
+    (`portfolio_replay.forecast`) — beside what the practice book actually did
+    on the same days. Three replays over ~50,000 minutes a coin take a few
+    seconds, so the answer is kept for `PORTFOLIO_TTL_S` unless `fresh=1`."""
+    from tradingagents import portfolio_replay as pr
+
+    dry = book != "live"
+    if not _stores.V2.candles.exists():
+        return {"why": _V2_EMPTY_WHY, "book": "demo" if dry else "live"}
+    hit = _PORTFOLIO_CACHE.get(dry)
+    now = _time.time()
+    if hit and not fresh and now - hit[0] < PORTFOLIO_TTL_S:
+        return hit[1]
+    try:
+        out = pr.forecast(dry=dry)
+    except Exception as exc:                                   # noqa: BLE001
+        logger.exception("portfolio forecast failed")
+        return {"why": f"the replay raised {type(exc).__name__}: {exc}",
+                "book": "demo" if dry else "live"}
+    # the same stable id the grid and the positions table print for the row
+    # (kit item H): hashed from the combination, never a per-page sequence
+    import tradingagents.auto_trader as at
+    settings = at.load_settings()
+    for side in (out.get("account"), out.get("checked")):
+        for r in (side or {}).get("rows") or []:
+            try:
+                r["id"] = row_id_for(r["key"], r["coin"], settings)
+            except Exception:                                  # noqa: BLE001
+                r["id"] = ""
+    out["computed_at"] = int(now)
+    _PORTFOLIO_CACHE[dry] = (now, out)
+    return out
+
+
 @app.get("/api/v2/strategies/facets")
 def strategy_facets_v2() -> dict:
     from tradingagents import rows_index as ri

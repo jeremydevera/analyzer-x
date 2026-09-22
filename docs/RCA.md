@@ -172,6 +172,319 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-23-F — the fee helper believed a spec that under-states: the venue takes 0.08% a side where the spec says 0.04%
+
+**CEO**
+
+* Every cost this app charges starts from the exchange's own fee figure for
+  each coin. For CTC, STBL and the older live coins (ALICE, NOM, PI, PROVE,
+  APEX) that figure reads 0.04% a side — and your real fills at MEXC paid
+  **0.08% a side**, every time. So half the fee was missing from the backtest,
+  from the gate that refuses expensive trades, and from the practice account,
+  on those coins.
+* Why: the code trusted the exchange's published rate whenever it was above
+  zero, and only fell back to the real figure when the spec said nothing.
+* What stops it now: the fee is the published rate or 0.08% a side, whichever
+  is higher — read off 48 of your own closed positions, where 44 paid exactly
+  0.08% and 4 paid 0.04% because one side closed as a maker.
+
+**DEV**
+
+* `auto_trader.taker_fee:1928` returned `rate if rate > 0 else FEE_FALLBACK`;
+  `contract_spec()["takerFeeRate"]` is `0.0004` for CTC/STBL/ALICE/NOM/PI/
+  PROVE/APEX and `0` for every stock contract, while `position_history()`
+  shows `fee / (closeVol * contractSize * (openAvg + closeAvg))` = **0.080%**
+  on 44 of 48 positions (`Aug 29` → `Sep 16, 2026`). It now returns
+  `max(rate, FEE_FALLBACK)`.
+* Invariant broken: **the exchange is the source of truth** (rule 14) — a
+  published rate is a label; the fill is the data.
+* Guard: `tests/test_the_backtest_forecasts_the_account.py::test_the_fee_helper_believes_the_venues_fills_over_a_low_spec`;
+  `tests/test_auto_trader.py::test_taker_fee_is_per_contract_and_never_assumes_btc`
+  (widened — it had asserted the under-statement).
+
+**SAW** — nothing on a screen; found while reconciling the account replay to
+the practice book (RCA-2026-09-23-E), when the venue's `fee` field on
+VUG_USDT (`Sep 16, 2026 1:37pm`, $396.81 a side) read $0.3174 against a spec
+of 0.
+
+**TIMELINE**
+
+1. `Aug 29, 2026 7:00pm` — ALICE_USDT closes live: $100.06 a side, fee
+   $0.1592 = 0.080% a side; spec 0.0004. Same for NOM ($0.3261 on $199.87),
+   PI, PROVE, APEX — 44 of 48 positions at 0.080%, 4 at 0.040%.
+2. `Sep 16, 2026 2:37am` — CTC_USDT live: $99.63 a side, fee $0.1581 =
+   0.080%; spec 0.0004. The gate on CTC's `killzone_4h_sl3tp15` was charging
+   0.04%.
+3. `Sep 23, 2026` — `taker_fee` returns the higher of spec and 0.0008.
+
+**ROOT CAUSE** — `return rate if rate > 0 else FEE_FALLBACK`: a fallback used
+only for a MISSING figure, never for a WRONG one.
+
+**WHY IT WAS NOT CAUGHT** — `test_taker_fee_is_per_contract_and_never_assumes_btc`
+asserted `taker_fee("CHEEMS_USDT") == 0.0004` for a spec of 0.0004: the test
+pinned the spec's word, and no test had ever read a real fill's fee back from
+`position_history`.
+
+**COST** — on CTC and STBL: 0.08% of notional a trade under-charged in every
+backtest row and in the gate; on the practice book it was masked by
+RCA-2026-09-23-E charging the fee twice.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_backtest_forecasts_the_account.py::test_the_fee_helper_believes_the_venues_fills_over_a_low_spec`.
+
+---
+
+## RCA-2026-09-23-E — the practice account paid the exchange fee TWICE on every trade: $25.92 of its −$52.76
+
+**CEO**
+
+* Your practice account's money figure was **−$52.76** over 166 trades. With
+  the fee charged once, as MEXC charges it, the same trades are **−$26.84**.
+  Half of what the practice book said you lost was a fee it invented.
+* Why: when a practice trade closed, the app charged the fee for getting in
+  and out, and then ALSO charged the full round-trip cost it had measured at
+  entry — which already had that same fee inside it.
+* What stops it now: a practice trade is charged the measured round trip and
+  nothing on top; a test checks the practice charge against the gate's own
+  number instead of re-typing the formula.
+
+**DEV**
+
+* `auto_trader._process_slot` (exit branch, formerly `cost = 2 * taker_fee(...)`
+  then `cost += pos["rt_cost"]`): `rt_cost` is `edge_check`'s
+  `round_trip = 2 * (slippage + taker_fee) + funding` (`auto_trader.py:2337`),
+  so a paper exit paid `4 * taker_fee`. Now `cost = paper_round_trip(pos,
+  symbol, fx=fx)` — the round trip when carried, else fee-once plus the flat
+  paper slippage.
+* Invariant broken: **every cost the backtest charges, the gate charges — and
+  ONLY once** (CLAUDE.md, "Every cost the BACKTEST charges, the GATE charges").
+  Two lists modelling one trade must be tested against each other.
+* Guard: `tests/test_demo_matches_live.py::test_the_paper_book_never_pays_the_fee_twice`,
+  `::test_the_paper_pnl_now_matches_what_live_would_keep` (now calls the code
+  it used to re-implement);
+  `tests/test_the_backtest_forecasts_the_account.py::test_the_paper_book_charges_the_gates_round_trip_and_nothing_on_top`.
+
+**SAW** — Auto Trade, demo W/L: **72.0% · −$45.92** over 164 trades
+(`Sep 15` → `Sep 22, 2026`), against Backtest v2's **97.3% · +$3,591.97**
+for the same rows. The operator: *"i want forecast to be 10/10"*.
+
+**TIMELINE**
+
+1. `Sep 05, 2026` — `rt_cost` (the gate's measured round trip) is carried on
+   every paper position and charged at exit, so a demo trade "can never be
+   cheaper than the live one beside it". The existing `2 * taker_fee` line
+   above it is left in place.
+2. `Sep 15, 2026 12:00pm` → `Sep 23` — 166 practice trades close; realised
+   cost median **0.350%** a trade against a gate reading of ~0.19% on the
+   same coins: 0.19% + 2 × 0.08%.
+3. `Sep 23, 2026` — the account replay (`portfolio_replay`) matches 39 demo
+   trades bar for bar, 37 of 39 with the same outcome, and cannot match the
+   money; the demo's per-trade cost is `rt_cost + 0.16%`. Booked −$52.76 →
+   fee once −$26.84 (the same trades, $25.92 apart).
+
+**ROOT CAUSE** — two cost terms for one trade: `2 * taker_fee` written on
+`Aug 12` for a live estimate, `rt_cost` (fee inside) added beside it on
+`Sep 05` instead of replacing it on the paper branch.
+
+**WHY IT WAS NOT CAUGHT** — `test_the_paper_pnl_now_matches_what_live_would_keep`
+computed `pnl = (move - (fee + rt)) * margin * lev` — it re-typed the exit
+path's arithmetic instead of calling it, so the double charge was asserted as
+the expected value. A test that copies a formula tests nothing about the code.
+
+**COST** — none in money (paper book). $25.92 of reported loss that did not
+exist, on the number the operator picks deployments by; and the practice
+book's 72.0% was right while its money was 96% too pessimistic.
+
+**FIX** — this commit. Old exit rows are not rewritten; `portfolio_replay`
+takes the doubled fee back out of any reading dated before
+`DEMO_FEE_TWICE_UNTIL_S`, and the screen says "booked … with the fee counted
+twice until Sep 23, 2026" beside the restated figure.
+
+**GUARD** — `tests/test_demo_matches_live.py::test_the_paper_book_never_pays_the_fee_twice`.
+
+---
+
+## RCA-2026-09-23-D — 23 rows stayed switched on for coins MEXC had delisted, and one of them filled the record with 4,177 refusals
+
+**CEO**
+
+* ROLSTOCK, APOSTOCK and FLUTSTOCK were removed by the exchange, and 23 of
+  your rows were still switched on for them — 13 on ROLSTOCK alone. Nothing
+  could trade, and every bar the app wrote another "no order book" line into
+  your record: 4,177 for ROLSTOCK.
+* Why: the delisted clean-up forgets a coin's candles and measurements, but
+  never touched the list of what you have switched on.
+* What stops it now: the clean-up also switches the coin off on every row and
+  writes a "disarmed" line in the deploy log; the 23 rows were switched off on
+  Sep 23, 2026 (97 remain).
+
+**DEV**
+
+* `storage_months._run_delisted` called `_forget_lost` (candles, rows, index)
+  and returned; `settings["strategy_coins"]` and `strategy_books` were never
+  read. New `auto_trader.disarm_coins(symbols, why)` removes the coins from
+  every key, drops their `book_slot` entries, saves, and records a
+  `disarmed` deployment per row; `_run_delisted` calls it after forgetting.
+* Invariant broken: **a coin that cannot trade is not deployed** — one rule,
+  every door (the deploy path refuses a delisted coin; the clean-up path did
+  not undeploy one).
+* Guard: `tests/test_the_backtest_forecasts_the_account.py::test_a_delisted_coin_is_disarmed_from_every_row_and_written_down`.
+
+**SAW** — Auto Trade's strategies grid: ROLSTOCK on 13 rows with `100%` and
+no trades; the ledger: `gate_blocked · no order book for ROLSTOCK_USDT` every
+cycle.
+
+**TIMELINE**
+
+1. `Sep 16, 2026 5:56am` — the last real ROLSTOCK position closes live
+   (−$3.5577); the contract is delisted after.
+2. `Sep 16` → `Sep 23` — 4,177 `gate_blocked` rows for ROLSTOCK, 405 book
+   readings for APOSTOCK, 11 for FLUTSTOCK; the delisted clean-up runs and
+   forgets their candles; the 23 rows stay armed.
+3. `Sep 23, 2026` — `disarm_coins({ROLSTOCK, APOSTOCK, FLUTSTOCK})`: 23 rows
+   off, backup at `auto_trade.json.before-rolstock-<ts>`; the v2 download for
+   APOSTOCK/FLUTSTOCK skips them as delisted, as it should.
+
+**ROOT CAUSE** — `_run_delisted` cleaned the store and not the deployment.
+
+**WHY IT WAS NOT CAUGHT** — every delisted test asserts on what is FORGOTTEN
+(files, rows, index); none asked what stays SWITCHED ON.
+
+**COST** — none in money; 4,177 noise rows in the record and 23 rows of
+false 100% on the grid.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_backtest_forecasts_the_account.py::test_a_delisted_coin_is_disarmed_from_every_row_and_written_down`.
+
+---
+
+## RCA-2026-09-23-C — two fade15 rows were waiting for a 50% move in one hour, so they measured 0 trades and were deployed at "100%"
+
+**CEO**
+
+* fade15_1h_sl3tp06 and fade15_4h_sl3tp1 were switched on for six coins
+  and showed 100% — over zero trades, ever. Their trigger was written as
+  0.5 and 0.4 where every other rule writes 0.005: a 50% and a 40%
+  move in one bar, which no coin has made.
+* Why: one number typed in percent inside a table that reads fractions.
+* What stops it now: 0.005 / 0.004 — 940 and 211 signals over the same
+  bars — and a test refuses any trigger at or above 5%.
+
+**DEV**
+
+* `auto_trader._OPERATORS_127["fade15_1h_sl3tp06"]["threshold"] = 0.5` and
+  `["fade15_4h_sl3tp1"]["threshold"] = 0.4`; `sig_fade15` compares
+  `abs(close/open - 1) >= threshold`. Measured on the deployed coins' 1m-rebuilt
+  bars: 0 signals at 0.5, 940 at 0.005 (1h); 0 at 0.4, 211 at 0.004 (4h).
+* Invariant broken: **one unit per table** — `STRATEGY_SPECS` thresholds are
+  fractions (`tp: 0.006`), and a row's label ("100% · 0 trades") must never
+  be read as a measurement.
+* Guard: `tests/test_the_backtest_forecasts_the_account.py::test_no_spec_threshold_is_a_percentage_wearing_a_fractions_clothes`.
+
+**SAW** — `docs/STRATEGIES.md` (Sep 22, 2026): *"fade15 rows: 0 signals
+measured over the whole store"*; the grid: 100% on six rows with no trades.
+
+**TIMELINE**
+
+1. `Sep 16, 2026 1:54am` — the six fade15 rows are switched on with the
+   Sep 16 batch.
+2. `Sep 16` → `Sep 23` — 0 signals, 0 trades, `100%` printed.
+3. `Sep 23, 2026` — thresholds corrected; the account replay measures them
+   with everything else.
+
+**ROOT CAUSE** — a percent typed where the table takes a fraction.
+
+**WHY IT WAS NOT CAUGHT** — no test bounds a spec's numeric fields, and a
+rule that never fires produces no failing assertion anywhere — it just makes
+the number smaller (the same shape as the missing funding term,
+RCA-2026-09-15-C).
+
+**COST** — none in money; six rows of false 100%.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_backtest_forecasts_the_account.py::test_no_spec_threshold_is_a_percentage_wearing_a_fractions_clothes`.
+
+---
+
+## RCA-2026-09-23-B — the backtest charged a flat 0.03% of slippage while the practice book charged the coin's real book, so 97.3% and 72.0% were the same rows
+
+**CEO**
+
+* Backtest v2 said your 80 rows win **97.3%** and make **+$3,591.97**; the
+  practice account running the same rows said **72.0%** and **−$45.92**. Part
+  of that gap was nothing but the cost per trade: the backtest charged a flat
+  guess of 0.03% a side for the spread, while the practice book charged what
+  the coin's order book really cost — 0.35% a trade on your coins against the
+  backtest's 0.22%.
+* Why: the backtest engine has a built-in default for the spread, and the
+  code that measures a coin never passed it the spread it had just read from
+  the book.
+* What stops it now: every place a trade is simulated — the local backtest,
+  the window re-measure, the trade log, the GitHub shards, the resume path —
+  charges the book's measured spread, and the coin's cost file keeps it. And
+  a new panel on Backtest v2 replays every switched-on row TOGETHER through
+  the runner's own gates, at the venue's own book readings, beside what the
+  practice account really did on the same days.
+
+**DEV**
+
+* `market_sweep.run_pair` read `book = fx.book_cost(...)` for the gate and
+  called `at.backtest_strategy(key, frame, base, fee=fee, ...)` without
+  `slippage=` → the engine's `PAPER_SLIPPAGE = 0.0003` default. Same in
+  `restate_window`, `trades_for`, `window_rows`, `.github/scripts/sweep_shard.py`
+  (`fee=fee + 0.0003` literal) and `resume_state.continue_combo`. All six
+  engine calls in `market_sweep` and both in the shard now pass the book's
+  `slippage`; `save_costs` stores it; the disk-only paths read it back.
+  `portfolio_replay.py` (new) + `GET /api/v2/portfolio` + `PortfolioForecast.tsx`.
+* Invariant broken: **every cost the backtest charges, the gate charges** —
+  and its mirror: every cost the gate charges, the backtest charges. Rule 10:
+  cost is measured per contract, never a flat figure.
+* Guard: `tests/test_the_backtest_forecasts_the_account.py::test_every_simulated_trade_charges_the_books_slippage`
+  (walks the AST for every `backtest_strategy` call and demands `slippage=`).
+
+**SAW** — Backtest v2 for the deployed rows: 97.3%, +$3,591.97, 8,077 trades;
+Auto Trade demo W/L: 72.0%, −$45.92, 164 trades; live 57.1%, +$0.48, 21.
+
+**TIMELINE**
+
+1. `Aug 19, 2026` — `backtest_strategy` charges fee + slippage by default;
+   the sweep passes `fee` and never `slippage`.
+2. `Sep 05, 2026` — the practice book starts charging the measured round trip
+   (`rt_cost`), so demo and backtest now charge DIFFERENT costs for one trade.
+3. `Sep 15` → `Sep 22, 2026` — 164 demo trades pay a median 0.350%; the
+   backtest rows they were picked from paid 0.220%.
+4. `Sep 23, 2026` — the review: 97.3% vs 72.0% on the same rows; the operator:
+   *"start fixing the bugs now … i want forecast to be 10/10"*. The account
+   replay over the same days, at the venue's own readings: **124 trades,
+   76.6%, +$6.41 flat** against the practice book's **135 trades, 69.6%,
+   about −$21 at $5 flat with the fee once** on the rows still switched on.
+   The rest of the original gap: 18,163 refusals the backtest never modelled
+   (a book too wide for the target most of the day — FASTSTOCK median 2.49%
+   across 1,469 gate readings, floor 0.181%), 54 rows on one coin measured as
+   54 simultaneous positions, and the doubled fee (RCA-2026-09-23-E).
+
+**ROOT CAUSE** — an engine default (`slippage=PAPER_SLIPPAGE`) silently used
+where the caller had the measured figure in hand.
+
+**WHY IT WAS NOT CAUGHT** — every backtest test asserts on TRADES and
+BARRIERS; the cost was a keyword with a default, and a default produces no
+failing assertion — it makes the number bigger. The demo's cost and the
+backtest's cost were never compared as lists.
+
+**COST** — none in money; the number the operator picks deployments by was
+~25 points of win rate and ~$3,600 too kind.
+
+**FIX** — this commit. A stored row measured before it keeps its old cost
+until re-measured (UPDATE THIS BACKTEST); the cost file's `slippage` is
+`null` until then and the replay charges the venue's reading, never the file.
+
+**GUARD** — `tests/test_the_backtest_forecasts_the_account.py` (19 tests).
+
+---
+
 ## RCA-2026-09-23-A — the Auto Trade tables were unreadable on a phone, and 15 columns had nowhere to go
 
 **CEO**

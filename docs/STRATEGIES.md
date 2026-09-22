@@ -451,7 +451,7 @@ A v2 row's id is never the same as its v1 twin's, so they cannot be confused.
 
 ## 7. Three things found while writing this
 
-### ⚠ The two `fade15` rows cannot ever fire — the threshold is 100× too big
+### ⚠ The two `fade15` rows could not fire — the threshold was 100× too big (fixed Sep 23, 2026)
 
 `fade15` needs a move bigger than a threshold over 15 bars. The deploy record
 writes that threshold as a **percentage**; the code reads it as a **fraction**.
@@ -475,9 +475,12 @@ Measured on the real candles:
 The older `fade15_1h` in the same file uses `0.003` and is correct, so this is
 these two entries, not the formula.
 
-**Nothing has been changed.** Fixing it makes two dead rows start trading, and
-that is your call, not mine. It is one line each: `0.5 → 0.005` and
-`0.4 → 0.004`.
+**FIXED on Sep 23, 2026** on *"okay start fixing the bugs now"*: `0.5 → 0.005`
+and `0.4 → 0.004` (docs/RCA.md RCA-2026-09-23-C). The two rows now fire — 940
+and 211 signals over the same bars — and a test refuses any threshold at or
+above 5% in the spec table. APOSTOCK itself was delisted and switched off the
+same day (RCA-2026-09-23-D), so `fade15_4h_sl3tp1` runs on nothing until it is
+armed on a live coin.
 
 ### ⚠ 48 of your 120 rows are 24 strategies deployed twice
 

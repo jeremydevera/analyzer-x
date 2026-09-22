@@ -1596,6 +1596,53 @@ export const notifyApi = {
  *  existing functions, so nothing a v1 panel calls changes. */
 export type StoreName = "v1" | "v2";
 
+// ---------------------------------------------------- the account forecast
+/** one closed trade of the account replay */
+export interface ForecastTrade {
+  key: string; coin: string; symbol: string; tf: string; side: 1 | -1;
+  entry_ms: number; entry: number; tp: number; sl: number;
+  exit_ms: number | null; exit: number | null; why: "TP" | "SL" | "LIQ" | "END";
+  unclear: 0 | 1; cost: number; cost_source: "record" | "saved";
+  margin: number; pnl: number | null;
+}
+export interface ForecastRow {
+  row: string; key: string; coin: string; tf: string; tp: number; sl: number;
+  trades: number; wins: number; losses: number; win_rate: number; pnl: number;
+  unclear: number; worst_run: number; signals: number; cost_refused: number;
+}
+export interface ForecastSide {
+  book: "demo" | "live"; sizing: "martingale" | "flat";
+  rows_deployed: number; rows_replayed: number; rows_traded: number;
+  rows_refused: Record<string, string>;
+  signals: number; refused: Record<string, number>;
+  gate_source: { record: number; saved: number };
+  taken: number; trades: number; wins: number; losses: number; win_rate: number;
+  pnl: number; worst_run: { pnl: number; trades: number }; unclear: number;
+  still_open: number; slices_per_coin: number; leverage: number; base_margin: number;
+  window: { first_ms: number | null; last_ms: number | null };
+  rows: ForecastRow[]; assumptions: string[];
+  cost_sources: { saved: number; default: number }; seconds: number;
+}
+export interface ForecastActual {
+  entries: number; trades: number; wins: number; losses: number; win_rate: number;
+  pnl: number; pnl_fee_once: number; pnl_at_base: number | null; base_margin: number | null;
+  refused: Record<string, number>;
+  rows: Record<string, { trades: number; wins: number; losses: number; pnl: number }>;
+  first_ms: number | null; last_ms: number | null;
+}
+export interface PortfolioForecast {
+  /** set when nothing could be replayed — the sentence to print instead */
+  why?: string;
+  book?: "demo" | "live";
+  account?: ForecastSide;
+  flat?: Pick<ForecastSide, "trades" | "wins" | "losses" | "win_rate" | "pnl" | "worst_run" | "sizing">;
+  checked?: ForecastSide | null;
+  actual?: ForecastActual;
+  readings?: Record<string, number>;
+  log?: ForecastTrade[];
+  computed_at?: number;
+}
+
 export function storeApi(store: StoreName) {
   // built from two pieces on purpose: tests/test_every_client_path_is_served
   // reads every quoted api path in this file (comments included) as a ROUTE
@@ -1630,6 +1677,10 @@ export function storeApi(store: StoreName) {
       get<Awaited<ReturnType<typeof api.facets>> & { store?: string; why?: string }>(
         `${P}/strategies/facets`),
     storage: () => get<BtStorage & { store?: string; why?: string }>(`${P}/backtest/storage`),
+    /** Backtest v2 only: every deployed row replayed TOGETHER through the
+     *  runner's gates, beside what the practice book actually did */
+    portfolio: (book: "demo" | "live" = "demo", fresh = false) =>
+      get<PortfolioForecast>(`${P}/portfolio?book=${book}${fresh ? "&fresh=1" : ""}`),
     /** the trade-by-trade log of one row, replayed from THIS store — on v2
      *  from the 1-minute candles with exits settled by the minute */
     trades: (row: StrategyRow, baseMargin = 5.0) =>

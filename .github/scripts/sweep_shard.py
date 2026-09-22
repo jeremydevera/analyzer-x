@@ -543,6 +543,11 @@ def continue_pair(sym, tf, prior: dict, out, *, i=0, n=0, rows_so_far=0):
         fund = fx.funding_history(sym)
         book = fx.book_cost(sym, BASE_MARGIN * at.LEVERAGE)
         rt = br.round_trip_cost(fee, book)
+        # THE BOOK'S SLIPPAGE, charged in the P&L — not only in the gate.
+        # The engine's flat 0.03%/side under-charged the operator's coins by
+        # ~0.13% a trade against the demo book (Sep 23, 2026), and a shard
+        # measuring on GitHub must score a coin exactly as this PC does.
+        slip = float(book.get("slippage") or 0.0) or 0.0003
         df = at._closed_bars(fx.klines(sym, iv, min(cap, need)), bs)
     except Exception as exc:
         raise PairFailed(f"{sym} {tf}: {str(exc)[:60]}") from exc
@@ -616,7 +621,7 @@ def continue_pair(sym, tf, prior: dict, out, *, i=0, n=0, rows_so_far=0):
                         r, st = rs.continue_combo(
                             key, frame, BASE_MARGIN, fee=fee, sizing=sz,
                             dirs=dirs, tp=tp, sl=sl, liq=liq, funding=fund,
-                            prev=prev, start_at=off)
+                            prev=prev, start_at=off, slippage=slip)
                     except Exception:
                         continue
                     new_states[ck] = st
@@ -703,6 +708,11 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
         # ONE definition, shared with the local sweep — see
         # backtest_report.round_trip_cost for why spread/2 must not be added.
         rt = br.round_trip_cost(fee, book)
+        # THE BOOK'S SLIPPAGE, charged in the P&L — not only in the gate.
+        # The engine's flat 0.03%/side under-charged the operator's coins by
+        # ~0.13% a trade against the demo book (Sep 23, 2026), and a shard
+        # measuring on GitHub must score a coin exactly as this PC does.
+        slip = float(book.get("slippage") or 0.0) or 0.0003
         fine = None
         # THE FRAME'S OWN CANDLES, ALWAYS. v2 adds the minutes; it does not
         # replace the bars with them.
@@ -855,7 +865,7 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
                             dirs_idx, dirs, op, hi, lo, cl, tp=tp, sl=sl,
                             liq=None if liq is None else abs(liq) / 100.0,
                             half=half, base=BASE_MARGIN, lev=at.LEVERAGE,
-                            fee=fee + 0.0003, ladder=at.ladder_margin,
+                            fee=fee + slip, ladder=at.ladder_margin,
                             mo_idx=mo_idx, mo_labels=mo_labels,
                             f_ms=f_ms, f_cum=f_cum, bar_ms=ts,
                             with_trades=True)
@@ -875,7 +885,7 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
                         pair_states[combo_key(sig, thp, sl * 100,
                                               tp * 100, sz)] = \
                             fg.end_state(six["trades"], base=BASE_MARGIN,
-                                         lev=at.LEVERAGE, fee=fee + 0.0003,
+                                         lev=at.LEVERAGE, fee=fee + slip,
                                          sizing=sz, ladder=at.ladder_margin,
                                          mo_idx=mo_idx, mo_labels=mo_labels,
                                          opens=op, bar_ms=ts,
@@ -888,6 +898,7 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
                         try:
                             r = at.backtest_strategy(
                                 key, df, BASE_MARGIN, fee=fee, sizing=sz,
+                                slippage=slip,
                                 dirs=dirs, tp=tp, sl=sl, liq_move_pct=liq,
                                 funding=fund, keep_log=False, start_at=warm,
                                 fine=fine)

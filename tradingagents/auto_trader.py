@@ -839,8 +839,8 @@ _OPERATORS_127 = {
     "cf_soup1_1h_sl25tp1": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.01, "sl": 0.025},
     "cf_soup1_1h_sl3tp1": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.01, "sl": 0.03},
     "cx_veto_1h_sl3tp1": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.01, "sl": 0.03},
-    "fade15_1h_sl3tp06": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.006, "sl": 0.03, "threshold": 0.5},
-    "fade15_4h_sl3tp1": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.01, "sl": 0.03, "threshold": 0.4},
+    "fade15_1h_sl3tp06": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.006, "sl": 0.03, "threshold": 0.005},
+    "fade15_4h_sl3tp1": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.01, "sl": 0.03, "threshold": 0.004},
     "ibs_15m_sl15tp04": {"interval": "Min15", "bar_seconds": 900, "tp": 0.004, "sl": 0.015},
     "ibs_1h_sl25tp06": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.006, "sl": 0.025},
     "ibs_1h_sl3tp06": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.006, "sl": 0.03},
@@ -1875,6 +1875,37 @@ FEE_FALLBACK = 0.0008
 # slippage; a simulated one is filled at the exact barrier, so without this
 # the demo reports better results than the backtest that justified it.
 PAPER_SLIPPAGE = 0.0003
+
+
+def live_fee_estimate(symbol: str, *, fx=None) -> float:
+    """What a REAL round trip costs in fees alone — the fallback figure a
+    live exit books until MEXC's own `realised` replaces it (rule 14)."""
+    try:
+        return 2 * taker_fee(symbol, fx=fx)
+    except Exception:
+        return 2 * FEE_FALLBACK
+
+
+def paper_round_trip(pos: dict, symbol: str, *, fx=None) -> float:
+    """What a PAPER fill is charged, as a fraction of notional.
+
+    `rt_cost` is the gate's own round trip, read from the book at entry:
+    `2 * (slippage + taker_fee) + funding` — the fee is ALREADY inside it.
+    Until `Sep 23, 2026` this path added `2 * taker_fee` on top and then the
+    whole `rt_cost`, so every demo trade paid the exchange fee TWICE: 0.32%
+    in fees on a contract MEXC charges 0.16%. Measured on the operator's
+    166 demo trades, that is **$25.92** of the book's **-$52.76** — the demo
+    read half again as bad as the same trades would have been live, and the
+    replay built to forecast the account could not be reconciled to it until
+    this was found (docs/RCA.md RCA-2026-09-23-E).
+
+    A position opened before `rt_cost` was carried (Sep 05, 2026) has none;
+    it is charged the fee once plus the flat paper slippage, as before.
+    """
+    rt = float(pos.get("rt_cost") or 0)
+    if rt > 0:
+        return rt
+    return live_fee_estimate(symbol, fx=fx) + 2 * PAPER_SLIPPAGE
 # How far SHY of a resting barrier a real fill may land and still be named
 # after it. A fill THROUGH the barrier always counts (a stop slips past by
 # any amount — ALICE's 0.1396 stop filled at 0.1407); shy fills happen on
@@ -1926,14 +1957,25 @@ def chase_ok(side: int, signal_close: float, live_px: float,
 
 
 def taker_fee(symbol: str, *, fx=None) -> float:
-    """This contract's real taker fee per side, never a global guess."""
+    """This contract's taker fee per side — the spec's figure or the worst
+    the venue has actually charged, whichever is HIGHER.
+
+    THE SPEC UNDER-STATES. Read off the operator's own closed positions at
+    MEXC on `Sep 23, 2026` (`position_history`, `fee` against both sides'
+    notional): 44 of 48 fills paid **0.080% a side** and the other 4 paid
+    0.040% (one side closed as a maker). That includes ALICE, NOM, PI, PROVE,
+    APEX, CTC and STBL, whose `takerFeeRate` reads **0.0004**, and every
+    stock contract, whose spec reads **0**. The exchange is the source of
+    truth (rule 14): a fee the spec calls 0.04% and the venue takes at 0.08%
+    is 0.08%. A spec that reads HIGHER than the fallback is still believed.
+    """
     if fx is None:
         from tradingagents.dataflows import mexc_futures as fx  # noqa: PLC0415
     try:
         rate = float(fx.contract_spec(symbol).get("takerFeeRate") or 0)
     except Exception:
         rate = 0.0
-    return rate if rate > 0 else FEE_FALLBACK
+    return max(rate, FEE_FALLBACK)
 # A strategy is only worth running if its take-profit dwarfs the round-trip
 # cost of touching the market. 2026-08-12: fade15_1m ran on BDX with TP 0.36%
 # against a 1.56% spread — arithmetically impossible, and it cost real money.
@@ -2338,6 +2380,7 @@ def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None,
     fund = funding_cost(symbol, side, hold_s, fx=fx)
     round_trip = (2 * (m["slippage"] + taker_fee(symbol, fx=fx))
                   + fund["cost"])
+    _record_book_reading(symbol, round_trip, m)
     ratio = round_trip / tp if tp else float("inf")
     verdict = ("block" if ratio >= COST_RATIO_BLOCK
                else "warn" if ratio >= COST_RATIO_WARN else "ok")
@@ -2448,6 +2491,34 @@ def _entry_gate(key: str, symbol: str, margin: float, *, fx,
 
 _GATE_CACHE: dict = {}
 _GATE_TTL = 300           # re-measure a pair's book every 5 minutes
+
+# EVERY fresh read of a book is kept, one line per coin per second, so the
+# account replay (`portfolio_replay`) can charge each signal the cost the
+# venue was really asking at that minute. The ledger could not tell it: a
+# `gate_blocked` row is written once an HOUR per pair (`_GATE_LOG_EVERY`),
+# so of 4,753 signals over Sep 15-22, 2026 only 878 had a reading within
+# reach, and the replay fell back to a saved 0.16% on a book that was
+# reading 0.6%-2.8% most of the day. This file is the missing series.
+BOOK_READINGS_PATH = STATE_DIR / "book_readings.jsonl"
+_LAST_READING: dict = {}
+
+
+def _record_book_reading(symbol: str, round_trip: float, m: dict) -> None:
+    """Append one book reading; never raises, never twice in one second for
+    one coin (every armed row on the coin asks in the same cycle)."""
+    try:
+        now = int(time.time())
+        if _LAST_READING.get(symbol) == now:
+            return
+        _LAST_READING[symbol] = now
+        line = json.dumps({"ts": now, "symbol": symbol,
+                           "round_trip": round(float(round_trip), 6),
+                           "spread": round(float(m.get("spread") or 0), 6),
+                           "slippage": round(float(m.get("slippage") or 0), 6)})
+        with open(BOOK_READINGS_PATH, "a", encoding="utf-8") as fh:
+            fh.write(line + "\n")
+    except Exception:                                          # noqa: BLE001
+        pass
 _GATE_LOGGED: dict = {}
 _GATE_LOG_EVERY = 3600    # one loud line per pair per hour, not per candle
 
@@ -4679,21 +4750,8 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
             # Charge the round-trip cost. Reporting a gross figure made every
             # displayed PnL optimistic and fed the loss limits a number the
             # account never saw.
-            try:
-                cost = 2 * taker_fee(symbol, fx=fx)
-            except Exception:
-                cost = 2 * FEE_FALLBACK
-            if pos_dry:
-                # A PAPER fill lands on the exact TP/SL price, which no real
-                # order gets. Charge THIS CONTRACT's measured round trip —
-                # the same number the gate reads from the book — so a demo
-                # trade can never be cheaper than the live one beside it.
-                # Flat 0.03%/side was 30x too cheap on PSXSTOCK (round trip
-                # 2%), which is how a row that went 0 for 3 live showed 8-1
-                # on demo (operator, 2026-09-05: "live trade and demo is not
-                # the same"). Falls back to the flat figure for a position
-                # opened before this was carried.
-                cost += float(pos.get("rt_cost") or 0) or 2 * PAPER_SLIPPAGE
+            cost = (paper_round_trip(pos, symbol, fx=fx) if pos_dry
+                    else live_fee_estimate(symbol, fx=fx))
             pnl = (move - cost) * pos["margin"] * LEVERAGE
             pnl_source = "simulated" if pos_dry else "estimate"
             if not pos_dry and outcome:
@@ -6194,6 +6252,60 @@ def save_settings(payload: dict) -> list[dict]:
     except Exception:
         pass
     return changes
+
+
+def disarm_coins(symbols, why: str = "delisted") -> dict:
+    """Take every deployed row OFF a set of contracts, and say so in the
+    deploy history.
+
+    ROLSTOCK_USDT left MEXC (not among its 1,008 contracts, no last price on
+    `Sep 23, 2026`) and **13 rows** stayed deployed on it for six days,
+    producing a `gate_blocked` line every cycle — 4,177 rows of noise in the
+    trade record and 13 rows on the screen that could never trade. The
+    delisted cleanup deleted the coin's candles and rows and never touched the
+    one file that decides what the runner tries: `auto_trade.json`.
+
+    Removes the coin from `strategy_coins`, drops its per-coin switches
+    (`strategy|COIN`), and goes through `save_settings` so every removal is a
+    `disarmed` line in `deployments.jsonl` with `why`. A strategy left with no
+    coin keeps its bare switch — the catalog listing is unchanged — because an
+    empty coin list is already how "deployed nowhere" is spelled.
+
+    Returns what it removed, by symbol, so the caller can print it.
+    """
+    dead = {str(x) for x in (symbols or []) if x}
+    if not dead:
+        return {"removed": {}, "rows": 0}
+    settings = load_settings()
+    coins = settings.get("strategy_coins") or {}
+    books = settings.get("strategy_books") or {}
+    removed: dict[str, list[str]] = {}
+    for key, cs in list(coins.items()):
+        kept = [c for c in (cs or []) if c not in dead]
+        for c in (cs or []):
+            if c in dead:
+                removed.setdefault(c, []).append(key)
+                books.pop(book_slot(key, c), None)
+        coins[key] = kept
+    n = sum(len(v) for v in removed.values())
+    if not n:
+        return {"removed": {}, "rows": 0}
+    settings["strategy_coins"] = coins
+    settings["strategy_books"] = books
+    save_settings(settings)
+    try:
+        from tradingagents import local_history as _lh
+
+        for c, keys in removed.items():
+            for key in keys:
+                _lh.record_deployment({
+                    "changed_at": int(time.time()), "strategy_key": key,
+                    "symbol": c, "action": "disarmed", "note": why})
+    except Exception:                                          # noqa: BLE001
+        pass
+    logger.warning("disarmed %d row(s) on %s: %s", n, why,
+                   ", ".join(f"{c} x{len(k)}" for c, k in removed.items()))
+    return {"removed": removed, "rows": n}
 
 
 def timeframe_locks(settings: dict | None = None) -> dict:

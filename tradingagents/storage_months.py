@@ -488,6 +488,23 @@ def _run_delisted(job: dict, flush) -> None:
             flush()
     _drop_pair_files(pairs, job, flush, per_pair_done=False)
     _forget_lost({c["symbol"] for c in coins}, job)
+    # AND THE ROWS THE RUNNER IS STILL TRYING TO TRADE. This job deleted a
+    # delisted coin's candles, rows and states and left `auto_trade.json`
+    # alone, so ROLSTOCK_USDT kept 13 deployed rows for six days after MEXC
+    # dropped it, each one refused every cycle (Sep 23, 2026). A coin the
+    # venue no longer lists cannot be traded; leaving it armed is a screen
+    # that lies and a trade record full of noise.
+    try:
+        import tradingagents.auto_trader as _at
+
+        got = _at.disarm_coins({c["symbol"] for c in coins}, why="delisted")
+        if got.get("rows"):
+            job["disarmed"] = got["removed"]
+            job["phase"] = (f"disarmed {got['rows']} deployed row(s) on "
+                            f"{len(got['removed'])} delisted coin(s)")
+            flush()
+    except Exception as exc:                                    # noqa: BLE001
+        job["errors"].append(f"disarm: {type(exc).__name__}: {exc}")
     _refresh_candle_index(job, flush)
 
 

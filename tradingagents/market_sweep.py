@@ -772,15 +772,20 @@ COSTS = HOME / "costs"
 
 
 def save_costs(symbol: str, *, fee: float, liq, funding: list,
-               root=None) -> None:
+               root=None, slippage: float | None = None) -> None:
     """Keep what the replay of this contract needs. Never raises: telemetry
-    for a click, not part of the measurement."""
+    for a click, not part of the measurement.
+
+    `slippage` is the BOOK's measured cost per side (`mexc_futures.book_cost`),
+    kept so every replay of this contract charges the same cost the sweep
+    charged — and the same cost the demo book charges (`rt_cost`)."""
     cdir = (Path(root) / "costs") if root else COSTS
     try:
         cdir.mkdir(parents=True, exist_ok=True)
         tmp = cdir / f"{symbol}.tmp"
         tmp.write_text(json.dumps({
             "symbol": symbol, "fee": fee, "liq": liq,
+            "slippage": slippage,
             "at": time.time(),
             "funding": [{"settle_ms": int(f["settle_ms"]),
                          "rate": float(f["rate"])}
@@ -999,7 +1004,15 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
         return {"coin": coin, "tf": tf, "rows": [], "added": added,
                 "source": source, "why": f"venue: {str(exc)[:60]}"}
     # keep what the click will need, so opening a row later is a pure read
-    save_costs(symbol, fee=fee, liq=liq, funding=fund)
+    # THE BOOK'S COST, NOT A GUESS. `backtest_strategy` defaulted to a flat
+    # 0.03%/side of slippage while the demo book charges this contract's
+    # measured round trip (`rt_cost`). Measured on the operator's own 164
+    # demo trades, Sep 23, 2026: the real cost was 0.35% a trade (median) and
+    # the backtest was charging 0.22% — so the same row read 97.3% in the
+    # backtest and 72.0% on the demo beside it, part of that gap being nothing
+    # but this number. One trade, one cost, wherever it is simulated.
+    slip = float(book.get("slippage") or 0.0) or at.PAPER_SLIPPAGE
+    save_costs(symbol, fee=fee, liq=liq, funding=fund, slippage=slip)
     thin = 0               # rows the trade floor dropped, for the report
     gated = 0              # barriers the cost gate skipped, ditto (rule 20)
     # what the operator is RUNNING, so the gate can never hide it from them
@@ -1138,6 +1151,7 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                 try:
                     r = at.backtest_strategy(
                         key, frame, base_margin, fee=fee, sizing=sz, dirs=dirs,
+                        slippage=slip,
                         tp=tp, sl=sl, liq_move_pct=liq, funding=fund,
                         keep_log=False, resume=prev or {}, start_at=off,
                         # v2: the minutes; None on v1 (`_settle_fine` indexes
@@ -1547,9 +1561,11 @@ def compute_combos(symbol: str, tf: str, combos: list, *,
     # same rule as run_pair: an unreadable funding history is an error, never
     # silently zero funding (2026-08-26)
     fund = fx.funding_history(symbol)
+    slip = at.PAPER_SLIPPAGE
     try:
         book = fx.book_cost(symbol, base_margin * at.LEVERAGE)
         rt = br.round_trip_cost(fee, book)
+        slip = float(book.get("slippage") or 0.0) or slip
     except Exception:
         rt = None
     hi = [float(x) for x in df["High"]]
@@ -1575,15 +1591,18 @@ def compute_combos(symbol: str, tf: str, combos: list, *,
             dirs = at._dirs_for_backtest(dk, hi, lo, cl, opens=op,
                                          volume=vol, ts=ts, funding=fund)
             r = at.backtest_strategy(key, df, base_margin, fee=fee,
+                                     slippage=slip,
                                      sizing=sz, dirs=dirs, tp=tp, sl=sl,
                                      liq_move_pct=liq, funding=fund,
                                      keep_log=False)
             a = at.backtest_strategy(key, df.iloc[:half], base_margin,
-                                     fee=fee, sizing=sz, dirs=dirs[:half],
+                                     fee=fee, slippage=slip, sizing=sz,
+                                     dirs=dirs[:half],
                                      tp=tp, sl=sl, liq_move_pct=liq,
                                      funding=fund, keep_log=False)
             b = at.backtest_strategy(key, df.iloc[half:], base_margin,
-                                     fee=fee, sizing=sz, dirs=dirs[half:],
+                                     fee=fee, slippage=slip, sizing=sz,
+                                     dirs=dirs[half:],
                                      tp=tp, sl=sl, liq_move_pct=liq,
                                      funding=fund, keep_log=False)
         except Exception:
@@ -1785,8 +1804,12 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
         # never silently zero funding (2026-08-26)
         fund = fx.funding_history(symbol)
         save_costs(symbol, fee=fee, liq=liq, funding=fund, root=root)
+        slip = at.PAPER_SLIPPAGE
     else:
         fee, liq, fund = costs["fee"], costs.get("liq"), costs.get("funding") or []
+        # the cost the SWEEP charged this row, so the click's log and the
+        # stored row agree; a cost file written before Sep 23, 2026 has none
+        slip = float(costs.get("slippage") or 0.0) or at.PAPER_SLIPPAGE
     # the ROW's own fee wins: the venue's fee today is not the fee this row was
     # measured under (see the PONS figures above)
     if row_fee > 0:
@@ -1808,6 +1831,7 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
             df = full.iloc[-want_bars:].reset_index(drop=True)
             dirs = dirs[-want_bars:]
         r = at.backtest_strategy(key, df, base_margin, fee=fee, sizing=sizing,
+                                 slippage=slip,
                                  dirs=dirs, tp=float(tp) / 100,
                                  sl=float(sl) / 100, liq_move_pct=liq,
                                  funding=fund, keep_log=True, fine=fine)
@@ -1983,10 +2007,12 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
                     liq = None
                 fund = fx.funding_history(sym)
                 save_costs(sym, fee=fee, liq=liq, funding=fund, root=root)
+                slip = at.PAPER_SLIPPAGE
             else:
                 fee = costs["fee"]
                 liq = costs.get("liq")
                 fund = costs.get("funding") or []
+                slip = float(costs.get("slippage") or 0.0) or at.PAPER_SLIPPAGE
             # the store is part of the key: v1 and v2 bars for one coin are
             # different frames of the same name
             ck = (coin, tf, sig, th, int(ms[-1]), len(ms),
@@ -2092,7 +2118,8 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
                 row_fee = float(r.get("fee") or 0) or fee
                 res = at.backtest_strategy(
                     key, frame, float(r.get("base") or base_margin),
-                    fee=row_fee, sizing=r["sizing"], dirs=win_dirs,
+                    fee=row_fee, slippage=slip, sizing=r["sizing"],
+                    dirs=win_dirs,
                     tp=float(r["tp"]) / 100.0, sl=float(r["sl"]) / 100.0,
                     liq_move_pct=liq, funding=fund, keep_log=True,
                     fine=fine)

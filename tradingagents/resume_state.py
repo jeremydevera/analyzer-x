@@ -73,7 +73,7 @@ def fold_streak(prev: dict, pnls) -> dict:
 
 def continue_combo(key: str, frame, base: float, *, fee: float, sizing: str,
                    dirs, tp: float, sl: float, liq, funding, prev: dict,
-                   start_at: int) -> tuple[dict, dict]:
+                   start_at: int, slippage: float | None = None) -> tuple[dict, dict]:
     """One combination, continued over `frame` from `prev`.
 
     `frame` holds the new bars plus the lookback the signal rules need
@@ -102,7 +102,10 @@ def continue_combo(key: str, frame, base: float, *, fee: float, sizing: str,
     start = int(start_at)
     if start > 0 and not prev.get("open") and not prev.get("exit_at_last"):
         start -= 1
-    r = at.backtest_strategy(key, frame, base, fee=fee, sizing=sizing,
+    # `slippage` is the BOOK's measured cost per side; None keeps the
+    # engine's flat default for a caller that has not measured one
+    _kw = {} if slippage is None else {"slippage": float(slippage)}
+    r = at.backtest_strategy(key, frame, base, fee=fee, sizing=sizing, **_kw,
                              dirs=dirs, tp=tp, sl=sl, liq_move_pct=liq,
                              funding=funding, keep_log=True,
                              resume=prev, start_at=start)

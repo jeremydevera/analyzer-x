@@ -741,16 +741,26 @@ def test_bracket_is_only_trusted_when_the_exchange_confirms_it(sandbox):
 
 
 def test_taker_fee_is_per_contract_and_never_assumes_btc(sandbox):
+    """The spec is believed only when it reads HIGHER than what the venue has
+    actually taken. Measured on the operator's own closed positions at MEXC,
+    Sep 23, 2026: ALICE, NOM, PI, PROVE, APEX, CTC and STBL all carry a spec
+    of 0.0004 and every one of their 44 taker fills paid 0.080% a side; the
+    stock contracts carry a spec of 0 and paid the same. This test used to
+    pin 0.0004 for a 0.0004 spec — asserting the under-statement."""
     class Spec(FakeFx):
         rates = {"CHEEMS_USDT": 0.0004, "BTC_USDT": 0.0002,
-                 "MCDSTOCK_USDT": 0}          # spec lies; real fee is higher
+                 "MCDSTOCK_USDT": 0,          # spec lies; real fee is higher
+                 "PRICEY_USDT": 0.0012}       # a spec ABOVE the floor is kept
         def contract_spec(self, symbol):
             return {"takerFeeRate": self.rates.get(symbol, 0), "priceScale": 2}
     fx = Spec(_bars([100.0] * 61))
-    assert at.taker_fee("CHEEMS_USDT", fx=fx) == 0.0004
-    assert at.taker_fee("BTC_USDT", fx=fx) == 0.0002
+    assert at.taker_fee("CHEEMS_USDT", fx=fx) == at.FEE_FALLBACK, \
+        "a spec of 0.04% on a venue that takes 0.08% is 0.08%"
+    assert at.taker_fee("BTC_USDT", fx=fx) == at.FEE_FALLBACK
     assert at.taker_fee("MCDSTOCK_USDT", fx=fx) == at.FEE_FALLBACK, \
         "a zero/missing spec fee must fall back to the worst observed, not 0"
+    assert at.taker_fee("PRICEY_USDT", fx=fx) == 0.0012
+    assert at.FEE_FALLBACK == 0.0008, "the venue's measured taker, per side"
 
 
 def test_daily_pnl_buckets_by_local_day_and_splits_books(sandbox):

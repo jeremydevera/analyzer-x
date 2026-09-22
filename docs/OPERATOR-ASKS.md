@@ -101,3 +101,98 @@ words are the record; a summary of them is not.
 
 > okay go, then do a backtest
 
+
+### Sep 22, 2026 8:02pm
+
+> What failed
+
+
+### Sep 22, 2026 8:03pm
+
+> I want to access the localhost from my other laptop or cellphone as well how can i do that
+
+
+### Sep 22, 2026 8:06pm
+
+> 40 machines are running right
+
+
+### Sep 22, 2026 8:07pm
+
+> Yes do tailscale
+
+
+### Sep 22, 2026 8:07pm
+
+> What is the reason why 26 only
+
+
+### Sep 22, 2026 8:14pm
+
+> Login success, if i do backtest in my phone willl the result still be in my pc?
+
+
+### Sep 22, 2026 10:03pm
+
+> why quesued why not run immediately
+
+
+### Sep 22, 2026 10:04pm
+
+> is backtest v2 done now
+
+
+### Sep 22, 2026 10:25pm
+
+> omg wtf
+
+
+### Sep 22, 2026 10:26pm
+
+> fuck you, stop the v1 now and start the v2 who said to start v1?
+
+
+### Sep 22, 2026 10:57pm
+
+> give me the table again for the options on how to make table faster when writing to disk
+
+
+### Sep 22, 2026 10:59pm
+
+> what is best for my backtest v2
+
+
+### Sep 22, 2026 11:00pm
+
+> what i want is faster, when clicking update this backtest i want it faster as well
+
+
+### Sep 22, 2026 11:09pm
+
+> is backtest v2 updating now
+
+
+### Sep 22, 2026 11:10pm
+
+> why cant i see any loading on screen
+
+
+### Sep 22, 2026 11:45pm
+
+> im trying to access this in my phone and its loading
+
+
+### Sep 22, 2026 11:57pm
+
+> status of backtest v2 now
+
+
+### Sep 22, 2026 11:59pm
+
+> if you will review backtest v2 strategies, will it almost simulate real trading since im using 1min candle? how will you rate it and is there a bug or something to improve?
+
+
+### Sep 23, 2026 12:16am
+
+> in mobile. the live trade table is not mobile responsive
+

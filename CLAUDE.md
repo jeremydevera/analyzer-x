@@ -1084,6 +1084,15 @@ was what "more accurate" meant.
   15m/30m/1h/4h/1d as v1 and rebuilds each of them from 1-minute candles the
   runner downloads itself (`sweep_shard.RES` → `market_sweep.bars_from_1m`).
   `1m` still never enters the grid, `pairs_for`, or `capacity.ALL_TFS`.
+* **THE MINUTES ARE AN ADDITION, NEVER A REPLACEMENT FOR THE BARS.** The
+  first cut rebuilt every frame from the 1-minute candles. That is exact where
+  both exist (666 of 666 XPIN hours identical to MEXC's Min60) — and MEXC
+  sells only ~30 days of minutes, so it capped every frame's history at 30
+  days and **deleted the 1d timeframe outright**: 33 daily bars against the
+  300-bar lookback every rule reads is 0 measurable bars, so all 1,080 daily
+  pairs were silently skipped for five days. The shard takes the frame's OWN
+  candles (the venue serves 2,300 daily) and uses the minutes only to settle
+  the exit. `docs/RCA.md` RCA-2026-09-22-A.
 * **The shard uses `backtest_strategy(fine=)`, not `fast_grid`.** The fused
   walk has no minute-exact settlement and teaching it one would be a SECOND
   implementation of the exit rules. Six engine runs instead of two walks, paid

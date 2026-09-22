@@ -172,6 +172,104 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-22-A — Backtest v2 lost the whole DAILY timeframe, because it rebuilt the bars out of the minutes
+
+**CEO**
+
+* Your Backtest v2 had no daily results at all — **zero** coins, against
+  **1,080** on the old backtest. Every other timeframe was there. Nothing said
+  a word about it; the daily rows simply never existed.
+* Why: v2 was building its candles out of 1-minute candles. MEXC only sells
+  about 30 days of those, which makes 33 daily candles — and every strategy
+  has to look back over 300 candles before it is allowed to trade. So there
+  was never enough daily history to trade on, and every daily coin was quietly
+  skipped.
+* What stops it now: v2 takes the ordinary daily candles from the exchange,
+  which go back 2,300 days, and uses the minutes only for the thing it needed
+  them for — deciding whether the win price or the lose price was hit first
+  inside a candle. Daily now measures: BTC gives 29 usable days and 8 trades
+  where it gave nothing.
+
+**DEV**
+
+* `.github/scripts/sweep_shard.py` `run_pair` called
+  `msw.bars_from_1m(m1, tf)` for every frame when `RES` was set. With
+  `br.TFS["1m"]` capped at 44,000 bars (MEXC's own limit, ~30.6 days), `1d`
+  rebuilt to 33 bars; `window()` then computes
+  `warm = min(WARMUP_BARS=300, len(df) - len(measured))` and `run_pair`
+  returns early on `len(df) - warm < br.min_bars(tf)` — 33 − 33 = 0 < 2.
+* Invariant broken: **the warm-up is history the rule READS, never bars it
+  trades**, so it may not be sourced from a feed that is shorter than the
+  lookback. And v2's own design sentence — *"the SAME signals on the SAME
+  timeframes, and only the EXIT made minute-exact"* — was implemented as a
+  replacement of the bars rather than an addition to them.
+* Guard: `tests/test_v2_measures_on_github.py::test_v2_ADDS_the_minutes_it
+  _does_not_replace_the_bars_with_them`.
+
+**SAW** — the operator, `Sep 21, 2026`, setting the goal: *"what ever existing
+on v1 i want on v2 the only difference is v2 will be using 1min candles that's
+the only difference i want"*. The daily gap is exactly the part of that which
+was not true, and it was found while checking whether it was.
+
+**TIMELINE**
+
+1. `Sep 17, 2026` — v2 ships. Its design proves 60 one-minute candles rebuild
+   MEXC's own hour candle exactly (XPIN, 666 of 666 hours), and rebuilding is
+   chosen for every frame.
+2. That equality holds for 15m/30m/1h/4h, where 30 days is thousands of bars.
+   On 1d it is 33 bars, and nothing compares 33 against the 300-bar lookback.
+3. `Sep 22, 2026 8:40am` — counted on the operator's store: v2 holds **1,001**
+   pair files at 15m, **1,002** each at 30m/1h/4h and **0** at 1d. v1 holds
+   **1,080** at 1d. The v2 row index agrees independently: 9,203,416 rows at
+   15m, 9,535,482 at 30m, 7,877,860 at 1h, 4,085,552 at 4h, **none** at 1d.
+4. `9:05am` — measured on BTC: 49,799 stored minutes = 34.6 days; rebuilt to
+   **33** daily bars against a **300**-bar warm-up. Measurable bars: **0**.
+5. `10:1xam` — after the fix, the same pair: **2,300** daily candles from the
+   venue, 300 warm-up, **29** measurable bars, 28 signals, **8 trades,
+   2W/6L, −$6.95**.
+
+**ROOT CAUSE** — the frame's bars were rebuilt from a feed (1-minute candles)
+whose available history is shorter than the lookback every rule needs, so on
+the coarsest frame there was nothing left to measure.
+
+**WHY IT WAS NOT CAUGHT** — `tests/test_bars_from_minutes.py` proves
+`bars_from_1m` is CORRECT, and it is: the bars it builds are the venue's own,
+to the tick. Correctness of the conversion says nothing about the QUANTITY it
+can be fed, and no test asked how many bars each frame ends up with. The
+number that mattered was never computed anywhere — 44,000 minutes is a cap on
+the download, 300 is a constant in the shard, and nothing multiplied them out
+per timeframe.
+
+It was also invisible from every direction a reader looks: the shard LOGS the
+skip (`only 0 measurable bars, skipped`), but that line is one of thousands in
+a fleet run; the store just has fewer files; and the panel shows the
+timeframes it has rather than the ones it does not. **A timeframe that
+produces nothing looks exactly like a timeframe nobody asked for.** The only
+way it surfaced was counting v1 and v2 side by side.
+
+**COST** — no money, no wrong number, no trade. Every daily strategy was
+absent from Backtest v2 for five days (`Sep 17` – `Sep 22`), while the screen
+gave no sign that daily was missing rather than empty.
+
+**FIX** — this commit. `run_pair` fetches the frame's own candles for every
+run (`at._closed_bars(fx.klines(sym, iv, cap), bs)`, the v1 line) and, when
+`RES` is set, ALSO downloads the minutes purely to build `fine` for the exit
+settlement. The minutes are an addition, never a replacement. Every bar in the
+measured 30-day window has minutes beneath it (the store carries ~34 days) and
+a bar without them falls back to the bar rule, which the engine already does.
+The now-unreachable `except ValueError` that caught `bars_from_1m`'s
+missing-minute refusal is removed rather than left to swallow an unrelated
+fault and silently skip a pair.
+
+**GUARD** — `tests/test_v2_measures_on_github.py::test_v2_ADDS_the_minutes_it
+_does_not_replace_the_bars_with_them`: the frame's own candles are fetched for
+v1 and v2 alike, `bars_from_1m` is not called in the shard at all, and the
+minutes are still fetched for the exit. The arithmetic that caused it —
+30 days of minutes is 33 daily bars against a 300-bar lookback — is written
+into the test so the next reader meets the number, not the symptom.
+
+---
+
 ## RCA-2026-09-19-A — updating ONE strategy rewrote all 23,580 of that coin's rows, so a 25-second job took 48 minutes
 
 **CEO**

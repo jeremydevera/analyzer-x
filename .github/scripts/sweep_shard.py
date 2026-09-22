@@ -31,7 +31,6 @@ import tradingagents.auto_trader as at  # noqa: E402
 from tradingagents import (
     backtest_report as br,  # noqa: E402
     fast_grid as fg,  # noqa: E402
-    market_sweep as msw,  # noqa: E402
     resume_state as rs,  # noqa: E402
 )
 from tradingagents.dataflows import mexc_futures as fx  # noqa: E402
@@ -48,10 +47,14 @@ MIN_DAYS = int(os.environ.get("MIN_DAYS", "0"))
 # will be using 1min candles that's the only difference i want"*.
 #
 # "" is v1: each frame's own candles, an exit settled on the bar that held
-# both prices by rule (SL first). "1m" is v2: the SAME frames — 15m, 30m, 1h,
-# 4h, 1d — rebuilt from one-minute candles, with every exit settled minute by
-# minute. It is a RESOLUTION, not a timeframe: `1m` never enters the grid,
-# never reaches `pairs_for`, and a shard never measures "the 1m timeframe".
+# both prices by rule (SL first). "1m" is v2: THE SAME CANDLES AND THE SAME
+# SIGNALS, with the exit settled minute by minute inside the bar that held
+# both prices. The minutes are an ADDITION, never a replacement for the bars —
+# see the note in `run_pair`, and the 1d timeframe that the replacement
+# version deleted outright.
+#
+# It is a RESOLUTION, not a timeframe: `1m` never enters the grid, never
+# reaches `pairs_for`, and a shard never measures "the 1m timeframe".
 RES = (os.environ.get("RES") or "").strip().lower()
 if RES and RES not in br.TFS:
     raise SystemExit(f"RES={RES!r} is not a known download frame")
@@ -701,27 +704,38 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
         # backtest_report.round_trip_cost for why spread/2 must not be added.
         rt = br.round_trip_cost(fee, book)
         fine = None
+        # THE FRAME'S OWN CANDLES, ALWAYS. v2 adds the minutes; it does not
+        # replace the bars with them.
+        #
+        # v2's design says it plainly: *"the SAME signals on the SAME
+        # timeframes, and only the EXIT made minute-exact"*. The first cut
+        # rebuilt each frame FROM the minutes instead, which is equivalent
+        # where both exist — 666 of 666 XPIN hours identical to MEXC's own
+        # Min60 — but MEXC sells only ~30 days of 1-minute candles, so it
+        # silently capped every frame's history at 30 days.
+        #
+        # On 1d that deleted the whole timeframe. 30 days of minutes is 33
+        # daily bars; every rule reads 300 bars before it may trade, so
+        # 33 - 300 = 0 measurable bars and EVERY 1d pair was skipped. The
+        # operator's v2 store held 1,001 15m pairs, 1,002 each at 30m/1h/4h
+        # and ZERO at 1d, against v1's 1,080 — found Sep 22, 2026 by counting
+        # the pair files, and it is why "whatever exists on v1" was not true.
+        #
+        # The warm-up is history the rule READS, never bars it trades, so it
+        # has to come from the frame's own candles — which the venue serves a
+        # year of. The minutes stay exactly what they were for: settling the
+        # exit inside the bar that held both prices. Every bar in the measured
+        # 30-day window has minutes under it (the store carries ~34 days), and
+        # a bar without them falls back to the bar rule by design.
+        df = at._closed_bars(fx.klines(sym, iv, cap), bs)
         if RES:
-            # v2: ONE download of minutes, and every frame is rebuilt from it.
-            # `bars_from_1m` is the same function the local v2 sweep uses and
-            # it REFUSES a frame with a missing minute rather than building a
-            # bar the venue never printed (rule 20) — so a hole is a named
-            # failure here, never a quiet wrong number.
             iv1, bs1, cap1 = br.TFS[RES]
             m1 = at._closed_bars(fx.klines(sym, iv1, cap1), bs1)
-            df = msw.bars_from_1m(m1, tf)
             import numpy as _np
             fine = (m1["Date"].to_numpy().astype("datetime64[ms]")
                     .astype("int64"),
                     _np.asarray(m1["High"], dtype="float64"),
                     _np.asarray(m1["Low"], dtype="float64"))
-        else:
-            df = at._closed_bars(fx.klines(sym, iv, cap), bs)
-    except ValueError as exc:
-        # a hole in the minutes: NAMED and skipped, not retried for ever —
-        # a redo fetches the same gap and meets the same refusal
-        log(f"{sym} {tf}: {str(exc)[:90]} — skipped")
-        return 0
     except Exception as exc:
         raise PairFailed(f"{sym} {tf}: {str(exc)[:60]}") from exc
     df, warm = window(df)

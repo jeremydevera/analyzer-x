@@ -129,14 +129,27 @@ def test_v2_measures_with_the_ENGINE_not_a_second_implementation():
          "whether a second settlement implementation is really wanted")
 
 
-def test_v2_rebuilds_the_frame_from_minutes_with_the_shared_function():
-    """`market_sweep.bars_from_1m` is the function the local v2 sweep uses,
-    and it REFUSES a frame with a missing minute rather than building a bar
-    the venue never printed."""
+def test_v2_ADDS_the_minutes_it_does_not_replace_the_bars_with_them():
+    """THE 1d FAULT, Sep 22, 2026. The first cut rebuilt each frame FROM the
+    minutes. That is equivalent where both exist — 666 of 666 XPIN hours
+    identical to MEXC's own Min60 — but MEXC sells only ~30 days of 1-minute
+    candles, so it capped every frame's history at 30 days.
+
+    On 1d it deleted the timeframe. 30 days of minutes is 33 daily bars and
+    every rule reads 300 before it may trade, so 33 - 300 = 0 measurable bars
+    and EVERY 1d pair was skipped. Counted on the operator's own v2 store:
+    1,001 pairs at 15m, 1,002 each at 30m/1h/4h, and ZERO at 1d against v1's
+    1,080. That is what made "whatever exists on v1" untrue.
+
+    The warm-up is history the rule READS, never bars it trades, so it must
+    come from the frame's own candles — which the venue serves a year of."""
     code = _code_only(_shard())
-    assert "msw.bars_from_1m(m1, tf)" in code
-    assert "except ValueError" in code, \
-        "a hole in the minutes is NAMED and skipped, never retried forever"
+    assert "df = at._closed_bars(fx.klines(sym, iv, cap), bs)" in code, \
+        "the frame's OWN candles, for v1 and v2 alike"
+    assert "msw.bars_from_1m" not in code, \
+        "rebuilding the frame from minutes is what capped history at 30 days"
+    # the minutes are still fetched, for the EXIT
+    assert "br.TFS[RES]" in code and "fine = (" in code
 
 
 def test_the_warmup_floor_still_applies_to_v2():

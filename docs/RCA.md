@@ -340,6 +340,69 @@ no fixture made one call behave differently from another.
 
 ---
 
+## RCA-2026-09-22-D — UPDATE THIS BACKTEST answered "Internal Server Error" on Backtest v2 while the table was getting its id list
+
+**CEO**
+
+* Pressing UPDATE THIS BACKTEST on #XLV6V5HJ (XPIN, 1 hour, mom6) in Backtest
+  v2 answered **"Internal Server Error"**. Nothing was wrong with the press
+  and nothing was lost.
+* Why: Backtest v2's table has grown to **30,702,310 rows** and it is building
+  the sorted list that finds a strategy by its code. Until that finishes, the
+  app cannot look an id up — and instead of saying so, it crashed.
+* What stops it now: the button says the real sentence — *"finding row
+  #XLV6V5HJ needs the rows_id index; it is being built NOW … Nothing is
+  lost"* — the same answer the strategy list and the CSV have given for a
+  month.
+
+**DEV**
+
+* `api.strategy_row_update` (`tradingagents/api.py:1079`) called
+  `ri.query(row_id=rid, limit=1)` bare. `rows_index.query` raises
+  `SortNotReady` when a sort index is missing or being built; the two other
+  doors (`/api/strategies` since 2026-08-26, the CSV export) translate it to
+  `503` with `str(exc)`, this one did not exist when that was written.
+* Invariant broken: **a store that is not ready yet is a 503 that says why**,
+  never a 500 — the same shape as the `JobBusy` 409 this very route was given
+  on Sep 17, 2026.
+* Guard: `tests/test_the_row_update_says_why_it_cannot_look_up_yet.py`,
+  including `::test_every_door_that_queries_the_index_answers_503_not_500`,
+  which COUNTS `ri.query`/`ri.export_plan` calls against
+  `except ri.SortNotReady` handlers so the next door cannot be added without
+  one.
+
+**SAW** — `Sep 22, 2026 10:47pm`: `POST /api/strategies/XLV6V5HJ/update?store=v2`
+→ `Internal Server Error`, `.run/api.log` ending
+`tradingagents.rows_index.SortNotReady: finding row #XLV6V5HJ needs the
+rows_id index; it is being built NOW`.
+
+**TIMELINE**
+
+1. `Sep 22, 2026 10:27pm` — Backtest v2 dispatched to 40 machines; the v2
+   table stands at 30,702,310 rows, 11.39 GB.
+2. `10:47pm` — UPDATE pressed on #XLV6V5HJ to time the press end to end.
+   500. `ri.build_running()` on the v2 store: `rows_id`.
+3. `10:52pm` — the route translates it: 503 with the sentence, proved red on
+   the pre-fix file.
+
+**ROOT CAUSE** — a third door onto the index that never learned the answer
+the other two give.
+
+**WHY IT WAS NOT CAUGHT** — every test of this route drives a store whose
+sort lists already exist, because the fixtures are small: a sort index on a
+few hundred rows is built instantly by `ensure()`, so `SortNotReady` cannot
+occur in a test that does not raise it deliberately. A failure that only
+appears at 30 million rows has to be injected, not waited for.
+
+**COST** — none in money or rows; one press, and a screen that said nothing
+useful.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_row_update_says_why_it_cannot_look_up_yet.py` (3).
+
+---
+
 ## RCA-2026-09-22-C — the Backtest v2 press shut its own fast door and filed half its machines under the wrong store
 
 **CEO**

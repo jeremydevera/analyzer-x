@@ -1076,7 +1076,18 @@ def strategy_row_update(row_id: str, store: str = "v1") -> dict:
     if _v2 and _db is None:
         raise HTTPException(404, "Backtest v2 has no rows yet")
     with (ri.using_db(_db) if _v2 else _ctx.nullcontext()):
-        got = ri.query(row_id=rid, limit=1)
+        try:
+            got = ri.query(row_id=rid, limit=1)
+        except ri.SortNotReady as exc:
+            # 503 WITH THE REASON, never a bare 500. Measured Sep 22, 2026
+            # 10:47pm: pressing UPDATE on #XLV6V5HJ (XPIN 1h mom6, Backtest
+            # v2) answered "Internal Server Error" because v2's 30,702,310
+            # rows had no `rows_id` list yet and one was being built. The
+            # press is fine and nothing is lost — the store is simply not
+            # ready to look an id up — and the sentence says so. The same
+            # answer the strategies list and the CSV have given since
+            # 2026-08-26; this route was the one that still said nothing.
+            raise HTTPException(503, str(exc)) from exc
         rows = (got.get("rows") if isinstance(got, dict) else got) or []
     if not rows:
         raise HTTPException(404, f"no stored row #{rid} in {store}")

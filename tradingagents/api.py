@@ -1360,7 +1360,73 @@ def jobs_all() -> dict:
                 "done": done, "total": total,
                 "pct": (round(100 * done / total) if total else None),
             })
+    running.extend(_background_activity())
     return {"jobs": out, "running": running, "any_running": bool(running)}
+
+
+def _background_activity() -> list:
+    """What is working that is NOT a disk job, in the running-chip shape —
+    so the header's spinner turns for every kind of waiting the operator can
+    be doing. Sep 23, 2026: a 99M-row rebuild of the Backtest v2 index ran
+    three hours with no spinner anywhere ("if its indexing i should be seeing
+    a loading beside the notification icon"). Every read here is a cached or
+    file read; this route is polled every 4 s and must never wait on GitHub
+    or the store."""
+    from tradingagents import rows_index as ri
+
+    out: list = []
+    # a fresh-file rebuild of either store's row index (one entry per pid:
+    # a legacy progress file answers for both stores and must not count twice)
+    seen_pids: set = set()
+    for name, store in (("v1", _stores.V1), ("v2", _stores.V2)):
+        try:
+            rp = ri.rebuild_progress(store.rows_db)
+        except Exception:                                      # noqa: BLE001
+            rp = {}
+        if not rp.get("running"):
+            continue
+        pid = rp.get("pid")
+        if pid in seen_pids:
+            continue
+        seen_pids.add(pid)
+        done, total = int(rp.get("pairs_done") or 0), int(rp.get("pairs_total") or 0)
+        which = ("a" if rp.get("store") == "unknown" else name)
+        out.append({
+            "kind": "rebuild_v2" if name == "v2" and rp.get("store") != "unknown"
+                    else "rebuild",
+            "now": (f"rebuilding {which} row index · {rp.get('phase') or 'working'}"
+                    f" · {done:,} of {total:,} pairs · {int(rp.get('rows') or 0):,} rows"),
+            "done": done, "total": total,
+            # the pair count is the LOADING phase's progress; while the
+            # indexes are built and the file verified every pair is loaded,
+            # and "100%" beside "indexing 4 of 4" reads as finished
+            "pct": (round(100 * done / total)
+                    if total and "load" in str(rp.get("phase") or "") else None)})
+    # the v1 indexer working off a backlog
+    try:
+        idx = index_status()
+        behind = int(idx.get("behind") or 0) + int(idx.get("stale") or 0)
+        if behind > 0 and idx.get("indexer_running"):
+            out.append({"kind": "indexing",
+                        "now": f"indexing {behind:,} pair(s) into the row index",
+                        "done": 0, "total": behind, "pct": None})
+    except Exception:                                          # noqa: BLE001
+        pass
+    # a GitHub run still measuring
+    try:
+        cs = _CLOUD_STATUS.get(pending=None) or {}
+        run = cs.get("run") or {}
+        if run and not cs.get("conclusion") and not cs.get("reading"):
+            shards = cs.get("shards") or []
+            fin = sum(1 for sh in shards if sh.get("conclusion") or sh.get("status") == "completed")
+            out.append({"kind": "github_v2" if run.get("res") == "1m" else "github",
+                        "now": (f"GitHub measuring · {fin} of {len(shards)} machine(s) finished"
+                                if shards else "GitHub measuring"),
+                        "done": fin, "total": len(shards),
+                        "pct": (round(100 * fin / len(shards)) if shards else None)})
+    except Exception:                                          # noqa: BLE001
+        pass
+    return out
 
 
 @app.get("/api/jobs/{kind}")

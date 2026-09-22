@@ -20,6 +20,20 @@ const HREF: Record<string, string> = {
   backtest: "/backtest",
   btupdate: "/backtest",
   stratbt: "/trade",
+  pairbt: "/backtest",
+  collect: "/backtest",
+  download_v2: "/candles-v2",
+  backtest_v2: "/backtest-v2",
+  btupdate_v2: "/backtest-v2",
+  pairbt_v2: "/backtest-v2",
+  collect_v2: "/backtest-v2",
+  // not disk jobs, but work the operator is waiting on all the same
+  // (Sep 23, 2026: a three-hour index rebuild with no spinner anywhere)
+  rebuild: "/backtest",
+  rebuild_v2: "/backtest-v2",
+  indexing: "/backtest",
+  github: "/backtest",
+  github_v2: "/backtest-v2",
 };
 
 const NAME: Record<string, string> = {
@@ -27,6 +41,18 @@ const NAME: Record<string, string> = {
   backtest: "backtesting",
   btupdate: "updating backtests",
   stratbt: "backtesting",
+  pairbt: "re-measuring a row",
+  collect: "collecting GitHub results",
+  download_v2: "downloading (v2)",
+  backtest_v2: "backtesting (v2)",
+  btupdate_v2: "updating backtests (v2)",
+  pairbt_v2: "re-measuring a row (v2)",
+  collect_v2: "collecting GitHub results (v2)",
+  rebuild: "rebuilding the row index",
+  rebuild_v2: "rebuilding the v2 row index",
+  indexing: "indexing",
+  github: "GitHub measuring",
+  github_v2: "GitHub measuring (v2)",
 };
 
 export default function RunningJobs() {

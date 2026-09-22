@@ -530,7 +530,11 @@ export interface CloudStatus {
    *  answers at once rather than holding the request (216 s on Sep 09, 2026,
    *  four of them holding every browser lane); not the same as "not available" */
   reading?: boolean;
-  run: { id?: number; url?: string } | null;
+  /** `res` is WHICH STORE this run measures for: "" is v1, "1m" is Backtest
+   *  v2 (the same frames rebuilt from 1-minute candles). The screen shows a
+   *  run only on its own store's tab — a v2 run on the v1 screen is the
+   *  label-must-match-data failure this repo keeps paying for. */
+  run: { id?: number; url?: string; res?: string } | null;
   shards: CloudShard[];
   conclusion?: string | null;
   done?: number;

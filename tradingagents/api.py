@@ -2806,7 +2806,33 @@ def cloud_merge(body: dict) -> dict:
     # measurement; the merge job only concatenates them), streams each file a
     # line at a time, and REFUSES to overwrite a pair this machine has already
     # measured — its watermark promises every bar up to X was tested.
-    got = cs.collect_into_store(run_id)
+    # THE STORE THE RUN WAS MEASURED FOR, and the ACCOUNT its artifacts are
+    # on. Since Backtest v2 went to GitHub (Sep 21, 2026) and a press deals
+    # the board across two accounts (Sep 22), collecting here in the API
+    # process — which runs in v1's environment and asks origin — would refuse
+    # every row of a v2 run (`land_rows` guards the store) and would look for
+    # a partner's artifacts in the operator's repo. Hand it to the same
+    # detached job the autopilot uses, which is spawned with that store's
+    # environment and is told which repo to ask.
+    import contextlib
+
+    from tradingagents import db_jobs as dj
+
+    res = cs.run_res(run_id)
+    slug = ""
+    with contextlib.suppress(Exception):
+        rec = cs.remembered() or {}
+        for one in [rec, *(rec.get("runs") or [])]:
+            if int(one.get("id") or 0) == run_id:
+                slug = str(one.get("repo") or "")
+                break
+    if res == "1m":
+        pid = dj.start("collect_v2", {"run": run_id, "repo": slug})
+        return {"started": True, "kind": "collect_v2", "pid": pid,
+                "run": run_id, "repo": slug, "fetched": 0,
+                "why": "Backtest v2 rows land in the v2 store, so the v2 "
+                       "collect job is doing it — watch it on this screen"}
+    got = cs.collect_into_store(run_id, slug or None)
     return {"fetched": got.get("rows", 0), **got}
 
 

@@ -375,7 +375,17 @@ no fixture made one call behave differently from another.
 * Invariant broken: **THE UI IS THE SOURCE OF TRUTH** — and its corollary
   from Sep 10, *a blocked resource names its holder*: git named the holder in
   a string nobody read, once per poll, for eight days.
-* Guard: `tests/test_the_panel_sees_every_accounts_machines.py` (4).
+* Guard: `tests/test_the_panel_sees_every_accounts_machines.py` (8).
+
+Found by pressing the real screen, and fixed in the same commit: `JobsPanel`'s
+poll began `if (store !== "v1") return;` — written before Backtest v2 moved to
+GitHub — so the v2 tab never fetched the cloud status at all and the v1 tab
+drew a run that was not its own. Each tab now shows the run whose `res`
+matches its store; `runProgress` adds one board PER RUN (it took the max
+across both, counting 35 machines' coins against one account's 499); and
+`/api/cloud/merge` hands a v2 run to the `collect_v2` job with its repo rather
+than collecting it in the API's v1 environment, where `land_rows` would refuse
+every row.
 
 **SAW** — the panel: *"no machine has reported through GitHub's API yet"*
 with 30 machines working; `.git/shallow.lock` dated `Sep 14, 2026 4:51pm`
@@ -397,6 +407,12 @@ with 30 machines working; `.git/shallow.lock` dated `Sep 14, 2026 4:51pm`
    and then `live_progress` returns **15** machines for the fork and **20**
    for the operator's account, 6,146,000+ rows measured between them.
 5. `11:30pm` — both faults fixed, 45 tests over the cloud suites green.
+6. `11:52pm` — pressing the real screen finds the third fault: Backtest v2
+   drew nothing because it never fetched the cloud status. After the fix,
+   measured in a real browser on `/backtest-v2`: **35** machine tiles named
+   by account (`machine 0 · jeremydvera`), a `2 accounts` badge and
+   `456/997 coin(s)`; `/backtest` shows none of it, which is correct — that
+   run is a v2 run.
 
 **ROOT CAUSE** — a lock file from a killed fetch that nothing cleaned, and a
 progress reader that knew only one account.

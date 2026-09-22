@@ -25,7 +25,17 @@ import CoinPicker from "./CoinPicker";
  *  files from before Sep 09, 2026 have no `finished`/`board` and fall back. */
 function runProgress(shards: CloudShard[]): { done: number; total: number } {
   const done = shards.reduce((a, s) => a + (s.finished ?? s.done ?? 0), 0);
-  const board = shards.reduce((a, s) => Math.max(a, s.board ?? 0), 0);
+  // ONE BOARD PER RUN, ADDED UP. Every machine of a run reports that run's
+  // whole board, so the board is the max WITHIN a run — but a press now
+  // starts one run per account, and taking the max across both counted the
+  // coins of one account against the machines of two: "436/499" while 35
+  // machines were working through 1,000 coins (Sep 22, 2026).
+  const boards = new Map<string, number>();
+  for (const s of shards) {
+    const k = String(s.run ?? s.repo ?? "");
+    boards.set(k, Math.max(boards.get(k) ?? 0, s.board ?? 0));
+  }
+  const board = [...boards.values()].reduce((a, n) => a + n, 0);
   const total = board || shards.reduce((a, s) => a + (s.total ?? 0), 0);
   return { done, total };
 }
@@ -108,8 +118,13 @@ export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
   const poll = useCallback(() => {
     S.jobStatus("backtest").then(setBt).catch(() => {});
     S.jobStatus("update").then(setUpd).catch(() => {});     // btupdate_v2 on v2
-    if (store !== "v1") return;             // v2 has no cloud and no hand-over
+    // BACKTEST V2 MEASURES ON GITHUB TOO (Sep 21, 2026: "i want backtest to
+    // run on github"). This line said `v2 has no cloud` and skipped the read
+    // entirely, so the v2 screen drew no run, no machines and no progress
+    // while 35 of them were measuring — the operator, Sep 22, 2026 11:14pm:
+    // "why cant i see any loading on screen".
     api.cloudStatus().then(setCloud).catch(() => {});
+    if (store !== "v1") return;             // the hand-over is still v1-only
     api.jobHandoffState("backtest").then(setHand).catch(() => {});
   }, [S, store]);
 
@@ -439,7 +454,11 @@ export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
         </div>
       </div>
 
-      {store === "v1" && cloud?.run?.id && (
+      {/* THE RUN THAT BELONGS TO THIS SCREEN. A press carries `res`: "" is a
+          v1 run, "1m" is a Backtest v2 one. Each tab shows its own, so a v2
+          run never reports progress under the v1 heading and the other way
+          round. */}
+      {cloud?.run?.id && (store === "v2") === ((cloud.run.res ?? "") === "1m") && (
         <div className="mt-4 rounded-xl border border-gray-200 p-3 dark:border-white/[0.08]">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-theme-sm font-medium text-gray-800 dark:text-white/90">

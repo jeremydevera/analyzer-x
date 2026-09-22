@@ -572,8 +572,15 @@ def ensure(*, wait_s: float = 90.0, res: str = "") -> dict:
             why = reachable(cur["url"])
             if not why:
                 return {"url": cur["url"], "why": "", "started": False}
-        log(f"the open door did not answer ({why}) — starting a new one")
-        stop()
+            # THIS LINE BELONGS TO THIS BRANCH ONLY. It sat one level out, so
+            # replacing a door that serves the OTHER store reached it with
+            # `why` never assigned: Sep 22, 2026 10:27pm, the v1 door was open
+            # and a Backtest v2 press raised `UnboundLocalError: cannot access
+            # local variable 'why'`, which `dispatch` swallowed into
+            # `live_why` — 40 machines measured with no live posting and the
+            # screen said the door was shut for a reason nobody could read.
+            log(f"the open door did not answer ({why}) — starting a new one")
+            stop()
     if not cloudflared():
         try:
             fetch_cloudflared()

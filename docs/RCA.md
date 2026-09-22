@@ -340,6 +340,88 @@ no fixture made one call behave differently from another.
 
 ---
 
+## RCA-2026-09-22-C — the Backtest v2 press shut its own fast door and filed half its machines under the wrong store
+
+**CEO**
+
+* You asked for Backtest v2 on 40 machines. Both halves started and both are
+  measuring with 1-minute candles — but this PC opened no fast door for them,
+  so every result comes home the slow way (an hour after the run, instead of
+  seconds after each coin), and this PC had written down that half of those
+  machines were doing the OLD kind of backtest.
+* Why: the fast door was still set up for the old backtest, and the code that
+  swaps it for the new one tripped over itself and crashed; separately, the
+  press now starts one run per account and only the FIRST one was recorded as
+  the new kind. The second account's results would have been offered to the
+  wrong filing cabinet, which would have refused them one by one.
+* What stops it now: the swap works and is proved by a test that runs it; and
+  every account's run is recorded with the kind of backtest it is doing. The
+  run that is going right now was corrected by hand, so nothing is lost.
+
+**DEV**
+
+* `live_ingest.ensure` (`tradingagents/live_ingest.py:565`): the
+  `log(f"the open door did not answer ({why}) …")` line sat one indent level
+  out of the `else:` that assigns `why`, so the res-mismatch branch
+  (`stop(); cur = {}`) fell into it with `why` unbound.
+  `UnboundLocalError` → `dispatch`'s `except Exception` → `live_why`, and the
+  press returned 200 with `live: false`.
+* `cloud_sweep.remember` (`tradingagents/cloud_sweep.py:1332`) filed
+  `RESFILE[run["id"]]` only. Since `dispatch_across`, the API passes
+  `{**runs[0], "runs": runs}` — so run `35740488141` was filed `""` while its
+  twin `35740445165` was filed `"1m"`, and `cloud_autopilot` picks the collect
+  kind with `cs.run_res(rid)`.
+* Invariants broken: **a swallowed failure still has to be readable** (a
+  reason nobody can act on is not a reason), and **every started run is
+  recorded** — the same rule RCA-2026-09-22-B bought, one field further in.
+* Guard: `tests/test_every_account_run_knows_its_store.py` (4 tests; both
+  fixes verified red on the pre-fix files).
+
+**SAW** — `Sep 22, 2026 10:27pm`, the answer to the Backtest v2 press:
+`{"id":35740445165, …, "live":false, "live_why":"UnboundLocalError: cannot
+access local variable 'why' where it is not associated with a value"}`, and
+`cs.run_res("35740488141")` returning `''` for a run dispatched with
+`res=1m`.
+
+**TIMELINE**
+
+1. `Sep 22, 2026 7:51pm` — the v1 pair of runs starts; `live_ingest` opens a
+   door for the v1 store (`res=""`) and leaves it open.
+2. `8:59pm` and `9:38pm` — both v1 runs finish on their own, 22 of 22
+   machines successful on each.
+3. `10:27pm` — Backtest v2 pressed across both accounts. `ensure(res="1m")`
+   sees the live v1 door, stops it, and crashes on the unbound `why`; the
+   dispatch continues with `ingest_url=""`, so runs `35740445165` (partner)
+   and `35740488141` (operator) start 40 machines with no live posting.
+4. `10:29pm` — `run_res` reads `'1m'` for the first and `''` for the second.
+   The res map is corrected by hand for the run in flight.
+5. `10:33pm` — both fixes in, 4 new tests green, 79 tests over the cloud and
+   v2 suites green.
+
+**ROOT CAUSE** — one log line at the wrong indent, and one record written for
+one run where a press now starts two.
+
+**WHY IT WAS NOT CAUGHT** — `test_the_live_door_serves_ONE_store_and_says_which`
+was written for exactly this branch and passes on the broken file, because it
+reads the SOURCE for `cur.get("res")`, `stop()` and `_stores.V2.env_for()` —
+all three present, all three at the right place, with the fault entirely in the
+indentation of a fourth line. A source check cannot see a scope. And every
+`remember` test passed a single-run dict, which is the shape that stopped being
+the only one when "i want 40" shipped: when a caller's payload gains a plural,
+re-test the singular AND the plural.
+
+**COST** — none in money or rows: the artifacts still carry every row (the
+live door is the fast path, never the record), and the mis-filed run was
+corrected before it finished. What it cost is immediacy — this v2 run's rows
+land after the run instead of during it.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_every_account_run_knows_its_store.py::test_replacing_a_door_for_the_other_store_does_not_raise`
+and `::test_every_account_run_is_filed_with_its_own_store`.
+
+---
+
 ## RCA-2026-09-19-A — updating ONE strategy rewrote all 23,580 of that coin's rows, so a 25-second job took 48 minutes
 
 **CEO**

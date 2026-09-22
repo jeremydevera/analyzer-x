@@ -1322,8 +1322,19 @@ def remember(run: dict) -> None:
     # Without this the autopilot would start a v1 `collect` for a v2 run;
     # `land_rows` refuses those rows (which is the safety net working), but
     # the run would then never land at all.
-    rid = run.get("id")
-    if rid is None:
+    # EVERY ACCOUNT'S RUN, not just the first. Since "i want 40" one press
+    # starts one run per account and the panel reads runs[0], so this used to
+    # file the store for that one and leave the other account's id unknown:
+    # measured Sep 22, 2026 10:27pm, run 35740445165 filed as res='1m' and
+    # 35740488141 — the same press, the same 1-minute machines — filed as v1,
+    # which would have offered 531 coins of v2 rows to the v1 collect for
+    # `land_rows` to refuse one by one.
+    pairs = [(r.get("id"), r.get("res")) for r in (run.get("runs") or [])
+             if isinstance(r, dict)]
+    if run.get("id") is not None:
+        pairs.append((run.get("id"), run.get("res")))
+    pairs = [(i, res) for i, res in pairs if i is not None]
+    if not pairs:
         return
     with contextlib.suppress(OSError, ValueError, TypeError):
         try:
@@ -1332,7 +1343,8 @@ def remember(run: dict) -> None:
             m = {}
         if not isinstance(m, dict):
             m = {}
-        m[str(rid)] = str(run.get("res") or "")
+        for rid, res in pairs:
+            m[str(rid)] = str(res or "")
         for k in sorted(m, key=lambda x: int(x) if str(x).isdigit() else 0
                         )[:-RES_MAP_KEEP]:
             m.pop(k, None)

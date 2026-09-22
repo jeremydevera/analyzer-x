@@ -272,6 +272,28 @@ def test_the_v2_update_docstring_does_not_still_say_this_PC():
     assert "GITHUB" in doc.upper()
 
 
+def test_the_v2_collect_writes_its_OWN_progress_file():
+    """FOUND BY RUNNING IT, Sep 22, 2026. The first `collect_v2` finished run
+    35607986601 in under a minute and `db_collect_v2.json` still read
+    `{"running": true, "now": "starting"}` — because `_run_collect` took
+    `FILES["collect"]` whatever kind it was. Two faults in one line: a v2
+    collect looks like it never ends, and it overwrites the v1 collect's
+    progress, which is how a screen comes to report the other store's run.
+
+    The same fault as `_finish_btupdate_cloud_only` in the commit before, in
+    the function beside it — so this asserts on the WHOLE family."""
+    from tradingagents import db_jobs as dj
+
+    for fn in (dj._run_collect, dj._write_run_plan,
+               dj._finish_btupdate_cloud_only):
+        assert "kind" in inspect.signature(fn).parameters, fn.__name__
+        body = _code_only(inspect.getsource(fn))
+        assert 'FILES["collect"]' not in body, fn.__name__
+        assert 'FILES["btupdate"]' not in body, fn.__name__
+    assert "_run_collect(spec, kind=kind)" in _code_only(
+        inspect.getsource(dj.main))
+
+
 def test_the_live_door_serves_ONE_store_and_says_which():
     """FOUND BY RUNNING IT. Run 35607986601 (Sep 21, 2026) measured BTC 1h on
     the fleet perfectly — 25,960 rows in 1 minute — and every live post came

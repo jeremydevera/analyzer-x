@@ -2304,7 +2304,7 @@ def _run_stratbt(spec: dict) -> None:
         raise
 
 
-def _run_collect(spec: dict) -> None:
+def _run_collect(spec: dict, kind: str = "collect") -> None:
     """Pull a finished cloud run's rows into the pair store.
 
     Five runs finished between Sep 03 and Sep 05, 2026 — 100 shard artifacts,
@@ -2317,7 +2317,13 @@ def _run_collect(spec: dict) -> None:
     measured, so this is safe to run while a local sweep is going.
     """
     from tradingagents import cloud_sweep as cs
-    f = FILES["collect"]
+    # FILES[kind], never FILES["collect"]. A v2 collect writing into v1's
+    # progress file leaves db_collect_v2.json on "starting" for ever AND
+    # overwrites the v1 collect's own progress — two versions writing one
+    # file, which is how a screen reports the other store's run. Found by
+    # running it: the Sep 22, 2026 collect of run 35607986601 finished in
+    # under a minute and its progress file still said "starting".
+    f = FILES[kind]
     run_id = int(spec["run"])
     _write_progress(f["progress"], {"running": True, "run": run_id, "done": 0,
                            "total": 0, "now": "starting"})
@@ -2665,8 +2671,9 @@ def main(argv: list[str]) -> int:
     elif kind == "btupdate":
         _run_btupdate(spec)
     elif kind in ("collect", "collect_v2"):
-        # one body; the v2 environment is what sends its rows to the v2 store
-        _run_collect(spec)
+        # one body; the v2 environment is what sends its rows to the v2 store,
+        # and `kind` keeps its progress in its OWN file
+        _run_collect(spec, kind=kind)
     elif kind in ("pairbt", "pairbt_v2"):
         _run_pairbt(spec, kind)
     else:

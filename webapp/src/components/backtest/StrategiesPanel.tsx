@@ -1024,7 +1024,7 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
               + ` · ${(idx.rebuild.pairs_done ?? 0).toLocaleString()} of ${(idx.rebuild.pairs_total ?? 0).toLocaleString()} pairs`
               + ` · ${(idx.rebuild.rows ?? 0).toLocaleString()} rows · running ${Math.floor((idx.rebuild.seconds ?? 0) / 3600)}h ${Math.floor(((idx.rebuild.seconds ?? 0) % 3600) / 60)}m`
               + ` — the dates and rows on this table catch up when it finishes`
-              + (idx.rebuild.store === "unknown" ? " (started before Sep 23, 2026, so it does not say which store it is filing)" : "")}
+              + (idx.rebuild.store === "unknown" ? " (started before this fix landed, so it does not say which store it is filing)" : "")}
           </span>
         ) : null}
         {idx && indexTodo > 0 && (store === "v2" || idx.filed_by === "job") ? (
